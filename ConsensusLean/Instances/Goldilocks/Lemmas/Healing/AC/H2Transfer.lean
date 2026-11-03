@@ -327,8 +327,7 @@ theorem h2_votes_continue (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp
         linarith
       exact next_transfer sp FGP ro H U tr proposer hrun (m + d) y k B ℓ e hy hca
         (by omega) ih hhalf
-        (h2_carry_votes hI hmd ih hy hca (by omega) hFB) (hI.faultBound ht0 hT)
-        (hI.syncAC (by linarith) _) (hes ▸ hviab)
+        (h2_carry_votes hI hmd ih hy hca (by omega) hFB) (hI.faultBound ht0 hT) (hes ▸ hviab)
         (fun z hz k' hk' e' hv' hs' => ihk k' hk' z hz e' hv' (by omega))
 
 /-- **§6.1, later labels (proposals)**: for a protected `(B, j)`, if every honest vote of a slot
@@ -595,7 +594,8 @@ theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
     (live_locks_of_stored_before hrun hf hy hc hs hstored hE) hmerged
 
 /-- Later transfer needs extension only at earlier cuts, for the predecessor and
-current labels. Slot monotonicity places every predecessor vote before this cast. -/
+current labels. Slot monotonicity places every predecessor vote before this cast. The `Sync`
+argument is no longer needed (A1.3 dropped it); it stays for the callers' interface. -/
 theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
     {m i : Nat} {y : Fin sp.n} {B : Blk sp.n FGP}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -606,10 +606,10 @@ theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
     (hcarry : CarryAt tr U y i e m
       {v | ∃ z ∈ H, ∃ q e', VoteAt tr z q e' ∧ e'.msg = v ∧ v.slot = m})
     (hfault : FaultBound tr H (tr.time i))
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr)
+    (_hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr)
     (hviab : ViableAtVote ℓ e (m + 1) B) : VoteExtends U e.msg B := by
   refine next_transfer sp FGP ro H U tr proposer hrun m y i B ℓ e hy hc hs ?_
-    hhalf hcarry hfault hsync hviab (fun z hz q hq e' hv he =>
+    hhalf hcarry hfault hviab (fun z hz q hq e' hv he =>
       hprior z hz q hq e' hv (Or.inr he))
   intro z hz q e' hv he
   have hqi : q < i := by

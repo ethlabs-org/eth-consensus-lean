@@ -227,8 +227,7 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
     (half_committee_of_healthy hrun hs (cutZ_le_of_clean hw (hj.trans hjm)))
     (honest_batch_carry hrun hs hc hw (hj.trans hjm) hall hy hv hm'
       (hviab y hy k ℓ e hv (by omega) hk) hBf)
-    (faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk)))
-    (Compose.syncAC_mono hsync0 le_rfl hle) ?_ ?_
+    (faultBound_proj hrun hs hy ((cutZ_le_of_clean hw hj).trans (hjm.trans hmk))) ?_ ?_
   · rw [← hm']
     exact Or.inl ((hviab y hy k ℓ e hv (by omega) hk).resolve_right hBf)
   · rw [← hm']

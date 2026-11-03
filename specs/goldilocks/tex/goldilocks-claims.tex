@@ -2581,7 +2581,9 @@ C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   (\texttt{compose\_node\_statements}, \texttt{run\_statements}); the slot's
   proposer is a run law (C0.5 (b))\\
 A1.3 & \texttt{SA.NextTransfer} & proved (\texttt{acSteps}), per vote under
-  its premises\\
+  its premises, without $\mathsf{Sync}$ (so A1.4 (a); A1.4 (b) also without
+  the optimistic confirmation; A1.9 without the public time and the
+  $\mathit{fc\_root}$/call-time compatibilities)\\
 A1.8 & \texttt{SA.ResultTransfer} & proved (\texttt{acSteps}), per vote under
   its premises\\
 A1.6 & \texttt{Compose.HeadExtendsRecord} & proved

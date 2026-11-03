@@ -223,8 +223,7 @@ theorem vote_extends (hrun : GoldilocksRun proposer dg H tr)
     have hsm' : s < m' := by omega
     refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm' ?_
       (hp.halfCommittee m' hsm' (by omega))
-      (hp.carryLater m' hsm' (by omega) y hy k e ⟨ℓ, hc.1, hc.2⟩ hm') hfault
-      (syncAC_mono hsync0 ((SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm'.le)) htm) ?_ ?_
+      (hp.carryLater m' hsm' (by omega) y hy k e ⟨ℓ, hc.1, hc.2⟩ hm') hfault ?_ ?_
     · intro z hz j e' hv hsl
       have hjk : j < k := by
         by_contra hjk

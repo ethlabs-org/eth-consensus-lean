@@ -108,11 +108,9 @@ theorem nextTransfer_premises_satisfiable :
     sp1.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard ∧
     CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} ∧
     FaultBound tr H (tr.time i) ∧
-    SyncAC (goldilocksSA sp1 Unit ro1) H U (sp1.ts m) (tr.time i) tr ∧
     ViableAtVote ℓ e (m + 1) B ∧ EarlierVotesExtend tr H U i (m + 1) B :=
   ⟨Set.univ, U₁, trW, fun _ => v0, 1, v0, 1, B1, ℓ1, e1, acRun_W, trivial, castAt_W, rfl,
-    slot1_extend_W, participation1_W, carryHonest_W, faultBound_W _, sync_W (by decide),
-    viable_W, earlier_W⟩
+    slot1_extend_W, participation1_W, carryHonest_W, faultBound_W _, viable_W, earlier_W⟩
 
 /-! ## The milestones on the witness -/
 
@@ -125,8 +123,8 @@ theorem firstTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
 /-- (a) A1.3 on the run: the slot-`2` vote extends `B1`. -/
 theorem nextTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
   (acStepsAt sp1).nextTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 1 v0 1 B1 ℓ1 e1
-    trivial castAt_W rfl slot1_extend_W participation1_W carryHonest_W (faultBound_W _)
-    (sync_W (by decide)) viable_W earlier_W
+    trivial castAt_W rfl slot1_extend_W participation1_W carryHonest_W (faultBound_W _) viable_W
+    earlier_W
 
 end Consensus.Goldilocks.SA.Test
 

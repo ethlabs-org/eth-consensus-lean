@@ -825,7 +825,6 @@ theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
       exact next_transfer sp FGP ro H U tr proposer hrun (m + d) x j B ℓ e hx hca (by omega)
         ih hhalf
         (hcarry x hx j e ⟨ℓ, hc, he⟩ (by omega)) (hS.faultBound (hr.time_nonneg j) hT)
-        (hS.syncAC (by linarith) _)
         (trivial_viable hS hx hca (by omega) hmd ⟨z, hz, jz, ez, hvz, hsz, ih z hz jz ez hvz hsz⟩)
         (fun z' hz' j' hj' e' hv' hs' => ihj j' hj' z' hz' e' hv' (by omega))
 

@@ -121,7 +121,7 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
 
 /-- **A1.3.** -/
 theorem next_transfer : NextTransfer sp :=
-  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ hy hc hs hall hhalf hcarry hfault _ hviab hearlier =>
+  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ hy hc hs hall hhalf hcarry hfault hviab hearlier =>
     next_transfer_of_carry sp hrun hy hc hs hall hhalf hcarry hfault hviab hearlier
 
 /-- **A1.4 (a), for the stored block.** A1.4 (a) for a block `B ⪯ D` of an optimistic lock on
@@ -217,7 +217,7 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
 
 /-- **A1.4 (a).** -/
 theorem optimistic_transfer : OptimisticTransfer sp :=
-  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hopt hf hy hc hs _ hcarry hviab hearlier =>
+  fun _ _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hopt hf hy hc hs hcarry hviab hearlier =>
     optimistic_transfer_stored sp hrun hx hopt .refl hf hy hc hs hcarry hviab hearlier
 
 /-- **A1.2, for the stored block.** A1.2 for a block `B ⪯ D` of a fast lock on `D` (the block

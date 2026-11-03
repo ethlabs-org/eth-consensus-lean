@@ -208,8 +208,7 @@ theorem high_vote_extends_of_syncAC
   · obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm' : j < m' := by omega
     refine SA.next_transfer sp _ ro H _ tr.projAC proposer hrun' m' y k B ℓ e hy hc hm' ?_
-      (hhalf m' hm' hsm') (hcarryLater m' hm' hsm' hBf) hfault'
-      (Compose.syncAC_mono hsync0 ((SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hsm'.le)) le_rfl) ?_ ?_
+      (hhalf m' hm' hsm') (hcarryLater m' hm' hsm' hBf) hfault' ?_ ?_
     · intro z hz j' e' hv' hsl
       have hjk : j' < k := by
         by_contra hjk

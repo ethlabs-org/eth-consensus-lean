@@ -41,14 +41,10 @@ theorem earlierSlots_W : ∀ z ∈ (Set.univ : Set (Fin sp1.n)), ∀ j < 2, ∀ 
   · exact absurd hs (by decide)
   · exact ⟨B1, B1_mem, rfl, Relation.ReflTransGen.refl⟩
 
-/-- Branch (i): `v0` cast its slot-`2` vote at cut 1, with `F = fc_root = g` compatible with
-`B1`. -/
+/-- Branch (i): `v0` cast its slot-`2` vote at cut 1, with `F = g` compatible with `B1`. -/
 theorem castBefore_W : ∃ j < 2, ∃ ℓ' e, CastAt trW v0 j ℓ' e ∧ e.msg.slot = 1 + 1 ∧
-    Compatible U₁ ℓ'.frame.F B1 ∧ Compatible U₁ ℓ'.frame.fcRoot B1 :=
-  ⟨1, by decide, ℓ1, e1, castAt_W, rfl, compatible_U₁ g_mem B1_mem, compatible_U₁ g_mem B1_mem⟩
-
-/-- The call's time `12` is public (a multiple of `Δ = 1`). -/
-theorem public_12 : sp1.toParams.IsPublic (trW.time 2) := ⟨12, by decide⟩
+    Compatible U₁ ℓ'.frame.F B1 :=
+  ⟨1, by decide, ℓ1, e1, castAt_W, rfl, compatible_U₁ g_mem B1_mem⟩
 
 /-! ## The witness -/
 
@@ -65,18 +61,15 @@ theorem sourceCompatible_premises_satisfiable :
     w ∈ H ∧ FastLockAt tr w i₀ s B CV ∧
     SyncAC (goldilocksSA sp1 Unit ro1) H U (sp1.ts s) (sp1.ts (s + 1 : Nat) + sp1.Δ) tr ∧
     Carry tr H U s CV ∧ 2 * Hᶜ.ncard < sp1.n ∧
-    x ∈ H ∧ ToFGAt tr x i ℓ C ∧ sp1.toParams.IsPublic (tr.time i) ∧
+    x ∈ H ∧ ToFGAt tr x i ℓ C ∧
     sp1.ts (s + 1 : Nat) + sp1.Δ < tr.time i ∧ tr.time i ≤ sp1.ts m + sp1.Δ ∧
     (∀ z ∈ H, ∀ j < i, ∀ e, VoteAt tr z j e → s < e.msg.slot → e.msg.slot ≤ m →
       VoteExtends U e.msg B) ∧
-    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧
-        Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) ∨
-      (∃ k < i, tr.RestartAt x k ∧ sp1.ts s < tr.time k)) ∧
-    Compatible U ℓ.frame.F B ∧ Compatible U ℓ.frame.fcRoot B :=
+    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
+      (∃ k < i, tr.RestartAt x k ∧ sp1.ts s < tr.time k)) :=
   ⟨Set.univ, U₁, trW, fun _ => v0, 1, 3, v0, v0, 0, 2, B1, CV1, ℓ2, B1, acRun_W, trivial,
     Or.inr optimisticLock_W, sync_W (by decide), carryAll_W, faults_W, trivial, toFG_W,
-    public_12, by decide, by decide, earlierSlots_W, Or.inl castBefore_W,
-    compatible_U₁ g_mem B1_mem, compatible_U₁ g_mem B1_mem⟩
+    by decide, by decide, earlierSlots_W, Or.inl castBefore_W⟩
 
 /-! ## The milestone on the witness -/
 
@@ -85,8 +78,7 @@ locked block `B1`. -/
 theorem sourceCompatible_on_witness : Compatible U₁ B1 B1 :=
   (acStepsAt sp1).sourceCompatible Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 1 3 v0 v0 0 2
     B1 CV1 ℓ2 B1 trivial (Or.inr optimisticLock_W) (sync_W (by decide)) carryAll_W faults_W
-    trivial toFG_W public_12 (by decide) (by decide) earlierSlots_W (Or.inl castBefore_W)
-    (compatible_U₁ g_mem B1_mem) (compatible_U₁ g_mem B1_mem)
+    trivial toFG_W (by decide) (by decide) earlierSlots_W (Or.inl castBefore_W)
 
 end Consensus.Goldilocks.SA.Test
 

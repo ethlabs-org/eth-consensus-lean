@@ -224,7 +224,6 @@ theorem attest_not_excluded (hrun : GoldilocksRun proposer dg H tr)
     (ih : ∀ i < j, VoteInv tr H s m B i ∧ CutInv tr H s m B i) :
     ∀ E ∈ excludedEntries tr H s B, a.T ≠ E.root := by
   obtain ⟨C, hcall⟩ := hs
-  have hpub := sign_public hrun hv hcall
   obtain ⟨j', rfl, ℓ, hc', hto, htime, hC, hfgeq⟩ := attest_source hrun.toLocalRun hv hcall
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
   have hr := hrun'.localRun
@@ -242,26 +241,14 @@ theorem attest_not_excluded (hrun : GoldilocksRun proposer dg H tr)
   have hs1 := (SA.ts_lt_iff sp).mpr (show ((s : Nat) : Int) < ((s + 1 : Nat) : Int) by omega)
   have hsm := (SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hp.lt)
   -- the caches at a cut of the window
-  have hcaches : ∀ k ≤ j', sp.ts s ≤ tr.time k →
-      Compatible (tr.HonestBlocks H) (tr.state v k).fg.F B ∧
-        Compatible (tr.HonestBlocks H) (tr.state v k).fg.J B := fun k hk hk₀ =>
-    state_caches hrun hp k (fun i hi => (ih' i (by omega)).2) v hv hk₀
-      fun i hi => by have := hrun.time_mono (show i ≤ j' by omega); linarith
   have hframe : ∀ k ≤ j', ∀ ℓk, tr.projAC.CallAt v k ℓk → sp.ts s ≤ tr.time k →
-      Compatible (tr.HonestBlocks H) ℓk.frame.F B ∧
-        Compatible (tr.HonestBlocks H) ℓk.frame.fcRoot B := by
+      Compatible (tr.HonestBlocks H) ℓk.frame.F B := by
     intro k hk ℓk hck hk₀
-    have hcc := hcaches k hk hk₀
     rw [frame_of_projAC hrun hv hck]
-    refine ⟨hcc.1, ?_⟩
-    change Compatible _ (tr.state v k).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact hcc.2
-    · exact hcc.1
+    exact (state_caches hrun hp k (fun i hi => (ih' i (by omega)).2) v hv hk₀
+      fun i hi => by have := hrun.time_mono (show i ≤ j' by omega); linarith).1
   have hcase : (∃ i < j', ∃ ℓ' e, SA.CastAt tr.projAC v i ℓ' e ∧ e.msg.slot = s + 1 ∧
-      Compatible (tr.HonestBlocks H) ℓ'.frame.F B ∧
-      Compatible (tr.HonestBlocks H) ℓ'.frame.fcRoot B) ∨
+      Compatible (tr.HonestBlocks H) ℓ'.frame.F B) ∨
       (∃ k < j', tr.projAC.RestartAt v k ∧ sp.ts s < tr.time k) := by
     refine (vote_or_restart hrun hp hv hToFG hlo).imp_left ?_
     rintro ⟨i, hi, ℓ', e, hce, hsl⟩
@@ -281,10 +268,10 @@ theorem attest_not_excluded (hrun : GoldilocksRun proposer dg H tr)
     SA.source_compatible_stored sp _ ro proposer H _ tr.projAC hrun' s m x v i₀ j' B D CV ℓ C
       hp.writer_honest hflD (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D)) hsync
       hp.carry (faulty_lt_half hrun hp) hv hToFG
-      (htime ▸ hpub) hlo hhi
+      hlo hhi
       (fun z hz i hi e ⟨ℓz, hcz, hez⟩ h₁ h₂ =>
         (voteInv_iff.mp (ih' i hi).1 z hz ℓz e ⟨hcz, hez⟩ h₁ h₂).2)
-      hcase (hframe j' le_rfl ℓ hpc (by linarith)).1 (hframe j' le_rfl ℓ hpc (by linarith)).2
+      hcase
   -- the target: the entry of the source's chain
   set st := (tr.state v (j' + 1)).fg with hst
   have hsub : st.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨v, hv, j' + 1, hX⟩

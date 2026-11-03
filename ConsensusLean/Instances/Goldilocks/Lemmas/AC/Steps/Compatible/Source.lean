@@ -51,17 +51,15 @@ theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     w ∈ H → FastLockAt tr w i₀ s D CV → Anc U B D →
     SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
     Carry tr H U s CV → 2 * Hᶜ.ncard < sp.n →
-    x ∈ H → ToFGAt tr x i ℓ C → sp.toParams.IsPublic (tr.time i) →
+    x ∈ H → ToFGAt tr x i ℓ C →
     sp.ts (s + 1 : Nat) + sp.Δ < tr.time i → tr.time i ≤ sp.ts m + sp.Δ →
     (∀ z ∈ H, ∀ j < i, ∀ e, VoteAt tr z j e → s < e.msg.slot → e.msg.slot ≤ m →
       VoteExtends U e.msg B) →
-    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧
-        Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) ∨
+    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
       (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
-    Compatible U ℓ.frame.F B → Compatible U ℓ.frame.fcRoot B →
     Compatible U C B := by
   intro FGP ro proposer H U tr hrun s m w x i₀ i B D CV ℓ C hw hfl hBD hsync hcarry hf hx hto
-    _ hlo hhi hvotes hcase _ _
+    hlo hhi hvotes hcase
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hc, hcall, hC⟩ := hto
@@ -114,7 +112,7 @@ theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     exacts [Or.inr (hBD.trans h), anc_total hU h hBD]
   · -- slot `s − 1`, so `slot(t) = s + 1`
     have hσ : sp.slot (tr.time i) = s + 1 := by omega
-    rcases hcase with ⟨j₁, hj₁, ℓ₁, e₁, hc₁, hs₁, hF₁, -⟩ | ⟨k, hk, hrk, htk⟩
+    rcases hcase with ⟨j₁, hj₁, ℓ₁, e₁, hc₁, hs₁, hF₁⟩ | ⟨k, hk, hrk, htk⟩
     · exact locks_after_unlock hrun hw hfl hBD hcarry hx hc₁ hs₁ hF₁ hj₁ l₀ hl₀ hgt B₀ (hΦU hB₀)
         hB₀r
     · -- a restart after `t_s` leaves `x` unjoined in slot `s + 1`

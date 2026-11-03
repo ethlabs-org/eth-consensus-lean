@@ -75,9 +75,9 @@ def FirstTransfer : Prop :=
 /-- **A1.3, next transfer (per vote).** Let an honest `y` cast its slot-`(m+1)` vote at cut `i`
 (time `τ`). If every honest vote of slot `m` extends `B`, the honest voters of slot `m` are at
 least half of the committee, `Carry_y(m, S_m, B)` holds for the honest slot-`m` votes, `f < h_τ`,
-`Sync[t_m, τ]`, at that vote `B` is in `y`'s viable voter block tree or at or below its
-`fc_root`, and every honest slot-`(m+1)` vote at an earlier cut extends `B`, then the vote
-extends `B`. -/
+at that vote `B` is in `y`'s viable voter block tree or at or below its `fc_root`, and every
+honest slot-`(m+1)` vote at an earlier cut extends `B`, then the vote extends `B`. (The claims
+also assume `Sync[t_m, τ]`; it is not needed.) -/
 def NextTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
@@ -88,15 +88,15 @@ def NextTransfer : Prop :=
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
     CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} →
     FaultBound tr H (tr.time i) →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr →
     ViableAtVote ℓ e (m + 1) B → EarlierVotesExtend tr H U i (m + 1) B →
     VoteExtends U e.msg B
 
 /-- **A1.4 (a), optimistic is fast: the transfer (per vote).** Let an honest node confirm `B`
 optimistically in slot `s` with counted votes `CV`, and assume `f < n/2`. For an honest `y`
-casting its slot-`(s+1)` vote at cut `i` (time `τ`): under `Sync[t_s, τ]`, `Carry_y(s, S, B)`,
-`B` in `y`'s viable voter block tree or at or below its `fc_root` at that vote, and every honest
-slot-`(s+1)` vote at an earlier cut extending `B`, the vote extends `B`. -/
+casting its slot-`(s+1)` vote at cut `i` (time `τ`): under `Carry_y(s, S, B)`, `B` in `y`'s viable
+voter block tree or at or below its `fc_root` at that vote, and every honest slot-`(s+1)` vote at
+an earlier cut extending `B`, the vote extends `B`. (The claims also assume `Sync[t_s, τ]`; it is
+not needed.) -/
 def OptimisticTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
@@ -104,14 +104,13 @@ def OptimisticTransfer : Prop :=
       (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
     x ∈ H → OptimisticLockAt tr x i₀ s B CV → 2 * Hᶜ.ncard < sp.n →
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr →
     CarryAt tr U y i e s CV →
     ViableAtVote ℓ e (s + 1) B → EarlierVotesExtend tr H U i (s + 1) B →
     VoteExtends U e.msg B
 
-/-- **A1.4 (b), optimistic is fast: the next update.** Let an honest node confirm `B`
-optimistically in slot `s`, with `f < n/2`. Under `Sync[t_s, t_{s+1} + Δ]`, if every honest
-vote of slot `s + 1` extends `B` ((a)'s conclusion), then an honest `z` whose update of slot
+/-- **A1.4 (b), optimistic is fast: the next update.** With `f < n/2`, if every honest vote of
+slot `s + 1` extends `B` ((a)'s conclusion for an optimistic confirmation of `B` in slot `s`; the
+statement needs neither that confirmation nor `Sync`), then an honest `z` whose update of slot
 `s + 1` runs at cut `k` (joined at `t_{s+1} + 6Δ`), holding the slot-`(s+1)` votes of at least
 `n/2` honest voters and with every honest slot-`(s+1)` vote it holds resolved before
 `t_{s+1} + 2Δ`, has a slot-`(s+1)` result that extends `B`, and, if `B` is not genesis, its fast
@@ -119,10 +118,9 @@ test selects a block `D` that extends `B` (the write can still be vetoed or move
 def OptimisticNextUpdate : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    ACRun proposer tr H U → ∀ (s : Nat) (x z : Fin sp.n) (i₀ k : Nat) (B : Blk sp.n FGP)
-      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)),
-    x ∈ H → OptimisticLockAt tr x i₀ s B CV → 2 * Hᶜ.ncard < sp.n →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
+    ACRun proposer tr H U → ∀ (s : Nat) (z : Fin sp.n) (k : Nat) (B : Blk sp.n FGP)
+      (ℓ : ACLabel (goldilocksSA sp FGP ro)),
+    2 * Hᶜ.ncard < sp.n →
     (∀ x' ∈ H, ∀ j e, VoteAt tr x' j e → e.msg.slot = s + 1 → VoteExtends U e.msg B) →
     z ∈ H → UpdateAt tr z k (s + 1) ℓ →
     sp.n ≤ 2 * {v | v ∈ H ∧ ∃ x' ∈ (tr.state z k).pool (s + 1), x'.val = v}.ncard →
@@ -168,14 +166,15 @@ def ResultTransfer : Prop :=
 
 /-- **A1.9, source compatibility after the cut (per call).** Let an honest node write a fast
 lock of slot `s` on `B` with counted votes `CV`. Assume `Sync[t_s, t_{s+1} + Δ]`,
-`Carry(s, S, B)` and `f < n/2`; let `x`'s `ac_to_fg` call at cut `i` be at a public time
+`Carry(s, S, B)` and `f < n/2`; let `x`'s `ac_to_fg` call at cut `i` be at a time
 `t ∈ (t_{s+1} + Δ, t_m + Δ]`; assume every honest vote of a slot in `(s, m]` at an earlier cut
-extends `B`, and that at the call `Φ.F` and `fc_root` are compatible with `B`, and either (i) `x`
-cast its slot-`(s+1)` vote at an earlier cut, and at the unlocking before that vote (the vote's
-call) `Φ.F` and `fc_root` are compatible with `B`, or (ii) `x` restarted after `t_s`, at an
-earlier cut (claims at goldilocks `688e287b`, goldilocks#33; not vacuous when `x` makes no
-unlocking in slot `s + 1`: consensus-lean#66). Then the block `fg_confirmed ≠ ⊥` that the call
-returns is compatible with `B`. -/
+extends `B`, and either (i) `x` cast its slot-`(s+1)` vote at an earlier cut, and at the unlocking
+before that vote (the vote's call) `Φ.F` is compatible with `B`, or (ii) `x` restarted after
+`t_s`, at an earlier cut (claims at goldilocks `688e287b`, goldilocks#33; not vacuous when `x`
+makes no unlocking in slot `s + 1`: consensus-lean#66). Then the block `fg_confirmed ≠ ⊥` that
+the call returns is compatible with `B`. (The claims also assume a public time, compatibility of
+`Φ.F` and `fc_root` with `B` at the call, and of `fc_root` at the vote's call; none is
+needed.) -/
 def SourceCompatible : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
@@ -184,14 +183,12 @@ def SourceCompatible : Prop :=
     w ∈ H → FastLockAt tr w i₀ s B CV →
     SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr →
     Carry tr H U s CV → 2 * Hᶜ.ncard < sp.n →
-    x ∈ H → ToFGAt tr x i ℓ C → sp.toParams.IsPublic (tr.time i) →
+    x ∈ H → ToFGAt tr x i ℓ C →
     sp.ts (s + 1 : Nat) + sp.Δ < tr.time i → tr.time i ≤ sp.ts m + sp.Δ →
     (∀ z ∈ H, ∀ j < i, ∀ e, VoteAt tr z j e → s < e.msg.slot → e.msg.slot ≤ m →
       VoteExtends U e.msg B) →
-    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧
-        Compatible U ℓ'.frame.F B ∧ Compatible U ℓ'.frame.fcRoot B) ∨
+    ((∃ j < i, ∃ ℓ' e, CastAt tr x j ℓ' e ∧ e.msg.slot = s + 1 ∧ Compatible U ℓ'.frame.F B) ∨
       (∃ k < i, tr.RestartAt x k ∧ sp.ts s < tr.time k)) →
-    Compatible U ℓ.frame.F B → Compatible U ℓ.frame.fcRoot B →
     Compatible U C B
 
 /-- The ACSteps statements, for the SA parameters `sp`. -/

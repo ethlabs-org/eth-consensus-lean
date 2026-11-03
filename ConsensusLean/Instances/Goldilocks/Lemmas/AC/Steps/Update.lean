@@ -146,7 +146,7 @@ variable (sp)
 
 /-- **A1.4 (b).** -/
 theorem optimistic_next_update : OptimisticNextUpdate sp := by
-  intro FGP ro H U tr proposer hrun s x z i₀ k B CV ℓ _ _ hf _ hext hz hup hh hres
+  intro FGP ro H U tr proposer hrun s z k B ℓ hf hext hz hup hh hres
   exact update_extends_of_resolved_votes hrun hf hext hz hup hh hres
 
 end Consensus.Goldilocks.SA

@@ -267,11 +267,11 @@ A1.7 are run-level (Service). The healing kernels A1–A5 of healing-simple are 
 | — | CLAIMS §Runs (unforgeable signatures); FG acceptance (slot proposer) | honest objects over an AC trace; the bundle with the trace contract | — | `Consensus.Goldilocks.SA.HonestObjects`, `Consensus.Goldilocks.SA.ACRun` |
 | A1.1 | CLAIMS A1.1 | proposer and voters agree on unlocking | `ACSteps` | `Consensus.Goldilocks.SA.ProposerVotersAgree` |
 | A1.2 | CLAIMS A1.2 | first transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.FirstTransfer` |
-| A1.3 | CLAIMS A1.3 | next transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.NextTransfer` |
-| A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update | `ACSteps` | `Consensus.Goldilocks.SA.OptimisticTransfer`, `Consensus.Goldilocks.SA.OptimisticNextUpdate` |
+| A1.3 | CLAIMS A1.3 | next transfer, per vote. **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): no `Sync[t_m, τ]` premise | `ACSteps` | `Consensus.Goldilocks.SA.NextTransfer` |
+| A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update. **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): (a) has no `Sync` premise; (b) assumes neither the optimistic confirmation nor `Sync`: in their place only `f < n/2` and that every honest slot-`(s+1)` vote extends `B` (the premises about the updating node `z` are kept) | `ACSteps` | `Consensus.Goldilocks.SA.OptimisticTransfer`, `Consensus.Goldilocks.SA.OptimisticNextUpdate` |
 | A1.5 | CLAIMS A1.5 | source age | `ACSteps` | `Consensus.Goldilocks.SA.SourceAge` |
 | A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.ResultTransfer` |
-| A1.9 | CLAIMS A1.9 | source compatibility after the cut, per call | `ACSteps` | `Consensus.Goldilocks.SA.SourceCompatible` |
+| A1.9 | CLAIMS A1.9 | source compatibility after the cut, per call. **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): no public-time premise, no compatibility of `Φ.F` or `fc_root` with `B` at the call, and branch (i) needs only `Φ.F` (not `fc_root`) compatible at the vote's call | `ACSteps` | `Consensus.Goldilocks.SA.SourceCompatible` |
 | — | the milestone | all of the above, at one and at every SA parameter set | `ACSteps` | `Consensus.Goldilocks.SA.ACStepsAt`, `Consensus.Goldilocks.SA.ACSteps` |
 
 Modelling choices:
