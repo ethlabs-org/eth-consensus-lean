@@ -190,22 +190,10 @@ private theorem headOK_of {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU
   obtain ⟨-, hah, hv⟩ := getHead_spec hΦ hdom hdomA V σ ha
   exact ⟨(hanc Φ.fcRoot (Or.inr rfl)).trans hah, hv⟩
 
-/-- The head that `ac_to_fg` returns is the walk of `ac_head`. -/
-private theorem toFG_head (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acToFG sp A Φ t).2.2 = ⟨acHead sp A Φ t, getAnchor sp A Φ t, Φ.tree⟩ := by
-  unfold acToFG
-  dsimp only
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
-
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem toFG_candidate {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2.1 = some C) : C ∈ toFGCandidates sp A Φ t := by
+    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
   unfold acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h
@@ -239,7 +227,7 @@ theorem interface_requirements : InterfaceRequirements sp := by
   · -- requirement 1: the heads of the duties
     intro x U hU A Φ t₀ hr
     obtain ⟨⟨hΦ, hΦU⟩, ht₀, h⟩ := lockInv_of_reachable hU hr
-    refine ⟨fun σ _ d p hp => ?_, fun t _ => ?_, fun t c Φ' ht hok e he d hd => ?_⟩
+    refine ⟨fun σ _ d p hp => ?_, fun t c Φ' ht hok e he d hd => ?_⟩
     · change (acProposal sp A Φ _).2 = _ at hp
       unfold acProposal at hp
       dsimp only at hp
@@ -247,9 +235,6 @@ theorem interface_requirements : InterfaceRequirements sp := by
       simp only [Option.some.injEq, Prod.mk.injEq] at hp
       obtain ⟨rfl, -⟩ := hp
       exact headOK_of hU hΦ hΦU (h.unlock hU hΦ hΦU _ _ _) (fun _ h => h) (hall Φ) _ _
-    · change (goldilocksSA sp FGP ro).HeadOK Φ (acToFG sp A Φ t).2.2
-      rw [toFG_head]
-      exact headOK_of hU hΦ hΦU h (fun _ h => h) (hall Φ) _ _
     · obtain ⟨A₁, V, σ, h1, h2, rfl⟩ := (h.callOK hU ⟨hΦ, hΦU⟩ hok).step_emits hU hok.1.1
         hok.1.2 x t (ht₀.trans ht) c e he d hd
       have hsp := stamp_parent sp FGP ro x U hU _ _ _ (ACInterface.ReachableAt.step c hr ht hok)
@@ -259,15 +244,8 @@ theorem interface_requirements : InterfaceRequirements sp := by
         (voteDomain_anc_closed (voterBlockTree_closed hsp _)) V σ
   · -- requirement 2: the block for the FG
     intro x U hU A Φ t₀ hr t ht C hC
-    obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr
-    change (acToFG sp A Φ t).2.1 = some C at hC
-    have hcand := toFG_candidate hC
-    refine ⟨hcand.1, ?_⟩
-    change Φ.Anc C (acToFG sp A Φ t).2.2.head
-    rw [toFG_head]
-    obtain ⟨ha, -⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
-    exact ((candidates_chain sp FGP ro x U hU A Φ t₀ hr t ht).2 C hcand).trans
-      (getHead_spec hΦ (fun _ h => h) (hall Φ) _ _ ha).2.1
+    change (acToFG sp A Φ t).2 = some C at hC
+    exact (toFG_candidate hC).1
   · -- requirement 3: the head and the confirmed tip
     intro x U hU A Φ t₀ hr t _
     obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr

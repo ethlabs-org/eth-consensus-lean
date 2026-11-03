@@ -535,9 +535,8 @@ theorem first_transfer : FirstTransfer sp :=
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem mem_toFGCandidates {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2.1 = some C) : C ∈ toFGCandidates sp A Φ t := by
+    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
   unfold acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h

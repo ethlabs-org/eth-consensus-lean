@@ -491,10 +491,9 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 
 /-- A block that `ac_to_fg` returns is a candidate (as in `Retention/Rows`). -/
 private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2.1 = some C) :
+    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
     C ∈ SA.toFGCandidates sp A Φ t := by
   unfold SA.acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h

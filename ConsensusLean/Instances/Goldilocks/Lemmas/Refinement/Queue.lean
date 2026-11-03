@@ -245,7 +245,6 @@ private theorem inventory_call {P : Wire sp.n → Prop} {st : NodeState (goldilo
   | toFG =>
     change PoolIn _ (SA.acToFG sp st.ac (frame st) t).1
     unfold SA.acToFG
-    dsimp only
     split_ifs
     · split
       · exact h.votes
@@ -292,7 +291,6 @@ private theorem inventory_toFG {P : Wire sp.n → Prop}
   refine ⟨h.reachable, h.blocks, ?_, h.atts⟩
   change PoolIn _ (SA.acToFG sp st.ac (frame st) t).1
   unfold SA.acToFG
-  dsimp only
   split_ifs
   · split
     · exact h.votes
@@ -455,7 +453,6 @@ theorem poll_pool_eq (st : State sp ro) t :
   have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (SA.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
     unfold SA.acToFG
-    dsimp only
     split_ifs
     · split
       · rfl

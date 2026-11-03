@@ -548,7 +548,6 @@ theorem acProposal_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 theorem acToFG_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (SA.acToFG sp A Φ t).1.pool = A.pool := by
   unfold SA.acToFG
-  dsimp only
   split_ifs
   · split
     · rfl

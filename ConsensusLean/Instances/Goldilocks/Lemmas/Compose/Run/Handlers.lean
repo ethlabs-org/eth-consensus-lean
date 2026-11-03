@@ -186,7 +186,7 @@ private theorem update_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : F
     (st : NodeState A) (t : Time) (x : Nat) {m : Nat} {C : A.Blk} {a : FG.Att P.n}
     (hm : (tickStep proposer dg y st t x .fgUpdate).2[m]? = some (.fg (.attest C (some a)))) :
     m = 1 ∧ (tickStep proposer dg y st t x .fgUpdate).2[0]? = some (.ac ⟨.toFG, frame st, []⟩) ∧
-      (A.toFG st.ac (frame st) t).2.1 = some C := by
+      (A.toFG st.ac (frame st) t).2 = some C := by
   simp only [tickStep, acToFG] at hm ⊢
   split at hm
   · rcases m with _ | m <;> simp at hm
@@ -220,7 +220,7 @@ private theorem attest_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
     (hk : (exec proposer dg y st t e).2[k]? = some (.fg (.attest C (some a)))) :
     ∃ k', k = k' + 1 ∧ ∃ st₁, CutChain y t st ((exec proposer dg y st t e).2.take k') st₁ ∧
       (exec proposer dg y st t e).2[k']? = some (.ac ⟨.toFG, frame st₁, []⟩) ∧
-      (A.toFG st₁.ac (frame st₁) t).2.1 = some C := by
+      (A.toFG st₁.ac (frame st₁) t).2 = some C := by
   obtain ⟨x, rfl⟩ : ∃ x, e = .tick x :=
     signed_only_in_ticks proposer dg y st t e C a (List.mem_of_getElem? hk)
   rw [tick_cuts] at hk ⊢
@@ -713,7 +713,7 @@ theorem fg_reachable (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy :
 theorem attest_source (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {j : Nat}
     {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel A, tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧
-      tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2.1 = some C ∧
+      tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg := by
   obtain ⟨j₀, e, k, hg, rfl, hk⟩ := call_in_group h hy hc
   obtain ⟨k', rfl, st₁, hch, hk', hC⟩ := attest_prev proposer dg y _ _ e hk

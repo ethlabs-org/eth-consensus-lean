@@ -297,7 +297,7 @@ theorem attest_not_excluded (hrun : GoldilocksRun proposer dg H tr)
       exact h
     have hsrc := ((SA.interface_requirements sp _ ro).2.1 v _ hU _ _ _ hreachA) (tr.time j') htp C
       (by rw [projAC_state hrun.toLocalRun hv, ← hΦ]; exact hC)
-    have hCf : C ∈ ℓ.frame.tree := hΦ ▸ hsrc.1.1
+    have hCf : C ∈ ℓ.frame.tree := hΦ ▸ hsrc.1
     rw [frame_of_projAC hrun hv hpc] at hCf
     change C ∈ st.tree
     rw [hfgeq]

@@ -76,10 +76,9 @@ noncomputable def acProposal (st : NodeState A) (t : Time) :
   let r := A.proposal st.ac Φ t
   ({ st with ac := r.1 }, .ac ⟨.proposal, Φ, []⟩, r.2)
 
-/-- `ac_to_fg(𝒜, Φ, t)` as a cut (no emissions), with its returned value:
-`(fg_confirmed, head)`. -/
+/-- `ac_to_fg(𝒜, Φ, t)` as a cut (no emissions), with its returned value `fg_confirmed`. -/
 noncomputable def acToFG (st : NodeState A) (t : Time) :
-    NodeState A × Cut A × (Option A.Blk × DutyHead P.n (List (FG.Att P.n)) A.Payload) :=
+    NodeState A × Cut A × Option A.Blk :=
   let Φ := frame st
   let r := A.toFG st.ac Φ t
   ({ st with ac := r.1 }, .ac ⟨.toFG, Φ, []⟩, r.2)

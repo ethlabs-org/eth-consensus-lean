@@ -471,11 +471,11 @@ leaves the tree and `Σ.F`. -/
 private theorem fgUpdate_attest {st : NodeState A} {t : Time}
     (hr : st.fg.Reachable A.genesisPayload) {C : A.Blk} {s : Option (FG.Att P.n)} {x : Nat}
     (h : Cut.fg (.attest C s) ∈ (tickStep proposer dg self st t x .fgUpdate).2) :
-    (Node.acToFG st t).2.2.1 = some C ∧
+    (Node.acToFG st t).2.2 = some C ∧
       (tickStep proposer dg self st t x .fgUpdate).1.fg.tree = st.fg.tree ∧
       (tickStep proposer dg self st t x .fgUpdate).1.fg.F = st.fg.F := by
   simp only [Node.tickStep, Node.acToFG] at h ⊢
-  cases hC' : (A.toFG st.ac (frame st) t).2.1 with
+  cases hC' : (A.toFG st.ac (frame st) t).2 with
   | none => rw [hC'] at h; simp at h
   | some C' =>
     rw [hC'] at h
@@ -524,7 +524,7 @@ theorem sources_held : SourcesHeld proposer dg self := by
   · exact absurd hC (proposal_no_attest proposer dg self _ t x C s)
   obtain ⟨hsrc, htree, hF⟩ := fgUpdate_attest proposer dg self h₂.fg hC
   obtain ⟨t₀, ht₀, hR⟩ := h₂.ac hq
-  obtain ⟨hCt, hFC, -⟩ := source_held A hq self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1 _ _ t₀ hR
+  obtain ⟨hCt, hFC⟩ := source_held A hq self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1 _ _ t₀ hR
     t ht₀ C hsrc
   dsimp only
   unfold Store.Anc

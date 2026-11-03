@@ -190,7 +190,6 @@ private theorem proposal_latestConfirmed (A : SA.SAState sp.n) (Φ : SA.Frm sp.n
 private theorem toFG_latestConfirmed (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
     (SA.acToFG sp A Φ t).1.latestConfirmed = A.latestConfirmed := by
   unfold SA.acToFG
-  dsimp only
   split_ifs
   · split
     · rfl
@@ -458,7 +457,6 @@ private theorem proposal_keeps {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA
 private theorem toFG_locks (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
     (SA.acToFG sp A Φ t).1.locks = A.locks := by
   unfold SA.acToFG
-  dsimp only
   split_ifs
   · split
     · rfl

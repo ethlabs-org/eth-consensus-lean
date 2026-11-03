@@ -149,7 +149,6 @@ theorem mem_acProposal_of_keep {A : SAState sp.n} (hl : l ∈ A.locks)
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by
   unfold acToFG
-  dsimp only
   split_ifs
   · split
     · rfl

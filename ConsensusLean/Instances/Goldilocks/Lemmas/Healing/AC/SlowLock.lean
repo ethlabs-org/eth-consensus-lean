@@ -199,7 +199,6 @@ private theorem FromP.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A :
 private theorem toFG_locks (A : SAState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by
   unfold acToFG
-  dsimp only
   split_ifs
   · split
     · rfl

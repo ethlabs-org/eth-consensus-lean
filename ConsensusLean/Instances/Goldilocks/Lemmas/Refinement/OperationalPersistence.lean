@@ -87,7 +87,6 @@ theorem operational_proposal_below_later_parent {b : Time}
     have hcand : C ∈ SA.toFGCandidates sp (tr.projAC.state z r) ellr.frame (tr.time r) := by
       have hout := hrep.2.2
       unfold SA.acToFG at hout
-      dsimp only at hout
       split_ifs at hout
       split at hout
       · cases hout

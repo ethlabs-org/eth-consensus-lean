@@ -1061,7 +1061,7 @@ theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n
     change tr.post c = (acToFG sp A ℓ.frame t).1 at hpost
     rw [hpost]
     refine RecP.of_eq ?_ hR
-    unfold acToFG; dsimp only
+    unfold acToFG
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>

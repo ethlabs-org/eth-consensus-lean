@@ -39,11 +39,10 @@ def ProposalParentHeld : Prop :=
 
 /-- **The source is held.** At a reachable AC state with frame `Φ`, a block `fg_confirmed ≠ ⊥`
 that `ac_to_fg` returns at a time not before its last call is a block of `Φ.tree` that
-extends `Φ.F`, and the returned head extends it (requirement 2 under a well-formed frame). -/
+extends `Φ.F` (requirement 2 under a well-formed frame). -/
 def SourceHeld : Prop :=
   A.Requirements → A.AtReachable fun _ _ s Φ t₀ => ∀ t, t₀ ≤ t → ∀ C,
-    (A.toFG s Φ t).2.1 = some C →
-      C ∈ Φ.tree ∧ Φ.Anc Φ.F C ∧ Φ.Anc C (A.toFG s Φ t).2.2.head
+    (A.toFG s Φ t).2 = some C → C ∈ Φ.tree ∧ Φ.Anc Φ.F C
 
 /-- **Duty heads are held.** The head of every emission of a lawful call from a reachable AC
 state is a block of the call's frame that extends its root (requirement 1 under a well-formed

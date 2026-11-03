@@ -54,7 +54,7 @@ def rootAC : NodeAC P₁ where
   onBlock _ s _ _ _ := (s, [])
   onTick _ s _ _ := (s, [])
   proposal s Φ _ := (s, some (⟨Φ.fcRoot, Φ.fcRoot, ∅⟩, ()))
-  toFG s Φ _ := (s, (none, ⟨Φ.fcRoot, Φ.fcRoot, ∅⟩))
+  toFG s _ _ := (s, none)
   confirmed _ Φ _ := Φ.F
   head _ Φ _ := Φ.fcRoot
   restart _ s _ _ := (s, [])
@@ -84,7 +84,7 @@ theorem headOK_fcRoot (Φ : rootAC.Frm) : rootAC.HeadOK Φ ⟨Φ.fcRoot, Φ.fcRo
 theorem rootAC_requirements : rootAC.Requirements where
   heads := by
     intro self U _ s Φ t₀ _
-    refine ⟨fun _ _ d p h => ?_, fun _ _ => headOK_fcRoot Φ, fun t c Φ' _ _ e he => ?_⟩
+    refine ⟨fun _ _ d p h => ?_, fun t c Φ' _ _ e he => ?_⟩
     · simp only [rootAC, Option.some.injEq] at h
       injection h with hd _
       subst hd

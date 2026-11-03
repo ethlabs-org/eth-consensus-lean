@@ -193,7 +193,6 @@ theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.
     have h : (SA.acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
         (SA.acToFG sp A Φ t).1.restartTime = A.restartTime := by
       unfold SA.acToFG
-      dsimp only
       split_ifs
       · split
         · exact ⟨rfl, rfl⟩

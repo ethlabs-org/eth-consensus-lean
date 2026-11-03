@@ -1095,7 +1095,7 @@ theorem fgUpdate_node (proposer : Nat → Fin sp.n)
     (fgUpdate st).node = (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).1 := by
   unfold fgUpdate Node.tickStep
   simp only
-  rcases h : (Node.acToFG st.node st.now).2.2.1 with _ | C
+  rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
   · rfl
   · unfold Node.attest
     rcases h' : (Node.acToFG st.node st.now).1.fg.attest (Node.acToFG st.node st.now).1.record

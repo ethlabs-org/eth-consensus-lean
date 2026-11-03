@@ -87,7 +87,6 @@ private theorem acToFG_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
       (acToFG sp A Φ t).1.restartTime = A.restartTime := by
   unfold acToFG
-  dsimp only
   split_ifs
   · split
     · exact ⟨rfl, rfl⟩

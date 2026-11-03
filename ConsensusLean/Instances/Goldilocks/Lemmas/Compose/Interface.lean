@@ -52,14 +52,14 @@ theorem proposal_parent_held : ProposalParentHeld A := by
 theorem source_held : SourceHeld A := by
   intro hreq self U hU s Φ t₀ hr t ht C hC
   have hΦ := (frameIn_of_reachableAt hr).1
-  obtain ⟨⟨hCt, hfC, -⟩, hCh⟩ := hreq.source self U hU s Φ t₀ hr t ht C hC
-  exact ⟨hCt, hΦ.F_anc_fcRoot.trans hfC, hCh⟩
+  obtain ⟨hCt, hfC, -⟩ := hreq.source self U hU s Φ t₀ hr t ht C hC
+  exact ⟨hCt, hΦ.F_anc_fcRoot.trans hfC⟩
 
 /-- **Duty heads are held.** -/
 theorem duty_heads_held : DutyHeadsHeld A := by
   intro hreq self U hU s Φ t₀ hr t c Φ' ht hok e he d hd
   exact held_of_fcRoot_anc hok.1.1
-    ((hreq.heads self U hU s Φ t₀ hr).2.2 t c Φ' ht hok e he d hd).1
+    ((hreq.heads self U hU s Φ t₀ hr).2 t c Φ' ht hok e he d hd).1
 
 end Consensus.Goldilocks.Compose
 

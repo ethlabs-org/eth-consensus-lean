@@ -571,7 +571,7 @@ it signs, the new record, the own `on_attestation` and the attestation queued), 
 noncomputable def fgUpdate (st : State sp ro) : State sp ro :=
   let r := Node.acToFG st.node st.now
   let st₁ := { st with node := r.1, fgDue := false }
-  match r.2.2.1 with
+  match r.2.2 with
   | none => st₁
   | some C =>
       match r.1.fg.attest r.1.record st.self C with

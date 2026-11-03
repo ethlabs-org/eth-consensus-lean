@@ -275,7 +275,6 @@ private theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.F
   | toFG =>
     change w ∈ (SA.acToFG sp A Φ t).1.pool σ at h
     unfold SA.acToFG at h
-    dsimp only at h
     split_ifs at h <;> (try split at h) <;> (try split_ifs at h) <;> exact Or.inl h
   | message m => exact absurd rfl (hm m)
   | block B =>

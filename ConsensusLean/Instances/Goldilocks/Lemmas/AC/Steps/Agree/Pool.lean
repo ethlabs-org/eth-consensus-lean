@@ -123,7 +123,6 @@ private theorem grow_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
   | toFG =>
     change Grow t A (acToFG sp A Φ t).1
     unfold acToFG
-    dsimp only
     split_ifs
     · split
       · exact Grow.of_eq rfl rfl

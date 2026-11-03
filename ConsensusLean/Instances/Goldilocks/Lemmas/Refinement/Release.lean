@@ -133,7 +133,7 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
         .fgUpdate).2 → a.val = st.self := by
   unfold fgUpdate Node.tickStep
   simp only
-  rcases h : (Node.acToFG st.node st.now).2.2.1 with _ | C
+  rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
   · simp [attBodies, emitted, blockObjs, Node.acToFG]
   · unfold Node.attest
     rcases h' : (Node.acToFG st.node st.now).1.fg.attest (Node.acToFG st.node st.now).1.record

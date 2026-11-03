@@ -36,7 +36,6 @@ theorem toFG_live_fast_lock {z : Fin sp.n} {r : Nat} {ell : ACLabel (goldilocksN
   obtain ⟨-, -, h⟩ := hto
   have hC : C ∈ SA.toFGCandidates sp (tr.projAC.state z r) ell.frame (tr.projAC.time r) := by
     unfold SA.acToFG at h
-    dsimp only at h
     split_ifs at h
     split at h
     · cases h

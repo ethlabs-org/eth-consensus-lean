@@ -204,7 +204,6 @@ private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : L
   | toFG =>
     change LockInv U (acToFG sp A Φ t).1 Φ
     unfold acToFG
-    dsimp only
     split_ifs
     · split
       · exact h

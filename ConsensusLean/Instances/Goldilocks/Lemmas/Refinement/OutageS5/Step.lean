@@ -114,10 +114,9 @@ theorem honest_head_accepted_after (hrun : GoldilocksRun proposer dg H tr)
 /-- `ac_to_fg` returns one of its candidates. (As `OutageLockSafety/Sources.lean`, where it is
 private.) -/
 private theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (SA.acToFG sp A Φ t).2.1 = some C) :
+    {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (SA.acToFG sp A Φ t).2 = some C) :
     C ∈ SA.toFGCandidates sp A Φ t := by
   unfold SA.acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h

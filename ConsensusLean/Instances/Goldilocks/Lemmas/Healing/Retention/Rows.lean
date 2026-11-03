@@ -136,10 +136,9 @@ theorem joinedAt_of_fastLockAt (hrun : GoldilocksRun proposer dg H tr)
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2.1 = some C) :
+    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
     C ∈ SA.toFGCandidates sp A Φ t := by
   unfold SA.acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h
@@ -164,7 +163,7 @@ theorem ResetPremisesUpTo.high_row_source {b : Time}
   obtain ⟨d', rfl, ℓ, hc', hto, -, hC, hfgeq⟩ :=
     Compose.attest_source hp.run.toLocalRun hv hcall
   have hpc : tr.projAC.CallAt v d' ℓ := Compose.projAC_callAt.mpr hc'
-  have hC' : (SA.acToFG sp (tr.projAC.state v d') ℓ.frame (tr.time d')).2.1 = some C := by
+  have hC' : (SA.acToFG sp (tr.projAC.state v d') ℓ.frame (tr.time d')).2 = some C := by
     rw [Compose.projAC_state hp.run.toLocalRun hv]
     exact hC
   obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := mem_toFGCandidates' hC'

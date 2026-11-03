@@ -1970,7 +1970,7 @@ theorem report_of_deepest_candidate_of_run
       (hR'r.trans hRr.symm)
     exact ⟨r, ell', R', hto, hrun.time_mono hrj.le, hPR.mono hPhiU⟩
   · refine ⟨j, ell, C, ⟨hc, hcall, ?_⟩, le_rfl, hPC.mono hPhiU⟩
-    change (SA.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2.1 = some C
+    change (SA.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2 = some C
     unfold SA.acToFG
     simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]
 

@@ -209,7 +209,7 @@ private theorem history_poll_sign {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
     {st : State sp ro} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
     (t : Time) (hdue : st.fgDue = true) {C} {a : FG.Att sp.n} {Λ'}
-    (hC : (Node.acToFG st.node st.now).2.2.1 = some C)
+    (hC : (Node.acToFG st.node st.now).2.2 = some C)
     (ha : (Node.acToFG st.node st.now).1.fg.attest
       (Node.acToFG st.node st.now).1.record st.self C = some (a, Λ')) :
     HasHistory key (poll st t).1 (fun b => signed b ∨ b = a) := by
@@ -373,7 +373,7 @@ private def Signs (v : V) (nd : Model.Node (Model.protoOf (compiled (family S)) 
     (d : (Model.protoOf (compiled (family S)) E).Duty) (a : FG.Att (Fintype.card V)) : Prop :=
   ∃ k : Nat, d = .poll k ∧ rho.ownKey v ∈ rho.sel .poll ∧
     (nd.st.1 hn).fgDue = true ∧ ∃ C Λ',
-      (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).2.2.1 = some C ∧
+      (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).2.2 = some C ∧
       (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).1.fg.attest
         (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).1.record (nd.st.1 hn).self C =
           some (a, Λ')
@@ -521,7 +521,7 @@ def EngineSignsAt (v : V) (i p : Nat) (a : FG.Att (Fintype.card V)) : Prop :=
           ((Model.protoOf (compiled (family S)) E).deliverDuties t)[p]? = some (.poll k)) ∧
       rho.ownKey v ∈ rho.sel .poll ∧
       (nd.st.1 hn).fgDue = true ∧
-      ∃ C Λ', (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).2.2.1 = some C ∧
+      ∃ C Λ', (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).2.2 = some C ∧
         (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).1.fg.attest
           (Node.acToFG (nd.st.1 hn).node (nd.st.1 hn).now).1.record (nd.st.1 hn).self C =
             some (a, Λ')
@@ -843,14 +843,14 @@ private theorem poll_queued {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
     {signed : FG.Att sp.n → Prop} (h : Queued st signed) :
     let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
-      (Node.acToFG st.node st.now).2.2.1 = some C ∧
+      (Node.acToFG st.node st.now).2.2 = some C ∧
       (Node.acToFG st.node st.now).1.fg.attest
         (Node.acToFG st.node st.now).1.record st.self C = some (a, Λ')
     Queued (poll st t).1 p ∧ ∀ w cs, (poll st t).2 = some (.att w, cs) →
       ∃ a, w = encodeAtt a ∧ a.val = st.self ∧ p a := by
   dsimp only
   let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
-    (Node.acToFG st.node st.now).2.2.1 = some C ∧
+    (Node.acToFG st.node st.now).2.2 = some C ∧
     (Node.acToFG st.node st.now).1.fg.attest
       (Node.acToFG st.node st.now).1.record st.self C = some (a, Λ')
   have hpre : Queued (if st.fgDue then fgUpdate st else st) p := by

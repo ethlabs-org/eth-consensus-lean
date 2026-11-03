@@ -256,9 +256,8 @@ theorem row_of_report_of_floor
       att.h = h ∧ att.T = E.root := by
   have hroot : ell.frame.Anc ell.frame.fcRoot R := by
     have h := hR.2.2
-    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some R at h
     unfold SA.acToFG at h
-    dsimp only at h
     split_ifs at h
     split at h
     · cases h
@@ -364,9 +363,8 @@ theorem FrameWindow.report_kind_of_warm
     rw [hfl, heq, ← hσ]; exact hh
   have hroot : ell.frame.Anc ell.frame.fcRoot R := by
     have h := hR.2.2
-    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some R at h
     unfold SA.acToFG at h
-    dsimp only at h
     split_ifs at h
     split at h
     · cases h

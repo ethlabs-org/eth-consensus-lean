@@ -29,7 +29,7 @@ fgsa-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote recei
 * `ac_proposal`: `⊥` when not joined; else the unlocking against the whole slot-`(s−1)` pool
   view, and the head of the full viable tree from the unlocked anchor, with the slot-`(s−1)`
   votes held (pool order) and the resolved ones as the payload.
-* `ac_to_fg`: the head of `ac_head`; for a joined node the deepest candidate (a block of the full
+* `ac_to_fg`: for a joined node the deepest candidate (a block of the full
   viable tree under a live fast lock of slot `slot(t) − 2` or later) when it is not at or below
   `fg_reported` (in the tree), which it then records. -/
 
@@ -111,17 +111,16 @@ def toFGCandidates (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk 
     ∃ l ∈ liveLocks sp A.locks Φ t, l.block = B.root ∧ l.fast = true ∧ sp.slot t ≤ l.slot + 2}
 
 open Classical in
-/-- `ac_to_fg(𝒜, Φ, t)`: `fg_confirmed` (or `⊥`) and the head (with its walk). -/
+/-- `ac_to_fg(𝒜, Φ, t)`: `fg_confirmed` (or `⊥`). -/
 noncomputable def acToFG (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    SAState sp.n × (Option (Blk sp.n FGP) × DutyHead sp.n FGP (Payload sp.n)) :=
-  let hd : DutyHead sp.n FGP (Payload sp.n) := ⟨acHead sp A Φ t, getAnchor sp A Φ t, Φ.tree⟩
-  if ¬ joined sp A t then (A, (none, hd))
+    SAState sp.n × Option (Blk sp.n FGP) :=
+  if ¬ joined sp A t then (A, none)
   else
     match deepest Φ (toFGCandidates sp A Φ t) with
-    | none => (A, (none, hd))
+    | none => (A, none)
     | some C =>
-      if AncR Φ C A.fgReported then (A, (none, hd))
-      else ({ A with fgReported := C.root }, (some C, hd))
+      if AncR Φ C A.fgReported then (A, none)
+      else ({ A with fgReported := C.root }, some C)
 
 end Consensus.Goldilocks.SA
 

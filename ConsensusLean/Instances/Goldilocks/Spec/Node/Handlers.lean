@@ -128,7 +128,7 @@ noncomputable def tickStep (proposer : Nat → Fin P.n)
       else (st, [])
   | .fgUpdate =>
       let r := acToFG st t
-      match r.2.2.1 with
+      match r.2.2 with
       | none => (r.1, [r.2.1])
       | some C =>
           let r' := attest self r.1 C

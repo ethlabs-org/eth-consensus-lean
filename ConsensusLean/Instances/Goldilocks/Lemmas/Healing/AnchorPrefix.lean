@@ -1025,9 +1025,8 @@ theorem toFG_fast_origin (hrun : GoldilocksRun proposer dg H tr)
   have hPhi := SA.frameIn_of_callAt hr hy hto.1
   have hRc : R ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i) := by
     have h := hto.2.2
-    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some R at h
     unfold SA.acToFG at h
-    dsimp only at h
     split_ifs at h
     split at h
     · cases h
@@ -1227,9 +1226,8 @@ theorem FrameWindow.toFG_later_proposal_head
   have hPhi := SA.frameIn_of_callAt hr hy hto.1
   have hRc : R ∈ SA.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i) := by
     have h := hto.2.2
-    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2.1 = some R at h
+    change (SA.acToFG sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some R at h
     unfold SA.acToFG at h
-    dsimp only at h
     split_ifs at h
     split at h
     · cases h

@@ -34,7 +34,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 
 private theorem fgUpdate_cuts (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) :
     (tickStep proposer dg y st t x .fgUpdate).2[0]? = some (.ac ⟨.toFG, frame st, []⟩) ∧
-      ∀ C, (A.toFG st.ac (frame st) t).2.1 = some C →
+      ∀ C, (A.toFG st.ac (frame st) t).2 = some C →
         (tickStep proposer dg y st t x .fgUpdate).2[1]? =
           some (.fg (.attest C ((st.fg.attest st.record y C).map Prod.fst))) := by
   simp only [tickStep, acToFG]
@@ -49,7 +49,7 @@ theorem tick_toFG_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (
     {j : Nat} {t : Time} {x : Nat} (hg : tr.GroupAt proposer dg y j t (.tick x)) :
     ∃ k, j ≤ k ∧ tr.time k = t ∧
       tr.CallAt y k (.ac ⟨.toFG, frame (tr.state y k), []⟩) ∧
-      ∀ C, (A.toFG (tr.state y k).ac (frame (tr.state y k)) t).2.1 = some C →
+      ∀ C, (A.toFG (tr.state y k).ac (frame (tr.state y k)) t).2 = some C →
         tr.time (k + 1) = t ∧ tr.CallAt y (k + 1)
           (.fg (.attest C (((tr.state y k).fg.attest (tr.state y k).record y C).map
             Prod.fst))) := by
@@ -93,7 +93,7 @@ theorem tick_toFG_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (
 theorem awake_toFG_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
     {t : Time} (ht : 0 ≤ t) (hp : P.IsPublic t) (hw : tr.awake y t) :
     ∃ k, tr.time k = t ∧ tr.CallAt y k (.ac ⟨.toFG, frame (tr.state y k), []⟩) ∧
-      ∀ C, (A.toFG (tr.state y k).ac (frame (tr.state y k)) t).2.1 = some C →
+      ∀ C, (A.toFG (tr.state y k).ac (frame (tr.state y k)) t).2 = some C →
         tr.time (k + 1) = t ∧ tr.CallAt y (k + 1)
           (.fg (.attest C (((tr.state y k).fg.attest (tr.state y k).record y C).map
             Prod.fst))) := by
@@ -141,7 +141,7 @@ theorem awake_signs_target (hrun : GoldilocksRun proposer dg H tr) {gR : Time} {
     {y : Fin sp.n} (hy : y ∈ H) {t : Time} (ht : 0 ≤ t) (hp : sp.toParams.IsPublic t)
     (hw : tr.awake y t) :
     ∃ k, tr.time k = t ∧ tr.CallAt y k (.ac ⟨.toFG, frame (tr.state y k), []⟩) ∧
-      ∀ C, ((goldilocksNode sp ro).toFG (tr.state y k).ac (frame (tr.state y k)) t).2.1 =
+      ∀ C, ((goldilocksNode sp ro).toFG (tr.state y k).ac (frame (tr.state y k)) t).2 =
           some C →
         h₀ ≤ ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).h →
         ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th =

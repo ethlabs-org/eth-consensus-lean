@@ -95,7 +95,7 @@ theorem cast_head_fcRoot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : 
     rw [hx]; exact he
   obtain ⟨⟨d, hd, hdr⟩, hle⟩ :=
     step_emitsHeads ro y (tr.state y i) hok.1.1 (hr.time_nonneg i) ℓ.call e he'
-  have hok' := (((SA.interface_requirements sp FGP ro).1 y U hU _ _ _ hreach).2.2
+  have hok' := (((SA.interface_requirements sp FGP ro).1 y U hU _ _ _ hreach).2
     (tr.time i) ℓ.call ℓ.frame htp hok e he' d hd).1
   have hs := (SA.castAt_spec hr hy ⟨hcall, he⟩).2.1
   refine ⟨⟨d.head, ?_, hdr, hok'⟩, hs ▸ hle⟩

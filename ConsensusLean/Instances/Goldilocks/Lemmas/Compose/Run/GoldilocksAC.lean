@@ -157,7 +157,6 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
   | toFG =>
     change Adds A (acToFG sp A Φ t).1 _
     unfold acToFG
-    dsimp only
     split_ifs
     · split
       · exact Adds.of_eq rfl

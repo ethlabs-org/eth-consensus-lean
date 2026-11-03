@@ -33,9 +33,8 @@ theorem attest_src_mem (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (h
     (hc : tr.CallAt y k (.fg (.attest src (some a)))) : src ∈ (tr.state y k).fg.tree := by
   obtain ⟨j, rfl, ℓ, hj, -, -, hret, hfg⟩ := Compose.attest_source hrun.toLocalRun hy hc
   have hC : src ∈ ℓ.frame.tree := by
-    change (SA.acToFG sp _ _ _).2.1 = some src at hret
+    change (SA.acToFG sp _ _ _).2 = some src at hret
     unfold SA.acToFG at hret
-    dsimp only at hret
     split_ifs at hret
     split at hret
     · cases hret

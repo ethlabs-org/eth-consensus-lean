@@ -435,7 +435,6 @@ private theorem acProposal_pv (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
 private theorem acToFG_pv (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.pool = A.pool ∧ (acToFG sp A Φ t).1.voteStamp = A.voteStamp := by
   unfold acToFG
-  dsimp only
   split_ifs
   · split
     · exact ⟨rfl, rfl⟩
@@ -543,7 +542,6 @@ theorem admission_slots : AdmissionSlots sp := by
     refine Or.inl ⟨?_, by simp⟩
     change x ∈ (acToFG sp A Φ' t).1.pool σ at hx
     unfold acToFG at hx
-    dsimp only at hx
     split_ifs at hx
     · split at hx
       · exact hx

@@ -176,9 +176,8 @@ theorem deadline_le_of_healthy (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy 
 
 /-- The block that `ac_to_fg` returns is in the frame of the call. -/
 private theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2.1 = some C) : C ∈ Φ.tree := by
+    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) : C ∈ Φ.tree := by
   unfold SA.acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h

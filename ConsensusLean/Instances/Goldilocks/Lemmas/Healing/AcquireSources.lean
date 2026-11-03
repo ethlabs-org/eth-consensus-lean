@@ -89,9 +89,8 @@ private theorem blockReceipt_fgr (A : SA.SAState sp.n) (t : Time) (B : SA.Blk sp
 /-- `ac_to_fg` keeps the report record, or sets it to the block it returns. -/
 private theorem acToFG_fgr (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
     (SA.acToFG sp A Φ t).1.fgReported = A.fgReported ∨
-      ∃ C, (SA.acToFG sp A Φ t).2.1 = some C ∧ (SA.acToFG sp A Φ t).1.fgReported = C.root := by
+      ∃ C, (SA.acToFG sp A Φ t).2 = some C ∧ (SA.acToFG sp A Φ t).1.fgReported = C.root := by
   unfold SA.acToFG
-  dsimp only
   split_ifs
   · split
     · exact Or.inl rfl

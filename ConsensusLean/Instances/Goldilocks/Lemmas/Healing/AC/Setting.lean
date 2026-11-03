@@ -116,7 +116,7 @@ private theorem rt_step (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     unfold acProposal; split_ifs <;> rfl
   | toFG =>
     change (acToFG sp A Φ t).1.restartTime = _
-    unfold acToFG; dsimp only
+    unfold acToFG
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
@@ -238,7 +238,7 @@ private theorem vs_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
   | toFG =>
     left
     change (acToFG sp A Φ t).1.votedSlot = _
-    unfold acToFG; dsimp only
+    unfold acToFG
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>

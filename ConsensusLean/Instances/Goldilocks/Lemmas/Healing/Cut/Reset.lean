@@ -117,9 +117,8 @@ theorem signAt_report_entry (hrun : GoldilocksRun proposer dg H tr) {v : Fin sp.
   obtain ⟨j, rfl, ℓ, hj, hcall, ht, hret, hfg⟩ := Compose.attest_source hrun.toLocalRun hv hc
   have hpc : tr.projAC.CallAt v j ℓ := Compose.projAC_callAt.2 hj
   have hC : C ∈ ℓ.frame.tree := by
-    change (SA.acToFG sp _ _ _).2.1 = some C at hret
+    change (SA.acToFG sp _ _ _).2 = some C at hret
     unfold SA.acToFG at hret
-    dsimp only at hret
     split_ifs at hret
     split at hret
     · cases hret
@@ -235,10 +234,9 @@ theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2.1 = some C) :
+    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
     C ∈ SA.toFGCandidates sp A Φ t := by
   unfold SA.acToFG at h
-  dsimp only at h
   split_ifs at h
   split at h
   · cases h

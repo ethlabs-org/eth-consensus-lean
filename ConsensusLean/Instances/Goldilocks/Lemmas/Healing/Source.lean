@@ -59,7 +59,7 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
     (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {ℓ : ACLabel A}
     (hk : (exec proposer dg y st t e).2[k]? = some (.ac ℓ)) (hc : ℓ.call = .toFG) :
     ∃ st₁, CutChain y t st ((exec proposer dg y st t e).2.take k) st₁ ∧ ℓ.frame = frame st₁ ∧
-      ∀ C, (A.toFG st₁.ac (frame st₁) t).2.1 = some C →
+      ∀ C, (A.toFG st₁.ac (frame st₁) t).2 = some C →
         ∃ s, (exec proposer dg y st t e).2[k + 1]? = some (.fg (.attest C s)) := by
   cases e with
   | block B =>
@@ -138,7 +138,7 @@ variable {proposer} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.
 time, with the FG state unchanged. -/
 theorem toFG_attest (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel A} {C : A.Blk} (hk : tr.CallAt y k (.ac ℓ)) (hc : ℓ.call = .toFG)
-    (hC : (A.toFG (tr.state y k).ac ℓ.frame (tr.time k)).2.1 = some C) :
+    (hC : (A.toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C) :
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
       (tr.state y (k + 1)).fg = (tr.state y k).fg := by
   obtain ⟨j₀, e, k', hg, rfl, hk'⟩ := Compose.call_in_group h hy hk

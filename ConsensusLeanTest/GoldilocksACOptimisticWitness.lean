@@ -317,8 +317,7 @@ noncomputable def r0 : SAState sp1.n × List (Em sp1 Unit) :=
 noncomputable def r1 : SAState sp1.n × List (Em sp1 Unit) := acOnTick sp1 v0 r0.1 Φ₁ 9
 
 /-- Cut 2: `ac_to_fg` at `t_3 = 12`. -/
-noncomputable def r2 :
-    SAState sp1.n × (Option (Blk sp1.n Unit) × DutyHead sp1.n Unit (Payload sp1.n)) :=
+noncomputable def r2 : SAState sp1.n × Option (Blk sp1.n Unit) :=
   acToFG sp1 r1.1 Φ₁ 12
 
 /-- Cut 3: `ac_on_tick` at `t_3 + 2Δ = 14` (the update of slot `2`). -/
@@ -517,7 +516,7 @@ theorem notAncR_B1_0 : ¬ AncR Φ₁ B1 0 := by
   · exact not_anc_B1_g hanc
   · simp [B1] at hr
 
-theorem toFG_S2 : (acToFG sp1 S2 Φ₁ 12).1 = S3 ∧ (acToFG sp1 S2 Φ₁ 12).2.1 = some B1 := by
+theorem toFG_S2 : (acToFG sp1 S2 Φ₁ 12).1 = S3 ∧ (acToFG sp1 S2 Φ₁ 12).2 = some B1 := by
   have hc : deepest Φ₁ (toFGCandidates sp1 S2 Φ₁ 12) = some B1 := by
     refine deepest_B1 (fun B hB => hB.1.1) ⟨B1_viable B1_mem, lock1, ?_, rfl, rfl, ?_⟩
     · rw [liveLocks_eq]
@@ -527,7 +526,6 @@ theorem toFG_S2 : (acToFG sp1 S2 Φ₁ 12).1 = S3 ∧ (acToFG sp1 S2 Φ₁ 12).2
         · rw [mem_S1_locks hl, slot_12]; exact ⟨rfl, by decide⟩
     · rw [slot_12]; decide
   unfold acToFG
-  dsimp only
   rw [ite_eq_right (not_not.2 (joined_bot rfl 12)), hc]
   dsimp only
   rw [ite_eq_right (show ¬ AncR Φ₁ B1 S2.fgReported from notAncR_B1_0)]

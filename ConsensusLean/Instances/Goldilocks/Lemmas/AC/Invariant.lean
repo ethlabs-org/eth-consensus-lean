@@ -151,7 +151,6 @@ private theorem acToFG_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
     (PoolOK A.pool → PoolOK (acToFG sp A Φ t).1.pool) ∧
       (acToFG sp A Φ t).1.blockStamp = A.blockStamp := by
   unfold acToFG
-  dsimp only
   split_ifs
   · split
     · exact ⟨id, rfl⟩

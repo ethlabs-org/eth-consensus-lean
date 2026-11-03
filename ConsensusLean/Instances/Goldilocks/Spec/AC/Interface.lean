@@ -94,9 +94,8 @@ structure ACInterface (P : Params) (FGP : Type) where
   /-- `ac_proposal(𝒜, Φ, t)`: the parent (a duty head) and the AC payload, or `⊥`. -/
   proposal : State → Frame P.n FGP Payload → Time →
     State × Option (DutyHead P.n FGP Payload × Payload)
-  /-- `ac_to_fg(𝒜, Φ, t)`: `fg_confirmed` (or `⊥`) and the head (a duty head). -/
-  toFG : State → Frame P.n FGP Payload → Time →
-    State × (Option (Block P.n FGP Payload) × DutyHead P.n FGP Payload)
+  /-- `ac_to_fg(𝒜, Φ, t)`: `fg_confirmed` (or `⊥`). -/
+  toFG : State → Frame P.n FGP Payload → Time → State × Option (Block P.n FGP Payload)
   /-- `ac_confirmed(𝒜, Φ, t)`: the confirmed tip. -/
   confirmed : State → Frame P.n FGP Payload → Time → Block P.n FGP Payload
   /-- `ac_head(𝒜, Φ, t)`: the head. -/
@@ -197,23 +196,19 @@ def AtReachable (Q : Fin P.n → Set A.Blk → A.State → A.Frm → Time → Pr
     ∀ s Φ t₀, A.ReachableAt self U s Φ t₀ → Q self U s Φ t₀
 
 /-- **Requirement 1.** Every head of a duty extends `fc_root`, and one whose walk starts in the
-viable tree of its domain is in `viable_heads`: the parent of a proposal (at a slot start), the
-head that `ac_to_fg` returns, and the head of every emitted vote of every lawful next call (at
-that call's frame). -/
+viable tree of its domain is in `viable_heads`: the parent of a proposal (at a slot start) and
+the head of every emitted vote of every lawful next call (at that call's frame). -/
 def ReqHeads : Prop :=
   A.AtReachable fun self U s Φ t₀ =>
     (∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p,
       (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) → A.HeadOK Φ d) ∧
-    (∀ t, t₀ ≤ t → A.HeadOK Φ (A.toFG s Φ t).2.2) ∧
     (∀ t (c : A.Call) Φ', t₀ ≤ t → A.CallOK U Φ t c Φ' →
       ∀ e ∈ (A.step self s Φ' t c).2, ∀ d, e.head = some d → A.HeadOK Φ' d)
 
-/-- **Requirement 2.** A block `fg_confirmed ≠ ⊥` is in `viable_tree(Φ, Φ.tree)`, and the
-returned head extends it. -/
+/-- **Requirement 2.** A block `fg_confirmed ≠ ⊥` is in `viable_tree(Φ, Φ.tree)`. -/
 def ReqSource : Prop :=
   A.AtReachable fun _ _ s Φ t₀ => ∀ t, t₀ ≤ t → ∀ C,
-    (A.toFG s Φ t).2.1 = some C →
-      C ∈ Φ.viableTree Φ.tree ∧ Φ.Anc C (A.toFG s Φ t).2.2.head
+    (A.toFG s Φ t).2 = some C → C ∈ Φ.viableTree Φ.tree
 
 /-- **Requirement 3.** The output of `ac_head` extends `fc_root`, and the confirmed tip extends
 `Φ.F` and is an ancestor of that output. -/

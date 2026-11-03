@@ -651,7 +651,7 @@ theorem acToFG_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (hrep : A.fgReported = (blk k).root) :
     (SA.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).1 =
         { A with fgReported := (blk (k + 1)).root } ∧
-      (SA.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).2.1 = some (blk (k + 1)) := by
+      (SA.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).2 = some (blk (k + 1)) := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
   have hf : f ≤ k + 1 := le_trans h.fj (jexp_le _)
   have htip' := h.mem (le_trans h.fj (jexp_le _)) (le_refl (k + 1))
@@ -680,9 +680,8 @@ theorem acToFG_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
 /-- `ac_to_fg` returns nothing once the tip is reported. -/
 theorem acToFG_none {A : SAState sp1.n} {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
     (hrep : A.fgReported = (blk τ).root) (t : Time) :
-    (SA.acToFG sp1 A Φ t).1 = A ∧ (SA.acToFG sp1 A Φ t).2.1 = none := by
+    (SA.acToFG sp1 A Φ t).1 = A ∧ (SA.acToFG sp1 A Φ t).2 = none := by
   unfold SA.acToFG
-  dsimp only
   split_ifs
   all_goals try exact ⟨rfl, rfl⟩
   · split

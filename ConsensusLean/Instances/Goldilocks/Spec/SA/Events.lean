@@ -101,7 +101,7 @@ def FastLockAt (tr : SATrace sp FGP ro) (x : Fin sp.n) (i s : Nat) (B : Blk sp.n
 /-- `ac_to_fg` at cut `i` of `x` returns `C`. -/
 def ToFGAt (tr : SATrace sp FGP ro) (x : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksSA sp FGP ro))
     (C : Blk sp.n FGP) : Prop :=
-  tr.CallAt x i ℓ ∧ ℓ.call = .toFG ∧ (acToFG sp (tr.state x i) ℓ.frame (tr.time i)).2.1 = some C
+  tr.CallAt x i ℓ ∧ ℓ.call = .toFG ∧ (acToFG sp (tr.state x i) ℓ.frame (tr.time i)).2 = some C
 
 /-- `ac_proposal` at cut `i` of `x` returns a proposal with payload `p`. -/
 def ProposalAt (tr : SATrace sp FGP ro) (x : Fin sp.n) (i : Nat)

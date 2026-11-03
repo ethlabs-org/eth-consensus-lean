@@ -417,7 +417,7 @@ theorem attestation_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
   -- the source is the deepest candidate: the viable ancestor of a stored fast lock block
   have hcand : src ∈ SA.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j))
       (tr.time j) := by
-    have hC' : (SA.acToFG sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)).2.1 =
+    have hC' : (SA.acToFG sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)).2 =
         some src := hC
     unfold SA.acToFG at hC'
     rcases hd : SA.deepest (Node.frame (tr.state x j))

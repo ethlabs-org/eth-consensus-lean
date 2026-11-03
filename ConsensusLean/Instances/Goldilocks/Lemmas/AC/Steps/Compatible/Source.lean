@@ -28,11 +28,10 @@ variable (sp : SAParams)
 
 /-- A block that `ac_to_fg` returns is a candidate, from a joined node, which the call keeps. -/
 private theorem toFG_some {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2.1 = some C) :
+    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) :
     C ∈ toFGCandidates sp A Φ t ∧ joined sp A t ∧
       (acToFG sp A Φ t).1.restartTime = A.restartTime := by
   unfold acToFG at h ⊢
-  dsimp only at h ⊢
   split_ifs at h ⊢ with hj
   split at h
   · cases h
