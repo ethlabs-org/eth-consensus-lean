@@ -19,10 +19,17 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
   own proposal) or accepts at `τ` in the window is processed (`fg_on_block`, accepted or
   refused) by every honest `y` in that interval, and **acceptance relay**: a block accepted at a
   time in the relay window is accepted by every honest `y` whose `Σ.F` it extends before the
-  deadline; attestations likewise
-  with `Δ_F`, from a signing or an admission. Over the run, "processed by `y` before the
-  deadline" reads: at every call of `y` at or after the deadline, `y` has processed it at a cut
-  before its own deadline (as `SyncAC`). `GST(g)` is `Sync[g, ∞)` with every object sent
+  deadline; attestations likewise with `Δ_F`, from a signing or an admission, except that an
+  attestation has no lower bound: a processing before the signing or admission counts. Its
+  processing is never refused (`fg_on_attestation` only adds it to the pool, which keeps it,
+  also across a restart), so an earlier one leaves `a` in the pool as a later one would; and an
+  honest node forwards an admitted attestation as the same object, which the network counts as
+  held from an earlier receipt (absent a wake in between). Not in CLAIMS, whose `Sync` row has
+  attestations "in the same form" (not before the send). Blocks and messages keep the lower
+  bound: they are forwarded in fresh wrappers, and an earlier receipt of a block can be refused.
+  Over the run, "processed by `y` before the deadline" reads: at every call of `y` at or after
+  the deadline, `y` has processed it at a cut before its own deadline (as `SyncAC`).
+  `GST(g)` is `Sync[g, ∞)` with every object sent
   before `g` processed as if sent at `g` (`eff τ = max τ g`). The claims' "as if sent at `g`"
   is read for the deadline only: the deadline becomes `max(g, w_y) + Δ`, while the lower bound
   of the delivery interval stays the real send time, so an object sent before `g` may be
@@ -31,8 +38,11 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
   `GST(g)` re-delivers old objects, it does not make them accepted, since a block refused for a
   missing parent is not delivered again): pre-`g` acceptance catch-up is the separate regime
   premise `Catch(κ)` (`Healing.CatchRun`).
-  `SyncOn` also carries the positivity `0 < Δ_F` (no order between `Δ` and `Δ_F`), so every
-  premise built on it has it.
+  `SyncOn` also carries the positivity `0 < Δ_F` and the order `Δ ≤ Δ_F` (claims
+  §"Parameters"; the generic network keeps the two bounds unordered), so every premise built on
+  it has them. The order is there because an attestation admitted from a block is forwarded in
+  the block's relay wrapper, which the network serves within `Δ`, not `Δ_F`
+  (`docs/decisions.md`, 2026-11-03).
 * **`Sleepy`**: `Sync[0, ∞)` and `f < h_t` at every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}`, `h_t` the
   honest validators awake and joined at `t` (`JoinedAt`: every restart at or before `t` is at
   or before `t_{slot(t) − 1}`; in slot `0`, no restart).
@@ -85,17 +95,21 @@ def BlockDeliveredBy (y : Fin P.n) (j : Nat) (τ₀ τ : Time) (B : A.Blk) : Pro
 def BlockAcceptedBy (y : Fin P.n) (j : Nat) (τ : Time) (B : A.Blk) : Prop :=
   ∃ k ≤ j, tr.AcceptAt y k B ∧ tr.time k < tr.deadline y k τ P.Δ
 
-/-- `y` has processed the attestation `a` by cut `j` within the deadline with `Δ_F`. -/
-def AttDeliveredBy (y : Fin P.n) (j : Nat) (τ₀ τ ΔF : Time) (a : FG.Att P.n) : Prop :=
-  ∃ k ≤ j, τ₀ ≤ tr.time k ∧ tr.ProcessAttAt y k a ∧ tr.time k < tr.deadline y k τ ΔF
+/-- `y` has processed the attestation `a` by cut `j` within the deadline with `Δ_F`, at a cut
+before its own deadline; an earlier processing counts (no lower bound, unlike blocks and
+messages). -/
+def AttDeliveredBy (y : Fin P.n) (j : Nat) (τ ΔF : Time) (a : FG.Att P.n) : Prop :=
+  ∃ k ≤ j, tr.ProcessAttAt y k a ∧ tr.time k < tr.deadline y k τ ΔF
 
 /-- **`Sync` over a run**, for the sends in the window `W` with effective send time `eff`
 (claims §"Premises", `Sync[a, b]` and `GST(g)`; goldilocks `a470648c`). -/
 structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W Wr : Time → Prop) (eff : Time → Time) :
     Prop where
-  /-- The attestation delay `Δ_F` is positive. It is not assumed to be at least `Δ`: each
-  class of objects has its own bound. -/
+  /-- The attestation delay `Δ_F` is positive. -/
   deltaF : 0 < ΔF
+  /-- The attestation delay is at least the delay of blocks and messages (claims
+  §"Parameters"): an attestation admitted from a block is forwarded with the block. -/
+  delta_le : P.Δ ≤ ΔF
   /-- Every AC message an honest node sends or admits in the window is processed by every honest
   node before its deadline. -/
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → W (tr.time i) →
@@ -114,10 +128,10 @@ structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W Wr : Time → Prop) (eff : 
       Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
       tr.BlockAcceptedBy y j (eff (tr.time i)) B
   /-- Every attestation an honest node signs or admits in the window is processed by every honest
-  node before its deadline with `Δ_F`. -/
+  node before its deadline with `Δ_F`, possibly before the signing or admission. -/
   attestation : ∀ x ∈ H, ∀ i a, tr.SendOrAdmitAttAt x i a → W (tr.time i) →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (eff (tr.time i)) ΔF ≤ tr.time j →
-      tr.AttDeliveredBy y j (tr.time i) (eff (tr.time i)) ΔF a
+      tr.AttDeliveredBy y j (eff (tr.time i)) ΔF a
 
 /-- **`Sync[a, b]`**: the sends at `τ ∈ [a, b]`, at their own time. -/
 def SyncRun (H : Set (Fin P.n)) (ΔF a b : Time) : Prop :=
@@ -127,10 +141,12 @@ def SyncRun (H : Set (Fin P.n)) (ΔF a b : Time) : Prop :=
 the cutoff applies to the deadline including the recipient's latest wake, not merely to
 the sender's time. A later call still checks an earlier qualifying deadline, but a wake
 whose deadline lies after `b` creates no pre-outage service obligation. All processing
-lower bounds and strict upper bounds are unchanged. -/
+lower bounds (none for attestations, as in `SyncOn`) and strict upper bounds are unchanged. -/
 structure SyncBefore (H : Set (Fin P.n)) (ΔF b : Time) : Prop where
-  /-- The attestation delay `Δ_F` is positive (not assumed to be at least `Δ`). -/
+  /-- The attestation delay `Δ_F` is positive. -/
   deltaF : 0 < ΔF
+  /-- The attestation delay is at least `Δ`, as in `SyncOn`. -/
+  delta_le : P.Δ ≤ ΔF
   /-- Message service for nonnegative sends/admissions with recipient deadline at most `b`. -/
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → 0 ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
@@ -152,7 +168,7 @@ structure SyncBefore (H : Set (Fin P.n)) (ΔF b : Time) : Prop where
   attestation : ∀ x ∈ H, ∀ i a, tr.SendOrAdmitAttAt x i a → 0 ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) ΔF ≤ b →
       tr.deadline y j (tr.time i) ΔF ≤ tr.time j →
-      tr.AttDeliveredBy y j (tr.time i) (tr.time i) ΔF a
+      tr.AttDeliveredBy y j (tr.time i) ΔF a
 
 /-- **`GST(g)`**: `Sync[g, ∞)`, and an object sent before `g` is processed as if sent at `g`:
 its deadline is `max(g, w_y) + Δ'`; it may still be delivered before `g`. The acceptance relay

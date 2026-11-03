@@ -48,7 +48,7 @@ theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
     have := max_le hg hv
     linarith
   obtain ⟨acc, hcall⟩ := hX.1.1
-  obtain ⟨k', hk', -, hproc, hlt⟩ := hs.healthy.1.attestation y hy k att (Or.inl hsig) trivial p hp
+  obtain ⟨k', hk', hproc, hlt⟩ := hs.healthy.1.attestation y hy k att (Or.inl hsig) trivial p hp
     kX ⟨_, hcall⟩ (by linarith [hdl kX])
   refine ⟨k', lt_of_le_of_ne hk' fun h => ?_, hproc⟩
   subst h

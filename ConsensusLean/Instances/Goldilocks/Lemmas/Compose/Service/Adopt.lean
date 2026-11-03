@@ -368,7 +368,7 @@ theorem update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocks H) P E := by
   have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm h0 y hy j hc _ hd =>
       hsl.1.message x hx i m hm h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,

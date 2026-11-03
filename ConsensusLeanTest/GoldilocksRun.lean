@@ -562,6 +562,7 @@ admitted or signed. -/
 theorem periodicRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) :
     periodicRun.SyncOn Set.univ 1 W Wr eff where
   deltaF := one_pos
+  delta_le := le_rfl
   message _ _ _ m _ := m.elim
   block x _ i B h := by
     rcases h with h | ⟨⟨_, h⟩, -⟩ <;> exact absurd h (periodicRun_no_fg x i _)
@@ -598,7 +599,7 @@ theorem periodicRun_sleepy : periodicRun.SleepyRun Set.univ 1 := by
 /-- The deadline-cut premise is satisfiable on the existing periodic local-run witness. -/
 theorem periodicRun_syncBefore (b : Time) : periodicRun.SyncBefore Set.univ 1 b := by
   have h := periodicRun_syncOn (fun _ => True) (fun _ => True) id
-  exact ⟨h.deltaF,
+  exact ⟨h.deltaF, h.delta_le,
     fun x hx i m hm _ y hy j hj _ hd => h.message x hx i m hm trivial y hy j hj hd,
     fun x hx i B hB _ y hy j hj _ hd => h.block x hx i B hB trivial y hy j hj hd,
     fun x hx i B hB _ y hy j hj _ hd ha => h.relay x hx i B hB trivial y hy j hj hd ha,

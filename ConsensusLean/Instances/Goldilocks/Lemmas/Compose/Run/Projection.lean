@@ -17,6 +17,7 @@ The relay is actual acceptance; network receipt alone does not supply it. -/
 structure RunTrace.SyncWindowBefore {P : Params} {A : NodeAC P} (tr : RunTrace A)
     (H : Set (Fin P.n)) (ΔF a b : Time) : Prop where
   deltaF : 0 < ΔF
+  delta_le : P.Δ ≤ ΔF
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m → a ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
       tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
@@ -33,14 +34,14 @@ structure RunTrace.SyncWindowBefore {P : Params} {A : NodeAC P} (tr : RunTrace A
   attestation : ∀ x ∈ H, ∀ i att, tr.SendOrAdmitAttAt x i att → a ≤ tr.time i →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.deadline y j (tr.time i) ΔF ≤ b →
       tr.deadline y j (tr.time i) ΔF ≤ tr.time j →
-      tr.AttDeliveredBy y j (tr.time i) (tr.time i) ΔF att
+      tr.AttDeliveredBy y j (tr.time i) ΔF att
 
 /-- At source lower bound zero the existing finite service contract is unchanged. -/
 theorem syncWindowBefore_zero_iff {P : Params} {A : NodeAC P} {tr : RunTrace A}
     {H : Set (Fin P.n)} {ΔF b : Time} :
     tr.SyncWindowBefore H ΔF 0 b ↔ tr.SyncBefore H ΔF b :=
-  ⟨fun h => ⟨h.deltaF, h.message, h.block, h.relay, h.attestation⟩,
-    fun h => ⟨h.deltaF, h.message, h.block, h.relay, h.attestation⟩⟩
+  ⟨fun h => ⟨h.deltaF, h.delta_le, h.message, h.block, h.relay, h.attestation⟩,
+    fun h => ⟨h.deltaF, h.delta_le, h.message, h.block, h.relay, h.attestation⟩⟩
 
 namespace Compose
 

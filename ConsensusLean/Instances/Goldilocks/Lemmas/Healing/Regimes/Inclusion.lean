@@ -145,7 +145,7 @@ theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y j).fg.F) := by
   have hb0 := le_max_right t 0
   have hs : tr.SyncBefore H ΔF (max t 0) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm h0 y hy j hc _ hd =>
       hsl.1.message x hx i m hm h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
@@ -295,7 +295,7 @@ theorem read_extends_of_record_before (hrun : GoldilocksRun proposer dg H tr)
 theorem include_sleepy : IncludeSleepy := by
   intro sp ro dg H tr proposer ΔF hrun hnc hsl τ P hP y t j ht hy hj
   have hs : tr.SyncBefore H ΔF (max t 0) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
+    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm h0 y hy j hc _ hd =>
       hsl.1.message x hx i m hm h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,

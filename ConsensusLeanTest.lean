@@ -15,6 +15,7 @@ public import ConsensusLeanTest.GoldilocksAccountableTightness
 public import ConsensusLeanTest.GoldilocksAggregationWitness
 public import ConsensusLeanTest.GoldilocksAsleepRun
 public import ConsensusLeanTest.GoldilocksAsleepSleepy
+public import ConsensusLeanTest.GoldilocksAttestationPremise
 public import ConsensusLeanTest.GoldilocksBudgetTightness
 public import ConsensusLeanTest.GoldilocksConflictChains
 public import ConsensusLeanTest.GoldilocksConflictRun

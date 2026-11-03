@@ -306,7 +306,7 @@ theorem exists_horizon {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 theorem _root_.Consensus.Goldilocks.RunTrace.SleepyRun.prefix {ΔF : Time}
     (hsl : tr.SleepyRun H ΔF) {b : Time} (hb : 0 ≤ b) : SleepyPrefix tr H ΔF b := by
   refine ⟨hb, show tr.SyncOn H ΔF _ _ id from
-    ⟨hsl.1.deltaF, fun x hx i m hm hw => hsl.1.message x hx i m hm hw.1,
+    ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm hw => hsl.1.message x hx i m hm hw.1,
       fun x hx i B hB hw => hsl.1.block x hx i B hB hw.1,
       fun x hx i B hB hw => hsl.1.relay x hx i B hB hw.1,
       fun x hx i a h hw => hsl.1.attestation x hx i a h hw.1⟩, fun s d hd _ => ?_⟩
@@ -428,7 +428,7 @@ theorem SleepyFrom.window {ΔF b : Time} {s₀ : Nat} (hfrom : SleepyFrom tr H �
     (hb : sp.ts s₀ ≤ b) : SleepyWindow tr H ΔF s₀ b := by
   obtain ⟨hs, hfb⟩ := sleepyFrom_iff.1 hfrom
   exact ⟨hb, show tr.SyncOn H ΔF _ _ id from
-    ⟨hs.deltaF, fun x hx i m hm hw => hs.message x hx i m hm hw.1,
+    ⟨hs.deltaF, hs.delta_le, fun x hx i m hm hw => hs.message x hx i m hm hw.1,
       fun x hx i B hB hw => hs.block x hx i B hB hw.1,
       fun x hx i B hB hw => hs.relay x hx i B hB hw.1,
       fun x hx i a h hw => hs.attestation x hx i a h hw.1⟩,

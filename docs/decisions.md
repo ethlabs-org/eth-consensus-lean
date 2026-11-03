@@ -70,7 +70,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   2026-11-03); a plausible
   risk, not a counterexample, is that AC recovery after GST may need FG rows, now unbounded before
   `gHeal`. A counterexample would go through the believed-false process, with the statements
-  unchanged. **Node level:** `SyncOn.deltaF` and `SyncBefore.deltaF` change from `Δ ≤ ΔF` to
+  unchanged. **Node level** (the order part superseded 2026-11-03: `SyncOn` and `SyncBefore` carry
+  `Δ ≤ ΔF` again, as `delta_le`)**:** `SyncOn.deltaF` and `SyncBefore.deltaF` change from `Δ ≤ ΔF` to
   `0 < ΔF`, which broadens every node statement built on them (`SyncRun`, `GSTRun`, `SleepyRun`,
   `HealthyRun`, the R.6 weak premises, `HSShared`, the Persist, Run and Service rows, the healing
   statements): they now admit `ΔF < Δ`, so their claims are stronger. The claims proved in
@@ -441,6 +442,30 @@ where it is recorded; "Francesco" marks the owner's decisions.
     `PhaseServiceStatements` (`phase_service_statements`). The alternative was (A), proving (a)
     as stated. (B), restating #100's premise over the voter's read-point locks, was rejected:
     that premise is the voter's state after its own `unlock`, nearly the step being claimed.
+- 2026-11-03, Francesco (note: thread T-01a1a008, artifact "Attestation service premise"; consumer
+  analysis T-823fece2): **the attestation clause of `Sync` has no lower bound, and the Goldilocks
+  premises assume `Δ ≤ Δ_F`** (option (d)). `AttDeliveredBy` drops `τ₀ ≤ time k`: a processing of
+  the attestation before its signing or admission counts. Reason: an honest node forwards an admitted
+  attestation as the same object, and L0 counts an earlier receipt (`CommLog.Held`), so a node can
+  hold it from before the admission and receive nothing after it; an attestation's processing is
+  never refused and the pool keeps it, so an earlier processing is as good. Blocks and messages keep
+  the lower bound: they are forwarded in fresh wrappers, and an earlier receipt of a block can be
+  refused. `SyncOn` and `SyncBefore` gain `delta_le : Δ ≤ Δ_F` (claims §"Parameters" already
+  assumes `Δ_F ≥ Δ`): an attestation admitted from a block leaves in the block's relay wrapper,
+  which is not a row and is served within `Δ` (the 2026-11-02 bundling choice). The generic L0
+  two-bound network stays unordered (two-bound card b7b5b06). The open transports
+  (`PSyncTransport`, `SyncUntilTransport`, `SyncRunTransport`) take `Δ ≤ Δ_F` as a hypothesis; with
+  the lower bound gone they owe no signer provenance for attestations. No proof reads `delta_le`; the
+  consumers of the clause read signings only. This reverses the node-level half of the 2026-11-02
+  two-bound entry: the node statements built on `SyncOn`/`SyncBefore` (`SyncRun`, `GSTRun`,
+  `SleepyRun`, `HealthyRun`, `HSShared`, the Persist, Run, Service and healing rows) again cover
+  only `Δ ≤ Δ_F`, the paper's range, so as hypotheses they are narrower than since 2026-11-02.
+  Accepted is unchanged: its closure mentions `SyncOn`/`SyncRun` only through the uninstantiated
+  `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/Frame`,
+  discharged with the `SleepyServiceBefore` disjunct); it never constructs or reads them, so
+  Accepted needs no `Δ ≤ Δ_F` (final-head review T-01a19c3a). Rejected: restricting the clause to signings (drops
+  the forwarding of admitted attestations) and a local `max Δ Δ_F` deadline for admissions (two
+  attestation fields).
 - 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md`, T-6daee397): **the
   node-level regime rows R.3–R.6 are retired.** `Statements/Regimes/{Healed,Final,Outage,Weak}`
   (28 declarations, none proved) are deleted, with the adapter `acceptance_outage_times`, its test

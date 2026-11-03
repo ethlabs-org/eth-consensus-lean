@@ -400,11 +400,13 @@ Modelling choices:
   slot's proposer, faulty proposers included (composition.tex §"Blocks": `B.proposer`'s slot key signs `B`; the
   paper's `state_transition` proposer assertion is not in the model's `state_transition`, `docs/decisions.md`
   2026-10-31). `SA.HonestObjects.proposer` (frame blocks) follows from it through the projection.
-- **`Δ_F` is a parameter** of `SyncOn`/`SyncRun`/…, not a field of `Params`; its positivity `0 < Δ_F` (no order
-  with `Δ`, two-bound network 2026-11-02) is a field of `SyncOn` (`deltaF`), so every premise built on it has it. `Sync` carries the acceptance-relay clause
+- **`Δ_F` is a parameter** of `SyncOn`/`SyncRun`/…, not a field of `Params`; its positivity `0 < Δ_F` (`deltaF`) and the
+  order `Δ ≤ Δ_F` (`delta_le`, 2026-11-03; the generic two-bound network stays unordered) are fields of `SyncOn`, so
+  every premise built on it has them. `Sync` carries the acceptance-relay clause
   (`relay`), the own proposal as a send (`block`: accepted or own), and admissions from payloads (`SendOrAdmitAt`,
   mirroring `ACTrace.SendOrAdmit`). `GST(g)` is `SyncOn` on every time with `eff τ = max τ g`: only the deadline
-  moves to `max(τ, g)`; the lower bound of the delivery interval stays the real send time `τ`. Its acceptance relay
+  moves to `max(τ, g)`; the lower bound of the delivery interval stays the real send time `τ` (attestations have
+  no lower bound, 2026-11-03). Its acceptance relay
   covers only acceptances at `τ ≥ g` (`SyncOn`'s relay window `Wr`, consensus-lean#96): `GST(g)` re-delivers old
   objects but does not make them accepted (a block refused for a missing parent is not delivered again), so pre-`g`
   acceptance catch-up is the regime premise `Catch(κ)`, as in the claims.
@@ -524,7 +526,7 @@ Modelling choices:
 - **`Prop⁺(G_p)`**: "ready" and "support references accepted at every honest voter before its deadline" are read as
   `vote_ready`'s condition on the slot-`(s−1)` support entries (a block of slot `≤ s − 1` with that root) held by
   every honest node at `t_s + Δ`, the vote deadline.
-- **HS parameter bounds**: of "the protocol's parameter bounds", `k ≥ 2` is in `SAParams` and `0 < Δ_F` in `SyncOn`;
+- **HS parameter bounds**: of "the protocol's parameter bounds", `k ≥ 2` is in `SAParams` and `0 < Δ_F` and `Δ ≤ Δ_F` in `SyncOn`;
   `δ_t ≥ x + 𝓕 + k_F` (with `x, k_F ≥ 0`, which `Params` does not carry) enters `HSShared` as its consequence
   `4Δδ_t ≥ 6Δ + Δ_F`. `R ≥ 𝓕` has no counterpart (the model attests in every tick).
 - **Slots against `r_AC`, `s_AC`**: "`j ≥ r_AC(t₀)`" (the least slot with `t_r ≥ t₀ + 4Δ`) is `t_j ≥ t₀ + 4Δ`, and
@@ -673,11 +675,23 @@ Modelling choices:
   protocol delay is `Δ_p = Δ_e` (it was `Δ_e + 1`, whose one-unit slack absorbed the inclusive endpoint);
   obligation 8's strict-vs-endpoint receipt is settled by the L0 text. The spec treats admission as an instantaneous send. The model's persistent-relay variants
   still break R.1 when relay waits for an awake tick or is one unit late, so buffering across sleep or adding
-  relay slack is not the chosen repair. `SyncOn` and `SyncAC` stay unchanged. At `Δ_p = Δ_e` the engine
+  relay slack is not the chosen repair. `SyncAC` stays unchanged, and `SyncOn` except for its attestation clause and `delta_le` (below). At `Δ_p = Δ_e` the engine
   `PSync` supplies the node services the Accepted chain uses (`message_service_psync`,
   `block_service_psync`, `signed_row_service_psync`, `catchRun_of_psync`, `resetService_of_psync`); the full
   transport stays open: `PSync ⇒ GSTRun` (`PSyncTransport`), `SyncUntil ⇒ SyncBefore`
-  (`SyncUntilTransport`) and `PSync 0 ⇒ SyncRun` (`SyncRunTransport`), in `Refinement/NetworkTransport`.
+  (`SyncUntilTransport`) and `PSync 0 ⇒ SyncRun` (`SyncRunTransport`), in `Refinement/NetworkTransport`,
+  each under `Δ ≤ Δ_F`.
+  **Attestations** (Francesco 2026-11-03, `docs/decisions.md`): `SyncOn.attestation` and
+  `SyncBefore.attestation` keep "signs or admits" and the deadline at `Δ_F`, but have no lower bound
+  (`AttDeliveredBy`: a processing before the signing or admission counts), and both premises carry
+  `delta_le : Δ ≤ Δ_F` (claims §"Parameters"). Not in CLAIMS: its `Sync` row has attestations "in the
+  same form", processed not before the send. An honest node forwards an admitted attestation as the same
+  object, which L0 counts as held from an earlier receipt, and one admitted from a block in the block's relay
+  wrapper, which is not a row and is served within `Δ`; an attestation's processing is never refused and the
+  pool keeps it, so an earlier processing is as good. Blocks and messages keep the lower bound (fresh
+  `.forward`/`.voteForward` wrappers; an earlier block receipt can be refused). The generic L0 two-bound
+  network stays unordered. `ConsensusLeanTest/GoldilocksAttestationPremise` gives the two traces that refute
+  the old clause and checks the new one on them.
 - **Conflict** is incompatibility inside the honest blocks of the run (`tr.HonestBlocks H`), as in G1.4 and C1.1.
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut
@@ -744,7 +758,7 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
   `max(a, g) + Δ − 1`, strictly before the spec's processing deadline `max(τ, w_y) + Δ'`, and reads an
   admission as an instantaneous send (`SendOrAdmitAt`). The owner decisions are delivery-time relay in the
   generic engine (#107) and half-open delivery with `Δ_p = Δ_e` (2026-11-04). The transport `PSync`/`SyncUntil` → `GSTRun`/`SyncRun` is still a proof obligation under that
-  choice; `SyncOn` and `SyncAC` are unchanged. The earlier next-tick `+1/+2` analysis is superseded, not a
+  choice; `SyncAC` is unchanged, and `SyncOn` except for its attestation clause and `delta_le`. The earlier next-tick `+1/+2` analysis is superseded, not a
   transport theorem.
 - **The proposer selection is the run's.** The generic skeleton's proposer selection is per slot
   (`proposerSel : Slot → SelSpec n`, consensus-lean#93); the Goldilocks skeleton sets it to `.sized 1` at every

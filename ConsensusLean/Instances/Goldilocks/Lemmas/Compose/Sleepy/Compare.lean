@@ -459,7 +459,8 @@ theorem syncAC_of_sleepy (hrun : GoldilocksRun proposer dg H tr) (hsl : tr.Sleep
     SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b tr.projAC :=
   sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b
     hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b) (fun τ => a ≤ τ ∧ τ ≤ b) id from
-      ⟨hsl.1.deltaF, fun x hx i m hm hw => hsl.1.message x hx i m hm (ha.trans hw.1),
+      ⟨hsl.1.deltaF, hsl.1.delta_le,
+        fun x hx i m hm hw => hsl.1.message x hx i m hm (ha.trans hw.1),
         fun x hx i B hB hw => hsl.1.block x hx i B hB (ha.trans hw.1),
         fun x hx i B hB hw => hsl.1.relay x hx i B hB (ha.trans hw.1),
         fun x hx i a' h hw => hsl.1.attestation x hx i a' h (ha.trans hw.1)⟩)
@@ -495,7 +496,7 @@ theorem syncAC_of_window (hrun : GoldilocksRun proposer dg H tr) (hwin : SleepyW
   have hs := (sleepyWindow_iff.1 hwin).2.1
   sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b'
     hrun.toLocalRun (show tr.SyncOn H ΔF (fun τ => a ≤ τ ∧ τ ≤ b') (fun τ => a ≤ τ ∧ τ ≤ b') id
-      from ⟨hs.deltaF,
+      from ⟨hs.deltaF, hs.delta_le,
         fun x hx i m hm hw => hs.message x hx i m hm ⟨ha.trans hw.1, hw.2.trans hb⟩,
         fun x hx i B hB hw => hs.block x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,
         fun x hx i B hB hw => hs.relay x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,

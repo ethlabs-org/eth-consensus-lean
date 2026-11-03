@@ -527,6 +527,7 @@ private theorem window_sync {b : Time} {s₀ : Nat} (hrun : GoldilocksRun propos
   sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer ΔF a b'
     hrun.toLocalRun
     { deltaF := hs.deltaF
+      delta_le := hs.delta_le
       message := fun x hx i m h hw => hs.message x hx i m h ⟨ha.trans hw.1, hw.2.trans hb⟩
       block := fun x hx i B h hw => hs.block x hx i B h ⟨ha.trans hw.1, hw.2.trans hb⟩
       relay := fun x hx i B h hw => hs.relay x hx i B h ⟨ha.trans hw.1, hw.2.trans hb⟩

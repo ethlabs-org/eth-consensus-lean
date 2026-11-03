@@ -52,29 +52,33 @@ publication gives network service by max(send, GST, latest wake)+Δe; authentica
 gives the lower bound, recursive processing gives a call, and the engine's strict deadline gives
 the node's strict endpoint.
 Acceptance relay additionally requires the parent-first induction, NoColl and chain-state
-agreement. Vote/attestation admissions need their own source/time provenance. The adapter
-must identify H, node keys, flattened cuts, horizon and awake intervals with the engine run. -/
+agreement. Vote admissions need their own source/time provenance; attestations have no lower
+bound (`AttDeliveredBy`), so they need none. The adapter
+must identify H, node keys, flattened cuts, horizon and awake intervals with the engine run.
+It assumes `Δ ≤ Δ_F` (`SyncOn.delta_le`): an attestation admitted from a block leaves in the
+block's relay wrapper, which the network serves within `Δ`, not `Δ_F`. -/
 def PSyncTransport : Prop :=
-  ∀ g, rho.log.PSync rho.point g → tr.GSTRun H ΔF g
+  sp.Δ ≤ ΔF → ∀ g, rho.log.PSync rho.point g → tr.GSTRun H ΔF g
 
 /-- OPEN supplier: SyncUntil supplies only recipient-deadline-cut SyncBefore, not SyncRun
 with a send-time cutoff. Paper route: a node deadline ≤ b puts its engine service endpoint
 strictly below b. Wakes are included in that deadline. All four service fields need
-the same publication/processing joins as PSyncTransport. No post-outage service is inferred. -/
+the same publication/processing joins as PSyncTransport. No post-outage service is inferred.
+It assumes `Δ ≤ Δ_F` as `PSyncTransport` does, also for the cutoff `deadline … Δ_F ≤ b`. -/
 def SyncUntilTransport : Prop :=
-  ∀ b, rho.log.SyncUntil rho.point b → tr.SyncBefore H ΔF b
+  sp.Δ ≤ ΔF → ∀ b, rho.log.SyncUntil rho.point b → tr.SyncBefore H ΔF b
 
 /-- OPEN supplier: global synchrony gives SyncRun on nonnegative send windows. In particular
 this does not derive a send-window SyncRun from SyncUntil: a late wake can put its deadline
 after the latter's cutoff. The concrete adapter must discharge the same four service leaves. -/
 def SyncRunTransport : Prop :=
-  rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
+  sp.Δ ≤ ΔF → rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
 
 /-- Signed FG rows are processed before the row deadline at row delay `Δ_F` (its own bound,
 not the block/message bound `Δ`) at recipient calls within the engine horizon. An earlier
 processing of the identical attestation is sufficient; no processing after the source signing is
-required. This services an existing signed row and does not produce one. The trusted
-`AttDeliveredBy` contract is unchanged. -/
+required. This services an existing signed row and does not produce one. It has the shape of
+the trusted `AttDeliveredBy`, restricted to signings. -/
 def PSyncFGRowTransport : Prop :=
   ∀ g, rho.log.PSync rho.point g →
     ∀ x ∈ H, ∀ i a, tr.SignAt x i a →

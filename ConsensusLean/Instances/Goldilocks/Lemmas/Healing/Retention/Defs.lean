@@ -22,7 +22,7 @@ open SA (SAParams ReplayOrder Payload gbar)
 theorem syncRun_of_gst {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P.n)}
     {ΔF g a b : Time} (h : tr.GSTRun H ΔF g) (hga : g ≤ a) : tr.SyncRun H ΔF a b := by
   have he : ∀ τ, a ≤ τ → max τ g = τ := fun τ hτ => max_eq_left (hga.trans hτ)
-  refine ⟨h.deltaF, fun x hx i m hs hw => ?_, fun x hx i B hB hw => ?_,
+  refine ⟨h.deltaF, h.delta_le, fun x hx i m hs hw => ?_, fun x hx i B hB hw => ?_,
     fun x hx i B hB hw => ?_, fun x hx i at' hs hw => ?_⟩
   · have := h.message x hx i m hs trivial
     simp only [he _ hw.1] at this
@@ -70,7 +70,7 @@ structure GSTRunUpTo (g ΔF b : Time) : Prop where
   attestation : ∀ x ∈ H, ∀ i att, tr.SendOrAdmitAttAt x i att →
     ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ b →
       tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
-      tr.AttDeliveredBy y j (tr.time i) (max (tr.time i) g) ΔF att
+      tr.AttDeliveredBy y j (max (tr.time i) g) ΔF att
 
 /-- Reset service keeps the AC message/block/relay contracts, but requests only
 signed-row delivery by the deadline, without a row processing lower bound. -/
@@ -101,7 +101,7 @@ theorem ResetService.of_gst {g ΔF b : Time} (h : tr.GSTRun H ΔF g) :
   refine ⟨h.deltaF, fun x hx i m hs => h.message x hx i m hs trivial,
     fun x hx i B hs => h.block x hx i B hs trivial, h.relay, ?_⟩
   intro x hx i att hs y hy j hj _ hd
-  obtain ⟨k, hk, -, hp, ht⟩ := h.attestation x hx i att (Or.inl hs) trivial y hy j hj hd
+  obtain ⟨k, hk, hp, ht⟩ := h.attestation x hx i att (Or.inl hs) trivial y hy j hj hd
   exact ⟨k, hk, hp, ht⟩
 
 /-- Finite reset premises. Reset existence and its cutoff are inputs, not consequences of

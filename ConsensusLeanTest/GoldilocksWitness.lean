@@ -365,6 +365,7 @@ theorem tickRun_lt_of_time {i j : Nat} (h : (tickRun N1 dg1).time i < (tickRun N
 theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ τ, τ ≤ eff τ) :
     (tickRun N1 dg1).SyncOn Set.univ 1 W Wr eff where
   deltaF := one_pos
+  delta_le := le_rfl
   message x _ i m h _ y _ j _ hdl := by
     rw [eq_v0 rfl x] at h
     rw [eq_v0 rfl y] at hdl ⊢
@@ -402,7 +403,7 @@ theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ 
     rcases h with h | ⟨ℓ, hcall, hnot, hin⟩
     · obtain ⟨hatt, ht⟩ := tickRun_sign_next h
       have hij' : i + 1 < j := tickRun_lt_of_time (i := i + 1) (j := j) (by rw [ht]; linarith)
-      refine ⟨i + 1, hij'.le, by rw [ht], Or.inl hatt, ?_⟩
+      refine ⟨i + 1, hij'.le, Or.inl hatt, ?_⟩
       rw [tickRun_deadline, ht]; linarith
     · have hle : i ≤ j := hij.le
       have hdl' : (tickRun N1 dg1).time i < (tickRun N1 dg1).deadline v0 i (eff
@@ -411,9 +412,9 @@ theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ 
       rcases cutStep_atts N1 (tickRun_cutStep rfl hcall) a hin with h | ⟨B, hB, ha⟩ | hB
       · exact absurd h hnot
       · cases hB
-        exact ⟨i, hle, le_rfl, Or.inr ⟨B, hcall, ha⟩, hdl'⟩
+        exact ⟨i, hle, Or.inr ⟨B, hcall, ha⟩, hdl'⟩
       · cases hB
-        exact ⟨i, hle, le_rfl, Or.inl hcall, hdl'⟩
+        exact ⟨i, hle, Or.inl hcall, hdl'⟩
 
 /-! ## A ready proposal at every slot -/
 

@@ -193,6 +193,7 @@ theorem eq_w0_of_isCall {y : Fin sp2.n} {j : Nat} (h : tr2.IsCall y j) : y = w0 
 theorem tr2_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ τ, τ ≤ eff τ) :
     tr2.SyncOn Set.univ 1 W Wr eff where
   deltaF := one_pos
+  delta_le := le_rfl
   message x _ i m h _ y _ j hj hdl := by
     obtain rfl := eq_w0_of_isCall hj
     obtain ⟨ℓ, hc, hh⟩ := h
@@ -233,7 +234,7 @@ theorem tr2_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ τ, 
       obtain ⟨hatt, ht⟩ := sign_next ⟨C, hc⟩
       have ht' : tr2.time (i + 1) = tr2.time i := ht
       have hij' : i + 1 < j := lt_of_time (i := i + 1) (j := j) (by rw [ht']; linarith)
-      refine ⟨i + 1, hij'.le, by rw [ht'], Or.inl hatt, ?_⟩
+      refine ⟨i + 1, hij'.le, Or.inl hatt, ?_⟩
       rw [tr2_deadline, ht']; linarith
     · obtain rfl := eq_v0_of_callAt (tr2_callAt.1 hcall)
       rw [tr2_state] at hnot
@@ -244,9 +245,9 @@ theorem tr2_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ τ, 
         h | ⟨B, hB, ha⟩ | hB
       · exact absurd h hnot
       · cases hB
-        exact ⟨i, hle, le_rfl, Or.inr ⟨B, hcall, ha⟩, hdl'⟩
+        exact ⟨i, hle, Or.inr ⟨B, hcall, ha⟩, hdl'⟩
       · cases hB
-        exact ⟨i, hle, le_rfl, Or.inl hcall, hdl'⟩
+        exact ⟨i, hle, Or.inl hcall, hdl'⟩
 
 /-- `f = 0 < h_t = 1` at every time `t ≥ 0`: `w0` is awake and joined, `w1` asleep. -/
 theorem tr2_faultBound {t : Time} (ht : 0 ≤ t) : tr2.FaultBound Set.univ t := by
