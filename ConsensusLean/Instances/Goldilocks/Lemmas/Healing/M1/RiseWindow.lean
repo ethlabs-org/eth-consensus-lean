@@ -24,12 +24,23 @@ open SA (SAParams ReplayOrder Payload gbar)
 /-- The rise round count of the merged key value `v`: `2, 2, 1, 1, 0` for `v = 2HZ + j`. -/
 def riseRounds (HZ v : Nat) : Nat := 2 - (v - 2 * HZ) / 2
 
+/-- Unfolding equation of `riseRounds`. -/
+theorem riseRounds_eq (HZ v : Nat) : riseRounds HZ v = 2 - (v - 2 * HZ) / 2 := by
+  unfold riseRounds
+  rfl
+
 theorem riseRounds_le_two (HZ v : Nat) : riseRounds HZ v ≤ 2 := by
   unfold riseRounds
   omega
 
 /-- The window length of key value `v`: the drain `d`, `r(v)` rounds of length `ρ`, slack `s`. -/
 def riseLen (d ρ s : Time) (HZ v : Nat) : Time := d + (riseRounds HZ v : Time) * ρ + s
+
+/-- Unfolding equation of `riseLen`. -/
+theorem riseLen_eq (d ρ s : Time) (HZ v : Nat) :
+    riseLen d ρ s HZ v = d + (riseRounds HZ v : Time) * ρ + s := by
+  unfold riseLen
+  rfl
 
 theorem riseLen_nonneg {d ρ s : Time} (hd : 0 ≤ d) (hρ : 0 ≤ ρ) (hs : 0 ≤ s) (HZ v : Nat) :
     0 ≤ riseLen d ρ s HZ v := by

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealComposeDe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowExists
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.WarmFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBoundRounds
@@ -18,76 +19,19 @@ of piece (3) and the `r`-round rise of piece (2):
   `r(v) = 2 − ⌊(v − 2HZ)/2⌋`, `ρ = δ_t + G − 1`; the five attempts end by
   `lo + 5(4D(L_drain + 2) + 2D + λ) + 6·4Dρ` (`exists_frameWindow_seq_of_service`);
 * at the vote cut of slot `s₀` the window floor has `HZ + 1 ≤ floor + r(v)`
-  (`le_floor_add_keyRounds`), and the warm proposal is at or above the floor
+  (`le_floor_add_riseRounds`), and the warm proposal is at or above the floor
   (`FrameWindow.floor_le_warm_proposal`), so `HZ + 1 ≤ σ[P].h + r(v)`;
 * `FrameWindow.rise_reset_rounds` gives the reset by `t_{u + r(v)ρ + 1} + 2Δ`.
 
 `B = resetBoundRounds r Δ λ δ_t G L_drain = r + (20 L_drain + 24ρ + 54)·Δ + 5λ`.
 
-`keyRounds` and `keyLen` repeat `riseRounds` and `riseLen` (`Healing.M1.RiseWindow`): those
-bodies are not exposed and have no unfolding equation, so an importer cannot compute the window
-length from them. The proofs of `sum_keyLen`, `le_floor_add_keyRounds` and the window step repeat
-`sum_riseLen`, `le_floor_add_riseRounds` and `exists_riseWindow_of_service`. -/
+The window step is `exists_riseWindow_of_service` (`Healing.M1.RiseWindow`); the window length
+and the round count are `riseLen` and `riseRounds` (`riseLen_eq`, `riseRounds_eq`). -/
 
 namespace Consensus.Goldilocks.Refinement
 
 open SA (gbar)
 open Healing
-
-/-- The rise round count of the merged key value `v`: `2, 2, 1, 1, 0` for `v = 2HZ + j`
-(the value of `riseRounds`). -/
-def keyRounds (HZ v : Nat) : Nat := 2 - (v - 2 * HZ) / 2
-
-/-- Unfolding equation of `keyRounds`. -/
-theorem keyRounds_eq (HZ v : Nat) : keyRounds HZ v = 2 - (v - 2 * HZ) / 2 := by
-  unfold keyRounds
-  rfl
-
-/-- The window length of key value `v` (the value of `riseLen`). -/
-def keyLen (d ρ s : Time) (HZ v : Nat) : Time := d + (keyRounds HZ v : Time) * ρ + s
-
-/-- Unfolding equation of `keyLen`. -/
-theorem keyLen_eq (d ρ s : Time) (HZ v : Nat) :
-    keyLen d ρ s HZ v = d + (keyRounds HZ v : Time) * ρ + s := by
-  unfold keyLen
-  rfl
-
-theorem keyLen_nonneg {d ρ s : Time} (hd : 0 ≤ d) (hρ : 0 ≤ ρ) (hs : 0 ≤ s) (HZ v : Nat) :
-    0 ≤ keyLen d ρ s HZ v := by
-  rw [keyLen_eq]
-  have : (0 : Time) ≤ (keyRounds HZ v : Time) := Nat.cast_nonneg _
-  nlinarith
-
-/-- The cumulative length of the five attempts: `5(d + s + λ) + 6ρ`. -/
-theorem sum_keyLen (d ρ s lam : Time) (HZ : Nat) :
-    ∑ j ∈ Finset.range 5, (keyLen d ρ s HZ (2 * HZ + j) + lam) =
-      5 * (d + s + lam) + 6 * ρ := by
-  simp only [Finset.sum_range_succ, Finset.sum_range_zero, keyLen_eq, keyRounds_eq,
-    Nat.add_sub_cancel_left]
-  norm_num
-  ring
-
-/-- **The floor and the round count** (`le_floor_add_riseRounds` for `keyRounds`). -/
-theorem le_floor_add_keyRounds {P : Params} {ACP : Type} (st : Store P ACP) {HZ : Nat}
-    (h1 : 1 ≤ st.hmax) (hv : 2 * HZ ≤ frameKey' st) :
-    HZ + 1 ≤ st.headHeightFloor + keyRounds HZ (frameKey' st) := by
-  classical
-  have hb := frameKey_bounds st
-  rw [frameKey'_def, keyMerge_eq] at hv ⊢
-  rw [keyRounds_eq]
-  unfold Store.headHeightFloor
-  by_cases hc : st.Contest
-  · have hK : frameKey st = 3 * st.hmax + 2 := by
-      rw [frameKey_def]
-      simp [hc]
-    simp only [hc, ↓reduceIte]
-    omega
-  · have hK : frameKey st ≤ 3 * st.hmax + 1 := by
-      rw [frameKey_def]
-      simp only [hc, ↓reduceIte]
-      split_ifs <;> omega
-    simp only [hc, ↓reduceIte]
-    omega
 
 /-- The reset bound of the key-dependent rise route: `lo + 5(4D(L_drain + 2) + 2D + λ) + 6·4Dρ`
 at `lo = r + 4D`, `ρ = δ_t + X − 1`. -/
@@ -122,7 +66,7 @@ theorem exists_slot_align (sp : SA.SAParams) {af : Time} (haf : 0 ≤ af) :
 /-- **The rise rounds at the warm proposal.** On a window `[a_f, a_f + len]` with merged key
 `v ≥ 2HZ` and a `FrameWindow`, the actual warm proposal `P` of slot `u` of a slot-aligned frame
 `[t_{s₀}, t_N + 2Δ]` inside the window has `HZ + 1 ≤ σ[P].h + r(v)`: the window floor at the
-vote cut of slot `s₀` (`le_floor_add_keyRounds`), and `floor ≤ σ[P].h`
+vote cut of slot `s₀` (`le_floor_add_riseRounds`), and `floor ≤ σ[P].h`
 (`FrameWindow.floor_le_warm_proposal`). -/
 theorem rounds_le_warm_proposal
     {g ΔF b af len : Time} {s₀ u N floor v : Nat} {kindJ : Prop}
@@ -140,7 +84,7 @@ theorem rounds_le_warm_proposal
     (huN : u ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
-    HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + keyRounds (HZ tr H g) v := by
+    HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + riseRounds (HZ tr H g) v := by
   have hΔ := sp.toParams.hΔ
   have hsN : sp.ts s₀ ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast (by omega : s₀ ≤ N))
   have hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
@@ -161,7 +105,7 @@ theorem rounds_le_warm_proposal
   have h1 : 1 ≤ (tr.state z c).fg.hmax := by
     have := hj_lt_hmax hrun hz c
     omega
-  have hZf := le_floor_add_keyRounds (tr.state z c).fg h1 (HZ := HZ tr H g)
+  have hZf := le_floor_add_riseRounds (tr.state z c).fg h1 (HZ := HZ tr H g)
     (by rw [hkey]; exact hv)
   rw [hkey, hwin.floor_eq z hz c hc1 hc2] at hZf
   have hPf := hframe.floor_le_warm_proposal hrun hnc hsvc hawake hf hcatch hnr hm hwarm
@@ -236,24 +180,17 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
   have hrange := hmax_range (T := B + 1) (lo := lo) hrun hnc hf2 hq hsvc hcatch hH hsnap hna
     hlo2
       (fun z hz m hm hmT => hcallZ z hz m hm (by have := Int.lt_add_one_iff.mp hmT; linarith))
-  have hlenv := keyLen_nonneg hd0 hρt0 h2D (HZ tr H g)
-  obtain ⟨v, hv1, hv2, af, haf, hafl, hK, floor, kindJ, J, hwin⟩ :=
-    exists_frameWindow_seq_of_service hrun hnc hf2 hsvc hcatch (lo := lo) (lam := lam)
-      (T := B + 1) (keyLen d ρt (2 * D) (HZ tr H g)) hlenv hlam hlo2 hrange
+  obtain ⟨v, hv1, hv2, af, haf, -, hwinE0, hK, floor, kindJ, J, hwin, -⟩ :=
+    exists_riseWindow_of_service hrun hnc hf2 hsvc hcatch (lo := lo) (lam := lam)
+      (T := B + 1) (HZ := HZ tr H g) hd0 hρt0 h2D hlam hlo2 hrange
       (fun z hz i m hi him hmT =>
         hcall z hz i m hi him (by have := Int.lt_add_one_iff.mp hmT; linarith))
-      (by rw [sum_keyLen, hB]; linarith)
-  have hsub : ∑ j ∈ Finset.range (v - 2 * HZ tr H g + 1),
-        (keyLen d ρt (2 * D) (HZ tr H g) (2 * HZ tr H g + j) + lam) ≤
-      ∑ j ∈ Finset.range 5, (keyLen d ρt (2 * D) (HZ tr H g) (2 * HZ tr H g + j) + lam) :=
-    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
-      fun j _ _ => add_nonneg (hlenv _) hlam
-  rw [sum_keyLen] at hsub
-  obtain ⟨rr, hrrdef⟩ : ∃ rr, keyRounds (HZ tr H g) v = rr := ⟨_, rfl⟩
-  have hrr2 : rr ≤ 2 := by rw [← hrrdef, keyRounds_eq]; omega
-  set len : Time := keyLen d ρt (2 * D) (HZ tr H g) v with hlendef
+      (by rw [hB]; linarith)
+  obtain ⟨rr, hrrdef⟩ : ∃ rr, riseRounds (HZ tr H g) v = rr := ⟨_, rfl⟩
+  have hrr2 : rr ≤ 2 := hrrdef ▸ riseRounds_le_two _ _
+  set len : Time := riseLen d ρt (2 * D) (HZ tr H g) v with hlendef
   have hlenE : len = 4 * D * ((Ld : ℤ) + (rr : ℤ) * ((δt : ℤ) + G - 1) + 2) + 2 * D := by
-    rw [hlendef, keyLen_eq, hrrdef, hddef, hρtdef, hρZ]; ring
+    rw [hlendef, riseLen_eq, hrrdef, hddef, hρtdef, hρZ]; ring
   -- slot alignment
   have h4D : 0 < 4 * D := by linarith
   obtain ⟨s₀, hts₀lo, hts₀hi⟩ := exists_slot_align sp (af := af) (by linarith)
@@ -281,7 +218,7 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
       rw [show sp.ts N = 4 * D * (N : ℤ) from rfl, hNdef]; push_cast; rw [hρZ]
     refine ⟨by rw [hN']; exact h1, ?_⟩
     rw [hN']
-    have := hafl
+    have := hwinE0
     rw [← hB] at ⊢
     linarith
   have hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * D)
