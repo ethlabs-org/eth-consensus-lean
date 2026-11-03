@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.HealedClient
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 
