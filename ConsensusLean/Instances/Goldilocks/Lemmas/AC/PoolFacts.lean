@@ -576,7 +576,7 @@ theorem proposal_payload_valid : ProposalPayloadValid sp := by
   have hσ : sp.slot (sp.toParams.slotTime σ) = σ := by
     rw [sp.slotTime_eq]
     exact slot_of_mem sp σ (by simp [SAParams.ts]) (by
-      simp only [SAParams.ts]; push_cast; have := sp.toParams.hΔ; nlinarith)
+      simp only [SAParams.ts]; push_cast; have := sp.toParams.hΔ; linarith)
   change (acProposal sp A Φ (sp.toParams.slotTime σ)).2 = some (d, p) at hp
   unfold acProposal at hp
   split_ifs at hp

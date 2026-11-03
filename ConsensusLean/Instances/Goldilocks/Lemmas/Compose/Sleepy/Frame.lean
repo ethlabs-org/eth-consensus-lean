@@ -1033,12 +1033,12 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     by_contra h
     have : q + 1 ≤ 4 * (s : Int) + 4 := by omega
     simp only [SAParams.ts] at hc0
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left this hΔ.le]
   have hq2 : q ≤ 4 * (s : Int) + 5 := by
     by_contra h
     have : 4 * (s : Int) + 6 ≤ q := by omega
     simp only [SAParams.ts] at hti'
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left this hΔ.le]
   rcases (show q = 4 * (s : Int) + 5 ∨ q = 4 * (s : Int) + 4 by omega) with hq5 | hq4
   · -- at `t_{s+1} + Δ`: the voter's tick there votes before the block arrives
     have hT : tr.time k = sp.ts s + 5 * sp.Δ := by
@@ -1237,7 +1237,7 @@ private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   · -- a regular origin of label `l > s` is written at `t_l + 6Δ ≥ t_{s+1} + 6Δ`
     have htR' : tr.time c = sp.ts (l : Int) + 6 * sp.Δ := htR
     simp only [SAParams.ts] at htR' hti
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left hl' hΔ.le]
   · rcases Nat.lt_or_ge l (s + 2) with hl2 | hl2
     · obtain rfl : l = s + 1 := by omega
       exact no_optimistic_before_held_row_of hrun hnc hf hy hc hs hm hmi hav hkm hsg hz hck hO
@@ -1248,7 +1248,7 @@ private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       have h' : sp.ts (l : Int) ≤ tr.time c := h
       have hl2' : (s : Int) + 2 ≤ (l : Int) := by exact_mod_cast hl2
       simp only [SAParams.ts] at h' hti
-      nlinarith
+      linarith [mul_le_mul_of_nonneg_left hl2' hΔ.le]
 
 /-- **S3 at full reads, over sources `G`**: with `f < n/2`, the honest rows at heights `≥ h_j`
 sourced by `G`, the sources pairwise compatible and compatible with `B`, a held block `B` is at or

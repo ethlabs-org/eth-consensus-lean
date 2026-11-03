@@ -213,8 +213,8 @@ private theorem fastLock_time_lt (hp : ResetPremises tr H proposer dg g ΔF a) {
     have hm2 : (m : Int) + 2 ≤ u := by
       by_contra hcon
       have h1 : (u : Int) ≤ m + 1 := by omega
-      nlinarith
-    nlinarith
+      linarith [mul_le_mul_of_nonneg_left h1 hΔ.le]
+    linarith [mul_le_mul_of_nonneg_left hm2 hΔ.le]
   · have hsl' : sp.slot (tr.time r) = m := hsl
     by_contra hcon
     have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) u).1 (not_lt.1 hcon)
@@ -235,8 +235,8 @@ theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
     have hm2 : (m : Int) + 2 ≤ u := by
       by_contra h
       have : (u : Int) ≤ m + 1 := by omega
-      nlinarith
-    nlinarith
+      linarith [mul_le_mul_of_nonneg_left this hΔ.le]
+    linarith [mul_le_mul_of_nonneg_left hm2 hΔ.le]
   · change sp.slot (tr.time r) = m at hsl
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
@@ -260,7 +260,7 @@ theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}
     have htu := (SA.ts_le_iff sp).mpr (show (l : Int) + 2 ≤ u by omega)
     simp only [SAParams.ts] at ht' htu ⊢
     have := sp.toParams.hΔ
-    nlinarith
+    linarith
   · change sp.slot (tr.time r) = l at hsl
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
@@ -1170,8 +1170,8 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
           have hn2 : (n : Int) + 2 ≤ u := by
             by_contra h
             have : (u : Int) ≤ n + 1 := by omega
-            nlinarith
-          nlinarith
+            linarith [mul_le_mul_of_nonneg_left this hΔ.le]
+          linarith [mul_le_mul_of_nonneg_left hn2 hΔ.le]
         · by_contra h
           have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q') u).mp (not_lt.mp h)
           change sp.slot (tr.time q') = n at hsl
@@ -1206,7 +1206,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
     rw [hti]
     have ht := (SA.ts_le_iff sp).mpr (show (s : Int) + 1 ≤ u by omega)
     simp only [SA.SAParams.ts] at ht ⊢
-    nlinarith
+    linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
     raw_writer_relay_source hr hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
@@ -1407,7 +1407,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
       have htu := (SA.ts_le_iff sp).mpr (show (m : Int) + 2 ≤ u by omega)
       simp only [SAParams.ts] at ht' htu ⊢
       have := sp.toParams.hΔ
-      nlinarith
+      linarith
     · by_contra h
       have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) u).mp (not_lt.mp h)
       change sp.slot (tr.time q) = m at hsl
@@ -3262,7 +3262,8 @@ private theorem reset_vote_root_source (hp : ResetPremises tr H proposer dg g Δ
       have hgap : sp.ts ((sp.slot a : Int) + 1) + sp.Δ ≤
           sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) := by
         simp only [SAParams.ts]; push_cast
-        nlinarith [sp.toParams.hΔ, sp.two_le_k]
+        linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left
+          (show (2 : Int) ≤ sp.k by exact_mod_cast sp.two_le_k) sp.toParams.hΔ.le]
       linarith
     have hFO' : Anc (tr.HonestBlocks H) ℓy.frame.F O := by rw [hfr]; exact hFO
     have hOt := seed_held hp hy hcy.1 hat ho hrt hFO'

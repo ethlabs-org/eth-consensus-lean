@@ -89,7 +89,7 @@ theorem final_recurrence_anchors (S : Setup) (A : AcceptanceAssumptions S) (X : 
   rw [G.slotTime_add]
   have hmul := mul_le_mul_of_nonneg_right hjbound G.slotLen_pos.le
   rw [hG] at hfirst hmul ⊢
-  nlinarith
+  linarith
 
 /-- Longer ready histories imply shorter ones, not conversely. -/
 theorem ready_of_duration_le {V : Type} {p : EnvPoint V} {v : V} {c₁ c₂ t : Time}

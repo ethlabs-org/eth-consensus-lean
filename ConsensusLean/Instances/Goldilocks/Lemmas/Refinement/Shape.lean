@@ -192,7 +192,8 @@ theorem dependencies_voteForward {n : Nat} (held : List (Wire n))
     (x : Fin n) (t : Time) (v : Vote n) :
     (dependencies n).ready held
       (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
-  simp [dependencies, Model.Obj.parts, Model.Obj.parts.partsList, forwardParent?, voteObj]
+  simp only [dependencies, forwardParent?, voteObj, Model.Obj.parts, Model.Obj.parts.partsList,
+      List.append_nil, List.all_cons, List.all_nil, Bool.and_self]
 
 /-- The only release-holdings obligation is the canonical carried vote at the actual prefix. -/
 theorem releasable_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
@@ -211,9 +212,12 @@ theorem dependencies_item {n : Nat} (held : List (Wire n))
     (auth : Model.Auth n (ShapeRole Empty)) (h : Header Info)
     (atts : List (FG.Att n)) (p : Payload n) :
     (dependencies n).ready held (.mk auth (.item h) (payloadObjs atts p)) = true := by
-  simp [dependencies, Model.Obj.parts, forwardParent?, payloadObjs]
+  simp only [dependencies, forwardParent?, payloadObjs, List.map_append, Model.Obj.parts,
+      List.all_cons, Bool.true_and, List.all_eq_true]
   simp only [Model.Obj.partsList_eq]
-  simp [attObj, voteObj, Model.Obj.parts, Model.Obj.parts.partsList]
+  simp only [List.flatMap_append, List.mem_append, List.mem_flatMap, List.mem_map, attObj,
+      exists_exists_and_eq_and, Model.Obj.parts, Model.Obj.parts.partsList, List.mem_cons,
+      List.not_mem_nil, or_false, voteObj]
   rintro x (⟨a, _, rfl⟩ | ⟨a, _, rfl⟩ | ⟨a, _, rfl⟩) <;> rfl
 
 /-- A dependency projected from a forwarding shape is a carried object. -/

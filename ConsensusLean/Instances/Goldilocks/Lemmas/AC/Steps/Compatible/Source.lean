@@ -90,7 +90,7 @@ theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     have := ((ts_le_iff_le_slot sp ht0) (m + 1 : Nat)).2 (by push_cast; omega)
     simp only [SAParams.ts] at this hhi
     push_cast at this
-    nlinarith
+    linarith
   -- the lock's origin: a fast lock of its slot that `x` wrote before the call
   obtain ⟨j, hj, B', CV', hfl', L, hL, hLr, hLB'⟩ := fast_lock_provenance hr hx i l₀ hl₀ hlf
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) hL (hB₀r.trans hLr.symm)
@@ -98,7 +98,7 @@ theorem source_compatible_stored : ∀ (FGP : Type) (ro : ReplayOrder sp FGP)
     have hmono := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
     rcases hfl' with ⟨ℓ', C', ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ', A', -, hsl, -⟩
     · have : sp.ts (l₀.slot + 1 : Nat) ≤ tr.time j := by
-        rw [ht]; simp only [SAParams.ts]; push_cast; nlinarith
+        rw [ht]; simp only [SAParams.ts]; push_cast; linarith
       have := ((ts_le_iff_le_slot sp (hr.time_nonneg j)) _).1 this
       push_cast at this
       omega

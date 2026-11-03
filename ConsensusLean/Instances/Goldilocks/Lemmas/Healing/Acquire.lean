@@ -128,7 +128,7 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
   have hrr := rTime_eq (sp := sp) w
   have hk0 : (0 : Time) ≤ (sp.k : Time) := Nat.cast_nonneg _
   have hkΔ : 0 ≤ (sp.k : Time) * sp.Δ := mul_nonneg hk0 hΔ.le
-  have hts : w + 12 * sp.Δ ≤ sp.ts s := by nlinarith
+  have hts : w + 12 * sp.Δ ≤ sp.ts s := by linarith
   obtain ⟨hpH, -, -, hprop, hPs, -⟩ := id hP
   have hkP : tr.time kP = sp.ts s := by
     rw [hprop.2.2, hPs, sp.slotTime_eq]; rfl
@@ -535,7 +535,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
     linarith
   -- the first ready proposal after `r`
   obtain ⟨s, kP, P, -, hs₁, hs₂, hP⟩ := hp (rTime sp w) (by linarith)
-  have hsD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; nlinarith
+  have hsD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; linarith
   obtain ⟨hkP, hkPD, hPt, hpostP, hPm, hallP, hvP, hlP, hpP⟩ := ready hP hs₁ hsD
   have honP := hafter _ hsD
   have hsrc := ready_sources hrun hs hc hp hset hclean hP hs₁ honP hvP hlP hpP
@@ -559,8 +559,8 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
       have h' : (sQ : Int) ≤ s + 1 := by omega
       have := mul_le_mul_of_nonneg_left h' (by linarith : (0 : Int) ≤ 4 * sp.Δ)
       simp only [SAParams.ts] at hq₁
-      nlinarith
-    have hQD : sp.ts sQ + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; nlinarith
+      linarith
+    have hQD : sp.ts sQ + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; linarith
     obtain ⟨hkQ, hkQD, hQt, hpostQ, hQm, hallQ, hvQ, hlQ, hpQ⟩ := ready hQ (by linarith) hQD
     have hpQH : proposer sQ ∈ H := hQ.1
     obtain ⟨Pr, hpar, hC₀Pr⟩ := descendant_source_parent hrun hs hc hset hP hs₁ honP hvP hy₀

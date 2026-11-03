@@ -540,14 +540,14 @@ theorem h2_drain (hI : InclusionRun tr H U proposer g t₀) {y : Fin sp.n} (hy :
     have hw : sp.ts ((l.slot : Int) - sp.k + 1) = sp.ts l.slot - 4 * sp.Δ * (sp.k - 1) := by
       simp only [SAParams.ts]; ring
     have hwin : t₀ + 4 * sp.Δ ≤ sp.ts ((l.slot : Int) - sp.k + 1) := by
-      rw [hw]; nlinarith
+      rw [hw]; linarith
     have htj : sp.ts l.slot ≤ tr.time j := by
       obtain ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ := hsl
       rw [ht]; linarith
     exact ⟨B, hLB, cleanOrigin_iff.2 (Or.inr ⟨y, hy, j,
-      joined_of_ge hI hy (hr.time_nonneg j) htj (by nlinarith), hsl, hwin⟩)⟩
+      joined_of_ge hI hy (hr.time_nonneg j) htj (by linarith), hsl, hwin⟩)⟩
   · obtain ⟨j, -, B, CV, hfl, hLB⟩ := fast_lock_provenance hr hy i l hl hf
-    have hj : t₀ + 4 * sp.Δ ≤ sp.ts l.slot := by nlinarith
+    have hj : t₀ + 4 * sp.Δ ≤ sp.ts l.slot := by linarith
     exact ⟨B, hLB, cleanOrigin_iff.2 (Or.inl ⟨y, hy, j, CV,
       joined_of_ge hI hy (hr.time_nonneg j) (fastLock_time hI hfl) (by linarith), hfl, hj⟩)⟩
 

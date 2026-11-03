@@ -230,7 +230,7 @@ theorem patternRecurrence_of_periodic (hρ : ρ.BadSlotSlack)
       have : d + 1 ≤ (ρ.gap : Nat) := by omega
       exact_mod_cast this
     push_cast at hs₁'
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hd'' hl.le]
 
 /-- With one whole window inside `[max start 0, stop]` and the horizon,
 recurrence yields a start slot whose whole pattern is honest, ready and inside
@@ -248,7 +248,7 @@ theorem PatternRecurrence.exists_inside (h : PatternRecurrence p key sel G ρ c 
     simp [Recurrence.len]
   rw [hlen] at ht
   rw [G.slotTime_add]
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hj' hl.le]
 
 /-! ## Payload -/
 

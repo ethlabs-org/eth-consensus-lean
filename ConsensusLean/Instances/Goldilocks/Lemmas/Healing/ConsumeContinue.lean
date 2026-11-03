@@ -53,7 +53,7 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
   have he : (e : Int) ≤ s := by exact_mod_cast h
   simp only [SAParams.ts]
   push_cast
-  nlinarith
+  linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left he sp.toParams.hΔ.le]
 
 /-- **HS.5's consumption and continuation in the phase** (`hs5-exact-helpers.md` §4;
 `Service`'s `consume_continue` with the acquired path destructured, its rows from

@@ -59,7 +59,7 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin {b : Time}
     omega)
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   simp only [SAParams.ts] at h₂ hck hkt'
-  nlinarith
+  linarith
 
 /-- Whole-run specialization of the origin label lower bound. -/
 theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)

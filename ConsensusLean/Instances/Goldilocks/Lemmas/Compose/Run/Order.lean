@@ -62,7 +62,7 @@ theorem ready_implies_joined : ReadyImpliesJoined := by
     rw [hS]
     change t - c - 1 < 4 * sp.toParams.Δ * ((sp.slot t : Int) - 1)
     change t < 4 * sp.toParams.Δ * ((sp.slot t : Int) + 1) at hup
-    nlinarith
+    linarith
   by_contra hgt
   push Not at hgt
   obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy _ (by linarith)

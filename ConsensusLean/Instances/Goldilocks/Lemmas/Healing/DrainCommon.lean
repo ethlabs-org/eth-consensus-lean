@@ -61,7 +61,7 @@ theorem slotA_spec (sp : SAParams) (w : Time) : w + 4 * sp.Δ ≤ sp.ts (slotA s
     have h1 := Int.self_le_toNat (w + 4 * sp.Δ)
     have h2 : (0 : Int) ≤ ((w + 4 * sp.Δ).toNat : Int) := Int.natCast_nonneg _
     have h3 : (1 : Int) ≤ 4 * sp.Δ := by linarith
-    nlinarith [mul_le_mul_of_nonneg_right h3 h2]
+    linarith [mul_le_mul_of_nonneg_right h3 h2]
   exact Nat.sInf_mem hne
 
 /-- A settled time is at least `ḡ + 8Δ`. -/

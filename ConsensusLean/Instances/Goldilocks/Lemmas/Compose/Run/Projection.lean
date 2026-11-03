@@ -178,7 +178,7 @@ private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
   rcases Nat.eq_zero_or_pos (sp.toParams.slotOf t) with h0 | hpos
   · simp only [SAParams.slot, h0, lt_irrefl, false_and, false_iff, not_le, SAParams.ts]
     push_cast
-    nlinarith
+    linarith
   · rw [sp.slotTime_eq]
     simp only [hpos, true_and, SAParams.ts, SAParams.slot]
     push_cast [Nat.one_le_iff_ne_zero.2 hpos.ne']

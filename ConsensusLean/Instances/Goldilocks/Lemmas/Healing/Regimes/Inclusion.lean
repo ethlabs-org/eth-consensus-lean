@@ -340,14 +340,14 @@ theorem grow_sleepy : GrowSleepy := by
     have h1k : (1 : Time) ≤ k := by exact_mod_cast hk
     rw [show ((s₀ + k - 1 : Nat) : Time) = (s₀ : Time) + k - 1 by
       rw [Nat.cast_sub (by omega)]; push_cast; ring]
-    nlinarith)
+    linarith)
   have hts : t < sp.ts s := lt_of_lt_of_le hts₀ ((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s))
   have htsD : sp.ts s + 6 * sp.Δ ≤ t + D := by
     have : sp.ts s ≤ sp.ts (s₀ + (k - 1) : Nat) := (SA.ts_le_iff sp).2 (by push_cast; omega)
     simp only [SAParams.ts, D] at this hts₀' ⊢
     push_cast at this hts₀' ⊢
     rw [show ((k - 1 : Nat) : Time) = k - 1 by rw [Nat.cast_sub hk]; simp] at this
-    nlinarith
+    linarith
   obtain ⟨kP, P, hP, hkP⟩ := ready_proposer_proposes hrun hnc (by omega) hready
   have hPslot : P.slot = s := by
     have h := hP.2.2

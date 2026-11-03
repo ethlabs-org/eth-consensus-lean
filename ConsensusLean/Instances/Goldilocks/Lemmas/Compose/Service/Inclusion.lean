@@ -53,7 +53,7 @@ private theorem update_recent (hrun : GoldilocksRun proposer dg H tr) {y : Fin s
   have hτσ : τ < sp.ts (σ : Int) := by
     simp only [τ, SAParams.ts]
     have : ((s' : Int) + 2) = (σ : Int) := by omega
-    rw [← this]; nlinarith
+    rw [← this]; linarith
   have hσt : sp.ts (σ : Int) ≤ tr.time i := (SA.ts_le_iff_le_slot sp hti σ).2 le_rfl
   have hsτ : sp.ts s + 6 * sp.Δ < τ := by
     simp only [τ]
@@ -107,7 +107,8 @@ private theorem update_recent (hrun : GoldilocksRun proposer dg H tr) {y : Fin s
       simp only [Nat.add_sub_cancel] at h ⊢
       rw [sp.slotTime_eq] at h ⊢
       have : (s : Int) ≤ s' := by exact_mod_cast hs's.le
-      have : 4 * sp.Δ * (s : Int) ≤ 4 * sp.Δ * (s' : Int) := by nlinarith
+      have : 4 * sp.Δ * (s : Int) ≤ 4 * sp.Δ * (s' : Int) :=
+        mul_le_mul_of_nonneg_left this (by linarith [sp.toParams.hΔ])
       exact h.trans this
     · exact (hnr k hk (lt_of_not_ge hks) (hkτ.trans (by linarith))).elim
   have hjoin : SA.joined sp (tr.state y j).ac τ :=

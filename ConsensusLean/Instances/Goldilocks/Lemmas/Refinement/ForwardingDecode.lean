@@ -971,8 +971,8 @@ theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [Dec
       q.origin = rho.ownKey v ∧
       q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
     apply tick_pending_publication S rho hn hv he
-      ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ [.propose s hs])
-      [.poll t.toNat]
+      ([ShapeDuty.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ [.propose s hs])
+      [ShapeDuty.poll t.toNat]
     · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1]
       simp only [dutiesInit, hone]
       rfl

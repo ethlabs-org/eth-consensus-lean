@@ -36,7 +36,7 @@ theorem slot_eq {t : Time} (ht : 0 ≤ t) : (sp.slot t : Int) = t / (4 * sp.Δ) 
       have h2 := Int.lt_ediv_add_one_mul_self t hd
       have : t / (4 * sp.Δ) + 1 ≤ (n : Int) := by
         exact (Int.toNat_lt' (lt_of_le_of_lt (Nat.zero_le _) hn)).mp hn
-      nlinarith
+      linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left this sp.toParams.hΔ.le]
   rw [key, Int.toNat_of_nonneg hq]
 
 /-- The slot of a time in `[t_s, t_{s+1})` is `s`. -/
@@ -55,11 +55,11 @@ theorem slot_of_mem (s : Nat) {t : Time} (h₁ : sp.ts s ≤ t) (h₂ : t < sp.t
     rcases lt_trichotomy q s with h | h | h
     · have h3 : q + 1 ≤ (s : Int) := h
       have := mul_le_mul_of_nonneg_right h3 hd.le
-      nlinarith
+      linarith
     · exact h
     · have h3 : (s : Int) + 1 ≤ q := h
       have := mul_le_mul_of_nonneg_right h3 hd.le
-      nlinarith
+      linarith
   exact_mod_cast he.trans hq
 
 theorem ts_le_iff {a b : Int} : sp.ts a ≤ sp.ts b ↔ a ≤ b := by
@@ -81,10 +81,10 @@ theorem ts_le_iff_le_slot {t : Time} (ht : 0 ≤ t) (a : Int) : sp.ts a ≤ t �
     by_contra hc
     have h3 : (sp.slot t : Int) + 1 ≤ a := lt_of_not_ge hc
     have := mul_le_mul_of_nonneg_left h3 hd.le
-    nlinarith
+    linarith
   · intro h
     have := mul_le_mul_of_nonneg_left h hd.le
-    nlinarith
+    linarith
 
 /-- `slot(t)` is monotone from time `0` on. -/
 theorem slot_mono {t t' : Time} (ht : 0 ≤ t) (h : t ≤ t') : sp.slot t ≤ sp.slot t' := by
@@ -104,7 +104,7 @@ theorem slot_arithmetic : SlotArithmetic sp := by
     linarith
   · simp only [SAParams.ts]; push_cast
     have : (i : Int) ≤ 3 := by exact_mod_cast Nat.le_of_lt_succ hi
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left this hΔ.le]
   · simp only [SAParams.ts]; push_cast; ring
   · simp only [SAParams.ts]; push_cast; ring
 

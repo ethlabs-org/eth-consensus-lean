@@ -141,7 +141,7 @@ theorem ts_add_two_le {m s : Nat}
   simp only [SAParams.ts] at h
   by_contra hc
   have h1 : (s : Int) ≤ m + 1 := by omega
-  nlinarith
+  linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left h1 sp.toParams.hΔ.le]
 
 end Walk
 
@@ -182,7 +182,7 @@ theorem OldOrigin.within (hrun : GoldilocksRun proposer dg H tr)
     have hs : (m : Int) + 2 ≤ s := by exact_mod_cast hm
     have hΔ := sp.toParams.hΔ
     simp only [SAParams.ts] at hb ht
-    nlinarith
+    linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left hs sp.toParams.hΔ.le]
   · refine ⟨m, by omega, originWithin_iff.2 ⟨x, hx, k, CV, ?_, Or.inr hO⟩⟩
     obtain ⟨ℓ, A, _, hs, _⟩ := hO
     change sp.slot (tr.time k) = m at hs

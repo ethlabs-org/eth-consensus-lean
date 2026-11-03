@@ -277,10 +277,10 @@ private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n
   have hδ : (0 : Time) ≤ sp.toParams.δt := Int.natCast_nonneg _
   have hD : 0 ≤ D_HS sp Gp := by
     simp only [D_HS]
-    nlinarith [mul_nonneg (by linarith : (0 : Time) ≤ 8 * sp.k + 48) hΔ.le]
+    linarith [mul_nonneg (by linarith : (0 : Time) ≤ 8 * sp.k + 48) hΔ.le]
   refine ⟨hD, ?_⟩
   simp only [A_HS, C_HS]
-  nlinarith [mul_nonneg (mul_nonneg (by norm_num : (0 : Time) ≤ 4) hΔ.le) hδ]
+  linarith [mul_nonneg (mul_nonneg (by norm_num : (0 : Time) ≤ 4) hΔ.le) hδ]
 
 /-- **HS.5, `Producer(A)`** (with `κ = 2Δ`, `G = G_p`): from a settled `w`, the effective phase
 has changed by `w + A_HS` (after all events there). Settled at `w` in the phase `(m, c)` at the

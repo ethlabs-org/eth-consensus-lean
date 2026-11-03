@@ -380,7 +380,7 @@ theorem healthy_receiver_repair_of_opening (D : HealthyRepairSchedule S A V Q)
     HealthyReceiverRepair S A V Q D O := by
   have hd := Q.params.toParams.hΔ
   have hTb : Q.params.ts O.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := by
-    nlinarith [O.bounded, D.reserve]
+    linarith [O.bounded, D.reserve]
   have hR : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts O.slot := by
     have := (le_max_left _ _).trans ((le_max_right _ _).trans D.lower)
     exact this.trans O.fresh.le
@@ -433,10 +433,10 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
   have hTcut : T < Q.run.2.cutTime i := by
     have hh : Q.heal ≤ Q.run.2.cutTime i := hi.2
     dsimp [T]
-    nlinarith [O.bounded, D.reserve]
+    linarith [O.bounded, D.reserve]
   have hTb : T ≤ Q.run.2.horizon := by
     dsimp [T]
-    nlinarith [O.bounded, D.reserve]
+    linarith [O.bounded, D.reserve]
   have hT0 : 0 ≤ T := by
     have : 0 ≤ Q.ready := by
       change 0 ≤ max Q.gst 0 + (Sys (family S) V).cDur (K S A) Q.run + 1
@@ -623,7 +623,7 @@ theorem healthy_read_label (D : HealthyRepairSchedule S A V Q)
   have ha : D.resetTime < Q.params.ts (Q.params.slot D.resetTime + 1 : Nat) := by
     have hh := Int.lt_ediv_add_one_mul_self D.resetTime (by linarith : 0 < 4 * Q.params.Δ)
     rw [← SA.slot_eq Q.params ha0] at hh
-    simpa only [SA.SAParams.ts, Nat.cast_add, Nat.cast_one, mul_comm] using hh
+    rw [SA.SAParams.ts, mul_comm]; exact_mod_cast hh
   have htlo := (SA.ts_le_iff_le_slot Q.params ht0 (Q.params.slot t)).mpr le_rfl
   by_cases hphase : Q.params.ts (Q.params.slot t) + 2 * Q.params.Δ ≤ t
   · refine ⟨Q.params.slot t, ?_, ?_, by linarith⟩
@@ -638,7 +638,7 @@ theorem healthy_read_label (D : HealthyRepairSchedule S A V Q)
     · have hs : ((Q.params.slot t - 1 : Nat) : Int) = (Q.params.slot t : Int) - 1 := by omega
       simp only [SA.SAParams.ts] at htlo ⊢
       rw [hs]
-      nlinarith
+      linarith
 
 set_option linter.unusedSectionVars false in
 /-- The original progress interval supplies an actual opening; finite catch and
@@ -658,9 +658,10 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
   have hd := Q.params.toParams.hΔ
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
-    nlinarith [D.reserve]
+    linarith [D.reserve]
   obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton] using hwin)
+    (by simpa only [Recurrence.len, Pattern.span, Pattern.single, List.foldr_cons, List.foldr_nil,
+        max_self, add_zero, family, skeleton] using hwin)
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton,
       Model.Run.point] using hwin.trans hb)
   have htime : (family S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
@@ -669,8 +670,8 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   rw [htime] at hlo hhi
   have hbound : Q.params.ts s ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by
     change Q.params.ts s ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
-    nlinarith
-  have hsb : Q.params.ts s ≤ Q.run.2.horizon := by nlinarith [D.reserve]
+    linarith
+  have hsb : Q.params.ts s ≤ Q.run.2.horizon := by linarith [D.reserve]
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
   have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by

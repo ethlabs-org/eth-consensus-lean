@@ -122,7 +122,8 @@ private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
   · exact h
   · exact h
   all_goals
-    refine good_optimistic hΦ hD (good_admitVote ?_ _ _) (hnew _ (List.mem_singleton_self _))
+    simp only [List.mem_singleton, forall_eq] at hnew
+    refine good_optimistic hΦ hD (good_admitVote ?_ _ _) hnew
     first
       | exact h
       | exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩

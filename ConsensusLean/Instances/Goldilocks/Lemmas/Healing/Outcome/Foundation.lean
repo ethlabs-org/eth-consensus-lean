@@ -1061,7 +1061,7 @@ theorem raw_writer_held_at_slot_start
     rw [hti]
     have ht := (SA.ts_le_iff sp).mpr (show (s : Int) + 1 ≤ u by omega)
     simp only [SA.SAParams.ts] at ht ⊢
-    nlinarith
+    linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
     raw_writer_relay_source hr hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
