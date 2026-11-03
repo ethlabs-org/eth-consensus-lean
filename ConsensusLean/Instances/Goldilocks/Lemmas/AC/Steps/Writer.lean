@@ -47,7 +47,7 @@ theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
   · split_ifs <;> rfl
 
 /-- A tick leaves the restart time. -/
-private theorem onTick_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+theorem onTick_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (acOnTick sp x A Φ t).1.restartTime = A.restartTime := by
   unfold acOnTick
   dsimp only

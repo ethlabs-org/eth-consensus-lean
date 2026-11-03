@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Anchor
 
 public section
 
@@ -21,19 +22,6 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
-
-/-- A stored lock of an honest node has a slot at most the current one: it was written by an
-optimistic confirmation of its slot or by the update of its slot, at an earlier cut. -/
-private theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {l : Lock} (hl : l ∈ (tr.state y i).locks) :
-    l.slot ≤ sp.slot (tr.time i) := by
-  obtain ⟨j, hj, B, horig, -⟩ := lock_provenance hr hy i l hl
-  have hmono := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
-  rcases horig with ⟨CV, ℓ, A, -, hsl, -⟩ | ⟨ℓ, -, -, htj, -⟩
-  · omega
-  · have : (l.slot : Int) ≤ sp.slot (tr.time j) :=
-      (ts_le_iff_le_slot sp (hr.time_nonneg j) _).1 (by rw [htj]; linarith [sp.toParams.hΔ])
-    omega
 
 /-- **§6 `Duty(P)`, first clause, with §6.1**: at every honest vote of slot `p` before the first
 one not on `P`, the anchor of the voter's walk after its unlocking is an ancestor of `P`:

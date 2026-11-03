@@ -24,13 +24,13 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
 
 /-- Every block of an honest node's frame is genesis or was accepted by the node. -/
-private theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X := by
@@ -77,7 +77,7 @@ private theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y
     · exact ih j hj hc'
 
 /-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. -/
-private theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
     (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
     (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' := by
   have hr := hrun.localRun
@@ -120,7 +120,7 @@ private theorem resolved_head {A : SAState sp.n} {Φ : Frm sp.n FGP} {v : Vote s
 
 /-- A vote with a finite stamp whose head is a stamped block of the tree of slot at most the
 vote's is resolved. -/
-private theorem resolutionTime_ne_top {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem resolutionTime_ne_top {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {v : Vote sp.n} {Hd : Blk sp.n FGP} (hHd : Hd ∈ Φ.tree) (hr : Hd.root = v.head)
     (hs : Hd.slot ≤ v.slot) (hv : A.voteStamp v ≠ ⊤) (hb : A.blockStamp v.head ≠ ⊤) :
     resolutionTime A Φ v ≠ ⊤ := by
@@ -136,27 +136,27 @@ private theorem resolutionTime_ne_top {A : SAState sp.n} {Φ : Frm sp.n FGP} (h�
     · omega
     · exact (max_lt (lt_top_iff_ne_top.2 hv) (lt_top_iff_ne_top.2 hb)).ne
 
-private theorem mem_voteViewList_fst {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem mem_voteViewList_fst {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     {c : ETime} {v : Vote sp.n} :
     v ∈ (voteViewList A Φ (s : Int) c).1 ↔ v ∈ A.pool s ∧ A.voteStamp v < c := by
   simp [voteViewList, SAState.poolAt]
 
-private theorem mem_voteViewList_snd {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem mem_voteViewList_snd {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     {c : ETime} {v : Vote sp.n} :
     v ∈ (voteViewList A Φ (s : Int) c).2 ↔
       (v ∈ A.pool s ∧ A.voteStamp v < c) ∧ resolutionTime A Φ v < c := by
   simp [voteViewList, SAState.poolAt]
   tauto
 
-private theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
+theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
 
-private theorem etime_of_lt_of {a b : Time} : ETime.of a < ETime.of b ↔ a < b := by
+theorem etime_of_lt_of {a b : Time} : ETime.of a < ETime.of b ↔ a < b := by
   simp [ETime.of]
 
 /-- The payload of a proposal is the proposer's view of the previous slot's pool, and the
 proposer is joined. -/
-private theorem proposal_payload {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem proposal_payload {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (acProposal sp A Φ t).2 = some (d, pay)) :
     joined sp A t ∧ pay = voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ ∧

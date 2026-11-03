@@ -50,7 +50,7 @@ private theorem anchor_cases (hS : StandaloneRun tr H U schedule g)
 
 /-- A stored lock of an honest node has a slot at most the current one: it was written by an
 optimistic confirmation of its slot or by the update of its slot, at an earlier cut. -/
-private theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {l : Lock} (hl : l ∈ (tr.state y i).locks) :
     l.slot ≤ sp.slot (tr.time i) := by
   obtain ⟨j, hj, B, horig, -⟩ := lock_provenance hr hy i l hl

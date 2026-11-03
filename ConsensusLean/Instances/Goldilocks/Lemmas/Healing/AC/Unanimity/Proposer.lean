@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 
 public section
 
@@ -19,22 +20,6 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
   {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
-
-/-- A nonempty set of blocks of the tree has a best block for any score. -/
-private theorem exists_isBest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FGP)}
-    (hS : S ⊆ Φ.tree) (hne : S.Nonempty) (score : Blk sp.n FGP → Nat) :
-    ∃ C, IsBest sp score S C := by
-  have hfin : S.Finite := hΦ.finite.subset hS
-  obtain ⟨D, hD, hmax⟩ := hfin.exists_maximalFor score S hne
-  obtain ⟨D', ⟨hD'S, hD'd⟩, hmin⟩ :=
-    (hfin.subset (Set.sep_subset S fun C => score C = score D)).exists_minimalFor
-      Block.root _ ⟨D, hD, rfl⟩
-  refine ⟨D', hD'S, fun C hC hne => ?_⟩
-  rcases lt_or_ge (score C) (score D') with h | h
-  · exact Or.inl h
-  have hCd : score C = score D' := le_antisymm (hD'd ▸ hmax hC (hD'd ▸ h)) h
-  refine Or.inr ⟨hCd, lt_of_le_of_ne ?_ fun hr => hne (hΦ.coherent.1 (hS hC) (hS hD'S) hr.symm)⟩
-  exact le_of_not_gt fun hlt => (hmin ⟨hC, hCd.trans hD'd⟩ hlt.le).not_gt hlt
 
 /-- The anchor is in the frame tree. -/
 private theorem getAnchor_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SAState sp.n)

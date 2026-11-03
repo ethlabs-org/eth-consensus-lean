@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 
 public section
 
@@ -137,11 +138,6 @@ theorem lowLocksCompatible_iff {A : SAState sp.n} {t : Time} {σ : Nat} {B : Blk
 
 theorem etime_finite (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
-
-private theorem equivocators_mono {S T : Set (Vote sp.n)} (h : S ⊆ T) :
-    equivocators S ⊆ equivocators T := by
-  rintro w ⟨a, ha, b, hb, hab, haw, hbw⟩
-  exact ⟨a, h ha, b, h hb, hab, haw, hbw⟩
 
 /-- A vote of an honest node's pool has a finite stamp. -/
 theorem pool_stamp_lt_top (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}

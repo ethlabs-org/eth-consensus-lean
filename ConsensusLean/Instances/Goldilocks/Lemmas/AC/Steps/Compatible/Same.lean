@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
@@ -48,11 +49,6 @@ private theorem rt_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s :
   · rfl
   · split_ifs <;> rfl
 
-private theorem rt_onTick (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acOnTick sp x A Φ t).1.restartTime = A.restartTime := by
-  unfold acOnTick; dsimp only
-  split_ifs <;> simp only [rt_update, rt_tryVote]
-
 /-- **The update side.** At an honest update of slot `s` whose fast test selects `D`: the
 node's restarts were at or before `t_s`; its supporters `S` of `D` are at least half of the
 committee and more than half of its voters; each has a vote in its pool, extending `D`, and
@@ -80,7 +76,7 @@ private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
       have : tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 :=
         (congrArg Prod.fst he).symm
       unfold joined at hj ⊢
-      rw [this, rt_onTick]
+      rw [this, SA.onTick_restartTime]
       exact hj
     have hsl : sp.slot (tr.time c) = s + 1 :=
       CompatibleSides.slot_of_lt (s := s + 1)
