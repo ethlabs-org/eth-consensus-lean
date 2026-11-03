@@ -13,7 +13,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `k` (`catchUp_small`, `catchUp_large`, `catchUp_of_k_le_four`, `catchUp_of_five_le_k`,
   `catchUp_k_four`, `catchUp_k_five`, each also against the former `max 37 (8k + 4)`); the outage
   no-sleep margin `4k + 6` covers catch-up + 1 only from `k = 4` on (`noSleep_covers_catchUp`,
-  `noSleep_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 6`
+  `noSleep_k_two_five`); lag `4k + 6`, recovery `9`, budget `4k − 5`
   (`outage_lag_recovery_budget`); heal `catchUp + M_f`, `563` at `k = 2, δt = 6, X = 1`, below
   the phase-1 coefficient (`heal_drop`). `accepted_latency` takes its documented value
   (`4X + 6`, `4(X + 3c) + 1`) at each capability, and both Sleepy margins hold there.
@@ -123,11 +123,11 @@ theorem noSleep_k_two_five (S : Setup) (A : AcceptanceAssumptions S) :
       rw [hk]
 
 /-- (b) The arming lag and recovery delay: lag `4k + 6` (`14` at `k = 2`), recovery `9`,
-budget `4k − 6`. -/
+budget `4k − 5` (`3` at `k = 2`). -/
 theorem outage_lag_recovery_budget :
     (K setupSmall assumptionsSmall).params.lag = 14 ∧
       (K setupSmall assumptionsSmall).params.recovery = 9 ∧
-      (K setupSmall assumptionsSmall).params.budget = 2 := ⟨rfl, rfl, rfl⟩
+      (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl, rfl⟩
 
 /-- (b) The heal coefficient is `catchUp + M_f` at every capability, `563` at `k = 2`, `δt = 6`,
 `X = 1` (`M_f = 544`), and below the phase-1 coefficient `37 + 2·M₁ + 3`,
@@ -210,11 +210,11 @@ theorem rowRatio_one (X : ℕ+) :
   ⟨rfl, assumptionsSmall.six_le_δt, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [accepted_latency_final]; rfl, rfl⟩
 
-/-- (b) The outage contract is plain sleepy with budget `4k − 6`: at `k = 2`, `η = 0` and
-`budget = 2`. -/
+/-- (b) The outage contract is plain sleepy with budget `4k − 5`: at `k = 2`, `η = 0` and
+`budget = 3`. -/
 theorem outage_eta_budget :
     (K setupSmall assumptionsSmall).params.η = 0 ∧
-      (K setupSmall assumptionsSmall).params.budget = 2 := ⟨rfl, rfl⟩
+      (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl⟩
 
 /-- (b) The rounding boundary of the gap: `cF 1 = cF 2 = 2`, `cF 3 = 3`, and `cF 32 = 10`. -/
 theorem rowGap_boundary : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := ⟨rfl, rfl, rfl, rfl⟩

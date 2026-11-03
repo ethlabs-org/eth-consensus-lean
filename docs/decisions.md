@@ -21,7 +21,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `4k + 6`, no-sleep `4k + 6`, recovery `9`, heal `catchUp + M_f` with
   `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` (563 at `k = 2, X = 1, δ_t = 6`, was 1312). The
   budget stays `4k − 6` (the node's phase-sensitive (V), `acceptance_outage_times`); `4k − 5`
-  is optional for Francesco. Every number moves toward stronger claims except catch-up, which is
+  is optional for Francesco (superseded: budget `4k − 5`, 2026-11-03, below). Every number moves toward stronger claims except catch-up, which is
   mixed: more ready readers, but the healthy progress window (`healthyLive`, `healedSafe`,
   `prog [ready, …]`) starts `18Δ` earlier, so those rows are incomparable with the old ones
   (catch-up is a guarantee coefficient, Francesco 2026-10-31). No-sleep `4k + 6` no longer covers
@@ -379,6 +379,14 @@ where it is recorded; "Francesco" marks the owner's decisions.
   (`Statements/Regimes/{Sleepy,Always}`) stay: they are Challenge rows, and the Accepted proof uses
   13 of their definitions. This removes the node (V) that held the Accepted outage budget at
   `4k − 6`.
+- 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md` Part B, 1b5c38ba):
+  **the outage budget is `4k − 5`** (was `4k − 6`). It is the bound of the Accepted proof: the
+  lock window keeps an unpolluted label for gaps up to `(4k − 5)Δ` (`exists_unpolluted_label`),
+  and the restored label stays within `j₀ + k` (`stop ≤ t_{j₀+k} + Δ`, one tick of slack, pure
+  time arithmetic). A larger budget weakens `OutageTimes`, so `persists` is stronger; no other
+  row reads it, and `budget_pos` holds (`4k − 5 ≥ 3`). `4k − 4` would break the restored-label
+  bound (`stop ≤ t_{j₀+k} + Δ`): at `k = 2`, `Δ = 2`, start `11` (`j₀ = 0`) the bound is `18`;
+  `4k − 5` gives stop `≤ 17` (one tick of slack) and `4k − 4` gives `19 > 18`.
 - 2026-11-03, Francesco: **`ac_to_fg` returns only `fg_confirmed`** (or `⊥`). Nothing read the
   returned head: the node discards it, and since loose BJ (goldilocks#14, 37fc02fe) the finality
   pair comes from `finality_pair(Λ, σ_e)` on the source's entry state. `ACInterface.toFG`,

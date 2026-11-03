@@ -17,7 +17,7 @@ protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
   `3·cF r ≤ δ_t` (`cF r = ⌈(r + 6)/4⌉`, `Refinement/Defs`). `Setup` fixes the genesis root,
   `δ_t`, the lock window `k ≥ 2` and the restart replay order.
 * **Contract** (`acceptanceContract`): the standard thresholds; row ratio `r` (the healthy regime
-  assumes `ΔF ≤ r·Δ`); arming lag `4k + 6`, outage budget `4k − 6`, look-back `η = 0` (plain
+  assumes `ΔF ≤ r·Δ`); arming lag `4k + 6`, outage budget `4k − 5`, look-back `η = 0` (plain
   sleepy outage), no-sleep margin `4k + 6` and recovery delay `9` (`Δ`-coefficients; node and
   engine delay agree, `Δp = Δe`); final progress the pattern `finalWindow A` (`[0, c, 2c, 3c]`,
   `c = cF r`) and one honest ready proposer for the other outputs, in every window of the outer
@@ -108,16 +108,17 @@ Outage numbers (in delays `Δ`, node and engine alike since L0 delivers strictly
 * recovery delay `9`: enough for the restored votes of the locked validators to bring
   the confirmed read back above the record (owner decision 2026-11-02;
   workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`);
-* budget `4k − 6` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy
-  (Francesco 2026-11-02); the budget stays `4k − 6` pending the approved change to `4k − 5`,
-  which the Accepted proof allows.
+* budget `4k − 5` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy
+  (Francesco 2026-11-02); `4k − 5` is the bound of the Accepted proof (the lock window keeps an
+  unpolluted label for outages up to `(4k − 5)Δ`, `exists_unpolluted_label`; Francesco
+  2026-11-03, was `4k − 6`).
 These numbers are not claimed minimal. -/
 abbrev acceptanceContract {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := { Params.standard C.catchUp (4 * S.k + 6)
-    (4 * S.k - 6) C.heal C.latency with
+    (4 * S.k - 5) C.heal C.latency with
     noSleep := 4 * S.k + 6, recovery := 9,
     rowRatio := A.rowRatio }
   progress := fun cap X => .recur ⟨if cap = .final then finalWindow A else Pattern.single, X⟩

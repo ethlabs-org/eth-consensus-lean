@@ -96,7 +96,7 @@ theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) :
     (acceptanceContract A C).params =
       { Params.standard C.catchUp (4 * S.k + 6)
-        (4 * S.k - 6) C.heal C.latency with
+        (4 * S.k - 5) C.heal C.latency with
         noSleep := 4 * S.k + 6, recovery := 9,
         rowRatio := A.rowRatio } := by rfl
 

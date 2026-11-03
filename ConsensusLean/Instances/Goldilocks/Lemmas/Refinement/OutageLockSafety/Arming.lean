@@ -18,7 +18,7 @@ origin). The post-GST pool delivery `OutageLockOthers.pg` is discharged by
 `outage_pool_delivery` (its premise `b₁ ≤ t_m + Δ` is paid by `r ≤ m`, the restored label).
 It proves the arithmetic N1–N6 from
 `OutageTimes` and the accepted numbers (lag `4k + 6`, no-sleep `4k + 6`, budget
-`≤ 4k − 6`), the Sleepy invariant and service up to `b₀`, the fault bounds from `EtaSleepyOn`, and
+`4k − 5`), the Sleepy invariant and service up to `b₀`, the fault bounds from `EtaSleepyOn`, and
 the cohort premises from `NoSleepOn` and `CohortOn` through the key transport. The arming fields
 are used as they are. Two inputs are hypotheses of the adapter: `Q.T ≤ horizon` (as for
 `outage_arming`) and `Q.start ≤ horizon`; beyond the horizon the reader conclusion is vacuous
@@ -117,9 +117,9 @@ private theorem query_numbers (Q : OutageQuery S A V) :
     have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
     have hΔ := Q.params.toParams.hΔ
     nlinarith)
-  have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by omega
-  have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
-  change Q.stop ≤ Q.start + ((4 * S.k - 6 : Nat) : Int) * Q.run.1.Δ at hbud
+  have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
+  have hb : ((4 * S.k - 5 : Nat) : Int) ≤ 4 * (S.k : Int) - 5 := hbcast.le
+  change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.Δ at hbud
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.Δ_pos)
   change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start at hg₁
   change Q.start < 4 * Q.run.1.Δ * (j₀ : Int) + 6 * Q.run.1.Δ at hg₂

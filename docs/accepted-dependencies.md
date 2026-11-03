@@ -267,9 +267,9 @@ The root fixes standard fractions, the row ratio `r` of the assumptions with gap
 `finalWindow A = [0, c, 2c, 3c]` (route A, #136; `[0,2,4,6]` at `r = 1`), `3c ≤ δt` (so δt≥6)
 and outage look-back η = 0 (plain sleepy; 2026-11-02, was a positive assumption). Engine-unit
 outage lag is 4k+6 (slow arming only: the label before the outage label is armed by b₀;
-half-open phase 2, was 8k+12 at Δp=Δe+1 and 8k−8 before 2026-11-02) and budget is 4k−6
-(2026-11-02, was min(η,4k−6), corrected in f416034), which implies the unchanged node time
-window at Δp=Δe.
+half-open phase 2, was 8k+12 at Δp=Δe+1 and 8k−8 before 2026-11-02) and budget is 4k−5
+(2026-11-03, Francesco; was 4k−6, and min(η,4k−6) before 2026-11-02), the gap bound of the
+lock window (`exists_unpolluted_label`).
 The outage no-sleep margin is 4k+6 and the recovery delay 9 (Δ units; half-open phase 2, were
 max(38, 8k+16) and 18 at Δp=Δe+1).
 Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
