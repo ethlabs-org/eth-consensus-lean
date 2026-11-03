@@ -36,6 +36,7 @@ public import ConsensusLeanTest.GoldilocksRun
 public import ConsensusLeanTest.GoldilocksSleepyRegimes
 public import ConsensusLeanTest.GoldilocksSleepyWitness
 public import ConsensusLeanTest.GoldilocksTickRun
+public import ConsensusLeanTest.GoldilocksUnlockFrameWitness
 public import ConsensusLeanTest.GoldilocksWitness
 public import ConsensusLeanTest.GoldilocksWitnessChain
 public import ConsensusLeanTest.GoldilocksWitnessRun
