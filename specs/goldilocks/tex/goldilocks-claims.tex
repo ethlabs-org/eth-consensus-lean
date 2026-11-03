@@ -2114,8 +2114,9 @@ honest~$x$ be ready at~$T$ and $B\preceq$ its confirmed read at~$T$.  Then for
 every honest~$y$ and every time $t\geq b_0$ at which $y$ is a resilience reader,
 $B\preceq$ $y$'s confirmed read at~$t$ and $B$ is compatible with $y$'s
 $\Sigma.F$ at~$t$.  Its steps, each to be proved for this node: (OC1) arming:
-by~$b_0$, $B$ is protected by an honest fast lock (or the slow lag's saved
-results) of a label~$j$, with expiry $e_0=d_j+L$; (OC2) by~(V), the first
+by~$b_0$, $B$ is protected by an honest lock, the slow lock~$X$ of an
+update, which lives the whole slow window (or by the slow lag's saved
+results), of a label~$j$, with expiry $e_0=d_j+L$; (OC2) by~(V), the first
 restored honest head batch after~$b_1$ precedes~$e_0$ (with
 $j=\lfloor(b_0-6\Delta)/4\Delta\rfloor+1$ and the first label~$r$ with
 $b_1\leq v_r$, $r\leq j+k$ and $v_r<e_0$); (OC3) up to that batch the lock keeps

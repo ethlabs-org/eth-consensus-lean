@@ -776,13 +776,15 @@ effective locks in the window.
 
 \emph{Expiries.}  A write fixes the expiry of each new lock of slot~$s$.
 A lock that is not fast gets $s+k$, the slow window.  A fast lock gets
-$\Call{fast\_expiry}{}$, except where the confirmation update says
-otherwise (Section~\ref{sec:sa-confirmation}): with $E$ the latest
-expiry of the node's live fast locks at the write, the node's \emph{fast
-deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when no fast
-lock is live.  So the fast locks of consecutive slots live longer and
+$\Call{fast\_expiry}{}$: with $E$ the latest expiry of the node's live
+fast locks of earlier slots at the write, the node's \emph{fast
+deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when there
+is no such lock.  So the fast locks of consecutive slots live longer and
 longer, $c-1$ slots more per slot, up to $k$~slots, and a fast lock after
-a gap lives two slots.  The cap keeps every lock within the slow window:
+a gap lives two slots.  The fast locks of one slot do not count for each
+other, so the optimistic confirmations of a slot give their fast locks
+the same expiry; the update of slot~$s$ runs in slot~$s+1$ and can see
+later locks.  The cap keeps every lock within the slow window:
 without it a run of fast locks would extend the deadline without bound.
 No step shortens an expiry, and a restart keeps the locks
 (Section~\ref{sec:sa-joining}).
@@ -896,8 +898,8 @@ pool.
 \vspace{1pt}
 \Function{fast\_expiry}{$\mathit{locks},\Fr,t,s$}
   \Comment{the expiry of a new fast lock of slot $s$}
-  \State $E\gets\{e:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\mathit{locks},\Fr,t}\}$
-  \Comment{the node's live fast locks}
+  \State $E\gets\{e:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\mathit{locks},\Fr,t},\ j<s\}$
+  \Comment{the live fast locks of earlier slots}
   \If{$E=\emptyset$} \State \Return $s+2$ \EndIf
   \State \Return $\min(s+k,\ \max(s+2,\ \max E+c))$
   \Comment{at least $s+2$, at most $s+k$}
@@ -1047,27 +1049,30 @@ chain.
 $\AC.\savedConfirmation[s]$, also when a live lock vetoes it, for the slow
 test of later slots.  A live lock that conflicts with the result vetoes it
 (Section~\ref{sec:sa-locks}).  A lock on~$\Fr.F$ vetoes no result, because
-every result extends~$\Fr.F$.  An update with no result or with a vetoed
-result changes neither $\AC.\latestConfirmed$ nor the locks.  Otherwise
+every result extends~$\Fr.F$.  An update with no result changes neither
+$\AC.\latestConfirmed$ nor the locks.  The veto stops only the
+confirmation: an update with a vetoed result leaves
+$\AC.\latestConfirmed$ unchanged, and it still writes its locks, on the
+blocks of the result's chain that conflict with no live lock.  Otherwise
 the update updates $\AC.\latestConfirmed$ with the result.
 
 \emph{The locks.}  Then the update writes locks of slot~$s$
-(Section~\ref{sec:sa-locks}) on non-genesis blocks of the result's chain
-in $\Fr.\tree$, by two tests.  The fast test: half of the committee or
-more supports the block.  The slow test: the saved confirmations of the
-previous $k-1$ slots are all in $\Fr.\tree$ and extend the block.  The
-update writes a fast lock on the deepest block~$D$ that passes the fast
-test, if there is one, and a lock that is not fast on the deepest block
-that passes the slow test, when there is no~$D$ or that block is deeper
-than~$D$.  The lock that is not fast gets the expiry $s+k$.  The fast
-lock on~$D$ gets $s+k$ when a block of the result's chain passes the slow test,
-and $\Call{fast\_expiry}{}$ otherwise (Section~\ref{sec:sa-locks}): a
-fast lock never shortens what the slow test gives.  An ancestor has at
-least the support of its descendant, so the blocks of the chain up to~$D$
-pass the fast test, and a fast lock on~$D$ covers them.  A block that
-passes the slow test is covered for the whole slow window: by the lock
-that is not fast when it is deeper than~$D$, and else by the fast lock
-on~$D$, whose expiry is then $s+k$.  As every new lock, these
+(Section~\ref{sec:sa-locks}) on the \emph{path}: the non-genesis blocks of
+the result's chain in $\Fr.\tree$ that conflict with no live lock.  When
+the result is not vetoed, the path is its whole chain, because every
+block of that chain is then comparable with every locked block; when a
+lock vetoes it, the path lies below the vetoing lock.  The update reads
+two tests.  The fast test: half of the committee or more supports the
+block.  The slow test: the saved confirmations of the previous $k-1$
+slots are all in $\Fr.\tree$ and extend the block.  The update writes a
+fast lock with the expiry $\Call{fast\_expiry}{}$ on the deepest
+block~$D$ of the path that passes the fast test, and a lock that is not
+fast with the expiry $s+k$ on the deepest block~$X$ of the path that
+passes the slow test, each when there is one.  An ancestor has at least
+the support of its descendant, and passes the slow test when its
+descendant does, so the fast lock on~$D$ covers the blocks of the path up
+to~$D$, and the lock on~$X$ covers the blocks up to~$X$ for the whole slow
+window.  As every new lock, these
 locks are stored moved back (Section~\ref{sec:sa-locks}), so a stored
 block can be a strict ancestor of the selected block, also~$\genesis$.
 
@@ -1080,7 +1085,9 @@ update of slot~$j$ writes in slot~$j+1$: its fast lock stays a source
 through the optimistic confirmations of slot~$j+2$, so an optimistic
 confirmation of an ancestor does not take the place of a deeper fast
 lock.  Every fast lock of slot~$j$ lives through slot~$j+2$
-(Section~\ref{sec:sa-locks}), so it is live for the whole window.  A failed confirmation writes no lock, so it removes no source.  A
+(Section~\ref{sec:sa-locks}), so it is live for the whole window.  An
+update with no result writes no lock, so it removes no source; a vetoed
+update can add one, below the vetoing lock.  A
 lock that is not fast is never a source.  The record
 $\AC.\latestConfirmed$ serves the user.
 
@@ -1144,10 +1151,12 @@ head is behind $\AC.\latestConfirmed$ or on another branch.
   \Comment{at $t_s+6\Delta$}
   \State $C\gets\Call{get\_confirmation}{\AC,\Fr,s}$
   \State $\AC.\savedConfirmation[s]\gets C$
-  \If{$C\neq\bot$ and not \Call{conflicts\_with\_lock}{$\AC.\locks,\Fr,t,C$}}
-    \Comment{else no result, or a vetoed one}
-    \State \Call{update\_latest\_confirmed}{$\AC,\Fr,C$}
-    \State $\mathit{path}\gets\{B\in\Fr.\tree:B\neq\genesis,\ B\preceq C\}$
+  \If{$C\neq\bot$}
+    \Comment{else no result}
+    \State $\mathit{vetoed}\gets\Call{conflicts\_with\_lock}{\AC.\locks,\Fr,t,C}$
+    \State $\mathit{path}\gets\{B\in\Fr.\tree:B\neq\genesis,\ B\preceq C,$
+      not $\Call{conflicts\_with\_lock}{\AC.\locks,\Fr,t,B}\}$
+    \Comment{all of $C$'s chain when not vetoed}
     \State define $\mathit{fast}(B)$ as
       $2\,\Call{confirmation\_score}{\AC,\Fr,s,B}\geq|\committee_s|$
     \Comment{the fast test}
@@ -1156,16 +1165,19 @@ head is behind $\AC.\latestConfirmed$ or on another branch.
     \Statex \hspace{5.5em}and $B\preceq\AC.\savedConfirmation[j]$
     \Comment{the slow test}
     \State $D\gets$ the deepest $B\in\mathit{path}$ with $\mathit{fast}(B)$, or $\bot$ if there is none
-    \State $\mathit{lock\_block}\gets$ the deepest $B\in\mathit{path}$ with
-      $\mathit{fast}(B)$ or $\mathit{slow}(B)$, or $\bot$ if there is none
-    \State $e_D\gets s+k$ if $\mathit{slow}(B)$ for some $B\in\mathit{path}$,
-      else $\Call{fast\_expiry}{\AC.\locks,\Fr,t,s}$
-    \Comment{never shorter than the slow window}
-    \State $N\gets\{(D,\mathsf{true},e_D)\}$ if $D\neq\bot$, else $\emptyset$
-    \Comment{the fast lock}
-    \If{$\mathit{lock\_block}\neq D$}
-      \Comment{a slow block, deeper than $D$ or with no $D$}
-      \State $N\gets N\cup\{(\mathit{lock\_block},\mathsf{false},s+k)\}$
+    \State $X\gets$ the deepest $B\in\mathit{path}$ with $\mathit{slow}(B)$, or $\bot$ if there is none
+    \State $N\gets\emptyset$
+    \If{$D\neq\bot$}
+      \State $N\gets N\cup\{(D,\mathsf{true},\Call{fast\_expiry}{\AC.\locks,\Fr,t,s})\}$
+      \Comment{the fast lock}
+    \EndIf
+    \If{$X\neq\bot$}
+      \State $N\gets N\cup\{(X,\mathsf{false},s+k)\}$
+      \Comment{the slow lock}
+    \EndIf
+    \If{not $\mathit{vetoed}$}
+      \State \Call{update\_latest\_confirmed}{$\AC,\Fr,C$}
+      \Comment{the veto stops only the confirmation}
     \EndIf
     \State $\AC.\locks\gets\Call{add\_locks}{\AC.\locks,\Fr,t,s,N}$
     \Comment{also when $N=\emptyset$}
@@ -1340,9 +1352,9 @@ a new block when it has one.  The candidates are the blocks of the live
 fast locks of slot $\slot(t)-2$ or later that are in the full viable
 tree.  A live lock block outside the viable tree is at or below
 $\Fr.\fcroot$, and so are its ancestors, so no viable block below it is
-lost.  The locked blocks lie on one chain, because a lock
-write is vetoed by a conflicting lock and unlocking only moves a lock
-back, so the candidates lie on one chain and the head extends them.  The node gives the block when the deepest candidate exists and is
+lost.  The locked blocks lie on one chain, because a lock is
+written only on a block that conflicts with no live lock and unlocking
+only moves a lock back, so the candidates lie on one chain and the head extends them.  The node gives the block when the deepest candidate exists and is
 not an ancestor of $\AC.\fgReported$, the block that it gave last, or
 equal to it.  A block given earlier that left $\Fr.\tree$ has no
 candidate as an ancestor.  So at each tick of a joined node the FG gets

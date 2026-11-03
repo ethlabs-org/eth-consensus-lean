@@ -240,9 +240,8 @@ claims covers these changes.
   fixed at its write with $j+2\leq e\leq j+k$.  It is live while
   $\slot(t)\leq e$ and $B\in\Fr.\tree$.  A lock that is not fast gets
   $e=j+k$; a fast lock gets $\fname{fast\_expiry}$, the latest expiry of
-  the node's live fast locks plus~$c\geq2$, at least $j+2$ and at most
-  $j+k$, except that the update's fast lock keeps $j+k$ when a block of
-  the result's chain passes the slow test.  The move back, unlocking and
+  the node's live fast locks of earlier slots plus~$c\geq2$, at least
+  $j+2$ and at most $j+k$.  The move back, unlocking and
   a restart keep the expiry.
   Every rule reads the locks through $\fname{live\_locks}$, which moves a
   lock back to its deepest ancestor that is viable or at or below
@@ -253,8 +252,11 @@ claims covers these changes.
   lock of slot~$s$ with the expiry $s+k$ expires at $t_{s+k+1}$, so a
   regular such lock lives $(4k-2)\Delta$ after its write, not
   $(4k-1)\Delta$; no lock lives longer, and there is no expiry guard.  The confirmation result is the deepest block at or
-  above~$\Fr.F$ with a strict majority, with no walk.  An accepted update writes a fast lock on its deepest fast block
-  and a lock that is not fast on a deeper slow block.
+  above~$\Fr.F$ with a strict majority, with no walk.  An update with a
+  result writes its locks also when the result is vetoed, on the blocks
+  of the result's chain that conflict with no live lock: a fast lock on
+  the deepest fast block and a lock that is not fast on the deepest slow
+  block, at any depth relative to each other.
 \item[(P6)] \emph{The FG source.}  $\fname{ac\_to\_fg}$ returns the
   deepest viable block under a live fast lock of slot $\slot(t)-2$ or
   later, when it is new.  There is no fast-confirmed field and no
