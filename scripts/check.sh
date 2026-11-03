@@ -1428,6 +1428,7 @@ run_selftest "0 box CI liveness alert self-test" python3 -I scripts/test_orb_ci_
 run_selftest "0 box CI sandbox self-test (isolation probes)" bash scripts/ci-sandbox.sh --self-test
 run_selftest "0 inventory publication self-test" python3 -I scripts/test_publish_inventory.py
 run_selftest "0 warm worktree isolation self-test" python3 -I scripts/test_worktree_setup.py
+run_selftest "0 report-only build timing self-test" python3 -I scripts/test_build_timing.py
 if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
   skip_step "1 build" "no Lean module changed"
 else
