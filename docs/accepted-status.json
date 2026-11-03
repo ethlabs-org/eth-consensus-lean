@@ -3205,7 +3205,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same.0.Consensus.Goldilocks.SA.update_side",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Compatible/Same.lean:102",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Compatible/Same.lean:60",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",

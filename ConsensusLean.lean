@@ -34,6 +34,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Late
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
