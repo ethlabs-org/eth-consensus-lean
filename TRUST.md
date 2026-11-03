@@ -41,9 +41,9 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 - **Protected-surface drift:** the same generator and verdict over the **protected surface**, against
   `scripts/instance-spec-snapshot.txt`. Its modules are the inventory's 6th column (`scripts/check-boundaries.py`,
   from `scripts/boundaries.toml` alone): every module of the default library whose file `[checks] trusted_paths`
-  covers and whose layer is not trusted. Today these are 67 modules: every module of the `protected` layers
-  (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`; the Bft, Streamlet and Tendermint `Spec`) and
-  `Lemmas/Problem/Derived.lean`. check-boundaries.py fails if a `protected` layer's module is not in it or a trusted
+  covers and whose layer is not trusted. Today these are 61 modules: every module of the `protected` layers
+  (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`; the Bft, Streamlet and Tendermint `Spec`).
+  check-boundaries.py fails if a `protected` layer's module is not in it or a trusted
   layer's module is. Like the Spec snapshot, it fails step 4 on any drift (a changed definition body or type, an
   added or removed constant, the pins/options header) until `--update-snapshot` regenerates it and the diff is
   committed for review; so it gates a landing at the regeneration level, and the regenerated diff is the record.
@@ -163,10 +163,11 @@ The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (ea
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Bft, Streamlet
-and Tendermint Specs import the generic `Main` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added
-for the now archived Goldilocks sheet, is in the list too; the record covers their text, not everything they import. `scripts/boundaries.toml`
-(`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted or
+on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Streamlet
+and Tendermint Specs import `Bft.Spec` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added for the now
+archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
+record covers the listed files' text, not everything they import. `scripts/boundaries.toml`
+(`[checks] trusted_paths`) lists the surface, and check-boundaries.py requires it to cover every file of a trusted or
 `protected` layer;
 CI's review-boundary steps (`scripts/review-boundary.sh`, self-tested on throwaway repositories) passes a change whose own
 diff touches none of those paths (literal; the lists at HEAD and at its base united) and otherwise

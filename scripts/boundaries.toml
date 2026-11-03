@@ -739,9 +739,6 @@ trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean
                  # Instance semantics and statements (#38; foundation plan §1, §4): for every instance P,
                  # Instances/P/{Spec,Statements} as file and directory and Instances/P/Refinement/Defs.lean,
                  # existing or not. The layers marked `protected` must be covered (check-boundaries.py).
-                 # Lemmas/Problem/Derived.lean: the definitions the Goldilocks Baseline sheet reads (FaultsBelow,
-                 # Safe, ReadySafeUpTo), so that no unreviewed edit changes what the sheet says.
-                 "ConsensusLean/Lemmas/Problem/Derived.lean",
                  "ConsensusLean/Instances/Bft/Spec.lean", "ConsensusLean/Instances/Bft/Spec",
                  "ConsensusLean/Instances/Bft/Statements.lean", "ConsensusLean/Instances/Bft/Statements",
                  "ConsensusLean/Instances/Bft/Refinement/Defs.lean", "ConsensusLean/Instances/Goldilocks/Spec.lean",

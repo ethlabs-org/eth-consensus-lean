@@ -196,7 +196,7 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
 One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
 `healedSafe`, `persists`). Derived in L0 (`Good.*`,
 `ConsensusLean/Lemmas/Problem/Facts/Good.lean`; `Agree`, `Safe`, `FaultsBelow`,
-`ReadySafeUpTo` are in `ConsensusLean/Lemmas/Problem/Derived.lean`), and in the Goldilocks sheet:
+`ReadySafeUpTo` are in `ConsensusLean/Lemmas/Problem/Derived.lean`):
 
 | Theorem | Statement |
 |---|---|
@@ -566,8 +566,8 @@ Spec drift is guarded by the snapshot diffs (the Spec and the protected surface)
 dependency drift by pins; proof validity by replay, check-decls and the CI comparator.
 
 Proof support outside that surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
-`Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (on the trusted surface, because the
-Goldilocks sheet reads them), and `ConsensusLean/Lemmas/Problem/DerivedFacts.lean` defines `SendsFromZero` and
+`Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (not on the trusted surface: the
+Goldilocks sheet that read them is archived), and `ConsensusLean/Lemmas/Problem/DerivedFacts.lean` defines `SendsFromZero` and
 `Trace.map` with theirs (not protected); `Good` reads none of them. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `Good.*`
 lemmas, including `Good.served`; `ConsensusLean/Lemmas/Blocks/Facts.lean` holds the block lemmas.
 `ConsensusLean/Lemmas/Shape/Payload.lean` proves the payload bridges;
@@ -913,9 +913,10 @@ The review boundary is separate from correctness. The **trusted surface** is
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
 `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Bft, Streamlet
-and Tendermint Specs import the generic `Main` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added
-for the now archived Goldilocks sheet, is in the list too; the record covers their text, not everything they import. The list lives in `scripts/boundaries.toml`
+on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Streamlet
+and Tendermint Specs import `Bft.Spec` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added for the now
+archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
+record covers the listed files' text, not everything they import. The list lives in `scripts/boundaries.toml`
 (`[checks] trusted_paths`, plain paths that must cover every spec-group file), read as literal paths at HEAD and
 at the base. A trusted-surface change is **recorded, not gated** (owner, 2026-11-01): it lands through
 `scripts/push-main.sh` like any change; every commit touching a trusted path carries a `Trusted-surface: <what and

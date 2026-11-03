@@ -105,6 +105,10 @@ self_test() {
   expect fail "an unlabeled change that drops a path from trusted_paths and edits it" "$drop" "$m0"
   git checkout -q --detach "$m0"; toml '"Challenge.lean"'; echo a6 >Spec/A.lean; drop_l="$(commit "drops Spec, labeled$L")"
   expect pass "the same change, labeled" "$drop_l" "$m0"
+  git checkout -q --detach "$drop_l"; echo a7 >Spec/A.lean; commit 'Spec after it left the list, unlabeled' >/dev/null
+  expect pass "an unlabeled change of a path that an earlier commit dropped from trusted_paths" HEAD "$drop_l"
+  git checkout -q --detach "$drop_l"; echo c4 >Challenge.lean; commit 'Challenge.lean, still listed, unlabeled' >/dev/null
+  expect fail "the control: an unlabeled change of a path still in trusted_paths" HEAD "$drop_l"
   git checkout -q --detach "$m0"; toml '"Spec/*"'; glob="$(commit 'glob entry')"
   expect fail "a glob in trusted_paths" "$glob" "$m0"
   git checkout -q --detach "$m0"; rm scripts/boundaries.toml; nolist="$(commit 'no list')"

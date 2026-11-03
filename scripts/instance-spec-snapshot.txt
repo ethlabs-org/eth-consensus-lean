@@ -4160,18 +4160,3 @@ def Consensus.Shape.tendermintProg : Consensus.Capability → PNat → Consensus
 def Consensus.Shape.tendermintSkeleton : (pub : Consensus.Model.Public) → Consensus.Shape.Skeleton pub.n := fun pub => { grid := { slotLen := pub.Δ, slotLen_pos := ⋯ }, proposerSel := fun x => Consensus.Model.SelSpec.fixed EmptyCollection.emptyCollection.{0}, pollSel := Consensus.Model.SelSpec.fixed Finset.univ.{0}, Kind := Empty, decKind := inferInstance.{1}, kinds := List.nil.{0}, phase := fun k => Consensus.Shape.tendermintSkeleton.match_1.{1} (fun k => Nat) k, kindSel := fun k => Consensus.Shape.tendermintSkeleton.match_1.{1} (fun k => Consensus.Model.SelSpec pub.n) k }
   #311676813/2347554225
 def Consensus.Shape.tendermintSkeleton.match_1 #4077841017/3844941871
-## ConsensusLean.Lemmas.Problem.Derived
-def Consensus.EnvPoint.FaultsBelow : {V : Type} → [Fintype.{0} V] → [DecidableEq.{1} V] → Consensus.EnvPoint V → Rat → Prop := fun {V} [Fintype.{0} V] [DecidableEq.{1} V] p β => LT.lt.{0} (Nat.cast.{0} (Finset.card.{0} p.faulty)) (HMul.hMul.{0, 0, 0} β (Nat.cast.{0} (Fintype.card.{0} V)))
-  #3212949596/3286953516
-theorem Consensus.EnvPoint.faultsBelow_iff : ∀ {V : Type} [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V] {p : Consensus.EnvPoint V} {β : Rat}, Iff (p.FaultsBelow β) (LT.lt.{0} (Nat.cast.{0} (Finset.card.{0} p.faulty)) (HMul.hMul.{0, 0, 0} β (Nat.cast.{0} (Fintype.card.{0} V))))
-  #2257235166/-
-def Consensus.Trace.Agree : {V α Id : Type} → Consensus.Trace V α Id → Id → Consensus.Time → Prop := fun {V α Id} tr g t₀ => tr.AgreeAmong (fun v x => Membership.mem.{0, 0} tr.point.honest v) g t₀
-  #2515987504/3237357280
-def Consensus.Trace.ReadySafeUpTo : {V α Id : Type} → Consensus.Trace V α Id → Consensus.Time → Id → Consensus.Time → Consensus.Time → Prop := fun {V α Id} tr c g t₀ b => And (∀ (u v : V) (i j : Nat), tr.InCuts t₀ i → tr.InCuts t₀ j → LE.le.{0} (tr.cutTime i) b → LE.le.{0} (tr.cutTime j) b → tr.point.Ready c u (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) → Consensus.Compatible (tr.read g u i) (tr.read g v j)) (∀ (v : V) (i j : Nat), tr.InCuts t₀ i → LE.le.{0} i j → tr.InCuts t₀ j → LE.le.{0} (tr.cutTime j) b → tr.point.Ready c v (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) → List.IsPrefix.{0} (tr.read g v i) (tr.read g v j))
-  #1113764822/1538720608
-def Consensus.Trace.Safe : {V α Id : Type} → Consensus.Trace V α Id → Id → Consensus.Time → Prop := fun {V α Id} tr g t₀ => And (tr.Agree g t₀) (tr.Monotone g t₀)
-  #2515987504/3332780907
-theorem Consensus.Trace.readySafeUpTo_iff : ∀ {V α Id : Type} {tr : Consensus.Trace V α Id} {c : Consensus.Time} {g : Id} {t₀ b : Consensus.Time}, Iff (tr.ReadySafeUpTo c g t₀ b) (And (∀ (u v : V) (i j : Nat), tr.InCuts t₀ i → tr.InCuts t₀ j → LE.le.{0} (tr.cutTime i) b → LE.le.{0} (tr.cutTime j) b → tr.point.Ready c u (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) → Consensus.Compatible (tr.read g u i) (tr.read g v j)) (∀ (v : V) (i j : Nat), tr.InCuts t₀ i → LE.le.{0} i j → tr.InCuts t₀ j → LE.le.{0} (tr.cutTime j) b → tr.point.Ready c v (tr.cutTime i) → tr.point.Ready c v (tr.cutTime j) → List.IsPrefix.{0} (tr.read g v i) (tr.read g v j)))
-  #3579539212/-
-theorem Consensus.Trace.safe_iff : ∀ {V α Id : Type} {tr : Consensus.Trace V α Id} {g : Id} {t₀ : Consensus.Time}, Iff (tr.Safe g t₀) (And (tr.Agree g t₀) (tr.Monotone g t₀))
-  #2299248664/-

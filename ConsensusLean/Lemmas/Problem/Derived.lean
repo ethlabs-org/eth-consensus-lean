@@ -4,15 +4,16 @@ public import ConsensusLean.Spec.Problem.Network
 
 public section
 
-/-! # Derived notions read by instance statements (L0; tag-protected, not a trusted layer)
+/-! # Derived notions (L0; not on the trusted surface)
 
 Not needed to read `Good`: no definition of `Behaviour`, `Adequate`,
 `Realizable` or `Good`, and no L1/L2 definition that the endpoints read, uses
-them. They are read by the Goldilocks baseline sheet, so this file is in
-`trusted_paths` (#38); it holds only those definitions and their characterising
-lemmas (which must sit with the unexposed bodies, plan §3). Other derived notions
-and their lemmas go in `DerivedFacts.lean`, which is not protected. Names and
-bodies are those of the trusted files they came from. -/
+them. The Goldilocks baseline sheet read them, and this file was in `trusted_paths`
+for it (#38); the sheet is archived and no trusted statement reads them, so the file
+left the list. It holds those definitions and their characterising lemmas (which
+must sit with the unexposed bodies, plan §3); other derived notions and their
+lemmas are in `DerivedFacts.lean`. Names and bodies are those of the trusted files
+they came from. -/
 
 namespace Consensus
 

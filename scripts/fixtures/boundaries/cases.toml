@@ -426,7 +426,7 @@ protected = true''']]
 
 # The protected surface (check.sh step 4's instance snapshot): a default lib's module covered by trusted_paths
 # outside the trusted layers. Selected: a `protected` instance layer's module (Fx.Inst.A) and a covered module of an
-# unprotected untrusted layer (Fx.Lemmas.L, as Lemmas/Problem/Derived.lean). Not selected: the trusted layers'
+# unprotected untrusted layer (Fx.Lemmas.L). Not selected: the trusted layers'
 # modules (the Spec snapshot holds them), an uncovered Lemmas module, and a covered module of the test lib.
 [ProtectedSurface]
 protected = ["Fx.Inst.A", "Fx.Lemmas.L"]
