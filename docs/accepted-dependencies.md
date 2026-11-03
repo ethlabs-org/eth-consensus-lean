@@ -77,7 +77,15 @@ c361faa46d43bdbdbd6cca76f301e374bb8236ef passed, 1381 s, zero SKIP lines, record
 certification): every-leaf kernel replay with its controls 227 s, the default-target lake check with the
 good/bad fixtures 578 s with only the standard three axioms, `lake comparator --paranoid` 175 s over 25,043
 declarations, the rebuild canary 15 s with the proof hash unchanged; 0 lexical sorry/admit.
-`AcceptedEndpoint` is certified as of c361faa4; commits after it are not covered by a full tier yet.
+`AcceptedEndpoint` was certified as of c361faa4. After the trusted landings that followed (the bound rename
+da7938f4, the citations 73e26bcc, the Baseline archive 656fe151, Part R 5d35a662, sweep item 6 ee7382ae, sweep
+item 3 08204077 and the outage budget 4k − 5 b75cd7c5), the full tier was rerun: `check.sh --full` on main
+b75cd7c586bcdb708d0c94e125307cf32edf051d (tree 1d3f211b) passed, 1351 s, zero SKIP lines, recorded on
+[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 12:06, trusted sweep certification):
+cold build 231 s, every-leaf kernel replay with its controls 228 s, the default-target lake check with its
+controls 554 s with only the standard three axioms, `lake comparator --paranoid` with its controls 173 s over
+25,042 declarations, the rebuild canary 16 s with the proof hash unchanged; 0 lexical sorry/admit.
+`AcceptedEndpoint` is certified as of b75cd7c5; commits after it are not covered.
 The four Healing statements above remain stated with their proof open.
 
 | Set | Owner | Direct leaf list |
