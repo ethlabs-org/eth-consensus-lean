@@ -24,7 +24,7 @@ its tests; not declarations of this library), **scope** (outside the definition)
 
 * M1 weak continuation: construction, healed regime healthy to the horizon (`m1_healthy_awake_to_horizon`); sheet `weakSafe`, `weakInclude`, `weakGrow`; uniformity: obligation (10).
 * M2 corruption growth: scope, static adversary (`EnvPoint.honest` fixed per run); sheet §3 (A6).
-* M3 FE/F4 pattern: `Pattern.range`; final progress `range (3R+κ)` (`pp223_numbers`, `finRec_span`); `range_head` (span loss); equivalence: gate F-2.
+* M3 FE/F4 pattern: `Pattern.range`; final progress `range (3R+κ)` (sheet `pp223_numbers`, `finRec_span`); sheet `range_head` (span loss); equivalence: gate F-2.
 * M4 psync mandated: construction, `Behaviour.healedSafe` and `Behaviour.healthyLive` (every provided output) are `Behaviour` fields (`m4_psync_live_mandated`); test `healed_witness_late`.
 * M5 final safety under asynchrony: construction, `Behaviour.finalAccountable` has premise `True`; `Good.final_agree` (`m5_final_agree`).
 * M6 syncUntil unchecked: removed, no premise language; `SyncUntil` is used only inside the fixed outage regime and the prefix forms.
@@ -34,8 +34,8 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M10 thresholds: `Params.Admissible`; tests `admissibility_rejections`, `standard_admissible`, `outage_times_teeth`, `healthy_needs_full_participation`.
 * M11 wake at GST: `HealthyOn` counts every honest validator awake from `max g 0` (full participation); progress from `ready`; test `healthy_wake_at_gst`.
 * M12 inclusion of every proposal: sheet `includeSleepy`, `includeHealed`.
-* M13 window-only P1: sheet `outageWindow`; test `outageWindow_prefix_only`.
-* M14 outage stable/finalized: closed; stable = confirmed (`stable_is_confirmed`, sheet `confirmed_persists`); `Good.persists_final_compatible` (sheet `outage_final_compatible`).
+* M13 window-only P1: sheet `outageWindow` and its test `outageWindow_prefix_only`.
+* M14 outage stable/finalized: closed; stable = confirmed (sheet test `stable_is_confirmed`, sheet `confirmed_persists`); `Good.persists_final_compatible` (sheet `outage_final_compatible`).
 * M15 pinned params: removed, the pinned sheet is archived; the live contract numbers are `Refinement.acceptanceContract` at `accepted_coefficients`.
 * M16 concrete instance: closed by the Accepted endpoint (`Refinement.acceptedEndpoint`); the unproved target sheet is archived.
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.

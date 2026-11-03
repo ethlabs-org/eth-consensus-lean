@@ -21,21 +21,23 @@ Labelled by kind (CONTRIBUTING "Statements"):
 * (a) `periodicRun_healthy_catch_noRestart`: the infinite periodic run of
   `ConsensusLeanTest/GoldilocksRun` satisfies `Healthy(0)`, `CatchRun` (vacuously: no acceptance)
   and `NoRestartAfter` with the run laws: the generic `RunTrace` premises hold together on an
-  infinite run over `idleAC`; `GoldilocksRun`, `HSShared` and `PropPlus` have no witness here.
+  infinite run over `idleAC`; `GoldilocksRun`, `HSShared` and `PropPlus` are witnessed on the
+  Goldilocks tick run instead (`ConsensusLeanTest/GoldilocksWitness`).
 * Arithmetic check (no witness kind): `C_HS_closed_form`, `bound_closed_form` and
   `T_heal_closed_form`, the closed forms of `C_HS`, of `ḡ + 24Δ + 12C_HS` (HR.3 (c)) and of `T_heal`
   (H.4), hold at every parameter (a check of the transcription of the constants).
 
-**Not provided, too costly here** (a follow-up): a non-vacuous run witness (kind (b)) for HR.1,
-HR.3, HR.4, H.2 (run), H.3 and H.4, and premise witnesses over Goldilocks traces for `HSShared`
-and `PropPlus`, and over driven SA traces for H.1 and H.2. `Healthy(g)` keeps every honest validator
-awake from `ḡ` on, and a run's awake function is clamped to its horizon
-(`Node.LocalRun.awake_in_horizon`), so every run satisfying `Healthy(g)` is infinite; the periodic
-run above is one, but over `idleAC`, not the Goldilocks SA. A Goldilocks witness needs a tick of
-the node at every public time, each expanded through `Node.exec` (with proposals at every slot
-start and the FG's `state_transition` on each block), and a reset `a_z` needs honest attestations
-at height `H_z + 1`, i.e. a justified chain under the Goldilocks SA. `Prop⁺(G_p)` needs honest
-proposals in every window from `ḡ`, so it is not satisfied by an idle run. -/
+**Elsewhere.** The premise witnesses over a Goldilocks trace are on the one-validator tick run:
+`ConsensusLeanTest/GoldilocksWitness` gives `GoldilocksRun`, `Healthy(g)`, `HSShared` and
+`Prop⁺(G_p)` (`tickRun_goldilocksRun`, `tickRun_healthy`, `tickRun_hsShared`, `tickRun_propPlus`),
+and `ConsensusLeanTest/GoldilocksWitnessRun` the reset and H.3 (c)'s bridge (`tickRun_isReset`,
+`tickRun_bridgeAt`, with `Geo` vacuous). `Healthy(g)` keeps every honest validator awake from `ḡ`
+on, and a run's awake function is clamped to its horizon (`Node.LocalRun.awake_in_horizon`), so
+every run satisfying `Healthy(g)` is infinite, as the periodic run above and the tick run are.
+
+**Not provided** (a follow-up): a non-vacuous run witness (kind (b)) for HR.1, HR.3, HR.4, H.2
+(run), H.3 and H.4, which would apply those premise witnesses together, and premise witnesses over
+driven SA traces for H.1 and H.2. -/
 
 namespace Consensus.Goldilocks.Healing.Test
 

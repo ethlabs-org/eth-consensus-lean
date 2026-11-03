@@ -6,10 +6,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 @[expose] public section
 
-/-! # A one-validator run of the Goldilocks node: the regime premises are consistent
+/-! # A one-validator run of the Goldilocks node: the healing premises are consistent
 
-Non-vacuity of the regime premises (consensus-lean#69, the follow-up recorded in #87): a
-`GoldilocksRun` meeting the healing and pattern premises of R.3, R.4, R.6, node O.1 and C1.3. With
+Non-vacuity of the healing premises (consensus-lean#69, the follow-up recorded in #87): a
+`GoldilocksRun` meeting the HS shared premises, the reset and H.3 (c)'s bridge of the healing
+statements, and the pattern premises of node O.1 and C1.3 (`PatternPremises`). With
 one validator (`n = 1`, `f = 0`) this shows the premises **consistent**, not met with faults (a
 witness with a faulty validator, e.g. `n = 4`, `f = 1` silent, is a follow-up).
 
