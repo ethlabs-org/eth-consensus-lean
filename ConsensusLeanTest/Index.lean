@@ -243,6 +243,7 @@ example := ``Consensus.Goldilocks.Block
 example := ``Consensus.Goldilocks.Block.RootOk
 example := ``Consensus.Goldilocks.Coherent
 example := ``Consensus.Goldilocks.CommonStatements
+example := ``Consensus.Goldilocks.common_statements
 example := ``Consensus.Goldilocks.Compatible
 example := ``Consensus.Goldilocks.DeepestCommonAncestor
 example := ``Consensus.Goldilocks.Digest
