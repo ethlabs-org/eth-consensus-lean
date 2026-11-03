@@ -41,6 +41,7 @@ public import ConsensusLeanTest.GoldilocksInclusionUpdateRejection
 public import ConsensusLeanTest.GoldilocksInclusionWitness
 public import ConsensusLeanTest.GoldilocksLockRuleWitness
 public import ConsensusLeanTest.GoldilocksNode
+public import ConsensusLeanTest.GoldilocksNonfinalQueryWitness
 public import ConsensusLeanTest.GoldilocksPersistWitness
 public import ConsensusLeanTest.GoldilocksProjectionRejection
 public import ConsensusLeanTest.GoldilocksRecentSourceWitness
