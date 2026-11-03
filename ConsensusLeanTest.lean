@@ -19,6 +19,7 @@ public import ConsensusLeanTest.GoldilocksFGStoreQuorumFree
 public import ConsensusLeanTest.GoldilocksFGStoreService
 public import ConsensusLeanTest.GoldilocksFGStoreTimeoutEntry
 public import ConsensusLeanTest.GoldilocksFaultyFinalizationWitness
+public import ConsensusLeanTest.GoldilocksFaultyRunWitness
 public import ConsensusLeanTest.GoldilocksFaultyWitness
 public import ConsensusLeanTest.GoldilocksFinalWitness
 public import ConsensusLeanTest.GoldilocksFinalityGateWitness
