@@ -548,10 +548,16 @@ where it is recorded; "Francesco" marks the owner's decisions.
   (`scripts/check-changed.sh`; `--fast --selftests` for `scripts/` or build-configuration changes), rebase on
   `origin/main` and push to `main`. CI runs on every push to `main`, and whoever made it red reverts at once. A PR
   only for a trusted-surface change, since the tag must cover its head before it reaches `main`.
+- 2026-11-04, lead (Francesco delegated it; rule-cost sweep item 9, workbench `cards/rule_cost_sweep.md`): **no
+  owner-review enforcement**. The open "branch ruleset enforcing owner review" item ([#21], option 2) is closed: it
+  contradicts "nothing blocks on the owner" (2026-10-30), and GitHub Actions is off. The step-12 check that
+  `.github/CODEOWNERS` lists exactly `trusted_paths` and `codeowners_extra` (and the keys `code_owner`,
+  `codeowners_extra`) is removed with its fixtures, since it guarded only that unenforced GitHub feature;
+  `.github/CODEOWNERS` stays as an informational file. The trusted surface is still `trusted_paths`, recorded by
+  `scripts/review-boundary.sh`; no other step-12 verdict changes.
 
 ## Open, for the owner
 
-- A branch ruleset enforcing owner review ([#21], option 2).
 - Audit (two-bound network, 2026-11-02): do the baseline targets `weakSafe`, `weakInclude` and
   `weakGrow` hold under `WeakPremise` at every row bound `ΔF > 0` (no ratio)? Kept unchanged by
   lead ruling; a counterexample goes through the believed-false process.

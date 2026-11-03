@@ -1,8 +1,8 @@
-# Owner: @fradamt (Francesco). Code Owner review is not enforced (no branch ruleset; issue #21). The entries are
-# exactly `[checks] trusted_paths` and `codeowners_extra` of scripts/boundaries.toml (check.sh step 12): the
-# trusted surface, recorded through `Trusted-surface:` commit lines and issue #129 (scripts/review-boundary.sh); the
-# check infrastructure, which agents review (TRUST.md, issue #21); and the mapping docs (plan §4). A directory
-# entry ends in `/` only while the directory exists (`/X` matches a file or a directory X).
+# Owner: @fradamt (Francesco). Informational only: Code Owner review is not enforced (no branch ruleset; closed
+# 2026-11-04, docs/decisions.md) and nothing checks this list against `[checks] trusted_paths` of
+# scripts/boundaries.toml, which is the trusted surface (recorded through `Trusted-surface:` commit lines and
+# issue #129, scripts/review-boundary.sh). The entries were that surface, the check infrastructure and the mapping
+# docs at 2026-11-04.
 /ConsensusLean/Init.lean            @fradamt
 /ConsensusLean/Init                 @fradamt
 /ConsensusLean/Core.lean            @fradamt

@@ -753,16 +753,11 @@ canary_statement_edit = ["theorem slotTime_add (s j : Slot) :",
 # name literal; building it (`lake test`) checks that each is a declaration.
 doc_name_files = ["docs/roadmap.md", "docs/goldilocks-mapping.md"]
 name_index_module = "ConsensusLeanTest.Index"
-# Step 12: .github/CODEOWNERS lists exactly `trusted_paths` and these paths, each owned by `code_owner`. Code Owner
-# review is not enforced (issue #21: infrastructure is agent-reviewed); the entries name the owner (plan §4).
-code_owner = "@fradamt"
-codeowners_extra = ["scripts", ".github", "lakefile.toml", "lakefile.lean", "docs/goldilocks-mapping.md"]
 # The trusted surface: scripts/review-boundary.sh (ci.yml, push-main.sh, orb-ci.sh) requires a `Trusted-surface:`
 # line in every commit that touches these paths (it reads this list at HEAD and at the base, and checks their union,
 # as literal paths), and push-main.sh records each such landing on issue #129. Not an approval gate (2026-11-01).
 # check-boundaries.py requires plain relative paths that cover the file of every module of a trusted layer:
-# each prefix of those layers as a file and as a directory. .github/CODEOWNERS lists exactly these paths (check.sh
-# step 12, with `codeowners_extra`); docs/spec-review.md records them.
+# each prefix of those layers as a file and as a directory. docs/spec-review.md records them.
 trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean/Core.lean", "ConsensusLean/Core",
                  "ConsensusLean/Spec.lean", "ConsensusLean/Spec", "ConsensusLean/Statements.lean",
                  "ConsensusLean/Statements", "ConsensusLean/ToMathlib.lean", "ConsensusLean/ToMathlib",

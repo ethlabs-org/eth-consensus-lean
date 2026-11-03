@@ -149,8 +149,8 @@ artifact cache on the box are not rebuilt locally. leanchecker replays the proje
 `lake check` exports the default targets with the constants they use and replays that export, which
 re-checks what the project uses of them. A dependency's own lakefile in its pinned, clean checkout is trusted
 as upstream content. The check scripts/configuration (`scripts/**`, `.github/**`, the lakefile) are trust
-infrastructure maintained by agents, not reviewed by the owner: Code Owner review (`.github/CODEOWNERS`) is not
-enforced (#21). A change to what a trust check checks comes with fixtures that show the new verdicts; a speedup that
+infrastructure maintained by agents, not reviewed by the owner: there is no owner review (`.github/CODEOWNERS` is
+informational and nothing checks it; the branch-ruleset option of #21 is closed, 2026-11-04). A change to what a trust check checks comes with fixtures that show the new verdicts; a speedup that
 keeps every check's verdict comes with evidence that the fixtures' verdicts are unchanged (owner, 2026-10-30: no
 review gates between agents).
 

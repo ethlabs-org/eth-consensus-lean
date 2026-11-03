@@ -62,8 +62,7 @@ TOP_KEYS = REQUIRED_KEYS | {"exception", "tool_libs"}
 CHECKS_KEYS = {"proofs_component_prefixes", "noconst_exempt", "theorems_mode", "review_axioms_module", "review_root",
                "challenge_module", "solution_module", "statements_module", "milestone_statements_modules",
                "extra_build_targets", "trusted_paths",
-               "canary_module", "canary_proof_edit", "canary_statement_edit", "doc_name_files", "name_index_module",
-               "code_owner", "codeowners_extra"}
+               "canary_module", "canary_proof_edit", "canary_statement_edit", "doc_name_files", "name_index_module"}
 LIB_KEYS = {"name", "default", "test_driver", "root_lists_all"}
 LAYER_KEYS = {"name", "prefixes", "allow", "trusted", "protected", "sorry", "expose", "may_import_roots", "may_import_all",
               "about"}

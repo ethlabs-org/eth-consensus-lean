@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Doc checks of scripts/check.sh step 12 that need no build (both run in milliseconds).
+"""The cited-names check of scripts/check.sh step 12; it needs no build and runs in milliseconds.
 
 names <index.lean> <doc.md>...
     Every token `Consensus.<...>` anywhere in the docs (prose, inline code and fenced code alike; the token runs to
@@ -12,12 +12,6 @@ names <index.lean> <doc.md>...
     fails unless Name is a declaration (`@Name` would also accept a field of a constant), so a cited name is checked
     to exist (as FLT's and Carleson's `checkdecls` check their blueprints). A missing doc or index, or no doc,
     fails.
-
-codeowners <CODEOWNERS> <root> <owner> <path>...
-    The patterns of the CODEOWNERS file are exactly the given paths (`[checks] trusted_paths` and
-    `codeowners_extra` of scripts/boundaries.toml), once each, anchored (`/path`, or `/path/` when <root>/path is
-    a directory), each owned by exactly <owner>, so the owner list cannot drift from the surface that CI's
-    review-boundary job checks.
 
 Each failure prints `FAIL[docs] ...`; the exit status is 1 on any failure.
 """
@@ -85,42 +79,9 @@ def names(index, docs):
         print(f"  {total} names cited in {len(docs)} docs, all listed in {index}")
     return fails
 
-def codeowners(path, root, owner, paths):
-    fails, seen = [], set()
-    text = read(path, "CODEOWNERS", fails)
-    if text is None:
-        return fails
-    for k, line in enumerate(text.splitlines(), 1):
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        pat, *owners = line.split()
-        where = f"{path}:{k}: {pat}"
-        if not pat.startswith("/") or pat == "/" or "//" in pat:
-            fails.append(f"FAIL[docs] {where} is not anchored to the repository root"); continue
-        p = pat.strip("/")
-        if pat.endswith("/") and not (Path(root) / p).is_dir():
-            fails.append(f"FAIL[docs] {where} has a trailing slash, but {p} is not a directory (write {pat.rstrip('/')})")
-        if owners != [owner]:
-            fails.append(f"FAIL[docs] {where} is owned by {' '.join(owners) or 'nobody'}, not exactly {owner}")
-        if p in seen:
-            fails.append(f"FAIL[docs] {where} is listed twice (the last match wins)")
-        seen.add(p)
-    want = set(paths)
-    if not want:
-        fails.append("FAIL[docs] no paths given")
-    for p in sorted(seen - want):
-        fails.append(f"FAIL[docs] {path} lists {p}, which is not a trusted path or a codeowners_extra entry")
-    for p in sorted(want - seen):
-        fails.append(f"FAIL[docs] {path} does not list {p}")
-    if not fails:
-        print(f"  {path} lists exactly the {len(want)} paths, each owned by {owner}")
-    return fails
-
 def main(argv):
     if len(argv) >= 2 and argv[0] == "names":
         fails = names(argv[1], argv[2:])
-    elif len(argv) >= 4 and argv[0] == "codeowners":
-        fails = codeowners(argv[1], argv[2], argv[3], argv[4:])
     else:
         print(__doc__, file=sys.stderr)
         return 2

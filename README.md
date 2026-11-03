@@ -913,8 +913,7 @@ Landings and CI continue to use `job` directly, outside the agent queue.
 `lake test` checks every cited name (`ConsensusLeanTest/Index.lean`) and compiles the review
 type/axiom pins (`ConsensusLeanTest/ReviewAxioms.lean`). Step 12 checks, without a build, that every name
 `docs/roadmap.md` and `docs/goldilocks-mapping.md` cite is in that index (as FLT's `checkdecls`
-checks its blueprint), and that `.github/CODEOWNERS` lists exactly `trusted_paths` and `codeowners_extra`
-(`scripts/check-docs.py`). `--no-build` skips compilation but still
+checks its blueprint) (`scripts/check-docs.py`). `--no-build` skips compilation but still
 uses Lake's freshness gate, so stale artifacts fail. Snapshot/extension updates fail deliberately so
 their diff is reviewed; CI refuses update flags and `--no-build`, and checks that the tree stays clean.
 

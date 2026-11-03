@@ -29,8 +29,7 @@
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
 #                       Lean's kernel and every bundled external kernel (--paranoid)
 #   12 docs             README spec-file list = the files of the Spec surface (trusted layers);
-#                       names cited in the docs are in the name index (built: they exist);  (check-docs.py)
-#                       CODEOWNERS = trusted_paths + codeowners_extra
+#                       names cited in the docs are in the name index (built: they exist)  (check-docs.py)
 #   13 metrics          depth, cones, expose and import counts (report)          (metrics-baseline.py)
 #   14 rebuild canary   a proof-only edit rebuilds one module (report); a        (lake; --full or --canary)
 #                       statement edit (control) must make an importer stale
@@ -146,8 +145,6 @@ mapfile -t FIXTURE_LIBS < <(cfg fixture_libs)
 mapfile -t NOCONST_EXEMPT < <(cfg noconst_exempt)
 mapfile -t DOC_NAME_FILES < <(cfg doc_name_files)
 NAME_INDEX="$(cfg name_index_module)"
-CODE_OWNER="$(cfg code_owner)"
-mapfile -t OWNED_PATHS < <(cfg trusted_paths; cfg codeowners_extra)
 THEOREMS_MODE="$(cfg theorems_mode)"
 REVIEW_AXIOMS="$(cfg review_axioms_module)"
 REVIEW_ROOT="$(cfg review_root)"
@@ -1243,7 +1240,6 @@ step_docs() {
   awk -F'\t' -v m="$NAME_INDEX" '$2 == m { print $1 }' "$INV" | grep -xF -f <(printf '%s\n' "${TEST_LIBS[@]}") >/dev/null ||
     { echo "  FAIL[docs] name_index_module $NAME_INDEX is not a module of a test library (${TEST_LIBS[*]})"; rc=1; }
   "${DOCS[@]}" names "$(mod_file "$NAME_INDEX")" "${DOC_NAME_FILES[@]}" || rc=1
-  "${DOCS[@]}" codeowners .github/CODEOWNERS . "$CODE_OWNER" "${OWNED_PATHS[@]}" || rc=1
   return "$rc"
 }
 selftest_docs() {
@@ -1254,7 +1250,7 @@ selftest_docs() {
   expect_fail 'FAIL[docs]' docs_ok "$FX/README-good.md" "${good[0]}" || rc=1
   expect_fail 'FAIL[docs]' docs_ok "$FX/README-good.md" || rc=1
   expect_fail 'FAIL[docs] ' docs_ok "$FX/comparator/README.md" "${good[@]}" || rc=1
-  local d="$FX/docs" own=(codeowners "$FX/docs/tree" @o f.txt D Spec)
+  local d="$FX/docs"
   expect_pass "${DOCS[@]}" names "$d/Index.lean" "$d/good.md" || rc=1
   expect_fail 'does not list (example := ``Consensus.Absent)' "${DOCS[@]}" names "$d/Index.lean" "$d/unlisted.md" || rc=1
   expect_fail 'does not list (example := ``Consensus.InBlock)' "${DOCS[@]}" names "$d/Index.lean" "$d/block-comment.md" || rc=1
@@ -1273,16 +1269,6 @@ selftest_docs() {
   expect_fail 'cannot read doc' "${DOCS[@]}" names "$d/Index.lean" "$d/good.md" "$d/absent.md" || rc=1
   expect_fail 'cannot read name index' "${DOCS[@]}" names "$d/absent.lean" "$d/good.md" || rc=1
   expect_fail 'no doc files given' "${DOCS[@]}" names "$d/Index.lean" || rc=1
-  expect_pass "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-good" "${own[@]:1}" || rc=1
-  expect_fail 'does not list B' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-good" "${own[@]:1}" B || rc=1
-  expect_fail 'lists scripts, which is not' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-extra" "${own[@]:1}" || rc=1
-  expect_fail 'is not anchored' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-unanchored" "${own[@]:1}" || rc=1
-  expect_fail 'trailing slash, but f.txt is not a directory' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-fileslash" "${own[@]:1}" || rc=1
-  expect_fail 'trailing slash, but Spec is not a directory' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-absentslash" "${own[@]:1}" || rc=1
-  expect_fail 'is owned by nobody' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-ownerless" "${own[@]:1}" || rc=1
-  expect_fail 'is owned by @o @x, not exactly @o' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-otherowner" "${own[@]:1}" || rc=1
-  expect_fail 'is listed twice' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-duplicate" "${own[@]:1}" || rc=1
-  expect_fail 'no paths given' "${DOCS[@]}" "${own[0]}" "$d/CODEOWNERS-good" "${own[@]:1:2}" || rc=1
   set -e
   return "$rc"
 }
@@ -1486,7 +1472,7 @@ full_only "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 # leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
 [[ "$mode" != full ]] || have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
 full_only "11 lake comparator --paranoid (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
-run_step "12 docs (README spec-files = the files of the trusted layers; cited names; CODEOWNERS)" step_docs
+run_step "12 docs (README spec-files = the files of the trusted layers; cited names)" step_docs
 run_selftest "12 docs self-test (README-good, README-missing, fixtures/docs)" selftest_docs
 run_step "13 metrics (report)" step_metrics
 if [[ "$mode" == changed ]] || ((!canary)); then
