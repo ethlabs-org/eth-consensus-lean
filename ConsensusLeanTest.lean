@@ -52,6 +52,7 @@ public import ConsensusLeanTest.GoldilocksSAHealingRun
 public import ConsensusLeanTest.GoldilocksSAHealingWitness
 public import ConsensusLeanTest.GoldilocksSleepyRegimes
 public import ConsensusLeanTest.GoldilocksSleepyWitness
+public import ConsensusLeanTest.GoldilocksThresholdRejections
 public import ConsensusLeanTest.GoldilocksTickRun
 public import ConsensusLeanTest.GoldilocksUnlockFrameWitness
 public import ConsensusLeanTest.GoldilocksWitness
