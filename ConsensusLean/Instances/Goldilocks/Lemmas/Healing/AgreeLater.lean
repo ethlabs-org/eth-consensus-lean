@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 
 public section
 
@@ -28,6 +29,68 @@ every in-phase honest proposal of a later slot has a parent extending `P`
 It also has the start of HS.3's walk comparison (§4, "the unequal-root prefix"): a voter below
 the proposer's `fc_root` reaches it (`voter_passes_proposer_root`), and a clean proposer lock
 start is below the vote under (b)'s premises (`proposer_lock_extends`). -/
+
+namespace Consensus.Goldilocks.SA
+
+variable {FGP : Type} {sp : SAParams}
+
+/-- A live lock comes from a stored lock that is live at the same time, with the same slot and
+fast bit, whose block is below its own (in the frame). -/
+private theorem liveLocks_live_source {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock}
+    {t : Time} {l' : Lock} (h : l' ∈ liveLocks sp L Φ t) :
+    ∃ l ∈ L, l.LiveAt sp t ∧ l'.slot = l.slot ∧ l'.fast = l.fast ∧
+      ∃ B ∈ Φ.tree, B.root = l.block ∧ ∃ B' ∈ Φ.tree, B'.root = l'.block ∧ Φ.Anc B' B := by
+  obtain ⟨l, hl, B, hB, hr, hlive, rfl⟩ := h
+  exact ⟨l, hl, hlive, rfl, rfl, B, hB, hr, _, (viableAncestor_anc hΦ hB).1, rfl,
+    (viableAncestor_anc hΦ hB).2⟩
+
+/-- `liveLocks_live_source` through `unlock`, which only moves live locks back. -/
+private theorem unlock_live_source {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock}
+    {t : Time} {s : Int} {V : View sp.n} {l' : Lock} (h : l' ∈ unlock sp L Φ t s V) :
+    ∃ l ∈ L, l.LiveAt sp t ∧ l'.slot = l.slot ∧ l'.fast = l.fast ∧
+      ∃ B ∈ Φ.tree, B.root = l.block ∧ ∃ B' ∈ Φ.tree, B'.root = l'.block ∧ Φ.Anc B' B := by
+  obtain ⟨l, hl, B, hB, hr, rfl⟩ := h
+  obtain ⟨l₀, hl₀, hlive, hs, hf, B₀, hB₀, hr₀, B₁, hB₁, hr₁, hB₁B₀⟩ :=
+    liveLocks_live_source hΦ hl
+  have hBB₁ : B = B₁ := hΦ.coherent.1 hB hB₁ (hr.trans hr₁.symm)
+  subst hBB₁
+  split_ifs
+  · exact ⟨l₀, hl₀, hlive, hs, hf, B₀, hB₀, hr₀, _, (unlockTarget_anc sp hΦ V s hB).1, rfl,
+      (unlockTarget_anc sp hΦ V s hB).2.trans hB₁B₀⟩
+  · exact ⟨l₀, hl₀, hlive, hs, hf, B₀, hB₀, hr₀, B, hB, hr, hB₁B₀⟩
+
+/-- `readPoint_locks_below_stored` with the stored lock live at the vote: a read-point lock of a
+slot other than the vote's sits below a stored lock of the same slot that is live at the cast. -/
+private theorem readPoint_live_source {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    (hpos : 0 < sp.slot (tr.time i)) {l' : Lock} (hl' : l' ∈ e.readPoint.locks)
+    (hne : l'.slot ≠ sp.slot (tr.time i)) :
+    ∃ l ∈ (tr.state y i).locks, l.LiveAt sp (tr.time i) ∧ l'.slot = l.slot ∧
+      ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧
+        ℓ.frame.Anc B' B := by
+  obtain ⟨P, he, hP⟩ := vote_tryVote_input hr hy hc
+  have hΦ := (frameIn_of_callAt hr hy hc.1).1
+  rw [tryVote_readPoint_locks_eq he] at hl'
+  simp only [hpos, ↓reduceIte] at hl'
+  obtain ⟨l₁, hl₁, hlive₁, hs₁, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ := unlock_live_source hΦ hl'
+  rcases hP with rfl | ⟨A, rfl, hAl⟩
+  · exact ⟨l₁, hl₁, hlive₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
+  unfold optimisticConfirmation at hl₁
+  split at hl₁
+  · exact ⟨l₁, hAl ▸ hl₁, hlive₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
+  rw [updateLatestConfirmed_locks_eq] at hl₁
+  obtain ⟨l₂, hl₂, hlive₂, hs₂, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
+    liveLocks_live_source hΦ hl₁
+  rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩
+  · obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)
+    exact ⟨l₂, hAl ▸ hl₂, hlive₂, hs₁.trans hs₂, B₂, hB₂, hB₂r, B', hB', hB'r, hA.trans hA'⟩
+  · rw [Set.mem_singleton_iff] at hp
+    subst hp
+    exact absurd (hs₁.trans hs₂) hne
+
+end Consensus.Goldilocks.SA
 
 namespace Consensus.Goldilocks.Healing
 
@@ -266,7 +329,61 @@ theorem proposer_lock_extends
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) : SA.VoteExtends (tr.HonestBlocks H) e.msg B' := by
-  sorry
+  have hrun := hS.run
+  have hl := hrun.toLocalRun
+  have hs := hS.shared
+  have hnc := hs.noColl
+  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr' := hrun'.localRun
+  have hU := hr'.coherent
+  have hpH : p ∈ H := hS.ready.1
+  have htP : tr.time iP = sp.ts s := hS.time
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hpH hS.call
+  -- the lock moves back from a stored live lock of the proposer
+  obtain ⟨hB't, l', ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩, hlB'⟩ := hB'
+  obtain rfl : B' = ℓp.frame.viableAncestor B₀ :=
+    hU.1 (hΦU hB't) (hΦU (SA.viableAncestor_anc hΦ hB₀).1) hlB'.symm
+  obtain ⟨l₁, hl₁, hlive, hs₁, hf₁, B₁, hB₁, hB₁r, B₀', hB₀', hB₀'r, hA⟩ :=
+    SA.unlock_live_source hΦ hl₀
+  obtain rfl : B₀ = B₀' := hΦ.coherent.1 hB₀ hB₀' (hB₀r.trans hB₀'r.symm)
+  have hlv : (⟨(ℓp.frame.viableAncestor B₁).root, l₁.slot, l₁.fast, l₁.expiry⟩ : SA.Lock) ∈
+      SA.liveLocks sp (tr.projAC.state p iP).locks ℓp.frame (tr.time iP) :=
+    ⟨l₁, hl₁, B₁, hB₁, hB₁r, hlive, rfl⟩
+  have hwf : SA.LocksWF sp (tr.projAC.state p iP).locks := by
+    rw [Compose.projAC_state hl hpH]; exact Compose.locksWF_state hrun hnc hpH iP
+  have hclean := live_lock_clean (hwf := hwf) (hr.trans (le_of_eq htP.symm)) hlv
+  dsimp only at hclean
+  have hB'B₁ : Anc (tr.HonestBlocks H) (ℓp.frame.viableAncestor B₀) B₁ :=
+    Anc.mono hΦU ((SA.anc_viableAncestor _ B₀).trans hA)
+  have hls := proposer_stored_lock_lt hS hl₁
+  -- the vote is in the phase from `i₀`
+  have htj : sp.ts s ≤ tr.time j :=
+    (SA.ts_le_iff_le_slot sp (hr'.time_nonneg j) _).2
+      (by rw [← hes, (SA.castAt_spec hr' hy hcy).2.1])
+  have hij : i ≤ j := by
+    by_contra hn
+    have := hl.time_mono (not_le.1 hn).le
+    have hst := hS.start_time
+    have hts : sp.ts ((s : Int) - 1) + 4 * sp.Δ = sp.ts s := by simp only [SAParams.ts]; ring
+    have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+    linarith
+  have hph := hS.phase y hy j ℓy e hcy hes
+  have hk : PhaseOn tr.projFG H i₀ j m c :=
+    phaseOn_squeeze hrun hs hS.settled.2.2 (hph j hij le_rfl)
+  cases hf : l₁.fast
+  · rw [Compose.projAC_state hl hpH] at hl₁
+    obtain ⟨r, -, O, hO, L, hL, hLr, hLO⟩ := stored_slow_lock_provenance hrun hnc hpH iP l₁ hl₁ hf
+    obtain rfl : L = B₁ := hU.1 hL (hΦU hB₁) (hLr.trans hB₁r.symm)
+    obtain ⟨Hd, hHd, hHdr, hOHd⟩ := clean_slow_extends hrun hs hS.catchUp hS.settled hpH hO
+      (hclean.2 hf) j y hy ℓy e hcy (by omega) hk
+    exact ⟨Hd, hHd, hHdr, hB'B₁.trans (hLO.trans hOHd)⟩
+  · obtain ⟨r, -, CV, ℓ', D, hcw, hfl, L, hL, hLr, hLO⟩ :=
+      stored_fast_lock_provenance hr' hpH iP l₁ hl₁ hf
+    obtain rfl : L = B₁ := hU.1 hL (hΦU hB₁) (hLr.trans hB₁r.symm)
+    obtain ⟨Hd, hHd, hHdr, hOHd⟩ := clean_fast_extends hrun hs hS.catchUp hS.settled hpH
+      (⟨ℓ', D, hcw, hfl, rfl⟩ : Compose.StoredFastLockAt tr p r l₁.slot _ CV) (hclean.1 hf)
+      j y hy ℓy e hcy (by omega) hk
+    exact ⟨Hd, hHd, hHdr, hB'B₁.trans (hLO.trans hOHd)⟩
 
 /-- **Every live lock block of an honest slot-`s` voter's read point is below `P`**
 (`hs234-exact-interface.md` §4, "with anchors on the parent path"), at a vote before which every
@@ -288,7 +405,70 @@ theorem readPoint_lockBlocks_below
       e'.msg.head = P.root) :
     ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ℓy.frame (tr.time j),
       Anc (tr.HonestBlocks H) B P := by
-  sorry
+  have hrun := hS.run
+  have hl := hrun.toLocalRun
+  have hnc := hS.shared.noColl
+  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hr := hac.localRun
+  have hU := Compose.honest_blocks_coherent hl hnc
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
+  obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hcy
+  have hsj : sp.slot (tr.time j) = s := by rw [← hes]; exact hys.symm
+  have hPv := proposal_frozen_viable hS hy hcy hes
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hPv.2.1.mono hΦU
+  have hPU : P ∈ tr.HonestBlocks H := hΦU hPv.1.1
+  have hHc := hS.shared.healthy.2.2
+  intro B' hB'
+  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks hΦ hB'
+  have hva := SA.viableAncestor_spec hΦ hB₀
+  have hvaU : Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor B₀) B₀ := hva.1.mono hΦU
+  rcases lt_or_ge l₀.slot s with hlt | hge
+  · -- a lock of an earlier slot sits below a stored live lock: the lock premise
+    obtain ⟨l, hlm, hlivel, hsl, B, hB, hBr, B'', hB'', hB''r, hB''B⟩ :=
+      SA.readPoint_live_source hr hy hcy (by omega) hl₀ (by omega)
+    obtain rfl : B'' = B₀ := hΦ.coherent.1 hB'' hB₀ (hB''r.trans hB₀r.symm)
+    have hlv : (⟨(ℓy.frame.viableAncestor B).root, l.slot, l.fast, l.expiry⟩ : SA.Lock) ∈
+        SA.liveLocks sp (tr.state y j).ac.locks ℓy.frame (tr.time j) := by
+      refine ⟨l, ?_, B, hB, hBr, hlivel, rfl⟩
+      rw [← Compose.projAC_state hl hy]
+      exact hlm
+    have hvaB := SA.viableAncestor_spec hΦ hB
+    have hle : ℓy.frame.Anc (ℓy.frame.viableAncestor B'') (ℓy.frame.viableAncestor B) :=
+      hvaB.2.2 _ (hva.1.trans hB''B) hva.2.1
+    rcases hlock y hy j ℓy e hcy hes _ hlv (by rw [← hsl]; exact hlt) _
+        (SA.viableAncestor_anc hΦ hB).1 rfl with h | h
+    · exact (hle.mono hΦU).trans h
+    · exact (hle.mono hΦU).trans (h.trans hfP)
+  · -- a lock of slot `≥ s` sits below a block of three quarters of the committee: an honest
+    -- supporter voted before, for `P`
+    obtain ⟨Φ, A, D, -, hΦ'U, -, hcnt, hpool, -, L, hL, hLr, hLD⟩ :=
+      SA.lock_origin_readPoint hac hy hcy l₀ hl₀ (by rw [hes]; omega)
+    obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
+    obtain ⟨z, ⟨x, hx, rfl, R, hR, hRr, hDR⟩, hzH⟩ : ∃ z ∈ SA.optimisticVoters sp A Φ l₀.slot D,
+        z ∈ H := by
+      by_contra hno
+      push Not at hno
+      have hsub : SA.optimisticVoters sp A Φ l₀.slot D ⊆ Hᶜ := fun z hz => hno z hz
+      have h1 : (SA.optimisticVoters sp A Φ l₀.slot D).ncard ≤ Hᶜ.ncard :=
+        Set.ncard_le_ncard hsub (Set.toFinite _)
+      have h2 : 3 * Hᶜ.ncard ≤ sp.n - 1 := hHc
+      have h3 : 3 * sp.n ≤ 4 * (SA.optimisticVoters sp A Φ l₀.slot D).ncard := hcnt
+      have h5 : 0 < sp.n := sp.toParams.hn
+      omega
+    obtain ⟨-, j', hj', e', hv', he'⟩ := hpool x hx hzH
+    obtain ⟨ℓ', hc', hem'⟩ := hv'
+    obtain ⟨-, hys', -, -⟩ := SA.castAt_spec hr hzH ⟨hc', hem'⟩
+    have hys'' : e'.msg.slot = sp.slot (tr.time j') := hys'
+    have hle : sp.slot (tr.time j') ≤ s :=
+      hsj ▸ SA.slot_mono sp (hl.time_nonneg j') (hl.time_mono hj'.le)
+    have hxs : x.slot = s := by
+      have := (hpool x hx hzH).1
+      rw [← he'] at this ⊢
+      omega
+    have hhead := hIH _ hzH j' hj' e' ⟨ℓ', hc', hem'⟩ (by rw [he']; exact hxs)
+    rw [he'] at hhead
+    obtain rfl : R = P := hU.1 (hΦ'U hR) hPU (hRr.trans hhead)
+    exact hvaU.trans (hLD.trans (hDR.mono hΦ'U))
 
 /-- Below a block `B`, a sibling `C` of `B` is deeper than every strict ancestor `A` of `B`. -/
 private theorem slot_lt_of_sibling {FGP : Type} {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
