@@ -91,6 +91,32 @@ private theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fr
       · exact Anc.mono hΦU hYC
     · exact Anc.mono hΦU hYC
 
+/-- **New locks below a live lock, the record kept.** When every new lock is on a block below a
+live lock block, and the record does not move, the invariant holds after: the live lock blocks are
+below the record. -/
+private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
+    {N : Set (Nat × Bool × Nat)} (hlocks : A'.locks = SA.addLocks sp A.locks Φ t s N)
+    (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧
+      ∃ L ∈ liveLockBlocks sp A.locks Φ t, Φ.Anc Y L)
+    (hrec : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
+  obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
+  have hLE : ∀ L ∈ liveLockBlocks sp A.locks Φ t, Anc U L E := by
+    rintro L ⟨hL, l', ⟨l, hl, B, hB, hBr, -, rfl⟩, hLr⟩
+    obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
+    obtain rfl : L = Φ.viableAncestor B := hΦ.coherent.1 hL hvt hLr.symm
+    exact (Anc.mono hΦU hva).trans (hlE l hl B (hΦU hB) hBr)
+  refine ⟨E, hE, hEr.trans hrec.symm, hEt, fun l' hl' X hX hXr => ?_⟩
+  rw [hlocks] at hl'
+  obtain ⟨l, hl, B, hB, hBr, -, rfl⟩ := hl'
+  obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
+  obtain rfl : X = Φ.viableAncestor B := hU.1 hX (hΦU hvt) hXr
+  rcases hl with hl | ⟨p, hp, rfl⟩
+  · exact (Anc.mono hΦU hva).trans (hlE l hl B (hΦU hB) hBr)
+  · obtain ⟨Y, hY, hYr, L, hL, hYL⟩ := hN p hp
+    obtain rfl : B = Y := hΦ.coherent.1 hB hY (hBr.trans hYr.symm)
+    exact (Anc.mono hΦU (hva.trans hYL)).trans (hLE L hL)
+
 /-! ### Each SA function keeps the invariant -/
 
 private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : LockInv U A Φ)
@@ -151,7 +177,42 @@ private theorem LockInv.optimistic {A : SAState sp.n} (h : LockInv U A Φ) (t : 
 open Classical in
 private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
     LockInv U (updateConfirmation sp A Φ t s) Φ := by
-  sorry
+  unfold updateConfirmation
+  rcases hC : getConfirmation sp A Φ s with _ | C
+  · exact h.of_eq rfl rfl
+  · dsimp only
+    have hCt := (deepest_mem hC).1.1
+    -- every new lock is on a block of `C`'s path that conflicts with no live lock
+    have hN : ∀ (N : Set (Nat × Bool × Nat)), (∀ p ∈ N, ∃ Y, (Y ∈ confirmationPath sp Φ C ∧
+        ¬ conflictsWithLock sp A.locks Φ t Y) ∧ Y.root = p.1) →
+        ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧ Φ.Anc Y C ∧ ¬ conflictsWithLock sp A.locks Φ t Y :=
+      fun N hN p hp => by
+        obtain ⟨Y, ⟨⟨hYt, -, hYC⟩, hnc⟩, hYr⟩ := hN p hp
+        exact ⟨Y, hYt, hYr, hYC, hnc⟩
+    split_ifs with hconf
+    · -- vetoed: the record stays; a written path block is below the live lock `C` conflicts with
+      obtain ⟨L, hL, hCL⟩ := hconf
+      refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
+        ).addLocks_below hU hΦ hΦU rfl (fun p hp => ?_) rfl
+      have hp' : ∃ Y, (Y ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t Y) ∧
+          Y.root = p.1 := by
+        rcases hp with ⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩ <;> exact ⟨D, (deepest_mem hD).1.1, rfl⟩
+      obtain ⟨Y, hYt, hYr, hYC, hnc⟩ := hN {p} (fun q hq => (Set.mem_singleton_iff.1 hq) ▸ hp') p rfl
+      refine ⟨Y, hYt, hYr, L, hL, ?_⟩
+      rcases (show Compatible Φ.tree Y L by by_contra h'; exact hnc ⟨L, hL, h'⟩) with hYL | hLY
+      · exact hYL
+      · exact absurd (Or.inr (hLY.trans hYC)) hCL
+    · have hconf' : ¬ conflictsWithLock sp A.locks Φ t C := hconf
+      simp only [updateLatestConfirmed_locks]
+      refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
+        ).addLocks hU hΦ hΦU hCt hconf' rfl (fun p hp => ?_) ?_
+      · have hp' : ∃ Y, (Y ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t Y) ∧
+            Y.root = p.1 := by
+          rcases hp with ⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩ <;> exact ⟨D, (deepest_mem hD).1.1, rfl⟩
+        obtain ⟨Y, hYt, hYr, hYC, -⟩ :=
+          hN {p} (fun q hq => (Set.mem_singleton_iff.1 hq) ▸ hp') p rfl
+        exact ⟨Y, hYt, hYr, hYC⟩
+      · unfold updateLatestConfirmed; split_ifs <;> rfl
 
 private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
     (t : Time) : LockInv U (SA.tryVote sp x A Φ t).1 Φ := by

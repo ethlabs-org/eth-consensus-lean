@@ -96,7 +96,18 @@ the path has a slow-test block (B′) and `fastExpiry` otherwise, its slow lock 
 theorem LocksWF.updateConfirmation {A : SAState sp.n} (h : LocksWF sp A.locks)
     (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     LocksWF sp (SA.updateConfirmation sp A Φ t s).locks := by
-  sorry
+  have hk := sp.two_le_k
+  unfold SA.updateConfirmation
+  dsimp only
+  split
+  · exact h
+  · split_ifs
+    all_goals
+      refine LocksWF.addLocks ?_ Φ t s fun p hp => ?_
+      · first | exact h | (rw [updateLatestConfirmed_locks_eq]; exact h)
+      · rcases hp with ⟨B, -, rfl⟩ | ⟨B, -, rfl⟩
+        · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
+        · dsimp only; omega
 
 /-- `try_vote` keeps `LocksWF`, in its post-state and in its emissions' read points. -/
 theorem LocksWF.tryVote {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
