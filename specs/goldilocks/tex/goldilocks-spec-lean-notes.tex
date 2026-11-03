@@ -256,9 +256,9 @@ claims covers these changes.
 \item[(P7)] \emph{The confirmed tip} is the deepest common ancestor of the
   record and the head.
 \item[(P8)] \emph{Loose BJ} (\texttt{shared/fg.tex}).  A justification at
-  a bound height waits for the finality of its predecessor.  The client
+  a height whose previous height is justified waits for the finality of its predecessor.  The client
   reads its finality pair from the entry state of its source, not from the
-  head: at a bound height the predecessor whenever the record allows it,
+  head: at such a height the predecessor whenever the record allows it,
   with no test of finalized status, and at another height the newest
   pending pair that the record allows; there is no $h\leq h_f$ clear.
   $K_W=2$, and $\delta_{\mathrm t}\geq x+c_F+k_F$ in place of

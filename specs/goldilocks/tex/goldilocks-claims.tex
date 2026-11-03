@@ -59,7 +59,7 @@ text wins and the statement is wrong.
 \texttt{95681941}, flattened SHA-256 \texttt{2a5519bc}
 (\texttt{python3 flatten.py fgsa-spec.tex | shasum -a 256}; the file is now
 \texttt{goldilocks-spec.tex}, in consensus-lean \texttt{specs/goldilocks/tex/}).  It includes
-loose BJ (goldilocks\#14: the justification gate at bound heights, the client
+loose BJ (goldilocks\#14: the justification gate at heights whose previous height is justified, the client
 finality pair read from the entry state, $K_W=2$,
 $\delta_{\mathrm t}\geq x+\cF+k_F$) and the weakened E1 (goldilocks\#15: the
 timeout record is a set of roots, $\fname{permits}$ requires
@@ -112,7 +112,7 @@ phase-service nodes HS.0--HS.5 (Section~\ref{sec:healing-service}; workbench\#7)
 fixed-phase service after the drain, with its settling and continuation
 interfaces, and no chosen-entry service across phase changes.  Draft~7 states
 C1.2 as outcome service (a literal good window, or an early justification that
-at a bound entry has already finalized the predecessor) and C1.3 as recurring finalizing coverage (workbench\#6
+at an entry whose previous height is justified has already finalized the predecessor) and C1.3 as recurring finalizing coverage (workbench\#6
 \S26); G1.6--G1.8, the target rows of R.4 and O.1 (a)--(c) are unchanged.  Draft~8 adds the top-level
 healing statements H.1--H.4 and HR.1--HR.4 (Section~\ref{sec:healing-top};
 workbench \texttt{t2-statements.md}) and the premises $\mathsf{Catch}$ and
@@ -458,12 +458,14 @@ each $v\in Q$ has an attestation included in a block of the chain whose
 finality pair is $(j,E_j)$;
 (h) \emph{entry constancy}: all states of the chain with the entry
 $(\sigma.h,\sigma.T_h)$ have the $(J,h_j)$ of the entry state
-$\sigma[\sigma.T_h]$, so $\fname{bound}$ and the predecessor
-$P=(\sigma.h_j,\sigma.J)$ are functions of the entry; a height is bound iff
-it was entered by a justification, and unbound iff by a timeout (or $h=1$);
-(i) the entry state of a bound height has not finalized its predecessor, and
+$\sigma[\sigma.T_h]$, so $\fname{previous\_height\_justified}$ and the predecessor
+$P=(\sigma.h_j,\sigma.J)$ are functions of the entry; a height has its
+previous height justified iff it was entered by a justification, and not iff
+by a timeout (or $h=1$);
+(i) the entry state of a height whose previous height is justified has not
+finalized its predecessor, and
 $P$ is its newest pending pair.}
-{G0.1 (chain)}{FG state transition and the notes ``Why a bound height waits'' and
+{G0.1 (chain)}{FG state transition and the notes ``Why a height whose previous height is justified waits'' and
 ``Why the client reads the entry state'' (fg.tex); theorem.md \S1 (entry
 constancy).}{M.  (a)--(e), (f)--(g) and (h)--(i) can be three tasks.}
 
@@ -471,20 +473,20 @@ constancy).}{M.  (a)--(e), (f)--(g) and (h)--(i) can be three tasks.}
 with $\sigma=\sigma[B.\parent]$ and $\sigma'=\sigma[B]$: (c0)
 $\Qtarget(\sigma)\subseteq\Qprog(\sigma)$; and, writing $w(\Qtarget)$ for the
 target weight after $B$'s attestations are counted:
-(a) if $w(\Qtarget)\geq q$ and ($\sigma$'s height is unbound, or $h_F=h_j$
+(a) if $w(\Qtarget)\geq q$ and ($\sigma$'s previous height is not justified, or $h_F=h_j$
 after the finality step), the block justifies $(\sigma.h,\sigma.T_h)$;
-(b) if the height is bound and its predecessor is still pending after the
+(b) if the previous height is justified and its predecessor is still pending after the
 finality step, the block does not justify, and the target bits persist while
 the height is current;
 (c) reachable-state invariant: if $w(\Qtarget(\sigma'))\geq q$ then
-$\sigma'$ is bound, its predecessor is pending, and
+$\sigma'$ has its previous height justified, its predecessor is pending, and
 $\sigma'.s<\sigma'.T_h.\slot+\delta_{\mathrm t}$ (since
 $\Qtarget\subseteq\Qprog$, a mature height would have crossed).  The old
 unconditional ``a target quorum is consumed'' does not hold.}
 {G0.2}{fg.tex \fname{process\_height\_events}; instance-proposal \S2.6
 (I7-target).}{S.}
 
-\dagnode{G0.8}{Finality before the gate (I7-LB)}{At a bound height whose
+\dagnode{G0.8}{Finality before the gate (I7-LB)}{At a height whose previous height is justified and whose
 predecessor $P$ is pending in the parent state: (a) if after the block's
 attestations are counted the validators with a counted finality pair $P$
 have weight at least~$q$, then $h_F=h_j$ after the finality step of the same
@@ -492,15 +494,17 @@ block; (b) if moreover $w(\Qtarget)\geq q$, the same block justifies.  (A
 timeout row that carries~$P$ sets a $\Qfin$ bit and no $\Qtarget$ bit.)}
 {G0.2, G0.7}{instance-proposal \S2.6 (I7-LB); theorem.md \S3 step~4.}{S.}
 
-\dagnode{G0.9}{Retention}{(a) While a bound height is current, its
+\dagnode{G0.9}{Retention}{(a) While a height whose previous height is justified is current, its
 predecessor stays pending until it is finalized (no append happens; $K_W\geq1$
 suffices).  (b) With $K_W=2$ it also stays through the next append, whichever
-height that append justifies (in particular the unbound height entered by a
-timeout).  (c) Not more: the
-sequence bound timeout, unbound append, bound timeout, unbound append drops
+height that append justifies (in particular the height entered by a
+timeout, whose previous height is not justified).  (c) Not more: the
+sequence timeout at a height whose previous height is justified, append at a
+height whose previous height is not, timeout at a height whose previous
+height is justified, append at a height whose previous height is not, drops
 it ($[P]\to[P,Q]\to[Q,R]$) without covering it.  (c) is a test witness of the
 Lean development, not a theorem.}
-{G0.2, G0.7}{fg.tex ``Why a bound height waits''; theorem.md \S4, \S6
+{G0.2, G0.7}{fg.tex ``Why a height whose previous height is justified waits''; theorem.md \S4, \S6
 item~3.}{S.}
 
 \dagnode{G0.3}{Cache invariants}{At an honest node at every time, through
@@ -574,14 +578,14 @@ and E1 of an attestation against itself never fires.}
 $\fname{create\_attestation}$ and $\fname{record\_attestation}$: a good first
 Lean task.}
 
-\dagnode{G0.10}{Aggregation at a bound entry}{Under $\mathsf{NoColl}$.  Say
+\dagnode{G0.10}{Aggregation at an entry whose previous height is justified}{Under $\mathsf{NoColl}$.  Say
 a record \emph{allows a target} at~$h$ when $\mathsf{lock}[h]\in\{\bot,T_h\}$,
 $\mathsf{target}[h]=\bot$, $\mathsf{timeout}[h]=\emptyset$ and no
 $b\in\mathsf{sent}$ has $b.h=h$.  (A record of a client run from the empty
 record has $\mathsf{target}[h]=\bot$ and $\mathsf{timeout}[h]=\emptyset$
 when nothing at~$h$ was sent, by G0.5's record invariants; on such records a
 target is allowed exactly when $\fname{create\_attestation}$ returns a
-target.)  At a bound entry $E$ with
+target.)  At an entry $E$ whose previous height is justified, with
 predecessor~$P$, let $\sigma_e$ be the state of a chain ending at $E$'s
 entry block (G0.1 (chain)).  For every record that allows a target at~$h$,
 $\fname{create\_attestation}$ on $\sigma_e$ returns $(h,T_h,\mathsf{false};P)$
@@ -812,7 +816,7 @@ one chain and the FG transition, under premises on the rows that reach it.
 That the AC and the network supply those premises, or that an accepted
 retained chain (retained: kept in the viable trees of honest nodes, the
 \texttt{JointRet} of workbench \texttt{producer-reset-continuation.md}) has
-already justified the entry early (and, at a bound entry,
+already justified the entry early (and, at an entry whose previous height is justified,
 finalized its predecessor through the gate), is the composition node C1.2
 (outcome service).  The FG lemmas keep their literal $\mathsf{GW}$ hypotheses
 and are applied only in the $\mathsf{GW}$ branch.  Notation (theorem.md \S1): an entry $E=(h,T_h,u)$ with $u=T_h.\slot$;
@@ -823,7 +827,7 @@ u+a+\cF+k_F]$; $D=a+\cF+k_F$.  \emph{Good window} $\mathsf{GW}(E,a,k_F)$:
   $\fname{state\_transition}$) of a slot $v^*\in I(E,a,k_F)$ whose parent
   extends~$T_h$;
 \item[P2] validators of weight $\geq q$ each contribute a target row for~$E$,
-  carrying~$P_E$ at a bound entry, emitted by $t_{u+a}+6\Delta$ or already
+  carrying~$P_E$ at an entry whose previous height is justified, emitted by $t_{u+a}+6\Delta$ or already
   on the chain of~$B^*$;
 \item[P3--P4] those rows are processed into the pool of $B^*$'s proposer
   before $t_{v^*}$;
@@ -833,7 +837,7 @@ u+a+\cF+k_F]$; $D=a+\cF+k_F$.  \emph{Good window} $\mathsf{GW}(E,a,k_F)$:
 \item[P7] honest clients are durable and serialized.
 \end{itemize}
 
-\dagnode{G1.6}{Bound entry (theorem A)}{Let $E$ be a bound entry with
+\dagnode{G1.6}{Entry whose previous height is justified (theorem A)}{Let $E$ be an entry whose previous height is justified, with
 predecessor $P_E$ and $\mathsf{GW}(E,a,k_F)$.  Then on the chain of $B^*$:
 $E$ is justified at $B^*$ or earlier; $P_E$ is finalized at or before the
 block that justifies~$E$; and $h$ does not cross by timeout first.  So by
@@ -841,10 +845,10 @@ slot $u+D$.  (Not ``in a block of the window'': it can happen earlier.)}
 {G0.1 (store), G0.2, G0.5, G0.7, G0.8, G0.9 (a), G0.10, F.2}{theorem.md \S3 (paper proof, checked
 twice); its boundary trace is a test witness.}{M.}
 
-\dagnode{G1.7}{Unbound entry, two windows (theorem B)}{Let $U=(h,T_h,u_0)$
-be an unbound entry, $D_i=a_i+\cF+k_F$, with $\mathsf{GW}(U,a_0,k_F)$ (target rows, no finality pair
+\dagnode{G1.7}{Entry whose previous height is not justified, two windows (theorem B)}{Let $U=(h,T_h,u_0)$
+be an entry whose previous height is not justified, $D_i=a_i+\cF+k_F$, with $\mathsf{GW}(U,a_0,k_F)$ (target rows, no finality pair
 needed).  Then $U$ justifies at a slot $u_1\leq u_0+D_0$, appending
-$Q=(h,T_h)$, and its block enters a bound height $E_1$ with predecessor~$Q$.
+$Q=(h,T_h)$, and its block enters a height $E_1$ whose previous height is justified, with predecessor~$Q$.
 If moreover $\mathsf{GW}(E_1,a_1,k_F)$ for that \emph{actual} entry, with
 serving block $B^*_1$, then on the chain of $B^*_1$ the pair $Q$ is finalized
 by $u_1+D_1\leq u_0+D_0+D_1$, which covers $T_h$ and every ancestor.}
@@ -860,7 +864,7 @@ the first block after the entry has slot $u+1$, goldilocks\#38).  Then
 on the chain of~$C$ the height is left, by justification or timeout, within
 $\max(\delta_{\mathrm t},r)+g-1$ slots of~$u$.  (b) If $m\geq1$ consecutive
 entries cross by timeout on a chain, with delays $\tau_i$, and the next
-unbound entry and its actual bound successor satisfy G1.7 with serving block
+entry, whose previous height is not justified, and its actual successor entry, entered by justifying it, satisfy G1.7 with serving block
 $B^*_1$, the first failed entry is covered on the chain of $B^*_1$ within
 $\sum_i\tau_i+D_0+D_1$ slots.}
 {G1.6, G1.7, G0.7}{theorem.md \S5.}{S.}
@@ -1162,7 +1166,7 @@ serialized honest clients ($\delta_{\mathrm t}\geq\cF\geq2$ by the parameters);
 then $a_z$ exists (HR.3) and (R1)--(R4) hold (HR.4).  The entries served: an
 entry $E=(h,P,u)$ whose entry block~$P$ is an actual honest ready proposal of
 slot~$u$, with $t_u\geq R_z=t_{\slot(a_z)+2k+5}$ ($R_z\leq a_z+(8k+20)\Delta$),
-at height $h\geq H_z+1$, and, when $E$ is bound, with predecessor height
+at height $h\geq H_z+1$, and, when $E$'s previous height is justified, with predecessor height
 $\geq H_z+1$ (so $h\geq H_z+2$; producer-reset-continuation \S18, BA); and
 (retained ready inclusion) some slot of $I(E,0,k_F)$ has an honest ready
 proposal whose parent extends~$P$, or extends an accepted retained chain that
@@ -1170,13 +1174,13 @@ has already justified~$E$ (instance-proposal \S3.5 \texttt{ACService}).
 \emph{Conclusion.}  Such an entry gets \emph{outcome service} by the deadline of its
 window $I(E,0,k_F)$, with the same carrier conclusion in both branches (the
 outcome is on an accepted retained chain, whose carrier honest nodes receive
-within a further~$\Delta$).  At a bound entry~$E$ of slot~$u$ with predecessor~$P_E$: either
+within a further~$\Delta$).  At an entry~$E$ of slot~$u$ whose previous height is justified, with predecessor~$P_E$: either
 (i) the literal $\mathsf{GW}(E,0,k_F)$ holds on the retained inclusion chain,
 including a quorum of target rows that carry~$P_E$, or (ii) an accepted
 retained chain has already justified~$E$ and finalized~$P_E$ (the gate).  At
-an unbound entry~$U$: either $\mathsf{GW}(U,0,k_F)$ or an accepted retained
+an entry~$U$ whose previous height is not justified: either $\mathsf{GW}(U,0,k_F)$ or an accepted retained
 chain has already justified~$U$ early; in both cases $U$ is justified by that
-deadline and the \emph{actual} bound successor whose predecessor is~$U$
+deadline and the \emph{actual} successor entry, entered by justifying~$U$, whose predecessor is~$U$
 exists.  When that successor is itself an actual honest-ready entry, this node
 applies to it at its own slot and deadline; it does not promise finalization
 of~$U$ before that successor is serviced.  (Proof shape, the conditional duty join of phase-service \S10 and
@@ -1188,8 +1192,8 @@ surviving fast write of~$P$ or a retained chain that extends~$P$ and carries a
 justified crossing of its entry ($\delta_{\mathrm t}\geq2$ rules out a timeout
 through $t_u+6\Delta$).  In the first case every honest validator has an actual
 source with entry~$E$ by $t_u+6\Delta$, or an earlier report of~$E$ suppresses
-it; by HR.4 (R1), (R4) and G0.10 its record allows a target at~$h$ and, at a
-bound entry, permits~$P_E$ (BA), so the honest rows give P2; they arrive before
+it; by HR.4 (R1), (R4) and G0.10 its record allows a target at~$h$ and, at an
+entry whose previous height is justified, permits~$P_E$ (BA), so the honest rows give P2; they arrive before
 $t_{u+\cF}$, and the window's honest ready proposal with the retained-inclusion
 parent gives P1, P3--P5 (C0.3), unless a retained chain justifies~$E$ first,
 which is branch~(ii).  In the second case branch~(ii) holds.)  Faulty or old entries are not
@@ -1231,10 +1235,10 @@ node's finalized output, C0.1).  The coverage goes through the entries of the
 fresh proposal's chain: the current entry~$E$ of the fresh honest proposal~$P$
 (possibly old, $E\preceq P$) is crossed on the retained $P$-chain; the new
 entry~$U$ then created by an honest proposal of the stretch satisfies
-$P\preceq U$; $U$ is serviced, and then its actual bound successor~$V$ (whose
+$P\preceq U$; $U$ is serviced, and then its actual successor entry~$V$, entered by justifying~$U$ (whose
 predecessor is~$U$), each at its own slot (inside the pattern their entry blocks
 are honest, so C1.2 applies to them); finalizing~$U$ covers~$P$ (servicing only
-the first window of a bound entry would finalize its predecessor, not
+the first window of an entry whose previous height is justified would finalize its predecessor, not
 cover~$P$).  In a C1.2
 branch~(i) G1.6 and G1.7 finalize; in a branch~(ii) the gate has; this node
 does not claim that a literal good window occurred in the early-justification

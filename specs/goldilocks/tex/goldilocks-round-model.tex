@@ -93,7 +93,7 @@ that the old round-model Lean model follows, kept for that correspondence.  It d
 not specify the current finality gadget.  The current FG rules are in
 \texttt{shared/fg.tex}, which \texttt{goldilocks-spec.tex} inputs, and they
 have loose BJ: a justification at
-a bound height waits for the finality of its predecessor, and the client
+a height whose previous height is justified waits for the finality of its predecessor, and the client
 reads its finality pair from the entry state of its source, not from the
 head.  Here a target quorum justifies at once, the finality pair comes
 from the head of the action, $K_W\geq2$, and $\delta_{\mathrm t}=2R$.  The

@@ -41,9 +41,10 @@ $\Qfin(\sigma,j)=\{i:\sigma.\finalityParticipation[j][i]\}$.  The
 of the block that brought the chain into height~$\sigma.h$; its height
 is~$\sigma.h$.  A justification ends its height, so every state with the
 entry $(\sigma.h,\sigma.T_h)$ has the pair $(\sigma.J,\sigma.h_j)$ of its
-entry state.  The height~$\sigma.h$ is \emph{bound} when $\sigma.h_j>0$
-and $\sigma.h_j=\sigma.h-1$: the chain entered it by justifying its
-predecessor $(\sigma.h_j,\sigma.J)$.  $K_W=2$, and
+entry state.  The height~$\sigma.h$ has its \emph{previous height
+justified} ($\Call{previous\_height\_justified}{\sigma}$) when
+$\sigma.h_j>0$ and $\sigma.h_j=\sigma.h-1$: the chain entered it by
+justifying its predecessor $(\sigma.h_j,\sigma.J)$.  $K_W=2$, and
 $\delta_{\mathrm{t}}\geq0$ is the timeout delay in slots; the AC sets its
 value (Section~\ref{sec:sa-schedule}).  Initially
 \[
@@ -195,7 +196,7 @@ target at a height only as its first vote at that height, and it names
 each entry at most once at a height.  After a finality pair $(h,T)$ it
 sends no row at~$h$, timeout or target vote, that names another block.
 It reads the finality pair from the entry state of its source, not from
-the head.  At a bound height the
+the head.  At a height whose previous height is justified the
 pair is the predecessor $(h_j,J)$ when the record allows it, also when a
 later state has finalized it, and empty otherwise.  At another height it
 is the newest pending pair of the entry state that the record allows, or
@@ -207,7 +208,7 @@ empty.  So the pair is below the height of the height pair.
 \begin{algorithmic}[1]
 \Function{finality\_pair}{$\Lambda,\sigma_e$}
   \Comment{$\sigma_e$: the entry state of the source}
-  \If{$\Call{bound}{\sigma_e}$}
+  \If{$\Call{previous\_height\_justified}{\sigma_e}$}
     \Comment{the predecessor, even if a later state finalized it}
     \If{$\Call{permits}{\Lambda,\sigma_e.h_j,\sigma_e.J}$}
       \State \Return $(\sigma_e.h_j,\sigma_e.J)$
@@ -336,8 +337,8 @@ empty.  So the pair is below the height of the height pair.
   \State remove from $\sigma.\pendingFinality$ every pair $(j,T)$ with
     $j\leq\sigma.h_F$
   \If{$w(\Qtarget(\sigma))\geq q$ \textbf{and}
-      (not $\Call{bound}{\sigma}$ or $\sigma.h_F=\sigma.h_j$)}
-    \Comment{a bound height waits for its predecessor}
+      (not $\Call{previous\_height\_justified}{\sigma}$ or $\sigma.h_F=\sigma.h_j$)}
+    \Comment{such a height waits for its predecessor}
     \State $(\sigma.J,\sigma.h_j)\gets(\sigma.T_h,\sigma.h)$
     \State append $(\sigma.h,\sigma.T_h)$ to $\sigma.\pendingFinality$;
       $\sigma.\finalityParticipation[\sigma.h]\gets\mathsf{false}^{V}$
@@ -359,36 +360,37 @@ empty.  So the pair is below the height of the height pair.
   \State \Return $\sigma$
 \EndFunction
 \vspace{1pt}
-\Function{bound}{$\sigma$}
+\Function{previous\_height\_justified}{$\sigma$}
   \Comment{the chain entered $\sigma.h$ by justifying $\sigma.h-1$}
   \State \Return $\sigma.h_j>0$ and $\sigma.h_j=\sigma.h-1$
 \EndFunction
 \end{algorithmic}
 }
 
-\emph{Why a bound height waits for its predecessor.}  Faulty validators
+\emph{Why a height whose previous height is justified waits for its predecessor.}  Faulty validators
 can help to justify a height with target votes and withhold their
 finality pairs.  Without the gate, the heights then advance before the
 finality pairs of late honest validators arrive, and the window drops
 each pair before it has a quorum.  With the gate, a justification at a
-bound height~$h$ needs its predecessor $(\sigma.h_j,\sigma.J)$, with
+height~$h$ whose previous height is justified needs its predecessor $(\sigma.h_j,\sigma.J)$, with
 $\sigma.h_j=h-1$, finalized in its block or before.  The gate reads
 $\sigma.h_F$ after the finality step of the block, and the target bits
 persist while the height is current, so a blocked target quorum
 justifies in the first block that finalizes the predecessor, unless a
-timeout has ended the height before.  While a bound height is current
+timeout has ended the height before.  While such a height is current
 and its predecessor is pending, the predecessor is the newest pair of the
 window, and only an append, which ends the height, drops it; so a window
-of one pair already keeps it, at every~$\Delta_F$.  A bound height that
+of one pair already keeps it, at every~$\Delta_F$.  Such a height that
 cannot finalize its predecessor stays current until a block at least
 $\delta_{\mathrm{t}}$ slots after its entry has a progress quorum, and
 for ever when no such block comes.  That block crosses by timeout and
 appends nothing: the predecessor stays pending at the crossing, and the
-next height is unbound.  $K_W=2$ keeps the predecessor also through the next
-append, the justification of that unbound height; a later append can
+next height does not have its previous height justified.  $K_W=2$ keeps
+the predecessor also through the next append, the justification of that
+height; a later append can
 drop it.  A later finalization at a height of at least~$h-1$ covers it,
-for example the finalization of that unbound justification at the bound
-height that it enters.  The gate only withholds justifications: target
+for example the finalization of that justification at the height that it
+enters, whose previous height is justified.  The gate only withholds justifications: target
 counting is unchanged, a justification still needs a target quorum and a
 crossing a progress quorum, and the slashing conditions are unchanged.
 
@@ -396,17 +398,17 @@ crossing a progress quorum, and the slashing conditions are unchanged.
 the same in the source state and in its entry state, and the pending
 pairs of the entry state are fixed by the entry.  So the finality pair
 that a validator selects for an entry depends on its record, not on the
-state of its source or of the head.  At a bound entry, the target votes
+state of its source or of the head.  At an entry whose previous height is justified, the target votes
 of the validators whose records allow the predecessor have the same
 height pair and the same finality pair, also when a later state has
-finalized the predecessor, so they aggregate.  The entry state of a bound
+finalized the predecessor, so they aggregate.  The entry state of such a
 height has not finalized the predecessor, because the finality step of a
 block precedes its append; the client carries the pair also when a later
 state or the head has finalized it, so every row for the entry counts
 toward the predecessor wherever it is still pending.  A validator whose
 record does not allow the predecessor selects its height pair as before
 and sends the empty finality pair: the predecessor does not turn its
-target vote into a timeout.  At an unbound entry, records can select
+target vote into a timeout.  At an entry whose previous height is not justified, records can select
 different pending pairs, or none, so rows for one entry need not
 aggregate.  A read of the head could give the pair of another height, or
 none.  The pair is below the height of the height pair, so the client

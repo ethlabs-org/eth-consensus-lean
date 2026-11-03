@@ -403,19 +403,19 @@ window is old enough for the timeout arm, and in a block of that slot the
 justification test runs first.  The window is \emph{good} when
 \begin{itemize}
 \item validators of weight at least~$q$ send a target vote for the entry
-  by $t_{u+x}+6\Delta$, or have one on the chain, and at a bound height
+  by $t_{u+x}+6\Delta$, or have one on the chain, and at a height whose previous height is justified
   the vote carries the predecessor pair (an honest validator needs to be
   awake and joined, a source with that entry, and a record that allows the
-  target and, at a bound height, the predecessor pair); and
+  target and, at such a height, the predecessor pair); and
 \item in a slot of the window an honest node, awake from
   $t_{u+x}+6\Delta$, makes a proposal whose parent extends the entry.
 \end{itemize}
 Then, on the chain of that proposal, at that proposal or before:
 \begin{itemize}
-\item at a bound height, the height is justified, and its predecessor is
+\item at a height whose previous height is justified, the height is justified, and its predecessor is
   finalized no later than the justification;
-\item at an unbound height, the height is justified, and the next height
-  is bound.
+\item at a height whose previous height is not justified, the height is
+  justified, and the next height has its previous height justified.
 \end{itemize}
 A finalization on a chain is the finalized output of a node only when its
 finality caches accept it (Section~\ref{sec:fg-frame}).  An honest entry
@@ -427,13 +427,14 @@ faulty entries is open.
 
 A height without a good window can stay current: it crosses by timeout
 only in a block at least $\delta_{\mathrm{t}}$ slots after its entry and
-with a progress quorum.  At a bound height that crossing appends nothing,
+with a progress quorum.  At a height whose previous height is justified that crossing appends nothing,
 and the predecessor stays pending, but later appends can drop it.  A
 later finalization at a height of at least that of the predecessor covers
-it: for example, a good window at the next height, which is unbound,
-justifies that height, and a good window at the bound height that this
-justification actually enters finalizes it.  A good window at an unbound
-height gives its justification, not the finality of the pairs that the
+it: for example, a good window at the next height, whose previous height
+is not justified, justifies that height, and a good window at the height
+that this justification actually enters, whose previous height is
+justified, finalizes it.  A good window at a height whose previous height
+is not justified gives its justification, not the finality of the pairs that the
 height inherits.
 
 An honest proposal in every $g$ consecutive slots, by a node awake for
