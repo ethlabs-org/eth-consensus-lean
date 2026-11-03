@@ -43,6 +43,7 @@ public import ConsensusLeanTest.GoldilocksGradedVeto
 public import ConsensusLeanTest.GoldilocksHalfCommitteeACData
 public import ConsensusLeanTest.GoldilocksHalfCommitteeACLocks
 public import ConsensusLeanTest.GoldilocksHalfCommitteeACStep
+public import ConsensusLeanTest.GoldilocksHalfCommitteeControl
 public import ConsensusLeanTest.GoldilocksHalfCommitteeCutLaw
 public import ConsensusLeanTest.GoldilocksHalfCommitteeFG
 public import ConsensusLeanTest.GoldilocksHalfCommitteeNode
