@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowParents
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
@@ -10,7 +9,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindowUpTo
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedClientUpTo
 
 public section
 

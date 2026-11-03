@@ -1,6 +1,4 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindow
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedClientUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalSignedUpTo
 
 public section

@@ -30,15 +30,6 @@ theorem opponents_mono_view {V W : View sp.n} (hv : V.votes ⊆ W.votes)
   · exact Or.inl (equivocators_mono (sp := sp) hv hi)
   · exact Or.inr ⟨x, hs hx, h⟩
 
-/-- The optimistic confirmation keeps the pools. -/
-theorem optimisticConfirmation_pool (A : SAState sp.n) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation
-  split
-  · rfl
-  · unfold updateLatestConfirmed
-    split_ifs <;> rfl
-
 /-- The votes and the support of a pool view lie in a set that holds the pools. -/
 theorem voteViewList_subset {A : SAState sp.n} {σ : Int} {cutoff : ETime}
     {S : Set (Vote sp.n)} (hpool : ∀ τ, ∀ v ∈ A.pool τ, v ∈ S) :

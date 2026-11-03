@@ -706,17 +706,6 @@ theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
     · exact hl
     · exact absurd hopt (hp.row_origin_not_current hy hc hW ha hv hs hrd)
 
-/-- Whole-run specialization of the own-slot exclusion for a row source. -/
-theorem row_origin_not_current (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ℓ e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
-    {v : Fin sp.n} (hv : v ∈ H) {d : Nat} (hs : tr.SignAt v d att) {r : Nat} (hrd : r < d)
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)} :
-    ¬ SA.OptimisticLockAt tr.projAC v r e.msg.slot D CV :=
-  (hp.toUpTo tr H (le_refl a)).row_origin_not_current hy hc hW ha hv hs hrd
-
 /-- Whole-run specialization of the strict source-label bound. -/
 theorem row_origin_label_lt (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}

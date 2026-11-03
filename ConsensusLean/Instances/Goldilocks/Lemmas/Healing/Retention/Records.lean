@@ -560,18 +560,6 @@ theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
   rw [← hEh, hp.σ_eq_run hz hy hPr hP, hp.σ_eq_run hz hy hE' hE]
   exact hlt
 
-/-- Whole-run specialization; finality provenance needs no future wakefulness. -/
-theorem finalized_descendant_report (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
-    (hXr : X.root = ((tr.state y k).fg.σ W.root).F)
-    (hPX : Anc (tr.HonestBlocks H) P X) (hne : P ≠ X) :
-    ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
-      Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
-  (ResetPremises.toUpTo tr H hp le_rfl).finalized_descendant_report hy hW hX hXr hPX hne
-
 /-- Whole-run specialization of the finite finality/report alternative. -/
 theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}

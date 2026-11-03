@@ -99,12 +99,6 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
   have := hk j (by omega)
   linarith
 
-/-- Whole-run specialization of the pre-reset justification bound. -/
-theorem hj_le_HZ_of_before (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} (hk : ∀ k' < k, tr.time k' < a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ (tr.state y k).fg.tree) : ((tr.state y k).fg.σ X.root).hj ≤ HZ tr H g :=
-  (hp.toUpTo tr H (le_refl a)).hj_le_HZ_of_before hy hk hX
-
 /-- **HBoot, the caches before the reset** (§11 "Historical finality and acceptance";
 `t1-proof.md` §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
 (a justification at `h ≥ H_z + 1` needs an honest row at `h`, none before `a`, HR.1 (c)), and

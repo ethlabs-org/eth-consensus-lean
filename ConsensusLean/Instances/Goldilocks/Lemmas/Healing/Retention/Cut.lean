@@ -34,24 +34,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### Run facts -/
 
-/-- The label of a high origin starts at or after `g` (`t_j ≥ c_z > ḡ ≥ g`). -/
-private theorem g_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
-    g ≤ sp.ts j := by
-  have h₁ := cutZ_le_ts_of_highOrigin hp ho
-  have h₂ := lt_cutZ sp g
-  have h₃ := le_gbar g
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  linarith
-
-/-- `f < n/2` under `Healthy(g)`. -/
-private theorem faulty_lt_half' (hp : ResetPremises tr H proposer dg g ΔF a) (x : Fin sp.n) :
-    2 * Hᶜ.ncard < sp.n := by
-  have := hp.healthy.2.2
-  have := Fin.pos x
-  have hn : sp.n = sp.toParams.n := rfl
-  omega
-
 /-- A block below one that is compatible with `B` is compatible with `B`. -/
 private theorem compatible_of_anc' {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
     {A B C : SA.Blk sp.n (List (FG.Att sp.n))} (hAC : Anc S A C) (hC : Compatible S C B) :
@@ -89,80 +71,6 @@ theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
   · refine Or.inr fun c hc => ?_
     by_contra hck
     exact (not_lt_of_ge (h.trans (hp.run.time_mono (show k ≤ c by omega)))) hc
-
-/-- **Prefix comparison of two high origins** (`hr4-cut-scope.md` §4). With `VoteInv` at every
-cut `≤ k`, a high origin `(B, j)` active at `k` (written by `k`, or `t_{j+1} ≤` the time of `k`)
-and a high origin `(O, l)` written by `k` are comparable: for `l < j` the honest slot-`j` votes
-counted by `B`'s write extend `O` (they are cast by `k`: before the write, or, for a pending
-write, in slot `j < t_{j+1}`); for `j < l` the honest slot-`l` votes counted by `O`'s write extend
-`B`; for `l = j` the raw selections are compatible by TSQ (`Sync` from `GST(g)`, `t_j ≥ g`). The
-stored blocks are ancestors of the raw selections. -/
-theorem origins_compatible_prefix (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
-    (hvk : ∀ k' ≤ k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {x' : Fin sp.n} {r l : Nat}
-    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O) (hrk : r ≤ k) :
-    Compatible (tr.HonestBlocks H) B O := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hrl := hrun'.localRun
-  have hU := hrl.coherent
-  have hf := faulty_lt_half' hp x
-  obtain ⟨CV, hst⟩ := ho.2.2.1
-  obtain ⟨CV', hst'⟩ := ho'.2.2.1
-  obtain ⟨-, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-  obtain ⟨-, D', hfl', hOD'⟩ := storedFastLock_mem hp.run hp.noColl ho'.1 hst'
-  have hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
-      HighOrigin tr H g x₀ i₀ j₀ B₀ → ∀ z ∈ H, ∀ c < k + 1, ∀ e, SA.VoteAt tr.projAC z c e →
-        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀ :=
-    fun ho₀ z hz c hc e ⟨ℓ, hcl, he⟩ hsl =>
-      ((voteInv_iff.1 (hvk c (by omega))) _ _ _ _ ho₀ z hz ℓ e ⟨hcl, he⟩ hsl).1
-  rcases lt_trichotomy l j with hlt | rfl | hgt
-  · -- `l < j`: the honest slot-`j` votes counted by `B`'s write extend `O`
-    have hcut : ∀ z ∈ H, ∀ c < i + 1, ∀ e, SA.VoteAt tr.projAC z c e → e.msg.slot = j →
-        c < k + 1 := by
-      intro z hz c hc e ⟨ℓ, hcl, he⟩ hsl
-      rcases hact with hik | hts
-      · omega
-      by_contra hck
-      have h₁ := (SA.castAt_spec hrl hz ⟨hcl, he⟩).2.1
-      have h₂ := hrl.time_mono (show k ≤ c by omega)
-      have h₃ := (SA.ts_le_iff_le_slot sp (hrl.time_nonneg c) ((j + 1 : Nat) : Int)).mp
-        (hts.trans h₂)
-      omega
-    have hDO : Compatible (tr.HonestBlocks H) D O :=
-      SA.fastLock_compatible_of_votes hrun' ho.1 (Nat.lt_succ_self i) hfl hf
-        fun z hz c hc e hve hsl => hvote ho' z hz c (hcut z hz c hc e hve hsl) e hve (by omega)
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
-  · -- the same label: TSQ
-    have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
-      (fun v => v.val) tr proposer ΔF (sp.ts l) (sp.ts (l + 1 : Nat) + sp.Δ) hp.run.toLocalRun
-      (syncRun_of_gst hp.healthy.1 (g_le_ts_of_highOrigin hp ho))
-    rcases SA.fastLock_same_slot hrun' ho.1 hfl ho'.1 hfl' hsync hf with h | h
-    · exact SA.anc_total hU (hBD.trans h) hOD'
-    · exact SA.anc_total hU hBD (hOD'.trans h)
-  · -- `j < l`: the honest slot-`l` votes counted by `O`'s write extend `B`
-    have hD'B : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun' ho'.1 (Nat.lt_succ_self r) hfl' hf
-        fun z hz c hc e hve hsl => hvote ho z hz c (by omega) e hve (by omega)
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hOD' hn hD'B.symm
-
-/-- **The rows signed by cut `k` name entries comparable with an active origin**
-(`hr4-cut-scope.md` §4): the row's entry lies below a high origin written before the signing
-(`high_row_source`), which is comparable with `B` (`origins_compatible_prefix`). -/
-theorem row_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {k : Nat}
-    (hvk : ∀ k' ≤ k, VoteInv tr H g k') {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {v : Fin sp.n} (hv : v ∈ H) {d : Nat}
-    {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hdk : d ≤ k) (hh : HZ tr H g + 1 ≤ att.h)
-    {E : SA.Blk sp.n (List (FG.Att sp.n))} (hEU : E ∈ tr.HonestBlocks H) (hEr : E.root = att.T) :
-    Compatible (tr.HonestBlocks H) E B := by
-  have hU := Compose.honest_blocks_coherent hp.run.toLocalRun hp.noColl
-  obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ := high_row_source hp hv hs hh
-  obtain rfl : E = E₀ := hU.1 hEU ⟨v, hv, r, hE₀⟩ (hEr.trans hE₀r.symm)
-  have hBO := origins_compatible_prefix hp hvk ho hact hoO (by omega)
-  exact compatible_of_anc' hU (hE₀O.mono fun X hX => ⟨v, hv, r, hX⟩) hBO.symm
 
 /-! ### The cut step and the rows -/
 

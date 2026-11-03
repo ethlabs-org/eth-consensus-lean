@@ -42,24 +42,6 @@ structure HSSharedUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
   timeoutDelay : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.δt : Time)
 
-/-- The whole-run shared premises restrict to every horizon. -/
-theorem HSShared.toUpTo (hs : HSShared tr H dg g ΔF) (b : Time) :
-    HSSharedUpTo tr H dg g ΔF b :=
-  ⟨hs.noColl, hs.genesisRoot, ResetService.of_gst tr H hs.healthy.1,
-    fun y hy t ht _ => hs.healthy.2.1 y hy t ht, hs.healthy.2.2,
-    fun y hy k hk _ => hs.noRestart y hy k hk, hs.timeoutDelay⟩
-
-/-- **Deadlines after `ḡ` through the horizon** (`deadline_le_of_healthy` at a cut by `b`). -/
-theorem HSSharedUpTo.deadline_le (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSSharedUpTo tr H dg g ΔF b) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} (hkb : tr.time k ≤ b) (τ Δ' : Time) :
-    tr.deadline y k τ Δ' ≤ max τ (gbar g) + Δ' := by
-  have h := deadline_le_restarts (T := tr.projAC) (c := k)
-    (fun k' hk' hr => hs.noRestart y hy k' (Compose.projAC_restartAt.1 hr)
-      ((hrun.time_mono hk').trans hkb)) τ
-  simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
-  linarith
-
 /-- **The rows reach the proposer strictly before `t_x`, through the horizon.** Signed-row
 service and a proposer restart-prefix bound suffice: when `v + Δ_F ≤ time kX ≤ b`, a row
 signed by `v ≥ ḡ` is processed at an earlier cut and strictly earlier time. No timeout-delay

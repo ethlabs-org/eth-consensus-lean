@@ -21,29 +21,4 @@ structure ForwardingState (n : Nat) where
   wrappers : Nat → Option (Wire n)
   pending : List (Wire n)
 
-/-- Revised publication transition: remember the exact wrapper and append it to the same-event
-drain. Resolve the parent from the durable map, never from a raw parent object. A missing
-non-genesis parent fails explicitly; proving this cannot occur on actual acceptance is OPEN.
-Callers must establish canonical acceptance first. This is not an installed engine handler. -/
-def ForwardingState.enqueue {sp : SA.SAParams} (st : ForwardingState sp.n)
-    (origin : Fin sp.n) (t : Time) (B : Blk sp) :
-    Option (ForwardingState sp.n) := do
-  let root ← B.parent
-  let parent ← if root = sp.genesisRoot then some none
-    else (st.wrappers root).map some
-  let o := forwardObj sp origin t parent B
-  return ⟨Function.update st.wrappers B.root (some o), st.pending ++ [o]⟩
-
-/-- Drain the entire event queue in one ordered engine release batch, retaining the durable
-map and clearing only the queue. Parent wrappers queued earlier become available to later
-guards through `releaseAll`'s seen update. Integration as an executed signed batch is OPEN. -/
-noncomputable def ForwardingState.drain {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E)
-    (st : ForwardingState (Fintype.card V)) (origin : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (family S)) E)) :
-    ForwardingState (Fintype.card V) ×
-      (Model.Node (protoOf (compiled (family S)) E) × List (Wire (Fintype.card V))) :=
-  (⟨st.wrappers, []⟩,
-    Model.releaseAll (protoOf (compiled (family S)) E) rho.hash origin nd st.pending)
-
 end Consensus.Goldilocks.Refinement

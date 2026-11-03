@@ -72,26 +72,6 @@ theorem ResetPremisesUpTo.permits_high_entry {b : Time}
     · exact Or.inl rfl
     · exact Or.inr (by rw [key r (Or.inr (Or.inr hl))])
 
-/-- **C2*⁺ (i) under the reset.** `high_row_entry` with the horizon of the row and the origin. -/
-theorem ResetPremises.high_row_entry (hp : ResetPremises tr H proposer dg g ΔF a)
-    {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att)
-    (hh : HZ tr H g + 1 ≤ att.h) {E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hE : HighEntry tr H g att.h E) : att.T = E.root := by
-  obtain ⟨⟨xo, io, jo, B, ho, hEB⟩, ⟨z, hz, m, hEm, hEh, hET⟩⟩ := hE
-  have hup := hp.toUpTo tr H (le_max_left a (max (tr.time d) (tr.time io)))
-  exact hup.high_row_entry hv hs ((le_max_left _ _).trans (le_max_right _ _)) hh ho
-    ((le_max_right _ _).trans (le_max_right _ _)) hEB hz hEm hEh hET
-
-/-- **R0 under the reset.** `permits_high_entry` with the horizon of the cut and the origin. -/
-theorem ResetPremises.permits_high_entry (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {h : Nat} (hh : HZ tr H g + 1 ≤ h)
-    {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : HighEntry tr H g h E) :
-    (tr.state y i).record.permits h E.root := by
-  obtain ⟨⟨xo, io, jo, B, ho, hEB⟩, ⟨z, hz, m, hEm, hEh, hET⟩⟩ := hE
-  have hup := hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time io)))
-  exact hup.permits_high_entry hy ((le_max_left _ _).trans (le_max_right _ _)) hh ho
-    ((le_max_right _ _).trans (le_max_right _ _)) hEB hz hEm hEh hET
-
 /-- **The record half of the Healed bundle** from the height `h₀` on, for the entries `E h` of
 the chain: RH, C2*⁺ (i) rows, C2*⁺ (ii) locks, and R0 at `h₀` (s4 L4.7 (a)–(c)). -/
 structure HealedRecords (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (h₀ : Nat)

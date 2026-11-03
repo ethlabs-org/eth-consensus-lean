@@ -39,17 +39,6 @@ theorem hiAt_iff {P : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {i : Nat}
       Anc (tr.HonestBlocks H) P (tr.state y i).fg.J ∧ (tr.state y i).fg.J.root ≠ P.root :=
   Iff.rfl
 
-/-- Two blocks of one coherent set with the same parent root: one below the other is the other. -/
-private theorem eq_of_anc_sibling {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
-    {Y Y' : SA.Blk sp.n (List (FG.Att sp.n))} (hY' : Y' ∈ S) (hpar : Y'.parent = Y.parent)
-    (h : Anc S Y' Y) : Y' = Y := by
-  obtain rfl | ⟨Z, hY'Z, hZY⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 h
-  · rfl
-  have hZ : Z ∈ S := hZY.1
-  have h₁ := (Anc.slot_le hS hY'Z).1
-  have h₂ := hS.2 Z hZ Y' hY' (hpar.trans hZY.2.2)
-  omega
-
 variable (D : OutageLockPremises tr H proposer dg)
 
 /-- **G3′**: under Hi at cut `k ≤ i`, every block of the node's tree at state height at least
