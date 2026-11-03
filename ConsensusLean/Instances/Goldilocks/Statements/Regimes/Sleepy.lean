@@ -22,7 +22,7 @@ Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun
   slots, joint strict growth of the confirmed output by `t + (4k + 6)Δ` (`GrowSleepy`).
 
 **Vocabulary.** A node is **ready** at `t` (catch-up `c = 18Δ` in the protocol's `Δ`, `sp.Δ`; at
-the Refinement's `Δp = Δe` this is `18Δe`, the target's `gc`) when it is
+the Refinement's `Δp = Δe` this is `18Δe`) when it is
 honest and awake throughout `[max(0, t − c − 1), t]` (`ReadyAt`, the model's `Point.Ready`). A
 **read** of `y` is its confirmed output at a read point `(j, t)` (`ReadPoint`: the state before cut
 `j` is the state at `t`), evaluated at `t` (`readAfter`); at `t = time j` this is `confirmedAt y j`,
@@ -30,7 +30,7 @@ and with `CutAfter j t` it is the read after all events at `t` (the model's end-
 `CutAfter` restates `Healing.FirstCutAfter` so that the regimes do not import the Healing files.
 `ProposerRecurrence c k a b`: every window of `k` consecutive slots whose first slot starts after
 `a` and whose last slot starts by `b` has a slot whose proposer is honest and ready at its
-start (the target's `gProg` at `k`).
+start.
 
 The transaction rows (`confirmed_txLive_sleepy`) are not stated over the run: the run model has no
 transactions. They follow, in the Refinement, from `IncludeSleepy` and the proposals' payloads.
@@ -61,7 +61,7 @@ reads, e.g. after an accepted `fg_on_block` and before its `ac_on_block`. -/
 def Boundary (y : Fin sp.n) (j : Nat) : Prop := tr.IsCall y j → tr.pos j = 0
 
 /-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the Refinement's `Δp = Δe` it is
-`18Δe`, the target's `gc`). -/
+`18Δe`). -/
 def catchUp (sp : SAParams) : Time := 18 * sp.Δ
 
 /-- `y` is ready at `t` with catch-up `c`: honest and awake throughout `[max(0, t − c − 1), t]`. -/
@@ -78,7 +78,7 @@ def ReadyProposalAt (c τ : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop 
   ∃ p kP, ReadyAt tr H c p τ ∧ tr.ProposesAt p kP P ∧ tr.time kP = τ
 
 /-- One honest proposer ready at its slot start in every window of `k` consecutive slots whose
-first slot starts after `a` and whose last slot starts by `b` (the target's windows
+first slot starts after `a` and whose last slot starts by `b` (in time, the windows
 `(t, t + 4kΔ]`). -/
 def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (a b : Time) : Prop :=
   ∀ s₀ : Nat, a < sp.ts s₀ → sp.ts (s₀ + k - 1 : Nat) ≤ b →
