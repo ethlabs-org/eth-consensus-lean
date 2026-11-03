@@ -19,8 +19,14 @@ frame-level consequences of nodes G0.3 (frame) and G0.4 (frame), against `Spec/F
 The sequence statements are about the blocks of all the frames of the sequence, so they assume
 that the union of the trees lies in one coherent set `U` (at a node, the accepted tree: its
 roots are injective by the duplicate-root test of `fg_on_block`, and slots increase by the
-assertion of `state_transition`), and that the first frame is rooted. Both are needed: frames
-alone allow a block that left to come back under a reused root. Statements only: no proofs here. -/
+assertion of `state_transition`), and that the first frame is rooted. `FrameNeverReturns` needs
+both: without coherence a block that left comes back under a reused root, and without the rooted
+first frame a block of the first tree whose parent is missing leaves and comes back once the
+parent arrives (`ConsensusLeanTest/GoldilocksFrameRejection.lean`:
+`frameNeverReturns_needs_coherent`, `frameNeverReturns_needs_rooted`). `FrameEntersOnce` needs
+coherence only (`frameEntersOnce_needs_coherent`): every frame after a step is rooted at its new
+`Φ.F`, so a block added by a step cannot be added again, and the rooted first frame is not
+needed. Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks
 
