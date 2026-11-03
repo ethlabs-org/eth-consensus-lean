@@ -60,7 +60,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   `sorry = true` layers of `scripts/boundaries.toml` (`Lemmas`, `Proofs.<M>`; check-boundaries.py refuses
   the flag on a trusted layer, outside Lemmas/Proofs or outside the default library); no declaration of Spec,
   Statements, Main, the instances, the tests or the solution contains one (check-decls `--sorry-ok`, grep step 7),
-  and it is never an axiom. **Certified = the import closure of
+  and it is never an axiom. **Proved in Solution = the import closure of
   `Solution`**: axiom-audit (step 3b, every PR) fails any declaration of `ConsensusLean` or `Solution` in that
   closure that depends on an axiom other than the three standard ones (`sorryAx`, `native_decide`'s axioms, a
   declared axiom, also through imports), and so it does for every test declaration (a test built on an unfinished
@@ -73,6 +73,8 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   pins and the comparator check the axioms of the review and milestone theorems too. axiom-audit's shared memo can under-count inside
   an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
   whose roots exclude the library): check-decls still fails a direct `sorry` outside the sorry layers. `lake build --wfail` runs with `warn.sorry = false`, so every other warning fails the build.
+  "Certified" is reserved for a full-tier certification: `check.sh --full` passed on a named main commit,
+  recorded on #63 (the status legend of `docs/roadmap.md`).
 - **Proofs:** leanchecker, one process per leaf module of the checked libraries (parents own no
   constants); `lake check` (of the default targets while the sorry layers' files hold no `sorry`/`admit` term or
   tactic outside comments and strings, an `admit`-named field or binder not being one: it rejects `sorryAx`;
