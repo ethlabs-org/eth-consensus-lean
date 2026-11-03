@@ -19,10 +19,10 @@ honest proposal is `w0`'s own block `P` of slot `1` (cut `34`, `t_1 = 4`), and t
 `i = 80`, the first cut at `t_1 + 6Δ = 10`: the tick that runs the update of slot `1`, before the
 update.
 
-* `inclusion_update_rejection`: every premise of A1.7 other than the update clause holds there
-  (`GoldilocksRun`, `NoColl`, `Sleepy`, the genesis root, the joined proposer, `w0` awake and
-  joined at `t` and at `t_1 + 6Δ`, no restart), the update clause fails, and `P` is **not** in the
-  confirmed tip.
+* `inclusion_update_rejection`: every premise of A1.7 other than the update clause, and the
+  claims' extra ones, hold there (`GoldilocksRun`, `NoColl`, `Sleepy`, the genesis root, the
+  joined proposer, `w0` awake and joined at `t` and at `t_1 + 6Δ`, no restart), the update clause
+  fails, and `P` is **not** in the confirmed tip.
 * `not_inclusionWithoutUpdate`: so A1.7 with the update clause dropped is false.
 * `inclusion_control`: one cut later (cut `81`, after the update) the clause holds and `P` is in
   the confirmed tip (`inclusion_sleepy`), so the rejection turns on the clause alone.
@@ -270,12 +270,10 @@ theorem inclusion_control : ∃ P : N2.Blk, tr2.ProposesAt w0 34 P ∧ P.slot = 
     rw [tickRun_label, show 81 / 8 = 10 by omega, show 81 % 8 = 1 by omega]
     exact List.getElem?_eq_getElem hlen
   refine ⟨P, hP, hPs, hu, Compose.inclusion_sleepy sp2 ro2 (fun _ => w0) dg2 Set.univ tr2 1
-    asleepRun_goldilocksRun (dg2_noColl _) tr2_sleepy dg2_genesis w0 (Set.mem_univ _) 34 P 1 hP
-    hPs (joined_w0 34 _) w0 (Set.mem_univ _) 81 hc81 ?_ ⟨rfl, ?_⟩ (joinedAt _ _)
-    ⟨rfl, by rw [hts]; norm_num⟩ (joinedAt _ _) (fun k' hk' => absurd hk' (tr2_no_restart _ k'))
-    hu⟩
-  · rw [hts]; change (10 : Int) ≤ ((81 / 8 : Nat) : Int); norm_num
-  · change (0 : Int) ≤ ((81 / 8 : Nat) : Int); omega
+    asleepRun_goldilocksRun (dg2_noColl _) tr2_sleepy w0 (Set.mem_univ _) 34 P 1 hP
+    hPs (joined_w0 34 _) w0 (Set.mem_univ _) 81 hc81 ⟨rfl, ?_⟩ (joinedAt _ _)
+    (joinedAt _ _) (fun k' hk' => absurd hk' (tr2_no_restart _ k')) hu⟩
+  change (0 : Int) ≤ ((81 / 8 : Nat) : Int); omega
 
 /-- A1.7 with the update clause `UpdatedNoRestart tr y i s` dropped. -/
 def InclusionWithoutUpdate : Prop :=
@@ -284,12 +282,11 @@ def InclusionWithoutUpdate : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
-    (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
     ∀ p ∈ H, ∀ k (P : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat),
       tr.ProposesAt p k P → P.slot = s → SA.joined sp (tr.state p k).ac (tr.time k) →
-      ∀ y ∈ H, ∀ i, tr.IsCall y i → sp.ts s + 6 * sp.Δ ≤ tr.time i →
+      ∀ y ∈ H, ∀ i, tr.IsCall y i →
         tr.awake y (tr.time i) → tr.JoinedAt y (tr.time i) →
-        tr.awake y (sp.ts s + 6 * sp.Δ) → tr.JoinedAt y (sp.ts s + 6 * sp.Δ) →
+        tr.JoinedAt y (sp.ts s + 6 * sp.Δ) →
         (∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' → tr.time k' ≤ tr.time i →
           False) →
         Anc (tr.HonestBlocks H) P (tr.confirmedAt y i)
@@ -297,10 +294,10 @@ def InclusionWithoutUpdate : Prop :=
 /-- (r) **A1.7 without the update clause is false** (consensus-lean#77). -/
 theorem not_inclusionWithoutUpdate : ¬ InclusionWithoutUpdate := by
   intro h
-  obtain ⟨P, hrun, hnc, hsl, hg, hP, hPs, hpj, hc, ht, hyw, hyj, hyw₀, hyj₀, hnr, -, hnot⟩ :=
+  obtain ⟨P, hrun, hnc, hsl, -, hP, hPs, hpj, hc, -, hyw, hyj, -, hyj₀, hnr, -, hnot⟩ :=
     inclusion_update_rejection
-  exact hnot (h sp2 ro2 (fun _ => w0) dg2 Set.univ tr2 1 hrun hnc hsl hg w0 (Set.mem_univ _) 34 P
-    1 hP hPs hpj w0 (Set.mem_univ _) 80 hc ht hyw hyj hyw₀ hyj₀ hnr)
+  exact hnot (h sp2 ro2 (fun _ => w0) dg2 Set.univ tr2 1 hrun hnc hsl w0 (Set.mem_univ _) 34 P
+    1 hP hPs hpj w0 (Set.mem_univ _) 80 hc hyw hyj hyj₀ hnr)
 
 end Consensus.Goldilocks.Witness.Two
 

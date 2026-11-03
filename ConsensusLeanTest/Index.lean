@@ -629,7 +629,6 @@ example := ``Consensus.Goldilocks.Compose.ServedAt
 example := ``Consensus.Goldilocks.Compose.RecordAt
 example := ``Consensus.Goldilocks.Compose.HeadExtendsRecord
 example := ``Consensus.Goldilocks.Compose.Inclusion
-example := ``Consensus.Goldilocks.Compose.ServiceStatements
 example := ``Consensus.Goldilocks.Compose.RunEntry
 example := ``Consensus.Goldilocks.Compose.EarlyOutcome
 example := ``Consensus.Goldilocks.Compose.OutcomeService

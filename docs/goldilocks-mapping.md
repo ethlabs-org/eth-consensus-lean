@@ -466,14 +466,14 @@ satisfiable together with the awake clamp). The regime witness is over an AC tha
 
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `4ea71d05`, §"Available chain, after C1.1"; the premises as
 restated in this repository (claims audit, 2026-11-03). Layout: decomposition §3.1 (the "Run" row). Over the
-Goldilocks run under `Sleepy` and `NoColl`, as A1.6 and A1.7 state; A1.7 also takes `GenRoot`. C1.2 (claims at goldilocks `6703bf05`) is
+Goldilocks run under `Sleepy` and `NoColl`, as A1.6 and A1.7 state (A1.7's `GenRoot` is supplied by the run's `genesis_root_ok`). C1.2 (claims at goldilocks `6703bf05`) is
 stated in `Statements/Healing/Outcome` (milestone Healing, its premises are the healing regime); C1.3 is in
 `Statements/Healing/Recovery`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
 | A1.6 | CLAIMS A1.6 | the update of a slot ran with no restart since; A1.6's condition at a cut (awake, joined, updated for `slot(t) − 2`); the record `𝒜.latest_confirmed` as a block of the frame's tree; **head extends the record**: the head extends the record in the frame, `ac_confirmed` is the record, and across served cuts the record extends | Service | `Consensus.Goldilocks.Compose.UpdatedNoRestart`, `Consensus.Goldilocks.Compose.ServedAt`, `Consensus.Goldilocks.Compose.RecordAt`, `Consensus.Goldilocks.Compose.HeadExtendsRecord` |
-| A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node awake and joined at `t ≥ t_s + 6Δ`, awake and joined at `t_s + 6Δ`, with no restart in `(t_s + 6Δ, t]`, that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`: the claims' "at `t_s + 6Δ` itself, after its tick"; the Lean also admits the cuts of that tick after the update; consensus-lean#77); under `Sleepy`, `NoColl` and `GenRoot`, as A1.7 states | Service | `Consensus.Goldilocks.Compose.Inclusion`, `Consensus.Goldilocks.Compose.ServiceStatements` |
+| A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node awake and joined at `t`, joined at `t_s + 6Δ`, with no restart in `(t_s + 6Δ, t]`, that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`: the claims' "at `t_s + 6Δ` itself, after its tick"; the Lean also admits the cuts of that tick after the update; consensus-lean#77); under `Sleepy` and `NoColl`. **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): no `t ≥ t_s + 6Δ` (the update clause places the cut after the update), no awake at `t_s + 6Δ`, and no separate `GenRoot` (the Goldilocks run's `genesis_root_ok` supplies it); each follows from the update clause (its cut is at `t_s + 6Δ`, so `time_mono` and `awake_of_call`) and the run, so the change is one of form | Service | `Consensus.Goldilocks.Compose.Inclusion` |
 | C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `Prop⁺`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when its previous height is justified), with retained ready inclusion, with `𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when its previous height is justified), its carrier relayed within `Δ` in both branches; an entry whose previous height is not justified is justified by then (stated in `Statements/Healing/Outcome`, next to its proof, since its premises are the healing regime) | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
 
 Modelling choices:
@@ -572,7 +572,7 @@ Modelling choices:
   honest `Σ.F` passes `B`, `B` leaves the frame tree and the frame reading fails. `tr.HonestBlocks H` holds every
   block of an honest node's accepted tree, faulty proposals included, so it contains the voter's `fc_root` (in its
   own `Σ.tree`) and `B`'s chain.
-- **Genesis root** (consensus-lean#73): `HSShared` and H.2 (run) take `genesis.RootOk dg`, as C0.3 and A1.7 do. Without
+- **Genesis root** (consensus-lean#73): `HSShared` and H.2 (run) take `genesis.RootOk dg`, as C0.3 does (A1.7 no longer does). Without
   it an honest proposal whose digest is the genesis root is refused by every FG, so driven-trace clause (b) (H.2 (run)),
   the reset's existence (HR.3, H.3 (a)) and C1.2's window proposal can fail. HR.1, HR.2 and HR.4 conclude nothing about
   the acceptance of honest proposals and do not take it.

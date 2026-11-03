@@ -16,8 +16,8 @@ SA's chain reasoning identifies blocks by root):
   `𝒜.latest_confirmed` when that block is in the frame's tree, so `ac_confirmed` is that block;
   and while both conditions hold, the record only moves to a descendant.
 * **A1.7, inclusion**: an honest proposal `P` of slot `s` by a joined proposer is in the
-  confirmed tip of every honest node awake and joined at `t ≥ t_s + 6Δ` that was awake and
-  joined at `t_s + 6Δ` with no restart since.
+  confirmed tip of every honest node awake and joined at `t` that was joined at `t_s + 6Δ`, has
+  not restarted since and has run the update of slot `s`.
 
 C1.2 (AC outcome service) is in `Statements/Healing/Outcome` (`OutcomeService`), C1.3 (finalizing
 coverage recurs) in `Statements/Healing/Recovery` (`FinalizingCoverage`).
@@ -66,39 +66,32 @@ def HeadExtendsRecord : Prop :=
       ∀ i', i ≤ i' → (∀ k, i ≤ k → k ≤ i' → tr.IsCall y k → ServedAt tr y k) →
         ∀ R', RecordAt tr y i' R' → Anc (tr.HonestBlocks H) R R'
 
-/-- **A1.7, inclusion.** Under `Sleepy`, with a genesis whose root is its digest, an honest
-proposal `P` of slot `s` by a proposer joined at its proposal is in the confirmed tip (inside
-the honest blocks) of every honest node at every cut at a time `t ≥ t_s + 6Δ` where it is awake
-and joined, if it was awake and joined at `t_s + 6Δ`, has not restarted at a cut in
-`(t_s + 6Δ, t]`, and has run the update of slot `s` at a cut before this one with no restart
-since (`UpdatedNoRestart`, as A1.6). The update clause is needed at the boundary `t = t_s + 6Δ`:
-"at `t`" is the state before a cut at `t`, and the node's first cut there is the AC tick that
-runs the update of slot `s` (at `t_{s+1} + 2Δ`), so before it the record can still be older
-than `P` (consensus-lean#77). With the node awake and joined at `t_s + 6Δ` the update is that
-tick, so the clause excludes only the cuts of that tick up to the update. The genesis root is
-needed as in C0.3: an honest proposal whose root is `P.genesisRoot` is refused by every FG, so
-it is in no honest tree (consensus-lean#73). -/
+/-- **A1.7, inclusion.** Under `Sleepy`, an honest proposal `P` of slot `s` by a proposer joined
+at its proposal is in the confirmed tip (inside the honest blocks) of every honest node at every
+cut at a time `t` where it is awake and joined, if it was joined at `t_s + 6Δ`, has not
+restarted at a cut in `(t_s + 6Δ, t]`, and has run the update of slot `s` at a cut before this
+one with no restart since (`UpdatedNoRestart`, as A1.6). The update clause is needed at the
+boundary `t = t_s + 6Δ`: "at `t`" is the state before a cut at `t`, and the node's first cut
+there is the AC tick that runs the update of slot `s` (at `t_{s+1} + 2Δ`), so before it the
+record can still be older than `P` (consensus-lean#77); it also places `t` at or after that
+update. (The claims also assume `t ≥ t_s + 6Δ`, awake at `t_s + 6Δ` and the genesis root; none is
+needed: the update's call is at `t_s + 6Δ`, so the node is awake there, and the Goldilocks run
+supplies the genesis root.) -/
 def Inclusion : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
     GoldilocksRun proposer dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
-    (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
     ∀ p ∈ H, ∀ k (P : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat),
       tr.ProposesAt p k P → P.slot = s → SA.joined sp (tr.state p k).ac (tr.time k) →
-      ∀ y ∈ H, ∀ i, tr.IsCall y i → sp.ts s + 6 * sp.Δ ≤ tr.time i →
+      ∀ y ∈ H, ∀ i, tr.IsCall y i →
         tr.awake y (tr.time i) → tr.JoinedAt y (tr.time i) →
-        tr.awake y (sp.ts s + 6 * sp.Δ) → tr.JoinedAt y (sp.ts s + 6 * sp.Δ) →
+        tr.JoinedAt y (sp.ts s + 6 * sp.Δ) →
         (∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' → tr.time k' ≤ tr.time i →
           False) →
         UpdatedNoRestart tr y i s →
         Anc (tr.HonestBlocks H) P (tr.confirmedAt y i)
-
-/-- The statements of milestone Service (so far). -/
-structure ServiceStatements : Prop where
-  headExtendsRecord : HeadExtendsRecord
-  inclusion : Inclusion
 
 end Consensus.Goldilocks.Compose
 

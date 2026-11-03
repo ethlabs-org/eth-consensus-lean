@@ -143,8 +143,8 @@ private theorem record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : No
 
 /-- **A1.7, inclusion.** -/
 theorem inclusion_sleepy : Inclusion := by
-  intro sp ro proposer dg H tr ΔF hrun hnc hsl hg p hp k P s hP hPs hpj y hy i hc ht hyw hyj
-    hyw₀ hyj₀ hnr hu
+  intro sp ro proposer dg H tr ΔF hrun hnc hsl p hp k P s hP hPs hpj y hy i hc hyw hyj hyj₀ hnr
+    hu
   have hinv := sleepy_invariant hrun hnc hsl
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer
