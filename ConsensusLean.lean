@@ -224,6 +224,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
