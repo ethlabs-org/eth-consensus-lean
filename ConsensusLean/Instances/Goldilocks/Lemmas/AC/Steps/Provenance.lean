@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 
 public section
@@ -22,62 +23,6 @@ variable {FGP : Type} {sp : SAParams}
 
 /-! ## Locks that sit below others -/
 
-/-- The block of `l'` is an ancestor (inside `U`) of the block of `l`, or `l' = l`. -/
-private def SitsBelow (U : Set (Blk sp.n FGP)) (l' l : Lock) : Prop :=
-  l' = l ∨ ∃ L₁ ∈ U, L₁.root = l'.block ∧ ∃ L₂ ∈ U, L₂.root = l.block ∧ Anc U L₁ L₂
-
-/-- The block of `l` is in `U` and an ancestor of `B` there. -/
-private def Below (U : Set (Blk sp.n FGP)) (l : Lock) (B : Blk sp.n FGP) : Prop :=
-  ∃ L ∈ U, L.root = l.block ∧ Anc U L B
-
-/-- Every lock of `L'` sits below a lock of `L` with its slot and fast bit, or below a block `B`
-with `New l'.slot l'.fast B`. -/
-private def FromP (U : Set (Blk sp.n FGP)) (L L' : Set Lock)
-    (New : Nat → Bool → Blk sp.n FGP → Prop) : Prop :=
-  ∀ l' ∈ L', (∃ l ∈ L, l.fast = l'.fast ∧ l'.slot = l.slot ∧ SitsBelow U l' l) ∨
-    ∃ B, New l'.slot l'.fast B ∧ Below U l' B
-
-private theorem FromP.of_eq {U : Set (Blk sp.n FGP)} {L L' : Set Lock}
-    {New : Nat → Bool → Blk sp.n FGP → Prop} (h : L' = L) : FromP U L L' New := by
-  subst h
-  exact fun l hl => Or.inl ⟨l, hl, rfl, rfl, Or.inl rfl⟩
-
-private theorem FromP.mono {U : Set (Blk sp.n FGP)} {L L' : Set Lock}
-    {New New' : Nat → Bool → Blk sp.n FGP → Prop} (h : FromP U L L' New)
-    (hN : ∀ s f B, New s f B → New' s f B) : FromP U L L' New' := fun l hl =>
-  (h l hl).imp_right fun ⟨B, h1, h2⟩ => ⟨B, hN _ _ _ h1, h2⟩
-
-private theorem FromP.trans {U : Set (Blk sp.n FGP)} (hU : Coherent U) {L₁ L₂ L₃ : Set Lock}
-    {New : Nat → Bool → Blk sp.n FGP → Prop} (h₁ : FromP U L₁ L₂ New) (h₂ : FromP U L₂ L₃ New) :
-    FromP U L₁ L₃ New := by
-  intro l₃ hl₃
-  rcases h₂ l₃ hl₃ with ⟨l₂, hl₂, hf₂, hs₂, hb₂⟩ | ⟨B, hN, hB⟩
-  · rcases h₁ l₂ hl₂ with ⟨l₁, hl₁, hf₁, hs₁, hb₁⟩ | ⟨B, hN, L, hL, hLr, hLB⟩
-    · refine Or.inl ⟨l₁, hl₁, hf₁.trans hf₂, hs₂.trans hs₁, ?_⟩
-      rcases hb₂ with rfl | ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
-      · exact hb₁
-      rcases hb₁ with rfl | ⟨C₁, hC₁, hC₁r, C₂, hC₂, hC₂r, hC⟩
-      · exact Or.inr ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
-      have : A₂ = C₁ := hU.1 hA₂ hC₁ (hA₂r.trans hC₁r.symm)
-      subst this
-      exact Or.inr ⟨A₁, hA₁, hA₁r, C₂, hC₂, hC₂r, hA.trans hC⟩
-    · refine Or.inr ⟨B, hs₂ ▸ hf₂ ▸ hN, ?_⟩
-      rcases hb₂ with rfl | ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
-      · exact ⟨L, hL, hLr, hLB⟩
-      have : A₂ = L := hU.1 hA₂ hL (hA₂r.trans hLr.symm)
-      subst this
-      exact ⟨A₁, hA₁, hA₁r, hA.trans hLB⟩
-  · exact Or.inr ⟨B, hN, hB⟩
-
-/-- Locks that move back in a frame inside `U` sit below the locks they come from. -/
-private theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
-    (hΦ : Φ.tree ⊆ U) {L L' : Set Lock} {New : Nat → Bool → Blk sp.n FGP → Prop}
-    (h : MovesBack sp Φ L L') : FromP U L L' New := by
-  intro l' hl'
-  obtain ⟨l, hl, hs, hfa, -, B, hB, hBr, B', hB', hB'r, hA⟩ := h l' hl'
-  exact Or.inl ⟨l, hl, hfa.symm, hs, Or.inr ⟨B', hΦ hB', hB'r, B, hΦ hB, hBr,
-    hA.mono hΦ⟩⟩
-
 /-- `add_locks` with new locks: the new locks are on the blocks of `N`'s entries. -/
 private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {L : Set Lock} {t : Time} {s : Nat}
@@ -87,19 +32,20 @@ private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ
       B.root = r ∧ New s f (Φ.viableAncestor B)) :
     FromP U L (addLocks sp L₀ Φ t s N) New := by
   subst hL
+  rw [fromP_iff]
   intro l' hl'
   obtain ⟨l, hl, B, hB, hBr, -, rfl⟩ := hl'
   rcases hl with hl | ⟨p, hp, rfl⟩
-  · exact Or.inl ⟨l, hl, rfl, rfl, Or.inr ⟨Φ.viableAncestor B,
+  · exact Or.inl ⟨l, hl, rfl, rfl, sitsBelow_iff.2 (Or.inr ⟨Φ.viableAncestor B,
       hΦU (viableAncestor_anc hΦ hB).1, rfl, B, hΦU hB, hBr,
-      Goldilocks.Anc.mono hΦU (viableAncestor_anc hΦ hB).2⟩⟩
+      Goldilocks.Anc.mono hΦU (viableAncestor_anc hΦ hB).2⟩)⟩
   · obtain ⟨r, b, e⟩ := p
     simp only at hBr
     obtain ⟨D, hD, hDr, hND⟩ := hN r b e hp
     have : B = D := hU.1 (hΦU hB) (hΦU hD) (hBr.trans hDr.symm)
     subst this
-    exact Or.inr ⟨Φ.viableAncestor B, hND, Φ.viableAncestor B,
-      hΦU (viableAncestor_anc hΦ hB).1, rfl, Relation.ReflTransGen.refl⟩
+    exact Or.inr ⟨Φ.viableAncestor B, hND, below_iff.2 ⟨Φ.viableAncestor B,
+      hΦU (viableAncestor_anc hΦ hB).1, rfl, Relation.ReflTransGen.refl⟩⟩
 
 /-! ## What each SA function does to the locks -/
 
@@ -260,24 +206,6 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl
 
-private theorem FromP.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
-    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop} :
-    FromP U A.locks (acProposal sp A Φ t).1.locks New := by
-  unfold acProposal
-  dsimp only
-  split_ifs
-  · exact FromP.of_movesBack hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 _ _)
-  · exact FromP.of_eq rfl
-
-private theorem toFG_locks (A : SAState sp.n) (t : Time) :
-    (acToFG sp A Φ t).1.locks = A.locks := by
-  unfold acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
-
 /-! ## Over an SA trace -/
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
@@ -413,21 +341,14 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
           B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc B C ∧
           ∀ m : Int, (s : Int) - sp.k < m → m < s →
             ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧ ℓ.frame.Anc B S)) := by
+  rw [fromP_iff]
   intro l hl
-  rcases call_candidate_fromP hr hx hc l hl with h | ⟨A, ⟨D, hD, rfl, h⟩, L, hL, hLr, hLA⟩
+  rcases fromP_iff.1 (call_candidate_fromP hr hx hc) l hl with h | ⟨A, ⟨D, hD, rfl, h⟩, hA⟩
   · exact Or.inl h
-  · exact Or.inr ⟨D, ⟨h.1, h.2.1, fun hf => (h.2.2 hf).2⟩, L, hL, hLr,
-      hLA.trans ((viableAncestor_anc (frameIn_of_callAt hr hx hc).1 hD).2.mono
-        (frameIn_of_callAt hr hx hc).2)⟩
-
-private theorem Below.of_sitsBelow (hU : Coherent U) {l' l : Lock} {B : Blk sp.n FGP}
-    (h : SitsBelow U l' l) (hB : Below U l B) : Below U l' B := by
-  rcases h with rfl | ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
-  · exact hB
-  obtain ⟨L, hL, hLr, hLB⟩ := hB
-  have : A₂ = L := hU.1 hA₂ hL (hA₂r.trans hLr.symm)
-  subst this
-  exact ⟨A₁, hA₁, hA₁r, hA.trans hLB⟩
+  obtain ⟨L, hL, hLr, hLA⟩ := below_iff.1 hA
+  exact Or.inr ⟨D, ⟨h.1, h.2.1, fun hf => (h.2.2 hf).2⟩, below_iff.2 ⟨L, hL, hLr,
+    hLA.trans ((viableAncestor_anc (frameIn_of_callAt hr hx hc).1 hD).2.mono
+      (frameIn_of_callAt hr hx hc).2)⟩⟩
 
 /-- Same-write provenance, retaining the selected raw block and the stored candidate
 together with its actual fast or slow selection. A slow lock's block is the slow selection
@@ -460,13 +381,13 @@ theorem lock_selection_candidate_provenance
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      rcases call_candidate_fromP hr hx ⟨hnode.1, hℓ⟩ l hl with
+      rcases fromP_iff.1 (call_candidate_fromP hr hx ⟨hnode.1, hℓ⟩) l hl with
         ⟨l₀, hl₀, hf, hs, hb⟩ | ⟨A, ⟨D, hD, rfl, hfast, -, hslow⟩, hA⟩
       · obtain ⟨j, hj, ℓ', D, hc, hD, ho, hA⟩ := ih l₀ hl₀
         refine ⟨j, hj.trans (Nat.lt_succ_self i), ℓ', D, hc, hD, ?_,
-          Below.of_sitsBelow hr.coherent hb hA⟩
+          below_iff.1 (Below.of_sitsBelow hr.coherent hb (below_iff.2 hA))⟩
         simpa only [hf, ← hs] using ho
-      · refine ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, ?_, hA⟩
+      · refine ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, ?_, below_iff.1 hA⟩
         cases hf : l.fast with
         | false => exact Or.inr ⟨rfl, (hslow hf).1⟩
         | true => exact Or.inl ⟨rfl, hfast hf⟩
@@ -493,12 +414,12 @@ theorem lock_candidate_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      rcases call_candidate_fromP hr hx ⟨hnode.1, hℓ⟩ l hl with
+      rcases fromP_iff.1 (call_candidate_fromP hr hx ⟨hnode.1, hℓ⟩) l hl with
         ⟨l₀, hl₀, -, hs, hb⟩ | ⟨A, ⟨D, hD, rfl, -, ho, -⟩, hA⟩
       · obtain ⟨j, hj, ℓ', D, hc, hD, ho, hA⟩ := ih l₀ hl₀
         exact ⟨j, hj.trans (Nat.lt_succ_self i), ℓ', D, hc, hD, hs ▸ ho,
-          Below.of_sitsBelow hr.coherent hb hA⟩
-      · exact ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, ho, hA⟩
+          below_iff.1 (Below.of_sitsBelow hr.coherent hb (below_iff.2 hA))⟩
+      · exact ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, ho, below_iff.1 hA⟩
     · obtain ⟨j, hj, h⟩ := ih l hl
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
 
@@ -542,11 +463,13 @@ private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      rcases call_fromP hr hx ⟨hnode.1, hℓ⟩ l hl with ⟨l₀, hl₀, hf₀, hs, hb⟩ | ⟨B, h, hB⟩
+      rcases fromP_iff.1 (call_fromP hr hx ⟨hnode.1, hℓ⟩) l hl with
+        ⟨l₀, hl₀, hf₀, hs, hb⟩ | ⟨B, h, hB⟩
       · obtain ⟨j, hj, B, h, hB⟩ := ih l₀ hl₀
-        refine ⟨j, hj.trans (Nat.lt_succ_self i), B, ?_, Below.of_sitsBelow hr.coherent hb hB⟩
+        refine ⟨j, hj.trans (Nat.lt_succ_self i), B, ?_,
+          below_iff.1 (Below.of_sitsBelow hr.coherent hb (below_iff.2 hB))⟩
         rwa [hs, ← hf₀]
-      · exact ⟨i, Nat.lt_succ_self i, B, h, hB⟩
+      · exact ⟨i, Nat.lt_succ_self i, B, h, below_iff.1 hB⟩
     · obtain ⟨j, hj, h⟩ := ih l hl
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
 
@@ -560,13 +483,13 @@ private theorem fromP_between (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
   | base => exact FromP.of_eq rfl
   | succ b hab ih =>
     refine FromP.trans hr.coherent (ih.mono fun s f B ⟨j, h1, h2, h⟩ =>
-      ⟨j, h1, h2.trans (Nat.lt_succ_self b), h⟩) fun l hl => ?_
+      ⟨j, h1, h2.trans (Nat.lt_succ_self b), h⟩) (fromP_iff.2 fun l hl => ?_)
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      exact (call_fromP hr hx ⟨hnode.1, hℓ⟩ l hl).imp_right fun ⟨B, h, hB⟩ =>
+      exact (fromP_iff.1 (call_fromP hr hx ⟨hnode.1, hℓ⟩) l hl).imp_right fun ⟨B, h, hB⟩ =>
         ⟨B, ⟨b, hab, Nat.lt_succ_self b, h.2.1⟩, hB⟩
-    · exact Or.inl ⟨l, hl, rfl, rfl, Or.inl rfl⟩
+    · exact Or.inl ⟨l, hl, rfl, rfl, sitsBelow_iff.2 (Or.inl rfl)⟩
 
 /-- **Lock provenance from a cut.** Every lock that an honest node holds at cut `b` sits below a
 lock of its slot that it held at cut `a ≤ b`, or below the block of a lock of its slot that the
@@ -580,9 +503,10 @@ theorem lock_provenance_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
         ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
         ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
   intro l hl
-  rcases fromP_between hr hx hab l hl with ⟨l', hl', -, hs, hb⟩ | ⟨B, ⟨j, h1, h2, h⟩, hB⟩
-  · exact Or.inl ⟨l', hl', hs.symm, hb.imp Eq.symm id⟩
-  · exact Or.inr ⟨j, h1, h2, B, h, hB⟩
+  rcases fromP_iff.1 (fromP_between hr hx hab) l hl with
+    ⟨l', hl', -, hs, hb⟩ | ⟨B, ⟨j, h1, h2, h⟩, hB⟩
+  · exact Or.inl ⟨l', hl', hs.symm, (sitsBelow_iff.1 hb).imp Eq.symm id⟩
+  · exact Or.inr ⟨j, h1, h2, B, h, below_iff.1 hB⟩
 
 /-- **Fast-lock provenance.** Every fast lock that an honest node holds before cut `i` sits below
 the block of a fast lock of its slot that the node wrote at an earlier cut. -/

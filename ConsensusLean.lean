@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv

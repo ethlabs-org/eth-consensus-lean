@@ -3241,7 +3241,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance.0.Consensus.Goldilocks.SA.FromP.of_addLocks",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:78",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:25",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -3259,7 +3259,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance.0.Consensus.Goldilocks.SA.call_candidate_fromP",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Provenance.lean:293",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/AC/Steps/Provenance.lean:221",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -3583,7 +3583,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock.0.Consensus.Goldilocks.SA.FromP.of_updateConfirmation",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:139",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:88",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -3601,7 +3601,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock.0.Consensus.Goldilocks.SA.call_fromP",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:209",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:140",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -3691,7 +3691,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance.0.Consensus.Goldilocks.SA.FromP.of_optimistic",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:96",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/DrainProvenance.lean:45",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
