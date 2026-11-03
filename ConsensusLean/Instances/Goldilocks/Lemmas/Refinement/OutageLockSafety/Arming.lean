@@ -101,21 +101,53 @@ noncomputable def OutageQuery.restoredLabel (Q : OutageQuery S A V) : Nat := by
 label in `(j₀, j₀ + k]`, the budget and the no-sleep window. -/
 private theorem query_numbers (Q : OutageQuery S A V) :
     let j₀ := Compose.coverLabel Q.params Q.start
-    2 ≤ Q.params.Δ ∧ Q.params.ts j₀ + 2 * Q.params.Δ ≤ Q.start ∧
+    Q.params.ts j₀ + 2 * Q.params.Δ ≤ Q.start ∧
       Q.start < Q.params.ts (j₀ + 1 : Nat) + 2 * Q.params.Δ ∧
-      Q.stop - Q.start ≤ (4 * (Q.params.k : Time) - 6) * (Q.params.Δ - 1) ∧
+      Q.stop - Q.start ≤ (4 * (Q.params.k : Time) - 5) * Q.params.Δ ∧
       Q.start ≤ Q.stop ∧ Q.stop ≤ Q.params.ts (j₀ + Q.params.k : Nat) + Q.params.Δ ∧
       Q.params.ts (j₀ : Nat) + Q.params.Δ < Q.stop ∧
       (∀ t, t ≤ Q.params.ts (j₀ + Q.params.k : Nat) + Q.params.Δ → t ≤ Q.run.2.horizon →
         t ≤ (Sys (family S) V).outageEnd (K S A) Q.stop Q.run) := by
-  sorry
+  intro j₀
+  obtain ⟨⟨hT, -, hb01, hbud⟩, -⟩ := Q.outage
+  have hlag := outage_node_lag S A V Q
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
+  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
+    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
+    have hΔ := Q.params.toParams.hΔ
+    nlinarith)
+  have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by omega
+  have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
+  change Q.stop ≤ Q.start + ((4 * S.k - 6 : Nat) : Int) * Q.run.1.Δ at hbud
+  have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.Δ_pos)
+  have hC : (8 * (S.k : Int) + 16) ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) := by
+    exact_mod_cast le_max_right 38 (8 * S.k + 16)
+  change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start at hg₁
+  change Q.start < 4 * Q.run.1.Δ * (j₀ : Int) + 6 * Q.run.1.Δ at hg₂
+  change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start ∧
+    Q.start < 4 * Q.run.1.Δ * ((j₀ + 1 : Nat) : Int) + 2 * Q.run.1.Δ ∧
+    Q.stop - Q.start ≤ (4 * (S.k : Time) - 5) * Q.run.1.Δ ∧ Q.start ≤ Q.stop ∧
+    Q.stop ≤ 4 * Q.run.1.Δ * ((j₀ + S.k : Nat) : Int) + Q.run.1.Δ ∧
+    4 * Q.run.1.Δ * ((j₀ : Nat) : Int) + Q.run.1.Δ < Q.stop ∧
+    ∀ t, t ≤ 4 * Q.run.1.Δ * ((j₀ + S.k : Nat) : Int) + Q.run.1.Δ →
+      t ≤ Q.run.2.horizon →
+      t ≤ min (Q.stop + ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ) Q.run.2.horizon
+  push_cast
+  refine ⟨hg₁, by linarith, by linarith, hb01, by nlinarith, by linarith,
+    fun t ht hth => le_min ?_ hth⟩
+  have h1 : (8 * (S.k : Int) + 16) * Q.run.1.Δ ≤ max 38 (8 * (S.k : Int) + 16) * Q.run.1.Δ :=
+    mul_le_mul_of_nonneg_right (le_max_right _ _) (by linarith)
+  have h3 : 4 * Q.run.1.Δ * ((j₀ : Int) + S.k) + Q.run.1.Δ ≤
+      Q.stop + (8 * (S.k : Int) + 16) * Q.run.1.Δ := by nlinarith
+  linarith
 
 /-- The restored label is the least `r` with `b₁ ≤ t_r + Δ`. -/
 theorem restoredLabel_spec (Q : OutageQuery S A V) :
     Q.stop ≤ Q.params.ts Q.restoredLabel + Q.params.Δ ∧
       ∀ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ → Q.restoredLabel ≤ s := by
   classical
-  obtain ⟨-, -, -, -, -, hK, -, -⟩ := query_numbers Q
+  obtain ⟨-, -, -, -, hK, -, -⟩ := query_numbers Q
   have h : ∃ s : Nat, Q.stop ≤ Q.params.ts s + Q.params.Δ := ⟨_, hK⟩
   unfold OutageQuery.restoredLabel
   simp only [h, ↓reduceDIte]
@@ -204,8 +236,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
     W := Q.lateKeys
     hrun := hrun
     hnc := hnc
-    hΔ := hnum.1
-    hj₀ := ⟨hnum.2.1, hnum.2.2.1⟩
+    hj₀ := ⟨hnum.1, hnum.2.1⟩
     hr := hr
     hσ := by
       split_ifs with hg
@@ -217,14 +248,14 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
         · exact absurd (ho ▸ htg) hg
         · exact hσk
     hrk := by
-      obtain ⟨-, -, -, -, -, hK, hjs, -⟩ := hnum
+      obtain ⟨-, -, -, -, hK, hjs, -⟩ := hnum
       refine ⟨?_, hr.2 _ hK⟩
       by_contra h
       have := (SA.ts_le_iff Q.params).2
         (show (Q.restoredLabel : Int) ≤ (Compose.coverLabel Q.params Q.start : Nat) by omega)
       linarith [hr.1]
-    hgap := hnum.2.2.2.1
-    hb₀ := hnum.2.2.2.2.1
+    hgap := hnum.2.2.1
+    hb₀ := hnum.2.2.2.1
     hP := by
       refine ⟨hP.2.2, ?_⟩
       split_ifs with hg
@@ -283,7 +314,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
       simp only [SA.SAParams.ts] at h ⊢
       have : (0 : Time) ≤ (Q.params.k : Int) - 1 := by linarith
       nlinarith
-    hz := fun t ht ⟨_, _, _, hc, hle⟩ => hnum.2.2.2.2.2.2.2 t ht (hle.trans (hcallh hc))
+    hz := fun t ht ⟨_, _, _, hc, hle⟩ => hnum.2.2.2.2.2.2 t ht (hle.trans (hcallh hc))
     lockPrev := fun x hx hg ⟨_, _, _, hc, hle⟩ => by
       obtain ⟨c, ℓ, hu, hb⟩ := ar.lockPrev x hx hg (hle.trans (hcallh hc))
       exact ⟨c, ℓ, hu, Compose.prevBase_iff.2 hb⟩

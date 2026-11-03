@@ -35,12 +35,23 @@ end OutageQuery
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/
 theorem outage_duration_supply (Q : OutageQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  sorry
+  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+    exact_mod_cast accepted_catchUp_ge_sleepy S A
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  simp only [OutageQuery.duration, System.cDur, Params.standard, accepted_coefficients_catchUp]
+  change 18 * Q.run.1.Δ ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
+  nlinarith
 
 /-- (A1) The engine lag `8k + 12` is the node lag `(4k+6)Δ`. -/
 theorem outage_node_lag (Q : OutageQuery S A V) :
     Q.T + (4 * Q.params.k + 6) * Q.params.Δ ≤ Q.start := by
-  sorry
+  obtain ⟨⟨-, hlag, -, -⟩, -⟩ := Q.outage
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hk : (0 : Time) ≤ S.k := by positivity
+  change Q.T + ((8 * S.k + 12 : Nat) : Int) * Q.run.1.Δ ≤ Q.start at hlag
+  change Q.T + (4 * (S.k : Int) + 6) * Q.run.1.Δ ≤ Q.start
+  push_cast at hlag
+  nlinarith
 
 /-- (A4)/(A5) The no-sleep window `[a, z]` starts by `t_{j₀−k}` (from `0`) and ends at or after
 every update of a label `≤ j₀` within the horizon. -/
@@ -52,7 +63,41 @@ theorem outage_window_cover (Q : OutageQuery S A V) :
           Q.run.2.horizon →
         Q.params.ts (Compose.coverLabel Q.params Q.start) + d ≤
           (Sys (family S) V).outageEnd (K S A) Q.stop Q.run := by
-  sorry
+  obtain ⟨⟨hT, -, hb01, -⟩, -⟩ := Q.outage
+  have hlag := outage_node_lag S A V Q
+  have hΔ := Q.params.toParams.hΔ
+  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hk : (0 : Time) ≤ S.k := by positivity
+  have hkj := (Compose.armed_label_lt (σ := 0) hT hlag (by simp [SA.SAParams.ts]; exact hT)).2
+  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
+    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
+    nlinarith)
+  have hhor : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
+  have hC : (8 * (S.k : Int) + 16) ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) := by
+    exact_mod_cast le_max_right 38 (8 * S.k + 16)
+  have hCm : (0 : Time) ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) := by positivity
+  set j₀ := Compose.coverLabel Q.params Q.start
+  have hkj' : ((S.k : Nat) : Int) < j₀ := by exact_mod_cast hkj
+  change 0 ≤ min (max 0 (Q.start - ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ))
+      Q.run.2.horizon ∧
+    min (max 0 (Q.start - ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ)) Q.run.2.horizon ≤
+      4 * Q.run.1.Δ * ((j₀ : Int) - S.k) ∧
+    ∀ d ≤ 6 * Q.run.1.Δ, 4 * Q.run.1.Δ * (j₀ : Int) + d ≤ Q.run.2.horizon →
+      4 * Q.run.1.Δ * (j₀ : Int) + d ≤
+        min (Q.stop + ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ) Q.run.2.horizon
+  change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start at hg₁
+  change Q.start < 4 * Q.run.1.Δ * (j₀ : Int) + 6 * Q.run.1.Δ at hg₂
+  refine ⟨le_min (le_max_left _ _) hhor, (min_le_left _ _).trans (max_le ?_ ?_),
+    fun d hd6 hdh => le_min ?_ hdh⟩
+  · have : (0 : Time) ≤ (j₀ : Int) - S.k := by linarith
+    positivity
+  · have h1 : (8 * (S.k : Int) + 16) * Q.run.1.Δ ≤
+        ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ :=
+      mul_le_mul_of_nonneg_right hC (by linarith)
+    nlinarith
+  · have h1 : 8 * Q.run.1.Δ ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ :=
+      mul_le_mul_of_nonneg_right (by linarith) (by linarith)
+    linarith
 
 /-- **Arming of a ready source** (§10): the read tip `P` at the end-of-`T` cut, an armed origin
 `C ⪰ P`, S-vote, and O1 at the labels `j₀ − 1` and `j₀ = coverLabel b₀` for the holders. -/

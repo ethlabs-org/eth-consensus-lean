@@ -86,7 +86,7 @@ theorem OutageVoteInv.locks_compatible {n : Nat} (hvi : OutageVoteInv D n)
   cases hf : l.fast
   · -- a slow lock: an unpolluted label of its window
     obtain ⟨L', hL'U, hL'r, hcomp⟩ := slow_lock_compatible D.hrun D.hnc hy hl hf (B := D.P) (by
-      obtain ⟨m, h1, h2, h3⟩ := exists_unpolluted_label sp D.hΔ D.hgap l.slot
+      obtain ⟨m, h1, h2, h3⟩ := exists_unpolluted_label sp D.hgap l.slot
       by_cases hm0 : 0 ≤ m
       · refine ⟨m, h1, h2, hm0, fun c C CV hc hR => hres y hy c hc m.toNat C CV hR ?_⟩
         have hmn : ((m.toNat : Nat) : Int) = m := Int.toNat_of_nonneg hm0

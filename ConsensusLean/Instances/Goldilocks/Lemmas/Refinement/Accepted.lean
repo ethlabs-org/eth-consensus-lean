@@ -328,7 +328,22 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
     (hslack : Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline)
     (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
       W.Extends (W.block 0) F) : W.CacheCoverage := by
-  sorry
+  apply final_cache_acceptance_of_publication_tail S A V Q W ?_ coverage
+  have hd := Q.run.1.Δ_pos
+  have hq : max Q.gst 0 ≤ Q.query := by
+    exact (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hd.le)).trans Q.mature
+  have hs : max Q.gst 0 ≤ Q.trace.time (W.cut 3) :=
+    (hq.trans W.fresh.le).trans
+      (simTrace_time_mono S Q.run.2 Q.hn Q.valid (W.ordered.monotone (by decide)))
+  constructor
+  · simpa only [max_eq_left ((le_max_left _ _).trans hs),
+      max_eq_left ((le_max_right _ _).trans hs)] using hslack
+  · have hc : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
+      rw [acceptanceContract_params_eq]
+      change (1 : Time) ≤ ((accepted_coefficients S A).catchUp : Nat)
+      exact_mod_cast (accepted_coefficients S A).catchUp.pos
+    change Q.run.1.Δ ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
+    nlinarith
 
 /-- Conditional payload/read projection of the finite supplier package. Uses the engine's
 existing catch-up duration, raw own-block release, and final cache membership at endCut.

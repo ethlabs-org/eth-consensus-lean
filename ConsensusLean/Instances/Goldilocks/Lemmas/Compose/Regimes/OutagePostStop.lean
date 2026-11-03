@@ -18,10 +18,10 @@ namespace Consensus.Goldilocks.Compose
 open SA (SAParams ReplayOrder Payload)
 
 /-- Among a slow lock's consecutive labels, at least one is outside the outage pollution
-window, under the engine gap budget. -/
+window, under the gap budget `(4k − 5)Δ`: the polluted slot starts lie in the open interval
+`(start − 2Δ, stop − Δ)`, of length at most `(4k − 4)Δ`, so at most `k − 1` of them. -/
 theorem exists_unpolluted_label (sp : SA.SAParams) {start stop : Time}
-    (hΔ : 2 ≤ sp.Δ)
-    (hgap : stop - start ≤ (4 * (sp.k : Time) - 6) * (sp.Δ - 1)) (s : Int) :
+    (hgap : stop - start ≤ (4 * (sp.k : Time) - 5) * sp.Δ) (s : Int) :
     ∃ m : Int, s - (sp.k : Int) < m ∧ m ≤ s ∧
       (sp.ts m + 2 * sp.Δ ≤ start ∨ stop ≤ sp.ts m + sp.Δ) := by
   have hk : (2 : Int) ≤ sp.k := by exact_mod_cast sp.two_le_k

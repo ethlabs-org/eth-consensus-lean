@@ -34,7 +34,6 @@ arming use them:
   `a + Δ`, the bound the abstract run interface `GoldilocksRun` gives (the first call after
   waking, at the first public time from `a`; `restart_le_of_awake`), so `ha` is
   `a + Δ ≤ t_{j₀}` (the simulated trace restarts at the wake time itself);
-* `hΔ : 2 ≤ Δ` (node `Δ = Δe + 1`, `Δe ≥ 1`), for `exists_unpolluted_label`;
 * `lockPrev` and `lockCover` carry the antecedents of the landed `OutageArming`: `P` is not
   genesis, and the gate is reached by an honest call (the horizon bound);
 * `protPrev` and `protCover` take the bases `PrevBase` and `CoverBase` as antecedents (no
@@ -130,12 +129,11 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   W : Set (Fin sp.n)
   hrun : GoldilocksRun proposer dg H tr
   hnc : NoCollRun dg tr
-  hΔ : 2 ≤ sp.Δ
   hj₀ : sp.ts j₀ + 2 * sp.Δ ≤ b₀ ∧ b₀ < sp.ts (j₀ + 1 : Nat) + 2 * sp.Δ
   hr : b₁ ≤ sp.ts r + sp.Δ ∧ ∀ s : Nat, b₁ ≤ sp.ts s + sp.Δ → r ≤ s
   hσ : σ + sp.k < j₀
   hrk : j₀ + 1 ≤ r ∧ r ≤ j₀ + sp.k
-  hgap : b₁ - b₀ ≤ (4 * (sp.k : Time) - 6) * (sp.Δ - 1)
+  hgap : b₁ - b₀ ≤ (4 * (sp.k : Time) - 5) * sp.Δ
   hb₀ : b₀ ≤ b₁
   /-- `P` is an honest block: genesis, or an origin within `b₀` of label `σ`. -/
   hP : P ∈ tr.HonestBlocks H ∧ (P.root = sp.genesisRoot ∨ OriginWithin tr H P σ b₀)
