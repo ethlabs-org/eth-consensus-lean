@@ -194,8 +194,8 @@ end Trace
 /-- A run's communication, with opaque messages `M`: what each node sent and
 received at each time, the transactions handed to it at each time (own
 submissions and network relay; the inbox is cumulative across restarts), and
-the message class: `row m` marks the row messages, delivered within `ΔF`
-instead of `Δ`. In the model the class is the protocol's (`Model.Run.log`,
+the message class: `row m` marks the row messages, delivered strictly before
+`ΔF` instead of `Δ`. In the model the class is the protocol's (`Model.Run.log`,
 `Model.tagLog`), never chosen per run. The network conditions on it are in
 `Network.lean`. -/
 structure CommLog (V M : Type) where

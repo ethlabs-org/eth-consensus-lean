@@ -23,7 +23,12 @@ where it is recorded; "Francesco" marks the owner's decisions.
   superseding the #107 `Δ_p = Δ_e + 1` (2026-10-31). `Realizable` and `RealizableActive` quantify
   over `Δ > 1` and `ΔF > 1` ("just state Delta > 1"): at `Δ = 1` half-open delivery is same-time
   delivery, which no protocol-agnostic eager log meets. Behaviour still covers every `Δ ≥ 1`.
-  Phase 1 keeps every contract coefficient (they over-cover); tightening is phase 2.
+  Direction: `Delivers` at `dl − 1` implies it at `dl`, so `PSync`, `SyncUntil` and `OutageNet`
+  become strictly stronger premises, and with them `Sleepy`, `Healthy`, `Outage`, the prefix
+  lemmas and the Baseline healed prefix; every Behaviour row, and so `Good`, `AcceptedGood` and the
+  Accepted endpoint, is weaker at each fixed `Δ` (it covers the runs that deliver by `Δ − 1`), the
+  paper's reading. Phase 1 keeps every contract coefficient (they over-cover); tightening is
+  phase 2.
 - 2026-11-02, Francesco, lead-approved design (two-bound network, revision 3): **two delay
   bounds**. `Env` and `Public` carry the message bound `Δ` and the row bound `ΔF` (both positive,
   neither bounds the other). The log carries the protocol's message class (`CommLog.row`, filled

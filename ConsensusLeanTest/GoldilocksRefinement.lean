@@ -208,7 +208,7 @@ theorem protocol_delay_grid (S : Setup) :
   exact ⟨rfl, rfl, rfl⟩
 
 /-- Half-open engine delivery (held by `base + Δ − 1`) is strict protocol delivery
-(`< base + Δ_p`) at `Δ_p = Δ_e`, including the endpoint. -/
+(`< base + Δ_p`) at `Δ_p = Δ_e`. -/
 theorem protocol_delivery_endpoint (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
     (base delivered : Time) (h : delivered ≤ base + pub.Δ - 1) :
     delivered < base + (S.params pub hn).Δ := by
@@ -222,8 +222,8 @@ theorem protocol_delivery_bound_not_strict (S : Setup) (pub : Model.Public) (hn 
   change ¬ base + pub.Δ < base + pub.Δ
   exact lt_irrefl _
 
-/-- Old k=2 coefficients fail independently: Δe=1 gives insufficient lag;
-Δe=8, Δp=9, b₀=89 has phase 35, so the old duration 24 violates lifetime 54. -/
+/-- Old k=2 coefficients fail independently (recorded under the former `Δp = Δe + 1`): Δe=1 gives
+insufficient lag; Δe=8, Δp=9, b₀=89 has phase 35, so the old duration 24 violates lifetime 54. -/
 theorem old_outage_coefficients_fail :
     (4 : Int) * 1 < 4 * (1 + 1) ∧
       (89 : Int) ≥ 4 * 9 ∧

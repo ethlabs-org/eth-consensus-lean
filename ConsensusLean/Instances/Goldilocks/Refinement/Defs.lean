@@ -199,15 +199,17 @@ def IsAttObj {n : Nat} : Wire n → Prop
   | .mk (.signed _ .poll) (.data (.att _)) [] => True
   | _ => False
 
-/-- **The row objects** (`Model.Protocol.isRow`, delivered within the row bound `ΔF`): a
+/-- **The row objects** (`Model.Protocol.isRow`, delivered strictly before the row bound `ΔF`): a
 standalone attestation (`IsAttObj`), and an unsigned relay wrapper whose carried list is nonempty
-and consists of standalone attestations only. Every other object is delivered within `Δ`: blocks
+and consists of standalone attestations only. Every other object is delivered strictly before
+`Δ`: blocks
 (with the attestations they carry), votes, `.forward` and `.voteForward` wrappers, the empty relay
 wrapper, and a mixed relay wrapper (attestations relayed together with a block or a vote).
 
 Model choice (owner decision, 2026-11-02): attestations bundled with a block or a vote in one
-relay wrapper are delivered within `Δ`, the bound of the bundle; so such attestations reach the
-other nodes within `Δ` instead of `ΔF` (faster than a standalone row whenever `Δ < ΔF`). -/
+relay wrapper are delivered strictly before `Δ`, the bound of the bundle; so such attestations
+reach the other nodes within `Δ` instead of `ΔF` (faster than a standalone row whenever
+`Δ < ΔF`). -/
 def isRow {n : Nat} : Wire n → Prop
   | .mk .none (.data .relay) cs => cs ≠ [] ∧ ∀ c ∈ cs, IsAttObj c
   | o => IsAttObj o

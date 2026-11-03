@@ -197,8 +197,13 @@ healthy up to the heal point, has the recurrence of `k`, and is sleepy after
 the heal point. -/
 theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ShapeFamily goldilocksSchema Info) (hb : GoldilocksBindings F) (pp : FGSAParams)
-    (k : ℕ+) {Δ : Time} (hΔ1 : 1 < Δ) (g : Time) :
+    (k : ℕ+) {Δ : Time} (hΔ : 0 < Δ) (g : Time) :
     ∃ r : (Sys F (Fin 5)).Run, (Sys F (Fin 5)).Valid r ∧ WeakPremise pp g k r := by
+  -- `Δ` is not in the conclusion: the witness is built at `Δ + 1`, inside the realizability
+  -- domain `1 < Δ` of `healthy_witness`.
+  have hΔ1 : 1 < Δ + 1 := by linarith
+  clear hΔ
+  generalize Δ + 1 = Δ at hΔ1
   have hΔ : 0 < Δ := by linarith
   let K := goldilocksContract pp
   let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := (Fintype.equivFin (Fin 5)).symm

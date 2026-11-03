@@ -68,8 +68,8 @@ structure AcceptanceCoefficients where
   heal : Capability → ℕ+ → Nat
   latency : Capability → ℕ+ → Nat
 
-/-- Catch-up `37` engine delays: it covers the Sleepy margin, `18(Δe + 1) + 1 ≤ 37Δe` for every
-engine delay `Δe ≥ 1`. -/
+/-- Catch-up `37` delays: it covers the Sleepy margin, `18Δ + 1 ≤ 37Δ` for every delay `Δ ≥ 1`
+(node and engine delay agree, `Δp = Δe`; phase 1 keeps the number). -/
 def accepted_catchUp (S : Setup) (_A : AcceptanceAssumptions S) : ℕ+ :=
   ⟨37, by decide⟩
 

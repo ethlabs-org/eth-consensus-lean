@@ -87,7 +87,7 @@ structure Params (Idx : Type) where
   /-- Row ratio `r ≥ 1`: the healthy regime assumes `ΔF ≤ r·Δ` (`System.Healthy`). Unlike the
   other numbers, a larger `r` weakens that premise (it admits slower rows) and so strengthens
   the claims. An upper envelope of the row bound for the coefficients, not an order between the
-  bounds (`ΔF < Δ` is allowed), and never a deadline (rows are delivered within `ΔF`). -/
+  bounds (`ΔF < Δ` is allowed), and never a deadline (rows are delivered strictly before `ΔF`). -/
   rowRatio : ℕ+
 
 namespace Params
