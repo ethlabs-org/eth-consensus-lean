@@ -155,8 +155,7 @@ these functions.  $t$ is the clock of the node.
  \Call{ac\_proposal}{\AC,\Fr,t} & \text{returns
    $(H,\mathit{ac\_payload})$: a parent and an AC payload, or $\bot$},\\
  \Call{ac\_to\_fg}{\AC,\Fr,t} & \text{returns
-   $(\mathit{fg\_confirmed},\mathit{head})$; $\mathit{fg\_confirmed}=\bot$
-   when no block is new},\\
+   $\mathit{fg\_confirmed}$, or $\bot$ when no block is new},\\
  \Call{ac\_confirmed}{\AC,\Fr,t} & \text{returns the confirmed tip},\\
  \Call{ac\_head}{\AC,\Fr,t} & \text{returns the head},\\
  \Call{ac\_restart}{\AC,\Fr,t} & \text{returns the AC state after a restart}.
@@ -169,12 +168,12 @@ a name: the content of a block and its ancestry come from $\Fr.\tree$, or
 from the block that a call supplies.  The AC must satisfy these
 requirements.
 \begin{enumerate}
-\item Every head of a duty (the parent of a proposal, the head of a vote,
-  the head that $\Call{ac\_to\_fg}{}$ returns) extends~$\Fr.\fcroot$.
+\item Every head of a duty (the parent of a proposal, the head of a vote)
+  extends~$\Fr.\fcroot$.
   Such a head whose walk starts in $\filtered(\Fr,\mathit{tree})$ is in
   $\Fr.\allowed$.
 \item A block $\mathit{fg\_confirmed}$ other than~$\bot$ is in
-  $\filtered(\Fr,\Fr.\tree)$, and the returned head extends it.
+  $\filtered(\Fr,\Fr.\tree)$.
 \item The output of $\Call{ac\_head}{}$ extends~$\Fr.\fcroot$, and the
   confirmed tip extends~$\Fr.F$ and is an ancestor of that output.
 \item The parent of a proposal is a head of the AC at that time.
@@ -208,17 +207,16 @@ valid against the state of the parent and is not already on the parent's
 chain, in the order of its pool.
 
 \emph{The FG update.}  After each tick the node asks the AC for an FG
-update.  The AC returns a pair $(\mathit{fg\_confirmed},\mathit{head})$, with
-$\mathit{fg\_confirmed}\neq\bot$ only when it has a new block to vouch
-for.
-$\mathit{fg\_confirmed}$ is the block up to which the AC vouches for the
-chain of the head, for the FG.  The node gives the FG the block
-$\mathit{fg\_confirmed}$ of each such pair, the \emph{source}, and the
+update.  The AC returns a block $\mathit{fg\_confirmed}$, or~$\bot$ when
+it has no new block to vouch for.
+$\mathit{fg\_confirmed}$ is the block up to which the AC vouches for its
+chain, for the FG.  The node gives the FG each such block, the
+\emph{source}, and the
 client record decides whether an attestation follows: a target only as the
 first vote at a height, and no entry twice (Section~\ref{sec:fg}).  The
 height pair comes from the chain state of the source, and the finality
 pair from the entry state of that chain state
-(Section~\ref{sec:fg-client}).  The FG does not read the head.
+(Section~\ref{sec:fg-client}).
 
 The node functions take the input from outside the node: the time of a
 tick, a received object, or the output of the AC for a duty.  They read
@@ -238,11 +236,11 @@ the clock~$t$ and pass $\Sigma$, $\AC$ and~$\Lambda$ to the two parts.
     \If{$P\neq\bot$} \State \Call{propose\_block}{$P$} \EndIf
   \EndIf
   \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$;\quad
-    $(\mathit{fg\_confirmed},\cdot)\gets\Call{ac\_to\_fg}{\AC,\Fr,t}$
+    $\mathit{fg\_confirmed}\gets\Call{ac\_to\_fg}{\AC,\Fr,t}$
   \Comment{$\bot$: no new block for the FG}
   \If{$\mathit{fg\_confirmed}\neq\bot$}
     \State \Call{attest}{$\mathit{fg\_confirmed}$}
-    \Comment{the source; the FG does not read the head}
+    \Comment{the source}
   \EndIf
 \EndFunction
 \vspace{1pt}

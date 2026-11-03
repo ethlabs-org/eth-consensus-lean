@@ -107,7 +107,7 @@ that pass between them.
   node[lab, midway, below=1pt] {$\Fr=(\tree,\fcroot,\allowed)$};
 \draw[->, thick] ($(ac.west)+(0,-0.9)$) -- ($(fg.east)+(0,-0.9)$)
   node[lab, midway, above=1pt] {$\fname{ac\_to\_fg}$}
-  node[lab, midway, below=1pt] {$(\mathit{fg\_confirmed},\mathit{head})$};
+  node[lab, midway, below=1pt] {$\mathit{fg\_confirmed}$ or $\bot$};
 % Handlers.
 \node[small] (hand)
   at ($(fg.north east)!0.5!(ac.north west)+(0,1.05)$)
@@ -195,8 +195,8 @@ that pass between them.
 \captionof{figure}{The three parts.  The handlers feed each part from
 the network, and the duties send to it.  The outputs point into one
 chain: the finalized tip from the FG, and the confirmed tip and the head
-from the AC.  Of the pair that $\fname{ac\_to\_fg}$ returns, the node
-passes only $\mathit{fg\_confirmed}$ to the FG; the FG does not read the
+from the AC.  $\fname{ac\_to\_fg}$ returns only $\mathit{fg\_confirmed}$
+(or~$\bot$), which the node passes to the FG; the FG does not read the
 head.}
 \label{fig:system}
 \end{center}
@@ -253,8 +253,7 @@ Figure~\ref{fig:system} with Goldilocks in the place of the AC.
   node[lab, midway, below=1pt] {$\Fr=(\tree,\fcroot,\allowed)$};
 \draw[->, thick] ($(ac.west)+(0,-0.9)$) -- ($(fg.east)+(0,-0.9)$)
   node[lab, midway, above=1pt] {$\fname{ac\_to\_fg}$}
-  node[lab, midway, below=1pt] {new locked confirmation,}
-  node[lab, midway, below=11pt] {Goldfish head};
+  node[lab, midway, below=1pt] {new locked confirmation};
 % Handlers.
 \node[small] (hand)
   at ($(fg.north east)!0.5!(ac.north west)+(0,1.05)$)
@@ -1159,8 +1158,8 @@ This section gives the event handlers and the duties of the AC.
 \emph{The joined test.}  Only a joined node (Section~\ref{sec:sa-state})
 unlocks, votes, confirms optimistically, proposes, runs the confirmation
 update or gives a block to the FG.  A node that is not joined still
-computes a head from the votes that it holds: $\Call{ac\_head}{}$ and the
-head of the pair for the FG have no such test.
+computes a head from the votes that it holds: $\Call{ac\_head}{}$ has no
+such test.
 
 \emph{When the node votes.}  For $s>0$, a joined node casts its slot-$s$
 vote at the first time $\tau\in[t_s,t_s+\Delta]$ at which it holds a \emph{ready} proposal: a block $P\in\Fr.\tree$
@@ -1339,17 +1338,16 @@ a block on another branch when the confirmations move there.
 \vspace{1pt}
 \Function{ac\_to\_fg}{$\AC,\Fr,t$}
   \Comment{after each tick}
-  \State $\mathit{head}\gets\Call{ac\_head}{\AC,\Fr,t}$
-  \If{not \Call{joined}{$\AC,t$}} \State \Return $(\bot,\mathit{head})$ \EndIf
+  \If{not \Call{joined}{$\AC,t$}} \State \Return $\bot$ \EndIf
   \State $\mathit{cands}\gets\{B:(B,j,\mathsf{true})\in\Call{live\_locks}{\AC.\locks,\Fr,t},\ \slot(t)\leq j+2,\ B\in\filtered(\Fr,\Fr.\tree)\}$
-  \If{$\mathit{cands}=\emptyset$} \State \Return $(\bot,\mathit{head})$ \EndIf
+  \If{$\mathit{cands}=\emptyset$} \State \Return $\bot$ \EndIf
   \State $C\gets$ the deepest block of $\mathit{cands}$
   \Comment{the candidates lie on one chain}
-  \If{$\AC.\fgReported\in\Fr.\tree$ and $C\preceq\AC.\fgReported$} \State \Return $(\bot,\mathit{head})$
+  \If{$\AC.\fgReported\in\Fr.\tree$ and $C\preceq\AC.\fgReported$} \State \Return $\bot$
     \Comment{nothing new}
   \EndIf
   \State $\AC.\fgReported\gets C$
-  \State \Return $(C,\mathit{head})$
+  \State \Return $C$
 \EndFunction
 \end{algorithmic}
 }
@@ -1507,8 +1505,7 @@ one target per height, so more pairs do not give more targets per height:
 they let a validator vote as soon as its chain enters a new height.  This
 note covers the age of the sources and the safety of the client.  That the finality
 bounds stay as before with these earlier attestations is a proof
-obligation: the present proofs assume one honest FG action per round.  The head of the pair is the
-head of $\Call{ac\_head}{}$, with the latest view at the call time.
+obligation: the present proofs assume one honest FG action per round.
 
 \subsection{Joining and restart}\label{sec:sa-joining}
 
