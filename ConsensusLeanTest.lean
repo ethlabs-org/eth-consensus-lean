@@ -39,6 +39,7 @@ public import ConsensusLeanTest.GoldilocksFrameRejection
 public import ConsensusLeanTest.GoldilocksFrameSeqWitness
 public import ConsensusLeanTest.GoldilocksGradedLocks
 public import ConsensusLeanTest.GoldilocksGradedVeto
+public import ConsensusLeanTest.GoldilocksHalfCommitteeACData
 public import ConsensusLeanTest.GoldilocksHalfCommitteeFG
 public import ConsensusLeanTest.GoldilocksHalfCommitteeSetup
 public import ConsensusLeanTest.GoldilocksHeadsImplied
