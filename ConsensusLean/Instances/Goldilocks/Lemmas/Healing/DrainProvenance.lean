@@ -12,11 +12,12 @@ block `Φ.viableAncestor D` of a slow lock of its slot that the node itself wrot
 exactly that block (`liveLocks` moves the new lock to its viable ancestor), the lock functions
 only move locks back and keep their slot and fast bit (A0.4 (c)), a restart keeps the locks
 (A0.7), an optimistic confirmation writes only fast locks, and an update writes a lock that is
-not fast only as its slow lock. This is `slow_lock_provenance` (`AC/SlowLock`, which keeps only
-the raw selection `D`) with the stored block of HR.4's `stored_fast_lock_provenance`
-(`Retention/Provenance`), with the shared `FromP` toolkit of `Lemmas/AC/LockProvenance`; their
-per-function helpers are private there and repeated here (`hs234-exact-interface.md` §3: "every
-lock image retains its original label"). -/
+not fast only as its slow lock. This is the slow case of the induction of `fast_lock_provenance`
+(`AC/Steps/Provenance`, whose per-function helpers are private there and repeated here with the
+slow write tracked; the shared `FromP` toolkit is `Lemmas/AC/LockProvenance`), with the stored
+block of HR.4's `stored_fast_lock_provenance` (`Retention/Provenance`)
+(`hs234-exact-interface.md` §3: "every lock image retains its original label").
+`slow_lock_provenance` (`AC/SlowLock`) is its corollary for the raw selection `D`. -/
 
 namespace Consensus.Goldilocks.SA
 
