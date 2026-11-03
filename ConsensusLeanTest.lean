@@ -9,6 +9,8 @@ public import ConsensusLeanTest.GoldilocksACOptimisticWitness
 public import ConsensusLeanTest.GoldilocksAcceptance
 public import ConsensusLeanTest.GoldilocksAccountableTightness
 public import ConsensusLeanTest.GoldilocksAggregationWitness
+public import ConsensusLeanTest.GoldilocksAsleepRun
+public import ConsensusLeanTest.GoldilocksAsleepSleepy
 public import ConsensusLeanTest.GoldilocksBudgetTightness
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
@@ -32,6 +34,7 @@ public import ConsensusLeanTest.GoldilocksGradedVeto
 public import ConsensusLeanTest.GoldilocksHeadsImplied
 public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksHealingWitness
+public import ConsensusLeanTest.GoldilocksInclusionUpdateRejection
 public import ConsensusLeanTest.GoldilocksInclusionWitness
 public import ConsensusLeanTest.GoldilocksNode
 public import ConsensusLeanTest.GoldilocksPersistWitness
