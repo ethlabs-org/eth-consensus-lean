@@ -43,21 +43,59 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
 `t'` as the witness that a ready reader exists; the honest proposal is released at
 `τ > max t start + Δ` (strictly), within the horizon, by a key ready at `τ` with
 catch-up `c₀·Δ ≥ Δ` (`1 ≤ c₀`, which admissible numbers give), so awake throughout
-`[τ − Δ − 1, τ − 1]`. Partial synchrony with GST `gst ≤ start` (L0 delivery) at the
-start `a := τ − Δ − 1 ≥ max t start ≥ gst`, whose delivery interval is
-`[τ − Δ − 1, τ − 1]`, puts the transaction in that key's inbox by the deadline
-`τ − 1` (receipt at the deadline counts), so in its mempool at
-the tick `τ`, which is the proposal's payload. The strict `τ > …` of
-`ProposalLiveReady` absorbs the one time unit between arrival at the deadline and
-use by the tick at `τ`. Every submission is served, including those before
-`start` (deadline `max t start + Δ + D·Δ`). -/
+`[τ − Δ, τ − 1]`. Partial synchrony with GST `gst ≤ start` (L0 delivery, held strictly
+before `max a gst + Δ`) at the start `a := τ − Δ > max t start ≥ gst`, whose delivery
+interval is `[τ − Δ, τ − 1]`, puts the transaction in that key's inbox by the deadline
+`τ − 1`, so in its mempool at the tick `τ`, which is the proposal's payload. The strict
+`τ > …` of `ProposalLiveReady` makes the start `τ − Δ` lie after the submission. Every
+submission is served, including those before `start` (deadline `max t start + Δ + D·Δ`). -/
 theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
     {start gst : Time} {D : Nat} (hv : rho.ExecutionValid) (hc₀ : 1 ≤ c₀)
     (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start)
     (hl : ProposalLiveReady rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
     ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.Δ) g start
       (((D : Nat) : Time) * E.Δ) := by
-  sorry
+  rw [Trace.map_eq]
+  intro x t t' hsub hdt hh v hv'
+  change max t start + E.Δ + (D : Time) * E.Δ ≤ t' at hdt
+  change rho.point.SubmittedToSome x t at hsub
+  change t' ≤ rho.horizon at hh
+  have hΔ := E.Δ_pos
+  have hmt := le_max_left t start
+  have hms := le_max_right t start
+  obtain ⟨τ, k, h, hτ, hready, hprop, hin⟩ := hl (t' - (D : Time) * E.Δ)
+    (by dsimp only [Time] at *; omega) (by dsimp only [Time] at *; omega)
+    ⟨v, by rw [sub_add_cancel]; exact hv'⟩
+  have he : t' - (D : Time) * E.Δ + (D : Time) * E.Δ = t' := sub_add_cancel _ _
+  rw [he] at hin
+  have hmem : x ∈ decodeTxs h.input := by
+    rw [honestProposal_payload hv hprop, decode_encodeTxs]
+    obtain ⟨u, hu, τ₀, hτ₀, hτ₀t, haw, hx⟩ := hsub
+    have hτa : τ₀ ≤ τ - E.Δ := by dsimp only [Time] at *; omega
+    have hga : gst ≤ τ - E.Δ := by dsimp only [Time] at *; omega
+    have hdl : max (τ - E.Δ) gst + E.Δ - 1 = τ - 1 := by
+      rw [max_eq_left hga]; dsimp only [Time] at *; omega
+    have hτh : τ ≤ rho.horizon := by
+      obtain ⟨-, -, -, -, i, hi | ⟨_, hi⟩, -⟩ := hprop <;>
+        exact (hv.in_horizon _ (List.mem_of_getElem? hi)).2
+    have hawake : rho.point.AwakeOnClosed (rho.key k) (τ - E.Δ) (τ - 1) := by
+      intro u hu₁ hu₂
+      refine hready.2 u ?_ ?_
+      · have hm : E.Δ ≤ ((c₀ : Nat) : Int) * E.Δ :=
+          le_mul_of_one_le_left hΔ.le (by exact_mod_cast hc₀)
+        apply max_le <;> dsimp only [Time] at * <;> omega
+      · dsimp only [Time] at *; omega
+    have hτ1 : τ - 1 ≤ rho.point.horizon := by
+      change τ - 1 ≤ rho.horizon; dsimp only [Time] at *; omega
+    have held : CommLog.TxHeld rho.log (rho.key k) x (max (τ - E.Δ) gst + E.Δ - 1) :=
+      hs.txs u hu x τ₀ hτ₀ haw hx (rho.key k) hready.1 (τ - E.Δ) hτa
+        (by change _ + E.Δ - 1 ≤ _; rw [hdl]; exact hτ1)
+        (by change _ + E.Δ - 1 ≤ _; rw [hdl]; exact hτ1)
+        (by change rho.point.AwakeOnClosed _ _ (_ + E.Δ - 1); rw [hdl]; exact hawake)
+    rw [hdl] at held
+    exact rho.txHeld_mem_mempool held (by dsimp only [Time]; omega)
+  change x ∈ ledgerOf ((chainTrace rho).readAt g v t')
+  exact (mem_ledgerOf _ _).mpr ⟨h, hin v hv', hmem⟩
 
 /-- An object is in a node's system view iff it is in its run view. -/
 theorem mem_sysView (rho : Model.Run (compiled F) E) (v : V) (i : Nat)

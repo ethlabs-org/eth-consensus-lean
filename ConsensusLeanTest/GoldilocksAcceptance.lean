@@ -239,12 +239,13 @@ theorem timeout_rejects_ratio (S : Setup) (h : S.δt = 29) :
   rw [hA, show cF 32 = 10 from rfl] at this
   omega
 
-/-- (b) Slower rows (`ΔF = 32 > Δ = 1`, `r = 32`): `6Δ_p + ΔF_p = 45 ≤ 80 = 4Δ_p·cF r`. -/
-theorem row_transport_slow : 6 * ((1 : Time) + 1) + (32 + 1) ≤ 4 * (1 + 1) * (cF 32 : Time) :=
+/-- (b) Slower rows (`ΔF = 32 > Δ = 1`, `r = 32`): `6Δ + ΔF = 38 ≤ 40 = 4Δ·cF r` (the
+protocol delays are the engine's, `Δ_p = Δ`, `ΔF_p = ΔF`). -/
+theorem row_transport_slow : 6 * (1 : Time) + 32 ≤ 4 * 1 * (cF 32 : Time) :=
   cF_spec 32 1 32 (by decide) (by decide)
 
-/-- (b) Faster rows (`ΔF = 1 < Δ = 5`, `r = 1`): `6Δ_p + ΔF_p = 38 ≤ 48 = 4Δ_p·cF r`. -/
-theorem row_transport_fast : 6 * ((5 : Time) + 1) + (1 + 1) ≤ 4 * (5 + 1) * (cF 1 : Time) :=
+/-- (b) Faster rows (`ΔF = 1 < Δ = 5`, `r = 1`): `6Δ + ΔF = 31 ≤ 40 = 4Δ·cF r`. -/
+theorem row_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (cF 1 : Time) :=
   cF_spec 1 5 1 (by decide) (by decide)
 
 end Consensus.Goldilocks.Refinement.Test.Acceptance
