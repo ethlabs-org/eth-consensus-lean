@@ -72,7 +72,7 @@ private theorem rt_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).restartTime = A.restartTime := by
   unfold admitVote; split_ifs <;> rfl
 
-private theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
   unfold optimisticConfirmation updateLatestConfirmed; split
   · rfl

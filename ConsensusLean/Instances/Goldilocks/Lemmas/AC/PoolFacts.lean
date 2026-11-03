@@ -56,14 +56,14 @@ private theorem updateLatestConfirmed_pool_eq (A : SAState sp.n) (Φ : Frm sp.n 
   unfold updateLatestConfirmed
   split_ifs <;> rfl
 
-private theorem optimistic_pool_eq (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem optimistic_pool_eq (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation
   split
   · rfl
   · exact updateLatestConfirmed_pool_eq _ _ _
 
-private theorem updateConfirmation_pool_eq (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem updateConfirmation_pool_eq (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).pool = A.pool := by
   unfold updateConfirmation
   dsimp only

@@ -42,7 +42,7 @@ private theorem updateLatestConfirmed_blockStamp (A : SAState sp.n) (Φ : Frm sp
   unfold updateLatestConfirmed
   split_ifs <;> rfl
 
-private theorem optimistic_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem optimistic_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
   unfold optimisticConfirmation
   split

@@ -22,7 +22,7 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
+theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
   unfold admitVote
   split_ifs
@@ -96,7 +96,7 @@ theorem merged_voters_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   · exact ⟨x, hx, hxv⟩
 
 /-- In a well-formed frame, `lookup` finds every block of the tree by its root. -/
-private theorem lookup_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
+theorem lookup_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
     (hB : B ∈ Φ.tree) : lookup Φ B.root = some B := by
   cases h : lookup Φ B.root with
   | none => exact absurd ⟨B, hB, rfl⟩ (lookup_eq_none h)

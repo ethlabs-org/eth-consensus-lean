@@ -70,28 +70,6 @@ theorem ts_sub_one (sp : SAParams) (a : Int) : sp.ts (a - 1) = sp.ts a - 4 * sp.
 
 section RestartTime
 
-private theorem rt_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).restartTime = A.restartTime := by
-  unfold admitVote; split_ifs <;> rfl
-
-private theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
-  unfold optimisticConfirmation updateLatestConfirmed; split
-  · rfl
-  · split_ifs <;> rfl
-
-private theorem rt_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (tryVote sp x A Φ t).1.restartTime = A.restartTime := by
-  unfold tryVote; dsimp only
-  split_ifs <;> simp only [rt_optimistic, rt_admitVote]
-
-private theorem rt_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
-  unfold updateConfirmation updateLatestConfirmed; dsimp only
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).restartTime = A.restartTime := by
   unfold blockReceipt
@@ -100,7 +78,7 @@ private theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
       (l.foldl (fun A v => admitVote sp A t v) A').restartTime = A'.restartTime from h _
   induction l with
   | nil => exact fun _ => rfl
-  | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, rt_admitVote]
+  | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, SA.admitVote_restartTime]
 
 /-- A call other than a restart keeps `restart_time`. -/
 private theorem rt_step (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
@@ -110,7 +88,7 @@ private theorem rt_step (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
   | tick =>
     change (acOnTick sp self A Φ t).1.restartTime = _
     unfold acOnTick; dsimp only
-    split_ifs <;> simp only [rt_update, rt_tryVote]
+    split_ifs <;> simp only [SA.updateConfirmation_restartTime, SA.tryVote_restartTime]
   | proposal =>
     change (acProposal sp A Φ t).1.restartTime = _
     unfold acProposal; split_ifs <;> rfl
@@ -121,10 +99,10 @@ private theorem rt_step (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
     change (tryVote sp self _ Φ t).1.restartTime = _
-    rw [rt_tryVote, rt_optimistic, rt_admitVote]
+    rw [SA.tryVote_restartTime, rt_optimistic, SA.admitVote_restartTime]
   | block B =>
     change (tryVote sp self _ Φ t).1.restartTime = _
-    rw [rt_tryVote, rt_optimistic, rt_blockReceipt]
+    rw [SA.tryVote_restartTime, rt_optimistic, rt_blockReceipt]
   | restart => exact absurd rfl hc
 
 /-- **The restart time of a state**: the state of an honest node before cut `i` has

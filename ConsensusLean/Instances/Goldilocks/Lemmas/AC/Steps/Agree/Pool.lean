@@ -144,7 +144,7 @@ theorem step_pool_subset {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAStat
 
 /-- Admitting a vote of the slot of `t` or the previous one leaves it in its pool, or two other
 votes of its validator there. -/
-private theorem admitVote_held (A : SAState sp.n) {t : Time} {v : Vote sp.n}
+theorem admitVote_held (A : SAState sp.n) {t : Time} {v : Vote sp.n}
     (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t) :
     v ∈ (admitVote sp A t v).pool v.slot ∨
       v.val ∈ equivocators {w | w ∈ (admitVote sp A t v).pool v.slot} := by
@@ -192,7 +192,7 @@ private theorem frameOK_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     FrameOK ℓ.frame := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
 
-private theorem state_succ_of_call {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+theorem state_succ_of_call {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt y k ℓ) : tr.state y (k + 1) = tr.post k := by
   rw [Trace.state]
   split_ifs with h

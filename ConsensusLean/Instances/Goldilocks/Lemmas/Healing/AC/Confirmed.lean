@@ -36,9 +36,6 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-private theorem ts_succ' (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-  simp only [SAParams.ts]; push_cast; ring
-
 /-- Finite message service retains an actual honest vote with its strict early stamp.
 Only deadlines and restarts through the receiving call are used. -/
 theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
@@ -73,7 +70,7 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     linarith
   have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith)
   have hqs : sp.slot (tr.time q) = s :=
-    slot_of_mem sp s (by linarith) (by rw [ts_succ']; linarith)
+    slot_of_mem sp s (by linarith) (by rw [SA.ts_succ]; linarith)
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (q + 1)).pool s := by
     rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
@@ -279,7 +276,7 @@ theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy :
   have hk'T : tr.time k' < sp.ts s + 2 * sp.Δ := by linarith [hdl k']
   have hk'j' : k' < j := lt_of_le_of_ne hk'j (by rintro rfl; linarith)
   have hsl' : sp.slot (tr.time k') = s :=
-    slot_of_mem sp s (by linarith) (by rw [ts_succ']; linarith)
+    slot_of_mem sp s (by linarith) (by rw [SA.ts_succ]; linarith)
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (k' + 1)).pool s := by
     rcases held_of_processAt hr hy hproc (by rw [hsl', hes]; omega) (by rw [hsl', hes]) with
@@ -654,9 +651,9 @@ theorem first_update_post (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Bl
   have hΔ := sp.toParams.hΔ
   have hg0 := gbar_nonneg g
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
-  have hts1 := ts_succ' (sp := sp) p
+  have hts1 := SA.ts_succ (sp := sp) p
   have hslot : sp.slot (tr.time k) = p + 1 :=
-    slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith) (by rw [htk, ts_succ', hts1]; linarith)
+    slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith) (by rw [htk, SA.ts_succ, hts1]; linarith)
   have hj := hS.joined_state hy k (by
     rw [hslot, show (((p + 1 : Nat) : Int) - 1) = p by push_cast; ring]; linarith)
   have hT2 : tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ := by rw [htk, hts1]; ring

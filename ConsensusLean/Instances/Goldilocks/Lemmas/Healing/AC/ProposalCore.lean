@@ -135,15 +135,7 @@ theorem lowLocksCompatible_iff {A : SAState sp.n} {t : Time} {σ : Nat} {B : Blk
 
 /-! ## The proposal's view -/
 
-private theorem lookup_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
-    (hB : B ∈ Φ.tree) : lookup Φ B.root = some B := by
-  cases h : lookup Φ B.root with
-  | none => exact absurd ⟨B, hB, rfl⟩ (lookup_eq_none h)
-  | some B' =>
-    obtain ⟨hB', hr⟩ := lookup_eq_some h
-    exact congrArg some (hΦ.coherent.1 hB' hB hr)
-
-private theorem etime_finite (t : Time) : ETime.of t < ⊤ :=
+theorem etime_finite (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
 
 private theorem equivocators_mono {S T : Set (Vote sp.n)} (h : S ⊆ T) :
@@ -215,7 +207,7 @@ theorem proposal_supporter (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
   have hvst := pool_stamp_lt_top hr hx (hvs ▸ hv)
   have hres : resolutionTime (tr.state x i) ℓ.frame v < ⊤ := by
     unfold resolutionTime
-    rw [← hRr, lookup_mem hΦ hR]
+    rw [← hRr, SA.lookup_of_mem hΦ hR]
     simp only [show ¬ v.slot < R.slot by omega, ite_false]
     exact max_lt hvst hbs
   have hpool : v ∈ (tr.state x i).poolAt (σ : Int) := by simpa [SAState.poolAt] using hv
@@ -461,7 +453,7 @@ private theorem counted_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   have hR's : ¬ v.slot < R'.slot := by
     intro hlt
     unfold resolutionTime at hres
-    rw [← hR'r, lookup_mem hΦX hR'] at hres
+    rw [← hR'r, SA.lookup_of_mem hΦX hR'] at hres
     dsimp only at hres
     split_ifs at hres
     exact absurd hres (not_lt.2 le_top)

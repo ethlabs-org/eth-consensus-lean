@@ -77,21 +77,6 @@ private theorem adds_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FG
     Adds A (blockReceipt sp A t B) (· ∈ blockVotes B) :=
   adds_foldl A t _ _ _ (Adds.of_eq rfl) (fun _ h => h)
 
-private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation SA.updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
-
-private theorem updateConfirmation_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (s : Nat) : (updateConfirmation sp A Φ t s).pool = A.pool := by
-  unfold updateConfirmation SA.updateLatestConfirmed
-  dsimp only
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem adds_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Adds A (tryVote sp x A Φ t).1 (fun v => ∃ e ∈ (tryVote sp x A Φ t).2, e.msg = v) := by
   unfold tryVote
@@ -101,7 +86,7 @@ private theorem adds_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
   · exact Adds.of_eq rfl
   all_goals
     intro σ v hv
-    rw [optimistic_pool] at hv
+    rw [SA.optimistic_pool_eq] at hv
     rcases adds_admitVote _ _ _ σ v hv with h | h
     · exact Or.inl h
     · exact Or.inr ⟨_, List.mem_singleton_self _, h.symm⟩
@@ -118,7 +103,7 @@ theorem tryVote_emission_mem_pool (x : Fin sp.n) (A : SAState sp.n)
   split_ifs at he ⊢ <;> simp only [List.not_mem_nil, List.mem_singleton] at he
   all_goals
     subst e
-    rw [optimistic_pool]
+    rw [SA.optimistic_pool_eq]
     have hfilter : (A.pool (sp.slot t)).filter (fun m => m.val = x) = [] := by
       apply List.filter_eq_nil_iff.mpr
       intro m hm
@@ -143,9 +128,9 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
     unfold acOnTick
     dsimp only
     split_ifs
-    · exact ((adds_tryVote _ _ _ _).trans_eq (updateConfirmation_pool _ _ _ _)).mono
+    · exact ((adds_tryVote _ _ _ _).trans_eq (SA.updateConfirmation_pool_eq _ _ _ _)).mono
         fun _ h => Or.inr (Or.inr h)
-    · exact Adds.of_eq (updateConfirmation_pool _ _ _ _)
+    · exact Adds.of_eq (SA.updateConfirmation_pool_eq _ _ _ _)
     · exact (adds_tryVote _ _ _ _).mono fun _ h => Or.inr (Or.inr h)
     · exact Adds.of_eq rfl
     · exact Adds.of_eq rfl
@@ -163,10 +148,10 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SASta
       · split_ifs <;> exact Adds.of_eq rfl
     · exact Adds.of_eq rfl
   | message m =>
-    exact ((adds_admitVote A t m).trans_eq (optimistic_pool _ _ _)).trans
+    exact ((adds_admitVote A t m).trans_eq (SA.optimistic_pool_eq _ _ _)).trans
       (adds_tryVote _ _ _ _) (fun _ h => Or.inl (h ▸ rfl)) (fun _ h => Or.inr (Or.inr h))
   | block B =>
-    exact ((adds_blockReceipt A t B).trans_eq (optimistic_pool _ _ _)).trans
+    exact ((adds_blockReceipt A t B).trans_eq (SA.optimistic_pool_eq _ _ _)).trans
       (adds_tryVote _ _ _ _) (fun _ h => Or.inr (Or.inl ⟨B, rfl, h⟩))
       (fun _ h => Or.inr (Or.inr h))
   | restart => exact absurd rfl hc
@@ -411,13 +396,13 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr)
       dsimp only at hem ⊢
       split_ifs at hem ⊢ <;> try simp at hem
       all_goals
-        try rw [updateConfirmation_pool]
+        try rw [SA.updateConfirmation_pool_eq]
         exact tryVote_emission_mem_pool y _ _ _ e hem hf
     | message m =>
       rw [hcall] at hem
       apply tryVote_emission_mem_pool y _ _ _ e hem
       intro w hw hwy
-      rw [optimistic_pool] at hw
+      rw [SA.optimistic_pool_eq] at hw
       have hs := (SA.receipt_pool_slot (FGP := List (FG.Att sp.n)) _ (tr.time i) hcap).1 m _ w hw
       rcases adds_admitVote _ _ _ _ w hw with hw | rfl
       · exact hf w hw hwy
@@ -426,7 +411,7 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr)
       rw [hcall] at hem
       apply tryVote_emission_mem_pool y _ _ _ e hem
       intro w hw hwy
-      rw [optimistic_pool] at hw
+      rw [SA.optimistic_pool_eq] at hw
       have hs := (SA.receipt_pool_slot _ (tr.time i) hcap).2 B _ w hw
       rcases adds_blockReceipt _ _ _ _ w hw with hold | hblock
       · exact hf w hold hwy

@@ -20,7 +20,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-! ## The SA functions -/
 
-private theorem admitVote_restartTime (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem admitVote_restartTime (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).restartTime = A.restartTime := by
   unfold admitVote
   split_ifs <;> rfl
@@ -32,13 +32,13 @@ private theorem optimistic_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
   · rfl
   · split_ifs <;> rfl
 
-private theorem tryVote_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+theorem tryVote_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (tryVote sp x A Φ t).1.restartTime = A.restartTime := by
   unfold tryVote
   dsimp only
   split_ifs <;> simp only [optimistic_restartTime, admitVote_restartTime]
 
-private theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
   unfold updateConfirmation updateLatestConfirmed
   dsimp only
@@ -89,36 +89,6 @@ private theorem foldl_admit_pool {t : Time} {σ : Nat} :
   | [], _ => List.Subset.refl _
   | _ :: l, _ => fun _ hw => foldl_admit_pool l _ (mem_admitVote_pool hw)
 
-/-- Admitting a vote of the slot of `t` or the previous one leaves it in its pool, or two other
-votes of its validator there. -/
-private theorem admitVote_held (A : SAState sp.n) {t : Time} {v : Vote sp.n}
-    (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t) :
-    v ∈ (admitVote sp A t v).pool v.slot ∨
-      v.val ∈ equivocators {w | w ∈ (admitVote sp A t v).pool v.slot} := by
-  unfold admitVote
-  split_ifs with ha hb
-  · left
-    rcases ha with ha | ha | ha
-    · omega
-    · omega
-    · exact ha
-  · right
-    generalize hL : ((A.pool v.slot).filter (fun x => x.val = v.val)).dedup = L at hb
-    have hnd : L.Nodup := hL ▸ List.nodup_dedup _
-    rcases L with _ | ⟨a, _ | ⟨b, l⟩⟩
-    · simp at hb
-    · simp at hb
-    have hmem : ∀ c ∈ a :: b :: l, c ∈ A.pool v.slot ∧ c.val = v.val := fun c hc => by
-      rw [← hL, List.mem_dedup, List.mem_filter] at hc
-      exact ⟨hc.1, of_decide_eq_true hc.2⟩
-    obtain ⟨ha, hav⟩ := hmem a List.mem_cons_self
-    obtain ⟨hb', hbv⟩ := hmem b (List.mem_cons_of_mem _ List.mem_cons_self)
-    refine ⟨a, ha, b, hb', ?_, hav, hbv⟩
-    rintro rfl
-    exact (List.nodup_cons.1 hnd).1 List.mem_cons_self
-  · left
-    simp
-
 /-- The receipt of a block admits each of its votes of the slot of `t` or the previous one: the
 node holds it after the receipt, or two other votes of its validator. -/
 private theorem blockReceipt_held (A : SAState sp.n) {t : Time} {B : Blk sp.n FGP}
@@ -142,13 +112,6 @@ private theorem blockReceipt_held (A : SAState sp.n) {t : Time} {B : Blk sp.n FG
     · exact ih _ hv
 
 /-! ## Over an SA trace -/
-
-private theorem state_succ_of_call {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    (hc : tr.CallAt y k ℓ) : tr.state y (k + 1) = tr.post k := by
-  rw [Trace.state]
-  split_ifs with h
-  · rfl
-  · exact absurd ⟨hc.1, by simp [hc.2]⟩ h
 
 /-- An honest vote is cast at most `Δ` after the start of its slot (`try_vote`'s guard). -/
 private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}

@@ -109,17 +109,6 @@ theorem vote_head_accepted (hS : StandaloneRun tr H U proposer g)
   rw [trivial_F_eq hS hy hz hc' hc]
   exact (hΦ.rooted.2 X (trivial_mem_tree hS hz hc hXU hacc)).mono hΦU
 
-private theorem lookup_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
-    (hB : B ∈ Φ.tree) : lookup Φ B.root = some B := by
-  cases h : lookup Φ B.root with
-  | none => exact absurd ⟨B, hB, rfl⟩ (lookup_eq_none h)
-  | some B' =>
-    obtain ⟨hB', hr⟩ := lookup_eq_some h
-    exact congrArg some (hΦ.coherent.1 hB' hB hr)
-
-private theorem etime_finite (t : Time) : ETime.of t < ⊤ :=
-  WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
-
 /-! ## The premises of `ProposalCore` under trivial frames -/
 
 private theorem compat_down (hU : Coherent U) {B X Y : Blk sp.n FGP} (hXY : Anc U X Y)
@@ -262,7 +251,7 @@ theorem counted_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n
   obtain ⟨hvp, hneqX, hres, R, hR, hRr, hER⟩ := hv
   have hvs := state_pool_slot sp hr hX i₀ σ v hvp
   unfold resolutionTime at hres
-  rw [← hRr, lookup_mem hΦX hR] at hres
+  rw [← hRr, SA.lookup_of_mem hΦX hR] at hres
   dsimp only at hres
   split_ifs at hres with hlt
   · exact absurd hres (not_lt.2 le_top)

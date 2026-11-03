@@ -16,17 +16,6 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
-    (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
-  unfold admitVote
-  split_ifs
-  · exact h
-  · exact h
-  · simp only [Function.update_apply]
-    split_ifs with he
-    · subst he; exact List.mem_append_left _ h
-    · exact h
-
 private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation updateLatestConfirmed

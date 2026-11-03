@@ -44,12 +44,6 @@ private theorem bs_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).blockStamp = A.blockStamp := by
   unfold admitVote; split_ifs <;> rfl
 
-private theorem bs_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
-  unfold optimisticConfirmation updateLatestConfirmed; split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
     ∃ k ≤ c, tr.RestartAt y k ∧ tr.lastWake y c = (tr.time k : WithBot Time)
   | 0 => by
@@ -98,7 +92,7 @@ private theorem etime_lt {a b : Time} : ETime.of a < ETime.of b ↔ a < b := by
 private theorem etime_le {a b : Time} : ETime.of a ≤ ETime.of b ↔ a ≤ b := by
   simp [ETime.of]
 
-private theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
   simp only [SAParams.ts]; push_cast; ring
 
 /-- Under trivial frames, an ancestor (inside `U`) of a block of an honest node's frame is
@@ -414,7 +408,7 @@ theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
   -- the read point's stamps are those after the call, which keeps `B`'s
   have hrp : e.readPoint.blockStamp B.root = (tr.state y i).blockStamp B.root := by
     have h1 : (tr.post i).blockStamp = e.readPoint.blockStamp := by
-      rw [post_of_castAt hr hy hc, bs_optimistic, bs_admitVote]
+      rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, bs_admitVote]
     rw [← h1]
     have he := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
     rw [hc.1.1] at he

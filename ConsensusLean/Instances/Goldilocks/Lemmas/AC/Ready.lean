@@ -19,18 +19,12 @@ private theorem bs_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).blockStamp = A.blockStamp := by
   unfold admitVote; split_ifs <;> rfl
 
-private theorem bs_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
-  unfold optimisticConfirmation updateLatestConfirmed; split
-  · rfl
-  · split_ifs <;> rfl
-
 /-- The read point of an honest vote has the block stamps of the state its call leaves. -/
 theorem readPoint_blockStamp_eq (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
-  rw [post_of_castAt hr hy hc, bs_optimistic, bs_admitVote]
+  rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, bs_admitVote]
 
 /-- A block already held in an earlier frame has an early read-point stamp. The
 stamp cases include restart replay; unique acceptance forbids a later overwrite. -/

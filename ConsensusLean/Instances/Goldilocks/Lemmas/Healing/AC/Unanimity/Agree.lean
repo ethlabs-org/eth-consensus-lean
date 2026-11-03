@@ -30,19 +30,6 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-! ## Helpers -/
 
-/-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
-private theorem genesis_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
-      ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
-  induction i using Nat.strong_induction_on with
-  | _ i ih =>
-    intro ℓ hc
-    rcases hr.frameLaw y hy i ℓ hc with
-      ⟨-, Φ₀, ⟨htree, hroot, hslot, -⟩, ⟨-, hsub⟩, -⟩ | ⟨j, ℓ', hj, hc', -⟩
-    · exact ⟨Φ₀.F, hsub (htree ▸ rfl), hroot, hslot⟩
-    · exact ih j hj hc'
-
 private theorem slot_ts (s : Nat) : sp.slot (sp.ts s) = s :=
   slot_of_mem sp s le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
 
@@ -95,7 +82,7 @@ private theorem frame_slot_eq (hs : UnanimitySetting tr H U schedule g p P k ℓ
   have hQf : HonestFrameBlock tr H Q := ⟨y, hy, i, ℓ, hc, hQ⟩
   have hQr : Q.root ≠ sp.genesisRoot := by
     intro hg
-    obtain ⟨G, hGU, hGr, hGs⟩ := genesis_slot hr hy i hc
+    obtain ⟨G, hGU, hGr, hGs⟩ := SA.genesis_mem hr hy i hc
     have := hr.coherent.1 ((frameIn_of_callAt hr hy hc).2 hQ) hGU (hg.trans hGr.symm)
     rw [this, hGs] at hQs
     omega

@@ -62,7 +62,7 @@ private theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
       · exact Or.inr ⟨i, le_rfl, ℓ, hc, h⟩
 
 /-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
-private theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
