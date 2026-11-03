@@ -56,6 +56,7 @@ public import ConsensusLeanTest.GoldilocksHalfCommitteeSync
 public import ConsensusLeanTest.GoldilocksHeadsImplied
 public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksHealingWitness
+public import ConsensusLeanTest.GoldilocksImpliedFields
 public import ConsensusLeanTest.GoldilocksInclusionUpdateRejection
 public import ConsensusLeanTest.GoldilocksInclusionWitness
 public import ConsensusLeanTest.GoldilocksInitialCarryControl
