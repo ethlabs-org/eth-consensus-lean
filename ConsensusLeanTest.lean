@@ -11,6 +11,7 @@ public import ConsensusLeanTest.GoldilocksAcceptance
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFGStoreService
+public import ConsensusLeanTest.GoldilocksFaultyFinalizationWitness
 public import ConsensusLeanTest.GoldilocksFaultyWitness
 public import ConsensusLeanTest.GoldilocksFinalWitness
 public import ConsensusLeanTest.GoldilocksFrame
