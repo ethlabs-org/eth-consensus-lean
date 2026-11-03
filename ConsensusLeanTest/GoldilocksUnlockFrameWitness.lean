@@ -39,6 +39,8 @@ abbrev sp7 : SAParams where
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
   two_le_k := le_rfl
+  c := 2
+  two_le_c := le_rfl
 
 /-- The blocks of the witness (no FG payload). -/
 abbrev Bk := Blk sp7.n Unit
