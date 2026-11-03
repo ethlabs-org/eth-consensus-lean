@@ -457,8 +457,7 @@ theorem heldT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time} (w : Fin 2) (d 
   · exact ⟨0, h0, Or.inl ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptT, envT] at hwk⟩
   · exact ⟨R, hR, Or.inr ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptT, envT] at hwk⟩
 
-/-- A receipt by `ΔF − 1` (a row) or by `Δ − 1 = 1` (any other message), at a time `R ≥ 0`,
-meets `PSync 0`. -/
+/-- A receipt by `ΔF − 1` (a row) or by `Δ − 1 = 1` (any other message) meets `PSync 0`. -/
 theorem psyncT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time}
     (hrow : row → R ≤ ΔF - 1) (hnr : ¬ row → R ≤ 1) : (logT row R).PSync (ptT ΔF h) 0 := by
   refine ⟨?_, ?_, ?_⟩
@@ -502,6 +501,42 @@ theorem nonrow_held_to_message_bound : ¬ (logT False 4).PSync (ptT 5 (by decide
   rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
   · exact absurd h1 (by decide)
   · exact absurd ht' (by decide)
+
+/-- A receipt at `ΔF` or later (a row, with `ΔF ≤ 11` so the deadline `ΔF − 1` is within the
+horizon `10`) or at `Δ = 2` or later (any other message) misses `PSync 0`: the always-awake
+validator 1 must hold the message strictly before the bound. -/
+theorem not_psyncT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time}
+    (hrow : row → ΔF ≤ R) (hnr : ¬ row → 2 ≤ R) (hF : ΔF ≤ 11) :
+    ¬ (logT row R).PSync (ptT ΔF h) 0 := by
+  intro hp
+  have hd : max 0 0 + (ptT ΔF h).env.ΔF - 1 ≤ (ptT ΔF h).horizon := by
+    change max 0 0 + ΔF - 1 ≤ 10; rw [max_self]; dsimp only [Time] at *; omega
+  by_cases hr : row
+  · obtain ⟨t', ht', hs, -⟩ := hp.rows 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ hr 1
+      (Finset.mem_univ _) 0 le_rfl hd hd (fun _ _ _ => rfl)
+    rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
+    · exact absurd h1 (by decide)
+    · have := hrow hr
+      change t' ≤ max 0 0 + ΔF - 1 at ht'
+      rw [max_self] at ht'; dsimp only [Time] at *; omega
+  · obtain ⟨t', ht', hs, -⟩ := hp.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ hr 1
+      (Finset.mem_univ _) 0 le_rfl (by change max (0 : Time) 0 + 2 - 1 ≤ 10; decide)
+      (by change max (0 : Time) 0 + 2 - 1 ≤ 10; decide) (fun _ _ _ => rfl)
+    rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
+    · exact absurd h1 (by decide)
+    · have := hnr hr
+      change t' ≤ max 0 0 + 2 - 1 at ht'
+      rw [max_self] at ht'; dsimp only [Time] at *; omega
+
+/-- **Rejections at the bound**: the six former at-bound witnesses (a row received exactly at
+`ΔF`, a non-row exactly at `Δ = 2`, at `ΔF = 1, 2, 5`) now miss `PSync 0` (delivery is strictly
+before the bound). -/
+theorem two_bound_at_bound_late :
+    ¬ (logT True 1).PSync (ptT 1 one_pos) 0 ∧ ¬ (logT False 2).PSync (ptT 1 one_pos) 0 ∧
+    ¬ (logT True 2).PSync (ptT 2 two_pos) 0 ∧ ¬ (logT False 2).PSync (ptT 2 two_pos) 0 ∧
+    ¬ (logT True 5).PSync (ptT 5 (by decide)) 0 ∧ ¬ (logT False 2).PSync (ptT 5 (by decide)) 0 := by
+  refine ⟨not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_,
+    not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_⟩ <;> simp
 
 end Consensus.Shape.Tests.Network
 
