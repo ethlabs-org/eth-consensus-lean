@@ -1,7 +1,14 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
+import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry

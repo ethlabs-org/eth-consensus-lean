@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 
 public section
 

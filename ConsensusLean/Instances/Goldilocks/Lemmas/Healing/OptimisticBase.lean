@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 
 public section
 

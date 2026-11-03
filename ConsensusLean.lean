@@ -28,6 +28,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
