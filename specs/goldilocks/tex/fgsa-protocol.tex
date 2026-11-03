@@ -90,8 +90,8 @@
 \paragraph{Scope (2026-10-30).}  This text is the round-model protocol
 that the FG-SA Lean model follows, kept for that correspondence.  It does
 not specify the current finality gadget.  The current FG rules are in
-\texttt{shared/fg.tex}, which \texttt{fgsa-spec.tex} and
-\texttt{pcsa-spec.tex} input, and they have loose BJ: a justification at
+\texttt{shared/fg.tex}, which \texttt{fgsa-spec.tex} inputs, and they
+have loose BJ: a justification at
 a bound height waits for the finality of its predecessor, and the client
 reads its finality pair from the entry state of its source, not from the
 head.  Here a target quorum justifies at once, the finality pair comes

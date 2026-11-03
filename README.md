@@ -585,6 +585,7 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 `lake test`; it is not a default target.
 `Solution` and `Challenge` are single-module libraries for the comparator.
 `archive/goldilocks/` is a read-only snapshot of the old Goldilocks Lean model and spec, outside every Lake target and check ([`ARCHIVE.md`](archive/goldilocks/ARCHIVE.md)).
+`specs/goldilocks/tex/` is the live LaTeX spec of Goldilocks, edited here; it is outside every Lake target and check and not trusted surface: fidelity is carried by the Lean statements and `docs/goldilocks-mapping.md` ([`README.md`](specs/goldilocks/tex/README.md)).
 
 | Layer under `ConsensusLean/` | Contents |
 |---|---|
