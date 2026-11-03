@@ -19,11 +19,7 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   watcher/build tree, edit shared outputs in place, or run `lake clean`/cache maintenance on the source
   during setup. Do not edit linked artifacts manually; use Lake to rebuild. Re-audit the helper on a
   Lean upgrade. No `lake exe cache get` on the box; normal builds use `LAKE_RESTORE_ARTIFACTS=true`.
-  Warm seeding is not a guaranteed setup speedup: with a fully hot shared project artifact cache,
-  packages-only setup plus restoration measured 2.7 s versus 4.7 s for the safer full seed alone.
-  Without project cache reuse (both Lake cache flags false), packages-only full build took 114.9 s
-  versus 1.75 s with warm outputs at the same revision (plus 4.7 s to seed). Package artifacts remain
-  warm in both cases; this models a fresh environment without cached project outputs, not cold Mathlib.
+  Warm seeding is not a guaranteed setup speedup (measurements: `docs/box-capacity.md`).
   No `git checkout <path>`, `git restore`, `git stash` or `git reset` that discards or hides work (plan §7):
   commit first, or ask.
 - **Every build in a job** (shared memory pool; OOM kills hit everyone):
@@ -37,19 +33,11 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   `lake build` builds only `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`
   (the lakefile's `testDriver`, not a default target).
   A single-module build does **not** check downstream callers after an interface change: use
-  `scripts/check-changed.sh` for that. A measured 105-module interface-migration cone took 42.6 s
-  versus 44.9 s for full `lake build`; no-op targeted/full took 0.8/1.4 s (box, 16G/8 CPU, warm).
-  Capacity planning: the migration peaked at 7.3 GiB summed process RSS (shared pages counted more
-  than once), largest Lean 1.55 GiB, Lake about 0.94 GiB. Budget 16G/8 CPU per build; at most two
-  concurrent agent builds across the box while reserving another 16G/8 CPU for CI. Check `jobs-all`
-  and available memory first; do not infer spare capacity from warm cgroup accounting of shared pages.
-  These are independent **jobs/worktrees**, each already spawning multiple Lean children under its
-  CPU quota, not two Lean children total. Concurrent Lake invocations sharing one output directory
-  are not established safe; do not do that. This is a measured recommendation, not a scheduler
-  reservation; one build per agent still applies.
-  The cold-project control reached 18.0 GiB summed RSS (largest Lean 1.72 GiB), but only 3.7 GiB
-  job-accounted peak due to already-resident shared pages; its CPU use averaged about seven cores.
-  Do not size cold multi-job capacity from the smaller cgroup number alone.
+  `scripts/check-changed.sh` for that. Budget 16G/8 CPU per build; at most two concurrent agent builds
+  across the box while reserving another 16G/8 CPU for CI. Check `jobs-all` and available memory first;
+  do not infer spare capacity from warm cgroup accounting of shared pages. Concurrent Lake invocations
+  sharing one output directory are not established safe; do not do that. One build per agent still
+  applies. Measurements behind these numbers: `docs/box-capacity.md`.
 - **Generated roots:** `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of
   their library. Regenerate with `lake exe mk_all --lib ConsensusLean --module` and
   `lake exe mk_all --lib ConsensusLeanTest --module`; `check-boundaries.py` fails on an unlisted file.
@@ -114,7 +102,8 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   `lake build --wfail` ignores it (`warn.sorry = false`) but fails on every other warning. The closure of
   `Solution` (today `Main` and every milestone) and every test must be free of it, also through imports (check.sh
   step 3b); a new milestone stays out of `Main`/`Solution` until it is finished. Tests are named theorems, not
-  proof `example`s (step 7: an example never enters the environment, so no check sees its proof). Step 3b's
+  proof `example`s (step 7: an example never enters the environment, so no check sees its proof; the name index's
+  ``` example := ``Name ``` lines carry no proof and are exempt). Step 3b's
   report lists what is unfinished.
 - **Spec snapshot:** a Spec change fails step 4 until `scripts/spec-snapshot.txt` is regenerated
   (`scripts/check.sh --update-snapshot`, which then fails on purpose) and the diff is committed for review. So
@@ -123,8 +112,8 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
 - **Cited names:** every `Consensus.`-prefixed token in `docs/roadmap.md` and `docs/goldilocks-mapping.md`
   (`doc_name_files` in `scripts/boundaries.toml`) is a fully qualified declaration name listed in
   `ConsensusLeanTest/Index.lean` (``` example := ``Name ```), whose build checks that it exists (check.sh step 12).
-  Renaming a cited declaration means updating the docs and the index and adding a `@[deprecated]` alias
-  (`CONTRIBUTING.md`).
+  Renaming a cited declaration means updating the docs and the index; no `@[deprecated]` alias (nothing outside
+  the repository uses these names, and `--wfail` makes any use of one an error).
 
 ## Statements first, then proofs
 

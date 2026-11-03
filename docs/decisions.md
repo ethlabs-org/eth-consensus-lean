@@ -547,7 +547,9 @@ where it is recorded; "Francesco" marks the owner's decisions.
 - 2026-10-30, amp-orbs (process), under that rule ([#50]). Trunk-based: after the local checks
   (`scripts/check-changed.sh`; `--fast --selftests` for `scripts/` or build-configuration changes), rebase on
   `origin/main` and push to `main`. CI runs on every push to `main`, and whoever made it red reverts at once. A PR
-  only for a trusted-surface change, since the tag must cover its head before it reaches `main`.
+  only for a trusted-surface change, since the tag must cover its head before it reaches `main`. (Superseded in
+  part: GitHub Actions is disabled, 2026-10-31, [#50], so box CI checks observed heads; the tag is retired,
+  2026-11-01, so a trusted-surface change needs no PR.)
 - 2026-11-04, lead (Francesco delegated it; rule-cost sweep item 9, workbench `cards/rule_cost_sweep.md`): **no
   owner-review enforcement**. The open "branch ruleset enforcing owner review" item ([#21], option 2) is closed: it
   contradicts "nothing blocks on the owner" (2026-10-30), and GitHub Actions is off. The step-12 check that

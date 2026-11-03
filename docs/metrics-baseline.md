@@ -359,3 +359,11 @@ Cone: default-target modules that import it (`-`: not a default-target module). 
 | `CheckFixtures.SnapHidden.Defs` | Tool | CheckFixtures | 10 | 0 | - | 0 | 0 | 1 | - | - |
 
 </details>
+
+## Historical CI timings (GitHub-hosted runner)
+
+Moved from README (2026-11-04); Actions has been disabled since 2026-10-31 (#50). Before the tiers, every
+push ran everything in about 50 minutes (build 3, check-decls 7.5, Spec surface 3.5, self-tests 4,
+leanchecker replay 9.5, `lake check` 19, comparator 1, setup 2). Fast tier (measured on PR #15, with
+self-tests because it changed `scripts/`): 17 minutes cold, 17 minutes with the build cache warm (setup 1.6,
+build 0.2, check-decls 4–7.5, Spec surface 3, self-tests 4); without self-tests about 10–13 minutes.

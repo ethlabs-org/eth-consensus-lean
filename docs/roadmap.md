@@ -5,7 +5,7 @@ Milestones, their statements, the Lean names and their status. Work is claimed a
 and must be listed in `ConsensusLeanTest/Index.lean`, whose build checks that it exists (check.sh step 12), so a
 rename or removal fails until this file is updated.
 
-Status: **proved in Solution** (proved; in the closure of `Solution`, so axiom-audited on every PR and replayed
+Status: **proved in Solution** (proved; in the closure of `Solution`, so axiom-audited on every checked head and replayed
 nightly: leanchecker on every leaf module, the comparator on `Solution`), **proved**, **stated** (statement written,
 proof open), **planned**. **Certified** is reserved for a full-tier certification: `check.sh --full` passed on a
 named main commit, recorded on [#63](https://github.com/ethlabs-org/consensus-lean/issues/63).

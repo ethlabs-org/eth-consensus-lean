@@ -929,12 +929,6 @@ Box caching (fast tier): worktrees share pinned Lake packages and retain their p
 the watcher prunes outputs whose source modules disappeared. Lake rebuilds changed modules and dependents.
 The full tier builds the project from scratch; Mathlib's prebuilt dependencies remain cached.
 
-Historical CI timings (GitHub-hosted runner, before Actions was disabled): before the tiers, every push ran everything in about 50 minutes
-(build 3, check-decls 7.5, Spec surface 3.5, self-tests 4, leanchecker replay 9.5, `lake check` 19,
-comparator 1, setup 2). Fast tier (measured on PR #15, with self-tests because it changed `scripts/`):
-17 minutes cold, 17 minutes with the build cache warm (setup 1.6, build 0.2, check-decls 4–7.5, Spec surface
-3, self-tests 4); without self-tests, the usual PR, about 10–13 minutes. check-decls is now the largest step.
-
 The review boundary is separate from correctness. The **trusted surface** is
 `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and

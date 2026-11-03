@@ -32,7 +32,7 @@ authorization**: annotated tag `spec-approved` ("Owner approval (Francesco,
 granted to claude-ethlabs 2026-10-29): protected Spec / review statements / challenge / toolchain at 4b7c5148
 (post-reorg; verbatim moves + v4.35 internal term differences documented in the reorg evidence)").
 
-The **trusted surface**, checked by the review-boundary steps of CI's `check` job against the tag (a change that touches it must equal the tag there), is the
+The **trusted surface** (today recorded, not gated: `scripts/review-boundary.sh` requires a `Trusted-surface:` line in every commit that touches it; until 2026-11-01 a change that touched it had to equal the tag) is the
 list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}`
 (each as `X.lean` and `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`, and since #38 the instance semantics

@@ -82,13 +82,11 @@ recorded on #129, before proofs start. A commit that changes a statement and its
   inherits.
 - **Generic proofs never unfold instance definitions**; the import matrix makes this structural.
 - **`ToMathlib/`** holds general lemmas staged for upstreaming; files there import only Mathlib.
-- **Deprecations:** a renamed public declaration keeps a `@[deprecated (since := "YYYY-MM-DD")]` alias; old
-  aliases are removed periodically.
 
 ## Upgrades (plan §9)
 
 One upgrade owner, claude-ethlabs, runs toolchain and Mathlib bumps: `lean-toolchain`, the Mathlib `rev` in
-`lakefile.toml`, `lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one PR. The toolchain
+`lakefile.toml`, `lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one landing. The toolchain
 and manifest are on the trusted surface, so a bump's commits carry a `Trusted-surface:` line. A bump runs the full
 tier on the box before merge (cold build, rebuild canary, replay, `lake check`, paranoid comparator): ask the
 box watcher owner for an exact-commit run and verify its result on #63. GitHub Actions is disabled; do not

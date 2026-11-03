@@ -61,7 +61,7 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   the flag on a trusted layer, outside Lemmas/Proofs or outside the default library); no declaration of Spec,
   Statements, Main, the instances, the tests or the solution contains one (check-decls `--sorry-ok`, grep step 7),
   and it is never an axiom. **Proved in Solution = the import closure of
-  `Solution`**: axiom-audit (step 3b, every PR) fails any declaration of `ConsensusLean` or `Solution` in that
+  `Solution`**: axiom-audit (step 3b, every checked head) fails any declaration of `ConsensusLean` or `Solution` in that
   closure that depends on an axiom other than the three standard ones (`sorryAx`, `native_decide`'s axioms, a
   declared axiom, also through imports), and so it does for every test declaration (a test built on an unfinished
   lemma proves nothing; grep step 7 refuses proof `example`s, which never enter the environment). `Solution` imports
@@ -177,9 +177,7 @@ requires every non-merge commit that touches them to carry a `Trusted-surface: <
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.AcceptedGood`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
-The `spec-approved` tag (an agent approval, 2026-10-30 to 2026-11-01) is retired by the owner while the work is
-active: trusted changes are recorded, not gated. The tag stays at its last commit as a historical marker;
-`docs/spec-review.md` keeps the approvals made under it.
+The `spec-approved` tag is retired (2026-11-01); its approvals are recorded in `docs/spec-review.md`.
 
 ## Assumed, not proved; per-instance bindings
 
