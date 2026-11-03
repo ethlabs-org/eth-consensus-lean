@@ -415,6 +415,32 @@ where it is recorded; "Francesco" marks the owner's decisions.
   votes and `Carry`, not the record). No coefficient changes. Witnesses at `k = 6`, `c = 2`:
   `ConsensusLeanTest/GoldilocksGradedLocks.lean`.
 
+- DRAFT, pending Francesco (option (C) of the HS.3 feasibility pass, coordinator T-01a19b22):
+  **HS.3 is stated as its after-`r` part only.** `FrozenTreeAgreement` (`Statements/Healing/Service`)
+  keeps the premises and the conclusion of its former second conjunct (b) (with `Prop⁺(G_p)` and
+  `t_s ≥ r`: every honest slot-`s` vote is `P` with its ancestry retained, and later honest votes
+  and proposal parents extend `P`). It drops the first conjunct (a), the claims' first part: every
+  honest slot-`s` vote is `P` under the explicit voter lock premise and #100's proposer-anchor
+  premise, without `Prop⁺` or `t_s ≥ r`. This is a deviation from claims HS.3, which states both
+  parts. Why:
+  - (a) has no proof. Its Lean route compiled except for one leaf, `voter_unlock_keeps_lock`
+    (removed with its four users in 61076d7f, #136). The leaf says a voter keeps, through its own
+    `unlock`, a live lock above the proposer's lock `L`. The proposer's survival of `L` doesn't
+    give that: `opponents` counts only support votes whose head is in the frame's tree, so a voter
+    whose `Σ.F` is below the proposer's can count more opponents against the same votes.
+    `unlockTarget_frame_dependent` (ConsensusLeanTest/GoldilocksUnlockFrameWitness,
+    work/caspar/unlock-frame-witness 0cd8f7fd) is a compiled instance of this at the lock-code
+    level. It does not show that the configuration is reachable under `AgreeSetting`. No
+    counterexample to the leaf or to (a) under their premises is known. A proof of (a) would need
+    a new argument: the honest voters' locks required by #100's premise would have to bound the
+    slot-`(s−1)` votes. That is several days of work with uncertain outcome (workbench
+    C1-healing-open E2, research-cores core 7).
+  - Nothing consumes (a). HS.4, HS.5, HR.3 and H.4 use only (b) (`frozen_tree_agreement_clean`,
+    from HS.2): `ready_protected`, `consume_continue_of`, `acquired_or_changed`.
+  - With the restatement HS.3 is proved (`frozen_tree_agreement`, from HS.2), and so is the bundle
+    `PhaseServiceStatements` (`phase_service_statements`). The alternative was (A), proving (a)
+    as stated. (B), restating #100's premise over the voter's read-point locks, was rejected:
+    that premise is the voter's state after its own `unlock`, nearly the step being claimed.
 - 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md`, T-6daee397): **the
   node-level regime rows R.3–R.6 are retired.** `Statements/Regimes/{Healed,Final,Outage,Weak}`
   (28 declarations, none proved) are deleted, with the adapter `acceptance_outage_times`, its test

@@ -487,7 +487,7 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | HS | CLAIMS §"Healing: phase service" (shared definitions) | the phase floor `ℓ` (`m` in a contest, `m − 1` otherwise); a block allowed in the effective phase geometry; the phase constant over a range of cuts (before the phase end `e`); the entry of a source's chain at a height; `a` and `r` from `w`; settled at `w` in a phase; a vote that extends `B` with `B` viable at it; a stored slow lock | Healing | `Consensus.Goldilocks.Healing.phaseFloor`, `Consensus.Goldilocks.Healing.EffAllowed`, `Consensus.Goldilocks.Healing.PhaseOn`, `Consensus.Goldilocks.Healing.EntryOf`, `Consensus.Goldilocks.Healing.slotA`, `Consensus.Goldilocks.Healing.rTime`, `Consensus.Goldilocks.Healing.SettledIn`, `Consensus.Goldilocks.Healing.VoteKeeps`, `Consensus.Goldilocks.Healing.StoredSlowLockAt` |
 | HS.1 | CLAIMS HS.1 | **viable-witness retention**: a block allowed in the effective phase geometry is extended by every later honest `Σ.F` before `e`, stays in frame trees and allowed (or below `fc_root`), and its ancestors stay viable or below `fc_root`, also in the voter block tree when it is there | Healing | `Consensus.Goldilocks.Healing.ViableWitnessRetention` |
 | HS.2 | CLAIMS HS.2 | **clean-lock transfer and drain**: fast locks of label `≥ a` and slow locks with `j − k + 1 ≥ a` (stored blocks) transfer to the next votes (with `Carry` for fast) and later votes unless below `fc_root`; live locks from `r` are clean; honest proposals from `r` follow every earlier-label live lock | Healing | `Consensus.Goldilocks.Healing.CleanLockDrain` |
-| HS.3 | CLAIMS HS.3 | **frozen-tree agreement**: an honest ready proposal in a stable phase, with relay from the previous freeze and the lock premise, gets every honest vote of its slot with its ancestry retained; after `r` (settled, `Prop⁺`) without the lock premise, and later votes and proposal parents extend it | Healing | `Consensus.Goldilocks.Healing.FrozenTreeAgreement` |
+| HS.3 | CLAIMS HS.3 (after-`r` part) | **frozen-tree agreement after `r`**: an honest ready proposal of a slot with `t_s ≥ r` in a stable phase (settled, `Prop⁺`), with relay from the previous freeze, gets every honest vote of its slot with its ancestry retained, and later votes and proposal parents extend it. The claims' first part (under the lock premise and #100's proposer-anchor premise, without `Prop⁺` or `t_s ≥ r`) is not stated (`docs/decisions.md`, HS.3) | Healing | `Consensus.Goldilocks.Healing.FrozenTreeAgreement` |
 | HS.4 | CLAIMS HS.4 | **common path and actual-report acquisition**: the phase ends by `w + D` or a unanimous honest proposal `W` at height `h ∈ {ℓ, m}` with every honest validator holding a source with its entry or a matching row by `v = t_s + 6Δ`, later votes and parents extending `W`; the client subclaim (P1/P2) | Healing | `Consensus.Goldilocks.Healing.CommonPathAcquisition`, `Consensus.Goldilocks.Healing.PhaseServiceStatements` |
 | — | CLAIMS §"O.1" (draft 9: `Rec`, `UPat`, constants) | `⌈x/4Δ⌉` in slots; `b₀`, `L_old`, `r_old`, `M*`, `Z`, `T_rec`, `R_*`; the recovery predicate `Rec(t₀)` ((a), (c): C1.1's `Clean(s, m, B)` for every honest fast confirmation written after `t₀` and every `m > s`; (b): compatible honest sources after `t₀`, clean records at the first source of an entry entered after `t₀`); the pattern regime `UPat(W, M)` (with C1.2's `c_F`, `k_F`); C1.2's premises with `UPat` and `M ≥ M*` | Healing | `Consensus.Goldilocks.Healing.slotsCeil`, `Consensus.Goldilocks.Healing.acqSlots`, `Consensus.Goldilocks.Healing.L_old`, `Consensus.Goldilocks.Healing.oldSlots`, `Consensus.Goldilocks.Healing.Mstar`, `Consensus.Goldilocks.Healing.Zreset`, `Consensus.Goldilocks.Healing.T_rec`, `Consensus.Goldilocks.Healing.Rstar`, `Consensus.Goldilocks.Healing.Rec`, `Consensus.Goldilocks.Healing.UPat`, `Consensus.Goldilocks.Healing.PatternPremises` |
 | O.1 (node) | CLAIMS node O.1 (draft 9; reviewed conditional assembly, workbench#27) | **recovery under a bounded uniform pattern**: `Rec(ḡ + T_rec)`, and high honest `Σ.F` from `T_F = ḡ + T_rec − 12Δ` (not O.1's target) | Healing | `Consensus.Goldilocks.Healing.PatternRecovery` |
@@ -556,16 +556,18 @@ Modelling choices:
 - **HS.1–HS.4** (`Statements/Healing/Service`): "before the phase end `e`" is `PhaseOn` from the cut that fixes the
   phase (for HS.2–HS.4 the first cut at `w`); "label `j ≥ a`" is `t_j ≥ w + 4Δ`. Stored blocks (after the move back)
   for the fast and slow locks of HS.2, as in C1.1 and HR.4. "Follows every effective live earlier-label lock" (HS.2
-  (3), HS.3's premise) is read at each honest slot-`s` vote: every live lock (`liveLocks`, moved back) of a label `< s`
-  of the voter is below the proposal or at or below the voter's `fc_root`; so HS.2 (3) gives HS.3's premise. `Carry`
-  in HS.2 (1), (2) is for the retained counted heads; HS.3 (a) and (b) both assume the run settled at `w` in the
-  phase (`SettledIn`, as the claims' "HS.2–HS.5 assume that the run is settled at w"; #86 had it in (b) only), i.e. when `B` is not at or below the voter's `fc_root`. HS.3's
+  (3), the lock premise of the claims' HS.3 first part) is read at each honest slot-`s` vote: every live lock
+  (`liveLocks`, moved back) of a label `< s` of the voter is below the proposal or at or below the voter's `fc_root`; so
+  HS.2 (3) gives that premise. `Carry`
+  in HS.2 (1), (2) is for the retained counted heads, i.e. when `B` is not at or below the voter's `fc_root`. HS.3
+  assumes the run settled at `w` in the phase (`SettledIn`, as the claims' "HS.2–HS.5 assume that the run is settled
+  at w"). HS.3's
   "stable effective phase geometry on the compared events" is the phase constant from a cut at or before the previous
-  freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.3 (a) also assumes that
-  each voter starts at or below the proposer's unlocked anchor (every live lock of a label `< s` of the proposer after
-  its `ac_proposal` at `t_s` is at or below a live lock block of the voter or its `fc_root`): a lock only the proposer
-  holds otherwise starts the proposal walk below where lock-free voters stop (consensus-lean#100; claims HS.3,
-  goldilocks#49). (b) needs no such premise: HS.2 puts every voter above every clean origin from `r`. HS.4's source "with
+  freeze `t_{s−1} + 3Δ` (the voters' pre-freeze trees are compared) through every slot-`s` vote. HS.3 is the claims' after-`r` part only:
+  the first part, with the lock premise and #100's proposer-anchor premise (every live lock of a label `< s` of the
+  proposer after its `ac_proposal` at `t_s` is at or below a live lock block of the voter or its `fc_root`), is not
+  stated (`docs/decisions.md`, HS.3). The after-`r` part needs no such premise: HS.2 puts every voter above every
+  clean origin from `r`. HS.4's source "with
   entry `E`" has state height `h` (`fg_attest` signs at the source's own height), so a higher suppressing source does
   not count; it is current: returned in `[t_s, v]`, extending `W` and allowed in the phase geometry, so the client
   subclaim (b) applies to it (phase-service.md §5: every candidate at the update extends the fresh proposal, and a
