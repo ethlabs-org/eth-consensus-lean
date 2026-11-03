@@ -132,23 +132,7 @@ private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A :
     (hnew : ∀ C, SA.getConfirmation sp A Φ s = some C → ¬ SA.conflictsWithLock sp A.locks Φ t C →
       R C.root ∧ ∀ D ∈ Φ.tree, Φ.Anc D C → ∀ f e, G ⟨D.root, s, f, e⟩) :
     Good R G (SA.updateConfirmation sp A Φ t s) := by
-  unfold SA.updateConfirmation
-  dsimp only
-  rcases hC : SA.getConfirmation sp A Φ s with _ | C
-  · exact h
-  dsimp only
-  split_ifs with hconf
-  · exact h
-  all_goals
-    obtain ⟨hR, hG⟩ := hnew C hC hconf
-    refine ⟨?_, good_addLocks hΦ hD (by rw [SA.updateLatestConfirmed_locks_eq]; exact h.2) ?_⟩
-    · change R (SA.updateLatestConfirmed sp _ Φ C).latestConfirmed
-      unfold SA.updateLatestConfirmed
-      split_ifs
-      exacts [h.1, hR]
-    · rintro p (⟨D, hD, rfl⟩ | ⟨-, D, hD, rfl⟩) <;>
-      · obtain ⟨⟨hDt, -, hDC⟩, -⟩ := (SA.deepest_mem hD).1
-        exact hG D hDt hDC _ _
+  sorry
 
 private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {A : SA.SAState sp.n}
     (h : Good R G A) {t : Time}

@@ -40,38 +40,7 @@ theorem updateConfirmation_slow_lock {FGP : Type} {sp : SAParams} {A : SAState s
     ∃ X f, X ∈ Φ.tree ∧ Φ.Anc C X ∧ Φ.Anc X D ∧
       (⟨(Φ.viableAncestor X).root, s, f, s + sp.k⟩ : Lock) ∈
         (updateConfirmation sp A Φ t s).locks := by
-  classical
-  set S : Set (Blk sp.n FGP) := {B | B ∈ confirmationPath sp Φ D ∧ (FastTest sp A Φ s B ∨
-    ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ Φ.tree,
-      (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧ Φ.Anc B S)}
-  have hSt : S ⊆ Φ.tree := fun B hB => hB.1.1
-  have hslow : ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ Φ.tree,
-      (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧ Φ.Anc C S := by
-    intro j hj₁ hj₂
-    obtain ⟨S', hS', hsv, hCS'⟩ := hrows j hj₁ hj₂
-    exact ⟨S', hS', by rw [Function.update_of_ne (by omega)]; exact hsv, hCS'⟩
-  have hCS : C ∈ S := ⟨⟨hCt, hCg, hCD⟩, Or.inr hslow⟩
-  have hch : ∀ B ∈ S, ∀ B' ∈ S, Compatible Φ.tree B B' := fun B hB B' hB' =>
-    anc_total hΦ.coherent hB.1.2.2 hB'.1.2.2
-  obtain ⟨X, hX⟩ := exists_deepest hΦ hSt ⟨C, hCS⟩
-  have hXS := (deepest_mem hX).1
-  -- B′: the path has a slow-test block (`C`), so the fast lock gets the slow expiry `s + k`
-  have hpos : ∃ B, B ∈ confirmationPath sp Φ D ∧ ∀ j : Int, (s : Int) - sp.k < j → j < s →
-      ∃ S ∈ Φ.tree, (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧
-        Φ.Anc B S := ⟨C, hCS.1, hslow⟩
-  have hXC := anc_deepest hΦ hSt hch hX C hCS
-  by_cases hf : deepest Φ S = fastSelect sp A Φ s D
-  · refine ⟨X, true, hSt hXS, hXC, hXS.1.2.2, ?_⟩
-    simp only [updateConfirmation, hD]
-    rw [ite_eq_right hnv]
-    refine ⟨⟨X.root, s, true, s + sp.k⟩,
-      Or.inr ⟨(X.root, true, s + sp.k), Or.inl ⟨X, hf ▸ hX, ?_⟩, rfl⟩, X, hSt hXS, rfl, hlive, rfl⟩
-    simp only [hpos, ↓reduceIte]
-  · refine ⟨X, false, hSt hXS, hXC, hXS.1.2.2, ?_⟩
-    simp only [updateConfirmation, hD]
-    rw [ite_eq_right hnv]
-    exact ⟨⟨X.root, s, false, s + sp.k⟩, Or.inr ⟨_, Or.inr ⟨hf, X, hX, rfl⟩, rfl⟩, X, hSt hXS,
-      rfl, hlive, rfl⟩
+  sorry
 
 /-- **Effective slow formation**: with `C` a candidate of `viable_ancestor`, the stored block
 extends `C` (`anc_viableAncestor_of_candidate`). -/

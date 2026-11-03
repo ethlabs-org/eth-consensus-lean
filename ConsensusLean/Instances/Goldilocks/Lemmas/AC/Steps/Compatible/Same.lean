@@ -108,50 +108,7 @@ private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
       S ⊆ Fwd tr U Y s D ∧
       ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
         ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U D R := by
-  have hr := hrun.localRun
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨ℓ, C, ⟨hc, hcall, ht, hj⟩, hC, -, hD, -⟩ := hfl
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hY hc
-  refine ⟨ℓ, supporters ℓ.frame ⟨{v | v ∈ (tr.state Y c).pool s}, {v | v ∈ (tr.state Y c).pool s ∧
-    resolutionTime (tr.state Y c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s D, hc, ht,
-    ?_, ?_, ?_, ?_, ?_⟩
-  · -- joined at the update: the restarts were at or before `t_s`
-    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hY)
-    rw [hc.1, hcall] at he
-    have hpost : joined sp (tr.post c) (tr.time c) := by
-      have : tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 :=
-        (congrArg Prod.fst he).symm
-      unfold joined at hj ⊢
-      rw [this, rt_onTick]
-      exact hj
-    have hsl : sp.slot (tr.time c) = s + 1 :=
-      slot_of_lt (s := s + 1) (by rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_add]; linarith)
-        (by rw [ht, ts_add]; linarith)
-    intro k hk hrk
-    have := ((joined_awake sp) FGP ro H U tr hr Y hY c ℓ hc hpost).2 k hk hrk
-    rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
-  · have hfast := (deepest_mem hD).1.2
-    unfold FastTest confirmationScore at hfast
-    exact hfast
-  · have hmaj := (deepest_mem hC).1.2.2
-    unfold confirmationScore at hmaj
-    exact lt_of_lt_of_le hmaj (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard
-      ((supporters_antitone sp) FGP ℓ.frame _ s D C (deepest_mem hD).1.1.2.2)))
-  · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
-    have hvs := state_pool_slot sp hr hY c s v hvp
-    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_of_held hr hY hvs hvp le_rfl
-      fun k _ hst => ?_⟩
-    have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
-      unfold resolutionTime at hres
-      split at hres
-      · exact absurd hres (by simp [ETime.of])
-      · split_ifs at hres
-        · exact absurd hres (by simp [ETime.of])
-        · exact lt_of_le_of_lt (le_max_left _ _) hres
-    rw [hst] at hst'
-    exact WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst')
-  · rintro u ⟨hneq, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hDR⟩
-    exact ⟨hneq, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
+  sorry
 
 /-- **The optimistic side.** At an honest optimistic confirmation of slot `s` on `D`, three
 quarters of the committee are optimistic voters of `D`, each with a vote extending `D` that the

@@ -6,9 +6,8 @@ public section
 /-! # Goldilocks SA: lock expiry facts
 
 The write-side bounds of a new fast lock's expiry, `s + 2 ≤ fastExpiry ≤ s + k`, on every lock
-set (no run invariant), and the reading of `Lock.LiveAt`. A slow lock and a slow-qualified
-update's fast lock get `s + k`, so every written lock of slot `s` has an expiry in
-`[s + 2, s + k]`. -/
+set (no run invariant), and the reading of `Lock.LiveAt`. A slow lock gets `s + k`, so every
+written lock of slot `s` has an expiry in `[s + 2, s + k]`. -/
 
 namespace Consensus.Goldilocks.SA
 

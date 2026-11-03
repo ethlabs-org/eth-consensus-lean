@@ -282,17 +282,16 @@ theorem updateConfirmation_cases (A : SAState sp1.n) (Φ : N1.Frm) (t : Time) (s
   split
   · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
   · rename_i C hC
+    obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
+      { A with saved := Function.update A.saved s ((getConfirmation sp1 A Φ s).map Block.root) }
+      Φ C
     split_ifs
-    · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
     all_goals
-      obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
-        { A with saved := Function.update A.saved s ((getConfirmation sp1 A Φ s).map Block.root) }
-        Φ C
-      rw [hc]
+      try rw [hc]
       refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
-      rintro p (⟨B, hB, rfl⟩ | ⟨-, B, hB, rfl⟩)
-      · exact ⟨B, (deepest_mem hB).1.1.1, rfl⟩
-      · exact ⟨B, (deepest_mem hB).1.1.1, rfl⟩
+      rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
+      · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩
+      · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩
 
 open ChainFrame in
 theorem liveLocks_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : Set Lock}

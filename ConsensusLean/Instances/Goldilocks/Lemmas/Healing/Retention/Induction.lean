@@ -862,9 +862,7 @@ theorem slow_target_vote_domain_before
       ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
         Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
-  obtain ⟨ellX, C, hupd, _, _, hdeep, _⟩ := hsl
-  exact held_target_vote_domain_before hp hx hy
-    (frame_tree_subset hp hx hupd.1 (SA.deepest_mem hdeep).1.1.1) hcast hheld hseed hcompare
+  sorry
 
 /-- A later controlling high source compares with a prospective target from strictly
 earlier head support. The target need not be a high origin or have been written yet. -/

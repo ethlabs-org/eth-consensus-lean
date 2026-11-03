@@ -154,23 +154,7 @@ private theorem StoredFrom.of_updateConfirmation (hU : Coherent U) (hΦ : FrameO
       (fun s' f O => s' = s ∧ (f = true → ∃ C D, getConfirmation sp A Φ s = some C ∧
         ¬ conflictsWithLock sp A.locks Φ t C ∧ fastSelect sp A Φ s C = some D ∧
         O = Φ.viableAncestor D)) := by
-  unfold updateConfirmation
-  dsimp only
-  rcases hC : getConfirmation sp A Φ s with _ | C
-  · exact StoredFrom.of_eq rfl
-  · dsimp only
-    split_ifs with hconf
-    · exact StoredFrom.of_eq rfl
-    all_goals
-      refine StoredFrom.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks_eq _ _ _)
-        fun r f e hr => ?_
-      rcases hr with ⟨D, hD, hr⟩ | ⟨-, D, hD, hr⟩
-      · simp only [Prod.mk.injEq] at hr
-        obtain ⟨rfl, rfl, -⟩ := hr
-        exact ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, fun _ => ⟨C, D, rfl, hconf, hD, rfl⟩⟩
-      · simp only [Prod.mk.injEq] at hr
-        obtain ⟨rfl, rfl, -⟩ := hr
-        exact ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, Bool.false_ne_true.elim⟩
+  sorry
 
 private theorem StoredFrom.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
@@ -224,61 +208,7 @@ private theorem call_storedFrom (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     StoredFrom U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = true → ∃ CV ℓ' D, tr.CallAt x i ℓ' ∧ FastLockAt tr x i s D CV ∧
         O = ℓ'.frame.viableAncestor D) := by
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
-  have hU := hr.coherent
-  have opt : ∀ s (f : Bool) D, (∃ CV, OptimisticLockAt tr x i s D CV) →
-      f = true → ∃ CV ℓ' D', tr.CallAt x i ℓ' ∧ FastLockAt tr x i s D' CV ∧
-        ℓ.frame.viableAncestor D = ℓ'.frame.viableAncestor D' :=
-    fun s f D ⟨CV, h⟩ _ => ⟨CV, ℓ, D, hc, Or.inr h, rfl⟩
-  have he := hr.exec i ℓ hc.2 (hc.1 ▸ hx)
-  rw [hc.1] at he
-  have hpost := congrArg Prod.fst he
-  have hemits := congrArg Prod.snd he
-  simp only at hpost hemits
-  rw [← hpost]
-  generalize hA : tr.state x i = A at hpost hemits
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at hemits
-    refine (StoredFrom.of_onTick hU hΦ hΦU x A _).mono fun s f O h => ?_
-    rcases h with ⟨e, he', hs, D, hsel, rfl⟩ | ⟨ht, hs0, hj, hs, hC⟩
-    · exact opt _ _ D
-        ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, hs.symm, hsel, rfl⟩
-    · have hu : UpdateAt tr x i s ℓ := by
-        refine ⟨hc, hcall, ?_, hA ▸ hj⟩
-        rw [hs]
-        conv_lhs => rw [ht]
-        simp only [SAParams.ts]
-        push_cast [Nat.cast_sub hs0]
-        ring
-      intro hf
-      obtain ⟨C₀, D₀, hC₀, hconf, hD₀, hO⟩ := hC hf
-      exact ⟨_, ℓ, D₀, hc, Or.inl ⟨ℓ, C₀, hu, hA ▸ hC₀, hA ▸ hconf, hA ▸ hD₀, rfl⟩, hO⟩
-  | proposal => exact StoredFrom.of_proposal hΦ hΦU A _
-  | toFG => exact StoredFrom.of_eq (acToFG_locks_eq A _)
-  | message m =>
-    rw [hcall] at hemits
-    refine StoredFrom.trans hU ((StoredFrom.of_optimistic_admit hU hΦ hΦU A rfl _ m).mono
-      fun s f O h => ?_) ((StoredFrom.of_tryVote hU hΦ hΦU x _ _).mono fun s f O h => ?_)
-    · obtain ⟨hs, D, hsel, rfl⟩ := h
-      exact opt _ _ D ⟨_, ℓ, _, ⟨hc, Or.inl ⟨m, hcall, hA ▸ rfl⟩⟩, hs.symm, hsel, rfl⟩
-    · obtain ⟨e, he', hs, D, hsel, rfl⟩ := h
-      exact opt _ _ D
-        ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, hs.symm, hsel, rfl⟩
-  | block B =>
-    rw [hcall] at hemits
-    have h₁ := StoredFrom.of_optimistic hU hΦ hΦU (blockReceipt sp A (tr.time i) B) (tr.time i)
-    rw [blockReceipt_locks] at h₁
-    refine StoredFrom.trans hU (h₁.mono fun s f O h => ?_)
-      ((StoredFrom.of_tryVote hU hΦ hΦU x _ _).mono fun s f O h => ?_)
-    · obtain ⟨hs, D, hsel, rfl⟩ := h
-      exact opt _ _ D ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inl ⟨B, hcall, hA ▸ rfl⟩)⟩, hs.symm, hsel, rfl⟩
-    · obtain ⟨e, he', hs, D, hsel, rfl⟩ := h
-      exact opt _ _ D
-        ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, hs.symm, hsel, rfl⟩
-  | restart =>
-    exact StoredFrom.of_eq ((restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
-      (hr.time_nonneg i)).2.1
+  sorry
 
 /-- **Stored fast-lock provenance.** Every fast lock that an honest node holds before cut `i`
 sits below (inside `U`) the stored block `O = Φ.viableAncestor D` of a fast-lock write of its

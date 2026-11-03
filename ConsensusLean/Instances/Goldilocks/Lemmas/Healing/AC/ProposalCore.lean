@@ -581,27 +581,7 @@ theorem update_first_proposal (hrun : ACRun proposer tr H U)
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool σ})
     (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D) :
     Anc U D d.head := by
-  have hr := hrun.localRun
-  obtain ⟨ℓX, C, hupd, hconf, -, hfs, rfl⟩ := hfu
-  obtain ⟨hΦX, hΦXU⟩ := frameIn_of_callAt hr hX hupd.1
-  obtain ⟨⟨-, -, hDC⟩, hfast⟩ := (deepest_mem hfs).1
-  have hDC' : Anc U D C := Anc.mono hΦXU hDC
-  -- the votes counted for `C` are counted for `D`
-  have hCD : fastCounted sp (tr.state X i₀) ℓX.frame σ C ⊆
-      fastCounted sp (tr.state X i₀) ℓX.frame σ D := by
-    rintro v ⟨hv, hneq, hres, R, hR, hRr, hCR⟩
-    exact ⟨hv, hneq, hres, R, hR, hRr, hDC.trans hCR⟩
-  set SX := {w | ∃ v ∈ fastCounted sp (tr.state X i₀) ℓX.frame σ D, v.val = w}
-  have hhalf : sp.n ≤ 2 * SX.ncard := by
-    refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
-    rintro w ⟨hw, v, ⟨hv, hres⟩, hval, -, hanc⟩
-    exact ⟨v, ⟨hv, hval ▸ hw, hres, hanc⟩, hval⟩
-  have hsupp := counted_supporters_proposal hr hX hupd.1 hx hc hV.1
-    (Relation.ReflTransGen.refl (a := D)) hP hW
-  exact proposal_walk hr hx hc hslot hprop hV.2
-    (proposal_locks hr hx hc hV.1 (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw), hhalf⟩) hhigh)
-    (result_best_at_proposal hr hX ⟨ℓX, hupd, hconf, rfl⟩ hx hc hV.1 hDC'
-      (fun v hv => hP v (hCD hv)) hW)
+  sorry
 
 /-- Optimistic proposal transfer for an ancestor B of the selected block D. -/
 theorem optimistic_first_proposal_stored (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)

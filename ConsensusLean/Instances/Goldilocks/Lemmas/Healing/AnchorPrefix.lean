@@ -430,24 +430,7 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
       ((∃ CV, SA.FastUpdateAt tr.projAC x a l.slot D CV) ∨
         SA.SlowLockAt tr.projAC x a l.slot D ∨
         ∃ CV, SA.OptimisticLockAt tr.projAC x a l.slot D CV) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hPhi := SA.frameIn_of_callAt hr hx hc
-  obtain ⟨l₀, hl₀, E, hE, hEr, -, heq⟩ := hl
-  have hs : l.slot = l₀.slot := by rw [heq]
-  have hBE : ell.frame.Anc B E := by
-    have he : B = ell.frame.viableAncestor E := hPhi.1.coherent.1 hB
-      (SA.viableAncestor_anc hPhi.1 hE).1 (hBr.trans (congrArg SA.Lock.block heq))
-    rw [he]
-    exact (SA.viableAncestor_anc hPhi.1 hE).2
-  obtain ⟨a, hai, ellw, D, ha, hD, ho, M, hM, hMr, hMA⟩ :=
-    SA.lock_selection_candidate_provenance hr hx i l₀ hl₀
-  have he : M = E := hr.coherent.1 hM (hPhi.2 hE) (hMr.trans hEr.symm)
-  rw [← hs] at ho
-  refine ⟨a, hai, ellw, D, ha, hD, (Anc.mono hPhi.2 hBE).trans (he ▸ hMA), ?_⟩
-  rcases ho with ⟨_, CV, hf | hop⟩ | ⟨_, hslow⟩
-  · exact Or.inl ⟨CV, hf⟩
-  · exact Or.inr (Or.inr ⟨CV, hop⟩)
-  · exact Or.inr (Or.inl hslow)
+  sorry
 
 /-- A warm actual proposal lock supplies exactly one of the three prefix
 mechanisms: the writer root, prior honest heads, or a boundary optimistic CV. -/

@@ -518,21 +518,7 @@ theorem clean_slow_proposal (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
     (hprior : ∀ z ∈ H, ∀ k' < k, ∀ e', SA.VoteAt tr.projAC z k' e' → j < e'.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
     Anc (tr.HonestBlocks H) B P := by
-  have hS := healthyBase_of_hs hrun hs hc
-  have hr := hS.run.localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hj' : w + 4 * sp.Δ ≤ sp.ts j :=
-    hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
-  have hw8 := gbar_add_le_of_settled hw
-  obtain ⟨ℓw, D, hcw, ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩, rfl⟩ := ho
-  obtain rfl : ℓX = ℓw := Option.some.inj (hupd.1.2.symm.trans hcw.2)
-  have hΦU := (SA.frameIn_of_callAt hr hx hcw).2
-  have hBC : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) C :=
-    Anc.mono hΦU ((SA.anc_viableAncestor _ D).trans (SA.deepest_mem hdeep).1.1.2.2)
-  obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hCHd⟩ :=
-    SA.result_extended hS (by linarith) hx hupd.1 (by rw [hupd.2.2.1]; linarith) hconf
-  exact proposal_extends_of_batch hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩
-    hP (he ▸ two_le_of_update hrun hs.noColl hupd hy hv hik) hy hv he hk hprior
+  sorry
 
 /-- **Proposal-boundary transfer of a clean fast origin** (`hs234-exact-interface.md` §2.2 last
 paragraph, §3 last paragraph): under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean

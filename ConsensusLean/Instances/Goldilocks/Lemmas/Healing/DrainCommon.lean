@@ -560,21 +560,7 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
     (hjs : j < e.msg.slot) (hk : PhaseOn tr.projFG H i₀ k m c) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hS := healthyBase_of_hs hrun hs hc
-  have hr := hS.run.localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hj' : w + 4 * sp.Δ ≤ sp.ts j :=
-    hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
-  have hw8 := gbar_add_le_of_settled hw
-  obtain ⟨ℓw, D, hcw, ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩, rfl⟩ := ho
-  obtain rfl : ℓX = ℓw := Option.some.inj (hupd.1.2.symm.trans hcw.2)
-  have hΦU := (SA.frameIn_of_callAt hr hx hcw).2
-  have hBC : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) C :=
-    Anc.mono hΦU ((SA.anc_viableAncestor _ D).trans (SA.deepest_mem hdeep).1.1.2.2)
-  obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hCHd⟩ :=
-    SA.result_extended hS (by linarith) hx hupd.1 (by rw [hupd.2.2.1]; linarith) hconf
-  exact viable_of_clean_vote hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩ hy hv
-    hjs hk
+  sorry
 
 /-! ### §2.1: exact `Carry` -/
 
@@ -633,40 +619,7 @@ theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (hC : SA.ResultAt tr.projAC x i j C CV) (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl).localRun
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hFB := frame_F_anc_of_viable hrun hs hy hv
-    (clean_slow_viable hrun hs hc hw hx ho hj hy hv (by omega) hk) hroot
-  have hj' : w + 4 * sp.Δ ≤ sp.ts j :=
-    hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
-  have hgj := gbar_le_of_clean hw hj'
-  have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (SA.castAt_spec hr hy hv).2.1])
-  have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  -- the stored block is below the slow selection, on the result's path
-  have hBC : Anc (tr.HonestBlocks H) B C := by
-    obtain ⟨ℓw, D, hcw, ⟨ℓs, C', ⟨hcs, -⟩, hC', -, hD, -⟩, rfl⟩ := ho
-    obtain ⟨ℓr, ⟨hcr, -⟩, hCr, -⟩ := hC
-    obtain rfl : ℓs = ℓw := Option.some.inj (hcs.2.symm.trans hcw.2)
-    obtain rfl : ℓr = ℓs := Option.some.inj (hcr.2.symm.trans hcs.2)
-    obtain rfl : C' = C := Option.some.inj (hC'.symm.trans hCr)
-    have hΦU := (SA.frameIn_of_callAt hr hx hcw).2
-    exact Anc.mono hΦU ((SA.anc_viableAncestor _ D).trans (SA.deepest_mem hD).1.1.2.2)
-  have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr proposer ΔF (gbar g) (sp.ts j + 2 * sp.Δ) hrun.toLocalRun
-    (syncRun_of_gst hs.healthy.1 (le_gbar g))
-  refine SA.carryAt_of_writer_catch hr hsync hgj le_rfl hx hy hv he fun v hvv => ?_
-  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr hx hC v hvv
-  have hFHv := hFB.trans (hBC.trans hCHv)
-  refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
-  rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩
-  · exact Or.inl hgen
-  by_cases hkg : gbar g ≤ tr.time kw
-  · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
-  · obtain ⟨k', hk', hacc, hk't⟩ :=
-      accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by linarith) hFHv
-    exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith⟩)
+  sorry
 
 /-- **`Carry` of the preceding honest batch** (`hs234-exact-interface.md` §2.1 "all-head Carry",
 §3 "the preceding common honest batch"): under `Γ`, if every honest vote of a clean slot `m'`

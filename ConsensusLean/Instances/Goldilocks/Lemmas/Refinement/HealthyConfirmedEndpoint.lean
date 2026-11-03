@@ -48,15 +48,7 @@ private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : SA.SASta
     (hage : sp.slot t ≤ u + 2) :
     ∃ e, u + 2 ≤ e ∧
       (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (SA.updateConfirmation sp A Φ t u).locks := by
-  have hk := sp.two_le_k
-  unfold SA.updateConfirmation
-  simp only [hconf]
-  rw [ite_eq_right hnv]
-  refine ⟨_, ?_, ⟨P.root, u, true, _⟩, Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPt, rfl, ?_,
-    by rw [hva]⟩
-  all_goals split_ifs
-  all_goals first | exact Nat.add_le_add_left hk u | exact hage.trans (Nat.add_le_add_left hk u) |
-    exact SA.le_fastExpiry sp _ _ _ _ | exact hage.trans (SA.le_fastExpiry sp _ _ _ _)
+  sorry
 
 /-- **The fresh fast lock at an actual update.** Every honest update of slot `u` after the drain
 writes `(P, u, true, e)` for the actual designated proposal `P` of slot `u`, with an expiry

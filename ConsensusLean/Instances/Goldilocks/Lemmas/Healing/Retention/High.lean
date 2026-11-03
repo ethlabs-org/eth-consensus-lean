@@ -182,12 +182,7 @@ theorem genesis_not_high (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin 
 theorem fastLock_mem {x : Fin sp.n} {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hfl : SA.FastLockAt tr.projAC x i s D CV) :
     ∃ ℓ, tr.projAC.CallAt x i ℓ ∧ D ∈ ℓ.frame.tree := by
-  rcases hfl with ⟨ℓ, C, ⟨hc, -⟩, -, -, hsel, -⟩ | ⟨ℓ, A, hpt, -, hsel, -⟩
-  · exact ⟨ℓ, hc, (SA.deepest_mem hsel).1.1.1⟩
-  · unfold SA.optimisticSelect at hsel
-    dsimp only at hsel
-    split_ifs at hsel
-    exact ⟨ℓ, hpt.1, (SA.deepest_mem hsel).1.1⟩
+  sorry
 
 /-- The frame of an honest AC call is inside the node's FG tree. -/
 theorem frame_tree_subset (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)

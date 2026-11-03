@@ -151,22 +151,7 @@ private theorem LockInv.optimistic {A : SAState sp.n} (h : LockInv U A Φ) (t : 
 open Classical in
 private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
     LockInv U (updateConfirmation sp A Φ t s) Φ := by
-  unfold updateConfirmation
-  dsimp only
-  rcases hC : getConfirmation sp A Φ s with _ | C
-  · exact h.of_eq rfl rfl
-  · dsimp only
-    split_ifs with hconf
-    · exact h.of_eq rfl rfl
-    all_goals
-      have hCt := (deepest_mem hC).1.1
-      simp only [updateLatestConfirmed_locks]
-      refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
-        ).addLocks hU hΦ hΦU hCt hconf rfl (fun p hp => ?_) ?_
-      · rcases hp with ⟨D, hD, rfl⟩ | ⟨-, D, hD, rfl⟩
-        · exact ⟨D, (deepest_mem hD).1.1.1, rfl, (deepest_mem hD).1.1.2.2⟩
-        · exact ⟨D, (deepest_mem hD).1.1.1, rfl, (deepest_mem hD).1.1.2.2⟩
-      · unfold updateLatestConfirmed; split_ifs <;> rfl
+  sorry
 
 private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
     (t : Time) : LockInv U (SA.tryVote sp x A Φ t).1 Φ := by

@@ -163,19 +163,16 @@ def ACHealingStandaloneCorollary : Prop :=
           Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))
 
 /-- **A slow lock** of slot `s` on `B`, written at cut `i` of `x`: the update of slot `s` (at
-`t_s + 6Δ`, joined) returns `C`, not vetoed, and the lock block of `update_confirmation` (the
-deepest block of `C`'s path that passes the fast test or has the `k − 1` previous saved results
-as descendants) is `B` and is not the block `D` of the fast test, so it is written as a lock that
-is not fast. -/
+`t_s + 6Δ`, joined) returns `C` (vetoed or not), and `B` is the deepest block of `C`'s path that
+conflicts with no live lock and has the `k − 1` previous saved results as descendants, written
+as a lock that is not fast. -/
 def SlowLockAt (tr : SATrace sp FGP ro) (x : Fin sp.n) (i s : Nat) (B : Blk sp.n FGP) : Prop :=
   ∃ ℓ C, UpdateAt tr x i s ℓ ∧ getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
-    ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C ∧
     deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
-      (FastTest sp (tr.state x i) ℓ.frame s X ∨
-        ∀ j : Int, (s : Int) - sp.k < j → j < s →
-          ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved j = some S.root ∧ ℓ.frame.Anc X S)} =
-      some B ∧
-    fastSelect sp (tr.state x i) ℓ.frame s C ≠ some B
+      ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) X ∧
+      ∀ j : Int, (s : Int) - sp.k < j → j < s →
+        ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved j = some S.root ∧ ℓ.frame.Anc X S} =
+      some B
 
 /-- **The protected blocks `𝒫(t₀)`** (claims §"Healing: top-level statements", "Protected
 blocks"): the pairs `(B, j)` such that, at an honest node joined at the write, (P1) `B` is the

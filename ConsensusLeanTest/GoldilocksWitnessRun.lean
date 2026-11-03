@@ -437,9 +437,9 @@ theorem update_pool {x : Fin sp1.n} {i s : Nat} {ℓ : ACLabel N1}
 theorem protected_le {t₀ : Time} {B : N1.Blk} {j : Nat}
     (h : Protected (fun _ => v0) (tickRun N1 dg1).projAC Set.univ t₀ B j) :
     ∃ m ≤ j, B = blk m := by
-  rcases h with ⟨x, -, i, CV, -, hfl, -⟩ | ⟨x, -, i, -, ⟨ℓ, C, hu, hC, -, hB, -⟩, -⟩ |
+  rcases h with ⟨x, -, i, CV, -, hfl, -⟩ | ⟨x, -, i, -, ⟨ℓ, C, hu, hC, hB⟩, -⟩ |
       ⟨-, ⟨k, ℓ, d, pay, -, -, -, -, -, hBs, -, -, i', -, ⟨ℓ', hc', hcall⟩, hti⟩, -, -⟩
-  · rcases hfl with ⟨ℓ, C, hu, hC, -, hB, -⟩ | ⟨ℓ, A, hp, hs, hsel, -⟩
+  · rcases hfl with ⟨ℓ, C, hu, hC, hB, -⟩ | ⟨ℓ, A, hp, hs, hsel, -⟩
     · obtain ⟨hpool, f, hf⟩ := update_pool hu
       obtain ⟨c, hc, rfl⟩ := getConfirmation_le hf hpool hC
       obtain ⟨⟨⟨-, -, ha⟩, -⟩, -⟩ := deepest_mem hB

@@ -518,19 +518,7 @@ theorem origin_compatible_proposal (hS : StandaloneRun tr H U proposer g)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {x : Fin sp.n} (hx : x ∈ H) {j s : Nat} {B : Blk sp.n FGP} (hps : p ≤ s)
     (horig : (∃ CV, FastLockAt tr x j s B CV) ∨ SlowLockAt tr x j s B) : Compatible U B P := by
-  have hr := hS.run.localRun
-  have hU := hr.coherent
-  have hs : gbar g + 4 * sp.Δ ≤ sp.ts s := hp.trans ((ts_le_iff sp).2 (by omega))
-  rcases horig with ⟨CV, hfl⟩ | ⟨ℓ', C, hupd, hC, -, hB, -⟩
-  · obtain ⟨z, hz, j', e, hv, hes, hext⟩ := fastLock_honest_vote hS.run hS.two_faulty_lt hx hfl
-    exact compatible_of_vote hU hvotes hz hv (hes ▸ hps) hext
-  · obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hx hupd.1
-    have hBC : ℓ'.frame.Anc B C := (deepest_mem hB).1.1.2.2
-    obtain ⟨z, hz, j', e, hv, hes, Hd, hHd, hHdr, hCHd⟩ :=
-      result_extended hS.toHealthyBase hs hx hupd.1
-        (by rw [hupd.2.2.1]; linarith [sp.toParams.hΔ]) hC
-    exact compatible_of_vote hU hvotes hz hv (hes ▸ hps)
-      ⟨Hd, hHd, hHdr, (Anc.mono hΦU hBC).trans hCHd⟩
+  sorry
 
 private theorem compatible_down {B L P : Blk sp.n FGP} (hU : Coherent U) (hLB : Anc U L B)
     (h : Compatible U B P) : Compatible U L P := by

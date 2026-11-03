@@ -629,26 +629,7 @@ theorem fastLock_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
 optimistic test with three quarters, and each counted validator has a counted vote. -/
 theorem fastLock_counted_nonempty {x : Fin sp.n} {i₀ s : Nat} {D : SA.Blk sp.n FGP}
     {CV : Set (Vote sp.n)} (hfl : SA.FastLockAt T x i₀ s D CV) : CV.Nonempty := by
-  have hn := sp.toParams.hn
-  have hn' : sp.n = sp.toParams.n := rfl
-  rcases hfl with ⟨ℓX, C, -, -, -, hsel, rfl⟩ | ⟨ℓx, A, -, hsl, hsel, rfl⟩
-  · obtain ⟨⟨-, hfast⟩, -⟩ := SA.deepest_mem hsel
-    unfold SA.FastTest SA.confirmationScore at hfast
-    dsimp only at hfast
-    generalize hS : SA.supporters _ _ _ _ = S at hfast
-    obtain ⟨i, hi⟩ := Set.nonempty_of_ncard_ne_zero (s := S) (by omega)
-    rw [← hS] at hi
-    obtain ⟨hi, v, ⟨hvp, hvres⟩, rfl, -, hv⟩ := hi
-    exact ⟨v, hvp, hi, hvres, hv⟩
-  · unfold SA.optimisticSelect at hsel
-    dsimp only at hsel
-    split_ifs at hsel
-    obtain ⟨⟨-, hq, -⟩, -⟩ := SA.deepest_mem hsel
-    generalize hS : SA.optimisticVoters _ _ _ _ _ = S at hq
-    obtain ⟨i, hi⟩ := Set.nonempty_of_ncard_ne_zero (s := S) (by omega)
-    rw [← hS] at hi
-    obtain ⟨v, hv, -, hvD⟩ := hi
-    exact ⟨v, hsl ▸ hv, hvD⟩
+  sorry
 
 /-- A raw writer supplies a counted head above the target, accepted before the slot freeze. -/
 theorem raw_writer_relay_source

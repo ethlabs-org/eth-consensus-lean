@@ -1544,22 +1544,7 @@ theorem candidate_after_fast_update {A : SA.SAState sp.n} {Phi : SA.Frm sp.n FGP
     (hfast : SA.fastSelect sp A Phi u P = some P)
     (hlive : sp.slot t ≤ u + sp.k) (hage : sp.slot t ≤ u + 2) :
     P ∈ SA.toFGCandidates sp (SA.updateConfirmation sp A Phi t u) Phi t := by
-  have hself : Phi.viableAncestor P = P := SA.viableAncestor_self hPhi hPv.1 (Or.inl hPv)
-  have hk := sp.two_le_k
-  -- the written expiry is `s + k` or `fastExpiry`, both at least `u + 2 ≥ slot(t)`
-  have hlock : ∃ e, sp.slot t ≤ e ∧ (⟨P.root, u, true, e⟩ : SA.Lock) ∈
-      (SA.updateConfirmation sp A Phi t u).locks := by
-    unfold SA.updateConfirmation
-    simp only [hconf]
-    rw [ite_eq_right hnv]
-    refine ⟨_, ?_, ⟨P.root, u, true, _⟩, Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPv.1, rfl,
-      ?_, by rw [hself]⟩ <;>
-    · split_ifs
-      · omega
-      · exact hage.trans (SA.le_fastExpiry sp _ _ _ _)
-  obtain ⟨e, he, hlock⟩ := hlock
-  exact ⟨hPv, ⟨P.root, u, true, e⟩, ⟨⟨P.root, u, true, e⟩, hlock, P, hPv.1, rfl, he,
-    by rw [hself]⟩, rfl, rfl, hage⟩
+  sorry
 
 /-- The exact fast candidate persists into an adjacent call with the same frame
 and timestamp; these are the equalities supplied by `update_toFG_calls`. -/

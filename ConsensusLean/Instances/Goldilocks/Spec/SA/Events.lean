@@ -10,7 +10,8 @@ AC trace of `goldilocksSA`:
 
 * **Events inside calls.** A vote is an emission (`VoteAt`, with its call's label). A fast lock
   of slot `s` on `B` is written by the fast test of the confirmation update of slot `s` (the tick
-  at `t_s + 6Δ` of a joined node, when the result is not vetoed; `FastUpdateAt`) or by an
+  at `t_s + 6Δ` of a joined node, vetoed or not; over the path blocks no live lock vetoes;
+  `FastUpdateAt`) or by an
   optimistic confirmation (`OptimisticLockAt`), which runs inside a call at its receipt (after
   the admission of an `on_message` vote or of an `on_block` block's votes) and after the own vote's
   admission; each comes with its **counted votes**. `ResultAt` is the result of
@@ -64,13 +65,14 @@ def ResultAt (tr : SATrace sp FGP ro) (x : Fin sp.n) (i s : Nat) (C : Blk sp.n F
     CV = fastCounted sp (tr.state x i) ℓ.frame s C
 
 /-- **A fast lock written by the fast test** of the update of slot `s` at cut `i` of `x`, on the
-block `B` the test selects (the result is not vetoed), with the counted votes `CV` (the counted
-validators are at least half of the committee). -/
+block `B` the test selects (vetoed or not; over the path blocks no live lock vetoes), with the
+counted votes `CV` (the counted validators are at least half of the committee). -/
 def FastUpdateAt (tr : SATrace sp FGP ro) (x : Fin sp.n) (i s : Nat) (B : Blk sp.n FGP)
     (CV : Set (Vote sp.n)) : Prop :=
   ∃ ℓ C, UpdateAt tr x i s ℓ ∧ getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
-    ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C ∧
-    fastSelect sp (tr.state x i) ℓ.frame s C = some B ∧
+    deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
+      ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) X ∧
+      FastTest sp (tr.state x i) ℓ.frame s X} = some B ∧
     CV = fastCounted sp (tr.state x i) ℓ.frame s B
 
 /-- The states at which the call of `x` at cut `i` (label `ℓ`) runs the optimistic check: after

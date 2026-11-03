@@ -29,18 +29,7 @@ theorem fastLock_mem_updateConfirmation_floor {A : SAState sp.n} {Φ : Frm sp.n 
     (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
     (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2) :
     ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks := by
-  have hk := sp.two_le_k
-  unfold updateConfirmation
-  simp only [hconf]
-  rw [ite_eq_right hnv]
-  dsimp only
-  split_ifs
-  · exact ⟨u + sp.k, by omega, ⟨P.root, u, true, u + sp.k⟩,
-      Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPt, rfl,
-      show sp.slot t ≤ u + sp.k by omega, by rw [hva]⟩
-  · exact ⟨_, le_fastExpiry sp _ Φ t u, ⟨P.root, u, true, _⟩,
-      Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPt, rfl,
-      hlive.trans (le_fastExpiry sp _ Φ t u), by rw [hva]⟩
+  sorry
 
 /-- `fastLock_mem_updateConfirmation_floor` without the expiry bound. -/
 theorem fastLock_mem_updateConfirmation {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}

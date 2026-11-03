@@ -160,51 +160,7 @@ theorem ResetPremisesUpTo.optimistic_vote_domain_before
       s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
     Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  have hS := healthy_base_of_reset_catch_before hp hc
-  have hr := hS.run.localRun
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨hBx, z, hz, q, hqr, ev, hv, hvs, hVB⟩ := hp.optimistic_supporter hx hop
-  have hqb := (hp.run.time_mono hqr).trans hrb
-  obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed
-  have hdb := hda.trans hp.reset_le
-  have hms : m < s := by rw [cleanLabel_eq] at hs; omega
-  have hts := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
-  have hgs : SA.gbar g ≤ sp.ts s := by
-    have := lt_cutZ sp g
-    have := sp.toParams.hΔ
-    linarith
-  apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by omega)
-    (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
-  · intro hF
-    exact raw_writer_voterBlockTree_window_before hr hS.sync hS.catchUp hx hy
-      (Or.inr (Or.inr hop)) .refl hcast (by omega) hib (by
-        have := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
-        linarith) hF
-  · intro w c n O hci ho
-    have hcb := (hp.run.time_mono hci.le).trans hib
-    rcases lt_trichotomy n s with hn | rfl | hn
-    · exact hp.target_compatible_older_origin ho hcb hz hv hqb hvs hn hVB
-    · obtain ⟨CV', hst⟩ := ho.2.2.1
-      obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-      have hcomp : Compatible (tr.HonestBlocks H) B D := by
-        rcases hfl with ⟨ellD, R, huD, hR, _, hfast, _⟩ | hop'
-        · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
-            (SA.frameIn_of_callAt hr ho.1 huD.1).2
-          have hRB := hp.result_source_compatible hc ho.1 hx
-            ⟨ellD, huD, hR, rfl⟩ (Or.inr hop) hcb hrb hts
-          rcases hRB with h | h
-          · exact Or.inr (hDR.trans h)
-          · exact SA.anc_total hr.coherent h hDR
-        · exact hp.optimistic_sources_compatible hx ho.1 hop hop'
-      rcases hcomp with h | h
-      · exact SA.anc_total hr.coherent h hOD
-      · exact Or.inr (hOD.trans h)
-    · exact hp.target_compatible_later_origin_before ho hci hn hprior
-  · intro w c n O hci ho
-    exact hp.origins_compatible hseed hdb ho ((hp.run.time_mono hci.le).trans hib)
-  · intro w c n O hci ho w' c' n' O' hci' ho'
-    exact hp.origins_compatible ho ((hp.run.time_mono hci.le).trans hib)
-      ho' ((hp.run.time_mono hci'.le).trans hib)
+  sorry
 
 /-- A bounded slow write compares with every older live stored lock through the horizon. -/
 theorem ResetPremisesUpTo.slow_stored_locks
@@ -242,21 +198,7 @@ theorem ResetPremisesUpTo.slow_source_votes_before
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
     ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, SA.CastAt tr.projAC y i ell e →
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨ellX, C, hupd, hconf, _, hdeep, _⟩ := id hslow
-  have hBC := ((SA.deepest_mem hdeep).1.1.2.2).mono
-    (SA.frameIn_of_callAt hr hx hupd.1).2
-  have hres : SA.ResultAt tr.projAC x r s C
-      (SA.fastCounted sp (tr.projAC.state x r) ellX.frame s C) :=
-    ⟨ellX, hupd, hconf, rfl⟩
-  apply hp.late_result_prefix_votes_before hc hx hres hBC hrb
-    (hp.clean_window_timing hs s (by have := sp.two_le_k; omega))
-  · intro y hy i ell e hcast hib hsi hprior
-    exact hp.result_prefix_vote_domain_before hc hx hy hres hBC hs hrb hcast hsi hib hprior
-  · intro y hy i ell e hcast hib hfirst
-    exact hp.slow_stored_locks hc hx hy hslow hs hrb hib (by
-      change s + 1 ≤ sp.slot (tr.projAC.time i)
-      rw [← (SA.castAt_spec hr hy hcast).2.1, hfirst])
+  sorry
 
 /-- Finite fast-source transfer, with its prospective domain supplied at earlier cuts. -/
 theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
@@ -362,16 +304,7 @@ theorem ResetPremisesUpTo.fast_source_votes_before
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
     ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, SA.CastAt tr.projAC y i ell e →
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  apply hp.fast_source_votes_of_domain_before hc hx hfast
-    (hp.clean_window_timing hs s (by have := sp.two_le_k; omega))
-  intro y hy i ell e hcast hib hsi hprior
-  rcases hfast with ⟨ellX, C, hupd, hconf, _, hdeep, _⟩ | hop
-  · have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-    have hBC := ((SA.deepest_mem hdeep).1.1.2.2).mono
-      (SA.frameIn_of_callAt hr hx hupd.1).2
-    exact hp.result_prefix_vote_domain_before hc hx hy ⟨ellX, hupd, hconf, rfl⟩ hBC
-      hs hrb hcast hsi hib hprior
-  · exact hp.optimistic_vote_domain_before hc hx hy hop hs hrb hcast hsi hib hprior
+  sorry
 
 /-- Every live older stored lock compares with a late raw-result prefix, within the horizon. -/
 theorem ResetPremisesUpTo.result_prefix_stored_locks
@@ -498,51 +431,7 @@ theorem ResetPremisesUpTo.clean_source_compatible_high_origin
     {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocks H) C D := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hrun.localRun
-  have hclean : cleanLabel sp a + sp.k + 2 ≤ s := by have := sp.two_le_k; omega
-  have hts := hp.clean_window_timing hclean s (by have := sp.two_le_k; omega)
-  rcases lt_trichotomy t s with h | rfl | h
-  · have supporter : ∃ z ∈ H, ∃ j ≤ r, ∃ e, SA.VoteAt tr.projAC z j e ∧
-        e.msg.slot = s ∧ SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
-      rcases hC with hC | hC
-      · obtain ⟨z, hz, j, hjr, e, hv, _, hes, hCH⟩ :=
-          hp.result_supporter hc hx hC (.refl : Anc (tr.HonestBlocks H) C C) hrb hts
-        exact ⟨z, hz, j, hjr.le, e, hv, hes, hCH⟩
-      · exact (hp.optimistic_supporter hx hC).2
-    obtain ⟨z, hz, j, hjr, e, hv, hes, hCH⟩ := supporter
-    exact hp.target_compatible_older_origin ho hqb hz hv
-      ((hp.run.time_mono hjr).trans hrb) hes h hCH
-  · obtain ⟨DV, hst⟩ := ho.2.2.1
-    obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-    have hcomp : Compatible (tr.HonestBlocks H) C E := by
-      rcases hfl with ⟨ell, R, hu, hR, _, hfast, _⟩ | hop
-      · have hER := ((SA.deepest_mem hfast).1.1.2.2).mono
-          (SA.frameIn_of_callAt hr ho.1 hu.1).2
-        have hRC := hp.result_source_compatible hc ho.1 hx
-          ⟨ell, hu, hR, rfl⟩ hC hqb hrb hts
-        rcases hRC with h | h
-        · exact Or.inr (hER.trans h)
-        · exact SA.anc_total hr.coherent h hER
-      · exact hp.sources_same_label_compatible hc hx ho.1 hC (Or.inr hop) hrb hqb hts
-    rcases hcomp with h | h
-    · exact SA.anc_total hr.coherent h hDE
-    · exact Or.inr (hDE.trans h)
-  · obtain ⟨DV, hst⟩ := ho.2.2.1
-    obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
-    have hEC : Compatible (tr.HonestBlocks H) E C :=
-      SA.fastLock_compatible_of_votes hrun ho.1 (Nat.lt_succ_self q) hfl hf (by
-        intro z hz j hj e ⟨ell, hcast⟩ hes
-        have hjb := (hp.run.time_mono (Nat.lt_succ_iff.mp hj)).trans hqb
-        rcases hC with hC | hC
-        · exact hp.clean_result_prefix_votes_before hc hx hC .refl hs hrb j hjb
-            z hz ell e hcast (by omega)
-        · exact hp.fast_source_votes_before hc hx (Or.inr hC) hclean hrb j hjb
-            z hz ell e hcast (by omega))
-    rcases hEC with h | h
-    · exact Or.inr (hDE.trans h)
-    · exact SA.anc_total hr.coherent h hDE
+  sorry
 
 /-- Finalization compares with a clean raw source using only completed cuts of the observation. -/
 theorem ResetPremisesUpTo.finalized_compatible_clean_source

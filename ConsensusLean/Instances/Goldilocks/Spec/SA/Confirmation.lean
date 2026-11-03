@@ -9,14 +9,13 @@ goldilocks-spec.tex §"Confirmation" (Figure "Goldilocks: confirmation"): the re
 `latest_confirmed`; the confirmation update of slot `s` at `t_s + 6Δ` (the result: the deepest
 block of the tree at or above `Φ.F` with a strict majority of the slot's participants among the
 votes resolved before `t_s + 2Δ` of validators with no second vote; saved also when vetoed; a
-fast lock on the deepest block of the result's chain with half of the committee or more, a slow
-lock when the saved results of the previous `k − 1` slots are in the tree and extend a deeper
-block); the optimistic confirmation of the current slot before `t_s + 2Δ` (three quarters of
+veto stops only the record: over the blocks of the result's chain that conflict with no live
+lock, a fast lock on the deepest one with half of the committee or more, and a slow lock on the
+deepest one that the saved results of the previous `k − 1` slots extend, both written when they
+exist); the optimistic confirmation of the current slot before `t_s + 2Δ` (three quarters of
 the committee with a slot-`s` vote whose head extends the block, equivocators included, and no
 conflicting live lock); and the confirmed tip. A slow lock of slot `s` lives through `s + k`; a
-fast lock gets `fastExpiry`, except that the update's fast lock keeps the slow expiry `s + k` when
-a block of the update's path passes the slow test (a fast lock never shortens what the slow rule
-gives). -/
+fast lock gets `fastExpiry`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -77,21 +76,18 @@ noncomputable def updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t :
   match C with
   | none => A₁
   | some C =>
-    if conflictsWithLock sp A₁.locks Φ t C then A₁
-    else
-      let A₂ := updateLatestConfirmed sp A₁ Φ C
-      let path := confirmationPath sp Φ C
-      let fast := FastTest sp A Φ s
-      let slow := fun B : Blk sp.n FGP => ∀ j : Int, (s : Int) - sp.k < j → j < s →
-        ∃ S ∈ Φ.tree, A₁.saved j = some S.root ∧ Φ.Anc B S
-      let D := fastSelect sp A Φ s C
-      let lockBlock := deepest Φ {B | B ∈ path ∧ (fast B ∨ slow B)}
-      -- never shorten: a slow-qualified update's fast lock keeps the slow expiry
-      let eD := if (∃ B, B ∈ path ∧ slow B) then s + sp.k else fastExpiry sp A₂.locks Φ t s
-      let N : Set (Nat × Bool × Nat) :=
-        {p | (∃ B, D = some B ∧ p = (B.root, true, eD)) ∨
-          (lockBlock ≠ D ∧ ∃ B, lockBlock = some B ∧ p = (B.root, false, s + sp.k))}
-      { A₂ with locks := addLocks sp A₂.locks Φ t s N }
+    -- a veto stops only the record; the locks are written on the unvetoed part of the path
+    let A₂ := if conflictsWithLock sp A₁.locks Φ t C then A₁ else updateLatestConfirmed sp A₁ Φ C
+    let path := {B | B ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A₁.locks Φ t B}
+    let fast := FastTest sp A Φ s
+    let slow := fun B : Blk sp.n FGP => ∀ j : Int, (s : Int) - sp.k < j → j < s →
+      ∃ S ∈ Φ.tree, A₁.saved j = some S.root ∧ Φ.Anc B S
+    let D := deepest Φ {B | B ∈ path ∧ fast B}
+    let X := deepest Φ {B | B ∈ path ∧ slow B}
+    let N : Set (Nat × Bool × Nat) :=
+      {p | (∃ B, D = some B ∧ p = (B.root, true, fastExpiry sp A₂.locks Φ t s)) ∨
+        (∃ B, X = some B ∧ p = (B.root, false, s + sp.k))}
+    { A₂ with locks := addLocks sp A₂.locks Φ t s N }
 
 /-- The voters of `B` in the optimistic test of slot `s`: the validators with a vote in the
 slot-`s` pool whose head (in the tree) extends `B`, equivocators included. -/

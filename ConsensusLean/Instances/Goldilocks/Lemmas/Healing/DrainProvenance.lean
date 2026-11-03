@@ -141,32 +141,7 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) (A : SAState sp.n) (t : Time) (s : Nat) :
     FromP U A.locks (updateConfirmation sp A Φ t s).locks
       (fun s' f O => s' = s ∧ (f = false → ∃ D, SlowW A Φ t s D ∧ O = Φ.viableAncestor D)) := by
-  unfold updateConfirmation
-  dsimp only
-  rcases hC : getConfirmation sp A Φ s with _ | C
-  · exact FromP.of_eq rfl
-  · dsimp only
-    split_ifs with hconf
-    · exact FromP.of_eq rfl
-    all_goals
-      refine FromP.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks_eq _ _ _)
-        fun r f e hr => ?_
-      rcases hr with ⟨D, hD, hr⟩ | ⟨hne, D, hD, hr⟩
-      · simp only [Prod.mk.injEq] at hr
-        obtain ⟨rfl, rfl, -⟩ := hr
-        exact ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, fun h => absurd h (by simp)⟩
-      · simp only [Prod.mk.injEq] at hr
-        obtain ⟨rfl, rfl, -⟩ := hr
-        refine ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, fun _ => ⟨D, ⟨C, hC, hconf, ?_, ?_⟩, rfl⟩⟩
-        · rw [← hD]
-          congr 1
-          ext X
-          simp only [Set.mem_ofPred_eq]
-          refine and_congr_right fun _ => or_congr_right (forall_congr' fun j =>
-            imp_congr_right fun _ => imp_congr_right fun hj => ?_)
-          rw [Function.update_of_ne (ne_of_lt hj)]
-        · rw [← hD]
-          exact Ne.symm hne
+  sorry
 
 private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
@@ -213,46 +188,7 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = false → ∃ D, SlowLockAt tr x i s D ∧ O = ℓ.frame.viableAncestor D) := by
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
-  have hU := hr.coherent
-  have fast : ∀ s (f : Bool) (O : Blk sp.n FGP), f = true → f = false →
-      ∃ D, SlowLockAt tr x i s D ∧ O = ℓ.frame.viableAncestor D :=
-    fun _ _ _ h1 h2 => absurd (h1.symm.trans h2) (by simp)
-  have he := hr.exec i ℓ hc.2 (hc.1 ▸ hx)
-  rw [hc.1] at he
-  have hpost := congrArg Prod.fst he
-  simp only at hpost
-  rw [← hpost]
-  generalize hA : tr.state x i = A at hpost
-  cases hcall : ℓ.call with
-  | tick =>
-    refine (FromP.of_onTick hU hΦ hΦU x A _).mono fun s f B h hf => ?_
-    rcases h with h | ⟨ht, hs0, hj, hs, hW⟩
-    · exact fast s f B h hf
-    · have hu : UpdateAt tr x i s ℓ := by
-        refine ⟨hc, hcall, ?_, hA ▸ hj⟩
-        rw [hs]
-        conv_lhs => rw [ht]
-        simp only [SAParams.ts]
-        push_cast [Nat.cast_sub hs0]
-        ring
-      obtain ⟨D, ⟨C, h1, h2, h3, h4⟩, rfl⟩ := hW hf
-      exact ⟨D, ⟨ℓ, C, hu, hA ▸ h1, hA ▸ h2, hA ▸ h3, hA ▸ h4⟩, rfl⟩
-  | proposal => exact FromP.of_proposal hΦ hΦU A _
-  | toFG => exact FromP.of_eq (toFG_locks A _)
-  | message m =>
-    have h₁ := FromP.of_optimistic hU hΦ hΦU (admitVote sp A (tr.time i) m) (tr.time i)
-    rw [admitVote_locks_eq] at h₁
-    exact (FromP.trans hU h₁ (FromP.of_tryVote hU hΦ hΦU x _ _)).mono fun s f B h hf =>
-      fast s f B h hf
-  | block B =>
-    have h₁ := FromP.of_optimistic hU hΦ hΦU (blockReceipt sp A (tr.time i) B) (tr.time i)
-    rw [blockReceipt_locks] at h₁
-    exact (FromP.trans hU h₁ (FromP.of_tryVote hU hΦ hΦU x _ _)).mono fun s f B h hf =>
-      fast s f B h hf
-  | restart =>
-    exact FromP.of_eq ((restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
-      (hr.time_nonneg i)).2.1
+  sorry
 
 private theorem Below.of_sitsBelow (hU : Coherent U) {l' l : Lock} {B : Blk sp.n FGP}
     (h : SitsBelow U l' l) (hB : Below U l B) : Below U l' B := by

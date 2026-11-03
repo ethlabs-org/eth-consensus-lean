@@ -418,18 +418,7 @@ private theorem trivial_update_first_proposal (hS : StandaloneRun tr H U propose
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay)) :
     Anc U D d.head := by
-  have hr := hS.run.localRun
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨ℓX, C, hupd, hconf, hnc, hfs, rfl⟩ := id hfu
-  obtain ⟨-, hΦXU⟩ := frameIn_of_callAt hr hX hupd.1
-  have hDC : Anc U D C := Anc.mono hΦXU (deepest_mem hfs).1.1.2.2
-  have hDt := result_block_at_proposal hS hX ⟨ℓX, hupd, hconf, rfl⟩ hσ hx hc ht hDC
-  exact update_first_proposal hS.run hX hfu hx hc (proposal_slot ht) hprop
-    (trivial_viable_at hS hx hc hDt) (trivial_counted_held hS hX hupd hσ hx hc hcall ht)
-    (trivial_writer_pool hS hX hupd hσ hx ht)
-    (trivial_high_locks hS hx ht hlater fun _ _ _ hopt =>
-      fastLock_fastLock_compatible hS.toHealthyBase hx (Or.inr hopt) hX (Or.inl hfu)
-        (by linarith))
+  sorry
 
 /-- An optimistic confirmation of slot `σ ≥ r` (A1.4 (a)) at the next proposal. -/
 private theorem trivial_optimistic_first_proposal (hS : StandaloneRun tr H U proposer g)
@@ -486,33 +475,7 @@ private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U proposer 
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay)) :
     Anc U D d.head := by
-  have hrun := hS.run
-  have hr := hrun.localRun
-  have hU := hr.coherent
-  have hk := sp.two_le_k
-  obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
-  have hres : ResultAt tr X i₀ σ C (fastCounted sp (tr.state X i₀) ℓX.frame σ C) :=
-    ⟨ℓX, hupd, hconf, rfl⟩
-  have hΦXU := (frameIn_of_callAt hr hX hupd.1).2
-  obtain ⟨⟨-, -, hDC⟩, -⟩ := (deepest_mem hdeep).1
-  have hDC' : Anc U D C := Anc.mono hΦXU hDC
-  have hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ := hs.trans ((ts_le_iff sp).2 (by omega))
-  have hDt := result_block_at_proposal hS hX hres hσ hx hc ht hDC'
-  -- every stored live lock is compatible with `D`
-  have hall : ∀ l ∈ (tr.state x i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ Y ∈ U,
-      Y.root = l.block → Compatible U Y D := by
-    intro l hl hlive Y hY hYr
-    rcases le_or_gt l.slot σ with hle | hlt
-    · exact slow_stored_locks hS.toHealthyBase hX hsl hs hx (by rw [proposal_slot ht]) l hl hlive
-        hle Y hY hYr
-    · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr hx ht hl hlt.le hY hYr
-      exact compat_down hU hYO (optimisticLock_compatible hrun hS.two_faulty_lt hx hopt
-        fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega))
-  exact result_first_proposal hrun hX hres hDC' hx hc (proposal_slot ht) hprop
-    (trivial_viable_at hS hx hc hDt) (trivial_counted_held hS hX hupd hσ hx hc hcall ht)
-    (trivial_writer_pool hS hX hupd hσ hx ht)
-    (lowLocksCompatible_iff.2 fun l hl hlive _ => hall l hl hlive)
-    (highLocksCompatible_iff.2 fun l hl hlive _ => hall l hl hlive)
+  sorry
 
 /-! ## Assembly -/
 

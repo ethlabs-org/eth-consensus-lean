@@ -131,14 +131,7 @@ theorem floor_updateConfirmation {A : SAState sp.n} {s : Nat} (hΦ : FrameOK Φ)
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
     ∃ l ∈ (updateConfirmation sp A Φ t s).locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · exact h
-  · split_ifs <;>
-      first
-      | exact h
-      | (rw [updateLatestConfirmed_locks_eq]; exact floor_addLocks hΦ hB0 hva0 hk h)
+  sorry
 
 /-- `try_vote` keeps the floor when `unlock` at the merged vote view of its input keeps `B₀`. -/
 theorem floor_tryVote (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)

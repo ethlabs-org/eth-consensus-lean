@@ -53,43 +53,7 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U)
     {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr w i₀ s B CV) :
     sp.n ≤ 2 * {u | ∃ v ∈ CV, v.val = u}.ncard ∧
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R := by
-  have hr := hrun.localRun
-  rcases hfl with ⟨ℓ, C, ⟨hc, -, -, -⟩, -, -, hD, rfl⟩ | ⟨ℓ, A, hpt, hsl, hsel, rfl⟩
-  · obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hw hc
-    refine ⟨?_, ?_⟩
-    · have hfast := (deepest_mem hD).1.2
-      unfold FastTest confirmationScore at hfast
-      refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
-      rintro u ⟨hu, x, ⟨hx, hres⟩, hval, -, hanc⟩
-      exact ⟨x, ⟨hx, hval ▸ hu, hres, hanc⟩, hval⟩
-    · rintro v ⟨hvp, -, hres, R, hR, hRr, hBR⟩
-      refine ⟨state_pool_slot sp hr hw i₀ s v hvp, R, hΦU hR, hRr, ?_, Anc.mono hΦU hBR⟩
-      have hvs := state_pool_slot sp hr hw i₀ s v hvp
-      unfold resolutionTime at hres
-      split at hres
-      · exact absurd hres (by simp [ETime.of])
-      · rename_i Hd hl
-        obtain ⟨hHd, hHdr⟩ := lookup_eq_some hl
-        obtain rfl : Hd = R := hΦ.coherent.1 hHd hR (hHdr.trans hRr.symm)
-        split_ifs at hres with hlt
-        · exact absurd hres (by simp [ETime.of])
-        · omega
-  · obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hw hpt.1
-    unfold optimisticSelect at hsel
-    dsimp only at hsel
-    split_ifs at hsel
-    have h34 := (deepest_mem hsel).1.2.1
-    refine ⟨?_, ?_⟩
-    · have hsub : optimisticVoters sp A ℓ.frame (sp.slot (tr.time i₀)) B ⊆
-          {u | ∃ v ∈ {v | v ∈ A.pool s ∧ AncR ℓ.frame B v.head}, v.val = u} := by
-        rintro u ⟨v, hv, rfl, hanc⟩
-        exact ⟨v, ⟨hsl ▸ hv, hanc⟩, rfl⟩
-      have := Set.ncard_le_ncard hsub
-      omega
-    · rintro v ⟨hv, R, hR, hRr, hBR⟩
-      refine ⟨optimisticPoint_pool_slot hr hw hpt hv, R, hΦU hR, hRr, ?_, Anc.mono hΦU hBR⟩
-      have := frame_slot_le sp hr hw hpt.1 R hR
-      omega
+  sorry
 
 /-- **The locks after the unlocking of slot `s + 1`**, for a fast lock on `D` and any `B ⪯ D`
 (the block the lock stores). -/

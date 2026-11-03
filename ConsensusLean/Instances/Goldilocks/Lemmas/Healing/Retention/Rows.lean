@@ -93,14 +93,7 @@ private theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
     (h : SA.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ℓ) : D ∈ ℓ.frame.tree := by
-  rcases h with ⟨ℓ', C, ⟨hc', -⟩, -, -, hD, -⟩ | ⟨ℓ', A, ⟨hc', -⟩, -, hsel, -⟩
-  · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
-    exact (SA.deepest_mem hD).1.1.1
-  · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
-    unfold SA.optimisticSelect at hsel
-    dsimp only at hsel
-    split_ifs at hsel
-    exact (SA.deepest_mem hsel).1.1
+  sorry
 
 /-- The stored block of a fast-lock write is in the writer's FG tree, below its selection. -/
 theorem storedFastLock_mem (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

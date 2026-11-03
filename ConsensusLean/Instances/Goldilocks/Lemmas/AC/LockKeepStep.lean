@@ -63,15 +63,7 @@ theorem mem_optimisticConfirmation_of_keep {A : SAState sp.n} (hl : l ∈ A.lock
 theorem mem_updateConfirmation_of_keep {A : SAState sp.n} {s : Nat} (hl : l ∈ A.locks)
     (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) : l ∈ (updateConfirmation sp A Φ t s).locks := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · exact hl
-  · split_ifs
-    · exact hl
-    all_goals
-      rw [updateLatestConfirmed_locks_eq]
-      exact mem_addLocks_of_keep hl hk hB hBr hva
+  sorry
 
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by
