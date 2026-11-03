@@ -213,6 +213,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection

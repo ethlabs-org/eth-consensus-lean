@@ -405,7 +405,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.same_slot_source_below_unanimous",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:51",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/SupplierFrames.lean:47",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -819,7 +819,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ready_call_locks_compatible",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:2046",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Supplier.lean:707",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",

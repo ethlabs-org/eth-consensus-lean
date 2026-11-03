@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.FloorHead
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 
 public section
 

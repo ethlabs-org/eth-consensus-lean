@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
