@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
 
 public section
 
@@ -23,8 +24,7 @@ The proof works one protected target `(B, j)` at a time:
 * `protected_call_viable`: at every honest call from `t_{j+1}` on, `B` is at or below `fc_root`
   or in the viable tree of the whole frame tree (route L7–L9).
 
-OPEN (`sorry`): `unanimous_target_fast_update`, `optimistic_target_vote_domain` and
-`protected_call_viable`. -/
+OPEN (`sorry`): `protected_call_viable`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -130,23 +130,64 @@ theorem protected_target_cases (hp : ResetPremises tr H proposer dg g ΔF a)
       Anc.mono (SA.frameIn_of_callAt hr hx hupd.1).2 hBC⟩
   · exact Or.inr (Or.inr (Or.inr ⟨hp', hP, hun⟩))
 
-/-- **A unanimous protected proposal is an honest fast-update selection** (OPEN; route L5′):
-an honest proposal of a post-drain slot `j` whose honest slot-`j` votes are all `B` is the
-result and the fast selection of an honest node's slot-`j` update. Landed in the Refinement
-layer as `Refinement.UpTo.operational_update_selection`, which this layer may not import. -/
+/-- An honest proposal is the proposer's own block at its slot start (as
+`Refinement.proposesAt_of_honestProposalRun`). -/
+private theorem proposesAt_of_honestProposal (hrun : GoldilocksRun proposer dg H tr) {s : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : proposer s ∈ H)
+    (hP : SA.HonestProposal tr.projAC (proposer s) s P) :
+    ∃ k, tr.ProposesAt (proposer s) k P := by
+  have hl := hrun.toLocalRun
+  obtain ⟨-, -, -, -, -, -, -, -, -, -, hPp, -, j, -, hacc, -⟩ := hP
+  obtain ⟨j₀, -, ha, -⟩ := fg_accept_before hl hpH hacc
+  obtain ⟨j', -, ⟨acc, hc⟩, hpos⟩ := hl.block_unforgeable _ hpH j₀ P ⟨true, ha⟩ (hPp ▸ hpH)
+  rw [hPp] at hc
+  rcases Compose.blockCall_cases hl hpH hc with hg | ⟨j₁, x, rfl, -, hpr, d', pay', -, hB, -⟩
+  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  · have hs : P.slot = sp.toParams.slotOf (tr.time (j₁ + 2)) := by rw [hB]; rfl
+    exact ⟨j₁ + 2, ⟨⟨acc, hc⟩, hpos⟩, hPp, hs ▸ hpr.2.1⟩
+
+/-- **A unanimous protected proposal is an honest fast-update selection** (route L5′): an honest
+proposal of a post-drain slot `j` is the result and the fast selection of its own proposer's
+slot-`j` update (`Refinement.UpTo.operational_update_selection`, the one Refinement theorem this
+module imports; reviewed exception in `scripts/boundaries.toml`). -/
 theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hc : CatchRun tr H g (2 * sp.Δ))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} (hj : sp.slot a + 2 * sp.k + 6 ≤ j)
-    (hpj : proposer j ∈ H) (hP : SA.HonestProposal tr.projAC (proposer j) j B)
-    (hun : ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = j → e.msg.head = B.root) :
+    (hpj : proposer j ∈ H) (hP : SA.HonestProposal tr.projAC (proposer j) j B) :
     ∃ x ∈ H, ∃ i CV, SA.FastUpdateAt tr.projAC x i j B CV ∧
       ∃ CV', SA.ResultAt tr.projAC x i j B CV' := by
-  sorry
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨k, hactual⟩ := proposesAt_of_honestProposal hp.run hpj hP
+  obtain ⟨-, -, -, -, -, -, -, -, -, hPs, -⟩ := hP
+  obtain ⟨-, -, kr, -, -, -, hka⟩ := hp.reset.1
+  have ha0 : 0 ≤ a := hka ▸ hp.run.time_nonneg kr
+  have hlt : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    omega
+  have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
+  have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
+  have hz := lt_cutZ sp g
+  have hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts j := by linarith
+  have hR : drainTime sp a ≤ sp.ts j := by
+    rw [drainTime_eq]; exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+  have hab : a ≤ sp.ts j + 6 * sp.Δ := by linarith
+  have hp' := hp.toUpTo tr H hab
+  have hu : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts j := by
+    have h₁ : sp.ts (sp.slot (SA.gbar g) : Int) ≤ SA.gbar g :=
+      (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) _).mpr le_rfl
+    have h₂ : sp.ts ((sp.slot (SA.gbar g) + 1 : Nat) : Int) =
+        sp.ts (sp.slot (SA.gbar g) : Int) + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    linarith
+  obtain ⟨i, ell, -, hup, -⟩ := hp'.update_toFG_calls hpj hu le_rfl
+  obtain ⟨-, hconf, hnv, hsel, -⟩ := Refinement.UpTo.operational_update_selection hp' hc hpj rfl
+    hactual hPs hR hgu le_rfl hpj hup
+  exact ⟨proposer j, hpj, i, _, ⟨ell, B, hup, hconf, hnv, hsel, rfl⟩, _, ⟨ell, hup, hconf, rfl⟩⟩
 
 /-- **Every protected target has a clean source** (route L1): an honest fast lock or slow lock
 of its label, which is after the drain. -/
 theorem protected_clean_source (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hc : CatchRun tr H g (2 * sp.Δ))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j) :
     sp.slot a + 2 * sp.k + 6 ≤ j ∧ ∃ x ∈ H, ∃ r,
@@ -158,25 +199,27 @@ theorem protected_clean_source (hp : ResetPremises tr H proposer dg g ΔF a)
   · exact ⟨x, hx, i, Or.inl ⟨CV, Or.inl hfu⟩⟩
   · exact ⟨x, hx, i, Or.inl ⟨CV, Or.inr hop⟩⟩
   · exact ⟨x, hx, i, Or.inr hsl⟩
-  · obtain ⟨x, hx, i, CV, hfu, -⟩ := unanimous_target_fast_update hp hc hnr hj hpj hP hun
+  · obtain ⟨x, hx, i, CV, hfu, -⟩ := unanimous_target_fast_update hp hc hj hpj hP
     exact ⟨x, hx, i, Or.inl ⟨CV, Or.inl hfu⟩⟩
 
 /-- Every honest vote of a slot `> j` extends a protected target `(B, j)`: the landed
 clean-source transfer `clean_source_votes_before`, at a horizon past both the source write and
 the vote. -/
 theorem protected_votes_extend (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hc : CatchRun tr H g (2 * sp.Δ))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j) :
     ∀ k, ∀ z ∈ H, ∀ e, SA.VoteAt tr.projAC z k e → j < e.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   rintro k z hz e ⟨ℓ, hcast⟩ hj
-  obtain ⟨hlab, x, hx, r, horig⟩ := protected_clean_source hp hc hnr hB
+  obtain ⟨hlab, x, hx, r, horig⟩ := protected_clean_source hp hc hB
   exact clean_source_votes_before hp hc (max (tr.time r) (tr.time k)) hx horig
     (by rw [cleanLabel_eq]; omega) (le_max_left _ _) k (le_max_right _ _) z hz ℓ e hcast hj
 
-/-- **Vote domain of an optimistic target** (OPEN; route L2): the optimistic counterpart of
-`result_prefix_vote_domain_before`. -/
+/-- **Vote domain of an optimistic target** (route L2): the optimistic counterpart of
+`result_prefix_vote_domain_before`. The writer holds `B`, an honest optimistic voter's vote
+extends it, and `held_target_vote_domain_before` gives the domain (heldness by writer relay,
+the reset seed, and comparison with older, same-label and later high origins). -/
 theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
     {r s i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
@@ -189,12 +232,73 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
       ((∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocks H) B W ∧ (tr.state y i).fg.IsViable W) ∨
         Anc (tr.HonestBlocks H) B ell.frame.fcRoot) := by
-  sorry
+  have hS := healthy_base_of_reset_catch hp hc
+  have hr := hS.run.localRun
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hf : 2 * Hᶜ.ncard < sp.n := by
+    have := hp.healthy.2.2
+    have := Fin.pos x
+    have hn : sp.n = sp.toParams.n := rfl
+    omega
+  have hfast : SA.FastLockAt tr.projAC x r s B CV := Or.inr hop
+  -- the label is after the reset, hence after `ḡ + 4Δ`
+  have hgs4 : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
+    obtain ⟨-, -, k, -, -, -, hka⟩ := hp.reset.1
+    have ha0 : 0 ≤ a := hka ▸ hp.run.time_nonneg k
+    have hlt : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      omega
+    have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts s :=
+      (SA.ts_le_iff sp).2 (by rw [cleanLabel_eq] at hs; omega)
+    have := cutZ_lt_reset hp.run hp.healthy hp.reset
+    have := lt_cutZ sp g
+    linarith
+  have hgs : SA.gbar g ≤ sp.ts s := by linarith
+  have evidence : B ∈ (tr.state x r).fg.tree ∧
+      ∃ z ∈ H, ∃ q e', SA.VoteAt tr.projAC z q e' ∧ e'.msg.slot = s ∧
+        SA.VoteExtends (tr.HonestBlocks H) e'.msg B := by
+    obtain ⟨ellX, A, hpt, hslot, hsel, -⟩ := hop
+    have hΦU := (SA.frameIn_of_callAt hr hx hpt.1).2
+    unfold SA.optimisticSelect at hsel
+    dsimp only at hsel
+    split_ifs at hsel
+    refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
+    have h34 := (SA.deepest_mem hsel).1.2.1
+    obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
+        (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time r)) B) (by omega)
+    obtain ⟨hvs, q, _, e', he, rfl⟩ :=
+      SA.optimisticPoint_pool_vote hS.run hx hpt hv (not_not.mp hz)
+    exact ⟨_, not_not.mp hz, q, e', he, hvs.trans hslot,
+      R, hΦU hR, hRr, hBR.mono hΦU⟩
+  obtain ⟨hBx, z, hz, q, e', hv, hvs, hVB⟩ := evidence
+  refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
+  · intro hF
+    have hg := le_gbar g
+    exact raw_writer_voterBlockTree_window_before hr (reset_raw_sync_window_before hp (tr.time i))
+      (catch_window_of_reset_catch hp hc (tr.time i)) hx hy (Or.inr hfast) .refl hcast
+      (by omega) le_rfl
+      (by
+        have hm := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
+        linarith) hF
+  · obtain ⟨v, r₀, m, S, hS', -, hm⟩ := (hp.toUpTo tr H (le_refl a)).reset_seed
+    have hms : m < s := by rw [cleanLabel_eq] at hs; omega
+    exact ⟨v, r₀, m, S, hS', by omega,
+      target_compatible_older_origin hp hS' hz hv hvs hms hVB⟩
+  · intro v r₀ m O hri ho
+    rcases lt_trichotomy m s with hm | rfl | hm
+    · exact target_compatible_older_origin hp ho hz hv hvs hm hVB
+    · obtain ⟨CV', hst⟩ := ho.2.2.1
+      obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
+      rcases SA.fastLock_fastLock_compatible hS hx hfast ho.1 hfl hgs with h | h
+      · exact SA.anc_total hr.coherent h hOD
+      · exact Or.inr (hOD.trans h)
+    · exact target_compatible_later_origin_before hp ho hri hm hprior
 
 /-- **Vote domain of a protected target** (route L1, L2): at an honest vote of a slot `> j`, `B`
 is in the viable voter block tree or at or below `fc_root`. -/
 theorem protected_vote_domain (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hc : CatchRun tr H g (2 * sp.Δ))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hB : SA.Protected proposer tr.projAC H (a + resetInvOffset sp.k sp.Δ) B j)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
@@ -204,7 +308,7 @@ theorem protected_vote_domain (hp : ResetPremises tr H proposer dg g ΔF a)
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
   have hprior : ∀ z ∈ H, ∀ q < k, ∀ e', SA.VoteAt tr.projAC z q e' → j < e'.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
-    fun z hz q _ e' hv hj' => protected_votes_extend hp hc hnr hB q z hz e' hv hj'
+    fun z hz q _ e' hv hj' => protected_votes_extend hp hc hB q z hz e' hv hj'
   obtain ⟨hlab, hcase⟩ := protected_target_cases hp hB
   have hclean : cleanLabel sp a + sp.k + 2 ≤ j := by rw [cleanLabel_eq]; omega
   have hdom : Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B ∧
@@ -218,7 +322,7 @@ theorem protected_vote_domain (hp : ResetPremises tr H proposer dg g ΔF a)
     · exact optimistic_target_vote_domain hp hc hx hy hop hclean hcast hj hprior
     · exact result_prefix_vote_domain_before hp hc (tr.time k) hx hy hres hBC hclean hcast hj
         le_rfl hprior
-    · obtain ⟨x, hx, i, -, -, CV', hres⟩ := unanimous_target_fast_update hp hc hnr hlab hpj hP hun
+    · obtain ⟨x, hx, i, -, -, CV', hres⟩ := unanimous_target_fast_update hp hc hlab hpj hP
       exact result_prefix_vote_domain_before hp hc (tr.time k) hx hy hres .refl hclean hcast hj
         le_rfl hprior
   exact vote_viable_of_root hp.run hp.noColl hy hcast hdom.1 hdom.2
@@ -245,7 +349,7 @@ theorem inv_after_reset (hp : ResetPremises tr H proposer dg g ΔF a)
   intro B j hB y hy i ℓ hcall ht
   have hprior : ∀ z ∈ H, ∀ q < i, ∀ e', SA.VoteAt tr.projAC z q e' → j < e'.msg.slot →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B :=
-    fun z hz q _ e' hv hj => protected_votes_extend hp hc hnr hB q z hz e' hv hj
+    fun z hz q _ e' hv hj => protected_votes_extend hp hc hB q z hz e' hv hj
   refine ⟨protected_call_viable hp hc hnr hB hy hcall ht hprior, fun e he => ?_⟩
   have hcast : SA.CastAt tr.projAC y i ℓ e := ⟨hcall, he⟩
   have hj : j < e.msg.slot := by
@@ -253,7 +357,7 @@ theorem inv_after_reset (hp : ResetPremises tr H proposer dg g ΔF a)
     rw [(SA.castAt_spec hr hy hcast).2.1]
     push_cast at hs
     omega
-  exact protected_vote_domain hp hc hnr hB hy hcast hj
+  exact protected_vote_domain hp hc hB hy hcast hj
 
 /-- **H.3 (c1)/(c2)** in the form of the retired `reset_inv`: under the H.3 premises, for every
 reset `a`, `Inv(a + T_b)` with `T_b = (8k + 20)Δ`. -/
