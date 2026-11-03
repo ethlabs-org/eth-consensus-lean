@@ -54,10 +54,12 @@ groups A, B and C deleted) no declaration in the import closure of `Refinement.A
 ConsensusLean, ConsensusLeanTest and Solution have **0 compiled sorry owners**. That is not 0
 outstanding mathematical statements: the Healing statements `HealingRunStatements`,
 `PhaseServiceStatements`, `NonInterference` and `FrozenTreeAgreement` lost their only
-(sorry-dependent) inhabitants (`docs/roadmap.md`), and further statements were never proved.
-`HealingRunStatements` and `NonInterference` are inhabited again (`healing_run_statements`,
-`non_interference`, standard axioms; H.3's `Inv` half after the reset in `Lemmas/Healing/ResetInv`);
-`PhaseServiceStatements` and `FrozenTreeAgreement` (HS.3 (a)) stay open. `ResetExistence`, `CommonPathAcquisition` and `AvailableHealing`, which
+(sorry-dependent) inhabitants (`docs/roadmap.md`), and further statements were never proved. All four
+are inhabited again, at standard axioms: `HealingRunStatements` and `NonInterference`
+(`healing_run_statements`, `non_interference`; H.3's `Inv` half after the reset in
+`Lemmas/Healing/ResetInv`), and `PhaseServiceStatements` and `FrozenTreeAgreement`
+(`phase_service_statements`, `frozen_tree_agreement`; HS.3 is stated as its after-`r` part (b),
+`docs/decisions.md`, HS.3). `ResetExistence`, `CommonPathAcquisition` and `AvailableHealing`, which
 lost theirs at the same time, are proved again: their consumers read only HS.3 (b), which follows from
 HS.2 (`frozen_tree_agreement_clean`), so neither HS.3 (a) nor `reset_inv` is needed. The exact-head full tier on
 70e90b443ce1d0871b8efd21e131ee54367559e9 (`check.sh --full`) passed, exit 0, 801 s, recorded on

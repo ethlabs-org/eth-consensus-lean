@@ -415,10 +415,10 @@ where it is recorded; "Francesco" marks the owner's decisions.
   votes and `Carry`, not the record). No coefficient changes. Witnesses at `k = 6`, `c = 2`:
   `ConsensusLeanTest/GoldilocksGradedLocks.lean`.
 
-- DRAFT, pending Francesco (option (C) of the HS.3 feasibility pass, coordinator T-01a19b22):
-  **HS.3 is stated as its after-`r` part only.** `FrozenTreeAgreement` (`Statements/Healing/Service`)
-  keeps the premises and the conclusion of its former second conjunct (b) (with `Prop⁺(G_p)` and
-  `t_s ≥ r`: every honest slot-`s` vote is `P` with its ancestry retained, and later honest votes
+- 2026-11-03, Francesco (fradamt; option (C) of the HS.3 feasibility pass, coordinator T-01a19b22):
+  **HS.3 is stated as its after-`r` part only.** Approved by Francesco (fradamt) on 2026-11-03.
+  `FrozenTreeAgreement` (`Statements/Healing/Service`) keeps the premises and the conclusion of its
+  former second conjunct (b) (with `Prop⁺(G_p)` and `t_s ≥ r`: every honest slot-`s` vote is `P` with its ancestry retained, and later honest votes
   and proposal parents extend `P`). It drops the first conjunct (a), the claims' first part: every
   honest slot-`s` vote is `P` under the explicit voter lock premise and #100's proposer-anchor
   premise, without `Prop⁺` or `t_s ≥ r`. This is a deviation from claims HS.3, which states both
