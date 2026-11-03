@@ -24,14 +24,6 @@ theorem locksWF_state (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
   rw [← projAC_state hrun.toLocalRun hy]
   exact SA.locksWF_state (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy i
 
-/-- **`LocksWF` at the read point of an honest cast** of a Goldilocks run. -/
-theorem castAt_readPoint_locksWF (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) :
-    SA.LocksWF sp e.readPoint.locks :=
-  SA.castAt_readPoint_locksWF (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-    hy hc
-
 end Consensus.Goldilocks.Compose
 
 end

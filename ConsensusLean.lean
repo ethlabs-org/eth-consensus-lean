@@ -18,7 +18,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.OpponentsHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointKeep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution

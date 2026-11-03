@@ -133,64 +133,6 @@ theorem FrameWindow.finalized_comparable_of_witness {lo hi : Time} {floor : Nat}
     (hframe.finalized_below_descendant hrun hnc hf hy hz hz hjlo hjhi hQ hh hJ hQ
       Relation.ReflTransGen.refl) hXQ
 
-/-- An actual honest vote extending the common-floor source satisfies the receiving
-cut's relay ancestry, even before its head has reached the receiver. -/
-theorem FrameWindow.finalized_below_vote {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y x z : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) (hz : z ∈ H)
-    {j i c : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
-    (hjlo : lo ≤ tr.time j) (hjhi : tr.time j ≤ hi)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x i e)
-    (hG : SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
-    ∀ B ∈ tr.HonestBlocks H, B.root = e.msg.head →
-      Anc (tr.HonestBlocks H) ell.frame.F B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  obtain ⟨ellx, hcx, hex⟩ := hv
-  obtain ⟨W, hW, hWr, -⟩ := SA.honest_head_frame hr hx ⟨hcx, hex⟩
-  obtain ⟨W', hW', hW'r, hXW⟩ := hG
-  have hWU : W ∈ tr.HonestBlocks H :=
-    ⟨x, hx, i, mem_tree_of_frame hrun hx hcx hW⟩
-  have heq : W' = W := hr.coherent.1 hW' hWU (hW'r.trans hWr.symm)
-  subst W'
-  intro B hB hBr
-  have heq : B = W := hr.coherent.1 hB hWU (hBr.trans hWr.symm)
-  subst B
-  rw [Compose.frame_of_projAC hrun hy hc]
-  exact hframe.finalized_below_descendant hrun hnc hf hy hx hz hjlo hjhi hX hh hJ
-    (mem_tree_of_frame hrun hx hcx hW) hXW
-
-/-- The common-floor relay condition suffices for CarryAt of the actual honest batch.
-The source block's honest cut is unrestricted. -/
-theorem FrameWindow.honest_batch_carry {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {j c s : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e' : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e') (hs' : e'.msg.slot = s + 1)
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
-    (hjb : tr.time j ≤ b) (hjlo : lo ≤ tr.time j) (hjhi : tr.time j ≤ hi)
-    (hdl : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.projAC.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
-    (hrs : ∀ k ≤ j, tr.projAC.RestartAt y k → tr.time k < sp.ts s)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
-    (hG : ∀ x ∈ H, ∀ i e, SA.VoteAt tr.projAC x i e → e.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y j e' s
-      {v | ∃ x ∈ H, ∃ i e, SA.VoteAt tr.projAC x i e ∧ e.msg = v ∧ v.slot = s} :=
-  SA.honest_batch_carry_before hS hy hc hs' hs ht hjb hdl hrs
-    (fun x hx i e hv hes => hframe.finalized_below_vote hrun hnc hf hy hx hz hc.1 hjlo hjhi
-      hX hh hJ hv (hG x hx i e hv hes))
-
 /-- No-restart and the initial slot margin supply the bounded actual honest vote batch. -/
 theorem honest_votes_before_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsync : ResetService tr H g ΔF b)
@@ -651,29 +593,6 @@ theorem FrameWindow.finalized_below_viable {lo hi : Time} {floor : Nat}
     rw [hframe.root_eq y hy i hilo hihi hk, hframe.root_eq z hz c hclo hchi hk]
   · exact hv
 
-/-- A carried honest head extending a floor-viable X makes X frozen-viable at the
-receiving vote. This does not assume that arbitrary honest heads are viable. -/
-theorem viable_at_vote_of_carried_head (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {j c s : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hs : e.msg.slot = s + 1)
-    {X W : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
-    (hh : (tr.state y j).fg.headHeightFloor ≤ ((tr.state z c).fg.σ X.root).h)
-    (hJ : (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 →
-      ¬(tr.state y j).fg.Contest → Anc (tr.HonestBlocks H) (tr.state y j).fg.J X)
-    (hW : W ∈ ell.frame.tree) (hXW : Anc (tr.HonestBlocks H) X W)
-    (hacc : SA.AcceptedBefore tr.projAC y X (SA.freeze sp e.msg.slot))
-    (hrs : ∀ k ≤ j, tr.projAC.RestartAt y k → tr.time k < SA.freeze sp e.msg.slot)
-    (ht : SA.freeze sp e.msg.slot ≤ tr.time j) : SA.ViableAtVote ell e (s + 1) X := by
-  obtain ⟨hXt, hroot, hv⟩ := floor_ancestor_mem_frame hrun hnc hf hy hz hX hh hJ
-    (mem_tree_of_frame hrun hy hc.1 hW) hXW
-  rw [← Compose.frame_of_projAC hrun hy hc.1] at hXt hroot hv
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hdom := SA.voterBlockTree_of_acceptedBefore hr hy hc hXt hacc hrs ht
-  rw [hs] at hdom
-  exact Or.inl ⟨hdom, hroot, X, hdom, hv, Relation.ReflTransGen.refl⟩
-
 /-- The honest preceding-slot batch is at least half the committee. -/
 theorem honest_voters_half_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -892,91 +811,6 @@ theorem unanimous_next_votes_of_witness (hrun : GoldilocksRun proposer dg H tr)
   obtain rfl : B = W := hr.coherent.1 hB hW (hBr.trans hWr.symm)
   rw [Compose.frame_of_projAC hrun hy hc.1]
   exact hFX.trans hXW
-
-/-- U's vote conclusion, with explicit common frame data and an arbitrary honest
-source cut for X. -/
-theorem unanimous_next_votes (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hnr : NoRestartAfter tr H (gbar g)) {m floor : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts (m + 1 : Nat) + sp.Δ ≤ b)
-    {kindJ : Prop} {J X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ)
-      floor kindJ J)
-    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hX : X ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
-    (hG : ∀ x ∈ H, ∀ i e, SA.VoteAt tr.projAC x i e → e.msg.slot = m →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
-    ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = m + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
-  have hr := hS.run.localRun
-  have hDelta := sp.toParams.hΔ
-  have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
-  apply unanimous_next_votes_of_geometry hrun hnc hsvc hawake hf hcatch hnr hm hmb hG
-  intro y hy i ell e hc hs
-  have hslot : sp.slot (tr.time i) = m + 1 := (SA.castAt_spec hr hy hc).2.1.symm.trans hs
-  have hlo : sp.ts m ≤ tr.time i :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by
-      change (m : Int) ≤ sp.slot (tr.time i)
-      rw [hslot]; omega)
-  have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by
-    have ht := SA.vote_time_le hr hy ⟨ell, hc⟩
-    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
-    simpa only [hslot] using ht
-  have hrelay := fun x hx k ev hv hes => hframe.finalized_below_vote hrun hnc hmf
-    hy hx hz hc.1 hlo hhi hX hh hJ hv (hG x hx k ev hv hes)
-  refine Or.inr ⟨?_, hrelay⟩
-  have hdl : ∀ k ≤ i, ∀ t, gbar g ≤ t →
-      tr.projAC.deadline y k t ≤ max t (sp.ts m) + sp.Δ := by
-    intro k _ t _
-    apply deadline_le_restarts (a := sp.ts m)
-    intro r _ hrs
-    have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
-    change tr.time r ≤ _
-    linarith
-  have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < sp.ts m := by
-    intro k _ hk
-    have := hnr y hy k (Compose.projAC_restartAt.mp hk)
-    change tr.time k < _
-    linarith
-  obtain ⟨k, ev, hvx, hsx, -⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-    hcatch hnr hm (show sp.ts m + sp.Δ ≤ b by linarith) y hy
-  have hnext : sp.ts (m + 1 : Nat) ≤ tr.time i :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by
-      change ((m + 1 : Nat) : Int) ≤ sp.slot (tr.time i)
-      rw [hslot])
-  obtain ⟨W, hW, hWr, -, -, -, -, hacc⟩ := SA.late_vote_accepted_of_frame_before hS hy hc.1
-    hm (by change sp.ts m + 2 * sp.Δ ≤ tr.time i; linarith) (hhi.trans hmb) hdl hrs hy hvx hsx
-    (hrelay y hy k ev hvx hsx)
-  obtain ⟨W', hW', hW'r, hXW⟩ := hG y hy k ev hvx hsx
-  obtain ⟨_, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  obtain rfl : W' = W := hr.coherent.1 hW' (hPhiU hW) (hW'r.trans hWr.symm)
-  have haccX := SA.acceptedBefore_ancestor hr hy hc.1 (hPhiU hW) hacc hXW
-  have hfreeze : SA.freeze sp e.msg.slot = sp.ts m + 3 * sp.Δ := by
-    rw [hs]; simp only [SA.freeze]; congr 1; congr 1; omega
-  apply viable_at_vote_of_carried_head hrun hnc hmf hy hz hc hs hX
-    (by rw [hframe.floor_eq y hy i hlo hhi]; exact hh)
-    (fun hm' hc' => by
-      have hk := (hframe.kind_iff y hy i hlo hhi).mp ⟨hm', hc'⟩
-      rw [hframe.root_eq y hy i hlo hhi hk]
-      exact hJ hk) hW hXW
-  · rcases haccX with hg | ⟨a, ha, hat⟩
-    · exact Or.inl hg
-    · exact Or.inr ⟨a, ha, by rw [hfreeze]; linarith⟩
-  · intro k hk hrk
-    rw [hfreeze]
-    have := hrs k hk hrk
-    linarith
-  · rw [hfreeze]; linarith
 
 /-- The shared proposal argument consumes local path geometry and relay ancestry. -/
 private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun proposer dg H tr)

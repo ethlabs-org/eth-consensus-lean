@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointKeep
 
 public section
 

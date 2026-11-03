@@ -385,40 +385,6 @@ theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
   exact ⟨hr.awake_of_call y hy i ℓ hc.1, (SA.castAt_spec hr hy hc).2.2.1,
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
 
-/-- **§2.4 up to `b`, the batch reaches the next voters** at times `≤ b` (`Carry_y` for the
-honest slot-`s` votes), when they all extend `B` and the voter's `Σ.F` is at or below `B`. -/
-theorem honest_batch_carry_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hall : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
-    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s
-      {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = s} :=
-  honest_batch_carry_win hrun hnc hpre.window (Nat.zero_le s) hy hc hs hib (hold_zero hrun) hall hF
-
-/-- **§2.4, the batch reaches the next voters** (`Carry_y` for the honest slot-`s` votes), when
-they all extend `B` and the voter's `Σ.F` is at or below `B`. Under `Sync[0, ∞)`: each honest
-slot-`s` vote is cast by `t_s + Δ`, forwarded, and processed by the voter (joined at its vote, so
-awake since `t_s` with its pool kept) before `t_s + 2Δ`; its head, accepted by its voter by then,
-is relayed to the voter before `t_s + 2Δ`, since the voter's `Σ.F` is below `B`, below the head
-(finality is monotone along the voter's chain). The analogue of `result_carry_before` for the whole
-honest batch. -/
-theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hall : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
-    (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
-    SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s
-      {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = s} :=
-  honest_batch_carry_upTo hrun hnc (hsl.prefix (le_max_right (tr.time i) 0)) hy hc hs
-    (le_max_left _ _) hall hF
-
 /-- **The live locks at a slot-`(s+1)` vote are compatible with `B`**, with `f < n/2`: a block
 compatible with every origin of a label in `[s₀, s]` whose event precedes the vote, with the live
 lock blocks of the read-point locks of slots `< s₀` (`hlow`), and that the earlier honest

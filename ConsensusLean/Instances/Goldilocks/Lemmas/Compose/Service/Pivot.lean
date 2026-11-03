@@ -386,24 +386,6 @@ theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc :
     exact mem_between hU hΦ hΦU hΦ.rooted.1 hHdt hFO hOHd
   · exact Or.inr hOF
 
-private theorem proposal_holds_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    ∀ O, OldOrigin tr H s O → O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
-  have hb := hrun.time_nonneg i
-  have hs : tr.SyncBefore H ΔF (tr.time i) :=
-    ⟨hsl.1.deltaF, fun x hx i m hm h0 y hy j hc _ hd =>
-      hsl.1.message x hx i m hm h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.block x hx i B hB h0 y hy j hc hd,
-      fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
-      fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
-  exact proposal_holds_old_before hrun hnc hb (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
-    (sleepyPrefix_iff.1 (hsl.prefix hb)).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb)) hp hc hcall hd hti le_rfl
-
 /-- **The children towards an old origin win the proposal walk** (workbench#12 §2.1): at every
 block `X` (of the full viable tree, with the proposal's slot-`(s−1)` pool view `pay`), a viable
 child `Cx` of `X` below an old origin held by the proposer is the best eligible child. A vote of
@@ -788,16 +770,6 @@ private theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr
     | _ => simp [Node.Event.phase] at hph
   have := Set.ncard_le_ncard hnoH (Set.toFinite _)
   omega
-
-private theorem proposal_no_optimistic (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
-    ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV :=
-  proposal_no_optimistic_of hrun hnc (two_faults_lt_of_sleepy hsl) hp hc hcall hd hti
 
 /-- **The proposer has no stored lock of slot `s` or later**: a stored lock sits below an origin
 of its slot before the proposal (`lock_origin`); a regular one of label at least `s` is written

@@ -864,17 +864,6 @@ theorem honest_supporter_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
   honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC
 
-/-- **§2.1, an origin has an honest supporter**: an honest slot-`s` vote whose head extends it. -/
-theorem honest_supporter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : Origin tr H C s) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
-  have ⟨b, hb⟩ := hC.exists_within
-  have ⟨x, hx, j, e, hv, _, hs, hext⟩ := honest_supporter_upTo hrun hnc
-    (hsl.prefix (le_max_right b 0)) (hb.mono (le_max_left b 0))
-  ⟨x, hx, j, e, hv, hs, hext⟩
-
 /-- `same_label_compatible_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
 private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b)
