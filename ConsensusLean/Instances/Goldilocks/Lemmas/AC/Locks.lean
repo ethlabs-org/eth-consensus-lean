@@ -34,7 +34,8 @@ theorem locks_move_back : LocksMoveBack sp := by
   intro FGP Φ L t hΦ
   refine ⟨liveLocks_movesBack sp hΦ L t, fun s N => liveLocks_movesBack sp hΦ _ t, fun s V => ?_⟩
   rintro l' ⟨l, hl, B, hB, hr, rfl⟩
-  obtain ⟨l₀, hl₀, hs, hf, he, B₀, hB₀, hr₀, B₁, hB₁, hr₁, hB₁B₀⟩ := liveLocks_movesBack sp hΦ L t l hl
+  obtain ⟨l₀, hl₀, hs, hf, he, B₀, hB₀, hr₀, B₁, hB₁, hr₁, hB₁B₀⟩ :=
+    liveLocks_movesBack sp hΦ L t l hl
   have hBB₁ : B = B₁ := hΦ.coherent.1 hB hB₁ (hr.trans hr₁.symm)
   subst hBB₁
   split_ifs

@@ -12,8 +12,8 @@ the rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is
 and the fast increment `c ≥ 2` slots.
 
 `SAParams` extends the shared parameters (`Params`) by the lock window, the fast increment and
-the hypothesis that the shared slot times are the SA's. `R`, `K_W`, `δ_t`'s lower bound and the source delay are
-the FG's and the regimes' (goldilocks-spec §"Schedule"); no SA rule reads them. -/
+the hypothesis that the shared slot times are the SA's. `R`, `K_W`, `δ_t`'s lower bound and the
+source delay are the FG's and the regimes' (goldilocks-spec §"Schedule"); no SA rule reads them. -/
 
 namespace Consensus.Goldilocks.SA
 
