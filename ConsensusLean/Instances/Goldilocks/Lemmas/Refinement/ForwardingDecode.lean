@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
-import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
 
 public section

@@ -330,7 +330,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindowUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationDecode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay

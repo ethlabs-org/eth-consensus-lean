@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInvariant

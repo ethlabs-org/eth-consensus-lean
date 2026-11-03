@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowAs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationQueue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowFieldsUpTo

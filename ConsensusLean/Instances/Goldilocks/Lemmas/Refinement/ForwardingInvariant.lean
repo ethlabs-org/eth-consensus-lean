@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Cuts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 
 public section
