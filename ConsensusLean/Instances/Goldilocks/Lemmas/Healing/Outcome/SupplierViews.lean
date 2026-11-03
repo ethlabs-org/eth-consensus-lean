@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore

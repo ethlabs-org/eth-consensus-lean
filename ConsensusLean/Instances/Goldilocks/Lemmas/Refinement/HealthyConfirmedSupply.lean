@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval

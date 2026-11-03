@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 

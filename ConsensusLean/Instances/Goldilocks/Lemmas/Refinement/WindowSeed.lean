@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorS
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ProposalWindowUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned

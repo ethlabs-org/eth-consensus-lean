@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRowSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records

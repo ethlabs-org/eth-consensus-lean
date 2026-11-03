@@ -279,7 +279,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.clean_source_proposal_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1359",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:516",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -333,7 +333,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.proposal_start_supported",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2964",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotSourceVotes.lean:170",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -351,7 +351,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.protected_source_compatible_high_origin",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1247",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:404",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -369,7 +369,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.ResetPremisesUpTo.reset_vote_anchor",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:3494",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:171",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -513,7 +513,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.clean_source_proposal_domain_before",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:1309",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotRowSources.lean:466",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -693,7 +693,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2950",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotSourceVotes.lean:156",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -711,7 +711,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.proposal_start_supported_of_source_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2860",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotSourceVotes.lean:66",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -1018,7 +1018,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.vote_old_live_lock_below_parent",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2353",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotWalk.lean:317",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -3726,8 +3726,8 @@
       "adversarial-pass-done": "n"
     },
     {
-      "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot.0.Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:2118",
+      "name": "Consensus.Goldilocks.Healing.proposal_stored_locks_compatible_old",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/PivotWalk.lean:82",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -3745,7 +3745,7 @@
     },
     {
       "name": "_private.ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot.0.Consensus.Goldilocks.Healing.reset_vote_anchor",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:3400",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Outcome/Pivot.lean:77",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",

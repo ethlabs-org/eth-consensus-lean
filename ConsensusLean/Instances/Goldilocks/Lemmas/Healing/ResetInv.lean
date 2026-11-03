@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRowSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AtCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RawAtCall

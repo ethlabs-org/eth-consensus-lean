@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induct
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.FromHighFinality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 

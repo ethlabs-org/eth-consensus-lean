@@ -213,6 +213,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRowSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSourceVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames

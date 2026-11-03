@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyConfirmedSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafetyConditional
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry

@@ -5,6 +5,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSourceVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore

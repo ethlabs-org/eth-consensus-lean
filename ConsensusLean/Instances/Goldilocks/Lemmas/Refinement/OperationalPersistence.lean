@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
