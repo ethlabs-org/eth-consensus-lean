@@ -81,7 +81,7 @@ private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ
     FromP U L (addLocks sp L₀ Φ t s N) New := by
   subst hL
   intro l' hl'
-  obtain ⟨l, hl, hs, hfa, B, hB, hBr, B', hB', hB'r, hA⟩ :=
+  obtain ⟨l, hl, hs, hfa, -, B, hB, hBr, B', hB', hB'r, hA⟩ :=
     ((locks_move_back sp) FGP Φ L₀ t hΦ).2.1 s N l' hl'
   rcases hl with hl | ⟨p, hp, rfl⟩
   · exact Or.inl ⟨l, hl, hfa.symm, hs, Or.inr ⟨B', hΦU hB', hB'r, B, hΦU hB, hBr,

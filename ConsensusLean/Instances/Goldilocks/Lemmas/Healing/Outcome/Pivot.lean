@@ -2903,7 +2903,7 @@ theorem proposal_start_supported_of_source_votes
   rw [hA₁] at hl
   replace hlive : sp.slot (tr.time i) ≤ l.slot + sp.k :=
     hlive.trans (((SA.locksWF_state hr hP.1 i).unlock _ _ _ _).cap hl)
-  obtain ⟨l₁, hl₁, hs, _, B₁, hB₁, hB₁r, B', hB', hB'r, hBB₁⟩ :=
+  obtain ⟨l₁, hl₁, hs, _, _, B₁, hB₁, hB₁r, B', hB', hB'r, hBB₁⟩ :=
     ((SA.locks_move_back sp) _ ℓp.frame _ (tr.time i) hΦ).2.2 _ _ l hl
   obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
   have hlo : cleanLabel sp a + sp.k + 2 ≤ l₁.slot := by
@@ -3016,7 +3016,7 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
   rw [hA₁] at hl
   replace hlive : sp.slot (tr.time i) ≤ l.slot + sp.k :=
     hlive.trans (((SA.locksWF_state hr hpH i).unlock _ _ _ _).cap hl)
-  obtain ⟨l₁, hl₁, hs, _, B₁, hB₁, hB₁r, B', hB', hB'r, hBB₁⟩ :=
+  obtain ⟨l₁, hl₁, hs, _, _, B₁, hB₁, hB₁r, B', hB', hB'r, hBB₁⟩ :=
     ((SA.locks_move_back sp) _ ellp.frame _ (tr.time i) hPhi).2.2 _ _ l hl
   obtain rfl : B' = B := hPhi.coherent.1 hB' hB (hB'r.trans hBr.symm)
   have hlo : cleanLabel sp a + sp.k + 2 ≤ l₁.slot := by

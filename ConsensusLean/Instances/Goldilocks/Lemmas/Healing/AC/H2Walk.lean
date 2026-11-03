@@ -86,7 +86,7 @@ theorem h2_proposal_anchor (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p 
     rw [hA] at hl
     replace hlive : sp.slot (tr.time k) ≤ l.slot + sp.k :=
       hlive.trans (((locksWF_state hr hpH k).unlock _ _ _ _).cap hl)
-    obtain ⟨l₀, hl₀, hslots, -, B₀, hB₀, hB₀r, B', hB', hB'r, hBB₀⟩ :=
+    obtain ⟨l₀, hl₀, hslots, -, -, B₀, hB₀, hB₀r, B', hB', hB'r, hBB₀⟩ :=
       ((locks_move_back sp) FGP ℓ.frame (tr.state (proposer p) k).locks
         (tr.time k) hΦ).2.2 _ _ l hl
     obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
