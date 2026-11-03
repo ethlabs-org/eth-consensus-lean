@@ -146,6 +146,36 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.Refinement.acceptedEndpoint' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Refinement.acceptedEndpoint
 
+/-- info: 'Consensus.Goldilocks.Healing.cutAndReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cutAndReset
+
+/-- info: 'Consensus.Goldilocks.Healing.resetExistence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.resetExistence
+
+/-- info: 'Consensus.Goldilocks.Healing.heightScopedRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.heightScopedRetention
+
+/-- info: 'Consensus.Goldilocks.Healing.runInclusion' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.runInclusion
+
+/-- info: 'Consensus.Goldilocks.Healing.nonInterference' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.nonInterference
+
+/-- info: 'Consensus.Goldilocks.Healing.availableHealing' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.availableHealing
+
+/-- info: 'Consensus.Goldilocks.Healing.viableWitnessRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.viableWitnessRetention
+
+/-- info: 'Consensus.Goldilocks.Healing.cleanLockDrain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cleanLockDrain
+
+/-- info: 'Consensus.Goldilocks.Healing.frozenTreeAgreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.frozenTreeAgreement
+
+/-- info: 'Consensus.Goldilocks.Healing.commonPathAcquisition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.commonPathAcquisition
+
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/

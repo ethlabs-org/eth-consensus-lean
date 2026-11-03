@@ -621,7 +621,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Proofs.Regimes",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Refinement.Defs",
          "Instances.Goldilocks.Statements.Refinement", "Instances.Goldilocks.Lemmas.Refinement",
-         "Instances.Goldilocks.Proofs.Refinement"]
+         "Instances.Goldilocks.Proofs.Refinement", "Instances.Goldilocks.Proofs.Healing"]
 about = "comparator solution: the review statements and the finished instance milestones (each through its Main)"
 
 [[layer]]
@@ -722,7 +722,9 @@ milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.F
                                 "ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Compose.Service",
-                                "ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted"]
+                                "ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.Run",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.Service"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

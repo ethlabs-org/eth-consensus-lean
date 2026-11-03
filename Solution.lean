@@ -12,6 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Refinement.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 
 @[expose] public section
 
@@ -184,5 +185,57 @@ theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.In
 theorem Consensus.Goldilocks.Refinement.acceptedEndpoint :
     Consensus.Goldilocks.Refinement.AcceptedEndpoint :=
   Consensus.Goldilocks.Refinement.accepted_endpoint
+
+/-! Goldilocks Healing: the run statements (HR.1, HR.3, HR.4, H.2 on the run, H.3, H.4;
+`Healing/Run`) and the phase service (HS.1–HS.4; `Healing/Service`), each a field of its proved
+bundle in `Proofs/Healing/Main`. -/
+
+/-- Goldilocks Healing: `CutAndReset` (HR.1). -/
+theorem Consensus.Goldilocks.Healing.cutAndReset : Consensus.Goldilocks.Healing.CutAndReset :=
+  Consensus.Goldilocks.Healing.healing_run_statements.cutAndReset
+
+/-- Goldilocks Healing: `ResetExistence` (HR.3). -/
+theorem Consensus.Goldilocks.Healing.resetExistence :
+    Consensus.Goldilocks.Healing.ResetExistence :=
+  Consensus.Goldilocks.Healing.healing_run_statements.resetExistence
+
+/-- Goldilocks Healing: `HeightScopedRetention` (HR.4). -/
+theorem Consensus.Goldilocks.Healing.heightScopedRetention :
+    Consensus.Goldilocks.Healing.HeightScopedRetention :=
+  Consensus.Goldilocks.Healing.healing_run_statements.heightScopedRetention
+
+/-- Goldilocks Healing: `RunInclusion` (H.2 on the run). -/
+theorem Consensus.Goldilocks.Healing.runInclusion : Consensus.Goldilocks.Healing.RunInclusion :=
+  Consensus.Goldilocks.Healing.healing_run_statements.runInclusion
+
+/-- Goldilocks Healing: `NonInterference` (H.3). -/
+theorem Consensus.Goldilocks.Healing.nonInterference :
+    Consensus.Goldilocks.Healing.NonInterference :=
+  Consensus.Goldilocks.Healing.healing_run_statements.nonInterference
+
+/-- Goldilocks Healing: `AvailableHealing` (H.4). -/
+theorem Consensus.Goldilocks.Healing.availableHealing :
+    Consensus.Goldilocks.Healing.AvailableHealing :=
+  Consensus.Goldilocks.Healing.healing_run_statements.availableHealing
+
+/-- Goldilocks Healing: `ViableWitnessRetention` (HS.1). -/
+theorem Consensus.Goldilocks.Healing.viableWitnessRetention :
+    Consensus.Goldilocks.Healing.ViableWitnessRetention :=
+  Consensus.Goldilocks.Healing.phase_service_statements.viableWitnessRetention
+
+/-- Goldilocks Healing: `CleanLockDrain` (HS.2). -/
+theorem Consensus.Goldilocks.Healing.cleanLockDrain :
+    Consensus.Goldilocks.Healing.CleanLockDrain :=
+  Consensus.Goldilocks.Healing.phase_service_statements.cleanLockDrain
+
+/-- Goldilocks Healing: `FrozenTreeAgreement` (HS.3). -/
+theorem Consensus.Goldilocks.Healing.frozenTreeAgreement :
+    Consensus.Goldilocks.Healing.FrozenTreeAgreement :=
+  Consensus.Goldilocks.Healing.phase_service_statements.frozenTreeAgreement
+
+/-- Goldilocks Healing: `CommonPathAcquisition` (HS.4). -/
+theorem Consensus.Goldilocks.Healing.commonPathAcquisition :
+    Consensus.Goldilocks.Healing.CommonPathAcquisition :=
+  Consensus.Goldilocks.Healing.phase_service_statements.commonPathAcquisition
 
 end

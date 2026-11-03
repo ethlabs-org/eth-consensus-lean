@@ -76,7 +76,7 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
 `Solution.lean` proves each review statement by its source theorem, and each finished instance
 milestone (the closed `Prop` definitions of `milestone_statements_modules` in `scripts/boundaries.toml`,
-today the 31 Goldilocks statements of `Challenge.lean`) by its milestone proof, importing that milestone's `Main`.
+today the 41 Goldilocks statements of `Challenge.lean`, including Healing Run and Service) by its milestone proof, importing that milestone's `Main`.
 Which claims node each of them states, and where its mapping rows are: `docs/goldilocks-mapping.md` §"Review path".
 `ConsensusLeanTest/ReviewAxioms.lean`, using `ConsensusLeanTest/ReviewGuard.lean`, compiles
 alpha-equality guards (including binder kinds) and `#guard_msgs` pins of the exact axiom lists
@@ -624,7 +624,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.Refinement` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import Refinement |
-| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes` and `Instances.Goldilocks.Proofs.Service`, with `Instances.Goldilocks.Lemmas.Healing`, which holds R.2's proofs) |
+| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Service`, `Instances.Goldilocks.Proofs.Refinement` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
 The checker fails on: a missing, unparsable or mistyped config (missing or unknown keys included); a
