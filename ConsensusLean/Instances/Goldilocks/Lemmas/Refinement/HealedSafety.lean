@@ -204,7 +204,7 @@ theorem healthy_repair_schedule_of_reset
       D.resetTime = a ∧ D.deltaF = ΔF ∧
       D.query = max Q.ready (Healing.drainTime Q.params a) ∧
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
-  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+  have hc : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
     exact_mod_cast accepted_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
   have hduration : 18 * Q.params.Δ + 1 ≤ (Sys (family S) V).cDur (K S A) Q.run := by

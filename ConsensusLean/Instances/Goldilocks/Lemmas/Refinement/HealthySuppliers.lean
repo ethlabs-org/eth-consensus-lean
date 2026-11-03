@@ -202,7 +202,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
     hnet Q.healthy.2.1.2
   have hduration : Regimes.catchUp Q.params ≤ (Sys (family S) V).cDur (K S A) Q.run := by
-    have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+    have hc : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
       exact_mod_cast accepted_catchUp_ge_sleepy S A
     have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
     simp only [System.cDur, Params.standard, accepted_coefficients_catchUp]

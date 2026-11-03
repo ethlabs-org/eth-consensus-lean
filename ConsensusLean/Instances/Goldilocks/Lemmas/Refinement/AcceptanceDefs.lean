@@ -46,50 +46,49 @@ theorem finalWindow_span {S : Setup} (A : AcceptanceAssumptions S) :
   omega
 
 theorem accepted_catchUp_val (S : Setup) (A : AcceptanceAssumptions S) :
-    (accepted_catchUp S A : Nat) = 37 := by rfl
+    (accepted_catchUp S A : Nat) = 19 := by rfl
 
 theorem accepted_heal_val (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability) (X : ℕ+) :
-    accepted_heal S A cap X = (accepted_catchUp S A : Nat) + 2 * healMargin S X + 3 := by rfl
+    accepted_heal S A cap X = (accepted_catchUp S A : Nat) + healMargin S X := by rfl
 
 /-- **The coefficient inequality (★)** of the nonfinal reset envelope, at every capability: the
 `hheal` of `healthy_repair_schedule_of_finite_envelope` at the named `R = healthyResetCoeff` and
 `r = healthyResetSlack`. -/
 theorem accepted_heal_ge_reset (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability)
     (X : ℕ+) :
-    (accepted_catchUp S A : Nat) + 2 * (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 26) +
+    (accepted_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 26) +
       healthyResetSlack S X + 3 ≤ accepted_heal S A cap X := by
-  rw [accepted_heal_val, healMargin_val, healthyResetSlack_val]
+  rw [accepted_heal_val, healthyResetSlack_val]
+  have := healMargin_ge_reset S X A.six_le_δt
   omega
 
-/-- The final route's coefficient form `accepted_heal(final, X) ≥ C + 2 M_f`,
+/-- The final route's coefficient form `accepted_heal(final, X) ≥ C + M_f`,
 `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` at `λ = 2Δ` and `L_drain = healthyDrainLen`
 (`heal_bound.md` §0.1). A budget for the final route, not a proof of its reset. -/
 theorem accepted_heal_ge_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
     (accepted_catchUp S A : Nat) +
-        2 * (24 * healthyDrainLen S X + 8 * S.k + 52 * S.δt + 52 * (X : Nat) + 44) ≤
+        (24 * healthyDrainLen S X + 8 * S.k + 52 * S.δt + 52 * (X : Nat) + 44) ≤
       accepted_heal S A .final X := by
-  rw [accepted_heal_val]
-  have := healMargin_ge_final S X
-  omega
+  rw [accepted_heal_val, healMargin_val]
 
 theorem accepted_latency_available (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
-    accepted_latency S A .available X = 8 * (X : Nat) + 12 := by rfl
+    accepted_latency S A .available X = 4 * (X : Nat) + 6 := by rfl
 
 theorem accepted_latency_stable (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
-    accepted_latency S A .stable X = 8 * (X : Nat) + 12 := by rfl
+    accepted_latency S A .stable X = 4 * (X : Nat) + 6 := by rfl
 
 theorem accepted_latency_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
-    accepted_latency S A .final X = 8 * ((X : Nat) + 3 * cF A.rowRatio) + 2 := by rfl
+    accepted_latency S A .final X = 4 * ((X : Nat) + 3 * cF A.rowRatio) + 1 := by rfl
 
-/-- For engine Δe ≥ 1, 37Δe covers 18(Δe+1)+1, including safety's literal +1. -/
+/-- For `Δ ≥ 1`, `19Δ` covers `18Δ + 1`, including safety's literal `+1`. -/
 theorem accepted_catchUp_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S) :
-    37 ≤ (accepted_catchUp S A : Nat) := by
+    19 ≤ (accepted_catchUp S A : Nat) := by
   rw [accepted_catchUp_val]
 
-/-- For Δe ≥ 1, the nonfinal latency covers (4idx+6)(Δe+1). -/
+/-- The nonfinal latency covers `(4idx + 6)Δ`. -/
 theorem accepted_latency_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S)
     (cap : Capability) (idx : ℕ+) (hcap : cap = .available ∨ cap = .stable) :
-    8 * (idx : Nat) + 12 ≤ accepted_latency S A cap idx := by
+    4 * (idx : Nat) + 6 ≤ accepted_latency S A cap idx := by
   rcases hcap with rfl | rfl
   · rw [accepted_latency_available]
   · rw [accepted_latency_stable]
@@ -97,9 +96,9 @@ theorem accepted_latency_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S)
 theorem acceptanceContract_params_eq {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) :
     (acceptanceContract A C).params =
-      { Params.standard C.catchUp (8 * S.k + 12)
+      { Params.standard C.catchUp (4 * S.k + 6)
         (4 * S.k - 6) C.heal C.latency with
-        noSleep := max 38 (8 * S.k + 16), recovery := 18,
+        noSleep := 4 * S.k + 6, recovery := 9,
         rowRatio := A.rowRatio } := by rfl
 
 theorem accepted_coefficients_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
@@ -111,7 +110,8 @@ theorem accepted_coefficients_heal (S : Setup) (A : AcceptanceAssumptions S) :
 theorem accepted_coefficients_latency (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).latency = accepted_latency S A := by rfl
 
-/-- The fixed engine-unit coefficients imply the node arming lag and phase-sensitive (V).
+/-- The fixed coefficients imply the node arming lag and phase-sensitive (V): the budget
+`4k − 6` is the largest with `(4k − 6)Δ + (4Δ − 1) ≤ (4k − 2)Δ` at every phase.
 This is only the time-window adapter, not network or participation transport. -/
 theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) (pub : Model.Public) (hn : 1 ≤ pub.n)
@@ -121,12 +121,12 @@ theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
   obtain ⟨hT, hlag, horder, hbudget⟩ := h
   have hk : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
   have hd : (1 : Int) ≤ pub.Δ := pub.Δ_pos
-  have hlcast : ((8 * S.k + 12 : Nat) : Int) = 8 * (S.k : Int) + 12 := by
+  have hlcast : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by
     omega
   have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by
     omega
   have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
-  change T + ((8 * S.k + 12 : Nat) : Int) * pub.Δ ≤ b₀ at hlag
+  change T + ((4 * S.k + 6 : Nat) : Int) * pub.Δ ≤ b₀ at hlag
   change b₁ ≤ b₀ + ((4 * S.k - 6 : Nat) : Int) * pub.Δ at hbudget
   rw [hlcast] at hlag
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt pub.Δ_pos)
@@ -140,24 +140,24 @@ theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
 noncomputable abbrev K (S : Setup) (A : AcceptanceAssumptions S) :=
   acceptanceContract A (accepted_coefficients S A)
 
-/-- The readiness duration of an acceptance contract with catch-up `≥ 37` covers `18 Δp`, for
+/-- The readiness duration of an acceptance contract with catch-up `≥ 19` covers `18Δ + 1`, for
 any coefficient record `C`, so that it also serves the witnesses over `acceptanceContract A C`.
 At `K S A` the premise is `accepted_catchUp_ge_sleepy`. -/
 theorem cDur_ge_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) [Fintype V]
-    [DecidableEq V] (C : AcceptanceCoefficients) (hC : 37 ≤ (C.catchUp : Nat))
+    [DecidableEq V] (C : AcceptanceCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
     (r : (Sys (family S) V).Run) :
-    18 * (r.1.Δ + 1) ≤ (Sys (family S) V).cDur (acceptanceContract A C) r := by
+    18 * r.1.Δ + 1 ≤ (Sys (family S) V).cDur (acceptanceContract A C) r := by
   have hd : (1 : Time) ≤ r.1.Δ := r.1.Δ_pos
-  have hc : (37 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
-  change 18 * (r.1.Δ + 1) ≤ ((C.catchUp : Nat) : Time) * r.1.Δ
+  have hc : (19 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
+  change 18 * r.1.Δ + 1 ≤ ((C.catchUp : Nat) : Time) * r.1.Δ
   nlinarith
 
-/-- **The snapshot fit at readiness** for any coefficient record with catch-up `≥ 37`:
+/-- **The snapshot fit at readiness** for any coefficient record with catch-up `≥ 19`:
 `c_z + Δp + 1 ≤ max ready 0 + 4Δp`, the `lo` condition of `snapshotCall_of_awake` at the frame
 base `max ready 0 + 4Δp`. Generic in `C` as `cDur_ge_of_catchUp`; its instance at `K S A` is
 `C := accepted_coefficients S A`, `hC := accepted_catchUp_ge_sleepy S A`. -/
 theorem cutZ_fit_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type) [Fintype V]
-    [DecidableEq V] (C : AcceptanceCoefficients) (hC : 37 ≤ (C.catchUp : Nat))
+    [DecidableEq V] (C : AcceptanceCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
     (r : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V) (g : Time) :
     Healing.cutZ (S.params (Model.pubOf r.1) hn).toParams g +
         (S.params (Model.pubOf r.1) hn).Δ + 1 ≤

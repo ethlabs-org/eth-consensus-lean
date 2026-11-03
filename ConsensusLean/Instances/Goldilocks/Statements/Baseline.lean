@@ -148,9 +148,8 @@ Francesco.
 6. Ready-vs-awake counting (M25).
 7. E1/E2 evidence binding (`conflicts` = FG-SA's slashing rule).
 8. Hash/digest (F-7); relay of accepted objects across sleep (F-8);
-   receipt-to-processing under endpoint delivery (F-9: FG-SA timing assumed
-   receipt strictly before the deadline; endpoint receipt costs one time
-   unit, at most `Δ`, absorbed by the `Δ`-rounded numbers or re-proved).
+   receipt-to-processing (F-9, settled: L0 delivers strictly before the
+   deadline, `CommLog.PSync` since 2026-11-04, as FG-SA's timing assumes).
 9. Closed (Francesco, 2026-10-29): finality liveness is owed under the
    full-participation healthy regime, FG-SA's all-awake premise.
 10. Weak continuation: uniform cut/seed preservation.
@@ -184,7 +183,7 @@ heal point cover one window plus the pattern span, for every `R` and `gf`),
 `finalRecur_delay_vs_window` (the intended FL2 delay `W_W` does not), and
 `EnvPoint.two_mul_card_faulty_union_lt` (tests: `ConsensusLeanTest/Goldilocks`). -/
 
-/-- The outage budget implies FG-SA's condition (V):
+/-- The outage budget implies the sheet's condition (V) at `L = 4·lockK − 1`:
 `b₁ − b₀ + ((b₀ − 6Δ) mod 4Δ) ≤ L·Δ`. -/
 theorem budget_implies_V (pp : FGSAParams) {Δ b₀ b₁ : Time} (hΔ : 0 < Δ)
     (hb : b₁ - b₀ ≤ (pp.budget : Time) * Δ) :
@@ -594,7 +593,7 @@ theorem confirmed_safe_healed (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     ⟨hH, hp⟩
 
 /-- **A4, prefix form.** The healed safety of the past: partially synchronous
-with GST `gst` (rows within `ΔF`) and healthy up to `b ≥ heal` (row bound within the row
+with GST `gst` (rows strictly before `ΔF`) and healthy up to `b ≥ heal` (row bound within the row
 ratio), with the recurrence on
 `[ready, heal]`: ready confirmed readers are safe at cuts in `[heal, b]`,
 whatever happens after `b`. -/

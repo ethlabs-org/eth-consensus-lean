@@ -75,7 +75,7 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
         ((S.params (Model.pubOf Q.run.1) Q.hn).ts s + d)) := by
   have hduration : Regimes.catchUp (S.params (Model.pubOf Q.run.1) Q.hn) + 1 ≤
       (Sys (family S) V).cDur (K S A) Q.run := by
-    have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+    have hc : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
       exact_mod_cast accepted_catchUp_ge_sleepy S A
     have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
     simp only [System.cDur, Params.standard, accepted_coefficients_catchUp]

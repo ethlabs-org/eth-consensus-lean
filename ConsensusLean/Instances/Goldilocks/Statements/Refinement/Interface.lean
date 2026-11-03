@@ -41,11 +41,12 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
   `System.NonFraming` of the compiled family (`sysOf_nonFraming`, Lemmas), nothing to state here.
 
 Not stated: the transport of the engine's network premises (`CommLog.PSync`, `SyncUntil`) to the
-spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` bounds a receipt by
-`max(a, g) + Δ` while the spec requires processing strictly before `max(τ, w_y) + Δ'`; the
-engine relays an admission at the admitting delivery's own time, as the spec's instantaneous
-send (consensus-lean#107), so only that endpoint slack remains: the regimes milestone states the
-transport. `docs/goldilocks-mapping.md` §"Refinement" maps each statement.
+spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` holds a receipt by
+`max(a, g) + Δ − 1`, strictly before `max(a, g) + Δ`, as the spec requires processing strictly
+before `max(τ, w_y) + Δ'` (half-open delivery, 2026-11-04); the engine relays an admission at
+the admitting delivery's own time, as the spec's instantaneous send (consensus-lean#107). The
+regimes milestone states the transport. `docs/goldilocks-mapping.md` §"Refinement" maps each
+statement.
 
 Not in `Challenge`: this module is outside the challenge's import closure, the comparator and
 `milestone_statements_modules`. Its statements are proved in `Lemmas/Refinement`

@@ -208,7 +208,7 @@ wrapper, and a mixed relay wrapper (attestations relayed together with a block o
 
 Model choice (owner decision, 2026-11-02): attestations bundled with a block or a vote in one
 relay wrapper are delivered strictly before `Δ`, the bound of the bundle; so such attestations
-reach the other nodes within `Δ` instead of `ΔF` (faster than a standalone row whenever
+reach the other nodes strictly before `Δ` instead of `ΔF` (faster than a standalone row whenever
 `Δ < ΔF`). -/
 def isRow {n : Nat} : Wire n → Prop
   | .mk .none (.data .relay) cs => cs ≠ [] ∧ ∀ c ∈ cs, IsAttObj c

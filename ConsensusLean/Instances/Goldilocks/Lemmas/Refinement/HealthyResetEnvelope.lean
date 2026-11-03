@@ -217,7 +217,7 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
   have hheal : Q.heal = max Q.gst 0 + (accepted_heal S A Q.cap Q.index : Time) * Q.run.1.Δ := by
     change max Q.gst 0 + ((accepted_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
     rw [accepted_coefficients_heal]
-  have hC : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+  have hC : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
     exact_mod_cast accepted_catchUp_ge_sleepy S A
   have hk : (2 : Time) ≤ (S.k : Time) := by exact_mod_cast S.two_le_k
   have hkk : (Q.params.k : Time) = S.k := rfl

@@ -203,7 +203,7 @@ theorem confirmed_ready_mono (Q : ConfirmedQuery S A V) {c d : Time}
 /-- The named joint coefficient bound covers the node duration; no equality of scales. -/
 theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+  have hc : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
     exact_mod_cast accepted_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
   simp only [ConfirmedQuery.duration, System.cDur,
@@ -271,7 +271,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
       Model.sysExternal, ConfirmedQuery.duration, System.cDur, System.pt, Sys,
       Model.sysOf, Model.Run.point]
       using hprogress
-  have hlat : (8 * (Q.index : Time) + 12) ≤ accepted_latency S A Q.cap Q.index := by
+  have hlat : (4 * (Q.index : Time) + 6) ≤ accepted_latency S A Q.cap Q.index := by
     exact_mod_cast accepted_latency_ge_sleepy S A Q.cap Q.index Q.nonfinal
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
   have hi : (0 : Time) ≤ Q.index := by positivity

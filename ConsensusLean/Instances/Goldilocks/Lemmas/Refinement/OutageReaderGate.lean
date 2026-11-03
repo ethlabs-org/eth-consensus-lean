@@ -16,7 +16,7 @@ public section
 /-! # Goldilocks outage: the reader's latest gate (O4, E0–E4) and the source prefix
 
 Workbench `notes/outage/outage_reader_bridge.md` (35ec2da), §2, §3 and §10.2. A reader ready at
-`t` from the recovery point `b₁ + 18Δe` has its latest gate `s = slot(t − 6Δ)`: `b₁ ≤ t_s + Δ`,
+`t` from the recovery point `b₁ + 9Δ` has its latest gate `s = slot(t − 6Δ)`: `b₁ ≤ t_s + Δ`,
 the update of slot `s` at `d_s = t_s + 6Δ ≤ t < t_s + 10Δ` before the read cut, no restart after
 `t_s` up to `t`, and the latest view at `t` of label `s + 1`. Only readiness, joining, the gate
 tick and the read cut are used: no vote, frame walk or voter tree. `outage_reader_prefix` turns
@@ -49,7 +49,7 @@ structure OutageReaderGate (Q : OutageQuery S A V) (w : V) (t : Time) where
 /-- The query's catch-up duration covers the node catch-up `18Δ` (G1, local copy). -/
 private theorem duration_ge (Q : OutageQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
+  have hc : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
     exact_mod_cast accepted_catchUp_ge_sleepy S A
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
   simp only [OutageQuery.duration, System.cDur, Params.standard, accepted_coefficients_catchUp]
@@ -75,8 +75,8 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
   set j := cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
   have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
   have hΔ : sp.Δ = Q.run.1.Δ := rfl
-  have hrec : Q.stop + 18 * Q.run.1.Δ ≤ t := by
-    change Q.stop + ((18 : Nat) : Time) * Q.run.1.Δ ≤ t at ht
+  have hrec : Q.stop + 9 * Q.run.1.Δ ≤ t := by
+    change Q.stop + ((9 : Nat) : Time) * Q.run.1.Δ ≤ t at ht
     push_cast at ht
     exact ht
   have hb₁ := stop_nonneg S A V Q

@@ -15,6 +15,19 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-04, lead (phase 2 of half-open delivery; W2's card `cards/coefficient_tightening.md`):
+  with `Δp = Δe` the Goldilocks contract numbers are the node numbers: catch-up `19`
+  (`18Δ + 1 ≤ 19Δ`), latency `4X + 6` (available, stable) and `4(X + 3·cF r) + 1` (final), lag
+  `4k + 6`, no-sleep `4k + 6`, recovery `9`, heal `catchUp + M_f` with
+  `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` (563 at `k = 2, X = 1, δ_t = 6`, was 1312). The
+  budget stays `4k − 6` (the node's phase-sensitive (V), `acceptance_outage_times`); `4k − 5`
+  is optional for Francesco. Every number moves toward stronger claims except catch-up, which is
+  mixed: more ready readers, but the healthy progress window (`healthyLive`, `healedSafe`,
+  `prog [ready, …]`) starts `18Δ` earlier, so those rows are incomparable with the old ones
+  (catch-up is a guarantee coefficient, Francesco 2026-10-31). No-sleep `4k + 6` no longer covers
+  `catchUp + 1` for `k ≤ 3`; no proof uses that relation. Supersedes the numbers of the entries
+  below (catch-up `37`, heal
+  `catchUp + 2M + 3`, lag `8k + 12`, no-sleep `max 38 (8k + 16)`, recovery `18`).
 - 2026-11-04, Francesco (option (a) of the Δ transport study, workbench
   `cards/delta_transport_study.md`; lead-approved plan `cards/delta_halfopen_plan.md`): **half-open
   delivery**. `CommLog.PSync`/`SyncUntil` hold a message strictly before the bound (deadlines

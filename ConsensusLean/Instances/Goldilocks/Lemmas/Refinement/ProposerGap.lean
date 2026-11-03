@@ -84,9 +84,9 @@ variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type) [Fintype V] [Decid
 theorem catchUp_le_cDur (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.card V) :
     Regimes.catchUp (S.params (Model.pubOf run.1) hn) ≤ (Sys (family S) V).cDur (K S A) run := by
   have hd : (1 : Time) ≤ run.1.Δ := run.1.Δ_pos
-  have hc : (37 : Time) ≤ ((K S A).params.catchUp : Time) := by
+  have hc : (19 : Time) ≤ ((K S A).params.catchUp : Time) := by
     rw [acceptanceContract_params_eq]
-    change (37 : Time) ≤ ((accepted_coefficients S A).catchUp : Nat)
+    change (19 : Time) ≤ ((accepted_coefficients S A).catchUp : Nat)
     rw [accepted_coefficients_catchUp]
     exact_mod_cast accepted_catchUp_ge_sleepy S A
   change 18 * run.1.Δ ≤ ((K S A).params.catchUp : Time) * run.1.Δ

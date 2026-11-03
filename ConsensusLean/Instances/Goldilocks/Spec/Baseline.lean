@@ -22,9 +22,10 @@ this contract, and the Goldilocks extras, give.
   gate F-3); arming lag `4·lockK + 6` (slow arming, the label before the
   outage label armed by `b₀`); outage no-sleep margin `max 19 (4·lockK + 8)`
   and recovery delay `9`; outage budget
-  `min eta (4·lockK − 5)` (implies FG-SA's condition (V), `budget_implies_V` in
-  the sheet); outage look-back `η = eta` (the outage regime is η-sleepy,
-  Francesco 2026-10-28); heal points from `max g 0`:
+  `min eta (4·lockK − 5)` (implies the sheet's (V) at the lifetime `L = 4·lockK − 1`,
+  `budget_implies_V`; not the node's phase-sensitive (V) at lifetime `(4k − 2)Δ`,
+  `Regimes.OutageWindowTimes`, which needs `4k − 6`); outage look-back `η = eta` (the
+  outage regime is η-sleepy, Francesco 2026-10-28); heal points from `max g 0`:
   `29 + B_H^F(k)` for the available and stable outputs at proposer gap `k`
   slots, `29 + B_H^F(gf·R) + W_W(gf)` (first finality) for the final output at
   finality index `gf` (`29 = catchUp 18 + 1` readiness rounding `+ 10` GST-shift
@@ -155,7 +156,8 @@ def noSleep : Nat := max 19 (4 * pp.lockK + 8)
 the locked validators, about two slots after the window). -/
 def recovery : Nat := 9
 
-/-- The outage budget `min eta (4·lockK − 5)` (implies FG-SA's (V)). -/
+/-- The outage budget `min eta (4·lockK − 5)` (implies the sheet's (V) at `L = 4·lockK − 1`,
+`budget_implies_V`; the node's (V) at lifetime `(4k − 2)Δ` needs `4k − 6`). -/
 def budget : Nat := min pp.eta (4 * pp.lockK - 5)
 
 /-- The pinned Goldilocks numbers: standard thresholds, outage look-back

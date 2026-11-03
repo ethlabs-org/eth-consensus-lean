@@ -17,7 +17,7 @@ outage query, its pre-`b₀` service and an armed ready source (`OutageArming`, 
 origin). The post-GST pool delivery `OutageLockOthers.pg` is discharged by
 `outage_pool_delivery` (its premise `b₁ ≤ t_m + Δ` is paid by `r ≤ m`, the restored label).
 It proves the arithmetic N1–N6 from
-`OutageTimes` and the accepted numbers (lag `8k + 12`, no-sleep `max 38 (8k+16)`, budget
+`OutageTimes` and the accepted numbers (lag `4k + 6`, no-sleep `4k + 6`, budget
 `≤ 4k − 6`), the Sleepy invariant and service up to `b₀`, the fault bounds from `EtaSleepyOn`, and
 the cohort premises from `NoSleepOn` and `CohortOn` through the key transport. The arming fields
 are used as they are. Two inputs are hypotheses of the adapter: `Q.T ≤ horizon` (as for
@@ -121,8 +121,6 @@ private theorem query_numbers (Q : OutageQuery S A V) :
   have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
   change Q.stop ≤ Q.start + ((4 * S.k - 6 : Nat) : Int) * Q.run.1.Δ at hbud
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.Δ_pos)
-  have hC : (8 * (S.k : Int) + 16) ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) := by
-    exact_mod_cast le_max_right 38 (8 * S.k + 16)
   change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start at hg₁
   change Q.start < 4 * Q.run.1.Δ * (j₀ : Int) + 6 * Q.run.1.Δ at hg₂
   change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start ∧
@@ -132,15 +130,11 @@ private theorem query_numbers (Q : OutageQuery S A V) :
     4 * Q.run.1.Δ * ((j₀ : Nat) : Int) + Q.run.1.Δ < Q.stop ∧
     ∀ t, t ≤ 4 * Q.run.1.Δ * ((j₀ + S.k : Nat) : Int) + Q.run.1.Δ →
       t ≤ Q.run.2.horizon →
-      t ≤ min (Q.stop + ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ) Q.run.2.horizon
+      t ≤ min (Q.stop + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.Δ) Q.run.2.horizon
   push_cast
   refine ⟨hg₁, by linarith, by linarith, hb01, by nlinarith, by linarith,
     fun t ht hth => le_min ?_ hth⟩
-  have h1 : (8 * (S.k : Int) + 16) * Q.run.1.Δ ≤ max 38 (8 * (S.k : Int) + 16) * Q.run.1.Δ :=
-    mul_le_mul_of_nonneg_right (le_max_right _ _) (by linarith)
-  have h3 : 4 * Q.run.1.Δ * ((j₀ : Int) + S.k) + Q.run.1.Δ ≤
-      Q.stop + (8 * (S.k : Int) + 16) * Q.run.1.Δ := by nlinarith
-  linarith
+  nlinarith
 
 /-- The restored label is the least `r` with `b₁ ≤ t_r + Δ`. -/
 theorem restoredLabel_spec (Q : OutageQuery S A V) :
