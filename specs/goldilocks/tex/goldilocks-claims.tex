@@ -2550,7 +2550,8 @@ G0.9 & \texttt{FG.Retention}, \texttt{FG.RetentionThroughAppend} & proved
 G0.10 & \texttt{FG.Aggregation} & proved (\texttt{fg\_safety})\\
 A0.1 & \texttt{SA.PoolCap}, \texttt{SA.AdmissionSlots},
   \texttt{SA.StampStable}, \texttt{SA.CarriedVotes},
-  \texttt{SA.StampParent} & proved (\texttt{acBase})\\
+  \texttt{SA.StampParent} & proved (\texttt{acBase}); admission slots and
+  carried votes hold from every state, not only reachable ones\\
 A0.2 & \texttt{SA.ResolutionStable}, \texttt{SA.SupportInTree} & proved
   (\texttt{acBase})\\
 A0.3 & \texttt{SA.SupportersAntitone}, \texttt{SA.OpponentsMonotone},

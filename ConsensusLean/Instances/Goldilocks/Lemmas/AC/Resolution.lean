@@ -142,7 +142,6 @@ private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
     have hst := voteClosed_poolStamped.step ro self Φ' t' hc ih.stamped
     by_cases hb : ∃ B, c = .block B
     · obtain ⟨B, rfl⟩ := hb
-      have hok' := hok
       obtain ⟨hΦ', hfs, hpay, hBs⟩ := hok
       have hmem : ∀ P ∈ Φ'.tree, P = B ∨ P ∈ Φ.tree := fun P hP => by
         rw [hfs.tree_eq] at hP
@@ -157,8 +156,7 @@ private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
       · rcases hmem P hP with rfl | hP'
         · by_cases hin : v ∈ (acOnBlock sp self A Φ' t' P).1.pool v.slot
           · exact Or.inl hin
-          · exact Or.inr (carried_votes sp FGP ro self U hU A Φ t hr P Φ' t' ht hok' hPs.symm v hv
-              hin)
+          · exact Or.inr (carried_votes sp FGP self A Φ' t' P hpay hPs.symm v hv hin)
         · have := ih.slot_le P hP'
           exact held_of_grows hg (ih.carried P hP' (by omega) v hv)
     · have hΦe : Φ' = Φ := by

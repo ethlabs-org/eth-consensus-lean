@@ -521,7 +521,7 @@ end Stamps
 
 /-- **A0.1, admission slots.** -/
 theorem admission_slots : AdmissionSlots sp := by
-  intro FGP ro self U _ A Φ t₀ _ c Φ' t _ _
+  intro FGP ro self A Φ' t c
   dsimp only
   intro σ x hx
   cases c with
@@ -561,9 +561,8 @@ theorem acOnBlock_held {FGP : Type} (self : Fin sp.n) (A : SAState sp.n) (Φ : F
 
 /-- **A0.1, carried votes.** -/
 theorem carried_votes : CarriedVotes sp := by
-  intro FGP ro self U _ A Φ t₀ _ B Φ' t _ hok hBs
+  intro FGP self A Φ' t B hpay hBs
   dsimp only
-  obtain ⟨-, -, hpay, -⟩ := hok
   intro v hv hnot
   refine (acOnBlock_held sp self A Φ' t B (fun v hv => ?_) v hv).resolve_left hnot
   have := hpay.1 v hv
@@ -596,7 +595,7 @@ theorem proposal_payload_valid : ProposalPayloadValid sp := by
 (admission at `t` takes votes of slot `slot(t) − 1` or `slot(t)`, and calls are at nondecreasing
 times from `0`). -/
 theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : (goldilocksSA sp FGP ro).State}
+    {U : Set (Blk sp.n FGP)} {A : (goldilocksSA sp FGP ro).State}
     {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
     (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t₀) :
     0 ≤ t₀ ∧ ∀ σ, ∀ x ∈ (A : SAState sp.n).pool σ, x.slot ≤ sp.slot t₀ := by
@@ -608,7 +607,7 @@ theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
   | @step A Φ Φ' t t' c hr ht hok ih =>
     obtain ⟨h0, hle⟩ := ih
     refine ⟨le_trans h0 ht, fun σ x hx => ?_⟩
-    rcases admission_slots sp FGP ro self U hU A Φ t hr c Φ' t' ht hok σ x hx with
+    rcases admission_slots sp FGP ro self A Φ' t' c σ x hx with
       ⟨hx, -⟩ | hx | hx
     · exact le_trans (hle σ x hx) (slot_mono sp h0 ht)
     · omega
@@ -631,7 +630,7 @@ private theorem sinv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
       simp [SAState.initial, hne]
     exact ⟨Φ.F, hf.2 hFt, hroot.trans hg.symm, Or.inl hFt⟩
   | @step A Φ Φ' t t' c hr ht hok ih =>
-    have h0 : 0 ≤ t' := (pool_slot_le sp hU hr).1.trans ht
+    have h0 : 0 ≤ t' := (pool_slot_le sp hr).1.trans ht
     have hΦ' := hok.1
     have hret := callOK_retains sp hU ih.frame hok
     have hkeep : ∀ X, (X ∈ Φ.tree ∨ ¬ Anc U Φ.F X) → X ∈ Φ'.tree ∨ ¬ Anc U Φ'.F X := by
@@ -684,7 +683,7 @@ theorem stamp_stable : StampStable sp := by
   intro FGP ro self U hU A Φ t₀ hr c Φ' t ht hok hc
   dsimp only
   have h := sinv_of_reachable sp hU hr
-  have h0 : 0 ≤ t := (pool_slot_le sp hU hr).1.trans ht
+  have h0 : 0 ≤ t := (pool_slot_le sp hr).1.trans ht
   refine ⟨fun x hx => (step_vok_keep ro self h.vok Φ' t hc).2.2 x (h.vok x hx), fun r hr' => ?_⟩
   have hstep := step_blockStamp_eq ro self A hok.1.1 h0 c
   by_cases hb : ∃ B, c = .block B
@@ -721,7 +720,7 @@ theorem joined_keeps_votes : JoinedKeepsVotes sp := by
     simp [SAState.initial] at hx
   · rw [tr.state_of_lastCall hc' hj' hnb] at hx
     have hreach := localRun_reachable _ _ _ _ _ tr h y hy j' ℓ' hc'
-    have hxs := (pool_slot_le sp h.coherent hreach).2 σ x hx
+    have hxs := (pool_slot_le sp hreach).2 σ x hx
     have hlt : tr.time j' < sp.ts ((sp.slot (tr.time i) : Int) - 1) :=
       lt_of_lt_of_le ((hbefore j' hj' ℓ' hc').trans hu) hle
     have := (ts_le_iff_le_slot sp (h.time_nonneg j') ((sp.slot (tr.time i) : Int) - 1)).not.mp

@@ -68,17 +68,15 @@ def PoolCap : Prop :=
     ∀ σ, (∀ x ∈ A.pool σ, x.slot = σ) ∧
       ∀ i : Fin sp.n, ((A.pool σ).filter (fun x => x.val = i)).dedup.length ≤ 2
 
-/-- **A0.1, admission slots.** In a lawful call at `t` from a reachable state, every vote of
-the pools after the call that was not in them before (or every vote, for a restart) has slot
-`slot(t) − 1` or `slot(t)`. -/
+/-- **A0.1, admission slots.** In every call at `t`, from every state and with every frame, every
+vote of the pools after the call that was not in them before (or every vote, for a restart) has
+slot `slot(t) − 1` or `slot(t)`. (The claims state it for lawful calls from reachable states.) -/
 def AdmissionSlots : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun self U (A : SAState sp.n) Φ t₀ =>
-    ∀ (c : (goldilocksSA sp FGP ro).Call) Φ' t, t₀ ≤ t →
-      (goldilocksSA sp FGP ro).CallOK U Φ t c Φ' →
-      let A' : SAState sp.n := ((goldilocksSA sp FGP ro).step self A Φ' t c).1
-      ∀ σ, ∀ x ∈ A'.pool σ, (x ∈ A.pool σ ∧ c ≠ .restart) ∨
-        x.slot + 1 = sp.slot t ∨ x.slot = sp.slot t
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
+    (Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call),
+    let A' : SAState sp.n := ((goldilocksSA sp FGP ro).step self A Φ' t c).1
+    ∀ σ, ∀ x ∈ A'.pool σ, (x ∈ A.pool σ ∧ c ≠ .restart) ∨
+      x.slot + 1 = sp.slot t ∨ x.slot = sp.slot t
 
 /-- **A0.1, stamps.** A lawful call other than a restart, from a reachable state, changes no
 stamp that is set (finite or `−∞`): a stamp never changes between two restarts. -/
@@ -92,16 +90,15 @@ def StampStable : Prop :=
       (∀ x, A.voteStamp x ≠ ⊤ → A'.voteStamp x = A.voteStamp x) ∧
         ∀ r, A.blockStamp r ≠ ⊤ → A'.blockStamp r = A.blockStamp r
 
-/-- **A0.1, carried votes.** When a block `B` is accepted at `t` with `slot(t) = B.slot`, from
-a reachable state, a vote of `B.votes` that is not in the pool after `ac_on_block` makes its
-validator an equivocator in that pool. -/
+/-- **A0.1, carried votes.** When a block `B` with a valid payload is processed at `t` with
+`slot(t) = B.slot`, from every state and with every frame, a vote of `B.votes` that is not in the
+pool after `ac_on_block` makes its validator an equivocator in that pool. (The claims state it for
+a lawful block call from a reachable state; its lawfulness gives the valid payload.) -/
 def CarriedVotes : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun self U (A : SAState sp.n) Φ t₀ =>
-    ∀ (B : Blk sp.n FGP) Φ' t, t₀ ≤ t → (goldilocksSA sp FGP ro).CallOK U Φ t (.block B) Φ' →
-      sp.slot t = B.slot →
-      let A' : SAState sp.n := (acOnBlock sp self A Φ' t B).1
-      ∀ v ∈ blockVotes B, v ∉ A'.pool v.slot → v.val ∈ equivocators {x | x ∈ A'.pool v.slot}
+  ∀ (FGP : Type) (self : Fin sp.n) (A : SAState sp.n) (Φ' : Frm sp.n FGP) (t : Time)
+    (B : Blk sp.n FGP), validPayload B → sp.slot t = B.slot →
+    let A' : SAState sp.n := (acOnBlock sp self A Φ' t B).1
+    ∀ v ∈ blockVotes B, v ∉ A'.pool v.slot → v.val ∈ equivocators {x | x ∈ A'.pool v.slot}
 
 /-- **A0.1, stamps along parent edges.** At a reachable state, the stamp of a block of the
 frame tree is at least the stamp of its parent in the tree (so a voter block tree is closed
