@@ -58,6 +58,7 @@ public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksHealingWitness
 public import ConsensusLeanTest.GoldilocksInclusionUpdateRejection
 public import ConsensusLeanTest.GoldilocksInclusionWitness
+public import ConsensusLeanTest.GoldilocksInitialCarryControl
 public import ConsensusLeanTest.GoldilocksInitialCarryPremises
 public import ConsensusLeanTest.GoldilocksInitialCarryReject
 public import ConsensusLeanTest.GoldilocksInitialCarryRun
