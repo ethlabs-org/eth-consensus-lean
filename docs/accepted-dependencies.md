@@ -49,9 +49,11 @@ groups A, B and C deleted) no declaration in the import closure of `Refinement.A
 `Healing.voter_unlock_keeps_lock`, `Healing.reset_inv` and their 14 sorry-dependent users deleted)
 ConsensusLean, ConsensusLeanTest and Solution have **0 compiled sorry owners**. That is not 0
 outstanding mathematical statements: the Healing statements `HealingRunStatements`,
-`PhaseServiceStatements`, `ResetExistence`, `NonInterference`, `AvailableHealing`,
-`FrozenTreeAgreement` and `CommonPathAcquisition` lost their only (sorry-dependent) inhabitants and
-are stated with their proof open (`docs/roadmap.md`), and further statements were never proved. The exact-head full tier on
+`PhaseServiceStatements`, `NonInterference` and `FrozenTreeAgreement` lost their only
+(sorry-dependent) inhabitants and are stated with their proof open (`docs/roadmap.md`), and further
+statements were never proved. `ResetExistence`, `CommonPathAcquisition` and `AvailableHealing`, which
+lost theirs at the same time, are proved again: their consumers read only HS.3 (b), which follows from
+HS.2 (`frozen_tree_agreement_clean`), so neither HS.3 (a) nor `reset_inv` is needed. The exact-head full tier on
 70e90b443ce1d0871b8efd21e131ee54367559e9 (`check.sh --full`) passed, exit 0, 801 s, recorded on
 [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-02 18:03, milestone
 closure): kernel replay, `lake comparator --paranoid` with its fixtures and the Solution/test
@@ -68,7 +70,7 @@ on main ebb2f2ec2783911997e7f4945684f54382690ea6 passed, exit 0, 1381 s, zero SK
 kernel replay 235 s with controls, the default-target lake check 561 s with the standard three axioms and the
 good/bad fixtures, `lake comparator --paranoid` 174 s over 25,065 declarations with controls, the rebuild canary
 16 s with both controls; 0 lexical sorry/admit. `AcceptedEndpoint` is certified as of ebb2f2ec.
-The seven Healing statements above remain stated with their proof open.
+The four Healing statements above remain stated with their proof open.
 
 | Set | Owner | Direct leaf list |
 |---|---|---|

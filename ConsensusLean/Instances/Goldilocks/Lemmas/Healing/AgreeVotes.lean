@@ -562,6 +562,44 @@ theorem frozen_votes_clean {Gp : Time}
     (e := e) hy hv hes
   exact ⟨hall, later_extend hS hp hr hdrain hall⟩
 
+/-- **HS.3 (b)**, the second conjunct of `FrozenTreeAgreement` as stated there, from HS.2: the
+setting from (a)'s premises (`agreeSetting_of`), then `frozen_votes_clean`. It needs neither
+(a)'s lock premises nor the reset. -/
+theorem frozen_tree_agreement_clean (hdrain : CleanLockDrain) :
+    ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+      (proposer : Nat → Fin sp.n)
+      (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
+      (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
+      (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
+      GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
+      SettledIn tr H g w i₀ m c → i₀ ≤ i →
+      ∀ (p : Fin sp.n) (kP s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
+        ReadyProposal tr H proposer p kP s P → i ≤ kP →
+        tr.time i ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
+        gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
+        (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
+          PhaseOn tr.projFG H i k m c) →
+        ∀ Gp : Time, PropPlus tr H proposer g Gp →
+          rTime sp w ≤ sp.ts s →
+          (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
+            e.msg.head = P.root ∧
+            ((P ∈ ℓ.frame.viableHeads ∧
+                P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) ∨
+              Anc (tr.HonestBlocks H) P ℓ.frame.fcRoot) ∧
+            ∀ X, Anc (tr.HonestBlocks H) X P →
+              X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
+              Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot) ∧
+          (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
+            PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
+          ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
+            P'.slot = s' → tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
+            PhaseOn tr.projFG H i₀ k' m c →
+            ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
+  intro sp ro proposer dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
+    Gp hp hr
+  obtain ⟨iP, ℓp, d, pay, hS⟩ := agreeSetting_of hrun hs hc hw hi₀ hP hikP hti hg hph
+  exact frozen_votes_clean hS hp hr hdrain
+
 end Consensus.Goldilocks.Healing
 
 end

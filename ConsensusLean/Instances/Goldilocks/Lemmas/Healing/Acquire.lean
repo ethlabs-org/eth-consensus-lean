@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 
 public section
 
@@ -16,15 +17,16 @@ entry `E` at `h = ht(W) ∈ {ℓ, m}` every honest node receives as a current so
 The assembly (proved): if the phase has not changed at the first cut `j_D` after `w + D`, it is
 `(m, c)` at every cut of `[i₀, j_D]` (`phaseOn_of_not_changed`, HR.2's monotone phase). `Prop⁺`
 at `r` gives the first ready proposal `P` of slot `s`, `t_s ≤ r + G_p`; HS.3 (b) protects it
-(`ready_protected`, from `FrozenTreeAgreement` as an opaque hypothesis); every honest node
+(`ready_protected`, from `frozen_tree_agreement_clean`); every honest node
 receives a source `C ⪰ P` in `[t_s, t_s + 6Δ]` (`ready_sources`). If every such source has
 `P`'s height, `W = P`. Otherwise a source of height `m > ht(P) = m − 1` has a fresh optimistic
 origin of label `s + 1` that later proposal parents extend (`descendant_source_parent`); the
 ready proposal `Q` after `t_s + 14Δ` then has height `m`, and `W = Q`. Time: `t_a < w + 8Δ`,
 `r < w + (8k + 16)Δ`, `t_Q + 6Δ < w + (8k + 36)Δ + 2G_p`. A ready proposal of the phase is
 allowed (`ready_allowed`) and every honest node receives a source above it (`ready_sources`):
-instances of `AcquireSources.proposal_allowed` and `AcquireSources.protected_sources`. HS.2 and
-HS.3 enter as the hypotheses `CleanLockDrain` and `FrozenTreeAgreement`; HS.2's internal
+instances of `AcquireSources.proposal_allowed` and `AcquireSources.protected_sources`. HS.2 enters
+as the hypothesis `CleanLockDrain` and HS.3 (b) follows from it (`frozen_tree_agreement_clean`);
+HS.2's internal
 extension and proposal-boundary transfer (`Drain`) give `descendant_source_parent`. -/
 
 namespace Consensus.Goldilocks.Healing
@@ -100,12 +102,12 @@ private theorem floor_cases {β : Type} (m : Nat) (c : PhaseCase β) :
 /-- **HS.3 (b) at a ready proposal after `r`** (`hs234-exact-interface.md` §5 "HS.3(b) gives exact
 `P` votes and the later-parent property"): under `Γ`, a ready proposal `P` of slot `s` with
 `t_s ≥ r`, in the phase through slot `s` (every honest slot-`s` vote is before `t_{s+1}`), is on
-a protected branch. HS.3 is taken as the opaque hypothesis `hagree`: its premises at `i = i₀` are
-discharged here (`i₀ ≤ k_P`; the proposer ticks at `t_{s−1} ∈ [w, t_{s−1} + 3Δ]`, so
+a protected branch. HS.3 (b) is `frozen_tree_agreement_clean` from HS.2: its premises at `i = i₀`
+are discharged here (`i₀ ≤ k_P`; the proposer ticks at `t_{s−1} ∈ [w, t_{s−1} + 3Δ]`, so
 `time i₀ ≤ t_{s−1} + 3Δ`; `ḡ ≤ t_{s−1} + 3Δ`), and only this proof reads HS.3's shape. -/
 theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
-    (hset : SettledIn tr H g w i₀ m c) (hagree : FrozenTreeAgreement) {s kP : Nat}
+    (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer (proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
     (hon : ∀ k, tr.time k < sp.ts ((s : Int) + 1) → PhaseOn tr.projFG H i₀ k m c) :
@@ -157,9 +159,8 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     have h2 : e.msg.slot = sp.slot (tr.time k) := (SA.castAt_spec hacr.localRun hy hv).2.1
     rw [← h2, he] at this
     omega
-  obtain ⟨h₁, h₂, h₃⟩ := (hagree sp ro proposer dg H tr g ΔF w i₀ i₀ m c
-    hrun hs hc hset le_rfl _ kP s P
-    hP hi₀ htime (by linarith) hvotes).2 Gp hp hr
+  obtain ⟨h₁, h₂, h₃⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr g ΔF w i₀ i₀
+    m c hrun hs hc hset le_rfl _ kP s P hP hi₀ htime (by linarith) hvotes Gp hp hr
   exact ⟨fun y hy k ℓ e hv he => let ⟨a, b, _⟩ := h₁ y hy k ℓ e hv he;
     ⟨a, b.imp_left And.right⟩, h₂, h₃⟩
 
@@ -436,8 +437,7 @@ HS.2 and HS.3 as opaque hypotheses, the phase has changed after all events at `w
 common path is acquired (HS.4 (a)'s second branch, with #88's current-source arm). -/
 theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
-    (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)
-    (hagree : FrozenTreeAgreement) :
+    (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) :
     (∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
       ∃ (s h : Nat) (E W : SA.Blk sp.n (List (FG.Att sp.n))) (kW : Nat),
         (h = phaseFloor m c ∨ h = m) ∧ 1 ≤ h ∧
@@ -530,7 +530,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
       (tr.state_succ_of_call hcall).symm
     refine ⟨hkP, hkD, hPt, hpost, by rw [hpost]; exact h_le_of_phaseAt hrun hnc hpH hkD hphD hPt,
       ready_allowed hrun hs hc hset hP (by linarith) (hbefore kP (by linarith)),
-      ready_protected hrun hs hc hp hset hagree hP hr fun k hk => hbefore k ?_⟩
+      ready_protected hrun hs hc hp hset hclean hP hr fun k hk => hbefore k ?_⟩
     have : sp.ts ((s : Int) + 1) = sp.ts s + 4 * sp.Δ := by simp only [SAParams.ts]; ring
     linarith
   -- the first ready proposal after `r`

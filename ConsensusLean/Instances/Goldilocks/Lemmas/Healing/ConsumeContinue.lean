@@ -1,14 +1,16 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeUpper
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 
 public section
 
 /-! # Goldilocks Healing, HS.5: consumption and continuation
 
 `hs5-exact-helpers.md` §4 (`consume_continue`, "two crossings with the original drain"): under
-`Γ`, with HS.1–HS.3 as hypotheses, from the acquired path's witness (an honest proposal `W` of
-slot `s`, entry `E` at `h ∈ {ℓ, m}`, its protected parents, and the rows by `v = t_s + 6Δ` that
+`Γ`, with HS.1 and HS.2 as hypotheses (HS.3 (b) from HS.2, `frozen_tree_agreement_clean`),
+from the acquired path's witness (an honest proposal `W` of slot `s`, entry `E` at
+`h ∈ {ℓ, m}`, its protected parents, and the rows by `v = t_s + 6Δ` that
 `historical_source_rows` gives), the phase cannot stay `(m, c)` through the first cut `j_A` after
 `w + A`, `A = 2C + Δ` (`consume_continue_of`, proved from `mature_progress_of` and
 `fixed_upper_rows_of`).
@@ -59,7 +61,7 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
 theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
-    (hret : ViableWitnessRetention) (hclean : CleanLockDrain) (hagree : FrozenTreeAgreement)
+    (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
     (hset : SettledIn tr H g w i₀ m c)
     (hcl : ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
       tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →
@@ -153,13 +155,13 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     have hkZ := htime hpropZ hZs
     have h₁ := hsucc hsz
     have h₂ := hpred z
-    obtain ⟨hv, hl, hpa⟩ := (hagree sp ro proposer dg H tr g ΔF w i₀ i₀ m c
-      hrun hs hc hset le_rfl _ kZ z Z
+    obtain ⟨hv, hl, hpa⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr g ΔF w i₀
+      i₀ m c hrun hs hc hset le_rfl _ kZ z Z
       hZ (hi₀ kZ (by linarith)) (by linarith) (by linarith [gbar_nonneg g])
       (fun y hy k ℓ e hv he => hphase k (by
         have := cast_time_le_slot hrun hnc hy hv
         rw [he] at this
-        linarith))).2 Gp hp (by linarith)
+        linarith)) Gp hp (by linarith)
     exact ⟨fun y hy k ℓ e hv' he => let ⟨a, b, _⟩ := hv y hy k ℓ e hv' he;
       ⟨a, b.imp_left And.right⟩, hl, hpa⟩
   -- the first crossing, by `b₁ ≤ w + C`

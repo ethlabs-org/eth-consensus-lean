@@ -14,23 +14,25 @@ public section
 
 The phase-service statements HS.1–HS.4 (`Statements/Healing/Service`; claims §"Healing: phase
 service"; `phase-service.md` §§2–5 and §7), and the interface through which HS.5
-(`Producer(A)`) would consume them (its whole-run producer was retired, #136):
+(`Producer(A)`, `producer` in `Reset`) consumes them:
 
 * `AcquiredPath` is HS.4 (a)'s second branch (the acquired common path: an honest unanimous
   proposal `W` of slot `s` with an entry `E` at `h ∈ {ℓ, m}` whose reports or rows every honest
   validator has by `t_s + 6Δ`, still in the phase), `ClientProgress` is HS.4 (b) (the client
-  subclaim);
+  subclaim), and `common_path_acquisition'` restates HS.4 with them;
 * `consume_continue` is HS.5's consumption and continuation (`phase-service.md` §6, §8.1;
   workbench#6 P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
   three steps that HS.1–HS.4 do not export are `historical_source_rows` (proved, `Source`),
   `fixed_upper_proposal_rows` and `mature_progress_consumption` (over `ProtectedBranch`,
   `ReportsBy`, `RowsBy` and `PathAt`, the pieces of `AcquiredPath`).
 
-HS.1 is proved (`Retain`). This is the paper orb's proposed contract, not yet certified.
-Interfaces: HS.2–HS.4 are open. `consume_continue`, `fixed_upper_proposal_rows` and
-`mature_progress_consumption` are assembled in `ConsumeContinue`, `ConsumeUpper` and
-`ConsumeMature` (`hs5-exact-helpers.md` §§2–4, with `ConsumeCrossing` for §3.1, the sources of
-§§2.1–2.3 in `AcquireSources`), over HS.1–HS.3 as hypotheses. -/
+HS.1, HS.2 and HS.4 are proved (`Retain`, `Drain`, `Acquire`), and HS.3 (b) is proved from HS.2
+(`frozen_tree_agreement_clean`, `AgreeVotes`); HS.3 as a whole (`FrozenTreeAgreement`, with part
+(a)) has no inhabitant. This is the paper orb's proposed contract, not yet certified.
+`consume_continue`, `fixed_upper_proposal_rows` and `mature_progress_consumption` are assembled
+in `ConsumeContinue`, `ConsumeUpper` and `ConsumeMature` (`hs5-exact-helpers.md` §§2–4, with
+`ConsumeCrossing` for §3.1, the sources of §§2.1–2.3 in `AcquireSources`), over HS.1 and
+HS.2 as hypotheses (HS.3 (b) from HS.2). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -55,6 +57,13 @@ theorem clean_lock_drain : CleanLockDrain := by
     fun _ _ _ _ _ hr _ _ hl => live_lock_clean hr hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
       live_lock_below_proposal hrun hs hc hw hP hr hy hv he hk hl hls hL hLr⟩
+
+/-- **HS.4, bounded common path and actual-report acquisition** (`phase-service.md` §5 "First
+proposal, actual reports, and the one extra wait", §7 HS.4). -/
+theorem common_path_acquisition : CommonPathAcquisition :=
+  fun _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
+    ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain,
+      client_progress hrun hs⟩
 
 section Contract
 
@@ -261,6 +270,16 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
+/-- **HS.4 with the named branches**: settled at `w` in `(m, c)`, the phase has changed by
+`w + D_HS` or the common path is acquired (`AcquiredPath`), and the client subclaim holds. -/
+theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr)
+    (hs : HSShared tr H dg g ΔF)
+    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
+    (hset : SettledIn tr H g w i₀ m c) :
+    ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
+      AcquiredPath tr H proposer Gp w i₀ m c) ∧ ClientProgress tr H i₀ m c :=
+  common_path_acquisition sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hset
+
 /-! ### HS.5's consumption, one level down (proposed contract)
 
 The paper orb's skeptical read-back of `consume_continue` names three steps that HS.1–HS.4 do not
@@ -382,8 +401,9 @@ the acquired path, a fresh honest ready inclusion proposal `X` (`Prop⁺` after
 `max(v + Δ_F, t_{E.slot + δ_t})`) crosses `h` by `b`; if `h = m` the crossing changes the phase
 within `C`; if `h = m − 1`, `X` has height `m` and is unanimous (HS.3 (b) with HS.2), and a second
 proposal `Y` after `t_X + 8Δ` gives the upper-height service within a second `C`; so the phase
-has changed by `w + A_HS`, `A = 2C + Δ`. It takes HS.1–HS.3 as hypotheses deliberately (the
-paper orb's proposed contract, not yet certified).
+has changed by `w + A_HS`, `A = 2C + Δ`. It takes HS.1 and HS.2 as hypotheses deliberately (the
+paper orb's proposed contract, not yet certified); HS.3 (b) follows from HS.2
+(`frozen_tree_agreement_clean`).
 
 Its proof is meant to assemble `historical_source_rows` (the witness's reports become rows),
 `mature_progress_consumption` (the crossing proposal `X` by `b ≤ w + C`; at `h = m` a crossing
@@ -395,7 +415,7 @@ HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusio
 is proved in `ConsumeContinue` (`consume_continue_of`, `hs5-exact-helpers.md` §4). -/
 theorem consume_continue (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
-    (hret : ViableWitnessRetention) (hclean : CleanLockDrain) (hagree : FrozenTreeAgreement)
+    (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
     (hset : SettledIn tr H g w i₀ m c) (hwit : AcquiredPath tr H proposer Gp w i₀ m c)
     (hcl : ClientProgress tr H i₀ m c) (jA : Nat) (hjA : FirstCutAfter tr jA (w + A_HS sp ΔF Gp)) :
     PhaseChanged tr.projFG H i₀ jA := by
@@ -404,7 +424,7 @@ theorem consume_continue (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hrows := historical_source_rows hrun hs hc hp hset hcl hpath hrep
   obtain ⟨h1, -, hW, hWs, hpH, hE, -, hws, hr, hvD, -, hbr⟩ := hpath
   by_contra hnc
-  exact consume_continue_of hrun hs hc hp hret hclean hagree hset hcl h1 hW hWs hpH hE hws hr hvD
+  exact consume_continue_of hrun hs hc hp hret hclean hset hcl h1 hW hWs hpH hE hws hr hvD
     hbr.2.2 hrows hjA (phaseOn_of_not_changed hrun hs hset hnc)
 
 end Contract
