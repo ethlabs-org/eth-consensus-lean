@@ -5,7 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 

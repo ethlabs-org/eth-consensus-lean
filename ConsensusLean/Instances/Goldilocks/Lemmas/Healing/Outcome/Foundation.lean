@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 
 public section

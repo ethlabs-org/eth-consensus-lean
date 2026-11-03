@@ -7,7 +7,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
 

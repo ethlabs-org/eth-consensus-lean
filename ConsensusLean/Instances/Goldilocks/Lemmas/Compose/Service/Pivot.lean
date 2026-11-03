@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin

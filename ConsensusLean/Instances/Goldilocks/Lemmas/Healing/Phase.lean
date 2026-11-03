@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 
 public section

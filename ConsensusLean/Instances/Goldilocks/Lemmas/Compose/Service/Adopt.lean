@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Held
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 
 public section
 

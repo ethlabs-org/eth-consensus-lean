@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 
 public section
 
