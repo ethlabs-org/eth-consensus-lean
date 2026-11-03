@@ -225,9 +225,9 @@ end System
 /-- **Realizability**: every regime is met by a clean witness with active
 claims, at every `Δ` and `ΔF` (the healthy regime at every `ΔF ≤ rowRatio·Δ`),
 every GST (with a log silent before it), and arbitrarily late outages; and
-every provided available or stable output is live, at
-some index, with at most two honest validators awake (sleepy stress
-witness). -/
+every provided available or stable output is live, at one index (per
+validator type and capability) that serves every `Δ` and `ΔF`, with at most
+two honest validators awake (sleepy stress witness). -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   sleepy : ∀ cap i (Δ ΔF : Time), 0 < Δ → 0 < ΔF → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
@@ -236,14 +236,16 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     0 ≤ g → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ (S.pt r).env.ΔF = ΔF ∧
     S.HealthyLive X K cap i g r ∧ SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
   /-- Sleepy stress: every provided available or stable output is live, at
-  some index, on a sleepy witness where at most two honest validators are
-  awake at any time, whatever the number of validators (the witness has a
+  one index chosen before the delays (it may depend on the validators and the
+  capability, not on `Δ` or `ΔF`), on a sleepy witness at every `Δ` and `ΔF`
+  where at most two honest validators are awake at any time, whatever the
+  number of validators (the witness has a
   faulty validator, so with `θ ≤ ½` two ready honest validators meet the
   sleepy threshold). A progress requirement that demands any growing
   participation at every index (e.g. at most `n − 3` validators not ready)
   fails here. -/
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
-    ∀ Δ ΔF : Time, 0 < Δ → 0 < ΔF → ∃ i r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
+    ∃ i, ∀ Δ ΔF : Time, 0 < Δ → 0 < ΔF → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
       (S.pt r).env.ΔF = ΔF ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
   outage : ∀ (Δ ΔF : Time) (k : Nat), 0 < Δ → 0 < ΔF → ∃ r T b₀ b₁, S.Witness r ∧
     (S.pt r).env.Δ = Δ ∧ (S.pt r).env.ΔF = ΔF ∧ S.Outage K T b₀ b₁ r ∧

@@ -54,8 +54,8 @@ theorem RealizableActive.toRealizable {V : Type} [Fintype V] [DecidableEq V]
   healthy cap i Δ ΔF g hΔ hΔF hr hg :=
     (h.healthy cap i Δ ΔF g hΔ hΔF hr hg).imp fun _ h =>
       ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1⟩
-  sleepyStress cap hc ho Δ ΔF hΔ hΔF := (h.sleepyStress cap hc ho Δ ΔF hΔ hΔF).imp fun _ h =>
-    h.imp fun _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1⟩
+  sleepyStress cap hc ho := (h.sleepyStress cap hc ho).imp fun _ h Δ ΔF hΔ hΔF =>
+    (h Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1⟩
   outage := h.outage
 
 end Activity
@@ -927,7 +927,7 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
     (hn : 5 ≤ Fintype.card V) : RealizableActive F K V := by
   let key : Fin (Fintype.card V) ≃ V := (Fintype.equivFin V).symm
   refine ⟨fun cap i Δ ΔF hΔ hΔF => ?_, fun cap i Δ ΔF g hΔ hΔF hr hg => ?_,
-    fun cap hc ho Δ ΔF hΔ hΔF => ?_, fun Δ ΔF k hΔ hΔF => ?_,
+    fun cap hc ho => ?_, fun Δ ΔF k hΔ hΔF => ?_,
     fun cap ho Δ ΔF g hΔ hΔF hr hg => ?_⟩
   · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn hΔ hΔF _ ha hf cap i le_rfl
     exact ⟨⟨_, rho⟩, hw, rfl, rfl, ⟨hs, hp, ht⟩, hpa⟩
@@ -946,9 +946,10 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
       (by linarith) (by linarith) (by linarith)
     exact ⟨⟨_, rho⟩, hw, rfl, rfl, ⟨he, hs, hp, ht⟩, hsa, hpa⟩
   · obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
+    refine ⟨i, fun Δ ΔF hΔ hΔF => ?_⟩
     obtain ⟨rho, -, -, hw, hs, hp, hpa, hl, hb⟩ :=
       sleepyStress_witness key hn hΔ hΔF _ ha hf cap i hi le_rfl
-    exact ⟨i, ⟨_, rho⟩, hw, rfl, rfl, ⟨hs, hp, hl⟩, hb, hpa⟩
+    exact ⟨⟨_, rho⟩, hw, rfl, rfl, ⟨hs, hp, hl⟩, hb, hpa⟩
   · have hl : (0 : Time) ≤ (K.params.lag : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     have hk : (0 : Time) ≤ (k : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     have hbud : (1 : Time) ≤ (K.params.budget : Time) := by exact_mod_cast ha.budget_pos

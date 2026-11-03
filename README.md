@@ -151,9 +151,10 @@ that a claim or regime evaluates.
 
   A **stress witness** exercises liveness with many honest validators
   asleep, so a progress requirement cannot quietly demand near-full
-  participation. For every provided available or stable output, at *some*
-  index:
-  - `sleepyStress`: for every validator count, a sleepy witness where at most
+  participation. For every provided available or stable output and every
+  validator count, at *one* index (it may depend on the validators, not on
+  `Δ` or `ΔF`):
+  - `sleepyStress`: at every `Δ` and `ΔF`, a sleepy witness where at most
     two honest validators are awake at any one time (`AwakeAtMost 2`; the
     witness also has a faulty validator, and with `θ ≤ ½` two ready honest
     validators meet the sleepy threshold), with `prog[0, horizon]` and
@@ -389,8 +390,9 @@ would pass: `censoring_progress_rejected`.)
 The slot is checked, within limits:
 
 - `Adequate.covers` transports it to the covering run.
-- `Realizable` requires it to hold on every witness, and, at some index, on
-  the stress witness with many honest validators asleep. A reader that
+- `Realizable` requires it to hold on every witness, and, at some index
+  chosen before `Δ` and `ΔF`, on the stress witness with many honest
+  validators asleep. A reader that
   never holds fails `Good` (`false_progress_not_good`); a requirement of
   near-full participation at every index fails the stress witness.
 - In L2, acceptance also asks every provided output to have an index whose

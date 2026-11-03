@@ -53,8 +53,8 @@ theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
     (hp : ∀ i, K.progress .available i = .notReadyAtMost (m i)) :
     ¬ Realizable (sysOf O (compiled F) V) (shapeProgress F V) K := by
   intro h
-  obtain ⟨i, r, -, hd, -, ⟨-, hprog, hlive⟩, hawake⟩ :=
-    h.sleepyStress .available (Or.inl rfl) ho 1 1 one_pos one_pos
+  obtain ⟨i, hi⟩ := h.sleepyStress .available (Or.inl rfl) ho
+  obtain ⟨r, -, hd, -, ⟨-, hprog, hlive⟩, hawake⟩ := hi 1 1 one_pos one_pos
   let S := sysOf O (compiled F) V
   have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
   have hD : 0 ≤ S.lat K .available i r :=
