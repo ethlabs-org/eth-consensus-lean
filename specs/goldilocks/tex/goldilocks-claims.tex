@@ -1972,7 +1972,8 @@ extends $F$ and wins the justification comparison or loses to a higher~$J$,
 which is comparable with $F^*$ through the honest witnesses on the HR.4 chain;
 a retained frontier block extends $F^*$ (G1.2) and is allowed, which gives the
 viable-descendant guard.}
-{M.  Paper only; conditional on HR.4 (R1)--(R4).  Falsification test: the
+{M.  Proved in Lean (\texttt{cache\_acceptance\_after\_reset},
+\S\ref{sec:lean-status}); on paper conditional on HR.4 (R1)--(R4).  Falsification test: the
 \texttt{sa-fg-model} runs and sweeps of node O.1: 210\,356, 21.5 million and
 19.5 million honest acceptances after $a_z$ with $\sigma[B].F$ of state height $\geq H_z+1$,
 no violation.}
@@ -2001,7 +2002,9 @@ F.5 (run)}
 geometry), \S10 (the floor-rise/RN join, which supersedes \S9);
 \texttt{producer-reset-continuation.md} \S\S21--23 (non-composition;
 slow-lock revival, lemmas RN and RU; the joined duty conclusion).}
-{L.  (a) is conditional on HR.3, and (b) is HR.4.  (c) has a
+{L.  Proved in Lean (\texttt{non\_interference}, \S\ref{sec:lean-status}),
+with $T_{\mathrm b}=\max((8k+20)\Delta,8\Delta)$; the paper status follows.
+(a) is conditional on HR.3, and (b) is HR.4.  (c) has a
 \emph{conditional paper assembly} (workbench\#21, \texttt{ed7355f},
 \texttt{h3-assembly.md} \S\S1--6): $\mathsf{Inv}$ for (P1)--(P3) and
 settled-phase $\mathsf{Geo}$, with the explicit $T_{\mathrm b}=(8k+20)\Delta$
@@ -2603,7 +2606,7 @@ G1.8 & \texttt{Store.Crossing}, \texttt{Store.Coverage} & proved
   (\texttt{fg\_store\_service}), conditional bounds as stated\\
 G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
   (\texttt{fg\_store\_service})\\
-G1.9 (b) & see HR.5 & stated only\\
+G1.9 (b) & see HR.5 & at high heights: proved through HR.5\\
 G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
   \texttt{Compose.CutScopeAt} & proved (\texttt{fg\_store\_trace}) under its
   premises; the scope is C1.1's conclusion~(iii) (\texttt{PersistAt.cut}),
@@ -2635,12 +2638,16 @@ HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset})\\
 HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
 HR.3 & \texttt{Healing.ResetExistence} & proved (\texttt{reset\_existence}),
   at $\mathsf{Catch}(2\Delta)$\\
-HR.5 & \texttt{Healing.CacheAcceptanceAfterReset} & stated only\\
-H.3 & \texttt{Healing.NonInterference}, \texttt{Healing.BridgeAt} & stated
-  only: (a), (b) and the $\mathsf{Geo}$ half of (c) are proved
-  (\texttt{reset\_existence}, \texttt{height\_scoped\_retention},
-  \texttt{settled\_geo}); the $\mathsf{Inv}$ half is open
-  (\texttt{non\_interference\_of\_reset\_inv} gives H.3 from it)\\
+HR.5 & \texttt{Healing.CacheAcceptanceAfterReset} & proved
+  (\texttt{cache\_acceptance\_after\_reset})\\
+H.3 & \texttt{Healing.NonInterference}, \texttt{Healing.BridgeAt} & proved
+  (\texttt{non\_interference}; in the run bundle
+  \texttt{healing\_run\_statements}): (a), (b) are
+  \texttt{reset\_existence}, \texttt{height\_scoped\_retention}; (c) the
+  $\mathsf{Geo}$ half is \texttt{settled\_geo} and the $\mathsf{Inv}$ half
+  is proved after the reset (\texttt{Lemmas/Healing/ResetInv}), with
+  $T_{\mathrm b}=\max((8k+20)\Delta,8\Delta)$, not the $8\Delta$
+  candidate\\
 H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
   conditional: proved (\texttt{available\_healing}) assuming
   \texttt{BridgeAt} at a reset and $T_{\mathrm b}\geq0$; not a consequence

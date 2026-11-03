@@ -726,6 +726,7 @@ example := ``Consensus.Goldilocks.Healing.PatternPremises
 example := ``Consensus.Goldilocks.Healing.PatternRecovery
 example := ``Consensus.Goldilocks.Healing.FinalizingCoverage
 example := ``Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset
+example := ``Consensus.Goldilocks.Healing.cache_acceptance_after_reset
 example := ``Consensus.Goldilocks.Healing.RecoveryStatements
 
 /-! ## Goldilocks Regimes (a milestone PR appends here only) -/
