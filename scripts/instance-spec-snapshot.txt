@@ -3874,10 +3874,6 @@ def Consensus.Goldilocks.Refinement.healMargin : Consensus.Goldilocks.Refinement
   #922212552/1218428848
 def Consensus.Goldilocks.Refinement.healthyDrainLen : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 2 S.k) X.val
   #922212552/2914389715
-def Consensus.Goldilocks.Refinement.healthyResetCoeff : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 24 (Consensus.Goldilocks.Refinement.healthyDrainLen S X)) (HMul.hMul.{0, 0, 0} 48 (HAdd.hAdd.{0, 0, 0} S.δt X.val))) 28
-  #922212552/1410014047
-def Consensus.Goldilocks.Refinement.healthyResetSlack : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun _S _X => 0
-  #922212552/147211982
 ## ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 def Consensus.Goldilocks.Refinement.ConflictsIff : Prop := ∀ (n : Nat) (o o' : Consensus.Goldilocks.Refinement.Wire n), Iff (Eq.{1} (Consensus.Goldilocks.Refinement.conflicts o o') Bool.true) (Exists.{1} fun a => Exists.{1} fun b => And (Eq.{1} o (Consensus.Goldilocks.Refinement.attObj a)) (And (Eq.{1} o' (Consensus.Goldilocks.Refinement.attObj b)) (Consensus.Goldilocks.FG.slashable a b)))
   #3944470172/504651374

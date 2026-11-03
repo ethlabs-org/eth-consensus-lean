@@ -6,9 +6,10 @@ public section
 /-! # Goldilocks Refinement: the named coefficients of the nonfinal reset envelope (#136, S5/S6)
 
 Characterising lemmas of parameter-only coefficients, functions of the setup `S` and the index `X`
-alone, shared by the reset envelope (`HealthyResetEnvelope`, S5) and the heal coefficient (S6). They
-are defined in the statement module `Statements/Refinement/Accepted` and fixed before any run, GST
-or reset is chosen.
+alone, shared by the reset envelope (`HealthyResetEnvelope`, S5) and the heal coefficient (S6), all
+fixed before any run, GST or reset is chosen. `healthyDrainLen` and `healMargin` are defined in the
+statement module `Statements/Refinement/Accepted` (the heal coefficient reads them); the envelope's
+`healthyResetCoeff` and `healthyResetSlack`, which no statement reads, are defined here.
 
 * `healthyDrainLen S X = 2k + X`: the drain length `L_drain`. It pays the producer guard
   `2k + G ≤ L_drain + 1` at the gap `G = X`.
@@ -22,6 +23,12 @@ or reset is chosen.
   `δ_t ≥ 6` (`healMargin_ge_reset`, slack `4δ_t − 13`). -/
 
 namespace Consensus.Goldilocks.Refinement
+
+/-- The reset coefficient `R = 24·L_drain + 48(δ_t + X) + 28` of the nonfinal reset envelope. -/
+def healthyResetCoeff (S : Setup) (X : ℕ+) : Nat := 24 * healthyDrainLen S X + 48 * (S.δt + X) + 28
+
+/-- The literal slack `0` of the nonfinal reset envelope (not the row ratio `r`). -/
+def healthyResetSlack (_S : Setup) (_X : ℕ+) : Nat := 0
 
 theorem healthyDrainLen_val (S : Setup) (X : ℕ+) : healthyDrainLen S X = 2 * S.k + X := by rfl
 

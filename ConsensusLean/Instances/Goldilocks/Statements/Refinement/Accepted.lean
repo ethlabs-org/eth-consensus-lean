@@ -37,12 +37,6 @@ open Blocks Shape
 /-- The drain length `L_drain = 2k + X` of the nonfinal reset envelope. -/
 def healthyDrainLen (S : Setup) (X : ℕ+) : Nat := 2 * S.k + X
 
-/-- The reset coefficient `R = 24·L_drain + 48(δ_t + X) + 28` of the nonfinal reset envelope. -/
-def healthyResetCoeff (S : Setup) (X : ℕ+) : Nat := 24 * healthyDrainLen S X + 48 * (S.δt + X) + 28
-
-/-- The literal slack `0` of the nonfinal reset envelope (not the row ratio `r`). -/
-def healthyResetSlack (_S : Setup) (_X : ℕ+) : Nat := 0
-
 /-- The margin `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` of the heal coefficient (the final
 route's heal bound at `λ = 2Δ`); expanded, `M_f = 56k + 52δ_t + 76X + 44`. It also covers the
 nonfinal reset envelope, `R + 8k + 4X + 29 ≤ M_f` for `δ_t ≥ 6`. -/
