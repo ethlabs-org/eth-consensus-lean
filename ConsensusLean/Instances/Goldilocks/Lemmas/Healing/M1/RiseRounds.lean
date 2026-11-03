@@ -5,11 +5,10 @@ public section
 
 /-! # Key-dependent rise rounds
 
-recovery_time_savings item 1, piece (2). `FrameWindow.rise_reset` always pays two rounds
-(`hN : u + 2ρ + 1 ≤ N`, `HZ ≤ σ[P].h + 1`). Its proof stops after 0 or 1 rounds when the
+recovery_time_savings item 1, piece (2). The rise reset stops after 0 or 1 rounds when the
 warm proposal is high. `FrameWindow.rise_reset_rounds` makes the round count `r ≤ 2` explicit:
 with `HZ + 1 ≤ σ[P].h + r` and `u + r·ρ + 1 ≤ N`, a reset by `t_{u+r·ρ+1} + 2Δ`.
-`r = 2` is `rise_reset`. The proof uses the same public steps (`reset_of_height_advance`,
+The proof uses the same public steps (`reset_of_height_advance`,
 `FrameWindow.reset_of_high_proposal`, `FrameWindow.round_of_warm`). -/
 
 namespace Consensus.Goldilocks.Healing
@@ -20,7 +19,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- **`r` rounds and Step F.** As `FrameWindow.rise_reset`, with the round count `r ≤ 2`:
+/-- **`r` rounds and Step F.** With the round count `r ≤ 2`:
 from the actual warm proposal `P` of slot `u` with `HZ + 1 ≤ σ[P].h + r` and
 `u + r·ρ + 1 ≤ N` (`ρ = δ_t + G − 1`), a reset by `t_{u+r·ρ+1} + 2Δ`. -/
 theorem FrameWindow.rise_reset_rounds

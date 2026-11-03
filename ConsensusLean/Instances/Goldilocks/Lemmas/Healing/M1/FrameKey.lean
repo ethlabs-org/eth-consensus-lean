@@ -64,26 +64,6 @@ theorem frameKey_bounds (st : Store P ACP) :
   unfold frameKey
   split_ifs <;> omega
 
-theorem frameKey_eq_hmax (h : frameKey a = frameKey b) : a.hmax = b.hmax := by
-  unfold frameKey at h
-  split_ifs at h <;> omega
-
-theorem frameKey_eq_contest (h : frameKey a = frameKey b) : a.Contest ↔ b.Contest := by
-  unfold frameKey at h
-  constructor <;> intro hc <;> by_contra hn <;> split_ifs at h <;> omega
-
-theorem frameKey_eq_kind (h : frameKey a = frameKey b) :
-    (a.hmax = a.hj + 1 ∧ ¬a.Contest) ↔ (b.hmax = b.hj + 1 ∧ ¬b.Contest) := by
-  unfold frameKey at h
-  constructor <;> rintro ⟨hm, hc⟩ <;> split_ifs at h <;> first | omega | tauto
-
-theorem frameKey_eq_floor (h : frameKey a = frameKey b) :
-    a.headHeightFloor = b.headHeightFloor := by
-  have hm := frameKey_eq_hmax h
-  have hc := frameKey_eq_contest h
-  unfold Store.headHeightFloor
-  split_ifs <;> first | omega | tauto
-
 theorem frameKey'_bounds {HZ : Nat} (h1 : HZ ≤ a.hmax) (h2 : a.hmax ≤ HZ + 1) :
     2 * HZ ≤ frameKey' a ∧ frameKey' a ≤ 2 * HZ + 4 := by
   have := frameKey_bounds a
@@ -215,22 +195,6 @@ theorem F_anc_of_hmax_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
     (X := X) (F := (tr.state y i).fg.F) (W := W)
   rw [store_eq_fg hrun hy, store_eq_fg hrun hz] at h
   exact h hX hF hXF.symm hW hstrict
-
-/-- Equal keys at two honest cuts in kind J give equal `Σ.J`. -/
-theorem frameKey_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
-    {i m : Nat} (h : frameKey (tr.state y i).fg = frameKey (tr.state z m).fg)
-    (hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1) :
-    (tr.state y i).fg.J = (tr.state z m).fg.J := by
-  have hm := frameKey_eq_hmax h
-  have h1 := hj_lt_hmax hrun hz m
-  have hb : (tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 := by
-    by_cases hc : (tr.state z m).fg.Contest
-    · exact hc.1
-    by_contra hn
-    unfold frameKey at h
-    split_ifs at h <;> omega
-  exact J_eq_of_hj_eq_run hrun hnc hf hy hz (by omega)
 
 /-- Equal merged keys at two honest cuts in kind J give equal `Σ.J`. -/
 theorem frameKey'_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

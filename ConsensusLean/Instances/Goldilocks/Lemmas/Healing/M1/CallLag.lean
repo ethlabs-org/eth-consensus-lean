@@ -7,8 +7,8 @@ public section
 
 /-! # M1′: the call-lag premises from public ticks (`λ = 2Δ`)
 
-The premises `hcallZ`, `hcall` and `hsnap` of `exists_frameWindow_of_noAdvance` (and `hcall` of
-`exists_frameWindow_of_service`), produced from wakefulness on `[ḡ, b]` alone.
+The premises `hcallZ`, `hcall` and `hsnap` of the M1 frame-window lemmas, produced
+from wakefulness on `[ḡ, b]` alone.
 
 * `exists_call_of_public`: an awake honest node ticks at every public time of `[ḡ, b]`, and the
   first cut of the tick is a call at that time.
@@ -21,7 +21,7 @@ The premises `hcallZ`, `hcall` and `hsnap` of `exists_frameWindow_of_noAdvance` 
   at or after `lo ≥ c_z + Δ + 1`.
 * `snapshot_of_awake` (`hsnap`).
 
-Only the NoAdvance premise of `exists_frameWindow_of_noAdvance` stays: it holds for `T ≤ a_z`
+Only the NoAdvance premise of the frame-window route stays: it holds for `T ≤ a_z`
 and fails after the reset, so this file gives no range after the reset. -/
 
 namespace Consensus.Goldilocks.Healing

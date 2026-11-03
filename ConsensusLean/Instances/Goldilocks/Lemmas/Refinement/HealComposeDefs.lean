@@ -23,7 +23,7 @@ FrameWindow `[t_{s₀}, t_N + 2Δ]` with `ḡ + 4Δ ≤ t_{s₀}`, `s₀ + L_dra
 service horizon), no honest signature above `H_z` up to `t_N + 2Δ`, and the honest-proposer gap
 `G` on `[s₀, N]`: an actual warm honest
 proposal `P` of a slot `u ∈ [s₀ + 2k, s₀ + L_drain]` by its designated proposer, with
-`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset`). The O1-L lock clause is derived from the warm
+`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset_rounds`). The O1-L lock clause is derived from the warm
 proposal and frame inside the rise, not an additional drain output. The uniform frame/warm
 producer remains an input; this interface strengthening does not construct it. -/
 structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)

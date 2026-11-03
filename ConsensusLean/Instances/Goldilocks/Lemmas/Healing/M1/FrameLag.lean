@@ -199,19 +199,6 @@ theorem frameKey_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCo
     frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg :=
   frameKey_lag_le hrun hnc hf hsvc hcatch hx hz (fun _ hk => hrun.time_mono hk.le) hcall hcm
 
-/-- **The merged-key lag** (`frameKey_lag_le` through the monotone `keyMerge`). -/
-theorem frameKey'_lag_le (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
-    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat} {τ : Time}
-    (hτ : ∀ k < i, tr.time k ≤ τ)
-    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max τ g) sp.Δ ≤ tr.time j)
-    (hcm : gbar g + κ ≤ tr.time m) :
-    frameKey' (tr.state x i).fg ≤ frameKey' (tr.state z m).fg :=
-  (frameKey'_def _).symm ▸ (frameKey'_def _).symm ▸ keyMerge_mono
-    (frameKey_lag_le hrun hnc hf hsvc hcatch hx hz hτ hcall hcm)
-
 /-- **The merged-key lag** with the relay deadline read from `time i`. -/
 theorem frameKey'_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}

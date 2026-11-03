@@ -8,7 +8,7 @@ public section
 
 `hgp_of_healthyQuery`: for a `HealthyPreparationQuery` with nonfinal progress on `[ready, heal]`,
 every slot window `[a, a + X)` with `X = Q.index` inside `[s₀, N]` has an actual honest designated
-proposal. This is the premise `hgp` of `Healing.FrameWindow.rise_reset` at `G = X`.
+proposal. This is the premise `hgp` of `Healing.FrameWindow.rise_reset_rounds` at `G = X`.
 
 The proof uses only the nonfinal `Pattern.single` recurrence (span `0`) from `hp`, with
 `recurrence_gap` at start `ready` and stop `heal`. The endpoint is `ts N ≤ heal ≤ horizon`. The
