@@ -72,27 +72,4 @@ theorem justify_of_signed_rows' (hrun : GoldilocksRun proposer dg H tr) {g ΔF v
   rw [hr] at this
   exact this
 
-/-- `justify_of_signed_rows'` with the earlier premises: `(h_j, J)` pending at a bound height
-(now redundant, by W2) and the finality pair at every bound height. -/
-theorem justify_of_signed_rows (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time}
-    (hs : HSShared tr H dg g ΔF) (hv : gbar g ≤ v)
-    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hpar : X.parent = some Pr.root)
-    (_hpend : ((tr.state p kX).fg.σ Pr.root).bound →
-      (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
-        ((tr.state p kX).fg.σ Pr.root).pending)
-    (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧
-      att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
-      att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
-        att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J))) :
-    ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
-      ((tr.post kX).fg.σ X.root).J = ((tr.state p kX).fg.σ Pr.root).Th ∧
-      (((tr.state p kX).fg.σ Pr.root).bound →
-        ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) :=
-  justify_of_signed_rows' hrun hs hv hp hX hvx hpar S hSH hS fun y hy => by
-    obtain ⟨k, att, h1, h2, h3, h4, h5, h6⟩ := hsig y hy
-    exact ⟨k, att, h1, h2, h3, h4, h5, fun hb _ => h6 hb⟩
-
 end Consensus.Goldilocks.Healing

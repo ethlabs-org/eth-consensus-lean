@@ -28,16 +28,6 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 
 /-! ## Traces -/
 
-/-- An FG cut leaves the AC state. -/
-private theorem cutStep_fg_ac {t : Time} {st st' : NodeState A} {ℓ : FGLabel P A.Payload}
-    (h : CutStep y t st (.fg ℓ) st') : st'.ac = st.ac := by
-  rcases ℓ with ⟨B, _ | _⟩ | a | ⟨C, _ | a⟩
-  · rw [h.2]
-  · exact h.2.2.1
-  · exact h.2.1
-  · rw [h.2]
-  · exact h.2.2
-
 /-! ## The FG state of an honest node -/
 
 /-- One cut of an honest node: its FG state stays, accepts a block, or processes an

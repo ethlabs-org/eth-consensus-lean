@@ -33,29 +33,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The base case, the vote premises and the records -/
 
-/-- A carried result ancestor below the receiver's floor threshold is an actual
-frozen voter-tree witness. Genesis uses the genesis branch of `AcceptedBefore`;
-it does not require a fictitious acceptance event. -/
-theorem raw_result_low_floor_witness (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H)
-    {i₀ k s : Nat} {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hR : SA.ResultAt tr.projAC x i₀ s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hc : SA.CastAt tr.projAC y k ℓ e) (hs : e.msg.slot = s + 1)
-    (hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e s CV)
-    (hFB : Anc (tr.HonestBlocks H) ℓ.frame.F B)
-    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h) :
-    B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot ∧
-      (tr.state y k).fg.IsViable B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hacc := SA.result_ancestor_accepted_before sp hr hx hR hBC hcarry
-  have hBU : B ∈ tr.HonestBlocks H := by
-    obtain ⟨ℓX, hupd, hC, _⟩ := hR
-    by_cases heq : B = C
-    · exact heq ▸ (SA.frameIn_of_callAt hr hx hupd.1).2 (SA.deepest_mem hC).1.1
-    · exact (Anc.mem hBC heq).1
-  exact ⟨hs ▸ Compose.accepted_voter_tree hrun hnc hy hc hs hBU hacc hFB, hfloor⟩
-
 /-- **The label bound of a high origin** (§11, "Historical finality and acceptance": `j ≥ slot(c)`).
 The writer accepted the counted heads, of state height `≥ H_z + 1`, before `t_j + 2Δ`; no honest
 node accepts such a block at or before `c_z` (the definition of `H_z`), so `t_j + 2Δ > c_z`, and

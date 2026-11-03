@@ -83,29 +83,6 @@ theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder s
     have hΦU := (frameIn_of_callAt hrun.localRun hx hupd.1).2
     exact ⟨R, hΦU hRt, hroot, hBC.trans (Anc.mono hΦU hCR)⟩
 
-/-- Carrying a result carries every ancestor of the result before the freeze.
-This uses a counted head, not an honest-supporter premise. -/
-theorem result_ancestor_accepted_before {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {x y : Fin sp.n} (hx : x ∈ H) {i₀ i s : Nat} {B C : Blk sp.n FGP}
-    {CV : Set (Vote sp.n)} {e : Em sp FGP}
-    (hR : ResultAt tr x i₀ s C CV) (hBC : Anc U B C)
-    (hcarry : CarryAt tr U y i e s CV) :
-    AcceptedBefore tr y B (sp.ts s + 3 * sp.Δ) := by
-  have hmaj := result_majority hR
-  have hne : CV.Nonempty := by
-    by_contra h
-    rw [Set.not_nonempty_iff_eq_empty.mp h] at hmaj
-    simp at hmaj
-  obtain ⟨v, hv⟩ := hne
-  obtain ⟨Hv, hHv, hHvr, hall⟩ := hcarry.heads v hv
-  obtain ⟨ℓ, hupd, _, rfl⟩ := hR
-  obtain ⟨_, _, _, R, hR, hRr, hCR⟩ := hv
-  have hΦU := (frameIn_of_callAt hr hx hupd.1).2
-  obtain rfl : R = Hv := hr.coherent.1 (hΦU hR) hHv (hRr.trans hHvr.symm)
-  exact hall B (hBC.trans (Anc.mono hΦU hCR))
-
 end Consensus.Goldilocks.SA
 
 end

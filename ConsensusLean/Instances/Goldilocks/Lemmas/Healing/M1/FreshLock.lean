@@ -381,28 +381,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
-/-- The M1 caller's slot schedule discharges the explicit vote-time join premise.
-The slot and restart bounds are non-strict, including their equality cases.
-This does not infer joinedness from the independent `gbar + 2Δ` margin. -/
-theorem joined_voteTime_of_noRestart (hnr : NoRestartAfter tr H (gbar g))
-    {u : Nat} (hu : sp.slot (gbar g) + 5 ≤ u) {y : Fin sp.n} (hy : y ∈ H) :
-    SA.JoinedAt tr.projAC y (sp.ts u + sp.Δ) := by
-  have hDelta := sp.toParams.hΔ
-  have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
-    apply SA.slot_of_mem sp u (by linarith)
-    simp only [SAParams.ts]; push_cast; linarith
-  have hnext : gbar g < sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-    apply lt_of_not_ge
-    intro h
-    have := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) _).1 h
-    omega
-  have hprev : gbar g ≤ sp.ts ((u : Int) - 1) :=
-    hnext.le.trans ((SA.ts_le_iff sp).2 (by omega))
-  intro k hk _
-  change tr.time k ≤ sp.ts ((sp.slot (sp.ts u + sp.Δ) : Int) - 1)
-  rw [hslot]
-  exact (hnr y hy k (Compose.projAC_restartAt.mp hk)).trans hprev
-
 /-- FS′ carries the actual honest proposal from a joined slot vote to every later
 call through the closed update endpoint. -/
 theorem FrameWindow.proposal_viable_after_votes

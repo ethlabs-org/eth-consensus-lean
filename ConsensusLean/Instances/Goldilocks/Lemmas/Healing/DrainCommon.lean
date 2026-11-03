@@ -731,32 +731,6 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
 
 /-! ### §2.2: raw-result comparisons -/
 
-/-- **RR** (`hs234-exact-interface.md` §2.2; continuation §36): two raw regular results of one
-clean label `j`, by honest writers (vetoed or not), are compatible: H.1's
-`result_result_compatible` over the AC projection, a healthy driven trace (it reads `Sync` from
-`ḡ` and `t_j ≥ ḡ + 4Δ`, no frame assumption). -/
-theorem raw_results_compatible (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x x' : Fin sp.n}
-    (hx : x ∈ H) (hx' : x' ∈ H) {i i' j : Nat} {C C' : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV CV' : Set (SA.Vote sp.n)} (hC : SA.ResultAt tr.projAC x i j C CV)
-    (hC' : SA.ResultAt tr.projAC x' i' j C' CV') (hj : w + 4 * sp.Δ ≤ sp.ts j) :
-    Compatible (tr.HonestBlocks H) C C' :=
-  SA.result_result_compatible (healthyBase_of_hs hrun hs hc) hx hC hx' hC'
-    (by have := gbar_add_le_of_settled hw; have := sp.toParams.hΔ; linarith)
-
-/-- **RO** (`hs234-exact-interface.md` §2.2; continuation §36): a raw regular result and an
-optimistic lock of one clean label `j`, by honest writers, are compatible (H.1's
-`result_optimistic_compatible` over the AC projection). -/
-theorem raw_result_optimistic_compatible (hrun : GoldilocksRun proposer dg H tr)
-    (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
-    (hw : SettledIn tr H g w i₀ m c) {x x' : Fin sp.n} (hx : x ∈ H) (hx' : x' ∈ H)
-    {i i' j : Nat} {C O : SA.Blk sp.n (List (FG.Att sp.n))} {CV OV : Set (SA.Vote sp.n)}
-    (hC : SA.ResultAt tr.projAC x i j C CV) (hO : SA.OptimisticLockAt tr.projAC x' i' j O OV)
-    (hj : w + 4 * sp.Δ ≤ sp.ts j) : Compatible (tr.HonestBlocks H) C O :=
-  SA.result_optimistic_compatible (healthyBase_of_hs hrun hs hc) hx hC hx' hO
-    (by have := gbar_add_le_of_settled hw; have := sp.toParams.hΔ; linarith)
-
 end Consensus.Goldilocks.Healing
 
 end

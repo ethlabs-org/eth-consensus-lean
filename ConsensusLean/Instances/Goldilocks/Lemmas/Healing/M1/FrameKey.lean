@@ -176,52 +176,6 @@ theorem F_anc_of_hmax_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
   rw [store_eq_fg hrun hy, store_eq_fg hrun hz] at h
   exact h hX hF hXF.symm hW hstrict
 
-/-- With `h_max` fixed, `h_j` and `Σ.J` stay at `h_max − 1` once there. -/
-theorem kind_persist (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} (hij : i ≤ j) (hm : (tr.state y i).fg.hmax = (tr.state y j).fg.hmax)
-    (hb : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1) :
-    (tr.state y j).fg.hj = (tr.state y i).fg.hj ∧ (tr.state y j).fg.J = (tr.state y i).fg.J := by
-  have h1 := hj_mono hrun hy hij
-  have h2 := hj_lt_hmax hrun hy j
-  have he : (tr.state y j).fg.hj = (tr.state y i).fg.hj := by omega
-  exact ⟨he, J_eq_of_hj_eq_run hrun hnc hf hy hy he⟩
-
-/-- FI(i) at one node: with `h_max` fixed, a contest stays. -/
-theorem contest_persist (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} (hij : i ≤ j) (hm : (tr.state y i).fg.hmax = (tr.state y j).fg.hmax)
-    (hc : (tr.state y i).fg.Contest) : (tr.state y j).fg.Contest := by
-  obtain ⟨hb, W, hW, -, hWh, hJW⟩ := hc
-  obtain ⟨hjj, hJ⟩ := kind_persist hrun hnc hf hy hij hm hb
-  have hWj : W ∈ (tr.state y j).fg.tree := Compose.tree_mono hrun.toLocalRun hy hij hW
-  have hσ := σ_eq_honest hrun hnc hy hy hWj hW
-  refine ⟨by omega, W, hWj, ?_, by rw [hσ]; omega, ?_⟩
-  · exact store_anc_of_honest_anc hrun hnc hy
-      (F_anc_of_hmax_le hrun hnc hf hy hy hWj (by rw [hσ]; omega)) hWj
-  · intro hJW'
-    rw [hJ] at hJW'
-    exact hJW (store_anc_of_honest_anc hrun hnc hy
-      (hJW'.mono fun X hX => ⟨y, hy, j, hX⟩) hW)
-
-/-- **MONO (§23.1).** The frame key of an honest store does not decrease along its cuts. -/
-theorem frameKey_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} (hij : i ≤ j) :
-    frameKey (tr.state y i).fg ≤ frameKey (tr.state y j).fg := by
-  have hmx := hmax_mono hrun.toLocalRun hy hij
-  have hji := hj_mono hrun hy hij
-  have hlt := hj_lt_hmax hrun hy j
-  rcases lt_or_eq_of_le hmx with hl | he
-  · have h1 := frameKey_bounds (tr.state y i).fg
-    have h2 := frameKey_bounds (tr.state y j).fg
-    change (tr.state y i).fg.hmax < (tr.state y j).fg.hmax at hl
-    omega
-  · have hC := contest_persist hrun hnc hf hy hij he
-    change (tr.state y i).fg.hmax = (tr.state y j).fg.hmax at he
-    unfold frameKey
-    split_ifs <;> first | omega | tauto
-
 /-- Equal keys at two honest cuts in kind J give equal `Σ.J`. -/
 theorem frameKey_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)

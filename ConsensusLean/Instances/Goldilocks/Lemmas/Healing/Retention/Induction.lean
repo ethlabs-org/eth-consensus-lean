@@ -436,33 +436,6 @@ theorem raw_vote_activation_before_core (hp : ResetPremises tr H proposer dg g �
       hcovered
     exact ⟨htransfer k hprior B j hP y hy ℓ e hc hj htime (Or.inl hvi), Or.inl hvi⟩
 
-/-- Compatibility wrapper for callers whose floor producer does not need prior votes. -/
-theorem raw_vote_activation_before (hp : ResetPremises tr H proposer dg g ΔF a)
-    (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (Q : Time)
-    (hcompare : ∀ k, tr.time k ≤ Q →
-      (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
-      RawCompareAt (tr := tr) (H := H) P g k)
-    (hroot : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
-      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
-        j < e.msg.slot → tr.time k ≤ Q → Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B)
-    (hlow : ∀ k B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
-      j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ B.root).h →
-      B ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)
-    (hhigh : ∀ k, RawCompareAt (tr := tr) (H := H) P g k →
-      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
-        j < e.msg.slot → tr.time k ≤ Q → Anc (tr.HonestBlocks H) ℓ.frame.F B →
-        ((tr.state y k).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor →
-        ∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
-          Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D)
-    (htransfer : ∀ k, (∀ q < k, RawVoteAt (tr := tr) (H := H) P Q q) →
-      ∀ B j, P B j → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
-        j < e.msg.slot → tr.time k ≤ Q → SA.ViableAtVote ℓ e e.msg.slot B →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
-    ∀ k, tr.time k ≤ Q → RawCompareAt (tr := tr) (H := H) P g k ∧
-      RawVoteAt (tr := tr) (H := H) P Q k :=
-  raw_vote_activation_before_core hp P Q hcompare hroot hlow (fun k _ => hhigh k) htransfer
-
 /-- All high origins, including writes pending at the observing cut. -/
 def HistoricalTargets (B : SA.Blk sp.n (List (FG.Att sp.n))) (j : Nat) : Prop :=
   ∃ x i, HighOrigin tr H g x i j B
@@ -782,20 +755,6 @@ theorem ResetPremisesUpTo.target_compatible_older_origin {b : Time}
   obtain ⟨HB, hHB, hBr, hBB⟩ := hB
   obtain rfl : HO = HB := hp.honest_coherent.1 hHO hHB (hOr.trans hBr.symm)
   exact SA.anc_total hp.honest_coherent hBB hOO
-
-/-- Bounded high-origin cache comparison after either write or slot activation. -/
-theorem ResetPremisesUpTo.activated_caches {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b) (hy : y ∈ H)
-    (hc : tr.IsCall y k) (hkb : tr.time k ≤ b)
-    (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) :
-    Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
-      (HZ tr H g + 1 ≤ (tr.post k).fg.hj →
-        Compatible (tr.HonestBlocks H) (tr.post k).fg.J B) := by
-  apply hp.retention_cut_step ?_ hkb hy hc ho hib hact
-  rintro x₀ i₀ j₀ B₀ ho₀ hi₀ z hz c _ hcb e ⟨ell, he⟩ hj
-  exact hp.high_origin_votes_before c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ z hz ell e he hj
 
 /-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
 joint-induction boundary, not consequences asserted of reset premises. Frozen target

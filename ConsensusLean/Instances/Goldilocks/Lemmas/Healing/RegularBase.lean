@@ -851,38 +851,6 @@ theorem proposal_views_agree_before
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB
         (by linarith) (by rw [hti]; exact not_lt.1 hearly) hjb hFB
 
-/-- The unequal-finalized-root prefix in Step 5 is forced by V/V_U, not
-by prior-slot unanimity. Every viable descendant at the walking cut extends
-the other honest finalized tip under the common FS′ floor. -/
-theorem FrameWindow.isBest_below_finalized {lo hi : Time} {floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
-    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
-    {dom : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hdom : dom ⊆ ell.frame.tree)
-    {X C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hXF : ell.frame.Anc X (tr.state y i).fg.F) (hne : X ≠ (tr.state y i).fg.F)
-    (hC : C ∈ ell.frame.viableTree dom) (hp : C.parent = some X.root)
-    (hCF : ell.frame.Anc C (tr.state y i).fg.F)
-    (V : SA.View sp.n) (t : Time) (s : Int) :
-    SA.IsBest sp (SA.goldfishScore sp ell.frame V s)
-      {B | B ∈ ell.frame.viableTree dom ∧ B.parent = some X.root ∧
-        SA.goldfishEligible sp ell.frame t V s B} C := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hPhi := SA.frameIn_of_callAt hac.localRun hz hc
-  apply SA.isBest_of_viable_floor hPhi.1 hdom _ hXF hne hC hp hCF V t s
-  intro Q hQ
-  have hvQ := hQ
-  rw [Compose.frame_of_projAC hrun hz hc] at hvQ
-  exact SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2
-    (Anc.mem hXF hne).2
-    (hframe.finalized_below_viable hrun hnc hf hy hz hilo hihi hclo hchi hvQ)
-    (hPhi.1.viableHeads_subset hQ)
-
 /-- At two FS′ cuts a viable head transfers whenever it is held in the
 receiver's frame. This uses the common floor and kind-J root, not a settled
 phase or equality of the frames. -/

@@ -38,14 +38,6 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
     ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
     hrun.genesis_root_ok hrun.toLocalRun hnc
 
-/-- **A-item 4.** PhaseCount (a) over the run: a justified block at a height is unique across
-cuts. Premises: the run, no collision and `f < 2q − n` (no `HSShared`). -/
-theorem justifiedAt_unique_run (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {i i' h : Nat} {J J' : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h₁ : JustifiedAt tr.projFG H i h J) (h₂ : JustifiedAt tr.projFG H i' h J') : J = J' :=
-  justifiedAt_unique (fg_run hrun hnc) hf h₁ h₂
-
 /-- An ancestor of genesis in a store is genesis. -/
 private theorem eq_genesis_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     {X : NodeBlock P ACP} (h : st.Anc X (P.genesisBlock acp₀)) : X = P.genesisBlock acp₀ := by

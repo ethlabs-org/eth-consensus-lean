@@ -72,19 +72,6 @@ theorem held_of_relay_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
     obtain ⟨k', hk', ha⟩ := hcatch x hx k B hacc hlt z hz j₀ hfirst (hF j₀ hj₀)
     exact hlift k' (by omega) ha
 
-/-- `held_of_relay_le` with `τ = time i`. -/
-theorem held_of_relay (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {g ΔF b κ : Time}
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
-    {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H) {i m : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x i).fg.tree)
-    (hh : (tr.state z m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h)
-    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
-    (hcm : gbar g + κ ≤ tr.time m) :
-    B ∈ (tr.state z m).fg.tree :=
-  held_of_relay_le hrun hnc hf hsvc hcatch hx hz hB hh (fun _ hk => hrun.time_mono hk.le) hcall
-    hcm
-
 /-- A store-level `G1.2`: `Σ.F` of an honest store is below every honest-held block of state
 height `> h_j`. -/
 theorem F_anc_of_hj_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

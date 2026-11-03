@@ -622,65 +622,6 @@ theorem next_vote_extends_before (hrun : ACRun proposer tr H U)
     omega
   exact hprior z hz q hqi e' hv (Or.inl he)
 
-/-- Conditional P2 first-vote induction on a finite prefix. The carry and pool
-arguments are the consumer interfaces of windowed service, with sender lower
-bound `a` and both observation horizons explicit. Stored-lock comparison and
-frozen viability remain obligations; neither is inferred from this conclusion. -/
-theorem slow_first_votes_before (hrun : ACRun proposer tr H U)
-    (hf : 2 * Hᶜ.ncard < sp.n) {a b : Time} {x : Fin sp.n} (hx : x ∈ H)
-    {i₀ s : Nat} {B : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s B)
-    (ha : a ≤ sp.ts s) (hi₀ : tr.time i₀ ≤ b)
-    (hcarry : ∀ {y i ℓ e CV}, y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
-      tr.time i ≤ b → a ≤ sp.ts s →
-      (∀ v ∈ CV, v.slot = s ∧
-        (∃ k, tr.SendOrAdmit x k v ∧ sp.ts s ≤ tr.time k ∧
-          tr.time k < sp.ts s + 2 * sp.Δ) ∧
-        ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
-          (Hv.root = sp.genesisRoot ∨
-            ∃ k, tr.AcceptAt x k Hv ∧ tr.time k < sp.ts s + 2 * sp.Δ)) →
-      CarryAt tr U y i e s CV)
-    (hmerged : ∀ {ℓX y i ℓ e}, UpdateAt tr x i₀ s ℓX → tr.time i₀ ≤ b →
-      a ≤ sp.ts s → y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
-      ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-        v ∈ (tr.state x i₀).pool s ∨
-          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
-    (hframe : ∀ {y i ℓ e}, y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
-      tr.time i ≤ b → ¬ Anc U B ℓ.frame.F →
-      Anc U ℓ.frame.F B ∧ ViableAtVote ℓ e (s + 1) B)
-    (hstored : ∀ {y i ℓ e}, y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
-      tr.time i ≤ b → ∀ l ∈ (tr.state y i).locks,
-        sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
-        ∀ Y ∈ U, Y.root = l.block → Compatible U Y B) :
-    ∀ y ∈ H, ∀ i e, VoteAt tr y i e → e.msg.slot = s + 1 → tr.time i ≤ b →
-      VoteExtends U e.msg B := by
-  have hr := hrun.localRun
-  obtain ⟨ℓX, C, hupd, hconf, -, hdeep, -⟩ := id hsl
-  have hBC : Anc U B C :=
-    Anc.mono (frameIn_of_callAt hr hx hupd.1).2 (deepest_mem hdeep).1.1.2.2
-  have hres : ResultAt tr x i₀ s C (fastCounted sp (tr.state x i₀) ℓX.frame s C) :=
-    ⟨ℓX, hupd, hconf, rfl⟩
-  suffices h : ∀ i, ∀ y ∈ H, ∀ e, VoteAt tr y i e → e.msg.slot = s + 1 →
-      tr.time i ≤ b → VoteExtends U e.msg B from fun y hy i e hv hs hi => h i y hy e hv hs hi
-  intro i
-  induction i using Nat.strong_induction_on with
-  | _ i ih =>
-    intro y hy e ⟨ℓ, hc, he⟩ hes hi
-    have hca : CastAt tr y i ℓ e := ⟨hc, he⟩
-    obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
-    by_cases hBF : Anc U B ℓ.frame.F
-    · obtain ⟨Hd, hHd, hHdr, -⟩ := honest_head_frame hr hy hca
-      exact ⟨Hd, hΦU hHd, hHdr, hBF.trans ((hΦ.rooted.2 Hd hHd).mono hΦU)⟩
-    obtain ⟨hFB, hviab⟩ := hframe hy hca hes hi hBF
-    have hCy : CarryAt tr U y i e s (fastCounted sp (tr.state x i₀) ℓX.frame s C) := by
-      apply hcarry hy hca hes hi ha
-      intro v hv
-      obtain ⟨hs, hw, Hv, hHv, hroot, hCH, hacc⟩ := Compose.result_writer hr hx hres v hv
-      exact ⟨hs, hw, Hv, hHv, hroot, hFB.trans (hBC.trans hCH), hacc⟩
-    exact result_prefix_vote_extends_of_stored hrun hf hx hy hres hBC hca hes hCy hviab
-      (hstored hy hca hes hi)
-      (fun z hz k hk e' hv' hs' => ih k hk z hz e' hv' hs' ((hr.time_mono hk.le).trans hi))
-      (hmerged hupd hi₀ ha hy hca hes)
-
 end Consensus.Goldilocks.SA
 
 end

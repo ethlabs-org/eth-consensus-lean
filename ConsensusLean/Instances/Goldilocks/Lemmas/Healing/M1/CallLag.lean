@@ -148,27 +148,6 @@ theorem snapshot_of_awake (hrun : GoldilocksRun proposer dg H tr) {g b : Time}
   exact ⟨Nat.find hex, ⟨fun k hk => not_lt.1 (Nat.find_min hex hk), Nat.find_spec hex⟩,
     (hrun.time_mono (Nat.find_min' hex hj)).trans (hjt ▸ hb)⟩
 
-/-- **A FrameWindow before the advance, from wakefulness** (`λ = 2Δ`).
-`exists_frameWindow_of_noAdvance` with `hsnap`, `hcallZ` and `hcall` discharged. NoAdvance
-before `T` stays a premise (it holds for `T ≤ a_z`). -/
-theorem exists_frameWindow_of_awake (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hq : Hᶜ.ncard < sp.toParams.fg.q)
-    {g ΔF b κ : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t) (hH : H.Nonempty)
-    {lo len T : Time} (hlen : 0 ≤ len)
-    (hlo : cutZ sp.toParams g + sp.Δ + 1 ≤ lo) (hκ : gbar g + κ ≤ lo)
-    (hT : lo + 6 * (len + 2 * sp.Δ) < T) (hTb : T ≤ b + 1)
-    (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g) :
-    ∃ a, lo + 2 * sp.Δ ≤ a ∧ a + len ≤ lo + 6 * (len + 2 * sp.Δ) ∧
-      ∃ floor contest kindJ J,
-        FrameWindow (tr := tr) (H := H) a (a + len) floor contest kindJ J := by
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨j, hj, -⟩ := snapshot_of_awake hrun hawake hH (by linarith)
-  exact exists_frameWindow_of_noAdvance hrun hnc hf hq hsvc hcatch hH ⟨j, hj⟩ hlen (by linarith)
-    hna hκ (snapshotCall_of_awake hrun hawake hlo hTb)
-    (callLag_of_awake hrun hawake (by linarith) hTb) hT
-
 end Consensus.Goldilocks.Healing
 
 end
