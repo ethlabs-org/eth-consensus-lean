@@ -2611,8 +2611,10 @@ G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
   \texttt{Compose.CutScopeAt} & proved (\texttt{fg\_store\_trace}) under its
   premises; the scope is C1.1's conclusion~(iii) (\texttt{PersistAt.cut}),
   proved with C1.1 (\texttt{persist\_statements})\\
-C1.2 & \texttt{Compose.OutcomeService} & stated only, note~3\\
-C1.3 & \texttt{Healing.FinalizingCoverage} & stated only\\
+C1.2 & \texttt{Compose.OutcomeService} & proved
+  (\texttt{Healing.Recovery.outcome\_service}), note~3\\
+C1.3 & \texttt{Healing.FinalizingCoverage} & proved
+  (\texttt{recovery\_statements})\\
 HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &
   specialization: proved at $\kappa=2\Delta$ with the original cut, note~4\\
 HS.1 & \texttt{Healing.ViableWitnessRetention} & proved
@@ -2652,8 +2654,9 @@ H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
   conditional: proved (\texttt{available\_healing}) assuming
   \texttt{BridgeAt} at a reset and $T_{\mathrm b}\geq0$; not a consequence
   of $\mathsf{Healthy}$ alone; read points, note~5\\
-O.1 (node) & \texttt{Healing.PatternRecovery} & stated only; the record
-  quantifier of (b) differs (\S``O.1'')\\
+O.1 (node) & \texttt{Healing.PatternRecovery} & proved
+  (\texttt{recovery\_statements}); the record quantifier of (b) differs
+  (\S``O.1'')\\
 O.1 (target) & none & open research; not a premise of \texttt{Accepted}\\
 R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_statements}), at
   the node catch-up $18\Delta$; the prefix row is the generic
@@ -2702,8 +2705,10 @@ height is not justified it concludes an accepted justification of~$U$, not
 the actual successor entry, which needs the chain transition.  Retained
 ready inclusion is an honest proposal whose parent extends~$P$; the
 alternative parent on a retained justification chain needs the ancestry
-fact.  Partial suppliers in \texttt{Lemmas/Healing/Outcome} do not prove the
-proposition.
+fact.  The proof is \texttt{Healing.Recovery.outcome\_service}; the actual
+successor entry and the finalization of~$U$ itself are derived from its two
+applications in C1.3's two-window step
+(\texttt{Healing.Recovery.two\_window\_finalization}).
 (4) HS.0's general~$\kappa$ with the shifted cut
 $t_{\slot(g+\kappa)+3}$, and the $\bar g'$ shift of
 \S\ref{sec:healing-top}, are not transcribed: the Lean fixes $\kappa=2\Delta$
