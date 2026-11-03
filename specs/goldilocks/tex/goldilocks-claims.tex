@@ -339,7 +339,10 @@ $\mathsf{Catch}(\kappa)$ & accepted-old-block catch-up
   \texttt{PSync} and every honest node awake from $\max(g,0)$\\
 $\mathsf{GenRoot}$ & the genesis block's root is the digest of its contents
   (otherwise an honest proposal on genesis can be refused); a premise of
-  C0.3, A1.7, the HS shared premises and H.2 (run), here and in the Lean &
+  C0.3 and C0.5 (c) (any AC), A1.7, the HS shared premises and H.2 (run),
+  here and in the Lean; in the Lean it is also a field of every Goldilocks
+  run (\texttt{GoldilocksRun.genesis\_root\_ok}), so every run statement has
+  it &
   \texttt{genesis.RootOk}\\
 $\mathsf{Prop}(G_{\mathrm p})$, $\mathsf{Prop}^{+}(G_{\mathrm p})$ & an honest
   proposer (resp.\ ready proposal) in every window $[t,t+G_{\mathrm p}]$ from
@@ -756,8 +759,9 @@ that meets requirements 1--5 (A0.6, A0.9), with $\mathsf{GenRoot}$: a block made
 $\fname{propose\_block}$ at an honest node at~$t_s$ passes the checks of its
 maker: its attestations are valid against the parent's state (they come from
 $\fname{proposal\_attestations}$), its payload passes $\fname{ac\_valid\_payload}$
-(requirement~5), its parent is held (requirement~4: a head, in
-$\Fr.\mathsf{tree}$) with a smaller slot (the proposal runs in the tick at~$t_s$,
+(requirement~5), its parent is held (requirement~1, or requirements~3
+and~4 together: the parent is $\fname{ac\_head}$ after
+$\fname{ac\_proposal}$, which extends $\fcroot$; in $\Fr.\mathsf{tree}$) with a smaller slot (the proposal runs in the tick at~$t_s$,
 before the objects of that time (C0.4), and the node drops blocks of a future
 slot), it extends $\Sigma.F$, and, under $\mathsf{NoColl}$, its root is new (the
 digest excludes the proposer).  Formerly G0.6.}
@@ -802,7 +806,8 @@ not of a future slot, its full parent is held, and it passed
 $\fname{state\_transition}$, with its slot's proposer and a parent of smaller
 slot (in the Lean model the slot's proposer is not a node check but the
 authenticated run law, \texttt{LocalRun.proposerCredential} for a delivered
-block and the own-proposal law for the own block, consensus-lean
+block, and, for the own block, the node's \texttt{Node.Proposes} check (it
+proposes only in a slot whose proposer it is), consensus-lean
 \texttt{docs/decisions.md} 2026-10-31; composition \S``Node'': $\fname{ac\_on\_block}$ runs only after
 $\fname{fg\_on\_block}$ accepts, and the restart replays only blocks of
 $\Fr.\mathsf{tree}$), so its states are reachable, by induction over the calls
@@ -1804,9 +1809,10 @@ statement \texttt{SA.ACInclusion} is proved separately
 
 \dagnode{H.2 (run)}{AC inclusion in runs}{A run node.  Assume H.2's premises
 read on the run ($\mathsf{Healthy}(g)$, $\mathsf{Catch}(2\Delta)$,
-$\mathsf{NoColl}$, unforgeable signatures, $\mathsf{Inv}(t_0)$) and
+$\mathsf{NoColl}$, unforgeable signatures, $\mathsf{Inv}(t_0)$ for a
+$t_0\geq\bar g$) and
 $\mathsf{GenRoot}$.  In a reachable
-Goldilocks run, the AC projections of the honest nodes (C0.5) form a driven
+Goldilocks run the honest nodes' AC projections (C0.5) form a driven
 AC trace whose frames are $\fname{fg\_to\_ac}(\Sigma)$.  Clause (a) of the
 driven trace comes from the FG's acceptance tests: assigned proposer and
 slot order in $\fname{state\_transition}$, the full parent held, and the
@@ -2155,7 +2161,7 @@ $\mathsf{UPat}$ (\S``O.1''); the two must not be identified.
 Node & Target rows & Uses & Evidence\\
 \hline
 R.1 & \texttt{sleepySafe}, \texttt{confirmed\_safe\_sleepy(\_prefix)} (the
-  prefix form is now the generic \texttt{Good.sleepySafe\_prefix} at the
+  prefix form is now the generic \texttt{Consensus.Good.\allowbreak sleepySafe\_prefix} at the
   endpoint's catch-up~$19$, not R.1's node statement at $18\Delta$) &
   A1.2, A1.3, A1.4, A1.6, C1.1, F.4 & blueprint 02\\
 R.2 & \texttt{sleepyLive}, \texttt{includeSleepy}, \texttt{growSleepy},
@@ -2521,7 +2527,9 @@ G0.1 (chain) & \texttt{FG.FGParams.chainState} & definitional (a fold)\\
 G0.1 (store) & \texttt{Store.ChainStateOfChain} & proved
   (\texttt{fg\_store\_local})\\
 G0.2 & \texttt{FG.ChainInvariants}, \texttt{FG.HeightStep},
-  \texttt{Store.EntryStateOfSource} & partial, note~1\\
+  \texttt{Store.EntryStateOfSource} & partial: the three named statements
+  are proved (\texttt{fg\_safety}, \texttt{fg\_store\_local}); the full
+  collection is not one statement, note~1\\
 G0.3 & \texttt{Store.CacheInvariants} & proved (\texttt{fg\_store\_local})\\
 G0.3 (frame), G0.4 (frame) & \texttt{FrameStatements} (\texttt{FrameStepAddsBlock},
   \texttt{FrameRetention}, \texttt{FrameNeverReturns},
@@ -2559,8 +2567,9 @@ C0.1 & \texttt{Compose.TipsNested}, \texttt{Compose.ThreeTips} & proved
 C0.2 & \texttt{Compose.FinalizedMonotone}, \texttt{Compose.RestartKeepsFG} &
   proved (\texttt{compose\_node\_statements})\\
 C0.3 & \texttt{Compose.HonestBlockAccepted} & proved
-  (\texttt{compose\_node\_statements}), with $\mathsf{NoColl}$ and
-  $\mathsf{GenRoot}$\\
+  (\texttt{compose\_node\_statements}), with $\mathsf{GenRoot}$;
+  $\mathsf{NoColl}$ (on the tree with the own block) only for its new-root
+  and acceptance clause\\
 C0.4 & \texttt{Compose.TickOrder}, \texttt{Compose.SignedOnlyInTicks};
   engine: \texttt{Refinement.EngineSimulatesNode} & proved
   (\texttt{compose\_node\_statements}, \texttt{engineSimulatesNode})\\
@@ -2599,7 +2608,8 @@ G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
 G1.9 (b) & see HR.5 & stated only\\
 G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
   \texttt{Compose.CutScopeAt} & proved (\texttt{fg\_store\_trace}) under its
-  premises; the scope is a definition, a premise read by C1.1\\
+  premises; the scope is C1.1's conclusion~(iii) (\texttt{PersistAt.cut}),
+  proved with C1.1 (\texttt{persist\_statements})\\
 C1.2 & \texttt{Compose.OutcomeService} & stated only, note~3\\
 C1.3 & \texttt{Healing.FinalizingCoverage} & stated only\\
 HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &
@@ -2642,8 +2652,11 @@ O.1 (node) & \texttt{Healing.PatternRecovery} & stated only; the record
 O.1 (target) & none & open research; not a premise of \texttt{Accepted}\\
 R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_statements}), at
   the node catch-up $18\Delta$; the prefix row is the generic
-  \texttt{Good.sleepySafe\_prefix} (conclusion
-  \texttt{ReadySafeUpTo}~$\ldots\lor$~\texttt{S.Excuse r}, catch-up~$19$),
+  \texttt{Consensus.Good.\allowbreak sleepySafe\_prefix} (for every \texttt{Good}
+  system: available and stable outputs, under \texttt{SyncUntil}~$b$ and
+  \texttt{SleepyOn}~$[0,b]$; conclusion
+  \texttt{ReadySafeUpTo}~$\ldots\lor$~\texttt{S.Excuse r}; catch-up from the
+  contract, $19$ for \texttt{Accepted}),
   another statement\\
 R.2 & \texttt{Regimes.IncludeSleepy}, \texttt{Regimes.GrowSleepy} & proved
   (\texttt{sleepy\_statements}); transaction liveness is generic, from
@@ -2657,8 +2670,8 @@ R.7 & \texttt{Regimes.FinalAccountable}, \texttt{Regimes.NonFraming},
 R.8 & \texttt{Regimes.OutputsNested}, \texttt{Regimes.FinalizedMonotone},
   \texttt{Regimes.OutputsValid} & proved (\texttt{always\_statements});
   local nesting only\\
-Baseline & archived \texttt{Shape.GoldilocksTarget},
-  \texttt{Shape.GoldilocksExtraAt} & retired, never the endpoint\\
+Baseline & archived \texttt{Consensus.Shape.GoldilocksTarget},
+  \texttt{Consensus.Shape.GoldilocksExtraAt} & retired, never the endpoint\\
 Accepted & \texttt{Refinement.AcceptedEndpoint} & proved
   (\texttt{accepted\_endpoint}); \S\ref{sec:accepted}\\
 \hline
@@ -2693,7 +2706,8 @@ and the original cut, and the HS service statements assume
 $\mathsf{Catch}(2\Delta)$.  A smaller~$\kappa$ reduces to it by
 monotonicity; a larger one is a paper generalization.
 (5) H.1, H.2 and H.4 conclude at the post-states of AC calls
-(\texttt{IncludedFrom} and the AC statements quantify those), not at every
+(\texttt{IncludedFrom} and the AC statements quantify those; at the boundary
+time itself, after the node's tick), not at every
 real time or at FG-only cuts.  The every-time reading of this file needs a
 separate read or stuttering argument, not packaged with these statements.
 
