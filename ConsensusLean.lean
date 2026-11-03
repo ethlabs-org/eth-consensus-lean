@@ -227,6 +227,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.CarrierCoverage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.FromHighFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.OldEntryCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
