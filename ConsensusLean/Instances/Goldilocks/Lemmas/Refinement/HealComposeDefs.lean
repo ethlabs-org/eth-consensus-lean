@@ -5,8 +5,8 @@ public section
 
 /-! # Goldilocks Refinement: definitions of the M1′ composition (#136)
 
-The drain interface `DrainOutputs`, the sub-interval restriction `frameWindow_sub`, and the
-reset bound `resetBound5` of `exists_reset_of_drain5` (`ResetOfDrain`). This module imports only the
+The drain interface `DrainOutputs` and the sub-interval restriction `frameWindow_sub`, inputs of
+the drain reset `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). This module imports only the
 rise, so that it does not depend on the final-window or healed-safety layers. -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -51,15 +51,5 @@ theorem frameWindow_sub {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
     fun y hy i h1 h2 => hf.root_eq y hy i (hlo.trans h1) (h2.trans hhi)⟩
 
 end Drain
-
-/-- The reset bound of the drain reset (`exists_reset_of_drain5`), on the 5-window route:
-`lo + 5(len + λ)` at `lo = r + 4D` and the frame length `len = 4D(L_drain + 2ρ + 2) + 2D`,
-`ρ = δ_t + X − 1`. -/
-def resetBound5 (r D lam δt X Ld : ℤ) : ℤ := r + (20 * Ld + 40 * (δt + X - 1) + 54) * D + 5 * lam
-
-/-- Unfolding equation of `resetBound5` (the definition is not exposed outside this module). -/
-theorem resetBound5_eq (r D lam δt X Ld : ℤ) :
-    resetBound5 r D lam δt X Ld = r + (20 * Ld + 40 * (δt + X - 1) + 54) * D + 5 * lam := by
-  rfl
 
 end Consensus.Goldilocks.Refinement

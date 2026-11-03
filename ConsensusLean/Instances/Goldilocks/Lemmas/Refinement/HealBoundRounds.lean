@@ -5,13 +5,13 @@ public section
 
 /-! # Goldilocks Refinement: the sufficient heal bound of the key-dependent rise route (#136)
 
-recovery_time_savings item 1, piece (4). `heal_bound_sufficient5` with the key-dependent window
-of `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). The window of key value `v` has the
-length `len = 4D(L_drain + r·ρ + 2) + 2D`, `r = r(v) ≤ 2`, `ρ = δ_t + X − 1`, and the five
-attempts end by `lo + 5(4D(L_drain + 2) + 2D + λ) + 6·4Dρ` (`sum_riseLen` at `d = 4D(L + 2)`,
-round length `4Dρ`, slack `2D`). The round count `rr` cancels in the reset bound, so the
-arithmetic needs no range for it: `a ≤ ready + (20 L_drain + 24ρ + 54)·D + 5λ − 1`, against
-`40ρ` on the five-window route.
+recovery_time_savings item 1, piece (4). The five-window sufficient heal bound with the
+key-dependent window of `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). The window of key
+value `v` has the length `len = 4D(L_drain + r·ρ + 2) + 2D`, `r = r(v) ≤ 2`, `ρ = δ_t + X − 1`,
+and the five attempts end by `lo + 5(4D(L_drain + 2) + 2D + λ) + 6·4Dρ` (`sum_riseLen` at
+`d = 4D(L + 2)`, round length `4Dρ`, slack `2D`). The round count `rr` cancels in the reset
+bound, so the arithmetic needs no range for it: `a ≤ ready + (20 L_drain + 24ρ + 54)·D + 5λ − 1`,
+against `40ρ` on the five-window route.
 
 Pure integer arithmetic, time unit `D`, `ts s = 4D·s`. `heal` is any time with
 `ready + T_heal ≤ heal`. -/

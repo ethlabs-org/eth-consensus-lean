@@ -294,7 +294,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedOfQuery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedRun
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBoundRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealComposeDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
@@ -352,7 +351,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ReceiverServi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrainRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RunBlocks

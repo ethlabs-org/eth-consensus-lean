@@ -12,7 +12,7 @@ public section
 
 /-! # Goldilocks Refinement: the reset from the drain with key-dependent rise rounds (#136)
 
-recovery_time_savings item 1, piece (4). `exists_reset_of_drain5` with the key-dependent window
+recovery_time_savings item 1, piece (4). The five-window drain reset with the key-dependent window
 of piece (3) and the `r`-round rise of piece (2):
 
 * the window of key value `v` has the length `len(v) = 4D(L_drain + 2) + r(v)·4Dρ + 2D`,
@@ -113,7 +113,7 @@ theorem rounds_le_warm_proposal
   omega
 
 /-- **The reset from the drain, key-dependent rise rounds.** The premises of
-`exists_reset_of_drain5` with `resetBoundRounds` for `resetBound5`: the reset is at a time
+the five-window drain reset with `resetBoundRounds` for its bound: the reset is at a time
 `a ≤ B = resetBoundRounds r Δ λ δ_t G L_drain`, provided `B ≤ b`. -/
 theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
@@ -248,8 +248,8 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
   linarith [hfitN.2]
 
 /-- **The reset from the drain, key-dependent rise rounds, from wakefulness** (`λ = 2Δ`).
-`exists_reset_of_drain_rounds` with the snapshot and the calls from `CallLag`, as in
-`exists_reset_of_drain5_awake`. -/
+`exists_reset_of_drain_rounds` with the snapshot, `hcallZ` and `hcall` produced by `CallLag` from
+wakefulness on `[ḡ, b]`; the snapshot call condition `c_z + Δ + 1 ≤ r + 4Δ` is paid explicitly. -/
 theorem exists_reset_of_drain_rounds_awake (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {g ΔF b r : Time} {G Ld : Nat}
