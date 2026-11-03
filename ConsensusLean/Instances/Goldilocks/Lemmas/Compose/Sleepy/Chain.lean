@@ -227,17 +227,6 @@ theorem SleepyInvariantUpTo.read_compatible {b : Time} (hinv : SleepyInvariantUp
   have ⟨hB', hc'⟩ := confirmed_read_on_chain_upTo hinv hrun hnc hy' hi' t'
   OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'
 
-/-- **R.1 from the invariant**: the confirmed outputs of honest nodes at any two cuts are
-compatible (inside the honest blocks). -/
-theorem SleepyInvariant.confirmed_compatible (hinv : SleepyInvariant tr H)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
-    ∀ y ∈ H, ∀ y' ∈ H, ∀ i i',
-      Compatible (tr.HonestBlocks H) (tr.confirmedAt y i) (tr.confirmedAt y' i') := by
-  intro y hy y' hy' i i'
-  obtain ⟨hB, hc⟩ := confirmed_read_on_chain hinv hrun hnc hy i (tr.time i)
-  obtain ⟨hB', hc'⟩ := confirmed_read_on_chain hinv hrun hnc hy' i' (tr.time i')
-  exact OnOriginChain.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'
-
 end Consensus.Goldilocks.Compose
 
 end

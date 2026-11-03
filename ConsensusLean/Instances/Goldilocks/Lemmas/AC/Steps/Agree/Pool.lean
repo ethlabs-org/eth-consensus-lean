@@ -398,47 +398,6 @@ theorem messageServedBefore_of_retained (y : Fin sp.n) {q j : Nat} (hqj : q ≤ 
   exact Or.inr ((retainedBefore_iff _ _ _ _).mpr
     ⟨q, hqj, (poolEvidenceBefore_iff _ _ _).mpr (Or.inl hv), hnr⟩)
 
-/-- A fresh local admission serves its own later observation without a new message
-call, provided no restart has discarded the admitted pool evidence. -/
-theorem messageServedBefore_of_admission
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} {v : Vote sp.n} (hij : i < j)
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
-    (hnr : ℓ.call ≠ .restart) (hold : v ∉ (tr.state y i).pool v.slot)
-    (hnew : v ∈ (tr.post i).pool v.slot)
-    (hfree : ∀ r, i < r → r < j → ¬ tr.RestartAt y r) :
-    MessageServedBefore tr y j (tr.time i) v := by
-  have hstamp := ((grow_call hr hy hc hnr).2 v).2 hnew hold
-  have hlt : tr.time i < tr.deadline y j (tr.time i) := by
-    unfold ACTrace.deadline
-    cases tr.lastWake y j with
-    | bot => exact lt_add_of_pos_right _ sp.toParams.hΔ
-    | coe w =>
-      change tr.time i < max (tr.time i) w + sp.Δ
-      exact lt_of_le_of_lt (le_max_left _ _) (lt_add_of_pos_right _ sp.toParams.hΔ)
-  apply messageServedBefore_of_retained y (Nat.succ_le_of_lt hij)
-  · rw [state_succ_of_call hc]
-    exact ⟨hnew, hstamp.1 ▸ WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr hlt)⟩
-  · intro r hir hrj
-    exact hfree r (Nat.lt_of_succ_le hir) hrj
-
-/-- A source serves itself: emissions already count as processing, while fresh
-admissions retain their stamps until a restart. -/
-theorem messageServedBefore_self
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} {v : Vote sp.n} (hij : i < j) (hs : tr.SendOrAdmit y i v)
-    (hfree : ∀ r, i < r → r < j → ¬ tr.RestartAt y r) :
-    MessageServedBefore tr y j (tr.time i) v := by
-  obtain ⟨ℓ, hc, hem | ⟨hnr, hold, hnew⟩⟩ := hs
-  · apply (messageServedBefore_iff _ _ _ _).mpr
-    refine Or.inl ⟨i, hij.le, le_rfl, ⟨ℓ, hc, Or.inr hem⟩, ?_⟩
-    unfold ACTrace.deadline
-    cases tr.lastWake y i with
-    | bot => exact lt_add_of_pos_right _ sp.toParams.hΔ
-    | coe w =>
-      exact lt_of_le_of_lt (le_max_left _ _) (lt_add_of_pos_right _ sp.toParams.hΔ)
-  · exact messageServedBefore_of_admission hr hy hij hc hnr hold hnew hfree
-
 /-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives
 it, or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or
 two other votes of its validator. -/
@@ -513,59 +472,6 @@ private theorem held_of_deadline_processing
   rcases held_of_processAt hr hX hproc h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
   · exact Or.inl (hmono h)
   · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
-
-/-- Processing strictly before a deadline gives stamped pool evidence. Existing
-duplicates and saturated identities retain their earlier admission stamps. -/
-theorem poolEvidenceBefore_of_processAt
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {v : Vote sp.n} (hp : tr.ProcessAt y k v)
-    (h₁ : (sp.slot (tr.time k) : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot (tr.time k))
-    {T : Time} (hkT : tr.time k < T) : PoolEvidenceBefore (tr.state y (k + 1)) v T := by
-  have stamped : ∀ w, w ∈ (tr.state y (k + 1)).pool w.slot →
-      HeldBefore (tr.state y (k + 1)) w T := by
-    intro w hw
-    refine ⟨hw, ?_⟩
-    rcases pool_origin hr hy (k + 1) w hw with ⟨q, hq, -, hs, -⟩ |
-        ⟨q, hq, ell, -, -, hs, -⟩ <;>
-      rw [hs] <;> exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr
-        ((hr.time_mono (Nat.lt_succ_iff.mp hq)).trans_lt hkT))
-  apply (poolEvidenceBefore_iff _ _ _).mpr
-  rcases held_of_processAt hr hy hp h₁ h₂ with hv | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · exact Or.inl (stamped v hv)
-  · have has := state_pool_slot sp hr hy (k + 1) v.slot a ha
-    have hbs := state_pool_slot sp hr hy (k + 1) v.slot b hb
-    exact Or.inr ⟨a, b, hab, hav, hbv, has, hbs,
-      stamped a (has.symm ▸ ha), stamped b (hbs.symm ▸ hb)⟩
-
-/-- Deadline service preserves strict stamps, for both fresh and retained evidence,
-under exactly the hypotheses of `held_of_deadline_service`. -/
-theorem poolEvidenceBefore_of_deadline_service
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : Fin sp.n}
-    {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
-    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
-    (hdl : tr.time k + sp.Δ ≤ tr.time i)
-    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
-      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t)
-    (hp : MessageServedBefore tr X i (tr.time k) v) :
-    PoolEvidenceBefore (tr.state X i) v (tr.time k + sp.Δ) := by
-  rcases (messageServedBefore_iff _ _ _ _).mp hp with hp | hp
-  · obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hp
-    have hd : tr.deadline X k' (tr.time k) = tr.time k + sp.Δ :=
-      deadline_eq fun k'' hk'' hr' => hrs k'' (hk''.trans hk'i) hr'
-    rw [hd] at hk'dl
-    have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
-    obtain ⟨h₁, h₂⟩ := hslot _ hkk' hk'dl
-    apply poolEvidenceBefore_mono hr hX (Nat.succ_le_of_lt hk'lt) ?_
-      (poolEvidenceBefore_of_processAt hr hX hproc h₁ h₂ hk'dl)
-    intro k'' hk'' hk''i hrk''
-    obtain ⟨ell, hc, hcall⟩ := hrk''
-    obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart X hX k'' ell hc hcall
-    obtain ⟨ell', hc', -⟩ := hproc
-    have := hprev k' (by omega) ell' hc'
-    have := hrs k'' hk''i.le ⟨ell, hc, hcall⟩
-    linarith
-  · have he := hp.evidence hr hX
-    rwa [deadline_eq hrs] at he
 
 /-- Both processing and retained evidence establish the writer's pool comparison.
 The retained route needs no artificial lower bound on the original admission time. -/

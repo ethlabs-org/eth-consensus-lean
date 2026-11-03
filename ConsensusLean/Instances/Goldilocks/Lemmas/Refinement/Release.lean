@@ -151,15 +151,6 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
       · exact createAtt_val h'
       · simp at hm
 
-/-- The AC-tick step signs nothing and processes no block. -/
-theorem tickStep_acTick_cuts (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.tickStep proposer dg self st t x .acTick).2 = [(Node.acCall self st t .tick).2] ∧
-      attBodies (Node.tickStep proposer dg self st t x .acTick).2 = [] ∧
-      blockObjs (Node.tickStep proposer dg self st t x .acTick).2 = [] := by
-  refine ⟨rfl, ?_, ?_⟩ <;> simp [Node.tickStep, Node.acCall, attBodies, blockObjs]
-
 /-- The proposal step signs nothing. -/
 theorem tickStep_proposal_attBodies (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))

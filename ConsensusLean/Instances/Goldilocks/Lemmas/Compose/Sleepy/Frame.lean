@@ -654,18 +654,6 @@ section Wrappers
 variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
-include hrun hnc hsl hy in
-/-- A crossing quorum has an honest row, whose source satisfies `G`. -/
-theorem frame_crossing_source (hsrc : HonestRowsSourced tr H G y i)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state y i).fg.tree) {j : Nat} (hj1 : 1 ≤ j)
-    (hj2 : j < ((tr.state y i).fg.σ W.root).h) :
-    ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E W ∧
-      ((tr.state y i).fg.σ E.root).h = j ∧ ((tr.state y i).fg.σ E.root).Th = E.root ∧
-      ∃ D, G D ∧ IsHonestSource tr H D E.root :=
-  frame_crossing_source_of hrun hnc (two_faults_lt_of_sleepy hsl) hy (hsrc.above 0) hW
-    (Nat.zero_le j) hj1 hj2
-
 /-- Justification provenance uses only the numerical fault bound and the supplied row sources. -/
 theorem justified_honest_source_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H)
@@ -697,38 +685,6 @@ theorem J_compatible_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ tr.HonestBlocks H) :
     Compatible (tr.HonestBlocks H) (tr.state y i).fg.J B :=
   J_compatible hrun hnc hf hy (hsrc.above _) hGB hB
-
-include hrun hnc hsl hy in
-/-- **The justification has an honest source**: at `h_j ≥ 1`, `Σ.J` is an entry block of height
-`h_j`, and an honest row of its target quorum has a source satisfying `G`. -/
-theorem justified_honest_source (hsrc : HonestRowsSourced tr H G y i)
-    (hj : 1 ≤ (tr.state y i).fg.hj) :
-    ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
-      ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
-      ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root :=
-  justified_honest_source_before hrun hnc (two_faults_lt_of_sleepy hsl) hy hsrc hj
-
-include hrun hnc hsl hy in
-/-- **No contest from genesis.** -/
-theorem frame_no_contest (hsrc : HonestRowsSourced tr H G y i)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D') :
-    ¬ (tr.state y i).fg.Contest :=
-  frame_no_contest_of hrun hnc (two_faults_lt_of_sleepy hsl) hy (hsrc.above _) hGG
-
-include hrun hnc hsl hy in
-/-- **The floor, or a crossing source above the block**: with no contest the floor is
-`h_max − 1`; when it is above a held block `B`, a carrier of height `h_max` crossed it with an
-honest source `D`, whose entry `E` of height `h_max − 1` extends `B`. -/
-theorem floor_or_crossing (hsrc : HonestRowsSourced tr H G y i)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
-      ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
-        (tr.state y i).fg.Anc B E ∧
-        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
-        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable X :=
-  floor_or_crossing_of hrun hnc (two_faults_lt_of_sleepy hsl) hy (hsrc.above _) hGG hGB hB
 
 end Wrappers
 
@@ -1248,28 +1204,6 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
       (hs'.trans hs.symm)).1
     omega
 
-/-- **No label-`(s+1)` optimistic origin precedes a row the voter holds** (workbench#11 §3, R4):
-at an honest slot-`(s+1)` vote at cut `i`, an honest row signed at cut `k`, on a block that the
-voter accepted at a cut `m ∈ (k, i)`, is not preceded by an honest optimistic selection of slot
-`s + 1`. The row is signed in a tick at a public time in `[t_{s+1}, t_{s+1} + Δ]`. At
-`t_{s+1} + Δ` the voter receives the block in a delivery, after its own tick there, which votes
-when it has not voted yet (`try_vote` at `t_{s+1} + Δ`): a second slot-`(s+1)` vote. At `t_{s+1}`
-the selection precedes the signer's tick, so each honest validator among its `≥ 3n/4` voters cast
-its vote in a tick at `t_{s+1}`, in the proposal step: it is the slot's proposer. Then
-`3n ≤ 4(f + 1)` and `2f < n` leave `n = 1`, where that proposer is the voter, whose vote would
-precede its own vote at `i`. -/
-theorem no_optimistic_before_held_row (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
-    {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hkm : k < m) (hsg : tr.SignAt a.val k a)
-    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hck : c < k) {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} (hO : SA.OptimisticLockAt tr.projAC z c (s + 1) C CV) : False :=
-  no_optimistic_before_held_row_of hrun hnc (two_faults_lt_of_sleepy hsl) hy hc hs hm hmi hav
-    hkm hsg hz hck hO
-
 /-- **Sources at a vote have labels at most `s`** (workbench#11 §3, R4; §4 "Extend the vote
 frontier"): at an honest slot-`(s+1)` vote, every honest row on a block the voter holds has a
 source below an origin of label at most `s`. A regular origin of label `l` is written at
@@ -1442,35 +1376,6 @@ theorem held_origin_viable_before {b : Time} (hrun : GoldilocksRun proposer dg H
     (fun C l C' l' hC hC' => originsBelowUpTo_iff.1 (hP (l + l' + 1)) C l C' l' (by omega)
       (by omega) (hC.within hi) (hC'.within hi)) hBc hBt
 
-/-- **S3 at full reads from `s₀`**: at a cut from `t_{s₀}`, once the origins of labels `≥ s₀`
-compare, a block `B` that an honest node holds and that is compatible with every origin of a
-label `≥ s₀` is at or below its `fc_root` or in its full viable tree. The honest rows (at heights
-`≥ h_j`) whose signing source is below a pre-`s₀` origin are `SleepyBase.event_rows`. -/
-theorem held_origin_viable_from {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hfrom : SleepyFrom tr H ΔF s₀) (hbase : SleepyBase tr H s₀)
-    (hP : ∀ C s C' s', OriginFrom tr H C s s₀ → OriginFrom tr H C' s' s₀ →
-      Compatible (tr.HonestBlocks H) C C')
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) (hi : sp.ts s₀ ≤ tr.time i)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hBc : ∀ C s, OriginFrom tr H C s s₀ → Compatible (tr.HonestBlocks H) B C)
-    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
-    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
-      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  have hsrc : RowsAbove tr H (fun D => ∃ C, (∃ l, OriginFrom tr H C l s₀) ∧
-      Anc (tr.HonestBlocks H) D C) y i (tr.state y i).fg.hj := by
-    intro X hX a ha hav hh
-    obtain ⟨m, hm, -, k, hk, hsg⟩ := honest_row_signed_before hrun hnc hy hX ha hav
-    obtain ⟨D, -, hDs, C, l, hC, hDC⟩ := attestation_source hrun hnc hav hsg
-    by_cases hl : s₀ ≤ l
-    · exact ⟨D, ⟨C, ⟨l, originFrom_iff.2 ⟨hC.origin, hl⟩⟩, hDC⟩, hDs⟩
-    obtain ⟨D', C', l', hD's, hC', hD'C'⟩ := hbase.event_rows y hy i hi X hX a ha hav hh
-      ⟨D, C, l, hDs, hC.origin, Nat.lt_of_not_le hl, hDC⟩
-    exact ⟨D', ⟨C', ⟨l', hC'⟩, hD'C'⟩, hD's⟩
-  obtain ⟨hGG, hGB⟩ := below_tips_compatible hU (Q := fun C => ∃ l, OriginFrom tr H C l s₀)
-    (fun C C' ⟨l, hC⟩ ⟨l', hC'⟩ => hP C l C' l' hC hC') (fun C ⟨l, hC⟩ => hBc C l hC)
-  exact held_viable_of hrun hnc (two_faults_lt_of_from hfrom) hy i hsrc hGG hGB hBt
-
 /-- **S3 at votes, over sources `G`, on a window**: at an honest slot-`(s+1)` vote at a time
 `≤ b`, with the honest rows at heights `≥ h_j` sourced by `G` (sources pairwise compatible,
 compatible with `B`, each extended by an honest vote of a slot `≤ s`) and the heads accepted
@@ -1627,65 +1532,6 @@ theorem vote_frame_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hsrc.above _) hGG (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB hw
   obtain ⟨x', hx', k', e'', hve', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
     honest_supporter_before hrun hnc hb hsync hfb hC
-  exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
-
-/-- **S3 at votes (the frozen witness)**: at an honest slot-`(s+1)` vote, a block `B` of the honest
-blocks that is compatible with every origin of label at most `s` and that some honest slot-`s`
-vote extends (an origin of label `s` by its honest supporter, an older one by `V_s`, a protected
-proposal by its common batch) is in the viable tree of the voter block tree, or at or below
-`fc_root` (inside the honest blocks). -/
-theorem vote_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB : B ∈ tr.HonestBlocks H)
-    (hBc : ∀ C j, Origin tr H C j → j ≤ s → Compatible (tr.HonestBlocks H) B C)
-    (hw : ∃ x ∈ H, ∃ k e', SA.VoteAt tr.projAC x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot :=
-  vote_frame_upTo hrun hnc (hsl.prefix (le_max_right (tr.time i) 0)) (hP.upTo _) hy hc hs
-    (le_max_left _ _) hB (fun C j hC hj => hBc C j hC.origin hj) hw
-
-/-- **S3 at votes from `s₀` (the frozen witness)**: at an honest slot-`(s+1)` vote with `s ≥ s₀`,
-under `SleepyFrom` and the base facts, a block `B` of the honest blocks that is compatible with
-every origin of a label in `[s₀, s]` and that some honest slot-`s` vote extends is in the viable
-tree of the voter block tree, or at or below `fc_root`. The honest rows (at heights `≥ h_j`)
-whose signing source is below a pre-`s₀` origin are `SleepyBase.vote_rows`; the heads accepted
-before `t_{s₀}` are `SleepyBase.old_blocks`. -/
-theorem vote_frame_from {s₀ : Nat} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hfrom : SleepyFrom tr H ΔF s₀) (hbase : SleepyBase tr H s₀) {s : Nat} (hs₀ : s₀ ≤ s)
-    (hP : OriginsBelowFrom tr H s₀ (s + 1)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
-    (hBc : ∀ C j, OriginFrom tr H C j s₀ → j ≤ s → Compatible (tr.HonestBlocks H) B C)
-    (hw : ∃ x ∈ H, ∃ k e', SA.VoteAt tr.projAC x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e'.msg B) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  have hf := two_faults_lt_of_from hfrom
-  have hsrc : RowsAbove tr H (fun D => ∃ C, (∃ j, OriginFrom tr H C j s₀ ∧ j ≤ s) ∧
-      Anc (tr.HonestBlocks H) D C) y i (tr.state y i).fg.hj := by
-    intro X hX a ha hav hh
-    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun hnc hf hy hc hs hX ha hav
-    by_cases hl : s₀ ≤ j
-    · exact ⟨D, ⟨C, ⟨j, originFrom_iff.2 ⟨hC.origin, hl⟩, hj⟩, hDC⟩, hDs⟩
-    obtain ⟨D', C', l', hD's, hC', hl', hD'C'⟩ := hbase.vote_rows y hy i ℓ e hc s hs hs₀ X hX a
-      ha hav hh ⟨D, C, j, hDs, hC.origin, Nat.lt_of_not_le hl, hDC⟩
-    exact ⟨D', ⟨C', ⟨l', hC', hl'⟩, hD'C'⟩, hD's⟩
-  obtain ⟨hGG, hGB⟩ := below_tips_compatible hU
-    (Q := fun C => ∃ j, OriginFrom tr H C j s₀ ∧ j ≤ s)
-    (fun C C' ⟨j, hC, hj⟩ ⟨j', hC', hj'⟩ =>
-      originsBelowFrom_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
-    (fun C ⟨j, hC, hj⟩ => hBc C j hC hj)
-  refine vote_frame_of hrun hnc (Or.inl (hfrom.window (le_max_right (tr.time i) _))) hf hy hc hs
-    (le_max_left _ _) (hbase.old_blocks y hy i ℓ e hc s hs hs₀) hsrc hGG
-    (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB hw
-  obtain ⟨x', hx', k', e'', hve', hs'', Hd, hHd, hHdr, hCHd⟩ :=
-    honest_supporter_from hrun hnc hfrom hC
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
 end Consensus.Goldilocks.Compose

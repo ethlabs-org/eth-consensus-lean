@@ -129,52 +129,6 @@ theorem HealedRecordsUpTo.sign_target (hR : HealedRecordsUpTo tr H g b h₀ E)
     att.timeout = false :=
   hR.sign_target_of hrun hy hs hkb hh (hR.timeout_empty hrun hy k _ hkb hh)
 
-/-- **N0⁺, permits, through the horizon.** At a cut `i` with `t_i ≤ b` and a height `h ≥ h₀`,
-every honest record permits the entry `E h`. -/
-theorem HealedRecordsUpTo.permits_entry (hR : HealedRecordsUpTo tr H g b h₀ E)
-    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hib : tr.time i ≤ b) (h : Nat) (hh : h₀ ≤ h) :
-    (tr.state y i).record.permits h (E h).root :=
-  ⟨hR.target_entry hrun hy hib h hh,
-    by rw [hR.timeout_empty hrun hy i h hib hh]; exact Finset.empty_subset _,
-    hR.locks y hy i h hib hh⟩
-
-/-- **N0⁺ for `create_attestation`, through the horizon** (`HealedRecords.createAtt_target` at
-a cut `i` with `t_i ≤ b`). -/
-theorem HealedRecordsUpTo.createAtt_target (hR : HealedRecordsUpTo tr H g b h₀ E)
-    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    (hib : tr.time i ≤ b)
-    {σe : FG.ChainState sp.n} (hh : h₀ ≤ σe.h) (hT : σe.Th = (E σe.h).root)
-    (hs : ∀ b ∈ (tr.state y i).record.sent, b.1 ≠ σe.h) :
-    (tr.state y i).record.createAtt y σe =
-      some (⟨y, σe.h, σe.Th, false, (tr.state y i).record.finalityPair σe⟩,
-        (tr.state y i).record.recordAtt
-          ⟨y, σe.h, σe.Th, false, (tr.state y i).record.finalityPair σe⟩) :=
-  FG.Record.createAtt_target (by rw [hT]; exact hR.locks y hy i _ hib hh)
-    (hR.timeout_empty hrun hy i _ hib hh) (by rw [hT]; exact hR.target_entry hrun hy hib _ hh) hs
-
-/-- **The first own row at a height `≥ h₀`, through the horizon**
-(`HealedRecords.first_sign_target` for a row signed at a cut `k` with `t_k ≤ b`). -/
-theorem HealedRecordsUpTo.first_sign_target (hR : HealedRecordsUpTo tr H g b h₀ E)
-    (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {att : FG.Att sp.n} (hs : tr.SignAt y k att) (hkb : tr.time k ≤ b) (hh : h₀ ≤ att.h)
-    (hfirst : ∀ k' < k, ∀ att', tr.SignAt y k' att' → att'.h ≠ att.h) :
-    ∃ src, tr.CallAt y k (.fg (.attest src (some att))) ∧
-      att = ⟨y, ((tr.state y k).fg.σ ((tr.state y k).fg.σ src.root).Th).h,
-        ((tr.state y k).fg.σ ((tr.state y k).fg.σ src.root).Th).Th, false,
-        (tr.state y k).record.finalityPair
-          ((tr.state y k).fg.σ ((tr.state y k).fg.σ src.root).Th)⟩ := by
-  obtain ⟨src, hc⟩ := hs
-  have hcl := (hrun.cutLaw y hy k _ hc).1
-  change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
-    ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨hah, haT, -, -⟩ := createAtt_timeout' hcl
-  have hT := hR.rows y hy k att ⟨src, hc⟩ hkb hh
-  have ha := hR.createAtt_target hrun hy hkb (by rw [← hah]; exact hh)
-    (by rw [← haT, hT, hah]) (by rw [← hah]; exact sent_ne_of_no_sign hrun hy k hfirst)
-  rw [ha] at hcl
-  exact ⟨src, hc, (congrArg Prod.fst (Option.some.inj hcl)).symm⟩
-
 end Consensus.Goldilocks.Healing
 
 end

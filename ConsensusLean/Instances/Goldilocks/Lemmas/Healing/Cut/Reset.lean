@@ -85,14 +85,6 @@ theorem faulty_lt_q (hh : tr.HealthyRun H ΔF g) : Hᶜ.ncard < sp.toParams.fg.q
   change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
   omega
 
-/-- The finite one-third fault bound gives fewer than a progress quorum of faulty validators. -/
-theorem faulty_lt_q_of_le (h3 : 3 * Hᶜ.ncard ≤ sp.n - 1) :
-    Hᶜ.ncard < sp.toParams.fg.q := by
-  have hn := sp.toParams.hn
-  change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
-  change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-  omega
-
 /-- The height pair an honest node signs names a block it holds, of that height. -/
 theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) :
@@ -393,19 +385,6 @@ theorem reset_of_height_advance (hrun : GoldilocksRun proposer dg H tr)
     ⟨⟨z, hz, Nat.find hex, b, hb, hbh, rfl⟩,
       fun v hv j c hc hch => hrun.time_mono (Nat.find_min' hex ⟨v, hv, c, hc, hch⟩)⟩
   exact ⟨_, hR, (hR.2 v hv j c hc hch).trans hjk⟩
-
-/-- **The frontier up to the reset is `≤ H_z + 1` (r14 s2, L2.4 upper bound).** At every
-`fg_attest` cut at or before the reset, the honest frontier is at most `H_z + 1`. -/
-theorem hmax_le_before_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
-    {a : Time}
-    (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {src : SA.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
-    (hc : tr.CallAt y k (.fg (.attest src signed))) (hk : tr.time k ≤ a) :
-    (tr.state y k).fg.hmax ≤ HZ tr H g + 1 := by
-  obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _
-    (Compose.fg_reachable hrun.toLocalRun hy k)
-  have := held_row_lt hrun hh hR hy hc hk hX
-  omega
 
 /-- **HR.1 (c), the frontier at the ticks at the reset is `≤ H_z + 1`.** -/
 theorem hmax_le_at_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)

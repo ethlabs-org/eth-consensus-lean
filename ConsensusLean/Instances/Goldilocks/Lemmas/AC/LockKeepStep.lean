@@ -72,80 +72,6 @@ theorem mem_updateConfirmation_of_keep {A : SAState sp.n} {s : Nat} (hl : l ∈ 
     · rw [updateLatestConfirmed_locks_eq]
       exact mem_addLocks_of_keep hl hk hB hBr hva
 
-/-- `try_vote` keeps such a lock that `unlock` does not move. -/
-theorem mem_tryVote_of_keep (self : Fin sp.n) {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
-    (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
-      ∀ V, unlockTarget sp Φ V ((sp.slot t : Int) - 1) B = B) :
-    l ∈ (tryVote sp self A Φ t).1.locks := by
-  unfold tryVote
-  dsimp only
-  split_ifs with h₁ h₂ h₃
-  · exact hl
-  · exact hl
-  · refine mem_optimisticConfirmation_of_keep ?_ hk hB hBr hva
-    rw [admitVote_locks_eq]
-    exact mem_unlock_of_keep hl hk hB hBr hva (hu.imp_right fun h => h _)
-  · refine mem_optimisticConfirmation_of_keep ?_ hk hB hBr hva
-    rw [admitVote_locks_eq]
-    exact hl
-
-/-- `ac_on_message` keeps such a lock. -/
-theorem mem_acOnMessage_of_keep (self : Fin sp.n) {A : SAState sp.n} (v : Vote sp.n)
-    (hl : l ∈ A.locks) (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree)
-    (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
-      ∀ V, unlockTarget sp Φ V ((sp.slot t : Int) - 1) B = B) :
-    l ∈ (acOnMessage sp self A Φ t v).1.locks := by
-  refine mem_tryVote_of_keep self ?_ hk hB hBr hva hu
-  refine mem_optimisticConfirmation_of_keep ?_ hk hB hBr hva
-  rw [admitVote_locks_eq]
-  exact hl
-
-/-- `ac_on_block` keeps such a lock. -/
-theorem mem_acOnBlock_of_keep (self : Fin sp.n) {A : SAState sp.n} (C : Blk sp.n FGP)
-    (hl : l ∈ A.locks) (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree)
-    (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
-      ∀ V, unlockTarget sp Φ V ((sp.slot t : Int) - 1) B = B) :
-    l ∈ (acOnBlock sp self A Φ t C).1.locks := by
-  refine mem_tryVote_of_keep self ?_ hk hB hBr hva hu
-  refine mem_optimisticConfirmation_of_keep ?_ hk hB hBr hva
-  rw [blockReceipt_locks]
-  exact hl
-
-/-- `ac_on_tick` keeps such a lock. -/
-theorem mem_acOnTick_of_keep (self : Fin sp.n) {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
-    (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
-      ∀ V, unlockTarget sp Φ V ((sp.slot t : Int) - 1) B = B) :
-    l ∈ (acOnTick sp self A Φ t).1.locks := by
-  have hv := mem_tryVote_of_keep self hl hk hB hBr hva hu
-  unfold acOnTick
-  dsimp only
-  split_ifs <;>
-    first
-    | exact hl
-    | exact hv
-    | exact mem_updateConfirmation_of_keep hl hk hB hBr hva
-    | exact mem_updateConfirmation_of_keep hv hk hB hBr hva
-
-/-- `ac_proposal` keeps such a lock. -/
-theorem mem_acProposal_of_keep {A : SAState sp.n} (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
-    (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
-      ∀ V, unlockTarget sp Φ V ((sp.slot t : Int) - 1) B = B) :
-    l ∈ (acProposal sp A Φ t).1.locks := by
-  unfold acProposal
-  dsimp only
-  split_ifs <;>
-    first
-    | exact hl
-    | exact mem_unlock_of_keep hl hk hB hBr hva (hu.imp_right fun h => h _)
-
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by
   unfold acToFG
@@ -154,30 +80,6 @@ theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.lock
     · rfl
     · split_ifs <;> rfl
   · rfl
-
-/-- **The keep lemma of an AC call.** A call of the SA at time `t ≥ 0` with a well-formed frame
-`Φ` keeps a lock `l` on a block `B` of the tree when `l` does not expire at `t`, `B` is its own
-viable ancestor, and `unlock` does not move it. -/
-theorem mem_step_locks_of_keep {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : SAState sp.n}
-    (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t) (hl : l ∈ A.locks)
-    (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
-    (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨
-      ∀ V, unlockTarget sp Φ V ((sp.slot t : Int) - 1) B = B) :
-    l ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.locks := by
-  cases c with
-  | tick => exact mem_acOnTick_of_keep self hl hk hB hBr hva hu
-  | proposal => exact mem_acProposal_of_keep hl hk hB hBr hva hu
-  | toFG =>
-    change l ∈ (acToFG sp A Φ t).1.locks
-    rw [acToFG_locks_eq]
-    exact hl
-  | message v => exact mem_acOnMessage_of_keep self v hl hk hB hBr hva hu
-  | block C => exact mem_acOnBlock_of_keep self C hl hk hB hBr hva hu
-  | restart =>
-    change l ∈ (acRestart sp ro self A Φ t).1.locks
-    rw [((restart_state sp) FGP ro self A Φ t hΦ ht).2.1]
-    exact hl
 
 /-! ## The keep lemma with the view that `unlock` reads
 

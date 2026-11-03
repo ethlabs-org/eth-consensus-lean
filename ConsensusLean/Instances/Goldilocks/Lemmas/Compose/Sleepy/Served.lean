@@ -12,7 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 -- the private `ReadInvWith`; the scoped relay also shares the read/tick machinery.
 -- Splitting would expose the private record-write and served-tick helpers.
 -- The public one-call writer interface stays beside its private record/lock producer.
-set_option linter.style.longFile 2100
+set_option linter.style.longFile 2000
 
 public section
 
@@ -806,29 +806,6 @@ private theorem ReadInv.of_full (hinv : SleepyInvariant tr H)
     sync := syncAC_of_sleepy hrun hsl le_rfl
     awake := fun s _ => faults_lt_awake_joined hsl s }
 
-/-- `ReadInv` from the invariant up to `b`, under the prefix premises up to `b`, at a cut within
-`b` read at `t ≤ b`. -/
-private theorem ReadInv.of_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hpre : SleepyPrefix tr H ΔF b)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) {t : Time}
-    (ht : t ≤ b) :
-    ReadInv tr H (fun B => OnOriginChainWithin tr H B b) (fun C s => OriginWithin tr H C s b)
-      y i t :=
-  have ⟨C, hC, hCr, hgo⟩ := hinv.record y hy i hi
-  { compat := fun _ _ hX hY hXc hYc =>
-      OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hX hY hXc hYc
-    anc := fun _ _ hA hAB h => OnOriginChainWithin.of_anc hrun hnc hA hAB h
-    record := ⟨C, hC, hCr,
-      onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)⟩
-    locks := hinv.locks y hy i hi
-    caches := hinv.caches y hy i hi
-    origin := fun _ _ h => h.within hi
-    viable := fun m hm C s hO hC => hinv.viable y hy m (fun k hk => hi k (by omega)) C s hO hC
-    vote_extends := fun C s hO x hx k hk e hv hs =>
-      hinv.vote_extends C s hO x hx k e hv (hi k hk) hs
-    sync := syncAC_of_prefix hrun hpre le_rfl (by linarith)
-    awake := fun s hs => faults_lt_awake_joined_upTo hpre s (hs.trans ht) }
-
 private theorem ReadInvWith.of_before {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
@@ -1310,15 +1287,6 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
   · rw [hes] at ha
     exact ⟨a, mem_latest_votes hrun hnc hy hL (hpm ha), hav.trans hval⟩
 
-/-- Time expiry leaves the latest-view label at least the expired label plus the lock window.
-This says nothing about locks removed by normalization or unlocking. -/
-theorem latestView_label_of_expired_lock
-    (A : SA.SAState sp.n) (Φ : SA.Frm sp.n (List (FG.Att sp.n))) {t : Time} {b : Nat}
-    (hexpired : b + sp.k < sp.slot t) :
-    (b + sp.k : Nat) ≤ (SA.latestView sp A Φ t).2 := by
-  simp only [SA.latestView]
-  split_ifs <;> dsimp <;> omega
-
 private theorem latest_majority_of_target_votes_at_read
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
@@ -1363,31 +1331,6 @@ private theorem latest_majority_of_target_votes_at_read
     · exact Or.inr hwH
   change Vt.ncard < 2 * Sp.ncard
   omega
-
-/-- At an actual awake, joined call, direct target votes and scoped Sync/Catch yield a
-strict current-view supporter majority. No target viability or origin invariant is used. -/
-theorem latest_majority_of_target_votes_at_call
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hcall : tr.IsCall y i)
-    (hw : tr.awake y (tr.time i)) (hj : tr.JoinedAt y (tr.time i))
-    {a : Time} (hsync : SyncACWindowBefore H (tr.HonestBlocks H) a (tr.time i) tr.projAC)
-    (hcatch : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) (tr.time i))
-    {L : Nat}
-    (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac
-      (Node.frame (tr.state y i)) (tr.time i)).2) (ha : a ≤ sp.ts L)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ (Node.frame (tr.state y i)).tree)
-    (hvotes : ∀ z ∈ H, ∀ q < i, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = L →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg R)
-    (hfault : Hᶜ.ncard <
-      {x | x ∈ H ∧ tr.awake x (sp.ts L + sp.Δ) ∧ tr.JoinedAt x (sp.ts L + sp.Δ)}.ncard) :
-    (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-      (tr.time i)).1.votes).ncard <
-      2 * (SA.supporters (Node.frame (tr.state y i))
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)).1
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-          (tr.time i)).2 R).ncard :=
-  latest_majority_of_target_votes_at_read hrun hnc hy (readAt_self hrun hy hcall hw hj)
-    hsync hcatch hL ha hR hvotes hfault
 
 /-- Scoped target support at an arbitrary read, including a read before the node's tick
 at the same clock. Direct votes are required through that clock, not just the initial cut. -/
@@ -1826,30 +1769,6 @@ theorem read_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun pr
               R).ncard)) :=
   read_head_support_of hrun hnc hy
     (fun m _ => (ReadInv.of_full hinv hrun hnc hsl hy m t).service) hle hti hwj hR
-
-/-- **G1, G2 at a read up to `b`** (for R.1 up to `b`): `read_head_support` for a read at a time
-`t ≤ b`, from the invariant up to `b` under the prefix premises up to `b`. -/
-theorem read_head_support_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hpre : SleepyPrefix tr H ΔF b)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time} (htb : t ≤ b)
-    (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
-    (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : RecordAt tr y i R) :
-    Compatible (Node.frame (tr.state y i)).tree
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
-      ((Node.frame (tr.state y i)).Anc R
-          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
-        (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
-              t).1.votes).ncard <
-            2 * (SA.supporters (Node.frame (tr.state y i))
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
-              R).ncard)) :=
-  read_head_support_of hrun hnc hy
-    (fun _ hm => (ReadInv.of_upTo hinv hrun hnc hpre hy
-      (fun k hk => (hm k hk).trans htb) htb).service) hle
-    hti hwj hR
 
 /-- G1, G2 with recipient service bounded by the read time, not the next cut's time.
 Only the fault bounds at `t_s + Δ ≤ t` are needed for the latest-view majority. -/

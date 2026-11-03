@@ -389,17 +389,6 @@ origin of label `≥ s₀`. -/
 def OnOriginChainFrom (B : SA.Blk sp.n (List (FG.Att sp.n))) (s₀ : Nat) : Prop :=
   B.root = sp.genesisRoot ∨ ∃ C s, OriginFrom tr H C s s₀ ∧ Anc (tr.HonestBlocks H) B C
 
-/-- **`P_s` from `s₀`**: origins of labels in `[s₀, s)` are pairwise compatible. -/
-def OriginsBelowFrom (s₀ s : Nat) : Prop :=
-  ∀ C j C' j', j < s → j' < s → OriginFrom tr H C j s₀ → OriginFrom tr H C' j' s₀ →
-    Compatible (tr.HonestBlocks H) C C'
-
-/-- **`V_s` from `s₀`**: every honest vote of a slot `m` with `j < m ≤ s` extends every origin of
-label `j ≥ s₀`. -/
-def VotesBelowFrom (s₀ s : Nat) : Prop :=
-  ∀ C j, OriginFrom tr H C j s₀ → ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → j < e.msg.slot →
-    e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocks H) e.msg C
-
 variable {tr H}
 
 theorem sleepyWindow_iff {ΔF b : Time} {s₀ : Nat} :
@@ -421,17 +410,6 @@ theorem originFrom_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s s₀ : Nat} :
 theorem onOriginChainFrom_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {s₀ : Nat} :
     OnOriginChainFrom tr H B s₀ ↔
       B.root = sp.genesisRoot ∨ ∃ C s, OriginFrom tr H C s s₀ ∧ Anc (tr.HonestBlocks H) B C :=
-  Iff.rfl
-
-theorem originsBelowFrom_iff {s₀ s : Nat} :
-    OriginsBelowFrom tr H s₀ s ↔ ∀ C j C' j', j < s → j' < s → OriginFrom tr H C j s₀ →
-      OriginFrom tr H C' j' s₀ → Compatible (tr.HonestBlocks H) C C' :=
-  Iff.rfl
-
-theorem votesBelowFrom_iff {s₀ s : Nat} :
-    VotesBelowFrom tr H s₀ s ↔ ∀ C j, OriginFrom tr H C j s₀ → ∀ y ∈ H, ∀ i e,
-      SA.VoteAt tr.projAC y i e → j < e.msg.slot → e.msg.slot ≤ s →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
   Iff.rfl
 
 /-- `t_0 = 0`. -/
@@ -456,20 +434,6 @@ theorem SleepyFrom.window {ΔF b : Time} {s₀ : Nat} (hfrom : SleepyFrom tr H �
       fun x hx i a h hw => hs.attestation x hx i a h hw.1⟩,
     fun s hs d hd _ => hfb s hs d hd⟩
 
-/-- **`Sleepy` is `SleepyFrom` slot `0`.** -/
-theorem _root_.Consensus.Goldilocks.RunTrace.SleepyRun.from_zero {ΔF : Time}
-    (hsl : tr.SleepyRun H ΔF) : SleepyFrom tr H ΔF 0 := by
-  refine ⟨by rw [ts_natCast_zero]; exact hsl.1, fun s _ d hd => ?_⟩
-  obtain ⟨h0, h1, h2⟩ := hsl.2 s
-  have hT : sp.toParams.slotTime s = sp.ts s := by
-    rw [sp.slotTime_eq]; simp only [SAParams.ts]
-  rw [hT] at h0 h1 h2
-  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
-  rcases hd with rfl | rfl | rfl
-  · simpa using h0
-  · exact h1
-  · exact h2
-
 theorem OriginFrom.origin {C : SA.Blk sp.n (List (FG.Att sp.n))} {s s₀ : Nat}
     (h : OriginFrom tr H C s s₀) : Origin tr H C s :=
   h.1
@@ -477,11 +441,6 @@ theorem OriginFrom.origin {C : SA.Blk sp.n (List (FG.Att sp.n))} {s s₀ : Nat}
 theorem OriginFrom.le {C : SA.Blk sp.n (List (FG.Att sp.n))} {s s₀ : Nat}
     (h : OriginFrom tr H C s s₀) : s₀ ≤ s :=
   h.2
-
-/-- Every origin is an origin from `0`. -/
-theorem Origin.from_zero {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (h : Origin tr H C s) : OriginFrom tr H C s 0 :=
-  ⟨h, Nat.zero_le s⟩
 
 variable (tr H)
 

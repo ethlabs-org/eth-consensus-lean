@@ -57,22 +57,6 @@ theorem drainTime_eq (a : Time) : drainTime sp a = sp.ts (sp.slot a + 2 * sp.k +
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- **RN, stored ancestry is irreversible** (§22): a lock that an honest node stores before cut
-`b` sits below a stored lock of its slot before an earlier cut `a'`, or below the block of a
-fresh fast write (an optimistic selection) or an update of its slot at a cut in `[a', b)`. -/
-theorem stored_lock_below (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {x : Fin sp.n} (hx : x ∈ H) {a' b : Nat} (hab : a' ≤ b) :
-    ∀ l ∈ (tr.projAC.state x b).locks,
-      (∃ l' ∈ (tr.projAC.state x a').locks, l'.slot = l.slot ∧
-        (l' = l ∨ ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧
-          ∃ L' ∈ tr.HonestBlocks H, L'.root = l'.block ∧ Anc (tr.HonestBlocks H) L L')) ∨
-      ∃ j, a' ≤ j ∧ j < b ∧ ∃ B,
-        ((∃ CV, SA.OptimisticLockAt tr.projAC x j l.slot B CV) ∨
-          ∃ ℓ, SA.UpdateAt tr.projAC x j l.slot ℓ) ∧
-        ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧ Anc (tr.HonestBlocks H) L B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  exact SA.lock_provenance_from hr hx hab
-
 /-- **The drain** (§23, HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
 label at least `b + k + 2`; every lock of a label before `b`, and every slow lock whose window
 straddles `b`, has expired. -/
@@ -156,76 +140,6 @@ theorem ResetPremisesUpTo.reset_seed {b : Time}
   refine ⟨y, r, l, O, ho, hra, ?_⟩
   have ha0 : 0 ≤ a := hka ▸ hr.time_nonneg k
   exact_mod_cast (SA.ts_le_iff_le_slot sp ha0 l).mp (htime.trans hra)
-
-/-- In a coherent `U` containing the frame tree, a block `B` between a tree block `X` and a tree
-block `O` above it (`X ⪯ B ⪯ O` in `U`, `X ⪯ O` in the tree) is below `O` in the tree. -/
-private theorem frame_anc_of_between {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
-    (hU : Coherent U) {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦU : Φ.tree ⊆ U)
-    {X B O : SA.Blk sp.n (List (FG.Att sp.n))} (hXO : Φ.Anc X O) (hXB : Anc U X B)
-    (hBO : Anc U B O) : Φ.Anc B O := by
-  induction hXO generalizing B with
-  | refl =>
-    obtain rfl := Anc.antisymm hU hXB hBO
-    exact .refl
-  | tail _ hcd ih =>
-    rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hBO with rfl | ⟨c', hBc', hc'd⟩
-    · exact .refl
-    obtain rfl := hU.1 hc'd.1 (hΦU hcd.1)
-      (Option.some_injective _ (hc'd.2.2.symm.trans hcd.2.2))
-    exact (ih hXB hBc').tail hcd
-
-/-- **Clean fast transfer** (§23, HS.2 (1), across phases): a fast lock of label `j ≥ b` that an
-honest node joined at its write stores (after the move back) on `B` is extended by every honest
-vote of a slot after `j`, and at that vote `B` is in the voter's viable voter block tree or at or
-below its `fc_root` (inside the honest blocks). (A high `B` is an HR.4 high origin, (R3); a low
-`B` can be an ancestor of a high seed, and then inherits the seed's transfer and witness.) -/
-theorem clean_fast_transfer (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H)
-    (hj : tr.JoinedAt x (tr.time i)) (hw : Compose.StoredFastLockAt tr x i j B CV)
-    (hb : cleanLabel sp a ≤ j) :
-    ∀ y ∈ H, ∀ k ℓ' e, SA.CastAt tr.projAC y k ℓ' e → j < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
-      (B ∈ ℓ'.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ'.frame e.msg.slot) ∨
-        Anc (tr.HonestBlocks H) B ℓ'.frame.fcRoot) := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hrun'.localRun
-  have hU := hr.coherent
-  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
-    hp.run hp.healthy hp.noColl a hp.reset
-  obtain ⟨hBt, D, hfl, hBD⟩ := storedFastLock_mem hp.run hp.noColl hx hw
-  -- a high `B` is a high origin: (R3)
-  by_cases hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
-  · exact hret.votes x i j B ⟨hx, hj, ⟨CV, hw⟩, hhigh⟩
-  -- a low `B` is below the reset seed `O`: the honest slot-`j` votes counted by the write extend
-  -- `O` (R3, `l < j`), so `B ⪯ D` is comparable with `O`, and `O ⪯ B` would make `B` high
-  obtain ⟨v, r, l, O, ho, hl⟩ := reset_seed hp
-  rw [cleanLabel_eq] at hb
-  have hDO : Compatible (tr.HonestBlocks H) D O :=
-    SA.fastLock_compatible_of_votes hrun' hx (Nat.lt_succ_self i) hfl (faulty_lt_half hp x)
-      fun z hz c _ e ⟨ℓ, hcl, he⟩ hsl =>
-        (hret.votes v r l O ho z hz c ℓ e ⟨hcl, he⟩ (by omega)).1
-  have hBO : Anc (tr.HonestBlocks H) B O := by
-    have hc : Compatible (tr.HonestBlocks H) B O := by
-      rcases hDO with h | h
-      · exact Or.inl (hBD.trans h)
-      · exact SA.anc_total hU hBD h
-    rcases hc with h | h
-    · exact h
-    · exact absurd (high_of_anc hp ho hx hBt h) hhigh
-  -- later votes inherit `O`'s transfer and witness
-  intro y hy k ℓ' e hc hje
-  obtain ⟨⟨Hd, hHd, hHdr, hOHd⟩, hO⟩ := hret.votes v r l O ho y hy k ℓ' e hc (by omega)
-  refine ⟨⟨Hd, hHd, hHdr, hBO.trans hOHd⟩, ?_⟩
-  rcases hO with ⟨hOS, hrO, W, hWS, hWv, hOW⟩ | hO
-  swap
-  · exact Or.inr (hBO.trans hO)
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  rcases SA.anc_total hU hBO (hrO.mono hΦU) with h | h
-  · exact Or.inr h
-  have hBOΦ := frame_anc_of_between hU hΦU hrO h hBO
-  exact Or.inl ⟨SA.voterBlockTree_anc hr hy hc O hOS B hBOΦ,
-    SA.anc_tree_of_anc_U hU hΦ hΦU (SA.mem_of_anc hrO hOS.1) h (SA.mem_of_anc hBOΦ hOS.1),
-    W, hWS, hWv, hBOΦ.trans hOW⟩
 
 /-! ### The clean slow transfer -/
 
@@ -1101,37 +1015,6 @@ theorem ResetPremisesUpTo.latest_votes_of_recent_result {b t : Time}
   exact hp.late_result_prefix_votes_before hc hx hres hBC hrb hts hdomain hstored
     q (hqt.trans htb) z hz ell e hcast (he ▸ hsL)
 
-/-- Late raw-result prefixes are extended by every later honest cast, without a
-source-cut ordering, high-origin, no-veto, or slow-lock premise. -/
-theorem late_result_prefix_votes
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) :
-    ∀ y ∈ H, ∀ i ell e, SA.CastAt tr.projAC y i ell e →
-      s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  intro y hy i ell e hcast hsi
-  exact late_result_prefix_votes_before hp hc (max (tr.time r) (tr.time i)) hx hres hBC hs
-    (le_max_left _ _) i (le_max_right _ _) y hy ell e hcast hsi
-
-/-- Compare using an already-cast honest vote within `Q`, rather than manufacturing a
-future vote. Whole-run reset premises remain in the transfer dependencies. -/
-theorem clean_source_compatible_high_origin_of_vote_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    (Q : Time) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrQ : tr.time r ≤ Q)
-    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g v q m O)
-    {z : Fin sp.n} (hz : z ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC z j ell e)
-    (hjQ : tr.time j ≤ Q) (hsl : s < e.msg.slot) (hml : m < e.msg.slot) :
-    Compatible (tr.HonestBlocks H) B O := by
-  have hB := clean_source_votes_before hp hc Q hx hsource hs hrQ j hjQ z hz ell e hv hsl
-  exact target_compatible_older_origin hp ho hz ⟨ell, hv⟩ rfl hml hB
-
 /-- A clean raw source and any high origin share a later honest vote head. This uses
 the already proved clean-source transfer, rather than assuming support at a source gate. -/
 theorem clean_source_compatible_high_origin
@@ -1255,64 +1138,6 @@ theorem reset_frame_relay
   · exact reset_accept_frame hp hc hx hy ha hcy hg
       (by have := hp.run.time_mono hk; change tr.time k ≤ tr.time q at this; linarith) hF
 
-/-- A held target above a high seed is either a candidate at the actual call or
-covered by a strictly earlier high origin. No frozen-tree transport is required. -/
-theorem held_target_candidate_or_high_origin_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y v : Fin sp.n} (hy : y ∈ H) {i q m : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
-    {P S : SA.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
-    (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocks H) S P)
-    (hcompare : ∀ x r b B, r < i → HighOrigin tr H g x r b B →
-      Compatible (tr.HonestBlocks H) P B) :
-    ell.frame.AncestorCandidate P ∨
-      ∃ x r b B, r < i ∧ HighOrigin tr H g x r b B ∧ Anc (tr.HonestBlocks H) P B := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hU := hr.coherent
-  have hPy := frame_tree_subset hp hy hcall hPt
-  have hSy := mem_tree_of_anc hp hy hSP hPy
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
-  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
-    hp.run hp.healthy hp.noColl a hp.reset
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
-  have hroot : Compatible (tr.HonestBlocks H) ell.frame.fcRoot P := by
-    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
-    · exact low_root_of_held_seed_at_call hp hy hPy hy hseed hcall hSy hlow
-        (Or.inr hSP) (fun _ => hPt)
-    · exact high_J_root_of_held_at_call_before hp hy hPy hy hcall (by omega) hcompare
-  by_cases hPF : Anc (tr.HonestBlocks H) P ell.frame.fcRoot
-  · exact Or.inl (Or.inl (SA.anc_tree_of_anc_U hU hPhi hPhiU hPt hPF hPhi.fcRoot_mem))
-  have hFP := hroot.resolve_right hPF
-  have hFPf := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hFP hPt
-  by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
-  · have hPv : P ∈ ell.frame.viableHeads := by
-      have hfr := Compose.frame_of_projAC hp.run hy hcall
-      have hPt' := hPt
-      rw [hfr] at hPt' hFPf ⊢
-      exact ⟨hPy, hPt'.2, hFPf.mono (fun X hX => hX.1), hfloor⟩
-    exact Or.inl (Or.inr ⟨hPt, hFPf, P, hPt, hPv, .refl⟩)
-  obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := highOrigin_mem hp hseed
-  have hSh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hSP hPy)
-  have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
-    rw [σ_eq_run hp hseed.1 hy hSs hSy]
-    omega
-  obtain ⟨x, r, b, B, E, hri, ho, -, hE, hEB, -, hEf⟩ :=
-    high_floor_source_of_row_bound hp hseed hy (u := sp.slot (tr.time i) + 1)
-      (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
-        obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
-        have ht : sp.ts l ≤ tr.time i :=
-          (ts_le_of_fastLock hp hfl).trans (hp.run.time_mono (by omega))
-        have hlabel : (l : Int) ≤ sp.slot (tr.time i) :=
-          (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).mp ht
-        omega)
-      (fun x r b B _ ho x' r' b' B' _ ho' => hret.comparable x r b B x' r' b' B' ho ho')
-      (fun x r b B _ ho => hret.comparable v q m S x r b B hseed ho) hSf
-  refine Or.inr ⟨x, r, b, B, hri, ho, ?_⟩
-  rcases hcompare x r b B hri ho with h | h
-  · exact h
-  · have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy (hEB.trans h) hPy)
-    omega
-
 /-- A floor above a held target above a high seed has an actual earlier honest report
 extending the target with strictly greater height at the reporter's cut. -/
 theorem held_target_high_floor_report_before
@@ -1364,83 +1189,6 @@ theorem held_target_high_floor_report_before
   refine ⟨x, ho.1, j, ell, C, by omega, hreport, hPC, ?_⟩
   rw [← hEh, σ_eq_run hp ho.1 hy hPx hPy, σ_eq_run hp ho.1 hy hE' hE]
   omega
-
-/-- An actual honest vote within the service horizon compares a late result prefix
-with an older-labelled origin, without manufacturing a later vote. -/
-theorem late_result_prefix_compatible_high_origin_of_vote_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    (Q : Time) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrQ : tr.time r ≤ Q)
-    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g v q m O)
-    {z : Fin sp.n} (hz : z ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.CastAt tr.projAC z j ell e)
-    (hjQ : tr.time j ≤ Q) (hsl : s < e.msg.slot) (hml : m < e.msg.slot) :
-    Compatible (tr.HonestBlocks H) B O := by
-  have hB := late_result_prefix_votes_before hp hc Q hx hres hBC hs hrQ j hjQ z hz ell e hv hsl
-  exact target_compatible_older_origin hp ho hz ⟨ell, hv⟩ rfl hml hB
-
-/-- A late raw-result prefix and any high origin share a later honest vote head. -/
-theorem late_result_prefix_compatible_high_origin
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s)
-    {v : Fin sp.n} {q m : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g v q m O) : Compatible (tr.HonestBlocks H) B O := by
-  have hS := healthy_base_of_reset_catch hp hc
-  let n := max s m + 1
-  have htime : SA.gbar g + 4 * sp.Δ ≤ sp.ts n := by
-    have ht := (clean_source_timing hp (show cleanLabel sp a + sp.k + 2 ≤ s by
-      have := sp.two_le_k; omega)).2
-    exact ht.trans ((SA.ts_le_iff sp).mpr (by dsimp [n]; omega))
-  obtain ⟨j, e, ⟨ell, hcast⟩, hes⟩ := SA.honest_votes_in_slot hS htime x hx
-  have hB := late_result_prefix_votes hp hc hx hres hBC hs x hx j ell e hcast
-    (by dsimp [n] at hes; omega)
-  exact target_compatible_older_origin hp ho hx ⟨ell, hcast⟩ hes
-    (by dsimp [n]; omega) hB
-
-/-- A unanimous late vote head extends a high reset seed. -/
-theorem high_seed_below_unanimous
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H) {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ tr.HonestBlocks H) (hs : cleanLabel sp a + sp.k + 2 ≤ s)
-    (hun : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s → e.msg.head = P.root) :
-    ∃ v q m S, HighOrigin tr H g v q m S ∧ Anc (tr.HonestBlocks H) S P := by
-  have hS := healthy_base_of_reset_catch hp hc
-  obtain ⟨v, q, m, S, ho, hm⟩ := reset_seed hp
-  have hms : m < s := by rw [cleanLabel_eq] at hs; omega
-  have htime : SA.gbar g + 4 * sp.Δ ≤ sp.ts s :=
-    (clean_source_timing hp hs).2.trans ((SA.ts_le_iff sp).mpr (by have := sp.two_le_k; omega))
-  obtain ⟨i, e, ⟨ell, hcast⟩, hes⟩ := SA.honest_votes_in_slot hS htime x hx
-  obtain ⟨⟨D, hD, hDr, hSD⟩, -⟩ := (height_scoped_retention sp ro proposer dg H tr g ΔF
-    hp.run hp.healthy hp.noColl a hp.reset).votes v q m S ho x hx i ell e hcast (by omega)
-  obtain rfl : D = P := hS.run.localRun.coherent.1 hD hP
-    (hDr.trans (hun x hx i e ⟨ell, hcast⟩ hes))
-  exact ⟨v, q, m, S, ho, hSD⟩
-
-/-- A late unanimous result is a candidate at its own update or has a covering high origin. -/
-theorem unanimous_result_candidate_or_high_origin
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hu : SA.UpdateAt tr.projAC x i s ell)
-    (hconf : SA.getConfirmation sp (tr.projAC.state x i) ell.frame s = some P)
-    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s)
-    (hun : ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = s → e.msg.head = P.root) :
-    ell.frame.AncestorCandidate P ∨
-      ∃ v q m S, q < i ∧ HighOrigin tr H g v q m S ∧ Anc (tr.HonestBlocks H) P S := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
-  have hPt : P ∈ ell.frame.tree := (SA.deepest_mem hconf).1.1
-  have hPU := (SA.frameIn_of_callAt hr hx hu.1).2 hPt
-  have hres : SA.ResultAt tr.projAC x i s P
-      (SA.fastCounted sp (tr.projAC.state x i) ell.frame s P) := ⟨ell, hu, hconf, rfl⟩
-  obtain ⟨v, q, m, S, ho, hSP⟩ := high_seed_below_unanimous hp hc hx hPU
-    (by have := sp.two_le_k; omega) hun
-  exact held_target_candidate_or_high_origin_before hp hx hu.1 hPt ho hSP
-    (fun v q m S _ ho => late_result_prefix_compatible_high_origin hp hc hx hres .refl hs ho)
 
 end Consensus.Goldilocks.Healing
 

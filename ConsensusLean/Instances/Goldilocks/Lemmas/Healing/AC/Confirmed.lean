@@ -397,25 +397,6 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp
   · exact hbs
   · rw [hpost]; exact hbs
 
-/-- `late_vote_held_of_frame` under trivial frames: every frame has the same `Φ.F`, which the
-voter's head extends. -/
-theorem late_vote_held (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
-    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ s ∧
-      ∀ c, (c = j ∨ c = j + 1) → e.msg ∈ (tr.state y c).pool s ∧
-        (tr.state y c).voteStamp e.msg < ETime.of (sp.ts s + 2 * sp.Δ) ∧
-        (tr.state y c).blockStamp e.msg.head < ETime.of (sp.ts s + 2 * sp.Δ) := by
-  refine late_vote_held_of_frame hS.toHealthyBase hy hc hs ht hx hv hes fun Hd hHd hHdr => ?_
-  have hr := hS.run.localRun
-  obtain ⟨ℓx, hcx, hex⟩ := hv
-  obtain ⟨hΦx, hΦxU⟩ := frameIn_of_callAt hr hx hcx
-  obtain ⟨Hx, hHx, hHxr, -⟩ := honest_head_frame hr hx ⟨hcx, hex⟩
-  obtain rfl : Hx = Hd := hr.coherent.1 (hΦxU hHx) hHd (hHxr.trans hHdr.symm)
-  rw [trivial_F_eq hS hy hx hc hcx]
-  exact (hΦx.rooted.2 Hx hHx).mono hΦxU
-
 /-- The resolution time of a vote whose head is a block of the frame of a slot at most the
 vote's is the later of the two stamps. -/
 theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
@@ -434,22 +415,6 @@ theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   split_ifs
   · omega
   · exact max_lt h1 h2
-
-/-- Strict vote evidence and an accepted head resolve strictly before the same cutoff.
-Restarts and a possible same-cut block receipt remain explicit. -/
-theorem resolutionTime_lt_of_held_accepted
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ell)
-    {v : Vote sp.n} {Hd : Blk sp.n FGP} {F : Time}
-    (hv : HeldBefore (tr.state y i) v F) (hHd : Hd ∈ ell.frame.tree)
-    (hroot : Hd.root = v.head) (hslot : Hd.slot ≤ v.slot)
-    (hacc : AcceptedBefore tr y Hd F)
-    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < F)
-    (hi : F ≤ tr.time i ∨ ell.call ≠ .block Hd) :
-    resolutionTime (tr.state y i) ell.frame v < ETime.of F := by
-  have hb := blockStamp_lt_of_acceptedBefore sp hr hy hc hHd hacc hrs hi
-  rw [hroot] at hb
-  exact resolutionTime_lt_of (frameIn_of_callAt hr hy hc).1 hHd hroot hslot hv.2 hb
 
 /-- **The proposal is relayed**: an honest proposal `P` of slot `p` (with `ḡ ≤ t_p`) is in the
 frame of every honest call from `t_p + Δ` on, accepted before `t_p + Δ`. -/
@@ -873,13 +838,6 @@ private theorem lc_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
 private theorem pool_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation updateLatestConfirmed; split
-  · rfl
-  · split_ifs <;> rfl
-
-private theorem pool_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    (updateConfirmation sp A Φ t s).pool = A.pool := by
-  unfold updateConfirmation updateLatestConfirmed; dsimp only
-  split
   · rfl
   · split_ifs <;> rfl
 

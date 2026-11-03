@@ -87,53 +87,6 @@ theorem window_justifies (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time
         hfin _ hpH k Pr hPr hh hT⟩
   exact ⟨hj.trans hh, hJ.trans hT, hF⟩
 
-/-- `window_justifies` with N0⁺: under `HealedRecords` from `h₀ ≤ h`, every honest row at `h` is
-a target (`HealedRecords.sign_target`), so the row supply needs no `timeout = false`. -/
-theorem window_justifies_healed (hrun : GoldilocksRun proposer dg H tr) {g ΔF v gR : Time}
-    {h₀ : Nat} {E : Nat → SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : Healing.HealedRecords tr H gR h₀ E)
-    (hs : Healing.HSShared tr H dg g ΔF) (hv : gbar g ≤ v) {s₀ gM s₁ : Nat}
-    (hM4 : ∀ s, s₀ ≤ s → ∃ s', s ≤ s' ∧ s' < s + gM ∧
-      ∃ P, Healing.HonestProposalRun tr H proposer s' P)
-    (hs₁ : s₀ ≤ s₁) (hvs : v + ΔF ≤ sp.ts s₁) {h T : Nat} (hh₀ : h₀ ≤ h)
-    (hexp : ∀ p ∈ H, ∀ k X Pr, tr.ProposesAt p k X → s₁ ≤ X.slot →
-      X.parent = some Pr.root → Pr ∈ (tr.state p k).fg.tree →
-      h < ((tr.state p k).fg.σ Pr.root).h ∨
-        (((tr.state p k).fg.σ Pr.root).h = h ∧ ((tr.state p k).fg.σ Pr.root).Th = T))
-    (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = h ∧ att.T = T ∧
-      ∀ p ∈ H, ∀ k' Pr, Pr ∈ (tr.state p k').fg.tree →
-        ((tr.state p k').fg.σ Pr.root).h = h → ((tr.state p k').fg.σ Pr.root).Th = T →
-        ((tr.state p k').fg.σ Pr.root).previousHeightJustified →
-        (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J) ∈
-          ((tr.state p k').fg.σ Pr.root).pending →
-        att.fin = some (((tr.state p k').fg.σ Pr.root).hj, ((tr.state p k').fg.σ Pr.root).J)) :
-    ∃ s', s₁ ≤ s' ∧ s' < s₁ + gM ∧ proposer s' ∈ H ∧ ∃ k X Pr,
-      tr.ProposesAt (proposer s') k X ∧ X.slot = s' ∧ X.parent = some Pr.root ∧
-      Pr ∈ (tr.state (proposer s') k).fg.tree ∧
-      (h < ((tr.state (proposer s') k).fg.σ Pr.root).h ∨
-        (((tr.post k).fg.σ X.root).hj = h ∧ ((tr.post k).fg.σ X.root).J = T ∧
-          (((tr.state (proposer s') k).fg.σ Pr.root).previousHeightJustified →
-            ((tr.post k).fg.σ X.root).hF =
-              ((tr.state (proposer s') k).fg.σ Pr.root).hj))) :=
-  window_justifies hrun hs hv hM4 hs₁ hvs hexp S hSH hS fun y hy => by
-    obtain ⟨k, att, hsg, hkv, hah, haT, hfin⟩ := hsig y hy
-    exact ⟨k, att, hsg, hkv, hah, haT,
-      hR.sign_target hrun (hSH y hy) hsg (hah ▸ hh₀), hfin⟩
-
-/-- **L5.4 step 1**: with `s₁ = u + x + c` and `x ≤ g − 1`, a slot `s' < s₁ + g` is at most
-`u + c + 2(g − 1)` (`Λ_J = c + 2(g − 1)`). -/
-theorem theorem_J_slot_le {u x c g s' : Nat} (hx : x + 1 ≤ g) (hs' : s' < u + x + c + g) :
-    s' ≤ u + (c + 2 * (g - 1)) := by
-  omega
-
-/-- **L5.3 step 6 as a window**: with `s₁ = max (s₁′ + c) (u₀ + δ_t)`, `s₁′ ≤ s_h + g`,
-`u₀ ≤ s_h` and `δ_t ≥ c + g − 1`, a slot `s' < s₁ + g` is at most `s_h + δ_t + g`
-(`Healing.handoff_slot_le`). -/
-theorem window_slot_handoff {sh s1 u0 s' c g δt : Nat} (hs1 : s1 ≤ sh + g) (hu0 : u0 ≤ sh)
-    (hs' : s' < max (s1 + c) (u0 + δt) + g) (hδ : c + g ≤ δt + 1) : s' ≤ sh + δt + g :=
-  Healing.handoff_slot_le hs1 hu0 hs' hδ
-
 end Consensus.Goldilocks.Refinement
 
 end

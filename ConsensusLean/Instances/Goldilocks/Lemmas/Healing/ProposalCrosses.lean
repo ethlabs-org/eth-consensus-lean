@@ -208,44 +208,7 @@ theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
   rw [hσX, hσPr]
   exact this
 
-/-- **L5.3 step 5 from signed rows** (`cross_of_rows` with delivery from `GST(g)`): as
-`cross_of_rows`, with each row signed by `v`, `ḡ ≤ v`, `v + Δ_F ≤ t_{kX}`, and the parent of `X`
-any block with root `X.parent` (it is held, `proposal_parent_held`). -/
-theorem cross_of_signed_rows (hrun : GoldilocksRun proposer dg H tr) {g ΔF v : Time}
-    (hs : HSShared tr H dg g ΔF) (hv : gbar g ≤ v)
-    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hpar : X.parent = some Pr.root)
-    (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧
-      att.h = ((tr.state p kX).fg.σ Pr.root).h ∧ att.T = ((tr.state p kX).fg.σ Pr.root).Th)
-    (hage : ((tr.state p kX).fg.σ Pr.root).ThSlot + sp.toParams.fg.δt ≤ X.slot) :
-    ((tr.post kX).fg.σ X.root).h = ((tr.state p kX).fg.σ Pr.root).h + 1 ∧
-      ((tr.post kX).fg.σ X.root).Th = X.root ∧
-      (((tr.post kX).fg.σ X.root).previousHeightJustified ↔
-        ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h) ∧
-      (((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h →
-        ((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
-        ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
-  obtain ⟨Pr', hpar', hPr'⟩ := proposal_parent_held hrun hs.noColl hp hX
-  have hr : Pr'.root = Pr.root := Option.some.inj (hpar'.symm.trans hpar)
-  have := cross_of_rows hrun hs.noColl hp hX hpar' hPr' S hSH hS
-    (fun y hy => by
-      obtain ⟨k, att, hsg, hk, hah, haT⟩ := hsig y hy
-      exact ⟨k, att, hsg, by rw [hr]; exact hah, by rw [hr]; exact haT,
-        rows_delivered hs hv hp hX hvx (hSH y hy) hsg hk⟩)
-    (by rw [hr]; exact hage)
-  rw [hr] at this
-  exact this
-
 end Run
-
-/-- **L5.3 step 6**: the first honest slot `s** ≥ max(s₁′ + c, u₀ + δ_t)` is at most `g − 1`
-after that bound (M4, premise `hss`); with `s₁′ ≤ s_h + g`, `u₀ ≤ s_h` and `δ_t ≥ c + g − 1`,
-`s** ≤ s_h + δ_t + g`. -/
-theorem handoff_slot_le {sh s1 u0 sss c g δt : Nat} (hs1 : s1 ≤ sh + g) (hu0 : u0 ≤ sh)
-    (hss : sss + 1 ≤ max (s1 + c) (u0 + δt) + g) (hδ : c + g ≤ δt + 1) :
-    sss ≤ sh + δt + g := by
-  omega
 
 end Consensus.Goldilocks.Healing
 

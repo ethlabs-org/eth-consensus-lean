@@ -1005,40 +1005,6 @@ theorem selValid_poll (hsel : rho.SelValid) : rho.sel .poll = Finset.univ := by
   change ((family S (pubOf E)).skel.pollSel).Admits _ at h
   exact h
 
-/-- **Pending bodies go out at the next tick.** At a tick of an honest node, every body queued in
-its outbox before the tick (at most one vote, `outbox_inv`) is released, signed by the node's own
-key in the poll role, by the tick's first poll step. -/
-theorem pending_released (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[j]? = some (.tick v t)) :
-    ∀ b ∈ (stateAt S rho hn v j).outbox, pollObj S rho v b ∈ rho.releasesAt j := by
-  intro b hb
-  have hm := List.mem_of_getElem? he
-  have ht : 0 ≤ t := (hv.in_horizon _ hm).1
-  obtain ⟨⟨hvote, hlen⟩, -⟩ := outbox_inv S rho hn hv v hv' j
-  have hone : (stateAt S rho hn v j).outbox = [b] := by
-    match hq : (stateAt S rho hn v j).outbox with
-    | [] => rw [hq] at hb; cases hb
-    | [b'] => rw [hq, List.mem_singleton] at hb; rw [hb]
-    | _ :: _ :: _ => rw [hq] at hlen; simp at hlen
-  simp only [Model.Run.releasesAt, he]
-  rw [rho.tick_of_awake _ v t (hv.tick_awake v t hm), duties_eq S t ht]
-  unfold dutiesInit
-  simp only [List.cons_append]
-  refine List.mem_append_left _ ?_
-  erw [Model.Run.runDuties_cons]
-  refine List.mem_append_left _ ?_
-  have hsel : rho.ownKey v ∈ rho.sel .poll := by
-    rw [selValid_poll S rho hv.selValid]; exact Finset.mem_univ _
-  refine dutyStep_poll_rel S rho hn v _ _ hsel (b := b) ?_ ?_
-  · have hf := fgDue_eq_false S rho hn v j
-    change (pollPre { stateAt S rho hn v j with now := t }).outbox.head? = some b
-    unfold pollPre
-    rw [show ({ stateAt S rho hn v j with now := t } : State _ _).fgDue = false from hf]
-    simp only [Bool.false_eq_true, ite_false]
-    rw [hone]; rfl
-  · obtain ⟨w, rfl⟩ := hvote b hb
-    exact protects_of_not_att S _ _ _ (fun k w' h => by cases h)
-
 /-- A delivery's poll drains its at-most-one queued vote. -/
 private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     {o : (Model.protoOf (compiled (family S)) E).Object}

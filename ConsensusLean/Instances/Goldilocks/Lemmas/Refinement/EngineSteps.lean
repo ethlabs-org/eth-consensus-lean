@@ -59,13 +59,6 @@ abbrev shapeOf (nd : Model.Node (Model.protoOf (compiled (family S)) E)) :
   nd.st.1 hn
 
 omit [DecidableEq V] in
-/-- `recordOwn` of the engine node is the shape's `recordOwn`. -/
-theorem shapeOf_recordOwn (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (c : (Model.protoOf (compiled (family S)) E).Object) (hs) :
-    shapeOf S hn ⟨(Model.protoOf (compiled (family S)) E).recordOwn nd.st c hs, nd.seen ++ [c]⟩ =
-      recordOwn (shapeOf S hn nd) c hs := rfl
-
-omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` is preserved by `releaseAll`: the
 engine records each released object with `recordOwn` and drops the rest. -/
 theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
@@ -183,21 +176,6 @@ theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
   · exact releaseAll_pres S rho hn Q hrec _ _ _
       (runDuties_pres S rho hn Q hrec hprop htick hpoll v _ _ h)
   · exact h
-
-omit [DecidableEq V] in
-/-- The engine's `process` is the shape's `process`. -/
-theorem shapeOf_process (nd : Model.Node (Model.protoOf (compiled (family S)) E))
-    (o : (Model.protoOf (compiled (family S)) E).Object) (hs) :
-    ((Model.protoOf (compiled (family S)) E).process nd.st o hs).1 hn =
-      process (nd.st.1 hn) o hs := rfl
-
-omit [DecidableEq V] in
-/-- The engine's `restore` of the durable state is the shape's `restore`. -/
-theorem shapeOf_restore (k : Fin (Fintype.card V))
-    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (t : Time) :
-    ((Model.protoOf (compiled (family S)) E).restore k
-      ((Model.protoOf (compiled (family S)) E).durable nd.st) t).1 hn =
-      restore k (nd.st.1 hn) t := rfl
 
 omit [DecidableEq V] in
 /-- Running two lists of duties in sequence is running their concatenation. -/

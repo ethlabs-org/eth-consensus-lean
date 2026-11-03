@@ -201,23 +201,6 @@ private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp
   · linarith [h₂.1]
   all_goals exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
 
-private theorem receipt_tryVote_votes (self : Fin sp.n) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) {t : Time} (hj : joined sp A t) (hs : 0 < sp.slot t)
-    (hlt : t < sp.ts (sp.slot t) + sp.Δ) (hready : voteReady sp Φ (sp.slot t)) :
-    A.votedSlot = sp.slot t ∨ ∃ e ∈ (tryVote sp self A Φ t).2,
-      e.msg.slot = sp.slot t := by
-  unfold tryVote
-  dsimp only
-  split_ifs with h₁ h₂
-  · rcases h₁ with h | h | h
-    · exact absurd hj h
-    · exact Or.inl h
-    · linarith
-  · rcases h₂.2 with hzero | hn
-    · omega
-    · exact False.elim (hn hready)
-  all_goals exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
-
 private theorem ts_succ_add (s : Nat) (a : Time) :
     sp.ts (s + 1 : Nat) + a = sp.ts s + 4 * sp.Δ + a := by
   simp only [SAParams.ts]; push_cast; ring
@@ -511,28 +494,9 @@ theorem syncAC_of_window (hrun : GoldilocksRun proposer dg H tr) (hwin : SleepyW
         fun x hx i B hB hw => hs.relay x hx i B hB ⟨ha.trans hw.1, hw.2.trans hb⟩,
         fun x hx i a' h hw => hs.attestation x hx i a' h ⟨ha.trans hw.1, hw.2.trans hb⟩⟩)
 
-/-- Under `SleepyFrom`, `f < n/2` (`f < h_{t_{s₀}}`). -/
-theorem two_faults_lt_of_from (hfrom : SleepyFrom tr H ΔF s₀) : 2 * Hᶜ.ncard < sp.n :=
-  two_faults_lt_of_window (hfrom.window (b := sp.ts s₀) le_rfl)
-
 /-- Under the prefix premises up to `b ≥ 0`, `f < n/2` (`f < h_0`). -/
 theorem two_faults_lt_of_prefix (hpre : SleepyPrefix tr H ΔF b) : 2 * Hᶜ.ncard < sp.n :=
   two_faults_lt_of_window hpre.window
-
-/-- Under the prefix premises up to `b`, more than `f` honest validators are awake and joined at
-`t_s + Δ ≤ b`. -/
-theorem faults_lt_awake_joined_upTo (hpre : SleepyPrefix tr H ΔF b) (s : Nat)
-    (hs : sp.ts s + sp.Δ ≤ b) :
-    Hᶜ.ncard <
-      {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard :=
-  faults_lt_awake_joined_win hpre.window (Nat.zero_le s) hs
-
-/-- Under the prefix premises up to `b`, `Sync[a, b']` holds of the AC projection for
-`0 ≤ a` and `b' ≤ b − Δ`. -/
-theorem syncAC_of_prefix (hrun : GoldilocksRun proposer dg H tr) (hpre : SleepyPrefix tr H ΔF b)
-    {a b' : Time} (ha : 0 ≤ a) (hb : b' ≤ b - sp.Δ) :
-    SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) a b' tr.projAC :=
-  syncAC_of_window hrun hpre.window (by rwa [ts_natCast_zero]) hb
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
@@ -595,66 +559,6 @@ theorem vote_of_awake_joined (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
       omega
   · refine ⟨j, e, ⟨ℓ, hc, hemit ▸ he'⟩, ?_, htj.le⟩
     rwa [htj, hslot] at hes
-
-/-- A ready message or block receipt before the slot's vote tick has cast a vote by that call. -/
-theorem vote_of_ready_receipt (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hs : 0 < s) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
-    (hkind : (∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B)
-    (hslot : sp.slot (tr.time i) = s) (hlt : tr.time i < sp.ts s + sp.Δ)
-    (hj : tr.JoinedAt y (tr.time i)) (hready : SA.voteReady sp ℓ.frame s) :
-    ∃ k ≤ i, ∃ e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧
-      tr.projAC.time k ≤ tr.time i := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hnr : ¬ tr.RestartAt y i := by
-    rintro ⟨ℓ', hc', hrest⟩
-    have heq : ℓ' = ℓ := by
-      have h := hc'.2.symm.trans (projAC_callAt.mp hc).2
-      injection h with h
-      exact Cut.ac.inj h
-    subst ℓ'
-    rcases hkind with ⟨m, hm⟩ | ⟨B, hB⟩ <;> simp_all
-  have hjo : SA.joined sp (tr.projAC.state y i) (tr.time i) := by
-    rw [projAC_state hrun.toLocalRun hy i]
-    exact ((joined_projection sp ro dg H tr proposer hrun y hy _).2.1 i
-      ⟨_, projAC_callAt.mp hc⟩ hnr rfl).1 hj
-  have prior : (tr.projAC.state y i).votedSlot = s →
-      ∃ k ≤ i, ∃ e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧
-        tr.projAC.time k ≤ tr.time i := by
-    intro hv
-    rcases SA.votedSlot_cast hr hy i with h | ⟨k, hk, e, he, hes⟩
-    · omega
-    · exact ⟨k, hk.le, e, he, by omega, hr.time_mono hk.le⟩
-  have he := congrArg Prod.snd (hr.exec i ℓ hc.2 (hc.1 ▸ hy))
-  rw [hc.1] at he
-  have receipt : ∀ A : SA.SAState sp.n,
-      A.votedSlot = (tr.projAC.state y i).votedSlot →
-      A.restartTime = (tr.projAC.state y i).restartTime →
-      (SA.tryVote sp y A ℓ.frame (tr.time i)).2 = ℓ.emits →
-      ∃ k ≤ i, ∃ e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧
-        tr.projAC.time k ≤ tr.time i := by
-    intro A hv hrst hem
-    have hjA : SA.joined sp A (tr.time i) := by
-      simpa only [SA.joined, hrst] using hjo
-    rcases SA.receipt_tryVote_votes y A ℓ.frame hjA (by omega)
-        (by simpa only [hslot] using hlt) (by simpa only [hslot] using hready) with h | ⟨e, he, hes⟩
-    · exact prior (by simpa only [hv, hslot] using h)
-    · exact ⟨i, le_rfl, e, ⟨ℓ, hc, hem ▸ he⟩, by simpa only [hslot] using hes, le_rfl⟩
-  rcases hkind with ⟨m, hm⟩ | ⟨B, hB⟩
-  · rw [hm] at he
-    change (SA.acOnMessage sp y (tr.projAC.state y i) ℓ.frame (tr.time i) m).2 = ℓ.emits at he
-    apply receipt (SA.optimisticConfirmation sp (SA.admitVote sp (tr.projAC.state y i)
-      (tr.time i) m) ℓ.frame (tr.time i))
-    · rw [(SA.optimistic_keeps _ _ _).1, (SA.admitVote_keeps _ _ _).1]
-    · rw [(SA.optimistic_keeps _ _ _).2, (SA.admitVote_keeps _ _ _).2]
-    · exact he
-  · rw [hB] at he
-    change (SA.acOnBlock sp y (tr.projAC.state y i) ℓ.frame (tr.time i) B).2 = ℓ.emits at he
-    apply receipt (SA.optimisticConfirmation sp (SA.blockReceipt sp (tr.projAC.state y i)
-      (tr.time i) B) ℓ.frame (tr.time i))
-    · rw [(SA.optimistic_keeps _ _ _).1, (SA.blockReceipt_keeps _ _ _).1]
-    · rw [(SA.optimistic_keeps _ _ _).2, (SA.blockReceipt_keeps _ _ _).2]
-    · exact he
 
 /-- **The honest validators awake and joined at `t_s + Δ` are participants** of an honest update
 of slot `s`: their slot-`s` votes reach the writer, whose restarts are at or before `t_s`. -/
@@ -829,21 +733,6 @@ theorem honest_vote_exists_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : N
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s :=
   honest_vote_exists_win hrun hnc hpre.window (Nat.zero_le s) hs
 
-/-- **Every slot from `s₀` has an honest vote** under `SleepyFrom`. -/
-theorem honest_vote_exists_from (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hfrom : SleepyFrom tr H ΔF s₀) {s : Nat} (hs₀ : s₀ ≤ s) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s :=
-  honest_vote_exists_win hrun hnc (hfrom.window (b := sp.ts s + sp.Δ)
-    ((ts_le_ts hs₀).trans (le_add_of_nonneg_right sp.toParams.hΔ.le))) hs₀ le_rfl
-
-/-- **Every slot has an honest vote**: an honest validator awake and joined at `t_s + Δ` (there
-are more than `f ≥ 0` of them) votes in slot `s`. -/
-theorem honest_vote_exists (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) (s : Nat) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s :=
-  honest_vote_exists_upTo hrun hnc (hsl.prefix (le_max_right (sp.ts s + sp.Δ) 0)) s
-    (le_max_left _ _)
-
 /-- `honest_supporter_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
 private theorem honest_supporter_win (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hwin : SleepyWindow tr H ΔF s₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -967,18 +856,6 @@ theorem honest_supporter_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
   honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC
-
-/-- **§2.1 from `s₀`, an origin of label `s ≥ s₀` has an honest supporter**: an honest slot-`s`
-vote whose head extends it, under `SleepyFrom`. -/
-theorem honest_supporter_from (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hfrom : SleepyFrom tr H ΔF s₀) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginFrom tr H C s s₀) :
-    ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
-  have ⟨b, hb⟩ := hC.origin.exists_within
-  have ⟨x, hx, j, e, hv, _, hs, hext⟩ := honest_supporter_win hrun hnc
-    (hfrom.window (le_max_right b (sp.ts s₀))) hC.le (hb.mono (le_max_left b _))
-  ⟨x, hx, j, e, hv, hs, hext⟩
 
 /-- **§2.1, an origin has an honest supporter**: an honest slot-`s` vote whose head extends it. -/
 theorem honest_supporter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -1131,27 +1008,6 @@ theorem same_label_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc 
     Compatible (tr.HonestBlocks H) C C' :=
   same_label_compatible_win hrun hnc hpre.window (Nat.zero_le s) hC hC'
 
-/-- **§2.2 from `s₀`, origins of one label `s ≥ s₀` are compatible** under `SleepyFrom`. -/
-theorem same_label_compatible_from (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hfrom : SleepyFrom tr H ΔF s₀) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginFrom tr H C s s₀) (hC' : OriginFrom tr H C' s s₀) :
-    Compatible (tr.HonestBlocks H) C C' :=
-  have ⟨b, hb⟩ := hC.origin.exists_within
-  have ⟨b', hb'⟩ := hC'.origin.exists_within
-  same_label_compatible_win hrun hnc (hfrom.window (le_max_right (max b b') (sp.ts s₀))) hC.le
-    (hb.mono ((le_max_left b b').trans (le_max_left _ _)))
-    (hb'.mono ((le_max_right b b').trans (le_max_left _ _)))
-
-/-- **§2.2, origins of one label are compatible** (RR, RO, OO). -/
-theorem same_label_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : Origin tr H C s) (hC' : Origin tr H C' s) : Compatible (tr.HonestBlocks H) C C' :=
-  have ⟨b, hb⟩ := hC.exists_within
-  have ⟨b', hb'⟩ := hC'.exists_within
-  same_label_compatible_upTo hrun hnc (hsl.prefix (le_max_right (max b b') 0))
-    (hb.mono ((le_max_left b b').trans (le_max_left _ 0)))
-    (hb'.mono ((le_max_right b b').trans (le_max_left _ 0)))
-
 /-- Two blocks below the head of one vote are compatible. -/
 private theorem compatible_of_voteExtends (hU : Coherent (tr.HonestBlocks H)) {v : Vote sp.n}
     {C C' : SA.Blk sp.n (List (FG.Att sp.n))} (h : SA.VoteExtends (tr.HonestBlocks H) v C)
@@ -1225,28 +1081,6 @@ theorem origins_below_succ (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
     (hsl.prefix (le_max_right (max b b') 0)) (hP.upTo _) (hV.upTo _)) C j C' j' hj hj'
     (hb.mono ((le_max_left b b').trans (le_max_left _ 0)))
     (hb'.mono ((le_max_right b b').trans (le_max_left _ 0)))
-
-/-- **Extending the origin frontier from `s₀`**: `P_s` and `V_s` from `s₀` give `P_{s+1}` from
-`s₀`, under `SleepyFrom`. -/
-theorem origins_below_succ_from (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hfrom : SleepyFrom tr H ΔF s₀) {s : Nat} (hP : OriginsBelowFrom tr H s₀ s)
-    (hV : VotesBelowFrom tr H s₀ s) : OriginsBelowFrom tr H s₀ (s + 1) := by
-  have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
-  rw [originsBelowFrom_iff] at hP ⊢
-  -- an origin of label `s` and one of label `j < s` are below the honest supporter's head
-  have hnew : ∀ C C' j, j < s → OriginFrom tr H C s s₀ → OriginFrom tr H C' j s₀ →
-      Compatible (tr.HonestBlocks H) C C' := by
-    intro C C' j hj hC hC'
-    obtain ⟨x, hx, i, e, hv, hs, hext⟩ := honest_supporter_from hrun hnc hfrom hC
-    exact compatible_of_voteExtends hU hext
-      (votesBelowFrom_iff.1 hV C' j hC' x hx i e hv (by omega) (by omega))
-  intro C j C' j' hj hj' hC hC'
-  rcases Nat.lt_succ_iff_lt_or_eq.1 hj with hj | rfl <;>
-    rcases Nat.lt_succ_iff_lt_or_eq.1 hj' with hj' | rfl
-  · exact hP C j C' j' hj hj' hC hC'
-  · exact Or.symm (hnew C' C j hj hC' hC)
-  · exact hnew C C' j' hj' hC hC'
-  · exact same_label_compatible_from hrun hnc hfrom hC hC'
 
 end Consensus.Goldilocks.Compose
 

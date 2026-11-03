@@ -114,68 +114,6 @@ theorem FrameWindow.finalized_below_descendant {lo hi : Time} {floor : Nat}
     rw [hframe.root_eq y hy j hjlo hjhi hk]
     exact hJ hk
 
-/-- An actual early FG acceptance survives to a later action frame when the common-floor
-witness extends that action's finalized tip. Retention includes restart replay: finalized
-tips at intervening restarts lie below the target tip, hence below Q. -/
-theorem FrameWindow.early_accepted_mem_frame {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
-    (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J Q)
-    {T : Time} (hacc : ∃ k, tr.AcceptAt y k Q ∧ tr.time k < T)
-    (hTi : T ≤ tr.time i) : Q ∈ ell.frame.tree := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  obtain ⟨k, hk, hkt⟩ := hacc
-  obtain ⟨ha, ht, -⟩ := ac_block_after hrun.toLocalRun hy hk
-  have hki : k + 1 ≤ i := by
-    by_contra hn
-    have htime := hr.time_mono (show i ≤ k + 1 by omega)
-    change tr.time i ≤ tr.time (k + 1) at htime
-    rw [ht] at htime
-    linarith
-  apply SA.mem_tree_of_acceptAt sp hr hy ha hki hc
-  rw [Compose.frame_of_projAC hrun hy hc]
-  exact hframe.finalized_below_descendant hrun hnc hf hy hz hz hlo hhi hQ hh hJ hQ
-    Relation.ReflTransGen.refl
-
-/-- Producer form of U-W's vote binder. Actual acceptance before the freeze supplies
-both FG heldness and the strict emission-read-point stamp. The common-floor/J geometry
-is used for retention, rather than assuming arbitrary early blocks survive a restart. -/
-theorem FrameWindow.early_accepted_vote_witness {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hnr : NoRestartAfter tr H (gbar g))
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC y i e)
-    (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J Q)
-    (hacc : ∃ k, tr.AcceptAt y k Q ∧ tr.time k < SA.freeze sp e.msg.slot)
-    (hgf : gbar g < SA.freeze sp e.msg.slot)
-    (hti : SA.freeze sp e.msg.slot ≤ tr.time i) :
-    Q ∈ (tr.state y i).fg.tree ∧
-      e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp e.msg.slot) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  obtain ⟨ell, hc, he⟩ := hv
-  have hQt := hframe.early_accepted_mem_frame hrun hnc hf hy hz hc hlo hhi hQ hh hJ hacc hti
-  refine ⟨mem_tree_of_frame hrun hy hc hQt, ?_⟩
-  apply SA.readPoint_blockStamp_lt_of_acceptedBefore hr hy ⟨hc, he⟩ hQt
-  · obtain ⟨k, hk, hkt⟩ := hacc
-    obtain ⟨ha, ht, -⟩ := ac_block_after hrun.toLocalRun hy hk
-    exact Or.inr ⟨k + 1, ha, by change tr.time (k + 1) < _; rwa [ht]⟩
-  · intro k _ hrs
-    exact (hnr y hy k (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
-  · exact hti
-
 /-- A common-floor witness above X makes X comparable with the target's finalized tip.
 The witness's source cut is arbitrary. -/
 theorem FrameWindow.finalized_comparable_of_witness {lo hi : Time} {floor : Nat}
@@ -268,41 +206,6 @@ theorem honest_votes_before_of_service (hrun : GoldilocksRun proposer dg H tr)
   rw [SA.ts_sub_one]
   change tr.time r ≤ _
   linarith
-
-/-- Finite reset-free service resolves an honest initial-slot vote and its head strictly
-before the next slot's freeze. The caller supplies the receiver's finality ancestry. -/
-theorem late_vote_held_of_service (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hsync : ResetService tr H g ΔF b)
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hnr : NoRestartAfter tr H (gbar g)) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
-    (ht : sp.ts m + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hv : SA.VoteAt tr.projAC x i e) (hes : e.msg.slot = m)
-    (hF : ∀ B ∈ tr.HonestBlocks H, B.root = e.msg.head →
-      Anc (tr.HonestBlocks H) ell.frame.F B) :
-    ∃ B ∈ ell.frame.tree, B.root = e.msg.head ∧ B.slot ≤ m ∧
-      e.msg ∈ (tr.projAC.state y j).pool m ∧
-      (tr.projAC.state y j).voteStamp e.msg < SA.ETime.of (sp.ts m + 2 * sp.Δ) ∧
-      (tr.projAC.state y j).blockStamp e.msg.head < SA.ETime.of (sp.ts m + 2 * sp.Δ) := by
-  refine SA.late_vote_held_of_frame_before
-    (healthy_base_of_service_catch_before hrun hnc hsync hawake hf hcatch)
-    hy hc hm ht hjb ?_ ?_ hx hv hes hF
-  · intro k _ t _
-    apply deadline_le_restarts (a := sp.ts m)
-    intro r _ hrs
-    have hr := hnr y hy r (Compose.projAC_restartAt.mp hrs)
-    change tr.time r ≤ _
-    have := sp.toParams.hΔ
-    linarith
-  · intro k _ hrs
-    have hr := hnr y hy k (Compose.projAC_restartAt.mp hrs)
-    change tr.time k < _
-    have := sp.toParams.hΔ
-    linarith
 
 /-- An accepted descendant puts a floor-viable source in the receiver's frame, even when
 the source was originally witnessed at a later cut. -/
@@ -743,69 +646,6 @@ theorem FrameWindow.finalized_below_viable {lo hi : Time} {floor : Nat}
     have hk := (hframe.kind_iff y hy i hilo hihi).mp ⟨hm, hc⟩
     rw [hframe.root_eq y hy i hilo hihi hk, hframe.root_eq z hz c hclo hchi hk]
   · exact hv
-
-/-- OW-F: in kind F/Contest a stuck anchor is strictly above every honest
-finalized tip at an FS′ cut. H-wit and the anchor's viable candidate share a
-finalized ancestor; the frozen witness excludes the reverse ancestry. -/
-theorem FrameWindow.finalized_strict_below_stuck_anchor {s₀ floor : Nat} {hi : Time}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
-    (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) (hnk : ¬kindJ)
-    (hnr : NoRestartAfter tr H (gbar g))
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {a i c : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
-    (ha : tr.projAC.CallAt y a ell₀) {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e)
-    (halo : sp.ts s₀ ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    (hclo : sp.ts s₀ ≤ tr.time c) (hchi : tr.time c ≤ hi)
-    (hat : tr.time a < SA.freeze sp e.msg.slot)
-    (hgf : gbar g < SA.freeze sp e.msg.slot)
-    (hstuck : ¬ ∃ Q ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Q ∈ ell.frame.viableHeads ∧
-      ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) Q) :
-    Anc (tr.HonestBlocks H) (tr.state z c).fg.F
-      (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) ∧
-      (tr.state z c).fg.F ≠ SA.getAnchor sp e.readPoint ell.frame (tr.time i) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hPhi := SA.frameIn_of_callAt hr hy hc.1
-  let A := SA.getAnchor sp e.readPoint ell.frame (tr.time i)
-  have hilo := halo.trans (hrun.time_mono hai)
-  obtain ⟨B, hB, hvB, hrootB⟩ :=
-    hframe.root_witness_of_earlier_call hrun hnc hf hnk hnr hy hai ha hc halo hihi hat hgf
-  have hvBi := hvB
-  rw [Compose.frame_of_projAC hrun hy hc.1] at hvBi
-  have hFB := hframe.finalized_below_viable hrun hnc hf hz hy hclo hchi hilo hihi hvBi
-  have hAnB : ¬ Anc (tr.HonestBlocks H) A B := by
-    intro h
-    have hAt := (SA.anc_getAnchor hPhi.1
-      (SA.castAt_liveLockBlocks_chain hr hy hc (tr.time i))).1
-    exact hstuck ⟨B, hB, hvB, SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hAt h hB.1⟩
-  have hAm : A ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
-    unfold A SA.getAnchor
-    cases hh : SA.deepest ell.frame
-        (SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot}) with
-    | none => exact (hAnB (by
-        change Anc _ ((SA.deepest _ _).getD _) _
-        rw [hh]; exact hrootB.mono hPhi.2)).elim
-    | some D =>
-      rcases (SA.deepest_mem hh).1 with h | h
-      · exact h
-      · exact (hAnB (by
-          change Anc _ ((SA.deepest _ _).getD _) _
-          rw [hh]; rw [Set.mem_singleton_iff.mp h]; exact hrootB.mono hPhi.2)).elim
-  have hvA : A ∈ ell.frame.viableTree ell.frame.tree := by
-    rcases SA.liveLockBlock_candidate hPhi.1 hAm with h | h
-    · exact h
-    · exact (hAnB (Anc.mono hPhi.2 (h.trans hrootB))).elim
-  obtain ⟨Q, hQ, hvQ, hAQ⟩ := hvA.2.2
-  have hvQi := hvQ
-  rw [Compose.frame_of_projAC hrun hy hc.1] at hvQi
-  have hFQ := hframe.finalized_below_viable hrun hnc hf hz hy hclo hchi hilo hihi hvQi
-  have hcomp := SA.anc_total hr.coherent (hAQ.mono hPhi.2) hFQ
-  have hn : ¬ Anc (tr.HonestBlocks H) A (tr.state z c).fg.F :=
-    fun h => hAnB (h.trans hFB)
-  exact ⟨hcomp.resolve_left hn, fun he => hn (he ▸ Relation.ReflTransGen.refl)⟩
 
 /-- A carried honest head extending a floor-viable X makes X frozen-viable at the
 receiving vote. This does not assume that arbitrary honest heads are viable. -/
@@ -1265,65 +1105,6 @@ theorem unanimous_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H t
   obtain rfl : B = W := hr.coherent.1 hB hW (hBr.trans hWr.symm)
   rw [Compose.frame_of_projAC hrun hy hc]
   exact hFX.trans hXW
-
-/-- U's proposal conclusion retains its original floor-viable source contract. -/
-theorem unanimous_next_proposal (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hnr : NoRestartAfter tr H (gbar g)) {m floor : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts (m + 1 : Nat) + sp.Δ ≤ b)
-    {kindJ : Prop} {J X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ)
-      floor kindJ J)
-    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hX : X ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
-    (hG : ∀ x ∈ H, ∀ i e, SA.VoteAt tr.projAC x i e → e.msg.slot = m →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
-    (hti : tr.time i = sp.ts (m + 1 : Nat))
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay)) :
-    Anc (tr.HonestBlocks H) X d.head := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
-  have hr := hS.run.localRun
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
-  have hDelta := sp.toParams.hΔ
-  have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have hlo : sp.ts m ≤ tr.time i := by linarith
-  have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by linarith
-  have hdl : ∀ k ≤ i, ∀ t, gbar g ≤ t →
-      tr.projAC.deadline y k t ≤ max t (sp.ts m) + sp.Δ := by
-    intro k _ t _
-    apply deadline_le_restarts (a := sp.ts m)
-    intro r _ hrs
-    have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
-    change tr.time r ≤ _
-    linarith
-  have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < sp.ts m := by
-    intro k _ hk
-    have := hnr y hy k (Compose.projAC_restartAt.mp hk)
-    change tr.time k < _
-    linarith
-  obtain ⟨k, e, hv, hs, -⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf hcatch
-    hnr hm (show sp.ts m + sp.Δ ≤ b by linarith) y hy
-  obtain ⟨W, hW, hWr, -, -, -, -⟩ := SA.late_vote_held_of_frame_before hS hy hc hm
-    (by change sp.ts m + 2 * sp.Δ ≤ tr.time i; linarith) (hhi.trans hmb) hdl hrs hy hv hs
-    (hframe.finalized_below_vote hrun hnc hmf hy hy hz hc hlo hhi hX hh hJ hv
-      (hG y hy k e hv hs))
-  obtain ⟨W', hW', hW'r, hXW⟩ := hG y hy k e hv hs
-  obtain ⟨_, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
-  obtain rfl : W' = W := hr.coherent.1 hW' (hPhiU hW) (hW'r.trans hWr.symm)
-  exact unanimous_next_proposal_of_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    hframe hz hX hh hJ Relation.ReflTransGen.refl hG hy hc hcall hti hd
-    (mem_of_honest_anc hrun hnc hy hXW (mem_tree_of_frame hrun hy hc hW))
 
 end Consensus.Goldilocks.Healing
 

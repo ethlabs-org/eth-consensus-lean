@@ -366,30 +366,6 @@ theorem writer_merged_window_before (hrun : ACRun proposer tr H U) {a b : Time}
     relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
       hsync.relay x hx k B hB (ha.trans h0) z hz j ℓ hc (hd.trans hi₀) ht hanc })
 
-/-- The source-zero specialization of writer-pool service. -/
-theorem writer_pool_before (hrun : ACRun proposer tr H U) {b : Time}
-    (hsync : ServiceBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
-    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
-    (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {k : Nat} (hk : k ≤ i) :
-    ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_pool_window_before hrun hsync hX
-    (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hupd hi₀ hy hc hs hk
-
-/-- The source-zero specialization of A1.8 (d). -/
-theorem writer_merged_before (hrun : ACRun proposer tr H U) {b : Time}
-    (hsync : ServiceBefore H U b tr) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
-    {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX)
-    (hi₀ : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_merged_window_before hrun hsync hX
-    (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hupd hi₀ hy hc hs
-
 end Consensus.Goldilocks.SA
 
 end

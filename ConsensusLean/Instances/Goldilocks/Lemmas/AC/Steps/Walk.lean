@@ -93,50 +93,6 @@ theorem anc_ghost_of_best {S tree : Set (Blk sp.n FGP)} (hS : Coherent S) (hT : 
     rw [Set.ncard_sdiff (Set.singleton_subset_iff.2 hmem), Set.ncard_singleton] at this
     omega
 
-/-- **Two walks agree** when, at every block the first walk visits before its last step, the two
-trees give the same eligible children and the two scores agree on them. -/
-theorem ghost_congr {T₁ T₂ : Set (Blk sp.n FGP)} {sc₁ sc₂ : Blk sp.n FGP → Nat}
-    {el₁ el₂ : Blk sp.n FGP → Prop} (f : Nat) (a : Blk sp.n FGP)
-    (hstep : ∀ k < f,
-      {B | B ∈ T₁ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k a).root ∧ el₁ B} =
-        {B | B ∈ T₂ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k a).root ∧ el₂ B} ∧
-      ∀ B ∈ {B | B ∈ T₁ ∧ B.parent = some (ghost sp T₁ sc₁ el₁ k a).root ∧ el₁ B},
-        sc₁ B = sc₂ B) :
-    ghost sp T₁ sc₁ el₁ f a = ghost sp T₂ sc₂ el₂ f a := by
-  induction f generalizing a with
-  | zero => rfl
-  | succ f ih =>
-    obtain ⟨hS, hsc⟩ := hstep 0 (Nat.succ_pos f)
-    simp only [ghost] at hS hsc
-    have hbest : ∀ C, IsBest sp sc₁ {B | B ∈ T₁ ∧ B.parent = some a.root ∧ el₁ B} C ↔
-        IsBest sp sc₂ {B | B ∈ T₂ ∧ B.parent = some a.root ∧ el₂ B} C := by
-      intro C
-      rw [← hS]
-      constructor
-      · rintro ⟨hC, h⟩
-        refine ⟨hC, fun D hD hne => ?_⟩
-        rw [← hsc D hD, ← hsc C hC]
-        exact h D hD hne
-      · rintro ⟨hC, h⟩
-        refine ⟨hC, fun D hD hne => ?_⟩
-        rw [hsc D hD, hsc C hC]
-        exact h D hD hne
-    rw [ghost, ghost]
-    by_cases h₁ : ∃ C, IsBest sp sc₁ {B | B ∈ T₁ ∧ B.parent = some a.root ∧ el₁ B} C
-    · have h₂ : ∃ C, IsBest sp sc₂ {B | B ∈ T₂ ∧ B.parent = some a.root ∧ el₂ B} C :=
-        let ⟨C, hC⟩ := h₁; ⟨C, (hbest C).1 hC⟩
-      simp only [h₁, h₂, ↓reduceDIte]
-      have he : h₁.choose = h₂.choose :=
-        IsBest.unique ((hbest _).1 h₁.choose_spec) h₂.choose_spec
-      rw [← he]
-      refine ih _ fun k hk => ?_
-      have := hstep (k + 1) (by omega)
-      simp only [ghost, h₁, ↓reduceDIte] at this
-      exact this
-    · have h₂ : ¬ ∃ C, IsBest sp sc₂ {B | B ∈ T₂ ∧ B.parent = some a.root ∧ el₂ B} C :=
-        fun ⟨C, hC⟩ => h₁ ⟨C, (hbest C).2 hC⟩
-      simp only [h₁, h₂, ↓reduceDIte]
-
 /-- **A stopped walk stays**: once the walk has no best child, more fuel does not move it. -/
 theorem ghost_fuel_stable {T : Set (Blk sp.n FGP)} {sc : Blk sp.n FGP → Nat}
     {el : Blk sp.n FGP → Prop} {f f' : Nat} (hf : f ≤ f') {a : Blk sp.n FGP}
@@ -229,8 +185,6 @@ theorem ghost_follow {T₁ T₂ : Set (Blk sp.n FGP)} {sc₁ sc₂ : Blk sp.n FG
       exact this hne
 
 
-
-
 /-- One step of a walk that has a best child. -/
 theorem ghost_succ_of_best {T : Set (Blk sp.n FGP)} {sc : Blk sp.n FGP → Nat}
     {el : Blk sp.n FGP → Prop} (m : Nat) (a : Blk sp.n FGP) {C : Blk sp.n FGP}
@@ -286,8 +240,6 @@ theorem ghost_stopped {S T : Set (Blk sp.n FGP)} (hS : Coherent S) (hT : T ⊆ S
     rw [show ({m | m ≤ f} : Set Nat) = ↑(Finset.range (f + 1)) by ext; simp]
     rw [Set.ncard_coe_finset, Finset.card_range]
   omega
-
-
 
 
 /-- **A walk visits every block between its start and its end** (in a coherent `S ⊇ tree`). -/

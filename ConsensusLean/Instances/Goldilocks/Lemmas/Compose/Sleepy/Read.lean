@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Reads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
@@ -94,31 +94,6 @@ theorem ready_read_record_before {b : Time} (hrun : GoldilocksRun proposer dg H 
         (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ]) hready.2
     obtain ⟨hc, hs⟩ := read_head_support_before hinv hrun hnc hsync hy htb
       (fun s hs => hfb s (hs.trans htb)) hrp.1 hrp.2 hwj ⟨hR, hRr⟩
-    exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
-  · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
-
-/-- The original sender-window ready-read interface. -/
-theorem ready_read_record_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) {y : Fin sp.n} {j : Nat} {t : Time}
-    (hrp : Regimes.ReadPoint tr j t) (_hb : Regimes.Boundary tr y j)
-    (hready : Regimes.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
-    (∃ R ∈ (Node.frame (tr.state y j)).tree,
-        R.root = (tr.state y j).ac.latestConfirmed ∧ Regimes.readAfter tr y j t = R) ∨
-      ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
-          R.root = (tr.state y j).ac.latestConfirmed) ∧
-        Regimes.readAfter tr y j t = (tr.state y j).fg.F) := by
-  have hy : y ∈ H := hready.1
-  have hΦ : FrameOK (Node.frame (tr.state y j)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).1
-  by_cases hin : ∃ R ∈ (Node.frame (tr.state y j)).tree,
-      R.root = (tr.state y j).ac.latestConfirmed
-  · obtain ⟨R, hR, hRr⟩ := hin
-    have hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t := fun ht0 =>
-      ready_implies_joined sp ro dg H tr proposer hrun y hy t (Regimes.catchUp sp) ht0
-        (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ]) hready.2
-    obtain ⟨hc, hs⟩ := read_head_support_upTo (sleepy_invariant_upTo hrun hnc hpre) hrun hnc
-      hpre hy htb hrp.1 hrp.2 hwj ⟨hR, hRr⟩
     exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
   · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
 

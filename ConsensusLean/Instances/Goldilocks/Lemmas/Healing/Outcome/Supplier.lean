@@ -142,44 +142,6 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
   · exact Or.inl (hLD.trans hDP)
   · exact SA.anc_total hr.coherent hLD hPD
 
-/-- Leaving a self-entry strictly above the target witnesses an actual earlier higher
-report. This is the strict-root arm, independent of high-origin or service assumptions. -/
-theorem ResetPremisesUpTo.higher_report_of_left_entry {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {P E W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y i).fg.tree)
-    (hET : ((tr.state y i).fg.σ E.root).Th = E.root)
-    (hEW : (tr.state y i).fg.Anc E W)
-    (hleft : ((tr.state y i).fg.σ E.root).h < ((tr.state y i).fg.σ W.root).h)
-    (hPE : Anc (tr.HonestBlocks H) P E) (hne : P ≠ E) :
-    ∃ z ∈ H, ∃ r ell C, r < i ∧ SA.ToFGAt tr.projAC z r ell C ∧
-      Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
-  have hr := Compose.fg_reachable hp.run.toLocalRun hy i
-  have hP := hp.mem_tree_of_anc hy hPE hE
-  have hPE' := hp.anc_tree_of_anc hy hPE hE
-  have hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h := by
-    apply lt_of_le_of_ne (σ_h_le_of_anc hr hPE')
-    intro heq
-    have hentry := (Th_eq_of_anc hr hPE' heq.symm).symm.trans hET
-    obtain ⟨⟨E₀, hE₀, hE₀r, hE₀P, _, _⟩, _⟩ :=
-      Goldilocks.Store.entry_state_of_source _ _ _ _ hr P hP
-    obtain rfl : E₀ = E := hp.honest_coherent.1 ⟨y, hy, i, hE₀⟩ ⟨y, hy, i, hE⟩
-      (hE₀r.trans hentry)
-    exact hne (hPE'.antisymm ((Goldilocks.Store.accepted_tree _ _ _ _ hr).2.1) hE₀P)
-  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
-    have hf := hp.faults
-    have hn : 0 < sp.n := sp.toParams.hn
-    change Hᶜ.ncard < (2 * sp.n + 2) / 3
-    omega
-  obtain ⟨Z, hZ, att, ha, hT, hz⟩ := honest_att_of_left hr hq hET hEW hleft
-  obtain ⟨m, hmi, _, d, hdm, hs⟩ :=
-    Compose.honest_row_signed_before hp.run hp.noColl hy hZ ha hz
-  obtain ⟨r, ell, C, hri, hto, hPC, hh⟩ :=
-    hp.higher_report_of_signed_entry hy hz hP hE hs (by omega) hT hPE hlt
-  exact ⟨att.val, hz, r, ell, C, hri, hto, hPC, hh⟩
-
 /-- A high floor yields an actual earlier report, retaining the signed entry witness
 from the finite floor producer. Only causal origin comparisons remain inputs. -/
 theorem ResetPremisesUpTo.held_target_high_floor_report_before {b : Time}
@@ -1820,26 +1782,6 @@ theorem update_toFG_calls_of_awake
   unfold Node.frame
   rw [(hrun.cutLaw y hy j _ hcj).2.2.1]
 
-/-- Whole-run specialization with the original first-slot joined-state bound. -/
-theorem reset_update_toFG_calls
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {y : Fin sp.n} (hy : y ∈ H) {u : Nat} (hu : SA.gbar g ≤ sp.ts u) :
-    ∃ j ell ell', SA.UpdateAt tr.projAC y j u ell ∧
-      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
-  apply update_toFG_calls_of_awake hp.run hy
-    (hp.healthy.2.1 y hy _ (by change SA.gbar g ≤ _; linarith [sp.toParams.hΔ]))
-  intro i hi
-  apply (healthy_base_of_reset_catch hp hc).joined_state hy i
-  change SA.gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
-  have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-    SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-      (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-  rw [hi, hslot]
-  simpa using hu
-
 /-- Bounded wakefulness and the causal restart bound supply the actual adjacent
 update and report call. The slot bound follows from the ready-slot initial margin;
 no Catch or service premise is needed to produce these calls. -/
@@ -2001,33 +1943,6 @@ theorem report_of_compatible_candidate_of_run
     have hlt := SA.depth_lt_of_anc hPhi hCPf (Ne.symm he) (hsub hPc)
     rcases hmax P hPc he with h | ⟨h, _⟩ <;> omega
   · exact SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU (hsub hPc) hPC (hsub hCc)
-
-/-- Whole-run specialization of actual report production from a deepest candidate. -/
-theorem report_of_deepest_candidate
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
-    (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
-    {P C : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
-    (hC : SA.deepest ell.frame (SA.toFGCandidates sp (tr.projAC.state y j)
-      ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
-    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
-      Anc (tr.HonestBlocks H) P R :=
-  report_of_deepest_candidate_of_run hp.run hp.noColl hy hc hcall hjoin hPg hC hPC
-
-/-- Whole-run specialization; the actual-report step itself needs no health hypothesis. -/
-theorem report_of_compatible_candidate
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
-    (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
-    (hPc : P ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j))
-    (hcompat : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j),
-      Compatible (tr.HonestBlocks H) C P) :
-    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
-      Anc (tr.HonestBlocks H) P R :=
-  report_of_compatible_candidate_of_run hp.run hp.noColl hy hc hcall hjoin hPg hPc hcompat
 
 /-- Every sufficiently clean older fast or slow source is below the unanimous proposal.
 The source need not precede the chosen vote cut: clean-source transfer budgets both times. -/
@@ -2265,35 +2180,6 @@ theorem ResetPremisesUpTo.report_cover_of_compatible_floors {b : Time}
   · obtain ⟨r, ell, C, hto, ht, hPC⟩ := hbelow hF
     exact False.elim (hn r ell C hto ht hPC)
   · exact Or.inr ⟨v, hv, r, ell, C, hto, (hp.run.time_mono hrj.le).trans hj, hPC, hlt⟩
-
-/-- Actual report production discharges the below-finality duty from a compatible
-candidate at an actual joined `toFG` call. Candidate membership and compatibility at that
-call remain explicit: an update selecting `P` alone is not a report-existence proof. -/
-theorem ResetPremisesUpTo.report_cover_of_candidate_duty {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
-    (hcuts : ∀ z ∈ H, ∃ j, tr.time j ≤ sp.ts u + 6 * sp.Δ ∧
-      Compatible (tr.HonestBlocks H) (tr.state z j).fg.F P ∧
-      (Anc (tr.HonestBlocks H) (tr.state z j).fg.F P →
-        ∃ i ell, tr.projAC.CallAt z i ell ∧ ell.call = .toFG ∧
-          tr.time i ≤ sp.ts u + 6 * sp.Δ ∧
-          SA.joined sp (tr.projAC.state z i) (tr.time i) ∧
-          P ∈ SA.toFGCandidates sp (tr.projAC.state z i) ell.frame (tr.time i) ∧
-          ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state z i) ell.frame (tr.time i),
-            Compatible (tr.HonestBlocks H) C P)) :
-    (∀ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
-      Anc (tr.HonestBlocks H) P C) ∨
-    ∃ z ∈ H, ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
-      Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
-  apply hp.report_cover_of_compatible_floors
-  intro z hz
-  obtain ⟨j, hj, hcompat, hduty⟩ := hcuts z hz
-  refine ⟨j, hj, hcompat, fun hF => ?_⟩
-  obtain ⟨i, ell, hcall, htoFG, hi, hjoin, hPc, hcomp⟩ := hduty hF
-  obtain ⟨r, ell', C, hto, hr, hPC⟩ :=
-    report_of_compatible_candidate_of_run hp.run hp.noColl hz hcall htoFG hjoin hPg hPc hcomp
-  exact ⟨r, ell', C, hto, hr.trans hi, hPC⟩
 
 /-- Conditional report coverage at actual cuts bounded by the update deadline.
 Compatibility discharges the strict-descendant branch using an earlier actual report;

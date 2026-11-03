@@ -81,17 +81,6 @@ theorem pred_pending_or_finalized {c : List (FGBlock gp.n)} {σ : ChainState gp.
   · exact Or.inl (List.mem_of_getLast? (hlast hlt))
   · exact Or.inr (le_antisymm hle hge)
 
-/-- **An entry whose previous height is not justified is a timeout (r14 s5, X with T).** On a chain,
-a block that enters the next height without justifying the old one (so its previous height is not
-justified) has a slot at least `δt` after the old entry. -/
-theorem previousHeightNotJustified_step_slot {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
-    {B : FGBlock gp.n}
-    (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
-    (hh : σ'.h = σ.h + 1) (hnb : ¬ σ'.previousHeightJustified) : σ.ThSlot + gp.δt ≤ B.slot := by
-  obtain ⟨-, -, -, -, hbd⟩ := height_step gp c σ σ' B hc h
-  obtain ⟨-, hiff, -⟩ := hbd hh
-  exact gp.timeout_step_slot h hh (fun e => hnb (hiff.2 e))
-
 /-- **Crossing by progress (r14 s3 L3.3a; the window tables).** A block whose counted state has a
 progress quorum, at a slot at least `δt` after the entry, enters the next height: it justifies
 or times out. -/
@@ -317,141 +306,6 @@ theorem stateTransition_ThSlot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · exact Or.inr ⟨rfl, rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl, rfl⟩
 
-/-- **An early crossing on an extension justifies the entry (r14 s5, L5.4 step 4, chain form).** Let
-`c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` has a slot before
-`σ.ThSlot + δt`, then a block `B` of `d` justified the entry `(σ.h, σ.Th)` of `σ`: its state has
-`h_j = σ.h` and `J = σ.Th`, and if `σ` has its previous height justified, `B` finalized the
-predecessor block (`F = σ.J`, `h_F = σ.hj`, L6.1 (i)). -/
-theorem early_cross_chain_justifies {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
-    (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ) (hh : σ.h < τ.h)
-    (hs : ∀ B ∈ d, B.slot < σ.ThSlot + gp.δt) :
-    ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
-      σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-      (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
-  suffices H : ∀ τ, gp.chainState (c ++ d) = some τ →
-      (τ.h = σ.h ∧ τ.Th = σ.Th ∧ τ.ThSlot = σ.ThSlot ∧ τ.J = σ.J ∧ τ.hj = σ.hj) ∨
-      ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
-        σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-        (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
-    rcases H τ hd with ⟨e, -⟩ | hx
-    · omega
-    · exact hx
-  clear hd hh τ
-  revert hs
-  induction d using List.reverseRecOn with
-  | nil =>
-    intro _ τ hτ
-    rw [List.append_nil, hc] at hτ
-    cases hτ
-    exact Or.inl ⟨rfl, rfl, rfl, rfl, rfl⟩
-  | append_singleton d B ih =>
-    intro hs τ hτ
-    have hs' : ∀ B ∈ d, B.slot < σ.ThSlot + gp.δt := fun B' hB' => hs B' (by simp [hB'])
-    rw [← List.append_assoc, gp.chainState_append, Option.bind_eq_some_iff] at hτ
-    obtain ⟨τ₀, h₀, hB⟩ := hτ
-    rcases ih hs' τ₀ h₀ with ⟨e1, e2, e3, e4, e5⟩ | ⟨d₁, B', d₂, σ₂, rfl, h1, h2⟩
-    · rcases gp.step_stay_or_cross hB with ⟨f1, f2, f3, f4, f5⟩ | ⟨f1, f2⟩
-      · exact Or.inl ⟨f1.trans e1, f2.trans e2, f3.trans e3, f4.trans e4, f5.trans e5⟩
-      · have hsl : B.slot < τ₀.ThSlot + gp.δt := e3 ▸ hs B (by simp)
-        obtain ⟨hj, -⟩ := gp.early_cross_justifies hB f1 hsl
-        have hJ : τ.J = τ₀.Th := by
-          rcases f2 with f2 | f2
-          · exact f2
-          · have := (chain_invariants gp _ _ h₀).2.2.1; omega
-        refine Or.inr ⟨d, B, [], τ, by simp, ?_, by omega, by omega, by rw [hJ, e2], ?_⟩
-        · rw [gp.chainState_append, h₀]; exact hB
-        · intro hb
-          have hb₀ : τ₀.previousHeightJustified := by
-            simp only [ChainState.previousHeightJustified] at hb ⊢; omega
-          obtain ⟨g1, g2⟩ := gp.previousHeightJustified_justify_finalizes_block h₀ hB hb₀ hj
-          exact ⟨g1.trans e4, g2.trans e5⟩
-    · exact Or.inr ⟨d₁, B', d₂ ++ [B], σ₂, by simp, h1, h2⟩
-
-/-- **No timeout at the entry height, so the crossing justifies (r14 s5, L5.4 step 4, prefix
-form).** Let `c` reach `σ` and `c ++ d` reach `τ` with `σ.h < τ.h`. If every block of `d` that is
-applied to a state `ρ` of height `σ.h` has a slot before `ρ.ThSlot + δt` (the entry slot does not
-change while the height stays), then a block `B` of `d` justified the entry `(σ.h, σ.Th)`, and
-finalized the predecessor block if `σ` has its previous height justified. The premise reads only the
-blocks applied at height `σ.h`, not the later ones. -/
-theorem cross_chain_justifies {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
-    (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ) (hh : σ.h < τ.h)
-    (hs : ∀ d₁ B d₂ ρ, d = d₁ ++ B :: d₂ → gp.chainState (c ++ d₁) = some ρ → ρ.h = σ.h →
-      B.slot < ρ.ThSlot + gp.δt) :
-    ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
-      σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-      (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) := by
-  suffices H : ∀ τ, gp.chainState (c ++ d) = some τ →
-      (τ.h = σ.h ∧ τ.Th = σ.Th ∧ τ.ThSlot = σ.ThSlot ∧ τ.J = σ.J ∧ τ.hj = σ.hj) ∨
-      ∃ d₁ B d₂ σ₂, d = d₁ ++ B :: d₂ ∧ gp.chainState (c ++ d₁ ++ [B]) = some σ₂ ∧
-        σ₂.h = σ.h + 1 ∧ σ₂.hj = σ.h ∧ σ₂.J = σ.Th ∧
-        (σ.previousHeightJustified → σ₂.F = σ.J ∧ σ₂.hF = σ.hj) by
-    rcases H τ hd with ⟨e, -⟩ | hx
-    · omega
-    · exact hx
-  clear hd hh τ
-  revert hs
-  induction d using List.reverseRecOn with
-  | nil =>
-    intro _ τ hτ
-    rw [List.append_nil, hc] at hτ
-    cases hτ
-    exact Or.inl ⟨rfl, rfl, rfl, rfl, rfl⟩
-  | append_singleton d B ih =>
-    intro hs τ hτ
-    have hs' : ∀ d₁ B' d₂ ρ, d = d₁ ++ B' :: d₂ → gp.chainState (c ++ d₁) = some ρ →
-        ρ.h = σ.h → B'.slot < ρ.ThSlot + gp.δt := fun d₁ B' d₂ ρ e hρ hρh =>
-      hs d₁ B' (d₂ ++ [B]) ρ (by rw [e]; simp) hρ hρh
-    rw [← List.append_assoc, gp.chainState_append, Option.bind_eq_some_iff] at hτ
-    obtain ⟨τ₀, h₀, hB⟩ := hτ
-    rcases ih hs' τ₀ h₀ with ⟨e1, e2, e3, e4, e5⟩ | ⟨d₁, B', d₂, σ₂, rfl, h1, h2⟩
-    · rcases gp.step_stay_or_cross hB with ⟨f1, f2, f3, f4, f5⟩ | ⟨f1, f2⟩
-      · exact Or.inl ⟨f1.trans e1, f2.trans e2, f3.trans e3, f4.trans e4, f5.trans e5⟩
-      · have hsl : B.slot < τ₀.ThSlot + gp.δt := hs d B [] τ₀ (by simp) h₀ e1
-        obtain ⟨hj, -⟩ := gp.early_cross_justifies hB f1 hsl
-        have hJ : τ.J = τ₀.Th := by
-          rcases f2 with f2 | f2
-          · exact f2
-          · have := (chain_invariants gp _ _ h₀).2.2.1; omega
-        refine Or.inr ⟨d, B, [], τ, by simp, ?_, by omega, by omega, by rw [hJ, e2], ?_⟩
-        · rw [gp.chainState_append, h₀]; exact hB
-        · intro hb
-          have hb₀ : τ₀.previousHeightJustified := by
-            simp only [ChainState.previousHeightJustified] at hb ⊢; omega
-          obtain ⟨g1, g2⟩ := gp.previousHeightJustified_justify_finalizes_block h₀ hB hb₀ hj
-          exact ⟨g1.trans e4, g2.trans e5⟩
-    · exact Or.inr ⟨d₁, B', d₂ ++ [B], σ₂, by simp, h1, h2⟩
-
-/-- **Theorem F, chain part (r14 s6, L6.5 step 3).** Let `c` reach the entry state `σ` of height `h
-= σ.h` and `c ++ d` reach `τ` with `h + 1 < τ.h`. If no block of `d` is applied at height `h` or `h
-+ 1` with a slot at or after the entry slot of its state plus `δt` (no timeout is possible at `h` or
-`h + 1`), then `d` has a block `B₁` that justifies `(h, σ.Th)` and a later block `B₂` that justifies
-`(h + 1, σ₁.Th)`. The height `h + 1` has its previous height justified, so `B₂` finalizes the first
-entry block: `σ₂.F = σ.Th` with `σ₂.hF = h` (L6.1 (i)). -/
-theorem theorem_F_chain {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
-    (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ)
-    (hh : σ.h + 1 < τ.h)
-    (hs : ∀ d₁ B d₂ ρ, d = d₁ ++ B :: d₂ → gp.chainState (c ++ d₁) = some ρ →
-      (ρ.h = σ.h ∨ ρ.h = σ.h + 1) → B.slot < ρ.ThSlot + gp.δt) :
-    ∃ d₁ B₁ d₂ B₂ d₃ σ₁ σ₂, d = d₁ ++ B₁ :: (d₂ ++ B₂ :: d₃) ∧
-      gp.chainState (c ++ d₁ ++ [B₁]) = some σ₁ ∧
-      σ₁.h = σ.h + 1 ∧ σ₁.hj = σ.h ∧ σ₁.J = σ.Th ∧
-      gp.chainState (c ++ d₁ ++ [B₁] ++ d₂ ++ [B₂]) = some σ₂ ∧
-      σ₂.h = σ.h + 2 ∧ σ₂.hj = σ.h + 1 ∧ σ₂.J = σ₁.Th ∧
-      σ₂.F = σ.Th ∧ σ₂.hF = σ.h := by
-  obtain ⟨d₁, B₁, d₂, σ₁, rfl, h1, h1h, h1j, h1J, -⟩ :=
-    gp.cross_chain_justifies hc hd (by omega) fun d₁ B d₂ ρ e hρ hρh =>
-      hs d₁ B d₂ ρ e hρ (Or.inl hρh)
-  have hd' : gp.chainState (c ++ d₁ ++ [B₁] ++ d₂) = some τ := by simpa using hd
-  obtain ⟨d₂', B₂, d₃, σ₂, rfl, h2, h2h, h2j, h2J, h2F⟩ :=
-    gp.cross_chain_justifies h1 hd' (by omega) fun e₁ B e₂ ρ e hρ hρh =>
-      hs (d₁ ++ B₁ :: e₁) B e₂ ρ (by rw [e]; simp) (by simpa using hρ) (Or.inr (by omega))
-  have hb : σ₁.previousHeightJustified := by
-    have := (chain_invariants gp _ _ hc).1
-    simp only [ChainState.previousHeightJustified]; omega
-  obtain ⟨hF, hhF⟩ := h2F hb
-  exact ⟨d₁, B₁, d₂', B₂, d₃, σ₁, σ₂, by simp, h1, h1h, h1j, h1J, h2, by omega,
-    by omega, h2J, hF.trans h1J, hhF.trans h1j⟩
-
 /-- **A crossing that is early or justifies, so it justifies (prefix form).** Let `c` reach `σ` and
 `c ++ d` reach `τ` with `σ.h < τ.h`. If every block `B` of `d` that is applied to a state `ρ` of
 height `σ.h` and enters the next height (state `ρ'`) has a slot before `ρ.ThSlot + δt` or justifies
@@ -544,25 +398,6 @@ theorem theorem_F_chain' {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
 end FGParams
 
 namespace Record
-
-/-- **A clean record sends a target (r14 s5, C).** If the record has no lock, no timeout
-and no target at the entry's height that name another block, and has sent nothing at that
-height, then `create_attestation` sends a target (not a timeout) for the entry. -/
-theorem createAtt_target {n : Nat} {Λ : Record} {v : Fin n} {σe : ChainState n}
-    (hl : Λ.lock σe.h = none ∨ Λ.lock σe.h = some σe.Th) (ht : Λ.timeout σe.h = ∅)
-    (htg : Λ.target σe.h = none ∨ Λ.target σe.h = some σe.Th)
-    (hs : ∀ b ∈ Λ.sent, b.1 ≠ σe.h) :
-    Λ.createAtt v σe = some (⟨v, σe.h, σe.Th, false, Λ.finalityPair σe⟩,
-      Λ.recordAtt ⟨v, σe.h, σe.Th, false, Λ.finalityPair σe⟩) := by
-  have hp : Λ.heightPair σe.h σe.Th = some (σe.h, σe.Th, false) := by
-    rcases hl with h1 | h1 <;> rcases htg with h2 | h2 <;> simp [heightPair, h1, h2, ht]
-  unfold createAtt
-  rw [hp]
-  dsimp only
-  split_ifs with hc
-  · obtain ⟨b, hb, he⟩ := List.any_eq_true.1 hc
-    exact absurd (of_decide_eq_true he).1 (hs b hb)
-  · rfl
 
 end Record
 
