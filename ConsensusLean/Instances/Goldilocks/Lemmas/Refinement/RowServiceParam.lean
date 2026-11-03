@@ -30,13 +30,6 @@ theorem hsSharedUpTo_of_le (Q : FinalQuery S A V) (ΔF : Time)
   Q.hsSharedUpTo_of_rows ΔF ((signed_row_service_psync S Q.run.2 Q.hn Q.valid).mono _ _ _ _ hΔF)
     ((rowDelay_pos _).trans_le hΔF) htd
 
-/-- `hsSharedUpTo` is the instance `Δ_F := Δ_F,p` of `hsSharedUpTo_of_le`. -/
-theorem hsSharedUpTo_of_le_self (Q : FinalQuery S A V)
-    (htd : 6 * Q.params.Δ + rowDelay (Model.pubOf Q.run.1) ≤
-      4 * Q.params.Δ * (S.δt : Time)) :
-    Q.hsSharedUpTo_of_le _ le_rfl htd = Q.hsSharedUpTo :=
-  rfl
-
 end FinalQuery
 
 end Consensus.Goldilocks.Refinement

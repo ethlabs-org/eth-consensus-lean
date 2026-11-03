@@ -92,14 +92,6 @@ theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
   simp [hval, headerOf]
   exact hwf
 
-/-- The canonical object of such a block stands for the node's `block` event. -/
-theorem canonEvent_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
-    (hpar : B.parent ≠ none) (hne : B.root ≠ sp.genesisRoot)
-    (hroot : rootOf hs (headerOf sp B) = some (rawRoot sp.genesisRoot B.root))
-    (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
-    canonEvent sp ro hs (blockObj sp B) = some (.block B) := by
-  simp [canonEvent, decodeBlock_blockObj hs B hpar hne hroot hwf hval]
-
 /-- The canonical object of a vote decodes to the vote. -/
 theorem decodeVoteObj_voteObj (v : Vote sp.n) : decodeVoteObj sp (voteObj v) = some v := by
   simp [decodeVoteObj, voteObj, decodeVote_encodeVote]
@@ -186,23 +178,6 @@ theorem protects_of_not_att {V : Type} [Fintype V] {E : Env V} (S : Setup)
     change (_ != _ || !(conflicts c o || conflicts o c)) = true
     simp [hc o, hc']
   · rfl
-
-/-- The engine's own-object guard never blocks a block object: `protects` is true of `blockObj`
-against any seen list. -/
-theorem protects_blockObj {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (hn : 1 ≤ Fintype.card V) (k : Fin (Fintype.card V))
-    (seen : List (Model.protoOf (compiled (family S)) E).Object)
-    (B : Blk (S.params (Model.pubOf E) hn)) :
-    Model.protects (Model.protoOf (compiled (family S)) E) k seen
-      (blockObj (S.params (Model.pubOf E) hn) B) = true :=
-  protects_of_not_att S k seen _ (fun _ _ h => by cases h)
-
-/-- The engine's own-object guard never blocks a vote object. -/
-theorem protects_voteObj {V : Type} [Fintype V] {E : Env V} (S : Setup)
-    (k : Fin (Fintype.card V)) (seen : List (Model.protoOf (compiled (family S)) E).Object)
-    (v : Vote (Fintype.card V)) :
-    Model.protects (Model.protoOf (compiled (family S)) E) k seen (voteObj v) = true :=
-  protects_of_not_att S k seen _ (fun _ _ h => by cases h)
 
 /-- Vote-forward envelopes never conflict with attestations, irrespective of the vote author. -/
 theorem protects_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
@@ -407,119 +382,6 @@ theorem apply_voteForward_of_admission (st : State sp ro) r (v : Vote sp.n)
   · exact List.mem_append_left _ (by simpa only [hb] using hv)
   · exact List.mem_append_right _ (List.mem_map.mpr ⟨e, he, hv⟩)
 
-/-- An own vote emitted by the public tick is queued once its fresh pool insertion
-is established. The emitted vote is already admitted before the later poll. -/
-theorem nodeTick_voteForward_of_emission (st : State sp ro)
-    (hp : sp.toParams.IsPublic st.now) (v : Vote sp.n)
-    (he : ∃ e ∈ ((goldilocksNode sp ro).step st.self st.node.ac
-      (Node.frame st.node) st.now .tick).2, e.msg = v)
-    (hold : v ∉ st.node.ac.pool v.slot)
-    (hnew : v ∈ (Node.acCall st.self st.node st.now .tick).1.ac.pool v.slot) :
-    (st.now, v) ∈ (nodeTick st).voteForwards := by
-  unfold nodeTick
-  rw [ite_eq_left hp]
-  exact apply_voteForward_of_admission st _ v _ (List.mem_singleton_self _)
-    (Or.inr (Or.inr he)) hold hnew
-
-/-- A new queued vote comes from a real message/payload candidate or own emission in this
-handler's cuts. This is not yet authenticated source provenance for an arbitrary received wire. -/
-theorem apply_voteForward_source (st : State sp ro) r (t : Time) (v : Vote sp.n)
-    (h : (t, v) ∈ (apply st r).voteForwards) (hold : (t, v) ∉ st.voteForwards) :
-    ∃ ℓ : ACLabel (goldilocksNode sp ro), .ac ℓ ∈ r.2 ∧
-      (ℓ.call = .message v ∨ (∃ B, ℓ.call = .block B ∧ v ∈ SA.blockVotes B) ∨
-        ∃ e ∈ ℓ.emits, e.msg = v) := by
-  classical
-  simp only [apply, List.mem_append] at h
-  obtain h | h := h
-  · exact False.elim (hold h)
-  obtain ⟨w, hw, he⟩ := List.mem_map.mp h
-  cases he
-  have hw := List.mem_dedup.mp (List.mem_filter.mp hw).1
-  obtain ⟨c, hc, hv⟩ := List.mem_flatMap.mp hw
-  cases c with
-  | fg l => simp at hv
-  | ac ℓ =>
-    refine ⟨ℓ, hc, ?_⟩
-    rcases List.mem_append.mp hv with hv | hv
-    · cases hcall : ℓ.call <;> simp_all
-    · exact Or.inr (Or.inr (List.mem_map.mp hv))
-
-/-- A fresh wire admission is queued by its single-cut message handler. -/
-theorem onMessage_voteForward (st : State sp ro) (m : Vote sp.n)
-    (hold : m ∉ st.node.ac.pool m.slot)
-    (hnew : m ∈ (Node.onMessage st.self st.node st.now m).1.ac.pool m.slot) :
-    (st.now, m) ∈ (apply st (Node.onMessage st.self st.node st.now m)).voteForwards := by
-  apply apply_voteForward_of_admission st _ m
-    ⟨.message m, Node.frame st.node, _⟩
-  · exact List.mem_singleton_self _
-  · exact Or.inl rfl
-  · exact hold
-  · exact hnew
-
-/-- A successful block handler has exactly one AC cut: the preceding FG acceptance does
-not change the old AC pool, and the handler result is the AC cut's result. -/
-theorem onBlock_voteForward (st : State sp ro) (B : Blk sp) (m : Vote sp.n)
-    (hm : m ∈ SA.blockVotes B) (ht : ¬ sp.slot st.now < B.slot)
-    (fg' : Store sp.toParams (Payload sp.n)) (hfg : st.node.fg.onBlock B = some fg')
-    (hold : m ∉ st.node.ac.pool m.slot)
-    (hnew : m ∈ (Node.onBlock st.self st.node st.now B).1.ac.pool m.slot) :
-    (st.now, m) ∈ (apply st (Node.onBlock st.self st.node st.now B)).voteForwards := by
-  apply apply_voteForward_of_admission st _ m
-    ⟨.block B, Node.frame { st.node with fg := fg' }, _⟩
-  · simp only [Node.onBlock, ht, ↓reduceIte, hfg]
-    exact List.mem_cons_of_mem _ (List.mem_singleton_self _)
-  · exact Or.inr (Or.inl ⟨B, rfl, hm⟩)
-  · exact hold
-  · exact hnew
-
-/-- A message handler's sole AC cut transports fresh incoming or emitted votes directly
-to the aggregate admission filter. Freshness remains an explicit reachability obligation. -/
-theorem onMessage_voteForward_of_cut (st : State sp ro) (m : Vote sp.n)
-    (ℓ : ACLabel (goldilocksNode sp ro))
-    (hc : .ac ℓ ∈ (Node.onMessage st.self st.node st.now m).2) (v : Vote sp.n)
-    (hsource : v = m ∨ ∃ e ∈ ℓ.emits, e.msg = v)
-    (hold : v ∉ st.node.ac.pool v.slot)
-    (hnew : v ∈ ((goldilocksNode sp ro).step st.self st.node.ac ℓ.frame
-      st.now ℓ.call).1.pool v.slot) :
-    (st.now, v) ∈ (apply st (Node.onMessage st.self st.node st.now m)).voteForwards := by
-  have hc' := hc
-  simp only [Node.onMessage, Node.acCall, List.mem_singleton, Cut.ac.injEq] at hc'
-  subst ℓ
-  apply apply_voteForward_of_admission st _ v _ hc
-  · rcases hsource with rfl | he
-    · exact Or.inl rfl
-    · exact Or.inr (Or.inr he)
-  · exact hold
-  · exact hnew
-
-/-- The AC cut of a block handler has exactly the handler's old and new AC states:
-the preceding FG cut changes neither pool. Thus a fresh cut admission or emission
-passes `apply`'s aggregate filter, without a collision or frame-coherence premise. -/
-theorem onBlock_voteForward_of_cut (st : State sp ro) (B : Blk sp)
-    (ℓ : ACLabel (goldilocksNode sp ro))
-    (hc : .ac ℓ ∈ (Node.onBlock st.self st.node st.now B).2) (v : Vote sp.n)
-    (hsource : v ∈ SA.blockVotes B ∨ ∃ e ∈ ℓ.emits, e.msg = v)
-    (hold : v ∉ st.node.ac.pool v.slot)
-    (hnew : v ∈ ((goldilocksNode sp ro).step st.self st.node.ac ℓ.frame
-      st.now ℓ.call).1.pool v.slot) :
-    (st.now, v) ∈ (apply st (Node.onBlock st.self st.node st.now B)).voteForwards := by
-  have hc' := hc
-  simp only [Node.onBlock] at hc'
-  split_ifs at hc' with ht
-  · simp at hc'
-  · cases hfg : st.node.fg.onBlock B with
-    | none => simp [hfg] at hc'
-    | some fg' =>
-      simp only [hfg, Node.acCall, List.mem_cons, List.not_mem_nil, or_false,
-        reduceCtorEq, false_or, Cut.ac.injEq] at hc'
-      subst ℓ
-      apply apply_voteForward_of_admission st _ v _ hc
-      · rcases hsource with hv | he
-        · exact Or.inr (Or.inl ⟨B, rfl, hv⟩)
-        · exact Or.inr (Or.inr he)
-      · exact hold
-      · simpa only [Node.onBlock, ht, ↓reduceIte, hfg, Node.acCall] using hnew
-
 /-- `relayIf` keeps the key. -/
 theorem relayIf_self (st : State sp ro) (c : Prop) [Decidable c] o :
     (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl
@@ -596,28 +458,6 @@ theorem foldl_processOne_voteForwards_subset hs (os : List (Wire sp.n)) (st : St
     intro q hq
     exact ih _ (processOne_voteForwards_subset hs st o hq)
 
-/-- A fresh canonical wire admission at any delivery prefix remains queued after the
-whole delivery. The freshness test is at this handler's input, not the event boundary. -/
-theorem process_message_voteForward (st : State sp ro) (o : Wire sp.n) hs
-    (pre post : List (Wire sp.n)) (m : Vote sp.n)
-    (hparts : delivered sp o = pre ++ voteObj m :: post)
-    (hold : m ∉ (pre.foldl (processOne hs) st).node.ac.pool m.slot)
-    (hnew : m ∈ (Node.onMessage (pre.foldl (processOne hs) st).self
-      (pre.foldl (processOne hs) st).node st.now m).1.ac.pool m.slot) :
-    (st.now, m) ∈ (process st o hs).voteForwards := by
-  have hnow : (pre.foldl (processOne hs) st).now = st.now := by
-    clear hparts hold hnew
-    induction pre generalizing st with
-    | nil => rfl
-    | cons x xs ih => exact (ih _).trans (processOne_now hs st x)
-  have hq := onMessage_voteForward (pre.foldl (processOne hs) st) m hold
-    (by simpa only [hnow] using hnew)
-  rw [hnow] at hq
-  unfold process
-  rw [hparts, List.foldl_append, List.foldl_cons]
-  apply foldl_processOne_voteForwards_subset hs post _
-  simpa only [processOne, canonEvent_voteObj, hnow] using hq
-
 /-- Processing a list of delivered objects keeps the key. -/
 theorem foldl_processOne_self hs (os : List (Wire sp.n)) (st : State sp ro) :
     (os.foldl (processOne hs) st).self = st.self := by
@@ -630,31 +470,6 @@ theorem foldl_processOne_now hs (os : List (Wire sp.n)) (st : State sp ro) :
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_now]
-
-/-- A fresh block-payload admission at a delivery prefix remains queued after all
-later objects, whether or not the accepted block itself needs unsigned relay. -/
-theorem process_block_voteForward (st : State sp ro) (o c : Wire sp.n) hs
-    (pre post : List (Wire sp.n)) (B : Blk sp) (m : Vote sp.n)
-    (hparts : delivered sp o = pre ++ c :: post)
-    (hcanon : canonEvent sp ro hs c = some (.block B))
-    (hm : m ∈ SA.blockVotes B) (ht : ¬ sp.slot st.now < B.slot)
-    (fg' : Store sp.toParams (Payload sp.n))
-    (hfg : (pre.foldl (processOne hs) st).node.fg.onBlock B = some fg')
-    (hold : m ∉ (pre.foldl (processOne hs) st).node.ac.pool m.slot)
-    (hnew : m ∈ (Node.onBlock (pre.foldl (processOne hs) st).self
-      (pre.foldl (processOne hs) st).node st.now B).1.ac.pool m.slot) :
-    (st.now, m) ∈ (process st o hs).voteForwards := by
-  have hnow := foldl_processOne_now hs pre st
-  have hq := onBlock_voteForward (pre.foldl (processOne hs) st) B m hm
-    (by simpa only [hnow] using ht) fg' hfg hold
-    (by simpa only [hnow] using hnew)
-  rw [hnow] at hq
-  unfold process
-  rw [hparts, List.foldl_append, List.foldl_cons]
-  apply foldl_processOne_voteForwards_subset hs post _
-  simp only [processOne, hcanon]
-  unfold relayIf
-  split <;> simpa only [hnow] using hq
 
 /-- Processing a list of delivered objects keeps the FG-due flag. -/
 theorem foldl_processOne_fgDue hs (os : List (Wire sp.n)) (st : State sp ro) :
@@ -741,13 +556,6 @@ theorem poll_now (st : State sp ro) t : (poll st t).1.now = st.now := by
 /-- After a poll step the FG update is not due: the step ran it if it was. -/
 theorem poll_fgDue (st : State sp ro) t : (poll st t).1.fgDue = false := by
   unfold poll; simp only; split <;> split <;> simp_all [fgUpdate_fgDue]
-
-/-- A restore sets the key to the restored one. -/
-theorem restore_self (k : Fin sp.n) (d : State sp ro) t : (restore k d t).self = k := rfl
-/-- A restore sets the clock to the restart time. -/
-theorem restore_now (k : Fin sp.n) (d : State sp ro) t : (restore k d t).now = t := rfl
-/-- A restore clears the FG-due flag. -/
-theorem restore_fgDue (k : Fin sp.n) (d : State sp ro) t : (restore k d t).fgDue = false := rfl
 
 end Consensus.Goldilocks.Refinement
 

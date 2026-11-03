@@ -152,20 +152,6 @@ theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H
 
 /-! ### §3 S-vote -/
 
-/-- **S-vote** (§3): every honest vote of a slot after an origin's label, cast by `t_s + Δ ≤ b`,
-extends the origin. -/
-theorem outage_vote_extends {b T : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat}
-    (hC : OriginWithin tr H C σ T) (hTb : T ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC y i e)
-    (hσ : σ < e.msg.slot) (hs : sp.ts e.msg.slot + sp.Δ ≤ b) :
-    SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  obtain ⟨ℓ, hc, he⟩ := hv
-  have ht := (cast_head_fcRoot hr hy ⟨hc, he⟩).2
-  exact hinv.vote_extends C σ (hC.mono hTb) y hy i e ⟨ℓ, hc, he⟩ (ht.trans hs) hσ
-
 /-! ### §4 The receiver epoch -/
 
 /-- (R1) Awake on `[a, z]`: every restart up to `z` is at or before every public `τ ∈ [a, z]`. -/

@@ -27,13 +27,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {D : OutageLockPremises tr H proposer dg}
 
-/-- A descendant inside `S` of a member of `S` is a member. -/
-private theorem anc_mem_right {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
-    {A B : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc S A B) (hA : A ∈ S) : B ∈ S := by
-  by_cases hne : A = B
-  · exact hne ▸ hA
-  · exact (h.mem hne).2
-
 /-- A held honest vote across an AC cut was cast by its validator. -/
 private theorem held_vote_cast (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}

@@ -110,38 +110,4 @@ theorem operational_proposal_below_later_parent {b : Time}
   exact hPC.trans (hCO.trans (hp.reset_proposal_passes hc hy hRv hci hcall hd hti hib O
     ⟨z, io, jo, hO, ((hp.run.time_mono hior.le).trans hrt).trans_lt hTv⟩))
 
-/-- Adjacent operational proposals inherit ancestry when the predecessor's update
-deadline and the later designated proposal are both inside the finite horizon. -/
-theorem operational_proposal_below_later_proposal {b : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
-    (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
-    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    {y : Fin sp.n} {l v : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hy : y ∈ H) (hydesignated : y = proposer v) (hB : tr.ProposesAt y l B)
-    (hBs : B.slot = v) (huv : u + 2 ≤ v) (hvb : sp.ts v ≤ b) :
-    Anc (tr.HonestBlocks H) P B := by
-  obtain ⟨_, i, ell, d, pay, hci, hcall, hd, hti, hparent, _⟩ :=
-    Healing.honestProposalRun_of_proposesAt hp.run hp.noColl hy hydesignated hB hBs
-  rw [← hydesignated] at hci hd
-  have hPd := operational_proposal_below_later_parent hp hc hpH hdesignated hactual hPs hR
-    hTb hy huv hci hcall hd hti (hti ▸ hvb)
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hci
-  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQt : d.head ∈ ell.frame.tree := by
-    rcases eq_or_ne d.start d.head with he | he
-    · exact he ▸ hst
-    · exact (Anc.mem hsQ he).2
-  have hacc := Compose.proposal_accepted hp.run hp.noColl hy hB
-  have hBU : B ∈ tr.HonestBlocks H := by
-    refine ⟨y, hy, l + 1, ?_⟩
-    rw [tr.state_succ_of_call hacc,
-      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hy _)).1 B _
-        (hp.run.toLocalRun.cutLaw y hy _ _ hacc).2.1]
-    exact Set.mem_insert _ _
-  exact hPd.trans (.single ⟨hPhiU hQt, hBU, hparent⟩)
-
 end Consensus.Goldilocks.Refinement.UpTo

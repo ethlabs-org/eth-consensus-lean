@@ -46,14 +46,4 @@ noncomputable def ForwardingState.drain {V : Type} [Fintype V] [DecidableEq V] {
   (⟨st.wrappers, []⟩,
     Model.releaseAll (protoOf (compiled (family S)) E) rho.hash origin nd st.pending)
 
-/-- A drain clears pending traffic but keeps the canonical wrapper map. This is a local
-producer-state fact, not a release guarantee or a theorem about engine restarts. -/
-theorem ForwardingState.drain_persistent {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E)
-    (st : ForwardingState (Fintype.card V)) (origin : Fin (Fintype.card V))
-    (nd : Model.Node (protoOf (compiled (family S)) E)) :
-    (st.drain S rho origin nd).1.wrappers = st.wrappers ∧
-      (st.drain S rho origin nd).1.pending = [] := by
-  exact ⟨rfl, rfl⟩
-
 end Consensus.Goldilocks.Refinement

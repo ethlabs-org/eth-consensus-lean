@@ -154,33 +154,6 @@ theorem cutPosts_cons (self : Fin P.n) (t : Time) (c : Cut A) (cs : List (Cut A)
     cutPosts self t (c :: cs) st =
       cutPost self t st c :: cutPosts self t cs (cutPost self t st c) := by rfl
 
-/-- The post-state of an AC cut: the AC's step at the cut's frame, nothing else changed. -/
-theorem cutPost_ac (self : Fin P.n) (t : Time) (st : NodeState A) (ℓ : ACLabel A) :
-    cutPost self t st (.ac ℓ) = { st with ac := (A.step self st.ac ℓ.frame t ℓ.call).1 } := by rfl
-
-/-- The post-state of an accepted block cut: the store's `onBlock`. -/
-theorem cutPost_block_true (self : Fin P.n) (t : Time) (st : NodeState A) (B : A.Blk) :
-    cutPost self t st (.fg (.block B true)) = { st with fg := (st.fg.onBlock B).getD st.fg } :=
-  by rfl
-
-/-- A refused block cut changes nothing. -/
-theorem cutPost_block_false (self : Fin P.n) (t : Time) (st : NodeState A) (B : A.Blk) :
-    cutPost self t st (.fg (.block B false)) = st := by rfl
-
-/-- The post-state of an attestation cut: the store's `onAttestation`. -/
-theorem cutPost_attestation (self : Fin P.n) (t : Time) (st : NodeState A) (a : FG.Att P.n) :
-    cutPost self t st (.fg (.attestation a)) = { st with fg := st.fg.onAttestation a } := by rfl
-
-/-- A silent attest cut changes nothing. -/
-theorem cutPost_attest_none (self : Fin P.n) (t : Time) (st : NodeState A) (C : A.Blk) :
-    cutPost self t st (.fg (.attest C none)) = st := by rfl
-
-/-- The post-state of a signing attest cut: the new record. -/
-theorem cutPost_attest_some (self : Fin P.n) (t : Time) (st : NodeState A) (C : A.Blk)
-    (a : FG.Att P.n) :
-    cutPost self t st (.fg (.attest C (some a))) =
-      { st with record := ((st.fg.attest st.record self C).map Prod.snd).getD st.record } := by rfl
-
 end Node
 
 namespace Refinement
@@ -298,10 +271,6 @@ theorem eventCuts_restart (i : Nat) (v : V) (t : Time)
       groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v i).node t (Nat.pair i 0)
         .restart := by
-  simp only [eventCuts, he]
-
-/-- No cut past the last engine event. -/
-theorem eventCuts_none (i : Nat) (he : rho.events[i]? = none) : eventCuts S rho hn i = [] := by
   simp only [eventCuts, he]
 
 /-- The cut map steps by the number of cuts of the event. -/

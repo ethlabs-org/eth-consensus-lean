@@ -51,49 +51,6 @@ theorem gap_delivery {ΔF : Time} {c : Nat} (h : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ *
   have := ts_add_gap (sp := sp) s c
   linarith
 
-/-- **`c_F` and the delivery premise.** `Time = ℤ`, so `c_F := ⌈(6Δ + ΔF) / 4Δ⌉` is the
-ceiling of the rational quotient, and `c_F ≤ c ↔ 6Δ + ΔF ≤ 4Δ·c`. -/
-theorem gap_delivery_iff_cF (ΔF : Time) (c : Nat) :
-    ⌈((6 * sp.Δ + ΔF : Time) : ℚ) / ((4 * sp.Δ : Time) : ℚ)⌉ ≤ (c : Int) ↔
-      6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c := by
-  have hΔ : (0 : ℚ) < ((4 * sp.Δ : Time) : ℚ) := by
-    have := sp.toParams.hΔ
-    exact_mod_cast (by linarith : (0 : Time) < 4 * sp.Δ)
-  rw [Int.ceil_le, div_le_iff₀ hΔ]
-  constructor
-  · intro h
-    have h' : 6 * sp.Δ + ΔF ≤ (c : Time) * (4 * sp.Δ) := by exact_mod_cast h
-    linarith
-  · intro h
-    have h' : 6 * sp.Δ + ΔF ≤ (c : Time) * (4 * sp.Δ) := by linarith
-    exact_mod_cast h'
-
-/-- **`c ≥ c_F` gives the delivery premise of `anchorStep_gap`.** -/
-theorem cF_gap_delivery {ΔF : Time} {c : Nat}
-    (hc : ⌈((6 * sp.Δ + ΔF : Time) : ℚ) / ((4 * sp.Δ : Time) : ℚ)⌉ ≤ (c : Int)) (s : Nat) :
-    sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts (s + c : Nat) :=
-  gap_delivery ((gap_delivery_iff_cF ΔF c).1 hc) s
-
-/-- At `ΔF = 32Δ`, `c_F = ⌈38/4⌉ = 10`. -/
-theorem cF_at_32 :
-    ⌈((6 * sp.Δ + 32 * sp.Δ : Time) : ℚ) / ((4 * sp.Δ : Time) : ℚ)⌉ = 10 := by
-  have hΔ : (0 : ℚ) < (sp.Δ : ℚ) := by exact_mod_cast sp.toParams.hΔ
-  have h : ((6 * sp.Δ + 32 * sp.Δ : Time) : ℚ) / ((4 * sp.Δ : Time) : ℚ) = 19 / 2 := by
-    push_cast
-    rw [div_eq_iff (by positivity)]
-    ring
-  rw [h, Int.ceil_eq_iff]
-  norm_num
-
-/-- `ΔF ≤ 2Δ` is the delivery premise at `c = 2`. -/
-theorem gap2_delivery {ΔF : Time} (h : ΔF ≤ 2 * sp.Δ) :
-    6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (2 : Nat) := by
-  push_cast; linarith
-
-/-- **The span of the window.** Anchors at `s₀` and `s₀ + 3c`: the `hsl` premise
-`B₃.slot ≤ A.slot + δt` of `coverage_of_anchor_window` holds if and only if `3c ≤ δt`. -/
-theorem anchor_span_iff {s₀ c δt : Nat} : s₀ + 3 * c ≤ s₀ + δt ↔ 3 * c ≤ δt := by omega
-
 /-! ## The anchor steps -/
 
 /-- The slot of an honest proposal. -/
@@ -289,7 +246,6 @@ private theorem height_next {g ΔR a b : Time}
   rw [Healing.σ_eq_honest hrun hnc hX.1 hy hAz hAy] at hle
   exact ⟨_, hX.1, kX + 1, hXm, by omega⟩
 
-
 /-- **The three route-A anchor steps (gap `c`).** Four honest proposals `P i` at the slots
 `s₀ + [0, c, 2c, 3c]`, `2 ≤ c`, after the drain, `t_{s₀+3c} ≤ b`, the HS premises with the
 delivery premise `6Δ + ΔF ≤ 4Δ·c` and `ḡ_S ≤ t_{s₀} + 6Δ`, and `H_z + 2 ≤ σ[P₀].h` at an
@@ -334,26 +290,6 @@ theorem anchorSteps_gap {g ΔR a b gS ΔF : Time}
   intro i
   fin_cases i
   exacts [st0, st1, st2]
-
-/-- **Check: the gap-2 theorem is the instance `c = 2`.** `anchorSteps_gap2` follows from
-`anchorSteps_gap` and `gap2_delivery`. -/
-theorem anchorSteps_gap2' {g ΔR a b gS ΔF : Time}
-    (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔR a b)
-    (hc : Healing.CatchRun tr H g (2 * sp.Δ))
-    (hs : Healing.HSSharedUpTo tr H dg gS ΔF b) (hΔF : ΔF ≤ 2 * sp.Δ) {s₀ : Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ∀ i, Healing.HonestProposalRun tr H proposer (s₀ + ![0, 2, 4, 6] i) (P i))
-    (hR : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 6 : Nat) ≤ b)
-    (hgS : gbar gS ≤ sp.ts s₀ + 6 * sp.Δ)
-    (hh₀ : ∃ y ∈ H, ∃ k, P 0 ∈ (tr.state y k).fg.tree ∧
-      Healing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ (P 0).root).h) :
-    ∀ i : Fin 3, AnchorStep tr H (P i.castSucc) (P i.succ) :=
-  anchorSteps_gap hp hc hs le_rfl (gap2_delivery hΔF)
-    (by
-      intro i
-      fin_cases i
-      exacts [by simpa using hP 0, by simpa using hP 1, by simpa using hP 2,
-        by simpa using hP 3]) hR hb hgS hh₀
 
 end Consensus.Goldilocks.Refinement
 

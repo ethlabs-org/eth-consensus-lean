@@ -124,41 +124,6 @@ theorem finalWindow_data_of_honest_anchors_gap (Q : FinalQuery S A V)
   rw [ht i]
   exact hready i
 
-/-- **`FinalWindowData` from four honest anchors** at the slots `start + off a` with the gap-2
-offsets `off = ![0, 2, 4, 6]` (not the contract's `finalWindow A`, whose gap is `cF r`):
-`finalWindow_data_of_honest_anchors_gap` at `c = 2`. -/
-theorem finalWindow_data_of_honest_anchors (Q : FinalQuery S A V)
-    {proposer : Nat → Fin Q.params.n}
-    {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
-    (hp : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b)
-    (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ)) (start : Nat)
-    {P : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))}
-    (hP : ∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-      (start + ![0, 2, 4, 6] i) (P i))
-    (hs : StrictMono fun i => start + ![0, 2, 4, 6] i)
-    (hR : Healing.drainTime Q.params a ≤ Q.params.ts (start + 0))
-    (hb : Q.params.ts (start + 6) ≤ b)
-    (hadj : start + 6 = start + 4 + 1 →
-      Q.params.ts (start + 4) + 6 * Q.params.Δ ≤ b)
-    (hq : Q.query < Q.params.toParams.slotTime (start + 0))
-    (hD : Q.params.toParams.slotTime (start + 6) ≤ Q.deadline)
-    (hready : ∀ i, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
-      ((Sys (family S) V).cDur (K S A) Q.run) (P i).proposer
-      (Q.params.toParams.slotTime (start + ![0, 2, 4, 6] i)))
-    (hcarrier : ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
-      ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
-      ∃ j, Q.trace.BlockCallAt y j (P 3) ∧ Q.trace.time j ≤ Q.deadline) :
-    ∃ W : FinalWindowData S A V Q, W.start = start ∧ W.block = P := by
-  have hoff : (![0, 2, 2 * 2, 3 * 2] : Fin 4 → Nat) = ![0, 2, 4, 6] := by
-    ext i; fin_cases i <;> rfl
-  obtain ⟨cut, hcut, hacc, -, -, hch, ht, hord, hfr, hbd⟩ :=
-    finalWindow_cuts_of_honest_anchors hp hc hP hs hR hb hadj hq hD
-  refine ⟨⟨start, 2, le_rfl, by have := A.six_le_δt; omega, P, cut,
-    by rw [hoff]; exact window_slots_of_honest_anchors hP, hcut, hacc, fun i => ?_, hfr,
-    hord, hbd, hch, hcarrier⟩, rfl, rfl⟩
-  rw [ht i]
-  exact hready i
-
 end Final
 
 end Consensus.Goldilocks.Refinement

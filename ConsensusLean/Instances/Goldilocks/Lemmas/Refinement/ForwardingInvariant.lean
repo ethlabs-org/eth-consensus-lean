@@ -31,16 +31,6 @@ theorem forwardQueueCanonical_iff {sp : SA.SAParams}
       ∀ q ∈ st.forwards, ∃ p : Option (Wire sp.n), ∃ B,
         q.2 = p.toList ++ [blockObj sp B] := by rfl
 
-/-- Every new acceptance queues one canonical child with its exact optional parent. -/
-theorem forwardQueueCanonical_queueAccepted {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
-    (h : ForwardQueueCanonical st) : ForwardQueueCanonical (queueAccepted st B) := by
-  rw [forwardQueueCanonical_iff] at h ⊢
-  intro q hq
-  rcases queueAccepted_forward_origin st B q hq with hq | ⟨root, p, _, _, he⟩
-  · exact h q hq
-  · exact ⟨p, B, congrArg Prod.snd he⟩
-
 /-- The handler's acceptance fold preserves canonical payload shape. -/
 theorem forwardQueueCanonical_apply {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) r
@@ -411,20 +401,6 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
       · cases ev <;> simp only [Model.Event.node] at hn' <;>
           simpa only [Model.Run.step, Function.update_of_ne (Ne.symm hn'), stateAt] using ih
 
-/-- At valid event boundaries the queue has drained, so durable wrappers are actual
-holdings. This does not identify their first publication or order acceptance cuts. -/
-theorem stateBefore_wrappers_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) (v : V) (i root : Nat) (o : Wire (Fintype.card V))
-    (hw : (stateAt S rho hn v i).wrappers root = some o) :
-    o ∈ (rho.stateBefore i v).seen.flatMap Obj.parts := by
-  have ha := (stateBefore_forwardInventory S rho hn v i).1
-  rw [wrappersAccounted_iff] at ha
-  rcases ha root o hw with h | h
-  · exact h
-  · rw [pendingWrappers_eq, forwards_empty S rho hn hv v i, List.map_nil] at h
-    exact False.elim (List.not_mem_nil h)
-
 /-- The delivery poll's immutable input is ready directly from the reachable inventory.
 The received object's recursive children are held before any of its calls run. -/
 theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -747,38 +723,6 @@ theorem deliverRecs_acceptance_pending {sp : SA.SAParams}
           simpa only [processOne_self, processOne_now, processOne_node proposer dg, he] using hr
         simpa only [List.foldl_cons, processOne_now] using ih _ (sub + 1) hc hh
 
-/-- An actual receipt acceptance produces a publication in that same engine event.
-The coverage and release-readiness premises are discharged by reachable invariants. -/
-theorem delivery_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) {v : V} {i : Nat}
-    {o : (protoOf (compiled (family S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
-    (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true)) :
-    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
-      q.origin = rho.ownKey v ∧
-      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
-  have ht : (stateAt S rho hn v i).now = t :=
-    (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
-  rw [eventCuts_deliver S rho hn i v o t he] at hr
-  have hr' : r ∈ deliverRecs (runProposer S rho hn) (digestOf S rho)
-      (digests rho.hash o) (stateAt S rho hn v i).self (stateAt S rho hn v i).now i
-      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v i).node 0 := by
-    simpa only [self_eq_ownKey, ht] using hr
-  obtain ⟨p, hp⟩ := deliverRecs_acceptance_pending (runProposer S rho hn) (digestOf S rho)
-    (digests rho.hash o) i _ _ 0 (stateAt_wrappersCover S rho hn v i) r B hr' hb
-  have hc : forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∈
-      pendingWrappers (process (stateAt S rho hn v i) o (digests rho.hash o)) := by
-    rw [pendingWrappers_eq]
-    refine List.mem_map.mpr ⟨_, hp, ?_⟩
-    have hself : (process (stateAt S rho hn v i) o (digests rho.hash o)).self =
-        rho.ownKey v := (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
-    simp only [ht, forwardObj]
-    rw [hself]
-  obtain ⟨q, hq, hi, hx, ho⟩ := delivery_pending_publication S rho hn hv he _ hc
-  exact ⟨p, q, hq, hi, hx, ho⟩
-
 /-- Every intermediate duty prefix of a tick inherits the reachable forwarding inventory.
 No release-success premise is supplied by the caller. -/
 theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -876,38 +820,6 @@ theorem tick_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env
   exact duty_release_in_runDuties S rho v _ pre post _ c
     (tick_duty_prefix_poll_released S rho hn hv v i t pre c hc)
 
-/-- Recording a successfully decoded own canonical block runs precisely its block handler. -/
-theorem recordOwn_decoded_block {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
-    (hs : List (Header Info × Nat)) (o : Wire sp.n) (B : Blk sp)
-    (hd : decodeBlock sp hs o = some B) :
-    recordOwn st o hs = apply st (Node.onBlock st.self st.node st.now B) := by
-  unfold decodeBlock at hd
-  split at hd <;> try { cases hd }
-  split at hd <;> try { cases hd }
-  dsimp only at hd
-  split_ifs at hd
-  all_goals
-    simp_all only [Option.some.injEq]
-    subst B
-    simp_all [recordOwn]
-
-/-- A released own canonical block that the node accepts queues its exact wrapper.
-This local bridge keeps acceptance distinct from mere release of a refused block. -/
-theorem recordOwn_acceptance_pending {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro)
-    (hs : List (Header Info × Nat)) (o : Wire sp.n) (B : Blk sp)
-    (hd : decodeBlock sp hs o = some B) (hcover : WrappersCover st)
-    (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
-    ∃ p : Option (Wire sp.n),
-      forwardObj sp st.self st.now p B ∈ pendingWrappers (recordOwn st o hs) := by
-  rw [recordOwn_decoded_block st hs o B hd]
-  obtain ⟨p, hp⟩ := onBlock_queues_acceptance st B hcover ha
-  refine ⟨p, ?_⟩
-  rw [pendingWrappers_eq, hp]
-  refine List.mem_map.mpr ⟨_, List.mem_append_right _ (List.mem_singleton_self _), ?_⟩
-  simp only [apply_self, forwardObj]
-
 /-- A successful singleton batch really records its sole candidate. -/
 theorem releaseAll_singleton_recorded {pub : Public} {O : Type} (P : Protocol pub O)
     (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (o : P.Object)
@@ -932,35 +844,6 @@ theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E
   apply runDuties_wrappersCover S rho hn
   simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt] using
     stateAt_wrappersCover S rho hn v i
-
-/-- A released singleton proposal that its actual recording handler accepts queues a
-wrapper before the following poll. This uses the post-propose, pre-record state. -/
-theorem dutyStep_propose_acceptance_pending {V : Type} [Fintype V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-    (v : V) (nd : Model.Node (protoOf (compiled (family S)) E)) (s : Slot) (hs : 0 < s)
-    (o : (protoOf (compiled (family S)) E).Object) (B : Blk (S.params (pubOf E) hn))
-    (hsel : rho.ownKey v ∈ rho.sel (.proposer s))
-    (hcs : rho.signedCandidate v (.propose s hs)
-      ((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).2 = [o])
-    (ho : o ∈ (rho.dutyStep v nd (.propose s hs)).2)
-    (hd : decodeBlock (S.params (pubOf E) hn) (digests rho.hash o) o = some B)
-    (hc : WrappersCover (propose (shapeOf S hn nd) s).1)
-    (ha : .fg (.block B true) ∈
-      (Node.onBlock (propose (shapeOf S hn nd) s).1.self
-        (propose (shapeOf S hn nd) s).1.node (propose (shapeOf S hn nd) s).1.now B).2) :
-    ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
-      (shapeOf S hn nd).now p B ∈
-        pendingWrappers (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1) := by
-  have hrole : (protoOf (compiled (family S)) E).role (.propose s hs) = .proposer s := rfl
-  simp only [Model.Run.dutyStep, hrole, hsel, ↓reduceIte, hcs] at ho ⊢
-  rw [releaseAll_singleton_recorded _ _ _ _ _ ho]
-  change ∃ p, forwardObj (S.params (pubOf E) hn) (shapeOf S hn nd).self
-    (shapeOf S hn nd).now p B ∈ pendingWrappers
-      (recordOwn (((protoOf (compiled (family S)) E).act nd.st (.propose s hs)).1.1 hn)
-        o (digests rho.hash o))
-  rw [shapeOf_act_propose S hn]
-  simpa only [propose_self, propose_now] using
-    recordOwn_acceptance_pending (propose (shapeOf S hn nd) s).1 _ o B hd hc ha
 
 /-- A successful proposal-step block cut releases its canonical block in that duty.
 The carried-object premise is the existing proposal release contract. -/
@@ -1184,32 +1067,6 @@ theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {
     hcover B (by simpa only [hnow, atProposal_mempool] using ha)
   exact ⟨p, by simpa only [hself, hnow] using hp⟩
 
-/-- An accepted scheduled proposal has an actual wrapper publication in that same tick.
-The witness is a successful publisher candidate, not just a queue entry. -/
-theorem tick_proposal_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
-    (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
-    (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
-    (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
-    (B : Blk (S.params (pubOf E) hn))
-    (ha : .fg (.block B true) ∈ (Node.tickStep (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node
-      t (encodeTxs (mempool rho.inbox v t)) .proposal).2) :
-    ∃ p r, (publisherExecution S rho).actual r ∧ r.event = i ∧
-      r.origin = rho.ownKey v ∧
-      r.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
-  obtain ⟨p, hp⟩ := tick_proposal_acceptance_queued S rho hn hv v hh i t he s hs hone ht B ha
-  refine ⟨p, ?_⟩
-  apply tick_pending_publication S rho hn hv he
-    ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ [.propose s hs])
-    [.poll t.toNat]
-  · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1]
-    simp only [dutiesInit, hone]
-    rfl
-  · erw [runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil]
-    rwa [atProposal_eq] at hp
-
 /-- A block acceptance in a tick belongs to the proposal step, not the AC tick or FG update. -/
 theorem tick_acceptance_proposal {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
@@ -1230,87 +1087,6 @@ theorem tick_acceptance_proposal {sp : SA.SAParams}
     · simp [Node.acToFG] at ha
     · simp only [Node.attest, List.mem_cons, Node.acToFG, reduceCtorEq, false_or] at ha
       split at ha <;> simp [Node.onAttestation] at ha
-
-/-- A real tick's accepting event cut has an actual same-event wrapper publication.
-The slot schedule and proposal-step location are recovered from the cut. -/
-theorem tick_acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
-    (he : rho.events[i]? = some (.tick v t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
-    (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true)) :
-    ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
-      q.origin = rho.ownKey v ∧
-      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B := by
-  have hpub : (S.params (pubOf E) hn).toParams.IsPublic t := by
-    by_contra h
-    rw [eventCuts_tick_other S rho hn i v t he h] at hr
-    exact List.not_mem_nil hr
-  rw [eventCuts_tick_public S rho hn i v t he hpub] at hr
-  obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
-  have hl := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
-    (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
-    (.tick (encodeTxs (mempool rho.inbox v t))) k hk).2.2.2.2
-  rw [hkr, hb] at hl
-  have ha := tick_acceptance_proposal (runProposer S rho hn) (digestOf S rho)
-    (rho.ownKey v) (stateAt S rho hn v i).node t (encodeTxs (mempool rho.inbox v t)) B
-    (hl.symm ▸ List.getElem_mem _)
-  have hsel := poll_selected S rho hv v
-  have hnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
-      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
-    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel,
-      nodeTick_node_public _ hpub]
-    exact congrArg (fun key => (Node.acCall key _ t .tick).1) (self_eq_ownKey S rho hn v i)
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
-    ⟨hnil, hno⟩ | ⟨s, hs, hone, htime⟩
-  · have hnp := not_proposes S hn (runProposer S rho hn) (rho.ownKey v) t
-      (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
-    simp only [Node.tickStep, hnp, ↓reduceIte, List.not_mem_nil] at ha
-  · apply tick_proposal_acceptance_publication S rho hn hv v hh i t he s hs hone
-      (htime.trans (slotTime_eq S hn s).symm) B
-    rwa [hnode]
-
-/-- Every honest accepting trace cut has an actual wrapper publication in its own engine
-event, with the exact cut interval and timestamp. Decoding is a separate invariant. -/
-theorem acceptance_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) (x : Fin (Fintype.card V)) (hx : x ∈ honestKeys S rho)
-    (k : Nat) (B : Blk (S.params (pubOf E) hn))
-    (ha : (simTrace S rho hn).AcceptAt x k B) :
-    ∃ q p, (publisherExecution S rho).actual q ∧ q.origin = x ∧
-      cutMap S rho hn q.event ≤ k ∧ k < cutMap S rho hn (q.event + 1) ∧
-      (publisherExecution S rho).eventTime q.event = (simTrace S rho hn).time k ∧
-      q.object = forwardObj (S.params (pubOf E) hn) x ((simTrace S rho hn).time k) p B := by
-  obtain ⟨hxk, hlab⟩ := ha
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, _, he, hlo, hhi, hidx, hnode, htime, _, hlabel⟩ :=
-    simTrace_cut S rho hn hl
-  have hb : r.label = .fg (.block B true) := Option.some.inj (hlabel.symm.trans hlab)
-  have hr := List.mem_of_getElem? hidx
-  have hxev : rho.ownKey ev.node = x := hnode.symm.trans hxk
-  have hhon : ev.node ∈ rho.honest := by
-    have hi : rho.key (rho.ownKey ev.node) = ev.node := rho.key.apply_symm_apply _
-    change rho.key x ∈ rho.honest at hx
-    rwa [← hxev, hi] at hx
-  have hp : ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
-      q.origin = rho.ownKey ev.node ∧
-      q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey ev.node) ev.time p B := by
-    cases ev with
-    | tick v t => exact tick_acceptance_publication S rho hn hv v hhon i t he r B hr hb
-    | deliver v o t => exact delivery_acceptance_publication S rho hn hv he r B hr hb
-    | restart v t =>
-      rw [eventCuts_restart S rho hn i v t he] at hr
-      obtain ⟨j, hj, hjr⟩ := List.getElem_of_mem hr
-      have hc := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
-        (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0) .restart j hj).2.2.2.2
-      rw [hjr, hb] at hc
-      have hm := hc.symm ▸ List.getElem_mem (by simpa only [length_groupRecs] using hj)
-      simp [Node.exec, Node.restart, Node.acCall] at hm
-  obtain ⟨p, q, hq, hqi, hqx, hqo⟩ := hp
-  refine ⟨q, p, hq, hqx.trans hxev, hqi ▸ hlo, hqi ▸ hhi, ?_, ?_⟩
-  · rw [hqi, publisherExecution_eventTime_eq, he]
-    exact htime.symm
-  · simpa only [hxev, ← htime] using hqo
 
 /-- A valid non-genesis block with the engine's root decodes from its own canonical object.
 This separates the payload checks from the digest bookkeeping needed by forwarding. -/

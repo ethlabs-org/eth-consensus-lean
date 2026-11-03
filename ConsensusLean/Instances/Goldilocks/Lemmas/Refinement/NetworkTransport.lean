@@ -66,19 +66,6 @@ must identify H, node keys, flattened cuts, horizon and awake intervals with the
 def PSyncTransport : Prop :=
   ∀ g, rho.log.PSync rho.point g → tr.GSTRun H ΔF g
 
-/-- OPEN supplier: SyncUntil supplies only recipient-deadline-cut SyncBefore, not SyncRun
-with a send-time cutoff. Paper route: a node deadline ≤ b puts its engine service endpoint
-strictly below b under +1. Wakes are included in that deadline. All four service fields need
-the same publication/processing joins as PSyncTransport. No post-outage service is inferred. -/
-def SyncUntilTransport : Prop :=
-  ∀ b, rho.log.SyncUntil rho.point b → tr.SyncBefore H ΔF b
-
-/-- OPEN supplier: global synchrony gives SyncRun on nonnegative send windows. In particular
-this does not derive a send-window SyncRun from SyncUntil: a late wake can put its deadline
-after the latter's cutoff. The concrete adapter must discharge the same four service leaves. -/
-def SyncRunTransport : Prop :=
-  rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
-
 /-- Signed FG rows are processed before the row deadline at row delay `Δ_F` (its own bound,
 not the block/message bound `Δ`) at recipient calls within the engine horizon. An earlier
 processing of the identical attestation is sufficient; no processing after the source signing is
@@ -133,23 +120,6 @@ theorem not_isRow_of_decodeForward {sp : SA.SAParams} {hs : List (Header Info ×
   rw [forwardObj_of_decodeForward hs o origin t parent B h]
   exact not_isRow_forwardObj origin t parent B
 
-/-- Pure endpoint arithmetic, independent of the unimplemented adapter. Service at the engine
-endpoint is strictly before the protocol endpoint, including equality at the engine bound.
-This buys no forwarding delay and is paid once, not once per ancestor. -/
-theorem delivery_endpoint_slack (base received Δe Δp : Time)
-    (hdelay : Δp = Δe + 1) (hreceived : received ≤ base + Δe) :
-    received < base + Δp := by
-  simp only [Time] at *
-  omega
-
-/-- A qualifying protocol deadline places the engine endpoint strictly before the outage
-cutoff. The cutoff itself is allowed for the protocol deadline. -/
-theorem delivery_endpoint_before_cutoff (base cutoff Δe Δp : Time)
-    (hdelay : Δp = Δe + 1) (hcut : base + Δp ≤ cutoff) :
-    base + Δe < cutoff := by
-  simp only [Time] at *
-  omega
-
 /-- Partial synchrony services an actual successful publication strictly before the
 protocol endpoint. The start may be a later wake; its entire engine delivery interval
 must be awake and inside the horizon. This proves holdings, not a node call or row production. -/
@@ -190,33 +160,6 @@ theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) {b : Time}
   exact ⟨hnet.msgs _ hx _ _
     ⟨r.event, (publisherExecution S rho).actual_event r hr,
       (publisherExecution S rho).actual_release r hr⟩ hrow y hy a ha hlt.le hh hawake, hlt⟩
-
-/-- Delivery of an honest publication yields a real block call at receipt time, no earlier
-than its source event. A bounded receipt therefore gives a strictly protocol-bounded call.
-This includes refused calls; it does not establish acceptance or supply network delivery. -/
-theorem publication_received_blockCall (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
-    (r : Publication (Model.protoOf (compiled (family S)) E))
-    (hr : (publisherExecution S rho).actual r) (hx : rho.key r.origin ∈ rho.honest)
-    {i : Nat} {v : V} {receipt : Wire (Fintype.card V)} {t u base : Time}
-    {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt r.object)
-    (hd : decodeForward (S.params (Model.pubOf E) hn)
-      (Model.digests rho.hash r.object) r.object = some (r.origin, t, p, B))
-    (hu : u ≤ base + E.Δ) :
-    ∃ k < cutMap S rho hn (i + 1),
-      (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B ∧
-      (simTrace S rho hn).time k = u ∧
-      (publisherExecution S rho).eventTime r.event ≤ (simTrace S rho hn).time k ∧
-      (simTrace S rho hn).time k < base + (S.params (Model.pubOf E) hn).Δ := by
-  have htu := received_forward_stamp_le S rho hn hv he hc hx hd
-  obtain ⟨k, hk, hcall, htime⟩ := received_forward_blockCall S rho hn he hc hd htu
-  refine ⟨k, hk, hcall, htime, ?_, ?_⟩
-  · rw [htime, ← publication_forward_stamp S rho hn hv r hr hd]
-    exact htu
-  · rw [htime]
-    exact delivery_endpoint_slack base u E.Δ (S.params (Model.pubOf E) hn).Δ rfl hu
 
 /-- A recipient is awake from its effective send/wake start through its call.
 This supplies the closed interval required by engine delivery, not merely wakefulness

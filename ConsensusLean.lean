@@ -71,7 +71,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageDe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageGate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageMajority
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
@@ -256,7 +255,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ExposureUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinPairUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalDutyProposal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalNodeOutput
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalResetPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowAssembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.FinalWindowDefs
@@ -267,7 +265,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingSta
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedOfQuery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HSSharedRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealBound
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealCompose
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealComposeDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedC4
@@ -324,7 +321,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrain
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RiseGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowServiceParam
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RowsSupplyUpTo

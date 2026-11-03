@@ -629,13 +629,6 @@ theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
     exact hpoll _ (t : Time) h
 
 omit [DecidableEq V] in
-/-- The compiled clock sets the Goldilocks clock. -/
-theorem clock_eq (st : (Model.protoOf (compiled (family S)) E).State) (t : Time)
-    (xs : List Tx) :
-    ((Model.protoOf (compiled (family S)) E).clock st t xs).1 hn = { st.1 hn with now := t } :=
-  rfl
-
-omit [DecidableEq V] in
 /-- The compiled `recordOwn` is the shape's. -/
 theorem recordOwn_eq (st : (Model.protoOf (compiled (family S)) E).State)
     (o : (Model.protoOf (compiled (family S)) E).Object) (hs) :
@@ -652,29 +645,6 @@ theorem rootOf_digests_blockObj (B : Blk (S.params (pubOf E) hn)) :
         (headerOf (S.params (pubOf E) hn) B) =
       some (rho.hash (headerOf (S.params (pubOf E) hn) B)) :=
   rootOf_digests_item S rho _ _ _
-
-/-- An object in a list is among the list's parts. -/
-theorem mem_partsList {n : Nat} {R I B : Type} (c : Model.Obj n R I B) :
-    ∀ cs : List (Model.Obj n R I B), c ∈ cs → c ∈ Model.Obj.parts.partsList cs
-  | [], h => absurd h List.not_mem_nil
-  | c' :: cs, h => by
-    rw [List.mem_cons] at h
-    simp only [Model.Obj.parts.partsList, List.mem_append]
-    rcases h with rfl | h
-    · left; cases c; simp [Model.Obj.parts]
-    · right; exact mem_partsList c cs h
-
-omit [DecidableEq V] in
-/-- The digests the engine passes with a relay wrapper map the header of each carried block object
-to the engine's hash of it. -/
-theorem rootOf_digests_relay (cs : List (Wire (Fintype.card V))) (B : Blk (S.params (pubOf E) hn))
-    (hB : blockObj (S.params (pubOf E) hn) B ∈ cs) :
-    rootOf (Model.digests rho.hash (.mk .none (.data .relay) cs))
-        (headerOf (S.params (pubOf E) hn) B) =
-      some (rho.hash (headerOf (S.params (pubOf E) hn) B)) := by
-  apply rootOf_digests_of_mem
-  simp only [Model.Obj.parts, List.filterMap_cons, Model.Obj.item?]
-  exact List.mem_filterMap.2 ⟨blockObj _ B, mem_partsList _ cs hB, rfl⟩
 
 end
 
@@ -847,25 +817,6 @@ theorem index_eq_of_events (hv : rho.ExecutionValid) {i i' : Nat}
   obtain ⟨hi', h2⟩ := List.getElem?_eq_some_iff.mp he'
   exact (hv.nodup.getElem_inj_iff).mp (h1.trans h2.symm)
 
-/-- A tick of an awake honest node at a time after a delivery to it, within the horizon, comes
-after the delivery. -/
-theorem tick_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {o : (Model.protoOf (compiled (family S)) E).Object} {t u : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (htu : t < u) (hu : u ≤ rho.horizon)
-    (hw : E.awake v u = true) : ∃ j, i < j ∧ rho.events[j]? = some (.tick v u) := by
-  have hm := List.mem_of_getElem? he
-  have ht0 := (hv.in_horizon _ hm).1
-  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp
-    (hv.tick_total v (hv.honest_only _ hm) u (by simp only [Model.Event.time] at ht0; linarith)
-      hu hw)
-  refine ⟨j, ?_, hj⟩
-  rcases lt_trichotomy j i with h | rfl | h
-  · rcases keyLe_of_index_lt S rho hv hj he h with h' | h'
-    · have : u < t := h'; linarith
-    · have : u = t := h'.1; linarith
-  · rw [he] at hj; cases hj
-  · exact h
-
 /-- At a delivery the node's last tick or restart is at the delivery's time: an awake honest
 node ticks at every time of the horizon, before the deliveries of that time. -/
 theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
@@ -959,69 +910,6 @@ theorem runDuties_seen (v : V) :
     split
     · rw [Model.releaseAll_seen]; simp
     · simp
-
-/-- **The gossip relays the queue.** An awake tick of node `v` releases the unsigned relay
-wrapper of its relay queue, which carries everything queued before the tick. -/
-theorem tick_relays {j : Nat} {v : V} {t : Time} (he : rho.events[j]? = some (.tick v t))
-    (hw : E.awake v t = true) {x : Wire (S.params (pubOf E) hn).n}
-    (hx : x ∈ (stateAt S rho hn v j).relayBuf) :
-    ∃ cs, x ∈ cs ∧ Model.Obj.mk .none (.data .relay) cs ∈ rho.releasesAt j := by
-  simp only [Model.Run.releasesAt, he]
-  rw [rho.tick_of_awake _ v t hw]
-  set nd := rho.stateBefore j v
-  set R := rho.runDuties v ⟨(Model.protoOf (compiled (family S)) E).clock nd.st t
-    (Model.mempool rho.inbox v t), nd.seen⟩ ((Model.protoOf (compiled (family S)) E).duties t)
-  -- the queue after the duties keeps `x` and holds only seen objects
-  have hkeep : x ∈ (R.1.st.1 hn).relayBuf :=
-    rho.runDuties_invariant (fun s => x ∈ (s.1 hn).relayBuf) v _ _
-      (fun s d _ hs => act_preserves S hn (fun st => x ∈ st.relayBuf)
-        (fun st s h => by rw [(propose_keeps st s).1]; exact h)
-        (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
-        (fun st t h => by rw [(poll_keeps st t).1]; exact h) s d hs)
-      (fun s o hs ho hq => by
-        obtain ⟨k, r, m, cs, rfl⟩ := runDuties_signed S rho v _ _ o ho
-        have h := recordOwn_relayBuf_signed (s.1 hn) (k := k) (r := r) (m := m) (cs := cs) hs
-        rw [← h] at hq
-        exact hq)
-      hx
-  have hseen : ∀ y ∈ (R.1.st.1 hn).relayBuf, y ∈ Model.closure R.1.seen := by
-    have hQ : ∀ y ∈ (R.1.st.1 hn).relayBuf, y ∈ Model.closure nd.seen := rho.runDuties_invariant
-      (fun s => ∀ y ∈ (s.1 hn).relayBuf, y ∈ Model.closure nd.seen) v _ _
-      (fun s d _ hs => act_preserves S hn (fun st => ∀ y ∈ st.relayBuf, y ∈ Model.closure nd.seen)
-        (fun st s h => by rw [(propose_keeps st s).1]; exact h)
-        (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
-        (fun st t h => by rw [(poll_keeps st t).1]; exact h) s d hs)
-      (fun s o hs _ hq => by
-        change ∀ y ∈ (recordOwn (s.1 hn) o hs).relayBuf, _
-        rcases (recordOwn_keeps (s.1 hn) o hs).1 with h' | h' <;> rw [h']
-        · exact hq
-        · simp)
-      (stateAt_relay_seen S rho hn v j)
-    intro y hy
-    rw [runDuties_seen S rho v, Model.closure_append]
-    exact List.mem_append_left _ (hQ y hy)
-  generalize hcs : (R.1.st.1 hn).relayBuf = cs at hkeep hseen
-  have hgo : Model.gossipCandidates (Model.protoOf (compiled (family S)) E) R.1.st t =
-      [Model.Obj.mk .none (.data .relay) cs] := by
-    obtain ⟨c, cs₀, rfl⟩ := List.exists_cons_of_ne_nil (List.ne_nil_of_mem hkeep)
-    have hcs' : ∀ h', (R.1.st.1 h').relayBuf = c :: cs₀ := fun _ => hcs
-    simp only [Model.gossipCandidates, Model.protoOf, compiled, compile, family, hn,
-      ↓reduceDIte, goldilocksShape, hcs']
-    rfl
-  refine ⟨cs, hkeep, List.mem_append_right _ ?_⟩
-  have hc : (Model.releasable R.1.seen (Model.Obj.mk .none (.data .relay) cs) &&
-      Model.protects (Model.protoOf (compiled (family S)) E) (rho.ownKey v) R.1.seen
-        (Model.Obj.mk .none (.data .relay) cs)) = true := by
-    simp only [Model.releasable, Model.protects, Bool.and_eq_true, List.all_eq_true,
-      decide_eq_true_eq]
-    refine ⟨fun y hy => hseen y hy, ?_⟩
-    simp [Model.Obj.signer?, Model.Obj.auth]
-  rw [hgo]
-  simp only [Model.releaseAll]
-  split
-  · exact List.mem_cons_self
-  · rename_i h
-    exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_relay _ _ hseen⟩))
 
 /-- **A delivery relays what it queued.** The gossip of a delivery to node `v` releases the
 unsigned relay wrapper of its relay queue, which carries everything the delivery's `process`
@@ -1398,68 +1286,6 @@ section
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
-
-omit [DecidableEq V] in
-/-- A restart queues its emissions. -/
-theorem restore_outbox (k : Fin (S.params (pubOf E) hn).n)
-    (d : State (S.params (pubOf E) hn) (S.ro _)) (t : Time) :
-    (restore k d t).outbox = d.outbox ++ emitted (Node.restart k d.node t).2 := rfl
-
-/-- Between ticks and deliveries of the node (whose poll steps pop it) the outbox only grows. -/
-theorem outbox_persist {i : Nat} {v : V} {b : Body} (hb : b ∈ (stateAt S rho hn v i).outbox) :
-    ∀ m, i ≤ m → (∀ l, i ≤ l → l < m → ∀ t, rho.events[l]? ≠ some (.tick v t) ∧
-      ∀ o, rho.events[l]? ≠ some (.deliver v o t)) →
-      b ∈ (stateAt S rho hn v m).outbox := by
-  intro m him
-  induction m, him using Nat.le_induction with
-  | base => exact fun _ => hb
-  | succ m him ih =>
-    intro hno
-    have hm := ih fun l h1 h2 => hno l h1 (by omega)
-    cases he : rho.events[m]? with
-    | none =>
-      simp only [stateAt, stateBefore_succ_none S rho he] at hm ⊢
-      exact hm
-    | some e =>
-      by_cases hne : e.node = v
-      · cases e with
-        | tick w t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          exact absurd he (hno m him (by omega) t).1
-        | deliver w o t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          exact absurd he ((hno m him (by omega) t).2 o)
-        | restart w t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          rw [stateAt_succ_restart S rho hn he]
-          change b ∈ (stateAt S rho hn w m).outbox ++ _
-          exact List.mem_append_left _ hm
-      · simp only [stateAt, stateBefore_succ_of_ne S rho he hne] at hm ⊢
-        exact hm
-
-/-- A tick of an awake honest node at a time after an event of it, within the horizon, comes
-after the event. -/
-theorem tick_after_event (hv : rho.ExecutionValid) {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
-    (he : rho.events[i]? = some ev) {u : Time} (htu : ev.time < u) (hu : u ≤ rho.horizon)
-    (hw : E.awake ev.node u = true) : ∃ j, i < j ∧ rho.events[j]? = some (.tick ev.node u) := by
-  have hm := List.mem_of_getElem? he
-  have ht0 := (hv.in_horizon _ hm).1
-  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp
-    (hv.tick_total _ (hv.honest_only _ hm) u (by linarith) hu hw)
-  refine ⟨j, ?_, hj⟩
-  rcases lt_trichotomy j i with h | rfl | h
-  · rcases keyLe_of_index_lt S rho hv hj he h with h' | h'
-    · have : u < ev.time := h'; linarith
-    · have : u = ev.time := h'.1; linarith
-  · rw [he] at hj
-    have : ev.time = u := congrArg Model.Event.time (Option.some.inj hj)
-    rw [this] at htu
-    exact absurd htu (lt_irrefl _)
-  · exact h
 
 end
 

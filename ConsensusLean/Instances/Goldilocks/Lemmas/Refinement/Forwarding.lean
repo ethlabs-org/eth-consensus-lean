@@ -1013,48 +1013,6 @@ theorem releaseAll_candidate_success {pub : Public} {O : Type} (P : Protocol pub
         simp only [h]
         exact ih _ i hi hs
 
-/-- Keep the immutable pre-poll candidates when advancing the release prefix. A durable
-entry is either a prior publication, a successful release in this prefix, or a candidate
-not yet visited. The guard premise is essential: merely clearing the queue proves nothing
-about publication. It is required only for entries of the durable map. -/
-theorem wrappers_release_prefix {pub : Public} {O : Type} (P : Protocol pub O)
-    (hash : P.Item → Nat) (origin : Key pub) (nd : Model.Node P)
-    (cs : List P.Object) (wrappers : Nat → Option P.Object) (prior : P.Object → Prop)
-    (hmap : ∀ root o, wrappers root = some o →
-      prior o ∨ ∃ i : Nat, cs[i]? = some o)
-    (hguards : ∀ root o, wrappers root = some o → ∀ i, cs[i]? = some o →
-      let pre := (Model.releaseAll P hash origin nd (cs.take i)).1
-      Model.releasable pre.seen o = true ∧
-        Model.protects P origin pre.seen o = true ∧
-        P.dependencies.ready (Model.closure pre.seen) o = true)
-    (r : Nat) :
-    ∀ root o, wrappers root = some o →
-      prior o ∨ o ∈ (Model.releaseAll P hash origin nd (cs.take r)).2 ∨
-        ∃ i, r ≤ i ∧ cs[i]? = some o := by
-  intro root o hw
-  rcases hmap root o hw with hp | ⟨i, hi⟩
-  · exact Or.inl hp
-  · by_cases hir : i < r
-    · right; left
-      apply releaseAll_candidate_success P hash origin nd (cs.take r) i o
-      · simpa only [List.getElem?_take, hir, ↓reduceIte] using hi
-      · simpa only [List.take_take, Nat.min_eq_left (Nat.le_of_lt hir)] using
-          hguards root o hw i hi
-    · exact Or.inr (Or.inr ⟨i, Nat.le_of_not_gt hir, hi⟩)
-
-/-- Polling keeps the old queue's exact order after the optional ordinary emission.
-The index belongs to the immutable pre-poll queue, not the cleared returned state. -/
-theorem pollBatch_forward_index {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
-    (i : Nat) (q : Time × List (Wire sp.n)) (hi : st.forwards[i]? = some q) :
-    (pollBatch st t).2[(poll st t).2.toList.length + i]? =
-      some (.forward q.1, q.2) := by
-  have hi' := (List.getElem?_eq_some_iff.mp hi).1
-  simp only [pollBatch]
-  rw [List.getElem?_append_left (by simp only [List.length_append, List.length_map]; omega)]
-  rw [List.getElem?_append_right (by omega)]
-  simp only [Nat.add_sub_cancel_left, List.getElem?_map, hi, Option.map_some]
-
 /-- A batch drains completely when its guards hold against the immutable candidate
 prefix. Earlier candidates become actual holdings by induction, not by assumption. -/
 theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub O)
@@ -1132,19 +1090,6 @@ theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : Setup)
     obtain ⟨c, hc, ho⟩ := List.mem_flatMap.mp ho
     exact List.mem_flatMap.mpr ⟨c, List.mem_append_left _ hc, ho⟩
   rw [(releaseAll_forward_batch S hn hash x _ cs hr' hshape).1]
-
-/-- The immutable pre-poll block queue follows the ordinary emission and precedes votes. -/
-theorem pollBatch_signed_eq {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time) :
-    ((pollBatch st t).2.map fun q =>
-      Obj.mk (.signed st.self .poll) (.data q.1) q.2) =
-      ((poll st t).2.toList.map fun q =>
-        Obj.mk (.signed st.self .poll) (.data q.1) q.2) ++ pendingWrappers st ++
-      (st.voteForwards.map fun q =>
-        Obj.mk (.signed st.self .poll) (.data (.voteForward q.1 (encodeVote q.2)))
-          [voteObj q.2]) := by
-  rw [pendingWrappers_eq]
-  simp only [pollBatch, List.map_append, List.map_map, Function.comp_def]
 
 /-- Actual selected poll candidates retain the old signed block queue after the ordinary
 emission. The self-key premise is the runtime identity, not a new service assumption. -/
@@ -1391,19 +1336,6 @@ def ForwardParentEarlier : Prop :=
         some (r.origin, pt, pp, A) ∧
       B.parent = some A.root ∧ tr.AcceptAt r.origin ka A ∧ tr.AcceptAt r.origin kb B ∧
       ka < kb ∧ tr.time ka = pt ∧ tr.time kb = t
-
-/-- Characterize parent publication order without exposing its definition body. -/
-theorem forwardParentEarlier_iff : ForwardParentEarlier S rho hn tr pubExec ↔
-    ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
-      decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
-        some (r.origin, t, some p, B) →
-      ∃ q A pt pp ka kb, pubExec.actual q ∧ Publication.Before q r ∧ q.origin = r.origin ∧
-        q.object = p ∧ p = forwardObj (S.params (pubOf E) hn) r.origin pt pp A ∧
-        decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash p) p =
-          some (r.origin, pt, pp, A) ∧
-        B.parent = some A.root ∧ tr.AcceptAt r.origin ka A ∧ tr.AcceptAt r.origin kb B ∧
-        ka < kb ∧ tr.time ka = pt ∧ tr.time kb = t := by
-  rfl
 
 /-- OPEN: recursive receipt processing turns prior authenticated holdings into prior calls;
 own publications instead use actual acceptance. Refused calls do not establish acceptance. -/

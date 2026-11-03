@@ -160,17 +160,6 @@ theorem voteCompat_of_not_lateWaker {i : Nat} (hinv : OutageVoteInv D i) {x : Fi
   · exact hpre.2 h
   · exact hxW h
 
-/-- A vote of a validator outside `W`, or of a slot past the lifetime, is compatible
-with `P` at a cut before `i`. -/
-theorem voteCompat_of_slot {i : Nat} (hinv : OutageVoteInv D i) {x : Fin sp.n}
-    (hx : x ∈ H) {k : Nat} (hk : k < i) {e : SA.Em sp (List (FG.Att sp.n))}
-    (hxW : x ∉ D.W ∨ D.j₀ + sp.k < e.msg.slot) (hv : SA.VoteAt tr.projAC x k e)
-    (hs : D.j₀ ≤ e.msg.slot) :
-    VoteCompat (tr.HonestBlocks H) e.msg D.P := by
-  rcases hxW with hxW | hlate
-  · exact hinv.voteCompat_of_not_lateWaker hx hxW hk hv hs
-  · exact hinv.late x hx k hk e hv hlate
-
 end OutageVoteInv
 
 /-- **A result's counted validators meet a participant set.** At an honest update with result

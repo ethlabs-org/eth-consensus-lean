@@ -23,13 +23,6 @@ variable {S : Setup} {A : AcceptanceAssumptions S} {V : Type} [Fintype V] [Decid
 
 namespace FinalQuery
 
-/-- Every honest node is awake on `[ḡ, horizon]` (`HealthyOn`). -/
-theorem awake_all (Q : FinalQuery S A V) :
-    ∀ y ∈ honestKeys S Q.run.2, ∀ t, gbar Q.gst ≤ t → t ≤ Q.run.2.horizon →
-      Q.trace.awake y t := by
-  intro y hy t hg hb
-  exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) hy t hg hb, le_trans (le_max_right _ _) hg, hb⟩
-
 /-- **The shared HS premises of a final query at a parametric `Δ_F`**, from row service at
 `Δ_F` (`hrow`), `0 < Δ_F` (only the field `ResetService.deltaF`) and `6Δ + Δ_F ≤ 4Δ·δt`. -/
 theorem hsSharedUpTo_of_rows (Q : FinalQuery S A V) (ΔF : Time)
