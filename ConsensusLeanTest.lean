@@ -65,6 +65,8 @@ public import ConsensusLeanTest.GoldilocksRetentionWitness
 public import ConsensusLeanTest.GoldilocksRun
 public import ConsensusLeanTest.GoldilocksSAHealingRun
 public import ConsensusLeanTest.GoldilocksSAHealingWitness
+public import ConsensusLeanTest.GoldilocksScheduleLocalRun
+public import ConsensusLeanTest.GoldilocksScheduleRun
 public import ConsensusLeanTest.GoldilocksSettledWitness
 public import ConsensusLeanTest.GoldilocksSleepyRegimes
 public import ConsensusLeanTest.GoldilocksSleepyWitness
