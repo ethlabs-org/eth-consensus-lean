@@ -6,6 +6,7 @@ public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLeanTest.GoldilocksACOptimisticWitness
+public import ConsensusLeanTest.GoldilocksACTransferWitness
 public import ConsensusLeanTest.GoldilocksAcceptance
 public import ConsensusLeanTest.GoldilocksAccountableTightness
 public import ConsensusLeanTest.GoldilocksAggregationWitness
