@@ -166,6 +166,28 @@ theorem later : True := by trivial
             ('Consensus.Test.openLeaf', 4, True),
             ('Consensus.Test.later', 6, False)])
 
+    def test_declarations_take_the_enclosing_namespace_block(self):
+        source = '''namespace Consensus.Helper
+theorem h : True := by trivial
+end Consensus.Helper
+
+namespace Consensus.Main
+section Inner
+private theorem leaf : True := by
+  sorry
+end Inner
+namespace Sub
+theorem deep : True := by trivial
+end Sub
+theorem after : True := by trivial
+end Consensus.Main
+'''
+        self.assertEqual(status.declarations(source), [
+            ('Consensus.Helper.h', 2, False),
+            ('Consensus.Main.leaf', 7, True),
+            ('Consensus.Main.Sub.deep', 11, False),
+            ('Consensus.Main.after', 13, False)])
+
     def test_closure_keeps_type_edges_and_handles_cycles(self):
         edges = {'root': ['body', 'type'], 'body': ['root'], 'type': ['leaf'],
                  'leaf': ['sorryAx'], 'unreached': ['sorryAx']}

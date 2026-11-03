@@ -100,7 +100,14 @@ def declarations(text):
         if name.startswith('_root_.'):
             name = name[7:]
         else:
-            name = namespace[1] + '.' + name
+            # The namespace blocks open at the declaration (a file may close one and open another).
+            stack = []
+            for block in re.finditer(r'^(namespace|end)\s+([\w.]+)', text[:match.start()], re.M):
+                if block[1] == 'namespace':
+                    stack.append(block[2])
+                elif stack and stack[-1] == block[2]:
+                    stack.pop()
+            name = ('.'.join(stack) if stack else namespace[1]) + '.' + name
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         result.append((name, text.count('\n', 0, match.start()) + 1,
                        bool(re.search(r'\bsorry\b', text[match.end():end]))))
