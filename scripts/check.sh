@@ -1422,6 +1422,7 @@ if ((no_build)); then build_label+=" (freshness only, --no-build)"; fi
 
 run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
+run_selftest "0 orb notes self-test (bounded/legacy/missing terminator)" bash scripts/test_agent_notes.sh
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
 run_selftest "0 box CI parity self-test (local Git remotes)" python3 -I scripts/test_orb_ci.py
 run_selftest "0 box CI liveness alert self-test" python3 -I scripts/test_orb_ci_liveness.py
@@ -1444,6 +1445,7 @@ fi
 run_selftest "2 boundaries self-test (fixtures/boundaries/cases.toml)" selftest_boundaries
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque, SorryPlace)" selftest_decls
+run_selftest "3 declaration waiver self-test (per declaration and kind)" bash scripts/test_check_decls_waivers.sh
 run_if "$((do_audit || do_audit_tests || do_audit_report))" "nothing in the closure of $SOLUTION, ${TEST_LIBS[*]} or ${DEFAULT_LIBS[*]} changed" \
   "3b axiom audit (closure of $SOLUTION, ${TEST_LIBS[*]}: gate; unfinished in ${DEFAULT_LIBS[*]}: report)" step_audit
 run_selftest "3b axiom audit self-test (CheckFixtures.Audit)" selftest_audit

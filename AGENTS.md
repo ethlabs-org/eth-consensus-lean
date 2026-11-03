@@ -97,6 +97,13 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   `unfold`/`change` through the body. Use them in the defining file too: `simp [foo]` or `unfold foo` there stores
   `foo.eq_1`, whose statement is the body, in the public `.olean`. `abbrev` and instances of non-`Prop`
   classes export their bodies anyway (not checked): use them for notation-like definitions only.
+- **Where a new lemma goes:** a new public declaration changes its module's interface and rebuilds every
+  importer. Put a helper that only a new file needs into that file (or into a new module importing what it
+  needs), not into a widely imported module: of 40 replayed main commits, the 4 that added a helper to
+  `AC/Steps/Nodes`, `AC/Steps/Core` or `Compose/Sleepy/Served` rebuilt 136–164 modules each (3 min on 4
+  cores), 62% of the rebuild time of all 40; the median commit rebuilt in 9 s (`docs/build-speed.md`).
+  If the helper needs a hub's private lemmas, move those lemmas to the hub's internal module instead
+  of adding the helper to the hub.
 - **Unfinished proofs:** `sorry` only under `Lemmas/` and `Proofs/` (the `sorry = true` layers of
   `scripts/boundaries.toml`), never in Spec, Statements, Main, instances, tests or `Solution`, and never an axiom.
   `lake build --wfail` ignores it (`warn.sorry = false`) but fails on every other warning. The closure of
