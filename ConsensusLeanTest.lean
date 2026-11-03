@@ -52,6 +52,7 @@ public import ConsensusLeanTest.GoldilocksPersistWitness
 public import ConsensusLeanTest.GoldilocksPhaseCountWitness
 public import ConsensusLeanTest.GoldilocksProjectionRejection
 public import ConsensusLeanTest.GoldilocksRecentSourceWitness
+public import ConsensusLeanTest.GoldilocksRecoveryWitness
 public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.GoldilocksRestartWitness
 public import ConsensusLeanTest.GoldilocksRetentionWitness
