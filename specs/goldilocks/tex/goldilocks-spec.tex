@@ -778,10 +778,17 @@ effective locks in the window.
 A lock that is not fast gets $s+k$, the slow window.  A fast lock gets
 $\Call{fast\_expiry}{}$: with $E$ the latest expiry of the node's live
 fast locks of earlier slots at the write, the node's \emph{fast
-deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when there
-is no such lock.  So the fast locks of consecutive slots live longer and
-longer, $c-1$ slots more per slot, up to $k$~slots, and a fast lock after
-a gap lives two slots.  The fast locks of one slot do not count for each
+deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when no
+live fast lock of an earlier slot remains.  $E$ is the node's own fast-lock
+history, not support for a branch: it counts every such lock whatever its
+block, also one that unlocking moved to $\Fr.F$ and an optimistic lock on
+$\genesis$ or on a common prefix.  So the fast locks of consecutive slots
+live longer and longer, $c-1$ slots more per slot, up to $k$~slots, and a
+slot without a fast lock does not reset~$E$ while a fast lock of an
+earlier slot is live.  For example, with $k=6$ and $c=2$, fast locks of
+slots $10$ to~$14$ get the expiries $12$, $14$, $16$, $18$ and~$20$; with
+no fast lock of slot~$15$, a fast lock of slot~$16$ still reads $E=20$
+and gets~$22$.  The fast locks of one slot do not count for each
 other, so the optimistic confirmations of a slot give their fast locks
 the same expiry; the update of slot~$s$ runs in slot~$s+1$ and can see
 later locks.  The cap keeps every lock within the slow window:

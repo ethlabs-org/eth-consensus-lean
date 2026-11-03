@@ -240,8 +240,9 @@ claims covers these changes.
   fixed at its write with $j+2\leq e\leq j+k$.  It is live while
   $\slot(t)\leq e$ and $B\in\Fr.\tree$.  A lock that is not fast gets
   $e=j+k$; a fast lock gets $\fname{fast\_expiry}$, the latest expiry of
-  the node's live fast locks of earlier slots plus~$c\geq2$, at least
-  $j+2$ and at most $j+k$.  The move back, unlocking and
+  the node's live fast locks of earlier slots, whatever their blocks,
+  plus~$c\geq2$, at least $j+2$ and at most $j+k$ ($j+2$ only when no such
+  lock is live).  The move back, unlocking and
   a restart keep the expiry.
   Every rule reads the locks through $\fname{live\_locks}$, which moves a
   lock back to its deepest ancestor that is viable or at or below
