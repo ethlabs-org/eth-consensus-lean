@@ -13,6 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Refinement.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 
 @[expose] public section
 
@@ -255,5 +256,27 @@ theorem Consensus.Goldilocks.Healing.frozenTreeAgreement :
 theorem Consensus.Goldilocks.Healing.commonPathAcquisition :
     Consensus.Goldilocks.Healing.CommonPathAcquisition :=
   Consensus.Goldilocks.Healing.phase_service_statements.commonPathAcquisition
+
+/-! Goldilocks Healing: C1.2, the AC outcome service (`Healing/Outcome`), and recovery (HR.5,
+node O.1, C1.3; `Healing/Recovery`). -/
+
+/-- Goldilocks Healing: `OutcomeService` (C1.2). -/
+theorem Consensus.Goldilocks.Compose.outcomeService : Consensus.Goldilocks.Compose.OutcomeService :=
+  Consensus.Goldilocks.Healing.Recovery.outcome_service
+
+/-- Goldilocks Healing: `CacheAcceptanceAfterReset` (HR.5). -/
+theorem Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset :
+    Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset :=
+  Consensus.Goldilocks.Healing.recovery_statements.cacheAcceptance
+
+/-- Goldilocks Healing: `PatternRecovery` (node O.1). -/
+theorem Consensus.Goldilocks.Healing.patternRecovery :
+    Consensus.Goldilocks.Healing.PatternRecovery :=
+  Consensus.Goldilocks.Healing.recovery_statements.patternRecovery
+
+/-- Goldilocks Healing: `FinalizingCoverage` (C1.3). -/
+theorem Consensus.Goldilocks.Healing.finalizingCoverage :
+    Consensus.Goldilocks.Healing.FinalizingCoverage :=
+  Consensus.Goldilocks.Healing.recovery_statements.finalizingCoverage
 
 end

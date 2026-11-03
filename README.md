@@ -76,7 +76,7 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
 `Solution.lean` proves each review statement by its source theorem, and each finished instance
 milestone (the closed `Prop` definitions of `milestone_statements_modules` in `scripts/boundaries.toml`,
-today the 45 Goldilocks statements of `Challenge.lean`, including Healing AC, Run and Service) by its milestone proof, importing that milestone's `Main`.
+today the 49 Goldilocks statements of `Challenge.lean`, including Healing AC, Run, Service, Outcome and Recovery) by its milestone proof, importing that milestone's `Main`.
 Which claims node each of them states, and where its mapping rows are: `docs/goldilocks-mapping.md` §"Review path".
 `ConsensusLeanTest/ReviewAxioms.lean`, using `ConsensusLeanTest/ReviewGuard.lean`, compiles
 alpha-equality guards (including binder kinds) and `#guard_msgs` pins of the exact axiom lists

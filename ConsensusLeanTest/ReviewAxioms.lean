@@ -188,6 +188,18 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.Healing.commonPathAcquisition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Healing.commonPathAcquisition
 
+/-- info: 'Consensus.Goldilocks.Compose.outcomeService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Compose.outcomeService
+
+/-- info: 'Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset
+
+/-- info: 'Consensus.Goldilocks.Healing.patternRecovery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.patternRecovery
+
+/-- info: 'Consensus.Goldilocks.Healing.finalizingCoverage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.finalizingCoverage
+
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/

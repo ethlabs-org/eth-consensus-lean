@@ -725,7 +725,9 @@ milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.F
                                 "ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Healing.AC",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Healing.Run",
-                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.Service"]
+                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.Service",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

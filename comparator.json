@@ -43,5 +43,9 @@
                     "Consensus.Goldilocks.Healing.viableWitnessRetention",
                     "Consensus.Goldilocks.Healing.cleanLockDrain",
                     "Consensus.Goldilocks.Healing.frozenTreeAgreement",
-                    "Consensus.Goldilocks.Healing.commonPathAcquisition"],
+                    "Consensus.Goldilocks.Healing.commonPathAcquisition",
+                    "Consensus.Goldilocks.Compose.outcomeService",
+                    "Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset",
+                    "Consensus.Goldilocks.Healing.patternRecovery",
+                    "Consensus.Goldilocks.Healing.finalizingCoverage"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

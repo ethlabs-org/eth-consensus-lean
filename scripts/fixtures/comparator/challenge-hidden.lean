@@ -17,6 +17,8 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
 
 @[expose] public section
 
@@ -72,6 +74,10 @@ theorem Consensus.Goldilocks.Healing.viableWitnessRetention : Consensus.Goldiloc
 theorem Consensus.Goldilocks.Healing.cleanLockDrain : Consensus.Goldilocks.Healing.CleanLockDrain := sorry
 theorem Consensus.Goldilocks.Healing.frozenTreeAgreement : Consensus.Goldilocks.Healing.FrozenTreeAgreement := sorry
 theorem Consensus.Goldilocks.Healing.commonPathAcquisition : Consensus.Goldilocks.Healing.CommonPathAcquisition := sorry
+theorem Consensus.Goldilocks.Compose.outcomeService : Consensus.Goldilocks.Compose.OutcomeService := sorry
+theorem Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset : Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset := sorry
+theorem Consensus.Goldilocks.Healing.patternRecovery : Consensus.Goldilocks.Healing.PatternRecovery := sorry
+theorem Consensus.Goldilocks.Healing.finalizingCoverage : Consensus.Goldilocks.Healing.FinalizingCoverage := sorry
 /- harmless -/ axiom extra : False /- harmless -/
 
 end
