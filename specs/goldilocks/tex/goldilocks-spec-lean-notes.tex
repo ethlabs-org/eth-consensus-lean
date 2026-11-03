@@ -235,18 +235,24 @@ claims covers these changes.
   block can change the frame.  Receipt handlers can send votes, and the
   own vote is a receipt.
 \item[(P4)] \emph{Interface.}  The receipt handlers take the frame.
-\item[(P5)] \emph{Locks.}  A lock is $(B,j,f)$: a block, the slot~$j$ of
-  the confirmation that wrote it, and the fast bit~$f$.  It is live while
-  $\slot(t)\leq j+k$ and $B\in\Fr.\tree$.
+\item[(P5)] \emph{Locks.}  A lock is $(B,j,f,e)$: a block, the slot~$j$ of
+  the confirmation that wrote it, the fast bit~$f$, and its expiry~$e$,
+  fixed at its write with $j+2\leq e\leq j+k$.  It is live while
+  $\slot(t)\leq e$ and $B\in\Fr.\tree$.  A lock that is not fast gets
+  $e=j+k$; a fast lock gets $\fname{fast\_expiry}$, the latest expiry of
+  the node's live fast locks plus~$c\geq2$, at least $j+2$ and at most
+  $j+k$, except that the update's fast lock keeps $j+k$ when a block of
+  the result's chain passes the slow test.  The move back, unlocking and
+  a restart keep the expiry.
   Every rule reads the locks through $\fname{live\_locks}$, which moves a
   lock back to its deepest ancestor that is viable or at or below
   $\Fr.\fcroot$.  Every lock write and every write of the record store
   the live locks, the new locks included ($\fname{add\_locks}$, also with
   no new lock), so a new lock on a nonviable block is stored on its viable
   ancestor.  A
-  lock of slot~$s$ expires at $t_{s+k+1}$, so a regular lock lives
-  $(4k-2)\Delta$ after its write, not $(4k-1)\Delta$; there is no expiry
-  guard.  The confirmation result is the deepest block at or
+  lock of slot~$s$ with the expiry $s+k$ expires at $t_{s+k+1}$, so a
+  regular such lock lives $(4k-2)\Delta$ after its write, not
+  $(4k-1)\Delta$; no lock lives longer, and there is no expiry guard.  The confirmation result is the deepest block at or
   above~$\Fr.F$ with a strict majority, with no walk.  An accepted update writes a fast lock on its deepest fast block
   and a lock that is not fast on a deeper slow block.
 \item[(P6)] \emph{The FG source.}  $\fname{ac\_to\_fg}$ returns the
