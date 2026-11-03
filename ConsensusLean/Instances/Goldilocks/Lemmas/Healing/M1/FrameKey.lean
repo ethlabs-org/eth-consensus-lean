@@ -37,6 +37,10 @@ theorem frameKey_def {P : Params} {ACP : Type} (st : Store P ACP) : frameKey st 
 `3(h + 1)` (gap at `h + 1`): both frames have floor `h`, root `Σ.F` and no `J` constraint. -/
 def keyMerge (n : Nat) : Nat := 2 * (n / 3) + n % 3
 
+theorem keyMerge_eq (n : Nat) : keyMerge n = 2 * (n / 3) + n % 3 := by
+  unfold keyMerge
+  rfl
+
 theorem keyMerge_mono {m n : Nat} (h : m ≤ n) : keyMerge m ≤ keyMerge n := by
   unfold keyMerge
   omega

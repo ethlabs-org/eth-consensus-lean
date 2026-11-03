@@ -9,8 +9,7 @@ public section
 recovery_time_savings item 1, piece (3). On `HZ ≤ h_max ≤ HZ + 1` the merged key `κ′` has the
 five values `2HZ + j`, `j < 5`, with the floors `HZ − 1, HZ − 1, HZ, HZ, HZ + 1`. The rise
 from a warm proposal at or above the floor needs `r(v) = 2 − ⌊(v − 2HZ)/2⌋` rounds
-(`2, 2, 1, 1, 0`): `HZ + 1 ≤ floor + r(v)` (`le_floor_add_riseRounds`). That proof needs the
-defining equation of `keyMerge`, which `M1/FrameKey` does not export; it is a premise `hkm`.
+(`2, 2, 1, 1, 0`): `HZ + 1 ≤ floor + r(v)` (`le_floor_add_riseRounds`).
 
 `exists_riseWindow_of_service` instantiates `exists_frameWindow_seq_of_service` with the window
 length `len(v) = d + r(v)·ρ + s` (drain `d`, round length `ρ`, slack `s`, all as times). The
@@ -48,16 +47,13 @@ theorem sum_riseLen (d ρ s lam : Time) (HZ : Nat) :
   ring
 
 /-- **The floor and the round count.** A store with `h_max ≥ 1` and merged key
-`v ≥ 2HZ` has `HZ + 1 ≤ head_height_floor + r(v)`. The premise `hkm` is the defining equation
-of `keyMerge`; its body is not exported by `M1/FrameKey`, so the caller supplies it until that
-module states it. -/
+`v ≥ 2HZ` has `HZ + 1 ≤ head_height_floor + r(v)`. -/
 theorem le_floor_add_riseRounds {P : Params} {ACP : Type} (st : Store P ACP) {HZ : Nat}
-    (hkm : ∀ n, keyMerge n = 2 * (n / 3) + n % 3)
     (h1 : 1 ≤ st.hmax) (hv : 2 * HZ ≤ frameKey' st) :
     HZ + 1 ≤ st.headHeightFloor + riseRounds HZ (frameKey' st) := by
   classical
   have hb := frameKey_bounds st
-  rw [frameKey'_def, hkm] at hv ⊢
+  rw [frameKey'_def, keyMerge_eq] at hv ⊢
   unfold riseRounds
   unfold Store.headHeightFloor
   by_cases hc : st.Contest
@@ -81,7 +77,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `len(v) = d + r(v)·ρ + s`. Some key value `v` holds on a window `[a, a + len(v)]` with a
 `FrameWindow`, the window ends by the partial sum up to `v` and by
 `lo + 5(d + s + λ) + 6ρ`, and at every honest cut of the window the frame floor satisfies
-`HZ + 1 ≤ floor + r(v)`. The premise `hkm` is as in `le_floor_add_riseRounds`. -/
+`HZ + 1 ≤ floor + r(v)`. -/
 theorem exists_riseWindow_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {g ΔF b κ : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
@@ -91,8 +87,7 @@ theorem exists_riseWindow_of_service (hrun : GoldilocksRun proposer dg H tr)
       HZ ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ HZ + 1)
     (hcall : ∀ z ∈ H, ∀ i m, lo ≤ tr.time i → tr.time i + lam ≤ tr.time m → tr.time m < T →
       ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
-    (hT : lo + (5 * (d + s + lam) + 6 * ρ) < T)
-    (hkm : ∀ n, keyMerge n = 2 * (n / 3) + n % 3) :
+    (hT : lo + (5 * (d + s + lam) + 6 * ρ) < T) :
     ∃ v, 2 * HZ ≤ v ∧ v ≤ 2 * HZ + 4 ∧ ∃ a, lo + lam ≤ a ∧
       a + riseLen d ρ s HZ v ≤
         lo + ∑ j ∈ Finset.range (v - 2 * HZ + 1), (riseLen d ρ s HZ (2 * HZ + j) + lam) ∧
@@ -118,7 +113,7 @@ theorem exists_riseWindow_of_service (hrun : GoldilocksRun proposer dg H tr)
   have h1 : 1 ≤ (tr.state y i).fg.hmax := by
     have := hj_lt_hmax hrun hy i
     omega
-  have hle := le_floor_add_riseRounds (tr.state y i).fg hkm h1 (HZ := HZ) (by rw [hkey]; exact hv1)
+  have hle := le_floor_add_riseRounds (tr.state y i).fg h1 (HZ := HZ) (by rw [hkey]; exact hv1)
   rw [hkey, hW.floor_eq y hy i hi1 hi2] at hle
   exact hle
 
