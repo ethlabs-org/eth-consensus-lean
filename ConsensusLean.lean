@@ -239,7 +239,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AnchorStepsGap
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AnchorStepsSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CarrierProcessed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
