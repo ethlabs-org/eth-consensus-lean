@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -212,7 +213,71 @@ theorem c3_of_reset_upTo (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF 
       ∀ s P, Healing.HonestProposalRun tr H proposer s P → tr.time k + sp.Δ ≤ sp.ts s →
         sp.ts s ≤ b →
         ∃ Pr ∈ tr.HonestBlocks H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) X Pr := by
-  sorry
+  intro y hy k ℓ hck htk l hl hlf X hX hXr s P hP hks hsb
+  obtain ⟨l₀, hl₀, B, hB, hBr, hlive', rfl⟩ := hl
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hlive : sp.slot (tr.time k) ≤ l₀.slot + sp.k :=
+    le_trans hlive' ((SA.locksWF_state hr hy k).cap hl₀)
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hck
+  have hvB := SA.viableAncestor_anc hPhi hB
+  obtain rfl : X = ℓ.frame.viableAncestor B := hU.1 (hPhiU hX) (hPhiU hvB.1) hXr
+  obtain ⟨r, hrk, CV, ℓ', D, hcr, hfl, L, hL, hLr, hLD⟩ :=
+    Healing.stored_fast_lock_provenance hr hy k l₀ hl₀ hlf
+  rw [hU.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
+  obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
+  obtain rfl : ell' = ℓ' := Option.some.inj (hc'.2.symm.trans hcr.2)
+  obtain ⟨hPhi', hPhiU'⟩ := SA.frameIn_of_callAt hr hy hc'
+  have hXD : Anc (tr.HonestBlocks H) (ℓ.frame.viableAncestor B) D :=
+    (hvB.2.mono hPhiU).trans (hLD.trans ((SA.viableAncestor_anc hPhi' hD).2.mono hPhiU'))
+  obtain ⟨hpH, i, ell, d, pay, hci, hcall, hd, hti, hpar, -⟩ := hP
+  -- the horizon bounds
+  have hib : tr.time i ≤ b := hti ▸ hsb
+  have hk0 := hp.run.time_nonneg k
+  have hrt : tr.time r ≤ tr.time k := hp.run.time_mono hrk.le
+  have hrb : tr.time r ≤ b := by linarith
+  -- the slot bounds
+  have hRk : Healing.drainTime sp a ≤ tr.time k := hR.trans htk
+  rw [Healing.drainTime_eq] at hRk
+  have hsk := (SA.ts_le_iff_le_slot sp hk0 _).1 hRk
+  have hks' : ¬ sp.ts s ≤ tr.time k := by linarith
+  rw [SA.ts_le_iff_le_slot sp hk0] at hks'
+  have hlab : Healing.cleanLabel sp a + sp.k + 2 ≤ l₀.slot := by
+    rw [Healing.cleanLabel_eq]; omega
+  have hRs : Healing.drainTime sp a ≤ sp.ts s := by
+    rw [Healing.drainTime_eq]; exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+  have hQ : Anc (tr.HonestBlocks H) D d.head → ∃ Pr ∈ tr.HonestBlocks H,
+      P.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) (ℓ.frame.viableAncestor B) Pr := by
+    intro hDQ
+    obtain ⟨hPhiP, hPhiPU⟩ := SA.frameIn_of_callAt hr hpH hci
+    obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhiP hd
+    have hQt : d.head ∈ ell.frame.tree := by
+      rcases eq_or_ne d.start d.head with he | he
+      · exact he ▸ hst
+      · exact (Anc.mem hsQ he).2
+    exact ⟨d.head, hPhiPU hQt, hpar, hXD.trans hDQ⟩
+  have hclean : l₀.slot + 2 ≤ s → Anc (tr.HonestBlocks H) D d.head := fun h2 =>
+    hp.clean_source_proposal_parent_before hc hy hpH (Or.inl ⟨CV, hfl⟩) hlab h2 hrb hRs
+      hci hcall hd hti hib
+  rcases hfl with hup | hop
+  · obtain ⟨-, -, ⟨-, -, ht, -⟩, -⟩ := hup
+    have ht' : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := ht
+    have h2 : l₀.slot + 2 ≤ s := by
+      have hlt : sp.ts (l₀.slot + 1 : Nat) < sp.ts s := by
+        have : sp.ts (l₀.slot + 1 : Nat) = sp.ts l₀.slot + 4 * sp.Δ := by
+          simp only [SA.SAParams.ts]; push_cast; ring
+        linarith
+      have := (SA.ts_lt_iff sp).1 hlt
+      omega
+    exact hQ (hclean h2)
+  · rcases Nat.lt_or_ge (l₀.slot + 1) s with h2 | h1
+    · exact hQ (hclean (by omega))
+    · have hsl : sp.slot (tr.time r) = l₀.slot := hop.choose_spec.choose_spec.2.1
+      have hsm := SA.slot_mono sp (hp.run.time_nonneg r) hrt
+      obtain rfl : s = l₀.slot + 1 := by omega
+      exact hQ (hp.clean_optimistic_proposal_parent hc hy hpH hop hlab hrb hRs hci hcall hd
+        hti hib)
 
 /-- The honest proposal `P'` of `s'` is the child of the duty head of its proposal call. -/
 private theorem honest_proposal_child (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)

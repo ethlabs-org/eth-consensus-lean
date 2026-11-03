@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksWitnessChain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 @[expose] public section
 
 /-! # The one-validator tick run: the SA's calls and the ticks
@@ -101,12 +102,12 @@ theorem viableAncestor_eq (h : ChainFrame Φ f j τ) {m : Nat} (h1 : f ≤ m) (h
 
 theorem mem_liveLocks (h : ChainFrame Φ f j τ) {L : Set Lock} {t : Time} {l : Lock} (hl : l ∈ L)
     {m : Nat} (h1 : f ≤ m) (h2 : m ≤ τ) (hr : l.block = (blk m).root)
-    (hlive : sp1.slot t ≤ l.slot + 2) : l ∈ liveLocks sp1 L Φ t :=
+    (hlive : sp1.slot t ≤ l.expiry) : l ∈ liveLocks sp1 L Φ t :=
   ⟨l, hl, blk m, h.mem h1 h2, hr.symm, hlive, by rw [h.viableAncestor_eq h1 h2, ← hr]⟩
 
 theorem liveLocks_sub (h : ChainFrame Φ f j τ) {L : Set Lock} {t : Time} {l : Lock}
     (hl : l ∈ liveLocks sp1 L Φ t) :
-    l ∈ L ∧ (∃ m, f ≤ m ∧ m ≤ τ ∧ l.block = (blk m).root) ∧ sp1.slot t ≤ l.slot + 2 := by
+    l ∈ L ∧ (∃ m, f ≤ m ∧ m ≤ τ ∧ l.block = (blk m).root) ∧ sp1.slot t ≤ l.expiry := by
   obtain ⟨l₀, hl₀, B, hB, hr, hlive, rfl⟩ := hl
   obtain ⟨m, h1, h2, rfl⟩ := h.eq_of_mem hB
   rw [h.viableAncestor_eq h1 h2, hr]
@@ -199,6 +200,11 @@ theorem Same.trans {A A' A'' : SAState sp1.n} (h : Same A A') (h' : Same A' A'')
     h'.votedSlot.trans h.votedSlot, h'.fgReported.trans h.fgReported,
     h'.restartTime.trans h.restartTime⟩
 
+/-- With `k = 2` every new fast lock of slot `s` expires after `s + 2`. -/
+theorem fastExpiry_eq (L : Set Lock) (Φ : N1.Frm) (t : Time) (s : Nat) :
+    fastExpiry sp1 L Φ t s = s + 2 :=
+  le_antisymm (fastExpiry_le sp1 L Φ t s) (le_fastExpiry sp1 L Φ t s)
+
 theorem updateLatestConfirmed_eq (A : SAState sp1.n) (Φ : N1.Frm) (C : N1.Blk) :
     ∃ c, updateLatestConfirmed sp1 A Φ C = { A with latestConfirmed := c } := by
   unfold updateLatestConfirmed
@@ -210,13 +216,15 @@ theorem optimisticConfirmation_cases (A : SAState sp1.n) (Φ : N1.Frm) (t : Time
     Same A (optimisticConfirmation sp1 A Φ t) ∧
       ((optimisticConfirmation sp1 A Φ t).locks = A.locks ∨ ∃ B,
         optimisticSelect sp1 A Φ t = some B ∧ (optimisticConfirmation sp1 A Φ t).locks =
-          addLocks sp1 A.locks Φ t (sp1.slot t) {(B.root, true)}) := by
+          addLocks sp1 A.locks Φ t (sp1.slot t) {(B.root, true, sp1.slot t + 2)}) := by
   unfold optimisticConfirmation
   split
   · exact ⟨Same.refl A, Or.inl rfl⟩
   · rename_i B hB
+    rw [fastExpiry_eq]
     obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
-      { A with locks := addLocks sp1 A.locks Φ t (sp1.slot t) {(B.root, true)} } Φ B
+      { A with locks := (addLocks sp1 A.locks Φ t (sp1.slot t)
+        {(B.root, true, sp1.slot t + 2)}) } Φ B
     rw [hc]
     exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
 
@@ -266,7 +274,7 @@ theorem optimisticSelect_vote {Φ : N1.Frm} {f j s : Nat} (h : ChainFrame Φ f j
 
 theorem updateConfirmation_cases (A : SAState sp1.n) (Φ : N1.Frm) (t : Time) (s : Nat) :
     Same A (updateConfirmation sp1 A Φ t s) ∧
-      ((updateConfirmation sp1 A Φ t s).locks = A.locks ∨ ∃ N : Set (Nat × Bool),
+      ((updateConfirmation sp1 A Φ t s).locks = A.locks ∨ ∃ N : Set (Nat × Bool × Nat),
         (∀ p ∈ N, ∃ B ∈ Φ.tree, p.1 = B.root) ∧
         (updateConfirmation sp1 A Φ t s).locks = addLocks sp1 A.locks Φ t s N) := by
   unfold updateConfirmation
@@ -276,7 +284,8 @@ theorem updateConfirmation_cases (A : SAState sp1.n) (Φ : N1.Frm) (t : Time) (s
   · rename_i C hC
     split_ifs
     · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
-    · obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
+    all_goals
+      obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
         { A with saved := Function.update A.saved s ((getConfirmation sp1 A Φ s).map Block.root) }
         Φ C
       rw [hc]
@@ -292,7 +301,7 @@ theorem liveLocks_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L 
 
 open ChainFrame in
 theorem addLocks_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : Set Lock}
-    {b : Nat} (hL : LocksLe L b) (hb : τ ≤ b) (t : Time) (s : Nat) {N : Set (Nat × Bool)}
+    {b : Nat} (hL : LocksLe L b) (hb : τ ≤ b) (t : Time) (s : Nat) {N : Set (Nat × Bool × Nat)}
     (hN : ∀ p ∈ N, ∃ B ∈ Φ.tree, p.1 = B.root) : LocksLe (addLocks sp1 L Φ t s N) b := by
   intro l hl
   obtain ⟨hl', -, -⟩ := h.liveLocks_sub hl
@@ -324,7 +333,7 @@ theorem unlock_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : S
 open ChainFrame in
 theorem mem_unlock {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : Set Lock} {l : Lock}
     (hl : l ∈ L) {m : Nat} (h1 : f ≤ m) (h2 : m ≤ τ) (hr : l.block = (blk m).root) {t : Time}
-    (hlive : sp1.slot t ≤ l.slot + 2) {s : Int} (hs : ¬ (l.slot : Int) < s) (V : View sp1.n) :
+    (hlive : sp1.slot t ≤ l.expiry) {s : Int} (hs : ¬ (l.slot : Int) < s) (V : View sp1.n) :
     l ∈ unlock sp1 L Φ t s V :=
   ⟨l, h.mem_liveLocks hl h1 h2 hr hlive, blk m, h.mem h1 h2, hr.symm, by rw [ite_neg hs]⟩
 
@@ -408,12 +417,14 @@ theorem optimisticSelect_slot_zero {A : SAState sp1.n} {Φ : N1.Frm} {t : Time}
 theorem optimisticConfirmation_of_some {A : SAState sp1.n} {Φ : N1.Frm} {t : Time} {B : N1.Blk}
     (h : optimisticSelect sp1 A Φ t = some B) :
     Same A (optimisticConfirmation sp1 A Φ t) ∧ (optimisticConfirmation sp1 A Φ t).locks =
-      addLocks sp1 A.locks Φ t (sp1.slot t) {(B.root, true)} := by
+      addLocks sp1 A.locks Φ t (sp1.slot t) {(B.root, true, sp1.slot t + 2)} := by
   unfold optimisticConfirmation
   rw [h]
   dsimp only
+  rw [fastExpiry_eq]
   obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
-    { A with locks := addLocks sp1 A.locks Φ t (sp1.slot t) {(B.root, true)} } Φ B
+    { A with locks := (addLocks sp1 A.locks Φ t (sp1.slot t)
+      {(B.root, true, sp1.slot t + 2)}) } Φ B
   rw [hc]
   exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, rfl⟩
 
@@ -481,12 +492,12 @@ theorem jexp_succ_le (k : Nat) : jexp (k + 1) ≤ k := by unfold jexp; split_ifs
 theorem tryVote_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
     (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hL : LocksLe A.locks k)
-    (htip : 1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ A.locks) :
+    (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
     ∃ L₁ d, tryVote sp1 v0 A Φ ((4 * (k + 1) : Nat) : Int) =
       (optimisticConfirmation sp1 (admitVote sp1 { A with locks := L₁, votedSlot := (k + 1 : Nat) }
         ((4 * (k + 1) : Nat) : Int) (cv (k + 1))) Φ ((4 * (k + 1) : Nat) : Int),
         [⟨cv (k + 1), { A with locks := L₁, votedSlot := (k + 1 : Nat) }, some d⟩]) ∧
-      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ L₁) := by
+      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
   have hf : f ≤ k := le_trans h.fj (jexp_succ_le k)
   unfold tryVote
@@ -499,7 +510,7 @@ theorem tryVote_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
   set V := mergedVoteView sp1 A Φ (k + 1)
   set L₁ := unlock sp1 A.locks Φ ((4 * (k + 1) : Nat) : Int) (((k + 1 : Nat) : Int) - 1) V
   have hL₁ : LocksLe L₁ k := unlock_le h hL _ _ _
-  have htip₁ : 1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ L₁ := fun hk =>
+  have htip₁ : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁ := fun hk =>
     mem_unlock h (htip hk) hf (by omega) rfl (by rw [hs]; change k + 1 ≤ k + 2; omega)
       (by push_cast; omega) V
   have hanc : getAnchor sp1 { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int) = blk k := by
@@ -533,10 +544,10 @@ theorem tryVote_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
 theorem acProposal_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jexp k) k) (hj : A.restartTime = ⊥) (hpool : A.pool k = [cv k])
     (hvst : A.voteStamp (cv k) < ⊤) (hbst : A.blockStamp (blk k).root < ⊤)
-    (hL : LocksLe A.locks k) (htip : 1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ A.locks) :
+    (hL : LocksLe A.locks k) (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
     ∃ L₁ d, SA.acProposal sp1 A Φ ((4 * (k + 1) : Nat) : Int) =
         ({ A with locks := L₁ }, some (d, ([cv k], [cv k]))) ∧ d.head = blk k ∧
-      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ L₁) := by
+      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
   have hf : f ≤ k := le_trans h.fj (jexp_le k)
   unfold SA.acProposal
@@ -559,7 +570,7 @@ theorem acProposal_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
   set L₁ := unlock sp1 A.locks Φ ((4 * (k + 1) : Nat) : Int) (k : Int)
     (View.ofLists ([cv k], [cv k]))
   have hL₁ : LocksLe L₁ k := unlock_le h hL _ _ _
-  have htip₁ : 1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ L₁ := fun hk1 =>
+  have htip₁ : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁ := fun hk1 =>
     mem_unlock h (htip hk1) hf le_rfl rfl (by rw [hs]; change k + 1 ≤ k + 2; omega)
       (lt_irrefl _) _
   have hanc : getAnchor sp1 { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int) = blk k := by
@@ -596,7 +607,7 @@ theorem vote_admitted {A' : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
         ((4 * (k + 1) : Nat) : Int)).fgReported = A'.fgReported ∧
     LocksLe (optimisticConfirmation sp1 (admitVote sp1 A' ((4 * (k + 1) : Nat) : Int)
         (cv (k + 1))) Φ ((4 * (k + 1) : Nat) : Int)).locks (k + 1) ∧
-    (⟨(blk (k + 1)).root, k + 1, true⟩ : Lock) ∈ (optimisticConfirmation sp1
+    (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ (optimisticConfirmation sp1
       (admitVote sp1 A' ((4 * (k + 1) : Nat) : Int) (cv (k + 1))) Φ
         ((4 * (k + 1) : Nat) : Int)).locks := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
@@ -623,7 +634,7 @@ theorem vote_admitted {A' : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
 theorem acOnBlock_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
     (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hcv : cv k ∈ A.pool k)
-    (hL : LocksLe A.locks k) (htip : 1 ≤ k → (⟨(blk k).root, k, true⟩ : Lock) ∈ A.locks) :
+    (hL : LocksLe A.locks k) (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
     ∃ A₃ e, acOnBlock sp1 v0 A Φ ((4 * (k + 1) : Nat) : Int) (blk (k + 1)) = (A₃, [e]) ∧
       e.msg = cv (k + 1) ∧ e.readPoint.pool = A.pool ∧ e.readPoint.restartTime = ⊥ ∧
       A₃.restartTime = ⊥ ∧ A₃.votedSlot = ((k + 1 : Nat) : Int) ∧
@@ -633,7 +644,7 @@ theorem acOnBlock_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
       A₃.blockStamp = Function.update A.blockStamp (blk (k + 1)).root
         (ETime.of ((4 * (k + 1) : Nat) : Int)) ∧
       A₃.fgReported = A.fgReported ∧ LocksLe A₃.locks (k + 1) ∧
-      (⟨(blk (k + 1)).root, k + 1, true⟩ : Lock) ∈ A₃.locks := by
+      (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ A₃.locks := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
   unfold acOnBlock
   rw [blockReceipt_blk hcv]
@@ -647,7 +658,7 @@ theorem acOnBlock_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
 /-- `ac_to_fg` after the own block of slot `k + 1`: the source is the new tip. -/
 theorem acToFG_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
-    (htip : (⟨(blk (k + 1)).root, k + 1, true⟩ : Lock) ∈ A.locks)
+    (htip : (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ A.locks)
     (hrep : A.fgReported = (blk k).root) :
     (SA.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).1 =
         { A with fgReported := (blk (k + 1)).root } ∧
@@ -706,7 +717,7 @@ structure ACGood (A : SAState sp1.n) (t : Nat) : Prop where
   vstamp : ∀ σ, 2 ≤ t → σ ≤ tip t → A.voteStamp (cv σ) < ⊤
   bstamp : ∀ m ≤ tip t, A.blockStamp (blk m).root < ⊤
   locks : LocksLe A.locks (tip t)
-  tipLock : 1 ≤ tip t → (⟨(blk (tip t)).root, tip t, true⟩ : Lock) ∈ A.locks
+  tipLock : 1 ≤ tip t → (⟨(blk (tip t)).root, tip t, true, tip t + 2⟩ : Lock) ∈ A.locks
   reported : A.fgReported = (blk (tip t)).root
 
 /-- The node state before the tick of time `t`. -/
@@ -771,7 +782,7 @@ theorem tickStep_fgUpdate_none {st : NodeState N1} {t : Nat} (hg : Good st t) (n
 /-- A tick with no AC call that changes anything but the locks. -/
 theorem good_of_same {st st' : NodeState N1} {t : Nat} (h : Good st t) (hfg : st'.fg = st.fg)
     (hr : st'.record = st.record) (hs : Same st.ac st'.ac) (hL : LocksLe st'.ac.locks (tip t))
-    (htip : 1 ≤ tip t → (⟨(blk (tip t)).root, tip t, true⟩ : Lock) ∈ st'.ac.locks)
+    (htip : 1 ≤ tip t → (⟨(blk (tip t)).root, tip t, true, tip t + 2⟩ : Lock) ∈ st'.ac.locks)
     (h1 : tip (t + 1) = tip t) (h2 : t ≤ 1 ↔ t + 1 ≤ 1) (h3 : 2 ≤ t ↔ 2 ≤ t + 1) :
     Good st' (t + 1) := by
   obtain ⟨hfg', hatts, hrec, hac⟩ := h
@@ -837,7 +848,7 @@ theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 �
     rcases hlocks with h | ⟨N, hN, h⟩
     · rw [h]; exact hg.ac.locks
     · rw [h]; exact addLocks_le hf hg.ac.locks le_rfl _ _ hN
-  have htip : 1 ≤ tip n → (⟨(blk (tip n)).root, tip n, true⟩ : Lock) ∈ A'.locks := by
+  have htip : 1 ≤ tip n → (⟨(blk (tip n)).root, tip n, true, tip n + 2⟩ : Lock) ∈ A'.locks := by
     intro h1
     rcases hlocks with h | ⟨N, hN, h⟩
     · rw [h]; exact hg.ac.tipLock h1
