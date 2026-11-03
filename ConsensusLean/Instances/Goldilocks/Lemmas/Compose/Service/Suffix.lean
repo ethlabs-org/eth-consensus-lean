@@ -16,7 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
@@ -76,22 +76,6 @@ private theorem anc_parent {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
   exact hAY
 
 end Walk
-
-
-/-! ### Ancestry in a set -/
-
-section Store
-
-variable {P : Params} {ACP : Type}
-
-/-- An ancestor of a member is a member. -/
-private theorem anc_mem {S : Set (NodeBlock P ACP)} {A W : NodeBlock P ACP} (h : Anc S A W)
-    (hW : W ∈ S) : A ∈ S := by
-  by_cases hne : A = W
-  · exact hne ▸ hW
-  · exact (Goldilocks.Anc.mem h hne).1
-
-end Store
 
 /-! ### Over a run -/
 

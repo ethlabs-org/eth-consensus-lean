@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 
 public section
 

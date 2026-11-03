@@ -107,6 +107,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read

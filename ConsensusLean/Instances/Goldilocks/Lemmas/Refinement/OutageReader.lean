@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 
 public section
 

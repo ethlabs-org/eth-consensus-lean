@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageS5.Coun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Sources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageLockSafety.Reader
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial

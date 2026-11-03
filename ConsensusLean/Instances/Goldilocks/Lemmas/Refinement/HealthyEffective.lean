@@ -17,6 +17,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 
 -- Whole-run consumers and their finite-horizon counterparts share this endpoint layer.
 public section

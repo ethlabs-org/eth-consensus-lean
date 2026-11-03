@@ -22,7 +22,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 -- Keep the operational proposal prerequisites with their pivot consumers.

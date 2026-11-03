@@ -461,7 +461,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `SleepyRun`, `HealthyRun`, `HSShared`, the Persist, Run, Service and healing rows) again cover
   only `Δ ≤ Δ_F`, the paper's range, so as hypotheses they are narrower than since 2026-11-02.
   Accepted is unchanged: its closure mentions `SyncOn`/`SyncRun` only through the uninstantiated
-  `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/Frame`,
+  `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/FrameLabels`,
   discharged with the `SleepyServiceBefore` disjunct); it never constructs or reads them, so
   Accepted needs no `Δ ≤ Δ_F` (final-head review T-01a19c3a). Rejected: restricting the clause to signings (drops
   the forwarding of admitted attestations) and a local `max Δ Δ_F` deadline for admissions (two

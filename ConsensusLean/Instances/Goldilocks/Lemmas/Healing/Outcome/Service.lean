@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 
 public section
 
