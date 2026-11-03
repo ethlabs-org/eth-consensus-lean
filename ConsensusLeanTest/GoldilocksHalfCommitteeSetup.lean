@@ -22,7 +22,8 @@ and `frameOf M` the frame `(T M, genesis, genesis, T M)`: the frame of every FG 
 fragment (no attestation in a block, so the FG never justifies or finalizes anything). The
 module proves ancestry, coherence, depth and `deepest` inside `T M` by the table (`anc_T_blk`,
 `frameOK`, `depth_blk`, `deepest_eq`), the slot arithmetic `slot t = ⌊t / 4⌋` and the counting
-of finite sets given by lists (`ncard_list`). -/
+of finite sets given by lists (`ncard_list`). The classical choices of a best block by a key
+(`deepest`, the walk's `IsBest`) are computed by `bestBy` on roots (`best_blk`, `pick_eq`). -/
 
 namespace Consensus.Goldilocks.Test.HalfCommittee
 
@@ -53,6 +54,16 @@ structure Fix where
   f : Fin sp.n
   /-- The table. -/
   tbl : List Row
+
+/-- The best root of a list by the key `f`: the greatest key, ties by the smaller root. -/
+def bestBy (f : Nat → Nat) (L : List Nat) : Option Nat :=
+  L.foldl (fun acc r =>
+    match acc with
+    | none => some r
+    | some b => if f b < f r ∨ (f b = f r ∧ r < b) then some r else some b) none
+
+/-- `c` beats `r` by the key `f`: a greater key, or the same key and a smaller root. -/
+def Beats (f : Nat → Nat) (c r : Nat) : Prop := f r < f c ∨ (f r = f c ∧ c < r)
 
 /-- The slot of a time with `Δ = 1`: `⌊t / 4⌋`, and `0` before time `0`. -/
 def slotT (t : Int) : Nat := (t / 4).toNat
@@ -150,17 +161,8 @@ def T (M : List Nat) : Set X.Blk := {B | ∃ r ∈ M, B = X.blk r}
 block a viable head. -/
 def frameOf (M : List Nat) : X.Frm := ⟨X.T M, X.gBlk, X.gBlk, X.T M⟩
 
-/-- `B` beats `C` in the deepest order: deeper, or as deep with a smaller root. -/
-def better (a b : Nat) : Bool :=
-  (X.chain b).length < (X.chain a).length ||
-    ((X.chain b).length == (X.chain a).length && a < b)
-
 /-- The deepest root of a list (by chain length, ties by the smaller root). -/
-def deep (L : List Nat) : Option Nat :=
-  L.foldl (fun acc r =>
-    match acc with
-    | none => some r
-    | some b => if X.better r b then some r else some b) none
+def deep (L : List Nat) : Option Nat := bestBy (fun r => (X.chain r).length) L
 
 /-! ## The table -/
 
@@ -449,29 +451,16 @@ theorem depth_blk (hX : X.OK) {M : List Nat} (hM : X.Closed M) {b : Nat} (hb : b
   exact ncard_list X.blk (fun a ha c hc h => blk_inj (hv a ha) (hv c hc) h)
     (chain_nodup hX (hM.valid b hb))
 
-/-! ## The deepest root -/
+/-! ## The best root -/
 
-theorem better_iff (a b : Nat) : X.better a b = true ↔
-    (X.chain b).length < (X.chain a).length ∨
-      ((X.chain b).length = (X.chain a).length ∧ a < b) := by
-  simp [better]
-
-theorem better_trans {a b c : Nat} (h₁ : X.better a b = true) (h₂ : X.better b c = true) :
-    X.better a c = true := by
-  rw [better_iff] at *; omega
-
-theorem better_total {a b : Nat} (h : X.better a b = false) : a = b ∨ X.better b a = true := by
-  have h' : ¬ X.better a b = true := by simp [h]
-  rw [better_iff] at h'; rw [better_iff]; omega
-
-theorem deep_spec_aux (L : List Nat) (acc : Option Nat) (S : List Nat)
-    (hacc : ∀ d, acc = some d → d ∈ S ∧ ∀ r ∈ S, r = d ∨ X.better d r = true)
+theorem bestBy_spec_aux (f : Nat → Nat) (L : List Nat) (acc : Option Nat) (S : List Nat)
+    (hacc : ∀ d, acc = some d → d ∈ S ∧ ∀ r ∈ S, r = d ∨ Beats f d r)
     (hnone : acc = none → S = []) :
     ∀ d, L.foldl (fun acc r =>
       match acc with
       | none => some r
-      | some b => if X.better r b then some r else some b) acc = some d →
-      d ∈ S ++ L ∧ ∀ r ∈ S ++ L, r = d ∨ X.better d r = true := by
+      | some b => if f b < f r ∨ (f b = f r ∧ r < b) then some r else some b) acc = some d →
+      d ∈ S ++ L ∧ ∀ r ∈ S ++ L, r = d ∨ Beats f d r := by
   induction L generalizing acc S with
   | nil => intro d h; simpa using hacc d h
   | cons x L ih =>
@@ -493,26 +482,24 @@ theorem deep_spec_aux (L : List Nat) (acc : Option Nat) (S : List Nat)
           refine ⟨by simp, fun r hr => ?_⟩
           rw [List.mem_append, List.mem_singleton] at hr
           rcases hr with hr | rfl
-          · rcases hb r hr with rfl | h' <;> [exact Or.inr hx; exact Or.inr (better_trans hx h')]
+          · right; rcases hb r hr with rfl | h' <;> unfold Beats at * <;> omega
           · exact Or.inl rfl
         · rename_i hx
           refine ⟨by simp [hbS], fun r hr => ?_⟩
           rw [List.mem_append, List.mem_singleton] at hr
           rcases hr with hr | rfl
           · exact hb r hr
-          · rcases better_total (Bool.eq_false_iff.2 hx) with h' | h'
-            · exact Or.inl h'
-            · exact Or.inr h'
+          · unfold Beats; omega
     · intro h'
       cases acc with
       | none => simp at h'
       | some b => simp only at h'; split at h' <;> cases h'
 
-theorem deep_spec {L : List Nat} {d : Nat} (h : X.deep L = some d) :
-    d ∈ L ∧ ∀ r ∈ L, r = d ∨ X.better d r = true := by
-  simpa using deep_spec_aux L none [] (by simp) (fun _ => rfl) d h
+theorem bestBy_spec {f : Nat → Nat} {L : List Nat} {d : Nat} (h : bestBy f L = some d) :
+    d ∈ L ∧ ∀ r ∈ L, r = d ∨ Beats f d r := by
+  simpa using bestBy_spec_aux f L none [] (by simp) (fun _ => rfl) d h
 
-theorem deep_eq_none {L : List Nat} : X.deep L = none ↔ L = [] := by
+theorem bestBy_eq_none {f : Nat → Nat} {L : List Nat} : bestBy f L = none ↔ L = [] := by
   constructor
   · intro h
     cases L with
@@ -522,7 +509,8 @@ theorem deep_eq_none {L : List Nat} : X.deep L = none ↔ L = [] := by
       have key : ∀ (L : List Nat) (b : Nat), L.foldl (fun acc r =>
           match acc with
           | none => some r
-          | some b => if X.better r b then some r else some b) (some b) ≠ none := by
+          | some b => if f b < f r ∨ (f b = f r ∧ r < b) then some r else some b) (some b) ≠
+            none := by
         intro L
         induction L with
         | nil => intro b; simp
@@ -530,37 +518,56 @@ theorem deep_eq_none {L : List Nat} : X.deep L = none ↔ L = [] := by
       exact key L x h
   · rintro rfl; rfl
 
-/-- `deepest` of a set given by a list of roots of the tree is the deepest root's block. -/
-theorem deepest_eq (hX : X.OK) {M : List Nat} (hM : X.Closed M) {S : Set X.Blk} {L : List Nat}
-    (hL : ∀ r ∈ L, r ∈ M) (hS : ∀ B, B ∈ S ↔ ∃ r ∈ L, B = X.blk r) :
-    deepest (X.frameOf M) S = (X.deep L).map X.blk := by
-  classical
-  cases hd : X.deep L with
-  | none =>
-    rw [deep_eq_none] at hd; subst hd
-    have hne : ¬ ∃ B, IsDeepest (X.frameOf M) S B := by
-      rintro ⟨B, hB, -⟩; simpa using (hS B).1 hB
-    unfold deepest
-    simp only [hne, ↓reduceDIte, Option.map_none]
-  | some d =>
-    obtain ⟨hdL, hbest⟩ := deep_spec hd
-    have hdM := hL d hdL
-    have hD : IsDeepest (X.frameOf M) S (X.blk d) := by
+/-- The best block of a set given by a list of valid roots, for a key that agrees with `f` on
+the list: the block of `bestBy f`, and no other. -/
+theorem best_blk {S : Set X.Blk} {L : List Nat} (hv : ∀ r ∈ L, X.Valid r)
+    (hS : ∀ B, B ∈ S ↔ ∃ r ∈ L, B = X.blk r) (κ : X.Blk → Nat) (f : Nat → Nat)
+    (hκ : ∀ r ∈ L, κ (X.blk r) = f r) :
+    let P := fun C : X.Blk => C ∈ S ∧ ∀ D ∈ S, D ≠ C → κ D < κ C ∨ (κ D = κ C ∧ C.root < D.root)
+    (∀ d, bestBy f L = some d → P (X.blk d) ∧ ∀ C, P C → C = X.blk d) ∧
+      (bestBy f L = none → ∀ C, ¬ P C) := by
+  intro P
+  refine ⟨fun d hd => ?_, fun hn C hC => ?_⟩
+  · obtain ⟨hdL, hbest⟩ := bestBy_spec hd
+    have hD : P (X.blk d) := by
       refine ⟨(hS _).2 ⟨d, hdL, rfl⟩, fun C hC hne => ?_⟩
       obtain ⟨r, hr, rfl⟩ := (hS C).1 hC
       rcases hbest r hr with rfl | hb
       · exact absurd rfl hne
-      · rw [depth_blk hX hM (hL r hr), depth_blk hX hM hdM,
-          blk_root (hM.valid d hdM), blk_root (hM.valid r (hL r hr))]
-        exact (better_iff d r).1 hb
-    have hex : ∃ B, IsDeepest (X.frameOf M) S B := ⟨_, hD⟩
-    unfold deepest
-    simp only [hex, ↓reduceDIte, Option.map_some]
-    congr 1
-    have hc := hex.choose_spec
+      · rw [hκ r hr, hκ d hdL, blk_root (hv d hdL), blk_root (hv r hr)]
+        exact hb
+    refine ⟨hD, fun C hc => ?_⟩
     by_contra hne
     rcases hc.2 _ hD.1 (Ne.symm hne) with h₁ | ⟨h₁, h₁'⟩ <;>
       rcases hD.2 _ hc.1 hne with h₂ | ⟨h₂, h₂'⟩ <;> omega
+  · rw [bestBy_eq_none] at hn; subst hn
+    simpa using (hS C).1 hC.1
+
+/-- A classical choice of the unique block satisfying `P`, computed by a root. -/
+theorem pick_eq {β : Type} {P : X.Blk → Prop} {o : Option Nat}
+    (hsome : ∀ d, o = some d → P (X.blk d) ∧ ∀ C, P C → C = X.blk d)
+    (hnone : o = none → ∀ C, ¬ P C) {_ : Decidable (∃ B, P B)} (k : X.Blk → β) (z : β) :
+    (if h : ∃ B, P B then k h.choose else z) = (o.map X.blk).elim z k := by
+  cases ho : o with
+  | none =>
+    have : ¬ ∃ B, P B := fun ⟨B, hB⟩ => hnone ho B hB
+    simp [this]
+  | some d =>
+    obtain ⟨hd, huniq⟩ := hsome d ho
+    have hex : ∃ B, P B := ⟨_, hd⟩
+    simp only [hex, ↓reduceDIte, Option.map_some, Option.elim_some]
+    rw [huniq _ hex.choose_spec]
+
+/-- `deepest` of a set given by a list of roots of the tree is the deepest root's block. -/
+theorem deepest_eq (hX : X.OK) {M : List Nat} (hM : X.Closed M) {S : Set X.Blk} {L : List Nat}
+    (hL : ∀ r ∈ L, r ∈ M) (hS : ∀ B, B ∈ S ↔ ∃ r ∈ L, B = X.blk r) :
+    deepest (X.frameOf M) S = (X.deep L).map X.blk := by
+  have h := best_blk (fun r hr => hM.valid r (hL r hr)) hS (depth (X.frameOf M))
+    (fun r => (X.chain r).length) (fun r hr => depth_blk hX hM (hL r hr))
+  unfold deepest
+  refine (pick_eq (P := IsDeepest (X.frameOf M) S) h.1 h.2 some none).trans ?_
+  unfold deep
+  cases bestBy (fun r => (X.chain r).length) L <;> rfl
 
 /-! ## Slots -/
 
