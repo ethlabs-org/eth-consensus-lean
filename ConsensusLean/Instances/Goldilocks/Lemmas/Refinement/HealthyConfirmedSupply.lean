@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 
 /-! # Finite adoption of an operational confirmed proposal
 
@@ -160,7 +161,8 @@ theorem operational_update_read_after
       apply Anc.mono hΦU
       apply SA.anc_getHead_of_compat hΦ (Or.inl hlive) ?_ (fun _ h => h.1) _ _ .refl
       intro L hL
-      obtain ⟨l, hl, B, hB, hBr, hlive, hLB⟩ := SA.mem_liveLockBlocks hΦ hL
+      obtain ⟨l, hl, B, hB, hBr, hlive, hLB⟩ :=
+        SA.mem_liveLockBlocks_of_wf hΦ (Compose.locksWF_state hp.run hp.noColl hy J) hL
       have hPB := hp.clean_source_stored_lock_compatible hc hy hy (Or.inl hRaw)
         hclean (ht ▸ hTb) (hprefix J le_rfl)
         (by rw [Compose.projAC_state hp.run.toLocalRun hy]; exact hl)
