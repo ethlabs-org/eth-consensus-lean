@@ -198,20 +198,29 @@ theorem tagged_genesis_boundary :
       parentRoot 7 (.digest 7) = some 8 ∧ parentRef 7 (some 8) = .digest 7 ∧
       parentRef 7 (some 7) = .root := by decide
 
-/-- Engine Δ=2 induces protocol Δ=3, not a second increment in the node shape's grid. -/
+/-- Engine Δ=2 induces protocol Δ=2 (`Δ_p = Δ_e`), with no increment in either grid:
+slots of `4Δ = 8`. -/
 theorem protocol_delay_grid (S : Setup) :
     let pub : Model.Public := ⟨1, 2, by decide, 2, by decide⟩
-    (S.params pub (by decide)).Δ = 3 ∧
-      (family S pub).skel.grid.slotTime 1 = 12 ∧
-      (goldilocksShape (S.params pub (by decide)) (S.ro 1)).skel.grid.slotTime 1 = 12 := by
+    (S.params pub (by decide)).Δ = 2 ∧
+      (family S pub).skel.grid.slotTime 1 = 8 ∧
+      (goldilocksShape (S.params pub (by decide)) (S.ro 1)).skel.grid.slotTime 1 = 8 := by
   exact ⟨rfl, rfl, rfl⟩
 
-/-- Inclusive engine delivery becomes strict protocol delivery, including the endpoint. -/
+/-- Half-open engine delivery (held by `base + Δ − 1`) is strict protocol delivery
+(`< base + Δ_p`) at `Δ_p = Δ_e`, including the endpoint. -/
 theorem protocol_delivery_endpoint (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (base delivered : Time) (h : delivered ≤ base + pub.Δ) :
+    (base delivered : Time) (h : delivered ≤ base + pub.Δ - 1) :
     delivered < base + (S.params pub hn).Δ := by
-  change delivered < base + (pub.Δ + 1)
+  change delivered < base + pub.Δ
   linarith
+
+/-- **Control**: the protocol delay adds no slack, so a receipt at the engine bound
+`base + Δ` itself is not strictly before `base + Δ_p`. -/
+theorem protocol_delivery_bound_not_strict (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
+    (base : Time) : ¬ base + pub.Δ < base + (S.params pub hn).Δ := by
+  change ¬ base + pub.Δ < base + pub.Δ
+  exact lt_irrefl _
 
 /-- Old k=2 coefficients fail independently: Δe=1 gives insufficient lag;
 Δe=8, Δp=9, b₀=89 has phase 35, so the old duration 24 violates lifetime 54. -/

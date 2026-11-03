@@ -13,9 +13,9 @@ theorem below states the same fields over `acceptanceContract A C` for every coe
 abbreviation.
 
 * `healthy_run`: the two-validator run of `GoldilocksSleepyWitness` (everyone awake and honest,
-  engine `Δ = 1`) is Healthy from GST 0 for every `acceptanceContract A C`.
-* `finalQuery_fields`: on that run with horizon `H = heal + latency` (at `.final`, index 1), the
-  `FinalQuery` fields hold with GST 0 and query time `heal`: validity, no collision, Healthy,
+  engine `Δ = 2`) is Healthy from GST 0 for every `acceptanceContract A C`.
+* `finalQuery_fields`: on that run with horizon `H = (heal + latency)·Δ` (at `.final`, index 1),
+  the `FinalQuery` fields hold with GST 0 and query time `heal·Δ`: validity, no collision, Healthy,
   final progress (the four-anchor `finalWindow`) on `[ready, H]`, maturity, the latency deadline
   inside the horizon, and a ready reader at the deadline. -/
 
@@ -37,16 +37,17 @@ theorem healthy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (
   obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (family S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_⟩
-  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr (he.psync le_rfl)
+  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
+      (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide))
   · change ((rho.point.faulty.card : ℚ)) < _ * _
     rw [hp, point_faulty]
     norm_num [Params.standard]
   · exact fun _ _ _ _ _ => rfl
-  · exact le_mul_of_one_le_left zero_le_one
+  · exact le_mul_of_one_le_left zero_le_two
       (by exact_mod_cast (acceptanceContract A C).params.rowRatio.pos)
 
 /-- (a) The `FinalQuery` fields, over `acceptanceContract A C`, are jointly satisfiable: index 1,
-GST 0, query time `heal`, horizon `heal + latency` (engine `Δ = 1`). -/
+GST 0, query time `heal·Δ`, horizon `(heal + latency)·Δ` (engine `Δ = 2`). -/
 theorem finalQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) :
     ∃ r : (Sys (family S) (Fin 2)).Run, ∃ query : Time, 1 ≤ Fintype.card (Fin 2) ∧
       (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
@@ -59,22 +60,22 @@ theorem finalQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficie
         r.2.horizon ∧
       ∃ v, r.2.point.Ready ((Sys (family S) (Fin 2)).cDur (acceptanceContract A C) r) v
         (query + ((acceptanceContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ) := by
-  let H : Time := (C.heal .final 1 : Time) + (C.latency .final 1 : Time)
+  let H : Time := (C.heal .final 1 : Time) * 2 + (C.latency .final 1 : Time) * 2
   have hH0 : 0 ≤ H := by positivity
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hhl⟩ := healthy_run S A C H hH0
   subst hE
   have hhor : rho.horizon = H := congrArg EnvPoint.horizon hp
-  refine ⟨⟨_, rho⟩, (C.heal .final 1 : Time), one_le_card, hv, hc, hhl, ?_, ?_, ?_, 0, ?_⟩
+  refine ⟨⟨_, rho⟩, (C.heal .final 1 : Time) * 2, one_le_card, hv, hc, hhl, ?_, ?_, ?_, 0, ?_⟩
   · change PatternRecurrence rho.point rho.key (fun s => rho.sel (ShapeRole.proposer s)) _ _ _ _ _
     apply patternRecurrence_of_all
     intro s j _
     rw [hs, hp]
     exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ => point_ready H _ _ _⟩
-  · change max (0 : Time) 0 + (C.heal .final 1 : Time) * 1 ≤ (C.heal .final 1 : Time)
+  · change max (0 : Time) 0 + (C.heal .final 1 : Time) * 2 ≤ (C.heal .final 1 : Time) * 2
     simp
   · rw [hhor]
-    change (C.heal .final 1 : Time) + (C.latency .final 1 : Time) * 1 ≤ H
-    rw [mul_one]
+    change (C.heal .final 1 : Time) * 2 + (C.latency .final 1 : Time) * 2 ≤ H
+    exact le_rfl
   · rw [hp]
     exact point_ready H _ _ _
 

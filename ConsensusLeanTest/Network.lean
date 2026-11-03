@@ -8,19 +8,22 @@ public import Mathlib.Tactic
 
 * `waker_within_bound`: `Δ = 2`, GST `0`; validator 1 is
   asleep at `0` and `1` and awake from `2`. An honest send at `0` must be
-  re-served to validator 1 within the bound of its wake: held at
-  `4 = max 2 0 + Δ` (Francesco's rule, normal delivery: awake over the
-  delivery interval `[2, 4]`). `waker_within_bound_silent`: a log in which
+  re-served to validator 1 strictly before the bound of its wake: held at
+  `3 = max 2 0 + Δ − 1` (Francesco's rule, normal delivery: awake over the
+  delivery interval `[2, 3]`). `waker_within_bound_silent`: a log in which
   validator 1 never receives the message is not partially synchronous.
-  `waker_not_instant`: receipt at `4` suffices; the rule does not demand
-  receipt at the wake `2` (no instant re-delivery).
-* `receipt_at_deadline`: receipt exactly at `t + Δ` meets `PSync 0`
-  ("received by that time").
+  `waker_not_instant`: receipt at `3` suffices; the rule does not demand
+  receipt at the wake `2` (no instant re-delivery). `waker_late`: receipt at
+  `4 = max 2 0 + Δ`, the bound itself, is too late. `waker_receipt_at_wake`:
+  receipt at the wake `2` suffices.
+* `receipt_at_deadline`: two always-awake validators, `Δ = 2`; receipt exactly
+  at `t + Δ` does **not** meet `PSync 0` (held strictly before the bound).
+  `receipt_before_deadline`: receipt at `t + Δ − 1` does.
 * `held_restart`: a receipt before a wake is held until the wake, not after.
 * `negative_send_covered`: sends at negative times are
   covered. Two always-awake honest validators, `Δ = 2`, GST `0`; validator 0
   sends at `-1` and nobody receives: not `PSync 0` (validator 1 must hold the
-  message at `max (-1) 0 + 2 = 2`).
+  message at `max (-1) 0 + 2 − 1 = 1`).
 * `agreesUpTo_empty_messages`: with an empty message
   type, logs whose inboxes differ at `0` do not agree up to `0`.
 * `faithful_relayedRun`: on the model test run, the system's log is the
@@ -30,8 +33,8 @@ public import Mathlib.Tactic
 * `silent_run_valid`: for every protocol and run
   data, the canonical run with GST past the horizon is a valid run with no
   receipts at all, and it violates `PSync g'` at every `g'` for which some
-  honest send at `t` has a deadline `max t g' + Δ` in the horizon and an honest
-  node awake throughout `[t, max t g' + Δ]` has not sent the message itself
+  honest send at `t` has a deadline `max t g' + Δ − 1` in the horizon and an honest
+  node awake throughout `[t, max t g' + Δ − 1]` has not sent the message itself
   (`silent_not_psync`, an L0 fact about logs with no receipts). So
   `Adequate.covers` includes runs that no network premise admits.
 * `truncate_relayedRun`: a concrete valid run (both validators tick
@@ -54,10 +57,10 @@ theorem Delivers.mono_cut {dl dlF : Time → Time} {cut cut' : Time}
 theorem PSync.mono {g g' : Time} (hg : g ≤ g') (h : L.PSync p g) : L.PSync p g' := by
   apply h.reindex (f := fun a => max a g') (fun a => le_max_left a g') ?_ ?_ le_rfl
   · intro a
-    show max a g' + p.env.Δ = max (max a g') g + p.env.Δ
+    show max a g' + p.env.Δ - 1 = max (max a g') g + p.env.Δ - 1
     rw [max_assoc, max_eq_left hg]
   · intro a
-    show max a g' + p.env.ΔF = max (max a g') g + p.env.ΔF
+    show max a g' + p.env.ΔF - 1 = max (max a g') g + p.env.ΔF - 1
     rw [max_assoc, max_eq_left hg]
 
 /-- Synchrony up to a cut is weaker at a smaller cut. -/
@@ -80,9 +83,9 @@ def logW (recv : Fin 2 → Unit → Time → Prop) : CommLog (Fin 2) Unit :=
   ⟨fun v _ t => v = 0 ∧ t = 0, recv, fun _ _ => [], fun _ => False⟩
 
 /-- Francesco's rule for a waker: validator 1, asleep at `0`–`1` and awake from
-`2`, must hold the message sent at `0` by `max 2 0 + Δ = 4`. -/
+`2`, must hold the message sent at `0` strictly before `max 2 0 + Δ = 4`, i.e. by `3`. -/
 theorem waker_within_bound (recv : Fin 2 → Unit → Time → Prop) (h : (logW recv).PSync ptW 0) :
-    (logW recv).Held ptW 1 () 4 :=
+    (logW recv).Held ptW 1 () 3 :=
   h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1 (Finset.mem_univ _) 2 (by decide)
     (by decide) (by decide) (fun u hu _ => by simp [ptW, envW, hu])
 
@@ -94,7 +97,7 @@ theorem waker_within_bound_silent : ¬ (logW fun _ _ _ => False).PSync ptW 0 := 
   · exact absurd h1 (by decide)
   · exact hs
 
-/-- The log with validator 1 receiving the message exactly at `0 + Δ = 2`. -/
+/-- The log with validator 1 receiving the message at `2`, its wake. -/
 def recvAt2 : Fin 2 → Unit → Time → Prop := fun w _ t => w = 1 ∧ t = 2
 
 theorem held0 (d : Time) (hd : 0 ≤ d) : (logW recvAt2).Held ptW 0 () d := by
@@ -114,31 +117,40 @@ theorem held_all (w : Fin 2) (d : Time) (hd : 2 ≤ d) : (logW recvAt2).Held ptW
   · exact held0 d (by dsimp only [Time] at *; omega)
   · exact held1 d hd
 
-/-- Receipt exactly at the deadline `t + Δ` satisfies `PSync 0`. -/
-theorem receipt_at_deadline : (logW recvAt2).PSync ptW 0 := by
+/-- Receipt by the waker at its wake `2` satisfies `PSync 0`: validator 1 is awake over
+no delivery interval `[a, max a 0 + Δ − 1]` with `a < 2`, and every later one ends at `3` or
+later. -/
+theorem waker_receipt_at_wake : (logW recvAt2).PSync ptW 0 := by
   refine ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩
-  · rintro v - m t ⟨-, rfl⟩ - w - a ha - - -
-    refine held_all w _ ?_
-    change 2 ≤ max a 0 + 2
-    have := le_max_right a 0
-    dsimp only [Time] at *
-    omega
+  · rintro v - m t ⟨-, rfl⟩ - w - a ha - - haw
+    have h0 := le_max_right a 0
+    fin_cases w
+    · exact held0 _ (by change 0 ≤ max a 0 + 2 - 1; dsimp only [Time] at *; omega)
+    · refine held1 _ ?_
+      change 2 ≤ max a 0 + 2 - 1
+      by_contra hlt
+      have h1 := haw (max a 0) (le_max_left a 0)
+        (by change max a 0 ≤ max a 0 + 2 - 1; dsimp only [Time]; omega)
+      simp only [ptW, envW, decide_eq_true_eq] at h1
+      rcases h1 with h1 | h1
+      · exact absurd h1 (by decide)
+      · dsimp only [Time] at *; omega
   · intro u _ x τ _ _ hx
     exact absurd hx (List.not_mem_nil)
 
-/-- The log with validator 1 receiving the message only at `4`, two units after
+/-- The log with validator 1 receiving the message only at `3`, one unit after
 its wake at `2`. -/
-def recvAt4 : Fin 2 → Unit → Time → Prop := fun w _ t => w = 1 ∧ t = 4
+def recvAt3 : Fin 2 → Unit → Time → Prop := fun w _ t => w = 1 ∧ t = 3
 
-/-- No instant re-delivery: receipt by the waker at `4 = max 2 0 + Δ`, not at
+/-- No instant re-delivery: receipt by the waker at `3 = max 2 0 + Δ − 1`, not at
 its wake `2`, satisfies `PSync 0`. Validator 1 is awake over no delivery
-interval `[a, max a 0 + 2]` with `a < 2`. -/
-theorem waker_not_instant : (logW recvAt4).PSync ptW 0 ∧ ¬ (logW recvAt4).Held ptW 1 () 2 := by
+interval `[a, max a 0 + 2 − 1]` with `a < 2`. -/
+theorem waker_not_instant : (logW recvAt3).PSync ptW 0 ∧ ¬ (logW recvAt3).Held ptW 1 () 2 := by
   refine ⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ?_⟩
   · rintro v - m t ⟨-, rfl⟩ - w - a ha - hh haw
     fin_cases w
     · refine ⟨0, ?_, Or.inl ⟨rfl, rfl⟩, fun u _ _ hwk => ?_⟩
-      · change 0 ≤ max a 0 + 2
+      · change 0 ≤ max a 0 + 2 - 1
         have := le_max_right a 0
         dsimp only [Time] at *
         omega
@@ -146,8 +158,8 @@ theorem waker_not_instant : (logW recvAt4).PSync ptW 0 ∧ ¬ (logW recvAt4).Hel
         simp [ptW, envW] at this
     · have h2 : 2 ≤ a := by
         by_contra hlt
-        have hle : max a 0 ≤ max a 0 + ptW.env.Δ := by
-          change max a 0 ≤ max a 0 + 2
+        have hle : max a 0 ≤ max a 0 + ptW.env.Δ - 1 := by
+          change max a 0 ≤ max a 0 + 2 - 1
           dsimp only [Time]
           omega
         have h1 := haw (max a 0) (le_max_left a 0) hle
@@ -156,8 +168,8 @@ theorem waker_not_instant : (logW recvAt4).PSync ptW 0 ∧ ¬ (logW recvAt4).Hel
         rcases h1 with h1 | h1
         · exact absurd h1 (by decide)
         · exact absurd h1 (not_le.mpr hm)
-      refine ⟨4, ?_, Or.inr ⟨rfl, rfl⟩, fun u hu _ hwk => ?_⟩
-      · change 4 ≤ max a 0 + 2
+      refine ⟨3, ?_, Or.inr ⟨rfl, rfl⟩, fun u hu _ hwk => ?_⟩
+      · change 3 ≤ max a 0 + 2 - 1
         have := le_max_left a 0
         dsimp only [Time] at *
         omega
@@ -171,6 +183,19 @@ theorem waker_not_instant : (logW recvAt4).PSync ptW 0 ∧ ¬ (logW recvAt4).Hel
     rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
     · exact absurd h1 (by decide)
     · exact absurd ht' (by decide)
+
+/-- The log with validator 1 receiving the message only at `4 = max 2 0 + Δ`, the bound of
+its wake itself. -/
+def recvAt4 : Fin 2 → Unit → Time → Prop := fun w _ t => w = 1 ∧ t = 4
+
+/-- **Rejection**: receipt by the waker at `4 = max 2 0 + Δ` is too late for `PSync 0`; it
+must hold the message strictly before the bound, at `3` (`waker_within_bound`). -/
+theorem waker_late : ¬ (logW recvAt4).PSync ptW 0 := by
+  intro h
+  obtain ⟨t', ht', hs, -⟩ := waker_within_bound _ h
+  rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
+  · exact absurd h1 (by decide)
+  · exact absurd ht' (by decide)
 
 /-- Validator 0 awake at `0`, asleep at `1`, awake again (a wake) at `2`. -/
 def envR : Env (Fin 2) := ⟨1, by decide, 1, by decide, fun _ t => decide (t ≠ 1)⟩
@@ -204,7 +229,7 @@ def logN : CommLog (Fin 2) Unit :=
   ⟨fun v _ t => v = 0 ∧ t = -1, fun _ _ _ => False, fun _ _ => [], fun _ => False⟩
 
 /-- A send at a negative time is covered by `PSync 0`: validator 1 must hold
-it at `max (-1) 0 + Δ = 2`. -/
+it at `max (-1) 0 + Δ − 1 = 1`. -/
 theorem negative_send_covered : ¬ logN.PSync ptN 0 := by
   intro h
   obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () (-1) ⟨rfl, rfl⟩ id 1
@@ -212,6 +237,38 @@ theorem negative_send_covered : ¬ logN.PSync ptN 0 := by
   rcases hs with ⟨h1, -⟩ | hs
   · exact absurd h1 (by decide)
   · exact hs
+
+/-- Both validators always awake, `Δ = 2`; validator 0 sends at `0`, validator 1 receives
+at `R`. -/
+def logD (R : Time) : CommLog (Fin 2) Unit :=
+  ⟨fun v _ t => v = 0 ∧ t = 0, fun v _ t => v = 1 ∧ t = R, fun _ _ => [], fun _ => False⟩
+
+/-- **Rejection at the bound**: receipt exactly at `t + Δ = 2` does not meet `PSync 0`; the
+always-awake validator 1 must hold the message at `0 + Δ − 1 = 1`. -/
+theorem receipt_at_deadline : ¬ (logD 2).PSync ptN 0 := by
+  intro h
+  obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1
+    (Finset.mem_univ _) 0 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
+  rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
+  · exact absurd h1 (by decide)
+  · exact absurd ht' (by decide)
+
+/-- **Acceptance strictly before the bound**: receipt at `t + Δ − 1 = 1` meets `PSync 0`
+("received by that time" at the last time before the bound). -/
+theorem receipt_before_deadline : (logD 1).PSync ptN 0 := by
+  refine ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩
+  · rintro v - m t ⟨-, rfl⟩ - w - a ha - - -
+    have h1 : (1 : Time) ≤ max a 0 + ptN.env.Δ - 1 := by
+      change (1 : Time) ≤ max a 0 + 2 - 1
+      have := le_max_right a 0
+      dsimp only [Time] at *
+      omega
+    fin_cases w
+    · exact ⟨0, by dsimp only [Time] at *; omega, Or.inl ⟨rfl, rfl⟩,
+        fun u _ _ hwk => by simp [Wakes, ptN, envN] at hwk⟩
+    · exact ⟨1, h1, Or.inr ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptN, envN] at hwk⟩
+  · intro u _ x τ _ _ hx
+    exact absurd hx (List.not_mem_nil)
 
 /-- Two logs over an empty message type whose inboxes differ at `0`. -/
 def logE₁ : CommLog Unit Empty :=
@@ -263,13 +320,14 @@ theorem faithful_receipt (o : (protoOf Model.family Model.env).Object) :
   exact hE (congrArg Sigma.fst he)
 
 /-- A log with no receipts is not partially synchronous with GST `g'` once an
-honest send at `t` has a deadline `d = max t g' + Δ` in the horizon and an
+honest send at `t` has a deadline `d = max t g' + Δ − 1` in the horizon and an
 honest node awake throughout `[t, d]` has not sent the message itself by `d`. -/
 theorem silent_not_psync {V M : Type} (p : EnvPoint V) (L : CommLog V M)
     (hq : ∀ w m t, ¬ L.recv w m t) {g' t : Time} {v w : V} {m : M} (hv : v ∈ p.honest)
-    (hs : L.sent v m t) (hr : ¬ L.row m) (hw : w ∈ p.honest) (hd : max t g' + p.env.Δ ≤ p.horizon)
-    (ha : p.AwakeOnClosed w t (max t g' + p.env.Δ))
-    (hns : ∀ t', t' ≤ max t g' + p.env.Δ → ¬ L.sent w m t') : ¬ L.PSync p g' := by
+    (hs : L.sent v m t) (hr : ¬ L.row m) (hw : w ∈ p.honest)
+    (hd : max t g' + p.env.Δ - 1 ≤ p.horizon)
+    (ha : p.AwakeOnClosed w t (max t g' + p.env.Δ - 1))
+    (hns : ∀ t', t' ≤ max t g' + p.env.Δ - 1 → ¬ L.sent w m t') : ¬ L.PSync p g' := by
   intro h
   obtain ⟨t', ht', hs', -⟩ := h.msgs v hv m t hs hr w hw t le_rfl hd hd ha
   rcases hs' with hs' | hr
@@ -280,7 +338,7 @@ open Consensus.Model in
 /-- Silent runs are valid: for every protocol and run data, there is a valid
 run with no receipts (the canonical run with GST `horizon + 1`), and it
 violates `PSync g'` whenever an honest send at `t` must reach, by the reachable
-deadline `max t g' + Δ`, an honest node awake throughout `[t, max t g' + Δ]`
+deadline `max t g' + Δ − 1`, an honest node awake throughout `[t, max t g' + Δ − 1]`
 that did not send it itself. -/
 theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
@@ -291,8 +349,9 @@ theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V
       let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
       rho.ExecutionValid ∧ (∀ w o t, ¬ rho.receives w o t) ∧
         ∀ g' v w o t, v ∈ honest → rho.releases v o t → ¬ (protoOf F E).isRow o → w ∈ honest →
-          max t g' + E.Δ ≤ horizon → (∀ u, t ≤ u → u ≤ max t g' + E.Δ → E.awake w u = true) →
-          (∀ t', t' ≤ max t g' + E.Δ → ¬ rho.releases w o t') →
+          max t g' + E.Δ - 1 ≤ horizon →
+          (∀ u, t ≤ u → u ≤ max t g' + E.Δ - 1 → E.awake w u = true) →
+          (∀ t', t' ≤ max t g' + E.Δ - 1 → ¬ rho.releases w o t') →
           ¬ CommLog.PSync rho.point rho.log g' := by
   obtain ⟨relay, events, hv, he⟩ :=
     canonical_run_from O F V E honest horizon hh key sel hsel submit hash (horizon + 1)
@@ -374,11 +433,12 @@ theorem truncate_relayedRun :
 /-! ## Two bounds: rows within `ΔF`, every other message within `Δ`
 
 Two honest validators, always awake, `Δ = 2`, horizon `10`; validator 0 sends one message at
-`0`, validator 1 receives it at `R`; the message is a row exactly when `row`. Regression
-witnesses at `ΔF < Δ`, `ΔF = Δ` and `ΔF > Δ` (`two_bound_witnesses`), and two controls
-(`row_held_to_row_bound`: a row is due by `ΔF`, not by `Δ`, when `ΔF < Δ`;
-`nonrow_held_to_message_bound`: a non-row is due by `Δ`, not by `ΔF`, when `ΔF > Δ`; the row
-witness at `ΔF = 5 > Δ` shows that `msgs` does not hold rows to `Δ`), so no order
+`0`, validator 1 receives it at `R`; the message is a row exactly when `row`. Delivery is
+strictly before the bound, so a row is due by `ΔF − 1` and any other message by `Δ − 1 = 1`.
+Regression witnesses at `ΔF < Δ`, `ΔF = Δ` and `ΔF > Δ` (`two_bound_witnesses`), and two
+controls (`row_held_to_row_bound`: a row is due by `ΔF − 1`, not by `Δ − 1`, when `ΔF < Δ`;
+`nonrow_held_to_message_bound`: a non-row is due by `Δ − 1`, not by `ΔF − 1`, when `ΔF > Δ`;
+the row witness at `ΔF = 5 > Δ` shows that `msgs` does not hold rows to `Δ`), so no order
 between the two bounds is assumed in either direction. -/
 
 /-- `Δ = 2`, row bound `ΔF`, everyone awake. -/
@@ -397,33 +457,35 @@ theorem heldT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time} (w : Fin 2) (d 
   · exact ⟨0, h0, Or.inl ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptT, envT] at hwk⟩
   · exact ⟨R, hR, Or.inr ⟨rfl, rfl⟩, fun u _ _ hwk => by simp [Wakes, ptT, envT] at hwk⟩
 
-/-- A receipt by `ΔF` (a row) or by `Δ = 2` (any other message) meets `PSync 0`. -/
+/-- A receipt by `ΔF − 1` (a row) or by `Δ − 1 = 1` (any other message), at a time `R ≥ 0`,
+meets `PSync 0`. -/
 theorem psyncT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time}
-    (hrow : row → R ≤ ΔF) (hnr : ¬ row → R ≤ 2) : (logT row R).PSync (ptT ΔF h) 0 := by
+    (hrow : row → R ≤ ΔF - 1) (hnr : ¬ row → R ≤ 1) : (logT row R).PSync (ptT ΔF h) 0 := by
   refine ⟨?_, ?_, ?_⟩
   · rintro v - m t ⟨-, rfl⟩ hr w - a ha - - -
     have := hnr hr
     have := le_max_right a 0
-    exact heldT w (max a 0 + 2) (by linarith) (by linarith)
+    exact heldT w (max a 0 + 2 - 1) (by linarith) (by linarith)
   · rintro v - m t ⟨-, rfl⟩ hr w - a ha - - -
     have := hrow hr
     have := le_max_right a 0
-    exact heldT w (max a 0 + ΔF) (by linarith) (by linarith)
+    exact heldT w (max a 0 + ΔF - 1) (by dsimp only [Time] at *; omega) (by linarith)
   · intro u _ x τ _ _ hx
     exact absurd hx List.not_mem_nil
 
 /-- **Regression witnesses** at `ΔF = 1 < Δ`, `ΔF = 2 = Δ` and `ΔF = 5 > Δ`: a row received
-exactly at `ΔF` and a non-row received exactly at `Δ` meet `PSync 0`. -/
+exactly at `ΔF − 1` and a non-row received exactly at `Δ − 1` meet `PSync 0` (at `ΔF = 1`
+the row is due at its send time `0`). -/
 theorem two_bound_witnesses :
-    (logT True 1).PSync (ptT 1 one_pos) 0 ∧ (logT False 2).PSync (ptT 1 one_pos) 0 ∧
-    (logT True 2).PSync (ptT 2 two_pos) 0 ∧ (logT False 2).PSync (ptT 2 two_pos) 0 ∧
-    (logT True 5).PSync (ptT 5 (by decide)) 0 ∧ (logT False 2).PSync (ptT 5 (by decide)) 0 := by
+    (logT True 0).PSync (ptT 1 one_pos) 0 ∧ (logT False 1).PSync (ptT 1 one_pos) 0 ∧
+    (logT True 1).PSync (ptT 2 two_pos) 0 ∧ (logT False 1).PSync (ptT 2 two_pos) 0 ∧
+    (logT True 4).PSync (ptT 5 (by decide)) 0 ∧ (logT False 1).PSync (ptT 5 (by decide)) 0 := by
   refine ⟨psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_, psyncT ?_ ?_⟩ <;>
     simp
 
-/-- **Control at `ΔF < Δ`**: a row received only at `Δ = 2` misses its row deadline `ΔF = 1`
-(rows are held to their own bound, not to `Δ`). -/
-theorem row_held_to_row_bound : ¬ (logT True 2).PSync (ptT 1 one_pos) 0 := by
+/-- **Control at `ΔF < Δ`**: a row received only at `Δ − 1 = 1` misses its row deadline
+`ΔF − 1 = 0` (rows are held to their own bound, not to `Δ`). -/
+theorem row_held_to_row_bound : ¬ (logT True 1).PSync (ptT 1 one_pos) 0 := by
   intro hp
   obtain ⟨t', ht', hs, -⟩ := hp.rows 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ trivial 1
     (Finset.mem_univ _) 0 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
@@ -431,9 +493,9 @@ theorem row_held_to_row_bound : ¬ (logT True 2).PSync (ptT 1 one_pos) 0 := by
   · exact absurd h1 (by decide)
   · exact absurd ht' (by decide)
 
-/-- **Control at `ΔF > Δ`**: a non-row received only at `ΔF = 5` misses its deadline `Δ = 2`
-(the larger row bound does not extend to other messages). -/
-theorem nonrow_held_to_message_bound : ¬ (logT False 5).PSync (ptT 5 (by decide)) 0 := by
+/-- **Control at `ΔF > Δ`**: a non-row received only at `ΔF − 1 = 4` misses its deadline
+`Δ − 1 = 1` (the larger row bound does not extend to other messages). -/
+theorem nonrow_held_to_message_bound : ¬ (logT False 4).PSync (ptT 5 (by decide)) 0 := by
   intro hp
   obtain ⟨t', ht', hs, -⟩ := hp.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1
     (Finset.mem_univ _) 0 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)

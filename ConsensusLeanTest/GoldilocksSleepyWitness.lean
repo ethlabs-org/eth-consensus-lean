@@ -17,7 +17,7 @@ abbreviation.
   with any horizon `H ≥ 0`.
 * `sleepyQuery_fields`: the same run with Sleepy progress at `.available`, index 1, on
   `[0, H]`, query time 0, the latency deadline inside the horizon, and a ready reader at the
-  deadline, for every `H ≥ latency`.
+  deadline, for every `H ≥ 2·latency` (engine `Δ = 2`).
 * `vote_emitted_forwarded`: on that run (horizon `H ≥ 2`), validator `0` emits a slot-0 vote
   (`EmitAt` on `simTrace`), the premise of `simTrace_vote_forwarded`, which then yields a
   released forwarding envelope. -/
@@ -27,9 +27,10 @@ namespace Consensus.Goldilocks.Refinement.Test.SleepyWitness
 open Shape Blocks
 open Consensus.Model (pubOf)
 
-/-- Two validators, always awake and honest, engine `Δ = 1`, horizon `H`, no submissions. -/
+/-- Two validators, always awake and honest, engine `Δ = ΔF = 2` (so protocol `Δ_p = 2`),
+horizon `H`, no submissions. -/
 def point (H : Time) : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, H, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, H, fun _ _ => []⟩
 
 theorem one_le_card : 1 ≤ Fintype.card (Fin 2) := by decide
 
@@ -78,7 +79,8 @@ theorem sleepy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (H
   obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (family S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ?_⟩
-  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr (he.psync le_rfl)
+  · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
+      (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide))
   · intro t _ _
     change rho.point.ReadyAbove (1 / 2) _ t
     unfold EnvPoint.ReadyAbove
@@ -97,9 +99,9 @@ theorem sleepySafety_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoeffic
 
 /-- (a) The `ConfirmedQuery` fields on the Sleepy branch, over `acceptanceContract A C`, are jointly
 satisfiable: capability `.available`, index 1, query time 0, at every horizon covering the latency
-deadline (`Δ = 1`). -/
+deadline (`Δ = 2`: `2·latency ≤ H`). -/
 theorem sleepyQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients)
-    (H : Time) (hH : (C.latency .available 1 : Time) ≤ H) :
+    (H : Time) (hH : 2 * (C.latency .available 1 : Time) ≤ H) :
     ∃ r : (Sys (family S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
       (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
       ((Sys (family S) (Fin 2)).Sleepy (acceptanceContract A C) r ∧
@@ -110,7 +112,7 @@ theorem sleepyQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoeffici
       ∃ v, r.2.point.Ready ((Sys (family S) (Fin 2)).cDur (acceptanceContract A C) r) v
         ((0 : Time) + ((acceptanceContract A C).params.latency .available (1 : ℕ+) : Time) *
           r.1.Δ) := by
-  have hH0 : 0 ≤ H := le_trans (Int.natCast_nonneg _) hH
+  have hH0 : 0 ≤ H := le_trans (by positivity) hH
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hsl⟩ := sleepy_run S A C H hH0
   subst hE
   have hhor : rho.horizon = H := congrArg EnvPoint.horizon hp
@@ -121,9 +123,8 @@ theorem sleepyQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoeffici
     rw [hs, hp]
     exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ => point_ready H _ _ _⟩
   · rw [hhor]
-    change (0 : Time) + (C.latency .available 1 : Time) * 1 ≤ H
-    rw [zero_add, mul_one]
-    exact hH
+    change (0 : Time) + (C.latency .available 1 : Time) * 2 ≤ H
+    linarith
   · rw [hp]
     exact point_ready H _ _ _
 

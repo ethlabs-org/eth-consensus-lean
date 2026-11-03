@@ -108,7 +108,8 @@ theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
     (h5 : 5 ≤ Fintype.card V) : ¬ Good S X K := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨r, -, -, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 1 1 one_pos one_pos
+  obtain ⟨r, -, -, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 2 2 (by norm_num)
+    (by norm_num)
   exact hX _ _ _ _ _ _ hp
 
 /-- A well-formed point: `Δ = 1`, GST `0`, everybody awake, nobody honest,
@@ -150,10 +151,10 @@ end Vacuous
 
 section Prefix
 
-/-- Two honest, always-awake validators, `Δ = 1`, horizon `3`, no
+/-- Two honest, always-awake validators, `Δ = 2` (deadlines `a + 1`), horizon `3`, no
 submissions. -/
 def prefixPoint : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
 
 /-- Validator `0` sends at `2`; nobody ever receives anything. -/
 def prefixLog : CommLog (Fin 2) Unit :=
@@ -189,7 +190,7 @@ theorem prefix_sync_then_async :
     · exact h1
   refine ⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ?_, hnp, fun P h => hnp h.1⟩
   · rintro v - m t ⟨-, rfl⟩ - w - a ha hc - -
-    have h2 : ∀ a : Int, 2 ≤ a → ¬ a + 1 ≤ 1 := by intro a h; omega
+    have h2 : ∀ a : Int, 2 ≤ a → ¬ a + 2 - 1 ≤ 1 := by intro a h; omega
     exact absurd hc (h2 a ha)
   · intro u _ x τ _ _ hx
     exact absurd hx (by simp [prefixPoint])

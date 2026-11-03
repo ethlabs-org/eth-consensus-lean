@@ -14,7 +14,8 @@ does nothing (`ctrlFamily`), at standard thresholds with catch-up, arming lag
 and outage budget `1`, outage look-back `η = 2`, heal and latency `1`
 (`ctrlParams`; arbitrary numbers that test the regimes only, not Goldilocks
 performance bounds), index `k = 1`,
-five validators (`key 0` faulty), `Δ = 1`, horizon `20`:
+five validators (`key 0` faulty), `Δ = ΔF = 2` (realizability starts at `2`: delivery is
+strictly before the bound), horizon `40`:
 
 * `positive_controls`, for every capability:
   - sleepy: everyone awake, the synchronous canonical run; the progress
@@ -29,11 +30,11 @@ five validators (`key 0` faulty), `Δ = 1`, horizon `20`:
     so this control does not distinguish delayed from eager delivery of
     protocol messages; it shows the regime is met with nothing received
     before the GST.
-* `outage_control`: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` always asleep,
+* `outage_control`: `T = 2 < b₀ = 6 < b₁ = 8`, honest `key 2` always asleep,
   outage regime (η-sleepy with look-back `2`; no honest validator falls asleep
-  in the no-sleep window `[1, 6]`; the cohort counts, with a faulty opponent)
+  in the no-sleep window `[2, 12]`; the cohort counts, with a faulty opponent)
   and active outage (a protected source, a sleeper inside the window, a ready
-  reader from the recovery point `7`).
+  reader from the recovery point `14`).
 
 * The control contract tolerates arbitrary numbers of validators not ready.
 
@@ -122,20 +123,20 @@ theorem card5 : 5 ≤ Fintype.card (Fin 5) := by simp
 /-- The concrete index `k = 1`. -/
 def k1 : ctrlK.Idx := (1 : ℕ+)
 
-/-- The everyone-awake point: `Δ = 1`, horizon `20`. -/
-abbrev ptA : EnvPoint (Fin 5) := realPoint key5 card5 1 one_pos 1 one_pos allAwake 20
+/-- The everyone-awake point: `Δ = ΔF = 2`, horizon `40`. -/
+abbrev ptA : EnvPoint (Fin 5) := realPoint key5 card5 2 two_pos 2 two_pos allAwake 40
 
-/-- The sleeper point: `key 2` always asleep, `Δ = 1`, horizon `20`. -/
+/-- The sleeper point: `key 2` always asleep, `Δ = ΔF = 2`, horizon `40`. -/
 abbrev ptS : EnvPoint (Fin 5) :=
-  realPoint key5 card5 1 one_pos 1 one_pos (asleepAlways (kv key5 card5 2 (by decide))) 20
+  realPoint key5 card5 2 two_pos 2 two_pos (asleepAlways (kv key5 card5 2 (by decide))) 40
 
-/-- One window of every control progress requirement is at most `8` long. -/
+/-- One window of every control progress requirement is at most `16` long. -/
 theorem progLen_le (cap : Capability) :
-    progLen ctrlFamily ctrlK cap k1 (⟨1, one_pos, 1, one_pos, allAwake⟩ : Env (Fin 5)) ≤ 8 := by
+    progLen ctrlFamily ctrlK cap k1 (⟨2, two_pos, 2, two_pos, allAwake⟩ : Env (Fin 5)) ≤ 16 := by
   cases cap <;> decide
 
 theorem progLen_nonneg' (cap : Capability) :
-    0 ≤ progLen ctrlFamily ctrlK cap k1 (⟨1, one_pos, 1, one_pos, allAwake⟩ : Env (Fin 5)) :=
+    0 ≤ progLen ctrlFamily ctrlK cap k1 (⟨2, two_pos, 2, two_pos, allAwake⟩ : Env (Fin 5)) :=
   progLen_nonneg _ _ _ _ _
 
 /-- **Positive controls** (sleepy, and healthy at GST `5` with a log silent
@@ -153,23 +154,23 @@ theorem positive_controls (cap : Capability) :
       SafeActive (S.cDur ctrlK r) (S.heal ctrlK cap k1 5 r) (S.pt r)) := by
   have hL := progLen_le cap
   have hL0 := progLen_nonneg' cap
-  have hlat : (ctrlK.params.latency cap k1 : Time) * 1 = 1 := by cases cap <;> rfl
+  have hlat : (ctrlK.params.latency cap k1 : Time) * 2 = 2 := by cases cap <;> rfl
   constructor
   · obtain ⟨rho, hpt, -, hw, hs, hp, hpa, ht⟩ :=
-      sleepy_witness (F := ctrlFamily) key5 card5 one_pos one_pos 20 ctrlK_admissible
-        ctrlK_progressFits cap k1 (by rw [hlat]; linarith)
+      sleepy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
+        (by norm_num) (by norm_num) ctrlK_progressFits cap k1 (by rw [hlat]; linarith)
     refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
     have hps : CommLog.PSync rho.point rho.log 0 :=
       (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _ _).mp hs.1
     exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
       (fun _ _ => by rw [realPoint_env]; exact allAwake_apply _ _) ht
-  · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 1 = 6 := by
+  · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 2 = 7 := by
       cases cap <;> rfl
-    have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 1 + 1 = 7 := by decide
+    have hrdy : max (5 : Time) 0 + (ctrlK.params.catchUp : Time) * 2 + 1 = 8 := by decide
     obtain ⟨rho, hpt, -, hw, he, hH, hp, hpa, ht, hsa⟩ :=
-      healthy_witness (F := ctrlFamily) key5 card5 one_pos one_pos 20 ctrlK_admissible
-        ctrlK_progressFits cap k1 5
-        (le_mul_of_one_le_left zero_le_one (by exact_mod_cast ctrlK.params.rowRatio.pos))
+      healthy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
+        (by norm_num) (by norm_num) ctrlK_progressFits cap k1 5
+        (le_mul_of_one_le_left zero_le_two (by exact_mod_cast ctrlK.params.rowRatio.pos))
         (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)
         (by rw [hrdy]; linarith)
     exact ⟨⟨_, rho⟩, hpt, hw, he.quiet, he, hH, hp, hpa, ht, hsa⟩
@@ -180,40 +181,40 @@ theorem ctrl_realizable : Realizable S X ctrlK :=
   (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits ctrlK_progressTolerant
     (Fin 5) card5).toRealizable
 
-/-- **Outage control**: `T = 1 < b₀ = 3 < b₁ = 4`, honest `key 2` always
+/-- **Outage control**: `T = 2 < b₀ = 6 < b₁ = 8` (at `Δ = 2`), honest `key 2` always
 asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is
-`[1, 6]` and its recovery point `7`) and the outage is active, with a ready
-reader at the horizon `20 ≥ 7`. -/
+`[2, 12]` and its recovery point `14`) and the outage is active, with a ready
+reader at the horizon `40 ≥ 14`. -/
 theorem outage_control :
-    ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧ S.Outage ctrlK 1 3 4 r ∧
-      OutageActive (S.cDur ctrlK r) 3 1 3 4 (S.pt r) ∧
-      S.outageStart ctrlK 3 r = 1 ∧ S.outageEnd ctrlK 4 r = 6 ∧ S.recoveryAt ctrlK 4 r = 7 ∧
+    ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧ S.Outage ctrlK 2 6 8 r ∧
+      OutageActive (S.cDur ctrlK r) 6 2 6 8 (S.pt r) ∧
+      S.outageStart ctrlK 6 r = 2 ∧ S.outageEnd ctrlK 8 r = 12 ∧ S.recoveryAt ctrlK 8 r = 14 ∧
       kv key5 card5 2 (by decide) ∈ (S.pt r).honest ∧
       (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
       (S.pt r).faulty.Nonempty := by
   obtain ⟨rho, hpt, -, hw, ho, hoa⟩ :=
-    outage_witness (F := ctrlFamily) key5 card5 one_pos one_pos 20 ctrlK_admissible
-      (T := 1) (b₀ := 3) (b₁ := 4)
+    outage_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
+      (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
       ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by decide)
   have hC : ctrlK.params.noSleep = 2 := rfl
   have hR : ctrlK.params.recovery = 3 := rfl
-  have hD : ((ctrlK.params.recovery : Nat) : Time) * 1 = 3 := by rw [hR]; norm_num
+  have hD : ((ctrlK.params.recovery : Nat) : Time) * 2 = 6 := by rw [hR]; norm_num
   rw [hD] at hoa
   refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.1⟩
-  · change min (max 0 (3 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ))
-      rho.point.horizon = 1
+  · change min (max 0 (6 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ))
+      rho.point.horizon = 2
     rw [hpt, realPoint_env, realPoint_horizon, hC]
     norm_num
-  · change min (4 + ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ)
-      rho.point.horizon = 6
+  · change min (8 + ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ)
+      rho.point.horizon = 12
     rw [hpt, realPoint_env, realPoint_horizon, hC]
     norm_num
-  · change 4 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.Δ = 7
+  · change 8 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.Δ = 14
     rw [hpt, realPoint_env, hR]
     norm_num
   · change _ ∈ rho.point.honest
     rw [hpt]
-    exact realPoint_honest key5 card5 one_pos one_pos _ 20 (j := 2) (by decide) (by decide)
+    exact realPoint_honest key5 card5 two_pos two_pos _ 40 (j := 2) (by decide) (by decide)
   · intro t
     change rho.point.env.awake _ t = false
     rw [hpt, realPoint_env]

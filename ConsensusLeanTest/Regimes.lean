@@ -15,14 +15,14 @@ public import Mathlib.Tactic
 Concrete points and logs that show what each fixed L0 regime admits and what
 it rejects.
 
-* `psync_lost_message`: two honest, always-awake validators, `Δ = 1`, horizon
+* `psync_lost_message`: two honest, always-awake validators, `Δ = 2`, horizon
   `10`; validator 0 sends at `0` and nobody receives. The log is not partially
   synchronous for any GST `g ≤ 9` (validator 1 must hold the message at
-  `max 0 g + 1 ≤ 10`), and is for `g = 10` (every deadline is past the
+  `max 0 g + Δ − 1 = max 0 g + 1 ≤ 10`), and is for `g = 10` (every deadline is past the
   horizon): a lost honest message is excused only by a GST so late that
   nothing is promised in the run.
 * `outage_async_log` (M8): validator 0 sends at `3`, validator 1 receives
-  at `7 = max 3 6 + Δ`. The log meets the outage network `OutageNet 3 6`
+  at `7 = max 3 6 + Δ − 1`. The log meets the outage network `OutageNet 3 6`
   (asynchronous during `[3, 6)`), but not synchrony (`PSync 0`), nor
   synchrony up to `4`: the outage regime admits real asynchrony.
 * `sleepy_with_sleeper` (M9): five validators, one faulty, honest validator 4
@@ -286,9 +286,10 @@ theorem silentLog_delivers {V M : Type} (p : EnvPoint V) (hs : ∀ v t, p.submit
 
 section Lost
 
-/-- Two honest validators, always awake, `Δ = 1`, horizon `10`. -/
+/-- Two honest validators, always awake, `Δ = 2` (deadlines `a + 1` before the GST shift),
+horizon `10`. -/
 def ptL : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, 10, fun _ _ => []⟩
 
 /-- Validator 0 sends at `0`; nobody receives anything. -/
 def logL : CommLog (Fin 2) Unit :=
@@ -298,7 +299,7 @@ def logL : CommLog (Fin 2) Unit :=
 `g = 10` every deadline is past the horizon and nothing is required. -/
 theorem psync_lost_message : (∀ g : Time, g ≤ 9 → ¬ logL.PSync ptL g) ∧ logL.PSync ptL 10 := by
   refine ⟨fun g hg h => ?_, ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩⟩
-  · have hd : max 0 g + 1 ≤ 10 := by
+  · have hd : max 0 g + 2 - 1 ≤ 10 := by
       have : max 0 g ≤ 9 := max_le (by decide) hg
       dsimp only [Time] at *; omega
     obtain ⟨t', -, hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ id 1 (Finset.mem_univ _)
@@ -307,7 +308,7 @@ theorem psync_lost_message : (∀ g : Time, g ≤ 9 → ¬ logL.PSync ptL g) ∧
     · exact absurd h1 (by decide)
     · exact h1
   · rintro v - m t ⟨-, rfl⟩ - w - a - hc - -
-    change max a 10 + 1 ≤ 10 at hc
+    change max a 10 + 2 - 1 ≤ 10 at hc
     have := le_max_right a 10
     dsimp only [Time] at *; omega
   · intro u _ x τ _ _ hx
@@ -349,13 +350,13 @@ theorem outage_async_log :
   refine ⟨⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩⟩,
     hnot _ _ _ rfl (by decide), hnot _ _ _ rfl le_rfl⟩
   · rintro v - m t ⟨-, rfl⟩ - w - a ha hc - -
-    change a + 1 ≤ 3 at hc
+    change a + 2 - 1 ≤ 3 at hc
     dsimp only [Time] at *; omega
   · intro u _ x τ _ _ hx
     exact absurd hx List.not_mem_nil
   · rintro v - m t ⟨-, rfl⟩ - w - a - - - -
     refine logA_held w _ ?_
-    change 7 ≤ max a 6 + 1
+    change 7 ≤ max a 6 + 2 - 1
     have := le_max_right a 6
     dsimp only [Time] at *; omega
   · intro u _ x τ _ _ hx

@@ -197,8 +197,9 @@ healthy up to the heal point, has the recurrence of `k`, and is sleepy after
 the heal point. -/
 theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ShapeFamily goldilocksSchema Info) (hb : GoldilocksBindings F) (pp : FGSAParams)
-    (k : ℕ+) {Δ : Time} (hΔ : 0 < Δ) (g : Time) :
+    (k : ℕ+) {Δ : Time} (hΔ1 : 1 < Δ) (g : Time) :
     ∃ r : (Sys F (Fin 5)).Run, (Sys F (Fin 5)).Valid r ∧ WeakPremise pp g k r := by
+  have hΔ : 0 < Δ := by linarith
   let K := goldilocksContract pp
   let key : Fin (Fintype.card (Fin 5)) ≃ Fin 5 := (Fintype.equivFin (Fin 5)).symm
   have hn : 5 ≤ Fintype.card (Fin 5) := by simp
@@ -218,7 +219,7 @@ theorem weakPremise_inhabited {Info : Type} [DecidableEq Info] [Countable Info]
     ((max g 0 + (K.params.heal .available k : Time) * Δ) +
       (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency .available k : Time) * Δ +
       progLen F K .available k ⟨Δ, hΔ, Δ, hΔ, allAwake⟩ + Δ + 2)
-    ha hf .available k g hr (by linarith) (by linarith) (by linarith)
+    ha hΔ1 hΔ1 hf .available k g hr (by linarith) (by linarith) (by linarith)
   have hhh : gHeal pp k g ⟨_, rho⟩ ≤ rho.horizon := by
     have hh : rho.horizon = rho.point.horizon := rfl
     have hd : ((Sys F (Fin 5)).pt ⟨_, rho⟩).env.Δ = Δ := by

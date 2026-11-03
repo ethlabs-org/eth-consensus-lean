@@ -162,11 +162,31 @@ theorem refuted_of_empty (F : ShapeFamily schema Unit)
       ∀ v i, (chainTrace rho).read () v i = []) :
     ¬ ShapeClaims F testK := by
   intro hc
-  obtain ⟨relay, es, valid, eager⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
+  obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
     Finset.univ 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled F) env :=
     Model.Run.mk Finset.univ 3 es (pkiFin 1) sel (fun _ _ => []) relay goodHash
-  have sync : CommLog.PSync r.point r.log 0 := eager.psync le_rfl
+  -- With one always-awake validator every receiver is the sender, which holds its own send
+  -- from the send time on: `PSync 0` at `Δ = 1` (deadline `max a 0 + Δ − 1 ≥ a`) needs no
+  -- network service (and no eager log, which would need `Δ > 1`).
+  have held : ∀ (m : (Model.protoOf (compiled F) env).Object) t a, r.log.sent 0 m t → t ≤ a →
+      r.log.Held r.point 0 m (max a 0 + r.point.env.Δ - 1) := by
+    intro m t a hs hta
+    refine ⟨t, ?_, Or.inl hs, fun u _ _ hwk => ?_⟩
+    · change t ≤ max a 0 + 1 - 1
+      have := le_max_left a 0
+      dsimp only [Time] at *; omega
+    · exact absurd hwk.2 (by simp [Model.Run.point, env])
+  have sync : CommLog.PSync r.point r.log 0 := by
+    refine ⟨?_, ?_, ?_⟩
+    · intro v _ m t hs _ w _ a hta _ _ _
+      rw [Subsingleton.elim w 0, Subsingleton.elim v 0] at *
+      exact held m t a hs hta
+    · intro v _ m t hs _ w _ a hta _ _ _
+      rw [Subsingleton.elim w 0, Subsingleton.elim v 0] at *
+      exact held m t a hs hta
+    · intro u _ x τ _ _ hx
+      exact absurd hx (List.not_mem_nil)
   have hready : ∀ c t v, r.point.Ready c v t := env_ready r.point rfl rfl
   have hfaulty : r.point.faulty = ∅ := by
     simp [EnvPoint.faulty, r, Model.Run.point]
