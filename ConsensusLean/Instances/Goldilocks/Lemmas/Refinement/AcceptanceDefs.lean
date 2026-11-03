@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 
@@ -109,33 +108,6 @@ theorem accepted_coefficients_heal (S : Setup) (A : AcceptanceAssumptions S) :
 
 theorem accepted_coefficients_latency (S : Setup) (A : AcceptanceAssumptions S) :
     (accepted_coefficients S A).latency = accepted_latency S A := by rfl
-
-/-- The fixed coefficients imply the node arming lag and phase-sensitive (V): the budget
-`4k − 6` is the largest with `(4k − 6)Δ + (4Δ − 1) ≤ (4k − 2)Δ` at every phase.
-This is only the time-window adapter, not network or participation transport. -/
-theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
-    (C : AcceptanceCoefficients) (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (T b₀ b₁ : Time)
-    (h : Consensus.OutageTimes (acceptanceContract A C).params pub.Δ T b₀ b₁) :
-    Regimes.OutageWindowTimes (S.params pub hn) T b₀ b₁ := by
-  obtain ⟨hT, hlag, horder, hbudget⟩ := h
-  have hk : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
-  have hd : (1 : Int) ≤ pub.Δ := pub.Δ_pos
-  have hlcast : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by
-    omega
-  have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by
-    omega
-  have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
-  change T + ((4 * S.k + 6 : Nat) : Int) * pub.Δ ≤ b₀ at hlag
-  change b₁ ≤ b₀ + ((4 * S.k - 6 : Nat) : Int) * pub.Δ at hbudget
-  rw [hlcast] at hlag
-  have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt pub.Δ_pos)
-  have hmod := Int.emod_lt_of_pos (b₀ - 6 * pub.Δ)
-    (show 0 < 4 * pub.Δ by linarith)
-  change 0 ≤ T ∧ T + (4 * (S.k : Int) - 4) * pub.Δ ≤ b₀ ∧
-    b₀ ≤ b₁ ∧ b₁ - b₀ + (b₀ - 6 * pub.Δ) % (4 * pub.Δ) ≤
-      (4 * (S.k : Int) - 2) * pub.Δ
-  refine ⟨hT, ?_, horder, ?_⟩ <;> nlinarith
 
 noncomputable abbrev K (S : Setup) (A : AcceptanceAssumptions S) :=
   acceptanceContract A (accepted_coefficients S A)

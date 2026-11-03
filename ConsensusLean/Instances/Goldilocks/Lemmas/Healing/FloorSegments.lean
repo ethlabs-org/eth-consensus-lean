@@ -11,8 +11,8 @@ consensus-lean#135, item N4. Segment `m` starts at the cut after an honest node'
 `t_q + 6Δ` lies in slot `q + 1` (`slot_update_time`). Segment `m` must keep its lock live up to
 the update tick of slot `p_{m+1}`, which is in slot `p_{m+1} + 1`; a lock of slot `p_m` is live
 there iff `p_{m+1} + 1 ≤ p_m + k`. So the spacing condition is `p_{m+1} − p_m ≤ k − 1`: the
-consecutive form (`UnanimousFrom`, spacing 1) suffices as `k ≥ 2`; a spacing of exactly `k`
-slots (a window `B = 4kΔ` of `UnanimousWithin`) is one slot short. At spacing `k` the lock of
+consecutive form (spacing 1) suffices as `k ≥ 2`; a spacing of exactly `k` slots (a window
+`B = 4kΔ`) is one slot short. At spacing `k` the lock of
 slot `p_m` expires at slot `p_m + k + 1`, the honest votes of that slot are cast at its start,
 and the lock of slot `p_{m+1}` is written only `2Δ` later. -/
 

@@ -8,8 +8,10 @@ public section
 
 `AlwaysStatements` (R.7, R.8) from `Lemmas/Compose/Regimes/` (`Outputs`, `Accountable`), and
 `SleepyStatements` (R.1, R.2) from `Lemmas/Compose/Regimes/Sleepy` (`sleepy_safe`) and
-`Lemmas/Healing/Regimes/Inclusion` (`include_sleepy`, `grow_sleepy`). The
-other rows (`Statements/Regimes/{Healed,Outage,Weak,Final}`) are not proved yet. -/
+`Lemmas/Healing/Regimes/Inclusion` (`include_sleepy`, `grow_sleepy`). The node-level rows
+R.3–R.6 (`Statements/Regimes/{Healed,Final,Outage,Weak}`) were retired unproved: R.3–R.5
+correspond to the generic rows `healedSafe`, `healthyLive` and `persists` of the Accepted endpoint;
+R.6 (weak continuation) has no generic row and is dropped. -/
 
 namespace Consensus.Goldilocks.Regimes
 

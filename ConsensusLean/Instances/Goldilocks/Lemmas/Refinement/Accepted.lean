@@ -9,8 +9,9 @@ public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Final
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
@@ -419,7 +420,7 @@ theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
   exact ⟨W, hslack,
     final_cache_acceptance S A V Q W hslack (final_anchor_coverage S A V Q W run steps)⟩
 
-/-- R3 available/stable inclusion; R4 FinalInclude for final.
+/-- R3 available/stable inclusion; R4 final inclusion (both retired node-level rows).
 NO PAPER PROOF for exact contract gHeal, bounded recurrence→node progress,
 or repaired engine timing transport. See generic-r3-bridge-audit.md.
 This field must not acquire whole-run progress before ready as a premise. -/
@@ -507,7 +508,7 @@ theorem accepted_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) �
     (sleepy_serviced_proposal_coverage S A V Q P service)
 
 /-- R3 healed safety. NO PAPER PROOF for bounded [ready,heal] recurrence
-to current whole-run HealedPremises or the target gHeal bound. RecRet also
+to the whole-run healing premises of the retired node row R.3 or the target gHeal bound. RecRet also
 has no completed proof (rc-recret-induction.md §6). -/
 theorem accepted_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),

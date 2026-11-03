@@ -64,7 +64,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   premise is not uniformly weaker; for a family without rows nothing changes. The targets keep
   their `Δ`-denominated times and must now hold with rows slower than `Δ` by any factor. They
   are targets (bare fields of `GoldilocksExtraAt`; the node-level R.6 `WeakSafe`, `WeakInclude`,
-  `WeakGrow` are unproved), not proved here; `weakPremise_inhabited` is a satisfiability witness
+  `WeakGrow` were unproved and are retired, 2026-11-03), not proved here; `weakPremise_inhabited` is a satisfiability witness
   at `ΔF := Δ` only. Whether they hold at `ΔF ≫ Δ` was an open audit item (moot since the sheet was archived,
   2026-11-03); a plausible
   risk, not a counterexample, is that AC recovery after GST may need FG rows, now unbounded before
@@ -141,7 +141,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `FGSAParams` sheet (node Δ) follows: lag `4·lockK + 6`, `noSleep = max 19 (4·lockK + 8)`,
   `recovery = 9`. A2 (`outageWindow`) drops `ReadyOfAll` for the same relative counts on
   `[a, min b₁ horizon]`. `Params.cover` is kept (read by no regime). The node-level R.5
-  statements (`Statements/Regimes/Outage.lean`, parked, off the Solution path) are unchanged. Cards:
+  statements (`Statements/Regimes/Outage.lean`, parked, off the Solution path) are unchanged
+  (retired 2026-11-03). Cards:
   workbench `outage_slow_only_delta.md`, read-backs 5d5e354 and 9f5d6a3.
 - 2026-11-02, claude-mac, owner direction Francesco ([#136]): route A for final liveness.
   `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `AcceptanceAssumptions.timeout` is
@@ -166,7 +167,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   remainder 35 and duration 24, totaling 59 > lifetime 54, even with node arming satisfied.
   The corrected lag uses Δ_p≤2Δ_e; the budget reserves the full phase remainder
   below 4Δ_p. A universal Lean theorem derives the unchanged node `OutageWindowTimes`
-  from the concrete contract's times. This strengthens the advertised outage premises
+  from the concrete contract's times (superseded 2026-11-03: the node row and the theorem are
+  retired). This strengthens the advertised outage premises
   for correctness; it does not weaken (V), change lifetime, or prove network/participation
   transport. Positive integer engine delays and k≥2 suffice; no new caller premise.
 
@@ -366,6 +368,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md`, T-6daee397): **the
+  node-level regime rows R.3–R.6 are retired.** `Statements/Regimes/{Healed,Final,Outage,Weak}`
+  (28 declarations, none proved) are deleted, with the adapter `acceptance_outage_times`, its test
+  and the `HealedPremises`/`FinalPremises` witnesses. None of them was in Challenge, the
+  comparator, Solution or the declaration closure of the Accepted endpoint (compiled scan at
+  3b29a82d). R.3–R.5 correspond to the generic rows of the Accepted endpoint `healedSafe`,
+  `healthyLive` (through `Accepted.good`) and `persists`; R.6 (weak continuation) has no generic
+  row and is dropped. R.1, R.2, R.7 and R.8
+  (`Statements/Regimes/{Sleepy,Always}`) stay: they are Challenge rows, and the Accepted proof uses
+  13 of their definitions. This removes the node (V) that held the Accepted outage budget at
+  `4k − 6`.
 - 2026-11-03, Francesco: **`ac_to_fg` returns only `fg_confirmed`** (or `⊥`). Nothing read the
   returned head: the node discards it, and since loose BJ (goldilocks#14, 37fc02fe) the finality
   pair comes from `finality_pair(Λ, σ_e)` on the source's entry state. `ACInterface.toFG`,
@@ -509,7 +522,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   (`Catch(2Δ)`, `Prop⁺(G_p)`, the `δ_t` bound and the genesis root of `HSShared`); Baseline's `gHeal` is unchanged.
   Raising `gHeal` to H.4's bound would weaken the review target to fit the proof we have, which AGENTS.md rules out,
   and a larger proven bound is not evidence that `gHeal` is false. **Baseline R.3 at `gHeal` remains open; what is
-  proved (once the proofs land) is R.3 at `T_heal` under those premises.** `gHeal` changes only with a
+  proved (once the proofs land) is R.3 at `T_heal` under those premises.** (Superseded
+  2026-11-03: the node-level R.3 is retired; see the 2026-11-03 entry.) `gHeal` changes only with a
   counterexample (a reachable run that heals later than `gHeal`) or the owner's explicit decision (flagged to him).
   Model evidence (workbench#8 `sa-fg-model`, measured at `528a15c`, recorded in the README at `e406004`): 9,600
   `Healthy` runs (n ∈ {4, 5, 7}, k ∈ {2, 3}, δ_t ∈ {2, 3}; random, hostile and partition adversaries) all heal
@@ -522,7 +536,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   regime claims node O.1 is proved under (`Statements/Regimes/Final`). `UPat` is a premise the target lacks: the
   target asks for the contract's finality recurrence `gProg .final gf` only, and O.1's target for that premise has no
   statement (claims §"O.1", open). Baseline's `gHealFin`, `finalCut` and `W_W(gf)` are unchanged; **Baseline R.4 at
-  its own numbers and premises remains open.**
+  its own numbers and premises remains open.** (Superseded 2026-11-03: the node-level R.4 is
+  retired; see the 2026-11-03 entry.)
 
 ## Process
 

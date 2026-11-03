@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Weak
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
@@ -16,8 +17,8 @@ the Compose layer is below Healing in the import matrix.
 
 R.6's safety goes through the Sleepy record invariant started at a label `s₀` after the reset
 (`Compose.sleepy_invariant_from`, over `SleepyFrom` and `SleepyBase`). This file works from
-`WeakPremises` (the healing premises of R.3 cut at the heal point `T`) for a start label `s₀` with
-`a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s bridge).
+the healing premises of R.3 cut at the heal point `T` (the retired node-level R.6 premises) for a
+start label `s₀` with `a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s bridge).
 
 `BaseFacts` names `SleepyBase`'s facts (2), (3a), (5) and (5′) at the cuts whose time satisfies a
 guard. The open remainder of `SleepyBase` ((1) old live locks, and `BaseFacts` up to `T` and at

@@ -593,10 +593,10 @@ Modelling choices:
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
 run-level forms of the rows of the (archived) target sheet, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
-`Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`; R.3 (healed, at a heal point
-`T ≥ T_heal`) in `Statements/Regimes/Healed`; R.5 (`Outage`) in `Statements/Regimes/Outage`; R.6 (`Weak`) in
-`Statements/Regimes/Weak`; R.4 (final, at a heal point `T ≥ T_heal`, `T ≥ ḡ + T_rec`, under `UPat(W, M)`) in
-`Statements/Regimes/Final`.
+`Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`. The node-level R.3 (healed),
+R.4 (final), R.5 (`Outage`) and R.6 (`Weak`) were stated in `Statements/Regimes/{Healed,Final,Outage,Weak}` and
+retired unproved on 2026-11-03 (Francesco): R.3–R.5 correspond to the generic rows `healedSafe`, `healthyLive` and
+`persists` of the Accepted endpoint; R.6 (weak continuation) has no generic row and is dropped.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -605,14 +605,7 @@ where the target row allows the collision escape); the Refinement milestone carr
 | — | CLAIMS R.1, R.2 (the target's `Ready`, `gc`, `gProg`) | a read point, a point between a node's events, and the first cut after a time; the catch-up `18Δ` in the protocol's `Δ` (at the Refinement's `Δp = Δe` it is `18Δe`, the target's `gc`); ready at `t` (honest, awake on `[max(0, t − c − 1), t]`); the confirmed read after all events at `t`; an honest proposal by a proposer ready at its release; one honest ready proposer in every window of `k` consecutive slots whose first slot starts after `a` and whose last slot starts by `b`; ready-reader safety (agreement and monotonicity) on the cuts of `[t₀, t₁]` | Regimes | `Consensus.Goldilocks.Regimes.CutAfter`, `Consensus.Goldilocks.Regimes.ReadPoint`, `Consensus.Goldilocks.Regimes.Boundary`, `Consensus.Goldilocks.Regimes.catchUp`, `Consensus.Goldilocks.Regimes.ReadyAt`, `Consensus.Goldilocks.Regimes.readAfter`, `Consensus.Goldilocks.Regimes.ReadyProposalAt`, `Consensus.Goldilocks.Regimes.ProposerRecurrence`, `Consensus.Goldilocks.Regimes.ReadySafeOn` |
 | R.1 | CLAIMS R.1 (uses A1.2–A1.4, A1.6, C1.1, F.4) | **`sleepySafe`**: under `Sleepy`, ready-reader safety of the confirmed output on every cut; the prefix form **`confirmed_safe_sleepy_prefix`** is the generic `Consensus.Good.sleepySafe_prefix` (`SyncUntil b` and sleepy on `[0, b]` give ready-reader safety up to `b`, or the run's excuse: the conclusion is `ReadySafeUpTo … ∨ S.Excuse r`), which the family gets from `Consensus.Shape.Accepted.good` at `Consensus.Goldilocks.Refinement.accepted_endpoint` (catch-up `accepted_catchUp·Δe`) (the archived target sheet stated it as `confirmed_safe_sleepy_prefix` at its catch-up `gc = 18Δe`, which `accepted_endpoint` does not deliver); the node-level row (`Sync[0, b − Δ]`, catch-up `18Δp`) is retired | Regimes | `Consensus.Goldilocks.Regimes.SleepySafe` |
 | R.2 | CLAIMS R.2 (uses A1.7, F.4) | **`includeSleepy`**: honest ready proposals are in every ready confirmed read from `τ + 6Δ`; **`growSleepy`**: with one honest ready proposer per `k` slots, a new common confirmed entry by `t + (4k + 6)Δ`, above every ready read at `t` | Regimes | `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy`, `Consensus.Goldilocks.Regimes.SleepyStatements` |
-| — | CLAIMS R.3 (heal point D1), H.4 (ii), (iii), H.3 (c) | `(U_all)` and `(U_B)` from `T` (H.4's open premises); the healing premises of R.3 at a heal point `T` (HS shared premises, `Catch(2Δ)`, `Prop⁺`, the reset, H.3 (c)'s bridge as a named hypothesis, `T ≥ T_heal`) | Regimes | `Consensus.Goldilocks.Regimes.UnanimousFrom`, `Consensus.Goldilocks.Regimes.UnanimousWithin`, `Consensus.Goldilocks.Regimes.HealedPremises` |
-| R.3 | CLAIMS R.3 (uses R.1, R.2, C1.1, H.4) | at a heal point `T ≥ T_heal` (not the target's `gHeal`): **`healedSafe`** (ready-reader safety from `T`); **`includeHealed`** (under `(U_all)`); **`growHealed`** (under `(U_B)` with `B = 4kΔ` and the recurrence from `gReady`); cross-node ancestry dropped by owner (#104) | Regimes | `Consensus.Goldilocks.Regimes.HealedSafe`, `Consensus.Goldilocks.Regimes.IncludeHealed`, `Consensus.Goldilocks.Regimes.GrowHealed`, `Consensus.Goldilocks.Regimes.HealedStatements` |
-| — | CLAIMS §"Premises" (`Outage(T, b₀, b₁)`), R.5; goldilocks-round-model.tex "Outage continuation under (V)" | honest and recently awake; η-sleepy participation at `t` (`θ = ½`); more than half of all ready at `t`; the resilience reader; the outage times with the arming lag `(4k − 4)Δ` and (V) with `L = (4k − 2)Δ`; **`Outage`** over the run | Regimes | `Consensus.Goldilocks.Regimes.RecentlyAwake`, `Consensus.Goldilocks.Regimes.EtaSleepyAt`, `Consensus.Goldilocks.Regimes.ReadyOfAllAt`, `Consensus.Goldilocks.Regimes.ResilienceReader`, `Consensus.Goldilocks.Regimes.OutageWindowTimes`, `Consensus.Goldilocks.Regimes.OutageRun` |
-| R.5 | CLAIMS R.5 (uses A1.2, A1.3, C1.1; (V)) | **`persists`**: under `Outage`, a ready read at `T` is an ancestor of every resilience reader's confirmed read from `b₀`; **`outageWindow`**: the same up to `b₁ − 1` with no premise after `b₀`; **`outage_final_compatible`**: compatible with every resilience reader's finalized read from `b₀` | Regimes | `Consensus.Goldilocks.Regimes.OutagePersists`, `Consensus.Goldilocks.Regimes.OutageWindow`, `Consensus.Goldilocks.Regimes.OutageFinalCompatible`, `Consensus.Goldilocks.Regimes.OutageStatements` |
-| — | CLAIMS §"Premises" (`Weak`), R.6 | the ready-proposer premise on `[ḡ, T]`; **`Weak`** with the healing premises cut at the heal point `T ≥ T_heal` | Regimes | `Consensus.Goldilocks.Regimes.PropPlusUntil`, `Consensus.Goldilocks.Regimes.WeakPremises` |
-| R.6 | CLAIMS R.6 (uses R.1–R.3) | at a heal point `T ≥ T_heal`: **`weakSafe`**, **`weakInclude`** (from `T + 8Δ`), **`weakGrow`** (recurrence from `T`); cross-node ancestry dropped by owner (#104) | Regimes | `Consensus.Goldilocks.Regimes.WeakSafe`, `Consensus.Goldilocks.Regimes.WeakInclude`, `Consensus.Goldilocks.Regimes.WeakGrow`, `Consensus.Goldilocks.Regimes.WeakStatements` |
-| — | CLAIMS R.4 (heal point D1), node O.1, C1.3 | the final deadline `D_fin = 4Δ(W + 1 + M) + 2Δ` (C1.3's coverage deadline for the coverage requested at `t + Δ`); the premises of R.4 at a heal point `T`: R.3's `HealedPremises` (`T ≥ T_heal`), node O.1's and C1.3's `PatternPremises` (`UPat(W, M)`, `M ≥ M*`) and `T ≥ ḡ + T_rec` | Regimes | `Consensus.Goldilocks.Regimes.D_fin`, `Consensus.Goldilocks.Regimes.FinalPremises` |
-| R.4 | CLAIMS R.4 (uses C1.3, G1.9, R.3, O.1's open target; here node O.1's regime) | at a heal point `T` (not the target's `gHealFin`/`finalCut`), deadline `D_fin` (not `W_W(gf)`): **`liveDC`** (an honest ready proposal released after `t`, a new finalized entry at `t + D_fin` above the ready confirmed reads at `t`; `finalRecur` is it without the proposal, `finalFirst` is `finalRecur` at `t = T`); **block form of `healthyLive` (final) / `finalized_txLive`** (a ready proposal released in `[t + Δ, t + Δ + 4Δ(W + 1 + M)]`, in every ready finalized read from `t + D_fin` on) | Regimes | `Consensus.Goldilocks.Regimes.LiveDC`, `Consensus.Goldilocks.Regimes.FinalInclude`, `Consensus.Goldilocks.Regimes.FinalStatements` |
+| R.3–R.6 | CLAIMS R.3, R.4, R.5, R.6 | **retired** 2026-11-03 (Francesco): the node-level healed, final, outage and weak rows and their premises (28 declarations, never proved; outside Challenge, Solution and the declaration closure of the Accepted endpoint). R.3–R.5 correspond to the generic rows of the Accepted endpoint `healedSafe`, `healthyLive` (through `Accepted.good`) and `persists`; R.6 (weak continuation) has no generic row and is dropped | Regimes | — |
 | R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe`, `Consensus.Goldilocks.Regimes.AlwaysStatements` |
 
 Modelling choices:
@@ -634,24 +627,15 @@ Modelling choices:
   `ac_on_block` (`Node.onBlock`, `proposeBlock`). So **at a point between two events of a node** (`Boundary`; every
   `CutAfter` point is one) its AC state and frame are those after its last AC call, and the read differs from that
   call's read only through the time argument, whose thresholds are public times, at which an awake node ticks.
-  Hence `IncludeSleepy`, `IncludeHealed` and `GrowSleepy` (reads after all events) are **not refuted** by FG-only
+  Hence `IncludeSleepy` and `GrowSleepy` (reads after all events) are **not refuted** by FG-only
   events; their proofs need that lemma (a read after all events is the read after the last AC call, at the last
   public time), not a new argument about the protocol. **Inside an event**, after an accepted `fg_on_block` and
   before its `ac_on_block`, the frame already has the new block (and possibly a higher `F` or floor) while the AC
   has not processed it; no argument covers that state and the model never reads it (a model cut is a whole event),
   so `ReadySafeOn` is restricted to `Boundary` read points (a statement correction of #89, #90).
-- **R.3's heal point** is a parameter `T ≥ T_heal` (H.4), not the target's `gHeal = max(g, 0) + (29 + B_H^F(k))Δ`:
-  R.3 at `gHeal` stays open (docs/decisions.md, "Goldilocks instance", 2026-10-30). H.4's open premises are named
-  hypotheses: H.3 (c)'s `BridgeAt` (in `HealedPremises`), unanimity from `T` for `includeHealed` and within `4kΔ`
-  windows for `growHealed` (the `(U_all)`/`(U_B)` forms, used through H.4 (i) per proposal). Premises the target
-  lacks: `Catch(2Δ)` and `Prop⁺(G_p)` (bridges B1–B3 of the claims' premises table), and `HSShared`'s parameter bound
-  `6Δ + Δ_F ≤ 4Δδ_t` and genesis root. Open proof items (not premises): `RecRet` (`healedSafe`); the confirmed tip
-  across FG-only frame changes between AC calls (`includeHealed` reads after all events, H.4 concludes at AC calls).
-  `healthyLive` and `confirmed_txLive_healed` are derived in the Refinement from
-  `includeHealed` (no transactions in the run).
 - **Cross-node ancestry is dropped** (owner decision, consensus-lean#104): the archived Baseline's `crossNest` and
   `weakCrossNest`, R.3's `CrossNest` and R.6's `WeakCrossNest` are removed, not restated with a lag.
-  Cross-node compatibility follows from `HealedSafe`/`WeakSafe` and R.8's `OutputsNested` (C0.1):
+  Cross-node compatibility follows from the safety rows and R.8's `OutputsNested` (C0.1):
   `F_x ⪯ C_x`, and compatible `C_x`, `C_y`, imply compatible `F_x`, `C_y`. Lagged ancestry is not stated.
   An honest proposer finalizes by accepting its own block inside its tick, and the other nodes receive that block up
   to `Δ` later. Evidence is the scripted grid (sa-fg-model `48a21ba`, `runs/crossnest-shape-grid.json`; replays
@@ -661,36 +645,6 @@ Modelling choices:
   carrier, at most `Δ − 1` unit after `x`, and `updateFinality`'s gates never blocked. The 582 random n10/n13 sweep
   runs never reach the shape (it needs the boosted set chosen exactly), so they are not evidence for (2).
   This bounded evidence is not a proof of lagged ancestry and does not retain it as a target obligation.
-- **R.5 (`Outage`)**: the claims replace the target's budget `b₁ − b₀ ≤ min(η, 4·lockK − 5)Δ` by (V),
-  `b₁ − b₀ + ((b₀ − 6Δ) mod 4Δ) ≤ (4k − 2)Δ` (goldilocks-round-model.tex: the old budget does not imply continuation after
-  `b₁`), with the target's `lockK` read as the SA's `k` (D1) and the arming lag `(4·lockK − 4)Δ` kept. For `b₀` a
-  multiple of `Δ` the target's budget implies (V) (the `mod` term is then `≤ 3Δ`); for other `b₀` the Refinement
-  must relate them (open). `outageWindow` (the interval-only P1) takes `b₁ − b₀ ≤ (4k − 2)Δ` instead of (V), which
-  the target's budget implies. Synchrony "before `b₀`" is `Consensus.Goldilocks.RunTrace.SyncBefore`:
-  recipient protocol deadlines (including the latest wake) at most `b₀`, not the send window
-  `Sync[0, b₀ − Δ]`, which would still require service after later wakes during the outage. The
-  protocol deadline itself is cut off, not its last admissible integer processing time; the
-  participation is the target's as of 2026-11-01: η-sleepy at every time (`θ = ½`, `η = eta·Δ`) and more than half
-  ready at `b₀`. The target changed on 2026-11-02 (slow arming only: lag `4·lockK + 6`, no majority premise, the
-  no-sleep window and cohort count, ready readers from `b₁ + 9Δ`; `docs/decisions.md`); the node-level R.5 is parked
-  on the old premise.
-- **R.6 (`Weak`)**: the heal point is `T ≥ T_heal`, as for R.3, and the healing premises are cut at `T`
-  (`WeakPremises`: honest awake on `[ḡ, T]`, ready honest more than faulty from `T`, the ready-proposer premise on
-  `[ḡ, T]`, plus R.3's); `weakInclude` and `weakGrow` also take H.4's open unanimity premises, as R.3 does. Its proof
-  needs H.4 and R.3 in a form that uses `Healthy` and the ready-proposer premise only up to `T` (open; H.4 is stated
-  under `Healthy(g)` and `Prop⁺(G_p)` on the whole run).
-- **R.4 (final)**: the heal point is a parameter `T` with `T ≥ T_heal` (R.3's, for the confirmed reads that the new
-  finalized entry must extend) and `T ≥ ḡ + T_rec` (node O.1's, so `Rec(T)` holds and C1.3 covers every window from
-  `T`, since `R_* ≤ ḡ + T_rec`); the one deadline `D_fin` is C1.3's coverage requested at `t + Δ` (so the proposal is
-  released after `t`, and after a transaction submitted at `t` has reached a ready proposer). **Premise the target
-  lacks: `UPat(W, M)` with `M ≥ M*`** (and C1.2's `c_F`, `k_F`), the regime node O.1 is proved under, in place of the
-  contract's finality recurrence `gProg .final gf`; plus R.3's (`Catch(2Δ)`, `Prop⁺`, the `δ_t` bound, the genesis
-  root, H.3 (c)'s bridge). R.4 under the contract's premise needs O.1's target (open, claims §"O.1"); R.4 at the
-  target's numbers (`gHealFin`, `finalCut`, `W_W(gf)`) stays open (docs/decisions.md). No unanimity premise: the rows
-  cover one honest proposal per C1.3 window. `finalFirst` and `finalRecur` are not stated apart (with one deadline
-  they are `LiveDC`'s consequences). The finalized read after all events at `t'` is covered because C1.3 concludes at
-  every honest call from its deadline and an awake honest node calls again after `t'` (its state between calls is
-  that of the next call). The transaction rows are the Refinement's, from `FinalInclude`.
 - **Network model vs the spec's premises** (consensus-lean#92, #107; half-open delivery 2026-11-04): the
   owner chose delivery-time relay in the generic engine. L0 now holds a message strictly before the bound
   (`PSync` deadline `max a g + Δ − 1`), which is the spec's strict processing deadline (`<`), so the
@@ -717,9 +671,8 @@ Modelling choices:
 - **Witnesses** (`ConsensusLeanTest/GoldilocksWitness`, #69): the one-validator tick run (`n = 1`, `f = 0`, `Δ = 1`,
   awake and ticking at every time) is a `GoldilocksRun` (kind (a), `tickRun_goldilocksRun`) with `Sync` for every
   window, `Healthy(g)`, `Catch(κ)` and the HS shared premises (kind (a)), with a ready proposal at every slot `≥ 1`
-  (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`). `HealedPremises`, `PatternPremises`
-  and `FinalPremises` hold outright (`healedPremises_tickRun`, `patternPremises_tickRun`, `finalPremises_tickRun` in
-  `GoldilocksWitnessRun`, W3; the run computed tick by tick in `GoldilocksWitnessChain`, `GoldilocksWitnessTicks`):
+  (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`). `PatternPremises` holds outright
+  (`patternPremises_tickRun` in `GoldilocksWitnessRun`, W3; the run computed tick by tick in `GoldilocksWitnessChain`, `GoldilocksWitnessTicks`):
   the reset is `a_z = t_{slot(ḡ)+4}` (`tickRun_isReset`), H.3 (c)'s bridge holds with `Inv(t₀)` for every `t₀` and
   `Geo` required of no proposal, since each own block raises the frontier between its proposal and its votes, so no
   proposal lies in one settled effective phase (`not_inSettledPhase`; the witness does not exercise `Geo`, which fails

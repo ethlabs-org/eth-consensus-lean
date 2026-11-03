@@ -230,14 +230,6 @@ theorem old_outage_coefficients_fail :
       24 + (89 - 6 * 9) % (4 * 9) > (4 * 2 - 2) * 9 ∧
       16 + (89 - 6 * 9) % (4 * 9) ≤ (4 * 2 - 2) * 9 := by decide
 
-/-- The public contract's time assumptions imply the actual node window at every engine delay. -/
-theorem outage_contract_window (S : Setup) (A : AcceptanceAssumptions S)
-    (C : AcceptanceCoefficients) (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (T b₀ b₁ : Time)
-    (h : Consensus.OutageTimes (acceptanceContract A C).params pub.Δ T b₀ b₁) :
-    Regimes.OutageWindowTimes (S.params pub hn) T b₀ b₁ :=
-  acceptance_outage_times S A C pub hn T b₀ b₁ h
-
 /-- Actual successful cuts queue a parent and child at one timestamp, with the child's
 exact parent wrapper supplied by the persistent root map. Refusal queues neither. -/
 theorem acceptance_publication_order {sp : SA.SAParams}

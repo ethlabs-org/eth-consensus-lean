@@ -109,8 +109,8 @@ Outage numbers (in delays `Δ`, node and engine alike since L0 delivers strictly
   the confirmed read back above the record (owner decision 2026-11-02;
   workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`);
 * budget `4k − 6` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy
-  (Francesco 2026-11-02); `4k − 6` keeps the node's phase-sensitive (V)
-  (`acceptance_outage_times`), while the Accepted proof itself would allow `4k − 5`.
+  (Francesco 2026-11-02); the budget stays `4k − 6` pending the approved change to `4k − 5`,
+  which the Accepted proof allows.
 These numbers are not claimed minimal. -/
 abbrev acceptanceContract {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) : Contract ProgressReq where

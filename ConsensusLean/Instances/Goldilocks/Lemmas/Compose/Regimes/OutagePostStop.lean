@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Outage
+public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest

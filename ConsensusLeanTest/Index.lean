@@ -743,35 +743,7 @@ example := ``Consensus.Goldilocks.Regimes.SleepySafe
 example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.GrowSleepy
 example := ``Consensus.Goldilocks.Regimes.SleepyStatements
-example := ``Consensus.Goldilocks.Regimes.UnanimousFrom
-example := ``Consensus.Goldilocks.Regimes.UnanimousWithin
-example := ``Consensus.Goldilocks.Regimes.HealedPremises
-example := ``Consensus.Goldilocks.Regimes.HealedSafe
-example := ``Consensus.Goldilocks.Regimes.IncludeHealed
-example := ``Consensus.Goldilocks.Regimes.GrowHealed
-example := ``Consensus.Goldilocks.Regimes.HealedStatements
-example := ``Consensus.Goldilocks.Regimes.RecentlyAwake
-example := ``Consensus.Goldilocks.Regimes.EtaSleepyAt
-example := ``Consensus.Goldilocks.Regimes.ReadyOfAllAt
-example := ``Consensus.Goldilocks.Regimes.ResilienceReader
-example := ``Consensus.Goldilocks.Regimes.OutageWindowTimes
 example := ``Consensus.Goldilocks.RunTrace.SyncBefore
-example := ``Consensus.Goldilocks.Regimes.OutageRun
-example := ``Consensus.Goldilocks.Regimes.OutagePersists
-example := ``Consensus.Goldilocks.Regimes.OutageWindow
-example := ``Consensus.Goldilocks.Regimes.OutageFinalCompatible
-example := ``Consensus.Goldilocks.Regimes.OutageStatements
-example := ``Consensus.Goldilocks.Regimes.PropPlusUntil
-example := ``Consensus.Goldilocks.Regimes.WeakPremises
-example := ``Consensus.Goldilocks.Regimes.WeakSafe
-example := ``Consensus.Goldilocks.Regimes.WeakInclude
-example := ``Consensus.Goldilocks.Regimes.WeakGrow
-example := ``Consensus.Goldilocks.Regimes.WeakStatements
-example := ``Consensus.Goldilocks.Regimes.D_fin
-example := ``Consensus.Goldilocks.Regimes.FinalPremises
-example := ``Consensus.Goldilocks.Regimes.LiveDC
-example := ``Consensus.Goldilocks.Regimes.FinalInclude
-example := ``Consensus.Goldilocks.Regimes.FinalStatements
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/
 

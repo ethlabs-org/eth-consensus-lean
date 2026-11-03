@@ -22,10 +22,8 @@ The remaining facts of the regime premises on the tick run of `GoldilocksWitness
   not of the voter's, and it is in the voter block tree.)
 * **The pattern** (`tickRun_upat`): every slot `s ≥ 1` has the ready proposal `blk s`, and the ready
   proposal `blk (s + 2)` has the parent `blk (s + 1)`, which extends it.
-* `healedPremises_tickRun`, `patternPremises_tickRun`, `finalPremises_tickRun`: `HealedPremises`,
-  `PatternPremises` and `FinalPremises` on the tick run, for `G_p ≥ 4Δ`, `T_b ≥ 0` and the
-  arithmetic bounds on `T` and `M`. With `n = 1` and `f = 0` this shows the premises consistent,
-  not met with faults. -/
+* `patternPremises_tickRun`: `PatternPremises` on the tick run, for `G_p ≥ 4Δ` and `M ≥ M*`.
+  With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
@@ -649,32 +647,14 @@ theorem tickRun_upat (g : Time) (M : Nat) :
       anc_honest (by omega)⟩⟩
     rw [blk_slot]; exact hk2
 
-/-! ## The regime premises, met outright -/
+/-! ## The pattern premises, met outright -/
 
-/-- **Non-vacuity of R.3's and R.6's healing premises.** The one-validator tick run meets every
-field of `HealedPremises` with the reset `a_z = t_{slot(ḡ)+4}` (`tickRun_isReset`), any
-`G_p ≥ 4Δ`, `T_b ≥ 0` and `T ≥ T_heal`. -/
-theorem healedPremises_tickRun (g Gp Tb T : Time) (hGp : 4 ≤ Gp) (hTb : 0 ≤ Tb)
-    (hT : Healing.T_heal sp1 g 1 Gp Tb ≤ T) :
-    Regimes.HealedPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp (aZ g) Tb T :=
-  tickRun_healedPremises g Gp (aZ g) Tb T hGp (tickRun_isReset g) hTb
-    (tickRun_bridgeAt g (aZ g) Tb (add_nonneg (aZ_nonneg g) hTb)) hT
-
-/-- **Non-vacuity of node O.1's, C1.3's and R.4's pattern premises**, with `c_F = 2`, `k_F = 0`,
+/-- **Non-vacuity of node O.1's and C1.3's pattern premises**, with `c_F = 2`, `k_F = 0`,
 `W = 1`, `G_p ≥ 4Δ` and any `M ≥ M*`. -/
 theorem patternPremises_tickRun (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
     Healing.PatternPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp 1 M 2 0 :=
   tickRun_patternPremises g Gp M hGp (tickRun_upat g M) hM
-
-/-- **Non-vacuity of R.4's premises**, with the parameters of `healedPremises_tickRun` and
-`patternPremises_tickRun` and `T ≥ ḡ + T_rec`. -/
-theorem finalPremises_tickRun (g Gp Tb T : Time) (M : Nat) (hGp : 4 ≤ Gp) (hTb : 0 ≤ Tb)
-    (hT : Healing.T_heal sp1 g 1 Gp Tb ≤ T) (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M)
-    (hrec : SA.gbar g + Healing.T_rec sp1 1 Gp 1 M ≤ T) :
-    Regimes.FinalPremises (tickRun N1 dg1) Set.univ (fun _ => v0) dg1 g 1 Gp (aZ g) Tb T 1 M 2 0 :=
-  tickRun_finalPremises g Gp (aZ g) Tb T M hGp (tickRun_isReset g) hTb
-    (tickRun_bridgeAt g (aZ g) Tb (add_nonneg (aZ_nonneg g) hTb)) hT (tickRun_upat g M) hM hrec
 
 end Consensus.Goldilocks.Witness.One
 
