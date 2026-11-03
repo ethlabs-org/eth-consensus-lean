@@ -5,8 +5,8 @@
 A fixed set~$V$ of $n\geq1$ validators is given.  Every validator has
 weight~$1$: for $S\subseteq V$, $w(S)=|S|$, and the quorum threshold is
 $q=\lceil 2n/3\rceil$.  $\Delta$ is the delivery parameter of blocks and
-AC messages, and $\Delta_F\geq\Delta$ is the delivery parameter of
-attestations.  A bound is strict: the receiver processes the object at
+AC messages, and $\Delta_F>0$ is the delivery parameter of attestation
+rows; neither bound bounds the other.  A bound is strict: the receiver processes the object at
 a time strictly less than the deadline of the bound.  When the deadline is
 a public time, the receiver thus processes the object before the tick at
 that time.  Time is continuous, and the clock~$t$ of a node is the
@@ -119,8 +119,8 @@ and $\AC$ is the initial state of the AC.
 \subsection{The FG frame}\label{sec:frame}
 
 The FG frame is what the FG gives to the AC.  It is derived from the FG
-state when used, and every call of one tick step reads the FG frame of the
-same state:
+state when used, and every AC call reads $\Call{fg\_to\_ac}{\Sigma}$ of the
+FG state at that call:
 \[
  \Fr=\Call{fg\_to\_ac}{\Sigma}=(\tree,\fcroot,\allowed).
 \]
@@ -170,13 +170,17 @@ requirements.
 \begin{enumerate}
 \item Every head of a duty (the parent of a proposal, the head of a vote)
   extends~$\Fr.\fcroot$.
-  Such a head whose walk starts in $\filtered(\Fr,\mathit{tree})$ is in
-  $\Fr.\allowed$.
+  Such a head whose walk starts in $\filtered(\Fr,D)$ of the domain~$D$
+  that the walk walks ($\Fr.\tree$ for a proposal, the vote domain for a
+  vote) is in $\Fr.\allowed$.
 \item A block $\mathit{fg\_confirmed}$ other than~$\bot$ is in
   $\filtered(\Fr,\Fr.\tree)$.
 \item The output of $\Call{ac\_head}{}$ extends~$\Fr.\fcroot$, and the
   confirmed tip extends~$\Fr.F$ and is an ancestor of that output.
 \item The parent of a proposal is a head of the AC at that time.
+\item If the proposal at~$t_s$ returns the AC payload~$p$, that is,
+  $\Call{ac\_proposal}{\AC,\Fr,t_s}=(H,p)$, then every block of slot~$s$
+  with AC payload~$p$ passes the check $\Call{ac\_valid\_payload}{}$.
 \end{enumerate}
 
 The protocol exposes three tips: the finalized tip~$\Sigma.F$, the

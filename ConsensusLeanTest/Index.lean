@@ -518,6 +518,7 @@ example := ``Consensus.Goldilocks.Node.Reaches
 example := ``Consensus.Goldilocks.Node.Reachable
 example := ``Consensus.Goldilocks.Node.CutStep
 example := ``Consensus.Goldilocks.Node.CutChain
+example := ``Consensus.Goldilocks.Compose.createAtt_wellFormed
 example := ``Consensus.Goldilocks.Compose.TipsNested
 example := ``Consensus.Goldilocks.Compose.ProposalParentHeld
 example := ``Consensus.Goldilocks.Compose.SourceHeld

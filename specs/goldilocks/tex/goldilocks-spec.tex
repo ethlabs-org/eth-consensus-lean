@@ -377,7 +377,7 @@ negative slot are empty.
 The parameters are these.
 \begin{itemize}
 \item $R\geq\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$ slots per round.  This
-  is at least~$2$, because $\Delta_F\geq\Delta$.
+  is at least~$2$, because $6\Delta+\Delta_F>4\Delta$.
 \item The slow window of $k\geq2$ slots.  A lock that the confirmation
   update or the optimistic confirmation of slot~$s$ writes is a lock of
   slot~$s$: it lives until $t_{s+k+1}$, the start of slot~$s+k+1$.
@@ -644,6 +644,10 @@ previous-slot vote freeze $t_{s-1}+3\Delta$, and every ancestor of a
 current-slot proposal.  The voter takes the viable tree of that tree.  It
 does not cut the full viable tree to that tree after the fact: a late
 witness cannot make an old pre-freeze child enter the walk of the vote.
+When the voter block tree has no viable block in the current frame, the
+\emph{vote domain} is the whole tree $\Fr.\tree$ instead, so the vote still
+walks a nonempty viable tree; otherwise the vote domain is the voter block
+tree.
 
 \captionof{figure}{Goldilocks: votes and views}\label{alg:sa-views}
 \nopagebreak
@@ -909,8 +913,8 @@ tree that it walks.
 \emph{The head.}  $\Call{ac\_head}{}$ computes the head when it is read: a
 walk of the full viable tree with the latest view.  It reads the current
 frame and the current locks, so a change of~$\Fr$ moves it at once.
-At~$t_s$ it is the head of the proposal, and in a pair for the FG it is the head of
-the pair.  The vote duty reads a frozen voter block tree, so its
+At~$t_s$ it is the head of the proposal.  The vote duty walks its vote domain, a
+frozen voter block tree (or $\Fr.\tree$ when that has no viable block), so its
 head can differ.
 
 \emph{Why the head waits for no honest vote.}  An honest node votes at the
@@ -1179,7 +1183,8 @@ slot.
 
 \emph{The vote.}  At its vote time~$\tau$ the voter walks a frozen view,
 and it reads the frame, the locks and the proposals at~$\tau$.  It walks
-the viable tree of its voter block tree with its merged view
+the viable tree of its vote domain (its voter block tree, or $\Fr.\tree$
+when the voter block tree has no viable block) with its merged view
 (Section~\ref{sec:sa-views}), and the unlocking before the vote reads the
 same merged view.  The vote is the head of that walk.
 
@@ -1219,8 +1224,11 @@ check also follows its own vote.
   \If{$s>0$}
     \State $\AC.\locks\gets\Call{unlock}{\AC.\locks,\Fr,t,s-1,\mathit{votes},\mathit{support\_votes}}$
   \EndIf
-  \State $\mathit{tree}\gets
-    \filtered(\Fr,\Call{voter\_block\_tree}{\AC,\Fr,s})$
+  \State $T\gets\Call{voter\_block\_tree}{\AC,\Fr,s}$
+  \If{$\filtered(\Fr,T)=\emptyset$} \State $T\gets\Fr.\tree$
+    \Comment{the vote domain: the full-tree fallback}
+  \EndIf
+  \State $\mathit{tree}\gets\filtered(\Fr,T)$
   \State $H\gets\Call{get\_head}{\AC,\Fr,t,\mathit{tree},
     \mathit{votes},\mathit{support\_votes},s-1}$
   \State $\AC.\votedSlot\gets s$

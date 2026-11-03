@@ -398,9 +398,9 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `ProposalParentHeld`, `DutyHeadsHeld`; Compose/Node `ThreeTips`, `HonestBlockAccepted`,
   `ACStatesReachable`, `SourcesHeld`; Compose/Run `ACProjection`, `FGProjection`); `SourceHeld` is
   incomparable (weaker hypothesis and conclusion). The node and family S behave as before (only an
-  unread return value went), and `AcceptedEndpoint` is unchanged. **The Lean is ahead of SPEC
-  requirements 1 and 2 and claims A0.6** until the matching LaTeX edits land in
-  `specs/goldilocks/tex/` (W1).
+  unread return value went), and `AcceptedEndpoint` is unchanged. The Lean was ahead of SPEC
+  requirements 1 and 2 and claims A0.6 until the matching LaTeX edits landed in
+  `specs/goldilocks/tex/` (14cc8f74); they now agree.
 - 2026-10-31, coordinator-authorized R.5/OC repair ([#107](https://github.com/ethlabs-org/consensus-lean/issues/107)).
   **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires
   service only when the recipient's protocol deadline, including its latest wake, is at most
