@@ -5,15 +5,14 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 
 /-! # Goldilocks SA: locks and unlocking
 
-fgsa-spec.tex §"Locks" (Figure "Goldilocks: locks and unlocking"). A lock `(B, j, f)` is live at
-`t` when `slot(t) ≤ j + k` and `B ∈ Φ.tree`; every rule reads the locks through `live_locks`,
+goldilocks-spec.tex §"Locks" (Figure "Goldilocks: locks and unlocking"). A lock `(B, j, f)` is live
+at `t` when `slot(t) ≤ j + k` and `B ∈ Φ.tree`; every rule reads the locks through `live_locks`,
 which moves each live lock back to its viable ancestor (`Frame.viableAncestor`, the frame-level
-definition of claims G0.4 (frame), which fgsa-spec §"Locks" also gives). The anchor is the
+definition of claims G0.4 (frame), which goldilocks-spec §"Locks" also gives). The anchor is the
 deepest live lock block or `fc_root`; a live lock vetoes a block that conflicts with its block;
-`add_locks` returns the live locks of the stored set and the new locks together; `unlock`
-against the slot-`s` votes of a view moves each live lock of a slot below `s` back to its
-deepest ancestor (at or above `Φ.F`) with fewer than half of the committee as opponents, or to
-`Φ.F`. -/
+`add_locks` returns the live locks of the stored set and the new locks together; `unlock` against
+the slot-`s` votes of a view moves each live lock of a slot below `s` back to its deepest ancestor
+(at or above `Φ.F`) with fewer than half of the committee as opponents, or to `Φ.F`. -/
 
 namespace Consensus.Goldilocks.SA
 

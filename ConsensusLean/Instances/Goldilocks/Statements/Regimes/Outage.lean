@@ -9,8 +9,8 @@ Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: re
 (skeleton)" (main `5f3adb28`), row R.5 (`persists` / `confirmed_persists`, `outageWindow`,
 `outage_final_compatible`; uses A1.2, A1.3, C1.1, and the budget (V) with the lock lifetime
 `(4k − 2)Δ`), with the premise `Outage(T, b₀, b₁)` of the claims' premises table: synchrony before
-`b₀`, GST `b₁`, the participation of the target's outage regime, and (V) (fgsa-protocol.tex,
-"Outage continuation under (V)"):
+`b₀`, GST `b₁`, the participation of the target's outage regime, and (V)
+(goldilocks-round-model.tex, "Outage continuation under (V)"):
 `b₁ − b₀ + ((b₀ − 6Δ) mod 4Δ) ≤ L` with `L = (4k − 2)Δ`.
 
 **Vocabulary.** `RecentlyAwake η y t`: honest and awake at some time of `[max(0, t − η), t]`.
@@ -87,11 +87,11 @@ def OutagePersists : Prop :=
         Anc (tr.HonestBlocks H) (readAfter tr v jv T) (readAfter tr w j t)
 
 /-- **R.5, `outageWindow`.** With the outage times and the window at most the lock lifetime (`b₁ −
-b₀ ≤ (4k − 2)Δ`, not (V): this interval row is the interval-only P1 of fgsa-protocol.tex, "The lags
-… and the budget min(η, L) concern interval-only P1"), synchrony for the sends with deadline `≤ b₀`,
-η-sleepy participation on `[0, b₀]` only, and more than half ready at `b₀`, and **no** premise after
-`b₀`: what a node ready at `T` reads as confirmed is an ancestor of the confirmed read of every
-resilience reader at every `t ∈ [b₀, b₁ − 1]`. -/
+b₀ ≤ (4k − 2)Δ`, not (V): this interval row is the interval-only P1 of goldilocks-round-model.tex,
+"The lags … and the budget min(η, L) concern interval-only P1"), synchrony for the sends with
+deadline `≤ b₀`, η-sleepy participation on `[0, b₀]` only, and more than half ready at `b₀`, and
+**no** premise after `b₀`: what a node ready at `T` reads as confirmed is an ancestor of the
+confirmed read of every resilience reader at every `t ∈ [b₀, b₁ − 1]`. -/
 def OutageWindow : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)

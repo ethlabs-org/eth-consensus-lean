@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
 
 /-! # Goldilocks SA: node actions
 
-fgsa-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote receipt" and
+goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote receipt" and
 "Goldilocks: block, tick, proposal and FG update").
 
 * `try_vote` runs after each receipt and in the tick at `t_s + Δ`: a joined node that has not

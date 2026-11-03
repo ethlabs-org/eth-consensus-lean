@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
 
 /-! # Goldilocks SA: votes, payload, state
 
-fgsa-spec.tex §"State" and §"Votes and views".
+goldilocks-spec.tex §"State" and §"Votes and views".
 
 * The wire message is the Goldfish vote `(val_index, s, H)`, which names its head by root.
   Signatures are not modelled (as for the FG's attestations): the signer of a vote is its

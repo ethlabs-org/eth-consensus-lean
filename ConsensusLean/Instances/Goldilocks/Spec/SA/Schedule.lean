@@ -5,14 +5,14 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 
 /-! # Goldilocks SA: schedule and parameters
 
-fgsa-spec.tex §"Schedule" (fradamt-agent/goldilocks `spec/fgsa-spec.tex`, pin `95681941`): slot
-`s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and its committee is all of `V`. The
-formula `t_s = 4Δs` also gives the times of negative slots (`ts` takes an integer slot), which
-the rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is `k ≥ 2` slots.
+goldilocks-spec.tex §"Schedule" (fradamt-agent/goldilocks `spec/fgsa-spec.tex`, pin `95681941`):
+slot `s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and its committee is all of `V`. The
+formula `t_s = 4Δs` also gives the times of negative slots (`ts` takes an integer slot), which the
+rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is `k ≥ 2` slots.
 
 `SAParams` extends the shared parameters (`Params`) by the lock window and the hypothesis that
 the shared slot times are the SA's. `R`, `K_W`, `δ_t`'s lower bound and the source delay are
-the FG's and the regimes' (fgsa-spec §"Schedule"); no SA rule reads them. -/
+the FG's and the regimes' (goldilocks-spec §"Schedule"); no SA rule reads them. -/
 
 namespace Consensus.Goldilocks.SA
 

@@ -14,7 +14,7 @@ sees (decomposition §2 D, `Frame`):
 * `viableTree Φ S`: the blocks of `S` that extend `fc_root` and have a descendant in
   `S ∩ viable_heads` (composition.tex; it follows from the frame, it is not a part of it);
 * `IsViableAncestor` / `viableAncestor`: the deepest `B' ⪯ B` with `B' ⪯ fc_root` or `B'` in the
-  viable tree (fgsa-spec Figure "Goldilocks: locks and unlocking"; a function of `Φ` alone, so
+  viable tree (goldilocks-spec Figure "Goldilocks: locks and unlocking"; a function of `Φ` alone, so
   it is defined here, claims G0.4 (frame));
 * `FrameOK`: a well-formed frame (claims G0.4 (frame));
 * `FrameStep Φ B Φ'` (`Φ ⊑_B Φ'`) and its closure `FrameEvol`: how a frame changes when the FG

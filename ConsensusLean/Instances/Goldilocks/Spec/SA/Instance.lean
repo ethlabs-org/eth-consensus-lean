@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
 
 /-! # Goldilocks SA as an AC
 
-`goldilocksSA sp FGP`: the Goldilocks available chain (fgsa-spec.tex §"Available chain:
+`goldilocksSA sp FGP`: the Goldilocks available chain (goldilocks-spec.tex §"Available chain:
 Goldilocks") as an `ACInterface`, polymorphic in the FG payload `FGP`, which it never reads
 (the node instantiates `FGP := List (FG.Att n)`). Its messages are Goldfish votes, its payload
 is `(votes, support_votes)` (two empty lists for genesis), and its message check is trivial

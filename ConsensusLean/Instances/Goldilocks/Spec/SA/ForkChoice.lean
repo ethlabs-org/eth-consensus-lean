@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Locks
 
 /-! # Goldilocks SA: fork choice
 
-fgsa-spec.tex §"Fork choice" (Figure "Goldilocks: fork choice"). The Goldfish score of `B` is
+goldilocks-spec.tex §"Fork choice" (Figure "Goldilocks: fork choice"). The Goldfish score of `B` is
 its number of supporters plus the number of equivocators. A walk starts at a block (also when
 it is not in the walked tree) and descends through the eligible children in the walked tree,
 taking the one with the greatest score, ties by root order (the smaller root wins), until no

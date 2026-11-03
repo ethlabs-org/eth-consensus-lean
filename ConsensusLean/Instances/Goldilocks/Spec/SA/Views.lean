@@ -7,8 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.State
 
 /-! # Goldilocks SA: blocks by name, votes and views
 
-fgsa-spec.tex §"Votes and views" (Figure "Goldilocks: votes and views"), over a frame `Φ` whose
-blocks carry the FG payload `FGP` (never read) and the SA payload.
+goldilocks-spec.tex §"Votes and views" (Figure "Goldilocks: votes and views"), over a frame `Φ`
+whose blocks carry the FG payload `FGP` (never read) and the SA payload.
 
 Blocks by name: the AC holds blocks by root, and "`H ∈ Φ.tree`" means that the tree holds a
 block with that root (`InTree`); `lookup` returns it. "Deepest" is maximum depth, ties by a

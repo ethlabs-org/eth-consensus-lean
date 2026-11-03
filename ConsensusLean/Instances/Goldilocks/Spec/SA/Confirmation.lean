@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.ForkChoice
 
 /-! # Goldilocks SA: confirmation
 
-fgsa-spec.tex §"Confirmation" (Figure "Goldilocks: confirmation"): the record
+goldilocks-spec.tex §"Confirmation" (Figure "Goldilocks: confirmation"): the record
 `latest_confirmed`; the confirmation update of slot `s` at `t_s + 6Δ` (the result: the deepest
 block of the tree at or above `Φ.F` with a strict majority of the slot's participants among the
 votes resolved before `t_s + 2Δ` of validators with no second vote; saved also when vetoed; a

@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Actions
 
 /-! # Goldilocks SA: restart
 
-fgsa-spec.tex §"Joining and restart" (Figure "Goldilocks: restart"): a restart keeps the locks
+goldilocks-spec.tex §"Joining and restart" (Figure "Goldilocks: restart"): a restart keeps the locks
 and `latest_confirmed`, resets every other field, sets `restart_time` to the time of the
 restart, and calls `ac_on_block` at that time for every block of `Φ.tree` other than genesis,
 in parent order. The spec does not fix the order of siblings, which matters (with three or more

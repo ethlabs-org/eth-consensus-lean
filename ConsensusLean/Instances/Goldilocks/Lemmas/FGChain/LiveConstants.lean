@@ -13,7 +13,7 @@ NF, `3 + 2m̄` with a bound `m̄` on finality moves). All values are in slots. -
 
 namespace Consensus.Goldilocks.FGLive
 
-/-- `c = ⌈(6Δ + Δ_F) / (4Δ)⌉` (fgsa: c_F), for `Δ ≥ 1`. -/
+/-- `c = ⌈(6Δ + Δ_F) / (4Δ)⌉` (the spec's `c_F`), for `Δ ≥ 1`. -/
 def cF (Δ ΔF : Nat) : Nat := (6 * Δ + ΔF + 4 * Δ - 1) / (4 * Δ)
 
 /-- `L = k + 1`. -/
