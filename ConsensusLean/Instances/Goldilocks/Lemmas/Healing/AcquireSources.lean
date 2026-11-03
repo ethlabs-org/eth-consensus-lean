@@ -388,7 +388,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   rintro L ⟨hLt, l', ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩, hLr⟩
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : L = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hLt) (hΦU hvat) hLr.symm
-  have hclean' := live_lock_clean (hr.trans (by rw [htk]; linarith))
+  have hclean' := live_lock_clean (hr.trans (by rw [htk]; linarith)) (SA.locksWF_state hr' hy k)
     ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩
   dsimp only at hclean'
   -- the image is below the stored block `O` of an origin that compares with `Y`

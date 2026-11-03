@@ -266,7 +266,8 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
   dsimp only at hlC hlf
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : C = ℓ.frame.viableAncestor B₀ := hΦ.coherent.1 hCv.1 hvat hlC.symm
-  have hclean := (live_lock_clean (hr.trans hk) ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩).1 hlf
+  have hclean := (live_lock_clean (hr.trans hk) (SA.locksWF_state hr' hy k)
+    ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩).1 hlf
   dsimp only at hclean
   obtain ⟨r, hrk, CV, ℓw, D, hcw, hfl, L₁, hL₁, hL₁r, hL₁O⟩ :=
     stored_fast_lock_provenance hr' hy k l₀ hl₀ hlf

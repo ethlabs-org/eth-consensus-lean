@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeContinue
 public import Mathlib.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 
 public section
 
@@ -55,7 +56,7 @@ theorem clean_lock_drain : CleanLockDrain := by
     fun _ hx _ _ _ ho hj _ _ hy _ _ _ hv hjs hk => ⟨fun he =>
       clean_slow_next hrun hs hc hw hx ho hj hy hv he hk, fun _ =>
       clean_slow_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
-    fun _ _ _ _ _ hr _ _ hl => live_lock_clean hr hl,
+    fun _ hy k _ _ hr _ _ hl => live_lock_clean hr (Compose.locksWF_state hrun hs.noColl hy k) hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
       live_lock_below_proposal hrun hs hc hw hP hr hy hv he hk hl hls hL hLr⟩
 

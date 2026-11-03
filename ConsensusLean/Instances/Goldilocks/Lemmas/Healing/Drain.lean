@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 
 public section
 
@@ -56,7 +58,42 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
     (hc : SA.CastAt T y i ℓ e) (hes : e.msg.slot = s + 1)
     (hE : SA.EarlierVotesExtend T H U i (s + 1) B) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (T.time i), Compatible U L B := by
-  sorry
+  have hrun := hS.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  have hsi : e.msg.slot = sp.slot (T.time i) := (SA.castAt_spec hr hy hc).2.1
+  have down : ∀ {X Y}, Anc U X Y → Compatible U Y B → Compatible U X B := by
+    rintro X Y hXY (h | h)
+    · exact Or.inl (hXY.trans h)
+    · exact SA.anc_total hU hXY h
+  rintro L ⟨hL, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive₀, rfl⟩, hlL⟩
+  have hlive : sp.slot (T.time i) ≤ l₀.slot + sp.k :=
+    le_trans hlive₀ ((SA.castAt_readPoint_locksWF hr hy hc).cap hl₀)
+  have hLe : L = ℓ.frame.viableAncestor B₀ :=
+    hU.1 (hΦU hL) (hΦU (SA.viableAncestor_anc hΦ hB₀).1) hlL.symm
+  subst hLe
+  refine down (Anc.mono hΦU (SA.anc_viableAncestor _ B₀)) ?_
+  rcases le_or_gt l₀.slot s with hle | hlt
+  · obtain ⟨l₁, hl₁, hsl₁, B₁, hB₁, hB₁r, B₀', hB₀', hB₀'r, hA⟩ :=
+      SA.readPoint_locks_below_stored hr hy hc (show 0 < sp.slot (T.time i) by omega) l₀ hl₀
+        (show l₀.slot ≠ sp.slot (T.time i) by omega)
+    obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
+    refine down (Anc.mono hΦU hA) ?_
+    rcases SA.slow_stored_locks hS hx hsl hs hy (by omega) l₁ hl₁ (by omega) (by omega) B₁
+        (hΦU hB₁) hB₁r with h | h
+    · exact SA.anc_total hU h hBD
+    · exact Or.inr (hBD.trans h)
+  · obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
+      SA.lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
+    obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
+    refine down hL₀D (SA.origin_compatible hU hΦ'U h34 hS.two_faulty_lt fun v hv hvH => ?_)
+    obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
+    obtain ⟨ℓ', hcj⟩ := id hvote
+    have hsj : e'.msg.slot = sp.slot (T.time j) := (SA.castAt_spec hr hvH hcj).2.1
+    have : sp.slot (T.time j) ≤ sp.slot (T.time i) :=
+      SA.slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
+    exact hE _ hvH j hj e' hvote (by omega)
 
 /-- **First transfer of a clean slow origin** (`hs234-exact-interface.md` §3, the slow helper;
 §2.2's ancestor-target score lemma): under `Γ` (without `Prop⁺`), at an honest slot-`(j+1)` vote,
@@ -322,10 +359,20 @@ theorem clean_slow_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
 lock live at a time `t ≥ r` keeps its label `l` with `slot(t) ≤ l + k`; as
 `slot(t) ≥ a + 2k + 2`, `l ≥ a + k + 2`, so the lock is clean. -/
 theorem live_lock_clean {t : Time} (ht : rTime sp w ≤ t) {L : Set SA.Lock}
+    (hwf : SA.LocksWF sp L)
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {l : SA.Lock} (hl : l ∈ SA.liveLocks sp L Φ t) :
     (l.fast = true → w + 4 * sp.Δ ≤ sp.ts l.slot) ∧
       (l.fast = false → w + 4 * sp.Δ ≤ sp.ts ((l.slot : Int) - sp.k + 1)) := by
-  sorry
+  have hsl := hwf.slot_le_of_live hl
+  obtain ⟨l₀, -, B, -, -, -, rfl⟩ := hl
+  dsimp only at hsl ⊢
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have ha := slotA_spec sp w
+  have hr0 : 0 ≤ rTime sp w := mul_nonneg (by linarith) (Int.natCast_nonneg _)
+  have h1 := (SA.ts_le_iff_le_slot sp (hr0.trans ht) _).1 ht
+  push_cast at h1
+  exact ⟨fun _ => ha.trans ((SA.ts_le_iff sp).2 (by omega)),
+    fun _ => ha.trans ((SA.ts_le_iff sp).2 (by omega))⟩
 
 /-- **HS.2 (3), the proposal boundary** (`hs234-exact-interface.md` §3 last paragraph): at an
 in-phase honest slot-`s` vote, `t_s ≥ r`, every live lock of a label `< s` has its block below the
@@ -347,7 +394,7 @@ theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr)
   have htk : sp.ts s ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hr'.time_nonneg k) _).2
       (by rw [← he, (SA.castAt_spec hr' hy hv).2.1])
-  have hclean := live_lock_clean (hr.trans htk) hl
+  have hclean := live_lock_clean (hr.trans htk) (Compose.locksWF_state hrun hs.noColl hy k) hl
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   dsimp only at hls hLr hclean
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
