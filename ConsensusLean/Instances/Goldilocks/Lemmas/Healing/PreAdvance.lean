@@ -13,6 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -404,7 +405,34 @@ theorem FrameWindow.live_old_lock_witness {s₀ floor : Nat} {hi : Time}
     (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot) :
     ∃ Q ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc L Q := by
-  sorry
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+  have hs := (SA.castAt_spec hr hy hc).2.1
+  change e.msg.slot = sp.slot (tr.time i) at hs
+  obtain ⟨l₀, hl₀, B, hB, hBr, hlive, heq⟩ := hl
+  -- live ⇒ recent: the read point's locks expire by `slot + k`
+  have hrecent : sp.slot (tr.time i) ≤ l₀.slot + sp.k :=
+    hlive.trans ((SA.castAt_readPoint_locksWF hr hy hc).cap hl₀)
+  have hsl : l.slot = l₀.slot := by simpa only using congrArg SA.Lock.slot heq
+  have hne : l₀.slot ≠ sp.slot (tr.time i) := by rw [← hs]; omega
+  obtain ⟨l₁, hl₁, hs₁, C, hC, hCr, B', hB', hB'r, hBC⟩ :=
+    SA.readPoint_locks_below_stored hr hy hc
+      (by change 0 < sp.slot (tr.time i); rwa [← hs]) l₀ hl₀ hne
+  have hPhi := SA.frameIn_of_callAt hr hy hc.1
+  have hBB : B' = B := hPhi.1.coherent.1 hB' hB (hB'r.trans hBr.symm)
+  rw [hBB] at hBC
+  have hLB : ell.frame.Anc L B := by
+    have he : L = ell.frame.viableAncestor B := hPhi.1.coherent.1 hL
+      (SA.viableAncestor_anc hPhi.1 hB).1 (hLr.trans (congrArg SA.Lock.block heq))
+    rw [he]; exact (SA.viableAncestor_anc hPhi.1 hB).2
+  have hlabel : s₀ ≤ l₁.slot := by rw [← hs₁, ← hsl]; rw [← hs] at hrecent; omega
+  have hstrictC : ¬ Anc (tr.HonestBlocks H) C ell.frame.fcRoot := by
+    intro h
+    exact hstrict ((Anc.mono hPhi.2 (hLB.trans hBC)).trans h)
+  obtain ⟨a, hai, ell₀, D, Q, -, -, -, -, -, hCQ, hvQ, hQv⟩ :=
+    hframe.old_lock_witness hrun hnc hf hnr hy hc hihi hgf hl₁ hlabel
+      (by rw [← hs₁, ← hsl]; exact hold) hC hCr hstrictC
+  refine ⟨Q, hQv, hvQ, ?_⟩
+  exact hLB.trans (hBC.trans (SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hC hCQ hQv.1))
 
 /-- Finite service supplies H-wit's earlier action cut from the writer's actual
 prior-slot vote, without assuming anything about that vote's head. -/
