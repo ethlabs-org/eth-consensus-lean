@@ -19,6 +19,8 @@ public import ConsensusLeanTest.GoldilocksAttestationPremise
 public import ConsensusLeanTest.GoldilocksBudgetTightness
 public import ConsensusLeanTest.GoldilocksConflictChains
 public import ConsensusLeanTest.GoldilocksConflictRun
+public import ConsensusLeanTest.GoldilocksDataRun
+public import ConsensusLeanTest.GoldilocksDataRunSync
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGRetention
 public import ConsensusLeanTest.GoldilocksFGStore
