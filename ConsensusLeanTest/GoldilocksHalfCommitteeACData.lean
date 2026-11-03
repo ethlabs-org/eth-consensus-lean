@@ -108,7 +108,7 @@ def ACD.joinedB (a : X.ACD) (t : Int) : Bool :=
   | some r => decide (r ≤ 4 * ((slotT t : Int) - 1))
 
 /-- `on_goldfish_vote`. -/
-def ACD.admit (a : X.ACD) (t : Int) (v : X.V) : X.ACD :=
+def ACD.addVote (a : X.ACD) (t : Int) (v : X.V) : X.ACD :=
   if (v.slot : Int) < (slotT t : Int) - 1 ∨ slotT t < v.slot ∨ v ∈ a.pool v.slot then a
   else if 2 ≤ ((a.pool v.slot).filter (fun x => x.val = v.val)).dedup.length then a
   else { a with adm := a.adm ++ [(v, t)] }
@@ -219,8 +219,8 @@ theorem mem_pool_iff {a : X.ACD} {v : X.V} : v ∈ a.pool v.slot ↔ ∃ t, (v, 
   simp [ACD.pool]
 
 theorem admitVote_interp (a : X.ACD) (t : Int) (v : X.V) :
-    admitVote X.sp a.interp t v = (a.admit t v).interp := by
-  unfold admitVote ACD.admit
+    admitVote X.sp a.interp t v = (a.addVote t v).interp := by
+  unfold admitVote ACD.addVote
   rw [slot_eq]
   simp only [interp_pool]
   by_cases h1 : (v.slot : Int) < (slotT t : Int) - 1 ∨ slotT t < v.slot ∨ v ∈ a.pool v.slot

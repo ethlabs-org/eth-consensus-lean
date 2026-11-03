@@ -103,12 +103,12 @@ def ACD.tryVote (a : X.ACD) (self : Fin X.sp.n) (M : List Nat) (t : Int) :
     let h := X.headD a₁ M t dom p ((s : Int) - 1)
     let a₂ : X.ACD := { a₁ with voted := (s : Int) }
     let v : X.V := ⟨self, s, h⟩
-    ((a₂.admit t v).optConf M t, [⟨v, a₂, h, X.anchorD a₁.locks M t, dom⟩])
+    ((a₂.addVote t v).optConf M t, [⟨v, a₂, h, X.anchorD a₁.locks M t, dom⟩])
 
 /-- `ac_on_message`. -/
 def ACD.onMsg (a : X.ACD) (self : Fin X.sp.n) (M : List Nat) (t : Int) (v : X.V) :
     X.ACD × List X.EmD :=
-  ((a.admit t v).optConf M t).tryVote self M t
+  ((a.addVote t v).optConf M t).tryVote self M t
 
 /-- `ac_on_block` of the root `r`. -/
 def ACD.onBlk (a : X.ACD) (self : Fin X.sp.n) (M : List Nat) (t : Int) (r : Nat) :
