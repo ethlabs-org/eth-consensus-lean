@@ -368,6 +368,40 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-03, Francesco (card: workbench `repos/consensus-lean/notes/cards/graded_fast_locks_v2.md` §5, §9–§16;
+  read-backs T-01a19b8a, PASS): **graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock
+  is live at `t` while `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps
+  the locks. A slow lock of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`: `min(s + k, max(s + 2,
+  E + c))`, with `E` the latest expiry of the node's live fast locks of earlier slots (the first decision below) and
+  `s + 2` when there is none. `c ≥ 2` is a new parameter (`SAParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient
+  reads. The cap is at the write; "a live lock is recent" comes from the run invariant `l.slot + 2 ≤ l.expiry ≤
+  l.slot + k` (`LocksWF`). Francesco's four decisions on the rule (card §11–§12):
+  - **per-slot `E`**: `E` counts only fast locks of earlier slots (`l.slot < s`). Without it, repeated optimistic
+    writes within one slot ratchet the expiry up to the cap; with it, the deadline grows by `c` per slot, as
+    intended (§12.1).
+  - **`E` as is**: a fast lock moved back to `Φ.F` still feeds `E`. It vetoes nothing, and no proof reads `E`
+    beyond the bounds `[s + 2, s + k]`, so a filter would add text and buy nothing (§12.2).
+  - **independent fast and slow writes, no B′**: over the path, the deepest fast block gets a fast lock with
+    `fastExpiry` and the deepest slow block a slow lock with `s + k`, each written when it exists. This replaces
+    B′ (a slow-qualified update's fast lock getting `s + k`, the earlier "keep the highest deadline" form): the
+    spec loses `lockBlock`, B′'s conditional and the `≠ D` clause, and `SlowLockAt` loses two clauses. The
+    outage arming uses the slow lock, and no statement needs the deeper fast block to live more than two slots
+    (§12.3).
+  - **the veto stops only the record (2(a))**: a result that conflicts with a live lock leaves
+    `latest_confirmed` unchanged, but the locks are still written, over the blocks of the result's path that
+    conflict with no live lock. This closes the outage cover base's veto branch (W2's finding), and an unvetoed
+    update behaves exactly as before (the filter is vacuous) (§10–§11).
+
+  What changes: trusted `Spec/SA/{Schedule, State, Locks, Confirmation, Events}` (`SAParams.c`, `Lock.expiry`,
+  `Lock.LiveAt`, `fastExpiry`, `addLocks`'s `N` with expiries, `updateConfirmation`, `optimisticConfirmation`,
+  `FastUpdateAt` over the filtered path), `Statements/AC/Base` (`LocksMoveBack`, the shape of `N` only),
+  `Statements/Healing/AC` (`SlowLockAt`), `Refinement/Defs` (`Setup.c`), and the LaTeX (`goldilocks-spec.tex`
+  §"Locks" and §"Confirmation"). `fastSelect` stays the raw test, so A1.4 (b) (`OptimisticNextUpdate`) keeps its
+  meaning. No Challenge statement changes its text; through `FastUpdateAt`/`FastLockAt` the scope of A1.2, A1.5,
+  A1.9, C1.1 and `RecentSourceNextVote` widens to the fast locks of vetoed updates (their arguments read the
+  counted votes and `Carry`, not the record). No coefficient changes. Witnesses at `k = 6`, `c = 2`:
+  `ConsensusLeanTest/GoldilocksGradedLocks.lean`.
+
 - 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md`, T-6daee397): **the
   node-level regime rows R.3–R.6 are retired.** `Statements/Regimes/{Healed,Final,Outage,Weak}`
   (28 declarations, none proved) are deleted, with the adapter `acceptance_outage_times`, its test
