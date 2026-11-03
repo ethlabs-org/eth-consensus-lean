@@ -283,8 +283,17 @@ def main : IO Unit := do
     owners = {n for n, deps in edges.items() if 'sorryAx' in deps}
     accepted = closure([root], edges)
     today = datetime.date.today().isoformat()
+    # A row renamed between private and public (or moved to another module's private) keeps its
+    # prior metadata: matched by the name without its `_private.<Module>.0.` prefix, only when
+    # exactly one vanished prior row and exactly one new row have that name.
+    user_name = lambda n: re.sub(r'^_private\..*?\.0\.', '', n)
+    names = set(seeds) | owners
+    vanished, fresh = {}, {}
+    for group, side in ((vanished, set(old) - names), (fresh, names - set(old))):
+        for n in side:
+            group.setdefault(user_name(n), []).append(n)
     rows = []
-    for name in sorted(set(seeds) | owners):
+    for name in sorted(names):
         if name not in current:
             raise ValueError(f'Missing source location: {name}')
         file, line, _ = current[name]
@@ -309,7 +318,11 @@ def main : IO Unit := do
             'network+Sleepy': 'T-01a18fec-6e1e-7342-9ca9-8562977d7347',
             'outage+persist': 'T-01a18fec-6e1e-7342-9ca9-8562977d7347',
         }[area]
-        prior = old.get(name, {})
+        prior = old.get(name)
+        if prior is None:
+            candidates = vanished.get(user_name(name), [])
+            unique = len(candidates) == 1 and len(fresh[user_name(name)]) == 1
+            prior = old[candidates[0]] if unique else {}
         # A 'lean-proved' rating describes a proof; it is not applied to a row whose closure has
         # regressed to a sorry.
         if short in RATINGS and (prior.get('status-source') is None or short in REFRESH) and (

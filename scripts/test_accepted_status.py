@@ -18,9 +18,10 @@ spec.loader.exec_module(status)
 class StatusTests(unittest.TestCase):
     PREFIX = 'Consensus.Goldilocks.Refinement.'
 
-    def regenerate(self, names, sorry, dependencies, prior, head='fixture-pin'):
+    def regenerate(self, names, sorry, dependencies, prior, head='fixture-pin', prior_rows=None):
         """Run `main` on a one-file fixture: every name was a historical sorry, `sorry` are the
-        current ones, `dependencies` the compiled edges, `prior` the previous rows; return rows."""
+        current ones, `dependencies` the compiled edges, `prior` the previous rows (or
+        `prior_rows`, whole rows with their own names); return rows."""
         prefix = self.PREFIX
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
             'theorem ' + n + ' : True := by ' + ('sorry' if n in sorry else 'trivial')
@@ -52,7 +53,9 @@ class StatusTests(unittest.TestCase):
                 file.write_text(source)
                 ledger = Path('docs/accepted-status.json')
                 ledger.parent.mkdir()
-                ledger.write_text(json.dumps({'rows': [{'name': prefix + n, **prior(n)} for n in names]}))
+                if prior_rows is None:
+                    prior_rows = [{'name': prefix + n, **prior(n)} for n in names]
+                ledger.write_text(json.dumps({'rows': prior_rows}))
                 with patch.object(status, 'run', side_effect=run), \
                         patch.object(status.subprocess, 'run'), \
                         patch('sys.argv', ['accepted-status.py']):
@@ -134,6 +137,45 @@ class StatusTests(unittest.TestCase):
         # the proof rating (and its source) is not applied to the regressed REFRESH row
         self.assertEqual(rows['healthy_repair_schedule']['status-source'],
                          'compiled dependency audit')
+
+    PRIVATE = '_private.ConsensusLean.Instances.Goldilocks.Lemmas.{}.0.' + PREFIX
+    CARRIED = {'status': 'lean-proved', 'status-source': 'compiled dependency audit',
+               'owner-thread': 'T-override', 'area': 'healing', 'card-path': 'cards/foo.md',
+               'card-commit': 'card-pin', 'card-repo': 'ethlabs-org/workbench',
+               'derisk-verdict': 'research', 'adversarial-pass-done': 'y',
+               'evidence': status.PROVED_EVIDENCE + 'oldsha.', 'last-changed': '2026-01-01'}
+
+    def test_private_to_public_rename_keeps_row_metadata(self):
+        prior_rows = [{'name': self.PRIVATE.format('Old') + 'foo', **self.CARRIED}]
+        row = self.regenerate(['foo'], set(), {}, None, prior_rows=prior_rows)['foo']
+        for key in ('owner-thread', 'card-path', 'card-commit', 'card-repo', 'derisk-verdict',
+                    'adversarial-pass-done', 'evidence'):
+            self.assertEqual(row[key], self.CARRIED[key])
+        self.assertEqual(row['status'], 'lean-proved')
+        self.assertNotEqual(row['last-changed'], '2026-01-01')
+        # the compiled closure still decides the status of a renamed row
+        regressed = self.regenerate(['foo'], {'foo'}, {}, None, prior_rows=prior_rows)['foo']
+        self.assertTrue(regressed['direct_sorry'])
+        self.assertNotEqual(regressed['status'], 'lean-proved')
+        self.assertNotIn('evidence', regressed)
+        self.assertEqual(regressed['card-path'], 'cards/foo.md')
+
+    def assert_defaults(self, row):
+        self.assertEqual(row['owner-thread'], 'T-01a18fec-6e1e-7342-9ca9-8562977d7347')
+        self.assertEqual(row['area'], 'network+Sleepy')
+        self.assertIsNone(row['card-path'])
+        self.assertEqual(row['derisk-verdict'], 'none yet')
+        self.assertEqual(row['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
+
+    def test_ambiguous_rename_carries_nothing(self):
+        prior_rows = [{'name': self.PRIVATE.format(m) + 'foo', **self.CARRIED} for m in ('A', 'B')]
+        self.assert_defaults(self.regenerate(['foo'], set(), {}, None, prior_rows=prior_rows)['foo'])
+
+    def test_unrelated_new_row_carries_nothing(self):
+        prior_rows = [{'name': self.PRIVATE.format('Old') + 'bar', **self.CARRIED}]
+        rows = self.regenerate(['foo'], set(), {}, None, prior_rows=prior_rows)
+        self.assertEqual(set(rows), {'foo'})
+        self.assert_defaults(rows['foo'])
 
     def test_card_repositories_preserve_mixed_pins(self):
         archive = {'card-path': 'old.md', 'card-commit': 'old-pin'}
