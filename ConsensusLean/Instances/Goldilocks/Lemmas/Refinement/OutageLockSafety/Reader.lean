@@ -133,7 +133,51 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
     (hfl : SA.FastLockAt tr.projAC y c s B CV)
     (hcut : ∀ v ∈ CV, v.val ∈ H → ∃ j < n, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v) :
     Compatible (tr.HonestBlocks H) B D.P := by
-  sorry
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc
+  have hU := D.coherent
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
+  by_cases hs : s < D.j₀
+  · -- an update or a selection of a label `< j₀` is within `b₀`
+    have hj₀ := D.hj₀.1
+    have hsj := ts_le_ts (sp := sp) (show s + 1 ≤ D.j₀ by omega)
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    rcases hfl with ⟨ℓ, C, hu, hC, hD, -⟩ | hO
+    · have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
+      obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hrun'.localRun hy hu.1
+      have hBC : ℓ.frame.Anc B C := (SA.deepest_mem hD).1.1.2.2
+      have hCU : C ∈ tr.HonestBlocks H := hΦU (SA.deepest_mem hC).1.1
+      exact compatible_of_anc hU (hBC.mono hΦU) (D.compatible_of_within
+        (originWithin_iff.2 ⟨y, hy, c, _, by linarith, Or.inl ⟨ℓ, hu, hC, rfl⟩⟩) hCU)
+    · obtain ⟨ℓ, A, hpt, hslot, hsel, -⟩ := id hO
+      have hlt : tr.time c < sp.ts (s + 1 : Nat) := by
+        by_contra h
+        have := (SA.ts_le_iff_le_slot sp (hrun'.localRun.time_nonneg c) ((s + 1 : Nat) : Int)).1
+          (not_lt.1 h)
+        rw [hslot] at this
+        omega
+      obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hrun'.localRun hy hpt.1
+      have hBt : B ∈ ℓ.frame.tree := by
+        unfold SA.optimisticSelect at hsel
+        dsimp only at hsel
+        split_ifs at hsel
+        exact (SA.deepest_mem hsel).1.1
+      exact D.compatible_of_within (originWithin_iff.2 ⟨y, hy, c, CV, by linarith, Or.inr hO⟩)
+        (hΦU hBt)
+  refine by_contra fun hB => ?_
+  have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ Hᶜ ∪ D.W := by
+    rintro u ⟨v, hv, rfl⟩
+    by_contra hu
+    simp only [Set.mem_union, Set.mem_compl_iff, not_or, not_not] at hu
+    obtain ⟨hvs, R, hRU, hRr, -, hBR⟩ := hCV v hv
+    obtain ⟨j', hj', e, hve, rfl⟩ := hcut v hv hu.1
+    exact hB (compatible_of_voteCompat hU hRU hRr hBR
+      (hvi.voteCompat_of_not_lateWaker hu.1 hu.2 hj' hve (by omega)))
+  have := Set.ncard_le_ncard hsub
+  have := D.two_mul_lt
+  omega
+
 
 /-- **Every honest fast lock block is compatible with `P`** (§5.2(a)(b)): a fast update lock or an
 optimistic selection of an honest node. -/
