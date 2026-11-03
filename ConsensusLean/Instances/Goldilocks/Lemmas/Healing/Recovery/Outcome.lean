@@ -353,7 +353,7 @@ theorem outcome_service_of_reports
       (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (proposer : Nat → Fin sp.n)
       (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time),
       ReadyProposalReportSupply tr H proposer dg g ΔF a) : Compose.OutcomeService := by
-  intro sp ro proposer dg H tr g ΔF _Gp a cF kF hrun hs hc _hprop _hceil hcf hto hreset
+  intro sp ro proposer dg H tr g ΔF a cF kF hrun hs hc hcf hto hreset
     p k i T u hP hentry hR hhigh hhj hretained
   classical
   have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hs.healthy, hs.noColl, hreset⟩

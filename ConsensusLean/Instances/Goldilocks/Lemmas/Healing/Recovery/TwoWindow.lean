@@ -193,8 +193,8 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
   have hdrainU : sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) ≤ sp.ts U.slot := by
     rw [← drainTime_eq]; exact hR
   -- **first outcome, at `U`**: an honest store holds the block `V` justifying `U`
-  have o1 := (houtcome sp ro proposer dg H tr g ΔF Gp a cF kF hrun hpat.shared
-    hpat.catchPremise hpat.prop hpat.cF_lower hpat.cF_upper hpat.timeout hp.reset q kU iU U
+  have o1 := (houtcome sp ro proposer dg H tr g ΔF a cF kF hrun hpat.shared
+    hpat.catchPremise hpat.cF_upper hpat.timeout hp.reset q kU iU U
     U.slot hU hentry hdrainU (by rw [hpostU]; omega) (fun _ h1 => by rw [hpostU] at h1 ⊢; omega)
     (hBret q iU hentry)).1
   have hA : ∃ y ∈ H, ∃ c V,
@@ -238,8 +238,8 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
     rw [hpostV, hVσ]; exact hpjy
   have hJr : ((tr.post kV).fg.σ V.root).J = U.root := by rw [hpostV, hVσ]; exact hVJ
   -- **second outcome, at `V`**: a block finalizing `U`, accepted before `t_{v+M}`
-  have o2 := (houtcome sp ro proposer dg H tr g ΔF Gp a cF kF hrun hpat.shared
-    hpat.catchPremise hpat.prop hpat.cF_lower hpat.cF_upper hpat.timeout hp.reset
+  have o2 := (houtcome sp ro proposer dg H tr g ΔF a cF kF hrun hpat.shared
+    hpat.catchPremise hpat.cF_upper hpat.timeout hp.reset
     (proposer V.slot) kV kV V V.slot hB'r hVent (hdrainU.trans (hts hUVs.le))
     (by rw [hpostV, hVσ, hVh]; omega) (fun _ _ => by rw [hpostV, hVσ, hVhj]; omega)
     (hB'ret _ _ hVent)).1

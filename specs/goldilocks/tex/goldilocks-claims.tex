@@ -2617,7 +2617,8 @@ G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
   premises; the scope is C1.1's conclusion~(iii) (\texttt{PersistAt.cut}),
   proved with C1.1 (\texttt{persist\_statements})\\
 C1.2 & \texttt{Compose.OutcomeService} & proved
-  (\texttt{Healing.Recovery.outcome\_service}), note~3\\
+  (\texttt{Healing.Recovery.outcome\_service}), note~3; without
+  $\mathsf{Prop}^+(G_p)$ and with $c_F$ only bounded below by the ceiling\\
 C1.3 & \texttt{Healing.FinalizingCoverage} & proved
   (\texttt{recovery\_statements})\\
 HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &

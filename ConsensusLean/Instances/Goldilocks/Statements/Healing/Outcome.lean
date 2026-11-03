@@ -8,18 +8,19 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Available chain, after
 C1.1", over the Goldilocks run (`Spec/Run`, `GoldilocksRun`). Its premises are the healing regime,
-so it lives with the healing statements, next to its proof (`Lemmas/Healing/Outcome`); its names
-stay in `Compose`.
+so it lives with the healing statements; its proof is `Healing.Recovery.outcome_service`
+(`Lemmas/Healing/Recovery/Reports`); its names stay in `Compose`.
 
 * **C1.2, AC outcome service for honest entries** (claims at goldilocks `6703bf05`, #37: its run
-  premises are the healing regime after the reset `a_z`): under `Healthy(g)`, `Catch(2Δ)`,
-  `Prop⁺(G_p)` and the HS shared premises, an entry whose entry block `P` is an actual honest ready
-  proposal of slot `u` with `t_u ≥ R_z = t_{slot(a_z)+2k+5}`, at a height `≥ H_z + 1` (with its
-  predecessor that high when it has its previous height justified), and with retained ready
-  inclusion in its window, gets outcome service by the end of the window: a literal good window
-  (`Store.GoodWindow`, on the FG projection) or an accepted early justification, which at a entry
-  whose previous height is justified has finalized the predecessor (the gate), and at an entry whose
-  previous height is not justified gives its actual successor entry, entered by justifying it,.
+  premises are the healing regime after the reset `a_z`): under `Healthy(g)`, `Catch(2Δ)` and the
+  HS shared premises (the claims also assume `Prop⁺(G_p)`, which is not needed), an entry whose
+  entry block `P` is an actual honest ready proposal of slot `u` with
+  `t_u ≥ R_z = t_{slot(a_z)+2k+5}`, at a height `≥ H_z + 1` (with its predecessor that high when
+  it has its previous height justified), and with retained ready inclusion in its window, gets
+  outcome service by the end of the window: a literal good window (`Store.GoodWindow`, on the FG
+  projection) or an accepted early justification, which at an entry whose previous height is
+  justified has finalized the predecessor (the gate), and at an entry whose previous height is not
+  justified gives its actual successor entry, entered by justifying it.
 
 Statements only: no proofs here. -/
 
@@ -48,13 +49,14 @@ def EarlyOutcome (T : SA.Blk sp.n (List (FG.Att sp.n))) (h : Nat) (bound : Bool)
     ∀ z ∈ H, ∃ k', tr.AcceptAt z k' X ∧ tr.time k' < T₁ + sp.Δ
 
 /-- **C1.2, AC outcome service for honest entries** (claims C1.2 at goldilocks `6703bf05`). Under
-`Healthy(g)` (in `HSShared`), `Catch(2Δ)`, `Prop⁺(G_p)` and the HS shared premises, with the reset
+`Healthy(g)` (in `HSShared`), `Catch(2Δ)` and the HS shared premises, with the reset
 `a_z` (HR.1): let `T` be an entry of height `h ≥ H_z + 1` whose entry block is an actual honest
 ready proposal of slot `u` (made by the honest joined proposer at `t_u`) with `t_u ≥ R_z =
 t_{slot(a_z)+2k+5}`; when the entry has its previous height justified (`h_j = h − 1 > 0` in its
 state), let its predecessor `(h − 1, J)` have `h − 1 ≥ H_z + 1`; and assume retained ready
 inclusion: some honest ready proposal `W` of a slot of the window `I(E, 0, k_F)` has a parent that
-extends `T`. Here `𝓕 = cF = ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F` (the parameters, with `x = 0`).
+extends `T`. Here `𝓕 = cF ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F` (the parameters, with `x = 0`;
+the claims fix `𝓕` at the ceiling and assume `Prop⁺(G_p)`, neither of which is needed).
 Then by the end of the window (`t_{u+𝓕+k_F+1}`) either (i) the literal good window `GW(E, 0, k_F)`
 holds on the FG projection (`Store.GoodWindow`, at some honest proposer's acceptance of its own
 proposal), or (ii) an accepted block justifies `E`, which at an entry whose previous height is
@@ -66,10 +68,9 @@ def OutcomeService : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF Gp a : Time) (cF kF : Nat),
+    (tr : GoldilocksTrace sp ro) (g ΔF a : Time) (cF kF : Nat),
     GoldilocksRun proposer dg H tr → Healing.HSShared tr H dg g ΔF →
-    Healing.CatchRun tr H g (2 * sp.Δ) → Healing.PropPlus tr H proposer g Gp →
-    4 * sp.Δ * ((cF : Time) - 1) < 6 * sp.Δ + ΔF → 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time) →
+    Healing.CatchRun tr H g (2 * sp.Δ) → 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time) →
     cF + kF ≤ sp.toParams.δt →
     Healing.IsReset tr H g a →
     ∀ (p : Fin sp.n) (k i : Nat) (T : SA.Blk sp.n (List (FG.Att sp.n))) (u : Nat),
