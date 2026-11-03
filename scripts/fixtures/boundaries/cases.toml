@@ -244,6 +244,40 @@ edit."Fx.lean" = [["public import Fx.Proofs.P.Main\n", ""]]
 expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.Spec.B (layer Spec)"
 files."Fx/Spec/B.lean" = "module\n\npublic import Fx.Lemmas.L\n"
 
+# The Recovery.Reports exception is an exact module pair, not a string-prefix grant.
+[ExactReportException]
+files."Fx/Lemmas/Reports.lean" = "module\n\npublic import Fx.Proofs.P.Main\n"
+edit."Fx.lean" = [['public import Fx.Lemmas.N', "public import Fx.Lemmas.N\npublic import Fx.Lemmas.Reports"]]
+edit."boundaries.toml" = [['[checks]', '''[[exception]]
+from = ["Fx.Lemmas.Reports"]
+to = ["Fx.Proofs.P.Main"]
+reason = "fixture: one report supplier depends on one operational theorem module"
+
+[checks]''']]
+
+[ExactReportExceptionWrongSource]
+expect = "FAIL[import] Fx.Proofs.P.Main (layer Proofs.P) imported by Fx.Lemmas.ReportsExtra (layer Lemmas)"
+files."Fx/Lemmas/Reports.lean" = "module\n\npublic import Fx.Proofs.P.Main\n"
+files."Fx/Lemmas/ReportsExtra.lean" = "module\n\npublic import Fx.Proofs.P.Main\n"
+edit."Fx.lean" = [['public import Fx.Lemmas.N', "public import Fx.Lemmas.N\npublic import Fx.Lemmas.Reports\npublic import Fx.Lemmas.ReportsExtra"]]
+edit."boundaries.toml" = [['[checks]', '''[[exception]]
+from = ["Fx.Lemmas.Reports"]
+to = ["Fx.Proofs.P.Main"]
+reason = "fixture: the neighboring report module is not allowed"
+
+[checks]''']]
+
+[ExactReportExceptionWrongTarget]
+expect = "FAIL[import] Fx.Proofs.Q.Main (layer Proofs.Q) imported by Fx.Lemmas.Reports (layer Lemmas)"
+files."Fx/Lemmas/Reports.lean" = "module\n\npublic import Fx.Proofs.P.Main\npublic import Fx.Proofs.Q.Main\n"
+edit."Fx.lean" = [['public import Fx.Lemmas.N', "public import Fx.Lemmas.N\npublic import Fx.Lemmas.Reports"]]
+edit."boundaries.toml" = [['[checks]', '''[[exception]]
+from = ["Fx.Lemmas.Reports"]
+to = ["Fx.Proofs.P.Main"]
+reason = "fixture: the neighboring operational module is not allowed"
+
+[checks]''']]
+
 [BadImportTransitive]
 expect = "FAIL[import] Fx.Proofs.P.Main (layer Proofs.P) reached from Fx.Lemmas.N -> Fx.Lemmas.M (layer Lemmas)"
 files."Fx/Lemmas/M.lean" = "module\n\npublic import Fx.Proofs.P.Main\n\ntheorem m : S := p\n"
