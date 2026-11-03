@@ -47,6 +47,8 @@ abbrev sp₂ : SAParams where
   slotTime_eq := fun s => by change 8 * (s : Int) = 4 * 2 * s; ring
   k := 2
   two_le_k := le_rfl
+  c := 2
+  two_le_c := le_rfl
 
 /-- `t_s = 8s` at `sp₂`. -/
 theorem ts_eq (s : Int) : sp₂.ts s = 8 * s := by
