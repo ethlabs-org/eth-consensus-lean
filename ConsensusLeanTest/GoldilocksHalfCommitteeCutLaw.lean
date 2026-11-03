@@ -147,6 +147,21 @@ theorem chainOK_postsD (hX : X.OK) (self : Fin X.sp.n) {d : X.NodeD} (hF : X.Fra
     rw [cutPost_ac]
     simp only [CallD.interp, ACInterface.step, acRestart_eq hX hF.1 hF.2 ro self _ ht]; rfl
 
+/-- `execD` makes a cut unless it drops a future-slot block. -/
+theorem execD_ne_nil (d : X.NodeD) (self : Fin X.sp.n) (t : Int) {e : X.EvD}
+    (h : ∀ r, e = .block r → X.slotR r ≤ slotT t) : (execD d self t e).2 ≠ [] := by
+  cases e with
+  | tick x =>
+    simp only [execD]
+    split
+    · simp
+    · split <;> simp
+  | block r =>
+    have hr := h r rfl
+    simp only [execD, show ¬ slotT t < X.slotR r by omega, ↓reduceIte]
+    split <;> simp
+  | _ => simp [execD]
+
 end Fix
 
 theorem getD_map {α β : Type} (f : α → β) (l : List α) (p : Nat) (z : α) :

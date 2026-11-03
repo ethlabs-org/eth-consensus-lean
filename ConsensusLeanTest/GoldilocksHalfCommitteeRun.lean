@@ -496,12 +496,31 @@ theorem isRestart_iff {e : X.EvD} : e.interp ro = .restart ↔ isRestart e = tru
 theorem eq_tick {e : X.EvD} (h : isTick e = true) : e.interp ro = .tick 0 ∨ ∃ x, e = .tick x := by
   cases e <;> simp_all [isTick]
 
+/-- The order of the entries: by time, then phase, and the ticks of one time by node. -/
+def ordD (a b : Ent) : Prop :=
+  a.2.1 < b.2.1 ∨ (a.2.1 = b.2.1 ∧ (phaseD a.2.2 < phaseD b.2.2 ∨
+    (phaseD a.2.2 = phaseD b.2.2 ∧ (phaseD a.2.2 = 1 → a.1 < b.1))))
+
+instance : DecidableRel ordD := fun a b => by unfold ordD; infer_instance
+
+instance : Trans ordD ordD ordD where
+  trans {a b c} hab hbc := by
+    unfold ordD at *
+    have := Fin.lt_def (a := a.1) (b := b.1)
+    have := Fin.lt_def (a := b.1) (b := c.1)
+    have := Fin.lt_def (a := a.1) (b := c.1)
+    omega
+
+/-- A drop of a future-slot block (no cut). -/
+def dropD (en : Ent) : Bool :=
+  match en.2.2 with
+  | .block r => decide (slotT en.2.1 < X.slotR r)
+  | _ => false
+
 /-- The entry laws of the schedule on data, checked by the kernel. -/
 structure EntryLaws (ctl : Bool) : Prop where
-  mono : (entriesD ctl).Pairwise fun a b => a.2.1 ≤ b.2.1
-  phase : (entriesD ctl).Pairwise fun a b => a.2.1 = b.2.1 → phaseD a.2.2 ≤ phaseD b.2.2
-  tick_unique : (entriesD ctl).Pairwise fun a b =>
-    ¬ (a.1 = b.1 ∧ a.2.1 = b.2.1 ∧ isTick a.2.2 = true ∧ isTick b.2.2 = true)
+  order : (entriesD ctl).IsChain ordD
+  drop : ∀ en ∈ entriesD ctl, dropD en = false
   ticks : ∀ y : Fin 5, ∀ t < 36, awakeB ctl y t = true →
     ∃ en ∈ entriesD ctl, en.1 = y ∧ en.2.1 = t ∧ isTick en.2.2 = true
   awake_call : ∀ en ∈ entriesD ctl, awakeB ctl en.1 en.2.1 = true
@@ -520,28 +539,20 @@ theorem entryLaws : ∀ ctl, EntryLaws ctl := by
   intro ctl
   exact ⟨by revert ctl; decide +kernel, by revert ctl; decide +kernel,
     by revert ctl; decide +kernel, by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel, by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel⟩
+    by revert ctl; decide +kernel, by revert ctl; decide +kernel, by revert ctl; decide +kernel⟩
 
-/-- The entries with the data of all nodes before them. -/
-def tblAux : (Fin 5 → X.NodeD) → List Ent → List (Ent × (Fin 5 → X.NodeD))
-  | _, [] => []
-  | st, en :: es => (en, st) :: tblAux (stepD st en) es
+theorem entries_pw (ctl : Bool) : (entriesD ctl).Pairwise ordD :=
+  List.isChain_iff_pairwise.1 (entryLaws ctl).order
 
-theorem tblAux_getElem? : ∀ (L : List Ent) (st : Fin 5 → X.NodeD) (k : Nat),
-    (tblAux st L)[k]? = L[k]?.map fun en => (en, (L.take k).foldl stepD st)
-  | [], _, _ => rfl
-  | _ :: _, _, 0 => rfl
-  | _ :: L, st, k + 1 => by simp [tblAux, tblAux_getElem? L _ k]
-
-theorem entries_ne : ∀ ctl, ∀ x ∈ tblAux init0 (entriesD ctl),
-    (execD (x.2 x.1.1) x.1.1 x.1.2.1 x.1.2.2).2 ≠ [] := by decide +kernel
+theorem isTick_phase {e : X.EvD} (h : isTick e = true) : phaseD e = 1 := by
+  cases e <;> simp_all [isTick, phaseD]
 
 theorem cutsD_ne {ctl : Bool} {k : Nat} {en : Ent} (h : (entriesD ctl)[k]? = some en) :
     (execD (stD ctl k en.1) en.1 en.2.1 en.2.2).2 ≠ [] := by
-  have hm : (en, stD ctl k) ∈ tblAux init0 (entriesD ctl) := by
-    apply List.mem_of_getElem?; rw [tblAux_getElem?, h]; rfl
-  exact entries_ne ctl _ hm
+  refine execD_ne_nil _ _ _ fun r hr => ?_
+  have hd := (entryLaws ctl).drop en (List.mem_of_getElem? h)
+  simp only [dropD, hr, decide_eq_false_iff_not, not_lt] at hd
+  exact hd
 
 theorem sched_entry_some {ctl : Bool} {k : Nat} {y : Fin 5} {t : Time} {e : Node.Event N5}
     (h : (sched ctl).entry k = some (y, t, e)) :
@@ -636,14 +647,19 @@ theorem sched_runLaws (ctl : Bool) : (sched ctl).RunLaws proposer dg H where
     obtain ⟨en', h', -, rfl, -⟩ := sched_entry_some he'
     rcases Nat.eq_or_lt_of_le hkk with rfl | hlt
     · rw [h] at h'; cases h'; exact le_rfl
-    · exact_mod_cast pw_of (entryLaws ctl).mono h h' hlt
+    · have := pw_of (entries_pw ctl) h h' hlt
+      unfold ordD at this
+      exact_mod_cast (show en.2.1 ≤ en'.2.1 by omega)
   nonneg k y t e he := by
     obtain ⟨en, -, -, rfl, -⟩ := sched_entry_some he; exact Int.natCast_nonneg _
   phase k k' y y' t e e' _ _ hlt he he' := by
     obtain ⟨en, h, -, rfl, rfl⟩ := sched_entry_some he
     obtain ⟨en', h', -, ht, rfl⟩ := sched_entry_some he'
     rw [phase_interp, phase_interp]
-    exact pw_of (entryLaws ctl).phase h h' hlt (by exact_mod_cast ht.symm)
+    have := pw_of (entries_pw ctl) h h' hlt
+    have ht' : en.2.1 = en'.2.1 := by exact_mod_cast ht.symm
+    unfold ordD at this
+    omega
   tick_public _ _ _ _ _ _ := one_dvd _
   tick_unique k k' y t x x' _ he he' := by
     obtain ⟨en, h, h1, rfl, h2⟩ := sched_entry_some he
@@ -652,7 +668,16 @@ theorem sched_runLaws (ctl : Bool) : (sched ctl).RunLaws proposer dg H where
     have key : ∀ {a b : Ent} {i j : Nat}, (entriesD ctl)[i]? = some a →
         (entriesD ctl)[j]? = some b → i < j → a.1 = b.1 → a.2.1 = b.2.1 →
         isTick a.2.2 = true → isTick b.2.2 = true → False :=
-      fun ha hb hij e1 e2 e3 e4 => pw_of (entryLaws ctl).tick_unique ha hb hij ⟨e1, e2, e3, e4⟩
+      fun {a b} {_ _} ha hb hij e1 e2 e3 e4 => by
+        have hab := pw_of (entries_pw ctl) ha hb hij
+        have hp := isTick_phase e3
+        have hq := isTick_phase e4
+        unfold ordD at hab
+        rw [e1] at hab
+        rcases hab with h | ⟨-, h | ⟨-, h⟩⟩
+        · omega
+        · omega
+        · exact absurd (h hp) (lt_irrefl _)
     have ht' : en.2.1 = en'.2.1 := by exact_mod_cast ht.symm
     rcases Nat.lt_or_gt_of_ne hne with hlt | hlt
     · exact key h h' hlt (h1.trans h1'.symm) ht' (isTick_of h2) (isTick_of h2')
