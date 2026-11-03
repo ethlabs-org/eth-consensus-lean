@@ -27,6 +27,7 @@ public import ConsensusLeanTest.GoldilocksPersistWitness
 public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.GoldilocksRetentionWitness
 public import ConsensusLeanTest.GoldilocksRun
+public import ConsensusLeanTest.GoldilocksSleepyRegimes
 public import ConsensusLeanTest.GoldilocksSleepyWitness
 public import ConsensusLeanTest.GoldilocksTickRun
 public import ConsensusLeanTest.GoldilocksWitness
