@@ -17,7 +17,8 @@ are open only through H.3's `Inv` half and HS.3 (a). Everything else is assemble
 * `healing_run_proved`: the run bundle without H.3 (HR.1–HR.4, H.2 (run), H.4);
   `non_interference_of_reset_inv` gives H.3 from its `Inv` half alone (H.3 (a) is HR.3, (b) is HR.4,
   the `Geo` half of (c) is `settled_geo`, combined at `max(T_b, 8Δ)` by `Inv.mono`); and
-  `healing_run_statements_of_reset_inv` is the bundle from that half.
+  `healing_run_statements_of_reset_inv` is the bundle from that half
+  (`healing_run_statements_of_nonInterference` from H.3 as stated).
 * `phase_service_proved`: the phase-service bundle without HS.3 (HS.1, HS.2, HS.4);
   `frozen_tree_agreement_of_unlocked` gives HS.3 from its part (a) alone ((b) is
   `frozen_tree_agreement_clean`, from HS.2); and `phase_service_statements_of_unlocked` is the
@@ -91,6 +92,17 @@ theorem healing_run_statements_of_reset_inv
   heightScopedRetention := height_scoped_retention
   runInclusion := run_inclusion
   nonInterference := non_interference_of_reset_inv hinv
+  availableHealing := available_healing
+
+/-- **The run bundle from H.3** as stated (the other fields are `healing_run_proved`). -/
+theorem healing_run_statements_of_nonInterference (h3 : NonInterference) :
+    HealingRunStatements where
+  cutAndReset := cut_and_reset
+  phaseCount := phase_count
+  resetExistence := reset_existence
+  heightScopedRetention := height_scoped_retention
+  runInclusion := run_inclusion
+  nonInterference := h3
   availableHealing := available_healing
 
 /-! ## The phase-service bundle -/

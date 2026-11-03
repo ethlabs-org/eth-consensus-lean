@@ -315,6 +315,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.StatementsBundle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
