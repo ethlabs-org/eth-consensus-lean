@@ -14,7 +14,7 @@ also across restarts), C0.3 (honest blocks are accepted), C0.4 (tick order) and 
 (projection onto the components: the AC's states are reachable AC states under the call law,
 the FG's states are reachable FG states, the record is a client run, every handler's cuts obey
 the cut law). The run-level composition statements (C1.1, Service, Healing, Regimes) are over
-`Spec/Run` and come later; nothing here mentions a run, the SA or the engine.
+`Spec/Run`, in their own modules; nothing here mentions a run, the SA or the engine.
 
 Statements only: no proofs here. -/
 
@@ -67,8 +67,8 @@ block `B` that `propose_block` makes passes the checks of its maker: `H` is held
 drops blocks of a future slot); every attestation of `B` is valid against `Σ.σ[H]` and well
 formed (the form of fg.tex §"Attestations", checked on the wire by composition.tex §"Blocks";
 the Lean `state_transition` folds that check into the FG, consensus-lean#65); `B`'s payload
-passes `ac_valid_payload` (requirement 5); `B`'s root is the digest of its content and, when
-the digest is collision free on the tree with `B`, no held block has it; and
+passes `ac_valid_payload` (requirement 5); `B`'s root is the digest of its content; and, when
+the digest is collision free on the tree with `B`, no held block has its root and
 `fg_on_block(Σ, B)` accepts `B`. -/
 def HonestBlockAccepted : Prop :=
   A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →

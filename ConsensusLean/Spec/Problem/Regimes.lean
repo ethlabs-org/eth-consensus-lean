@@ -14,7 +14,7 @@ thresholds. The other numbers are instance numbers that the reviewer reads;
 they are not bounded: the generic outage witness of the realizability proofs
 assumes of a shape contract's numbers only `Admissible`, so every `η`, `lag`,
 `noSleep`, `recovery` and every `budget ≥ 1` is realizable there (with at least
-five validators, `Δ, Δ_F > 0`, on every window `(T, [b₀, b₁))` with
+five validators, `Δ, Δ_F > 1`, on every window `(T, [b₀, b₁))` with
 `OutageTimes` (`0 ≤ T`, `T + lag·Δ ≤ b₀`, `b₁ ≤ b₀ + budget·Δ`), `T < b₀` and
 `b₀ + Δ ≤ b₁`, and a horizon at or after `b₁ + recovery·Δ`). The direction of
 each, for a larger value:
@@ -78,7 +78,7 @@ structure Params (Idx : Type) where
   `[b₀ − noSleep·Δ, b₁ + noSleep·Δ]` (`System.Outage`). -/
   noSleep : Nat
   /-- Outage recovery delay: protection holds for every ready reader from
-  `b₁ + recovery·Δ` (`Good.persists`). -/
+  `b₁ + recovery·Δ` (`Behaviour.persists`). -/
   recovery : Nat
   /-- Heal point per capability and index (`System.heal`). -/
   heal : Capability → Idx → Nat
@@ -200,7 +200,7 @@ def outageEnd (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
   min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) (S.pt r).horizon
 
 /-- The recovery point of an outage `[b₀, b₁)`: `b₁ + recovery·Δ`, from which
-every ready reader is protected (`Good.persists`). -/
+every ready reader is protected (`Behaviour.persists`). -/
 def recoveryAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
   b₁ + (K.params.recovery : Time) * (S.pt r).env.Δ
 

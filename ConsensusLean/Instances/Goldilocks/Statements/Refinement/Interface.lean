@@ -25,9 +25,10 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `Refinement
   group) or no cut (a tick at a non-public time, a dropped object); every labelled node cut
   belongs to an engine event; awake agrees up to the spec's horizon clamp. The engine releases
   what the node sends: an own block at its proposal time, a vote or an attestation at its
-  emission or signing time (`ReleasedFrom`), and an admitted block, vote or attestation in a
-  relay wrapper at the admission time (`RelayedFrom`). These obligations include the horizon
-  and do not depend on a future awake time (consensus-lean#107).
+  emission or signing time (`ReleasedFrom`), an accepted block or a received attestation in a
+  relay wrapper at the admission time (`RelayedFrom`), and an admitted or own vote in a signed,
+  admission-stamped `.voteForward` envelope in that event (`vote_forwarded`). These obligations
+  include the horizon and do not depend on a future awake time (consensus-lean#107).
 * **Reads** (`ReadIsOut`): the chain trace reads the shape's outputs of the node state at the
   shape's clock, which is the time of the node's last tick or restart (`lastClock`).
 * **`NoColl` transport** (`NoCollTransport`): no observed hash collision gives the spec's
@@ -45,14 +46,15 @@ spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` holds a recei
 `max(a, g) + Δ − 1`, strictly before `max(a, g) + Δ`, as the spec requires processing strictly
 before `max(τ, w_y) + Δ'` (half-open delivery, 2026-11-04); the engine relays an admission at
 the admitting delivery's own time, as the spec's instantaneous send (consensus-lean#107). The
-regimes milestone states the transport. `docs/goldilocks-mapping.md` §"Refinement" maps each
-statement.
+open transport suppliers are in `Lemmas/Refinement/NetworkTransport`; they are not premises of
+`AcceptedEndpoint`. `docs/goldilocks-mapping.md` §"Refinement" maps each statement.
 
 Not in `Challenge`: this module is outside the challenge's import closure, the comparator and
 `milestone_statements_modules`. Its statements are proved in `Lemmas/Refinement`
 (`engineSimulatesNode`, `readIsOut`, `noCollTransport`, `evidenceInView`,
-`finalizedAccountable`, …) and used only by those proofs, toward `acceptedEndpoint`, and by
-tests; the bundle `RefinementStatements` is not assembled.
+`finalizedAccountable`, …) and used only by those proofs, toward `accepted_endpoint`, and by
+tests; the bundle `RefinementStatements` is assembled outside `Solution`
+(`refinement_statements`, `Lemmas/Refinement/StatementsBundle`).
 
 Statements only: no proofs here. -/
 

@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Instance
 
 The Goldilocks protocol is the node (`Spec/Node`) with the Goldilocks SA as its AC
 (composition.tex §"Composition"): `goldilocksNode sp ro` is `goldilocksSA` at the FG payload
-the node uses, `List (FG.Att n)`. `GoldilocksRun dg H tr` is a run of it: `Node.LocalRun`
+the node uses, `List (FG.Att n)`. `GoldilocksRun proposer dg H tr` is a run of it: `Node.LocalRun`
 with the vote's validator as the message signer, plus **carried-vote unforgeability**, the
 instance of the run's unforgeability for votes that travel in a block's payload (claims
 §"Runs"; composition.tex §"Blocks"): a vote of an honest validator that an honest node
@@ -20,8 +20,8 @@ A Goldilocks run also takes the genesis root: the genesis block's root is the di
 its content (`genesis_root_ok`). composition.tex §"Blocks" makes every block's root its
 content's digest; the Lean `genesisRoot` is a parameter of `Params`, so this is a premise
 relating it to `dg`, taken as C0.3 takes it. The generic statements over any AC (C0.3,
-`FGProjection`, `Inclusion`) keep it as their own premise; the Goldilocks run supplies it to
-the statements that reach the FG trace only through `FGProjection` (C1.1). -/
+`FGProjection`) keep it as their own premise. Every statement over `GoldilocksRun` has it from
+the run; some restate it (`Healing.RunInclusion`, `HSShared.genesisRoot`). -/
 
 namespace Consensus.Goldilocks
 

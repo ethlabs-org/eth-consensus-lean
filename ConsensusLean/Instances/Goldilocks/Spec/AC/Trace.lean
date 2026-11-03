@@ -13,32 +13,13 @@ emissions (each with its internal read point and duty head). FG cuts and the oth
 are stutters (no label).
 
 `ACLocalRun A H U tr` is the contract a node run's projection satisfies (claims C0.5 (a), (b)),
-for the honest validators `H`, inside the coherent set `U`:
-
-* each honest node starts from the initial AC state, and each of its calls **executes** the AC:
-  the post-state and the emissions are those of the call on the pre-state and the label's
-  frame and time (so an own vote's read point is the call's actual read point);
-* the **frame law at call boundaries**, on the labels: the first call of a node follows the
-  initial frame and each later call follows the previous call's frame by the call law
-  (`CallOK`: equal frames, or `Φ ⊑_B Φ'` exactly at `on_block(Φ', B)`; well-formed frames in
-  `U`; the input contract);
-* the cuts are in the run's order, which is by time (claims F.5 (run)), from time `0`;
-* sleep and wake (claims §"Runs"; `Spec/Run`'s admissibility): an honest node is called only
-  while awake; its first call after it was asleep is a restart; a wake is a restart, at the time
-  of the wake; and a restart is a wake (the node was asleep after its previous call).
-
-`SyncAC A H U a b tr` is the network premise `Sync[a, b]` (claims §"Premises") as the AC trace
-observes it: every AC message an honest node sends, or admits (also from a block's payload), at
-`τ ∈ [a, b]` is processed by
-every honest `y` at a time in `[τ, max(τ, w_y) + Δ)` (`w_y` the latest wake of `y` at or before
-the processing; an honest node forwards an object when it accepts it, so each admission is a
-send whose delivery follows it; an earlier processing, e.g. a refused early receipt, does not
-count, and a refused receipt triggers nothing), and every block an honest node accepts at
-`τ ∈ [a, b]` is accepted by every honest `y` whose finalized tip it extends before that
-deadline (acceptance relay). Over the AC
-trace, "processed by `y` before the deadline" reads: at every call of `y` at or after the
-deadline, `y` has processed it at a cut before its own deadline; "whose finalized tip `B`
-extends" reads the frame of that call. -/
+for the honest validators `H`, inside the coherent set `U`: each honest node starts from the
+initial AC state and each call executes the AC on its pre-state, under the frame law at call
+boundaries (`CallOK`), in the run's time order from `0`, with the run's sleep and wake laws; its
+fields state each. `SyncAC A H U a b tr` is the
+network premise `Sync[a, b]` (claims §"Premises") as the AC trace observes it: a deadline is
+read at every call of `y` at or after it, and "extends `y`'s finalized tip" at that call's
+frame. -/
 
 namespace Consensus.Goldilocks
 

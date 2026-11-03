@@ -44,8 +44,8 @@ structure Trace (N S L : Type) where
   post : Nat → S
   /-- Whether a node is awake at a time (fixed by the run). -/
   awake : N → Time → Prop
-  /-- Optional finite observation horizon, independent of labelled protocol actions.
-  `none` retains the action-covered horizon of legacy traces. -/
+  /-- Optional finite observation horizon, independent of labelled protocol actions;
+  `none`: the horizon is the one the labelled cuts cover. -/
   observationHorizon : Option Time := none
 
 namespace Trace

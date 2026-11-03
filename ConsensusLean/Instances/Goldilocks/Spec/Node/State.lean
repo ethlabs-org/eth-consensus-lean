@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
 
 /-! # Goldilocks node: the node state and the component calls
 
-The node composed with an AC (fradamt-agent/goldilocks `spec/shared/composition.tex` §"State",
+The node composed with an AC (`specs/goldilocks/tex/shared/composition.tex` §"State",
 §"Node"; decomposition §2 D, `Node`): parametric in `A : ACInterface P (List (FG.Att P.n))`,
 the AC whose blocks carry the FG's attestation list. The node keeps the FG state `Σ`
 (`Store P A.Payload`), the AC state `𝒜` and the validator's durable record `Λ`; the clock is

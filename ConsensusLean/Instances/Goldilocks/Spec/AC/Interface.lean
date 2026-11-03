@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Frame
 
 /-! # Goldilocks: the AC interface, reachable AC states, and the interface requirements
 
-The available chain as the node sees it (fradamt-agent/goldilocks `spec/shared/composition.tex`
+The available chain as the node sees it (`specs/goldilocks/tex/shared/composition.tex`
 §"The available chain"; decomposition §2 D, `AC`): an AC has a state, wire messages, a block
 payload and nine functions over `(𝒜, Φ, t)`, never over the FG state. `ACInterface P FGP` is
 that record, executable: each call returns the new state and what it emits, and every function
@@ -20,15 +20,10 @@ head, where its walk starts, and the domain whose viable tree it walks (requirem
 these).
 
 `ReachableAt` is the claims' reachability (goldilocks-claims.tex §"How to read the DAG",
-goldilocks#21): the states reached from the initial state by calls at nondecreasing times from
-`0`, starting from the initial frame (tree `{genesis}`), with well-formed frames, where
-every call other than `ac_on_block` (a restart included) sees the frame of the previous call and
-`ac_on_block(Φ', B)` is called only when `Φ ⊑_B Φ'` for the previous frame `Φ` (G0.3 (frame));
-the trees of all the frames (hence every block passed to `ac_on_block`, which is in the new tree)
-lie in one coherent set `U` (roots injective, slots increasing; at a node, the accepted tree
-`Σ.T`, which only grows); and the inputs pass the AC wire checks: a message passes `validMsg`, a
-block passes `validPayload` and is not of a future slot (the node drops those). That an honest
-node's AC states are reachable is claims C0.5. The restart replay is inside the restart call.
+goldilocks#21): the states reached from the initial state and frame by calls at nondecreasing
+times that obey the call law `CallOK`, inside one coherent set `U` (at a node, the accepted tree
+`Σ.T`, which only grows). That an honest node's AC states are reachable is claims C0.5. The
+restart replay is inside the restart call.
 
 `Requirements` is requirements 1–4 of composition.tex §"The available chain" (claims A0.6) and
 requirement 5, the proposal payload (claims A0.9), each at every reachable state and every
@@ -61,9 +56,9 @@ structure Emission (n : Nat) (FGP ACP S M : Type) where
 
 /-- An available chain for the node with parameters `P`, polymorphic in nothing but the FG
 payload `FGP` it never reads: its state, wire messages and block payload, the stateless checks,
-the initial state, and the nine functions of composition.tex (the six that change the state
-return the new state and their emissions; `ac_proposal` and `ac_to_fg` also return their
-values; `ac_confirmed` and `ac_head` only read). -/
+the initial state, and the nine functions of composition.tex (four return the new state and
+their emissions: `ac_on_message`, `ac_on_block`, `ac_on_tick`, `ac_restart`; `ac_proposal` and
+`ac_to_fg` return the new state and their value; `ac_confirmed` and `ac_head` only read). -/
 structure ACInterface (P : Params) (FGP : Type) where
   /-- The AC state `𝒜`. -/
   State : Type

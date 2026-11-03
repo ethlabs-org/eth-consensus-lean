@@ -5,7 +5,7 @@ public import ConsensusLean.Init
 
 /-! # Goldilocks: blocks
 
-A block of the Goldilocks node (fradamt-agent/goldilocks `spec/shared/composition.tex`
+A block of the Goldilocks node (`specs/goldilocks/tex/shared/composition.tex`
 §"Blocks"): root, parent (named by root; genesis has none), slot, proposer, the FG payload,
 the AC payload and the input, the encoded transactions the engine writes into every header
 (`Consensus.Blocks.Header.input`): the spec folds it into the AC payload ("the AC

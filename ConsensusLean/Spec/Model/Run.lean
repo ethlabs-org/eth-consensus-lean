@@ -9,7 +9,7 @@ public import ConsensusLean.Spec.Model.Protocol
 A run fixes everything the protocol does not choose: the honest set, the
 horizon, the scheduler's events, the PKI (which validator owns each key), the
 selection (which keys act in each role), the transactions submitted to every
-node, and the hash function. The engine runs the protocol on
+node and those the network relays to it, and the hash function. The engine runs the protocol on
 the events. Per node it keeps the protocol state and the `seen` log of every
 object the node released or received.
 
@@ -170,7 +170,8 @@ def gossipCandidates {pub : Public} {Out : Type} (P : Protocol pub Out) (st : P.
     (t : Time) : List P.Object :=
   (P.gossip st t).map (fun mc => .mk .none mc.1 mc.2)
 
-/-- The transactions submitted to node `v` at times `0, …, t`. -/
+/-- The transactions of `submit` at node `v` at times `0, …, t`; the engine passes `Run.inbox`,
+the submitted and the relayed ones. -/
 def mempool (submit : V → Time → List Tx) (v : V) (t : Time) : List Tx :=
   if t < 0 then [] else (List.range (t.toNat + 1)).flatMap (fun k => submit v k)
 

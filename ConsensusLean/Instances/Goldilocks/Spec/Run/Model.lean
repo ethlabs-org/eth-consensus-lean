@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Node.Reachable
 
 /-! # Goldilocks runs: the run model
 
-The spec's own run model (fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Model",
+The spec's own run model (`specs/goldilocks/tex/goldilocks-claims.tex` §"Model",
 §"Runs"; `spec/shared/composition.tex` §"Model"; decomposition §2 D, `Run`): a **run** is a
 `Trace` over the node states, whose labelled cuts are the component calls (`Cut`) of the honest
 nodes, grouped by top-level event (`Node.Event`), with `Node.LocalRun` as the law that makes a
@@ -46,7 +46,8 @@ trace a run of the protocol. Faulty nodes have no cuts: what they send is an inp
   `max(τ, w_y) + Δ'` for a delivery parameter `Δ'` (`Δ` for blocks and AC messages, `Δ_F` for
   attestations), and the outputs at a cut (claims §"Outputs").
 
-Premises (`Sync`, `GST`, `Sleepy`, `Healthy`, `NoColl`) are in `Spec/Run/Premises`; the
+Premises (`Sync`, `GST`, `Sleepy`, `Healthy`) are in `Spec/Run/Premises`, `NoColl` over a run
+(`Compose.NoCollRun`) in `Statements/Compose/Run`; the
 concrete Goldilocks run (the node with `goldilocksSA`) in `Spec/Run/Goldilocks`; the
 projections onto the component traces in `Spec/Run/Projection`. -/
 

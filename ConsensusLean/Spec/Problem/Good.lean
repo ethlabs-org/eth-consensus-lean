@@ -15,8 +15,8 @@ contract `K` (numbers only). Three parts:
 * `Adequate`: the acceptance interface that rules out a vacuous system
   (coverage of every environment point and GST by a valid, excuse-free run;
   prefix closure).
-* `Realizable` (for at least five validators): every regime, at every `Δ`
-  and `ΔF` (the healthy regime within its row ratio), every GST and
+* `Realizable` (for at least five validators): every regime, at every `Δ > 1`
+  and `ΔF > 1` (the healthy regime within its row ratio), every GST and
   arbitrarily late outages, is met by a clean witness with
   active claims, plus a sleepy stress witness with at most two honest
   validators awake.

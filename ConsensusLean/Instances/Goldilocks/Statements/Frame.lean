@@ -24,9 +24,9 @@ both: without coherence a block that left comes back under a reused root, and wi
 first frame a block of the first tree whose parent is missing leaves and comes back once the
 parent arrives (`ConsensusLeanTest/GoldilocksFrameRejection.lean`:
 `frameNeverReturns_needs_coherent`, `frameNeverReturns_needs_rooted`). `FrameEntersOnce` needs
-coherence only (`frameEntersOnce_needs_coherent`): every frame after a step is rooted at its new
-`Φ.F`, so a block added by a step cannot be added again, and the rooted first frame is not
-needed. Statements only: no proofs here. -/
+coherence (`frameEntersOnce_needs_coherent`). Every frame after a step is rooted at its new
+`Φ.F`, so a block added by a step cannot be added again; `frame_statements` proves it through
+`FrameNeverReturns`, which uses both premises. Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks
 

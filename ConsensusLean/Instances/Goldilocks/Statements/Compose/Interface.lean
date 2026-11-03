@@ -11,8 +11,9 @@ its last call (decomposition §2 D, "the FG input contract derived from A0.6/A0.
 C0.5 (c)): the parent of a proposal, the source `fg_confirmed`, the head of every emitted duty
 and the two AC tips are blocks of the frame's tree that extend its root `Φ.F`, and the tips are
 nested. These are the frame-level consequences of the requirements under a well-formed frame
-(`FrameIn`: `fc_root ∈ Φ.tree` and the tree is rooted at `Φ.F`); they mention no node and no
-particular AC. `Statements/Compose/Node` instantiates them at the node's AC states (C0.5).
+(`FrameIn`: `FrameOK` inside `U`, so `fc_root ∈ Φ.tree` and the tree is rooted at `Φ.F`); they
+mention no node and no particular AC. `Statements/Compose/Node` instantiates them at the node's
+AC states (C0.5).
 
 Statements only: no proofs here. -/
 

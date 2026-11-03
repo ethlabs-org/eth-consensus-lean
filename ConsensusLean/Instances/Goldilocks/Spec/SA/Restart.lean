@@ -41,8 +41,7 @@ structure ReplayOrderData (n genesisRoot : Nat) (FGP : Type) where
   parentOrder : ∀ t Φ, (∃ l, ParentOrderAt genesisRoot Φ l) →
     ParentOrderAt genesisRoot Φ (order t Φ)
 
-/-- Replay order depends only on the validator count and genesis root, not on
-the proposer schedule used to describe a run. -/
+/-- Replay order depends only on the validator count and genesis root. -/
 abbrev ReplayOrder (sp : SAParams) (FGP : Type) := ReplayOrderData sp.n sp.genesisRoot FGP
 
 open Classical in

@@ -13,8 +13,9 @@ inside the step that makes it (`Spec/Node/Handlers`). A configuration is the nod
 clock and a `Phase`: `pre` while nothing of the current time but restarts has run, `post`
 after the tick or an object of that time. A delivery passes the wire checks (`WireOK`). The
 relation over-approximates a run, so every fact about it holds of every run; `Spec/Run` owes
-three conditions it does not state: an awake node ticks at every public time; a restart
-follows a sleep (no cuts in between), once per wake; an asleep node receives nothing.
+three conditions it does not state: (i) an awake node ticks at every public time; (ii) a
+restart follows a sleep (no cuts in between), once per wake; (iii) an asleep node receives
+nothing.
 
 `CutStep` is the law of one cut, which a run's projections read (claims C0.5): an AC cut
 executes the AC on the node's AC state with the frame `fg_to_ac(Σ)` at that cut, and changes

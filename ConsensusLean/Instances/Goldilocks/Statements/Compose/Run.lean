@@ -31,11 +31,13 @@ Service, Healing, Regimes) reads, over the spec's own run model (`Spec/Run`, dec
   `SyncAC` over the AC projection on the same window, and the joining and participation counts
   agree.
 
-Every statement is over `Node.LocalRun` (or `GoldilocksRun`) with `NoColl` on the objects of
-the run, the blocks that occur in it and genesis (`NoCollRun`, over `Compose.NoCollOn`); the two
-projections of an arbitrary AC also take the AC's requirements 1–5 and, for the FG projection,
-the genesis root, as C0.5 (a) and C0.3 do (consensus-lean#73). `docs/goldilocks-mapping.md`
-§"Persist" maps each statement to its node.
+Every statement is over `Node.LocalRun` (or `GoldilocksRun`). The three projections onto
+component traces (`ACProjection`, `FGProjection`, `GoldilocksACProjection`) also take `NoColl` on
+the objects of the run, the blocks that occur in it and genesis (`NoCollRun`, over
+`Compose.NoCollOn`); F.5 (run), F.4, `GroupStatesReachable`, `SyncProjection` and
+`JoinedProjection` take none. The two projections of an arbitrary AC also take the AC's
+requirements 1–5 and, for the FG projection, the genesis root, as C0.5 (a) and C0.3 do
+(consensus-lean#73). `docs/goldilocks-mapping.md` §"Persist" maps each statement to its node.
 
 Statements only: no proofs here. -/
 

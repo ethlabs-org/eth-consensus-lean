@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Run.Model
 
 /-! # Goldilocks runs: the premises
 
-The premises of the claims (fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Premises")
+The premises of the claims (`specs/goldilocks/tex/goldilocks-claims.tex` §"Premises")
 over a run (`Spec/Run/Model`), for the honest validators `H`:
 
 * **`Sync`** (`SyncOn`, with a window `W` on the send time, a window `Wr` on the acceptance time
@@ -61,8 +61,9 @@ premises are satisfiable by such a run (together with `Node.LocalRun`) is the ki
 `ConsensusLeanTest/GoldilocksRun.lean`.
 
 `NoColl` is `Compose.NoCollRun` (`Statements/Compose/Run`: `Compose.NoCollOn` on the blocks
-that occur in the run and genesis), stated where it is used. `Outage` and `Weak` are the regime
-milestone's. -/
+that occur in the run and genesis), stated where it is used. `Outage` and `Weak` have no run
+form here: R.5 and R.6, which took them, are archived with R.3 and R.4
+(`archive/consensus-lean-regimes`). -/
 
 namespace Consensus.Goldilocks.RunTrace
 

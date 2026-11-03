@@ -8,10 +8,12 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Duties
 
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21), the
 single-store nodes of the FG store level, against `Spec/FG/Store`: G0.1 (store), F.2 at the
-store, G0.3 (cache invariants), the `Σ` half of C0.2, the FG kernel of the frame step, and
-G0.4 (height) (the frame realization). Every statement is about the FG states that the handlers
-reach (`Store.Reachable`): one node, no time, no AC. The multi-node store statements (G1.4,
-G1.6–G1.10) are part 2, over FG traces (`Spec/Trace`, not yet fixed).
+store, G0.3 (cache invariants), the `Σ` half of C0.2, the FG kernel of the frame step,
+G0.4 (height) (the frame realization) and G0.2 (c), (h) at the store (`EntryStateOfSource`).
+Every statement is about the FG states that the handlers reach (`Store.Reachable`): one node, no
+time, no AC. The multi-node store statements are over FG traces (`Spec/FG/Store/Trace`): G1.4
+and the core of G1.10 in part 2 (`FGStore/Trace`), G1.6–G1.8 and G1.9 (a) in part 3
+(`FGStore/Service`).
 
 Statements only: no proofs here. -/
 
@@ -110,8 +112,8 @@ structure FGStoreLocalAt : Prop where
   entryStateOfSource : EntryStateOfSource P ACP
 
 /-- **FGStore, part 1.** The single-store statements hold at every parameter and AC payload
-type. Part 2 (the FG trace statements) is a separate bundle; the FGStore milestone is the
-conjunction of the two. -/
+type. Parts 2 and 3 (`FGStoreTrace`, `FGStoreService`) are separate bundles, each a statement
+of `Challenge`. -/
 def FGStoreLocal : Prop := ∀ (P : Params) (ACP : Type), FGStoreLocalAt P ACP
 
 end Consensus.Goldilocks.Store
