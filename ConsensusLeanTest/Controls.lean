@@ -9,9 +9,10 @@ public import Mathlib.Tactic
 
 The regimes of the L0 table are met by concrete runs, so no refutation in the
 other test modules comes from a regime that no run can meet, and `Good` is
-not vacuous at concrete numbers. A family with the Goldilocks skeleton that
-does nothing (`ctrlFamily`), at standard thresholds with catch-up, arming lag
-and outage budget `1`, outage look-back `η = 2`, heal and latency `1`
+not vacuous at concrete numbers. A family with a Goldilocks-like skeleton
+(`ctrlSkeleton`: slots of `4Δ`, one proposer per slot) that does nothing (`ctrlFamily`),
+at standard thresholds with catch-up, arming lag and outage budget `1`, outage look-back
+`η = 2`, heal and latency `1`
 (`ctrlParams`; arbitrary numbers that test the regimes only, not Goldilocks
 performance bounds), index `k = 1`,
 five validators (`key 0` faulty), `Δ = ΔF = 2` (realizability starts at `2`: delivery is
@@ -46,10 +47,41 @@ namespace Consensus.Shape.Tests.Controls
 open Consensus Blocks Shape
 open Consensus.Model (Public pubOf sysOf)
 
-/-- A Goldilocks-skeleton shape that does nothing. Any shape would do: the
+/-- The control outputs: one for the available and stable capabilities, one for final. -/
+inductive CtrlOut where
+  | confirmed
+  | finalized
+  deriving DecidableEq, Repr
+
+/-- The control schema: `confirmed` serves available and stable, `finalized` final. -/
+def ctrlSchema : OutputSchema :=
+  ⟨CtrlOut, fun
+    | .available => some .confirmed
+    | .stable => some .confirmed
+    | .final => some .finalized⟩
+
+/-- Two placeholder committee kinds. -/
+inductive CtrlKind where
+  | head
+  | fin
+  deriving DecidableEq, Repr
+
+/-- The control skeleton: slots of `4·Δ`, one proposer per slot, polling disabled, the two
+placeholder committee kinds at phases 1 and 2, every key in each. -/
+def ctrlSkeleton (pub : Public) : Skeleton pub.n where
+  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+  proposerSel := fun _ => .sized 1
+  pollSel := .fixed ∅
+  Kind := CtrlKind
+  decKind := inferInstance
+  kinds := [.head, .fin]
+  phase := fun | .head => pub.Δ.toNat | .fin => 2 * pub.Δ.toNat
+  kindSel := fun _ => .fixed Finset.univ
+
+/-- A control-skeleton shape that does nothing. Any shape would do: the
 canonical run (as in `coverage`) is valid whatever the protocol does. -/
-def ctrlShape (pub : Public) : ChainShape pub GOut Unit where
-  skel := goldilocksSkeleton pub
+def ctrlShape (pub : Public) : ChainShape pub CtrlOut Unit where
+  skel := ctrlSkeleton pub
   State := Unit
   Body := Unit
   Durable := Unit
@@ -69,7 +101,7 @@ def ctrlShape (pub : Public) : ChainShape pub GOut Unit where
   conflicts := fun _ _ => false
 
 /-- The control family. -/
-def ctrlFamily : ShapeFamily goldilocksSchema Unit := ctrlShape
+def ctrlFamily : ShapeFamily ctrlSchema Unit := ctrlShape
 
 /-- Standard thresholds; catch-up, arming lag and outage budget `1`; outage
 look-back `η = 2`, no-sleep margin `2` and recovery delay `3`; heal and
@@ -78,10 +110,9 @@ def ctrlParams : Params ℕ+ :=
   { Params.standard 1 1 1 (fun _ _ => 1) (fun _ _ => 1) with
     η := 2, noSleep := 2, recovery := 3 }
 
-/-- The control contract over the Goldilocks schema: `ctrlParams`, index the
+/-- The control contract over the control schema: `ctrlParams`, index the
 gap `k`, one honest ready proposer per window of `k` slots (available,
-stable), the pattern `range 2` per window of `k` slots (final). Not the
-pinned Goldilocks contract (`goldilocksContract`). -/
+stable), the pattern `range 2` per window of `k` slots (final). -/
 abbrev ctrlK : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
@@ -102,7 +133,7 @@ theorem ctrlK_progressFits : ProgressFits ctrlK ctrlFamily := by
 /-- The control recurrences tolerate any number of validators not ready and a
 bad proposer slot in every window (gap `2` for one proposer, `3` for two
 consecutive ones). -/
-theorem ctrlK_progressTolerant : ProgressTolerant goldilocksSchema ctrlK := by
+theorem ctrlK_progressTolerant : ProgressTolerant ctrlSchema ctrlK := by
   intro cap ho N
   cases cap
   · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
@@ -110,7 +141,7 @@ theorem ctrlK_progressTolerant : ProgressTolerant goldilocksSchema ctrlK := by
   · exact ⟨3, show (⟨Pattern.range 2, 3⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-- The control system: five validators. -/
-abbrev S : System (Fin 5) := sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)
+abbrev S : System (Fin 5) := sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)
 
 /-- The control progress reader. -/
 abbrev X : Progress S ProgressReq := shapeProgress ctrlFamily (Fin 5)
@@ -161,7 +192,7 @@ theorem positive_controls (cap : Capability) :
         (by norm_num) (by norm_num) ctrlK_progressFits cap k1 (by rw [hlat]; linarith)
     refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
     have hps : CommLog.PSync rho.point rho.log 0 :=
-      (Model.sysOf_delivers_iff (O := goldilocksSchema) rho _ _ _).mp hs.1
+      (Model.sysOf_delivers_iff (O := ctrlSchema) rho _ _ _).mp hs.1
     exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
       (fun _ _ => by rw [realPoint_env]; exact allAwake_apply _ _) ht
   · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 2 = 7 := by

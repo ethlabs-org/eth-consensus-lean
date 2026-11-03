@@ -239,29 +239,29 @@ theorem good_late_witnesses (h : Good S X K) (h5 : 5 ≤ Fintype.card V) (cap : 
   obtain ⟨r', T, b₀, b₁, hw', -, ho, -, hT⟩ := outage_witness_late (h.realizable h5)
   exact ⟨⟨r, hw, hΔ, hh, hs⟩, r', T, b₀, b₁, hw', ho, hT⟩
 
-open Consensus.Shape.Tests.Controls (ctrlFamily ctrlK ctrl_realizable)
+open Consensus.Shape.Tests.Controls (ctrlSchema ctrlFamily ctrlK ctrl_realizable)
 
 /-- `healed_witness_late` at the positive-control family. -/
 theorem healed_witness_late_control (cap : Capability) :
-    ∃ r, (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
-      ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
-      (∀ w m t, ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).log r).recv w m t →
+    ∃ r, (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
+      ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
+      (∀ w m t, ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).log r).recv w m t →
         1000 ≤ t) ∧
-      (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Healthy ctrlK 1000 r ∧
-      SafeActive ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
-        ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).heal ctrlK cap (1 : ℕ+) 1000 r)
-        ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r) := by
+      (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Healthy ctrlK 1000 r ∧
+      SafeActive ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
+        ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).heal ctrlK cap (1 : ℕ+) 1000 r)
+        ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r) := by
   obtain ⟨r, hw, hΔ, hq, hH, -, -, -, hs⟩ := healed_witness_late ctrl_realizable cap (1 : ℕ+)
   exact ⟨r, hw, hΔ, hq, hH, hs⟩
 
 /-- `outage_witness_late` at the positive-control family. -/
 theorem outage_witness_late_control :
-    ∃ r T b₀ b₁, (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
-      ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
-      (sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).Outage ctrlK T b₀ b₁ r ∧
-      OutageActive ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
+    ∃ r T b₀ b₁, (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
+      ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
+      (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Outage ctrlK T b₀ b₁ r ∧
+      OutageActive ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
         ((ctrlK.params.recovery : Time) * 7) T b₀ b₁
-        ((sysOf goldilocksSchema (compiled ctrlFamily) (Fin 5)).pt r) ∧ 7000 ≤ T :=
+        ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r) ∧ 7000 ≤ T :=
   outage_witness_late ctrl_realizable
 
 end Late

@@ -17,11 +17,10 @@ set_option linter.style.longLine false
 
 One line per row of the merged gap list (`gapreview/gaps-merged.md`) and the
 "vacuous system" row (plan: iteration 6, §8). Kinds: **construction** (the
-fixed L0 definition says it; a theorem below), **test**, **sheet**
-(`GoldilocksTarget` theorem or `GoldilocksExtraAt` field), **obligation** (FG-SA
-migration obligation in the sheet), **scope** (outside the definition),
-**removed** (the gap's object no longer exists). Cited names are checked to
-exist in `Index.lean`.
+fixed L0 definition says it; a theorem below), **test**, **sheet** and **obligation** (a row
+or a migration obligation of the archived target sheet, `archive/consensus-lean-baseline`, with
+its tests; not declarations of this library), **scope** (outside the definition), **removed**
+(the gap's object no longer exists).
 
 * M1 weak continuation: construction, healed regime healthy to the horizon (`m1_healthy_awake_to_horizon`); sheet `weakSafe`, `weakInclude`, `weakGrow`; uniformity: obligation (10).
 * M2 corruption growth: scope, static adversary (`EnvPoint.honest` fixed per run); sheet §3 (A6).
@@ -37,14 +36,14 @@ exist in `Index.lean`.
 * M12 inclusion of every proposal: sheet `includeSleepy`, `includeHealed`.
 * M13 window-only P1: sheet `outageWindow`; test `outageWindow_prefix_only`.
 * M14 outage stable/finalized: closed; stable = confirmed (`stable_is_confirmed`, sheet `confirmed_persists`); `Good.persists_final_compatible` (sheet `outage_final_compatible`).
-* M15 pinned params: `goldilocksContract`, `goldilocks_admissible`, `reference_bounds`; test `pp223_numbers`.
-* M16 concrete instance: migration; `GoldilocksTarget` is the reviewed target, unproved.
+* M15 pinned params: removed, the pinned sheet is archived; the live contract numbers are `Refinement.acceptanceContract` at `accepted_coefficients`.
+* M16 concrete instance: closed by the Accepted endpoint (`Refinement.acceptedEndpoint`); the unproved target sheet is archived.
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.
 * M18 adaptive corruption: scope, static adversary.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).
 * M20 cross-node nesting: dropped by owner (#104); compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
 * M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`Good.final_safe_healthy`; `m21_healthy_faults_below`, `m21_final_safe_healthy`); test `faulty_third_not_healthy`.
-* M22 instance vs FG-SA: obligations (1)–(12).
+* M22 instance vs the archived development: removed, with the sheet's migration obligations (archived).
 * M23 cover / budget: sheet `budget_implies_V`; the outage has no cover (owner, 2026-11-02): the cohort count gives `OutageE1` (`EnvPoint.CohortOn.two_mul_lt`), obligation (4).
 * M24 reader scope: construction, `ReadySafe` (ready readers) for available/stable, `AccountablySafe` (every honest reader) for final (`m24_sleepy_ready_safe`, `m24_final_accountable`).
 * M25 ready vs awake: healthy = every honest validator awake (full participation), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).

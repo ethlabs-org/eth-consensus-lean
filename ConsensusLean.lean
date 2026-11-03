@@ -348,7 +348,6 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
-public import ConsensusLean.Instances.Goldilocks.Spec.Baseline
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
@@ -382,7 +381,6 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 public import ConsensusLean.Instances.Goldilocks.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
-public import ConsensusLean.Instances.Goldilocks.Statements.Baseline
 public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node

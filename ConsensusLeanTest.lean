@@ -4,7 +4,6 @@ public import ConsensusLeanTest.Blocks
 public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
-public import ConsensusLeanTest.Goldilocks
 public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLeanTest.GoldilocksACOptimisticWitness
 public import ConsensusLeanTest.GoldilocksAcceptance

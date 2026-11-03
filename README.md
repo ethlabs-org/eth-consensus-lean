@@ -602,7 +602,7 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 | `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
 | `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
 | `Main.lean` | `Accepted.good` and `Accepted.activeService`. |
-| `Instances/<P>/Spec.lean`, `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`, `Statements/`: the baseline sheet in `Baseline.lean`, milestone statements beside it), Bft, Streamlet, Tendermint (`Spec.lean`). |
+| `Instances/<P>/Spec.lean`, `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`, `Statements/`: the milestone statements), Bft, Streamlet, Tendermint (`Spec.lean`). |
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
 so every module reaches it. It is part of the trusted surface.
@@ -621,7 +621,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Proofs.<M>` (one layer per milestone directory) | the above, Lemmas |
 | `Main` | the above, every `Proofs.<M>` |
 | `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
-| `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Spec.Baseline` and `Statements.Baseline` (until `Baseline.lean` retires), `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
+| `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.Refinement` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import Refinement |
 | `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes` and `Instances.Goldilocks.Proofs.Service`, with `Instances.Goldilocks.Lemmas.Healing`, which holds R.2's proofs) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
@@ -803,28 +803,8 @@ are the intended ones.
 
 ### Goldilocks
 
-`ConsensusLean/Instances/Goldilocks/Spec/Baseline.lean` pins the numbers (round-model FG-SA,
-row ratio `1` (transitional: the healthy regime assumes `ΔF ≤ Δ`), `κ = 2`, slow arming;
-`FGSAParams = ⟨R, lockK, eta⟩`):
-
-| Number | Value |
-|---|---|
-| thresholds | standard (`θ = ½`, `β = ⅓`, `cover = ½`, `α = ⅓`) |
-| catch-up; arming lag; budget; `η` | `18`; `4·lockK + 6`; `min eta (4·lockK − 5)`; `eta` |
-| outage no-sleep margin; recovery delay | `max 19 (4·lockK + 8)`; `9` |
-| row ratio | `1` (`Params.standard`; transitional) |
-| heal (available, stable), gap `k`; final, index `gf` | `29 + B_H^F(k)`; `29 + B_H^F(gf·R) + W_W(gf)` |
-| latency | `4k + 6`; final `4·gf·R + 6 + W_W(gf)` |
-| progress | `.recur ⟨single, k⟩`; final `.recur ⟨range(3R+κ), gf·R⟩` (tolerant indices: `k = 2`, `gf = 5`) |
-
-`GoldilocksTarget F pp := GoldilocksBindings F ∧ Accepted F (goldilocksContract
-pp) ∧ GoldilocksExtra F pp` is a pre-foundation target, **not approved** (#38): no
-proof targets it until the first slice (#10) re-reviews it against the current Goldilocks spec; it is
-never changed to fit FG-SA. The sheet
-(`ConsensusLean/Instances/Goldilocks/Statements/Baseline.lean`) holds every intended-property
-disposition: proved (`GoldilocksTarget.*`), stated (`GoldilocksExtraAt`
-fields), not yet stated (§3), weaker than intended, and the twelve migration
-obligations with the regime risk (obligations (1), (4), (9)).
+The Goldilocks statements are the milestone statements under `Instances/Goldilocks/Statements/`, proved
+through the refinement (`Statements/Refinement/Accepted`).
 
 ### Bft, Streamlet and Tendermint
 
@@ -856,7 +836,6 @@ These are values and fit/tolerance proofs, with no concrete protocol proofs.
 - `Realizable`: coverage, `allProposers_no_witness`, late-GST and late-outage witnesses.
 - `Controls`: positive controls at explicit numbers.
 - `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_accepted`.
-- `Goldilocks`: `pp223_numbers`, `stable_is_confirmed`, `outageWindow_prefix_only`, `weakPremise_inhabited`.
 - `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Instances/Bft/Spec.lean`, `ConsensusLean/Instances/Streamlet/Spec.lean` and `ConsensusLean/Instances/Tendermint/Spec.lean`.
 - `ReviewAxioms`, `ReviewGuard`: statement alpha-equality, completeness and axiom pins.
 - `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.
@@ -934,10 +913,9 @@ The review boundary is separate from correctness. The **trusted surface** is
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
 `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
-`Baseline` modules and the Bft, Streamlet and Tendermint Specs import the generic `Main` through a reviewed
-exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Problem/Derived.lean`, are in the list
-too; the record covers their text, not everything they import. The list lives in `scripts/boundaries.toml`
+on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Bft, Streamlet
+and Tendermint Specs import the generic `Main` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added
+for the now archived Goldilocks sheet, is in the list too; the record covers their text, not everything they import. The list lives in `scripts/boundaries.toml`
 (`[checks] trusted_paths`, plain paths that must cover every spec-group file), read as literal paths at HEAD and
 at the base. A trusted-surface change is **recorded, not gated** (owner, 2026-11-01): it lands through
 `scripts/push-main.sh` like any change; every commit touching a trusted path carries a `Trusted-surface: <what and

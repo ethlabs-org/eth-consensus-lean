@@ -65,7 +65,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   their `Δ`-denominated times and must now hold with rows slower than `Δ` by any factor. They
   are targets (bare fields of `GoldilocksExtraAt`; the node-level R.6 `WeakSafe`, `WeakInclude`,
   `WeakGrow` are unproved), not proved here; `weakPremise_inhabited` is a satisfiability witness
-  at `ΔF := Δ` only. Whether they hold at `ΔF ≫ Δ` is an open audit item (below); a plausible
+  at `ΔF := Δ` only. Whether they hold at `ΔF ≫ Δ` was an open audit item (moot since the sheet was archived,
+  2026-11-03); a plausible
   risk, not a counterexample, is that AC recovery after GST may need FG rows, now unbounded before
   `gHeal`. A counterexample would go through the believed-false process, with the statements
   unchanged. **Node level:** `SyncOn.deltaF` and `SyncBefore.deltaF` change from `Δ ≤ ΔF` to
@@ -325,6 +326,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
   exception to `Main` is limited to the two `Baseline` modules. The sheet moved to
   `Instances/Goldilocks/{Spec,Statements}/Baseline.lean` (unchanged) so that milestone statements
   `Statements/<M>.lean` can sit beside it (check.sh step 4: a module with descendants owns no constants).
+- 2026-11-03, Francesco (rule-cost sweep, workbench `cards/rule_cost_sweep.md`). **The Baseline sheet is
+  archived**: `Instances/Goldilocks/{Spec,Statements}/Baseline.lean` and its tests (`ConsensusLeanTest/Goldilocks`)
+  move to `archive/consensus-lean-baseline`, out of the build, the roots and the snapshots; their layers, the
+  Baseline entries of the import exception to `Main` and their index entries go. It was never approved and was
+  off every live path: nothing in the closure of `Challenge`, `Solution` or `Refinement.Accepted` imported it.
+  The positive controls keep their own copy of its schema and skeleton (`Tests.Controls.ctrlSchema`,
+  `ctrlSkeleton`). The open audit item on its weak-continuation premise is closed as moot.
 
 ## Repository, toolchain and trust checks
 
@@ -560,9 +568,6 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Open, for the owner
 
-- Audit (two-bound network, 2026-11-02): do the baseline targets `weakSafe`, `weakInclude` and
-  `weakGrow` hold under `WeakPremise` at every row bound `ΔF > 0` (no ratio)? Kept unchanged by
-  lead ruling; a counterexample goes through the believed-false process.
 - Audit (two-bound network, 2026-11-02): sleepy row-independence: do the sleepy claims hold at
   every `ΔF > 0`, as `System.Sleepy` (no ratio) now states? Goldilocks's `sleepySafe`,
   `sleepyLive` and `persists` are proved with no `rowRatio` premise, for each positive `ΔF`, in

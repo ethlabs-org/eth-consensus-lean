@@ -3,7 +3,6 @@ public import ConsensusLeanTest.Blocks
 public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
-public import ConsensusLeanTest.Goldilocks
 public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.Good
 public import ConsensusLeanTest.Leaks
@@ -858,59 +857,6 @@ example := ``Consensus.Goldilocks.Refinement.Test.skeleton_proposerSel
 example := ``Consensus.Goldilocks.Refinement.Test.selValid_proposer
 example := ``Consensus.Goldilocks.Refinement.Test.selValid_exists
 
-/-! ## Goldilocks (values and sheet) -/
-
-example := ``Consensus.Shape.goldilocksSchema
-example := ``Consensus.Shape.goldilocksGrid
-example := ``Consensus.Shape.goldilocksSkeleton
-example := ``Consensus.Shape.FGSAParams
-example := ``Consensus.Shape.GoldilocksBindings
-example := ``Consensus.Shape.GoldilocksTarget
-example := ``Consensus.EnvPoint.two_mul_card_faulty_union_lt
-example := ``Consensus.Shape.GoldilocksExtraAt
-example := ``Consensus.Shape.GoldilocksExtraAt.finalFirst
-example := ``Consensus.Shape.GoldilocksExtraAt.finalRecur
-example := ``Consensus.Shape.GoldilocksExtraAt.growHealed
-example := ``Consensus.Shape.GoldilocksExtraAt.growSleepy
-example := ``Consensus.Shape.GoldilocksExtraAt.includeHealed
-example := ``Consensus.Shape.GoldilocksExtraAt.includeSleepy
-example := ``Consensus.Shape.GoldilocksExtraAt.liveDC
-example := ``Consensus.Shape.GoldilocksExtraAt.outageWindow
-example := ``Consensus.Shape.GoldilocksExtraAt.weakGrow
-example := ``Consensus.Shape.GoldilocksExtraAt.weakInclude
-example := ``Consensus.Shape.GoldilocksExtraAt.weakSafe
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_persists
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_safe_healed
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_safe_healed_prefix
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_safe_sleepy
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_safe_sleepy_prefix
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_txLive_healed
-example := ``Consensus.Shape.GoldilocksTarget.confirmed_txLive_sleepy
-example := ``Consensus.Shape.GoldilocksTarget.finalized_accountable
-example := ``Consensus.Shape.GoldilocksTarget.finalized_monotone
-example := ``Consensus.Shape.GoldilocksTarget.finalized_safe_below_third
-example := ``Consensus.Shape.GoldilocksTarget.finalized_txLive
-example := ``Consensus.Shape.GoldilocksTarget.goldilocks_good
-example := ``Consensus.Shape.GoldilocksTarget.nested
-example := ``Consensus.Shape.GoldilocksTarget.nonFraming
-example := ``Consensus.Shape.GoldilocksTarget.outage_final_compatible
-example := ``Consensus.Shape.budget_implies_V
-example := ``Consensus.Shape.finRec_span
-example := ``Consensus.Shape.finalCut
-example := ``Consensus.Shape.finalRecur_delay_vs_window
-example := ``Consensus.Shape.final_heal_covers_window
-example := ``Consensus.Shape.final_latency_covers_window
-example := ``Consensus.Shape.gHealFin_eq
-example := ``Consensus.Shape.gHeal_eq
-example := ``Consensus.Shape.gReady_eq
-example := ``Consensus.Shape.gc_eq
-example := ``Consensus.Shape.goldilocksContract
-example := ``Consensus.Shape.goldilocks_admissible
-example := ``Consensus.Shape.goldilocks_progressFits
-example := ``Consensus.Shape.goldilocks_progressTolerant
-example := ``Consensus.Shape.range_head
-example := ``Consensus.Shape.reference_bounds
-
 /-! ## Tests: Blocks -/
 
 example := ``Consensus.Shape.Tests.Blocks.recurrence_has_teeth
@@ -922,14 +868,6 @@ example := ``Consensus.Shape.Tests.Controls.ctrlK_progressTolerant
 example := ``Consensus.Shape.Tests.Controls.ctrl_realizable
 example := ``Consensus.Shape.Tests.Controls.outage_control
 example := ``Consensus.Shape.Tests.Controls.positive_controls
-
-/-! ## Tests: Goldilocks -/
-
-example := ``Consensus.Shape.Tests.Goldilocks.collapse_prefix_only
-example := ``Consensus.Shape.Tests.Goldilocks.outageWindow_prefix_only
-example := ``Consensus.Shape.Tests.Goldilocks.pp223_numbers
-example := ``Consensus.Shape.Tests.Goldilocks.stable_is_confirmed
-example := ``Consensus.Shape.Tests.Goldilocks.weakPremise_inhabited
 
 /-! ## Tests: Good -/
 

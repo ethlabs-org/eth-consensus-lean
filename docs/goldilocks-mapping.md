@@ -4,9 +4,8 @@ From the Goldilocks references to the Lean definitions, milestones and names (fo
 file per instance). Every Lean name here is fully qualified (namespace `Consensus`) and must be listed in
 `ConsensusLeanTest/Index.lean`, whose build checks that it exists (check.sh step 12).
 
-**Status: skeleton.** The only Goldilocks Lean today is the pre-foundation baseline
-(`ConsensusLean/Instances/Goldilocks/{Spec,Statements}/Baseline.lean`): the round-model FG-SA numbers and the properties
-sheet. It is **not approved** and no proof targets it (issue #38). The first slice (issue #10) re-derives the
+**Status: skeleton.** The pre-foundation baseline (the round-model pinned numbers and the properties sheet, never
+approved) is archived in `archive/consensus-lean-baseline` (Francesco); no live statement depends on it. The first slice (issue #10) re-derives the
 statements from the current spec and fills the "First slice" table; each row then gets a read-back by an agent
 that did not write it (`CONTRIBUTING.md` "Statements").
 
@@ -25,16 +24,11 @@ provenance in that history and stay as they are; new citations use consensus-lea
 | SPEC | [`goldilocks-spec.tex`](../specs/goldilocks/tex/goldilocks-spec.tex) (formerly `fgsa-spec.tex`) | the current Goldilocks spec (with loose BJ, goldilocks#14, and weakened E1, goldilocks#15) |
 | CLAIMS | [`goldilocks-claims.tex`](../specs/goldilocks/tex/goldilocks-claims.tex) (draft, goldilocks#12) | the claims and proof DAG that the instance statements will transcribe |
 
-## Baseline (pre-foundation, not approved)
+## Baseline (archived)
 
-| Reference | Definition | Milestone | Lean name |
-|---|---|---|---|
-| FGSA: outputs confirmed (available and stable) and finalized (final) | output schema | — | `Consensus.Shape.goldilocksSchema` |
-| FGSA: slots of `4Δ` | time grid | — | `Consensus.Shape.goldilocksGrid` |
-| FGSA: one proposer per slot; committee kinds are placeholders | skeleton | — | `Consensus.Shape.goldilocksSkeleton` |
-| FGSA: round length `R`, lock lifetime `lockK`, look-back `eta` | parameters | — | `Consensus.Shape.FGSAParams` |
-| FGSA: catch-up, heal, latency, outage budget, progress | contract (pinned numbers) | — | `Consensus.Shape.goldilocksContract`, `Consensus.Shape.goldilocks_admissible`, `Consensus.Shape.reference_bounds` |
-| intended properties (pre-foundation lists) | reviewed target: bindings, acceptance, extras | — | `Consensus.Shape.GoldilocksTarget`, `Consensus.Shape.GoldilocksBindings`, `Consensus.Shape.GoldilocksExtraAt` |
+The pre-foundation pinned numbers (`goldilocksContract` at `FGSAParams`) and the properties sheet
+(`GoldilocksTarget`, `GoldilocksExtraAt`) were never approved and are archived in `archive/consensus-lean-baseline`
+(Francesco), with their tests. No statement, proof or milestone of this library depends on them.
 
 ## First slice (issue #10)
 
@@ -597,7 +591,7 @@ Modelling choices:
 ## Regimes
 
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
-run-level forms of the `GoldilocksTarget` rows, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
+run-level forms of the rows of the (archived) target sheet, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
 `Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`; R.3 (healed, at a heal point
 `T ≥ T_heal`) in `Statements/Regimes/Healed`; R.5 (`Outage`) in `Statements/Regimes/Outage`; R.6 (`Weak`) in
@@ -609,7 +603,7 @@ where the target row allows the collision escape); the Refinement milestone carr
 | — | CLAIMS R.7 (G1.5's binding), R.8 (`outputValid`) | the attestations on the chain of a block of a node's tree; a valid output (in the tree, chain linked to genesis, each non-genesis block with its digest as root, accepted by the node, with its slot's proposer and an earlier parent) | Regimes | `Consensus.Goldilocks.Regimes.ChainAtts`, `Consensus.Goldilocks.Regimes.ValidOutput` |
 | R.8 | CLAIMS R.8 (uses C0.1, C0.2, F.2, F.3) | **`nested`**: finalized ⪯ confirmed ⪯ head at every honest cut; **`finalMonotone`**: the honest finalized tip moves only to descendants, across restarts; **`outputValid`**: the finalized and confirmed outputs are valid outputs of the node's tree | Regimes | `Consensus.Goldilocks.Regimes.OutputsNested`, `Consensus.Goldilocks.Regimes.FinalizedMonotone`, `Consensus.Goldilocks.Regimes.OutputsValid` |
 | — | CLAIMS R.1, R.2 (the target's `Ready`, `gc`, `gProg`) | a read point, a point between a node's events, and the first cut after a time; the catch-up `18Δ` in the protocol's `Δ` (at the Refinement's `Δp = Δe` it is `18Δe`, the target's `gc`); ready at `t` (honest, awake on `[max(0, t − c − 1), t]`); the confirmed read after all events at `t`; an honest proposal by a proposer ready at its release; one honest ready proposer in every window of `k` consecutive slots whose first slot starts after `a` and whose last slot starts by `b`; ready-reader safety (agreement and monotonicity) on the cuts of `[t₀, t₁]` | Regimes | `Consensus.Goldilocks.Regimes.CutAfter`, `Consensus.Goldilocks.Regimes.ReadPoint`, `Consensus.Goldilocks.Regimes.Boundary`, `Consensus.Goldilocks.Regimes.catchUp`, `Consensus.Goldilocks.Regimes.ReadyAt`, `Consensus.Goldilocks.Regimes.readAfter`, `Consensus.Goldilocks.Regimes.ReadyProposalAt`, `Consensus.Goldilocks.Regimes.ProposerRecurrence`, `Consensus.Goldilocks.Regimes.ReadySafeOn` |
-| R.1 | CLAIMS R.1 (uses A1.2–A1.4, A1.6, C1.1, F.4) | **`sleepySafe`**: under `Sleepy`, ready-reader safety of the confirmed output on every cut; the prefix form **`confirmed_safe_sleepy_prefix`** is the generic `Consensus.Good.sleepySafe_prefix` (`SyncUntil b` and sleepy on `[0, b]` give ready-reader safety up to `b`, or the run's excuse: the conclusion is `ReadySafeUpTo … ∨ S.Excuse r`), which the family gets from `Consensus.Shape.Accepted.good` at `Consensus.Goldilocks.Refinement.accepted_endpoint` (catch-up `accepted_catchUp·Δe`) and which the target sheet (not an approved contract) states as `Consensus.Shape.GoldilocksTarget.confirmed_safe_sleepy_prefix` (the target sheet's form is at its catch-up `gc = 18Δe`, which `accepted_endpoint` does not deliver); the node-level row (`Sync[0, b − Δ]`, catch-up `18Δp`) is retired | Regimes | `Consensus.Goldilocks.Regimes.SleepySafe` |
+| R.1 | CLAIMS R.1 (uses A1.2–A1.4, A1.6, C1.1, F.4) | **`sleepySafe`**: under `Sleepy`, ready-reader safety of the confirmed output on every cut; the prefix form **`confirmed_safe_sleepy_prefix`** is the generic `Consensus.Good.sleepySafe_prefix` (`SyncUntil b` and sleepy on `[0, b]` give ready-reader safety up to `b`, or the run's excuse: the conclusion is `ReadySafeUpTo … ∨ S.Excuse r`), which the family gets from `Consensus.Shape.Accepted.good` at `Consensus.Goldilocks.Refinement.accepted_endpoint` (catch-up `accepted_catchUp·Δe`) (the archived target sheet stated it as `confirmed_safe_sleepy_prefix` at its catch-up `gc = 18Δe`, which `accepted_endpoint` does not deliver); the node-level row (`Sync[0, b − Δ]`, catch-up `18Δp`) is retired | Regimes | `Consensus.Goldilocks.Regimes.SleepySafe` |
 | R.2 | CLAIMS R.2 (uses A1.7, F.4) | **`includeSleepy`**: honest ready proposals are in every ready confirmed read from `τ + 6Δ`; **`growSleepy`**: with one honest ready proposer per `k` slots, a new common confirmed entry by `t + (4k + 6)Δ`, above every ready read at `t` | Regimes | `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy`, `Consensus.Goldilocks.Regimes.SleepyStatements` |
 | — | CLAIMS R.3 (heal point D1), H.4 (ii), (iii), H.3 (c) | `(U_all)` and `(U_B)` from `T` (H.4's open premises); the healing premises of R.3 at a heal point `T` (HS shared premises, `Catch(2Δ)`, `Prop⁺`, the reset, H.3 (c)'s bridge as a named hypothesis, `T ≥ T_heal`) | Regimes | `Consensus.Goldilocks.Regimes.UnanimousFrom`, `Consensus.Goldilocks.Regimes.UnanimousWithin`, `Consensus.Goldilocks.Regimes.HealedPremises` |
 | R.3 | CLAIMS R.3 (uses R.1, R.2, C1.1, H.4) | at a heal point `T ≥ T_heal` (not the target's `gHeal`): **`healedSafe`** (ready-reader safety from `T`); **`includeHealed`** (under `(U_all)`); **`growHealed`** (under `(U_B)` with `B = 4kΔ` and the recurrence from `gReady`); cross-node ancestry dropped by owner (#104) | Regimes | `Consensus.Goldilocks.Regimes.HealedSafe`, `Consensus.Goldilocks.Regimes.IncludeHealed`, `Consensus.Goldilocks.Regimes.GrowHealed`, `Consensus.Goldilocks.Regimes.HealedStatements` |
@@ -655,7 +649,7 @@ Modelling choices:
   across FG-only frame changes between AC calls (`includeHealed` reads after all events, H.4 concludes at AC calls).
   `healthyLive` and `confirmed_txLive_healed` are derived in the Refinement from
   `includeHealed` (no transactions in the run).
-- **Cross-node ancestry is dropped** (owner decision, consensus-lean#104): Baseline's `crossNest` and
+- **Cross-node ancestry is dropped** (owner decision, consensus-lean#104): the archived Baseline's `crossNest` and
   `weakCrossNest`, R.3's `CrossNest` and R.6's `WeakCrossNest` are removed, not restated with a lag.
   Cross-node compatibility follows from `HealedSafe`/`WeakSafe` and R.8's `OutputsNested` (C0.1):
   `F_x ⪯ C_x`, and compatible `C_x`, `C_y`, imply compatible `F_x`, `C_y`. Lagged ancestry is not stated.
@@ -793,20 +787,15 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
   carries only released objects, `protects` passes an honest node's own attestation, the digests cover a block's
   header), and one theorem per field of `GoldilocksRun` and `Simulates` over the trace (`Run`); `Simulation`
   assembles them (`engineSimulatesNode`).
-- **Not linked: the Baseline target and the refinement family.** `GoldilocksTarget F pp` requires
-  `GoldilocksBindings F` (the skeleton is `goldilocksSkeleton`, over `goldilocksSchema`); `family S` has its own
-  schema and a skeleton that differs in `Kind`, `pollSel` and `order` (its `proposerSel` is `.sized 1` since #117, so
-  it would fit a `.recur` requirement), so no Baseline row is instantiated at the refinement family, and nothing in
-  Lemmas or Proofs does so. The milestone statements are stated directly over `compiled (family S)`; whether
-  Baseline is restated at the refinement skeleton (and its `.recur` rows through the instance's ready-proposer
-  premise) is the first-slice re-review's decision (consensus-lean#10, #38).
+- **The Baseline target is archived** (`archive/consensus-lean-baseline`): no Baseline row is instantiated at the
+  refinement family. The milestone statements are stated directly over `compiled (family S)`.
 
 ## Exclusions
 
 What the model leaves out, and why. Generic exclusions (static adversary, equal weights, one `Δ`, no
-responsiveness claim, no transaction validity, …) are in README "Scope". For the baseline, the sheet's module
-docstring (`ConsensusLean/Instances/Goldilocks/Statements/Baseline.lean`) lists the intended properties not yet stated
-(§3), those stated weaker than intended, and the migration obligations. Known differences between the baseline
-and SPEC (issue #38): lock lifetime and outage budget, FG attestations after every tick instead of once per
+responsiveness claim, no transaction validity, …) are in README "Scope". For the archived baseline, the sheet's
+module docstring (`archive/consensus-lean-baseline/ConsensusLean/Instances/Goldilocks/Statements/Baseline.lean`) lists
+the intended properties not yet stated (§3), those stated weaker than intended, and the migration obligations. Known
+differences between the baseline and SPEC: lock lifetime and outage budget, FG attestations after every tick instead of once per
 round, and the loose-BJ bounds (`K_W = 2`, general `Δ_F`). The first slice replaces this paragraph with one row
 per exclusion: what is left out, why, and which claim it affects.

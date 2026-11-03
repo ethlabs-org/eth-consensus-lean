@@ -163,10 +163,9 @@ The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (ea
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Goldilocks
-`Baseline` modules and the Bft, Streamlet and Tendermint Specs import the generic `Main` through a reviewed
-exception). The definitions the Goldilocks sheet reads from there, `Lemmas/Problem/Derived.lean`, are in the list
-too; the record covers their text, not everything they import. `scripts/boundaries.toml`
+on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Bft, Streamlet
+and Tendermint Specs import the generic `Main` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added
+for the now archived Goldilocks sheet, is in the list too; the record covers their text, not everything they import. `scripts/boundaries.toml`
 (`[checks] trusted_paths`) lists it, and check-boundaries.py requires it to cover every file of a trusted or
 `protected` layer;
 CI's review-boundary steps (`scripts/review-boundary.sh`, self-tested on throwaway repositories) passes a change whose own
@@ -190,7 +189,7 @@ Static, all-knowing adversary; no adaptive corruption. Per instance the reviewer
 
 ## Not proved / out of scope
 
-There is no FG-SA bridge proving `GoldilocksTarget`; Streamlet/Tendermint are values, not protocol
+Streamlet/Tendermint are values, not protocol
 proofs, and Tendermint's pointwise `notReadyAtMost` is a placeholder. Arbitrary L0 `Good` systems
 trust their abstraction; only `sysOf` binds the distributed model. See `README.md` Scope: one GST/outage,
 full-participation healthy runs, equal weights, fixed Δ, bounded latency, no adaptive/probabilistic/PoW
