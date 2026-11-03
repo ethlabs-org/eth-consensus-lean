@@ -47,6 +47,12 @@ engine relays an admission at the admitting delivery's own time, as the spec's i
 send (consensus-lean#107), so only that endpoint slack remains: the regimes milestone states the
 transport. `docs/goldilocks-mapping.md` §"Refinement" maps each statement.
 
+Not in `Challenge`: this module is outside the challenge's import closure, the comparator and
+`milestone_statements_modules`. Its statements are proved in `Lemmas/Refinement`
+(`engineSimulatesNode`, `readIsOut`, `noCollTransport`, `evidenceInView`,
+`finalizedAccountable`, …) and used only by those proofs, toward `acceptedEndpoint`, and by
+tests; the bundle `RefinementStatements` is not assembled.
+
 Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -208,7 +214,14 @@ variable (V) in
 /-- **G1.5 (c), finalized accountability** (the run-level G1.3; target `finalized_accountable`).
 In a valid run without an observed hash collision, two honest finalized reads are
 compatible (one a prefix of the other), or at least
-`2q − n` validators are slashable on the two readers' views together. -/
+`2q − n` validators are slashable on the two readers' views together.
+
+Limitation (a reading of the statement, not a defect of its proof): the evidence is the union of
+the two **views** (`ViewIdx u i ∪ ViewIdx v j`), as the generic L0 accountability convicts from
+views. CLAIMS G1.5 and G1.3 restrict the slashable pairs to the attestations included on the two
+finalized chains. The views contain those attestations (`EvidenceInView`), so this conclusion is
+weaker than G1.5's: the slashable pairs may come from viewed attestations on neither chain. A
+chain-restricted statement would be a separate proposal. -/
 def FinalizedAccountable : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
     rho.ExecutionValid → ¬ rho.HashCollision →

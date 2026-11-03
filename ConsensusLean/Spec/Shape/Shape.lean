@@ -45,8 +45,9 @@ structure Skeleton (n : Nat) : Type 1 where
   /-- Who may propose at slot `s`: a fixed schedule (`fun s => .fixed {p s}`)
   or a free choice of the run (`fun _ => .sized 1`). -/
   proposerSel : Slot → SelSpec n
-  /-- Who may sign in the poll role; `.fixed ∅` disables poll signatures (the
-  poll steps' state updates still run). -/
+  /-- Who may sign in the poll role; `.fixed ∅` disables the poll steps
+  altogether (an unselected duty does not run, so neither its state update nor
+  a signature happens, `Model.Run.dutyStep`). -/
   pollSel : SelSpec n
   /-- Committee kinds. -/
   Kind : Type
@@ -72,8 +73,9 @@ structure Skeleton (n : Nat) : Type 1 where
   once, after all the duties of the tick (so no step sees the digests of the
   tick's gossip). Per-tick work goes in `clock`, which runs at the start of
   every tick; work after the duties of an awake tick goes in a trailing poll
-  step (the poll steps are due at every tick `t ≥ 0`; the other steps only at
-  some ticks). -/
+  step, for keys selected in the poll role (the poll steps are due at every
+  tick `t ≥ 0`; the other steps only at some ticks; an unselected duty is
+  skipped). -/
   order : List (Step Kind) := [.propose] ++ kinds.map .kind ++ [.pollPropose, .poll]
   /-- The steps the engine runs at a delivery, in order, after `process` and
   before the delivery's gossip (`Model.Run.deliver`); the steps due at the
@@ -138,8 +140,8 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   clock : State → Time → State
   /-- Slot proposal: the new state, and parent, info, carried objects.
   `compile` writes `pos := s` and `input := encodeTxs mempool`. As for every
-  step, the state is applied whether or not the proposal is signed or
-  released. -/
+  step, the state is applied for a selected proposer whether or not the
+  proposal is released; for an unselected key the step does not run. -/
   propose : State → Slot →
     State × Option (ParentRef × Info × List (ShapeObj pub.n skel.Kind Info Body))
   /-- Committee kind `k` at slot `s`: the new state, and data and carried

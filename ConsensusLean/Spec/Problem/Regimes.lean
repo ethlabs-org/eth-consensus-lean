@@ -11,8 +11,13 @@ progress requirement per capability and index. Every duration is a
 coefficient of `Δ`. `Params.Admissible` bounds the thresholds by the standard
 ones (`Params.standard`), so a contract cannot buy its claims with stronger
 thresholds. The other numbers are instance numbers that the reviewer reads;
-they are not bounded (any `η` is realizable, `Shape.outage_witness`). The
-direction of each, for a larger value:
+they are not bounded: the generic outage witness of the realizability proofs
+assumes of a shape contract's numbers only `Admissible`, so every `η`, `lag`,
+`noSleep`, `recovery` and every `budget ≥ 1` is realizable there (with at least
+five validators, `Δ, Δ_F > 0`, on every window `(T, [b₀, b₁))` with
+`OutageTimes` (`0 ≤ T`, `T + lag·Δ ≤ b₀`, `b₁ ≤ b₀ + budget·Δ`), `T < b₀` and
+`b₀ + Δ ≤ b₁`, and a horizon at or after `b₁ + recovery·Δ`). The direction of
+each, for a larger value:
 
 * catch-up (mixed): a reader needs `catchUp·Δ` awake to be ready, so fewer
   validators are ready: the participation premises (sleepy, η-sleepy) are
@@ -43,13 +48,16 @@ The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
 the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
 off a run's environment point and communication log. The GST is a parameter
 of the regimes, not of the environment; an outage run is partially
-synchronous with GST `b₁`, so the after-GST rows apply with `g = b₁`. -/
+synchronous with GST `b₁`, so the after-GST rows apply with `g = b₁` when their
+other premises hold: `Outage` supplies only the `PSync b₁` part of `Healthy`,
+not `HealthyOn` (participation and the fault bound) or the row ratio. -/
 
 namespace Consensus
 
 /-- The numbers of a protocol. Durations are `Δ`-coefficients. -/
 structure Params (Idx : Type) where
-  /-- Readers' catch-up `c`: a reader is ready after `c·Δ` awake. -/
+  /-- Readers' catch-up `c`: a reader is ready after `c·Δ + 1` awake
+  (`EnvPoint.Ready`: awake throughout `[t − c·Δ − 1, t]`, clamped at `0`). -/
   catchUp : Nat
   /-- Sleepy threshold: `θ·(|ready| + |faulty|) < |ready|`. -/
   θ : ℚ
@@ -170,8 +178,10 @@ def cDur (K : Contract Prog) (r : S.Run) : Time := (K.params.catchUp : Time) * (
 def heal (K : Contract Prog) (cap : Capability) (i : K.Idx) (g : Time) (r : S.Run) : Time :=
   max g 0 + (K.params.heal cap i : Time) * (S.pt r).env.Δ
 
-/-- The start of progress windows after GST `g` in run `r`: the first time from
-which a node awake since `g` is ready, `max g 0 + catchUp·Δ + 1`. -/
+/-- The start of progress windows after GST `g` in run `r`,
+`max g 0 + catchUp·Δ + 1`: for `g > 0` the first time from which a node awake
+since `g` is ready; for `g ≤ 0` a sufficient start (the clamp of
+`EnvPoint.Ready` makes a node awake since `0` ready earlier). -/
 def ready (K : Contract Prog) (g : Time) (r : S.Run) : Time := max g 0 + S.cDur K r + 1
 
 /-- The latency `latency·Δ` of `cap` at `i` in run `r`. -/

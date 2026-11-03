@@ -38,8 +38,9 @@ head walks are functions on finite trees.) -/
 namespace Consensus.Goldilocks
 
 /-- The head of a duty with its walk: the head, the block where the walk starts, and the domain
-whose viable tree it walks (the full tree for a proposal and `ac_to_fg`, the voter block tree
-for a vote). -/
+whose viable tree it walks (the full tree for a proposal and `ac_to_fg`; for a vote the vote
+domain `SA.voteDomain`: the voter block tree, or the whole tree when the voter block tree's
+viable tree is empty, the recorded fallback of `docs/decisions.md`, 2026-11-02). -/
 structure DutyHead (n : Nat) (FGP ACP : Type) where
   /-- The head. -/
   head : Block n FGP ACP

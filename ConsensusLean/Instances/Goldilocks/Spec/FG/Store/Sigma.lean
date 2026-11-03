@@ -12,7 +12,8 @@ The FG state of a node (fradamt-agent/goldilocks `spec/shared/composition.tex` �
 `Σ = (T, σ[·], F, J, h_j, h_max, attestations)`. The tree `Σ.T` is kept by root, the way the
 store tests it (a block enters only when no held block has its root), so a held root names one
 block; `Σ.σ` is kept by root too. `Σ.F` and `Σ.J` are blocks of the tree. The FG reads a block
-through `Block.fgView` (root, slot, proposer, attestations) before `state_transition`, and its
+through `Block.fgView` (root, slot, proposer, attestations; the proposer is carried, not read)
+before `state_transition`, and its
 parameters `Params.fg` are derived from the shared parameters. -/
 
 namespace Consensus.Goldilocks
@@ -23,8 +24,8 @@ def Params.fg (P : Params) : FG.FGParams := ⟨P.n, P.hn, P.δt, P.genesisRoot�
 /-- A node block: its FG payload is the attestation list. -/
 abbrev NodeBlock (P : Params) (ACP : Type) := Block P.n (List (FG.Att P.n)) ACP
 
-/-- What the FG reads of a block: root, slot, proposer and the attestation list (order and
-repeats kept). -/
+/-- What the FG sees of a block: root, slot, proposer and the attestation list (order and
+repeats kept). No FG function reads the proposer (`FGBlock`). -/
 def Block.fgView {n : Nat} {ACP : Type} (B : Block n (List (FG.Att n)) ACP) : FG.FGBlock n :=
   ⟨B.root, B.slot, B.proposer, B.fgPayload⟩
 

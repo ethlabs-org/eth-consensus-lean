@@ -54,8 +54,10 @@ instance"):
   `pollBatch` emits its ordinary body, block wrappers in acceptance order, then vote envelopes;
   `releaseAll` checks each against actual prefix holdings. Duplicate/refused calls do not mint
   wrappers. Unsigned compatibility relay is retained, but certifies no acceptance timestamp.
-* **Restart.** Everything is durable (the spec keeps `Σ`, `𝒜`, `Λ` and restarts the AC); the
-  queued bodies are kept and leave at the tick that follows the restart at the wake time.
+* **Restart.** `durable` keeps the whole state and `restore` applies `ac_restart`: as in the
+  spec (composition.tex §"State"), `Σ` and `Λ` are kept and `𝒜` is replaced by
+  `ac_restart(𝒜, Φ, t)`, which keeps only the locks and the latest confirmation. The queued
+  bodies are kept and leave at the tick that follows the restart at the wake time.
 * **Outputs.** `confirmed` is `ac_confirmed`, `finalized` is `Σ.F`, each as the chain of
   headers from genesis (excluded) to the block, read from `Σ.T` by parent walk (fuel: the slot).
 * **Slashing rule.** `conflicts` is `FG.slashable` on two canonical attestation objects.
@@ -614,8 +616,9 @@ noncomputable def outOf (st : NodeState (goldilocksNode sp ro)) (t : Time) : Out
     let C := (goldilocksNode sp ro).confirmed st.ac (Node.frame st) t
     chainTo st.fg.blocks (C.slot + 1) C
 
-/-- A restart at time `t`: `ac_restart` (its emissions queued), the time set, no FG update due;
-`Σ`, `𝒜`, `Λ`, the queued bodies and the relay queue are kept. -/
+/-- A restart at time `t`: `𝒜` becomes `ac_restart(𝒜, Φ, t)` (only the locks and the latest
+confirmation persist; its emissions are queued), the time is set, no FG update is due. `Σ`, `Λ`,
+the queued bodies, the relay queue and the forwarding state are kept. -/
 noncomputable def restore (k : Fin sp.n) (d : State sp ro) (t : Time) : State sp ro :=
   let r := Node.restart k d.node t
   { apply { d with self := k, now := t } r with fgDue := false }

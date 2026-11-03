@@ -13,7 +13,7 @@ public import ConsensusLean.Init
 What the consensus problem is, independently of any protocol or execution
 model: what users read (ledgers of transactions, one per output of the
 protocol's output schema, each serving some of three capabilities), what
-the world is (an environment: `Δ` and an awake profile; and per run the
+the world is (an environment: the bounds `Δ` and `ΔF` and an awake profile; and per run the
 honest nodes, a horizon and transaction submissions), and what an
 abstract system of runs exposes, including its communication log with opaque
 messages (`CommLog`; the network conditions on it are in `Network.lean`). No
@@ -149,7 +149,9 @@ def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
   else θ * ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) <
     (p.readyAt c t).card
 
-/-- More than fraction `φ` of all validators are ready. -/
+/-- More than fraction `φ` of all validators are ready. Read by no regime since
+2026-11-02 (the outage premise is relative, `docs/decisions.md`); only tests use
+it. -/
 def ReadyOfAll (φ : ℚ) (c t : Time) : Prop :=
   φ * Fintype.card V < ((p.readyAt c t).card : ℚ)
 

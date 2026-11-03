@@ -227,7 +227,11 @@ claims, at every `Δ` and `ΔF` (the healthy regime at every `ΔF ≤ rowRatio·
 every GST (with a log silent before it), and arbitrarily late outages; and
 every provided available or stable output is live, at one index (per
 validator type and capability) that serves every `Δ` and `ΔF`, with at most
-two honest validators awake (sleepy stress witness). -/
+two honest validators awake (sleepy stress witness). The sleepy witnesses
+carry liveness activity (`TxLiveActive`, inside `SleepyLive`) but no
+safety-activity (`SafeActive`) witness: `SafeActive` is asked only of the
+healthy witness, so no sleepy witness is required to exercise `sleepySafe`'s
+agreement between readers or its monotonicity. -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   sleepy : ∀ cap i (Δ ΔF : Time), 0 < Δ → 0 < ΔF → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧

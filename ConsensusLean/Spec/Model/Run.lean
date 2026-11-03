@@ -16,22 +16,25 @@ object the node released or received.
 At a tick of awake node `v` at `t`, the engine
 1. runs `clock` with `v`'s own and relayed transactions up to `t` (its mempool);
 2. runs the due duties one after the other, in `duties` order, each from the
-   state the previous one left: `act` gives a new state, which the engine
-   applies unconditionally, and a message, which becomes a candidate signed
-   with `v`'s own key in the duty's role if that role selects the key (and is
-   dropped otherwise), and goes through release (3) before the next duty runs;
+   state the previous one left. A duty whose role does not select `v`'s key is
+   skipped: no state change and no candidates (`dutyStep`). A selected duty's
+   `act` gives a new state, which the engine applies, and a message, which
+   becomes a candidate signed with `v`'s own key in the duty's role and goes
+   through release (3) before the next duty runs;
 3. releases a candidate only if every object it carries is already in the
-   closure of `seen` (so honest code passes on no object it has not seen) and
+   closure of `seen` (so honest code passes on no object it has not seen),
    slashing protection allows it (`protects`: a candidate signed by the own
    key must not conflict, under the protocol's `conflicts`, with itself or
-   with an own-signed object in the closure of `seen`), adds it to `seen`, and
-   records it with `recordOwn`;
+   with an own-signed object in the closure of `seen`), and its dependencies
+   are held (`P.dependencies.ready` on the closure of `seen`); it then adds it
+   to `seen` and records it with `recordOwn`;
 4. last, builds unsigned gossip from the final state and releases it as in 3.
 
 Same-tick semantics: a duty reads the state after the earlier duties of the
 tick, including the `recordOwn` of their released messages (which is how a
-node learns that it signed). It gets no other feedback: a duty whose message
-is unselected or refused leaves only its own state. Duties run only at awake
+node learns that it signed). It gets no other feedback: a selected duty whose
+candidates are refused leaves only its own state; an unselected duty leaves
+nothing. Duties run only at awake
 ticks and at deliveries (which the conditions make only to awake nodes).
 
 At a delivery to awake node `v` at `t`, the engine runs `process`, adds the
@@ -147,7 +150,8 @@ def protects {pub : Public} {Out : Type} (P : Protocol pub Out) (k : Key pub)
   else true
 
 /-- Release candidates in order, for the node with own key `k`: a candidate is
-released if it is `releasable` and `protects` allows it; released objects join
+released if it is `releasable`, `protects` allows it and its dependencies are
+held (`P.dependencies.ready` on the closure of `seen`); released objects join
 `seen` at once, so later candidates of the same tick are checked against
 them. -/
 def releaseAll {pub : Public} {Out : Type} (P : Protocol pub Out) (hash : P.Item → Nat)

@@ -67,8 +67,10 @@ def Att.WellFormed {n : Nat} (a : Att n) : Prop := 1 ≤ a.h ∧ ∀ p ∈ a.fin
 instance {n : Nat} (a : Att n) : Decidable a.WellFormed :=
   inferInstanceAs (Decidable (1 ≤ a.h ∧ ∀ p ∈ a.fin.toList, p.1 < a.h))
 
-/-- What the FG reads of a block: root, slot, proposer and the attestation list
-(order and repeats are content). -/
+/-- What the FG sees of a block: root, slot, proposer and the attestation list
+(order and repeats are content). The proposer is carried but read by no FG function: the paper's
+`state_transition` proposer assertion is the run's credential (`stateTransition`,
+`docs/decisions.md` 2026-10-31). -/
 structure FGBlock (n : Nat) where
   /-- The root of the block. -/
   root : Nat

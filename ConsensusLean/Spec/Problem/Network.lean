@@ -48,7 +48,8 @@ def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
   ∃ τ, 0 ≤ τ ∧ τ ≤ d ∧ x ∈ L.inbox w τ
 
 /-- Delivery with deadline function `dl` for messages and transactions and
-`dlF` for rows, for deadlines up to `cut` and up to the horizon. -/
+`dlF` for rows, for deadlines up to the time `cut` (a time, not a trace cut
+index) and up to the horizon. -/
 structure Delivers (dl dlF : Time → Time) (cut : Time) : Prop where
   /-- Francesco's rule (normal delivery): an honest send at `t` of a message
   that is not a row is held at `dl a`, for every start `a ≥ t`, by every

@@ -17,11 +17,12 @@ AC trace of `goldilocksSA`:
   `get_confirmation` at an update (fast, slow, vetoed or not), with the votes it counts;
   `ToFGAt` is a block that `ac_to_fg` returns; `ProposalAt` is a proposal and its payload.
 * **Honest objects** (`HonestObjects`): the run facts about honest signers that the AC trace
-  contract does not carry (claims §"Runs": signatures are unforgeable; FG acceptance asserts the
-  slot proposer): every vote of an honest validator that an honest node holds, in its pools or
-  in a block of its frame, was emitted by that validator's node at an earlier cut; every block of
-  an honest frame other than genesis has the slot's proposer; and an honest proposer has at most
-  one block per slot in the honest frames. `ACRun` bundles them with `ACLocalRun`. -/
+  contract does not carry (claims §"Runs": signatures are unforgeable; the slot proposer, the
+  paper's `state_transition` assertion, is in the model the run law `LocalRun.proposerCredential`):
+  every vote of an honest validator that an honest node holds, in its pools or in a block of its
+  frame, was emitted by that validator's node at an earlier cut; every block of an honest frame
+  other than genesis has the slot's proposer; and an honest proposer has at most one block per slot
+  in the honest frames. `ACRun` bundles them with `ACLocalRun`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -114,7 +115,8 @@ def HonestFrameBlock (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (B : Blk sp.n
   ∃ y ∈ H, ∃ i ℓ, tr.CallAt y i ℓ ∧ B ∈ ℓ.frame.tree
 
 /-- **Honest objects**: the run facts about honest signers over an AC trace (unforgeable vote
-and block signatures; FG acceptance of the slot proposer). -/
+and block signatures; the slot proposer, supplied by the run law `LocalRun.proposerCredential`,
+not by FG acceptance). -/
 structure HonestObjects (selectedProposer : Nat → Fin sp.n)
     (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
   /-- A vote of an honest validator in an honest node's pool before cut `i` was emitted by that

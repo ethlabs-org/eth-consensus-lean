@@ -25,7 +25,8 @@ protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
   `max 37 (8k + 4)`; heal `max 37 (8k + 4) + 128k + 112δ_t + 160X + 187` at every capability
   (`catchUp + 2·healMargin + 3`, `healMargin = 64k + 56δ_t + 80X + 92`); latency `8X + 12` for
   the available and stable outputs and `8(X + 3·cF r) + 2` for the final one. Only the final
-  latency reads the assumptions (through `r`); the heal coefficient ignores the capability.
+  latency reads the assumptions (through `r`) directly; heal depends on `r` only through the
+  `δ_t` that `3·cF r ≤ δ_t` requires, and the heal coefficient ignores the capability.
 
 Statements only: no proofs here. -/
 
@@ -38,7 +39,7 @@ def healthyDrainLen (S : Setup) (X : ℕ+) : Nat := 2 * S.k + X
 /-- The reset coefficient `R = 24·L_drain + 48(δ_t + X) + 28` of the nonfinal reset envelope. -/
 def healthyResetCoeff (S : Setup) (X : ℕ+) : Nat := 24 * healthyDrainLen S X + 48 * (S.δt + X) + 28
 
-/-- The literal slack `r = 0` of the nonfinal reset envelope. -/
+/-- The literal slack `0` of the nonfinal reset envelope (not the row ratio `r`). -/
 def healthyResetSlack (_S : Setup) (_X : ℕ+) : Nat := 0
 
 /-- The margin `M = R + 16k + 8δ_t + 8X + 64` of the heal coefficient; expanded,
@@ -102,7 +103,7 @@ An abbreviation exposes the index type for the adapter signatures.
 
 Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming only):
 * arming lag `8k + 12`: `(8k+12)Δe ≥ (4k+6)Δp` for every `Δe ≥ 1` (equality only
-  at `Δe = 1`, about `k + 1½` slots), so the label before the outage label is
+  at `Δe = 1`; the required `(4k+6)Δp` is `k + 1½` slots), so the label before the outage label is
   fully armed by `b₀`;
 * no-sleep margin `max 38 (8k + 16)`: it covers the formation window
   (`(4k+6)Δp` before `b₀`), the restored votes (`8k + 16`) and the catch-up

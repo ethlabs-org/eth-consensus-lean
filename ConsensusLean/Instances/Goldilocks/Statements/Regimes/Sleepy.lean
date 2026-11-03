@@ -20,14 +20,15 @@ Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun
   from `τ + 6Δ` on (`IncludeSleepy`); and with one honest ready proposer in every window of `k`
   slots, joint strict growth of the confirmed output by `t + (4k + 6)Δ` (`GrowSleepy`).
 
-**Vocabulary.** A node is **ready** at `t` (catch-up `c = 18Δ`, as the target's `gc`) when it is
+**Vocabulary.** A node is **ready** at `t` (catch-up `c = 18Δ` in the protocol's `Δ`, `sp.Δ`; at
+the Refinement's `Δp = Δe + 1` this is `18Δe + 18`, not the target's `gc = 18Δe`) when it is
 honest and awake throughout `[max(0, t − c − 1), t]` (`ReadyAt`, the model's `Point.Ready`). A
 **read** of `y` is its confirmed output at a read point `(j, t)` (`ReadPoint`: the state before cut
 `j` is the state at `t`), evaluated at `t` (`readAfter`); at `t = time j` this is `confirmedAt y j`,
 and with `CutAfter j t` it is the read after all events at `t` (the model's end-of-time cut).
 `CutAfter` restates `Healing.FirstCutAfter` so that the regimes do not import the Healing files.
-`ProposerRecurrence c k a b`: every window of `k` consecutive slots with starts in `[a, b]` has a
-slot whose proposer is honest and ready at its
+`ProposerRecurrence c k a b`: every window of `k` consecutive slots whose first slot starts after
+`a` and whose last slot starts by `b` has a slot whose proposer is honest and ready at its
 start (the target's `gProg` at `k`).
 
 The transaction rows (`confirmed_txLive_sleepy`) are not stated over the run: the run model has no
@@ -58,7 +59,8 @@ cut (position `≠ 0`) of an event of `y`. Inside an event the state can be one 
 reads, e.g. after an accepted `fg_on_block` and before its `ac_on_block`. -/
 def Boundary (y : Fin sp.n) (j : Nat) : Prop := tr.IsCall y j → tr.pos j = 0
 
-/-- The catch-up `c = 18Δ` (the target's `gc`). -/
+/-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the Refinement's `Δp = Δe + 1` it is
+`18Δe + 18`, while the target's `gc` is `18Δe`). -/
 def catchUp (sp : SAParams) : Time := 18 * sp.Δ
 
 /-- `y` is ready at `t` with catch-up `c`: honest and awake throughout `[max(0, t − c − 1), t]`. -/
@@ -75,7 +77,8 @@ def ReadyProposalAt (c τ : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop 
   ∃ p kP, ReadyAt tr H c p τ ∧ tr.ProposesAt p kP P ∧ tr.time kP = τ
 
 /-- One honest proposer ready at its slot start in every window of `k` consecutive slots whose
-starts lie in `(a, b]` (the target's windows `(t, t + 4kΔ]`). -/
+first slot starts after `a` and whose last slot starts by `b` (the target's windows
+`(t, t + 4kΔ]`). -/
 def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (a b : Time) : Prop :=
   ∀ s₀ : Nat, a < sp.ts s₀ → sp.ts (s₀ + k - 1 : Nat) ≤ b →
     ∃ s, s₀ ≤ s ∧ s < s₀ + k ∧ ReadyAt tr H c (proposer s) (sp.ts s)
@@ -103,10 +106,21 @@ def SleepySafe : Prop :=
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ t₁, ReadySafeOn tr H (catchUp sp) 0 t₁
 
-/-- **R.1, `confirmed_safe_sleepy_prefix`.** Synchronous for the sends with deadline `≤ b`
-(`Sync[0, b − Δ]`, the model's `SyncUntil b`) with `f < h_t` at the slot points up to `b`:
-ready-reader safety of the confirmed output at the read points up to `b`, whatever happens after
-`b`. -/
+/-- **R.1, `confirmed_safe_sleepy_prefix`.** Synchronous for the sends in `[0, b − Δ]`
+(`Sync[0, b − Δ]`, `SyncRun H ΔF 0 (b − Δ)`) with `f < h_t` at the slot points up to `b`:
+ready-reader safety of the confirmed output at the read points up to `b`.
+
+The premise is not the model's `SyncUntil b` (sends with deadline `≤ b`), in three ways:
+* it windows the **send** time `τ`, and each delivery is owed against the recipient's deadline
+  `max(τ, w_y) + Δ'` (`Δ'` the object's class delay) at every later call, so it also constrains
+  the run after `b`;
+* **late wakers**: a node that wakes at `w > b` must still process the window's sends by
+  `w + Δ'`, after `b`;
+* the deadlines **differ by class**: attestations (rows) use `Δ_F`, the other objects `Δ`. For
+  `Δ_F > Δ`, attestations sent in `(b − Δ_F, b − Δ]` have deadline `τ + Δ_F > b`, so the premise
+  can require their processing after `b`, even by nodes awake throughout; for `Δ_F < Δ`, some
+  attestations due by `b` (those sent in `(b − Δ, b − Δ_F]`) are not covered.
+The row is proved as stated; this records what its premise assumes, not a counterexample. -/
 def SleepySafePrefix : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))

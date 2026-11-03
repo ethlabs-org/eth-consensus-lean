@@ -153,7 +153,8 @@ def voterBlockTree (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk s
 
 /-- The head domain of an honest slot-`s` vote: the voter block tree, or the whole tree when the
 voter block tree has no viable block in the current frame `Φ` (`fc_root` and viable heads as of
-now). -/
+now). Not in SPEC: the full-tree fallback is the recorded deviation of `docs/decisions.md`
+(2026-11-02, Francesco). -/
 def voteDomain (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=
   {B | (B ∈ voterBlockTree sp A Φ s ∧ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) ∨
     (B ∈ Φ.tree ∧ ¬ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty)}

@@ -5,14 +5,15 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Trace
 
 /-! # Goldilocks milestone ACBase: the AC interface and the SA's foundations (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21, head
-`05418956`), the L0 nodes of the AC module (decomposition §3.1, §4.1): F.1 (a)–(c) (the SA's
-schedule arithmetic, lock expiry, joining), A0.1–A0.5, A0.7, A0.8 (pool, resolution, counting,
-lock store, lock to tip, restart, one vote per slot), A0.6 (requirements 1–4 of composition.tex
-§"The available chain" over reachable AC states) and A0.9 (requirement 5: the proposal payload
-is valid), against the SA of `Spec/SA` and the AC interface and traces of `Spec/AC`. One more
-statement is not a claims node: `LocalRunReachable`, that the AC trace contract gives reachable
-states (decomposition §2 D), so that the step statements of ACSteps can use the A0 nodes.
+Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21, merged as
+goldilocks main `c4928a76`), the L0 nodes of the AC module (decomposition §3.1, §4.1): F.1 (a)–(c)
+(the SA's schedule arithmetic, lock expiry, joining), A0.1–A0.5, A0.7, A0.8 (pool, resolution,
+counting, lock store, lock to tip, restart, one vote per slot), A0.6 (requirements 1–4 of
+composition.tex §"The available chain" over reachable AC states) and A0.9 (requirement 5: the
+proposal payload is valid), against the SA of `Spec/SA` and the AC interface and traces of
+`Spec/AC`. One more statement is not a claims node: `LocalRunReachable`, that the AC trace contract
+gives reachable states (decomposition §2 D), so that the step statements of ACSteps can use the A0
+nodes.
 
 "At an honest node at every time" reads: at every reachable state (`ACInterface.ReachableAt`,
 with the frame and the time of its last call) inside a coherent set of blocks, and every later

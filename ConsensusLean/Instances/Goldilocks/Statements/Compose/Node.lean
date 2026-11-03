@@ -128,9 +128,12 @@ def SignedOnlyInTicks : Prop :=
 the cuts of every event at every state, an AC cut with the call `ac_on_block(B)` comes right
 after the FG cut that accepts `B`, and at the FG state `Σ` before that cut `fg_on_block(Σ, B)`
 accepts: `B` is not of a future slot, its root is new, its full parent is held, it extends
-`Σ.F`, and `state_transition` passes from the parent's state (so its proposer is its slot's and
-its parent is of a smaller slot: the assertions of `state_transition`). A restart passes no
-block: its replay runs inside `ac_restart`, over the frame's tree. -/
+`Σ.F`, and `state_transition` passes from the parent's state (so its parent is of a smaller
+slot, the assertion of `state_transition`). That its proposer is its slot's is not a node fact
+and is not part of this statement: no node check reads the proposer, and in a run it is the run
+law `LocalRun.proposerCredential` for a delivered block and `Proposes` for the own block
+(`accept_facts`; `docs/decisions.md` 2026-10-31). A restart passes no block: its replay runs
+inside `ac_restart`, over the frame's tree. -/
 def ACSeesAcceptedBlocks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (ℓ : ACLabel A) (B : A.Blk),
     Cut.ac ℓ ∈ (exec proposer dg self st t e).2 → ℓ.call = .block B →

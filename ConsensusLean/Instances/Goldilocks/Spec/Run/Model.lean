@@ -31,8 +31,10 @@ trace a run of the protocol. Faulty nodes have no cuts: what they send is an inp
   obligation of workbench#5 for `ACLocalRun.restart_at_wake`); **unforgeability** as a run
   condition (claims §"Runs"): a block of an honest proposer that an honest node processes is
   that proposer's own block, made at or before (the slot key of `B.proposer` signs `B`,
-  composition.tex §"Blocks"; that an accepted block's proposer is its slot's is an assertion of
-  `state_transition`, not a run law); an attestation of an honest signer that an
+  composition.tex §"Blocks"); a block delivered to an honest node names its slot's proposer,
+  faulty proposers included (`proposerCredential`, the engine's credentials: the paper's
+  `state_transition` proposer assertion, removed from the model's `state_transition` with the
+  proposer schedule, `docs/decisions.md` 2026-10-31); an attestation of an honest signer that an
   honest node processes, or that a processed block carries, was signed by that signer at an
   earlier `fg_attest` cut; an AC message of an honest signer (by the signer map `sg`, a run
   parameter: the AC interface has no signer) that an honest node receives was emitted by that

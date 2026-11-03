@@ -21,7 +21,7 @@ finite validator type: `Accepted.behaviour` (the refinement of the shape
 claims), the model's adequacy (`sysOf_adequate`, an L1 theorem, independent
 of the claims) and the generic `regimes_realizable` (from admissibility,
 progress fit and tolerance). Its corollary `Accepted.activeService` (a final
-or available output actively serves transactions) is in `Service.lean`. -/
+or available output actively serves transactions) is in `ConsensusLean/Main.lean`. -/
 
 namespace Consensus.Shape
 
