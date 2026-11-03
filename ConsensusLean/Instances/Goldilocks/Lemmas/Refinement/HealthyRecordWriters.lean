@@ -305,7 +305,7 @@ theorem young_optimistic_lock_persists
     have : (s : Int) + 3 ≤ sp.slot (tr.time j) := by omega
     nlinarith
   -- live through `s + 2 ≤ e`; `he` covers a liveness premise on the expiry
-  refine ⟨by have := sp.two_le_k; have := he; dsimp; omega, hR,
+  refine ⟨show sp.slot _ ≤ e by omega, hR,
     SA.viableAncestor_self (Compose.frameOK_state hp.run.toLocalRun hy j) hR hcandidate.symm, ?_⟩
   intro ell hcall
   by_cases hshort : sp.slot (tr.time j) ≤ s + 1

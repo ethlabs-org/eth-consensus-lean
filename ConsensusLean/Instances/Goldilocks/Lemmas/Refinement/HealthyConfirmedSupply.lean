@@ -149,7 +149,7 @@ theorem operational_update_read_after
         hlock' (B := P) rfl (fun e hje heJ => by
           have he := htime e (by omega) heJ
           refine ⟨?_, hPe e (by omega) heJ.le, hva e (by omega) heJ.le, ?_⟩
-          · simp only [he, hslot]; have := sp.two_le_k; omega
+          · show sp.slot _ ≤ ex; simp only [he]; omega
           · intro ell' _; left; simp only [he, hslot]; omega)
       have hlive : P ∈ SA.liveLockBlocks sp (tr.state y J).ac.locks
           (Node.frame (tr.state y J)) (sp.ts u + 6 * sp.Δ) := by
