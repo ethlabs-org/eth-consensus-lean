@@ -584,9 +584,20 @@ Modelling choices:
   `4Δ`.
 - **Witnesses** (`ConsensusLeanTest/GoldilocksHealing`): kind (a) for HR.2's premises and the phase vocabulary, and
   for `Catch` and `NoRestartAfter` with the run laws, and for `Healthy(0)` with `Catch` and `NoRestartAfter` on the
-  infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. No witness over Goldilocks
-  traces for `HSShared`, `PropPlus` or the run statements (HR.1, HR.3, HR.4, H.2 (run), H.3, H.4), and none over
-  driven SA traces for H.1/H.2: they need an infinite live run of the Goldilocks SA (a follow-up).
+  infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. The premises over a
+  Goldilocks trace are witnessed on the one-validator infinite tick run (`n = 1`, `f = 0`: consistent, not met with
+  faults): `ConsensusLeanTest/GoldilocksWitness` (`tickRun_goldilocksRun`, `tickRun_healthy`, `tickRun_catch`,
+  `tickRun_hsShared`, `tickRun_propPlus`) and `ConsensusLeanTest/GoldilocksWitnessRun` (`tickRun_isReset`,
+  `tickRun_bridgeAt`, with `Geo` vacuous). Not provided (a follow-up): a run witness (kind (b)) that applies them to
+  HR.1, HR.3, HR.4, H.2 (run), H.3 and H.4, and premise witnesses over driven SA traces for H.1/H.2 (H.1 needs an
+  infinite live run of the Goldilocks SA with trivial frames; the tick run's frames are not trivial).
+- **Whole-run statements and Accepted**: `Healthy(g)` (`HealthyRun`, `Spec/Run/Premises`) keeps every honest
+  validator awake on `[max(g, 0), ∞)`, and a run's awake function lies in its horizon (`Node.LocalRun.awake_in_horizon`),
+  so a run satisfying `Healthy(g)` with an honest validator is infinite. The trace of a model run is clamped to
+  `[0, horizon]` (`awakeAt`, `Statements/Refinement/Trace`). So the whole-run Healing statements (HR.1, HR.3, HR.4,
+  H.2 (run), H.3, H.4 and HS.1–HS.4) never apply to Accepted's runs, and none of them is in Accepted's closure:
+  Accepted's chain uses the finite-horizon forms (`ResetPremisesUpTo`, `HSSharedUpTo`, `GSTRunUpTo`) and the
+  frame-window route (`Lemmas/Healing/M1`), not the phase service.
 
 ## Regimes
 

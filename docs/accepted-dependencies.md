@@ -1,9 +1,11 @@
 # Accepted proof dependencies
 
-This is the integration ledger for the Goldilocks `Accepted` skeleton.
-The master status view records the complete compiled endpoint leaf inventory;
-mathematical proof completion remains **OPEN**. Historical/planned sections below
-are not elaborated evidence merely because a downstream theorem uses `sorry`.
+This is the integration ledger for the Goldilocks `Accepted` endpoint.
+The master status view records the complete compiled endpoint leaf inventory.
+`Accepted` is **proved and certified** (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips; [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) row 11-03 12:06): `acceptedEndpoint` is in `Solution`
+at the standard axioms [propext, Classical.choice, Quot.sound]. Historical/planned
+sections below record how the endpoint was wired; an OPEN in them is past status,
+not current evidence.
 
 ## Completion gate
 
@@ -19,11 +21,13 @@ are not elaborated evidence merely because a downstream theorem uses `sorry`.
 5. Snapshot, import boundaries and trusted-surface review pass before landing.
    The incomplete skeleton stays outside Main/Solution's sorry-free closure.
 
-Current status: **endpoint skeleton wired; mathematical proofs OPEN**. Every
-Accepted field now assembles named suppliers rather than containing a direct
-adapter sorry. The healing coefficient remains a direct OPEN leaf. The master
-view below is compiled reachability, not proof closure or evidence that every
-joint supplier has been decomposed into its eventual proof obligations.
+Current status: **proved and certified** (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips; [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) row 11-03 12:06). Every Accepted field
+assembles named, proved suppliers, with no `sorry` in the closure of `Refinement.Accepted`
+or `Solution`. The healing coefficient is closed: `accepted_heal` is the fixed
+`catchUp + healMargin` (4078bc74). The master view below is compiled reachability. The
+Healing statements outside that closure (`docs/roadmap.md`) are whole-run statements over
+infinite runs, which Accepted's finite model runs never satisfy (`docs/goldilocks-mapping.md`
+§"Healing"), so Accepted uses the finite-horizon `…UpTo` forms instead.
 
 ## Master status: every Accepted field, grouped by leaf owner
 
