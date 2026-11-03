@@ -48,6 +48,7 @@ public import ConsensusLeanTest.GoldilocksHalfCommitteeFG
 public import ConsensusLeanTest.GoldilocksHalfCommitteeNode
 public import ConsensusLeanTest.GoldilocksHalfCommitteeRun
 public import ConsensusLeanTest.GoldilocksHalfCommitteeSetup
+public import ConsensusLeanTest.GoldilocksHalfCommitteeSync
 public import ConsensusLeanTest.GoldilocksHeadsImplied
 public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksHealingWitness
