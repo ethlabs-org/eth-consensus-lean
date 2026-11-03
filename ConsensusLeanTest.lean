@@ -23,6 +23,7 @@ public import ConsensusLeanTest.GoldilocksFaultyWitness
 public import ConsensusLeanTest.GoldilocksFinalWitness
 public import ConsensusLeanTest.GoldilocksFinalityGateWitness
 public import ConsensusLeanTest.GoldilocksFrame
+public import ConsensusLeanTest.GoldilocksFrameRejection
 public import ConsensusLeanTest.GoldilocksHealing
 public import ConsensusLeanTest.GoldilocksInclusionWitness
 public import ConsensusLeanTest.GoldilocksNode
