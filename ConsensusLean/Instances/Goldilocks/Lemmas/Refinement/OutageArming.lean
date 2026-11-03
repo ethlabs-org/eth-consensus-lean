@@ -141,11 +141,7 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
        (∃ L f, ℓ.frame.Anc origin L ∧
           (⟨L.root, Compose.coverLabel Q.params Q.start, f,
             Compose.coverLabel Q.params Q.start + Q.params.k⟩ : SA.Lock) ∈
-            (Q.trace.state w (c + 1)).ac.locks) ∨
-       (∃ l ∈ (Q.trace.state w (c + 1)).ac.locks,
-          l.slot = Compose.coverLabel Q.params Q.start + 1 ∧
-          Compose.coverLabel Q.params Q.start + Q.params.k ≤ l.expiry ∧
-          ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc origin B))
+            (Q.trace.state w (c + 1)).ac.locks))
 
 /-- **Arming** (§§1–7): every ready source at `T` within the horizon is armed. -/
 theorem outage_arming (Q : OutageQuery S A V)

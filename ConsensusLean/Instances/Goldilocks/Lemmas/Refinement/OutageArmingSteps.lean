@@ -823,8 +823,7 @@ slot's votes are delivered by `t_s + 2Δ ≤ b` but which may itself be after `b
 compatible with `C`, (VA) `C` a candidate when `Σ.F ⪯ C`, and (N) for the `Hold` votes of slot
 `s + 1` before it, it has root cover or stores a lock of slot `s` and expiry `s + k` above `C`.
 Under independent writes the slow lock is written even when the result is vetoed, because `C`
-itself conflicts with no live lock (`cover_gate_veto_above`); so the third disjunct (a post-update
-lock of slot `s + 1`) is never needed. It is kept for the interface of `OutageArming.lockCover`. -/
+itself conflicts with no live lock (`cover_gate_veto_above`). -/
 theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
@@ -844,10 +843,8 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
         (∀ x ∈ Hold, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s + 1 → j < c →
           SA.VoteExtends (tr.HonestBlocks H) e.msg C) →
         Anc (tr.HonestBlocks H) C (tr.state w c).fg.F ∨
-        (∃ L f, ℓ.frame.Anc C L ∧
-          (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) ∨
-        (∃ l ∈ (tr.state w (c + 1)).ac.locks, l.slot = s + 1 ∧ s + sp.k ≤ l.expiry ∧
-          ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc C B)) := by
+        ∃ L f, ℓ.frame.Anc C L ∧
+          (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨c, ℓ, hu, hfirst, hnr, hP⟩ := armed_first_update hrun hnc hinv hsync hfb hC hw haw hks
     hσs ha hsz hsb
@@ -878,7 +875,7 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   -- independent writes: the slow lock is written on the unvetoed part of the path, vetoed or not
   obtain ⟨L, -, hCL, hl⟩ := SA.updateConfirmation_slow_lock_effective_of hΦ hD hnvC hCt hCg
     hCD hrows hlive (hVA hFC)
-  exact Or.inr (Or.inl ⟨L, false, hCL, (locks_after_update hrun hnc hw hu).symm ▸ hl⟩)
+  exact Or.inr ⟨L, false, hCL, (locks_after_update hrun hnc hw hu).symm ▸ hl⟩
 
 end Consensus.Goldilocks.Compose
 

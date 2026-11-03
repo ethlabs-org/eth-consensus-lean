@@ -79,18 +79,15 @@ def PrevBase (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
       (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks
 
 /-- The base of the label-`j₀` protection at `x`'s first label-`j₀` update at cut `c`
-(`OutageArming.lockCover`): root cover, a fresh label-`j₀` lock of expiry `j₀ + k` on a frame
-block above `P`, or (the veto branch) an own label-`(j₀ + 1)` lock after the update, of expiry at
-least `j₀ + k`, on a frame block above `P`. -/
+(`OutageArming.lockCover`): root cover, or a fresh label-`j₀` lock of expiry `j₀ + k` on a frame
+block above `P` (independent writes: also when the result is vetoed). -/
 def CoverBase (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (P : SA.Blk sp.n (List (FG.Att sp.n)))
     (j : Nat) (x : Fin sp.n) (c : Nat) (ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)) :
     Prop :=
   Anc (tr.HonestBlocks H) P (tr.state x c).fg.F ∨
-    (∃ L f, ℓ.frame.Anc P L ∧
-      (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) ∨
-    (∃ l ∈ (tr.state x (c + 1)).ac.locks, l.slot = j + 1 ∧ j + sp.k ≤ l.expiry ∧
-      ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc P B)
+    ∃ L f, ℓ.frame.Anc P L ∧
+      (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks
 
 theorem prevBase_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
@@ -104,10 +101,8 @@ theorem coverBase_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} :
     CoverBase tr H P j x c ℓ ↔ Anc (tr.HonestBlocks H) P (tr.state x c).fg.F ∨
-      (∃ L f, ℓ.frame.Anc P L ∧
-        (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) ∨
-      (∃ l ∈ (tr.state x (c + 1)).ac.locks, l.slot = j + 1 ∧ j + sp.k ≤ l.expiry ∧
-        ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧ ℓ.frame.Anc P B) :=
+      ∃ L f, ℓ.frame.Anc P L ∧
+        (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
   Iff.rfl
 
 /-- **The premise package of the outage lock module** (card §2), at trace level. -/
@@ -190,17 +185,8 @@ expiry at least `m` on a frame block above `P` (`FloorAt`), or root cover (`P �
 def Prot (D : OutageLockPremises tr H proposer dg) (x : Fin sp.n) (i j m : Nat) : Prop :=
   FloorAt tr x i D.P j m ∨ Anc (tr.HonestBlocks H) D.P (tr.state x i).fg.F
 
-/-- The protection of the cover through slot `j₀ + k`: label `j₀`, or the veto replacement of
-label `j₀ + 1`. -/
-def Prot₀ (D : OutageLockPremises tr H proposer dg) (x : Fin sp.n) (i : Nat) : Prop :=
-  Prot D x i D.j₀ (D.j₀ + sp.k) ∨ FloorAt tr x i D.P (D.j₀ + 1) (D.j₀ + sp.k)
-
 theorem prot_iff {D : OutageLockPremises tr H proposer dg} {x : Fin sp.n} {i j m : Nat} :
     Prot D x i j m ↔ FloorAt tr x i D.P j m ∨ Anc (tr.HonestBlocks H) D.P (tr.state x i).fg.F :=
-  Iff.rfl
-
-theorem prot₀_iff {D : OutageLockPremises tr H proposer dg} {x : Fin sp.n} {i : Nat} :
-    Prot₀ D x i ↔ Prot D x i D.j₀ (D.j₀ + sp.k) ∨ FloorAt tr x i D.P (D.j₀ + 1) (D.j₀ + sp.k) :=
   Iff.rfl
 
 /-- The vote half of the invariant at the cuts before `i`: (H) and S5V. -/
@@ -236,11 +222,12 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
     PrevBase tr H D.P (D.j₀ - 1) x c ℓ →
     ∀ k, c < k → k ≤ i → sp.slot (tr.time (k - 1)) ≤ D.j₀ - 1 + sp.k →
       Prot D x k (D.j₀ - 1) (D.j₀ - 1 + sp.k)
-  /-- (Prot₀) `A₀` keeps its label-`j₀` lock, its label-`(j₀ + 1)` veto replacement, or root
-  cover, through slot `j₀ + k`, after a label-`j₀` update with the cover base. -/
+  /-- (Prot) `A₀` keeps its label-`j₀` lock, or root cover, through slot `j₀ + k`, after a
+  label-`j₀` update with the cover base. -/
   protCover : ∀ x ∈ D.A₀, ∀ c ℓ, SA.UpdateAt tr.projAC x c D.j₀ ℓ →
     CoverBase tr H D.P D.j₀ x c ℓ →
-    ∀ k, c < k → k ≤ i → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k → Prot₀ D x k
+    ∀ k, c < k → k ≤ i → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k →
+      Prot D x k D.j₀ (D.j₀ + sp.k)
 
 /-- The S5 step that the lock module consumes (856c1db, restated cut-indexed; read-back F2): from
 the invariant at `i`, the votes of cut `i` past the lock lifetime have heads compatible with

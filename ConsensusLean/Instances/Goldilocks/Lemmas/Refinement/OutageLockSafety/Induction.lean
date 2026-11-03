@@ -160,9 +160,7 @@ theorem cohort_vote_extends {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n}
       linarith
     have hp := hinv.protCover x hx c ℓ hu (hinv.cover_base hx hc.le hu hcond) i hc le_rfl
       (by omega)
-    rcases prot₀_iff.1 hp with hp | hp
-    · exact hinv.vote_extends_of_prot hxH (by omega) (by omega) hva hp hv
-    · exact hinv.vote_extends_of_prot hxH (by omega) (by omega) hva (prot_iff.2 (Or.inl hp)) hv
+    exact hinv.vote_extends_of_prot hxH (by omega) (by omega) hva hp hv
 
 end OutageLockInv
 
@@ -202,23 +200,20 @@ private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg) {x : 
   exact prot_of_lock D hx hu hF hl rfl le_rfl hL rfl hPL
 
 /-- **The base of the cover protection** (§7.3): the cover base at `x`'s label-`j₀` update at cut
-`c`, with the caches at `c` and `c + 1`, gives `Prot₀` at `c + 1`. -/
-private theorem prot₀_of_coverBase (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
+`c`, with the caches at `c` and `c + 1`, gives the label-`j₀` protection at `c + 1`. -/
+private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {c : Nat} {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hFc : Compatible (tr.HonestBlocks H) (tr.state x c).fg.F D.P)
     (hF : Compatible (tr.HonestBlocks H) (tr.state x (c + 1)).fg.F D.P)
-    (hbase : CoverBase tr H D.P D.j₀ x c ℓ) : Prot₀ D x (c + 1) := by
+    (hbase : CoverBase tr H D.P D.j₀ x c ℓ) : Prot D x (c + 1) D.j₀ (D.j₀ + sp.k) := by
   have hxH := D.hA₀ hx
-  have hU := D.coherent
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hFm := Healing.run_F_mono D.hrun.toLocalRun hxH (Nat.le_succ c)
   have hfr : ℓ.frame = Node.frame (tr.state x c) :=
     (D.hrun.cutLaw x hxH c _ (projAC_callAt.1 hu.1)).1
   by_cases hroot : Anc (tr.HonestBlocks H) D.P (tr.state x (c + 1)).fg.F
-  · exact prot₀_iff.2 (Or.inl (prot_iff.2 (Or.inr hroot)))
-  rcases coverBase_iff.1 hbase with hroot₀ | ⟨L, f, hPL, hl⟩ |
-      ⟨l, hl, hls, hle, B, hB, hBr, hPB⟩
+  · exact prot_iff.2 (Or.inr hroot)
+  rcases coverBase_iff.1 hbase with hroot₀ | ⟨L, f, hPL, hl⟩
   · exact absurd (hroot₀.trans hFm) hroot
   · -- a fresh label-`j₀` lock above `P`
     have hFcP : Anc (tr.HonestBlocks H) (tr.state x c).fg.F D.P :=
@@ -229,11 +224,7 @@ private theorem prot₀_of_coverBase (D : OutageLockPremises tr H proposer dg) {
       by_cases hne : D.P = L
       · exact hne ▸ hP
       · exact (hPL.mem hne).2
-    exact prot₀_iff.2 (Or.inl (prot_of_prevBase D hxH hu hF ⟨L, f, hL, hPL, hl⟩))
-  · -- the veto branch: the own label-`(j₀ + 1)` lock after the update, of expiry `≥ j₀ + k`
-    rcases prot_iff.1 (prot_of_lock D hxH hu hF hl hls hle hB hBr hPB) with hfl | hroot'
-    · exact prot₀_iff.2 (Or.inr hfl)
-    · exact absurd hroot' hroot
+    exact prot_of_prevBase D hxH hu hF ⟨L, f, hL, hPL, hl⟩
 
 /-- **The outage lock invariant at every cut** (card §3): from the premise package and the S5
 step at each cut. -/
@@ -345,14 +336,9 @@ theorem outage_lock_inv (D : OutageLockPremises tr H proposer dg) (hS5 : OutageS
       rcases Nat.lt_succ_iff_lt_or_eq.1 hck with hci | rfl
       · have hva := hinv.viable x hxH i le_rfl
         have hF := (hcaches x hxH (i + 1) le_rfl).1
-        rcases prot₀_iff.1 (hinv.protCover x hx c ℓ hu hbase i hci le_rfl
-            (hslot_mono.trans hkK)) with hp | hp
-        · exact prot₀_iff.2 (Or.inl (hinv.prot_step hxH (by omega) hkK hva hF hp))
-        · rcases prot_iff.1 (hinv.prot_step hxH (by omega) (by omega) hva hF
-              (prot_iff.2 (Or.inl hp))) with hp' | hp'
-          · exact prot₀_iff.2 (Or.inr hp')
-          · exact prot₀_iff.2 (Or.inl (prot_iff.2 (Or.inr hp')))
-      · exact prot₀_of_coverBase D hx hu (hinv.caches x hxH c le_rfl).1
+        exact hinv.prot_step hxH (by omega) hkK hva hF (hinv.protCover x hx c ℓ hu hbase i hci
+          le_rfl (hslot_mono.trans hkK))
+      · exact prot_of_coverBase D hx hu (hinv.caches x hxH c le_rfl).1
           (hcaches x hxH (c + 1) le_rfl).1 hbase
 
 end Consensus.Goldilocks.Compose
