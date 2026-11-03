@@ -192,17 +192,6 @@ def JoinedProjection : Prop :=
         (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t)) ∧
       tr.honestAwakeJoined H t = SA.honestAwakeJoined tr.projAC H t
 
-/-- The run statements of milestone Persist, part 1. -/
-structure RunStatements : Prop where
-  eventOrder : EventOrder
-  readyImpliesJoined : ReadyImpliesJoined
-  acProjection : ACProjection
-  fgProjection : FGProjection
-  goldilocksACProjection : GoldilocksACProjection
-  groupStatesReachable : GroupStatesReachable
-  syncProjection : SyncProjection
-  joinedProjection : JoinedProjection
-
 end Consensus.Goldilocks.Compose
 
 end

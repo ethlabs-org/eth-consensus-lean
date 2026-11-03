@@ -22,7 +22,7 @@ FGStore (G1.4) through the run's FG projection:
 * `finalized_safe` (G1.4; `NoColl`, `f < 2q − n`): `Store.finalized_safety` over the FG
   projection (`fg_projection`).
 
-`Proofs/Regimes/Main` assembles R.7 with R.8 (`Outputs`) as `always_statements`. -/
+R.7 and R.8 (`Outputs`) are `Challenge` statements, each proved by its own theorem. -/
 
 namespace Consensus.Goldilocks.Regimes
 

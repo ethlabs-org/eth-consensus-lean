@@ -65,9 +65,6 @@ variable {A : NodeAC P} (tr : RunTrace A)
 /-- Cut `i` is a call of `y` (any label). -/
 def IsCall (y : Fin P.n) (i : Nat) : Prop := ∃ c, tr.CallAt y i c
 
-/-- `y` makes no call at a cut in `[j, i)`. -/
-def NoCallBetween (y : Fin P.n) (j i : Nat) : Prop := ∀ k, j ≤ k → k < i → ¬ tr.IsCall y k
-
 /-- `y` restarts at cut `k` (an `ac_restart` call). -/
 def RestartAt (y : Fin P.n) (k : Nat) : Prop :=
   ∃ ℓ : ACLabel A, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .restart

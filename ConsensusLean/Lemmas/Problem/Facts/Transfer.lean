@@ -45,12 +45,6 @@ theorem Nested.map {g₁ g₂} (h : tr.Nested g₁ g₂) : (tr.map f).Nested g�
   intro v hv i hi
   exact hf (h v hv i hi)
 
-theorem ProtectedUpTo.map {c src dst T b₀ b₁ b} (h : tr.ProtectedUpTo c src dst T b₀ b₁ b) :
-    (tr.map f).ProtectedUpTo c src dst T b₀ b₁ b := by
-  rw [map_eq]
-  intro v hv t ht ht' w hw ha
-  exact hf (h v hv t ht ht' w hw ha)
-
 theorem ProtectedReadyUpTo.map {c src dst T t₀ b} (h : tr.ProtectedReadyUpTo c src dst T t₀ b) :
     (tr.map f).ProtectedReadyUpTo c src dst T t₀ b := by
   rw [map_eq]

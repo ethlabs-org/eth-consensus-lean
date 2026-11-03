@@ -17,7 +17,7 @@ sees (decomposition §2 D, `Frame`):
   viable tree (goldilocks-spec Figure "Goldilocks: locks and unlocking"; a function of `Φ` alone, so
   it is defined here, claims G0.4 (frame));
 * `FrameOK`: a well-formed frame (claims G0.4 (frame));
-* `FrameStep Φ B Φ'` (`Φ ⊑_B Φ'`) and its closure `FrameEvol`: how a frame changes when the FG
+* `FrameStep Φ B Φ'` (`Φ ⊑_B Φ'`): how a frame changes when the FG
   accepts `B` (claims G0.3 (frame)); nothing is said about `fc_root` or `viable_heads`, which a
   contest moves back and forth.
 
@@ -111,11 +111,6 @@ structure FrameStep (Φ : Frame n FGP ACP) (B : Block n FGP ACP) (Φ' : Frame n 
   F'_anc_B : Goldilocks.Anc (insert B Φ.tree) Φ'.F B
   /-- `Φ'.tree` is the blocks of `Φ.tree ∪ {B}` that extend `Φ'.F`. -/
   tree_eq : Φ'.tree = {X | X ∈ insert B Φ.tree ∧ Goldilocks.Anc (insert B Φ.tree) Φ'.F X}
-
-/-- The reflexive-transitive closure of frame steps (`Φ ⊑ Φ'`): equal frames, or a sequence of
-steps `Φ ⊑_{B₁} ⋯ ⊑_{B_k} Φ'`. -/
-def FrameEvol : Frame n FGP ACP → Frame n FGP ACP → Prop :=
-  Relation.ReflTransGen (fun Φ Φ' => ∃ B, FrameStep Φ B Φ')
 
 /-- A sequence of frames that evolves by steps: each frame equals the previous one or is
 reached from it by one step. -/

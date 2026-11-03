@@ -43,16 +43,6 @@ def ReadySafe (c : Time) (g : Id) (t₀ : Time) : Prop :=
 def Nested (g₁ g₂ : Id) : Prop :=
   ∀ v ∈ tr.point.honest, ∀ i, i ≤ tr.cuts → tr.read g₁ v i <+: tr.read g₂ v i
 
-/-- Reader `w` is eligible for resilience at `t` (window `[b₀, b₁)`, catch-up
-`c`): it was caught up before the window and stayed awake since (awake
-throughout `[max 0 (b₀ − c − 1), t]`), or it caught up after the window
-(awake throughout `[t − c − 1, t]` with `b₁ ≤ t − c − 1`). Nodes that wake
-during the window are eligible once caught up after it: during the window
-there is no delivery guarantee. -/
-def ResilienceReader (c b₀ b₁ : Time) (w : V) (t : Time) : Prop :=
-  tr.point.AwakeOnClosed w (max 0 (b₀ - c - 1)) t ∨
-    (b₁ ≤ t - c - 1 ∧ tr.point.AwakeOnClosed w (t - c - 1) t)
-
 /-- `tr'` is the prefix of `tr` up to time `b`: the same environment point
 with horizon `b`, the cuts of `tr` through the end of time `b`, and the same
 cut times and reads on them. -/
@@ -61,16 +51,6 @@ structure PrefixOf (tr' tr : Trace V α Id) (b : Time) : Prop where
   cuts : tr'.cuts = tr.endCut b
   cutTime : ∀ i, i ≤ tr'.cuts → tr'.cutTime i = tr.cutTime i
   read : ∀ g v i, i ≤ tr'.cuts → tr'.read g v i = tr.read g v i
-
-/-- Resilience for ready sources at reading times `t ∈ [b₀, b]`: the read of
-`src` at `T` of every node **ready** at `T` is a prefix of the `dst` read at
-`t` of every honest `ResilienceReader`. A node that is awake but not caught up
-at `T` may expose a stale ledger, which nobody must keep (sleepy safety, too,
-restricts only ready readers). -/
-def ProtectedUpTo (c : Time) (src dst : Id) (T b₀ b₁ b : Time) : Prop :=
-  ∀ v, tr.point.Ready c v T → ∀ t, b₀ ≤ t → t ≤ b →
-    ∀ w ∈ tr.point.honest, tr.ResilienceReader c b₀ b₁ w t →
-    tr.readAt src v T <+: tr.readAt dst w t
 
 /-- Recovery for ready sources at reading times `t ∈ [t₀, b]`: the read of
 `src` at `T` of every node ready at `T` is a prefix of the `dst` read at `t`

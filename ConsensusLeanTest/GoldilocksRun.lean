@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
 public import ConsensusLeanTest.GoldilocksNode
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks run model and the run-level Compose statements

@@ -175,10 +175,6 @@ def CallStep (self : Fin P.n) (U : Set A.Blk) (p : A.State × A.Frm × Time) (c 
     (q : A.State × A.Frm × Time) : Prop :=
   p.2.2 ≤ q.2.2 ∧ A.CallOK U p.2.1 q.2.2 c q.2.1 ∧ q.1 = (A.step self p.1 q.2.1 q.2.2 c).1
 
-/-- `s` is a reachable AC state of validator `self`: reachable inside some coherent set. -/
-def Reachable (self : Fin P.n) (s : A.State) : Prop :=
-  ∃ U : Set A.Blk, Coherent U ∧ ∃ Φ t, A.ReachableAt self U s Φ t
-
 /-- A duty head is good at frame `Φ` (requirement 1): it extends `fc_root`, and, when its walk
 starts in the viable tree of its domain, it is in `viable_heads`. -/
 def HeadOK (Φ : A.Frm) (d : DutyHead P.n FGP A.Payload) : Prop :=

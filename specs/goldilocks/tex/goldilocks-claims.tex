@@ -2523,10 +2523,10 @@ F.2 & \texttt{AncAntisymm}, \texttt{AncTotal},
 F.3 & \texttt{DigestDeterminesBlock} & proved
   (\texttt{digest\_determines\_block}) with valid roots and equal
   proposers, as F.3 now states\\
-F.4 & \texttt{Compose.ReadyImpliesJoined} & proved (\texttt{run\_statements})\\
+F.4 & \texttt{Compose.ReadyImpliesJoined} & proved (\texttt{ready\_implies\_joined})\\
 F.5 (schema) & none needed: well-founded induction & ---\\
 F.5 (run) & \texttt{Compose.EventOrder}, over \texttt{Compose.RunOrder} &
-  proved (\texttt{run\_statements})\\
+  proved (\texttt{event\_order})\\
 G0.1 (chain) & \texttt{FG.FGParams.chainState} & definitional (a fold)\\
 G0.1 (store) & \texttt{Store.ChainStateOfChain} & proved
   (\texttt{fg\_store\_local})\\
@@ -2580,7 +2580,7 @@ C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   \texttt{Compose.ACStatesReachable}, \texttt{Compose.FGStatesReachable},
   \texttt{Compose.RecordIsClientRun}, \texttt{Compose.SourcesHeld}; the
   projections of \texttt{Statements/Compose/Run} & proved
-  (\texttt{compose\_node\_statements}, \texttt{run\_statements}); the slot's
+  (\texttt{compose\_node\_statements}, \texttt{ac\_projection}, \texttt{fg\_projection}, \dots); the slot's
   proposer is a run law (C0.5 (b))\\
 A1.3 & \texttt{SA.NextTransfer} & proved (\texttt{acSteps}), per vote under
   its premises, without $\mathsf{Sync}[t_m,\tau]$\\
@@ -2609,7 +2609,7 @@ G1.3 & \texttt{FG.AccountableSafety} & proved (\texttt{fg\_safety})\\
 G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{fg\_store\_trace})\\
 G1.5 & \texttt{Refinement.ConflictsIff}, \texttt{Refinement.EvidenceInView},
   \texttt{Refinement.FinalizedAccountable}; \texttt{Regimes.FinalAccountable}
-  & proved (\texttt{refinement\_statements}, \texttt{always\_statements});
+  & proved (\texttt{refinement\_statements}, \texttt{final\_accountable});
   evidence universes differ, note~2\\
 G1.6 & \texttt{Store.PreviousHeightJustifiedEntry} & proved
   (\texttt{fg\_store\_service})\\
@@ -2688,11 +2688,12 @@ R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
   \texttt{Outage*}, \texttt{Weak*} & retired, never proved;
   \S\ref{sec:l2}\\
 R.7 & \texttt{Regimes.FinalAccountable}, \texttt{Regimes.NonFraming},
-  \texttt{Regimes.FinalizedSafe} & proved (\texttt{always\_statements});
-  evidence scope, note~2\\
+  \texttt{Regimes.FinalizedSafe} & proved (\texttt{final\_accountable},
+  \texttt{non\_framing}, \texttt{finalized\_safe}); evidence scope, note~2\\
 R.8 & \texttt{Regimes.OutputsNested}, \texttt{Regimes.FinalizedMonotone},
-  \texttt{Regimes.OutputsValid} & proved (\texttt{always\_statements});
-  local nesting only\\
+  \texttt{Regimes.OutputsValid} & proved (\texttt{Regimes.outputs\_nested},
+  \texttt{Regimes.finalized\_monotone}, \texttt{Regimes.outputs\_valid}); local
+  nesting only\\
 Baseline & archived \texttt{Consensus.Shape.GoldilocksTarget},
   \texttt{Consensus.Shape.GoldilocksExtraAt} & retired, never the endpoint\\
 Accepted & \texttt{Refinement.AcceptedEndpoint} & proved

@@ -127,15 +127,6 @@ def FinalizedSafe : Prop :=
     ∀ y ∈ H, ∀ z ∈ H, ∀ i j,
       Compatible (tr.HonestBlocks H) (tr.finalizedAt y i) (tr.finalizedAt z j)
 
-/-- The rows of milestone Regimes that hold in every run (R.7, R.8). -/
-structure AlwaysStatements : Prop where
-  outputsNested : OutputsNested
-  finalizedMonotone : FinalizedMonotone
-  outputsValid : OutputsValid
-  finalAccountable : FinalAccountable
-  nonFraming : NonFraming
-  finalizedSafe : FinalizedSafe
-
 end Consensus.Goldilocks.Regimes
 
 end

@@ -1494,12 +1494,8 @@ def Consensus.Trace.ProtectedReadyFrom : {V α Id : Type} → Consensus.Trace V 
   #3453360720/3035344597
 def Consensus.Trace.ProtectedReadyUpTo : {V α Id : Type} → Consensus.Trace V α Id → Consensus.Time → Id → Id → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V α Id} tr c src dst T t₀ b => ∀ (v : V), tr.point.Ready c v T → ∀ (t : Consensus.Time), LE.le.{0} t₀ t → LE.le.{0} t b → ∀ (w : V), tr.point.Ready c w t → List.IsPrefix.{0} (tr.readAt src v T) (tr.readAt dst w t)
   #4253789763/2150941756
-def Consensus.Trace.ProtectedUpTo : {V α Id : Type} → Consensus.Trace V α Id → Consensus.Time → Id → Id → Consensus.Time → Consensus.Time → Consensus.Time → Consensus.Time → Prop := fun {V α Id} tr c src dst T b₀ b₁ b => ∀ (v : V), tr.point.Ready c v T → ∀ (t : Consensus.Time), LE.le.{0} b₀ t → LE.le.{0} t b → ∀ (w : V), Membership.mem.{0, 0} tr.point.honest w → tr.ResilienceReader c b₀ b₁ w t → List.IsPrefix.{0} (tr.readAt src v T) (tr.readAt dst w t)
-  #1635442785/3649010245
 def Consensus.Trace.ReadySafe : {V α Id : Type} → Consensus.Trace V α Id → Consensus.Time → Id → Consensus.Time → Prop := fun {V α Id} tr c g t₀ => And (tr.AgreeAmong (tr.point.Ready c) g t₀) (tr.MonotoneAmong (tr.point.Ready c) g t₀)
   #1181487129/4242182070
-def Consensus.Trace.ResilienceReader : {V α Id : Type} → Consensus.Trace V α Id → Consensus.Time → Consensus.Time → Consensus.Time → V → Consensus.Time → Prop := fun {V α Id} tr c b₀ b₁ w t => Or (tr.point.AwakeOnClosed w (Max.max.{0} 0 (HSub.hSub.{0, 0, 0} (HSub.hSub.{0, 0, 0} b₀ c) 1)) t) (And (LE.le.{0} b₁ (HSub.hSub.{0, 0, 0} (HSub.hSub.{0, 0, 0} t c) 1)) (tr.point.AwakeOnClosed w (HSub.hSub.{0, 0, 0} (HSub.hSub.{0, 0, 0} t c) 1) t))
-  #1263634942/283772442
 def Consensus.Trace.TxLive : {V Id : Type} → Consensus.Trace V Consensus.Tx Id → Consensus.Time → Id → Consensus.Time → Consensus.Time → Prop := fun {V Id} tr c g start D => ∀ (x : Consensus.Tx) (t t' : Consensus.Time), tr.point.SubmittedToSome x t → LE.le.{0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (Max.max.{0} t start) tr.point.env.Δ) D) t' → LE.le.{0} t' tr.point.horizon → ∀ (v : V), tr.point.Ready c v t' → Membership.mem.{0, 0} (tr.readAt g v t') x
   #1258369792/685973100
 def Consensus.convicted : {V O : Type} → [Fintype.{0} V] → (Set.{0} O → V → Prop) → Set.{0} O → Finset.{0} V := fun {V O} [Fintype.{0} V] convicts A => Finset.filter.{0} (convicts A) Finset.univ.{0}
