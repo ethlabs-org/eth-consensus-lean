@@ -19,9 +19,11 @@ variable {sp : SAParams} {FGP : Type} {U : Set (Blk sp.n FGP)}
 /-- A live lock block is the viable ancestor of the block of a stored live lock. -/
 theorem mem_liveLockBlocks {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock} {t : Time}
     {B : Blk sp.n FGP} (hB : B ∈ liveLockBlocks sp L Φ t) :
-    ∃ l ∈ L, ∃ B₀ ∈ Φ.tree, B₀.root = l.block ∧ sp.slot t ≤ l.slot + sp.k ∧
+    ∃ l ∈ L, ∃ B₀ ∈ Φ.tree, B₀.root = l.block ∧ l.LiveAt sp t ∧
       B = Φ.viableAncestor B₀ := by
-  sorry
+  obtain ⟨hBt, l', ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩, hr⟩ := hB
+  exact ⟨l, hl, B₀, hB₀, hB₀r, hlive,
+    hΦ.coherent.1 hBt (viableAncestor_anc hΦ hB₀).1 hr.symm⟩
 
 /-- A live lock block is viable or at or below `fc_root`. -/
 theorem liveLockBlock_candidate {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock} {t : Time}

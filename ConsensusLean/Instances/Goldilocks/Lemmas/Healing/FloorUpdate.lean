@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
@@ -19,14 +20,36 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams}
 
-/-- **A fast update writes a fresh fast lock**: result `P`, no veto, fast selection `P`, the
-lock live at `t`, and `P` its own viable ancestor. -/
+/-- **A fast update writes a fresh fast lock**: result `P`, no veto, fast selection `P`, `t`
+within the new lock's guaranteed life (`slot(t) ≤ u + 2`), and `P` its own viable ancestor. The
+lock's expiry is at least `u + 2`: `u + k` when the path has a slow-test block (B′), else
+`fastExpiry ≥ u + 2`. -/
+theorem fastLock_mem_updateConfirmation_floor {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {u : Nat} {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hva : Φ.viableAncestor P = P)
+    (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
+    (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2) :
+    ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks := by
+  have hk := sp.two_le_k
+  unfold updateConfirmation
+  simp only [hconf]
+  rw [ite_eq_right hnv]
+  dsimp only
+  split_ifs
+  · exact ⟨u + sp.k, by omega, ⟨P.root, u, true, u + sp.k⟩,
+      Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPt, rfl,
+      show sp.slot t ≤ u + sp.k by omega, by rw [hva]⟩
+  · exact ⟨_, le_fastExpiry sp _ Φ t u, ⟨P.root, u, true, _⟩,
+      Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPt, rfl,
+      hlive.trans (le_fastExpiry sp _ Φ t u), by rw [hva]⟩
+
+/-- `fastLock_mem_updateConfirmation_floor` without the expiry bound. -/
 theorem fastLock_mem_updateConfirmation {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {u : Nat} {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hva : Φ.viableAncestor P = P)
     (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
-    (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + sp.k) :
-    ∃ e, (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks := by
-  sorry
+    (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2) :
+    ∃ e, (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks :=
+  let ⟨e, _, h⟩ := fastLock_mem_updateConfirmation_floor hPt hva hconf hnv hfast hlive
+  ⟨e, h⟩
 
 end Consensus.Goldilocks.SA
 

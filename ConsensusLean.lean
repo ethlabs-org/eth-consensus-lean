@@ -36,6 +36,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
@@ -62,6 +63,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Cut

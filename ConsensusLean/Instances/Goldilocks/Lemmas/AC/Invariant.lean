@@ -42,7 +42,11 @@ private theorem optimistic_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Ti
 private theorem updateConfirmation_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).pool = A.pool ∧
       (updateConfirmation sp A Φ t s).blockStamp = A.blockStamp := by
-  sorry
+  unfold updateConfirmation
+  dsimp only
+  split
+  · exact ⟨rfl, rfl⟩
+  · split_ifs <;> first | exact ⟨rfl, rfl⟩ | exact updateLatestConfirmed_fields _ _ _
 
 private theorem admitVote_blockStamp (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).blockStamp = A.blockStamp := by

@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.CoefficientAdapters
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
@@ -779,7 +780,8 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   rcases hX with hX | hX
   · have hdrainNow := hdrain.trans (show Q.params.ts O.slot ≤
         (stateAt S Q.run.2 Q.hn v i).now by linarith)
-    obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi hX
+    obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi
+      (Compose.locksWF_state D.reset.run D.reset.noColl hy C.cut) hX
     rw [← Compose.projAC_state D.reset.run.toLocalRun hy C.cut] at hl
     have hRE := D.reset.clean_source_stored_lock_compatible hc hx hy hsource hs hrb hib hl
       (Healing.drain_stored_lock_label hdrainNow hlive) (hsub hE) hEr
@@ -986,8 +988,9 @@ theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
       (stateAt S Q.run.2 Q.hn v i).now :=
     ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hquery
   intro X hX Y hY
-  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi hX
-  obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := SA.mem_liveLockBlocks hPhi hY
+  have hwf := Compose.locksWF_state D.reset.run D.reset.noColl hy C.cut
+  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hX
+  obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hY
   rw [← Compose.projAC_state D.reset.run.toLocalRun hy C.cut] at hl hm
   have hBE := D.reset.clean_stored_locks_compatible (healthy_repair_catch S A V Q) hy
     (fun q hq => (C.readPoint.1 q hq).trans C.time_bound) hl hm

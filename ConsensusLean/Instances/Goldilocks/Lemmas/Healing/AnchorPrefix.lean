@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -93,13 +93,13 @@ theorem actual_proposal_start_cases {A : SA.SAState sp.n}
 /-- Keep the live preimage before unlock, so its actual writer origin can
 be classified without replacing it by an arbitrary optimistic lock. -/
 theorem unlocked_live_preimage {Phi : SA.Frm sp.n (List (FG.Att sp.n))}
-    (hPhi : FrameOK Phi) {L : Set SA.Lock} {t : Time} {s : Int} {V : SA.View sp.n}
-    {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hPhi : FrameOK Phi) {L : Set SA.Lock} (hwf : SA.LocksWF sp L) {t : Time} {s : Int}
+    {V : SA.View sp.n} {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ SA.liveLockBlocks sp (SA.unlock sp L Phi t s V) Phi t) :
     ∃ l ∈ SA.liveLocks sp L Phi t, ∃ B ∈ Phi.tree, B.root = l.block ∧
       sp.slot t ≤ l.slot + sp.k ∧ Phi.Anc X B := by
   obtain ⟨l', ⟨l, hl, B, hB, hBr, heq⟩, E, hE, hEr, hlive, rfl⟩ :=
-    SA.mem_liveLockBlocks hPhi hX
+    SA.mem_liveLockBlocks_of_wf hPhi (hwf.unlock Phi t s V) hX
   have hs : l'.slot = l.slot := by
     rw [heq]; split_ifs <;> rfl
   refine ⟨l, hl, B, hB, hBr, hs ▸ hlive, ?_⟩
@@ -158,7 +158,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
   · exact Or.inl hroot
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hPhi := (SA.frameIn_of_callAt hr hz hc).1
-  obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ := unlocked_live_preimage hPhi hlock
+  obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ := unlocked_live_preimage hPhi (SA.locksWF_state hr hz i) hlock
   have hslot : sp.slot (tr.time i) = p := by
     rw [hti]
     exact SA.slot_of_mem sp p le_rfl (by

@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -1385,7 +1386,8 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
   have hlk : ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
       Anc (tr.HonestBlocks H) B P := by
     intro B hB
-    obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks hPhi.1 hB
+    obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi.1
+      (SA.castAt_readPoint_locksWF hac.localRun hy hc) hB
     have hslot := (SA.castAt_spec hac.localRun hy hc).2.1
     have hB₀P := hframe.read_locks_below_of_earlier_heads hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdesignated hactual hPs hy hc hes hmargin hIH hl
