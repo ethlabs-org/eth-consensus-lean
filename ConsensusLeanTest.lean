@@ -7,6 +7,7 @@ public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLeanTest.GoldilocksACOptimisticWitness
 public import ConsensusLeanTest.GoldilocksAcceptance
+public import ConsensusLeanTest.GoldilocksAccountableTightness
 public import ConsensusLeanTest.GoldilocksAggregationWitness
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
