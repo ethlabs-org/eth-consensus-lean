@@ -33,6 +33,24 @@ theorem frameKey_def {P : Params} {ACP : Type} (st : Store P ACP) : frameKey st 
   unfold frameKey
   rfl
 
+/-- The merge map `φ(3h + c) = 2h + c` (`c < 3`). It identifies `3h + 2` (contest at `h`) with
+`3(h + 1)` (gap at `h + 1`): both frames have floor `h`, root `Σ.F` and no `J` constraint. -/
+def keyMerge (n : Nat) : Nat := 2 * (n / 3) + n % 3
+
+theorem keyMerge_mono {m n : Nat} (h : m ≤ n) : keyMerge m ≤ keyMerge n := by
+  unfold keyMerge
+  omega
+
+/-- The merged frame key `κ′ = φ(κ)`. For `h_max ≥ 1` it is `2·floor + 2 + [kind J]`, so a
+contest at `h` and a gap at `h + 1` have the same key. -/
+noncomputable def frameKey' {P : Params} {ACP : Type} (st : Store P ACP) : Nat :=
+  keyMerge (frameKey st)
+
+theorem frameKey'_def {P : Params} {ACP : Type} (st : Store P ACP) :
+    frameKey' st = keyMerge (frameKey st) := by
+  unfold frameKey'
+  rfl
+
 section Store
 
 variable {P : Params} {ACP : Type} {a b : Store P ACP}
@@ -61,6 +79,26 @@ theorem frameKey_eq_floor (h : frameKey a = frameKey b) :
   have hc := frameKey_eq_contest h
   unfold Store.headHeightFloor
   split_ifs <;> first | omega | tauto
+
+theorem frameKey'_bounds {HZ : Nat} (h1 : HZ ≤ a.hmax) (h2 : a.hmax ≤ HZ + 1) :
+    2 * HZ ≤ frameKey' a ∧ frameKey' a ≤ 2 * HZ + 4 := by
+  have := frameKey_bounds a
+  unfold frameKey' keyMerge
+  omega
+
+/-- Equal merged keys give equal `head_height_floor` and equal root kind. The contest flag and
+`h_max` can differ. -/
+theorem frameKey'_eq_floor_kind (ha : 1 ≤ a.hmax) (hb : 1 ≤ b.hmax)
+    (h : frameKey' a = frameKey' b) :
+    a.headHeightFloor = b.headHeightFloor ∧
+      ((a.hmax = a.hj + 1 ∧ ¬a.Contest) ↔ (b.hmax = b.hj + 1 ∧ ¬b.Contest)) := by
+  classical
+  unfold frameKey' keyMerge at h
+  rw [frameKey_def, frameKey_def] at h
+  unfold Store.headHeightFloor
+  by_cases ca : a.Contest <;> by_cases cb : b.Contest <;>
+    by_cases ka : a.hmax = a.hj + 1 <;> by_cases kb : b.hmax = b.hj + 1 <;>
+    (simp [ca, cb, ka, kb] at h ⊢) <;> omega
 
 end Store
 
@@ -174,6 +212,52 @@ theorem F_anc_of_hmax_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
   rw [store_eq_fg hrun hy, store_eq_fg hrun hz] at h
   exact h hX hF hXF.symm hW hstrict
 
+/-- With `h_max` fixed, `h_j` and `Σ.J` stay at `h_max − 1` once there. -/
+theorem kind_persist (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} (hij : i ≤ j) (hm : (tr.state y i).fg.hmax = (tr.state y j).fg.hmax)
+    (hb : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1) :
+    (tr.state y j).fg.hj = (tr.state y i).fg.hj ∧ (tr.state y j).fg.J = (tr.state y i).fg.J := by
+  have h1 := hj_mono hrun hy hij
+  have h2 := hj_lt_hmax hrun hy j
+  have he : (tr.state y j).fg.hj = (tr.state y i).fg.hj := by omega
+  exact ⟨he, J_eq_of_hj_eq_run hrun hnc hf hy hy he⟩
+
+/-- FI(i) at one node: with `h_max` fixed, a contest stays. -/
+theorem contest_persist (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} (hij : i ≤ j) (hm : (tr.state y i).fg.hmax = (tr.state y j).fg.hmax)
+    (hc : (tr.state y i).fg.Contest) : (tr.state y j).fg.Contest := by
+  obtain ⟨hb, W, hW, -, hWh, hJW⟩ := hc
+  obtain ⟨hjj, hJ⟩ := kind_persist hrun hnc hf hy hij hm hb
+  have hWj : W ∈ (tr.state y j).fg.tree := Compose.tree_mono hrun.toLocalRun hy hij hW
+  have hσ := σ_eq_honest hrun hnc hy hy hWj hW
+  refine ⟨by omega, W, hWj, ?_, by rw [hσ]; omega, ?_⟩
+  · exact store_anc_of_honest_anc hrun hnc hy
+      (F_anc_of_hmax_le hrun hnc hf hy hy hWj (by rw [hσ]; omega)) hWj
+  · intro hJW'
+    rw [hJ] at hJW'
+    exact hJW (store_anc_of_honest_anc hrun hnc hy
+      (hJW'.mono fun X hX => ⟨y, hy, j, hX⟩) hW)
+
+/-- **MONO (§23.1).** The frame key of an honest store does not decrease along its cuts. -/
+theorem frameKey_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} (hij : i ≤ j) :
+    frameKey (tr.state y i).fg ≤ frameKey (tr.state y j).fg := by
+  have hmx := hmax_mono hrun.toLocalRun hy hij
+  have hji := hj_mono hrun hy hij
+  have hlt := hj_lt_hmax hrun hy j
+  rcases lt_or_eq_of_le hmx with hl | he
+  · have h1 := frameKey_bounds (tr.state y i).fg
+    have h2 := frameKey_bounds (tr.state y j).fg
+    change (tr.state y i).fg.hmax < (tr.state y j).fg.hmax at hl
+    omega
+  · have hC := contest_persist hrun hnc hf hy hij he
+    change (tr.state y i).fg.hmax = (tr.state y j).fg.hmax at he
+    unfold frameKey
+    split_ifs <;> first | omega | tauto
+
 /-- Equal keys at two honest cuts in kind J give equal `Σ.J`. -/
 theorem frameKey_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
@@ -189,6 +273,29 @@ theorem frameKey_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
     unfold frameKey at h
     split_ifs at h <;> omega
   exact J_eq_of_hj_eq_run hrun hnc hf hy hz (by omega)
+
+/-- **MONO′.** The merged key of an honest store does not decrease along its cuts. -/
+theorem frameKey'_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H)
+    {i j : Nat} (hij : i ≤ j) :
+    frameKey' (tr.state y i).fg ≤ frameKey' (tr.state y j).fg :=
+  keyMerge_mono (frameKey_mono hrun hnc hf hy hij)
+
+/-- Equal merged keys at two honest cuts in kind J give equal `Σ.J`. -/
+theorem frameKey'_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
+    {i m : Nat} (h : frameKey' (tr.state y i).fg = frameKey' (tr.state z m).fg)
+    (hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧ ¬(tr.state y i).fg.Contest) :
+    (tr.state y i).fg.J = (tr.state z m).fg.J := by
+  classical
+  have h1 := hj_lt_hmax hrun hy i
+  have h2 := hj_lt_hmax hrun hz m
+  obtain ⟨hfl, hkd⟩ := frameKey'_eq_floor_kind (by omega) (by omega) h
+  have hk' := hkd.1 hk
+  apply J_eq_of_hj_eq_run hrun hnc hf hy hz
+  unfold Store.headHeightFloor at hfl
+  simp [hk.2, hk'.2] at hfl
+  omega
 
 end Consensus.Goldilocks.Healing
 
