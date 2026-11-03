@@ -206,7 +206,7 @@ Goldilocks is Goldfish with locks.  The name also says what the locks are
 for.  Goldfish counts only the votes of one slot: it remembers too little
 to keep a confirmed block when votes are missing.  A fork choice that
 counts the latest vote of every validator, with no limit of age,
-remembers too much.  A lock holds a confirmed block for about $k$~slots and
+remembers too much.  A lock holds a confirmed block for two to $k$~slots and
 then expires: a memory that is neither too short nor too long.  The name
 also fits the three tips of the chain.  The head is the newest, and it can
 still change.  The finalized tip cannot change, but it comes late.  The
@@ -378,9 +378,12 @@ The parameters are these.
 \begin{itemize}
 \item $R\geq\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$ slots per round.  This
   is at least~$2$, because $6\Delta+\Delta_F>4\Delta$.
-\item The slow window of $k\geq2$ slots.  A lock that the confirmation
-  update or the optimistic confirmation of slot~$s$ writes is a lock of
-  slot~$s$: it lives until $t_{s+k+1}$, the start of slot~$s+k+1$.
+\item The slow window of $k\geq2$ slots and the fast increment $c\geq2$
+  slots.  A lock that the confirmation update or the optimistic
+  confirmation of slot~$s$ writes is a lock of slot~$s$.  Its expiry~$e$,
+  fixed when it is written, has $s+2\leq e\leq s+k$
+  (Section~\ref{sec:sa-locks}): the lock lives until $t_{e+1}$, the start
+  of slot~$e+1$, and so at the latest until $t_{s+k+1}$.
 \item The FG window $K_W=2$ and the timeout delay
   $\delta_{\mathrm{t}}\geq x+c_F+k_F$ slots (Section~\ref{sec:fg-state}),
   with $c_F=\lceil(6\Delta+\Delta_F)/(4\Delta)\rceil$, the least~$R$, the
@@ -524,7 +527,7 @@ $\timestamp[x]$ & the time at which the AC accepted the vote or block~$x$;
 $\savedConfirmation[s]$ & the result of the slot-$s$ update, a block
   or~$\bot$, also when a lock vetoes it & \textsc{update\_\allowbreak confirmation} &
   the slow test & reset\\
-$\locks$ & the locks $(B,j,f)$: a block, the slot of its confirmation and the fast bit &
+$\locks$ & the locks $(B,j,f,e)$: a block, the slot of its confirmation, the fast bit and the expiry &
   \textsc{update\_\allowbreak confirmation}, \textsc{optimistic\_\allowbreak confirmation}, \textsc{try\_\allowbreak vote}, \fname{ac\_proposal} &
   anchor, veto, unlocking, \fname{ac\_to\_fg} & kept\\
 $\latestConfirmed$ & the stored confirmed block, for the confirmed tip &
@@ -750,24 +753,48 @@ awake nodes and restarts.
 
 \subsection{Locks}\label{sec:sa-locks}
 
-\emph{Locks.}  $\AC.\locks$ is a set of locks $(B,j,f)$: a block, the
-slot~$j$ of the confirmation that wrote it, and the fast bit~$f$.  A lock with $f=\mathsf{true}$ is a
+\emph{Locks.}  $\AC.\locks$ is a set of locks $(B,j,f,e)$: a block, the
+slot~$j$ of the confirmation that wrote it, the fast bit~$f$, and the
+expiry~$e$, the last slot of its life.  A lock with $f=\mathsf{true}$ is a
 \emph{fast lock}: the lock of a fast or an optimistic confirmation
-(Section~\ref{sec:sa-confirmation}).  Only $\Call{ac\_to\_fg}{}$ reads the
-bit.  A lock is \emph{live} when $\slot(t)\leq j+k$ and $B\in\Fr.\tree$.  This lock
+(Section~\ref{sec:sa-confirmation}).  Only $\Call{ac\_to\_fg}{}$ and
+$\Call{fast\_expiry}{}$ read the bit.  A lock is \emph{live} when
+$\slot(t)\leq e$ and $B\in\Fr.\tree$.  This lock
 is not the finality lock $\Lambda.\mathsf{lock}[h]$ of the record.
 
 \emph{Lifetimes.}  A \emph{lock of slot~$j$} is a lock with the slot~$j$:
-it lives through slot~$j+k$ and is not live from $t_{j+k+1}$ on.  The
+it lives through slot~$e$, its expiry, and is not live from $t_{e+1}$ on.  The
 optimistic confirmation of slot~$j$ and the confirmation update of
 slot~$j$ write the locks of slot~$j$ (Section~\ref{sec:sa-schedule}).  No
-later step changes the slot of a lock.  So a lock expires only at the
+later step changes the slot or the expiry of a lock.  So a lock expires only at the
 start of a slot, and no lock expires strictly after~$t_m$ and at or before
 $t_m+\Delta$: for fixed stored locks and a fixed frame, every expiry test
 gives the same result in the vote window of slot~$m$ and at its proposal.
 So expiry alone cannot make an early vote keep a lock that the vote at
 $t_m+\Delta$ has lost.  Receipts and lock writes can still change the
 effective locks in the window.
+
+\emph{Expiries.}  A write fixes the expiry of each new lock of slot~$s$.
+A lock that is not fast gets $s+k$, the slow window.  A fast lock gets
+$\Call{fast\_expiry}{}$, except where the confirmation update says
+otherwise (Section~\ref{sec:sa-confirmation}): with $E$ the latest
+expiry of the node's live fast locks at the write, the node's \emph{fast
+deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when no fast
+lock is live.  So the fast locks of consecutive slots live longer and
+longer, $c-1$ slots more per slot, up to $k$~slots, and a fast lock after
+a gap lives two slots.  The cap keeps every lock within the slow window:
+without it a run of fast locks would extend the deadline without bound.
+No step shortens an expiry, and a restart keeps the locks
+(Section~\ref{sec:sa-joining}).
+
+\emph{The expiry bounds.}  Every lock that a node stores has
+$j+2\leq e\leq j+k$: every write fixes such an expiry, and no step changes
+it.  The upper bound gives that a lock of slot~$j$ is not live after
+slot~$j+k$, as when every lock lived $k$~slots; the drain of the healing
+argument reads only this.  The
+lower bound gives that a fast lock of slot~$j$ lives through slot~$j+2$,
+which the source window of the FG (Section~\ref{sec:sa-actions}) and the
+protection of a fresh confirmation read.
 
 \emph{Live locks.}  Every rule reads the locks through
 $\Call{live\_locks}{}$, which moves each live lock back to its deepest
@@ -812,10 +839,10 @@ slot~$s+1$, before each vote and each proposal of that slot
 (Section~\ref{sec:sa-actions}).  In a view, the \emph{opponents} of a
 block~$B'$ are the equivocators of its votes and the validators with a
 support vote whose head conflicts with~$B'$.  Unlocking keeps the locks of
-slot~$s$ and of later slots.  It moves each other live lock $(B,j,f)$ back
+slot~$s$ and of later slots.  It moves each other live lock $(B,j,f,e)$ back
 to the deepest~$B'$ with $\Fr.F\preceq B'\preceq B$ for which fewer than
 half of the committee are opponents, or to $\Fr.F$ if there is no such
-block.  It keeps $j$ and~$f$.  With a fixed frame, evidence slot, view and expiry
+block.  It keeps $j$, $f$ and~$e$.  With a fixed frame, evidence slot, view and expiry
 tests, unlocking is idempotent.  A lock that is not live changes no
 decision; unlocking drops such locks when it runs, and a restart can keep
 them.
@@ -852,24 +879,33 @@ pool.
 \vspace{1pt}
 \Function{live\_locks}{$\mathit{locks},\Fr,t$}
   \Comment{each moved back: viable, or at or below $\Fr.\fcroot$}
-  \State \Return $\{(\Call{viable\_ancestor}{\Fr,B},j,f):(B,j,f)\in\mathit{locks},\ \slot(t)\leq j+k,\ B\in\Fr.\tree\}$
+  \State \Return $\{(\Call{viable\_ancestor}{\Fr,B},j,f,e):(B,j,f,e)\in\mathit{locks},\ \slot(t)\leq e,\ B\in\Fr.\tree\}$
 \EndFunction
 \vspace{1pt}
 \Function{conflicts\_with\_lock}{$\mathit{locks},\Fr,t,C$}
   \Comment{$C$ conflicts with a locked block}
-  \State \Return $\mathsf{true}$ if $C$ conflicts with $B_0$ for some $(B_0,j,f)\in\Call{live\_locks}{\mathit{locks},\Fr,t}$, else $\mathsf{false}$
+  \State \Return $\mathsf{true}$ if $C$ conflicts with $B_0$ for some $(B_0,j,f,e)\in\Call{live\_locks}{\mathit{locks},\Fr,t}$, else $\mathsf{false}$
 \EndFunction
 \vspace{1pt}
 \Function{get\_anchor}{$\AC,\Fr,t$}
   \Comment{the deepest viable lock block, or $\Fr.\fcroot$}
-  \State $\mathit{blocks}\gets\{B:(B,j,f)\in\Call{live\_locks}{\AC.\locks,\Fr,t}\}$
+  \State $\mathit{blocks}\gets\{B:(B,j,f,e)\in\Call{live\_locks}{\AC.\locks,\Fr,t}\}$
   \Comment{each viable, or at or below $\Fr.\fcroot$}
   \State \Return the deepest block of $\mathit{blocks}\cup\{\Fr.\fcroot\}$
 \EndFunction
 \vspace{1pt}
+\Function{fast\_expiry}{$\mathit{locks},\Fr,t,s$}
+  \Comment{the expiry of a new fast lock of slot $s$}
+  \State $E\gets\{e:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\mathit{locks},\Fr,t}\}$
+  \Comment{the node's live fast locks}
+  \If{$E=\emptyset$} \State \Return $s+2$ \EndIf
+  \State \Return $\min(s+k,\ \max(s+2,\ \max E+c))$
+  \Comment{at least $s+2$, at most $s+k$}
+\EndFunction
+\vspace{1pt}
 \Function{add\_locks}{$\mathit{locks},\Fr,t,s,N$}
-  \Comment{$N$: pairs $(B,f)$, new locks of slot $s$}
-  \State \Return $\Call{live\_locks}{\mathit{locks}\cup\{(B,s,f):(B,f)\in N\},\Fr,t}$
+  \Comment{$N$: triples $(B,f,e)$, new locks of slot $s$}
+  \State \Return $\Call{live\_locks}{\mathit{locks}\cup\{(B,s,f,e):(B,f,e)\in N\},\Fr,t}$
   \Comment{the caller writes them}
 \EndFunction
 \vspace{1pt}
@@ -880,15 +916,15 @@ pool.
     (v,s,H)\in\mathit{support\_votes}$
   \Statex \hspace{2em}with $H$ conflicting with $B'\}$
   \State $\mathit{new\_locks}\gets\emptyset$
-  \ForAll{$(B,j,f)\in\Call{live\_locks}{\mathit{locks},\Fr,t}$}
+  \ForAll{$(B,j,f,e)\in\Call{live\_locks}{\mathit{locks},\Fr,t}$}
     \If{$j<s$}
       \Comment{a lock of slot $s$ or later keeps its place against these votes}
       \State $B\gets$ the deepest $B'\in\Fr.\tree$ with
         $B'\preceq B$ and $2\,|\mathit{opponents}(B')|<|\committee_{s}|$,
         or $\Fr.F$ if there is none
     \EndIf
-    \State add $(B,j,f)$ to $\mathit{new\_locks}$
-    \Comment{keep the slot and the bit}
+    \State add $(B,j,f,e)$ to $\mathit{new\_locks}$
+    \Comment{keep the slot, the bit and the expiry}
   \EndFor
   \State \Return $\mathit{new\_locks}$
   \Comment{the caller writes them}
@@ -1023,9 +1059,15 @@ previous $k-1$ slots are all in $\Fr.\tree$ and extend the block.  The
 update writes a fast lock on the deepest block~$D$ that passes the fast
 test, if there is one, and a lock that is not fast on the deepest block
 that passes the slow test, when there is no~$D$ or that block is deeper
-than~$D$.  An ancestor has at least
-the support of its descendant, so the blocks of the chain up to~$D$ pass
-the fast test, and a fast lock on~$D$ covers them.  As every new lock, these
+than~$D$.  The lock that is not fast gets the expiry $s+k$.  The fast
+lock on~$D$ gets $s+k$ when a block of the result's chain passes the slow test,
+and $\Call{fast\_expiry}{}$ otherwise (Section~\ref{sec:sa-locks}): a
+fast lock never shortens what the slow test gives.  An ancestor has at
+least the support of its descendant, so the blocks of the chain up to~$D$
+pass the fast test, and a fast lock on~$D$ covers them.  A block that
+passes the slow test is covered for the whole slow window: by the lock
+that is not fast when it is deeper than~$D$, and else by the fast lock
+on~$D$, whose expiry is then $s+k$.  As every new lock, these
 locks are stored moved back (Section~\ref{sec:sa-locks}), so a stored
 block can be a strict ancestor of the selected block, also~$\genesis$.
 
@@ -1037,7 +1079,8 @@ back before that time, and the source moves back with it.  The window is two slo
 update of slot~$j$ writes in slot~$j+1$: its fast lock stays a source
 through the optimistic confirmations of slot~$j+2$, so an optimistic
 confirmation of an ancestor does not take the place of a deeper fast
-lock.  A failed confirmation writes no lock, so it removes no source.  A
+lock.  Every fast lock of slot~$j$ lives through slot~$j+2$
+(Section~\ref{sec:sa-locks}), so it is live for the whole window.  A failed confirmation writes no lock, so it removes no source.  A
 lock that is not fast is never a source.  The record
 $\AC.\latestConfirmed$ serves the user.
 
@@ -1047,7 +1090,8 @@ $t_s+2\Delta$, a joined node checks after each receipt
 block~$B$ passes when at least three quarters of the committee have a
 slot-$s$ vote in its pool whose head extends~$B$, equivocators included,
 and $B$ conflicts with no locked block.  For the deepest passing block,
-the node adds a fast lock of slot~$s$, stored moved back as every new
+the node adds a fast lock of slot~$s$ with the expiry
+$\Call{fast\_expiry}{}$, stored moved back as every new
 lock, and updates $\AC.\latestConfirmed$.
 Its lock is the lock of a fast confirmation; only the trigger differs.  If two conflicting blocks passed,
 at least half of the committee would have votes that extend each of them;
@@ -1114,11 +1158,14 @@ head is behind $\AC.\latestConfirmed$ or on another branch.
     \State $D\gets$ the deepest $B\in\mathit{path}$ with $\mathit{fast}(B)$, or $\bot$ if there is none
     \State $\mathit{lock\_block}\gets$ the deepest $B\in\mathit{path}$ with
       $\mathit{fast}(B)$ or $\mathit{slow}(B)$, or $\bot$ if there is none
-    \State $N\gets\{(D,\mathsf{true})\}$ if $D\neq\bot$, else $\emptyset$
+    \State $e_D\gets s+k$ if $\mathit{slow}(B)$ for some $B\in\mathit{path}$,
+      else $\Call{fast\_expiry}{\AC.\locks,\Fr,t,s}$
+    \Comment{never shorter than the slow window}
+    \State $N\gets\{(D,\mathsf{true},e_D)\}$ if $D\neq\bot$, else $\emptyset$
     \Comment{the fast lock}
     \If{$\mathit{lock\_block}\neq D$}
       \Comment{a slow block, deeper than $D$ or with no $D$}
-      \State $N\gets N\cup\{(\mathit{lock\_block},\mathsf{false})\}$
+      \State $N\gets N\cup\{(\mathit{lock\_block},\mathsf{false},s+k)\}$
     \EndIf
     \State $\AC.\locks\gets\Call{add\_locks}{\AC.\locks,\Fr,t,s,N}$
     \Comment{also when $N=\emptyset$}
@@ -1141,7 +1188,8 @@ head is behind $\AC.\latestConfirmed$ or on another branch.
   \If{$B=\bot$}
     \State \Return
   \EndIf
-  \State $\AC.\locks\gets\Call{add\_locks}{\AC.\locks,\Fr,t,s,\{(B,\mathsf{true})\}}$
+  \State $e\gets\Call{fast\_expiry}{\AC.\locks,\Fr,t,s}$
+  \State $\AC.\locks\gets\Call{add\_locks}{\AC.\locks,\Fr,t,s,\{(B,\mathsf{true},e)\}}$
   \State \Call{update\_latest\_confirmed}{$\AC,\Fr,B$}
 \EndFunction
 \vspace{1pt}
@@ -1348,7 +1396,7 @@ a block on another branch when the confirmations move there.
 \Function{ac\_to\_fg}{$\AC,\Fr,t$}
   \Comment{after each tick}
   \If{not \Call{joined}{$\AC,t$}} \State \Return $\bot$ \EndIf
-  \State $\mathit{cands}\gets\{B:(B,j,\mathsf{true})\in\Call{live\_locks}{\AC.\locks,\Fr,t},\ \slot(t)\leq j+2,\ B\in\filtered(\Fr,\Fr.\tree)\}$
+  \State $\mathit{cands}\gets\{B:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\AC.\locks,\Fr,t},\ \slot(t)\leq j+2,\ B\in\filtered(\Fr,\Fr.\tree)\}$
   \If{$\mathit{cands}=\emptyset$} \State \Return $\bot$ \EndIf
   \State $C\gets$ the deepest block of $\mathit{cands}$
   \Comment{the candidates lie on one chain}
@@ -1375,6 +1423,7 @@ early vote keep a lock that the vote at $t_s+\Delta$ has lost
 slot~$s+k+1$; the slow first transfer reads the votes of that slot
 without the lock.  The cost: with the previous deadline $t_{s+k}+5\Delta$ the
 proposal and the early votes of slot~$s+k+1$ also read the lock, so a lock
+with the expiry $s+k$
 now lives $(4k-2)\Delta$ after its write at $t_s+6\Delta$, not
 $(4k-1)\Delta$, and the outage budget is $\Delta$ smaller.
 
@@ -1528,8 +1577,8 @@ of slots below~$s'$, and a node joined at~$t$ has $s'\leq\slot(t)-1$ and reads
 only votes of slot $\slot(t)-1$ or later, so the order of siblings changes no
 pool or stamp that a joined node reads.  These blocks get that stamp, and the
 votes that they carry and that admission accepts enter the pools with it.
-A lock written before a restart keeps its slot, so a sleep does not
-extend it.  The restart resets $\AC.\votedSlot$.
+A lock written before a restart keeps its slot and its expiry, so a
+sleep does not extend it.  The restart resets $\AC.\votedSlot$.
 A node that restarts in slot~$s$ is not joined in slot~$s$, so it does not
 unlock or vote a second time in that slot.  The replay of the blocks runs
 the optimistic check and the vote check of $\Call{ac\_on\_block}{}$, but

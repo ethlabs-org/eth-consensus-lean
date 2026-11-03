@@ -360,7 +360,8 @@ facts below are about the Goldilocks SA's slots $t_s=4\Delta s$ and belong to
 the SA module.  (a) $\slot(t_s+i\Delta)=s$ for
 $0\leq i<4$; $t_s+5\Delta=t_{s+1}+\Delta$ and $t_s+6\Delta=t_{s+1}+2\Delta$.
 (b) For fixed stored locks and a fixed frame, the expiry test
-$\slot(t)\leq j+k$ is constant on $[t_m,t_{m+1})$; in particular on the vote
+$\slot(t)\leq e$ of a lock of expiry~$e$ (a slot, at most $j+k$ for a lock
+of slot~$j$) is constant on $[t_m,t_{m+1})$; in particular on the vote
 window $[t_m,t_m+\Delta]$.  (c) A node that wakes at $t_j$ is joined from
 $t_{j+1}$, and one that wakes in $(t_j,t_{j+1})$ from $t_{j+2}$; a node that is awake and joined at~$t$ is awake on
 $[\max(0,t_{\slot(t)-1}),t]$ with no restart in $(t_{\slot(t)-1},t]$.  (An
@@ -1539,9 +1540,9 @@ not discharge O.1 (a), the time-scoped O.1 (b), or $T_{\mathrm{rec}}$.
 
 \paragraph{Healing notation.}  $\bar g=\max(g,0)$.  $\Theta=4(k+1)\Delta$
 bounds the time from a lock write to its expiry: a regular write lives
-$(4k-2)\Delta$, an optimistic one at most $4(k+1)\Delta$ (with $n=1$ the
+at most $(4k-2)\Delta$, an optimistic one at most $4(k+1)\Delta$ (with $n=1$ the
 proposer's own vote can make an optimistic write at~$t_j$, which expires at
-$t_{j+k+1}$; AC \S Locks; healing-simple \texttt{t4-recheck.md} W2).
+the latest at $t_{j+k+1}$; AC \S Locks; healing-simple \texttt{t4-recheck.md} W2).
 $\Theta$ is not the client record~$\Lambda$.  For a time~$t$,
 $r_{\mathrm{AC}}(t)$ is the least slot with $t_{r_{\mathrm{AC}}(t)}\geq
 t+4\Delta$ and $s_{\mathrm{AC}}(t)$ the least slot with
