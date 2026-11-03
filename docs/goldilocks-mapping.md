@@ -294,8 +294,8 @@ Modelling choices:
 - **The A1.5 conclusion** "is the block of a fast lock written after `τ`" reads: at or below the block of a fast
   lock of a slot `s'` with `slot(t) ≤ s' + 2` that the node wrote at a cut after `τ` (a lock moves only back).
 - **A1.9** follows the claims at goldilocks `688e287b` (goldilocks#33). The calling node `x` either (i) cast its
-  slot-`(s+1)` vote before the call, with `Φ.F` and `fc_root` compatible with `B` at that vote's call (its
-  unlocking), or (ii) restarted after `t_s`. It is no longer a vacuous "at each unlocking": consensus-lean#66
+  slot-`(s+1)` vote before the call, with `Φ.F` compatible with `B` at that vote's call (its unlocking; the
+  claims also ask `fc_root`), or (ii) restarted after `t_s`. It is no longer a vacuous "at each unlocking": consensus-lean#66
   shows that form is false. C1.1 discharges the disjunction by C0.4.
 - **A1.2** follows the claims' text without a writer-pool hypothesis. That condition (A1.8 (d)) follows from
   `Sync`, because votes admitted from a block's payload are forwarded too (goldilocks#32). Without that forwarding,
