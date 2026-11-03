@@ -40,7 +40,11 @@ theorem Consensus.Goldilocks.Regimes.growSleepy : Consensus.Goldilocks.Regimes.G
 theorem Consensus.Goldilocks.Compose.headExtendsRecord : Consensus.Goldilocks.Compose.HeadExtendsRecord := sorry
 theorem Consensus.Goldilocks.Compose.inclusion : Consensus.Goldilocks.Compose.Inclusion := sorry
 theorem Consensus.Goldilocks.Refinement.acceptedEndpoint : Consensus.Goldilocks.Refinement.AcceptedEndpoint := sorry
+theorem Consensus.Goldilocks.SA.aCHealingStandaloneAll : Consensus.Goldilocks.SA.ACHealingStandaloneAll := sorry
+theorem Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll : Consensus.Goldilocks.SA.ACHealingStandaloneCorollaryAll := sorry
+theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll := sorry
 theorem Consensus.Goldilocks.Healing.cutAndReset : Consensus.Goldilocks.Healing.CutAndReset := sorry
+theorem Consensus.Goldilocks.Healing.phaseCountAll : Consensus.Goldilocks.Healing.PhaseCountAll := sorry
 theorem Consensus.Goldilocks.Healing.resetExistence : Consensus.Goldilocks.Healing.ResetExistence := sorry
 theorem Consensus.Goldilocks.Healing.heightScopedRetention : Consensus.Goldilocks.Healing.HeightScopedRetention := sorry
 theorem Consensus.Goldilocks.Healing.runInclusion : Consensus.Goldilocks.Healing.RunInclusion := sorry

@@ -186,13 +186,31 @@ theorem Consensus.Goldilocks.Refinement.acceptedEndpoint :
     Consensus.Goldilocks.Refinement.AcceptedEndpoint :=
   Consensus.Goldilocks.Refinement.accepted_endpoint
 
-/-! Goldilocks Healing: the run statements (HR.1, HR.3, HR.4, H.2 on the run, H.3, H.4;
-`Healing/Run`) and the phase service (HS.1–HS.4; `Healing/Service`), each a field of its proved
-bundle in `Proofs/Healing/Main`. -/
+/-! Goldilocks Healing: the AC healing statements (H.1, its corollary, H.2; `Healing/AC`), the run
+statements (HR.1–HR.4, H.2 on the run, H.3, H.4; `Healing/Run`) and the phase service (HS.1–HS.4;
+`Healing/Service`), each a field of its proved bundle in `Proofs/Healing/Main`. -/
+
+/-- Goldilocks Healing: `ACHealingStandaloneAll` (H.1). -/
+theorem Consensus.Goldilocks.SA.aCHealingStandaloneAll :
+    Consensus.Goldilocks.SA.ACHealingStandaloneAll :=
+  Consensus.Goldilocks.Healing.healing_ac_statements.standalone
+
+/-- Goldilocks Healing: `ACHealingStandaloneCorollaryAll` (H.1, corollary). -/
+theorem Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll :
+    Consensus.Goldilocks.SA.ACHealingStandaloneCorollaryAll :=
+  Consensus.Goldilocks.SA.ac_healing_standalone_corollary
+
+/-- Goldilocks Healing: `ACInclusionAll` (H.2). -/
+theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll :=
+  Consensus.Goldilocks.Healing.healing_ac_statements.inclusion
 
 /-- Goldilocks Healing: `CutAndReset` (HR.1). -/
 theorem Consensus.Goldilocks.Healing.cutAndReset : Consensus.Goldilocks.Healing.CutAndReset :=
   Consensus.Goldilocks.Healing.healing_run_statements.cutAndReset
+
+/-- Goldilocks Healing: `PhaseCountAll` (HR.2). -/
+theorem Consensus.Goldilocks.Healing.phaseCountAll : Consensus.Goldilocks.Healing.PhaseCountAll :=
+  Consensus.Goldilocks.Healing.healing_run_statements.phaseCount
 
 /-- Goldilocks Healing: `ResetExistence` (HR.3). -/
 theorem Consensus.Goldilocks.Healing.resetExistence :

@@ -345,6 +345,10 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
       c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
     ∀ m, {i | ∃ c c', PhaseAt tr H i m c ∧ PhaseAt tr H (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
 
+/-- **HR.2** (`PhaseCount`) at every parameter and AC payload type (its closed form, the
+comparator's statement, as `FGStoreTrace`). -/
+def PhaseCountAll : Prop := ∀ (P : Params) (ACP : Type), PhaseCount P ACP
+
 /-- **HR.3, reset existence.** In a Goldilocks run under the HS shared premises (`HSShared`,
 with `Healthy(g)`), `Catch(2Δ)` and `Prop⁺(G_p)` (so `κ = 2Δ`, `G = G_p`):
 (a) `c_z > ḡ + 8Δ`, and for every `u ≥ c_z` HS.0 applies at `u` (`Settle(Δ)`): the effective phase

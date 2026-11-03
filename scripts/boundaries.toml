@@ -723,6 +723,7 @@ milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.F
                                 "ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Compose.Service",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted",
+                                "ConsensusLean.Instances.Goldilocks.Statements.Healing.AC",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Healing.Run",
                                 "ConsensusLean.Instances.Goldilocks.Statements.Healing.Service"]
 # Extra targets built by step 1 next to the default targets.

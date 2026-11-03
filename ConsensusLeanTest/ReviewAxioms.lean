@@ -146,8 +146,20 @@ run_meta do
 /-- info: 'Consensus.Goldilocks.Refinement.acceptedEndpoint' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Refinement.acceptedEndpoint
 
+/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneAll
+
+/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll
+
+/-- info: 'Consensus.Goldilocks.SA.aCInclusionAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCInclusionAll
+
 /-- info: 'Consensus.Goldilocks.Healing.cutAndReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Healing.cutAndReset
+
+/-- info: 'Consensus.Goldilocks.Healing.phaseCountAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.phaseCountAll
 
 /-- info: 'Consensus.Goldilocks.Healing.resetExistence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Healing.resetExistence

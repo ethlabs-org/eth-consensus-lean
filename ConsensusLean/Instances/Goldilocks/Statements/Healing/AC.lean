@@ -249,6 +249,20 @@ structure HealingACStatements : Prop where
   standalone : ∀ sp : SAParams, ACHealingStandalone (sp := sp)
   inclusion : ∀ sp : SAParams, ACInclusion (sp := sp)
 
+/-! The closed forms of H.1, its corollary and H.2, for all SA parameters (the comparator's
+statements of this module, as `ACSteps` and `ACBase`); `HealingACStatements` bundles H.1 and H.2,
+and the corollary follows from H.1. -/
+
+/-- **H.1** (`ACHealingStandalone`) for all SA parameters. -/
+def ACHealingStandaloneAll : Prop := ∀ sp : SAParams, ACHealingStandalone (sp := sp)
+
+/-- **H.1, corollary** (`ACHealingStandaloneCorollary`) for all SA parameters. -/
+def ACHealingStandaloneCorollaryAll : Prop :=
+  ∀ sp : SAParams, ACHealingStandaloneCorollary (sp := sp)
+
+/-- **H.2** (`ACInclusion`) for all SA parameters. -/
+def ACInclusionAll : Prop := ∀ sp : SAParams, ACInclusion (sp := sp)
+
 end Consensus.Goldilocks.SA
 
 end
