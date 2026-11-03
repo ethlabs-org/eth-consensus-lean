@@ -338,6 +338,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ResetOfDrain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RunBlocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RunSchedule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy

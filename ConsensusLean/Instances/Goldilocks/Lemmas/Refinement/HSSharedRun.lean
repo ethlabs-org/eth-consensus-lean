@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RunBlocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 
 public section

@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepGlobal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.RunSimulates
 
 public section
 
