@@ -25,6 +25,7 @@ public import ConsensusLeanTest.GoldilocksFinalityGateWitness
 public import ConsensusLeanTest.GoldilocksFrame
 public import ConsensusLeanTest.GoldilocksFrameRejection
 public import ConsensusLeanTest.GoldilocksHealing
+public import ConsensusLeanTest.GoldilocksHealingWitness
 public import ConsensusLeanTest.GoldilocksInclusionWitness
 public import ConsensusLeanTest.GoldilocksNode
 public import ConsensusLeanTest.GoldilocksPersistWitness
