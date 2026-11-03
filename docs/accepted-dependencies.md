@@ -57,8 +57,12 @@ are stated with their proof open (`docs/roadmap.md`), and further statements wer
 closure): kernel replay, `lake comparator --paranoid` with its fixtures and the Solution/test
 audit passed. Step 10 logged 15 lexical sorry/admit matches (14 sorry holes plus an admit-named
 structure field) and skipped the default-target lake check; the good/bad fixtures passed. This is
-distinct from the Accepted Challenge certification, which is pending: it is not certified yet and
-needs its own full tier.
+distinct from the Accepted Challenge certification, which has its own full tier: `check.sh --full` on
+main 2a9b34a11bb9f754a5526593fab6d72366c325a7 passed, 1371 s, zero SKIP lines, recorded on
+[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 02:28): kernel replay of every
+leaf, the default-target lake check, the axiom audit, `lake comparator --paranoid` and the rebuild canary,
+with their controls; 0 sorry/admit. `AcceptedEndpoint` is certified. The seven Healing statements above
+remain stated with their proof open.
 
 | Set | Owner | Direct leaf list |
 |---|---|---|
