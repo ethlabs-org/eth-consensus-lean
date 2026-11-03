@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 
 public section
 
@@ -615,7 +616,16 @@ theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P 
     (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) {c : Nat}
     (hcj : c = j ∨ c = j + 1) :
     ∀ L ∈ liveLockBlocks sp (tr.state y c).locks ℓ.frame (tr.time j), Compatible U L P := by
-  sorry
+  have hr := hS.run.localRun
+  have hU := hr.coherent
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
+  rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
+  have hva : ℓ.frame.Anc (ℓ.frame.viableAncestor B) B := anc_viableAncestor ℓ.frame B
+  obtain rfl : L = ℓ.frame.viableAncestor B :=
+    hΦ.coherent.1 hLt (mem_of_anc hva hB) hLr.symm
+  exact compatible_down hU (hva.mono hΦU)
+    (lock_compatible hS hp hset hexact hvotes hPU hy htj hcj hl
+      (le_trans hlive ((locksWF_state hr hy c).cap hl)) (L := B) (hΦU hB) hBr)
 
 /-! ## The first update at `t_p + 6Δ` -/
 
@@ -856,7 +866,16 @@ private theorem RecP.ofOptimistic {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SA
     {t : Time} (hR : RecP Φ P A)
     (hsel : ∀ B, optimisticSelect sp A Φ t = some B → Compatible Φ.tree B P) :
     RecP Φ P (optimisticConfirmation sp A Φ t) := by
-  sorry
+  unfold optimisticConfirmation
+  rcases h : optimisticSelect sp A Φ t with _ | B
+  · exact hR
+  · have hB := h
+    unfold optimisticSelect at hB
+    dsimp only at hB
+    split_ifs at hB
+    let N : Set (Nat × Bool × Nat) := {(B.root, true, fastExpiry sp A.locks Φ t (sp.slot t))}
+    exact RecP.ulc (A := { A with locks := addLocks sp A.locks Φ t (sp.slot t) N })
+      hR (deepest_mem hB).1.1 (hsel B h)
 
 private theorem RecP.ofTryVote {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {x : Fin sp.n}
     {A : SAState sp.n} {t : Time} (hR : RecP Φ P A)
@@ -876,7 +895,16 @@ private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAStat
     {t : Time} {s : Nat} (hR : RecP Φ P A)
     (hres : ∀ C, getConfirmation sp A Φ s = some C → Compatible Φ.tree C P) :
     RecP Φ P (updateConfirmation sp A Φ t s) := by
-  sorry
+  unfold updateConfirmation
+  dsimp only
+  rcases hC : getConfirmation sp A Φ s with _ | C
+  · exact hR
+  · dsimp only
+    split_ifs
+    · exact hR
+    all_goals
+      exact RecP.ulc (A := { A with saved := Function.update A.saved s (some C.root) }) hR
+        (deepest_mem hC).1.1 (hres C hC)
 
 /-- **An optimistic selection compares with `P`** (h1 §4): at an honest call at `t ≥ t_p + 6Δ`,
 from a state whose pools the call keeps, the block an optimistic check selects has three

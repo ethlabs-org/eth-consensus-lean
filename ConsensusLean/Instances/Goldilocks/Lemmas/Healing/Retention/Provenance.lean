@@ -87,7 +87,14 @@ private theorem StoredFrom.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U
     (hL : L₀ = L)
     (hN : ∀ r f e, (r, f, e) ∈ N → ∃ D ∈ Φ.tree, D.root = r ∧ New s f (Φ.viableAncestor D)) :
     StoredFrom U L (addLocks sp L₀ Φ t s N) New := by
-  sorry
+  subst hL
+  rintro l' ⟨l, hl, B, hB, hBr, -, rfl⟩
+  obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
+  rcases hl with hl | ⟨p, hp, rfl⟩
+  · exact Or.inl ⟨l, hl, rfl, rfl, Or.inr ⟨_, hΦU hvt, rfl, B, hΦU hB, hBr, hva.mono hΦU⟩⟩
+  · obtain ⟨D, hD, hDr, hND⟩ := hN p.1 p.2.1 p.2.2 hp
+    obtain rfl : B = D := hU.1 (hΦU hB) (hΦU hD) (hBr.trans hDr.symm)
+    exact Or.inr ⟨_, hND, _, hΦU hvt, rfl, .refl⟩
 
 /-! ## What each SA function does to the locks -/
 
@@ -98,7 +105,18 @@ private theorem StoredFrom.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (h
     StoredFrom U A.locks (optimisticConfirmation sp A Φ t).locks
       (fun s _ O => s = sp.slot t ∧ ∃ D, optimisticSelect sp A Φ t = some D ∧
         O = Φ.viableAncestor D) := by
-  sorry
+  unfold optimisticConfirmation
+  rcases h : optimisticSelect sp A Φ t with _ | B
+  · exact StoredFrom.of_eq rfl
+  · rw [updateLatestConfirmed_locks_eq]
+    refine StoredFrom.of_addLocks hU hΦ hΦU rfl fun r f e hr => ?_
+    simp only [Set.mem_singleton_iff, Prod.mk.injEq] at hr
+    obtain ⟨rfl, -⟩ := hr
+    have hB := h
+    unfold optimisticSelect at hB
+    dsimp only at hB
+    split_ifs at hB
+    exact ⟨B, (deepest_mem hB).1.1, rfl, rfl, B, rfl, rfl⟩
 
 private theorem StoredFrom.of_optimistic_admit (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {L : Set Lock} (A : SAState sp.n) (hL : A.locks = L) (t : Time)
@@ -136,7 +154,23 @@ private theorem StoredFrom.of_updateConfirmation (hU : Coherent U) (hΦ : FrameO
       (fun s' f O => s' = s ∧ (f = true → ∃ C D, getConfirmation sp A Φ s = some C ∧
         ¬ conflictsWithLock sp A.locks Φ t C ∧ fastSelect sp A Φ s C = some D ∧
         O = Φ.viableAncestor D)) := by
-  sorry
+  unfold updateConfirmation
+  dsimp only
+  rcases hC : getConfirmation sp A Φ s with _ | C
+  · exact StoredFrom.of_eq rfl
+  · dsimp only
+    split_ifs with hconf
+    · exact StoredFrom.of_eq rfl
+    all_goals
+      refine StoredFrom.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks_eq _ _ _)
+        fun r f e hr => ?_
+      rcases hr with ⟨D, hD, hr⟩ | ⟨-, D, hD, hr⟩
+      · simp only [Prod.mk.injEq] at hr
+        obtain ⟨rfl, rfl, -⟩ := hr
+        exact ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, fun _ => ⟨C, D, rfl, hconf, hD, rfl⟩⟩
+      · simp only [Prod.mk.injEq] at hr
+        obtain ⟨rfl, rfl, -⟩ := hr
+        exact ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, Bool.false_ne_true.elim⟩
 
 private theorem StoredFrom.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :

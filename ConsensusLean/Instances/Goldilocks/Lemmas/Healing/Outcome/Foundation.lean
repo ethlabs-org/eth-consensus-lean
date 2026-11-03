@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
@@ -59,11 +60,21 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 
 /-- **The drain** (§23, HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
 label at least `b + k + 2`; every lock of a label before `b`, and every slow lock whose window
-straddles `b`, has expired. -/
+straddles `b`, has expired. The locks are those of a run (`LocksWF`: every expiry is at most
+`k` slots after the label), as every honest node's are (`SA.locksWF_state`). -/
 theorem drain_live_locks {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {L : Set SA.Lock} {t : Time}
-    (ht : drainTime sp a ≤ t) :
+    (hwf : SA.LocksWF sp L) (ht : drainTime sp a ≤ t) :
     ∀ l ∈ SA.liveLocks sp L Φ t, cleanLabel sp a + sp.k + 2 ≤ l.slot := by
-  sorry
+  intro l hl
+  have hk := hwf.slot_le_of_live hl
+  have h0 : 0 ≤ t := le_trans (by
+    rw [drainTime_eq]
+    simp only [SAParams.ts]
+    exact mul_nonneg (by linarith [sp.toParams.hΔ]) (Int.natCast_nonneg _)) ht
+  rw [drainTime_eq] at ht
+  have hs := (SA.ts_le_iff_le_slot sp h0 _).1 ht
+  rw [cleanLabel_eq]
+  omega
 
 /-- A stored lock that is live by time after the drain has a clean label. This requires
 neither normalized `liveLocks` membership nor a later `addLocks` call. -/

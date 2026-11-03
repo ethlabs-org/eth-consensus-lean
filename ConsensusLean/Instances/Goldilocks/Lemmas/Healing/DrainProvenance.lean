@@ -81,7 +81,14 @@ private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ
       (hL : L₀ = L)
     (hN : ∀ r f e, (r, f, e) ∈ N → ∃ D ∈ Φ.tree, D.root = r ∧ New s f (Φ.viableAncestor D)) :
     FromP U L (addLocks sp L₀ Φ t s N) New := by
-  sorry
+  subst hL
+  rintro l' ⟨l, hl, B, hB, hBr, -, rfl⟩
+  obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
+  rcases hl with hl | ⟨p, hp, rfl⟩
+  · exact Or.inl ⟨l, hl, rfl, rfl, Or.inr ⟨_, hΦU hvt, rfl, B, hΦU hB, hBr, hva.mono hΦU⟩⟩
+  · obtain ⟨D, hD, hDr, hND⟩ := hN p.1 p.2.1 p.2.2 hp
+    obtain rfl : B = D := hU.1 (hΦU hB) (hΦU hD) (hBr.trans hDr.symm)
+    exact Or.inr ⟨_, hND, _, hΦU hvt, rfl, .refl⟩
 
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
@@ -89,7 +96,18 @@ variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (A : SAState sp.n) (t : Time) :
     FromP U A.locks (optimisticConfirmation sp A Φ t).locks (fun _ f _ => f = true) := by
-  sorry
+  unfold optimisticConfirmation
+  rcases h : optimisticSelect sp A Φ t with _ | B
+  · exact FromP.of_eq rfl
+  · rw [updateLatestConfirmed_locks_eq]
+    refine FromP.of_addLocks hU hΦ hΦU rfl fun r f e hr => ?_
+    simp only [Set.mem_singleton_iff, Prod.mk.injEq] at hr
+    obtain ⟨rfl, rfl, -⟩ := hr
+    have hB := h
+    unfold optimisticSelect at hB
+    dsimp only at hB
+    split_ifs at hB
+    exact ⟨B, (deepest_mem hB).1.1, rfl, rfl⟩
 
 private theorem FromP.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
@@ -123,7 +141,32 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) (A : SAState sp.n) (t : Time) (s : Nat) :
     FromP U A.locks (updateConfirmation sp A Φ t s).locks
       (fun s' f O => s' = s ∧ (f = false → ∃ D, SlowW A Φ t s D ∧ O = Φ.viableAncestor D)) := by
-  sorry
+  unfold updateConfirmation
+  dsimp only
+  rcases hC : getConfirmation sp A Φ s with _ | C
+  · exact FromP.of_eq rfl
+  · dsimp only
+    split_ifs with hconf
+    · exact FromP.of_eq rfl
+    all_goals
+      refine FromP.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks_eq _ _ _)
+        fun r f e hr => ?_
+      rcases hr with ⟨D, hD, hr⟩ | ⟨hne, D, hD, hr⟩
+      · simp only [Prod.mk.injEq] at hr
+        obtain ⟨rfl, rfl, -⟩ := hr
+        exact ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, fun h => absurd h (by simp)⟩
+      · simp only [Prod.mk.injEq] at hr
+        obtain ⟨rfl, rfl, -⟩ := hr
+        refine ⟨D, (deepest_mem hD).1.1.1, rfl, rfl, fun _ => ⟨D, ⟨C, hC, hconf, ?_, ?_⟩, rfl⟩⟩
+        · rw [← hD]
+          congr 1
+          ext X
+          simp only [Set.mem_ofPred_eq]
+          refine and_congr_right fun _ => or_congr_right (forall_congr' fun j =>
+            imp_congr_right fun _ => imp_congr_right fun hj => ?_)
+          rw [Function.update_of_ne (ne_of_lt hj)]
+        · rw [← hD]
+          exact Ne.symm hne
 
 private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
