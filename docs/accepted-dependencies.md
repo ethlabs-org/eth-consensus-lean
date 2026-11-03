@@ -270,11 +270,12 @@ Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no 
 The three numeric leaves must be solved jointly with the named endpoint suppliers;
 their arbitrary separate instantiation would not prove the endpoint. Local-pattern
 sufficiency remains OPEN, not supplied by the timeout inequality alone.
-The one-Δ model maps Δ_F:=Δ_p, hence c_F=2; this deliberately excludes the
-intended model's independent slower FG delivery. Route A (#136): window coverage is the
+The model maps the FG row delay to the actual engine bound, `rowDelay = ΔF` (half-open:
+Δ_F,p = Δ_F,e; no order between ΔF and Δ is assumed). The healthy regime's ratio `ΔF ≤ r·Δ`
+gives `6Δ + ΔF ≤ 4Δ·cF r` (`cF_spec`), so the row gap is `c = cF r` (2 at r = 1). Route A (#136): window coverage is the
 proved anchor route (`final_anchor_coverage` over `cacheCoverage_of_anchor_window_upTo`);
 its inputs `AnchorRun` (reset premises, catch-up, honest anchor proposals, drain, horizon)
-and `AnchorSteps` (three gap-2 anchor steps) come from `final_window_extract`. Its body is
+and `AnchorSteps` (three gap-`c` anchor steps) come from `final_window_extract`. Its body is
 `final_window_extract_of'` (CarrierProcessed.lean; (H4) carrier processing proved) from the
 leaves `final_reset_premises` ((H1) reset premises = M1′, and (H3) placement with
 `u_min = finalSeedMin Q a = slot a + 2k + 5` = the heal coefficient, corrected by #145; one leaf
