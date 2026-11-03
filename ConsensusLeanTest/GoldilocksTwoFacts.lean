@@ -43,7 +43,7 @@ structure RunFacts : Prop where
   /-- Every vote is received by the other node at its vote time. -/
   recv_exists : ∀ y z σ, z ≠ y → ∃ i, run.MsgCallAt z i (vote y σ) ∧ run.time i = (vt σ : Int)
   /-- Every AC send or admission is of a vote, at its vote time. -/
-  admit : ∀ x i m, run.SendOrAdmitAt x i m → ∃ y σ, m = vote y σ ∧ run.time i = (vt σ : Int)
+  admitMsg : ∀ x i m, run.SendOrAdmitAt x i m → ∃ y σ, m = vote y σ ∧ run.time i = (vt σ : Int)
   /-- Every processed block is the chain block of its slot `s ≥ 1`, accepted at `t_s`. -/
   block : ∀ y i B, run.BlockCallAt y i B →
     ∃ s, 1 ≤ s ∧ B = blk s ∧ run.time i = 4 * (s : Int) ∧ run.AcceptAt y i B
