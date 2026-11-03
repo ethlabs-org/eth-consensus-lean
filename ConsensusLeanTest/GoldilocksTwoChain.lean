@@ -1037,6 +1037,143 @@ theorem fgGood_frame {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood f
     rw [hfloor, h.sigma m h2, csN_eq, cs_h]
     exact hgt_ge_of_jx h1
 
+/-! ## The rows on the chain -/
+
+/-- The block that carries the row of `v0` for height `q`. -/
+def car0 (q : Nat) : Nat := 10 * (q - 1) + 2
+
+/-- The block that carries the row of `v1` for height `q`. -/
+def car1 (q : Nat) : Nat := 10 * q + 1
+
+theorem mem_blk_fgPayload {m : Nat} {a : FG.Att sp.n} : a ∈ (blk m).fgPayload ↔
+    (∃ q, 1 ≤ q ∧ m = car0 q ∧ a = row w0 q) ∨ (∃ q, 1 ≤ q ∧ m = car1 q ∧ a = row w1 q) := by
+  rcases m with _ | s
+  · rw [blk_fgPayload_zero]; simp only [List.not_mem_nil, false_iff, not_or, not_exists, not_and]
+    exact ⟨fun q _ h => by unfold car0 at h; omega, fun q _ h => by unfold car1 at h; omega⟩
+  · rw [blk_fgPayload]
+    have hq := hgt_pos s
+    split_ifs with h1 h2
+    · rw [List.mem_singleton]
+      constructor
+      · rintro rfl; exact Or.inl ⟨_, hq, by unfold car0 hgt; split_ifs <;> omega, rfl⟩
+      · rintro (⟨q, hq1, hm, rfl⟩ | ⟨q, -, hm, -⟩)
+        · unfold car0 at hm; congr 1; unfold hgt; split_ifs <;> omega
+        · unfold car1 at hm; omega
+    · rw [List.mem_singleton]
+      constructor
+      · rintro rfl; exact Or.inr ⟨_, hq, by unfold car1 hgt; split_ifs <;> omega, rfl⟩
+      · rintro (⟨q, -, hm, -⟩ | ⟨q, hq1, hm, rfl⟩)
+        · unfold car0 at hm; omega
+        · unfold car1 at hm; congr 1; unfold hgt; split_ifs <;> omega
+    · simp only [List.not_mem_nil, false_iff, not_or, not_exists, not_and]
+      exact ⟨fun q hq1 h => by unfold car0 at h; omega,
+        fun q hq1 h => by unfold car1 at h; omega⟩
+
+theorem row_valid_iff {m q : Nat} (y : Fin sp.n) (hq : 1 ≤ q) :
+    (cs m).validAtt (row y q) ↔ q = hgt m := by
+  constructor
+  · rintro (⟨hh, -⟩ | ⟨p, hp, hpp, hlt, hlt'⟩)
+    · rw [row_h, cs_h] at hh; exact hh
+    · rw [row_fin] at hp
+      split_ifs at hp with h1
+      · cases hp
+      · simp only [Option.toList_some, List.mem_singleton] at hp
+        subst hp
+        rw [cs_pending] at hpp
+        rw [row_h, cs_h] at hlt'
+        split_ifs at hpp
+        · cases hpp
+        · simp only [List.mem_singleton, Prod.mk.injEq] at hpp; omega
+  · rintro rfl; exact Or.inl ⟨by rw [row_h, cs_h], by rw [row_T, cs_Th]⟩
+
+/-- The other validator. -/
+def other (y : Fin sp.n) : Fin sp.n := if y = w0 then w1 else w0
+
+/-- The `i`-th attestation of `y`'s pool: its own row of each height, then the other's. -/
+noncomputable def poolAt (y : Fin sp.n) (i : Nat) : FG.Att sp.n :=
+  row (if i % 2 = 0 then y else other y) (i / 2 + 1)
+
+/-- The first `k` attestations of `y`'s pool. -/
+noncomputable def poolOf (y : Fin sp.n) (k : Nat) : List (FG.Att sp.n) :=
+  (List.range k).map (poolAt y)
+
+theorem poolOf_succ (y : Fin sp.n) (k : Nat) :
+    poolOf y (k + 1) = poolOf y k ++ [poolAt y k] := by
+  simp [poolOf, List.range_succ]
+
+theorem other_ne (y : Fin sp.n) : other y ≠ y := by
+  unfold other; rcases eq_w0_or_w1 y with rfl | rfl <;> decide
+
+theorem poolAt_inj (y : Fin sp.n) {i i' : Nat} (h : poolAt y i = poolAt y i') : i = i' := by
+  obtain ⟨h1, h2⟩ := row_inj h
+  have := other_ne y
+  split_ifs at h1 <;> omega
+
+theorem mem_poolOf {y : Fin sp.n} {k : Nat} {a : FG.Att sp.n} :
+    a ∈ poolOf y k ↔ ∃ i < k, a = poolAt y i := by
+  simp only [poolOf, List.mem_map, List.mem_range]
+  constructor
+  · rintro ⟨i, hi, rfl⟩; exact ⟨i, hi, rfl⟩
+  · rintro ⟨i, hi, rfl⟩; exact ⟨i, hi, rfl⟩
+
+theorem poolOf_nodup (y : Fin sp.n) (k : Nat) : (poolOf y k).Nodup :=
+  (List.nodup_range).map (fun _ _ h => poolAt_inj y h)
+
+theorem onAttestation_new {ACP : Type} {st : Store sp.toParams ACP} {a : FG.Att sp.n}
+    (h : a ∉ st.atts) : st.onAttestation a = { st with atts := st.atts ++ [a] } := by
+  unfold Store.onAttestation; rw [ite_eq_right h]
+
+theorem onAttestation_old {ACP : Type} {st : Store sp.toParams ACP} {a : FG.Att sp.n}
+    (h : a ∈ st.atts) : st.onAttestation a = st := by
+  unfold Store.onAttestation; rw [ite_eq_left h]
+
+/-- A filter of a duplicate-free list with the members of a list of at most one element. -/
+theorem filter_eq_of_mem_iff {α : Type} {l r : List α} {p : α → Bool}
+    (hl : l.Nodup) (hr : r.length ≤ 1) (h : ∀ a, (a ∈ l ∧ p a = true) ↔ a ∈ r) :
+    l.filter p = r := by
+  rcases r with _ | ⟨x, _ | ⟨y, r⟩⟩
+  · rw [List.filter_eq_nil_iff]
+    intro a ha hp; exact List.not_mem_nil ((h a).1 ⟨ha, hp⟩)
+  · have hnd : (l.filter p).Nodup := hl.filter p
+    have hall : ∀ a ∈ l.filter p, a = x := fun a ha => by
+      rw [List.mem_filter] at ha; exact List.mem_singleton.1 ((h a).1 ha)
+    have hx : x ∈ l.filter p := List.mem_filter.2 ((h x).2 (List.mem_singleton_self x))
+    rcases hf : l.filter p with _ | ⟨z, _ | ⟨z', rest⟩⟩
+    · rw [hf] at hx; cases hx
+    · rw [hall z (by rw [hf]; exact List.mem_singleton_self z)]
+    · exfalso
+      rw [hf] at hnd hall
+      have h1 := hall z (List.mem_cons_self ..)
+      have h2 := hall z' (List.mem_cons_of_mem _ (List.mem_cons_self ..))
+      exact (List.nodup_cons.1 hnd).1 (by rw [h1, ← h2]; exact List.mem_cons_self ..)
+  · simp at hr
+
+theorem onChain_row0 {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood fg τ) (q : Nat) :
+    fg.OnChain (blk τ) (row w0 q) ↔ 1 ≤ q ∧ car0 q ≤ τ := by
+  constructor
+  · rintro ⟨X, hX, hXa, hm⟩
+    obtain ⟨m, hm', rfl⟩ := (mem_tree_iff h.blocks).1 hX
+    have hle := le_of_anc_blk (onChain_tree h.blocks) hXa
+    rcases mem_blk_fgPayload.1 hm with ⟨q', hq', h1, h2⟩ | ⟨q', hq', h1, h2⟩
+    · obtain ⟨-, rfl⟩ := row_inj h2; exact ⟨hq', by omega⟩
+    · exact absurd (row_inj h2).1 (by decide)
+  · rintro ⟨hq, hc⟩
+    exact ⟨blk (car0 q), (mem_tree_iff h.blocks).2 ⟨_, hc, rfl⟩, anc_tree h.blocks hc le_rfl,
+      mem_blk_fgPayload.2 (Or.inl ⟨q, hq, rfl, rfl⟩)⟩
+
+theorem onChain_row1 {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood fg τ) (q : Nat) :
+    fg.OnChain (blk τ) (row w1 q) ↔ 1 ≤ q ∧ car1 q ≤ τ := by
+  constructor
+  · rintro ⟨X, hX, hXa, hm⟩
+    obtain ⟨m, hm', rfl⟩ := (mem_tree_iff h.blocks).1 hX
+    have hle := le_of_anc_blk (onChain_tree h.blocks) hXa
+    rcases mem_blk_fgPayload.1 hm with ⟨q', hq', h1, h2⟩ | ⟨q', hq', h1, h2⟩
+    · exact absurd (row_inj h2).1 (by decide)
+    · obtain ⟨-, rfl⟩ := row_inj h2; exact ⟨hq', by omega⟩
+  · rintro ⟨hq, hc⟩
+    exact ⟨blk (car1 q), (mem_tree_iff h.blocks).2 ⟨_, hc, rfl⟩, anc_tree h.blocks hc le_rfl,
+      mem_blk_fgPayload.2 (Or.inr ⟨q, hq, rfl, rfl⟩)⟩
+
 end Consensus.Goldilocks.Witness.TwoRun
 
 end
