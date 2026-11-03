@@ -31,7 +31,7 @@ HealCompose.lean, takes an unguarded duty → proposal premise, which the guarde
 supply.)
 
 The coefficient input is `accepted_heal_ge_final` (AcceptanceDefs.lean): the heal coefficient of
-the final capability is at least `catchUp + 2·M_f`, `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44`
+the final capability is at least `catchUp + M_f`, `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44`
 (in node delays `Δ = Δe`). With it,
 `B + (8k + 20)Δ + 4(X + δ_t − 1)Δ − 1 = ready + M_f·Δ − 1 ≤ heal ≤ query`, which is (H3), and
 `B + (12c − 2)Δ ≤ heal ≤ horizon` (`final_heal_horizon_fit`, for every `c` with `3c ≤ δ_t`),
@@ -162,11 +162,11 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     (by rw [accepted_coefficients_catchUp]; exact accepted_catchUp_ge_sleepy S A) Q.run Q.hn Q.gst
   change Healing.cutZ Q.params.toParams Q.gst + D + 1 ≤ max ready 0 + 4 * D at hcz
   rw [hrmax] at hcz
-  -- heal and the coefficient budget, in node delays `D ≤ 2Δe`
+  -- heal and the coefficient budget, in node delays `D = Δe`
   have hheal : max Q.gst 0 + ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ ≤ Q.query :=
     Q.mature
   have hbud : ((accepted_catchUp S A : Nat) : Time) +
-      2 * (24 * (Ld : Time) + 8 * S.k + 52 * S.δt + 52 * X + 44) ≤
+      (24 * (Ld : Time) + 8 * S.k + 52 * S.δt + 52 * X + 44) ≤
       ((K S A).params.heal .final Q.index : Time) := by
     have h := accepted_heal_ge_final S A Q.index
     have he : (K S A).params.heal .final Q.index = accepted_heal S A .final Q.index := by
@@ -177,8 +177,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hMf0 : 0 ≤ Mf := by rw [hMf]; positivity
   have hq : ready + Mf * D - 1 ≤ Q.query := by
     have h1 := mul_le_mul_of_nonneg_right hbud (by linarith : (0 : Time) ≤ Q.run.1.Δ)
-    have h2 : Mf * D ≤ 2 * Mf * Q.run.1.Δ := by rw [hDe]; nlinarith
-    rw [hready]; nlinarith
+    rw [hready, hDe]; nlinarith
   have hqh : Q.query ≤ Q.run.2.horizon := by
     have := Q.bounded
     have : (0 : Time) ≤ ((K S A).params.latency .final Q.index : Time) * Q.run.1.Δ := by

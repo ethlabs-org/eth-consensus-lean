@@ -129,8 +129,8 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
 
 /-- **The window fit before heal** (S6): `ready + R·Δ + r ≤ heal` at every query, from the
 coefficient inequality `accepted_heal_ge_reset` alone. With engine delay `d ≥ 1`, `Δ = d`,
-`ready = g₀ + C·d + 1` and `heal = g₀ + H·d`, `H ≥ C + 2R + r + 3` gives
-`heal − ready − R·Δ − r ≥ R·d + r(d − 1) + 3d − 1 ≥ 0`. -/
+`ready = g₀ + C·d + 1` and `heal = g₀ + H·d`, `H ≥ C + R + r + 1` gives
+`heal − ready − R·Δ − r ≥ r(d − 1) + d − 1 ≥ 0`. -/
 theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
     Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
       (healthyResetSlack S Q.index : Time) ≤ Q.heal := by
@@ -142,15 +142,13 @@ theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
     change max Q.gst 0 + ((accepted_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
     rw [accepted_coefficients_heal]
   have hΔ : Q.params.Δ = Q.run.1.Δ := rfl
-  have hH : ((accepted_catchUp S A : Nat) : Time) + 2 * (healthyResetCoeff S Q.index : Time) +
-      (healthyResetSlack S Q.index : Time) + 3 ≤ (accepted_heal S A Q.cap Q.index : Time) := by
+  have hH : ((accepted_catchUp S A : Nat) : Time) + (healthyResetCoeff S Q.index : Time) +
+      (healthyResetSlack S Q.index : Time) + 1 ≤ (accepted_heal S A Q.cap Q.index : Time) := by
     have := accepted_heal_ge_reset S A Q.cap Q.index
     exact_mod_cast (show _ ≤ _ by omega)
-  have hR0 : (0 : Time) ≤ healthyResetCoeff S Q.index := Nat.cast_nonneg _
   have hr0 : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
   rw [hready, hheal, hΔ]
   nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ),
-    mul_nonneg hR0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1),
     mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1)]
 
 /-- **The reset envelope (E) from the drain.** `healthy_reset_envelope_of_fit` with the window fit
@@ -227,17 +225,15 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
   set B : Time := (healthyResetCoeff S Q.index : Time) + 8 * (S.k : Time) +
     4 * ((Q.index : Nat) : Time) + 26 with hBdef
   have hB : Q.ready + B * Q.params.Δ + 2 ≤ Q.heal := by
-    have hH : ((accepted_catchUp S A : Nat) : Time) + 2 * B + 3 ≤
+    have hH : ((accepted_catchUp S A : Nat) : Time) + B + 3 ≤
         (accepted_heal S A Q.cap Q.index : Time) := by
       have h1 := (Nat.cast_le (α := Time)).mpr (accepted_heal_ge_reset S A Q.cap Q.index)
       rw [healthyResetSlack_val] at h1
       push_cast at h1
       rw [hBdef]
       linarith
-    have hB0 : (0 : Time) ≤ B := by rw [hBdef]; positivity
     rw [hready, hheal, hΔ]
-    nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ),
-      mul_nonneg hB0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1)]
+    nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ)]
   have hR0 : (28 : Time) ≤ healthyResetCoeff S Q.index := by
     rw [healthyResetCoeff_val]; push_cast
     linarith [Nat.cast_nonneg (α := Time) (healthyDrainLen S Q.index)]
