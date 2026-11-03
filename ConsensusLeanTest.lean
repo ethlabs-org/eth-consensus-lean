@@ -17,6 +17,7 @@ public import ConsensusLeanTest.GoldilocksAsleepRun
 public import ConsensusLeanTest.GoldilocksAsleepSleepy
 public import ConsensusLeanTest.GoldilocksBudgetTightness
 public import ConsensusLeanTest.GoldilocksFG
+public import ConsensusLeanTest.GoldilocksFGRetention
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFGStoreCoverage
 public import ConsensusLeanTest.GoldilocksFGStoreCrossing
@@ -55,6 +56,7 @@ public import ConsensusLeanTest.GoldilocksRetentionWitness
 public import ConsensusLeanTest.GoldilocksRun
 public import ConsensusLeanTest.GoldilocksSAHealingRun
 public import ConsensusLeanTest.GoldilocksSAHealingWitness
+public import ConsensusLeanTest.GoldilocksSettledWitness
 public import ConsensusLeanTest.GoldilocksSleepyRegimes
 public import ConsensusLeanTest.GoldilocksSleepyWitness
 public import ConsensusLeanTest.GoldilocksThresholdRejections
