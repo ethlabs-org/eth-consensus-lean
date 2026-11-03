@@ -74,7 +74,7 @@ The four Healing statements above remain stated with their proof open.
 
 | Set | Owner | Direct leaf list |
 |---|---|---|
-| C | Spec orb, joint coefficient synthesis | none since 4078bc74 (`accepted_heal` is the closed `catchUp + 2·healMargin + 3`) |
+| C | Spec orb, joint coefficient synthesis | none since 4078bc74 (`accepted_heal` is the closed `catchUp + healMargin`; half-open phase 2: `healMargin = 24·L_drain + 8k + 52δt + 52X + 44`, was `catchUp + 2·healMargin + 3`) |
 | F | Four-anchor/final service owner (H1 Sol, H3 coefficients) | none since e621acd7 (`final_reset_premises` is closed by `final_reset_premises_of_query`) |
 | H | Healing paper/T3; Spec orb integration | none since f4997e9f (`healthy_preparation_initialize` proved at 2d943744, `healthy_repair_schedule` at f4997e9f) |
 | N | Healing paper/T3; Spec orb integration | none since db4b864f (`healthy_confirmed_supply` proved from the preparation initializer) |
@@ -152,8 +152,8 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 
 | Declaration | Paper argument/status |
 |---|---|
-| `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | Proved by the value (`accepted_catchUp = 37`). Covers 18(Δe+1)+1≤37Δe for Δe≥1. Reached by Sleepy safety and liveness. |
-| `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥8idx+12, covering (4idx+6)(Δe+1)≤(8idx+12)Δe. Other regimes may raise it; not a final joint value or new endpoint premise. Reached by Sleepy liveness slot selection. |
+| `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | Proved by the value (`accepted_catchUp = 19`). Covers 18Δ+1≤19Δ for Δ≥1 (node Δ = engine Δ since half-open delivery). Reached by Sleepy safety and liveness. |
+| `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥4idx+6, covering (4idx+6)Δ (half-open phase 2; was ≥8idx+12 covering (4idx+6)(Δe+1)). Other regimes may raise it; not a final joint value or new endpoint premise. Reached by Sleepy liveness slot selection. |
 | `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | Proved (db4b864f): `healthy_confirmed_supply_of_initializer` (HealthyConfirmedEndpoint, cb3e1846) applied to `healthy_preparation_initialize`; statement unchanged. Only the selected accepted proposal is covered; no new endpoint assumption. |
 | `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | Body proved via finite SVC at the horizon, duration arithmetic and fault bounds. No direct sorry; full closure sorry-free since 4078bc74 (accepted_heal closed), not a #128 statement obstruction. |
 | `Consensus.Goldilocks.Refinement.confirmed_duration_supply` | Body closed at 7547caee using accepted_catchUp_ge_sleepy and exact scale arithmetic; proved, no direct owner in the compiled audit at 70e90b44. |
@@ -258,10 +258,12 @@ paths; names in compiled rows are fully qualified.
 The root fixes standard fractions, the row ratio `r` of the assumptions with gap `c = cF r`,
 `finalWindow A = [0, c, 2c, 3c]` (route A, #136; `[0,2,4,6]` at `r = 1`), `3c ≤ δt` (so δt≥6)
 and outage look-back η = 0 (plain sleepy; 2026-11-02, was a positive assumption). Engine-unit
-outage lag is 8k+12 (slow arming only: the label before the outage label is armed by b₀;
-2026-11-02, was 8k−8) and budget is 4k−6 (2026-11-02, was min(η,4k−6), corrected in f416034),
-which implies the unchanged node time window at Δp=Δe+1.
-The outage no-sleep margin is max(38, 8k+16) and the recovery delay 18 (Δe units).
+outage lag is 4k+6 (slow arming only: the label before the outage label is armed by b₀;
+half-open phase 2, was 8k+12 at Δp=Δe+1 and 8k−8 before 2026-11-02) and budget is 4k−6
+(2026-11-02, was min(η,4k−6), corrected in f416034), which implies the unchanged node time
+window at Δp=Δe.
+The outage no-sleep margin is 4k+6 and the recovery delay 9 (Δ units; half-open phase 2, were
+max(38, 8k+16) and 18 at Δp=Δe+1).
 Only catch-up (positive Nat), heal and latency (Nat-valued functions at each gap)
 are existential. They are independent of validator set, execution and horizon.
 Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no X.
@@ -286,14 +288,14 @@ For the `AnchorSteps` rows, the reusable finite signer results are landed in
 the paper handoff is workbench b386900 `notes/cards/final_row_signers.md`.
 The paper route (workbench `route_a_gap2.md`, read-back passed on #136) is conditional on
 the duty-to-proposal adapter, the M1′ bound, an `accepted_heal` that satisfies (H*), and
-the mechanical links. Final latency is 8(X+3c)+2, c = cF r (8(X+6)+2 at r = 1); it does not
-depend on δt.
+the mechanical links. Final latency is 4(X+3c)+1, c = cF r (4(X+6)+1 at r = 1; half-open
+phase 2, was 8(X+3c)+2); nonfinal latency is 4X+6 (was 8X+12); neither depends on δt.
 Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/workbench/blob/fd8cb311fac057347fb49e32cf17841e27a75e76/repos/goldilocks/notes/healing-simple/four-anchor-window.md#general-fixed-timeout-d4).
 
 | Declaration | Paper argument/status |
 |---|---|
-| `Consensus.Goldilocks.Refinement.accepted_catchUp` | Fixed at `37` (2026-11-03, Francesco's request; was `max 37 (8k + 4)`): no proof needs more than the Sleepy margin `37`. |
-| `Consensus.Goldilocks.Refinement.accepted_heal` | Closed (4078bc74): `accepted_catchUp + 2·healMargin S X + 3` at every capability, a named parameter-only value (`ResetCoefficients`), chosen to fit the proved reset envelope (owner: adjust the constants to what can be proved). `accepted_heal_ge_reset` is the coefficient inequality (★) of the nonfinal envelope and S0; `accepted_heal_ge_final` the final route's heal-bound margin at λ = 2Δ. A later leaf that needs more raises `healMargin`; consumers use only these ≥-forms. |
+| `Consensus.Goldilocks.Refinement.accepted_catchUp` | Fixed at `19` (half-open phase 2; was `37` at Δp=Δe+1 from 2026-11-03, Francesco's request, and `max 37 (8k + 4)` before): no proof needs more than the Sleepy margin `18Δ + 1 ≤ 19Δ`. |
+| `Consensus.Goldilocks.Refinement.accepted_heal` | Closed (4078bc74): `accepted_catchUp + healMargin S X` at every capability (half-open phase 2, `healMargin = 24·L_drain + 8k + 52δt + 52X + 44`, the final route's margin `M_f`; was `accepted_catchUp + 2·healMargin S X + 3`), a named parameter-only value (`ResetCoefficients`), chosen to fit the proved reset envelope (owner: adjust the constants to what can be proved). `accepted_heal_ge_reset` is the coefficient inequality (★) of the nonfinal envelope and S0; `accepted_heal_ge_final` the final route's heal-bound margin at λ = 2Δ. A later leaf that needs more raises `healMargin`; consumers use only these ≥-forms. |
 | `Consensus.Goldilocks.Refinement.accepted_latency` | OPEN: finite latency at every gap; final local-pattern service and cache acceptance unresolved. Spec orb. |
 | `Consensus.Goldilocks.Refinement.accepted_outputValid` | Proved through shape_outputValid; compiled closure has no sorryAx. |
 | `Consensus.Goldilocks.Refinement.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
@@ -348,7 +350,7 @@ Replay order uses only validator count and genesis root. The local family repair
 indexes it by those values so run-selected proposer parameters preserve the actual
 restart order. Credentials supplies ideal selection validity; receivers check role
 syntax, not a preconfigured proposer schedule. Selection gates duty execution before
-mutation. The protocol timing target is Δp = Δe + 1, with delivery-time relay.
+mutation. The protocol timing target is Δp = Δe (half-open delivery; was Δp = Δe + 1), with delivery-time relay.
 
 The runtime publisher is installed by #124: successful block-acceptance cuts,
 including own proposals, populate a durable node-root-to-own-wrapper map and queue
@@ -720,7 +722,7 @@ these five leaves is a direct owner.
 | `healthy_cut_monotone` | Temporal prefix extension at arbitrary ordered engine cuts with both exact-cDur readiness tests; same-time/pre-endCut transport remains owed. |
 | `outage_pre_service` | Canonical service through recipient deadlines ≤ outage start, not unrestricted late-wake service. |
 | `outage_arm` | Effective-record arming at original endCut(T), including inherited records and lookup-none/frame.F fallback; frame membership and original read-prefix witness. |
-| `outage_repair` | Slow-only recovery for every reader ready from `b₁ + recovery·Δ` (`recovery = 18`): O1 formation at labels `j₀ − 1` and `j₀`, O2 retention (base handoff, VA), O3 (the `k − 1` conflicting-label count, the cohort count at the reader gates, the veto-harmless lemma, S5), O4 reader bridge. |
+| `outage_repair` | Slow-only recovery for every reader ready from `b₁ + recovery·Δ` (`recovery = 9`): O1 formation at labels `j₀ − 1` and `j₀`, O2 retention (base handoff, VA), O3 (the `k − 1` conflicting-label count, the cohort count at the reader gates, the veto-harmless lemma, S5), O4 reader bridge. |
 
 `healthy_ready_safety` consumes initialization→preparation→preservation and the
 two cut adapters. Its Accepted wrapper handles an empty validator type and heal
