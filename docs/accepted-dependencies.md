@@ -69,7 +69,15 @@ on main ebb2f2ec2783911997e7f4945684f54382690ea6 passed, exit 0, 1381 s, zero SK
 [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 04:45): cold build 243 s, every-leaf
 kernel replay 235 s with controls, the default-target lake check 561 s with the standard three axioms and the
 good/bad fixtures, `lake comparator --paranoid` 174 s over 25,065 declarations with controls, the rebuild canary
-16 s with both controls; 0 lexical sorry/admit. `AcceptedEndpoint` is certified as of ebb2f2ec.
+16 s with both controls; 0 lexical sorry/admit. After the trusted changes that followed (the retired
+`SleepySafePrefix` row 13841d74, the flat catch-up 4df95240, half-open L0 delivery 5eafeb1d, 333300b4 and
+09ddfad9, and the Goldilocks head-drop b15ffd4a), the full tier was rerun: `check.sh --full` on main
+c361faa46d43bdbdbd6cca76f301e374bb8236ef passed, 1381 s, zero SKIP lines, recorded on
+[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 09:04, combined phase 2 and head-drop
+certification): every-leaf kernel replay with its controls 227 s, the default-target lake check with the
+good/bad fixtures 578 s with only the standard three axioms, `lake comparator --paranoid` 175 s over 25,043
+declarations, the rebuild canary 15 s with the proof hash unchanged; 0 lexical sorry/admit.
+`AcceptedEndpoint` is certified as of c361faa4; commits after it are not covered by a full tier yet.
 The four Healing statements above remain stated with their proof open.
 
 | Set | Owner | Direct leaf list |
