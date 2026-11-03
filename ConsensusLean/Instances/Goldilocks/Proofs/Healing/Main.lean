@@ -3,6 +3,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Assembly
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Coverage
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv
 
 public section
@@ -22,7 +26,11 @@ claims' after-`r` part, `frozen_tree_agreement`). The partial assemblies, withou
   `healing_run_statements_of_reset_inv` is the bundle from that half
   (`healing_run_statements_of_nonInterference` from H.3 as stated).
 * `phase_service_proved`: HS.1, HS.2 and HS.4; `phase_service_statements` is the bundle with
-  HS.3. -/
+  HS.3.
+
+`RecoveryStatements` (HR.5, O.1 and C1.3) is `recovery_statements`: the actual-report and outcome
+suppliers close the bounded high-coverage construction, then the recovery adapter discharges
+all three unchanged public statements. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -121,6 +129,14 @@ theorem phase_service_statements : PhaseServiceStatements where
   cleanLockDrain := clean_lock_drain
   frozenTreeAgreement := frozen_tree_agreement
   commonPathAcquisition := common_path_acquisition
+
+/-- **Healing Recovery**: HR.5 cache acceptance, O.1 pattern recovery and C1.3 finalizing
+coverage, with the actual-report and outcome suppliers discharged. -/
+theorem recovery_statements : RecoveryStatements := by
+  apply Recovery.recovery_statements_of_coverage
+  intro sp ro proposer dg H tr g ΔF Gp W M cF kF
+  exact Recovery.pattern_coverage_supply Recovery.outcome_service
+    (fun _ => Recovery.ready_proposal_report_supply)
 
 end Consensus.Goldilocks.Healing
 
