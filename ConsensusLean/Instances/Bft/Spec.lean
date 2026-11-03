@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Main
+public import ConsensusLean.Spec.Shape.ProgressFit
 public import Mathlib.Tactic
 
 @[expose] public section
@@ -66,12 +66,6 @@ def bftContract (progress : Capability → ℕ+ → ProgressReq) (catchUp : Nat)
   params := Params.standard catchUp 0 1 (fun _ k => catchUp + 1 + heal.eval k)
     (fun _ k => latency.eval k)
   progress := progress
-
-/-- The numbers of `bftContract` are admissible for a positive catch-up. -/
-theorem bftContract_admissible (progress : Capability → ℕ+ → ProgressReq) {catchUp : Nat}
-    (h : 1 ≤ catchUp) (heal latency : Affine) :
-    (bftContract progress catchUp heal latency).params.Admissible :=
-  Params.standard_admissible h le_rfl
 
 end Consensus.Shape
 

@@ -53,8 +53,6 @@ def Consensus.Shape.Affine.recOn : {motive : Consensus.Shape.Affine → Sort u} 
 def Consensus.Shape.bftContract : (Consensus.Capability → PNat → Consensus.Blocks.ProgressReq) → Nat → Consensus.Shape.Affine → Consensus.Shape.Affine → Consensus.Contract Consensus.Blocks.ProgressReq := fun progress catchUp heal latency => { Idx := PNat, idx_nonempty := Consensus.Shape.bftContract._proof_1, params := Consensus.Params.standard catchUp 0 1 (fun x k => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} catchUp 1) (heal.eval k.val)) fun x k => latency.eval k.val, progress := progress }
   #1035733289/766364819
 theorem Consensus.Shape.bftContract._proof_1 #3293017938/-
-theorem Consensus.Shape.bftContract_admissible : ∀ (progress : Consensus.Capability → PNat → Consensus.Blocks.ProgressReq) {catchUp : Nat}, LE.le.{0} 1 catchUp → ∀ (heal latency : Consensus.Shape.Affine), (Consensus.Shape.bftContract progress catchUp heal latency).params.Admissible
-  #2864612357/-
 def Consensus.Shape.bftCore : Consensus.OutputSchema := { Id := Unit, output := fun x => Consensus.Shape.bftCore.match_1.{1} (fun x => Option.{0} Unit) x (fun _ => Option.some.{0} Unit.unit) fun x => Option.none.{0} }
   #2282098036/3322899600
 def Consensus.Shape.bftCore._sparseCasesOn_1 #2090199883/3780305705

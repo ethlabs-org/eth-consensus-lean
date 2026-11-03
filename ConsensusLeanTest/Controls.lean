@@ -38,10 +38,24 @@ strictly before the bound), horizon `40`:
   reader from the recovery point `14`).
 
 * The control contract tolerates arbitrary numbers of validators not ready.
+* `bftContract_admissible`: the numbers of the BFT contract shape shared by
+  Streamlet and Tendermint (`Instances.Bft.Spec`) are admissible for a positive
+  catch-up (in `Consensus.Shape`, as before its move out of the Spec).
 
 All witnesses are the generic ones of `regimes_realizable`
 (`sleepy_witness`, `healthy_witness`, `outage_witness`) at explicit
 numbers. -/
+
+namespace Consensus.Shape
+
+open Blocks in
+/-- The numbers of `bftContract` are admissible for a positive catch-up. -/
+theorem bftContract_admissible (progress : Capability → ℕ+ → ProgressReq) {catchUp : Nat}
+    (h : 1 ≤ catchUp) (heal latency : Affine) :
+    (bftContract progress catchUp heal latency).params.Admissible :=
+  Params.standard_admissible h le_rfl
+
+end Consensus.Shape
 
 namespace Consensus.Shape.Tests.Controls
 open Consensus Blocks Shape
