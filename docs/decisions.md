@@ -394,7 +394,14 @@ where it is recorded; "Francesco" marks the owner's decisions.
   - **the veto stops only the record (2(a))**: a result that conflicts with a live lock leaves
     `latest_confirmed` unchanged, but the locks are still written, over the blocks of the result's path that
     conflict with no live lock. This closes the outage cover base's veto branch (W2's finding), and an unvetoed
-    update behaves exactly as before (the filter is vacuous) (§10–§11).
+    update behaves exactly as before (the filter is vacuous) (§10–§11). Francesco kept the fast write as well
+    (over the slow-only alternative). Pre-GST effects, both bounded, pre-GST only, and leaving Accepted
+    untouched: (i) the fast write is an FG source, so a vetoed node may lose a finality bit; this is not
+    veto-specific, since an unvetoed node with the same pool, no lock and no FG view of the later block fast-locks
+    the same ancestor and loses the same bit, while a node that already holds that block normalizes the lock to
+    a compatible viable ancestor and does not (skeptic trace T-ae2d2a56, counterfactual T-01a19c3a); (ii) a
+    vetoed slow lock `X` may pin the node up to `k − 1` slots beyond the vetoing lock's expiry (trace
+    T-ec68d127, read-back T-01a19c3a).
 
   What changes: trusted `Spec/SA/{Schedule, State, Locks, Confirmation, Events}` (`SAParams.c`, `Lock.expiry`,
   `Lock.LiveAt`, `fastExpiry`, `addLocks`'s `N` with expiries, `updateConfirmation`, `optimisticConfirmation`,
