@@ -841,6 +841,94 @@ theorem tick_propose {st : St} {s : Nat} (hs : 1 ≤ s) (h : Good st w0 (4 * s))
   rw [hfu]
   rfl
 
+/-! ## The other vote of a slot -/
+
+theorem addLocks_tip {Φ : N.Frm} {f s : Nat} (h : ChainFrame Φ f (jx s) s) {L : Set Lock}
+    (hL : LocksLe L (s - 1)) {t : Time} (hst : sp.slot t = s) :
+    LocksLe (addLocks sp L Φ t s {((blk s).root, true, s + 2)}) s ∧
+      (⟨(blk s).root, s, true, s + 2⟩ : Lock) ∈
+        addLocks sp L Φ t s {((blk s).root, true, s + 2)} := by
+  have hf : f ≤ s := le_trans h.fj (jx_le _)
+  refine ⟨addLocks_le h (fun l hl => (hL l hl).imp fun _ hm => ⟨by omega, hm.2⟩) le_rfl _ _ ?_, ?_⟩
+  · rintro p hp; rw [Set.mem_singleton_iff] at hp
+    exact ⟨blk s, h.mem hf le_rfl, by rw [hp]⟩
+  · exact h.mem_liveLocks (Or.inr ⟨_, rfl, rfl⟩) hf le_rfl rfl (by rw [hst]; dsimp only; omega)
+
+/-- **The other validator's vote of slot `s ≥ 1`** at `t_s`: both votes are held, and the
+optimistic check locks the block of slot `s` and records it as confirmed. -/
+theorem deliver_vote {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h : Voted st y s) :
+    ∃ A', Node.onMessage y st ((4 * s : Nat) : Int) (vote (other y) s) =
+      ({ st with ac := A' }, [.ac ⟨.message (vote (other y) s), Node.frame st, []⟩]) ∧
+      NS { st with ac := A' } y s (cnt y (4 * s)) (nrw (4 * s + 1)) (vsT (4 * s + 1))
+        (poolT y (4 * s + 1)) s s s (rep (4 * s + 1)) (nsv (4 * s + 1)) := by
+  obtain ⟨hfg, hatts, hrec, hac⟩ := h
+  obtain ⟨f, hf⟩ := fgGood_frame hfg
+  change ChainFrame (Node.frame st) f (jx s) s at hf
+  have hst : sp.slot ((4 * s : Nat) : Int) = s := by rw [slot_nat]; omega
+  have hpool : st.ac.pool s = [vote y s] := by rw [hac.pool, Function.update_self]
+  rw [onMessage_eq, acOnMessage_other hst hpool (by rw [hac.voted])]
+  have hsel := optimisticSelect_two hf hs hst
+    (by rw [ts_nat, delta1]; change ((4 * s : Nat) : Int) < 4 * (s : Int) + 2 * 1; omega)
+    (joined_of_bot hac.restart _) (y := y)
+    (A := { st.ac with
+      pool := Function.update st.ac.pool s [vote y s, vote (other y) s],
+      voteStamp := Function.update st.ac.voteStamp (vote (other y) s)
+        (ETime.of ((4 * s : Nat) : Int)) }) (Function.update_self _ _ _)
+  rw [optimisticConfirmation_of_some hsel, hst]
+  refine ⟨_, rfl, ?_⟩
+  obtain ⟨hLk, htipk⟩ := addLocks_tip hf hac.locks hst
+  have hnot : ¬ AncR (Node.frame st) (blk s) st.ac.latestConfirmed := by
+    rintro ⟨R, hR, hr, ha⟩
+    rw [hac.latest] at hr
+    obtain ⟨rfl, -, -⟩ := hf.eq_of_root hR hr
+    have := hf.le_of_anc ha; omega
+  unfold updateLatestConfirmed
+  rw [ite_eq_right hnot]
+  have hp1 : poolT y (4 * s + 1) = Function.update (poolT y (4 * s)) s
+      [vote y s, vote (other y) s] := by
+    funext σ; unfold poolT; rw [Function.update_apply, tip_four1, tip_four]
+    split_ifs <;> first | rfl | omega | (subst_vars; rfl)
+  have hne := other_ne y
+  refine ⟨hfg, hatts, ?_, ⟨hac.restart, ?_, ?_, ?_, ?_, hac.bstamp0, ?_,
+    hLk, fun _ => htipk, rfl, by rw [rep_four1]; exact hac.reported⟩⟩
+  · rw [nrw_succ_of (by omega)]; exact hrec
+  · dsimp only; rw [hac.voted]; unfold vsT; rw [tip_four1, ite_eq_right (by omega)]
+  · change Function.update st.ac.pool s _ = _
+    rw [hp1, hac.pool, Function.update_idem]
+  · intro σ x hx
+    change Function.update st.ac.voteStamp (vote (other y) s) _ x = _
+    rw [hp1, Function.update_apply] at hx
+    split_ifs at hx with hσ
+    · subst hσ
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
+      rcases hx with rfl | rfl
+      · rw [Function.update_of_ne (fun he => hne (vote_inj he).1.symm)]
+        exact hac.vstamp σ _ (by rw [Function.update_self]; exact List.mem_singleton_self _)
+      · rw [Function.update_self]; unfold vt; rw [ite_eq_right (by omega)]
+    · rw [Function.update_of_ne (fun he => by
+        subst he; unfold poolT at hx; rw [tip_four] at hx
+        split_ifs at hx with h2
+        · simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
+          rcases hx with he | he <;> have := (vote_inj he).2 <;> omega
+        · cases hx)]
+      exact hac.vstamp σ x (by rw [Function.update_of_ne hσ]; exact hx)
+  · intro m h1 h2; exact hac.bstamp m h1 h2
+  · intro j; dsimp only; rw [hac.saved, nsv_four, nsv_four1]
+
+/-- After the other vote, the state before `t_s + Δ`, except for the row of `v1` that `v0`
+receives later at `t_s` when `s ≡ 0 mod 10`. -/
+theorem good_of_voted {st : St} {y : Fin sp.n} {s : Nat}
+    (h : NS st y s (cnt y (4 * s)) (nrw (4 * s + 1)) (vsT (4 * s + 1)) (poolT y (4 * s + 1)) s s s
+      (rep (4 * s + 1)) (nsv (4 * s + 1))) (hc : cnt y (4 * s + 1) = cnt y (4 * s)) :
+    Good st y (4 * s + 1) := by
+  unfold Good; rw [tip_four1, hc]; exact h
+
+theorem cnt_four1 (y : Fin sp.n) (s : Nat) :
+    cnt y (4 * s + 1) =
+      if y = w0 ∧ s % 10 = 0 ∧ 10 ≤ s then cnt y (4 * s) + 1 else cnt y (4 * s) := by
+  unfold cnt; rw [nrw_succ_of (by omega), nrv_four]
+  split_ifs <;> first | rfl | omega
+
 end Consensus.Goldilocks.Witness.TwoRun
 
 end
