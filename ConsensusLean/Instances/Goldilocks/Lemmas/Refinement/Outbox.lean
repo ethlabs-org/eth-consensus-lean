@@ -84,7 +84,13 @@ private theorem optimistic_keeps (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : 
 private theorem updateConfirmation_keeps (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
     (s : Nat) : (SA.updateConfirmation sp A Φ t s).votedSlot = A.votedSlot ∧
       (SA.updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
-  sorry
+  unfold SA.updateConfirmation
+  dsimp only
+  split
+  · exact ⟨rfl, rfl⟩
+  · split_ifs
+    · exact ⟨rfl, rfl⟩
+    all_goals exact updateLatestConfirmed_keeps _ _ _
 
 private theorem blockReceipt_keeps (A : SAState sp.n) (t : Time) (B : SA.Blk sp.n FGP) :
     (SA.blockReceipt sp A t B).votedSlot = A.votedSlot ∧

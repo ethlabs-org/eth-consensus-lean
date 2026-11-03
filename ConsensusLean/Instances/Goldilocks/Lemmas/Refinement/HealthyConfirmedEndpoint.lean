@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyConfir
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 
 /-! # The healthy confirmed-supply endpoint from the preparation initializer
 
@@ -14,7 +15,7 @@ Everything else is produced here or landed:
   proposal `P` of slot `u`, the post-state holds the fresh fast lock `(P, u, true)` (the
   `hlocks` input of `healthy_confirmed_coverage_of_service`). The selection is
   `UpTo.operational_update_selection`; `P` is its own viable ancestor in the update frame by the
-  held-target candidate argument; `SA.fastLock_mem_updateConfirmation` writes the lock.
+  held-target candidate argument; the update writes the lock (expiry at least `u + 2`).
 * `healthy_cut_tips_ancestor_of_preparation`: the statement of `healthy_cut_tips_ancestor`, with
   its repair schedule from the supplied preparation schedule
   (`healthy_repair_schedule_of_preparation`) instead of the open `healthy_repair_schedule`.
@@ -38,8 +39,28 @@ variable {sp : SA.SAParams}
   {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
   {g ΔF a b : Time}
 
+/-- A fast update writes its fast lock with an expiry of at least `u + 2` (`s + k` or
+`fastExpiry`), so it is live at every `t` of slot at most `u + 2`. -/
+private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : SA.SAState sp.n}
+    {Φ : SA.Frm sp.n FGP} {t : Time} {u : Nat} {P : SA.Blk sp.n FGP} (hPt : P ∈ Φ.tree)
+    (hva : Φ.viableAncestor P = P) (hconf : SA.getConfirmation sp A Φ u = some P)
+    (hnv : ¬ SA.conflictsWithLock sp A.locks Φ t P) (hfast : SA.fastSelect sp A Φ u P = some P)
+    (hage : sp.slot t ≤ u + 2) :
+    ∃ e, u + 2 ≤ e ∧
+      (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (SA.updateConfirmation sp A Φ t u).locks := by
+  have hk := sp.two_le_k
+  unfold SA.updateConfirmation
+  simp only [hconf]
+  rw [ite_eq_right hnv]
+  refine ⟨_, ?_, ⟨P.root, u, true, _⟩, Or.inr ⟨_, Or.inl ⟨P, hfast, rfl⟩, rfl⟩, P, hPt, rfl, ?_,
+    by rw [hva]⟩
+  all_goals split_ifs
+  all_goals first | exact Nat.add_le_add_left hk u | exact hage.trans (Nat.add_le_add_left hk u) |
+    exact SA.le_fastExpiry sp _ _ _ _ | exact hage.trans (SA.le_fastExpiry sp _ _ _ _)
+
 /-- **The fresh fast lock at an actual update.** Every honest update of slot `u` after the drain
-writes `(P, u, true)` for the actual designated proposal `P` of slot `u`. -/
+writes `(P, u, true, e)` for the actual designated proposal `P` of slot `u`, with an expiry
+`e ≥ u + 2`. -/
 theorem UpTo.operational_update_fresh_lock
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ))
@@ -49,7 +70,7 @@ theorem UpTo.operational_update_fresh_lock
     (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hup : SA.UpdateAt tr.projAC y j u ell) :
-    ∃ e, (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post j).locks := by
+    ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post j).locks := by
   have hΔ := sp.toParams.hΔ
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   obtain ⟨hPt, hconf, hnv, hfast, hpost, -⟩ :=
@@ -83,8 +104,8 @@ theorem UpTo.operational_update_fresh_lock
     · simp only [SA.SAParams.ts]; push_cast; nlinarith
     · simp only [SA.SAParams.ts]; push_cast; nlinarith
   rw [hpost]
-  exact SA.fastLock_mem_updateConfirmation hPt (hframe ▸ hva) hconf hnv hfast
-    (by rw [hslot]; have := sp.two_le_k; omega)
+  exact fastLock_mem_updateConfirmation_floor hPt (hframe ▸ hva) hconf hnv hfast
+    (by rw [hslot]; omega)
 
 end FiniteSupply
 
@@ -230,7 +251,8 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   have hTb : Q.params.ts Ws.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := hmargin.trans Q.bounded
   have hlocks : ∀ y ∈ honestKeys S Q.run.2, ∀ j ell,
       SA.UpdateAt Q.trace.projAC y j Ws.slot ell →
-      ∃ e, (⟨B.root, Ws.slot, true, e⟩ : SA.Lock) ∈ (Q.trace.projAC.post j).locks :=
+      ∃ e, Ws.slot + 2 ≤ e ∧ (⟨B.root, Ws.slot, true, e⟩ : SA.Lock) ∈
+        (Q.trace.projAC.post j).locks :=
     fun y hy j ell hup => UpTo.operational_update_fresh_lock Dprep.reset hc hr.1 hBp he hPs
       hR hgu hTb hy hup
   -- readiness and end-of-time cuts at `T = t_u + 6Δ` and at the deadline

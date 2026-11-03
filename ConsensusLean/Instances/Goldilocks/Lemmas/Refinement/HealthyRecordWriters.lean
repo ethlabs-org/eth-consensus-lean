@@ -276,8 +276,8 @@ private theorem optimistic_unlock_keeps
   exact Or.inr (SA.anc_tree_of_anc_U hp.honest_coherent
     (Compose.frameOK_state hp.run.toLocalRun hy j) hPhiU hR hRHd hHd)
 
-/-- The actual slot-`s` fast lock survives until the next-result deadline,
-provided the held source remains a candidate. This includes slot `s+2`. -/
+/-- The actual slot-`s` fast lock, of expiry at least `s + 2`, survives until the next-result
+deadline, provided the held source remains a candidate. This includes slot `s+2`. -/
 theorem young_optimistic_lock_persists
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ))
@@ -287,11 +287,32 @@ theorem young_optimistic_lock_persists
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqb : tr.time q ≤ b)
     (hin : i ≤ n) (hread : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b)
     (hyoung : t < sp.ts (s + 1 : Nat) + 6 * sp.Δ)
-    (hl : ∃ e, (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y i).ac.locks)
+    {e : Nat} (he : s + 2 ≤ e) (hl : (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y i).ac.locks)
     (hframe : ∀ j, i ≤ j → j < n → R ∈ (Node.frame (tr.state y j)).tree ∧
       (Node.frame (tr.state y j)).AncestorCandidate R) :
-    ∃ e, (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y n).ac.locks := by
-  sorry
+    (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y n).ac.locks := by
+  apply Compose.lock_keep_interval_view hp.run hy hin hl (B := R) rfl
+  intro j hij hjn
+  obtain ⟨hR, hcandidate⟩ := hframe j hij hjn
+  have hslot : sp.slot (tr.time j) ≤ s + 2 := by
+    have htime := hread j hjn
+    have hfloor := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg j)
+      (sp.slot (tr.time j))).2 le_rfl
+    have hΔ := sp.toParams.hΔ
+    simp only [SA.SAParams.ts] at hyoung hfloor
+    push_cast at hyoung hfloor
+    by_contra h
+    have : (s : Int) + 3 ≤ sp.slot (tr.time j) := by omega
+    nlinarith
+  -- live through `s + 2 ≤ e`; `he` covers a liveness premise on the expiry
+  refine ⟨by have := sp.two_le_k; have := he; dsimp; omega, hR,
+    SA.viableAncestor_self (Compose.frameOK_state hp.run.toLocalRun hy j) hR hcandidate.symm, ?_⟩
+  intro ell hcall
+  by_cases hshort : sp.slot (tr.time j) ≤ s + 1
+  · left; dsimp; omega
+  · right
+    exact optimistic_unlock_keeps hp hc hx hy hop hs hqb ((hread j hjn).trans htb)
+      (by omega) hR ell hcall
 
 /-- The next-result alternative at a specified update, so engine callers may
 choose the tick known to precede their stored-clock observation. -/
