@@ -231,16 +231,22 @@ other premises hold.
 
 The delivery rule is Francesco's rule, normal delivery (`CommLog.Delivers.msgs`):
 
-> every message an honest node sends at `t` is received, within the delivery
-> bound, by every honest node that is awake over the delivery interval, and is
-> re-served, within the bound, to nodes that wake later.
+> every message an honest node sends at `t` is received, strictly before the
+> delivery bound, by every honest node that is awake over the delivery
+> interval, and is re-served, strictly before the bound, to nodes that wake
+> later.
 
-Formally, for a deadline function `dl` (`max a GST + Δ` in partial synchrony):
-for every start `a ≥ t`, every honest node awake throughout `[a, dl a]` holds
-the message at `dl a`. At `a = t`: a node awake over `[t, max(t, GST) + Δ]`
-has it by `max(t, GST) + Δ`. At a later `a`: a node that wakes at `a` and
-stays awake has it by `max(a, GST) + Δ`, not at the wake itself (no instant
-re-delivery; tests `waker_within_bound`, `waker_not_instant`).
+The delivery interval is half-open, `[t, max(t, GST) + Δ)`, as in the paper's
+`Sync`; on integer time "strictly before `d`" is "by `d − 1`". Formally, for a
+deadline function `dl` (`max a GST + Δ − 1` in partial synchrony): for every
+start `a ≥ t`, every honest node awake throughout `[a, dl a]` holds the message
+at `dl a`. At `a = t`: a node awake over `[t, max(t, GST) + Δ − 1]` has it by
+`max(t, GST) + Δ − 1`, so its tick at `max(t, GST) + Δ` (which runs before the
+deliveries of that time) reads it. At a later `a`: a node that wakes at `a` and
+stays awake has it by `max(a, GST) + Δ − 1`, not at the wake itself (no instant
+re-delivery; tests `waker_within_bound`, `waker_not_instant`). At `Δ = 1` this
+is same-time delivery; realizability starts at `Δ = ΔF = 2` (`Realizable`), and
+every behaviour claim holds at every `Δ ≥ 1`.
 
 **Two bounds.** The environment has a message bound `Δ` and a row bound `ΔF`
 (`Env.Δ`, `Env.ΔF`, both positive; neither bounds the other). The log carries
@@ -248,7 +254,7 @@ the protocol's message class (`CommLog.row`): for model runs it is filled only
 from `Protocol.isRow` (`Run.log`, `tagLog`, `sysOf_log_row`), so no theorem or
 regime about the model can choose another one (an abstract L0 `System` fixes
 its own). Rows are served by `Delivers.rows` with their own deadline function
-`dlF` (`max a GST + ΔF` in partial synchrony); every other message by
+`dlF` (`max a GST + ΔF − 1` in partial synchrony); every other message by
 `Delivers.msgs` with `dl`, and a row is never served by `msgs`. When `ΔF < Δ`,
 rows may overtake blocks; no statement claims a block or a vote within `ΔF`.
 For Goldilocks the rows are the standalone attestations and the relay wrappers
@@ -268,12 +274,12 @@ decision 2026-11-02). Every other protocol has no rows (`isRow` defaults to
   covered from `0`. With `SendsFromZero` (in `DerivedFacts`; true of every valid model run),
   `PSync 0` is synchrony (`PSync.syncUntil_zero`).
 - Receipt is a network service, not protocol use. In the model, what arrives
-  at the deadline is processed at the delivery, which may run the protocol's
-  delivery duties and release at once; a tick first reads it at the node's
-  next tick. That slack belongs to the protocol.
+  is processed at the delivery, which may run the protocol's delivery duties
+  and release at once; a tick first reads it at the node's next tick, at the
+  latest the tick at the bound itself.
 
-Instances: `PSync g` (deadline `max a g + Δ`, rows `max a g + ΔF`), `SyncUntil b`
-(deadline `a + Δ`, rows `a + ΔF`, for deadlines up to `b`), and
+Instances: `PSync g` (deadline `max a g + Δ − 1`, rows `max a g + ΔF − 1`),
+`SyncUntil b` (deadline `a + Δ − 1`, rows `a + ΔF − 1`, for deadlines up to `b`), and
 `OutageNet b₀ b₁ = SyncUntil b₀ ∧ PSync b₁`. Every delivery obligation (all
 three clauses, in every instance)
 applies only when its deadline is within both the cut and the horizon: a
@@ -842,7 +848,7 @@ These are values and fit/tolerance proofs, with no concrete protocol proofs.
 `lake test` builds this library, including the review pins and citation index.
 
 - `Problem`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
-- `Network`: the delivery rule (wakers served within the bound, not instantly), faithfulness, silent runs and truncation.
+- `Network`: the delivery rule (wakers served strictly before the bound, not instantly), faithfulness, silent runs and truncation.
 - `Regimes`: what each regime admits and rejects; the explanatory L0 regime lemmas.
 - `Good`: vacuous systems are not good; censoring progress, rotating sleepers, η-sleepy history.
 - `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and poll mode.

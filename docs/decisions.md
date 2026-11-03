@@ -15,6 +15,15 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-04, Francesco (option (a) of the Δ transport study, workbench
+  `cards/delta_transport_study.md`; lead-approved plan `cards/delta_halfopen_plan.md`): **half-open
+  delivery**. `CommLog.PSync`/`SyncUntil` hold a message strictly before the bound (deadlines
+  `max a g + Δ − 1`, `a + Δ − 1`, and `− 1` for rows), the paper's `[τ, max(τ, w) + Δ)`; so the
+  Goldilocks transport is `Δ_p = Δ_e` and `ΔF_p = ΔF_e` (`Setup.params`, `rowDelay`, `cF_spec`),
+  superseding the #107 `Δ_p = Δ_e + 1` (2026-10-31). `Realizable` and `RealizableActive` quantify
+  over `Δ > 1` and `ΔF > 1` ("just state Delta > 1"): at `Δ = 1` half-open delivery is same-time
+  delivery, which no protocol-agnostic eager log meets. Behaviour still covers every `Δ ≥ 1`.
+  Phase 1 keeps every contract coefficient (they over-cover); tightening is phase 2.
 - 2026-11-02, Francesco, lead-approved design (two-bound network, revision 3): **two delay
   bounds**. `Env` and `Public` carry the message bound `Δ` and the row bound `ΔF` (both positive,
   neither bounds the other). The log carries the protocol's message class (`CommLog.row`, filled
@@ -49,7 +58,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   attestations only; a mixed relay wrapper (attestations with a block or a vote) and the empty
   wrapper are delivered within `Δ` (Francesco's decision 2026-11-02, option (a)), so attestations
   bundled with a block reach the others within `Δ`. Protocol row delay `ΔF_p = ΔF + 1`, as
-  `Δ_p = Δ + 1`; the FG row gap at ratio `r` is `cF r = ⌈(r + 6)/4⌉` with
+  `Δ_p = Δ + 1` (superseded 2026-11-04 by half-open delivery: `ΔF_p = ΔF`, `Δ_p = Δ`); the FG row gap at ratio `r` is `cF r = ⌈(r + 6)/4⌉` with
   `6Δ_p + ΔF_p ≤ 4Δ_p·cF r` (`cF_spec`). **Transitional (keep-green):** the Goldilocks contract
   keeps `rowRatio = 1` (`Params.standard`), so its healthy regime still requires `ΔF ≤ Δ`, the
   case Francesco ruled out as a final state; this is not the arbitrary-ratio port, which chooses
@@ -141,7 +150,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   for correctness; it does not weaken (V), change lifetime, or prove network/participation
   transport. Positive integer engine delays and k≥2 suffice; no new caller premise.
 
-- 2026-10-31, coordinator (#107 protocol-delay implementation).
+- 2026-10-31, coordinator (#107 protocol-delay implementation; superseded 2026-11-04 by
+  half-open delivery, `Δ_p = Δ_e`).
   The concrete family's `Setup.params` uses `Δ_p = Δ_e + 1`; its skeleton and node slot
   starts both use `4Δ_p`. The standalone node shape receives protocol parameters already
   chosen, so its grid uses `sp.Δ` without adding another unit. Generic network delivery,

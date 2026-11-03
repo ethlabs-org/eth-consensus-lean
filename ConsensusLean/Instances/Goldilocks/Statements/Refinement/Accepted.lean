@@ -102,16 +102,18 @@ An abbreviation exposes the index type for the adapter signatures.
 * row ratio `A.rowRatio`: the healthy regime assumes `ΔF ≤ r·Δ` (an envelope, never a deadline;
   final gap `cF r`).
 
-Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming only):
-* arming lag `8k + 12`: `(8k+12)Δe ≥ (4k+6)Δp` for every `Δe ≥ 1` (equality only
-  at `Δe = 1`; the required `(4k+6)Δp` is `k + 1½` slots), so the label before the outage label is
+Outage numbers (engine `Δe`, node `Δp`, slot `4Δp`; slow arming only). L0 now delivers strictly
+before the bound, so `Δp = Δe` (`Setup.params`); these numbers were sized for the earlier
+`Δp = Δe + 1` and still cover `Δp = Δe` (a tighter set is pending):
+* arming lag `8k + 12`: `(8k+12)Δe > (4k+6)Δp` for every `Δe ≥ 1` (the required `(4k+6)Δp` is
+  `k + 1½` slots), so the label before the outage label is
   fully armed by `b₀`;
 * no-sleep margin `max 38 (8k + 16)`: it covers the formation window
   (`(4k+6)Δp` before `b₀`), the restored votes (`8k + 16`) and the catch-up
   (`accepted_catchUp = 37`, so `catchUp + 1 = 38`), so the honest
   validators awake at the window start are ready on the recovery counts;
-* recovery delay `18` (`18Δe ≥ 9Δp` for every `Δe ≥ 1`, equality only at
-  `Δe = 1`): enough for the restored votes of the locked validators to bring
+* recovery delay `18` (`18Δe > 9Δp` for every `Δe ≥ 1`): enough for the restored votes of the
+  locked validators to bring
   the confirmed read back above the record (owner decision 2026-11-02;
   workbench 9f5d6a3, `outage_recovery_delay-readback-opus.md`);
 * budget `4k − 6` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy

@@ -22,7 +22,7 @@ Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun
   slots, joint strict growth of the confirmed output by `t + (4k + 6)Δ` (`GrowSleepy`).
 
 **Vocabulary.** A node is **ready** at `t` (catch-up `c = 18Δ` in the protocol's `Δ`, `sp.Δ`; at
-the Refinement's `Δp = Δe + 1` this is `18Δe + 18`, not the target's `gc = 18Δe`) when it is
+the Refinement's `Δp = Δe` this is `18Δe`, the target's `gc`) when it is
 honest and awake throughout `[max(0, t − c − 1), t]` (`ReadyAt`, the model's `Point.Ready`). A
 **read** of `y` is its confirmed output at a read point `(j, t)` (`ReadPoint`: the state before cut
 `j` is the state at `t`), evaluated at `t` (`readAfter`); at `t = time j` this is `confirmedAt y j`,
@@ -60,8 +60,8 @@ cut (position `≠ 0`) of an event of `y`. Inside an event the state can be one 
 reads, e.g. after an accepted `fg_on_block` and before its `ac_on_block`. -/
 def Boundary (y : Fin sp.n) (j : Nat) : Prop := tr.IsCall y j → tr.pos j = 0
 
-/-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the Refinement's `Δp = Δe + 1` it is
-`18Δe + 18`, while the target's `gc` is `18Δe`). -/
+/-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the Refinement's `Δp = Δe` it is
+`18Δe`, the target's `gc`). -/
 def catchUp (sp : SAParams) : Time := 18 * sp.Δ
 
 /-- `y` is ready at `t` with catch-up `c`: honest and awake throughout `[max(0, t − c − 1), t]`. -/

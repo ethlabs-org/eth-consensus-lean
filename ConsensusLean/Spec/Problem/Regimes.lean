@@ -38,7 +38,7 @@ each, for a larger value:
 * row ratio `rowRatio`: the healthy regime assumes `ΔF ≤ rowRatio·Δ`, so a
   larger ratio weakens that premise (it admits slower rows) and strengthens the
   claims; it is an upper envelope of the row bound for the coefficients, never
-  a deadline (rows are delivered within `ΔF` itself, `CommLog.PSync`) and never
+  a deadline (rows are delivered strictly before `ΔF` itself, `CommLog.PSync`) and never
   an order between the bounds (`ΔF < Δ` is allowed).
 
 The sleepy and outage regimes carry no ratio: they are stated at every row

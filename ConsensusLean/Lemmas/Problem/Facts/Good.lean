@@ -110,6 +110,16 @@ theorem persists_final_compatible (h : Good S X K) {g gf : S.schema.Id}
     exact List.prefix_or_prefix_of_prefix h1 h2
   · exact Or.inr he
 
+/-- A half-open deadline `max a g + d − 1` is at or after the start, for a positive delay. -/
+private theorem le_max_add_sub_one {a g d : Time} (hd : 0 < d) : a ≤ max a g + d - 1 := by
+  have : (1 : Time) ≤ d := hd
+  linarith [le_max_left a g]
+
+/-- A half-open deadline `a + d − 1` is at or after the start, for a positive delay. -/
+private theorem le_add_sub_one {a d : Time} (hd : 0 < d) : a ≤ a + d - 1 := by
+  have : (1 : Time) ≤ d := hd
+  linarith
+
 omit [Fintype V] [DecidableEq V] in
 /-- Run quantities that depend only on `Δ` agree on a prefix. -/
 private theorem cDur_prefix {r r' : S.Run} {b : Time} (hP : (S.trace r').PrefixOf (S.trace r) b) :
@@ -130,12 +140,13 @@ theorem sleepySafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     unfold System.Sleepy
     rw [hc, show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hθ⟩
-    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ)
-        (fun a => max a 0 + (S.pt r).env.ΔF) b :=
+    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ - 1)
+        (fun a => max a 0 + (S.pt r).env.ΔF - 1) b :=
       hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) (fun _ => rfl)
         le_rfl
-    exact hd.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
-      (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.ΔF_pos.le)
+    exact hd.prefix hL hbh
+      (fun _ => le_max_add_sub_one (S.pt r).env.Δ_pos)
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔF_pos)
   rcases h.behaviour.sleepySafe cap g hcap hg r' hv' hreg with hr | he
   · rw [hc] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
@@ -148,8 +159,8 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) (i : K.Idx) (gst : Time) {b : Time} (hb0 : 0 ≤ b)
     (hbh : b ≤ (S.pt r).horizon)
-    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ)
-      (fun a => max a gst + (S.pt r).env.ΔF) b)
+    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ - 1)
+      (fun a => max a gst + (S.pt r).env.ΔF - 1) b)
     (hH : (S.pt r).HealthyOn K.params.β gst b)
     (hrat : (S.pt r).env.ΔF ≤ (K.params.rowRatio : Time) * (S.pt r).env.Δ)
     (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
@@ -165,8 +176,9 @@ theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
     unfold System.Healthy
     rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hH, hrat⟩
-    exact hs.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.Δ_pos.le)
-      (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.ΔF_pos.le)
+    exact hs.prefix hL hbh
+      (fun _ => le_max_add_sub_one (S.pt r).env.Δ_pos)
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔF_pos)
   have hpr : S.prog X K cap i (S.ready K gst r') (S.heal K cap i gst r') r' := by
     rw [hready, hheal]
     unfold System.prog at hp ⊢
@@ -187,8 +199,8 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
     (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
     (hs : (S.log r).SyncUntil (S.pt r) b₀)
-    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ)
-      (fun a => max a b₁ + (S.pt r).env.ΔF) b)
+    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ - 1)
+      (fun a => max a b₁ + (S.pt r).env.ΔF - 1) b)
     (hθ : (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0 b)
     (hns : (S.pt r).NoSleepOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b)
       (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b))
@@ -211,10 +223,10 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
     unfold System.Outage
     rw [hc, hst, hen, hpt]
     refine ⟨hT, ⟨?_, ?_⟩, hθ, hns, hco⟩
-    · exact hs.prefix hL hbh (fun a => le_add_of_nonneg_right hΔ.le)
-        (fun a => le_add_of_nonneg_right (S.pt r).env.ΔF_pos.le)
-    · exact hps.prefix hL hbh (fun a => le_add_of_le_of_nonneg (le_max_left _ _) hΔ.le)
-        (fun a => le_add_of_le_of_nonneg (le_max_left _ _) (S.pt r).env.ΔF_pos.le)
+    · exact hs.prefix hL hbh (fun _ => le_add_sub_one hΔ)
+        (fun _ => le_add_sub_one (S.pt r).env.ΔF_pos)
+    · exact hps.prefix hL hbh (fun _ => le_max_add_sub_one hΔ)
+        (fun _ => le_max_add_sub_one (S.pt r).env.ΔF_pos)
   have hTb : T ≤ S.recoveryAt K b₁ r := by
     obtain ⟨-, hl, h01, -⟩ := hT
     have : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
@@ -226,14 +238,14 @@ theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
   · exact Or.inr (hE he)
 
 /-- Active service of a provided final or available output `g` (capability
-`cap`): with at least five validators, at every index, `Δ` and GST `gst ≥ 0`,
+`cap`): with at least five validators, at every index, `Δ > 1` and GST `gst ≥ 0`,
 some clean witness in the healthy regime from `gst`, with the progress of `cap`
 at the index, has a transaction submitted to one honest node in the `g`-read of
 another honest node that was never submitted it. From the healthy witness of
 `Realizable` and `Behaviour.healthyLive`; the witness has no excuse. -/
 theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
     {g : S.schema.Id} (_hcap : cap = .final ∨ cap = .available)
-    (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 0 < Δ)
+    (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 1 < Δ)
     (hgst : 0 ≤ gst) :
     ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.Healthy K gst r ∧
       S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r ∧
@@ -241,7 +253,7 @@ theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
         x ∈ (S.pt r).submit u t ∧ (∀ τ, x ∉ (S.pt r).submit w τ) ∧
         t' ≤ (S.pt r).horizon ∧ x ∈ (S.trace r).readAt g w t' := by
   have hrat : Δ ≤ (K.params.rowRatio : Time) * Δ :=
-    le_mul_of_one_le_left hΔ.le (by exact_mod_cast K.params.rowRatio.pos)
+    le_mul_of_one_le_left (by linarith) (by exact_mod_cast K.params.rowRatio.pos)
   obtain ⟨r, hw, hd, -, ⟨-, hH, hp, ha⟩, -⟩ :=
     (h.realizable hn).healthy cap i Δ Δ gst hΔ hΔ hrat hgst
   refine ⟨r, hw, hd, hH, hp, ?_⟩

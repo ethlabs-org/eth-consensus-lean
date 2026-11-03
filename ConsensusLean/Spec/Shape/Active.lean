@@ -61,21 +61,21 @@ def BadProposerEvery (cap : Capability) (i : K.Idx) {E : Env V}
 witness (stress included) also having an active progress window
 (`ProgressActive`) from the start of its progress premise. -/
 structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
-  sleepy : ∀ cap i (Δ ΔF : Time), 0 < Δ → 0 < ΔF → ∃ r, (Sys F V).Witness r ∧
+  sleepy : ∀ cap i (Δ ΔF : Time), 1 < Δ → 1 < ΔF → ∃ r, (Sys F V).Witness r ∧
     ((Sys F V).pt r).env.Δ = Δ ∧ ((Sys F V).pt r).env.ΔF = ΔF ∧
     (Sys F V).SleepyLive (shapeProgress F V) K cap i r ∧ ProgressActive F K cap i 0 r.2
-  healthy : ∀ cap i (Δ ΔF g : Time), 0 < Δ → 0 < ΔF → ΔF ≤ (K.params.rowRatio : Time) * Δ →
+  healthy : ∀ cap i (Δ ΔF g : Time), 1 < Δ → 1 < ΔF → ΔF ≤ (K.params.rowRatio : Time) * Δ →
     0 ≤ g → ∃ r, (Sys F V).Witness r ∧
     ((Sys F V).pt r).env.Δ = Δ ∧ ((Sys F V).pt r).env.ΔF = ΔF ∧
     (Sys F V).HealthyLive (shapeProgress F V) K cap i g r ∧
     SafeActive ((Sys F V).cDur K r) ((Sys F V).heal K cap i g r) ((Sys F V).pt r) ∧
     ProgressActive F K cap i ((Sys F V).ready K g r) r.2
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (O.output cap).isSome →
-    ∃ i, ∀ Δ ΔF : Time, 0 < Δ → 0 < ΔF → ∃ r, (Sys F V).Witness r ∧
+    ∃ i, ∀ Δ ΔF : Time, 1 < Δ → 1 < ΔF → ∃ r, (Sys F V).Witness r ∧
       ((Sys F V).pt r).env.Δ = Δ ∧ ((Sys F V).pt r).env.ΔF = ΔF ∧
       (Sys F V).SleepyLive (shapeProgress F V) K cap i r ∧
       ((Sys F V).pt r).AwakeAtMost 2 ∧ ProgressActive F K cap i 0 r.2
-  outage : ∀ (Δ ΔF : Time) (k : Nat), 0 < Δ → 0 < ΔF → ∃ r T b₀ b₁, (Sys F V).Witness r ∧
+  outage : ∀ (Δ ΔF : Time) (k : Nat), 1 < Δ → 1 < ΔF → ∃ r T b₀ b₁, (Sys F V).Witness r ∧
     ((Sys F V).pt r).env.Δ = Δ ∧ ((Sys F V).pt r).env.ΔF = ΔF ∧ (Sys F V).Outage K T b₀ b₁ r ∧
     OutageActive ((Sys F V).cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁
       ((Sys F V).pt r) ∧ (k : Time) * Δ ≤ T
@@ -84,7 +84,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
   proposer slot (`BadProposerEvery`). A requirement that needs an honest
   ready proposer in every slot (e.g. `recur ⟨single, 1⟩`) fails here. Not
   part of L0 `Realizable` (L0 has no proposers). -/
-  badProposer : ∀ cap, (O.output cap).isSome → ∀ (Δ ΔF g : Time), 0 < Δ → 0 < ΔF →
+  badProposer : ∀ cap, (O.output cap).isSome → ∀ (Δ ΔF g : Time), 1 < Δ → 1 < ΔF →
     ΔF ≤ (K.params.rowRatio : Time) * Δ → 0 ≤ g →
     ∃ i r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.Δ = Δ ∧ ((Sys F V).pt r).env.ΔF = ΔF ∧
       (Sys F V).HealthyLive (shapeProgress F V) K cap i g r ∧

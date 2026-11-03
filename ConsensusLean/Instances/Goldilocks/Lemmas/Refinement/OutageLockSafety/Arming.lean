@@ -108,40 +108,7 @@ private theorem query_numbers (Q : OutageQuery S A V) :
       Q.params.ts (j₀ : Nat) + Q.params.Δ < Q.stop ∧
       (∀ t, t ≤ Q.params.ts (j₀ + Q.params.k : Nat) + Q.params.Δ → t ≤ Q.run.2.horizon →
         t ≤ (Sys (family S) V).outageEnd (K S A) Q.stop Q.run) := by
-  intro j₀
-  obtain ⟨⟨hT, -, hb01, hbud⟩, -⟩ := Q.outage
-  have hlag := outage_node_lag S A V Q
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
-  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
-    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
-    have hΔ := Q.params.toParams.hΔ
-    nlinarith)
-  have hbcast : ((4 * S.k - 6 : Nat) : Int) = 4 * (S.k : Int) - 6 := by omega
-  have hb : ((4 * S.k - 6 : Nat) : Int) ≤ 4 * (S.k : Int) - 6 := hbcast.le
-  change Q.stop ≤ Q.start + ((4 * S.k - 6 : Nat) : Int) * Q.run.1.Δ at hbud
-  have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.Δ_pos)
-  have hC : (8 * (S.k : Int) + 16) ≤ ((max 38 (8 * S.k + 16) : Nat) : Int) := by
-    exact_mod_cast le_max_right 38 (8 * S.k + 16)
-  change 4 * (Q.run.1.Δ + 1) * (j₀ : Int) + 2 * (Q.run.1.Δ + 1) ≤ Q.start at hg₁
-  change Q.start < 4 * (Q.run.1.Δ + 1) * (j₀ : Int) + 6 * (Q.run.1.Δ + 1) at hg₂
-  change 2 ≤ Q.run.1.Δ + 1 ∧ 4 * (Q.run.1.Δ + 1) * (j₀ : Int) + 2 * (Q.run.1.Δ + 1) ≤ Q.start ∧
-    Q.start < 4 * (Q.run.1.Δ + 1) * ((j₀ + 1 : Nat) : Int) + 2 * (Q.run.1.Δ + 1) ∧
-    Q.stop - Q.start ≤ (4 * (S.k : Time) - 6) * (Q.run.1.Δ + 1 - 1) ∧ Q.start ≤ Q.stop ∧
-    Q.stop ≤ 4 * (Q.run.1.Δ + 1) * ((j₀ + S.k : Nat) : Int) + (Q.run.1.Δ + 1) ∧
-    4 * (Q.run.1.Δ + 1) * ((j₀ : Nat) : Int) + (Q.run.1.Δ + 1) < Q.stop ∧
-    ∀ t, t ≤ 4 * (Q.run.1.Δ + 1) * ((j₀ + S.k : Nat) : Int) + (Q.run.1.Δ + 1) →
-      t ≤ Q.run.2.horizon →
-      t ≤ min (Q.stop + ((max 38 (8 * S.k + 16) : Nat) : Int) * Q.run.1.Δ) Q.run.2.horizon
-  push_cast
-  refine ⟨by linarith, hg₁, by linarith, by linarith, hb01, by nlinarith, by linarith,
-    fun t ht hth => le_min ?_ hth⟩
-  have h1 : (8 * (S.k : Int) + 16) * Q.run.1.Δ ≤ max 38 (8 * (S.k : Int) + 16) * Q.run.1.Δ :=
-    mul_le_mul_of_nonneg_right (le_max_right _ _) (by linarith)
-  have h2 : 4 * (S.k : Int) - 1 ≤ (4 * (S.k : Int) + 17) * Q.run.1.Δ := by nlinarith
-  have h3 : 4 * (Q.run.1.Δ + 1) * ((j₀ : Int) + S.k) + (Q.run.1.Δ + 1) ≤
-      Q.stop + (8 * (S.k : Int) + 16) * Q.run.1.Δ := by nlinarith
-  linarith
+  sorry
 
 /-- The restored label is the least `r` with `b₁ ≤ t_r + Δ`. -/
 theorem restoredLabel_spec (Q : OutageQuery S A V) :

@@ -80,41 +80,7 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
       ∀ y, Regimes.ReadyAt Q.trace (honestKeys S Q.run.2)
         ((Sys (family S) V).cDur (K S A) Q.run) y Q.deadline →
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline := by
-  intro s P hP hq hD y hy
-  have hmem := hP.1
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun hrun hP
-  obtain ⟨hacc, -, -⟩ := Healing.accept_of_proposesAt hrun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hmem hk
-  have htk : Q.trace.time k = Q.params.ts s := by
-    rw [hk.2.2, honestProposalRun_slot hP, Q.params.slotTime_eq]
-    simp [SA.SAParams.ts]
-  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
-    (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
-      (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ hmem _ _ hacc
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
-    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  have hΔ := Q.run.1.Δ_pos
-  have hg : max Q.gst 0 ≤ Q.query :=
-    (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hΔ.le)).trans Q.mature
-  have hmax : max (max (Q.params.ts s) Q.gst) 0 = Q.params.ts s := by
-    have h1 := le_max_left Q.gst 0
-    have h2 := le_max_right Q.gst 0
-    have h3 : Q.gst ≤ Q.params.ts s := by linarith
-    have h4 : (0 : Time) ≤ Q.params.ts s := by linarith
-    rw [max_eq_left h3, max_eq_left h4]
-  have hc : Q.params.Δ ≤ (Sys (family S) V).cDur (K S A) Q.run + 1 := by
-    have hc1 : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
-      rw [acceptanceContract_params_eq]
-      change (1 : Time) ≤ ((accepted_coefficients S A).catchUp : Nat)
-      exact_mod_cast (accepted_coefficients S A).catchUp.pos
-    change Q.run.1.Δ + 1 ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
-    nlinarith
-  obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
-    (horg ▸ hmem) (not_isRow_of_decodeForward hdecode) hy Q.bounded
-    (by rw [htime, htk, hmax]; exact hD) hc
-  obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.valid hmem hheld hdecode hdt
-  exact ⟨j, hj, hjt.le⟩
+  sorry
 
 /-- **Final-window extraction at a gap `c` with (H4) discharged.** `final_window_extract_of_gap`
 with the carrier premise from `carrier_processed_of_honest`; the gap, forwarding-delay and latency

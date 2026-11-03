@@ -88,18 +88,21 @@ theorem EagerFrom.delivers {g : Time} (h : L.EagerFrom p g) {dl dlF : Time → T
     exact ⟨dl a, le_trans hτ hle, le_rfl, h.txs u hu x τ hτ hua hx w hw (dl a) hle
       (haw (dl a) (le_trans (le_max_left a g) (hdl a).le) le_rfl)⟩
 
-/-- An eager log from `g` is partially synchronous with every GST `g' ≥ g`. -/
-theorem EagerFrom.psync {g g' : Time} (h : L.EagerFrom p g) (hg : g ≤ g') : L.PSync p g' := by
-  have key : ∀ d : Time, 0 < d → ∀ a, max a g < max a g' + d := fun d hd a =>
+/-- An eager log from `g` is partially synchronous with every GST `g' ≥ g`, at delays `Δ > 1`
+and `ΔF > 1`: `PSync` holds strictly before `max a g' + Δ`, that is by `max a g' + Δ − 1`, and
+the eager log serves strictly after `max a g` (at `Δ = 1` it would need same-time service). -/
+theorem EagerFrom.psync {g g' : Time} (h : L.EagerFrom p g) (hg : g ≤ g') (hΔ : 1 < p.env.Δ)
+    (hΔF : 1 < p.env.ΔF) : L.PSync p g' := by
+  have key : ∀ d : Time, 1 < d → ∀ a, max a g < max a g' + d - 1 := fun d hd a =>
     max_lt (lt_of_le_of_lt (le_max_left a g') (by linarith))
       (lt_of_le_of_lt hg (lt_of_le_of_lt (le_max_right a g') (by linarith)))
-  exact h.delivers (key _ p.env.Δ_pos) (key _ p.env.ΔF_pos) _
+  exact h.delivers (key _ hΔ) (key _ hΔF) _
 
 /-- An eager log from `g ≤ 0` with no honest send before `0` is synchronous up
 to every cut. -/
 theorem EagerFrom.syncUntil {g : Time} (hns : L.SendsFromZero p) (h : L.EagerFrom p g)
-    (hg : g ≤ 0) (b : Time) : L.SyncUntil p b :=
-  (h.psync hg).syncUntil_zero hns b
+    (hg : g ≤ 0) (hΔ : 1 < p.env.Δ) (hΔF : 1 < p.env.ΔF) (b : Time) : L.SyncUntil p b :=
+  (h.psync hg hΔ hΔF).syncUntil_zero hns b
 
 /-- Delivery transfers to a log `L'` that agrees with `L` up to `b`, on the
 point with horizon `b ≤ horizon`, for deadlines at or after the start

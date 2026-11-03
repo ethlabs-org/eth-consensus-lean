@@ -601,8 +601,8 @@ whatever happens after `b`. -/
 theorem confirmed_safe_healed_prefix (k : ℕ+) (gst : Time) (r : (Sys F V).Run)
     (hv : (Sys F V).Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ ((Sys F V).pt r).horizon)
     (hs : ((Sys F V).log r).Delivers ((Sys F V).pt r)
-      (fun a => max a gst + ((Sys F V).pt r).env.Δ)
-      (fun a => max a gst + ((Sys F V).pt r).env.ΔF) b)
+      (fun a => max a gst + ((Sys F V).pt r).env.Δ - 1)
+      (fun a => max a gst + ((Sys F V).pt r).env.ΔF - 1) b)
     (hH : ((Sys F V).pt r).HealthyOn (1 / 3) gst b)
     (hrat : ((Sys F V).pt r).env.ΔF ≤
       ((goldilocksContract pp).params.rowRatio : Time) * ((Sys F V).pt r).env.Δ)

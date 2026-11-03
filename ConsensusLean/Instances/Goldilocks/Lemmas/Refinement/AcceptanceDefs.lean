@@ -130,11 +130,11 @@ theorem acceptance_outage_times (S : Setup) (A : AcceptanceAssumptions S)
   change b₁ ≤ b₀ + ((4 * S.k - 6 : Nat) : Int) * pub.Δ at hbudget
   rw [hlcast] at hlag
   have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt pub.Δ_pos)
-  have hmod := Int.emod_lt_of_pos (b₀ - 6 * (pub.Δ + 1))
-    (show 0 < 4 * (pub.Δ + 1) by linarith)
-  change 0 ≤ T ∧ T + (4 * (S.k : Int) - 4) * (pub.Δ + 1) ≤ b₀ ∧
-    b₀ ≤ b₁ ∧ b₁ - b₀ + (b₀ - 6 * (pub.Δ + 1)) % (4 * (pub.Δ + 1)) ≤
-      (4 * (S.k : Int) - 2) * (pub.Δ + 1)
+  have hmod := Int.emod_lt_of_pos (b₀ - 6 * pub.Δ)
+    (show 0 < 4 * pub.Δ by linarith)
+  change 0 ≤ T ∧ T + (4 * (S.k : Int) - 4) * pub.Δ ≤ b₀ ∧
+    b₀ ≤ b₁ ∧ b₁ - b₀ + (b₀ - 6 * pub.Δ) % (4 * pub.Δ) ≤
+      (4 * (S.k : Int) - 2) * pub.Δ
   refine ⟨hT, ?_, horder, ?_⟩ <;> nlinarith
 
 noncomputable abbrev K (S : Setup) (A : AcceptanceAssumptions S) :=
@@ -164,7 +164,7 @@ theorem cutZ_fit_of_catchUp {S : Setup} (A : AcceptanceAssumptions S) (V : Type)
       max ((Sys (family S) V).ready (acceptanceContract A C) g r) 0 +
         4 * (S.params (Model.pubOf r.1) hn).Δ := by
   have h := cDur_ge_of_catchUp A V C hC r
-  have hΔ : (S.params (Model.pubOf r.1) hn).Δ = r.1.Δ + 1 := rfl
+  have hΔ : (S.params (Model.pubOf r.1) hn).Δ = r.1.Δ := rfl
   exact Healing.cutZ_add_lt_ready_add _ g _ (by have := r.1.Δ_pos; rw [hΔ]; linarith)
 
 end Consensus.Goldilocks.Refinement

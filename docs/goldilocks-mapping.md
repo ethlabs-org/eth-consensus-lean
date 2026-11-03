@@ -697,10 +697,11 @@ Modelling choices:
   they are `LiveDC`'s consequences). The finalized read after all events at `t'` is covered because C1.3 concludes at
   every honest call from its deadline and an awake honest node calls again after `t'` (its state between calls is
   that of the next call). The transaction rows are the Refinement's, from `FinalInclude`.
-- **Network model vs the spec's premises** (consensus-lean#92, #107): the owner chose delivery-time relay in
-  the generic engine and protocol delay `Δ_p = Δ_e + 1`. The engine's inclusive delivery bound (`≤`) becomes
-  the spec's strict processing deadline (`<`) with this one-unit slack; it absorbs only the endpoint, not
-  relay latency. The spec treats admission as an instantaneous send. The model's persistent-relay variants
+- **Network model vs the spec's premises** (consensus-lean#92, #107; half-open delivery 2026-11-04): the
+  owner chose delivery-time relay in the generic engine. L0 now holds a message strictly before the bound
+  (`PSync` deadline `max a g + Δ − 1`), which is the spec's strict processing deadline (`<`), so the
+  protocol delay is `Δ_p = Δ_e` (it was `Δ_e + 1`, whose one-unit slack absorbed the inclusive endpoint);
+  obligation 8's strict-vs-endpoint receipt is settled by the L0 text. The spec treats admission as an instantaneous send. The model's persistent-relay variants
   still break R.1 when relay waits for an awake tick or is one unit late, so buffering across sleep or adding
   relay slack is not the chosen repair. `SyncOn` and `SyncAC` stay unchanged. The Refinement transport from
   `PSync`/`SyncUntil` to `GSTRun`/`SyncRun` remains to be proved with delivery-time relay and the chosen delay;
@@ -767,11 +768,10 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
   spec's tick runs only awake (`tick_of_awake`), so it is the poll proposal step at the public times. The release
   of queued bodies is the shape's own, through poll steps; the two leading polls make a proposal carry only
   released objects (the spec has no release step).
-- **Not stated: the network premises' transport.** The engine's `Delivers` bounds a receipt by `max(a, g) + Δ`
-  (`≤`) where the spec requires processing strictly before `max(τ, w_y) + Δ'`, and reads an admission as an
-  instantaneous send (`SendOrAdmitAt`). The owner decision in consensus-lean#107 is delivery-time relay in the
-  generic engine and `Δ_p = Δ_e + 1`: only the inclusive-to-strict endpoint consumes the extra unit, never
-  relay delay. The transport `PSync`/`SyncUntil` → `GSTRun`/`SyncRun` is still a proof obligation under that
+- **Not stated: the network premises' transport.** The engine's `PSync` holds a receipt by
+  `max(a, g) + Δ − 1`, strictly before the spec's processing deadline `max(τ, w_y) + Δ'`, and reads an
+  admission as an instantaneous send (`SendOrAdmitAt`). The owner decisions are delivery-time relay in the
+  generic engine (#107) and half-open delivery with `Δ_p = Δ_e` (2026-11-04). The transport `PSync`/`SyncUntil` → `GSTRun`/`SyncRun` is still a proof obligation under that
   choice; `SyncOn` and `SyncAC` are unchanged. The earlier next-tick `+1/+2` analysis is superseded, not a
   transport theorem.
 - **The proposer selection is the run's.** The generic skeleton's proposer selection is per slot

@@ -273,14 +273,14 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
     (p : Payload sp.n) : Blk sp :=
   ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
-/-- The skeleton uses protocol delay `Δ_p = pub.Δ + 1`, selecting one proposer per `4Δ_p`, with
+/-- The skeleton uses protocol delay `Δ_p = pub.Δ`, selecting one proposer per `4Δ_p`, with
 everyone in the poll role and no committee kinds; two poll steps (the release of the
 bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
 then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
 delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
 delivery). -/
 def skeleton (pub : Public) : Skeleton pub.n where
-  grid := ⟨4 * (pub.Δ + 1), mul_pos (by decide) (by have := pub.Δ_pos; linarith)⟩
+  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed Finset.univ
   Kind := Empty
@@ -669,15 +669,16 @@ structure Setup where
   not on a proposer schedule or timing parameters. -/
   ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
 
-/-- The SA parameters use protocol delay `pub.Δ + 1` and slots of four protocol delays.
+/-- The SA parameters use protocol delay `pub.Δ` and slots of four protocol delays: L0 delivers
+strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
 The run's proposer selection is independent of these runtime parameters. -/
 abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
   toParams :=
     { n := pub.n
       hn := hn
-      Δ := pub.Δ + 1
-      hΔ := by have := pub.Δ_pos; linarith
-      slotTime := fun s => 4 * (pub.Δ + 1) * s
+      Δ := pub.Δ
+      hΔ := pub.Δ_pos
+      slotTime := fun s => 4 * pub.Δ * s
       slotTime_zero := by simp
       slotTime_strictMono := fun a b h =>
         mul_lt_mul_of_pos_left (by exact_mod_cast h) (by have := pub.Δ_pos; linarith)
@@ -735,10 +736,10 @@ noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
 
 /-! ## The row bound -/
 
-/-- The protocol row delay of the public parameters: `ΔF_p = ΔF + 1`, the engine row bound plus
-the same one-tick slack as the protocol delay `Δ_p = Δ + 1` (`Setup.params`): a row received at
-its engine deadline is used at the node's next tick. -/
-def rowDelay (pub : Public) : Time := pub.ΔF + 1
+/-- The protocol row delay of the public parameters: `ΔF_p = ΔF`, the engine row bound, as the
+protocol delay `Δ_p = Δ` (`Setup.params`): L0 delivers strictly before the bound (`CommLog.PSync`),
+which is the node's deadline `[τ, max(τ, w) + Δ_F)`. -/
+def rowDelay (pub : Public) : Time := pub.ΔF
 
 /-- The FG row gap at row ratio `r`: `cF r = ⌈(r + 6)/4⌉` slots (`cF_ceil`). It bounds
 `⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉` whenever the engine bounds satisfy `ΔF ≤ r·Δ` (`cF_spec`). -/
@@ -750,10 +751,9 @@ theorem cF_ceil (r : ℕ+) : (r : Nat) + 6 ≤ 4 * cF r ∧ 4 * cF r < (r : Nat)
   omega
 
 /-- The row transport at ratio `r`: with engine bounds `0 < Δ` and `ΔF ≤ r·Δ`, the protocol
-delays `Δ_p = Δ + 1` and `ΔF_p = ΔF + 1` satisfy `6Δ_p + ΔF_p ≤ 4Δ_p·cF r`. -/
+delays `Δ_p = Δ` and `ΔF_p = ΔF` satisfy `6Δ_p + ΔF_p ≤ 4Δ_p·cF r`. -/
 theorem cF_spec (r : ℕ+) (Δ ΔF : Time) (hΔ : 0 < Δ) (hr : ΔF ≤ (r : Time) * Δ) :
-    6 * (Δ + 1) + (ΔF + 1) ≤ 4 * (Δ + 1) * (cF r : Time) := by
-  have h1 : (1 : Time) ≤ r := by exact_mod_cast r.pos
+    6 * Δ + ΔF ≤ 4 * Δ * (cF r : Time) := by
   have h4 : ((r : Nat) : Time) + 6 ≤ 4 * (cF r : Time) := by exact_mod_cast (cF_ceil r).1
   nlinarith
 

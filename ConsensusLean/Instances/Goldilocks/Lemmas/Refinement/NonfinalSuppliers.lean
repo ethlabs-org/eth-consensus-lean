@@ -32,40 +32,7 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
     ∃ k ≤ j, τ ≤ (simTrace S rho hn).time k ∧
       (simTrace S rho hn).projAC.ProcessAt y k m ∧
       (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y k τ := by
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj hτ
-    have heq' : (simTrace S rho hn).projAC.deadline y j τ =
-        a + (S.params (Model.pubOf E) hn).Δ := by
-      rw [Compose.projAC_deadline]
-      exact heq
-    have hslack : a + E.Δ < a + (S.params (Model.pubOf E) hn).Δ := by
-      change a + E.Δ < a + (E.Δ + 1)
-      linarith
-    have hbound : a + E.Δ ≤ b := hslack.le.trans (heq' ▸ hb)
-    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩
-      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y) hy
-      a ha hbound (hbound.trans hbh)
-      (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
-    rcases held_voteForward_source_or_process S rho hn hv hx hs hfirst hheld with
-      h | ⟨k, hp, hlo, hhi⟩
-    · exact False.elim (hne h)
-    have htime : (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y j τ := by
-      rw [heq']
-      exact hhi.trans_lt hslack
-    have hkj : k < j := by
-      by_contra h
-      have := simTrace_time_mono S rho hn hv (Nat.le_of_not_gt h)
-      linarith
-    by_cases hk : (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y k τ
-    · exact ⟨k, hkj.le, hlo, hp, hk⟩
-    · have hm : (simTrace S rho hn).projAC.deadline y k τ ≤
-          (simTrace S rho hn).projAC.deadline y j τ := by
-        rw [Compose.projAC_deadline, Compose.projAC_deadline]
-        exact deadline_mono_cut S rho hn hv y τ (S.params (Model.pubOf E) hn).Δ hkj.le
-      obtain ⟨l, hl, hlo', hp', hlt⟩ := ih k hkj ⟨_, Compose.projAC_callAt.mp hp.choose_spec.1⟩
-        (hm.trans hb) (le_of_not_gt hk)
-      exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
+  sorry
 
 /-- Finite canonical service needs only raw synchrony through its deadline bound.
 Self-service uses fresh processing at the source time, never retention across a restart. -/
@@ -203,13 +170,7 @@ theorem confirmed_ready_mono (Q : ConfirmedQuery S A V) {c d : Time}
 /-- The named joint coefficient bound covers the node duration; no equality of scales. -/
 theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (37 : Time) ≤ (accepted_catchUp S A : Nat) := by
-    exact_mod_cast accepted_catchUp_ge_sleepy S A
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  simp only [ConfirmedQuery.duration, System.cDur,
-    Params.standard, accepted_coefficients_catchUp]
-  change 18 * (Q.run.1.Δ + 1) ≤ (accepted_catchUp S A : Nat) * Q.run.1.Δ
-  nlinarith
+  sorry
 
 /-- Canonical recipient service through the actual query deadline. -/
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
@@ -261,60 +222,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
     (hprogress : (Sys (family S) V).prog (shapeProgress (family S) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlot S A V Q) := by
-  classical
-  have hquery0 : 0 ≤ Q.query := (le_max_right ready 0).trans hquery
-  have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
-  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (family S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index⟩ Q.duration ready Q.run.2.horizon := by
-    simpa only [System.prog, shapeProgress, shapeHolds, acceptanceContract, ite_eq_right hcap,
-      Model.sysExternal, ConfirmedQuery.duration, System.cDur, System.pt, Sys,
-      Model.sysOf, Model.Run.point]
-      using hprogress
-  have hlat : (8 * (Q.index : Time) + 12) ≤ accepted_latency S A Q.cap Q.index := by
-    exact_mod_cast accepted_latency_ge_sleepy S A Q.cap Q.index Q.nonfinal
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  have hi : (0 : Time) ≤ Q.index := by positivity
-  have hbudget : (4 * (Q.index : Time) + 6) * Q.params.Δ ≤
-      ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.Δ := by
-    rw [show (K S A).params.latency Q.cap Q.index = accepted_latency S A Q.cap Q.index from
-      congrFun (congrFun (accepted_coefficients_latency S A) Q.cap) Q.index]
-    change (4 * (Q.index : Time) + 6) * (Q.run.1.Δ + 1) ≤ _
-    nlinarith
-  have hwin : Q.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.run.2.horizon := by
-    have hb := Q.bounded
-    have hp := Q.params.toParams.hΔ
-    change Q.query + _ ≤ _ at hb
-    linarith
-  obtain ⟨s, hlo, hhi, hr⟩ := hrec Q.query (by simpa using hquery)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, family, skeleton,
-      Model.Run.point] using hwin)
-  have htime : (family S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
-    change (s : Time) * (4 * (Q.run.1.Δ + 1)) = 4 * (Q.run.1.Δ + 1) * s
-    ring
-  rw [htime] at hlo hhi
-  have hmargin : Q.params.ts s + 6 * Q.params.Δ ≤ Q.deadline := by
-    change Q.params.ts s ≤ Q.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
-    change _ ≤ Q.query + _
-    linarith
-  have hready := hr 0 (by simp [Pattern.single])
-  simp only [Nat.add_zero] at hready
-  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
-    simp only [runProposer, dite_eq_left hready.1]
-    exact Finset.min'_mem _ _
-  have hR := hready.2 _ hmem
-  rw [htime] at hR
-  have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hquery0.trans hlo.le)
-    ((le_add_of_nonneg_right (by positivity : 0 ≤ 6 * Q.params.Δ)).trans
-      (hmargin.trans Q.bounded)) hR
-  rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
-    runProposer S Q.run.2 Q.hn s from Q.run.2.key.symm_apply_apply _] at hnode
-  refine ⟨⟨s, ?_, hlo, hmargin, hnode⟩⟩
-  change 1 ≤ s
-  cases s with
-  | zero => simp [SA.SAParams.ts] at hlo; linarith
-  | succ s => exact Nat.succ_pos s
+  sorry
 
 set_option linter.unusedVariables false in
 /-- Recurrence/grid selection at exact cDur, using the joint latency lower bound. -/

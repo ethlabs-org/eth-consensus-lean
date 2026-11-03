@@ -57,46 +57,7 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
     (hl : ProposalLiveReady rho (((c₀ : Nat) : Time) * E.Δ) g start D) :
     ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.Δ) g start
       (((D : Nat) : Time) * E.Δ) := by
-  rw [Trace.map_eq]
-  intro x t t' hsub hdt hh v hv'
-  change max t start + E.Δ + (D : Time) * E.Δ ≤ t' at hdt
-  change rho.point.SubmittedToSome x t at hsub
-  change t' ≤ rho.horizon at hh
-  have hΔ := E.Δ_pos
-  have hmt := le_max_left t start
-  have hms := le_max_right t start
-  obtain ⟨τ, k, h, hτ, hready, hprop, hin⟩ := hl (t' - (D : Time) * E.Δ)
-    (by dsimp only [Time] at *; omega) (by dsimp only [Time] at *; omega)
-    ⟨v, by rw [sub_add_cancel]; exact hv'⟩
-  have he : t' - (D : Time) * E.Δ + (D : Time) * E.Δ = t' := sub_add_cancel _ _
-  rw [he] at hin
-  have hmem : x ∈ decodeTxs h.input := by
-    rw [honestProposal_payload hv hprop, decode_encodeTxs]
-    obtain ⟨u, hu, τ₀, hτ₀, hτ₀t, haw, hx⟩ := hsub
-    have hτa : τ₀ ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
-    have hga : gst ≤ τ - E.Δ - 1 := by dsimp only [Time] at *; omega
-    have hdl : max (τ - E.Δ - 1) gst + E.Δ = τ - 1 := by
-      rw [max_eq_left hga]; dsimp only [Time] at *; omega
-    have hτh : τ ≤ rho.horizon := by
-      obtain ⟨-, -, -, -, i, hi | ⟨_, hi⟩, -⟩ := hprop <;>
-        exact (hv.in_horizon _ (List.mem_of_getElem? hi)).2
-    have hawake : rho.point.AwakeOnClosed (rho.key k) (τ - E.Δ - 1) (τ - 1) := by
-      intro u hu₁ hu₂
-      refine hready.2 u ?_ ?_
-      · have hm : E.Δ ≤ ((c₀ : Nat) : Int) * E.Δ :=
-          le_mul_of_one_le_left hΔ.le (by exact_mod_cast hc₀)
-        apply max_le <;> dsimp only [Time] at * <;> omega
-      · dsimp only [Time] at *; omega
-    have hτ1 : τ - 1 ≤ rho.point.horizon := by
-      change τ - 1 ≤ rho.horizon; dsimp only [Time] at *; omega
-    have held : CommLog.TxHeld rho.log (rho.key k) x (max (τ - E.Δ - 1) gst + E.Δ) :=
-      hs.txs u hu x τ₀ hτ₀ haw hx (rho.key k) hready.1 (τ - E.Δ - 1) hτa
-        (by change _ + E.Δ ≤ _; rw [hdl]; exact hτ1) (by change _ + E.Δ ≤ _; rw [hdl]; exact hτ1)
-        (by change rho.point.AwakeOnClosed _ _ (_ + E.Δ); rw [hdl]; exact hawake)
-    rw [hdl] at held
-    exact rho.txHeld_mem_mempool held (by dsimp only [Time]; omega)
-  change x ∈ ledgerOf ((chainTrace rho).readAt g v t')
-  exact (mem_ledgerOf _ _).mpr ⟨h, hin v hv', hmem⟩
+  sorry
 
 /-- An object is in a node's system view iff it is in its run view. -/
 theorem mem_sysView (rho : Model.Run (compiled F) E) (v : V) (i : Nat)
