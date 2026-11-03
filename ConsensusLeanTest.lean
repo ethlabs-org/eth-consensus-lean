@@ -8,6 +8,7 @@ public import ConsensusLeanTest.Goldilocks
 public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLeanTest.GoldilocksACOptimisticWitness
 public import ConsensusLeanTest.GoldilocksAcceptance
+public import ConsensusLeanTest.GoldilocksAggregationWitness
 public import ConsensusLeanTest.GoldilocksFG
 public import ConsensusLeanTest.GoldilocksFGStore
 public import ConsensusLeanTest.GoldilocksFGStoreService
