@@ -24,8 +24,8 @@ protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
   `c = cF r`) and one honest ready proposer for the other outputs, in every window of the outer
   gap.
 * **Coefficients** (`accepted_coefficients`, `Δ`-coefficients): catch-up `19`; heal
-  `56k + 52δ_t + 76X + 63` at every capability (`catchUp + healMargin`,
-  `healMargin = 56k + 52δ_t + 76X + 44`); latency `4X + 6` for the available and stable outputs
+  `48k + 44δ_t + 64X + 59` at every capability (`catchUp + healMargin`,
+  `healMargin = 48k + 44δ_t + 64X + 40`); latency `4X + 6` for the available and stable outputs
   and `4(X + 3·cF r) + 1` for the final one. Only the final latency reads the assumptions
   (through `r`) directly; heal depends on `r` only through the `δ_t` that `3·cF r ≤ δ_t`
   requires, and the heal coefficient ignores the capability.
@@ -38,11 +38,12 @@ open Blocks Shape
 /-- The drain length `L_drain = 2k + X` of the nonfinal reset envelope. -/
 def healthyDrainLen (S : Setup) (X : ℕ+) : Nat := 2 * S.k + X
 
-/-- The margin `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` of the heal coefficient (the final
-route's heal bound at `λ = 2Δ`); expanded, `M_f = 56k + 52δ_t + 76X + 44`. It also covers the
-nonfinal reset envelope, `R + 8k + 4X + 29 ≤ M_f` for `δ_t ≥ 6`. -/
+/-- The margin `M_f = 20 L_drain + 8k + 44δ_t + 44X + 40` of the heal coefficient (the final
+route's heal bound on the five-window frame route at `λ = 2Δ`); expanded,
+`M_f = 48k + 44δ_t + 64X + 40`. It also covers the nonfinal reset envelope,
+`R + 8k + 4X + 29 ≤ M_f` for `δ_t ≥ 6` (slack `4δ_t − 13`). -/
 def healMargin (S : Setup) (X : ℕ+) : Nat :=
-  24 * healthyDrainLen S X + 8 * S.k + 52 * S.δt + 52 * X + 44
+  20 * healthyDrainLen S X + 8 * S.k + 44 * S.δt + 44 * X + 40
 
 /-- Fixed row ratio and timeout assumptions. The row ratio `r` bounds the engine row delay
 by `ΔF ≤ r·Δ` in the healthy regime (`Params.rowRatio`); the timeout pays the route-A window at
@@ -72,7 +73,7 @@ def accepted_catchUp (S : Setup) (_A : AcceptanceAssumptions S) : ℕ+ :=
 
 /-- The finite healing witness `catchUp + M_f`, `M_f = healMargin S X`, at every capability: a
 closed expression in `k`, `δ_t`, `X` and the catch-up, fixed before any run; expanded,
-`56k + 52δ_t + 76X + 63`. In delays `Δ` (node and engine alike, `Δp = Δe`), `M_f` is the final
+`48k + 44δ_t + 64X + 59`. In delays `Δ` (node and engine alike, `Δp = Δe`), `M_f` is the final
 route's heal-bound margin and covers the nonfinal reset envelope. -/
 def accepted_heal (S : Setup) (A : AcceptanceAssumptions S) : Capability → ℕ+ → Nat :=
   fun _ X => (accepted_catchUp S A : Nat) + healMargin S X

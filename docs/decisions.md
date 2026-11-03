@@ -19,7 +19,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   with `Δp = Δe` the Goldilocks contract numbers are the node numbers: catch-up `19`
   (`18Δ + 1 ≤ 19Δ`), latency `4X + 6` (available, stable) and `4(X + 3·cF r) + 1` (final), lag
   `4k + 6`, no-sleep `4k + 6`, recovery `9`, heal `catchUp + M_f` with
-  `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` (563 at `k = 2, X = 1, δ_t = 6`, was 1312). The
+  `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` (563 at `k = 2, X = 1, δ_t = 6`, was 1312;
+  superseded: five-window `M_f`, 483, 2026-11-03, below). The
   budget stays `4k − 6` (the node's phase-sensitive (V), `acceptance_outage_times`); `4k − 5`
   is optional for Francesco (superseded: budget `4k − 5`, 2026-11-03, below). Every number moves toward stronger claims except catch-up, which is
   mixed: more ready readers, but the healthy progress window (`healthyLive`, `healedSafe`,
@@ -433,6 +434,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
   row reads it, and `budget_pos` holds (`4k − 5 ≥ 3`). `4k − 4` would break the restored-label
   bound (`stop ≤ t_{j₀+k} + Δ`): at `k = 2`, `Δ = 2`, start `11` (`j₀ = 0`) the bound is `18`;
   `4k − 5` gives stop `≤ 17` (one tick of slack) and `4k − 4` gives `19 > 18`.
+- 2026-11-03, Francesco (plan: workbench `cards/heal_five_window.md` 3ff7d946, claude-mac PASS
+  on #136): **the heal coefficient moves to the five-window frame route** (claude-mac's
+  `exists_reset_of_drain5_awake`, `resetBound5`, `healBoundCoeff5_at_two`, 386596cd/86795559):
+  `healMargin = 20 L_drain + 8k + 44δ_t + 44X + 40 = 48k + 44δ_t + 64X + 40` (was
+  `24 L_drain + 8k + 52δ_t + 52X + 44`); heal `19 + M_f` is `483` at `k = 2, X = 1, δ_t = 6`
+  (was `563`), lower by `8k + 8δ_t + 12X + 4` at every setup, capability and index. The
+  untrusted reset coefficient `healthyResetCoeff` moves with it (`20 L_drain + 40(δ_t + X) + 24`);
+  the nonfinal reserve keeps its slack `4δ_t − 13`. A smaller heal makes `healthyLive` and
+  `healedSafe` hold from earlier and shortens `healedSafe`'s progress window, so both are
+  stronger; `Admissible` does not bound the heal, and the generic realizability witnesses give
+  `SafeActive` from every start, so realizability is unaffected.
 - 2026-11-03, Francesco: **`ac_to_fg` returns only `fg_confirmed`** (or `⊥`). Nothing read the
   returned head: the node discards it, and since loose BJ (goldilocks#14, 37fc02fe) the finality
   pair comes from `finality_pair(Λ, σ_e)` on the source's entry state. `ACInterface.toFG`,

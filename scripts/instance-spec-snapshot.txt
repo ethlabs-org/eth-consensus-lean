@@ -3883,8 +3883,8 @@ def Consensus.Goldilocks.Refinement.accepted_latency.match_1 #2825803619/4681342
 def Consensus.Goldilocks.Refinement.finalWindow : {S : Consensus.Goldilocks.Refinement.Setup} → Consensus.Goldilocks.Refinement.AcceptanceAssumptions S → Consensus.Blocks.Pattern := fun {S} A => { offsets := List.cons.{0} 0 (List.cons.{0} (Consensus.Goldilocks.Refinement.cF A.rowRatio) (List.cons.{0} (HMul.hMul.{0, 0, 0} 2 (Consensus.Goldilocks.Refinement.cF A.rowRatio)) (List.cons.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.Refinement.cF A.rowRatio)) List.nil.{0}))), nonempty := ⋯ }
   #1803649254/244824562
 theorem Consensus.Goldilocks.Refinement.finalWindow._proof_1 #2947112540/-
-def Consensus.Goldilocks.Refinement.healMargin : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 24 (Consensus.Goldilocks.Refinement.healthyDrainLen S X)) (HMul.hMul.{0, 0, 0} 8 S.k)) (HMul.hMul.{0, 0, 0} 52 S.δt)) (HMul.hMul.{0, 0, 0} 52 X.val)) 44
-  #922212552/1218428848
+def Consensus.Goldilocks.Refinement.healMargin : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 20 (Consensus.Goldilocks.Refinement.healthyDrainLen S X)) (HMul.hMul.{0, 0, 0} 8 S.k)) (HMul.hMul.{0, 0, 0} 44 S.δt)) (HMul.hMul.{0, 0, 0} 44 X.val)) 40
+  #922212552/2146974874
 def Consensus.Goldilocks.Refinement.healthyDrainLen : Consensus.Goldilocks.Refinement.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 2 S.k) X.val
   #922212552/2914389715
 ## ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface

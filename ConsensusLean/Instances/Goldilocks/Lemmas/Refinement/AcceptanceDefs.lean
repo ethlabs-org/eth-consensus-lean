@@ -62,11 +62,12 @@ theorem accepted_heal_ge_reset (S : Setup) (A : AcceptanceAssumptions S) (cap : 
   omega
 
 /-- The final route's coefficient form `accepted_heal(final, X) ≥ C + M_f`,
-`M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` at `λ = 2Δ` and `L_drain = healthyDrainLen`
-(`heal_bound.md` §0.1). A budget for the final route, not a proof of its reset. -/
+`M_f = 20 L_drain + 8k + 44δ_t + 44X + 40` at `λ = 2Δ` and `L_drain = healthyDrainLen` (the
+five-window route, `healBoundCoeff5_at_two`). A budget for the final route, not a proof of its
+reset. -/
 theorem accepted_heal_ge_final (S : Setup) (A : AcceptanceAssumptions S) (X : ℕ+) :
     (accepted_catchUp S A : Nat) +
-        (24 * healthyDrainLen S X + 8 * S.k + 52 * S.δt + 52 * (X : Nat) + 44) ≤
+        (20 * healthyDrainLen S X + 8 * S.k + 44 * S.δt + 44 * (X : Nat) + 40) ≤
       accepted_heal S A .final X := by
   rw [accepted_heal_val, healMargin_val]
 

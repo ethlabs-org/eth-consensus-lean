@@ -21,15 +21,16 @@ statement of the leaf `final_reset_premises` (Accepted.lean): one reset `a` with
 HS premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and
 `3c ≤ δ_t` (workbench `two_bound_network.md` §4).
 
-The reset is `exists_reset_of_drain_awake` at the ready scalar `ready` (`ready ≥ 1`), the gap
-`G = X = Q.index`, the drain length `L_drain = healthyDrainLen = 2k + X`, `λ = 2Δ` and the service
-horizon `b = horizon`; its bound is `B = ready + healthyResetCoeff·Δ`. The run premises come from
-the shared HS premises at `Δ_F`, Catch from `catchRun_of_psync`, the drain from
-`drainOutputs_of_service`. The gap is `final_query_gap`: `recurrence_gap` on the final pattern
-(span `3c`) with the guarded duty → proposal adapter `duty_proposal_run`.
+The reset is `exists_reset_of_drain5_awake` (the five-window frame route) at the ready scalar
+`ready` (`ready ≥ 1`), the gap `G = X = Q.index`, the drain length
+`L_drain = healthyDrainLen = 2k + X`, `λ = 2Δ` and the service horizon `b = horizon`; its bound is
+`B = ready + healthyResetCoeff·Δ`.
+The run premises come from the shared HS premises at `Δ_F`, Catch from `catchRun_of_psync`, the
+drain from `drainOutputs_of_service`. The gap is `final_query_gap`: `recurrence_gap` on the final
+pattern (span `3c`) with the guarded duty → proposal adapter `duty_proposal_run`.
 
 The coefficient input is `accepted_heal_ge_final` (AcceptanceDefs.lean): the heal coefficient of
-the final capability is at least `catchUp + M_f`, `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44`
+the final capability is at least `catchUp + M_f`, `M_f = 20 L_drain + 8k + 44δ_t + 44X + 40`
 (in node delays `Δ = Δe`). With it,
 `B + (8k + 20)Δ + 4(X + δ_t − 1)Δ − 1 = ready + M_f·Δ − 1 ≤ heal ≤ query`, which is (H3), and
 `B + (12c − 2)Δ ≤ heal ≤ horizon` (`final_heal_horizon_fit`, for every `c` with `3c ≤ δ_t`),
@@ -43,20 +44,20 @@ open SA (gbar)
 variable (S : Setup) (A : AcceptanceAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- **The final heal margin covers a window of span `3c`** (symbolic in `c`). With the reset bound
-`B = ready + (24 L_drain + 48δ_t + 48X + 28)·Δ` and `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44`
+`B = ready + (20 L_drain + 40δ_t + 40X + 24)·Δ` and `M_f = 20 L_drain + 8k + 44δ_t + 44X + 40`
 (`accepted_heal_ge_final`), the horizon step of a gap-`c` window, `B + (12c − 2)·Δ`, stays below
 `ready + M_f·Δ − 1` for every `c` with `3c ≤ δ_t`: the slack `M_f − (B − ready)/Δ − 12c + 2 =
 8k + 4δ_t + 4X + 18 − 12c ≥ 8k + 4X + 18` is positive. So `accepted_heal` needs no change for a
 gap `c` with `3c ≤ δ_t`. -/
 theorem final_heal_horizon_fit {D Ld k δt X c : Time} (hD : 0 < D) (hk : 0 ≤ k) (hX : 0 ≤ X)
     (h3c : 3 * c ≤ δt) :
-    (24 * Ld + 48 * δt + 48 * X + 28 + (12 * c - 2)) * D + 1 ≤
-      (24 * Ld + 8 * k + 52 * δt + 52 * X + 44) * D := by
+    (20 * Ld + 40 * δt + 40 * X + 24 + (12 * c - 2)) * D + 1 ≤
+      (20 * Ld + 8 * k + 44 * δt + 44 * X + 40) * D := by
   have h1 : 0 ≤ (4 * δt - 12 * c) * D := mul_nonneg (by linarith) hD.le
   have h2 : 0 ≤ k * D := mul_nonneg hk hD.le
   have h3 : 0 ≤ X * D := mul_nonneg hX hD.le
-  have key : (24 * Ld + 8 * k + 52 * δt + 52 * X + 44) * D -
-      ((24 * Ld + 48 * δt + 48 * X + 28 + (12 * c - 2)) * D + 1) =
+  have key : (20 * Ld + 8 * k + 44 * δt + 44 * X + 40) * D -
+      ((20 * Ld + 40 * δt + 40 * X + 24 + (12 * c - 2)) * D + 1) =
       8 * (k * D) + (4 * δt - 12 * c) * D + 4 * (X * D) + 18 * D - 1 := by ring
   have hD1 : (1 : Time) ≤ D := by change (0 : ℤ) < D at hD; change (1 : ℤ) ≤ D; omega
   linarith
@@ -164,14 +165,14 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hheal : max Q.gst 0 + ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ ≤ Q.query :=
     Q.mature
   have hbud : ((accepted_catchUp S A : Nat) : Time) +
-      (24 * (Ld : Time) + 8 * S.k + 52 * S.δt + 52 * X + 44) ≤
+      (20 * (Ld : Time) + 8 * S.k + 44 * S.δt + 44 * X + 40) ≤
       ((K S A).params.heal .final Q.index : Time) := by
     have h := accepted_heal_ge_final S A Q.index
     have he : (K S A).params.heal .final Q.index = accepted_heal S A .final Q.index := by
       simp only [Params.standard, accepted_coefficients_heal]
     rw [he]
     exact_mod_cast h
-  set Mf : Time := 24 * (Ld : Time) + 8 * S.k + 52 * S.δt + 52 * X + 44 with hMf
+  set Mf : Time := 20 * (Ld : Time) + 8 * S.k + 44 * S.δt + 44 * X + 40 with hMf
   have hMf0 : 0 ≤ Mf := by rw [hMf]; positivity
   have hq : ready + Mf * D - 1 ≤ Q.query := by
     have h1 := mul_le_mul_of_nonneg_right hbud (by linarith : (0 : Time) ≤ Q.run.1.Δ)
@@ -182,9 +183,9 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
       positivity
     linarith
   -- the reset bound `B`
-  set B := resetBound ready D (2 * D) Q.params.toParams.fg.δt X Ld with hBdef
-  have hBeq : B = ready + (24 * (Ld : Time) + 48 * S.δt + 48 * X + 28) * D := by
-    rw [hBdef, resetBound_eq, hδeq]; ring
+  set B := resetBound5 ready D (2 * D) Q.params.toParams.fg.δt X Ld with hBdef
+  have hBeq : B = ready + (20 * (Ld : Time) + 40 * S.δt + 40 * X + 24) * D := by
+    rw [hBdef, resetBound5_eq, hδeq]; ring
   have hk2 : (2 : Time) ≤ S.k := by exact_mod_cast S.two_le_k
   have hX1 : (1 : Time) ≤ X := by exact_mod_cast Q.index.pos
   have hBc : B + (12 * (c : Time) - 2) * D ≤ Q.run.2.horizon := by
@@ -223,7 +224,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     drainOutputs_of_service hrun hs.noColl hs.sync hs.awake hs.faults hcatch hnr
       (by rw [hLddef, healthyDrainLen_val, hk]; omega)
   -- the reset
-  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_awake hrun hs.noColl hs.faults hs.sync hs.awake
+  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain5_awake hrun hs.noColl hs.faults hs.sync hs.awake
     hcatch hnr hH (by rw [hδeq]; omega) (by rw [hδeq]; exact hs.timeoutDelay)
     hr0 hgr Q.index.pos hcz hBh
     (fun s₀ N hs₀ hN => final_query_gap S A V Q hpat (by rw [hrmax]; exact hs₀) (by
@@ -233,7 +234,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     hdrain
   have hLd0 : (0 : Time) ≤ Ld := by positivity
   have h4B : ready + 4 * D ≤ B := by
-    have : (4 : Time) * D ≤ (24 * (Ld : Time) + 48 * S.δt + 48 * X + 28) * D :=
+    have : (4 : Time) * D ≤ (20 * (Ld : Time) + 40 * S.δt + 40 * X + 24) * D :=
       mul_le_mul_of_nonneg_right (by linarith) hD.le
     rw [hBeq]; linarith
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake hrun hs.awake hH (b := Q.run.2.horizon)
@@ -268,7 +269,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
       rw [hMf]; have : (0 : Time) ≤ Ld := by positivity
       linarith
     linarith
-  · have : (24 * (Ld : Time) + 48 * S.δt + 48 * X + 28) * D + 4 * D * (2 * S.k + 5) +
+  · have : (20 * (Ld : Time) + 40 * S.δt + 40 * X + 24) * D + 4 * D * (2 * S.k + 5) +
         (X + S.δt) * (4 * D) - 4 * D = Mf * D := by rw [hMf]; ring
     have hab' : a ≤ B := hab
     rw [hBeq] at hab'

@@ -135,7 +135,7 @@ GST `Q.gst`, with the run proposer and digest (Sol's M1′ reset), and (H3) the 
 with `u_min = finalSeedMin Q a = slot a + 2k + 5` (#145 removed a time summand that made (H3)
 false for large GST). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1).
 Proved by `final_reset_premises_of_query` (FinalResetPremises.lean): the generic reset kernel
-`exists_reset_of_drain_awake` with the drain `drainOutputs_of_service`, and the heal coefficient
+`exists_reset_of_drain5_awake` with the drain `drainOutputs_of_service`, and the heal coefficient
 `accepted_heal_ge_final`. -/
 theorem final_reset_premises (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
