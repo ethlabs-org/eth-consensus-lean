@@ -657,7 +657,7 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
 /-! ## The family -/
 
 /-- The parameters of the Goldilocks node not fixed by the public parameters:
-the genesis root, the FG timeout `δ_t`, the lock window `k`, and
+the genesis root, the FG timeout `δ_t`, the lock window `k`, the fast increment `c`, and
 the restart replay order at every parameter set. -/
 structure Setup where
   /-- The genesis root. -/
@@ -667,6 +667,9 @@ structure Setup where
   /-- The lock window `k ≥ 2`. -/
   k : Nat
   two_le_k : 2 ≤ k
+  /-- The fast increment `c ≥ 2` (`SAParams.c`). -/
+  c : Nat
+  two_le_c : 2 ≤ c
   /-- The restart replay order depends on the validator count and fixed genesis root,
   not on a proposer schedule or timing parameters. -/
   ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
@@ -690,6 +693,8 @@ abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams whe
   slotTime_eq := fun _ => rfl
   k := S.k
   two_le_k := S.two_le_k
+  c := S.c
+  two_le_c := S.two_le_c
 
 /-- The shape's state at the public parameters `pub`: a Goldilocks state at every proof that
 `pub` has a validator. The dependence on `1 ≤ n` (which `Params` needs) is thus in the state's

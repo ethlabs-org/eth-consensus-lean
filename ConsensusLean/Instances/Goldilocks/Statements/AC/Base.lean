@@ -199,8 +199,8 @@ slot and fast bit. -/
 def LocksMoveBack : Prop :=
   ∀ (FGP : Type) (Φ : Frm sp.n FGP) (L : Set Lock) (t : Time), FrameOK Φ →
     MovesBack sp Φ L (liveLocks sp L Φ t) ∧
-    (∀ (s : Nat) (N : Set (Nat × Bool)),
-      MovesBack sp Φ (L ∪ {l | ∃ p ∈ N, l = ⟨p.1, s, p.2⟩}) (addLocks sp L Φ t s N)) ∧
+    (∀ (s : Nat) (N : Set (Nat × Bool × Nat)),
+      MovesBack sp Φ (L ∪ {l | ∃ p ∈ N, l = ⟨p.1, s, p.2.1, p.2.2⟩}) (addLocks sp L Φ t s N)) ∧
     ∀ (s : Int) (V : View sp.n), MovesBack sp Φ L (unlock sp L Φ t s V)
 
 /-- **A0.4 (d), unlocking is idempotent** for a fixed frame, slot, view and time. -/

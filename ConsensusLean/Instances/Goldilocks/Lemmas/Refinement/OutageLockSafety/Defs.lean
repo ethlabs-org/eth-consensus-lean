@@ -76,7 +76,7 @@ def PrevBase (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     Prop :=
   Anc (tr.HonestBlocks H) P (tr.state x c).fg.F ∨
     ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc P L ∧
-      (⟨L.root, j, f⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks
+      ∃ e, (⟨L.root, j, f, e⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks
 
 /-- The base of the label-`j₀` protection at `x`'s first label-`j₀` update at cut `c`
 (`OutageArming.lockCover`): root cover, a fresh label-`j₀` lock on a frame block above `P`, or a
@@ -86,7 +86,7 @@ def CoverBase (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (j : Nat) (x : Fin sp.n) (c : Nat) (ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)) :
     Prop :=
   Anc (tr.HonestBlocks H) P (tr.state x c).fg.F ∨
-    (∃ L f, ℓ.frame.Anc P L ∧ (⟨L.root, j, f⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) ∨
+    (∃ L f, ℓ.frame.Anc P L ∧ ∃ e, (⟨L.root, j, f, e⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) ∨
     (∃ V ∈ SA.liveLockBlocks sp (tr.state x c).ac.locks ℓ.frame (tr.time c),
       ℓ.frame.Anc P V ∧ ∃ l ∈ (tr.state x c).ac.locks, l.slot = j + 1 ∧
         ∃ B₀ ∈ ℓ.frame.tree, B₀.root = l.block ∧ V = ℓ.frame.viableAncestor B₀)
@@ -96,14 +96,15 @@ theorem prevBase_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} :
     PrevBase tr H P j x c ℓ ↔ Anc (tr.HonestBlocks H) P (tr.state x c).fg.F ∨
       ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc P L ∧
-        (⟨L.root, j, f⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
+        ∃ e, (⟨L.root, j, f, e⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
   Iff.rfl
 
 theorem coverBase_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
     {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} :
     CoverBase tr H P j x c ℓ ↔ Anc (tr.HonestBlocks H) P (tr.state x c).fg.F ∨
-      (∃ L f, ℓ.frame.Anc P L ∧ (⟨L.root, j, f⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) ∨
+      (∃ L f, ℓ.frame.Anc P L ∧ ∃ e, (⟨L.root, j, f, e⟩ : SA.Lock)
+          ∈ (tr.state x (c + 1)).ac.locks) ∨
       (∃ V ∈ SA.liveLockBlocks sp (tr.state x c).ac.locks ℓ.frame (tr.time c),
         ℓ.frame.Anc P V ∧ ∃ l ∈ (tr.state x c).ac.locks, l.slot = j + 1 ∧
           ∃ B₀ ∈ ℓ.frame.tree, B₀.root = l.block ∧ V = ℓ.frame.viableAncestor B₀) :=

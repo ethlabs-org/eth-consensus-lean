@@ -123,7 +123,7 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
     ∃ c ℓ, SA.UpdateAt Q.trace.projAC w c (Compose.coverLabel Q.params Q.start - 1) ℓ ∧
       (Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) origin (Q.trace.state w c).fg.F ∨
        ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc origin L ∧
-         (⟨L.root, Compose.coverLabel Q.params Q.start - 1, f⟩ : SA.Lock) ∈
+         ∃ e, (⟨L.root, Compose.coverLabel Q.params Q.start - 1, f, e⟩ : SA.Lock) ∈
            (Q.trace.state w (c + 1)).ac.locks)
   /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update (§7). -/
   lockCover : ∀ w ∈ Q.holders, origin.root ≠ Q.params.genesisRoot →
@@ -138,7 +138,7 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
           SA.VoteExtends (Q.trace.HonestBlocks (honestKeys S Q.run.2)) e.msg origin) →
        Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) origin (Q.trace.state w c).fg.F ∨
        (∃ L f, ℓ.frame.Anc origin L ∧
-          (⟨L.root, Compose.coverLabel Q.params Q.start, f⟩ : SA.Lock) ∈
+          ∃ e, (⟨L.root, Compose.coverLabel Q.params Q.start, f, e⟩ : SA.Lock) ∈
             (Q.trace.state w (c + 1)).ac.locks) ∨
        (∃ V ∈ SA.liveLockBlocks Q.params (Q.trace.state w c).ac.locks ℓ.frame
             (Q.trace.time c), ℓ.frame.Anc origin V ∧

@@ -185,28 +185,30 @@ def Consensus.Goldilocks.Refinement.Out.recOn : {motive : Consensus.Goldilocks.R
   #2539122173/3643706462
 induct Consensus.Goldilocks.Refinement.Setup : Type
   #3931117990/-
-def Consensus.Goldilocks.Refinement.Setup._sizeOf_1 #4082301073/3653887499
+def Consensus.Goldilocks.Refinement.Setup._sizeOf_1 #4082301073/1768097657
 def Consensus.Goldilocks.Refinement.Setup._sizeOf_inst #3960672168/3284694372
-def Consensus.Goldilocks.Refinement.Setup.casesOn : {motive : Consensus.Goldilocks.Refinement.Setup → Sort u} → (t : Consensus.Goldilocks.Refinement.Setup) → ((genesisRoot δt k : Nat) → (two_le_k : LE.le.{0} 2 k) → (ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → motive { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, ro := ro }) → motive t := fun {motive} t mk => Consensus.Goldilocks.Refinement.Setup.rec.{u} (fun genesisRoot δt k two_le_k ro => mk genesisRoot δt k two_le_k ro) t
-  #4102066283/1467517408
+def Consensus.Goldilocks.Refinement.Setup.c : Consensus.Goldilocks.Refinement.Setup → Nat := fun self => self.5
+  #4082301073/1079803811
+def Consensus.Goldilocks.Refinement.Setup.casesOn : {motive : Consensus.Goldilocks.Refinement.Setup → Sort u} → (t : Consensus.Goldilocks.Refinement.Setup) → ((genesisRoot δt k : Nat) → (two_le_k : LE.le.{0} 2 k) → (c : Nat) → (two_le_c : LE.le.{0} 2 c) → (ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → motive { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c, ro := ro }) → motive t := fun {motive} t mk => Consensus.Goldilocks.Refinement.Setup.rec.{u} (fun genesisRoot δt k two_le_k c two_le_c ro => mk genesisRoot δt k two_le_k c two_le_c ro) t
+  #3542643444/1885233707
 def Consensus.Goldilocks.Refinement.Setup.ctorIdx #4082301073/556722394
 def Consensus.Goldilocks.Refinement.Setup.genesisRoot : Consensus.Goldilocks.Refinement.Setup → Nat := fun self => self.1
   #4082301073/330028801
 def Consensus.Goldilocks.Refinement.Setup.k : Consensus.Goldilocks.Refinement.Setup → Nat := fun self => self.3
   #4082301073/181964598
-ctor Consensus.Goldilocks.Refinement.Setup.mk : (genesisRoot : Nat) → Nat → (k : Nat) → LE.le.{0} 2 k → ((n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → Consensus.Goldilocks.Refinement.Setup
-  #1493174343/-
-def Consensus.Goldilocks.Refinement.Setup.mk._flat_ctor #1493174343/689380126
-theorem Consensus.Goldilocks.Refinement.Setup.mk.inj #3333276530/-
-theorem Consensus.Goldilocks.Refinement.Setup.mk.injEq #3231248552/-
-def Consensus.Goldilocks.Refinement.Setup.mk.noConfusion : {P : Sort u} → {genesisRoot δt k : Nat} → {two_le_k : LE.le.{0} 2 k} → {ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))} → {genesisRoot' δt' k' : Nat} → {two_le_k' : LE.le.{0} 2 k'} → {ro' : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot' (List.{0} (Consensus.Goldilocks.FG.Att n))} → Eq.{1} { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, ro := ro } { genesisRoot := genesisRoot', δt := δt', k := k', two_le_k := two_le_k', ro := ro' } → (Eq.{1} genesisRoot genesisRoot' → Eq.{1} δt δt' → Eq.{1} k k' → HEq.{1} ro ro' → P) → P := fun {P} {genesisRoot δt k} {two_le_k} {ro} {genesisRoot' δt' k'} {two_le_k'} {ro'} eq k_1 => id.{u} (Consensus.Goldilocks.Refinement.Setup.noConfusion.{u} eq k_1)
-  #2049448768/2533541277
-theorem Consensus.Goldilocks.Refinement.Setup.mk.sizeOf_spec #3524613264/-
-def Consensus.Goldilocks.Refinement.Setup.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.Refinement.Setup} → Eq.{1} t t' → Consensus.Goldilocks.Refinement.Setup.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.Refinement.Setup.casesOn.{u} t fun genesisRoot δt k two_le_k ro k_1 => k_1 ⋯ ⋯ ⋯ ⋯) eq
-  #2292206457/2758757039
-def Consensus.Goldilocks.Refinement.Setup.noConfusionType #334928538/2479151451
-def Consensus.Goldilocks.Refinement.Setup.params : Consensus.Goldilocks.Refinement.Setup → (pub : Consensus.Model.Public) → LE.le.{0} 1 pub.n → Consensus.Goldilocks.SA.SAParams := fun S pub hn => { toParams := { n := pub.n, hn := hn, Δ := pub.Δ, hΔ := ⋯, slotTime := fun s => HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 pub.Δ) (Nat.cast.{0} s), slotTime_zero := ⋯, slotTime_strictMono := ⋯, slotTime_public := ⋯, genesisRoot := S.genesisRoot, δt := S.δt }, slotTime_eq := ⋯, k := S.k, two_le_k := ⋯ }
-  #2137491239/735296937
+ctor Consensus.Goldilocks.Refinement.Setup.mk : (genesisRoot : Nat) → Nat → (k : Nat) → LE.le.{0} 2 k → (c : Nat) → LE.le.{0} 2 c → ((n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → Consensus.Goldilocks.Refinement.Setup
+  #1231456518/-
+def Consensus.Goldilocks.Refinement.Setup.mk._flat_ctor #1231456518/1632371264
+theorem Consensus.Goldilocks.Refinement.Setup.mk.inj #2795173956/-
+theorem Consensus.Goldilocks.Refinement.Setup.mk.injEq #1394889652/-
+def Consensus.Goldilocks.Refinement.Setup.mk.noConfusion : {P : Sort u} → {genesisRoot δt k : Nat} → {two_le_k : LE.le.{0} 2 k} → {c : Nat} → {two_le_c : LE.le.{0} 2 c} → {ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))} → {genesisRoot' δt' k' : Nat} → {two_le_k' : LE.le.{0} 2 k'} → {c' : Nat} → {two_le_c' : LE.le.{0} 2 c'} → {ro' : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot' (List.{0} (Consensus.Goldilocks.FG.Att n))} → Eq.{1} { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c, ro := ro } { genesisRoot := genesisRoot', δt := δt', k := k', two_le_k := two_le_k', c := c', two_le_c := two_le_c', ro := ro' } → (Eq.{1} genesisRoot genesisRoot' → Eq.{1} δt δt' → Eq.{1} k k' → Eq.{1} c c' → HEq.{1} ro ro' → P) → P := fun {P} {genesisRoot δt k} {two_le_k} {c} {two_le_c} {ro} {genesisRoot' δt' k'} {two_le_k'} {c'} {two_le_c'} {ro'} eq k_1 => id.{u} (Consensus.Goldilocks.Refinement.Setup.noConfusion.{u} eq k_1)
+  #2431177360/4086655237
+theorem Consensus.Goldilocks.Refinement.Setup.mk.sizeOf_spec #1841404033/-
+def Consensus.Goldilocks.Refinement.Setup.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.Refinement.Setup} → Eq.{1} t t' → Consensus.Goldilocks.Refinement.Setup.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.Refinement.Setup.casesOn.{u} t fun genesisRoot δt k two_le_k c two_le_c ro k_1 => k_1 ⋯ ⋯ ⋯ ⋯ ⋯) eq
+  #2292206457/958744214
+def Consensus.Goldilocks.Refinement.Setup.noConfusionType #334928538/1769101180
+def Consensus.Goldilocks.Refinement.Setup.params : Consensus.Goldilocks.Refinement.Setup → (pub : Consensus.Model.Public) → LE.le.{0} 1 pub.n → Consensus.Goldilocks.SA.SAParams := fun S pub hn => { toParams := { n := pub.n, hn := hn, Δ := pub.Δ, hΔ := ⋯, slotTime := fun s => HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 pub.Δ) (Nat.cast.{0} s), slotTime_zero := ⋯, slotTime_strictMono := ⋯, slotTime_public := ⋯, genesisRoot := S.genesisRoot, δt := S.δt }, slotTime_eq := ⋯, k := S.k, two_le_k := ⋯, c := S.c, two_le_c := ⋯ }
+  #2137491239/750693646
 theorem Consensus.Goldilocks.Refinement.Setup.params._proof_1 #1089899438/-
 theorem Consensus.Goldilocks.Refinement.Setup.params._proof_2 #3545090637/-
 theorem Consensus.Goldilocks.Refinement.Setup.params._proof_3 #3205166335/-
@@ -214,12 +216,14 @@ theorem Consensus.Goldilocks.Refinement.Setup.params._proof_4 #57323902/-
 theorem Consensus.Goldilocks.Refinement.Setup.params._proof_5 #3766269635/-
 theorem Consensus.Goldilocks.Refinement.Setup.params._proof_6 #328691441/-
 theorem Consensus.Goldilocks.Refinement.Setup.params._proof_7 #553071339/-
-recursor Consensus.Goldilocks.Refinement.Setup.rec : {motive : Consensus.Goldilocks.Refinement.Setup → Sort u} → ((genesisRoot δt k : Nat) → (two_le_k : LE.le.{0} 2 k) → (ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → motive { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, ro := ro }) → (t : Consensus.Goldilocks.Refinement.Setup) → motive t
-  #3729603267/-
-def Consensus.Goldilocks.Refinement.Setup.recOn : {motive : Consensus.Goldilocks.Refinement.Setup → Sort u} → (t : Consensus.Goldilocks.Refinement.Setup) → ((genesisRoot δt k : Nat) → (two_le_k : LE.le.{0} 2 k) → (ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → motive { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, ro := ro }) → motive t := fun {motive} t mk => Consensus.Goldilocks.Refinement.Setup.rec.{u} mk t
-  #4102066283/1412436544
-def Consensus.Goldilocks.Refinement.Setup.ro : (self : Consensus.Goldilocks.Refinement.Setup) → (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n self.genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n)) := fun self => self.5
-  #884314450/1079803811
+recursor Consensus.Goldilocks.Refinement.Setup.rec : {motive : Consensus.Goldilocks.Refinement.Setup → Sort u} → ((genesisRoot δt k : Nat) → (two_le_k : LE.le.{0} 2 k) → (c : Nat) → (two_le_c : LE.le.{0} 2 c) → (ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → motive { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c, ro := ro }) → (t : Consensus.Goldilocks.Refinement.Setup) → motive t
+  #2193355904/-
+def Consensus.Goldilocks.Refinement.Setup.recOn : {motive : Consensus.Goldilocks.Refinement.Setup → Sort u} → (t : Consensus.Goldilocks.Refinement.Setup) → ((genesisRoot δt k : Nat) → (two_le_k : LE.le.{0} 2 k) → (c : Nat) → (two_le_c : LE.le.{0} 2 c) → (ro : (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n))) → motive { genesisRoot := genesisRoot, δt := δt, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c, ro := ro }) → motive t := fun {motive} t mk => Consensus.Goldilocks.Refinement.Setup.rec.{u} mk t
+  #3542643444/2389472455
+def Consensus.Goldilocks.Refinement.Setup.ro : (self : Consensus.Goldilocks.Refinement.Setup) → (n : Nat) → Consensus.Goldilocks.SA.ReplayOrderData n self.genesisRoot (List.{0} (Consensus.Goldilocks.FG.Att n)) := fun self => self.7
+  #884314450/2951736419
+theorem Consensus.Goldilocks.Refinement.Setup.two_le_c : ∀ (self : Consensus.Goldilocks.Refinement.Setup), LE.le.{0} 2 self.c
+  #2704421009/-
 theorem Consensus.Goldilocks.Refinement.Setup.two_le_k : ∀ (self : Consensus.Goldilocks.Refinement.Setup), LE.le.{0} 2 self.k
   #3537488693/-
 def Consensus.Goldilocks.Refinement.Setup.δt : Consensus.Goldilocks.Refinement.Setup → Nat := fun self => self.2
@@ -2151,14 +2155,14 @@ def Consensus.Goldilocks.SA.fastSelect : {FGP : Type} → (sp : Consensus.Goldil
   #149594100/2219363786
 def Consensus.Goldilocks.SA.getConfirmation : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Nat → Option.{0} (Consensus.Goldilocks.SA.Blk sp.n FGP) := fun {FGP} sp A Φ s => Consensus.Goldilocks.SA.deepest Φ (Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} Φ.tree B) (And (Consensus.Goldilocks.Frame.Anc Φ Φ.F B) (LT.lt.{0} (Set.ncard.{0} (Consensus.Goldilocks.SA.voters (Set.ofPred.{0} fun v => Membership.mem.{0, 0} (A.pool s) v))) (HMul.hMul.{0, 0, 0} 2 (Consensus.Goldilocks.SA.confirmationScore sp A Φ s B)))))
   #2090721759/1137882014
-def Consensus.Goldilocks.SA.optimisticConfirmation : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Consensus.Goldilocks.SA.SAState sp.n := fun {FGP} sp A Φ t => Consensus.Goldilocks.SA.updateConfirmation.match_1.{1} sp (fun x => Consensus.Goldilocks.SA.SAState sp.n) (Consensus.Goldilocks.SA.optimisticSelect sp A Φ t) (fun _ => A) fun B => Consensus.Goldilocks.SA.updateLatestConfirmed sp { pool := A.pool, voteStamp := A.voteStamp, blockStamp := A.blockStamp, saved := A.saved, locks := Consensus.Goldilocks.SA.addLocks sp A.locks Φ t (sp.slot t) (Singleton.singleton.{0, 0} (Prod.mk.{0, 0} B.root Bool.true)), latestConfirmed := A.latestConfirmed, fgReported := A.fgReported, votedSlot := A.votedSlot, restartTime := A.restartTime } Φ B
-  #928058671/3244639278
+def Consensus.Goldilocks.SA.optimisticConfirmation : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Consensus.Goldilocks.SA.SAState sp.n := fun {FGP} sp A Φ t => Consensus.Goldilocks.SA.updateConfirmation.match_1.{1} sp (fun x => Consensus.Goldilocks.SA.SAState sp.n) (Consensus.Goldilocks.SA.optimisticSelect sp A Φ t) (fun _ => A) fun B => Consensus.Goldilocks.SA.updateLatestConfirmed sp { pool := A.pool, voteStamp := A.voteStamp, blockStamp := A.blockStamp, saved := A.saved, locks := Consensus.Goldilocks.SA.addLocks sp A.locks Φ t (sp.slot t) (Singleton.singleton.{0, 0} (Prod.mk.{0, 0} B.root (Prod.mk.{0, 0} Bool.true (Consensus.Goldilocks.SA.fastExpiry sp A.locks Φ t (sp.slot t))))), latestConfirmed := A.latestConfirmed, fgReported := A.fgReported, votedSlot := A.votedSlot, restartTime := A.restartTime } Φ B
+  #928058671/368025497
 def Consensus.Goldilocks.SA.optimisticSelect : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Option.{0} (Consensus.Goldilocks.SA.Blk sp.n FGP) := fun {FGP} sp A Φ t => have s := sp.slot t; ite.{1} (Or (Not (Consensus.Goldilocks.SA.joined sp A t)) (Or (Eq.{1} s 0) (LE.le.{0} (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} s)) (HMul.hMul.{0, 0, 0} 2 sp.Δ)) t))) Option.none.{0} (Consensus.Goldilocks.SA.deepest Φ (Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} Φ.tree B) (And (LE.le.{0} (HMul.hMul.{0, 0, 0} 3 sp.n) (HMul.hMul.{0, 0, 0} 4 (Set.ncard.{0} (Consensus.Goldilocks.SA.optimisticVoters sp A Φ s B)))) (Not (Consensus.Goldilocks.SA.conflictsWithLock sp A.locks Φ t B)))))
   #2718353776/44333544
 def Consensus.Goldilocks.SA.optimisticVoters : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Nat → Consensus.Goldilocks.SA.Blk sp.n FGP → Set.{0} (Fin sp.n) := fun {FGP} sp A Φ s B => Set.ofPred.{0} fun i => Exists.{1} fun x => And (Membership.mem.{0, 0} (A.pool s) x) (And (Eq.{1} x.val i) (Consensus.Goldilocks.SA.AncR Φ B x.head))
   #1473630551/541477174
-def Consensus.Goldilocks.SA.updateConfirmation : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Nat → Consensus.Goldilocks.SA.SAState sp.n := fun {FGP} sp A Φ t s => have C := Consensus.Goldilocks.SA.getConfirmation sp A Φ s; have A₁ := { pool := A.pool, voteStamp := A.voteStamp, blockStamp := A.blockStamp, saved := Function.update.{1, 1} A.saved (Nat.cast.{0} s) (Option.map.{0, 0} Consensus.Goldilocks.Block.root C), locks := A.locks, latestConfirmed := A.latestConfirmed, fgReported := A.fgReported, votedSlot := A.votedSlot, restartTime := A.restartTime }; Consensus.Goldilocks.SA.updateConfirmation.match_1.{1} sp (fun C => Consensus.Goldilocks.SA.SAState sp.n) C (fun _ => A₁) fun C => ite.{1} (Consensus.Goldilocks.SA.conflictsWithLock sp A₁.locks Φ t C) A₁ (have A₂ := Consensus.Goldilocks.SA.updateLatestConfirmed sp A₁ Φ C; have path := Consensus.Goldilocks.SA.confirmationPath sp Φ C; have fast := Consensus.Goldilocks.SA.FastTest sp A Φ s; have slow := fun B => ∀ (j : Int), LT.lt.{0} (HSub.hSub.{0, 0, 0} (Nat.cast.{0} s) (Nat.cast.{0} sp.k)) j → LT.lt.{0} j (Nat.cast.{0} s) → Exists.{1} fun S => And (Membership.mem.{0, 0} Φ.tree S) (And (Eq.{1} (A₁.saved j) (Option.some.{0} S.root)) (Consensus.Goldilocks.Frame.Anc Φ B S)); have D := Consensus.Goldilocks.SA.fastSelect sp A Φ s C; have lockBlock := Consensus.Goldilocks.SA.deepest Φ (Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} path B) (Or (fast B) (slow B))); have N := Set.ofPred.{0} fun p => Or (Exists.{1} fun B => And (Eq.{1} D (Option.some.{0} B)) (Eq.{1} p (Prod.mk.{0, 0} B.root Bool.true))) (And (Ne.{1} lockBlock D) (Exists.{1} fun B => And (Eq.{1} lockBlock (Option.some.{0} B)) (Eq.{1} p (Prod.mk.{0, 0} B.root Bool.false)))); { pool := A₂.pool, voteStamp := A₂.voteStamp, blockStamp := A₂.blockStamp, saved := A₂.saved, locks := Consensus.Goldilocks.SA.addLocks sp A₂.locks Φ t s N, latestConfirmed := A₂.latestConfirmed, fgReported := A₂.fgReported, votedSlot := A₂.votedSlot, restartTime := A₂.restartTime })
-  #1144467702/972256588
+def Consensus.Goldilocks.SA.updateConfirmation : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Nat → Consensus.Goldilocks.SA.SAState sp.n := fun {FGP} sp A Φ t s => have C := Consensus.Goldilocks.SA.getConfirmation sp A Φ s; have A₁ := { pool := A.pool, voteStamp := A.voteStamp, blockStamp := A.blockStamp, saved := Function.update.{1, 1} A.saved (Nat.cast.{0} s) (Option.map.{0, 0} Consensus.Goldilocks.Block.root C), locks := A.locks, latestConfirmed := A.latestConfirmed, fgReported := A.fgReported, votedSlot := A.votedSlot, restartTime := A.restartTime }; Consensus.Goldilocks.SA.updateConfirmation.match_1.{1} sp (fun C => Consensus.Goldilocks.SA.SAState sp.n) C (fun _ => A₁) fun C => ite.{1} (Consensus.Goldilocks.SA.conflictsWithLock sp A₁.locks Φ t C) A₁ (have A₂ := Consensus.Goldilocks.SA.updateLatestConfirmed sp A₁ Φ C; have path := Consensus.Goldilocks.SA.confirmationPath sp Φ C; have fast := Consensus.Goldilocks.SA.FastTest sp A Φ s; have slow := fun B => ∀ (j : Int), LT.lt.{0} (HSub.hSub.{0, 0, 0} (Nat.cast.{0} s) (Nat.cast.{0} sp.k)) j → LT.lt.{0} j (Nat.cast.{0} s) → Exists.{1} fun S => And (Membership.mem.{0, 0} Φ.tree S) (And (Eq.{1} (A₁.saved j) (Option.some.{0} S.root)) (Consensus.Goldilocks.Frame.Anc Φ B S)); have D := Consensus.Goldilocks.SA.fastSelect sp A Φ s C; have lockBlock := Consensus.Goldilocks.SA.deepest Φ (Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} path B) (Or (fast B) (slow B))); have eD := ite.{1} (Exists.{1} fun B => And (Membership.mem.{0, 0} path B) (slow B)) (HAdd.hAdd.{0, 0, 0} s sp.k) (Consensus.Goldilocks.SA.fastExpiry sp A₂.locks Φ t s); have N := Set.ofPred.{0} fun p => Or (Exists.{1} fun B => And (Eq.{1} D (Option.some.{0} B)) (Eq.{1} p (Prod.mk.{0, 0} B.root (Prod.mk.{0, 0} Bool.true eD)))) (And (Ne.{1} lockBlock D) (Exists.{1} fun B => And (Eq.{1} lockBlock (Option.some.{0} B)) (Eq.{1} p (Prod.mk.{0, 0} B.root (Prod.mk.{0, 0} Bool.false (HAdd.hAdd.{0, 0, 0} s sp.k)))))); { pool := A₂.pool, voteStamp := A₂.voteStamp, blockStamp := A₂.blockStamp, saved := A₂.saved, locks := Consensus.Goldilocks.SA.addLocks sp A₂.locks Φ t s N, latestConfirmed := A₂.latestConfirmed, fgReported := A₂.fgReported, votedSlot := A₂.votedSlot, restartTime := A₂.restartTime })
+  #1144467702/527654281
 def Consensus.Goldilocks.SA.updateConfirmation.match_1 #279170229/290315259
 def Consensus.Goldilocks.SA.updateLatestConfirmed : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Goldilocks.SA.Blk sp.n FGP → Consensus.Goldilocks.SA.SAState sp.n := fun {FGP} sp A Φ C => ite.{1} (Consensus.Goldilocks.SA.AncR Φ C A.latestConfirmed) A { pool := A.pool, voteStamp := A.voteStamp, blockStamp := A.blockStamp, saved := A.saved, locks := A.locks, latestConfirmed := C.root, fgReported := A.fgReported, votedSlot := A.votedSlot, restartTime := A.restartTime }
   #1125697294/4020229205
@@ -2245,20 +2249,24 @@ def Consensus.Goldilocks.SA.goldfishScore : {FGP : Type} → (sp : Consensus.Gol
 def Consensus.Goldilocks.SA.goldilocksSA : (sp : Consensus.Goldilocks.SA.SAParams) → (FGP : Type) → Consensus.Goldilocks.SA.ReplayOrder sp FGP → Consensus.Goldilocks.ACInterface sp.toParams FGP := fun sp FGP ro => { State := Consensus.Goldilocks.SA.SAState sp.n, Msg := Consensus.Goldilocks.SA.Vote sp.n, Payload := Consensus.Goldilocks.SA.Payload sp.n, validPayload := Consensus.Goldilocks.SA.validPayload, validMsg := fun x => True, holdsMsg := fun A v => Membership.mem.{0, 0} (A.pool v.slot) v, genesisPayload := Prod.mk.{0, 0} List.nil.{0} List.nil.{0}, initial := Consensus.Goldilocks.SA.SAState.initial sp.genesisRoot, onMessage := Consensus.Goldilocks.SA.acOnMessage sp, onBlock := Consensus.Goldilocks.SA.acOnBlock sp, onTick := Consensus.Goldilocks.SA.acOnTick sp, proposal := Consensus.Goldilocks.SA.acProposal sp, toFG := Consensus.Goldilocks.SA.acToFG sp, confirmed := Consensus.Goldilocks.SA.acConfirmed sp, head := Consensus.Goldilocks.SA.acHead sp, restart := Consensus.Goldilocks.SA.acRestart sp ro }
   #648244428/683258547
 ## ConsensusLean.Instances.Goldilocks.Spec.SA.Locks
-def Consensus.Goldilocks.SA.addLocks : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Nat → Set.{0} (Prod.{0, 0} Nat Bool) → Set.{0} Consensus.Goldilocks.SA.Lock := fun {FGP} sp L Φ t s N => Consensus.Goldilocks.SA.liveLocks sp (Union.union.{0} L (Set.ofPred.{0} fun l => Exists.{1} fun p => And (Membership.mem.{0, 0} N p) (Eq.{1} l { block := Prod.fst.{0, 0} p, slot := s, fast := Prod.snd.{0, 0} p }))) Φ t
-  #4184605733/33665292
+def Consensus.Goldilocks.SA.Lock.LiveAt : Consensus.Goldilocks.SA.SAParams → Consensus.Goldilocks.SA.Lock → Consensus.Time → Prop := fun sp l t => LE.le.{0} (sp.slot t) l.expiry
+  #3427683190/412009002
+def Consensus.Goldilocks.SA.addLocks : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Nat → Set.{0} (Prod.{0, 0} Nat (Prod.{0, 0} Bool Nat)) → Set.{0} Consensus.Goldilocks.SA.Lock := fun {FGP} sp L Φ t s N => Consensus.Goldilocks.SA.liveLocks sp (Union.union.{0} L (Set.ofPred.{0} fun l => Exists.{1} fun p => And (Membership.mem.{0, 0} N p) (Eq.{1} l { block := Prod.fst.{0, 0} p, slot := s, fast := Prod.fst.{0, 0} (Prod.snd.{0, 0} p), expiry := Prod.snd.{0, 0} (Prod.snd.{0, 0} p) }))) Φ t
+  #697639528/183577251
 def Consensus.Goldilocks.SA.conflictsWithLock : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Consensus.Goldilocks.SA.Blk sp.n FGP → Prop := fun {FGP} sp L Φ t C => Exists.{1} fun B => And (Membership.mem.{0, 0} (Consensus.Goldilocks.SA.liveLockBlocks sp L Φ t) B) (Not (Consensus.Goldilocks.Compatible Φ.tree C B))
   #3809368180/3947305528
+def Consensus.Goldilocks.SA.fastExpiry : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Nat → Nat := fun {FGP} sp L Φ t s => have E := Set.ofPred.{0} fun e => Exists.{1} fun l => And (Membership.mem.{0, 0} (Consensus.Goldilocks.SA.liveLocks sp L Φ t) l) (And (Eq.{1} l.fast Bool.true) (Eq.{1} e l.expiry)); Min.min.{0} (HAdd.hAdd.{0, 0, 0} s sp.k) (ite.{1} (Set.Nonempty.{0} E) (Max.max.{0} (HAdd.hAdd.{0, 0, 0} s 2) (HAdd.hAdd.{0, 0, 0} (SupSet.sSup.{0} E) sp.c)) (HAdd.hAdd.{0, 0, 0} s 2))
+  #5689987/3697022029
 def Consensus.Goldilocks.SA.getAnchor : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.SAState sp.n → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Consensus.Goldilocks.SA.Blk sp.n FGP := fun {FGP} sp A Φ t => Option.getD.{0} (Consensus.Goldilocks.SA.deepest Φ (Union.union.{0} (Consensus.Goldilocks.SA.liveLockBlocks sp A.locks Φ t) (Singleton.singleton.{0, 0} Φ.fcRoot))) Φ.fcRoot
   #3175303639/4060107377
 def Consensus.Goldilocks.SA.liveLockBlocks : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Set.{0} (Consensus.Goldilocks.SA.Blk sp.n FGP) := fun {FGP} sp L Φ t => Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} Φ.tree B) (Exists.{1} fun l => And (Membership.mem.{0, 0} (Consensus.Goldilocks.SA.liveLocks sp L Φ t) l) (Eq.{1} l.block B.root))
   #42098354/2203928238
-def Consensus.Goldilocks.SA.liveLocks : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Set.{0} Consensus.Goldilocks.SA.Lock := fun {FGP} sp L Φ t => Set.ofPred.{0} fun l' => Exists.{1} fun l => And (Membership.mem.{0, 0} L l) (Exists.{1} fun B => And (Membership.mem.{0, 0} Φ.tree B) (And (Eq.{1} B.root l.block) (And (LE.le.{0} (sp.slot t) (HAdd.hAdd.{0, 0, 0} l.slot sp.k)) (Eq.{1} l' { block := (Consensus.Goldilocks.Frame.viableAncestor Φ B).root, slot := l.slot, fast := l.fast }))))
-  #525736540/373348417
+def Consensus.Goldilocks.SA.liveLocks : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Set.{0} Consensus.Goldilocks.SA.Lock := fun {FGP} sp L Φ t => Set.ofPred.{0} fun l' => Exists.{1} fun l => And (Membership.mem.{0, 0} L l) (Exists.{1} fun B => And (Membership.mem.{0, 0} Φ.tree B) (And (Eq.{1} B.root l.block) (And (Consensus.Goldilocks.SA.Lock.LiveAt sp l t) (Eq.{1} l' { block := (Consensus.Goldilocks.Frame.viableAncestor Φ B).root, slot := l.slot, fast := l.fast, expiry := l.expiry }))))
+  #525736540/794006794
 def Consensus.Goldilocks.SA.opponents : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Goldilocks.SA.View sp.n → Int → Consensus.Goldilocks.SA.Blk sp.n FGP → Set.{0} (Fin sp.n) := fun {FGP} sp Φ V s B' => Union.union.{0} (Consensus.Goldilocks.SA.equivocators V.votes) (Set.ofPred.{0} fun i => Exists.{1} fun x => And (Membership.mem.{0, 0} V.support x) (And (Eq.{1} x.val i) (And (Eq.{1} (Nat.cast.{0} x.slot) s) (Exists.{1} fun H => And (Membership.mem.{0, 0} Φ.tree H) (And (Eq.{1} H.root x.head) (Not (Consensus.Goldilocks.Compatible Φ.tree H B')))))))
   #1159910806/2852750740
-def Consensus.Goldilocks.SA.unlock : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Int → Consensus.Goldilocks.SA.View sp.n → Set.{0} Consensus.Goldilocks.SA.Lock := fun {FGP} sp L Φ t s V => Set.ofPred.{0} fun l' => Exists.{1} fun l => And (Membership.mem.{0, 0} (Consensus.Goldilocks.SA.liveLocks sp L Φ t) l) (Exists.{1} fun B => And (Membership.mem.{0, 0} Φ.tree B) (And (Eq.{1} B.root l.block) (Eq.{1} l' (ite.{1} (LT.lt.{0} (Nat.cast.{0} l.slot) s) { block := (Consensus.Goldilocks.SA.unlockTarget sp Φ V s B).root, slot := l.slot, fast := l.fast } l))))
-  #4156435214/1863003592
+def Consensus.Goldilocks.SA.unlock : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Set.{0} Consensus.Goldilocks.SA.Lock → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Time → Int → Consensus.Goldilocks.SA.View sp.n → Set.{0} Consensus.Goldilocks.SA.Lock := fun {FGP} sp L Φ t s V => Set.ofPred.{0} fun l' => Exists.{1} fun l => And (Membership.mem.{0, 0} (Consensus.Goldilocks.SA.liveLocks sp L Φ t) l) (Exists.{1} fun B => And (Membership.mem.{0, 0} Φ.tree B) (And (Eq.{1} B.root l.block) (Eq.{1} l' (ite.{1} (LT.lt.{0} (Nat.cast.{0} l.slot) s) { block := (Consensus.Goldilocks.SA.unlockTarget sp Φ V s B).root, slot := l.slot, fast := l.fast, expiry := l.expiry } l))))
+  #4156435214/2085197762
 def Consensus.Goldilocks.SA.unlockTarget : {FGP : Type} → (sp : Consensus.Goldilocks.SA.SAParams) → Consensus.Goldilocks.SA.Frm sp.n FGP → Consensus.Goldilocks.SA.View sp.n → Int → Consensus.Goldilocks.SA.Blk sp.n FGP → Consensus.Goldilocks.SA.Blk sp.n FGP := fun {FGP} sp Φ V s B => Option.getD.{0} (Consensus.Goldilocks.SA.deepest Φ (Set.ofPred.{0} fun B' => And (Membership.mem.{0, 0} Φ.tree B') (And (Consensus.Goldilocks.Frame.Anc Φ B' B) (LT.lt.{0} (HMul.hMul.{0, 0, 0} 2 (Set.ncard.{0} (Consensus.Goldilocks.SA.opponents sp Φ V s B'))) sp.n)))) Φ.F
   #826836037/2455752369
 ## ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
@@ -2302,32 +2310,34 @@ def Consensus.Goldilocks.SA.acRestart : {FGP : Type} → (sp : Consensus.Goldilo
 ## ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
 induct Consensus.Goldilocks.SA.SAParams : Type
   #3931117990/-
-def Consensus.Goldilocks.SA.SAParams._sizeOf_1 #886879893/2053077682
+def Consensus.Goldilocks.SA.SAParams._sizeOf_1 #886879893/2159238816
 def Consensus.Goldilocks.SA.SAParams._sizeOf_inst #3134521484/1441561316
-def Consensus.Goldilocks.SA.SAParams.casesOn : {motive : Consensus.Goldilocks.SA.SAParams → Sort u} → (t : Consensus.Goldilocks.SA.SAParams) → ((toParams : Consensus.Goldilocks.Params) → (slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → (two_le_k : LE.le.{0} 2 k) → motive { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.SAParams.rec.{u} (fun toParams slotTime_eq k two_le_k => mk toParams slotTime_eq k two_le_k) t
-  #204131476/280205301
+def Consensus.Goldilocks.SA.SAParams.c : Consensus.Goldilocks.SA.SAParams → Nat := fun self => self.5
+  #886879893/89898113
+def Consensus.Goldilocks.SA.SAParams.casesOn : {motive : Consensus.Goldilocks.SA.SAParams → Sort u} → (t : Consensus.Goldilocks.SA.SAParams) → ((toParams : Consensus.Goldilocks.Params) → (slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → (two_le_k : LE.le.{0} 2 k) → (c : Nat) → (two_le_c : LE.le.{0} 2 c) → motive { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.SAParams.rec.{u} (fun toParams slotTime_eq k two_le_k c two_le_c => mk toParams slotTime_eq k two_le_k c two_le_c) t
+  #491955341/1998792846
 def Consensus.Goldilocks.SA.SAParams.ctorIdx #886879893/1430323698
 def Consensus.Goldilocks.SA.SAParams.genesisRoot : Consensus.Goldilocks.SA.SAParams → Nat := fun sp => sp.toParams.genesisRoot
   #886879893/1353767399
 def Consensus.Goldilocks.SA.SAParams.k : Consensus.Goldilocks.SA.SAParams → Nat := fun self => self.3
   #886879893/2593768529
-ctor Consensus.Goldilocks.SA.SAParams.mk : (toParams : Consensus.Goldilocks.Params) → (∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → LE.le.{0} 2 k → Consensus.Goldilocks.SA.SAParams
-  #144935230/-
-def Consensus.Goldilocks.SA.SAParams.mk._flat_ctor #144935230/344763174
-theorem Consensus.Goldilocks.SA.SAParams.mk.inj #744078563/-
-theorem Consensus.Goldilocks.SA.SAParams.mk.injEq #138947527/-
-def Consensus.Goldilocks.SA.SAParams.mk.noConfusion : {P : Sort u} → {toParams : Consensus.Goldilocks.Params} → {slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))} → {k : Nat} → {two_le_k : LE.le.{0} 2 k} → {toParams' : Consensus.Goldilocks.Params} → {slotTime_eq' : ∀ (s : Nat), Eq.{1} (toParams'.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams'.Δ) (Nat.cast.{0} s))} → {k' : Nat} → {two_le_k' : LE.le.{0} 2 k'} → Eq.{1} { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k } { toParams := toParams', slotTime_eq := slotTime_eq', k := k', two_le_k := two_le_k' } → (Eq.{1} toParams toParams' → Eq.{1} k k' → P) → P := fun {P} {toParams} {slotTime_eq} {k} {two_le_k} {toParams'} {slotTime_eq'} {k'} {two_le_k'} eq k_1 => id.{u} (Consensus.Goldilocks.SA.SAParams.noConfusion.{u} eq k_1)
-  #2788594574/3310539275
-theorem Consensus.Goldilocks.SA.SAParams.mk.sizeOf_spec #3802359830/-
+ctor Consensus.Goldilocks.SA.SAParams.mk : (toParams : Consensus.Goldilocks.Params) → (∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → LE.le.{0} 2 k → (c : Nat) → LE.le.{0} 2 c → Consensus.Goldilocks.SA.SAParams
+  #2452108421/-
+def Consensus.Goldilocks.SA.SAParams.mk._flat_ctor #2452108421/3763864530
+theorem Consensus.Goldilocks.SA.SAParams.mk.inj #1160919914/-
+theorem Consensus.Goldilocks.SA.SAParams.mk.injEq #4183455061/-
+def Consensus.Goldilocks.SA.SAParams.mk.noConfusion : {P : Sort u} → {toParams : Consensus.Goldilocks.Params} → {slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))} → {k : Nat} → {two_le_k : LE.le.{0} 2 k} → {c : Nat} → {two_le_c : LE.le.{0} 2 c} → {toParams' : Consensus.Goldilocks.Params} → {slotTime_eq' : ∀ (s : Nat), Eq.{1} (toParams'.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams'.Δ) (Nat.cast.{0} s))} → {k' : Nat} → {two_le_k' : LE.le.{0} 2 k'} → {c' : Nat} → {two_le_c' : LE.le.{0} 2 c'} → Eq.{1} { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c } { toParams := toParams', slotTime_eq := slotTime_eq', k := k', two_le_k := two_le_k', c := c', two_le_c := two_le_c' } → (Eq.{1} toParams toParams' → Eq.{1} k k' → Eq.{1} c c' → P) → P := fun {P} {toParams} {slotTime_eq} {k} {two_le_k} {c} {two_le_c} {toParams'} {slotTime_eq'} {k'} {two_le_k'} {c'} {two_le_c'} eq k_1 => id.{u} (Consensus.Goldilocks.SA.SAParams.noConfusion.{u} eq k_1)
+  #4111078912/603675839
+theorem Consensus.Goldilocks.SA.SAParams.mk.sizeOf_spec #3954679027/-
 def Consensus.Goldilocks.SA.SAParams.n : Consensus.Goldilocks.SA.SAParams → Nat := fun sp => sp.toParams.n
   #886879893/434533816
-def Consensus.Goldilocks.SA.SAParams.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.SA.SAParams} → Eq.{1} t t' → Consensus.Goldilocks.SA.SAParams.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.SA.SAParams.casesOn.{u} t fun toParams slotTime_eq k two_le_k k_1 => k_1 ⋯ ⋯) eq
-  #1594356369/88649804
-def Consensus.Goldilocks.SA.SAParams.noConfusionType #213045727/1864819954
-recursor Consensus.Goldilocks.SA.SAParams.rec : {motive : Consensus.Goldilocks.SA.SAParams → Sort u} → ((toParams : Consensus.Goldilocks.Params) → (slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → (two_le_k : LE.le.{0} 2 k) → motive { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k }) → (t : Consensus.Goldilocks.SA.SAParams) → motive t
-  #1622148700/-
-def Consensus.Goldilocks.SA.SAParams.recOn : {motive : Consensus.Goldilocks.SA.SAParams → Sort u} → (t : Consensus.Goldilocks.SA.SAParams) → ((toParams : Consensus.Goldilocks.Params) → (slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → (two_le_k : LE.le.{0} 2 k) → motive { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.SAParams.rec.{u} mk t
-  #204131476/2323303559
+def Consensus.Goldilocks.SA.SAParams.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.SA.SAParams} → Eq.{1} t t' → Consensus.Goldilocks.SA.SAParams.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.SA.SAParams.casesOn.{u} t fun toParams slotTime_eq k two_le_k c two_le_c k_1 => k_1 ⋯ ⋯ ⋯) eq
+  #1594356369/1307619601
+def Consensus.Goldilocks.SA.SAParams.noConfusionType #213045727/4138710848
+recursor Consensus.Goldilocks.SA.SAParams.rec : {motive : Consensus.Goldilocks.SA.SAParams → Sort u} → ((toParams : Consensus.Goldilocks.Params) → (slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → (two_le_k : LE.le.{0} 2 k) → (c : Nat) → (two_le_c : LE.le.{0} 2 c) → motive { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c }) → (t : Consensus.Goldilocks.SA.SAParams) → motive t
+  #214805928/-
+def Consensus.Goldilocks.SA.SAParams.recOn : {motive : Consensus.Goldilocks.SA.SAParams → Sort u} → (t : Consensus.Goldilocks.SA.SAParams) → ((toParams : Consensus.Goldilocks.Params) → (slotTime_eq : ∀ (s : Nat), Eq.{1} (toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 toParams.Δ) (Nat.cast.{0} s))) → (k : Nat) → (two_le_k : LE.le.{0} 2 k) → (c : Nat) → (two_le_c : LE.le.{0} 2 c) → motive { toParams := toParams, slotTime_eq := slotTime_eq, k := k, two_le_k := two_le_k, c := c, two_le_c := two_le_c }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.SAParams.rec.{u} mk t
+  #491955341/4269705329
 def Consensus.Goldilocks.SA.SAParams.slot : Consensus.Goldilocks.SA.SAParams → Consensus.Time → Nat := fun sp t => sp.toParams.slotOf t
   #1304761772/3380967564
 theorem Consensus.Goldilocks.SA.SAParams.slotTime_eq : ∀ (self : Consensus.Goldilocks.SA.SAParams) (s : Nat), Eq.{1} (self.toParams.slotTime s) (HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 self.toParams.Δ) (Nat.cast.{0} s))
@@ -2336,6 +2346,8 @@ def Consensus.Goldilocks.SA.SAParams.toParams : Consensus.Goldilocks.SA.SAParams
   #498949914/736206861
 def Consensus.Goldilocks.SA.SAParams.ts : Consensus.Goldilocks.SA.SAParams → Int → Consensus.Time := fun sp s => HMul.hMul.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 sp.Δ) s
   #3207110730/420101573
+theorem Consensus.Goldilocks.SA.SAParams.two_le_c : ∀ (self : Consensus.Goldilocks.SA.SAParams), LE.le.{0} 2 self.c
+  #2692527195/-
 theorem Consensus.Goldilocks.SA.SAParams.two_le_k : ∀ (self : Consensus.Goldilocks.SA.SAParams), LE.le.{0} 2 self.k
   #2363760787/-
 def Consensus.Goldilocks.SA.SAParams.Δ : Consensus.Goldilocks.SA.SAParams → Consensus.Time := fun sp => sp.toParams.Δ
@@ -2347,30 +2359,32 @@ def Consensus.Goldilocks.SA.ETime.of : Consensus.Time → Consensus.Goldilocks.S
   #1669210739/74823544
 induct Consensus.Goldilocks.SA.Lock : Type
   #3931117990/-
-def Consensus.Goldilocks.SA.Lock._sizeOf_1 #841856739/2117779478
+def Consensus.Goldilocks.SA.Lock._sizeOf_1 #841856739/800271093
 def Consensus.Goldilocks.SA.Lock._sizeOf_inst #1164654592/577497890
 def Consensus.Goldilocks.SA.Lock.block : Consensus.Goldilocks.SA.Lock → Nat := fun self => self.1
   #841856739/2917333043
-def Consensus.Goldilocks.SA.Lock.casesOn : {motive : Consensus.Goldilocks.SA.Lock → Sort u} → (t : Consensus.Goldilocks.SA.Lock) → ((block slot : Nat) → (fast : Bool) → motive { block := block, slot := slot, fast := fast }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.Lock.rec.{u} (fun block slot fast => mk block slot fast) t
-  #159679126/1811269246
+def Consensus.Goldilocks.SA.Lock.casesOn : {motive : Consensus.Goldilocks.SA.Lock → Sort u} → (t : Consensus.Goldilocks.SA.Lock) → ((block slot : Nat) → (fast : Bool) → (expiry : Nat) → motive { block := block, slot := slot, fast := fast, expiry := expiry }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.Lock.rec.{u} (fun block slot fast expiry => mk block slot fast expiry) t
+  #2824086724/4141402943
 def Consensus.Goldilocks.SA.Lock.ctorIdx #841856739/4022873878
+def Consensus.Goldilocks.SA.Lock.expiry : Consensus.Goldilocks.SA.Lock → Nat := fun self => self.4
+  #841856739/2624587921
 def Consensus.Goldilocks.SA.Lock.fast : Consensus.Goldilocks.SA.Lock → Bool := fun self => self.3
   #4060410947/833168564
-ctor Consensus.Goldilocks.SA.Lock.mk : Nat → Nat → Bool → Consensus.Goldilocks.SA.Lock
-  #3911976589/-
-def Consensus.Goldilocks.SA.Lock.mk._flat_ctor #3911976589/2654948786
-theorem Consensus.Goldilocks.SA.Lock.mk.inj #3493383690/-
-theorem Consensus.Goldilocks.SA.Lock.mk.injEq #611388321/-
-def Consensus.Goldilocks.SA.Lock.mk.noConfusion : {P : Sort u} → {block slot : Nat} → {fast : Bool} → {block' slot' : Nat} → {fast' : Bool} → Eq.{1} { block := block, slot := slot, fast := fast } { block := block', slot := slot', fast := fast' } → (Eq.{1} block block' → Eq.{1} slot slot' → Eq.{1} fast fast' → P) → P := fun {P} {block slot} {fast} {block' slot'} {fast'} eq k => id.{u} (Consensus.Goldilocks.SA.Lock.noConfusion.{u} eq k)
-  #130667413/122190007
-theorem Consensus.Goldilocks.SA.Lock.mk.sizeOf_spec #2496411290/-
-def Consensus.Goldilocks.SA.Lock.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.SA.Lock} → Eq.{1} t t' → Consensus.Goldilocks.SA.Lock.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.SA.Lock.casesOn.{u} t fun block slot fast k => k ⋯ ⋯ ⋯) eq
-  #1332785808/1222891200
-def Consensus.Goldilocks.SA.Lock.noConfusionType #1185310594/1352838784
-recursor Consensus.Goldilocks.SA.Lock.rec : {motive : Consensus.Goldilocks.SA.Lock → Sort u} → ((block slot : Nat) → (fast : Bool) → motive { block := block, slot := slot, fast := fast }) → (t : Consensus.Goldilocks.SA.Lock) → motive t
-  #2361378374/-
-def Consensus.Goldilocks.SA.Lock.recOn : {motive : Consensus.Goldilocks.SA.Lock → Sort u} → (t : Consensus.Goldilocks.SA.Lock) → ((block slot : Nat) → (fast : Bool) → motive { block := block, slot := slot, fast := fast }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.Lock.rec.{u} mk t
-  #159679126/2445051117
+ctor Consensus.Goldilocks.SA.Lock.mk : Nat → Nat → Bool → Nat → Consensus.Goldilocks.SA.Lock
+  #45873009/-
+def Consensus.Goldilocks.SA.Lock.mk._flat_ctor #45873009/1051692401
+theorem Consensus.Goldilocks.SA.Lock.mk.inj #1077347576/-
+theorem Consensus.Goldilocks.SA.Lock.mk.injEq #1143143305/-
+def Consensus.Goldilocks.SA.Lock.mk.noConfusion : {P : Sort u} → {block slot : Nat} → {fast : Bool} → {expiry block' slot' : Nat} → {fast' : Bool} → {expiry' : Nat} → Eq.{1} { block := block, slot := slot, fast := fast, expiry := expiry } { block := block', slot := slot', fast := fast', expiry := expiry' } → (Eq.{1} block block' → Eq.{1} slot slot' → Eq.{1} fast fast' → Eq.{1} expiry expiry' → P) → P := fun {P} {block slot} {fast} {expiry block' slot'} {fast'} {expiry'} eq k => id.{u} (Consensus.Goldilocks.SA.Lock.noConfusion.{u} eq k)
+  #3777887734/901771142
+theorem Consensus.Goldilocks.SA.Lock.mk.sizeOf_spec #1281049334/-
+def Consensus.Goldilocks.SA.Lock.noConfusion : {P : Sort u} → {t t' : Consensus.Goldilocks.SA.Lock} → Eq.{1} t t' → Consensus.Goldilocks.SA.Lock.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Goldilocks.SA.Lock.casesOn.{u} t fun block slot fast expiry k => k ⋯ ⋯ ⋯ ⋯) eq
+  #1332785808/35870291
+def Consensus.Goldilocks.SA.Lock.noConfusionType #1185310594/233955112
+recursor Consensus.Goldilocks.SA.Lock.rec : {motive : Consensus.Goldilocks.SA.Lock → Sort u} → ((block slot : Nat) → (fast : Bool) → (expiry : Nat) → motive { block := block, slot := slot, fast := fast, expiry := expiry }) → (t : Consensus.Goldilocks.SA.Lock) → motive t
+  #567685528/-
+def Consensus.Goldilocks.SA.Lock.recOn : {motive : Consensus.Goldilocks.SA.Lock → Sort u} → (t : Consensus.Goldilocks.SA.Lock) → ((block slot : Nat) → (fast : Bool) → (expiry : Nat) → motive { block := block, slot := slot, fast := fast, expiry := expiry }) → motive t := fun {motive} t mk => Consensus.Goldilocks.SA.Lock.rec.{u} mk t
+  #2824086724/2560210784
 def Consensus.Goldilocks.SA.Lock.slot : Consensus.Goldilocks.SA.Lock → Nat := fun self => self.2
   #841856739/3750387964
 def Consensus.Goldilocks.SA.Payload : Nat → Type := fun n => Prod.{0, 0} (List.{0} (Consensus.Goldilocks.SA.Vote n)) (List.{0} (Consensus.Goldilocks.SA.Vote n))
@@ -2449,13 +2463,14 @@ def Consensus.Goldilocks.SA.Vote.val : {n : Nat} → Consensus.Goldilocks.SA.Vot
   #2282499808/266293785
 def Consensus.Goldilocks.SA.instDecidableEqLock : DecidableEq.{1} Consensus.Goldilocks.SA.Lock := Consensus.Goldilocks.SA.instDecidableEqLock.decEq
   #951228986/2719079168
-def Consensus.Goldilocks.SA.instDecidableEqLock.decEq : (x x_1 : Consensus.Goldilocks.SA.Lock) → Decidable (Eq.{1} x x_1) := fun x x_1 => Consensus.Goldilocks.SA.instDecidableEqLock.decEq.match_1.{1} (fun x x_2 => Decidable (Eq.{1} x x_2)) x x_1 fun a a_1 a_2 b b_1 b_2 => if h : Eq.{1} a b then Eq.ndrec.{1, 1} (if h : Eq.{1} a_1 b_1 then Eq.ndrec.{1, 1} (if h : Eq.{1} a_2 b_2 then Eq.ndrec.{1, 1} (Decidable.isTrue ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯
-  #4222464026/3788291471
-theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_1 #2122714105/-
-theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_3 #4268196173/-
-theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_4 #3902092159/-
-theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_5 #2528797284/-
-def Consensus.Goldilocks.SA.instDecidableEqLock.decEq.match_1 #2721932087/2337567663
+def Consensus.Goldilocks.SA.instDecidableEqLock.decEq : (x x_1 : Consensus.Goldilocks.SA.Lock) → Decidable (Eq.{1} x x_1) := fun x x_1 => Consensus.Goldilocks.SA.instDecidableEqLock.decEq.match_1.{1} (fun x x_2 => Decidable (Eq.{1} x x_2)) x x_1 fun a a_1 a_2 a_3 b b_1 b_2 b_3 => if h : Eq.{1} a b then Eq.ndrec.{1, 1} (if h : Eq.{1} a_1 b_1 then Eq.ndrec.{1, 1} (if h : Eq.{1} a_2 b_2 then Eq.ndrec.{1, 1} (if h : Eq.{1} a_3 b_3 then Eq.ndrec.{1, 1} (Decidable.isTrue ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯
+  #4222464026/4164090343
+theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_1 #3128747382/-
+theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_3 #567944484/-
+theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_4 #2009665642/-
+theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_5 #2004322767/-
+theorem Consensus.Goldilocks.SA.instDecidableEqLock.decEq._proof_6 #1854160070/-
+def Consensus.Goldilocks.SA.instDecidableEqLock.decEq.match_1 #3170063944/243918904
 def Consensus.Goldilocks.SA.instDecidableEqVote : {n : Nat} → DecidableEq.{1} (Consensus.Goldilocks.SA.Vote n) := fun {n} => Consensus.Goldilocks.SA.instDecidableEqVote.decEq
   #4088561851/949250713
 def Consensus.Goldilocks.SA.instDecidableEqVote.decEq : {n : Nat} → (x x_1 : Consensus.Goldilocks.SA.Vote n) → Decidable (Eq.{1} x x_1) := fun {n} x x_1 => Consensus.Goldilocks.SA.instDecidableEqVote.decEq.match_1.{1} (fun x x_2 => Decidable (Eq.{1} x x_2)) x x_1 fun a a_1 a_2 b b_1 b_2 => if h : Eq.{1} a b then Eq.ndrec.{1, 1} (if h : Eq.{1} a_1 b_1 then Eq.ndrec.{1, 1} (if h : Eq.{1} a_2 b_2 then Eq.ndrec.{1, 1} (Decidable.isTrue ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯) h else Decidable.isFalse ⋯
@@ -2719,8 +2734,8 @@ def Consensus.Goldilocks.SA.LockExpiry : Consensus.Goldilocks.SA.SAParams → Pr
   #1635895928/1285350085
 def Consensus.Goldilocks.SA.LockToTip : Consensus.Goldilocks.SA.SAParams → Prop := fun sp => ∀ (FGP : Type) (ro : Consensus.Goldilocks.SA.ReplayOrder sp FGP), (Consensus.Goldilocks.SA.goldilocksSA sp FGP ro).AtReachable fun x x_1 A Φ t₀ => ∀ (t : Consensus.Time), LE.le.{0} t₀ t → ∀ (B : Consensus.Goldilocks.SA.Blk sp.n FGP), Membership.mem.{0, 0} (Consensus.Goldilocks.SA.liveLockBlocks sp A.locks Φ t) B → Consensus.Goldilocks.Frame.Anc Φ B (Option.getD.{0} (Consensus.Goldilocks.SA.lookup Φ A.latestConfirmed) Φ.F)
   #1635895928/2519288785
-def Consensus.Goldilocks.SA.LocksMoveBack : Consensus.Goldilocks.SA.SAParams → Prop := fun sp => ∀ (FGP : Type) (Φ : Consensus.Goldilocks.SA.Frm sp.n FGP) (L : Set.{0} Consensus.Goldilocks.SA.Lock) (t : Consensus.Time), Consensus.Goldilocks.FrameOK Φ → And (Consensus.Goldilocks.SA.MovesBack sp Φ L (Consensus.Goldilocks.SA.liveLocks sp L Φ t)) (And (∀ (s : Nat) (N : Set.{0} (Prod.{0, 0} Nat Bool)), Consensus.Goldilocks.SA.MovesBack sp Φ (Union.union.{0} L (Set.ofPred.{0} fun l => Exists.{1} fun p => And (Membership.mem.{0, 0} N p) (Eq.{1} l { block := Prod.fst.{0, 0} p, slot := s, fast := Prod.snd.{0, 0} p }))) (Consensus.Goldilocks.SA.addLocks sp L Φ t s N)) (∀ (s : Int) (V : Consensus.Goldilocks.SA.View sp.n), Consensus.Goldilocks.SA.MovesBack sp Φ L (Consensus.Goldilocks.SA.unlock sp L Φ t s V)))
-  #1635895928/4009660835
+def Consensus.Goldilocks.SA.LocksMoveBack : Consensus.Goldilocks.SA.SAParams → Prop := fun sp => ∀ (FGP : Type) (Φ : Consensus.Goldilocks.SA.Frm sp.n FGP) (L : Set.{0} Consensus.Goldilocks.SA.Lock) (t : Consensus.Time), Consensus.Goldilocks.FrameOK Φ → And (Consensus.Goldilocks.SA.MovesBack sp Φ L (Consensus.Goldilocks.SA.liveLocks sp L Φ t)) (And (∀ (s : Nat) (N : Set.{0} (Prod.{0, 0} Nat (Prod.{0, 0} Bool Nat))), Consensus.Goldilocks.SA.MovesBack sp Φ (Union.union.{0} L (Set.ofPred.{0} fun l => Exists.{1} fun p => And (Membership.mem.{0, 0} N p) (Eq.{1} l { block := Prod.fst.{0, 0} p, slot := s, fast := Prod.fst.{0, 0} (Prod.snd.{0, 0} p), expiry := Prod.snd.{0, 0} (Prod.snd.{0, 0} p) }))) (Consensus.Goldilocks.SA.addLocks sp L Φ t s N)) (∀ (s : Int) (V : Consensus.Goldilocks.SA.View sp.n), Consensus.Goldilocks.SA.MovesBack sp Φ L (Consensus.Goldilocks.SA.unlock sp L Φ t s V)))
+  #1635895928/2670575215
 def Consensus.Goldilocks.SA.MajorityChain : Consensus.Goldilocks.SA.SAParams → Prop := fun sp => ∀ (FGP : Type) (Φ : Consensus.Goldilocks.SA.Frm sp.n FGP) (V : Consensus.Goldilocks.SA.View sp.n) (s : Int) (B C : Consensus.Goldilocks.SA.Blk sp.n FGP), Consensus.Goldilocks.FrameOK Φ → LE.le.{0} V.support V.votes → Membership.mem.{0, 0} Φ.tree B → Membership.mem.{0, 0} Φ.tree C → LT.lt.{0} (Set.ncard.{0} (Consensus.Goldilocks.SA.voters V.votes)) (HMul.hMul.{0, 0, 0} 2 (Set.ncard.{0} (Consensus.Goldilocks.SA.supporters Φ V s B))) → LT.lt.{0} (Set.ncard.{0} (Consensus.Goldilocks.SA.voters V.votes)) (HMul.hMul.{0, 0, 0} 2 (Set.ncard.{0} (Consensus.Goldilocks.SA.supporters Φ V s C))) → Consensus.Goldilocks.Compatible Φ.tree B C
   #1635895928/904353179
 def Consensus.Goldilocks.SA.MergedOpponents : Consensus.Goldilocks.SA.SAParams → Prop := fun sp => ∀ (FGP : Type) (ro : Consensus.Goldilocks.SA.ReplayOrder sp FGP), (Consensus.Goldilocks.SA.goldilocksSA sp FGP ro).AtReachable fun x x_1 A Φ t₀ => ∀ (σ : Nat) (B : Consensus.Goldilocks.SA.Blk sp.n FGP), Eq.{1} (sp.slot t₀) (HAdd.hAdd.{0, 0, 0} σ 1) → LE.le.{0} (Consensus.Goldilocks.SA.opponents sp Φ (Consensus.Goldilocks.SA.mergedVoteView sp A Φ (HAdd.hAdd.{0, 0, 0} σ 1)) (Nat.cast.{0} σ) B) (Consensus.Goldilocks.SA.opponents sp Φ (Consensus.Goldilocks.SA.voteView A Φ (Nat.cast.{0} σ) Top.top.{0}) (Nat.cast.{0} σ) B)

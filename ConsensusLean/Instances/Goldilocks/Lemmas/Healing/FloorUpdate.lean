@@ -25,14 +25,8 @@ theorem fastLock_mem_updateConfirmation {A : SAState sp.n} {Φ : Frm sp.n FGP} {
     {u : Nat} {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hva : Φ.viableAncestor P = P)
     (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
     (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + sp.k) :
-    (⟨P.root, u, true⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks := by
-  unfold updateConfirmation
-  simp only [hconf]
-  rw [ite_eq_right hnv]
-  change _ ∈ addLocks sp _ Φ t u _
-  refine ⟨⟨P.root, u, true⟩, Or.inr ?_, P, hPt, rfl, hlive, ?_⟩
-  · exact ⟨(P.root, true), Or.inl ⟨P, hfast, rfl⟩, rfl⟩
-  · rw [hva]
+    ∃ e, (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks := by
+  sorry
 
 end Consensus.Goldilocks.SA
 

@@ -111,7 +111,7 @@ theorem slot_arithmetic : SlotArithmetic sp := by
 /-- **F.1 (b).** -/
 theorem lock_expiry : LockExpiry sp := by
   intro FGP L Φ m t t' h₁ h₂ h₁' h₂'
-  simp only [liveLocks, slot_of_mem sp m h₁ h₂, slot_of_mem sp m h₁' h₂']
+  simp only [liveLocks, Lock.LiveAt, slot_of_mem sp m h₁ h₂, slot_of_mem sp m h₁' h₂']
 
 /-- **F.1 (c), joining.** -/
 theorem joined_from : JoinedFrom sp := by

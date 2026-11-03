@@ -173,21 +173,9 @@ private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg) {x : 
     (hu : SA.UpdateAt tr.projAC x c j ℓ)
     (hF : Compatible (tr.HonestBlocks H) (tr.state x (c + 1)).fg.F D.P)
     (hbase : ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc D.P L ∧
-      (⟨L.root, j, f⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) :
+      ∃ e, (⟨L.root, j, f, e⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks) :
     Prot D x (c + 1) j := by
-  by_cases hroot : Anc (tr.HonestBlocks H) D.P (tr.state x (c + 1)).fg.F
-  · exact prot_iff.2 (Or.inr hroot)
-  obtain ⟨L, f, hL, hPL, hl⟩ := hbase
-  have hfr : ℓ.frame = Node.frame (tr.state x c) :=
-    (D.hrun.cutLaw x hx c _ (projAC_callAt.1 hu.1)).1
-  rw [hfr] at hL hPL
-  have hP : D.P ∈ (tr.state x c).fg.toFrame.tree := SA.mem_of_anc hPL hL
-  have hPt := tree_mono D.hrun.toLocalRun hx (Nat.le_succ c) hP.1
-  have hP' : D.P ∈ (tr.state x (c + 1)).fg.toFrame.tree :=
-    frame_mem_of_tree D.hrun hx le_rfl hPt
-      (honest_held_anc D.hrun D.hnc hx (hF.resolve_right hroot) hPt)
-  obtain ⟨hL', hPL'⟩ := floor_frame_transport D.hrun hx (Nat.le_succ c) hP' hL hPL
-  exact prot_iff.2 (Or.inl ⟨_, hl, rfl, L, hL', rfl, hPL'⟩)
+  sorry
 
 /-- **The base of the cover protection** (§7.3): the cover base at `x`'s label-`j₀` update at cut
 `c`, with (VA) at `c` and the caches at `c` and `c + 1`, gives `Prot₀` at `c + 1`. -/

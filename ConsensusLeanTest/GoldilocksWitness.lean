@@ -68,6 +68,8 @@ abbrev sp1 : SAParams where
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
   two_le_k := le_rfl
+  c := 2
+  two_le_c := le_rfl
 
 /-- A replay order (never used: nobody restarts). -/
 noncomputable abbrev ro1 : ReplayOrder sp1 (List (FG.Att sp1.n)) := ReplayOrder.choice sp1

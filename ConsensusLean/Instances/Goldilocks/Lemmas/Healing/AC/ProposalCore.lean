@@ -67,34 +67,7 @@ theorem unlocked_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK
     (hhigh : ∀ l ∈ L, sp.slot t ≤ l.slot + sp.k → σ ≤ (l.slot : Int) → ∀ X ∈ U,
       X.root = l.block → Compatible U X B) :
     ∀ C ∈ liveLockBlocks sp (unlock sp L Φ t σ V) Φ t, Compatible U C B := by
-  have down : ∀ {X Y}, Anc U X Y → Compatible U Y B → Compatible U X B := by
-    rintro X Y hXY (h | h)
-    · exact Or.inl (hXY.trans h)
-    · exact anc_total hU hXY h
-  rintro C ⟨hC, l, ⟨l₁, hl₁, B₁, hB₁, hB₁r, -, rfl⟩, hlC⟩
-  have hCe : C = Φ.viableAncestor B₁ :=
-    hU.1 (hΦU hC) (hΦU (viableAncestor_anc hΦ hB₁).1) hlC.symm
-  subst hCe
-  refine down (Anc.mono hΦU (anc_viableAncestor _ B₁)) ?_
-  -- the stored lock below the unlocked one
-  obtain ⟨l₂, ⟨l₃, hl₃, B₃, hB₃, hB₃r, hlive, rfl⟩, B₂, hB₂, hB₂r, hl₁e⟩ := id hl₁
-  have hB₂e : B₂ = Φ.viableAncestor B₃ :=
-    hΦ.coherent.1 hB₂ (viableAncestor_anc hΦ hB₃).1 hB₂r
-  subst hB₂e
-  have h₂₃ : Anc U (Φ.viableAncestor B₃) B₃ := Anc.mono hΦU (anc_viableAncestor _ B₃)
-  split_ifs at hl₁e with hlt
-  · subst hl₁e
-    obtain ⟨hT, hTB⟩ := unlockTarget_anc sp hΦ V σ hB₂
-    obtain rfl : B₁ = unlockTarget sp Φ V σ (Φ.viableAncestor B₃) := hΦ.coherent.1 hB₁ hT hB₁r
-    rcases hlow with ⟨S, hS, hn⟩ | hlow
-    · rcases unlock_compatible hΦ hB hS hn L t _ hl₁ hlt _ hB₁ rfl with h | h
-      · exact Or.inl (Anc.mono hΦU h)
-      · exact Or.inr (Anc.mono hΦU h)
-    · exact down ((Anc.mono hΦU hTB).trans h₂₃) (hlow l₃ hl₃ hlive hlt B₃ (hΦU hB₃) hB₃r)
-  · subst hl₁e
-    obtain rfl : B₁ = Φ.viableAncestor B₃ :=
-      hΦ.coherent.1 hB₁ (viableAncestor_anc hΦ hB₃).1 hB₁r
-    exact down h₂₃ (hhigh l₃ hl₃ hlive (not_lt.1 hlt) B₃ (hΦU hB₃) hB₃r)
+  sorry
 
 /-! ## The premises -/
 

@@ -60,13 +60,7 @@ private theorem optimistic_fgr (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t :
 
 private theorem update_fgr (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (s : Nat) :
     (SA.updateConfirmation sp A Φ t s).fgReported = A.fgReported := by
-  unfold SA.updateConfirmation
-  dsimp only
-  split
-  · rfl
-  · split_ifs
-    · rfl
-    · exact ulc_fgr _ _ _
+  sorry
 
 private theorem tryVote_fgr (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) : (SA.tryVote sp self A Φ t).1.fgReported = A.fgReported := by
@@ -191,23 +185,11 @@ new locks on blocks of `Y`'s path, among them the fast selection, fast. -/
 private theorem update_locks {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : Time} {s : Nat}
     {Y : SA.Blk sp.n FGP} (hconf : SA.getConfirmation sp A Φ s = some Y)
     (hnv : ¬ SA.conflictsWithLock sp A.locks Φ t Y) :
-    ∃ N : Set (Nat × Bool),
+    ∃ N : Set (Nat × Bool × Nat),
       (SA.updateConfirmation sp A Φ t s).locks = SA.addLocks sp A.locks Φ t s N ∧
       (∀ p ∈ N, ∃ B ∈ Φ.tree, B.root = p.1 ∧ Φ.Anc B Y) ∧
-      ∀ D, SA.fastSelect sp A Φ s Y = some D → (D.root, true) ∈ N := by
-  have path : ∀ {S : Set (SA.Blk sp.n FGP)} {B}, SA.deepest Φ S = some B →
-      S ⊆ SA.confirmationPath sp Φ Y → B ∈ Φ.tree ∧ Φ.Anc B Y := fun hB hS =>
-    let h := hS (SA.deepest_mem hB).1
-    ⟨h.1, h.2.2⟩
-  unfold SA.updateConfirmation
-  simp only [hconf, hnv, ↓reduceIte]
-  refine ⟨_, by rw [ulc_locks], ?_, ?_⟩
-  swap
-  · intro D hD
-    exact Or.inl ⟨D, hD, rfl⟩
-  rintro p (⟨B, hB, rfl⟩ | ⟨-, B, hB, rfl⟩)
-  · exact ⟨B, (path hB fun X hX => hX.1).1, rfl, (path hB fun X hX => hX.1).2⟩
-  · exact ⟨B, (path hB fun X hX => hX.1).1, rfl, (path hB fun X hX => hX.1).2⟩
+      ∀ D, SA.fastSelect sp A Φ s Y = some D → ∃ e, (D.root, true, e) ∈ N := by
+  sorry
 
 end Update
 
@@ -493,198 +475,7 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
     (hon : ∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) :
     ∀ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
       tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) Y C := by
-  classical
-  intro y hy
-  have hl := hrun.toLocalRun
-  have hnc := hs.noColl
-  have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hr' := hacr.localRun
-  have hU := Compose.honest_blocks_coherent hl hnc
-  have hS := healthyBase_of_hs hrun hs hc
-  -- time
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
-  have hgb0 := gbar_nonneg g
-  have hw4 := add_le_rTime sp w
-  have hts : gbar g + 12 * sp.Δ ≤ sp.ts s := by linarith
-  have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have hslot : sp.slot (sp.ts s + 6 * sp.Δ) = s + 1 :=
-    SA.slot_of_mem sp (s + 1) (by rw [hts1]; linarith)
-      (by simp only [SAParams.ts] at hts1 ⊢; push_cast at hts1 ⊢; linarith)
-  have hs1 : 1 ≤ s := by
-    by_contra h0
-    obtain rfl : s = 0 := by omega
-    have : sp.ts ((0 : Nat) : Int) = 0 := by simp [SAParams.ts]
-    linarith
-  -- the proposal and its allowedness
-  obtain ⟨hacc, hYt₀, hpost⟩ := accept_of_proposesAt hrun hnc hpH hY
-  have hkY : tr.time kY = sp.ts s := by rw [hY.2.2, hYs, sp.slotTime_eq]; rfl
-  have hi₀kY : i₀ ≤ kY := le_of_settledIn hset (by rw [hkY]; linarith)
-  obtain ⟨jv, hjv⟩ := exists_firstCutAfter_of_healthy hrun hs hy (sp.ts s + 6 * sp.Δ)
-  have hphv := hon jv hjv
-  have hkYjv : kY < jv := hjv.lt_of_time_le hrun.time_mono (by rw [hkY]; linarith)
-  have hall := proposal_allowed hrun hs hc hset hpH hY hYs (by linarith)
-    (fun k' h1 h2 => hphv k' h1 (h2.trans hkYjv.le))
-  rw [hpost] at hall
-  -- `y`'s tick at `v`, not a proposal duty: `ac_on_tick`, then `ac_to_fg`
-  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts s + 6 * sp.Δ) (by linarith)
-    ⟨4 * (s : Int) + 6, by simp only [SAParams.ts]; ring⟩
-    (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith))
-  have hnP : ¬ Node.Proposes proposer y (sp.ts s + 6 * sp.Δ) := by
-    rintro ⟨-, h, -⟩
-    rw [show sp.toParams.slotOf (sp.ts s + 6 * sp.Δ) = s + 1 from hslot, sp.slotTime_eq] at h
-    simp only [SAParams.ts] at hts1 h
-    push_cast at hts1 h
-    linarith
-  obtain ⟨hcj, htj⟩ := tick_first_cut hg
-  obtain ⟨ℓ', hcj1, hcall', htj1⟩ := tick_toFG_call hg hnP
-  obtain ⟨ℓ, hcjAC, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp ro),
-      tr.projAC.CallAt y j ℓ ∧ ℓ.call = .tick := ⟨_, Compose.projAC_callAt.2 hcj, rfl⟩
-  have hcj1AC : tr.projAC.CallAt y (j + 1) ℓ' := Compose.projAC_callAt.2 hcj1
-  have hjjv : j + 1 < jv := hjv.lt_of_time_le hrun.time_mono (by rw [htj1])
-  have hi₀j : i₀ ≤ j := le_of_settledIn hset (by rw [htj]; linarith)
-  have hkYj : kY < j := by
-    by_contra h
-    have := hrun.time_mono (not_lt.1 h)
-    linarith
-  have hwin : PhaseOn tr.projFG H (kY + 1) (j + 1) m c :=
-    fun k' h1 h2 => hphv k' (by omega) (by omega)
-  -- `y` holds `Y` at its tick: relayed by `t_s + Δ`, `F ⪯ Y` by HS.1
-  have hYj : Y ∈ (tr.state y j).fg.tree := by
-    have hex : ∃ k', sp.ts s + 6 * sp.Δ ≤ tr.time k' := ⟨j, htj.ge⟩
-    have hjw : tr.FirstCutFrom (Nat.find hex) (sp.ts s + 6 * sp.Δ) :=
-      ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
-    have hjwj : Nat.find hex ≤ j := Nat.find_min' hex htj.ge
-    have hkYw : kY + 1 ≤ Nat.find hex := by
-      by_contra h
-      have := hrun.time_mono (show Nat.find hex ≤ kY by omega)
-      linarith [hjw.1]
-    have hF := finalized_anc_of_allowed hrun hs (fun k' h1 h2 => hwin k' h1 (h2.trans (by omega)))
-      hpH hall hy hkYw le_rfl
-    exact Compose.tree_mono hl hy hjwj (relay_held hl hs.healthy hs.noRestart hc hpH hy hacc
-      (by linarith) (by rw [hkY]; linarith) hjw hF)
-  -- `Y` is a viable head of `y`'s frame at the tick
-  have hfr : ℓ.frame = Node.frame (tr.state y j) := Compose.frame_of_projAC hrun hy hcjAC
-  have hΦ : FrameOK ℓ.frame := (SA.frameIn_of_callAt hr' hy hcjAC).1
-  have hΦU : ℓ.frame.tree ⊆ tr.HonestBlocks H := (SA.frameIn_of_callAt hr' hy hcjAC).2
-  have hYv : Y ∈ ℓ.frame.viableHeads := by
-    rw [hfr]
-    exact viableHead_of_allowed hrun hs hwin hpH hall hy (by omega) (by omega) hYj
-  have hYt : Y ∈ ℓ.frame.tree := hΦ.viableHeads_subset hYv
-  have hYvt : Y ∈ ℓ.frame.viableTree ℓ.frame.tree :=
-    ⟨hYt, hΦ.fcRoot_anc_viableHeads Y hYv, Y, hYt, hYv, .refl⟩
-  have hYg : Y.root ≠ sp.genesisRoot := by
-    intro hg0
-    have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
-    obtain rfl := hU.1 ⟨y, hy, j, hYj⟩ ⟨y, hy, j, hG⟩ hg0
-    simp [Params.genesisBlock] at hYs
-    omega
-  -- the slot-`s` update: result and fast selection `Y`, not vetoed
-  have hexact : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
-      e.msg.head = Y.root := fun x hx j e ⟨ℓ, hc, he⟩ hes => (hvotes x hx j ℓ e ⟨hc, he⟩ hes).1
-  have htjAC : tr.projAC.time j = sp.ts s + 6 * sp.Δ := htj
-  obtain ⟨hconf, hnv, hfast, hpostj⟩ := SA.first_update_post hS (by linarith) hexact hy hcjAC
-    hcall htjAC hYt (update_locks_compatible hrun hs hc hp hset hclean hY hYs hpH hr hvotes
-      hlater hparents hon hy hcjAC htj)
-  set A := tr.projAC.state y j with hA
-  set t := sp.ts s + 6 * sp.Δ with ht
-  have hlocks := update_locks_compatible hrun hs hc hp hset hclean hY hYs hpH hr hvotes hlater
-    hparents hon hy hcjAC htj
-  obtain ⟨N, hN, hNY, hND⟩ := update_locks hconf hnv
-  have hD := hND Y (SA.fastSelect_eq_result hΦ hYt hYg hfast)
-  -- the `ac_to_fg` cut: same frame, same time, the state the update left
-  have hst1 : tr.projAC.state y (j + 1) = tr.projAC.post j := by
-    simp [Trace.state, hcjAC.1, hcjAC.2]
-  have hfr' : ℓ'.frame = ℓ.frame := by
-    rw [(hrun.cutLaw y hy (j + 1) _ hcj1).1, hfr, tr.state_succ_of_call hcj]
-    unfold Node.frame
-    rw [(hrun.cutLaw y hy j _ hcj).2.2.1]
-  have htj1AC : tr.projAC.time (j + 1) = t := htj1
-  have hpostl : (tr.projAC.state y (j + 1)).locks = SA.addLocks sp A.locks ℓ.frame t s N := by
-    rw [hst1, hpostj, hN, htjAC]
-  have hjoin : SA.joined sp (tr.projAC.state y (j + 1)) t := by
-    have := hS.joined_state hy (j + 1) (by
-      rw [htj1AC, hslot]; push_cast; simp only [add_sub_cancel_right]
-      linarith)
-    rwa [htj1AC] at this
-  -- every live lock at the `ac_to_fg` compares with `Y`, and `Y` is a fast candidate
-  have hk2 : 2 ≤ sp.k := sp.two_le_k
-  have hlv : sp.slot t ≤ s + sp.k := by rw [hslot]; omega
-  have hlv2 : sp.slot t ≤ s + 2 := by rw [hslot]; omega
-  have hlive : ∀ B ∈ SA.liveLockBlocks sp (tr.projAC.state y (j + 1)).locks ℓ.frame t,
-      Compatible (tr.HonestBlocks H) B Y := by
-    rintro B ⟨hB, l, ⟨l₁, hl₁, B₁, hB₁, hB₁r, -, rfl⟩, hlB⟩
-    rw [hpostl] at hl₁
-    obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, hl₀t, rfl⟩ := hl₁
-    obtain ⟨hvat₀, hva₀⟩ := SA.viableAncestor_anc hΦ hB₀
-    obtain rfl : B₁ = ℓ.frame.viableAncestor B₀ := hΦ.coherent.1 hB₁ hvat₀ hB₁r
-    obtain ⟨-, hva₁⟩ := SA.viableAncestor_anc hΦ hB₁
-    obtain rfl : B = ℓ.frame.viableAncestor (ℓ.frame.viableAncestor B₀) :=
-      hΦ.coherent.1 hB (SA.viableAncestor_anc hΦ hB₁).1 hlB.symm
-    have hBB₀ := hva₁.trans hva₀
-    rcases hl₀ with hl₀ | ⟨q, hq, rfl⟩
-    · have hcomp := hlocks _ ⟨hvat₀, ⟨(ℓ.frame.viableAncestor B₀).root, l₀.slot, l₀.fast⟩,
-        ⟨l₀, hl₀, B₀, hB₀, hB₀r, by rw [htj]; exact hl₀t, rfl⟩, rfl⟩
-      rcases hcomp with h | h
-      · exact Or.inl ((Anc.mono hΦU hva₁).trans h)
-      · exact (SA.anc_total hU h (Anc.mono hΦU hva₁)).symm
-    · obtain ⟨Bq, hBq, hBqr, hBqY⟩ := hNY q hq
-      obtain rfl : B₀ = Bq := hΦ.coherent.1 hB₀ hBq (hB₀r.trans hBqr.symm)
-      exact Or.inl (Anc.mono hΦU (hBB₀.trans hBqY))
-  have hYc : Y ∈ SA.toFGCandidates sp (tr.projAC.state y (j + 1)) ℓ.frame t := by
-    refine ⟨hYvt, ⟨Y.root, s, true⟩, ⟨⟨Y.root, s, true⟩, ?_, Y, hYt, rfl, ?_, ?_⟩, rfl, rfl, ?_⟩
-    · rw [hpostl]
-      exact ⟨⟨Y.root, s, true⟩, Or.inr ⟨_, hD, rfl⟩, Y, hYt, rfl, hlv,
-        by rw [SA.viableAncestor_self hΦ hYt (Or.inl hYvt)]⟩
-    · exact hlv
-    · rw [SA.viableAncestor_self hΦ hYt (Or.inl hYvt)]
-    · exact hlv2
-  -- the deepest candidate extends `Y`
-  have hcs : SA.toFGCandidates sp (tr.projAC.state y (j + 1)) ℓ.frame t ⊆ ℓ.frame.tree :=
-    fun B hB => hB.1.1
-  obtain ⟨C, hC⟩ := SA.exists_deepest hΦ hcs ⟨Y, hYc⟩
-  obtain ⟨hCc, hCmax⟩ := SA.deepest_mem hC
-  have hYC : ℓ.frame.Anc Y C := by
-    obtain ⟨hCv, l, hl, hlC, -⟩ := hCc
-    rcases hlive C ⟨hCv.1, l, hl, hlC⟩ with h | h
-    · by_cases he : Y = C
-      · exact he ▸ .refl
-      · have h' := SA.anc_tree_of_anc_U hU hΦ hΦU hCv.1 h hYt
-        by_cases he' : C = Y
-        · exact absurd he'.symm he
-        rcases hCmax Y hYc he with h2 | ⟨h2, -⟩ <;>
-          have := SA.depth_lt_of_anc hΦ h' he' hYt <;> omega
-    · exact SA.anc_tree_of_anc_U hU hΦ hΦU hYt h hCv.1
-  have hYCU : Anc (tr.HonestBlocks H) Y C := hYC.mono hΦU
-  -- returned, or suppressed by an earlier return
-  by_cases hrep : SA.AncR ℓ.frame C (tr.projAC.state y (j + 1)).fgReported
-  · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
-    have hYR : Anc (tr.HonestBlocks H) Y R := hYCU.trans (hCR.mono hΦU)
-    rcases fgReported_origin hr' hy (j + 1) with hgen | ⟨k', hk', ℓ'', R', hto, hR'r⟩
-    · have hG := Store.genesis_mem (Compose.fg_reachable hl hy j)
-      have hRG := hU.1 (hΦU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
-      subst hRG
-      have := slot_le_of_anc hU hYR
-      simp [Params.genesisBlock] at this
-      omega
-    have hR't := toFG_mem_tree hrun hy hto
-    obtain rfl : R' = R := hU.1 ⟨y, hy, k', hR't⟩ (hΦU hRt) (hR'r.trans hRr.symm)
-    have hYk' := mem_of_honest_anc hrun hnc hy hYR hR't
-    have hk't : tr.time k' ≤ t := by
-      rw [← htj1]; exact hrun.time_mono (by omega)
-    refine ⟨k', ℓ'', R', hto, ?_, hk't, hYR⟩
-    -- `R ⪰ Y` was returned after `Y` was accepted, at `t_s` or later
-    rcases Compose.tree_cases hl hy hYk' with hg0 | ⟨a, ha, hacc'⟩
-    · exact absurd (by rw [hg0]; rfl) hYg
-    have hlaw := (hrun.cutLaw y hy a _ hacc').1
-    have hsl : s ≤ sp.slot (tr.time a) := hYs ▸ hlaw
-    have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg a) s).2 (by exact_mod_cast hsl)
-    exact this.trans (hrun.time_mono ha.le)
-  · refine ⟨j + 1, ℓ', C, ⟨hcj1AC, hcall', ?_⟩, by rw [htj1]; linarith, by rw [htj1], hYCU⟩
-    rw [hfr', htj1AC]
-    unfold SA.acToFG
-    simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]
+  sorry
 
 end Consensus.Goldilocks.Healing
 

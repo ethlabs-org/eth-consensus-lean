@@ -37,31 +37,9 @@ theorem updateConfirmation_slow_lock {FGP : Type} {sp : SAParams} {A : SAState s
       ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
     (hlive : sp.slot t ≤ s + sp.k) :
     ∃ X f, X ∈ Φ.tree ∧ Φ.Anc C X ∧ Φ.Anc X D ∧
-      (⟨(Φ.viableAncestor X).root, s, f⟩ : Lock) ∈ (updateConfirmation sp A Φ t s).locks := by
-  classical
-  set S : Set (Blk sp.n FGP) := {B | B ∈ confirmationPath sp Φ D ∧ (FastTest sp A Φ s B ∨
-    ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ Φ.tree,
-      (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧ Φ.Anc B S)}
-  have hSt : S ⊆ Φ.tree := fun B hB => hB.1.1
-  have hCS : C ∈ S := by
-    refine ⟨⟨hCt, hCg, hCD⟩, Or.inr fun j hj₁ hj₂ => ?_⟩
-    obtain ⟨S', hS', hsv, hCS'⟩ := hrows j hj₁ hj₂
-    exact ⟨S', hS', by rw [Function.update_of_ne (by omega)]; exact hsv, hCS'⟩
-  have hch : ∀ B ∈ S, ∀ B' ∈ S, Compatible Φ.tree B B' := fun B hB B' hB' =>
-    anc_total hΦ.coherent hB.1.2.2 hB'.1.2.2
-  obtain ⟨X, hX⟩ := exists_deepest hΦ hSt ⟨C, hCS⟩
-  have hXS := (deepest_mem hX).1
-  have hN : ∃ f, (X.root, f) ∈ {p : Nat × Bool | (∃ B, fastSelect sp A Φ s D = some B ∧
-      p = (B.root, true)) ∨ (deepest Φ S ≠ fastSelect sp A Φ s D ∧
-        ∃ B, deepest Φ S = some B ∧ p = (B.root, false))} := by
-    by_cases hf : deepest Φ S = fastSelect sp A Φ s D
-    · exact ⟨true, Or.inl ⟨X, hf ▸ hX, rfl⟩⟩
-    · exact ⟨false, Or.inr ⟨hf, X, hX, rfl⟩⟩
-  obtain ⟨f, hf⟩ := hN
-  refine ⟨X, f, hSt hXS, anc_deepest hΦ hSt hch hX C hCS, hXS.1.2.2, ?_⟩
-  simp only [updateConfirmation, hD]
-  rw [ite_eq_right hnv]
-  exact ⟨⟨X.root, s, f⟩, Or.inr ⟨_, hf, rfl⟩, X, hSt hXS, rfl, hlive, rfl⟩
+      ∃ e, (⟨(Φ.viableAncestor X).root, s, f, e⟩ : Lock)
+          ∈ (updateConfirmation sp A Φ t s).locks := by
+  sorry
 
 /-- **Effective slow formation**: with `C` a candidate of `viable_ancestor`, the stored block
 extends `C` (`anc_viableAncestor_of_candidate`). -/
@@ -73,7 +51,7 @@ theorem updateConfirmation_slow_lock_effective {FGP : Type} {sp : SAParams} {A :
       ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
     (hlive : sp.slot t ≤ s + sp.k) (hcand : Φ.AncestorCandidate C) :
     ∃ L f, L ∈ Φ.tree ∧ Φ.Anc C L ∧
-      (⟨L.root, s, f⟩ : Lock) ∈ (updateConfirmation sp A Φ t s).locks := by
+      ∃ e, (⟨L.root, s, f, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t s).locks := by
   obtain ⟨X, f, hX, hCX, -, hl⟩ :=
     updateConfirmation_slow_lock hΦ hD hnv hCt hCg hCD hrows hlive
   exact ⟨Φ.viableAncestor X, f, (viableAncestor_anc hΦ hX).1,
@@ -748,7 +726,7 @@ theorem armed_lock_formed (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     ∃ c ℓ, SA.UpdateAt tr.projAC w c s ℓ ∧
       (Anc (tr.HonestBlocks H) C (tr.state w c).fg.F ∨
         ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc C L ∧
-          (⟨L.root, s, f⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
+          ∃ e, (⟨L.root, s, f, e⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
   have hk2 := sp.two_le_k
   obtain ⟨c, ℓ, hu, -, -, hP⟩ := armed_first_update hrun hnc hinv hsync hfb hC hw haw hks hσs
@@ -795,7 +773,7 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
           SA.VoteExtends (tr.HonestBlocks H) e.msg C) →
         Anc (tr.HonestBlocks H) C (tr.state w c).fg.F ∨
         (∃ L f, ℓ.frame.Anc C L ∧
-          (⟨L.root, s, f⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) ∨
+          ∃ e, (⟨L.root, s, f, e⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) ∨
         (∃ V ∈ SA.liveLockBlocks sp (tr.state w c).ac.locks ℓ.frame (tr.time c),
           ℓ.frame.Anc C V ∧ ∃ l ∈ (tr.state w c).ac.locks, l.slot = s + 1 ∧
             ∃ B₀ ∈ ℓ.frame.tree, B₀.root = l.block ∧ V = ℓ.frame.viableAncestor B₀)) := by

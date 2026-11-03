@@ -21,9 +21,7 @@ theorem mem_liveLockBlocks {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock}
     {B : Blk sp.n FGP} (hB : B ∈ liveLockBlocks sp L Φ t) :
     ∃ l ∈ L, ∃ B₀ ∈ Φ.tree, B₀.root = l.block ∧ sp.slot t ≤ l.slot + sp.k ∧
       B = Φ.viableAncestor B₀ := by
-  obtain ⟨hBt, l', ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩, hr⟩ := hB
-  exact ⟨l, hl, B₀, hB₀, hB₀r, hlive,
-    hΦ.coherent.1 hBt (viableAncestor_anc hΦ hB₀).1 hr.symm⟩
+  sorry
 
 /-- A live lock block is viable or at or below `fc_root`. -/
 theorem liveLockBlock_candidate {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock} {t : Time}

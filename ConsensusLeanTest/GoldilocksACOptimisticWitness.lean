@@ -154,7 +154,7 @@ theorem viableAncestor_B1 : Φ₁.viableAncestor B1 = B1 :=
 
 /-- Live locks on `B1` stay as they are. -/
 theorem liveLocks_eq {L : Set Lock} {t : Time}
-    (hL : ∀ l ∈ L, l.block = 1 ∧ sp1.slot t ≤ l.slot + 2) : liveLocks sp1 L Φ₁ t = L := by
+    (hL : ∀ l ∈ L, l.block = 1 ∧ sp1.slot t ≤ l.expiry) : liveLocks sp1 L Φ₁ t = L := by
   ext l'
   constructor
   · rintro ⟨l, hl, B, hB, hr, -, rfl⟩
@@ -163,13 +163,13 @@ theorem liveLocks_eq {L : Set Lock} {t : Time}
       · rw [(hL l hl).1] at hr; simp [g] at hr
       · rfl
     rw [viableAncestor_B1]
-    obtain ⟨b, s, f⟩ := l
+    obtain ⟨b, s, f, e⟩ := l
     obtain rfl : b = 1 := (hL _ hl).1
     exact hl
   · intro hl
     refine ⟨l', hl, B1, B1_mem, (hL l' hl).1.symm, (hL l' hl).2, ?_⟩
     rw [viableAncestor_B1]
-    obtain ⟨b, s, f⟩ := l'
+    obtain ⟨b, s, f, e⟩ := l'
     obtain rfl : b = 1 := (hL _ hl).1
     rfl
 
@@ -213,7 +213,7 @@ theorem getHead_eq {T : Set (Blk sp1.n Unit)} (hT : T ⊆ U₁) (hB : B1 ∈ T) 
 
 /-- Unlocking keeps live locks on `B1` of a slot at least `s`. -/
 theorem unlock_eq {L : Set Lock} {t : Time} {s : Int} (V : View sp1.n)
-    (hL : ∀ l ∈ L, l.block = 1 ∧ sp1.slot t ≤ l.slot + 2 ∧ s ≤ l.slot) :
+    (hL : ∀ l ∈ L, l.block = 1 ∧ sp1.slot t ≤ l.expiry ∧ s ≤ l.slot) :
     unlock sp1 L Φ₁ t s V = L := by
   have hlive := liveLocks_eq (L := L) (t := t) fun l hl => ⟨(hL l hl).1, (hL l hl).2.1⟩
   ext l'
@@ -269,7 +269,8 @@ theorem optimisticConfirmation_none {A : SAState sp1.n} {t : Time}
 theorem optimisticConfirmation_some {A : SAState sp1.n} {t : Time}
     (h : optimisticSelect sp1 A Φ₁ t = some B1) : optimisticConfirmation sp1 A Φ₁ t =
       updateLatestConfirmed sp1
-        { A with locks := addLocks sp1 A.locks Φ₁ t (sp1.slot t) {(B1.root, true)} } Φ₁ B1 := by
+        { A with locks := (addLocks sp1 A.locks Φ₁ t (sp1.slot t)
+          {(B1.root, true, fastExpiry sp1 A.locks Φ₁ t (sp1.slot t))}) } Φ₁ B1 := by
   unfold optimisticConfirmation; rw [h]
 
 theorem updateLatestConfirmed_new {A : SAState sp1.n} (h : A.latestConfirmed = 0) :
@@ -303,11 +304,20 @@ def vote1 : Vote sp1.n := ⟨v0, 1, 1⟩
 /-- The slot-`2` vote of `v0`, on `B1`. -/
 def vote2 : Vote sp1.n := ⟨v0, 2, 1⟩
 
-/-- The optimistic fast lock of slot `1` on `B1`. -/
-def lock1 : Lock := ⟨1, 1, true⟩
+/-- The optimistic fast lock of slot `1` on `B1`, expiry `3` (`fastExpiry_eq`). -/
+def lock1 : Lock := ⟨1, 1, true, 3⟩
 
-/-- The optimistic fast lock of slot `2` on `B1`. -/
-def lock2 : Lock := ⟨1, 2, true⟩
+/-- The optimistic fast lock of slot `2` on `B1`, expiry `4`: at `k = c = 2` the cap `s + k`
+binds, so the live lock of slot `1` does not extend it. -/
+def lock2 : Lock := ⟨1, 2, true, 4⟩
+
+/-- At `k = 2` every fast lock of slot `s` expires after `s + 2`: the cap `s + k` and the floor
+`s + 2` coincide. -/
+theorem fastExpiry_eq (L : Set Lock) (t : Time) (s : Nat) : fastExpiry sp1 L Φ₁ t s = s + 2 := by
+  unfold fastExpiry
+  change min (s + 2) _ = s + 2
+  dsimp only
+  split_ifs <;> omega
 
 /-- Cut 0: `ac_on_block(B1)` at `t_1 = 4`. -/
 noncomputable def r0 : SAState sp1.n × List (Em sp1 Unit) :=
@@ -329,9 +339,9 @@ theorem voteDomain_sub (A : SAState sp1.n) (s : Nat) : voteDomain sp1 A Φ₁ s 
   · exact h
 
 /-- Adding a fast lock on `B1` to live locks on `B1`. -/
-theorem addLocks_eq {L : Set Lock} {t : Time} {s : Nat}
-    (hL : ∀ l ∈ L, l.block = 1 ∧ sp1.slot t ≤ l.slot + 2) (hs : sp1.slot t ≤ s + 2) :
-    addLocks sp1 L Φ₁ t s {(B1.root, true)} = insert ⟨1, s, true⟩ L := by
+theorem addLocks_eq {L : Set Lock} {t : Time} {s e : Nat}
+    (hL : ∀ l ∈ L, l.block = 1 ∧ sp1.slot t ≤ l.expiry) (hs : sp1.slot t ≤ e) :
+    addLocks sp1 L Φ₁ t s {(B1.root, true, e)} = insert ⟨1, s, true, e⟩ L := by
   unfold addLocks
   rw [liveLocks_eq]
   · ext l
@@ -421,7 +431,7 @@ theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
       voteStamp := Function.update R0.voteStamp vote1 (ETime.of 4) } Φ₁ 4 = some B1 :=
     optimisticSelect_B1 rfl (by rw [slot_4]; decide) (by rw [slot_4]; decide)
       ⟨vote1, by rw [slot_4]; simp [vote1], rfl⟩
-  rw [admitVote_fresh R0 4 vote1 slot_4 rfl, optimisticConfirmation_some hsel,
+  rw [admitVote_fresh R0 4 vote1 slot_4 rfl, optimisticConfirmation_some hsel, fastExpiry_eq,
     addLocks_eq (fun l hl => hl.elim) (by rw [slot_4]; decide), updateLatestConfirmed_new rfl,
     slot_4]
   rfl
@@ -450,7 +460,8 @@ theorem updateConfirmation_pool (A : SAState sp1.n) (t : Time) (s : Nat) :
   · rfl
   · split_ifs
     · rfl
-    · unfold updateLatestConfirmed
+    all_goals
+      unfold updateLatestConfirmed
       split_ifs <;> rfl
 
 /-- The read point of the slot-`2` vote. -/
@@ -505,7 +516,7 @@ theorem r1_eq : ∃ d, r1 = (S2, [⟨vote2, R1, some d⟩]) := by
       voteStamp := Function.update R1.voteStamp vote2 (ETime.of 9) } Φ₁ 9 = some B1 :=
     optimisticSelect_B1 rfl (by rw [slot_9]; decide) (by rw [slot_9]; decide)
       ⟨vote2, by rw [slot_9]; simp [vote2], rfl⟩
-  rw [admitVote_fresh R1 9 vote2 slot_9 rfl, optimisticConfirmation_some hsel,
+  rw [admitVote_fresh R1 9 vote2 slot_9 rfl, optimisticConfirmation_some hsel, fastExpiry_eq,
     addLocks_eq (fun l hl => by rw [mem_S1_locks hl, slot_9]; exact ⟨rfl, by decide⟩)
       (by rw [slot_9]; decide), updateLatestConfirmed_keep rfl, slot_9]
   rfl

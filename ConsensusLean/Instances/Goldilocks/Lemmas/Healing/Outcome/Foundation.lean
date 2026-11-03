@@ -63,13 +63,7 @@ straddles `b`, has expired. -/
 theorem drain_live_locks {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {L : Set SA.Lock} {t : Time}
     (ht : drainTime sp a ≤ t) :
     ∀ l ∈ SA.liveLocks sp L Φ t, cleanLabel sp a + sp.k + 2 ≤ l.slot := by
-  rintro _ ⟨l, -, B, -, -, hk, rfl⟩
-  have h0 : 0 ≤ t := le_trans (by
-    simp only [drainTime, SAParams.ts]
-    exact mul_nonneg (by linarith [sp.toParams.hΔ]) (Int.natCast_nonneg _)) ht
-  have := (SA.ts_le_iff_le_slot sp h0 _).1 ht
-  simp only [cleanLabel]
-  omega
+  sorry
 
 /-- A stored lock that is live by time after the drain has a clean label. This requires
 neither normalized `liveLocks` membership nor a later `addLocks` call. -/

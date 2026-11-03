@@ -43,6 +43,8 @@ noncomputable def setupSmall : Setup where
   δt := 6
   k := 2
   two_le_k := le_rfl
+  c := 2
+  two_le_c := le_rfl
   ro := replayOrder
 
 /-- A larger setup, past the catch-up switch: `k = 6`, `δt = 8`. -/
@@ -51,6 +53,8 @@ noncomputable def setupLarge : Setup where
   δt := 8
   k := 6
   two_le_k := by decide
+  c := 2
+  two_le_c := le_rfl
   ro := replayOrder
 
 /-- The assumptions at `setupSmall`, with row ratio `1`. -/
@@ -197,6 +201,8 @@ noncomputable def setupRow : Setup where
   δt := 30
   k := 2
   two_le_k := le_rfl
+  c := 2
+  two_le_c := le_rfl
   ro := replayOrder
 
 /-- (b) Row ratio `1` reproduces the single-bound constants: gap `2`, `6 ≤ δt`, the window

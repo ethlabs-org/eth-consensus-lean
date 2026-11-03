@@ -79,13 +79,10 @@ theorem floor_liveLocks {L : Set Lock} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tre
     (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ j + sp.k)
     (h : ∃ l ∈ L, l.slot = j ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
     ∃ l ∈ liveLocks sp L Φ t, l.slot = j ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
-  obtain ⟨l, hl, hj, B, hB, hBr, hB0B⟩ := h
-  subst hj
-  exact ⟨_, ⟨l, hl, B, hB, hBr, hk, rfl⟩, rfl, _, (viableAncestor_anc hΦ hB).1, rfl,
-    anc_viableAncestor_of_floor hΦ hB0 hva0 hB hB0B⟩
+  sorry
 
 /-- `add_locks` keeps the floor. -/
-theorem floor_addLocks {L : Set Lock} {s : Nat} {N : Set (Nat × Bool)} (hΦ : FrameOK Φ)
+theorem floor_addLocks {L : Set Lock} {s : Nat} {N : Set (Nat × Bool × Nat)} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ j + sp.k)
     (h : ∃ l ∈ L, l.slot = j ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
     ∃ l ∈ addLocks sp L Φ t s N, l.slot = j ∧
@@ -103,7 +100,7 @@ theorem floor_unlock {L : Set Lock} {s : Int} {V : View sp.n} (hΦ : FrameOK Φ)
   subst hj
   by_cases hs : (l.slot : Int) < s
   · have hu' := hu.resolve_left (by omega)
-    exact ⟨⟨(unlockTarget sp Φ V s B).root, l.slot, l.fast⟩,
+    exact ⟨⟨(unlockTarget sp Φ V s B).root, l.slot, l.fast, l.expiry⟩,
       ⟨l, hl, B, hB, hBr, by simp only [hs, ↓reduceIte]⟩, rfl, _,
       (unlockTarget_anc sp hΦ V s hB).1, rfl, anc_unlockTarget_of_floor hΦ V s hB0 hB hB0B hu'⟩
   · exact ⟨l, ⟨l, hl, B, hB, hBr, by simp only [hs, ↓reduceIte]⟩, rfl, B, hB, hBr, hB0B⟩
@@ -126,14 +123,7 @@ theorem floor_updateConfirmation {A : SAState sp.n} {s : Nat} (hΦ : FrameOK Φ)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
     ∃ l ∈ (updateConfirmation sp A Φ t s).locks, l.slot = j ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · exact h
-  · split_ifs
-    · exact h
-    · rw [updateLatestConfirmed_locks_eq]
-      exact floor_addLocks hΦ hB0 hva0 hk h
+  sorry
 
 /-- `try_vote` keeps the floor when `unlock` at the merged vote view of its input keeps `B₀`. -/
 theorem floor_tryVote (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)

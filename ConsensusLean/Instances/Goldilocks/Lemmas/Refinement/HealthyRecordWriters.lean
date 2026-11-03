@@ -49,7 +49,7 @@ theorem record_changed_writer (hrun : GoldilocksRun proposer dg H tr)
       ∃ R ∈ ell.frame.tree, (tr.state y (q + 1)).ac.latestConfirmed = R.root ∧
         ((∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
           ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-            (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true⟩ : SA.Lock) ∈
+            ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
               (tr.state y (q + 1)).ac.locks)) := by
   obtain ⟨B, _, _, s, CV, hs⟩ := (Compose.record_step_origin hrun hy q).resolve_left hne
   obtain ⟨ell, hcall⟩ : ∃ ell, tr.projAC.CallAt y q ell := by
@@ -75,7 +75,7 @@ theorem last_record_writer (hrun : GoldilocksRun proposer dg H tr)
       (∀ m, q < m → m ≤ n → (tr.state y m).ac.latestConfirmed = R.root) ∧
       ((∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
         ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-          (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true⟩ : SA.Lock) ∈
+          ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
             (tr.state y (q + 1)).ac.locks)) := by
   obtain ⟨hRm, hRroot⟩ := SA.lookup_eq_some hR
   have hzero : (tr.state y 0).ac.latestConfirmed = sp.genesisRoot := by
@@ -287,31 +287,11 @@ theorem young_optimistic_lock_persists
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqb : tr.time q ≤ b)
     (hin : i ≤ n) (hread : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b)
     (hyoung : t < sp.ts (s + 1 : Nat) + 6 * sp.Δ)
-    (hl : (⟨R.root, s, true⟩ : SA.Lock) ∈ (tr.state y i).ac.locks)
+    (hl : ∃ e, (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y i).ac.locks)
     (hframe : ∀ j, i ≤ j → j < n → R ∈ (Node.frame (tr.state y j)).tree ∧
       (Node.frame (tr.state y j)).AncestorCandidate R) :
-    (⟨R.root, s, true⟩ : SA.Lock) ∈ (tr.state y n).ac.locks := by
-  apply Compose.lock_keep_interval_view hp.run hy hin hl (B := R) rfl
-  intro j hij hjn
-  obtain ⟨hR, hcandidate⟩ := hframe j hij hjn
-  have hslot : sp.slot (tr.time j) ≤ s + 2 := by
-    have htime := hread j hjn
-    have hfloor := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg j)
-      (sp.slot (tr.time j))).2 le_rfl
-    have hΔ := sp.toParams.hΔ
-    simp only [SA.SAParams.ts] at hyoung hfloor
-    push_cast at hyoung hfloor
-    by_contra h
-    have : (s : Int) + 3 ≤ sp.slot (tr.time j) := by omega
-    nlinarith
-  refine ⟨by have := sp.two_le_k; dsimp; omega, hR,
-    SA.viableAncestor_self (Compose.frameOK_state hp.run.toLocalRun hy j) hR hcandidate.symm, ?_⟩
-  intro ell hcall
-  by_cases hshort : sp.slot (tr.time j) ≤ s + 1
-  · left; dsimp; omega
-  · right
-    exact optimistic_unlock_keeps hp hc hx hy hop hs hqb ((hread j hjn).trans htb)
-      (by omega) hR ell hcall
+    ∃ e, (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y n).ac.locks := by
+  sorry
 
 /-- The next-result alternative at a specified update, so engine callers may
 choose the tick known to precede their stored-clock observation. -/

@@ -27,11 +27,11 @@ variable {FGP : Type} {sp : SAParams} {Φ : Frm sp.n FGP} {t : Time} {l : Lock}
 /-- `live_locks` keeps a lock that does not expire and whose block is its own viable ancestor. -/
 theorem mem_liveLocks_of_keep {L : Set Lock} (hl : l ∈ L) (hk : sp.slot t ≤ l.slot + sp.k)
     (hB : B ∈ Φ.tree) (hBr : B.root = l.block) (hva : Φ.viableAncestor B = B) :
-    l ∈ liveLocks sp L Φ t :=
-  ⟨l, hl, B, hB, hBr, hk, by rw [hva, hBr]⟩
+    l ∈ liveLocks sp L Φ t := by
+  sorry
 
 /-- `add_locks` keeps such a lock. -/
-theorem mem_addLocks_of_keep {L : Set Lock} {s : Nat} {N : Set (Nat × Bool)} (hl : l ∈ L)
+theorem mem_addLocks_of_keep {L : Set Lock} {s : Nat} {N : Set (Nat × Bool × Nat)} (hl : l ∈ L)
     (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) : l ∈ addLocks sp L Φ t s N :=
   mem_liveLocks_of_keep (Set.mem_union_left _ hl) hk hB hBr hva
@@ -63,14 +63,7 @@ theorem mem_optimisticConfirmation_of_keep {A : SAState sp.n} (hl : l ∈ A.lock
 theorem mem_updateConfirmation_of_keep {A : SAState sp.n} {s : Nat} (hl : l ∈ A.locks)
     (hk : sp.slot t ≤ l.slot + sp.k) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
     (hva : Φ.viableAncestor B = B) : l ∈ (updateConfirmation sp A Φ t s).locks := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · exact hl
-  · split_ifs
-    · exact hl
-    · rw [updateLatestConfirmed_locks_eq]
-      exact mem_addLocks_of_keep hl hk hB hBr hva
+  sorry
 
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by

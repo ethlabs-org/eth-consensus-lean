@@ -45,6 +45,8 @@ abbrev sp1 : SAParams where
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
   two_le_k := le_rfl
+  c := 2
+  two_le_c := le_rfl
 
 /-- The validator. -/
 abbrev v0 : Fin sp1.n := ⟨0, Nat.one_pos⟩

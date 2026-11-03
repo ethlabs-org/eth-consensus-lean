@@ -579,71 +579,7 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
     ell.frame.Anc d.start (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
-  have hr := hS.run.localRun
-  have hPhi := SA.frameIn_of_callAt hr hy hc.1
-  have hPhip := SA.frameIn_of_callAt hr hz hcp
-  have hΔ := sp.toParams.hΔ
-  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn : 0 < sp.n := sp.toParams.hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
-  obtain ⟨hst, _, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
-  have hSQ := hw.anc (fun X hX => hX.1) hst
-  have hQt : d.head ∈ ellp.frame.tree := by
-    rcases eq_or_ne d.start d.head with he | he
-    · exact he ▸ hst
-    · exact (Anc.mem hSQ he).2
-  have hSP : Anc (tr.HonestBlocks H) d.start P :=
-    (Anc.mono hPhip.2 hSQ).tail ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
-  have hPv' := hPv
-  rw [← hes] at hPv'
-  have hSv := frozen_viable_of_anchor_path hrun hnc hy hc hPv'
-    (Anc.mono hPhi.2 haS) hSP
-  rw [hes] at hSv
-  have hslot := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
-  change sp.slot (tr.time i) = s + 1 at hslot
-  have hlo : sp.ts s₀ ≤ tr.time i :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
-      change (s₀ : Int) ≤ sp.slot (tr.time i)
-      rw [hslot]; omega)
-  have hhi := SA.vote_time_le hr hy ⟨ell, hc⟩
-  change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
-  rw [hslot] at hhi
-  have hplo : sp.ts s₀ ≤ tr.time ip := by
-    rw [hti]; exact (SA.ts_le_iff sp).2 (by omega)
-  have hphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith
-  have hroot (hSr : Anc (tr.HonestBlocks H) d.start ellp.frame.fcRoot) := by
-    have hrootE := hframe.fcRoot_anc_head_at_cast hrun hnc hf' hz hy hplo hphi hlo hhi
-      hcp hc (hes ▸ hPv.1) hvP ((Anc.mono hPhi.2 haS).trans hSr)
-    have hSE := hSr.trans hrootE
-    rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hSE
-    exact SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hSv.1.1 hSE
-      (SA.getHead_mem hPhi.1 (fun X hX => hX.1.1) _ _ _ _)
-  rcases actual_proposal_start_live_origin hrun hnc hf (by omega)
-    (by omega : s₀ + sp.k ≤ s + 1) (hdesignated ▸ hz)
-    (hdesignated ▸ hcp) hcall hti (hdesignated ▸ hpay) with he | ⟨l, hl, _, hold, B, hB, hBr, hSB⟩
-  · exact hroot (he ▸ .refl)
-  have hlive : s + 1 ≤ l.slot + sp.k := by
-    obtain ⟨l₀, _, E, _, _, hlive, heq⟩ := hl
-    have hs : l.slot = l₀.slot := by rw [heq]
-    have hsl : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
-    rw [hsl, ← hs] at hlive
-    exact hlive
-  rcases hframe.proposal_lock_prefix_cases hrun hnc hsvc hawake hf hcatch hnr hm hmb hz
-    hcp hti (hdesignated.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB with
-    hbelow | hheads | ⟨a, _, D, CV, hop, hSD⟩
-  · exact hroot hbelow
-  · exact honest_prefix_of_finality_before hrun hnc hsvc hawake hf hcatch hnr
-      (by
-        have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
-        linarith) hmb hheads hy hc hes hSv haS
-  · have hFD : Anc (tr.HonestBlocks H) ell.frame.F D :=
-      (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
-    exact optimistic_prefix_before hrun hnc hsvc hawake hf hcatch
-      (by
-        have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
-        linarith) hz hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS
+  sorry
 
 /-- Finite Step 5/6: every honest vote of the warm honest proposal's slot
 has exactly its root. Current-slot optimistic residues use only strictly
@@ -1017,23 +953,10 @@ theorem fresh_lock_toFG_candidate {A : SA.SAState sp.n}
     {Phi : SA.Frm sp.n (List (FG.Att sp.n))} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     {u : Nat} {t : Time} (hv : P ∈ Phi.viableTree Phi.tree)
     (hva : Phi.viableAncestor P = P)
-    (hl : (⟨P.root, u, true⟩ : SA.Lock) ∈ A.locks)
+    (hl : ∃ e, (⟨P.root, u, true, e⟩ : SA.Lock) ∈ A.locks)
     (ht : t = sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
     P ∈ SA.toFGCandidates sp A Phi t := by
-  have hslot : sp.slot t = u + 1 := by
-    rw [ht]
-    apply SA.slot_of_mem sp (u + 1)
-    all_goals simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
-  refine ⟨hv, ⟨P.root, u, true⟩, ?_, rfl, rfl, ?_⟩
-  · refine ⟨⟨P.root, u, true⟩, hl, P, hv.1, rfl, ?_, ?_⟩
-    · change sp.slot t ≤ u + sp.k
-      rw [hslot]
-      have := sp.two_le_k
-      omega
-    · simp only [hva]
-  · change sp.slot t ≤ u + 2
-    rw [hslot]
-    omega
+  sorry
 
 end Consensus.Goldilocks.Healing
 

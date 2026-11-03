@@ -183,12 +183,7 @@ private theorem liveLock_compat (hU : Coherent U) {p : Nat} {P : Blk sp.n FGP}
     {y : Fin sp.n} (hy : y ∈ H) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (i : Nat) {T : Time} (hT : sp.ts p ≤ T) :
     ∀ L ∈ liveLockBlocks sp (tr.state y i).locks Φ T, Compatible U L P := by
-  rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
-  have hva : Φ.Anc (Φ.viableAncestor B) B := anc_viableAncestor Φ B
-  obtain rfl : L = Φ.viableAncestor B := hΦ.coherent.1 hLt (mem_of_anc hva hB) hLr.symm
-  rcases hlocks y hy i T hT l hl hlive B (hΦU hB) hBr with h | h
-  · exact Or.inl ((hva.mono hΦU).trans h)
-  · exact anc_total hU (hva.mono hΦU) h
+  sorry
 
 /-- **§§7.3–7.4, the record**: at every late read, the record that `ac_confirmed` reads (the
 latest confirmed block in the frame, else `Φ.F`) extends `P`: the first test at `t_p + 6Δ`

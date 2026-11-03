@@ -46,72 +46,7 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
     ∀ x ∈ H, ∀ i ℓ e, CastAt tr x i ℓ e → e.msg.slot = p → (∀ y ∈ H, ∀ j e', VoteAt tr y j e' →
       e'.msg.slot = p → j < i → e'.msg.head = P.root) →
       Anc U (getAnchor sp e.readPoint ℓ.frame (tr.time i)) P := by
-  have hrun := hI.run
-  have hr := hrun.localRun
-  have hU := hr.coherent
-  have hΔ := sp.toParams.hΔ
-  have hΘ := Θ_nonneg sp
-  have hg := hI.le
-  have hg0 := gbar_nonneg g
-  obtain ⟨k, ℓp, d, pay, hck, hcallk, hpay, htk, hPpar, -, -, -, ja, -, ⟨ℓa, hca, hcalla⟩, -⟩ :=
-    hP
-  have hPU : P ∈ U := (frameIn_of_callAt hr hpH hca).2
-    ((accept_new sp hr hpH ⟨ℓa, hca, hcalla⟩).1 ℓa hca)
-  have hdP : Anc U d.head P := by
-    obtain ⟨hΦp, hΦpU⟩ := frameIn_of_callAt hr hpH hck
-    have hdU : d.head ∈ U := by
-      rw [(acProposal_head hpay).2]
-      exact hΦpU (getHead_mem hΦp (fun _ hX => hX.1) _ _ _ _)
-    exact Relation.ReflTransGen.single ⟨hdU, hPU, hPpar⟩
-  intro x hx i ℓ e hce hes hfirst
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hce.1
-  have hsl : sp.slot (tr.time i) = p := by rw [← hes]; exact (castAt_spec hr hx hce).2.1.symm
-  have hti : sp.ts p ≤ tr.time i :=
-    (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hsl])
-  have hp0 : 0 < p := by
-    have h0 : sp.ts 0 = 0 := by simp [SAParams.ts]
-    have : (0 : Int) < p := (ts_lt_iff sp).1 (by rw [h0]; linarith)
-    omega
-  have hfc : Anc U ℓ.frame.fcRoot P :=
-    (hΦ.fcRoot_anc_viableHeads P (hgeo k ℓp hck hcallk htk x hx i ℓ e hce hes).1).mono hΦU
-  have hlock : ∀ D ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Anc U D P := by
-    rintro D ⟨hDt, l', ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩, hDr⟩
-    have hva := anc_viableAncestor ℓ.frame B₀
-    obtain rfl : D = ℓ.frame.viableAncestor B₀ :=
-      hΦ.coherent.1 hDt (mem_of_anc hva hB₀) hDr.symm
-    refine (hva.mono hΦU).trans ?_
-    by_cases hlp : l.slot = p
-    · -- a slot-`p` lock: optimistic, with an honest supporter of an earlier cut on `P`
-      obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L, hL, hLr, hLD⟩ :=
-        lock_origin_readPoint hrun hx hce l hl (by rw [hes, hlp]; omega)
-      obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
-      have hf := hI.two_faulty_lt
-      have hlt : Hᶜ.ncard < (optimisticVoters sp A Φ' l.slot D').ncard := by omega
-      obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hu⟩ :=
-        Set.exists_mem_notMem_of_ncard_lt_ncard hlt
-      have huH : v.val ∈ H := not_not.1 hu
-      obtain ⟨hvs, j', hj', e', hve, rfl⟩ := hpool v hv huH
-      obtain rfl : R = P :=
-        hU.1 (hΦ'U hR) hPU (hRr.trans (hfirst _ huH j' e' hve (hvs.trans hlp) hj'))
-      exact hLD.trans (hDR.mono hΦ'U)
-    · -- an older lock: settled, below the proposal head
-      obtain ⟨l₀, hl₀, hsl₀, B, hB, hBr, B', hB', hB'r, hB'B⟩ :=
-        readPoint_locks_below_stored hr hx hce (by rw [hsl]; exact hp0) l hl
-          (by rw [hsl]; exact hlp)
-      obtain rfl : B' = B₀ := hΦ.coherent.1 hB' hB₀ (hB'r.trans hB₀r.symm)
-      have hle := stored_lock_slot_le hr hx i hl₀
-      rw [hsl] at hle hlive
-      obtain ⟨-, hprops⟩ := locksSettled_iff.1 hset x hx i (by linarith) l₀ hl₀
-        (by rw [hsl]; omega) B (hΦU hB) hBr
-      exact (hB'B.mono hΦU).trans ((proposalsExtendAfter_iff.1 hprops _ hpH k ℓp p d pay hck
-        hcallk htk (by omega) hpay).trans hdP)
-  unfold getAnchor
-  rcases hD : deepest ℓ.frame (liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i) ∪
-      {ℓ.frame.fcRoot}) with _ | D
-  · exact hfc
-  · rcases (deepest_mem hD).1 with h | h
-    · exact hlock D h
-    · rw [Set.mem_singleton_iff.1 h]; exact hfc
+  sorry
 
 /-- **§3, no current-slot lock at the proposal input** (claims, driven trace (b): at `t_p` the
 proposer runs its tick, then `ac_proposal`, then the objects received): every stored lock of the

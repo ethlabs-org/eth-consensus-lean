@@ -49,7 +49,7 @@ theorem UpTo.operational_update_fresh_lock
     (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hup : SA.UpdateAt tr.projAC y j u ell) :
-    (⟨P.root, u, true⟩ : SA.Lock) ∈ (tr.projAC.post j).locks := by
+    ∃ e, (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post j).locks := by
   have hΔ := sp.toParams.hΔ
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   obtain ⟨hPt, hconf, hnv, hfast, hpost, -⟩ :=
@@ -230,7 +230,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   have hTb : Q.params.ts Ws.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := hmargin.trans Q.bounded
   have hlocks : ∀ y ∈ honestKeys S Q.run.2, ∀ j ell,
       SA.UpdateAt Q.trace.projAC y j Ws.slot ell →
-      (⟨B.root, Ws.slot, true⟩ : SA.Lock) ∈ (Q.trace.projAC.post j).locks :=
+      ∃ e, (⟨B.root, Ws.slot, true, e⟩ : SA.Lock) ∈ (Q.trace.projAC.post j).locks :=
     fun y hy j ell hup => UpTo.operational_update_fresh_lock Dprep.reset hc hr.1 hBp he hPs
       hR hgu hTb hy hup
   -- readiness and end-of-time cuts at `T = t_u + 6Δ` and at the deadline

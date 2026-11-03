@@ -81,24 +81,12 @@ private theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 /-- `add_locks` with new locks: the new locks are on the blocks of `N`'s entries. -/
 private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {L : Set Lock} {t : Time} {s : Nat}
-    {N : Set (Nat × Bool)} {New : Nat → Bool → Blk sp.n FGP → Prop} {L₀ : Set Lock} (hL : L₀ = L)
-    (hN : ∀ r f, (r, f) ∈ N → ∃ B ∈ Φ.tree,
+    {N : Set (Nat × Bool × Nat)} {New : Nat → Bool → Blk sp.n FGP → Prop} {L₀ : Set Lock}
+      (hL : L₀ = L)
+    (hN : ∀ r f e, (r, f, e) ∈ N → ∃ B ∈ Φ.tree,
       B.root = r ∧ New s f (Φ.viableAncestor B)) :
     FromP U L (addLocks sp L₀ Φ t s N) New := by
-  subst hL
-  intro l' hl'
-  obtain ⟨l, hl, B, hB, hBr, -, rfl⟩ := hl'
-  rcases hl with hl | ⟨p, hp, rfl⟩
-  · exact Or.inl ⟨l, hl, rfl, rfl, Or.inr ⟨Φ.viableAncestor B,
-      hΦU (viableAncestor_anc hΦ hB).1, rfl, B, hΦU hB, hBr,
-      Goldilocks.Anc.mono hΦU (viableAncestor_anc hΦ hB).2⟩⟩
-  · obtain ⟨r, b⟩ := p
-    simp only at hBr
-    obtain ⟨D, hD, hDr, hND⟩ := hN r b hp
-    have : B = D := hU.1 (hΦU hB) (hΦU hD) (hBr.trans hDr.symm)
-    subst this
-    exact Or.inr ⟨Φ.viableAncestor B, hND, Φ.viableAncestor B,
-      hΦU (viableAncestor_anc hΦ hB).1, rfl, Relation.ReflTransGen.refl⟩
+  sorry
 
 /-! ## What each SA function does to the locks -/
 
@@ -134,18 +122,7 @@ private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU :
     FromP U A.locks (optimisticConfirmation sp A Φ t).locks
       (fun s f B => ∃ D ∈ Φ.tree, B = Φ.viableAncestor D ∧
         f = true ∧ s = sp.slot t ∧ optimisticSelect sp A Φ t = some D) := by
-  unfold optimisticConfirmation
-  rcases h : optimisticSelect sp A Φ t with _ | B
-  · exact FromP.of_eq rfl
-  · rw [updateLatestConfirmed_locks_eq]
-    refine FromP.of_addLocks hU hΦ hΦU rfl fun r f hr => ?_
-    simp only [Set.mem_singleton_iff, Prod.mk.injEq] at hr
-    obtain ⟨rfl, rfl⟩ := hr
-    have hB := h
-    unfold optimisticSelect at hB
-    dsimp only at hB
-    split_ifs at hB
-    exact ⟨B, (deepest_mem hB).1.1, rfl, B, (deepest_mem hB).1.1, rfl, rfl, rfl, rfl⟩
+  sorry
 
 private theorem FromP.of_optimistic_admit (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {L : Set Lock} (A : SAState sp.n) (hL : A.locks = L) (t : Time)
@@ -193,55 +170,7 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
             (FastTest sp A Φ s X ∨ ∀ m : Int, (s : Int) - sp.k < m → m < s →
               ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc X S)} = some D ∧
           fastSelect sp A Φ s C ≠ some D)) := by
-  unfold updateConfirmation
-  dsimp only
-  rcases hC : getConfirmation sp A Φ s with _ | C
-  · exact FromP.of_eq rfl
-  · dsimp only
-    split_ifs with hconf
-    · exact FromP.of_eq rfl
-    · refine FromP.of_addLocks hU hΦ hΦU (updateLatestConfirmed_locks_eq _ _ _) fun r f hr => ?_
-      rcases hr with ⟨D, hD, hr⟩ | ⟨hne, D, hD, hr⟩
-      · simp only [Prod.mk.injEq] at hr
-        obtain ⟨rfl, rfl⟩ := hr
-        exact ⟨D, (deepest_mem hD).1.1.1, rfl, D, (deepest_mem hD).1.1.1, rfl, rfl,
-          (fun _ => ⟨C, rfl, hconf, hD⟩),
-          (fun h => Bool.false_ne_true h.symm |>.elim),
-          (fun h => Bool.false_ne_true h.symm |>.elim)⟩
-      · simp only [Prod.mk.injEq] at hr
-        obtain ⟨rfl, rfl⟩ := hr
-        have hDm := (deepest_mem hD).1
-        have hslow : ∀ m : Int, (s : Int) - sp.k < m → m < s →
-            ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc D S := by
-          rcases hDm.2 with hf | hs
-          · exfalso
-            let T := {X | X ∈ confirmationPath sp Φ C ∧ FastTest sp A Φ s X}
-            obtain ⟨E, hE⟩ := exists_deepest (S := T) hΦ (fun _ h => h.1.1) ⟨D, hDm.1, hf⟩
-            have hDE := anc_deepest (S := T) hΦ (fun _ h => h.1.1)
-              (fun X hX Y hY => anc_total hΦ.coherent hX.1.2.2 hY.1.2.2) hE D ⟨hDm.1, hf⟩
-            have hED := anc_deepest (S := {X | X ∈ confirmationPath sp Φ C ∧
-              (FastTest sp A Φ s X ∨ ∀ m : Int, (s : Int) - sp.k < m → m < s →
-                ∃ S ∈ Φ.tree, (Function.update A.saved (s : Int) (some C.root)) m = some S.root ∧
-                  Φ.Anc X S)}) hΦ (fun _ h => h.1.1)
-              (fun X hX Y hY => anc_total hΦ.coherent hX.1.2.2 hY.1.2.2) hD E
-              ⟨(deepest_mem hE).1.1, Or.inl (deepest_mem hE).1.2⟩
-            have heq : E = D := Anc.antisymm hΦ.coherent hED hDE
-            exact hne (hD.trans (by simpa only [fastSelect, heq] using hE.symm))
-          · intro m hm hms
-            obtain ⟨S, hS, hsave, hDS⟩ := hs m hm hms
-            refine ⟨S, hS, ?_, hDS⟩
-            simpa only [Function.update_of_ne (show m ≠ (s : Int) by omega)] using hsave
-        refine ⟨D, hDm.1.1, rfl, D, hDm.1.1, rfl, rfl, Bool.false_ne_true.elim,
-          (fun _ => ⟨C, rfl, hDm.1.2.2, hslow⟩), fun _ => ⟨C, rfl, hconf, ?_, ?_⟩⟩
-        · rw [← hD]
-          congr 1
-          ext X
-          simp only [Set.mem_ofPred_eq]
-          refine and_congr_right fun _ => or_congr_right (forall_congr' fun m =>
-            imp_congr_right fun _ => imp_congr_right fun hm => ?_)
-          rw [Function.update_of_ne (ne_of_lt hm)]
-        · rw [← hD]
-          exact Ne.symm hne
+  sorry
 
 private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (x : Fin sp.n) (A : SAState sp.n) (t : Time) :

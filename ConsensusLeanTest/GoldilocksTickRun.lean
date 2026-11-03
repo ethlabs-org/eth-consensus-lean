@@ -480,7 +480,8 @@ theorem updateConfirmation_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time
   · rfl
   · split_ifs
     · rfl
-    · change (updateLatestConfirmed sp _ Φ _).pool = A.pool
+    all_goals
+      change (updateLatestConfirmed sp _ Φ _).pool = A.pool
       rw [updateLatestConfirmed_pool]
 
 theorem admitVote_pool (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) (w : Vote sp.n)

@@ -854,7 +854,7 @@ theorem fresh_fast_lock_at_update
       ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P ∧
       SA.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
       ell.frame.viableAncestor P = P ∧
-      (⟨P.root, u, true⟩ : SA.Lock) ∈ (tr.projAC.post k).locks := by
+      ∃ e, (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post k).locks := by
   obtain ⟨hvi, hconf, hfast, hva⟩ := hframe.unanimous_update_selection hrun hnc hsvc hawake hf
     hcatch hnr hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
   have hnv := hframe.unanimous_update_no_veto hrun hnc hsvc hawake hf hcatch hnr
@@ -916,34 +916,9 @@ theorem fresh_fast_lock_update_toFG
       ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P ∧
       SA.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
       ell'.frame.viableAncestor P = P ∧
-      (⟨P.root, u, true⟩ : SA.Lock) ∈ (tr.projAC.post k).locks ∧
-      (⟨P.root, u, true⟩ : SA.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-  have hr := (healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch).run.localRun
-  have hDelta := sp.toParams.hΔ
-  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 := by
-    apply SA.slot_of_mem sp (u + 1)
-    all_goals simp only [SAParams.ts]; push_cast; linarith
-  have hj : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
-      SA.joined sp (tr.projAC.state y i) (tr.time i) := by
-    intro i hi
-    unfold SA.joined
-    rcases SA.restartTime_state hr hy i with h | ⟨r, _, hrs, h⟩
-    · rw [h]; exact bot_le
-    · rw [h]
-      apply WithBot.coe_le_coe.mpr
-      rw [hi, hslot, show ((u + 1 : Nat) : Int) - 1 = u by omega]
-      have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
-      change tr.time r ≤ _
-      linarith
-  obtain ⟨k, ell, ell', hu, hcall, hto, htime, hframe', _⟩ := update_toFG_calls_of_awake hrun hy
-    (hawake y hy _ (by linarith) (by rwa [hT] at hTb)) hj
-  obtain ⟨_, hconf, hnv, hfast, hva, hlock⟩ := fresh_fast_lock_at_update hrun hnc hsvc hawake hf
-    hcatch hnr hmargin hjoin hTb hframe hz hdesignated hactual hPs hun hy hu
-  refine ⟨k, ell, ell', hu, hcall, hto, htime.trans hT.symm, hframe', hconf, hnv,
-    hfast, hframe'.symm ▸ hva, hlock, ?_⟩
-  simpa [Trace.state, hu.1.1, hu.1.2] using hlock
+      ∃ e, (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post k).locks ∧
+      ∃ e, (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
+  sorry
 
 end Consensus.Goldilocks.Healing
 

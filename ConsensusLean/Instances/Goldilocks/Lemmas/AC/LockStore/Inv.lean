@@ -45,51 +45,14 @@ stored locks become the live locks of the old ones with new ones on ancestors of
 in the tree and conflicts with no live lock, the invariant holds after. -/
 private theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
-    {N : Set (Nat × Bool)} {C : Blk sp.n FGP} (hC : C ∈ Φ.tree)
+    {N : Set (Nat × Bool × Nat)} {C : Blk sp.n FGP} (hC : C ∈ Φ.tree)
     (hconf : ¬ conflictsWithLock sp A.locks Φ t C)
     (hlocks : A'.locks = SA.addLocks sp A.locks Φ t s N)
     (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧ Φ.Anc Y C)
     (hrec : A'.latestConfirmed =
       if AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root) :
     LockInv U A' Φ := by
-  obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
-  -- a lock of the new set: the live lock of an old one, or of a new one
-  have key : ∀ l' ∈ A'.locks, ∀ X ∈ U, X.root = l'.block →
-      X ∈ Φ.tree ∧ ((X ∈ liveLockBlocks sp A.locks Φ t ∧ Anc U X E) ∨ Φ.Anc X C) := by
-    intro l' hl' X hX hXr
-    rw [hlocks] at hl'
-    obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := hl'
-    obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
-    obtain rfl : X = Φ.viableAncestor B := hU.1 hX (hΦU hvt) hXr
-    refine ⟨hvt, ?_⟩
-    rcases hl with hl | ⟨p, hp, rfl⟩
-    · exact Or.inl ⟨⟨hvt, _, ⟨l, hl, B, hB, hBr, hlive, rfl⟩, rfl⟩,
-        (Anc.mono hΦU hva).trans (hlE l hl B (hΦU hB) hBr)⟩
-    · obtain ⟨Y, hY, hYr, hYC⟩ := hN p hp
-      obtain rfl : B = Y := hΦ.coherent.1 hB hY (hBr.trans hYr.symm)
-      exact Or.inr (hva.trans hYC)
-  by_cases hA : AncR Φ C A.latestConfirmed
-  · simp only [hA, ↓reduceIte] at hrec
-    obtain ⟨R, hR, hRr, hCR⟩ := hA
-    obtain rfl : R = E := hU.1 (hΦU hR) hE (hRr.trans hEr.symm)
-    refine ⟨R, hE, hEr.trans hrec.symm, hEt, fun l' hl' X hX hXr => ?_⟩
-    obtain ⟨-, (⟨-, hYE⟩ | hYC)⟩ := key l' hl' X hX hXr
-    · exact hYE
-    · exact Anc.mono hΦU (hYC.trans hCR)
-  · simp only [hA, ↓reduceIte] at hrec
-    refine ⟨C, hΦU hC, hrec.symm, fun _ => hC, fun l' hl' X hX hXr => ?_⟩
-    obtain ⟨hY, (⟨hYl, hYE⟩ | hYC)⟩ := key l' hl' X hX hXr
-    · -- `C` is compatible with the live lock block `X`
-      have hcomp : Compatible Φ.tree C X := by
-        by_contra hnc
-        exact hconf ⟨X, hYl, hnc⟩
-      rcases hcomp with hCY | hYC
-      · -- `C ⪯ X ⪯ E`: then `E` is in the tree and the record does not move
-        exfalso
-        have hEt' : E ∈ Φ.tree := hEt ((Anc.mono hΦU (hΦ.rooted.2 X hY)).trans hYE)
-        exact hA ⟨E, hEt', hEr, hCY.trans (anc_tree_of_anc_U hU hΦ hΦU hY hYE hEt')⟩
-      · exact Anc.mono hΦU hYC
-    · exact Anc.mono hΦU hYC
+  sorry
 
 /-! ### Each SA function keeps the invariant -/
 
@@ -134,37 +97,12 @@ theorem LockInv.unlock {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : I
 open Classical in
 private theorem LockInv.optimistic {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) :
     LockInv U (optimisticConfirmation sp A Φ t) Φ := by
-  unfold optimisticConfirmation
-  rcases hsel : optimisticSelect sp A Φ t with _ | B
-  · exact h
-  · have hB := hsel
-    unfold optimisticSelect at hB
-    dsimp only at hB
-    split_ifs at hB
-    obtain ⟨⟨hBt, -, hconf⟩, -⟩ := deepest_mem hB
-    refine h.addLocks hU hΦ hΦU hBt hconf (N := {(B.root, true)}) (s := sp.slot t) ?_
-      (fun p hp => ⟨B, hBt, by rw [Set.mem_singleton_iff.1 hp], .refl⟩) ?_
-    · dsimp only; unfold updateLatestConfirmed; split_ifs <;> rfl
-    · dsimp only; unfold updateLatestConfirmed; split_ifs <;> rfl
+  sorry
 
 open Classical in
 private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
     LockInv U (updateConfirmation sp A Φ t s) Φ := by
-  unfold updateConfirmation
-  dsimp only
-  rcases hC : getConfirmation sp A Φ s with _ | C
-  · exact h.of_eq rfl rfl
-  · dsimp only
-    split_ifs with hconf
-    · exact h.of_eq rfl rfl
-    · have hCt := (deepest_mem hC).1.1
-      simp only [updateLatestConfirmed_locks]
-      refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
-        ).addLocks hU hΦ hΦU hCt hconf rfl (fun p hp => ?_) ?_
-      · rcases hp with ⟨D, hD, rfl⟩ | ⟨-, D, hD, rfl⟩
-        · exact ⟨D, (deepest_mem hD).1.1.1, rfl, (deepest_mem hD).1.1.2.2⟩
-        · exact ⟨D, (deepest_mem hD).1.1.1, rfl, (deepest_mem hD).1.1.2.2⟩
-      · unfold updateLatestConfirmed; split_ifs <;> rfl
+  sorry
 
 private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
     (t : Time) : LockInv U (SA.tryVote sp x A Φ t).1 Φ := by

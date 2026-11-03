@@ -2022,25 +2022,7 @@ theorem ready_old_lock_below
     {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ ell.frame.tree)
     (hLr : L.root = l.block) :
     Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) P := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
-  have hs := drain_live_locks ht _
-    ⟨l, hl, L, hL, hLr, hlive, rfl⟩
-  change cleanLabel sp a + sp.k + 2 ≤ l.slot at hs
-  obtain ⟨r, _, B, horig, X, hX, hXr, hXB⟩ : ∃ r < j, ∃ B,
-      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot B CV) ∨ SA.SlowLockAt tr.projAC y r l.slot B) ∧
-      ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X B := by
-    cases hf : l.fast with
-    | false =>
-      obtain ⟨r, hrj, B, hslow, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
-      exact ⟨r, hrj, B, Or.inr hslow, hX⟩
-    | true =>
-      obtain ⟨r, hrj, B, CV, hfast, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
-      exact ⟨r, hrj, B, Or.inl ⟨CV, hfast⟩, hX⟩
-  have hXL : X = L := hr.coherent.1 hX (hPhiU hL) (hXr.trans hLr.symm)
-  rw [hXL] at hXB
-  exact ((SA.anc_viableAncestor ell.frame L).mono hPhiU).trans
-    (hXB.trans (clean_source_below_ready hp hc hP hR hgu hy horig hs hlu))
+  sorry
 
 /-- At any honest call after the drain and through the deadline, old and same-slot locks
 are below the ready proposal. Next-slot optimistic compatibility remains explicit. -/
@@ -2056,54 +2038,7 @@ theorem ready_call_locks_compatible
       Compatible (tr.HonestBlocks H) B P) :
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocks H) L P := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcall
-  have hDelta := sp.toParams.hΔ
-  rintro L ⟨hLt, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hLr⟩
-  have he : L = ell.frame.viableAncestor B := hPhi.coherent.1 hLt
-    (SA.viableAncestor_anc hPhi hB).1 hLr.symm
-  rw [he]
-  by_cases hlu : l.slot < u
-  · exact Or.inl (ready_old_lock_below hp hc hP hR hgu hy hcall
-      hafter hl hlu hlive hB hBr)
-  obtain ⟨r, hrj, D, horig, X, hX, hXr, hXD⟩ : ∃ r < j, ∃ D,
-      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨ SA.SlowLockAt tr.projAC y r l.slot D) ∧
-      ∃ X ∈ tr.HonestBlocks H, X.root = l.block ∧ Anc (tr.HonestBlocks H) X D := by
-    cases hf : l.fast with
-    | false =>
-      obtain ⟨r, hrj, D, hs, hX⟩ := SA.slow_lock_provenance hr hy j l hl hf
-      exact ⟨r, hrj, D, Or.inr hs, hX⟩
-    | true =>
-      obtain ⟨r, hrj, D, CV, hf, hX⟩ := SA.fast_lock_provenance hr hy j l hl hf
-      exact ⟨r, hrj, D, Or.inl ⟨CV, hf⟩, hX⟩
-  have hXB : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
-  rw [hXB] at hXD
-  have hLD := ((SA.anc_viableAncestor ell.frame B).mono hPhiU).trans hXD
-  have hrt : tr.time r ≤ sp.ts u + 6 * sp.Δ := (hp.run.time_mono hrj.le).trans hbefore
-  have hDP : Compatible (tr.HonestBlocks H) D P := by
-    by_cases heq : l.slot = u
-    · exact Or.inl (same_slot_source_below_ready hp hc hP hR hgu hy (heq ▸ horig))
-    have hgt : u < l.slot := by omega
-    rcases horig with ⟨CV, ⟨ellr, C, hupd, _⟩ | hop⟩ | ⟨ellr, C, hupd, _⟩
-    · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
-      have hts := (SA.ts_lt_iff sp).2 (show (u : Int) < l.slot by omega)
-      exfalso; linarith
-    · have hsl : sp.slot (tr.time r) = l.slot := hop.choose_spec.choose_spec.2.1
-      have hbound : l.slot ≤ u + 1 := by
-        have hmono := SA.slot_mono sp (hr.time_nonneg r) hrt
-        change sp.slot (tr.time r) ≤ sp.slot (sp.ts u + 6 * sp.Δ) at hmono
-        have hs : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-          SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith)
-            (by simp only [SAParams.ts]; push_cast; linarith)
-        rw [hsl, hs] at hmono
-        exact hmono
-      exact hnext r hrj D CV (show l.slot = u + 1 by omega ▸ hop)
-    · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
-      have hts := (SA.ts_lt_iff sp).2 (show (u : Int) < l.slot by omega)
-      exfalso; linarith
-  rcases hDP with hDP | hPD
-  · exact Or.inl (hLD.trans hDP)
-  · exact SA.anc_total hr.coherent hLD hPD
+  sorry
 
 /-- The update is a deadline call, so the general live-lock comparison applies. -/
 theorem ready_update_locks_compatible

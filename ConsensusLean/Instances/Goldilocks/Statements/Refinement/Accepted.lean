@@ -15,7 +15,8 @@ protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
 
 * **Assumptions** (`AcceptanceAssumptions`): a row ratio `r ≥ 1` and the timeout
   `3·cF r ≤ δ_t` (`cF r = ⌈(r + 6)/4⌉`, `Refinement/Defs`). `Setup` fixes the genesis root,
-  `δ_t`, the lock window `k ≥ 2` and the restart replay order.
+  `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient) and the
+  restart replay order.
 * **Contract** (`acceptanceContract`): the standard thresholds; row ratio `r` (the healthy regime
   assumes `ΔF ≤ r·Δ`); arming lag `4k + 6`, outage budget `4k − 5`, look-back `η = 0` (plain
   sleepy outage), no-sleep margin `4k + 6` and recovery delay `9` (`Δ`-coefficients; node and

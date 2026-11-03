@@ -36,8 +36,8 @@ structure Vote (n : Nat) where
 /-- The AC payload of a block: `(votes, support_votes)`. -/
 abbrev Payload (n : Nat) := List (Vote n) × List (Vote n)
 
-/-- A lock `(B, j, f)`: a block (by root), the slot of the confirmation that wrote it, and the
-fast bit. -/
+/-- A lock `(B, j, f, e)`: a block (by root), the slot of the confirmation that wrote it, the
+fast bit, and its expiry. -/
 structure Lock where
   /-- The root of the locked block. -/
   block : Nat
@@ -45,6 +45,8 @@ structure Lock where
   slot : Nat
   /-- The fast bit. -/
   fast : Bool
+  /-- The last slot of its life (inclusive), fixed at its write, at most `slot + k`. -/
+  expiry : Nat
   deriving DecidableEq
 
 /-- The extended time line: `⊥ = −∞`, `⊤ = +∞`. -/

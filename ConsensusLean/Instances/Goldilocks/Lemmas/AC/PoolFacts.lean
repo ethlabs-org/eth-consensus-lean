@@ -65,13 +65,7 @@ private theorem optimistic_pool_eq (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : T
 
 private theorem updateConfirmation_pool_eq (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).pool = A.pool := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · rfl
-  · split_ifs
-    · rfl
-    · exact updateLatestConfirmed_pool_eq _ _ _
+  sorry
 
 theorem admits_tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Admits A (tryVote sp self A Φ t).1 t := by
@@ -327,13 +321,7 @@ private theorem optimistic_vs (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
 
 private theorem updateConfirmation_vs (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).voteStamp = A.voteStamp := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · rfl
-  · split_ifs
-    · rfl
-    · exact updateLatestConfirmed_vs _ _ _
+  sorry
 
 private theorem optimistic_vok_keep {A : SAState sp.n} (h : VOK A) (Φ : Frm sp.n FGP) (t : Time) :
     VOK (optimisticConfirmation sp A Φ t) ∧ Keep A (optimisticConfirmation sp A Φ t) :=

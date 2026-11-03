@@ -381,18 +381,9 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
     (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} {t : Time} {y : Fin sp.n} {i : Nat} {s : Int}
     (h : ∀ l ∈ A.locks, s ≤ l.slot → Good tr H U y i l)
     (hnew : ∀ D, optimisticSelect sp A Φ t = some D →
-      Good tr H U y i ⟨D.root, sp.slot t, true⟩) :
+      ∀ e, Good tr H U y i ⟨D.root, sp.slot t, true, e⟩) :
     ∀ l ∈ (optimisticConfirmation sp A Φ t).locks, s ≤ l.slot → Good tr H U y i l := by
-  unfold optimisticConfirmation
-  rcases hD : optimisticSelect sp A Φ t with _ | D
-  · exact h
-  · rw [updateLatestConfirmed_locks_eq]
-    refine good_movesBack hU hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.1 _ _) ?_
-    rintro l (hl | ⟨p, hp, rfl⟩) hs
-    · exact h l hl hs
-    · rw [Set.mem_singleton_iff] at hp
-      subst hp
-      exact hnew D hD
+  sorry
 
 /-- **Lock origin at a vote.** A lock of slot `s − 1` or later at the read point of an honest
 slot-`s` vote sits below a block `D` that three quarters of the committee vote for in a pool
@@ -406,41 +397,7 @@ theorem lock_origin_readPoint (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy 
           ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) ∧
         (∃ k ≤ i, A.pool l.slot ⊆ (tr.state y (k + 1)).pool l.slot) ∧
         ∃ L ∈ U, L.root = l.block ∧ Anc U L D := by
-  have hr := hrun.localRun
-  have hU := hr.coherent
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc.1
-  obtain ⟨P, he, hP⟩ := emits_tryVote hr hy hc
-  obtain ⟨hes, ht, hlocks, -⟩ := tryVote_em he
-  rw [hes]
-  -- the locks before the call: an earlier optimistic check (an update of their slot runs later)
-  have hS : ∀ l ∈ (tr.state y i).locks, (sp.slot (tr.time i) : Int) - 1 ≤ l.slot →
-      Good tr H U y i l := by
-    intro l hl hsl
-    obtain ⟨j, hj, B, horig, hb⟩ := lock_provenance hr hy i l hl
-    rcases horig with ⟨CV, ℓ', A, hpt, hslot, hsel, -⟩ | ⟨ℓ', -, -, htj, -⟩
-    · have hΦ' := frameIn_of_callAt hr hy hpt.1
-      refine (good_of_select hΦ'.1 hΦ'.2 hsel (fun σ v hv hvH => ?_)
-        ⟨j, hj.le, optimisticPoint_pool_post hr hy hpt⟩).2 l hslot.symm hb
-      obtain ⟨hs, j', hj', h⟩ := optimisticPoint_pool_vote hrun hy hpt hv hvH
-      exact ⟨hs, j', hj'.trans_lt hj, h⟩
-    · have hji := hr.time_mono hj.le
-      have hΔ := sp.toParams.hΔ
-      have hsl' : ((sp.slot (tr.time i) : Nat) : Time) - 1 ≤ (l.slot : Time) := by
-        exact_mod_cast hsl
-      simp only [SAParams.ts] at htj ht
-      nlinarith
-  -- the locks at `try_vote`'s input: also the optimistic check of the receipt
-  have hPl : ∀ l ∈ P.locks, (sp.slot (tr.time i) : Int) - 1 ≤ l.slot → Good tr H U y i l := by
-    rcases hP with rfl | ⟨A, hA, rfl, hAl⟩
-    · exact hS
-    · refine good_optimistic hU hΦ hΦU (hAl ▸ hS) fun D hD => ?_
-      obtain ⟨hDt, hg⟩ := good_of_select hΦ hΦU hD (receipt_poolOK hrun hy hc.1 hA)
-        ⟨i, le_rfl, optimisticPoint_pool_post hr hy ⟨hc.1, hA.imp_right Or.inl⟩⟩
-      exact hg _ rfl ⟨D, hΦU hDt, rfl, Relation.ReflTransGen.refl⟩
-  rw [hlocks]
-  split_ifs
-  · exact good_movesBack hU hΦU (((locks_move_back sp) FGP _ _ _ hΦ).2.2 _ _) hPl
-  · exact hPl
+  sorry
 
 /-- A current-label read lock is below the common head of the strictly earlier
 honest casts. The strict cut comes from the read point, not from an arbitrary

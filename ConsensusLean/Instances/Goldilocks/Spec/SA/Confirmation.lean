@@ -13,7 +13,10 @@ fast lock on the deepest block of the result's chain with half of the committee 
 lock when the saved results of the previous `k − 1` slots are in the tree and extend a deeper
 block); the optimistic confirmation of the current slot before `t_s + 2Δ` (three quarters of
 the committee with a slot-`s` vote whose head extends the block, equivocators included, and no
-conflicting live lock); and the confirmed tip. -/
+conflicting live lock); and the confirmed tip. A slow lock of slot `s` expires after `s + k`; a
+fast lock gets `fastExpiry`, except that the update's fast lock keeps the slow expiry `s + k` when
+a block of the update's path passes the slow test (a fast lock never shortens what the slow rule
+gives). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -83,9 +86,11 @@ noncomputable def updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t :
         ∃ S ∈ Φ.tree, A₁.saved j = some S.root ∧ Φ.Anc B S
       let D := fastSelect sp A Φ s C
       let lockBlock := deepest Φ {B | B ∈ path ∧ (fast B ∨ slow B)}
-      let N : Set (Nat × Bool) :=
-        {p | (∃ B, D = some B ∧ p = (B.root, true)) ∨
-          (lockBlock ≠ D ∧ ∃ B, lockBlock = some B ∧ p = (B.root, false))}
+      -- never shorten: a slow-qualified update's fast lock keeps the slow expiry
+      let eD := if (∃ B, B ∈ path ∧ slow B) then s + sp.k else fastExpiry sp A₂.locks Φ t s
+      let N : Set (Nat × Bool × Nat) :=
+        {p | (∃ B, D = some B ∧ p = (B.root, true, eD)) ∨
+          (lockBlock ≠ D ∧ ∃ B, lockBlock = some B ∧ p = (B.root, false, s + sp.k))}
       { A₂ with locks := addLocks sp A₂.locks Φ t s N }
 
 /-- The voters of `B` in the optimistic test of slot `s`: the validators with a vote in the
@@ -113,7 +118,8 @@ noncomputable def optimisticConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) 
   | none => A
   | some B =>
     updateLatestConfirmed sp
-      { A with locks := addLocks sp A.locks Φ t (sp.slot t) {(B.root, true)} } Φ B
+      { A with locks := addLocks sp A.locks Φ t (sp.slot t)
+                  {(B.root, true, fastExpiry sp A.locks Φ t (sp.slot t))} } Φ B
 
 open Classical in
 /-- `ac_confirmed(𝒜, Φ, t)`: the deepest common ancestor of the effective record
