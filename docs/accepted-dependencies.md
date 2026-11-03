@@ -45,8 +45,13 @@ an assembly depending on them is not an additional leaf.
 Compiled closure: no direct owner in the audit at 70e90b44; `accepted` at
 [propext, Classical.choice, Quot.sound] (`#print axioms` at 70e90b44). Since dea4a19e (#136, sorry
 groups A, B and C deleted) no declaration in the import closure of `Refinement.Accepted` and
-`Solution` depends on `sorryAx` (`axiom-audit` at dea4a19e); the only direct sorry owners left in
-ConsensusLean are `Healing.voter_unlock_keeps_lock` and `Healing.reset_inv`, outside that closure. The exact-head full tier on
+`Solution` depends on `sorryAx` (`axiom-audit` at dea4a19e). Since 9089d1d7 (#136, sorry group D:
+`Healing.voter_unlock_keeps_lock`, `Healing.reset_inv` and their 14 sorry-dependent users deleted)
+ConsensusLean, ConsensusLeanTest and Solution have **0 compiled sorry owners**. That is not 0
+outstanding mathematical statements: the Healing statements `HealingRunStatements`,
+`PhaseServiceStatements`, `ResetExistence`, `NonInterference`, `AvailableHealing`,
+`FrozenTreeAgreement` and `CommonPathAcquisition` lost their only (sorry-dependent) inhabitants and
+are stated with their proof open (`docs/roadmap.md`), and further statements were never proved. The exact-head full tier on
 70e90b443ce1d0871b8efd21e131ee54367559e9 (`check.sh --full`) passed, exit 0, 801 s, recorded on
 [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-02 18:03, milestone
 closure): kernel replay, `lake comparator --paranoid` with its fixtures and the Solution/test

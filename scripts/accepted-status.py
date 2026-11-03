@@ -55,10 +55,8 @@ RATINGS = {
     'outage_arm': ('paper-partial', PAPER, 'Whole-statement audit 6d6af170 §§10,14–19: inherited record/lookup and exact reader extraction; arming is not protection.'),
     'outage_repair': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§10,17–19: covering nonvetoed renewal, pool bound/resolutions, RESULT compatibility, persistence and both reader branches remain.'),
     'outage_pre_service': ('paper-partial', LEAD, 'Revision update 4d69fdd: old duplicate-fresh signature obstruction retired by migration; replacement engine service unproved. #128 Outage applicability not established.'),
-    'reset_inv': ('paper-partial', PAPER, 'Outside audit 649f0286 §§74–81: full Protected/P3, arbitrary admissions/root/frame retention and uniform Tb remain beyond P1/P2.'),
     'vote_old_live_lock_below_parent': ('paper-proved awaiting Lean', PAPER, 'Outside audit 649f0286 §§80–81: provenance+l+2 transfer and separate optimistic u−1 branch; non-vote full-tree domain/service integration remains.'),
     'ready_unanimous': ('paper-partial', PAPER, 'Outside audit 649f0286 §§23,79–81: actual first-deviation head/walk/payload equality remains, not merely parent extension.'),
-    'voter_unlock_keeps_lock': ('paper-open (research)', PAPER, 'Outside audit 649f0286: voter-only opponents and proposer s−1 lock defeat simple view bound; new pivot bypasses this leaf; no full-run counterexample asserted.'),
     'higher_report_window_origin': ('paper-proved awaiting Lean', LEAD, 'Four outside audits 649f0286: reset_origin_below and same-store high_of_anc establish high C, then high_report_origin; no unheld receiver height. entry-rows-exact §3.'),
     'update_window_kept': ('paper-partial', LEAD, 'Four outside audits 649f0286: actual update-frame viable-or-higher-origin dichotomy remains; hsrc can be vacuous; no reverse raw→stored ancestry.'),
 }
@@ -370,7 +368,9 @@ def main : IO Unit := do
                         'lean-proved means the full dependency closure is sorry-free.',
                         'Owner threads are area routing defaults; authoritative overrides are preserved.',
                         'Historical removed declarations are listed separately, not counted as proved.',
-                        'retired keeps prior rows of retired former owners; retirement is not proof closure.'],
+                        'retired keeps prior rows of retired former owners; retirement is not proof closure.',
+                        'Zero compiled sorry owners is not zero outstanding statements: a statement can be stated '
+                        'without a proof (docs/roadmap.md lists the stated, unproved ones).'],
               'historical_removed': sorted(historical - current.keys()),
               'fields': {n: sorted(closure([n], edges) & owners) for n in sorted(accepted)
                          if n.startswith('Consensus.Goldilocks.Refinement.accepted_')},
