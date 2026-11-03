@@ -10,7 +10,7 @@ in the tree (`F_lt_finalizer`): the finality votes for the pair `(h_F, F)` are c
 blocks of a greater height, which strictly extend `F` (workbench#12 §4). (`Σ.F = Σ.J` itself is
 possible away from genesis: a chain state can finalize its latest justified pair, and
 `update_finality` then moves `Σ.F` onto `Σ.J`.) Used by `Compose/Service/Held`
-(`updater_F_anc_proposal`).
+(`updater_F_anc_proposal_before`).
 
 The proof: a state's finalization is its parent's or one of its parent's pending pairs, all
 roots of the chain below the block; that chain's blocks are at lower slots, so a block other

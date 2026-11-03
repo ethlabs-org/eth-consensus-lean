@@ -25,9 +25,9 @@ explicit premises:
   `Pr` past `h`, or `X` justifies `(h, T)` (`justify_of_signed_rows'`), with `h_F = σ[Pr].h_j` at
   a bound parent.
 * `window_justifies_healed`: the same, with `timeout = false` from `HealedRecords` (`h₀ ≤ h`).
-* `theorem_J_slot_le`, `window_justifies_J`: L5.4 step 1, `s' ≤ u + c + 2(g − 1)` for
+* `theorem_J_slot_le`: L5.4 step 1, `s' ≤ u + c + 2(g − 1)` for
   `s₁ = u + x + c`, `x ≤ g − 1`.
-* `window_justifies_handoff`: L5.3 step 6, `s' ≤ s_h + δ_t + g` for
+* L5.3 step 6 (slot arithmetic only), `s' ≤ s_h + δ_t + g` for
   `s₁ = max (s₁′ + c) (u₀ + δ_t)` (`Healing.handoff_slot_le`). -/
 
 namespace Consensus.Goldilocks.Refinement

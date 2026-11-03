@@ -15,26 +15,26 @@ public section
 
 workbench#12 (`sleepy-proposal-adoption.md`, f42c0ad) §2–§3, over the Sleepy invariant: for the
 honest proposal `P` of slot `s` by a joined proposer, every honest slot-`s` vote is `P`
-(`honest_votes_eq_proposal`). The proposal walk (`ac_proposal`: the full viable tree, the
+(`honest_votes_eq_proposal_before`). The proposal walk (`ac_proposal`: the full viable tree, the
 slot-`(s−1)` pool view `pay`, from the unlocked anchor) ends at `Q = P.parent`, and each voter's
 walk (the viable voter block tree, the merged view, from its unlocked anchor) is compared with it:
 
 * `proposal_data` (proved): the run's proposal of `P` is `ac_proposal`'s, at `t_s`, on the duty
   head `Q`, with payload `pay`;
-* `pivot` (open, `Service/Pivot`, §2.1, §2.2): a block `D` on the proposal walk such that every
+* `pivot_before` (`Service/Pivot`, §2.1, §2.2): a block `D` on the proposal walk such that every
   honest slot-`s` voter's walk passes a block of the path from `D` through `Q` to `P` (a voter
   whose anchor is a current-slot optimistic lock starts on that path above `D`);
-* `suffix_agree` (proved, `Service/Suffix`, §3): at every block from `D` below `Q` at or above
-  the voter's anchor, the proposer's best child is the voter's best child;
-* `stop_at_parent` (§3): at `Q` the voter's only eligible child is `P` (its slot is the current
-  one; another slot-`s` block would be the honest proposer's second; no old child is eligible,
-  `old_children_ineligible`, proved), and the voter's walk stops at `P` (`P ∈` the voter's viable
-  voter block tree, `proposal_at_voter` in `Service/Suffix`).
+* `suffix_agree_before` (proved, `Service/Suffix`, §3): at every block from `D` below `Q` at or
+  above the voter's anchor, the proposer's best child is the voter's best child;
+* `stop_at_parent_before` (§3): at `Q` the voter's only eligible child is `P` (its slot is the
+  current one; another slot-`s` block would be the honest proposer's second; no old child is
+  eligible), and the voter's walk stops at `P` (`P ∈` the voter's viable
+  voter block tree, `proposal_at_voter_before` in `Service/Suffix`).
 
-The assembly (`honest_votes_eq_proposal`) joins them with the walk lemmas of `Steps/Walk`
+The assembly (`honest_votes_eq_proposal_before`) joins them with the walk lemmas of `Steps/Walk`
 (`ghost_visits`, `ghost_add`, `ghost_follow`, `ghost_stopped`, `ghost_fuel_stable`). The honest
 slot-`s` batch then reaches the joined updater of slot `s`, resolved before `t_s + 2Δ` (§4,
-`honest_batch_at_update` in `Service/Batch`). -/
+`honest_batch_at_update_before` in `Service/Batch`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -110,7 +110,7 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
 
 /-- **The stop at `P.parent`** (workbench#12 §3): at `Q` a voter's only eligible child is `P` (of
 the current slot; another block of slot `s` would be a second block of the honest proposer, and
-an old child is ineligible, `old_children_ineligible`), and its walk has no best child at `P` (no
+an old child is ineligible), and its walk has no best child at `P` (no
 block of the frame is of a later slot): `SA.stop_core` from the two leaves. -/
 theorem stop_at_parent_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ΔF : Time} (hrun : GoldilocksRun proposer dg H tr)
@@ -166,8 +166,8 @@ theorem stop_at_parent_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} 
 
 
 /-- **Every honest slot-`s` vote is the honest proposal `P` of slot `s`** (workbench#12 §2–§3), by
-induction on the vote's cut (the first vote not `P`; `pivot` reads the earlier ones): each voter's
-walk reaches a block `X` of the path from `D` to `P`; from `X` it is at `P`, or it
+induction on the vote's cut (the first vote not `P`; `pivot_before` reads the earlier ones): each
+voter's walk reaches a block `X` of the path from `D` to `P`; from `X` it is at `P`, or it
 follows the proposal walk to `Q` and steps to `P`, where it stops (`ghost_follow`); with its full
 fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
 theorem honest_votes_eq_proposal_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}

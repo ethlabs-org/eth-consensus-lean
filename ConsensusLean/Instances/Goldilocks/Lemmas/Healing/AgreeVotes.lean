@@ -382,8 +382,8 @@ theorem voters_pass
     exact ⟨d.start, Or.inr ⟨.refl, hsd⟩, h1, h2⟩
 
 /-- **Every honest slot-`s` vote is `P`** given that every voter passes the path from `d.start`
-through `Q` to `P` (workbench#12 §2–§3, as `Compose.honest_votes_eq_proposal`), by induction on
-the vote's cut: from the passed block `X` the voter's walk follows the proposal walk to `Q`
+through `Q` to `P` (workbench#12 §2–§3, as `Compose.honest_votes_eq_proposal_before`), by induction
+on the vote's cut: from the passed block `X` the voter's walk follows the proposal walk to `Q`
 (`proposal_suffix`) and steps to `P`, where it stops (`proposal_stop`, `ghost_follow`); with its
 full fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
 theorem votes_eq_of_pass

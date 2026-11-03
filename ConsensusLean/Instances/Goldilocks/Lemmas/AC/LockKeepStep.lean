@@ -182,7 +182,7 @@ theorem mem_step_locks_of_keep {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : 
 /-! ## The keep lemma with the view that `unlock` reads
 
 `opponents` contains the equivocators of the view, so the premise `∀ V, unlockTarget … B = B`
-above holds in general only for `B = Φ.F` (`unlockTarget_F`). The lemmas below name the view
+above holds in general only for `B = Φ.F`. The lemmas below name the view
 that the call passes to `unlock` (`unlockView`): the merged vote view of the state that
 `try_vote` receives, and the slot-`(slot(t) − 1)` pool view in `ac_proposal`. A bound on its
 opponents (`unlockTarget_eq_self_of_subset`) then discharges the premise. -/

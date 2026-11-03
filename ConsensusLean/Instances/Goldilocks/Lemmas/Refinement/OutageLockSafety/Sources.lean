@@ -15,7 +15,7 @@ public section
   sources of the earlier cuts are.
 * `caches_compatible` (OB-F, §6.2): `Σ.J` is compatible with `P` (its quorum has an honest row) and
   `Σ.F ⪯ Σ.J`.
-* `viable_candidate` (VA, §6.3): `held_candidate_of_rows` at `P`. -/
+* VA (§6.3) is `held_candidate_of_rows` (`Candidate`) at `P`. -/
 
 namespace Consensus.Goldilocks.Compose
 

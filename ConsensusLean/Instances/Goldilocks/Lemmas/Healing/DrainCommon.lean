@@ -32,7 +32,7 @@ public section
   frozen-viable `B`; then the counted votes of a clean fast origin (`clean_fast_carry`), of a
   clean slow origin's result (`clean_slow_carry`) and of the preceding honest batch
   (`honest_batch_carry`) are carried by H.2's `carryAt_of_writer_catch`.
-* §2.2, RR/RO (`raw_results_compatible`, `raw_result_optimistic_compatible`): H.1's
+* §2.2, RR/RO: H.1's
   `HealthyBase` comparisons over the AC projection (`healthyBase_of_hs`).
 
 Everything here is proved.

@@ -11,7 +11,7 @@ Actual votes and strict early resolution are separate from unanimous vote agreem
 The vote deadline uses explicit joinedness, rather than a stronger GST margin.
 This is §22.1's no-restart-from `ts(u−1)` premise for all honest nodes; the M1
 caller's §23.4 schedule supplies it from no restart and `gbar ≤ ts(u−1)`.
-`joined_voteTime_of_noRestart` checks the caller's sufficient bound
+The caller's sufficient bound is
 `slot(gbar)+5 ≤ u`. A restart between `ts(u−1)` and `ts u−2Δ` explains why the
 independent `+2Δ` margin is not a joinedness proof; this is premise analysis,
 not a constructed counterexample satisfying every execution premise.

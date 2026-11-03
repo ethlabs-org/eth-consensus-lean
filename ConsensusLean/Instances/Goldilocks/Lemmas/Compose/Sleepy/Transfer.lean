@@ -17,15 +17,15 @@ cuts extend the block in question (the first-bad-vote argument). The lock and la
 are stated for a block `B` with the hypotheses they use, so that the proposal-adoption bootstrap
 (workbench#12 §4) applies them to the protected proposal; for an origin `C` of label `j ≤ s`:
 
-* **Locks** (`vote_locks_compatible`): every live lock block after the unlocking is compatible
+* **Locks** (`vote_locks_compatible_upTo`): every live lock block after the unlocking is compatible
   with `C`: a lock of slot at most `s` sits below an origin of its slot, compared with `C` by
   `P_{s+1}`; one of slot `s + 1` is optimistic and was selected over earlier honest
   slot-`(s+1)` votes, which extend `C` (`SA.locks_compatible`).
-* **First transfer** (`first_transfer_step`, `j = s`): `C` at or below `fc_root` (the vote's head
-  extends `fc_root`), or, with `vote_frame` and the transport (`result_carry`,
-  `optimistic_carry`, `result_writer_pool`), A1.8 for a result and A1.4 (a) for an optimistic
-  selection.
-* **Later batch** (`later_transfer_step`, `j < s`): the slot-`s` honest votes all extend `C`
+* **First transfer** (`first_transfer_step_upTo`, `j = s`): `C` at or below `fc_root` (the vote's
+  head extends `fc_root`), or, with `vote_frame` and the transport (`result_carry_before`,
+  `optimistic_carry_before`, `result_writer_pool_before`), A1.8 for a result and A1.4 (a) for an
+  optimistic selection.
+* **Later batch** (`later_transfer_step_upTo`, `j < s`): the slot-`s` honest votes all extend `C`
   (`V_s`); the more than `f` of them cast by the validators awake and joined at `t_s + Δ` are held
   and resolved at the vote freeze, and only faulty seats oppose or equivocate, so `C`'s children
   towards the vote win the walk (`SA.isBest_of_majority`, `SA.anc_getHead`).
@@ -292,7 +292,7 @@ private theorem hold_zero (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
       Anc (tr.HonestBlocks H) Φ.F B → SA.AcceptedBefore tr.projAC y B T :=
   fun _ _ m _ _ hm _ => absurd hm (by rw [ts_natCast_zero]; exact not_lt.2 (hrun.time_nonneg m))
 
-/-- `faults_lt_honest_voters_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
+/-- The honest voters outnumber the faults on the window from slot `s₀ ≤ s` to `b`. -/
 private theorem faults_lt_honest_voters_win (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b) {s : Nat} (hs₀ : s₀ ≤ s)
     (hs : sp.ts s + sp.Δ ≤ b) :
@@ -404,7 +404,7 @@ they all extend `B` and the voter's `Σ.F` is at or below `B`. Under `Sync[0, �
 slot-`s` vote is cast by `t_s + Δ`, forwarded, and processed by the voter (joined at its vote, so
 awake since `t_s` with its pool kept) before `t_s + 2Δ`; its head, accepted by its voter by then,
 is relayed to the voter before `t_s + 2Δ`, since the voter's `Σ.F` is below `B`, below the head
-(finality is monotone along the voter's chain). The analogue of `result_carry` for the whole
+(finality is monotone along the voter's chain). The analogue of `result_carry_before` for the whole
 honest batch. -/
 theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}

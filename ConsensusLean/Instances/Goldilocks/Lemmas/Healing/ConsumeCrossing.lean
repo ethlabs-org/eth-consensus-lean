@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing, HS.5: the mature crossing
 
-`hs5-exact-helpers.md` §3.1 (the FG part of `mature_progress_consumption`): an honest proposal
+`hs5-exact-helpers.md` §3.1 (the FG part of `mature_progress_of`): an honest proposal
 `X` whose parent `Pr` has state height `h` and the entry `E` (slot `u`), with `u + δ_t ≤ X.slot`,
 and whose proposer has processed a matching row of every honest validator before its proposal
 cut, has state height `≥ h + 1` (`crossing_of_rows`).

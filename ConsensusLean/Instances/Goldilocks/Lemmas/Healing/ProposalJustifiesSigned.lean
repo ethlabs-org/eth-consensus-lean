@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing: Lemma 3′ from signed rows
 
-`justify_of_rows` (`ProposalJustifies`) with its two run-level premises discharged:
+`justify_of_rows'` (`ProposalJustifies`) with its two run-level premises discharged:
 
 * the parent of an honest proposal is held by the proposer at the proposal cut
   (`proposal_parent_held`: `onBlock` accepts only a block whose parent is stored);

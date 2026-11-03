@@ -8,8 +8,8 @@ public section
 
 consensus-lean#137, owner intent (2026-11-02): `δt` is a fixed constant, independent of the
 honest-proposer gap `g`. Honest proposers are used only at the four anchors `P₀ ⪯ … ⪯ P₃`; the
-slots between anchors may be faulty. No density premise (`hM4`), no `WindowService`, no
-`WindowAdvance` premise.
+slots between anchors may be faulty. No density premise (`hM4`) and no
+window advance or window service premise.
 
 * `Store.slot_lt_ThSlot_of_anc`: a held `Z ⪰ A` strictly above the height of `A` has its entry
   slot strictly above `A.slot`.
@@ -95,7 +95,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- One anchor step between honest stores: `σ[A].h + 1 ≤ σ[X].h`, read at two honest stores
-that hold `A` and `X`. This is the form `anchor_height_step*` gives (`anchor_step_of_height`). -/
+that hold `A` and `X`. This is the form `anchor_height_step*` gives. -/
 def AnchorStep (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (A X : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ z ∈ H, ∃ j j' : Nat, A ∈ (tr.state z j).fg.tree ∧ X ∈ (tr.state z j').fg.tree ∧
@@ -153,8 +153,8 @@ theorem anchor_window_advance (hrun : GoldilocksRun proposer dg H tr)
 /-- **Window coverage from an anchor window, through a horizon.** Four honest anchors `P i` at
 strictly increasing slots `s i` (guards of `window_anchors_chain_upTo`), three anchor steps, and
 `(P 3).slot ≤ (P 0).slot + δt`. For an honest `y` holding the four anchors at cut `k`, the block
-`F` of root `σ[P₃].F` is held by `y` and `P₀ ⪯ F` in the honest blocks. No `WindowService`,
-no `WindowAdvance` premise, no density premise. -/
+`F` of root `σ[P₃].F` is held by `y` and `P₀ ⪯ F` in the honest blocks. No window service,
+window advance or density premise. -/
 theorem cacheCoverage_of_anchor_window_upTo {g ΔF a b : Time}
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {s : Fin 4 → Nat}

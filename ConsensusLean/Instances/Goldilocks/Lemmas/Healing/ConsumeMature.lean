@@ -5,7 +5,7 @@ public section
 
 /-! # Goldilocks Healing, HS.5: mature progress consumption
 
-`hs5-exact-helpers.md` §3 (`mature_progress_consumption`, "choose `X` before inspecting its
+`hs5-exact-helpers.md` §3 ("choose `X` before inspecting its
 parent"), over `Γ` and the phase `(m, c)` through the first cut `j_b` after
 `b = τ + G_p + Δ`, `τ = max(v + Δ_F, t_{E.slot + δ_t})`, `v = t_s + 6Δ`
 (`mature_progress_of`; `Service` splits off the phase-change branch).
@@ -54,9 +54,9 @@ theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
   subst h
   linarith [hdl k']
 
-/-- **Mature progress consumption in the phase** (`hs5-exact-helpers.md` §3; `Service`'s
-`mature_progress_consumption` with the phase `(m, c)` through `j_b`, `RowsBy` spelled out and
-HS.1 as the hypothesis `hret`). -/
+/-- **Mature progress consumption in the phase** (`hs5-exact-helpers.md` §3; the mature-progress
+step of `Service`'s `consume_continue`, with the phase `(m, c)` through `j_b`, `RowsBy` spelled out
+and HS.1 as the hypothesis `hret`). -/
 theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hret : ViableWitnessRetention) {s h kW : Nat}

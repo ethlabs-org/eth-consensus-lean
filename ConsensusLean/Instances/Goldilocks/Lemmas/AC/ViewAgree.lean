@@ -15,7 +15,7 @@ other's tree when they extend its `Φ.F`: the voter's blocks stamped before the 
 otherwise (late faulty blocks, different finalized tips).
 This is A1.1's agreement (`proposer_voters_agree`) for the Goldfish score, without its premise
 that the two trees agree up to slot `s`. Used by H.1 (`proposal_votes`) and by the service
-statements (`honest_votes_eq_proposal`). -/
+statements (`honest_votes_eq_proposal_before`). -/
 
 namespace Consensus.Goldilocks.SA
 

@@ -23,15 +23,16 @@ service"; `phase-service.md` §§2–5 and §7), and the interface through which
 * `consume_continue` is HS.5's consumption and continuation (`phase-service.md` §6, §8.1;
   workbench#6 P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
   three steps that HS.1–HS.4 do not export are `historical_source_rows` (proved, `Source`),
-  `fixed_upper_proposal_rows` and `mature_progress_consumption` (over `ProtectedBranch`,
+  the rows of a fixed upper proposal (`fixed_upper_rows_of`, `ConsumeUpper`) and mature
+  progress consumption (`mature_progress_of`, `ConsumeMature`) (over `ProtectedBranch`,
   `ReportsBy`, `RowsBy` and `PathAt`, the pieces of `AcquiredPath`).
 
 HS.1, HS.2 and HS.4 are proved (`Retain`, `Drain`, `Acquire`), and HS.3 (b) is proved from HS.2
 (`frozen_tree_agreement_clean`, `AgreeVotes`); HS.3 as a whole (`FrozenTreeAgreement`, with part
 (a)) has no inhabitant. This is the paper orb's proposed contract, not yet certified.
-`consume_continue`, `fixed_upper_proposal_rows` and `mature_progress_consumption` are assembled
-in `ConsumeContinue`, `ConsumeUpper` and `ConsumeMature` (`hs5-exact-helpers.md` §§2–4, with
-`ConsumeCrossing` for §3.1, the sources of §§2.1–2.3 in `AcquireSources`), over HS.1 and
+`consume_continue` and its two steps are assembled in `ConsumeContinue`, `ConsumeUpper`
+(`fixed_upper_rows_of`) and `ConsumeMature` (`mature_progress_of`) (`hs5-exact-helpers.md` §§2–4,
+with `ConsumeCrossing` for §3.1, the sources of §§2.1–2.3 in `AcquireSources`), over HS.1 and
 HS.2 as hypotheses (HS.3 (b) from HS.2). -/
 
 namespace Consensus.Goldilocks.Healing
@@ -262,10 +263,10 @@ paper orb's proposed contract, not yet certified); HS.3 (b) follows from HS.2
 (`frozen_tree_agreement_clean`).
 
 Its proof is meant to assemble `historical_source_rows` (the witness's reports become rows),
-`mature_progress_consumption` (the crossing proposal `X` by `b ≤ w + C`; at `h = m` a crossing
+`mature_progress_of` (the crossing proposal `X` by `b ≤ w + C`; at `h = m` a crossing
 is a frontier rise), and, at `h = m − 1`, HS.3 (b) for `X` and for the next ready proposal `Y`
-after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_proposal_rows` for `Y` and
-`mature_progress_consumption` again at `m` (by `t_X + Δ + C ≤ w + 2C`). The glue (a crossing
+after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_rows_of` for `Y` and
+`mature_progress_of` again at `m` (by `t_X + Δ + C ≤ w + 2C`). The glue (a crossing
 proposal of height `m + 1` accepted in the phase is a frontier rise; `ht(Y) = m`; `E.slot ≤ s`;
 HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusion of first cuts)
 is proved in `ConsumeContinue` (`consume_continue_of`, `hs5-exact-helpers.md` §4). -/

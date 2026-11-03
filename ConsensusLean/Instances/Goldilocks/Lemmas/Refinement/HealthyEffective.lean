@@ -380,8 +380,7 @@ variable {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp 
 /-- Explicit interval producer contract for one earlier output. Each transition either
 decomposes into guarded writes in the old frame followed by a compatible floor change,
 or supplies a replacement effective record extending the prefix (including restarts).
-The write predicate must include every actual write; qualifying high-cover candidates
-can discharge its compatibility using `covered_candidates_compatible`. No such provenance,
+The write predicate must include every actual write. No such provenance,
 restart preservation, or floor compatibility is inferred from a lock at one read. -/
 structure EffectiveRecordInterval (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (y : Fin sp.n) (i j : Nat) (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where

@@ -12,7 +12,8 @@ acceptances and chain of `FinalWindowData`. Here, per field:
 * `ordered`: from the slots and `time_mono` (`strictMono_cut_of_proposesAt`);
 * `fresh`, `bounded`: from an explicit query premise and an explicit deadline premise;
 * `ready`, `carrierProcessed`: OPEN (awake schedule of the anchor proposers, and delivery of the
-  last anchor before the deadline); explicit premises of `finalWindow_data_of_honest_anchors`. -/
+  last anchor before the deadline); explicit premises of `finalWindow_data_of_honest_anchors_gap`.
+  -/
 
 namespace Consensus.Goldilocks.Refinement
 

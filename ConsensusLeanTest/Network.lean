@@ -430,7 +430,7 @@ theorem truncate_relayedRun :
   · simp [Run.truncate_eq, tickedRun, Event.time]
   · simp [sysOf, tagLog, Run.log, Run.truncate_eq, tickedRun, Run.inbox]
 
-/-! ## Two bounds: rows within `ΔF`, every other message within `Δ`
+/-! ## Two bounds: rows strictly before `ΔF`, every other message strictly before `Δ`
 
 Two honest validators, always awake, `Δ = 2`, horizon `10`; validator 0 sends one message at
 `0`, validator 1 receives it at `R`; the message is a row exactly when `row`. Delivery is

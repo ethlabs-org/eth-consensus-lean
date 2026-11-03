@@ -19,13 +19,7 @@ cut (`HiAt`) when its justification cache `Σ.J` is strictly above the protected
 * `above_of_hi_height` (G3′): under Hi, every block of the node's tree at state height at least
   `h_j + 1` is strictly above `P`. Its height-`h_j` entry has an honest source compatible with `P`
   (lock safety's (SRC)), so it is compatible with `P`; it is `Σ.J` or a distinct entry of the same
-  height, which cannot be below `P ≺ Σ.J`.
-* `head_above_of_hi` (H1, reader form): under Hi, `ac_head` extends `P`. It walks the full viable
-  tree (not a voter's vote domain). Below `Σ.F` or `fc_root` the head is above `P` at once;
-  otherwise `fc_root = Σ.F ≺ P`, the head height floor is at least `h_j + 1`, every viable head is
-  strictly above `P` (G3′), so the viable tree holds `P` and the only viable child of a block below
-  `P` on the way to `P` is the child towards `P`, which is eligible since its parent, below `P`,
-  is not a viable head. -/
+  height, which cannot be below `P ≺ Σ.J`. -/
 
 namespace Consensus.Goldilocks.Compose
 

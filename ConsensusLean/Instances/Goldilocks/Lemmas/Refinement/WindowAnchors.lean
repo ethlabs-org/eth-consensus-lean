@@ -11,24 +11,17 @@ consensus-lean#135 WI-20, #137; workbench `notes/fg-liveness/r14-end-to-end/wind
 §1 (S1–S4, Steps 1–3). The four anchors `A = block 0 ⪯ … ⪯ B₃ = block 3` are given; the facts
 of the note are split as follows.
 
-* S3 (one surviving chain), anchor part, PROVED: `anchors_chain`, `window_anchors_chain`
-  (C4: `honest_proposal_below_next`, `honest_proposal_below_later`). At the store of an honest
+* S3 (one surviving chain), anchor part, PROVED: `anchors_chain_upTo`,
+  `window_anchors_chain_upTo` (C4: `honest_proposal_below_next_upTo`,
+  `honest_proposal_below_later_upTo`). At the store of an honest
   holder of `B₃` the chain is store ancestry (`store_anc_of_honest_anc`).
 * Step 1, structural part, PROVED: `Store.first_crossing_of_anc`. On `A ⪯ B₃` with a higher
   height at `B₃`, the first crossing `T_B` after `A` is held, `A ⪯ T_B ⪯ B₃`, it is at height
   `σ[A].h + 1`, and it is its own entry block. So `A ⪯` the entry block of `T_B`
   (`Store.entry_anc_of_self`).
-* S1 + S2 + S4, outcome of the tables (CONDITIONAL, premise): `Store.WindowAdvance`. The last
-  anchor is three heights above `A` (E, B and C crossed).
-* S1 + S4 at the late crossings (CONDITIONAL, premise): `Store.WindowService`. A crossing at
-  height `σ[A].h + 1` or `σ[A].h + 2` at age `≥ δt` has a target quorum in its counted state, and
-  a finality quorum at `h_j` when the pair `(h_j, J)` is pending. By F4 it justifies
-  (`Store.crossing_of_service`, through `justify_of_target_chain`).
 
-`Store.window_premises_of_anchors` gives exactly the premises of
-`Store.finalized_covers_of_window''` with `X := T_B` and `W := B₃`, and
-`Store.coverage_of_anchors`, `coverage_of_anchors`, `coverage_of_window_anchors` give the
-`CacheCoverage` premise shape, the last two with ancestry in `HonestBlocks`. -/
+S1, S2 and S4 (the outcome of the tables and the late crossings) are not stated here; the final
+window takes its coverage from `cacheCoverage_of_anchor_window_upTo` (`WindowAnchorRoute`). -/
 
 namespace Consensus.Goldilocks
 

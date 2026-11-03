@@ -19,7 +19,7 @@ The premises `hcallZ`, `hcall` and `hsnap` of `exists_frameWindow_of_noAdvance` 
   at a non-public time has no cut.
 * `snapshotCall_of_awake` (`hcallZ`): the call at the public `c_z + Δ`, before every cut
   at or after `lo ≥ c_z + Δ + 1`.
-* `snapshot_of_awake` (`hsnap`) and `exists_frameWindow_of_awake`, the composition.
+* `snapshot_of_awake` (`hsnap`).
 
 Only the NoAdvance premise of `exists_frameWindow_of_noAdvance` stays: it holds for `T ≤ a_z`
 and fails after the reset, so this file gives no range after the reset. -/
@@ -133,7 +133,7 @@ theorem snapshotCall_of_awake (hrun : GoldilocksRun proposer dg H tr) {g b : Tim
     (by linarith)
 
 /-- **`hsnap`.** With an honest node awake at `c_z + Δ ≤ b`, a cut follows `c_z` by `b`
-(`cutZ_snapshot_of_awake_before` from `H.Nonempty` instead of the fault bound). -/
+(from `H.Nonempty`, not the fault bound). -/
 theorem snapshot_of_awake (hrun : GoldilocksRun proposer dg H tr) {g b : Time}
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t) (hH : H.Nonempty)
     (hb : cutZ sp.toParams g + sp.Δ ≤ b) :

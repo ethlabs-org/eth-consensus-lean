@@ -15,21 +15,16 @@ public section
 
 /-! # Goldilocks Refinement: the route-A anchor steps at a general gap `c` (#136)
 
-`AnchorStepsSupply` fixes the anchor gap at 2 slots and assumes `ΔF ≤ 2Δ`. That holds only for
-`ΔF := Δ_p`. For a larger `ΔF` (for example `ΔF = 32Δ`) the anchors must be `c ≥ c_F` slots
-apart, with `c_F := ⌈(6Δ + ΔF) / 4Δ⌉`. This module generalizes the gap-2 proofs.
+The gap-2 route (`anchorSteps_gap2`) fixes the anchor gap at 2 slots and assumes `ΔF ≤ 2Δ`. That
+holds only for `ΔF := Δ_p`. For a larger `ΔF` (for example `ΔF = 32Δ`) the anchors must be `c ≥ c_F`
+slots apart, with `c_F := ⌈(6Δ + ΔF) / 4Δ⌉`. This module generalizes the gap-2 proofs.
 
 * `anchorStep_gap`: one step `A → X`, with `A` at slot `s` and `X` at slot `s + c`, `2 ≤ c`.
   The premise `ΔF ≤ 2Δ` becomes the delivery premise `t_s + 6Δ + ΔF ≤ t_{s+c}`: the rows
   are signed by `t_s + 6Δ` and are delivered by `t_{s+c}`. `2 ≤ c` gives the adjacency
   (`anchors_chain_upTo`) and `t_s + 7Δ ≤ t_{s+c}` (`crossed_parents_above_upTo`).
 * `anchorSteps_gap`: the three steps of the window, anchors at `s₀ + [0, c, 2c, 3c]`. The
-  delivery premise is slot-free: `6Δ + ΔF ≤ 4Δ·c`.
-* `cF_gap_delivery`, `gap_delivery_iff_cF`: `c_F ≤ c` if and only if `6Δ + ΔF ≤ 4Δ·c`.
-  `cF_at_32`: `c_F = 10` when `ΔF = 32Δ`. `gap2_delivery`: `ΔF ≤ 2Δ` gives the premise at
-  `c = 2`, and `anchorSteps_gap2'` recovers `anchorSteps_gap2` from `anchorSteps_gap`.
-* `anchor_span_iff`: the span `3c ≤ δt` is the `hsl` premise of `coverage_of_anchor_window`
-  for anchors at `s₀` and `s₀ + 3c`. -/
+  delivery premise is slot-free: `6Δ + ΔF ≤ 4Δ·c` (`gap_delivery`). -/
 
 namespace Consensus.Goldilocks.Refinement
 

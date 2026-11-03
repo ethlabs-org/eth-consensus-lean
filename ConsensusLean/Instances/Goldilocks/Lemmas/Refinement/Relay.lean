@@ -32,11 +32,11 @@ state to the simulating trace's cuts where the relay obligations of `Simulates` 
   duties (`act_preserves`, `tick_preserves`), and two invariants: the own index is the own key
   (`stateAt_self`) and the relay queue is seen (`stateAt_relay_seen`).
 * **Relaying.** The gossip of a tick or a delivery releases the unsigned relay wrapper of the
-  relay queue (`tick_relays`, `deliver_relays`): what a delivery queues leaves at the delivery's
+  relay queue (`deliver_relays`): what a delivery queues leaves at the delivery's
   own time.
 * **Releasing.** Every emission is a vote of the emitting node (`emits_val`); a delivery or a
-  restart queues the votes it emits (`process_outbox`, `restore_outbox`), which wait in the outbox
-  between the node's ticks and deliveries (`outbox_persist`), whose poll steps release them.
+  restart queues the votes it emits (`process_outbox`), which wait in the outbox
+  between the node's ticks and deliveries, whose poll steps release them.
   The outbox bookkeeping and tick releases are proved in `Outbox` and `Release`.
 -/
 

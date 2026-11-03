@@ -19,8 +19,8 @@ deadline `a + Δp`. FG row service has its own delay `Δ_F` (`PSyncFGRowTranspor
 serves standalone rows (`isRow`) strictly before its row bound `ΔF` (the `rows` clause of
 `PSync`), and `signed_row_service_psync` serves them at the protocol row delay
 `Δ_F,p = rowDelay (pubOf E) = ΔF`.
-Every other object (blocks, votes, forwarding and vote-forwarding wrappers) is served within `Δ`;
-no statement here claims a block within `ΔF`.
+Every other object (blocks, votes, forwarding and vote-forwarding wrappers) is served strictly
+before the bound `Δ`; no statement here claims a block before `ΔF`.
 All three suppliers include message, block, acceptance-relay and attestation service. Receipt
 alone proves none of the acceptance-relay fields. The finite `ResetService` assembly below
 uses the concrete message, block, relay and signed-row services; full GST remains separate.

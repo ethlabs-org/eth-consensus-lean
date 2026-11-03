@@ -44,7 +44,7 @@ and extend every honest `Σ.F` at `u + Δ` (strict-height G1.2), so they reach e
 `producer` is assembled from HS.4 (`common_path_acquisition'`) and HS.5's consumption step
 (`consume_continue`, with HS.1 and HS.2), all proved in `Service`; HS.3 enters only through its
 part (b), which follows from HS.2 (`frozen_tree_agreement_clean`), so the route needs neither HS.3
-(a) nor `reset_inv`. A phase change persists to later cuts (`PhaseChanged.mono`).
+(a) nor a reset invariant. A phase change persists to later cuts (`PhaseChanged.mono`).
 
 Interfaces: none here (`settle` uses the chain-level G1.2 of `Settle`, open there
 only because its proof in `FGChain/Accountable` is private). -/

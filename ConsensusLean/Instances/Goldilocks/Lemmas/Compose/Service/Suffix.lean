@@ -30,21 +30,21 @@ workbench#12 §3: on the proposal walk from the pivot `D` to `Q = P.parent`, at 
 
 * `winner_on_path` (proved): the proposer's best child `C` at a block `X ≠ Q` of the walk is on
   the walk, below `Q`;
-* `winner_voter_tree` (proved): `C`, an ancestor of `P`, is in the voter's viable voter block
+* `winner_voter_tree_before` (proved): `C`, an ancestor of `P`, is in the voter's viable voter block
   tree (the voter holds `P`, a viable head there: the floor at the vote is at most the height of
   every block above the old origins, which are below `Q`);
-* `competitor_reflect` (proved): for `X ≠ Q`, every child of `X` in the voter's viable voter block
-  tree is in the proposer's viable tree (frozen before the vote freeze, so relayed to the proposer
-  by `t_s`, or below `Q`; and viable there: heights do not decrease along ancestry and `X` is a
-  proposer viable head); at `X = Q` it fails (`P` is not in the proposal's frame);
-* `views_agree` (proved): the two views have the same equivocators and voters, and the same
+* `competitor_reflect_before` (proved): for `X ≠ Q`, every child of `X` in the voter's viable voter
+  block tree is in the proposer's viable tree (frozen before the vote freeze, so relayed to the
+  proposer by `t_s`, or below `Q`; and viable there: heights do not decrease along ancestry and `X`
+  is a proposer viable head); at `X = Q` it fails (`P` is not in the proposal's frame);
+* `views_agree_before` (proved): the two views have the same equivocators and voters, and the same
   supporters for every block of both trees (`view_agree`, with the Sleepy relay), once the voter
-  holds `P` (`voter_holds`: its anchor is below the block `X ⪯ Q`).
+  holds `P` (`voter_holds_before`: its anchor is below the block `X ⪯ Q`).
 
 With `X` a proposer viable head (`hviab`) and `C` of a slot below `s`, the best child carries over
 (`SA.isBest_transfer`, Lemmas/AC/BestChild): `C` is proposer-eligible only by a strict majority,
-so voter-eligible by the same majority (`views_agree`), and a competitor the proposer does not
-count has no majority, so its score is below `C`'s. -/
+so voter-eligible by the same majority (`views_agree_before`), and a competitor the proposer does
+not count has no majority, so its score is below `C`'s. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -262,7 +262,7 @@ theorem relay_mem_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     z hz jz ℓz hcz (hd.trans hb) hd hF
   exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
 
-/-- **The honest rows at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old`): every
+/-- **The honest rows at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old_of`): every
 honest row an honest slot-`s` voter holds was signed before the vote, with a source below an
 origin before the signing (`attestation_source`); a regular one of label `l` is written at
 `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
@@ -364,7 +364,7 @@ private theorem voter_holds_proposal_before (hrun : GoldilocksRun proposer dg H 
 
 end Run
 
-/-! ### The proposal's cut and payload (for `views_agree`) -/
+/-! ### The proposal's cut and payload (for `views_agree_before`) -/
 
 section Proposal
 
@@ -554,10 +554,10 @@ include hrun hnc hsl hp hP hPs hpj hc hcall hd hti hPQ hsD hDQ hviab hy hcy hes
 omit hsl hpj hcall hd hti hsD hDQ hviab in
 /-- **The winner is in the voter's tree**: a child `C` of a block `X` of the suffix that is an
 ancestor of `Q` (so of `P`) is in the voter's viable voter block tree. The voter holds `P`
-(`voter_holds_proposal`), and `C ⪯ P` extends `fc_root` (below the voter's anchor, below `X`), so
-`C` is in the voter block tree as an ancestor of the slot-`s` block `P`; and `P` is a viable head
-of the voter: every old origin is below `Q` (`proposal_passes_old`), so the floor at the vote is
-at most the height of `P` (`vote_floor_le`). -/
+(`voter_holds_proposal_before`), and `C ⪯ P` extends `fc_root` (below the voter's anchor, below
+`X`), so `C` is in the voter block tree as an ancestor of the slot-`s` block `P`; and `P` is a
+viable head of the voter: every old origin is below `Q` (`proposal_walk_passes_old_before`), so the
+floor at the vote is at most the height of `P` (`vote_floor_le_of`). -/
 private theorem winner_voter_tree_before {b : Time}
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hjb : tr.time j ≤ b)
     (hf : 2 * Hᶜ.ncard < sp.n)
@@ -711,7 +711,7 @@ private theorem winner_on_path {X C : SA.Blk sp.n (List (FG.Att sp.n))}
 
 omit hsl hpj hcall hti hsD hDQ hviab in
 /-- **The voter holds `P`** when its anchor is below a block `X ⪯ Q` of the proposer's tree: then
-`Σ.F ⪯ fc_root ⪯ anchor ⪯ X ⪯ P` (`voter_holds_proposal`). -/
+`Σ.F ⪯ fc_root ⪯ anchor ⪯ X ⪯ P` (`voter_holds_proposal_before`). -/
 private theorem voter_holds_before {b : Time}
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hjb : tr.time j ≤ b)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hXQ : ℓp.frame.Anc X d.head)
@@ -828,8 +828,8 @@ leaves): a child `B ≠ P` of `Q` (of a slot below `s`) in the voter's viable vo
 stamped before the vote freeze (it is not an ancestor of the slot-`s` block `P`), so it is in the
 proposer's tree, and a viable head there (its height is at least `Q`'s, a proposer viable head);
 the proposal walk stopped at `Q`, so `B` has no strict majority in the proposal's view; the views
-agree on `B` (`views_agree`), and `Q` is a viable head of the voter (`vote_floor_le`), so `B` is
-ineligible at the voter too. -/
+agree on `B` (`views_agree_before`), and `Q` is a viable head of the voter (`vote_floor_le_of`), so
+`B` is ineligible at the voter too. -/
 theorem old_child_ineligible_before {b : Time}
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hf : 2 * Hᶜ.ncard < sp.n)

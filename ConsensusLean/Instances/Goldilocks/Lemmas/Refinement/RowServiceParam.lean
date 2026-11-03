@@ -21,7 +21,7 @@ namespace FinalQuery
 
 /-- **The shared HS premises of a final query at every `Δ_F ≥ Δ_F,p`** with
 `6Δ + Δ_F ≤ 4Δ·δt`, by the monotone lift of the network's row service at the protocol row delay.
-`hsSharedUpTo` is its instance `Δ_F := Δ_F,p` (`hsSharedUpTo_of_le_self`). -/
+`hsSharedUpTo` is its instance `Δ_F := Δ_F,p`. -/
 theorem hsSharedUpTo_of_le (Q : FinalQuery S A V) (ΔF : Time)
     (hΔF : rowDelay (Model.pubOf Q.run.1) ≤ ΔF)
     (htd : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (S.δt : Time)) :

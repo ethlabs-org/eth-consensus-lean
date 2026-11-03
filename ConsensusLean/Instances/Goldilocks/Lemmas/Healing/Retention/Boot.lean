@@ -16,8 +16,8 @@ Paper: `hr4-boot-carry.md` (workbench#23), `producer-reset-continuation.md` §§
 
 Proved here: the label bound, half the committee, the low-`Σ.J` root, both carries (relay after
 the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from G1.2 over the run
-(`finalized_anc_of_height_lt`, `Retention/Finality`), and R5 below the floor (a counted head of
-the origin, relayed in time; `relay_mem_voterBlockTree`), activation (`activation_caches`, the
+(`finalized_anc_of_height_lt_of_run`, `Retention/Finality`), and R5 below the floor (a counted head
+of the origin, relayed in time; `relay_mem_voterBlockTree`), activation (`activation_caches`, the
 rows' sources compared before the first cut of `t_{j+1}`, `origins_compatible_before`) and R5
 above the floor (`height_lead_above`: no high contest, then the crossing of the floor, through
 `Retention/Prefix`, with the report-time bound `row_origin_not_current`). -/

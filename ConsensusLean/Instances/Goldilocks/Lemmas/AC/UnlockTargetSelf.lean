@@ -9,12 +9,11 @@ public section
 `2 · |opponents(Φ, V, s, B')| < n`, or `Φ.F`. So:
 
 * `unlockTarget_eq_self`: if `B` itself has fewer than `n/2` opponents in `V`, the target is `B`;
-* `unlockTarget_eq_self_of_subset`: the same when the opponents lie in a set of size `< n/2`;
-* `unlockTarget_F`: the target of `Φ.F` is `Φ.F` in every view.
+* `unlockTarget_eq_self_of_subset`: the same when the opponents lie in a set of size `< n/2`.
 
 `opponents` contains the equivocators of `V.votes`, and `V` is arbitrary, so a hypothesis
 `∀ V, unlockTarget sp Φ V s B = B` can hold only for `B = Φ.F` in general (a view where every
-validator equivocates has no block with few opponents); `unlockTarget_F` is its uniform form. -/
+validator equivocates has no block with few opponents). -/
 
 namespace Consensus.Goldilocks.SA
 

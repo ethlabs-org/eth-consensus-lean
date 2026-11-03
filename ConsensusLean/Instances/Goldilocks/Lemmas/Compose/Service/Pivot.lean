@@ -30,16 +30,16 @@ below `D`; a lock of slot `s` sits below an optimistic selection with an honest 
 the earlier slot-`s` votes, which are `P`. So the anchor is below `D` (then `X = D`, which the
 vote extends by S2), or on `P`'s chain above `D` (then `X` is the anchor).
 
-The proposal walk passes every old origin (`proposal_walk_passes_old`, `SA.anc_getHead`): the
+The proposal walk passes every old origin (`proposal_walk_passes_old_before`, `SA.anc_getHead`): the
 proposer holds it or has it below `Σ.F` (`proposal_holds_old`: an honest supporting head is
-relayed to the proposer, `proposer_relay`), and the children towards it win the walk
-(`proposal_best_toward_old`, the counts of §2.1: the honest slot-`(s−1)` batch, or the `3n/4`
+relayed to the proposer, `proposer_relay_before`), and the children towards it win the walk
+(`proposal_best_toward_old_before`, the counts of §2.1: the honest slot-`(s−1)` batch, or the `3n/4`
 votes of an optimistic origin of label `s − 1`, relayed into the proposer's pool and resolved).
-Its anchor is below one (`proposal_anchor_old`): no honest optimistic check of slot `s` precedes
+Its anchor is below one (`proposal_anchor_old_of`): no honest optimistic check of slot `s` precedes
 the proposal (`proposal_no_optimistic`, so the proposer's stored locks are of slots below `s`),
-and `fc_root` is below an old origin at the proposal and at a vote (`proposal_fcRoot_old`,
-`vote_fcRoot_old`: the source labels of the honest rows held before `t_s`, §2). The path from
-`D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable`, §2: the
+and `fc_root` is below an old origin at the proposal and at a vote (`proposal_fcRoot_old_of`,
+`vote_fcRoot_old_of`: the source labels of the honest rows held before `t_s`, §2). The path from
+`D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`, §2: the
 head height floor is at most the height of `D`, and `fc_root` is below `D`). -/
 
 namespace Consensus.Goldilocks.Compose
@@ -308,7 +308,7 @@ private theorem proposer_relay_before (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **The head of an honest vote of a slot before `s` reaches the proposer** of slot `s`: its
 voter accepted it (or it is genesis) by `t_{s−1} + Δ` (`frame_anc_accepted`), and
-`proposer_relay`. -/
+`proposer_relay_before`. -/
 private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     {b : Time} (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
@@ -350,8 +350,8 @@ private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H
 
 /-- **The proposer holds every old origin, or it is below its `Σ.F`** (workbench#12 §2.1): an
 old origin has an honest supporting vote of a slot before `s` (`honest_supporter`), whose head
-reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head`); otherwise `Σ.F`,
-on the origin chain, is compatible with it (S1) and above it. -/
+reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head_before`); otherwise
+`Σ.F`, on the origin chain, is compatible with it (S1) and above it. -/
 theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
@@ -410,8 +410,8 @@ child `Cx` of `X` below an old origin held by the proposer is the best eligible 
 the proposer's pool is held with a finite stamp; an honest validator has one vote in it
 (`one_vote_per_slot`). For an origin of label below `s − 1`, every honest slot-`(s−1)` vote
 extends it (S2), is relayed to the proposer (`SA.sync_forward`) and resolved there (its head is
-relayed too, `proposer_accepts_head`), so the honest slot-`(s−1)` voters support it, and the
-other voters are faulty (`faults_lt_honest_voters`, `SA.isBest_of_majority`). For an optimistic
+relayed too, `proposer_accepts_head_before`), so the honest slot-`(s−1)` voters support it, and the
+other voters are faulty (the fault bound, `SA.isBest_of_majority`). For an optimistic
 origin of label `s − 1`, the at least `3n/4` votes it counted (`optimistic_writer_votes`) are
 relayed likewise, so each of its seats supports it or equivocates, and the equivocators and the
 voters outside are fewer (`2f < n`, `SA.isBest_of_cover`). -/
@@ -905,7 +905,7 @@ private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hn
 
 /-- **The proposer's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
 `F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest rows
-(`proposal_rows_old`, `fcRoot_old_of_rows`). -/
+(`proposal_rows_old_of`). -/
 private theorem proposal_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
@@ -1000,8 +1000,8 @@ theorem proposal_walk_passes_old_before (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **The proposal's anchor is below an old origin, or genesis** (workbench#12 §2, "both
 unlocked anchors are `≤ D_s`"): a live lock block sits below an origin before `t_s` of a slot
-below `s` (`proposal_locks_slot`), which is old (a regular origin of label `s − 1` is written at
-`t_s + 2Δ`); `fc_root` by `proposal_fcRoot_old`. -/
+below `s` (`proposal_locks_slot_of`), which is old (a regular origin of label `s − 1` is written at
+`t_s + 2Δ`); `fc_root` by `proposal_fcRoot_old_of`. -/
 private theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hfault : 2 * Hᶜ.ncard < sp.n)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
@@ -1156,8 +1156,8 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc :
 /-- **The proposal walk from `D` to `Q` is through viable heads** (workbench#12 §2: at `t_s`,
 `F ⪯ fc_root ⪯ D_s` and the head height floor is at most `ht(D_s)`, heights increase along the
 path), for `D` above every old origin. `fc_root` is genesis or below an old origin
-(`proposal_fcRoot_old`), so below `D ⪯ X`. The proposer's honest rows have sources below old
-origins, hence below `D` and pairwise compatible (`proposal_rows_old`), so with no contest the
+(`proposal_fcRoot_old_of`), so below `D ⪯ X`. The proposer's honest rows have sources below old
+origins, hence below `D` and pairwise compatible (`proposal_rows_old_of`), so with no contest the
 floor is reached by `X`, or a crossing entry `E ⪰ X` of the floor's height is below its source,
 below `D ⪯ X`, and `E = X` (`floor_or_crossing`). -/
 private theorem proposal_suffix_viable_of (hrun : GoldilocksRun proposer dg H tr)

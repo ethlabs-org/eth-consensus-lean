@@ -15,15 +15,9 @@ This module lives in Healing because the base uses the reset and acceptance proj
 the Compose layer is below Healing in the import matrix.
 
 R.6's safety goes through the Sleepy record invariant started at a label `s₀` after the reset
-(`Compose.sleepy_invariant_from`, over `SleepyFrom` and `SleepyBase`). This file derives, from
+(`Compose.sleepy_invariant_from`, over `SleepyFrom` and `SleepyBase`). This file works from
 `WeakPremises` (the healing premises of R.3 cut at the heal point `T`) for a start label `s₀` with
-`a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s bridge), the proved parts:
-
-* `weak_sleepyFrom`: `Sync` and `f < h_t` from `t_{s₀}` (`GST(g)` from `ḡ`; every honest node
-  awake on `[ḡ, T]` and joined from `t_{s₀}`, the ready ones from `T`);
-* `weak_base_sources` and `weak_base_old_blocks`: `SleepyBase`'s (3b) (A1.5: a source is below the
-  stored block of a recent fast lock) and (6) (`Catch(2Δ)` for the acceptances before `ḡ`,
-  `GST(g)`'s relay for those in `[ḡ, t_{s₀})`, the voter joined).
+`a + T_b ≤ t_{s₀}` (the reset `a`, `T_b` of H.3 (c)'s bridge).
 
 `BaseFacts` names `SleepyBase`'s facts (2), (3a), (5) and (5′) at the cuts whose time satisfies a
 guard. The open remainder of `SleepyBase` ((1) old live locks, and `BaseFacts` up to `T` and at

@@ -10,11 +10,9 @@ public section
 
 consensus-lean#135 (WI-15/16). `heldVotes_honest_unique`: at an AC cut `j` of an honest node `y`,
 two votes held across the cut (`SA.heldVotes`) of one honest validator and one slot are equal
-(each was emitted by its validator, `one_vote_per_slot`). `lock_keep_interval_cases_honest`:
-`lock_keep_interval_cases_held` with the opponent premise at each cut replaced by the
-compatibility of the honest held votes of slot `slot(t_j) − 1` with `B` and the fault bound
-`2 · |Hᶜ| < n` (`SA.unlockTarget_unlockView_held_of_honest_slot`). Both assume `NoCollRun`, for
-the AC projection of the run (`goldilocks_ac_projection`). -/
+(each was emitted by its validator, `one_vote_per_slot`). With the fault bound `2 · |Hᶜ| < n`
+this keeps the unlock target (`SA.unlockTarget_unlockView_held_of_honest_slot`). It assumes
+`NoCollRun`, for the AC projection of the run (`goldilocks_ac_projection`). -/
 
 namespace Consensus.Goldilocks.Compose
 

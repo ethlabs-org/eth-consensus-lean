@@ -48,8 +48,8 @@ exist in `Index.lean`.
 * M23 cover / budget: sheet `budget_implies_V`; the outage has no cover (owner, 2026-11-02): the cohort count gives `OutageE1` (`EnvPoint.CohortOn.two_mul_lt`), obligation (4).
 * M24 reader scope: construction, `ReadySafe` (ready readers) for available/stable, `AccountablySafe` (every honest reader) for final (`m24_sleepy_ready_safe`, `m24_final_accountable`).
 * M25 ready vs awake: healthy = every honest validator awake (full participation), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).
-* M26 two delay bounds: `Env` and `Public` carry `Δ` and `ΔF` (`docs/decisions.md` 2026-11-02, two-bound network); `Realizable` quantifies every `ΔF > 0`, the healthy regime within `ΔF ≤ rowRatio·Δ`.
-* M27 Δ = 1 witnesses: `Realizable` quantifies every `Δ`; test `healed_witness_late` (Δ = 7).
+* M26 two delay bounds: `Env` and `Public` carry `Δ` and `ΔF` (`docs/decisions.md` 2026-11-02, two-bound network); `Realizable` quantifies every `Δ > 1` and `ΔF > 1` (half-open delivery, 2026-11-04), the healthy regime within `ΔF ≤ rowRatio·Δ`.
+* M27 small-Δ witnesses: `Realizable` quantifies every `Δ > 1` (from `Δ = 2`); test `healed_witness_late` (Δ = 7).
 * M28 recovery starts: construction, `heal = max g 0 + heal·Δ`, `ready = max g 0 + c + 1` (`m28_heal_anchor`, `m28_ready_anchor`).
 * M29 faulty proposer witnesses: `ProgressFits` (recurrence only on `.sized 1`); `ProgressTolerant` asks a bad proposer slot in every window (`Recurrence.BadSlotSlack`, witness `RealizableActive.badProposer`); tests `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth`, `recur_single_one_not_tolerant`, `recur_single_one_bad_slots`.
 * M30 safety vs liveness regime: construction, one `Healthy` regime; safety window `[ready, heal]` ⊆ liveness window (`Progress.mono`; `m30_prog_to_heal`).

@@ -52,7 +52,7 @@ theorem accepted_heal_val (S : Setup) (A : AcceptanceAssumptions S) (cap : Capab
     accepted_heal S A cap X = (accepted_catchUp S A : Nat) + healMargin S X := by rfl
 
 /-- **The coefficient inequality (★)** of the nonfinal reset envelope, at every capability: the
-`hheal` of `healthy_repair_schedule_of_finite_envelope` at the named `R = healthyResetCoeff` and
+heal budget of `healthy_reset_fit` (`HealthyResetEnvelope`) at the named `R = healthyResetCoeff` and
 `r = healthyResetSlack`. -/
 theorem accepted_heal_ge_reset (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability)
     (X : ℕ+) :

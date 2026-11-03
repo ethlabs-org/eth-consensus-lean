@@ -46,8 +46,9 @@ where it is recorded; "Francesco" marks the owner's decisions.
   bounds**. `Env` and `Public` carry the message bound `Δ` and the row bound `ΔF` (both positive,
   neither bounds the other). The log carries the protocol's message class (`CommLog.row`, filled
   only from `Protocol.isRow` by `Model.Run.log` and `Model.tagLog`); `Delivers` serves rows within
-  `ΔF` (`rows`) and every other message and every transaction within `Δ` (`msgs`, `txs`): no
-  statement may claim a block or vote within `ΔF`, and when `ΔF < Δ` rows may overtake blocks.
+  `ΔF` (`rows`) and every other message and every transaction within `Δ` (`msgs`, `txs`; strictly
+  before the bound since 2026-11-04): no statement may claim a block or vote within `ΔF`, and when
+  `ΔF < Δ` rows may overtake blocks.
   Contract units option A: `Params.rowRatio r ≥ 1`; only `System.Healthy` assumes `ΔF ≤ r·Δ` (an
   upper envelope for the coefficients, never a deadline; a larger `r` weakens the premise). Sleepy
   and Outage carry no ratio and so cover every `ΔF > 0` (a weaker premise, stronger claims);
@@ -298,7 +299,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   depends on network Δ generically; each instance constructs them from its public parameters.
   The generic progress and realizability proofs need only positive slot length, not scaling or
   divisibility by Δ. Existing instances retain their concrete slot and phase times.
-  Goldilocks's subsequent family repair uses exactly Δ_p = Δ_e + 1, not 2Δ_e.
+  Goldilocks's subsequent family repair uses exactly Δ_p = Δ_e + 1, not 2Δ_e (superseded
+  2026-11-04 by half-open delivery: Δ_p = Δ_e).
   Contract catch-up, heal and latency remain engine-delay coefficients; conservative numbers
   are allowed to simplify proofs, but the intended resilience fractions 1/2 and 1/3 stay fixed.
   This generic grid change does not yet change the Goldilocks family or its contract.
@@ -378,7 +380,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   the generic `Outage` are unchanged. The cutoff is conservatively the protocol deadline itself,
   not its last admissible integer processing time: deadline `b₀` is covered, `b₀ + 1` is not.
   With `Δ_p = Δ_e + 1`, a qualifying protocol deadline leaves the engine endpoint at most
-  `b₀ − 1`. Later calls still check qualifying pre-outage deadlines; attestation deadlines use
+  `b₀ − 1` (superseded 2026-11-04: at `Δ_p = Δ_e` the half-open engine deadline itself is at most
+  `b₀ − 1`). Later calls still check qualifying pre-outage deadlines; attestation deadlines use
   `Δ_F`. Strict processing bounds and send-time lower bounds are retained. This changes the
   premises of the still-unproved outage rows, not their conclusions. Acceptance relay remains
   an explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent
@@ -405,7 +408,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   This owner-approved target change supersedes the earlier decision to restate the Baseline fields in
   #106's lagged form. It does not change R.4's cross-time growth or R.8's local nesting.
 - 2026-10-31, Francesco ([#107](https://github.com/ethlabs-org/consensus-lean/issues/107)).
-  **Delivery-time relay in the generic engine; protocol delay `Δ_p = Δ_e + 1`.** The extra unit absorbs
+  **Delivery-time relay in the generic engine; protocol delay `Δ_p = Δ_e + 1`** (the `+ 1` superseded
+  2026-11-04 by half-open delivery, `Δ_p = Δ_e`; delivery-time relay stands). The extra unit absorbs
   only the inclusive engine deadline versus the strict spec deadline (`≤` versus `<`), not relay latency.
   Persistent relay at the next awake tick and even relay one unit late still break R.1 in the model;
   persistence across sleep alone is not enough. This supersedes the earlier next-tick `+1/+2` analysis and

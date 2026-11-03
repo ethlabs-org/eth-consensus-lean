@@ -303,7 +303,7 @@ theorem FrameWindow.honest_prefix_before {s floor : Nat}
 
 /-- At the actual proposal start, expiry and proposal causality put every
 non-root anchor in the warm older-label range. The returned lock is the
-pre-unlock live lock, ready for live_lock_write_origin. -/
+pre-unlock live lock. -/
 theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {s₀ p i : Nat} (hp : 1 ≤ p) (hmargin : s₀ + sp.k ≤ p)
@@ -1138,7 +1138,7 @@ theorem FrameWindow.fcRoot_anc_proposal_head {lo hi : Time} {floor : Nat}
 
 /-- Propagate a remapped optimistic write, using its viable ancestor rather
 than assuming that the raw selected block is viable. This accepts exactly the
-root-or-witness alternative returned by `live_lock_write_origin`. -/
+root-or-witness alternative of a live-lock write origin. -/
 theorem FrameWindow.optimistic_write_later_proposal_head
     {g ΔF b : Time} {s₀ j N floor : Nat} {contest kindJ : Prop}
     {J R A D : SA.Blk sp.n (List (FG.Att sp.n))}

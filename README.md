@@ -256,9 +256,9 @@ regime about the model can choose another one (an abstract L0 `System` fixes
 its own). Rows are served by `Delivers.rows` with their own deadline function
 `dlF` (`max a GST + ΔF − 1` in partial synchrony); every other message by
 `Delivers.msgs` with `dl`, and a row is never served by `msgs`. When `ΔF < Δ`,
-rows may overtake blocks; no statement claims a block or a vote within `ΔF`.
+rows may overtake blocks; no statement claims a block or a vote strictly before `ΔF`.
 For Goldilocks the rows are the standalone attestations and the relay wrappers
-of attestations only; a mixed relay wrapper is delivered within `Δ` (owner
+of attestations only; a mixed relay wrapper is delivered strictly before `Δ` (owner
 decision 2026-11-02). Every other protocol has no rows (`isRow` defaults to
 `False`), which is the single-bound model (tests `two_bound_witnesses`,
 `row_held_to_row_bound`, `nonrow_held_to_message_bound`).

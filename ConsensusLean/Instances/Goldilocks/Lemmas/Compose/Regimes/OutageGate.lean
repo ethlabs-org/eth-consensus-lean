@@ -208,8 +208,8 @@ private theorem lookup_mem {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameO
   obtain ⟨h₁, h₂⟩ := hin.choose_spec
   rw [hΦ.coherent.1 h₁ hB h₂]
 
-/-- **L3.** The latest view's majority from the extending casters only (count form of
-`read_majority_of_honest_batch`): when the extending casters of the view's label outnumber its
+/-- **L3.** The latest view's majority from the extending casters only: when the
+extending casters of the view's label outnumber its
 opponents and every extending vote is delivered, the view's voters are fewer than twice the
 supporters of `B`. -/
 theorem read_majority_of_extending (hrun : GoldilocksRun proposer dg H tr)

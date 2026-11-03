@@ -9,7 +9,7 @@ public section
 /-! # Goldilocks Refinement: the reset from the drain on a generic finite run (#136, P7)
 
 workbench `heal_bound.md` §1 steps 1–7, `healing_parallel_plan.md` P7,
-`healing_supply_repair_contracts.md` S4. The composition of `reset_of_drain` (`HealCompose`) on a
+`healing_supply_repair_contracts.md` S4. The drain-to-reset composition on a
 generic trace, with no query type:
 
 * the frame base `lo := r + 4Δ` for an abstract ready scalar `r ≥ ḡ`, and the pigeonhole window

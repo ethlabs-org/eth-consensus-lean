@@ -11,17 +11,12 @@ The O-form of the unlock premise of `mem_step_locks_of_keep_view` (consensus-lea
 WI-15/16). The view `unlockView A Φ t c` of an AC call `c` is built from votes of pools and
 from the votes and support entries of the blocks of `Φ.tree`. So, for a vote set `S` that holds
 these votes, its votes and its support lie in `S`, and its opponents lie in the opponents of the
-view `⟨S, S⟩` (`opponents` grows with the view). Two forms of `S`:
+view `⟨S, S⟩` (`opponents` grows with the view).
+`unlockView_subset_post`: `S` holds the pools of `A` and of the state after the call, and the
+votes and support entries of the blocks of `Φ.tree`; `heldVotes A A' Φ` is such an `S`.
 
-* `unlockView_subset_post`: `S` holds the pools of `A` and of the state after the call, and the
-  votes and support entries of the blocks of `Φ.tree`;
-* `unlockView_subset_pre`: `S` holds the pools of `A`, the votes and support entries of the
-  blocks of `Φ.tree`, and the votes that the call admits (the vote `v` of `.message v`, the
-  votes of the block `C` of `.block C`).
-
-Then `2 · |O| < n` and `opponents(Φ, ⟨S, S⟩, s, B) ⊆ O` give `unlockTarget = B`
-(`unlockTarget_unlockView_post`, `unlockTarget_unlockView_pre`; with `S = heldVotes A A' Φ`,
-`unlockTarget_unlockView_held`). -/
+Then `2 · |O| < n` and `opponents(Φ, ⟨S, S⟩, s, B) ⊆ O` give `unlockTarget = B` (for honest
+voters, `unlockTarget_unlockView_held_of_honest_slot` in `OpponentsHonest`). -/
 
 namespace Consensus.Goldilocks.SA
 

@@ -13,9 +13,9 @@ public section
 
 `IncludeSleepy` and `GrowSleepy` (`Statements/Regimes/Sleepy`) over the run, from
 
-* `later_update_adopts` (`Service/Later`, a generalisation of `update_adopts`): after an honest
-  update of any slot `≥ s`, the record or `Σ.F` extends an honest proposal `P` of slot `s` by a
-  joined proposer;
+* `later_update_adopts_before` (`Service/Later`, a generalisation of `update_adopts`): after an
+  honest update of any slot `≥ s`, the record or `Σ.F` extends an honest proposal `P` of slot `s` by
+  a joined proposer;
 * `ready_read_record` (`Sleepy/Read`, A1.6 at a ready read point): the read of a ready node between
   its events is the record's block, or `Σ.F` when the record is not in the frame.
 
@@ -49,7 +49,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 proposal `P` released at `τ` by a proposer ready at `τ`, and `y` ready at `t ≥ τ + 6Δ`, the
 record of `y` after all events at `t`, or its `Σ.F`, extends `P`: `y` ran the update of
 `slot(t) − 2` or `slot(t) − 1` (a slot `≥ slot(P)`) with no restart since, and that update adopts
-`P` (`later_update_adopts`), and the record and `Σ.F` only extend (`record_step`,
+`P` (`later_update_adopts_before`), and the record and `Σ.F` only extend (`record_step`,
 `run_F_mono`). -/
 theorem ready_record_extends_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)

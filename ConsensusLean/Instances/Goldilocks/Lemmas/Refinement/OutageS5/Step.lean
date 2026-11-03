@@ -419,7 +419,7 @@ theorem not_contest_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (h
       exact hJX hEX
   · exact hJX ((honest_held_anc D.hrun D.hnc hy (hJP.trans hPE) hEt).trans hEX)
 
-/-- **The honest rows at a restored vote are supported** (S5 card §12.8, `source_supported`): at
+/-- **The honest rows at a restored vote are supported** (S5 card §12.8, source support): at
 an honest slot-`(q+1)` vote of `y` at cut `i`, every honest row of `y`'s tree has an honest source
 compatible with `P` (lock safety's (SRC) before `i`) and extended by an honest vote of a slot
 `≤ q`. The source is the viable ancestor of a fast stored lock of the signer (`ac_to_fg`'s

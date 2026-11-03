@@ -83,8 +83,8 @@ theorem schema_daCore : DACore schema := ⟨rfl, rfl⟩
 catch-up 1, heal 1, outage numbers unused; per index `k` one honest proposer
 in every window of `k` slots (slots of one `Δ`, the test skeleton's grid) and
 latency `k + 2`: within `k·Δ` after `t` an honest ready proposer releases;
-its proposal reaches every node awake over `[τ, τ + Δ]` by `Δ` later; the last
-`Δ` is slack. -/
+its proposal reaches every node awake over `[τ, τ + Δ − 1]` strictly before `τ + Δ`;
+the last `Δ` is slack. -/
 def testK : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩

@@ -26,9 +26,7 @@ The reset is `exists_reset_of_drain_awake` at the ready scalar `ready` (`ready �
 horizon `b = horizon`; its bound is `B = ready + healthyResetCoeff·Δ`. The run premises come from
 the shared HS premises at `Δ_F`, Catch from `catchRun_of_psync`, the drain from
 `drainOutputs_of_service`. The gap is `final_query_gap`: `recurrence_gap` on the final pattern
-(span `3c`) with the guarded duty → proposal adapter `duty_proposal_run`. (`reset_of_drain`,
-HealCompose.lean, takes an unguarded duty → proposal premise, which the guarded (H2) does not
-supply.)
+(span `3c`) with the guarded duty → proposal adapter `duty_proposal_run`.
 
 The coefficient input is `accepted_heal_ge_final` (AcceptanceDefs.lean): the heal coefficient of
 the final capability is at least `catchUp + M_f`, `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44`

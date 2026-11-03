@@ -31,7 +31,7 @@ public section
 
 /-! # Goldilocks Healing: the pivot of an honest ready proposal after the drain (interface)
 
-Post-reset `Compose.pivot` (A1.7, workbench#12 §2) for `ready_unanimous`: an honest ready
+Post-reset `Compose.pivot_before` (A1.7, workbench#12 §2) for `ready_unanimous`: an honest ready
 proposal `P` at `t_u ≥ R` has duty head `Q = P.parent`. Under reset premises, `Catch(2Δ)`
 and three OPEN compatibility/support suppliers, its walk contains `D` with a viable
 path to `Q`. Each honest slot-`u` voter whose earlier honest slot-`u` votes are `P` walks
@@ -452,7 +452,7 @@ private theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g Δ
 /-! ### Old sources -/
 
 /-- **The old sources of slot `u`**: the HR.4 high origins written before `t_u` (the post-reset
-counterpart of `Compose.pivot`'s old origins; their labels are below `u`). -/
+counterpart of `Compose.pivot_before`'s old origins; their labels are below `u`). -/
 private def OldSrc (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (u : Nat)
     (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ (x : Fin sp.n) (i j : Nat), HighOrigin tr H g x i j O ∧ tr.time i < sp.ts u

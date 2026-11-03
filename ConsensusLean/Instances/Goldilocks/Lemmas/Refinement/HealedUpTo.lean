@@ -11,7 +11,7 @@ public section
 
 /-! # Goldilocks Refinement: the Healed bundle through a finite horizon (WI-17, #137)
 
-consensus-lean#137 (finite-horizon port). `Healed` and `healed_of_reset_canonical_full` need the
+consensus-lean#137 (finite-horizon port). `Healed` needs the
 whole-run `ResetPremises`, whose `HealthyRun` asks every honest node to be awake at all
 `t ≥ ḡ`. A finite trace (simTrace) is not awake after its horizon, so a finite query cannot
 supply them. This module states the bundle through a horizon `b` (`HealedUpTo`) and proves it
@@ -201,7 +201,7 @@ structure HealedUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
       sp.ts s' ≤ b → (s' = s + 1 → sp.ts s + 6 * sp.Δ ≤ b) →
       Anc (tr.HonestBlocks H) P P'
 
-/-- **C3 through the horizon.** `c3_of_reset` from `ResetPremisesUpTo … b`, for proposals of
+/-- **C3 through the horizon.** C3 from `ResetPremisesUpTo … b`, for proposals of
 slots `s` with `t_s ≤ b`. -/
 theorem c3_of_reset_upTo (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {tH : Time}
@@ -296,7 +296,7 @@ private theorem honest_proposal_child (hp : Healing.ResetPremisesUpTo tr H propo
   have hBU : P' ∈ tr.HonestBlocks H := ⟨_, hy, j, hp.acceptAt_mem hy hacc⟩
   exact (hPd hci hcall hd hti).trans (.single ⟨hPhiU hQt, hBU, hpar⟩)
 
-/-- **No reorg two slots on, through the horizon.** `honest_proposal_below_later` from
+/-- **No reorg two slots on, through the horizon.** From
 `ResetPremisesUpTo … b` for a later slot `s' ≥ s + 2` with `t_{s'} ≤ b`. -/
 theorem honest_proposal_below_later_upTo
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -316,7 +316,7 @@ theorem honest_proposal_below_later_upTo
     UpTo.operational_proposal_below_later_parent hp hc hP.1 rfl hk hPs hR hTb hP'.1 hss
       hci hcall hd hti (hti ▸ hb)
 
-/-- **No reorg one slot on, through the horizon.** `honest_proposal_below_next` from
+/-- **No reorg one slot on, through the horizon.** From
 `ResetPremisesUpTo … b`, with the service reserve `t_s + 6Δ ≤ b`. -/
 theorem honest_proposal_below_next_upTo
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -347,7 +347,7 @@ theorem c4_of_reset_upTo (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF 
   · obtain rfl : s' = s + 1 := by omega
     exact honest_proposal_below_next_upTo hp hc hP hRs hP' (hadj rfl)
 
-/-- **Healed through the horizon, canonical form** (`healed_of_reset_canonical_full` from
+/-- **Healed through the horizon, canonical form** (from
 `ResetPremisesUpTo … b`). Under the bounded reset premises and Catch(2Δ) with the drain over
 by the heal time, `HealedUpTo` holds for the canonical entries through `b`. -/
 theorem healed_of_reset_canonical_full_upTo

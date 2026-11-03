@@ -12,7 +12,7 @@ pre_advance_finality §23.2 (O2) and §6 (window). Two layers:
   (6 values, so at most 5 global rises) with lag `Δ` (a value held by one node at `t` is held by
   every node at a cut strictly before `t + Δ`) is constant over all nodes on one of 6 disjoint
   windows of length `len` inside `[lo, lo + 6(len + Δ)]`.
-* `exists_frameWindow` applies it to `frameKey` (MONO, `frameKey_mono`) and builds a
+* `exists_frameWindow` applies it to `frameKey` (MONO) and builds a
   `FrameWindow` from the constant key (`frameKey_eq_*`).
 
 The range (F1 and the lower bound `h_max ≥ HZ` after `cutZ + Δ`) and the lag (L-H/L-J/L-C) are

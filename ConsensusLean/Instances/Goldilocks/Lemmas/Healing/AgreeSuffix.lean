@@ -8,9 +8,9 @@ public section
 
 /-! # Goldilocks Healing, HS.3: the suffix of the proposal walk and the stop at `Q`
 
-`hs234-exact-interface.md` §4 (workbench#12 §3, as `Compose.suffix_agree` and
-`Compose.stop_at_parent`), in the settled phase of `AgreeSetting`: at every block `X ≠ Q` of the
-proposal walk at or above an honest slot-`s` voter's anchor, the proposer's best child is the
+`hs234-exact-interface.md` §4 (workbench#12 §3, as `Compose.suffix_agree_before` and
+`Compose.stop_at_parent_before`), in the settled phase of `AgreeSetting`: at every block `X ≠ Q` of
+the proposal walk at or above an honest slot-`s` voter's anchor, the proposer's best child is the
 voter's best child (`proposal_suffix`); and `P` is the voter's only eligible child of
 `Q = P.parent` (`proposal_only_child`). Their pieces:
 
@@ -202,14 +202,14 @@ end Leaves
 /-! ### The suffix and the stop -/
 
 /-- **The suffix** (`hs234-exact-interface.md` §4, "restrict score comparison to a branching
-vertex `A` on `P`'s parent path above both roots"; workbench#12 §3, as `Compose.suffix_agree`):
-at every block `X` from `D` (on the proposal walk) to `Q`, `Q` excluded, at or above the
-voter's anchor (so above both roots), the proposer's best child is the voter's best child: the
-votes admitted in the voter view are the carried proposer view up to cap alternatives (the
-payload carries the proposer's pool; the voter's pre-freeze votes and support heads relay to the
-proposer by `t_s`), and a competing child viable at the voter has a pre-freeze allowed witness,
-at the proposer too (aligned readers, HS.1). Only the winner is compared (a voter-eligible
-competitor need not be proposer-eligible in reachable runs, sa-fg-model 7f7e660). -/
+vertex `A` on `P`'s parent path above both roots"; workbench#12 §3, as
+`Compose.suffix_agree_before`): at every block `X` from `D` (on the proposal walk) to `Q`, `Q`
+excluded, at or above the voter's anchor (so above both roots), the proposer's best child is the
+voter's best child: the votes admitted in the voter view are the carried proposer view up to cap
+alternatives (the payload carries the proposer's pool; the voter's pre-freeze votes and support
+heads relay to the proposer by `t_s`), and a competing child viable at the voter has a pre-freeze
+allowed witness, at the proposer too (aligned readers, HS.1). Only the winner is compared (a
+voter-eligible competitor need not be proposer-eligible in reachable runs, sa-fg-model 7f7e660). -/
 theorem proposal_suffix
     (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)

@@ -25,14 +25,10 @@ From the invariant at every cut (`outage_lock_inv`):
   at every honest cut (`lockInv_state`, `liveBlocks_chain_at`);
 * `fastLock_compatible` (§5.2(a)(b)): every honest fast lock block (update or optimistic
   selection) is compatible with `P`;
-* `readPoint_liveLockBlocks_compatible` (S5's `LiveLocksCompatible` at a cast's read point): the
+* `readPoint_liveLockBlocks_compatible_at` (S5's `LiveLocksCompatible` at a cast's read point): the
   live lock blocks of an honest vote's read point are compatible with every block `B ⪯ P` (the
   read-point locks sit below stored locks or below the cut's optimistic selection,
-  `SA.readPoint_locks_provenance`);
-* `veto_record_above` ((iii), §8): an update with a result above `P` that a live lock vetoes has a
-  stored record above `P`;
-* `effective_record_above` (§8): a stored record above `P` makes the effective record above `P`,
-  given OB-F. -/
+  `SA.readPoint_locks_provenance`). -/
 
 namespace Consensus.Goldilocks.Compose
 

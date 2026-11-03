@@ -10,7 +10,7 @@ set of validators (the honest ones). If no validator of `Hn` equivocates in the 
 and every slot-`s` support vote of a validator of `Hn` has heads in the tree that are compatible
 with `B`, then the opponents of `B` lie outside `Hn` (`opponents_subset_compl`). With
 `2 · |Hnᶜ| < n`, `unlock` keeps `B` against the view of a call
-(`unlockTarget_unlockView_held_of_honest`). -/
+(`unlockTarget_unlockView_held_of_honest_slot`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -30,8 +30,8 @@ theorem opponents_subset_compl {V : View sp.n} {s : Int} {B : Blk sp.n FGP}
 
 /-! ## Per-slot non-equivocation
 
-`hne` of `unlockTarget_unlockView_held_of_honest` asks that a validator of `Hn` have at most one
-vote in `heldVotes A A' Φ`, of any slot. An honest validator votes once per slot, and
+`hne` of `unlockTarget_unlockView_held_of_honest_slot` asks that a validator of `Hn` have at most
+one vote in `heldVotes A A' Φ`, of any slot. An honest validator votes once per slot, and
 `heldVotes` holds the votes of every pool and every block of the tree, so for an honest `Hn`
 this premise fails as soon as one of its validators has held votes of two slots. The view that
 `unlock` reads holds only slot-`(slot(t) − 1)` votes (`unlockView_votes_slot`: the pools hold

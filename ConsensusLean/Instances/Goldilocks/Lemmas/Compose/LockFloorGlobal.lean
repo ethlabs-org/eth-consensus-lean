@@ -7,14 +7,14 @@ public section
 
 /-! # Goldilocks: every honest node keeps a lock above `B₀` over an interval
 
-consensus-lean#135 (WI-16), the floor form of `lock_keep_global`. The invariant is "each honest
+consensus-lean#135 (WI-16), the floor form of global lock keeping. The invariant is "each honest
 `x` holds a lock of slot `js x` on a block `⪰ B₀` of its frame's tree" (`FloorAt`). The lock may
 move (`live_locks` to its viable ancestor, `unlock` to its unlock target); it stays `⪰ B₀` when
 `B₀` is its own viable ancestor and `unlock` keeps `B₀` (`SA.exists_step_locks_floor`). The
 moved lock keeps its slot, so the no-expiry premise `slot(t_j) ≤ js x + k` bounds the interval.
 The frame changes between cuts: the honest tree only grows, so a block `⪰ B₀` stays in the
 frame's tree and `⪰ B₀` when `B₀` stays in the tree (`floor_frame_transport`). The vote
-condition of `unlockKeeps_of_reads` for `B₀` holds because each honest cast reads its own floor
+condition of `UnlockKeeps` for `B₀` holds because each honest cast reads its own floor
 lock, a live lock block `⪰ B₀` (`SA.exists_readPoint_liveLockBlocks_floor`). -/
 
 namespace Consensus.Goldilocks.Compose

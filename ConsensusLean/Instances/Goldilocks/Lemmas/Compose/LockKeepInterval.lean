@@ -9,15 +9,9 @@ public section
 
 /-! # Goldilocks: a lock kept over an interval of cuts
 
-`lock_keep_interval`: the interval induction of `lock_keep_run` (consensus-lean#135, WI-15/16).
-If an honest node `y` holds a lock `l` on `B` at cut `i`, and at every cut `j ∈ [i, k)` the
-premises of `lock_keep_run` hold (no expiry, `B` in the frame's tree and its own viable ancestor,
-`unlock` does not move it), then `y` holds `l` at cut `k`.
-
-`viableAncestor_eq_self_run` discharges the viable-ancestor premise by one of three of the
-contest-lock lemmas (contest; no contest with `hmax = hj + 1`; `hmax ≠ hj + 1`), and
-`lock_keep_interval_cases` is the interval induction with that disjunction per cut.
-`viableAncestor_of_F_advance_run` reads an earlier store and is not in the disjunction. -/
+consensus-lean#135, WI-15/16. If an honest node `y` holds a lock `l` on `B` at cut `i`, and at
+every cut `j ∈ [i, k)` the lock does not expire, `B` is in the frame's tree and its own viable
+ancestor, and `unlock` does not move it, then `y` holds `l` at cut `k`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -29,12 +23,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ## With the view that `unlock` reads
 
-`lock_keep_run_view`, `lock_keep_interval_view` and `lock_keep_interval_cases_view`: the lemmas
-above with the unlock premise at the view of the AC call made at the cut
+`lock_keep_run_view` (one cut) and `lock_keep_interval_view` (the interval induction), with the
+unlock premise at the view of the AC call made at the cut
 (`SA.unlockView`, `SA.mem_step_locks_of_keep_view`) instead of every view. -/
 
-/-- `lock_keep_run` with the unlock premise at the view `SA.unlockView` of the AC call at cut
-`i`. -/
+/-- One cut of lock keeping, with the unlock premise at the view `SA.unlockView` of the AC call
+at cut `i`. -/
 theorem lock_keep_run_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hk : sp.slot (tr.time i) ≤ l.slot + sp.k)
@@ -71,7 +65,8 @@ theorem lock_keep_run_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n
   · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
     exact hl
 
-/-- `lock_keep_interval` with the unlock premise at the view of the AC call at each cut. -/
+/-- Lock keeping over an interval of cuts, with the unlock premise at the view of the AC call
+at each cut. -/
 theorem lock_keep_interval_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     (hy : y ∈ H) {i k : Nat} (hik : i ≤ k) {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block)
@@ -89,13 +84,6 @@ theorem lock_keep_interval_view (hrun : GoldilocksRun proposer dg H tr) {y : Fin
     obtain ⟨hk, hB, hva, hu⟩ := hstep k hik (Nat.lt_succ_self k)
     exact lock_keep_run_view hrun hy k (ih fun j h1 h2 => hstep j h1 (by omega)) hk hB hBr hva
       hu
-
-/-! ## The O-form of the unlock premise
-
-`lock_keep_interval_cases_held`: `lock_keep_interval_cases_view` with the unlock premise at each
-cut `j` stated on the votes that `y` holds (`SA.heldVotes`: the pools of `y` at `j` and at
-`j + 1` and the votes and support entries of the blocks of its frame's tree at `j`). The pools at
-`j` matter only for a restart at `j` (no other call removes a vote from a pool). -/
 
 end Consensus.Goldilocks.Compose
 

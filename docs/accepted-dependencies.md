@@ -538,7 +538,7 @@ retention is an optional sufficient route, not its definition.
 §11 supplies conditional coefficients, not unconditional timing proofs:
 δt=6+f; h=104k+628+48δt+12f+144(m+2)+b; available/stable
 heal=c+1+2(h+8) engine units, assuming ΔF≤fΔp, Tb≤bΔp and
-Δp=Δe+1≤2Δe plus finite-margin proofs. No arbitrary b=8 and no extra 2W.
+Δp≤2Δe (Δp = Δe since 2026-11-04) plus finite-margin proofs. No arbitrary b=8 and no extra 2W.
 
 Paper update at workbench `925bc1a`, healing-plan §§14–15: local prefix repair
 from an actual non-vetoed result D≥B permits either writing D or retaining E≥D;

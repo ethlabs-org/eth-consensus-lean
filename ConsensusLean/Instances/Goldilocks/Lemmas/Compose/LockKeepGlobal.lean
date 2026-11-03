@@ -8,14 +8,9 @@ public section
 
 /-! # Goldilocks: honest locks on `B` kept by every honest node over an interval
 
-consensus-lean#135 (WI-16), r14 s1 L1.2: the induction over time that discharges the read-point
-premise of `lock_keep_interval_cases_locked`. Each honest node `x` holds a lock `lk x` on `B` at
-cut `i₀`. At every cut `j ∈ [i₀, N)` of every honest node, the lock does not expire and the frame
-regime keeps `B` (`FrameKeeps`); these stay premises. The votes that `unlock` reads at cut `j` are
-of slot `slot(t_j) − 1`, so their honest casts are at earlier cuts (`cast_lt_of_slot`). A cast at a
-cut `k ≥ i₀` reads `B` as a live lock block (`SA.mem_readPoint_liveLockBlocks_of_keep`, by the
-induction hypothesis at `k`); a cast before `i₀` is the premise `hearly`. Strong induction on the
-global cut index (`lock_keep_global`). -/
+consensus-lean#135 (WI-16), r14 s1 L1.2: the read-point premise `UnlockKeeps` of an induction
+over time in which each honest node keeps a lock on `B`. The votes that `unlock` reads at cut `j`
+are of slot `slot(t_j) − 1`, so their honest casts are at earlier cuts (`cast_lt_of_slot`). -/
 
 namespace Consensus.Goldilocks.Compose
 

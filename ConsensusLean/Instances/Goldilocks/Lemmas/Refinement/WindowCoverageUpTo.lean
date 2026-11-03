@@ -9,13 +9,10 @@ public section
 
 /-! # Goldilocks Refinement: window coverage on the last anchor's post-store (#137)
 
-consensus-lean#137. `coverage_of_window_anchors_upTo` concludes coverage in a holder state
-`(tr.state y k).fg`. The final window reads the post-store `(tr.post k).fg` of the last anchor's
-proposal cut. Here: coverage persists along an honest node's states (`coverage_mono`: the tree
-grows, a held block's state is unique, a held root names its block), the post-store of a call is
-the next state (`coverage_post_of_call`), the window fields from four honest anchors
-(`finalWindow_fields_of_honest_anchors`), and the coverage on the last anchor's post-store
-(`cacheCoverage_of_anchors_upTo`), the `coverage` input of `final_cache_acceptance`. -/
+consensus-lean#137. The window fields from four honest anchors
+(`finalWindow_fields_of_honest_anchors`), for the final window read at the post-store
+`(tr.post k).fg` of the last anchor's proposal cut (the `coverage` input of
+`final_cache_acceptance`). -/
 
 namespace Consensus.Goldilocks.Refinement
 

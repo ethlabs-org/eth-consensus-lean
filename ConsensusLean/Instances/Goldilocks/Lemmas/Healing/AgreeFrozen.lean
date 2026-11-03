@@ -12,7 +12,7 @@ and in its viable voter block tree (`proposal_frozen_viable`). As `Geo.geo_of_se
 proposal's parent is a viable head of the proposer (its walk starts in the viable tree), so `P`
 is allowed wherever it is held; the voter holds it (ready at an early vote, relayed by `t_s + Δ`
 otherwise); HS.1 (`viableHead_of_allowed`) makes it a viable head of the voter. The proposal's
-cut precedes every slot-`s` vote (`proposal_before_vote`: an early voter holds `P`, accepted
+cut precedes every slot-`s` vote (an early voter holds `P`, accepted
 after its proposer's own block call, the tick of the proposal), so the phase holds at it.
 
 The aligned-reader facts are `Geo`'s (`viableHeads_iff`, `proposal_head_viable`,

@@ -21,7 +21,7 @@ tick's duties (`Run.runDuties`). Every released object is unsigned, or signed
 with the node's own key in a role that selects that key (`Run.tick_auth`). A
 property of states that the duties and the records of released objects keep
 holds after the tick
-(`Run.tick_invariant`); the tick ends in a reached state (`Run.tick_reach`). -/
+(`Run.tick_invariant`); the tick ends in a reached state. -/
 
 namespace Consensus.Model
 

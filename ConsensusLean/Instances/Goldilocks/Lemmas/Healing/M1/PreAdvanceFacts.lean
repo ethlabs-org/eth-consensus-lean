@@ -11,7 +11,6 @@ F3-lock lemma uses the NoAdvance premise.
 
 * `hj_ge_of_lock` (LH, §24.2): an honest record lock at height `h` gives own `h_j ≥ h`.
 * `lock_root_eq_J` (§24.3, kind J): a lock at `h = h_j` names `Σ.J`.
-* `justifiedAt_unique_run` (A-item 4): `justifiedAt_unique` over the run.
 * `lock_none_of_noAdvance` (F3-lock, §24.4): before the advance there is no lock at `H_z`.
 * `client_progress_of_lock` (A-item 3): `client_progress` with the lock premise as a
   hypothesis, in place of `HSShared` and `PhaseOn`.

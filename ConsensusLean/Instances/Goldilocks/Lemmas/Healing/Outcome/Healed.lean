@@ -12,11 +12,13 @@ the entry `E h` of the high chain at `h` (`HighEntry`: a block below a high orig
 honest node, whose state has height `h` and entry `E h` itself):
 
 * C2*⁺ (i), rows: every honest row at `h` names `E h` (`high_row_entry`);
-* C2*⁺ (ii), locks: every honest `Λ.lock[h]` is `⊥` or `E h` (`high_lock_entry`);
+* C2*⁺ (ii), locks: every honest `Λ.lock[h]` is `⊥` or `E h`
+  (`ResetPremisesUpTo.high_lock_entry_of_upTo`);
 * R0: `permits(Λ, h, E h)` at every cut (`permits_high_entry`).
 
 `HealedRecords` collects them from a height `h₀` on, with RH (`H_z + 1 ≤ h₀`).
-`healed_records_of_reset` proves it from `ResetPremises`, RH, and the high entries at the heights
+`healed_records_of_reset_canonical_upTo` proves it from `ResetPremisesUpTo`, RH, and the high
+entries at the heights
 `≥ h₀`. RH and the high entries are explicit: in the paper they come from CH (iii) and L4.5. -/
 
 namespace Consensus.Goldilocks.Healing

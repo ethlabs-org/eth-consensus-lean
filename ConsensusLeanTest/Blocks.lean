@@ -75,12 +75,12 @@ theorem slotAt_between_slots : (⟨6, by decide⟩ : TimeGrid).slotAt? 0 7 = non
 theorem slotAt_zero : grid.slotAt? 0 0 = some 0 := by decide
 theorem slotAt_negative : grid.slotAt? 0 (-6) = none := by decide
 
-/-- Endpoint slack changes the slot grid, not the engine's delay. -/
+/-- A grid of sixteen-unit slots. -/
 def slackGrid : TimeGrid where
   slotLen := 16
   slotLen_pos := by decide
 
-/-- At engine delay 3, protocol delay 4 gives sixteen-unit slots. -/
+/-- Sixteen-unit slots: slot 1 starts at `16`, and `12` is no slot start. -/
 theorem slack_grid_slots : slackGrid.slotAt? 0 16 = some 1 ∧
     slackGrid.slotAt? 0 12 = none := by decide
 

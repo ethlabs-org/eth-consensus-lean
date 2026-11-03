@@ -6,8 +6,8 @@ public section
 
 /-! # Goldilocks Refinement: window coverage from four anchors, through a horizon (#137)
 
-consensus-lean#137 (finite-horizon port). `anchors_chain`, `window_anchors_chain` and
-`coverage_of_window_anchors` from `ResetPremisesUpTo … b`, by C4 through the horizon
+consensus-lean#137 (finite-horizon port). `anchors_chain_upTo` and `window_anchors_chain_upTo`:
+S3's anchor part from `ResetPremisesUpTo … b`, by C4 through the horizon
 (`honest_proposal_below_next_upTo`, `honest_proposal_below_later_upTo`). Guards: the later
 proposal of each pair has `t_{s₁} ≤ b`, and an adjacent pair `s₁ = s₀ + 1` also has the service
 reserve `t_{s₀} + 6Δ ≤ b`. For the four anchors this is `t_{s 3} ≤ b` and, when `s 3 = s 2 + 1`,
@@ -22,7 +22,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
-/-- **S3, anchor part, through the horizon** (`anchors_chain` from `ResetPremisesUpTo … b`):
+/-- **S3, anchor part, through the horizon** (from `ResetPremisesUpTo … b`):
 with `t_{s₁} ≤ b`, and `t_{s₀} + 6Δ ≤ b` when `s₁ = s₀ + 1`. -/
 theorem anchors_chain_upTo (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {s₀ s₁ : Nat}
@@ -49,7 +49,7 @@ private theorem ts_add_eight_le {m n : Nat} (h : m + 2 ≤ n) :
 private theorem fin4_pairs : ∀ i j : Fin 4, i < j →
     (i = 2 ∧ j = 3) ∨ j < 3 ∨ (i < 2 ∧ j = 3) := by decide
 
-/-- **S3, anchor part, for four anchors, through the horizon** (`window_anchors_chain` from
+/-- **S3, anchor part, for four anchors, through the horizon** (from
 `ResetPremisesUpTo … b`): with `t_{s 3} ≤ b`, and `t_{s 2} + 6Δ ≤ b` when `s 3 = s 2 + 1`. -/
 theorem window_anchors_chain_upTo (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ)) {s : Fin 4 → Nat}

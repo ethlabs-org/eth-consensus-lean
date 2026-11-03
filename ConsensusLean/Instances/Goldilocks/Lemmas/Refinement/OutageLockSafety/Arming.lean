@@ -24,8 +24,8 @@ are used as they are. Two inputs are hypotheses of the adapter: `Q.T ≤ horizon
 `outage_arming`) and `Q.start ≤ horizon`; beyond the horizon the reader conclusion is vacuous
 (card §1, degenerate case).
 
-The headers (`outage_locks`, `outage_F_compatible`, `outage_reader_locks`, `outage_reader_frame`,
-`outage_record_above_from`, `outage_veto_record_above`) take the S5 step `OutageS5Step` as a
+The headers (`outage_locks`, `outage_reader_locks`, `outage_reader_frame`,
+`outage_record_above_from`) take the S5 step `OutageS5Step` as a
 hypothesis. -/
 
 namespace Consensus.Goldilocks.Compose

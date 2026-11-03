@@ -106,7 +106,7 @@ Every honest slot-`s'` vote occurs before the bounded update and extends the ori
 slot-`s'` vote's head is above `Σ.F`, so it is held and resolved at the update
 (`honest_vote_at_update`); then `P` is in the frame with a strict majority (the honest slot-`s'`
 voters support it, the rest are faulty), the deepest majority block above `Σ.F` extends it, is not
-vetoed (`result_not_vetoed`), and the record moves to it or keeps a deeper one. -/
+vetoed (`result_not_vetoed_before`), and the record moves to it or keeps a deeper one. -/
 theorem update_adopts_origin_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {b : Time}
     (hrun : GoldilocksRun proposer dg H tr)

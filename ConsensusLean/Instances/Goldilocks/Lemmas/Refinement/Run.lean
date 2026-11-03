@@ -1604,8 +1604,7 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
   exact ⟨cs, hxcs, i, Or.inr ⟨o, he⟩, hrel⟩
 
 /-- The engine releases an honest node's own block at the tick that proposes it (the proposal
-duty's candidate is `blockObj` of the block, `releasable` by `proposal_releasable`, passed by
-`protects_blockObj`). -/
+duty's candidate is `blockObj` of the block, `releasable` by `proposal_releasable`). -/
 theorem simTrace_block_released (hv : rho.ExecutionValid)
     (hrun : GoldilocksRun (runProposer S rho hn)
       (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :

@@ -9,14 +9,14 @@ public section
 
 Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §4, Lemma 3′, steps 3–6, at trace level.
 
-* `justify_step` (one held block): a block `X` on the parent `Pr`, and a set `S` of weight `≥ q`
+* `justify_step'` (one held block): a block `X` on the parent `Pr`, and a set `S` of weight `≥ q`
   of validators, each with a target row (no timeout) for `Pr`'s entry `(h, T_h)` in `X`'s payload
   or on `Pr`'s chain, and with the finality pair `(h_j, J)` when `Pr`'s state is bound (pending
   there): `X`'s state justifies `(h, T_h)`, and at a bound height it finalizes `h_j`. A row on
   the chain has its bits in `σ[Pr]` (`Store.rows_counted`); one in the payload sets them in the
   counting (`Store.foldl_bits`); then `FGParams.justify_of_target_unbound` or
   `FGParams.justify_of_target_bound`.
-* `justify_of_rows` (the run): an honest proposal `X` on `Pr`, where the proposer has processed
+* `justify_of_rows'` (the run): an honest proposal `X` on `Pr`, where the proposer has processed
   each row before its proposal cut (the delivery premise, M1): every row is in the pool, so it is
   on `Pr`'s chain or in `proposal_attestations` (it is valid against `σ[Pr]`: it names the entry).
   Honest rows are not equivocations; the weight is that of the honest signers, no `2q − n` slack.

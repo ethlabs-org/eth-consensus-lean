@@ -12,8 +12,9 @@ when `P` is in the voter's viable voter block tree and no old child of `Q` (slot
 eligible there, `P` is the voter's only eligible child of `Q` (a second slot-`s` child would be a
 second block of the honest proposer in the slot, `HonestObjects.one_block`; `P` itself is eligible
 as a block of the current slot), and the voter's walk has no best child at `P` (no block of the
-frame is of a later slot than the vote, `frame_slot_le`). Shared by A1.7 (`stop_at_parent`, under
-`Sleepy`) and HS.3 (`proposal_only_child`, in a settled phase), which supply the two leaves. -/
+frame is of a later slot than the vote, `frame_slot_le`). Shared by A1.7 (`stop_at_parent_before`,
+under `Sleepy`) and HS.3 (`proposal_only_child`, in a settled phase), which supply the two leaves.
+-/
 
 namespace Consensus.Goldilocks.SA
 

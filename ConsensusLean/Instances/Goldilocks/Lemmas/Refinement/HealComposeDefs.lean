@@ -6,7 +6,7 @@ public section
 /-! # Goldilocks Refinement: definitions of the M1′ composition (#136)
 
 The drain interface `DrainOutputs`, the sub-interval restriction `frameWindow_sub`, and the
-reset bound `resetBound` of `reset_of_drain` (`HealCompose`). This module imports only the
+reset bound `resetBound` of `exists_reset_of_drain` (`ResetOfDrain`). This module imports only the
 rise, so that it does not depend on the final-window or healed-safety layers. -/
 
 namespace Consensus.Goldilocks.Refinement
@@ -53,8 +53,8 @@ theorem frameWindow_sub {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
 
 end Drain
 
-/-- The reset bound of `reset_of_drain`: `r + (24 L_drain + 48ρ + 64)·Δ + 6λ`,
-`ρ = δ_t + X − 1`. -/
+/-- The reset bound of the drain reset (`exists_reset_of_drain`): `r + (24 L_drain + 48ρ + 64)·Δ +
+6λ`, `ρ = δ_t + X − 1`. -/
 def resetBound (r D lam δt X Ld : ℤ) : ℤ := r + (24 * Ld + 48 * (δt + X - 1) + 64) * D + 6 * lam
 
 /-- Unfolding equation of `resetBound` (the definition is not exposed outside this module). -/

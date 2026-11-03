@@ -7,7 +7,7 @@ public section
 /-! # Goldilocks: lock-floor segments from unanimous updates
 
 consensus-lean#135, item N4. Segment `m` starts at the cut after an honest node's tick at
-`t_{p_m} + 6Δ`, and its floor slot is `p_m` (`floor_of_unanimous_update`). The tick at
+`t_{p_m} + 6Δ`, and its floor slot is `p_m`. The tick at
 `t_q + 6Δ` lies in slot `q + 1` (`slot_update_time`). Segment `m` must keep its lock live up to
 the update tick of slot `p_{m+1}`, which is in slot `p_{m+1} + 1`; a lock of slot `p_m` is live
 there iff `p_{m+1} + 1 ≤ p_m + k`. So the spacing condition is `p_{m+1} − p_m ≤ k − 1`: the

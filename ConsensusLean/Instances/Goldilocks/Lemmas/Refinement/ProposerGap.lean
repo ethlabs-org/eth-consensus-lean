@@ -12,7 +12,7 @@ public section
 
 /-! # Goldilocks Refinement: the proposer gap core (#136, S3)
 
-The upstream core of the honest-proposer gap. It does not import `RiseGap`,
+The upstream core of the honest-proposer gap. It does not import
 `FinalWindowAssembly`, `FinalWindowDefs` or `HealedSafety`.
 
 * `recurrence_gap`: a recurrence whose pattern has offset `0` gives an honest-ready duty in every
