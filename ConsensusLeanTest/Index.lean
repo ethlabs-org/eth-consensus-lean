@@ -259,6 +259,7 @@ example := ``Consensus.Goldilocks.FrameOK
 example := ``Consensus.Goldilocks.FrameSeq
 example := ``Consensus.Goldilocks.FrameSeqIn
 example := ``Consensus.Goldilocks.FrameStatements
+example := ``Consensus.Goldilocks.frame_statements
 example := ``Consensus.Goldilocks.FrameStep
 example := ``Consensus.Goldilocks.FrameNeverReturns
 example := ``Consensus.Goldilocks.Params
