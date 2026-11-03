@@ -46,7 +46,7 @@ theorem finalWindow_span {S : Setup} (A : AcceptanceAssumptions S) :
   omega
 
 theorem accepted_catchUp_val (S : Setup) (A : AcceptanceAssumptions S) :
-    (accepted_catchUp S A : Nat) = max 37 (8 * S.k + 4) := by rfl
+    (accepted_catchUp S A : Nat) = 37 := by rfl
 
 theorem accepted_heal_val (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability) (X : ℕ+) :
     accepted_heal S A cap X = (accepted_catchUp S A : Nat) + 2 * healMargin S X + 3 := by rfl
@@ -85,7 +85,6 @@ theorem accepted_latency_final (S : Setup) (A : AcceptanceAssumptions S) (X : �
 theorem accepted_catchUp_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S) :
     37 ≤ (accepted_catchUp S A : Nat) := by
   rw [accepted_catchUp_val]
-  exact Nat.le_max_left _ _
 
 /-- For Δe ≥ 1, the nonfinal latency covers (4idx+6)(Δe+1). -/
 theorem accepted_latency_ge_sleepy (S : Setup) (A : AcceptanceAssumptions S)

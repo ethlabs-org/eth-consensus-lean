@@ -152,7 +152,7 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 
 | Declaration | Paper argument/status |
 |---|---|
-| `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | OPEN, Spec orb joint synthesis: 37≤accepted_catchUp is a minimum Sleepy constraint, not a selected shared witness. Covers 18(Δe+1)+1≤37Δe for Δe≥1. Reached by Sleepy safety and liveness. |
+| `Consensus.Goldilocks.Refinement.accepted_catchUp_ge_sleepy` | Proved by the value (`accepted_catchUp = 37`). Covers 18(Δe+1)+1≤37Δe for Δe≥1. Reached by Sleepy safety and liveness. |
 | `Consensus.Goldilocks.Refinement.accepted_latency_ge_sleepy` | OPEN, Spec orb joint synthesis: available/stable latency≥8idx+12, covering (4idx+6)(Δe+1)≤(8idx+12)Δe. Other regimes may raise it; not a final joint value or new endpoint premise. Reached by Sleepy liveness slot selection. |
 | `Consensus.Goldilocks.Refinement.healthy_confirmed_supply` | Proved (db4b864f): `healthy_confirmed_supply_of_initializer` (HealthyConfirmedEndpoint, cb3e1846) applied to `healthy_preparation_initialize`; statement unchanged. Only the selected accepted proposal is covered; no new endpoint assumption. |
 | `Consensus.Goldilocks.Refinement.sleepy_safety_inputs` | Body proved via finite SVC at the horizon, duration arithmetic and fault bounds. No direct sorry; full closure sorry-free since 4078bc74 (accepted_heal closed), not a #128 statement obstruction. |
@@ -292,7 +292,7 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 
 | Declaration | Paper argument/status |
 |---|---|
-| `Consensus.Goldilocks.Refinement.accepted_catchUp` | OPEN: finite positive uniform catch-up; canonical timing adapter required. Spec orb. |
+| `Consensus.Goldilocks.Refinement.accepted_catchUp` | Fixed at `37` (2026-11-03, Francesco's request; was `max 37 (8k + 4)`): no proof needs more than the Sleepy margin `37`. |
 | `Consensus.Goldilocks.Refinement.accepted_heal` | Closed (4078bc74): `accepted_catchUp + 2·healMargin S X + 3` at every capability, a named parameter-only value (`ResetCoefficients`), chosen to fit the proved reset envelope (owner: adjust the constants to what can be proved). `accepted_heal_ge_reset` is the coefficient inequality (★) of the nonfinal envelope and S0; `accepted_heal_ge_final` the final route's heal-bound margin at λ = 2Δ. A later leaf that needs more raises `healMargin`; consumers use only these ≥-forms. |
 | `Consensus.Goldilocks.Refinement.accepted_latency` | OPEN: finite latency at every gap; final local-pattern service and cache acceptance unresolved. Spec orb. |
 | `Consensus.Goldilocks.Refinement.accepted_outputValid` | Proved through shape_outputValid; compiled closure has no sorryAx. |

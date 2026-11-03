@@ -9,9 +9,11 @@ Labelled by kind (CONTRIBUTING "Statements"):
 * (a) `assumptions_small`, `assumptions_large`: `AcceptanceAssumptions` is satisfiable at two
   concrete setups, `k = 2, δt = 6` and `k = 6, δt = 8`; `assumptions_iff` gives its exact range
   and `assumptions_empty_of_timeout` rejects `δt = 5`.
-* (b) The coefficients at those setups: `accepted_catchUp` is `37` at `k = 2` and `8k + 4 = 52`
-  at `k = 6`; the switch between the two branches is at `k = 5` (`catchUp_of_k_le_four`,
-  `catchUp_of_five_le_k`, `catchUp_k_four`, `catchUp_k_five`). `accepted_latency` takes its
+* (b) The coefficients at those setups: `accepted_catchUp` is `37` at every `k` (`catchUp_small`,
+  `catchUp_large`, `catchUp_of_k_le_four`, `catchUp_of_five_le_k`, `catchUp_k_four`,
+  `catchUp_k_five`; the former `max 37 (8k + 4)` first exceeded `37` at `k = 5`); the outage
+  no-sleep margin covers catch-up + 1 (`noSleep_covers_catchUp`, `noSleep_k_two_five`); the heal
+  coefficient drops by the former excess (`heal_drop`). `accepted_latency` takes its
   documented value at each capability, and both Sleepy margins hold there.
 
 * (b) The row ratio `r` (`AcceptanceAssumptions.rowRatio`) and its gap `c = cF r`:
@@ -71,40 +73,58 @@ theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
   ⟨fun A => by have := A.six_le_δt; omega⟩
 
 /-- (b) Catch-up is `37` at `k = 2`. -/
-theorem catchUp_small : (accepted_catchUp setupSmall assumptionsSmall : Nat) = 37 := by
-  rw [accepted_catchUp_val]
-  rfl
+theorem catchUp_small : (accepted_catchUp setupSmall assumptionsSmall : Nat) = 37 :=
+  accepted_catchUp_val _ _
 
-/-- (b) Catch-up is `8k + 4 = 52` at `k = 6`. -/
-theorem catchUp_large :
-    (accepted_catchUp setupLarge assumptionsLarge : Nat) = 8 * setupLarge.k + 4 ∧
-      (accepted_catchUp setupLarge assumptionsLarge : Nat) = 52 := by
-  rw [accepted_catchUp_val]
-  exact ⟨rfl, rfl⟩
+/-- (b) Catch-up is `37` at `k = 6` (the former formula gave `8k + 4 = 52`). -/
+theorem catchUp_large : (accepted_catchUp setupLarge assumptionsLarge : Nat) = 37 :=
+  accepted_catchUp_val _ _
 
 /-- (b) Catch-up is `37` for every `k ≤ 4`. -/
-theorem catchUp_of_k_le_four (S : Setup) (A : AcceptanceAssumptions S) (hk : S.k ≤ 4) :
-    (accepted_catchUp S A : Nat) = 37 := by
-  rw [accepted_catchUp_val]
-  omega
+theorem catchUp_of_k_le_four (S : Setup) (A : AcceptanceAssumptions S) (_hk : S.k ≤ 4) :
+    (accepted_catchUp S A : Nat) = 37 :=
+  accepted_catchUp_val S A
 
-/-- (b) Catch-up is `8k + 4` for every `k ≥ 5`. -/
+/-- (b) Catch-up is `37` for every `k ≥ 5` (the former formula gave `8k + 4 > 37`). -/
 theorem catchUp_of_five_le_k (S : Setup) (A : AcceptanceAssumptions S) (hk : 5 ≤ S.k) :
-    (accepted_catchUp S A : Nat) = 8 * S.k + 4 := by
+    (accepted_catchUp S A : Nat) = 37 ∧ (accepted_catchUp S A : Nat) < 8 * S.k + 4 := by
   rw [accepted_catchUp_val]
   omega
 
-/-- (b) The switch: at `k = 4` the `37` branch still wins (`8k + 4 = 36`). -/
+/-- (b) At `k = 4`, `37` (the former formula's `max 37 36`). -/
 theorem catchUp_k_four (S : Setup) (A : AcceptanceAssumptions S) (hk : S.k = 4) :
-    (accepted_catchUp S A : Nat) = 37 ∧ (accepted_catchUp S A : Nat) ≠ 8 * S.k + 4 := by
-  rw [accepted_catchUp_val]
-  omega
+    (accepted_catchUp S A : Nat) = 37 ∧ (accepted_catchUp S A : Nat) = max 37 (8 * S.k + 4) := by
+  rw [accepted_catchUp_val, hk]
+  decide
 
-/-- (b) The switch: at `k = 5` the `8k + 4 = 44` branch wins. -/
+/-- (b) At `k = 5`, `37` (the former formula gave `44`). -/
 theorem catchUp_k_five (S : Setup) (A : AcceptanceAssumptions S) (hk : S.k = 5) :
-    (accepted_catchUp S A : Nat) = 44 := by
+    (accepted_catchUp S A : Nat) = 37 ∧ max 37 (8 * S.k + 4) = 44 := by
+  rw [accepted_catchUp_val, hk]
+  decide
+
+/-- (b) The outage no-sleep margin `max 38 (8k + 16)` covers catch-up + 1 at every `k`; at
+`k = 2` with equality (`38`), at `k = 5` with `56`. -/
+theorem noSleep_covers_catchUp (S : Setup) (A : AcceptanceAssumptions S) :
+    (accepted_catchUp S A : Nat) + 1 ≤ (K S A).params.noSleep := by
   rw [accepted_catchUp_val]
-  omega
+  exact Nat.le_max_left 38 _
+
+/-- (b) The no-sleep margin at `k = 2` and `k = 5`. -/
+theorem noSleep_k_two_five (S : Setup) (A : AcceptanceAssumptions S) :
+    (S.k = 2 → (K S A).params.noSleep = 38) ∧ (S.k = 5 → (K S A).params.noSleep = 56) := by
+  refine ⟨fun hk => ?_, fun hk => ?_⟩ <;>
+    · change max 38 (8 * S.k + 16) = _
+      rw [hk]; rfl
+
+/-- (b) The heal coefficient against the former catch-up `max 37 (8k + 4)`: unchanged for
+`k ≤ 4`, lower by `7` at `k = 5` and by `15` at `k = 6`, at every capability. -/
+theorem heal_drop (S : Setup) (A : AcceptanceAssumptions S) (cap : Capability) (X : ℕ+) :
+    (S.k ≤ 4 → accepted_heal S A cap X = max 37 (8 * S.k + 4) + 2 * healMargin S X + 3) ∧
+      (S.k = 5 → accepted_heal S A cap X + 7 = max 37 (8 * S.k + 4) + 2 * healMargin S X + 3) ∧
+      (S.k = 6 → accepted_heal S A cap X + 15 = max 37 (8 * S.k + 4) + 2 * healMargin S X + 3) := by
+  rw [accepted_heal_val, accepted_catchUp_val]
+  refine ⟨fun hk => ?_, fun hk => ?_, fun hk => ?_⟩ <;> omega
 
 /-- Both setups' assumptions have row ratio `1`, hence gap `2`. -/
 theorem gap_one {S : Setup} {A : AcceptanceAssumptions S} (h : A.rowRatio = 1 := by rfl) :

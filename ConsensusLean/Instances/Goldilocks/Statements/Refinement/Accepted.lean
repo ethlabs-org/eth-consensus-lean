@@ -21,12 +21,12 @@ protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
   sleepy outage), no-sleep margin `max 38 (8k + 16)` and recovery delay `18` (engine
   `Δ`-coefficients); final progress the pattern `finalWindow A` (`[0, c, 2c, 3c]`, `c = cF r`)
   and one honest ready proposer for the other outputs, in every window of the outer gap.
-* **Coefficients** (`accepted_coefficients`, engine `Δ`-coefficients): catch-up
-  `max 37 (8k + 4)`; heal `max 37 (8k + 4) + 128k + 112δ_t + 160X + 187` at every capability
-  (`catchUp + 2·healMargin + 3`, `healMargin = 64k + 56δ_t + 80X + 92`); latency `8X + 12` for
-  the available and stable outputs and `8(X + 3·cF r) + 2` for the final one. Only the final
-  latency reads the assumptions (through `r`) directly; heal depends on `r` only through the
-  `δ_t` that `3·cF r ≤ δ_t` requires, and the heal coefficient ignores the capability.
+* **Coefficients** (`accepted_coefficients`, engine `Δ`-coefficients): catch-up `37`; heal
+  `128k + 112δ_t + 160X + 224` at every capability (`catchUp + 2·healMargin + 3`,
+  `healMargin = 64k + 56δ_t + 80X + 92`); latency `8X + 12` for the available and stable outputs
+  and `8(X + 3·cF r) + 2` for the final one. Only the final latency reads the assumptions
+  (through `r`) directly; heal depends on `r` only through the `δ_t` that `3·cF r ≤ δ_t`
+  requires, and the heal coefficient ignores the capability.
 
 Statements only: no proofs here. -/
 
@@ -68,13 +68,14 @@ structure AcceptanceCoefficients where
   heal : Capability → ℕ+ → Nat
   latency : Capability → ℕ+ → Nat
 
-/-- Catch-up `max 37 (8k + 4)`: it covers the Sleepy margin and the outage history window. -/
+/-- Catch-up `37` engine delays: it covers the Sleepy margin, `18(Δe + 1) + 1 ≤ 37Δe` for every
+engine delay `Δe ≥ 1`. -/
 def accepted_catchUp (S : Setup) (_A : AcceptanceAssumptions S) : ℕ+ :=
-  ⟨max 37 (8 * S.k + 4), lt_of_lt_of_le (by decide) (Nat.le_max_left _ _)⟩
+  ⟨37, by decide⟩
 
 /-- The finite healing witness `catchUp + 2M + 3`, `M = healMargin S X`, at every capability: a
 closed expression in `k`, `δ_t`, `X` and the catch-up, fixed before any run; expanded,
-`max 37 (8k + 4) + 128k + 112δ_t + 160X + 187`. `M` is read off the reset envelope of the
+`128k + 112δ_t + 160X + 224`. `M` is read off the reset envelope of the
 healing route and covers the final route's heal-bound margin. -/
 def accepted_heal (S : Setup) (A : AcceptanceAssumptions S) : Capability → ℕ+ → Nat :=
   fun _ X => (accepted_catchUp S A : Nat) + 2 * healMargin S X + 3
@@ -107,7 +108,7 @@ Outage numbers (engine `Δe`, node `Δp = Δe + 1`, slot `4Δp`; slow arming onl
   fully armed by `b₀`;
 * no-sleep margin `max 38 (8k + 16)`: it covers the formation window
   (`(4k+6)Δp` before `b₀`), the restored votes (`8k + 16`) and the catch-up
-  (`accepted_catchUp = max 37 (8k + 4)`, so `catchUp + 1 = max 38 (8k + 5)`), so the honest
+  (`accepted_catchUp = 37`, so `catchUp + 1 = 38`), so the honest
   validators awake at the window start are ready on the recovery counts;
 * recovery delay `18` (`18Δe ≥ 9Δp` for every `Δe ≥ 1`, equality only at
   `Δe = 1`): enough for the restored votes of the locked validators to bring

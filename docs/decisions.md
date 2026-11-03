@@ -55,6 +55,20 @@ where it is recorded; "Francesco" marks the owner's decisions.
   case Francesco ruled out as a final state; this is not the arbitrary-ratio port, which chooses
   `r` in the acceptance assumptions, adds `3·cF r ≤ δt`, and reworks the coefficients. Card:
   workbench `two_bound_network.md`.
+- 2026-11-03, Francesco's request (lead-approved; read-back T-01a19b8a): the Goldilocks catch-up is a
+  flat `accepted_catchUp = 37` (was `max 37 (8k + 4)`). No proof needs `8k + 4`: with the value
+  changed, the whole build failed only in tests that pinned the old formula. Effects (identical
+  for `k ≤ 4`; for `k ≥ 5`): admissibility holds; heal is lower by `8k + 4 − 37` at every
+  capability (`128k + 112δ_t + 160X + 224`); latency is unchanged; the ready and heal points move
+  earlier by the same amount, so `[ready, heal]` keeps its length; more validators are ready
+  (shorter `cDur`), so the sleepy and outage participation premises are weaker (no-sleep and
+  cohort unchanged). `sleepySafe`, `sleepyLive` (L0 `TxLive`; the shape-level
+  `ProposalLiveReady` also relaxes the proposer's readiness) and `persists` are stronger.
+  `healthyLive` (L0 `TxLive`; the shape-level `ProposalLiveReady` also relaxes the proposer's
+  readiness) has a stronger premise (under `Healthy` every honest validator is awake from
+  `max g 0`, so progress on `[ready_new, horizon]` implies it on the former `[ready, horizon]`)
+  and a stronger conclusion. `healedSafe` has a stronger conclusion and a premise not comparable
+  with the former one (its window `[ready, heal]` shifts earlier with the same length).
 - 2026-11-02, Francesco (η = 0, coefficient lane): the Goldilocks outage regime is plain sleepy.
   `AcceptanceAssumptions.lookback` is removed, `acceptanceContract` keeps `Params.standard`'s
   `η = 0`, and the outage budget is `4k − 6` (was `min(lookback, 4k − 6)`). Statement impact:
