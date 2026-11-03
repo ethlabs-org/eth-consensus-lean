@@ -26,7 +26,7 @@ of piece (3) and the `r`-round rise of piece (2):
 `B = resetBoundRounds r Δ λ δ_t G L_drain = r + (20 L_drain + 24ρ + 54)·Δ + 5λ`.
 
 The window step is `exists_riseWindow_of_service` (`Healing.M1.RiseWindow`); the window length
-and the round count are `riseLen` and `riseRounds` (`riseLen_eq`). -/
+and the round count are `riseLen` and `riseRounds` (`riseLen_eq`, `riseRounds_eq`). -/
 
 namespace Consensus.Goldilocks.Refinement
 

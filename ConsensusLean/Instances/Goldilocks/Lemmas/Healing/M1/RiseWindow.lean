@@ -24,6 +24,11 @@ open SA (SAParams ReplayOrder Payload gbar)
 /-- The rise round count of the merged key value `v`: `2, 2, 1, 1, 0` for `v = 2HZ + j`. -/
 def riseRounds (HZ v : Nat) : Nat := 2 - (v - 2 * HZ) / 2
 
+/-- Unfolding equation of `riseRounds`. -/
+theorem riseRounds_eq (HZ v : Nat) : riseRounds HZ v = 2 - (v - 2 * HZ) / 2 := by
+  unfold riseRounds
+  rfl
+
 theorem riseRounds_le_two (HZ v : Nat) : riseRounds HZ v ≤ 2 := by
   unfold riseRounds
   omega
