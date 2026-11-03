@@ -9,9 +9,9 @@ Derive GST and Healthy from the observable-event interface, independently of its
 invariant. Votes and blocks reach both validators at their send time. Rows arrive at signing
 time or thirty-five time units later, strictly within `ΔF = 36`.
 
-The current attestation premise also requires processing after each admission. For a delayed
-admission at `v0`, the next carrier reprocesses the row at both validators four time units later.
-Thus even that lower bound holds; no earlier receipt is substituted for a later forwarding.
+Attestation form (d) permits an earlier processing to satisfy a later admission's deadline.
+Each row's receipt therefore suffices, including its signer's processing before a delayed
+admission at the other validator. The delay ordering is `Δ = 1 ≤ 36 = ΔF`.
 These are conditional witnesses until the run's invariant supplies `RunFacts`.
 -/
 
@@ -31,28 +31,11 @@ private theorem deadline_eq (hf : RunFacts) (y : Fin sp.n) (k : Nat) (τ Δ' : T
   simp only [RunTrace.deadline, lastWake_eq hf]
   rfl
 
-/-- A row is processed after any of its send/admission times, strictly within thirty-six
-time units. A delayed admission uses its next block carrier rather than an earlier receipt. -/
-private theorem row_service (hf : RunFacts) (x y z : Fin sp.n) (q : Nat) (hq : 1 ≤ q) :
-    ∃ i, run.ProcessAttAt z i (row y q) ∧
-      (rowRecv x y q : Int) ≤ run.time i ∧ run.time i < (rowRecv x y q : Int) + 36 := by
-  by_cases hd : x = w0 ∧ y = w1
-  · obtain ⟨rfl, rfl⟩ := hd
-    obtain ⟨i, hi, ht⟩ := hf.accept_exists z (10 * q + 1) (by omega)
-    have hrow : row w1 q ∈ (blk (10 * q + 1)).fgPayload :=
-      mem_blk_fgPayload.2 (Or.inr ⟨q, hq, rfl, rfl⟩)
-    refine ⟨i, Or.inr ⟨_, hi, hrow⟩, ?_, ?_⟩ <;>
-      simp only [ht, rowRecv, rt, and_self, ↓reduceIte] <;>
-      push_cast <;> dsimp only [Time] at * <;> omega
-  · obtain ⟨i, hi, ht⟩ := hf.processAtt z y q hq
-    refine ⟨i, Or.inl hi, ?_, ?_⟩ <;>
-      simp only [ht, rowRecv, hd, ↓reduceIte] <;>
-      split_ifs <;> push_cast <;> dsimp only [Time] at * <;> omega
-
 /-- The actual two-validator schedule meets GST with `g = 0` and `ΔF = 36`, provided its
 observable events satisfy `RunFacts`. No run-law or state invariant is assumed separately. -/
 theorem run_gst (hf : RunFacts) : run.GSTRun Set.univ 36 0 where
   deltaF := by decide
+  delta_le := by decide
   message x _ i m hm _ z _ j _ hj := by
     obtain ⟨y, σ, rfl, ht⟩ := hf.admitMsg x i m hm
     have hproc : ∃ k, run.ProcessMsgAt z k (vote y σ) ∧ run.time k = (vt σ : Int) := by
@@ -93,9 +76,12 @@ theorem run_gst (hf : RunFacts) : run.GSTRun Set.univ 36 0 where
     omega
   attestation x _ i a ha _ z _ j _ hj := by
     obtain ⟨y, q, hq, rfl, ht⟩ := hf.admitAtt x i a ha
-    obtain ⟨k, hk, hlo, hhi⟩ := row_service hf x y z q hq
+    obtain ⟨k, hk, hkt⟩ := hf.processAtt z y q hq
+    have hhi : run.time k < (rowRecv x y q : Int) + 36 := by
+      simp only [hkt, rowRecv]
+      split_ifs <;> push_cast <;> dsimp only [Time] at * <;> omega
     rw [deadline_eq hf, ht, max_eq_left (Int.natCast_nonneg _)] at hj
-    refine ⟨k, (time_lt_index (hhi.trans_le hj)).le, by rwa [ht], hk, ?_⟩
+    refine ⟨k, (time_lt_index (hhi.trans_le hj)).le, Or.inl hk, ?_⟩
     rwa [deadline_eq hf, ht, max_eq_left (Int.natCast_nonneg _)]
 
 /-- Both validators are honest and awake forever from time zero. Together with the network
