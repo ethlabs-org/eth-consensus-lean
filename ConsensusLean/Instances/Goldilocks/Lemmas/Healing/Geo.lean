@@ -496,12 +496,6 @@ theorem stamp_origin (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fi
     | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
     | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2.1 ▸ hX)
 
-@[deprecated SA.readPoint_blockStamp_eq (since := "2026-10-30")]
-alias readPoint_blockStamp_eq := SA.readPoint_blockStamp_eq
-
-@[deprecated SA.cast_ready (since := "2026-10-30")]
-alias cast_ready := SA.cast_ready
-
 /-- The anchor of a walk is in the viable tree of the whole frame tree when `fc_root` is: it is
 `fc_root` or the deepest live lock block, a candidate at least as deep as `fc_root`. -/
 theorem getAnchor_viable {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SAState sp.n) (t : Time)
