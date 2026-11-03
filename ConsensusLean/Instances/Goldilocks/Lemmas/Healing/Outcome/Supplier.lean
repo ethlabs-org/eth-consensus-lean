@@ -57,7 +57,24 @@ theorem ResetPremisesUpTo.same_slot_source_below_unanimous {b : Time}
     (hPU : P ∈ tr.HonestBlocks H)
     (hun : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root) : Anc (tr.HonestBlocks H) B P := by
-  sorry
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have below : ∀ z ∈ H, ∀ q ≤ r, ∀ e, SA.VoteAt tr.projAC z q e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B → Anc (tr.HonestBlocks H) B P := by
+    rintro z hz q hqr e hv hes ⟨D, hD, hDr, hBD⟩
+    obtain rfl : D = P := hr.coherent.1 hD hPU
+      (hDr.trans (hun z hz q e hv ((hp.run.time_mono hqr).trans hrb) hes))
+    exact hBD
+  rcases horig with ⟨CV, ⟨ell, C, hupd, hC, hD, _⟩ | hop⟩ | ⟨ell, C, hupd, hC, hD⟩
+  · obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := hp.result_supporter hc hx
+      ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
+        (SA.frameIn_of_callAt hr hx hupd.1).2) hrb hts
+    exact below z hz q hqr.le e hv hes he
+  · obtain ⟨_, z, hz, q, hqr, e, hv, hes, he⟩ := hp.optimistic_supporter hx hop
+    exact below z hz q hqr e hv hes he
+  · obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := hp.result_supporter hc hx
+      ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
+        (SA.frameIn_of_callAt hr hx hupd.1).2) hrb hts
+    exact below z hz q hqr.le e hv hes he
 
 /-- Through the update deadline, normalized live locks compare with the operational
 head. Older and same-label source ancestry are derived from actual bounded votes. -/
@@ -1970,7 +1987,27 @@ theorem same_slot_source_below_ready
     {x : Fin sp.n} (hx : x ∈ H) {r : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (horig : (∃ CV, SA.FastLockAt tr.projAC x r u B CV) ∨ SA.SlowLockAt tr.projAC x r u B) :
     Anc (tr.HonestBlocks H) B P := by
-  sorry
+  have hS := healthy_base_of_reset_catch hp hc
+  have hU := hS.run.localRun.coherent
+  obtain ⟨-, -, _, _, _, _, _, _, _, _, _, _, _, ja, _, hacc, _⟩ :=
+    honestProposalRun_of_ready hp.run hp.noColl hP
+  rw [← hP.2.1] at hacc
+  obtain ⟨ellp, hcp, hblock⟩ := hacc
+  have hPm := (SA.accept_new sp hS.run.localRun hP.1 ⟨ellp, hcp, hblock⟩).1 ellp hcp
+  have hPU := (SA.frameIn_of_callAt hS.run.localRun hP.1 hcp).2 hPm
+  have below : ∀ z ∈ H, ∀ j e, SA.VoteAt tr.projAC z j e → e.msg.slot = u →
+      SA.VoteExtends (tr.HonestBlocks H) e.msg B → Anc (tr.HonestBlocks H) B P := by
+    rintro z hz j e hv hes ⟨Hd, hHd, hHdr, hBH⟩
+    have he := hU.1 hHd hPU (hHdr.trans (ready_unanimous hp hc hP hR z hz j e hv hes))
+    exact he ▸ hBH
+  rcases horig with ⟨CV, hf⟩ | ⟨ell, C, hupd, hC, hD⟩
+  · obtain ⟨z, hz, j, e, hv, hes, hB⟩ := SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hf
+    exact below z hz j e hv hes hB
+  · obtain ⟨z, hz, j, e, hv, hes, Hd, hHd, hHdr, hCH⟩ := SA.result_extended hS hgu hx
+      hupd.1 (by rw [hupd.2.2.1]; linarith [sp.toParams.hΔ]) hC
+    have hPhiU := (SA.frameIn_of_callAt hS.run.localRun hx hupd.1).2
+    exact below z hz j e hv hes
+      ⟨Hd, hHd, hHdr, ((SA.deepest_mem hD).1.1.2.2.mono hPhiU).trans hCH⟩
 
 /-- At any post-drain call, the viable image of a stored live lock of an older label lies
 below the ready proposal. This covers both slow locks and fast locks. -/

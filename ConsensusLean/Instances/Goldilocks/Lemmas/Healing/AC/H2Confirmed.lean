@@ -39,7 +39,55 @@ theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P) :
     ∀ y ∈ H, ∀ i (T : Time), sp.ts p ≤ T → ∀ l ∈ (tr.state y i).locks,
       sp.slot T ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block → Compatible U L P := by
-  sorry
+  have hrun := hI.run
+  have hr := hrun.localRun
+  have hU := hr.coherent
+  have hΔ := sp.toParams.hΔ
+  have hΘ := Θ_nonneg sp
+  have hg := hI.le
+  have down : ∀ {X Y}, Anc U X Y → Compatible U Y P → Compatible U X P := by
+    rintro X Y hXY (h | h)
+    · exact Or.inl (hXY.trans h)
+    · exact anc_total hU hXY h
+  -- two blocks extended by one honest vote compare
+  have hcomp : ∀ {X Y : Blk sp.n FGP} {z : Fin sp.n}, z ∈ H → ∀ {j e}, VoteAt tr z j e →
+      VoteExtends U e.msg X → VoteExtends U e.msg Y → Compatible U X Y := by
+    intro X Y z hz j e hv ⟨Hd, hHd, hHdr, hXHd⟩ ⟨Hd', hHd', hHd'r, hYHd⟩
+    obtain rfl : Hd = Hd' := hU.1 hHd hHd' (hHdr.trans hHd'r.symm)
+    exact anc_total hU hXHd hYHd
+  intro y hy i T hT l hl hlive L hL hLr
+  rcases Nat.lt_or_ge l.slot p with hlp | hpl
+  · -- an older label: below a clean raw origin (drain), which an honest slot-`p` vote extends
+    have hT0 : 0 ≤ T := by linarith [gbar_nonneg g]
+    have hσ : t₀ + 2 * Θ sp ≤ sp.ts (sp.slot T) := by
+      have h1 : ¬ sp.ts ((sp.slot T : Nat) + 1 : Int) ≤ T := by
+        rw [ts_le_iff_le_slot sp hT0]; omega
+      have h2 : sp.ts ((sp.slot T : Nat) + 1 : Int) = sp.ts (sp.slot T) + 4 * sp.Δ := by
+        simp only [SAParams.ts]; ring
+      linarith [not_le.1 h1]
+    obtain ⟨B, ⟨L', hL', hL'r, hL'B⟩, hclean⟩ := h2_drain hI hy hl hlive hσ
+    obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
+    obtain ⟨j, e, hve, hes⟩ := honest_votes_in_slot hI.toHealthyBase
+      (show gbar g + 4 * sp.Δ ≤ sp.ts p by linarith) y hy
+    exact down hL'B (hcomp hy hve (votesExtendAfter_iff.1 (raw_origin_votes hI hclean) y hy j e hve
+      (by omega)) (hvotes y hy j e hve hes.ge))
+  · have hlg : gbar g + 4 * sp.Δ ≤ sp.ts l.slot :=
+      (show gbar g + 4 * sp.Δ ≤ sp.ts p by linarith).trans ((ts_le_iff sp).2 (by omega))
+    cases hf : l.fast
+    · -- a slow lock: below the result of its update, which has an honest supporter
+      obtain ⟨j, -, D, hsl, L', hL', hL'r, hL'D⟩ := slow_lock_provenance hr hy i l hl hf
+      obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
+      obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := hsl
+      have hΦXU := (frameIn_of_callAt hr hy hupd.1).2
+      have hDC : Anc U D C := Anc.mono hΦXU (deepest_mem hdeep).1.1.2.2
+      obtain ⟨z, hz, j', e, hve, hes, hext⟩ :=
+        result_honest_supporter hI hy (⟨ℓX, hupd, hconf, rfl⟩ : ResultAt tr y j l.slot C _) hlg
+      exact down (hL'D.trans hDC) (hcomp hz hve hext (hvotes z hz j' e hve (hes ▸ hpl)))
+    · -- a fast lock: an honest vote of its slot extends its block
+      obtain ⟨j, -, B, CV, hfl, L', hL', hL'r, hL'B⟩ := fast_lock_provenance hr hy i l hl hf
+      obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
+      obtain ⟨z, hz, j', e, hve, hes, hext⟩ := fastLock_honest_vote hrun hI.two_faulty_lt hy hfl
+      exact down hL'B (hcomp hz hve hext (hvotes z hz j' e hve (hes ▸ hpl)))
 
 /-! ## §7.4–7.5 helpers: the record read by `ac_confirmed`, the head from `fc_root` -/
 
