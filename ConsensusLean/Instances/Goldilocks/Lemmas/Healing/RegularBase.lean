@@ -652,7 +652,7 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
   rcases ho with ⟨_, CV, hfast | hop⟩ | ⟨_, hslow⟩
   · exact Or.inl (hregular (Or.inl ⟨CV, hfast⟩))
   swap
-  · exact Or.inl (hregular (Or.inr (slowLockAt_of_lockBlock hr hy hslow)))
+  · exact Or.inl (hregular (Or.inr hslow))
   have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by omega)
   have hlow : sp.ts l.slot ≤ tr.time a := by
     obtain ⟨_, _, _, hs', _, _⟩ := hop

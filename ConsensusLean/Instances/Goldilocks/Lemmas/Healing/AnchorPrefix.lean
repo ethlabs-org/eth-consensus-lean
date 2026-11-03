@@ -158,7 +158,8 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
   · exact Or.inl hroot
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hPhi := (SA.frameIn_of_callAt hr hz hc).1
-  obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ := unlocked_live_preimage hPhi (SA.locksWF_state hr hz i) hlock
+  obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ :=
+    unlocked_live_preimage hPhi (SA.locksWF_state hr hz i) hlock
   have hslot : sp.slot (tr.time i) = p := by
     rw [hti]
     exact SA.slot_of_mem sp p le_rfl (by
@@ -447,7 +448,7 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
   rcases ho with ⟨_, CV, hf | hop⟩ | ⟨_, hslow⟩
   · exact Or.inl ⟨CV, hf⟩
   · exact Or.inr (Or.inr ⟨CV, hop⟩)
-  · exact Or.inr (Or.inl (slowLockAt_of_lockBlock hr hx hslow))
+  · exact Or.inr (Or.inl hslow)
 
 /-- A warm actual proposal lock supplies exactly one of the three prefix
 mechanisms: the writer root, prior honest heads, or a boundary optimistic CV. -/

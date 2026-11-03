@@ -197,7 +197,8 @@ private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time
       have hp' : ∃ Y, (Y ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t Y) ∧
           Y.root = p.1 := by
         rcases hp with ⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩ <;> exact ⟨D, (deepest_mem hD).1.1, rfl⟩
-      obtain ⟨Y, hYt, hYr, hYC, hnc⟩ := hN {p} (fun q hq => (Set.mem_singleton_iff.1 hq) ▸ hp') p rfl
+      obtain ⟨Y, hYt, hYr, hYC, hnc⟩ :=
+        hN {p} (fun q hq => (Set.mem_singleton_iff.1 hq) ▸ hp') p rfl
       refine ⟨Y, hYt, hYr, L, hL, ?_⟩
       rcases (show Compatible Φ.tree Y L by by_contra h'; exact hnc ⟨L, hL, h'⟩) with hYL | hLY
       · exact hYL

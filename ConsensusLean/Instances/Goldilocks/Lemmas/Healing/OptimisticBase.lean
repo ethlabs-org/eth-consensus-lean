@@ -23,58 +23,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
-section LockBlock
-
-variable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (SA.Blk sp.n FGP)}
-  {T : SA.SATrace sp FGP ro'}
-
-/-- A deepest block of a set is the one `deepest` returns. -/
-private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n FGP} {S : Set (SA.Blk sp.n FGP)}
-    {D : SA.Blk sp.n FGP} (h : SA.IsDeepest Φ S D) : SA.deepest Φ S = some D := by
-  have hex : ∃ B, SA.IsDeepest Φ S B := ⟨D, h⟩
-  cases hd : SA.deepest Φ S with
-  | none =>
-    unfold SA.deepest at hd
-    simp only [hex, ↓reduceDIte, reduceCtorEq] at hd
-  | some D' =>
-    have h' := SA.deepest_mem hd
-    by_contra hne
-    have hne' : D' ≠ D := fun h => hne (congrArg some h)
-    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
-      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
-
-/-- **The lock block of an unvetoed update that is not its fast selection is its slow lock**: the
-slow branch of the lock-block rule (an unvetoed result `C`, `D` the deepest block of `C`'s path
-that passes the fast or the slow test, and `D` not the fast selection) is a `SlowLockAt`. `D` is
-not fast, so it is slow and the deepest slow block; no live lock vetoes it, because it is below
-the unvetoed `C`. (The slow branch of `SA.lock_selection_candidate_provenance`.) -/
-theorem slowLockAt_of_lockBlock (hr : ACLocalRun (SA.goldilocksSA sp FGP ro') H U T)
-    {x : Fin sp.n} (hx : x ∈ H) {a s : Nat} {D : SA.Blk sp.n FGP}
-    (h : ∃ ℓ' C, SA.UpdateAt T x a s ℓ' ∧
-      SA.getConfirmation sp (T.state x a) ℓ'.frame s = some C ∧
-      ¬ SA.conflictsWithLock sp (T.state x a).locks ℓ'.frame (T.time a) C ∧
-      SA.deepest ℓ'.frame {X | X ∈ SA.confirmationPath sp ℓ'.frame C ∧
-        (SA.FastTest sp (T.state x a) ℓ'.frame s X ∨
-          ∀ m : Int, (s : Int) - sp.k < m → m < s →
-            ∃ S ∈ ℓ'.frame.tree, (T.state x a).saved m = some S.root ∧ ℓ'.frame.Anc X S)} =
-        some D ∧
-      SA.fastSelect sp (T.state x a) ℓ'.frame s C ≠ some D) :
-    SA.SlowLockAt T x a s D := by
-  obtain ⟨ℓ', C, hu, hconf, hnv, hdeep, hne⟩ := h
-  have hΦ := (SA.frameIn_of_callAt hr hx hu.1).1
-  obtain ⟨⟨hDp, hDfs⟩, hmax⟩ := SA.deepest_mem hdeep
-  have hDs := hDfs.resolve_left fun hDf => hne (deepest_eq_of_isDeepest
-    ⟨⟨hDp, hDf⟩, fun X hX hXD => hmax X ⟨hX.1, Or.inl hX.2⟩ hXD⟩)
-  refine ⟨ℓ', C, hu, hconf, deepest_eq_of_isDeepest
-    ⟨⟨hDp, ?_, hDs⟩, fun X hX hXD => hmax X ⟨hX.1, Or.inr hX.2.2⟩ hXD⟩⟩
-  rintro ⟨K, hK, hDK⟩
-  refine hnv ⟨K, hK, fun hc => hDK ?_⟩
-  rcases hc with hc | hc
-  · exact Or.inl (hDp.2.2.trans hc)
-  · exact SA.anc_total hΦ.coherent hDp.2.2 hc
-
-end LockBlock
-
 /-- The optimistic base G(s+1,X), including below-floor X with a viable descendant Q.
 The actual write and its counted set are retained. Q is held at any honest early cut; its
 floor and J are the explicit FS′ values. Service/Catch ends at the next-slot horizon,
