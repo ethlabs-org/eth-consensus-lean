@@ -2658,8 +2658,9 @@ O.1 (node) & \texttt{Healing.PatternRecovery} & proved
   (\texttt{recovery\_statements}); the record quantifier of (b) differs
   (\S``O.1'')\\
 O.1 (target) & none & open research; not a premise of \texttt{Accepted}\\
-R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_statements}), at
-  the node catch-up $18\Delta$; the prefix row is the generic
+R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_safe}), at
+  the node catch-up $18\Delta$; stronger than R.1: agreement holds for any
+  two honest reads, ready or not, and monotonicity needs no time-$0$ window; the prefix row is the generic
   \texttt{Consensus.Good.\allowbreak sleepySafe\_prefix} (for every \texttt{Good}
   system: available and stable outputs, under \texttt{SyncUntil}~$b$ and
   \texttt{SleepyOn}~$[0,b]$; conclusion
@@ -2667,7 +2668,7 @@ R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_statements}), at
   contract, $19$ for \texttt{Accepted}),
   another statement\\
 R.2 & \texttt{Regimes.IncludeSleepy}, \texttt{Regimes.GrowSleepy} & proved
-  (\texttt{sleepy\_statements}); transaction liveness is generic, from
+  (\texttt{include\_sleepy}, \texttt{grow\_sleepy}); transaction liveness is generic, from
   \texttt{Accepted}\\
 R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
   \texttt{Outage*}, \texttt{Weak*} & retired, never proved;

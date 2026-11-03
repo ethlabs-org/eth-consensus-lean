@@ -482,7 +482,7 @@ theorem accepted_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
   · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (by omega)
     exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
 
-/-- R2 inclusion/growth, node sleepy_statements. NO PAPER PROOF yet pinned
+/-- R2 inclusion/growth, node include_sleepy/grow_sleepy. NO PAPER PROOF yet pinned
 for the exact recurrence/readiness/deadline transport; keep this gap explicit. -/
 theorem accepted_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ i : (K S A).Idx,

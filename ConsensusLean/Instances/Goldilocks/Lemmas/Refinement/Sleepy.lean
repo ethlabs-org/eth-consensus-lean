@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outputs
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Spec.Shape.Run
 
 public section

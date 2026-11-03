@@ -10,12 +10,12 @@ Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: re
 Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun`: `Sync[0, ∞)` and
 `f < h_t` at the slot points):
 
-* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`; uses A1.2–A1.4, A1.6, C1.1, F.4):
-  ready-reader safety of the confirmed output: the confirmed reads of two honest nodes ready at
-  their cuts are compatible, and a node's confirmed reads at two cuts where it is ready only
-  extend (`SleepySafe`). The prefix form `confirmed_safe_sleepy_prefix` has no node-level row:
-  it is the generic prefix result of a good protocol, which the family gets through its
-  acceptance.
+* **R.1** (`sleepySafe`, `confirmed_safe_sleepy`; uses A1.2–A1.4, A1.6, C1.1, F.4): safety of
+  the confirmed output: the confirmed reads of two honest nodes, at any cuts and times, are
+  compatible (the claims ask this of ready readers only), and a node's confirmed reads at two
+  read points between its events where it is ready only extend (`SleepySafe`). The prefix form
+  `confirmed_safe_sleepy_prefix` has no node-level row: it is the generic prefix result of a good
+  protocol, which the family gets through its acceptance.
 * **R.2** (`sleepyLive`, `includeSleepy`, `growSleepy`, `confirmed_txLive_sleepy`; uses A1.7,
   F.4): every honest proposal released at `τ` by a ready proposer is in every ready confirmed read
   from `τ + 6Δ` on (`IncludeSleepy`); and with one honest ready proposer in every window of `k`
@@ -84,28 +84,22 @@ def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (a b :
   ∀ s₀ : Nat, a < sp.ts s₀ → sp.ts (s₀ + k - 1 : Nat) ≤ b →
     ∃ s, s₀ ≤ s ∧ s < s₀ + k ∧ ReadyAt tr H c (proposer s) (sp.ts s)
 
-/-- Ready-reader safety of the confirmed output at the read points of times in `[t₀, t₁]` between
-the reader's events (`Boundary`):
-agreement of the reads of two ready nodes, and monotonicity of a node's reads between two read
-points where it is ready. -/
-def ReadySafeOn (c t₀ t₁ : Time) : Prop :=
-  (∀ y z i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr z j →
-    t₀ ≤ t → t ≤ t₁ → t₀ ≤ t' → t' ≤ t₁ → ReadyAt tr H c y t → ReadyAt tr H c z t' →
-    Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t')) ∧
-  ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
-    i ≤ j → t ≤ t' → t₀ ≤ t → t' ≤ t₁ → ReadyAt tr H c y t → ReadyAt tr H c y t' →
-    Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t')
-
 end Defs
 
-/-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** Under `Sleepy`, ready-reader safety of the
-confirmed output at every read point (catch-up `18Δ`; every bound `t₁`, i.e. on the whole run). -/
+/-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** Under `Sleepy`, safety of the confirmed
+output: agreement, any two confirmed reads of honest nodes (at any cuts and times) are compatible;
+and monotonicity, a node's reads at two read points between its events (`Boundary`), in cut order,
+where it is ready (catch-up `18Δ`), only extend. -/
 def SleepySafe : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
-    ∀ t₁, ReadySafeOn tr H (catchUp sp) 0 t₁
+    (∀ y ∈ H, ∀ z ∈ H, ∀ i j t t',
+      Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t')) ∧
+    ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
+      i ≤ j → ReadyAt tr H (catchUp sp) y t → ReadyAt tr H (catchUp sp) y t' →
+      Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t')
 
 /-- **R.2, `includeSleepy`.** Under `Sleepy`, every honest proposal released at `τ` by a proposer
 ready at `τ` is in the confirmed read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/
@@ -141,12 +135,6 @@ def GrowSleepy : Prop :=
             CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
             Anc (tr.HonestBlocks H) (readAfter tr x jx t)
               (readAfter tr y j (t + (4 * k + 6) * sp.Δ))
-
-/-- The sleepy rows of milestone Regimes (R.1, R.2). -/
-structure SleepyStatements : Prop where
-  sleepySafe : SleepySafe
-  includeSleepy : IncludeSleepy
-  growSleepy : GrowSleepy
 
 end Consensus.Goldilocks.Regimes
 

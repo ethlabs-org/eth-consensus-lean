@@ -756,7 +756,6 @@ example := ``Consensus.Goldilocks.Regimes.ReadySafeOn
 example := ``Consensus.Goldilocks.Regimes.SleepySafe
 example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.GrowSleepy
-example := ``Consensus.Goldilocks.Regimes.SleepyStatements
 example := ``Consensus.Goldilocks.RunTrace.SyncBefore
 
 /-! ## Goldilocks Refinement (a milestone PR appends here only) -/

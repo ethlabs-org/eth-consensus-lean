@@ -134,11 +134,9 @@ theorem tickRun_sleepySafe (t t' : Nat) :
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t') t')) := by
   obtain ⟨hrun, hnc, hsl, hi, hj, hbi, hbj, hy, hy'⟩ := sleepySafe_premises t t'
   have h := Regimes.sleepy_safe sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0) 1 hrun hnc
-    hsl (max t t')
-  refine ⟨h.1 v0 v0 _ _ _ _ hi hj hbi hbj (Int.natCast_nonneg _) (by simp)
-    (Int.natCast_nonneg _) (by simp) hy hy', fun htt => ?_⟩
-  exact h.2 v0 _ _ _ _ hi hj hbi hbj (by omega) (by exact_mod_cast htt) (Int.natCast_nonneg _)
-    (by simp) hy hy'
+    hsl
+  refine ⟨h.1 v0 (Set.mem_univ _) v0 (Set.mem_univ _) _ _ _ _, fun htt => ?_⟩
+  exact h.2 v0 _ _ _ _ hi hj hbi hbj (by omega) hy hy'
 
 /-- (b) **R.2 inclusion on the tick run** (`include_sleepy`): the own block of slot `s ≥ 1` is in
 the validator's read after every time `t ≥ t_s + 6Δ`. -/
