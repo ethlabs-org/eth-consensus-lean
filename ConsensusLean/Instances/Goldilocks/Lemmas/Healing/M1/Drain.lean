@@ -27,10 +27,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 report itself followed by all proposal heads from slot `u+3` onward.
 Both frame and service include the last update/ToFG endpoint. -/
 theorem FrameWindow.proposal_report_follow
-    {g ΔF b : Time} {s₀ s N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -54,9 +54,8 @@ theorem FrameWindow.proposal_report_follow
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
   have hsub {lo hi : Time} (hlo : sp.ts s₀ ≤ lo) (hhi : hi ≤ sp.ts N + 2 * sp.Δ) :
-      FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J :=
+      FrameWindow (tr := tr) (H := H) lo hi floor kindJ J :=
     ⟨fun w hw i hl hh => hframe.floor_eq w hw i (hlo.trans hl) (hh.trans hhi),
-     fun w hw i hl hh => hframe.contest_iff w hw i (hlo.trans hl) (hh.trans hhi),
      fun w hw i hl hh => hframe.kind_iff w hw i (hlo.trans hl) (hh.trans hhi),
      fun w hw i hl hh => hframe.root_eq w hw i (hlo.trans hl) (hh.trans hhi)⟩
   have hT : sp.ts (s + 2 : Nat) + 2 * sp.Δ ≤ sp.ts N + 2 * sp.Δ := by
@@ -154,10 +153,10 @@ theorem reset_of_high_report {g : Time}
 closed update deadline. The height is measured at any honest cut holding P,
 then transported to the actual reporter's store by collision freedom. -/
 theorem FrameWindow.reset_of_high_proposal
-    {g ΔF b : Time} {s₀ s N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -274,9 +273,9 @@ theorem row_of_report_of_floor
 /-- A shared source entry transports to each actual report extending that
 source. The caller's floor is inherited by ancestry, not candidate viability. -/
 theorem FrameWindow.row_of_report_of_source
-    {lo hi : Time} {floor : Nat} {contest kindJ : Prop}
+    {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J P R E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {c i : Nat} {h : Nat}
@@ -304,10 +303,10 @@ theorem FrameWindow.row_of_report_of_source
 /-- An actual equal-height report above a warm proposal satisfies O1-L by the
 frame floor, with no additional lock premise. -/
 theorem FrameWindow.report_kind_of_warm
-    {g ΔF b : Time} {s₀ u N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -343,9 +342,8 @@ theorem FrameWindow.report_kind_of_warm
       change ((u : Nat) : Int) ≤ sp.slot (tr.time c)
       rw [hslot]))
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts u + sp.Δ)
-      floor contest kindJ J :=
+      floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith),
-      fun y hy i hlo hhi => hframe.contest_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith) hc⟩
   have hvP := (hsub.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr

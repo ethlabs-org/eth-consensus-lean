@@ -402,13 +402,12 @@ theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr)
   rw [hst hy, hst hz] at h
   exact h hX hF hXF.symm hW hstrict
 
-/-- Equal frame floors, contest status and root kind suffice for cross-node finality
+/-- Equal frame floors and root kind suffice for cross-node finality
 ancestry of an actual viable head. J roots agree only in the J-root case. -/
 theorem finalized_below_viable_head (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
     (hfloor : (tr.state y i).fg.headHeightFloor = (tr.state z m).fg.headHeightFloor)
-    (_hcontest : (tr.state y i).fg.Contest ↔ (tr.state z m).fg.Contest)
     (hkind : ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
         ¬(tr.state y i).fg.Contest) ↔
       ((tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 ∧ ¬(tr.state z m).fg.Contest))

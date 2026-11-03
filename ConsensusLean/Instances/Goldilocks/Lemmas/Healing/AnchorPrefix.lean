@@ -132,8 +132,8 @@ theorem unlocked_live_preimage {Phi : SA.Frm sp.n (List (FG.Att sp.n))}
 /-- The below-write-root optimistic branch stays below the writer's current
 root, even after unlock and viableAncestor. This is not a cross-node root bound. -/
 theorem FrameWindow.unlocked_image_below_write_root {lo hi : Time} {floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     {ellw ell : ACLabel (goldilocksNode sp ro)}
@@ -156,10 +156,10 @@ theorem FrameWindow.unlocked_image_below_write_root {lo hi : Time} {floor : Nat}
 optimistic prefix. The receiver-root split is explicit; this branch is used
 only when the receiver's finalized root is below the target. -/
 theorem FrameWindow.optimistic_prefix_of_early_witness {s floor : Nat}
-    {contest kindJ : Prop} {J B Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J B Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -228,10 +228,10 @@ theorem FrameWindow.optimistic_prefix_of_early_witness {s floor : Nat}
 /-- Older-lock dominance supplies a finite voter prefix. The prior heads
 extend the lock image, not the proposal parent; actual delivery is derived. -/
 theorem FrameWindow.honest_prefix_before {s floor : Nat}
-    {contest kindJ : Prop} {J B Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J B Q : SA.Blk sp.n (List (FG.Att sp.n))}
     {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -369,9 +369,9 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr)
 needs a prefix supplier. A deeper voter anchor is already on the proposal
 path, unless it equals P, where the slot bound stops it. -/
 theorem FrameWindow.vote_head_eq_of_start_prefix {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))} {g b : Time}
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))} {g b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
@@ -446,8 +446,8 @@ theorem FrameWindow.vote_head_eq_of_start_prefix {s₀ s floor : Nat}
 /-- A voter below another honest fcRoot reaches it. In kind J the roots
 agree; otherwise V forces the prefix to the other finalized block. -/
 theorem FrameWindow.fcRoot_anc_head_at_cast {lo hi : Time} {floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {z y : Fin sp.n} (hz : z ∈ H) (hy : y ∈ H) {c i : Nat}
@@ -615,9 +615,9 @@ theorem live_lock_selection_origin (hrun : GoldilocksRun proposer dg H tr)
 /-- A warm actual proposal lock supplies exactly one of the three prefix
 mechanisms: the writer root, prior honest heads, or a boundary optimistic CV. -/
 theorem FrameWindow.proposal_lock_prefix_cases {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J X B : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    {kindJ : Prop} {J X B : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -700,9 +700,8 @@ theorem FrameWindow.proposal_lock_prefix_cases {s₀ s floor : Nat}
     rwa [show (tr.state z a).fg.fcRoot = (tr.state z a).fg.J from ite_eq_left hkind,
       hframe.root_eq z hz a halo ((hrun.time_mono hai.le).trans hi) hk] at hroot
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts l.slot)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
     ⟨fun y hy j hlo hhi => hframe.floor_eq y hy j (hts.trans hlo) hhi,
-     fun y hy j hlo hhi => hframe.contest_iff y hy j (hts.trans hlo) hhi,
      fun y hy j hlo hhi => hframe.kind_iff y hy j (hts.trans hlo) hhi,
      fun y hy j hlo hhi => hframe.root_eq y hy j (hts.trans hlo) hhi⟩
   have hall := (optimistic_later_heads_of_witness hrun hnc hsvc hawake hf hcatch hnr
@@ -717,9 +716,9 @@ theorem FrameWindow.proposal_lock_prefix_cases {s₀ s floor : Nat}
 three origin cases use distinct suppliers; no honest heads above the
 proposal parent, settled phase, or head-equality premise is used. -/
 theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -814,9 +813,9 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
 has exactly its root. Current-slot optimistic residues use only strictly
 earlier actual casts in the global-cut induction. -/
 theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J)
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -872,9 +871,9 @@ theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
 /-- Finite L1.5(ii): iterate U through the last used vote slot. The source
 floor and kind-J ancestry are explicit, with no whole-run frame premise. -/
 theorem FrameWindow.vote_extends_through {u last floor : Nat}
-    {contest kindJ : Prop} {J X : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    {kindJ : Prop} {J X : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts u) (sp.ts last + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -895,9 +894,8 @@ theorem FrameWindow.vote_extends_through {u last floor : Nat}
     have ht : sp.ts u ≤ sp.ts m := (SA.ts_le_iff sp).2 (by omega)
     have ht' : sp.ts (m + 1 : Nat) ≤ sp.ts last := (SA.ts_le_iff sp).2 (by omega)
     have hsub : FrameWindow (tr := tr) (H := H) (sp.ts m)
-        (sp.ts (m + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+        (sp.ts (m + 1 : Nat) + sp.Δ) floor kindJ J :=
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (ht.trans hlo) (by linarith),
-        fun y hy i hlo hhi => hframe.contest_iff y hy i (ht.trans hlo) (by linarith),
         fun y hy i hlo hhi => hframe.kind_iff y hy i (ht.trans hlo) (by linarith),
         fun y hy i hlo hhi hk => hframe.root_eq y hy i (ht.trans hlo) (by linarith) hk⟩
     exact unanimous_next_votes hrun hnc hsvc hawake hf hcatch hnr (by linarith)
@@ -907,9 +905,9 @@ theorem FrameWindow.vote_extends_through {u last floor : Nat}
 batch and floor-viable source. Vote ancestry starts in its own slot, while
 proposal-head ancestry starts only in the next slot. -/
 theorem FrameWindow.proposal_later_heads {s₀ s last floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts last + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -932,9 +930,8 @@ theorem FrameWindow.proposal_later_heads {s₀ s last floor : Nat}
   have hts : sp.ts s₀ ≤ sp.ts (s + 1 : Nat) := (SA.ts_le_iff sp).2 (by omega)
   have htl : sp.ts (s + 1 : Nat) ≤ sp.ts last := (SA.ts_le_iff sp).2 (by omega)
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
-      (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+      (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith),
-      fun y hy i hlo hhi => hframe.contest_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith) hc⟩
   have hun := hsub.honest_vote_heads_eq hrun hnc hsvc hawake hf hcatch hnr hm hk
@@ -966,9 +963,8 @@ theorem FrameWindow.proposal_later_heads {s₀ s last floor : Nat}
     rw [heq, hframe.root_eq z hz c hlo (by linarith) hj] at ha
     exact ha
   have htail : FrameWindow (tr := tr) (H := H) (sp.ts (s + 1 : Nat))
-      (sp.ts last + sp.Δ) floor contest kindJ J :=
+      (sp.ts last + sp.Δ) floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (hts.trans hlo) hhi,
-      fun y hy i hlo hhi => hframe.contest_iff y hy i (hts.trans hlo) hhi,
       fun y hy i hlo hhi => hframe.kind_iff y hy i (hts.trans hlo) hhi,
       fun y hy i hlo hhi hj => hframe.root_eq y hy i (hts.trans hlo) hhi hj⟩
   have hG := fun {r} (hur : s + 1 ≤ r) (hrl : r ≤ last) =>
@@ -981,9 +977,8 @@ theorem FrameWindow.proposal_later_heads {s₀ s last floor : Nat}
   have htr : sp.ts (s + 1 : Nat) ≤ sp.ts r := (SA.ts_le_iff sp).2 (by omega)
   have htrl : sp.ts (r + 1 : Nat) ≤ sp.ts last := (SA.ts_le_iff sp).2 (by omega)
   have hstep : FrameWindow (tr := tr) (H := H) (sp.ts r)
-      (sp.ts (r + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+      (sp.ts (r + 1 : Nat) + sp.Δ) floor kindJ J :=
     ⟨fun y hy i hlo hhi => htail.floor_eq y hy i (htr.trans hlo) (by linarith),
-      fun y hy i hlo hhi => htail.contest_iff y hy i (htr.trans hlo) (by linarith),
       fun y hy i hlo hhi => htail.kind_iff y hy i (htr.trans hlo) (by linarith),
       fun y hy i hlo hhi hj => htail.root_eq y hy i (htr.trans hlo) (by linarith) hj⟩
   exact unanimous_next_proposal hrun hnc hsvc hawake hf hcatch hnr (by linarith)
@@ -1105,8 +1100,8 @@ theorem toFG_fast_origin_between (hrun : GoldilocksRun proposer dg H tr)
 /-- Any honest FS′ root is below the head of an actual proposal read in
 the same window. Kind J uses the common J; F/Contest uses finality geometry. -/
 theorem FrameWindow.fcRoot_anc_proposal_head {lo hi : Time} {floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c s : Nat}
@@ -1140,10 +1135,10 @@ theorem FrameWindow.fcRoot_anc_proposal_head {lo hi : Time} {floor : Nat}
 than assuming that the raw selected block is viable. This accepts exactly the
 root-or-witness alternative of a live-lock write origin. -/
 theorem FrameWindow.optimistic_write_later_proposal_head
-    {g ΔF b : Time} {s₀ j N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ j N floor : Nat} {kindJ : Prop}
     {J R A D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -1186,9 +1181,8 @@ theorem FrameWindow.optimistic_write_later_proposal_head
       (by rw [hti]; exact hts (by omega))
       (by rw [hti]; have := hts hrN; linarith [sp.toParams.hΔ]) hc hcall hti hd
   · have hsub : FrameWindow (tr := tr) (H := H) (sp.ts j) (sp.ts N + sp.Δ)
-        floor contest kindJ J :=
+        floor kindJ J :=
       ⟨fun x hx i hlo hhi => hframe.floor_eq x hx i ((hts hj).trans hlo) hhi,
-       fun x hx i hlo hhi => hframe.contest_iff x hx i ((hts hj).trans hlo) hhi,
        fun x hx i hlo hhi => hframe.kind_iff x hx i ((hts hj).trans hlo) hhi,
        fun x hx i hlo hhi => hframe.root_eq x hx i ((hts hj).trans hlo) hhi⟩
     exact hRA.trans ((optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf
@@ -1198,10 +1192,10 @@ theorem FrameWindow.optimistic_write_later_proposal_head
 /-- D8c at the actual report, including a report made before the current
 read. Its own fast-write origin supplies the regular or optimistic route. -/
 theorem FrameWindow.toFG_later_proposal_head
-    {g ΔF b : Time} {s₀ u N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)

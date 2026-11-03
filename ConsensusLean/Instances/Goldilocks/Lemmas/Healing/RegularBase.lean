@@ -30,9 +30,9 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     {s floor : Nat} (hm : gbar g ≤ sp.ts s)
     (hslow : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
-    {contest kindJ : Prop} {J Q D C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J Q D C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts s + 6 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
     (hsl : SA.SlowLockAt tr.projAC x c s D)
     (hres : SA.ResultAt tr.projAC x c s C
@@ -139,9 +139,9 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
 supporter branches. The warm-window margin supplies saved-slot post-GST service;
 no separate slow margin is assumed. -/
 theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts s + 6 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -240,8 +240,6 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
         (by linarith [sp.toParams.hΔ]) hslow hmb
         ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i
             (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
-         fun y hy i hlo hhi => hframe.contest_iff y hy i
-            (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
          fun y hy i hlo hhi => hframe.kind_iff y hy i
             (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
          fun y hy i hlo hhi => hframe.root_eq y hy i
@@ -258,9 +256,8 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
-        (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+        (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith [sp.toParams.hΔ]),
-       fun y hy i hlo hhi => hframe.contest_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
        fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
        fun y hy i hlo hhi => hframe.root_eq y hy i hlo (by linarith [sp.toParams.hΔ])⟩
     have hheads := (hnext.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr
@@ -280,9 +277,9 @@ theorem regular_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g)) {s N floor : Nat}
     (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
-    {contest kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     {w : Fin sp.n} (hw : w ∈ H) {a : Nat}
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
@@ -328,10 +325,8 @@ theorem regular_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H
     have hms := hts hsm
     have hwarm : gbar g + 4 * sp.Δ ≤ sp.ts m := by rw [hstep] at hms; linarith
     have hwin : FrameWindow (tr := tr) (H := H) (sp.ts m)
-        (sp.ts (m + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+        (sp.ts (m + 1 : Nat) + sp.Δ) floor kindJ J :=
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i ((hts (by omega)).trans hlo)
-          (hhi.trans (by linarith)),
-       fun y hy i hlo hhi => hframe.contest_iff y hy i ((hts (by omega)).trans hlo)
           (hhi.trans (by linarith)),
        fun y hy i hlo hhi => hframe.kind_iff y hy i ((hts (by omega)).trans hlo)
           (hhi.trans (by linarith)),
@@ -404,9 +399,9 @@ theorem regular_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H
 Votes start at s+1 and proposals at s+2. The early viable supporter, not a
 write-tick witness with an unproved strict timestamp, supplies every U-W step. -/
 theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
-    {contest kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -432,9 +427,8 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
   have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hsub {lo hi : Time} (hl : sp.ts s₀ ≤ lo) (hh' : hi ≤ sp.ts N + sp.Δ) :
-      FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J :=
+      FrameWindow (tr := tr) (H := H) lo hi floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (hl.trans hlo) (hhi.trans hh'),
-     fun y hy i hlo hhi => hframe.contest_iff y hy i (hl.trans hlo) (hhi.trans hh'),
      fun y hy i hlo hhi => hframe.kind_iff y hy i (hl.trans hlo) (hhi.trans hh'),
      fun y hy i hlo hhi => hframe.root_eq y hy i (hl.trans hlo) (hhi.trans hh')⟩
   have h6 : sp.ts s + 6 * sp.Δ ≤ sp.ts N + sp.Δ := by
@@ -568,9 +562,9 @@ supplies the selected raw block, its candidate and the actual regular/optimistic
 origin together. Only current-label optimistic writes remain for Step 6; this
 does not assert head=P (Step 5), causal closure (Step 6), DESC or drain. -/
 theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -687,9 +681,8 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
     rwa [show (tr.state y a).fg.fcRoot = (tr.state y a).fg.J from ite_eq_left hkind,
       hframe.root_eq y hy a halo ((hrun.time_mono hai.le).trans hhigh) hk'] at hrootA
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts l.slot) (sp.ts p + sp.Δ)
-      floor contest kindJ J :=
+      floor kindJ J :=
     ⟨fun w hw j hlo hhi => hframe.floor_eq w hw j (hts.trans hlo) hhi,
-     fun w hw j hlo hhi => hframe.contest_iff w hw j (hts.trans hlo) hhi,
      fun w hw j hlo hhi => hframe.kind_iff w hw j (hts.trans hlo) hhi,
      fun w hw j hlo hhi => hframe.root_eq w hw j (hts.trans hlo) hhi⟩
   have hAP := (optimistic_later_heads_of_witness hrun hnc hsvc hawake hf hcatch hnr
@@ -701,9 +694,9 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
 regular passage is unconditional; only its exact current-label alternative
 uses causal minimality. This is the input to Step 5, not head equality itself. -/
 theorem FrameWindow.read_locks_below_of_earlier_heads {s₀ p floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -855,8 +848,8 @@ theorem proposal_views_agree_before
 receiver's frame. This uses the common floor and kind-J root, not a settled
 phase or equality of the frames. -/
 theorem FrameWindow.viableHead_transfer {lo hi : Time} {floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i c : Nat}
@@ -934,9 +927,9 @@ theorem proposal_parent_viable_full_frame
 the proposer's full viable tree above the proposer root. The frozen arm uses
 relay/Catch; the proposal arm uses the actual viable proposal parent. -/
 theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
@@ -1059,9 +1052,9 @@ theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr)
 Finite view equality and reflected competitors replace the settled-phase
 supplier. The path and frozen proposal are the Step 5 consumer geometry. -/
 theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
@@ -1175,9 +1168,9 @@ theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
 and stops. Old competitors reflect to the stopped proposal walk, with the
 same scores; no prior unanimity above the parent is assumed. -/
 theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
@@ -1270,9 +1263,9 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
 suffix and stop obligations are discharged from finite FS′ data; reaching
 the path is the remaining anchor-prefix obligation, not a head-equality premise. -/
 theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hS : SA.HealthyBaseUpTo tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
@@ -1361,9 +1354,9 @@ theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
 Stored lock images use regular/optimistic passage; current-slot images use
 read-point provenance, never post-cast self-admission. -/
 theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -1411,8 +1404,8 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
 that tip. FS′ supplies the floor for every viable head; the witness is in
 the actual frozen domain. This is the unequal-root prefix, without scores. -/
 theorem FrameWindow.finalized_anc_head_at_cast {lo hi : Time} {floor : Nat}
-    {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {z y : Fin sp.n} (hz : z ∈ H) (hy : y ∈ H) {c i : Nat}

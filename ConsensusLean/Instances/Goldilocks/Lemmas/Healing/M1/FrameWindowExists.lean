@@ -170,24 +170,21 @@ theorem frameWindow_of_frameKey_eq (hrun : GoldilocksRun proposer dg H tr)
     {lo hi : Time}
     (hK : ∀ y ∈ H, ∀ z ∈ H, ∀ i m, lo ≤ tr.time i → tr.time i ≤ hi → lo ≤ tr.time m →
       tr.time m ≤ hi → frameKey (tr.state y i).fg = frameKey (tr.state z m).fg) :
-    ∃ floor contest kindJ J, FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J := by
+    ∃ floor kindJ J, FrameWindow (tr := tr) (H := H) lo hi floor kindJ J := by
   classical
   by_cases hex : ∃ y ∈ H, ∃ i, lo ≤ tr.time i ∧ tr.time i ≤ hi
   · obtain ⟨y₀, hy₀, i₀, h₁, h₂⟩ := hex
     let st := (tr.state y₀ i₀).fg
-    refine ⟨st.headHeightFloor, st.Contest, st.hmax = st.hj + 1 ∧ ¬st.Contest, st.J,
-      ⟨?_, ?_, ?_, ?_⟩⟩
+    refine ⟨st.headHeightFloor, st.hmax = st.hj + 1 ∧ ¬st.Contest, st.J, ⟨?_, ?_, ?_⟩⟩
     · intro y hy i hlo hhi
       exact frameKey_eq_floor (hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂)
-    · intro y hy i hlo hhi
-      exact frameKey_eq_contest (hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂)
     · intro y hy i hlo hhi
       exact frameKey_eq_kind (hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂)
     · intro y hy i hlo hhi hk
       have he := hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂
       exact frameKey_eq_J hrun hnc hf hy hy₀ he ((frameKey_eq_kind he).2 hk).1
   · push Not at hex
-    refine ⟨0, True, True, sp.toParams.genesisBlock ([], []), ⟨?_, ?_, ?_, ?_⟩⟩ <;>
+    refine ⟨0, True, sp.toParams.genesisBlock ([], []), ⟨?_, ?_, ?_⟩⟩ <;>
       intro y hy i hlo hhi <;> exact absurd hhi (not_le.2 (hex y hy i hlo))
 
 /-- **O2 + pigeonhole → ∃ FrameWindow (B2/B3).** Premises: per-node range `HZ ≤ h_max ≤ HZ + 1`
@@ -204,8 +201,8 @@ theorem exists_frameWindow (hrun : GoldilocksRun proposer dg H tr)
         frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg)
     (hT : lo + 6 * (len + Δ) < T) :
     ∃ a, lo + Δ ≤ a ∧ a + len ≤ lo + 6 * (len + Δ) ∧
-      ∃ floor contest kindJ J,
-        FrameWindow (tr := tr) (H := H) a (a + len) floor contest kindJ J := by
+      ∃ floor kindJ J,
+        FrameWindow (tr := tr) (H := H) a (a + len) floor kindJ J := by
   obtain ⟨a, h1, h2, hK⟩ := exists_const_window H tr.time
     (fun y i => frameKey (tr.state y i).fg) (3 * HZ) hlen hΔ
     (fun y hy i h1 h2 => by
@@ -230,39 +227,19 @@ theorem exists_frameWindow_of_service (hrun : GoldilocksRun proposer dg H tr)
       ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hT : lo + 6 * (len + lam) < T) :
     ∃ a, lo + lam ≤ a ∧ a + len ≤ lo + 6 * (len + lam) ∧
-      ∃ floor contest kindJ J,
-        FrameWindow (tr := tr) (H := H) a (a + len) floor contest kindJ J :=
+      ∃ floor kindJ J,
+        FrameWindow (tr := tr) (H := H) a (a + len) floor kindJ J :=
   exists_frameWindow hrun hnc hf hlen hlam hrange
     (fun x hx z hz i m hi _ him hmT => frameKey_lag hrun hnc hf hsvc hcatch hx hz
       (hcall z hz i m hi him hmT) (by linarith)) hT
 
-/-- Frame data on a finite interval without the contest flag: floor, root kind and, in kind J,
-`Σ.J` are constant. In a contest at `h` and a gap at `h + 1` the frame is the same (floor `h`,
-root `Σ.F`), so the flag and `h_max` may change inside the window. -/
-structure FrameWindowF (lo hi : Time) (floor : Nat) (kindJ : Prop)
-    (J : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
-  floor_eq : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i ≤ hi →
-    (tr.state y i).fg.headHeightFloor = floor
-  kind_iff : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i ≤ hi →
-    (((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-      ¬(tr.state y i).fg.Contest) ↔ kindJ)
-  root_eq : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i ≤ hi → kindJ →
-    (tr.state y i).fg.J = J
-
-/-- A `FrameWindow` forgets its contest flag. -/
-theorem FrameWindow.toF {lo hi : Time} {floor : Nat} {contest kindJ : Prop}
-    {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J) :
-    FrameWindowF (tr := tr) (H := H) lo hi floor kindJ J :=
-  ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩
-
-/-- A merged key that is constant over the honest cuts of `[lo, hi]` gives a `FrameWindowF`. -/
-theorem frameWindowF_of_frameKey'_eq (hrun : GoldilocksRun proposer dg H tr)
+/-- A merged key that is constant over the honest cuts of `[lo, hi]` gives a `FrameWindow`. -/
+theorem frameWindow_of_frameKey'_eq (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {lo hi : Time}
     (hK : ∀ y ∈ H, ∀ z ∈ H, ∀ i m, lo ≤ tr.time i → tr.time i ≤ hi → lo ≤ tr.time m →
       tr.time m ≤ hi → frameKey' (tr.state y i).fg = frameKey' (tr.state z m).fg) :
-    ∃ floor kindJ J, FrameWindowF (tr := tr) (H := H) lo hi floor kindJ J := by
+    ∃ floor kindJ J, FrameWindow (tr := tr) (H := H) lo hi floor kindJ J := by
   classical
   have hpos : ∀ y ∈ H, ∀ i, 1 ≤ (tr.state y i).fg.hmax := fun y hy i => by
     have := hj_lt_hmax hrun hy i
@@ -285,9 +262,9 @@ theorem frameWindowF_of_frameKey'_eq (hrun : GoldilocksRun proposer dg H tr)
     refine ⟨0, True, sp.toParams.genesisBlock ([], []), ⟨?_, ?_, ?_⟩⟩ <;>
       intro y hy i hlo hhi <;> exact absurd hhi (not_le.2 (hex y hy i hlo))
 
-/-- **O2′ + 5-window pigeonhole → ∃ FrameWindowF.** `exists_frameWindow` on the merged key
+/-- **O2′ + 5-window pigeonhole → ∃ FrameWindow.** `exists_frameWindow` on the merged key
 `frameKey'` (5 values on `HZ ≤ h_max ≤ HZ + 1`): the window is `a + len ≤ lo + 5(len + Δ)`. -/
-theorem exists_frameWindowF5 (hrun : GoldilocksRun proposer dg H tr)
+theorem exists_frameWindow5 (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {lo len Δ T : Time} {HZ : Nat} (hlen : 0 ≤ len) (hΔ : 0 ≤ Δ)
     (hrange : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i < T →
@@ -297,17 +274,17 @@ theorem exists_frameWindowF5 (hrun : GoldilocksRun proposer dg H tr)
         frameKey' (tr.state x i).fg ≤ frameKey' (tr.state z m).fg)
     (hT : lo + 5 * (len + Δ) < T) :
     ∃ a, lo + Δ ≤ a ∧ a + len ≤ lo + 5 * (len + Δ) ∧
-      ∃ floor kindJ J, FrameWindowF (tr := tr) (H := H) a (a + len) floor kindJ J := by
+      ∃ floor kindJ J, FrameWindow (tr := tr) (H := H) a (a + len) floor kindJ J := by
   obtain ⟨a, h1, h2, hK⟩ := exists_const_window5 H tr.time
     (fun y i => frameKey' (tr.state y i).fg) (2 * HZ) hlen hΔ
     (fun y hy i h1 h2 => by
       have := hrange y hy i h1 h2
       exact frameKey'_bounds this.1 this.2)
     hlag hT
-  exact ⟨a, h1, h2, frameWindowF_of_frameKey'_eq hrun hnc hf hK⟩
+  exact ⟨a, h1, h2, frameWindow_of_frameKey'_eq hrun hnc hf hK⟩
 
-/-- `exists_frameWindowF5` with the lag discharged by `frameKey'_lag`. -/
-theorem exists_frameWindowF5_of_service (hrun : GoldilocksRun proposer dg H tr)
+/-- `exists_frameWindow5` with the lag discharged by `frameKey'_lag`. -/
+theorem exists_frameWindow5_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {g ΔF b κ : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
     {lo len lam T : Time} {HZ : Nat} (hlen : 0 ≤ len) (hlam : 0 ≤ lam)
@@ -318,8 +295,8 @@ theorem exists_frameWindowF5_of_service (hrun : GoldilocksRun proposer dg H tr)
       ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hT : lo + 5 * (len + lam) < T) :
     ∃ a, lo + lam ≤ a ∧ a + len ≤ lo + 5 * (len + lam) ∧
-      ∃ floor kindJ J, FrameWindowF (tr := tr) (H := H) a (a + len) floor kindJ J :=
-  exists_frameWindowF5 hrun hnc hf hlen hlam hrange
+      ∃ floor kindJ J, FrameWindow (tr := tr) (H := H) a (a + len) floor kindJ J :=
+  exists_frameWindow5 hrun hnc hf hlen hlam hrange
     (fun x hx z hz i m hi _ him hmT => frameKey'_lag hrun hnc hf hsvc hcatch hx hz
       (hcall z hz i m hi him hmT) (by linarith)) hT
 

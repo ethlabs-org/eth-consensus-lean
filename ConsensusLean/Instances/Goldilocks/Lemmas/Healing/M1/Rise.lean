@@ -242,10 +242,10 @@ come from the actual reports of `proposal_report_follow`; at each report of the 
 `P`, `report_kind_of_warm` derives O1-L from the frame floor. This strengthens the interface
 by removing the redundant lock premise, without changing the conclusion. -/
 theorem FrameWindow.round_of_warm
-    {g ΔF b T : Time} {s₀ u x N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -313,10 +313,10 @@ at height `≥ HZ − 1`, with the honest-proposer gap `G` (GP: every slot windo
 a reset by `t_{u+2ρ+1} + 2Δ`. The O1-L lock clause is derived inside each round, so no
 additional lock premise is required (the interface strengthening of variant B). -/
 theorem FrameWindow.rise_reset
-    {g ΔF b : Time} {s₀ u N G floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ u N G floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)

@@ -33,9 +33,9 @@ theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s floor : Nat} (hm : gbar g ≤ sp.ts s)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
-    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocks H) X D)
@@ -188,9 +188,9 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s floor : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
-    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts (s + 1 : Nat))
-      floor contest kindJ J)
+      floor kindJ J)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocks H) X D)
@@ -300,9 +300,9 @@ theorem optimistic_later_heads_of_early_witness (hrun : GoldilocksRun proposer d
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g)) {s N floor : Nat}
     (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
-    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocks H) X D)
@@ -339,9 +339,8 @@ theorem optimistic_later_heads_of_early_witness (hrun : GoldilocksRun proposer d
   have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hsub {lo hi : Time} (hl : sp.ts s ≤ lo) (hh' : hi ≤ sp.ts N + sp.Δ) :
-      FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J :=
+      FrameWindow (tr := tr) (H := H) lo hi floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (hl.trans hlo) (hhi.trans hh'),
-      fun y hy i hlo hhi => hframe.contest_iff y hy i (hl.trans hlo) (hhi.trans hh'),
       fun y hy i hlo hhi => hframe.kind_iff y hy i (hl.trans hlo) (hhi.trans hh'),
       fun y hy i hlo hhi => hframe.root_eq y hy i (hl.trans hlo) (hhi.trans hh')⟩
   intro r hrlo
@@ -437,9 +436,9 @@ theorem optimistic_later_heads_of_witness (hrun : GoldilocksRun proposer dg H tr
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g)) {s N floor : Nat}
     (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
-    {contest kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocks H) X D)
@@ -494,9 +493,9 @@ private theorem proposal_root_viable (hrun : GoldilocksRun proposer dg H tr)
 is produced at the actual supporter vote, not assumed at its optimistic write.
 The regular count/saved-result branches and Steps 5–6 remain separate. -/
 theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
-    {contest kindJ : Prop} {J L D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J L D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -572,9 +571,8 @@ theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
     rw [he, hframe.root_eq x hx i (hts.trans hlo) (by linarith) hk] at hroot'
     exact hroot'
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
-      floor contest kindJ J :=
+      floor kindJ J :=
     ⟨fun y hy j hl hh => hframe.floor_eq y hy j (hts.trans hl) hh,
-      fun y hy j hl hh => hframe.contest_iff y hy j (hts.trans hl) hh,
       fun y hy j hl hh => hframe.kind_iff y hy j (hts.trans hl) hh,
       fun y hy j hl hh => hframe.root_eq y hy j (hts.trans hl) hh⟩
   exact optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
@@ -587,9 +585,9 @@ proposal arm of voterBlockTree needs no frozen stamp. This is Step 4, not vote
 agreement (Step 5) or current-slot optimistic induction (Step 6).
 The archived repair_h6_frame uses phase/RX-ing store frames, not read points. -/
 theorem FrameWindow.proposal_viable_at_cast {s₀ p floor : Nat}
-    {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -693,9 +691,9 @@ theorem regular_fast_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     (hnr : NoRestartAfter tr H (gbar g))
     {s floor : Nat} (hm : gbar g ≤ sp.ts s)
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
-    {contest kindJ : Prop} {J X Q D C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q D C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts s + 6 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat} {CV : Set (SA.Vote sp.n)}
     (hfast : SA.FastUpdateAt tr.projAC x c s D CV)
     (hres : SA.ResultAt tr.projAC x c s C
@@ -825,9 +823,9 @@ supporter; OW's viable, common-J and optimistic-stuck cases are all discharged.
 No supporter viability or write-time witness is assumed. This is the next-vote
 base only, not slow BASE, later-label MI-reg, Step 5/6 or drain. -/
 theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
-    {contest kindJ : Prop} {J X D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts s + 6 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -922,8 +920,6 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
         (by linarith [sp.toParams.hΔ]) hmb
         ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i
             (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
-         fun y hy i hlo hhi => hframe.contest_iff y hy i
-            (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
          fun y hy i hlo hhi => hframe.kind_iff y hy i
             (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
          fun y hy i hlo hhi => hframe.root_eq y hy i
@@ -940,9 +936,8 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
-        (sp.ts (s + 1 : Nat) + sp.Δ) floor contest kindJ J :=
+        (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith [sp.toParams.hΔ]),
-       fun y hy i hlo hhi => hframe.contest_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
        fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
        fun y hy i hlo hhi => hframe.root_eq y hy i hlo (by linarith [sp.toParams.hΔ])⟩
     have hheads := (hnext.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr

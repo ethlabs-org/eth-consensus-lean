@@ -30,10 +30,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 least `HZ − 1`. The snapshot call is obtained at the actual cast, not at the
 proposal's post-state; immutable held-block state then transports the height. -/
 theorem FrameWindow.warm_proposal_height
-    {g ΔF b : Time} {s₀ u N floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -62,9 +62,8 @@ theorem FrameWindow.warm_proposal_height
       rw [hslot])
   have hlo : sp.ts s₀ ≤ tr.time c := hsu.trans huc
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts u + sp.Δ)
-      floor contest kindJ J :=
+      floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith),
-      fun y hy i hlo hhi => hframe.contest_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith) hc⟩
   have hvP := (hsub.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
@@ -95,10 +94,10 @@ theorem FrameWindow.warm_proposal_height
 than the frame alone, discharges its height requirement. The gap need only hold
 on the indicated slot window, so an HPQ caller can keep its endpoint before heal. -/
 theorem FrameWindow.exists_warm_proposal
-    {g ΔF b : Time} {s₀ N G floor : Nat} {contest kindJ : Prop}
+    {g ΔF b : Time} {s₀ N G floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
-      floor contest kindJ J)
+      floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)

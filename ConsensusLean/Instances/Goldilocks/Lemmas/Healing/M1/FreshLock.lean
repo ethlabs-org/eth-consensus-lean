@@ -384,9 +384,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- FS′ carries the actual honest proposal from a joined slot vote to every later
 call through the closed update endpoint. -/
 theorem FrameWindow.proposal_viable_after_votes
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -411,9 +411,8 @@ theorem FrameWindow.proposal_viable_after_votes
     rw [hts]; linarith
   have hub := hshortT.trans hTb
   have hshort : FrameWindow (tr := tr) (H := H) (sp.ts u) (sp.ts u + sp.Δ)
-      floor contest kindJ J :=
+      floor kindJ J :=
     ⟨fun x hx i hlo hhi => hframe.floor_eq x hx i hlo (hhi.trans hshortT),
-      fun x hx i hlo hhi => hframe.contest_iff x hx i hlo (hhi.trans hshortT),
       fun x hx i hlo hhi => hframe.kind_iff x hx i hlo (hhi.trans hshortT),
       fun x hx i hlo hhi => hframe.root_eq x hx i hlo (hhi.trans hshortT)⟩
   obtain ⟨q, e, ⟨ellq, hcq⟩, hes, hqt⟩ := SA.honest_votes_of_joined_before hS hgu hub hjoin y hy
@@ -439,9 +438,9 @@ theorem FrameWindow.proposal_viable_after_votes
 
 /-- The actual update is included in the finite viability window, at equality. -/
 theorem FrameWindow.proposal_viable_at_update
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -465,9 +464,9 @@ theorem FrameWindow.proposal_viable_at_update
 selection at each actual update. Lock compatibility is deliberately not an input
 or a conclusion here: it is a separate obligation for fresh-lock creation. -/
 theorem FrameWindow.unanimous_update_selection
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -528,9 +527,9 @@ theorem FrameWindow.unanimous_update_selection
 /-- Unanimity transfers one slot forward using only the finite proposal window.
 The induction is on strictly earlier next-slot casts, not on a whole-run invariant. -/
 theorem FrameWindow.unanimous_next_votes
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -631,9 +630,9 @@ theorem FrameWindow.unanimous_next_votes
 /-- The receiver's actual next-slot cast clears incompatible older labels before
 the update. In particular, the previous slot's intervening update is not skipped. -/
 theorem FrameWindow.older_locks_compatible_at_update
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -731,9 +730,9 @@ theorem FrameWindow.older_locks_compatible_at_update
 unlock; new fast labels use honest support in slots `u` and `u+1`, and new slow
 labels use the independently established raw slot-`u` result. -/
 theorem FrameWindow.unanimous_update_no_veto
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -833,7 +832,7 @@ theorem FrameWindow.unanimous_update_no_veto
 honest proposal, it is not vetoed, and the post-state contains its fresh fast lock.
 The frame/service endpoint `ts(u+1)+2Δ` is closed, including the update itself. -/
 theorem fresh_fast_lock_at_update
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     {z : Fin sp.n} {kP : Nat}
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
@@ -844,7 +843,7 @@ theorem fresh_fast_lock_at_update
     (hjoin : ∀ y ∈ H, SA.JoinedAt tr.projAC y (sp.ts u + sp.Δ))
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hz : z ∈ H) (hdesignated : z = proposer u)
     (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : Unanimous tr H u P)
@@ -894,7 +893,7 @@ theorem fresh_fast_lock_at_update
 /-- P5b's fresh fast lock is present at the immediately adjacent actual to-FG
 pre-state, not merely at an unrelated call sharing the same timestamp. -/
 theorem fresh_fast_lock_update_toFG
-    {u floor : Nat} {contest kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     {z : Fin sp.n} {kP : Nat}
     (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hsvc : ResetService tr H g ΔF b)
@@ -905,7 +904,7 @@ theorem fresh_fast_lock_update_toFG
     (hjoin : ∀ y ∈ H, SA.JoinedAt tr.projAC y (sp.ts u + sp.Δ))
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
     (hframe : FrameWindow (tr := tr) (H := H)
-      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor contest kindJ J)
+      (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hz : z ∈ H) (hdesignated : z = proposer u)
     (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : Unanimous tr H u P) {y : Fin sp.n} (hy : y ∈ H) :

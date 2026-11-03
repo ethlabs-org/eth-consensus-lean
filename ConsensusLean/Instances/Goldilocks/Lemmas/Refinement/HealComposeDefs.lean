@@ -28,8 +28,8 @@ proposal and frame inside the rise, not an additional drain output. The uniform 
 producer remains an input; this interface strengthening does not construct it. -/
 structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
     (H : Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
-  warm : ∀ {s₀ N floor : Nat} {contest kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))},
-    FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor contest kindJ J →
+  warm : ∀ {s₀ N floor : Nat} {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))},
+    FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J →
     gbar g + 4 * sp.Δ ≤ sp.ts s₀ → s₀ + Ld ≤ N → sp.ts N + 2 * sp.Δ ≤ b →
     (∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k ≤ sp.ts N + 2 * sp.Δ →
       att.h ≤ HZ tr H g) →
@@ -41,13 +41,12 @@ structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n
 
 /-- A FrameWindow restricts to every sub-interval. -/
 theorem frameWindow_sub {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
-    {lo hi lo' hi' : Time} {floor : Nat} {contest kindJ : Prop}
+    {lo hi lo' hi' : Time} {floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hf : FrameWindow (tr := tr) (H := H) lo hi floor contest kindJ J)
+    (hf : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hlo : lo ≤ lo') (hhi : hi' ≤ hi) :
-    FrameWindow (tr := tr) (H := H) lo' hi' floor contest kindJ J :=
+    FrameWindow (tr := tr) (H := H) lo' hi' floor kindJ J :=
   ⟨fun y hy i h1 h2 => hf.floor_eq y hy i (hlo.trans h1) (h2.trans hhi),
-    fun y hy i h1 h2 => hf.contest_iff y hy i (hlo.trans h1) (h2.trans hhi),
     fun y hy i h1 h2 => hf.kind_iff y hy i (hlo.trans h1) (h2.trans hhi),
     fun y hy i h1 h2 => hf.root_eq y hy i (hlo.trans h1) (h2.trans hhi)⟩
 
@@ -60,6 +59,15 @@ def resetBound (r D lam δt X Ld : ℤ) : ℤ := r + (24 * Ld + 48 * (δt + X - 
 /-- Unfolding equation of `resetBound` (the definition is not exposed outside this module). -/
 theorem resetBound_eq (r D lam δt X Ld : ℤ) :
     resetBound r D lam δt X Ld = r + (24 * Ld + 48 * (δt + X - 1) + 64) * D + 6 * lam := by
+  rfl
+
+/-- The reset bound of the 5-window route: `lo + 5(len + λ)` at `lo = r + 4D` and the frame length
+`len = 4D(L_drain + 2ρ + 2) + 2D`, `ρ = δ_t + X − 1`. -/
+def resetBound5 (r D lam δt X Ld : ℤ) : ℤ := r + (20 * Ld + 40 * (δt + X - 1) + 54) * D + 5 * lam
+
+/-- Unfolding equation of `resetBound5` (the definition is not exposed outside this module). -/
+theorem resetBound5_eq (r D lam δt X Ld : ℤ) :
+    resetBound5 r D lam δt X Ld = r + (20 * Ld + 40 * (δt + X - 1) + 54) * D + 5 * lam := by
   rfl
 
 end Consensus.Goldilocks.Refinement

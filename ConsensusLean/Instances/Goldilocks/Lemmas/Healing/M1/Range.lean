@@ -116,14 +116,14 @@ theorem exists_frameWindow_of_noAdvance (hrun : GoldilocksRun proposer dg H tr)
       ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hT : lo + 6 * (len + lam) < T) :
     ∃ a, lo + lam ≤ a ∧ a + len ≤ lo + 6 * (len + lam) ∧
-      ∃ floor contest kindJ J,
-        FrameWindow (tr := tr) (H := H) a (a + len) floor contest kindJ J :=
+      ∃ floor kindJ J,
+        FrameWindow (tr := tr) (H := H) a (a + len) floor kindJ J :=
   exists_frameWindow_of_service hrun hnc hf hsvc hcatch hlen hlam hlo
     (hmax_range hrun hnc hf hq hsvc hcatch hH hsnap hna hlo hcallZ) hcall hT
 
-/-- **A FrameWindowF before the advance (5 windows).** `exists_frameWindowF5_of_service` with
+/-- **A FrameWindow before the advance (5 windows).** `exists_frameWindow5_of_service` with
 the range premise discharged by `hmax_range`. -/
-theorem exists_frameWindowF5_of_noAdvance (hrun : GoldilocksRun proposer dg H tr)
+theorem exists_frameWindow5_of_noAdvance (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hq : Hᶜ.ncard < sp.toParams.fg.q)
     {g ΔF b κ : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
@@ -137,8 +137,8 @@ theorem exists_frameWindowF5_of_noAdvance (hrun : GoldilocksRun proposer dg H tr
       ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hT : lo + 5 * (len + lam) < T) :
     ∃ a, lo + lam ≤ a ∧ a + len ≤ lo + 5 * (len + lam) ∧
-      ∃ floor kindJ J, FrameWindowF (tr := tr) (H := H) a (a + len) floor kindJ J :=
-  exists_frameWindowF5_of_service hrun hnc hf hsvc hcatch hlen hlam hlo
+      ∃ floor kindJ J, FrameWindow (tr := tr) (H := H) a (a + len) floor kindJ J :=
+  exists_frameWindow5_of_service hrun hnc hf hsvc hcatch hlen hlam hlo
     (hmax_range hrun hnc hf hq hsvc hcatch hH hsnap hna hlo hcallZ) hcall hT
 
 end Consensus.Goldilocks.Healing
