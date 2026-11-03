@@ -205,17 +205,6 @@ theorem locksWF_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin
       exact this
     · exact ih
 
-/-- **`LocksWF` after an honest call.** -/
-theorem locksWF_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    LocksWF sp (tr.post i).locks := by
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have := ((locksWF_state hr hy i).step y (frameIn_of_callAt hr hy hc).1 (hr.time_nonneg i)
-    ℓ.call).1
-  rw [hx] at this
-  exact this
-
 /-- **`LocksWF` at the read point of an honest cast.** -/
 theorem castAt_readPoint_locksWF (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}

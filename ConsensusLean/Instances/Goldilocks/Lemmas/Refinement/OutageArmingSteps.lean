@@ -79,23 +79,6 @@ theorem updateConfirmation_slow_lock_of {FGP : Type} {sp : SAParams} {A : SAStat
   · exact hlocks _ rfl
   · exact hlocks _ (updateLatestConfirmed_locks_eq _ _ _)
 
-/-- **Slow formation** (§6.5): rows above `C`, an unvetoed result `D ⪰ C`: the slow lock of slot
-`s` and expiry `s + k` on the viable ancestor of a block `X` with `C ⪯ X ⪯ D`
-(`updateConfirmation_slow_lock_of`; `C` is unvetoed below `D`). -/
-theorem updateConfirmation_slow_lock {FGP : Type} {sp : SAParams} {A : SAState sp.n}
-    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {s : Nat} {C D : Blk sp.n FGP}
-    (hD : getConfirmation sp A Φ s = some D) (hnv : ¬ conflictsWithLock sp A.locks Φ t D)
-    (hCt : C ∈ Φ.tree) (hCg : C.root ≠ sp.genesisRoot) (hCD : Φ.Anc C D)
-    (hrows : ∀ j : Int, (s : Int) - sp.k < j → j < s →
-      ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
-    (hlive : sp.slot t ≤ s + sp.k) :
-    ∃ X f, X ∈ Φ.tree ∧ Φ.Anc C X ∧ Φ.Anc X D ∧
-      (⟨(Φ.viableAncestor X).root, s, f, s + sp.k⟩ : Lock) ∈
-        (updateConfirmation sp A Φ t s).locks := by
-  obtain ⟨X, hX, hCX, hXD, hl⟩ := updateConfirmation_slow_lock_of hΦ hD
-    (not_conflictsWithLock_of_anc hΦ hCD hnv) hCt hCg hCD hrows hlive
-  exact ⟨X, false, hX, hCX, hXD, hl⟩
-
 /-- **Effective slow formation**: with `C` a candidate of `viable_ancestor` and unvetoed, the stored
 slow block extends `C` (`anc_viableAncestor_of_candidate`). -/
 theorem updateConfirmation_slow_lock_effective_of {FGP : Type} {sp : SAParams}

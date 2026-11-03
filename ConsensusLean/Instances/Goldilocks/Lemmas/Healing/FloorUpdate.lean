@@ -52,15 +52,6 @@ theorem fastLock_mem_updateConfirmation_floor {A : SAState sp.n} {Φ : Frm sp.n 
     Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPt, rfl,
     hlive.trans (le_fastExpiry sp _ Φ t u), by rw [hva]⟩
 
-/-- `fastLock_mem_updateConfirmation_floor` without the expiry bound. -/
-theorem fastLock_mem_updateConfirmation {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {u : Nat} {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hva : Φ.viableAncestor P = P)
-    (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
-    (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2) :
-    ∃ e, (⟨P.root, u, true, e⟩ : Lock) ∈ (updateConfirmation sp A Φ t u).locks :=
-  let ⟨e, _, h⟩ := fastLock_mem_updateConfirmation_floor hPt hva hconf hnv hfast hlive
-  ⟨e, h⟩
-
 end Consensus.Goldilocks.SA
 
 namespace Consensus.Goldilocks.Healing

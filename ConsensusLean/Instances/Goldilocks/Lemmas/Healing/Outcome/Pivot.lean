@@ -26,7 +26,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 
 -- Keep the operational proposal prerequisites with their pivot consumers.
-set_option linter.style.longFile 4000
+set_option linter.style.longFile 3900
 
 public section
 
@@ -296,37 +296,6 @@ private theorem reset_lt_ts (hp : ResetPremises tr H proposer dg g ΔF a) {u : N
     exact (SA.ts_le_iff sp).2 (by push_cast; omega)
   linarith
 
-/-- A deepest block of a set is the one `deepest` returns. -/
-private theorem deepest_eq_of_isDeepest {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : SA.IsDeepest Φ S D) : SA.deepest Φ S = some D := by
-  have hex : ∃ B, SA.IsDeepest Φ S B := ⟨D, h⟩
-  cases hd : SA.deepest Φ S with
-  | none =>
-    unfold SA.deepest at hd
-    simp only [hex, ↓reduceDIte, reduceCtorEq] at hd
-  | some D' =>
-    have h' := SA.deepest_mem hd
-    by_contra hne
-    have hne' : D' ≠ D := fun h => hne (congrArg some h)
-    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
-      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
-
-/-- An honest validator is not an equivocator in an honest node's pool of a slot. -/
-private theorem honest_not_equivocator_pool (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n}
-    (hy : y ∈ H) (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
-    u ∉ SA.equivocators {v | v ∈ (tr.projAC.state y c).pool s} := by
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hrun.localRun
-  rintro ⟨v, hv, w, hw, hvw, rfl, hwv⟩
-  obtain ⟨jv, -, ev, hev, rfl⟩ := hrun.honest.pool_vote y hy c s _ hv hu
-  obtain ⟨jw, -, ew, hew, rfl⟩ := hrun.honest.pool_vote y hy c s _ hw (hwv ▸ hu)
-  rw [hwv] at hew
-  obtain ⟨-, rfl⟩ := (SA.one_vote_per_slot sp) _ ro H _ _ hr _ hu jv jw ev ew hev hew
-    ((SA.state_pool_slot sp hr hy c s _ hv).trans (SA.state_pool_slot sp hr hy c s _ hw).symm)
-  exact hvw rfl
-
 /-! ### No optimistic check of the proposal's slot before it (copies of `Compose/Service/Pivot`) -/
 
 /-- The AC cuts of a tick by position (C0.4). -/
@@ -536,39 +505,6 @@ theorem finalized_compatible_high_origin (hp : ResetPremises tr H proposer dg g 
     (ho : HighOrigin tr H g x i j O) :
     Compatible (tr.HonestBlocks H) (tr.state z c).fg.F O :=
   finalized_compatible_high_origin_at_any_cut hp hz ho
-
-/-- A post-reset finalized cache is below a high origin written no later than its cut. -/
-theorem finalized_below_high_origin (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (ha : a ≤ tr.time k) :
-    ∃ x r b B, HighOrigin tr H g x r b B ∧ tr.time r ≤ tr.time k ∧
-      Anc (tr.HonestBlocks H) (tr.state y k).fg.F B := by
-  have hr := Compose.fg_reachable hp.run.toLocalRun hy k
-  have hU := honest_coherent hp
-  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocks H := fun _ h => ⟨y, hy, k, h⟩
-  obtain ⟨hFm, hJm, hFJ, ⟨C, hC, hCJ, hChj⟩, -⟩ :=
-    Store.cache_invariants _ _ _ _ hr
-  obtain ⟨E, hE, hEr, hEC, hcase⟩ := Store.J_entry_of_reachable hr hC
-  obtain rfl : E = (tr.state y k).fg.J := hU.1 (hsub hE) (hsub hJm) (hEr.trans hCJ)
-  rcases hcase with hg | ⟨hJh, hJT⟩
-  · obtain ⟨v, r, b, B, ho, _, ht⟩ := reset_seed hp
-    have hFG := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
-    rw [← hg] at hFG
-    have he := (hFJ.mono hsub).antisymm hU (hFG.mono hsub)
-    obtain ⟨_, _, _, _, _, _, _, _, _, hB⟩ := highOrigin_mem hp ho
-    exact ⟨v, r, b, B, ho, ht.trans ha,
-      Compose.honest_genesis_root_anc hp.run hU (hsub hFm)
-        (congrArg (·.root) (he.trans hg)) ⟨v, ho.1, r, hB⟩⟩
-  by_cases hh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj
-  · obtain ⟨W, _, att, _, v, _, d, hdk, _, _, r, hrd, b, B, ho, hJB⟩ :=
-      left_entry_origin hp hy hJm hJT (by omega) hEC
-        (by have := Store.hj_lt_h hr hC; omega)
-    exact ⟨v, r, b, B, ho, hp.run.time_mono (by omega), (hFJ.mono hsub).trans hJB⟩
-  obtain ⟨v, r, b, B, ho, _, ht⟩ := reset_seed hp
-  refine ⟨v, r, b, B, ho, ht.trans ha, ?_⟩
-  rcases finalized_compatible_high_origin hp hy ha ho with h | h
-  · exact h
-  have hhigh := high_of_anc hp ho hy hJm (h.trans (hFJ.mono hsub))
-  omega
 
 /-- A post-reset finalized cache lies below an actual bounded high origin. -/
 theorem ResetPremisesUpTo.finalized_below_high_origin {b : Time}
@@ -3359,21 +3295,6 @@ theorem ResetPremisesUpTo.reset_vote_root_below_bound {b : Time}
   · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
     exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg hP
   · exact hroot.trans (hbound x r l B ho ht hrb)
-
-/-- Any bound on all pre-slot high origins also bounds the post-drain voter root. -/
-theorem reset_vote_root_below_bound (hp : ResetPremises tr H proposer dg g ΔF a)
-    {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocks H)
-    (hbound : ∀ x r b B, HighOrigin tr H g x r b B → tr.time r < sp.ts u →
-      Anc (tr.HonestBlocks H) B P)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
-    (hs : e.msg.slot = u) : Anc (tr.HonestBlocks H) ell.frame.fcRoot P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  rcases reset_vote_root_source hp hR hy hc hs with hg | ⟨B, ⟨x, r, b, ho, ht⟩, hroot⟩
-  · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
-    exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg hP
-  · exact hroot.trans (hbound x r b B ho ht)
 
 private theorem reset_vote_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ))

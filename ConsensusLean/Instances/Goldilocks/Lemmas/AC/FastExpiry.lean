@@ -13,10 +13,6 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} (sp : SAParams)
 
-/-- A lock is live at `t` exactly when `slot(t)` is at most its expiry. -/
-theorem Lock.liveAt_iff (l : Lock) (t : Time) : l.LiveAt sp t ↔ sp.slot t ≤ l.expiry :=
-  Iff.rfl
-
 /-- A new fast lock of slot `s` lives at least through `s + 2`. -/
 theorem le_fastExpiry (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     s + 2 ≤ fastExpiry sp L Φ t s := by

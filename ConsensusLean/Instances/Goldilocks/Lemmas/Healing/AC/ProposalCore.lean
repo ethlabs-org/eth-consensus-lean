@@ -151,12 +151,6 @@ private theorem equivocators_mono {S T : Set (Vote sp.n)} (h : S ⊆ T) :
   rintro w ⟨a, ha, b, hb, hab, haw, hbw⟩
   exact ⟨a, h ha, b, h hb, hab, haw, hbw⟩
 
-private theorem compat_down (hU : Coherent U) {B X Y : Blk sp.n FGP} (hXY : Anc U X Y)
-    (h : Compatible U Y B) : Compatible U X B := by
-  rcases h with h | h
-  · exact Or.inl (hXY.trans h)
-  · exact anc_total hU hXY h
-
 /-- A vote of an honest node's pool has a finite stamp. -/
 theorem pool_stamp_lt_top (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {v : Vote sp.n} (hv : v ∈ (tr.state y i).pool v.slot) :
