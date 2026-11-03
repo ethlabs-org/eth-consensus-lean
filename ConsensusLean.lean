@@ -222,6 +222,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifies
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalSignedUpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Acquisition
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.CarrierCoverage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.FromHighFinality
