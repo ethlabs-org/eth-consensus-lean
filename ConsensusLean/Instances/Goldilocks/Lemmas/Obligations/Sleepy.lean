@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Spec.Shape.Run
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

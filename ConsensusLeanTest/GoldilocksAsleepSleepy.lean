@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksAsleepRun
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The two-validator asleep run is `Sleepy`, with a proposal at every slot

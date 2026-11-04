@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

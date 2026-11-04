@@ -13,6 +13,8 @@ with their own meaning (a configuration that makes Mathlib's tactic fail must st
 
 namespace Consensus.Test.LinarithFrontEnd
 
+open Lean Elab Tactic
+
 /-- Needs `natToInt` (the bound on an ℕ variable): proved through the fallback to Mathlib's rule. -/
 theorem nat_fallback (n : ℕ) (h : n < 3) : n ≤ 2 := by linarith
 
@@ -60,5 +62,17 @@ theorem false_goal_fails (x y : ℤ) (_h : x < y) : True := by
   fail_if_success (have : y < x := by linarith)
   fail_if_success (have : y < x := by nlinarith)
   trivial
+
+/-- The cheap attempt alone (`Consensus.Tactic.Linarith.run`) really omits `natToInt`: without it
+the ℕ bound of `nat_fallback` is out of reach, so this pins the filter in `cheapConfig` (were it a
+no-op, the cheap attempt would prove the goal and the `fail_if_success` would fail). -/
+theorem cheap_omits_natToInt (n : ℕ) (h : n < 3) : n ≤ 2 := by
+  fail_if_success run_tac liftMetaFinishingTactic (Consensus.Tactic.Linarith.run false [])
+  fail_if_success run_tac liftMetaFinishingTactic (Consensus.Tactic.Linarith.run true [])
+  linarith
+
+/-- Control for `cheap_omits_natToInt`: the cheap attempt alone proves an ℤ goal. -/
+theorem cheap_proves_int (a b : ℤ) (h : a < b) : a ≤ b := by
+  run_tac liftMetaFinishingTactic (Consensus.Tactic.Linarith.run false [])
 
 end Consensus.Test.LinarithFrontEnd

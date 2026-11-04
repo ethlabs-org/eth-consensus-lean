@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenanc
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowFieldsUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

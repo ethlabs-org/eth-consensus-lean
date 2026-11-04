@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

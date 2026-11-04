@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

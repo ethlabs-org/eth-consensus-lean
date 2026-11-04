@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

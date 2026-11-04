@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AtCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RawAtCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

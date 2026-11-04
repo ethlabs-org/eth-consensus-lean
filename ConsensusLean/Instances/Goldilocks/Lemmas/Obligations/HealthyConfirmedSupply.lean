@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 /-! # Finite adoption of an operational confirmed proposal
 

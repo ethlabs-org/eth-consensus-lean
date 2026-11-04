@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Steps
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

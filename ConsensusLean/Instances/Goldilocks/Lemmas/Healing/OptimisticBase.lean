@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

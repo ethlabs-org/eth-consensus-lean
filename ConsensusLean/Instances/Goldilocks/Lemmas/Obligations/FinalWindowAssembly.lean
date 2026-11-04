@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Spec.Blocks.Progress
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

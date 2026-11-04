@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageGate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

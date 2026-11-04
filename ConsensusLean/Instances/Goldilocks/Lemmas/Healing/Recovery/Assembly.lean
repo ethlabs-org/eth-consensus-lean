@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interfa
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.FromHighFinality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Timing
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

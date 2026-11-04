@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -7,6 +7,7 @@ public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Model.Protection
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

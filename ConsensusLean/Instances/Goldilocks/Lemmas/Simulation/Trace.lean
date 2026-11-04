@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

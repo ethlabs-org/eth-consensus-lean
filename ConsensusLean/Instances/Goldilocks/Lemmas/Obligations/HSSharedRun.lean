@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTrans
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

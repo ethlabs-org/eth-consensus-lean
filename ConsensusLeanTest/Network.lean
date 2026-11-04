@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.Model
 public import ConsensusLeanTest.Common
 public import Mathlib.Tactic
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Network tests (L0 delivery, L1 faithfulness)

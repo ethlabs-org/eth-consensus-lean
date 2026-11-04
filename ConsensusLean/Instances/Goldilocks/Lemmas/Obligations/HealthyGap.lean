@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

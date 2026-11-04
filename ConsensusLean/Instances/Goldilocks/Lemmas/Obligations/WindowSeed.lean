@@ -13,6 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

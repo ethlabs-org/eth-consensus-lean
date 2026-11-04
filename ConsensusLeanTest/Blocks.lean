@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLeanTest.Common
 public import Mathlib.Tactic
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Building-block tests

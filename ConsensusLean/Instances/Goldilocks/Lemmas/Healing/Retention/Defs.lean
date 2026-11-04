@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

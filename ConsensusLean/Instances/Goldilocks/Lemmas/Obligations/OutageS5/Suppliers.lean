@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageS5.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

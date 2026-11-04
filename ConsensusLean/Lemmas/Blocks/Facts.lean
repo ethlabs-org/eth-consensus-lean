@@ -3,6 +3,7 @@ public import ConsensusLean.Spec.Blocks.TimeGrid
 public import ConsensusLean.Spec.Blocks.Progress
 public import ConsensusLean.Spec.Blocks.Chains
 public import ConsensusLean.Spec.Blocks.Payload
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

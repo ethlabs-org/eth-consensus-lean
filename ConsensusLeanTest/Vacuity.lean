@@ -3,6 +3,7 @@ public import ConsensusLeanTest.Realizable
 public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Regimes
 public import Mathlib.Tactic
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Bad contracts, bad protocols, credentials (L2)

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSupp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyConfirmedEndpoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 namespace Consensus.Goldilocks.Obligations

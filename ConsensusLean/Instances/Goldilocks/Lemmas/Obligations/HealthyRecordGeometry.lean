@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 /-! # Retained-record provenance and current-frame geometry
 

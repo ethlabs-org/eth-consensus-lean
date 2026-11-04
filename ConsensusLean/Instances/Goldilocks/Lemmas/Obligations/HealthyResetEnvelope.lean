@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoeffic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyQueryShared
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainWarm
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

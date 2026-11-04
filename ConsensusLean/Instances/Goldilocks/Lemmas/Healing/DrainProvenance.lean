@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

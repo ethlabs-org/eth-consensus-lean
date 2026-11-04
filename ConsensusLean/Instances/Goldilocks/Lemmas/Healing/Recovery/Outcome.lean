@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.O
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

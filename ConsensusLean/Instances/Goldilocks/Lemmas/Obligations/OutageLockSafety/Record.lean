@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffec
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Reader
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageRead
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

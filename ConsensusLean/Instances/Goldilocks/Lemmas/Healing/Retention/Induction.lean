@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

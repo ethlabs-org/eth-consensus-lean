@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Confirmed
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArming
 public import ConsensusLean.Proofs.RegimesRealizable.Main
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses: the healthy-nonfinal and outage queries are inhabited at the Accepted contract

@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.CarrierCoverage
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

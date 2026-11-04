@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

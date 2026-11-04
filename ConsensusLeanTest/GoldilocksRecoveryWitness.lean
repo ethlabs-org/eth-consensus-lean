@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.GoldilocksHealingWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The one-validator tick run through the Recovery statements

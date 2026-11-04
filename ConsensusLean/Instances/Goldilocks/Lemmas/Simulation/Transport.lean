@@ -4,6 +4,7 @@ public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

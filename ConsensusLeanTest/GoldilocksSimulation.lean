@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Proofs.RegimesRealizable.Main
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks refinement statements

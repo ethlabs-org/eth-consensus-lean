@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposalWindowUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

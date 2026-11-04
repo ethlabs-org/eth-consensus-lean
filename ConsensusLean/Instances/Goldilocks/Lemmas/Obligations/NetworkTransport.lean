@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Lemmas.Model.SysLog
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

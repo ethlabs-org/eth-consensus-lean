@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

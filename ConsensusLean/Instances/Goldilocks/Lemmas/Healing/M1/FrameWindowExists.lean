@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

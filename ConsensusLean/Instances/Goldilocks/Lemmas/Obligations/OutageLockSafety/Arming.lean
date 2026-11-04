@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.In
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Reader
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

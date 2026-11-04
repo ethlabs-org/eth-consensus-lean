@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeFrozen
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

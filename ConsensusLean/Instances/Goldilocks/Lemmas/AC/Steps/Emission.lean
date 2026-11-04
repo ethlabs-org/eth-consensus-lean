@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

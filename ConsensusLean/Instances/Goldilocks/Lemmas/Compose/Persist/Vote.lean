@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

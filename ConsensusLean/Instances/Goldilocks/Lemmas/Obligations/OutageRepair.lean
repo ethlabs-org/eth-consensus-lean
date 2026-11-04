@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Ar
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageReaderGate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageS5.Suppliers
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

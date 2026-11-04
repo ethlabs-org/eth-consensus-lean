@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

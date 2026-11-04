@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.GoldilocksSimulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses: the Sleepy leaves' and vote forwarding's hypotheses are satisfiable

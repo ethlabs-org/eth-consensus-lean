@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageMajority
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

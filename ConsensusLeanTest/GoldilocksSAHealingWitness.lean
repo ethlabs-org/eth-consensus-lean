@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The SA live-run healing witness: `Geo`, `Inv`, H.1 and H.2 (i)

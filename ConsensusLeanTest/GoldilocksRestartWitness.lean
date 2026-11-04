@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksSimulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # F.4 (`Compose.ReadyImpliesJoined`): the restart branch

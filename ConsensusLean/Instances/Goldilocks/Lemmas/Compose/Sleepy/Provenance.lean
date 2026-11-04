@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

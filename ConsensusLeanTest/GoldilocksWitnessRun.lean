@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksWitnessTicks
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The one-validator tick run: the reset, the bridge and the pattern

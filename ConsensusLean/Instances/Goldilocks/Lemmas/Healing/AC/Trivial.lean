@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

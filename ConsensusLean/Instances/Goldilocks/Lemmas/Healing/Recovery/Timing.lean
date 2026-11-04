@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

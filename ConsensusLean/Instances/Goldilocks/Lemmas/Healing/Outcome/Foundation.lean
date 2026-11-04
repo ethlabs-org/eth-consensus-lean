@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

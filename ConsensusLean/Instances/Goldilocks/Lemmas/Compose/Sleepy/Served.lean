@@ -17,6 +17,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.RecordWrites
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 -- The served head shares a proof across whole-run, prefix and deadline-bounded service through
 -- the private `ReadInvWith`; the scoped relay also shares the read/tick machinery.

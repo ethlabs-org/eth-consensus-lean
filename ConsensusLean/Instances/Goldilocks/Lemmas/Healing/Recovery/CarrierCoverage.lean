@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

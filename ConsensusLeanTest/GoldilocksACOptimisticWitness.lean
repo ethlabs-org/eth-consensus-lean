@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Witnesses for the premises of the Goldilocks optimistic-path ACSteps statements

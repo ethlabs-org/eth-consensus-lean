@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Lemmas.Blocks.Facts
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

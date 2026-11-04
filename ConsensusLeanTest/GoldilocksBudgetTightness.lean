@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Rejection test: the outage budget `4k − 4` breaks the restored-label bound

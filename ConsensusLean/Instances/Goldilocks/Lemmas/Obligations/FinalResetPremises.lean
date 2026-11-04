@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 import ConsensusLean.Lemmas.Blocks.Facts
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

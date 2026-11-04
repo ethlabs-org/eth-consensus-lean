@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 namespace Consensus.Goldilocks.Obligations

@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Votes
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

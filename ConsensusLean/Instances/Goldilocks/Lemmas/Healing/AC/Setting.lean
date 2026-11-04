@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

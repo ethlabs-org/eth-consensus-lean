@@ -9,6 +9,7 @@ public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLeanTest.Regimes
 public import Mathlib.Tactic
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Tests of the L0 definition of a correct protocol

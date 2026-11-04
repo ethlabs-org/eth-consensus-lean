@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 /-! # The healthy confirmed-supply endpoint from the preparation initializer
 

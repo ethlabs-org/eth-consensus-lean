@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.WarmFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealBoundRounds
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoefficients
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

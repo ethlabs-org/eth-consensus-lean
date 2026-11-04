@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Outcome
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

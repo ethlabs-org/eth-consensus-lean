@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksWitnessChain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The one-validator tick run: the SA's calls and the ticks

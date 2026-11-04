@@ -28,6 +28,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowD
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CarrierProcessed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalResetPremises
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

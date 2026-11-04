@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeContinue
 public import Mathlib.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

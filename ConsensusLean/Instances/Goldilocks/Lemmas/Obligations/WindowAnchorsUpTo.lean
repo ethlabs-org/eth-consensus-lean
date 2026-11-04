@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchors
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedUpTo
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

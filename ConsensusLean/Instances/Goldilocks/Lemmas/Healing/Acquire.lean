@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeVotes
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

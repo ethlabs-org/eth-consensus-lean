@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

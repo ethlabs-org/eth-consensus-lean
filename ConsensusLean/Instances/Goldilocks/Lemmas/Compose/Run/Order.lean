@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
