@@ -28,6 +28,40 @@ session. The tools are adopted separately from the proof edits and tactic front 
 - **Verification:** `scripts/check-changed.sh` remains the gate. Timing and profiling tools do not
   run in the trust checks or change their verdicts; only their deterministic regression fixtures
   run in `check.sh --selftests`. Speed measurements are not statement-equivalence evidence.
+- **Statement equivalence (report-only):** in each built tree (base and change), `lake build const-dump
+  && lake exe const-dump /tmp/<tree>.tsv ConsensusLean Solution ConsensusLeanTest` (and `lake exe
+  const-dump /tmp/<tree>-challenge.tsv Challenge` for the challenge, which declares the review
+  statements again), then `python3 -I scripts/const-diff.py /tmp/base.tsv /tmp/new.tsv`. It compares
+  every public constant and every internal or private constant that a compared type or definition value
+  refers to, the `implemented_by` targets and `partial` bodies of compared constants, and the field
+  defaults (also a child's override) of compared structures, except defaults of fields whose projection
+  is a theorem (`Prop` fields, also when a child overrides an inherited one: proofs, like their default
+  tactics): kind, universe parameters (names, in order), type, value (definition bodies, inductive
+  shapes), safety and axioms in both directions. Axioms are collected over every copy of a theorem that
+  several modules declare alike (Lean merges them on import and keeps one), for the theorem and its
+  users in the dumped modules, and a merged name whose copies' axioms differ is always compared. Axiom
+  sets follow Lean's `collectAxioms` walk but take an inductive block with its constructors at once:
+  Lean's stored answer (`#print axioms` downstream) can lack the constructors' axioms depending on walk
+  order, which a proof edit elsewhere could flip (on main `b7bf2656`, 14 constants get a superset of
+  Lean's stored answer; all others are equal). Not compared: theorem proofs, also those inside
+  definitions and statements (Lean's `foo._proof_1` and private theorems hash as one tag, by proof
+  irrelevance, while their axioms still count; a proof written as a term inside a statement stays
+  inline, so changing it changes the statement's hash and is accepted by name after checking);
+  auxiliary or private constants no compared constant refers to (proofs may use them); attributes,
+  `@[extern]` code, notation, options, binder names and kinds; the dependencies. Hashes are 64-bit
+  structural hashes, evidence for honest edits but not collision-resistant. Each accepted difference is
+  named (`--allow-added`, `--allow-removed`, `--allow-type`, `--allow-value`, `--allow-axioms`),
+  printed, and fails when it matches nothing; a proof edit can drop a public reserved name that proofs
+  realize on demand (`foo.congr_simp`), which is then accepted by name. On a 4-core orb a dump of the
+  three libraries takes about 11 s and 4.2 GB. Its self-test (`scripts/test_const_diff.py`, in `check.sh
+  --selftests`, about 50 s there) compiles each planted mutation with `lean` and dumps it with the compiled
+  tool: one per hashed field (literals, bound variables, binder types, levels, projections, `let`),
+  reordered universes, a private definition or inductive under an unchanged public one, field defaults,
+  `partial` and `implemented_by` bodies, a weakened statement, gained, narrowed or merged-copy axioms
+  (also with the clean copy, or the only user, in a module not dumped), safety, an inductive's axioms
+  independent of walk order, and proof-only controls (a proof inside a definition, a `Prop` field's
+  default proof, also a child's override used by a definition, its default tactic, a private structure
+  only proofs use).
 
 ## Where the time goes (main at `208c05b7`, measured on 2026-11-02)
 

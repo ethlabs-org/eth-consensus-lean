@@ -18,7 +18,7 @@ fixture_libs = ["CheckFixtures", "CheckDeclsTest", "Challenge"]
 # lean_exe targets of the lakefile (the check stack's tools) and the lean_lib targets only they use. Every
 # lakefile target is a [[lib]] below, a fixture lib or one of these; no lib root, glob or file may take a
 # top-level name of `base`. No checked module may import a tool module (an unknown top-level name).
-tool_exes = ["check-decls", "axiom-audit", "spec-surface"]
+tool_exes = ["check-decls", "axiom-audit", "spec-surface", "const-dump"]
 tool_libs = ["AxiomAudit"]
 
 # Every module (except a generated root) reaches this one through public imports (as CSLib's Init).

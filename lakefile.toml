@@ -84,6 +84,15 @@ srcDir = "scripts"
 root = "SpecSurface"
 supportInterpreter = true
 
+# Constant dump of scripts/const-diff.py (report-only: did a change alter anything but proofs?). Compiled,
+# like spec-surface; built by its self-test (scripts/test_const_diff.py, check.sh --selftests) and on demand.
+# Never a default target.
+[[lean_exe]]
+name = "const-dump"
+srcDir = "scripts"
+root = "ConstDump"
+supportInterpreter = true
+
 # leanprover-community/axiom-audit v0.1.2 (Apache-2.0; vendored verbatim, see TRUST.md): the library and the
 # executable (its `Main.lean` as `AxiomAuditMain.lean`). Built by check.sh; step 3b audits the `Solution` closure
 # and reports the library's unfinished declarations. Never a default target.

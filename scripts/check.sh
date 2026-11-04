@@ -1444,6 +1444,7 @@ run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
 run_selftest "0 commit email allowlist self-test (throwaway repositories)" python3 -I scripts/test_check_commit_emails.py
 run_selftest "0 report-only build timing self-test" python3 -I scripts/test_build_timing.py
+run_selftest "0 report-only constant diff self-test (compiled mutations and controls)" python3 -I scripts/test_const_diff.py
 if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
   skip_step "1 build" "no Lean module changed"
 else
