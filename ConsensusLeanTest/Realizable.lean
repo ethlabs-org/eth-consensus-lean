@@ -211,7 +211,7 @@ theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r) := by
   have hr : (7 : Time) ≤ (K.params.rowRatio : Time) * 7 :=
     le_mul_of_one_le_left (by norm_num) (by exact_mod_cast K.params.rowRatio.pos)
-  obtain ⟨r, hw, hΔ, -, ⟨he, hH, hp, ht⟩, hs⟩ :=
+  obtain ⟨r, ⟨hw, hΔ, -⟩, ⟨he, hH, hp, ht⟩, hs⟩ :=
     h.healthy cap i 7 7 1000 (by norm_num) (by norm_num) hr (by norm_num)
   refine ⟨r, hw, hΔ, he.quiet, hH, ?_, hp, ht, hs⟩
   unfold System.heal
@@ -226,7 +226,7 @@ theorem outage_witness_late (h : Realizable S X K) :
     ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ S.Outage K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * 7) T b₀ b₁ (S.pt r) ∧
       7000 ≤ T := by
-  obtain ⟨r, T, b₀, b₁, hw, hΔ, -, ho, ha, hT⟩ := h.outage 7 7 1000 (by norm_num) (by norm_num)
+  obtain ⟨r, T, b₀, b₁, ⟨hw, hΔ, -⟩, ho, ha, hT⟩ := h.outage 7 7 1000 (by norm_num) (by norm_num)
   exact ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, by norm_num at hT; exact hT⟩
 
 /-- Every good system with at least five validators has both late witnesses. -/

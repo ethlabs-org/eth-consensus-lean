@@ -254,7 +254,7 @@ theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
         t' ≤ (S.pt r).horizon ∧ x ∈ (S.trace r).readAt g w t' := by
   have hrat : Δ ≤ (K.params.rowRatio : Time) * Δ :=
     le_mul_of_one_le_left (by linarith) (by exact_mod_cast K.params.rowRatio.pos)
-  obtain ⟨r, hw, hd, -, ⟨-, hH, hp, ha⟩, -⟩ :=
+  obtain ⟨r, ⟨hw, hd, -⟩, ⟨-, hH, hp, ha⟩, -⟩ :=
     (h.realizable hn).healthy cap i Δ Δ gst hΔ hΔ hrat hgst
   refine ⟨r, hw, hd, hH, hp, ?_⟩
   rcases h.behaviour.healthyLive cap g hg i gst r hw.1 ⟨hH, hp⟩ with hl | he

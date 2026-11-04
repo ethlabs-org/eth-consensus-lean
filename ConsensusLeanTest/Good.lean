@@ -108,7 +108,7 @@ theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
     (h5 : 5 ≤ Fintype.card V) : ¬ Good S X K := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨r, -, -, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 2 2 (by norm_num)
+  obtain ⟨r, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 2 2 (by norm_num)
     (by norm_num)
   exact hX _ _ _ _ _ _ hp
 

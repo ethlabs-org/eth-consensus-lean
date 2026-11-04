@@ -50,12 +50,11 @@ families, dropping `ProgressActive`; `badProposer` has no L0 counterpart). -/
 theorem RealizableActive.toRealizable {V : Type} [Fintype V] [DecidableEq V]
     (h : RealizableActive F K V) : Realizable (Sys F V) (shapeProgress F V) K where
   sleepy cap i Δ ΔF hΔ hΔF :=
-    (h.sleepy cap i Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1⟩
+    (h.sleepy cap i Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1⟩
   healthy cap i Δ ΔF g hΔ hΔF hr hg :=
-    (h.healthy cap i Δ ΔF g hΔ hΔF hr hg).imp fun _ h =>
-      ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1⟩
+    (h.healthy cap i Δ ΔF g hΔ hΔF hr hg).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1⟩
   sleepyStress cap hc ho := (h.sleepyStress cap hc ho).imp fun _ h Δ ΔF hΔ hΔF =>
-    (h Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1⟩
+    (h Δ ΔF hΔ hΔF).imp fun _ h => ⟨h.1, h.2.1, h.2.2.1⟩
   outage := h.outage
 
 end Activity
@@ -936,7 +935,7 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
     fun cap ho Δ ΔF g hΔ1 hΔF1 hr hg => ?_⟩
   · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn (by linarith) (by linarith)
       _ ha hΔ1 hΔF1 hf cap i le_rfl
-    exact ⟨⟨_, rho⟩, hw, rfl, rfl, ⟨hs, hp, ht⟩, hpa⟩
+    exact ⟨⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨hs, hp, ht⟩, hpa⟩
   · have hΔ : 0 < Δ := by linarith
     have hΔF : 0 < ΔF := by linarith
     have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V)
@@ -952,12 +951,12 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
         (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) + Δ + 2) ha hΔ1 hΔF1 hf cap i g hr
       (by linarith) (by linarith) (by linarith)
-    exact ⟨⟨_, rho⟩, hw, rfl, rfl, ⟨he, hs, hp, ht⟩, hsa, hpa⟩
+    exact ⟨⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨he, hs, hp, ht⟩, hsa, hpa⟩
   · obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
     refine ⟨i, fun Δ ΔF hΔ1 hΔF1 => ?_⟩
     obtain ⟨rho, -, -, hw, hs, hp, hpa, hl, hb⟩ :=
       sleepyStress_witness key hn (by linarith) (by linarith) _ ha hΔ1 hΔF1 hf cap i hi le_rfl
-    exact ⟨⟨_, rho⟩, hw, rfl, rfl, ⟨hs, hp, hl⟩, hb, hpa⟩
+    exact ⟨⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨hs, hp, hl⟩, hb, hpa⟩
   · have hΔ : 0 < Δ := by linarith
     have hΔF : 0 < ΔF := by linarith
     have hl : (0 : Time) ≤ (K.params.lag : Time) * Δ := mul_nonneg (by positivity) hΔ.le
@@ -969,7 +968,7 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
       ⟨hk, by linarith, by linarith, by nlinarith⟩
     obtain ⟨rho, -, -, hw, ho, hoa⟩ := outage_witness (F := F) key hn hΔ hΔF _ ha hΔ1 hΔF1 hT
       (by linarith) le_rfl le_rfl
-    exact ⟨⟨_, rho⟩, _, _, _, hw, rfl, rfl, ho, hoa, le_rfl⟩
+    exact ⟨⟨_, rho⟩, _, _, _, ⟨hw, rfl, rfl⟩, ho, hoa, le_rfl⟩
   · have hΔ : 0 < Δ := by linarith
     have hΔF : 0 < ΔF := by linarith
     obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
@@ -989,7 +988,7 @@ theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
     obtain ⟨rho, hpt, hk, hs, hw, he, hs', hp, hpa, ht', -⟩ :=
       healthy_witness_sel key hn hΔ hΔF _ ha hΔ1 hΔF1 cap i g sel hsel hprog hr (by linarith)
         (by linarith) (by linarith)
-    exact ⟨i, ⟨_, rho⟩, hw, rfl, rfl, ⟨he, hs', hp, ht'⟩, hpa,
+    exact ⟨i, ⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨he, hs', hp, ht'⟩, hpa,
       hbad rho hs hk (congrArg EnvPoint.honest hpt)⟩
 
 end Realize

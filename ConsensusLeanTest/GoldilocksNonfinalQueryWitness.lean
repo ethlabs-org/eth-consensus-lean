@@ -201,7 +201,7 @@ theorem healthyPreparationQuery_not_final {V : Type} [Fintype V] [DecidableEq V]
 /-- (a) An `OutageQuery` at `K S A`: the outage witness of `Shape.regimes_realizable` for the
 Accepted contract on five validators, at `Δ = ΔF = 2`, armed at `T ≥ 0`. -/
 theorem outageQuery_witness : ∃ Q : OutageQuery S A (Fin 5), 0 ≤ Q.T := by
-  obtain ⟨r, T, b₀, b₁, ⟨hv, hc, -, -⟩, -, -, ho, -, -⟩ :=
+  obtain ⟨r, T, b₀, b₁, ⟨⟨hv, hc, -, -⟩, -, -⟩, ho, -, -⟩ :=
     (Shape.regimes_realizable (family S) (K S A) (accepted_admissible S A)
       (accepted_progressFits S A) (accepted_progressTolerant S A) (Fin 5) (by decide)).outage
       2 2 0 (by decide) (by decide)

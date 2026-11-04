@@ -93,6 +93,10 @@ variable [Fintype V] [DecidableEq V]
 def Witness (r : S.Run) : Prop :=
   S.Valid r ∧ ¬ S.Excuse r ∧ (S.pt r).faulty.Nonempty ∧ (S.pt r).honest.Nonempty
 
+/-- A clean witness at the delays `Δ` and `ΔF`: a clean witness whose environment has them. -/
+def WitnessAt (Δ ΔF : Time) (r : S.Run) : Prop :=
+  S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ (S.pt r).env.ΔF = ΔF
+
 end System
 
 variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type}
@@ -236,10 +240,10 @@ healthy witness, so no sleepy witness is required to exercise `sleepySafe`'s
 agreement between readers or its monotonicity. -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
-  sleepy : ∀ cap i (Δ ΔF : Time), 1 < Δ → 1 < ΔF → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
-    (S.pt r).env.ΔF = ΔF ∧ S.SleepyLive X K cap i r
+  sleepy : ∀ cap i (Δ ΔF : Time), 1 < Δ → 1 < ΔF →
+    ∃ r, S.WitnessAt Δ ΔF r ∧ S.SleepyLive X K cap i r
   healthy : ∀ cap i (Δ ΔF g : Time), 1 < Δ → 1 < ΔF → ΔF ≤ (K.params.rowRatio : Time) * Δ →
-    0 ≤ g → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ (S.pt r).env.ΔF = ΔF ∧
+    0 ≤ g → ∃ r, S.WitnessAt Δ ΔF r ∧
     S.HealthyLive X K cap i g r ∧ SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
   /-- Sleepy stress: every provided available or stable output is live, at
   one index chosen before the delays (it may depend on the validators and the
@@ -251,10 +255,10 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   participation at every index (e.g. at most `n − 3` validators not ready)
   fails here. -/
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
-    ∃ i, ∀ Δ ΔF : Time, 1 < Δ → 1 < ΔF → ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧
-      (S.pt r).env.ΔF = ΔF ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
-  outage : ∀ (Δ ΔF : Time) (k : Nat), 1 < Δ → 1 < ΔF → ∃ r T b₀ b₁, S.Witness r ∧
-    (S.pt r).env.Δ = Δ ∧ (S.pt r).env.ΔF = ΔF ∧ S.Outage K T b₀ b₁ r ∧
+    ∃ i, ∀ Δ ΔF : Time, 1 < Δ → 1 < ΔF →
+      ∃ r, S.WitnessAt Δ ΔF r ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
+  outage : ∀ (Δ ΔF : Time) (k : Nat), 1 < Δ → 1 < ΔF →
+    ∃ r T b₀ b₁, S.WitnessAt Δ ΔF r ∧ S.Outage K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁ (S.pt r) ∧
       (k : Time) * Δ ≤ T
 
