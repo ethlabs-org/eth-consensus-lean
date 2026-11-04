@@ -41,8 +41,8 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 - **Protected-surface drift:** the same generator and verdict over the **protected surface**, against
   `scripts/instance-spec-snapshot.txt`. Its modules are the inventory's 6th column (`scripts/check-boundaries.py`,
   from `scripts/boundaries.toml` alone): every module of the default library whose file `[checks] trusted_paths`
-  covers and whose layer is not trusted. Today these are 59 modules: every module of the `protected` layers
-  (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`; the Bft, Streamlet and Tendermint `Spec`).
+  covers and whose layer is not trusted. Today these are 56 modules: every module of the `protected` layers
+  (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`).
   Common/Frame claim aliases and frame-sequence vocabulary live in non-exposed Lemmas leaves,
   outside that surface; their names and propositions are preserved and audited through the test root.
   check-boundaries.py fails if a `protected` layer's module is not in it or a trusted
@@ -164,9 +164,11 @@ It cannot reach proofs, instances, the solution, tests or fixtures. Pins/snapsho
 The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
-as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Streamlet
-and Tendermint Specs import `Bft.Spec` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added for the now
+as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every protocol instance `P`; today
+Goldilocks). The instance paths are on the trusted surface but are not trusted layers: their imports are not
+restricted to trusted layers. The Shape examples `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are
+not instances and left the surface on 2026-11-04 (no Challenge statement reaches them; `docs/decisions.md`).
+`Lemmas/Problem/Derived.lean`, added for the now
 archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
 record covers the listed files' text, not everything they import. `scripts/boundaries.toml`
 (`[checks] trusted_paths`) lists the surface, and check-boundaries.py requires it to cover every file of a trusted or
@@ -192,8 +194,8 @@ Static, all-knowing adversary; no adaptive corruption. Per instance the reviewer
 
 ## Not proved / out of scope
 
-Streamlet/Tendermint are values, not protocol
-proofs, and Tendermint's pointwise `notReadyAtMost` is a placeholder. Arbitrary L0 `Good` systems
+Streamlet/Tendermint are Shape examples (values, not protocol
+proofs, and not on the trusted surface), and Tendermint's pointwise `notReadyAtMost` is a placeholder. Arbitrary L0 `Good` systems
 trust their abstraction; only `sysOf` binds the distributed model. See `README.md` Scope: one GST/outage,
 full-participation healthy runs, equal weights, fixed Δ, bounded latency, no adaptive/probabilistic/PoW
 model, non-validator readers, responsiveness, transaction validity/fees/capacity/chain quality, public

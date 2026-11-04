@@ -56,7 +56,7 @@ name = "Solution"
 # layers. `sorry`: unfinished proofs may stay here (plan §5: only Lemmas and Proofs, never a trusted layer;
 # check.sh steps 3 and 7 fail a `sorry` anywhere else, and step 3b fails one in the closure of the solution). Tests: `may_import_roots` (the generated roots,
 # import-only aggregates) and `may_import_all`. `expose`: `@[expose]` may appear here (plan §3: whole-file expose
-# in Core, Spec, Statements and the instance Spec/Statements layers and Refinement.Defs; none in Lemmas, Proofs, Main and ToMathlib,
+# in Core, Spec, Statements, the instance Spec/Statements layers, Refinement.Defs and Examples; none in Lemmas, Proofs, Main and ToMathlib,
 # where a definition used elsewhere gets characterising lemmas instead; check-boundaries.py refuses `expose` on a
 # Lemmas, Proofs, ToMathlib or Main layer). Solution and Test also have it: they are leaves (nothing imports them),
 # so exposure there costs no rebuild. `protected`: not trusted, but `trusted_paths` must cover its files (the tag
@@ -539,28 +539,12 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
 about = "composition of the Goldilocks milestones"
 
 [[layer]]
-name = "Instances.Bft.Spec"
-prefixes = ["ConsensusLean.Instances.Bft.Spec"]
+name = "Examples"
+prefixes = ["ConsensusLean.Examples"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
-protected = true
-about = "the BFT contract shape shared by Streamlet and Tendermint"
-
-[[layer]]
-name = "Instances.Streamlet.Spec"
-prefixes = ["ConsensusLean.Instances.Streamlet.Spec"]
-expose = true
-allow = ["Init", "ToMathlib", "Core", "Spec"]
-protected = true
-about = "Streamlet as a value"
-
-[[layer]]
-name = "Instances.Tendermint.Spec"
-prefixes = ["ConsensusLean.Instances.Tendermint.Spec"]
-expose = true
-allow = ["Init", "ToMathlib", "Core", "Spec"]
-protected = true
-about = "Tendermint as a value"
+about = """Shape examples (Bft, Streamlet, Tendermint as contract values): not protocol instances and not on the
+trusted surface, since no Challenge statement reaches them (docs/decisions.md, 2026-11-04)"""
 
 [[layer]]
 name = "Solution"
@@ -607,7 +591,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Persist",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Refinement",
-         "Instances.Goldilocks.Main", "Instances.Bft.Spec", "Instances.Streamlet.Spec", "Instances.Tendermint.Spec",
+         "Instances.Goldilocks.Main", "Examples",
          "Solution"]
 may_import_roots = true
 may_import_all = true
@@ -620,12 +604,6 @@ about = "tests, review pins (ReviewAxioms, ReviewGuard) and the README index"
 # those reach, through their own exceptions too; it does not extend to the importers of the `from` modules.
 # None may start in a
 # trusted layer, and every `from` and `to` entry must be used (a fixed deviation must be removed).
-
-[[exception]]
-from = ["ConsensusLean.Instances.Streamlet.Spec", "ConsensusLean.Instances.Tendermint.Spec"]
-to = ["ConsensusLean.Instances.Bft.Spec"]
-reason = """Streamlet and Tendermint share the BFT contract shape of Instances.Bft. Plan §2: an instance never
-imports another; shared material moves down to the generic layers."""
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv",
@@ -715,19 +693,12 @@ trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean
                  "ConsensusLean/Statements", "ConsensusLean/ToMathlib.lean", "ConsensusLean/ToMathlib",
                  "Challenge.lean", "comparator.json", "lean-toolchain", "lake-manifest.json",
                  "ConsensusLeanTest/ReviewAxioms.lean", "ConsensusLeanTest/ReviewGuard.lean",
-                 # Instance semantics and statements (#38; foundation plan §1, §4): for every instance P,
-                 # Instances/P/{Spec,Statements} as file and directory and Instances/P/Refinement/Defs.lean,
-                 # existing or not. The layers marked `protected` must be covered (check-boundaries.py).
-                 "ConsensusLean/Instances/Bft/Spec.lean", "ConsensusLean/Instances/Bft/Spec",
-                 "ConsensusLean/Instances/Bft/Statements.lean", "ConsensusLean/Instances/Bft/Statements",
-                 "ConsensusLean/Instances/Bft/Refinement/Defs.lean", "ConsensusLean/Instances/Goldilocks/Spec.lean",
+                 # Instance semantics and statements (#38; foundation plan §1, §4): for every protocol instance P
+                 # (today Goldilocks), Instances/P/{Spec,Statements} as file and directory and
+                 # Instances/P/Refinement/Defs.lean, existing or not. The layers marked `protected` must be covered
+                 # (check-boundaries.py). The Shape examples (ConsensusLean/Examples) are not instances and are not
+                 # listed (docs/decisions.md, 2026-11-04).
+                 "ConsensusLean/Instances/Goldilocks/Spec.lean",
                  "ConsensusLean/Instances/Goldilocks/Spec", "ConsensusLean/Instances/Goldilocks/Statements.lean",
                  "ConsensusLean/Instances/Goldilocks/Statements",
-                 "ConsensusLean/Instances/Goldilocks/Refinement/Defs.lean",
-                 "ConsensusLean/Instances/Streamlet/Spec.lean", "ConsensusLean/Instances/Streamlet/Spec",
-                 "ConsensusLean/Instances/Streamlet/Statements.lean", "ConsensusLean/Instances/Streamlet/Statements",
-                 "ConsensusLean/Instances/Streamlet/Refinement/Defs.lean",
-                 "ConsensusLean/Instances/Tendermint/Spec.lean", "ConsensusLean/Instances/Tendermint/Spec",
-                 "ConsensusLean/Instances/Tendermint/Statements.lean",
-                 "ConsensusLean/Instances/Tendermint/Statements",
-                 "ConsensusLean/Instances/Tendermint/Refinement/Defs.lean"]
+                 "ConsensusLean/Instances/Goldilocks/Refinement/Defs.lean"]

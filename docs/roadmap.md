@@ -44,9 +44,9 @@ Mapping from the Goldilocks references to the Lean names: `docs/goldilocks-mappi
 | Refinement interface (`Statements/Refinement/Interface`, outside `Challenge`): simulation, reads, `NoColl` transport, `conflicts`, evidence, finalized accountability | `Consensus.Goldilocks.Refinement.RefinementStatements`, `Consensus.Goldilocks.Refinement.refinement_statements` | proved (standard axioms), the bundle assembled from its fields (`engineSimulatesNode`, `readIsOut`, `noCollTransport`, `conflicts_iff`, `evidenceInView`, `finalizedAccountable`; four of them in Accepted's closure) |
 | Healing, AC level (`Statements/Healing/AC`; in `Challenge` through its closed forms `ACHealingStandaloneAll`, `ACHealingStandaloneCorollaryAll`, `ACInclusionAll`): H.1 standalone AC healing and H.2 AC inclusion over driven AC traces; H.1's corollary follows from H.1 | `Consensus.Goldilocks.SA.HealingACStatements`, `Consensus.Goldilocks.Healing.healing_ac_statements`, `Consensus.Goldilocks.SA.ac_healing_standalone_corollary` | proved (standard axioms); in `Challenge`/`Solution`, full tier pending |
 
-## Other instances
+## Shape examples
 
-`ConsensusLean/Instances/{Bft,Streamlet,Tendermint}/`: contract values with admissibility, progress-fit and
+`ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` (not instances, not on the trusted surface): contract values with admissibility, progress-fit and
 tolerance proofs (`Consensus.Shape.bftContract_admissible`, `Consensus.Shape.streamletContract_progressTolerant`,
 `Consensus.Shape.tendermintContract_progressTolerant`); no protocol proofs and no milestones yet.
 

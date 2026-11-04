@@ -39,7 +39,7 @@ strictly before the bound), horizon `40`:
 
 * The control contract tolerates arbitrary numbers of validators not ready.
 * `bftContract_admissible`: the numbers of the BFT contract shape shared by
-  Streamlet and Tendermint (`Instances.Bft.Spec`) are admissible for a positive
+  Streamlet and Tendermint (`Examples.Shape.Bft`) are admissible for a positive
   catch-up (in `Consensus.Shape`, as before its move out of the Spec).
 
 All witnesses are the generic ones of `regimes_realizable`

@@ -118,6 +118,18 @@ self_test() {
   git checkout -q --detach "$other"; git merge -q --no-ff --no-edit "$spec"
   expect fail "a merge of an unlabeled trusted commit" HEAD "$other"
   expect pass "a base that is not an ancestor of HEAD: nothing to compare" "$spec" "$other"
+  # The repository's own list (docs/decisions.md, 2026-11-04): a Shape example is not on the trusted surface,
+  # the Goldilocks instance Spec is.
+  local real ex gold
+  git checkout -q --detach "$m0"; cp "$(dirname "$script")/boundaries.toml" scripts/boundaries.toml
+  mkdir -p ConsensusLean/Examples/Shape ConsensusLean/Instances/Goldilocks/Spec
+  echo e >ConsensusLean/Examples/Shape/Streamlet.lean; echo g >ConsensusLean/Instances/Goldilocks/Spec/Trace.lean
+  real="$(commit "the repository's trusted_paths$L")"
+  echo e2 >ConsensusLean/Examples/Shape/Streamlet.lean; ex="$(commit 'Shape example, unlabeled')"
+  expect pass "repository list: an unlabeled change of a Shape example (Examples/Shape/Streamlet.lean)" "$ex" "$real"
+  git checkout -q --detach "$real"; echo g2 >ConsensusLean/Instances/Goldilocks/Spec/Trace.lean
+  gold="$(commit 'Goldilocks Spec, unlabeled')"
+  expect fail "repository list: an unlabeled change of the Goldilocks instance Spec" "$gold" "$real"
   return "$fails"
 }
 

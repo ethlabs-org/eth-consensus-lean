@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Bft.Spec
+public import ConsensusLean.Examples.Shape.Bft
 public import Mathlib.Tactic
 
 @[expose] public section

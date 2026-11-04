@@ -41,8 +41,9 @@ The **trusted surface** (today recorded, not gated: `scripts/review-boundary.sh`
 list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}`
 (each as `X.lean` and `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`, and since #38 the instance semantics
-and statements: for every instance `P` `Instances/<P>/{Spec,Statements}` (file and directory) and
-`Instances/<P>/Refinement/Defs.lean`, existing or not; check-boundaries.py requires the `protected` instance
+and statements: for every protocol instance `P` (today Goldilocks) `Instances/<P>/{Spec,Statements}` (file and
+directory) and `Instances/<P>/Refinement/Defs.lean`, existing or not (the Shape examples under
+`ConsensusLean/Examples` are not instances and left the list on 2026-11-04); check-boundaries.py requires the `protected` instance
 layers to be covered. These are tag-protected, not trusted layers: the Goldilocks `Baseline` modules read
 definitions of the generic `Main` and `Lemmas/Problem/Derived.lean` (`FaultsBelow`, `Safe`, `ReadySafeUpTo`)
 through a reviewed import exception. `ConsensusLean/Lemmas/Problem/Derived.lean`, which defines only those three, `Agree`, and their

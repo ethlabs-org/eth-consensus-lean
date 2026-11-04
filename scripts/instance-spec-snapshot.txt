@@ -21,42 +21,6 @@ option weak.linter.style.header = false
 option weak.linter.style.longFile = 1500
 option lean_lib Challenge weak.linter.style.longLine = false
 
-## ConsensusLean.Instances.Bft.Spec
-induct Consensus.Shape.Affine : Type
-  #3931117990/-
-def Consensus.Shape.Affine._sizeOf_1 #150060922/30131487
-def Consensus.Shape.Affine._sizeOf_inst #2161269463/913992953
-def Consensus.Shape.Affine.a : Consensus.Shape.Affine → Nat := fun self => self.1
-  #150060922/2376110660
-def Consensus.Shape.Affine.b : Consensus.Shape.Affine → Nat := fun self => self.2
-  #150060922/2087939762
-def Consensus.Shape.Affine.casesOn : {motive : Consensus.Shape.Affine → Sort u} → (t : Consensus.Shape.Affine) → ((a b : Nat) → motive { a := a, b := b }) → motive t := fun {motive} t mk => Consensus.Shape.Affine.rec.{u} (fun a b => mk a b) t
-  #4073463086/3309918268
-def Consensus.Shape.Affine.ctorIdx #150060922/8483605
-def Consensus.Shape.Affine.eval : Consensus.Shape.Affine → Nat → Nat := fun f k => HAdd.hAdd.{0, 0, 0} f.a (HMul.hMul.{0, 0, 0} f.b k)
-  #269344256/3873763178
-ctor Consensus.Shape.Affine.mk : Nat → Nat → Consensus.Shape.Affine
-  #824057462/-
-def Consensus.Shape.Affine.mk._flat_ctor #824057462/986911115
-theorem Consensus.Shape.Affine.mk.inj #2144998397/-
-theorem Consensus.Shape.Affine.mk.injEq #1679578744/-
-def Consensus.Shape.Affine.mk.noConfusion : {P : Sort u} → {a b a' b' : Nat} → Eq.{1} { a := a, b := b } { a := a', b := b' } → (Eq.{1} a a' → Eq.{1} b b' → P) → P := fun {P} {a b a' b'} eq k => id.{u} (Consensus.Shape.Affine.noConfusion.{u} eq k)
-  #1779253532/1483480821
-theorem Consensus.Shape.Affine.mk.sizeOf_spec #27496107/-
-def Consensus.Shape.Affine.noConfusion : {P : Sort u} → {t t' : Consensus.Shape.Affine} → Eq.{1} t t' → Consensus.Shape.Affine.noConfusionType.{u} P t t' := fun {P} {t t'} eq => Eq.ndrec.{u, 1} (Consensus.Shape.Affine.casesOn.{u} t fun a b k => k ⋯ ⋯) eq
-  #2922571364/2895493718
-def Consensus.Shape.Affine.noConfusionType #3158311716/2250477305
-recursor Consensus.Shape.Affine.rec : {motive : Consensus.Shape.Affine → Sort u} → ((a b : Nat) → motive { a := a, b := b }) → (t : Consensus.Shape.Affine) → motive t
-  #3528586849/-
-def Consensus.Shape.Affine.recOn : {motive : Consensus.Shape.Affine → Sort u} → (t : Consensus.Shape.Affine) → ((a b : Nat) → motive { a := a, b := b }) → motive t := fun {motive} t mk => Consensus.Shape.Affine.rec.{u} mk t
-  #4073463086/1495689896
-def Consensus.Shape.bftContract : (Consensus.Capability → PNat → Consensus.Blocks.ProgressReq) → Nat → Consensus.Shape.Affine → Consensus.Shape.Affine → Consensus.Contract Consensus.Blocks.ProgressReq := fun progress catchUp heal latency => { Idx := PNat, idx_nonempty := Consensus.Shape.bftContract._proof_1, params := Consensus.Params.standard catchUp 0 1 (fun x k => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} catchUp 1) (heal.eval k.val)) fun x k => latency.eval k.val, progress := progress }
-  #1035733289/766364819
-theorem Consensus.Shape.bftContract._proof_1 #3293017938/-
-def Consensus.Shape.bftCore : Consensus.OutputSchema := { Id := Unit, output := fun x => Consensus.Shape.bftCore.match_1.{1} (fun x => Option.{0} Unit) x (fun _ => Option.some.{0} Unit.unit) fun x => Option.none.{0} }
-  #2282098036/3322899600
-def Consensus.Shape.bftCore._sparseCasesOn_1 #2090199883/3780305705
-def Consensus.Shape.bftCore.match_1 #3150180874/595116461
 ## ConsensusLean.Instances.Goldilocks.Refinement.Defs
 def Consensus.Goldilocks.Refinement.Blk : Consensus.Goldilocks.SA.SAParams → Type := fun sp => Consensus.Goldilocks.NodeBlock sp.toParams (Consensus.Goldilocks.SA.Payload sp.n)
   #3042411892/1333364470
@@ -3941,31 +3905,3 @@ def Consensus.Goldilocks.Regimes.catchUp : Consensus.Goldilocks.SA.SAParams → 
   #1462763396/774505255
 def Consensus.Goldilocks.Regimes.readAfter : {sp : Consensus.Goldilocks.SA.SAParams} → {ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))} → Consensus.Goldilocks.GoldilocksTrace sp ro → Fin sp.n → Nat → Consensus.Time → Consensus.Goldilocks.SA.Blk sp.n (List.{0} (Consensus.Goldilocks.FG.Att sp.n)) := fun {sp} {ro} tr y j t => (Consensus.Goldilocks.goldilocksNode sp ro).confirmed (Consensus.Goldilocks.Trace.state tr y j).ac (Consensus.Goldilocks.Node.frame (Consensus.Goldilocks.Trace.state tr y j)) t
   #3613769212/4257615084
-## ConsensusLean.Instances.Streamlet.Spec
-def Consensus.Shape.streamletContract : Nat → Consensus.Shape.Affine → Consensus.Shape.Affine → Consensus.Contract Consensus.Blocks.ProgressReq := Consensus.Shape.bftContract Consensus.Shape.streamletProg
-  #1209911267/1982791083
-theorem Consensus.Shape.streamletContract_progressFits : ∀ {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] (catchUp : Nat) (heal latency : Consensus.Shape.Affine) (F : Consensus.Shape.ShapeFamily Consensus.Shape.bftCore Info), (∀ (pub : Consensus.Model.Public) (s : Consensus.Blocks.Slot), Eq.{1} ((F pub).skel.proposerSel s) (Consensus.Model.SelSpec.sized 1)) → Consensus.Shape.ProgressFits (Consensus.Shape.streamletContract catchUp heal latency) F
-  #1441798630/-
-theorem Consensus.Shape.streamletContract_progressTolerant : ∀ (catchUp : Nat) (heal latency : Consensus.Shape.Affine), Consensus.Shape.ProgressTolerant Consensus.Shape.bftCore (Consensus.Shape.streamletContract catchUp heal latency)
-  #2258001754/-
-def Consensus.Shape.streamletGrid : Consensus.Model.Public → Consensus.Blocks.TimeGrid := fun pub => { slotLen := HMul.hMul.{0, 0, 0} 2 pub.Δ, slotLen_pos := ⋯ }
-  #617384109/2015736261
-theorem Consensus.Shape.streamletGrid._proof_1 #2214691589/-
-theorem Consensus.Shape.streamletGrid._proof_2 #2397786764/-
-def Consensus.Shape.streamletProg : Consensus.Capability → PNat → Consensus.Blocks.ProgressReq := fun x k => Consensus.Blocks.ProgressReq.recur { pattern := Consensus.Blocks.Pattern.range 5, gap := k }
-  #3747641934/1441631590
-theorem Consensus.Shape.streamletProg._proof_1 #915101028/-
-def Consensus.Shape.streamletSkeleton : (pub : Consensus.Model.Public) → Consensus.Shape.Skeleton pub.n := fun pub => { grid := Consensus.Shape.streamletGrid pub, proposerSel := fun x => Consensus.Model.SelSpec.sized 1, pollSel := Consensus.Model.SelSpec.fixed EmptyCollection.emptyCollection.{0}, Kind := Unit, decKind := inferInstance.{1}, kinds := List.cons.{0} Unit.unit List.nil.{0}, phase := fun x => Int.toNat pub.Δ, kindSel := fun x => Consensus.Model.SelSpec.fixed Finset.univ.{0} }
-  #311676813/1372110247
-## ConsensusLean.Instances.Tendermint.Spec
-def Consensus.Shape.tendermintContract : Nat → Consensus.Shape.Affine → Consensus.Shape.Affine → Consensus.Contract Consensus.Blocks.ProgressReq := Consensus.Shape.bftContract Consensus.Shape.tendermintProg
-  #1209911267/4105024751
-theorem Consensus.Shape.tendermintContract_progressFits : ∀ {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] (catchUp : Nat) (heal latency : Consensus.Shape.Affine) (F : Consensus.Shape.ShapeFamily Consensus.Shape.bftCore Info), Consensus.Shape.ProgressFits (Consensus.Shape.tendermintContract catchUp heal latency) F
-  #3776069400/-
-theorem Consensus.Shape.tendermintContract_progressTolerant : ∀ (catchUp : Nat) (heal latency : Consensus.Shape.Affine), Consensus.Shape.ProgressTolerant Consensus.Shape.bftCore (Consensus.Shape.tendermintContract catchUp heal latency)
-  #1993621374/-
-def Consensus.Shape.tendermintProg : Consensus.Capability → PNat → Consensus.Blocks.ProgressReq := fun x m => Consensus.Blocks.ProgressReq.notReadyAtMost m
-  #3747641934/271389565
-def Consensus.Shape.tendermintSkeleton : (pub : Consensus.Model.Public) → Consensus.Shape.Skeleton pub.n := fun pub => { grid := { slotLen := pub.Δ, slotLen_pos := ⋯ }, proposerSel := fun x => Consensus.Model.SelSpec.fixed EmptyCollection.emptyCollection.{0}, pollSel := Consensus.Model.SelSpec.fixed Finset.univ.{0}, Kind := Empty, decKind := inferInstance.{1}, kinds := List.nil.{0}, phase := fun k => Consensus.Shape.tendermintSkeleton.match_1.{1} (fun k => Nat) k, kindSel := fun k => Consensus.Shape.tendermintSkeleton.match_1.{1} (fun k => Consensus.Model.SelSpec pub.n) k }
-  #311676813/2347554225
-def Consensus.Shape.tendermintSkeleton.match_1 #4077841017/3844941871

@@ -1,7 +1,9 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
+public import ConsensusLean.Examples.Shape.Bft
+public import ConsensusLean.Examples.Shape.Streamlet
+public import ConsensusLean.Examples.Shape.Tendermint
 public import ConsensusLean.Init
-public import ConsensusLean.Instances.Bft.Spec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
@@ -446,8 +448,6 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
-public import ConsensusLean.Instances.Streamlet.Spec
-public import ConsensusLean.Instances.Tendermint.Spec
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLean.Lemmas.Model.Adequate
 public import ConsensusLean.Lemmas.Model.Candidates

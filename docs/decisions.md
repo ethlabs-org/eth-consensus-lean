@@ -709,6 +709,17 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `codeowners_extra`) is removed with its fixtures, since it guarded only that unenforced GitHub feature;
   `.github/CODEOWNERS` stays as an informational file. The trusted surface is still `trusted_paths`, recorded by
   `scripts/review-boundary.sh`; no other step-12 verdict changes.
+- 2026-11-04, lead (Francesco: as much as possible off the trusted surface): **the Shape examples leave the trusted
+  surface**. `Instances/{Bft,Streamlet,Tendermint}/Spec.lean` move to `ConsensusLean/Examples/Shape/{Bft,Streamlet,
+  Tendermint}.lean` (one unprotected `Examples` layer; the Streamlet/Tendermint → Bft import exception goes, since
+  they share the layer), and their `Instances/<P>/…` entries leave `trusted_paths`. Reason: they are demonstrations
+  of `Shape` (contract values with fit and tolerance proofs), not protocol instances, and no Challenge or comparator
+  statement reaches them: the compiled trusted-surface inventory at dd513f0f finds all their declarations
+  unreachable from the 53 roots, in the statement closure and in the proof closure. #38's rule (every protocol
+  instance's `Spec`, `Statements` and `Refinement/Defs.lean` are trusted) stands; Goldilocks is today's only
+  instance, and its layers stay `protected`, so check-boundaries.py still requires them to be covered.
+  `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`:
+  Streamlet was their only user on the trusted surface, but `Lemmas/Blocks/Facts` and the tests use them too.
 
 ## Open, for the owner
 

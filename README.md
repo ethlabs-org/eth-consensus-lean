@@ -603,7 +603,8 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 | `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
 | `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
 | `Main.lean` | `Accepted.good` and `Accepted.activeService`. |
-| `Instances/<P>/Spec.lean`, `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`, `Statements/`: the milestone statements), Bft, Streamlet, Tendermint (`Spec.lean`). |
+| `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`, `Statements/`: the milestone statements). |
+| `Examples/Shape/` | Shape examples, not on the trusted surface: Bft, Streamlet, Tendermint as contract values. |
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
 so every module reaches it. It is part of the trusted surface.
@@ -621,7 +622,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Lemmas` | the above, Statements |
 | `Proofs.<M>` (one layer per milestone directory) | the above, Lemmas |
 | `Main` | the above, every `Proofs.<M>` |
-| `Instances.<P>.Spec` | Init, ToMathlib, Core, Spec |
+| `Examples` (Shape examples, untrusted) | Init, ToMathlib, Core, Spec |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `Refinement.Defs`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.Refinement` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import Refinement |
 | `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Service`, `Instances.Goldilocks.Proofs.Refinement` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |
@@ -636,14 +637,13 @@ aggregate, or `import all`, outside the tests; a module that does not reach `Con
 public imports (except `ToMathlib` and the meta tool `ReviewGuard`); a fixture module or an unknown
 top-level name; the attribute `expose` (a whole-file `@[expose]` section, on a declaration, or `attribute
 [expose]`; comments and strings ignored) in a layer without `expose = true`, which only Core, Spec, Statements,
-the instance Spec, Statements and `Refinement.Defs` layers, the solution and the tests have (plan §3: Lemmas, Proofs, Main and ToMathlib export no
+the instance Spec, Statements and `Refinement.Defs` layers, the Examples layer, the solution and the tests have (plan §3: Lemmas, Proofs, Main and ToMathlib export no
 bodies; the solution and the tests are leaves, so their exposure costs no rebuild), or `expose = true` on a
 Lemmas, Proofs, ToMathlib or Main layer. Lean also exports the bodies of `abbrev`s and of instances of non-`Prop`
 classes without the attribute; the checker does not flag those (today `Trace.Agree` and `kv`). Its self-test (`scripts/fixtures/boundaries/cases.toml`, one case per
 failure kind) runs in check.sh step 2. Today's deviations from the plan's matrix are reviewed
-`[[exception]]` entries, each with its reason: `Lemmas.Shape.Payload` uses the `Faithful` milestone;
-`RegimesRealizable` builds on `Behaviour`; the instance Specs import the generic `Main`; Streamlet and
-Tendermint share `Instances.Bft`. An exception lets the modules under its `from` depend on the modules
+`[[exception]]` entries, each with its reason; today one: Goldilocks `Lemmas.Healing.ResetInv`,
+`Lemmas.Healing.Recovery.Reports` and `Proofs.Healing.Main` import `Lemmas.Refinement.HealthyEffective`. An exception lets the modules under its `from` depend on the modules
 under its `to` (and so on what those reach), never the importers of the `from` modules; none starts in a
 trusted layer, and every `from` and `to` entry must be used.
 
@@ -813,18 +813,21 @@ with their nodes; and the milestone proof `Proofs/<M>/Main.lean`, which `Solutio
 acceptance endpoint (`Statements/Refinement/Accepted`) is proved through the refinement; the other milestones
 are proved directly over their own models (FG chains, AC states, the node and its runs). Milestone status: `docs/roadmap.md`.
 
-### Bft, Streamlet and Tendermint
+## Shape examples (`ConsensusLean/Examples/Shape/`): Bft, Streamlet and Tendermint
 
-`ConsensusLean/Instances/Bft/Spec.lean` supplies the common final-only schema `bftCore`, affine bounds
+These are demonstrations of `Shape`, not protocol instances, and are not on the trusted surface: no
+Challenge statement reaches them (`docs/decisions.md`, 2026-11-04).
+
+`ConsensusLean/Examples/Shape/Bft.lean` supplies the common final-only schema `bftCore`, affine bounds
 and `bftContract`: index `k : ℕ+`, standard thresholds, catch-up, heal point
 `max g 0 + (catchUp + 1 + heal k)·Δ`, and latency `latency k` in Δ-coefficients.
 Outage numbers are unused because there is no stable output.
 
-`ConsensusLean/Instances/Streamlet/Spec.lean` gives `2·Δ` slots, one proposer per slot, polling disabled,
+`ConsensusLean/Examples/Shape/Streamlet.lean` gives `2·Δ` slots, one proposer per slot, polling disabled,
 and all-validator votes at offset `Δ`. Progress is five consecutive honest ready proposers
 in every window of `k` slots (`Pattern.range 5`); gap 6 supplies the tolerant index.
 
-`ConsensusLean/Instances/Tendermint/Spec.lean` gives a poll shape, no slot proposals or committee kinds,
+`ConsensusLean/Examples/Shape/Tendermint.lean` gives a poll shape, no slot proposals or committee kinds,
 and all-validator polling at every unit tick. Height is in `pos`, round in `info`; round-robin
 leadership is computed locally. A locked value is re-proposed by carrying its signed header.
 Progress is the pointwise `notReadyAtMost m` placeholder described in Scope.
@@ -843,7 +846,7 @@ These are values and fit/tolerance proofs, with no concrete protocol proofs.
 - `Realizable`: coverage, `allProposers_no_witness`, late-GST and late-outage witnesses.
 - `Controls`: positive controls at explicit numbers.
 - `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_accepted`.
-- `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Instances/Bft/Spec.lean`, `ConsensusLean/Instances/Streamlet/Spec.lean` and `ConsensusLean/Instances/Tendermint/Spec.lean`.
+- `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean`.
 - `ReviewAxioms`, `ReviewGuard`: statement alpha-equality, completeness and axiom pins.
 - `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.
 
@@ -919,9 +922,11 @@ The review boundary is separate from correctness. The **trusted surface** is
 `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
 `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
-as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every instance `P`). The instance paths are
-on the trusted surface but are not trusted layers: their imports are not restricted to trusted layers (the Streamlet
-and Tendermint Specs import `Bft.Spec` through a reviewed exception). `Lemmas/Problem/Derived.lean`, added for the now
+as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every protocol instance `P`; today
+Goldilocks). The instance paths are on the trusted surface but are not trusted layers: their imports are not
+restricted to trusted layers. The Shape examples `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are
+not instances and left the surface on 2026-11-04 (no Challenge statement reaches them; `docs/decisions.md`).
+`Lemmas/Problem/Derived.lean`, added for the now
 archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
 record covers the listed files' text, not everything they import. The list lives in `scripts/boundaries.toml`
 (`[checks] trusted_paths`, plain paths that must cover every spec-group file), read as literal paths at HEAD and
