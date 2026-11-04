@@ -45,7 +45,7 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
     norm_num [Params.standard]
   · exact fun _ _ _ _ _ => rfl
   · exact le_mul_of_one_le_left zero_le_two
-      (by exact_mod_cast (goldilocksContract A C).params.rowRatio.pos)
+      (by exact_mod_cast (goldilocksContract A C).params.fgDelay.pos)
 
 /-- (a) The `FinalQuery` fields, over `goldilocksContract A C`, are jointly satisfiable: index 1,
 GST 0, query time `heal·Δ`, horizon `(heal + latency)·Δ` (engine `Δ = 2`). -/
@@ -58,10 +58,10 @@ theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients)
         .final (1 : ℕ+) ((Sys (goldilocks S) (Fin 2)).ready (goldilocksContract A C) 0 r)
         r.2.horizon r ∧
       (Sys (goldilocks S) (Fin 2)).heal (goldilocksContract A C) .final (1 : ℕ+) 0 r ≤ query ∧
-      query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ ≤
+      query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.ΔAC ≤
         r.2.horizon ∧
       ∃ v, r.2.point.Ready ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r) v
-        (query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ) := by
+        (query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.ΔAC) := by
   let H : Time := (C.heal .final 1 : Time) * 2 + (C.latency .final 1 : Time) * 2
   have hH0 : 0 ≤ H := by positivity
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hhl⟩ := healthy_run S A C H hH0

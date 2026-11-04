@@ -71,10 +71,10 @@ end Trace
 /-- Transaction liveness of `g` from `start` with delay `D` (a duration),
 serving every submission: a transaction submitted to some awake honest node by
 `t` is in the ledger of every ready reader at every time
-`t' ∈ [max t start + Δ + D, horizon]`. No GST: every regime's `start` is at or
+`t' ∈ [max t start + ΔAC + D, horizon]`. No GST: every regime's `start` is at or
 after its GST. -/
 def Trace.TxLive {V Id : Type} (tr : Trace V Tx Id) (c : Time) (g : Id) (start D : Time) : Prop :=
-  ∀ x t t', tr.point.SubmittedToSome x t → max t start + tr.point.env.Δ + D ≤ t' →
+  ∀ x t t', tr.point.SubmittedToSome x t → max t start + tr.point.env.ΔAC + D ≤ t' →
     t' ≤ tr.point.horizon → ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t'
 
 /-- Validators convicted by evidence, independently of an execution model. -/

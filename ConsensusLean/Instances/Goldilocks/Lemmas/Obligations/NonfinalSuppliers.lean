@@ -41,13 +41,13 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
         a + (S.params (Model.pubOf E) hn).Δ := by
       rw [Compose.projAC_deadline]
       exact heq
-    have hslack : a + E.Δ - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
-      change a + E.Δ - 1 < a + E.Δ
+    have hslack : a + E.ΔAC - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
+      change a + E.ΔAC - 1 < a + E.ΔAC
       linarith
-    have hbound : a + E.Δ - 1 ≤ b := hslack.le.trans (heq' ▸ hb)
+    have hbound : a + E.ΔAC - 1 ≤ b := hslack.le.trans (heq' ▸ hb)
     have hheld := hnet.msgs (rho.key x) ((mem_honestKeys_iff S rho x).mp hx)
       _ τ ⟨source, hs, hrel⟩
-      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y)
+      (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) (rho.key y)
       ((mem_honestKeys_iff S rho y).mp hy)
       a ha hbound (hbound.trans hbh)
       (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
@@ -155,9 +155,9 @@ structure ConfirmedQuery where
       (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
         ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run ∧
       (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ query)
-  bounded : query + ((K S A).params.latency cap index : Time) * run.1.Δ ≤ run.2.horizon
+  bounded : query + ((K S A).params.latency cap index : Time) * run.1.ΔAC ≤ run.2.horizon
   reader : ∃ v, run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run) v
-    (query + ((K S A).params.latency cap index : Time) * run.1.Δ)
+    (query + ((K S A).params.latency cap index : Time) * run.1.ΔAC)
 
 namespace ConfirmedQuery
 variable {S A V}
@@ -166,7 +166,7 @@ noncomputable abbrev trace (Q : ConfirmedQuery S A V) := simTrace S Q.run.2 Q.hn
 noncomputable abbrev duration (Q : ConfirmedQuery S A V) :=
   (Sys (goldilocks S) V).cDur (K S A) Q.run
 noncomputable abbrev deadline (Q : ConfirmedQuery S A V) : Time :=
-  Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.Δ
+  Q.query + ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC
 end ConfirmedQuery
 
 /-- Actual production at a finite cut, not an eligible schedule slot alone.
@@ -210,10 +210,10 @@ theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [ConfirmedQuery.duration, System.cDur,
     Params.standard, contract_coefficients_catchUp]
-  change 18 * Q.run.1.Δ ≤ (contract_catchUp S A : Nat) * Q.run.1.Δ
+  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
   nlinarith
 
 /-- Canonical recipient service through the actual query deadline. -/
@@ -278,13 +278,13 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
       using hprogress
   have hlat : (4 * (Q.index : Time) + 6) ≤ contract_latency S A Q.cap Q.index := by
     exact_mod_cast contract_latency_ge_sleepy S A Q.cap Q.index Q.nonfinal
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hi : (0 : Time) ≤ Q.index := by positivity
   have hbudget : (4 * (Q.index : Time) + 6) * Q.params.Δ ≤
-      ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.Δ := by
+      ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC := by
     rw [show (K S A).params.latency Q.cap Q.index = contract_latency S A Q.cap Q.index from
       congrFun (congrFun (contract_coefficients_latency S A) Q.cap) Q.index]
-    change (4 * (Q.index : Time) + 6) * Q.run.1.Δ ≤ _
+    change (4 * (Q.index : Time) + 6) * Q.run.1.ΔAC ≤ _
     nlinarith
   have hwin : Q.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.run.2.horizon := by
     have hb := Q.bounded
@@ -296,7 +296,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
       Model.Run.point] using hwin)
   have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
-    change (s : Time) * (4 * Q.run.1.Δ) = 4 * Q.run.1.Δ * s
+    change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
   rw [htime] at hlo hhi
   have hmargin : Q.params.ts s + 6 * Q.params.Δ ≤ Q.deadline := by

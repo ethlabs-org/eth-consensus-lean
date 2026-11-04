@@ -113,7 +113,7 @@ private theorem query_numbers (Q : OutageQuery S A V) :
   intro j₀
   obtain ⟨⟨hT, -, hb01, hbud⟩, -⟩ := Q.outage
   have hlag := outage_node_lag S A V Q
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k
   obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
     have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
@@ -121,18 +121,18 @@ private theorem query_numbers (Q : OutageQuery S A V) :
     nlinarith)
   have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
   have hb : ((4 * S.k - 5 : Nat) : Int) ≤ 4 * (S.k : Int) - 5 := hbcast.le
-  change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.Δ at hbud
-  have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.Δ_pos)
-  change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start at hg₁
-  change Q.start < 4 * Q.run.1.Δ * (j₀ : Int) + 6 * Q.run.1.Δ at hg₂
-  change 4 * Q.run.1.Δ * (j₀ : Int) + 2 * Q.run.1.Δ ≤ Q.start ∧
-    Q.start < 4 * Q.run.1.Δ * ((j₀ + 1 : Nat) : Int) + 2 * Q.run.1.Δ ∧
-    Q.stop - Q.start ≤ (4 * (S.k : Time) - 5) * Q.run.1.Δ ∧ Q.start ≤ Q.stop ∧
-    Q.stop ≤ 4 * Q.run.1.Δ * ((j₀ + S.k : Nat) : Int) + Q.run.1.Δ ∧
-    4 * Q.run.1.Δ * ((j₀ : Nat) : Int) + Q.run.1.Δ < Q.stop ∧
-    ∀ t, t ≤ 4 * Q.run.1.Δ * ((j₀ + S.k : Nat) : Int) + Q.run.1.Δ →
+  change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
+  have hmul := mul_le_mul_of_nonneg_right hb (le_of_lt Q.run.1.ΔAC_pos)
+  change 4 * Q.run.1.ΔAC * (j₀ : Int) + 2 * Q.run.1.ΔAC ≤ Q.start at hg₁
+  change Q.start < 4 * Q.run.1.ΔAC * (j₀ : Int) + 6 * Q.run.1.ΔAC at hg₂
+  change 4 * Q.run.1.ΔAC * (j₀ : Int) + 2 * Q.run.1.ΔAC ≤ Q.start ∧
+    Q.start < 4 * Q.run.1.ΔAC * ((j₀ + 1 : Nat) : Int) + 2 * Q.run.1.ΔAC ∧
+    Q.stop - Q.start ≤ (4 * (S.k : Time) - 5) * Q.run.1.ΔAC ∧ Q.start ≤ Q.stop ∧
+    Q.stop ≤ 4 * Q.run.1.ΔAC * ((j₀ + S.k : Nat) : Int) + Q.run.1.ΔAC ∧
+    4 * Q.run.1.ΔAC * ((j₀ : Nat) : Int) + Q.run.1.ΔAC < Q.stop ∧
+    ∀ t, t ≤ 4 * Q.run.1.ΔAC * ((j₀ + S.k : Nat) : Int) + Q.run.1.ΔAC →
       t ≤ Q.run.2.horizon →
-      t ≤ min (Q.stop + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.Δ) Q.run.2.horizon
+      t ≤ min (Q.stop + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC) Q.run.2.horizon
   push_cast
   refine ⟨hg₁, by linarith, by linarith, hb01, by nlinarith, by linarith,
     fun t ht hth => le_min ?_ hth⟩

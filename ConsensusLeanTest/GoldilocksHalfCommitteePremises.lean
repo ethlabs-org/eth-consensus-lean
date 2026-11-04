@@ -651,7 +651,7 @@ theorem run_clean (ctl : Bool) : Clean (tr ctl) H 6 8 Bk where
   caches y _ j _ := by
     rw [trace_state]
     exact ⟨Or.inl (gBlk_anc_Bk ctl), Or.inl (gBlk_anc_Bk ctl)⟩
-  rowCut E' hE' := by
+  fgAttCut E' hE' := by
     obtain ⟨-, y, -, j, -, hanc, hne⟩ := hE'
     rw [trace_state] at hanc hne
     change Anc _ X.gBlk E' at hanc

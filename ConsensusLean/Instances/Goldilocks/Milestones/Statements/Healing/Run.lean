@@ -258,7 +258,7 @@ structure RetentionAt (g a : Time) : Prop where
     Compatible (tr.HonestBlocks H) B B'
   /-- (R1) Every honest attestation signed at or after `a` whose height pair has height
   `h ≥ H_z + 1` names the entry at `h` of a high origin's chain. -/
-  rows : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
+  fgAtts : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
     ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
       (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
       ((tr.state x i).fg.σ E.root).Th = E.root

@@ -14,19 +14,19 @@ The delivery rule is Francesco's rule, normal delivery:
 > interval, and is re-served, strictly before the bound, to nodes that wake
 > later.
 
-The delivery interval is half-open, `[t, max(t, GST) + Δ)`, as in the paper's
+The delivery interval is half-open, `[t, max(t, GST) + ΔAC)`, as in the paper's
 `Sync`; on integer time, "strictly before `d`" is "by `d − 1`". `Delivers`
-states it for a deadline function `dl` (`msgs`, every message that is not a
-row): for every start `a ≥ t`, an honest node awake throughout `[a, dl a]`
-holds the message at `dl a`. With `dl a = max a GST + Δ − 1`: a node awake
-over `[t, max(t, GST) + Δ − 1]` has it by `max(t, GST) + Δ − 1`, and a node
-that wakes at `u` (and stays awake) has it by `max(u, GST) + Δ − 1`. So a
-tick at `max(t, GST) + Δ`, which runs before the deliveries of its time, reads
-it. At `Δ = 1` this is same-time delivery (a receipt at the send's time
-counts, `Held`); realizability starts at `Δ = 2` (`Realizable`). Row messages
-(`CommLog.row`) follow the same rule with their own deadline function `dlF`
-(`rows`, bound `ΔF`, deadline `max a GST + ΔF − 1`); neither bound is assumed
-to bound the other, and a row is never served by the `msgs` clause.
+states it for a deadline function `dl` (`msgs`, every message that is not an
+FG attestation): for every start `a ≥ t`, an honest node awake throughout `[a, dl a]`
+holds the message at `dl a`. With `dl a = max a GST + ΔAC − 1`: a node awake
+over `[t, max(t, GST) + ΔAC − 1]` has it by `max(t, GST) + ΔAC − 1`, and a node
+that wakes at `u` (and stays awake) has it by `max(u, GST) + ΔAC − 1`. So a
+tick at `max(t, GST) + ΔAC`, which runs before the deliveries of its time, reads
+it. At `ΔAC = 1` this is same-time delivery (a receipt at the send's time
+counts, `Held`); realizability starts at `ΔAC = 2` (`Realizable`). FG attestation
+messages (`CommLog.fgAtt`) follow the same rule with their own deadline function `dlF`
+(`fgAtts`, bound `ΔFG`, deadline `max a GST + ΔFG − 1`); neither bound is assumed
+to bound the other, and an FG attestation is never served by the `msgs` clause.
 Transactions (`txs`) follow the rule of `dl`. Partial synchrony (`PSync g`),
 synchrony up to a cut (`SyncUntil b`) and the outage network
 (`OutageNet b₀ b₁`) are instances; `EagerFrom g` is the shape of the model's
@@ -54,19 +54,19 @@ def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
   ∃ τ, 0 ≤ τ ∧ τ ≤ d ∧ x ∈ L.inbox w τ
 
 /-- Delivery with deadline function `dl` for messages and transactions and
-`dlF` for rows, for deadlines up to the time `cut` (a time, not a trace cut
+`dlF` for FG attestations, for deadlines up to the time `cut` (a time, not a trace cut
 index) and up to the horizon. -/
 structure Delivers (dl dlF : Time → Time) (cut : Time) : Prop where
   /-- Francesco's rule (normal delivery): an honest send at `t` of a message
-  that is not a row is held at `dl a`, for every start `a ≥ t`, by every
+  that is not an FG attestation is held at `dl a`, for every start `a ≥ t`, by every
   honest node awake throughout the delivery interval `[a, dl a]`. At `a = t`
   this is delivery by `dl t` (for `PSync`, strictly before the bound) to nodes
   awake over `[t, dl t]`; at a later `a` it is re-service, by `dl a`, to a node
   that wakes at `a` (a restart loses earlier receipts, see `Held`). -/
-  msgs : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ¬ L.row m → ∀ w ∈ p.honest, ∀ a, t ≤ a →
+  msgs : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ¬ L.fgAtt m → ∀ w ∈ p.honest, ∀ a, t ≤ a →
     dl a ≤ cut → dl a ≤ p.horizon → p.AwakeOnClosed w a (dl a) → L.Held p w m (dl a)
-  /-- The same rule for rows, with the row deadline `dlF`. -/
-  rows : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → L.row m → ∀ w ∈ p.honest, ∀ a, t ≤ a →
+  /-- The same rule for FG attestations, with the FG deadline `dlF`. -/
+  fgAtts : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → L.fgAtt m → ∀ w ∈ p.honest, ∀ a, t ≤ a →
     dlF a ≤ cut → dlF a ≤ p.horizon → p.AwakeOnClosed w a (dlF a) → L.Held p w m (dlF a)
   /-- Transactions submitted to an awake honest node, likewise: held at
   `dl a`, for every start `a` at or after the submission, by every honest node
@@ -75,15 +75,16 @@ structure Delivers (dl dlF : Time → Time) (cut : Time) : Prop where
     ∀ w ∈ p.honest, ∀ a, τ ≤ a → dl a ≤ cut → dl a ≤ p.horizon →
       p.AwakeOnClosed w a (dl a) → L.TxHeld w x (dl a)
 
-/-- Partial synchrony with GST `g`: held strictly before `max a g + Δ` (deadline
-`max a g + Δ − 1`), and strictly before `max a g + ΔF` for rows, up to the
+/-- Partial synchrony with GST `g`: held strictly before `max a g + ΔAC` (deadline
+`max a g + ΔAC − 1`), and strictly before `max a g + ΔFG` for FG attestations, up to the
 horizon. `PSync 0` is synchrony. -/
 def PSync (g : Time) : Prop :=
-  L.Delivers p (fun a => max a g + p.env.Δ - 1) (fun a => max a g + p.env.ΔF - 1) p.horizon
+  L.Delivers p (fun a => max a g + p.env.ΔAC - 1) (fun a => max a g + p.env.ΔFG - 1) p.horizon
 
-/-- Synchrony (held strictly before `a + Δ`, `a + ΔF` for rows) for deadlines up to `b`. -/
+/-- Synchrony (held strictly before `a + ΔAC`, `a + ΔFG` for FG attestations) for deadlines up
+to `b`. -/
 def SyncUntil (b : Time) : Prop :=
-  L.Delivers p (fun a => a + p.env.Δ - 1) (fun a => a + p.env.ΔF - 1) b
+  L.Delivers p (fun a => a + p.env.ΔAC - 1) (fun a => a + p.env.ΔFG - 1) b
 
 /-- The outage network: synchronous for deadlines up to `b₀`, partially
 synchronous with GST `b₁` (asynchronous during `[b₀, b₁)`). -/
@@ -107,7 +108,7 @@ receipts and inboxes, and it has the same message class. Inbox agreement is
 quantified separately, so it is not vacuous when the message type is empty. -/
 def AgreesUpTo (L' : CommLog V M) (b : Time) : Prop :=
   (∀ v m t, t ≤ b → (L.sent v m t ↔ L'.sent v m t) ∧ (L.recv v m t ↔ L'.recv v m t)) ∧
-    (∀ v t, t ≤ b → L.inbox v t = L'.inbox v t) ∧ L.row = L'.row
+    (∀ v t, t ≤ b → L.inbox v t = L'.inbox v t) ∧ L.fgAtt = L'.fgAtt
 
 end CommLog
 

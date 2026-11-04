@@ -57,14 +57,14 @@ theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
   obtain ⟨i, hi⟩ := h.sleepyStress .available (Or.inl rfl) ho
   obtain ⟨r, ⟨-, hd, -⟩, ⟨-, hprog, hlive⟩, hawake⟩ := hi 2 2 (by norm_num) (by norm_num)
   let S := sysOf O (compiled F) V
-  have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
+  have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.ΔAC_pos.le
   have hD : 0 ≤ S.lat K .available i r :=
-    mul_nonneg (by positivity) (S.pt r).env.Δ_pos.le
+    mul_nonneg (by positivity) (S.pt r).env.ΔAC_pos.le
   obtain ⟨x, t, t', u, w, ht, -, -, -, -, -, -, hdl, hth, -⟩ := hlive
   have hH : 0 ≤ (S.pt r).horizon := by
     have := le_max_left t 0
     dsimp [S] at *
-    linarith [(S.pt r).env.Δ_pos]
+    linarith [(S.pt r).env.ΔAC_pos]
   change shapeHolds F (K.progress .available i) _ _ _ _ _ at hprog
   rw [hp i] at hprog
   have hready := hprog 0 (by simp) hH hH

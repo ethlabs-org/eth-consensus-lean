@@ -180,7 +180,7 @@ theorem prefix_sync_then_async :
       ¬ prefixLog.PSync prefixPoint 0 ∧
       ∀ {Idx : Type} (P : Params Idx),
         ¬ (prefixLog.PSync prefixPoint 0 ∧
-          prefixPoint.SleepyOn P.θ ((P.catchUp : Time) * prefixPoint.env.Δ) 0
+          prefixPoint.SleepyOn P.θ ((P.catchUp : Time) * prefixPoint.env.ΔAC) 0
             prefixPoint.horizon) := by
   have hnp : ¬ prefixLog.PSync prefixPoint 0 := by
     intro h

@@ -211,10 +211,10 @@ theorem healthy_repair_schedule_of_reset
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hduration : 18 * Q.params.Δ + 1 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    change 18 * Q.run.1.Δ + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.Δ
+    change 18 * Q.run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
     nlinarith
   have hΔ := Q.params.toParams.hΔ
   have hready : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by

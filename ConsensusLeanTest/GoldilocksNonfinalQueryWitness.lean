@@ -53,9 +53,9 @@ theorem confirmedQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap idx
       ((Sys (goldilocks S) V).ready (K S A) gst r) r.2.horizon r)
     (ht : (Sys (goldilocks S) V).heal (K S A) cap idx gst r ≤ t)
-    (hb : t + ((K S A).params.latency cap idx : Time) * r.1.Δ ≤ r.2.horizon)
+    (hb : t + ((K S A).params.latency cap idx : Time) * r.1.ΔAC ≤ r.2.horizon)
     (hr : ∃ v, r.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) r) v
-      (t + ((K S A).params.latency cap idx : Time) * r.1.Δ)) :
+      (t + ((K S A).params.latency cap idx : Time) * r.1.ΔAC)) :
     ∃ Q : ConfirmedQuery S A V, Q.run = r ∧ Q.cap = cap ∧ Q.index = idx ∧ Q.gst = gst ∧
       Q.query = t :=
   ⟨⟨r, hn, cap, hcap, idx, gst, t, hv, hc, Or.inr ⟨hh, hp, ht⟩, hb, hr⟩,
@@ -157,13 +157,13 @@ theorem confirmedQuery_producer :
   have hlt : P.ready ≤ P.heal := by nlinarith
   have hready : P.ready = (Sys (goldilocks S) (Fin 2)).ready (K S A) 0 Q.run := rfl
   have hheal : P.heal = healT S A := by
-    change max (0 : Time) 0 + ((K S A).params.heal .available (1 : ℕ+) : Time) * Q.run.1.Δ = _
+    change max (0 : Time) 0 + ((K S A).params.heal .available (1 : ℕ+) : Time) * Q.run.1.ΔAC = _
     rw [hE]; simp only [max_self, zero_add]; rfl
   have h0 : 0 ≤ (Sys (goldilocks S) (Fin 2)).ready (K S A) 0 Q.run := by
     change 0 ≤ max (0 : Time) 0 + (Sys (goldilocks S) (Fin 2)).cDur (K S A) Q.run + 1
     have : (0 : Time) ≤ (Sys (goldilocks S) (Fin 2)).cDur (K S A) Q.run := by
-      change (0 : Time) ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ
-      have := Q.run.1.Δ_pos; positivity
+      change (0 : Time) ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC
+      have := Q.run.1.ΔAC_pos; positivity
     simp only [max_self]; linarith
   refine ⟨Q, healthy_query_slot S A (Fin 2) Q (ready := (Sys (goldilocks S) (Fin 2)).ready
     (K S A) 0 Q.run) ?_ ?_⟩

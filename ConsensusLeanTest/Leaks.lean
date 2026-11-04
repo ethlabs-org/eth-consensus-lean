@@ -51,9 +51,9 @@ a proposal role, is in every ready read by `t + D·Δ`. `τ` is not bounded
 above: the obligation is the inclusion by `t + D·Δ`, not the release time. -/
 def ProposalLive (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (start : Time) (D : Nat) :
     Prop :=
-  ∀ t, start ≤ t → t + (D : Time) * E.Δ ≤ rho.horizon →
+  ∀ t, start ≤ t → t + (D : Time) * E.ΔAC ≤ rho.horizon →
     ∃ τ k h, t < τ ∧ rho.point.Ready c (rho.key k) τ ∧
-      HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.Δ)
+      HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.ΔAC)
 
 /-- The unconditional form is sufficient. -/
 theorem ProposalLive.ready {rho : Model.Run (compiled F) E} {c : Time} {g : O.Id}
@@ -99,7 +99,7 @@ theorem testK_progressTolerant : ProgressTolerant schema testK :=
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/
 def testSkel (pub : Public) : Skeleton pub.n where
-  grid := ⟨pub.Δ, pub.Δ_pos⟩
+  grid := ⟨pub.ΔAC, pub.ΔAC_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
@@ -170,7 +170,7 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
   -- from the send time on: `PSync 0` at `Δ = 1` (deadline `max a 0 + Δ − 1 ≥ a`) needs no
   -- network service (and no eager log, which would need `Δ > 1`).
   have held : ∀ (m : (Model.protoOf (compiled F) env).Object) t a, r.log.sent 0 m t → t ≤ a →
-      r.log.Held r.point 0 m (max a 0 + r.point.env.Δ - 1) := by
+      r.log.Held r.point 0 m (max a 0 + r.point.env.ΔAC - 1) := by
     intro m t a hs hta
     refine ⟨t, ?_, Or.inl hs, fun u _ _ hwk => ?_⟩
     · change t ≤ max a 0 + 1 - 1
@@ -211,7 +211,7 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
   rcases (hc (Fin 1)).sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) ⟨env, r⟩ valid
       ⟨hsleepy, hprog⟩ with hl | hcol
   · obtain ⟨τ, k, h, -, -, -, hin⟩ := hl 0 le_rfl
-      (show (0 : Int) + ((testK.params.latency .available (1 : ℕ+) : Nat) : Int) * env.Δ ≤ 3 by
+      (show (0 : Int) + ((testK.params.latency .available (1 : ℕ+) : Nat) : Int) * env.ΔAC ≤ 3 by
         decide) ⟨0, hready _ _ _⟩
     have hmem := hin 0 (hready _ _ _)
     change h ∈ (chainTrace r).read () 0 _ at hmem
@@ -498,7 +498,7 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     (hs : 0 ≤ start) (D : Nat) (hD : 1 ≤ D) :
     ProposalLive rho c () start D := by
   intro t hst ht
-  have hΔ : env.Δ = 1 := rfl
+  have hΔ : env.ΔAC = 1 := rfl
   rw [hΔ, mul_one] at ht ⊢
   have hDt : (1 : Int) ≤ (D : Int) := by exact_mod_cast hD
   have ht0 : (0 : Int) ≤ t := le_trans hs hst

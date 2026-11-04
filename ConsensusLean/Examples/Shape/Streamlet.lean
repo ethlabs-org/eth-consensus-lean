@@ -12,7 +12,7 @@ open Consensus.Model (Public SelSpec pubOf)
 /-! ## Streamlet -/
 
 /-- Slots of `2·Δ`. -/
-def streamletGrid (pub : Public) : TimeGrid := ⟨2 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+def streamletGrid (pub : Public) : TimeGrid := ⟨2 * pub.ΔAC, mul_pos (by decide) pub.ΔAC_pos⟩
 
 /-- The Streamlet skeleton. -/
 def streamletSkeleton (pub : Public) : Skeleton pub.n where
@@ -22,7 +22,7 @@ def streamletSkeleton (pub : Public) : Skeleton pub.n where
   Kind := Unit
   decKind := inferInstance
   kinds := [()]
-  phase := fun _ => pub.Δ.toNat
+  phase := fun _ => pub.ΔAC.toNat
   kindSel := fun _ => .fixed Finset.univ
 
 /-- Streamlet progress: five consecutive honest proposers within every window

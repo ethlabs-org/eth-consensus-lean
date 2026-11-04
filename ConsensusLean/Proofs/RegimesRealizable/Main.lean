@@ -686,7 +686,7 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 
     (hsel : (protoOf (compiled F) (realPoint key hn Δ hΔ ΔF hΔF allAwake H).env).SelAdmits sel)
     (hprog : ∀ c s e, shapeHolds F (K.progress cap i) c s e
       (realPoint key hn Δ hΔ ΔF hΔF allAwake H) (key, sel))
-    (hr : ΔF ≤ (K.params.rowRatio : Time) * Δ)
+    (hr : ΔF ≤ (K.params.fgDelay : Time) * Δ)
     (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
     (h2 : max g 0 + (K.params.heal cap i : Time) * Δ + 2 ≤ H)
     (h3 : max g 0 + (K.params.catchUp : Time) * Δ + 1 +
@@ -737,7 +737,7 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 
 proposes every slot). -/
 theorem healthy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF)
     (hf : ProgressFits K F) (cap : Capability)
-    (i : K.Idx) (g : Time) (hr : ΔF ≤ (K.params.rowRatio : Time) * Δ)
+    (i : K.Idx) (g : Time) (hr : ΔF ≤ (K.params.fgDelay : Time) * Δ)
     (h1 : max g 0 + (K.params.heal cap i : Time) * Δ + Δ + (K.params.latency cap i : Time) * Δ ≤ H)
     (h2 : max g 0 + (K.params.heal cap i : Time) * Δ + 2 ≤ H)
     (h3 : max g 0 + (K.params.catchUp : Time) * Δ + 1 +

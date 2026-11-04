@@ -146,8 +146,8 @@ that a claim or regime evaluates.
     progress on windows that end by `b`.
 - **`Realizable`** (at least five validators): every regime is met by a clean
   witness. A witness is valid, has no excuse, and has a faulty and an honest
-  validator. The witnesses exist at every `Δ` and every row bound `ΔF` (healthy: every
-  `ΔF ≤ rowRatio·Δ`), at every GST `g ≥ 0` (healthy: with a
+  validator. The witnesses exist at every `ΔAC` and every FG delay `ΔFG` (healthy: every
+  `ΔFG ≤ fgDelay·ΔAC`), at every GST `g ≥ 0` (healthy: with a
   log that is silent before the GST), and for outages armed arbitrarily late.
   Each witness has active claims (the sleepy and healthy witnesses bundle
   regime, progress and `TxLiveActive` as `SleepyLive` and `HealthyLive`):
@@ -256,18 +256,18 @@ re-delivery; tests `waker_within_bound`, `waker_not_instant`). At `Δ = 1` this
 is same-time delivery; realizability starts at `Δ = ΔF = 2` (`Realizable`), and
 every behaviour claim holds at every `Δ ≥ 1`.
 
-**Two bounds.** The environment has a message bound `Δ` and a row bound `ΔF`
-(`Env.Δ`, `Env.ΔF`, both positive; neither bounds the other). The log carries
-the protocol's message class (`CommLog.row`): for model runs it is filled only
-from `Protocol.isRow` (`Run.log`, `tagLog`, `sysOf_log_row`), so no theorem or
+**Two bounds.** The environment has a message bound `ΔAC` and an FG attestation bound `ΔFG`
+(`Env.ΔAC`, `Env.ΔFG`, both positive; neither bounds the other). The log carries
+the protocol's message class (`CommLog.fgAtt`): for model runs it is filled only
+from `Protocol.isFGAtt` (`Run.log`, `tagLog`, `sysOf_log_fgAtt`), so no theorem or
 regime about the model can choose another one (an abstract L0 `System` fixes
-its own). Rows are served by `Delivers.rows` with their own deadline function
-`dlF` (`max a GST + ΔF − 1` in partial synchrony); every other message by
-`Delivers.msgs` with `dl`, and a row is never served by `msgs`. When `ΔF < Δ`,
-rows may overtake blocks; no statement claims a block or a vote strictly before `ΔF`.
-For Goldilocks the rows are the standalone attestations and the relay wrappers
-of attestations only; a mixed relay wrapper is delivered strictly before `Δ` (owner
-decision 2026-11-02). Every other protocol has no rows (`isRow` defaults to
+its own). FG attestations are served by `Delivers.fgAtts` with their own deadline function
+`dlF` (`max a GST + ΔFG − 1` in partial synchrony); every other message by
+`Delivers.msgs` with `dl`, and an FG attestation is never served by `msgs`. When `ΔFG < ΔAC`,
+FG attestations may overtake blocks; no statement claims a block or a vote strictly before `ΔFG`.
+For Goldilocks the FG attestation objects are the standalone attestations and the relay wrappers
+of attestations only; a mixed relay wrapper is delivered strictly before `ΔAC` (owner
+decision 2026-11-02). Every other protocol has none (`isFGAtt` defaults to
 `False`), which is the single-bound model (tests `two_bound_witnesses`,
 `row_held_to_row_bound`, `nonrow_held_to_message_bound`).
 
@@ -286,8 +286,8 @@ decision 2026-11-02). Every other protocol has no rows (`isRow` defaults to
   and release at once; a tick first reads it at the node's next tick, at the
   latest the tick at the bound itself.
 
-Instances: `PSync g` (deadline `max a g + Δ − 1`, rows `max a g + ΔF − 1`),
-`SyncUntil b` (deadline `a + Δ − 1`, rows `a + ΔF − 1`, for deadlines up to `b`), and
+Instances: `PSync g` (deadline `max a g + ΔAC − 1`, FG attestations `max a g + ΔFG − 1`),
+`SyncUntil b` (deadline `a + ΔAC − 1`, FG attestations `a + ΔFG − 1`, for deadlines up to `b`), and
 `OutageNet b₀ b₁ = SyncUntil b₀ ∧ PSync b₁`. Every delivery obligation (all
 three clauses, in every instance)
 applies only when its deadline is within both the cut and the horizon: a
@@ -334,10 +334,10 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 | Regime | Definition |
 |---|---|
 | `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
-| `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon] ∧ ΔF ≤ rowRatio·Δ` (full participation; awake, not ready; the row ratio is an upper envelope, not a deadline) |
-| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·Δ) c 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z` (`a`, `z`: `outageStart`, `outageEnd`) |
-| `OutageTimes` | `0 ≤ T ∧ T + lag·Δ ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·Δ` |
-| η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·Δ), t] ∪ faulty\| < \|ready_t\|` |
+| `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon] ∧ ΔFG ≤ fgDelay·ΔAC` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
+| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z` (`a`, `z`: `outageStart`, `outageEnd`) |
+| `OutageTimes` | `0 ≤ T ∧ T + lag·ΔAC ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·ΔAC` |
+| η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·ΔAC), t] ∪ faulty\| < \|ready_t\|` |
 
 With `η = 0`, η-sleepy is plain sleepy (tests: `etaSleepyOn_zero`,
 `System.outage_eta_zero`). For `η > 0`, every validator awake at some time
@@ -352,15 +352,15 @@ the regimes, not of the environment. Weaker thresholds keep each regime
 
 ```lean
 structure Params (Idx : Type) where
-  catchUp : Nat   -- reader catch-up c = catchUp·Δ
+  catchUp : Nat   -- reader catch-up c = catchUp·ΔAC
   θ β cover α : ℚ -- sleepy, healthy fault bound, cover (read by no regime), accountable fraction
-  lag budget η : Nat                         -- outage arming lag, budget, look-back (Δ-coefficients)
-  noSleep recovery : Nat                     -- outage no-sleep margin C, recovery delay D (Δ-coefficients)
+  lag budget η : Nat                         -- outage arming lag, budget, look-back (ΔAC-coefficients)
+  noSleep recovery : Nat                     -- outage no-sleep margin C, recovery delay D (ΔAC-coefficients)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
-  rowRatio : ℕ+                              -- healthy regime: ΔF ≤ rowRatio·Δ (larger = weaker premise)
+  fgDelay : ℕ+                               -- healthy regime: ΔFG ≤ fgDelay·ΔAC (larger = weaker premise)
 def Params.standard (catchUp lag budget heal latency) :=
   { catchUp, θ := ½, β := ⅓, cover := ½, α := ⅓, lag, budget, η := 0, noSleep := 0,
-    recovery := 0, heal, latency, rowRatio := 1 }
+    recovery := 0, heal, latency, fgDelay := 1 }
 structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
@@ -749,7 +749,7 @@ within the execution conditions. There is no adaptive corruption.
   separately from receipt. Message and FG-attestation deadlines are unchanged.
   `Network.RawArrival.poisoned_arrival` tests a valid synchronous execution with
   an honest proposal's timely arrival and a prerequisite withheld from its recipient.
-- **Δ known; unit ticks:** honest code knows `n`, `Δ` and `ΔF`. Every awake honest
+- **Δ known; unit ticks:** honest code knows `n`, `ΔAC` and `ΔFG`. Every awake honest
   node ticks at every integer time.
 - **Order within one time:** restarts, then ticks, then deliveries. What
   arrives at a deadline is processed at the delivery (whose duties and gossip
@@ -782,7 +782,7 @@ are the intended ones.
   Liveness with honest validators asleep is asked by the sleepy regime and
   its stress witness.
 - Static adversary, equal weights, two delay bounds (`Δ` for messages and
-  transactions, `ΔF` for rows), no probabilistic protocols, no
+  transactions, `ΔFG` for FG attestations), no probabilistic protocols, no
   proof of work, no non-validator readers, no responsiveness claim.
 - No transaction validity, fees, capacity or chain-quality bounds. Liveness
   is bounded-latency.

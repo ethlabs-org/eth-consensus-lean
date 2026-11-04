@@ -9,7 +9,7 @@ public section
 Characterisations of `sysOf`'s communication log that the milestones use:
 sends and receipts are exactly the engine's releases and receipts, tagged
 with the run's environment (`sysOf_sent_iff`, `sysOf_recv_iff`,
-`sysOf_log_tagged`); its message class is the protocol's (`sysOf_log_row`); holding and delivery
+`sysOf_log_tagged`); its message class is the protocol's (`sysOf_log_fgAtt`); holding and delivery
 of the system's log are those of the run's log (`sysOf_held_iff`,
 `sysOf_delivers_iff`); and a valid run sends
 nothing before time `0` (`Run.log_sendsFromZero`). The Faithful milestone
@@ -70,9 +70,9 @@ theorem sysOf_held_iff (rho : Run F E) (w : V) (o : (protoOf F E).Object) (d : T
     · exact Or.inr ((sysOf_recv_iff ⟨E, rho⟩ w o t').mpr hs)
 
 /-- The message class of the system's log is the protocol's: a tagged object is a row exactly
-when the protocol classifies it as one (`Model.Protocol.isRow`). -/
-theorem sysOf_log_row (rho : Run F E) (o : (protoOf F E).Object) :
-    ((sysOf O F V).log ⟨E, rho⟩).row ⟨E, o⟩ ↔ (protoOf F E).isRow o := by
+when the protocol classifies it as one (`Model.Protocol.isFGAtt`). -/
+theorem sysOf_log_fgAtt (rho : Run F E) (o : (protoOf F E).Object) :
+    ((sysOf O F V).log ⟨E, rho⟩).fgAtt ⟨E, o⟩ ↔ (protoOf F E).isFGAtt o := by
   constructor
   · rintro ⟨o', he, h⟩
     cases he
@@ -91,18 +91,18 @@ theorem sysOf_delivers_iff (rho : Run F E) (dl dlF : Time → Time) (cut : Time)
     refine ⟨?_, ?_, h.txs⟩
     · intro v hv o t hs hr w hw a hta hc hh ha
       exact (sysOf_held_iff rho w o _).mp (h.msgs v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩
-        (fun h' => hr ((sysOf_log_row rho o).mp h')) w hw a hta hc hh ha)
+        (fun h' => hr ((sysOf_log_fgAtt rho o).mp h')) w hw a hta hc hh ha)
     · intro v hv o t hs hr w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mp (h.rows v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩
-        ((sysOf_log_row rho o).mpr hr) w hw a hta hc hh ha)
+      exact (sysOf_held_iff rho w o _).mp (h.fgAtts v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩
+        ((sysOf_log_fgAtt rho o).mpr hr) w hw a hta hc hh ha)
   · intro h
     refine ⟨?_, ?_, h.txs⟩
     · rintro v hv m t ⟨o, rfl, hs⟩ hr w hw a hta hc hh ha
       exact (sysOf_held_iff rho w o _).mpr (h.msgs v hv o t hs
-        (fun h' => hr ((sysOf_log_row rho o).mpr h')) w hw a hta hc hh ha)
+        (fun h' => hr ((sysOf_log_fgAtt rho o).mpr h')) w hw a hta hc hh ha)
     · rintro v hv m t ⟨o, rfl, hs⟩ hr w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.rows v hv o t hs
-        ((sysOf_log_row rho o).mp hr) w hw a hta hc hh ha)
+      exact (sysOf_held_iff rho w o _).mpr (h.fgAtts v hv o t hs
+        ((sysOf_log_fgAtt rho o).mp hr) w hw a hta hc hh ha)
 
 /-- On a valid run no send happens before time `0` (event times are in
 `[0, horizon]`), so the L0 convenience `CommLog.PSync.syncUntil_zero` applies. -/

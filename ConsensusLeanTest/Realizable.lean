@@ -50,7 +50,7 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 obligation is vacuous. -/
 theorem ProposalLiveReady.of_noReady {rho : Model.Run (compiled F) E} {c : Time} {g : O.Id}
     {start : Time} {D : Nat}
-    (h : ∀ t, start + (D : Time) * E.Δ ≤ t → ∀ v, ¬ rho.point.Ready c v t) :
+    (h : ∀ t, start + (D : Time) * E.ΔAC ≤ t → ∀ v, ¬ rho.point.Ready c v t) :
     ProposalLiveReady rho c g start D := by
   rintro t hs - ⟨v, hv⟩
   exact absurd hv (h _ (by linarith) v)
@@ -159,7 +159,7 @@ theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [Decidabl
     ProposalLiveReady rho 3 g start D := by
   apply ProposalLiveReady.of_noReady
   intro t ht v hv
-  have hD : (0 : Time) ≤ (D : Time) * E.Δ := mul_nonneg (by positivity) E.Δ_pos.le
+  have hD : (0 : Time) ≤ (D : Time) * E.ΔAC := mul_nonneg (by positivity) E.ΔAC_pos.le
   have hmem : v ∈ rotPoint.readyAt 3 t := by
     rw [← hp]
     classical
@@ -205,13 +205,13 @@ point is at or after `1000`, with progress from `ready`, and liveness and
 safety active after the heal point. -/
 theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
     (i : K.Idx) :
-    ∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ (∀ w m t, (S.log r).recv w m t → 1000 ≤ t) ∧
+    ∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ (∀ w m t, (S.log r).recv w m t → 1000 ≤ t) ∧
       S.Healthy K 1000 r ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       S.prog X K cap i (S.ready K 1000 r) (S.pt r).horizon r ∧
       (S.pt r).TxLiveActive (S.cDur K r) (S.heal K cap i 1000 r) (S.lat K cap i r) ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r) := by
-  have hr : (7 : Time) ≤ (K.params.rowRatio : Time) * 7 :=
-    le_mul_of_one_le_left (by norm_num) (by exact_mod_cast K.params.rowRatio.pos)
+  have hr : (7 : Time) ≤ (K.params.fgDelay : Time) * 7 :=
+    le_mul_of_one_le_left (by norm_num) (by exact_mod_cast K.params.fgDelay.pos)
   obtain ⟨r, ⟨hw, hΔ, -⟩, ⟨he, hH, hp, ht⟩, hs⟩ :=
     h.healthy cap i 7 7 1000 (by norm_num) (by norm_num) hr (by norm_num)
   refine ⟨r, hw, hΔ, he.quiet, hH, ?_, hp, ht, hs⟩
@@ -224,7 +224,7 @@ theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
 /-- An arbitrarily late outage: every realizable system has, at `Δ = 7`, a
 clean witness of an active outage armed at or after `1000·Δ`. -/
 theorem outage_witness_late (h : Realizable S X K) :
-    ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ S.Outage K T b₀ b₁ r ∧
+    ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ S.Outage K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * 7) T b₀ b₁ (S.pt r) ∧
       7000 ≤ T := by
   obtain ⟨r, T, b₀, b₁, ⟨hw, hΔ, -⟩, ho, ha, hT⟩ := h.outage 7 7 1000 (by norm_num) (by norm_num)
@@ -233,7 +233,7 @@ theorem outage_witness_late (h : Realizable S X K) :
 /-- Every good system with at least five validators has both late witnesses. -/
 theorem good_late_witnesses (h : CorrectProtocol S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability)
     (i : K.Idx) :
-    (∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
+    (∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r)) ∧
     ∃ r T b₀ b₁, S.Witness r ∧ S.Outage K T b₀ b₁ r ∧ 7000 ≤ T := by
   obtain ⟨r, hw, hΔ, -, -, hh, -, -, hs⟩ := healed_witness_late (h.realizable h5) cap i
@@ -245,7 +245,7 @@ open Consensus.Shape.Tests.Controls (ctrlSchema ctrlFamily ctrlK ctrl_realizable
 /-- `healed_witness_late` at the positive-control family. -/
 theorem healed_witness_late_control (cap : Capability) :
     ∃ r, (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
-      ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
+      ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.ΔAC = 7 ∧
       (∀ w m t, ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).log r).recv w m t →
         1000 ≤ t) ∧
       (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Healthy ctrlK 1000 r ∧
@@ -258,7 +258,7 @@ theorem healed_witness_late_control (cap : Capability) :
 /-- `outage_witness_late` at the positive-control family. -/
 theorem outage_witness_late_control :
     ∃ r T b₀ b₁, (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
-      ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.Δ = 7 ∧
+      ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.ΔAC = 7 ∧
       (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Outage ctrlK T b₀ b₁ r ∧
       OutageActive ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
         ((ctrlK.params.recovery : Time) * 7) T b₀ b₁

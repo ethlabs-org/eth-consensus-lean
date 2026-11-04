@@ -41,15 +41,15 @@ theorem outage_repair (Q : OutageQuery S A V)
       (chainTrace Q.run.2).readAt (resilienceTarget schema .confirmed) w t := by
   have hTs : Q.T ≤ Q.start := by
     obtain ⟨⟨-, hlag, -, -⟩, -⟩ := Q.outage
-    have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.Δ := by
-      have := Q.run.1.Δ_pos; positivity
-    change Q.T + _ * Q.run.1.Δ ≤ Q.start at hlag
+    have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.ΔAC := by
+      have := Q.run.1.ΔAC_pos; positivity
+    change Q.T + _ * Q.run.1.ΔAC ≤ Q.start at hlag
     linarith
   have hst : Q.start ≤ Q.stop := Q.outage.1.2.2.1
   have hrec : Q.stop ≤ t := by
-    have : (0 : Time) ≤ ((K S A).params.recovery : Time) * Q.run.1.Δ := by
-      have := Q.run.1.Δ_pos; positivity
-    change Q.stop + _ * Q.run.1.Δ ≤ t at ht
+    have : (0 : Time) ≤ ((K S A).params.recovery : Time) * Q.run.1.ΔAC := by
+      have := Q.run.1.ΔAC_pos; positivity
+    change Q.stop + _ * Q.run.1.ΔAC ≤ t at ht
     linarith
   have hsh : Q.start ≤ Q.run.2.horizon := hst.trans (hrec.trans hth)
   have hTh : Q.T ≤ Q.run.2.horizon := hTs.trans hsh

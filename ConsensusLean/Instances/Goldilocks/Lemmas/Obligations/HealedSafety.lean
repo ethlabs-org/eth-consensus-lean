@@ -185,7 +185,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
       Model.Run.point] using hwin.trans hb)
   have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
-    change (s : Time) * (4 * Q.run.1.Δ) = 4 * Q.run.1.Δ * s
+    change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
   rw [htime] at hlo hhi
   have hbound : Q.params.ts s ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by

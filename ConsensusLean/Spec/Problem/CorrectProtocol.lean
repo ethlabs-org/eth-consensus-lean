@@ -15,8 +15,8 @@ contract `K` (numbers only). Three parts:
 * `Adequate`: the acceptance interface that rules out a vacuous system
   (coverage of every environment point and GST by a valid, excuse-free run;
   prefix closure).
-* `Realizable` (for at least five validators): every regime, at every `Δ > 1`
-  and `ΔF > 1` (the healthy regime within its row ratio), every GST and
+* `Realizable` (for at least five validators): every regime, at every `ΔAC > 1`
+  and `ΔFG > 1` (the healthy regime within its FG delay bound), every GST and
   arbitrarily late outages, is met by a clean witness with
   active claims, plus a sleepy stress witness with at most two honest
   validators awake.
@@ -93,9 +93,9 @@ variable [Fintype V] [DecidableEq V]
 def Witness (r : S.Run) : Prop :=
   S.Valid r ∧ ¬ S.Excuse r ∧ (S.pt r).faulty.Nonempty ∧ (S.pt r).honest.Nonempty
 
-/-- A clean witness at the delays `Δ` and `ΔF`: a clean witness whose environment has them. -/
-def WitnessAt (Δ ΔF : Time) (r : S.Run) : Prop :=
-  S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ (S.pt r).env.ΔF = ΔF
+/-- A clean witness at the delays `ΔAC` and `ΔFG`: a clean witness whose environment has them. -/
+def WitnessAt (ΔAC ΔFG : Time) (r : S.Run) : Prop :=
+  S.Witness r ∧ (S.pt r).env.ΔAC = ΔAC ∧ (S.pt r).env.ΔFG = ΔFG
 
 end System
 
@@ -151,7 +151,7 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
       (fun r => (S.trace r).ReadySafe (S.cDur K r) g (S.heal K cap i gst r))
   /-- Outage resilience of the stable output, into the resilience target:
   what a node ready at `T` reads as stable is kept by every ready reader from
-  the recovery point `b₁ + recovery·Δ` on. -/
+  the recovery point `b₁ + recovery·ΔAC` on. -/
   persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
     S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedReadyFrom (S.cDur K r) g
       (resilienceTarget S.schema g) T (S.recoveryAt K b₁ r))
@@ -182,12 +182,12 @@ structure System.Adequate (S : System V) (X : Progress S Prog) : Prop where
 /-- Non-vacuity of `TxLive` (used by realizability witnesses): a transaction
 submitted at `t ≥ 0` to an awake honest `u`, and a *different* honest `w`
 that never receives it by submission, ready at a reachable deadline
-`t' ≥ max t start + Δ + D`, `t' ≤ horizon`. -/
+`t' ≥ max t start + ΔAC + D`, `t' ≤ horizon`. -/
 def EnvPoint.TxLiveActive (p : EnvPoint V) (c start D : Time) : Prop :=
   ∃ (x : Tx) (t t' : Time) (u w : V), 0 ≤ t ∧ u ∈ p.honest ∧
     p.env.awake u t = true ∧ x ∈ p.submit u t ∧ w ∈ p.honest ∧ w ≠ u ∧
     (∀ τ, x ∉ p.submit w τ) ∧
-    max t start + p.env.Δ + D ≤ t' ∧ t' ≤ p.horizon ∧ p.Ready c w t'
+    max t start + p.env.ΔAC + D ≤ t' ∧ t' ≤ p.horizon ∧ p.Ready c w t'
 
 /-- Safety is active after `t₀`: two distinct readers ready at one time after
 `t₀`, one of them ready again at a later time within the horizon. -/
@@ -196,11 +196,11 @@ def SafeActive (c t₀ : Time) (p : EnvPoint V) : Prop :=
     p.Ready c u t ∧ p.Ready c w t ∧ p.Ready c u t'
 
 /-- The outage is active: armed at `T ≥ 0` before the window, which lasts at
-least `Δ`; a node is ready at `T` (a protected source); an honest node sleeps
+least `ΔAC`; a node is ready at `T` (a protected source); an honest node sleeps
 in the window; and a node is ready at a time from the recovery point
 `b₁ + D` within the horizon (a protected reader). -/
 def OutageActive (c D T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
-  0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.Δ ≤ b₁ ∧ (∃ u, p.Ready c u T) ∧
+  0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.ΔAC ≤ b₁ ∧ (∃ u, p.Ready c u T) ∧
     (∃ v ∈ p.honest, ∃ t, b₀ ≤ t ∧ t < b₁ ∧ p.env.awake v t = false) ∧
     ∃ w t, b₁ + D ≤ t ∧ t ≤ p.horizon ∧ p.Ready c w t
 
@@ -227,12 +227,12 @@ def HealthyLive (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i 
 end System
 
 /-- **Realizability**: every regime is met by a clean witness with active
-claims, at every `Δ > 1` and `ΔF > 1` (the healthy regime at every
-`ΔF ≤ rowRatio·Δ`; at `Δ = 1` delivery strictly before `t + Δ` is same-time
+claims, at every `ΔAC > 1` and `ΔFG > 1` (the healthy regime at every
+`ΔFG ≤ fgDelay·ΔAC`; at `ΔAC = 1` delivery strictly before `t + ΔAC` is same-time
 delivery, which no protocol-agnostic eager log meets, `CommLog.PSync`),
 every GST (with a log silent before it), and arbitrarily late outages; and
 every provided available or stable output is live, at one index (per
-validator type and capability) that serves every `Δ` and `ΔF`, with at most
+validator type and capability) that serves every `ΔAC` and `ΔFG`, with at most
 two honest validators awake (sleepy stress witness). The sleepy witnesses
 carry liveness activity (`TxLiveActive`, inside `SleepyLive`) but no
 safety-activity (`SafeActive`) witness: `SafeActive` is asked only of the
@@ -240,14 +240,14 @@ healthy witness, so no sleepy witness is required to exercise `sleepySafe`'s
 agreement between readers or its monotonicity. -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
-  sleepy : ∀ cap i (Δ ΔF : Time), 1 < Δ → 1 < ΔF →
-    ∃ r, S.WitnessAt Δ ΔF r ∧ S.SleepyLive X K cap i r
-  healthy : ∀ cap i (Δ ΔF g : Time), 1 < Δ → 1 < ΔF → ΔF ≤ (K.params.rowRatio : Time) * Δ →
-    0 ≤ g → ∃ r, S.WitnessAt Δ ΔF r ∧
+  sleepy : ∀ cap i (ΔAC ΔFG : Time), 1 < ΔAC → 1 < ΔFG →
+    ∃ r, S.WitnessAt ΔAC ΔFG r ∧ S.SleepyLive X K cap i r
+  healthy : ∀ cap i (ΔAC ΔFG g : Time), 1 < ΔAC → 1 < ΔFG → ΔFG ≤ (K.params.fgDelay : Time) * ΔAC →
+    0 ≤ g → ∃ r, S.WitnessAt ΔAC ΔFG r ∧
     S.HealthyLive X K cap i g r ∧ SafeActive (S.cDur K r) (S.heal K cap i g r) (S.pt r)
   /-- Sleepy stress: every provided available or stable output is live, at
   one index chosen before the delays (it may depend on the validators and the
-  capability, not on `Δ` or `ΔF`), on a sleepy witness at every `Δ` and `ΔF`
+  capability, not on `ΔAC` or `ΔFG`), on a sleepy witness at every `ΔAC` and `ΔFG`
   where at most two honest validators are awake at any time, whatever the
   number of validators (the witness has a
   faulty validator, so with `θ ≤ ½` two ready honest validators meet the
@@ -255,12 +255,12 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   participation at every index (e.g. at most `n − 3` validators not ready)
   fails here. -/
   sleepyStress : ∀ cap, (cap = .available ∨ cap = .stable) → (S.schema.output cap).isSome →
-    ∃ i, ∀ Δ ΔF : Time, 1 < Δ → 1 < ΔF →
-      ∃ r, S.WitnessAt Δ ΔF r ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
-  outage : ∀ (Δ ΔF : Time) (k : Nat), 1 < Δ → 1 < ΔF →
-    ∃ r T b₀ b₁, S.WitnessAt Δ ΔF r ∧ S.Outage K T b₀ b₁ r ∧
-      OutageActive (S.cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁ (S.pt r) ∧
-      (k : Time) * Δ ≤ T
+    ∃ i, ∀ ΔAC ΔFG : Time, 1 < ΔAC → 1 < ΔFG →
+      ∃ r, S.WitnessAt ΔAC ΔFG r ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
+  outage : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
+    ∃ r T b₀ b₁, S.WitnessAt ΔAC ΔFG r ∧ S.Outage K T b₀ b₁ r ∧
+      OutageActive (S.cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁ (S.pt r) ∧
+      (k : Time) * ΔAC ≤ T
 
 /-- **A correct protocol.** -/
 structure CorrectProtocol (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where

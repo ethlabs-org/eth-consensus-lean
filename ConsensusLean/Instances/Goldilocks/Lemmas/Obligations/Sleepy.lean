@@ -43,7 +43,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- Engine readiness bridge. Map honesty by the key equivalence
 and awake intervals by canonical simulation. Both ends are inside the finite horizon; the
-catch-up is the NODE duration, not silently `18 * E.Δ`. R.1 defines the same closed interval,
+catch-up is the NODE duration, not silently `18 * E.ΔAC`. R.1 defines the same closed interval,
 but supplies no engine proof. -/
 theorem ready_transport (_hv : rho.ExecutionValid) {c : Time} {v : V} {t : Time}
     (_ht : 0 ≤ t) (hth : t ≤ rho.horizon)

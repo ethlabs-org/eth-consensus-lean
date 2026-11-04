@@ -142,7 +142,7 @@ theorem clean_caches (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gbar g
 
 /-- **(K1) for a high origin of a slot after `T`**: an excluded entry strictly extends a high
 `Σ.F`, so it is high, and no honest validator names it. -/
-theorem clean_rowCut (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gbar g ≤ T)
+theorem clean_fgAttCut (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hF : HighFinalityFrom tr H g T) {x : Fin sp.n} {i s : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (hs : T < sp.ts s) (T₀ : Time) :
@@ -188,7 +188,7 @@ theorem high_origin_clean (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : g
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (hs : T < sp.ts s) :
     ∀ m, s < m → Compose.Clean tr H s m B := fun m _ =>
-  ⟨clean_caches hp hgT hF ho hs, clean_rowCut hp hgT hF ho hs _, clean_heightLead hp ho m⟩
+  ⟨clean_caches hp hgT hF ho hs, clean_fgAttCut hp hgT hF ho hs _, clean_heightLead hp ho m⟩
 
 
 /-- **R1: a late stored fast write is a high origin of a slot after `T`.** -/

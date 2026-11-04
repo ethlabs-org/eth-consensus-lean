@@ -45,7 +45,7 @@ theorem hsSharedUpTo (Q : FinalQuery S A V) :
 
 /-- **The row transport of a final query** at its row gap: `6Δ + Δ_F,p ≤ 4Δ·cF r`. -/
 theorem rowDelay_delivery (Q : FinalQuery S A V) :
-    6 * Q.params.Δ + rowDelay (Model.pubOf Q.run.1) ≤ 4 * Q.params.Δ * (cF A.rowRatio : Time) :=
+    6 * Q.params.Δ + rowDelay (Model.pubOf Q.run.1) ≤ 4 * Q.params.Δ * (cF A.fgDelay : Time) :=
   rowDelay_delivery_of_healthy S A V Q.run Q.hn Q.healthy
 
 end FinalQuery

@@ -86,13 +86,13 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 theorem catchUp_le_cDur (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) :
     Regimes.catchUp (S.params (Model.pubOf run.1) hn) ≤
         (Sys (goldilocks S) V).cDur (K S A) run := by
-  have hd : (1 : Time) ≤ run.1.Δ := run.1.Δ_pos
+  have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
   have hc : (19 : Time) ≤ ((K S A).params.catchUp : Time) := by
     rw [goldilocksContract_params_eq]
     change (19 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
     rw [contract_coefficients_catchUp]
     exact_mod_cast contract_catchUp_ge_sleepy S A
-  change 18 * run.1.Δ ≤ ((K S A).params.catchUp : Time) * run.1.Δ
+  change 18 * run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * run.1.ΔAC
   nlinarith
 
 /-- **Duty to actual proposal, run level.** In a valid, collision-free run, an honest-ready
@@ -115,7 +115,7 @@ theorem duty_proposal_run (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype
         (runProposer S run.2 hn s) ((S.params (Model.pubOf run.1) hn).ts s) := by
   have htime : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s =
       (S.params (Model.pubOf run.1) hn).ts s := by
-    change (s : Time) * (4 * run.1.Δ) = 4 * run.1.Δ * s
+    change (s : Time) * (4 * run.1.ΔAC) = 4 * run.1.ΔAC * s
     ring
   have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
     simp only [runProposer_eq, dite_eq_left hduty.1]

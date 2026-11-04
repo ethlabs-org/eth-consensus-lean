@@ -78,7 +78,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
   -- the ready scalar
   have hready : Q.ready = max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := rfl
   have hcDur : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run :=
-    mul_nonneg (Int.natCast_nonneg _) Q.run.1.Δ_pos.le
+    mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le
   have hr0 : 0 ≤ Q.ready := by rw [hready]; linarith [le_max_right Q.gst 0]
   have hgr : gbar Q.gst ≤ Q.ready := by
     change max Q.gst 0 ≤ Q.ready
@@ -136,22 +136,23 @@ coefficient inequality `contract_heal_ge_reset` alone. With engine delay `d ≥ 
 theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
     Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
       (healthyResetSlack S Q.index : Time) ≤ Q.heal := by
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  have hready : Q.ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.Δ + 1 := by
-    change max Q.gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.Δ + 1 = _
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
+  have hready :
+      Q.ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
+    change max Q.gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.ΔAC + 1 = _
     rw [contract_coefficients_catchUp]
-  have hheal : Q.heal = max Q.gst 0 + (contract_heal S A Q.cap Q.index : Time) * Q.run.1.Δ := by
-    change max Q.gst 0 + ((contract_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
+  have hheal : Q.heal = max Q.gst 0 + (contract_heal S A Q.cap Q.index : Time) * Q.run.1.ΔAC := by
+    change max Q.gst 0 + ((contract_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.ΔAC = _
     rw [contract_coefficients_heal]
-  have hΔ : Q.params.Δ = Q.run.1.Δ := rfl
+  have hΔ : Q.params.Δ = Q.run.1.ΔAC := rfl
   have hH : ((contract_catchUp S A : Nat) : Time) + (healthyResetCoeff S Q.index : Time) +
       (healthyResetSlack S Q.index : Time) + 1 ≤ (contract_heal S A Q.cap Q.index : Time) := by
     have := contract_heal_ge_reset S A Q.cap Q.index
     exact_mod_cast (show _ ≤ _ by omega)
   have hr0 : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
   rw [hready, hheal, hΔ]
-  nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ),
-    mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.Δ - 1)]
+  nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC),
+    mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.ΔAC - 1)]
 
 /-- **The reset envelope (E) from the drain.** `healthy_reset_envelope_of_fit` with the window fit
 `healthy_reset_fit`: the drain at `healthyDrainLen` is the only remaining input. -/
@@ -209,13 +210,14 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
   obtain ⟨ΔF, a, hreset, ha⟩ := healthy_reset_envelope S A V Q hb hp
   obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed
   -- the scalars
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  have hΔ : Q.params.Δ = Q.run.1.Δ := rfl
-  have hready : Q.ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.Δ + 1 := by
-    change max Q.gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.Δ + 1 = _
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
+  have hΔ : Q.params.Δ = Q.run.1.ΔAC := rfl
+  have hready :
+      Q.ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
+    change max Q.gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.ΔAC + 1 = _
     rw [contract_coefficients_catchUp]
-  have hheal : Q.heal = max Q.gst 0 + (contract_heal S A Q.cap Q.index : Time) * Q.run.1.Δ := by
-    change max Q.gst 0 + ((contract_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.Δ = _
+  have hheal : Q.heal = max Q.gst 0 + (contract_heal S A Q.cap Q.index : Time) * Q.run.1.ΔAC := by
+    change max Q.gst 0 + ((contract_coefficients S A).heal Q.cap Q.index : Time) * Q.run.1.ΔAC = _
     rw [contract_coefficients_heal]
   have hC : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
@@ -235,7 +237,7 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
       rw [hBdef]
       linarith
     rw [hready, hheal, hΔ]
-    nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.Δ)]
+    nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   have hR0 : (24 : Time) ≤ healthyResetCoeff S Q.index := by
     rw [healthyResetCoeff_val]; push_cast
     linarith [Nat.cast_nonneg (α := Time) (healthyDrainLen S Q.index)]

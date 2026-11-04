@@ -299,7 +299,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
     (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp (W.ready 3).1)
-    (not_isRow_of_decodeForward hdecode) hy hth
+    (not_isFGAtt_of_decodeForward hdecode) hy hth
     (by rw [htime]; exact tail.1.trans hdt) tail.2
   obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.valid hnc
     hy.1 (W.ready 3).1 hheld hdecode hdt' hj.2.le (hFX.trans hXB)
@@ -333,7 +333,7 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
     (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
       W.Extends (W.block 0) F) : W.CacheCoverage := by
   apply final_cache_acceptance_of_publication_tail S A V Q W ?_ coverage
-  have hd := Q.run.1.Δ_pos
+  have hd := Q.run.1.ΔAC_pos
   have hq : max Q.gst 0 ≤ Q.query := by
     exact (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hd.le)).trans Q.mature
   have hs : max Q.gst 0 ≤ Q.trace.time (W.cut 3) :=
@@ -346,7 +346,7 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
       rw [goldilocksContract_params_eq]
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
       exact_mod_cast (contract_coefficients S A).catchUp.pos
-    change Q.run.1.Δ ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
+    change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
     nlinarith
 
 /-- Conditional payload/read projection of the finite supplier package. Uses the engine's
@@ -378,9 +378,9 @@ theorem final_payload_projection
     hprog, hm, hb, v, hvr⟩
   obtain ⟨W, hslack, hcover⟩ := windows Q
   have ht : 0 ≤ t := by
-    have hd := r.1.Δ_pos
+    have hd := r.1.ΔAC_pos
     have hg0 : (0 : Time) ≤ max gst 0 := le_max_right _ _
-    have hp : 0 ≤ ((K S A).params.heal .final i : Time) * r.1.Δ :=
+    have hp : 0 ≤ ((K S A).params.heal .final i : Time) * r.1.ΔAC :=
       mul_nonneg (Int.natCast_nonneg _) hd.le
     exact (add_nonneg hg0 hp).trans hm
   have hτ : 0 ≤ Q.trace.time (W.cut 0) := ht.trans W.fresh.le
@@ -391,10 +391,10 @@ theorem final_payload_projection
   obtain ⟨k, hk, hrel⟩ := ready_proposal S r.2 hn hv hτ hτh hproposal
   refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
   have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) r := by
-    exact mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le
+    exact mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le
   have hdeadline : 0 ≤ Q.deadline := ht.trans (by
     change t ≤ t + _
-    exact le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le))
+    exact le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le))
   have hroot : (W.block 0).root ≠ Q.params.genesisRoot := by
     have run := simTrace_goldilocksRun S r.2 hn hv
     rcases Compose.blockCall_cases run.toLocalRun (W.ready 0).1 (W.accepted 0) with hg | hg
@@ -457,7 +457,7 @@ theorem accepted_healthyLive : ∀ cap g, schema.output cap = some g →
   obtain ⟨P, cover⟩ := healthy_confirmed_supply S A V Q hh hp ht
   have h0 : 0 ≤ t :=
     (add_nonneg (le_max_right gst 0)
-      (mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le)).trans ht
+      (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)).trans ht
   exact confirmed_payload_projection S A V Q h0 P cover
 
 /-- R1, sleepy-record-invariant.md §§2–5.1 and sleepy-proposal-adoption.md
@@ -543,7 +543,7 @@ theorem accepted_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
         hcollision, hh⟩
       have h0 : 0 ≤ Q.heal :=
         add_nonneg (le_max_right gst 0)
-          (mul_nonneg (Int.natCast_nonneg _) r.1.Δ_pos.le)
+          (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)
       exact healthy_ready_safety S A V Q h0 hb hp
     · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (by omega)
       exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩

@@ -20,10 +20,10 @@ Labelled by kind (CONTRIBUTING "Statements"):
   five-window and the phase-1 coefficients (`heal_drop`). `contract_latency` takes its documented
   value (`4X + 6`, `4(X + 3c) + 1`) at each capability, and both Sleepy margins hold there.
 
-* (b) The row ratio `r` (`ContractAssumptions.rowRatio`) and its gap `c = cF r`:
-  `rowRatio_one` reproduces every constant of the single-bound contract (`c = 2`, `6 ≤ δt`, the
+* (b) The row ratio `r` (`ContractAssumptions.fgDelay`) and its gap `c = cF r`:
+  `fgDelay_one` reproduces every constant of the single-bound contract (`c = 2`, `6 ≤ δt`, the
   window `[0, 2, 4, 6]`, final latency `4(X + 6) + 1`); `rowGap_boundary` crosses a rounding
-  boundary (`cF 2 = 2`, `cF 3 = 3`); `rowRatio_three` and `rowRatio_thirtyTwo` give the window and
+  boundary (`cF 2 = 2`, `cF 3 = 3`); `fgDelay_three` and `fgDelay_thirtyTwo` give the window and
   latency at `c = 3` and `c = 10`; `timeout_rejects_ratio` rejects `r = 32` at `δt = 29`;
   `row_transport_slow` and `row_transport_fast` instantiate `cF_spec` at `ΔF > Δ` and `ΔF < Δ`.
 
@@ -162,8 +162,8 @@ theorem heal_drop (S : Setup) (A : ContractAssumptions S) (cap : Capability) (X 
     omega
 
 /-- Both setups' assumptions have row ratio `1`, hence gap `2`. -/
-theorem gap_one {S : Setup} {A : ContractAssumptions S} (h : A.rowRatio = 1 := by rfl) :
-    cF A.rowRatio = 2 := by rw [h]; rfl
+theorem gap_one {S : Setup} {A : ContractAssumptions S} (h : A.fgDelay = 1 := by rfl) :
+    cF A.fgDelay = 2 := by rw [h]; rfl
 
 /-- (b) Latency at `k = 2, δt = 6`: `4X + 6` for available and stable, `4X + 25` for final. -/
 theorem latency_small (X : ℕ+) :
@@ -222,12 +222,12 @@ noncomputable def setupRow : Setup where
 
 /-- (b) Row ratio `1` reproduces the single-bound constants: gap `2`, `6 ≤ δt`, the window
 `[0, 2, 4, 6]` of span `6` and final latency `4(X + 6) + 1`; the contract carries the ratio. -/
-theorem rowRatio_one (X : ℕ+) :
-    cF assumptionsSmall.rowRatio = 2 ∧ 6 ≤ setupSmall.δt ∧
+theorem fgDelay_one (X : ℕ+) :
+    cF assumptionsSmall.fgDelay = 2 ∧ 6 ≤ setupSmall.δt ∧
       (finalWindow assumptionsSmall).offsets = [0, 2, 4, 6] ∧
       (finalWindow assumptionsSmall).span = 6 ∧
       contract_latency setupSmall assumptionsSmall .final X = 4 * ((X : Nat) + 6) + 1 ∧
-      (K setupSmall assumptionsSmall).params.rowRatio = 1 :=
+      (K setupSmall assumptionsSmall).params.fgDelay = 1 :=
   ⟨rfl, assumptionsSmall.six_le_δt, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [contract_latency_final]; rfl, rfl⟩
 
@@ -247,8 +247,8 @@ def assumptionsRowThree : ContractAssumptions setupRow := ⟨3, by decide⟩
 def assumptionsRowThirtyTwo : ContractAssumptions setupRow := ⟨32, by decide⟩
 
 /-- (b) Row ratio `3`: gap `3`, the window `[0, 3, 6, 9]` and final latency `4(X + 9) + 1`. -/
-theorem rowRatio_three (X : ℕ+) :
-    cF assumptionsRowThree.rowRatio = 3 ∧
+theorem fgDelay_three (X : ℕ+) :
+    cF assumptionsRowThree.fgDelay = 3 ∧
       (finalWindow assumptionsRowThree).offsets = [0, 3, 6, 9] ∧
       contract_latency setupRow assumptionsRowThree .final X = 4 * ((X : Nat) + 9) + 1 ∧
       contract_latency setupRow assumptionsRowThree .available X = 4 * (X : Nat) + 6 :=
@@ -258,19 +258,19 @@ theorem rowRatio_three (X : ℕ+) :
 /-- (b) Row ratio `32`: gap `10`, the window `[0, 10, 20, 30]` (span `30 = δt`) and final latency
 `4(X + 30) + 1`; the nonfinal latency stays `4X + 6`; the contract carries the ratio `32` (so its
 healthy regime assumes `ΔF ≤ 32·Δ`). -/
-theorem rowRatio_thirtyTwo (X : ℕ+) :
-    cF assumptionsRowThirtyTwo.rowRatio = 10 ∧
+theorem fgDelay_thirtyTwo (X : ℕ+) :
+    cF assumptionsRowThirtyTwo.fgDelay = 10 ∧
       (finalWindow assumptionsRowThirtyTwo).offsets = [0, 10, 20, 30] ∧
       (finalWindow assumptionsRowThirtyTwo).span = setupRow.δt ∧
       contract_latency setupRow assumptionsRowThirtyTwo .final X = 4 * ((X : Nat) + 30) + 1 ∧
       contract_latency setupRow assumptionsRowThirtyTwo .stable X = 4 * (X : Nat) + 6 ∧
-      (K setupRow assumptionsRowThirtyTwo).params.rowRatio = 32 :=
+      (K setupRow assumptionsRowThirtyTwo).params.fgDelay = 32 :=
   ⟨rfl, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [contract_latency_final]; rfl, by rw [contract_latency_stable], rfl⟩
 
 /-- (a) Rejection: row ratio `32` is not admitted at `δt = 29` (`3·cF 32 = 30`). -/
 theorem timeout_rejects_ratio (S : Setup) (h : S.δt = 29) :
-    ¬ ∃ A : ContractAssumptions S, A.rowRatio = 32 := by
+    ¬ ∃ A : ContractAssumptions S, A.fgDelay = 32 := by
   rintro ⟨A, hA⟩
   have := A.timeout
   rw [hA, show cF 32 = 10 from rfl] at this

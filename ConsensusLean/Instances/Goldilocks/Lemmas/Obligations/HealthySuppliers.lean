@@ -206,9 +206,9 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hduration : Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
     have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
       exact_mod_cast contract_catchUp_ge_sleepy S A
-    have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+    have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    change 18 * Q.run.1.Δ ≤ (contract_catchUp S A : Nat) * Q.run.1.Δ
+    change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
     nlinarith
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
@@ -228,7 +228,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
       Model.Run.point] using hwin.trans hb)
   have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime u = Q.params.ts u := by
-    change (u : Time) * (4 * Q.run.1.Δ) = 4 * Q.run.1.Δ * u
+    change (u : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * u
     ring
   rw [htime] at hlo hhi
   have hbound : Q.params.ts u ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by

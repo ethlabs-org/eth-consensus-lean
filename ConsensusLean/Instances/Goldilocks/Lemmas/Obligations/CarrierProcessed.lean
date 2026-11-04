@@ -98,7 +98,7 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
       (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ hmem _ _ hacc
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  have hΔ := Q.run.1.Δ_pos
+  have hΔ := Q.run.1.ΔAC_pos
   have hg : max Q.gst 0 ≤ Q.query :=
     (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hΔ.le)).trans Q.mature
   have hmax : max (max (Q.params.ts s) Q.gst) 0 = Q.params.ts s := by
@@ -112,11 +112,11 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
       rw [goldilocksContract_params_eq]
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
       exact_mod_cast (contract_coefficients S A).catchUp.pos
-    change Q.run.1.Δ ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
+    change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
     nlinarith
   obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
     (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp hmem)
-    (not_isRow_of_decodeForward hdecode) hy Q.bounded
+    (not_isFGAtt_of_decodeForward hdecode) hy Q.bounded
     (by rw [htime, htk, hmax]; exact hD) hc
   obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.valid hmem hheld hdecode hdt
   exact ⟨j, hj, hjt.le⟩
@@ -180,9 +180,9 @@ theorem final_window_extract_of' (Q : FinalQuery S A V) {ΔR a : Time}
         Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
         Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
         (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-          (W.start + ![0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio] i) (W.block i)) ∧
+          (W.start + ![0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay] i) (W.block i)) ∧
         Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-        Q.params.ts (W.start + 3 * cF A.rowRatio) ≤ b) ∧
+        Q.params.ts (W.start + 3 * cF A.fgDelay) ≤ b) ∧
       ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
         (W.block i.succ) :=
   final_window_extract_of S A V Q hreset hpropose hplace (carrier_processed_of_honest S A V Q)

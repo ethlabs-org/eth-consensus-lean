@@ -45,7 +45,7 @@ theorem hgp_of_healthyQuery (Q : HealthyPreparationQuery S A V)
       Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
   have htime : ∀ s : Nat, (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s =
       Q.params.ts s := fun s => by
-    change (s : Time) * (4 * Q.run.1.Δ) = 4 * Q.run.1.Δ * s
+    change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
   have hL : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotLen = 4 * Q.params.Δ := by
     have h1 := htime 1

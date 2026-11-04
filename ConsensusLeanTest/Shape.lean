@@ -26,7 +26,7 @@ open Consensus.Model (Public Key Obj pubOf protoOf sysOf)
 /-- The trivial skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (phase 0, every key). -/
 def trivialSkel (pub : Public) : Skeleton pub.n where
-  grid := ⟨pub.Δ, pub.Δ_pos⟩
+  grid := ⟨pub.ΔAC, pub.ΔAC_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := Unit
@@ -88,17 +88,17 @@ theorem trivial_pollPropose_selSpec (pub : Public) :
 
 /-- The proposal of slot 2 is due at its slot time `2·Δ`. -/
 theorem trivial_propose_due (pub : Public) :
-    ShapeDuty.propose 2 (by decide) ∈ (compile (trivialShape pub)).duties (2 * pub.Δ) :=
+    ShapeDuty.propose 2 (by decide) ∈ (compile (trivialShape pub)).duties (2 * pub.ΔAC) :=
   ((trivialShape pub).skel.duties_spec _ _).mpr ⟨List.mem_cons_self, by
-    change (trivialSkel pub).grid.slotTime 2 = 2 * pub.Δ
+    change (trivialSkel pub).grid.slotTime 2 = 2 * pub.ΔAC
     simp [TimeGrid.slotTime, trivialSkel]⟩
 
 /-- The committee duty of slot 3 is due at `3·Δ` (phase 0). -/
 theorem trivial_act_due (pub : Public) :
-    ShapeDuty.act 3 () ∈ (compile (trivialShape pub)).duties (3 * pub.Δ) :=
+    ShapeDuty.act 3 () ∈ (compile (trivialShape pub)).duties (3 * pub.ΔAC) :=
   ((trivialShape pub).skel.duties_spec _ _).mpr
     ⟨List.mem_cons_of_mem _ List.mem_cons_self, by
-    change (trivialSkel pub).grid.slotTime 3 + ((0 : Nat) : Time) = 3 * pub.Δ
+    change (trivialSkel pub).grid.slotTime 3 + ((0 : Nat) : Time) = 3 * pub.ΔAC
     simp [TimeGrid.slotTime, trivialSkel]⟩
 
 /-- Every read of the trivial family is the empty ledger, the image of the
@@ -127,7 +127,7 @@ theorem poll_disabled_forged {V : Type} [Fintype V] {E : Env V}
 /-- The poll skeleton (decision T): slots of four `Δ`, no slot proposer, every
 key may poll, no committee kinds. -/
 def pollSkel (pub : Public) : Skeleton pub.n where
-  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+  grid := ⟨4 * pub.ΔAC, mul_pos (by decide) pub.ΔAC_pos⟩
   proposerSel := fun _ => .fixed ∅
   pollSel := .fixed Finset.univ
   Kind := Empty

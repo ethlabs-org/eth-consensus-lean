@@ -135,7 +135,8 @@ theorem cut_inv_step (hrun : GoldilocksRun proposer dg H tr)
         (le_antisymm (h₂.trans hTa) hkj))
     exact attest_not_excluded hrun hp hv ⟨src, hsc'⟩ h₁ (h₂.trans hTle)
       (fun i hi => ih i (hi.trans hjk)) E (hex E hE)
-  obtain ⟨hab, hcc⟩ := Store.cut_scope hfg hT₀ hTpub hK0 (fun E hE => hp.clean.rowCut E (hex E hE))
+  obtain ⟨hab, hcc⟩ :=
+    Store.cut_scope hfg hT₀ hTpub hK0 (fun E hE => hp.clean.fgAttCut E (hex E hE))
     hrows hy
   -- an acceptance at `T + Δ` up to cut `k` is the own proposal
   have hown : ∀ j ≤ k, ∀ X, tr.AcceptAt y j X → tr.time j = T + sp.Δ →

@@ -50,20 +50,20 @@ def InBy (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (h : Header Info
     Prop :=
   ∀ v, rho.point.Ready c v t → h ∈ (chainTrace rho).readAt g v t
 
-/-- Reader-conditional: for every `t ≥ start` (with `t + D·Δ` in the
-horizon) at which some node is ready at the inclusion deadline `t + D·Δ`, a
+/-- Reader-conditional: for every `t ≥ start` (with `t + D·ΔAC` in the
+horizon) at which some node is ready at the inclusion deadline `t + D·ΔAC`, a
 header released after `t`, at `τ`, by a key ready at `τ` in a proposal role, is
-in every ready read by `t + D·Δ`. `τ` is not bounded above: the obligation is
-the inclusion by `t + D·Δ`, not the release time. Reader-conditional as L0
+in every ready read by `t + D·ΔAC`. `τ` is not bounded above: the obligation is
+the inclusion by `t + D·ΔAC`, not the release time. Reader-conditional as L0
 `TxLive`, which has no obligation without a ready reader: under churn that
 lets nobody be ready (e.g. a different validator asleep at each tick), no
 ready proposer can be demanded. -/
 def ProposalLiveReady (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (start : Time)
     (D : Nat) : Prop :=
-  ∀ t, start ≤ t → t + (D : Time) * E.Δ ≤ rho.horizon →
-    (∃ v, rho.point.Ready c v (t + (D : Time) * E.Δ)) →
+  ∀ t, start ≤ t → t + (D : Time) * E.ΔAC ≤ rho.horizon →
+    (∃ v, rho.point.Ready c v (t + (D : Time) * E.ΔAC)) →
     ∃ τ k h, t < τ ∧ rho.point.Ready c (rho.key k) τ ∧
-      HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.Δ)
+      HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.ΔAC)
 
 /-- Output validity of `g`: every honest read at every cut is linked from the
 root under the run's hash, has increasing positions, and every header in it

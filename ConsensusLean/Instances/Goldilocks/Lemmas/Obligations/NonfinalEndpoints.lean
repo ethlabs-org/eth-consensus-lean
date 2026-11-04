@@ -49,7 +49,7 @@ theorem confirmed_payload_projection (Q : ConfirmedQuery S A V)
   refine ⟨_, k, headerOf Q.params P.block, P.fresh, hk, hr, ?_⟩
   exact confirmed_inBy S Q.run.2 Q.hn Q.valid
     (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
-    (mul_nonneg (Int.natCast_nonneg _) Q.run.1.Δ_pos.le)
+    (mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le)
     hτ P.bounded Q.bounded hprop coverage
 
 /-- Safety has no progress/query/ready-reader existence premise. Its service
@@ -79,9 +79,9 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
       (Sys (goldilocks S) V).cDur (K S A) Q.run := by
     have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
       exact_mod_cast contract_catchUp_ge_sleepy S A
-    have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+    have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    change 18 * Q.run.1.Δ + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.Δ
+    change 18 * Q.run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
     nlinarith
   refine ⟨hduration, ?_, ?_⟩
   · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid

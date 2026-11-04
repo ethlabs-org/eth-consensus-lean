@@ -79,7 +79,7 @@ structure HealedRecords (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : T
   /-- RH: `h₀` is above the reset height. -/
   rh : HZ tr H g + 1 ≤ h₀
   /-- C2*⁺ (i): every honest row at a height `≥ h₀` names the entry at its height. -/
-  rows : ∀ v ∈ H, ∀ d att, tr.SignAt v d att → h₀ ≤ att.h → att.T = (E att.h).root
+  fgAtts : ∀ v ∈ H, ∀ d att, tr.SignAt v d att → h₀ ≤ att.h → att.T = (E att.h).root
   /-- C2*⁺ (ii): every honest lock at a height `≥ h₀` is `⊥` or the entry at that height. -/
   locks : ∀ y ∈ H, ∀ i h, h₀ ≤ h →
     (tr.state y i).record.lock h = none ∨ (tr.state y i).record.lock h = some (E h).root

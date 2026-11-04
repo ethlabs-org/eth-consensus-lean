@@ -87,13 +87,13 @@ inductive CtrlKind where
 /-- The control skeleton: slots of `4·Δ`, one proposer per slot, polling disabled, the two
 placeholder committee kinds at phases 1 and 2, every key in each. -/
 def ctrlSkeleton (pub : Public) : Skeleton pub.n where
-  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+  grid := ⟨4 * pub.ΔAC, mul_pos (by decide) pub.ΔAC_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed ∅
   Kind := CtrlKind
   decKind := inferInstance
   kinds := [.head, .fin]
-  phase := fun | .head => pub.Δ.toNat | .fin => 2 * pub.Δ.toNat
+  phase := fun | .head => pub.ΔAC.toNat | .fin => 2 * pub.ΔAC.toNat
   kindSel := fun _ => .fixed Finset.univ
 
 /-- A control-skeleton shape that does nothing. Any shape would do: the
@@ -211,7 +211,7 @@ theorem positive_controls (cap : Capability) :
     refine ⟨⟨_, rho⟩, hpt, hw, hs, hp, hpa, ht, ?_⟩
     have hps : CommLog.PSync rho.point rho.log 0 :=
       (Model.sysOf_delivers_iff (O := ctrlSchema) rho _ _ _).mp hs.1
-    exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.Δ_pos _).le)
+    exact active_relay rho hps le_rfl (mul_nonneg (Nat.cast_nonneg _) (Env.ΔAC_pos _).le)
       (fun _ _ => by rw [realPoint_env]; exact allAwake_apply _ _) ht
   · have hheal : max (5 : Time) 0 + (ctrlK.params.heal cap k1 : Time) * 2 = 7 := by
       cases cap <;> rfl
@@ -219,7 +219,7 @@ theorem positive_controls (cap : Capability) :
     obtain ⟨rho, hpt, -, hw, he, hH, hp, hpa, ht, hsa⟩ :=
       healthy_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
         (by norm_num) (by norm_num) ctrlK_progressFits cap k1 5
-        (le_mul_of_one_le_left zero_le_two (by exact_mod_cast ctrlK.params.rowRatio.pos))
+        (le_mul_of_one_le_left zero_le_two (by exact_mod_cast ctrlK.params.fgDelay.pos))
         (by rw [hheal, hlat]; norm_num) (by rw [hheal]; norm_num)
         (by rw [hrdy]; linarith)
     exact ⟨⟨_, rho⟩, hpt, hw, he.quiet, he, hH, hp, hpa, ht, hsa⟩
@@ -263,15 +263,15 @@ theorem outage_control :
   have hD : ((ctrlK.params.recovery : Nat) : Time) * 2 = 6 := by rw [hR]; norm_num
   rw [hD] at hoa
   refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.1⟩
-  · change min (max 0 (6 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ))
+  · change min (max 0 (6 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.ΔAC))
       rho.point.horizon = 2
     rw [hpt, realPoint_env, realPoint_horizon, hC]
     norm_num
-  · change min (8 + ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.Δ)
+  · change min (8 + ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.ΔAC)
       rho.point.horizon = 12
     rw [hpt, realPoint_env, realPoint_horizon, hC]
     norm_num
-  · change 8 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.Δ = 14
+  · change 8 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.ΔAC = 14
     rw [hpt, realPoint_env, hR]
     norm_num
   · change _ ∈ rho.point.honest

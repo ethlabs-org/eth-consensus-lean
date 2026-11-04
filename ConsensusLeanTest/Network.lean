@@ -58,10 +58,10 @@ theorem Delivers.mono_cut {dl dlF : Time → Time} {cut cut' : Time}
 theorem PSync.mono {g g' : Time} (hg : g ≤ g') (h : L.PSync p g) : L.PSync p g' := by
   apply h.reindex (f := fun a => max a g') (fun a => le_max_left a g') ?_ ?_ le_rfl
   · intro a
-    show max a g' + p.env.Δ - 1 = max (max a g') g + p.env.Δ - 1
+    show max a g' + p.env.ΔAC - 1 = max (max a g') g + p.env.ΔAC - 1
     rw [max_assoc, max_eq_left hg]
   · intro a
-    show max a g' + p.env.ΔF - 1 = max (max a g') g + p.env.ΔF - 1
+    show max a g' + p.env.ΔFG - 1 = max (max a g') g + p.env.ΔFG - 1
     rw [max_assoc, max_eq_left hg]
 
 /-- Synchrony up to a cut is weaker at a smaller cut. -/
@@ -159,7 +159,7 @@ theorem waker_not_instant : (logW recvAt3).PSync ptW 0 ∧ ¬ (logW recvAt3).Hel
         simp [ptW, envW] at this
     · have h2 : 2 ≤ a := by
         by_contra hlt
-        have hle : max a 0 ≤ max a 0 + ptW.env.Δ - 1 := by
+        have hle : max a 0 ≤ max a 0 + ptW.env.ΔAC - 1 := by
           change max a 0 ≤ max a 0 + 2 - 1
           dsimp only [Time]
           omega
@@ -259,7 +259,7 @@ theorem receipt_at_deadline : ¬ (logD 2).PSync ptN 0 := by
 theorem receipt_before_deadline : (logD 1).PSync ptN 0 := by
   refine ⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩
   · rintro v - m t ⟨-, rfl⟩ - w - a ha - - -
-    have h1 : (1 : Time) ≤ max a 0 + ptN.env.Δ - 1 := by
+    have h1 : (1 : Time) ≤ max a 0 + ptN.env.ΔAC - 1 := by
       change (1 : Time) ≤ max a 0 + 2 - 1
       have := le_max_right a 0
       dsimp only [Time] at *
@@ -325,10 +325,10 @@ honest send at `t` has a deadline `d = max t g' + Δ − 1` in the horizon and a
 honest node awake throughout `[t, d]` has not sent the message itself by `d`. -/
 theorem silent_not_psync {V M : Type} (p : EnvPoint V) (L : CommLog V M)
     (hq : ∀ w m t, ¬ L.recv w m t) {g' t : Time} {v w : V} {m : M} (hv : v ∈ p.honest)
-    (hs : L.sent v m t) (hr : ¬ L.row m) (hw : w ∈ p.honest)
-    (hd : max t g' + p.env.Δ - 1 ≤ p.horizon)
-    (ha : p.AwakeOnClosed w t (max t g' + p.env.Δ - 1))
-    (hns : ∀ t', t' ≤ max t g' + p.env.Δ - 1 → ¬ L.sent w m t') : ¬ L.PSync p g' := by
+    (hs : L.sent v m t) (hr : ¬ L.fgAtt m) (hw : w ∈ p.honest)
+    (hd : max t g' + p.env.ΔAC - 1 ≤ p.horizon)
+    (ha : p.AwakeOnClosed w t (max t g' + p.env.ΔAC - 1))
+    (hns : ∀ t', t' ≤ max t g' + p.env.ΔAC - 1 → ¬ L.sent w m t') : ¬ L.PSync p g' := by
   intro h
   obtain ⟨t', ht', hs', -⟩ := h.msgs v hv m t hs hr w hw t le_rfl hd hd ha
   rcases hs' with hs' | hr
@@ -349,10 +349,10 @@ theorem silent_run_valid (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [F
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
       rho.ExecutionValid ∧ (∀ w o t, ¬ rho.receives w o t) ∧
-        ∀ g' v w o t, v ∈ honest → rho.releases v o t → ¬ (protoOf F E).isRow o → w ∈ honest →
-          max t g' + E.Δ - 1 ≤ horizon →
-          (∀ u, t ≤ u → u ≤ max t g' + E.Δ - 1 → E.awake w u = true) →
-          (∀ t', t' ≤ max t g' + E.Δ - 1 → ¬ rho.releases w o t') →
+        ∀ g' v w o t, v ∈ honest → rho.releases v o t → ¬ (protoOf F E).isFGAtt o → w ∈ honest →
+          max t g' + E.ΔAC - 1 ≤ horizon →
+          (∀ u, t ≤ u → u ≤ max t g' + E.ΔAC - 1 → E.awake w u = true) →
+          (∀ t', t' ≤ max t g' + E.ΔAC - 1 → ¬ rho.releases w o t') →
           ¬ CommLog.PSync rho.point rho.log g' := by
   obtain ⟨relay, events, hv, he⟩ :=
     canonical_run_from O F V E honest horizon hh key sel hsel submit hash (horizon + 1)
@@ -485,7 +485,7 @@ theorem two_bound_witnesses :
 `ΔF − 1 = 0` (rows are held to their own bound, not to `Δ`). -/
 theorem row_held_to_row_bound : ¬ (logT True 1).PSync (ptT 1 one_pos) 0 := by
   intro hp
-  obtain ⟨t', ht', hs, -⟩ := hp.rows 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ trivial 1
+  obtain ⟨t', ht', hs, -⟩ := hp.fgAtts 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ trivial 1
     (Finset.mem_univ _) 0 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
   rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
   · exact absurd h1 (by decide)
@@ -508,10 +508,10 @@ theorem not_psyncT {ΔF : Time} {h : 0 < ΔF} {row : Prop} {R : Time}
     (hrow : row → ΔF ≤ R) (hnr : ¬ row → 2 ≤ R) (hF : ΔF ≤ 11) :
     ¬ (logT row R).PSync (ptT ΔF h) 0 := by
   intro hp
-  have hd : max 0 0 + (ptT ΔF h).env.ΔF - 1 ≤ (ptT ΔF h).horizon := by
+  have hd : max 0 0 + (ptT ΔF h).env.ΔFG - 1 ≤ (ptT ΔF h).horizon := by
     change max 0 0 + ΔF - 1 ≤ 10; rw [max_self]; dsimp only [Time] at *; omega
   by_cases hr : row
-  · obtain ⟨t', ht', hs, -⟩ := hp.rows 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ hr 1
+  · obtain ⟨t', ht', hs, -⟩ := hp.fgAtts 0 (Finset.mem_univ _) () 0 ⟨rfl, rfl⟩ hr 1
       (Finset.mem_univ _) 0 le_rfl hd hd (fun _ _ _ => rfl)
     rcases hs with ⟨h1, -⟩ | ⟨-, rfl⟩
     · exact absurd h1 (by decide)

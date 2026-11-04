@@ -14,7 +14,7 @@ per output identifier of its schema), and its slashing rule. There is no slot,
 proposer or block here: a proposer is a role whose selection has one key and
 whose duty acts at the proposal time, and blocks are items of the protocol.
 
-Honest code knows only the public parameters `n`, `Δ` and `ΔF`, and its own key
+Honest code knows only the public parameters `n`, `ΔAC` and `ΔFG`, and its own key
 (`init` and `restore` receive it). It never sees the selection, the PKI, the
 honest set, the GST, the awake profile, the submission or relay functions, or
 the hash function: the engine gives it its own and relayed transactions (at its
@@ -27,13 +27,13 @@ the model does not attempt it. -/
 namespace Consensus.Model
 
 /-- The public parameters that honest code may depend on: the number of
-validators and the two delay bounds (`Env.Δ`, `Env.ΔF`). -/
+validators and the two delay bounds (`Env.ΔAC`, `Env.ΔFG`). -/
 structure Public where
   n : Nat
-  Δ : Time
-  Δ_pos : 0 < Δ
-  ΔF : Time
-  ΔF_pos : 0 < ΔF
+  ΔAC : Time
+  ΔAC_pos : 0 < ΔAC
+  ΔFG : Time
+  ΔFG_pos : 0 < ΔFG
 
 /-- Validator keys: the public key space `Fin n`. The run's PKI maps keys to
 validators. -/
@@ -133,10 +133,10 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- The slashing rule: two objects that, signed by one validator, convict
   it. -/
   conflicts : Obj pub.n Role Item Body → Obj pub.n Role Item Body → Bool
-  /-- The row objects: delivered within the row bound `ΔF` instead of `Δ`
-  (`CommLog.row`, through `Run.log`). Every other object is delivered within
-  `Δ`. Default: none. -/
-  isRow : Obj pub.n Role Item Body → Prop := fun _ => False
+  /-- The FG attestation objects: delivered within the FG delay `ΔFG` instead of `ΔAC`
+  (`CommLog.fgAtt`, through `Run.log`). Every other object is delivered within
+  `ΔAC`. Default: none. -/
+  isFGAtt : Obj pub.n Role Item Body → Prop := fun _ => False
 
 attribute [instance] Protocol.decRole Protocol.decItem Protocol.decBody Protocol.cntItem
 

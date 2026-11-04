@@ -53,17 +53,17 @@ private theorem duration_ge (Q : OutageQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
     exact_mod_cast contract_catchUp_ge_sleepy S A
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [OutageQuery.duration, System.cDur, Params.standard, contract_coefficients_catchUp]
-  change 18 * Q.run.1.Δ ≤ (contract_catchUp S A : Nat) * Q.run.1.Δ
+  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
   nlinarith
 
 /-- The outage's end is not before `0`. -/
 private theorem stop_nonneg (Q : OutageQuery S A V) : 0 ≤ Q.stop := by
   obtain ⟨⟨hT, hlag, h01, -⟩, -⟩ := Q.outage
-  have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.Δ := by
-    have := Q.run.1.Δ_pos; positivity
-  change Q.T + _ * Q.run.1.Δ ≤ Q.start at hlag
+  have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.ΔAC := by
+    have := Q.run.1.ΔAC_pos; positivity
+  change Q.T + _ * Q.run.1.ΔAC ≤ Q.start at hlag
   change Q.start ≤ Q.stop at h01
   linarith
 
@@ -75,10 +75,10 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
   set tr := Q.trace
   set y := Q.run.2.ownKey w
   set j := cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
-  have hΔ : sp.Δ = Q.run.1.Δ := rfl
-  have hrec : Q.stop + 9 * Q.run.1.Δ ≤ t := by
-    change Q.stop + ((9 : Nat) : Time) * Q.run.1.Δ ≤ t at ht
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
+  have hΔ : sp.Δ = Q.run.1.ΔAC := rfl
+  have hrec : Q.stop + 9 * Q.run.1.ΔAC ≤ t := by
+    change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
   have hb₁ := stop_nonneg S A V Q

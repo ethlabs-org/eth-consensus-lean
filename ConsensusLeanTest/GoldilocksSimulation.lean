@@ -216,16 +216,16 @@ theorem protocol_delay_grid (S : Setup) :
 /-- Half-open engine delivery (held by `base + Δ − 1`) is strict protocol delivery
 (`< base + Δ_p`) at `Δ_p = Δ_e`. -/
 theorem protocol_delivery_endpoint (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (base delivered : Time) (h : delivered ≤ base + pub.Δ - 1) :
+    (base delivered : Time) (h : delivered ≤ base + pub.ΔAC - 1) :
     delivered < base + (S.params pub hn).Δ := by
-  change delivered < base + pub.Δ
+  change delivered < base + pub.ΔAC
   linarith
 
 /-- **Control**: the protocol delay adds no slack, so a receipt at the engine bound
 `base + Δ` itself is not strictly before `base + Δ_p`. -/
 theorem protocol_delivery_bound_not_strict (S : Setup) (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (base : Time) : ¬ base + pub.Δ < base + (S.params pub hn).Δ := by
-  change ¬ base + pub.Δ < base + pub.Δ
+    (base : Time) : ¬ base + pub.ΔAC < base + (S.params pub hn).Δ := by
+  change ¬ base + pub.ΔAC < base + pub.ΔAC
   exact lt_irrefl _
 
 /-- Old k=2 coefficients fail independently (recorded under the former `Δp = Δe + 1`): Δe=1 gives
@@ -284,14 +284,14 @@ theorem forwarding_root_alias (sp : SA.SAParams) (x : Fin sp.n) (t : Time)
   have hr := congrArg (fun C : Blk sp => C.root) h
   simp at hr
 
-/-- **Row classification** (`isRow`, owner decision 2026-11-02): a standalone attestation and a
+/-- **Row classification** (`isFGAtt`, owner decision 2026-11-02): a standalone attestation and a
 relay wrapper of attestations only are rows (bound `ΔF`); a mixed relay wrapper (an attestation
 with a vote) and the empty relay wrapper are not (bound `Δ`). -/
-theorem isRow_classification {n : Nat} (a : FG.Att n) (v : SA.Vote n) :
-    isRow (attObj a) ∧ isRow (.mk .none (.data .relay) [attObj a] : Wire n) ∧
-      ¬ isRow (.mk .none (.data .relay) [attObj a, voteObj v] : Wire n) ∧
-      ¬ isRow (.mk .none (.data .relay) [] : Wire n) := by
-  simp [isRow, IsAttObj, attObj, voteObj]
+theorem isFGAtt_classification {n : Nat} (a : FG.Att n) (v : SA.Vote n) :
+    isFGAtt (attObj a) ∧ isFGAtt (.mk .none (.data .relay) [attObj a] : Wire n) ∧
+      ¬ isFGAtt (.mk .none (.data .relay) [attObj a, voteObj v] : Wire n) ∧
+      ¬ isFGAtt (.mk .none (.data .relay) [] : Wire n) := by
+  simp [isFGAtt, IsAttObj, attObj, voteObj]
 
 /-- The FG row gap `cF r = ⌈(r + 6)/4⌉` at `r = 1, 2, 3, 32`. -/
 theorem cF_values : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := by decide

@@ -183,8 +183,9 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   a rule keyed only on the role would make an honest re-proposal in a later
   round conflict, and the engine's slashing protection would suppress it. -/
   conflicts : ShapeObj pub.n skel.Kind Info Body → ShapeObj pub.n skel.Kind Info Body → Bool
-  /-- The row objects (`Model.Protocol.isRow`): delivered strictly before `ΔF`. Default: none. -/
-  isRow : ShapeObj pub.n skel.Kind Info Body → Prop := fun _ => False
+  /-- The FG attestation objects (`Model.Protocol.isFGAtt`): delivered strictly before `ΔFG`.
+  Default: none. -/
+  isFGAtt : ShapeObj pub.n skel.Kind Info Body → Prop := fun _ => False
 
 attribute [instance] ChainShape.decBody
 

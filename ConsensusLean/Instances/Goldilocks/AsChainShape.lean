@@ -63,7 +63,7 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
 * **Outputs.** `confirmed` is `ac_confirmed`, `finalized` is `Σ.F`, each as the chain of
   headers from genesis (excluded) to the block, read from `Σ.T` by parent walk (fuel: the slot).
 * **Slashing rule.** `conflicts` is `FG.slashable` on two canonical attestation objects.
-* **Family.** `goldilocks S` fixes the public parameters from `pub` (`Δ`, `n`) and the rest from a
+* **Family.** `goldilocks S` fixes the public parameters from `pub` (`ΔAC`, `n`) and the rest from a
   `Setup`. `Params` needs `1 ≤ n`; the family keeps that dependence out of its types
   (`PubState`), so that a run's state is a Goldilocks state at any proof of `1 ≤ n`. -/
 
@@ -201,18 +201,18 @@ def IsAttObj {n : Nat} : Wire n → Prop
   | .mk (.signed _ .poll) (.data (.att _)) [] => True
   | _ => False
 
-/-- **The row objects** (`Model.Protocol.isRow`, delivered strictly before the row bound `ΔF`): a
-standalone attestation (`IsAttObj`), and an unsigned relay wrapper whose carried list is nonempty
-and consists of standalone attestations only. Every other object is delivered strictly before
-`Δ`: blocks
-(with the attestations they carry), votes, `.forward` and `.voteForward` wrappers, the empty relay
-wrapper, and a mixed relay wrapper (attestations relayed together with a block or a vote).
+/-- **The FG attestation objects** (`Model.Protocol.isFGAtt`, delivered strictly before the FG
+delay `ΔFG`): a standalone attestation (`IsAttObj`), and an unsigned relay wrapper whose carried
+list is nonempty and consists of standalone attestations only. Every other object is delivered
+strictly before `ΔAC`: blocks (with the attestations they carry), votes, `.forward` and
+`.voteForward` wrappers, the empty relay wrapper, and a mixed relay wrapper (attestations relayed
+together with a block or a vote).
 
 Model choice (owner decision, 2026-11-02): attestations bundled with a block or a vote in one
-relay wrapper are delivered strictly before `Δ`, the bound of the bundle; so such attestations
-reach the other nodes strictly before `Δ` instead of `ΔF` (faster than a standalone row whenever
-`Δ < ΔF`). -/
-def isRow {n : Nat} : Wire n → Prop
+relay wrapper are delivered strictly before `ΔAC`, the bound of the bundle; so such attestations
+reach the other nodes strictly before `ΔAC` instead of `ΔFG` (faster than a standalone
+attestation whenever `ΔAC < ΔFG`). -/
+def isFGAtt {n : Nat} : Wire n → Prop
   | .mk .none (.data .relay) cs => cs ≠ [] ∧ ∀ c ∈ cs, IsAttObj c
   | o => IsAttObj o
 
@@ -251,9 +251,9 @@ def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
 variable (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
 
 /-- The public parameters of `sp`: the type index of `goldilocksShape`. Only `n` (keys and
-objects) and `Δ` (`skeleton`'s grid, overridden by `goldilocksShape`) are read from it; its row
-bound is set to `sp.Δ` only to fill the field and is read by no definition. The run's row bound
-is the family's `Public.ΔF`. -/
+objects) and `ΔAC` (`skeleton`'s grid, overridden by `goldilocksShape`) are read from it; its FG
+delay is set to `sp.Δ` only to fill the field and is read by no definition. The run's FG delay
+is the family's `Public.ΔFG`. -/
 abbrev _root_.Consensus.Goldilocks.SA.SAParams.pub : Public :=
   ⟨sp.n, sp.Δ, sp.toParams.hΔ, sp.Δ, sp.toParams.hΔ⟩
 
@@ -269,14 +269,14 @@ def blockOf (d : Nat) (h : Header Info) (k : Fin sp.n) (atts : List (FG.Att sp.n
     (p : Payload sp.n) : Blk sp :=
   ⟨taggedRoot sp.genesisRoot d, parentRoot sp.genesisRoot h.parent, h.pos, k, h.input, atts, p⟩
 
-/-- The skeleton uses protocol delay `Δ_p = pub.Δ`, selecting one proposer per `4Δ_p`, with
+/-- The skeleton uses protocol delay `Δ_p = pub.ΔAC`, selecting one proposer per `4Δ_p`, with
 everyone in the poll role and no committee kinds; two poll steps (the release of the
 bodies queued since the last tick), the node's tick as the poll proposal step, the slot proposal,
 then two poll steps (the FG update and the release of the tick's bodies); one poll step at every
 delivery (the release of the vote the delivery emitted, if any; the FG update is never due at a
 delivery). -/
 def skeleton (pub : Public) : Skeleton pub.n where
-  grid := ⟨4 * pub.Δ, mul_pos (by decide) pub.Δ_pos⟩
+  grid := ⟨4 * pub.ΔAC, mul_pos (by decide) pub.ΔAC_pos⟩
   proposerSel := fun _ => .sized 1
   pollSel := .fixed Finset.univ
   Kind := Empty
@@ -593,7 +593,7 @@ noncomputable def goldilocksShape : ChainShape sp.pub Out Info where
   restore := restore
   out g st := outOf st.node st.now g
   conflicts := conflicts
-  isRow := isRow
+  isFGAtt := isFGAtt
 
 /-! ## The family -/
 
@@ -615,19 +615,19 @@ structure Setup where
   not on a proposer schedule or timing parameters. -/
   ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
 
-/-- The SA parameters use protocol delay `pub.Δ` and slots of four protocol delays: L0 delivers
+/-- The SA parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
 strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
 The run's proposer selection is independent of these runtime parameters. -/
 abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
   toParams :=
     { n := pub.n
       hn := hn
-      Δ := pub.Δ
-      hΔ := pub.Δ_pos
-      slotTime := fun s => 4 * pub.Δ * s
+      Δ := pub.ΔAC
+      hΔ := pub.ΔAC_pos
+      slotTime := fun s => 4 * pub.ΔAC * s
       slotTime_zero := by simp
       slotTime_strictMono := fun a b h =>
-        mul_lt_mul_of_pos_left (by exact_mod_cast h) (by have := pub.Δ_pos; linarith)
+        mul_lt_mul_of_pos_left (by exact_mod_cast h) (by have := pub.ΔAC_pos; linarith)
       slotTime_public := fun s => ⟨4 * s, by ring⟩
       genesisRoot := S.genesisRoot
       δt := S.δt }
@@ -680,13 +680,13 @@ noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info := fun p
     restore := fun k d t hn => (G hn).restore k (d hn) t
     out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
     conflicts := conflicts
-    isRow := isRow }
+    isFGAtt := isFGAtt }
 
-/-! ## The row bound -/
+/-! ## The FG gap -/
 
-/-- The FG row gap at row ratio `r`: `cF r = ⌈(r + 6)/4⌉` slots (`cF_ceil`). It bounds
-`⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉`, at the protocol delays `Δ_p = Δ` and `ΔF_p = ΔF`, whenever the
-engine bounds satisfy `ΔF ≤ r·Δ` (`cF_spec`; both in `Lemmas/Obligations/ContractDefs`). -/
+/-- The FG gap at FG delay bound `r`: `cF r = ⌈(r + 6)/4⌉` slots (`cF_ceil`). It bounds
+`⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉`, at the protocol delays `Δ_p = ΔAC` and `ΔF_p = ΔFG`, whenever the
+engine bounds satisfy `ΔFG ≤ r·ΔAC` (`cF_spec`; both in `Lemmas/Obligations/ContractDefs`). -/
 def cF (r : ℕ+) : Nat := ((r : Nat) + 9) / 4
 
 end Consensus.Goldilocks.AsChainShape

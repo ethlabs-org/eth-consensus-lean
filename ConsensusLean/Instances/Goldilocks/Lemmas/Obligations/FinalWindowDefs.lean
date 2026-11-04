@@ -44,9 +44,9 @@ structure FinalQuery where
   progress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final index
     ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run
   mature : (Sys (goldilocks S) V).heal (K S A) .final index gst run ≤ query
-  bounded : query + ((K S A).params.latency .final index : Time) * run.1.Δ ≤ run.2.horizon
+  bounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤ run.2.horizon
   reader : ∃ v, run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) run) v
-    (query + ((K S A).params.latency .final index : Time) * run.1.Δ)
+    (query + ((K S A).params.latency .final index : Time) * run.1.ΔAC)
 
 namespace FinalQuery
 
@@ -55,7 +55,7 @@ variable {S A V}
 abbrev params (Q : FinalQuery S A V) := S.params (Model.pubOf Q.run.1) Q.hn
 noncomputable abbrev trace (Q : FinalQuery S A V) := simTrace S Q.run.2 Q.hn
 noncomputable abbrev deadline (Q : FinalQuery S A V) : Time :=
-  Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.Δ
+  Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC
 
 end FinalQuery
 

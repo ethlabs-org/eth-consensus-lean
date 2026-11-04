@@ -140,23 +140,23 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   set ready := (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run with hreadydef
   set D := Q.params.Δ with hDdef
   have hD : 0 < D := Q.params.toParams.hΔ
-  have hDe : D = Q.run.1.Δ := rfl
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hDe : D = Q.run.1.ΔAC := rfl
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
   have hk : Q.params.k = S.k := rfl
   -- the ready scalar
   have hC : (Sys (goldilocks S) V).cDur (K S A) Q.run =
-      ((contract_catchUp S A : Nat) : Time) * Q.run.1.Δ := by
+      ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC := by
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
     rfl
-  have hready : ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.Δ + 1 := by
+  have hready : ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
     rw [hreadydef, ← hC]; rfl
   have hr0 : 0 ≤ ready := by
     rw [hready]; have := le_max_right Q.gst 0; positivity
   have hrmax : max ready 0 = ready := max_eq_left hr0
   have hgr : gbar Q.gst ≤ ready := by
     change max Q.gst 0 ≤ ready
-    rw [hready]; have : (0 : Time) ≤ ((contract_catchUp S A : Nat) : Time) * Q.run.1.Δ := by
+    rw [hready]; have : (0 : Time) ≤ ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC := by
       positivity
     linarith
   have hcz := cutZ_fit_of_catchUp A V (contract_coefficients S A)
@@ -164,7 +164,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   change Healing.cutZ Q.params.toParams Q.gst + D + 1 ≤ max ready 0 + 4 * D at hcz
   rw [hrmax] at hcz
   -- heal and the coefficient budget, in node delays `D = Δe`
-  have hheal : max Q.gst 0 + ((K S A).params.heal .final Q.index : Time) * Q.run.1.Δ ≤ Q.query :=
+  have hheal : max Q.gst 0 + ((K S A).params.heal .final Q.index : Time) * Q.run.1.ΔAC ≤ Q.query :=
     Q.mature
   have hbud : ((contract_catchUp S A : Nat) : Time) +
       (20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56) ≤
@@ -177,11 +177,11 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   set Mf : Time := 20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56 with hMf
   have hMf0 : 0 ≤ Mf := by rw [hMf]; positivity
   have hq : ready + Mf * D - 1 ≤ Q.query := by
-    have h1 := mul_le_mul_of_nonneg_right hbud (by linarith : (0 : Time) ≤ Q.run.1.Δ)
+    have h1 := mul_le_mul_of_nonneg_right hbud (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)
     rw [hready, hDe]; nlinarith
   have hqh : Q.query ≤ Q.run.2.horizon := by
     have := Q.bounded
-    have : (0 : Time) ≤ ((K S A).params.latency .final Q.index : Time) * Q.run.1.Δ := by
+    have : (0 : Time) ≤ ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC := by
       positivity
     linarith
   -- the reset bound `B`

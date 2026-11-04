@@ -82,10 +82,11 @@ structure GoodWindow (H : Set (Fin P.n)) (tr : FGTrace P ACP) (cF : Nat) (T : No
   extends_entry : (tr.store p i).Anc T Pr
   /-- P1: the slot is in the window. -/
   window : T.slot + a + cF ≤ Bs.slot ∧ Bs.slot ≤ T.slot + a + cF + kF
-  /-- P2: the rows' validators weigh at least `q`. -/
+  /-- P2: the attestations' validators weigh at least `q`. -/
   quorum : P.fg.q ≤ (R.image FG.Att.val).card
-  /-- P2: target rows for `E`, carrying `P_E` at an entry whose previous height is justified. -/
-  rows : ∀ r ∈ R, r.h = ((tr.store p i).σ T.root).h ∧ r.T = T.root ∧ r.timeout = false ∧
+  /-- P2: target attestations for `E`, carrying `P_E` at an entry whose previous height is
+  justified. -/
+  fgAtts : ∀ r ∈ R, r.h = ((tr.store p i).σ T.root).h ∧ r.T = T.root ∧ r.timeout = false ∧
     (((tr.store p i).σ T.root).previousHeightJustified →
       r.fin = some (((tr.store p i).σ T.root).hj, ((tr.store p i).σ T.root).J))
   /-- P2: on the chain already, or (honest) signed by `t_{u+a} + 6Δ`. -/

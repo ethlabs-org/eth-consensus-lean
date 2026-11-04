@@ -74,7 +74,7 @@ structure ExecutionValid : Prop where
 and inboxes, independently of handler admission. Network conditions are the L0 ones
 (`CommLog.PSync`, `CommLog.SyncUntil`, …) on `rho.point` and `rho.log`. -/
 def log : CommLog V (protoOf F E).Object :=
-  ⟨rho.releases, rho.receives, rho.inbox, (protoOf F E).isRow⟩
+  ⟨rho.releases, rho.receives, rho.inbox, (protoOf F E).isFGAtt⟩
 
 end Run
 

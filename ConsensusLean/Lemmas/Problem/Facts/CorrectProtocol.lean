@@ -142,29 +142,29 @@ theorem sleepySafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
     unfold System.Sleepy
     rw [hc, show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hθ⟩
-    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.Δ - 1)
-        (fun a => max a 0 + (S.pt r).env.ΔF - 1) b :=
+    have hd : (S.log r).Delivers (S.pt r) (fun a => max a 0 + (S.pt r).env.ΔAC - 1)
+        (fun a => max a 0 + (S.pt r).env.ΔFG - 1) b :=
       hs.reindex (f := fun a => max a 0) (fun a => le_max_left a 0) (fun _ => rfl) (fun _ => rfl)
         le_rfl
     exact hd.prefix hL hbh
-      (fun _ => le_max_add_sub_one (S.pt r).env.Δ_pos)
-      (fun _ => le_max_add_sub_one (S.pt r).env.ΔF_pos)
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔAC_pos)
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔFG_pos)
   rcases h.behaviour.sleepySafe cap g hcap hg r' hv' hreg with hr | he
   · rw [hc] at hr; exact Or.inl (hP.readySafeUpTo hr)
   · exact Or.inr (hE he)
 
 /-- Healed safety of the past: a run partially synchronous with GST `gst` and
-healthy up to `b` (row bound within the row ratio), with progress on `[ready, heal]` and
+healthy up to `b` (FG delay within its bound), with progress on `[ready, heal]` and
 `heal ≤ b`, is
 safe for ready readers at cuts in `[heal, b]`, whatever happens after `b`. -/
 theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) (i : K.Idx) (gst : Time) {b : Time} (hb0 : 0 ≤ b)
     (hbh : b ≤ (S.pt r).horizon)
-    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.Δ - 1)
-      (fun a => max a gst + (S.pt r).env.ΔF - 1) b)
+    (hs : (S.log r).Delivers (S.pt r) (fun a => max a gst + (S.pt r).env.ΔAC - 1)
+      (fun a => max a gst + (S.pt r).env.ΔFG - 1) b)
     (hH : (S.pt r).HealthyOn K.params.β gst b)
-    (hrat : (S.pt r).env.ΔF ≤ (K.params.rowRatio : Time) * (S.pt r).env.Δ)
+    (hrat : (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC)
     (hp : S.prog X K cap i (S.ready K gst r) (S.heal K cap i gst r) r)
     (hhb : S.heal K cap i gst r ≤ b) :
     (S.trace r).ReadySafeUpTo (S.cDur K r) g (S.heal K cap i gst r) b ∨ S.Excuse r := by
@@ -179,8 +179,8 @@ theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.
     rw [show S.pt r' = { S.pt r with horizon := b } from hP.point]
     refine ⟨?_, hH, hrat⟩
     exact hs.prefix hL hbh
-      (fun _ => le_max_add_sub_one (S.pt r).env.Δ_pos)
-      (fun _ => le_max_add_sub_one (S.pt r).env.ΔF_pos)
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔAC_pos)
+      (fun _ => le_max_add_sub_one (S.pt r).env.ΔFG_pos)
   have hpr : S.prog X K cap i (S.ready K gst r') (S.heal K cap i gst r') r' := by
     rw [hready, hheal]
     unfold System.prog at hp ⊢
@@ -199,25 +199,25 @@ readers at reading times in `[b₁ + recovery·Δ, b]`, whatever happens after
 theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)
     {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
-    (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
+    (hT : OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁)
     (hs : (S.log r).SyncUntil (S.pt r) b₀)
-    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.Δ - 1)
-      (fun a => max a b₁ + (S.pt r).env.ΔF - 1) b)
-    (hθ : (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.Δ) (S.cDur K r) 0 b)
-    (hns : (S.pt r).NoSleepOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b)
-      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b))
-    (hco : (S.pt r).CohortOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b)
-      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b)) :
+    (hps : (S.log r).Delivers (S.pt r) (fun a => max a b₁ + (S.pt r).env.ΔAC - 1)
+      (fun a => max a b₁ + (S.pt r).env.ΔFG - 1) b)
+    (hθ : (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r) 0 b)
+    (hns : (S.pt r).NoSleepOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.ΔAC)) b)
+      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b))
+    (hco : (S.pt r).CohortOn (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.ΔAC)) b)
+      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b)) :
     (S.trace r).ProtectedReadyUpTo (S.cDur K r) g (resilienceTarget S.schema g) T
       (S.recoveryAt K b₁ r) b ∨ S.Excuse r := by
   obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
-  have hΔ := (S.pt r).env.Δ_pos
+  have hΔ := (S.pt r).env.ΔAC_pos
   have hpt : S.pt r' = { S.pt r with horizon := b } := hP.point
   have hst : S.outageStart K b₀ r' =
-      min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.Δ)) b := by
+      min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.ΔAC)) b := by
     unfold System.outageStart; rw [hP.env, hpt]
-  have hen : S.outageEnd K b₁ r' = min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.Δ) b := by
+  have hen : S.outageEnd K b₁ r' = min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b := by
     unfold System.outageEnd; rw [hP.env, hpt]
   have hrec : S.recoveryAt K b₁ r' = S.recoveryAt K b₁ r := by
     unfold System.recoveryAt; rw [hP.env]
@@ -226,13 +226,13 @@ theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
     rw [hc, hst, hen, hpt]
     refine ⟨hT, ⟨?_, ?_⟩, hθ, hns, hco⟩
     · exact hs.prefix hL hbh (fun _ => le_add_sub_one hΔ)
-        (fun _ => le_add_sub_one (S.pt r).env.ΔF_pos)
+        (fun _ => le_add_sub_one (S.pt r).env.ΔFG_pos)
     · exact hps.prefix hL hbh (fun _ => le_max_add_sub_one hΔ)
-        (fun _ => le_max_add_sub_one (S.pt r).env.ΔF_pos)
+        (fun _ => le_max_add_sub_one (S.pt r).env.ΔFG_pos)
   have hTb : T ≤ S.recoveryAt K b₁ r := by
     obtain ⟨-, hl, h01, -⟩ := hT
-    have : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
-    have : (0 : Time) ≤ (K.params.recovery : Time) * (S.pt r).env.Δ := by positivity
+    have : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.ΔAC := by positivity
+    have : (0 : Time) ≤ (K.params.recovery : Time) * (S.pt r).env.ΔAC := by positivity
     unfold System.recoveryAt
     linarith
   rcases h.behaviour.persists g hg T b₀ b₁ r' hv' hreg with hr | he
@@ -249,13 +249,13 @@ theorem served (h : CorrectProtocol S X K) (hn : 5 ≤ Fintype.card V) {cap : Ca
     {g : S.schema.Id} (_hcap : cap = .final ∨ cap = .available)
     (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 1 < Δ)
     (hgst : 0 ≤ gst) :
-    ∃ r, S.Witness r ∧ (S.pt r).env.Δ = Δ ∧ S.Healthy K gst r ∧
+    ∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = Δ ∧ S.Healthy K gst r ∧
       S.prog X K cap i (S.ready K gst r) (S.pt r).horizon r ∧
       ∃ x u w t t', u ∈ (S.pt r).honest ∧ w ∈ (S.pt r).honest ∧ w ≠ u ∧
         x ∈ (S.pt r).submit u t ∧ (∀ τ, x ∉ (S.pt r).submit w τ) ∧
         t' ≤ (S.pt r).horizon ∧ x ∈ (S.trace r).readAt g w t' := by
-  have hrat : Δ ≤ (K.params.rowRatio : Time) * Δ :=
-    le_mul_of_one_le_left (by linarith) (by exact_mod_cast K.params.rowRatio.pos)
+  have hrat : Δ ≤ (K.params.fgDelay : Time) * Δ :=
+    le_mul_of_one_le_left (by linarith) (by exact_mod_cast K.params.fgDelay.pos)
   obtain ⟨r, ⟨hw, hd, -⟩, ⟨-, hH, hp, ha⟩, -⟩ :=
     (h.realizable hn).healthy cap i Δ Δ gst hΔ hΔ hrat hgst
   refine ⟨r, hw, hd, hH, hp, ?_⟩

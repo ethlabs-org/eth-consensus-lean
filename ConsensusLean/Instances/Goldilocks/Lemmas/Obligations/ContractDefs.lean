@@ -37,9 +37,9 @@ theorem cF_spec (r : ℕ+) (Δ ΔF : Time) (hΔ : 0 < Δ) (hr : ΔF ≤ (r : Tim
 /-- The row gap is at least `2` at every ratio (`cF_ceil`: `4·cF r ≥ r + 6 ≥ 7`). -/
 theorem _root_.Consensus.Goldilocks.ContractAssumptions.two_le_cF {S : Setup}
     (A : ContractAssumptions S) :
-    2 ≤ cF A.rowRatio := by
-  have := (cF_ceil A.rowRatio).1
-  have := A.rowRatio.pos
+    2 ≤ cF A.fgDelay := by
+  have := (cF_ceil A.fgDelay).1
+  have := A.fgDelay.pos
   omega
 
 /-- The timeout covers the gap-2 bound `6 ≤ δ_t` at every ratio. -/
@@ -51,10 +51,10 @@ theorem _root_.Consensus.Goldilocks.ContractAssumptions.six_le_δt {S : Setup}
   omega
 
 theorem finalWindow_offsets {S : Setup} (A : ContractAssumptions S) :
-    (finalWindow A).offsets = [0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio] := by rfl
+    (finalWindow A).offsets = [0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay] := by rfl
 
 theorem finalWindow_span {S : Setup} (A : ContractAssumptions S) :
-    (finalWindow A).span = 3 * cF A.rowRatio := by
+    (finalWindow A).span = 3 * cF A.fgDelay := by
   unfold Pattern.span
   rw [finalWindow_offsets]
   simp only [List.foldr_cons, List.foldr_nil]
@@ -94,7 +94,7 @@ theorem contract_latency_stable (S : Setup) (A : ContractAssumptions S) (X : ℕ
     contract_latency S A .stable X = 4 * (X : Nat) + 6 := by rfl
 
 theorem contract_latency_final (S : Setup) (A : ContractAssumptions S) (X : ℕ+) :
-    contract_latency S A .final X = 4 * ((X : Nat) + 3 * cF A.rowRatio) + 1 := by rfl
+    contract_latency S A .final X = 4 * ((X : Nat) + 3 * cF A.fgDelay) + 1 := by rfl
 
 /-- For `Δ ≥ 1`, `19Δ` covers `18Δ + 1`, including safety's literal `+1`. -/
 theorem contract_catchUp_ge_sleepy (S : Setup) (A : ContractAssumptions S) :
@@ -115,7 +115,7 @@ theorem goldilocksContract_params_eq {S : Setup} (A : ContractAssumptions S)
       { Params.standard C.catchUp (4 * S.k + 6)
         (4 * S.k - 5) C.heal C.latency with
         noSleep := 4 * S.k + 6, recovery := 9,
-        rowRatio := A.rowRatio } := by rfl
+        fgDelay := A.fgDelay } := by rfl
 
 theorem contract_coefficients_catchUp (S : Setup) (A : ContractAssumptions S) :
     (contract_coefficients S A).catchUp = contract_catchUp S A := by rfl
@@ -135,10 +135,10 @@ At `K S A` the premise is `contract_catchUp_ge_sleepy`. -/
 theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : ContractCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
     (r : (Sys (goldilocks S) V).Run) :
-    18 * r.1.Δ + 1 ≤ (Sys (goldilocks S) V).cDur (goldilocksContract A C) r := by
-  have hd : (1 : Time) ≤ r.1.Δ := r.1.Δ_pos
+    18 * r.1.ΔAC + 1 ≤ (Sys (goldilocks S) V).cDur (goldilocksContract A C) r := by
+  have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
   have hc : (19 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
-  change 18 * r.1.Δ + 1 ≤ ((C.catchUp : Nat) : Time) * r.1.Δ
+  change 18 * r.1.ΔAC + 1 ≤ ((C.catchUp : Nat) : Time) * r.1.ΔAC
   nlinarith
 
 /-- **The snapshot fit at readiness** for any coefficient record with catch-up `≥ 19`:
@@ -153,8 +153,8 @@ theorem cutZ_fit_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [
       max ((Sys (goldilocks S) V).ready (goldilocksContract A C) g r) 0 +
         4 * (S.params (Model.pubOf r.1) hn).Δ := by
   have h := cDur_ge_of_catchUp A V C hC r
-  have hΔ : (S.params (Model.pubOf r.1) hn).Δ = r.1.Δ := rfl
-  exact Healing.cutZ_add_lt_ready_add _ g _ (by have := r.1.Δ_pos; rw [hΔ]; linarith)
+  have hΔ : (S.params (Model.pubOf r.1) hn).Δ = r.1.ΔAC := rfl
+  exact Healing.cutZ_add_lt_ready_add _ g _ (by have := r.1.ΔAC_pos; rw [hΔ]; linarith)
 
 end Consensus.Goldilocks.Obligations
 end

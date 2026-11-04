@@ -50,7 +50,7 @@ structure HealedRecordsUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g
   /-- RH: `h₀` is above the reset height. -/
   rh : HZ tr H g + 1 ≤ h₀
   /-- C2*⁺ (i): every honest row signed by `b` at a height `≥ h₀` names the entry. -/
-  rows : ∀ v ∈ H, ∀ d att, tr.SignAt v d att → tr.time d ≤ b → h₀ ≤ att.h →
+  fgAtts : ∀ v ∈ H, ∀ d att, tr.SignAt v d att → tr.time d ≤ b → h₀ ≤ att.h →
     att.T = (E att.h).root
   /-- C2*⁺ (ii): at a cut by `b`, every honest lock at a height `≥ h₀` is `⊥` or the entry. -/
   locks : ∀ y ∈ H, ∀ i h, tr.time i ≤ b → h₀ ≤ h →
@@ -150,7 +150,7 @@ theorem healed_records_of_reset_canonical_upTo
     {h₀ : Nat} (hrh : HZ tr H g + 1 ≤ h₀) (Z₀ : SA.Blk sp.n (List (FG.Att sp.n))) :
     HealedRecordsUpTo tr H g b h₀ (canonicalEntryUpTo tr H g b Z₀) where
   rh := hrh
-  rows _ hv _ _ hs hdb hh := by
+  fgAtts _ hv _ _ hs hdb hh := by
     obtain ⟨E, hE, -⟩ := hp.highEntryUpTo_of_row hv hs hdb (hrh.trans hh)
     exact hp.high_row_entry_of_upTo hv hs hdb (hrh.trans hh) (canonicalEntryUpTo_highEntry ⟨E, hE⟩)
   locks _ hy i h hib hh := by

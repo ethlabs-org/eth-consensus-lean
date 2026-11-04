@@ -58,7 +58,7 @@ def ActiveService (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (cap 
     (g : O.Id) : Prop :=
   ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V →
     ∀ (i : K.Idx) (Δ gst : Time), 1 < Δ → 0 ≤ gst →
-    ∃ r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.Δ = Δ ∧ (Sys F V).Healthy K gst r ∧
+    ∃ r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.ΔAC = Δ ∧ (Sys F V).Healthy K gst r ∧
       (Sys F V).prog (shapeProgress F V) K cap i ((Sys F V).ready K gst r)
         ((Sys F V).pt r).horizon r ∧
       ∃ x u w t t', u ∈ ((Sys F V).pt r).honest ∧ w ∈ ((Sys F V).pt r).honest ∧ w ≠ u ∧

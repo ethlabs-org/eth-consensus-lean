@@ -53,10 +53,11 @@ structure Clean (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
   caches : ∀ y ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts s) →
     Compatible (tr.HonestBlocks H) (tr.state y j).fg.F B ∧
       Compatible (tr.HonestBlocks H) (tr.state y j).fg.J B
-  /-- (K1) Row cut: for every excluded entry `E'`, the validators that are faulty, or honest and
+  /-- (K1) FG attestation cut (the claims' row cut): for every excluded entry `E'`, the validators
+  that are faulty, or honest and
   sign at or before `t_{s+1} + Δ` an attestation whose height pair names `E'`, number fewer
   than `q`. -/
-  rowCut : ∀ E' ∈ excludedEntries tr H s B,
+  fgAttCut : ∀ E' ∈ excludedEntries tr H s B,
     (Store.namers sp.toParams (Payload sp.n) H tr.projFG (sp.ts (s + 1 : Nat) + sp.Δ) E').ncard <
       sp.toParams.fg.q
   /-- (K2) Height lead: at each honest vote of a slot in `(s, m]`, the voter block tree holds a

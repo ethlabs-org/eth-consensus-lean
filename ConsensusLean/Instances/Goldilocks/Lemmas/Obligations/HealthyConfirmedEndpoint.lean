@@ -208,11 +208,11 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   classical
   let Q' : HealthyPreparationQuery S A V :=
     ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.valid, Q.noCollision, hh⟩
-  have hd : (1 : Time) ≤ Q.run.1.Δ := Q.run.1.Δ_pos
+  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ := Q.params.toParams.hΔ
   -- the preparation query: `0 ≤ heal ≤ query ≤ deadline ≤ horizon`, progress on `[ready, heal]`
   have h0 : 0 ≤ Q'.heal := by
-    change 0 ≤ max Q.gst 0 + ((K S A).params.heal Q.cap Q.index : Time) * Q.run.1.Δ
+    change 0 ≤ max Q.gst 0 + ((K S A).params.heal Q.cap Q.index : Time) * Q.run.1.ΔAC
     exact add_nonneg (le_max_right _ _) (mul_nonneg (Nat.cast_nonneg _) (by linarith))
   have hqD : Q.query ≤ Q.deadline :=
     le_add_of_nonneg_right (mul_nonneg (Nat.cast_nonneg _) (by linarith))

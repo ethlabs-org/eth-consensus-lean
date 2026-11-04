@@ -45,18 +45,18 @@ def healMargin (S : Setup) (X : ℕ+) : Nat :=
   20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * X + 56
 
 /-- Fixed row ratio and timeout assumptions. The row ratio `r` bounds the engine row delay
-by `ΔF ≤ r·Δ` in the healthy regime (`Params.rowRatio`); the timeout pays the route-A window at
+by `ΔF ≤ r·Δ` in the healthy regime (`Params.fgDelay`); the timeout pays the route-A window at
 the row gap `cF r` (`AsChainShape`), `3·cF r ≤ δ_t`. The final pattern is determined by these,
 not chosen by a caller; outer gaps never enter the timeout bound. The outage regime is plain
 sleepy (`η = 0`), so no outage look-back is assumed. -/
 structure ContractAssumptions (S : Setup) where
-  rowRatio : ℕ+
-  timeout : 3 * cF rowRatio ≤ S.δt
+  fgDelay : ℕ+
+  timeout : 3 * cF fgDelay ≤ S.δt
 
 /-- Route-A four-anchor window `[0, c, 2c, 3c]` at the row gap `c = cF r` of the assumptions'
 row ratio (span `3c ≤ δ_t`, `A.timeout`). At `r = 1`, `c = 2`: `[0, 2, 4, 6]`. -/
 def finalWindow {S : Setup} (A : ContractAssumptions S) : Pattern :=
-  ⟨[0, cF A.rowRatio, 2 * cF A.rowRatio, 3 * cF A.rowRatio], by simp⟩
+  ⟨[0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay], by simp⟩
 
 /-- Only guarantees are chosen: positive finite catch-up and finite heal/latency
 coefficients at every capability and outer gap. -/
@@ -83,7 +83,7 @@ def contract_latency (S : Setup) (A : ContractAssumptions S) :
     Capability → ℕ+ → Nat
   | .available, X => 4 * (X : Nat) + 6
   | .stable, X => 4 * (X : Nat) + 6
-  | .final, X => 4 * ((X : Nat) + 3 * cF A.rowRatio) + 1
+  | .final, X => 4 * ((X : Nat) + 3 * cF A.fgDelay) + 1
 
 /-- The guarantee coefficients of the endpoint: catch-up `contract_catchUp`, heal
 `contract_heal` and latency `contract_latency`. -/
@@ -97,7 +97,7 @@ noncomputable def contract_coefficients (S : Setup) (A : ContractAssumptions S) 
 Final progress is the chosen local pattern at every positive outer gap.
 An abbreviation exposes the index type for the adapter signatures.
 
-* row ratio `A.rowRatio`: the healthy regime assumes `ΔF ≤ r·Δ` (an envelope, never a deadline;
+* row ratio `A.fgDelay`: the healthy regime assumes `ΔF ≤ r·Δ` (an envelope, never a deadline;
   final gap `cF r`).
 
 Outage numbers (slot `4Δ`; slow arming only):
@@ -121,7 +121,7 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
       (budget := 4 * S.k - 5) (heal := C.heal) (latency := C.latency) with
     noSleep := 4 * S.k + 6
     recovery := 9
-    rowRatio := A.rowRatio }
+    fgDelay := A.fgDelay }
   progress := fun cap X =>
     .recur { pattern := if cap = .final then finalWindow A else Pattern.single, gap := X }
 

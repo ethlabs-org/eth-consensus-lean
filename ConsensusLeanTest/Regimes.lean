@@ -200,13 +200,13 @@ variable {V : Type} [Fintype V] [DecidableEq V] {S : System V} {Prog Prog' : Typ
 /-- With look-back `η = 0`, the outage regime's participation is plain
 sleepy throughout. -/
 theorem outage_eta_zero (hη : K.params.η = 0) {T b₀ b₁ : Time} :
-    S.Outage K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.Δ T b₀ b₁ ∧
+    S.Outage K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧
       (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
       (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 (S.pt r).horizon ∧
       (S.pt r).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
       (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := by
   unfold Outage
-  rw [show ((K.params.η : Time) * (S.pt r).env.Δ) = 0 by simp [hη], EnvPoint.etaSleepyOn_zero]
+  rw [show ((K.params.η : Time) * (S.pt r).env.ΔAC) = 0 by simp [hη], EnvPoint.etaSleepyOn_zero]
 
 omit [Fintype V] [DecidableEq V] in
 theorem cDur_of_catchUp (hc : K'.params.catchUp = K.params.catchUp) :
@@ -220,13 +220,13 @@ theorem Sleepy.of_le (hc : K'.params.catchUp = K.params.catchUp) (hθ : K'.param
   rw [cDur_of_catchUp hc]
   exact EnvPoint.SleepyOn.mono h.2 hθ
 
-/-- A weaker fault bound and a larger row ratio keep the healthy regime. -/
+/-- A weaker fault bound and a larger FG delay bound keep the healthy regime. -/
 theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β)
-    (hr : K.params.rowRatio ≤ K'.params.rowRatio) (h : S.Healthy K g r) : S.Healthy K' g r := by
+    (hr : K.params.fgDelay ≤ K'.params.fgDelay) (h : S.Healthy K g r) : S.Healthy K' g r := by
   refine ⟨h.1, EnvPoint.HealthyOn.mono h.2.1 hβ, h.2.2.trans ?_⟩
-  have hr' : ((K.params.rowRatio : Nat) : Time) ≤ (K'.params.rowRatio : Nat) := by
+  have hr' : ((K.params.fgDelay : Nat) : Time) ≤ (K'.params.fgDelay : Nat) := by
     exact_mod_cast hr
-  exact mul_le_mul_of_nonneg_right hr' (S.pt r).env.Δ_pos.le
+  exact mul_le_mul_of_nonneg_right hr' (S.pt r).env.ΔAC_pos.le
 
 /-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag, a
 larger budget and a smaller no-sleep margin (same catch-up) keep the outage
@@ -237,12 +237,12 @@ theorem Outage.of_le {T b₀ b₁ : Time} (hc : K'.params.catchUp = K.params.cat
     (hC : K'.params.noSleep ≤ K.params.noSleep) (h : S.Outage K T b₀ b₁ r) :
     S.Outage K' T b₀ b₁ r := by
   obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hns, hco⟩ := h
-  have hΔ : (0 : Time) ≤ (S.pt r).env.Δ := (S.pt r).env.Δ_pos.le
+  have hΔ : (0 : Time) ≤ (S.pt r).env.ΔAC := (S.pt r).env.ΔAC_pos.le
   have hl' : ((K'.params.lag : Nat) : Time) ≤ (K.params.lag : Time) := by exact_mod_cast hl
   have hb' : ((K.params.budget : Nat) : Time) ≤ (K'.params.budget : Time) := by exact_mod_cast hb
   have hC' : ((K'.params.noSleep : Nat) : Time) ≤ (K.params.noSleep : Time) := by exact_mod_cast hC
-  have hlag0 : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.Δ := by positivity
-  have hC0 : (0 : Time) ≤ (K'.params.noSleep : Time) * (S.pt r).env.Δ := by positivity
+  have hlag0 : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.ΔAC := by positivity
+  have hC0 : (0 : Time) ≤ (K'.params.noSleep : Time) * (S.pt r).env.ΔAC := by positivity
   have ha : S.outageStart K b₀ r ≤ S.outageStart K' b₀ r := by
     unfold outageStart
     exact min_le_min (max_le_max le_rfl (by nlinarith)) le_rfl
@@ -395,7 +395,7 @@ theorem sleepy_with_sleeper :
     (∀ c, ptS.SleepyOn (1 / 2) c 0 ptS.horizon) ∧
     (∀ {Idx : Type} (P : Params Idx), P.θ ≤ 1 / 2 →
       (silentLog (Fin 5) Unit).PSync ptS 0 ∧
-        ptS.SleepyOn P.θ ((P.catchUp : Time) * ptS.env.Δ) 0 ptS.horizon) ∧
+        ptS.SleepyOn P.θ ((P.catchUp : Time) * ptS.env.ΔAC) 0 ptS.horizon) ∧
     ∀ β, ¬ ptS.HealthyOn β 0 ptS.horizon := by
   refine ⟨by decide, by decide, fun c t _ _ => ptS_readyAbove c t, fun P hθ => ?_, ?_⟩
   · exact ⟨silentLog_delivers _ (fun _ _ => rfl) _ _ _,
