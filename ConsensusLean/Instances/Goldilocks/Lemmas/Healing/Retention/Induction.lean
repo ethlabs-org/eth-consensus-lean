@@ -266,72 +266,6 @@ theorem retention_inv (hp : ResetPremises tr H proposer dg g ΔF a) :
   | _ k ih =>
     exact ⟨retention_vote_step hp k ih, retention_cut_step hp k ih (retention_vote_step hp k ih)⟩
 
-/-- **Two high origins are comparable** (§11 item 3, §13 "Activation uses earlier labels"), from
-(R3) at the votes up to the later write: for labels `j < j'`, the later lock is supported by an
-honest slot-`j'` vote (half of the committee, or three quarters, against `f < n/2`), which extends
-`B` (`fastLock_compatible_of_votes`); for `j = j'`, two fast locks of one slot are compatible
-(`fastLock_same_slot`, TSQ, with `Sync` from `GST(g)` since `t_j ≥ c_z`). The stored blocks are
-ancestors of the selected ones. -/
-theorem origins_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x x' : Fin sp.n}
-    {i j i' j' : Nat} {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (ho' : HighOrigin tr H g x' i' j' B') (hjj : j ≤ j') (hv : ∀ k ≤ i', VoteInv tr H g k) :
-    Compatible (tr.HonestBlocks H) B B' := by
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hrun'.localRun
-  have hU := hr.coherent
-  have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.healthy.2.2
-    have := Fin.pos x
-    have hn : sp.n = sp.toParams.n := rfl
-    omega
-  have hsel : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))}
-      {CV₀ : Set (SA.Vote sp.n)}, x₀ ∈ H → Compose.StoredFastLockAt tr x₀ i₀ j₀ B₀ CV₀ →
-      ∃ D, SA.FastLockAt tr.projAC x₀ i₀ j₀ D CV₀ ∧ Anc (tr.HonestBlocks H) B₀ D := by
-    rintro x₀ i₀ j₀ B₀ CV₀ hx₀ ⟨ℓ, D, hc, hfl, rfl⟩
-    have hΦU : ℓ.frame.tree ⊆ tr.HonestBlocks H := by
-      rcases hr.frameLaw x₀ hx₀ i₀ ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;>
-        exact h.1.2
-    exact ⟨D, hfl, Anc.mono hΦU (SA.anc_viableAncestor ℓ.frame D)⟩
-  obtain ⟨CV, hst⟩ := ho.2.2.1
-  obtain ⟨CV', hst'⟩ := ho'.2.2.1
-  obtain ⟨D, hfl, hBD⟩ := hsel ho.1 hst
-  obtain ⟨D', hfl', hBD'⟩ := hsel ho'.1 hst'
-  rcases hjj.lt_or_eq with hlt | rfl
-  · have hD'B : Compatible (tr.HonestBlocks H) D' B :=
-      SA.fastLock_compatible_of_votes hrun' ho'.1 (Nat.lt_succ_self i') hfl' hf
-        fun z hz k hk e hve hsl => by
-          obtain ⟨ℓ, hc, he⟩ := hve
-          exact (voteInv_iff.1 (hv k (Nat.lt_succ_iff.mp hk)) x i j B ho z hz ℓ e ⟨hc, he⟩
-            (by omega)).1
-    by_contra hn
-    exact SA.not_compatible_of_anc hU hBD' hn hD'B.symm
-  · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-      tr proposer ΔF (sp.ts j) (sp.ts (j + 1 : Nat) + sp.Δ) hp.run.toLocalRun
-      (syncRun_of_gst hp.healthy.1 (le_ts_of_highOrigin hp ho))
-    rcases SA.fastLock_same_slot hrun' ho.1 hfl ho'.1 hfl' hsync hf with h | h
-    · exact SA.anc_total hU (hBD.trans h) hBD'
-    · exact SA.anc_total hU hBD (hBD'.trans h)
-
-/-- **HR.4, height-scoped retention** (HBoot §11, JointRet §13, high records §16): (R1)'s
-comparability from the votes (`origins_compatible`), (R1)'s rows (`high_rows`), (R2) and (R3) from
-the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
-theorem height_scoped_retention : HeightScopedRetention := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc a ha
-  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha⟩
-  have hinv := retention_inv hp
-  have hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B →
-      HighOrigin tr H g x' i' j' B' → Compatible (tr.HonestBlocks H) B B' := by
-    intro x i j B x' i' j' B' ho ho'
-    rcases le_total j j' with h | h
-    · exact origins_compatible hp ho ho' h fun k _ => (hinv k).1
-    · exact (origins_compatible hp ho' ho h fun k _ => (hinv k).1).symm
-  have hrows := high_rows hp
-  exact ⟨hcomp, hrows,
-    fun y hy k hc hk x i j B ho hik =>
-      (cacheInv_iff.1 (hinv k).2) y hy hc hk x i j B ho (Or.inl hik),
-    fun x i j B ho y hy k ℓ e hc hj => (voteInv_iff.1 (hinv k).1) x i j B ho y hy ℓ e hc hj,
-    high_records hp hcomp hrows⟩
-
 /-- Vote extension with frozen viability or global root coverage at a bounded cut.
 Global coverage deliberately allows targets below the frame's finalized root. -/
 def RawVoteAt (P : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (Q : Time)
@@ -717,6 +651,40 @@ theorem ResetPremisesUpTo.origins_compatible {b : Time}
     (Or.inl (by omega)) hO (by omega) hib hrb
   rintro x₀ i₀ j₀ B₀ ho₀ hi₀ y hy c _ hcb e ⟨ell, hc⟩ hj
   exact hp.high_origin_votes_before c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y hy ell e hc hj
+
+set_option linter.unusedVariables false in
+/-- **Two high origins are comparable** (§11 item 3, §13 "Activation uses earlier labels"), from
+(R3) at the votes up to the later write: for labels `j < j'`, the later lock is supported by an
+honest slot-`j'` vote (half of the committee, or three quarters, against `f < n/2`), which extends
+`B` (`fastLock_compatible_of_votes`); for `j = j'`, two fast locks of one slot are compatible
+(`fastLock_same_slot`, TSQ, with `Sync` from `GST(g)` since `t_j ≥ c_z`). The stored blocks are
+ancestors of the selected ones. -/
+theorem origins_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x x' : Fin sp.n}
+    {i j i' j' : Nat} {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    (ho' : HighOrigin tr H g x' i' j' B') (hjj : j ≤ j') (hv : ∀ k ≤ i', VoteInv tr H g k) :
+    Compatible (tr.HonestBlocks H) B B' :=
+  (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time i')))).origins_compatible ho
+    ((le_max_left _ _).trans (le_max_right _ _)) ho' ((le_max_right _ _).trans (le_max_right _ _))
+
+/-- **HR.4, height-scoped retention** (HBoot §11, JointRet §13, high records §16): (R1)'s
+comparability from the votes (`origins_compatible`), (R1)'s rows (`high_rows`), (R2) and (R3) from
+the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
+theorem height_scoped_retention : HeightScopedRetention := by
+  intro sp ro proposer dg H tr g ΔF hrun hh hnc a ha
+  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha⟩
+  have hinv := retention_inv hp
+  have hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B →
+      HighOrigin tr H g x' i' j' B' → Compatible (tr.HonestBlocks H) B B' := by
+    intro x i j B x' i' j' B' ho ho'
+    rcases le_total j j' with h | h
+    · exact origins_compatible hp ho ho' h fun k _ => (hinv k).1
+    · exact (origins_compatible hp ho' ho h fun k _ => (hinv k).1).symm
+  have hrows := high_rows hp
+  exact ⟨hcomp, hrows,
+    fun y hy k hc hk x i j B ho hik =>
+      (cacheInv_iff.1 (hinv k).2) y hy hc hk x i j B ho (Or.inl hik),
+    fun x i j B ho y hy k ℓ e hc hj => (voteInv_iff.1 (hinv k).1) x i j B ho y hy ℓ e hc hj,
+    high_records hp hcomp hrows⟩
 
 /-- An actual bounded honest supporter compares its target with an older bounded origin. -/
 theorem ResetPremisesUpTo.target_compatible_older_origin {b : Time}
