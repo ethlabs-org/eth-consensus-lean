@@ -2,7 +2,7 @@
 
 This is the integration ledger for the Goldilocks `Accepted` endpoint.
 The master status view records the complete compiled endpoint leaf inventory.
-`Accepted` is **proved and certified** (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips; [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) row 11-03 12:06): `acceptedEndpoint` is in `Solution`
+`Accepted` is **proved and certified** (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips; [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) row 11-03 12:06): `acceptedEndpoint` is in `Solution`
 at the standard axioms [propext, Classical.choice, Quot.sound]. Historical/planned
 sections below record how the endpoint was wired; an OPEN in them is past status,
 not current evidence.
@@ -21,7 +21,7 @@ not current evidence.
 5. Snapshot, import boundaries and trusted-surface review pass before landing.
    The incomplete skeleton stays outside Main/Solution's sorry-free closure.
 
-Current status: **proved and certified** (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips; [#63](https://github.com/ethlabs-org/consensus-lean/issues/63) row 11-03 12:06). Every Accepted field
+Current status: **proved and certified** (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips; [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) row 11-03 12:06). Every Accepted field
 assembles named, proved suppliers, with no `sorry` in the closure of `Refinement.Accepted`
 or `Solution`. The healing coefficient is closed: `accepted_heal` is the fixed
 `catchUp + healMargin` (4078bc74). The master view below is compiled reachability. The
@@ -63,25 +63,25 @@ are inhabited again, at standard axioms: `HealingRunStatements` and `NonInterfer
 lost theirs at the same time, are proved again: their consumers read only HS.3 (b), which follows from
 HS.2 (`frozen_tree_agreement_clean`), so neither HS.3 (a) nor `reset_inv` is needed. The exact-head full tier on
 70e90b443ce1d0871b8efd21e131ee54367559e9 (`check.sh --full`) passed, exit 0, 801 s, recorded on
-[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-02 18:03, milestone
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) (row 11-02 18:03, milestone
 closure): kernel replay, `lake comparator --paranoid` with its fixtures and the Solution/test
 audit passed. Step 10 logged 15 lexical sorry/admit matches (14 sorry holes plus an admit-named
 structure field) and skipped the default-target lake check; the good/bad fixtures passed. This is
 distinct from the Accepted Challenge certification, which has its own full tier: `check.sh --full` on
 main 2a9b34a11bb9f754a5526593fab6d72366c325a7 passed, 1371 s, zero SKIP lines, recorded on
-[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 02:28): kernel replay of every
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) (row 11-03 02:28): kernel replay of every
 leaf, the default-target lake check, the axiom audit, `lake comparator --paranoid` and the rebuild canary,
 with their controls; 0 sorry/admit. After a90299c1 strengthened `Realizable.sleepyStress` (trusted
 semantics) and the trusted-layer review documentation batch landed, the full tier was rerun: `check.sh --full`
 on main ebb2f2ec2783911997e7f4945684f54382690ea6 passed, exit 0, 1381 s, zero SKIP lines, recorded on
-[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 04:45): cold build 243 s, every-leaf
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) (row 11-03 04:45): cold build 243 s, every-leaf
 kernel replay 235 s with controls, the default-target lake check 561 s with the standard three axioms and the
 good/bad fixtures, `lake comparator --paranoid` 174 s over 25,065 declarations with controls, the rebuild canary
 16 s with both controls; 0 lexical sorry/admit. After the trusted changes that followed (the retired
 `SleepySafePrefix` row 13841d74, the flat catch-up 4df95240, half-open L0 delivery 5eafeb1d, 333300b4 and
 09ddfad9, and the Goldilocks head-drop b15ffd4a), the full tier was rerun: `check.sh --full` on main
 c361faa46d43bdbdbd6cca76f301e374bb8236ef passed, 1381 s, zero SKIP lines, recorded on
-[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 09:04, combined phase 2 and head-drop
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) (row 11-03 09:04, combined phase 2 and head-drop
 certification): every-leaf kernel replay with its controls 227 s, the default-target lake check with the
 good/bad fixtures 578 s with only the standard three axioms, `lake comparator --paranoid` 175 s over 25,043
 declarations, the rebuild canary 15 s with the proof hash unchanged; 0 lexical sorry/admit.
@@ -89,7 +89,7 @@ declarations, the rebuild canary 15 s with the proof hash unchanged; 0 lexical s
 da7938f4, the citations 73e26bcc, the Baseline archive 656fe151, Part R 5d35a662, sweep item 6 ee7382ae, sweep
 item 3 08204077 and the outage budget 4k − 5 b75cd7c5), the full tier was rerun: `check.sh --full` on main
 b75cd7c586bcdb708d0c94e125307cf32edf051d (tree 1d3f211b) passed, 1351 s, zero SKIP lines, recorded on
-[#63](https://github.com/ethlabs-org/consensus-lean/issues/63) (row 11-03 12:06, trusted sweep certification):
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63) (row 11-03 12:06, trusted sweep certification):
 cold build 231 s, every-leaf kernel replay with its controls 228 s, the default-target lake check with its
 controls 554 s with only the standard three axioms, `lake comparator --paranoid` with its controls 173 s over
 25,042 declarations, the rebuild canary 16 s with the proof hash unchanged; 0 lexical sorry/admit.
@@ -125,7 +125,7 @@ is fully sorry-free; `sleepy_query_sync` and `sleepy_safety_inputs` have proved 
 not direct sorries. Since 4078bc74 their full closures are sorry-free
 (`#print axioms`: `propext`, `Classical.choice`, `Quot.sound`): `accepted_heal` is a closed
 definition, so `K S A = acceptanceContract A (accepted_coefficients S A)` carries no sorry. Kev's independent read-back and axiom
-split are recorded on [#132](https://github.com/ethlabs-org/consensus-lean/issues/132).
+split are recorded on [#132](https://github.com/ethlabs-org/consensus-lean-coordination/issues/132).
 `healthy_preserve` has a proved body
 (since R0 it preserves only records and recent locks), while its coefficient type dependencies remain. `outage_arm` is proved at 649f0286;
 103bfbd moves the two cut adapters' holes into actual-tip comparability/ancestry,

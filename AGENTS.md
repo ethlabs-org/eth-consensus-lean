@@ -5,7 +5,10 @@ Rules for AI agents (and humans) working on this repo. `CLAUDE.md` is a symlink 
 Read first: README "What this is" (the review statement), `TRUST.md` (what is trusted and what each check
 does), `CONTRIBUTING.md` (how to write statements and proofs, style), `docs/roadmap.md` (milestones and
 their status). Coordination (claiming issues, branches, PRs, reviews): GitHub issue #2; pointers and
-decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: README "Verification".
+decisions: #17. Issues (#2, #17, #63, #129, #136 and every other `#N` here) live in the private coordination
+repository [ethlabs-org/consensus-lean-coordination](https://github.com/ethlabs-org/consensus-lean-coordination/issues),
+the archive of the history before the email rewrite; code, branches and PRs are in this repository
+(`scripts/repos.toml`). Never push from a clone of the archive's history here. Design decisions: `docs/decisions.md`. Checks and CI tiers: README "Verification".
 
 ## Working on this repo
 
@@ -58,7 +61,7 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   pushed it, then fixed. **GitHub Actions is disabled by owner decision (2026-10-31, #50)** because billing
   prevents jobs from starting; workflow files remain for reference and reversible re-enablement. Do not create
   GitHub CI subscriptions, dispatch Actions, or report the known billing failures. **Green CI means the box
-  result on [#63](https://github.com/ethlabs-org/consensus-lean/issues/63)**, not a GitHub check badge.
+  result on [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63)**, not a GitHub check badge.
   `scripts/orb-ci.sh` runs as systemd user services on `ethlabs-box`, with checks inside `job`: fast tier and
   review-boundary for observed main/non-draft PR heads, docs-only `--changed`, and full tier nightly, on tags
   and manually (kernel replay, `lake check`, `lake comparator --paranoid`). Polling can coalesce intermediate
@@ -80,7 +83,7 @@ decisions: #17. Design decisions: `docs/decisions.md`. Checks and CI tiers: READ
   `spec-approved` tag is retired while the work is active): it lands through `scripts/push-main.sh` like any
   other change; every commit that touches a trusted path carries a line `Trusted-surface: <what changes and
   why>` in its message (`scripts/review-boundary.sh` fails without it), and push-main comments the landing on
-  [#129](https://github.com/ethlabs-org/consensus-lean/issues/129). For a statement change, do a fidelity
+  [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129). For a statement change, do a fidelity
   read-back (a subagent, in your own session) before landing and say so in the commit; the spec snapshot
   (step 4) still has to be regenerated and committed. Nothing waits for anyone.
 - **Check infrastructure** (`scripts/**`, `.github/**`, the lakefile) is not on the trusted surface; its author is

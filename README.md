@@ -870,7 +870,7 @@ by-construction rows: `ConsensusLeanTest/Gaps.lean`.
 ## Verification
 
 **CI of record is the box watcher on `ethlabs-box`; results are on
-[#63](https://github.com/ethlabs-org/consensus-lean/issues/63).** GitHub Actions `check`, `full` and `notify`
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63).** GitHub Actions `check`, `full` and `notify`
 are disabled by owner decision (2026-10-31, #50): billing prevents jobs from starting. Their YAML files remain
 as reference; disabling them changes no check. Do not create GitHub CI subscriptions, dispatch workflows,
 or report the known billing failures. A green CI result means a passing box row for the relevant commit,
@@ -949,7 +949,7 @@ record covers the listed files' text, not everything they import. The list lives
 at the base. A trusted-surface change is **recorded, not gated** (owner, 2026-11-01): it lands through
 `scripts/push-main.sh` like any change; every commit touching a trusted path carries a `Trusted-surface: <what and
 why>` line (`scripts/review-boundary.sh`, with fixtures, fails without it), so `git log --grep='^Trusted-surface:'`
-lists them, and push-main comments each landing on [#129](https://github.com/ethlabs-org/consensus-lean/issues/129).
+lists them, and push-main comments each landing on [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129).
 The annotated tag `spec-approved` (an agent approval from 2026-10-30) is retired and stays at its last commit; the
 approvals made under it are in `docs/spec-review.md`. The check infrastructure (`scripts/**`, `.github/**`,
 `lakefile.toml`, `lakefile.lean`, which must not exist) is not on the trusted surface: agents maintain it (`TRUST.md`).

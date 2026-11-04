@@ -4,5 +4,5 @@
 #   code: the code repository: main, the landing lock `push-main-lock`, pull requests; the `origin` of every clone
 #         (push-main.sh and orb-ci.sh refuse a GitHub origin that is another repository).
 #   issues: the coordination repository: the issues (#2, #17, #63, #129, #136) and the `ci-inventory` branch.
-code = "ethlabs-org/consensus-lean"
-issues = "ethlabs-org/consensus-lean"
+code = "ethlabs-org/eth-consensus-lean"
+issues = "ethlabs-org/consensus-lean-coordination"

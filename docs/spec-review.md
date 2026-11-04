@@ -617,7 +617,7 @@ mapfile -t protected < <(python3 -I -c 'import tomllib; print("\n".join(tomllib.
 GIT_LITERAL_PATHSPECS=1 git diff spec-approved origin/main -- "${protected[@]}"   # empty while main is covered
 ```
 
-The box full-tier result on [#63](https://github.com/ethlabs-org/consensus-lean/issues/63), matched to the
+The box full-tier result on [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63), matched to the
 commit being reviewed, is the correctness evidence: kernel replay, `lake check` and
 `lake comparator --paranoid`. Ask the box watcher owner for an exact-commit run if needed. GitHub Actions
 is disabled (owner decision, 2026-10-31); historical Actions logs below remain historical evidence only.

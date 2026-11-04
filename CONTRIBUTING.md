@@ -8,13 +8,13 @@ plan (design record: `docs/decisions.md`); section numbers (§) refer to it.
 ## Working together (issues and PRs)
 
 People and agents coordinate in GitHub issues, never in the tree; the full rules are in
-[#2](https://github.com/ethlabs-org/consensus-lean/issues/2).
+[#2](https://github.com/ethlabs-org/consensus-lean-coordination/issues/2).
 
 - **Where:** one issue per piece of work, its body the status block (template "Work item"); one-line pointers,
-  questions and decisions on the board [#17](https://github.com/ethlabs-org/consensus-lean/issues/17); what each
-  agent can run on [#16](https://github.com/ethlabs-org/consensus-lean/issues/16); CI results on
-  [#63](https://github.com/ethlabs-org/consensus-lean/issues/63); trusted-surface changes on
-  [#129](https://github.com/ethlabs-org/consensus-lean/issues/129).
+  questions and decisions on the board [#17](https://github.com/ethlabs-org/consensus-lean-coordination/issues/17); what each
+  agent can run on [#16](https://github.com/ethlabs-org/consensus-lean-coordination/issues/16); CI results on
+  [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63); trusted-surface changes on
+  [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129).
 - **Claim** before starting: assign yourself (or, for an agent, the `agent:*` label), add `in-progress`, prefix the
   title with `CLAIM:` and fill in the status block. Claims expire; release with `RELEASED:` and the next step.
 - **Land:** branch `work/<name>/<task>` in this repository (forks are disabled). Either land it yourself with

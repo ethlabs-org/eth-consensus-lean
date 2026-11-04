@@ -13,8 +13,8 @@ import subprocess
 
 # The code repository (main) and the coordination repository (issue #63): a copy of scripts/repos.toml, since this
 # hook is installed root-owned and never reads the writable checkout. Update both with that file.
-CODE_SLUG = "ethlabs-org/consensus-lean"
-ISSUES_SLUG = "ethlabs-org/consensus-lean"
+CODE_SLUG = "ethlabs-org/eth-consensus-lean"
+ISSUES_SLUG = "ethlabs-org/consensus-lean-coordination"
 UNIT = "consensus-lean-orb-ci.service"
 GRACE = 1800
 
