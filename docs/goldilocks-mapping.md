@@ -314,8 +314,10 @@ CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `4ea71d05` (goldilocks#21
 pin: `shared/composition.tex` at goldilocks `a470648c` (§"State", §"Node", Figure "Node: handlers and duties"). Layout:
 decomposition §2 D (`Node`), §3.1 (the "Node" row), §4.1, §4.2 (the `ComposeAnyAC` layer). Milestone `Compose/AnyAC`
 covers the node parametric in the AC (`Spec/Node`) and the composition nodes C0.1–C0.5 stated at one node for **any**
-AC meeting requirements 1–5 (`ACInterface.Requirements`); no SA, no run, no engine. The run-level composition
-(C1.1, Service, Healing, Regimes) is over `Spec/Run`, later.
+AC meeting requirements 1–5 (`ACInterface.Requirements`); no SA, no run, no engine. The AC-only interface
+consequences are stronger than that bundled premise: tips need only requirement 3 (`ReqOutputs`), proposal
+parents and duty heads only requirement 1 (`ReqHeads`), and sources only requirement 2 (`ReqSource`).
+The run-level composition (C1.1, Service, Healing, Regimes) is over `Spec/Run`, later.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -326,7 +328,7 @@ AC meeting requirements 1–5 (`ACInterface.Requirements`); no SA, no run, no en
 | — | SPEC §Model, §Node, §Blocks (wire checks) | top-level events and their handler; the wire checks of a delivery | — | `Consensus.Goldilocks.Node.Event`, `Consensus.Goldilocks.Node.exec`, `Consensus.Goldilocks.Node.WireOK` |
 | C0.4 | SPEC §Model, §Node (restart, tick, then the objects of a time); decomposition §2 D (`Node.Reachable`) | the phase of a node in a time; configurations; when an event may run; one event; reachable configurations | — | `Consensus.Goldilocks.Node.Phase`, `Consensus.Goldilocks.Node.Phase.at`, `Consensus.Goldilocks.Node.Config`, `Consensus.Goldilocks.Node.Config.init`, `Consensus.Goldilocks.Node.EventOK`, `Consensus.Goldilocks.Node.Event.phaseAfter`, `Consensus.Goldilocks.Node.Step`, `Consensus.Goldilocks.Node.Reaches`, `Consensus.Goldilocks.Node.Reachable` |
 | C0.5 | CLAIMS C0.5; decomposition §2 D (`I_link`, pointwise projection) | the law of one cut; a chain of cuts | — | `Consensus.Goldilocks.Node.CutStep`, `Consensus.Goldilocks.Node.CutChain` |
-| A0.6, A0.9 | CLAIMS A0.6, A0.9 (consequences); C0.1 at the AC; C0.5 (c) | for any AC meeting requirements 1–5: the tips are nested, the proposal parent, the source and every duty head are held and extend `Φ.F` | Compose/AnyAC | `Consensus.Goldilocks.Compose.TipsNested`, `Consensus.Goldilocks.Compose.ProposalParentHeld`, `Consensus.Goldilocks.Compose.SourceHeld`, `Consensus.Goldilocks.Compose.DutyHeadsHeld`, `Consensus.Goldilocks.Compose.InterfaceStatements`, `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` |
+| A0.6, A0.9 | CLAIMS A0.6, A0.9 (consequences); C0.1 at the AC; C0.5 (c) | stronger than assuming requirements 1–5: tips are nested from `ReqOutputs` alone; the proposal parent and every duty head are held and extend `Φ.F` from `ReqHeads` alone; the source is held and extends `Φ.F` from `ReqSource` alone | Compose/AnyAC | `Consensus.Goldilocks.Compose.TipsNested`, `Consensus.Goldilocks.Compose.ProposalParentHeld`, `Consensus.Goldilocks.Compose.SourceHeld`, `Consensus.Goldilocks.Compose.DutyHeadsHeld`, `Consensus.Goldilocks.Compose.InterfaceStatements`, `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` |
 | C0.1 | CLAIMS C0.1 | three tips on one chain at the node: `TipsNested` (Compose/Interface) at the node's reachable AC states (`ACStatesReachable`) inside the accepted tree (`Store.AcceptedTree`); no separate statement | Compose/AnyAC | `Consensus.Goldilocks.Compose.TipsNested`, `Consensus.Goldilocks.Compose.ACStatesReachable` |
 | C0.2 | CLAIMS C0.2 (both halves) | finalized monotone along reachable configurations, across restarts; a restart keeps `Σ` and `Λ` | Compose/AnyAC | `Consensus.Goldilocks.Compose.FinalizedMonotone`, `Consensus.Goldilocks.Compose.RestartKeepsFG` |
 | C0.3 | CLAIMS C0.3 | honest blocks are accepted (with `NoColl` on the tree with the block) | Compose/AnyAC | `Consensus.Goldilocks.Compose.NoCollOn`, `Consensus.Goldilocks.Compose.HonestBlockAccepted` |

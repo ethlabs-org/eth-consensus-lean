@@ -2564,6 +2564,13 @@ A0.7 (pool, joining) & \texttt{SA.RestartState}, \texttt{SA.JoinedKeepsVotes}
   & proved (\texttt{acBase})\\
 A0.8 & \texttt{SA.OneVotePerSlot} & proved (\texttt{acBase})\\
 A0.9 & \texttt{SA.ProposalPayloadValid} & proved (\texttt{acBase})\\
+A0.6, A0.9 (interface consequences) & \texttt{Compose.TipsNested},
+  \texttt{Compose.ProposalParentHeld}, \texttt{Compose.SourceHeld},
+  \texttt{Compose.DutyHeadsHeld} & proved
+  (\texttt{compose\_interface\_statements}); stronger than assuming
+  requirements 1--5: tips need only requirement~3 (\texttt{ReqOutputs}),
+  proposal parents and duty heads only requirement~1 (\texttt{ReqHeads}),
+  and sources only requirement~2 (\texttt{ReqSource})\\
 C0.1 & \texttt{Compose.TipsNested} at the states of
   \texttt{Compose.ACStatesReachable} & proved
   (\texttt{compose\_interface\_statements},

@@ -388,7 +388,7 @@ private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv dg self st
     · rename_i C hC
       refine (h.acToFG dg self).attest dg self _ fun hq => ?_
       obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
-      exact (source_held A hq self _ (Store.accepted_tree P _ _ _ h.fg).2.1 _ _ t₀ hR t ht₀ C
+      exact (source_held A hq.source self _ (Store.accepted_tree P _ _ _ h.fg).2.1 _ _ t₀ hR t ht₀ C
         hC).1.1
 
 private theorem NInv.exec {st : NodeState A} {t : Time} (h : NInv dg self st t) (e : Event A)
@@ -516,8 +516,8 @@ theorem sources_held : SourcesHeld proposer dg self := by
   · exact absurd hC (proposal_no_attest proposer dg self _ t x C s)
   obtain ⟨hsrc, htree, hF⟩ := fgUpdate_attest proposer dg self h₂.fg hC
   obtain ⟨t₀, ht₀, hR⟩ := h₂.ac hq
-  obtain ⟨hCt, hFC⟩ := source_held A hq self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1 _ _ t₀ hR
-    t ht₀ C hsrc
+  obtain ⟨hCt, hFC⟩ := source_held A hq.source self _ (Store.accepted_tree P _ _ _ h₂.fg).2.1
+    _ _ t₀ hR t ht₀ C hsrc
   dsimp only
   unfold Store.Anc
   rw [htree, hF]
@@ -651,7 +651,7 @@ theorem honest_block_accepted : HonestBlockAccepted proposer dg self := by
       (frame (tickStep proposer dg self cfg.st t x .acTick).1) (P.slotTime (P.slotOf t))).2 =
       some (d, p) := by
     rw [← hts]; exact hdp
-  obtain ⟨hHt, hFH⟩ := proposal_parent_held A hq self _ hcoh _ _ t₀ hRA (P.slotOf t)
+  obtain ⟨hHt, hFH⟩ := proposal_parent_held A hq.heads self _ hcoh _ _ t₀ hRA (P.slotOf t)
     (hts ▸ ht₀) d p hprop
   have hslot := slot_lt_of_tick proposer dg self hR hs hp
   have hHs : d.head.slot < P.slotOf t := hslot _ hHt.1
