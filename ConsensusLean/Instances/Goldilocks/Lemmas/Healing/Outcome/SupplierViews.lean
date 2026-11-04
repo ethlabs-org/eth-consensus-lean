@@ -20,45 +20,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- At a first-disagreement cut, a frame-held proposal is a viable voter-tree candidate. -/
-theorem reset_proposal_viable
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p y : Fin sp.n} {k i j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
-    {ellp elly : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
-    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u)
-    (hPy : P ∈ elly.frame.tree)
-    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-      e'.msg.head = P.root) :
-    P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) := by
-  have hr := (healthy_base_of_reset_catch hp hc).run.localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
-  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  have hroot := reset_vote_root_below_proposal hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
-  have hroot' := SA.anc_tree_of_anc_U hr.coherent hPsi hPsiU hPsi.fcRoot_mem hroot hPy
-  have hPt : P ∈ SA.voterBlockTree sp e.readPoint elly.frame u :=
-    ⟨hPy, Or.inr ⟨P, hPy, hP.2.2.2.2.1, .refl⟩⟩
-  have hPyStore : P ∈ (tr.state y j).fg.tree := by
-    rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy
-    exact hPy.1
-  have hfloor := reset_vote_floor_above_old hp hy hR hcy hes hPyStore (fun x r l O ho ht => by
-    have hOQ := crossing_below_proposal_parent hp hc hP hR hci hcall hd hti hPQ ho ht
-      (show Anc (tr.HonestBlocks H) O O from .refl)
-    obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-    have hQt : d.head ∈ ellp.frame.tree := by
-      rcases eq_or_ne d.start d.head with he | he
-      · exact he ▸ hst
-      · exact (Anc.mem hsQ he).2
-    exact hOQ.trans (.single ⟨hPhiU hQt, hPsiU hPy, hPQ⟩))
-  refine ⟨hPt, hroot', P, hPt, ?_, .refl⟩
-  rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy hroot' ⊢
-  exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
-
 /-- A held actual proposal is viable at a bounded post-drain cast. -/
 theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
@@ -98,30 +59,27 @@ theorem ResetPremisesUpTo.reset_proposal_viable {b : Time}
   rw [Compose.frame_of_projAC hp.run hy hcy.1] at hPy hroot' ⊢
   exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
 
-/-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.
-This is the winner-domain transport used by suffix comparison. -/
-theorem reset_winner_voter_tree
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
-    (hes : e.msg.slot = u)
-    {P C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
-    (hCP : Anc (tr.HonestBlocks H) C P)
-    (haC : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) C) :
-    C ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  have hfC := ((SA.fcRoot_anc_getAnchor hPhi e.readPoint (tr.time j)).mono hPhiU).trans haC
-  have hFC := (hPhi.F_anc_fcRoot.mono hPhiU).trans hfC
-  have hCt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hP.1.1 hCP hFC
-  have hCP' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hCt hCP hP.1.1
-  have hfC' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfC hCt
-  obtain ⟨W, hW, hWv, hPW⟩ := hP.2.2
-  have hCs : C ∈ SA.voterBlockTree sp e.readPoint ell.frame u := by
-    rw [← hes] at hP ⊢
-    exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
-  exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
+set_option linter.unusedVariables false in
+/-- At a first-disagreement cut, a frame-held proposal is a viable voter-tree candidate. -/
+theorem reset_proposal_viable
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p y : Fin sp.n} {k i j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    (hy : y ∈ H) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u)
+    (hPy : P ∈ elly.frame.tree)
+    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root) :
+    P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) :=
+  (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).reset_proposal_viable hc
+    hP.1 hP.2.2.2.1 hP.2.2.2.2.1 hR hci hcall hd hti
+    ((le_max_left _ _).trans (le_max_right _ _)) hPQ hy hcy hes
+    ((le_max_right _ _).trans (le_max_right _ _)) hPy
 
 /-- A voter competitor other than the proposal, below a predecessor of its parent, reflects into the
 proposer's viable tree. Frozen candidates use guarded relay; current-slot candidates use the
@@ -190,6 +148,20 @@ theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
     rw [← hes] at hP ⊢
     exact SA.voterBlockTree_anc hr hy hc P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
+
+/-- Any ancestor of a viable current proposal above the voter's anchor is in its viable tree.
+This is the winner-domain transport used by suffix comparison. -/
+theorem reset_winner_voter_tree
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    (hes : e.msg.slot = u)
+    {P C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hCP : Anc (tr.HonestBlocks H) C P)
+    (haC : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time j)) C) :
+    C ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u) :=
+  (hp.toUpTo tr H le_rfl).reset_winner_voter_tree hy hc hes hP hCP haC
 
 /-- Finite competitor reflection uses only guarded frozen transport and actual uniqueness. -/
 theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
@@ -496,47 +468,6 @@ theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
         SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
       (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
 
-/-- Two distinct viable children force the voter's root below their parent. If that parent
-extends every pre-slot high origin, it also reaches the voter's height floor. -/
-theorem reset_parent_viable_of_children
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
-    {Q P B : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocks H)
-    (hPQ : P.parent = some Q.root) (hBQ : B.parent = some Q.root) (hBP : B ≠ P)
-    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
-    (hBv : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
-    (hQold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
-      Anc (tr.HonestBlocks H) O Q) : Q ∈ ell.frame.viableHeads := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  have hQP : Anc (tr.HonestBlocks H) Q P := .single ⟨hQU, hPhiU hPv.1.1, hPQ⟩
-  have hnBP : ¬ Anc (tr.HonestBlocks H) B P := by
-    intro h
-    rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hBY, hY⟩
-    · exact hBP heq.symm
-    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
-      (Option.some_injective _ (hY.2.2.symm.trans hPQ))
-    have h1 := (Anc.slot_le hr.coherent hBY).1
-    have h2 := hr.coherent.2 Y hQU B (hPhiU hBv.1.1) hBQ
-    omega
-  have below : ∀ X, Anc (tr.HonestBlocks H) X B → Anc (tr.HonestBlocks H) X P →
-      Anc (tr.HonestBlocks H) X Q := by
-    intro X hXB hXP
-    rcases Relation.ReflTransGen.cases_tail hXB with heq | ⟨Y, hXY, hY⟩
-    · exact False.elim (hnBP (heq ▸ hXP))
-    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
-      (Option.some_injective _ (hY.2.2.symm.trans hBQ))
-    exact hXY
-  have hfQ := below _ (hBv.2.1.mono hPhiU) (hPv.2.1.mono hPhiU)
-  have hQt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hPv.1.1 hQP
-    ((hPhi.F_anc_fcRoot.mono hPhiU).trans hfQ)
-  have hfQ' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfQ hQt
-  rw [Compose.frame_of_projAC hp.run hy hc.1] at hQt hfQ' ⊢
-  exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
-    reset_vote_floor_above_old hp hy hR hc hes hQt.1 hQold⟩
-
 /-- Finite sibling viability places their parent above the voter's root and height floor. -/
 theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -576,6 +507,23 @@ theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
   rw [Compose.frame_of_projAC hp.run hy hc.1] at hQt hfQ' ⊢
   exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
     hp.reset_vote_floor_above_old hy hR hc hes hjb hQt.1 hQold⟩
+
+/-- Two distinct viable children force the voter's root below their parent. If that parent
+extends every pre-slot high origin, it also reaches the voter's height floor. -/
+theorem reset_parent_viable_of_children
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {Q P B : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocks H)
+    (hPQ : P.parent = some Q.root) (hBQ : B.parent = some Q.root) (hBP : B ≠ P)
+    (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hBv : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame u))
+    (hQold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) O Q) : Q ∈ ell.frame.viableHeads :=
+  (hp.toUpTo tr H (le_max_left a (tr.time j))).reset_parent_viable_of_children hy hR hc
+    hes (le_max_right _ _) hQU hPQ hBQ hBP hPv hBv
+    fun x r l O ho ht _ => hQold x r l O ho ht
 
 /-- At the proposal parent, the actual proposal is the only eligible child and its own
 children are ineligible. Parent viability is derived separately for each old competitor. -/

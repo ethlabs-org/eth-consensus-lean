@@ -296,34 +296,6 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
   unfold SA.updateLatestConfirmed
   split <;> rfl
 
-/-- Actual honest proposals are unique in honest frames at their positive slot.
-This uses no payload-support clause of `ReadyProposal`. -/
-theorem reset_proposal_frame_unique
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hu : 0 < u)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hac.localRun
-  obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hPprop, -, ja, -, hacc, -⟩ :=
-    honestProposalRun_of_ready hp.run hp.noColl hP
-  rw [← hP.2.1] at hPprop hacc
-  obtain ⟨ellp, hcp, hblock⟩ := hacc
-  have hPm := (SA.accept_new sp hr hP.1 ⟨ellp, hcp, hblock⟩).1 ellp hcp
-  have hQf : SA.HonestFrameBlock tr.projAC H Q := ⟨y, hy, j, ell, hcall, hQ⟩
-  have hroot : Q.root ≠ sp.genesisRoot := by
-    intro hg
-    have hG := Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hy j)
-    obtain rfl := hr.coherent.1 ((SA.frameIn_of_callAt hr hy hcall).2 hQ)
-      ⟨y, hy, j, hG⟩ hg
-    simp [Params.genesisBlock] at hQu
-    omega
-  exact (hac.honest.one_block P Q ⟨p, hP.1, ja, ellp, hcp, hPm⟩ hQf (hPprop ▸ hP.1)
-    (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hP.2.1])
-    (by rw [hP.2.2.2.2.1, hQu])).symm
-
 /-- An honest designated actual proposal is the unique block of its positive slot
 in every honest frame, without reset or readiness premises. -/
 theorem proposal_frame_unique
@@ -352,6 +324,18 @@ theorem proposal_frame_unique
   exact (hac.honest.one_block P Q ⟨p, hpH, ja, ellp, hcp, hPm⟩ hQf (hPprop ▸ hpH)
     (by rw [hPprop, hac.honest.proposer Q hQf hroot, hQu, hdesignated])
     (by rw [hPs, hQu])).symm
+
+/-- Actual honest proposals are unique in honest frames at their positive slot.
+This uses no payload-support clause of `ReadyProposal`. -/
+theorem reset_proposal_frame_unique
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hu : 0 < u)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) {Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hQ : Q ∈ ell.frame.tree) (hQu : Q.slot = u) : Q = P :=
+  proposal_frame_unique hp.run hp.noColl hP.1 hP.2.1 hP.2.2.2.1 hP.2.2.2.2.1 hu hy hcall
+    hQ hQu
 
 /-- Actual proposal uniqueness in a bounded run needs no readiness/support predicate. -/
 theorem ResetPremisesUpTo.reset_proposal_frame_unique {b : Time}

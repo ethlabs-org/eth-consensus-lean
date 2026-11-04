@@ -858,18 +858,8 @@ theorem report_cover_of_compatible_floors
       Anc (tr.HonestBlocks H) P C) ∨
     ∃ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
       Anc (tr.HonestBlocks H) P C ∧
-      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
-  by_cases hall : ∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
-      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C
-  · exact Or.inl hall
-  push Not at hall
-  obtain ⟨z, hz, hn⟩ := hall
-  obtain ⟨j, hj, hcompat, hbelow⟩ := hcuts z hz
-  rcases finality_below_or_higher_report hp hz hcompat with
-    hF | ⟨v, hv, r, ℓ, C, hrj, hto, hPC, hlt⟩
-  · obtain ⟨r, ℓ, C, hto, ht, hPC⟩ := hbelow hF
-    exact False.elim (hn r ℓ C hto ht hPC)
-  · exact Or.inr ⟨v, hv, r, ℓ, C, hto, (hp.run.time_mono hrj.le).trans hj, hPC, hlt⟩
+      ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
+  (hp.toUpTo tr H le_rfl).report_cover_of_compatible_floors hcuts
 
 end Consensus.Goldilocks.Healing
 
