@@ -487,6 +487,7 @@ public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 public import ConsensusLean.Lemmas.Shape.Payload
+public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Faithful.Main

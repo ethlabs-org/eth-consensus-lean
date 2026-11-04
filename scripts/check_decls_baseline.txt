@@ -2,3 +2,7 @@
 # Target: empty. Every other finding fails scripts/check.sh step 3, and so does a stale entry.
 ConsensusLeanTest reaches-opaque Consensus.ReviewGuard.check  # meta code run by `run_meta` in ReviewAxioms; calls Lean's Meta API (opaque/extern by design); not a proof or a Spec definition
 ConsensusLeanTest reaches-opaque Consensus.ReviewGuard.checkComplete  # likewise (Lean.Meta.whnf, environment hashing)
+ConsensusLean reaches-opaque Consensus.Tactic.Linarith.run  # meta code of the `linarith` front end (Lemmas/Tactic/Linarith.lean); calls Mathlib's linarith and Lean's Meta API (opaque/extern by design); not a proof or a Spec definition
+ConsensusLean reaches-opaque Consensus.Tactic.Linarith.fullConfig  # likewise (Mathlib's LinarithConfig, its default discharger)
+ConsensusLean reaches-opaque _aux_ConsensusLean_Lemmas_Tactic_Linarith___elabRules_Mathlib_Tactic_linarith_1  # likewise (the elaborator of `linarith`)
+ConsensusLean reaches-opaque _aux_ConsensusLean_Lemmas_Tactic_Linarith___elabRules_Mathlib_Tactic_nlinarith_1  # likewise (the elaborator of `nlinarith`)

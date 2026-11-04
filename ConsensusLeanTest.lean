@@ -94,6 +94,7 @@ public import ConsensusLeanTest.GoldilocksWitnessTicks
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.Leaks
 public import ConsensusLeanTest.Lift
+public import ConsensusLeanTest.LinarithFrontEnd
 public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model
 public import ConsensusLeanTest.Network
