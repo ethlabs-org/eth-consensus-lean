@@ -54,39 +54,6 @@ theorem oldSrc_iff {u : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))} :
     OldSrc tr H g u O ↔
       ∃ (x : Fin sp.n) (i j : Nat), HighOrigin tr H g x i j O ∧ tr.time i < sp.ts u := Iff.rfl
 
-/-- Compare the actual cache and origin within a fixed horizon using only held
-chains and prior signed-row origins. No later tick is required. -/
-theorem finalized_compatible_high_origin_before
-    (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
-    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (_hcQ : tr.time c ≤ Q)
-    {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j O) (_hiQ : tr.time i ≤ Q) :
-    Compatible (tr.HonestBlocks H) (tr.state z c).fg.F O := by
-  have hr := Compose.fg_reachable hp.run.toLocalRun hz c
-  have hU := honest_coherent hp
-  have hsub : (tr.state z c).fg.tree ⊆ tr.HonestBlocks H := fun _ h => ⟨z, hz, c, h⟩
-  by_cases hh : HZ tr H g + 1 ≤ (tr.state z c).fg.hj
-  · obtain ⟨_, hJm, hFJ, ⟨C, hC, hCJ, _⟩, -⟩ := Store.cache_invariants _ _ _ _ hr
-    obtain ⟨E, hE, hEr, hEC, hcase⟩ := Store.J_entry_of_reachable hr hC
-    obtain rfl : E = (tr.state z c).fg.J := hU.1 (hsub hE) (hsub hJm) (hEr.trans hCJ)
-    rcases hcase with hg | ⟨hJh, hJT⟩
-    · obtain ⟨_, _, _, _, _, _, _, _, _, hO⟩ := highOrigin_mem hp ho
-      exact Or.inl ((hFJ.mono hsub).trans
-        (Compose.honest_genesis_root_anc hp.run hU (hsub hJm)
-          (congrArg (·.root) hg) ⟨x, ho.1, i, hO⟩))
-    · obtain ⟨W, _, att, _, v, _, d, _, _, _, r, _, b, B, hB, hJB⟩ :=
-        left_entry_origin hp hz hJm hJT (by omega) hEC
-          (by have := Store.hj_lt_h hr hC; omega)
-      have hFB := (hFJ.mono hsub).trans hJB
-      have hcmp := (height_scoped_retention sp ro proposer dg H tr g ΔF
-        hp.run hp.healthy hp.noColl a hp.reset).comparable v r b B x i j O hB ho
-      rcases hcmp with h | h
-      · exact Or.inl (hFB.trans h)
-      · exact Anc.total hU hFB h
-  · obtain ⟨_, _, _, _, _, _, _, _, _, hO⟩ := highOrigin_mem hp ho
-    exact Or.inl (low_finalized_below_high_block hp hz ho.1 hO
-      (high_of_anc hp ho ho.1 hO .refl) (by omega))
-
 /-- The causal cache comparison also permits an origin written after the receiver cut. -/
 theorem ResetPremisesUpTo.finalized_compatible_high_origin {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -114,6 +81,18 @@ theorem ResetPremisesUpTo.finalized_compatible_high_origin {b : Time}
       · exact Or.inl (hFB.trans h)
       · exact Anc.total hU hFB h
   · exact Or.inl (hp.low_finalized_below_origin hz c (by omega) ho)
+
+/-- Compare the actual cache and origin within a fixed horizon using only held
+chains and prior signed-row origins. No later tick is required. -/
+theorem finalized_compatible_high_origin_before
+    (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (_hcQ : tr.time c ≤ Q)
+    {x : Fin sp.n} {i j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j O) (_hiQ : tr.time i ≤ Q) :
+    Compatible (tr.HonestBlocks H) (tr.state z c).fg.F O :=
+  (hp.toUpTo tr H (le_max_left a (max (tr.time c) (tr.time i)))).finalized_compatible_high_origin
+    hz (fun _ hq => (hp.run.time_mono hq.le).trans ((le_max_left _ _).trans (le_max_right _ _)))
+    ho ((le_max_right _ _).trans (le_max_right _ _))
 
 /-- Whole-run cache comparison permits an origin written after the receiver cut. -/
 theorem finalized_compatible_high_origin_at_any_cut
@@ -169,48 +148,6 @@ theorem ResetPremisesUpTo.finalized_below_high_origin {b : Time}
   exact ⟨v, r, l, B, ho, ht.trans ha, ht.trans hp.reset_le,
     hp.low_finalized_below_origin hy k (by omega) ho⟩
 
-/-- A high supporting head accepted by an honest voter before the previous slot's relay
-deadline is held in the proposal frame. Its height rules out pre-GST acceptance. -/
-private theorem proposal_relay_high (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u)
-    {x : Fin sp.n} {r l : Nat} {O B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r l O) (hOB : Anc (tr.HonestBlocks H) O B)
-    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hacc : tr.projAC.AcceptAt z c B)
-    (hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ)
-    (hFB : Anc (tr.HonestBlocks H) ℓp.frame.F B) :
-    B ∈ ℓp.frame.tree ∧ SA.AcceptedBefore tr.projAC p B (sp.ts ((u : Int) - 1) + 3 * sp.Δ) := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hΔ := sp.toParams.hΔ
-  have hgc : g ≤ tr.time c := by
-    have := (cutZ_lt_of_anc hp ho hz (acceptAt_mem hp hz hacc) hOB).1
-    have := lt_cutZ sp g
-    have := le_gbar g
-    linarith
-  have hsi : sp.slot (tr.time i) = u := by
-    rw [hti]; simpa using (SA.slot_arithmetic sp u).1 0 (by omega)
-  have hts : sp.ts (u : Int) = sp.ts ((u : Int) - 1) + 4 * sp.Δ := by
-    simp only [SAParams.ts]; ring
-  have hrs := Compose.proposal_call_restarts hp.run hp.noColl hpH hci hcall hd
-  rw [hsi] at hrs
-  have hdl : ∀ k ≤ i, tr.projAC.deadline p k (tr.projAC.time c) ≤
-      sp.ts ((u : Int) - 1) + 3 * sp.Δ := fun k hk => by
-    have hd := deadline_le_restarts (T := tr.projAC)
-      (fun c' hc' hr' => hrs c' (hc'.trans hk) hr') (tr.projAC.time c)
-    have := max_le hct.le (show sp.ts ((u : Int) - 1) ≤ sp.ts ((u : Int) - 1) + 2 * sp.Δ by
-      linarith)
-    change _ ≤ max (tr.time c) (sp.ts ((u : Int) - 1)) + sp.Δ at hd
-    linarith
-  have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr proposer ΔF g (tr.time c) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
-  obtain ⟨k, hki, hak, hkt⟩ := hsync.2 z hz c B hacc hgc le_rfl p hpH i ℓp hci
-    (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith) hFB
-  exact ⟨SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFB,
-    Or.inr ⟨k, hak, lt_of_lt_of_le hkt (hdl k hki)⟩⟩
-
 /-- Actual-call relay of a high supporting head to the proposal frame. -/
 theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -261,54 +198,6 @@ theorem label_lt_of_old (hp : ResetPremises tr H proposer dg g ΔF a)
   by_contra hcon
   have h1 : sp.ts u ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
   linarith [ts_le_of_fastLock hp hfl]
-
-/-- An old source is held by the proposer, or below its finalized cache. Relay starts at an
-honest supporting vote head, not at the possibly later write of the origin. -/
-theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) {O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hO : OldSrc tr H g u O) :
-    O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
-  obtain ⟨x, r, l, ho, hrt⟩ := oldSrc_iff.1 hO
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hrun.localRun
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
-  have hcmp := finalized_compatible_high_origin hp hpH hai ho
-  have hfr := Compose.frame_of_projAC hp.run hpH hci
-  have hF : ℓp.frame.F = (tr.state p i).fg.F := by rw [hfr]; rfl
-  rw [← hF] at hcmp
-  rcases hcmp with hFO | hOF
-  · left
-    obtain ⟨ℓ, D, CV, hcx, hfl, -, -, -, hOD, -⟩ := highOrigin_mem hp ho
-    obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
-      SA.fastLock_honest_vote hrun (faulty_lt_half hp p) ho.1 hfl
-    have hOB := (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB
-    obtain ⟨ℓz, hcz, he⟩ := hv
-    obtain ⟨⟨B', hB't, hB'r, -⟩, hjt⟩ := Compose.cast_head_fcRoot hr hz ⟨hcz, he⟩
-    have hEq : B' = B := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hcz).2 hB't) hB
-      (hB'r.trans hBr.symm)
-    rw [hEq] at hB't
-    have hlu := label_lt_of_old hp ho hrt
-    have hts : sp.ts l ≤ sp.ts ((u : Int) - 1) := (SA.ts_le_iff sp).2 (by omega)
-    have hjt' : tr.time j ≤ sp.ts ((u : Int) - 1) + sp.Δ := by
-      rw [hes] at hjt
-      change tr.time j ≤ sp.ts l + sp.Δ at hjt
-      linarith
-    rcases Compose.frame_anc_accepted hr hz j ℓz hcz B hB't B .refl with hg | ⟨c, hcj, hacc⟩
-    · exact False.elim ((cutZ_lt_of_anc hp ho hz
-        (mem_tree_of_frame hp.run hz hcz hB't) hOB).2 hg)
-    have hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ := by
-      have := hr.time_mono hcj
-      change tr.time c ≤ tr.time j at this
-      linarith
-    have hBt := (proposal_relay_high hp hpH hci hcall hd hti ho hOB hz hacc hct
-      (hFO.trans hOB)).1
-    exact mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
-  · exact Or.inr hOF
 
 /-- An earlier high source is held at a bounded actual proposal, or finalized there. -/
 theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
@@ -366,6 +255,19 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
     exact mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
   · exact Or.inr hOF
 
+/-- An old source is held by the proposer, or below its finalized cache. Relay starts at an
+honest supporting vote head, not at the possibly later write of the origin. -/
+theorem proposal_holds_old (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hai : a ≤ tr.time i)
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hO : OldSrc tr H g u O) :
+    O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocks H) O ℓp.frame.F := by
+  obtain ⟨x, r, l, ho, hrt⟩ := hO
+  exact (hp.toUpTo tr H hai).proposal_holds_old hpH hci hcall hd hti le_rfl ho hrt
+
 /-- Conditional seed receipt at a proposal, including the finalized-equality case. -/
 theorem proposal_holds_high_of_finalized
     (hp : ResetPremises tr H proposer dg g ΔF a)
@@ -386,33 +288,6 @@ theorem proposal_holds_high_of_finalized
     have he := Anc.antisymm hr.coherent hOF hFO
     rw [he]
     exact hPhi.rooted.1
-
-/-- Root comparison for an actual proposal duty and an arbitrary held target. -/
-theorem held_target_proposal_root_before
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r i u : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
-    (hai : a ≤ tr.time i) {ell : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u)
-    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree)
-    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
-      Compatible (tr.HonestBlocks H) B S)
-    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
-      Compatible (tr.HonestBlocks H) B O) :
-    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B := by
-  by_cases hlow : (tr.state p i).fg.hj ≤ HZ tr H g
-  · obtain ⟨v, q, m, S, hS, hm, hBS⟩ := hseed
-    have hFS := low_finalized_below_origin hp hpH i hlow hS
-    have hFF : ell.frame.F = (tr.state p i).fg.F := by
-      rw [Compose.frame_of_projAC hp.run hpH hci]; rfl
-    have hSt := proposal_holds_high_of_finalized hp hpH hai hci hcall hd hti hS hm
-      (by rw [hFF]; exact hFS)
-    exact low_root_of_held_seed_at_call hp hx hBx hpH hS hci
-      (frame_tree_subset hp hpH hci hSt) hlow hBS hheld
-  · exact high_J_root_of_held_at_call_before hp hx hBx hpH hci (by omega) hcompare
 
 /-- Bounded root comparison uses only an actual proposal and earlier source comparisons. -/
 theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
@@ -447,6 +322,25 @@ theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
     exact hp.low_root_of_held_seed_at_call hx hBx hpH hS hci
       (mem_tree_of_frame hp.run hpH hci hSt) hlow hBS hheld
   · exact hp.high_J_root_of_held_at_call_before hx hBx hpH hci (by omega) hcompare
+
+/-- Root comparison for an actual proposal duty and an arbitrary held target. -/
+theorem held_target_proposal_root_before
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {x p : Fin sp.n} (hx : x ∈ H) (hpH : p ∈ H) {r i u : Nat}
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    (hai : a ≤ tr.time i) {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u)
+    (hheld : Anc (tr.HonestBlocks H) ell.frame.F B → B ∈ ell.frame.tree)
+    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
+      Compatible (tr.HonestBlocks H) B S)
+    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
+      Compatible (tr.HonestBlocks H) B O) :
+    Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
+  (hp.toUpTo tr H hai).held_target_proposal_root_before hx hpH hBx hci hcall hd hti le_rfl hheld
+    hseed hcompare
 
 
 end Consensus.Goldilocks.Healing

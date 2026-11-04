@@ -56,116 +56,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-section Walk
-variable {FGP : Type}
-/-- The upper end of an ancestry inside `U` from a block of `U` is in `U`. -/
-private theorem mem_of_anc_right {U : Set (SA.Blk sp.n FGP)} {A B : SA.Blk sp.n FGP}
-    (h : Anc U A B) (hA : A ∈ U) : B ∈ U := by
-  by_cases hAB : A = B
-  · exact hAB ▸ hA
-  · exact (Anc.mem h hAB).2
-end Walk
-
 /-! ### The anchors -/
-
-/-- **A voter's anchor is below `D`, or on `P`'s chain above `D`**: for a block `D` above every
-old source and below `Q = P.parent`, at an honest slot-`u` vote whose earlier honest slot-`u`
-votes are `P`. A live lock of slot `u` sits below an optimistic selection with an honest
-supporter among the earlier votes, so below `P`; one of another slot has its viable ancestor
-below the proposal parent by the explicit source-service supplier; `fc_root` by
-`reset_vote_fcRoot`. -/
-private theorem reset_vote_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P Q D : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
-    (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
-    (hDQ : Anc (tr.HonestBlocks H) D Q) (hDU : D ∈ tr.HonestBlocks H)
-    (hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = u)
-    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-      e'.msg.head = P.root)
-    (hlocks : ∀ l ∈ e.readPoint.locks, l.slot ≠ u →
-      sp.slot (tr.time j) ≤ l.slot + sp.k →
-      ∀ L ∈ ℓy.frame.tree, L.root = l.block →
-        Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor L) Q) :
-    Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) D ∨
-      (Anc (tr.HonestBlocks H) D (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) ∧
-        Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P ∧
-        P ∈ tr.HonestBlocks H) := by
-  have hrun := hp.run
-  have hnc := hp.noColl
-  have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  have hr := hrun'.localRun
-  have hU : Coherent (tr.HonestBlocks H) := hr.coherent
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨hpH, -, -, hPp, -, -⟩ := id hP
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  have hs0 : 0 < u := by
-    have h := hR
-    rw [drainTime_eq] at h
-    have := (SA.ts_le_iff sp).1 h
-    omega
-  have hslj : e.msg.slot = sp.slot (tr.time j) := (SA.castAt_spec hr hy hcy).2.1
-  have htj : tr.time j ≤ sp.ts u + sp.Δ := hes ▸ (Compose.cast_head_fcRoot hr hy hcy).2
-  have htR : drainTime sp a ≤ tr.time j :=
-    hR.trans ((SA.ts_le_iff_le_slot sp (hr.time_nonneg j) u).2 (by
-      change (u : Int) ≤ sp.slot (tr.time j); rw [← hslj, hes]))
-  have hDP : ∀ hPU : P ∈ tr.HonestBlocks H, Anc (tr.HonestBlocks H) D P := fun hPU =>
-    hDQ.trans (Relation.ReflTransGen.single ⟨hQU, hPU, hPQ⟩)
-  have hat := anchor_tree hΦ e.readPoint (tr.time j)
-  have haS := anchor_mem ℓy.frame e.readPoint (tr.time j)
-  generalize SA.getAnchor sp e.readPoint ℓy.frame (tr.time j) = an at hat haS ⊢
-  rcases haS with ⟨-, l', hl', hl'r⟩ | haf
-  swap
-  · -- `fc_root`
-    rw [Set.mem_singleton_iff.1 haf]
-    have hfU := hΦU hΦ.fcRoot_mem
-    rcases reset_vote_fcRoot hp hc ⟨hpH, hP.2⟩ hR hy hcy hes hE with hg | ⟨O, hO, hfO⟩ | hfP
-    · exact Or.inl (Compose.honest_genesis_root_anc hrun hU hfU hg hDU)
-    · exact Or.inl (hfO.trans (hDold O hO))
-    · have hPU := mem_of_anc_right hfP hfU
-      rcases Anc.total hU hfP (hDP hPU) with h | h
-      · exact Or.inl h
-      · exact Or.inr ⟨h, hfP, hPU⟩
-  -- a live lock block: the viable ancestor of the block of a read-point lock
-  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := hl'
-  obtain rfl : an = ℓy.frame.viableAncestor B :=
-    hΦ.coherent.1 hat (SA.viableAncestor_anc hΦ hB).1 hl'r.symm
-  have haB : Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor B) B :=
-    Anc.mono hΦU (SA.anc_viableAncestor _ B)
-  by_cases hls : l.slot = u
-  · -- a lock of slot `u`: below an optimistic selection with an honest earlier supporter
-    obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, -, L, hLU, hLr, hLD'⟩ :=
-      SA.lock_origin_readPoint hrun' hy hcy l hl (by rw [hes, hls]; omega)
-    obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
-    have hf := faulty_lt_half hp y
-    obtain ⟨x, ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hxH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-        (t := SA.optimisticVoters sp A' Φ' l.slot D') (by omega)
-    have hvH : v.val ∈ H := not_not.1 hxH
-    obtain ⟨hvs, j', hj', e', hv', rfl⟩ := hpool v hv hvH
-    have hRP : R = P := eq_proposal hrun hnc hpH hPp (hΦ'U hRt)
-      (hRr.trans (hE _ hvH j' hj' e' hv' (hvs.trans hls)))
-    rw [hRP] at hRt hDR
-    have hPU : P ∈ tr.HonestBlocks H := hΦ'U hRt
-    have haP := haB.trans (hLD'.trans (Anc.mono hΦ'U hDR))
-    rcases Anc.total hU haP (hDP hPU) with h | h
-    · exact Or.inl h
-    · exact Or.inr ⟨h, haP, hPU⟩
-  · have haQ := hlocks l hl hls
-      (hlive.trans ((SA.castAt_readPoint_locksWF hr hy hcy).cap hl)) B hB hBr
-    rcases Anc.total hU haQ hDQ with h | h
-    · exact Or.inl h
-    · have hPU : P ∈ tr.HonestBlocks H := by
-        have hacc := Compose.proposal_accepted hrun hnc hpH hPp
-        refine ⟨p, hpH, k + 1, ?_⟩
-        rw [tr.state_succ_of_call hacc,
-          (Store.tree_grows _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hpH _)).1 P _
-            (hrun.toLocalRun.cutLaw p hpH _ _ hacc).2.1]
-        exact Set.mem_insert _ _
-      exact Or.inr ⟨h, haQ.trans (Relation.ReflTransGen.single ⟨hQU, hPU, hPQ⟩), hPU⟩
 
 /-- Finite voter anchors lie below the old-source bound or on the proposal chain. -/
 theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
@@ -228,44 +119,43 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
     · exact Or.inl h
     · exact Or.inr ⟨h, haQ.trans (.single ⟨hQU, hPU, hPQ⟩)⟩
 
-/-- A held block extending every pre-slot origin reaches the voter's height floor. -/
-theorem reset_vote_floor_above_old
-    (hp : ResetPremises tr H proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
-    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
-      Anc (tr.HonestBlocks H) O B) :
-    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hy j
-  obtain ⟨v₀, r₀, l₀, O₀, ho₀, -, hr₀⟩ := reset_seed hp
-  have hBh := high_of_anc hp ho₀ hy hB
-    (hBold v₀ r₀ l₀ O₀ ho₀ (hr₀.trans_lt (reset_lt_ts hp hR)))
-  have hnc := no_high_contest hp hy j
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ (tr.state y j).fg.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by omega⟩
-  have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Store.cache_invariants _ _ _ _ hreach
-  obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-    entry_at_height hreach hC (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
-  obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, -, r, hrd, l, O, ho, hEO⟩ :=
-    left_entry_origin hp hy hE hET (by omega) hEC (by omega)
-  have hlu : l < u := hes ▸ row_origin_label_lt hp hy hc hW ha hv hs hdj hrd ho
-  obtain ⟨-, D, CV, -, hf, -⟩ := highOrigin_mem hp ho
-  have hrt : tr.time r < sp.ts u := fastLock_time_lt hp hf hlu
-    ((hp.run.time_mono (by omega)).trans (hes ▸ (Compose.cast_head_fcRoot hr hy hc).2))
-  have hEB := hEO.trans (hBold v r l O ho hrt)
-  have := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy hEB hB)
-  omega
+set_option linter.unusedVariables false in
+/-- **A voter's anchor is below `D`, or on `P`'s chain above `D`**: for a block `D` above every
+old source and below `Q = P.parent`, at an honest slot-`u` vote whose earlier honest slot-`u`
+votes are `P`. A live lock of slot `u` sits below an optimistic selection with an honest
+supporter among the earlier votes, so below `P`; one of another slot has its viable ancestor
+below the proposal parent by the explicit source-service supplier; `fc_root` by
+`reset_vote_fcRoot`. -/
+private theorem reset_vote_anchor (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
+    (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocks H)
+    (hDQ : Anc (tr.HonestBlocks H) D Q) (hDU : D ∈ tr.HonestBlocks H)
+    (hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
+    (hes : e.msg.slot = u)
+    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root)
+    (hlocks : ∀ l ∈ e.readPoint.locks, l.slot ≠ u →
+      sp.slot (tr.time j) ≤ l.slot + sp.k →
+      ∀ L ∈ ℓy.frame.tree, L.root = l.block →
+        Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor L) Q) :
+    Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) D ∨
+      (Anc (tr.HonestBlocks H) D (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) ∧
+        Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P ∧
+        P ∈ tr.HonestBlocks H) := by
+  have hPU : P ∈ tr.HonestBlocks H := by
+    have hacc := Compose.proposal_accepted hp.run hp.noColl hP.1 hP.2.2.2.1
+    refine ⟨p, hP.1, k + 1, ?_⟩
+    rw [tr.state_succ_of_call hacc,
+      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hP.1 _)).1 P _
+        (hp.run.toLocalRun.cutLaw p hP.1 _ _ hacc).2.1]
+    exact Set.mem_insert _ _
+  exact ((hp.toUpTo tr H (le_max_left a (tr.time j))).reset_vote_anchor hPU hR hPQ hQU hDQ hDU
+    (fun x r l O ho hrt _ => hDold O (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩)) hy hcy hes
+    (le_max_right _ _) hE hlocks).imp_right fun h => ⟨h.1, h.2, hPU⟩
 
 /-- A bounded old-origin upper bound reaches the actual voter's height floor. -/
 theorem ResetPremisesUpTo.reset_vote_floor_above_old {b : Time}
@@ -305,38 +195,18 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old {b : Time}
   have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hEB hB)
   omega
 
-/-- Before the first disagreeing vote, the voter root is below the actual proposal. -/
-theorem reset_vote_root_below_proposal
-    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ellp : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {elly : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
-    (hes : e.msg.slot = u)
-    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-      e'.msg.head = P.root) : Anc (tr.HonestBlocks H) elly.frame.fcRoot P := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
-  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQU := hPhiU (mem_of_anc_left hsQ hst)
-  have hacc := Compose.proposal_accepted hp.run hp.noColl hP.1 hP.2.2.2.1
-  have hPU : P ∈ tr.HonestBlocks H := by
-    refine ⟨p, hP.1, k + 1, ?_⟩
-    rw [tr.state_succ_of_call hacc,
-      (Store.tree_grows _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hP.1 _)).1 P _
-        (hp.run.toLocalRun.cutLaw p hP.1 _ _ hacc).2.1]
-    exact Set.mem_insert _ _
-  rcases reset_vote_fcRoot hp hc hP hR hy hcy hes hE with hg | ⟨O, hO, hroot⟩ | hroot
-  · exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPsiU hPsi.fcRoot_mem) hg hPU
-  · exact hroot.trans ((reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ O hO).trans
-      (.single ⟨hQU, hPU, hPQ⟩))
-  · exact hroot
+/-- A held block extending every pre-slot origin reaches the voter's height floor. -/
+theorem reset_vote_floor_above_old
+    (hp : ResetPremises tr H proposer dg g ΔF a)
+    {y : Fin sp.n} (hy : y ∈ H) {j u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
+    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
+      Anc (tr.HonestBlocks H) O B) :
+    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h :=
+  (hp.toUpTo tr H (le_max_left a (tr.time j))).reset_vote_floor_above_old hy hR hc hes
+    (le_max_right _ _) hB (fun x r l O ho hrt _ => hBold x r l O ho hrt)
 
 /-- Actual bounded proposal and cast evidence bound the voter root by the proposal. -/
 theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
@@ -366,6 +236,26 @@ theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
   apply hp.reset_vote_root_below_bound hR hPU (fun x r l O ho hrt _ => ?_) hy hcy hes hjb
   exact (hp.reset_proposal_passes hc hpH hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
     (.single ⟨hQU, hPU, hPQ⟩)
+
+set_option linter.unusedVariables false in
+/-- Before the first disagreeing vote, the voter root is below the actual proposal. -/
+theorem reset_vote_root_below_proposal
+    (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {elly : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
+    (hes : e.msg.slot = u)
+    (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
+      e'.msg.head = P.root) : Anc (tr.HonestBlocks H) elly.frame.fcRoot P :=
+  (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).reset_vote_root_below_proposal
+    hc hP.1 hP.2.2.2.1 hR hci hcall hd hti ((le_max_left _ _).trans (le_max_right _ _)) hPQ hy hcy
+    hes ((le_max_right _ _).trans (le_max_right _ _))
 
 /-- **The pivot after the drain** (open: through the four residual steps above). -/
 theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))

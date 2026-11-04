@@ -173,29 +173,6 @@ theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin
   · have hsl' : sp.slot (tr.time i) = s := hsl
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) s).2 (by omega)
 
-/-- A fast lock of a label `m < u` written by `t_u + Δ` is written before `t_u` (an update of
-`m` runs at `t_m + 6Δ`, so `m ≤ u − 2`; an optimistic check of `m` runs in slot `m`). -/
-theorem fastLock_time_lt (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
-    {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hfl : SA.FastLockAt tr.projAC x r m D CV) (hmu : m < u)
-    (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hΔ := sp.toParams.hΔ
-  rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
-  · have ht' : tr.time r = sp.ts m + 6 * sp.Δ := ht
-    rw [ht'] at htr ⊢
-    simp only [SAParams.ts] at htr ⊢
-    have hm2 : (m : Int) + 2 ≤ u := by
-      by_contra hcon
-      have h1 : (u : Int) ≤ m + 1 := by omega
-      linarith [mul_le_mul_of_nonneg_left h1 hΔ.le]
-    linarith [mul_le_mul_of_nonneg_left hm2 hΔ.le]
-  · have hsl' : sp.slot (tr.time r) = m := hsl
-    by_contra hcon
-    have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) u).1 (not_lt.1 hcon)
-    have : sp.slot (tr.projAC.time r) = sp.slot (tr.time r) := rfl
-    omega
-
 /-- Bounded reset premises retain the operational timing of an older fast lock. -/
 theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n}
@@ -216,6 +193,14 @@ theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
     omega
+
+/-- A fast lock of a label `m < u` written by `t_u + Δ` is written before `t_u` (an update of
+`m` runs at `t_m + 6Δ`, so `m ≤ u − 2`; an optimistic check of `m` runs in slot `m`). -/
+theorem fastLock_time_lt (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n}
+    {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : SA.FastLockAt tr.projAC x r m D CV) (hmu : m < u)
+    (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
+  (hp.toUpTo tr H le_rfl).fastLock_time_lt hfl hmu htr
 
 /-- The reset seed precedes every post-drain slot and is bounded by the horizon. -/
 theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}

@@ -41,114 +41,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- Every old source is below the proposal's duty head. Relay and high-origin viability put
-the source on the walk; earlier-label votes or the same-label optimistic quorum favor its
-chain. -/
-theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (_hPQ : P.parent = some d.head.root) :
-    ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O d.head := by
-  intro O hO
-  have hpH := hP.1
-  have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hrun.localRun
-  have hU := hr.coherent
-  have hΔ := sp.toParams.hΔ
-  have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
-    hp.run hp.healthy hp.noColl a hp.reset
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hpH hci
-  obtain ⟨x, r, l, ho, hrt⟩ := oldSrc_iff.1 hO
-  have hlu := label_lt_of_old hp ho hrt
-  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by omega⟩
-  have hslot := SA.proposal_slot (tr := tr.projAC) hti
-  have hai : a ≤ tr.time i := by rw [hti]; exact (reset_lt_ts hp hR).le
-  rcases proposal_holds_old hp hpH hai hci hcall hd hti (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩)
-    with hOt | hOF
-  swap
-  · obtain ⟨hstart, hsQ⟩ := Compose.acProposal_start_anc_head hΦ hd
-    exact hOF.trans (Anc.mono hΦU ((hΦ.rooted.2 _ hstart).trans hsQ))
-  have hV := held_high_origin_viable hp hpH hci ho
-    (by rw [hti]; exact (SA.ts_le_iff sp).2 (by omega)) hOt
-  have hFO := (hΦ.rooted.2 O hOt).mono hΦU
-  have hhigh : SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
-      (tr.time i) s O := by
-    exact proposal_stored_locks_compatible_old hp hc hP hR hci hcall hti O
-      (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩)
-  have hcut : cutZ sp.toParams g ≤ sp.ts s :=
-    (cutZ_le_ts_of_highOrigin hp ho).trans ((SA.ts_le_iff sp).2 (by omega))
-  have hgs : g ≤ sp.ts s := by
-    have := le_gbar g
-    have := lt_cutZ sp g
-    linarith
-  have hrs : ∀ k ≤ i, tr.projAC.RestartAt p k → tr.projAC.time k < sp.ts s := by
-    intro k _ hk
-    have := restart_le hp hpH (Compose.projAC_restartAt.1 hk)
-    have hcZ := cutZ_eq sp g
-    have htlt : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) < cutZ sp.toParams g := by
-      rw [hcZ]
-      exact (SA.ts_lt_iff sp).2 (by omega)
-    exact lt_of_le_of_lt this (htlt.trans_le hcut)
-  have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
-    tr proposer ΔF g (sp.ts s + 2 * sp.Δ) hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
-  have hheld : ∀ z ∈ H, ∀ v : SA.Vote sp.n, v.slot = s →
-      (∃ k, tr.projAC.SendOrAdmit z k v ∧ sp.ts s ≤ tr.projAC.time k ∧
-        tr.projAC.time k < sp.ts s + 2 * sp.Δ) →
-      (∃ B ∈ tr.HonestBlocks H, B.root = v.head ∧ Anc (tr.HonestBlocks H) O B ∧
-        (B.root = sp.genesisRoot ∨ ∃ k, tr.projAC.AcceptAt z k B ∧
-          tr.projAC.time k < sp.ts s + 2 * sp.Δ)) →
-      SA.HeldAtProposal (tr.projAC.state p i) ℓp.frame s v := by
-    rintro z hz v hvs hsend ⟨B, hB, hBr, hOB, hacc⟩
-    apply SA.heldAtProposal_of_writer hr hsync hgs le_rfl hz hpH hci hti hrs hvs hsend
-    refine ⟨B, hB, hBr, hFO.trans hOB, ?_⟩
-    rcases hacc with hg | ⟨k, hk, hkt⟩
-    · exact Or.inl hg
-    refine Or.inr (Or.inl ⟨k, hk, ?_, hkt⟩)
-    have := (cutZ_lt_of_anc hp ho hz (acceptAt_mem hp hz hk) hOB).1
-    have := lt_cutZ sp g
-    have := le_gbar g
-    change g ≤ tr.time k
-    linarith
-  by_cases hls : l < s
-  · have hvotes : ∀ z ∈ H, ∀ k e, SA.VoteAt tr.projAC z k e → e.msg.slot = s →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg O := by
-      rintro z hz k e ⟨ℓ, hcz, he⟩ hes
-      exact (hret.votes x r l O ho z hz k ℓ e ⟨hcz, he⟩ (by omega)).1
-    refine SA.batch_proposal hrun (faulty_lt_half hp p) (half_committee hp hcut) hvotes hpH hci
-      hslot hd ⟨hOt, hV⟩ ?_ hhigh
-    intro z hz k e hv hes
-    obtain ⟨B, hB, hBr, hOB⟩ := hvotes z hz k e hv hes
-    obtain ⟨ℓz, hcz, he⟩ := hv
-    obtain ⟨⟨B', hB't, hB'r, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr hz ⟨hcz, he⟩
-    have hEq : B' = B := hU.1 ((SA.frameIn_of_callAt hr hz hcz).2 hB't) hB (hB'r.trans hBr.symm)
-    rw [hEq] at hB't
-    rw [hes] at hkt
-    refine hheld z hz e.msg hes ⟨k, ⟨ℓz, hcz, Or.inl ⟨e, he, rfl⟩⟩, ?_, by linarith⟩
-      ⟨B, hB, hBr, hOB, ?_⟩
-    · exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
-        (by have := (SA.castAt_spec hr hz ⟨hcz, he⟩).2.1; omega)
-    · rcases Compose.frame_anc_accepted hr hz k ℓz hcz B hB't B .refl with hg | ⟨k', hkk, hk⟩
-      · exact Or.inl hg
-      · exact Or.inr ⟨k', hk, by have := hr.time_mono hkk; linarith⟩
-  · have hls : l = s := by omega
-    obtain ⟨ℓx, D, CV, hcx, hfl, _, _, _, hOD, _⟩ := highOrigin_mem hp ho
-    rw [hls] at hfl
-    rcases hfl with ⟨ℓ', C, ⟨_, _, ht, _⟩, _⟩ | hop
-    · have ht' : tr.time r = sp.ts s + 6 * sp.Δ := ht
-      have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
-      linarith
-    refine optimistic_first_proposal_anc hrun (faulty_lt_half hp p) ho.1 hop
-      (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2) hpH hci hslot hd ⟨hOt, hV⟩ ?_ hhigh
-    intro v hv
-    obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer hr ho.1 (Or.inr hop) v hv
-    exact hheld x ho.1 v hvs hsend ⟨B, hB, hBr,
-      (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB, hacc⟩
-
 /-- Every pre-slot high origin lies below the bounded operational proposal's parent. -/
 theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
@@ -271,6 +163,21 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
     · obtain ⟨k, hki, hak, hkt⟩ := hS.catchUp.relay x ho.1 q B hq (not_le.mp hg) p hpH i ell hci
         (by change _ ≤ tr.time i; rw [hti, hsucc]; linarith) hib hFB
       exact Or.inr (Or.inr ⟨k, hki, hak, by change tr.time k < _ at hkt ⊢; linarith⟩)
+
+/-- Every old source is below the proposal's duty head. Relay and high-origin viability put
+the source on the walk; earlier-label votes or the same-label optimistic quorum favor its
+chain. -/
+theorem reset_proposal_passes (hp : ResetPremises tr H proposer dg g ΔF a)
+    (hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (_hPQ : P.parent = some d.head.root) :
+    ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O d.head :=
+  fun O hO => (hp.toUpTo tr H (le_max_left a (tr.time i))).reset_proposal_passes hc hP.1 hR
+    hci hcall hd hti (le_max_right _ _) O (oldSrc_iff.1 hO)
 
 /-- A crossing below an origin written before a serving proposal is below its duty parent.
 The explicit timestamp preserves the provenance needed by bounded report consumers. -/
@@ -416,6 +323,18 @@ theorem ResetPremisesUpTo.proposal_floor_above_old {b : Time}
   have hEB := hEO.trans (hBold v r l O ho hrt ((hp.run.time_mono (by omega)).trans hib))
   have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH hEB hB)
   omega
+
+/-- A block above every old source reaches the proposal's floor. Only high crossing
+quorums matter: the reset seed already makes the block high. -/
+theorem proposal_floor_above_old (hp : ResetPremises tr H proposer dg g ΔF a)
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
+    {ℓp : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ℓp)
+    (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts u)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state p i).fg.tree)
+    (hBold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O B) :
+    (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h :=
+  (hp.toUpTo tr H (le_max_left a (tr.time i))).proposal_floor_above_old hpH hR hci hcall hti
+    (le_max_right _ _) hB (fun x r l O ho hrt _ => hBold O (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩))
 
 /-- The finite proposal root is genesis or below a bounded pre-slot high origin. -/
 theorem ResetPremisesUpTo.reset_proposal_root_source {b : Time}
