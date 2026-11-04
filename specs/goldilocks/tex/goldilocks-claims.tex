@@ -2594,7 +2594,7 @@ C0.4 & \texttt{Compose.TickOrder}, \texttt{Compose.SignedOnlyInTicks};
 C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   \texttt{Compose.ACStatesReachable}, \texttt{Compose.FGStatesReachable},
   \texttt{Compose.RecordIsClientRun}, \texttt{Compose.SourcesHeld}; the
-  projections of \texttt{Statements/Compose/Run} & proved
+  projections of \texttt{Milestones/Statements/Compose/Run} & proved
   (\texttt{compose\_node\_statements}, \texttt{ac\_projection}, \texttt{fg\_projection}, \dots); the slot's
   proposer is a run law (C0.5 (b))\\
 A1.3 & \texttt{SA.NextTransfer} & proved (\texttt{acSteps}), per vote under
@@ -2701,8 +2701,8 @@ H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
   of $\mathsf{Healthy}$ alone; read points, note~5; the statement is (i);
   (ii) and (iii) follow from it (\texttt{available\_healing\_windows},
   \texttt{available\_healing\_all}) and the closed form of $T_{\mathrm{heal}}$
-  is \texttt{T\_heal\_eq}, checked by \texttt{lake test}, not by the
-  comparator\\
+  is \texttt{T\_heal\_eq}; all of H.4 ((i) included) is a proved lemma,
+  checked by \texttt{lake test} and the axiom audit, not by the comparator\\
 O.1 (node) & \texttt{Healing.PatternRecovery} & proved
   (\texttt{recovery\_statements}); the record quantifier of (b) differs
   (\S``O.1'')\\

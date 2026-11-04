@@ -74,10 +74,16 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
 
 `Accepted` carries the admissibility, progress-fit and progress-tolerance premises of
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
-`Solution.lean` proves each review statement by its source theorem, and each finished instance
-milestone (the closed `Prop` definitions of `milestone_statements_modules` in `scripts/boundaries.toml`,
-today the 49 Goldilocks statements of `Challenge.lean`, including Healing AC, Run, Service, Outcome and Recovery) by its milestone proof, importing that milestone's `Main`.
-Which claims node each of them states, and where its mapping rows are: `docs/goldilocks-mapping.md` §"Review path".
+`Solution.lean` proves each review statement by its source theorem, and the one instance statement
+of `Challenge.lean`, the Goldilocks acceptance endpoint `Refinement.AcceptedEndpoint` (the closed
+`Prop` definition of `milestone_statements_modules` in `scripts/boundaries.toml`), by its milestone
+proof. Challenge certifies these five statements and nothing else (`docs/decisions.md`,
+2026-11-04): the trusted surface is the generic definition of a correct protocol plus the one
+instance endpoint. The other Goldilocks milestones are ordinary proved lemmas: their statements are
+in the untrusted `Instances/Goldilocks/Milestones/` layers, `ConsensusLeanTest/MilestoneAxioms.lean`
+states and pins each one, and check.sh step 3b gates their closure (`proved_milestone_modules`).
+Which claims node each statement states, and where its mapping rows are: `docs/goldilocks-mapping.md`
+§"Review path".
 `ConsensusLeanTest/ReviewAxioms.lean`, using `ConsensusLeanTest/ReviewGuard.lean`, compiles
 alpha-equality guards (including binder kinds) and `#guard_msgs` pins of the exact axiom lists
 for both the review and source theorems. `ReviewGuard.checkComplete` requires every non-proof,
@@ -550,13 +556,13 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 1. **Build:** compile `ConsensusLean` (the default target), `ConsensusLeanTest` (what `lake test` builds), `Solution`, the challenge, check-decls and axiom-audit with `lake build --wfail --iofail` (any warning or info message fails, also one Lake replays from a built module; `warn.sorry = false` in the lakefile keeps `sorry` silent), and the deliberately bad fixtures without; `--no-build` still checks Lake freshness.
 2. **Boundaries:** enforce the layer matrix, the Init chain, root coverage, library inventory and pinned-base names with `scripts/check-boundaries.py` (source-level, no build).
 3. **Declarations:** EthLib check-decls runs once per library scope (`ConsensusLean`, `ConsensusLeanTest`, `Solution`), checking every module for extra axioms, unfinished proofs, opaque/unsafe/partial declarations, extern/implemented_by/csimp and opaque reachability; empty scopes fail. A `sorry` is allowed (and listed) only in the `sorry = true` layers of `scripts/boundaries.toml`, `Lemmas` and `Proofs.<M>` (foundation plan §5); anywhere else it fails.
-3b. **Axiom audit:** leanprover-community/axiom-audit over the import closure of `Solution` (the part proved in Solution; "certified" means a passed full tier, `docs/roadmap.md`): every declaration of `ConsensusLean` and `Solution` in it uses only `propext`, `Classical.choice` and `Quot.sound`, so a `sorry` (also through an import), `native_decide` or a declared axiom there fails. The same gate covers every declaration of `ConsensusLeanTest`: a test, witness or rejection built on an unfinished lemma proves nothing (step 7 refuses proof `example`s, which never enter the environment, so every test is a named declaration). `Solution` imports `Main` and every milestone, so all of them must be finished today; a new milestone may stay unfinished while neither `Main` nor `Solution` imports it (plan §5); the instances reach the generic library only through `Main`, and a finished instance milestone enters `Solution` through its `Proofs/<M>/Main` (the imports of `Solution.lean`). A report lists the unfinished declarations of `ConsensusLean` (those that depend on `sorryAx`): the progress metric.
+3b. **Axiom audit:** leanprover-community/axiom-audit over the import closure of `Solution` and of the `proved_milestone_modules` (the proved milestones that are not Challenge statements) (the part proved in Solution; "certified" means a passed full tier, `docs/roadmap.md`): every declaration of `ConsensusLean` and `Solution` in it uses only `propext`, `Classical.choice` and `Quot.sound`, so a `sorry` (also through an import), `native_decide` or a declared axiom there fails. The same gate covers every declaration of `ConsensusLeanTest`: a test, witness or rejection built on an unfinished lemma proves nothing (step 7 refuses proof `example`s, which never enter the environment, so every test is a named declaration). `Solution` imports `Main` and every milestone, so all of them must be finished today; a new milestone may stay unfinished while neither `Main` nor `Solution` imports it (plan §5); the instances reach the generic library only through `Main`, and a finished instance milestone enters `Solution` through its `Proofs/<M>/Main` (the imports of `Solution.lean`). A report lists the unfinished declarations of `ConsensusLean` (those that depend on `sorryAx`): the progress metric.
 4. **Spec surface:** check persisted extensions, diff the complete readable/structural snapshot (including pins/options), enforce theorem hygiene and constant-free parents; the `reach` report (which Spec definitions the review statements reach; not a gate) runs in `--full`, in `--changed` when step 4 runs, and in `--fast` with `--reach`. The protected-surface snapshot diffs the same snapshot of every default-library module that `trusted_paths` covers outside the trusted layers (the instance `Spec`, `Statements` and `Refinement/Defs.lean`) against `scripts/instance-spec-snapshot.txt`; like the Spec snapshot it fails until regenerated with `--update-snapshot` and committed. The extension and theorem policies apply to the trusted layers only (TRUST.md).
 5. **Kernel replay:** run leanchecker on every leaf module of the checked libraries, one module per process after checking it has no descendants, two processes at a time (`REPLAY_JOBS`); parent modules own no constants.
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for `sorry`/`admit` outside the sorry layers (comments included; their count inside them, comments and strings removed and only as a term or tactic, is reported), proof `example`s (only a bare `example := @Name` or ``` example := ``Name ``` reference is allowed), native proofs, kernel bypasses and `debug.` options, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
-9. **Comparator config:** pin challenge/solution modules, every statement name (the four review statements and the closed statements of the `milestone_statements_modules`, each of which must have one) and exactly the three standard axioms; validate the Spec-only challenge.
+9. **Comparator config:** pin challenge/solution modules, every statement name (the four review statements and the closed statements of the `milestone_statements_modules`, today the acceptance endpoint, each of which must have one) and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms. It rejects `sorryAx` too, so it checks the default targets only while the files of the sorry layers hold no `sorry`/`admit` term or tactic outside comments and strings (an `admit`-named field, binder or projection is not one; plan §5; otherwise a NOTE and, in CI, a warning); then the checks of the part proved in Solution, the `Solution` closure, are 3b, 5 and 11. Its fixtures always run.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
 12. **Docs:** require the marked list above to equal every file of the trusted layers exactly, and every `Consensus.…` name cited in `docs/roadmap.md` and `docs/goldilocks-mapping.md` to be listed in `ConsensusLeanTest/Index.lean`, whose build checks that it exists.
@@ -604,7 +610,8 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 | `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
 | `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
 | `Main.lean` | `Accepted.good` and `Accepted.activeService`. |
-| `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`, `Statements/`: the milestone statements). |
+| `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`: what the endpoint statement reaches; `Statements/Refinement/Accepted`: the endpoint). |
+| `Instances/<P>/Milestones/` | Goldilocks milestone vocabulary and statements, not on the trusted surface (`docs/decisions.md`, 2026-11-04). |
 | `Examples/Shape/` | Shape examples, not on the trusted surface: Bft, Streamlet, Tendermint as contract values. |
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
@@ -805,12 +812,16 @@ are the intended ones.
 
 ### Goldilocks
 
-The Goldilocks statements are under `Instances/Goldilocks/Statements/` (trusted surface, protected snapshot).
-A reviewer goes from a claim to its proof in four steps: the node in
+The Goldilocks acceptance endpoint is `Instances/Goldilocks/Statements/Refinement/Accepted` (trusted surface,
+protected snapshot), stated over the Spec it reaches (`Instances/Goldilocks/Spec/`, `Refinement/Defs.lean`). The
+other milestone statements, and the Spec vocabulary only they use (traces, run premises, frame laws, the AC
+requirements, the node's tick steps), are proved lemmas in the untrusted `Instances/Goldilocks/Milestones/`
+(`docs/decisions.md`, 2026-11-04). A reviewer goes from a claim to its proof in four steps: the node in
 [`goldilocks-claims.tex`](specs/goldilocks/tex/goldilocks-claims.tex), whose §"Lean status" names its Lean statement
 and status; the statement; its row and modelling notes in
-[`docs/goldilocks-mapping.md`](docs/goldilocks-mapping.md), whose §"Review path" lists the `Challenge` statements
-with their nodes; and the milestone proof `Proofs/<M>/Main.lean`, which `Solution.lean` cites. The concrete
+[`docs/goldilocks-mapping.md`](docs/goldilocks-mapping.md), whose §"Review path" lists the statements
+with their nodes; and the milestone proof `Proofs/<M>/Main.lean`, which `Solution.lean` (the endpoint) or
+`ConsensusLeanTest/MilestoneAxioms.lean` (the other milestones) cites. The concrete
 acceptance endpoint (`Statements/Refinement/Accepted`) is proved through the refinement; the other milestones
 are proved directly over their own models (FG chains, AC states, the node and its runs). Milestone status: `docs/roadmap.md`.
 
@@ -924,9 +935,13 @@ The review boundary is separate from correctness. The **trusted surface** is
 `comparator.json`, `lean-toolchain`, `lake-manifest.json`, `ConsensusLeanTest/ReviewAxioms.lean` and
 `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every protocol instance `P`; today
-Goldilocks). The instance paths are on the trusted surface but are not trusted layers: their imports are not
-restricted to trusted layers. The Shape examples `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are
-not instances and left the surface on 2026-11-04 (no Challenge statement reaches them; `docs/decisions.md`).
+Goldilocks). The instance paths are on the trusted surface but are not trusted layers: they are `protected`
+layers, which may import only trusted and protected layers (check-boundaries.py). The Shape examples
+`ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are not instances and left the surface on 2026-11-04
+(no Challenge statement reaches them; `docs/decisions.md`). So did, the same day, the Goldilocks milestone
+statements other than the acceptance endpoint and the instance Spec that only they reach: they are in
+`ConsensusLean/Instances/Goldilocks/Milestones/`, outside `trusted_paths` (Challenge certifies only the four review
+statements and the endpoint; `docs/decisions.md`).
 `Lemmas/Problem/Derived.lean`, added for the now
 archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
 record covers the listed files' text, not everything they import. The list lives in `scripts/boundaries.toml`

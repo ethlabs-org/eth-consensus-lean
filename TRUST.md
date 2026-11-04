@@ -41,8 +41,11 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 - **Protected-surface drift:** the same generator and verdict over the **protected surface**, against
   `scripts/instance-spec-snapshot.txt`. Its modules are the inventory's 6th column (`scripts/check-boundaries.py`,
   from `scripts/boundaries.toml` alone): every module of the default library whose file `[checks] trusted_paths`
-  covers and whose layer is not trusted. Today these are 54 modules: every module of the `protected` layers
-  (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`).
+  covers and whose layer is not trusted. Today these are 28 modules: every module of the `protected` layers
+  (Goldilocks `Spec`, `Statements/Refinement` and `Refinement/Defs.lean`), which may import only trusted and
+  protected layers (check-boundaries.py), so the closure of the endpoint statement stays inside the surface.
+  Since 2026-11-04 (`docs/decisions.md`) the Goldilocks milestone statements other than the endpoint, and the
+  instance Spec that only they reach, are in the untrusted `Instances/Goldilocks/Milestones/` layers, outside it.
   Common/Frame claim aliases and frame-sequence vocabulary live in non-exposed Lemmas leaves,
   outside that surface; their names and propositions are preserved and audited through the test root.
   Refinement's simulation interface and canonical trace construction likewise live in non-exposed
@@ -68,14 +71,17 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   and it is never an axiom. **Proved in Solution = the import closure of
   `Solution`**: axiom-audit (step 3b, every checked head) fails any declaration of `ConsensusLean` or `Solution` in that
   closure that depends on an axiom other than the three standard ones (`sorryAx`, `native_decide`'s axioms, a
-  declared axiom, also through imports), and so it does for every test declaration (a test built on an unfinished
+  declared axiom, also through imports), and likewise in the closure of each `proved_milestone_modules` entry
+  (the proved milestones that are not Challenge statements; `ConsensusLeanTest/MilestoneAxioms.lean` pins their
+  theorems), and so it does for every test declaration (a test built on an unfinished
   lemma proves nothing; grep step 7 refuses proof `example`s, which never enter the environment). `Solution` imports
-  `Main`, every generic milestone and each finished instance milestone's `Main` (the imports of `Solution.lean`),
-  so all of them must be finished; a new milestone may stay unfinished while neither imports it (step 3b's
+  `Main`, every generic milestone and the acceptance endpoint's `Main`, and `proved_milestone_modules` lists the
+  other finished instance milestones' `Main`s, so all of them must be finished; a new milestone may stay unfinished while neither imports it (step 3b's
   report lists what is unfinished). The instances reach the generic library only through `Main`, inside the
   closure, so everything they use is finished today. Step 9 and the comparator check the closed statements of the
-  `milestone_statements_modules` (instance statements modules under `trusted_paths`) next to the review statements. The review
-  pins and the comparator check the axioms of the review and milestone theorems too. axiom-audit's shared memo can under-count inside
+  `milestone_statements_modules` (instance statements modules under `trusted_paths`; today the acceptance endpoint
+  alone) next to the review statements. The review pins and the comparator check the axioms of the review and
+  endpoint theorems too; `MilestoneAxioms` those of the other milestones (untrusted). axiom-audit's shared memo can under-count inside
   an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
   whose roots exclude the library): check-decls still fails a direct `sorry` outside the sorry layers. `lake build --wfail` runs with `warn.sorry = false`, so every other warning fails the build.
   "Certified" is reserved for a full-tier certification: `check.sh --full` passed on a named main commit,
@@ -168,9 +174,12 @@ The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (ea
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
 as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every protocol instance `P`; today
-Goldilocks). The instance paths are on the trusted surface but are not trusted layers: their imports are not
-restricted to trusted layers. The Shape examples `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are
-not instances and left the surface on 2026-11-04 (no Challenge statement reaches them; `docs/decisions.md`).
+Goldilocks). The instance paths are on the trusted surface but are not trusted layers: they are `protected`
+layers, which may import only trusted and protected layers. The Shape examples
+`ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are not instances and left the surface on 2026-11-04
+(no Challenge statement reaches them; `docs/decisions.md`). So did, the same day, the Goldilocks milestone
+statements other than the acceptance endpoint and the instance Spec only they reach
+(`ConsensusLean/Instances/Goldilocks/Milestones/`): Challenge certifies the four review statements and the endpoint.
 `Lemmas/Problem/Derived.lean`, added for the now
 archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
 record covers the listed files' text, not everything they import. `scripts/boundaries.toml`

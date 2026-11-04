@@ -7,31 +7,33 @@ file per instance). Every Lean name here is fully qualified (namespace `Consensu
 ## Review path
 
 To check a claim: find its node in CLAIMS (its §"Lean status" names the Lean statement and its status), read the
-statement in `ConsensusLean/Instances/Goldilocks/Statements/` (trusted surface, protected snapshot), then its row and
-modelling notes in the section below. The finished milestones are the statements of `Challenge.lean`; the
-comparator checks that `Solution.lean` proves exactly them, each by its `Proofs/<M>/Main.lean`. Every other
-statement outside `Challenge` (including the refinement interface) has its status in
-`docs/roadmap.md`.
+statement, then its row and modelling notes in the section below. Challenge certifies one Goldilocks statement, the
+acceptance endpoint (`ConsensusLean/Instances/Goldilocks/Statements/Refinement/Accepted`, trusted surface, protected
+snapshot); the comparator checks that `Solution.lean` proves it by `Proofs/Refinement/Main.lean`. The other
+finished milestones are proved lemmas (`docs/decisions.md`, 2026-11-04): their statements are in
+`ConsensusLean/Instances/Goldilocks/Milestones/Statements/` (not on the trusted surface), and
+`ConsensusLeanTest/MilestoneAxioms.lean` proves each by its `Proofs/<M>/Main.lean` and pins its axioms. Every other
+statement (including the refinement interface) has its status in `docs/roadmap.md`.
 Common and Frame claims are proof-side definitions in `Lemmas/Common/Claims` and
 `Lemmas/AC/FrameClaims`, outside the trusted surface and `Challenge`; their names and meanings
-are unchanged. The latter also owns the frame-sequence vocabulary, not needed by any Challenge statement.
+are unchanged. The latter also owns the frame-sequence vocabulary, not needed by any milestone statement.
 
-| `Challenge` statement | `Statements/` module | CLAIMS nodes | Section |
-|---|---|---|---|
-| `Consensus.Goldilocks.FG.FGSafety` | `FGSafety` | G0.2 (part), G0.5, G0.7 (c), G0.8–G0.10, G1.1, G1.3 | First slice |
-| `Consensus.Goldilocks.Store.FGStoreLocal` | `FGStore/Local` | F.2 (store), G0.1 (store), G0.2 (c), (h), G0.3, G0.3 (frame) at the store, G0.4 (height), C0.2 (`Σ`) | FGStore |
-| `Consensus.Goldilocks.Store.FGStoreTrace` | `FGStore/Trace` | G1.4, G1.10 (core) | FGStore |
-| `Consensus.Goldilocks.Store.FGStoreService` | `FGStore/Service` | G1.6, G1.7, G1.8, G1.9 (a) | FGStore |
-| `Consensus.Goldilocks.SA.ACBase`, `Consensus.Goldilocks.LocalRunReachable` | `AC/Base` | F.1, A0.1–A0.9 (the trace contract is not a node) | ACBase |
-| `Consensus.Goldilocks.SA.ACSteps` | `AC/Steps` | A1.1–A1.5, A1.8, A1.9 | ACSteps |
-| `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` | `Compose/Interface` | C0.1 at the AC; A0.6, A0.9 consequences; C0.5 (c) | Compose/AnyAC |
-| `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC |
-| `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Compose/Run` | F.5 (run), F.4, C0.5 | Persist |
-| `Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist`, `Consensus.Goldilocks.Compose.RecentSourceNextVote` | `Compose/Persist` | C1.1 and its corollary | Persist |
-| `Consensus.Goldilocks.Compose.HeadExtendsRecord`, `Consensus.Goldilocks.Compose.Inclusion` | `Compose/Service` | A1.6, A1.7 | Service |
-| the six rows of `Statements/Regimes/Always` | `Regimes/Always` | R.7, R.8 | Regimes |
-| `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` | `Regimes/Sleepy` | R.1, R.2 | Regimes |
-| `Consensus.Goldilocks.Refinement.AcceptedEndpoint` | `Refinement/Accepted` | CLAIMS §"The acceptance endpoint" | Refinement |
+| Statement | Module | CLAIMS nodes | Section | Status |
+|---|---|---|---|---|
+| `Consensus.Goldilocks.FG.FGSafety` | `Milestones/Statements/FGSafety` | G0.2 (part), G0.5, G0.7 (c), G0.8–G0.10, G1.1, G1.3 | First slice | proved (lemma) |
+| `Consensus.Goldilocks.Store.FGStoreLocal` | `Milestones/Statements/FGStore/Local` | F.2 (store), G0.1 (store), G0.2 (c), (h), G0.3, G0.3 (frame) at the store, G0.4 (height), C0.2 (`Σ`) | FGStore | proved (lemma) |
+| `Consensus.Goldilocks.Store.FGStoreTrace` | `Milestones/Statements/FGStore/Trace` | G1.4, G1.10 (core) | FGStore | proved (lemma) |
+| `Consensus.Goldilocks.Store.FGStoreService` | `Milestones/Statements/FGStore/Service` | G1.6, G1.7, G1.8, G1.9 (a) | FGStore | proved (lemma) |
+| `Consensus.Goldilocks.SA.ACBase`, `Consensus.Goldilocks.LocalRunReachable` | `Milestones/Statements/AC/Base` | F.1, A0.1–A0.9 (the trace contract is not a node) | ACBase | proved (lemma) |
+| `Consensus.Goldilocks.SA.ACSteps` | `Milestones/Statements/AC/Steps` | A1.1–A1.5, A1.8, A1.9 | ACSteps | proved (lemma) |
+| `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` | `Milestones/Statements/Compose/Interface` | C0.1 at the AC; A0.6, A0.9 consequences; C0.5 (c) | Compose/AnyAC | proved (lemma) |
+| `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Milestones/Statements/Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC | proved (lemma) |
+| `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Milestones/Statements/Compose/Run` | F.5 (run), F.4, C0.5 | Persist | proved (lemma) |
+| `Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist`, `Consensus.Goldilocks.Compose.RecentSourceNextVote` | `Milestones/Statements/Compose/Persist` | C1.1 and its corollary | Persist | proved (lemma) |
+| `Consensus.Goldilocks.Compose.HeadExtendsRecord`, `Consensus.Goldilocks.Compose.Inclusion` | `Milestones/Statements/Compose/Service` | A1.6, A1.7 | Service | proved (lemma) |
+| the six rows of `Milestones/Statements/Regimes/Always` | `Milestones/Statements/Regimes/Always` | R.7, R.8 | Regimes | proved (lemma) |
+| `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` | `Milestones/Statements/Regimes/Sleepy` | R.1, R.2 | Regimes | proved (lemma) |
+| `Consensus.Goldilocks.Refinement.AcceptedEndpoint` | `Statements/Refinement/Accepted` | CLAIMS §"The acceptance endpoint" | Refinement | certified (Challenge) |
 
 The section pins ("CLAIMS pin", "SPEC pin") record the goldilocks commit each section was transcribed from; later
 changes to the claims are recorded in `docs/decisions.md` and in the rows they change.
@@ -473,14 +475,14 @@ satisfiable together with the awake clamp). The regime witness is over an AC tha
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `4ea71d05`, §"Available chain, after C1.1"; the premises as
 restated in this repository (claims audit, 2026-11-03). Layout: decomposition §3.1 (the "Run" row). Over the
 Goldilocks run under `Sleepy` and `NoColl`, as A1.6 and A1.7 state (A1.7's `GenRoot` is supplied by the run's `genesis_root_ok`). C1.2 (claims at goldilocks `6703bf05`) is
-stated in `Statements/Healing/Outcome` (milestone Healing, its premises are the healing regime); C1.3 is in
-`Statements/Healing/Recovery`.
+stated in `Milestones/Statements/Healing/Outcome` (milestone Healing, its premises are the healing regime); C1.3 is in
+`Milestones/Statements/Healing/Recovery`.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
 | A1.6 | CLAIMS A1.6 | the update of a slot ran with no restart since; A1.6's condition at a cut (a call, joined, updated for `slot(t) − 2`; awake follows from the call, `awake_of_call`, so `ServedAt` has no awake conjunct since 2026-11-04, trusted-strengthen-3, which makes `HeadExtendsRecord`'s premises weaker in form); the record `𝒜.latest_confirmed` as a block of the frame's tree; **head extends the record**: the head extends the record in the frame, `ac_confirmed` is the record, and across served cuts the record extends | Service | `Consensus.Goldilocks.Compose.UpdatedNoRestart`, `Consensus.Goldilocks.Compose.ServedAt`, `Consensus.Goldilocks.Compose.RecordAt`, `Consensus.Goldilocks.Compose.HeadExtendsRecord` |
 | A1.7 | CLAIMS A1.7 | **inclusion**: an honest proposal of slot `s` by a joined proposer is in the confirmed tip of every honest node joined at `t`, with no restart in `(t_s + 6Δ, t]` (written `t < time k'` for every restart `k'` after `t_s + 6Δ`), that has run the update of slot `s` before the cut with no restart since (`UpdatedNoRestart`: the claims' "at `t_s + 6Δ` itself, after its tick"; the Lean also admits the cuts of that tick after the update; consensus-lean#77); under `Sleepy` and `NoColl`. **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): no `t ≥ t_s + 6Δ` (the update clause places the cut after the update), no awake at `t_s + 6Δ`, and no separate `GenRoot` (the Goldilocks run's `genesis_root_ok` supplies it); since 2026-11-04 (trusted-strengthen-3) also no awake at `t` (`awake_of_call` at the cut) and no joined at `t_s + 6Δ` (the update's `SA.UpdateAt` is a joined tick there, `joined_projection`); each follows from the update clause (its cut is at `t_s + 6Δ`, so `time_mono` and `awake_of_call`), the call and the run, so the change is one of form | Service | `Consensus.Goldilocks.Compose.Inclusion` |
-| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when its previous height is justified), with retained ready inclusion, with `𝓕 ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when its previous height is justified), its carrier relayed within `Δ` in both branches; an entry whose previous height is not justified is justified by then (stated in `Statements/Healing/Outcome`, since its premises are the healing regime). **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): no `Prop⁺(G_p)` and `𝓕` only bounded below, not fixed at the ceiling | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
+| C1.2 | CLAIMS C1.2 (goldilocks `6703bf05`, #37) | **AC outcome service**: under the healing regime after the reset (`HSShared`, `Catch(2Δ)`, `a_z`), an entry whose block is an honest ready proposal from `R_z`, high (and with a high predecessor when its previous height is justified), with retained ready inclusion, with `𝓕 ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉` and `δ_t ≥ 𝓕 + k_F`, gets by the end of its window a literal good window (`Store.GoodWindow` on the FG projection) or an accepted early justification (finalizing the predecessor when its previous height is justified), its carrier relayed within `Δ` in both branches; an entry whose previous height is not justified is justified by then (stated in `Milestones/Statements/Healing/Outcome`, since its premises are the healing regime). **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): no `Prop⁺(G_p)` and `𝓕` only bounded below, not fixed at the ceiling | Healing | `Consensus.Goldilocks.Compose.RunEntry`, `Consensus.Goldilocks.Compose.EarlyOutcome`, `Consensus.Goldilocks.Compose.OutcomeService` |
 
 Modelling choices:
 
@@ -498,8 +500,8 @@ Modelling choices:
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `48aca059` (draft 8, goldilocks#34; §"Healing: top-level
 statements" and §"Healing: phase service" unchanged since `30ace044` apart from the H.2 (run) status (#36) and HR.3's evidence (#37, #40)). Layout: the run-level healing nodes HR.1–HR.4
 are over the Goldilocks run (`Spec/Run`, `GoldilocksRun`), HR.2 over FG traces (`FGLocalRun`), in
-`Statements/Healing/Run`, with H.2 (run), H.3 and H.4; H.1, its corollary and H.2, over driven AC traces of the SA, are
-in `Statements/Healing/AC`. HS.1–HS.5 are not transcribed as separate statements yet: HS.0 (`Settle(Δ)`) and
+`Milestones/Statements/Healing/Run`, with H.2 (run), H.3 and H.4; H.1, its corollary and H.2, over driven AC traces of the SA, are
+in `Milestones/Statements/Healing/AC`. HS.1–HS.5 are not transcribed as separate statements yet: HS.0 (`Settle(Δ)`) and
 HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 
 | Node | Reference | Definition | Milestone | Lean name |
@@ -587,7 +589,7 @@ Modelling choices:
   (attestations) are not read separately; H.4's proof is H.2 (run) (ii), which the claims state the same way.
 - **H.2 (run)** states both the bridge to H.2's premises (driven, `Healthy`, `Catch` on the projection) and the
   run conclusion, so that its proof is the bridge plus H.2 with `GoldilocksACProjection`.
-- **HS.1–HS.4** (`Statements/Healing/Service`): "before the phase end `e`" is `PhaseOn` from the cut that fixes the
+- **HS.1–HS.4** (`Milestones/Statements/Healing/Service`): "before the phase end `e`" is `PhaseOn` from the cut that fixes the
   phase (for HS.2–HS.4 the first cut at `w`); "label `j ≥ a`" is `t_j ≥ w + 4Δ`. Stored blocks (after the move back)
   for the fast and slow locks of HS.2, as in C1.1 and HR.4. "Follows every effective live earlier-label lock" (HS.2
   (3), the lock premise of the claims' HS.3 first part) is read at each honest slot-`s` vote: every live lock
@@ -608,7 +610,7 @@ Modelling choices:
   suppressing earlier report "occurred after P's creation, not in the archival prefix"; consensus-lean#88). HS.3's "acceptance relay from the previous freeze" is `t_{s−1} + 3Δ ≥ ḡ` (relay holds
   from `ḡ` under `Healthy`). HS.4's "by `v`" is at a cut at a time `≤ v`. HS.0 and HS.5's `Producer(A)` are HR.3
   (a), (b); HS.5's other conclusions (PhaseService, continuation, row delivery, consumption) are not transcribed yet.
-- **Recovery** (`Statements/Healing/Recovery`): `UPat` is the regime node O.1 is proved under, not O.1's target, which
+- **Recovery** (`Milestones/Statements/Healing/Recovery`): `UPat` is the regime node O.1 is proved under, not O.1's target, which
   stays open (claims §"O.1", Status). `Rec` (a) and (c) are C1.1's `Clean(s, m, B)` for every `m > s`, at every honest
   fast confirmation written after `t₀` by a joined node (`StoredFastLockAt`, of any label: a regular write of label
   `s` happens at `t_s + 6Δ`). `Rec` (b)'s served entry is read through the compatibility of the honest sources after
@@ -649,7 +651,7 @@ Modelling choices:
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
 run-level forms of the rows of the (archived) target sheet, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
 where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
-`Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Statements/Regimes/Sleepy`. The node-level R.3 (healed),
+`Milestones/Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Milestones/Statements/Regimes/Sleepy`. The node-level R.3 (healed),
 R.4 (final), R.5 (`Outage`) and R.6 (`Weak`) were stated in `Statements/Regimes/{Healed,Final,Outage,Weak}` and
 retired unproved on 2026-11-03 (Francesco): R.3–R.5 correspond to the generic rows `healedSafe`, `healthyLive` and
 `persists` of the Accepted endpoint; R.6 (weak continuation) has no generic row and is dropped.

@@ -753,6 +753,24 @@ where it is recorded; "Francesco" marks the owner's decisions.
   instance, and its layers stay `protected`, so check-boundaries.py still requires them to be covered.
   `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`:
   Streamlet was their only user on the trusted surface, but `Lemmas/Blocks/Facts` and the tests use them too.
+- 2026-11-04, Francesco: **Challenge certifies exactly five statements**: the four generic review statements
+  (`Review.AcceptedGood`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`) and the Goldilocks
+  `Refinement.AcceptedEndpoint`. Reason: keep the trusted surface to the generic definition of a correct protocol plus
+  the one instance endpoint; the other 48 Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist,
+  Regimes, Service, Healing) are means to the endpoint, not claims a reviewer must read. They stay proved and built
+  as ordinary lemmas, but are no longer comparator roots and no longer trusted: their statement modules, and every
+  declaration of the instance Spec that only they reach (a compiled walk of the statement closure of the five roots,
+  types and definition bodies, not proofs), move with their names and bodies unchanged to the new untrusted
+  `Instances/Goldilocks/Milestones/` layer family. It mirrors the old Spec/Statements sub-layers, so the allow matrix
+  carries over; it allows `@[expose]` (the statements are unfolded by their proofs and tests) and no `sorry`, which
+  is why it is not `Lemmas`. The Refinement simulation interface and canonical trace moved the same day to
+  `Lemmas/Refinement/{Interface,TraceDefs}` with characterising lemmas instead; the two placements differ on
+  purpose (redoing the ~40 milestone modules that way would be a large diff for no gain in review surface). What
+  the five roots reach stays in `Spec/`, `Statements/Refinement/Accepted` and `Refinement/Defs.lean`, protected; a
+  `protected` layer may now import only trusted and protected layers (check-boundaries.py), so that closure cannot
+  reach Milestones. The 48 stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and
+  check.sh step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
+  "proved (lemma)".
 
 ## Open, for the owner
 
