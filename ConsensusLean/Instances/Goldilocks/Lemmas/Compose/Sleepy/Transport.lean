@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 
@@ -20,40 +21,6 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Vote Payload)
 
-/-! ### Deadlines -/
-
-section Deadline
-
-variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
-
-private theorem lastWake_coe {y : Fin P.n} {w : Time} :
-    ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w
-  | 0, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨0, le_rfl, hr, WithBot.coe_injective h⟩
-    · simp at h
-  | c + 1, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨c + 1, le_rfl, hr, WithBot.coe_injective h⟩
-    · obtain ⟨k, hk, h'⟩ := lastWake_coe h
-      exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
-
-/-- **The deadline after restarts**: with every restart up to cut `c` at or before `a`, the
-deadline of `τ` is at most `max(τ, a) + Δ`. -/
-theorem ac_deadline_le_of_restarts {y : Fin P.n} {c : Nat} {a : Time}
-    (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
-    T.deadline y c τ ≤ max τ a + P.Δ := by
-  unfold ACTrace.deadline
-  rcases hw : T.lastWake y c with _ | w
-  · change τ + P.Δ ≤ max τ a + P.Δ
-    linarith [le_max_left τ a]
-  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_coe hw
-    change max τ (T.time k) + P.Δ ≤ max τ a + P.Δ
-    linarith [max_le_max (le_refl τ) (h k hk hrk)]
-
-end Deadline
 
 /-! ### One honest node over an SA trace -/
 
@@ -61,12 +28,6 @@ section Node
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
-
-private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
-  simp [SA.ETime.of]
-
-private theorem etime_le {t t' : Time} : SA.ETime.of t ≤ SA.ETime.of t' ↔ t ≤ t' := by
-  simp [SA.ETime.of]
 
 /-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
 node's frame at a call is genesis or was accepted by the node at that call or an earlier one. -/
@@ -116,62 +77,6 @@ theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
       exact step _ hin' hok fun B hB X hX =>
         (ih j hj ℓ' hc' B hB X hX).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
 
-/-- **A stamp is not earlier than the acceptance**: after an honest node accepts a block other
-than genesis at cut `k`, its stamp is at least the time of `k` (a later receipt or a restart
-writes a later time, or a restart resets it to `+∞`). -/
-private theorem stamp_ge_of_accept (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n FGP} (hk : T.AcceptAt y k B)
-    (hB : B.root ≠ sp.genesisRoot) :
-    ∀ c, k + 1 ≤ c → SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root := by
-  have hpost : ∀ c (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y c ℓ → k ≤ c →
-      (ℓ.call = .block B ∨ SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root) →
-      SA.ETime.of (T.time k) ≤ (T.post c).blockStamp B.root := by
-    intro c ℓ hc hkc hpre
-    have hΦ : FrameOK ℓ.frame := by
-      rcases hr.frameLaw y hy c ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
-    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hy)
-    rw [hc.1] at he
-    have hp : T.post c =
-        ((SA.goldilocksSA sp FGP ro).step y (T.state y c) ℓ.frame (T.time c) ℓ.call).1 := by
-      rw [he]
-    have htk : SA.ETime.of (T.time k) ≤ SA.ETime.of (T.time c) := etime_le.2 (hr.time_mono hkc)
-    obtain ⟨hblk, -, hoth⟩ :=
-      SA.step_blockStamp_eq ro y (T.state y c) hΦ (hr.time_nonneg c) ℓ.call
-    rw [hp]
-    generalize ℓ.call = cl at hpre hblk hoth ⊢
-    cases cl with
-    | block B' =>
-      rw [hblk B' rfl, Function.update_apply]
-      split_ifs with h
-      · exact htk
-      · rcases hpre with hpre | hpre
-        · cases hpre
-          exact absurd rfl h
-        · exact hpre
-    | restart =>
-      change _ ≤ (SA.acRestart sp ro y (T.state y c) ℓ.frame (T.time c)).1.blockStamp B.root
-      rcases ((SA.restart_state sp) FGP ro y (T.state y c) ℓ.frame (T.time c) hΦ
-        (hr.time_nonneg c)).2.2.2.2.2.2.2.2.2.2 B.root with h | ⟨h, -⟩
-      · rw [h]; simp [SA.SAState.initial, hB]
-      · rw [h]; exact htk
-    | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-  intro c hc
-  induction c, hc using Nat.le_induction with
-  | base =>
-    obtain ⟨ℓ, hcl, hcall⟩ := hk
-    rw [Trace.state_succ_of_call T hcl]
-    exact hpost k ℓ hcl le_rfl (Or.inl hcall)
-  | succ c hkc ih =>
-    by_cases hn : ∃ ℓ, T.CallAt y c ℓ
-    · obtain ⟨ℓ, hcl⟩ := hn
-      rw [Trace.state_succ_of_call T hcl]
-      exact hpost c ℓ hcl (by omega) (Or.inr ih)
-    · rw [Trace.state_succ_of_not T fun ℓ hcl => hn ⟨ℓ, hcl⟩]
-      exact ih
-
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call. -/
 private theorem readPoint_slot (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
@@ -196,13 +101,13 @@ private theorem readPoint_slot (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U 
   · exact ⟨Function.update_of_ne (Ne.symm hσ) _ _,
       fun u hu => Function.update_of_ne (by rintro rfl; exact hσ hu) _ _⟩
 
-/-- **`Carry_y` from a writer, on a window.** For an honest `y` casting its slot-`(s+1)` vote,
+/-- **`Carry_y` from a writer, per head.** For an honest `y` casting its slot-`(s+1)` vote,
 under `Sync` from `a ≤ t_s` to at least `t_s + 2Δ`: if each counted vote is of slot `s`, was sent
 or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s
-`Σ.F` that is genesis or that `w` accepted before `t_s + 2Δ`, and every head that `w` accepted
-before `a` (outside the relay window) reaches `y` before the freeze `t_s + 3Δ` (`hold`), then
-`Carry_y(s, ·, ·)` holds for the counted votes. -/
-private theorem carryAt_of_writer_service
+`Σ.F` that `w` accepted in `[a, t_s + 2Δ)` (so relayed) or that `y` accepted before the freeze
+`t_s + 3Δ` by other means (genesis included), then `Carry_y(s, ·, ·)` holds for the counted
+votes. -/
+theorem carryAt_of_writer_heads
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
@@ -213,9 +118,8 @@ private theorem carryAt_of_writer_service
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ))
-    (hold : ∀ k Hv, T.AcceptAt w k Hv → T.time k < a → Anc U ℓ.frame.F Hv →
-      SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
+        ((∃ k, T.AcceptAt w k Hv ∧ a ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∨
+          SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
     SA.CarryAt T U y i e s CV := by
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -244,11 +148,9 @@ private theorem carryAt_of_writer_service
   · -- the head: relayed to `y` before `t_s + 3Δ`, with its ancestors
     obtain ⟨-, -, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨Hv, hHv, hHvr, fun X hX => ?_⟩
-    -- `y` accepted the head before the freeze: relayed, or (accepted by `w` before `a`) `hold`
+    -- `y` accepted the head before the freeze: relayed, or by other means
     have hyacc : SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ) := by
-      rcases hacc with hg | ⟨kw, hkw, hkwt⟩
-      · exact Or.inl hg
-      by_cases hakw : a ≤ T.time kw
+      rcases hacc with ⟨kw, hkw, hakw, hkwt⟩ | hacc
       · have hdi : T.deadline y i (T.time kw) ≤ T.time i := by
           linarith [hdl i le_rfl _ hkwt]
         have delivered := hsync.elim
@@ -256,7 +158,7 @@ private theorem carryAt_of_writer_service
           (fun h => h.relay w hw kw Hv hkw hakw y hy i ℓ hc.1 hdi hdi hFHv)
         obtain ⟨ky, hky, hacc', hkyt⟩ := delivered
         exact Or.inr ⟨ky, hacc', hkyt.trans (hdl ky hky _ hkwt)⟩
-      · exact hold kw Hv hkw (not_le.1 hakw) hFHv
+      · exact hacc
     rcases hyacc with hg | ⟨ky, ⟨ℓk, hck, hcall⟩, hkyt'⟩
     · left
       obtain rfl : Hv = G := hU.1 hHv hGU (hg.trans hGr.symm)
@@ -322,7 +224,7 @@ private theorem carryAt_of_writer_service
       rw [← hstamp u hus]
       rcases SA.pool_origin hr hy (i + 1) u (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-      · rw [hst₁, etime_lt]
+      · rw [hst₁, SA.etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
@@ -332,7 +234,7 @@ private theorem carryAt_of_writer_service
             linarith
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
               (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
-      · rw [hst₁, etime_lt]
+      · rw [hst₁, SA.etime_of_lt_of]
         have := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
         linarith
     by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
@@ -347,6 +249,32 @@ private theorem carryAt_of_writer_service
           SA.state_pool_slot sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
+
+/-- **`Carry_y` from a writer, on a window**: `carryAt_of_writer_heads`, with every head that
+`w` accepted before `a` (outside the relay window) reaching `y` before the freeze (`hold`). -/
+private theorem carryAt_of_writer_service
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
+    {s : Nat} (ha : a ≤ sp.ts s)
+    (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
+    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T ∨
+      SA.ServiceWindowBefore H U a (T.time i) T)
+    (hW : ∀ v ∈ CV, v.slot = s ∧
+      (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
+      ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ))
+    (hold : ∀ k Hv, T.AcceptAt w k Hv → T.time k < a → Anc U ℓ.frame.F Hv →
+      SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
+    SA.CarryAt T U y i e s CV := by
+  refine carryAt_of_writer_heads hr ha hb hw hy hc hs hsync fun v hv => ?_
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
+  refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
+  rcases hacc with hg | ⟨kw, hkw, hkwt⟩
+  · exact Or.inr (Or.inl hg)
+  by_cases hakw : a ≤ T.time kw
+  · exact Or.inl ⟨kw, hkw, hakw, hkwt⟩
+  · exact Or.inr (hold kw Hv hkw (not_le.1 hakw) hFHv)
 
 /-- Writer transport with a sender window, including pre-window accepted heads. -/
 theorem carryAt_of_writer_win (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b : Time}
@@ -443,12 +371,12 @@ theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
   refine ⟨hvs, ?_, R, hΦXU hR, hRr, Anc.mono hΦXU hCR, ?_⟩
   · rcases SA.pool_origin hr hX i₀ v (by rw [hvs]; exact hvp) with
       ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, hst, B, hB, hvB⟩
-    · rw [hst, etime_lt] at hvst
+    · rw [hst, SA.etime_of_lt_of] at hvst
       exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
         (by rw [← hvs]; exact_mod_cast hsl), hvst⟩
     · -- a restart's vote is of a block of slot at most `slot(t_k) ≤ s`, so of slot below `s`
       exfalso
-      rw [hst, etime_lt] at hvst
+      rw [hst, SA.etime_of_lt_of] at hvst
       have hBv := (SA.frame_validPayload sp hr hX hck B hB).1 v hvB
       have hBs := SA.frame_slot_le sp hr hX hck B hB
       have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
@@ -466,9 +394,10 @@ theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
         rw [Option.some.inj (hc'.2.symm.trans hcX.2), htick] at hcall
         cases hcall
       rw [← hRr] at hbst
-      have h := (stamp_ge_of_accept hr hX hacc (SA.accept_ne_genesis sp hr hX hacc) i₀ hki).trans_lt
+      have h := (blockStamp_ge_of_accept hr hX hacc (SA.accept_ne_genesis sp hr hX hacc) i₀
+        hki).trans_lt
         hbst
-      rw [etime_lt] at h
+      rw [SA.etime_of_lt_of] at h
       linarith
 
 /-- **What an optimistic selection's writer did with its counted votes**: each was admitted (or

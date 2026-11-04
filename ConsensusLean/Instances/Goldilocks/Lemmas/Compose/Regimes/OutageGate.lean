@@ -199,15 +199,6 @@ private theorem latestView_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG
     List.mem_filter, decide_eq_true_eq, Int.natCast_nonneg, not_lt.2, ↓reduceIte, Int.toNat_natCast,
     and_assoc, true_and]
 
-/-- The block of the tree with the root of one of its blocks. -/
-private theorem lookup_mem {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ Φ.tree) : SA.lookup Φ B.root = some B := by
-  have hin : SA.InTree Φ B.root := ⟨B, hB, rfl⟩
-  unfold SA.lookup
-  rw [dite_eq_left_of_eq_true (eq_true hin)]
-  obtain ⟨h₁, h₂⟩ := hin.choose_spec
-  rw [hΦ.coherent.1 h₁ hB h₂]
-
 /-- **L3.** The latest view's majority from the extending casters only: when the
 extending casters of the view's label outnumber its
 opponents and every extending vote is delivered, the view's voters are fewer than twice the
@@ -254,7 +245,7 @@ theorem read_majority_of_extending (hrun : GoldilocksRun proposer dg H tr)
     have hvst : A.voteStamp e.msg < ⊤ := ((latestView_mem hL e.msg).1.1 hvotes).2
     have hres : SA.resolutionTime A Φ e.msg < ⊤ := by
       unfold SA.resolutionTime
-      rw [← hHdr, lookup_mem hΦ hHd't]
+      rw [← hHdr, SA.lookup_of_mem hΦ hHd't]
       dsimp only
       simp only [not_lt.2 hHd₂s, ↓reduceIte]
       exact max_lt hvst hbst

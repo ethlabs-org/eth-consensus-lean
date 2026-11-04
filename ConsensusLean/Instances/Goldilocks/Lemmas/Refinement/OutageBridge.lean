@@ -44,52 +44,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- A block stamp stays finite without restarts (copied from `Compose/Sleepy/Served.lean`, where
-it is private). -/
-private theorem stamp_finite (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
-    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.projAC.RestartAt y k) {q : Nat}
-    (h : (tr.projAC.state y a).blockStamp q < ⊤) : (tr.projAC.state y b).blockStamp q < ⊤ := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  induction b, hab using Nat.le_induction with
-  | base => exact h
-  | succ b hab ih =>
-    have ih := ih fun k h₁ h₂ => hnr k h₁ (h₂.trans (Nat.lt_succ_self b))
-    by_cases hc : ∃ ℓ, tr.projAC.CallAt y b ℓ
-    · obtain ⟨ℓ, hc⟩ := hc
-      rw [tr.projAC.state_succ_of_call hc]
-      have he := hr.exec b ℓ hc.2 (hc.1 ▸ hy)
-      rw [hc.1] at he
-      have hp : tr.projAC.post b =
-          ((goldilocksNode sp ro).step y (tr.projAC.state y b) ℓ.frame (tr.projAC.time b)
-            ℓ.call).1 := by rw [he]
-      rw [hp]
-      obtain ⟨hblk, -, hoth⟩ := SA.step_blockStamp_eq ro y (tr.projAC.state y b)
-        (SA.frameIn_of_callAt hr hy hc).1 (hr.time_nonneg b) ℓ.call
-      generalize hcl : ℓ.call = cl at hblk hoth
-      cases cl with
-      | block B =>
-        rw [hblk B rfl, Function.update_apply]
-        split_ifs
-        · exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
-        · exact ih
-      | restart => exact absurd ⟨ℓ, hc, hcl⟩ (hnr b hab (Nat.lt_succ_self b))
-      | tick => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-      | message m => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-      | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-      | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-    · rw [tr.projAC.state_succ_of_not fun ℓ h => hc ⟨ℓ, h⟩]
-      exact ih
-
-/-- The block of the tree with the root of one of its blocks. -/
-private theorem lookup_mem {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ Φ.tree) : SA.lookup Φ B.root = some B := by
-  have hin : SA.InTree Φ B.root := ⟨B, hB, rfl⟩
-  unfold SA.lookup
-  rw [dite_eq_left_of_eq_true (eq_true hin)]
-  obtain ⟨h₁, h₂⟩ := hin.choose_spec
-  rw [hΦ.coherent.1 h₁ hB h₂]
-
 /-- A block between an honest node's `Σ.F` and a block of its store is in its frame. -/
 private theorem mem_frame_between (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -261,7 +215,7 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
       have hΦc : FrameOK G.label.frame := (SA.frameIn_of_callAt hr hŵ G.update.1).1
       have hbst : (Q.trace.projAC.state ŵ G.cut).blockStamp Hd.root < ⊤ := by
         unfold SA.resolutionTime at hrt
-        rw [← hHdr, lookup_mem hΦc hHdt] at hrt
+        rw [← hHdr, SA.lookup_of_mem hΦc hHdt] at hrt
         dsimp only at hrt
         split_ifs at hrt
         · exact absurd hrt (not_lt.2 le_top)
@@ -274,7 +228,7 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
       refine ⟨hpool', Hd, mem_frame_between hrun hnc hŵ ((Compose.fg_grows hrun hŵ hGj).1 hfg)
         (hFt.trans hBHd) .refl, hHdr, ?_⟩
       rw [← Compose.projAC_state hrun.toLocalRun hŵ j]
-      exact stamp_finite hrun hnc hŵ hGj hnr hbst
+      exact Compose.blockStamp_finite hr hŵ hGj hnr hbst
     -- the tip is in the frame: an extending caster's head is, above the tip
     have hBt : ar.tip ∈ (Node.frame st).tree := by
       have hpos : 0 < (Compose.ExtendingCasters Q.trace (honestKeys S Q.run.2) ar.tip q).ncard :=

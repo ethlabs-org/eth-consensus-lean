@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 
 public section
 
@@ -85,12 +86,6 @@ theorem trivial_F_eq (hS : StandaloneRun tr H U proposer g) {y z : Fin sp.n} (hy
 /-! ## Trivial frames: viability and `Carry` -/
 
 /-! ## Trivial frames: blocks, stamps, relay and held votes -/
-
-private theorem etime_lt {a b : Time} : ETime.of a < ETime.of b ↔ a < b := by
-  simp [ETime.of]
-
-private theorem etime_le {a b : Time} : ETime.of a ≤ ETime.of b ↔ a ≤ b := by
-  simp [ETime.of]
 
 theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
   simp only [SAParams.ts]; push_cast; ring
@@ -202,7 +197,7 @@ theorem blockStamp_cases (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
               have : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
               rw [this, hrs] at hcall'
               exact absurd hcall' (by simp)
-            exact Or.inr (Or.inr ⟨k, by omega, X, hXr, hacc, etime_le.2 (hr.time_mono hk)⟩)
+            exact Or.inr (Or.inr ⟨k, by omega, X, hXr, hacc, etime_of_le_of.2 (hr.time_mono hk)⟩)
       · rw [hoth hb hrs]
         exact weak _ ih
     · have hst : tr.state y (i + 1) = tr.state y i := by
@@ -219,7 +214,7 @@ theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U proposer g) {y : Fi
   rcases blockStamp_cases hS hy r i with h' | h' | ⟨k, hk, X, hX, hacc, hle⟩
   · rw [h'] at h; exact absurd h (not_lt.2 le_top)
   · exact Or.inl h'
-  · exact Or.inr ⟨k, hk, X, hX, hacc, etime_lt.1 (lt_of_le_of_lt hle h)⟩
+  · exact Or.inr ⟨k, hk, X, hX, hacc, etime_of_lt_of.1 (lt_of_le_of_lt hle h)⟩
 
 /-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
 between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
@@ -234,7 +229,7 @@ theorem stamp_lt_of_held_of_run (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
   have hmem := pool_mono hr hy hab hnr w.slot hw
   refine ⟨hmem, ?_⟩
   rcases pool_origin hr hy b w hmem with ⟨k, hk, hsend, hst, -⟩ | ⟨k, hk, ℓ, hc, hcall, hst, -⟩
-  · rw [hst, etime_lt]
+  · rw [hst, etime_of_lt_of]
     by_cases hka : k < a
     · exact hta k hka
     obtain ⟨ℓ, hc, ⟨e, he, rfl⟩ | ⟨-, hnh, -⟩⟩ := hsend
@@ -244,7 +239,7 @@ theorem stamp_lt_of_held_of_run (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
       linarith
     · exact absurd (pool_mono hr hy (not_lt.1 hka) (fun k' h1 h2 => hnr k' h1 (h2.trans hk))
         _ hw) hnh
-  · rw [hst, etime_lt]
+  · rw [hst, etime_of_lt_of]
     exact hrestart k hk ⟨ℓ, hc, hcall⟩
 
 /-- Whole-run specialization of bounded-cut stamp retention. -/
@@ -571,7 +566,7 @@ theorem trivial_carry_update (hS : StandaloneRun tr H U proposer g) {x : Fin sp.
   · exact absurd hres (not_lt.2 le_top)
   obtain ⟨h1, h2⟩ := max_lt_iff.1 hres
   obtain ⟨k, -, hsend, hk1, hst⟩ := hadm i₀ v hvp
-  rw [hst, etime_lt] at h1
+  rw [hst, etime_of_lt_of] at h1
   refine ⟨hvs, x, hx, k, hsend, hk1, h1, Hd, hΦU hHd, hHdr, ?_⟩
   rw [← hHdr] at h2
   rcases accepted_of_blockStamp_lt hS hx h2 with hg | ⟨k₁, -, Y, hYr, ⟨ℓ₁, hc₁, hcall₁⟩, hlt⟩

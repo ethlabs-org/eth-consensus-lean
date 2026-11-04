@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 
 public section
 
@@ -150,9 +151,6 @@ theorem mem_voteViewList_snd {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
 
 theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
-
-theorem etime_of_lt_of {a b : Time} : ETime.of a < ETime.of b ↔ a < b := by
-  simp [ETime.of]
 
 /-- The payload of a proposal is the proposer's view of the previous slot's pool, and the
 proposer is joined. -/

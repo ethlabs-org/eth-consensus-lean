@@ -403,35 +403,6 @@ private theorem served_tick (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.
   · rw [heq] at hj₁
     exact hrd.tick j₁ ⟨x₁, hj₁⟩
 
-private theorem lastWake_coe {y : Fin sp.n} {w : Time} :
-    ∀ {c : Nat}, tr.projAC.lastWake y c = (w : WithBot Time) →
-      ∃ k ≤ c, tr.projAC.RestartAt y k ∧ tr.projAC.time k = w
-  | 0, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨0, le_rfl, hr, WithBot.coe_injective h⟩
-    · simp at h
-  | c + 1, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨c + 1, le_rfl, hr, WithBot.coe_injective h⟩
-    · obtain ⟨k, hk, h'⟩ := lastWake_coe h
-      exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
-
-/-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
-`max(τ, a) + Δ`. -/
-private theorem deadline_le {y : Fin sp.n} {c : Nat} {a : Time}
-    (h : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.projAC.time k ≤ a) (τ : Time) :
-    tr.projAC.deadline y c τ ≤ max τ a + sp.Δ := by
-  unfold ACTrace.deadline
-  rcases hw : tr.projAC.lastWake y c with _ | w
-  · change τ + sp.Δ ≤ max τ a + sp.Δ
-    linarith [le_max_left τ a]
-  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_coe hw
-    have h' : tr.time k ≤ a := h k hk hrk
-    change max τ (tr.time k) + sp.Δ ≤ max τ a + sp.Δ
-    linarith [max_le_max (le_refl τ) h']
-
 /-- A vote of the slot-`L` pool of an honest node is a vote of its latest view, of slot `L`. -/
 theorem mem_latest_votes (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i L : Nat} {t : Time}
@@ -465,42 +436,6 @@ theorem fg_grows (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y 
     · rw [tr.state_succ_of_not fun c h => hc ⟨c, h⟩]
       exact ih
 
-/-- Between restarts, a finite block stamp stays finite (a receipt writes a finite time). -/
-private theorem stamp_finite (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
-    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.projAC.RestartAt y k) {q : Nat}
-    (h : (tr.projAC.state y a).blockStamp q < ⊤) : (tr.projAC.state y b).blockStamp q < ⊤ := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  induction b, hab using Nat.le_induction with
-  | base => exact h
-  | succ b hab ih =>
-    have ih := ih fun k h₁ h₂ => hnr k h₁ (h₂.trans (Nat.lt_succ_self b))
-    by_cases hc : ∃ ℓ, tr.projAC.CallAt y b ℓ
-    · obtain ⟨ℓ, hc⟩ := hc
-      rw [tr.projAC.state_succ_of_call hc]
-      have he := hr.exec b ℓ hc.2 (hc.1 ▸ hy)
-      rw [hc.1] at he
-      have hp : tr.projAC.post b =
-          ((goldilocksNode sp ro).step y (tr.projAC.state y b) ℓ.frame (tr.projAC.time b)
-            ℓ.call).1 := by rw [he]
-      rw [hp]
-      obtain ⟨hblk, -, hoth⟩ := SA.step_blockStamp_eq ro y (tr.projAC.state y b)
-        (SA.frameIn_of_callAt hr hy hc).1 (hr.time_nonneg b) ℓ.call
-      generalize hcl : ℓ.call = cl at hblk hoth
-      cases cl with
-      | block B =>
-        rw [hblk B rfl, Function.update_apply]
-        split_ifs
-        · exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
-        · exact ih
-      | restart => exact absurd ⟨ℓ, hc, hcl⟩ (hnr b hab (Nat.lt_succ_self b))
-      | tick => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-      | message m => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-      | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-      | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact ih
-    · rw [tr.projAC.state_succ_of_not fun ℓ h => hc ⟨ℓ, h⟩]
-      exact ih
-
 /-- The votes and the support of the latest view, of slot `L`. -/
 private theorem latestView_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
     {t : Time} {L : Nat} (hL : (L : Int) = (SA.latestView sp A Φ t).2) (v : Vote sp.n) :
@@ -512,15 +447,6 @@ private theorem latestView_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG
   simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, SA.SAState.poolAt, Set.mem_ofPred_eq,
     List.mem_filter, decide_eq_true_eq, Int.natCast_nonneg, not_lt.2, ↓reduceIte, Int.toNat_natCast,
     and_assoc, true_and]
-
-/-- The block of the tree with the root of one of its blocks. -/
-private theorem lookup_of_mem {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ Φ.tree) : SA.lookup Φ B.root = some B := by
-  have hin : SA.InTree Φ B.root := ⟨B, hB, rfl⟩
-  unfold SA.lookup
-  rw [dite_eq_left_of_eq_true (eq_true hin)]
-  obtain ⟨h₁, h₂⟩ := hin.choose_spec
-  rw [hΦ.coherent.1 h₁ hB h₂]
 
 /-- **An honest head reaches a read node** (acceptance relay): at a read at `t`, with `l` the
 latest view's slot, the head `Hd` of an honest slot-`l` vote that extends the node's `Σ.F` is in
@@ -569,7 +495,8 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       rwa [hU.1 hHd ⟨y, hy, jc, hgen⟩ hg]
     · have hkt : tr.projAC.time k ≤ sp.ts L + sp.Δ := (hr.time_mono hk).trans htj'
       have hdl : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
-        have := deadline_le (fun r hr' hrr => hres' r hrr (hjct r hr')) (tr.projAC.time k)
+        have := ac_deadline_le_of_restarts (fun r hr' hrr => hres' r hrr (hjct r hr'))
+          (tr.projAC.time k)
         change _ ≤ tr.time jc
         rw [htj]
         linarith [max_le hkt (show sp.ts L ≤ sp.ts L + sp.Δ by linarith)]
@@ -580,7 +507,8 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
             ∃ k₂ ≤ jc, tr.projAC.AcceptAt y k₂ Hd' ∧
               tr.projAC.time k₂ < sp.ts L + 2 * sp.Δ := by
           rintro ⟨k₂, hk₂j, hk₂, hk₂t⟩
-          have hd₂ := deadline_le (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hk₂j)))
+          have hd₂ := ac_deadline_le_of_restarts
+            (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hk₂j)))
             (tr.projAC.time k)
           have hmax : max (tr.projAC.time k) (sp.ts L) ≤ sp.ts L + sp.Δ :=
             max_le hkt (by linarith)
@@ -621,7 +549,8 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     (Or.inl (by change _ ≤ tr.time jc; rw [htj]))
   refine ⟨⟨hgr.1 hinj, anc_of_anc_superset hU (fun X hX => ⟨y, hy, i, hX⟩)
     (by simp [Params.genesisBlock]) (hanc i) hF (hgr.1 hinj)⟩, ?_⟩
-  refine stamp_finite hrun hnc hy hjci (fun r h1 h2 hrr => ?_) (lt_trans hst (htop _))
+  refine blockStamp_finite (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy
+    hjci (fun r h1 h2 hrr => ?_) (lt_trans hst (htop _))
   have h3 : tr.time r ≤ sp.ts L := hres' r hrr (hrd.before r h2)
   have h4 : tr.time jc ≤ tr.time r := hr.time_mono h1
   linarith
@@ -674,7 +603,7 @@ theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer d
   have hvst : (tr.state y i).ac.voteStamp v < ⊤ := ((latestView_mem hL v).1.1 hvV).2
   have hres : SA.resolutionTime (tr.state y i).ac (Node.frame (tr.state y i)) v < ⊤ := by
     unfold SA.resolutionTime
-    rw [← hHdr, lookup_of_mem hΦ hHdΦ]
+    rw [← hHdr, SA.lookup_of_mem hΦ hHdΦ]
     dsimp only
     simp only [not_lt.2 hHd₂s, ↓reduceIte]
     rw [← hst] at hvst ⊢
@@ -747,7 +676,8 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
     change _ ≤ tr.time jc at this
     linarith
   have hdl : ∀ c ≤ jc, tr.projAC.deadline y c (tr.projAC.time k) ≤ tr.projAC.time k + sp.Δ :=
-    fun c hcj' => (deadline_le (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hcj'))) _).trans
+    fun c hcj' => (ac_deadline_le_of_restarts
+      (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hcj'))) _).trans
       (by rw [max_eq_left hk0])
   have hdj : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
     have := hdl jc le_rfl; change _ ≤ tr.time jc; rw [htj]; linarith

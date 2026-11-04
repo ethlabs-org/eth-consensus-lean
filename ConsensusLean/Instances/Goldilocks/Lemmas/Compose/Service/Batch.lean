@@ -25,50 +25,12 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Payload)
 
-/-! ### Deadlines -/
-
-section Deadline
-
-variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
-
-private theorem lastWake_coe {y : Fin P.n} {w : Time} :
-    ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w
-  | 0, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨0, le_rfl, hr, WithBot.coe_injective h⟩
-    · simp at h
-  | c + 1, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨c + 1, le_rfl, hr, WithBot.coe_injective h⟩
-    · obtain ⟨k, hk, h'⟩ := lastWake_coe h
-      exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
-
-/-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
-`max(τ, a) + Δ`. -/
-private theorem deadline_le {y : Fin P.n} {c : Nat} {a : Time}
-    (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
-    T.deadline y c τ ≤ max τ a + P.Δ := by
-  unfold ACTrace.deadline
-  rcases hw : T.lastWake y c with _ | w
-  · change τ + P.Δ ≤ max τ a + P.Δ
-    linarith [le_max_left τ a]
-  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_coe hw
-    change max τ (T.time k) + P.Δ ≤ max τ a + P.Δ
-    linarith [max_le_max (le_refl τ) (h k hk hrk)]
-
-end Deadline
-
 /-! ### One honest updater over an SA trace -/
 
 section Node
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-
-private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
-  simp [SA.ETime.of]
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
@@ -95,15 +57,6 @@ theorem update_restarts (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
   intro k hk hrk
   have := ((SA.joined_awake sp) FGP ro H U T hr y hy k₀ ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
-
-/-- The block of the tree with the root of one of its blocks. -/
-private theorem lookup_of_mem {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {B : SA.Blk sp.n FGP}
-    (hB : B ∈ Φ.tree) : SA.lookup Φ B.root = some B := by
-  have hin : SA.InTree Φ B.root := ⟨B, hB, rfl⟩
-  unfold SA.lookup
-  rw [dite_eq_left_of_eq_true (eq_true hin)]
-  obtain ⟨h₁, h₂⟩ := hin.choose_spec
-  rw [hΦ.coherent.1 h₁ hB h₂]
 
 /-- **An honest slot-`s` vote at a joined updater of slot `s`**, under `Sync[a₀, t_s + 6Δ]` with
 `a₀ ≤ t_s`: the vote, cast by `t_s + Δ` and forwarded, is processed by the updater (awake,
@@ -134,7 +87,7 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
   -- delivery deadlines at the updater, for objects of times up to `t_s + Δ`
   have hdl : ∀ k ≤ k₀, ∀ τ, τ ≤ sp.ts s + sp.Δ → T.deadline y k τ ≤ sp.ts s + 2 * sp.Δ := by
     intro k hk τ hτ
-    have h₁ := deadline_le (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
+    have h₁ := ac_deadline_le_of_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
     change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
     linarith [max_le hτ (show sp.ts s ≤ sp.ts s + sp.Δ by linarith)]
   obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := SA.honest_head hrun hx hv
@@ -190,7 +143,7 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
     refine ⟨hpool, ?_⟩
     rcases SA.pool_origin hr hy k₀ e.msg (by rw [hes]; exact hpool) with
       ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-    · rw [hst₁, etime_lt]
+    · rw [hst₁, SA.etime_of_lt_of]
       by_cases hk₁k' : k₁ ≤ k'
       · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
       · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, he₁m⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
@@ -199,7 +152,7 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
           linarith
         · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
             (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hes]; exact hpk')) hn₁
-    · rw [hst₁, etime_lt]
+    · rw [hst₁, SA.etime_of_lt_of]
       linarith [hrsy k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩]
   have held : e.msg ∈ (T.state y k₀).pool s ∧
       (T.state y k₀).voteStamp e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -250,7 +203,7 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
     exact hHd₂s
   refine ⟨hPt, hpool, ?_⟩
   unfold SA.resolutionTime
-  rw [hhead, lookup_of_mem hΦ hPt]
+  rw [hhead, SA.lookup_of_mem hΦ hPt]
   dsimp only
   simp only [not_lt.2 hPs, ↓reduceIte]
   exact max_lt hvst hbst

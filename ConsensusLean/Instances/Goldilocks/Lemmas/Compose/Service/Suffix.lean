@@ -155,69 +155,6 @@ private theorem eq_of_slot (hrun : GoldilocksRun proposer dg H tr)
   simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at this
   exact this.1
 
-private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
-  simp [SA.ETime.of]
-
-private theorem etime_le {t t' : Time} : SA.ETime.of t ≤ SA.ETime.of t' ↔ t ≤ t' := by
-  simp [SA.ETime.of]
-
-/-- **A stamp is not earlier than the acceptance** (as `Sleepy/Transport`'s
-`stamp_ge_of_accept`). -/
-private theorem stamp_ge_of_accept {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
-    {T : SA.SATrace sp (List (FG.Att sp.n)) ro}
-    (hr : ACLocalRun (SA.goldilocksSA sp (List (FG.Att sp.n)) ro) H U T)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hk : T.AcceptAt y k B) (hB : B.root ≠ sp.genesisRoot) :
-    ∀ c, k + 1 ≤ c → SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root := by
-  have hpost : ∀ c (ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)), T.CallAt y c ℓ →
-      k ≤ c → (ℓ.call = .block B ∨ SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root) →
-      SA.ETime.of (T.time k) ≤ (T.post c).blockStamp B.root := by
-    intro c ℓ hc hkc hpre
-    have hΦ : FrameOK ℓ.frame := by
-      rcases hr.frameLaw y hy c ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
-    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hy)
-    rw [hc.1] at he
-    have hp : T.post c = ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step y (T.state y c)
-        ℓ.frame (T.time c) ℓ.call).1 := by
-      rw [he]
-    have htk : SA.ETime.of (T.time k) ≤ SA.ETime.of (T.time c) := etime_le.2 (hr.time_mono hkc)
-    obtain ⟨hblk, -, hoth⟩ :=
-      SA.step_blockStamp_eq ro y (T.state y c) hΦ (hr.time_nonneg c) ℓ.call
-    rw [hp]
-    generalize ℓ.call = cl at hpre hblk hoth ⊢
-    cases cl with
-    | block B' =>
-      rw [hblk B' rfl, Function.update_apply]
-      split_ifs with h
-      · exact htk
-      · rcases hpre with hpre | hpre
-        · cases hpre
-          exact absurd rfl h
-        · exact hpre
-    | restart =>
-      change _ ≤ (SA.acRestart sp ro y (T.state y c) ℓ.frame (T.time c)).1.blockStamp B.root
-      rcases ((SA.restart_state sp) (List (FG.Att sp.n)) ro y (T.state y c) ℓ.frame (T.time c) hΦ
-        (hr.time_nonneg c)).2.2.2.2.2.2.2.2.2.2 B.root with h | ⟨h, -⟩
-      · rw [h]; simp [SA.SAState.initial, hB]
-      · rw [h]; exact htk
-    | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-  intro c hc
-  induction c, hc using Nat.le_induction with
-  | base =>
-    obtain ⟨ℓ, hcl, hcall⟩ := hk
-    rw [Trace.state_succ_of_call T hcl]
-    exact hpost k ℓ hcl le_rfl (Or.inl hcall)
-  | succ c hkc ih =>
-    by_cases hn : ∃ ℓ, T.CallAt y c ℓ
-    · obtain ⟨ℓ, hcl⟩ := hn
-      rw [Trace.state_succ_of_call T hcl]
-      exact hpost c ℓ hcl (by omega) (Or.inr ih)
-    · rw [Trace.state_succ_of_not T fun ℓ hcl => hn ⟨ℓ, hcl⟩]
-      exact ih
-
 /-- **The acceptance relay into a frame**: a block of the honest blocks that is genesis, or that
 an honest node accepted at a time `τ` with `max(τ, a) + Δ` at most the time of a call of an
 honest `z` whose restarts up to it are at or before `a`, is in that call's frame when it extends
@@ -626,9 +563,9 @@ private theorem competitor_reflect_before {b : Time}
       by_cases hg : B.root = sp.genesisRoot
       · exact Or.inl hg
       refine Or.inr ⟨kx, hA, ?_⟩
-      have hge := stamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
+      have hge := blockStamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
       rw [Trace.state_succ_of_call _ hcy.1, ← SA.readPoint_blockStamp_eq hr hy hcy] at hge
-      have hlt := etime_lt.1 (lt_of_le_of_lt hge hfz)
+      have hlt := SA.etime_of_lt_of.1 (lt_of_le_of_lt hge hfz)
       have hfr : SA.freeze sp (s' + 1) = sp.ts (s' : Int) + 3 * sp.Δ := by
         simp only [SA.freeze, hcast]
       rw [hfr] at hlt
@@ -772,9 +709,9 @@ private theorem views_agree_before {b : Time}
     · exact Or.inl hg
     right
     refine ⟨kx, hA, ?_⟩
-    have hge := stamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
+    have hge := blockStamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
     rw [Trace.state_succ_of_call _ hcy.1, ← SA.readPoint_blockStamp_eq hr hy hcy] at hge
-    have hlt := etime_lt.1 (lt_of_le_of_lt hge hst)
+    have hlt := SA.etime_of_lt_of.1 (lt_of_le_of_lt hge hst)
     have hfz : SA.freeze sp (s' + 1) = sp.ts (s' : Int) + 3 * sp.Δ := by
       simp only [SA.freeze, hcast]
     rw [hfz] at hlt
@@ -867,9 +804,9 @@ theorem old_child_ineligible_before {b : Time}
       by_cases hg : B.root = sp.genesisRoot
       · exact Or.inl hg
       refine Or.inr ⟨kx, hA, ?_⟩
-      have hge := stamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
+      have hge := blockStamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
       rw [Trace.state_succ_of_call _ hcy.1, ← SA.readPoint_blockStamp_eq hr hy hcy] at hge
-      have hlt := etime_lt.1 (lt_of_le_of_lt hge hfz)
+      have hlt := SA.etime_of_lt_of.1 (lt_of_le_of_lt hge hfz)
       have hfr : SA.freeze sp (s' + 1) = sp.ts (s' : Int) + 3 * sp.Δ := by
         simp only [SA.freeze, hcast]
       rw [hfr] at hlt

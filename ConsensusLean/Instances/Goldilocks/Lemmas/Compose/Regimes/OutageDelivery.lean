@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 
 public section
 
@@ -25,45 +26,18 @@ namespace Consensus.Goldilocks.Compose
 
 open SA (SAParams ReplayOrder Payload)
 
-/-! ### Deadlines (copied from `Compose/Service/Batch.lean`, where they are private) -/
+/-! ### Deadlines -/
 
 section Deadline
 
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
-
-private theorem lastWake_coe {y : Fin P.n} {w : Time} :
-    ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w
-  | 0, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨0, le_rfl, hr, WithBot.coe_injective h⟩
-    · simp at h
-  | c + 1, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨c + 1, le_rfl, hr, WithBot.coe_injective h⟩
-    · obtain ⟨k, hk, h'⟩ := lastWake_coe h
-      exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
-
-/-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
-`max(τ, a) + Δ`. -/
-private theorem deadline_le {y : Fin P.n} {c : Nat} {a : Time}
-    (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
-    T.deadline y c τ ≤ max τ a + P.Δ := by
-  unfold ACTrace.deadline
-  rcases hw : T.lastWake y c with _ | w
-  · change τ + P.Δ ≤ max τ a + P.Δ
-    linarith [le_max_left τ a]
-  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_coe hw
-    change max τ (T.time k) + P.Δ ≤ max τ a + P.Δ
-    linarith [max_le_max (le_refl τ) (h k hk hrk)]
 
 /-- The deadline from `g ≤ t + Δ` of an object of time at most `t + Δ`, with every restart at or
 before `t`, is at most `t + 2Δ`. -/
 private theorem deadline_le_two {y : Fin P.n} {c : Nat} {t g : Time}
     (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ t) (hg : g ≤ t + P.Δ) {τ : Time}
     (hτ : τ ≤ t + P.Δ) : T.deadline y c (max τ g) ≤ t + 2 * P.Δ := by
-  have h₁ := deadline_le h (max τ g)
+  have h₁ := ac_deadline_le_of_restarts h (max τ g)
   have hΔ : 0 < P.Δ := P.hΔ
   linarith [max_le (max_le hτ hg) (show t ≤ t + P.Δ by linarith)]
 
@@ -75,9 +49,6 @@ section Node
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-
-private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
-  simp [SA.ETime.of]
 
 /-- The block of the tree with the root of one of its blocks. -/
 private theorem lookup_of_mem {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {B : SA.Blk sp.n FGP}
@@ -182,7 +153,7 @@ theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
   refine ⟨hpool, ?_⟩
   rcases SA.pool_origin hr hy c e.msg (by rw [hes]; exact hpool) with
     ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-  · rw [hst₁, etime_lt]
+  · rw [hst₁, SA.etime_of_lt_of]
     by_cases hk₁k' : k₁ ≤ k'
     · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
     · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, he₁m⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
@@ -196,7 +167,7 @@ theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
         linarith
       · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
           (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hes]; exact hpk')) hn₁
-  · rw [hst₁, etime_lt]
+  · rw [hst₁, SA.etime_of_lt_of]
     linarith [hres k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩]
 
 /-- D3 (L1 without its head facts). The vote is pooled, its head is held, and the vote is

@@ -125,9 +125,6 @@ private theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG
     cases h
     exact (SA.deepest_mem hC').1
 
-private theorem etime_lt' {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
-  simp [SA.ETime.of]
-
 /-- **`Carry_y` after the outage's GST** (`carryAt_of_writer_window` with receiver service): at an
 honest slot-`(s+1)` vote of `y`, under receiver service from `g ≤ t_s + Δ`, `Carry_y(s, ·, ·)` holds
 for honest slot-`s` votes whose heads extend `y`'s `Σ.F`: each is sent by its voter by `t_s + Δ`
@@ -209,7 +206,7 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
       rw [← hstamp u hus]
       rcases SA.pool_origin hr hy (i + 1) u (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-      · rw [hst₁, etime_lt']
+      · rw [hst₁, SA.etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
@@ -218,7 +215,7 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
             linarith
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
               (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
-      · rw [hst₁, etime_lt']
+      · rw [hst₁, SA.etime_of_lt_of]
         have : tr.projAC.time k₁ ≤ sp.ts s := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
         linarith
     by_cases hv' : v ∈ (tr.projAC.state y (k' + 1)).pool s
