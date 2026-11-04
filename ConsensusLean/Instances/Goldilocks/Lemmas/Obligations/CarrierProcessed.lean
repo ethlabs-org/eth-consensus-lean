@@ -180,9 +180,9 @@ theorem final_window_extract_of' (Q : FinalQuery S A V) {ΔR a : Time}
         Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2) proposer dg g ΔF a b ∧
         Healing.CatchRun Q.trace (honestKeys S Q.run.2) g (2 * Q.params.Δ) ∧
         (∀ i, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2) proposer
-          (W.start + ![0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay] i) (W.block i)) ∧
+          (W.start + ![0, A.fgSlots, 2 * A.fgSlots, 3 * A.fgSlots] i) (W.block i)) ∧
         Healing.drainTime Q.params a ≤ Q.params.ts W.start ∧
-        Q.params.ts (W.start + 3 * cF A.fgDelay) ≤ b) ∧
+        Q.params.ts (W.start + 3 * A.fgSlots) ≤ b) ∧
       ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
         (W.block i.succ) :=
   final_window_extract_of S A V Q hreset hpropose hplace (carrier_processed_of_honest S A V Q)

@@ -18,9 +18,9 @@ consensus-lean#136, route A, workbench `heal_bound.md`. `final_reset_premises_of
 statement of the leaf `final_reset_premises` (Concrete.lean): one reset `a` with (H1) its premises
 `ResetPremisesUpTo` through the horizon at GST `Q.gst`, and (H3) the placement with
 `u_min = finalSeedMin Q a = slot a + 2k + 5`. It is the instance at the protocol row delay
-`ΔF := rowDelay` and the gap `c = cF r` of `final_reset_premises_of_shared`, which takes the shared
-HS premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and
-`3c ≤ δ_t` (workbench `two_bound_network.md` §4).
+`ΔF := rowDelay` and the gap `c = fgSlots` of `final_reset_premises_of_shared`, which takes the
+shared HS premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c`
+and `3c ≤ δ_t` (workbench `two_bound_network.md` §4).
 
 The reset is `exists_reset_of_drain_rounds_awake` (the rise-round route) at the ready scalar
 `ready` (`ready ≥ 1`), the gap `G = X = Q.index`, the drain length
@@ -280,7 +280,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
 /-- **The reset premises and the placement of a final query** (the leaf `final_reset_premises`,
 Concrete.lean): a reset `a` with its premises through the horizon at GST `Q.gst`, and the
 placement `(P)` with `u_min = finalSeedMin Q a`. `final_reset_premises_of_shared` at the gap
-`c = cF r` of `finalWindow` and the protocol row delay `ΔF := rowDelay`
+`c = fgSlots` of `finalWindow` and the protocol row delay `ΔF := rowDelay`
 (`FinalQuery.hsSharedUpTo`). -/
 theorem final_reset_premises_of_query (Q : FinalQuery S A V) :
     ∃ ΔR a : Time,
@@ -290,7 +290,7 @@ theorem final_reset_premises_of_query (Q : FinalQuery S A V) :
           ((finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) - 1) +
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
         Q.query + (finalGrid S A V Q).slotLen :=
-  final_reset_premises_of_shared S A V Q A.two_le_cF A.timeout (finalWindow_offsets A)
+  final_reset_premises_of_shared S A V Q A.two_le_fgSlots A.timeout (finalWindow_offsets A)
     Q.hsSharedUpTo
 
 end Consensus.Goldilocks.Obligations

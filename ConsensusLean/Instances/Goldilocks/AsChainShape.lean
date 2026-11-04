@@ -682,13 +682,6 @@ noncomputable def goldilocks (S : Setup) : ChainShapeFamily schema Info := fun p
     conflicts := conflicts
     isFGAtt := isFGAtt }
 
-/-! ## The FG gap -/
-
-/-- The FG gap at FG delay bound `r`: `cF r = ⌈(r + 6)/4⌉` slots (`cF_ceil`). It bounds
-`⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉`, at the protocol delays `Δ_p = ΔAC` and `ΔF_p = ΔFG`, whenever the
-engine bounds satisfy `ΔFG ≤ r·ΔAC` (`cF_spec`; both in `Lemmas/Obligations/ContractDefs`). -/
-def cF (r : ℕ+) : Nat := ((r : Nat) + 9) / 4
-
 end Consensus.Goldilocks.AsChainShape
 
 end

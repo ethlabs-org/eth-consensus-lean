@@ -280,8 +280,8 @@ paths; names in compiled rows are fully qualified.
 
 ## Concrete acceptance assembly
 
-The root fixes standard fractions, the row ratio `r` of the assumptions with gap `c = cF r`,
-`finalWindow A = [0, c, 2c, 3c]` (route A, #136; `[0,2,4,6]` at `r = 1`), `3c ≤ δt` (so δt≥6)
+The root fixes standard fractions, the FG delay in slots `c = fgSlots` of the assumptions,
+`finalWindow A = [0, c, 2c, 3c]` (route A, #136; `[0,2,4,6]` at `c = 2`), `3c ≤ δt` (so δt≥6)
 and outage look-back η = 0 (plain sleepy; 2026-11-02, was a positive assumption). Engine-unit
 outage lag is 4k+6 (slow arming only: the label before the outage label is armed by b₀;
 half-open phase 2, was 8k+12 at Δp=Δe+1 and 8k−8 before 2026-11-02) and budget is 4k−5
@@ -296,8 +296,8 @@ The three numeric leaves must be solved jointly with the named endpoint supplier
 their arbitrary separate instantiation would not prove the endpoint. Local-pattern
 sufficiency remains OPEN, not supplied by the timeout inequality alone.
 The model maps the FG row delay to the actual engine bound, `rowDelay = ΔF` (half-open:
-Δ_F,p = Δ_F,e; no order between ΔF and Δ is assumed). The healthy regime's ratio `ΔF ≤ r·Δ`
-gives `6Δ + ΔF ≤ 4Δ·cF r` (`cF_spec`), so the row gap is `c = cF r` (2 at r = 1). Route A (#136): window coverage is the
+Δ_F,p = Δ_F,e; no order between ΔF and Δ is assumed). The healthy regime's bound `ΔFG ≤ (4c − 6)·ΔAC`
+gives `6Δ + ΔF ≤ 4Δ·c` (`fgDelay_bound_iff`), so the FG gap is `c = fgSlots` (at least 2). Route A (#136): window coverage is the
 proved anchor route (`final_anchor_coverage` over `cacheCoverage_of_anchor_window_upTo`);
 its inputs `AnchorRun` (reset premises, catch-up, honest anchor proposals, drain, horizon)
 and `AnchorSteps` (three gap-`c` anchor steps) come from `final_window_extract`. Its body is
@@ -314,7 +314,7 @@ For the `AnchorSteps` rows, the reusable finite signer results are landed in
 the paper handoff is workbench b386900 `notes/cards/final_row_signers.md`.
 The paper route (workbench `route_a_gap2.md`, read-back passed on #136) is conditional on
 the duty-to-proposal adapter, the M1′ bound, a `contract_heal` that satisfies (H*), and
-the mechanical links. Final latency is 4(X+3c)+1, c = cF r (4(X+6)+1 at r = 1; half-open
+the mechanical links. Final latency is 4(X+3c)+1, c = fgSlots (4(X+6)+1 at c = 2; half-open
 phase 2, was 8(X+3c)+2); nonfinal latency is 4X+6 (was 8X+12); neither depends on δt.
 Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/workbench/blob/fd8cb311fac057347fb49e32cf17841e27a75e76/repos/goldilocks/notes/healing-simple/four-anchor-window.md#general-fixed-timeout-d4).
 
@@ -330,7 +330,7 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 | `Consensus.Goldilocks.Obligations.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final (sorry-free since e621acd7). `healthy_confirmed_supply` is proved since db4b864f; the compiled closure has no direct sorry owner. |
 | `Consensus.Goldilocks.Obligations.final_reset_premises` | Body closed (route A, #136): `final_reset_premises_of_query` (FinalResetPremises.lean), the reset kernel `exists_reset_of_drain_rounds_awake` with `drainOutputs_of_service` and `contract_heal_ge_final`. (H1) `ResetPremisesUpTo` through the horizon at `Q.gst` with the run proposer and digest, for a reset `a` and bound `ΔR` (Sol's M1′), and (H3) the placement `(P)` with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient; #145 removed a time summand that made (H3) false at large GST). One leaf: (H3) depends on the `a` of (H1). No producer is assumed. |
 | `Consensus.Goldilocks.Obligations.final_duty_proposal` | Body closed (route A, #136): (H2) duty → proposal adapter (Kev): for `0 < s` with `ts s ≤ horizon`, `HonestReadyIn` at slot `s` gives `HonestProposalRun` at `s`; proved by `final_duty_proposal_run` (FinalDutyProposal.lean). Reaches sorryAx only through the `FinalQuery` type (accepted coefficients). |
-| `Consensus.Goldilocks.Obligations.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,c,2c,3c] (c = cF r), the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
+| `Consensus.Goldilocks.Obligations.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,c,2c,3c] (c = fgSlots), the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
 | `Consensus.Goldilocks.Obligations.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
 | `Consensus.Goldilocks.Obligations.final_cache_acceptance` | Body closed; no direct owner in the compiled audit at 70e90b44 (the type dependency on the coefficients is sorry-free since 4078bc74). Consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Obligations.final_payload_projection` | Body closed conditional on window extraction with CacheCoverage of the extracted window (one premise; route A, #136): raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |

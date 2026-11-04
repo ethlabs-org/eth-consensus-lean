@@ -394,6 +394,18 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-04, Francesco and the coordinator (review-surface naming, step 2): the delays are `ΔAC`/`ΔFG`
+  (`Env`, `Model.Public`), the FG attestation class `isFGAtt`/`CommLog.fgAtt`/`Delivers.fgAtts` (and the
+  Healing/FGStore `fgAtts`, `fgAttCut`), the generic contract number `Params.fgDelay` (the healthy regime's
+  `ΔFG ≤ fgDelay·ΔAC`, a plain `ΔAC`-coefficient; pure renames). **The review surface has no ratio** (option (a)
+  of the coordinator, Francesco's request): `ContractAssumptions` takes the FG delay in slots `fgSlots ≥ 2`
+  with the timeout `3·fgSlots ≤ δt`; the contract sets `fgDelay := 4·fgSlots − 6`, so healthy runs have
+  `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the paper's `c_F ≤ fgSlots`); the final window is
+  `[0, fgSlots, 2·fgSlots, 3·fgSlots]` and the final latency `4(X + 3·fgSlots) + 1`. Equivalent to the former
+  ratio form (`r ≥ 1`, gap `cF r = ⌈(r + 6)/4⌉`): each new contract is the former one at `r = 4·fgSlots − 6`,
+  and the former endpoint at every `r` follows by monotonicity in `fgDelay`
+  (`GoldilocksObligations.meets_obligations_at_every_bound`). `cF` leaves the trusted surface (it lives in that
+  test). Contracts whose numbers depend on the run's delays (option (b)) are deferred.
 - 2026-11-04, Francesco and the coordinator (review-surface naming, step 1 of the naming proposal): mechanical
   renames and moves, no statement changes. `Refinement/Defs` becomes `AsChainShape` (namespace
   `Goldilocks.AsChainShape`; `family` → `goldilocks`, `FamilyState` → `PubState`). The endpoint statement becomes

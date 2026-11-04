@@ -165,9 +165,9 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
   exact ⟨P, hP⟩
 
 /-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
-`start + [0, c, 2c, 3c]` after the query (the row gap `c = cF r` of the assumptions; `c = 2` at
-`r = 1`), its route-A run premises, and its three anchor steps. Proved by
-`final_window_extract_of_gap'` at `c = cF r` and the protocol row delay `ΔF := rowDelay` (the
+`start + [0, c, 2c, 3c]` after the query (the FG gap `c = fgSlots` of the assumptions, at least
+`2`), its route-A run premises, and its three anchor steps. Proved by
+`final_window_extract_of_gap'` at `c = fgSlots` and the protocol row delay `ΔF := rowDelay` (the
 shared HS premises `FinalQuery.hsSharedUpTo`, the latency `final_latency_gap`) from
 `final_reset_premises` ((H1), (H3)) and the proved `final_duty_proposal` ((H2)); (H4) is proved
 there. Paper: workbench route_a_gap2.md, window_start_h0.md, anchor_row_supplier.md,
@@ -177,7 +177,7 @@ theorem final_window_extract (Q : FinalQuery S A V) :
       W.AnchorRun ∧ W.AnchorSteps := by
   obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises S A V Q
   obtain ⟨W, -, hslack, hrun, hsteps⟩ :=
-    final_window_extract_of_gap' S A V Q A.two_le_cF A.timeout (finalWindow_offsets A)
+    final_window_extract_of_gap' S A V Q A.two_le_fgSlots A.timeout (finalWindow_offsets A)
       Q.hsSharedUpTo Q.rowDelay_delivery (final_latency_gap S A V Q) hreset
       (final_duty_proposal S A V Q) hplace
   exact ⟨W, hslack, W.anchorRun_iff.mpr hrun, W.anchorSteps_iff.mpr hsteps⟩

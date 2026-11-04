@@ -13,7 +13,7 @@ public section
 workbench `healing_supply_repair_contracts.md` S5. For a `HealthyPreparationQuery` with nonfinal
 progress on `[ready, heal]` and `heal ≤ horizon`: a delay `Δ_F` and a reset `a` with
 `ResetPremisesUpTo … Q.gst Δ_F a horizon` and `a ≤ ready + R·Δ + ρ`, where `R = healthyResetCoeff`
-and `ρ = healthyResetSlack`, the literal slack `0` (not the row ratio `r`), are the named
+and `ρ = healthyResetSlack`, the literal slack `0` (not an FG delay bound), are the named
 parameter-only coefficients (`ResetCoefficients`).
 
 It is the instance of `exists_reset_of_drain_rounds_awake` (the rise-round route) at `λ = 2Δ`, the
@@ -39,7 +39,7 @@ open SA (gbar)
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The shared HS premises of the query through the horizon at the protocol row delay
-`Δ_F,p = rowDelay` (`6Δ + Δ_F,p ≤ 4Δ·cF r ≤ 4Δ·δ_t`, `rowDelay_timeout_of_healthy`). -/
+`Δ_F,p = rowDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `rowDelay_timeout_of_healthy`). -/
 private theorem healthy_hsShared (Q : HealthyPreparationQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
       (rowDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=

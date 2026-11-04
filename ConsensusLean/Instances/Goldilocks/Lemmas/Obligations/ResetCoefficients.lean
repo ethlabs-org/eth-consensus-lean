@@ -29,7 +29,7 @@ open AsChainShape
 (rise-round route). -/
 def healthyResetCoeff (S : Setup) (X : ℕ+) : Nat := 20 * healthyDrainLen S X + 24 * (S.δt + X) + 40
 
-/-- The literal slack `0` of the nonfinal reset envelope (not the row ratio `r`). -/
+/-- The literal slack `0` of the nonfinal reset envelope (not an FG delay bound). -/
 def healthyResetSlack (_S : Setup) (_X : ℕ+) : Nat := 0
 
 theorem healthyDrainLen_val (S : Setup) (X : ℕ+) : healthyDrainLen S X = 2 * S.k + X := by rfl

@@ -293,8 +293,6 @@ def Consensus.Goldilocks.AsChainShape.blockObj : (sp : Consensus.Goldilocks.SA.S
   #244628276/4104646735
 def Consensus.Goldilocks.AsChainShape.blockOf : (sp : Consensus.Goldilocks.SA.SAParams) → Nat → Consensus.Blocks.Header Consensus.Goldilocks.AsChainShape.Info → Fin sp.n → List.{0} (Consensus.Goldilocks.FG.Att sp.n) → Consensus.Goldilocks.SA.Payload sp.n → Consensus.Goldilocks.AsChainShape.Blk sp := fun sp d h k atts p => { root := Consensus.Goldilocks.AsChainShape.taggedRoot sp.genesisRoot d, parent := Consensus.Goldilocks.AsChainShape.parentRoot sp.genesisRoot h.parent, slot := h.pos, proposer := k, input := h.input, fgPayload := atts, acPayload := p }
   #2917709399/2334715428
-def Consensus.Goldilocks.AsChainShape.cF : PNat → Nat := fun r => HDiv.hDiv.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} r.val 9) 4
-  #2156557543/1848199667
 def Consensus.Goldilocks.AsChainShape.canonEvent : (sp : Consensus.Goldilocks.SA.SAParams) → (ro : Consensus.Goldilocks.SA.ReplayOrder sp (List.{0} (Consensus.Goldilocks.FG.Att sp.n))) → List.{0} (Prod.{0, 0} (Consensus.Blocks.Header Consensus.Goldilocks.AsChainShape.Info) Nat) → Consensus.Goldilocks.AsChainShape.Wire sp.n → Option.{0} (Consensus.Goldilocks.Node.Event (Consensus.Goldilocks.goldilocksNode sp ro)) := fun sp ro hs o => Consensus.Goldilocks.AsChainShape.canonEvent.match_1.{1} sp (fun x x_1 x_2 => Option.{0} (Consensus.Goldilocks.Node.Event (Consensus.Goldilocks.goldilocksNode sp ro))) (Consensus.Goldilocks.AsChainShape.decodeBlock sp hs o) (Consensus.Goldilocks.AsChainShape.decodeVoteObj sp o) (Consensus.Goldilocks.AsChainShape.decodeAttObj sp o) (fun B x x_1 => Option.some.{0} (Consensus.Goldilocks.Node.Event.block B)) (fun v x => Option.some.{0} (Consensus.Goldilocks.Node.Event.message v)) (fun a => Option.some.{0} (Consensus.Goldilocks.Node.Event.attestation a)) fun _ => Option.none.{0}
   #1477085659/4159575200
 def Consensus.Goldilocks.AsChainShape.canonEvent.match_1 #3728018910/914435714
@@ -1751,30 +1749,35 @@ def Consensus.Goldilocks.SA.voters : {n : Nat} → Set.{0} (Consensus.Goldilocks
 ## ConsensusLean.Instances.Goldilocks.Statements.Obligations
 induct Consensus.Goldilocks.ContractAssumptions : Consensus.Goldilocks.AsChainShape.Setup → Type
   #4238298358/-
-def Consensus.Goldilocks.ContractAssumptions._sizeOf_1 #3296198405/2657248541
+def Consensus.Goldilocks.ContractAssumptions._sizeOf_1 #3296198405/829892381
 def Consensus.Goldilocks.ContractAssumptions._sizeOf_inst #2760349567/2804818832
-def Consensus.Goldilocks.ContractAssumptions.casesOn : {S : Consensus.Goldilocks.AsChainShape.Setup} → {motive : Consensus.Goldilocks.ContractAssumptions S → Sort u} → (t : Consensus.Goldilocks.ContractAssumptions S) → ((fgDelay : PNat) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF fgDelay)) S.δt) → motive { fgDelay := fgDelay, timeout := timeout }) → motive t := fun {S} {motive} t mk => Consensus.Goldilocks.ContractAssumptions.rec.{u} (fun fgDelay timeout => mk fgDelay timeout) t
-  #916525384/2111252870
+def Consensus.Goldilocks.ContractAssumptions.casesOn : {S : Consensus.Goldilocks.AsChainShape.Setup} → {motive : Consensus.Goldilocks.ContractAssumptions S → Sort u} → (t : Consensus.Goldilocks.ContractAssumptions S) → ((fgSlots : Nat) → (two_le_fgSlots : LE.le.{0} 2 fgSlots) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 fgSlots) S.δt) → motive { fgSlots := fgSlots, two_le_fgSlots := two_le_fgSlots, timeout := timeout }) → motive t := fun {S} {motive} t mk => Consensus.Goldilocks.ContractAssumptions.rec.{u} (fun fgSlots two_le_fgSlots timeout => mk fgSlots two_le_fgSlots timeout) t
+  #3605190389/4072102570
 def Consensus.Goldilocks.ContractAssumptions.ctorIdx #3296198405/2599119143
-def Consensus.Goldilocks.ContractAssumptions.fgDelay : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → PNat := fun S self => self.1
-  #1823032384/2963014032
-ctor Consensus.Goldilocks.ContractAssumptions.mk : {S : Consensus.Goldilocks.AsChainShape.Setup} → (fgDelay : PNat) → LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF fgDelay)) S.δt → Consensus.Goldilocks.ContractAssumptions S
-  #2970910598/-
-def Consensus.Goldilocks.ContractAssumptions.mk._flat_ctor #2970910598/3482217295
-theorem Consensus.Goldilocks.ContractAssumptions.mk.inj #2120861048/-
-theorem Consensus.Goldilocks.ContractAssumptions.mk.injEq #3469426625/-
-def Consensus.Goldilocks.ContractAssumptions.mk.noConfusion : {S : Consensus.Goldilocks.AsChainShape.Setup} → {P : Sort u} → {fgDelay : PNat} → {timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF fgDelay)) S.δt} → {fgDelay' : PNat} → {timeout' : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF fgDelay')) S.δt} → Eq.{1} { fgDelay := fgDelay, timeout := timeout } { fgDelay := fgDelay', timeout := timeout' } → (Eq.{1} fgDelay fgDelay' → P) → P := fun {S} {P} {fgDelay} {timeout} {fgDelay'} {timeout'} eq k => id.{u} (Consensus.Goldilocks.ContractAssumptions.noConfusion.{u} ⋯ ⋯ k)
-  #2168910248/2593377698
-theorem Consensus.Goldilocks.ContractAssumptions.mk.sizeOf_spec #234170492/-
-def Consensus.Goldilocks.ContractAssumptions.noConfusion : {P : Sort u} → {S : Consensus.Goldilocks.AsChainShape.Setup} → {t : Consensus.Goldilocks.ContractAssumptions S} → {S' : Consensus.Goldilocks.AsChainShape.Setup} → {t' : Consensus.Goldilocks.ContractAssumptions S'} → Eq.{1} S S' → HEq.{1} t t' → Consensus.Goldilocks.ContractAssumptions.noConfusionType.{u} P t t' := fun {P} {S} {t} {S'} {t'} eq_1 eq_2 => Eq.ndrec.{u, 1} (motive := fun {S'} => {t' : Consensus.Goldilocks.ContractAssumptions S'} → HEq.{1} t t' → Consensus.Goldilocks.ContractAssumptions.noConfusionType.{u} P t t') (fun {t'} eq_2 => Eq.ndrec.{u, 1} (Consensus.Goldilocks.ContractAssumptions.casesOn.{u} t fun fgDelay timeout k => k ⋯) ⋯) eq_1 eq_2
-  #4069614387/2305545403
-def Consensus.Goldilocks.ContractAssumptions.noConfusionType #829358717/4018310150
-recursor Consensus.Goldilocks.ContractAssumptions.rec : {S : Consensus.Goldilocks.AsChainShape.Setup} → {motive : Consensus.Goldilocks.ContractAssumptions S → Sort u} → ((fgDelay : PNat) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF fgDelay)) S.δt) → motive { fgDelay := fgDelay, timeout := timeout }) → (t : Consensus.Goldilocks.ContractAssumptions S) → motive t
-  #277214011/-
-def Consensus.Goldilocks.ContractAssumptions.recOn : {S : Consensus.Goldilocks.AsChainShape.Setup} → {motive : Consensus.Goldilocks.ContractAssumptions S → Sort u} → (t : Consensus.Goldilocks.ContractAssumptions S) → ((fgDelay : PNat) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF fgDelay)) S.δt) → motive { fgDelay := fgDelay, timeout := timeout }) → motive t := fun {S} {motive} t mk => Consensus.Goldilocks.ContractAssumptions.rec.{u} mk t
-  #916525384/2250899595
-theorem Consensus.Goldilocks.ContractAssumptions.timeout : ∀ {S : Consensus.Goldilocks.AsChainShape.Setup} (self : Consensus.Goldilocks.ContractAssumptions S), LE.le.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF self.fgDelay)) S.δt
-  #509501154/-
+def Consensus.Goldilocks.ContractAssumptions.fgDelay : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → PNat := fun {S} A => Subtype.mk.{1} (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 A.fgSlots) 6) ⋯
+  #1823032384/2901911577
+theorem Consensus.Goldilocks.ContractAssumptions.fgDelay._proof_2 #221136691/-
+def Consensus.Goldilocks.ContractAssumptions.fgSlots : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Nat := fun S self => self.1
+  #3296198405/2963014032
+ctor Consensus.Goldilocks.ContractAssumptions.mk : {S : Consensus.Goldilocks.AsChainShape.Setup} → (fgSlots : Nat) → LE.le.{0} 2 fgSlots → LE.le.{0} (HMul.hMul.{0, 0, 0} 3 fgSlots) S.δt → Consensus.Goldilocks.ContractAssumptions S
+  #811199127/-
+def Consensus.Goldilocks.ContractAssumptions.mk._flat_ctor #811199127/1164859283
+theorem Consensus.Goldilocks.ContractAssumptions.mk.inj #1438446391/-
+theorem Consensus.Goldilocks.ContractAssumptions.mk.injEq #2606074444/-
+def Consensus.Goldilocks.ContractAssumptions.mk.noConfusion : {S : Consensus.Goldilocks.AsChainShape.Setup} → {P : Sort u} → {fgSlots : Nat} → {two_le_fgSlots : LE.le.{0} 2 fgSlots} → {timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 fgSlots) S.δt} → {fgSlots' : Nat} → {two_le_fgSlots' : LE.le.{0} 2 fgSlots'} → {timeout' : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 fgSlots') S.δt} → Eq.{1} { fgSlots := fgSlots, two_le_fgSlots := two_le_fgSlots, timeout := timeout } { fgSlots := fgSlots', two_le_fgSlots := two_le_fgSlots', timeout := timeout' } → (Eq.{1} fgSlots fgSlots' → P) → P := fun {S} {P} {fgSlots} {two_le_fgSlots} {timeout} {fgSlots'} {two_le_fgSlots'} {timeout'} eq k => id.{u} (Consensus.Goldilocks.ContractAssumptions.noConfusion.{u} ⋯ ⋯ k)
+  #2412315757/1134431506
+theorem Consensus.Goldilocks.ContractAssumptions.mk.sizeOf_spec #209453404/-
+def Consensus.Goldilocks.ContractAssumptions.noConfusion : {P : Sort u} → {S : Consensus.Goldilocks.AsChainShape.Setup} → {t : Consensus.Goldilocks.ContractAssumptions S} → {S' : Consensus.Goldilocks.AsChainShape.Setup} → {t' : Consensus.Goldilocks.ContractAssumptions S'} → Eq.{1} S S' → HEq.{1} t t' → Consensus.Goldilocks.ContractAssumptions.noConfusionType.{u} P t t' := fun {P} {S} {t} {S'} {t'} eq_1 eq_2 => Eq.ndrec.{u, 1} (motive := fun {S'} => {t' : Consensus.Goldilocks.ContractAssumptions S'} → HEq.{1} t t' → Consensus.Goldilocks.ContractAssumptions.noConfusionType.{u} P t t') (fun {t'} eq_2 => Eq.ndrec.{u, 1} (Consensus.Goldilocks.ContractAssumptions.casesOn.{u} t fun fgSlots two_le_fgSlots timeout k => k ⋯) ⋯) eq_1 eq_2
+  #4069614387/1647849780
+def Consensus.Goldilocks.ContractAssumptions.noConfusionType #829358717/3789091676
+recursor Consensus.Goldilocks.ContractAssumptions.rec : {S : Consensus.Goldilocks.AsChainShape.Setup} → {motive : Consensus.Goldilocks.ContractAssumptions S → Sort u} → ((fgSlots : Nat) → (two_le_fgSlots : LE.le.{0} 2 fgSlots) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 fgSlots) S.δt) → motive { fgSlots := fgSlots, two_le_fgSlots := two_le_fgSlots, timeout := timeout }) → (t : Consensus.Goldilocks.ContractAssumptions S) → motive t
+  #1808677022/-
+def Consensus.Goldilocks.ContractAssumptions.recOn : {S : Consensus.Goldilocks.AsChainShape.Setup} → {motive : Consensus.Goldilocks.ContractAssumptions S → Sort u} → (t : Consensus.Goldilocks.ContractAssumptions S) → ((fgSlots : Nat) → (two_le_fgSlots : LE.le.{0} 2 fgSlots) → (timeout : LE.le.{0} (HMul.hMul.{0, 0, 0} 3 fgSlots) S.δt) → motive { fgSlots := fgSlots, two_le_fgSlots := two_le_fgSlots, timeout := timeout }) → motive t := fun {S} {motive} t mk => Consensus.Goldilocks.ContractAssumptions.rec.{u} mk t
+  #3605190389/601051284
+theorem Consensus.Goldilocks.ContractAssumptions.timeout : ∀ {S : Consensus.Goldilocks.AsChainShape.Setup} (self : Consensus.Goldilocks.ContractAssumptions S), LE.le.{0} (HMul.hMul.{0, 0, 0} 3 self.fgSlots) S.δt
+  #749918881/-
+theorem Consensus.Goldilocks.ContractAssumptions.two_le_fgSlots : ∀ {S : Consensus.Goldilocks.AsChainShape.Setup} (self : Consensus.Goldilocks.ContractAssumptions S), LE.le.{0} 2 self.fgSlots
+  #3938341090/-
 induct Consensus.Goldilocks.ContractCoefficients : Type
   #3931117990/-
 def Consensus.Goldilocks.ContractCoefficients._sizeOf_1 #854098084/4101221234
@@ -1813,12 +1816,12 @@ def Consensus.Goldilocks.contract_coefficients : (S : Consensus.Goldilocks.AsCha
   #1754612256/2891159266
 def Consensus.Goldilocks.contract_heal : (S : Consensus.Goldilocks.AsChainShape.Setup) → Consensus.Goldilocks.ContractAssumptions S → Consensus.Capability → PNat → Nat := fun S A x X => HAdd.hAdd.{0, 0, 0} (Consensus.Goldilocks.contract_catchUp S A).val (Consensus.Goldilocks.healMargin S X)
   #3228399400/2354250037
-def Consensus.Goldilocks.contract_latency : (S : Consensus.Goldilocks.AsChainShape.Setup) → Consensus.Goldilocks.ContractAssumptions S → Consensus.Capability → PNat → Nat := fun S A x x_1 => Consensus.Goldilocks.contract_latency.match_1.{1} (fun x x_2 => Nat) x x_1 (fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 X.val) 6) (fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 X.val) 6) fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 (HAdd.hAdd.{0, 0, 0} X.val (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF A.fgDelay)))) 1
-  #3228399400/4089386805
+def Consensus.Goldilocks.contract_latency : (S : Consensus.Goldilocks.AsChainShape.Setup) → Consensus.Goldilocks.ContractAssumptions S → Consensus.Capability → PNat → Nat := fun S A x x_1 => Consensus.Goldilocks.contract_latency.match_1.{1} (fun x x_2 => Nat) x x_1 (fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 X.val) 6) (fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 X.val) 6) fun X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 (HAdd.hAdd.{0, 0, 0} X.val (HMul.hMul.{0, 0, 0} 3 A.fgSlots))) 1
+  #3228399400/2060891864
 def Consensus.Goldilocks.contract_latency.match_1 #2825803619/468134226
-def Consensus.Goldilocks.finalWindow : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Consensus.Blocks.Pattern := fun {S} A => { offsets := List.cons.{0} 0 (List.cons.{0} (Consensus.Goldilocks.AsChainShape.cF A.fgDelay) (List.cons.{0} (HMul.hMul.{0, 0, 0} 2 (Consensus.Goldilocks.AsChainShape.cF A.fgDelay)) (List.cons.{0} (HMul.hMul.{0, 0, 0} 3 (Consensus.Goldilocks.AsChainShape.cF A.fgDelay)) List.nil.{0}))), nonempty := ⋯ }
-  #57060020/3555088272
-theorem Consensus.Goldilocks.finalWindow._proof_1 #3355237160/-
+def Consensus.Goldilocks.finalWindow : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Consensus.Blocks.Pattern := fun {S} A => { offsets := List.cons.{0} 0 (List.cons.{0} A.fgSlots (List.cons.{0} (HMul.hMul.{0, 0, 0} 2 A.fgSlots) (List.cons.{0} (HMul.hMul.{0, 0, 0} 3 A.fgSlots) List.nil.{0}))), nonempty := ⋯ }
+  #57060020/3416389647
+theorem Consensus.Goldilocks.finalWindow._proof_1 #1102947579/-
 def Consensus.Goldilocks.goldilocksContract : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Consensus.Goldilocks.ContractCoefficients → Consensus.Contract Consensus.Blocks.ProgressReq := fun {S} A C => { Idx := PNat, idx_nonempty := Consensus.Goldilocks.goldilocksContract._proof_1, params := have __src := Consensus.Params.standard C.catchUp.val (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6) (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 5) C.heal C.latency; { catchUp := __src.catchUp, θ := __src.θ, β := __src.β, cover := __src.cover, α := __src.α, lag := __src.lag, budget := __src.budget, η := __src.η, noSleep := HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6, recovery := 9, heal := __src.heal, latency := __src.latency, fgDelay := A.fgDelay }, progress := fun cap X => Consensus.Blocks.ProgressReq.recur { pattern := ite.{1} (Eq.{1} cap Consensus.Capability.final) (Consensus.Goldilocks.finalWindow A) Consensus.Blocks.Pattern.single, gap := X } }
   #857968302/315960172
 theorem Consensus.Goldilocks.goldilocksContract._proof_1 #3293017938/-
@@ -1826,3 +1829,4 @@ def Consensus.Goldilocks.healMargin : Consensus.Goldilocks.AsChainShape.Setup �
   #2671360635/222144714
 def Consensus.Goldilocks.healthyDrainLen : Consensus.Goldilocks.AsChainShape.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 2 S.k) X.val
   #2671360635/3929563864
+theorem _private.ConsensusLean.Instances.Goldilocks.Statements.Obligations.0.Consensus.Goldilocks.ContractAssumptions.fgDelay._proof_1 #499673014/-

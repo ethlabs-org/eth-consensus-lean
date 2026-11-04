@@ -11,50 +11,50 @@ public section
 
 /-! # Goldilocks Obligations: the acceptance contract and its coefficients
 
-The characterising lemmas of the fixed assumptions (`ContractAssumptions`: row ratio and
-timeout), the final pattern (`finalWindow`, gap `cF r`), the coefficients (`contract_catchUp`,
+The characterising lemmas of the fixed assumptions (`ContractAssumptions`: the FG delay in slots
+`fgSlots`, its FG delay bound `fgDelay = 4·fgSlots − 6`, and the timeout), the final pattern
+(`finalWindow`, gap `fgSlots`), the coefficients (`contract_catchUp`,
 `contract_heal`, `contract_latency`) and the contract `goldilocksContract`, all defined in the
-statement module `Statements/Obligations`, and the abbreviation `K`. The row transport is
-instantiated at the actual protocol row delay `rowDelay` (HSSharedRun, HSSharedOfQuery); the
+statement module `Statements/Obligations`, and the abbreviation `K`. The FG transport is
+instantiated at the actual protocol FG delay `rowDelay` (HSSharedRun, HSSharedOfQuery); the
 monotone lift `PSyncFGRowTransport.mono` exists, but Accepted's chain uses it only at `le_rfl`. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape
 open Blocks Shape
 
-/-- `cF r` is the ceiling `⌈(r + 6)/4⌉`, for every `r`. -/
-theorem cF_ceil (r : ℕ+) : (r : Nat) + 6 ≤ 4 * cF r ∧ 4 * cF r < (r : Nat) + 10 := by
-  unfold cF
-  omega
+/-- The contract's FG delay bound is `4·fgSlots − 6`. -/
+theorem _root_.Consensus.Goldilocks.ContractAssumptions.fgDelay_val {S : Setup}
+    (A : ContractAssumptions S) : (A.fgDelay : Nat) = 4 * A.fgSlots - 6 := by rfl
 
-/-- The row transport at ratio `r`: with engine bounds `0 < Δ` and `ΔF ≤ r·Δ`, the protocol
-delays `Δ_p = Δ` and `ΔF_p = ΔF` satisfy `6Δ_p + ΔF_p ≤ 4Δ_p·cF r`. -/
-theorem cF_spec (r : ℕ+) (Δ ΔF : Time) (hΔ : 0 < Δ) (hr : ΔF ≤ (r : Time) * Δ) :
-    6 * Δ + ΔF ≤ 4 * Δ * (cF r : Time) := by
-  have h4 : ((r : Nat) : Time) + 6 ≤ 4 * (cF r : Time) := by exact_mod_cast (cF_ceil r).1
-  nlinarith
+/-- The healthy regime's FG delay bound of `K S A`, read in slots: `ΔF ≤ (4·fgSlots − 6)·Δ` is
+`6Δ + ΔF ≤ 4Δ·fgSlots`. -/
+theorem fgDelay_bound_iff {S : Setup} (A : ContractAssumptions S) (Δ ΔF : Time) :
+    ΔF ≤ (A.fgDelay : Time) * Δ ↔ 6 * Δ + ΔF ≤ 4 * Δ * (A.fgSlots : Time) := by
+  have h : ((A.fgDelay : Nat) : Time) + 6 = 4 * (A.fgSlots : Time) := by
+    have := A.two_le_fgSlots
+    have : (A.fgDelay : Nat) + 6 = 4 * A.fgSlots := by rw [A.fgDelay_val]; omega
+    exact_mod_cast this
+  have h' : 4 * Δ * (A.fgSlots : Time) = ((A.fgDelay : Nat) : Time) * Δ + 6 * Δ := by
+    rw [show 4 * Δ * (A.fgSlots : Time) = Δ * (4 * (A.fgSlots : Time)) by ring, ← h]
+    ring
+  change ΔF ≤ ((A.fgDelay : Nat) : Time) * Δ ↔ _
+  rw [h']
+  constructor <;> intro <;> linarith
 
-/-- The row gap is at least `2` at every ratio (`cF_ceil`: `4·cF r ≥ r + 6 ≥ 7`). -/
-theorem _root_.Consensus.Goldilocks.ContractAssumptions.two_le_cF {S : Setup}
-    (A : ContractAssumptions S) :
-    2 ≤ cF A.fgDelay := by
-  have := (cF_ceil A.fgDelay).1
-  have := A.fgDelay.pos
-  omega
-
-/-- The timeout covers the gap-2 bound `6 ≤ δ_t` at every ratio. -/
+/-- The timeout covers the gap-2 bound `6 ≤ δ_t` for every FG gap. -/
 theorem _root_.Consensus.Goldilocks.ContractAssumptions.six_le_δt {S : Setup}
     (A : ContractAssumptions S) :
     6 ≤ S.δt := by
   have := A.timeout
-  have := A.two_le_cF
+  have := A.two_le_fgSlots
   omega
 
 theorem finalWindow_offsets {S : Setup} (A : ContractAssumptions S) :
-    (finalWindow A).offsets = [0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay] := by rfl
+    (finalWindow A).offsets = [0, A.fgSlots, 2 * A.fgSlots, 3 * A.fgSlots] := by rfl
 
 theorem finalWindow_span {S : Setup} (A : ContractAssumptions S) :
-    (finalWindow A).span = 3 * cF A.fgDelay := by
+    (finalWindow A).span = 3 * A.fgSlots := by
   unfold Pattern.span
   rw [finalWindow_offsets]
   simp only [List.foldr_cons, List.foldr_nil]
@@ -94,7 +94,7 @@ theorem contract_latency_stable (S : Setup) (A : ContractAssumptions S) (X : ℕ
     contract_latency S A .stable X = 4 * (X : Nat) + 6 := by rfl
 
 theorem contract_latency_final (S : Setup) (A : ContractAssumptions S) (X : ℕ+) :
-    contract_latency S A .final X = 4 * ((X : Nat) + 3 * cF A.fgDelay) + 1 := by rfl
+    contract_latency S A .final X = 4 * ((X : Nat) + 3 * A.fgSlots) + 1 := by rfl
 
 /-- For `Δ ≥ 1`, `19Δ` covers `18Δ + 1`, including safety's literal `+1`. -/
 theorem contract_catchUp_ge_sleepy (S : Setup) (A : ContractAssumptions S) :

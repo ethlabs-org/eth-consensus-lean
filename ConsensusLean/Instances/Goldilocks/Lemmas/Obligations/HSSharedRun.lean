@@ -15,9 +15,9 @@ execution, no observed collision, `Healthy` at GST `g`), at a parametric row del
 
 * `hsSharedUpTo_of_rows`: from row service at `Δ_F` (`PSyncFGRowTransport … Δ_F`) as a premise.
 * `rowDelay_delivery_of_healthy`, `rowDelay_timeout_of_healthy`: the healthy regime of `K S A`
-  bounds the engine row delay by the assumptions' row ratio `r` (`ΔF ≤ r·Δ`), so the protocol row
-  delay `Δ_F,p = rowDelay (pubOf E)` satisfies `6Δ_p + Δ_F,p ≤ 4Δ_p·cF r ≤ 4Δ_p·δ_t`
-  (`cF_spec`, `3·cF r ≤ δ_t`). No order between `Δ` and `Δ_F` is used.
+  bounds the engine FG delay by the contract's bound (`ΔFG ≤ (4·fgSlots − 6)·ΔAC`), so the
+  protocol FG delay `Δ_F,p = rowDelay (pubOf E)` satisfies `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`
+  (`fgDelay_bound_iff`, `3·fgSlots ≤ δ_t`). No order between `Δ` and `Δ_F` is used.
 * `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_F,p`, from the network's row
   service at `Δ_F,p` (`signed_row_service_psync`). The lift (`PSyncFGRowTransport.mono`) exists,
   but Accepted's chain uses it only at `le_rfl` (`Δ_F = Δ_F,p`).
@@ -87,30 +87,30 @@ theorem rowDelay_pos (pub : Model.Public) : 0 < rowDelay pub := by
   rw [rowDelay_eq]
   exact pub.ΔFG_pos
 
-/-- **The row transport of a healthy run of `K S A`**: the healthy regime bounds the engine row
-delay by the assumptions' row ratio, `ΔF ≤ r·Δ`, so the protocol delays satisfy
-`6Δ_p + Δ_F,p ≤ 4Δ_p·cF r` (`cF_spec`), with `Δ_F,p = rowDelay (pubOf E)`. -/
+/-- **The FG transport of a healthy run of `K S A`**: the healthy regime bounds the engine FG
+delay by the contract's FG delay bound, `ΔFG ≤ (4·fgSlots − 6)·ΔAC`, so the protocol delays satisfy
+`6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots` (`fgDelay_bound_iff`), with `Δ_F,p = rowDelay (pubOf E)`. -/
 theorem rowDelay_delivery_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     {g : Time} (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) :
     6 * (S.params (Model.pubOf run.1) hn).Δ + rowDelay (Model.pubOf run.1) ≤
-      4 * (S.params (Model.pubOf run.1) hn).Δ * (cF A.fgDelay : Time) := by
+      4 * (S.params (Model.pubOf run.1) hn).Δ * (A.fgSlots : Time) := by
   have h := healthy.2.2
   change run.1.ΔFG ≤ ((A.fgDelay : ℕ+) : Time) * run.1.ΔAC at h
   rw [rowDelay_eq]
-  exact cF_spec A.fgDelay run.1.ΔAC run.1.ΔFG run.1.ΔAC_pos h
+  exact (fgDelay_bound_iff A run.1.ΔAC run.1.ΔFG).1 h
 
 /-- **The rise timeout of a healthy run of `K S A`** at the protocol row delay:
-`6Δ_p + Δ_F,p ≤ 4Δ_p·cF r ≤ 4Δ_p·δ_t`, from `rowDelay_delivery_of_healthy` and
-`3·cF r ≤ δ_t` (`ContractAssumptions.timeout`). -/
+`6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`, from `rowDelay_delivery_of_healthy` and
+`3·fgSlots ≤ δ_t` (`ContractAssumptions.timeout`). -/
 theorem rowDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     {g : Time} (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) :
     6 * (S.params (Model.pubOf run.1) hn).Δ + rowDelay (Model.pubOf run.1) ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time) := by
   have h := rowDelay_delivery_of_healthy S A V run hn healthy
   have hΔ := (S.params (Model.pubOf run.1) hn).toParams.hΔ
-  have hc : (cF A.fgDelay : Time) ≤ (S.δt : Time) := by
+  have hc : (A.fgSlots : Time) ≤ (S.δt : Time) := by
     have := A.timeout
-    exact_mod_cast (show cF A.fgDelay ≤ S.δt by omega)
+    exact_mod_cast (show A.fgSlots ≤ S.δt by omega)
   nlinarith
 
 /-- **The monotone lift**: the shared HS premises of a healthy run at every `Δ_F ≥ Δ_F,p` with

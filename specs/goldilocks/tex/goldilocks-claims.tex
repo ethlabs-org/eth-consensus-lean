@@ -2136,8 +2136,7 @@ outer gap~$X$, the index of its progress requirement.
 \hline
 Quantity & Value\\
 \hline
-Row ratio & $r\geq1$; the healthy row delay is at most $r\Delta$ ($\Delta_F\leq r\Delta$)\\
-Row gap & $c=\cF(r)=\lceil(r+6)/4\rceil$\\
+FG delay in slots & $c=\texttt{fgSlots}\geq2$; healthy runs have $6\Delta+\Delta_F\leq4c\Delta$, i.e.\ $\cF\leq c$ (FG delay bound $\Delta_F\leq(4c-6)\Delta$)\\
 Timeout & $3c\leq\delta_{\mathrm t}$\\
 Final progress & in every window of the outer gap~$X$, the four-anchor
   pattern $[0,c,2c,3c]$\\

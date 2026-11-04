@@ -20,12 +20,18 @@ Labelled by kind (CONTRIBUTING "Statements"):
   five-window and the phase-1 coefficients (`heal_drop`). `contract_latency` takes its documented
   value (`4X + 6`, `4(X + 3c) + 1`) at each capability, and both Sleepy margins hold there.
 
-* (b) The row ratio `r` (`ContractAssumptions.fgDelay`) and its gap `c = cF r`:
-  `fgDelay_one` reproduces every constant of the single-bound contract (`c = 2`, `6 ≤ δt`, the
-  window `[0, 2, 4, 6]`, final latency `4(X + 6) + 1`); `rowGap_boundary` crosses a rounding
-  boundary (`cF 2 = 2`, `cF 3 = 3`); `fgDelay_three` and `fgDelay_thirtyTwo` give the window and
-  latency at `c = 3` and `c = 10`; `timeout_rejects_ratio` rejects `r = 32` at `δt = 29`;
-  `row_transport_slow` and `row_transport_fast` instantiate `cF_spec` at `ΔF > Δ` and `ΔF < Δ`.
+* (b) The FG delay in slots `fgSlots` (its FG delay bound `fgDelay = 4·fgSlots − 6`):
+  `fgSlots_two` gives every constant at the smallest gap (`6 ≤ δt`, the window `[0, 2, 4, 6]`,
+  final latency `4(X + 6) + 1`, bound `2`); `fgSlots_three` and `fgSlots_ten` give the window,
+  latency and bound at `fgSlots = 3` and `10`; `timeout_rejects_gap` rejects `fgSlots = 10` at
+  `δt = 29`; `fg_transport_slow` and `fg_transport_fast` instantiate `fgDelay_bound_iff` at
+  `ΔFG > ΔAC` and `ΔFG < ΔAC`.
+* (b) The former FG delay bound `r` (before the `fgSlots` restatement, gap `cF r = ⌈(r + 6)/4⌉`):
+  `cF_values`; `cF_four_mul_sub_six` (every gap is the former gap of its own bound, so each
+  contract is the former contract at `r = fgDelay`); `shapeObligations_of_fgDelay_le` (the
+  obligations are monotone in the FG delay bound: a smaller bound is a weaker healthy regime);
+  `meets_obligations_at_every_bound` (the former endpoint, at every `r` with `3·cF r ≤ δt`) and
+  `former_contract_fields` (its contract is the former one).
 
 `contract_heal` (`catchUp + healMargin`, `contract_heal_val`) is pinned by `heal_drop`.
 
@@ -38,7 +44,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
 namespace Consensus.Goldilocks.Obligations.Test.Contract
 open AsChainShape Simulation
 
-open Shape SA
+open Blocks Shape SA
 
 open Classical in
 /-- A replay order at genesis root `0`: a chosen parent-order enumeration (`[]` if none). -/
@@ -66,11 +72,11 @@ noncomputable def setupLarge : Setup where
   two_le_c := le_rfl
   ro := replayOrder
 
-/-- The assumptions at `setupSmall`, with row ratio `1`. -/
-def assumptionsSmall : ContractAssumptions setupSmall := ⟨1, by decide⟩
+/-- The assumptions at `setupSmall`, with FG gap `2`. -/
+def assumptionsSmall : ContractAssumptions setupSmall := ⟨2, le_rfl, by decide⟩
 
-/-- The assumptions at `setupLarge`, with row ratio `1`. -/
-def assumptionsLarge : ContractAssumptions setupLarge := ⟨1, by decide⟩
+/-- The assumptions at `setupLarge`, with FG gap `2`. -/
+def assumptionsLarge : ContractAssumptions setupLarge := ⟨2, le_rfl, by decide⟩
 
 /-- (a) The acceptance assumptions are satisfiable at `k = 2, δt = 6`. -/
 theorem assumptions_small : Nonempty (ContractAssumptions setupSmall) := ⟨assumptionsSmall⟩
@@ -80,7 +86,7 @@ theorem assumptions_large : Nonempty (ContractAssumptions setupLarge) := ⟨assu
 
 /-- (a) The assumptions hold exactly at the setups with `6 ≤ δt`. -/
 theorem assumptions_iff (S : Setup) : Nonempty (ContractAssumptions S) ↔ 6 ≤ S.δt :=
-  ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨⟨1, by rw [show cF 1 = 2 from rfl]; omega⟩⟩⟩
+  ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨⟨2, le_rfl, by omega⟩⟩⟩
 
 /-- (a) Rejection: a timeout of five is not admitted. -/
 theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
@@ -161,16 +167,16 @@ theorem heal_drop (S : Setup) (A : ContractAssumptions S) (cap : Capability) (X 
     unfold healMargin healthyDrainLen
     omega
 
-/-- Both setups' assumptions have row ratio `1`, hence gap `2`. -/
-theorem gap_one {S : Setup} {A : ContractAssumptions S} (h : A.fgDelay = 1 := by rfl) :
-    cF A.fgDelay = 2 := by rw [h]; rfl
+/-- Both setups' assumptions have FG gap `2`. -/
+theorem gap_two {S : Setup} {A : ContractAssumptions S} (h : A.fgSlots = 2 := by rfl) :
+    A.fgSlots = 2 := h
 
 /-- (b) Latency at `k = 2, δt = 6`: `4X + 6` for available and stable, `4X + 25` for final. -/
 theorem latency_small (X : ℕ+) :
     contract_latency setupSmall assumptionsSmall .available X = 4 * (X : Nat) + 6 ∧
       contract_latency setupSmall assumptionsSmall .stable X = 4 * (X : Nat) + 6 ∧
       contract_latency setupSmall assumptionsSmall .final X = 4 * (X : Nat) + 25 := by
-  rw [contract_latency_available, contract_latency_stable, contract_latency_final, gap_one]
+  rw [contract_latency_available, contract_latency_stable, contract_latency_final, gap_two]
   refine ⟨rfl, rfl, ?_⟩
   omega
 
@@ -180,7 +186,7 @@ theorem latency_large (X : ℕ+) :
     contract_latency setupLarge assumptionsLarge .available X = 4 * (X : Nat) + 6 ∧
       contract_latency setupLarge assumptionsLarge .stable X = 4 * (X : Nat) + 6 ∧
       contract_latency setupLarge assumptionsLarge .final X = 4 * (X : Nat) + 25 := by
-  rw [contract_latency_available, contract_latency_stable, contract_latency_final, gap_one]
+  rw [contract_latency_available, contract_latency_stable, contract_latency_final, gap_two]
   refine ⟨rfl, rfl, ?_⟩
   omega
 
@@ -191,7 +197,7 @@ theorem latency_one :
       contract_latency setupLarge assumptionsLarge .stable 1 = 10 ∧
       contract_latency setupLarge assumptionsLarge .final 1 = 29 := by
   rw [contract_latency_available, contract_latency_final, contract_latency_stable,
-    contract_latency_final, gap_one, gap_one]
+    contract_latency_final, gap_two, gap_two]
   exact ⟨rfl, rfl, rfl, rfl⟩
 
 /-- (b) Both Sleepy margins hold at `k = 2, δt = 6`; catch-up meets the margin exactly. -/
@@ -210,7 +216,7 @@ theorem sleepy_margins_large (idx : ℕ+) :
   ⟨contract_catchUp_ge_sleepy _ _, contract_latency_ge_sleepy _ _ _ _ (.inl rfl),
     contract_latency_ge_sleepy _ _ _ _ (.inr rfl)⟩
 
-/-- A setup with a long timeout, `k = 2`, `δt = 30`, admitting row ratios up to `32`. -/
+/-- A setup with a long timeout, `k = 2`, `δt = 30`, admitting FG gaps up to `10`. -/
 noncomputable def setupRow : Setup where
   genesisRoot := 0
   δt := 30
@@ -220,14 +226,14 @@ noncomputable def setupRow : Setup where
   two_le_c := le_rfl
   ro := replayOrder
 
-/-- (b) Row ratio `1` reproduces the single-bound constants: gap `2`, `6 ≤ δt`, the window
-`[0, 2, 4, 6]` of span `6` and final latency `4(X + 6) + 1`; the contract carries the ratio. -/
-theorem fgDelay_one (X : ℕ+) :
-    cF assumptionsSmall.fgDelay = 2 ∧ 6 ≤ setupSmall.δt ∧
+/-- (b) FG gap `2`: `6 ≤ δt`, the window `[0, 2, 4, 6]` of span `6`, final latency `4(X + 6) + 1`;
+the contract's FG delay bound is `4·2 − 6 = 2` (its healthy regime assumes `ΔFG ≤ 2·ΔAC`). -/
+theorem fgSlots_two (X : ℕ+) :
+    assumptionsSmall.fgSlots = 2 ∧ 6 ≤ setupSmall.δt ∧
       (finalWindow assumptionsSmall).offsets = [0, 2, 4, 6] ∧
       (finalWindow assumptionsSmall).span = 6 ∧
       contract_latency setupSmall assumptionsSmall .final X = 4 * ((X : Nat) + 6) + 1 ∧
-      (K setupSmall assumptionsSmall).params.fgDelay = 1 :=
+      (K setupSmall assumptionsSmall).params.fgDelay = 2 :=
   ⟨rfl, assumptionsSmall.six_le_δt, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [contract_latency_final]; rfl, rfl⟩
 
@@ -237,56 +243,51 @@ theorem outage_eta_budget :
     (K setupSmall assumptionsSmall).params.η = 0 ∧
       (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl⟩
 
-/-- (b) The rounding boundary of the gap: `cF 1 = cF 2 = 2`, `cF 3 = 3`, and `cF 32 = 10`. -/
-theorem rowGap_boundary : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := ⟨rfl, rfl, rfl, rfl⟩
+/-- The assumptions at `setupRow` with FG gap `3` (`9 ≤ 30`). -/
+def assumptionsGapThree : ContractAssumptions setupRow := ⟨3, by decide, by decide⟩
 
-/-- The assumptions at `setupRow` with row ratio `3` (gap `3`, `9 ≤ 30`). -/
-def assumptionsRowThree : ContractAssumptions setupRow := ⟨3, by decide⟩
+/-- The assumptions at `setupRow` with FG gap `10` (`30 ≤ 30`). -/
+def assumptionsGapTen : ContractAssumptions setupRow := ⟨10, by decide, by decide⟩
 
-/-- The assumptions at `setupRow` with row ratio `32` (gap `10`, `30 ≤ 30`). -/
-def assumptionsRowThirtyTwo : ContractAssumptions setupRow := ⟨32, by decide⟩
+/-- (b) FG gap `3`: the window `[0, 3, 6, 9]`, final latency `4(X + 9) + 1`, FG delay bound `6`. -/
+theorem fgSlots_three (X : ℕ+) :
+    (finalWindow assumptionsGapThree).offsets = [0, 3, 6, 9] ∧
+      contract_latency setupRow assumptionsGapThree .final X = 4 * ((X : Nat) + 9) + 1 ∧
+      contract_latency setupRow assumptionsGapThree .available X = 4 * (X : Nat) + 6 ∧
+      (K setupRow assumptionsGapThree).params.fgDelay = 6 :=
+  ⟨by rw [finalWindow_offsets]; rfl, by rw [contract_latency_final]; rfl,
+    by rw [contract_latency_available], rfl⟩
 
-/-- (b) Row ratio `3`: gap `3`, the window `[0, 3, 6, 9]` and final latency `4(X + 9) + 1`. -/
-theorem fgDelay_three (X : ℕ+) :
-    cF assumptionsRowThree.fgDelay = 3 ∧
-      (finalWindow assumptionsRowThree).offsets = [0, 3, 6, 9] ∧
-      contract_latency setupRow assumptionsRowThree .final X = 4 * ((X : Nat) + 9) + 1 ∧
-      contract_latency setupRow assumptionsRowThree .available X = 4 * (X : Nat) + 6 :=
-  ⟨rfl, by rw [finalWindow_offsets]; rfl, by rw [contract_latency_final]; rfl,
-    by rw [contract_latency_available]⟩
-
-/-- (b) Row ratio `32`: gap `10`, the window `[0, 10, 20, 30]` (span `30 = δt`) and final latency
-`4(X + 30) + 1`; the nonfinal latency stays `4X + 6`; the contract carries the ratio `32` (so its
-healthy regime assumes `ΔF ≤ 32·Δ`). -/
-theorem fgDelay_thirtyTwo (X : ℕ+) :
-    cF assumptionsRowThirtyTwo.fgDelay = 10 ∧
-      (finalWindow assumptionsRowThirtyTwo).offsets = [0, 10, 20, 30] ∧
-      (finalWindow assumptionsRowThirtyTwo).span = setupRow.δt ∧
-      contract_latency setupRow assumptionsRowThirtyTwo .final X = 4 * ((X : Nat) + 30) + 1 ∧
-      contract_latency setupRow assumptionsRowThirtyTwo .stable X = 4 * (X : Nat) + 6 ∧
-      (K setupRow assumptionsRowThirtyTwo).params.fgDelay = 32 :=
-  ⟨rfl, by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
+/-- (b) FG gap `10`: the window `[0, 10, 20, 30]` (span `30 = δt`), final latency `4(X + 30) + 1`;
+the nonfinal latency stays `4X + 6`; the FG delay bound is `34` (so the healthy regime assumes
+`ΔFG ≤ 34·ΔAC`, i.e. `6·ΔAC + ΔFG ≤ 40·ΔAC`). -/
+theorem fgSlots_ten (X : ℕ+) :
+    (finalWindow assumptionsGapTen).offsets = [0, 10, 20, 30] ∧
+      (finalWindow assumptionsGapTen).span = setupRow.δt ∧
+      contract_latency setupRow assumptionsGapTen .final X = 4 * ((X : Nat) + 30) + 1 ∧
+      contract_latency setupRow assumptionsGapTen .stable X = 4 * (X : Nat) + 6 ∧
+      (K setupRow assumptionsGapTen).params.fgDelay = 34 :=
+  ⟨by rw [finalWindow_offsets]; rfl, by rw [finalWindow_span]; rfl,
     by rw [contract_latency_final]; rfl, by rw [contract_latency_stable], rfl⟩
 
-/-- (a) Rejection: row ratio `32` is not admitted at `δt = 29` (`3·cF 32 = 30`). -/
-theorem timeout_rejects_ratio (S : Setup) (h : S.δt = 29) :
-    ¬ ∃ A : ContractAssumptions S, A.fgDelay = 32 := by
+/-- (a) Rejection: FG gap `10` is not admitted at `δt = 29` (`3·10 = 30`). -/
+theorem timeout_rejects_gap (S : Setup) (h : S.δt = 29) :
+    ¬ ∃ A : ContractAssumptions S, A.fgSlots = 10 := by
   rintro ⟨A, hA⟩
   have := A.timeout
-  rw [hA, show cF 32 = 10 from rfl] at this
   omega
 
-/-- (b) Slower rows (`ΔF = 32 > Δ = 1`, `r = 32`): `6Δ + ΔF = 38 ≤ 40 = 4Δ·cF r` (the
-protocol delays are the engine's, `Δ_p = Δ`, `ΔF_p = ΔF`). -/
-theorem row_transport_slow : 6 * (1 : Time) + 32 ≤ 4 * 1 * (cF 32 : Time) :=
-  cF_spec 32 1 32 (by decide) (by decide)
+/-- (b) Slower FG attestations (`ΔFG = 34 > ΔAC = 1`, FG gap `10`): the healthy bound
+`ΔFG ≤ 34·ΔAC` is `6ΔAC + ΔFG = 40 ≤ 40 = 4ΔAC·10`. -/
+theorem fg_transport_slow : 6 * (1 : Time) + 34 ≤ 4 * 1 * (assumptionsGapTen.fgSlots : Time) :=
+  (fgDelay_bound_iff assumptionsGapTen 1 34).1 (by decide)
 
-/-- (b) Faster rows (`ΔF = 1 < Δ = 5`, `r = 1`): `6Δ + ΔF = 31 ≤ 40 = 4Δ·cF r`. -/
-theorem row_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (cF 1 : Time) :=
-  cF_spec 1 5 1 (by decide) (by decide)
+/-- (b) Faster FG attestations (`ΔFG = 1 < ΔAC = 5`, FG gap `2`): `31 ≤ 40 = 4ΔAC·2`. -/
+theorem fg_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (assumptionsSmall.fgSlots : Time) :=
+  (fgDelay_bound_iff assumptionsSmall 5 1).1 (by decide)
 
 /-- (a) **The Accepted endpoint is not vacuous**: there are a setup and an assumption set (`k = 2`,
-`δt = 6`, row ratio `1`), and the family is accepted at their contract. -/
+`δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
 theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions S),
     ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A)) :=
   ⟨setupSmall, assumptionsSmall, meets_obligations setupSmall assumptionsSmall⟩
@@ -300,5 +301,115 @@ theorem accepted_realizable_small :
       (Fin 5) :=
   have h := meets_obligations setupSmall assumptionsSmall
   regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5) (by decide)
+
+/-! ## The fixed FG gap against the former FG delay bound
+
+Before the `fgSlots` restatement the assumptions took an FG delay bound `r ≥ 1` (the healthy
+regime's `ΔFG ≤ r·ΔAC`), with the gap `cF r = ⌈(r + 6)/4⌉`, the timeout `3·cF r ≤ δt`, the window
+`[0, cF r, 2·cF r, 3·cF r]` and the final latency `4(X + 3·cF r) + 1`. The restated endpoint is
+equivalent: each contract is the former one at `r = 4·fgSlots − 6` (`cF_four_mul_sub_six`), and the
+former endpoint at every `r` follows from it (`meets_obligations_at_every_bound`), because the
+obligations only weaken with a smaller bound (`shapeObligations_of_fgDelay_le`). -/
+
+/-- The former FG gap at bound `r`: `cF r = ⌈(r + 6)/4⌉`. -/
+def cF (r : ℕ+) : Nat := ((r : Nat) + 9) / 4
+
+theorem cF_ceil (r : ℕ+) : (r : Nat) + 6 ≤ 4 * cF r ∧ 4 * cF r < (r : Nat) + 10 := by
+  unfold cF
+  omega
+
+/-- The former gap at `r = 1, 2, 3, 32`: it crosses a rounding boundary between `2` and `3`. -/
+theorem cF_values : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := by decide
+
+/-- Every gap `c ≥ 2` is the former gap of its own bound `4c − 6`: the contract at `fgSlots` is the
+former contract at `r = fgDelay`. -/
+theorem cF_four_mul_sub_six {S : Setup} (A : ContractAssumptions S) : cF A.fgDelay = A.fgSlots := by
+  have := A.two_le_fgSlots
+  unfold cF
+  rw [A.fgDelay_val]
+  omega
+
+/-- `K` with its FG delay bound replaced by `d`. -/
+def withFGDelay (K : Contract ProgressReq) (d : ℕ+) : Contract ProgressReq :=
+  { K with params := { K.params with fgDelay := d } }
+
+/-- **The obligations are monotone in the FG delay bound**: the bound enters them only through the
+healthy regime's premise `ΔFG ≤ fgDelay·ΔAC` (`System.Healthy`, in `healthyLive` and
+`healedSafe`), so a smaller bound keeps every claim. -/
+theorem shapeObligations_of_fgDelay_le {O : OutputSchema} {Info : Type} [DecidableEq Info]
+    [Countable Info] {F : ChainShapeFamily O Info} {K : Contract ProgressReq} {d : ℕ+}
+    (hd : d ≤ K.params.fgDelay) (h : ShapeObligations F K) :
+    ShapeObligations F (withFGDelay K d) := by
+  have hH : ∀ (V : Type) [Fintype V] [DecidableEq V] (g : Time) (r : (Sys F V).Run),
+      (Sys F V).Healthy (withFGDelay K d) g r → (Sys F V).Healthy K g r := by
+    intro V _ _ g r hr
+    refine ⟨hr.1, hr.2.1, hr.2.2.trans ?_⟩
+    have hd' : ((d : Nat) : Time) ≤ (K.params.fgDelay : Nat) := by exact_mod_cast hd
+    exact mul_le_mul_of_nonneg_right hd' ((Sys F V).pt r).env.ΔAC_pos.le
+  have ha := h.admissible
+  refine ⟨fun V _ _ => ?_, ⟨ha.1, ha.2, ha.3, ha.4, ha.5, ha.6⟩, h.serves, h.progressFits,
+    h.progressTolerant⟩
+  have c := h.claims V
+  exact
+    { outputValid := c.outputValid
+      nested := c.nested
+      finalMonotone := c.finalMonotone
+      finalAccountable := c.finalAccountable
+      healthyLive := fun cap g hg i gst r hv hp =>
+        c.healthyLive cap g hg i gst r hv ⟨hH V gst r hp.1, hp.2⟩
+      sleepySafe := c.sleepySafe
+      sleepyLive := c.sleepyLive
+      healedSafe := fun cap g hc hg i gst r hv hp =>
+        c.healedSafe cap g hc hg i gst r hv ⟨hH V gst r hp.1, hp.2⟩
+      persists := c.persists }
+
+/-- The former gap is at least `2`. -/
+theorem two_le_cF (r : ℕ+) : 2 ≤ cF r := by
+  have := (cF_ceil r).1
+  have := r.pos
+  omega
+
+/-- The assumptions of the former bound `r`: gap `cF r`. -/
+def formerAssumptions (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) : ContractAssumptions S :=
+  ⟨cF r, two_le_cF r, ht⟩
+
+/-- The former contract at bound `r`: the contract at gap `cF r`, with FG delay bound `r`. -/
+noncomputable def formerContract (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) :
+    Contract ProgressReq :=
+  withFGDelay (goldilocksContract (formerAssumptions S r ht)
+    (contract_coefficients S (formerAssumptions S r ht))) r
+
+/-- The former contract has the former numbers: FG delay bound `r`, final progress the window
+`[0, cF r, 2·cF r, 3·cF r]` in every window of the outer gap, final latency
+`4(X + 3·cF r) + 1`. -/
+theorem former_contract_fields (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) (X : ℕ+) :
+    (formerContract S r ht).params.fgDelay = r ∧
+      (formerContract S r ht).progress .final X =
+        .recur { pattern := ⟨[0, cF r, 2 * cF r, 3 * cF r], by simp⟩, gap := X } ∧
+      (formerContract S r ht).params.latency .final X = 4 * ((X : Nat) + 3 * cF r) + 1 :=
+  ⟨rfl, rfl, rfl⟩
+
+/-- Conversely, each contract is the former contract at its own FG delay bound
+`r = 4·fgSlots − 6` (whose gap is `fgSlots`, `cF_four_mul_sub_six`): the same FG delay bound,
+final progress and final latency. -/
+theorem contract_eq_former {S : Setup} (A : ContractAssumptions S) (X : ℕ+) :
+    (K S A).params.fgDelay = A.fgDelay ∧
+      (K S A).progress .final X = .recur { pattern := finalWindow A, gap := X } ∧
+      (finalWindow A).offsets = [0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay] ∧
+      (K S A).params.latency .final X = 4 * ((X : Nat) + 3 * cF A.fgDelay) + 1 := by
+  refine ⟨rfl, rfl, ?_, ?_⟩
+  · rw [finalWindow_offsets, cF_four_mul_sub_six A]
+  · rw [cF_four_mul_sub_six A]
+    rfl
+
+/-- **The former endpoint, at every FG delay bound `r`** with `3·cF r ≤ δt`: Goldilocks meets the
+obligations at the former contract, from `meets_obligations` at the gap `cF r` (whose bound
+`4·cF r − 6 ≥ r`, `cF_ceil`) and `shapeObligations_of_fgDelay_le`. -/
+theorem meets_obligations_at_every_bound (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) :
+    ShapeObligations (goldilocks S) (formerContract S r ht) := by
+  refine shapeObligations_of_fgDelay_le ?_ (meets_obligations S (formerAssumptions S r ht))
+  change (r : Nat) ≤ 4 * cF r - 6
+  have := (cF_ceil r).1
+  omega
 
 end Consensus.Goldilocks.Obligations.Test.Contract

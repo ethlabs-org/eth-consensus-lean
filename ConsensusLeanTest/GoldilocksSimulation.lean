@@ -293,7 +293,4 @@ theorem isFGAtt_classification {n : Nat} (a : FG.Att n) (v : SA.Vote n) :
       ¬ isFGAtt (.mk .none (.data .relay) [] : Wire n) := by
   simp [isFGAtt, IsAttObj, attObj, voteObj]
 
-/-- The FG row gap `cF r = ⌈(r + 6)/4⌉` at `r = 1, 2, 3, 32`. -/
-theorem cF_values : cF 1 = 2 ∧ cF 2 = 2 ∧ cF 3 = 3 ∧ cF 32 = 10 := by decide
-
 end Consensus.Goldilocks.Simulation.Test
