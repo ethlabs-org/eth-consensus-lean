@@ -172,20 +172,19 @@ def FinalizingCoverage : Prop :=
           t + 4 * sp.Δ * ((W : Time) + 1 + M) + sp.Δ ≤ tr.time k →
           Anc (tr.HonestBlocks H) P (tr.state y k).fg.F
 
-/-- **HR.5, cache acceptance after the reset** (G1.9 (b) at high heights). In a Goldilocks run
-under `Healthy(g)` and `NoColl`, with the reset `a_z`: at an honest node's acceptance of a block
-`B` at a time `≥ a_z`, if `F* = σ[B].F` has state height `≥ H_z + 1`, then `F* ⪯ Σ.F` after
-that `fg_on_block` call. -/
+/-- **HR.5, cache acceptance** (G1.9 (b)). In a Goldilocks run under `Healthy(g)` and `NoColl`:
+at every honest node's acceptance of a block `B`, `F* = σ[B].F` satisfies `F* ⪯ Σ.F` after that
+`fg_on_block` call. (The claims state it after the reset `a_z` and at state heights `≥ H_z + 1`;
+neither is needed: of `Healthy(g)` only its fault bound `3|Hᶜ| ≤ n − 1` is used, at every height
+and time. The name keeps the claims node's.) -/
 def CacheAcceptanceAfterReset : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
     GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
-    ∀ a, IsReset tr H g a →
-      ∀ y ∈ H, ∀ k B, tr.AcceptAt y k B → a ≤ tr.time k →
+      ∀ y ∈ H, ∀ k B, tr.AcceptAt y k B →
         ∀ Fs ∈ (tr.post k).fg.tree, Fs.root = ((tr.post k).fg.σ B.root).F →
-          HZ tr H g + 1 ≤ ((tr.post k).fg.σ Fs.root).h →
           (tr.post k).fg.Anc Fs (tr.post k).fg.F
 
 end Consensus.Goldilocks.Healing

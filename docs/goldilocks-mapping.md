@@ -181,7 +181,7 @@ block); genesis takes an AC payload `acp₀` (never read). Restart keeps `Σ`, s
 stated: G0.3's "a block that leaves `Φ.tree` never returns" (it is `FrameNeverReturns` along the frames of
 `AcceptIsFrameStep`, with `U` the union of the trees, by `AcceptedTree`, `TreeGrows` and `FrameRealization`);
 G0.1 (store)'s "does not depend on the node, the arrival order or the time" (it follows from `ChainStateOfChain`
-under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (b) (stated as HR.5, Healing, high heights after the reset only); G1.10's C1.1 scope (a)–(c) (Compose), and `Sync` over FG traces (with the statements that need it).
+under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (b) (stated as HR.5, Healing, at every honest acceptance); G1.10's C1.1 scope (a)–(c) (Compose), and `Sync` over FG traces (with the statements that need it).
 Witnesses in `ConsensusLeanTest/GoldilocksFGStore.lean`, kind (a): `init_reachable`, `accepts_b₁`, `idle_localRun`, `relay_localRun`.
 
 ## ACBase
@@ -526,7 +526,7 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | — | CLAIMS §"O.1" (draft 9: `Rec`, `UPat`, constants) | `⌈x/4Δ⌉` in slots; `b₀`, `L_old`, `r_old`, `M*`, `Z`, `T_rec`, `R_*`; the recovery predicate `Rec(t₀)` ((a), (c): C1.1's `Clean(s, m, B)` for every honest fast confirmation written after `t₀` and every `m > s`; (b): compatible honest sources after `t₀`, clean records at the first source of an entry entered after `t₀`); the pattern regime `UPat(W, M)` (with C1.2's `c_F`, `k_F`); C1.2's premises with `UPat` and `M ≥ M*` | Healing | `Consensus.Goldilocks.Healing.slotsCeil`, `Consensus.Goldilocks.Healing.acqSlots`, `Consensus.Goldilocks.Healing.L_old`, `Consensus.Goldilocks.Healing.oldSlots`, `Consensus.Goldilocks.Healing.Mstar`, `Consensus.Goldilocks.Healing.Zreset`, `Consensus.Goldilocks.Healing.T_rec`, `Consensus.Goldilocks.Healing.Rstar`, `Consensus.Goldilocks.Healing.Rec`, `Consensus.Goldilocks.Healing.UPat`, `Consensus.Goldilocks.Healing.PatternPremises` |
 | O.1 (node) | CLAIMS node O.1 (draft 9; reviewed conditional assembly, workbench#27) | **recovery under a bounded uniform pattern**: `Rec(ḡ + T_rec)`, and high honest `Σ.F` from `T_F = ḡ + T_rec − 12Δ` (not O.1's target) | Healing | `Consensus.Goldilocks.Healing.PatternRecovery` |
 | C1.3 | CLAIMS C1.3 (draft 9) | **recurring finalizing coverage**: from `R_*`, an honest proposal released in `[t, t + 4Δ(W + 1 + M)]` is ⪯ every honest `Σ.F` from `t + 4Δ(W + 1 + M) + Δ` | Healing | `Consensus.Goldilocks.Healing.FinalizingCoverage` |
-| HR.5 | CLAIMS HR.5 (G1.9 (b) after the reset) | **cache acceptance after the reset**: an honest acceptance after `a_z` of a block whose `σ.F` is high puts it under `Σ.F` | Healing | `Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset` |
+| HR.5 | CLAIMS HR.5 (G1.9 (b) after the reset) | **cache acceptance**: every honest acceptance of a block puts its `σ.F` under `Σ.F`. **Stronger than CLAIMS** (2026-11-04, trusted-strengthen-2): no reset, no time bound `≥ a_z` and no height bound `≥ H_z + 1` (the fault bound of `Healthy(g)` alone gives it), so G1.9 (b) holds at every height and time, not only at high heights after the reset | Healing | `Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset` |
 
 Modelling choices:
 

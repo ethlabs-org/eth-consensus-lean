@@ -932,11 +932,14 @@ $\Sigma.F\prec\sigma[B].F$, $\sigma[B].F\preceq\Sigma.J$ after that call's
 justification step, and $\fname{has\_viable\_descendant}(\Sigma,\sigma[B].F)$
 after its $\hmax$ step, then $\sigma[B].F\preceq\Sigma.F$ afterwards.  (b) The
 run-level premises under which these conditions hold are stated after the reset
-and at heights above $H_z$ as HR.5 (cache acceptance after the reset); below
-$H_z+1$, and before the reset, they stay open.  The tested block is $\sigma[B].F$, not an ancestor's:
+and at heights above $H_z$ as HR.5 (cache acceptance after the reset); the
+Lean HR.5 (\texttt{Healing.CacheAcceptanceAfterReset}) proves its conclusion
+$\sigma[B].F\preceq\Sigma.F$ at every honest acceptance of a Goldilocks run
+under $\mathsf{Healthy}(g)$ and $\mathsf{NoColl}$, without the reset or the
+height bound (of $\mathsf{Healthy}(g)$ only the fault bound is used).  The tested block is $\sigma[B].F$, not an ancestor's:
 a finalization on an ancestor's chain that the caches refused is not re-read.}
 {G0.3, G0.4 (height)}{theorem.md \S8 item~5; (b): HR.5.}{M; (a) fixed (goldilocks\#38); (b)
-at high heights after the reset is HR.5.}
+is HR.5 (in the Lean without the reset or the height bound).}
 
 \dagnode{G1.10}{Quorum-free entries (the cut)}{An FG fact, parametric in
 its scope.  Let $\mathcal E$ be a set of blocks (the \emph{excluded entries}),
@@ -2627,7 +2630,8 @@ G1.8 & \texttt{Store.Crossing}, \texttt{Store.Coverage} & proved
   (\texttt{fg\_store\_service}), conditional bounds as stated\\
 G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
   (\texttt{fg\_store\_service})\\
-G1.9 (b) & see HR.5 & at high heights: proved through HR.5\\
+G1.9 (b) & see HR.5 & proved through HR.5 at every honest acceptance
+  (the reset and the high heights are not needed)\\
 G1.10 & \texttt{Store.QuorumFreeEntries}; its composed scope
   \texttt{Compose.CutScopeAt} & proved (\texttt{fg\_store\_trace}) under its
   premises; the scope is C1.1's conclusion~(iii) (\texttt{PersistAt.cut}),
@@ -2670,7 +2674,9 @@ HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
 HR.3 & \texttt{Healing.ResetExistence} & proved (\texttt{reset\_existence}),
   at $\mathsf{Catch}(2\Delta)$\\
 HR.5 & \texttt{Healing.CacheAcceptanceAfterReset} & proved
-  (\texttt{cache\_acceptance\_after\_reset})\\
+  (\texttt{cache\_acceptance\_after\_reset}); stronger than HR.5: at every
+  honest acceptance, without the reset, the time bound or the height
+  bound\\
 H.3 & \texttt{Healing.NonInterference}, \texttt{Healing.BridgeAt} & proved
   (\texttt{non\_interference}; in the run bundle
   \texttt{healing\_run\_statements}): (a), (b) are

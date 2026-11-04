@@ -15,9 +15,10 @@ the pattern parameters `W = 1`, `M = 24`, `c_F = 2`, `k_F = 0` (the weak-timeout
 * The constants (computed from the definitions): `M* = 24` (`Mstar_sp1`), `R* = 1092`
   (`Rstar_sp1`), `T_rec = 1209` (`T_rec_sp1`).
 * (a) `recovery_premises`: `GoldilocksRun` and `PatternPremises` at these parameters, the
-  premises of O.1 and C1.3. `blk6_cache_premise`: HR.5's per-acceptance premises at the
+  premises of O.1 and C1.3. `blk6_cache_premise`: the claims' HR.5 per-acceptance premises at the
   acceptance of `blk 6` (cut `194`, time `24 ≥ a_z`): its replay-finalized block `blk 4` is held
-  with state height `4 = H_z + 1`, the bound met with equality.
+  with state height `4 = H_z + 1`, the bound met with equality (the Lean HR.5 needs only the held
+  block and its root).
 * (b) `tickRun_cacheAcceptance` (HR.5, through `Healing.cache_acceptance_after_reset`): `blk 4`
   is below the finality cache after that acceptance; `finalized_after_blk6`: so the cache there
   is `blk 4` or `blk 5` (the chain invariant `FGGood` alone gives only `≤ blk 5`).
@@ -80,11 +81,10 @@ theorem blk6_cache_premise :
 /-- (b) **HR.5 on the run**: after accepting `blk 6`, the finality cache extends `blk 4`. -/
 theorem tickRun_cacheAcceptance :
     ((tickRun N1 dg1).post 194).fg.Anc (blk 4) ((tickRun N1 dg1).post 194).fg.F := by
-  obtain ⟨ht, hmem, hroot, hh⟩ := blk6_cache_premise
+  obtain ⟨-, hmem, hroot, -⟩ := blk6_cache_premise
   exact Healing.cache_acceptance_after_reset sp1 ro1 (fun _ => v0) dg1 Set.univ
-    (tickRun N1 dg1) 0 1 tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _) (aZ 0)
-    (tickRun_isReset 0) v0 trivial 194 (blk 6) blk6_accept (by rw [aZ_zero]; exact ht) (blk 4)
-    hmem hroot hh
+    (tickRun N1 dg1) 0 1 tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _) v0 trivial 194
+    (blk 6) blk6_accept (blk 4) hmem hroot
 
 /-- (b) The finality cache after accepting `blk 6` is `blk 4` or `blk 5`. -/
 theorem finalized_after_blk6 :

@@ -19,7 +19,7 @@ At such a call, FG safety compares `F_x` with the reader's `Σ.F` (`replay_final
 `F_x ⪯ Σ.F` we are done. Otherwise `Σ.F ⪯ F_x ⪯ X`, so the acceptance relay of `GST(g)` applies:
 the reader accepted `X` at an earlier cut, strictly before the deadline `time(k_X) + Δ ≤ D + Δ`
 (no honest restart after `ḡ`, `restart_le_gbar`), and that acceptance cached `F_x`
-(`accepted_finality_cached`, HR.5's stronger form). Acceptance is the actual relayed one; no
+(`accepted_finality_cached`, HR.5's FG-level form). Acceptance is the actual relayed one; no
 delivery is turned into acceptance. -/
 
 namespace Consensus.Goldilocks.Healing.Recovery

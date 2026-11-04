@@ -10,14 +10,14 @@ public section
 /-! # Goldilocks Healing: replay finality enters the cache (HR.5)
 
 Successful acceptance puts the carrier's replay-finalized block below the actual cache under
-the FG fault bound. Reset timing and high height are unnecessary for this stronger fact;
-`CacheAcceptanceAfterReset` is its Goldilocks projection, with its statement unchanged. -/
+the FG fault bound. Reset timing and high height are unnecessary; `CacheAcceptanceAfterReset`
+is its Goldilocks projection, stated without them. -/
 
 namespace Consensus.Goldilocks.Healing
 
-/-- An honest acceptance caches its carrier's replay-finalized block. Unlike HR.5, this needs
-neither a reset nor a lower bound on time or height: replay safety compares the old cache with
-the target, and the advancing case is `accepted_replay_finalized_cached`. -/
+/-- An honest acceptance caches its carrier's replay-finalized block. Unlike the claims' HR.5,
+this needs neither a reset nor a lower bound on time or height: replay safety compares the old
+cache with the target, and the advancing case is `accepted_replay_finalized_cached`. -/
 theorem accepted_finality_cached {P : Params} {ACP : Type} {acp₀ : ACP}
     {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)} {tr : FGTrace P ACP}
     (hr : FGLocalRun acp₀ H U tr) (hf : Hᶜ.ncard < 2 * P.fg.q - P.n)
@@ -42,9 +42,9 @@ theorem accepted_finality_cached {P : Params} {ACP : Type} {acp₀ : ACP}
   exact Goldilocks.Store.anc_of_U hr hy hout
     (Goldilocks.Store.cache_invariants _ _ _ _ hpost).1
 
-/-- **HR.5:** an honest acceptance after the reset caches its high replay-finalized target. -/
+/-- **HR.5:** every honest acceptance caches its replay-finalized target. -/
 theorem cache_acceptance_after_reset : CacheAcceptanceAfterReset := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc a _ha y hy k B hB _htime Fs hFs hroot _hheight
+  intro sp ro proposer dg H tr g ΔF hrun hh hnc y hy k B hB Fs hFs hroot
   have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
   have hfg := Compose.fg_projection _ _ dg H _ tr proposer
     ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
