@@ -16,7 +16,7 @@
 #   3c sorry inventory  Accepted declaration closure and ledger (REPORT ONLY; JSON in WORK)
 #   4  Spec surface     persisted extensions, snapshot, theorems, noconst,      (SpecSurface.lean)
 #                       reach (report); the protected-surface snapshot (the instance Spec, Statements and
-#                       Refinement.Defs and every other default-library module under trusted_paths outside
+#                       AsChainShape and every other default-library module under trusted_paths outside
 #                       the trusted layers: scripts/instance-spec-snapshot.txt)
 #   5  kernel replay    every leaf module of every checked library              (leanchecker)
 #   6  review pins      ReviewAxioms compiled into the tests root               (#guard_msgs)

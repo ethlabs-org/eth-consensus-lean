@@ -123,9 +123,9 @@ self_test() {
   local real ex gold ms acc
   local G=ConsensusLean/Instances/Goldilocks
   git checkout -q --detach "$m0"; cp "$(dirname "$script")/boundaries.toml" scripts/boundaries.toml
-  mkdir -p ConsensusLean/Examples/Shape $G/Spec $G/Milestones/Statements $G/Statements/Refinement
+  mkdir -p ConsensusLean/Examples/Shape $G/Spec $G/Milestones/Statements $G/Statements
   echo e >ConsensusLean/Examples/Shape/Streamlet.lean; echo g >$G/Spec/Frame.lean
-  echo m >$G/Milestones/Statements/FGSafety.lean; echo a >$G/Statements/Refinement/Accepted.lean
+  echo m >$G/Milestones/Statements/FGSafety.lean; echo a >$G/Statements/Obligations.lean
   real="$(commit "the repository's trusted_paths$L")"
   echo e2 >ConsensusLean/Examples/Shape/Streamlet.lean; ex="$(commit 'Shape example, unlabeled')"
   expect pass "repository list: an unlabeled change of a Shape example (Examples/Shape/Streamlet.lean)" "$ex" "$real"
@@ -136,9 +136,9 @@ self_test() {
   git checkout -q --detach "$real"; echo g2 >$G/Spec/Frame.lean
   gold="$(commit 'Goldilocks Spec, unlabeled')"
   expect fail "repository list: an unlabeled change of the Goldilocks instance Spec" "$gold" "$real"
-  git checkout -q --detach "$real"; echo a2 >$G/Statements/Refinement/Accepted.lean
+  git checkout -q --detach "$real"; echo a2 >$G/Statements/Obligations.lean
   acc="$(commit 'Goldilocks endpoint statement, unlabeled')"
-  expect fail "repository list: an unlabeled change of the endpoint statement (Statements/Refinement/Accepted)" \
+  expect fail "repository list: an unlabeled change of the endpoint statement (Statements/Obligations)" \
     "$acc" "$real"
   return "$fails"
 }

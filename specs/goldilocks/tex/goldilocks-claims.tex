@@ -126,16 +126,16 @@ the derivation of the bounds (D1).
 \begin{sloppypar}
 \paragraph{Lean status and the acceptance target (2026-11-03).}  The
 acceptance target is the concrete endpoint
-\texttt{Refinement.AcceptedEndpoint} (consensus-lean
-\texttt{Statements/Refinement/Accepted}), proved by
-\texttt{accepted\_endpoint}; its contract and coefficients are in
+\texttt{MeetsObligations} (consensus-lean
+\texttt{Statements/Obligations}), proved by
+\texttt{meets\_obligations}; its contract and coefficients are in
 \S\ref{sec:accepted}.  It is not proved through the regime rows R.3--R.6 and
 does not depend on O.1.  The pre-foundation baseline (\texttt{GoldilocksTarget},
 \texttt{GoldilocksExtraAt}) and the node statements of R.3--R.6 were retired
 unproved (consensus-lean \texttt{archive/consensus-lean-baseline},
 \texttt{archive/consensus-lean-regimes}).  So the references below to
 \texttt{GoldilocksTarget} and its rows (Decisions D1, D2, layer L3,
-\S\ref{sec:l2}) and the dependency of \texttt{ShapeObligations} on O.1 are
+\S\ref{sec:l2}) and the dependency of \texttt{MeetsObligations} on O.1 are
 historical.  The Lean status of every node outside the lock nodes, with the
 formal premises and read points where they differ from the statements here,
 is in \S\ref{sec:lean-status}.
@@ -212,7 +212,7 @@ FG, store level & G0.1 (store), G0.3, G0.4 (height), F.2 (accepted tree), the $\
 AC (interface and SA, over frames) & F.1, A0.1--A0.9 & A1.1--A1.5, A1.8, A1.9\\
 Node & C0.1, C0.3, C0.4, C0.5, the restart half of C0.2 & ---\\
 Run & F.4, F.5 (run) & C1.1 (Persist), C1.2, C1.3, A1.6, A1.7 (Service), R.*, O.1\\
-Refinement & --- & G1.5; the engine simulates the node (C0.4 kept)\\
+Simulation & --- & G1.5; the engine simulates the node (C0.4 kept)\\
 Healing & --- & HS.0--HS.5 (\S\ref{sec:healing-service}); H.1, H.2 (AC, over driven AC traces), H.2 (run), HR.1, HR.2 (FG store level), HR.3, HR.4, H.3, H.4 (\S\ref{sec:healing-top}); formerly healing-simple \texttt{Producer(A)} (now HS.5), F1 (HR.1), F2 (HR.2), F3 and F4 ($=\mathsf{Reset}(z)$, restated by time at $a_z$: HR.4), F5 (H.2 (run) and H.3), A6 (H.1, H.2; in runs H.2 (run))\\
 \hline
 \end{tabular}
@@ -2122,11 +2122,11 @@ premises and constants, and R.6 has no generic row.
 \subsection{The acceptance endpoint}\label{sec:accepted}
 
 \begin{sloppypar}
-\texttt{Refinement.AcceptedEndpoint} (consensus-lean
-\texttt{Statements/Refinement/Accepted}, proved by
-\texttt{accepted\_endpoint}): for every setup and every assumption set the
-Goldilocks family is \texttt{ShapeObligations} at the contract
-\texttt{acceptanceContract A (accepted\_coefficients S A)}.  Every number is a
+\texttt{MeetsObligations} (consensus-lean
+\texttt{Statements/Obligations}, proved by
+\texttt{meets\_obligations}): for every setup and every assumption set the
+Goldilocks family meets \texttt{ShapeObligations} at the contract
+\texttt{goldilocksContract A (contract\_coefficients S A)}.  Every number is a
 coefficient of~$\Delta$, the node and engine delay alike ($\Delta_p=\Delta_e$);
 all are fixed before the run, but heal and latency depend on the contract's
 outer gap~$X$, the index of its progress requirement.
@@ -2419,11 +2419,11 @@ discharge any of (a)--(c).
 
 \emph{Status.}  Open for every design (theorem.md \S8 item~4; r7 open item~2);
 corollary~C (G1.8) gives a conditional upper bound after bad entries, not a
-uniform recovery bound.  \texttt{ShapeObligations} does not depend on O.1: the L0
+uniform recovery bound.  \texttt{MeetsObligations} does not depend on O.1: the L0
 contract's final healthy liveness, with a heal point fixed before the run,
 is proved for the endpoint by another route, its four-anchor final pattern
 with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:accepted}).  The
-earlier dependency (the retired R.4, and with it \texttt{ShapeObligations}, on O.1;
+earlier dependency (the retired R.4, and with it \texttt{MeetsObligations}, on O.1;
 instance-proposal Q1) is history.  O.1 stays a separate research target.
 The FG safety milestone (G0, G1.1--G1.5) does not
 depend on O.1.  Workbench \texttt{producer-reset-continuation.md} \S27 (main \texttt{ee6445a})
@@ -2589,7 +2589,7 @@ C0.3 & \texttt{Compose.HonestBlockAccepted} & proved
   $\mathsf{NoColl}$ (on the tree with the own block) only for its new-root
   and acceptance clause\\
 C0.4 & \texttt{Compose.TickOrder}, \texttt{Compose.SignedOnlyInTicks};
-  engine: \texttt{Refinement.EngineSimulatesNode} & proved
+  engine: \texttt{Simulation.EngineSimulatesNode} & proved
   (\texttt{compose\_node\_statements}, \texttt{engineSimulatesNode})\\
 C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   \texttt{Compose.ACStatesReachable}, \texttt{Compose.FGStatesReachable},
@@ -2628,9 +2628,9 @@ G1.2 & \texttt{FG.FGParams.finalization\_meets\_crossing} & proved core
   lemma, note~1\\
 G1.3 & \texttt{FG.AccountableSafety} & proved (\texttt{fg\_safety})\\
 G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{fg\_store\_trace})\\
-G1.5 & \texttt{Refinement.ConflictsIff}, \texttt{Refinement.EvidenceInView},
-  \texttt{Refinement.FinalizedAccountable}; \texttt{Regimes.FinalAccountable}
-  & proved (\texttt{refinement\_statements}, \texttt{final\_accountable});
+G1.5 & \texttt{Simulation.ConflictsIff}, \texttt{Simulation.EvidenceInView},
+  \texttt{Simulation.FinalizedAccountable}; \texttt{Regimes.FinalAccountable}
+  & proved (\texttt{simulation\_statements}, \texttt{final\_accountable});
   evidence universes differ, note~2\\
 G1.6 & \texttt{Store.PreviousHeightJustifiedEntry} & proved
   (\texttt{fg\_store\_service})\\
@@ -2706,7 +2706,7 @@ H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
 O.1 (node) & \texttt{Healing.PatternRecovery} & proved
   (\texttt{recovery\_statements}); the record quantifier of (b) differs
   (\S``O.1'')\\
-O.1 (target) & none & open research; not a premise of \texttt{ShapeObligations}\\
+O.1 (target) & none & open research; not a premise of \texttt{MeetsObligations}\\
 R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_safe}), at
   the node catch-up $18\Delta$; stronger than R.1: agreement holds for any
   two honest reads, ready or not, and monotonicity needs no time-$0$ window; the prefix row is the generic
@@ -2714,7 +2714,7 @@ R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_safe}), at
   system: available and stable outputs, under \texttt{SyncUntil}~$b$ and
   \texttt{SleepyOn}~$[0,b]$; conclusion
   \texttt{ReadySafeUpTo}~$\ldots\lor$~\texttt{S.Excuse r}; catch-up from the
-  contract, $19$ for \texttt{ShapeObligations}),
+  contract, $19$ for \texttt{MeetsObligations}),
   another statement\\
 R.2 & \texttt{Regimes.IncludeSleepy}, \texttt{Regimes.GrowSleepy} & proved
   (\texttt{include\_sleepy}, \texttt{grow\_sleepy}); stronger than before,
@@ -2733,8 +2733,8 @@ R.8 & \texttt{Regimes.OutputsNested}, \texttt{Regimes.FinalizedMonotone},
   nesting only\\
 Baseline & archived \texttt{Consensus.Shape.GoldilocksTarget},
   \texttt{Consensus.Shape.GoldilocksExtraAt} & retired, never the endpoint\\
-Accepted & \texttt{Refinement.AcceptedEndpoint} & proved
-  (\texttt{accepted\_endpoint}); \S\ref{sec:accepted}\\
+Obligations & \texttt{MeetsObligations} & proved
+  (\texttt{meets\_obligations}); \S\ref{sec:accepted}\\
 \hline
 \end{longtable}}
 
@@ -2746,7 +2746,7 @@ carries the quorum witnesses internally.  Likewise G1.2's lemma proves a
 quorum of slashable pairs with one attestation on each chain, but its
 conclusion does not expose the pair fields or the entry $E^{(2)}_j$.
 (2) G1.5 binds the evidence differently at two layers.  The engine statement
-\texttt{Refinement.FinalizedAccountable} finds the evidence in the union of
+\texttt{Simulation.FinalizedAccountable} finds the evidence in the union of
 the readers' whole views, which is weaker than the two finalized output
 chains.  The node statement \texttt{Regimes.FinalAccountable} finds it on two
 held carrier chains, which need not be the finalized output prefixes (a

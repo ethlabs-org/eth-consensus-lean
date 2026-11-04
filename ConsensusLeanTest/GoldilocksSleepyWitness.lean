@@ -1,7 +1,7 @@
 module
-public import ConsensusLeanTest.GoldilocksRefinement
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+public import ConsensusLeanTest.GoldilocksSimulation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 @[expose] public section
 
 /-! # Witnesses: the Sleepy leaves' and vote forwarding's hypotheses are satisfiable
@@ -9,11 +9,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the hypotheses of
 `sleepy_safety_inputs` (`SleepySafetyQuery`) and of `sleepy_query_sync` (`ConfirmedQuery`,
 Sleepy branch). Both structures fix the contract to `K S A`. The theorems below state the same
-fields over `acceptanceContract A C` for every coefficient record `C`; at
-`C = accepted_coefficients S A` they are the structures' fields, since `K S A` is that
+fields over `goldilocksContract A C` for every coefficient record `C`; at
+`C = contract_coefficients S A` they are the structures' fields, since `K S A` is that
 abbreviation.
 
-* `sleepySafety_fields`: a valid, collision-free Sleepy run of `family S` on two validators,
+* `sleepySafety_fields`: a valid, collision-free Sleepy run of `goldilocks S` on two validators,
   with any horizon `H ≥ 0`.
 * `sleepyQuery_fields`: the same run with Sleepy progress at `.available`, index 1, on
   `[0, H]`, query time 0, the latency deadline inside the horizon, and a ready reader at the
@@ -22,7 +22,8 @@ abbreviation.
   (`EmitAt` on `simTrace`), the premise of `simTrace_vote_forwarded`, which then yields a
   released forwarding envelope. -/
 
-namespace Consensus.Goldilocks.Refinement.Test.SleepyWitness
+namespace Consensus.Goldilocks.Obligations.Test.SleepyWitness
+open AsChainShape Simulation
 
 open Shape Blocks
 open Consensus.Model (pubOf)
@@ -38,17 +39,18 @@ variable (S : Setup)
 
 /-- Validator `0` proposes every slot; everyone polls. -/
 def sel (H : Time) :
-    (Model.protoOf (compiled (family S)) (point H).env).Role → Finset (Fin (Fintype.card (Fin 2)))
+    (Model.protoOf (compiled (goldilocks S)) (point H).env).Role →
+        Finset (Fin (Fintype.card (Fin 2)))
   | .proposer _ => {⟨0, one_le_card⟩}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
 theorem sel_admits (H : Time) :
-    (Model.protoOf (compiled (family S)) (point H).env).SelAdmits (sel S H) := by
+    (Model.protoOf (compiled (goldilocks S)) (point H).env).SelAdmits (sel S H) := by
   intro r
   cases r with
   | proposer s =>
-    change ((family S (pubOf (point H).env)).skel.proposerSel s).Admits _
+    change ((goldilocks S (pubOf (point H).env)).skel.proposerSel s).Admits _
     rw [Test.skeleton_proposerSel S s]
     change ({(⟨0, one_le_card⟩ : Fin (Fintype.card (Fin 2)))} : Finset _).card =
       min 1 (Fintype.card (Fin 2))
@@ -69,14 +71,14 @@ theorem point_faulty (H : Time) : (point H).faulty = ∅ := by
   simp [EnvPoint.faulty, point]
 
 /-- The run of `Shape.coverage` at `point H`: valid, collision-free and Sleepy for every contract
-`acceptanceContract A C`. -/
-theorem sleepy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (H : Time)
+`goldilocksContract A C`. -/
+theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : Time)
     (hH : 0 ≤ H) :
-    ∃ r : (Sys (family S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
+    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
       r.2.sel = sel S H ∧ r.2.key = Equiv.refl _ ∧
-      (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (family S) (Fin 2)).Sleepy (acceptanceContract A C) r := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (family S) (point H) hH
+      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
+      (Sys (goldilocks S) (Fin 2)).Sleepy (goldilocksContract A C) r := by
+  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (goldilocks S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ?_⟩
   · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
@@ -87,30 +89,31 @@ theorem sleepy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (H
     rw [hp, point_readyAt, point_faulty]
     norm_num
 
-/-- (a) The `SleepySafetyQuery` fields, over `acceptanceContract A C`, are jointly satisfiable at
+/-- (a) The `SleepySafetyQuery` fields, over `goldilocksContract A C`, are jointly satisfiable at
 every horizon `H ≥ 0`. -/
-theorem sleepySafety_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients)
+theorem sleepySafety_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     (H : Time) (hH : 0 ≤ H) :
-    ∃ r : (Sys (family S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
-      (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (family S) (Fin 2)).Sleepy (acceptanceContract A C) r := by
+    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
+      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
+      (Sys (goldilocks S) (Fin 2)).Sleepy (goldilocksContract A C) r := by
   obtain ⟨r, -, hp, -, -, hv, hc, hs⟩ := sleepy_run S A C H hH
   exact ⟨r, one_le_card, congrArg EnvPoint.horizon hp, hv, hc, hs⟩
 
-/-- (a) The `ConfirmedQuery` fields on the Sleepy branch, over `acceptanceContract A C`, are jointly
+/-- (a) The `ConfirmedQuery` fields on the Sleepy branch, over `goldilocksContract A C`, are jointly
 satisfiable: capability `.available`, index 1, query time 0, at every horizon covering the latency
 deadline (`Δ = 2`: `2·latency ≤ H`). -/
-theorem sleepyQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients)
+theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     (H : Time) (hH : 2 * (C.latency .available 1 : Time) ≤ H) :
-    ∃ r : (Sys (family S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
-      (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      ((Sys (family S) (Fin 2)).Sleepy (acceptanceContract A C) r ∧
-        (Sys (family S) (Fin 2)).prog (shapeProgress (family S) (Fin 2)) (acceptanceContract A C)
+    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, 1 ≤ Fintype.card (Fin 2) ∧ r.2.horizon = H ∧
+      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
+      ((Sys (goldilocks S) (Fin 2)).Sleepy (goldilocksContract A C) r ∧
+        (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2))
+            (goldilocksContract A C)
           .available (1 : ℕ+) 0 r.2.horizon r ∧ (0 : Time) ≤ 0) ∧
-      (0 : Time) + ((acceptanceContract A C).params.latency .available (1 : ℕ+) : Time) * r.1.Δ ≤
+      (0 : Time) + ((goldilocksContract A C).params.latency .available (1 : ℕ+) : Time) * r.1.Δ ≤
         r.2.horizon ∧
-      ∃ v, r.2.point.Ready ((Sys (family S) (Fin 2)).cDur (acceptanceContract A C) r) v
-        ((0 : Time) + ((acceptanceContract A C).params.latency .available (1 : ℕ+) : Time) *
+      ∃ v, r.2.point.Ready ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r) v
+        ((0 : Time) + ((goldilocksContract A C).params.latency .available (1 : ℕ+) : Time) *
           r.1.Δ) := by
   have hH0 : 0 ≤ H := le_trans (by positivity) hH
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hsl⟩ := sleepy_run S A C H hH0
@@ -133,14 +136,14 @@ two-validator run with horizon `H ≥ 2`, validator `0` emits a slot-0 vote by i
 deadline `t₀ + Δp = 2`, and the theorem's conclusion then gives its first released forwarding
 envelope. -/
 theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
-    ∃ rho : Model.Run (compiled (family S)) (point H).env, rho.ExecutionValid ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) (point H).env, rho.ExecutionValid ∧
       ∃ y ∈ honestKeys S rho, ∃ (k : Nat) (m : SA.Vote (Fintype.card (Fin 2))),
         (simTrace S rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
         (simTrace S rho one_le_card).time k ≤ 2 ∧
         ∃ i, rho.SendsAt (rho.key y) i ((simTrace S rho one_le_card).time k) ∧
           .mk (.signed y .poll) (.data (.voteForward ((simTrace S rho one_le_card).time k)
             (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
-  obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage (family S) (point H)
+  obtain ⟨rho, hp, -, -, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) (point H)
     (le_trans (by decide) hH)
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   have hn := one_le_card
@@ -170,4 +173,4 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
   obtain ⟨i, -, -, hsend, hrel, -⟩ := simTrace_vote_forwarded S rho hn hv y hy k e.msg (Or.inl hem)
   exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, hsend, hrel⟩
 
-end Consensus.Goldilocks.Refinement.Test.SleepyWitness
+end Consensus.Goldilocks.Obligations.Test.SleepyWitness

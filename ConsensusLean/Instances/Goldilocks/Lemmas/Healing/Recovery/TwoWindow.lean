@@ -41,7 +41,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
 /-- The first crossing above `A` on a held `A ⪯ B` (as `Store.first_crossing_of_anc` in
-`Refinement/WindowAnchors`, structural part, local to avoid a Healing-to-Refinement edge). -/
+`Obligations/WindowAnchors`, structural part, local to avoid a Healing-to-Obligations edge). -/
 theorem first_crossing {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {A B : NodeBlock P ACP}
     (hAB : st.Anc A B) (hh : (st.σ A.root).h < (st.σ B.root).h) :

@@ -1,10 +1,10 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageArmingSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 @[expose] public section
 
 /-! # Rejection test: the outage budget `4k − 4` breaks the restored-label bound
 
-The outage budget (`acceptanceContract`, `Statements/Refinement/Accepted.lean`: `4k − 5` since
+The outage budget (`goldilocksContract`, `Statements/Obligations.lean`: `4k − 5` since
 `b75cd7c5`) bounds the outage length: `b₁ − b₀ ≤ budget · Δ`. The lock-safety arithmetic
 (`OutageLockSafety/Arming.lean`, the private `query_numbers`, conjunct 5) needs the end of the
 outage before the restored-label bound of the cover label `j₀ = coverLabel b₀`:

@@ -42,7 +42,7 @@ list `trusted_paths` in `scripts/boundaries.toml` (since #5): `ConsensusLean/{In
 (each as `X.lean` and `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean`, `ConsensusLeanTest/ReviewGuard.lean`, and since #38 the instance semantics
 and statements: for every protocol instance `P` (today Goldilocks) `Instances/<P>/{Spec,Statements}` (file and
-directory) and `Instances/<P>/Refinement/Defs.lean`, existing or not (the Shape examples under
+directory) and `Instances/<P>/AsChainShape.lean`, existing or not (the Shape examples under
 `ConsensusLean/Examples` are not instances and left the list on 2026-11-04); check-boundaries.py requires the `protected` instance
 layers to be covered. These are tag-protected, not trusted layers: the Goldilocks `Baseline` modules read
 definitions of the generic `Main` and `Lemmas/Problem/Derived.lean` (`FaultsBelow`, `Safe`, `ReadySafeUpTo`)
@@ -104,8 +104,8 @@ The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Soluti
 | Other protected path | Meaning |
 |---|---|
 | `ConsensusLean/Init.lean` | Curated public imports (`Mathlib.Init`, `Mathlib.Tactic.Common`); owns no declarations. Replaces the import-only root `ConsensusSpec.lean` of `4b7c5148` in the list. |
-| `Challenge.lean` | Non-default comparator challenge: imports exactly `ConsensusLean.Statements.Review` and the `milestone_statements_modules` (today `ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted`, since 2026-11-04 the one instance statement: `docs/decisions.md`) and states their five closed statements with `sorry` proofs. |
-| `comparator.json` | Challenge/solution modules, the five theorem names (four review and the Goldilocks acceptance endpoint `acceptedEndpoint`) and three permitted axioms. |
+| `Challenge.lean` | Non-default comparator challenge: imports exactly `ConsensusLean.Statements.Review` and the `milestone_statements_modules` (today `ConsensusLean.Instances.Goldilocks.Statements.Obligations`, since 2026-11-04 the one instance statement: `docs/decisions.md`) and states their five closed statements with `sorry` proofs. |
+| `comparator.json` | Challenge/solution modules, the five theorem names (four review and the Goldilocks acceptance endpoint `meetsObligations`) and three permitted axioms. |
 | `ConsensusLeanTest/ReviewAxioms.lean` | Compiled statement/type, binder-kind, completeness and exact axiom pins. |
 | `ConsensusLeanTest/ReviewGuard.lean` | Shared implementation of those statement/completeness checks, also used by negative fixtures. |
 | `lean-toolchain` | Exact Lean version: `leanprover/lean4:v4.35.0`. |

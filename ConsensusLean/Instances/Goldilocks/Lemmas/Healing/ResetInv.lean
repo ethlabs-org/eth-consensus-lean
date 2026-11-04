@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRowSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AtCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RawAtCall
-import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 
 public section
 
@@ -135,7 +135,7 @@ theorem protected_target_cases (hp : ResetPremises tr H proposer dg g ΔF a)
   · exact Or.inr (Or.inr (Or.inr ⟨hp', hP, hun⟩))
 
 /-- An honest proposal is the proposer's own block at its slot start (as
-`Refinement.proposesAt_of_honestProposalRun`). -/
+`Obligations.proposesAt_of_honestProposalRun`). -/
 private theorem proposesAt_of_honestProposal (hrun : GoldilocksRun proposer dg H tr) {s : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : proposer s ∈ H)
     (hP : SA.HonestProposal tr.projAC (proposer s) s P) :
@@ -152,7 +152,7 @@ private theorem proposesAt_of_honestProposal (hrun : GoldilocksRun proposer dg H
 
 /-- **A unanimous protected proposal is an honest fast-update selection** (route L5′): an honest
 proposal of a post-drain slot `j` is the result and the fast selection of its own proposer's
-slot-`j` update (`Refinement.UpTo.operational_update_selection`, the one Refinement theorem this
+slot-`j` update (`Obligations.UpTo.operational_update_selection`, the one Obligations theorem this
 module imports; reviewed exception in `scripts/boundaries.toml`). -/
 theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ))
@@ -184,9 +184,9 @@ theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF 
       simp only [SAParams.ts]; push_cast; ring
     linarith
   obtain ⟨i, ell, -, hup, -⟩ := hp'.update_toFG_calls hpj hu le_rfl
-  obtain ⟨-, hconf, hnv, hsel, -⟩ := Refinement.UpTo.operational_update_selection hp' hc hpj rfl
+  obtain ⟨-, hconf, hnv, hsel, -⟩ := Obligations.UpTo.operational_update_selection hp' hc hpj rfl
     hactual hPs hR hgu le_rfl hpj hup
-  have hsel' := Refinement.UpTo.deepest_of_subset
+  have hsel' := Obligations.UpTo.deepest_of_subset
     (S := {X | X ∈ SA.confirmationPath sp ell.frame B ∧
       ¬ SA.conflictsWithLock sp (tr.projAC.state (proposer j) i).locks ell.frame (tr.time i) X ∧
       SA.FastTest sp (tr.projAC.state (proposer j) i) ell.frame j X}) hsel

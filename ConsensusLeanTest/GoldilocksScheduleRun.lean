@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 @[expose] public section
 
 /-! # A schedule of top-level events and its run trace
@@ -390,7 +390,7 @@ theorem cutStep_of_callAt {y : Fin P.n} {i : Nat} {ℓ : Cut A}
     rw [cutsAt_some he]
     exact Compose.exec_is_cut_chain proposer dg y _ t e
   simp only [midState, entryNode_of he, entryTime_of he]
-  exact hl ▸ Refinement.cutStep_of_cutChain hch p hp
+  exact hl ▸ Simulation.cutStep_of_cutChain hch p hp
 
 /-! ### Groups -/
 
@@ -423,7 +423,7 @@ theorem headKey_exec (self : Fin P.n) (st : NodeState A) (t : Time) (e : Event A
     obtain ⟨rfl, -⟩ := List.cons.inj h
     simp [headKey, hℓ, normEv]
   | block B =>
-    obtain ⟨acc, rfl⟩ := Refinement.exec_block_head proposer dg self st t B h
+    obtain ⟨acc, rfl⟩ := Simulation.exec_block_head proposer dg self st t B h
     rfl
   | message m =>
     simp only [exec, onMessage, acCall] at h

@@ -1,7 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksAsleepSleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
@@ -168,7 +168,7 @@ theorem record_slot {R : N2.Blk}
     rw [hinj hRm.1 hgm hg]
     rfl
   · obtain ⟨q, hq, _, _, _, _, hsrc⟩ :=
-      Refinement.last_record_writer hrun (dg2_noColl _) (Set.mem_univ w0) hl hg
+      Obligations.last_record_writer hrun (dg2_noColl _) (Set.mem_univ w0) hl hg
     rcases hsrc with ⟨s, CV, hres⟩ | ⟨⟨CV, hopt⟩, -⟩
     · exact result_slot hq hres
     · exact absurd hopt no_optimisticLock

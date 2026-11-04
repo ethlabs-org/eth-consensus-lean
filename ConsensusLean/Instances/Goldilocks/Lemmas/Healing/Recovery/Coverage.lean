@@ -14,7 +14,7 @@ Choose the post-drain pattern stretch, acquire a high proposal P, cross its old 
 then serve U and its actual successor. The resulting carrier finalizes U and hence P before
 the stretch ends. C5 propagates that actual acceptance to honest caches at the exact public
 deadline. The report and outcome suppliers are proof inputs; this module does not import
-their Refinement-dependent implementation. -/
+their Obligations-dependent implementation. -/
 
 namespace Consensus.Goldilocks.Healing.Recovery
 

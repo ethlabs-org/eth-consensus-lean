@@ -1,25 +1,26 @@
 module
 public import ConsensusLeanTest.GoldilocksSleepyWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
 @[expose] public section
 
 /-! # Witness: the final liveness query's hypotheses are jointly satisfiable
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), for the fields of `FinalQuery`, the
 hypotheses of `accepted_healthyLive_final`. `FinalQuery` fixes the contract to `K S A`; the
-theorem below states the same fields over `acceptanceContract A C` for every coefficient record
+theorem below states the same fields over `goldilocksContract A C` for every coefficient record
 `C`. At
-`C = accepted_coefficients S A` they are the structure's fields, since `K S A` is that
+`C = contract_coefficients S A` they are the structure's fields, since `K S A` is that
 abbreviation.
 
 * `healthy_run`: the two-validator run of `GoldilocksSleepyWitness` (everyone awake and honest,
-  engine `Δ = 2`) is Healthy from GST 0 for every `acceptanceContract A C`.
+  engine `Δ = 2`) is Healthy from GST 0 for every `goldilocksContract A C`.
 * `finalQuery_fields`: on that run with horizon `H = (heal + latency)·Δ` (at `.final`, index 1),
   the `FinalQuery` fields hold with GST 0 and query time `heal·Δ`: validity, no collision, Healthy,
   final progress (the four-anchor `finalWindow`) on `[ready, H]`, maturity, the latency deadline
   inside the horizon, and a ready reader at the deadline. -/
 
-namespace Consensus.Goldilocks.Refinement.Test.FinalWitness
+namespace Consensus.Goldilocks.Obligations.Test.FinalWitness
+open AsChainShape Simulation
 
 open Shape Blocks SleepyWitness
 open Consensus.Model (pubOf)
@@ -27,14 +28,14 @@ open Consensus.Model (pubOf)
 variable (S : Setup)
 
 /-- The run of `Shape.coverage` at `point H` is Healthy from GST 0 for every contract
-`acceptanceContract A C`. -/
-theorem healthy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (H : Time)
+`goldilocksContract A C`. -/
+theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : Time)
     (hH : 0 ≤ H) :
-    ∃ r : (Sys (family S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
+    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, r.1 = (point H).env ∧ r.2.point = point H ∧
       r.2.sel = sel S H ∧ r.2.key = Equiv.refl _ ∧
-      (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (family S) (Fin 2)).Healthy (acceptanceContract A C) 0 r := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (family S) (point H) hH
+      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
+      (Sys (goldilocks S) (Fin 2)).Healthy (goldilocksContract A C) 0 r := by
+  obtain ⟨rho, hp, hk, hs, hv, hc, -, he⟩ := Shape.coverage (goldilocks S) (point H) hH
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_⟩
   · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
@@ -44,22 +45,23 @@ theorem healthy_run (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) (
     norm_num [Params.standard]
   · exact fun _ _ _ _ _ => rfl
   · exact le_mul_of_one_le_left zero_le_two
-      (by exact_mod_cast (acceptanceContract A C).params.rowRatio.pos)
+      (by exact_mod_cast (goldilocksContract A C).params.rowRatio.pos)
 
-/-- (a) The `FinalQuery` fields, over `acceptanceContract A C`, are jointly satisfiable: index 1,
+/-- (a) The `FinalQuery` fields, over `goldilocksContract A C`, are jointly satisfiable: index 1,
 GST 0, query time `heal·Δ`, horizon `(heal + latency)·Δ` (engine `Δ = 2`). -/
-theorem finalQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficients) :
-    ∃ r : (Sys (family S) (Fin 2)).Run, ∃ query : Time, 1 ≤ Fintype.card (Fin 2) ∧
-      (Sys (family S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
-      (Sys (family S) (Fin 2)).Healthy (acceptanceContract A C) 0 r ∧
-      (Sys (family S) (Fin 2)).prog (shapeProgress (family S) (Fin 2)) (acceptanceContract A C)
-        .final (1 : ℕ+) ((Sys (family S) (Fin 2)).ready (acceptanceContract A C) 0 r)
+theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients) :
+    ∃ r : (Sys (goldilocks S) (Fin 2)).Run, ∃ query : Time, 1 ≤ Fintype.card (Fin 2) ∧
+      (Sys (goldilocks S) (Fin 2)).Valid r ∧ ¬ r.2.HashCollision ∧
+      (Sys (goldilocks S) (Fin 2)).Healthy (goldilocksContract A C) 0 r ∧
+      (Sys (goldilocks S) (Fin 2)).prog (shapeProgress (goldilocks S) (Fin 2))
+          (goldilocksContract A C)
+        .final (1 : ℕ+) ((Sys (goldilocks S) (Fin 2)).ready (goldilocksContract A C) 0 r)
         r.2.horizon r ∧
-      (Sys (family S) (Fin 2)).heal (acceptanceContract A C) .final (1 : ℕ+) 0 r ≤ query ∧
-      query + ((acceptanceContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ ≤
+      (Sys (goldilocks S) (Fin 2)).heal (goldilocksContract A C) .final (1 : ℕ+) 0 r ≤ query ∧
+      query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ ≤
         r.2.horizon ∧
-      ∃ v, r.2.point.Ready ((Sys (family S) (Fin 2)).cDur (acceptanceContract A C) r) v
-        (query + ((acceptanceContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ) := by
+      ∃ v, r.2.point.Ready ((Sys (goldilocks S) (Fin 2)).cDur (goldilocksContract A C) r) v
+        (query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.Δ) := by
   let H : Time := (C.heal .final 1 : Time) * 2 + (C.latency .final 1 : Time) * 2
   have hH0 : 0 ≤ H := by positivity
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hhl⟩ := healthy_run S A C H hH0
@@ -79,4 +81,4 @@ theorem finalQuery_fields (A : AcceptanceAssumptions S) (C : AcceptanceCoefficie
   · rw [hp]
     exact point_ready H _ _ _
 
-end Consensus.Goldilocks.Refinement.Test.FinalWitness
+end Consensus.Goldilocks.Obligations.Test.FinalWitness

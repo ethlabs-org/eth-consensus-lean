@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksHalfCommitteeNode
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TraceDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
 @[expose] public section
 
 /-! # A computable mirror of the Goldilocks node: the cut law on data, checks along lists

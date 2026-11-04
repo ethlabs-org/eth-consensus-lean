@@ -11,7 +11,6 @@ public import ConsensusLeanTest.GoldilocksACProposerVotersWitness
 public import ConsensusLeanTest.GoldilocksACResultTransferWitness
 public import ConsensusLeanTest.GoldilocksACSourceCompatibleWitness
 public import ConsensusLeanTest.GoldilocksACTransferWitness
-public import ConsensusLeanTest.GoldilocksAcceptance
 public import ConsensusLeanTest.GoldilocksAccountableTightness
 public import ConsensusLeanTest.GoldilocksAggregationWitness
 public import ConsensusLeanTest.GoldilocksAsleepRun
@@ -68,12 +67,12 @@ public import ConsensusLeanTest.GoldilocksJoinedRestartWitness
 public import ConsensusLeanTest.GoldilocksLockRuleWitness
 public import ConsensusLeanTest.GoldilocksNode
 public import ConsensusLeanTest.GoldilocksNonfinalQueryWitness
+public import ConsensusLeanTest.GoldilocksObligations
 public import ConsensusLeanTest.GoldilocksPersistWitness
 public import ConsensusLeanTest.GoldilocksPhaseCountWitness
 public import ConsensusLeanTest.GoldilocksProjectionRejection
 public import ConsensusLeanTest.GoldilocksRecentSourceWitness
 public import ConsensusLeanTest.GoldilocksRecoveryWitness
-public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.GoldilocksRestartWitness
 public import ConsensusLeanTest.GoldilocksRetentionWitness
 public import ConsensusLeanTest.GoldilocksRun
@@ -82,6 +81,7 @@ public import ConsensusLeanTest.GoldilocksSAHealingWitness
 public import ConsensusLeanTest.GoldilocksScheduleLocalRun
 public import ConsensusLeanTest.GoldilocksScheduleRun
 public import ConsensusLeanTest.GoldilocksSettledWitness
+public import ConsensusLeanTest.GoldilocksSimulation
 public import ConsensusLeanTest.GoldilocksSleepyRegimes
 public import ConsensusLeanTest.GoldilocksSleepyWitness
 public import ConsensusLeanTest.GoldilocksThresholdRejections

@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Statements.Review
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
+public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 
 @[expose] public section
 
@@ -11,7 +11,7 @@ theorem Consensus.Review.obligationsSufficient : Consensus.Review.ObligationsSuf
 theorem Consensus.Review.regimesRealizable : Consensus.Review.RegimesRealizable := sorry
 theorem Consensus.Review.logFaithful : Consensus.Review.LogFaithful := sorry
 theorem Consensus.Review.heldIffServed : Consensus.Review.HeldIffServed := sorry
-theorem Consensus.Goldilocks.Refinement.acceptedEndpoint : Consensus.Goldilocks.Refinement.AcceptedEndpoint := sorry
+theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObligations := sorry
 
 /- harmless -/ axiom extra : False /- harmless -/
 

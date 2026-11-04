@@ -111,7 +111,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `r` in the acceptance assumptions, adds `3·cF r ≤ δt`, and reworks the coefficients. Card:
   workbench `two_bound_network.md`.
 - 2026-11-03, Francesco's request (lead-approved; read-back T-01a19b8a): the Goldilocks catch-up is a
-  flat `accepted_catchUp = 37` (was `max 37 (8k + 4)`). No proof needs `8k + 4`: with the value
+  flat `contract_catchUp = 37` (was `max 37 (8k + 4)`). No proof needs `8k + 4`: with the value
   changed, the whole build failed only in tests that pinned the old formula. Effects (identical
   for `k ≤ 4`; for `k ≥ 5`): admissibility holds; heal is lower by `8k + 4 − 37` at every
   capability (`128k + 112δ_t + 160X + 224`); latency is unchanged; the ready and heal points move
@@ -125,7 +125,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   and a stronger conclusion. `healedSafe` has a stronger conclusion and a premise not comparable
   with the former one (its window `[ready, heal]` shifts earlier with the same length).
 - 2026-11-02, Francesco (η = 0, coefficient lane): the Goldilocks outage regime is plain sleepy.
-  `AcceptanceAssumptions.lookback` is removed, `acceptanceContract` keeps `Params.standard`'s
+  `ContractAssumptions.lookback` is removed, `goldilocksContract` keeps `Params.standard`'s
   `η = 0`, and the outage budget is `4k − 6` (was `min(lookback, 4k − 6)`). Statement impact:
   `Outage`'s participation premise `EtaSleepyOn θ (η·Δ)` becomes plain sleepy and its window bound
   `b₁ ≤ b₀ + budget·Δ` admits windows up to `(4k − 6)·Δ` (was `min(lookback, 4k − 6)·Δ`); both
@@ -134,11 +134,11 @@ where it is recorded; "Francesco" marks the owner's decisions.
   to the acceptance contract; the Baseline sheet is unchanged and still pins `η = eta ≥ 1`
   (OD-23), a stronger premise, so the acceptance claim is the stronger one.
 - 2026-11-02, coefficient lane (lead-approved plan): the arbitrary-ratio contract. The Goldilocks
-  acceptance assumptions choose the row ratio, `AcceptanceAssumptions.rowRatio : ℕ+`, passed to
-  `Params.rowRatio` by `acceptanceContract`, so its healthy regime assumes `ΔF ≤ r·Δ` for that `r`.
-  With `c = cF r`: `AcceptanceAssumptions.timeout` is `3c ≤ δt` (`six_le_δt` derived),
-  `finalWindow A = [0, c, 2c, 3c]` (span `3c`) and `accepted_latency .final X = 8(X + 3c) + 2`; the
-  nonfinal latency `8X + 12` and `accepted_heal` are unchanged (the row delay enters the reset
+  acceptance assumptions choose the row ratio, `ContractAssumptions.rowRatio : ℕ+`, passed to
+  `Params.rowRatio` by `goldilocksContract`, so its healthy regime assumes `ΔF ≤ r·Δ` for that `r`.
+  With `c = cF r`: `ContractAssumptions.timeout` is `3c ≤ δt` (`six_le_δt` derived),
+  `finalWindow A = [0, c, 2c, 3c]` (span `3c`) and `contract_latency .final X = 8(X + 3c) + 2`; the
+  nonfinal latency `8X + 12` and `contract_heal` are unchanged (the row delay enters the reset
   envelope only through the rise timeout `6Δ + ΔF ≤ 4Δ·δt`, paid by `3c ≤ δt`). Provenance of
   `8X + 12` (workbench `confirmed_supply_row_use_audit.md`, at 03e10e76): the post-heal proofs do
   not consume the row-timing components, although their premise bundles still contain them; this
@@ -171,8 +171,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   (retired 2026-11-03). Cards:
   workbench `outage_slow_only_delta.md`, read-backs 5d5e354 and 9f5d6a3.
 - 2026-11-02, claude-mac, owner direction Francesco ([#136]): route A for final liveness.
-  `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `AcceptanceAssumptions.timeout` is
-  `6 ≤ δt`, and `accepted_latency .final X = 8(X+6)+2`. The window coverage comes from the anchor
+  `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `ContractAssumptions.timeout` is
+  `6 ≤ δt`, and `contract_latency .final X = 8(X+6)+2`. The window coverage comes from the anchor
   route (`cacheCoverage_of_anchor_window_upTo`, WindowAnchorRoute.lean): honest proposers only at
   the four anchors, three gap-2 anchor steps, and `P₃.slot ≤ P₀.slot + δt`. Only this coverage
   lemma needs `δt ≥ 6`; the seed needs `δt ≥ 4`. `δt` is a fixed constant, independent of the
@@ -208,8 +208,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   no actual row-production or network-to-node service obligation.
 
 - 2026-10-31, coordinator (canonical collision transport, following #121).
-  Protect the canonical trace construction in `Statements/Refinement/Trace`; keep its proofs
-  in `Lemmas/Refinement/Trace`. Collision transport targets this constructed trace, not every
+  Protect the canonical trace construction in `Statements/Refinement/Trace` (since moved); keep its proofs
+  in `Lemmas/Simulation/Trace`. Collision transport targets this constructed trace, not every
   arbitrary simulation witness: simulation coverage alone does not identify all block calls
   with engine objects. This deliberately narrows the transport target. Tagged genesis roots
   make freshness unconditional, so neither transport nor finalized accountability assumes it.
@@ -300,7 +300,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `dutyStep` gates both state mutation and release on selection. Delivered-block
   proposer correspondence is an explicit `LocalRun.proposerCredential` obligation,
   including faulty signers; the canonical simulation supplier remained OPEN then (since proved:
-  `simTrace_proposerCredential`, `Lemmas/Refinement/Run.lean`, used by `simTrace_goldilocksRun`).
+  `simTrace_proposerCredential`, `Lemmas/Simulation/Run.lean`, used by `simTrace_goldilocksRun`).
 - 2026-10-31, coordinator-directed selected-duty repair. Restart replay order depends
   only on validator count and genesis root: its data enumerates a frame's non-genesis
   blocks in parent order. It has no proposer or timing dependence. Indexing that data
@@ -348,7 +348,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 - 2026-10-29, claude-ethlabs ([#38]). That sheet (`Instances/Goldilocks/{Spec,Statements}/Baseline.lean`) is a
   pre-foundation baseline, **not approved**: no proof targets it until the first slice ([#10]) re-reviews it
   against the current Goldilocks spec (`docs/goldilocks-mapping.md`). The files of the instance semantics and
-  statements (`Instances/<P>/{Spec,Statements}` as file and directory, `Instances/<P>/Refinement/Defs.lean`)
+  statements (`Instances/<P>/{Spec,Statements}` as file and directory, `Instances/<P>/AsChainShape.lean`)
   join `trusted_paths`, and their layers are `protected` (check-boundaries requires the coverage), so every edit
   of those files is reviewed; the tag covers the sheet only as a frozen baseline. The Goldilocks import
   exception to `Main` is limited to the two `Baseline` modules. The sheet moved to
@@ -358,7 +358,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   archived**: `Instances/Goldilocks/{Spec,Statements}/Baseline.lean` and its tests (`ConsensusLeanTest/Goldilocks`)
   move to `archive/consensus-lean-baseline`, out of the build, the roots and the snapshots; their layers, the
   Baseline entries of the import exception to `Main` and their index entries go. It was never approved and was
-  off every live path: nothing in the closure of `Challenge`, `Solution` or `Refinement.Accepted` imported it.
+  off every live path: nothing in the closure of `Challenge`, `Solution` or `Obligations.Concrete` imported it.
   The positive controls keep their own copy of its schema and skeleton (`Tests.Controls.ctrlSchema`,
   `ctrlSkeleton`). The open audit item on its weak-continuation premise is closed as moot.
 
@@ -394,17 +394,29 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-04, Francesco and the coordinator (review-surface naming, step 1 of the naming proposal): mechanical
+  renames and moves, no statement changes. `Refinement/Defs` becomes `AsChainShape` (namespace
+  `Goldilocks.AsChainShape`; `family` → `goldilocks`, `FamilyState` → `PubState`). The endpoint statement becomes
+  `Statements/Obligations`, in the root namespace: `AcceptedEndpoint` → `MeetsObligations`, `acceptanceContract` →
+  `goldilocksContract`, `AcceptanceAssumptions`/`AcceptanceCoefficients` → `ContractAssumptions`/`ContractCoefficients`,
+  `accepted_{catchUp,heal,latency,coefficients}` and their lemmas → `contract_*`. The proofs split by import
+  closure into `Lemmas/Simulation` (the simulation statements, namespace `Goldilocks.Simulation`;
+  `RefinementStatements` → `SimulationStatements`), which never imports the obligations, and `Lemmas/Obligations`
+  with `Proofs/Obligations` (namespace `Goldilocks.Obligations`). The instance trusted path
+  `Instances/<P>/Refinement/Defs.lean` becomes `Instances/<P>/AsChainShape.lean`. The other entries use the current
+  names and paths of what still exists. The row, ratio and delay names (`rowRatio`, `cF`, `Δ`/`ΔF`, `isRow`) are
+  step 2; the accepted-status ledger and its tool, step 3.
 - 2026-11-04, Francesco (trusted-surface reduction): move the Refinement simulation interface
-  and canonical trace construction into non-exposed `Lemmas/Refinement/{Interface,TraceDefs}`,
+  and canonical trace construction into non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`,
   with characterising lemmas for proof consumers. This supersedes the 2026-10-31 canonical-trace
   protection decision **for location only**: collision transport still targets the same trace
   constructed from the engine run, never an arbitrary simulation witness. Every definition,
   simulation field, release/relay obligation and horizon clamp is unchanged. The certified
-  Challenge statements, Solution entries, comparator configuration, shape in `Refinement/Defs`
+  Challenge statements, Solution entries, comparator configuration, shape in `AsChainShape`
   and Accepted statement are unchanged. The endpoint proof still uses the construction and is
   axiom-audited; it is not additional material the endpoint's statement reader must trust.
   The follow-up moves the unchanged digest adapter `dgOf` and delivery relation `DeliverSeq`
-  from `Refinement/Defs` beside their only users in those same proof-side leaves. All other
+  from `AsChainShape` beside their only users in those same proof-side leaves. All other
   declarations in `Defs` are unchanged; its digest docstring points to the new location.
   Neither helper is a dependency of its remaining declarations
   or the certified endpoint statement. Their names, binders and canonical semantics stay intact.
@@ -447,7 +459,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   What changes: trusted `Spec/SA/{Schedule, State, Locks, Confirmation, Events}` (`SAParams.c`, `Lock.expiry`,
   `Lock.LiveAt`, `fastExpiry`, `addLocks`'s `N` with expiries, `updateConfirmation`, `optimisticConfirmation`,
   `FastUpdateAt` over the filtered path), `Statements/AC/Base` (`LocksMoveBack`: the shape of `N`, and `MovesBack`
-  also keeps the expiry, a strengthening), `Statements/Healing/AC` (`SlowLockAt`), `Refinement/Defs` (`Setup.c`),
+  also keeps the expiry, a strengthening), `Statements/Healing/AC` (`SlowLockAt`), `AsChainShape` (`Setup.c`),
   and the LaTeX (`goldilocks-spec.tex` §"Locks", §"Confirmation"; lean notes P5; claims OC1). `fastSelect` stays the
   raw test, so A1.4 (b) (`OptimisticNextUpdate`) keeps its meaning. No Challenge statement changes its text apart
   from A0.4 (c)'s `MovesBack`/`LocksMoveBack` (above); through `FastUpdateAt`/`FastLockAt` the scope of A1.2, A1.5,
@@ -558,7 +570,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `ProposalParentHeld`, `DutyHeadsHeld`; Compose/Node `ThreeTips`, `HonestBlockAccepted`,
   `ACStatesReachable`, `SourcesHeld`; Compose/Run `ACProjection`, `FGProjection`); `SourceHeld` is
   incomparable (weaker hypothesis and conclusion). The node and family S behave as before (only an
-  unread return value went), and `AcceptedEndpoint` is unchanged. The Lean was ahead of SPEC
+  unread return value went), and `MeetsObligations` is unchanged. The Lean was ahead of SPEC
   requirements 1 and 2 and claims A0.6 until the matching LaTeX edits landed in
   `specs/goldilocks/tex/` (14cc8f74); they now agree.
 - 2026-10-31, coordinator-authorized R.5/OC repair ([#107](https://github.com/ethlabs-org/consensus-lean-coordination/issues/107)).
@@ -618,8 +630,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   and touches `Spec/Common/Block`, `Spec/Node`, `Spec/Run/Model`, the `Statements/Compose` files that pattern
   the tick, five `Lemmas/Compose` files and the Goldilocks tests. The spec folds the input into the AC payload
   (composition.tex: the AC fixes the encoding of its payload); the mapping records the field as that encoding.
-- 2026-10-30, amp-orbs (architecture), Refinement statements ([#17]; `Refinement/Defs`,
-  `Statements/Refinement`). **The Goldilocks node as a generic shape, simulated rather than equated.** The wire
+- 2026-10-30, amp-orbs (architecture), Refinement statements ([#17]; `AsChainShape`,
+  `Statements/Obligations`). **The Goldilocks node as a generic shape, simulated rather than equated.** The wire
   format and digest are the refinement's choices, not the spec's: `n`-independent bodies (the family needs one
   body type for every parameter set; a fixed-`n` body was rejected), canonical signed objects (a block's header
   carries the canonical objects of its payload, so the engine's view contains the evidence G1.5 needs), a digest
@@ -629,7 +641,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   rejected since `clock` runs asleep), two leading polls release the bodies queued since the last tick so that a
   proposal carries only released objects (rejected: filtering own objects out of the proposal), the trailing
   polls run the FG update and drain the tick's vote and attestation. The family's state is a Goldilocks state at
-  every proof of `1 ≤ n` (`FamilyState`; a `dite`/cast family was rejected). The simulation (`Simulates`) maps
+  every proof of `1 ≤ n` (`PubState`; a `dite`/cast family was rejected). The simulation (`Simulates`) maps
   engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries (`DeliverSeq`, one group per
   canonical object), restarts and releases; releases have the slack of the next awake tick (`ReleasedFrom`,
   `RelayedFrom`). Two gaps recorded, not stated: the proposer selection was a hypothesis (`SelIs`; the generic
@@ -640,7 +652,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   (`Delivers` with `≤ max(a, g) + Δ` versus the spec's strict deadline; admission read as an instantaneous send
   versus the engine's relay at the next awake tick) is left to the regimes milestone.
 - 2026-10-30, amp-orbs (architecture), per-slot proposer selection ([#93]; `Spec/Shape/Shape`,
-  `Spec/Shape/ProgressFit`, `Refinement/Defs`). **The skeleton's proposer selection is per slot, and a
+  `Spec/Shape/ProgressFit`, `AsChainShape`). **The skeleton's proposer selection is per slot, and a
   recurrence still fits only a run-chosen proposer.** `Skeleton.proposerSel : Slot → SelSpec n`, so that a
   shape can fix its schedule (`fun s => .fixed {p s}`) or leave the choice to the run (`fun _ => .sized 1`); the
   other instances are unchanged (`fun _ => …`). `ProgressReq.Fits (.recur _)` becomes `∀ s, proposerSel s =
@@ -652,15 +664,15 @@ where it is recorded; "Francesco" marks the owner's decisions.
   ready-proposer premise), not through `.recur`; its `Spec/Baseline` skeleton keeps `fun _ => .sized 1`. The
   Refinement skeleton sets `fun s => .fixed {proposer s}` (superseded by #117, ac3e8d5c: it is now `fun _ => .sized 1`
   with the run's proposer `runProposer`) and `SelIs` is dropped from `EngineSimulatesNode` and
-  `FinalizedAccountable`; `selValid_proposer` (`ConsensusLeanTest/GoldilocksRefinement.lean`) derives the former
+  `FinalizedAccountable`; `selValid_proposer` (`ConsensusLeanTest/GoldilocksSimulation.lean`) derives the former
   hypothesis from `SelValid`. Baseline's `GoldilocksTarget` is not instantiated at the refinement family (its
   bindings name `goldilocksSkeleton` over `goldilocksSchema`, and a fixed schedule does not fit its `.recur`
-  rows: a fixed schedule does not fit `.recur`, see above); the milestone statements are over `compiled (family S)` directly, and restating Baseline at the
+  rows: a fixed schedule does not fit `.recur`, see above); the milestone statements are over `compiled (goldilocks S)` directly, and restating Baseline at the
   refinement skeleton is left to the first-slice re-review ([#10], [#38]) as a recorded gap.
 
 - 2026-10-31, amp-orbs (architecture), delivery-time release in the engine ([#107], coordinator's decision
   option (a); `Spec/Model/{Protocol,Run,Conditions}`, `Spec/Shape/{Shape,Compile}`, `Spec/Problem/Network`,
-  `Refinement/Defs`). **What a delivery makes a node emit, relay or acknowledge leaves at the delivery's own
+  `AsChainShape`). **What a delivery makes a node emit, relay or acknowledge leaves at the delivery's own
   time.** A protocol has `deliverDuties : Time → List Duty` (default `[]`; a skeleton lists them as
   `deliverOrder`, default `[]`), and `Run.step` at `.deliver v o t` runs them on the processed node and then the
   gossip `releaseAll`, as an awake tick does; `releasesAt` has a deliver branch, `releases v o t` holds at the
@@ -755,13 +767,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
   of `Shape` (contract values with fit and tolerance proofs), not protocol instances, and no Challenge or comparator
   statement reaches them: the compiled trusted-surface inventory at dd513f0f finds all their declarations
   unreachable from the 53 roots, in the statement closure and in the proof closure. #38's rule (every protocol
-  instance's `Spec`, `Statements` and `Refinement/Defs.lean` are trusted) stands; Goldilocks is today's only
+  instance's `Spec`, `Statements` and `AsChainShape.lean` are trusted) stands; Goldilocks is today's only
   instance, and its layers stay `protected`, so check-boundaries.py still requires them to be covered.
   `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`:
   Streamlet was their only user on the trusted surface, but `Lemmas/Blocks/Facts` and the tests use them too.
 - 2026-11-04, Francesco: **Challenge certifies exactly five statements**: the four generic review statements
   (`Review.ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`) and the Goldilocks
-  `Refinement.AcceptedEndpoint`. Reason: keep the trusted surface to the generic definition of a correct protocol plus
+  `MeetsObligations`. Reason: keep the trusted surface to the generic definition of a correct protocol plus
   the one instance endpoint; the other 48 Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist,
   Regimes, Service, Healing) are means to the endpoint, not claims a reviewer must read. They stay proved and built
   as ordinary lemmas, but are no longer comparator roots and no longer trusted: their statement modules, and every
@@ -770,9 +782,9 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `Instances/Goldilocks/Milestones/` layer family. It mirrors the old Spec/Statements sub-layers, so the allow matrix
   carries over; it allows `@[expose]` (the statements are unfolded by their proofs and tests) and no `sorry`, which
   is why it is not `Lemmas`. The Refinement simulation interface and canonical trace moved the same day to
-  `Lemmas/Refinement/{Interface,TraceDefs}` with characterising lemmas instead; the two placements differ on
+  `Lemmas/Simulation/{Interface,TraceDefs}` with characterising lemmas instead; the two placements differ on
   purpose (redoing the ~40 milestone modules that way would be a large diff for no gain in review surface). What
-  the five roots reach stays in `Spec/`, `Statements/Refinement/Accepted` and `Refinement/Defs.lean`, protected; a
+  the five roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
   `protected` layer may now import only trusted and protected layers (check-boundaries.py), so that closure cannot
   reach Milestones. The 48 stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and
   check.sh step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
@@ -804,7 +816,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 - Audit (two-bound network, 2026-11-02): sleepy row-independence: do the sleepy claims hold at
   every `ΔF > 0`, as `System.Sleepy` (no ratio) now states? Goldilocks's `sleepySafe`,
   `sleepyLive` and `persists` are proved with no `rowRatio` premise, for each positive `ΔF`, in
-  the two-bound model (`Refinement.accepted`, standard axioms). That model still imposes finite
+  the two-bound model (`Obligations.accepted`, standard axioms). That model still imposes finite
   row delivery at `ΔF`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
   `OutageNet`, whose `rows` clause delivers rows by `ΔF`. This is not independence from any
   row-delivery assumption, and it does not allow unbounded or missing delivery. Generically the

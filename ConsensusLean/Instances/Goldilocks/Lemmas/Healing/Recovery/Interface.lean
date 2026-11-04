@@ -25,7 +25,7 @@ extra premise of the public Recovery statements.
 
 The shared seam is high finalized caches at honest pre-call states. At `t = Rstar`, the
 coverage deadline is `gbar g + T_rec - 12Δ`; O.1 then uses the unchanged `12Δ` margin.
-There is no Healing-to-Refinement import. -/
+There is no Healing-to-Obligations import. -/
 
 namespace Consensus.Goldilocks.Healing.Recovery
 

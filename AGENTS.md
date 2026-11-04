@@ -78,7 +78,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
 - **Trusted surface** (`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` as `X.lean` and `X/**`,
   `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
   `ConsensusLeanTest/Review{Axioms,Guard}.lean`, and since #38 the instance files
-  `Instances/<P>/{Spec,Statements}` and `Instances/<P>/Refinement/Defs.lean`): the list is `trusted_paths` in `scripts/boundaries.toml`,
+  `Instances/<P>/{Spec,Statements}` and `Instances/<P>/AsChainShape.lean`): the list is `trusted_paths` in `scripts/boundaries.toml`,
   (united with the list at the base). Such a change is **recorded, not gated** (owner, 2026-11-01: the
   `spec-approved` tag is retired while the work is active): it lands through `scripts/push-main.sh` like any
   other change; every commit that touches a trusted path carries a line `Trusted-surface: <what changes and

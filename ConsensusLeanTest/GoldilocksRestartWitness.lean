@@ -1,5 +1,5 @@
 module
-public import ConsensusLeanTest.GoldilocksRefinement
+public import ConsensusLeanTest.GoldilocksSimulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 @[expose] public section
 
@@ -22,7 +22,8 @@ nothing (no lock, pool or FG state) is carried across the restart.
   `t = 8Δ − 1 = 15` and `c = 8Δ − 3 = 13` (`c + 1 = 8Δ − 2`), the window `[1, 15]` is awake, but
   the restart at `1` is after `t_{slot 15 − 1} = t_0 = 0`. -/
 
-namespace Consensus.Goldilocks.Refinement.Test.RestartWitness
+namespace Consensus.Goldilocks.Obligations.Test.RestartWitness
+open AsChainShape Simulation
 
 open Shape Blocks
 open Consensus.Model (pubOf)
@@ -39,16 +40,16 @@ variable (S : Setup)
 
 /-- Validator `1` proposes every slot; everyone polls. -/
 def sel :
-    (Model.protoOf (compiled (family S)) point.env).Role → Finset (Fin (Fintype.card (Fin 2)))
+    (Model.protoOf (compiled (goldilocks S)) point.env).Role → Finset (Fin (Fintype.card (Fin 2)))
   | .proposer _ => {⟨1, by decide⟩}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
-theorem sel_admits : (Model.protoOf (compiled (family S)) point.env).SelAdmits (sel S) := by
+theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) point.env).SelAdmits (sel S) := by
   intro r
   cases r with
   | proposer s =>
-    change ((family S (pubOf point.env)).skel.proposerSel s).Admits _
+    change ((goldilocks S (pubOf point.env)).skel.proposerSel s).Admits _
     rw [Test.skeleton_proposerSel S s]
     change ({(⟨1, by decide⟩ : Fin (Fintype.card (Fin 2)))} : Finset _).card =
       min 1 (Fintype.card (Fin 2))
@@ -63,7 +64,7 @@ theorem sp_Δ : (sp S).Δ = 2 := rfl
 
 /-- The run has a restart of validator `0` at time `1`, its first cut. -/
 theorem restart_at_one :
-    ∃ rho : Model.Run (compiled (family S)) point.env, rho.ExecutionValid ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
       GoldilocksRun (runProposer S rho one_le_card) (digestOf S rho) (honestKeys S rho)
         (simTrace S rho one_le_card) ∧
       ∃ y ∈ honestKeys S rho,
@@ -71,7 +72,7 @@ theorem restart_at_one :
         ∃ k, (simTrace S rho one_le_card).RestartAt y k ∧
           (simTrace S rho one_le_card).time k = 1 ∧
           ∀ j < k, ¬ (simTrace S rho one_le_card).IsCall y j := by
-  obtain ⟨rho, hp, hk, -, hv, -, -, -⟩ := Shape.coverage (family S) point (by decide)
+  obtain ⟨rho, hp, hk, -, hv, -, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   have hn := one_le_card
   have hhon : rho.honest = Finset.univ := congrArg EnvPoint.honest hp
@@ -105,7 +106,7 @@ theorem restart_at_one :
 at `t = 8Δ + 1 = 17` with `c = 8Δ − 1 = 15`, validator `0` is awake on `[1, 17]`, has a restart at
 time `1 ≤ t`, and F.4 gives that this restart is at or before `t_{slot 17 − 1} = t_1 = 8`. -/
 theorem readyImpliesJoined_restart :
-    ∃ rho : Model.Run (compiled (family S)) point.env, rho.ExecutionValid ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
       GoldilocksRun (runProposer S rho one_le_card) (digestOf S rho) (honestKeys S rho)
         (simTrace S rho one_le_card) ∧
       ∃ y ∈ honestKeys S rho, ∃ k, (simTrace S rho one_le_card).RestartAt y k ∧
@@ -133,7 +134,7 @@ theorem readyImpliesJoined_restart :
 /-- The restart branch of `readyImpliesJoined_restart`, read off: the restart at time `1` is in
 `(0, t_1]` and `slot 17 > 0`. -/
 theorem readyImpliesJoined_restart_bound :
-    ∃ rho : Model.Run (compiled (family S)) point.env, rho.ExecutionValid ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
       ∃ y ∈ honestKeys S rho, ∃ k, (simTrace S rho one_le_card).RestartAt y k ∧
         0 < (simTrace S rho one_le_card).time k ∧
         0 < (sp S).toParams.slotOf (8 * (sp S).Δ + 1) ∧
@@ -163,4 +164,4 @@ theorem readyImpliesJoined_needs_catchUp :
   rw [hk, show (sp S).toParams.slotTime ((sp S).toParams.slotOf 15 - 1) = 0 from rfl] at hle
   exact absurd hle (by decide)
 
-end Consensus.Goldilocks.Refinement.Test.RestartWitness
+end Consensus.Goldilocks.Obligations.Test.RestartWitness

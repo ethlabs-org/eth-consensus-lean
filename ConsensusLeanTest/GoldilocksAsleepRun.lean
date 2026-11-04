@@ -1,7 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Release
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 @[expose] public section
 
 /-! # A two-validator run with an honest validator that never wakes
@@ -372,7 +372,7 @@ theorem asleepRun_localRun (sg : N2.Msg → Fin sp2.n) :
         obtain ⟨j, hj, hs⟩ := tickRun_pool_v0 (8 * (i / 8)) a hpay
         exact ⟨j, by omega, hs⟩
     obtain ⟨j, hj, C, hc⟩ := hsig
-    have hval : a.val = v0 := Refinement.attest_val_of_mem_exec (fun _ => v0) dg2 v0
+    have hval : a.val = v0 := Simulation.attest_val_of_mem_exec (fun _ => v0) dg2 v0
       (tickState N2 dg2 (j / 8)) _ (.tick 0) (tickRun_label_mem hc.2)
     rw [hval]
     exact ⟨j, hj, C, hc⟩
@@ -464,7 +464,7 @@ theorem asleepRun_votes :
 theorem emit_val {j : Nat} {v : Vote sp2.n} (h : (tickRun N2 dg2).EmitAt v0 j v) : v.val = v0 := by
   obtain ⟨ℓ, hc, e, he, rfl⟩ := h
   have hmem := tickRun_label_mem hc.2
-  exact Refinement.emits_val_of_mem_exec (fun _ => v0) dg2 v0 (tickState N2 dg2 (j / 8)) _
+  exact Simulation.emits_val_of_mem_exec (fun _ => v0) dg2 v0 (tickState N2 dg2 (j / 8)) _
     (.tick 0) hmem e he
 
 /-- **The run is a Goldilocks run.** -/

@@ -24,7 +24,7 @@
 /ConsensusLean/Instances/Goldilocks/Spec/ @fradamt
 /ConsensusLean/Instances/Goldilocks/Statements.lean @fradamt
 /ConsensusLean/Instances/Goldilocks/Statements/ @fradamt
-/ConsensusLean/Instances/Goldilocks/Refinement/Defs.lean @fradamt
+/ConsensusLean/Instances/Goldilocks/AsChainShape.lean @fradamt
 /scripts/                           @fradamt
 /.github/                           @fradamt
 /lakefile.toml                      @fradamt

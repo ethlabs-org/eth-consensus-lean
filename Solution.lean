@@ -3,7 +3,7 @@ public import ConsensusLean.Statements.Review
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import ConsensusLean.Proofs.Faithful.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Refinement.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 
 @[expose] public section
 
@@ -27,12 +27,12 @@ theorem heldIffServed : HeldIffServed := @Consensus.Model.Run.held_iff_served
 
 end Consensus.Review
 
-/-! Goldilocks Accepted: the concrete acceptance endpoint
-(`Statements/Refinement/Accepted`). -/
+/-! Goldilocks meets the obligations: the concrete acceptance endpoint
+(`Statements/Obligations`). -/
 
-/-- Goldilocks Accepted: `AcceptedEndpoint`. -/
-theorem Consensus.Goldilocks.Refinement.acceptedEndpoint :
-    Consensus.Goldilocks.Refinement.AcceptedEndpoint :=
-  Consensus.Goldilocks.Refinement.accepted_endpoint
+/-- Goldilocks meets the obligations: `MeetsObligations`. -/
+theorem Consensus.Goldilocks.meetsObligations :
+    Consensus.Goldilocks.MeetsObligations :=
+  Consensus.Goldilocks.Obligations.meets_obligations
 
 end

@@ -29,7 +29,7 @@ People and agents coordinate in GitHub issues, never in the tree; the full rules
 A milestone statement is a `Prop` in `ConsensusLean/Statements/<M>.lean` (generic) or
 `ConsensusLean/Instances/<P>/Statements/<M>.lean` (instance, with one bundled parameter structure). It imports
 only Core, Spec and generic Statements (an instance's also its own Spec and, once it exists,
-`Refinement/Defs`; `scripts/boundaries.toml` is authoritative), so nothing proof-side changes how it
+`AsChainShape`; `scripts/boundaries.toml` is authoritative), so nothing proof-side changes how it
 elaborates. Since 2026-11-04 (`docs/decisions.md`) only the Challenge statements are there: a Goldilocks
 milestone that is not one (all but the acceptance endpoint) is stated in the untrusted
 `ConsensusLean/Instances/Goldilocks/Milestones/Statements/<M>.lean` under the same import rule (plus the

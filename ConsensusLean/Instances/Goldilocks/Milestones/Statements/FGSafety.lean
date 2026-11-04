@@ -11,7 +11,7 @@ nodes G0.2, G0.5, G0.7–G0.10, G1.1 and G1.3, against the FG of `Spec/FG/` (fg.
 loose BJ and the weakened E1). Every statement is about the pure FG: chains, chain states
 and the client; none reads a run. The run-level nodes (the store G0.3/G0.4, finalized
 monotone C0.2, honest acceptance G0.6, finalized safety G1.4, the evidence binding G1.5)
-are a later milestone, with `Refinement/Defs`. `docs/goldilocks-mapping.md` maps each
+are a later milestone, with `AsChainShape`. `docs/goldilocks-mapping.md` maps each
 field to its node.
 
 Statements only: no proofs here. -/

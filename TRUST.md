@@ -42,15 +42,15 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   `scripts/instance-spec-snapshot.txt`. Its modules are the inventory's 6th column (`scripts/check-boundaries.py`,
   from `scripts/boundaries.toml` alone): every module of the default library whose file `[checks] trusted_paths`
   covers and whose layer is not trusted. Today these are 28 modules: every module of the `protected` layers
-  (Goldilocks `Spec`, `Statements/Refinement` and `Refinement/Defs.lean`), which may import only trusted and
+  (Goldilocks `Spec`, `Statements/Obligations` and `AsChainShape.lean`), which may import only trusted and
   protected layers (check-boundaries.py), so the closure of the endpoint statement stays inside the surface.
   Since 2026-11-04 (`docs/decisions.md`) the Goldilocks milestone statements other than the endpoint, and the
   instance Spec that only they reach, are in the untrusted `Instances/Goldilocks/Milestones/` layers, outside it.
   Common/Frame claim aliases and frame-sequence vocabulary live in non-exposed Lemmas leaves,
   outside that surface; their names and propositions are preserved and audited through the test root.
-  Refinement's simulation interface and canonical trace construction likewise live in non-exposed
-  Lemmas leaves; they remain dependencies of Solution's proof and its axiom audit, not of the
-  certified endpoint statement. The shape in Refinement/Defs and the Accepted statement stay protected.
+  The simulation interface and canonical trace construction (`Lemmas/Simulation/{Interface,TraceDefs}`)
+  likewise live in non-exposed Lemmas leaves; they remain dependencies of Solution's proof and its axiom audit, not of the
+  certified endpoint statement. The shape in AsChainShape and the obligations statement stay protected.
   `check-boundaries.py` fails if a `protected` layer's module is not in it or a trusted
   layer's module is. Like the Spec snapshot, it fails step 4 on any drift (a changed definition body or type, an
   added or removed constant, the pins/options header) until `--update-snapshot` regenerates it and the diff is
@@ -180,7 +180,7 @@ It cannot reach proofs, instances, the solution, tests or fixtures. Pins/snapsho
 The trusted surface is `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and
 `X/**`), `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
 `ConsensusLeanTest/ReviewAxioms.lean` and `ConsensusLeanTest/ReviewGuard.lean`, and, since #38, the instance semantics and statements (`ConsensusLean/Instances/<P>/{Spec,Statements}`
-as `X.lean` and `X/**`, and `Instances/<P>/Refinement/Defs.lean`, for every protocol instance `P`; today
+as `X.lean` and `X/**`, and `Instances/<P>/AsChainShape.lean`, for every protocol instance `P`; today
 Goldilocks). The instance paths are on the trusted surface but are not trusted layers: they are `protected`
 layers, which may import only trusted and protected layers. The Shape examples
 `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are not instances and left the surface on 2026-11-04

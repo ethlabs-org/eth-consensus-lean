@@ -1,7 +1,7 @@
 module
-public import ConsensusLeanTest.GoldilocksRefinement
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
+public import ConsensusLeanTest.GoldilocksSimulation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 @[expose] public section
 
@@ -11,7 +11,7 @@ Kind (a), joint satisfiability (CONTRIBUTING "Statements"), with `f = 1`: four v
 `0` faulty and the keys `1, 2, 3` honest, engine `Δ = ΔF = 2`, horizon `40`, identity PKI,
 honest proposer `1` at every slot, everyone awake, no submissions, at every `Setup` (so every
 lock window `S.k ≥ 2`; no lock-rule value is chosen or used). The run is `Shape.coverage` of
-`family S` at that point, carried to the node level by `simTrace_goldilocksRun` and
+`goldilocks S` at that point, carried to the node level by `simTrace_goldilocksRun` and
 `noCollRun_simTrace`.
 
 * `faulty_run`: a valid engine run whose `simTrace` is a `GoldilocksRun` with `NoCollRun`, with
@@ -32,7 +32,8 @@ delivered object carries the faulty key's signature (causality of the canonical 
 stated, since `Shape.coverage` does not export `rho.Causal`. The run and digest are
 noncomputable: a proof-level existential witness, not an evaluated trace. -/
 
-namespace Consensus.Goldilocks.Refinement.Test.FaultyRunWitness
+namespace Consensus.Goldilocks.Obligations.Test.FaultyRunWitness
+open AsChainShape Simulation
 
 open Shape
 open Consensus.Model (pubOf)
@@ -61,16 +62,16 @@ variable (S : Setup)
 
 /-- Honest key `1` proposes every slot; everyone polls. -/
 def sel :
-    (Model.protoOf (compiled (family S)) point.env).Role → Finset (Fin (Fintype.card (Fin 4)))
+    (Model.protoOf (compiled (goldilocks S)) point.env).Role → Finset (Fin (Fintype.card (Fin 4)))
   | .proposer _ => {⟨1, by decide⟩}
   | .duty _ k => k.elim
   | .poll => Finset.univ
 
-theorem sel_admits : (Model.protoOf (compiled (family S)) point.env).SelAdmits (sel S) := by
+theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) point.env).SelAdmits (sel S) := by
   intro r
   cases r with
   | proposer s =>
-    change ((family S (pubOf point.env)).skel.proposerSel s).Admits _
+    change ((goldilocks S (pubOf point.env)).skel.proposerSel s).Admits _
     rw [Test.skeleton_proposerSel S s]
     change ({(⟨1, by decide⟩ : Fin (Fintype.card (Fin 4)))} : Finset _).card =
       min 1 (Fintype.card (Fin 4))
@@ -91,7 +92,7 @@ theorem one_lt_threshold :
   change 1 < 2 * 3 - Fintype.card (Fin 4)
   simp
 
-variable {S} {rho : Model.Run (compiled (family S)) point.env}
+variable {S} {rho : Model.Run (compiled (goldilocks S)) point.env}
 
 /-- The faulty keys of a run at `point` are one: `f = 1`. -/
 theorem faulty_ncard (hp : rho.point = point) : (honestKeys S rho)ᶜ.ncard = 1 := by
@@ -184,10 +185,10 @@ theorem faulty_silent (hp : rho.point = point) (hk : rho.key = Equiv.refl _)
 
 variable (S)
 
-/-- (a) A valid engine run of `family S` at `point` whose canonical trace is a `GoldilocksRun`
+/-- (a) A valid engine run of `goldilocks S` at `point` whose canonical trace is a `GoldilocksRun`
 with `NoCollRun`, one faulty key (`f = 1`), and `f < 2q − n`. -/
 theorem faulty_run :
-    ∃ rho : Model.Run (compiled (family S)) point.env, rho.point = point ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.point = point ∧
       rho.key = Equiv.refl _ ∧ rho.sel = sel S ∧ rho.ExecutionValid ∧
       GoldilocksRun (runProposer S rho one_le_card) (digestOf S rho) (honestKeys S rho)
         (simTrace S rho one_le_card) ∧
@@ -195,7 +196,7 @@ theorem faulty_run :
       (honestKeys S rho)ᶜ.ncard = 1 ∧
       (honestKeys S rho)ᶜ.ncard < 2 * (S.params (pubOf point.env) one_le_card).toParams.q -
         (S.params (pubOf point.env) one_le_card).n := by
-  obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage (family S) point (by decide)
+  obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   refine ⟨rho, hp, hk, hs, hv, simTrace_goldilocksRun S rho one_le_card hv,
     noCollRun_simTrace S rho one_le_card hv hc, faulty_ncard hp, ?_⟩
@@ -206,7 +207,7 @@ theorem faulty_run :
 `Regimes.non_framing` apply: the finalized tips of honest nodes never conflict, and no honest
 key signs a slashable pair. -/
 theorem faulty_run_safe :
-    ∃ rho : Model.Run (compiled (family S)) point.env, rho.point = point ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.point = point ∧
       rho.ExecutionValid ∧ (honestKeys S rho)ᶜ.ncard = 1 ∧
       (∀ y ∈ honestKeys S rho, ∀ z ∈ honestKeys S rho, ∀ i j,
         Compatible ((simTrace S rho one_le_card).HonestBlocks (honestKeys S rho))
@@ -222,7 +223,7 @@ theorem faulty_run_safe :
 and collision freedom, `f = 1 < 2q − n`, `f < h_t` at every `t ∈ [0, 40]` (`h_t = 3`), and a
 silent faulty key. -/
 theorem faulty_run_premises :
-    ∃ rho : Model.Run (compiled (family S)) point.env, rho.ExecutionValid ∧
+    ∃ rho : Model.Run (compiled (goldilocks S)) point.env, rho.ExecutionValid ∧
       GoldilocksRun (runProposer S rho one_le_card) (digestOf S rho) (honestKeys S rho)
         (simTrace S rho one_le_card) ∧
       Compose.NoCollRun (digestOf S rho) (simTrace S rho one_le_card) ∧
@@ -238,4 +239,4 @@ theorem faulty_run_premises :
     fun _ ht htb => ⟨honestAwakeJoined_eq hp hv ht htb, faultBound hp hv ht htb⟩,
     (faulty_silent hp hk hv).2.2.1⟩
 
-end Consensus.Goldilocks.Refinement.Test.FaultyRunWitness
+end Consensus.Goldilocks.Obligations.Test.FaultyRunWitness

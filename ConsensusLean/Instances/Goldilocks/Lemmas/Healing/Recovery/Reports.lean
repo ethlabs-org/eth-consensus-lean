@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Outcome
-import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 
@@ -43,7 +43,7 @@ theorem ready_proposal_report_supply : ReadyProposalReportSupply tr H proposer d
       omega
     have hbounded := hp.toUpTo tr H
       (show a ≤ sp.ts u + 6 * sp.Δ by linarith)
-    exact Refinement.UpTo.report_cover_of_proposal hbounded hc hpH hdesignated hactual
+    exact Obligations.UpTo.report_cover_of_proposal hbounded hc hpH hdesignated hactual
       hPU hslot hu hPg hgu hR le_rfl
 
 /-- **C1.2:** exact outcome service, with the actual-report supplier discharged. -/

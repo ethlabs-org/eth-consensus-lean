@@ -45,7 +45,7 @@ private theorem ThSlot_eq_of_anc' {P : Params} {ACP : Type} {acp₀ : ACP} {st :
     · rw [e']; exact ih (by rw [← e]; exact hh)
     · omega
 
-/-- The entry slot is at most the slot (as `Store.ThSlot_le_slot` in Refinement). -/
+/-- The entry slot is at most the slot (as `Store.ThSlot_le_slot` in Obligations). -/
 private theorem ThSlot_le_slot' {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {Z : NodeBlock P ACP} (hZ : Z ∈ st.tree) :
     (st.σ Z.root).ThSlot ≤ Z.slot := by

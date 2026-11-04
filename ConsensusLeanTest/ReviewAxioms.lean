@@ -53,8 +53,8 @@ run_meta do
 /-- info: 'Consensus.Review.heldIffServed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.heldIffServed
 
-/-- info: 'Consensus.Goldilocks.Refinement.acceptedEndpoint' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Refinement.acceptedEndpoint
+/-- info: 'Consensus.Goldilocks.meetsObligations' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.meetsObligations
 
 /-! ## Axiom pins: the source theorems -/
 
