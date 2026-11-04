@@ -370,6 +370,16 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-04, Francesco (trusted-surface reduction): move the Refinement simulation interface
+  and canonical trace construction into non-exposed `Lemmas/Refinement/{Interface,TraceDefs}`,
+  with characterising lemmas for proof consumers. This supersedes the 2026-10-31 canonical-trace
+  protection decision **for location only**: collision transport still targets the same trace
+  constructed from the engine run, never an arbitrary simulation witness. Every definition,
+  simulation field, release/relay obligation and horizon clamp is unchanged. The certified
+  Challenge statements, Solution entries, comparator configuration, shape in `Refinement/Defs`
+  and Accepted statement are unchanged. The endpoint proof still uses the construction and is
+  axiom-audited; it is not additional material the endpoint's statement reader must trust.
+
 - 2026-11-03, Francesco (card: workbench `repos/consensus-lean/notes/cards/graded_fast_locks_v2.md` §5, §9–§16;
   read-backs T-01a19b8a, PASS): **graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock
   is live at `t` while `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps

@@ -152,7 +152,7 @@ theorem tips_comparable_of_origin_witnesses (Q : HealthyPreparationQuery S A V)
     Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R R' := by
   have hU := Compose.honest_blocks_coherent
     (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
   rcases hCC with h | h
   · exact Anc.total hU (hR.trans h) hR'
   · exact Anc.total hU hR (hR'.trans h)

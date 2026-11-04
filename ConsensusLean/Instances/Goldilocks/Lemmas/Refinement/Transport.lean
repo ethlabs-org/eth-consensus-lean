@@ -33,6 +33,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- Tagged node roots exclude genesis even when the raw hash equals it. -/
 theorem genesisFresh : GenesisFresh S rho := by
+  rw [genesisFresh_iff]
   intro x _
   exact taggedRoot_ne _ _
 
@@ -67,7 +68,7 @@ theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho
       (Regimes.validOutput_of_mem hs.run hy hX).2 X .refl hg
     have he : X.root = taggedRoot S.genesisRoot
         (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
-      simpa [Block.RootOk, digestOf, dgOf, headerOf, hpar] using hroot
+      simpa [Block.RootOk, digestOf_eq, dgOf, headerOf, hpar] using hroot
     simp only [parentRef, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
   let blocks := ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
   have hvalid : ∀ B ∈ ((simTrace S rho hn).state (rho.ownKey v)
@@ -83,7 +84,7 @@ theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho
     intro h hh
     obtain ⟨X, hX, _, hg, rfl⟩ := mem_chainTo hr hB hh
     exact ⟨X.proposer, .proposer X.slot, _, rfl, held_in_view S rho hn hv hv' hX hg⟩
-  rw [readIsOut V S E rho hn]
+  rw [read_eq_out S rho hn]
   simp only [outOf, hs.state v hv' i hi]
   cases g with
   | finalized => exact hvalid _ (Store.cache_invariants _ _ _ _ hr).1
@@ -115,7 +116,6 @@ theorem engine_finalMonotone (hv : rho.ExecutionValid) :
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   exact finalized_monotone (simTrace_simulates S rho hn hv) v i j hi hij hj hv' hv''
 
-variable (V) in
 /-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
 non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
 is handled separately.
@@ -137,8 +137,8 @@ then places the canonical block object in the final engine view without acceptan
 The target no longer quantifies arbitrary simulation witnesses, whose laws do not supply
 this provenance.
 Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
-theorem noCollTransport : NoCollTransport V S := by
-  intro E rho hn hv hnc
+theorem noCollRun_simTrace (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) :
+    Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by
   have hocc (B : Blk (S.params (pubOf E) hn)) (hB : (simTrace S rho hn).Occurs B) :
       B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B) := by
     obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hv hB
@@ -151,13 +151,13 @@ theorem noCollTransport : NoCollTransport V S := by
     | none => exact False.elim (hp hc)
     | some p =>
       exact False.elim (taggedRoot_ne _ _
-        (by simpa [digestOf, dgOf, hc, Params.genesisBlock] using heq.symm))
+        (by simpa [digestOf_eq, dgOf, hc, Params.genesisBlock] using heq.symm))
   · obtain ⟨hp, _⟩ := hocc B hB
     cases hb : B.parent with
     | none => exact False.elim (hp hb)
     | some p =>
       exact False.elim (taggedRoot_ne _ _
-        (by simpa [digestOf, dgOf, hb, Params.genesisBlock] using heq))
+        (by simpa [digestOf_eq, dgOf, hb, Params.genesisBlock] using heq))
   · obtain ⟨hpB, hoB⟩ := hocc B hB
     obtain ⟨hpC, hoC⟩ := hocc C hC
     obtain ⟨pb, hpb⟩ := Option.ne_none_iff_exists'.mp hpB
@@ -165,7 +165,7 @@ theorem noCollTransport : NoCollTransport V S := by
     have hh : rho.hash (headerOf (S.params (pubOf E) hn) B) =
         rho.hash (headerOf (S.params (pubOf E) hn) C) := by
       have h := congrArg (rawRoot S.genesisRoot) heq
-      simpa [digestOf, dgOf, hpb, hpc, headerOf, rawRoot_taggedRoot] using h
+      simpa [digestOf_eq, dgOf, hpb, hpc, headerOf, rawRoot_taggedRoot] using h
     have he : headerOf (S.params (pubOf E) hn) B = headerOf (S.params (pubOf E) hn) C := by
       by_contra h
       exact hnc ⟨_, _, h, hoB, hoC, hh⟩
@@ -176,6 +176,11 @@ theorem noCollTransport : NoCollTransport V S := by
     simp only [headerOf, hpb, hpc, parentRoot_parentRef] at hpar
     simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hinfo
     exact ⟨by simpa [hpb, hpc] using hpar, hslot, hin, hinfo.1, hinfo.2⟩
+
+variable (V) in
+/-- Collision transport, bundled over all engine runs. -/
+theorem noCollTransport : NoCollTransport V S :=
+  (noCollTransport_iff V S).mpr fun _ rho hn => noCollRun_simTrace S rho hn
 
 /-- CLAIMS R.7/G1.3–G1.5: compatibility of honest node tips gives structural compatibility
 of their header chains. Parent closure and coherent honest blocks identify the ancestor walk
@@ -262,7 +267,7 @@ theorem convicted_count {A : Set (Model.protoOf (compiled (family S)) E).Object}
     refine ⟨attObj a, ha, attObj b, hb, ?_, ?_, ?_⟩
     · simp [Model.Run.signerOf, attObj, Model.Obj.signer?, Model.Obj.auth, hak]
     · simp [Model.Run.signerOf, attObj, Model.Obj.signer?, Model.Obj.auth, hbk]
-    · exact (conflicts_iff _ _ _).mpr ⟨a, b, rfl, rfl, hab⟩
+    · exact (conflictsIff_iff.mp conflicts_iff _ _ _).mpr ⟨a, b, rfl, rfl, hab⟩
   simpa only [Finset.card_image_of_injective W rho.key.injective] using
     Finset.card_le_card hsub
 
@@ -313,8 +318,10 @@ Paper reduction: choose the canonical simulation, obtain its `NoCollRun` using
 `noCollTransport`, then use `final_accountable_of_noColl` at the two bounded cuts.
 Canonical collision transport is proved. No freshness premise remains. -/
 theorem finalizedAccountable : FinalizedAccountable V S := by
+  rw [finalizedAccountable_iff]
   intro E rho hn hv hnc u hu v hv' i hi j hj
-  exact final_accountable_of_noColl S rho hn hv (noCollTransport V S E rho hn hv hnc)
+  exact final_accountable_of_noColl S rho hn hv
+    (noCollRun_simTrace S rho hn hv hnc)
     hu hv' hi hj
 
 section Claims
@@ -382,7 +389,8 @@ theorem shape_finalAccountable (K : Contract ProgressReq) (hα : K.params.α ≤
   left
   intro u hu v hv' i j hi hj
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨u⟩
-  rcases finalizedAccountable V S r.1 r.2 hn hv hc u hu v hv' i hi.1 j hj.1 with h | h
+  rcases (finalizedAccountable_iff V S).mp (finalizedAccountable V S)
+      r.1 r.2 hn hv hc u hu v hv' i hi.1 j hj.1 with h | h
   · exact Or.inl h
   right
   have hq : Fintype.card V ≤

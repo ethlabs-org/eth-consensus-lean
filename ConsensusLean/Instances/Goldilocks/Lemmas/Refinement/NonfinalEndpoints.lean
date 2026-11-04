@@ -46,7 +46,7 @@ theorem confirmed_payload_projection (Q : ConfirmedQuery S A V)
     (P.bounded.trans Q.bounded) hprop
   refine ⟨_, k, headerOf Q.params P.block, P.fresh, hk, hr, ?_⟩
   exact confirmed_inBy S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
     (mul_nonneg (Int.natCast_nonneg _) Q.run.1.Δ_pos.le)
     hτ P.bounded Q.bounded hprop coverage
 
@@ -83,7 +83,7 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
     nlinarith
   refine ⟨hduration, ?_, ?_⟩
   · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
-      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) le_rfl
+      (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) le_rfl
       (sleepy_raw_syncUntil S A V Q.run Q.valid Q.sleepy Q.run.2.horizon)
   · apply sleepy_faultBound S Q.run.2 Q.hn Q.valid le_rfl
     intro t ht hth

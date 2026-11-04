@@ -501,7 +501,7 @@ theorem stateAt_succ_deliver {i : Nat} {v : V}
 theorem stateAt_succ_restart {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) :
     stateAt S rho hn v (i + 1) = restore (rho.ownKey v) (stateAt S rho hn v i) t := by
-  simp only [stateAt, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
+  simp only [stateAt_eq, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
   rfl
 
 /-- An event of another node leaves the node's engine state unchanged. -/
@@ -653,7 +653,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 theorem stateAt_succ_tick {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) :
     stateAt S rho hn v (i + 1) = (rho.tick (rho.stateBefore i v) v t).1.st.1 hn := by
-  simp only [stateAt, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
+  simp only [stateAt_eq, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
 
 omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the clock, every duty step and every `recordOwn`
@@ -671,12 +671,12 @@ theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 /-- **The own index.** The Goldilocks state of node `v` holds `v`'s own key. -/
 theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
     have ih := stateAt_self v i
     cases he : rho.events[i]? with
     | none =>
-      simp only [stateAt, stateBefore_succ_none S rho he] at ih ⊢
+      simp only [stateAt_eq, stateBefore_succ_none S rho he] at ih ⊢
       exact ih
     | some e =>
       by_cases hne : e.node = v
@@ -689,7 +689,8 @@ theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
             (fun st s h => (propose_keeps st s).2.trans h)
             (fun st h => (nodeTick_keeps st).2.trans h)
             (fun st t h => (poll_keeps st t).2.trans h)
-            (fun st o hs h => (recordOwn_keeps st o hs).2.trans h) _ w t ih
+            (fun st o hs h => (recordOwn_keeps st o hs).2.trans h) _ w t
+            (by simpa only [stateAt_eq] using ih)
         | deliver w o t =>
           simp only [Model.Event.node] at hne
           subst hne
@@ -697,13 +698,14 @@ theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
           exact deliver_pres S rho hn (fun st => st.self = rho.ownKey w)
             (fun st t h => (poll_keeps st t).2.trans h)
             (fun st _ _ hs h => (recordOwn_keeps st _ hs).2.trans h) w _ o t
-            ((process_relay (runProposer S rho hn) (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans ih)
+            ((process_relay (runProposer S rho hn) (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans
+              (by simpa only [stateAt_eq] using ih))
         | restart w t =>
           simp only [Model.Event.node] at hne
           subst hne
           rw [stateAt_succ_restart S rho hn he]
           rfl
-      · simp only [stateAt, stateBefore_succ_of_ne S rho he hne] at ih ⊢
+      · simp only [stateAt_eq, stateBefore_succ_of_ne S rho he hne] at ih ⊢
         exact ih
 
 
@@ -729,12 +731,12 @@ theorem process_relay_seen {i : Nat} {v : V} (o : (Model.protoOf (compiled (fami
 what `v` has seen. -/
 theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).relayBuf,
     x ∈ Model.closure (rho.stateBefore i v).seen
-  | 0 => fun x hx => absurd hx List.not_mem_nil
+  | 0 => by rw [stateAt_zero]; exact fun x hx => absurd hx List.not_mem_nil
   | i + 1 => by
     have ih := stateAt_relay_seen v i
     cases he : rho.events[i]? with
     | none =>
-      simp only [stateAt, stateBefore_succ_none S rho he] at ih ⊢
+      simp only [stateAt_eq, stateBefore_succ_none S rho he] at ih ⊢
       exact ih
     | some e =>
       by_cases hne : e.node = v
@@ -754,7 +756,7 @@ theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).rel
               rcases (recordOwn_keeps st o hs).1 with h' | h' <;> rw [h']
               · exact h
               · simp)
-            _ w t ih x hx
+            _ w t (by simpa only [stateAt_eq] using ih) x hx
           rw [rho.stateBefore_succ he]
           simp only [Model.Run.step, Function.update_self, Model.Run.tick_seen,
             Model.closure_append]
@@ -770,7 +772,8 @@ theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).rel
             (fun st _ _ hs h => by
               rcases (recordOwn_keeps st _ hs).1 with h' | h' <;> rw [h']
               · exact h
-              · simp) w _ o t (process_relay_seen S rho hn o ih) x hx
+              · simp) w _ o t
+                (by simpa only [stateAt_eq] using process_relay_seen S rho hn o ih) x hx
           rw [stateBefore_succ_deliver S rho he, rho.deliver_seen, Model.closure_append]
           exact List.mem_append_left _ hQ
         | restart w t =>
@@ -780,7 +783,7 @@ theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).rel
           rw [rho.stateBefore_succ he]
           simp only [Model.Run.step, Function.update_self]
           exact ih
-      · simp only [stateAt, stateBefore_succ_of_ne S rho he hne] at ih ⊢
+      · simp only [stateAt_eq, stateBefore_succ_of_ne S rho he hne] at ih ⊢
         exact ih
 
 end
@@ -829,18 +832,18 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
   have key : ∀ m, it + 1 ≤ m → m ≤ i → lastClock S rho v m = t := by
     intro m hm1
     induction m, hm1 using Nat.le_induction with
-    | base => intro _; simp [lastClock, hit]
+    | base => intro _; simp [lastClock_succ, hit]
     | succ m hm1 ih =>
       intro hmi
       have ihm := ih (by omega)
       cases hem : rho.events[m]? with
-      | none => simpa [lastClock, hem] using ihm
+      | none => simpa [lastClock_succ, hem] using ihm
       | some e =>
         have h1 := keyLe_of_index_lt S rho hv hit hem (by omega)
         have h2 := keyLe_of_index_lt S rho hv hem he (by omega)
         cases e with
         | tick v' t' =>
-          simp only [lastClock, hem]
+          simp only [lastClock_succ, hem]
           split_ifs with hvv
           · subst hvv
             exfalso
@@ -851,7 +854,7 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
             exact absurd (index_eq_of_events S rho hv hit hem) (by omega)
           · exact ihm
         | restart v' t' =>
-          simp only [lastClock, hem]
+          simp only [lastClock_succ, hem]
           split_ifs with hvv
           · exfalso
             rcases h1 with h1 | h1
@@ -860,7 +863,7 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
               · simp only [Model.Event.time] at h1 h2; linarith [h2.1]
             · exact absurd h1.2 (by simp [Model.Event.phase])
           · exact ihm
-        | deliver v' o' t' => simpa [lastClock, hem] using ihm
+        | deliver v' o' t' => simpa [lastClock_succ, hem] using ihm
   exact key i hlt le_rfl
 
 end
@@ -929,7 +932,7 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (family S
         have h := recordOwn_relayBuf_signed (s.1 hn) (k := k) (r := r) (m := m) (cs := cs) hs
         rw [← h] at hq
         exact hq)
-      hx
+      (by rw [stateAt_eq] at hx; exact hx)
   have hseen : ∀ y ∈ (R.1.st.1 hn).relayBuf, y ∈ Model.closure R.1.seen := by
     have hQ : ∀ y ∈ (R.1.st.1 hn).relayBuf, y ∈ Model.closure (nd.seen ++ [o]) :=
       rho.runDuties_invariant
@@ -944,7 +947,10 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled (family S
           rcases (recordOwn_keeps (s.1 hn) o hs).1 with h' | h' <;> rw [h']
           · exact hq
           · simp)
-        (process_relay_seen S rho hn o (stateAt_relay_seen S rho hn v j))
+        (by
+          have h := process_relay_seen S rho hn o (stateAt_relay_seen S rho hn v j)
+          rw [stateAt_eq] at h
+          exact h)
     intro y hy
     rw [runDuties_seen S rho v, Model.closure_append]
     exact List.mem_append_left _ (hQ y hy)

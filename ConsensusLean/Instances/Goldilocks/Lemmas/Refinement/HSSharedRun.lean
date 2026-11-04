@@ -50,11 +50,14 @@ theorem hsSharedUpTo_of_rows (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time)) :
     Healing.HSSharedUpTo (simTrace S run.2 hn) (honestKeys S run.2) (digestOf S run.2) g
       ΔF run.2.horizon := by
-  have hnc := noCollTransport V S run.1 run.2 hn valid noCollision
+  have hnc := noCollRun_simTrace S run.2 hn valid noCollision
   have hnet : run.2.log.PSync run.2.point g := (Model.sysOf_delivers_iff _ _ _ _).mp healthy.1
   have hawake : ∀ y ∈ honestKeys S run.2, ∀ t, SA.gbar g ≤ t → t ≤ run.2.horizon →
-      (simTrace S run.2 hn).awake y t := fun y hy t hg hb =>
-    ⟨healthy.2.1.2 (run.2.key y) hy t hg hb, le_trans (le_max_right _ _) hg, hb⟩
+      (simTrace S run.2 hn).awake y t := by
+    intro y hy t hg hb
+    rw [simTrace_awake_iff, awakeAt_iff]
+    exact ⟨healthy.2.1.2 (run.2.key y) ((mem_honestKeys_iff S run.2 y).mp hy)
+      t hg hb, le_trans (le_max_right _ _) hg, hb⟩
   refine ⟨hnc, simTrace_genesis_root_ok S run.2 hn,
     resetService_of_psync S run.2 hn valid hnc hnet hrow hΔF, hawake, ?_, ?_, htd⟩
   · have hpop := healthy.2.1.1
@@ -63,7 +66,7 @@ theorem hsSharedUpTo_of_rows (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.
     change (run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
     have hfault : (honestKeys S run.2)ᶜ.ncard = run.2.point.faulty.card := by
       have heq : (honestKeys S run.2)ᶜ = run.2.key ⁻¹' (↑run.2.point.faulty : Set V) := by
-        ext k; simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+        ext k; simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
       rw [heq, Set.ncard_preimage_of_injective_subset_range run.2.key.injective
         (by simp [run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     change 3 * (honestKeys S run.2)ᶜ.ncard ≤ Fintype.card V - 1

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
 public import ConsensusLean.Lemmas.Model.Candidates
 
 public section

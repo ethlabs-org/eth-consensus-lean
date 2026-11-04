@@ -48,6 +48,7 @@ private theorem wireOK_of_delivered (o : (Model.protoOf (compiled (family S)) E)
     have hrt := hroot.symm
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
     refine ⟨?_, hwf, hval⟩
+    rw [digestOf_eq]
     change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
     rw [hrt]
     simp only [headerOf, hr]
@@ -132,7 +133,8 @@ omit [DecidableEq V] in
 private theorem honest_of_cut {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
     {ev : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
     (h : rho.ownKey ev.node = y) : ev.node ∈ rho.honest := by
-  rw [key_of_ownKey S rho h]; exact hy
+  rw [key_of_ownKey S rho h]
+  exact (mem_honestKeys_iff S rho y).mp hy
 
 /-- A labelled cut of an honest node lies in the records of one handler call, starting at the
 trace's state. -/

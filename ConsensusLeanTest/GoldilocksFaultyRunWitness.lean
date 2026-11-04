@@ -12,7 +12,7 @@ Kind (a), joint satisfiability (CONTRIBUTING "Statements"), with `f = 1`: four v
 honest proposer `1` at every slot, everyone awake, no submissions, at every `Setup` (so every
 lock window `S.k ≥ 2`; no lock-rule value is chosen or used). The run is `Shape.coverage` of
 `family S` at that point, carried to the node level by `simTrace_goldilocksRun` and
-`noCollTransport`.
+`noCollRun_simTrace`.
 
 * `faulty_run`: a valid engine run whose `simTrace` is a `GoldilocksRun` with `NoCollRun`, with
   `f = (honestKeys S rho)ᶜ.ncard = 1`, `q = 3` and `f < 2q − n` (`1 < 2`).
@@ -97,7 +97,7 @@ variable {S} {rho : Model.Run (compiled (family S)) point.env}
 theorem faulty_ncard (hp : rho.point = point) : (honestKeys S rho)ᶜ.ncard = 1 := by
   have heq : (honestKeys S rho)ᶜ = rho.key ⁻¹' (↑rho.point.faulty : Set (Fin 4)) := by
     ext k
-    simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+    simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
   rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
     (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset, hp, point_faulty]
   rfl
@@ -114,8 +114,10 @@ theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) 
     (ht : 0 ≤ t) (htb : t ≤ 40) :
     (simTrace S rho one_le_card).honestAwakeJoined (honestKeys S rho) t = 3 := by
   have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
-  have hawake : ∀ y u, 0 ≤ u → u ≤ 40 → (simTrace S rho one_le_card).awake y u :=
-    fun y u h0 h1 => (awakeAt_iff S rho one_le_card y u).mpr ⟨rfl, h0, hhor ▸ h1⟩
+  have hawake : ∀ y u, 0 ≤ u → u ≤ 40 → (simTrace S rho one_le_card).awake y u := by
+    intro y u h0 h1
+    rw [simTrace_awake_iff, awakeAt_iff]
+    exact ⟨rfl, h0, hhor ▸ h1⟩
   have hset : {y | y ∈ honestKeys S rho ∧ (simTrace S rho one_le_card).awake y t ∧
       (simTrace S rho one_le_card).JoinedAt y t} = honestKeys S rho := by
     ext y
@@ -157,7 +159,7 @@ theorem not_callAt_of_not_honest (hv : rho.ExecutionValid) {y : Fin (Fintype.car
   obtain ⟨_, _, ev, _, he, -, -, -, hn, -⟩ :=
     simTrace_cut S rho one_le_card (hl ▸ Option.some_ne_none ℓ)
   apply hy
-  change rho.key y ∈ rho.honest
+  rw [mem_honestKeys_iff]
   rw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
   exact hv.honest_only ev (List.mem_of_getElem? he)
 
@@ -171,13 +173,13 @@ theorem faulty_silent (hp : rho.point = point) (hk : rho.key = Equiv.refl _)
       ∀ k m, ¬ (simTrace S rho one_le_card).EmitAt faultyKey k m := by
   have hhon : rho.honest = {1, 2, 3} := congrArg EnvPoint.honest hp
   have hf : faultyKey ∉ honestKeys S rho := by
-    change rho.key faultyKey ∉ rho.honest
+    rw [mem_honestKeys_iff]
     rw [hk, hhon]
     decide
   have hc := not_callAt_of_not_honest hv hf
   refine ⟨hf, fun e he h => hf ?_, hc, fun k a ⟨_, h⟩ => hc k _ h,
     fun k m ⟨_, h, _⟩ => hc k _ h⟩
-  change rho.key faultyKey ∈ rho.honest
+  rw [mem_honestKeys_iff]
   exact h ▸ hv.honest_only e he
 
 variable (S)
@@ -196,7 +198,7 @@ theorem faulty_run :
   obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage (family S) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   refine ⟨rho, hp, hk, hs, hv, simTrace_goldilocksRun S rho one_le_card hv,
-    noCollTransport (Fin 4) S _ rho one_le_card hv hc, faulty_ncard hp, ?_⟩
+    noCollRun_simTrace S rho one_le_card hv hc, faulty_ncard hp, ?_⟩
   rw [faulty_ncard hp]
   exact one_lt_threshold S
 

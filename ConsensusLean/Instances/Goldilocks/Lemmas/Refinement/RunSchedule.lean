@@ -291,7 +291,8 @@ theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
   have hth := (hv.in_horizon ev (List.mem_of_getElem? he)).2
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
-      (hv.wake_restart _ hy w (by linarith) (by linarith) ⟨hw1, hw2⟩)
+      (hv.wake_restart _ ((mem_honestKeys_iff S rho y).mp hy) w
+        (by linarith) (by linarith) ⟨hw1, hw2⟩)
   obtain ⟨hR, hRt, hsucc⟩ := restart_at S rho hn hir
   rw [ownKey_key] at hR
   have hge : i ≤ cutMap S rho hn ir := by
@@ -333,7 +334,8 @@ theorem simTrace_restart_at_wake (hv : rho.ExecutionValid) :
   obtain ⟨w, huw, hwv', hw1, hw2⟩ := exists_wake _ hwu hwv huv.le
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
-      (hv.wake_restart _ hy w (by linarith) (by linarith) ⟨hw1, hw2⟩)
+      (hv.wake_restart _ ((mem_honestKeys_iff S rho y).mp hy) w
+        (by linarith) (by linarith) ⟨hw1, hw2⟩)
   obtain ⟨hR, ht, -⟩ := restart_at S rho hn hir
   rw [ownKey_key] at hR
   exact ⟨_, hR, by rw [ht]; exact huw, by rw [ht]; exact hwv'⟩
@@ -604,12 +606,14 @@ theorem simTrace_block_unforgeable (hv : rho.ExecutionValid) :
     rw [hh, Option.map_some, Option.some.injEq] at hroot
     have hroot' : B.RootOk (digestOf S rho) := by
       obtain ⟨p, hp⟩ := Option.ne_none_iff_exists'.mp hpar
+      rw [digestOf_eq]
       change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
       rw [← hroot]
       simp only [headerOf, hp]
       rfl
     have hsign : rho.signerOf (blockObj (S.params (pubOf E) hn) B) =
         some (rho.key B.proposer) := rfl
+    rw [mem_honestKeys_iff] at hhon
     obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _
       (contains_of_mem_delivered ho) (rho.key B.proposer) hhon hsign
     obtain ⟨q, hq, hown⟩ := released_block_cut S rho hn hv hs hhon hpar hroot' hb
@@ -795,8 +799,9 @@ theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
         ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
       · have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
           (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
-        change (pollPre (process (stateAt S rho hn v i) o
+        change (pollPre (process ((rho.stateBefore i v).st.1 hn) o
           (Model.digests rho.hash o))).outbox.head? = some b at hb
+        rw [← stateAt_eq S rho hn v i] at hb
         rw [pollPre_eq, hf] at hb
         have hb' := List.mem_of_mem_head? hb
         rw [hbody b heq] at hb'
@@ -858,6 +863,7 @@ theorem simTrace_msg_unforgeable (hv : rho.ExecutionValid) :
     · cases h; exact ho
     · cases h
   subst o'
+  rw [mem_honestKeys_iff] at hhon
   obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ (contains_of_mem_delivered ho)
     (rho.key m.val) hhon rfl
   obtain ⟨q, hq, hem⟩ := released_vote_cut S rho hn hv hs hhon hb

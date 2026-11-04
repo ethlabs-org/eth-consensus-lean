@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingState
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
@@ -811,6 +811,7 @@ theorem stateAt_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i, WrappersCover (stateAt S rho hn v i)
   | 0 => by
+    rw [stateAt_zero]
     intro root hg hh
     change (if root = S.genesisRoot then some _ else none).isSome at hh
     simp only [show root ≠ S.genesisRoot from hg, ↓reduceIte, Option.isSome_none] at hh
@@ -826,12 +827,14 @@ theorem stateAt_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
           simp only [Model.Event.node] at hnode
           subst w
           rw [stateAt_tick S rho hn v he]
+          rw [stateAt_eq] at ih
           exact tick_pres S rho hn WrappersCover wrappersCover_recordOwn
             wrappersCover_propose wrappersCover_nodeTick wrappersCover_poll v _ t ih
         | deliver w o t =>
           simp only [Model.Event.node] at hnode
           subst w
           rw [stateAt_deliver S rho hn v he]
+          rw [stateAt_eq] at ih
           apply deliver_pres S rho hn WrappersCover wrappersCover_poll
             (fun st m cs hs h => wrappersCover_recordOwn st _ hs h)
           have hf : ∀ (xs : List (Wire (Fintype.card V)))

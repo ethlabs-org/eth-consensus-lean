@@ -639,7 +639,7 @@ Modelling choices:
 - **Whole-run statements and Accepted**: `Healthy(g)` (`HealthyRun`, `Spec/Run/Premises`) keeps every honest
   validator awake on `[max(g, 0), ∞)`, and a run's awake function lies in its horizon (`Node.LocalRun.awake_in_horizon`),
   so a run satisfying `Healthy(g)` with an honest validator is infinite. The trace of a model run is clamped to
-  `[0, horizon]` (`awakeAt`, `Statements/Refinement/Trace`). So the whole-run Healing statements (HR.1, HR.3, HR.4,
+  `[0, horizon]` (`awakeAt`, `Lemmas/Refinement/TraceDefs`). So the whole-run Healing statements (HR.1, HR.3, HR.4,
   H.2 (run), H.3, H.4 and HS.1–HS.4) never apply to Accepted's runs, and none of them is in Accepted's closure:
   Accepted's chain uses the finite-horizon forms (`ResetPremisesUpTo`, `HSSharedUpTo`, `GSTRunUpTo`) and the
   frame-window route (`Lemmas/Healing/M1`), not the phase service.
@@ -758,6 +758,12 @@ repository (2026-11-03). SPEC pin: `shared/composition.tex` at goldilocks `4ea71
 `ChainShape` (`Refinement/Defs`) so that the engine (`Spec/Model/Run`) runs it and the generic L1 theorems apply, and
 states that every valid engine run is simulated by a run of the spec's node (`Spec/Run`), with the evidence binding
 G1.5. Goldilocks' `Params` needs `1 ≤ n`; the family keeps that dependence out of its types (`FamilyState`).
+
+The simulation interface and canonical trace are proof-side vocabulary in non-exposed
+`Lemmas/Refinement/Interface` and `TraceDefs`, not part of the trusted statement surface.
+The canonical construction and all claims retain their names and meanings; the Accepted proof
+uses them through characterising lemmas. `Refinement/Defs` and `Statements/Refinement/Accepted`
+remain protected and unchanged (2026-11-04 location decision, `docs/decisions.md`).
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|

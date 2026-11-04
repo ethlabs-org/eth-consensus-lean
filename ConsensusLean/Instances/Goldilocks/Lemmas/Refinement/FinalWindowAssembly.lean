@@ -198,7 +198,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
     exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
+      (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
   -- the seed and the anchors
   obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) hdu
   have hoff : ∀ i : Fin 4, ![0, c, 2 * c, 3 * c] i ≤ 3 * c := by
@@ -224,7 +224,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     have hr := hduty i
     have hmem : runProposer S Q.run.2 Q.hn (s₀ + ![0, c, 2 * c, 3 * c] i) ∈
         Q.run.2.sel (.proposer (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
-      simp only [runProposer, dite_eq_left hr.1]
+      simp only [runProposer_eq, dite_eq_left hr.1]
       exact Finset.min'_mem _ _
     have hR' := hr.2 _ hmem
     rw [finalGrid_slotTime] at hR'

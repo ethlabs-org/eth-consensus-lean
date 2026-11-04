@@ -678,11 +678,12 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
   have hf := fgDue_eq_false S rho hn v i
   have hself0 := self_eq_ownKey S rho hn v i
   set nd := rho.stateBefore i v with hnd
-  have hσ : stateAt S rho hn v i = shapeOf S hn nd := rfl
+  have hσ : stateAt S rho hn v i = shapeOf S hn nd := stateAt_eq S rho hn v i
   rw [hσ] at hlen hf hself0 ⊢
   obtain ⟨hR1, hR2, hR3, hseen3, hS3, hout2, hnode2, hself2, hnow2, hfg2⟩ :=
-    leading_polls S rho hn v nd t hsel hf hlen (forwards_empty S rho hn hv v i)
-      (voteForwards_empty S rho hn hv v i)
+    leading_polls S rho hn v nd t hsel hf hlen
+      (by simpa only [hσ] using forwards_empty S rho hn hv v i)
+      (by simpa only [hσ] using voteForwards_empty S rho hn hv v i)
   set X := encodeTxs (Model.mempool rho.inbox v t)
   set dg := digestOf S rho
   set n1 := (Node.acCall (rho.ownKey v) (shapeOf S hn nd).node t .tick).1
@@ -977,11 +978,12 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   obtain ⟨-, hlen⟩ := (atMostOneVote_iff _).1 hamo
   have hf := fgDue_eq_false S rho hn v i
   set nd := rho.stateBefore i v
-  have hσ : stateAt S rho hn v i = shapeOf S hn nd := rfl
+  have hσ : stateAt S rho hn v i = shapeOf S hn nd := stateAt_eq S rho hn v i
   rw [hσ] at hlen hf ⊢
   obtain ⟨hR1, hR2, hR3, -, hS3, hout2, -, -, hnow2, hfg2⟩ :=
-    leading_polls S rho hn v nd t hsel hf hlen (forwards_empty S rho hn hv v i)
-      (voteForwards_empty S rho hn hv v i)
+    leading_polls S rho hn v nd t hsel hf hlen
+      (by simpa only [hσ] using forwards_empty S rho hn hv v i)
+      (by simpa only [hσ] using voteForwards_empty S rho hn hv v i)
   have hnil : (skeleton (pubOf E)).proposeAt t = [] := by
     rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
       ⟨h, -⟩ | ⟨s, hs, -, hts⟩
@@ -1345,16 +1347,19 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     intro _
     refine ⟨Bool.eq_false_iff.mpr fun h => ?_, fun o ho hos => ⟨Bool.eq_false_iff.mpr fun h => ?_,
       Bool.eq_false_iff.mpr fun h => ?_⟩⟩
-    · obtain ⟨a1, b1, h1, h2, hsl⟩ := (conflicts_iff (Fintype.card V) (attObj a) (attObj a)).mp h
+    · obtain ⟨a1, b1, h1, h2, hsl⟩ :=
+        (conflictsIff_iff.mp conflicts_iff (Fintype.card V) (attObj a) (attObj a)).mp h
       rw [← attObj_inj h1, ← attObj_inj h2] at hsl
       exact hnf ka ka a a hka hka hsl
-    · obtain ⟨a1, b1, h1, rfl, hsl⟩ := (conflicts_iff (Fintype.card V) (attObj a) o).mp h
+    · obtain ⟨a1, b1, h1, rfl, hsl⟩ :=
+        (conflictsIff_iff.mp conflicts_iff (Fintype.card V) (attObj a) o).mp h
       rw [← attObj_inj h1] at hsl
       have hb1 : b1.val = rho.ownKey v := by
         simpa [Model.Obj.signer?, attObj, Model.Obj.auth] using hos
       obtain ⟨kb, hkb⟩ := hs b1 hb1 ho
       exact hnf ka kb a b1 hka hkb hsl
-    · obtain ⟨a1, b1, rfl, h2, hsl⟩ := (conflicts_iff (Fintype.card V) o (attObj a)).mp h
+    · obtain ⟨a1, b1, rfl, h2, hsl⟩ :=
+        (conflictsIff_iff.mp conflicts_iff (Fintype.card V) o (attObj a)).mp h
       rw [← attObj_inj h2] at hsl
       have ha1 : a1.val = rho.ownKey v := by
         simpa [Model.Obj.signer?, attObj, Model.Obj.auth] using hos

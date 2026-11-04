@@ -303,7 +303,8 @@ theorem publication_held_before_deadline (hn : 1 ≤ Fintype.card V)
   have hslack : a + E.Δ - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.Δ - 1 < a + E.Δ
     linarith
-  obtain ⟨hheld, _⟩ := publication_held_syncUntil S rho hn hnet r hr hx hrow hy
+  obtain ⟨hheld, _⟩ := publication_held_syncUntil S rho hn hnet r hr hx hrow
+    ((mem_honestKeys_iff S rho y).mp hy)
     (ht ▸ ha) hb ((hslack.le.trans hb).trans hbh)
     (fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))
   exact ⟨a + E.Δ - 1, hheld, hslack⟩
@@ -369,7 +370,9 @@ theorem held_forward_accepted_before (hn : 1 ≤ Fintype.card V) (hv : rho.Execu
     exact ⟨k, (hk.trans_le hcut).le, hkey ▸ ha, ht ▸ hstamp ▸ huD⟩
   · obtain ⟨i, hi⟩ := hr
     obtain ⟨k, hk, ha, _, ht⟩ := received_forward_accepted_before S rho hn hv hrun hnc
-      hi hy (.refl o) hx hdecode (event_before hi rfl) (by simpa only [hkey] using hF) huD
+      hi ((mem_honestKeys_iff S rho y).mp hy) (.refl o)
+      ((mem_honestKeys_iff S rho x).mp hx) hdecode (event_before hi rfl)
+      (by simpa only [hkey] using hF) huD
     exact ⟨k, (hk.trans_le (event_before hi rfl)).le, hkey ▸ ha, ht⟩
 
 /-- Acceptance service is measured at the processing cut, even when later restarts
@@ -397,7 +400,7 @@ theorem publication_acceptedBy_syncUntil (hn : 1 ≤ Fintype.card V)
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_deadline S rho hn hv hbh hnet
       r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
-      hy hx hheld hdecode hlt hd hF
+      hy ((mem_honestKeys_iff S rho r.origin).mpr hx) hheld hdecode hlt hd hF
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).deadline y k τ (S.params (Model.pubOf E) hn).Δ
     · exact ⟨k, hkj, hacc, hk⟩
@@ -432,7 +435,8 @@ theorem acceptance_relay_syncUntil (hn : 1 ≤ Fintype.card V)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
   apply publication_acceptedBy_syncUntil S rho hn hv hnc hbh hnet r hr
-    (horg ▸ hx) ht htime (p := p) (by simpa only [horg] using hdecode) hy hj hb hd hF
+    (horg ▸ (mem_honestKeys_iff S rho x).mp hx) ht htime (p := p)
+    (by simpa only [horg] using hdecode) hy hj hb hd hF
 
 /-- After GST, an actual publication is held before every qualifying finite deadline.
 The recipient may wake after the publication; the call supplies its awake interval. -/
@@ -455,7 +459,8 @@ theorem publication_held_before_deadline_psync (hn : 1 ≤ Fintype.card V)
   have hslack : a + E.Δ - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.Δ - 1 < a + E.Δ
     linarith
-  have hheld := (publication_held_psync S rho hn hnet r hr hx hrow hy (ht ▸ ha)
+  have hheld := (publication_held_psync S rho hn hnet r hr hx hrow
+    ((mem_honestKeys_iff S rho y).mp hy) (ht ▸ ha)
     (by rw [hga]; exact hslack.le.trans hb)
     (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))).1
   rw [hga] at hheld
@@ -487,7 +492,7 @@ theorem publication_acceptedBy_psync (hn : 1 ≤ Fintype.card V)
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_deadline_psync S rho hn hv hnet
       r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ hg ht hb hd
     obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
-      hy hx hheld hdecode hlt hd hF
+      hy ((mem_honestKeys_iff S rho r.origin).mpr hx) hheld hdecode hlt hd hF
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).deadline y k τ (S.params (Model.pubOf E) hn).Δ
     · exact ⟨k, hkj, hacc, hk⟩
@@ -521,7 +526,8 @@ theorem acceptance_relay_psync (hn : 1 ≤ Fintype.card V)
     (simTrace S rho hn).BlockAcceptedBy y j ((simTrace S rho hn).time i) B := by
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
-  exact publication_acceptedBy_psync S rho hn hv hnc hnet r hr (horg ▸ hx)
+  exact publication_acceptedBy_psync S rho hn hv hnc hnet r hr
+    (horg ▸ (mem_honestKeys_iff S rho x).mp hx)
     ht hg htime (p := p) (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd hF
 
 /-- Old honest acceptances catch up before the first two-delay snapshot after GST.
@@ -546,13 +552,15 @@ theorem catchRun_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
   have hmax : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
-  obtain ⟨hheld, hslack⟩ := publication_held_psync S rho hn hnet r hr (horg ▸ hx)
-    (not_isRow_of_decodeForward hdecode) hy
+  obtain ⟨hheld, hslack⟩ := publication_held_psync S rho hn hnet r hr
+    (horg ▸ (mem_honestKeys_iff S rho x).mp hx)
+    (not_isRow_of_decodeForward hdecode) ((mem_honestKeys_iff S rho y).mp hy)
     (a := max g 0) (by rw [htime]; exact hbefore.le)
     (by rw [hmax]; exact hservice)
     (by
       rw [hmax]
-      exact fun u hlo hhi => hawake (rho.key y) hy u hlo (hhi.trans hservice))
+      exact fun u hlo hhi => hawake (rho.key y) ((mem_honestKeys_iff S rho y).mp hy)
+        u hlo (hhi.trans hservice))
   rw [hmax] at hheld hslack
   have hdeadline : max g 0 + (S.params (Model.pubOf E) hn).Δ ≤
       (simTrace S rho hn).time j := by
@@ -588,7 +596,8 @@ theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
   have hslack : a + E.Δ - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.Δ - 1 < a + E.Δ
     linarith
-  have hheld := (publication_held_psync S rho hn hnet r hr hx hrow hy
+  have hheld := (publication_held_psync S rho hn hnet r hr hx hrow
+    ((mem_honestKeys_iff S rho y).mp hy)
     (ht ▸ (le_max_left τ g).trans ha)
     (by rw [hga]; exact hslack.le.trans hb)
     (by rw [hga]; exact fun u hau hud => hw u hau (hud.trans (hslack.le.trans hd)))).1
@@ -622,7 +631,7 @@ theorem publication_acceptedBy_psync_any (hn : 1 ≤ Fintype.card V)
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline S rho hn hv hnet
       r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hacc, htime⟩ := held_forward_accepted_before S rho hn hv hnc
-      hy hx hheld hdecode hlt hd hF
+      hy ((mem_honestKeys_iff S rho r.origin).mpr hx) hheld hdecode hlt hd hF
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).deadline y k (max τ g) (S.params (Model.pubOf E) hn).Δ
     · exact ⟨k, hkj, hacc, hk⟩
@@ -653,7 +662,8 @@ theorem acceptance_relay_psync_any (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
     (simTrace S rho hn).BlockAcceptedBy y j (max ((simTrace S rho hn).time i) g) B := by
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
-  exact publication_acceptedBy_psync_any S rho hn hv hnc hnet r hr (horg ▸ hx)
+  exact publication_acceptedBy_psync_any S rho hn hv hnc hnet r hr
+    (horg ▸ (mem_honestKeys_iff S rho x).mp hx)
     (simTrace_time_nonneg S rho hn hv i) htime (p := p) (by simpa only [horg] using hdecode)
     hy hj (hd.trans hb) hd hF
 
@@ -691,7 +701,8 @@ theorem held_forward_blockCall_before (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
     have hk : (simTrace S rho hn).time k < D := ht ▸ hstamp ▸ huD
     exact ⟨k, before hk, ht.ge, ⟨true, hkey ▸ ha⟩, hk⟩
   · obtain ⟨i, hi⟩ := hr
-    have htu := received_forward_stamp_le S rho hn hv hi (.refl o) hx hdecode
+    have htu := received_forward_stamp_le S rho hn hv hi (.refl o)
+      ((mem_honestKeys_iff S rho x).mp hx) hdecode
     obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall S rho hn hi (.refl o) hdecode htu
     have hk : (simTrace S rho hn).time k < D := ht ▸ huD
     exact ⟨k, before hk, ht ▸ htu, hkey ▸ hc, hk⟩
@@ -718,7 +729,7 @@ theorem publication_blockDeliveredBy_psync (hn : 1 ≤ Fintype.card V)
     obtain ⟨d, hheld, hlt⟩ := publication_held_before_gst_deadline S rho hn hv hnet
       r hr hx (not_isRow_of_decodeForward hdecode) hy hj hτ ht hb hd
     obtain ⟨k, hkj, hlo, hcall, htime⟩ := held_forward_blockCall_before S rho hn hv
-      hx hheld hdecode hlt hd
+      ((mem_honestKeys_iff S rho r.origin).mpr hx) hheld hdecode hlt hd
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).deadline y k (max τ g) (S.params (Model.pubOf E) hn).Δ
     · exact ⟨k, hkj, hlo, hcall, hk⟩
@@ -782,7 +793,8 @@ theorem block_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid
   have ha := hi.elim id (ownBlockAt_accept S rho hn hv hnc hx)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B ha
-  exact publication_blockDeliveredBy_psync S rho hn hv hnet r hr (horg ▸ hx)
+  exact publication_blockDeliveredBy_psync S rho hn hv hnet r hr
+    (horg ▸ (mem_honestKeys_iff S rho x).mp hx)
     (simTrace_time_nonneg S rho hn hv i) htime (p := p)
     (by simpa only [horg] using hdecode) hy hj (hd.trans hb) hd
 
@@ -906,7 +918,7 @@ theorem held_att_processed_before (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
   have hp : ∃ k, (simTrace S rho hn).ProcessAttAt (rho.ownKey (rho.key y)) k a ∧
       (simTrace S rho hn).time k = u := by
     rcases hs with hs | ⟨i, hi⟩
-    · exact released_att_processAt S rho hn hv hy hs
+    · exact released_att_processAt S rho hn hv ((mem_honestKeys_iff S rho y).mp hy) hs
     · obtain ⟨k, _, hk, ht⟩ := received_att_processAt S rho hn hi hwf (.refl _)
       exact ⟨k, hk, ht⟩
   obtain ⟨k, hk, ht⟩ := hp
@@ -949,7 +961,9 @@ theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
       linarith
     have hbound : w + E.ΔF - 1 ≤ (simTrace S rho hn).time j :=
       slack.le.trans (heq ▸ hd)
-    have held := hnet.rows (rho.key x) hx (attObj a) _ hrel hrowa (rho.key y) hy w
+    have held := hnet.rows (rho.key x) ((mem_honestKeys_iff S rho x).mp hx)
+      (attObj a) _ ((releasedFrom_iff S rho _ _ _).mp hrel) hrowa
+      (rho.key y) ((mem_honestKeys_iff S rho y).mp hy) w
       ((le_max_left _ g).trans hw) (by rw [hgw]; exact hbound.trans hb)
       (by rw [hgw]; exact hbound.trans hb)
       (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
@@ -993,7 +1007,8 @@ theorem publication_held_ready_tail (hn : 1 ≤ Fintype.card V) {g : Time}
     intro u hau hud
     have h := hy.2 u (by dsimp [a, Time] at *; omega) (hud.trans hlt.le)
     exact ((awakeAt_iff S rho hn y u).mp ((simTrace_awake_iff S rho hn y u).mp h)).1
-  have hh := (publication_held_psync S rho hn hnet r hr hx hrow hy.1
+  have hh := (publication_held_psync S rho hn hnet r hr hx hrow
+    ((mem_honestKeys_iff S rho y).mp hy.1)
     (show (publisherExecution S rho).eventTime r.event ≤ a by dsimp [a, Time]; omega)
     (by rw [hga]; exact hlt.le.trans ht) (by rw [hga]; exact hw)).1
   rw [hga] at hh
@@ -1109,7 +1124,7 @@ theorem sendOrAdmit_process_same_time (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
       simp at hidx
     have hvhon : v ∈ rho.honest := by
       have : rho.key y = v := by rw [← hkey]; exact rho.key.apply_symm_apply v
-      exact this ▸ hy
+      exact this ▸ (mem_honestKeys_iff S rho y).mp hy
     obtain ⟨hengine, hlen⟩ := simTrace_tick_public_group S rho hn hv v hvhon n t he hpublic
     rw [hkey] at hengine hlen
     obtain ⟨i', hi, hacc, htime⟩ := Compose.acBlock_prev hr.toLocalRun hy hc hb
@@ -1182,12 +1197,15 @@ theorem vote_message_service_psync_other (hn : 1 ≤ Fintype.card V)
       simp only [Time]; omega
     have hbound := hslack.le.trans (heq' ▸ hd)
     have hag : max a g = a := max_eq_left ((le_max_right _ _).trans ha)
-    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩
-      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y) hy
+    have hheld := hnet.msgs (rho.key x) ((mem_honestKeys_iff S rho x).mp hx)
+      _ τ ⟨source, hs, hrel⟩
+      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y)
+      ((mem_honestKeys_iff S rho y).mp hy)
       a ((le_max_left _ _).trans ha) (by rw [hag]; exact hbound.trans hb)
       (by rw [hag]; exact hbound.trans hb)
       (by rw [hag]; exact fun u hau hud => hw u hau (hud.trans hbound))
-    rcases held_voteForward_source_or_process S rho hn hv hx hs hfirst hheld with
+    rcases held_voteForward_source_or_process S rho hn hv
+      ((mem_honestKeys_iff S rho x).mp hx) hs hfirst hheld with
       h | ⟨k, hp, hlo, hhi⟩
     · exact False.elim (hne h)
     rw [hag] at hhi

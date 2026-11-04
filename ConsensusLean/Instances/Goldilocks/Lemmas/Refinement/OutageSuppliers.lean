@@ -38,7 +38,7 @@ theorem outage_pre_service (Q : OutageQuery S A V) :
     CommLog.Delivers.reindex h0 (f := id) (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl)
       (min_le_left _ _)
   have service := sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
     (min_le_right Q.start Q.run.2.horizon) hnet
   have bound {y j} (hj : Q.trace.IsCall y j) : Q.trace.time j ≤ Q.run.2.horizon := by
     obtain ⟨l, hl⟩ := hj
@@ -108,7 +108,7 @@ theorem outage_arm (Q : OutageQuery S A V)
     | some D => exact (SA.deepest_mem hd).1.2.1
   refine ⟨⟨R, hR, hrecord, ?_⟩⟩
   change (chainTrace Q.run.2).read .confirmed v i <+: _
-  rw [readIsOut V S Q.run.1 Q.run.2 Q.hn, outOf,
+  rw [read_eq_out S Q.run.2 Q.hn, outOf,
     simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 i hi]
   exact chainTo_prefix hr ((hanc (stateAt S Q.run.2 Q.hn v i).now).mono (fun _ h => h.1))
 

@@ -925,6 +925,7 @@ private theorem cut_owned (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hon
     intro w hw
     rw [outbox_empty S rho hn hv v hv' i] at hw
     cases hw
+  rw [stateAt_eq] at hbase
   cases hc with
   | tick he hw hp =>
     exact duties_owned S rho hn v _ _ hbase
@@ -1131,8 +1132,9 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
       (stateAt S rho hn v i).node := by
   intro i
   induction i with
-  | zero => exact inventory_init _
+  | zero => rw [stateAt_zero]; exact inventory_init _
   | succ i ih =>
+    rw [stateAt_eq] at ih ⊢
     change Inventory (Available (rho.stateBefore i v).seen (shapeOf S hn (rho.stateBefore i v)))
       (shapeOf S hn (rho.stateBefore i v)).node at ih
     have hg : ∀ nd t, Inventory (Available nd.seen (shapeOf S hn nd))
@@ -1154,7 +1156,7 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
       have heq : rho.stateBefore (i + 1) = rho.stateBefore i := by
         simp only [Model.Run.stateBefore, List.take_add_one, he, Option.toList_none,
           List.append_nil]
-      simpa only [stateAt, heq] using ih
+      simpa only [stateAt_eq, heq] using ih
     | some e =>
       change Inventory (Available (rho.stateBefore (i + 1) v).seen
         (shapeOf S hn (rho.stateBefore (i + 1) v)))
@@ -1184,11 +1186,13 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
           have hp : Inventory (Available ((rho.stateBefore i v).seen ++ [o])
               (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
               (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
+            rw [stateAt_eq]
             apply process_inventory
             · exact inventory_mono ih (fun _ => available_mono (parts_append _ _) (fun _ h => h))
             · intro x hx
               exact List.mem_flatMap.mpr
                 ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
+          rw [stateAt_eq] at hp
           have hi := prefix_inventory S rho hn hv hv' i
             ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
               (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _
@@ -1222,7 +1226,10 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
     ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
       (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
     (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
-    (event_inventory S rho hn hv v hv' i) p hp
+    (by
+      have hi := event_inventory S rho hn hv v hv' i
+      rw [stateAt_eq] at hi
+      exact hi) p hp
   rcases hi.votes σ m hm with h | ⟨w, heq, hw⟩ | ⟨a, heq, _⟩
   · exact Or.inl h
   · have henc := congrArg Model.Obj.msg heq
@@ -1351,7 +1358,10 @@ theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
     ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
       (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
     (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
-    (event_inventory S rho hn hv v hv' i) p
+    (by
+      have hi := event_inventory S rho hn hv v hv' i
+      rw [stateAt_eq] at hi
+      exact hi) p
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1)
   have hout : (shapeOf S hn (rho.runDuties v
       ⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t

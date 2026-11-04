@@ -43,11 +43,14 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
       change a + E.Δ - 1 < a + E.Δ
       linarith
     have hbound : a + E.Δ - 1 ≤ b := hslack.le.trans (heq' ▸ hb)
-    have hheld := hnet.msgs (rho.key x) hx _ τ ⟨source, hs, hrel⟩
-      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y) hy
+    have hheld := hnet.msgs (rho.key x) ((mem_honestKeys_iff S rho x).mp hx)
+      _ τ ⟨source, hs, hrel⟩
+      (by simp [log_row_iff, isRow, IsAttObj]) (rho.key y)
+      ((mem_honestKeys_iff S rho y).mp hy)
       a ha hbound (hbound.trans hbh)
       (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
-    rcases held_voteForward_source_or_process S rho hn hv hx hs hfirst hheld with
+    rcases held_voteForward_source_or_process S rho hn hv
+      ((mem_honestKeys_iff S rho x).mp hx) hs hfirst hheld with
       h | ⟨k, hp, hlo, hhi⟩
     · exact False.elim (hne h)
     have htime : (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y j τ := by
@@ -216,7 +219,7 @@ theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (family S) V).Sleepy (K S A) Q.run) :
     Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
   exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
     (sleepy_raw_syncUntil S A V Q.run Q.valid hsleepy Q.deadline)
 
 /-- Shortening the readiness duration preserves a strict half-ready population. -/
@@ -301,7 +304,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
   have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
-    simp only [runProposer, dite_eq_left hready.1]
+    simp only [runProposer_eq, dite_eq_left hready.1]
     exact Finset.min'_mem _ _
   have hR := hready.2 _ hmem
   rw [htime] at hR
@@ -338,7 +341,7 @@ theorem confirmed_slot_event (Q : ConfirmedQuery S A V)
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
   obtain ⟨k, B, hp, ht⟩ := Regimes.ready_proposer_proposes
     (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
     W.positive (confirmed_ready_mono S A V Q (confirmed_duration_supply S A V Q) W.ready)
   exact ⟨B, k, hp.2.1, hp.2.1 ▸ hp, ht⟩
 
@@ -356,7 +359,7 @@ theorem sleepy_query_producer (Q : ConfirmedQuery S A V)
   have hr : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
       B.proposer (Q.trace.time k) := by rw [hp, ht]; exact W.ready
   have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
   have hmargin : Q.trace.time k + 6 * Q.params.Δ ≤ Q.deadline := by
     rw [ht]; exact W.margin
   have hbound : Q.trace.time k ≤ Q.deadline :=
@@ -385,7 +388,7 @@ theorem sleepy_serviced_proposal_coverage (Q : ConfirmedQuery S A V)
         (Regimes.readAfter Q.trace y j Q.deadline) := by
   intro y j hy hj
   exact sleepy_include_finite S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
     (W.nonnegative.trans P.bounded) Q.bounded W.sync W.population
     W.nonnegative P.bounded
     ⟨P.block.proposer, P.cut, confirmed_ready_mono S A V Q W.duration P.ready,

@@ -47,15 +47,17 @@ theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
   rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw hsel]
   have hPself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).self =
       rho.ownKey v := by
-    rw [atProposal_self _ _ _ _ _ _ hsel]; exact self_eq_ownKey S rho hn v i
+    rw [atProposal_self _ _ _ _ _ _ hsel, ← stateAt_eq S rho hn v i]
+    exact self_eq_ownKey S rho hn v i
   have hPnow : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).now = t :=
     atProposal_now S rho hn v _ t hsel
   have hPfg : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).fgDue = true :=
     atProposal_fgDue S rho hn v _ t hp hsel
   have hPnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
       (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
-    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel,
-      nodeTick_node_public _ (by exact hp)]
+    rw [atProposal_node S rho hn v _ t
+      (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel,
+      nodeTick_node_public _ (by exact hp), ← stateAt_eq S rho hn v i]
     exact congrArg (fun k => (Node.acCall k _ t _).1) (self_eq_ownKey S rho hn v i)
   have hPmem : (atProposal S rho v (rho.stateBefore i v) t).st.2 =
       Model.mempool rho.inbox v t := atProposal_mempool S rho v _ t

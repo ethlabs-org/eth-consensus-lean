@@ -1258,7 +1258,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.carrier_processed_of_honest",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/CarrierProcessed.lean:77",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/CarrierProcessed.lean:78",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -1276,7 +1276,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.catchRun_of_psync",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:522",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:528",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -1312,7 +1312,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_duration_supply",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:204",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:207",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -1330,7 +1330,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.confirmed_slot_event",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:334",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:337",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -1384,7 +1384,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.final_cache_acceptance",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:328",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Accepted.lean:329",
       "owner-thread": "T-01a188b7-1c55-7594-9ad6-81a9b156211c",
       "area": "final liveness",
       "status": "lean-proved",
@@ -1869,7 +1869,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.healthy_query_slot",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:260",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:263",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -1979,7 +1979,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.message_service_psync",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:1203",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:1221",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2161,7 +2161,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.publication_held_before_deadline_psync",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:432",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:436",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2179,7 +2179,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.publication_held_before_gst_deadline",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:563",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:571",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2215,7 +2215,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.publication_held_ready_tail",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:966",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:980",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2269,7 +2269,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.rowDelay_pos",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HSSharedRun.lean:81",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/HSSharedRun.lean:84",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2287,7 +2287,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.signed_row_service_psync",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:922",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:934",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2305,7 +2305,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.simTrace_vote_forwarded",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Simulation.lean:1185",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Simulation.lean:1197",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2342,7 +2342,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_population",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:238",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:241",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2360,7 +2360,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_slot",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:321",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:324",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2378,7 +2378,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_query_sync",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:215",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NonfinalSuppliers.lean:218",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2397,7 +2397,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_safe_engine",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Sleepy.lean:864",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Sleepy.lean:868",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
@@ -2452,7 +2452,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.vote_message_service_psync_other",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:1149",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/NetworkTransport.lean:1164",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",

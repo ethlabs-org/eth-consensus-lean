@@ -198,6 +198,7 @@ If V is empty there is no reader, so no simulation with `n ≥ 1` is required. T
 `i ≤ events.length` is exactly the domain of simulation's state agreement.
 Status: proved relative to simulation. -/
 theorem evidenceInView : EvidenceInView V S := by
+  rw [evidenceInView_iff]
   intro E rho hv v hv' i hi h hh atts p hd a ha
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   have hs := simTrace_simulates S rho hn hv

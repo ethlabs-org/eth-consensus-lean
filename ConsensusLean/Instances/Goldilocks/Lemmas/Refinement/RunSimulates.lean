@@ -136,6 +136,7 @@ theorem simTrace_tick_of_awake (hv : rho.ExecutionValid) :
       (simTrace S rho hn).awake y t →
       ∃ j, (simTrace S rho hn).TickAt (runProposer S rho hn) (digestOf S rho) y j t := by
   intro y hy t ht0 hp hw
+  rw [mem_honestKeys_iff] at hy
   obtain ⟨hwE, -, hth⟩ := (awake_iff' S rho hn y t).mp hw
   obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total _ hy t ht0 hth hwE)
   obtain ⟨hg, -⟩ := simTrace_tick_public_group S rho hn hv _ hy i t he hp
@@ -215,7 +216,7 @@ private theorem simTrace_nonFraming
     ∀ k k' a b, (simTrace S rho hn).SignAt (rho.ownKey v) k a →
       (simTrace S rho hn).SignAt (rho.ownKey v) k' b → ¬ FG.slashable a b :=
   Regimes.non_framing _ _ _ _ _ _ hrun (rho.ownKey v)
-    (by change rho.key (rho.ownKey v) ∈ rho.honest; rw [ownKey_key']; exact hv')
+    (by rw [mem_honestKeys_iff, ownKey_key']; exact hv')
 
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
@@ -310,6 +311,7 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
     ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).EmitAt y k m →
       ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
   rintro y _ k m ⟨ℓ, ⟨hnode, hlab⟩, em, hem, rfl⟩
+  erw [releasedFrom_iff]
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
@@ -369,8 +371,9 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
     erw [Model.Run.runDuties_cons]
     refine List.mem_append_left _ ?_
     apply dutyStep_poll_rel S rho hn v _ _ (poll_selected S rho hv v)
-    · change (pollPre (process (stateAt S rho hn v i) o
+    · change (pollPre (process ((rho.stateBefore i v).st.1 hn) o
         (Model.digests rho.hash o))).outbox.head? = some _
+      rw [← stateAt_eq S rho hn v i]
       rw [pollPre_eq]
       have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
         (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
@@ -395,7 +398,7 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
       unfold voteObj
       rw [show em.msg.val = rho.ownKey v from hval]
     rw [hobj]
-    exact releasedFrom_of_pending S rho hn hv he hb
+    exact (releasedFrom_iff S rho _ _ _).mp (releasedFrom_of_pending S rho hn hv he hb)
 
 /-- The engine releases an honest node's attestation at its signing time (queued by `fgUpdate`,
 released by the tick's last poll steps; `tick_releases`, `Release`). -/
@@ -405,6 +408,7 @@ theorem simTrace_att_released (hv : rho.ExecutionValid)
     ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).SignAt y k a →
       ReleasedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
   rintro y _ k a ⟨src, hnode, hlab⟩
+  erw [releasedFrom_iff]
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
   have hrl : r.label = .fg (.attest src (some a)) := Option.some.inj (hlab'.symm.trans hlab)
@@ -448,6 +452,7 @@ theorem simTrace_block_relayed (hv : rho.ExecutionValid) :
         RelayedFrom S rho (rho.key y) (blockObj (S.params (pubOf E) hn) B)
           ((simTrace S rho hn).time k) := by
   rintro y _ k B ⟨hnode, hlab⟩ hpos
+  erw [relayedFrom_iff]
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
@@ -461,6 +466,7 @@ theorem simTrace_att_relayed (hv : rho.ExecutionValid) :
       (simTrace S rho hn).pos k = 0 →
         RelayedFrom S rho (rho.key y) (attObj a) ((simTrace S rho hn).time k) := by
   rintro y _ k a ⟨hnode, hlab⟩ hpos
+  erw [relayedFrom_iff]
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,

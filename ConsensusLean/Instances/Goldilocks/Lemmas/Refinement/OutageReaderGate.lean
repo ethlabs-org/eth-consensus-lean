@@ -199,7 +199,7 @@ theorem outage_reader_prefix (Q : OutageQuery S A V) {v : V}
   obtain ⟨-, -, hvT⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid hc hT0 (hTt.trans hth) hv
   obtain ⟨-, -, hwt⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid hc (hT0.trans hTt) hth hw
   refine confirmed_prefix_of_anc (simTrace_simulates S Q.run.2 Q.hn Q.valid)
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hv.1 hw.1
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hv.1 hw.1
     (Nat.findGreatest_le _) (Nat.findGreatest_le _) ?_
   rw [hvT, hwt]
   exact h

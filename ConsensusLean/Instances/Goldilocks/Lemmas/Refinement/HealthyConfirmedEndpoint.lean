@@ -228,7 +228,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   have hr : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration B.proposer
       (Q.trace.time k) := by rw [hBp, htk]; exact Ws.ready
   have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
   have hmargin := Ws.margin
   have hbound : Q.trace.time k ≤ Q.deadline := by rw [htk]; linarith
   refine ⟨⟨B, k, he, hacc, hr, htk ▸ Ws.fresh, hbound⟩, ?_⟩
@@ -272,8 +272,9 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
     hbound⟩ Dprep.reset hc hBp hPs hR hgu hmargin hlocks hcut ?_
   -- the later-read continuation from the preparation schedule
   intro y i j hy hi hj
-  have hvT := confirmed_ready_of_healthy S A V Q hh (v := Q.run.2.key y) hy.1 hrT hTb
-  have hvD := confirmed_ready_of_healthy S A V Q hh (v := Q.run.2.key y) hy.1
+  have hhon := (mem_honestKeys_iff S Q.run.2 y).mp hy.1
+  have hvT := confirmed_ready_of_healthy S A V Q hh (v := Q.run.2.key y) hhon hrT hTb
+  have hvD := confirmed_ready_of_healthy S A V Q hh (v := Q.run.2.key y) hhon
     (hrT.trans hmargin) Q.bounded
   obtain ⟨hcT, hnT, htT, hlT⟩ := confirmed_end_cut S A V Q hT0 hTb hvT
   obtain ⟨hcD, hnD, htD, hlD⟩ := confirmed_end_cut S A V Q (hT0.trans hmargin) Q.bounded hvD

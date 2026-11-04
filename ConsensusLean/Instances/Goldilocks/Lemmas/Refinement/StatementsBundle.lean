@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks milestone Refinement, assembled
 
-`RefinementStatements` (`Statements/Refinement/Interface`) from its six proved fields: the engine
+`RefinementStatements` (`Lemmas/Refinement/Interface`) from its six proved fields: the engine
 simulates the node (`engineSimulatesNode`, `Simulation`), reads are outputs (`readIsOut`,
 `Chains`), collision transport (`noCollTransport`, `Transport`), the conflict characterisation
 (`conflicts_iff`, `Shape`), evidence in view (`evidenceInView`, `Evidence`) and finalized

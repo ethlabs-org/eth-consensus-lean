@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
 public import ConsensusLean.Lemmas.Model.Objects
 
 public section
@@ -120,6 +120,7 @@ theorem canonEvent_attObj (hs : List (Header Info × Nat)) (a : FG.Att sp.n)
 /-- **G1.5 (a).** `conflicts` holds of two objects exactly when they are the canonical objects
 of two `slashable` attestations. -/
 theorem conflicts_iff : ConflictsIff := by
+  rw [conflictsIff_iff]
   intro n o o'
   constructor
   · intro hc

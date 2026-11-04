@@ -805,7 +805,9 @@ the node (`voted_slot`). -/
 theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
     ∀ i, AtMostOneVote (stateAt S rho hn v i) ∧
       (LastRestart S rho v i ∨ OneVote (stateAt S rho hn v i).now (stateAt S rho hn v i))
-  | 0 => ⟨⟨fun b hb => absurd hb List.not_mem_nil, Nat.zero_le _⟩,
+  | 0 => by
+    rw [stateAt_zero]
+    exact ⟨⟨fun b hb => absurd hb List.not_mem_nil, Nat.zero_le _⟩,
       Or.inr ⟨fun b hb => absurd hb List.not_mem_nil, Or.inl rfl⟩⟩
   | i + 1 => by
     obtain ⟨ih₁, ih₂⟩ := outbox_inv hv v hv' i
@@ -829,7 +831,9 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
           have hm := List.mem_of_getElem? he
           rw [stateAt_tick S rho hn w he]
           have h0 := outbox_after_tick S rho hn w (rho.stateBefore i w) t
-            (hv.in_horizon _ hm).1 (hv.tick_awake w t hm) (fgDue_eq_false S rho hn w i) ih₁.2
+            (hv.in_horizon _ hm).1 (hv.tick_awake w t hm)
+            (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn w i)
+            (by simpa only [stateAt_eq] using ih₁.2)
             (poll_selected S rho hv w)
           refine ⟨⟨fun b hb => ?_, by rw [h0]; exact Nat.zero_le _⟩,
             Or.inr ⟨fun b hb => ?_, Or.inl h0⟩⟩ <;>
@@ -867,7 +871,9 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
               | item => exact h
               | data b => cases b <;> exact h)
             w (rho.stateBefore i w) o t
-            ⟨(process_fgDue _ _ _).trans (fgDue_eq_false S rho hn w i), hnow', h2⟩
+            ⟨(process_fgDue _ _ _).trans
+                (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn w i),
+              by simpa only [stateAt_eq] using hnow', by rw [stateAt_eq] at h2; exact h2⟩
           refine ⟨hd.2.2.atMost, Or.inr ?_⟩
           rw [hd.2.1]
           exact hd.2.2
@@ -935,8 +941,10 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
       cases hmsg
     have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
       (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
-    change (pollPre (process (stateAt S rho hn v i) o (Model.digests rho.hash o))).outbox.head? =
+    change (pollPre (process ((rho.stateBefore i v).st.1 hn) o
+      (Model.digests rho.hash o))).outbox.head? =
       some b at hb
+    rw [← stateAt_eq S rho hn v i] at hb
     rw [pollPre_eq, hf] at hb
     obtain ⟨w, rfl⟩ := hproc.1 b (List.mem_of_mem_head? hb)
     have hmsg := congrArg Model.Obj.msg heq
@@ -982,7 +990,9 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
   unfold Model.Run.deliver
   rw [gossip_outbox, deliverDuties_eq S t ht]
   erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ (poll_selected S rho hv v)]
-  change (poll (process (stateAt S rho hn v i) o (Model.digests rho.hash o)) t.toNat).1.outbox = []
+  change (poll (process ((rho.stateBefore i v).st.1 hn) o
+    (Model.digests rho.hash o)) t.toNat).1.outbox = []
+  rw [← stateAt_eq S rho hn v i]
   rw [(poll_outbox _ _).1, pollPre_eq, hf]
   simp only [Bool.false_eq_true, ite_false]
   change OneVote t (process (stateAt S rho hn v i) o (Model.digests rho.hash o)) at hproc
@@ -992,7 +1002,7 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
 their queues, and restarts emit nothing. -/
 theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
     ∀ i, (stateAt S rho hn v i).outbox = []
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
     have ih := outbox_empty hv v hv' i
     cases he : rho.events[i]? with
@@ -1006,8 +1016,9 @@ theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) 
           rw [stateAt_tick S rho hn v he]
           exact outbox_after_tick S rho hn v _ t
             (hv.in_horizon _ (List.mem_of_getElem? he)).1
-            (hv.tick_awake v t (List.mem_of_getElem? he)) (fgDue_eq_false S rho hn v i)
-            (by change (stateAt S rho hn v i).outbox.length ≤ 1; rw [ih]; simp)
+            (hv.tick_awake v t (List.mem_of_getElem? he))
+            (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i)
+            (by dsimp only [shapeOf]; rw [← stateAt_eq S rho hn v i, ih]; simp)
             (poll_selected S rho hv v)
         | deliver w o t =>
           simp only [Model.Event.node] at hnode
@@ -1031,6 +1042,7 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
     (hts : t = (S.params (pubOf E) hn).toParams.slotTime s) :
     (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).outbox = [] := by
   rw [atProposal_shape S rho hn v _ t (poll_selected S rho hv v)]
+  rw [← stateAt_eq S rho hn v i]
   set σ : State (S.params (pubOf E) hn) (S.ro _) := { stateAt S rho hn v i with now := t }
   have hout : σ.outbox = [] := outbox_empty S rho hn hv v hv' i
   have hf : σ.fgDue = false := fgDue_eq_false S rho hn v i
@@ -1107,7 +1119,7 @@ theorem gossip_forwards (k : Fin (Fintype.card V))
 This is a queue fact, not a claim that every candidate passed its release guard. -/
 theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
     ∀ i, (stateAt S rho hn v i).forwards = []
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
     have ih := forwards_empty hv v i
     cases he : rho.events[i]? with
@@ -1176,7 +1188,7 @@ theorem gossip_voteForwards (k : Fin (Fintype.card V))
 Queue emptiness does not assert successful release. -/
 theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
     ∀ i, (stateAt S rho hn v i).voteForwards = []
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
     have ih := voteForwards_empty hv v i
     cases he : rho.events[i]? with

@@ -327,7 +327,8 @@ theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {
     split at hb
     · rcases List.mem_append.mp hb with hb | hb
       · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m ho
-        change VoteQueueStamped u { stateAt S rho hn v i with now := u }
+        change VoteQueueStamped u { (rho.stateBefore i v).st.1 hn with now := u }
+        rw [← stateAt_eq S rho hn v i]
         refine ⟨rfl, ?_⟩
         intro q hq
         change q ∈ (stateAt S rho hn v i).voteForwards at hq
@@ -340,7 +341,8 @@ theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {
     rcases List.mem_append.mp hb with hb | hb
     · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m ho
       change VoteQueueStamped u
-        (process (stateAt S rho hn v i) receipt (Model.digests rho.hash receipt))
+        (process ((rho.stateBefore i v).st.1 hn) receipt (Model.digests rho.hash receipt))
+      rw [← stateAt_eq S rho hn v i]
       apply voteStamped_process
       refine ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he), ?_⟩
       intro q hq
@@ -376,7 +378,8 @@ theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u
         rw [gossip_node_eq]
         apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m ho
         intro q hq
-        change q ∈ (stateAt S rho hn v i).voteForwards at hq
+        change q ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hq
+        rw [← stateAt_eq S rho hn v i] at hq
         rw [voteForwards_empty S rho hn hv v i] at hq
         cases hq
       · obtain rfl := List.mem_singleton.mp hb
@@ -388,7 +391,9 @@ theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u
       simp only [Model.Run.deliver]
       rw [gossip_node_eq]
       apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m ho
-      exact delivery_voteForward_in_pool S rho hn hv v i receipt
+      have h := delivery_voteForward_in_pool S rho hn hv v i receipt
+      rw [stateAt_eq] at h
+      exact h
     · obtain rfl := List.mem_singleton.mp hb
       exact False.elim (hg _ ho)
 
@@ -574,7 +579,8 @@ theorem tick_prefix_voteForward_poll (hv : rho.ExecutionValid) {v : V}
   apply tick_prefix_pool_available S rho hn hv hv' he hw hp q.2.slot q.2
   apply runDuties_voteForward_in_pool S rho hn v _ _ ?_ q hq
   intro r hr
-  change r ∈ (stateAt S rho hn v i).voteForwards at hr
+  change r ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hr
+  rw [← stateAt_eq S rho hn v i] at hr
   rw [voteForwards_empty S rho hn hv v i] at hr
   cases hr
 
@@ -612,7 +618,8 @@ theorem tick_trailing_voteForward_poll (hv : rho.ExecutionValid) {v : V}
   apply outbox_after_pre S rho hn v (stateAt S rho hn v i) t ht
     (fgDue_eq_false S rho hn v i)
   · rw [outbox_empty S rho hn hv v hv' i]; simp
-  · exact pre_shape S rho hn v (rho.stateBefore i v) t (poll_selected S rho hv v)
+  · rw [stateAt_eq]
+    exact pre_shape S rho hn v (rho.stateBefore i v) t (poll_selected S rho hv v)
 
 omit [DecidableEq V] in
 /-- Through the optional proposal, every newly pooled vote is queued at the unchanged clock. -/
@@ -692,6 +699,7 @@ theorem tick_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
   have hbase : m ∈ (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node.ac.pool m.slot →
       (t, m) ∈ (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).voteForwards := by
     rw [atProposal_shape S rho hn v _ t hsel]
+    rw [← stateAt_eq S rho hn v i]
     let st := (poll (poll { stateAt S rho hn v i with now := t } t.toNat).1 t.toNat).1
     have hn' : st.node = (stateAt S rho hn v i).node := by
       dsimp only [st]
@@ -732,7 +740,9 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
     ⟨(Model.protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
       (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
   have hshape : shapeOf S hn nd =
-      process (stateAt S rho hn v i) o (Model.digests rho.hash o) := rfl
+      process (stateAt S rho hn v i) o (Model.digests rho.hash o) := by
+    rw [stateAt_eq]
+    rfl
   have hself : (shapeOf S hn nd).self = rho.ownKey v := by
     rw [hshape]
     exact (process_self _ _ _).trans (stateAt_self S rho hn v i)
@@ -745,6 +755,7 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
       voteObj q.2 ∈ Model.closure nd.seen ∨
         (shapeOf S hn nd).outbox.head? = some (.vote (encodeVote q.2)) := by
     intro q hq
+    rw [hshape]
     exact delivery_voteForward_held_or_head S rho hn hv he q (hshape ▸ hq)
   have hrel : ∀ q ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
@@ -944,7 +955,7 @@ theorem sending_event_pool_insertion (hv : rho.ExecutionValid)
       (stateAt S rho hn (rho.key y) j).node =
         (simTrace S rho hn).state y (cutMap S rho hn j) := by
     simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using
-      simTrace_state S rho hn hv (rho.key y) hy j hj
+      simTrace_state S rho hn hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy) j hj
   constructor
   · rw [hstate i hi.le]
     intro hm
@@ -997,7 +1008,8 @@ theorem admission_voteForward_first (hv : rho.ExecutionValid)
   have hjlen : j + 1 ≤ rho.events.length := by
     rcases hsend with he | ⟨o, he⟩ <;>
       exact Nat.succ_le_of_lt (List.getElem?_eq_some_iff.mp he).1
-  rw [simTrace_state S rho hn hv (rho.key y) hy (j + 1) hjlen, hkey] at hm
+  rw [simTrace_state S rho hn hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy)
+    (j + 1) hjlen, hkey] at hm
   exact ⟨cutMap S rho hn (j + 1), cutMap_mono S rho hn (Nat.le_succ j), le_rfl, hm⟩
 
 /-- Every non-restart AC cut lies in a sending engine event of the same node and time.
@@ -1235,7 +1247,8 @@ theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
     hcall hfresh hpost
   refine ⟨i, hlo, hhi, hs, ?_, admission_voteForward_first S rho hn hv hy hs hlo hhi hfresh⟩
   rcases hs with he | ⟨o, he⟩
-  · have hr := tick_pool_insertion_released S rho hn hv hy he m hold hnew
+  · have hr := tick_pool_insertion_released S rho hn hv
+      ((mem_honestKeys_iff S rho y).mp hy) he m hold hnew
     simp only [Model.Run.ownKey, Equiv.symm_apply_apply] at hr
     exact hr
   · have hr := delivery_pool_insertion_released S rho hn hv he m hold hnew
@@ -1268,7 +1281,8 @@ variable (V) in
 /-- **The engine simulates the node** (`EngineSimulatesNode`): every valid engine run of the
 family is simulated by `simTrace` with `cutMap`. -/
 theorem engineSimulatesNode : EngineSimulatesNode V S :=
-  fun _ rho hn hv => ⟨simTrace S rho hn, cutMap S rho hn, simTrace_simulates S rho hn hv⟩
+  (engineSimulatesNode_iff V S).mpr
+    fun _ rho hn hv => ⟨simTrace S rho hn, cutMap S rho hn, simTrace_simulates S rho hn hv⟩
 
 end Consensus.Goldilocks.Refinement
 

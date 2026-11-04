@@ -115,7 +115,7 @@ theorem duty_proposal_run (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.car
     change (s : Time) * (4 * run.1.Δ) = 4 * run.1.Δ * s
     ring
   have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
-    simp only [runProposer, dite_eq_left hduty.1]
+    simp only [runProposer_eq, dite_eq_left hduty.1]
     exact Finset.min'_mem _ _
   have hR := hduty.2 _ hmem
   rw [htime] at hR
@@ -134,7 +134,7 @@ theorem duty_proposal_run (run : (Sys (family S) V).Run) (hn : 1 ≤ Fintype.car
     have := catchUp_le_cDur S A V run hn
     linarith
   have hrun := simTrace_goldilocksRun S run.2 hn hv
-  have hnc' := noCollTransport V S run.1 run.2 hn hv hnc
+  have hnc' := noCollRun_simTrace S run.2 hn hv hnc
   obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc' hs hshort
   have hlabel : P.slot = s := by
     have := hP.2.2

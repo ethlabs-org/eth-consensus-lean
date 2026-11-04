@@ -22,6 +22,6 @@ theorem outage_receiver_service (Q : OutageQuery S A V) :
       Compose.ReceiverServiceAfter (honestKeys S Q.run.2)
         (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Q.stop y Q.trace.projAC :=
   fun _ hy => receiverServiceAfter_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync S A V Q) hy
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync S A V Q) hy
 
 end Consensus.Goldilocks.Refinement

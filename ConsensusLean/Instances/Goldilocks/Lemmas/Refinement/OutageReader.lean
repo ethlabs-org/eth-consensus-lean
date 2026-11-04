@@ -37,7 +37,7 @@ theorem outage_pool_delivery (Q : OutageQuery S A V) :
   intro w hw c m ℓ hu hstop x hx i e hv hes
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
   have hr := hrun'.localRun
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
   have hts : Q.params.ts (m + 1 : Nat) = Q.params.ts m + 4 * Q.params.Δ := by

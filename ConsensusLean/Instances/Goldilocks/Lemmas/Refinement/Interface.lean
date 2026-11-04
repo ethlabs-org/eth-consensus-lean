@@ -1,12 +1,12 @@
 module
 public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TraceDefs
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
 
-@[expose] public section
+public section
 
-/-! # Goldilocks milestone Refinement (statements)
+/-! # Goldilocks Refinement: proof-side simulation interface
 
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main
 `4ea71d05`), the Refinement row of the module table: **the engine simulates the node (C0.4
@@ -56,7 +56,8 @@ Not in `Challenge`: this module is outside the challenge's import closure, the c
 tests; the bundle `RefinementStatements` is assembled outside `Solution`
 (`refinement_statements`, `Lemmas/Refinement/StatementsBundle`).
 
-Statements only: no proofs here. -/
+These proof-side claims and their characterisers are outside the trusted surface; the
+certified endpoint statement remains in `Statements/Refinement/Accepted`. -/
 
 namespace Consensus.Goldilocks.Refinement
 
@@ -243,6 +244,77 @@ structure RefinementStatements : Prop where
   conflictsIff : ConflictsIff
   evidenceInView : EvidenceInView V S
   finalizedAccountable : FinalizedAccountable V S
+
+/-- The initial shape clock. -/
+theorem lastClock_zero (v : V) : lastClock S rho v 0 = 0 := by rfl
+
+/-- Only a tick or restart of this node changes its clock. -/
+theorem lastClock_succ (v : V) (i : Nat) : lastClock S rho v (i + 1) =
+    match rho.events[i]? with
+    | some (.tick v' t) => if v' = v then t else lastClock S rho v i
+    | some (.restart v' t) => if v' = v then t else lastClock S rho v i
+    | _ => lastClock S rho v i := by rfl
+
+/-- Release means an engine release at the stated time. -/
+theorem releasedFrom_iff (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
+    (τ : Time) : ReleasedFrom S rho v o τ ↔ rho.releases v o τ := by rfl
+
+/-- Relay means carrying the object in an unsigned relay released at the stated time. -/
+theorem relayedFrom_iff (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
+    (τ : Time) : RelayedFrom S rho v o τ ↔
+      ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) τ := by rfl
+
+variable (V) in
+/-- Every valid engine run has a simulating node run. -/
+theorem engineSimulatesNode_iff : EngineSimulatesNode V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
+      rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι := by rfl
+
+variable (V) in
+/-- Engine reads are exactly the embedded node's outputs. -/
+theorem readIsOut_iff : ReadIsOut V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
+      ∀ (g : Out) (v : V) (i : Nat),
+        (chainTrace rho).read g v i =
+          outOf (stateAt S rho hn v i).node (stateAt S rho hn v i).now g := by rfl
+
+/-- Observed tagged roots differ from genesis. -/
+theorem genesisFresh_iff : GenesisFresh S rho ↔
+    ∀ x, rho.ObservedItem x → taggedRoot S.genesisRoot (rho.hash x) ≠ S.genesisRoot := by rfl
+
+variable (V) in
+/-- Collision transport targets the canonical trace, not an arbitrary simulation. -/
+theorem noCollTransport_iff : NoCollTransport V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
+      rho.ExecutionValid → ¬ rho.HashCollision →
+        Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by rfl
+
+/-- Conflicts are exactly canonical slashable attestation pairs. -/
+theorem conflictsIff_iff : ConflictsIff ↔
+    ∀ (n : Nat) (o o' : Wire n),
+      conflicts o o' = true ↔
+        ∃ a b : FG.Att n, o = attObj a ∧ o' = attObj b ∧ FG.slashable a b := by
+  rfl
+
+variable (V) in
+/-- Finalized attestations are in the reader's engine view. -/
+theorem evidenceInView_iff : EvidenceInView V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E), rho.ExecutionValid →
+      ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+        ∀ h ∈ (chainTrace rho).read .finalized v i, ∀ atts (p : Payload (Fintype.card V)),
+          decodeInfo (Fintype.card V) h.info = some (atts, p) →
+            ∀ a ∈ atts, attObj a ∈ rho.ViewIdx v i := by rfl
+
+variable (V) in
+/-- Incompatible finalized reads convict the threshold from the union of the views. -/
+theorem finalizedAccountable_iff : FinalizedAccountable V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V),
+      rho.ExecutionValid → ¬ rho.HashCollision →
+      ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
+        Consensus.Compatible ((chainTrace rho).read .finalized u i)
+            ((chainTrace rho).read .finalized v j) ∨
+          2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
+            (convicted rho.Slashable (rho.ViewIdx u i ∪ rho.ViewIdx v j)).card := by rfl
 
 end Consensus.Goldilocks.Refinement
 

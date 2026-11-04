@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
 import ConsensusLean.Lemmas.Model.Objects
 import ConsensusLean.Lemmas.Model.Protection
@@ -671,8 +671,8 @@ private theorem history_events (v : V) (i : Nat) :
 /-- The FG store at every engine event boundary is reachable, independently of wire validity. -/
 theorem stateAt_fg_reachable (v : V) (i : Nat) :
     (stateAt S rho hn v i).node.fg.Reachable
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload :=
-  (history_events S rho hn v i).2.1
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload := by
+  simpa only [stateAt_eq] using (history_events S rho hn v i).2.1
 
 /-- **Implementation event-boundary history.** This is the pre-event
 version of the duty-prefix invariant. Initial state has the empty record; clock, processing,
@@ -686,6 +686,7 @@ theorem engine_event_signing_history (_hv : rho.ExecutionValid) {v : V}
         (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).1 ∧
       ∀ j q a, j < i → EngineSignsAt S rho hn v j q a →
         a ∈ (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).2 := by
+  rw [stateAt_eq]
   obtain ⟨_, _, ins, hi, hr, hout⟩ := history_events S rho hn v i
   exact ⟨ins, hi, hr, fun j q a hj hs => hout a ⟨j, q, hj, hs⟩⟩
 
@@ -748,7 +749,7 @@ restart, independently of execution validity. -/
 theorem engine_restart_record (_hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) :
     (stateAt S rho hn v (i + 1)).node.record = (stateAt S rho hn v i).node.record := by
-  simp only [stateAt, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
+  simp only [stateAt_eq, rho.stateBefore_succ he, Model.Run.step, Function.update_self]
   rfl
 
 /-- **Paper G0.5 (`FG.client_safety`) after the implementation history lemma.** Put both
@@ -1435,7 +1436,7 @@ theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
   have hself : conflicts (attObj a) (attObj a) = false := by
     apply Bool.eq_false_iff.mpr
     intro h
-    obtain ⟨b, c, hb, hc', hbc⟩ := (conflicts_iff _ _ _).mp h
+    obtain ⟨b, c, hb, hc', hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
     obtain rfl := hinj hb
     obtain rfl := hinj hc'
     exact engine_signings_nonFraming S rho hn hv hv' ha ha hbc
@@ -1448,12 +1449,12 @@ theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
     by_cases hk : o.signer? = some (rho.ownKey v)
     · have hconf : conflicts (attObj a) o = false ∧ conflicts o (attObj a) = false := by
         constructor <;> apply Bool.eq_false_iff.mpr <;> intro h
-        · obtain ⟨b, c, hb, rfl, hbc⟩ := (conflicts_iff _ _ _).mp h
+        · obtain ⟨b, c, hb, rfl, hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
           obtain rfl := hinj hb
           have hcval : c.val = rho.ownKey v := Option.some.inj hk
           obtain ⟨j', q', _, hc'⟩ := engine_seen_att_signed S rho hn hv hv' hv' hc hcval ho
           exact engine_signings_nonFraming S rho hn hv hv' ha hc' hbc
-        · obtain ⟨b, c, rfl, hc', hbc⟩ := (conflicts_iff _ _ _).mp h
+        · obtain ⟨b, c, rfl, hc', hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
           obtain rfl := hinj hc'
           have hbval : b.val = rho.ownKey v := Option.some.inj hk
           obtain ⟨j', q', _, hb⟩ := engine_seen_att_signed S rho hn hv hv' hv' hc hbval ho

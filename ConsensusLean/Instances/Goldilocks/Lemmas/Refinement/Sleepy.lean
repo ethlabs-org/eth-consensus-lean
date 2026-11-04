@@ -50,7 +50,7 @@ theorem ready_transport (_hv : rho.ExecutionValid) {c : Time} {v : V} {t : Time}
       c (rho.ownKey v) t := by
   have hkey : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
   constructor
-  · change rho.key (rho.ownKey v) ∈ rho.honest
+  · rw [mem_honestKeys_iff]
     rw [hkey]
     exact hr.1
   · intro τ hτ hτt
@@ -93,7 +93,7 @@ theorem sleepy_faultBound (hv : rho.ExecutionValid) {b : Time}
   have hf : (honestKeys S rho)ᶜ.ncard = rho.point.faulty.card := by
     have heq : (honestKeys S rho)ᶜ = rho.key ⁻¹' (↑rho.point.faulty : Set V) := by
       ext k
-      simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+      simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
     rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
       (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset]
   have hcount : (rho.point.readyAt (Regimes.catchUp (S.params (pubOf E) hn)) t).card ≤
@@ -210,7 +210,7 @@ theorem ready_read_cut (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v : 
   refine ⟨⟨hprev, hnext⟩, ?_, ?_⟩
   · rintro ⟨c, hc⟩
     have hy : rho.ownKey v ∈ honestKeys S rho := by
-      change rho.key (rho.ownKey v) ∈ rho.honest
+      rw [mem_honestKeys_iff]
       rw [show rho.key (rho.ownKey v) = v from rho.key.apply_symm_apply v]
       exact hr.1
     obtain ⟨j0, e, hg, hle, hlt⟩ := simTrace_grouped S rho hn hv _ hy j c hc
@@ -435,7 +435,8 @@ theorem ready_proposal (hv : rho.ExecutionValid) {c : Time} {τ : Time}
   obtain ⟨p, k, hr, hP, htime⟩ := hP
   have hp := hP.2.1
   subst p
-  refine ⟨P.proposer, ⟨hr.1, ?_⟩, hr.1, .proposer P.slot, payloadObjs P.fgPayload P.acPayload,
+  have hhon := (mem_honestKeys_iff S rho P.proposer).mp hr.1
+  refine ⟨P.proposer, ⟨hhon, ?_⟩, hhon, .proposer P.slot, payloadObjs P.fgPayload P.acPayload,
     rfl, ?_⟩
   · intro u hu hut
     exact (simTrace_awake_of S rho hn hv P.proposer hr.1 u (hr.2 u hu hut)).1
@@ -484,7 +485,7 @@ theorem finalized_inBy (hv : rho.ExecutionValid)
     split <;> simp
   have hout := hprefix.subset hmem
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .finalized v i
-  rw [readIsOut V S E rho hn, outOf, hs.state v hr.1 i hi]
+  rw [read_eq_out S rho hn, outOf, hs.state v hr.1 i hi]
   exact hout
 
 /-- Inclusion-to-chain consumer. Parent-closed coherent stores
@@ -514,7 +515,7 @@ theorem confirmed_inBy (hv : rho.ExecutionValid)
     · have := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim (hpos (by simpa using this))
     · obtain ⟨j, x, _, _, _, d, p', _, hB, _⟩ := hg
-      rw [hB]
+      rw [hB, digestOf_eq]
       exact taggedRoot_ne _ _
   intro v hr
   let i := (chainTrace rho).endCut t
@@ -536,7 +537,7 @@ theorem confirmed_inBy (hv : rho.ExecutionValid)
     split <;> simp
   have hout := hprefix.subset hmem
   change headerOf (S.params (pubOf E) hn) P ∈ (chainTrace rho).read .confirmed v i
-  rw [readIsOut V S E rho hn, outOf, hs.state v hr.1 i hi, hcut.2.2]
+  rw [read_eq_out S rho hn, outOf, hs.state v hr.1 i hi, hcut.2.2]
   exact hout
 
 theorem sleepy_inBy (hv : rho.ExecutionValid)
@@ -657,7 +658,7 @@ theorem tick_before_stored_clock (hv : rho.ExecutionValid) {v : V} {p i : Nat} {
   by_contra hpi
   have hip : i ≤ p := by omega
   rcases stateAt_last_local_event S rho hn hv v i with h | ⟨q, hqi, e, hq, hnode, _, htime⟩
-  · rw [h] at hti
+  · rw [h, stateAt_eq] at hti
     change t ≤ 0 at hti
     linarith
   · have hqp : q < p := by omega
@@ -684,7 +685,7 @@ theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
     {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some e) : (stateAt S rho hn v i).now ≤ e.time := by
   rcases stateAt_last_local_event S rho hn hv v i with h | ⟨j, hj, f, hf, _, _, ht⟩
-  · rw [h]
+  · rw [h, stateAt_eq]
     exact (hv.in_horizon e (List.mem_of_getElem? he)).1
   · rw [ht]
     rcases keyLe_of_lt S rho hv hf he hj with h | ⟨h, _⟩
@@ -708,9 +709,12 @@ theorem now_mono (hv : rho.ExecutionValid) (v : V) :
 theorem now_bounds_cut (hv : rho.ExecutionValid) (v : V) {i : Nat}
     (hi : i ≤ rho.events.length) :
     0 ≤ (stateAt S rho hn v i).now ∧ (stateAt S rho hn v i).now ≤ rho.cutTime i := by
-  refine ⟨now_mono S rho hn hv v (Nat.zero_le i), ?_⟩
+  have hmono := now_mono S rho hn hv v (Nat.zero_le i)
+  dsimp only at hmono
+  rw [stateAt_eq S rho hn v 0] at hmono
+  refine ⟨hmono, ?_⟩
   cases i with
-  | zero => exact le_rfl
+  | zero => rw [stateAt_eq]; exact le_rfl
   | succ i =>
     have hi' : i < rho.events.length := by omega
     let e := rho.events[i]
@@ -840,9 +844,9 @@ private theorem stored_read_eq_record (hv : rho.ExecutionValid)
       (stateAt S rho hn v i).now ≤ rho.horizon := by
     rcases stateAt_last_local_event S rho hn hv v i with hs | ⟨j, hj, e, he, hev, hs, ht⟩
     · refine ⟨0, Nat.zero_le _, hs, ?_, ?_⟩
-      · rw [hs, cutMap_zero]
+      · rw [hs, cutMap_zero, stateAt_eq]
         exact ⟨fun k hk => by omega, (simTrace_goldilocksRun S rho hn hv).time_nonneg 0⟩
-      · rw [hs]
+      · rw [hs, stateAt_eq]
         exact hv.horizon_nonneg
     · refine ⟨j + 1, by omega, hs, ?_, ?_⟩
       · rw [ht]
@@ -895,7 +899,7 @@ theorem sleepy_safe_engine (hv : rho.ExecutionValid)
         chainTo (tr.state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
           ((C v i).slot + 1) (C v i) := by
     intro v hv' i hi
-    rw [readIsOut V S E rho hn, outOf, simTrace_state S rho hn hv v hv' i hi]
+    rw [read_eq_out S rho hn, outOf, simTrace_state S rho hn hv v hv' i hi]
     rfl
   have hprefix : ∀ u v i j, u ∈ rho.honest → v ∈ rho.honest →
       i ≤ rho.events.length → j ≤ rho.events.length →

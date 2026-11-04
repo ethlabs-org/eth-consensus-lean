@@ -147,16 +147,18 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
   have hhon : rho.honest = Finset.univ := congrArg EnvPoint.honest hp
   have hhor : rho.horizon = H := congrArg EnvPoint.horizon hp
   have hrun := simTrace_goldilocksRun S rho hn hv
-  have hnc := noCollTransport (Fin 2) S _ rho hn hv hc
+  have hnc := noCollRun_simTrace S rho hn hv hc
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hy : y ∈ honestKeys S rho := by
-    change rho.key y ∈ rho.honest
+    rw [mem_honestKeys_iff]
     rw [hhon]
     exact Finset.mem_univ _
   let sp := S.params (pubOf (point H).env) hn
   have ht : sp.ts 0 + sp.Δ = 2 := by rfl
-  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace S rho hn).awake y u := fun u h0 h2 =>
-    (awakeAt_iff S rho hn y u).mpr ⟨rfl, h0, by rw [hhor]; exact h2.trans hH⟩
+  have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace S rho hn).awake y u := by
+    intro u h0 h2
+    rw [simTrace_awake_iff, awakeAt_iff]
+    exact ⟨rfl, h0, by rw [hhor]; exact h2.trans hH⟩
   have h0 : (0 : Time) ≤ sp.ts 0 + sp.Δ := by rw [ht]; decide
   have hc8 : 8 * sp.Δ ≤ 8 * sp.Δ + 1 := Int.le_add_one le_rfl
   obtain ⟨hw, hj⟩ := Compose.ready_implies_joined sp _ _ _ _ _ hrun y hy (sp.ts 0 + sp.Δ)

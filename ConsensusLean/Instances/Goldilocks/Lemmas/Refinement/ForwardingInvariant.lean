@@ -91,7 +91,7 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
     (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i, ForwardQueueCanonical (stateAt S rho hn v i)
   | 0 => by
-    rw [forwardQueueCanonical_iff]
+    rw [forwardQueueCanonical_iff, stateAt_zero]
     exact fun q h => False.elim (List.not_mem_nil h)
   | i + 1 => by
     have ih := stateAt_forwardQueueCanonical S rho hn v i
@@ -112,6 +112,7 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
               · exact forwardQueueCanonical_apply st _ h
               · exact h)
             (fun st t _ => canonical_poll st t)
+          rw [stateAt_eq] at ih
           exact ih
         | deliver w o t =>
           simp only [Model.Event.node] at hnode
@@ -126,6 +127,7 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
             induction xs with
             | nil => exact fun _ h => h
             | cons x xs hx => exact fun st h => hx _ (canonical_processOne st x _ h)
+          rw [stateAt_eq] at ih
           exact hf _ _ ih
         | restart w t =>
           simp only [Model.Event.node] at hnode
@@ -351,10 +353,11 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
     constructor
     · rw [wrappersAccounted_iff]
       intro root o ho
+      rw [stateAt_zero] at ho
       cases ho
     · change PendingReady ([] : List (Wire (Fintype.card V)))
         (pendingWrappers (stateAt S rho hn v 0))
-      rw [pendingWrappers_eq]
+      rw [pendingWrappers_eq, stateAt_zero]
       change PendingReady ([] : List (Wire (Fintype.card V))) []
       rw [pendingReady_iff]
       intro i o hi
@@ -372,21 +375,26 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
       exact ih
     | some ev =>
       rw [show stateAt S rho hn v (i + 1) =
-        shapeOf S hn (rho.stateBefore (i + 1) v) from rfl, rho.stateBefore_succ he]
+        shapeOf S hn (rho.stateBefore (i + 1) v) from stateAt_eq S rho hn v (i + 1),
+        rho.stateBefore_succ he]
       by_cases hn' : ev.node = v
       · cases ev with
         | tick w t =>
           simp only [Model.Event.node] at hn'
           subst w
           simp only [Model.Run.step, Function.update_self]
-          exact tick_forwardInventory S rho hn v _ t (self_eq_ownKey S rho hn v i)
-            ih.1 ih.2 (stateAt_forwardQueueCanonical S rho hn v i)
+          have hs := self_eq_ownKey S rho hn v i
+          have hc := stateAt_forwardQueueCanonical S rho hn v i
+          rw [stateAt_eq] at ih hs hc
+          exact tick_forwardInventory S rho hn v _ t hs ih.1 ih.2 hc
         | deliver w o t =>
           simp only [Model.Event.node] at hn'
           subst w
           simp only [Model.Run.step, Function.update_self]
-          exact deliver_forwardInventory S rho hn v _ o t (self_eq_ownKey S rho hn v i)
-            ih.1 ih.2 (stateAt_forwardQueueCanonical S rho hn v i)
+          have hs := self_eq_ownKey S rho hn v i
+          have hc := stateAt_forwardQueueCanonical S rho hn v i
+          rw [stateAt_eq] at ih hs hc
+          exact deliver_forwardInventory S rho hn v _ o t hs ih.1 ih.2 hc
         | restart w t =>
           simp only [Model.Event.node] at hn'
           subst w
@@ -394,13 +402,15 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
               (rho.step (rho.stateBefore i) (.restart v t) v) =
               restore (rho.ownKey v) (stateAt S rho hn v i) t := by
             rw [← rho.stateBefore_succ he]
+            dsimp only [shapeOf]
+            rw [← stateAt_eq S rho hn v (i + 1)]
             exact stateAt_restart S rho hn v he
           rw [hs]
           simpa only [Model.Run.step, Function.update_self, wrappersAccounted_iff,
             pendingWrappers_eq, restore, apply, Node.restart, Node.acCall,
             List.foldl_cons, List.foldl_nil, self_eq_ownKey S rho hn v i] using ih
       · cases ev <;> simp only [Model.Event.node] at hn' <;>
-          simpa only [Model.Run.step, Function.update_of_ne (Ne.symm hn'), stateAt] using ih
+          simpa only [Model.Run.step, Function.update_of_ne (Ne.symm hn'), stateAt_eq] using ih
 
 /-- The delivery poll's immutable input is ready directly from the reachable inventory.
 The received object's recursive children are held before any of its calls run. -/
@@ -440,7 +450,7 @@ theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : En
     ⟨(protoOf (compiled (family S)) E).process (rho.stateBefore i v).st o
       (digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩
   have hself : (shapeOf S hn nd).self = rho.ownKey v :=
-    (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
+    (process_self _ _ _).trans (by simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i)
   have hcanon : ForwardQueueCanonical (shapeOf S hn nd) := by
     have hf : ∀ xs : List (Wire (Fintype.card V)),
         ∀ st : State (S.params (pubOf E) hn) (S.ro _), ForwardQueueCanonical st →
@@ -449,11 +459,14 @@ theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : En
       induction xs with
       | nil => exact fun _ h => h
       | cons a as ih => exact fun st h => ih _ (canonical_processOne st a _ h)
-    exact hf _ _ (stateAt_forwardQueueCanonical S rho hn v i)
+    exact hf _ _ (by simpa only [stateAt_eq] using stateAt_forwardQueueCanonical S rho hn v i)
   have hs := forwardQueueCanonical_pending (shapeOf S hn nd) hcanon
   rw [hself] at hs
   have hp := dutyStep_poll_pending S rho hn v nd t.toNat (poll_selected S rho hv v)
-    hself (delivery_pendingReady S rho hn v i o) hs c hc
+    hself (by
+      have h := delivery_pendingReady S rho hn v i o
+      rw [stateAt_eq] at h
+      exact h) hs c (by rw [stateAt_eq] at hc; exact hc)
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   simp only [Model.Run.releasesAt, he, Model.Run.deliver]
   rw [deliverDuties_eq S t ht]
@@ -738,11 +751,15 @@ theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : E
       PendingReady nd.seen (pendingWrappers (shapeOf S hn nd)) := by
   obtain ⟨ha, hr⟩ := stateBefore_forwardInventory S rho hn v i
   apply runDuties_forwardInventory S rho hn
-  · exact self_eq_ownKey S rho hn v i
+  · have h := self_eq_ownKey S rho hn v i
+    rw [stateAt_eq] at h
+    exact h
   · simpa only [wrappersAccounted_iff, pendingWrappers_eq, shapeOf,
-      shapeOf_clock S hn, stateAt] using ha
-  · simpa only [pendingWrappers_eq, shapeOf, shapeOf_clock S hn, stateAt] using hr
-  · exact stateAt_forwardQueueCanonical S rho hn v i
+      shapeOf_clock S hn, stateAt_eq] using ha
+  · simpa only [pendingWrappers_eq, shapeOf, shapeOf_clock S hn, stateAt_eq] using hr
+  · have h := stateAt_forwardQueueCanonical S rho hn v i
+    rw [stateAt_eq] at h
+    exact h
 
 /-- A poll following any actual tick-duty prefix releases all its queued block wrappers.
 Neither the ordinary emission nor the later vote suffix adds a caller guard premise. -/
@@ -764,7 +781,9 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
       (fun st s h => (propose_self st s).trans h)
       (fun st h => (nodeTick_self st).trans h)
       (fun st t h => (poll_self st t).trans h)
-    exact self_eq_ownKey S rho hn v i
+    have h := self_eq_ownKey S rho hn v i
+    rw [stateAt_eq] at h
+    exact h
   have hc : ForwardQueueCanonical (shapeOf S hn (rho.runDuties v start ds).1) := by
     apply runDuties_pres S rho hn ForwardQueueCanonical canonical_recordOwn
       (fun st s h => by unfold propose; dsimp only; split <;> exact h)
@@ -774,7 +793,9 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
         · exact forwardQueueCanonical_apply st _ h
         · exact h)
       (fun st t _ => canonical_poll st t)
-    exact stateAt_forwardQueueCanonical S rho hn v i
+    have h := stateAt_forwardQueueCanonical S rho hn v i
+    rw [stateAt_eq] at h
+    exact h
   have hs := forwardQueueCanonical_pending _ hc
   rw [hself] at hs
   exact dutyStep_poll_pending S rho hn v _ _ (poll_selected S rho hv v) hself
@@ -843,7 +864,7 @@ theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E
       ⟨(protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st t
         (mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1) := by
   apply runDuties_wrappersCover S rho hn
-  simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt] using
+  simpa only [wrappersCover_iff, shapeOf, shapeOf_clock S hn, stateAt_eq] using
     stateAt_wrappersCover S rho hn v i
 
 /-- A successful proposal-step block cut releases its canonical block in that duty.
@@ -947,7 +968,7 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
       (headerOf (S.params (pubOf E) hn) B) B.proposer B.fgPayload B.acPayload = B := by
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
     change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
-    simp only [digestOf, dgOf] at hroot
+    simp only [digestOf_eq, dgOf] at hroot
     cases B
     simp_all only [blockOf, headerOf, parentRoot_parentRef]
   simp only [blockObj, recordOwn, headerOf, decodeInfo_encodeInfo]
@@ -1050,7 +1071,7 @@ theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {
   have hself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).self =
       rho.ownKey v := by
     rw [atProposal_self S rho hn v _ t hsel]
-    exact self_eq_ownKey S rho hn v i
+    simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i
   have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
   have hcover : WrappersCover
       (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).1 := by
@@ -1103,7 +1124,7 @@ theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
   have hhash : B.root = taggedRoot (S.params (pubOf E) hn).genesisRoot
       (rho.hash (headerOf (S.params (pubOf E) hn) B)) := by
     change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
-    simpa only [digestOf, dgOf, hr, headerOf] using hroot
+    simpa only [digestOf_eq, dgOf, hr, headerOf] using hroot
   apply decodeBlock_blockObj _ B hpar (hhash ▸ taggedRoot_ne _ _) _ hwf hval
   rw [rootOf_digests_blockObj, hhash, rawRoot_taggedRoot]
 

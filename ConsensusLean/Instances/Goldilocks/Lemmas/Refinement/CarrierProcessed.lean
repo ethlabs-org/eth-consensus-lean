@@ -63,7 +63,8 @@ theorem held_forward_blockCall_lt (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
     obtain ⟨k, _, ha, ht⟩ := hacc
     exact ⟨k, ⟨true, hkey ▸ ha⟩, ht ▸ hstamp ▸ huD⟩
   · obtain ⟨i, hi⟩ := hr
-    have htu := received_forward_stamp_le S rho hn hv hi (.refl o) hx hdecode
+    have htu := received_forward_stamp_le S rho hn hv hi (.refl o)
+      ((mem_honestKeys_iff S rho x).mp hx) hdecode
     obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall S rho hn hi (.refl o) hdecode htu
     exact ⟨k, hkey ▸ hc, ht ▸ huD⟩
 
@@ -86,7 +87,7 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun hrun hP
   obtain ⟨hacc, -, -⟩ := Healing.accept_of_proposesAt hrun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hmem hk
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hmem hk
   have htk : Q.trace.time k = Q.params.ts s := by
     rw [hk.2.2, honestProposalRun_slot hP, Q.params.slotTime_eq]
     simp [SA.SAParams.ts]
@@ -112,7 +113,8 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
     change Q.run.1.Δ ≤ ((K S A).params.catchUp : Time) * Q.run.1.Δ + 1
     nlinarith
   obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
-    (horg ▸ hmem) (not_isRow_of_decodeForward hdecode) hy Q.bounded
+    (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp hmem)
+    (not_isRow_of_decodeForward hdecode) hy Q.bounded
     (by rw [htime, htk, hmax]; exact hD) hc
   obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.valid hmem hheld hdecode hdt
   exact ⟨j, hj, hjt.le⟩

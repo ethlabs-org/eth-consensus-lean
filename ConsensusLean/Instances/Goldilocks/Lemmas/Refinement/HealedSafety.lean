@@ -106,9 +106,9 @@ theorem healthy_read_representative (D : HealthyRepairSchedule S A V Q)
       (stateAt S Q.run.2 Q.hn v i).now ≤ Q.run.2.horizon := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hs | ⟨j, hj, e, he, hev, hs, ht⟩
     · refine ⟨0, Nat.zero_le _, hs, ?_, ?_⟩
-      · rw [hs, cutMap_zero]
+      · rw [hs, cutMap_zero, stateAt_eq]
         exact ⟨fun k hk => by omega, D.reset.run.time_nonneg 0⟩
-      · rw [hs]
+      · rw [hs, stateAt_eq]
         exact Q.valid.horizon_nonneg
     · refine ⟨j + 1, by omega, hs, ?_, ?_⟩
       · rw [ht]
@@ -193,7 +193,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
   have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
-    simp only [runProposer, dite_eq_left hready.1]
+    simp only [runProposer_eq, dite_eq_left hready.1]
     exact Finset.min'_mem _ _
   have hR := hready.2 _ hmem
   rw [htime] at hR
@@ -213,7 +213,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
       simpa only [Regimes.catchUp] using D.duration_bound
     linarith
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
   obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc (s := s)
     (Nat.zero_le D.oldLabel |>.trans_lt hold) hshort
   have hlabel : P.slot = s := by
@@ -251,7 +251,7 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hs | ⟨j, _, e, he, hev, _, _⟩
-    · rw [hs] at htpos
+    · rw [hs, stateAt_eq] at htpos
       change 0 < (0 : Time) at htpos
       exact (lt_irrefl (0 : Time) htpos).elim
     · exact hev ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
@@ -344,7 +344,7 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hinit |
       ⟨j, _, e, he, hev, _, _⟩
-    · rw [hinit] at ht0
+    · rw [hinit, stateAt_eq] at ht0
       change (0 : Time) < 0 at ht0
       exact (lt_irrefl (0 : Time) ht0).elim
     · exact hev ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
@@ -559,7 +559,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hinit | ⟨j, hji, e, he, hnode, hstate, htime⟩
-    · have : t = 0 := by change (stateAt S Q.run.2 Q.hn v i).now = 0; rw [hinit]; rfl
+    · have : t = 0 := by change (stateAt S Q.run.2 Q.hn v i).now = 0; rw [hinit, stateAt_eq]; rfl
       exact False.elim ((ne_of_gt ht0) this)
     · exact hnode ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
   have hy : y ∈ honestKeys S Q.run.2 := honest_ownKey hv
@@ -1009,7 +1009,7 @@ theorem healthy_cut_agreement (Q : HealthyPreparationQuery S A V)
     Consensus.Compatible ((chainTrace Q.run.2).read .confirmed u i)
       ((chainTrace Q.run.2).read .confirmed v j) := by
   have hs := simTrace_simulates S Q.run.2 Q.hn Q.valid
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
   rcases healthy_cut_tips_comparable S A V Q h0 hb hp W states u v i j hi hj hu hv with h | h
   · exact Or.inl (confirmed_prefix_of_anc hs hnc hu.1 hv.1 hi.1 hj.1 h)
   · exact Or.inr (confirmed_prefix_of_anc hs hnc hv.1 hu.1 hj.1 hi.1 h)
@@ -1033,7 +1033,7 @@ theorem healthy_cut_monotone (Q : HealthyPreparationQuery S A V)
     (chainTrace Q.run.2).read .confirmed v i <+:
       (chainTrace Q.run.2).read .confirmed v j := by
   exact confirmed_prefix_of_anc (simTrace_simulates S Q.run.2 Q.hn Q.valid)
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hvi.1 hvj.1 hi.1 hj.1
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hvi.1 hvj.1 hi.1 hj.1
     (healthy_cut_tips_ancestor S A V Q h0 hb hp W states v i j hi hij hj hvi hvj)
 
 /-- Assembly with finite preparation; only the two named cut adapters remain

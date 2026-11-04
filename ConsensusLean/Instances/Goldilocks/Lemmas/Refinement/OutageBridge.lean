@@ -106,7 +106,7 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
   classical
   obtain ⟨G⟩ := outage_reader_gate S A V Q ht hth hw
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
   have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent

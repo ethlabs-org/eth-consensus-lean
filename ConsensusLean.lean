@@ -317,6 +317,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecord
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthyResetEnvelope
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealthySuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalSuppliers
@@ -369,6 +370,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.StatementsBundle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TraceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.WindowAnchorStep
@@ -444,8 +446,6 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
 public import ConsensusLean.Lemmas.Blocks.Facts

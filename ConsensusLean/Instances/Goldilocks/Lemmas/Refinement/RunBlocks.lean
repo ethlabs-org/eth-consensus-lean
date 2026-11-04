@@ -27,6 +27,7 @@ theorem simTrace_genesis_root_ok :
     ((S.params (pubOf E) hn).toParams.genesisBlock
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk
         (digestOf S rho) := by
+  rw [digestOf_eq]
   rfl
 
 /-- An honest-signed payload object of any called block was released before its engine event. -/
@@ -106,6 +107,7 @@ theorem simTrace_carried_vote_unforgeable (hv : rho.ExecutionValid) :
       ∀ v ∈ blockVotes B, v.val ∈ honestKeys S rho →
         ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
   intro y _ k B hc m hm hh
+  rw [mem_honestKeys_iff] at hh
   have hmem : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
   obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hv hc hmem hh
@@ -130,6 +132,7 @@ theorem simTrace_att_unforgeable (hv : rho.ExecutionValid) :
         ∃ B, (simTrace S rho hn).BlockCallAt y i B ∧ a ∈ B.fgPayload) →
       a.val ∈ honestKeys S rho → ∃ j < i, (simTrace S rho hn).SignAt a.val j a := by
   intro y _ k a hc hh
+  rw [mem_honestKeys_iff] at hh
   rcases hc with ⟨hnode, hlab⟩ | ⟨B, hc, ha⟩
   swap
   · have hmem : attObj a ∈ payloadObjs B.fgPayload B.acPayload :=

@@ -80,7 +80,7 @@ theorem restart_at_one :
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hky : rho.key y = 0 := by rw [hk]; rfl
   have hy : y ∈ honestKeys S rho := by
-    change rho.key y ∈ rho.honest
+    rw [mem_honestKeys_iff]
     rw [hhon]
     exact Finset.mem_univ _
   have haw : ∀ u : Time, (simTrace S rho hn).awake y u ↔ 1 ≤ u ∧ u ≤ 64 := by

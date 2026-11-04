@@ -411,7 +411,8 @@ theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
     split at hb
     · rcases List.mem_append.mp hb with hb | hb
       · apply dutyBatches_forward_stamp S rho hn v u _ _ ?_ b hb o ho t p B hd
-        change QueueStamped u { stateAt S rho hn v i with now := u }
+        change QueueStamped u { (rho.stateBefore i v).st.1 hn with now := u }
+        rw [← stateAt_eq S rho hn v i]
         refine ⟨rfl, ?_⟩
         intro q hq
         change q ∈ (stateAt S rho hn v i).forwards at hq
@@ -425,7 +426,8 @@ theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
     rcases List.mem_append.mp hb with hb | hb
     · apply dutyBatches_forward_stamp S rho hn v u _ _ ?_ b hb o ho t p B hd
       change QueueStamped u
-        (process (stateAt S rho hn v i) receipt (Model.digests rho.hash receipt))
+        (process ((rho.stateBefore i v).st.1 hn) receipt (Model.digests rho.hash receipt))
+      rw [← stateAt_eq S rho hn v i]
       apply stamped_process
       refine ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he), ?_⟩
       intro q hq
@@ -584,7 +586,9 @@ theorem delivery_released_forward_acceptance (hv : rho.ExecutionValid)
     subst b
     split at ho
     · have hq := poll_candidate_forward_queue S rho hn v _ u.toNat ho hd
-      exact delivery_decoded_forward_acceptance S rho hn hv he hq hd
+      apply delivery_decoded_forward_acceptance S rho hn hv he _ hd
+      rw [stateAt_eq]
+      exact hq
     · exact False.elim (List.not_mem_nil ho)
   · have hb' := List.mem_singleton.mp hb
     subst b

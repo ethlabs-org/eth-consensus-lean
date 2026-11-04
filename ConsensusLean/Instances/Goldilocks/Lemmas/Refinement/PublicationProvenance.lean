@@ -41,8 +41,10 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
   have hclock : (shapeOf S hn
       (⟨(Model.protoOf (compiled (family S)) E).clock (rho.stateBefore i v).st u
         (Model.mempool rho.inbox v u), (rho.stateBefore i v).seen⟩ :
-        Model.Node (Model.protoOf (compiled (family S)) E))).forwards = [] :=
-    forwards_empty S rho hn hv v i
+        Model.Node (Model.protoOf (compiled (family S)) E))).forwards = [] := by
+    have h := forwards_empty S rho hn hv v i
+    rw [stateAt_eq] at h
+    exact h
   have hpoll (nd : Model.Node (Model.protoOf (compiled (family S)) E)) :
       (shapeOf S hn (rho.dutyStep v nd (.poll u.toNat)).1).forwards = [] := by
     rw [dutyStep_poll S rho hn v nd u.toNat hsel, poll_forwards]
@@ -122,7 +124,7 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
   have hself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) u)).self =
       rho.ownKey v := by
     rw [atProposal_self S rho hn v _ u hsel]
-    exact self_eq_ownKey S rho hn v i
+    simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i
   have hnow := atProposal_now S rho hn v (rho.stateBefore i v) u hsel
   rcases proposal_duty_forward_origin S rho hn v _ s hs
       (selValid_proposer S rho hn hv.selValid s) hself
@@ -134,8 +136,9 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
     rw [atProposal_mempool] at hc
     have hnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) u)).node =
         (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node u .tick).1 := by
-      rw [atProposal_node S rho hn v _ u (fgDue_eq_false S rho hn v i) hsel,
-        nodeTick_node_public _ hpub]
+      rw [atProposal_node S rho hn v _ u
+        (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel,
+        nodeTick_node_public _ hpub, ← stateAt_eq S rho hn v i]
       exact congrArg (fun k => (Node.acCall k _ u .tick).1) (self_eq_ownKey S rho hn v i)
     rw [hnode] at hc
     refine ⟨C, parent, ?_, hq, hpub⟩
@@ -184,6 +187,7 @@ private theorem decoded_block_root {o : Wire (Fintype.card V)}
   rw [hh, Option.map_some, Option.some.injEq] at hroot
   refine ⟨?_, hpar⟩
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
+  rw [digestOf_eq]
   change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
   rw [← hroot]
   simp only [headerOf, hr]
@@ -318,7 +322,7 @@ theorem received_forward_accepted (hv : rho.ExecutionValid)
       ((simTrace S rho hn).state (rho.ownKey v) j).fg.F B) :
     ∃ k < j, (simTrace S rho hn).AcceptAt (rho.ownKey v) k B := by
   have hy' : rho.ownKey v ∈ honestKeys S rho := by
-    change rho.key (rho.ownKey v) ∈ rho.honest
+    rw [mem_honestKeys_iff]
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
   have hseq := simTrace_deliver S rho hn hv v hy i receipt u he
   obtain ⟨pre, post, hparts⟩ := contained_parts_infix hc
@@ -336,7 +340,8 @@ theorem received_forward_accepted (hv : rho.ExecutionValid)
     obtain ⟨k, _, ha, _⟩ := received_forward_source_acceptance S rho hn hv he (hc.trans hq) hx
       ((decodeForward_receipt_iff S rho hn (hc.trans hq)).mp hdec)
     exact ⟨k, ha⟩
-  have hheld := forward_receipt_held hrun hnc hx hy' hFB B o t p r e hd' hsub hej
+  have hheld := forward_receipt_held hrun hnc ((mem_honestKeys_iff S rho x).mpr hx)
+    hy' hFB B o t p r e hd' hsub hej
     (received_forward_stamp_le S rho hn hv he hc hx hd) .refl hsource
   rcases Compose.tree_cases hrun.toLocalRun hy' hheld with hgen | ⟨k, hk, ha⟩
   · have hp := (decodeBlock_wire (decodeForward_child hd).1).2.1
@@ -364,7 +369,7 @@ theorem received_forward_accepted_before (hv : rho.ExecutionValid)
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).AcceptAt (rho.ownKey v) k B ∧
       (simTrace S rho hn).time k ≤ u ∧ (simTrace S rho hn).time k < deadline := by
   have hy' : rho.ownKey v ∈ honestKeys S rho := by
-    change rho.key (rho.ownKey v) ∈ rho.honest
+    rw [mem_honestKeys_iff]
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
   have hFB' := (Healing.run_F_mono hrun.toLocalRun hy' hij).trans hFB
   obtain ⟨k, hk, ha⟩ := received_forward_accepted S rho hn hv hrun hnc
@@ -394,7 +399,7 @@ theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
   apply (forwardHeldProcessed_iff S rho hn _ _).mpr
   intro y _ i x t p B o hx ho hd
   have hy : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
-  rcases held_forward_tick_or_processed S rho hn hv ho hx hd with
+  rcases held_forward_tick_or_processed S rho hn hv ho ((mem_honestKeys_iff S rho x).mp hx) hd with
     ⟨hxy, j, hj, u, he, hr⟩ | ⟨k, hk, ht, hc⟩
   · rw [hxy] at hd
     obtain ⟨k, hk, ha, ht⟩ := tick_released_forward_acceptance S rho hn hv he hr hd

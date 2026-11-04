@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksHalfCommitteeNode
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TraceDefs
 @[expose] public section
 
 /-! # A computable mirror of the Goldilocks node: the cut law on data, checks along lists
@@ -77,7 +77,7 @@ theorem cutPost_ac (self : Fin X.sp.n) (t : Int) (d : X.NodeD) (c : CallD X) (M 
     (ems : List X.EmD) :
     Node.cutPost self t (d.interp ro) ((CutD.ac c M ems).interp ro) =
       ⟨d.fg.interp, ((X.AC ro).step self d.ac.interp (X.frameOf M) t (c.interp ro)).1,
-        X.recI d.signed⟩ := rfl
+        X.recI d.signed⟩ := by rw [Node.cutPost_eq]; rfl
 
 /-- The cut law along `execD`: the post-states of the cuts are the interpretations of
 `postsD`. -/
@@ -102,13 +102,15 @@ theorem chainOK_postsD (hX : X.OK) (self : Fin X.sp.n) {d : X.NodeD} (hF : X.Fra
     | none => simp only; exact ⟨h1, h2, trivial⟩
     | some c =>
       cases ha : X.attestD d.signed self with
-      | none => simp only; exact ⟨h1, h2, rfl, trivial⟩
+      | none => simp only; exact ⟨h1, h2, by rw [Node.cutPost_eq]; rfl, trivial⟩
       | some a =>
         simp only
         refine ⟨h1, h2, ?_, ?_, trivial⟩
-        · change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
+        · rw [Node.cutPost_eq]
+          change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
           simp only [NodeD.interp, attest_interp hX, ha, Option.map_some, Option.getD_some]
-        · change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
+        · simp only [Node.cutPost_eq]
+          change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
           simp only [NodeD.interp, onAtt_interp]
   | block r =>
     have hr : r ∈ X.roots := he
@@ -116,7 +118,7 @@ theorem chainOK_postsD (hX : X.OK) (self : Fin X.sp.n) {d : X.NodeD} (hF : X.Fra
     split_ifs
     · trivial
     · cases h : d.fg.onBlock r with
-      | none => exact ⟨rfl, trivial⟩
+      | none => exact ⟨by rw [Node.cutPost_eq]; rfl, trivial⟩
       | some fg' =>
         have hr1 : r ∉ d.fg.tree ∧ X.par r ∈ d.fg.tree := by
           unfold FGD.onBlock at h; split_ifs at h with hc
@@ -128,7 +130,8 @@ theorem chainOK_postsD (hX : X.OK) (self : Fin X.sp.n) {d : X.NodeD} (hF : X.Fra
         have hM' : X.Closed fg'.tree := hfg ▸ closed_cons hF.1 hr hr1.2
         have hnd' : fg'.tree.Nodup := hfg ▸ List.nodup_cons.2 ⟨hr1.1, hF.2⟩
         refine ⟨?_, ?_, trivial⟩
-        · change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
+        · rw [Node.cutPost_eq]
+          change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
           simp only [NodeD.interp, onBlock_interp hX hF.1 hr, h, Option.map_some,
             Option.getD_some]
         · rw [cutPost_ac]
@@ -140,6 +143,7 @@ theorem chainOK_postsD (hX : X.OK) (self : Fin X.sp.n) {d : X.NodeD} (hF : X.Fra
     simp only [CallD.interp, ACInterface.step, acOnMessage_eq hX hF.1 hF.2, resI]; rfl
   | attestation a =>
     refine ⟨?_, trivial⟩
+    rw [Node.cutPost_eq]
     change (⟨_, _, _⟩ : NodeState (X.AC ro)) = _
     simp only [NodeD.interp, onAtt_interp]
   | restart =>

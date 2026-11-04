@@ -217,7 +217,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
     exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-      (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
+      (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
   -- the drain
   have hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst X Ld
       Q.run.2.horizon :=

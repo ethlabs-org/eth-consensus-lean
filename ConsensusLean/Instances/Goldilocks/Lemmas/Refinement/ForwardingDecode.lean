@@ -598,7 +598,7 @@ theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] 
   intro d p hdp
   have run := simTrace_goldilocksRun S rho hn hv
   have hhon : rho.ownKey v ∈ honestKeys S rho := by
-    change rho.key (rho.ownKey v) ∈ rho.honest
+    rw [mem_honestKeys_iff]
     have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
     rwa [hk]
   have hpub := (S.params (pubOf E) hn).toParams.slotTime_public
@@ -610,10 +610,10 @@ theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] 
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
   have hsel := poll_selected S rho hv v
   have hnode := atProposal_node S rho hn v (rho.stateBefore i v) t
-    (fgDue_eq_false S rho hn v i) hsel
+    (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel
   rw [nodeTick_node_public { (rho.stateBefore i v).st.1 hn with now := t } hpub] at hnode
   have hself := self_eq_ownKey S rho hn v i
-  change ((rho.stateBefore i v).st.1 hn).self = rho.ownKey v at hself
+  rw [stateAt_eq] at hself
   have hnow := atProposal_now S rho hn v (rho.stateBefore i v) t hsel
   have req := SA.interface_requirements (S.params (pubOf E) hn)
     (List (FG.Att (Fintype.card V))) (S.ro _)
@@ -622,8 +622,8 @@ theorem scheduled_proposal_child_decodes {V : Type} [Fintype V] [DecidableEq V] 
     ⟨req.1, req.2.1, req.2.2.1, req.2.2.2, SA.proposal_payload_valid _ _ _⟩
     run.genesis_root_ok hr hs hp d p (by
       rw [hst, ← hstate]
-      simpa only [hnode, hnow, Node.tickStep, stateAt, hself] using hdp)
-  simpa only [hnode, hnow, atProposal_mempool, hst, ← hstate, Node.tickStep, stateAt, hself]
+      simpa only [hnode, hnow, Node.tickStep, stateAt_eq, hself] using hdp)
+  simpa only [hnode, hnow, atProposal_mempool, hst, ← hstate, Node.tickStep, stateAt_eq, hself]
     using hdecode
 
 /-- At a scheduled honest tick, the proposal duty preserves the joint invariant without
@@ -656,11 +656,12 @@ theorem decoded_held_scheduled_proposal {V : Type} [Fintype V] [DecidableEq V] {
   have hr : (propose (shapeOf S hn nd) s).1.node.fg.Reachable
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload := by
     have hnode := atProposal_node S rho hn v (rho.stateBefore i v) t
-      (fgDue_eq_false S rho hn v i) hpoll
+      (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hpoll
     have hpub : (S.params (pubOf E) hn).toParams.IsPublic t :=
       ht ▸ (S.params (pubOf E) hn).toParams.slotTime_public s
     have hfg : (shapeOf S hn nd).node.fg = (stateAt S rho hn v i).node.fg := by
       rw [hnode, nodeTick_node_public { (rho.stateBefore i v).st.1 hn with now := t } hpub]
+      rw [stateAt_eq]
       rfl
     have hr := stateAt_fg_reachable S rho hn v i
     rw [← hfg] at hr
@@ -715,6 +716,7 @@ theorem stateAt_clock_bounds {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   rw [now_eq_lastClock S rho hn hv]
   induction i with
   | zero =>
+    rw [lastClock_zero]
     exact ⟨le_rfl, fun _ e _ he => (hv.in_horizon e (List.mem_of_getElem? he)).1⟩
   | succ i ih =>
     have old : 0 ≤ lastClock S rho v i ∧
@@ -756,8 +758,10 @@ theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
   have hsel := poll_selected S rho hv v
+  have hclock := stateAt_clock_bounds S rho hn hv v i
+  rw [stateAt_eq] at hd hh hclock
   have hp := decoded_held_atProposal S rho hn v (rho.stateBefore i v) t hd hh
-    ((stateAt_clock_bounds S rho hn hv v i).2 i _ le_rfl he) hsel
+    (hclock.2 i _ le_rfl he) hsel
   have hprop :
       WrappersDecoded (digests rho.hash) (shapeOf S hn
         (rho.runDuties v (atProposal S rho v (rho.stateBefore i v) t)
@@ -804,6 +808,7 @@ theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     WrappersHeld (digests rho.hash) (stateAt S rho hn v i) := by
   induction i with
   | zero =>
+    rw [stateAt_zero]
     exact ⟨wrappersDecoded_empty _ _ (fun _ => rfl) rfl,
       wrappersHeld_empty _ _ (fun _ => rfl)⟩
   | succ i ih =>
@@ -821,9 +826,12 @@ theorem stateAt_decoded_held {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
           simp only [Model.Event.node] at hvn
           subst w
           rw [stateAt_deliver S rho hn v he]
+          have hc := stateAt_wrappersCover S rho hn v i
+          have hr := stateAt_fg_reachable S rho hn v i
+          have ht := (stateAt_clock_bounds S rho hn hv v i).1
+          rw [stateAt_eq] at ih hc hr ht
           exact decoded_held_deliver S rho hn v _ ih.1 ih.2
-            (stateAt_wrappersCover S rho hn v i) (stateAt_fg_reachable S rho hn v i)
-            o t (stateAt_clock_bounds S rho hn hv v i).1
+            hc hr o t ht
         | restart w t =>
           simp only [Model.Event.node] at hvn
           subst w
@@ -922,8 +930,10 @@ theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [Dec
         some (rho.ownKey v, t, p, B) := by
   obtain ⟨p, hp⟩ := tick_proposal_acceptance_queued S rho hn hv v hh i t he s hs hone ht B ha
   have hstate := stateAt_decoded_held S rho hn hv v hh i
+  have hclock := (stateAt_clock_bounds S rho hn hv v i).2 i _ le_rfl he
+  rw [stateAt_eq] at hstate hclock
   have hprefix := decoded_held_atProposal S rho hn v (rho.stateBefore i v) t
-    hstate.1 hstate.2 ((stateAt_clock_bounds S rho hn hv v i).2 i _ le_rfl he)
+    hstate.1 hstate.2 hclock
     (poll_selected S rho hv v)
   have hprop := decoded_held_scheduled_proposal S rho hn hv v hh i t he s hs ht
     hprefix.1 hprefix.2
@@ -936,7 +946,7 @@ theorem tick_proposal_acceptance_decoded_publication {V : Type} [Fintype V] [Dec
       (fun st h => (nodeTick_self st).trans h)
       (fun st t h => (poll_self st t).trans h)
     exact (atProposal_self S rho hn v _ t (poll_selected S rho hv v)).trans
-      (self_eq_ownKey S rho hn v i)
+      (by simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i)
   have hd := pending_forward_decodes S rho hn _ hprop.1 t p B
     (hself.symm ▸ hp) hchild
   rw [hself] at hd
@@ -984,8 +994,9 @@ theorem tick_acceptance_decoded_publication {V : Type} [Fintype V] [DecidableEq 
   have hsel := poll_selected S rho hv v
   have hnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
       (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
-    rw [atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel,
-      nodeTick_node_public _ hpub]
+    rw [atProposal_node S rho hn v _ t
+      (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel,
+      nodeTick_node_public _ hpub, ← stateAt_eq S rho hn v i]
     exact congrArg (fun key => (Node.acCall key _ t .tick).1) (self_eq_ownKey S rho hn v i)
   rcases Skeleton.proposeAt_cases (skeleton (pubOf E)) t with
     ⟨hnil, hno⟩ | ⟨s, hs, hone, htime⟩
@@ -1015,7 +1026,7 @@ theorem forwardAtAcceptance {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   have hxev : rho.ownKey ev.node = x := hnode.symm.trans hxk
   have hhon : ev.node ∈ rho.honest := by
     have hi : rho.key (rho.ownKey ev.node) = ev.node := rho.key.apply_symm_apply _
-    change rho.key x ∈ rho.honest at hx
+    rw [mem_honestKeys_iff] at hx
     rwa [← hxev, hi] at hx
   have hp : ∃ p q, (publisherExecution S rho).actual q ∧ q.event = i ∧
       q.origin = rho.ownKey ev.node ∧

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 
@@ -22,8 +22,17 @@ variable {sp : SAParams} {st : Store sp.toParams (Payload sp.n)}
 variable (V : Type) [Fintype V] [DecidableEq V] (S : Setup) in
 /-- The engine reads the node outputs stored by the family, also at the last cut. -/
 theorem readIsOut : ReadIsOut V S := by
+  rw [readIsOut_iff]
   intro E rho hn g v i
-  simp only [chainTrace, family, goldilocksShape, dite_eq_left hn, stateAt]
+  simp only [chainTrace, family, goldilocksShape, dite_eq_left hn, stateAt_eq]
+
+/-- Read the embedded node's output in a particular engine run. -/
+theorem read_eq_out {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+    (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
+    (g : Out) (v : V) (i : Nat) :
+    (chainTrace rho).read g v i =
+      outOf (stateAt S rho hn v i).node (stateAt S rho hn v i).now g :=
+  (readIsOut_iff V S).mp (readIsOut V S) E rho hn g v i
 
 /-- Fuel beyond the tip's slot cannot change its emitted chain. -/
 theorem chainTo_fuel (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ st.tree)

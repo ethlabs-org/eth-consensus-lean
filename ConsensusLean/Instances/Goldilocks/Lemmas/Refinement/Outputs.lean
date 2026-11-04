@@ -19,7 +19,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
 omit [DecidableEq V] in
 /-- The honest engine reader's key is honest in its simulating run. -/
 theorem honest_ownKey {v : V} (hv : v ∈ rho.honest) : rho.ownKey v ∈ honestKeys S rho := by
-  simpa only [honestKeys, Set.mem_ofPred_eq, Model.Run.ownKey, Equiv.apply_symm_apply] using hv
+  simpa only [mem_honestKeys_iff, Model.Run.ownKey, Equiv.apply_symm_apply] using hv
 
 /-- Read the finalized chain directly from the simulating node cut. -/
 theorem read_finalized (hs : Simulates S rho hn tr ι) {v : V} (hv : v ∈ rho.honest)
@@ -28,7 +28,7 @@ theorem read_finalized (hs : Simulates S rho hn tr ι) {v : V} (hv : v ∈ rho.h
       chainTo (tr.state (rho.ownKey v) (ι i)).fg.blocks
         ((tr.finalizedAt (rho.ownKey v) (ι i)).slot + 1)
         (tr.finalizedAt (rho.ownKey v) (ι i)) := by
-  rw [readIsOut V S E rho hn, outOf, hs.state v hv i hi]
+  rw [read_eq_out S rho hn, outOf, hs.state v hv i hi]
   rfl
 
 /-- Transport ancestry of the actual stored-clock tips, at arbitrary engine
@@ -54,7 +54,7 @@ theorem confirmed_prefix_of_anc (hs : Simulates S rho hn tr ι)
         chainTo (tr.state (rho.ownKey v) (ι i)).fg.blocks
           ((C v i).slot + 1) (C v i) := by
     intro v hv' i hi'
-    rw [readIsOut V S E rho hn, outOf, hs.state v hv' i hi']
+    rw [read_eq_out S rho hn, outOf, hs.state v hv' i hi']
     rfl
   have hri := Compose.fg_reachable hs.run.toLocalRun (honest_ownKey (S := S) hu) (ι i)
   have hrj := Compose.fg_reachable hs.run.toLocalRun (honest_ownKey (S := S) hv) (ι j)
@@ -96,7 +96,7 @@ theorem outputs_nested (hs : Simulates S rho hn tr ι) :
   have hC := (Regimes.sa_tips (A := (tr.state (rho.ownKey v) (ι i)).ac) hΦ
     (stateAt S rho hn v i).now).1
   have ha := hΦ.rooted.2 _ hC
-  rw [readIsOut V S E rho hn, readIsOut V S E rho hn]
+  rw [read_eq_out S rho hn, read_eq_out S rho hn]
   simp only [outOf, hs.state v hv i hi]
   exact chainTo_prefix hr (ha.mono (fun _ h => h.1))
 

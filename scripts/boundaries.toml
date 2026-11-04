@@ -301,7 +301,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose"]
 protected = true
-about = "G1.5 and the engine simulation"
+about = "the concrete Goldilocks acceptance endpoint (simulation vocabulary is proof-side)"
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Common"

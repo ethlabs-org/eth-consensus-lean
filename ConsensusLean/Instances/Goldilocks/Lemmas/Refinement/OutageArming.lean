@@ -151,7 +151,7 @@ theorem outage_arming (Q : OutageQuery S A V)
   classical
   obtain ⟨⟨hT0, -, hb01, -⟩, -, heta, hns, hcoh⟩ := Q.outage
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
   have hr := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc).localRun
   have hU := hr.coherent
   have hΔ := Q.params.toParams.hΔ
@@ -192,7 +192,7 @@ theorem outage_arming (Q : OutageQuery S A V)
         (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
           (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T) := by
     change (chainTrace Q.run.2).read .confirmed v ((chainTrace Q.run.2).endCut Q.T) <+: _
-    rw [readIsOut V S Q.run.1 Q.run.2 Q.hn, outOf,
+    rw [read_eq_out S Q.run.2 Q.hn, outOf,
       simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 _ hi]
     dsimp only
     rw [hnow]
@@ -234,7 +234,7 @@ theorem outage_arming (Q : OutageQuery S A V)
         u ≤ (Sys (family S) V).outageEnd (K S A) Q.stop Q.run → Q.trace.awake w u := by
     intro w hw haz
     obtain ⟨hwh, hwa⟩ := Finset.mem_filter.1 hw
-    refine ⟨hwh, fun u hu₁ hu₂ => ?_⟩
+    refine ⟨(mem_honestKeys_iff S Q.run.2 w).mpr hwh, fun u hu₁ hu₂ => ?_⟩
     rw [simTrace_awake_iff, awakeAt_iff]
     exact ⟨hns _ hwh _ le_rfl haz hwa u hu₁ hu₂, ha0.trans hu₁, hu₂.trans (min_le_right _ _)⟩
   have hts1 : Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k) ≤
@@ -286,7 +286,7 @@ theorem outage_arming (Q : OutageQuery S A V)
     have hF : (honestKeys S Q.run.2)ᶜ ⊆ Opp := by
       intro x hx
       refine Finset.mem_union_left _ (Finset.mem_sdiff.2 ⟨Finset.mem_univ _, ?_⟩)
-      exact hx
+      exact fun h => hx ((mem_honestKeys_iff S Q.run.2 x).mpr h)
     have hopp : 2 * Opp.ncard < Q.params.n := by
       have heq : Opp = Q.run.2.key ⁻¹' (↑(Q.run.2.point.faulty ∪ Q.run.2.point.lateWakers
           ((Sys (family S) V).outageStart (K S A) Q.start Q.run)
@@ -317,7 +317,8 @@ theorem outage_arming (Q : OutageQuery S A V)
           Q.run.2.point.awakeAt ((Sys (family S) V).outageStart (K S A) Q.start Q.run)
       · exact Or.inl hxa
       · refine Or.inr (Finset.mem_union_right _ (Finset.mem_sdiff.2 ⟨?_, hxa⟩))
-        exact Finset.mem_filter.2 ⟨hx, _, by linarith, by linarith, haw'.1⟩
+        exact Finset.mem_filter.2 ⟨(mem_honestKeys_iff S Q.run.2 x).mp hx,
+          _, by linarith, by linarith, haw'.1⟩
     exact Compose.armed_lock_cover hrun hnc hinv hsvc.ac hfb hCb hCg hwH haw
       (s := Compose.coverLabel Q.params Q.start) h1 h2 (haj.trans hts1) hsz
       (le_min hg₁ (by linarith)) Q.holders Opp hF hopp hcast

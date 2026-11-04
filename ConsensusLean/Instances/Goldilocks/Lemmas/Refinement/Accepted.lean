@@ -86,7 +86,7 @@ private theorem final_fg_run (Q : FinalQuery S A V) :
   have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   exact Compose.fg_projection _ _ _ _ _ _ _ (final_node_requirements S A V Q)
     hr.genesis_root_ok hr.toLocalRun
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
 
 private theorem final_anchor_post (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
     (a : Fin 4) :
@@ -248,7 +248,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
       W.Extends (W.block 0) F) : W.CacheCoverage := by
   have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   have fg := final_fg_run S A V Q
-  have hnc := noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
   have hst : ∀ z, z ∈ honestKeys S Q.run.2 → ∀ k,
       Q.trace.projFG.store z k = (Q.trace.state z k).fg := by
     intro z hz k
@@ -263,7 +263,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
     have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
       have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
-        ext k; simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+        ext k; simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
       rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
@@ -296,7 +296,8 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
-    (horg ▸ (W.ready 3).1) (not_isRow_of_decodeForward hdecode) hy hth
+    (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp (W.ready 3).1)
+    (not_isRow_of_decodeForward hdecode) hy hth
     (by rw [htime]; exact tail.1.trans hdt) tail.2
   obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.valid hnc
     hy.1 (W.ready 3).1 hheld hdecode hdt' hj.2.le (hFX.trans hXB)
@@ -397,10 +398,10 @@ theorem final_payload_projection
     · have hz := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim ((W.proposals 0).1.2 (by simpa using hz))
     · obtain ⟨j, x, _, _, _, d, p, _, hB, _⟩ := hg
-      rw [hB]
+      rw [hB, digestOf_eq]
       exact taggedRoot_ne _ _
   exact finalized_inBy S r.2 hn hv
-    (noCollTransport V S r.1 r.2 hn hv hcollision) hc hdeadline hb hroot
+    (noCollRun_simTrace S r.2 hn hv hcollision) hc hdeadline hb hroot
     (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
 
 /-- Statement-only assembly of the OPEN route-A suppliers; not a completed liveness proof.
@@ -471,7 +472,7 @@ theorem accepted_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
   · let Q : SleepySafetyQuery S A V := ⟨r, hn, hv, hc, hs⟩
     obtain ⟨hd, hsync, hf⟩ := sleepy_safety_inputs S A V Q
     have safe := sleepy_safe_engine S r.2 hn hv
-      (noCollTransport V S r.1 r.2 hn hv hc) hsync hf
+      (noCollRun_simTrace S r.2 hn hv hc) hsync hf
     have ready : ∀ v t, r.2.point.Ready ((Sys (family S) V).cDur (K S A) r) v t →
         r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
       intro v t h

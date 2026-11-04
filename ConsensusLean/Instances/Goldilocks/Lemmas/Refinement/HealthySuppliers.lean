@@ -68,11 +68,11 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon := by
   refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid,
-    noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision,
+    noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision,
     hsync, ?_, ?_, hreset, ha, hsnapshot⟩
   · intro y hy t ht htb
     rw [simTrace_awake_iff, awakeAt_iff]
-    exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) hy t ht htb,
+    exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) ((mem_honestKeys_iff S Q.run.2 y).mp hy) t ht htb,
       (le_max_right Q.gst 0).trans ht, htb⟩
   · have hpop := Q.healthy.2.1.1
     change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
@@ -81,7 +81,7 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
     have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
       have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
         ext k
-        simp [honestKeys, EnvPoint.faulty, Model.Run.point]
+        simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
       rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
@@ -97,7 +97,7 @@ theorem healthy_repair_catch (Q : HealthyPreparationQuery S A V) :
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
     hnet Q.healthy.2.1.2
 
 /-- Global inventory obligation, exactly the initialization required by
@@ -180,7 +180,7 @@ theorem healthy_locks (Q : HealthyPreparationQuery S A V) (s₀ i : Nat)
       Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) L s₀ := by
   obtain ⟨L, hL, hr, C, hC, hLC⟩ := Compose.lock_origin
     (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision) hy i l hl
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hy i l hl
   exact ⟨L, hL, hr, Compose.onOriginChainFrom_iff.2
     (Or.inr ⟨C, l.slot, Compose.originFrom_iff.2 ⟨hC.origin, hs⟩, hLC⟩)⟩
 
@@ -199,7 +199,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   have hcatch := catchRun_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollTransport V S Q.run.1 Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
     hnet Q.healthy.2.1.2
   have hduration : Regimes.catchUp Q.params ≤ (Sys (family S) V).cDur (K S A) Q.run := by
     have hc : (19 : Time) ≤ (accepted_catchUp S A : Nat) := by
@@ -237,7 +237,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
   have hmem : runProposer S Q.run.2 Q.hn u ∈ Q.run.2.sel (.proposer u) := by
-    simp only [runProposer, dite_eq_left hready.1]
+    simp only [runProposer_eq, dite_eq_left hready.1]
     exact Finset.min'_mem _ _
   have hR := hready.2 _ hmem
   rw [htime] at hR

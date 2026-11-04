@@ -354,14 +354,16 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
 
 /-- The shape's state before the first event is its initial state at the own key. -/
 theorem stateAt_zero (v : V) :
-    stateAt S rho hn v 0 = (goldilocksShape _ _).init (rho.ownKey v) := rfl
+    stateAt S rho hn v 0 = (goldilocksShape _ _).init (rho.ownKey v) := by
+  rw [stateAt_eq]
+  rfl
 
 /-- The shape's state after event `i` is the engine's `step` on the state before it. -/
 theorem stateAt_succ (v : V) {i : Nat}
     {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some e) :
     stateAt S rho hn v (i + 1) = (rho.step (rho.stateBefore i) e v).st.1 hn := by
-  simp only [stateAt, rho.stateBefore_succ he]
+  simp only [stateAt_eq, rho.stateBefore_succ he]
 
 /-- Past the last event the shape's state is constant. -/
 theorem stateAt_succ_none (v : V) {i : Nat} (he : rho.events[i]? = none) :
@@ -369,7 +371,7 @@ theorem stateAt_succ_none (v : V) {i : Nat} (he : rho.events[i]? = none) :
   have : rho.events.take (i + 1) = rho.events.take i := by
     have hl := List.getElem?_eq_none_iff.1 he
     rw [List.take_of_length_le hl, List.take_of_length_le (by omega)]
-  simp only [stateAt, Model.Run.stateBefore, this]
+  simp only [stateAt_eq, Model.Run.stateBefore, this]
 
 /-- An event of another node leaves the shape's state unchanged. -/
 theorem state_of_other (v : V) (i : Nat)
@@ -378,7 +380,7 @@ theorem state_of_other (v : V) (i : Nat)
     stateAt S rho hn v (i + 1) = stateAt S rho hn v i := by
   rw [stateAt_succ S rho hn v he]
   cases e <;> simp only [Model.Event.node] at hne <;>
-    simp only [Model.Run.step, Function.update_of_ne (Ne.symm hne)] <;> rfl
+    simp only [Model.Run.step, Function.update_of_ne (Ne.symm hne), stateAt_eq]
 
 /-- The shape's state after a tick of `v` is the shape of the engine's `tick`. -/
 theorem stateAt_tick (v : V) {i : Nat} {t : Time} (he : rho.events[i]? = some (.tick v t)) :
@@ -401,7 +403,7 @@ theorem stateAt_restart (v : V) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) :
     stateAt S rho hn v (i + 1) = restore (rho.ownKey v) (stateAt S rho hn v i) t := by
   rw [stateAt_succ S rho hn v he]
-  simp only [Model.Run.step, Function.update_self]
+  simp only [Model.Run.step, Function.update_self, stateAt_eq]
   rfl
 
 
@@ -409,7 +411,7 @@ theorem stateAt_restart (v : V) {i : Nat} {t : Time}
 
 /-- The shape's key at every cut is the node's own key. -/
 theorem self_eq_ownKey (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
     match he : rho.events[i]? with
     | none => rw [stateAt_succ_none S rho hn v he]; exact self_eq_ownKey v i
@@ -422,14 +424,15 @@ theorem self_eq_ownKey (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey
           exact tick_pres S rho hn (fun st => st.self = rho.ownKey v')
             (fun st o hs h => (recordOwn_self st o hs).trans h)
             (fun st s h => (propose_self st s).trans h) (fun st h => (nodeTick_self st).trans h)
-            (fun st t h => (poll_self st t).trans h) v' _ t (self_eq_ownKey v' i)
+            (fun st t h => (poll_self st t).trans h) v' _ t
+            (by simpa only [stateAt_eq] using self_eq_ownKey v' i)
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he]
           exact deliver_pres S rho hn (fun st => st.self = rho.ownKey v')
             (fun st t h => (poll_self st t).trans h)
             (fun st _ _ hs h => (recordOwn_self st _ hs).trans h) v' _ o t
-            ((process_self _ _ _).trans (self_eq_ownKey v' i))
+            ((process_self _ _ _).trans (by simpa only [stateAt_eq] using self_eq_ownKey v' i))
         | restart v' t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_restart S rho hn _ he]; rfl
@@ -438,37 +441,37 @@ theorem self_eq_ownKey (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey
 /-- `lastClock` after a tick of `v` is the tick time. -/
 theorem lastClock_succ_tick (v : V) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) : lastClock S rho v (i + 1) = t := by
-  simp [lastClock, he]
+  simp [lastClock_succ, he]
 
 /-- `lastClock` after a restart of `v` is the restart time. -/
 theorem lastClock_succ_restart (v : V) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) : lastClock S rho v (i + 1) = t := by
-  simp [lastClock, he]
+  simp [lastClock_succ, he]
 
 /-- `lastClock` is unchanged by a delivery. -/
 theorem lastClock_succ_deliver (v : V) {i : Nat} {t : Time}
     {o : (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some (.deliver v o t)) :
     lastClock S rho v (i + 1) = lastClock S rho v i := by
-  simp [lastClock, he]
+  simp [lastClock_succ, he]
 
 /-- `lastClock` is constant past the last event. -/
 theorem lastClock_succ_none (v : V) {i : Nat} (he : rho.events[i]? = none) :
     lastClock S rho v (i + 1) = lastClock S rho v i := by
-  simp [lastClock, he]
+  simp [lastClock_succ, he]
 
 /-- `lastClock` of `v` is unchanged by an event of another node. -/
 theorem lastClock_succ_other (v : V) {i : Nat}
     {e : Model.Event V (Model.protoOf (compiled (family S)) E).Object}
     (he : rho.events[i]? = some e) (hne : e.node ≠ v) :
     lastClock S rho v (i + 1) = lastClock S rho v i := by
-  cases e <;> simp only [Model.Event.node] at hne <;> simp [lastClock, he, hne]
+  cases e <;> simp only [Model.Event.node] at hne <;> simp [lastClock_succ, he, hne]
 
 /-- **`Simulates.now`.** The shape's clock before an engine cut is the time of the node's last tick
 or restart before it. -/
 theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
     ∀ i, (stateAt S rho hn v i).now = lastClock S rho v i
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero, lastClock_zero]; rfl
   | i + 1 => by
     match he : rho.events[i]? with
     | none =>
@@ -490,7 +493,7 @@ theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
           exact deliver_pres S rho hn (fun st => st.now = lastClock S rho v' i)
             (fun st t h => (poll_now st t).trans h)
             (fun st _ _ hs h => (recordOwn_now st _ hs).trans h) v' _ o t
-            ((process_now _ _ _).trans (now_eq_lastClock _hv v' i))
+            ((process_now _ _ _).trans (by simpa only [stateAt_eq] using now_eq_lastClock _hv v' i))
         | restart v' t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_restart S rho hn _ he, lastClock_succ_restart S rho _ he]; rfl
@@ -527,7 +530,7 @@ theorem duties_eq_nil (t : Time) (ht : t < 0) :
 
 /-- The FG update is never due at a cut: every tick ends with a poll step, which runs it. -/
 theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
-  | 0 => rfl
+  | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
     match he : rho.events[i]? with
     | none => rw [stateAt_succ_none S rho hn v he]; exact fgDue_eq_false v i
@@ -585,7 +588,9 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
                   show (Model.protoOf (compiled (family S)) E).role (.poll t.toNat) =
                     .poll from rfl,
                   hsel, ↓reduceIte]
-                exact hpres _ _ (fgDue_eq_false v' i)
+                apply hpres
+                change ((rho.stateBefore i v').st.1 hn).fgDue = false
+                simpa only [stateAt_eq] using fgDue_eq_false v' i
               unfold Model.Run.dutyStep
               simp only [show (Model.protoOf (compiled (family S)) E).role (.poll t.toNat) =
                 .poll from rfl, hsel, ↓reduceIte]
@@ -596,15 +601,17 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
               rw [shapeOf_act_poll]
               exact poll_fgDue _ _
             · rw [duties_eq_nil S t ht]
-              exact fgDue_eq_false v' i
-          · exact fgDue_eq_false v' i
+              change ((rho.stateBefore i v').st.1 hn).fgDue = false
+              simpa only [stateAt_eq] using fgDue_eq_false v' i
+          · change ((rho.stateBefore i v').st.1 hn).fgDue = false
+            simpa only [stateAt_eq] using fgDue_eq_false v' i
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he]
           exact deliver_pres S rho hn (fun st => st.fgDue = false)
             (fun st t _ => poll_fgDue st t)
             (fun st _ _ hs h => (recordOwn_fgDue st _ hs).trans h) v' _ o t
-            ((process_fgDue _ _ _).trans (fgDue_eq_false v' i))
+            ((process_fgDue _ _ _).trans (by simpa only [stateAt_eq] using fgDue_eq_false v' i))
         | restart v' t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_restart S rho hn _ he]; rfl
@@ -640,11 +647,11 @@ theorem lastClock_of_between (v : V) (t : Time) (j : Nat)
         cases e with
         | tick v' t' =>
           simp only [Model.Event.time] at ht; subst ht
-          simp [lastClock, he, ih]
+          simp [lastClock_succ, he, ih]
         | restart v' t' =>
           simp only [Model.Event.time] at ht; subst ht
-          simp [lastClock, he, ih]
-        | deliver v' o t' => simp [lastClock, he, ih]
+          simp [lastClock_succ, he, ih]
+        | deliver v' o t' => simp [lastClock_succ, he, ih]
     · rcases hj with hj | hj
       · exact lastClock_succ_tick S rho v hj
       · exact lastClock_succ_restart S rho v hj
@@ -769,7 +776,8 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.hone
     (fun st t h => ⟨(poll_node_of_fgDue st t h.2).trans h.1, poll_fgDue st t⟩)
     (fun st _ _ hs h =>
       ⟨(recordOwn_none_node st _ _ hs).trans h.1, (recordOwn_fgDue st _ hs).trans h.2⟩)
-    v _ o t ⟨rfl, (process_fgDue _ _ _).trans hpre⟩).1.trans ?_
+    v _ o t ⟨by rw [stateAt_eq],
+      (process_fgDue _ _ _).trans (by simpa only [stateAt_eq] using hpre)⟩).1.trans ?_
   unfold process
   refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
@@ -925,8 +933,7 @@ theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
   rw [min_eq_left hn] at h
   obtain ⟨k, hk⟩ := Finset.card_eq_one.mp h
   have hne : (rho.sel (.proposer s)).Nonempty := ⟨k, hk ▸ Finset.mem_singleton_self k⟩
-  unfold runProposer
-  rw [dite_eq_left hne]
+  rw [runProposer_eq, dite_eq_left hne]
   exact Finset.eq_singleton_iff_unique_mem.mpr
     ⟨Finset.min'_mem _ _, fun x hx => by
       have hm := Finset.min'_mem (rho.sel (.proposer s)) hne
@@ -962,7 +969,7 @@ theorem blockOf_eq_mkBlock (k : Fin (Fintype.card V))
       mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho) k fg t x
         H p := by
   subst hslot
-  simp only [blockOf, mkBlock, digestOf, dgOf]
+  simp only [blockOf, mkBlock, digestOf_eq, dgOf]
   rw [parentRoot_parentRef]
 
 omit [DecidableEq V] in
@@ -1292,8 +1299,9 @@ theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.h
       rw [ite_eq_right (by rw [poll_now, poll_now]; exact hp)]
       exact poll_fgDue _ _
     rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_of_fgDue _ _ hf,
-      atProposal_node S rho hn v _ t (fgDue_eq_false S rho hn v i) hsel, nodeTick_node_other _ hp]
-    rfl
+      atProposal_node S rho hn v _ t
+        (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel,
+      nodeTick_node_other _ hp, stateAt_eq]
   · exfalso
     apply hp
     rw [hts, ← slotTime_eq S hn s]

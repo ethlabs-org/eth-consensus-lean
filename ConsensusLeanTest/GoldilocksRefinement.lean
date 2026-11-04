@@ -62,12 +62,14 @@ variable [DecidableEq V]
 /-- Exact-time release cannot be satisfied solely by a later send, even at the horizon. -/
 theorem released_requires_same_time (v : V)
     (o : (Model.protoOf (compiled (family S)) E).Object) (τ : Time)
-    (h : ReleasedFrom S rho v o τ) : rho.releases v o τ := h
+    (h : ReleasedFrom S rho v o τ) : rho.releases v o τ :=
+  (releasedFrom_iff S rho v o τ).mp h
 
 /-- An admission at the horizon still requires a relay at that same time. -/
 theorem relayed_at_horizon (v : V) (o : (Model.protoOf (compiled (family S)) E).Object)
     (h : RelayedFrom S rho v o rho.horizon) :
-    ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon := h
+    ∃ cs, o ∈ cs ∧ rho.releases v (.mk .none (.data .relay) cs) rho.horizon :=
+  (relayedFrom_iff S rho v o rho.horizon).mp h
 
 omit [DecidableEq V] in
 /-- A canonical block carrying one vote runs the block handler first and then the actual
@@ -88,7 +90,7 @@ theorem payload_message_after_block {sp : SA.SAParams}
     simp [delivered, blockObj, payloadObjs, ha, hp, voteObj, Model.Obj.parts,
       Model.Obj.parts.partsList]
   rw [hd]
-  simp [deliverRecs, hc, canonEvent_voteObj, Node.exec]
+  simp [deliverRecs_cons, deliverRecs_nil, hc, canonEvent_voteObj, Node.exec]
 
 omit [DecidableEq V] in
 /-- Two nested relay wrappers still execute the carried vote's message handler, with its
@@ -102,7 +104,7 @@ theorem nested_payload_message {sp : SA.SAParams}
     deliverRecs proposer dg hs self t i
       (delivered sp (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) st 0 =
       groupRecs proposer dg self st t (Nat.pair i 2) (.message v) := by
-  simp [delivered, Model.Obj.parts, Model.Obj.parts.partsList, deliverRecs,
+  simp [delivered, Model.Obj.parts, Model.Obj.parts.partsList, deliverRecs_cons, deliverRecs_nil,
     canonEvent, decodeBlock, decodeVoteObj, decodeAttObj, voteObj,
     decodeVote_encodeVote, Option.filter]
 
@@ -182,7 +184,8 @@ theorem terminal_observation (S : Setup) :
     rw [hp]
     exact ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
   refine ⟨rho, hv, hh, hr, ?_, (allCuts S rho (by decide)).length, ?_, ?_⟩
-  · exact ⟨rfl, hv.horizon_nonneg, le_rfl⟩
+  · rw [simTrace_awake_iff, awakeAt_iff]
+    exact ⟨rfl, hv.horizon_nonneg, le_rfl⟩
   · rw [simTrace_label, List.getElem?_length]; rfl
   · constructor
     · intro k hk
