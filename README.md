@@ -730,17 +730,17 @@ within the execution conditions. There is no adaptive corruption.
 - **Delivery:** the network rule above, for honest releases, including
   honest re-releases of adversarial objects, and for transactions (inboxes
   survive restarts).
-- **Dependency delivery:** a delivery is valid only if the receiver already
-  holds the object's dependencies (`ExecutionValid.delivery_ready`), so under a
-  regime's network premise the dependencies of an honest send are delivered
-  with it; a run in which they are withheld fails the premise. For Goldilocks
-  this asks nothing of adversary-only objects. That is **source-audited**, not
-  a compiled lemma and not a generic closure: `decodeBlock` accepts only
-  canonical blocks (`eq_blockObj_of_decodeBlock`), the dependency policy
-  constrains only signed forward wrappers (`forwardParent?`), and an honest
-  forward wrapper depends only on the same node's earlier wrapper. Whether
-  `delivery_ready` together with `Delivers` is satisfiable whenever `Delivers`
-  is, is an argument from that audit, not a theorem.
+- **Raw arrivals:** each delivery enters the protocol's total `process` handler
+  and the communication log, regardless of dependency readiness or consensus
+  admission. Buffering and retries belong to the protocol; `seen` is durable
+  evidence, not a retry queue. Dependency checks still guard outgoing releases.
+  The dependency-gated network escape (`not_psync_of_poisoned` in the earlier
+  audit) is closed by construction: withholding a prerequisite does not exclude
+  the dependent's raw arrival from valid runs or network service. Goldilocks
+  processes carried parent chains in the same arrival and proves acceptance
+  separately from receipt. Message and FG-attestation deadlines are unchanged.
+  `Network.RawArrival.poisoned_arrival` tests a valid synchronous execution with
+  an honest proposal's timely arrival and a prerequisite withheld from its recipient.
 - **Δ known; unit ticks:** honest code knows `n`, `Δ` and `ΔF`. Every awake honest
   node ticks at every integer time.
 - **Order within one time:** restarts, then ticks, then deliveries. What

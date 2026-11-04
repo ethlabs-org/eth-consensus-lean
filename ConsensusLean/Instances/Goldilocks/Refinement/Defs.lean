@@ -449,9 +449,10 @@ noncomputable def process (st : State sp ro) (o : Wire sp.n) (hs : List (Header 
     State sp ro :=
   (delivered sp o).foldl (processOne hs) st
 
-/-- Every forwarding shape requires its exact parent wrapper to be held before
-the envelope. Raw blocks have no dependency. Parsing and honest provenance,
-not this shape-only policy, establish same-origin acceptance and freshness. -/
+/-- Releasing a forwarding shape requires its exact parent wrapper to be held before
+the envelope. Raw blocks have no release dependency. This policy does not restrict arrivals:
+`process` traverses carried objects. Parsing and honest provenance, not this shape-only
+release policy, establish same-origin acceptance and freshness. -/
 def dependencies (n : Nat) : Model.DependencyPolicy (Wire n) where
   ready held o := o.parts.all fun part =>
     match forwardParent? part with

@@ -37,11 +37,14 @@ candidates are refused leaves only its own state; an unselected duty leaves
 nothing. Duties run only at awake
 ticks and at deliveries (which the conditions make only to awake nodes).
 
-At a delivery to awake node `v` at `t`, the engine runs `process`, adds the
+At a raw arrival to awake node `v` at `t`, the engine runs `process`, adds the
 object to `seen`, then runs the protocol's `deliverDuties t` as in 2–3 and
 gossip as in 4, from the processed state: what the delivery makes the node
 emit, relay or acknowledge leaves at the delivery's own time, not at the
-next tick (which may never come if the node sleeps). At a restart it runs
+next tick (which may never come if the node sleeps). The engine neither checks
+incoming dependency readiness nor buffers arrivals; admission and retries are
+the protocol's responsibility. The durable `seen` log is evidence, not a retry queue.
+At a restart it runs
 `restore` (with the own key) of
 `durable`, keeping `seen`. The `seen` log survives restarts, so slashing
 protection persists across them, as a validator's slashing-protection
@@ -225,9 +228,10 @@ def tick (nd : Node (protoOf F E)) (v : V) (t : Time) :
     (g.1, r.2 ++ g.2)
   else (nd₁, [])
 
-/-- A delivery of `o` to node `v` at `t`: `process` and the `seen` entry, then
+/-- A raw arrival of `o` to node `v` at `t`: `process` and the `seen` entry, then
 the delivery duties in order, then gossip from the final state. No awake test:
-the conditions deliver only to awake nodes (`ExecutionValid.deliver_awake`). -/
+the conditions deliver only to awake nodes (`ExecutionValid.deliver_awake`).
+No dependency test: the protocol owns buffering and admission. -/
 def deliver (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object) (t : Time) :
     Node (protoOf F E) × List (protoOf F E).Object :=
   let nd₁ : Node (protoOf F E) :=

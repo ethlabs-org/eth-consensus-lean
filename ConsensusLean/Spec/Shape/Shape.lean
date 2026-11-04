@@ -163,9 +163,10 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   /-- Unsigned objects (items allowed); relay is done here, by carrying. -/
   gossip : State → Time →
     List (Msg (Header Info) Body × List (ShapeObj pub.n skel.Kind Info Body))
-  /-- Processing a delivered object, with the digests of the items it contains. -/
+  /-- Processing a raw arrival, with the digests of the items it contains.
+  Buffering, retries and consensus admission belong to the shape. -/
   process : State → ShapeObj pub.n skel.Kind Info Body → List (Header Info × Nat) → State
-  /-- Engine-held dependencies for release and delivery. -/
+  /-- Engine-held dependencies for release, not a restriction on raw arrivals. -/
   dependencies : Model.DependencyPolicy (ShapeObj pub.n skel.Kind Info Body) :=
     .trivial _
   /-- Recording an own released object, with the digests of the items it

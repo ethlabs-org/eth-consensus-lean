@@ -57,7 +57,7 @@ def Admits : SelSpec n → Finset (Fin n) → Prop
 
 end SelSpec
 
-/-- Engine-only dependency policy. Readiness depends monotonically on held
+/-- Engine-only release dependency policy. Readiness depends monotonically on held
 objects, not on hashes or the protocol's acceptance state. -/
 structure DependencyPolicy (Object : Type) where
   ready : List Object → Object → Bool
@@ -115,10 +115,11 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   /-- Unsigned objects (items allowed). Relay of received objects is done here,
   by carrying them. -/
   gossip : State → Time → List (Msg Item Body × List (Obj pub.n Role Item Body))
-  /-- Processing a delivered object, with the digests of the items it
-  contains. Total: any object, at any time. -/
+  /-- Processing a raw arrival, with the digests of the items it contains.
+  Total: any object, at any time, regardless of dependency readiness.
+  Buffering, retries and consensus admission belong to the protocol. -/
   process : State → Obj pub.n Role Item Body → List (Item × Nat) → State
-  /-- Dependencies held before release or delivery. Other handler guards are separate. -/
+  /-- Dependencies held before release. This does not restrict raw arrivals. -/
   dependencies : DependencyPolicy (Obj pub.n Role Item Body) := .trivial _
   /-- Recording an object the node has just released, with the digests of the
   items it contains. -/

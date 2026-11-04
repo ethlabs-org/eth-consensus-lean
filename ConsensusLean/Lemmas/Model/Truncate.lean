@@ -170,7 +170,7 @@ theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
   have hsub : ∀ e, e ∈ (rho.truncate b).events → e ∈ rho.events := fun e he =>
     (mem_truncate_events.mp he).1
   refine ⟨hb, hv.sorted.sublist List.filter_sublist, hv.nodup.filter _, ?_, ?_, ?_,
-    ?_, ?_, ?_, ?_, ?_, ?_, hv.selValid, ?_⟩
+    ?_, ?_, ?_, ?_, ?_, hv.selValid, ?_⟩
   · intro e he
     exact ⟨(hv.in_horizon e (hsub e he)).1, (mem_truncate_events.mp he).2⟩
   · intro e he
@@ -181,11 +181,6 @@ theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
     exact hv.tick_awake v t (hsub _ he)
   · intro v o t he
     exact hv.deliver_awake v o t (hsub _ he)
-  · intro i v o t hi
-    have hil : i < (rho.truncate b).events.length := (List.getElem?_eq_some_iff.mp hi).1
-    rw [truncate_getElem? hsplit hil] at hi
-    rw [truncate_stateBefore hsplit hil.le]
-    exact hv.delivery_ready i v o t hi
   · intro v t he
     exact hv.restart_at_wake v t (hsub _ he)
   · intro v hvh t ht0 htb hw

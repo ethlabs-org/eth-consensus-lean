@@ -306,8 +306,8 @@ theorem log_eq (hv : rho.ExecutionValid) : r.log = rho.log := by
 
 /-- Rehashing a valid source preserves execution validity as well as its reads. -/
 theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
-  obtain ⟨hst, hr⟩ := h.trace hv
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  obtain ⟨-, hr⟩ := h.trace hv
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · simpa only [h.horizon] using hv.horizon_nonneg
   · simpa only [h.events] using hv.sorted
   · simpa only [h.events] using hv.nodup
@@ -316,7 +316,6 @@ theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
   · simpa only [h.events, h.honest, h.horizon] using hv.tick_total
   · simpa only [h.events] using hv.tick_awake
   · simpa only [h.events] using hv.deliver_awake
-  · simpa only [h.events, hst] using hv.delivery_ready
   · simpa only [h.events] using hv.restart_at_wake
   · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
   · simpa only [Unforgeable, SendsAt, signerOf, h.events, h.honest, h.key, hr] using

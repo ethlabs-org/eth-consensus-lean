@@ -388,7 +388,7 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
     intro i w o t h
     have := List.mem_of_getElem? h
     simp [tickedRun] at this
-  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, Model.sel_valid _ rfl, ?_⟩
+  refine ⟨by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, Model.sel_valid _ rfl, ?_⟩
   · simp [tickedRun, Event.keyLe, Event.time, Event.phase]
   · simp [tickedRun]
   · intro e he
@@ -403,8 +403,6 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
     rfl
   · intro v o t _
     rfl
-  · intro i v o t he
-    exact False.elim (hnd i v o t he)
   · intro v t he
     simp [tickedRun] at he
   · intro v _ t _ _ hw
@@ -537,6 +535,129 @@ theorem two_bound_at_bound_late :
     ¬ (logT True 5).PSync (ptT 5 (by decide)) 0 ∧ ¬ (logT False 2).PSync (ptT 5 (by decide)) 0 := by
   refine ⟨not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_,
     not_psyncT ?_ ?_ ?_, not_psyncT ?_ ?_ ?_⟩ <;> simp
+
+namespace RawArrival
+open Consensus.Model
+
+/-- An honest proposal needs a faulty credentialed item before it may be released. -/
+abbrev proto (pub : Public) : Protocol pub Unit :=
+  { Model.proto pub with dependencies := (Model.batchProto pub).dependencies }
+
+def env : Env (Fin 3) := ⟨2, by decide, 2, by decide, fun _ _ => true⟩
+def poison : Obj 3 Bool Unit Unit := .mk (.signed 2 true) (.item ()) []
+def child : Obj 3 Bool Unit Unit := .mk (.signed 0 false) (.data ()) []
+
+/-- Only the sender receives the prerequisite; the recipient receives the proposal alone. -/
+def run : Run (O := schema) proto env :=
+  Run.mk {0, 1} 2
+    [.tick 0 0, .tick 1 0, .deliver 0 poison 0,
+      .tick 0 1, .tick 1 1, .deliver 1 child 1, .tick 0 2, .tick 1 2]
+    (pkiFin 3) (fun (r : Bool) => if r then {2} else Finset.univ)
+    (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+
+private theorem valid : run.ExecutionValid := by
+  refine ⟨by decide, ?_, by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simp [run, Event.keyLe, Event.time, Event.phase]
+  · intro e he
+    simp only [run, List.mem_cons, List.not_mem_nil, or_false] at he
+    rcases he with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
+  · intro e he
+    simp only [run, List.mem_cons, List.not_mem_nil, or_false] at he
+    rcases he with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
+  · intro v hv t ht hh _
+    change t ≤ 2 at hh
+    simp only [run, Finset.mem_insert, Finset.mem_singleton] at hv
+    rcases hv with rfl | rfl <;> interval_cases t <;> simp [run]
+  · intro v t _; rfl
+  · intro v o t _; rfl
+  · intro v t he
+    simp [run] at he
+  · intro v _ t _ _ h
+    simp [Wakes, env] at h
+  · intro i v o t he q hq u hu hs
+    have hi : i < 8 := (List.getElem?_eq_some_iff.mp he).1
+    interval_cases i <;> simp [run] at he
+    · obtain ⟨rfl, rfl, rfl⟩ := he
+      have hq' : q = poison := List.mem_singleton.mp hq
+      subst q
+      change some (2 : Fin 3) = some u at hs
+      cases Option.some.inj hs
+      contradiction
+    · obtain ⟨rfl, rfl, rfl⟩ := he
+      have hq' : q = child := List.mem_singleton.mp hq
+      subst q
+      change some (0 : Fin 3) = some u at hs
+      cases Option.some.inj hs
+      exact ⟨3, 1, by decide, Or.inl rfl, List.mem_singleton_self _⟩
+  · intro r
+    cases r
+    · rfl
+    · change ({2} : Finset (Fin 3)).card = min 1 3
+      decide
+  · intro i v o t he q hq k r ha
+    have hi : i < 8 := (List.getElem?_eq_some_iff.mp he).1
+    interval_cases i <;> simp [run] at he
+    · obtain ⟨rfl, rfl, rfl⟩ := he
+      have hq' : q = poison := List.mem_singleton.mp hq
+      subst q
+      simp only [poison, Obj.auth] at ha
+      obtain ⟨rfl, rfl⟩ := ha
+      exact Finset.mem_singleton_self _
+    · obtain ⟨rfl, rfl, rfl⟩ := he
+      have hq' : q = child := List.mem_singleton.mp hq
+      subst q
+      simp only [child, Obj.auth] at ha
+      obtain ⟨rfl, rfl⟩ := ha
+      exact Finset.mem_univ _
+
+private theorem releases_iff (v : Fin 3) (o : Obj 3 Bool Unit Unit) (t : Time) :
+    run.releases v o t ↔ v = 0 ∧ o = child ∧ (t = 1 ∨ t = 2) := by
+  constructor
+  · rintro ⟨i, he, ho⟩
+    have hi : i < 8 := by
+      rcases he with he | ⟨p, he⟩ <;> exact (List.getElem?_eq_some_iff.mp he).1
+    have hr : run.releasesAt i = if i = 3 ∨ i = 6 then [child] else [] := by
+      interval_cases i <;> rfl
+    rw [hr] at ho
+    split at ho
+    next h =>
+      obtain rfl := List.mem_singleton.mp ho
+      rcases h with rfl | rfl <;> simp [Run.SendsAt, run] at he <;> aesop
+    next h => exact False.elim (List.not_mem_nil ho)
+  · rintro ⟨rfl, rfl, rfl | rfl⟩
+    · exact ⟨3, Or.inl rfl, List.mem_singleton_self _⟩
+    · exact ⟨6, Or.inl rfl, List.mem_singleton_self _⟩
+
+private theorem psync : run.log.PSync run.point 0 := by
+  refine ⟨?_, ?_, ?_⟩
+  · intro v _ o t hs _ w hw a ha _ _ _
+    obtain ⟨rfl, rfl, ht⟩ := (releases_iff v o t).mp hs
+    have hta : 1 ≤ a := by rcases ht with rfl | rfl <;> dsimp only [Time] at * <;> omega
+    refine ⟨1, ?_, ?_, ?_⟩
+    · change 1 ≤ max a 0 + 2 - 1; dsimp only [Time] at *; omega
+    · simp only [Run.point, run, Finset.mem_insert, Finset.mem_singleton] at hw
+      rcases hw with rfl | rfl
+      · exact Or.inl ((releases_iff 0 child 1).mpr ⟨rfl, rfl, Or.inl rfl⟩)
+      · exact Or.inr ⟨5, rfl⟩
+    · intro u _ _ h
+      simp [Wakes, Run.point, run, env] at h
+  · intro v hv o t hs hrow
+    exact False.elim hrow
+  · intro v hv x t ht ha hx
+    exact False.elim (List.not_mem_nil hx)
+
+/-- Withholding a prerequisite no longer removes an honest proposal's timely raw arrival
+from valid synchronous executions. Its deadline is in the horizon; the recipient remains
+unready and never receives the prerequisite. No protocol admission is asserted. -/
+theorem poisoned_arrival : run.ExecutionValid ∧ run.log.PSync run.point 0 ∧
+    run.releases 0 child 1 ∧ run.receives 1 child 1 ∧
+    (proto (pubOf env)).dependencies.ready
+      (closure (P := proto (pubOf env)) (run.stateBefore 5 1).seen) child = false ∧
+    poison ∉ run.ViewIdx 1 run.events.length := by
+  exact ⟨valid, psync, ⟨3, Or.inl rfl, List.mem_singleton_self _⟩,
+    ⟨5, rfl⟩, rfl, by change poison ∉ [child]; decide⟩
+
+end RawArrival
 
 end Consensus.Shape.Tests.Network
 

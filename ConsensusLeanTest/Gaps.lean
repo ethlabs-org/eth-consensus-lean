@@ -62,6 +62,10 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M38 global escape: removed, local accountability only; test `local_accountability_teeth`.
 * M39 HEAD: scope, protocol-internal; sheet §3.
 * vacuous system: `Good = Behaviour ∧ Adequate ∧ Realizable`; tests `false_progress_not_good`, `empty_valid_not_good`, `excuse_true_not_good`, `no_admissible_not_good`; progress cannot read submissions (`censoring_progress_rejected`) or demand near-full participation (`notReadyAtMost_one_not_realizable`).
+* dependency-gated network: closed by construction; raw arrivals do not require dependency readiness.
+  `Network.RawArrival.poisoned_arrival` admits the timely honest send/receipt with a withheld prerequisite.
+  The former audit's `not_psync_of_poisoned` exclusion no longer holds; buffering and admission belong
+  to the family, while release guards and message/FG-attestation deadlines are unchanged.
 -/
 
 namespace Consensus.Shape.Tests.Gaps

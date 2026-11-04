@@ -7,8 +7,9 @@ public import ConsensusLean.Spec.Problem.Network
 /-! # Conditions (L1)
 
 Conditions on runs speak about the environment, the run data, and what the engine did
-(ticks, releases, receipts, restarts); delivery additionally checks the protocol's
-holdings-only dependency policy. Participation (readiness, majorities,
+(ticks, releases, raw arrivals, restarts). Arrivals enter the protocol's total
+`process` handler regardless of dependency readiness; buffering and admission belong
+to the protocol, not to execution validity. Participation (readiness, majorities,
 fault bounds) is environment vocabulary, defined once in L0
 (`Consensus.EnvPoint`) and applied to `Run.point`. -/
 
@@ -60,9 +61,6 @@ structure ExecutionValid : Prop where
   -- Sleep.
   tick_awake : ∀ v t, Event.tick v t ∈ rho.events → E.awake v t = true
   deliver_awake : ∀ v o t, Event.deliver v o t ∈ rho.events → E.awake v t = true
-  /-- A receipt is a dependency-ready delivery, not a refused raw arrival. -/
-  delivery_ready : ∀ i v o t, rho.events[i]? = some (.deliver v o t) →
-    (protoOf F E).dependencies.ready (closure (rho.stateBefore i v).seen) o = true
   restart_at_wake : ∀ v t, Event.restart v t ∈ rho.events → 0 < t ∧ Wakes E v t
   wake_restart : ∀ v ∈ rho.honest, ∀ t, 0 < t → t ≤ rho.horizon →
     Wakes E v t → Event.restart v t ∈ rho.events
@@ -71,9 +69,9 @@ structure ExecutionValid : Prop where
   selValid : SelValid rho
   credentials : Credentials rho
 
-/-- The run's communication log (L0 `CommLog`): engine releases, deliveries
-and inboxes. Network conditions are the L0 ones (`CommLog.PSync`,
-`CommLog.SyncUntil`, …) on `rho.point` and `rho.log`. -/
+/-- The run's communication log (L0 `CommLog`): engine releases, raw arrivals
+and inboxes, independently of handler admission. Network conditions are the L0 ones
+(`CommLog.PSync`, `CommLog.SyncUntil`, …) on `rho.point` and `rho.log`. -/
 def log : CommLog V (protoOf F E).Object :=
   ⟨rho.releases, rho.receives, rho.inbox, (protoOf F E).isRow⟩
 

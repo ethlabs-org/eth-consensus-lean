@@ -15,6 +15,24 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-04, Francesco (raw-arrival audit, option 2): remove
+  `ExecutionValid.delivery_ready`. A delivery is a raw arrival into the existing
+  total `process` handler and log, independently of dependency readiness or
+  consensus admission. Buffering and retries belong to the family; no engine
+  buffer, new event kind or replay of `seen` is introduced. Dependencies still
+  guard outgoing releases. This supersedes the incoming-delivery part of the
+  2026-10-31 dependency repair below. Engine states, logs, views, excuses, progress,
+  message/FG-attestation deadlines and Held/Served are unchanged on each run;
+  valid runs only increase, so Behaviour and ShapeClaims only strengthen.
+  Accepted under the new validity implies Accepted under the old validity by
+  restricting claims. Do not infer arbitrary-System Good monotonicity from that
+  inclusion alone: its witnesses are existential. The existing canonical runs
+  still prove Adequate, Realizable and RealizableActive, including
+  `regimes_realizable`, with only validity-constructor adjustments; prefix closure
+  still uses truncation. The retained `Run.canonical_delivery_ready` theorem proves
+  that these canonical witnesses also satisfy the former incoming-readiness condition.
+  Goldilocks's carried parent-chain processing needs no
+  new admission premise. The poisoned-dependency exclusion is closed by construction.
 - 2026-11-04, lead (phase 2 of half-open delivery; W2's card `cards/coefficient_tightening.md`):
   with `Δp = Δe` the Goldilocks contract numbers are the node numbers: catch-up `19`
   (`18Δ + 1 ≤ 19Δ`), latency `4X + 6` (available, stable) and `4(X + 3·cF r) + 1` (final), lag

@@ -30,10 +30,11 @@ to bound the other, and a row is never served by the `msgs` clause.
 Transactions (`txs`) follow the rule of `dl`. Partial synchrony (`PSync g`),
 synchrony up to a cut (`SyncUntil b`) and the outage network
 (`OutageNet b₀ b₁`) are instances; `EagerFrom g` is the shape of the model's
-canonical logs. Receipt is network service, not protocol use: what arrives is
-processed at the delivery (whose own releases leave then) and first read by
-the node's next tick, at the latest the tick at the bound itself. Sends are
-covered at every time, submissions from `0`. -/
+canonical logs. Receipt is raw network service, independent of dependency readiness
+or protocol admission: the model passes each arrival to the total `process` handler
+(whose own releases leave then). Its resulting state is read by the next tick,
+at the latest the tick at the bound itself; buffering and retries belong to the
+protocol. Sends are covered at every time, submissions from `0`. -/
 
 namespace Consensus
 

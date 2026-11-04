@@ -268,17 +268,14 @@ three bindings it is a valid execution. -/
 theorem canonical_valid_of (g : Time) (h0 : 0 ≤ rho.horizon)
     (hu : (rho.withEvents (rho.canonicalEvents g)).Unforgeable)
     (hsel : (rho.withEvents (rho.canonicalEvents g)).SelValid)
-    (hc : (rho.withEvents (rho.canonicalEvents g)).Credentials)
-    (hd : ∀ i v o t, (rho.canonicalEvents g)[i]? = some (.deliver v o t) →
-      (protoOf F E).dependencies.ready
-        (closure ((rho.withEvents (rho.canonicalEvents g)).stateBefore i v).seen) o = true) :
+    (hc : (rho.withEvents (rho.canonicalEvents g)).Credentials) :
     (rho.withEvents (rho.canonicalEvents g)).ExecutionValid := by
-  rw [withEvents_eq] at hu hsel hc hd ⊢
+  rw [withEvents_eq] at hu hsel hc ⊢
   have event_layer {e : Event V (protoOf F E).Object} (he : e ∈ (rho.canonicalEvents g)) :
       ∃ k, e ∈ rho.layer g (rho.stages g k) (k : Time) := by
     obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
     exact ⟨k, hk⟩
-  refine ⟨h0, rho.stages_sorted g _, rho.stages_nodup g _, ?_, ?_, ?_, ?_, ?_, hd, ?_, ?_, hu, hsel,
+  refine ⟨h0, rho.stages_sorted g _, rho.stages_nodup g _, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hu, hsel,
     hc⟩
   · exact fun e he => rho.canonical_in_horizon g h0 he
   · intro e he

@@ -928,6 +928,7 @@ example := ``Consensus.Shape.Tests.Network.held1
 example := ``Consensus.Shape.Tests.Network.held_all
 example := ``Consensus.Shape.Tests.Network.held_restart
 example := ``Consensus.Shape.Tests.Network.negative_send_covered
+example := ``Consensus.Shape.Tests.Network.RawArrival.poisoned_arrival
 example := ``Consensus.Shape.Tests.Network.receipt_at_deadline
 example := ``Consensus.Shape.Tests.Network.receipt_before_deadline
 example := ``Consensus.Shape.Tests.Network.silent_not_psync
