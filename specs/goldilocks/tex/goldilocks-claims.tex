@@ -2688,7 +2688,11 @@ H.3 & \texttt{Healing.NonInterference}, \texttt{Healing.BridgeAt} & proved
 H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
   conditional: proved (\texttt{available\_healing}) assuming
   \texttt{BridgeAt} at a reset and $T_{\mathrm b}\geq0$; not a consequence
-  of $\mathsf{Healthy}$ alone; read points, note~5\\
+  of $\mathsf{Healthy}$ alone; read points, note~5; the statement is (i);
+  (ii) and (iii) follow from it (\texttt{available\_healing\_windows},
+  \texttt{available\_healing\_all}) and the closed form of $T_{\mathrm{heal}}$
+  is \texttt{T\_heal\_eq}, checked by \texttt{lake test}, not by the
+  comparator\\
 O.1 (node) & \texttt{Healing.PatternRecovery} & proved
   (\texttt{recovery\_statements}); the record quantifier of (b) differs
   (\S``O.1'')\\

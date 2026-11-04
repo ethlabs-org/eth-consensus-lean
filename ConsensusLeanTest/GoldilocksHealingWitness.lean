@@ -232,7 +232,8 @@ theorem tickRun_availableHealing :
       Healing.Unanimous (tickRun N1 dg1) Set.univ 272 (blk 272) ∧
       Healing.IncludedFrom (tickRun N1 dg1) Set.univ 1094 (blk 272) := by
   obtain ⟨hp, hs, hc, hpp⟩ := healing_premises
-  obtain ⟨hT, hi, -, -⟩ := Healing.available_healing sp1 ro1 (fun _ => v0) dg1 Set.univ
+  have hT := Healing.T_heal_eq sp1 0 1 4 0
+  have hi := Healing.available_healing sp1 ro1 (fun _ => v0) dg1 Set.univ
     (tickRun N1 dg1) 0 1 4 hp hs hc hpp 16 0 reset_bundle.1 le_rfl reset_bundle.2
   have hle : Healing.T_heal sp1 0 1 4 0 ≤ sp1.ts ((272 : Nat) : Int) := by
     rw [T_heal_sp1, ts_272]

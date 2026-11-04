@@ -481,20 +481,17 @@ def NonInterference : Prop :=
     ∃ a, IsReset tr H g a ∧ a ≤ gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp ∧
       RetentionAt tr H g a ∧ BridgeAt tr H proposer g a (Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt)
 
-/-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4). -/
+/-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4), that is
+`ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b` (`Healing.T_heal_eq`). -/
 def T_heal (sp : SAParams) (g ΔF Gp Tb : Time) : Time :=
   gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp + Tb + 2 * SA.Θ sp + 8 * sp.Δ
 
-/-- **H.4, healing of the available chain, assembled** (a conditional assembly). Under the
-premises of H.3, for the reset `a_z` and a `T_b ≥ 0` for which H.3 (c)'s bridge holds
-(`BridgeAt`), with `T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`:
-(i) an honest proposal `P` with `t_p ≥ T_heal` whose honest slot-`p` votes are all `P` is in every
-honest confirmed tip at every `t ≥ t_p + 6Δ`;
-(ii) under `(U_B)` (from `T_heal` on, every window `[t, t + B]` has a unanimous honest proposal),
-for every `t ≥ T_heal` some honest proposal released in `[t, t + B]` is in every honest confirmed
-tip from `t + B + 6Δ` on;
-(iii) under `(U_all)` (every honest proposal with `t_p ≥ T_heal` is unanimous), every honest
-proposal with `t_p ≥ T_heal` is in every honest confirmed tip from `t_p + 6Δ` on. -/
+/-- **H.4, healing of the available chain, assembled** (a conditional assembly; claims H.4 (i)).
+Under the premises of H.3, for the reset `a_z` and a `T_b ≥ 0` for which H.3 (c)'s bridge holds
+(`BridgeAt`): an honest proposal `P` with `t_p ≥ T_heal` whose honest slot-`p` votes are all `P`
+is in every honest confirmed tip at every `t ≥ t_p + 6Δ`. (The claims' (ii), under `(U_B)`, and
+(iii), under `(U_all)`, follow from (i) by `Healing.available_healing_windows` and
+`Healing.available_healing_all`.) -/
 def AvailableHealing : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
@@ -503,22 +500,8 @@ def AvailableHealing : Prop :=
     GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     PropPlus tr H proposer g Gp →
     ∀ a Tb, IsReset tr H g a → 0 ≤ Tb → BridgeAt tr H proposer g a Tb →
-      T_heal sp g ΔF Gp Tb =
-        gbar g + (104 * (sp.k : Time) + 628 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
-          36 * Gp + Tb ∧
-      (∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
-        Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P) ∧
-      (∀ B : Time,
-        (∀ t, T_heal sp g ΔF Gp Tb ≤ t →
-          ∃ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), t ≤ sp.ts p ∧ sp.ts p ≤ t + B ∧
-            HonestProposalRun tr H proposer p P ∧ Unanimous tr H p P) →
-        ∀ t, T_heal sp g ΔF Gp Tb ≤ t →
-          ∃ (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))), t ≤ sp.ts p ∧ sp.ts p ≤ t + B ∧
-            HonestProposalRun tr H proposer p P ∧ IncludedFrom tr H (t + B + 6 * sp.Δ) P) ∧
-      ((∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
-          Unanimous tr H p P) →
-        ∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
-          IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
+      ∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
+        Unanimous tr H p P → IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P
 
 end Consensus.Goldilocks.Healing
 
