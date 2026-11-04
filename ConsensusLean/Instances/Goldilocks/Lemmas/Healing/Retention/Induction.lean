@@ -66,32 +66,12 @@ theorem vote_state_caches (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     (hy : y ∈ H) (hk : sp.ts (j + 1 : Nat) ≤ tr.time k) :
     Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B ∧
       (HZ tr H g + 1 ≤ (tr.state y k).fg.hj →
-        Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B) := by
-  classical
-  have hex : ∃ k', sp.ts (j + 1 : Nat) ≤ tr.time k' := ⟨k, hk⟩
-  have hk₁ : Nat.find hex ≤ k := Nat.find_min' hex hk
-  have hfirst : tr.FirstCutFrom (Nat.find hex) (sp.ts (j + 1 : Nat)) :=
-    ⟨Nat.find_spec hex, fun k' hk' => not_le.mp (Nat.find_min hex hk')⟩
-  have hboot : ∀ k₀, (∀ k' < k₀, tr.time k' < a) →
-      Compatible (tr.HonestBlocks H) (tr.state y k₀).fg.F B ∧
-        (HZ tr H g + 1 ≤ (tr.state y k₀).fg.hj →
-          Compatible (tr.HonestBlocks H) (tr.state y k₀).fg.J B) := fun k₀ hk₀ => by
-    obtain ⟨hj, hF⟩ := boot_caches hp hy hk₀
-    exact ⟨hF x i j B ho, fun h => absurd (h.trans hj) (Nat.not_succ_le_self _)⟩
-  rcases Compose.state_of_le (tr := tr) (y := y) hk₁ with h | ⟨k', hk', hk'k, hc, h⟩
-  · rw [h]
-    by_cases hta : sp.ts (j + 1 : Nat) ≤ a
-    · exact hboot _ fun k' hk' => lt_of_lt_of_le (hfirst.2 k' hk') hta
-    · exact activation_caches hp ho hy hfirst (not_le.mp hta)
-        fun k' hk' => ih k' (lt_of_lt_of_le hk' hk₁)
-  · rw [h]
-    have hact : sp.ts (j + 1 : Nat) ≤ tr.time k' := hfirst.1.trans (hp.run.time_mono hk')
-    by_cases hak : a ≤ tr.time k'
-    · exact (cacheInv_iff.1 (ih k' hk'k).2) y hy hc hak x i j B ho (Or.inr hact)
-    · obtain ⟨c, hc'⟩ := hc
-      rw [← Trace.state_succ_of_call _ hc']
-      exact hboot _ fun k'' hk'' =>
-        lt_of_le_of_lt (hp.run.time_mono (Nat.lt_succ_iff.mp hk'')) (not_le.mp hak)
+        Compatible (tr.HonestBlocks H) (tr.state y k).fg.J B) :=
+  (hp.toUpTo tr H (le_max_left a (max (tr.time k) (tr.time i)))).vote_state_caches
+    (fun ho₀ _ z hz c hc _ e ⟨ℓ, hcl, he⟩ hsl =>
+      ((voteInv_iff.1 (ih c hc).1) _ _ _ _ ho₀ z hz ℓ e ⟨hcl, he⟩ hsl).1)
+    ((le_max_left _ _).trans (le_max_right _ _)) ho
+    ((le_max_right _ _).trans (le_max_right _ _)) hy hk
 
 /-- **The fork-choice root at a vote is compatible with the origin**: it is `Σ.F` (compatible,
 `vote_state_caches`), a high `Σ.J` (compatible, `vote_state_caches`), or a low `Σ.J`, which is
@@ -907,15 +887,10 @@ theorem target_compatible_older_origin
     (ho : HighOrigin tr H g x r m O) (hz : z ∈ H) (hv : SA.VoteAt tr.projAC z q e)
     (hs : e.msg.slot = l) (hml : m < l)
     (hB : SA.VoteExtends (tr.HonestBlocks H) e.msg B) :
-    Compatible (tr.HonestBlocks H) B O := by
-  obtain ⟨ell, hc, he⟩ := hv
-  have hO := ((rawVoteAt_iff _ _ _).mp
-    (historical_activation_before hp (tr.time q) q le_rfl).2 O m
-    ((historicalTargets_iff O m).mpr ⟨x, r, ho⟩) z hz ell e ⟨hc, he⟩ (by omega) le_rfl).1
-  obtain ⟨HB, hHB, hBr, hBB⟩ := hB
-  obtain ⟨HO, hHO, hOr, hOO⟩ := hO
-  obtain rfl : HO = HB := (honest_coherent hp).1 hHO hHB (hOr.trans hBr.symm)
-  exact SA.anc_total (honest_coherent hp) hBB hOO
+    Compatible (tr.HonestBlocks H) B O :=
+  (hp.toUpTo tr H (le_max_left a (max (tr.time r) (tr.time q)))).target_compatible_older_origin
+    ho ((le_max_left _ _).trans (le_max_right _ _)) hz hv
+    ((le_max_right _ _).trans (le_max_right _ _)) hs hml hB
 
 /-- §76 join: the remaining inputs are actual frozen service, an honest counted
 supporter, a seed witness, same-label comparison, and prospective prior-cut support. -/

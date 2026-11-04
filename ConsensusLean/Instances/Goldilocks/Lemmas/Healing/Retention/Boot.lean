@@ -1262,41 +1262,6 @@ theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   exact ((voteInv_iff.1 (ih q hq).1) x i j B ho z hz ell e' ⟨hcall, hcast⟩
     (by rw [hslot]; exact hjm)).1
 
-/-- **Half of the committee votes** (`Healthy(g)`): in a slot `s'` with `t_{s'} ≥ c_z`, every
-honest validator is awake and joined (no honest restart after `max(g, 0)`) and votes by
-`t_{s'} + Δ` (`tryVote`), and the honest validators are at least half of the committee
-(`3f ≤ n − 1`). -/
-theorem half_committee (hp : ResetPremises tr H proposer dg g ΔF a) {s' : Nat}
-    (hs : cutZ sp.toParams g ≤ sp.ts s') :
-    sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard := by
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hgt : gbar g ≤ sp.ts s' + sp.Δ := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ sp.ts s' + sp.Δ := (gbar_nonneg g).trans hgt
-  have hsl : sp.slot (sp.ts s' + sp.Δ) = s' :=
-    SA.slot_of_mem sp s' (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
-  have hs3 : sp.slot (gbar g) + 3 ≤ s' := by
-    have h := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hs)
-    exact_mod_cast h
-  have hsub : H ⊆ {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'} := by
-    intro y hy
-    have hj : tr.JoinedAt y (sp.ts s' + sp.Δ) := fun k hk _ => by
-      change 0 < sp.slot (sp.ts s' + sp.Δ) ∧
-        tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts s' + sp.Δ) - 1)
-      have he : sp.toParams.slotTime (sp.slot (sp.ts s' + sp.Δ) - 1) =
-          sp.ts ((sp.slot (sp.ts s' + sp.Δ) - 1 : Nat) : Int) := sp.slotTime_eq _
-      refine ⟨by omega, (restart_le hp hy hk).trans ?_⟩
-      rw [he]
-      exact (SA.ts_le_iff sp).mpr (by omega)
-    obtain ⟨k, e, hv, hes, -⟩ :=
-      Compose.vote_of_awake_joined hp.run hp.noColl hy (hp.healthy.2.1 y hy _ hgt) hj
-    exact ⟨hy, k, e, hv, hes⟩
-  have hle := Set.ncard_le_ncard hsub (Set.toFinite _)
-  have hn : H.ncard + Hᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h3 := hp.healthy.2.2
-  have hn' : sp.n = sp.toParams.n := rfl
-  omega
-
 /-- The finite healthy interval contains the predecessor votes used by transfer. -/
 theorem ResetPremisesUpTo.half_committee {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {m : Nat}
@@ -1327,6 +1292,15 @@ theorem ResetPremisesUpTo.half_committee {b : Time}
   have hf := hp.faults
   have hn' : sp.n = sp.toParams.n := rfl
   omega
+
+/-- **Half of the committee votes** (`Healthy(g)`): in a slot `s'` with `t_{s'} ≥ c_z`, every
+honest validator is awake and joined (no honest restart after `max(g, 0)`) and votes by
+`t_{s'} + Δ` (`tryVote`), and the honest validators are at least half of the committee
+(`3f ≤ n − 1`). -/
+theorem half_committee (hp : ResetPremises tr H proposer dg g ΔF a) {s' : Nat}
+    (hs : cutZ sp.toParams g ≤ sp.ts s') :
+    sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard :=
+  (hp.toUpTo tr H (le_max_left a (sp.ts s' + sp.Δ))).half_committee hs (le_max_right _ _)
 
 /-- **(R4), the high-record lemma** (§16). From (R1): before `a` no honest row has height
 `≥ H_z + 1` (HR.1 (c)), and its finality pair is below its height pair (G0.5), so the high record
