@@ -60,9 +60,10 @@ noncomputable def tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
     let dom := voteDomain sp A₁ Φ s
     let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let A₂ := { A₁ with votedSlot := s }
-    let vote : Vote sp.n := ⟨self, s, H.root⟩
+    let vote : Vote sp.n := { val := self, slot := s, head := H.root }
     let A₃ := optimisticConfirmation sp (admitVote sp A₂ t vote) Φ t
-    (A₃, [⟨vote, A₂, some ⟨H, getAnchor sp A₁ Φ t, dom⟩⟩])
+    (A₃, [{ msg := vote, readPoint := A₂,
+            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
 
 /-- `ac_on_message(𝒜, Φ, t, vote)` at validator `self`. -/
 noncomputable def acOnMessage (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)

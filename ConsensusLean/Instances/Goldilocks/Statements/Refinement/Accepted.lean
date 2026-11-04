@@ -87,8 +87,10 @@ def accepted_latency (S : Setup) (A : AcceptanceAssumptions S) :
 /-- The guarantee coefficients of the endpoint: catch-up `accepted_catchUp`, heal
 `accepted_heal` and latency `accepted_latency`. -/
 noncomputable def accepted_coefficients (S : Setup) (A : AcceptanceAssumptions S) :
-    AcceptanceCoefficients :=
-  ⟨accepted_catchUp S A, accepted_heal S A, accepted_latency S A⟩
+    AcceptanceCoefficients where
+  catchUp := accepted_catchUp S A
+  heal := accepted_heal S A
+  latency := accepted_latency S A
 
 /-- Standard fixed resilience fractions, the coefficient record `C`, and the numbers below.
 Final progress is the chosen local pattern at every positive outer gap.
@@ -114,11 +116,13 @@ abbrev acceptanceContract {S : Setup} (A : AcceptanceAssumptions S)
     (C : AcceptanceCoefficients) : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
-  params := { Params.standard C.catchUp (4 * S.k + 6)
-    (4 * S.k - 5) C.heal C.latency with
-    noSleep := 4 * S.k + 6, recovery := 9,
+  params := { Params.standard (catchUp := C.catchUp) (lag := 4 * S.k + 6)
+      (budget := 4 * S.k - 5) (heal := C.heal) (latency := C.latency) with
+    noSleep := 4 * S.k + 6
+    recovery := 9
     rowRatio := A.rowRatio }
-  progress := fun cap X => .recur ⟨if cap = .final then finalWindow A else Pattern.single, X⟩
+  progress := fun cap X =>
+    .recur { pattern := if cap = .final then finalWindow A else Pattern.single, gap := X }
 
 /-- **Goldilocks Accepted**, the concrete endpoint: for every setup and every assumption set (a
 row ratio `r` and the timeout `3·cF r ≤ δ_t`), the Goldilocks family is accepted at the contract

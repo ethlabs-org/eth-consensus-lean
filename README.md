@@ -352,7 +352,8 @@ structure Params (Idx : Type) where
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
   rowRatio : ℕ+                              -- healthy regime: ΔF ≤ rowRatio·Δ (larger = weaker premise)
 def Params.standard (catchUp lag budget heal latency) :=
-  ⟨catchUp, ½, ⅓, ½, ⅓, lag, budget, 0, 0, 0, heal, latency, 1⟩
+  { catchUp, θ := ½, β := ⅓, cover := ½, α := ⅓, lag, budget, η := 0, noSleep := 0,
+    recovery := 0, heal, latency, rowRatio := 1 }
 structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```

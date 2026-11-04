@@ -29,7 +29,7 @@ abbrev Lock.LiveAt (l : Lock) (t : Time) : Prop := sp.slot t ≤ l.expiry
 /-- `live_locks(locks, Φ, t)`: the live locks, each moved back to its viable ancestor. -/
 def liveLocks (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) : Set Lock :=
   {l' | ∃ l ∈ L, ∃ B ∈ Φ.tree, B.root = l.block ∧ l.LiveAt sp t ∧
-    l' = ⟨(Φ.viableAncestor B).root, l.slot, l.fast, l.expiry⟩}
+    l' = { l with block := (Φ.viableAncestor B).root }}
 
 open Classical in
 /-- The expiry of a new fast lock of slot `s`: the node's fast deadline `E` (the latest expiry
@@ -76,7 +76,7 @@ noncomputable def unlock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Int)
     Set Lock :=
   {l' | ∃ l ∈ liveLocks sp L Φ t, ∃ B ∈ Φ.tree, B.root = l.block ∧
     l' = if (l.slot : Int) < s then
-      ⟨(unlockTarget sp Φ V s B).root, l.slot, l.fast, l.expiry⟩ else l}
+      { l with block := (unlockTarget sp Φ V s B).root } else l}
 
 end Consensus.Goldilocks.SA
 

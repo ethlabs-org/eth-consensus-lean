@@ -99,8 +99,20 @@ look-back, no-sleep margin and recovery delay `0`, and row ratio `1` (an
 instance sets them with
 `{ standard … with η := k, noSleep := C, recovery := D, rowRatio := r }`). -/
 def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → Nat) :
-    Params Idx :=
-  ⟨catchUp, 1 / 2, 1 / 3, 1 / 2, 1 / 3, lag, budget, 0, 0, 0, heal, latency, 1⟩
+    Params Idx where
+  catchUp := catchUp
+  θ := 1 / 2
+  β := 1 / 3
+  cover := 1 / 2
+  α := 1 / 3
+  lag := lag
+  budget := budget
+  η := 0
+  noSleep := 0
+  recovery := 0
+  heal := heal
+  latency := latency
+  rowRatio := 1
 
 /-- Admissible numbers: thresholds no stronger than standard (the healthy
 fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),

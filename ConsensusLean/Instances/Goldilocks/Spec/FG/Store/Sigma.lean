@@ -32,8 +32,14 @@ def Block.fgView {n : Nat} {ACP : Type} (B : Block n (List (FG.Att n)) ACP) : FG
 /-- Genesis: the genesis root, no parent, slot `0`, input `0`, no attestations, the AC payload
 `acp₀`. Its proposer is the fixed index zero, independent of leader selection.
 (Its proposer, input and AC payload are never read by the transition.) -/
-def Params.genesisBlock (P : Params) {ACP : Type} (acp₀ : ACP) : NodeBlock P ACP :=
-  ⟨P.genesisRoot, none, 0, ⟨0, P.hn⟩, 0, [], acp₀⟩
+def Params.genesisBlock (P : Params) {ACP : Type} (acp₀ : ACP) : NodeBlock P ACP where
+  root := P.genesisRoot
+  parent := none
+  slot := 0
+  proposer := ⟨0, P.hn⟩
+  input := 0
+  fgPayload := []
+  acPayload := acp₀
 
 /-- The FG state `Σ`. -/
 structure Store (P : Params) (ACP : Type) where

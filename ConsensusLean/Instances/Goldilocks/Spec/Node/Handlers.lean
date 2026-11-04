@@ -69,7 +69,8 @@ the attestations `proposal_attestations(Σ, H)`, its root the digest `dg` of its
 noncomputable def mkBlock (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (fg : Store P A.Payload) (t : Time) (x : Nat) (H : A.Blk) (p : A.Payload) : A.Blk :=
   let atts := fg.proposalAttestations H
-  ⟨dg (some H.root) (P.slotOf t) x atts p, some H.root, P.slotOf t, self, x, atts, p⟩
+  { root := dg (some H.root) (P.slotOf t) x atts p, parent := some H.root, slot := P.slotOf t,
+    proposer := self, input := x, fgPayload := atts, acPayload := p }
 
 /-- `propose_block(H, p)`: the block (with the tick's input `x`), then the own `on_block`. -/
 noncomputable def proposeBlock (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
