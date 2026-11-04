@@ -228,7 +228,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.FrameWindow.current_lock_passage_of_regular_base",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/RegularBase.lean:567",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/RegularBase.lean:359",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -300,7 +300,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.FrameWindow.regular_fast_next_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/OptimisticBase.lean:827",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/OptimisticBase.lean:577",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -318,7 +318,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.FrameWindow.regular_later_heads",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/RegularBase.lean:404",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/RegularBase.lean:196",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -336,7 +336,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.FrameWindow.regular_slow_next_votes",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/RegularBase.lean:144",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/RegularBase.lean:96",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
@@ -1003,7 +1003,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.regular_fast_next_votes_of_early_witness",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/OptimisticBase.lean:689",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/OptimisticBase.lean:487",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",

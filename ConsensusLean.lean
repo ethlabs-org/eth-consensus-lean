@@ -210,6 +210,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Warm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.WarmFloor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
