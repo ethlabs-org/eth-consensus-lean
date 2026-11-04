@@ -300,78 +300,6 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 
-private theorem admitVote_fields (A : SA.SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (SA.admitVote sp A t v).blockStamp = A.blockStamp ∧
-      (SA.admitVote sp A t v).restartTime = A.restartTime := by
-  unfold SA.admitVote
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
-private theorem optimistic_fields (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
-    (SA.optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp ∧
-      (SA.optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
-  unfold SA.optimisticConfirmation SA.updateLatestConfirmed
-  split
-  · exact ⟨rfl, rfl⟩
-  · split_ifs <;> exact ⟨rfl, rfl⟩
-
-private theorem blockReceipt_blockStamp (A : SA.SAState sp.n) (t : Time) (B : SA.Blk sp.n FGP) :
-    (SA.blockReceipt sp A t B).blockStamp =
-      Function.update A.blockStamp B.root (SA.ETime.of t) := by
-  unfold SA.blockReceipt
-  generalize SA.blockVotes B = l
-  suffices h : ∀ A' : SA.SAState sp.n,
-      (l.foldl (fun A v => SA.admitVote sp A t v) A').blockStamp = A'.blockStamp from h _
-  induction l with
-  | nil => exact fun _ => rfl
-  | cons v l ih => exact fun A' => (ih _).trans (admitVote_fields _ _ _).1
-
-private theorem tryVote_readPoint (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) : ∀ e ∈ (SA.tryVote sp x A Φ t).2, e.readPoint.blockStamp = A.blockStamp := by
-  unfold SA.tryVote
-  dsimp only
-  split_ifs <;> simp
-
-private theorem onTick_readPoint (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) : ∀ e ∈ (SA.acOnTick sp x A Φ t).2, e.readPoint.blockStamp = A.blockStamp := by
-  unfold SA.acOnTick
-  dsimp only
-  split_ifs
-  all_goals first | exact tryVote_readPoint x A Φ t | simp
-
-/-- The read point of an honest vote has the block stamps of the state before its call, except
-for the block that an `on_block` call receives (main's private `SA.readPoint_blockStamp`). -/
-private theorem readPoint_blockStamp (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {r : Nat}
-    (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
-    e.readPoint.blockStamp r = (T.state y i).blockStamp r := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ : FrameOK ℓ.frame := (SA.frameIn_of_callAt hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ ((SA.goldilocksSA sp FGP ro).step y (T.state y i) ℓ.frame (T.time i)
-      ℓ.call).2 := by
-    rw [hx]; exact he
-  clear hx he
-  generalize T.state y i = A at he' ⊢
-  revert hrB he'
-  cases ℓ.call with
-  | tick => exact fun _ he' => by rw [onTick_readPoint y A _ _ e he']
-  | proposal => intro _ he'; simp [ACInterface.step] at he'
-  | toFG => intro _ he'; simp [ACInterface.step] at he'
-  | message m =>
-    intro _ he'
-    rw [tryVote_readPoint y _ _ _ e he', (optimistic_fields _ _ _).1, (admitVote_fields _ _ _).1]
-  | block B =>
-    intro hrB he'
-    rw [tryVote_readPoint y _ _ _ e he', (optimistic_fields _ _ _).1, blockReceipt_blockStamp,
-      Function.update_of_ne (hrB B rfl)]
-  | restart =>
-    intro _ he'
-    change e ∈ (SA.acRestart sp ro y A ℓ.frame (T.time i)).2 at he'
-    rw [((SA.restart_state sp) FGP ro y A ℓ.frame (T.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
-
 /-- **Head-only relay to a voter, after the GST** (`hr4-boot-carry.md` §4, §7): a block `W`
 above the voter's `Σ.F` that an honest writer accepted in `[a₀, t_s + 2Δ)`, under `Sync[a₀, b]`
 with `t_s + 2Δ ≤ b`, is in the voter block tree of every honest vote of a slot `> s` (relayed to
@@ -426,7 +354,7 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     have heq := SA.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
     rw [heq] at hkyt'
     linarith
-  rw [← readPoint_blockStamp hr hy hc hne] at hbs
+  rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, Or.inl hbs⟩
 
 /-- A counted head reaches the actual voter freeze through either window service or
@@ -487,7 +415,7 @@ private theorem relay_mem_voterBlockTree_window_aux
     have heq := SA.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
     rw [heq] at hkyt
     linarith
-  rw [← readPoint_blockStamp hr hy hc hne] at hbs
+  rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, hbs⟩
 
 /-- Post-start acceptance relay needs no catch-up premise. -/
@@ -716,7 +644,7 @@ theorem voterBlockTree_of_relay_source
     have hne : ∀ X, ℓ.call = .block X → G.root ≠ X.root := by
       intro X hcall heq
       exact SA.accept_ne_genesis sp hr hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
-    rw [← readPoint_blockStamp hr hy hc hne] at hbs
+    rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
     have hBt := SA.frame_mem_of_between sp hr.coherent hΦ hΦU hDt hBD hF
     exact SA.voterBlockTree_anc hr hy hc G ⟨hDt, Or.inl hbs⟩ B
       (SA.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt)
