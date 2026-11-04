@@ -16,8 +16,8 @@ service) under exactly `PatternPremises`; no stronger timeout or `Δ ≤ Δ_F` i
 * `pattern_stretch_after_reset`: for every request `t ≥ R*`, the `UPat` stretch start `v` with
   `t ≤ t_v ≤ t + 4Δ(W + 1)`, after the drain of a bounded reset, with the stretch clause of
   `UPat` unchanged.
-* The ceiling sandwiches `slotsCeil_bounds`, `acqSlots_bounds`, `oldSlots_bounds`; the timeout
-  bound `timeout_add_three_le_oldSlots`; `one_le_of_Mstar_le`; and the slot budget
+* The ceiling sandwiches `slotsCeil_bounds`, `oldSlots_bounds`; the timeout bound
+  `timeout_add_three_le_oldSlots`; and the slot budget
   `recovery_slot_budget` (`s ≤ v + b₀`, `u ≤ s + r_old` put the old-entry crossing and two
   windows of `c_F + k_F` slots inside the stretch `[v, v + M)`).
 * `pattern_Gp_nonneg`: `0 ≤ G_p` from `Prop⁺(G_p)`. -/
@@ -50,20 +50,6 @@ theorem slotsCeil_bounds {x : Time} (hx : 0 ≤ x) :
   have h1 : x - 1 < 4 * sp.Δ * q := by linarith
   exact ⟨Int.sub_one_lt_iff.mp h1, by linarith⟩
 
-/-- **The acquisition budget** `b₀ = ⌈((8k + 26)Δ + G_p)/4Δ⌉ + 1`: `4Δ(b₀ − 1)` is the ceiling. -/
-theorem acqSlots_bounds {Gp : Time} (hGp : 0 ≤ Gp) :
-    (8 * (sp.k : Time) + 26) * sp.Δ + Gp ≤ 4 * sp.Δ * ((acqSlots sp Gp : Time) - 1) ∧
-      4 * sp.Δ * ((acqSlots sp Gp : Time) - 1) <
-        (8 * (sp.k : Time) + 26) * sp.Δ + Gp + 4 * sp.Δ := by
-  have hΔ := sp.toParams.hΔ
-  have hk : (0 : Time) ≤ sp.k := Nat.cast_nonneg _
-  have h := slotsCeil_bounds (sp := sp) (x := (8 * (sp.k : Time) + 26) * sp.Δ + Gp)
-    (by nlinarith)
-  have he : ((acqSlots sp Gp : Nat) : Time) - 1 =
-      (slotsCeil sp ((8 * (sp.k : Time) + 26) * sp.Δ + Gp) : Time) := by
-    simp only [acqSlots]; push_cast; ring
-  rw [he]; exact h
-
 /-- **The old-entry budget** `r_old = ⌈L_old/4Δ⌉ + 1`: `4Δ(r_old − 1)` is the ceiling. -/
 theorem oldSlots_bounds {ΔF Gp : Time} (hΔF : 0 ≤ ΔF) (hGp : 0 ≤ Gp) :
     L_old sp ΔF Gp ≤ 4 * sp.Δ * ((oldSlots sp ΔF Gp : Time) - 1) ∧
@@ -90,11 +76,6 @@ theorem timeout_add_three_le_oldSlots {ΔF Gp : Time} (hΔF : 0 ≤ ΔF) (hGp : 
   exact_mod_cast this
 
 /-! ## The slot budget -/
-
-/-- `M ≥ M* ≥ 1`. -/
-theorem one_le_of_Mstar_le {ΔF Gp : Time} {cF kF M : Nat}
-    (hM : Mstar sp ΔF Gp cF kF ≤ M) : 1 ≤ M := by
-  simp only [Mstar] at hM; omega
 
 /-- **The recovery slot budget**: with the acquired slot `s ≤ v + b₀` and the crossed entry
 `u ≤ s + r_old`, the crossing budget ends inside the stretch, and so do two windows of

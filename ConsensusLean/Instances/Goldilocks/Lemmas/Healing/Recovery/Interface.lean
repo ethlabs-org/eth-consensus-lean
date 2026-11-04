@@ -17,10 +17,11 @@ extra premise of the public Recovery statements.
 * The C1.3 lane supplies `PatternCoverageSupply`: acquisition, retained old-entry crossing,
   service of the new entry and its actual successor, and propagation to honest caches. The
   witness keeps the acquired proposal's high height, which public `FinalizingCoverage` omits.
-* The O.1 lane supplies `RecoveryFromHighFinality`. Its internal R1–R5 split is late stored-write
-  highness (including vetoed writes), historical K0/K1 and frozen-domain K2, source compatibility,
-  new ancestral-entry highness, and record equality. No source-height or earliest-global-source
-  restriction may replace `Rec.records`. Catch-up is not needed by this lane's interface.
+* The O.1 lane supplies `Rec` from permanent high finality (`rec_of_high_finality`). Its
+  internal R1–R5 split is late stored-write highness (including vetoed writes), historical K0/K1
+  and frozen-domain K2, source compatibility, new ancestral-entry highness, and record equality.
+  No source-height or earliest-global-source restriction may replace `Rec.records`. Catch-up is
+  not needed by this lane's interface.
 
 The shared seam is high finalized caches at honest pre-call states. At `t = Rstar`, the
 coverage deadline is `gbar g + T_rec - 12Δ`; O.1 then uses the unchanged `12Δ` margin.
@@ -75,13 +76,6 @@ structure PatternCoverageSupply (proposer : Nat → Fin sp.n)
     PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       HighCoverageAt tr H g t (4 * sp.Δ * ((W : Time) + 1 + M))
-
-/-- Lane B's recovery obligation from permanent high finality. This is independent of the
-pattern and outcome-service proofs; the public recovery time keeps its `12Δ` margin. -/
-structure RecoveryFromHighFinality (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a T : Time) : Prop where
-  recover : ResetPremises tr H proposer dg g ΔF a → gbar g ≤ T →
-    NoRestartAfter tr H (gbar g) → HighFinalityFrom tr H g T → Rec tr H (T + 12 * sp.Δ)
 
 end Consensus.Goldilocks.Healing.Recovery
 

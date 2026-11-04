@@ -14,7 +14,7 @@ public section
 
 Under the reset premises, no honest restart after `ḡ`, and `HighFinalityFrom T` (every honest
 pre-call `Σ.F` has state height `≥ H_z + 1` from `T ≥ ḡ` on), `Rec` holds from `T + 12Δ`
-(`rec_of_high_finality`, packaged as `recoveryFromHighFinality`):
+(`rec_of_high_finality`):
 
 * R1 `late_write_high`: a stored fast write after `T + 12Δ` by a joined honest writer, from
   either origin (a regular update, vetoed or not, or an optimistic confirmation), is a high
@@ -394,11 +394,6 @@ theorem rec_of_high_finality (hp : ResetPremises tr H proposer dg g ΔF a) (hgT 
     exact high_origin_clean hp hgT hF ho hts m hsm
   · exact late_sources_compatible hp hF hy hz hC hC' (by linarith) (by linarith)
   · exact late_entry_records hp hgT hF hy hC (by linarith) hE (by linarith)
-
-/-- Lane B's interface obligation, from `rec_of_high_finality`. -/
-theorem recoveryFromHighFinality :
-    RecoveryFromHighFinality tr H proposer dg g ΔF a T :=
-  ⟨fun hp hgT hnr hF => rec_of_high_finality hp hgT hnr hF⟩
 
 end Consensus.Goldilocks.Healing.Recovery
 
