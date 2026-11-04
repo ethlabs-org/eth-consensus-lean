@@ -271,11 +271,12 @@ theorem inclusion_control : ∃ P : N2.Blk, tr2.ProposesAt w0 34 P ∧ P.slot = 
     exact List.getElem?_eq_getElem hlen
   refine ⟨P, hP, hPs, hu, Compose.inclusion_sleepy sp2 ro2 (fun _ => w0) dg2 Set.univ tr2 1
     asleepRun_goldilocksRun (dg2_noColl _) tr2_sleepy w0 (Set.mem_univ _) 34 P 1 hP
-    hPs (joined_w0 34 _) w0 (Set.mem_univ _) 81 hc81 ⟨rfl, ?_⟩ (joinedAt _ _)
-    (joinedAt _ _) (fun k' hk' => absurd hk' (tr2_no_restart _ k')) hu⟩
-  change (0 : Int) ≤ ((81 / 8 : Nat) : Int); omega
+    hPs (joined_w0 34 _) w0 (Set.mem_univ _) 81 hc81 (joinedAt _ _)
+    (fun k' hk' => absurd hk' (tr2_no_restart _ k')) hu⟩
 
-/-- A1.7 with the update clause `UpdatedNoRestart tr y i s` dropped. -/
+/-- A1.7 with the update clause `UpdatedNoRestart tr y i s` dropped, keeping the premises the
+statement leaves out because they follow from the clause and the call (awake at `t`, joined at
+`t_s + 6Δ`), so that the rejection shows the clause is needed even with them. -/
 def InclusionWithoutUpdate : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)

@@ -74,36 +74,32 @@ theorem inclusion_update_boundary :
 
 /-- (a) **The premises of A1.7 are jointly satisfiable at slot `1`**: a Goldilocks run with
 `NoColl` and `Sleepy`; the honest proposal `blk 1` of slot `1` at cut `34` by a joined proposer;
-and the cut `81` at `t_1 + 6Δ`, where the validator is awake and joined (joined also at
-`t_1 + 6Δ`), has not restarted, and has run the update of slot `1`. -/
+and the cut `81` at `t_1 + 6Δ`, where the validator is joined, has not restarted, and has run
+the update of slot `1`. -/
 theorem inclusion_premises_tickRun :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
       Compose.NoCollRun dg1 (tickRun N1 dg1) ∧ (tickRun N1 dg1).SleepyRun Set.univ 1 ∧
       (tickRun N1 dg1).ProposesAt v0 34 (blk 1) ∧ (blk 1).slot = 1 ∧
       joined sp1 ((tickRun N1 dg1).state v0 34).ac ((tickRun N1 dg1).time 34) ∧
       (tickRun N1 dg1).IsCall v0 81 ∧
-      (tickRun N1 dg1).awake v0 ((tickRun N1 dg1).time 81) ∧
       (tickRun N1 dg1).JoinedAt v0 ((tickRun N1 dg1).time 81) ∧
-      (tickRun N1 dg1).JoinedAt v0 (sp1.ts (1 : Nat) + 6 * sp1.Δ) ∧
       (∀ k', (tickRun N1 dg1).RestartAt v0 k' →
         sp1.ts (1 : Nat) + 6 * sp1.Δ < (tickRun N1 dg1).time k' →
-        (tickRun N1 dg1).time k' ≤ (tickRun N1 dg1).time 81 → False) ∧
+        (tickRun N1 dg1).time 81 < (tickRun N1 dg1).time k') ∧
       Compose.UpdatedNoRestart (tickRun N1 dg1) v0 81 1 := by
   have hj : ∀ t, (tickRun N1 dg1).JoinedAt v0 t := fun _ k hk =>
     absurd hk (tickRun_no_restart _ k)
   refine ⟨tickRun_goldilocksRun, dg1_noColl _, tickRun_sleepy, proposesAt_blk1, blk_slot 1,
-    joined_of_bot (tickRun_restartTime 34) _, tickRun_isCall_81, ?_, hj _, hj _,
+    joined_of_bot (tickRun_restartTime 34) _, tickRun_isCall_81, hj _,
     fun k' hk' => absurd hk' (tickRun_no_restart _ k'), updatedNoRestart_81⟩
-  change (0 : Int) ≤ ((81 / 8 : Nat) : Int); omega
 
 /-- **A1.7 on the witness**: the honest proposal `blk 1` is in the confirmed tip of the validator
 before cut `81`, as `inclusion_sleepy` gives from `inclusion_premises_tickRun`. -/
 theorem inclusion_tickRun :
     Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (blk 1) ((tickRun N1 dg1).confirmedAt v0 81) := by
-  obtain ⟨hrun, hnc, hsl, hP, hPs, hpj, hc, hyw, hyj, hyj₀, hnr, hu⟩ :=
-    inclusion_premises_tickRun
+  obtain ⟨hrun, hnc, hsl, hP, hPs, hpj, hc, hyj, hnr, hu⟩ := inclusion_premises_tickRun
   exact Compose.inclusion_sleepy sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 1 hrun hnc
-    hsl v0 (Set.mem_univ _) 34 (blk 1) 1 hP hPs hpj v0 (Set.mem_univ _) 81 hc hyw hyj hyj₀ hnr hu
+    hsl v0 (Set.mem_univ _) 34 (blk 1) 1 hP hPs hpj v0 (Set.mem_univ _) 81 hc hyj hnr hu
 
 end Consensus.Goldilocks.Witness.One
 

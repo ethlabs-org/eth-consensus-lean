@@ -2616,11 +2616,13 @@ A1.9 & \texttt{SA.SourceCompatible} & proved (\texttt{acSteps}), per call,
 A1.8 & \texttt{SA.ResultTransfer} & proved (\texttt{acSteps}), per vote under
   its premises\\
 A1.6 & \texttt{Compose.HeadExtendsRecord} & proved
-  (\texttt{head\_extends\_record}), with $\mathsf{NoColl}$\\
+  (\texttt{head\_extends\_record}), with $\mathsf{NoColl}$; the condition
+  \texttt{ServedAt} has no awake conjunct, which follows from the call\\
 A1.7 & \texttt{Compose.Inclusion} & proved (\texttt{inclusion\_sleepy}),
-  with the completed update at $t_s+6\Delta$ and $\mathsf{NoColl}$; it drops
-  $t\geq t_s+6\Delta$, awake at $t_s+6\Delta$ and $\mathsf{GenRoot}$, which
-  follow from the update clause and the run\\
+  with the completed update at $t_s+6\Delta$ and $\mathsf{NoColl}$; stronger
+  than A1.7 in form: it drops $t\geq t_s+6\Delta$, awake at~$t$, awake and
+  joined at $t_s+6\Delta$ and $\mathsf{GenRoot}$, which follow from the
+  call, the update clause and the run\\
 G1.1 & \texttt{FG.QuorumIntersection} & proved (\texttt{fg\_safety})\\
 G1.2 & \texttt{FG.FGParams.finalization\_meets\_crossing} & proved core
   lemma, note~1\\

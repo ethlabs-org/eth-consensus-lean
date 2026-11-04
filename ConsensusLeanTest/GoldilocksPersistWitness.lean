@@ -288,8 +288,8 @@ theorem tickRun_sleepy : (tickRun N1 dg1).SleepyRun Set.univ 1 := by
   · change (0 : Int) ≤ 4 * (s : Int) + 1; positivity
   · change (0 : Int) ≤ 4 * (s : Int) + 2 * 1; positivity
 
-/-- A1.6's `ServedAt` at the tick of time `8` (cut `64`, slot `2`): the validator is awake and
-joined, and ran the update of slot `0` at the tick of `t_0 + 6Δ = 6` (cut `48`), with no restart
+/-- A1.6's `ServedAt` at the tick of time `8` (cut `64`, slot `2`): a call of the validator, which
+is joined and ran the update of slot `0` at the tick of `t_0 + 6Δ = 6` (cut `48`), with no restart
 since. -/
 theorem servedAt_tickRun : Compose.ServedAt (tickRun N1 dg1) v0 64 := by
   have hl : ∀ t : Nat, (tickRun N1 dg1).label (8 * t) =
@@ -297,9 +297,9 @@ theorem servedAt_tickRun : Compose.ServedAt (tickRun N1 dg1) v0 64 := by
     intro t
     rw [tickRun_label, show 8 * t / 8 = t by omega, show 8 * t % 8 = 0 by omega]
     exact tickCuts_head N1 dg1 t
-  refine ⟨⟨_, rfl, hl 8⟩, by change (0 : Int) ≤ ((64 / 8 : Nat) : Int); positivity,
-    fun k hk => absurd hk (tickRun_no_restart _ k), 0, by rw [time_run, slot_nat], 48, by decide,
-    _, ⟨Compose.projAC_callAt.2 ⟨rfl, hl 6⟩, rfl, ?_, ?_⟩, fun k' _ _ => tickRun_no_restart _ k'⟩
+  refine ⟨⟨_, rfl, hl 8⟩, fun k hk => absurd hk (tickRun_no_restart _ k), 0,
+    by rw [time_run, slot_nat], 48, by decide, _,
+    ⟨Compose.projAC_callAt.2 ⟨rfl, hl 6⟩, rfl, ?_, ?_⟩, fun k' _ _ => tickRun_no_restart _ k'⟩
   · rw [time_eq, ts_nat]; rfl
   · rw [projAC_state']
     exact joined_of_bot (tickRun_restartTime 48) _

@@ -124,6 +124,23 @@ private theorem update_recent (hrun : GoldilocksRun proposer dg H tr) {y : Fin s
     have h₂ := hrun.time_mono hki.le
     exact hnr k' hr (by linarith) h₂
 
+/-- A node that has run the update of slot `s` was joined at `t_s + 6Δ`: the update is a tick (no
+restart) at `t_s + 6Δ` of a joined node. -/
+private theorem joinedAt_of_update (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i s : Nat} (hu : UpdatedNoRestart tr y i s) :
+    tr.JoinedAt y (sp.ts s + 6 * sp.Δ) := by
+  obtain ⟨k, -, ℓ, ⟨hc, htick, ht, hj⟩, -⟩ := hu
+  have hc' := projAC_callAt.1 hc
+  have hnr : ¬ tr.RestartAt y k := by
+    rintro ⟨ℓ', ⟨-, hl'⟩, hr'⟩
+    have h := hl'.symm.trans hc'.2
+    injection h with h
+    injection h with h
+    rw [h, htick] at hr'
+    cases hr'
+  rw [projAC_state hrun.toLocalRun hy k, ht] at hj
+  exact ((joined_projection sp ro dg H tr proposer hrun y hy _).2.1 k ⟨_, hc'⟩ hnr ht).2 hj
+
 /-- The record's block after the update moves forward to cut `i` (the record step at every honest
 cut). -/
 private theorem record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -143,8 +160,11 @@ private theorem record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : No
 
 /-- **A1.7, inclusion.** -/
 theorem inclusion_sleepy : Inclusion := by
-  intro sp ro proposer dg H tr ΔF hrun hnc hsl p hp k P s hP hPs hpj y hy i hc hyw hyj hyj₀ hnr
-    hu
+  intro sp ro proposer dg H tr ΔF hrun hnc hsl p hp k P s hP hPs hpj y hy i hc hyj hnr' hu
+  have hyw := hrun.awake_of_call y hy i hc
+  have hyj₀ := joinedAt_of_update hrun hy hu
+  have hnr : ∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' →
+      tr.time k' ≤ tr.time i → False := fun k' hr h₁ h₂ => not_le.2 (hnr' k' hr h₁) h₂
   have hinv := sleepy_invariant hrun hnc hsl
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer

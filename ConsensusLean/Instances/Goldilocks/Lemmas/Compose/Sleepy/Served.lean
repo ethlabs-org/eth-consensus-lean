@@ -1267,7 +1267,8 @@ theorem sleepy_served_facts (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hs : ServedAt tr y i) :
     ServedFacts tr H y i :=
   have hinv := sleepy_invariant hrun hnc hsl
-  have ⟨hc, hw, hj, _, hs', hu⟩ := hs
+  have ⟨hc, hj, _, hs', hu⟩ := hs
+  have hw := hrun.awake_of_call y hy i hc
   ⟨fun _ hR => served_head_support hinv hrun hnc hsl hy hc hw hj hs'.ge hu hR,
     record_step hinv hrun hnc hy i⟩
 
