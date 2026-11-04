@@ -2561,6 +2561,10 @@ A0.2 & \texttt{SA.ResolutionStable}, \texttt{SA.SupportInTree} & proved
 A0.3 & \texttt{SA.SupportersAntitone}, \texttt{SA.OpponentsMonotone},
   \texttt{SA.MajorityChain}, \texttt{SA.OptimisticChain},
   \texttt{SA.MergedOpponents} & proved (\texttt{acBase})\\
+A0.4 (a), (b), (f); A0.5 & \texttt{SA.LiveLocksChain}, \texttt{SA.CandidatesChain},
+  \texttt{SA.LockToTip} & proved (\texttt{acBase}); stronger than A0.4 and
+  A0.5: at a reachable state at every time~$t$, also before the state's last
+  call~$t_0$ (no $t\geq t_0$)\\
 A0.6 & \texttt{SA.InterfaceRequirements} & proved (\texttt{acBase});
   requirement~5 through A0.9\\
 A0.7 (pool, joining) & \texttt{SA.RestartState}, \texttt{SA.JoinedKeepsVotes}
@@ -2601,6 +2605,10 @@ A1.4 & \texttt{SA.OptimisticTransfer}, \texttt{SA.OptimisticNextUpdate} &
   optimistic confirmation of~$B$: it keeps only $f<n/2$, (a)'s conclusion
   (every honest slot-$(s+1)$ vote extends~$B$) and the updating node's
   premises\\
+A1.5 & \texttt{SA.SourceAge} & proved (\texttt{acSteps}); stronger than
+  A1.5 in form: over every AC trace with the local contract
+  (\texttt{ACLocalRun}), without the honest-object facts of
+  \texttt{ACRun} (signature provenance, slot proposer)\\
 A1.9 & \texttt{SA.SourceCompatible} & proved (\texttt{acSteps}), per call,
   without the public time, without $\Fr.F$ and $\fcroot$ compatible
   with~$B$ at the call, and in~(i) with only $\Fr.F$ compatible at the

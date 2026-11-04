@@ -620,16 +620,16 @@ theorem liveLocksChain_applies (h : LiveLocksChain sp) : ∀ t, 8 ≤ t →
     (∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, ∀ C ∈ liveLockBlocks sp S2.locks Φ₁ t,
       Compatible Φ₁.tree B C) ∧
     ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, B ∈ Φ₁.viableTree Φ₁.tree ∨ Φ₁.Anc B Φ₁.fcRoot :=
-  h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2
+  fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 theorem candidatesChain_applies (h : CandidatesChain sp) : ∀ t, 8 ≤ t →
     (∀ B ∈ toFGCandidates sp S2 Φ₁ t, ∀ C ∈ toFGCandidates sp S2 Φ₁ t,
       Compatible Φ₁.tree B C) ∧
     ∀ B ∈ toFGCandidates sp S2 Φ₁ t, Φ₁.Anc B (getAnchor sp S2 Φ₁ t) :=
-  h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2
+  fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 theorem lockToTip_applies (h : LockToTip sp) : ∀ t, 8 ≤ t →
     ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, Φ₁.Anc B ((lookup Φ₁ S2.latestConfirmed).getD Φ₁.F) :=
-  h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2
+  fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 end Consensus.Goldilocks.SA.Test.LockRule

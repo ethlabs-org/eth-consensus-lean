@@ -17,7 +17,8 @@ later than the vote (an update of slot `s` runs at `t_s + 6Δ`, after the slot-`
 and A1.7 are run-level (milestone Service).
 
 Every statement is over an AC trace of the Goldilocks SA with its contract and the honest-object
-facts (`ACRun`, for the honest validators `H` inside the coherent set `U` of all frame blocks),
+facts (`ACRun`, for the honest validators `H` inside the coherent set `U` of all frame blocks;
+A1.5, `SourceAge`, over the contract `ACLocalRun` only),
 with the network premises over the trace (`SyncAC`, `Carry` / `CarryAt`, `FaultBound`), never
 over the FG state. `NoColl` is the coherence of `U` (roots injective; every AC lookup goes through
 frames inside `U`). The SA is parametric in its restart replay order and the statements quantify
@@ -132,11 +133,13 @@ def OptimisticNextUpdate : Prop :=
 
 /-- **A1.5, source age.** From slot `slot(τ) + 3` on, every block that `ac_to_fg` returns at an
 honest node is the block of a fast lock that node wrote after `τ`: at or below the block of a
-fast lock of a slot `s'` with `slot(t) ≤ s' + 2`, written at a cut after `τ`. -/
+fast lock of a slot `s'` with `slot(t) ≤ s' + 2`, written at a cut after `τ`. It needs only the
+AC trace contract (`ACLocalRun`), not the honest-object facts of `ACRun` (signature provenance,
+slot proposer). -/
 def SourceAge : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
-    ACRun proposer tr H U → ∀ (τ : Time) (x : Fin sp.n) (i : Nat)
+    (tr : SATrace sp FGP ro),
+    ACLocalRun (goldilocksSA sp FGP ro) H U tr → ∀ (τ : Time) (x : Fin sp.n) (i : Nat)
       (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
     x ∈ H → ToFGAt tr x i ℓ C → sp.slot τ + 3 ≤ sp.slot (tr.time i) →
     ∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧

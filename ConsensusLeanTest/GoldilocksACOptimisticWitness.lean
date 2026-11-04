@@ -24,7 +24,8 @@ The run `trW` (each post-state the call's literal output, threaded):
 | 3 | `14 = t_2 + 6Δ` | `ac_on_tick` | the update of slot `2` |
 
 `*_premises_satisfiable` state, for each statement at `sp1`, `FGP := Unit`, `ro1`, that there are
-values of all its universally bound variables satisfying `ACRun` and every hypothesis (copied from
+values of all its universally bound variables satisfying `ACRun` (`ACLocalRun` for `SourceAge`)
+and every hypothesis (copied from
 the statement); `*_on_witness` apply the proved milestones (`acStepsAt`) to the run. -/
 
 namespace Consensus.Goldilocks.SA.Test
@@ -935,11 +936,11 @@ the run at `τ = 0`: `ac_to_fg` returns `B1` at cut 2, time `12`, and
 `slot(0) + 3 = 3 = slot(12)`. -/
 theorem sourceAge_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
-      (proposer : Nat → Fin sp1.n) (τ : Time) (x : Fin sp1.n) (i : Nat)
+      (τ : Time) (x : Fin sp1.n) (i : Nat)
       (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (C : Blk sp1.n Unit),
-    ACRun proposer tr H U ∧
+    ACLocalRun (goldilocksSA sp1 Unit ro1) H U tr ∧
     x ∈ H ∧ ToFGAt tr x i ℓ C ∧ sp1.slot τ + 3 ≤ sp1.slot (tr.time i) :=
-  ⟨Set.univ, U₁, trW, fun _ => v0, 0, v0, 2, ℓ2, B1, acRun_W, trivial, toFG_W, by decide⟩
+  ⟨Set.univ, U₁, trW, 0, v0, 2, ℓ2, B1, acRun_W.localRun, trivial, toFG_W, by decide⟩
 
 /-! ## The milestones on the witness -/
 
@@ -963,7 +964,7 @@ lock of a slot `s'` with `slot(12) ≤ s' + 2`, written after time `0`. -/
 theorem sourceAge_on_witness :
     ∃ j ≤ 2, ∃ s' B' CV', FastLockAt trW v0 j s' B' CV' ∧ (0 : Time) < trW.time j ∧
       sp1.slot (trW.time 2) ≤ s' + 2 ∧ Anc U₁ B1 B' :=
-  (acStepsAt sp1).sourceAge Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W 0 v0 2 ℓ2 B1 trivial
+  (acStepsAt sp1).sourceAge Unit ro1 Set.univ U₁ trW acRun_W.localRun 0 v0 2 ℓ2 B1 trivial
     toFG_W (by decide)
 
 end Consensus.Goldilocks.SA.Test

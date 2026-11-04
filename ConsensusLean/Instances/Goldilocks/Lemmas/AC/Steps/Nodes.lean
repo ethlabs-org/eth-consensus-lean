@@ -380,15 +380,15 @@ private theorem mem_toFGCandidates {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.
 
 /-- **A1.5.** -/
 theorem source_age : SourceAge sp := by
-  intro FGP ro H U tr proposer hrun τ x i ℓ C hx hto hslot
+  intro FGP ro H U tr hrun τ x i ℓ C hx hto hslot
   obtain ⟨hc, -, hC⟩ := hto
   obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates sp hC
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
-    fast_lock_provenance hrun.localRun hx i l₀ hl₀ hlf
-  have hU := hrun.localRun.coherent
+    fast_lock_provenance hrun hx i l₀ hl₀ hlf
+  have hU := hrun.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-    rcases hrun.localRun.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
+    rcases hrun.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
       exact h.1
   refine ⟨j, hj.le, l₀.slot, B', CV', hfl, ?_, hls, ?_⟩
   · -- the lock was written in a slot after `τ`'s
@@ -409,7 +409,7 @@ theorem source_age : SourceAge sp := by
       linarith
     · refine lt_of_lt_of_le hτ ?_
       rw [← hs]
-      exact ((ts_le_iff_le_slot sp (hrun.localRun.time_nonneg j)) _).2 le_rfl
+      exact ((ts_le_iff_le_slot sp (hrun.time_nonneg j)) _).2 le_rfl
   · -- `C` is the viable ancestor of the lock's block, which is `L`
     have hCt : C ∈ ℓ.frame.tree := hCv.1
     obtain ⟨hvat, hva⟩ := viableAncestor_anc hΦ hB₀

@@ -174,12 +174,12 @@ def MergedOpponents : Prop :=
     ∀ (σ : Nat) (B : Blk sp.n FGP), sp.slot t₀ = σ + 1 →
       opponents sp Φ (mergedVoteView sp A Φ (σ + 1)) σ B ⊆ opponents sp Φ (voteView A Φ σ ⊤) σ B
 
-/-- **A0.4 (a), (b), the live locks.** At a reachable state and every later time, the blocks of
-the live locks lie on one chain, and each is in the viable tree or at or below `fc_root`. -/
+/-- **A0.4 (a), (b), the live locks.** At a reachable state and every time, the blocks of the
+live locks lie on one chain, and each is in the viable tree or at or below `fc_root`. -/
 def LiveLocksChain : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ t₀ =>
-    ∀ t, t₀ ≤ t →
+    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    ∀ t,
       (∀ B ∈ liveLockBlocks sp A.locks Φ t, ∀ C ∈ liveLockBlocks sp A.locks Φ t,
         Compatible Φ.tree B C) ∧
       ∀ B ∈ liveLockBlocks sp A.locks Φ t, B ∈ Φ.viableTree Φ.tree ∨ Φ.Anc B Φ.fcRoot
@@ -213,22 +213,21 @@ def UnlockNoFallback : Prop :=
     2 * (equivocators V.votes).ncard < sp.n →
       2 * (opponents sp Φ V s Φ.F).ncard < sp.n
 
-/-- **A0.4 (f), the FG candidates.** At a reachable state and every later time, the candidates
-of `ac_to_fg` lie on one chain and the anchor extends each of them. -/
+/-- **A0.4 (f), the FG candidates.** At a reachable state and every time, the candidates of
+`ac_to_fg` lie on one chain and the anchor extends each of them. -/
 def CandidatesChain : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ t₀ =>
-    ∀ t, t₀ ≤ t →
+    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    ∀ t,
       (∀ B ∈ toFGCandidates sp A Φ t, ∀ C ∈ toFGCandidates sp A Φ t, Compatible Φ.tree B C) ∧
       ∀ B ∈ toFGCandidates sp A Φ t, Φ.Anc B (getAnchor sp A Φ t)
 
-/-- **A0.5, lock to tip.** At a reachable state and every later time, every block of a live
-lock is an ancestor of the effective record: `latest_confirmed` when it is in the tree, else
-`Φ.F`. -/
+/-- **A0.5, lock to tip.** At a reachable state and every time, every block of a live lock is
+an ancestor of the effective record: `latest_confirmed` when it is in the tree, else `Φ.F`. -/
 def LockToTip : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ t₀ =>
-    ∀ t, t₀ ≤ t → ∀ B ∈ liveLockBlocks sp A.locks Φ t,
+    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    ∀ t, ∀ B ∈ liveLockBlocks sp A.locks Φ t,
       Φ.Anc B ((lookup Φ A.latestConfirmed).getD Φ.F)
 
 /-- **A0.6, the interface requirements 1–4** of composition.tex §"The available chain", for the

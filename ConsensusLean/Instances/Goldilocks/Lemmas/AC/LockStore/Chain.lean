@@ -116,13 +116,13 @@ variable (sp)
 
 /-- **A0.4 (a), (b).** -/
 theorem live_locks_chain : LiveLocksChain sp := by
-  intro FGP ro x U hU A Φ t₀ hr t _
+  intro FGP ro x U hU A Φ t₀ hr t
   obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr
   exact ⟨h.liveBlocks_chain hU hΦ hΦU, fun B hB => liveLockBlock_candidate hΦ hB⟩
 
 /-- **A0.4 (f).** -/
 theorem candidates_chain : CandidatesChain sp := by
-  intro FGP ro x U hU A Φ t₀ hr t _
+  intro FGP ro x U hU A Φ t₀ hr t
   obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr
   have hsub : toFGCandidates sp A Φ t ⊆ liveLockBlocks sp A.locks Φ t := by
     rintro B ⟨hB, l, hl, hlb, -⟩
@@ -132,7 +132,7 @@ theorem candidates_chain : CandidatesChain sp := by
 
 /-- **A0.5.** -/
 theorem lock_to_tip : LockToTip sp := by
-  intro FGP ro x U hU A Φ t₀ hr t _ B hB
+  intro FGP ro x U hU A Φ t₀ hr t B hB
   obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ := lockInv_of_reachable hU hr
   obtain ⟨E, hE, hEr, hBE⟩ := h.liveBlock_anc hU hΦ hΦU hB
   have : lookup Φ A.latestConfirmed = some E := by
