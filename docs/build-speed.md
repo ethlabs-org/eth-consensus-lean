@@ -58,8 +58,21 @@ All four proof-speed commits together, cold build of the default targets back to
 `ad13a491`: wall 388.3 → 369.5 s (−4.9%), CPU 1,467 → 1,374 s (−6.3%), critical path
 242.3 → 223.8 s (−7.6%), simulated on 8 cores 267.0 → 246.6 s (−7.6%).
 
-The tactic front end in the historical table is deferred until the structural changes land.
-Its measurements do not claim a speedup in the current tree.
+The tactic front end on `eth-consensus-lean`, measured in a 2 vCPU orb (Xeon @ 2.6 GHz, 3 GB),
+base `3e503e87` (front end landed, no caller imports) against `59c7e3cd` (the 208 generated
+caller imports, `scripts/linarith-imports.py`), same machine, interleaved base/new/base/new,
+best of two:
+
+- Module alone (`time-modules.py`, jobs 1): the 12 modules with the most plain calls
+  69.7 → 58.8 s wall (−15.6%), 111.7 → 94.3 s CPU (−15.6%), every one faster (−6% to −32%;
+  `Obligations.HealthyResetEnvelope` 9.5 → 6.5 s, `Healing.M1.FreshLock` 6.7 → 4.9 s,
+  `Healing.Acquire` 6.4 → 4.9 s); three heavy unchanged controls 19.5 → 18.7 s (−4.0%, drift),
+  none slower, so about −12% net of that drift.
+- Cold build of the default targets (`rm -rf .lake/build`, `LAKE_ARTIFACT_CACHE=false`,
+  `lakeprof record lake build`; the 516 project modules, packages prebuilt): wall 801.8 → 759.0 s
+  (−5.3%), summed module time 1,502.5 → 1,435.8 s (−4.4%), critical path 289.8 → 265.6 s
+  (−8.4%), simulated on 8 cores 311.4 → 290.6 s (−6.7%). Both rounds agree in sign; round to
+  round, base varied by 3%.
 
 ## The critical path is the proof structure
 
