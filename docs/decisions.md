@@ -785,6 +785,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `scripts/push-main.sh` stays the landing path, its local check unchanged. `ci.yml` now installs bubblewrap: the
   box CI sandbox self-test failed on Actions because `bwrap` was missing (runs 41800845655, 41830574497); no check is
   weakened.
+- 2026-11-04, Francesco (cutover step 10): **commit emails are checked against a public allowlist** instead of an
+  ongoing private-address scan. `scripts/check-commit-emails.py` checks the author, committer and `Co-authored-by:`
+  addresses of every new commit against `scripts/commit-emails.toml` (GitHub `users.noreply.github.com` addresses
+  and the named service identities); it runs in `check` on every PR and main push and in `scripts/push-main.sh`
+  before the push, and a failure names the commit and field, never the address. So no private address is ever
+  written to the repository or a log. CI detects an upload after the fact; push-main stops a landing before it. The
+  migration operator's private exact-address scan stays an occasional manual check, outside the repository.
 
 ## Open, for the owner
 

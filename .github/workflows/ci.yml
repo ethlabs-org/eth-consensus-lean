@@ -24,10 +24,11 @@ permissions:
   contents: read
 
 concurrency:
-  # One group per PR (and per pushed ref): a newer push supersedes a running check of the same PR or ref, on main
-  # too (its tree contains the older commits).
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # One group per PR: a newer push to a PR supersedes its running check. Every other run (each head of main, a
+  # dispatch) is its own group and is never cancelled or replaced, so green CI stays per commit. (A shared group
+  # without cancellation would still drop all but the newest pending run.)
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -256,3 +257,14 @@ jobs:
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: scripts/review-boundary.sh "$BASE"
+
+      # Every new commit's author, committer and Co-authored-by addresses are on the public allowlist
+      # (scripts/commit-emails.toml). A PR checks its own commits (base..head, not GitHub's merge commit); a push to
+      # main the commits since the previous head; a dispatch or a first push the whole history. A failure names the
+      # commit and the field, never the address. Detection after upload; push-main.sh runs it before the push.
+      - name: Commit emails on the allowlist
+        if: ${{ !cancelled() }}
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: python3 -I scripts/check-commit-emails.py "$BASE" "$HEAD_SHA"

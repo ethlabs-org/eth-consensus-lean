@@ -1443,6 +1443,7 @@ run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
 run_selftest "0 orb notes self-test (bounded/legacy/missing terminator)" bash scripts/test_agent_notes.sh
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
+run_selftest "0 commit email allowlist self-test (throwaway repositories)" python3 -I scripts/test_check_commit_emails.py
 run_selftest "0 box CI parity self-test (local Git remotes)" python3 -I scripts/test_orb_ci.py
 run_selftest "0 box CI liveness alert self-test" python3 -I scripts/test_orb_ci_liveness.py
 run_selftest "0 box CI sandbox self-test (isolation probes)" bash scripts/ci-sandbox.sh --self-test

@@ -5,7 +5,9 @@
 #   - `scripts/check.sh --changed origin/main` passes (the downstream cone of the change; a change to scripts/ or the
 #     build configuration runs the whole fast mode, with self-tests for scripts/),
 #   - `scripts/review-boundary.sh origin/main` passes (every commit that touches the trusted surface carries a
-#     `Trusted-surface: <what and why>` line);
+#     `Trusted-surface: <what and why>` line),
+#   - `scripts/check-commit-emails.py origin/main HEAD` passes (every author, committer and co-author address of the
+#     commits to push is on the public allowlist scripts/commit-emails.toml);
 # then it records HEAD as verified (for the pre-push hook scripts/hooks/pre-push), pushes HEAD to main as a
 # fast-forward of the commit it checked against, and prints the check's result line. A landing that touches the
 # trusted surface is then recorded on issue PUSH_MAIN_TRUSTED_ISSUE (default 129) of the coordination repository
@@ -123,6 +125,9 @@ while :; do
   phase=$SECONDS
   scripts/review-boundary.sh "$base" || die "review boundary: label each commit that touches the trusted surface with a Trusted-surface: line"
   timing review-boundary "$phase"
+  # Before the upload: the email allowlist of every commit to push (scripts/commit-emails.toml; CI runs it again).
+  python3 -I scripts/check-commit-emails.py "$base" "$head" ||
+    die "commit emails: rewrite the commits above with an allowed address (scripts/commit-emails.toml)"
   git fetch -q --tags --force "$remote" main
   if [[ "$(git rev-parse "$remote/main")" == "$base" ]]; then
     # Without the lock, don't overtake a lander that holds it (it checked against this same main).
@@ -132,13 +137,20 @@ while :; do
         die "HEAD or tree changed during checks"
       echo "$head" >>"$(git rev-parse --git-common-dir)/push-main-verified"
       phase=$SECONDS
-      if git push --force-with-lease="refs/heads/main:$base" "$remote" "$head:refs/heads/main"; then
+      if out="$(git push --force-with-lease="refs/heads/main:$base" "$remote" "$head:refs/heads/main" 2>&1)"; then
+        printf '%s\n' "$out"
         release
         timing delivery "$phase"
         echo "push-main: pushed ${head:0:8} to main after: $result"
         record_trusted "$base" "$head"
         exit 0
       fi
+      printf '%s\n' "$out" >&2
+      # The remote itself declined (a ruleset such as GH013 "must be made through a pull request", a protected
+      # branch, a hook): no rebase or retry can fix that, so stop at once (die releases the lock). Only a lease
+      # rejection (main moved) is contention.
+      grep -q '\[remote rejected\]' <<<"$out" &&
+        die "the remote declined the push to main, not because main moved ($(grep -m1 -oE 'GH[0-9]+[^.]*|\[remote rejected\].*' <<<"$out")): nothing was pushed; fix the access or the rule, then run this again"
       echo "push-main: the push was rejected (main moved at the last moment)"
     fi
   fi

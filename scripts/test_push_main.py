@@ -16,6 +16,8 @@ def run(*args, cwd):
 
 
 REPOS = 'code = "fixture/code"\nissues = "fixture/coordination"\n'
+# The email allowlist check (its verdicts: test_check_commit_emails.py); EMAILS_FAIL=1 makes it reject.
+EMAILS = "import os, sys\nprint('emails fixture')\nsys.exit(int(os.environ.get('EMAILS_FAIL', '0')))\n"
 GH = """#!/bin/sh
 printf '%s\\n' "$*" >>"$GH_LOG"
 """
@@ -34,6 +36,7 @@ def landing_repo(root, repos=REPOS, trusted=False):
     (scripts / "check.sh").write_text("#!/bin/sh\necho 'check.sh: PASSED (fixture)'\n")
     (scripts / "review-boundary.sh").write_text("#!/bin/sh\nexit 0\n")
     (scripts / "repos.toml").write_text(repos)
+    (scripts / "check-commit-emails.py").write_text(EMAILS)
     (scripts / "boundaries.toml").write_text('[checks]\ntrusted_paths = ["Trusted.lean"]\n')
     for script in scripts.glob("*.sh"):
         script.chmod(0o755)
@@ -71,6 +74,48 @@ def check_trusted_record_goes_to_the_issues_repo():
         assert calls and all(" -R fixture/coordination " in f" {c} " for c in calls), calls
         assert any(c.startswith("issue comment 129 ") for c in calls), calls
     print("PASS: the trusted-surface record goes to issue #129 of the coordination repository")
+
+
+def check_remote_rule_rejection_fails_hard():
+    # A rule of the remote (here a pre-receive hook standing in for GitHub's GH013 ruleset rejection) declines the
+    # push to main: push-main stops after that one attempt, says why, and leaves no lock; it does not retry it as
+    # contention.
+    with tempfile.TemporaryDirectory(prefix="push-main-test-") as tmp:
+        root = Path(tmp)
+        remote, repo, env = landing_repo(root)
+        base = run("git", "rev-parse", "main", cwd=remote)
+        hook = remote / "hooks/pre-receive"
+        hook.write_text(f"""#!/bin/sh
+while read old new ref; do
+  if [ "$ref" = refs/heads/main ]; then
+    echo attempt >>"{root}/main-pushes"
+    echo "error: GH013: Repository rule violations found for refs/heads/main." >&2
+    exit 1
+  fi
+done
+""")
+        hook.chmod(0o755)
+        rc, out = land(repo, env)
+        assert rc == 1 and "REFUSED: the remote declined the push to main, not because main moved (GH013" in out, out
+        assert (root / "main-pushes").read_text().count("attempt") == 1, "retried a rule rejection"
+        assert run("git", "rev-parse", "main", cwd=remote) == base
+        assert not run("git", "branch", "--list", "push-main-lock", cwd=remote), "lock leaked"
+        assert "main moved at the last moment" not in out, out
+    print("PASS: a rule rejection by the remote (GH013) fails after one attempt, with no lock left")
+
+
+def check_refuses_a_commit_email_off_the_allowlist():
+    with tempfile.TemporaryDirectory(prefix="push-main-test-") as tmp:
+        root = Path(tmp)
+        remote, repo, env = landing_repo(root)
+        base = run("git", "rev-parse", "main", cwd=remote)
+        rc, out = land(repo, {**env, "EMAILS_FAIL": "1"})
+        assert rc == 1 and "REFUSED: commit emails" in out, out
+        assert run("git", "rev-parse", "main", cwd=remote) == base, "pushed despite a rejected email"
+        assert not run("git", "branch", "--list", "push-main-lock", cwd=remote), "lock leaked"
+        rc, out = land(repo, env)  # control: the same change lands once the check passes
+        assert rc == 0 and run("git", "rev-parse", "main", cwd=remote) != base, out
+    print("PASS: a commit email off the allowlist is refused before the push; the control lands")
 
 
 def check_refuses_an_origin_other_than_the_code_repo():
@@ -155,6 +200,7 @@ echo 'check.sh: PASSED (fixture)'
 ''')
         (scripts / "review-boundary.sh").write_text("#!/bin/sh\nexit 0\n")
         (scripts / "repos.toml").write_text(REPOS)
+        (scripts / "check-commit-emails.py").write_text(EMAILS)
         for script in scripts.iterdir():
             script.chmod(0o755)
         run("git", "add", ".", cwd=repo)
@@ -231,4 +277,6 @@ if __name__ == "__main__":
         check(None, mutation, before_rebase=True)
     check_trusted_record_goes_to_the_issues_repo()
     check_refuses_an_origin_other_than_the_code_repo()
+    check_refuses_a_commit_email_off_the_allowlist()
+    check_remote_rule_rejection_fails_hard()
     check_renaming_the_code_repository_lands_under_the_old_name_then_freezes()

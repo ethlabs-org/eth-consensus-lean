@@ -52,7 +52,10 @@ the archive of the history before the email rewrite; code, branches and PRs are 
 - **Land on main (trunk-based, owner 2026-10-30, #2)** with `scripts/push-main.sh`, never a bare `git push` to
   `main`: after rebasing on `origin/main` and committing everything, it runs `scripts/check.sh --changed
   origin/main` (the change's cone; the whole fast mode with self-tests for a `scripts/` change) and
-  `scripts/review-boundary.sh`, and pushes only if both pass, printing the check's result line. If main moves during the check, it takes the landing
+  `scripts/review-boundary.sh`, and pushes only if both pass and every commit's author, committer and co-author
+  address is on the public allowlist `scripts/commit-emails.toml` (`scripts/check-commit-emails.py`), printing the
+  check's result line. It stops at once, releasing the lock, when the remote itself declines the push (a ruleset or
+  protected-branch rejection such as GH013). If main moves during the check, it takes the landing
   lock (the remote branch `push-main-lock`), rebases and checks again; other landers wait for the lock instead of
   checking in vain (#50). Never create or delete that branch by hand except to clear a dead lock (it also expires). The pre-push hook
   `scripts/hooks/pre-push` refuses a push to `main` of a commit the script did not check; enable it once per clone

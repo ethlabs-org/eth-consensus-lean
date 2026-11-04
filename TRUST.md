@@ -106,11 +106,13 @@ code a collaborator wrote: it runs on a fresh GitHub-hosted runner, on the `pull
 project build: a proof change merged after a green fast run is replayed by the kernel at the latest the next night.
 `lake check` and `lake comparator --paranoid` run inside bubblewrap, which the workflow installs (and smoke-tests:
 the job fails if user namespaces are blocked). The kernels are the toolchain's own, pinned by `lean-toolchain`
-(leanchecker, leanchecker-paranoid, lean4lean, nanoda, con-leche, con-ron). Full CI rejects skipped or deferred
-steps and a dirty tree; without bubblewrap a standalone check skips these steps and lists them as CI-only, which is
-not a passing full CI result. `scripts/orb-ci.sh` and the box units (the former CI of record, with results on
+(leanchecker, leanchecker-paranoid, lean4lean, nanoda, con-leche, con-ron). Full CI rejects any skipped step and a
+dirty tree; part main may defer only step 10 (`lake check`), which part lake-check must pass. Without bubblewrap a
+standalone check skips these steps and lists them as CI-only, which is not a passing full CI result. `scripts/orb-ci.sh` and the box units (the former CI of record, with results on
 [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63)) remain in the repository, unused; their
-self-tests still run. No trust-check verdict changed in the move.
+self-tests still run. No trust-check verdict changed in the move. `check` and `scripts/push-main.sh` also check that
+every new commit's author, committer and co-author addresses are on the public allowlist `scripts/commit-emails.toml`
+(`scripts/check-commit-emails.py`; a privacy check, not a trust check).
 
 Step 3c is **report only**, not a new trust gate. `scripts/sorry-inventory.py` reads the
 Accepted ledger's `toml sorry-inventory` block (`modules`, `roots`) and compiled tables

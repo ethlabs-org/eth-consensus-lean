@@ -1,0 +1,10 @@
+# Allowed commit email addresses (scripts/check-commit-emails.py; owner, 2026-11-04, docs/decisions.md): every new
+# commit's author, committer and `Co-authored-by:` addresses must match. Public by design: list only public service
+# or GitHub noreply addresses here, never a personal address. Matching is case-insensitive.
+suffixes = ["@users.noreply.github.com"]  # GitHub's per-account noreply addresses (<id>+<login>@...)
+addresses = [
+  "amp@ampcode.com",        # Amp's co-author trailer
+  "noreply@anthropic.com",  # Claude Code's co-author trailer
+  "noreply@openai.com",     # Codex's co-author trailer
+  "noreply@github.com",     # GitHub as committer (web edits, merges, the merge ref of a PR)
+]

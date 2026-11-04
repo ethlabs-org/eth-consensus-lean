@@ -874,7 +874,9 @@ The box runs no CI and is not part of verification. A green CI result means the 
 `check` (`.github/workflows/ci.yml`: the fast tier and the review boundary) on every pull request and every push to
 `main`, and `full` (`.github/workflows/full.yml`: the full tier, in two parallel parts) nightly at 03:17 UTC, on
 `milestone*`/`release*` tags and on demand. Pull requests run on the `pull_request` event with a read-only token and
-no secrets. Each run's summary shows the check's result and SKIP lines; its log is an artifact, and on main the step 3c
+no secrets. `check` also checks every new commit's author, committer and `Co-authored-by:` addresses against the
+public allowlist `scripts/commit-emails.toml` (`scripts/check-commit-emails.py`; `push-main.sh` runs it before the
+push). Each run's summary shows the check's result and SKIP lines; its log is an artifact, and on main the step 3c
 sorry inventory too. Results are no longer posted to
 [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63), which keeps the box rows of the old history.
 `scripts/orb-ci.sh`, `scripts/orb-ci-refresh.sh`, `scripts/orb-ci-liveness.py`, `scripts/publish-inventory.py` and the box
