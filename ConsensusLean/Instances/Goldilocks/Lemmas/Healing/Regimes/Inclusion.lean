@@ -320,10 +320,9 @@ private theorem tree_slot_le (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp
 
 /-- **R.2, `growSleepy`.** -/
 theorem grow_sleepy : GrowSleepy := by
-  intro sp ro dg H tr proposer ΔF k hrun hnc hsl hk t ht hrec _
+  intro sp ro dg H tr proposer ΔF k hrun hnc hsl hk D t ht hrec
   have hΔ := sp.toParams.hΔ
   have hcoh := honest_blocks_coherent hrun.toLocalRun hnc
-  set D := (4 * (k : Time) + 6) * sp.Δ
   -- the window `(t, t + 4kΔ]` has a ready proposer
   set s₀ := sp.slot t + 1
   have hts₀ : t < sp.ts s₀ := by
@@ -374,7 +373,7 @@ theorem grow_sleepy : GrowSleepy := by
     change P.slot ≤ (SA.acConfirmed sp (tr.state x jx).ac (Node.frame (tr.state x jx)) t).slot
       at this
     omega
-  refine ⟨sp.ts s, P, hts, hRP, hinc, fun x jx hx hjx => ⟨hnot x jx hx hjx, fun y j hy hj => ?_⟩⟩
+  refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
   rcases sleepy_reads_compatible hrun hnc hsl x hx.1 y hy.1 jx j t (t + D) with h | h
   · exact h
   · exact absurd ((hinc y j hy hj).trans h) (hnot x jx hx hjx)

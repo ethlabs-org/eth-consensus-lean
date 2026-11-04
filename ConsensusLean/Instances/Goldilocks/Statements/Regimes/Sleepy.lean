@@ -112,29 +112,26 @@ def IncludeSleepy : Prop :=
       ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) P (readAfter tr y j t)
 
-/-- **R.2, `growSleepy` / `sleepyLive`.** Under `Sleepy` with one honest ready proposer in every
-window of `k ≥ 1` slots up to the read time: for every `t ≥ 0` with a node ready at `t + D`, `D =
-(4k + 6)Δ`, some honest proposal `P` released at `τ > t` by a proposer ready at `τ` is a new common
-entry at
-`t + D`: it is in the read at `t + D` of every node ready then, in none of the reads at `t` of the
-nodes ready then, and each of those reads is an ancestor of each ready read at `t + D`. -/
+/-- **R.2, `growSleepy` / `sleepyLive`.** Under `Sleepy`, for every `t ≥ 0` with one honest ready
+proposer in every window of `k ≥ 1` slots up to the read time `t + D`, `D = (4k + 6)Δ`, some
+honest proposal `P` released at `τ > t` by a proposer ready at `τ` is a new common entry at
+`t + D`: it is in the read at `t + D` of every node ready then and in none of the reads at `t` of
+the nodes ready then, and each of those reads is an ancestor of each ready read at `t + D`. -/
 def GrowSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF → 1 ≤ k →
-    ∀ t, 0 ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k 0 (t + (4 * k + 6) * sp.Δ) →
-      (∃ v, ReadyAt tr H (catchUp sp) v (t + (4 * k + 6) * sp.Δ)) →
+    let D := (4 * k + 6) * sp.Δ
+    ∀ t, 0 ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k 0 (t + D) →
       ∃ τ P, t < τ ∧ ReadyProposalAt tr H (catchUp sp) τ P ∧
-        (∀ y j, ReadyAt tr H (catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
-          CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
-          Anc (tr.HonestBlocks H) P (readAfter tr y j (t + (4 * k + 6) * sp.Δ))) ∧
-        ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
-          ¬ Anc (tr.HonestBlocks H) P (readAfter tr x jx t) ∧
-          ∀ y j, ReadyAt tr H (catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
-            CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
-            Anc (tr.HonestBlocks H) (readAfter tr x jx t)
-              (readAfter tr y j (t + (4 * k + 6) * sp.Δ))
+        (∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
+          Anc (tr.HonestBlocks H) P (readAfter tr y j (t + D))) ∧
+        (∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
+          ¬ Anc (tr.HonestBlocks H) P (readAfter tr x jx t)) ∧
+        ∀ x jx y j, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
+          ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
+          Anc (tr.HonestBlocks H) (readAfter tr x jx t) (readAfter tr y j (t + D))
 
 end Consensus.Goldilocks.Regimes
 

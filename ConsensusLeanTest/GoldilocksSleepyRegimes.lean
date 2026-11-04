@@ -13,8 +13,8 @@ time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with `Δ_F = 1` and ca
   is the first cut after `t`, for every `t ∈ ℕ`; the own block `blk s` of slot `s ≥ 1` is a ready
   proposal released at `t_s` (cut `8·t_s + 2`).
 * (a) `sleepySafe_premises`, `includeSleepy_premises`, `growSleepy_premises`: the premises of
-  `SleepySafe`, `IncludeSleepy` and `GrowSleepy` (at `k = 1`, `ProposerRecurrence … 1 0 (t + 10Δ)`
-  and a node ready at `t + 10Δ`) hold together, with ready readers at these read points and cuts.
+  `SleepySafe`, `IncludeSleepy` and `GrowSleepy` (at `k = 1`, `ProposerRecurrence … 1 0 (t + 10Δ)`)
+  hold together, with ready readers at these read points and cuts.
 * (b) `tickRun_sleepySafe`: `sleepy_safe` at the reads `(8t, t)` and `(8t', t')`: compatible, and
   the earlier one an ancestor of the later one.
   `tickRun_includeSleepy`: `include_sleepy` puts `blk s` in the read after every `t ≥ t_s + 6Δ`.
@@ -97,17 +97,15 @@ theorem includeSleepy_premises (s t : Nat) (hs : 1 ≤ s) (ht : 4 * s + 6 ≤ t)
   omega
 
 /-- (a) **The premises of `GrowSleepy` at `k = 1`**: a Goldilocks run with `NoColl` and `Sleepy`,
-`t ≥ 0`, a ready proposer at every slot start (`ProposerRecurrence … 1 0 (t + 10Δ)`), and a node
-ready at `t + 10Δ`; and the validator ready at `t` and at `t + 10Δ`, with the first cuts
-`8(t + 1)` after `t` and `8(t + 11)` after `t + 10Δ`. -/
+`t ≥ 0` and a ready proposer at every slot start (`ProposerRecurrence … 1 0 (t + 10Δ)`); and the
+validator ready at `t` and at `t + 10Δ`, with the first cuts `8(t + 1)` after `t` and `8(t + 11)`
+after `t + 10Δ`. -/
 theorem growSleepy_premises (t : Nat) :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
       Compose.NoCollRun dg1 (tickRun N1 dg1) ∧ (tickRun N1 dg1).SleepyRun Set.univ 1 ∧
       1 ≤ 1 ∧ (0 : Time) ≤ t ∧
       Regimes.ProposerRecurrence (tickRun N1 dg1) Set.univ (fun _ => v0) (Regimes.catchUp sp1) 1
         0 (t + (4 * 1 + 6) * sp1.Δ) ∧
-      (∃ v, Regimes.ReadyAt (tickRun N1 dg1) Set.univ (Regimes.catchUp sp1) v
-        (t + (4 * 1 + 6) * sp1.Δ)) ∧
       Regimes.ReadyAt (tickRun N1 dg1) Set.univ (Regimes.catchUp sp1) v0 t ∧
       Regimes.CutAfter (tickRun N1 dg1) (8 * (t + 1)) t ∧
       Regimes.ReadyAt (tickRun N1 dg1) Set.univ (Regimes.catchUp sp1) v0
@@ -115,7 +113,7 @@ theorem growSleepy_premises (t : Nat) :
       Regimes.CutAfter (tickRun N1 dg1) (8 * (t + 11)) (t + (4 * 1 + 6) * sp1.Δ) := by
   refine ⟨tickRun_goldilocksRun, dg1_noColl _, tickRun_sleepy, le_rfl, Int.natCast_nonneg _,
     fun s₀ _ _ => ⟨s₀, le_rfl, Nat.lt_succ_self _, tickRun_readyAt _ _ _⟩,
-    ⟨v0, tickRun_readyAt _ _ _⟩, tickRun_readyAt _ _ _, tickRun_cutAfter t,
+    tickRun_readyAt _ _ _, tickRun_cutAfter t,
     tickRun_readyAt _ _ _, ?_⟩
   have h := tickRun_cutAfter (t + 10)
   rwa [show (((t + 10 : Nat)) : Time) = t + (4 * 1 + 6) * sp1.Δ by rw [delta1]; push_cast; ring]
@@ -160,11 +158,10 @@ theorem tickRun_growSleepy (t : Nat) :
       Anc ((tickRun N1 dg1).HonestBlocks Set.univ)
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * (t + 1)) t)
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * (t + 11)) (t + (4 * 1 + 6) * sp1.Δ)) := by
-  obtain ⟨hrun, hnc, hsl, hk, ht, hrec, hv, hx, hjx, hy, hj⟩ := growSleepy_premises t
-  obtain ⟨τ, P, hτ, hP, hin, hnew⟩ := Regimes.grow_sleepy sp1 ro1 dg1 Set.univ (tickRun N1 dg1)
-    (fun _ => v0) 1 1 hrun hnc hsl hk t ht hrec hv
-  obtain ⟨hnot, hanc⟩ := hnew v0 _ hx hjx
-  exact ⟨τ, P, hτ, hP, hin v0 _ hy hj, hnot, hanc v0 _ hy hj⟩
+  obtain ⟨hrun, hnc, hsl, hk, ht, hrec, hx, hjx, hy, hj⟩ := growSleepy_premises t
+  obtain ⟨τ, P, hτ, hP, hin, hnot, hanc⟩ := Regimes.grow_sleepy sp1 ro1 dg1 Set.univ
+    (tickRun N1 dg1) (fun _ => v0) 1 1 hrun hnc hsl hk t ht hrec
+  exact ⟨τ, P, hτ, hP, hin v0 _ hy hj, hnot v0 _ hx hjx, hanc v0 _ v0 _ hx hjx hy hj⟩
 
 end Consensus.Goldilocks.Witness.One
 

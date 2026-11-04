@@ -2717,7 +2717,9 @@ R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_safe}), at
   contract, $19$ for \texttt{Accepted}),
   another statement\\
 R.2 & \texttt{Regimes.IncludeSleepy}, \texttt{Regimes.GrowSleepy} & proved
-  (\texttt{include\_sleepy}, \texttt{grow\_sleepy}); transaction liveness is generic, from
+  (\texttt{include\_sleepy}, \texttt{grow\_sleepy}); stronger than before,
+  \texttt{GrowSleepy} assumes no node ready at $t+(4k+6)\Delta$; transaction
+  liveness is generic, from
   \texttt{Accepted}\\
 R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
   \texttt{Outage*}, \texttt{Weak*} & retired, never proved;
