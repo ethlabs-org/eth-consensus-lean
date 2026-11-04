@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head

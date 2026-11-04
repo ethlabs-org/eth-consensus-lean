@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 
 public section
 

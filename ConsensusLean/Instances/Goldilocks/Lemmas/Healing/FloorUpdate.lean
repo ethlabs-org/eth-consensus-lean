@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 
 public section
 

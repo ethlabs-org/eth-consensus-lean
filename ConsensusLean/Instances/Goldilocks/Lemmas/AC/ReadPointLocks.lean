@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 
 public section
 

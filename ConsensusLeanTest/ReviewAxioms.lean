@@ -15,9 +15,10 @@ parsed):
   declared in `ConsensusLean/Statements/Review.lean`, in any namespace, `private` (hence
   `import all`) or not, must have a pair (`Consensus.ReviewGuard.checkComplete`);
 * each `#guard_msgs` pins the exact axiom list (`propext`, `Classical.choice`, `Quot.sound`) of the
-  review theorems, of their source theorems and of the solution's instance milestone theorems
-  (whose statements are the milestone definitions themselves, so they need no pair); an
-  unfinished proof or a new axiom changes the message and fails the build. -/
+  review theorems, of their source theorems and of the solution's Goldilocks acceptance endpoint
+  (whose statement is the milestone definition itself, so it needs no pair); an unfinished proof
+  or a new axiom changes the message and fails the build. The other Goldilocks milestones are
+  pinned, untrusted, by `ConsensusLeanTest/MilestoneAxioms.lean`. -/
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the linter's warning would
 -- otherwise be part of the guarded messages; the pinned messages are longer than 100 columns.
@@ -52,153 +53,8 @@ run_meta do
 /-- info: 'Consensus.Review.heldIffServed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.heldIffServed
 
-/-- info: 'Consensus.Goldilocks.FG.fGSafety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.FG.fGSafety
-
-/-- info: 'Consensus.Goldilocks.SA.aCSteps' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCSteps
-
-/-- info: 'Consensus.Goldilocks.Store.fGStoreLocal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreLocal
-
-/-- info: 'Consensus.Goldilocks.Store.fGStoreTrace' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreTrace
-
-/-- info: 'Consensus.Goldilocks.SA.aCBase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCBase
-
-/-- info: 'Consensus.Goldilocks.localRunReachable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.localRunReachable
-
-/-- info: 'Consensus.Goldilocks.Store.fGStoreService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreService
-
-/-- info: 'Consensus.Goldilocks.Compose.composeInterfaceStatements' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.composeInterfaceStatements
-
-/-- info: 'Consensus.Goldilocks.Compose.composeNodeStatements' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.composeNodeStatements
-
-/-- info: 'Consensus.Goldilocks.Compose.eventOrder' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.eventOrder
-
-/-- info: 'Consensus.Goldilocks.Compose.readyImpliesJoined' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.readyImpliesJoined
-
-/-- info: 'Consensus.Goldilocks.Compose.aCProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.aCProjection
-
-/-- info: 'Consensus.Goldilocks.Compose.fGProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.fGProjection
-
-/-- info: 'Consensus.Goldilocks.Compose.goldilocksACProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.goldilocksACProjection
-
-/-- info: 'Consensus.Goldilocks.Compose.groupStatesReachable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.groupStatesReachable
-
-/-- info: 'Consensus.Goldilocks.Compose.syncProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.syncProjection
-
-/-- info: 'Consensus.Goldilocks.Compose.joinedProjection' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.joinedProjection
-
-/-- info: 'Consensus.Goldilocks.Compose.honestFastConfirmationsPersist' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.honestFastConfirmationsPersist
-
-/-- info: 'Consensus.Goldilocks.Compose.recentSourceNextVote' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.recentSourceNextVote
-
-/-- info: 'Consensus.Goldilocks.Regimes.outputsNested' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.outputsNested
-
-/-- info: 'Consensus.Goldilocks.Regimes.finalizedMonotone' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedMonotone
-
-/-- info: 'Consensus.Goldilocks.Regimes.outputsValid' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.outputsValid
-
-/-- info: 'Consensus.Goldilocks.Regimes.finalAccountable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalAccountable
-
-/-- info: 'Consensus.Goldilocks.Regimes.nonFraming' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.nonFraming
-
-/-- info: 'Consensus.Goldilocks.Regimes.finalizedSafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.finalizedSafe
-
-/-- info: 'Consensus.Goldilocks.Regimes.sleepySafe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.sleepySafe
-
-
-/-- info: 'Consensus.Goldilocks.Regimes.includeSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.includeSleepy
-
-/-- info: 'Consensus.Goldilocks.Regimes.growSleepy' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Regimes.growSleepy
-
-/-- info: 'Consensus.Goldilocks.Compose.headExtendsRecord' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.headExtendsRecord
-
-/-- info: 'Consensus.Goldilocks.Compose.inclusion' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.inclusion
-
 /-- info: 'Consensus.Goldilocks.Refinement.acceptedEndpoint' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Refinement.acceptedEndpoint
-
-/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneAll
-
-/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll
-
-/-- info: 'Consensus.Goldilocks.SA.aCInclusionAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCInclusionAll
-
-/-- info: 'Consensus.Goldilocks.Healing.cutAndReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cutAndReset
-
-/-- info: 'Consensus.Goldilocks.Healing.phaseCountAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.phaseCountAll
-
-/-- info: 'Consensus.Goldilocks.Healing.resetExistence' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.resetExistence
-
-/-- info: 'Consensus.Goldilocks.Healing.heightScopedRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.heightScopedRetention
-
-/-- info: 'Consensus.Goldilocks.Healing.runInclusion' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.runInclusion
-
-/-- info: 'Consensus.Goldilocks.Healing.nonInterference' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.nonInterference
-
-/-- info: 'Consensus.Goldilocks.Healing.availableHealing' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.availableHealing
-
-/-- info: 'Consensus.Goldilocks.Healing.viableWitnessRetention' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.viableWitnessRetention
-
-/-- info: 'Consensus.Goldilocks.Healing.cleanLockDrain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cleanLockDrain
-
-/-- info: 'Consensus.Goldilocks.Healing.frozenTreeAgreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.frozenTreeAgreement
-
-/-- info: 'Consensus.Goldilocks.Healing.commonPathAcquisition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.commonPathAcquisition
-
-/-- info: 'Consensus.Goldilocks.Compose.outcomeService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.outcomeService
-
-/-- info: 'Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset
-
-/-- info: 'Consensus.Goldilocks.Healing.patternRecovery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.patternRecovery
-
-/-- info: 'Consensus.Goldilocks.Healing.finalizingCoverage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.finalizingCoverage
 
 /-! ## Axiom pins: the source theorems -/
 

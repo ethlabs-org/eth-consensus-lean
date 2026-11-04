@@ -1,6 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks FGStore statements (part 1)

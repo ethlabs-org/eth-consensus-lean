@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service

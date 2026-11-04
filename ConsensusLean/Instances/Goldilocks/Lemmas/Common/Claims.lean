@@ -1,6 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
-public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Tree
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 
 public section
 

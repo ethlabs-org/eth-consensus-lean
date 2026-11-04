@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Assembly
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Coverage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports

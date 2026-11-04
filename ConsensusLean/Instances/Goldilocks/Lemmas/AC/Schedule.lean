@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import Mathlib.Tactic.Linarith
 public import Mathlib.Tactic.Positivity
 public import Mathlib.Tactic.Ring

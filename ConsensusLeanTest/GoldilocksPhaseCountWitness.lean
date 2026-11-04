@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksFGStoreTimeoutEntry
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 @[expose] public section
 
 /-! # Witness for HR.2 (b), (c), the phase count, with a phase change at a fixed frontier

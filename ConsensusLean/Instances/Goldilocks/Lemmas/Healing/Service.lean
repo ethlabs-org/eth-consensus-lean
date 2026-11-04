@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Acquire

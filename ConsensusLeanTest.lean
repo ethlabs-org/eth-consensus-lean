@@ -94,6 +94,7 @@ public import ConsensusLeanTest.Good
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.Leaks
 public import ConsensusLeanTest.Lift
+public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model
 public import ConsensusLeanTest.Network
 public import ConsensusLeanTest.Problem

@@ -1,8 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
-public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import Mathlib.Data.Set.Finite.Basic
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks ACBase statements, and §4.7 case 1

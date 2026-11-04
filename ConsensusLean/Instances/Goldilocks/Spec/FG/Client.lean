@@ -11,7 +11,10 @@ finality pair is read from the entry state of the source) and the weakened E1
 `timeout[j] ⊆ {T}`, `height_pair` tests the lock first), and the slashing
 conditions of fg.tex §"Slashing conditions". The client's input is the entry state
 `σe = Σ.σ[T_c]` of its source (`fg_attest`): its height is the source's height `h_c`
-and its `Th` is `T_c` itself, so the height pair names `(σe.h, σe.Th)`. -/
+and its `Th` is `T_c` itself, so the height pair names `(σe.h, σe.Th)`.
+
+This module holds only what the Challenge statements reach; `Record.run`, a client run, is in
+`Milestones/Spec/FG/Client` (docs/decisions.md, 2026-11-04). -/
 
 namespace Consensus.Goldilocks.FG
 
@@ -90,15 +93,6 @@ def createAtt {n : Nat} (Λ : Record) (v : Fin n) (σe : ChainState n) :
       else
         let a : Att n := ⟨v, h, T, τ, Λ.finalityPair σe⟩
         some (a, Λ.recordAtt a)
-
-/-- A client run: the record and the attestations sent, from a sequence of entry
-states of sources (in the order of the FG updates). -/
-def run {n : Nat} (v : Fin n) : Record → List (ChainState n) → Record × List (Att n)
-  | Λ, [] => (Λ, [])
-  | Λ, σe :: rest =>
-      match Λ.createAtt v σe with
-      | none => Record.run v Λ rest
-      | some (a, Λ') => let r := Record.run v Λ' rest; (r.1, a :: r.2)
 
 end Record
 

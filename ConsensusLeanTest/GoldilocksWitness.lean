@@ -1,7 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksTickRun
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 @[expose] public section

@@ -153,6 +153,7 @@ SOLUTION="$(cfg solution_module)"
 STATEMENTS="$(cfg statements_module)"
 mapfile -t MILESTONE_STATEMENTS < <(cfg milestone_statements_modules)
 COMPARATOR_STATEMENTS=("$STATEMENTS" "${MILESTONE_STATEMENTS[@]}")  # step 9: the challenge imports exactly these
+mapfile -t PROVED_MILESTONES < <(cfg proved_milestone_modules)  # step 3b: gated like the solution, not certified
 case "$THEOREMS_MODE" in report|enforce) ;; *) echo "check.sh: theorems_mode must be report or enforce" >&2; exit 2 ;; esac
 ((${#LIBS[@]} > 0 && ${#DEFAULT_LIBS[@]} > 0 && ${#EXTRA_TARGETS[@]} > 0)) ||
   { echo "check.sh: empty configuration" >&2; exit 2; }
@@ -164,7 +165,7 @@ CHANGED=()                # --changed: paths changed since $base (committed, sta
 CONE=()                   # --changed: checked-library modules changed or (transitively) importing one
 BUILD_TARGETS=()          # --changed: what step 1 builds
 do_surface=1 do_comparator_config=1 do_protected=1
-do_audit=1 do_audit_tests=1 do_audit_report=1  # step 3b: the gates (solution closure, tests); the unfinished report
+do_audit=1 do_audit_tests=1 do_audit_report=1  # step 3b: the gates (solution and proved milestones, tests); the report
 
 # compute_changes: the change set since $base and its downstream cone (--changed). Falls back to --fast
 # (setting `mode`) where no sound restriction exists: the check stack or the build configuration changed.
@@ -263,7 +264,7 @@ PY
     [[ "$f" == comparator.json || "$f" == "$(mod_file "$CHALLENGE")" ]] && do_comparator_config=1
   done
   printf '%s\n' "${CONE[@]}" | grep -xF "$SOLUTION" >/dev/null && do_comparator_config=1
-  printf '%s\n' "${CONE[@]}" | grep -xF "$SOLUTION" >/dev/null || do_audit=0
+  printf '%s\n' "${CONE[@]}" | grep -xF -f <(printf '%s\n' "$SOLUTION" "${PROVED_MILESTONES[@]}") >/dev/null || do_audit=0
   printf '%s\n' "${CONE[@]}" | grep -xF -f <(printf '%s\n' "${TEST_LIBS[@]}" | awk NF) >/dev/null || do_audit_tests=0
   printf '%s\n' "${CONE[@]}" | grep -xF -f <(printf '%s\n' "${DEFAULT_LIBS[@]}") >/dev/null || do_audit_report=0
   BUILD_TARGETS=("${CONE[@]}")
@@ -415,7 +416,7 @@ step_boundaries() {
   # Every module named in [checks] must be in the inventory (a typo would silently check less).
   local m l bad=0
   [[ -n "$(inv_trusted)" ]] || { echo "  FAIL[config] no module in a trusted layer"; bad=1; }
-  for m in "$REVIEW_AXIOMS" "$REVIEW_ROOT" "${COMPARATOR_STATEMENTS[@]}" "$SOLUTION"; do
+  for m in "$REVIEW_AXIOMS" "$REVIEW_ROOT" "${COMPARATOR_STATEMENTS[@]}" "$SOLUTION" "${PROVED_MILESTONES[@]}"; do
     cut -f2 "$INV" | grep -xF "$m" >/dev/null || { echo "  FAIL[config] $m (boundaries.toml [checks]) is not in the inventory"; bad=1; }
   done
   for m in "${NOCONST_EXEMPT[@]}"; do
@@ -556,14 +557,27 @@ if len(unfinished) > 50: print("    ... and %d more" % (len(unfinished) - 50))
 if other: print("  NOTE  %d depend on another non-standard axiom (step 3 fails them):" % len(other))
 for d in other[:50]: print("    " + d)'
 }
+# audit_proved <roots> <modules...>: the gate of the proved milestones that are not Challenge statements
+# (proved_milestone_modules; docs/decisions.md, 2026-11-04): the import closure of each module, under each root
+# (space-separated), passes audit_closure, so none of them may rest on `sorry` although Solution no longer
+# imports them. No module: nothing to gate.
+audit_proved() {
+  local roots="$1"
+  shift
+  (($#)) || return 0
+  # shellcheck disable=SC2086  # the roots are words
+  audit_closure "$(IFS=,; echo "$*")" $roots
+}
 step_audit() {
   set +e
   local rc=0 r
   if ((do_audit)); then
     echo "  gate: the import closure of $SOLUTION (roots: ${DEFAULT_LIBS[*]} $SOLUTION)"
     audit_closure "$SOLUTION" "${DEFAULT_LIBS[@]}" "$SOLUTION" || rc=1
+    echo "  gate: the import closure of the proved milestones ${PROVED_MILESTONES[*]} (roots: ${DEFAULT_LIBS[*]})"
+    audit_proved "${DEFAULT_LIBS[*]}" "${PROVED_MILESTONES[@]}" || rc=1
   else
-    echo "  NOTE  gate not run: nothing in the closure of $SOLUTION changed"
+    echo "  NOTE  gate not run: nothing in the closure of $SOLUTION or of the proved milestones changed"
   fi
   # A test, witness or rejection built on an unfinished lemma would prove nothing: no test declaration may
   # depend on sorryAx (or another non-standard axiom), also through an import. Main and the instances may
@@ -597,6 +611,11 @@ selftest_audit() {
   # As the tests gate runs it (the root is the module itself): the sorry comes from outside the root.
   expect_fail "$fx.SolTransitive.s → [sorryAx]" audit_closure $fx.SolTransitive $fx.SolTransitive || rc=1
   expect_fail "$fx.SolAxiom.s → [$fx.SolAxiom.ax]" audit_closure $fx.SolAxiom $fx || rc=1
+  # The proved-milestones gate: a sorry in a proved milestone's closure fails it, as in the solution's; clean
+  # entries (one or several, comma-joined into one audit) pass, and no entry passes.
+  expect_pass audit_proved $fx $fx.SolGood || rc=1
+  expect_pass audit_proved $fx || rc=1
+  expect_fail "$fx.Lemma.helper → [sorryAx]" audit_proved $fx $fx.SolGood $fx.SolTransitive || rc=1
   # native_decide's auxiliary axiom (v4.35: a private `<decl>._native.native_decide.ax_*`), not Lean.ofReduceBool.
   expect_fail "$fx.SolNative.s → [_private.$fx.SolNative.0.$fx.SolNative.s._native.native_decide.ax_" \
     audit_closure $fx.SolNative $fx || rc=1

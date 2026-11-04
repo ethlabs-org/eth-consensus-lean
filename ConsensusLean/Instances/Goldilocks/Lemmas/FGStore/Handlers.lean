@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
 
 public section
 

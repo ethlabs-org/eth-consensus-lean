@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client

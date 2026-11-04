@@ -7,7 +7,7 @@ import all ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 @[expose] public section
 

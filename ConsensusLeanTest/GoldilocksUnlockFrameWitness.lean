@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 
 /-! # Witness: `unlock`'s target depends on the frame

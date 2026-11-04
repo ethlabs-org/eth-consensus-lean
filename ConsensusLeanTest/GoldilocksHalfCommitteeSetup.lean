@@ -1,8 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
-public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import Mathlib.Data.Set.Card
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 
 /-! # A computable mirror of the Goldilocks node: the block table

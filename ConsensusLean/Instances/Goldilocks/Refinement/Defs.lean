@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Spec.Shape.Compile
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
 
 @[expose] public section
 

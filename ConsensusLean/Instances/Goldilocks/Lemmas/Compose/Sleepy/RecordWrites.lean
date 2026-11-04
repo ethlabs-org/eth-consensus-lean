@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
-import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
+import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 
 public section

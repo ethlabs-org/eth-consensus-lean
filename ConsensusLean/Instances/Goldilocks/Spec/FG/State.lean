@@ -14,9 +14,11 @@ root as the digest of the block, and a chain lists the blocks from genesis, so t
 parent links are implicit. Validators are `Fin n`, every weight is `1`, and the quorum
 is `q = ⌈2n/3⌉`.
 
-A chain is a list of blocks, oldest first, genesis implicit before the first. Its
-chain state is the fold of `stateTransition` from `ChainState.init`; a failed
-assertion makes the fold `none` (the block is refused). -/
+A chain is a list of blocks, oldest first, genesis implicit before the first.
+
+This module holds only what the Challenge statements reach; the chain state of a whole chain
+(`FGParams.chainState`) and its roots and attestations are in `Milestones/Spec/FG/State`
+(docs/decisions.md, 2026-11-04). -/
 
 namespace Consensus.Goldilocks.FG
 
@@ -229,16 +231,6 @@ def stateTransition (σ : ChainState gp.n) (B : FGBlock gp.n) : Option (ChainSta
     some (gp.heightEvents
       { B.atts.foldl ChainState.processAtt { σ with s := B.slot } with L := B.root })
   else none
-
-/-- The chain state after a chain (oldest first), or `none` if a block is refused. -/
-def chainState (c : List (FGBlock gp.n)) : Option (ChainState gp.n) :=
-  c.foldl (fun o B => o.bind (fun σ => gp.stateTransition σ B)) (some (ChainState.init gp))
-
-/-- The roots of a chain, genesis included. -/
-def roots (c : List (FGBlock gp.n)) : List Nat := gp.genesis :: c.map FGBlock.root
-
-/-- The attestations that a chain carries. -/
-def chainAtts (c : List (FGBlock gp.n)) : List (Att gp.n) := c.flatMap FGBlock.atts
 
 end FGParams
 

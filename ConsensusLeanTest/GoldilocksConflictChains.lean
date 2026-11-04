@@ -1,5 +1,7 @@
 module
 public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 
 /-! # Two conflicting finalizing chains, at the FG store of the Goldilocks node

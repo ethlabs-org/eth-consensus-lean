@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection

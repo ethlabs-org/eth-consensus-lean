@@ -118,18 +118,28 @@ self_test() {
   git checkout -q --detach "$other"; git merge -q --no-ff --no-edit "$spec"
   expect fail "a merge of an unlabeled trusted commit" HEAD "$other"
   expect pass "a base that is not an ancestor of HEAD: nothing to compare" "$spec" "$other"
-  # The repository's own list (docs/decisions.md, 2026-11-04): a Shape example is not on the trusted surface,
-  # the Goldilocks instance Spec is.
-  local real ex gold
+  # The repository's own list (docs/decisions.md, 2026-11-04): a Shape example and a Goldilocks milestone statement
+  # (the Milestones layers) are not on the trusted surface; the Goldilocks instance Spec and the endpoint statement are.
+  local real ex gold ms acc
+  local G=ConsensusLean/Instances/Goldilocks
   git checkout -q --detach "$m0"; cp "$(dirname "$script")/boundaries.toml" scripts/boundaries.toml
-  mkdir -p ConsensusLean/Examples/Shape ConsensusLean/Instances/Goldilocks/Spec
-  echo e >ConsensusLean/Examples/Shape/Streamlet.lean; echo g >ConsensusLean/Instances/Goldilocks/Spec/Trace.lean
+  mkdir -p ConsensusLean/Examples/Shape $G/Spec $G/Milestones/Statements $G/Statements/Refinement
+  echo e >ConsensusLean/Examples/Shape/Streamlet.lean; echo g >$G/Spec/Frame.lean
+  echo m >$G/Milestones/Statements/FGSafety.lean; echo a >$G/Statements/Refinement/Accepted.lean
   real="$(commit "the repository's trusted_paths$L")"
   echo e2 >ConsensusLean/Examples/Shape/Streamlet.lean; ex="$(commit 'Shape example, unlabeled')"
   expect pass "repository list: an unlabeled change of a Shape example (Examples/Shape/Streamlet.lean)" "$ex" "$real"
-  git checkout -q --detach "$real"; echo g2 >ConsensusLean/Instances/Goldilocks/Spec/Trace.lean
+  git checkout -q --detach "$real"; echo m2 >$G/Milestones/Statements/FGSafety.lean
+  ms="$(commit 'Goldilocks milestone statement, unlabeled')"
+  expect pass "repository list: an unlabeled change of a milestone statement (Milestones/Statements/FGSafety.lean)" \
+    "$ms" "$real"
+  git checkout -q --detach "$real"; echo g2 >$G/Spec/Frame.lean
   gold="$(commit 'Goldilocks Spec, unlabeled')"
   expect fail "repository list: an unlabeled change of the Goldilocks instance Spec" "$gold" "$real"
+  git checkout -q --detach "$real"; echo a2 >$G/Statements/Refinement/Accepted.lean
+  acc="$(commit 'Goldilocks endpoint statement, unlabeled')"
+  expect fail "repository list: an unlabeled change of the endpoint statement (Statements/Refinement/Accepted)" \
+    "$acc" "$real"
   return "$fails"
 }
 

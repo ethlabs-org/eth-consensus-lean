@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 
 public section

@@ -10,7 +10,10 @@ validators `Fin n` of weight `1` and the quorum `q = ⌈2n/3⌉`; the delivery p
 the slot start times `t_s` (public times, `t_0 = 0`, strictly increasing; the AC fixes them);
 the genesis root; and the FG timeout delay `δ_t` in slots (fg.tex: the AC
 sets it). Time is integer (`Consensus.Time`). The FG's own parameter bundle `FG.FGParams` is
-derived from these where both are in scope (the FG store), not declared twice. -/
+derived from these where both are in scope (the FG store), not declared twice.
+
+This module holds only what the Challenge statements reach; `Params.q`, the quorum on `Params` (the
+FG reads `FG.FGParams.q`), is in `Milestones/Spec/Common/Params` (docs/decisions.md, 2026-11-04). -/
 
 namespace Consensus.Goldilocks
 
@@ -36,9 +39,6 @@ structure Params where
 namespace Params
 
 variable (P : Params)
-
-/-- The quorum `q = ⌈2n/3⌉`. -/
-def q : Nat := (2 * P.n + 2) / 3
 
 /-- A public time: a multiple of `Δ`. -/
 def IsPublic (t : Time) : Prop := P.Δ ∣ t

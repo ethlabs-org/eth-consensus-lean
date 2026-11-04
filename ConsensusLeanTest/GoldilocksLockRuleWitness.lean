@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksGradedLocks
-public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 @[expose] public section
 

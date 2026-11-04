@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Chains
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 
 public section

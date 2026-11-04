@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers

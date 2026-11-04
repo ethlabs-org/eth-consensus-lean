@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
 public import ConsensusLeanTest.GoldilocksNode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 @[expose] public section

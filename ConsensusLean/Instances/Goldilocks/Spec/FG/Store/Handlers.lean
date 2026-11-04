@@ -9,8 +9,10 @@ fg.tex Figure "FG: handlers, finality caches and frame": `fg_on_attestation`,
 `update_finality` and `fg_on_block`. `fg_on_block` returns the new FG state, or `none` when it
 refuses the block: a held root, a parent that is not held, a block that does not extend `Σ.F`,
 or a failed assertion of `state_transition` (no write). An accepted block's attestations enter
-the pool after the block's finality update. `Reachable`: the FG states that the handlers reach
-from the initial state. -/
+the pool after the block's finality update.
+
+This module holds only what the Challenge statements reach; `Store.Step` and `Reachable` are in
+`Milestones/Spec/FG/Store/Handlers` (docs/decisions.md, 2026-11-04). -/
 
 namespace Consensus.Goldilocks.Store
 
@@ -68,15 +70,6 @@ noncomputable def onBlock (st : Store P ACP) (B : NodeBlock P ACP) : Option (Sto
               { st with blocks := Function.update st.blocks B.root (some B),
                         σ := Function.update st.σ B.root σ' }
             some ((updateFinality st₁ σ').addAtts B.fgPayload)
-
-/-- One FG store step: an accepted block, or a processed attestation (from the wire or the
-node's own `attest`). A restart keeps `Σ` (composition.tex §"State"), so it is no step. -/
-def Step (st st' : Store P ACP) : Prop :=
-  (∃ B, onBlock st B = some st') ∨ ∃ a, st' = onAttestation st a
-
-/-- An FG state is reachable when the handlers reach it from the initial state with genesis AC
-payload `acp₀`. (Which blocks and attestations a node is given is a node fact, C0.5.) -/
-def Reachable (acp₀ : ACP) : Store P ACP → Prop := Relation.ReflTransGen Step (init acp₀)
 
 end Consensus.Goldilocks.Store
 

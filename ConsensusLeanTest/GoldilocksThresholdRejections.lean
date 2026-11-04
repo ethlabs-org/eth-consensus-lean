@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLeanTest.GoldilocksNode
 public import Mathlib.Tactic.Ring
 public import Mathlib.Tactic.NormNum

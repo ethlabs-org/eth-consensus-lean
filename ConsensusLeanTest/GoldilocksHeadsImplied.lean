@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 @[expose] public section
 
 /-! # Requirement 1's proposal clause follows from requirements 3 and 4

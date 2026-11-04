@@ -485,6 +485,31 @@ name = "Lemmas"'''], ['trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec
   ['allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol"]',
    'allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol", "Inst"]']]
 
+# A `protected` layer allows only trusted and protected layers, so the protected surface never reaches an untrusted
+# layer such as the Goldilocks Milestones (docs/decisions.md, 2026-11-04); ProtectedSurface is the control.
+[ProtectedAllowsUnprotected]
+expect = "FAIL[config] protected layer Inst allows the unprotected layer Lemmas"
+files."Fx/Inst/A.lean" = '''module
+
+public import Fx.Init
+
+def a : Nat := 0
+'''
+edit."Fx.lean" = [['public import Fx.Init', '''public import Fx.Init
+public import Fx.Inst.A''']]
+edit."boundaries.toml" = [['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Inst"
+prefixes = ["Fx.Inst"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+protected = true
+
+[[layer]]
+name = "Proofs.P"'''], ['trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements"]',
+  'trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec", "Fx/Statements", "Fx/Inst"]'],
+  ['allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol"]',
+   'allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol", "Inst"]']]
+
 # A `protected` layer must lie in the protected surface: here its module is not in a default lib.
 [ProtectedOutsideDefault]
 expect = "FAIL[config] FxTest.T (protected layer Test) is not in the protected surface"

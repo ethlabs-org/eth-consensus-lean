@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
-public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 
 public section
 

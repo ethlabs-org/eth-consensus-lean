@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksWitnessRun
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 @[expose] public section

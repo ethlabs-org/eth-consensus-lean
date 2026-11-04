@@ -2,7 +2,8 @@ module
 public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.TraceDefs
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
 
 public section
 

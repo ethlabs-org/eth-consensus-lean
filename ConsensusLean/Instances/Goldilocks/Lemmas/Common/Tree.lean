@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Tree
 
 public section
 

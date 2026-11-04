@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion

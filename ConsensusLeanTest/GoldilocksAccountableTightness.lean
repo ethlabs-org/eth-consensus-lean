@@ -1,5 +1,6 @@
 module
 public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 
 /-! # Tightness of `AccountableSafety`'s bound `2q − n`, for every `n`

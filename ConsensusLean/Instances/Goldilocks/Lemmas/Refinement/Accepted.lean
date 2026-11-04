@@ -9,9 +9,9 @@ public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
 
 public section
 

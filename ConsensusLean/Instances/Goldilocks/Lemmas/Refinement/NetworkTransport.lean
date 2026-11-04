@@ -3,8 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.PublicationProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.ForwardingDecode
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Lemmas.Model.SysLog

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks FG statements (milestone M₁)

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 
 public section
 

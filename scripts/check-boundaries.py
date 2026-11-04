@@ -18,10 +18,10 @@ Libraries: every lakefile target is a configured lib, a fixture lib or a tool (`
 Layers: every module except a generated root is in exactly one `[[layer]]`: prefixes never overlap.
   `allow` lists the other layers a module may import directly; the lists are acyclic and downward-closed
   (a layer allows everything its allowed layers allow), so the direct rule bounds the whole import closure.
-  A trusted layer allows only trusted layers. `sorry = true` (where check.sh lets unfinished proofs stay) is
-  allowed only on an untrusted layer whose every prefix is in a default library and has a `Lemmas` or `Proofs`
-  component. Every directory `<parent>.<M>` under a `milestone_parents`
-  entry is one milestone layer, entered from other layers only through `<parent>.<M>.Main`.
+  A trusted layer allows only trusted layers; a `protected` layer only trusted and protected ones. `sorry = true`
+  (where check.sh lets unfinished proofs stay) is allowed only on an untrusted layer whose every prefix is in a
+  default library and has a `Lemmas` or `Proofs` component. Every directory `<parent>.<M>` under a
+  `milestone_parents` entry is one milestone layer, entered from other layers only through `<parent>.<M>.Main`.
 Imports (each module, each import): an edge outside `allow` fails unless an `[[exception]]` lets the
   modules under its `from` import the modules under its `to`; an import into a milestone layer other than
   its entry fails, exception or not. The import closure of each module is walked too: it may hold only its
@@ -61,6 +61,7 @@ TOP_KEYS = REQUIRED_KEYS | {"exception", "tool_libs"}
 # [checks]: read by scripts/check.sh (and trusted_paths by CI's review-boundary job); a new key is added here.
 CHECKS_KEYS = {"proofs_component_prefixes", "noconst_exempt", "theorems_mode", "review_axioms_module", "review_root",
                "challenge_module", "solution_module", "statements_module", "milestone_statements_modules",
+               "proved_milestone_modules",
                "extra_build_targets", "trusted_paths",
                "canary_module", "canary_proof_edit", "canary_statement_edit", "doc_name_files", "name_index_module"}
 LIB_KEYS = {"name", "default", "test_driver", "root_lists_all"}
@@ -317,6 +318,10 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
     for n in sorted(trusted):
         for x in sorted(allow[n] - trusted):
             fails.append(f"FAIL[config] trusted layer {n} allows the untrusted layer {x}")
+    protected = {n for n, l in layers.items() if l.get("protected") is True}
+    for n in sorted(protected):  # the protected surface's closure stays inside it (docs/decisions.md, 2026-11-04)
+        for x in sorted(allow[n] - trusted - protected):
+            fails.append(f"FAIL[config] protected layer {n} allows the unprotected layer {x}")
     for n, l in sorted(layers.items()):  # `sorry = true` (check.sh steps 3, 7): only Lemmas and Proofs (plan §5)
         if l.get("sorry") is True:
             if n in trusted:

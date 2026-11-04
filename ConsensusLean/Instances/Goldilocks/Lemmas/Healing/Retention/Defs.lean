@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote

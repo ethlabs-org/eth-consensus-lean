@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induct
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources

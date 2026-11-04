@@ -1,5 +1,7 @@
 module
 public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 @[expose] public section
 
 /-! # Faulty-validator witnesses for the Goldilocks FG safety milestones

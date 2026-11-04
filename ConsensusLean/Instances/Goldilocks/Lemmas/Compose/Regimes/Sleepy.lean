@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
 

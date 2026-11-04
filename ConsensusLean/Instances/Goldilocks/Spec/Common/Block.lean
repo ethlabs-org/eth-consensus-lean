@@ -16,9 +16,12 @@ The block is parametric in both payload types (`FGP`, `ACP`), so that the AC sid
 the FG's attestations and the FG side never names the AC's payload; the node instantiates
 `FGP := List (FG.Att n)`. The order and the repeats of each payload are part of the block.
 
-The root is the fixed digest of `(parent root, slot, input, FG payload, AC payload)`; `Block.RootOk`
-says that a block's root is that digest (the wire check), and the collision-freedom of the
-digest is a hypothesis where a statement needs it (claims F.3), never an axiom. -/
+The root is the fixed digest of `(parent root, slot, input, FG payload, AC payload)`; the
+collision-freedom of the digest is a hypothesis where a statement needs it (claims F.3), never an
+axiom.
+
+This module holds only what the Challenge statements reach; the digest `Digest` and `Block.RootOk`
+are in `Milestones/Spec/Common/Block` (docs/decisions.md, 2026-11-04). -/
 
 namespace Consensus.Goldilocks
 
@@ -39,15 +42,6 @@ structure Block (n : Nat) (FGP ACP : Type) where
   fgPayload : FGP
   /-- The AC payload. -/
   acPayload : ACP
-
-/-- A block digest: the root of the content `(parent root, slot, input, FG payload, AC
-payload)`. -/
-abbrev Digest (FGP ACP : Type) := Option Nat → Nat → Nat → FGP → ACP → Nat
-
-/-- The root of `B` is the digest of its content (composition.tex §"Blocks": `B.root` is the
-fixed digest of `(B.parent.root, B.slot, B.attestations, B.acp)`, the input inside `B.acp`). -/
-def Block.RootOk {n : Nat} {FGP ACP : Type} (dg : Digest FGP ACP) (B : Block n FGP ACP) : Prop :=
-  B.root = dg B.parent B.slot B.input B.fgPayload B.acPayload
 
 end Consensus.Goldilocks
 

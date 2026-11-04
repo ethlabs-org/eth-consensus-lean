@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting

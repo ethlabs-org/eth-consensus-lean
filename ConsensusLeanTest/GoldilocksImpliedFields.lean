@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly

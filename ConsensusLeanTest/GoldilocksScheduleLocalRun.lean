@@ -1,6 +1,5 @@
 module
 public import ConsensusLeanTest.GoldilocksScheduleRun
-public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 @[expose] public section
 
 /-! # The run trace of a schedule is a run of the node

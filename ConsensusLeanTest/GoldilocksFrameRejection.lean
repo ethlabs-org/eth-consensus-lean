@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.GoldilocksFrame
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 
 /-! # Rejections for the Goldilocks frame-sequence statements

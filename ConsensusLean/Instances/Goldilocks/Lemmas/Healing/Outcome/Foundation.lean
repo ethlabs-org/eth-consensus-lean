@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction

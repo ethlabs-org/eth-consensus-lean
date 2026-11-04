@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.Frame
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 
 public section
 

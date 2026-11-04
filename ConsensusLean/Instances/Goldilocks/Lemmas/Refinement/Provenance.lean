@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Interface
-public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 import ConsensusLean.Lemmas.Model.Objects
 import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client

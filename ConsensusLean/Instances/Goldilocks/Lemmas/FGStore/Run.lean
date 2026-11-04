@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
-public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 

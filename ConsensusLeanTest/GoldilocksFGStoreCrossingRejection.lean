@@ -1,6 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 @[expose] public section
 
 /-! # The `1 ≤ r` premise of the Goldilocks crossing bound (G1.8 (a)) at `δ_t = 0`

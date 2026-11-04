@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo

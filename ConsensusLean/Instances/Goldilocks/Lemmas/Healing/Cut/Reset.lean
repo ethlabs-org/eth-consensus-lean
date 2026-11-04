@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith

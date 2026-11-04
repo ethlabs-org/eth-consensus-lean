@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Regimes.Always
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest

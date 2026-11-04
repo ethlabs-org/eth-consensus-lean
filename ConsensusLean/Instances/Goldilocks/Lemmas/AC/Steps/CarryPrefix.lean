@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count

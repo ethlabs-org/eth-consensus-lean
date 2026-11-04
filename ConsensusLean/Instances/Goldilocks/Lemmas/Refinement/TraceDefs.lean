@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 
 public section
 

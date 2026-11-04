@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 public import ConsensusLeanTest.GoldilocksFGStore
 @[expose] public section

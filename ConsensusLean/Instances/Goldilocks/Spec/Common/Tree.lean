@@ -11,8 +11,10 @@ composition.tex §"Blocks": processed blocks form a parent-closed tree; `B ⪯ C
 or `B` is an ancestor of `C`; two blocks are compatible when one is an ancestor of the other.
 A block names its parent by root, so ancestry is relative to a set of blocks `S` (an FG tree,
 a frame tree): `Anc S B C` holds when `B = C` or parent edges inside `S` lead from `C` down to
-`B`. `Coherent S` is what makes `S` a tree (claims F.2, F.3): roots are injective on `S` and
-slots strictly increase along its parent edges. -/
+`B`.
+
+This module holds only what the Challenge statements reach; `Coherent` is in
+`Milestones/Spec/Common/Tree` (docs/decisions.md, 2026-11-04). -/
 
 namespace Consensus.Goldilocks
 
@@ -31,11 +33,6 @@ def Anc (S : Set (Block n FGP ACP)) : Block n FGP ACP → Block n FGP ACP → Pr
 otherwise. -/
 def Compatible (S : Set (Block n FGP ACP)) (B C : Block n FGP ACP) : Prop :=
   Anc S B C ∨ Anc S C B
-
-/-- `S` is a coherent set of blocks: roots are injective on `S`, and along every parent edge
-inside `S` the slot strictly increases (the assertion of `state_transition`). -/
-def Coherent (S : Set (Block n FGP ACP)) : Prop :=
-  Set.InjOn Block.root S ∧ ∀ B ∈ S, ∀ C ∈ S, C.parent = some B.root → B.slot < C.slot
 
 end Consensus.Goldilocks
 

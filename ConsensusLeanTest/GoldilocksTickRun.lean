@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
-public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 @[expose] public section
 
 /-! # The tick run of a one-validator node (generic part of the Goldilocks witness)
