@@ -50,14 +50,14 @@ theorem viable_witness_retention : ViableWitnessRetention :=
 /-- **HS.2, clean-lock transfer and two-window drain** (`phase-service.md` §4 "Clean evidence and
 the two-window drain", §7 HS.2; `hs234-exact-interface.md` §3, assembled in `Drain`). -/
 theorem clean_lock_drain : CleanLockDrain := by
-  intro sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hw
-  refine ⟨fun _ hx _ _ _ _ ho hj _ _ hy _ _ _ hv hjs hk => ⟨fun he =>
-      clean_fast_next hrun hs hc hw hx ho hj hy hv he hk, fun _ =>
-      clean_fast_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
-    fun _ hx _ _ _ ho hj _ _ hy _ _ _ hv hjs hk => ⟨fun he =>
-      clean_slow_next hrun hs hc hw hx ho hj hy hv he hk, fun _ =>
-      clean_slow_later hrun hs hc hw hx ho hj hy hv hjs hk⟩,
-    fun _ hy k _ _ hr _ _ hl => live_lock_clean hr (Compose.locksWF_state hrun hs.noColl hy k) hl,
+  intro sp ro proposer dg H tr g ΔF w i₀ m c hrun hs hc hw
+  refine ⟨fun _ hx _ _ _ _ ho hj _ hy _ _ _ hv hjs hk =>
+      ⟨clean_fast_later hrun hs hc hw hx ho hj hy hv hjs hk, fun he =>
+        (clean_fast_next hrun hs hc hw hx ho hj hy hv he hk).2⟩,
+    fun _ hx _ _ _ ho hj _ hy _ _ _ hv hjs hk =>
+      ⟨clean_slow_later hrun hs hc hw hx ho hj hy hv hjs hk, fun he =>
+        (clean_slow_next hrun hs hc hw hx ho hj hy hv he hk).2⟩,
+    fun _ hy k _ _ hr _ hl => live_lock_clean hr (Compose.locksWF_state hrun hs.noColl hy k) hl,
     fun _ _ hP hr _ hy _ _ _ hv he hk _ hl hls _ hL hLr =>
       live_lock_below_proposal hrun hs hc hw hP hr hy hv he hk hl hls hL hLr⟩
 

@@ -173,9 +173,9 @@ place of (a)'s start premise. `d.start` is the
 proposer's `fc_root` `R` (`voter_passes_proposer_root`) or a live lock block of the proposer,
 clean (HS.2 (3)), whose origin every later in-phase honest vote extends
 (`proposer_lock_extends`). -/
-theorem voter_reaches_start_clean {Gp : Time}
+theorem voter_reaches_start_clean
     (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (_hp : PropPlus tr H proposer g Gp) (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
+    (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ SA.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
@@ -243,9 +243,9 @@ slot-`s` vote exactly `P`, every honest in-phase vote of a later slot extends `P
 honest in-phase proposal of a later slot has a parent extending `P` (the honest batch, `n − f >
 2f`, beats every conflicting child and releases every older conflicting lock, by induction on the
 slot and the cut; each later event bounded by its own `PhaseOn i₀`). -/
-theorem later_extend {Gp : Time}
+theorem later_extend
     (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (_hp : PropPlus tr H proposer g Gp) (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
+    (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
       ((P ∈ ℓ.frame.viableHeads ∧
@@ -501,9 +501,9 @@ theorem vote_conclusion
 clause is (a)'s lock premise (the voters' cuts are in the phase from `i₀`, `phaseOn_voter`); the
 votes are `P` as in (a), with `voter_reaches_start_clean`; the later votes and parents are
 `later_extend`. -/
-theorem frozen_votes_clean {Gp : Time}
+theorem frozen_votes_clean
     (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
-    (hp : PropPlus tr H proposer g Gp) (hr : rTime sp w ≤ sp.ts s) (hdrain : CleanLockDrain) :
+    (hr : rTime sp w ≤ sp.ts s) (hdrain : CleanLockDrain) :
     (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       e.msg.head = P.root ∧
       ((P ∈ ℓ.frame.viableHeads ∧
@@ -524,17 +524,17 @@ theorem frozen_votes_clean {Gp : Time}
         ∀ L ∈ ℓ.frame.tree, L.root = l.block →
           Anc (tr.HonestBlocks H) L P ∨ Anc (tr.HonestBlocks H) L ℓ.frame.fcRoot :=
     fun y hy k ℓ e hv hes =>
-      (hdrain sp ro proposer dg H tr g ΔF Gp w i₀ m c
-        hS.run hS.shared hS.catchUp hp hS.settled).2.2.2 s P
+      (hdrain sp ro proposer dg H tr g ΔF w i₀ m c
+        hS.run hS.shared hS.catchUp hS.settled).2.2.2 s P
         hPr hr y hy k ℓ e hv hes (phaseOn_voter hS.run hS.shared hS.settled
           (start_le_voter hS.run hS.shared.noColl hS.start_time hy hv hes)
           (hS.phase y hy k ℓ e hv hes))
   have hvotes := votes_eq_of_pass hS fun y hy j ℓy e hcy hes hIH =>
     have hb := voter_anchor_below hS hlock hy hcy hes hIH
-    voters_pass hS hy hcy hb (voter_reaches_start_clean hS hp hr hdrain hlock hy hcy hes hIH hb)
+    voters_pass hS hy hcy hb (voter_reaches_start_clean hS hr hdrain hlock hy hcy hes hIH hb)
   have hall := fun y hy k ℓ e hv hes => vote_conclusion hS hvotes (y := y) (k := k) (ℓ := ℓ)
     (e := e) hy hv hes
-  exact ⟨hall, later_extend hS hp hr hdrain hall⟩
+  exact ⟨hall, later_extend hS hr hdrain hall⟩
 
 /-- **HS.3 (b)**, the claims' after-`r` part, which is `FrozenTreeAgreement` as stated, from
 HS.2: the setting from the common premises (`agreeSetting_of`), then `frozen_votes_clean`. It
@@ -553,26 +553,25 @@ theorem frozen_tree_agreement_clean (hdrain : CleanLockDrain) :
         gbar g ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ →
         (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
           PhaseOn tr.projFG H i k m c) →
-        ∀ Gp : Time, PropPlus tr H proposer g Gp →
-          rTime sp w ≤ sp.ts s →
-          (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
-            e.msg.head = P.root ∧
-            ((P ∈ ℓ.frame.viableHeads ∧
-                P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) ∨
-              Anc (tr.HonestBlocks H) P ℓ.frame.fcRoot) ∧
-            ∀ X, Anc (tr.HonestBlocks H) X P →
-              X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
-              Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot) ∧
-          (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
-            PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
-          ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
-            P'.slot = s' → tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
-            PhaseOn tr.projFG H i₀ k' m c →
-            ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
+        rTime sp w ≤ sp.ts s →
+        (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
+          e.msg.head = P.root ∧
+          ((P ∈ ℓ.frame.viableHeads ∧
+              P ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s)) ∨
+            Anc (tr.HonestBlocks H) P ℓ.frame.fcRoot) ∧
+          ∀ X, Anc (tr.HonestBlocks H) X P →
+            X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s) ∨
+            Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot) ∧
+        (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot →
+          PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg P) ∧
+        ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
+          P'.slot = s' → tr.ProposesAt (proposer s') k' P' → proposer s' ∈ H →
+          PhaseOn tr.projFG H i₀ k' m c →
+          ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr := by
   intro sp ro proposer dg H tr g ΔF w i₀ i m c hrun hs hc hw hi₀ p kP s P hP hikP hti hg hph
-    Gp hp hr
+    hr
   obtain ⟨iP, ℓp, d, pay, hS⟩ := agreeSetting_of hrun hs hc hw hi₀ hP hikP hti hg hph
-  exact frozen_votes_clean hS hp hr hdrain
+  exact frozen_votes_clean hS hr hdrain
 
 end Consensus.Goldilocks.Healing
 

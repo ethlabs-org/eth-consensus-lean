@@ -106,7 +106,7 @@ a protected branch. HS.3 (b) is `frozen_tree_agreement_clean` from HS.2: its pre
 are discharged here (`i₀ ≤ k_P`; the proposer ticks at `t_{s−1} ∈ [w, t_{s−1} + 3Δ]`, so
 `time i₀ ≤ t_{s−1} + 3Δ`; `ḡ ≤ t_{s−1} + 3Δ`), and only this proof reads HS.3's shape. -/
 theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
+    (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer (proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
@@ -160,7 +160,7 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     rw [← h2, he] at this
     omega
   obtain ⟨h₁, h₂, h₃⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr g ΔF w i₀ i₀
-    m c hrun hs hc hset le_rfl _ kP s P hP hi₀ htime (by linarith) hvotes Gp hp hr
+    m c hrun hs hc hset le_rfl _ kP s P hP hi₀ htime (by linarith) hvotes hr
   exact ⟨fun y hy k ℓ e hv he => let ⟨a, b, _⟩ := h₁ y hy k ℓ e hv he;
     ⟨a, b.imp_left And.right⟩, h₂, h₃⟩
 
@@ -179,7 +179,7 @@ theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr 
 (`hs234-exact-interface.md` §5 "acquisition", first two paragraphs;
 `AcquireSources.protected_sources` for the ready proposal). -/
 theorem ready_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
+    (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer (proposer s) kP s P) (hr : rTime sp w ≤ sp.ts s)
@@ -196,7 +196,7 @@ theorem ready_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr 
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr) :
     ∀ y ∈ H, ∃ k ℓ C, SA.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
       tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C :=
-  protected_sources hrun hs hc hp hset hclean hP.2.2.2.1 hP.2.2.2.2.1 hP.1 hr hvotes hlater
+  protected_sources hrun hs hc hset hclean hP.2.2.2.1 hP.2.2.2.2.1 hP.1 hr hvotes hlater
     hparents hon
 
 /-- **A higher source above a protected proposal is below a later proposal's parent**
@@ -517,7 +517,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
       (tr.state_succ_of_call hcall).symm
     refine ⟨hkP, hkD, hPt, hpost, by rw [hpost]; exact h_le_of_phaseAt hrun hnc hpH hkD hphD hPt,
       ready_allowed hrun hs hc hset hP (by linarith) (hbefore kP (by linarith)),
-      ready_protected hrun hs hc hp hset hclean hP hr fun k hk => hbefore k ?_⟩
+      ready_protected hrun hs hc hset hclean hP hr fun k hk => hbefore k ?_⟩
     have : sp.ts ((s : Int) + 1) = sp.ts s + 4 * sp.Δ := by simp only [SAParams.ts]; ring
     linarith
   -- the first ready proposal after `r`
@@ -525,7 +525,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
   have hsD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; linarith
   obtain ⟨hkP, hkPD, hPt, hpostP, hPm, hallP, hvP, hlP, hpP⟩ := ready hP hs₁ hsD
   have honP := hafter _ hsD
-  have hsrc := ready_sources hrun hs hc hp hset hclean hP hs₁ honP hvP hlP hpP
+  have hsrc := ready_sources hrun hs hc hset hclean hP hs₁ honP hvP hlP hpP
   have hpH : proposer s ∈ H := hP.1
   have hPfl : phaseFloor m c ≤ ((tr.post kP).fg.σ P.root).h := hallP.2.1
   rw [hpostP] at hPm hPfl
@@ -563,7 +563,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
       have := h_le_of_anc_run hrun hnc hpQH hy₀ hC₀Q hQt hC₀t
       rw [hpostQ] at hQm ⊢
       omega
-    have hsrcQ := ready_sources hrun hs hc hp hset hclean hQ (by linarith)
+    have hsrcQ := ready_sources hrun hs hc hset hclean hQ (by linarith)
       (hafter _ hQD) hvQ hlQ hpQ
     refine acquired_of_sources hrun hs hQ hvQ hlQ hpQ hallQ (fun y hy => ?_) (Or.inr hQm')
       (by linarith) (by linarith) hQD (hafter _ hQD)

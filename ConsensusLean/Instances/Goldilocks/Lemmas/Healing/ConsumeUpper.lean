@@ -6,7 +6,7 @@ public section
 /-! # Goldilocks Healing, HS.5: rows at `m` for a fixed upper proposal
 
 `hs5-exact-helpers.md` §2 ("keep the chosen `Y`"), over `Γ`
-(`GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `Prop⁺(G_p)`, `SettledIn … w i₀ m c`) and the client
+(`GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `SettledIn … w i₀ m c`) and the client
 subclaim: for an honest proposal `Y` of slot `s` with `t_s ≥ r`, state height `m`, on a protected
 branch (the three clauses of `ProtectedBranch`, spelled out: `Service` imports this file) and in
 the phase through `v = t_s + 6Δ`, `Y` has an entry `E` at `m` and every honest validator has signed
@@ -35,7 +35,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 step of `Service`'s `consume_continue`, with `ProtectedBranch`, `ClientProgress` and `RowsBy`
 spelled out, and HS.2 as the hypothesis `hclean`). -/
 theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
+    (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)
     (hcl : ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
       tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →
@@ -63,7 +63,7 @@ theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
       ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ att.h = m ∧
         att.T = E.root := by
   have hnc := hs.noColl
-  have hsrc := protected_sources hrun hs hc hp hset hclean hY hYs hpH hr hvotes hlater hparents
+  have hsrc := protected_sources hrun hs hc hset hclean hY hYs hpH hr hvotes hlater hparents
     hon
   obtain ⟨-, hYt, hpost⟩ := accept_of_proposesAt hrun hnc hpH hY
   rw [hpost] at hYh ⊢

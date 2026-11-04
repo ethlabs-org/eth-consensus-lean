@@ -161,7 +161,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
       (fun y hy k ℓ e hv he => hphase k (by
         have := cast_time_le_slot hrun hnc hy hv
         rw [he] at this
-        linarith)) Gp hp (by linarith)
+        linarith)) (by linarith)
     exact ⟨fun y hy k ℓ e hv' he => let ⟨a, b, _⟩ := hv y hy k ℓ e hv' he;
       ⟨a, b.imp_left And.right⟩, hl, hpa⟩
   -- the first crossing, by `b₁ ≤ w + C`
@@ -215,7 +215,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     rw [hpostY]
     omega
   obtain ⟨hYv, hYl, hYp⟩ := hprot hYr (hsx.trans hxy) (by linarith)
-  obtain ⟨E₂, hE₂, hrows₂⟩ := fixed_upper_rows_of hrun hs hc hp hset hclean hcl hpropY hYs hpY
+  obtain ⟨E₂, hE₂, hrows₂⟩ := fixed_upper_rows_of hrun hs hc hset hclean hcl hpropY hYs hpY
     hYm (by linarith) hYv hYl hYp (hupto _ (by linarith))
   have hE₂s := entry_slot_le hrun hnc hpY (accept_of_proposesAt hrun hnc hpY hpropY).2.2 hE₂
   rw [hYs] at hE₂s

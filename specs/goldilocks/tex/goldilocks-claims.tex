@@ -2494,8 +2494,8 @@ result.  Node O.1 does not mark that target proved.
 The Lean counterpart of every node outside the lock nodes, at consensus-lean
 main of 2026-11-03 (names relative to \texttt{Consensus.Goldilocks}; the
 crosswalk is \texttt{docs/goldilocks-mapping.md}).  The lock nodes (F.1 (b),
-A0.4, A0.5, the lock part of A0.7, A1.1, A1.2, A1.4, A1.5, A1.9, C1.1, HS.2,
-HR.4) are not covered here.  \emph{Proved}: a proof of the indexed
+A0.4, A0.5, the lock part of A0.7, A1.1, A1.2, A1.5, C1.1, HR.4) are not covered
+here (A1.4, A1.9 and HS.2 have rows for their deviations).  \emph{Proved}: a proof of the indexed
 proposition, named in the table, under the axioms \texttt{propext},
 \texttt{Classical.choice} and \texttt{Quot.sound}.  \emph{Conditional} or
 \emph{specialization}: a proof of a weaker or narrower statement, said
@@ -2641,9 +2641,15 @@ HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &
   specialization: proved at $\kappa=2\Delta$ with the original cut, note~4\\
 HS.1 & \texttt{Healing.ViableWitnessRetention} & proved
   (\texttt{viable\_witness\_retention}), at $\mathsf{Catch}(2\Delta)$\\
+HS.2 & \texttt{Healing.CleanLockDrain} & proved
+  (\texttt{clean\_lock\_drain}); stronger than HS.2: without
+  $\mathsf{Prop}^+(G_p)$, for locks written at any time, (3) at any call,
+  and later votes extend $B$ even when $B$ is at or below the voter's
+  $\fcroot$\\
 HS.3 & \texttt{Healing.FrozenTreeAgreement} & after-$r$ part only (the
   first part is not stated; decisions.md, HS.3): proved
-  (\texttt{frozen\_tree\_agreement}, from HS.2)\\
+  (\texttt{frozen\_tree\_agreement}, from HS.2); without
+  $\mathsf{Prop}^+(G_p)$\\
 HS.4 & \texttt{Healing.CommonPathAcquisition} & proved
   (\texttt{common\_path\_acquisition})\\
 HS.5 & $\mathsf{Producer}(A)$ inside \texttt{Healing.ResetExistence} &
