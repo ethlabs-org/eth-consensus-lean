@@ -302,6 +302,31 @@ theorem forwardObj_release_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
     exact h c hc
   · exact dependencies_forwardObj seen x t p B h
 
+variable (sp) in
+open Classical in
+/-- Parse a canonical authenticated forwarding chain, using the same engine digests for all
+nested blocks. A parent wrapper has the same origin, an earlier slot and no later timestamp.
+The genesis-root parent terminates the chain. These are wire checks only: actual acceptance
+and first-release provenance must be established separately for honest origins. -/
+noncomputable def decodeForward (hs : List (Header Info × Nat)) :
+    Wire sp.n → Option (Fin sp.n × Time × Option (Wire sp.n) × Blk sp)
+  | .mk (.signed origin .poll) (.data (.forward t)) [child] => do
+      let B ← decodeBlock sp hs child
+      if child = blockObj sp B ∧ B.parent = some sp.genesisRoot ∧
+          0 ≤ t ∧ sp.toParams.slotTime B.slot ≤ t then
+        some (origin, t, none, B)
+      else none
+  | .mk (.signed origin .poll) (.data (.forward t)) [parent, child] => do
+      let B ← decodeBlock sp hs child
+      let (parentOrigin, parentTime, _, A) ← decodeForward hs parent
+      if child = blockObj sp B ∧ parentOrigin = origin ∧ B.parent = some A.root ∧
+          A.root ≠ sp.genesisRoot ∧ A.slot < B.slot ∧ parentTime ≤ t ∧
+          0 ≤ t ∧ sp.toParams.slotTime B.slot ≤ t then
+        some (origin, t, some parent, B)
+      else none
+  | _ => none
+termination_by o => sizeOf o
+
 /-- A genesis-parent forwarding wrapper decodes under the explicit wire checks. -/
 theorem decodeForward_genesis (hs : List (Header Info × Nat)) (origin : Fin sp.n)
     (t : Time) (B : Blk sp) (hb : decodeBlock sp hs (blockObj sp B) = some B)
@@ -338,6 +363,107 @@ theorem forwardObj_of_decodeForward (hs : List (Header Info × Nat)) (o : Wire s
     rw [← h.2.2.1]
     rfl
   · simp at h
+
+/-- Decoding a forwarding envelope identifies its canonical child using the supplied
+digests and bounds the child's slot by the acceptance stamp. -/
+theorem decodeForward_child {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
+    (h : decodeForward sp hs o = some (x, t, p, B)) :
+    decodeBlock sp hs (blockObj sp B) = some B ∧ sp.toParams.slotTime B.slot ≤ t := by
+  unfold decodeForward at h
+  split at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, hc, h⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact ⟨by simpa only [hp.1] using hc, hp.2.2.2⟩
+    · simp at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, hc, ⟨⟨y, pt, pp, A⟩, _, h⟩⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact ⟨by simpa only [hp.1] using hc, hp.2.2.2.2.2.2.2⟩
+    · simp at h
+  · simp at h
+
+/-- The parser's recursive parent is authenticated by the same source, precedes the
+child's slot and stamp, and names its exact parent root; the leaf names genesis. -/
+theorem decodeForward_parent_cases {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
+    (h : decodeForward sp hs o = some (x, t, p, B)) :
+    (p = none ∧ B.parent = some sp.genesisRoot) ∨
+      ∃ parent pt pp A, p = some parent ∧
+        decodeForward sp hs parent = some (x, pt, pp, A) ∧
+        B.parent = some A.root ∧ A.root ≠ sp.genesisRoot ∧ A.slot < B.slot ∧ pt ≤ t := by
+  unfold decodeForward at h
+  split at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, h⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact Or.inl ⟨rfl, hp.2.1⟩
+    · simp at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, ⟨⟨y, pt, pp, A⟩, hd, h⟩⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact Or.inr ⟨_, pt, pp, A, rfl, hp.2.1 ▸ hd,
+        hp.2.2.1, hp.2.2.2.1, hp.2.2.2.2.1, hp.2.2.2.2.2.1⟩
+    · simp at h
+  · simp at h
+
+/-- A decoded forwarding stamp is nonnegative. -/
+theorem decodeForward_time_nonneg {hs : List (Header Info × Nat)} {o : Wire sp.n}
+    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
+    (h : decodeForward sp hs o = some (x, t, p, B)) : 0 ≤ t := by
+  unfold decodeForward at h
+  split at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, h⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact hp.2.2.1
+    · simp at h
+  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+    obtain ⟨C, _, ⟨⟨y, pt, pp, A⟩, _, h⟩⟩ := h
+    split at h
+    · rename_i hp
+      cases h
+      exact hp.2.2.2.2.2.2.1
+    · simp at h
+  · simp at h
+
+/-- A successful decode of a constructed wrapper preserves its explicit stamp and parent
+when the canonical child has already been decoded in that table. -/
+theorem decoded_forward_fields {sp : SA.SAParams} (hs : List (Header Info × Nat))
+    (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)) (B : Blk sp)
+    (hb : decodeBlock sp hs (blockObj sp B) = some B)
+    {u : Time} {q : Option (Wire sp.n)} {C : Blk sp}
+    (hd : decodeForward sp hs (forwardObj sp x t p B) = some (x, u, q, C)) :
+    (u, q, C) = (t, p, B) := by
+  cases p with
+  | none =>
+    simp only [forwardObj, Option.toList_none, List.nil_append, decodeForward, hb,
+      Option.bind_eq_bind, Option.bind_some] at hd
+    split at hd
+    · cases hd; rfl
+    · cases hd
+  | some parent =>
+    simp only [forwardObj, Option.toList_some, List.cons_append, List.nil_append,
+      decodeForward, hb, Option.bind_eq_bind, Option.bind_some] at hd
+    cases hp : decodeForward sp hs parent with
+    | none => simp [hp] at hd
+    | some result =>
+      obtain ⟨origin, stamp, pp, A⟩ := result
+      simp only [hp, Option.bind_some] at hd
+      split at hd
+      · cases hd; rfl
+      · cases hd
 
 /-! ## Shape-level preservation -/
 

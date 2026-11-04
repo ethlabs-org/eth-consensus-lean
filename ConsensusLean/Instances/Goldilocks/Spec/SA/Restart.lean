@@ -24,10 +24,6 @@ def ParentOrderAt {n : Nat} (genesisRoot : Nat) (Φ : Frm n FGP)
   l.Nodup ∧ (∀ B, B ∈ l ↔ B ∈ Φ.tree ∧ B.root ≠ genesisRoot) ∧
     ∀ i j (hi : i < l.length) (hj : j < l.length), l[i].parent = some l[j].root → j < i
 
-/-- Parent order at the genesis root of these protocol parameters. -/
-abbrev ParentOrder (Φ : Frm sp.n FGP) (l : List (Blk sp.n FGP)) : Prop :=
-  ParentOrderAt sp.genesisRoot Φ l
-
 /-- A replay order for restarts: for each restart time and frame, a list of the blocks to replay,
 which is a parent-order enumeration of the tree without genesis whenever one exists (at a
 well-formed frame one does). The spec fixes only that parents come before their children; the
@@ -43,12 +39,6 @@ structure ReplayOrderData (n genesisRoot : Nat) (FGP : Type) where
 
 /-- Replay order depends only on the validator count and genesis root. -/
 abbrev ReplayOrder (sp : SAParams) (FGP : Type) := ReplayOrderData sp.n sp.genesisRoot FGP
-
-open Classical in
-/-- One replay order: a chosen parent-order enumeration (`[]` if there is none). -/
-noncomputable def ReplayOrder.choice : ReplayOrder sp FGP where
-  order := fun _ Φ => if h : ∃ l, ParentOrder sp Φ l then h.choose else []
-  parentOrder := fun _ Φ h => by simp only [h, ↓reduceDIte]; exact h.choose_spec
 
 /-- `ac_restart(𝒜, Φ, t)` at validator `self`, replaying in the order `ro`: the replay's
 emissions are returned (there are none: the node is not joined at `t`, claims A0.7). -/

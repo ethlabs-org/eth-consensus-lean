@@ -520,16 +520,6 @@ def AvailableHealing : Prop :=
         ∀ (p : Nat) P, HonestProposalRun tr H proposer p P → T_heal sp g ΔF Gp Tb ≤ sp.ts p →
           IncludedFrom tr H (sp.ts p + 6 * sp.Δ) P)
 
-/-- The run-level statements of milestone Healing (HR.1–HR.4, H.2 (run), H.3, H.4). -/
-structure HealingRunStatements : Prop where
-  cutAndReset : CutAndReset
-  phaseCount : ∀ (P : Params) (ACP : Type), PhaseCount P ACP
-  resetExistence : ResetExistence
-  heightScopedRetention : HeightScopedRetention
-  runInclusion : RunInclusion
-  nonInterference : NonInterference
-  availableHealing : AvailableHealing
-
 end Consensus.Goldilocks.Healing
 
 end

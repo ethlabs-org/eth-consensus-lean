@@ -262,30 +262,6 @@ private theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
     have hbound := (deliverSeq_cover htail).1
     exact ⟨hcall, by omega⟩
 
-/-- Decoding a forwarding envelope identifies its canonical child using the supplied
-digests and bounds the child's slot by the acceptance stamp. -/
-theorem decodeForward_child {hs : List (Header Info × Nat)} {o : Wire sp.n}
-    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
-    (h : decodeForward sp hs o = some (x, t, p, B)) :
-    decodeBlock sp hs (blockObj sp B) = some B ∧ sp.toParams.slotTime B.slot ≤ t := by
-  unfold decodeForward at h
-  split at h
-  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-    obtain ⟨C, hc, h⟩ := h
-    split at h
-    · rename_i hp
-      cases h
-      exact ⟨by simpa only [hp.1] using hc, hp.2.2.2⟩
-    · simp at h
-  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-    obtain ⟨C, hc, ⟨⟨y, pt, pp, A⟩, _, h⟩⟩ := h
-    split at h
-    · rename_i hp
-      cases h
-      exact ⟨by simpa only [hp.1] using hc, hp.2.2.2.2.2.2.2⟩
-    · simp at h
-  · simp at h
-
 /-- Parsing a forwarding envelope authenticates its outer signer, independently of
 whether its contained block was accepted by any receiver. -/
 theorem decodeForward_signer {hs : List (Header Info × Nat)} {o : Wire sp.n}
@@ -293,34 +269,6 @@ theorem decodeForward_signer {hs : List (Header Info × Nat)} {o : Wire sp.n}
     (h : decodeForward sp hs o = some (x, t, p, B)) : o.signer? = some x := by
   rw [forwardObj_of_decodeForward hs o x t p B h]
   rfl
-
-/-- The parser's recursive parent is authenticated by the same source, precedes the
-child's slot and stamp, and names its exact parent root; the leaf names genesis. -/
-theorem decodeForward_parent_cases {hs : List (Header Info × Nat)} {o : Wire sp.n}
-    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
-    (h : decodeForward sp hs o = some (x, t, p, B)) :
-    (p = none ∧ B.parent = some sp.genesisRoot) ∨
-      ∃ parent pt pp A, p = some parent ∧
-        decodeForward sp hs parent = some (x, pt, pp, A) ∧
-        B.parent = some A.root ∧ A.root ≠ sp.genesisRoot ∧ A.slot < B.slot ∧ pt ≤ t := by
-  unfold decodeForward at h
-  split at h
-  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-    obtain ⟨C, _, h⟩ := h
-    split at h
-    · rename_i hp
-      cases h
-      exact Or.inl ⟨rfl, hp.2.1⟩
-    · simp at h
-  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-    obtain ⟨C, _, ⟨⟨y, pt, pp, A⟩, hd, h⟩⟩ := h
-    split at h
-    · rename_i hp
-      cases h
-      exact Or.inr ⟨_, pt, pp, A, rfl, hp.2.1 ▸ hd,
-        hp.2.2.1, hp.2.2.2.1, hp.2.2.2.2.1, hp.2.2.2.2.2.1⟩
-    · simp at h
-  · simp at h
 
 /-- Parent-first receipt traversal admits a source-accepted wrapper chain whenever
 the final observation's receiver tip is below its child. Source provenance is kept
@@ -402,27 +350,6 @@ theorem decodeBlock_transport {hs hs' : List (Header Info × Nat)} {o : Wire sp.
   simp only [blockObj] at hd ⊢
   rw [hr]
   exact hd
-
-private theorem decodeForward_time_nonneg {hs : List (Header Info × Nat)} {o : Wire sp.n}
-    {x : Fin sp.n} {t : Time} {p : Option (Wire sp.n)} {B : Blk sp}
-    (h : decodeForward sp hs o = some (x, t, p, B)) : 0 ≤ t := by
-  unfold decodeForward at h
-  split at h
-  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-    obtain ⟨C, _, h⟩ := h
-    split at h
-    · rename_i hp
-      cases h
-      exact hp.2.2.1
-    · simp at h
-  · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-    obtain ⟨C, _, ⟨⟨y, pt, pp, A⟩, _, h⟩⟩ := h
-    split at h
-    · rename_i hp
-      cases h
-      exact hp.2.2.2.2.2.2.1
-    · simp at h
-  · simp at h
 
 /-- Forwarding decode is unchanged when both digest tables agree on every
 canonical child carried by the envelope, including its recursive parent chain. -/

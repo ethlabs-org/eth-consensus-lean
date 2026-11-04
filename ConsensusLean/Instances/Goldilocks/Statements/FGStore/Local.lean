@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Duties
 
 Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21), the
 single-store nodes of the FG store level, against `Spec/FG/Store`: G0.1 (store), F.2 at the
-store, G0.3 (cache invariants), the `Σ` half of C0.2, the FG kernel of the frame step,
+store, G0.3 (cache invariants), the FG kernel of the frame step,
 G0.4 (height) (the frame realization) and G0.2 (c), (h) at the store (`EntryStateOfSource`).
 Every statement is about the FG states that the handlers reach (`Store.Reachable`): one node, no
 time, no AC. The multi-node store statements are over FG traces (`Spec/FG/Store/Trace`): G1.4
@@ -62,15 +62,6 @@ def CacheInvariants : Prop :=
       (∀ B ∈ st.tree, (st.σ B.root).h ≤ st.hmax) ∧
       (∃ B ∈ st.tree, (st.σ B.root).h = st.hmax) ∧
       ∃ B ∈ st.tree, (st.σ B.root).F = st.F.root
-
-/-- **C0.2, the `Σ` half: the finalized tip moves only to descendants.** From a reachable FG
-state, accepting a block moves `Σ.F` to a descendant (in the new tree), and processing an
-attestation leaves it unchanged. It follows from `AcceptIsFrameStep` and `TreeGrows`, so it is
-not a field of `FGStoreLocalAt`; it is stated for the claims node C0.2 and its proof is used. -/
-def FinalizedMonotone : Prop :=
-  ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
-    (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
-      ∀ a, (st.onAttestation a).F = st.F
 
 /-- **The FG kernel of the frame step.** From a reachable FG state, accepting `B` is a frame
 step `fg_to_ac(Σ) ⊑_B fg_to_ac(Σ')` (G0.3 (frame)), and processing an attestation leaves the

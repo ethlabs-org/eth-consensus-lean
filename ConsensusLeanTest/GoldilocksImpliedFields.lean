@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 @[expose] public section
 
@@ -41,6 +42,7 @@ namespace Consensus.Goldilocks.Store.Test
 /-- **The `Σ` half of C0.2 from the remaining `FGStoreLocalAt` fields.** -/
 theorem finalizedMonotone_of_fields (P : Params) (ACP : Type)
     (hstep : AcceptIsFrameStep P ACP) (hgrow : TreeGrows P ACP) : FinalizedMonotone P ACP := by
+  rw [finalizedMonotone_iff]
   intro acp₀ st hr
   refine ⟨fun B st' h => ?_, fun a => ?_⟩
   · have hF := ((hstep acp₀ st hr).1 B st' h).F_anc_F'

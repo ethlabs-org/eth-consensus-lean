@@ -299,13 +299,6 @@ def CommonPathAcquisition : Prop :=
         (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
         ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root
 
-/-- The phase-service statements of milestone Healing (HS.1–HS.4). -/
-structure PhaseServiceStatements : Prop where
-  viableWitnessRetention : ViableWitnessRetention
-  cleanLockDrain : CleanLockDrain
-  frozenTreeAgreement : FrozenTreeAgreement
-  commonPathAcquisition : CommonPathAcquisition
-
 end Consensus.Goldilocks.Healing
 
 end

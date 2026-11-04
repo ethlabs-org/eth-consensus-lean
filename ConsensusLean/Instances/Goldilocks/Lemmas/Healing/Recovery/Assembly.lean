@@ -13,6 +13,17 @@ cached finality. C1.3 forgets the proposal's high-height witness; O.1 applies th
 `Rstar`, then uses recovery from high finality with the unchanged `12Δ` margin. HR.5 is already
 proved independently. The coverage supplier is an explicit argument, not an added axiom. -/
 
+namespace Consensus.Goldilocks.Healing
+
+/-- The recovery statements of milestone Healing (HR.5, node O.1, C1.3): proof packaging, since
+`Challenge` states each field on its own. -/
+structure RecoveryStatements : Prop where
+  cacheAcceptance : CacheAcceptanceAfterReset
+  patternRecovery : PatternRecovery
+  finalizingCoverage : FinalizingCoverage
+
+end Consensus.Goldilocks.Healing
+
 namespace Consensus.Goldilocks.Healing.Recovery
 
 open SA (SAParams ReplayOrder Payload gbar)

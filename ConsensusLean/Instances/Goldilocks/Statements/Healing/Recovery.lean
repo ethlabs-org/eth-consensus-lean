@@ -188,12 +188,6 @@ def CacheAcceptanceAfterReset : Prop :=
           HZ tr H g + 1 ≤ ((tr.post k).fg.σ Fs.root).h →
           (tr.post k).fg.Anc Fs (tr.post k).fg.F
 
-/-- The recovery statements of milestone Healing (HR.5, node O.1, C1.3). -/
-structure RecoveryStatements : Prop where
-  cacheAcceptance : CacheAcceptanceAfterReset
-  patternRecovery : PatternRecovery
-  finalizingCoverage : FinalizingCoverage
-
 end Consensus.Goldilocks.Healing
 
 end

@@ -195,11 +195,6 @@ def RecentSourceNextVote : Prop :=
     ∀ y ∈ H, ∀ k e, SA.VoteAt tr.projAC y k e → e.msg.slot = m + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B
 
-/-- The statements of milestone Persist, part 2. -/
-structure PersistStatements : Prop where
-  honestFastConfirmationsPersist : HonestFastConfirmationsPersist
-  recentSourceNextVote : RecentSourceNextVote
-
 end Consensus.Goldilocks.Compose
 
 end

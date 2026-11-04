@@ -44,9 +44,6 @@ variable {n : Nat} {Role Item Body : Type}
 def auth : Obj n Role Item Body → Auth n Role
   | mk a _ _ => a
 
-def msg : Obj n Role Item Body → Msg Item Body
-  | mk _ m _ => m
-
 def carried : Obj n Role Item Body → List (Obj n Role Item Body)
   | mk _ _ cs => cs
 

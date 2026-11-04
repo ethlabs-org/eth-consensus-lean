@@ -15,6 +15,10 @@ namespace Consensus.Model
 namespace Obj
 variable {n : Nat} {Role Item Body : Type}
 
+/-- The message of an object (a field accessor; no trusted definition reads it). -/
+abbrev msg : Obj n Role Item Body → Msg Item Body
+  | mk _ m _ => m
+
 theorem partsList_eq (cs : List (Obj n Role Item Body)) :
     parts.partsList cs = cs.flatMap parts := by
   induction cs with

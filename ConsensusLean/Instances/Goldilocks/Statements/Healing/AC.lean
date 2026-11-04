@@ -243,15 +243,8 @@ def ACInclusion : Prop :=
             ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
           Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
 
-/-- The AC-level statements of milestone Healing (H.1, H.2). H.1's corollary follows from H.1
-(`corollary_of_standalone`), so it is not a field. -/
-structure HealingACStatements : Prop where
-  standalone : ∀ sp : SAParams, ACHealingStandalone (sp := sp)
-  inclusion : ∀ sp : SAParams, ACInclusion (sp := sp)
-
 /-! The closed forms of H.1, its corollary and H.2, for all SA parameters (the comparator's
-statements of this module, as `ACSteps` and `ACBase`); `HealingACStatements` bundles H.1 and H.2,
-and the corollary follows from H.1. -/
+statements of this module, as `ACSteps` and `ACBase`); the corollary follows from H.1. -/
 
 /-- **H.1** (`ACHealingStandalone`) for all SA parameters. -/
 def ACHealingStandaloneAll : Prop := ∀ sp : SAParams, ACHealingStandalone (sp := sp)

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Assembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Assembly
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Assembly
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Coverage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv
@@ -24,7 +24,20 @@ run bundle from H.3 as stated.
 
 `RecoveryStatements` (HR.5, O.1 and C1.3) is `recovery_statements`: the actual-report and outcome
 suppliers close the bounded high-coverage construction, then the recovery adapter discharges
-all three unchanged public statements. -/
+all three unchanged public statements.
+
+The bundles are proof packaging, not statements: `Challenge` states each field on its own, and
+`Solution` projects them. -/
+
+namespace Consensus.Goldilocks.SA
+
+/-- The AC-level statements of milestone Healing (H.1, H.2). H.1's corollary follows from H.1
+(`corollary_of_standalone`), so it is not a field. -/
+structure HealingACStatements : Prop where
+  standalone : ∀ sp : SAParams, ACHealingStandalone (sp := sp)
+  inclusion : ∀ sp : SAParams, ACInclusion (sp := sp)
+
+end Consensus.Goldilocks.SA
 
 namespace Consensus.Goldilocks.Healing
 
@@ -36,6 +49,16 @@ theorem healing_ac_statements : SA.HealingACStatements where
   inclusion := SA.ac_inclusion
 
 /-! ## The run bundle -/
+
+/-- The run-level statements of milestone Healing (HR.1–HR.4, H.2 (run), H.3, H.4). -/
+structure HealingRunStatements : Prop where
+  cutAndReset : CutAndReset
+  phaseCount : ∀ (P : Params) (ACP : Type), PhaseCount P ACP
+  resetExistence : ResetExistence
+  heightScopedRetention : HeightScopedRetention
+  runInclusion : RunInclusion
+  nonInterference : NonInterference
+  availableHealing : AvailableHealing
 
 /-- **The run bundle from H.3** as stated (the other fields are proved). -/
 theorem healing_run_statements_of_nonInterference (h3 : NonInterference) :
@@ -53,6 +76,13 @@ theorem healing_run_statements : HealingRunStatements :=
   healing_run_statements_of_nonInterference non_interference
 
 /-! ## The phase-service bundle -/
+
+/-- The phase-service statements of milestone Healing (HS.1–HS.4). -/
+structure PhaseServiceStatements : Prop where
+  viableWitnessRetention : ViableWitnessRetention
+  cleanLockDrain : CleanLockDrain
+  frozenTreeAgreement : FrozenTreeAgreement
+  commonPathAcquisition : CommonPathAcquisition
 
 /-- **The phase-service statements** HS.1–HS.4. -/
 theorem phase_service_statements : PhaseServiceStatements where

@@ -79,8 +79,24 @@ private theorem frameStep_of {n : Nat} {FGP ACP : Type} {T T' : Set (Block n FGP
     · rintro ⟨hXT, hF'X⟩
       exact ⟨hXT.1, hF'X.mono fun _ h => h.1⟩
 
-/-- **C0.2, the `Σ` half.** -/
-theorem finalized_monotone : FinalizedMonotone P ACP := by
+/-- **C0.2, the `Σ` half: the finalized tip moves only to descendants.** From a reachable FG
+state, accepting a block moves `Σ.F` to a descendant (in the new tree), and processing an
+attestation leaves it unchanged. It follows from `AcceptIsFrameStep` and `TreeGrows`, so it is
+not a field of `FGStoreLocalAt`; the proofs use it as a lemma, and no statement reads it. -/
+def FinalizedMonotone : Prop :=
+  ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
+    (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
+      ∀ a, (st.onAttestation a).F = st.F
+
+theorem finalizedMonotone_iff : FinalizedMonotone P ACP ↔
+    ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
+      (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
+        ∀ a, (st.onAttestation a).F = st.F := Iff.rfl
+
+/-- **C0.2, the `Σ` half** (`FinalizedMonotone`, unfolded). -/
+theorem finalized_monotone : ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
+    (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
+      ∀ a, (st.onAttestation a).F = st.F := by
   intro acp₀ st _
   refine ⟨fun B st' h => ?_, fun a => ?_⟩
   · rcases onBlock_F h with he | ⟨-, hFF'⟩

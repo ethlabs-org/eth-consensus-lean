@@ -263,33 +263,6 @@ theorem accepted_child_decodes {V : Type} [Fintype V] [DecidableEq V] {E : Env V
       run.genesis_root_ok hr hs hp d p (by rw [hst]; exact hdp)
     simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall, hB] using hd
 
-/-- A successful decode of a constructed wrapper preserves its explicit stamp and parent
-when the canonical child has already been decoded in that table. -/
-theorem decoded_forward_fields {sp : SA.SAParams} (hs : List (Header Info × Nat))
-    (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n)) (B : Blk sp)
-    (hb : decodeBlock sp hs (blockObj sp B) = some B)
-    {u : Time} {q : Option (Wire sp.n)} {C : Blk sp}
-    (hd : decodeForward sp hs (forwardObj sp x t p B) = some (x, u, q, C)) :
-    (u, q, C) = (t, p, B) := by
-  cases p with
-  | none =>
-    simp only [forwardObj, Option.toList_none, List.nil_append, decodeForward, hb,
-      Option.bind_eq_bind, Option.bind_some] at hd
-    split at hd
-    · cases hd; rfl
-    · cases hd
-  | some parent =>
-    simp only [forwardObj, Option.toList_some, List.cons_append, List.nil_append,
-      decodeForward, hb, Option.bind_eq_bind, Option.bind_some] at hd
-    cases hp : decodeForward sp hs parent with
-    | none => simp [hp] at hd
-    | some result =>
-      obtain ⟨origin, stamp, pp, A⟩ := result
-      simp only [hp, Option.bind_some] at hd
-      split at hd
-      · cases hd; rfl
-      · cases hd
-
 /-- Acceptance preserves both decoder inventory and held-block correspondence together. -/
 theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)

@@ -13,6 +13,16 @@ namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
 
+/-- Parent order at the genesis root of these protocol parameters. -/
+abbrev ParentOrder {FGP : Type} (Φ : Frm sp.n FGP) (l : List (Blk sp.n FGP)) : Prop :=
+  ParentOrderAt sp.genesisRoot Φ l
+
+open Classical in
+/-- One replay order: a chosen parent-order enumeration (`[]` if there is none). -/
+noncomputable def ReplayOrder.choice {FGP : Type} : ReplayOrder sp FGP where
+  order := fun _ Φ => if h : ∃ l, ParentOrder sp Φ l then h.choose else []
+  parentOrder := fun _ Φ h => by simp only [h, ↓reduceDIte]; exact h.choose_spec
+
 /-- A well-formed frame has a parent-order enumeration of its blocks other than genesis: by
 slot (parents have smaller slots). -/
 theorem parentOrder_exists {FGP : Type} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) :

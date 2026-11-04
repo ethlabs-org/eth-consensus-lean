@@ -20,6 +20,18 @@ monotone lift `PSyncFGRowTransport.mono` exists, but Accepted's chain uses it on
 namespace Consensus.Goldilocks.Refinement
 open Blocks Shape
 
+/-- `cF r` is the ceiling `⌈(r + 6)/4⌉`, for every `r`. -/
+theorem cF_ceil (r : ℕ+) : (r : Nat) + 6 ≤ 4 * cF r ∧ 4 * cF r < (r : Nat) + 10 := by
+  unfold cF
+  omega
+
+/-- The row transport at ratio `r`: with engine bounds `0 < Δ` and `ΔF ≤ r·Δ`, the protocol
+delays `Δ_p = Δ` and `ΔF_p = ΔF` satisfy `6Δ_p + ΔF_p ≤ 4Δ_p·cF r`. -/
+theorem cF_spec (r : ℕ+) (Δ ΔF : Time) (hΔ : 0 < Δ) (hr : ΔF ≤ (r : Time) * Δ) :
+    6 * Δ + ΔF ≤ 4 * Δ * (cF r : Time) := by
+  have h4 : ((r : Nat) : Time) + 6 ≤ 4 * (cF r : Time) := by exact_mod_cast (cF_ceil r).1
+  nlinarith
+
 /-- The row gap is at least `2` at every ratio (`cF_ceil`: `4·cF r ≥ r + 6 ≥ 7`). -/
 theorem AcceptanceAssumptions.two_le_cF {S : Setup} (A : AcceptanceAssumptions S) :
     2 ≤ cF A.rowRatio := by

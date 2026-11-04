@@ -259,7 +259,7 @@ variable (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
 /-- The public parameters of `sp`: the type index of `goldilocksShape`. Only `n` (keys and
 objects) and `Δ` (`skeleton`'s grid, overridden by `goldilocksShape`) are read from it; its row
 bound is set to `sp.Δ` only to fill the field and is read by no definition. The run's row bound
-is the family's `Public.ΔF` (`rowDelay`). -/
+is the family's `Public.ΔF`. -/
 abbrev _root_.Consensus.Goldilocks.SA.SAParams.pub : Public :=
   ⟨sp.n, sp.Δ, sp.toParams.hΔ, sp.Δ, sp.toParams.hΔ⟩
 
@@ -399,31 +399,6 @@ def apply (st : State sp ro)
     wrappers := publications.wrappers
     forwards := publications.forwards
     voteForwards := st.voteForwards ++ admitted.map (st.now, ·) }
-
-variable (sp) in
-open Classical in
-/-- Parse a canonical authenticated forwarding chain, using the same engine digests for all
-nested blocks. A parent wrapper has the same origin, an earlier slot and no later timestamp.
-The genesis-root parent terminates the chain. These are wire checks only: actual acceptance
-and first-release provenance must be established separately for honest origins. -/
-noncomputable def decodeForward (hs : List (Header Info × Nat)) :
-    Wire sp.n → Option (Fin sp.n × Time × Option (Wire sp.n) × Blk sp)
-  | .mk (.signed origin .poll) (.data (.forward t)) [child] => do
-      let B ← decodeBlock sp hs child
-      if child = blockObj sp B ∧ B.parent = some sp.genesisRoot ∧
-          0 ≤ t ∧ sp.toParams.slotTime B.slot ≤ t then
-        some (origin, t, none, B)
-      else none
-  | .mk (.signed origin .poll) (.data (.forward t)) [parent, child] => do
-      let B ← decodeBlock sp hs child
-      let (parentOrigin, parentTime, _, A) ← decodeForward hs parent
-      if child = blockObj sp B ∧ parentOrigin = origin ∧ B.parent = some A.root ∧
-          A.root ≠ sp.genesisRoot ∧ A.slot < B.slot ∧ parentTime ≤ t ∧
-          0 ≤ t ∧ sp.toParams.slotTime B.slot ≤ t then
-        some (origin, t, some parent, B)
-      else none
-  | _ => none
-termination_by o => sizeOf o
 
 variable (sp) in
 /-- The vote a received object is the canonical object of (`voteObj`): signed by its validator
@@ -743,26 +718,10 @@ noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
 
 /-! ## The row bound -/
 
-/-- The protocol row delay of the public parameters: `ΔF_p = ΔF`, the engine row bound, as the
-protocol delay `Δ_p = Δ` (`Setup.params`): L0 delivers strictly before the bound (`CommLog.PSync`),
-which is the node's deadline `[τ, max(τ, w) + Δ_F)`. -/
-def rowDelay (pub : Public) : Time := pub.ΔF
-
 /-- The FG row gap at row ratio `r`: `cF r = ⌈(r + 6)/4⌉` slots (`cF_ceil`). It bounds
-`⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉` whenever the engine bounds satisfy `ΔF ≤ r·Δ` (`cF_spec`). -/
+`⌈(6Δ_p + ΔF_p)/(4Δ_p)⌉`, at the protocol delays `Δ_p = Δ` and `ΔF_p = ΔF`, whenever the
+engine bounds satisfy `ΔF ≤ r·Δ` (`cF_spec`; both in `Lemmas/Refinement/AcceptanceDefs`). -/
 def cF (r : ℕ+) : Nat := ((r : Nat) + 9) / 4
-
-/-- `cF r` is the ceiling `⌈(r + 6)/4⌉`, for every `r`. -/
-theorem cF_ceil (r : ℕ+) : (r : Nat) + 6 ≤ 4 * cF r ∧ 4 * cF r < (r : Nat) + 10 := by
-  unfold cF
-  omega
-
-/-- The row transport at ratio `r`: with engine bounds `0 < Δ` and `ΔF ≤ r·Δ`, the protocol
-delays `Δ_p = Δ` and `ΔF_p = ΔF` satisfy `6Δ_p + ΔF_p ≤ 4Δ_p·cF r`. -/
-theorem cF_spec (r : ℕ+) (Δ ΔF : Time) (hΔ : 0 < Δ) (hr : ΔF ≤ (r : Time) * Δ) :
-    6 * Δ + ΔF ≤ 4 * Δ * (cF r : Time) := by
-  have h4 : ((r : Nat) : Time) + 6 ≤ 4 * (cF r : Time) := by exact_mod_cast (cF_ceil r).1
-  nlinarith
 
 end Consensus.Goldilocks.Refinement
 

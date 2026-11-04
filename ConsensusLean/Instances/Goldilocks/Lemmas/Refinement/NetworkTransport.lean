@@ -43,6 +43,13 @@ namespace Consensus.Goldilocks.Refinement
 
 open Shape Blocks
 
+/-- The protocol row delay of the public parameters: `ΔF_p = ΔF`, the engine row bound, as the
+protocol delay `Δ_p = Δ` (`Setup.params`): L0 delivers strictly before the bound (`CommLog.PSync`),
+which is the node's deadline `[τ, max(τ, w) + Δ_F)`. -/
+def rowDelay (pub : Model.Public) : Time := pub.ΔF
+
+theorem rowDelay_eq (pub : Model.Public) : rowDelay pub = pub.ΔF := by rfl
+
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (family S)) E)
   {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}

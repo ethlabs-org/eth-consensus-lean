@@ -129,12 +129,6 @@ theorem EtaReadyAbove.awakeForm {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove 
     exact_mod_cast Finset.card_le_card (p.readyAt_subset_awakeAt hc0 ht)
   exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left hc h0) (lt_of_lt_of_le h hr)
 
-omit [DecidableEq V] in
-/-- A smaller fraction of all validators is weaker. -/
-theorem ReadyOfAll.mono {φ φ' : ℚ} {c t : Time} (h : p.ReadyOfAll φ' c t)
-    (hle : φ ≤ φ') : p.ReadyOfAll φ c t :=
-  lt_of_le_of_lt (mul_le_mul_of_nonneg_right hle (by positivity)) h
-
 variable {p}
 
 /-- A smaller fraction is weaker. -/

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Refinement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
+import all ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted

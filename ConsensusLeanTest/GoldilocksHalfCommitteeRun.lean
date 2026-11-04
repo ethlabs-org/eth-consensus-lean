@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.GoldilocksHalfCommitteeCutLaw
 public import ConsensusLeanTest.GoldilocksScheduleLocalRun
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 @[expose] public section
 
 /-! # The halfCommittee run with five validators: schedule and `GoldilocksRun`
