@@ -307,8 +307,9 @@ theorem accepted_realizable_small :
 Before the `fgSlots` restatement the assumptions took an FG delay bound `r ≥ 1` (the healthy
 regime's `ΔFG ≤ r·ΔAC`), with the gap `cF r = ⌈(r + 6)/4⌉`, the timeout `3·cF r ≤ δt`, the window
 `[0, cF r, 2·cF r, 3·cF r]` and the final latency `4(X + 3·cF r) + 1`. The restated endpoint is
-equivalent: each contract is the former one at `r = 4·fgSlots − 6` (`cF_four_mul_sub_six`), and the
-former endpoint at every `r` follows from it (`meets_obligations_at_every_bound`), because the
+equivalent, as one checked fact: `meetsObligations_iff_former`. Each contract is the former one at
+`r = 4·fgSlots − 6` (`formerContract_eq`, from `cF_four_mul_sub_six`), and the former endpoint at
+every `r` follows from the restated one (`meets_obligations_at_every_bound`), because the
 obligations only weaken with a smaller bound (`shapeObligations_of_fgDelay_le`). -/
 
 /-- The former FG gap at bound `r`: `cF r = ⌈(r + 6)/4⌉`. -/
@@ -402,14 +403,50 @@ theorem contract_eq_former {S : Setup} (A : ContractAssumptions S) (X : ℕ+) :
   · rw [cF_four_mul_sub_six A]
     rfl
 
+/-- The timeout of the assumptions is the former timeout at their own bound `r = fgDelay`. -/
+theorem former_timeout {S : Setup} (A : ContractAssumptions S) : 3 * cF A.fgDelay ≤ S.δt := by
+  rw [cF_four_mul_sub_six A]
+  exact A.timeout
+
+/-- The former assumptions at `r = fgDelay` are the assumptions themselves. -/
+theorem formerAssumptions_fgDelay {S : Setup} (A : ContractAssumptions S) :
+    formerAssumptions S A.fgDelay (former_timeout A) = A := by
+  have h := cF_four_mul_sub_six A
+  cases A
+  simp only [formerAssumptions, ContractAssumptions.mk.injEq]
+  exact h
+
+/-- **Each contract is the former contract at its own FG delay bound** `r = 4·fgSlots − 6`, as one
+equality of contracts. -/
+theorem formerContract_eq {S : Setup} (A : ContractAssumptions S) :
+    formerContract S A.fgDelay (former_timeout A) = K S A := by
+  unfold formerContract
+  rw [formerAssumptions_fgDelay A]
+  rfl
+
+/-- **The restated endpoint is equivalent to the former one.** `MeetsObligations` (at every setup
+and every FG gap `fgSlots`) holds iff Goldilocks meets the obligations at the former contract at
+every setup and every FG delay bound `r` with `3·cF r ≤ δt`. Forward: the assumptions at the gap
+`cF r` give a bound `4·cF r − 6 ≥ r` (`cF_ceil`), and the obligations are monotone in it
+(`shapeObligations_of_fgDelay_le`). Backward: `formerContract_eq` at `r = fgDelay`. -/
+theorem meetsObligations_iff_former :
+    MeetsObligations ↔ ∀ (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt),
+      ShapeObligations (goldilocks S) (formerContract S r ht) := by
+  constructor
+  · intro h S r ht
+    refine shapeObligations_of_fgDelay_le ?_ (h S (formerAssumptions S r ht))
+    change (r : Nat) ≤ 4 * cF r - 6
+    have := (cF_ceil r).1
+    omega
+  · intro h S A
+    have hA := h S A.fgDelay (former_timeout A)
+    rw [formerContract_eq A] at hA
+    exact hA
+
 /-- **The former endpoint, at every FG delay bound `r`** with `3·cF r ≤ δt`: Goldilocks meets the
-obligations at the former contract, from `meets_obligations` at the gap `cF r` (whose bound
-`4·cF r − 6 ≥ r`, `cF_ceil`) and `shapeObligations_of_fgDelay_le`. -/
+obligations at the former contract (`meetsObligations_iff_former` at `meets_obligations`). -/
 theorem meets_obligations_at_every_bound (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) :
-    ShapeObligations (goldilocks S) (formerContract S r ht) := by
-  refine shapeObligations_of_fgDelay_le ?_ (meets_obligations S (formerAssumptions S r ht))
-  change (r : Nat) ≤ 4 * cF r - 6
-  have := (cF_ceil r).1
-  omega
+    ShapeObligations (goldilocks S) (formerContract S r ht) :=
+  meetsObligations_iff_former.1 meets_obligations S r ht
 
 end Consensus.Goldilocks.Obligations.Test.Contract
