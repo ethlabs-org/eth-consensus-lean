@@ -1,3 +1,4 @@
+# CI of record (owner, 2026-11-04, docs/decisions.md): GitHub Actions; the box runs no CI.
 # Fast tier, on every pull request and every push to main: a cached build (Mathlib via `lake exe cache get`,
 # the project's .lake/build via actions/cache, falling back to main's latest) and `scripts/check.sh --fast`:
 # pins, build (--wfail), imports, check-decls, axiom audit (solution closure, tests), Spec surface + snapshot diff,
@@ -8,7 +9,9 @@
 # Kernel replay, `lake check` and `lake comparator --paranoid` run in full.yml (nightly, manual, tags).
 # Pushes to work/* branches without a PR run nothing here: iterate locally (scripts/check-changed.sh).
 # Plus the review boundary (every trusted-surface commit carries a `Trusted-surface:` line). Action SHAs as in
-# verified-consensus verify.yml.
+# verified-consensus verify.yml. Event `pull_request` only, never `pull_request_target`: a PR's code runs with a
+# read-only token and no secrets. Sized for the standard public runner (4 vCPU, 16 GB): the heaviest test modules
+# (~2.7 GB each) build one at a time before check.sh builds the rest.
 name: check
 
 on:
@@ -21,15 +24,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # A newer push supersedes a running check of the same ref, on main too (its tree contains the older commits).
+  # One group per PR (and per pushed ref): a newer push supersedes a running check of the same PR or ref, on main
+  # too (its tree contains the older commits).
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
     name: Build (cached) and scripts/check.sh --fast
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # A cold run (no build cache): Mathlib download plus the whole project on 4 vCPUs; cached runs take minutes.
+    timeout-minutes: 150
     steps:
       - name: Check out consensus-lean (full history, for the diff that decides the self-tests)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -85,6 +90,17 @@ jobs:
           lake --version
           jq --version
 
+      # The self-tests of scripts/ci-sandbox.sh (step 0) and test_orb_ci.py's sandbox case run bubblewrap; Ubuntu
+      # 24.04 ships without it and blocks unprivileged user namespaces through AppArmor. Without this step the
+      # sandbox self-test fails (its "ok" probes refuse to run unsandboxed): runs 41800845655 and 41830574497, 2026-11-04.
+      - name: Bubblewrap (sandbox self-tests)
+        if: steps.docs.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q && sudo apt-get install -y -q bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          bwrap --ro-bind / / --unshare-all true    # smoke: fails the job if user namespaces are still blocked
+
       # Saved only right after `cache get` below, so an exact hit always holds Mathlib's oleans and `cache get` (a
       # ~22 s no-op then) is skipped. A docs-only run, which skips `cache get`, never saves it.
       - name: Restore Lake packages
@@ -117,6 +133,16 @@ jobs:
           key: lake-build-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-${{ github.sha }}
           restore-keys: |
             lake-build-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-
+
+      # Before check.sh's parallel build (4 jobs): two of these at once would exceed the runner's memory.
+      - name: Build the heaviest test modules one at a time
+        if: steps.docs.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          for f in ConsensusLeanTest/GoldilocksHalfCommittee*.lean ConsensusLeanTest/GoldilocksInitialCarry*.lean; do
+            m="${f%.lean}"; m="${m//\//.}"
+            echo "::group::lake build $m"; lake build --wfail --iofail "$m"; echo "::endgroup::"
+          done
 
       - name: Self-tests and reach report, from what the change touches
         id: mode
@@ -158,11 +184,13 @@ jobs:
       - name: Run scripts/check.sh (docs-only --changed, otherwise --fast)
         env:
           CI: "1"
+          RUN_DIR: ${{ runner.temp }}/run
           FLAGS: ${{ steps.mode.outputs.flags }}
           DOCS_ONLY: ${{ steps.docs.outputs.docs_only }}
           BASE: ${{ steps.docs.outputs.base }}
         run: |
           set -euo pipefail
+          mkdir -p "$RUN_DIR"
           if [[ "$DOCS_ONLY" == true ]]; then
             scripts/check.sh --changed "$BASE" 2>&1 | tee "$RUNNER_TEMP/check.log"
           else
@@ -179,6 +207,23 @@ jobs:
           [[ "$DOCS_ONLY" != true ]] || mode=changed
           grep -q "^check.sh: PASSED ($mode mode" "$RUNNER_TEMP/check.log"
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
+      - name: Summary (the check's result line and its SKIP lines)
+        if: always()
+        run: |
+          { echo '```'; grep -E '^(SKIP|FAIL|check\.sh:)' "$RUNNER_TEMP/check.log" || echo "no check.sh result line"; echo '```'; } \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # The sorry inventory (step 3c, report only) of main's heads, as an artifact of the run: it replaces the
+      # retired `ci-inventory` branch of the coordination repository (no cross-repository token in CI).
+      - name: Upload the sorry inventory (main)
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.docs.outputs.docs_only != 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sorry-inventory
+          path: ${{ runner.temp }}/run/check.*/sorry-inventory.json
+          if-no-files-found: warn
+          retention-days: 90
 
       - name: Save project build (.lake/build)
         if: ${{ !cancelled() && steps.docs.outputs.docs_only != 'true' && steps.build-cache.outputs.cache-hit != 'true' }}

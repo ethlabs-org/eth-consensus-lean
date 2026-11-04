@@ -85,7 +85,8 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
   whose roots exclude the library): check-decls still fails a direct `sorry` outside the sorry layers. `lake build --wfail` runs with `warn.sorry = false`, so every other warning fails the build.
   "Certified" is reserved for a full-tier certification: `check.sh --full` passed on a named main commit,
-  recorded on #63 (the status legend of `docs/roadmap.md`).
+  that is, a passing `full` workflow run of the commit (earlier ones: rows on #63; the status legend of
+  `docs/roadmap.md`).
 - **Proofs:** leanchecker, one process per leaf module of the checked libraries (parents own no
   constants); `lake check` (of the default targets while the sorry layers' files hold no `sorry`/`admit` term or
   tactic outside comments and strings, an `admit`-named field or binder not being one: it rejects `sorryAx`;
@@ -94,18 +95,22 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   kernel and, with `--paranoid`, by every external kernel bundled with Lean.
   The comparator is **not a Spec-drift check**: both sides read the same source tree.
 
-`scripts/check.sh` wires checks and fixtures. **CI of record is `scripts/orb-ci.sh` on `ethlabs-box`, with
-results on [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63).** GitHub Actions is disabled
-by owner decision (2026-10-31, #50); its files remain, but agents must not dispatch workflows, create GitHub CI
-subscriptions or report the known billing failures. A green check means a passing box result for that commit.
-The watcher runs fast mode (no replay, `lake check` or comparator; check-decls, axiom audit, snapshot diff and
-review pins included) on observed main/non-draft PR heads, with docs-only changes in `--changed` mode, plus
-review-boundary and its self-test, all inside a bubblewrap sandbox (`scripts/ci-sandbox.sh`, the watcher's own copy: no network, credentials or watcher state; read-only packages; no unsandboxed fallback), since a head's scripts are code a collaborator wrote. Polling can coalesce heads; missing exact commits can be queued by the watcher owner.
-Full mode runs nightly, on demand and on milestone/release tags, from a clean
+`scripts/check.sh` wires checks and fixtures. **CI is GitHub Actions only** (owner, 2026-11-04, reversing #50;
+`docs/decisions.md`); the box runs no CI and is not part of verification. A green check means the passing GitHub check
+of that commit. `check` (`.github/workflows/ci.yml`) runs fast mode (no replay, `lake check` or comparator;
+check-decls, axiom audit, snapshot diff and review pins included) on every pull request (its merge commit) and every
+push to `main`, with docs-only changes in `--changed` mode, plus review-boundary and its self-test. A head's scripts are
+code a collaborator wrote: it runs on a fresh GitHub-hosted runner, on the `pull_request` event (never
+`pull_request_target`), with a read-only token and no secrets, so it can change nothing but its own check result.
+`full` (`.github/workflows/full.yml`) runs full mode nightly, on demand and on milestone/release tags, from a clean
 project build: a proof change merged after a green fast run is replayed by the kernel at the latest the next night.
-`lake check` and `lake comparator --paranoid` run inside bubblewrap on the box. Full CI rejects skipped steps
-and a dirty tree; without bubblewrap a standalone check skips these steps and lists them as CI-only, which is
-not a passing full CI result. No trust-check verdict is removed by disabling Actions.
+`lake check` and `lake comparator --paranoid` run inside bubblewrap, which the workflow installs (and smoke-tests:
+the job fails if user namespaces are blocked). The kernels are the toolchain's own, pinned by `lean-toolchain`
+(leanchecker, leanchecker-paranoid, lean4lean, nanoda, con-leche, con-ron). Full CI rejects skipped or deferred
+steps and a dirty tree; without bubblewrap a standalone check skips these steps and lists them as CI-only, which is
+not a passing full CI result. `scripts/orb-ci.sh` and the box units (the former CI of record, with results on
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63)) remain in the repository, unused; their
+self-tests still run. No trust-check verdict changed in the move.
 
 Step 3c is **report only**, not a new trust gate. `scripts/sorry-inventory.py` reads the
 Accepted ledger's `toml sorry-inventory` block (`modules`, `roots`) and compiled tables

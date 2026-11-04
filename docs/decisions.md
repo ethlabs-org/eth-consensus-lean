@@ -771,6 +771,20 @@ where it is recorded; "Francesco" marks the owner's decisions.
   reach Milestones. The 48 stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and
   check.sh step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
   "proved (lemma)".
+- 2026-11-04, Francesco: **CI is GitHub Actions only; the box runs no CI.** This reverses "GitHub Actions is
+  disabled" (2026-10-31, [#50]): that was a billing decision, and the code repository `eth-consensus-lean` is to be
+  public, where the standard runners cost nothing (the two runs on it while private, 2026-11-04, started too). `check` (`.github/workflows/ci.yml`) runs the fast tier and the review
+  boundary on every pull request and every push to `main`; `full` (`full.yml`) runs the full tier nightly, on
+  `milestone*`/`release*` tags and on demand. Green CI is the GitHub check of the commit; full-tier certification
+  is a passing `full` run of the named commit. PRs run on `pull_request` (never `pull_request_target`) with a
+  read-only token and no secrets; a fresh hosted runner takes the place of the box's bubblewrap sandbox for a head's
+  code. No result is posted to the coordination repository: that would need a cross-repository token in CI, so
+  [#63] keeps the box rows of the old history, and the `ci-inventory` branch is retired (main runs upload the step
+  3c sorry inventory as an artifact). `notify.yml` is removed (its `NTFY_TOPIC` secret was never set).
+  `scripts/orb-ci.sh`, its helpers and the box units stay in the repository, unused, with their self-tests;
+  `scripts/push-main.sh` stays the landing path, its local check unchanged. `ci.yml` now installs bubblewrap: the
+  box CI sandbox self-test failed on Actions because `bwrap` was missing (runs 41800845655, 41830574497); no check is
+  weakened.
 
 ## Open, for the owner
 
@@ -800,3 +814,4 @@ where it is recorded; "Francesco" marks the owner's decisions.
 [#136]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/136
 [#21]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/21
 [#38]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/38
+[#63]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/63

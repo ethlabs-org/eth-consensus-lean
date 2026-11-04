@@ -1,9 +1,15 @@
+# CI of record (owner, 2026-11-04, docs/decisions.md): GitHub Actions; the box runs no CI.
 # Full tier: `scripts/check.sh --full` (every step and self-test, incl. leanchecker kernel replay, `lake check`
 # and `lake comparator --paranoid` in a bubblewrap sandbox) on a clean project build. Nightly (skipped when
 # main's head already passed a full run), on demand, and on `milestone*` / `release*` tags.
 # Two parallel jobs (#13): `lake check` (step 10, about 15 min of single-threaded export replay) and every
 # other step (`--split main`); the run passes only if both do.
 # The fast tier (ci.yml) runs on every pull request and push to main.
+# Manual runs: `gh workflow run full.yml` (main) or `gh workflow run full.yml --ref <tag or branch>` (a milestone,
+# release or toolchain/Mathlib bump candidate). The checkers are the toolchain's own (pinned by lean-toolchain):
+# leanchecker, leanchecker-paranoid, lean4lean, nanoda, con-leche and con-ron, all bundled with Lean; the sandbox is
+# bubblewrap, installed below. Sized for the standard public runner (4 vCPU, 16 GB): the heaviest test modules
+# build one at a time, and kernel replay runs 2 leaves at once (most peak ~3.3 GB, the heaviest test modules ~5.5 GB).
 name: full
 
 on:
@@ -52,7 +58,9 @@ jobs:
     needs: gate
     if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    # The box ran the unsplit tier in ~25 min on 8 CPUs; a cold split part on 4 vCPUs takes longer (lake check
+    # alone ~15 min single-threaded). Well inside the 6 h hosted limit.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -103,9 +111,19 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           bwrap --ro-bind / / --unshare-user true    # smoke: fails the job if userns is still blocked
 
+      # Before check.sh's parallel build (4 jobs): two of these at once would exceed the runner's memory.
+      - name: Build the heaviest test modules one at a time (clean project build; no .lake/build cache)
+        run: |
+          set -euo pipefail
+          for f in ConsensusLeanTest/GoldilocksHalfCommittee*.lean ConsensusLeanTest/GoldilocksInitialCarry*.lean; do
+            m="${f%.lean}"; m="${m//\//.}"
+            echo "::group::lake build $m"; lake build --wfail --iofail "$m"; echo "::endgroup::"
+          done
+
       - name: Run scripts/check.sh --full --split (clean project build; no .lake/build cache)
         env:
           CI: "1"
+          REPLAY_JOBS: "2"
           PART: ${{ matrix.part }}
         run: |
           set -o pipefail
@@ -128,6 +146,12 @@ jobs:
             *) exit 1 ;;
           esac
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
+      - name: Summary (the part's result line and its SKIP/DEFER lines)
+        if: always()
+        run: |
+          { echo '```'; grep -E '^(SKIP|DEFER|FAIL|check\.sh:)' "$RUNNER_TEMP/check.log" || echo "no check.sh result line"; echo '```'; } \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload check log
         if: always()

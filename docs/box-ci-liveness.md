@@ -1,5 +1,8 @@
 # Box CI liveness alerts
 
+**Unused since 2026-11-04** (owner decision, `docs/decisions.md`): CI is GitHub Actions only and the box runs no CI. This
+document describes the former box CI; it is kept as reference.
+
 `scripts/orb-ci-liveness.py` is a project-specific check for the existing root
 `ethlabs-alerts` timer (every ten minutes), not another notification system.
 `scripts/install-orb-ci-liveness.py` installs a root-owned helper and a small hook

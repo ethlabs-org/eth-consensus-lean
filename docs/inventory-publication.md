@@ -1,5 +1,9 @@
 # Accepted inventory publication (private, report-only)
 
+**Unused since 2026-11-04** (owner decision, `docs/decisions.md`): CI is GitHub Actions only and the box runs no CI. The `ci-inventory`
+branch is retired (main runs of `check` upload the sorry inventory as an artifact); this document describes the
+former publication; it is kept as reference.
+
 The fast watcher captures step 3c for each checked `main` / `main (re-check)` SHA.
 PR and full-tier runs do not publish. CI verdicts and #63 rows are unchanged.
 Reports live on the private coordination repository's isolated `ci-inventory` branch (`issues` in

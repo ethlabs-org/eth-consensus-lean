@@ -29,7 +29,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   from your worktree, agent builds and checks use
   `scripts/agent-job.py <unique-name> -- bash -lc 'LAKE_RESTORE_ARTIFACTS=true <cmd>'`.
   It waits through the per-user FIFO (two agent slots), delegates to `job --mem 16G --cpus 8
-  consensus-lean`, and returns the job's exit status. Landings and CI stay on `job`, outside this queue.
+  consensus-lean`, and returns the job's exit status. Landings stay on `job`, outside this queue.
   One build at a time per agent; reviewers never build.
 - **Iterate locally:** `lake env lean <file>` for one file (its imports built), or
   `turbo-lean check <file> --decl <name>` for a single declaration only. `lake build` stays the gate.
@@ -37,7 +37,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   (the lakefile's `testDriver`, not a default target).
   A single-module build does **not** check downstream callers after an interface change: use
   `scripts/check-changed.sh` for that. Budget 16G/8 CPU per build; at most two concurrent agent builds
-  across the box while reserving another 16G/8 CPU for CI. Check `jobs-all` and available memory first;
+  across the box while reserving another 16G/8 CPU for landings. Check `jobs-all` and available memory first;
   do not infer spare capacity from warm cgroup accounting of shared pages. Concurrent Lake invocations
   sharing one output directory are not established safe; do not do that. One build per agent still
   applies. Measurements behind these numbers: `docs/box-capacity.md`.
@@ -56,18 +56,15 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   lock (the remote branch `push-main-lock`), rebases and checks again; other landers wait for the lock instead of
   checking in vain (#50). Never create or delete that branch by hand except to clear a dead lock (it also expires). The pre-push hook
   `scripts/hooks/pre-push` refuses a push to `main` of a commit the script did not check; enable it once per clone
-  with `git config core.hooksPath scripts/hooks` (`.agents/setup` does it in orbs). No PR; observed main heads run
-  the selected box CI tier; a red `main` is reverted at once by whoever
-  pushed it, then fixed. **GitHub Actions is disabled by owner decision (2026-10-31, #50)** because billing
-  prevents jobs from starting; workflow files remain for reference and reversible re-enablement. Do not create
-  GitHub CI subscriptions, dispatch Actions, or report the known billing failures. **Green CI means the box
-  result on [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63)**, not a GitHub check badge.
-  `scripts/orb-ci.sh` runs as systemd user services on `ethlabs-box`, with checks inside `job`: fast tier and
-  review-boundary for observed main/non-draft PR heads, docs-only `--changed`, and full tier nightly, on tags
-  and manually (kernel replay, `lake check`, `lake comparator --paranoid`). Polling can coalesce intermediate
-  heads: ask the box watcher owner to queue an exact SHA when its row is missing. Failures go to #17 or the PR.
-  Request full checks for milestones and toolchain/Mathlib bumps from the box watcher owner; see README
-  "Verification" for manual commands. A PR is optional (for collaborators who cannot run the checks:
+  with `git config core.hooksPath scripts/hooks` (`.agents/setup` does it in orbs). No PR needed; a red `main` is reverted at
+  once by whoever pushed it, then fixed. **CI is GitHub Actions only (owner, 2026-11-04, reversing #50;
+  `docs/decisions.md`); the box runs no CI and is not part of verification.** `.github/workflows/ci.yml` runs the fast
+  tier and the review boundary on every pull request and every push to `main`; `full.yml` runs the full tier
+  (kernel replay, `lake check`, `lake comparator --paranoid`, the rebuild canary) nightly, on `milestone*`/`release*`
+  tags and on demand (`gh workflow run full.yml [--ref <ref>]`; run it for milestones and toolchain/Mathlib bumps).
+  **Green CI means the GitHub check of the commit** (`check` for a PR or a main head, `full` for full
+  certification). The earlier #63 rows stay as the record of the old history; new results are not posted there.
+  `scripts/orb-ci.sh`, its helpers and the box units remain in the repository but are unused. A PR is optional (for collaborators who cannot run the checks:
   `CONTRIBUTING.md` "Working together"), also for a trusted-surface change (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
   time worse. An agent's commit also names the model in a trailer after the cost line,

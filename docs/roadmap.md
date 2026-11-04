@@ -8,7 +8,8 @@ rename or removal fails until this file is updated.
 Status: **proved in Solution** (proved; in the closure of `Solution`, so axiom-audited on every checked head and replayed
 nightly: leanchecker on every leaf module, the comparator on `Solution`), **proved**, **stated** (statement written,
 proof open), **planned**. **Certified** is reserved for a full-tier certification: `check.sh --full` passed on a
-named main commit, recorded on [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63).
+named main commit: since 2026-11-04 a passing `full` workflow run of that commit (GitHub Actions); earlier
+certifications are rows on [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63).
 
 ## Generic contract
 

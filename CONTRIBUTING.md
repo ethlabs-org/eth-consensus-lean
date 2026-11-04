@@ -12,14 +12,15 @@ People and agents coordinate in GitHub issues, never in the tree; the full rules
 
 - **Where:** one issue per piece of work, its body the status block (template "Work item"); one-line pointers,
   questions and decisions on the board [#17](https://github.com/ethlabs-org/consensus-lean-coordination/issues/17); what each
-  agent can run on [#16](https://github.com/ethlabs-org/consensus-lean-coordination/issues/16); CI results on
-  [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63); trusted-surface changes on
+  agent can run on [#16](https://github.com/ethlabs-org/consensus-lean-coordination/issues/16); CI results are the
+  GitHub checks of each commit (the box rows of the old history are on
+  [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63)); trusted-surface changes on
   [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129).
 - **Claim** before starting: assign yourself (or, for an agent, the `agent:*` label), add `in-progress`, prefix the
   title with `CLAIM:` and fill in the status block. Claims expire; release with `RELEASED:` and the next step.
 - **Land:** branch `work/<name>/<task>` in this repository (forks are disabled). Either land it yourself with
   `scripts/push-main.sh` (it runs the checks; you need the toolchain and memory for the build), or open a PR into
-  `main`: the box CI checks non-draft PRs and comments the result, and after a green result on the exact head the
+  `main`: the `check` workflow (GitHub Actions) checks it, and after a green check on the exact head the
   PR is merged with `gh pr merge --rebase --match-head-commit <sha>`. Whoever turns `main` red reverts at once.
 - **A statement you believe is false:** open an issue with the "Statement believed false" template and stop.
 
@@ -92,9 +93,8 @@ recorded on #129, before proofs start. A commit that changes a statement and its
 One upgrade owner, claude-ethlabs, runs toolchain and Mathlib bumps: `lean-toolchain`, the Mathlib `rev` in
 `lakefile.toml`, `lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one landing. The toolchain
 and manifest are on the trusted surface, so a bump's commits carry a `Trusted-surface:` line. A bump runs the full
-tier on the box before merge (cold build, rebuild canary, replay, `lake check`, paranoid comparator): ask the
-box watcher owner for an exact-commit run and verify its result on #63. GitHub Actions is disabled; do not
-dispatch `full.yml` or create a GitHub CI subscription (README "Verification").
+tier before merge (cold build, rebuild canary, replay, `lake check`, paranoid comparator):
+`gh workflow run full.yml --ref <branch>` and verify that the run passed (README "Verification").
 
 ## License
 

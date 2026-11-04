@@ -5,8 +5,8 @@
 This project defines a good consensus protocol (`Good`), a generic execution model, and a shape layer.
 The review statement is `Consensus.Review.AcceptedGood`: accepted shapes give good protocols.
 Its three secondaries are `RegimesRealizable`, `LogFaithful`, and `HeldIffServed`.
-`scripts/check.sh` checks the trust boundary locally and in box CI: fast checks on observed main/non-draft PR heads, everything
-(including kernel replay, `lake check` and the sandboxed comparator) nightly; see "Verification".
+`scripts/check.sh` checks the trust boundary locally and in GitHub Actions: fast checks on every pull request and push to
+main, everything (including kernel replay, `lake check` and the sandboxed comparator) nightly; see "Verification".
 See `TRUST.md` for the assumptions and the roles of the checks. Milestones and their status: `docs/roadmap.md`;
 design decisions: `docs/decisions.md`; how to contribute: `CONTRIBUTING.md` and `AGENTS.md`.
 
@@ -869,20 +869,23 @@ by-construction rows: `ConsensusLeanTest/Gaps.lean`.
 
 ## Verification
 
-**CI of record is the box watcher on `ethlabs-box`; results are on
-[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63).** GitHub Actions `check`, `full` and `notify`
-are disabled by owner decision (2026-10-31, #50): billing prevents jobs from starting. Their YAML files remain
-as reference; disabling them changes no check. Do not create GitHub CI subscriptions, dispatch workflows,
-or report the known billing failures. A green CI result means a passing box row for the relevant commit,
-not a GitHub badge. Polling can skip intermediate heads; ask the box watcher owner to queue an exact SHA
-if its row is missing. The watcher comments failures on #17 (main/full) or the PR.
+**CI is GitHub Actions only** (owner, 2026-11-04, reversing the #50 decision that disabled it; `docs/decisions.md`).
+The box runs no CI and is not part of verification. A green CI result means the GitHub check of the commit:
+`check` (`.github/workflows/ci.yml`: the fast tier and the review boundary) on every pull request and every push to
+`main`, and `full` (`.github/workflows/full.yml`: the full tier, in two parallel parts) nightly at 03:17 UTC, on
+`milestone*`/`release*` tags and on demand. Pull requests run on the `pull_request` event with a read-only token and
+no secrets. Each run's summary shows the check's result and SKIP lines; its log is an artifact, and on main the step 3c
+sorry inventory too. Results are no longer posted to
+[#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63), which keeps the box rows of the old history.
+`scripts/orb-ci.sh`, `scripts/orb-ci-refresh.sh`, `scripts/orb-ci-liveness.py`, `scripts/publish-inventory.py` and the box
+units remain in the repository but are unused.
 
 `scripts/check.sh` has three modes; every step it does not run prints `SKIP  <step> (<reason>)`:
 
 | Mode | Runs | Where |
 |---|---|---|
-| `--fast` (default) | steps 0–4, 6–9, 12, 13: pins, build (`--wfail`), imports, check-decls, axiom audit, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs, metrics; self-tests only with `--selftests`, step 4's `reach` report only with `--reach`, the rebuild canary (14) only with `--canary` | Box watcher on observed main and non-draft PR heads (PR merged into main first), with `--selftests` when `scripts/` or the build configuration changed, `--reach` when the trusted surface or `scripts/` changed, `--canary` when the build configuration changed; review-boundary and its self-test also run; all of it in the sandbox `scripts/ci-sandbox.sh` (no network or credentials) |
-| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11), the rebuild canary (14) | Box nightly at 03:17 UTC, on demand and on `milestone*`/`release*` tags; clean project build, unsplit, with no skipped steps |
+| `--fast` (default) | steps 0–4, 6–9, 12, 13: pins, build (`--wfail`), imports, check-decls, axiom audit, Spec surface + snapshot diff, review pins, grep, vendored hashes, comparator config, docs, metrics; self-tests only with `--selftests`, step 4's `reach` report only with `--reach`, the rebuild canary (14) only with `--canary` | `check` on every pull request (its merge commit) and push to main, with `--selftests` when `scripts/` or the build configuration changed, `--reach` when the trusted surface or `scripts/` changed, `--canary` when the build configuration changed; review-boundary and its self-test also run |
+| `--full` | everything: the fast steps, every self-test, leanchecker replay (5), `lake check` (10), `lake comparator --paranoid` (11), the rebuild canary (14) | `full` nightly at 03:17 UTC, on demand and on `milestone*`/`release*` tags; clean project build, split into `lake check` and the rest, with no skipped steps |
 | `--changed [<base>]` | the fast steps restricted to what changed since `<base>` (default: merge-base with `origin/main`, uncommitted and untracked files included): build of the changed modules' downstream cone, check-decls on the affected libraries, the axiom audit's gates only if the closure of `Solution` (or a test module) changed and its report only if `ConsensusLean` did, Spec surface and comparator config only if a Spec module (or the challenge, `comparator.json`, the solution's imports) changed (otherwise only noconst of step 4), grep on the changed files; pins, imports, review pins, vendored hashes, docs and metrics in full (cheap). A change of `scripts/` or of the build configuration falls back to `--fast` (with self-tests for `scripts/`); with `--selftests` it runs `--fast --selftests` | locally, `scripts/check-changed.sh [<base>]` |
 
 Only an unsplit `--full` ends with `check.sh: ALL CHECKS PASSED`; a `--split` part ends with `check.sh: PART PASSED (split <part>; ...)`, the other modes with `check.sh: PASSED (<mode> mode; ...)`.
@@ -892,7 +895,7 @@ Only an unsplit `--full` ends with `check.sh: ALL CHECKS PASSED`; a `--split` pa
 On the shared box agent builds and checks use the opt-in FIFO wrapper from their worktree:
 `scripts/agent-job.py <name> -- <command...>`. It preserves cwd and arguments, admits at most two
 agent jobs per user, delegates to `job --mem 16G --cpus 8 consensus-lean`, and waits for completion.
-Landings and CI continue to use `job` directly, outside the agent queue.
+Landings continue to use `job` directly, outside the agent queue.
 
 1. Iterate on one file with `lake env lean <file>` (after building its imports), or on one declaration with
    `turbo-lean check <file> --decl <name>` (a single declaration only; `lake build` stays the gate).
@@ -902,12 +905,10 @@ Landings and CI continue to use `job` directly, outside the agent queue.
    scripts/agent-job.py <name> -- bash -lc 'LAKE_RESTORE_ARTIFACTS=true scripts/check-changed.sh'
    ```
 3. Commit, rebase on `origin/main` and land with `scripts/push-main.sh` (it reruns step 2 against `origin/main`
-   and pushes only if it passes; a trusted-surface change needs a `Trusted-surface:` line in each commit). The box watcher
-   checks main and PR heads; verify the corresponding result on #63. Docs-only changes use `--changed <base>`.
-   Before a milestone or toolchain/Mathlib bump, request a full run on the exact commit from the box watcher owner.
-   On the box, `systemctl --user start --no-block consensus-lean-orb-ci-full@now` checks current main;
-   `scripts/orb-ci.sh --full sha <commit> [<label>]` supports an exact revision using the watcher's configured
-   environment and serialized full worktree. Coordinate with its owner rather than starting a second watcher.
+   and pushes only if it passes; a trusted-surface change needs a `Trusted-surface:` line in each commit). The `check`
+   workflow then runs on the new main head; verify its result (`gh run list --workflow ci.yml --commit <sha>`).
+   Docs-only changes use `--changed <base>`. Before a milestone or toolchain/Mathlib bump, run the full tier on the
+   exact commit: `gh workflow run full.yml --ref <branch or tag>`, and verify it passed.
 
 `check.sh` refuses to run without `RUN_DIR` (set by `job`) or `CI`. Elsewhere: `CI=1 scripts/check.sh --full`.
 
@@ -919,16 +920,18 @@ uses Lake's freshness gate, so stale artifacts fail. Snapshot/extension updates 
 their diff is reviewed; CI refuses update flags and `--no-build`, and checks that the tree stays clean.
 
 `lake check` and `lake comparator` need bubblewrap (`bwrap`). Where it is missing, `--full` skips
-them and lists them as **CI-only**; the box full tier always runs them, with their fixtures and a guard that
-fails on any skipped step. The shared box has `bwrap` (installed 2026-10-29), so a local `--full` run
-executes them too. The comparator runs with `--paranoid`: the review statements' closure is replayed by
+them and lists them as **CI-only**; the `full` workflow installs bubblewrap and always runs them, with their fixtures
+and a guard that fails on any skipped or deferred step. The shared box has `bwrap` (installed 2026-10-29), so a local
+`--full` run executes them too. The comparator runs with `--paranoid`: the review statements' closure is replayed by
 Lean's kernel and by every external kernel bundled with Lean (leanchecker-paranoid, lean4lean, nanoda,
 con-leche, con-ron), about 3 minutes in CI. leanchecker replays every leaf module of the checked
-libraries, one module per process (two at a time); never invoke it on a root or prefix with descendants.
+libraries, one module per process (`REPLAY_JOBS` at a time; 2 in `full`); never invoke it on a root or prefix with
+descendants.
 
-Box caching (fast tier): worktrees share pinned Lake packages and retain their project build outputs;
-the watcher prunes outputs whose source modules disappeared. Lake rebuilds changed modules and dependents.
-The full tier builds the project from scratch; Mathlib's prebuilt dependencies remain cached.
+Caching (Actions): `check` restores the Lake packages (with Mathlib's oleans from `lake exe cache get`) and the project
+build of this PR's previous push or of main's latest, and Lake rebuilds changed modules and dependents. The full tier
+builds the project from scratch; only the packages are cached. Both build the heaviest test modules one at a time
+first, to fit the 16 GB runner.
 
 The review boundary is separate from correctness. The **trusted surface** is
 `ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` (each as `X.lean` and `X/**`), `Challenge.lean`,

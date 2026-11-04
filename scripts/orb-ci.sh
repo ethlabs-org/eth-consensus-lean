@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# UNUSED since 2026-11-04 (owner decision, docs/decisions.md): CI is GitHub Actions only (.github/workflows); the
+# box runs no CI. Kept with its helpers, units and self-tests as reference.
 # Fallback CI without GitHub Actions (#50): checks new heads of `main` and of open, non-draft PRs into `main` in an
 # orb, as ci.yml would, and records each result in the table of issue $ORB_CI_ISSUE (default 63); a failure is also a
 # comment (#17 for main, the PR for a PR), and a PR's result is commented on the PR. (The agent token cannot post
