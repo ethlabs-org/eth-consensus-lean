@@ -48,7 +48,7 @@ private theorem updateConfirmation_fields (A : SAState sp.n) (Φ : Frm sp.n FGP)
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> first | exact ⟨rfl, rfl⟩ | exact updateLatestConfirmed_fields _ _ _
 
-private theorem admitVote_blockStamp (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem admitVote_blockStamp (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).blockStamp = A.blockStamp := by
   unfold admitVote
   split_ifs <;> rfl

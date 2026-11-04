@@ -826,7 +826,7 @@ private theorem restore_att {sp : SA.SAParams}
     Body.att a ∈ (restore k st t).outbox ↔ Body.att a ∈ st.outbox := by
   exact apply_att _ _ _
 
-private theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainState n}
+theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainState n}
     {a : FG.Att n} (h : Λ.createAtt v σ = some (a, Λ')) : a.val = v := by
   unfold FG.Record.createAtt at h
   split at h

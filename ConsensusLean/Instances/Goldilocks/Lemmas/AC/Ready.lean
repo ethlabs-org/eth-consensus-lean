@@ -15,16 +15,12 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
-private theorem bs_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold admitVote; split_ifs <;> rfl
-
 /-- The read point of an honest vote has the block stamps of the state its call leaves. -/
 theorem readPoint_blockStamp_eq (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
-  rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, bs_admitVote]
+  rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
 
 /-- A block already held in an earlier frame has an early read-point stamp. The
 stamp cases include restart replay; unique acceptance forbids a later overwrite. -/

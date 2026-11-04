@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 
 public section
 
@@ -234,18 +235,6 @@ theorem late_write_high (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
     exact h1.trans h2
 
 
-/-- The block that `ac_to_fg` returns is in the frame of the call. -/
-private theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) : C ∈ Φ.tree := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1.1.1
-
 /-- A source at an honest call from `T` on is high and below a high origin. -/
 theorem late_source_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     (hF : HighFinalityFrom tr H g T) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
@@ -253,7 +242,7 @@ theorem late_source_origin (hp : ResetPremises tr H proposer dg g ΔF a)
     (hC : SA.ToFGAt tr.projAC y k ell C) (ht : T ≤ tr.time k) :
     HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h ∧
       ∃ io < k, ∃ jo B, HighOrigin tr H g y io jo B ∧ Anc (tr.HonestBlocks H) C B := by
-  have hCm := toFG_mem_frame hC.2.2
+  have hCm := Healing.toFG_mem_frame hC.2.2
   rw [Compose.frame_of_projAC hp.run hy hC.1] at hCm
   have hh := (hF.at_call y hy k ⟨_, Compose.projAC_callAt.1 hC.1⟩ ht).trans
     (σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k) hCm.2)
@@ -332,7 +321,7 @@ theorem late_entry_high (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
     have := hp.run.time_mono (show k ≤ j₀ by omega)
     linarith
   have hF₀k := Healing.run_F_mono hp.run.toLocalRun hy hj₀k
-  have hCm := toFG_mem_frame hC.2.2
+  have hCm := Healing.toFG_mem_frame hC.2.2
   rw [Compose.frame_of_projAC hp.run hy hC.1] at hCm
   have hF₀C := hF₀k.trans (hCm.2.mono hsub)
   set F₀ := (tr.state y j₀).fg.F

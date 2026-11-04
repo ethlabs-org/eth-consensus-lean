@@ -44,16 +44,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### Frame facts -/
 
-/-- The anchor of a walk is a block of the frame tree. -/
-private theorem getAnchor_mem {FGP : Type} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (A : SA.SAState sp.n) (t : Time) : SA.getAnchor sp A Φ t ∈ Φ.tree := by
-  unfold SA.getAnchor
-  rcases hD : SA.deepest Φ (SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with _ | D
-  · exact hΦ.fcRoot_mem
-  · rcases (SA.deepest_mem hD).1 with h | h
-    · exact h.1
-    · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
-
 /-- A block between the root `Φ.F` and a block of the tree (in `U`) is in the tree, below it. -/
 private theorem mem_of_between {FGP : Type} {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
     {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {X B : SA.Blk sp.n FGP}
@@ -72,22 +62,6 @@ private theorem mem_of_between {FGP : Type} {U : Set (SA.Blk sp.n FGP)} (hU : Co
     obtain ⟨hXt, hXq⟩ := ih hq.1
     exact ⟨hXt, hXq.tail hq⟩
 
-/-- The duty head of a proposal is the walk of the full viable tree from its start, with the
-payload's view; the start is the anchor of the unlocked state. -/
-private theorem acProposal_spec {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (h : (SA.acProposal sp A Φ t).2 = some (d, pay)) :
-    (∃ A₁ : SA.SAState sp.n, d.start = SA.getAnchor sp A₁ Φ t) ∧
-      d.head = SA.ghost sp (Φ.viableTree Φ.tree)
-        (SA.goldfishScore sp Φ (SA.View.ofLists pay) ((sp.slot t : Int) - 1))
-        (SA.goldfishEligible sp Φ t (SA.View.ofLists pay) ((sp.slot t : Int) - 1))
-        Φ.tree.ncard d.start := by
-  unfold SA.acProposal at h
-  split_ifs at h
-  simp only [Option.some.injEq, Prod.mk.injEq] at h
-  obtain ⟨rfl, rfl⟩ := h
-  exact ⟨⟨_, rfl⟩, rfl⟩
-
 /-- The proposal walk: `d.start` and `d.head` are in the proposer's frame tree, `d.start ⪯
 d.head` there, and `d.head` is in `U`. -/
 private theorem proposal_walk
@@ -97,7 +71,7 @@ private theorem proposal_walk
     proposer hS.run hS.shared.noColl).localRun
   have hΦ := (SA.frameIn_of_callAt hr hS.ready.1 hS.call).1
   obtain ⟨⟨A₁, hst⟩, hhd⟩ := acProposal_spec hS.payload
-  have hst' : d.start ∈ ℓp.frame.tree := hst ▸ getAnchor_mem hΦ A₁ _
+  have hst' : d.start ∈ ℓp.frame.tree := hst ▸ Compose.anchor_tree hΦ A₁ _
   have hT : ℓp.frame.viableTree ℓp.frame.tree ⊆ ℓp.frame.tree := fun _ h => h.1
   have ha : ℓp.frame.Anc d.start d.head := hhd ▸ SA.anc_ghost hT _ hst'
   refine ⟨hst', ?_, ha⟩
@@ -187,7 +161,7 @@ private theorem walk_passes_start
   rw [hes] at hhead
   obtain rfl := hU.1 hHd (hΦU hGt) (hHdr.trans hhead)
   -- `d.start ⪯ P`, so the anchor is below `d.start`
-  have hat := getAnchor_mem hΦ e.readPoint (tr.time j)
+  have hat := Compose.anchor_tree hΦ e.readPoint (tr.time j)
   have haS := (SA.anc_total hU hbelow hsP).resolve_right hlow
   obtain ⟨hst, hsG⟩ :=
     mem_of_between hU hΦ hΦU (((hΦ.rooted.2 _ hat).mono hΦU).trans haS) hsH hGt
@@ -370,7 +344,7 @@ theorem voters_pass
   obtain ⟨hst, hhd, hsd⟩ := proposal_walk hS
   set a := SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)
   by_cases hsa : Anc (tr.HonestBlocks H) d.start a
-  · refine ⟨a, ?_, .refl, SA.anc_ghost (fun _ h => h.1.1) _ (getAnchor_mem hΦy _ _)⟩
+  · refine ⟨a, ?_, .refl, SA.anc_ghost (fun _ h => h.1.1) _ (Compose.anchor_tree hΦy _ _)⟩
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hbelow with h | ⟨Y, haY, hYP⟩
     · exact Or.inl h.symm
     obtain rfl : Y = d.head := hU.1 hYP.1 (hΦpU hhd)

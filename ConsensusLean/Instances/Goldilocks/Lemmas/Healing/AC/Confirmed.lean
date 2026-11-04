@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 
 public section
 
@@ -626,9 +627,6 @@ theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P 
 
 /-! ## The first update at `t_p + 6Δ` -/
 
-private theorem etime_lt_top (t : Time) : ETime.of t < ⊤ :=
-  WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
-
 /-- **The first update** (h1 §4): at an honest node's tick at `t_p + 6Δ`, with every honest
 slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,
 whose result is `P` (its honest batch is a strict majority, and every other passing block has only
@@ -834,12 +832,6 @@ private theorem lc_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
   | nil => exact fun _ => rfl
   | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, lc_admitVote]
 
-private theorem pool_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation updateLatestConfirmed; split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem pool_sub_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : ∀ σ, ∀ v ∈ A.pool σ, v ∈ (tryVote sp x A Φ t).1.pool σ := by
   intro σ v hv
@@ -849,7 +841,7 @@ private theorem pool_sub_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.
   · exact hv
   · exact hv
   all_goals
-    rw [pool_optimistic]
+    rw [SA.optimistic_pool]
     unfold admitVote
     split_ifs
     · exact hv
@@ -886,7 +878,7 @@ private theorem RecP.ofTryVote {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {x : Fin s
   · exact hR
   all_goals
     exact RecP.ofOptimistic (RecP.of_eq (lc_admitVote _ _ _) hR) fun B hB =>
-      hsel _ B (pool_optimistic _ _ _).symm hB
+      hsel _ B (SA.optimistic_pool _ _ _).symm hB
 
 private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAState sp.n}
     {t : Time} {s : Nat} (hR : RecP Φ P A)
@@ -1031,7 +1023,7 @@ theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n
     refine RecP.ofTryVote (RecP.ofOptimistic (RecP.of_eq (lc_admitVote _ _ _) hR)
       fun B hB => hopt _ (fun σ v hv => ?_) B hB) fun A' B hA' hB =>
         hopt A' (fun σ v hv => by rw [← hA']; exact hv) B hB
-    exact pool_sub_tryVote _ _ _ _ σ v (by rw [pool_optimistic]; exact hv)
+    exact pool_sub_tryVote _ _ _ _ σ v (by rw [SA.optimistic_pool]; exact hv)
   | block B =>
     rw [hcall] at hpost
     change tr.post c = (tryVote sp y (optimisticConfirmation sp (blockReceipt sp A t B)
@@ -1040,7 +1032,7 @@ theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n
     refine RecP.ofTryVote (RecP.ofOptimistic (RecP.of_eq (lc_blockReceipt _ _ _) hR)
       fun B' hB' => hopt _ (fun σ v hv => ?_) B' hB') fun A' B' hA' hB' =>
         hopt A' (fun σ v hv => by rw [← hA']; exact hv) B' hB'
-    exact pool_sub_tryVote _ _ _ _ σ v (by rw [pool_optimistic]; exact hv)
+    exact pool_sub_tryVote _ _ _ _ σ v (by rw [SA.optimistic_pool]; exact hv)
   | restart =>
     rw [hcall] at hpost
     change tr.post c = (acRestart sp ro y A ℓ.frame t).1 at hpost
@@ -1176,11 +1168,11 @@ theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P 
     rw [hst] at hmem hvst hbst
     obtain ⟨hval, -⟩ := castAt_spec hr hu ⟨hv.choose_spec.1, hv.choose_spec.2⟩
     have hres : resolutionTime (tr.post j) ℓ.frame e.msg < ⊤ :=
-      resolutionTime_lt_of hΦ hHdt hHdr (hes ▸ hHds) (hvst.trans (etime_lt_top _))
-        (hbst.trans (etime_lt_top _))
+      resolutionTime_lt_of hΦ hHdt hHdr (hes ▸ hHds) (hvst.trans (SA.etime_of_lt_top _))
+        (hbst.trans (SA.etime_of_lt_top _))
     have hmemv : e.msg ∈ (voteViewList (tr.post j) ℓ.frame m ⊤).1 := by
       simp only [voteViewList, SAState.poolAt, List.mem_filter, decide_eq_true_eq]
-      exact ⟨by simpa using hmem, hvst.trans (etime_lt_top _)⟩
+      exact ⟨by simpa using hmem, hvst.trans (SA.etime_of_lt_top _)⟩
     refine ⟨fun heq => honest_not_equivocator_pool hS hy (j + 1) m hu ?_, e.msg, ?_, hval,
       by rw [hes], ?_⟩
     · rw [hst]; exact equivocators_mono hvotes_sub heq

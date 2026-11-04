@@ -1209,7 +1209,7 @@ theorem optimistic_next_result_of_floor {b : Time}
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD⟩
 
 /-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/
-private theorem deepest_of_subset {FGP : Type} {Φ : SA.Frm sp.n FGP}
+theorem deepest_of_subset {FGP : Type} {Φ : SA.Frm sp.n FGP}
     {S T : Set (SA.Blk sp.n FGP)} {D : SA.Blk sp.n FGP} (hT : SA.deepest Φ T = some D)
     (hST : S ⊆ T) (hD : D ∈ S) : SA.deepest Φ S = some D := by
   have h : SA.IsDeepest Φ S D := ⟨hD, fun C hC hne => (SA.deepest_mem hT).2 C (hST hC) hne⟩

@@ -182,10 +182,6 @@ private theorem exists_phase (hH : H.Nonempty) (i : Nat) :
     · exact ⟨(_, .top J), hf, hJ, hC⟩
   · exact ⟨(_, .gap), hf, fun J hj => hJ ⟨J, hj⟩⟩
 
-private theorem PhaseCase.eq_of_rank {β : Type} {c c' : PhaseCase β} (hr : c.rank = c'.rank)
-    (hJ : ∀ J, c.topJ = some J → c'.topJ = some J) : c = c' := by
-  cases c <;> cases c' <;> simp_all [PhaseCase.rank, PhaseCase.topJ]
-
 private theorem PhaseCase.rank_le {β : Type} (c : PhaseCase β) : c.rank ≤ 2 := by
   cases c <;> simp [PhaseCase.rank]
 

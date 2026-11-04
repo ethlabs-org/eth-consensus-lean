@@ -5,6 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
 public section
 
@@ -24,9 +26,9 @@ with height pair `(h_j, J)` (`justification_quorum`, by induction over the chain
 bits); two such quorums at one height with different `J` meet in an honest validator, whose two
 attestations are an E2 pair, which client safety (G0.5) excludes (`J_eq_of_hj_eq`, part (a)). Honest
 stores keep their blocks and their states (`held_mono`), and ancestry of a held block does not
-change as the store grows (`anc_transfer`), so justifications and contests stay (part (b)); with
-(a) the phase at a cut is unique, so a change raises the rank, which lies in `{0, 1, 2}`
-(part (c)). -/
+change as the store grows (`Store.anc_transfer`), so justifications and contests stay (part
+(b)); with (a) the phase at a cut is unique, so a change raises the rank, which lies in
+`{0, 1, 2}` (part (c)). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -166,27 +168,6 @@ theorem justifiedAt_unique (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 
 
 /-! ## Part (b): justifications and contests stay -/
 
-/-- A held block that names a parent has its parent held. -/
-private theorem parent_held (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) {r : Nat} (hp : B.parent = some r) :
-    ∃ Y, ParentIn (tr.store y i).tree Y B := by
-  rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 B hB).cases_tail with
-    rfl | ⟨Y, -, hY⟩
-  · exact absurd hp (by simp [Params.genesisBlock])
-  · exact ⟨Y, hY⟩
-
-/-- Ancestry at one honest node holds at another that holds the descendant. -/
-private theorem anc_transfer (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy : y ∈ H)
-    (hz : z ∈ H) {i j : Nat} {A B : NodeBlock P ACP} (h : (tr.store y i).Anc A B)
-    (hB : B ∈ (tr.store z j).tree) : (tr.store z j).Anc A B := by
-  induction h with
-  | refl => exact .refl
-  | tail _ hYB ih =>
-    obtain ⟨Z, hZ⟩ := parent_held hr hz hB hYB.2.2
-    obtain rfl : Z = _ := hr.coherent.1 (hr.tree_subset z hz j hZ.1)
-      (hr.tree_subset y hy i hYB.1) (Option.some.inj (hZ.2.2.symm.trans hYB.2.2))
-    exact (ih hZ.1).tail hZ
-
 /-- A justification held at an honest node stays held. -/
 private theorem justifiedAt_mono (hr : FGLocalRun acp₀ H U tr) {i j : Nat} (hij : i ≤ j)
     {h : Nat} {J : NodeBlock P ACP} (hJ : JustifiedAt tr H i h J) : JustifiedAt tr H j h J := by
@@ -199,7 +180,7 @@ private theorem contestAt_mono (hr : FGLocalRun acp₀ H U tr) {i j : Nat} (hij 
     {m : Nat} {J : NodeBlock P ACP} (hc : ContestAt tr H i m J) : ContestAt tr H j m J := by
   obtain ⟨y, hy, B, hB, hh, hn⟩ := hc
   obtain ⟨hB', hσ⟩ := held_mono hr hy hij hB
-  exact ⟨y, hy, B, hB', by rw [hσ]; exact hh, fun ha => hn (anc_transfer hr hy hy ha hB)⟩
+  exact ⟨y, hy, B, hB', by rw [hσ]; exact hh, fun ha => hn (Store.anc_transfer hr hy hy ha hB)⟩
 
 /-- **HR.2 (b).** While the frontier stays, the phase moves only forward, with one `J`. -/
 theorem phaseAt_mono (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
@@ -230,7 +211,7 @@ theorem phaseAt_mono (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg
       exact ⟨le_rfl, fun _ h => h⟩
 
 /-- Two cases with the same rank and the first's top `J` kept are equal. -/
-private theorem PhaseCase.eq_of_rank {β : Type} {c c' : PhaseCase β} (hr : c.rank = c'.rank)
+theorem PhaseCase.eq_of_rank {β : Type} {c c' : PhaseCase β} (hr : c.rank = c'.rank)
     (ht : ∀ J, c.topJ = some J → c'.topJ = some J) : c = c' := by
   cases c <;> cases c' <;> simp only [PhaseCase.rank, PhaseCase.topJ] at hr ht
   all_goals first

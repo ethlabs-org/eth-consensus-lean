@@ -19,7 +19,7 @@ namespace Consensus.Goldilocks.Store
 
 /-- Every block of a chain of `S` linked from `A ∈ S` (and `A`) is an ancestor of its last
 block. -/
-private theorem anc_of_linked {P : Params} {ACP : Type} {S : Set (NodeBlock P ACP)} :
+theorem anc_of_linked {P : Params} {ACP : Type} {S : Set (NodeBlock P ACP)} :
     ∀ (c : List (NodeBlock P ACP)) (A : NodeBlock P ACP), A ∈ S → (∀ X ∈ c, X ∈ S) →
       c.map Block.parent = ((A.root :: c.map Block.root).take c.length).map some →
       ∀ B, (A :: c).getLast? = some B → ∀ X ∈ A :: c, Goldilocks.Anc S X B

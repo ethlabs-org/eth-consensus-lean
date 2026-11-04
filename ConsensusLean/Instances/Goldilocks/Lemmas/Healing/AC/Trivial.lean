@@ -41,10 +41,6 @@ theorem getHead_mem' {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n F
   · exact h ▸ ha
   · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
 
-private theorem bs_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold admitVote; split_ifs <;> rfl
-
 private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
     ∃ k ≤ c, tr.RestartAt y k ∧ tr.lastWake y c = (tr.time k : WithBot Time)
   | 0 => by
@@ -403,7 +399,7 @@ theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
   -- the read point's stamps are those after the call, which keeps `B`'s
   have hrp : e.readPoint.blockStamp B.root = (tr.state y i).blockStamp B.root := by
     have h1 : (tr.post i).blockStamp = e.readPoint.blockStamp := by
-      rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, bs_admitVote]
+      rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
     rw [← h1]
     have he := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
     rw [hc.1.1] at he

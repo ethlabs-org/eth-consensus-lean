@@ -199,19 +199,6 @@ theorem ready_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr 
   protected_sources hrun hs hc hp hset hclean hP.2.2.2.1 hP.2.2.2.2.1 hP.1 hr hvotes hlater
     hparents hon
 
-/-- A block that `ac_to_fg` returns is one of its candidates. -/
-private theorem mem_toFGCandidates_of {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1
-
 /-- **A higher source above a protected proposal is below a later proposal's parent**
 (`hs234-exact-interface.md` §5, "The only obstruction" and "The provenance bridge"): under `Γ`,
 with `P` as in `ready_sources`, let an honest `ac_to_fg` return `C ⪰ P` at a cut `k` in
@@ -262,7 +249,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨hcall, -, hC⟩ := hto
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr' hy hcall
   obtain ⟨hCv, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩, hlC, hlf, -⟩ :=
-    mem_toFGCandidates_of hC
+    SA.toFG_candidate hC
   dsimp only at hlC hlf
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : C = ℓ.frame.viableAncestor B₀ := hΦ.coherent.1 hCv.1 hvat hlC.symm

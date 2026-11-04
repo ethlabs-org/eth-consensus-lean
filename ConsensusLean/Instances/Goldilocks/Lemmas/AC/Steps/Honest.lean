@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
@@ -15,13 +16,6 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-
-private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
 
 /-- The walk of a subtree of a well-formed frame ends in the frame's tree. -/
 theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}

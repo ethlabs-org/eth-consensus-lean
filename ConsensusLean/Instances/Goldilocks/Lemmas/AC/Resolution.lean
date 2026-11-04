@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 
 public section
 
@@ -19,9 +20,6 @@ section Invariant
 
 variable {sp} {FGP : Type}
 
-private theorem ETime.of_lt_top (t : Time) : ETime.of t < ⊤ :=
-  WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top t)
-
 /-- `v` is held in its pool, or its validator equivocates there. -/
 private def Held (A : SAState sp.n) (v : Vote sp.n) : Prop :=
   v ∈ A.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A.pool v.slot}
@@ -38,7 +36,7 @@ private theorem voteClosed_poolStamped : VoteClosed (PoolStamped (sp := sp)) := 
     · dsimp only at hx ⊢
       rw [Function.update_apply]
       split_ifs with hxv
-      · exact (ETime.of_lt_top t).ne
+      · exact (SA.etime_of_lt_top t).ne
       · rw [Function.update_apply] at hx
         split_ifs at hx with hσ
         · rcases List.mem_append.mp hx with hx | hx
@@ -126,7 +124,7 @@ private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
       · change x ∈ (acRestart sp ro self A Φ' t').1.pool σ at hx
         change (acRestart sp ro self A Φ' t').1.voteStamp x ≠ ⊤
         rw [(hrs.2.2.2.2.2.2.2.2.1 σ x hx).1]
-        exact (ETime.of_lt_top t').ne
+        exact (SA.etime_of_lt_top t').ne
       · by_cases hg : B.root = sp.genesisRoot
         · obtain ⟨G, hG, hGr, hGv⟩ := ih.genesis
           have : B = G := hU.1 (ih.frame.2 hB) hG (hg.trans hGr.symm)
@@ -272,7 +270,7 @@ theorem merged_opponents : MergedOpponents sp := by
   simp only [mergedVoteView, voteView, voteViewList, View.ofLists, Set.mem_union,
     Set.mem_ofPred_eq, List.mem_filter, decide_eq_true_eq] at hx
   rcases hx with ⟨⟨hx, -⟩, hres⟩ | ⟨P, hP, hPs, hxP, -, H', hH', hH'r, hH's⟩
-  · exact hopp (hfs x ((hpool' x).mp hx) (hres.trans (ETime.of_lt_top _)))
+  · exact hopp (hfs x ((hpool' x).mp hx) (hres.trans (SA.etime_of_lt_top _)))
   obtain ⟨hxσ, hx' | hx'⟩ := hcar P hP hPs x ((h.payload P hP).2 x hxP)
   · refine hopp (hfs x hx' ?_)
     have hl : lookup Φ x.head = some H' := by
@@ -285,7 +283,7 @@ theorem merged_opponents : MergedOpponents sp := by
     split_ifs with hlt
     · omega
     · exact max_lt (lt_top_iff_ne_top.mpr (h.stamped σ x hx'))
-        (hH'r ▸ (hle H' hH').trans_lt (ETime.of_lt_top _))
+        (hH'r ▸ (hle H' hH').trans_lt (SA.etime_of_lt_top _))
   · exact Or.inl (heq (hxi ▸ hx'))
 
 end Consensus.Goldilocks.SA

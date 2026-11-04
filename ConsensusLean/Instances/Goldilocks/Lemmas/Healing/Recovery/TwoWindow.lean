@@ -8,6 +8,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 
 public section
 
@@ -40,7 +42,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
 
 /-- The first crossing above `A` on a held `A ⪯ B` (as `Store.first_crossing_of_anc` in
 `Refinement/WindowAnchors`, structural part, local to avoid a Healing-to-Refinement edge). -/
-private theorem first_crossing {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+theorem first_crossing {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {A B : NodeBlock P ACP}
     (hAB : st.Anc A B) (hh : (st.σ A.root).h < (st.σ B.root).h) :
     ∃ X ∈ st.tree, st.Anc A X ∧ st.Anc X B ∧ (st.σ X.root).h = (st.σ A.root).h + 1 ∧
@@ -81,49 +83,6 @@ private theorem justifier_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : S
     exact ⟨hVh, hVTh⟩
   · have := (hmid V hV hTV hVX hVX').1
     omega
-
-/-- The honest proposal is the only honest block of its slot (as the private
-`Compose.eq_of_slot` of `Compose/Service/Suffix`). -/
-private theorem eq_of_slot (hrun : GoldilocksRun proposer dg H tr)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ tr.HonestBlocks H) (hRs : R.slot = P.slot) :
-    R = P := by
-  have h := hrun.toLocalRun
-  obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, htk⟩ := hP
-  rcases Compose.blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, -, hB, -⟩
-  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hpr : P.proposer = proposer P.slot := by
-    rw [hpp, hB]
-    exact hPr.2.2.symm
-  have hs0 : 0 < P.slot := by rw [hB]; exact hPr.1
-  obtain ⟨y, hy, i, hRt⟩ := hR
-  rcases Compose.tree_cases h hy hRt with rfl | ⟨k', -, hk'⟩
-  · simp [Params.genesisBlock] at hRs
-    omega
-  obtain ⟨-, hRpr, -⟩ := Compose.accept_facts h hy hk'
-  have hRp : R.proposer = p := by rw [hRpr, hRs, ← hpr, hpp]
-  obtain ⟨j', -, ⟨acc', hc'⟩, hpos'⟩ := hrun.block_unforgeable y hy k' R ⟨true, hk'⟩ (hRp ▸ hp)
-  rw [hRp] at hc'
-  rcases Compose.blockCall_cases h hp hc' with hg' | ⟨j₀, x', rfl, hg', hPr', d₀, pay₀, -, hB', -⟩
-  · exact absurd (by simpa using (hg'.2.1 0 (List.length_pos_iff.2 hg'.1)).2.2.2.1) hpos'
-  have ht' : tr.time (j₀ + 2) = sp.toParams.slotTime R.slot := by
-    have hs : R.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hB']; rfl
-    exact hs ▸ hPr'.2.1
-  have htt : tr.time (j₀ + 2) = tr.time (j + 2) := by rw [ht', htk, hRs]
-  rw [htt] at hg'
-  obtain rfl := hrun.tick_unique p hp j₀ j _ ⟨x', hg'⟩ ⟨x, hg⟩
-  have := hc'.2.symm.trans hcB.2
-  simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at this
-  exact this.1
-
-/-- An honest node holds the block it accepts after the cut. -/
-private theorem mem_of_accept (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (hacc : tr.AcceptAt y k B) :
-    B ∈ (tr.state y (k + 1)).fg.tree := by
-  rw [tr.state_succ_of_call hacc, (Store.tree_grows _ _ _ _
-    (Compose.fg_reachable hrun.toLocalRun hy k)).1 B _ (hrun.cutLaw y hy k _ hacc).2.1]
-  exact Set.mem_insert _ _
 
 /-- **C4: two-window finalization.** -/
 theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {kU iU : Nat}
@@ -180,7 +139,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
   -- `U` at its acceptance
   obtain ⟨hqH, hUacc, hUTh⟩ := id hentry
   have hpostU : tr.post iU = tr.state q (iU + 1) := (tr.state_succ_of_call hUacc).symm
-  have hUm : U ∈ (tr.state q (iU + 1)).fg.tree := mem_of_accept hrun hqH hUacc
+  have hUm : U ∈ (tr.state q (iU + 1)).fg.tree := Healing.accept_mem' hrun hqH hUacc
   rw [hpostU] at hhigh
   set h := ((tr.state q (iU + 1)).fg.σ U.root).h with hh
   have hUσ : ∀ {y} (_ : y ∈ H) {c}, U ∈ (tr.state y c).fg.tree →
@@ -189,7 +148,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
   -- the stretch's retained inclusion at `U`
   obtain ⟨kB, B, hBr, hBret⟩ := hwindow U.slot hvU (by omega)
   obtain ⟨hpbH, -, -, hBprop, hBs, -⟩ := id hBr
-  obtain rfl : U = B := eq_of_slot hrun hpbH hBprop (hsub q hqH _ hUm) hBs.symm
+  obtain rfl : U = B := Compose.eq_of_slot hrun hpbH hBprop (hsub q hqH _ hUm) hBs.symm
   have hdrainU : sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) ≤ sp.ts U.slot := by
     rw [← drainTime_eq]; exact hR
   -- **first outcome, at `U`**: an honest store holds the block `V` justifying `U`
@@ -227,7 +186,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
   -- `V` is the stretch's ready proposal of its slot, accepted by its proposer
   obtain ⟨kV, B', hB'r, hB'ret⟩ := hwindow V.slot (by omega) (by omega)
   obtain ⟨hpvH, -, -, hB'prop, hB's, -⟩ := id hB'r
-  obtain rfl : V = B' := eq_of_slot hrun hpvH hB'prop (hsub y hy c hVm) hB's.symm
+  obtain rfl : V = B' := Compose.eq_of_slot hrun hpvH hB'prop (hsub y hy c hVm) hB's.symm
   obtain ⟨hVacc, hVm', hpostV⟩ := accept_of_proposesAt hrun hnc hpvH hB'prop
   have hVσ := σ_eq_honest hrun hnc hpvH hy hVm' hVm
   have hVent : Compose.RunEntry tr H (proposer V.slot) kV V :=
@@ -260,7 +219,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
         (by exact_mod_cast (show U.slot ≤ sp.slot (tr.time k) by omega))
       linarith
     · rw [← tr.state_succ_of_call hacc]
-      exact mem_of_honest_anc hrun hnc hx hUZ (mem_of_accept hrun hx hacc)
+      exact mem_of_honest_anc hrun hnc hx hUZ (Healing.accept_mem' hrun hx hacc)
     · rw [← tr.state_succ_of_call hacc, hF]
   rcases o2 with ⟨q', j, Bs, Pr, R, hjt, hgw, -⟩ | ⟨x, hx, k, Z, hacc, hkt, hJZ, hfin, -⟩
   · -- good window at `V`: its justifying block finalizes `σ[V].J = U`
@@ -280,7 +239,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
       omega
     · refine finish q' hq' k' Z hacc
         (lt_of_le_of_lt (hrun.time_mono (Nat.lt_succ_iff.mp hk')) hjt) hVZ ?_
-      rw [σ_eq_honest hrun hnc hq' hq' (mem_of_accept hrun hq' hacc) hZm]
+      rw [σ_eq_honest hrun hnc hq' hq' (Healing.accept_mem' hrun hq' hacc) hZm]
       exact hFZ
   · -- early justification of `V`: the gate has finalized `σ[V].J = U`
     have hFZ := (hfin (decide_eq_true hpj)).2

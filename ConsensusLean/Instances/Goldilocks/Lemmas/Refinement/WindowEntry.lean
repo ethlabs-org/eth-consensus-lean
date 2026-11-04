@@ -218,15 +218,6 @@ theorem hF_mono (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc
     obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP acp₀ st hr Y hY
     exact ih.trans (FG.height_step P.fg _ _ _ _ hc ht).2.2.1
 
-private theorem h_le_anc (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc X Z) :
-    (st.σ X.root).h ≤ (st.σ Z.root).h := by
-  induction hXZ with
-  | refl => exact le_rfl
-  | @tail Y Y' _ hYY' ih =>
-    obtain ⟨-, hY', hp⟩ := hYY'
-    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
-    rcases P.fg.stateTransition_ThSlot ht with ⟨e, -⟩ | ⟨e, -⟩ <;> omega
-
 /-- **The entry is constant at one height.** In a reachable store, for a held `X ⪯ Z` with
 `σ[Z].h = σ[X].h`, `σ[Z].Th = σ[X].Th`. -/
 theorem Th_eq_of_h_eq (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc X Z)
@@ -236,7 +227,7 @@ theorem Th_eq_of_h_eq (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : 
   | @tail Y Y' hXY hYY' ih =>
     obtain ⟨-, hY', hp⟩ := hYY'
     obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
-    have h1 := h_le_anc hr hXY
+    have h1 := Healing.h_le_of_store_anc hr hXY
     rcases P.fg.stateTransition_ThSlot ht with ⟨e, -, e'⟩ | ⟨e, -, -⟩
     · rw [e']
       exact ih (e.symm.trans hh)
@@ -262,7 +253,7 @@ theorem self_entry_anc_finalized (hr : st.Reachable acp₀) {T Z : NodeBlock P A
   obtain rfl : W = F := Option.some.inj (hW.symm.trans hF)
   rcases Anc.total hcoh hTZ hFZ with hTF | hFT
   · exact hTF
-  · have h2 := h_le_anc hr hFT
+  · have h2 := Healing.h_le_of_store_anc hr hFT
     have hEq := Th_eq_of_h_eq hr hFT (by omega)
     rw [hTs, hWT] at hEq
     have hb : st.blocks T.root = some T := hT

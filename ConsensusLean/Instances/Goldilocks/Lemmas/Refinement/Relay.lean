@@ -52,13 +52,6 @@ section
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-private theorem encodeAtt_of_decodeAtt {n : Nat} {w : WireAtt} {a : FG.Att n}
-    (h : decodeAtt n w = some a) : encodeAtt a = w := by
-  unfold decodeAtt at h
-  split at h
-  · cases h; rfl
-  · cases h
-
 private theorem encodeVote_of_decodeVote {n : Nat} {w : WireVote} {v : Vote n}
     (h : decodeVote n w = some v) : encodeVote v = w := by
   unfold decodeVote at h
@@ -82,7 +75,7 @@ private theorem encodeInfo_of_decodeInfo {n : Nat} {i : Info} {atts : List (FG.A
   simp only [decodeInfo, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
     Option.some.injEq, Prod.mk.injEq] at h
   obtain ⟨a, ha, b, hb, c, hc, rfl, rfl⟩ := h
-  simp only [encodeInfo, map_of_mapM (fun _ _ => encodeAtt_of_decodeAtt) ha,
+  simp only [encodeInfo, map_of_mapM (fun _ _ => Refinement.decodeAtt_eq_some) ha,
     map_of_mapM (fun _ _ => encodeVote_of_decodeVote) hb,
     map_of_mapM (fun _ _ => encodeVote_of_decodeVote) hc]
 
@@ -136,7 +129,7 @@ theorem eq_attObj_of_decodeAttObj {o : Wire sp.n} {a : FG.Att sp.n}
       simp only [hw, Option.filter_some, decide_eq_true_eq] at h
       split_ifs at h with hk
       cases h
-      simp only [attObj, encodeAtt_of_decodeAtt hw, hk.1]
+      simp only [attObj, Refinement.decodeAtt_eq_some hw, hk.1]
   · cases h
 
 /-- The object a canonical event stands for is its canonical object. -/

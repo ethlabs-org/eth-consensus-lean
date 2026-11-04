@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
@@ -32,13 +33,6 @@ theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ :
     split_ifs with he
     · subst he; exact List.mem_append_left _ h
     · exact h
-
-private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
 
 /-- Every vote of an honest voter's merged view of slot `s + 1` has slot `s`. -/
 theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}

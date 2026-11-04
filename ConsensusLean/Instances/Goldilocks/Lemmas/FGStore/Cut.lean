@@ -114,7 +114,7 @@ private theorem F_mono (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈
       exact ih
 
 /-- The state of a held block has height at least `1`, above its justification. -/
-private theorem one_le_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem one_le_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) :
     1 ≤ ((tr.store y i).σ B.root).h ∧
       ((tr.store y i).σ B.root).hj < ((tr.store y i).σ B.root).h := by
@@ -123,7 +123,7 @@ private theorem one_le_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y �
   exact ⟨h1, h2⟩
 
 /-- A held block that names a parent has its parent held. -/
-private theorem parent_held (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem parent_held (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) {r : Nat} (hp : B.parent = some r) :
     ∃ Y, ParentIn (tr.store y i).tree Y B := by
   rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 B hB).cases_tail with

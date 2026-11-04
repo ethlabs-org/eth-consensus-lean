@@ -38,18 +38,6 @@ section Stores
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP}
 
-/-- One accepted block keeps the justification or justifies its parent's entry. -/
-private theorem step_J' {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
-    (h : gp.stateTransition σ B = some σ') :
-    (σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h) := by
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he]
-  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he'] <;>
-    simp [FG.ChainState.advance]
-
 /-- The justification of a held block's state names a held block whose state height is at least
 the justified height. -/
 theorem J_entry_h {st : Store P ACP} (hr : st.Reachable acp₀) {W : NodeBlock P ACP}
@@ -63,7 +51,7 @@ theorem J_entry_h {st : Store P ACP} (hr : st.Reachable acp₀) {W : NodeBlock P
     exact ⟨_, Store.genesis_mem hr, rfl, by simp [FG.ChainState.init]⟩
   | tail _ hYW ih =>
     obtain ⟨X, -, hXr, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
-    rcases step_J' ht with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
+    rcases Compose.step_J ht with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
     · obtain ⟨E, hE, h1, h2⟩ := ih
       exact ⟨E, hE, h1.trans hJ.symm, hj ▸ h2⟩
     · obtain ⟨⟨E, hE, h1, -, h2, -⟩, -⟩ :=

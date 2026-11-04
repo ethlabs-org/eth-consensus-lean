@@ -651,16 +651,6 @@ theorem voter_passes_proposer_root
 
 /-! ### HS.3 (a): a proposal walk starting at a lock of the proposer -/
 
-/-- The anchor of a walk is a block of the frame tree. -/
-private theorem getAnchor_mem {FGP : Type} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (A : SA.SAState sp.n) (t : Time) : SA.getAnchor sp A Φ t ∈ Φ.tree := by
-  unfold SA.getAnchor
-  rcases hD : SA.deepest Φ (SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with _ | D
-  · exact hΦ.fcRoot_mem
-  · rcases (SA.deepest_mem hD).1 with h | h
-    · exact h.1
-    · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
-
 /-- A nonempty set of blocks of a well-formed frame has a deepest block. -/
 private theorem exists_isDeepest {FGP : Type} {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ)
     {S : Set (SA.Blk sp.n FGP)} (hS : S ⊆ Φ.tree) {X : SA.Blk sp.n FGP} (hX : X ∈ S) :

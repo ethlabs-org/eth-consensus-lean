@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 
 public section
 
@@ -90,7 +91,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-private theorem store_eq_fg (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem store_eq_fg (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
   simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
@@ -101,15 +102,6 @@ theorem hj_lt_hmax (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : 
   obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hR
   exact hBjhj ▸ (Store.hj_lt_h hR hBj).trans_le (hge Bj hBj)
-
-private theorem updateFinality_hj_le' {P : Params} {ACP : Type}
-    (st : Store P ACP) (σ : FG.ChainState P.n) : st.hj ≤ (st.updateFinality σ).hj := by
-  rcases (Store.updateFinality_spec st σ).2.2.2.2.1 with h | ⟨_, he, _, hlex⟩
-  · exact le_of_eq h.2.symm
-  · rw [he]
-    rcases hlex with h | h
-    · exact h.le
-    · exact le_of_eq h.1
 
 /-- `h_j` of an honest store does not decrease. -/
 theorem hj_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
@@ -135,7 +127,7 @@ theorem hj_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y �
             obtain ⟨atts, hatt⟩ := Store.addAtts_eq
               (Store.updateFinality _ σ) B.fgPayload
             rw [hatt]
-            exact updateFinality_hj_le'
+            exact Healing.updateFinality_hj_le
               { (tr.state y j).fg with
                 blocks := Function.update (tr.state y j).fg.blocks B.root (some B),
                 σ := Function.update (tr.state y j).fg.σ B.root σ } σ

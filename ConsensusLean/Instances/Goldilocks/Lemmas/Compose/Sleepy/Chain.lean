@@ -24,14 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-
 /-- The honest blocks of a run are coherent. -/
-private theorem honest_coherent (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
+theorem honest_coherent (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     Coherent (tr.HonestBlocks H) :=
   (ac_projection _ _ dg H _ tr proposer (requirements sp ro) hrun.toLocalRun hnc).coherent
 

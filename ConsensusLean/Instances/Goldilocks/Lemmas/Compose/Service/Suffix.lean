@@ -59,22 +59,6 @@ section Walk
 
 variable {FGP : Type}
 
-/-- A descendant inside the tree of a block of the tree is in the tree. -/
-private theorem mem_of_anc_left {Φ : SA.Frm sp.n FGP} {A B : SA.Blk sp.n FGP} (h : Φ.Anc A B)
-    (hA : A ∈ Φ.tree) : B ∈ Φ.tree := by
-  by_cases hAB : A = B
-  · exact hAB ▸ hA
-  · exact (Anc.mem h hAB).2
-
-/-- A proper ancestor of a block is an ancestor of its parent. -/
-private theorem anc_parent {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
-    {A B Q : SA.Blk sp.n FGP} (h : Anc U A B) (hne : A ≠ B) (hBQ : B.parent = some Q.root)
-    (hQ : Q ∈ U) : Anc U A Q := by
-  rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hAY, hY⟩
-  · exact absurd heq.symm hne
-  obtain rfl : Y = Q := hU.1 hY.1 hQ (Option.some_injective _ (hY.2.2.symm.trans hBQ))
-  exact hAY
-
 end Walk
 
 /-! ### Over a run -/
@@ -83,12 +67,6 @@ section Run
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
-
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
 
 /-- **An honest node accepts its own proposal** (C0.3, under `NoColl`). -/
 theorem proposal_accepted (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -122,7 +100,7 @@ private theorem accepted_honest (hrun : GoldilocksRun proposer dg H tr) {y : Fin
   exact Set.mem_insert _ _
 
 /-- **The honest proposal is the only honest block of its slot.** -/
-private theorem eq_of_slot (hrun : GoldilocksRun proposer dg H tr)
+theorem eq_of_slot (hrun : GoldilocksRun proposer dg H tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ tr.HonestBlocks H) (hRs : R.slot = P.slot) :
@@ -300,7 +278,7 @@ private theorem head_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att s
   exact SA.getHead_mem hΦ (fun _ h => h.1) _ _ _ _
 
 /-- The payload of a proposal is the proposer's view of the previous slot's pool. -/
-private theorem payload_eq {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
+theorem payload_eq {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
     {t : Time} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (h : (SA.acProposal sp A Φ t).2 = some (d, pay)) :
     pay = SA.voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ := by

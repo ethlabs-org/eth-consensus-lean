@@ -32,11 +32,6 @@ private def EmitsVotes (x : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time)
   ∀ e ∈ r.2, VoteSpec x Φ t e ∧
     r.1 = optimisticConfirmation sp (admitVote sp e.readPoint t e.msg) Φ t
 
-private theorem admitVote_blockStamp (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold admitVote
-  split_ifs <;> rfl
-
 private theorem updateLatestConfirmed_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).blockStamp = A.blockStamp := by
   unfold updateLatestConfirmed

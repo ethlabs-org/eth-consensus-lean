@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 
 public section
 
@@ -41,98 +42,6 @@ section SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-
-/-- The read point of `try_vote`'s emission holds the input's locks, unlocked against the merged
-view for a slot `s > 0`. -/
-private theorem tryVote_readPoint_locks {x : Fin sp.n} {A : SA.SAState sp.n}
-    {Φ : SA.Frm sp.n FGP} {t : Time} {e : SA.Em sp FGP} (he : e ∈ (SA.tryVote sp x A Φ t).2) :
-    e.readPoint.locks = if 0 < sp.slot t then
-      SA.unlock sp A.locks Φ t ((sp.slot t : Int) - 1) (SA.mergedVoteView sp A Φ (sp.slot t))
-      else A.locks := by
-  unfold SA.tryVote at he
-  dsimp only at he
-  split_ifs at he with h1 h2 h3
-  · simp at he
-  · simp at he
-  all_goals
-    rw [List.mem_singleton] at he
-    subst he
-    split_ifs
-    rfl
-
-/-- The input of the `try_vote` that emits an honest vote: the state before the call, or the
-optimistic check after the receipt of a message or a block, which keeps the locks. -/
-private theorem emits_tryVote (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt tr y i ℓ e) :
-    ∃ P, e ∈ (SA.tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
-      ∃ A : SA.SAState sp.n, P = SA.optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
-        A.locks = (tr.state y i).locks) := by
-  obtain ⟨hc, he⟩ := hc
-  have hΦ := (SA.frameIn_of_callAt hr hy hc).1
-  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-  rw [hc.1] at hx
-  have he' : e ∈ ((SA.goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by
-    rw [hx]
-    exact he
-  clear hx he
-  cases hcall : ℓ.call with
-  | tick =>
-    rw [hcall] at he'
-    change e ∈ (SA.acOnTick sp y _ ℓ.frame _).2 at he'
-    unfold SA.acOnTick at he'
-    dsimp only at he'
-    split_ifs at he' <;> first | exact ⟨_, he', Or.inl rfl⟩ | simp at he'
-  | proposal =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | toFG =>
-    rw [hcall] at he'
-    simp [ACInterface.step] at he'
-  | message m =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, SA.admitVote_locks_eq _ _ _⟩⟩
-  | block B =>
-    rw [hcall] at he'
-    exact ⟨_, he', Or.inr ⟨_, rfl, SA.blockReceipt_locks _ _ _⟩⟩
-  | restart =>
-    rw [hcall] at he'
-    change e ∈ (SA.acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((SA.restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
-    simp at he'
-
-/-- **The read point's locks come from the stored ones.** At an honest vote of a slot `> 0`,
-a lock of the read point of a slot other than the vote's sits (in the frame) below a stored
-lock of the same slot: `try_vote`'s unlocking and the receipt's optimistic check only move
-locks back, and the optimistic check writes locks of the vote's slot. -/
-private theorem readPoint_locks_stored (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
-    ∀ l' ∈ e.readPoint.locks, l'.slot ≠ sp.slot (tr.time i) →
-      ∃ l ∈ (tr.state y i).locks, l'.slot = l.slot ∧ ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧
-        ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧ ℓ.frame.Anc B' B := by
-  obtain ⟨P, he, hP⟩ := emits_tryVote hr hy hc
-  have hΦ := (SA.frameIn_of_callAt hr hy hc.1).1
-  intro l' hl' hne
-  rw [tryVote_readPoint_locks he] at hl'
-  simp only [hpos, ↓reduceIte] at hl'
-  obtain ⟨l₁, hl₁, hs₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
-    ((SA.locks_move_back sp) FGP ℓ.frame P.locks (tr.time i) hΦ).2.2 _ _ l' hl'
-  rcases hP with rfl | ⟨A, rfl, hAl⟩
-  · exact ⟨l₁, hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
-  unfold SA.optimisticConfirmation at hl₁
-  split at hl₁
-  · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
-  rw [SA.updateLatestConfirmed_locks_eq] at hl₁
-  obtain ⟨l₂, hl₂, hs₂, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
-    ((SA.locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
-  rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩
-  · obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)
-    exact ⟨l₂, hAl ▸ hl₂, hs₁.trans hs₂, B₂, hB₂, hB₂r, B', hB', hB'r, hA.trans hA'⟩
-  · rw [Set.mem_singleton_iff] at hp
-    subst hp
-    exact absurd (hs₁.trans hs₂) hne
 
 /-- The later-batch walk for a selected honest slot-`s` batch: its votes extend `B`, are
 carried at the read point, and outnumber half of a set covering all merged voters.
@@ -422,7 +331,7 @@ private theorem vote_locks_compatible_of (hrun : GoldilocksRun proposer dg H tr)
   rcases le_or_gt l₀.slot s with hle | hlt
   · -- a lock of slot in `[s₀, s]` sits below a stored lock, below an origin of its slot
     obtain ⟨l₁, hl₁, hsl₁, B₁, hB₁, hB₁r, B₀', hB₀', hB₀'r, hA⟩ :=
-      readPoint_locks_stored hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
+      SA.readPoint_locks_below_stored hr hy hc (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
     rw [projAC_state hrun.toLocalRun hy i] at hl₁

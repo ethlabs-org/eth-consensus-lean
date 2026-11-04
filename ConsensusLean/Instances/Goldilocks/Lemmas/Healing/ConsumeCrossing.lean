@@ -37,118 +37,6 @@ open _root_.Consensus.Goldilocks.Store
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- Counting attestations keeps the progress bits and sets those of the rows on the entry. -/
-private theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
-    {v : Fin n} (h : v ∈ σ.prog ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) :
-    v ∈ (atts.foldl FG.ChainState.processAtt σ).prog := by
-  induction atts generalizing σ with
-  | nil => exact h.resolve_right (by simp)
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
-    have key : σ.prog ⊆ (σ.processAtt a).prog ∧
-        (a.h = σ.h ∧ a.T = σ.Th → a.val ∈ (σ.processAtt a).prog) := by
-      unfold FG.ChainState.processAtt
-      rcases hf : a.fin with _ | q <;> dsimp only <;> split_ifs <;> simp_all
-    rw [List.foldl_cons]
-    refine ih ?_
-    rw [hh, hT]
-    rcases h with h | ⟨b, hb, hbv, hbh, hbT⟩
-    · exact Or.inl (key.1 h)
-    · rcases List.mem_cons.1 hb with rfl | hb
-      · exact Or.inl (hbv ▸ key.2 ⟨hbh, hbT⟩)
-      · exact Or.inr ⟨b, hb, hbv, hbh, hbT⟩
-
-/-- One accepted block keeps the height, the entry (and its slot) and the progress bits, adds
-the bits of its rows on the entry, and does not time out; or it enters the next height. -/
-private theorem step_entry {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
-    (h : gp.stateTransition σ B = some σ') :
-    (σ'.h = σ.h ∧ σ'.Th = σ.Th ∧ σ'.ThSlot = σ.ThSlot ∧
-      (∀ v, (v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) → v ∈ σ'.prog) ∧
-      ¬ (gp.q ≤ σ'.prog.card ∧ σ.ThSlot + gp.δt ≤ B.slot)) ∨
-    (σ'.h = σ.h + 1 ∧ σ'.Th = B.root ∧ σ'.ThSlot = B.slot) := by
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
-  have hP := fun v (hv : v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) =>
-    mem_foldl_prog_of (σ := { σ with s := B.slot }) hv
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hP ⊢
-  dsimp only at hP ⊢
-  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, hto, he'⟩ <;> rw [he']
-  · exact Or.inr ⟨rfl, rfl, rfl⟩
-  · exact Or.inr ⟨rfl, rfl, rfl⟩
-  · exact Or.inl ⟨rfl, rfl, rfl, hP, hto⟩
-
-/-- Along ancestry the height does not decrease; while it stays, the entry and the progress
-bits stay. -/
-private theorem anc_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {A W : NodeBlock P ACP} (h : (tr.store y i).Anc A W) :
-    ((tr.store y i).σ A.root).h ≤ ((tr.store y i).σ W.root).h ∧
-      (((tr.store y i).σ W.root).h = ((tr.store y i).σ A.root).h →
-        ((tr.store y i).σ W.root).Th = ((tr.store y i).σ A.root).Th ∧
-        ((tr.store y i).σ A.root).prog ⊆ ((tr.store y i).σ W.root).prog) := by
-  induction h with
-  | refl => exact ⟨le_rfl, fun _ => ⟨rfl, subset_rfl⟩⟩
-  | tail _ hYW ih =>
-    have := ih.1
-    rcases step_entry (step_σ hr hy hYW.2.1 hYW.2.2) with ⟨hh, hT, -, hp, -⟩ | ⟨hh, -, -⟩
-    · refine ⟨by omega, fun he => ?_⟩
-      obtain ⟨h1, h2⟩ := ih.2 (by omega)
-      exact ⟨hT.trans h1, fun v hv => hp v (Or.inl (h2 hv))⟩
-    · exact ⟨by omega, fun _ => by omega⟩
-
-/-- The entry of a held block's state is a held block at the entry slot. -/
-private theorem entry_slot (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {W : NodeBlock P ACP} (hW : W ∈ (tr.store y i).tree) :
-    ∃ E ∈ (tr.store y i).tree, E.root = ((tr.store y i).σ W.root).Th ∧
-      E.slot = ((tr.store y i).σ W.root).ThSlot := by
-  have hreach := store_reachable hr hy i
-  have hg := (accepted_tree P ACP acp₀ _ hreach).2.2.1
-  have hA := (accepted_tree P ACP acp₀ _ hreach).2.2.2 W hW
-  clear hW
-  induction hA with
-  | refl =>
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis hr hy]
-    exact ⟨_, hg, rfl, rfl⟩
-  | tail _ hYW ih =>
-    rcases step_entry (step_σ hr hy hYW.2.1 hYW.2.2) with ⟨-, hT, hs, -⟩ | ⟨-, hT, hs⟩
-    · obtain ⟨E, hE, h1, h2⟩ := ih
-      exact ⟨E, hE, h1.trans hT.symm, h2.trans hs.symm⟩
-    · exact ⟨_, hYW.2.1, hT.symm, hs.symm⟩
-
-/-- An entry block is one height above its parent. -/
-private theorem entry_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
-    {i : Nat} {T T' : NodeBlock P ACP} (hT : ((tr.store y i).σ T.root).Th = T.root)
-    (hp : ParentIn (tr.store y i).tree T' T) :
-    ((tr.store y i).σ T'.root).h < ((tr.store y i).σ T.root).h := by
-  have coh : Coherent (tr.store y i).tree := hr.coherent.mono (hr.tree_subset y hy i)
-  rcases step_entry (step_σ hr hy hp.2.1 hp.2.2) with ⟨-, hTh, -⟩ | ⟨hh, -⟩
-  · obtain ⟨E, hE, h1, hET, -⟩ :=
-      (entry_state_of_source P ACP acp₀ _ (store_reachable hr hy i) T' hp.1).1
-    have he : E = T := coh.1 hE hp.2.1 (h1.trans (hTh.symm.trans hT))
-    rw [he] at hET
-    have := (Goldilocks.Anc.slot_le coh hET).1
-    have := coh.2 _ hp.1 _ hp.2.1 hp.2.2
-    omega
-  · omega
-
-/-- A row of a held block is valid against its parent's state, so its height is at most the
-parent's. -/
-private theorem row_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {X : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) {x : FG.Att P.n}
-    (hx : x ∈ X.fgPayload) :
-    ∃ X', ParentIn (tr.store y i).tree X' X ∧ x.h ≤ ((tr.store y i).σ X'.root).h := by
-  rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 X hX).cases_tail with
-    rfl | ⟨X', -, hX'⟩
-  · exact absurd hx (by simp [Params.genesisBlock])
-  · obtain ⟨⟨-, hv⟩, -⟩ := P.fg.stateTransition_eq_some.1 (step_σ hr hy hX'.2.1 hX'.2.2)
-    refine ⟨X', hX', ?_⟩
-    rcases (hv x hx).2 with ⟨h, -⟩ | ⟨-, -, -, -, h⟩
-    · exact h.le
-    · exact h.le
-
 /-- **The crossing at one block** (G1.8 (a)'s argument for one proposal): a held block `X` on
 the parent `Pr`, whose state has the height `h` of the entry `E ⪯ Pr` and the entry `E`, with
 `E.slot + δ_t ≤ X.slot`, and a set `S` of validators of weight `≥ q` each with a row for `E` at
@@ -165,8 +53,9 @@ theorem crossing_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ 
   have hPrt : Pr ∈ (tr.store y i).tree := by
     rcases hEPr.cases_tail with h | ⟨_, -, h⟩
     exacts [h ▸ hE.1, h.2.1]
-  have hPrTh : ((tr.store y i).σ Pr.root).Th = E.root := ((anc_h hr hy hEPr).2 hPrh).1.trans hE.2
-  obtain ⟨E', hE', hE'r, hE's⟩ := entry_slot hr hy hPrt
+  have hPrTh : ((tr.store y i).σ Pr.root).Th = E.root :=
+    ((Store.anc_h hr hy hEPr).2 hPrh).1.trans hE.2
+  obtain ⟨E', hE', hE'r, hE's⟩ := Store.entry_slot hr hy hPrt
   rw [coh.1 hE' hE.1 (hE'r.trans hPrTh)] at hE's
   have hbits : ∀ v ∈ S, v ∈ ((tr.store y i).σ Pr.root).prog ∨ ∃ a ∈ X.fgPayload, a.val = v ∧
       a.h = ((tr.store y i).σ Pr.root).h ∧ a.T = ((tr.store y i).σ Pr.root).Th := by
@@ -175,33 +64,33 @@ theorem crossing_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ 
     · exact Or.inr ⟨a, ha, rfl, hah.trans hPrh.symm, haT.trans hPrTh.symm⟩
     left
     obtain ⟨Z, hZt, hZPr, haZ⟩ := hon
-    obtain ⟨Z', hZ'Z, hZ'h⟩ := row_parent hr hy hZt haZ
+    obtain ⟨Z', hZ'Z, hZ'h⟩ := Store.row_parent hr hy hZt haZ
     rcases Goldilocks.Anc.total coh hZPr hEPr with hZE | hEZ
     · exfalso
       rcases (Relation.ReflTransGen.head hZ'Z hZE).cases_tail with rfl | ⟨T', hZ'T', hT'E⟩
       · have := (Goldilocks.Anc.slot_le coh hZE).1
         have := coh.2 _ hZ'Z.1 _ hZ'Z.2.1 hZ'Z.2.2
         omega
-      · have := (anc_h hr hy hZ'T').1
-        have := entry_parent hr hy hE.2 hT'E
+      · have := (Store.anc_h hr hy hZ'T').1
+        have := Store.entry_parent hr hy hE.2 hT'E
         omega
     have hEZ' : (tr.store y i).Anc E Z' := by
       rcases hEZ.cases_tail with rfl | ⟨W', hEW', hW'Z⟩
-      · have := entry_parent hr hy hE.2 hZ'Z
+      · have := Store.entry_parent hr hy hE.2 hZ'Z
         omega
       · obtain rfl : W' = Z' :=
           coh.1 hW'Z.1 hZ'Z.1 (Option.some.inj (hW'Z.2.2.symm.trans hZ'Z.2.2))
         exact hEW'
-    have h1 := anc_h hr hy hEZ'
-    have h2 := (anc_h hr hy ((Relation.ReflTransGen.single hZ'Z).trans hZPr)).1
+    have h1 := Store.anc_h hr hy hEZ'
+    have h2 := (Store.anc_h hr hy ((Relation.ReflTransGen.single hZ'Z).trans hZPr)).1
     have hZ'h' : ((tr.store y i).σ Z'.root).h = ((tr.store y i).σ E.root).h := by omega
     have hZ'T := (h1.2 hZ'h').1
-    have h3 := anc_h hr hy hZPr
-    rcases step_entry (step_σ hr hy hZ'Z.2.1 hZ'Z.2.2) with ⟨hh, -, -, hp, -⟩ | ⟨hh, -, -⟩
+    have h3 := Store.anc_h hr hy hZPr
+    rcases Store.step_entry (step_σ hr hy hZ'Z.2.1 hZ'Z.2.2) with ⟨hh, -, -, hp, -⟩ | ⟨hh, -, -⟩
     · exact (h3.2 (by omega)).2 (hp _ (Or.inr ⟨a, haZ, rfl, by omega,
         haT.trans (hE.2.symm.trans hZ'T.symm)⟩))
     · omega
-  rcases step_entry (step_σ hr hy hX hpar) with ⟨-, -, -, hp, hto⟩ | ⟨hh, -, -⟩
+  rcases Store.step_entry (step_σ hr hy hX hpar) with ⟨-, -, -, hp, hto⟩ | ⟨hh, -, -⟩
   · refine absurd ⟨le_trans hS (Finset.card_le_card fun v hv => hp v (hbits v hv)), ?_⟩ hto
     change ((tr.store y i).σ Pr.root).ThSlot + P.δt ≤ X.slot
     omega
@@ -216,11 +105,6 @@ section Run
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
-
-private theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
 /-- The FG projection under the HS shared premises. -/
 private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :
@@ -335,10 +219,10 @@ theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hEt' := mem_of_honest_anc hrun hnc hp (hEPr.trans hPrX) hXt
   have hσE := σ_eq_honest hrun hnc hp hq₀ hEt' hEt
   have hEPr' := store_anc_of_honest_anc hrun hnc hp hEPr hPrt
-  have hst := store_eq hrun hp (kX + 1)
+  have hst := Compose.store_eq hrun hp (kX + 1)
   -- the entry of `Pr`
   have hPrTh : ((tr.state p (kX + 1)).fg.σ Pr.root).Th = E.root := by
-    have := ((anc_h hfg hp (i := kX + 1) (by rw [hst]; exact hEPr')).2
+    have := ((Store.anc_h hfg hp (i := kX + 1) (by rw [hst]; exact hEPr')).2
       (by rw [hst, hPrh, hσE, hEh])).1
     rw [hst, hσE, hETh] at this
     exact this

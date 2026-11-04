@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.TwoWindow
 
 public section
 
@@ -36,69 +37,6 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
-
-/-- The first crossing above `A` on a held `A ⪯ B` (as `Store.first_crossing_of_anc` in
-`Refinement/WindowAnchors`, structural part, local to avoid a Healing-to-Refinement edge). -/
-private theorem first_crossing {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {A B : NodeBlock P ACP}
-    (hAB : st.Anc A B) (hh : (st.σ A.root).h < (st.σ B.root).h) :
-    ∃ X ∈ st.tree, st.Anc A X ∧ st.Anc X B ∧ (st.σ X.root).h = (st.σ A.root).h + 1 ∧
-      (st.σ X.root).Th = X.root := by
-  suffices key : (st.σ A.root).h ≤ (st.σ B.root).h ∧ ((st.σ A.root).h < (st.σ B.root).h →
-      ∃ X ∈ st.tree, st.Anc A X ∧ st.Anc X B ∧ (st.σ X.root).h = (st.σ A.root).h + 1 ∧
-        (st.σ X.root).Th = X.root) from key.2 hh
-  clear hh
-  induction hAB with
-  | refl => exact ⟨le_rfl, fun h => absurd h (lt_irrefl _)⟩
-  | @tail W W' hAW hWW' ih =>
-    obtain ⟨hle, ih⟩ := ih
-    obtain ⟨hW, hW', hp⟩ := hWW'
-    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hW' hp
-    have hst : st.Anc W W' := .single ⟨hW, hW', hp⟩
-    rcases P.fg.stateTransition_ThSlot ht with ⟨e, -, -⟩ | ⟨e, -, eT⟩
-    · refine ⟨e ▸ hle, fun hlt => ?_⟩
-      obtain ⟨X, hX, hAX, hXW, h1, h2⟩ := ih (e ▸ hlt)
-      exact ⟨X, hX, hAX, hXW.trans hst, h1, h2⟩
-    · refine ⟨by omega, fun hlt => ?_⟩
-      rcases Nat.lt_or_ge (st.σ A.root).h (st.σ W.root).h with hl | hl
-      · obtain ⟨X, hX, hAX, hXW, h1, h2⟩ := ih hl
-        exact ⟨X, hX, hAX, hXW.trans hst, h1, h2⟩
-      · exact ⟨W', hW', hAW.trans hst, Relation.ReflTransGen.refl, by omega, eT⟩
-
-/-- The honest proposal is the only honest block of its slot (as the private
-`Compose.eq_of_slot` of `Compose/Service/Suffix`). -/
-private theorem eq_of_slot (hrun : GoldilocksRun proposer dg H tr)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ tr.HonestBlocks H) (hRs : R.slot = P.slot) :
-    R = P := by
-  have h := hrun.toLocalRun
-  obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, htk⟩ := hP
-  rcases Compose.blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, -, hB, -⟩
-  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hpr : P.proposer = proposer P.slot := by
-    rw [hpp, hB]
-    exact hPr.2.2.symm
-  have hs0 : 0 < P.slot := by rw [hB]; exact hPr.1
-  obtain ⟨y, hy, i, hRt⟩ := hR
-  rcases Compose.tree_cases h hy hRt with rfl | ⟨k', -, hk'⟩
-  · simp [Params.genesisBlock] at hRs
-    omega
-  obtain ⟨-, hRpr, -⟩ := Compose.accept_facts h hy hk'
-  have hRp : R.proposer = p := by rw [hRpr, hRs, ← hpr, hpp]
-  obtain ⟨j', -, ⟨acc', hc'⟩, hpos'⟩ := hrun.block_unforgeable y hy k' R ⟨true, hk'⟩ (hRp ▸ hp)
-  rw [hRp] at hc'
-  rcases Compose.blockCall_cases h hp hc' with hg' | ⟨j₀, x', rfl, hg', hPr', d₀, pay₀, -, hB', -⟩
-  · exact absurd (by simpa using (hg'.2.1 0 (List.length_pos_iff.2 hg'.1)).2.2.2.1) hpos'
-  have ht' : tr.time (j₀ + 2) = sp.toParams.slotTime R.slot := by
-    have hs : R.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hB']; rfl
-    exact hs ▸ hPr'.2.1
-  have htt : tr.time (j₀ + 2) = tr.time (j + 2) := by rw [ht', htk, hRs]
-  rw [htt] at hg'
-  obtain rfl := hrun.tick_unique p hp j₀ j _ ⟨x', hg'⟩ ⟨x, hg⟩
-  have := hc'.2.symm.trans hcB.2
-  simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at this
-  exact this.1
 
 /-- **The row at a high report** (as `row_or_high_of_report` in `M1/Rise`, with the lock clause
 from high-record uniqueness instead of the frame kind). An honest report `R ⪰ P` at cut `i`, `P`
@@ -315,7 +253,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
   have hslt : s < U.slot := hPs ▸ hsl.2 (Ne.symm hne)
   obtain ⟨kU, B, hBr, -⟩ := hwindow U.slot (by omega) (by omega)
   obtain ⟨hqH, -, -, hBprop, hBs, -⟩ := id hBr
-  obtain rfl : U = B := eq_of_slot hrun hqH hBprop (hsub hUm) hBs.symm
+  obtain rfl : U = B := Compose.eq_of_slot hrun hqH hBprop (hsub hUm) hBs.symm
   obtain ⟨hacc, hUq, hpost⟩ := accept_of_proposesAt hrun hnc hqH hBprop
   have hσU := σ_eq_honest hrun hnc hqH hw hUq hUm
   refine ⟨proposer U.slot, kU, kU, U, hBr, ⟨hqH, hacc, ?_⟩, hPU.mono hsub, hslt, by omega, ?_⟩

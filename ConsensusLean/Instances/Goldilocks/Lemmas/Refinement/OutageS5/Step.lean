@@ -111,20 +111,6 @@ theorem honest_head_accepted_after (hrun : GoldilocksRun proposer dg H tr)
     (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith) hFHd
   exact Or.inr ⟨k', hAy, by have := hdl k' hk'i; linarith⟩
 
-/-- `ac_to_fg` returns one of its candidates. (As `OutageLockSafety/Sources.lean`, where it is
-private.) -/
-private theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1
-
 /-- **`Carry_y` after the outage's GST** (`carryAt_of_writer_window` with receiver service): at an
 honest slot-`(s+1)` vote of `y`, under receiver service from `g ≤ t_s + Δ`, `Carry_y(s, ·, ·)` holds
 for honest slot-`s` votes whose heads extend `y`'s `Σ.F`: each is sent by its voter by `t_s + Δ`

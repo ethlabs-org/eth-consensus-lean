@@ -57,29 +57,6 @@ private theorem parent_mem (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
       (Option.some.inj (hZp.symm.trans hp))
     exact hZ
 
-/-- Ancestry inside `U` ending at an honest held block is ancestry in that store. -/
-private theorem store_anc (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {A B : NodeBlock P ACP} (h : Anc U A B) (hB : B ∈ (tr.store y i).tree) :
-    (tr.store y i).Anc A B := by
-  induction h with
-  | refl => exact .refl
-  | tail _ hYB ih =>
-    have hY := parent_mem hr hy hB hYB.1 hYB.2.2
-    exact (ih hY).tail ⟨hY, hB, hYB.2.2⟩
-
-/-- Ancestors of a held block are held. -/
-private theorem mem_of_anc {st : Store P ACP} {A B : NodeBlock P ACP} (h : st.Anc A B)
-    (hB : B ∈ st.tree) : A ∈ st.tree := by
-  induction h with
-  | refl => exact hB
-  | tail _ hp ih => exact ih hp.1
-
-/-- Ancestry at one honest store holds at another that holds the descendant. -/
-private theorem anc_transfer (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy : y ∈ H)
-    (hz : z ∈ H) {i j : Nat} {A B : NodeBlock P ACP} (h : (tr.store y i).Anc A B)
-    (hB : B ∈ (tr.store z j).tree) : (tr.store z j).Anc A B :=
-  store_anc hr hz (h.mono (hr.tree_subset y hy i)) hB
-
 end FGTraces
 
 /-! ## The first crossing of an entry before its timeout (workbench#30 §5)
@@ -164,19 +141,6 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 
 /-! ## The actual reports (workbench#30 §3) -/
 
-/-- A block that `ac_to_fg` returns is a candidate (as in `Retention/Rows`). -/
-private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1
-
 /-- The selection of a fast-lock write is in the frame of its call (as in `Retention/Rows`). -/
 private theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
@@ -196,7 +160,7 @@ private theorem report_mem (hrun : GoldilocksRun proposer dg H tr)
     {z : Fin sp.n} (hz : z ∈ H) {r : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : SA.ToFGAt tr.projAC z r ℓ C) : C ∈ (tr.state z r).fg.tree :=
-  mem_tree_of_frame hrun hz h.1 (mem_toFGCandidates h.2.2).1.1
+  mem_tree_of_frame hrun hz h.1 (SA.toFG_candidate h.2.2).1.1
 
 /-- **An actual high report has a stored high origin written before it** (workbench#30 §3, the
 prefix of `high_row_source`): `C` is the viable image of a live fast lock, below the stored block
@@ -210,7 +174,7 @@ theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hU := hr.coherent
   obtain ⟨hpc, -, hC'⟩ := hrep
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := mem_toFGCandidates hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨io, hio, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     stored_fast_lock_provenance hr hz r l₀ hl₀ hlf
@@ -247,7 +211,7 @@ theorem ResetPremisesUpTo.high_report_origin {b : Time}
       Anc (tr.HonestBlocks H) O D := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hpc, _, hC'⟩ := hrep
-  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := mem_toFGCandidates hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
   obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     stored_fast_lock_provenance hr hz r l₀ hl₀ hlf

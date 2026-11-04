@@ -297,7 +297,7 @@ theorem adopt_result_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H
 open Classical in
 /-- The record after a joined tick at `t_s + 6Δ` whose update of slot `s` has a result `C` that
 no live lock vetoes: the old record when `C` is below it in the tree, else `C`. -/
-private theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
+theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {t : Time} (ht : t = sp.ts s + 6 * sp.Δ) (hj : SA.joined sp A t)
     (hC : SA.getConfirmation sp A Φ s = some C) (hv : ¬ SA.conflictsWithLock sp A.locks Φ t C) :

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 
 public section
 
@@ -22,30 +23,9 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
-    FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-  rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-
-private theorem rt_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).restartTime = A.restartTime := by
-  unfold admitVote; split_ifs <;> rfl
-
 theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
   unfold optimisticConfirmation updateLatestConfirmed; split
-  · rfl
-  · split_ifs <;> rfl
-
-private theorem rt_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (tryVote sp x A Φ t).1.restartTime = A.restartTime := by
-  unfold tryVote; dsimp only
-  split_ifs <;> simp only [rt_optimistic, rt_admitVote]
-
-private theorem rt_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
-  unfold updateConfirmation updateLatestConfirmed; dsimp only
-  split
   · rfl
   · split_ifs <;> rfl
 

@@ -87,17 +87,6 @@ private theorem step_prog {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- An ancestor of a block is the block itself or an ancestor of its parent. -/
-private theorem anc_parent {st : Store P ACP} {X W W' : NodeBlock P ACP} (hW' : W' ∈ st.tree)
-    (hp : W.parent = some W'.root) (h : st.Anc X W) : X = W ∨ st.Anc X W' := by
-  rcases Relation.ReflTransGen.cases_tail h with rfl | ⟨Z, hXZ, hZ, -, hZp⟩
-  · exact Or.inl rfl
-  · have hZ : st.blocks Z.root = some Z := hZ
-    have hW' : st.blocks W'.root = some W' := hW'
-    have hr : Z.root = W'.root := Option.some.inj (hZp.symm.trans hp)
-    obtain rfl : Z = W' := Option.some.inj (hZ.symm.trans (hr ▸ hW'))
-    exact Or.inr hXZ
-
 /-- The rows on the chain of a held block are not above its height, and those on its entry
 (targets and timeouts) have set their progress bits. -/
 theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat)
@@ -117,7 +106,7 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
     obtain ⟨h1, h2, hp⟩ := hpar
     obtain ⟨hle, hcase⟩ := step_prog (step_σ hr hy h2 hp)
     intro X hX r hrX
-    have hX' := anc_parent h1 hp hX
+    have hX' := Store.anc_parent h1 hp hX
     have hrh : r.h ≤ ((tr.store y m).σ W'.root).h := by
       rcases hX' with rfl | hX'
       · exact hle r hrX

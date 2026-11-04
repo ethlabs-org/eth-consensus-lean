@@ -186,19 +186,6 @@ theorem gate_result_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
   subst hCD
   exact hBD.mono hΦU
 
-/-- The latest view's votes are the held votes of its label, and its support the resolved ones
-(copied from `Compose/Sleepy/Served.lean`, where it is private). -/
-private theorem latestView_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {L : Nat} (hL : (L : Int) = (SA.latestView sp A Φ t).2) (v : SA.Vote sp.n) :
-    (v ∈ (SA.latestView sp A Φ t).1.votes ↔ v ∈ A.pool L ∧ A.voteStamp v < ⊤) ∧
-      (v ∈ (SA.latestView sp A Φ t).1.support ↔
-        (v ∈ A.pool L ∧ A.voteStamp v < ⊤) ∧ SA.resolutionTime A Φ v < ⊤) := by
-  simp only [SA.latestView] at hL ⊢
-  rw [← hL]
-  simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, SA.SAState.poolAt, Set.mem_ofPred_eq,
-    List.mem_filter, decide_eq_true_eq, Int.natCast_nonneg, not_lt.2, ↓reduceIte, Int.toNat_natCast,
-    and_assoc, true_and]
-
 /-- **L3.** The latest view's majority from the extending casters only: when the
 extending casters of the view's label outnumber its
 opponents and every extending vote is delivered, the view's voters are fewer than twice the

@@ -227,11 +227,6 @@ private theorem ac_run (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun 
     ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
     hrun.toLocalRun hnc
 
-/-- The honest blocks of a run are coherent. -/
-private theorem honest_coherent (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
-    Coherent (tr.HonestBlocks H) :=
-  (ac_run hrun hnc).coherent
-
 private theorem down_lockOK {T : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hU : Coherent (tr.HonestBlocks H))
     (hTU : T ⊆ tr.HonestBlocks H) (hΦT : Φ.tree ⊆ T) (i : Nat) : Down Φ (LockOK tr H T i) := by
@@ -479,7 +474,7 @@ private theorem good_state (hrun : GoldilocksRun proposer dg H tr)
       exact ih'
 
 /-- `ac_to_fg` returns one of its candidates. -/
-private theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
+theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
     {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (SA.acToFG sp A Φ t).2 = some C) :
     C ∈ SA.toFGCandidates sp A Φ t := by
   unfold SA.acToFG at h

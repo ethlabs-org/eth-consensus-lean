@@ -25,19 +25,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- `ac_to_fg` returns one of its candidates. -/
-private theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1
-
 /-- An attestation names the entry of its entry state. -/
 private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
     {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) : a.T = σe.Th := by

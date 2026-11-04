@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
@@ -21,13 +22,6 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-! ## The SA functions -/
-
-private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
 
 private theorem admit_pool_mem {A : SAState sp.n} {t : Time} {m v : Vote sp.n} {σ : Nat}
     (h : v ∈ (admitVote sp A t m).pool σ) : v ∈ A.pool σ ∨ v = m ∧ m.slot = σ := by

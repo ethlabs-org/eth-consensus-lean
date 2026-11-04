@@ -24,7 +24,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-private theorem accept_mem' (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem accept_mem' (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (h : tr.AcceptAt y k B) :
     B ∈ (tr.state y (k + 1)).fg.tree := by
   rw [tr.state_succ_of_call h, (Store.tree_grows _ _ _ _

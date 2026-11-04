@@ -50,7 +50,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The duty head of a proposal is the walk of the full viable tree from its start, with the
 payload's view; the start is the anchor of the unlocked state. -/
-private theorem acProposal_spec {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
+theorem acProposal_spec {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
     {t : Time} {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (SA.acProposal sp A Φ t).2 = some (d, pay)) :
     (∃ A₁ : SA.SAState sp.n, d.start = SA.getAnchor sp A₁ Φ t) ∧

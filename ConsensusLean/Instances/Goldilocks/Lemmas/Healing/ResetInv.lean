@@ -134,22 +134,6 @@ theorem protected_target_cases (hp : ResetPremises tr H proposer dg g ΔF a)
       Anc.mono (SA.frameIn_of_callAt hr hx hupd.1).2 hBC⟩
   · exact Or.inr (Or.inr (Or.inr ⟨hp', hP, hun⟩))
 
-/-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/
-private theorem deepest_of_subset {FGP : Type} {Φ : SA.Frm sp.n FGP}
-    {S T : Set (SA.Blk sp.n FGP)} {D : SA.Blk sp.n FGP} (hT : SA.deepest Φ T = some D)
-    (hST : S ⊆ T) (hD : D ∈ S) : SA.deepest Φ S = some D := by
-  have h : SA.IsDeepest Φ S D := ⟨hD, fun C hC hne => (SA.deepest_mem hT).2 C (hST hC) hne⟩
-  cases hd : SA.deepest Φ S with
-  | none =>
-    unfold SA.deepest at hd
-    simp only [show ∃ B, SA.IsDeepest Φ S B from ⟨D, h⟩, ↓reduceDIte, reduceCtorEq] at hd
-  | some D' =>
-    have h' := SA.deepest_mem hd
-    by_contra hne
-    have hne' : D' ≠ D := fun h => hne (congrArg some h)
-    rcases h.2 D' h'.1 hne' with h₁ | ⟨h₁, h₂⟩ <;>
-      rcases h'.2 D h.1 (Ne.symm hne') with h₃ | ⟨h₃, h₄⟩ <;> omega
-
 /-- An honest proposal is the proposer's own block at its slot start (as
 `Refinement.proposesAt_of_honestProposalRun`). -/
 private theorem proposesAt_of_honestProposal (hrun : GoldilocksRun proposer dg H tr) {s : Nat}
@@ -202,7 +186,8 @@ theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF 
   obtain ⟨i, ell, -, hup, -⟩ := hp'.update_toFG_calls hpj hu le_rfl
   obtain ⟨-, hconf, hnv, hsel, -⟩ := Refinement.UpTo.operational_update_selection hp' hc hpj rfl
     hactual hPs hR hgu le_rfl hpj hup
-  have hsel' := deepest_of_subset (S := {X | X ∈ SA.confirmationPath sp ell.frame B ∧
+  have hsel' := Refinement.UpTo.deepest_of_subset
+    (S := {X | X ∈ SA.confirmationPath sp ell.frame B ∧
       ¬ SA.conflictsWithLock sp (tr.projAC.state (proposer j) i).locks ell.frame (tr.time i) X ∧
       SA.FastTest sp (tr.projAC.state (proposer j) i) ell.frame j X}) hsel
     (fun X hX => ⟨hX.1, hX.2.2⟩)

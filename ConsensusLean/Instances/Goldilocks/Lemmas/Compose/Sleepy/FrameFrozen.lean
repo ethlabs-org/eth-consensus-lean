@@ -49,11 +49,6 @@ theorem deadline_le_of_restarts {y : Fin sp.n} {c : Nat} {a : Time}
   · change max τ w + Δ' ≤ max τ a + Δ'
     linarith [max_le_max (le_refl τ) (lastWake_le h w hw)]
 
-private theorem admitVote_stamp (A : SA.SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (SA.admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold SA.admitVote
-  split_ifs <;> rfl
-
 private theorem optimistic_stamp (A : SA.SAState sp.n) (Φ : SA.Frm sp.n (List (FG.Att sp.n)))
     (t : Time) : (SA.optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
   unfold SA.optimisticConfirmation SA.updateLatestConfirmed
@@ -229,7 +224,7 @@ theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
   have hnr := (honest_vote_call hrun hnc hy hc).2.2.2
   have hrp : e.readPoint.blockStamp X.root = (tr.projAC.state y i).blockStamp X.root := by
     have h1 : (tr.projAC.post i).blockStamp = e.readPoint.blockStamp := by
-      rw [SA.post_of_castAt hr hy hc, optimistic_stamp, admitVote_stamp]
+      rw [SA.post_of_castAt hr hy hc, optimistic_stamp, SA.admitVote_blockStamp]
     have hp : tr.projAC.post i = ((SA.goldilocksSA sp _ ro).step y (tr.projAC.state y i)
         ℓ.frame (tr.projAC.time i) ℓ.call).1 := by rw [hx]
     obtain ⟨hblk, -, hoth⟩ :=

@@ -189,34 +189,6 @@ private theorem decoded_block_root {o : Wire (Fintype.card V)}
   simp only [headerOf, hr]
   rfl
 
-omit [DecidableEq V] in
-private theorem rooted_block_eq {B C : Blk (S.params (Model.pubOf E) hn)}
-    (hB : B.parent ≠ none) (hC : C.parent ≠ none)
-    (hrB : B.RootOk (digestOf S rho)) (hrC : C.RootOk (digestOf S rho))
-    (he : blockObj (S.params (Model.pubOf E) hn) B = blockObj _ C) : B = C := by
-  have hh := congrArg Model.Obj.msg he
-  have ha := congrArg Model.Obj.auth he
-  simp only [blockObj, Model.Obj.msg, Model.Msg.item.injEq] at hh
-  simp only [blockObj, Model.Obj.auth, Model.Auth.signed.injEq] at ha
-  have hp := congrArg (fun h => parentRoot S.genesisRoot h.parent) hh
-  have hs := congrArg Header.pos hh
-  have hx := congrArg Header.input hh
-  have hi := congrArg (fun h => decodeInfo (Fintype.card V) h.info) hh
-  obtain ⟨b, hb⟩ := Option.ne_none_iff_exists'.mp hB
-  obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.mp hC
-  simp only [headerOf, hb, hc, parentRoot_parentRef] at hp
-  simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hi
-  have hparent : B.parent = C.parent := by simpa [hb, hc] using hp
-  change B.slot = C.slot at hs
-  change B.input = C.input at hx
-  have hroot : B.root = C.root := by
-    change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hrB
-    rw [hrB, hparent, hs, hx, hi.1, hi.2]
-    exact hrC.symm
-  have hv := ha.1
-  cases B; cases C
-  simp_all
-
 /-- A forwarding release during a tick identifies an actual successful proposal cut,
 including the digest-backed root rather than just the serialized block fields. -/
 theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
@@ -239,7 +211,7 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
       (Model.Obj.Contains.refl _)
   obtain ⟨hrB, hpB⟩ := decoded_block_root S rho hn hcontains (decodeForward_child hd).1
   obtain ⟨hrC, hpC⟩ := tick_accepted_root _ _ _ _ _ _ hc
-  have hBC := rooted_block_eq S rho hn hpB hpC hrB hrC hw
+  have hBC := Refinement.blockObj_fields S rho hn hpB hpC hrB hrC hw
   subst C
   obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
   have hm' : m < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)

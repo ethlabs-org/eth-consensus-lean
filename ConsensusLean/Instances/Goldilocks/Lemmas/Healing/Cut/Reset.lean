@@ -224,19 +224,6 @@ theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun
     (hk : tr.time k ≤ cutZ sp.toParams g) : att.h ≤ HZ tr H g :=
   signed_le_HZ_of_snapshot hrun (exists_firstCutAfter hrun hh hy) hy hs hk
 
-/-- A block that `ac_to_fg` returns is a candidate. -/
-private theorem mem_toFGCandidates {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1
-
 /-- **HR.1 (a), second part (A1.5 with `τ = ḡ`).** From `c_z` on, a block `C` that `ac_to_fg`
 returns at an honest node is the block of one of its live fast locks, whose label has a fast-lock
 write at that node after `ḡ`, on a descendant of `C`. -/
@@ -250,7 +237,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
         Anc (tr.HonestBlocks H) C B := by
   have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   obtain ⟨hc, -, hC⟩ := hto
-  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates hC
+  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := SA.toFG_candidate hC
   have hst := Compose.projAC_state hrun.toLocalRun hx i
   rw [hst] at hl
   refine ⟨l, hl, hlf, hlb, ?_⟩

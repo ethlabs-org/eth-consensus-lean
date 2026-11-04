@@ -13,6 +13,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 
 public section
 
@@ -57,27 +58,6 @@ theorem anc_mem {S : Set (NodeBlock P ACP)} {A W : NodeBlock P ACP} (h : Anc S A
   by_cases hne : A = W
   · exact hne ▸ hW
   · exact (Goldilocks.Anc.mem h hne).1
-
-/-- A held block that names a parent has its parent held. -/
-private theorem parent_held (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀) {m : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (ftr.store y m).tree) {r : Nat} (hp : B.parent = some r) :
-    ∃ Y, ParentIn (ftr.store y m).tree Y B := by
-  rcases ((Store.accepted_tree P ACP acp₀ _ (Store.store_reachable hr hy m)).2.2.2 B hB).cases_tail
-    with rfl | ⟨Y, -, hY⟩
-  · exact absurd hp (by simp [Params.genesisBlock])
-  · exact ⟨Y, hY⟩
-
-/-- Ancestry inside `U` below a held block is ancestry inside the store. -/
-private theorem anc_store (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀) {m : Nat}
-    {A W : NodeBlock P ACP} (h : Anc U A W) (hW : W ∈ (ftr.store y m).tree) :
-    (ftr.store y m).Anc A W := by
-  induction h with
-  | refl => exact .refl
-  | tail _ hYW ih =>
-    obtain ⟨Z, hZ⟩ := parent_held hr hy hW hYW.2.2
-    obtain rfl : Z = _ := hr.coherent.1 (hr.tree_subset y hy m hZ.1) hYW.1
-      (Option.some.inj (hZ.2.2.symm.trans hYW.2.2))
-    exact (ih hZ.1).tail hZ
 
 /-- Along ancestry the height does not decrease; while it stays, the entry stays. -/
 private theorem anc_height (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀)
@@ -176,7 +156,7 @@ private theorem crossing_quorum (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n
       · exact ⟨W, h2, .refl, a, ha, hav, haT.trans hEr.symm⟩
 
 /-- One accepted block keeps the justification or justifies its parent's entry. -/
-private theorem step_J {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
+theorem step_J {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') :
     (σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h) := by
   obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
@@ -236,12 +216,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The FG projection of a run -/
 
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-
 /-- The FG projection of a Goldilocks run is an FG local run inside the honest blocks. -/
 theorem projFG_localRun (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
@@ -266,7 +240,7 @@ theorem honest_held_anc (hrun : GoldilocksRun proposer dg H tr)
     (h : Anc (tr.HonestBlocks H) A W) (hW : W ∈ (tr.state y i).fg.tree) :
     (tr.state y i).fg.Anc A W := by
   rw [← store_eq hrun hy i] at hW ⊢
-  exact anc_store (projFG_localRun hrun hnc) hy h hW
+  exact Store.anc_of_U (projFG_localRun hrun hnc) hy h hW
 
 /-- State heights do not decrease along ancestry in an honest store, and equal heights have equal
 `Th`. -/

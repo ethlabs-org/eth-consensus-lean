@@ -182,11 +182,6 @@ section Update
 
 variable {FGP : Type} {sp : SAParams}
 
-private theorem ulc_locks (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (C : SA.Blk sp.n FGP) :
-    (SA.updateLatestConfirmed sp A Φ C).locks = A.locks := by
-  unfold SA.updateLatestConfirmed
-  split_ifs <;> rfl
-
 /-- **The locks after an unvetoed update with result `Y`**: the live locks of the old locks with
 new locks on blocks of `Y`'s path, among them the fast selection, fast. -/
 private theorem update_locks {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : Time} {s : Nat}
@@ -210,7 +205,7 @@ private theorem update_locks {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : T
         (fun hc => SA.anc_total hΦ.coherent h.1.2.2 hc))⟩⟩, h.2⟩⟩)
   unfold SA.updateConfirmation
   simp only [hconf, hnv, ↓reduceIte]
-  refine ⟨_, by rw [ulc_locks], ?_, ?_⟩
+  refine ⟨_, by rw [SA.updateLatestConfirmed_locks_eq], ?_, ?_⟩
   swap
   · intro D hD
     exact ⟨_, SA.le_fastExpiry sp _ _ _ _, Or.inl ⟨D, (hpath _).trans hD, rfl⟩⟩

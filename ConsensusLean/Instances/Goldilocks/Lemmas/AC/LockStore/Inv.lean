@@ -264,11 +264,6 @@ theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Cohe
     refine ⟨hok.1, ht₀.trans ht, LockInv.step hU hok.1.1 hok.1.2 ?_ x _ (ht₀.trans ht) c⟩
     exact ⟨E, hE, hEr, fun h => hX E (hEt (hF.trans h)) h, hlE⟩
 
-private theorem admitVote_blockStamp (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold admitVote
-  split_ifs <;> rfl
-
 private theorem optimistic_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
   unfold optimisticConfirmation updateLatestConfirmed

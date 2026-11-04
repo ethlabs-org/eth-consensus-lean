@@ -191,7 +191,7 @@ private theorem headOK_of {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU
   exact ⟨(hanc Φ.fcRoot (Or.inr rfl)).trans hah, hv⟩
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
-private theorem toFG_candidate {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem toFG_candidate {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
   unfold acToFG at h
   split_ifs at h

@@ -111,11 +111,6 @@ theorem slot_le_of_anc {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Cohere
   | refl => exact le_rfl
   | tail _ hst ih => exact ih.trans (hS.2 _ hst.1 _ hst.2.1 hst.2.2).le
 
-private theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
 /-- **Heights at a cut of the phase are at most its frontier** (a held block at a cut `k ≤ j`,
 with the phase at `j`). -/
 theorem h_le_of_phaseAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
@@ -127,7 +122,7 @@ theorem h_le_of_phaseAt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
   have hR := Compose.fg_reachable hrun.toLocalRun hy j
   have h1 := (Goldilocks.Store.cache_invariants _ _ _ _ hR).2.2.2.2.1 X hX'
   have h2 := hph.frontierAt.2 y hy
-  rw [store_eq hrun hy] at h2
+  rw [Compose.store_eq hrun hy] at h2
   rw [σ_eq_honest hrun hnc hy hy hX' hX] at h1
   omega
 
@@ -144,8 +139,8 @@ theorem effAllowed_of_height (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp
     cases c <;> simp only [phaseFloor] <;> omega
   · subst hJ
     by_contra hn
-    exact hph.2.2 ⟨y, hy, X, by rw [store_eq hrun hy]; exact hX,
-      by rw [store_eq hrun hy]; exact hXh, by rw [store_eq hrun hy]; exact hn⟩
+    exact hph.2.2 ⟨y, hy, X, by rw [Compose.store_eq hrun hy]; exact hX,
+      by rw [Compose.store_eq hrun hy]; exact hXh, by rw [Compose.store_eq hrun hy]; exact hn⟩
 
 /-- **A block above the floor is allowed** at a cut of the phase `(m, c)`: its height is at most
 the frontier `m`, so in the top-`J` case (floor `m − 1`) it is `m` (`effAllowed_of_height`). -/
@@ -175,7 +170,7 @@ theorem deadline_le_of_healthy (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy 
 /-! ## Sources and votes -/
 
 /-- The block that `ac_to_fg` returns is in the frame of the call. -/
-private theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
+theorem toFG_mem_frame {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
     {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) : C ∈ Φ.tree := by
   unfold SA.acToFG at h
   split_ifs at h

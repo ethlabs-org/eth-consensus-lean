@@ -123,13 +123,6 @@ theorem h2_carry_votes (hI : InclusionRun tr H U proposer g t₀) {m : Nat}
     CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} :=
   healthy_carry_votes hI.toHealthyBase hm hvB hy hc hs hFB
 
-private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold optimisticConfirmation updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 /-- **An honest node is a voter at every honest update** of a slot `l` with `t_l ≥ ḡ + 4Δ`: its
 slot-`l` vote (or a pair of its slot-`l` votes) is in the writer's pool at the update, or it
 equivocates there. -/

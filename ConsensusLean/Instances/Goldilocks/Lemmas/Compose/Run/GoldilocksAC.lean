@@ -172,7 +172,7 @@ end Adds
 /-! ### In the run -/
 
 /-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
+theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
     (goldilocksNode sp ro).Requirements :=
   have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
   ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩

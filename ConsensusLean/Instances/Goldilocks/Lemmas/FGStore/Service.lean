@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 
 public section
 
@@ -21,7 +22,7 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
 /-! ## One block of the state transition -/
 
 /-- Counting attestations keeps the progress bits and sets those of the rows on the entry. -/
-private theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
+theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
     {v : Fin n} (h : v ∈ σ.prog ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) :
     v ∈ (atts.foldl FG.ChainState.processAtt σ).prog := by
   induction atts generalizing σ with
@@ -45,7 +46,7 @@ private theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List 
 
 /-- One accepted block keeps the height, the entry (and its slot) and the progress bits, adds
 the bits of its rows on the entry, and does not time out; or it enters the next height. -/
-private theorem step_entry {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
+theorem step_entry {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') :
     (σ'.h = σ.h ∧ σ'.Th = σ.Th ∧ σ'.ThSlot = σ.ThSlot ∧
       (∀ v, (v ∈ σ.prog ∨ ∃ a ∈ B.atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) → v ∈ σ'.prog) ∧
@@ -66,26 +67,8 @@ private theorem step_entry {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B :
 
 /-! ## The tree of an honest node -/
 
-/-- The state of a held block has height at least `1`, above its justification. -/
-private theorem one_le_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) :
-    1 ≤ ((tr.store y i).σ B.root).h ∧
-      ((tr.store y i).σ B.root).hj < ((tr.store y i).σ B.root).h := by
-  obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP acp₀ _ (store_reachable hr hy i) B hB
-  obtain ⟨h1, -, h2, -⟩ := FG.chain_invariants P.fg _ _ hc
-  exact ⟨h1, h2⟩
-
-/-- A held block that names a parent has its parent held. -/
-private theorem parent_held (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) {r : Nat} (hp : B.parent = some r) :
-    ∃ Y, ParentIn (tr.store y i).tree Y B := by
-  rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 B hB).cases_tail with
-    rfl | ⟨Y, -, hY⟩
-  · exact absurd hp (by simp [Params.genesisBlock])
-  · exact ⟨Y, hY⟩
-
 /-- Ancestry at one honest node holds at another that holds the descendant. -/
-private theorem anc_transfer (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy : y ∈ H)
+theorem anc_transfer (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy : y ∈ H)
     (hz : z ∈ H) {i j : Nat} {A B : NodeBlock P ACP} (h : (tr.store y i).Anc A B)
     (hB : B ∈ (tr.store z j).tree) : (tr.store z j).Anc A B := by
   induction h with
@@ -98,7 +81,7 @@ private theorem anc_transfer (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy
 
 /-- Along ancestry the height does not decrease; while it stays, the entry and the progress
 bits stay. -/
-private theorem anc_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem anc_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {A W : NodeBlock P ACP} (h : (tr.store y i).Anc A W) :
     ((tr.store y i).σ A.root).h ≤ ((tr.store y i).σ W.root).h ∧
       (((tr.store y i).σ W.root).h = ((tr.store y i).σ A.root).h →
@@ -115,7 +98,7 @@ private theorem anc_h (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ 
     · exact ⟨by omega, fun _ => by omega⟩
 
 /-- The entry of a held block's state is a held block at the entry slot. -/
-private theorem entry_slot (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem entry_slot (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {W : NodeBlock P ACP} (hW : W ∈ (tr.store y i).tree) :
     ∃ E ∈ (tr.store y i).tree, E.root = ((tr.store y i).σ W.root).Th ∧
       E.slot = ((tr.store y i).σ W.root).ThSlot := by
@@ -134,7 +117,7 @@ private theorem entry_slot (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
     · exact ⟨_, hYW.2.1, hT.symm, hs.symm⟩
 
 /-- An entry block is one height above its parent. -/
-private theorem entry_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
+theorem entry_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H)
     {i : Nat} {T T' : NodeBlock P ACP} (hT : ((tr.store y i).σ T.root).Th = T.root)
     (hp : ParentIn (tr.store y i).tree T' T) :
     ((tr.store y i).σ T'.root).h < ((tr.store y i).σ T.root).h := by
@@ -151,7 +134,7 @@ private theorem entry_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy :
 
 /-- A row of a held block is valid against its parent's state, so its height is at most the
 parent's. -/
-private theorem row_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+theorem row_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) {x : FG.Att P.n}
     (hx : x ∈ X.fgPayload) :
     ∃ X', ParentIn (tr.store y i).tree X' X ∧ x.h ≤ ((tr.store y i).σ X'.root).h := by

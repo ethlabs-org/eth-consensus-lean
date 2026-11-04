@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 
 public section
 
@@ -33,21 +34,6 @@ private theorem pool_admit {P : Vote sp.n → Prop} {A : SAState sp.n}
       · exact (List.mem_singleton.mp hw) ▸ hv
     · exact h s w hw
 
-private theorem pool_optimistic (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
-    (SA.optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold SA.optimisticConfirmation SA.updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
-
-private theorem pool_confirmation (A : SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) (s : Nat) : (SA.updateConfirmation sp A Φ t s).pool = A.pool := by
-  unfold SA.updateConfirmation SA.updateLatestConfirmed
-  dsimp only
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem pool_tryVote {P : Vote sp.n → Prop} (self : Fin sp.n)
     (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (h : PoolIn P A)
     (he : ∀ e ∈ (SA.tryVote sp self A Φ t).2, P e.msg) :
@@ -59,7 +45,7 @@ private theorem pool_tryVote {P : Vote sp.n → Prop} (self : Fin sp.n)
   · exact h
   all_goals
     intro s v hv
-    rw [pool_optimistic] at hv
+    rw [SA.optimistic_pool_eq] at hv
     apply pool_admit (A := _) (P := P) (t := t) (v := _) ?_ ?_ s v hv
     · exact h
     · exact he _ (List.mem_singleton_self _)
@@ -87,7 +73,7 @@ private theorem pool_block {P : Vote sp.n → Prop} (self : Fin sp.n)
     PoolIn P (SA.acOnBlock sp self A Φ t B).1 := by
   apply pool_tryVote self _ Φ t _ he
   intro s v hv
-  rw [pool_optimistic] at hv
+  rw [SA.optimistic_pool_eq] at hv
   exact pool_receipt A t B h hB s v hv
 
 private theorem pool_message {P : Vote sp.n → Prop} (self : Fin sp.n)
@@ -97,7 +83,7 @@ private theorem pool_message {P : Vote sp.n → Prop} (self : Fin sp.n)
     PoolIn P (SA.acOnMessage sp self A Φ t m).1 := by
   apply pool_tryVote self _ Φ t _ he
   intro s v hv
-  rw [pool_optimistic] at hv
+  rw [SA.optimistic_pool_eq] at hv
   exact pool_admit h t m hm s v hv
 
 private theorem pool_tick {P : Vote sp.n → Prop} (self : Fin sp.n)
@@ -111,7 +97,7 @@ private theorem pool_tick {P : Vote sp.n → Prop} (self : Fin sp.n)
     | exact h
     | exact pool_tryVote self A Φ t h he
     | intro s v hv
-      rw [pool_confirmation] at hv
+      rw [SA.updateConfirmation_pool_eq] at hv
       first | exact h s v hv | exact pool_tryVote self A Φ t h he s v hv
 
 /-- Restart replay only imports votes from its frame and its own emissions. The replay
@@ -953,15 +939,6 @@ theorem duty_cut_vote_signer (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
     m.val = rho.ownKey v :=
   (cut_owned S rho hn hv hv' hc m hm).trans (cut_self S rho hn hc)
 
-omit [DecidableEq V] in
-private theorem duty_seen (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (family S)) E)) (d) :
-    (rho.dutyStep v nd d).1.seen = nd.seen ++ (rho.dutyStep v nd d).2 := by
-  unfold Model.Run.dutyStep
-  split
-  · exact Model.releaseAll_seen _ _ _ _
-  · simp
-
 private theorem poll_duty_inventory (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∈ rho.honest) {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
@@ -981,10 +958,10 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid) {v : V}
       pollObj S rho v b ∈ (rho.dutyStep v nd (.poll k)).1.seen.flatMap Model.Obj.parts := by
     intro b hb hp
     apply Model.mem_closure_of_mem
-    rw [duty_seen S rho v nd (.poll k)]
+    rw [Refinement.dutyStep_seen S rho v nd (.poll k)]
     exact List.mem_append_right _ (dutyStep_poll_rel S rho hn v nd k hsel hb hp)
   apply poll_inventory nd.seen _ _ _ h
-  · rw [duty_seen S rho v nd (.poll k)]
+  · rw [Refinement.dutyStep_seen S rho v nd (.poll k)]
     exact parts_append _ _
   · intro w hw
     rw [← pollPre_eq] at hw
@@ -1105,7 +1082,7 @@ private theorem tick_duty_inventory (v : V)
     Inventory (Available (rho.dutyStep v nd (.pollPropose k)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1))
       (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1).node := by
-  rw [duty_seen S rho v nd (.pollPropose k), dutyStep_pollPropose_snd S rho hn,
+  rw [Refinement.dutyStep_seen S rho v nd (.pollPropose k), dutyStep_pollPropose_snd S rho hn,
     List.append_nil]
   by_cases hsel : rho.ownKey v ∈ rho.sel .poll
   · rw [dutyStep_pollPropose S rho hn v nd k hsel]

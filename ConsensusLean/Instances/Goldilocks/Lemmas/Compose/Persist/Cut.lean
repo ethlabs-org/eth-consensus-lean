@@ -26,12 +26,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : Goldil
   {H : Set (Fin sp.n)} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {proposer : Nat → Fin sp.n}
 
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-private theorem node_requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-
 /-- A public time below `t_m + 2Δ` is at most `t_m + Δ`. -/
 private theorem public_le {T : Time} (hT : sp.toParams.IsPublic T) {m : Nat}
     (h : T < sp.ts m + 2 * sp.Δ) : T ≤ sp.ts m + sp.Δ := by
@@ -106,7 +100,7 @@ theorem cut_inv_step (hrun : GoldilocksRun proposer dg H tr)
   rintro y hy ⟨c, hc⟩ hk₀ hk₁
   have hlocal := hrun.toLocalRun
   have hfg := fg_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val) tr proposer
-    (node_requirements sp ro) hrun.genesis_root_ok hlocal hp.noColl
+    (Compose.requirements sp ro) hrun.genesis_root_ok hlocal hp.noColl
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hstore : ∀ z ∈ H, ∀ j, tr.projFG.store z j = (tr.state z j).fg := fun z hz j => by
     change (tr.projFG.state z j).1 = _

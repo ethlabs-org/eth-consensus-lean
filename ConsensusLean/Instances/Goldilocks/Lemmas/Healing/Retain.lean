@@ -31,15 +31,11 @@ extends `J` in the top-`J` case).
 namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
+open Compose (store_eq)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
-
-private theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
 
 /-- The FG projection under the HS shared premises, with `f < 2q − n`. -/
 private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :

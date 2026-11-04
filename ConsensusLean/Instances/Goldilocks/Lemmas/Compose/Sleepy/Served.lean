@@ -67,12 +67,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The record step -/
 
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-private theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-
 /-- Inside a coherent `U`, ancestry towards a block of a subset `S ⊆ U` in which every block
 descends from a parentless root stays inside `S` (`S` is parent-closed). -/
 private theorem anc_of_anc_superset {n : Nat} {FGP ACP : Type} {S U : Set (Block n FGP ACP)}
@@ -437,7 +431,7 @@ theorem fg_grows (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y 
       exact ih
 
 /-- The votes and the support of the latest view, of slot `L`. -/
-private theorem latestView_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
+theorem latestView_mem {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
     {t : Time} {L : Nat} (hL : (L : Int) = (SA.latestView sp A Φ t).2) (v : Vote sp.n) :
     (v ∈ (SA.latestView sp A Φ t).1.votes ↔ v ∈ A.pool L ∧ A.voteStamp v < ⊤) ∧
       (v ∈ (SA.latestView sp A Φ t).1.support ↔

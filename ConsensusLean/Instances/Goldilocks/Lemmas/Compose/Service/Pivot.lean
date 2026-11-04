@@ -56,7 +56,7 @@ section Walk
 variable {FGP : Type}
 
 /-- A descendant inside the tree of a block of the tree is in the tree. -/
-private theorem mem_of_anc_left {Φ : SA.Frm sp.n FGP} {A B : SA.Blk sp.n FGP} (h : Φ.Anc A B)
+theorem mem_of_anc_left {Φ : SA.Frm sp.n FGP} {A B : SA.Blk sp.n FGP} (h : Φ.Anc A B)
     (hA : A ∈ Φ.tree) : B ∈ Φ.tree := by
   by_cases hAB : A = B
   · exact hAB ▸ hA
@@ -86,7 +86,7 @@ private theorem mem_between {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U) {Φ : 
     exact hp.1
 
 /-- A proper ancestor of a block is an ancestor of its parent. -/
-private theorem anc_parent {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
+theorem anc_parent {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
     {A B Q : SA.Blk sp.n FGP} (h : Anc U A B) (hne : A ≠ B) (hBQ : B.parent = some Q.root)
     (hQ : Q ∈ U) : Anc U A Q := by
   rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hAY, hY⟩
@@ -103,7 +103,7 @@ private theorem anchor_mem (Φ : SA.Frm sp.n FGP) (A : SA.SAState sp.n) (t : Tim
   | some D => exact (SA.deepest_mem hd).1
 
 /-- The anchor of a well-formed frame is in its tree. -/
-private theorem anchor_tree {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SAState sp.n)
+theorem anchor_tree {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SAState sp.n)
     (t : Time) : SA.getAnchor sp A Φ t ∈ Φ.tree := by
   rcases anchor_mem Φ A t with h | h
   · exact h.1

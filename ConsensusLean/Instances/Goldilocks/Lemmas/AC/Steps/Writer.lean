@@ -64,7 +64,7 @@ private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.
     · subst he; exact List.mem_append_left _ h
     · exact h
 
-private theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation updateLatestConfirmed
   split

@@ -442,7 +442,7 @@ private theorem tick_block_fields {sp : SAParams} {ro : ReplayOrder sp (List (FG
       split at hm <;> simp [onAttestation] at hm
 
 omit [DecidableEq V] in
-private theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
+theorem blockObj_fields {B C : Blk (S.params (pubOf E) hn)}
     (hB : B.parent ≠ none) (hC : C.parent ≠ none)
     (hrB : B.RootOk (digestOf S rho)) (hrC : C.RootOk (digestOf S rho))
     (he : blockObj (S.params (pubOf E) hn) B = blockObj (S.params (pubOf E) hn) C) : B = C := by

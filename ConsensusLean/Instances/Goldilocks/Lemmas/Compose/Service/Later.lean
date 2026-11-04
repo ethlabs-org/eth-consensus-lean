@@ -74,32 +74,6 @@ theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   rw [projAC_state hrun.toLocalRun hx j, htj]
   exact ((joined_projection sp ro dg H tr proposer hrun x hx _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
 
-open Classical in
-/-- The record after a joined tick at `t_s + 6Δ` whose update of slot `s` has a result `C` that
-no live lock vetoes: the old record when `C` is below it in the tree, else `C` (as in
-`Service/Adopt`). -/
-private theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {t : Time} (ht : t = sp.ts s + 6 * sp.Δ) (hj : SA.joined sp A t)
-    (hC : SA.getConfirmation sp A Φ s = some C) (hv : ¬ SA.conflictsWithLock sp A.locks Φ t C) :
-    (SA.acOnTick sp self A Φ t).1.latestConfirmed =
-      if SA.AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root := by
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have h6 : t = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ := ht.trans (SA.slot_arithmetic sp s).2.2
-  have hsl : sp.slot t = s + 1 := by
-    have := (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
-    rw [h6]
-    simpa using this
-  have hne : ¬ t = sp.ts ((s + 1 : Nat) : Int) + sp.Δ := by rw [h6]; intro h; linarith
-  unfold SA.acOnTick
-  rw [ite_eq_right (not_not.2 hj)]
-  simp only [hsl]
-  rw [ite_eq_right hne, ite_eq_left ⟨h6, Nat.succ_pos s⟩, Nat.add_sub_cancel]
-  simp only [SA.updateConfirmation, hC]
-  rw [ite_eq_right hv]
-  simp only [SA.updateLatestConfirmed]
-  split_ifs <;> rfl
-
 /-- **A later update adopts an origin within `b`** (`s' > s`).
 Every honest slot-`s'` vote occurs before the bounded update and extends the origin (S2), and
 `Σ.F` is compatible with it (S1). When `P ⪯ Σ.F`, the second disjunct holds. Otherwise each honest

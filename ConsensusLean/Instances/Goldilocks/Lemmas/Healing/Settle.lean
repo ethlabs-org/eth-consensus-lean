@@ -5,6 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 
 public section
 
@@ -44,24 +47,6 @@ section Stores
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- Every block of a chain of `S` linked from `A ∈ S` (and `A`) is an ancestor of its last
-block. -/
-private theorem anc_of_linked {S : Set (NodeBlock P ACP)} :
-    ∀ (c : List (NodeBlock P ACP)) (A : NodeBlock P ACP), A ∈ S → (∀ X ∈ c, X ∈ S) →
-      c.map Block.parent = ((A.root :: c.map Block.root).take c.length).map some →
-      ∀ B, (A :: c).getLast? = some B → ∀ X ∈ A :: c, Goldilocks.Anc S X B
-  | [], A, _, _, _, B, hB, X, hX => by
-    simp only [List.getLast?_singleton, Option.some.injEq, List.mem_singleton] at hB hX
-    exact hX ▸ hB ▸ .refl
-  | C :: c, A, hA, hc, hl, B, hB, X, hX => by
-    simp only [List.map_cons, List.length_cons, List.take_succ_cons, List.cons.injEq] at hl
-    rw [List.getLast?_cons_cons] at hB
-    have ih := anc_of_linked c C (hc C List.mem_cons_self)
-      (fun X hX => hc X (List.mem_cons_of_mem _ hX)) hl.2 B hB
-    rcases List.mem_cons.1 hX with rfl | hX
-    · exact .head ⟨hA, hc C List.mem_cons_self, hl.1⟩ (ih C List.mem_cons_self)
-    · exact ih X hX
-
 /-- A held block of an honest store has a chain whose fold is its state, each of whose roots
 names a held ancestor, and each of whose attestations with an honest signer was signed before
 the cut. -/
@@ -75,7 +60,7 @@ private theorem held_chain (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
   have hR := store_reachable hr hy i
   obtain ⟨c, hc, hl, hlast, hσ⟩ := chain_state_of_chain P ACP acp₀ _ hR B hB
   obtain ⟨-, -, hg, -⟩ := accepted_tree P ACP acp₀ _ hR
-  have hanc := anc_of_linked c _ hg hc hl B (by
+  have hanc := Store.anc_of_linked c _ hg hc hl B (by
     rcases hlast with ⟨rfl, rfl⟩ | h
     · rfl
     · simp [List.getLast?_cons, h])
@@ -132,32 +117,11 @@ theorem finalized_anc (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.f
     (hrun k' (by omega) b hkb) hab
 
 /-- Ancestors of a held block are held. -/
-private theorem mem_of_anc {st : Store P ACP} {A B : NodeBlock P ACP} (h : st.Anc A B)
+theorem mem_of_anc {st : Store P ACP} {A B : NodeBlock P ACP} (h : st.Anc A B)
     (hB : B ∈ st.tree) : A ∈ st.tree := by
   induction h with
   | refl => exact hB
   | tail _ hp ih => exact ih hp.1
-
-/-- A held block that names a parent has its parent held. -/
-private theorem parent_held (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) {r : Nat} (hp : B.parent = some r) :
-    ∃ Y, ParentIn (tr.store y i).tree Y B := by
-  rcases ((accepted_tree P ACP acp₀ _ (store_reachable hr hy i)).2.2.2 B hB).cases_tail with
-    rfl | ⟨Y, -, hY⟩
-  · exact absurd hp (by simp [Params.genesisBlock])
-  · exact ⟨Y, hY⟩
-
-/-- Ancestry at one honest node holds at another that holds the descendant. -/
-private theorem anc_transfer (hr : FGLocalRun acp₀ H U tr) {y z : Fin P.n} (hy : y ∈ H)
-    (hz : z ∈ H) {i j : Nat} {A B : NodeBlock P ACP} (h : (tr.store y i).Anc A B)
-    (hB : B ∈ (tr.store z j).tree) : (tr.store z j).Anc A B := by
-  induction h with
-  | refl => exact .refl
-  | tail _ hYB ih =>
-    obtain ⟨Z, hZ⟩ := parent_held hr hz hB hYB.2.2
-    obtain rfl : Z = _ := hr.coherent.1 (hr.tree_subset z hz j hZ.1)
-      (hr.tree_subset y hy i hYB.1) (Option.some.inj (hZ.2.2.symm.trans hYB.2.2))
-    exact (ih hZ.1).tail hZ
 
 /-- The phase at a cut has the frontier there. -/
 theorem PhaseAt.frontierAt {i m : Nat} {c : PhaseCase (NodeBlock P ACP)}
@@ -209,14 +173,14 @@ theorem holdsEvidence_of_relay (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy
     obtain rfl : X = J := hr.coherent.1 (hr.tree_subset x hx i hX) (hr.tree_subset x hx i hJ)
       (hXr.trans hBJ)
     have hσ := σ_eq_of_held hr hy hx hBy hB
-    exact ⟨mem_of_anc (anc_transfer hr hx hy hXB hBy) hBy, B, hBy, by rw [hσ]; exact hBj,
+    exact ⟨mem_of_anc (Store.anc_transfer hr hx hy hXB hBy) hBy, B, hBy, by rw [hσ]; exact hBj,
       by rw [hσ]; exact hBJ⟩
   have hcont : ∀ J, ContestAt tr H i m J → ∃ B ∈ (tr.store y i').tree,
       ((tr.store y i').σ B.root).h = m ∧ ¬ (tr.store y i').Anc J B := by
     rintro J ⟨x, hx, B, hB, hBh, hn⟩
     have hBy := hrel x hx B hB hBh
     exact ⟨B, hBy, by rw [σ_eq_of_held hr hy hx hBy hB]; exact hBh,
-      fun ha => hn (anc_transfer hr hy hx ha hB)⟩
+      fun ha => hn (Store.anc_transfer hr hy hx ha hB)⟩
   cases c with
   | gap => exact hfr
   | top J => exact ⟨hfr, hjust J hc.2.1⟩

@@ -26,10 +26,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-private theorem store_eq_fg' (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    (i : Nat) : tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
 private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG := by
   have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
@@ -122,9 +118,9 @@ theorem lock_root_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
   obtain ⟨-, -, -, ⟨Bj, hBjt, hBjJ, hBjhj⟩, -⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hy k)
   have he := J_eq_of_hj_eq (fg_run hrun hnc) hf hy hy (i := k') (j := k) (B := B) (B' := Bj)
-    (by rw [store_eq_fg' hrun hy]; exact hB) (by rw [store_eq_fg' hrun hy]; exact hBjt)
-    (by rw [store_eq_fg' hrun hy, store_eq_fg' hrun hy, hBj, hBjhj, hj])
-  rw [store_eq_fg' hrun hy, store_eq_fg' hrun hy, hBJ, hBjJ] at he
+    (by rw [store_eq_fg hrun hy]; exact hB) (by rw [store_eq_fg hrun hy]; exact hBjt)
+    (by rw [store_eq_fg hrun hy, store_eq_fg hrun hy, hBj, hBjhj, hj])
+  rw [store_eq_fg hrun hy, store_eq_fg hrun hy, hBJ, hBjJ] at he
   exact he
 
 /-- **F3-lock (§24.4).** Before the advance (no honest signature of height `> H_z` at a time

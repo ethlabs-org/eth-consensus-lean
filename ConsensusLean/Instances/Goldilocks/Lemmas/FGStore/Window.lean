@@ -213,7 +213,7 @@ theorem step_current {gp : FG.FGParams} {c : List (FG.FGBlock gp.n)}
 /-! ## Along the tree of an honest node -/
 
 /-- An ancestor of a block is the block itself or an ancestor of its parent. -/
-private theorem anc_parent {st : Store P ACP} {X W W' : NodeBlock P ACP} (hW' : W' ∈ st.tree)
+theorem anc_parent {st : Store P ACP} {X W W' : NodeBlock P ACP} (hW' : W' ∈ st.tree)
     (hp : W.parent = some W'.root) (h : st.Anc X W) : X = W ∨ st.Anc X W' := by
   rcases Relation.ReflTransGen.cases_tail h with rfl | ⟨Z, hXZ, hZ, -, hZp⟩
   · exact Or.inl rfl

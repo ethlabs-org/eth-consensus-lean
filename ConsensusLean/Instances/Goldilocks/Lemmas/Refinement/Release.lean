@@ -111,15 +111,6 @@ theorem onTick_cuts (proposer : Nat → Fin sp.n)
             t x .proposal).1 t x .fgUpdate).2 := by
   simp [Node.onTick, Node.runSteps, Node.tickSteps]
 
-private theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) : a.val = v := by
-  unfold FG.Record.createAtt at h
-  split at h
-  · cases h
-  · split_ifs at h
-    cases h
-    rfl
-
 /-- The FG update queues the attestation of the node's FG-update step's signing cut, and that
 step emits no vote and processes no block. -/
 theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)

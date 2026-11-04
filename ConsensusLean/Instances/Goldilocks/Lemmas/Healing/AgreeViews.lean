@@ -54,16 +54,6 @@ theorem mem_frame_of_relay
   exact Compose.tree_mono hl hz hle (relay_held hl hS.shared.healthy hS.shared.noRestart
     hS.catchUp hx hz ha hu (by linarith) hj₁ ((run_F_mono hl hz hle).trans (hFz ▸ hF)))
 
-/-- The payload of a proposal is the proposer's view of the previous slot's pool. -/
-private theorem payload_eq {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {d' : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay' : Payload sp.n}
-    (h : (SA.acProposal sp A Φ t).2 = some (d', pay')) :
-    pay' = SA.voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ := by
-  unfold SA.acProposal at h
-  split_ifs at h
-  simp only [Option.some.injEq, Prod.mk.injEq] at h
-  exact h.2.symm
-
 /-- **The views agree**: the proposal's view and the voter's merged view have the same
 equivocators and voters, and the same supporters for every block of both trees
 (`SA.view_agree`, with the HS relay: a block the voter stamped before the vote freeze was
@@ -148,7 +138,7 @@ theorem proposal_views_agree
       rw [hes] at hP's hsup
       obtain rfl := hslotP P' hP't hP's
       have hxs : x.slot + 1 = s' + 1 := by
-        rw [payload_eq hS.payload, hsi, hcast] at hx
+        rw [Compose.payload_eq hS.payload, hsi, hcast] at hx
         simp only [SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx

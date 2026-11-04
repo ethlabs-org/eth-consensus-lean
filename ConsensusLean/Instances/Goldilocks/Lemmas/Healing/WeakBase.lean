@@ -101,7 +101,7 @@ def OldEntryCovered (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₀ : Na
     (E : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ C l, Compose.OriginFrom tr H C l s₀ ∧ Anc (tr.HonestBlocks H) E C
 
-private theorem updateFinality_hj_le {P : Params} {ACP : Type}
+theorem updateFinality_hj_le {P : Params} {ACP : Type}
     (st : Store P ACP) (σ : FG.ChainState P.n) : st.hj ≤ (st.updateFinality σ).hj := by
   rcases (Store.updateFinality_spec st σ).2.2.2.2.1 with h | ⟨_, he, _, hlex⟩
   · exact le_of_eq h.2.symm

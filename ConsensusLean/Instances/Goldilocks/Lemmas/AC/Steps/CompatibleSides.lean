@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 
 public section
 
@@ -62,11 +63,6 @@ theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : 
       rw [← add_zero (sp.ts (s + 1 : Nat)), ts_add] at this
       linarith
     omega
-
-private theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
-    FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-  rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
 
 /-- **The optimistic side.** At an honest optimistic confirmation of slot `s` on `D`, three
 quarters of the committee are optimistic voters of `D`, each with a vote extending `D` that the

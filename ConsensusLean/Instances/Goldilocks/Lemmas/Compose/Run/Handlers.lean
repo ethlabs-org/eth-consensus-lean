@@ -198,22 +198,6 @@ private theorem update_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : F
   obtain ⟨rfl, -⟩ := hm
   exact ⟨rfl, rfl, hC'⟩
 
-/-- The proposal step signs nothing. -/
-private theorem proposal_no_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
-    (st : NodeState A) (t : Time) (x : Nat) (C : A.Blk) (s : Option (FG.Att P.n)) :
-    Cut.fg (.attest C s) ∉ (tickStep proposer dg y st t x .proposal).2 := by
-  simp only [tickStep]
-  split_ifs
-  · split
-    · simp [acProposal]
-    · rename_i d p _
-      simp only [proposeBlock, onBlock, List.mem_cons, acProposal, reduceCtorEq, false_or]
-      by_cases hf : P.slotOf t < (mkBlock dg y st.fg t x d.head p).slot
-      · simp [hf]
-      · simp only [hf, ↓reduceIte]
-        split <;> simp [acCall]
-  · simp
-
 /-- A signing `fg_attest` cut follows the FG update's `ac_to_fg`, which returned its source. -/
 private theorem attest_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {C : A.Blk} {a : FG.Att P.n}

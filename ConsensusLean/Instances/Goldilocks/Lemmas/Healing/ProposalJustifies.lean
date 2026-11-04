@@ -84,20 +84,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-private theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
-/-- The FG projection of a run without block collisions. -/
-private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG := by
-  have hreq : (goldilocksNode sp ro).Requirements :=
-    ⟨(SA.interface_requirements sp _ ro).1, (SA.interface_requirements sp _ ro).2.1,
-      (SA.interface_requirements sp _ ro).2.2.1, (SA.interface_requirements sp _ ro).2.2.2,
-      SA.proposal_payload_valid sp _ ro⟩
-  exact Compose.fg_projection _ _ dg H _ tr proposer hreq hrun.genesis_root_ok hrun.toLocalRun hnc
-
 /-- An honest validator signs its own attestations. -/
 theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
@@ -131,7 +117,7 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
   classical
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   obtain ⟨hacc, hXt, hpost⟩ := accept_of_proposesAt hrun hnc hp hX
-  have hst := store_eq hrun hp (kX + 1)
+  have hst := Compose.store_eq hrun hp (kX + 1)
   have hmono := Compose.tree_mono hrun.toLocalRun hp (Nat.le_succ kX)
   have hPrU : Pr ∈ tr.HonestBlocks H := ⟨p, hp, kX, hPr⟩
   have hXU : X ∈ tr.HonestBlocks H := ⟨p, hp, kX + 1, hXt⟩
@@ -152,7 +138,7 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
       obtain rfl : Pr = X := hU.1 hPrU hXU he
       exact lt_irrefl _ (hU.2 _ hPrU _ hPrU hpar)
     rw [tr.state_succ_of_call hacc, hsf, Function.update_of_ne hne]
-  refine ⟨fg_run hrun hnc, by rw [hst]; exact hXt, by rw [hst]; exact hmono hPr,
+  refine ⟨Compose.projFG_localRun hrun hnc, by rw [hst]; exact hXt, by rw [hst]; exact hmono hPr,
     by rw [hpost, hst], by rw [hst, hσPr], fun att ⟨k', hk', hproc⟩ hah haT => ?_⟩
   have hpool := processed_att_retained hrun hp hproc hk'
   rw [hst]

@@ -40,18 +40,6 @@ section Stamps
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro}
 
-private theorem admitVote_blockStamp (A : SA.SAState sp.n) (t : Time) (v : SA.Vote sp.n) :
-    (SA.admitVote sp A t v).blockStamp = A.blockStamp := by
-  unfold SA.admitVote
-  split_ifs <;> rfl
-
-private theorem optimistic_blockStamp (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
-    (SA.optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
-  unfold SA.optimisticConfirmation SA.updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 /-- **The voter block tree of slot `s` has no block of a later slot**: at an honest vote, a block
 of it received before the freeze `t_{s−1} + 3Δ` was in a frame at an earlier call, before `t_s`,
 and frames hold no block of a future slot (genesis has slot `0`); any other block is an ancestor
@@ -63,7 +51,7 @@ theorem voterBlockTree_slot_le (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U 
     {W : SA.Blk sp.n FGP} (hW : W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame s) : W.slot ≤ s := by
   obtain ⟨hWt, hst | ⟨P', hP', hP's, hWP'⟩⟩ := hW
   · have heq : e.readPoint.blockStamp = (tr.post j).blockStamp := by
-      rw [SA.post_of_castAt hr hy hc, optimistic_blockStamp, admitVote_blockStamp]
+      rw [SA.post_of_castAt hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
     rw [heq] at hst
     rcases stamp_origin hr hy j ℓ hc.1 W hWt with hgn | ⟨k, -, ℓk, hck, hWk, hsk⟩
     · rw [hgen W hWt hgn]; exact Nat.zero_le _
