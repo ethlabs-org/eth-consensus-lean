@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.AcceptanceDefs
+public import ConsensusLean.Instances.Goldilocks.Proofs.Refinement.Main
+public import ConsensusLean.Proofs.RegimesRealizable.Main
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks acceptance coefficients
@@ -25,7 +27,13 @@ Labelled by kind (CONTRIBUTING "Statements"):
   latency at `c = 3` and `c = 10`; `timeout_rejects_ratio` rejects `r = 32` at `δt = 29`;
   `row_transport_slow` and `row_transport_fast` instantiate `cF_spec` at `ΔF > Δ` and `ΔF < Δ`.
 
-`accepted_heal` (`catchUp + healMargin`, `accepted_heal_val`) is pinned by `heal_drop`. -/
+`accepted_heal` (`catchUp + healMargin`, `accepted_heal_val`) is pinned by `heal_drop`.
+
+* (a) The endpoint is not vacuous: `accepted_endpoint_nonvacuous` instantiates
+  `AcceptedEndpoint` (`accepted_endpoint`) at `setupSmall`, `assumptionsSmall`, and
+  `accepted_realizable_small` gives its contract's active witnesses on five validators
+  (`Shape.regimes_realizable` from `Accepted`'s admissibility, progress-fit and tolerance
+  fields). -/
 
 namespace Consensus.Goldilocks.Refinement.Test.Acceptance
 
@@ -275,5 +283,21 @@ theorem row_transport_slow : 6 * (1 : Time) + 32 ≤ 4 * 1 * (cF 32 : Time) :=
 /-- (b) Faster rows (`ΔF = 1 < Δ = 5`, `r = 1`): `6Δ + ΔF = 31 ≤ 40 = 4Δ·cF r`. -/
 theorem row_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (cF 1 : Time) :=
   cF_spec 1 5 1 (by decide) (by decide)
+
+/-- (a) **The Accepted endpoint is not vacuous**: there are a setup and an assumption set (`k = 2`,
+`δt = 6`, row ratio `1`), and the family is accepted at their contract. -/
+theorem accepted_endpoint_nonvacuous : ∃ (S : Setup) (A : AcceptanceAssumptions S),
+    Accepted (family S) (acceptanceContract A (accepted_coefficients S A)) :=
+  ⟨setupSmall, assumptionsSmall, accepted_endpoint setupSmall assumptionsSmall⟩
+
+/-- (a) The active witnesses of the endpoint's contract at `setupSmall`, `assumptionsSmall` on five
+validators: sleepy, healthy, sleepy-stress, outage and bad-proposer runs exist
+(`Shape.regimes_realizable`, from the fields of `accepted_endpoint`). -/
+theorem accepted_realizable_small :
+    RealizableActive (family setupSmall)
+      (acceptanceContract assumptionsSmall (accepted_coefficients setupSmall assumptionsSmall))
+      (Fin 5) :=
+  have h := accepted_endpoint setupSmall assumptionsSmall
+  regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5) (by decide)
 
 end Consensus.Goldilocks.Refinement.Test.Acceptance

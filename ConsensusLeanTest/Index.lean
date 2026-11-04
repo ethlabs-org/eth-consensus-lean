@@ -3,6 +3,7 @@ public import ConsensusLeanTest.Blocks
 public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
+public import ConsensusLeanTest.GoldilocksAcceptance
 public import ConsensusLeanTest.GoldilocksRefinement
 public import ConsensusLeanTest.Good
 public import ConsensusLeanTest.Leaks
@@ -818,6 +819,8 @@ example := ``Consensus.Goldilocks.Refinement.acceptanceContract
 example := ``Consensus.Goldilocks.Refinement.acceptedEndpoint
 example := ``Consensus.Goldilocks.Refinement.accepted_coefficients
 example := ``Consensus.Goldilocks.Refinement.accepted_endpoint
+example := ``Consensus.Goldilocks.Refinement.Test.Acceptance.accepted_endpoint_nonvacuous
+example := ``Consensus.Goldilocks.Refinement.Test.Acceptance.accepted_realizable_small
 example := ``Consensus.Goldilocks.Refinement.finalWindow
 example := ``Consensus.Goldilocks.Refinement.honestKeys
 example := ``Consensus.Goldilocks.Refinement.digestOf
