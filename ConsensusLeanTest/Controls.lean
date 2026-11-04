@@ -38,6 +38,10 @@ strictly before the bound), horizon `40`:
   reader from the recovery point `14`).
 
 * The control contract tolerates arbitrary numbers of validators not ready.
+* `ctrl_not_accepted` (rejection): the do-nothing family is realizable
+  (`ctrl_realizable`) but not `Accepted` at any contract, since acceptance gives active
+  service (`Accepted.activeService`: a relayed transaction in a read) and its reads are
+  empty. Realizability of the regimes is not acceptance.
 * `bftContract_admissible`: the numbers of the BFT contract shape shared by
   Streamlet and Tendermint (`Examples.Shape.Bft`) are admissible for a positive
   catch-up (in `Consensus.Shape`, as before its move out of the Spec).
@@ -225,6 +229,19 @@ generic theorem at concrete numbers). -/
 theorem ctrl_realizable : Realizable S X ctrlK :=
   (regimes_realizable ctrlFamily ctrlK ctrlK_admissible ctrlK_progressFits ctrlK_progressTolerant
     (Fin 5) card5).toRealizable
+
+/-- **The do-nothing family is not accepted** (rejection): at every contract.
+`Accepted` gives active service (`Accepted.activeService`), a transaction relayed into the
+read of an honest node; the control family's reads are empty. So `ctrl_realizable`, a
+realizability certificate, is not acceptance. -/
+theorem ctrl_not_accepted (K : Contract ProgressReq) : ¬ Accepted ctrlFamily K := by
+  intro h
+  obtain ⟨cap, g, hcap, hg, -⟩ := h.activeService
+  obtain ⟨i⟩ := K.idx_nonempty
+  obtain ⟨r, -, -, -, -, x, u, w, t, t', -, -, -, -, -, -, hx⟩ :=
+    (h.good (Fin 5)).served (by simp) hcap hg i 2 0 (by norm_num) le_rfl
+  simp [Trace.readAt, sysOf, Model.Run.readIdx, Model.protoOf, compiled, ctrlFamily,
+    ctrlShape, compile, ledgerOf] at hx
 
 /-- **Outage control**: `T = 2 < b₀ = 6 < b₁ = 8` (at `Δ = 2`), honest `key 2` always
 asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is

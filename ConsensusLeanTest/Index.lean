@@ -854,6 +854,7 @@ example := ``Consensus.Shape.Tests.Blocks.span_guard
 /-! ## Tests: Controls -/
 
 example := ``Consensus.Shape.Tests.Controls.ctrlK_progressTolerant
+example := ``Consensus.Shape.Tests.Controls.ctrl_not_accepted
 example := ``Consensus.Shape.Tests.Controls.ctrl_realizable
 example := ``Consensus.Shape.Tests.Controls.outage_control
 example := ``Consensus.Shape.Tests.Controls.positive_controls
