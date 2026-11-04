@@ -252,7 +252,7 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
       linarith
     have hBt := (hp.proposal_relay_high hpH hci hcall hd hti ho hOB hz hacc hct
       (hFO.trans hOB)).1
-    exact mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
+    exact Compose.mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
   · exact Or.inr hOF
 
 /-- An old source is held by the proposer, or below its finalized cache. Relay starts at an

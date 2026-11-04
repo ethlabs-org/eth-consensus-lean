@@ -495,7 +495,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
   rcases hp.clean_source_proposal_domain_before hc hx hpH hsource hs (by omega) hrb hR
       hci hcall hd hti hib with hBF | hV
   · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
-    obtain ⟨A₁, _, hstart, _⟩ := acProposal_walk hd
+    obtain ⟨A₁, _, hstart, _⟩ := Compose.acProposal_walk hd
     rw [hstart] at hhead
     exact hBF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A₁ (tr.time i)).trans hhead))
   have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU
@@ -651,7 +651,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
   rcases hp.clean_source_proposal_domain_before hc hx hpH (Or.inl ⟨CV, Or.inr hop⟩) hs
       (by omega) hrb hR hci hcall hd hti hib with hBF | hV
   · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
-    obtain ⟨A₁, _, hstart, _⟩ := acProposal_walk hd
+    obtain ⟨A₁, _, hstart, _⟩ := Compose.acProposal_walk hd
     rw [hstart] at hhead
     exact hBF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A₁ (tr.time i)).trans hhead))
   have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU

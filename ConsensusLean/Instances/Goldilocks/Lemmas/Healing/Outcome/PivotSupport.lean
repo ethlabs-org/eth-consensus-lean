@@ -73,7 +73,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
       Anc (tr.HonestBlocks H) O d.head := by
     intro hOF
     obtain ⟨_, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-    obtain ⟨A, _, hstart, _⟩ := acProposal_walk hd
+    obtain ⟨A, _, hstart, _⟩ := Compose.acProposal_walk hd
     rw [hstart] at hsQ
     exact hOF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsQ))
   rcases hp.proposal_holds_old hpH hci hcall hd hti hib ho hrt with hOt | hOF

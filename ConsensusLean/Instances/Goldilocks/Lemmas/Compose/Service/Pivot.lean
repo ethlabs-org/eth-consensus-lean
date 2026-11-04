@@ -64,7 +64,7 @@ theorem mem_of_anc_left {Φ : SA.Frm sp.n FGP} {A B : SA.Blk sp.n FGP} (h : Φ.A
 
 /-- A block between two blocks of a well-formed frame's tree (ancestry in a coherent `U` holding
 the tree) is in the tree. -/
-private theorem mem_between {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U) {Φ : SA.Frm sp.n FGP}
+theorem mem_between {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U) {Φ : SA.Frm sp.n FGP}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {A B C : SA.Blk sp.n FGP} (hA : A ∈ Φ.tree)
     (hC : C ∈ Φ.tree) (hAB : Anc U A B) (hBC : Anc U B C) : B ∈ Φ.tree := by
   have hFB : Anc U Φ.F B := (Anc.mono hΦU (hΦ.rooted.2 A hA)).trans hAB
@@ -95,7 +95,7 @@ theorem anc_parent {U : Set (SA.Blk sp.n FGP)} (hU : Coherent U)
   exact hAY
 
 /-- The anchor is a live lock block or `fc_root`. -/
-private theorem anchor_mem (Φ : SA.Frm sp.n FGP) (A : SA.SAState sp.n) (t : Time) :
+theorem anchor_mem (Φ : SA.Frm sp.n FGP) (A : SA.SAState sp.n) (t : Time) :
     SA.getAnchor sp A Φ t ∈ SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} := by
   unfold SA.getAnchor
   cases hd : SA.deepest Φ (SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
@@ -111,7 +111,7 @@ theorem anchor_tree {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SAState sp
 
 /-- The duty head of a proposal is the walk of the full viable tree from its start, the anchor
 after the proposal's unlocking. -/
-private theorem acProposal_walk {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : Time}
+theorem acProposal_walk {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : Time}
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (SA.acProposal sp A Φ t).2 = some (d, pay)) :
     ∃ A₁ : SA.SAState sp.n,
@@ -695,13 +695,11 @@ at a cut no later (`SA.optimisticPoint_pool_vote`), at `t_s`. A vote at `t_s` is
 whose group precedes the proposer's tick at `t_s` or is it (phase order), so in a tick, where only
 the slot's proposer's own block casts it (C0.4), after `ac_proposal`: in the proposer's tick
 (`tick_unique`), after cut `i`. -/
-private theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr)
+theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
+    {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
+    (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV := by
   intro z hz c hci C CV hO
   have hr' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -772,6 +770,7 @@ private theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr
   have := Set.ncard_le_ncard hnoH (Set.toFinite _)
   omega
 
+set_option linter.unusedVariables false in
 /-- **The proposer has no stored lock of slot `s` or later**: a stored lock sits below an origin
 of its slot before the proposal (`lock_origin`); a regular one of label at least `s` is written
 after `t_s`, an optimistic one has the slot of its time, at most `s`, and not `s`
@@ -802,7 +801,7 @@ theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
     · exact h
     have hls : l.slot = s := by rw [hii, hsl_i] at hle; omega
     exact absurd (hls ▸ hOp)
-      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hd hti x hx k' hki O CV)
+      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti x hx k' hki O CV)
 
 /-- **`fc_root` in a downward-closed set, from the sources**: at an honest node's cut whose honest
 rows all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or the
@@ -840,6 +839,7 @@ theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     exact hg
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
 
+set_option linter.unusedVariables false in
 /-- **The proposer's honest rows have sources below old origins** (workbench#12 §2): every honest
 row the proposer holds was signed before cut `i`, with a source below an origin before the
 signing (`attestation_source`); a regular one of label `l` is written at `t_l + 6Δ ≤ t_s`, so
@@ -874,7 +874,7 @@ private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hn
     · omega
     obtain rfl : l = s := by omega
     exact absurd hOp
-      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hd hti z hz c (by omega) C CV)
+      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti z hz c (by omega) C CV)
 
 /-- **The proposer's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
 `F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest rows

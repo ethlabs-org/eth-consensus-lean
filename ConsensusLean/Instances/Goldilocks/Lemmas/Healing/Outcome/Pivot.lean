@@ -84,8 +84,8 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
   have hU := hr.coherent
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hDP : Anc (tr.HonestBlocks H) D P := hDQ.trans (.single ⟨hQU, hPU, hPQ⟩)
-  have hat := anchor_tree hPhi e.readPoint (tr.time j)
-  have haS := anchor_mem ell.frame e.readPoint (tr.time j)
+  have hat := Compose.anchor_tree hPhi e.readPoint (tr.time j)
+  have haS := Compose.anchor_mem ell.frame e.readPoint (tr.time j)
   generalize SA.getAnchor sp e.readPoint ell.frame (tr.time j) = an at hat haS ⊢
   rcases haS with ⟨_, l', hl', hl'r⟩ | haf
   swap
@@ -225,7 +225,7 @@ theorem ResetPremisesUpTo.reset_vote_root_below_proposal {b : Time}
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQU := hPhiU (mem_of_anc_left hsQ hst)
+  have hQU := hPhiU (Compose.mem_of_anc_left hsQ hst)
   have hacc := Compose.proposal_accepted hp.run hp.noColl hpH hactual
   have hPU : P ∈ tr.HonestBlocks H := by
     refine ⟨p, hpH, k + 1, ?_⟩
@@ -285,7 +285,7 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hpH hci
   -- the proposal walk, from its start to `Q`
   obtain ⟨hstart, hsQ⟩ := Compose.acProposal_start_anc_head hΦp hd
-  have hQt : d.head ∈ ℓp.frame.tree := mem_of_anc_left hsQ hstart
+  have hQt : d.head ∈ ℓp.frame.tree := Compose.mem_of_anc_left hsQ hstart
   have hpass := reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ
   -- `D`: the deepest of the start and the old sources on the proposal walk
   obtain ⟨D, hD⟩ := SA.exists_deepest hΦp (S := {X | X ∈ ℓp.frame.tree ∧
@@ -299,7 +299,7 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
     have hOQ := hpass O hO
     rcases Anc.total hU hOQ (Anc.mono hΦpU hsQ) with h | h
     · exact h.trans (Anc.mono hΦpU hsD)
-    have hOt := mem_between hU hΦp hΦpU hstart hQt h hOQ
+    have hOt := Compose.mem_between hU hΦp hΦpU hstart hQt h hOQ
     exact Anc.mono hΦpU (hmax O ⟨hOt, SA.anc_tree_of_anc_U hU hΦp hΦpU hstart h hOt,
       SA.anc_tree_of_anc_U hU hΦp hΦpU hOt hOQ hQt, Or.inr hO⟩)
   refine ⟨D, hsD, hDQ,
@@ -308,13 +308,13 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hhead := (SA.castAt_spec hr hy hcy).2.2.2
   rw [hes] at hhead
-  have hat := anchor_tree hΦ e.readPoint (tr.time j)
+  have hat := Compose.anchor_tree hΦ e.readPoint (tr.time j)
   have hah : ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))
       (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
         (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
         (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) :=
     SA.anc_ghost (fun B hB => (SA.voteDomain_subset_tree hB.1)) _ hat
-  have hht := mem_of_anc_left hah hat
+  have hht := Compose.mem_of_anc_left hah hat
   -- The vote's head extends `D`: direct start support, or HR.4 (R3).
   have hDh : Anc (tr.HonestBlocks H) D (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
       (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
@@ -329,13 +329,13 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
       hDold hy hcy hes hE (fun l hl hne hlive L hL hLr =>
         vote_old_live_lock_below_parent hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
           hl hne hlive hL hLr) with haD | ⟨hDa, haP, hPU⟩
-  · have hDt' := mem_between hU hΦ hΦU hat hht haD hDh
+  · have hDt' := Compose.mem_between hU hΦ hΦU hat hht haD hDh
     exact ⟨D, Or.inr ⟨.refl, hDQ⟩, SA.anc_tree_of_anc_U hU hΦ hΦU hat haD hDt',
       SA.anc_tree_of_anc_U hU hΦ hΦU hDt' hDh hht⟩
   by_cases haPe : SA.getAnchor sp e.readPoint ℓy.frame (tr.time j) = P
   · exact ⟨P, Or.inl rfl, haPe ▸ .refl, haPe ▸ hah⟩
-  have haQ := anc_parent hU haP haPe hPQ (hΦpU hQt)
-  have hat' := mem_between hU hΦp hΦpU hDt hQt hDa haQ
+  have haQ := Compose.anc_parent hU haP haPe hPQ (hΦpU hQt)
+  have hat' := Compose.mem_between hU hΦp hΦpU hDt hQt hDa haQ
   exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hΦp hΦpU hDt hDa hat',
     SA.anc_tree_of_anc_U hU hΦp hΦpU hat' haQ hQt⟩, .refl, hah⟩
 
@@ -363,7 +363,7 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
   have hU := hr.coherent
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hstart, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQt : d.head ∈ ellp.frame.tree := mem_of_anc_left hsQ hstart
+  have hQt : d.head ∈ ellp.frame.tree := Compose.mem_of_anc_left hsQ hstart
   have hacc := Compose.proposal_accepted hp.run hp.noColl hpH hactual
   have hPU : P ∈ tr.HonestBlocks H := by
     refine ⟨p, hpH, k + 1, ?_⟩
@@ -383,7 +383,7 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
     have hOQ := hpass O (oldSrc_iff.1 hO)
     rcases Anc.total hU hOQ (Anc.mono hPhiU hsQ) with h | h
     · exact h.trans (Anc.mono hPhiU hsD)
-    have hOt := mem_between hU hPhi hPhiU hstart hQt h hOQ
+    have hOt := Compose.mem_between hU hPhi hPhiU hstart hQt h hOQ
     exact Anc.mono hPhiU (hmax O ⟨hOt, SA.anc_tree_of_anc_U hU hPhi hPhiU hstart h hOt,
       SA.anc_tree_of_anc_U hU hPhi hPhiU hOt hOQ hQt, Or.inr hO⟩)
   have hDold' : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
@@ -395,13 +395,13 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
   obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   have hhead := (SA.castAt_spec hr hy hcy).2.2.2
   rw [hes] at hhead
-  have hat := anchor_tree hPsi e.readPoint (tr.time j)
+  have hat := Compose.anchor_tree hPsi e.readPoint (tr.time j)
   have hah : elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j))
       (SA.getHead sp e.readPoint elly.frame (tr.time j)
         (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
         (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) :=
     SA.anc_ghost (fun B hB => (SA.voteDomain_subset_tree hB.1)) _ hat
-  have hht := mem_of_anc_left hah hat
+  have hht := Compose.mem_of_anc_left hah hat
   have hDh : Anc (tr.HonestBlocks H) D (SA.getHead sp e.readPoint elly.frame (tr.time j)
       (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
       (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
@@ -421,13 +421,13 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
       hDold' hy hcy hes hjb hE (fun l hl hne hlive L hL hLr =>
         hp.vote_old_live_lock_below_parent hc hpH hR hci hcall hd hti hib hy hcy hes hjb
           hl hne hlive hL hLr) with haD | ⟨hDa, haP⟩
-  · have hDt' := mem_between hU hPsi hPsiU hat hht haD hDh
+  · have hDt' := Compose.mem_between hU hPsi hPsiU hat hht haD hDh
     exact ⟨D, Or.inr ⟨.refl, hDQ⟩, SA.anc_tree_of_anc_U hU hPsi hPsiU hat haD hDt',
       SA.anc_tree_of_anc_U hU hPsi hPsiU hDt' hDh hht⟩
   by_cases haPe : SA.getAnchor sp e.readPoint elly.frame (tr.time j) = P
   · exact ⟨P, Or.inl rfl, haPe ▸ .refl, haPe ▸ hah⟩
-  have haQ := anc_parent hU haP haPe hPQ (hPhiU hQt)
-  have hat' := mem_between hU hPhi hPhiU hDt hQt hDa haQ
+  have haQ := Compose.anc_parent hU haP haPe hPQ (hPhiU hQt)
+  have hat' := Compose.mem_between hU hPhi hPhiU hDt hQt hDa haQ
   exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hPhi hPhiU hDt hDa hat',
     SA.anc_tree_of_anc_U hU hPhi hPhiU hat' haQ hQt⟩, .refl, hah⟩
 

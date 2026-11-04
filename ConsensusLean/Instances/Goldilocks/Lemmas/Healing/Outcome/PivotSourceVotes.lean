@@ -74,9 +74,9 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hr.coherent.1 hW (hPsiU hhead) (hWr.trans hheadr)
     exact hBW
-  obtain ⟨A₁, hA₁, hstart, _⟩ := acProposal_walk hd
+  obtain ⟨A₁, hA₁, hstart, _⟩ := Compose.acProposal_walk hd
   rw [hstart]
-  rcases anchor_mem ellp.frame A₁ (tr.time i) with hlock | hroot
+  rcases Compose.anchor_mem ellp.frame A₁ (tr.time i) with hlock | hroot
   swap
   · rw [Set.mem_singleton_iff.1 hroot]
     rcases hp.reset_proposal_root_source hpH hR hci hcall hd hti hib with
@@ -217,9 +217,9 @@ theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
   intro X hDX _
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
-  have hXt : X ∈ ell.frame.tree := mem_of_anc_left hDX hDt
+  have hXt : X ∈ ell.frame.tree := Compose.mem_of_anc_left hDX hDt
   have hDXU := hDX.mono hPhiU
-  obtain ⟨A, _, hstart, _⟩ := acProposal_walk hd
+  obtain ⟨A, _, hstart, _⟩ := Compose.acProposal_walk hd
   have hfX : ell.frame.Anc ell.frame.fcRoot X := by
     rw [hstart] at hsD
     exact ((SA.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsD).trans hDX
