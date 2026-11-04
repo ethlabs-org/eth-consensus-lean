@@ -126,7 +126,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   isRow := S.isRow
 
 /-- The model family of a shape family. -/
-abbrev compiled {O : OutputSchema} (F : ShapeFamily O Info) : Model.Family O :=
+abbrev compiled {O : OutputSchema} (F : ChainShapeFamily O Info) : Model.ProtocolFamily O :=
   fun pub => compile (F pub)
 
 end Consensus.Shape

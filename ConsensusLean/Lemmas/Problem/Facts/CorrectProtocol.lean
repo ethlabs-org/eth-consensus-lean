@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
-public import ConsensusLean.Spec.Problem.Good
+public import ConsensusLean.Spec.Problem.CorrectProtocol
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
@@ -9,11 +9,11 @@ public import Mathlib.Tactic
 
 public section
 
-/-! # Consequences of a good protocol (L0 facts)
+/-! # Consequences of a correct protocol (L0 facts)
 
-Corollaries of `Good`: final agreement and healthy final safety, compatibility
+Corollaries of `CorrectProtocol`: final agreement and healthy final safety, compatibility
 through an outage, safety and resilience of the past (`*_prefix`), and active
-service of a provided final or available output (`Good.served`). -/
+service of a provided final or available output (`CorrectProtocol.served`). -/
 
 namespace Consensus
 
@@ -64,19 +64,20 @@ theorem Trace.TxLive.served {V Id : Type} {tr : Trace V Tx Id} {c : Time}
   exact ⟨x, u, w, t, t', hu, hw, hne, hx, hnw, hth,
     hl x t t' ⟨u, hu, t, ht0, le_rfl, hua, hx⟩ hdl hth w hr⟩
 
-namespace Good
+namespace CorrectProtocol
 
 variable {S : System V} {X : Progress S Prog} {K : Contract Prog}
 
 /-- Final agreement in every environment with faults below `α`. -/
-theorem final_agree (h : Good S X K) {g : S.schema.Id} (hg : S.schema.output .final = some g)
+theorem final_agree (h : CorrectProtocol S X K) {g : S.schema.Id}
+    (hg : S.schema.output .final = some g)
     (r : S.Run) (hv : S.Valid r) (hb : (S.pt r).FaultsBelow K.params.α) :
     (S.trace r).Agree g 0 ∨ S.Excuse r :=
   (h.behaviour.finalAccountable g hg r hv trivial).imp
     (fun ha => S.agree_of_accountable h.behaviour.laws r ha (h.behaviour.nonFraming r hv) hb) id
 
 /-- Final safety in the healthy regime: the faults are below `β ≤ α`. -/
-theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
+theorem final_safe_healthy (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hg : S.schema.output .final = some g) (r : S.Run) (hv : S.Valid r) {gst : Time}
     (hH : S.Healthy K gst r) : (S.trace r).Safe g 0 ∨ S.Excuse r := by
   have hb : (S.pt r).FaultsBelow K.params.α :=
@@ -87,7 +88,7 @@ theorem final_safe_healthy (h : Good S X K) {g : S.schema.Id}
 /-- Through an outage, what a node ready at `T` read as stable is compatible
 with the final read of every reader ready from the recovery point on (both
 are prefixes of its available read). -/
-theorem persists_final_compatible (h : Good S X K) {g gf : S.schema.Id}
+theorem persists_final_compatible (h : CorrectProtocol S X K) {g gf : S.schema.Id}
     (hs : S.schema.output .stable = some g) (hf : S.schema.output .final = some gf)
     (r : S.Run) (hv : S.Valid r) {T b₀ b₁ : Time} (hO : S.Outage K T b₀ b₁ r)
     {v w : V} (hvr : (S.pt r).Ready (S.cDur K r) v T) {t : Time}
@@ -128,7 +129,7 @@ private theorem cDur_prefix {r r' : S.Run} {b : Time} (hP : (S.trace r').PrefixO
 
 /-- Sleepy safety of the past: a run synchronous and sleepy up to `b` is safe
 for ready readers at cuts up to `b`, whatever happens after `b`. -/
-theorem sleepySafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
+theorem sleepySafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) {b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
     (hs : (S.log r).SyncUntil (S.pt r) b)
@@ -155,7 +156,7 @@ theorem sleepySafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
 healthy up to `b` (row bound within the row ratio), with progress on `[ready, heal]` and
 `heal ≤ b`, is
 safe for ready readers at cuts in `[heal, b]`, whatever happens after `b`. -/
-theorem healedSafe_prefix (h : Good S X K) {cap : Capability} {g : S.schema.Id}
+theorem healedSafe_prefix (h : CorrectProtocol S X K) {cap : Capability} {g : S.schema.Id}
     (hcap : cap = .available ∨ cap = .stable) (hg : S.schema.output cap = some g)
     (r : S.Run) (hv : S.Valid r) (i : K.Idx) (gst : Time) {b : Time} (hb0 : 0 ≤ b)
     (hbh : b ≤ (S.pt r).horizon)
@@ -194,7 +195,7 @@ to `b`, η-sleepy on `[0, b]`, with the no-sleep window and cohort count of
 `System.Outage` cut at `b`) keeps what nodes ready at `T` read as stable, for ready
 readers at reading times in `[b₁ + recovery·Δ, b]`, whatever happens after
 `b`. -/
-theorem outage_prefix (h : Good S X K) {g : S.schema.Id}
+theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hg : S.schema.output .stable = some g) (r : S.Run) (hv : S.Valid r)
     {T b₀ b₁ b : Time} (hb0 : 0 ≤ b) (hbh : b ≤ (S.pt r).horizon)
     (hT : OutageTimes K.params (S.pt r).env.Δ T b₀ b₁)
@@ -243,7 +244,7 @@ some clean witness in the healthy regime from `gst`, with the progress of `cap`
 at the index, has a transaction submitted to one honest node in the `g`-read of
 another honest node that was never submitted it. From the healthy witness of
 `Realizable` and `Behaviour.healthyLive`; the witness has no excuse. -/
-theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
+theorem served (h : CorrectProtocol S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
     {g : S.schema.Id} (_hcap : cap = .final ∨ cap = .available)
     (hg : S.schema.output cap = some g) (i : K.Idx) (Δ gst : Time) (hΔ : 1 < Δ)
     (hgst : 0 ≤ gst) :
@@ -261,7 +262,7 @@ theorem served (h : Good S X K) (hn : 5 ≤ Fintype.card V) {cap : Capability}
   · exact hl.served ha
   · exact absurd he hw.2.1
 
-end Good
+end CorrectProtocol
 
 end Consensus
 

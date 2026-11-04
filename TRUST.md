@@ -199,7 +199,7 @@ requires every non-merge commit that touches them to carry a `Trusted-surface: <
 `ConsensusLean/Statements/Review.lean` must hold statements only: every non-proof constant needs a
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
-Primary: `Consensus.Review.AcceptedGood`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
+Primary: `Consensus.Review.ObligationsSufficient`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 The `spec-approved` tag is retired (2026-11-01); its approvals are recorded in `docs/spec-review.md`.
 
 ## Assumed, not proved; per-instance bindings
@@ -214,7 +214,7 @@ Static, all-knowing adversary; no adaptive corruption. Per instance the reviewer
 ## Not proved / out of scope
 
 Streamlet/Tendermint are Shape examples (values, not protocol
-proofs, and not on the trusted surface), and Tendermint's pointwise `notReadyAtMost` is a placeholder. Arbitrary L0 `Good` systems
+proofs, and not on the trusted surface), and Tendermint's pointwise `notReadyAtMost` is a placeholder. Arbitrary L0 `CorrectProtocol` systems
 trust their abstraction; only `sysOf` binds the distributed model. See `README.md` Scope: one GST/outage,
 full-participation healthy runs, equal weights, fixed Δ, bounded latency, no adaptive/probabilistic/PoW
 model, non-validator readers, responsiveness, transaction validity/fees/capacity/chain quality, public

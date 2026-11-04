@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageRepair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
-public import ConsensusLean.Spec.Shape.Accepted
+public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
@@ -606,7 +606,7 @@ theorem accepted_admissible : (K S A).params.Admissible := by
 
 /-- The concrete endpoint at the coefficients `accepted_coefficients S A`. Every gap is a named
 numeric or adapter leaf; no simulation, GenesisFresh, or desired safety premise is added. -/
-theorem accepted_concrete : Accepted (family S) (K S A) :=
+theorem accepted_concrete : ShapeObligations (family S) (K S A) :=
   { claims := accepted_claims S A
     admissible := accepted_admissible S A
     serves := by simp [OutputSchema.Serves, schema]
@@ -615,7 +615,7 @@ theorem accepted_concrete : Accepted (family S) (K S A) :=
 
 /-- The existential endpoint, from `accepted_concrete`. -/
 theorem accepted : ∃ C : AcceptanceCoefficients,
-    Accepted (family S) (acceptanceContract A C) :=
+    ShapeObligations (family S) (acceptanceContract A C) :=
   ⟨_, accepted_concrete S A⟩
 
 end Consensus.Goldilocks.Refinement

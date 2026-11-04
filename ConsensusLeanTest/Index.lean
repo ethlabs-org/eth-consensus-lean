@@ -5,7 +5,7 @@ public import ConsensusLeanTest.Controls
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.GoldilocksAcceptance
 public import ConsensusLeanTest.GoldilocksRefinement
-public import ConsensusLeanTest.Good
+public import ConsensusLeanTest.CorrectProtocol
 public import ConsensusLeanTest.Leaks
 public import ConsensusLeanTest.Lift
 public import ConsensusLeanTest.Model
@@ -29,22 +29,22 @@ proves is its own statement (compiled in the gate). The declaration check
 (`scripts/check.sh`, EthLib check-decls) scans every declaration of every module.
 
 Kept here: the endpoint theorems, every theorem of the rejecting-test files
-(`Problem`, `Network`, `Regimes`, `Good`, `Leaks`, `Vacuity`), the names cited
+(`Problem`, `Network`, `Regimes`, `CorrectProtocol`, `Leaks`, `Vacuity`), the names cited
 by `Gaps` and the Goldilocks sheet, the former audit list, and every name cited by the docs that
 check.sh step 12 checks against this file (`doc_name_files` in `scripts/boundaries.toml`). -/
 
 /-! ## Endpoints -/
 
-example := ``Consensus.Review.AcceptedGood
+example := ``Consensus.Review.ObligationsSufficient
 example := ``Consensus.Review.RegimesRealizable
 example := ``Consensus.Review.LogFaithful
 example := ``Consensus.Review.HeldIffServed
-example := ``Consensus.Review.acceptedGood
+example := ``Consensus.Review.obligationsSufficient
 example := ``Consensus.Review.regimesRealizable
 example := ``Consensus.Review.logFaithful
 example := ``Consensus.Review.heldIffServed
-example := ``Consensus.Shape.Accepted.good
-example := ``Consensus.Shape.Accepted.activeService
+example := ``Consensus.Shape.ShapeObligations.correct
+example := ``Consensus.Shape.ShapeObligations.activeService
 example := ``Consensus.Shape.refinement
 example := ``Consensus.Shape.regimes_realizable
 example := ``Consensus.Model.sysOf_adequate
@@ -73,13 +73,13 @@ example := ``Consensus.EnvPoint.etaSet_mono
 example := ``Consensus.EnvPoint.etaSleepyOn_zero
 example := ``Consensus.EnvPoint.readyAbove_iff_union
 example := ``Consensus.EnvPoint.readyAt_subset_awakeAt
-example := ``Consensus.Good.final_agree
-example := ``Consensus.Good.final_safe_healthy
-example := ``Consensus.Good.healedSafe_prefix
-example := ``Consensus.Good.outage_prefix
-example := ``Consensus.Good.persists_final_compatible
-example := ``Consensus.Good.served
-example := ``Consensus.Good.sleepySafe_prefix
+example := ``Consensus.CorrectProtocol.final_agree
+example := ``Consensus.CorrectProtocol.final_safe_healthy
+example := ``Consensus.CorrectProtocol.healedSafe_prefix
+example := ``Consensus.CorrectProtocol.outage_prefix
+example := ``Consensus.CorrectProtocol.persists_final_compatible
+example := ``Consensus.CorrectProtocol.served
+example := ``Consensus.CorrectProtocol.sleepySafe_prefix
 example := ``Consensus.Params.standard_admissible
 example := ``Consensus.System.Healthy.of_le
 example := ``Consensus.System.Outage.of_le
@@ -168,7 +168,7 @@ example := ``Consensus.Blocks.Recurrence.BadSlotSlack
 
 /-! ## L2 (shape) and test values -/
 
-example := ``Consensus.Shape.Accepted.behaviour
+example := ``Consensus.Shape.ShapeObligations.behaviour
 example := ``Consensus.Shape.ProgressFits
 example := ``Consensus.Shape.ProgressReq.Fits
 example := ``Consensus.Shape.ProgressReq.Tolerates
@@ -854,35 +854,35 @@ example := ``Consensus.Shape.Tests.Blocks.span_guard
 /-! ## Tests: Controls -/
 
 example := ``Consensus.Shape.Tests.Controls.ctrlK_progressTolerant
-example := ``Consensus.Shape.Tests.Controls.ctrl_not_accepted
+example := ``Consensus.Shape.Tests.Controls.ctrl_not_obligations
 example := ``Consensus.Shape.Tests.Controls.ctrl_realizable
 example := ``Consensus.Shape.Tests.Controls.outage_control
 example := ``Consensus.Shape.Tests.Controls.positive_controls
 
-/-! ## Tests: Good -/
+/-! ## Tests: CorrectProtocol -/
 
-example := ``Consensus.Shape.Tests.Good.briefPoint_faulty
-example := ``Consensus.Shape.Tests.Good.briefPoint_readyAt
-example := ``Consensus.Shape.Tests.Good.censoring_progress_rejected
-example := ``Consensus.Shape.Tests.Good.empty_valid_not_adequate
-example := ``Consensus.Shape.Tests.Good.empty_valid_not_good
-example := ``Consensus.Shape.Tests.Good.eta_sleepy_counts_brief
-example := ``Consensus.Shape.Tests.Good.eta_sleepy_history_sensitive
-example := ``Consensus.Shape.Tests.Good.eta_sleepy_startup
-example := ``Consensus.Shape.Tests.Good.excuse_true_not_good
-example := ``Consensus.Shape.Tests.Good.false_progress_not_good
-example := ``Consensus.Shape.Tests.Good.healthy_rotating_sleeper
-example := ``Consensus.Shape.Tests.Good.no_admissible_not_adequate
-example := ``Consensus.Shape.Tests.Good.no_admissible_not_good
-example := ``Consensus.Shape.Tests.Good.prefixPoint_faulty
-example := ``Consensus.Shape.Tests.Good.prefixPoint_readyAt
-example := ``Consensus.Shape.Tests.Good.prefix_sync_then_async
-example := ``Consensus.Shape.Tests.Good.rotPoint_awake_card
-example := ``Consensus.Shape.Tests.Good.rotPoint_faulty
-example := ``Consensus.Shape.Tests.Good.stable_alias_final_sleepy_live
-example := ``Consensus.Shape.Tests.Good.startPoint_awakeIn
-example := ``Consensus.Shape.Tests.Good.startPoint_faulty
-example := ``Consensus.Shape.Tests.Good.startPoint_readyAt
+example := ``Consensus.Shape.Tests.CorrectProtocol.briefPoint_faulty
+example := ``Consensus.Shape.Tests.CorrectProtocol.briefPoint_readyAt
+example := ``Consensus.Shape.Tests.CorrectProtocol.censoring_progress_rejected
+example := ``Consensus.Shape.Tests.CorrectProtocol.empty_valid_not_adequate
+example := ``Consensus.Shape.Tests.CorrectProtocol.empty_valid_not_correct
+example := ``Consensus.Shape.Tests.CorrectProtocol.eta_sleepy_counts_brief
+example := ``Consensus.Shape.Tests.CorrectProtocol.eta_sleepy_history_sensitive
+example := ``Consensus.Shape.Tests.CorrectProtocol.eta_sleepy_startup
+example := ``Consensus.Shape.Tests.CorrectProtocol.excuse_true_not_correct
+example := ``Consensus.Shape.Tests.CorrectProtocol.false_progress_not_correct
+example := ``Consensus.Shape.Tests.CorrectProtocol.healthy_rotating_sleeper
+example := ``Consensus.Shape.Tests.CorrectProtocol.no_admissible_not_adequate
+example := ``Consensus.Shape.Tests.CorrectProtocol.no_admissible_not_correct
+example := ``Consensus.Shape.Tests.CorrectProtocol.prefixPoint_faulty
+example := ``Consensus.Shape.Tests.CorrectProtocol.prefixPoint_readyAt
+example := ``Consensus.Shape.Tests.CorrectProtocol.prefix_sync_then_async
+example := ``Consensus.Shape.Tests.CorrectProtocol.rotPoint_awake_card
+example := ``Consensus.Shape.Tests.CorrectProtocol.rotPoint_faulty
+example := ``Consensus.Shape.Tests.CorrectProtocol.stable_alias_final_sleepy_live
+example := ``Consensus.Shape.Tests.CorrectProtocol.startPoint_awakeIn
+example := ``Consensus.Shape.Tests.CorrectProtocol.startPoint_faulty
+example := ``Consensus.Shape.Tests.CorrectProtocol.startPoint_readyAt
 
 /-! ## Tests: Leaks -/
 
@@ -998,7 +998,7 @@ example := ``Consensus.Shape.Tests.Vacuity.allProposers_unfit
 example := ``Consensus.Shape.Tests.Vacuity.credential_forgery_excluded
 example := ``Consensus.Shape.Tests.Vacuity.forgedProposal_invalid
 example := ``Consensus.Shape.Tests.Vacuity.noProgressFit_contract
-example := ``Consensus.Shape.Tests.Vacuity.noService_not_accepted
+example := ``Consensus.Shape.Tests.Vacuity.noService_not_obligations
 example := ``Consensus.Shape.Tests.Vacuity.notReadyAtMost_fits
 example := ``Consensus.Shape.Tests.Vacuity.recur_noSlack_not_tolerant
 example := ``Consensus.Shape.Tests.Vacuity.recur_single_one_not_tolerant

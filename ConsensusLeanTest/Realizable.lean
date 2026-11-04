@@ -1,7 +1,7 @@
 module
 public import ConsensusLeanTest.Shape
 public import ConsensusLeanTest.Common
-public import ConsensusLeanTest.Good
+public import ConsensusLeanTest.CorrectProtocol
 public import ConsensusLeanTest.Controls
 public import ConsensusLean
 public import Mathlib.Tactic
@@ -44,7 +44,7 @@ open Blocks
 open Consensus.Model (pubOf protoOf)
 
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-  {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- Without a ready node from `start + D·Δ` on, the reader-conditional
 obligation is vacuous. -/
@@ -99,7 +99,7 @@ selected at every slot of a valid run, so a faulty validator is always among
 the proposers and `PatternRecurrence` (every selected key honest and ready)
 fails whenever one window fits in the horizon. -/
 theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Countable Info] {F : ShapeFamily O Info}
+    [Countable Info] {F : ChainShapeFamily O Info}
     (hF : ∀ pub s, (F pub).skel.proposerSel s = .sized (max 1 pub.n))
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
     (hsel : rho.SelValid) (hf : rho.point.faulty.Nonempty) (π : Recurrence) (c start stop : Time)
@@ -130,7 +130,7 @@ theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq In
 
 section Rotating
 
-open Consensus.Shape.Tests.Good (rotPoint healthy_rotating_sleeper)
+open Consensus.Shape.Tests.CorrectProtocol (rotPoint healthy_rotating_sleeper)
 
 /-- Below the validator count (`m < 4`) the not-ready bound fails on the
 rotating sleeper, on any window `[start, stop]` with `max start 0 ≤ 3 ≤ stop`:
@@ -153,7 +153,8 @@ theorem rotating_notReadyOn_trivial {m : Nat} (hm : 4 ≤ m) (start stop : Time)
 from `3` on, for every family and run with that point: the shape claims
 demand no ready proposer where nobody is ready. -/
 theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Countable Info] (F : ShapeFamily O Info) {E : Env (Fin 4)} (rho : Model.Run (compiled F) E)
+    [Countable Info] (F : ChainShapeFamily O Info) {E : Env (Fin 4)}
+        (rho : Model.Run (compiled F) E)
     (hp : rho.point = rotPoint) (g : O.Id) {start : Time} (hs : 3 ≤ start) (D : Nat) :
     ProposalLiveReady rho 3 g start D := by
   apply ProposalLiveReady.of_noReady
@@ -176,7 +177,7 @@ and a Tendermint index at least the population (`m = 5`, and every larger
 one), the progress requirement holds on every run of every family, window and
 catch-up. L0 `Realizable` fixes `V` before the index, so no not-ready index of
 an unbounded contract may be unsatisfiable. -/
-theorem tendermint_largeIdx_prog (F : ShapeFamily bftCore Unit) (catchUp : Nat)
+theorem tendermint_largeIdx_prog (F : ChainShapeFamily bftCore Unit) (catchUp : Nat)
     (heal latency : Affine) (cap : Capability) (m : ℕ+) (hm : 5 ≤ (m : Nat))
     (r : (sysOf bftCore (compiled F) (Fin 5)).Run) (start stop : Time) :
     (sysOf bftCore (compiled F) (Fin 5)).prog (shapeProgress F (Fin 5))
@@ -184,7 +185,7 @@ theorem tendermint_largeIdx_prog (F : ShapeFamily bftCore Unit) (catchUp : Nat)
   NotReadyOn.of_card_le (by simpa using hm)
 
 /-- The concrete counterexample of the rotating-sleeper case: `V = Fin 5`, `m = 5`. -/
-theorem rotating_sleeper_counterexample (F : ShapeFamily bftCore Unit) (cap : Capability)
+theorem rotating_sleeper_counterexample (F : ChainShapeFamily bftCore Unit) (cap : Capability)
     (r : (sysOf bftCore (compiled F) (Fin 5)).Run) (start stop : Time) :
     (sysOf bftCore (compiled F) (Fin 5)).prog (shapeProgress F (Fin 5))
       (tendermintContract 1 ⟨0, 0⟩ ⟨0, 0⟩) cap (5 : ℕ+) start stop r :=
@@ -198,7 +199,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
   {X : Progress S Prog} {K : Contract Prog}
 
 /-- A late GST at a large `Δ`: every realizable system (so every good system
-with at least five validators, `Good.realizable`) has, at `Δ = 7` and GST
+with at least five validators, `CorrectProtocol.realizable`) has, at `Δ = 7` and GST
 `1000`, a clean healthy witness with no receipt before `1000`, whose heal
 point is at or after `1000`, with progress from `ready`, and liveness and
 safety active after the heal point. -/
@@ -230,7 +231,7 @@ theorem outage_witness_late (h : Realizable S X K) :
   exact ⟨r, T, b₀, b₁, hw, hΔ, ho, ha, by norm_num at hT; exact hT⟩
 
 /-- Every good system with at least five validators has both late witnesses. -/
-theorem good_late_witnesses (h : Good S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability)
+theorem good_late_witnesses (h : CorrectProtocol S X K) (h5 : 5 ≤ Fintype.card V) (cap : Capability)
     (i : K.Idx) :
     (∃ r, S.Witness r ∧ (S.pt r).env.Δ = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r)) ∧

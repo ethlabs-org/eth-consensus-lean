@@ -43,7 +43,8 @@ theorem eagerRelay_apply {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The eager relay serves every awake honest recipient at every time from
 the submission on, whatever the event list. -/
-theorem eagerRelay_txs {O : OutputSchema} {F : Family O} {V : Type} [Fintype V] [DecidableEq V]
+theorem eagerRelay_txs {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
+    [DecidableEq V]
     {E : Env V} (rho : Run F E) (hrel : rho.relay = eagerRelay E rho.honest rho.submit) :
     rho.EagerTxDelivery := by
   rw [Run.eagerTxDelivery_iff]
@@ -67,7 +68,7 @@ theorem eagerRelay_txs {O : OutputSchema} {F : Family O} {V : Type} [Fintype V] 
   · simpa [haw] using hx
 
 /-- The canonical schedule with GST `g` is a valid execution. -/
-theorem Run.canonical_valid {O : OutputSchema} {F : Family O} {V : Type} [Fintype V]
+theorem Run.canonical_valid {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (base : Run F E) (hh : 0 ≤ base.horizon) (hsel : base.SelValid)
     (g : Time) : (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
   base.canonical_valid_of g hh
@@ -78,7 +79,7 @@ theorem Run.canonical_valid {O : OutputSchema} {F : Family O} {V : Type} [Fintyp
 /-- `canonical_run_from` with one more fact about the schedule: its network
 is causal (every delivery is an earlier release), so it carries no object
 that no honest node released. -/
-theorem canonical_run_from_causal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+theorem canonical_run_from_causal (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf F E).SelAdmits sel)
@@ -106,7 +107,7 @@ message is received before `g`, and from `g` on every honest send is received
 by every awake honest node. `g ≤ 0` is a synchronous run; `g` past the horizon
 is a silent run (no receipts at all); in between, the network is asynchronous
 before `g`. -/
-theorem canonical_run_from (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+theorem canonical_run_from (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf F E).SelAdmits sel)

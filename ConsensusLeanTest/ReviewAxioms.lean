@@ -32,7 +32,7 @@ open Lean Meta
 #guard_msgs in
 run_meta do
   let pairs := [
-    (``Consensus.Review.AcceptedGood, ``Consensus.Shape.Accepted.good),
+    (``Consensus.Review.ObligationsSufficient, ``Consensus.Shape.ShapeObligations.correct),
     (``Consensus.Review.RegimesRealizable, ``Consensus.Shape.regimes_realizable),
     (``Consensus.Review.LogFaithful, ``Consensus.Model.sysOf_log_faithful),
     (``Consensus.Review.HeldIffServed, ``Consensus.Model.Run.held_iff_served)]
@@ -41,8 +41,8 @@ run_meta do
 
 /-! ## Axiom pins: the review theorems -/
 
-/-- info: 'Consensus.Review.acceptedGood' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Review.acceptedGood
+/-- info: 'Consensus.Review.obligationsSufficient' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Review.obligationsSufficient
 
 /-- info: 'Consensus.Review.regimesRealizable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.regimesRealizable
@@ -58,8 +58,8 @@ run_meta do
 
 /-! ## Axiom pins: the source theorems -/
 
-/-- info: 'Consensus.Shape.Accepted.good' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Shape.Accepted.good
+/-- info: 'Consensus.Shape.ShapeObligations.correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Shape.ShapeObligations.correct
 
 /-- info: 'Consensus.Shape.regimes_realizable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Shape.regimes_realizable

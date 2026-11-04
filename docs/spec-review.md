@@ -81,7 +81,7 @@ The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Soluti
 | `Problem/Network.lean` | Delivery, `Held`/`TxHeld`, partial synchrony, cut/outage networks and eager logs. |
 | `Problem/Properties.lean` | Agreement, monotonicity, ready safety, nesting, transaction liveness, resilience and local accountability. |
 | `Problem/Regimes.lean` | Numerical `Params`/`Contract`, admissibility, sleepy/healthy/outage regimes and timing accessors. |
-| `Problem/Good.lean` | External data, progress, `Behaviour`, adequacy, active witnesses, `Realizable` and `Good`. |
+| `Problem/CorrectProtocol.lean` | External data, progress, `Behaviour`, adequacy, active witnesses, `Realizable` and `CorrectProtocol`. |
 | `Model/Objects.lean` | Authenticated objects, carried-object closure, signers, items and decidable equality. |
 | `Model/Protocol.lean` | Public parameters, closed selection, protocol interfaces, selection admissibility and families. |
 | `Model/Run.lean` | Events/order, engine state, releases, inboxes, views, persistent slashing protection and reads. |
@@ -92,13 +92,13 @@ The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Soluti
 | `Blocks/Progress.lean` | Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`. |
 | `Blocks/Chains.lean` | Headers/chains, roots/digests, structural prefixes, linkage and provenance. |
 | `Blocks/Payload.lean` | Transaction encoding/decoding and `ledgerOf`, retaining first occurrences. |
-| `Shape/Shape.lean` | Skeletons, closed roles, proposal provenance, duties, `ChainShape` and `ShapeFamily`. |
+| `Shape/Shape.lean` | Skeletons, closed roles, proposal provenance, duties, `ChainShape` and `ChainShapeFamily`. |
 | `Shape/Compile.lean` | Compile skeleton duties and shape state machines into model protocols. |
 | `Shape/Run.lean` | Compiled systems, chain traces, output validity, proposal liveness and `shapeProgress`. |
 | `Shape/Claims.lean` | The chain-level safety, liveness, accountability and resilience claims. |
 | `Shape/ProgressFit.lean` | Progress fit and tolerance, including participation and bad-proposer tolerance. |
 | `Shape/Active.lean` | Progress activity, `BadProposerEvery` and `RealizableActive` witnesses. |
-| `Shape/Accepted.lean` | Acceptance: claims, admissible numbers, service, progress fit and tolerance. |
+| `Shape/Obligations.lean` | Shape obligations: claims, admissible numbers, service, progress fit and tolerance. |
 | `../Statements/Review.lean` (`Statements.lean` at `4b7c5148`) | The four review propositions below. |
 
 | Other protected path | Meaning |
@@ -119,20 +119,20 @@ The review propositions are in `ConsensusLean/Statements/Review.lean`, inside
 `namespace Consensus.Review` with `open Consensus.Shape Consensus.Model Consensus.Blocks`:
 
 ```lean
-def AcceptedGood : Prop :=
+def ObligationsSufficient : Prop :=
   ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-    {F : ShapeFamily O Info} {K : Contract ProgressReq}, Accepted F K →
+    {F : ChainShapeFamily O Info} {K : Contract ProgressReq}, ShapeObligations F K →
     ∀ (V : Type) [Fintype V] [DecidableEq V],
-      Good (sysOf O (compiled F) V) (shapeProgress F V) K
+      CorrectProtocol (sysOf O (compiled F) V) (shapeProgress F V) K
 
 def RegimesRealizable : Prop :=
   ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-    (F : ShapeFamily O Info) (K : Contract ProgressReq),
+    (F : ChainShapeFamily O Info) (K : Contract ProgressReq),
     K.params.Admissible → ProgressFits K F → ProgressTolerant O K →
     ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V → RealizableActive F K V
 
 def LogFaithful : Prop :=
-  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O}
+  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
     (r : (sysOf O F V).Run),
     (∀ v o t, ((sysOf O F V).log r).sent v ⟨r.1, o⟩ t ↔ r.2.releases v o t) ∧
     (∀ v o t, ((sysOf O F V).log r).recv v ⟨r.1, o⟩ t ↔ r.2.receives v o t) ∧
@@ -141,7 +141,7 @@ def LogFaithful : Prop :=
     ((sysOf O F V).log r).inbox = r.2.inbox
 
 def HeldIffServed : Prop :=
-  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}
     (rho : Run F E), rho.ExecutionValid → ∀ {w : V}, w ∈ rho.honest →
     ∀ (o : (protoOf F E).Object) {d : Time}, d ≤ rho.horizon →
       (CommLog.Held rho.point rho.log w o d ↔ rho.Served w o d)
@@ -150,7 +150,7 @@ def HeldIffServed : Prop :=
 
 | Proposition (`Consensus.Review.*`) | What it says; proof |
 |---|---|
-| `AcceptedGood` | Every accepted shape gives an L0 `Good` system for every finite validator type. `acceptedGood` uses `Consensus.Shape.Accepted.good`. |
+| `ObligationsSufficient` | Every shape that meets its obligations gives an L0 `CorrectProtocol` system for every finite validator type. `obligationsSufficient` uses `Consensus.Shape.ShapeObligations.correct`. |
 | `RegimesRealizable` | Admissibility, progress fit and tolerance give active regime witnesses for ≥5 validators, including bad-proposer windows. `regimesRealizable` uses `Consensus.Shape.regimes_realizable`. |
 | `LogFaithful` | The system log records exactly engine releases, receipts and inboxes, with only the run's environment tag. `logFaithful` uses `Consensus.Model.sysOf_log_faithful`. |
 | `HeldIffServed` | On valid runs, for honest nodes and deadlines within the horizon, L0 holding equals engine service. `heldIffServed` uses `Consensus.Model.Run.held_iff_served`. |

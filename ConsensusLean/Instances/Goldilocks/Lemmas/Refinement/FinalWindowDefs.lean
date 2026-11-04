@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.HealedSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
-public import ConsensusLean.Spec.Shape.Accepted
+public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Transport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Spec.Model.System
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLean.Lemmas.Model.Protocol
 
 public section
@@ -62,7 +62,8 @@ end Obj
 
 namespace Run
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 theorem stateBefore_succ (rho : Run F E) {i : Nat} {e : Event V (protoOf F E).Object}
     (hi : rho.events[i]? = some e) :

@@ -29,7 +29,8 @@ protocol's business). -/
 
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 /-- The log of `sysOf` is the engine's communication. -/
 theorem sysOf_log_faithful (r : (sysOf O F V).Run) :

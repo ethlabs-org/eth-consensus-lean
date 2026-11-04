@@ -35,7 +35,7 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 section Activity
 
-variable (F : ShapeFamily O Info) (K : Contract ProgressReq)
+variable (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 omit [DecidableEq V] in
@@ -65,7 +65,7 @@ end Activity
 point `p`, the PKI `key`, an admissible selection `sel`, and a GST `g`. Some
 valid, collision-free, conviction-free compiled run has exactly that point,
 PKI and selection, and its log is eager from `g`. -/
-theorem coverage (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
+theorem coverage (F : ChainShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V]
     (p : EnvPoint V) (hp : 0 ≤ p.horizon) (key : Fin (Fintype.card V) ≃ V)
     (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf (compiled F) p.env).SelAdmits sel) (g : Time) :
@@ -122,15 +122,15 @@ theorem extremalKeys_admits {N : Nat} (s : SelSpec N) : s.Admits (extremalKeys s
     · rw [Finset.card_univ, Fintype.card_fin, min_eq_right (by omega)]
 
 /-- The extremal selection: `extremalKeys` of every role's specification. -/
-def extremalSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
+def extremalSel (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
     (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V)) :=
   fun r => extremalKeys ((protoOf (compiled F) E).selSpec r)
 
-theorem extremalSel_apply (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V)
+theorem extremalSel_apply (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V)
     (r : (protoOf (compiled F) E).Role) :
     extremalSel F E r = extremalKeys ((protoOf (compiled F) E).selSpec r) := by rfl
 
-theorem extremalSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
+theorem extremalSel_admits (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) :
     (protoOf (compiled F) E).SelAdmits (extremalSel F E) :=
   fun _ => extremalKeys_admits _
 
@@ -153,20 +153,20 @@ theorem badSlotRole_poll {Kind : Type} (P : Nat) :
 /-- The bad-slot selection with period `P`: key `0` (faulty at the witness
 points) proposes at every slot `s` with `s % P = P − 1`; every other role is
 selected as by `extremalSel`. -/
-def badSel (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
+def badSel (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
     (hn : 0 < Fintype.card V) :
     (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V)) :=
   fun r => if badSlotRole (Kind := (F (pubOf E)).skel.Kind) P r then {⟨0, hn⟩}
     else extremalSel F E r
 
-theorem badSel_apply (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
+theorem badSel_apply (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
     (hn : 0 < Fintype.card V) (r : (protoOf (compiled F) E).Role) :
     badSel F E P hn r =
       if badSlotRole (Kind := (F (pubOf E)).skel.Kind) P r then {⟨0, hn⟩}
       else extremalSel F E r := by rfl
 
 /-- With one proposer per slot, the bad-slot selection is admissible. -/
-theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
+theorem badSel_admits (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V) (P : Nat)
     (hn : 0 < Fintype.card V) (hF : ∀ s, (F (pubOf E)).skel.proposerSel s = .sized 1) :
     (protoOf (compiled F) E).SelAdmits (badSel F E P hn) := by
   intro r
@@ -185,7 +185,7 @@ theorem badSel_admits (F : ShapeFamily O Info) {V : Type} [Fintype V] (E : Env V
 
 /-- Under the bad-slot selection, the proposer of a bad slot is exactly
 key `0`. -/
-theorem badSel_bad (F : ShapeFamily O Info) {V : Type} [Fintype V] {E : Env V} {P : Nat}
+theorem badSel_bad (F : ChainShapeFamily O Info) {V : Type} [Fintype V] {E : Env V} {P : Nat}
     (hn : 0 < Fintype.card V) {s : Slot} (hs : s % P = P - 1) :
     badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) = {⟨0, hn⟩} := by
   simp [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs]
@@ -230,7 +230,7 @@ Thresholds are proved at the standard bounds (`θ ≤ ½`, `β ≥ ⅓`), which
 
 section Realize
 
-variable (F : ShapeFamily O Info) (K : Contract ProgressReq)
+variable (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-! ### The witness points -/
@@ -425,7 +425,7 @@ end Point
 omit [DecidableEq V] in
 /-- Under the extremal selection, a `.sized 1` proposer role selects exactly
 key `1`. -/
-theorem extremalSel_proposer_mem (F : ShapeFamily O Info) {E : Env V}
+theorem extremalSel_proposer_mem (F : ChainShapeFamily O Info) {E : Env V}
     (hF : ∀ s, (F (pubOf E)).skel.proposerSel s = .sized 1) (h2 : 2 ≤ Fintype.card V)
     (s : Slot) (k : Fin (Fintype.card V)) :
     k ∈ extremalSel F E (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) ↔
@@ -440,7 +440,7 @@ theorem extremalSel_proposer_mem (F : ShapeFamily O Info) {E : Env V}
 omit [DecidableEq V] in
 /-- Under the bad-slot selection with one proposer per slot, the proposer of
 a good slot is exactly key `1`. -/
-theorem badSel_good_mem (F : ShapeFamily O Info) {E : Env V} {P : Nat}
+theorem badSel_good_mem (F : ChainShapeFamily O Info) {E : Env V} {P : Nat}
     (hn : 0 < Fintype.card V) (hF : ∀ s, (F (pubOf E)).skel.proposerSel s = .sized 1)
     (h2 : 2 ≤ Fintype.card V) {s : Slot} (hs : s % P ≠ P - 1) (k : Fin (Fintype.card V)) :
     k ∈ badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) ↔
@@ -611,7 +611,7 @@ theorem profile_safeActive (awake : V → Time → Bool)
 hash and an admissible selection `sel`: valid, no collision, and eager from
 `g`; its point, PKI and selection are the given ones definitionally
 (a `Run` literal). -/
-theorem real_run_sel (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time)
+theorem real_run_sel (F : ChainShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time)
     (sel : (protoOf (compiled F) p.env).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf (compiled F) p.env).SelAdmits sel) :
     ∃ hash relay events,
@@ -626,7 +626,7 @@ theorem real_run_sel (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.hor
     Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj), he⟩
 
 /-- The canonical run at a witness point under the extremal selection. -/
-theorem real_run (F : ShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time) :
+theorem real_run (F : ChainShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.horizon) (g : Time) :
     ∃ hash relay events,
       let rho := Model.Run.mk (F := compiled F) (E := p.env) p.honest p.horizon events key
           (extremalSel F p.env) p.submit relay hash
@@ -925,7 +925,7 @@ end Witnesses
 with active progress windows, for every family whose progress fits its
 skeleton and every admissible, progress-tolerant contract, with at least five
 validators. -/
-theorem regimes_realizable (F : ShapeFamily O Info) (K : Contract ProgressReq)
+theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
     (ha : K.params.Admissible) (hf : ProgressFits K F) (ht : ProgressTolerant O K)
     (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) : RealizableActive F K V := by

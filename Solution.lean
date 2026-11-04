@@ -17,7 +17,7 @@ module (`comparator.json`). The other Goldilocks milestones are proved lemmas, p
 
 namespace Consensus.Review
 
-theorem acceptedGood : AcceptedGood := @Consensus.Shape.Accepted.good
+theorem obligationsSufficient : ObligationsSufficient := @Consensus.Shape.ShapeObligations.correct
 
 theorem regimesRealizable : RegimesRealizable := @Consensus.Shape.regimes_realizable
 

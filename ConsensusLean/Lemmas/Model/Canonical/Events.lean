@@ -9,7 +9,8 @@ pool of released objects used by the canonical scheduler. -/
 
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 /-- A closure consists exactly of the descendants of its roots. -/
 theorem mem_closure_iff {pub : Public} {Out : Type} {P : Protocol pub Out} (l : List P.Object)

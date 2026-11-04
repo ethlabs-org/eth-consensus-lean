@@ -5,7 +5,7 @@ public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Spec.Model.System
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Credentials
@@ -63,7 +63,7 @@ def proto (pub : Public) : Protocol pub Unit where
   conflicts := fun _ _ => false
 
 /-- The test family. -/
-def family : Family schema := proto
+def family : ProtocolFamily schema := proto
 
 /-- Data depends on a previously held item; items have no dependency. -/
 def dependentProto : Protocol ⟨1, 1, by decide, 1, by decide⟩ Unit :=
@@ -168,7 +168,7 @@ theorem injected_not_submitted : ¬ relayedRun.point.SubmittedToSome 42 5 := by
 
 /-- Validity rules out a negative horizon, for every protocol and
 environment: the empty time window of such a point is never a valid run. -/
-theorem negativeHorizon_not_valid {O : OutputSchema} (F : Family O) {V : Type} [Fintype V]
+theorem negativeHorizon_not_valid {O : OutputSchema} (F : ProtocolFamily O) {V : Type} [Fintype V]
     [DecidableEq V] (E : Env V) (rho : Run F E) (h : rho.horizon < 0) :
     ¬ rho.ExecutionValid := by
   intro hv
@@ -203,7 +203,7 @@ convict its signer. -/
 def protoC (pub : Public) : Protocol pub Unit := { proto pub with conflicts := fun _ _ => true }
 
 /-- The test family with `conflicts` always true. -/
-def familyC : Family schema := protoC
+def familyC : ProtocolFamily schema := protoC
 
 /-- With `conflicts` always true, slashing protection refuses every own-signed
 candidate: every release of every run (valid or not) is unsigned. -/
@@ -277,7 +277,7 @@ def seqProto (pub : Public) : Protocol pub Unit where
   conflicts := fun _ _ => false
 
 /-- The sequential test family. -/
-def seqFamily : Family schema := seqProto
+def seqFamily : ProtocolFamily schema := seqProto
 
 /-- A later duty reads the state the earlier one left, including the
 `recordOwn` of its release: duty `true` signs `0 + 1 + 10 = 11`. -/

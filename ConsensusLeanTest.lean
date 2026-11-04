@@ -3,6 +3,7 @@ module  -- shake: keep-all --deprecated_module: ignore
 public import ConsensusLeanTest.Blocks
 public import ConsensusLeanTest.Common
 public import ConsensusLeanTest.Controls
+public import ConsensusLeanTest.CorrectProtocol
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.GoldilocksAC
 public import ConsensusLeanTest.GoldilocksACOptimisticWitness
@@ -90,7 +91,6 @@ public import ConsensusLeanTest.GoldilocksWitness
 public import ConsensusLeanTest.GoldilocksWitnessChain
 public import ConsensusLeanTest.GoldilocksWitnessRun
 public import ConsensusLeanTest.GoldilocksWitnessTicks
-public import ConsensusLeanTest.Good
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.Leaks
 public import ConsensusLeanTest.Lift

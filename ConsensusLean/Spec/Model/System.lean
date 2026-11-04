@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Spec.Problem.Good
+public import ConsensusLean.Spec.Problem.CorrectProtocol
 public import ConsensusLean.Spec.Model.Conditions
 
 @[expose] public section
@@ -35,7 +35,7 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 
 namespace Run
 
-variable {O : OutputSchema} {F : Family O} {E : Env V} (rho : Run F E)
+variable {O : OutputSchema} {F : ProtocolFamily O} {E : Env V} (rho : Run F E)
 
 /-- `x` is slashable on the objects `A`. -/
 def Slashable (A : Set (protoOf F E).Object) (x : V) : Prop :=
@@ -61,7 +61,7 @@ def tagLog {M : Env V → Type} (E : Env V) (L : CommLog V (M E)) : CommLog V (�
 
 /-- The system of family `F`. Reducible by unfolding: `(sysOf O F V).schema`
 is `O` by definition. -/
-def sysOf (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V] :
+def sysOf (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V] [DecidableEq V] :
     Consensus.System V where
   schema := O
   Run := Σ E : Env V, Run F E
@@ -76,7 +76,7 @@ def sysOf (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq 
 /-- The external data of a compiled run: its PKI and its selection, fixed
 before execution; admissible = the protocol's selection spec. Progress
 requirements of a shape read only these and the environment point. -/
-def sysExternal (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V] :
+def sysExternal (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V] [DecidableEq V] :
     External (sysOf O F V) where
   Ext E := (Fin (Fintype.card V) ≃ V) × ((protoOf F E).Role → Finset (Fin (Fintype.card V)))
   ext r := (r.2.key, r.2.sel)

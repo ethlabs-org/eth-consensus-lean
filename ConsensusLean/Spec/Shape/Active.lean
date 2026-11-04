@@ -23,7 +23,7 @@ of its statement. -/
 
 section Activity
 
-variable (F : ShapeFamily O Info) (K : Contract ProgressReq)
+variable (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The length of one window of the progress requirement of `cap` at `i` on

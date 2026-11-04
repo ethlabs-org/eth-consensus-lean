@@ -27,10 +27,10 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 /-- The compiled system of family `F` at validators `V` (L1 `sysOf`). Its runs
 are pairs `r = ⟨E, rho⟩`; the L0 regimes and durations at `r` are the
 `System` accessors (`(Sys F V).Sleepy K r`, `.cDur K r`, `.heal K cap i gst r`, …). -/
-abbrev Sys (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] : System V :=
+abbrev Sys (F : ChainShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] : System V :=
   sysOf O (compiled F) V
 
-variable {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+variable {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- The chain trace of a run: the run's point and event cuts, and each node's
 output chains at each cut. -/
@@ -83,7 +83,7 @@ proposers (`proposerSel := fun _ => .fixed ∅`, e.g. a poll shape) never meets 
 recurrence with a window inside `[start, stop]` (`HonestReadyIn` needs a
 nonempty selection); acceptance therefore requires `.recur` only of shapes
 with one proposer per slot (`ProgressFits`). -/
-def shapeHolds (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V] :
+def shapeHolds (F : ChainShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V] :
     ProgressReq → Time → Time → Time → (p : EnvPoint V) →
       (sysExternal O (compiled F) V).Ext p.env → Prop
   | .recur ρ, c, s, e, p, x =>
@@ -93,7 +93,7 @@ def shapeHolds (F : ShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V] :
 
 /-- The shape's progress reader: the model's external data (PKI and
 selection) with `shapeHolds`. -/
-def shapeProgress (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
+def shapeProgress (F : ChainShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     Progress (Sys F V) ProgressReq where
   toExternal := sysExternal O (compiled F) V
   holds := shapeHolds F

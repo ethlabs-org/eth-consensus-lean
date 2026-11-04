@@ -8,7 +8,7 @@ public import Mathlib.Tactic
 /-! # Positive controls
 
 The regimes of the L0 table are met by concrete runs, so no refutation in the
-other test modules comes from a regime that no run can meet, and `Good` is
+other test modules comes from a regime that no run can meet, and `CorrectProtocol` is
 not vacuous at concrete numbers. A family with a Goldilocks-like skeleton
 (`ctrlSkeleton`: slots of `4Δ`, one proposer per slot) that does nothing (`ctrlFamily`),
 at standard thresholds with catch-up, arming lag and outage budget `1`, outage look-back
@@ -38,9 +38,9 @@ strictly before the bound), horizon `40`:
   reader from the recovery point `14`).
 
 * The control contract tolerates arbitrary numbers of validators not ready.
-* `ctrl_not_accepted` (rejection): the do-nothing family is realizable
-  (`ctrl_realizable`) but not `Accepted` at any contract, since acceptance gives active
-  service (`Accepted.activeService`: a relayed transaction in a read) and its reads are
+* `ctrl_not_obligations` (rejection): the do-nothing family is realizable
+  (`ctrl_realizable`) but not `ShapeObligations` at any contract, since acceptance gives active
+  service (`ShapeObligations.activeService`: a relayed transaction in a read) and its reads are
   empty. Realizability of the regimes is not acceptance.
 * `bftContract_admissible`: the numbers of the BFT contract shape shared by
   Streamlet and Tendermint (`Examples.Shape.Bft`) are admissible for a positive
@@ -119,7 +119,7 @@ def ctrlShape (pub : Public) : ChainShape pub CtrlOut Unit where
   conflicts := fun _ _ => false
 
 /-- The control family. -/
-def ctrlFamily : ShapeFamily ctrlSchema Unit := ctrlShape
+def ctrlFamily : ChainShapeFamily ctrlSchema Unit := ctrlShape
 
 /-- Standard thresholds; catch-up, arming lag and outage budget `1`; outage
 look-back `η = 2`, no-sleep margin `2` and recovery delay `3`; heal and
@@ -231,15 +231,15 @@ theorem ctrl_realizable : Realizable S X ctrlK :=
     (Fin 5) card5).toRealizable
 
 /-- **The do-nothing family is not accepted** (rejection): at every contract.
-`Accepted` gives active service (`Accepted.activeService`), a transaction relayed into the
-read of an honest node; the control family's reads are empty. So `ctrl_realizable`, a
+`ShapeObligations` gives active service (`ShapeObligations.activeService`), a transaction relayed
+into the read of an honest node; the control family's reads are empty. So `ctrl_realizable`, a
 realizability certificate, is not acceptance. -/
-theorem ctrl_not_accepted (K : Contract ProgressReq) : ¬ Accepted ctrlFamily K := by
+theorem ctrl_not_obligations (K : Contract ProgressReq) : ¬ ShapeObligations ctrlFamily K := by
   intro h
   obtain ⟨cap, g, hcap, hg, -⟩ := h.activeService
   obtain ⟨i⟩ := K.idx_nonempty
   obtain ⟨r, -, -, -, -, x, u, w, t, t', -, -, -, -, -, -, hx⟩ :=
-    (h.good (Fin 5)).served (by simp) hcap hg i 2 0 (by norm_num) le_rfl
+    (h.correct (Fin 5)).served (by simp) hcap hg i 2 0 (by norm_num) le_rfl
   simp [Trace.readAt, sysOf, Model.Run.readIdx, Model.protoOf, compiled, ctrlFamily,
     ctrlShape, compile, ledgerOf] at hx
 

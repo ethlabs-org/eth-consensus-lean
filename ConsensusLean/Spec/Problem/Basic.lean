@@ -40,7 +40,7 @@ def Compatible {α : Type} (a b : List α) : Prop := a <+: b ∨ b <+: a
 /-- The three services a protocol may provide. The names state the intent: an
 available ledger (live under dynamic participation), a stable ledger
 (persists through bounded outages), and a final ledger (safe under asynchrony,
-accountable). What is claimed for each capability is fixed in `Good.lean`
+accountable). What is claimed for each capability is fixed in `CorrectProtocol.lean`
 (`Behaviour`); a protocol supplies only numbers. -/
 inductive Capability where
   | available

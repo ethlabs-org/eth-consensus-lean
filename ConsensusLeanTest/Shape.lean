@@ -71,7 +71,7 @@ def trivialShape (pub : Public) : ChainShape pub Unit Unit where
   conflicts := fun _ _ => false
 
 /-- The trivial slot shape family. -/
-def trivialFamily : ShapeFamily schema Unit := trivialShape
+def trivialFamily : ChainShapeFamily schema Unit := trivialShape
 
 -- Compiled roles and selections: a slot proposal signs as the slot's
 -- proposer (one key), a committee duty as its kind (every key), the poll
@@ -183,11 +183,11 @@ theorem poll_duty_every_tick :
 /-- `shapeProgress` keeps its data fields (plan §2.1: only its proof fields `mono`/`shrink`
 were rewritten, to inline term proofs). -/
 theorem shapeProgress_holds {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-    (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
+    (F : ChainShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     (shapeProgress F V).holds = shapeHolds F := rfl
 
 theorem shapeProgress_toExternal {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Countable Info] (F : ShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
+    [Countable Info] (F : ChainShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :
     (shapeProgress F V).toExternal = Model.sysExternal O (compiled F) V := rfl
 
 end Consensus.Shape.Tests.Shapes

@@ -18,7 +18,8 @@ the truncation is one in the full run. -/
 
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 namespace Run
 

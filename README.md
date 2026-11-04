@@ -2,8 +2,8 @@
 
 ## What this is
 
-This project defines a good consensus protocol (`Good`), a generic execution model, and a shape layer.
-The review statement is `Consensus.Review.AcceptedGood`: accepted shapes give good protocols.
+This project defines a correct consensus protocol (`CorrectProtocol`), a generic execution model, and a shape layer.
+The review statement is `Consensus.Review.ObligationsSufficient`: shapes that meet their obligations give correct protocols.
 Its three secondaries are `RegimesRealizable`, `LogFaithful`, and `HeldIffServed`.
 `scripts/check.sh` checks the trust boundary locally and in GitHub Actions: fast checks on every pull request and push to
 main, everything (including kernel replay, `lake check` and the sandboxed comparator) nightly; see "Verification".
@@ -16,28 +16,29 @@ design decisions: `docs/decisions.md`; how to contribute: `CONTRIBUTING.md` and 
 (in namespace `Consensus.Review`, opening `Consensus.Shape`, `Consensus.Model`, and `Consensus.Blocks`):
 
 ```lean
-/-- **The review statement (L2 ⇒ L0).** Every accepted shape instance is a good protocol (L0
-`Good`) for every finite validator type. Exactly the type of `Consensus.Shape.Accepted.good`. -/
-def AcceptedGood : Prop :=
+/-- **The review statement (L2 ⇒ L0).** Every shape instance that meets its obligations is a correct
+protocol (L0 `CorrectProtocol`) for every finite validator type. Exactly the type of
+`Consensus.Shape.ShapeObligations.correct`. -/
+def ObligationsSufficient : Prop :=
   ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-    {F : ShapeFamily O Info} {K : Contract ProgressReq}, Accepted F K →
+    {F : ChainShapeFamily O Info} {K : Contract ProgressReq}, ShapeObligations F K →
     ∀ (V : Type) [Fintype V] [DecidableEq V],
-      Good (sysOf O (compiled F) V) (shapeProgress F V) K
+      CorrectProtocol (sysOf O (compiled F) V) (shapeProgress F V) K
 
-/-- L2 beyond `Good`: with ≥ 5 validators, a family whose progress fits its skeleton and an
-admissible, progress-tolerant contract have active witnesses, including the bad-proposer witness
-that gives `ProgressTolerant` its meaning (`RealizableActive.badProposer`). `Accepted F K` carries
-the three premises as fields. Exactly the type of `Consensus.Shape.regimes_realizable`. -/
+/-- L2 beyond `CorrectProtocol`: with ≥ 5 validators, a family whose progress fits its skeleton and
+an admissible, progress-tolerant contract have active witnesses, including the bad-proposer witness
+that gives `ProgressTolerant` its meaning (`RealizableActive.badProposer`). `ShapeObligations F K`
+carries the three premises as fields. Exactly the type of `Consensus.Shape.regimes_realizable`. -/
 def RegimesRealizable : Prop :=
   ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-    (F : ShapeFamily O Info) (K : Contract ProgressReq),
+    (F : ChainShapeFamily O Info) (K : Contract ProgressReq),
     K.params.Admissible → ProgressFits K F → ProgressTolerant O K →
     ∀ (V : Type) [Fintype V] [DecidableEq V], 5 ≤ Fintype.card V → RealizableActive F K V
 
 /-- L1: the system's log is the engine's communication. Exactly the type of
 `Consensus.Model.sysOf_log_faithful`. -/
 def LogFaithful : Prop :=
-  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O}
+  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
     (r : (sysOf O F V).Run),
     (∀ v o t, ((sysOf O F V).log r).sent v ⟨r.1, o⟩ t ↔ r.2.releases v o t) ∧
     (∀ v o t, ((sysOf O F V).log r).recv v ⟨r.1, o⟩ t ↔ r.2.receives v o t) ∧
@@ -48,17 +49,17 @@ def LogFaithful : Prop :=
 /-- L1: on valid runs, for honest nodes and deadlines in the horizon, L0 `Held` is engine
 `Run.Served`. Exactly the type of `Consensus.Model.Run.held_iff_served`. -/
 def HeldIffServed : Prop :=
-  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+  ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}
     (rho : Run F E), rho.ExecutionValid → ∀ {w : V}, w ∈ rho.honest →
     ∀ (o : (protoOf F E).Object) {d : Time}, d ≤ rho.horizon →
       (CommLog.Held rho.point rho.log w o d ↔ rho.Served w o d)
 ```
 
-The acceptance premise is `Consensus.Shape.Accepted`, from
-`ConsensusLean/Spec/Shape/Accepted.lean`:
+The acceptance premise is `Consensus.Shape.ShapeObligations`, from
+`ConsensusLean/Spec/Shape/Obligations.lean`:
 
 ```lean
-structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop where
+structure ShapeObligations (F : ChainShapeFamily O Info) (K : Contract ProgressReq) : Prop where
   /-- The chain-level claims (proved by the protocol). -/
   claims : ShapeClaims F K
   /-- The numbers are admissible. -/
@@ -72,7 +73,7 @@ structure Accepted (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop wh
   progressTolerant : ProgressTolerant O K
 ```
 
-`Accepted` carries the admissibility, progress-fit and progress-tolerance premises of
+`ShapeObligations` carries the admissibility, progress-fit and progress-tolerance premises of
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
 `Solution.lean` proves each review statement by its source theorem, and the one instance statement
 of `Challenge.lean`, the Goldilocks acceptance endpoint `Refinement.AcceptedEndpoint` (the closed
@@ -96,7 +97,7 @@ matching statements, permitted axioms, sandboxed kernel replay, and identical re
 in both exports to resist build-time tampering. This checks the proofs against Spec built alone;
 Spec drift is checked by the snapshot diff, committed and recorded with each change (#129).
 
-`Accepted.good` combines three theorems. `refinement` gives `Behaviour`;
+`ShapeObligations.correct` combines three theorems. `refinement` gives `Behaviour`;
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
 and `proposalLive_txLive` (proposal liveness and partial synchrony give
 transaction liveness; it needs catch-up `≥ Δ`, `Admissible.catchUp_pos`, so a
@@ -105,24 +106,24 @@ ready proposer was awake over the delivery interval before its release). `sysOf_
 (`RealizableActive.toRealizable`; its stress witness keeps keys `1` and `2`
 awake and the rest asleep; its L2-only `badProposer` witness puts a faulty
 proposer slot in every progress window). Corollary
-(`ConsensusLean/Main.lean`, `Accepted.activeService`): a final or
+(`ConsensusLean/Main.lean`, `ShapeObligations.activeService`): a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness (`ActiveService`). A silent service or empty
 outputs are therefore not accepted, for every protocol.
 
-## The definition of a good protocol
+## The definition of a correct protocol
 
-A protocol is **good** when its system `S` (with its progress reader `X`)
+A protocol is **correct** when its system `S` (with its progress reader `X`)
 meets a contract `K` that supplies **only numbers**:
 
 ```lean
-structure Good (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
+structure CorrectProtocol (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
   behaviour  : Behaviour S X K                    -- the fixed property table, under fixed regimes
   adequate   : S.Adequate X                       -- the system is not vacuous
   realizable : 5 ≤ Fintype.card V → Realizable S X K  -- every regime is met, with active claims
 ```
 
-(`ConsensusLean/Spec/Problem/Good.lean`.) All three parts are L0 definitions. The
+(`ConsensusLean/Spec/Problem/CorrectProtocol.lean`.) All three parts are L0 definitions. The
 property list, the regimes, the network rule and the thresholds' admissible
 range are fixed. An instance chooses only the numbers in `Params`, and a
 progress requirement for each capability and index. It writes no predicate
@@ -176,9 +177,9 @@ that a claim or regime evaluates.
   needs a fixed fraction of the validators awake is not dynamically
   available.
 
-For shape protocols, `Accepted.good` (L2) proves all three parts. The good
+For shape protocols, `ShapeObligations.correct` (L2) proves all three parts. The correct
 protocols we accept are
-`Good (sysOf O (compiled F) V) (shapeProgress F V) K`, for every finite `V`.
+`CorrectProtocol (sysOf O (compiled F) V) (shapeProgress F V) K`, for every finite `V`.
 
 ### The property table (`Behaviour`)
 
@@ -201,8 +202,8 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
 | stable | outage resilience | `Outage T b₀ b₁` | `ProtectedReadyFrom c stable target T (b₁ + recovery·Δ)` |
 
 One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
-`healedSafe`, `persists`). Derived in L0 (`Good.*`,
-`ConsensusLean/Lemmas/Problem/Facts/Good.lean`; `Agree`, `Safe`, `FaultsBelow`,
+`healedSafe`, `persists`). Derived in L0 (`CorrectProtocol.*`,
+`ConsensusLean/Lemmas/Problem/Facts/CorrectProtocol.lean`; `Agree`, `Safe`, `FaultsBelow`,
 `ReadySafeUpTo` are in `ConsensusLean/Lemmas/Problem/Derived.lean`):
 
 | Theorem | Statement |
@@ -408,7 +409,7 @@ The slot is checked, within limits:
 - `Realizable` requires it to hold on every witness, and, at some index
   chosen before `Δ` and `ΔF`, on the stress witness with many honest
   validators asleep. A reader that
-  never holds fails `Good` (`false_progress_not_good`); a requirement of
+  never holds fails `CorrectProtocol` (`false_progress_not_correct`); a requirement of
   near-full participation at every index fails the stress witness.
 - In L2, acceptance also asks every provided output to have an index whose
   requirement tolerates a bad (faulty or not ready) proposer slot in every
@@ -469,7 +470,7 @@ author, schedule or evidence collector.
 
 ### What L0 checks and what L1 proves
 
-`Good S X K` is **the** definition for the systems of the model,
+`CorrectProtocol S X K` is **the** definition for the systems of the model,
 `S = sysOf O (compiled F) V`. For an arbitrary L0 system it is a property of
 an abstraction that L0 trusts. L0 alone checks the property table, the
 regimes, the network rule, the numbers' range, adequacy (coverage of every
@@ -518,7 +519,7 @@ and non-framing (`sysOf_nonFraming`, from slashing protection in the engine).
 
 ## What to read (the trusted surface)
 
-To know what `Accepted F K` (or `Good`) means, read every file below, in this order.
+To know what `ShapeObligations F K` (or `CorrectProtocol`) means, read every file below, in this order.
 The generated library root only collects imports.
 
 <!-- spec-files -->
@@ -528,7 +529,7 @@ The generated library root only collects imports.
 3. `ConsensusLean/Spec/Problem/Network.lean`: Delivery and holding (`Held`, `TxHeld`), partial synchrony, synchrony up to a cut, outage networks and eager logs.
 4. `ConsensusLean/Spec/Problem/Properties.lean`: Trace claims: agreement, monotonicity, ready-reader safety, nesting, transaction liveness, resilience and local accountability.
 5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, sleepy/healthy/outage regimes and the `cDur`, `heal`, `ready`, `lat` accessors.
-6. `ConsensusLean/Spec/Problem/Good.lean`: External data and progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `Good`.
+6. `ConsensusLean/Spec/Problem/CorrectProtocol.lean`: External data and progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `CorrectProtocol`.
 7. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
 8. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces, selection admissibility and families.
 9. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state, releases, inboxes, views, slashing protection and local reads.
@@ -539,14 +540,14 @@ The generated library root only collects imports.
 14. `ConsensusLean/Spec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
 15. `ConsensusLean/Spec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
 16. `ConsensusLean/Spec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
-17. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ShapeFamily`.
+17. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ChainShapeFamily`.
 18. `ConsensusLean/Spec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`).
 19. `ConsensusLean/Spec/Shape/Run.lean`: Compiled systems (`Sys`), chain traces, output validity, proposal liveness and `shapeProgress`.
 20. `ConsensusLean/Spec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
 21. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
 22. `ConsensusLean/Spec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
-23. `ConsensusLean/Spec/Shape/Accepted.lean`: The acceptance premise `Accepted`: protocol claims, admissible numbers, service, progress fit and tolerance.
-24. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `AcceptedGood`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
+23. `ConsensusLean/Spec/Shape/Obligations.lean`: The acceptance premise `ShapeObligations`: protocol claims, admissible numbers, service, progress fit and tolerance.
+24. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 
 <!-- /spec-files -->
 
@@ -576,12 +577,12 @@ dependency drift by pins; proof validity by replay, check-decls and the CI compa
 Proof support outside that surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
 `Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (not on the trusted surface: the
 Goldilocks sheet that read them is archived), and `ConsensusLean/Lemmas/Problem/DerivedFacts.lean` defines `SendsFromZero` and
-`Trace.map` with theirs (not protected); `Good` reads none of them. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `Good.*`
-lemmas, including `Good.served`; `ConsensusLean/Lemmas/Blocks/Facts.lean` holds the block lemmas.
+`Trace.map` with theirs (not protected); `CorrectProtocol` reads none of them. `ConsensusLean/Lemmas/Problem/Facts/` holds the derived `CorrectProtocol.*`
+lemmas, including `CorrectProtocol.served`; `ConsensusLean/Lemmas/Blocks/Facts.lean` holds the block lemmas.
 `ConsensusLean/Lemmas/Shape/Payload.lean` proves the payload bridges;
 `ConsensusLean/Proofs/Behaviour/Main.lean`, `ConsensusLean/Proofs/RegimesRealizable/Main.lean`,
 and `ConsensusLean/Main.lean` prove
-refinement, coverage/witnesses, acceptance and `Accepted.activeService`.
+refinement, coverage/witnesses, acceptance and `ShapeObligations.activeService`.
 `ConsensusLean/Lemmas/Model/` and `ConsensusLean/Proofs/Faithful/Main.lean` prove
 `sysOf_adequate`, `sysOf_log_faithful`,
 `Run.held_iff_served`, `sysOf_nonFraming` and `sysOf_laws`, with support for canonical runs
@@ -609,7 +610,7 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 | `Statements/Review.lean` | The four review statements. |
 | `Lemmas/{Problem,Model,Blocks,Shape}/` | Derived definitions, lemmas, canonical runs and witnesses. |
 | `Proofs/<M>/Main.lean` | Milestones: `Behaviour`, `RegimesRealizable`, `Faithful`. |
-| `Main.lean` | `Accepted.good` and `Accepted.activeService`. |
+| `Main.lean` | `ShapeObligations.correct` and `ShapeObligations.activeService`. |
 | `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`: what the endpoint statement reaches; `Statements/Refinement/Accepted`: the endpoint). |
 | `Instances/<P>/Milestones/` | Goldilocks milestone vocabulary and statements, not on the trusted surface (`docs/decisions.md`, 2026-11-04). |
 | `Examples/Shape/` | Shape examples, not on the trusted surface: Bft, Streamlet, Tendermint as contract values. |
@@ -770,7 +771,7 @@ are the intended ones.
 - **Non-accountable BFT is out of scope**. Final accountability is
   mandatory, for fraction `α ≥ β` (standard ⅓), in every environment.
 - **One GST and one outage per run: partially closed.** The prefix forms
-  (`Good.sleepySafe_prefix`, `healedSafe_prefix`, `outage_prefix`) make the
+  (`CorrectProtocol.sleepySafe_prefix`, `healedSafe_prefix`, `outage_prefix`) make the
   past safe before any later asynchrony. A run after an outage is a run with
   GST `b₁`. Runs with several GSTs or outages, judged as a whole, are out of
   scope.
@@ -806,7 +807,7 @@ are the intended ones.
   (Francesco, 2026-10-29): `ProgressTolerant` asks `span + 2 ≤ gap` at some
   index of every provided output, witnessed by `RealizableActive.badProposer`.
   Beyond that, the gap is read as a number. The check is in L2 (L0 has no
-  proposers): an L0 `Good` system with abstract progress is not bound by it.
+  proposers): an L0 `CorrectProtocol` system with abstract progress is not bound by it.
 
 ## Instances (`ConsensusLean/Instances/`)
 
@@ -852,12 +853,12 @@ These are values and fit/tolerance proofs, with no concrete protocol proofs.
 - `Problem`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
 - `Network`: the delivery rule (wakers served strictly before the bound, not instantly), faithfulness, silent runs and truncation.
 - `Regimes`: what each regime admits and rejects; the explanatory L0 regime lemmas.
-- `Good`: vacuous systems are not good; censoring progress, rotating sleepers, η-sleepy history.
+- `CorrectProtocol`: vacuous systems are not correct; censoring progress, rotating sleepers, η-sleepy history.
 - `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and poll mode.
 - `Leaks`: do-nothing, fabricating and self-silencing protocols fail `ShapeClaims`; `recorder_live_testK` passes.
 - `Realizable`: coverage, `allProposers_no_witness`, late-GST and late-outage witnesses.
 - `Controls`: positive controls at explicit numbers.
-- `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_accepted`.
+- `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_obligations`.
 - `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean`.
 - `ReviewAxioms`, `ReviewGuard`: statement alpha-equality, completeness and axiom pins.
 - `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.

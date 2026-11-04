@@ -151,7 +151,7 @@ abbrev Protocol.Object {pub : Public} {Out : Type} (P : Protocol pub Out) : Type
 
 /-- A protocol for every choice of the public parameters, with the outputs of
 schema `O`. -/
-abbrev Family (O : OutputSchema) := (pub : Public) → Protocol pub O.Id
+abbrev ProtocolFamily (O : OutputSchema) := (pub : Public) → Protocol pub O.Id
 
 end Consensus.Model
 

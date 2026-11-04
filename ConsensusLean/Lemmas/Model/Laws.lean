@@ -4,7 +4,8 @@ public import ConsensusLean.Lemmas.Model.View
 public section
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 private theorem event_time_nonneg (rho : Run F E) (h : rho.ExecutionValid) (i : Nat) :
     0 ≤ rho.cutTime i := by
@@ -26,7 +27,8 @@ private theorem event_time_le (rho : Run F E) (h : rho.ExecutionValid)
     simp only [Run.cutTime, List.getElem?_eq_getElem hib]
     exact (h.in_horizon _ (List.getElem_mem hib)).2
 
-theorem sysOf_laws (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V] :
+theorem sysOf_laws (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V] [DecidableEq V]
+    :
     (sysOf O F V).Laws := by
   constructor
   · rintro ⟨E, rho⟩ hv

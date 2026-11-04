@@ -17,7 +17,7 @@ safety/inclusion/growth; they do not prove these finite engine bridges. No whole
 `SleepyRun` or `HealthyRun` is inferred from a finite engine horizon.
 
 There is no node-level prefix row (retired; the prefix claim is the generic
-`Good.sleepySafe_prefix`). The finite consumers below
+`CorrectProtocol.sleepySafe_prefix`). The finite consumers below
 use `SleepyServiceBefore`, which permits retained stamped SA evidence and bounds
 the recipient's deadline, and bound all observations
 by `b`. Their proofs need a dependency-local version of R.1/R.2, not direct application of

@@ -340,7 +340,7 @@ run with no receipts (the canonical run with GST `horizon + 1`), and it
 violates `PSync g'` whenever an honest send at `t` must reach, by the reachable
 deadline `max t g' + Δ − 1`, an honest node awake throughout `[t, max t g' + Δ − 1]`
 that did not send it itself. -/
-theorem silent_run_valid (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+theorem silent_run_valid (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
     [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : ∀ r, ((protoOf F E).selSpec r).Admits (sel r))

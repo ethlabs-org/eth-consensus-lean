@@ -132,7 +132,7 @@ name = "Main"
 prefixes = ["ConsensusLean.Main"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful"]
-about = "generic composition of the milestones (Accepted.good) and its corollaries"
+about = "generic composition of the milestones (ShapeObligations.correct) and its corollaries"
 
 # Goldilocks (workbench repos/goldilocks/notes/architecture/decomposition.md §4.1, §4.2): components by level.
 # No FG layer allows AC or SA and no AC/SA layer allows an FG layer (they meet only in Spec.Frame and

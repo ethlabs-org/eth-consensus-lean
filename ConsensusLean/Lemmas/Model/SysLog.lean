@@ -17,7 +17,8 @@ nothing before time `0` (`Run.log_sendsFromZero`). The Faithful milestone
 
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 /-- A send of the system's log is an engine release, tagged with the run's environment. -/
 theorem sysOf_sent_iff (r : (sysOf O F V).Run) (v : V) (o : (protoOf F r.1).Object) (t : Time) :

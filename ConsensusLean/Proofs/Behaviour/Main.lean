@@ -30,7 +30,7 @@ open Blocks
 open Consensus.Model (pubOf protoOf sysOf Obj)
 
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-  {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- The compiled ledger trace is the chain trace mapped by `ledgerOf`. -/
 theorem ledgerTrace (rho : Model.Run (compiled F) E) :
@@ -153,7 +153,7 @@ theorem gst_le_heal (K : Contract ProgressReq) (rho : Model.Run (compiled F) E)
 /-- The headline: shape claims, admissible numbers and a served ledger give
 the L0 behaviour of the compiled system, with progress read by
 `shapeProgress`. -/
-theorem refinement (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
+theorem refinement (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
     [Fintype V] [DecidableEq V] (hc : ShapeClaims F K) (ha : K.params.Admissible)
     (hs : O.Serves) : Behaviour (sysOf O (compiled F) V) (shapeProgress F V) K := by
   have hc := hc V

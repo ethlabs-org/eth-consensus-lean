@@ -15,6 +15,12 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## What a good protocol is
 
+- 2026-11-04, Francesco and the coordinator (review-surface naming, step 1 of the naming proposal): mechanical
+  renames, no statement changes. `Good` → `CorrectProtocol` (with its lemmas `CorrectProtocol.*`; files
+  `Spec/Problem/CorrectProtocol.lean`, `Lemmas/Problem/Facts/CorrectProtocol.lean`), `Accepted` → `ShapeObligations`
+  (`Spec/Shape/Obligations.lean`; `.good` → `.correct`), `Review.AcceptedGood` → `Review.ObligationsSufficient`,
+  `Model.Family` → `Model.ProtocolFamily`, `Shape.ShapeFamily` → `Shape.ChainShapeFamily`: the names say which is
+  correctness and which is the set of obligations that implies it. The other entries use the current names.
 - 2026-11-04, Francesco (raw-arrival audit, option 2): remove
   `ExecutionValid.delivery_ready`. A delivery is a raw arrival into the existing
   total `process` handler and log, independently of dependency readiness or
@@ -24,8 +30,8 @@ where it is recorded; "Francesco" marks the owner's decisions.
   2026-10-31 dependency repair below. Engine states, logs, views, excuses, progress,
   message/FG-attestation deadlines and Held/Served are unchanged on each run;
   valid runs only increase, so Behaviour and ShapeClaims only strengthen.
-  Accepted under the new validity implies Accepted under the old validity by
-  restricting claims. Do not infer arbitrary-System Good monotonicity from that
+  ShapeObligations under the new validity implies ShapeObligations under the old validity by
+  restricting claims. Do not infer arbitrary-System CorrectProtocol monotonicity from that
   inclusion alone: its witnesses are existential. The existing canonical runs
   still prove Adequate, Realizable and RealizableActive, including
   `regimes_realizable`, with only validity-constructor adjustments; prefix closure
@@ -57,7 +63,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   delivery, which no protocol-agnostic eager log meets. Behaviour still covers every `Δ ≥ 1`.
   Direction: `Delivers` at `dl − 1` implies it at `dl`, so `PSync`, `SyncUntil` and `OutageNet`
   become strictly stronger premises, and with them `Sleepy`, `Healthy`, `Outage`, the prefix
-  lemmas and the Baseline healed prefix; every Behaviour row, and so `Good`, `AcceptedGood` and the
+  lemmas and the Baseline healed prefix; every Behaviour row, and so `CorrectProtocol`, `ObligationsSufficient` and the
   Accepted endpoint, is weaker at each fixed `Δ` (it covers the runs that deliver by `Δ − 1`), the
   paper's reading. Phase 1 keeps every contract coefficient (they over-cover); tightening is
   phase 2.
@@ -154,7 +160,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   conjuncts, `NoSleepOn a z` (no honest validator falls asleep in `[a, z]`, waking allowed;
   `a = b₀ − noSleep·Δ`, `z = b₁ + noSleep·Δ`, clamped to `[0, horizon]`) and `CohortOn a z`
   (faulty plus late wakers fewer than the honest validators awake at `a`; half of all is the lemma
-  `CohortOn.two_mul_lt`). `Good.persists` protects every `Ready` reader from `b₁ + recovery·Δ`
+  `CohortOn.two_mul_lt`). `CorrectProtocol.persists` protects every `Ready` reader from `b₁ + recovery·Δ`
   (`ProtectedReadyFrom`), replacing `ResilienceReader` readers from `b₀`. New `Params` fields
   `noSleep`, `recovery`. Accepted: lag `8k+12` (`(8k+12)Δe ≥ (4k+6)Δp`, the label before the
   outage label armed by `b₀`), `noSleep = max 38 (8k+16)`, `recovery = 18`. The pinned
@@ -505,7 +511,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   and the `HealedPremises`/`FinalPremises` witnesses. None of them was in Challenge, the
   comparator, Solution or the declaration closure of the Accepted endpoint (compiled scan at
   3b29a82d). R.3–R.5 correspond to the generic rows of the Accepted endpoint `healedSafe`,
-  `healthyLive` (through `Accepted.good`) and `persists`; R.6 (weak continuation) has no generic
+  `healthyLive` (through `ShapeObligations.correct`) and `persists`; R.6 (weak continuation) has no generic
   row and is dropped. R.1, R.2, R.7 and R.8
   (`Statements/Regimes/{Sleepy,Always}`) stay: they are Challenge rows, and the Accepted proof uses
   13 of their definitions. This removes the node (V) that held the Accepted outage budget at
@@ -671,7 +677,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   tick's `pollPropose`), so a delivery emits at most the queued vote and the relay gossip and `signed_only_in_ticks`
   stands. `CommLog.EagerFrom.recv` becomes strict (`max t g < a`): the canonical schedule fixes the deliveries at
   `a` before the delivery-time releases at `a` exist, so those are served from `a + 1`. No `Statements/` file
-  names `EagerFrom`; `Spec/Problem/Good.lean` uses it existentially (`Adequate.covers`, `HealthyLive`), so the
+  names `EagerFrom`; `Spec/Problem/CorrectProtocol.lean` uses it existentially (`Adequate.covers`, `HealthyLive`), so the
   strict form asks those witness runs for one receipt less (none at the send's own time), and every regime
   premise they serve (`PSync`, `SyncUntil`, `OutageNet`: deadlines at least `a + Δ`, `Δ > 0`) is still
   implied (`EagerFrom.psync`). The other instances' skeletons keep the default and rebuild unchanged. The Goldilocks `ReleasedFrom`/`RelayedFrom` and the six
@@ -754,7 +760,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`:
   Streamlet was their only user on the trusted surface, but `Lemmas/Blocks/Facts` and the tests use them too.
 - 2026-11-04, Francesco: **Challenge certifies exactly five statements**: the four generic review statements
-  (`Review.AcceptedGood`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`) and the Goldilocks
+  (`Review.ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`) and the Goldilocks
   `Refinement.AcceptedEndpoint`. Reason: keep the trusted surface to the generic definition of a correct protocol plus
   the one instance endpoint; the other 48 Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist,
   Regimes, Service, Healing) are means to the endpoint, not claims a reviewer must read. They stay proved and built

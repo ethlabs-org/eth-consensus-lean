@@ -1,28 +1,28 @@
 module
-public import ConsensusLean.Spec.Problem.Good
+public import ConsensusLean.Spec.Problem.CorrectProtocol
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLeanTest.Regimes
 public import Mathlib.Tactic
 @[expose] public section
 
-/-! # Tests of the L0 definition of a good protocol
+/-! # Tests of the L0 definition of a correct protocol
 
 * Submission-dependent censoring progress is rejected by `submit_irrel`.
 * Vacuous systems are not good:
-  `false_progress_not_good` (a progress reader that never holds violates
-  `Realizable` for `|V| ≥ 5`), `no_admissible_not_good` (no admissible
+  `false_progress_not_correct` (a progress reader that never holds violates
+  `Realizable` for `|V| ≥ 5`), `no_admissible_not_correct` (no admissible
   external data, e.g. `Admits := False`, violates `Adequate.admits`),
-  `empty_valid_not_good` (no valid run violates `Adequate.covers`),
-  `excuse_true_not_good` (an excuse on every run, likewise).
+  `empty_valid_not_correct` (no valid run violates `Adequate.covers`),
+  `excuse_true_not_correct` (an excuse on every run, likewise).
 * `prefix_sync_then_async`: a log synchronous for deadlines up
   to `b = 1` whose later honest send is never received. It meets the premises
-  of `Good.sleepySafe_prefix` at `b = 1` (`SyncUntil 1`, sleepy on `[0, 1]`)
+  of `CorrectProtocol.sleepySafe_prefix` at `b = 1` (`SyncUntil 1`, sleepy on `[0, 1]`)
   but is not partially synchronous with GST `0`, so the full-run sleepy
   regime (and `Behaviour.sleepySafe`) does not apply.
 * `healthy_rotating_sleeper`: four
@@ -83,7 +83,7 @@ theorem HealthyOn.awakeOfAll {β : ℚ} {g b t : Time} (h : p.HealthyOn β g b)
 
 end Consensus.EnvPoint
 
-namespace Consensus.Shape.Tests.Good
+namespace Consensus.Shape.Tests.CorrectProtocol
 
 section Vacuous
 
@@ -104,8 +104,8 @@ theorem censoring_progress_rejected (v : V) (π : Prog) (c s e : Time)
   norm_num at this
 
 /-- A progress reader that never holds: not good (for `|V| ≥ 5`). -/
-theorem false_progress_not_good (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
-    (h5 : 5 ≤ Fintype.card V) : ¬ Good S X K := by
+theorem false_progress_not_correct (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
+    (h5 : 5 ≤ Fintype.card V) : ¬ CorrectProtocol S X K := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
   obtain ⟨r, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 2 2 (by norm_num)
@@ -125,7 +125,7 @@ theorem no_admissible_not_adequate (hX : ∀ E e, ¬ X.Admits E e) : ¬ S.Adequa
   exact hX _ e he
 
 /-- No admissible external data: not good. -/
-theorem no_admissible_not_good (hX : ∀ E e, ¬ X.Admits E e) : ¬ Good S X K :=
+theorem no_admissible_not_correct (hX : ∀ E e, ¬ X.Admits E e) : ¬ CorrectProtocol S X K :=
   fun h => no_admissible_not_adequate hX h.adequate
 
 omit [Fintype V] [DecidableEq V] in
@@ -137,11 +137,11 @@ theorem empty_valid_not_adequate (hS : ∀ r, ¬ S.Valid r) : ¬ S.Adequate X :=
   exact hS r hv
 
 /-- No valid run: not good. -/
-theorem empty_valid_not_good (hS : ∀ r, ¬ S.Valid r) : ¬ Good S X K :=
+theorem empty_valid_not_correct (hS : ∀ r, ¬ S.Valid r) : ¬ CorrectProtocol S X K :=
   fun h => empty_valid_not_adequate hS h.adequate
 
 /-- An excuse on every run: not good. -/
-theorem excuse_true_not_good (hS : ∀ r, S.Excuse r) : ¬ Good S X K := by
+theorem excuse_true_not_correct (hS : ∀ r, S.Excuse r) : ¬ CorrectProtocol S X K := by
   intro h
   obtain ⟨e, he⟩ := h.adequate.admits (trivPoint V).env
   obtain ⟨r, -, hne, -⟩ := h.adequate.covers (trivPoint V) le_rfl e he 0
@@ -171,7 +171,7 @@ theorem prefixPoint_faulty : prefixPoint.faulty = ∅ := by
   unfold EnvPoint.faulty prefixPoint; simp
 
 /-- A log synchronous up to `1` and silent after: the premises of
-`Good.sleepySafe_prefix` at `b = 1` hold (for every `θ ≤ ½` and catch-up), the
+`CorrectProtocol.sleepySafe_prefix` at `b = 1` hold (for every `θ ≤ ½` and catch-up), the
 full-run sleepy regime does not (for every contract numbers). -/
 theorem prefix_sync_then_async :
     prefixLog.SyncUntil prefixPoint 1 ∧
@@ -450,7 +450,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
 outputs are the same identifier, the final output is live in the sleepy
 regime. So a schema with `stable := final` is good only if its final output is
 sleepy-live. -/
-theorem stable_alias_final_sleepy_live (h : Good S X K) {g : S.schema.Id}
+theorem stable_alias_final_sleepy_live (h : CorrectProtocol S X K) {g : S.schema.Id}
     (hs : S.schema.output .stable = some g) (_hf : S.schema.output .final = some g)
     (i : K.Idx) :
     S.Holds (fun r => S.Sleepy K r ∧ S.prog X K .stable i 0 (S.pt r).horizon r)
@@ -459,6 +459,6 @@ theorem stable_alias_final_sleepy_live (h : Good S X K) {g : S.schema.Id}
 
 end Alias
 
-end Consensus.Shape.Tests.Good
+end Consensus.Shape.Tests.CorrectProtocol
 
 end

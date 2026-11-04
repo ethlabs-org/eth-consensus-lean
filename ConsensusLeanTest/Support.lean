@@ -180,7 +180,7 @@ def extremalKey (n : Nat) : Fin (Fintype.card (Fin (n + 1))) ≃ Fin (n + 1) :=
 before `start` where every validator is always awake, an active liveness
 witness (`TxLiveActive`) has an honest reader that receives the submitted
 transaction by relay, never by its own submission. -/
-theorem active_relay {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
+theorem active_relay {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (rho : Model.Run (compiled F) E) {gst c start D : Time}
     (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start) (hD : 0 ≤ D)
     (hawake : ∀ v t, E.awake v t = true)

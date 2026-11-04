@@ -34,7 +34,8 @@ theorem releaseAll_seen (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
 
 end Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 namespace Run
 

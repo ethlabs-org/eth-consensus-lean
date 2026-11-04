@@ -31,11 +31,11 @@ public import Mathlib.Tactic
   selected as the slot's proposer violates `ExecutionValid`, for every family;
   `forgedProposal` is a concrete such run of the trivial shape (admissible
   selection, key 2 proposes, key 1 forges), `forgedProposal_invalid`.
-* `noService_not_accepted`: a schema with no output at all, or only a stable
-  one, is not `Accepted`, whatever its claims (`OutputSchema.Serves`).
+* `noService_not_obligations`: a schema with no output at all, or only a stable
+  one, is not `ShapeObligations`, whatever its claims (`OutputSchema.Serves`).
 
 Vacuous *systems* (empty validity, excuse everywhere, a progress reader that
-never holds) are rejected by L0 `Good` itself: `Good.lean` tests. -/
+never holds) are rejected by L0 `CorrectProtocol` itself: `CorrectProtocol.lean` tests. -/
 
 namespace Consensus.Shape.Tests.Vacuity
 open Consensus Blocks Shape
@@ -46,7 +46,7 @@ open Consensus.Shape.Tests.Shapes (pollSkel pollShape)
 the sleepy stress witness (at most two honest validators awake): any fixed
 participation requirement of three or more ready validators fails. -/
 theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
-    [DecidableEq Info] [Countable Info] (F : ShapeFamily O Info)
+    [DecidableEq Info] [Countable Info] (F : ChainShapeFamily O Info)
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
     (_hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome) (m : K.Idx → ℕ+)
     (hm : ∀ i, (m i : Nat) + 3 ≤ Fintype.card V)
@@ -77,7 +77,7 @@ theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
 /-- Near-full participation (at most one validator not ready) cannot meet
 sleepy stress. -/
 theorem notReadyAtMost_one_not_realizable {O : OutputSchema} {Info : Type}
-    [DecidableEq Info] [Countable Info] (F : ShapeFamily O Info)
+    [DecidableEq Info] [Countable Info] (F : ChainShapeFamily O Info)
     (K : Contract ProgressReq) (V : Type) [Fintype V] [DecidableEq V]
     (hn : 5 ≤ Fintype.card V) (ho : (O.output .available).isSome)
     (hp : ∀ i, K.progress .available i = .notReadyAtMost 1) :
@@ -151,7 +151,7 @@ section ProgressFit
 /-- Acceptance rejects the all-proposers family up front: a recurrence
 requirement does not fit `.sized (max 1 n)` once `n ≥ 2`. -/
 theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
-    [Countable Info] {F : ShapeFamily O Info}
+    [Countable Info] {F : ChainShapeFamily O Info}
     (hF : ∀ pub s, (F pub).skel.proposerSel s = .sized (max 1 pub.n))
     (K : Contract ProgressReq) (cap : Capability) (i : K.Idx) (ρ : Recurrence)
     (hK : K.progress cap i = .recur ρ) : ¬ ProgressFits K F := by
@@ -167,7 +167,7 @@ theorem allProposers_unfit {O : OutputSchema} {Info : Type} [DecidableEq Info]
 fits only `.sized 1` proposers, and the poll skeleton has none. -/
 theorem noProgressFit_contract (K : Contract ProgressReq) (cap : Capability) (i : K.Idx)
     (ρ : Recurrence) (hK : K.progress cap i = .recur ρ) :
-    ¬ ProgressFits K (show ShapeFamily schema Unit from fun pub => pollShape pub) := by
+    ¬ ProgressFits K (show ChainShapeFamily schema Unit from fun pub => pollShape pub) := by
   intro h
   have := h cap i ⟨1, 1, by decide, 1, by decide⟩
   rw [hK] at this
@@ -224,7 +224,7 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 /-- Credential forgery (L2 form): a delivered object containing a
 proposal signed by a key not selected as the slot's proposer makes the run
 invalid, for every family. -/
-theorem credential_forgery_excluded {F : ShapeFamily O Info} {V : Type} [Fintype V]
+theorem credential_forgery_excluded {F : ChainShapeFamily O Info} {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E) {i : Nat} {w : V}
     {o : (protoOf (compiled F) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver w o t)) {o' : (protoOf (compiled F) E).Object}
@@ -255,10 +255,10 @@ theorem forgedProposal_invalid : forgedProposal.SelValid ∧ ¬ forgedProposal.E
 def noService (stable : Bool) : OutputSchema :=
   ⟨Unit, fun c => if stable ∧ c = .stable then some () else none⟩
 
-/-- An instance without a ledger service is never accepted (`Accepted.serves`),
+/-- An instance without a ledger service is never accepted (`ShapeObligations.serves`),
 whatever its claims. -/
-theorem noService_not_accepted (b : Bool) (F : ShapeFamily (noService b) Info)
-    (K : Contract ProgressReq) : ¬ Accepted F K := by
+theorem noService_not_obligations (b : Bool) (F : ChainShapeFamily (noService b) Info)
+    (K : Contract ProgressReq) : ¬ ShapeObligations F K := by
   intro h
   rcases h.serves with h | h <;> simp [noService] at h
 

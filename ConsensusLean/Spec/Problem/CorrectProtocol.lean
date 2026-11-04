@@ -5,9 +5,9 @@ public import Mathlib.Tactic
 
 @[expose] public section
 
-/-! # The definition of a good protocol (L0)
+/-! # The definition of a correct protocol (L0)
 
-`Good S X K`: system `S`, with progress requirements read by `X`, meets the
+`CorrectProtocol S X K`: system `S`, with progress requirements read by `X`, meets the
 contract `K` (numbers only). Three parts:
 
 * `Behaviour`: a fixed table of properties, each under a fixed regime
@@ -262,8 +262,8 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁ (S.pt r) ∧
       (k : Time) * Δ ≤ T
 
-/-- **A good protocol.** -/
-structure Good (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
+/-- **A correct protocol.** -/
+structure CorrectProtocol (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
   behaviour : Behaviour S X K
   adequate : S.Adequate X
   realizable : 5 ≤ Fintype.card V → Realizable S X K

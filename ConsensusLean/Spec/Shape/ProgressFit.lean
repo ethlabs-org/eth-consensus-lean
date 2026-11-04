@@ -3,9 +3,9 @@ public import ConsensusLean.Spec.Shape.Shape
 
 @[expose] public section
 
-/-! # Progress fit and tolerance (L2, part of `Accepted`)
+/-! # Progress fit and tolerance (L2, part of `ShapeObligations`)
 
-What `Accepted` asks of a contract's progress requirements besides the
+What `ShapeObligations` asks of a contract's progress requirements besides the
 claims: they fit the family's skeleton (`ProgressFits`) and every provided
 output has indices that tolerate arbitrary numbers of validators not ready
 and a bad (faulty or not ready) proposer slot in every window
@@ -34,7 +34,7 @@ def ProgressReq.Fits {n : Nat} (sk : Skeleton n) : ProgressReq → Prop
 
 /-- Every progress requirement of the contract fits the family's skeleton at
 every public parameter. -/
-def ProgressFits (K : Contract ProgressReq) (F : ShapeFamily O Info) : Prop :=
+def ProgressFits (K : Contract ProgressReq) (F : ChainShapeFamily O Info) : Prop :=
   ∀ cap i pub, ProgressReq.Fits (F pub).skel (K.progress cap i)
 
 /-- A requirement tolerates `N` validators not ready and a bad proposer slot

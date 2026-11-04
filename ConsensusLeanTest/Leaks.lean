@@ -42,7 +42,7 @@ open Blocks
 open Consensus.Model (pubOf protoOf)
 
 variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
-  {F : ShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- D-14, unconditional (moved from the library; the shape claims use the
 reader-conditional `ProposalLiveReady`): for every `t ≥ start` (with `t + D·Δ`
@@ -114,7 +114,7 @@ def fab : Header Unit := ⟨.root, 1, 7, ()⟩
 /-- Stateless test families: propose (if `proposal`), vote (if `vote`; then
 `conflicts` is always true), and output nothing or (if `bad`) the fabricated
 header. -/
-def family (proposal vote bad : Bool) : ShapeFamily schema Unit := fun pub => {
+def family (proposal vote bad : Bool) : ChainShapeFamily schema Unit := fun pub => {
   skel := testSkel pub
   State := Unit, Body := Unit, Durable := Unit
   decBody := inferInstance
@@ -154,7 +154,7 @@ theorem env_ready (p : EnvPoint (Fin 1)) (hp : p.env = env) (hh : p.honest = Fin
 
 /-- The refutation pattern: a family with the test skeleton's selection whose
 valid runs on `env` have empty outputs violates the liveness claim of `testK`. -/
-theorem refuted_of_empty (F : ShapeFamily schema Unit)
+theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     (sel : (protoOf (compiled F) env).Role → Finset (Fin (Fintype.card (Fin 1))))
     (hsel : ∀ r, ((protoOf (compiled F) env).selSpec r).Admits (sel r))
     (hprop : ∀ s, (sel (ShapeRole.proposer s)).Nonempty)
@@ -257,7 +257,7 @@ theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
 
 /-- A protocol that proposes and votes at every slot and outputs the headers
 of its own released signed items, with `conflicts` constantly `conf`. -/
-def familyC (conf : Bool) : ShapeFamily schema Unit := fun pub => {
+def familyC (conf : Bool) : ChainShapeFamily schema Unit := fun pub => {
   skel := testSkel pub
   State := Chain Unit, Body := Unit, Durable := Chain Unit
   decBody := inferInstance

@@ -35,7 +35,7 @@ abbrev streamletContract : Nat → Affine → Affine → Contract ProgressReq :=
 
 /-- The Streamlet progress fits every family with one proposer per slot. -/
 theorem streamletContract_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
-    (catchUp : Nat) (heal latency : Affine) (F : ShapeFamily bftCore Info)
+    (catchUp : Nat) (heal latency : Affine) (F : ChainShapeFamily bftCore Info)
     (hsel : ∀ pub s, (F pub).skel.proposerSel s = .sized 1) :
     ProgressFits (streamletContract catchUp heal latency) F :=
   fun _ _ pub => hsel pub

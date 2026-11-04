@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
-public import ConsensusLean.Spec.Shape.Accepted
+public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Instances.Goldilocks.Statements.Refinement.Accepted
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith

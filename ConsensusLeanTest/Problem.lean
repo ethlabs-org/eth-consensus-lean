@@ -1,12 +1,12 @@
 module
-public import ConsensusLean.Spec.Problem.Good
+public import ConsensusLean.Spec.Problem.CorrectProtocol
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import Mathlib.Tactic
 @[expose] public section
 

@@ -190,7 +190,7 @@ attribute [instance] ChainShape.decBody
 
 /-- A chain shape for every choice of the public parameters, with the outputs
 of schema `O`. -/
-abbrev ShapeFamily (O : OutputSchema) (Info : Type) [DecidableEq Info] [Countable Info] :=
+abbrev ChainShapeFamily (O : OutputSchema) (Info : Type) [DecidableEq Info] [Countable Info] :=
   (pub : Public) → ChainShape pub O.Id Info
 
 end Consensus.Shape

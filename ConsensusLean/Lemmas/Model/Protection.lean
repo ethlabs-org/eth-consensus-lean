@@ -181,7 +181,8 @@ theorem releaseAll_eq_carried (hash : P.Item → Nat) (k : Key pub) (nd : Node P
 
 end Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 namespace Run
 
@@ -363,7 +364,7 @@ theorem mem_honestEvidence_iff (rho : Run F E) (p : (protoOf F E).Object) :
     exact ⟨w, hw, p, hp, rfl⟩
 
 /-- L0 non-framing holds for every model system. -/
-theorem sysOf_nonFraming (O : OutputSchema) (F : Family O) (V : Type) [Fintype V]
+theorem sysOf_nonFraming (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
     [DecidableEq V] : (sysOf O F V).HoldsAlways (sysOf O F V).NonFraming := by
   rintro ⟨E, rho⟩ hv v hvh hconv
   apply rho.honestNeverSlashed hv v hvh

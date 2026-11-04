@@ -32,7 +32,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
 * (a) The endpoint is not vacuous: `accepted_endpoint_nonvacuous` instantiates
   `AcceptedEndpoint` (`accepted_endpoint`) at `setupSmall`, `assumptionsSmall`, and
   `accepted_realizable_small` gives its contract's active witnesses on five validators
-  (`Shape.regimes_realizable` from `Accepted`'s admissibility, progress-fit and tolerance
+  (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
   fields). -/
 
 namespace Consensus.Goldilocks.Refinement.Test.Acceptance
@@ -287,7 +287,7 @@ theorem row_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (cF 1 : Time) :=
 /-- (a) **The Accepted endpoint is not vacuous**: there are a setup and an assumption set (`k = 2`,
 `δt = 6`, row ratio `1`), and the family is accepted at their contract. -/
 theorem accepted_endpoint_nonvacuous : ∃ (S : Setup) (A : AcceptanceAssumptions S),
-    Accepted (family S) (acceptanceContract A (accepted_coefficients S A)) :=
+    ShapeObligations (family S) (acceptanceContract A (accepted_coefficients S A)) :=
   ⟨setupSmall, assumptionsSmall, accepted_endpoint setupSmall assumptionsSmall⟩
 
 /-- (a) The active witnesses of the endpoint's contract at `setupSmall`, `assumptionsSmall` on five

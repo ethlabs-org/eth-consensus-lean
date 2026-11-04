@@ -16,7 +16,7 @@ not current evidence.
    outage and final leaves, has an exact statement in Lean, an owner, dependencies,
    and a paper argument with a pinned location, or an explicit **OPEN** flag.
 4. The dependency graph has no circular supplier assumptions and introduces no
-   additional premise in generic `Accepted`. Conditional publisher interfaces must
+   additional premise in generic `ShapeObligations`. Conditional publisher interfaces must
    expose their concrete implementation obligation as a separate OPEN leaf.
 5. Snapshot, import boundaries and trusted-surface review pass before landing.
    The incomplete skeleton stays outside Main/Solution's sorry-free closure.
@@ -243,7 +243,7 @@ These are named sets of leaves, not extra assumptions.
 | sleepy_grow_finite | none (`#print axioms` at 70e90b44) |
 | sleepy_safe_engine | none (`#print axioms` at 70e90b44) |
 
-Nonframing is not a separate `Accepted` field: the audited signing/protection
+Nonframing is not a separate `ShapeObligations` field: the audited signing/protection
 theorems provide it. Roots marked `none` use only the standard axioms
 `propext`, `Classical.choice`, `Quot.sound`. A direct sorry in an adapter does not
 reference its intended future suppliers, so this graph is not the remaining-work
@@ -465,7 +465,7 @@ Here Δp is the node parameter, c = catchUp = 18Δp, and b≤horizon.
 | `Consensus.Goldilocks.Refinement.sleepy_safe_engine` | Valid run, NoCollRun, SyncBefore/quorum through horizon ⇒ engine ReadySafe (node catchUp+1) confirmed | Proved at 5d33450: arbitrary cuts via unit clock lag and last complete local event; standard axioms only |
 
 R.1/R.2 motivate these reductions, but do not prove the engine bridges. The node-level
-SleepySafePrefix row is retired (the prefix claim is Good.sleepySafe_prefix); IncludeSleepy
+SleepySafePrefix row is retired (the prefix claim is CorrectProtocol.sleepySafe_prefix); IncludeSleepy
 and GrowSleepy require whole-run SleepyRun. Neither supplies these finite consumers
 directly. No unconditional Accepted endpoint is asserted. Timing/grid/catch-up/latency
 scaling, finite locality, arbitrary-cut clocks and canonical collision encoding remain OPEN.

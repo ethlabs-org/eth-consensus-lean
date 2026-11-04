@@ -482,7 +482,7 @@ public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
@@ -503,14 +503,14 @@ public import ConsensusLean.Spec.Model.Run
 public import ConsensusLean.Spec.Model.Served
 public import ConsensusLean.Spec.Model.System
 public import ConsensusLean.Spec.Problem.Basic
-public import ConsensusLean.Spec.Problem.Good
+public import ConsensusLean.Spec.Problem.CorrectProtocol
 public import ConsensusLean.Spec.Problem.Network
 public import ConsensusLean.Spec.Problem.Properties
 public import ConsensusLean.Spec.Problem.Regimes
-public import ConsensusLean.Spec.Shape.Accepted
 public import ConsensusLean.Spec.Shape.Active
 public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Spec.Shape.Compile
+public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Spec.Shape.ProgressFit
 public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Spec.Shape.Shape

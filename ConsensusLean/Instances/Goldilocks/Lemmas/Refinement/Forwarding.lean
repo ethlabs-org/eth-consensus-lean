@@ -896,7 +896,7 @@ structure ReleaseBatch {pub : Public} {O : Type} (P : Protocol pub O) where
 /-- Enumerate actual selected duty batches, threading the same `dutyStep` states as the
 engine. Empty/unselected duties retain their ordinal position as an empty batch. -/
 noncomputable def dutyBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V) :
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V) :
     Model.Node (protoOf F E) → List (protoOf F E).Duty → List (ReleaseBatch (protoOf F E))
   | _, [] => []
   | nd, d :: ds =>
@@ -907,14 +907,14 @@ noncomputable def dutyBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- No duties produce no release batches. -/
 theorem dutyBatches_nil {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V)
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V)
     (nd : Model.Node (protoOf F E)) : dutyBatches rho v nd [] = [] := by
   rfl
 
 /-- The next batch retains its duty position even when unselected; later batches start
 from the actual duty-step result. -/
 theorem dutyBatches_cons {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V)
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V)
     (nd : Model.Node (protoOf F E)) (d : (protoOf F E).Duty)
     (ds : List (protoOf F E).Duty) :
     dutyBatches rho v nd (d :: ds) =
@@ -928,7 +928,7 @@ theorem dutyBatches_cons {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Actual event batches, including the final gossip batch. No synthetic batch labels are
 allowed: publication indices must select an entry in this list. -/
 noncomputable def eventBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (i : Nat) :
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (i : Nat) :
     List (ReleaseBatch (protoOf F E)) :=
   match rho.events[i]? with
   | some (.tick v t) =>
@@ -949,7 +949,7 @@ noncomputable def eventBatches {V : Type} [Fintype V] [DecidableEq V] {E : Env V
 
 /-- Characterization by the actual event, without exposing the implementation body. -/
 theorem eventBatches_eq {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (i : Nat) :
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (i : Nat) :
     eventBatches rho i = (match rho.events[i]? with
       | some (.tick v t) =>
         let nd := rho.stateBefore i v
@@ -1184,7 +1184,7 @@ theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : Setu
 The induction threads the same intermediate node as `runDuties`, including unselected
 duties, which have an empty batch and leave the state unchanged. -/
 theorem dutyBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V)
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V)
     (nd : Model.Node (protoOf F E)) (ds : List (protoOf F E).Duty)
     (b : ReleaseBatch (protoOf F E)) (hb : b ∈ dutyBatches rho v nd ds)
     (o : (protoOf F E).Object)
@@ -1209,7 +1209,7 @@ theorem dutyBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 Thus a release from an enumerated batch is an actual event release, not a synthetic
 candidate occurrence. This covers delivery events as well as awake ticks. -/
 theorem eventBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-    {O : OutputSchema} {F : Family O} (rho : Model.Run F E) (v : V) (i : Nat) (t : Time)
+    {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V) (i : Nat) (t : Time)
     (he : rho.SendsAt v i t) (b : ReleaseBatch (protoOf F E))
     (hb : b ∈ eventBatches rho i) (o : (protoOf F E).Object)
     (ho : o ∈ (Model.releaseAll (protoOf F E) rho.hash (rho.ownKey v)

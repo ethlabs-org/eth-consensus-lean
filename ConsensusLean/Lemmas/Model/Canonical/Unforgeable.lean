@@ -52,7 +52,8 @@ theorem releaseAll_preserves {pub : Public} {Out : Type} {P : Protocol pub Out}
       simp only [hf]
       exact ih nd hs hr
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 namespace Run
 variable (rho : Run F E)
 

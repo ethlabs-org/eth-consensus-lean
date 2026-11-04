@@ -24,7 +24,8 @@ meets the L0 acceptance interface `System.Adequate`:
 
 namespace Consensus.Model
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 /-- The hash is injective: no collision can occur. -/
 def Run.InjectiveHash (rho : Run F E) : Prop := Function.Injective rho.hash

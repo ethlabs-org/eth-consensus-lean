@@ -18,12 +18,12 @@ them. `Solution.lean` proves each statement by the milestone theorem whose type 
 
 | Milestone (`ConsensusLean/Proofs/`) | Statement | Milestone theorem | Solution | Status |
 |---|---|---|---|---|
-| `Behaviour` (L2 ⇒ L0: shape claims give the behaviour; composed in `ConsensusLean/Main.lean`) | `Consensus.Review.AcceptedGood` | `Consensus.Shape.Accepted.good` (from `Consensus.Shape.refinement`) | `Consensus.Review.acceptedGood` | proved in Solution |
+| `Behaviour` (L2 ⇒ L0: shape claims give the behaviour; composed in `ConsensusLean/Main.lean`) | `Consensus.Review.ObligationsSufficient` | `Consensus.Shape.ShapeObligations.correct` (from `Consensus.Shape.refinement`) | `Consensus.Review.obligationsSufficient` | proved in Solution |
 | `RegimesRealizable` (active witnesses for admissible, tolerant contracts) | `Consensus.Review.RegimesRealizable` | `Consensus.Shape.regimes_realizable` | `Consensus.Review.regimesRealizable` | proved in Solution |
 | `Faithful` (L1: the log is the engine's communication) | `Consensus.Review.LogFaithful` | `Consensus.Model.sysOf_log_faithful` | `Consensus.Review.logFaithful` | proved in Solution |
 | `Faithful` (L1: holding is being served) | `Consensus.Review.HeldIffServed` | `Consensus.Model.Run.held_iff_served` | `Consensus.Review.heldIffServed` | proved in Solution |
 
-Corollary outside the trusted surface: `Consensus.Shape.Accepted.activeService` (proved).
+Corollary outside the trusted surface: `Consensus.Shape.ShapeObligations.activeService` (proved).
 
 ## Goldilocks
 

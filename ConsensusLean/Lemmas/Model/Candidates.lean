@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Spec.Model.System
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLean.Lemmas.Model.Protocol
 
 public section
@@ -162,7 +162,8 @@ theorem mem_gossipCandidates {st : P.State} {t : Time} {o : P.Object} :
 
 end Engine
 
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 namespace Run
 variable (rho : Run F E)

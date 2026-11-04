@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Spec.Shape.Accepted
+public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 
 @[expose] public section
@@ -8,10 +8,10 @@ public import ConsensusLean.Instances.Goldilocks.Refinement.Defs
 
 The concrete acceptance endpoint of the Goldilocks family (`family S`, the node of
 `Refinement/Defs` as a chain shape): for every setup `S` and every assumption set `A`, the family
-is `Accepted` (`Spec/Shape/Accepted`: shape claims, admissible numbers, a served ledger, progress
-that fits the skeleton and tolerates validators not ready and bad proposer slots) at the contract
-`acceptanceContract A (accepted_coefficients S A)`, whose every number is a closed formula in the
-protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
+is `ShapeObligations` (`Spec/Shape/Obligations`: shape claims, admissible numbers, a served ledger,
+progress that fits the skeleton and tolerates validators not ready and bad proposer slots) at the
+contract `acceptanceContract A (accepted_coefficients S A)`, whose every number is a closed formula
+in the protocol parameters `k`, `δ_t`, the row ratio `r` and the outer gap `X`.
 
 * **Assumptions** (`AcceptanceAssumptions`): a row ratio `r ≥ 1` and the timeout
   `3·cF r ≤ δ_t` (`cF r = ⌈(r + 6)/4⌉`, `Refinement/Defs`). `Setup` fixes the genesis root,
@@ -129,7 +129,7 @@ row ratio `r` and the timeout `3·cF r ≤ δ_t`), the Goldilocks family is acce
 `acceptanceContract A (accepted_coefficients S A)`, every number of which is fixed above. -/
 def AcceptedEndpoint : Prop :=
   ∀ (S : Setup) (A : AcceptanceAssumptions S),
-    Accepted (family S) (acceptanceContract A (accepted_coefficients S A))
+    ShapeObligations (family S) (acceptanceContract A (accepted_coefficients S A))
 
 end Consensus.Goldilocks.Refinement
 

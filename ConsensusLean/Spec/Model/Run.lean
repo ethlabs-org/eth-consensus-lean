@@ -89,11 +89,11 @@ abbrev pubOf {V : Type} [Fintype V] (E : Env V) : Public :=
 variable {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The protocol that family `F` runs in environment `E`. -/
-abbrev protoOf {O : OutputSchema} (F : Family O) (E : Env V) : Protocol (pubOf E) O.Id :=
+abbrev protoOf {O : OutputSchema} (F : ProtocolFamily O) (E : Env V) : Protocol (pubOf E) O.Id :=
   F (pubOf E)
 
 /-- A run of family `F` in environment `E`. -/
-structure Run {O : OutputSchema} (F : Family O) (E : Env V) where
+structure Run {O : OutputSchema} (F : ProtocolFamily O) (E : Env V) where
   honest : Finset V
   horizon : Time
   events : List (Event V (protoOf F E).Object)
@@ -111,7 +111,7 @@ structure Run {O : OutputSchema} (F : Family O) (E : Env V) where
   the engine. -/
   hash : (protoOf F E).Item → Nat
 
-variable {O : OutputSchema} {F : Family O} {E : Env V}
+variable {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}
 
 /-- The environment point of a run. -/
 def Run.point (rho : Run F E) : EnvPoint V := ⟨E, rho.honest, rho.horizon, rho.submit⟩

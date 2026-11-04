@@ -13,7 +13,7 @@ exactly these statements, built from Spec alone, under `propext`, `Quot.sound` a
 `Classical.choice`. The other Goldilocks milestones are proved lemmas, not certified here
 (docs/decisions.md, 2026-11-04). -/
 
-theorem Consensus.Review.acceptedGood : Consensus.Review.AcceptedGood := sorry
+theorem Consensus.Review.obligationsSufficient : Consensus.Review.ObligationsSufficient := sorry
 theorem Consensus.Review.regimesRealizable : Consensus.Review.RegimesRealizable := sorry
 theorem Consensus.Review.logFaithful : Consensus.Review.LogFaithful := sorry
 theorem Consensus.Review.heldIffServed : Consensus.Review.HeldIffServed := sorry

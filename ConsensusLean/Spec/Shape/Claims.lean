@@ -26,7 +26,7 @@ unconditional, `HoldsAlways`):
 `proposalLive_txLive`). It owes a proposal only when a node is ready at the
 inclusion deadline, exactly as L0 `TxLive` owes inclusion only to ready
 readers. Prefix forms are not restated: they follow from the
-L0 prefix closure (`Good.*_prefix`). Non-framing is an L1 theorem, so there is
+L0 prefix closure (`CorrectProtocol.*_prefix`). Non-framing is an L1 theorem, so there is
 no field for it. `refinement` turns these into `Behaviour`. -/
 
 namespace Consensus.Shape
@@ -42,7 +42,7 @@ runs satisfying the regime, or an observed hash collision; `HoldsAlways`: no
 escape), with the chain trace of the run `r.2` for the ledger trace and
 `ProposalLiveReady` for `TxLive`; latencies are the `Nat` coefficients
 `K.params.latency`. -/
-structure ShapeClaimsAt (F : ShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
+structure ShapeClaimsAt (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
     [Fintype V] [DecidableEq V] : Prop where
   /-- Every provided output is valid. -/
   outputValid : (Sys F V).HoldsAlways fun r => ∀ c g, O.output c = some g → OutputValid r.2 g
@@ -88,7 +88,7 @@ structure ShapeClaimsAt (F : ShapeFamily O Info) (K : Contract ProgressReq) (V :
 
 /-- The chain-level claims of a shape family for contract `K`: at every finite
 validator type. -/
-def ShapeClaims (F : ShapeFamily O Info) (K : Contract ProgressReq) : Prop :=
+def ShapeClaims (F : ChainShapeFamily O Info) (K : Contract ProgressReq) : Prop :=
   ∀ (V : Type) [Fintype V] [DecidableEq V], ShapeClaimsAt F K V
 
 end Consensus.Shape

@@ -6,8 +6,8 @@ public section
 
 /-! # Derived notions (L0; not on the trusted surface)
 
-Not needed to read `Good`: no definition of `Behaviour`, `Adequate`,
-`Realizable` or `Good`, and no L1/L2 definition that the endpoints read, uses
+Not needed to read `CorrectProtocol`: no definition of `Behaviour`, `Adequate`,
+`Realizable` or `CorrectProtocol`, and no L1/L2 definition that the endpoints read, uses
 them. The Goldilocks baseline sheet read them, and this file was in `trusted_paths`
 for it (#38); the sheet is archived and no trusted statement reads them, so the file
 left the list. It holds those definitions and their characterising lemmas (which

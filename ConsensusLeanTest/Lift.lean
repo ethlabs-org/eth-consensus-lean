@@ -5,7 +5,7 @@ public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Spec.Model.System
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
-public import ConsensusLean.Lemmas.Problem.Facts.Good
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Credentials
@@ -28,7 +28,8 @@ trace-invariant property holds on all runs up to the collision excuse iff it
 holds on all valid runs with an injective hash (`holds_of_injective`,
 `injective_of_holds`). No library proof uses it; it is checked here. -/
 namespace Consensus.Model
-variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Family O} {E : Env V}
+variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
+    {E : Env V}
 
 namespace Run
 
@@ -341,7 +342,8 @@ end Run
 /-- Trace-invariant properties lift from injective hashes to collision-escaped claims.
 Only transport from a valid source satisfying `A` is required: assumptions move
 forward to its rehashed twin, and the conclusion moves back to the source. -/
-theorem holds_of_injective (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V]
+theorem holds_of_injective (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
+    [DecidableEq V]
     (A P : (sysOf O F V).Run → Prop)
     (ha : ∀ E (r s : Run F E), r.ExecutionValid → A ⟨E, r⟩ →
       r.SameTrace s → A ⟨E, s⟩)
@@ -356,7 +358,8 @@ theorem holds_of_injective (O : OutputSchema) (F : Family O) (V : Type) [Fintype
     exact Or.inl (hp E r s hv ar hs (hi ⟨E, s⟩ (hs.executionValid hv) (ha E r s hv ar hs) hinj))
 
 /-- The converse direction of injective-hash lifting, on valid runs. -/
-theorem injective_of_holds (O : OutputSchema) (F : Family O) (V : Type) [Fintype V] [DecidableEq V]
+theorem injective_of_holds (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
+    [DecidableEq V]
     (A P : (sysOf O F V).Run → Prop) (h : (sysOf O F V).Holds A P) :
     ∀ r, (sysOf O F V).Valid r → A r → r.2.InjectiveHash → P r := by
   intro r hv ha hi

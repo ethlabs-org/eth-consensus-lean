@@ -648,7 +648,7 @@ def FamilyState (S : Setup) (pub : Public) : Type :=
 /-- The Goldilocks family: `goldilocksShape` at `S.params pub hn` for every `hn`, through
 `FamilyState`; the steps that output something (a proposal, a poll body, the gossip, the
 output chains) output it at some proof of `1 ≤ n` and nothing without one. -/
-noncomputable def family (S : Setup) : ShapeFamily schema Info := fun pub =>
+noncomputable def family (S : Setup) : ChainShapeFamily schema Info := fun pub =>
   let G := fun hn : 1 ≤ pub.n => goldilocksShape (S.params pub hn) (S.ro _)
   { skel := skeleton pub
     State := FamilyState S pub

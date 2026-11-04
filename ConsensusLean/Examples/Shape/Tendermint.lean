@@ -31,7 +31,7 @@ abbrev tendermintContract : Nat → Affine → Affine → Contract ProgressReq :
 
 /-- The Tendermint progress fits every family (no slot proposers needed). -/
 theorem tendermintContract_progressFits {Info : Type} [DecidableEq Info] [Countable Info]
-    (catchUp : Nat) (heal latency : Affine) (F : ShapeFamily bftCore Info) :
+    (catchUp : Nat) (heal latency : Affine) (F : ChainShapeFamily bftCore Info) :
     ProgressFits (tendermintContract catchUp heal latency) F :=
   fun _ _ _ => trivial
 
