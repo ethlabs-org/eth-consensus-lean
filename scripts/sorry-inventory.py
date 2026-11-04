@@ -68,7 +68,7 @@ def inventory(config, rows, records):
     edges = {n: r["dependencies"] for n, r in nodes.items()}
     issues = []
     if not config["roots"]:
-        issues.append("missing concrete Accepted root: assembly unresolved (NOT MET)")
+        issues.append("missing concrete obligations root: assembly unresolved (NOT MET)")
     for name in sorted(set(config["roots"]) | rows.keys()):
         if name not in nodes:
             issues.append(f"unknown declaration: {name}")
@@ -98,7 +98,7 @@ def inventory(config, rows, records):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ledger", type=Path, default=Path("docs/accepted-dependencies.md"))
+    parser.add_argument("--ledger", type=Path, default=Path("docs/obligations-dependencies.md"))
     parser.add_argument("--json-out", type=Path, required=True)
     args = parser.parse_args()
     result = {"schema_version": 1, "mode": "report-only", "status": "incomplete",
@@ -109,7 +109,7 @@ def main():
         result.update({"modules": config["modules"], "roots": config["roots"],
                        "rows": rows, "excluded_tables": excluded, "issues": issues})
         if not config["roots"]:
-            result["issues"].append("missing concrete Accepted root: assembly unresolved (NOT MET)")
+            result["issues"].append("missing concrete obligations root: assembly unresolved (NOT MET)")
         seeds = sorted(set(config["roots"]) | rows.keys())
         records = []
         if seeds:
@@ -131,8 +131,8 @@ def main():
         result["issues"].append(str(exc))
         if isinstance(exc, subprocess.CalledProcessError):
             result["issues"].append((exc.stderr or "")[-4000:])
-    if not result["roots"] and not any("missing concrete Accepted root" in i for i in result["issues"]):
-        result["issues"].append("missing concrete Accepted root: assembly unresolved (NOT MET)")
+    if not result["roots"] and not any("missing concrete obligations root" in i for i in result["issues"]):
+        result["issues"].append("missing concrete obligations root: assembly unresolved (NOT MET)")
     args.json_out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(f"REPORT sorry inventory: {result['status']}; {len(result['sorries'])} direct owners; "
           f"{len(result['excluded_tables'])} noncompiled tables excluded; JSON: {args.json_out}")

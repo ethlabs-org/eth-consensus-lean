@@ -53,7 +53,7 @@ class InventoryTests(unittest.TestCase):
     def test_missing_root_is_not_empty_success(self):
         report = self.report([], modules=[])
         self.assertEqual(report["status"], "incomplete")
-        self.assertIn("missing concrete Accepted root", report["issues"][0])
+        self.assertIn("missing concrete obligations root", report["issues"][0])
         self.assertEqual(report["sorries"], [])
         report = self.report(["SorryInventory.missing"])
         self.assertIn("unknown declaration: SorryInventory.missing", report["issues"])

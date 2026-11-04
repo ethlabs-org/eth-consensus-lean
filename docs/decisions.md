@@ -394,6 +394,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-04, coordinator (review-surface naming, step 3): the Accepted sorry ledger and its tool follow the
+  obligations names, check-infra only: `docs/obligations-status.json`, `docs/obligations-dependencies.md`,
+  `scripts/obligations-status.py` (self-test `test_obligations_status.py`), the step 3c labels and the JSON field
+  `in_obligations_closure`. The tool's baseline moves from the archived `fd7f498` to the same tree in this
+  repository, `eed6d0b5`, and it maps the step-1 names of historical sorry owners to the declarations they became,
+  so no former owner loses its row. Commit SHAs written before the 2026-11-04 cutover (`79cdddc8`), in the ledger's
+  evidence and elsewhere, refer to the history archived in ethlabs-org/consensus-lean-coordination.
 - 2026-11-04, Francesco and the coordinator (review-surface naming, step 2): the delays are `ΔAC`/`ΔFG`
   (`Env`, `Model.Public`), the FG attestation class `isFGAtt`/`CommLog.fgAtt`/`Delivers.fgAtts` (and the
   Healing/FGStore `fgAtts`, `fgAttCut`), the generic contract number `Params.fgDelay` (the healthy regime's

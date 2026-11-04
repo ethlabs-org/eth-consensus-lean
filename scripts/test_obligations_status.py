@@ -10,23 +10,26 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True  # a self-test leaves no scripts/__pycache__ in the checkout
 
-spec = importlib.util.spec_from_file_location('status', Path(__file__).with_name('accepted-status.py'))
+spec = importlib.util.spec_from_file_location('status', Path(__file__).with_name('obligations-status.py'))
 status = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(status)
 
 
 class StatusTests(unittest.TestCase):
-    PREFIX = 'Consensus.Goldilocks.Refinement.'
+    PREFIX = 'Consensus.Goldilocks.'
 
-    def regenerate(self, names, sorry, dependencies, prior, head='fixture-pin', prior_rows=None):
+    def regenerate(self, names, sorry, dependencies, prior, head='fixture-pin', prior_rows=None,
+                   historical=None, document=False):
         """Run `main` on a one-file fixture: every name was a historical sorry, `sorry` are the
         current ones, `dependencies` the compiled edges, `prior` the previous rows (or
-        `prior_rows`, whole rows with their own names); return rows."""
+        `prior_rows`, whole rows with their own names); return rows (or, with `document`, the
+        ledger). `historical` replaces the fixture as the historical blob."""
         prefix = self.PREFIX
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
             'theorem ' + n + ' : True := by ' + ('sorry' if n in sorry else 'trivial')
             for n in names)
-        records = [{'declaration': prefix + 'accepted', 'dependencies': [prefix + n for n in names]}]
+        records = [{'declaration': 'Consensus.Goldilocks.Obligations.accepted',
+                    'dependencies': [prefix + n for n in names]}]
         records += [{'declaration': prefix + n,
                      'dependencies': ['sorryAx'] if n in sorry else
                      [prefix + d for d in dependencies.get(n, [])]} for n in names]
@@ -37,7 +40,7 @@ class StatusTests(unittest.TestCase):
             if args[:2] == ('git', 'ls-tree'):
                 return '100644 blob fixture\t' + str(file) + '\n'
             if args[:2] == ('git', 'cat-file'):
-                return source.replace('trivial', 'sorry')
+                return historical if historical is not None else source.replace('trivial', 'sorry')
             if args[:2] == ('git', 'rev-list') or args[:3] == ('lake', 'env', 'lean'):
                 return ''
             if args[:3] == ('lake', 'exe', 'spec-surface'):
@@ -51,25 +54,28 @@ class StatusTests(unittest.TestCase):
                 file = Path('ConsensusLean/Instances/Goldilocks/Lemmas/Fixture.lean')
                 file.parent.mkdir(parents=True)
                 file.write_text(source)
-                ledger = Path('docs/accepted-status.json')
+                ledger = Path('docs/obligations-status.json')
                 ledger.parent.mkdir()
                 if prior_rows is None:
                     prior_rows = [{'name': prefix + n, **prior(n)} for n in names]
                 ledger.write_text(json.dumps({'rows': prior_rows}))
                 with patch.object(status, 'run', side_effect=run), \
                         patch.object(status.subprocess, 'run'), \
-                        patch('sys.argv', ['accepted-status.py']):
+                        patch('sys.argv', ['obligations-status.py']):
                     status.main()
-                return {r['name'][len(prefix):]: r for r in json.loads(ledger.read_text())['rows']}
+                result = json.loads(ledger.read_text())
+                if document:
+                    return result
+                return {r['name'][len(prefix):]: r for r in result['rows']}
             finally:
                 os.chdir(cwd)
 
     def test_sleepy_regeneration_distinguishes_body_and_type_dependency(self):
-        names = ['accepted_heal', 'sleepy_query_sync', 'sleepy_safety_inputs',
+        names = ['contract_heal', 'sleepy_query_sync', 'sleepy_safety_inputs',
                  'simTrace_vote_forwarded', 'final_duty_proposal']
         rows = self.regenerate(
-            names, {'accepted_heal'},
-            {n: ['accepted_heal'] for n in ('sleepy_query_sync', 'sleepy_safety_inputs',
+            names, {'contract_heal'},
+            {n: ['contract_heal'] for n in ('sleepy_query_sync', 'sleepy_safety_inputs',
                                             'final_duty_proposal')},
             lambda n: {'status': 'paper-open (research)', 'obstruction': '#128 stale',
                        'evidence': 'stale', 'derisk-verdict': 'complete',
@@ -79,7 +85,7 @@ class StatusTests(unittest.TestCase):
             self.assertFalse(r['direct_sorry'])
             self.assertEqual(r['lean-status'], 'sorry-dependent')
             self.assertEqual(r['status'], 'unknown')
-            self.assertEqual(r['blocked-by'], [self.PREFIX + 'accepted_heal'])
+            self.assertEqual(r['blocked-by'], [self.PREFIX + 'contract_heal'])
             self.assertIn('Body proved', r['evidence'])
             self.assertIn('K S A', r['evidence'])
             self.assertNotIn('obstruction', r)
@@ -93,6 +99,31 @@ class StatusTests(unittest.TestCase):
         self.assertIn('final_duty_proposal_run', duty['evidence'])
         self.assertIn('K S A', duty['evidence'])
         self.assertTrue(rows[names[0]]['direct_sorry'])
+
+    def test_step1_renames_keep_former_owners(self):
+        # The historical blob names the former owner by its pre-2026-11-04 name: it keeps its row under
+        # the name it became (the coefficient in the root namespace). A historical name that no current
+        # declaration took stays historical.
+        historical = ('namespace Consensus.Goldilocks.Refinement\n'
+                      'theorem accepted_heal : True := by sorry\n'
+                      'theorem gone_leaf : True := by sorry\n')
+        ledger = self.regenerate(['contract_heal'], set(), {}, lambda n: {}, historical=historical,
+                                 prior_rows=[], document=True)
+        self.assertEqual([r['name'] for r in ledger['rows']], [self.PREFIX + 'contract_heal'])
+        self.assertEqual(ledger['historical_removed'], ['Consensus.Goldilocks.Refinement.gone_leaf'])
+        self.assertEqual(status.renamed('Consensus.Goldilocks.Refinement.accepted_heal', set()),
+                         'Consensus.Goldilocks.Refinement.accepted_heal')
+
+    def test_leftover_renames_keep_former_owners_outside_refinement(self):
+        # The naming leftovers renamed Obligations.rowDelay_pos (a former owner outside Refinement) to
+        # protoFGDelay_pos: it keeps its row under the new name, and nothing becomes historical.
+        historical = ('namespace Consensus.Goldilocks.Obligations\n'
+                      'theorem rowDelay_pos : True := by sorry\n')
+        ledger = self.regenerate(['Obligations.protoFGDelay_pos'], set(), {}, lambda n: {},
+                                 historical=historical, prior_rows=[], document=True)
+        self.assertEqual([r['name'] for r in ledger['rows']],
+                         [self.PREFIX + 'Obligations.protoFGDelay_pos'])
+        self.assertEqual(ledger['historical_removed'], [])
 
     def test_proved_rows_refresh_ratings_and_skip_unproved_overrides(self):
         # every row was reviewed before (status-source set), with stale prose evidence

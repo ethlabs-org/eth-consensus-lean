@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerate the Accepted status ledger; paper classifications are preserved, never inferred.
+"""Regenerate the obligations status ledger (the sorry status of the Goldilocks `MeetsObligations`
+proof); paper classifications are preserved, never inferred.
 
 Run after building ConsensusLean and spec-surface. Historical source scans select
 former sorry declarations; compiled dependency edges determine their current status.
@@ -25,20 +26,24 @@ ROUTE_A = ('https://github.com/' +
 # Evidence of a proved row outside REFRESH: the compiled audit fact, not prose.
 PROVED_EVIDENCE = 'Proved; no direct owner in compiled audit at '
 # Rows whose RATINGS entry replaces the previous row's rating and evidence on every run.
-REFRESH = ('healthy_preserve', 'accepted_heal', 'final_window_extract',
+# contract_catchUp/heal/latency are defined in Statements/Obligations, outside the Lemmas scan, so they are never
+# rows: their REFRESH/RATINGS entries (and their RENAMED_COMPONENTS entries) take effect only in the self-test
+# fixture; the real ledger lists them under historical_removed by their old names. (Their *_ge_sleepy lemmas are
+# in Lemmas/Obligations/ContractDefs and are rows.)
+REFRESH = ('healthy_preserve', 'contract_heal', 'final_window_extract',
            'final_reset_premises', 'healthy_preparation_initialize', 'healthy_repair_schedule',
            'healthy_confirmed_supply')
 RATINGS = {
-    'accepted_catchUp': ('paper-partial', LEAD, 'Settled coefficient audit: simultaneous finite engine envelope and repaired transport remain; no arbitrary witness choice.'),
-    'accepted_heal': ('lean-proved', ROUTE_A, 'Closed at 4078bc74 (S6): accepted_catchUp + 2·healMargin + 3 at every capability, a named parameter-only value (ResetCoefficients) fitted to the proved reset envelope. accepted_heal_ge_reset is the coefficient inequality of the nonfinal envelope, accepted_heal_ge_final the final route heal-bound margin; a later leaf may raise healMargin, consumers use only these ≥-forms.'),
-    'accepted_latency': ('paper-partial', LEAD, 'Settled coefficient audit: joint nonfinal/four-anchor latency and actual carrier acceptance remain.'),
-    'accepted_catchUp_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 37 is a verified constraint, not a proof about the opaque shared witness; enlargement needs monotonicity audit.'),
-    'accepted_latency_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.'),
+    'contract_catchUp': ('paper-partial', LEAD, 'Settled coefficient audit: simultaneous finite engine envelope and repaired transport remain; no arbitrary witness choice.'),
+    'contract_heal': ('lean-proved', ROUTE_A, 'Closed at 4078bc74 (S6): contract_catchUp + 2·healMargin + 3 at every capability, a named parameter-only value (ResetCoefficients) fitted to the proved reset envelope. contract_heal_ge_reset is the coefficient inequality of the nonfinal envelope, contract_heal_ge_final the final route heal-bound margin; a later leaf may raise healMargin, consumers use only these ≥-forms.'),
+    'contract_latency': ('paper-partial', LEAD, 'Settled coefficient audit: joint nonfinal/four-anchor latency and actual carrier acceptance remain.'),
+    'contract_catchUp_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 37 is a verified constraint, not a proof about the opaque shared witness; enlargement needs monotonicity audit.'),
+    'contract_latency_ge_sleepy': ('paper-partial', LEAD, 'Settled coefficient audit: 8idx+12 is a verified constraint, not a jointly admissible selected witness.'),
     'final_window_extract': ('lean-proved', ROUTE_A, "Body final_window_extract_of' from final_reset_premises (closed at e621acd7) and final_duty_proposal (final_duty_proposal_run, #143)."),
     # Route-A split of final_window_extract (#136): its body is final_window_extract_of'
     # from these two leaves (final_duty_proposal has a proved body); the rating is inherited
     # from final_window_extract.
-    'final_reset_premises': ('lean-proved', ROUTE_A, "Closed at e621acd7 by final_reset_premises_of_query (FinalResetPremises.lean): exists_reset_of_drain_awake at r = ready, G = X, L_drain = healthyDrainLen, λ = 2Δ, b = horizon, with the guarded gap final_query_gap and drainOutputs_of_service; (H3) and the horizon fit from accepted_heal_ge_final."),
+    'final_reset_premises': ('lean-proved', ROUTE_A, "Closed at e621acd7 by final_reset_premises_of_query (FinalResetPremises.lean): exists_reset_of_drain_awake at r = ready, G = X, L_drain = healthyDrainLen, λ = 2Δ, b = horizon, with the guarded gap final_query_gap and drainOutputs_of_service; (H3) and the horizon fit from contract_heal_ge_final."),
     'final_duty_proposal': ('paper-partial', ROUTE_A, "(H2) of final_window_extract_of': duty → proposal adapter, bounded by 0 < s and ts s ≤ horizon; body proved by final_duty_proposal_run (FinalDutyProposal.lean, #143). Owner: Kev."),
     # Historical rating; the declaration is retired by route A (#141), see RETIRED.
     'final_inherited_progress': ('paper-open (research)', LEAD, 'Settled final-liveness audit: arbitrary dirty inherited permissions/held or credited rows must yield same-entry progress without a birth lower bound.'),
@@ -46,8 +51,8 @@ RATINGS = {
     'final_cache_acceptance': ('paper-partial', LEAD, 'Settled final-liveness audit: actual last-carrier acceptance, retained lookup/cache for every reader and processing/read deadline budget remain.'),
     # Historical rating; the declaration is retired by R0 (#136), see RETIRED.
     'healthy_old_inventory_initialize': ('paper-open (research)', PAPER, 'Whole-statement audit 6d6af170 §§27–28: global future first arrivals require upper coverage or strict below-hj, including equality; bounded actual reset production missing.'),
-    'healthy_preparation_initialize': ('lean-proved', ROUTE_A, 'Proved at 2d943744 (moved unchanged to HealthyResetEnvelope.lean): the joint (E) tuple from healthy_reset_envelope (ΔF = Δ, a ≤ ready + R·Δ), ResetPremisesUpTo.reset_seed, base slot slot(ready) + 1 and the query the maximum of the lower bound; every timing bound, including the reserve and the base timing W, is one step from accepted_heal_ge_reset.'),
-    'healthy_repair_schedule': ('lean-proved', ROUTE_A, 'Proved at f4997e9f through the reserved route: healthy_preparation_initialize at the same Q, h0, hb, hp, then healthy_repair_schedule_of_preparation (580f1e4); the reserve is Dprep.reserve, paid by accepted_heal_ge_reset.'),
+    'healthy_preparation_initialize': ('lean-proved', ROUTE_A, 'Proved at 2d943744 (moved unchanged to HealthyResetEnvelope.lean): the joint (E) tuple from healthy_reset_envelope (ΔF = Δ, a ≤ ready + R·Δ), ResetPremisesUpTo.reset_seed, base slot slot(ready) + 1 and the query the maximum of the lower bound; every timing bound, including the reserve and the base timing W, is one step from contract_heal_ge_reset.'),
+    'healthy_repair_schedule': ('lean-proved', ROUTE_A, 'Proved at f4997e9f through the reserved route: healthy_preparation_initialize at the same Q, h0, hb, hp, then healthy_repair_schedule_of_preparation (580f1e4); the reserve is Dprep.reserve, paid by contract_heal_ge_reset.'),
     'healthy_prepare': ('paper-partial', PAPER, 'Body proved: heal-cut archival records from the operational update and recent stored locks by lock_origin, from W and the preparation schedule; since R0 no cache or inventory is produced. Sorry-dependent through its premise types and callees, not a direct sorry.'),
     'healthy_preserve': ('paper-proved awaiting Lean', PAPER, 'Since R0 only records and recent locks are preserved: retained records via archival tree/F monotonicity/restart, recent locks via lock_origin. The former J quorum/inventory and F≤J cache steps were removed with those fields.'),
     'healthy_cut_tips_comparable': ('paper-partial', PAPER, '103bfbd extracts actual stored-clock read-tip comparability; same equality-time pre-endCut gap. Engine output transport is proved.'),
@@ -117,6 +122,52 @@ def declarations(text):
     return result
 
 
+# The 2026-11-04 review renames (docs/decisions.md). Step 1 split `Goldilocks.Refinement` into
+# `Goldilocks.AsChainShape`, `.Simulation`, `.Obligations` and the root `Consensus.Goldilocks`, and renamed
+# components; step 2 renamed the FG attestation lemmas; the naming leftovers renamed `rowDelay` (and its
+# lemmas) to `protoFGDelay` and `PSyncFGRowTransport` to `PSyncFGAttTransport`. Historical source blobs still
+# carry the old names; `renamed` maps such a name to the one current declaration it became, so a former owner
+# keeps its row (and its provenance) across the renames.
+RENAMED_COMPONENTS = {
+    'AcceptanceAssumptions': 'ContractAssumptions', 'AcceptanceCoefficients': 'ContractCoefficients',
+    'acceptanceContract': 'goldilocksContract', 'acceptanceContract_params_eq': 'goldilocksContract_params_eq',
+    'AcceptedEndpoint': 'MeetsObligations', 'accepted_endpoint': 'meets_obligations',
+    'accepted_concrete': 'meetsObligations_concrete', 'family': 'goldilocks', 'FamilyState': 'PubState',
+    'RefinementStatements': 'SimulationStatements', 'refinement_statements': 'simulation_statements',
+    **{'accepted_' + s: 'contract_' + s for s in (
+        'catchUp', 'catchUp_val', 'catchUp_ge_sleepy', 'heal', 'heal_val', 'heal_ge_reset', 'heal_ge_final',
+        'latency', 'latency_final', 'latency_available', 'latency_stable', 'latency_ge_sleepy', 'coefficients',
+        'coefficients_catchUp', 'coefficients_heal', 'coefficients_latency')},
+    **{'rowDelay' + s: 'protoFGDelay' + s for s in (
+        '', '_eq', '_pos', '_delivery', '_delivery_of_healthy', '_timeout_of_healthy')},
+    'PSyncFGRowTransport': 'PSyncFGAttTransport',
+    # Step 2 (FG attestation names) in the scanned Lemmas; its removed cF lemmas have no successor.
+    'clean_rowCut': 'clean_fgAttCut', 'isRow_attObj': 'isFGAtt_attObj', 'log_row_iff': 'log_fgAtt_iff',
+    'not_isRow_forwardObj': 'not_isFGAtt_forwardObj', 'not_isRow_of_decodeForward': 'not_isFGAtt_of_decodeForward'}
+STEP1_OLD = 'Consensus.Goldilocks.Refinement.'
+STEP1_NEW = ('Consensus.Goldilocks.Obligations.', 'Consensus.Goldilocks.Simulation.',
+             'Consensus.Goldilocks.AsChainShape.', 'Consensus.Goldilocks.')
+# The `fields` keys: the closure members named `Refinement.accepted_*` before step 1 (the contract coefficients
+# and their lemmas, the endpoint proof's field theorems, and `accepted_in_view`).
+FIELD_PREFIXES = ('Consensus.Goldilocks.contract_', 'Consensus.Goldilocks.Obligations.contract_',
+                  'Consensus.Goldilocks.Obligations.accepted_', 'Consensus.Goldilocks.Obligations.meetsObligations_',
+                  'Consensus.Goldilocks.Simulation.accepted_')
+
+
+def renamed(name, current):
+    """The current name of a historical declaration: itself if it is current, else the one current
+    declaration the renames made of it (a `Refinement.*` name in any of the namespaces step 1 split it
+    into), else itself."""
+    if name in current:
+        return name
+    rest = '.'.join(RENAMED_COMPONENTS.get(c, c) for c in name.split('.'))
+    if rest.startswith(STEP1_OLD):
+        found = [p + rest[len(STEP1_OLD):] for p in STEP1_NEW if p + rest[len(STEP1_OLD):] in current]
+    else:
+        found = [rest] if rest in current else []
+    return found[0] if len(found) == 1 else name
+
+
 def closure(seeds, edges):
     seen = set()
     todo = list(seeds)
@@ -156,7 +207,7 @@ def retired_rows(previous, current):
             by, reason = RETIRED[short]
             kept[row['name']] = {**row, 'status-before-retirement': row.get('status'),
                                  'status': 'retired (not proved)', 'lean-status': 'removed',
-                                 'in_accepted_closure': False, 'direct_sorry': False,
+                                 'in_obligations_closure': False, 'direct_sorry': False,
                                  'blocked-by': [], 'retired-by': by, 'retirement-note': reason}
     unexpected = sorted(n for n in kept if n in current)
     if unexpected:
@@ -195,7 +246,7 @@ def ingest_cards(document, repository):
                 raise ValueError(f'Expected reviewed research verdict in {locator}')
             adversarial = bool(re.search(r'adversarial', card, re.I))
             for row in document['rows']:
-                if row['name'].rsplit('.', 1)[-1] == name:
+                if row['name'].rsplit('.', 1)[-1] == RENAMED_COMPONENTS.get(name, name):
                     row.update({'card-path': locator, 'card-commit': commit,
                                 'card-repo': repository,
                                 'derisk-verdict': 'research',
@@ -218,11 +269,12 @@ def main():
     parser.add_argument('--card-repo', default='fradamt-agent/workbench',
                         help='owner/repo containing the reviewed ingestion source commits')
     args = parser.parse_args()
-    root = 'Consensus.Goldilocks.Refinement.accepted'
+    root = 'Consensus.Goldilocks.Obligations.accepted'
     scope = 'ConsensusLean/Instances/Goldilocks/Lemmas'
-    baseline = run('git', 'rev-parse', 'fd7f498').strip()
+    # The ledger's first audit (old-lineage fd7f498, before the 2026-11-04 cutover; same tree).
+    baseline = run('git', 'rev-parse', 'eed6d0b5').strip()
     head = run('git', 'rev-parse', 'HEAD').strip()
-    path = Path('docs/accepted-status.json')
+    path = Path('docs/obligations-status.json')
     previous = json.loads(path.read_text()) if path.exists() else {'rows': []}
     card_repositories(previous)
     if args.ingest_cards:
@@ -255,6 +307,7 @@ def main():
             current[name] = (str(source), line, sorry)
             if sorry:
                 historical.add(name)
+    historical = {renamed(n, current) for n in historical}
     seeds = sorted(historical & current.keys())
     modules = sorted({current[n][0][:-5].replace('/', '.') for n in seeds})
     subprocess.run(['lake', 'build', '--no-build', 'spec-surface', *modules], check=True)
@@ -277,7 +330,7 @@ def main : IO Unit := do
     seeds = [aliases.get(n, n) for n in seeds]
     records = [json.loads(line) for line in run(
         'lake', 'exe', 'spec-surface', 'dependencies', '--from', root, *seeds,
-        '--modules', 'ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Accepted',
+        '--modules', 'ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete',
         *modules).splitlines()]
     missing = [r for r in records if 'missing' in r]
     if missing:
@@ -303,8 +356,8 @@ def main : IO Unit := do
         dependencies = sorted((closure([name], edges) & owners) - {name})
         proved = not (closure([name], edges) & owners)
         short = name.rsplit('.', 1)[-1]
-        if short in ('accepted_catchUp', 'accepted_heal', 'accepted_latency',
-                     'accepted_catchUp_ge_sleepy', 'accepted_latency_ge_sleepy'):
+        if short in ('contract_catchUp', 'contract_heal', 'contract_latency',
+                     'contract_catchUp_ge_sleepy', 'contract_latency_ge_sleepy'):
             area = 'coefficients'
         elif short.startswith('final_'):
             area = 'final liveness'
@@ -339,7 +392,7 @@ def main : IO Unit := do
         row = {'name': name, 'file:line': f'{file}:{line}',
                'owner-thread': prior.get('owner-thread', owner), 'area': area,
                'status': status, 'blocked-by': dependencies,
-               'in_accepted_closure': name in accepted,
+               'in_obligations_closure': name in accepted,
                'direct_sorry': name in owners,
                'lean-status': 'proved' if proved else 'direct-sorry' if name in owners else 'sorry-dependent',
                'status-source': 'compiled dependency audit' if proved else prior.get('status-source'),
@@ -358,19 +411,19 @@ def main : IO Unit := do
         if short in ('sleepy_query_sync', 'sleepy_safety_inputs'):
             row.pop('obstruction', None)
             if name not in owners and dependencies == [
-                    'Consensus.Goldilocks.Refinement.accepted_heal']:
+                    'Consensus.Goldilocks.contract_heal']:
                 row['status'] = 'unknown'
                 row['status-source'] = 'compiled dependency audit'
-                row['evidence'] = ('Body proved; full closure depends on accepted_heal through '
-                                   'K S A = acceptanceContract A (accepted_coefficients S A). '
+                row['evidence'] = ('Body proved; full closure depends on contract_heal through '
+                                   'K S A = goldilocksContract A (contract_coefficients S A). '
                                    'The query and Sleepy premise types include the sorry definition; '
                                    'this is not a direct sorry in the proof body.')
         if short == 'final_duty_proposal' and name not in owners and dependencies == [
-                'Consensus.Goldilocks.Refinement.accepted_heal']:
+                'Consensus.Goldilocks.contract_heal']:
             row['status'] = 'unknown'
             row['status-source'] = 'compiled dependency audit'
             row['evidence'] = ('Body proved by final_duty_proposal_run (#143); full closure depends on '
-                               'accepted_heal only through the FinalQuery type (K S A). '
+                               'contract_heal only through the FinalQuery type (K S A). '
                                'Not a direct sorry in the proof body.')
         # A proved row's prose evidence predates the proof; outside REFRESH (curated texts) it is
         # replaced by the audit fact, recorded at the first audit that found the closure sorry-free.
@@ -393,17 +446,19 @@ def main : IO Unit := do
                         'Historical removed declarations are listed separately, not counted as proved.',
                         'retired keeps prior rows of retired former owners; retirement is not proof closure.',
                         'Zero compiled sorry owners is not zero outstanding statements: a statement can be stated '
-                        'without a proof (docs/roadmap.md lists the stated, unproved ones).'],
+                        'without a proof (docs/roadmap.md lists the stated, unproved ones).',
+                        'Commit SHAs written before the 2026-11-04 cutover (79cdddc8) refer to the history archived in '
+                        'ethlabs-org/consensus-lean-coordination, not to this repository.'],
               'historical_removed': sorted(historical - current.keys()),
               'fields': {n: sorted(closure([n], edges) & owners) for n in sorted(accepted)
-                         if n.startswith('Consensus.Goldilocks.Refinement.accepted_')},
+                         if n.startswith(FIELD_PREFIXES)},
               'rows': rows,
               'retired': retired_rows(previous, current)}
     for key in ('research-cores', 'shared-cards'):
         if key in previous:
             result[key] = previous[key]
     path.write_text(json.dumps(result, indent=2) + '\n')
-    print(f'{len(accepted & owners)} Accepted leaves; {len(owners - accepted)} outside leaves; {len(rows)} rows')
+    print(f'{len(accepted & owners)} obligations leaves; {len(owners - accepted)} outside leaves; {len(rows)} rows')
 
 
 if __name__ == '__main__':

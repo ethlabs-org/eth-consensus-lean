@@ -115,8 +115,9 @@ every new commit's author, committer and co-author addresses are on the public a
 (`scripts/check-commit-emails.py`; a privacy check, not a trust check).
 
 Step 3c is **report only**, not a new trust gate. `scripts/sorry-inventory.py` reads the
-Accepted ledger's `toml sorry-inventory` block (`modules`, `roots`) and compiled tables
-headed `Declaration` and `Paper argument/status`. Names must be fully qualified; other
+`toml sorry-inventory` block (`modules`, `roots`) of the obligations ledger
+(`docs/obligations-dependencies.md`) and its compiled tables headed `Declaration` and
+`Paper argument/status`. Names must be fully qualified; other
 tables are explicitly listed as excluded (planned/draft material is not compiled coverage).
 Missing ledger, empty/missing roots, stale artifacts, nonexistent rows and unmapped direct
 `sorryAx` owners report incomplete; no generic Accepted structure substitutes for an absent
