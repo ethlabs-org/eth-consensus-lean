@@ -13,8 +13,8 @@ the Sleepy `carryAt_of_writer_before` with the extra premise that the head was a
 `a₀`), and what a writer of a fast lock did with its counted votes before `t_s + 2Δ`
 (`fastLock_writer`, main's Sleepy `result_writer` / `optimistic_writer` for both origins of a fast
 lock, the fast test's selected block instead of the result), with the counted votes nonempty
-(`fastLock_counted_nonempty`). The private helpers of `Compose/Sleepy/Transport.lean` are
-repeated here (they are private there). -/
+(`fastLock_counted_nonempty`). The timing and writer-carry steps are the shared ones of
+`Compose/Sleepy/Timing` and `Compose.carryAt_of_writer_heads`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -78,31 +78,15 @@ variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
 
 /-- A last wake is the time of a restart at or before the cut. -/
 theorem lastWake_restart {y : Fin P.n} {w : Time} :
-    ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w
-  | 0, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨0, le_rfl, hr, WithBot.coe_injective h⟩
-    · simp at h
-  | c + 1, h => by
-    unfold ACTrace.lastWake at h
-    split_ifs at h with hr
-    · exact ⟨c + 1, le_rfl, hr, WithBot.coe_injective h⟩
-    · obtain ⟨k, hk, h'⟩ := lastWake_restart h
-      exact ⟨k, hk.trans (Nat.le_succ c), h'⟩
+    ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w :=
+  Compose.lastWake_coe
 
 /-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
 `max(τ, a) + Δ`. -/
 theorem deadline_le_restarts {y : Fin P.n} {c : Nat} {a : Time}
     (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
-    T.deadline y c τ ≤ max τ a + P.Δ := by
-  unfold ACTrace.deadline
-  rcases hw : T.lastWake y c with _ | w
-  · change τ + P.Δ ≤ max τ a + P.Δ
-    linarith [le_max_left τ a]
-  · obtain ⟨k, hk, hrk, rfl⟩ := lastWake_restart hw
-    change max τ (T.time k) + P.Δ ≤ max τ a + P.Δ
-    linarith [max_le_max (le_refl τ) (h k hk hrk)]
+    T.deadline y c τ ≤ max τ a + P.Δ :=
+  Compose.ac_deadline_le_of_restarts h τ
 
 end Deadline
 
@@ -112,66 +96,6 @@ section Node
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
-
-private theorem etime_lt {t t' : Time} : SA.ETime.of t < SA.ETime.of t' ↔ t < t' := by
-  simp [SA.ETime.of]
-
-private theorem etime_le {t t' : Time} : SA.ETime.of t ≤ SA.ETime.of t' ↔ t ≤ t' := by
-  simp [SA.ETime.of]
-
-/-- **A stamp is not earlier than the acceptance** (main's Sleepy `stamp_ge_of_accept`). -/
-private theorem stamp_ge_of_accept (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n FGP} (hk : T.AcceptAt y k B)
-    (hB : B.root ≠ sp.genesisRoot) :
-    ∀ c, k + 1 ≤ c → SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root := by
-  have hpost : ∀ c (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y c ℓ → k ≤ c →
-      (ℓ.call = .block B ∨ SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root) →
-      SA.ETime.of (T.time k) ≤ (T.post c).blockStamp B.root := by
-    intro c ℓ hc hkc hpre
-    have hΦ : FrameOK ℓ.frame := by
-      rcases hr.frameLaw y hy c ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
-    have he := hr.exec c ℓ hc.2 (hc.1 ▸ hy)
-    rw [hc.1] at he
-    have hp : T.post c =
-        ((SA.goldilocksSA sp FGP ro).step y (T.state y c) ℓ.frame (T.time c) ℓ.call).1 := by
-      rw [he]
-    have htk : SA.ETime.of (T.time k) ≤ SA.ETime.of (T.time c) := etime_le.2 (hr.time_mono hkc)
-    obtain ⟨hblk, -, hoth⟩ :=
-      SA.step_blockStamp_eq ro y (T.state y c) hΦ (hr.time_nonneg c) ℓ.call
-    rw [hp]
-    generalize ℓ.call = cl at hpre hblk hoth ⊢
-    cases cl with
-    | block B' =>
-      rw [hblk B' rfl, Function.update_apply]
-      split_ifs with h
-      · exact htk
-      · rcases hpre with hpre | hpre
-        · cases hpre
-          exact absurd rfl h
-        · exact hpre
-    | restart =>
-      change _ ≤ (SA.acRestart sp ro y (T.state y c) ℓ.frame (T.time c)).1.blockStamp B.root
-      rcases ((SA.restart_state sp) FGP ro y (T.state y c) ℓ.frame (T.time c) hΦ
-        (hr.time_nonneg c)).2.2.2.2.2.2.2.2.2.2 B.root with h | ⟨h, -⟩
-      · rw [h]; simp [SA.SAState.initial, hB]
-      · rw [h]; exact htk
-    | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-    | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
-  intro c hc
-  induction c, hc using Nat.le_induction with
-  | base =>
-    obtain ⟨ℓ, hcl, hcall⟩ := hk
-    rw [Trace.state_succ_of_call T hcl]
-    exact hpost k ℓ hcl le_rfl (Or.inl hcall)
-  | succ c hkc ih =>
-    by_cases hn : ∃ ℓ, T.CallAt y c ℓ
-    · obtain ⟨ℓ, hcl⟩ := hn
-      rw [Trace.state_succ_of_call T hcl]
-      exact hpost c ℓ hcl (by omega) (Or.inr ih)
-    · rw [Trace.state_succ_of_not T fun ℓ hcl => hn ⟨ℓ, hcl⟩]
-      exact ih
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call (main's Sleepy `readPoint_slot`). -/
@@ -214,91 +138,12 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
         (Hv.root = sp.genesisRoot ∨
           ∃ k, T.AcceptAt w k Hv ∧ a₀ ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
     SA.CarryAt T U y i e s CV := by
-  have hU := hr.coherent
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  obtain ⟨-, hys, hyj, -⟩ := SA.castAt_spec hr hy hc
-  have hsi : sp.slot (T.time i) = s + 1 := by omega
-  have hti : sp.ts s + 4 * sp.Δ ≤ T.time i := by
-    have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s + 1 : Nat) : Int)).2 (by rw [hsi])
-    rwa [hts] at this
-  have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts s := by
-    have hj' : SA.joined sp (T.post i) (T.time i) := by
-      unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
-    intro k hk hrk
-    have := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
-    rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
-  have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
-    intro k hk τ hτ
-    have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
-    have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith)
-    change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
-    linarith
-  obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy i ℓ hc.1
-  refine ⟨hr.awake_of_call y hy i ℓ hc.1, hyj, fun v hv => ?_, fun v hv => ?_⟩
-  · obtain ⟨-, -, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
-    refine ⟨Hv, hHv, hHvr, fun X hX => ?_⟩
-    rcases hacc with hg | ⟨kw, hkw, hkwa, hkwt⟩
-    · left
-      obtain rfl : Hv = G := hU.1 hHv hGU (hg.trans hGr.symm)
-      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hX with rfl | ⟨Q, -, hQ⟩
-      · exact hGr
-      · exact absurd (hQ.2.2.symm.trans hGp) (Option.some_ne_none _)
-    obtain ⟨ky, hky, ⟨ℓk, hck, hcall⟩, hkyt⟩ := hsync.2 w hw kw Hv hkw hkwa
-      (by linarith) y hy i ℓ hc.1 (by linarith [hdl i le_rfl _ hkwt]) hFHv
-    have hkyt' : T.time ky < sp.ts s + 3 * sp.Δ := hkyt.trans (hdl ky hky _ hkwt)
-    rcases frame_anc_accepted hr hy ky ℓk hck Hv
-      ((SA.accept_new sp hr hy ⟨ℓk, hck, hcall⟩).1 ℓk hck) X hX with hg | ⟨k, hk, hkX⟩
-    · exact Or.inl hg
-    · exact Or.inr ⟨k, hkX, lt_of_le_of_lt (hr.time_mono hk) hkyt'⟩
-  · obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, -⟩ := hW v hv
-    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hsync.1 w hw k v hsend (ha₀.trans hk1)
-      (by linarith) y hy i ℓ hc.1 (by linarith [hdl i le_rfl _ hk2])
-    have hk'lt : T.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
-    obtain ⟨ℓ', hc', -⟩ := id hp
-    have hnr : ∀ r, k' + 1 ≤ r → r < i + 1 → ¬ T.RestartAt y r := by
-      rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
-      obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
-      have h₁ := hprev k' (by omega) ℓ' hc'
-      have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
-      linarith
-    have hsk' : sp.slot (T.time k') = s :=
-      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith)
-    have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
-        SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
-      intro u hu
-      have hus : u.slot = s := SA.state_pool_slot sp hr hy (k' + 1) s u hu
-      obtain ⟨hpool, hstamp⟩ := readPoint_pool_of_ne hr hy hc (σ := s) (by omega)
-      have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
-      refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
-      rw [← hstamp u hus]
-      rcases SA.pool_origin hr hy (i + 1) u (by rw [hus]; exact hu') with
-        ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-      · rw [hst₁, etime_lt]
-        by_cases hk₁k' : k₁ ≤ k'
-        · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
-        · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
-          · have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
-            rw [hus] at h
-            linarith
-          · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
-              (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
-      · rw [hst₁, etime_lt]
-        have := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
-        linarith
-    by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
-    · exact Or.inl (hheld v hv')
-    · rcases SA.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
-        h | ⟨a, ha, c, hc'', hac, hav, hcv⟩
-      · rw [hvs] at h
-        exact absurd h hv'
-      · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
-        have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot sp hr hy _ s a ha',
-          SA.state_pool_slot sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
-        · rintro rfl; exact hv' ha'
-        · rintro rfl; exact hv' hc'
+  refine carryAt_of_writer_heads hr ha₀ hb hw hy hc hs (Or.inl hsync) fun v hv => ?_
+  obtain ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
+  refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
+  rcases hacc with hg | hw'
+  · exact Or.inr (Or.inl hg)
+  · exact Or.inl hw'
 
 /-- **Head-only relay to a voter, after the GST** (`hr4-boot-carry.md` §4, §7): a block `W`
 above the voter's `Σ.F` that an honest writer accepted in `[a₀, t_s + 2Δ)`, under `Sync[a₀, b]`
@@ -499,11 +344,11 @@ theorem fastLock_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
     refine ⟨hvs, ?_, R, hΦXU hR, hRr, Anc.mono hΦXU hCR, ?_⟩
     · rcases SA.pool_origin hr hx i₀ v (by rw [hvs]; exact hvp) with
         ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, hst, B, hB, hvB⟩
-      · rw [hst, etime_lt] at hvst
+      · rw [hst, SA.etime_of_lt_of] at hvst
         exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
           (by rw [← hvs]; exact_mod_cast hsl), hvst⟩
       · exfalso
-        rw [hst, etime_lt] at hvst
+        rw [hst, SA.etime_of_lt_of] at hvst
         have hBv := (SA.frame_validPayload sp hr hx hck B hB).1 v hvB
         have hBs := SA.frame_slot_le sp hr hx hck B hB
         have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
@@ -521,9 +366,9 @@ theorem fastLock_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
           rw [Option.some.inj (hc'.2.symm.trans hcX.2), htick] at hcall
           cases hcall
         rw [← hRr] at hbst
-        have h := (stamp_ge_of_accept hr hx hacc (SA.accept_ne_genesis sp hr hx hacc) i₀
+        have h := (blockStamp_ge_of_accept hr hx hacc (SA.accept_ne_genesis sp hr hx hacc) i₀
           hki).trans_lt hbst
-        rw [etime_lt] at h
+        rw [SA.etime_of_lt_of] at h
         linarith
   · have hc := hp.1
     have hti : T.time i₀ < sp.ts (sp.slot (T.time i₀)) + 2 * sp.Δ := by

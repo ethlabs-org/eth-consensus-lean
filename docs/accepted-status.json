@@ -678,7 +678,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Healing.fastLock_counted_nonempty",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Relay.lean:558",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Healing/Retention/Relay.lean:403",
       "owner-thread": "T-01a18b7f-055c-74c7-ae28-91217f676dcd",
       "area": "healing",
       "status": "lean-proved",
