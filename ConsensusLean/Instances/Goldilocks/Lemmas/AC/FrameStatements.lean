@@ -1,12 +1,12 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
 /-! # Goldilocks: the frame statements, assembled (G0.3, G0.4 (frame))
 
-`FrameStatements` (`Statements/Frame`):
+`FrameStatements` (`Lemmas/AC/FrameClaims`):
 
 * G0.4 (frame): the viable ancestor exists and is unique (`viableAncestor_spec` and antisymmetry),
   a candidate is its own (`viableAncestor_self`), the viable tree is closed under ancestors down
@@ -27,12 +27,14 @@ variable {n : Nat} {FGP ACP : Type}
 /-! ## G0.4 (frame) -/
 
 theorem viable_ancestor_exists : ViableAncestorExists := by
+  rw [viableAncestorExists_iff]
   intro n FGP ACP Φ B hΦ hB
   have hs := SA.viableAncestor_spec hΦ hB
   refine ⟨hs, fun A hA => ?_⟩
   exact Anc.antisymm hΦ.coherent (hs.2.2 A hA.1 hA.2.1) (hA.2.2 _ hs.1 hs.2.1)
 
 theorem viable_ancestor_self : ViableAncestorSelf := by
+  rw [viableAncestorSelf_iff]
   intro n FGP ACP Φ B hΦ hc
   have hB : B ∈ Φ.tree := by
     rcases hc with h | h
@@ -41,10 +43,12 @@ theorem viable_ancestor_self : ViableAncestorSelf := by
   exact SA.viableAncestor_self hΦ hB hc
 
 theorem viable_tree_ancestor_closed : ViableTreeAncestorClosed := by
+  rw [viableTreeAncestorClosed_iff]
   rintro n FGP ACP Φ S A B ⟨-, -, W, hW, hWh, hBW⟩ hA hFA hAB
   exact ⟨hA, hFA, W, hW, hWh, hAB.trans hBW⟩
 
 theorem frame_parent_closed : FrameParentClosed := by
+  rw [frameParentClosed_iff]
   intro n FGP ACP Φ C hΦ hC hne
   rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 C hC) with h | ⟨P, -, hP⟩
   · exact absurd h hne
@@ -53,6 +57,7 @@ theorem frame_parent_closed : FrameParentClosed := by
 /-! ## G0.3 (frame) -/
 
 theorem frame_step_adds_block : FrameStepAddsBlock := by
+  rw [frameStepAddsBlock_iff]
   intro n FGP ACP Φ Φ' B h
   rw [h.tree_eq]
   exact ⟨⟨Set.mem_insert _ _, h.F'_anc_B⟩, fun X hX => hX.1⟩
@@ -96,7 +101,8 @@ variable {Φ : Nat → Frame n FGP ACP} {U : Set (Block n FGP ACP)}
 previous tree. -/
 private theorem insert_subset (h : FrameSeqIn Φ U) {i : Nat} {B : Block n FGP ACP}
     (hs : FrameStep (Φ i) B (Φ (i + 1))) : insert B (Φ i).tree ⊆ U := by
-  have hB : B ∈ (Φ (i + 1)).tree := (frame_step_adds_block n FGP ACP _ _ B hs).1
+  have hB : B ∈ (Φ (i + 1)).tree := (frameStepAddsBlock_iff.mp frame_step_adds_block
+    n FGP ACP _ _ B hs).1
   exact Set.insert_subset (h.subset _ hB) (h.subset i)
 
 /-- Every frame of a sequence inside `U` is rooted. -/
@@ -104,7 +110,7 @@ private theorem rooted (h : FrameSeqIn Φ U) (i : Nat) : (Φ i).Rooted := by
   induction i with
   | zero => exact h.rooted
   | succ i ih =>
-    rcases h.seq i with he | ⟨B, hs⟩
+    rcases frameSeq_iff.mp h.seq i with he | ⟨B, hs⟩
     · exact he ▸ ih
     · exact hs.rooted'
 
@@ -114,16 +120,17 @@ private theorem F_mono (h : FrameSeqIn Φ U) {i j : Nat} (hij : i ≤ j) :
   induction hij with
   | refl => exact .refl
   | @step j _ ih =>
-    rcases h.seq j with he | ⟨B, hs⟩
+    rcases frameSeq_iff.mp h.seq j with he | ⟨B, hs⟩
     · exact he ▸ ih
     · exact ih.trans (hs.F_anc_F'.mono (insert_subset h hs))
 
 theorem frame_retention : FrameRetention := by
+  rw [frameRetention_iff]
   intro n FGP ACP Φ U h i j hij X hX hFX
   induction hij with
   | refl => exact hX
   | @step j hij ih =>
-    rcases h.seq j with he | ⟨B, hs⟩
+    rcases frameSeq_iff.mp h.seq j with he | ⟨B, hs⟩
     · rw [he] at hFX ⊢
       exact ih hFX
     · have hIU := insert_subset h hs
@@ -144,17 +151,21 @@ theorem frame_retention : FrameRetention := by
         anc_of_anc_U h.coherent hIU hroot hF'm hFX (Set.mem_insert_of_mem _ hXj)⟩
 
 theorem frame_never_returns : FrameNeverReturns := by
+  rw [frameNeverReturns_iff]
   intro n FGP ACP Φ U h i j k hij hjk X hX hXj hXk
   have hFk : Anc U (Φ k).F X := ((rooted h k).2 X hXk).mono (h.subset k)
-  exact hXj (frame_retention n FGP ACP Φ U h i j hij X hX ((F_mono h hjk).trans hFk))
+  exact hXj (frameRetention_iff.mp frame_retention
+    n FGP ACP Φ U h i j hij X hX ((F_mono h hjk).trans hFk))
 
 theorem frame_enters_once : FrameEntersOnce := by
+  rw [frameEntersOnce_iff]
   intro n FGP ACP Φ U h i j B hi hj
   have key : ∀ {a b}, a < b → FrameStep (Φ a) B (Φ (a + 1)) → FrameStep (Φ b) B (Φ (b + 1)) →
       False := fun {a b} hab ha hb =>
-    frame_never_returns n FGP ACP Φ U h (a + 1) b (b + 1) hab (Nat.le_succ b) B
-      (frame_step_adds_block n FGP ACP _ _ B ha).1 hb.new
-      (frame_step_adds_block n FGP ACP _ _ B hb).1
+    frameNeverReturns_iff.mp frame_never_returns
+      n FGP ACP Φ U h (a + 1) b (b + 1) hab (Nat.le_succ b) B
+      (frameStepAddsBlock_iff.mp frame_step_adds_block n FGP ACP _ _ B ha).1 hb.new
+      (frameStepAddsBlock_iff.mp frame_step_adds_block n FGP ACP _ _ B hb).1
   rcases lt_trichotomy i j with hlt | heq | hgt
   · exact (key hlt hi hj).elim
   · exact heq

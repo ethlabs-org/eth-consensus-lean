@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
 public import Mathlib.Data.Set.Function
 public import Mathlib.Data.Set.Finite.Basic
 public import Mathlib.Tactic.Tauto
@@ -132,8 +132,9 @@ theorem step_Φ₁_Φ₂ : FrameStep Φ₁ b₂ Φ₂ where
 /-- (a) The hypotheses of `FrameRetention`, `FrameNeverReturns` and `FrameEntersOnce` hold
 together. -/
 theorem seq_hyps : FrameSeqIn seq {g, b₁, b₂} := by
-  refine ⟨fun i => ?_, frameOK_Φ₀.rooted, fun i => ?_, coherent_U⟩
-  · rcases i with _ | _ | i
+  refine ⟨frameSeq_iff.mpr ?_, frameOK_Φ₀.rooted, fun i => ?_, coherent_U⟩
+  · intro i
+    rcases i with _ | _ | i
     · exact Or.inr ⟨b₁, step_Φ₀_Φ₁⟩
     · exact Or.inr ⟨b₂, step_Φ₁_Φ₂⟩
     · exact Or.inl rfl

@@ -234,7 +234,10 @@ example := ``Consensus.Goldilocks.FG.ClientSafety
 example := ``Consensus.Goldilocks.FG.AccountableSafety
 example := ``Consensus.Goldilocks.FG.FGSafety
 
-/-! ## Goldilocks Common and Frame -/
+/-! ## Goldilocks Common and Frame
+
+Claim names are preserved in `Lemmas/Common/Claims` and `Lemmas/AC/FrameClaims`, outside the
+trusted surface; the frame-sequence vocabulary also lives in the latter. -/
 
 example := ``Consensus.Goldilocks.Anc
 example := ``Consensus.Goldilocks.AncAntisymm

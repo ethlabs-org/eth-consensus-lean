@@ -232,30 +232,13 @@ protected = true
 about = "the node as a chain Shape; compile"
 
 [[layer]]
-name = "Instances.Goldilocks.Statements.Common"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Common"]
-expose = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common"]
-protected = true
-about = "F.2, F.3, F.5 (schema): no Trace"
-
-[[layer]]
 name = "Instances.Goldilocks.Statements.FG"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.FGSafety"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Statements.Common"]
+         "Instances.Goldilocks.Spec.FG"]
 protected = true
 about = "M1 FG safety, chain level only"
-
-[[layer]]
-name = "Instances.Goldilocks.Statements.Frame"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Frame"]
-expose = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Statements.Common"]
-protected = true
-about = "frame lemmas statements"
 
 [[layer]]
 name = "Instances.Goldilocks.Statements.FGStore"
@@ -263,8 +246,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.FGStore"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
-         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame"]
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.FG"]
 protected = true
 about = "FG store statements"
 
@@ -274,8 +256,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.AC"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
-         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.Frame"]
+         "Instances.Goldilocks.Spec.SA"]
 protected = true
 about = "AC statements over AC traces and frames; no FG"
 
@@ -287,8 +268,7 @@ expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.Node",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore"]
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore"]
 protected = true
 about = "C0.1, C0.3, C0.4, C0.2: stated for any AC (no Statements.AC, no Spec.SA, no Spec.Run)"
 
@@ -304,8 +284,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC"]
 protected = true
 about = "run-level composition, persistence, service, healing, regimes (listed by file: no Statements.Compose module)"
@@ -318,8 +297,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose"]
 protected = true
@@ -329,15 +307,14 @@ about = "G1.5 and the engine simulation"
 name = "Instances.Goldilocks.Lemmas.Common"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Common"]
 sorry = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Statements.Common"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common"]
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.FGChain"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.FGChain"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Spec.FG",
          "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Lemmas.Common"]
 about = "chain-level FG helpers"
 
@@ -347,8 +324,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.FGStore"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
-         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.FG",
          "Instances.Goldilocks.Statements.FGStore", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain"]
 
@@ -358,8 +334,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.AC"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
-         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.AC",
          "Instances.Goldilocks.Lemmas.Common"]
 
 [[layer]]
@@ -370,8 +345,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -385,8 +359,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -401,8 +374,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
@@ -414,7 +386,7 @@ name = "Instances.Goldilocks.Proofs.FGSafety"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Statements.Common",
+         "Instances.Goldilocks.Spec.FG",
          "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain"]
 about = "Goldilocks milestone"
@@ -425,8 +397,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.FGStore"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
-         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.FG",
          "Instances.Goldilocks.Statements.FGStore", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore"]
 about = "Goldilocks milestone"
@@ -437,8 +408,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ACBase"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
-         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.AC",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
 about = "Goldilocks milestone"
 
@@ -448,8 +418,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ACSteps"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC",
-         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Statements.AC",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
 about = "Goldilocks milestone"
 
@@ -461,8 +430,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -477,8 +445,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -493,8 +460,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -509,8 +475,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -525,8 +490,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
@@ -543,8 +507,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
@@ -561,8 +524,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.FGStore",
+         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Statements.AC", "Instances.Goldilocks.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Statements.Compose", "Instances.Goldilocks.Statements.Refinement",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
@@ -606,11 +568,11 @@ prefixes = ["Solution"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour", "Proofs.RegimesRealizable",
          "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
-         "Instances.Goldilocks.Statements.Common", "Instances.Goldilocks.Statements.FG",
+         "Instances.Goldilocks.Statements.FG",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.FGChain",
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Spec.Frame",
          "Instances.Goldilocks.Spec.Trace", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
-         "Instances.Goldilocks.Statements.Frame", "Instances.Goldilocks.Statements.AC",
+         "Instances.Goldilocks.Statements.AC",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Statements.FGStore",
          "Instances.Goldilocks.Lemmas.FGStore", "Instances.Goldilocks.Proofs.FGStore",
@@ -633,8 +595,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.Trace",
          "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Refinement.Defs",
-         "Instances.Goldilocks.Statements.Common",
-         "Instances.Goldilocks.Statements.FG", "Instances.Goldilocks.Statements.Frame",
+         "Instances.Goldilocks.Statements.FG",
          "Instances.Goldilocks.Statements.FGStore", "Instances.Goldilocks.Statements.AC",
          "Instances.Goldilocks.Statements.ComposeAnyAC", "Instances.Goldilocks.Statements.Compose",
          "Instances.Goldilocks.Statements.Refinement", "Instances.Goldilocks.Lemmas.Common",

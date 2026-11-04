@@ -7,6 +7,11 @@ are recorded, not approved: each commit touching a trusted path carries a `Trust
 (`scripts/review-boundary.sh`), and `scripts/push-main.sh` comments each landing on #129. This file keeps the record
 of the approvals made under the tag; the tag stays at its last commit.
 
+Common/Frame claim aliases and the frame-sequence vocabulary formerly covered by the record now
+live in `Lemmas/Common/Claims` and `Lemmas/AC/FrameClaims`, outside the trusted surface. The
+mathematical statements and names are unchanged; no Challenge statement or Solution proof needs
+their bodies. The remaining `Spec/Frame` semantics stay protected.
+
 **Previous rule (owner, #2, 2026-10-30 to 2026-11-01): nothing blocks on the owner.** The tag was an agent approval: an agent
 other than the change's author (claude-ethlabs, or the amp-orbs coordinator) moves it once the author has done a
 fidelity read-back (a subagent, in the author's own session) and CI's fast check is green. The tag message names

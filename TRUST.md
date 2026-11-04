@@ -41,8 +41,10 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
 - **Protected-surface drift:** the same generator and verdict over the **protected surface**, against
   `scripts/instance-spec-snapshot.txt`. Its modules are the inventory's 6th column (`scripts/check-boundaries.py`,
   from `scripts/boundaries.toml` alone): every module of the default library whose file `[checks] trusted_paths`
-  covers and whose layer is not trusted. Today these are 61 modules: every module of the `protected` layers
+  covers and whose layer is not trusted. Today these are 59 modules: every module of the `protected` layers
   (Goldilocks `Spec`, `Statements` and `Refinement/Defs.lean`; the Bft, Streamlet and Tendermint `Spec`).
+  Common/Frame claim aliases and frame-sequence vocabulary live in non-exposed Lemmas leaves,
+  outside that surface; their names and propositions are preserved and audited through the test root.
   check-boundaries.py fails if a `protected` layer's module is not in it or a trusted
   layer's module is. Like the Spec snapshot, it fails step 4 on any drift (a changed definition body or type, an
   added or removed constant, the pins/options header) until `--update-snapshot` regenerates it and the diff is

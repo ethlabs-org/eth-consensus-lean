@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Bft.Spec
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep
@@ -57,6 +58,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
@@ -420,7 +422,6 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 public import ConsensusLean.Instances.Goldilocks.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Statements.AC.Steps
-public import ConsensusLean.Instances.Goldilocks.Statements.Common
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Statements.Compose.Persist
@@ -430,7 +431,6 @@ public import ConsensusLean.Instances.Goldilocks.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Local
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Statements.FGStore.Trace
-public import ConsensusLean.Instances.Goldilocks.Statements.Frame
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Statements.Healing.Recovery

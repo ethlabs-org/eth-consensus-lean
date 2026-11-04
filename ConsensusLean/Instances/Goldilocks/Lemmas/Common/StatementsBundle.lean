@@ -1,12 +1,12 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Common
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 
 public section
 
 /-! # Goldilocks: the Common statements, assembled
 
-`CommonStatements` (`Statements/Common`): F.2 (a), (b) are `Anc.antisymm` and `Anc.total`;
+`CommonStatements` (`Lemmas/Common/Claims`): F.2 (a), (b) are `Anc.antisymm` and `Anc.total`;
 F.2 (c), the deepest common ancestor, is the common ancestor of greatest slot (the common
 ancestors of `B` lie on the chain of ancestors of `B`, with slots at most `B.slot`); F.3 is the
 injectivity of the digest's content; and the slot of a time is the greatest slot that starts by
@@ -17,6 +17,7 @@ namespace Consensus.Goldilocks
 /-- **F.2 (c).** -/
 theorem deepest_common_ancestor : DeepestCommonAncestor := by
   classical
+  rw [deepestCommonAncestor_iff]
   intro n FGP ACP S R B C hS hRB hRC
   let P : Nat → Prop := fun k => ∃ D, Anc S D B ∧ Anc S D C ∧ D.slot = k
   have hR : P R.slot := ⟨R, hRB, hRC, rfl⟩
@@ -34,6 +35,7 @@ theorem deepest_common_ancestor : DeepestCommonAncestor := by
 
 /-- **F.3.** -/
 theorem digest_determines_block : DigestDeterminesBlock := by
+  rw [digestDeterminesBlock_iff]
   intro n FGP ACP dg B C hcoll hB hC hr hp
   obtain ⟨h1, h2, h3, h4, h5⟩ := hcoll (hB.symm.trans (hr.trans hC))
   cases B
@@ -53,6 +55,7 @@ private theorem le_slotTime (P : Params) (s : Nat) : (s : Time) ≤ P.slotTime s
 
 /-- **The slot of a time.** -/
 theorem slotOf_spec : SlotOfSpec := by
+  rw [slotOfSpec_iff]
   intro P t ht
   have h0 : P.slotTime 0 ≤ t := by rw [P.slotTime_zero]; exact ht
   refine ⟨Nat.findGreatest_spec (P := fun s => P.slotTime s ≤ t) (Nat.zero_le _) h0, ?_⟩
@@ -66,8 +69,8 @@ theorem slotOf_spec : SlotOfSpec := by
 
 /-- **The Common statements.** -/
 theorem common_statements : CommonStatements where
-  ancAntisymm := fun _ _ _ _ _ _ hS h h' => Anc.antisymm hS h h'
-  ancTotal := fun _ _ _ _ _ _ _ hS h h' => Anc.total hS h h'
+  ancAntisymm := ancAntisymm_iff.mpr fun _ _ _ _ _ _ hS h h' => Anc.antisymm hS h h'
+  ancTotal := ancTotal_iff.mpr fun _ _ _ _ _ _ _ hS h h' => Anc.total hS h h'
   deepestCommonAncestor := deepest_common_ancestor
   digestDeterminesBlock := digest_determines_block
   slotOfSpec := slotOf_spec

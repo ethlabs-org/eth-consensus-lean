@@ -112,24 +112,6 @@ structure FrameStep (Φ : Frame n FGP ACP) (B : Block n FGP ACP) (Φ' : Frame n 
   /-- `Φ'.tree` is the blocks of `Φ.tree ∪ {B}` that extend `Φ'.F`. -/
   tree_eq : Φ'.tree = {X | X ∈ insert B Φ.tree ∧ Goldilocks.Anc (insert B Φ.tree) Φ'.F X}
 
-/-- A sequence of frames that evolves by steps: each frame equals the previous one or is
-reached from it by one step. -/
-def FrameSeq (Φ : Nat → Frame n FGP ACP) : Prop :=
-  ∀ i, Φ (i + 1) = Φ i ∨ ∃ B, FrameStep (Φ i) B (Φ (i + 1))
-
-/-- A frame sequence inside `U`: it evolves by steps, its first frame is rooted, and all its
-trees lie in the coherent set `U` (at a node, the accepted blocks of the run). Frames alone allow
-a block that left the tree to come back under a reused root; `U` excludes it. -/
-structure FrameSeqIn (Φ : Nat → Frame n FGP ACP) (U : Set (Block n FGP ACP)) : Prop where
-  /-- Each frame equals the previous one or is reached from it by one step. -/
-  seq : FrameSeq Φ
-  /-- The first frame is rooted. -/
-  rooted : (Φ 0).Rooted
-  /-- Every tree lies in `U`. -/
-  subset : ∀ i, (Φ i).tree ⊆ U
-  /-- `U` is coherent. -/
-  coherent : Coherent U
-
 end Consensus.Goldilocks
 
 end

@@ -4,8 +4,8 @@ public import ConsensusLeanTest.GoldilocksFrame
 
 /-! # Rejections for the Goldilocks frame-sequence statements
 
-`FrameNeverReturns` and `FrameEntersOnce` (`Statements/Frame.lean`) assume `FrameSeqIn Φ U`: the
-frames evolve by steps, the first frame is rooted, every tree lies in `U`, and `U` is coherent.
+`FrameNeverReturns` and `FrameEntersOnce` (`Lemmas/AC/FrameClaims.lean`) assume `FrameSeqIn Φ U`:
+the frames evolve by steps, the first frame is rooted, every tree lies in `U`, and `U` is coherent.
 `GoldilocksFrame` shows these premises hold together (`seq_hyps`). Labelled by kind (CONTRIBUTING
 "Statements"):
 
@@ -186,7 +186,7 @@ theorem step_Τ₂_Τ₃ : FrameStep Τ₂ x Τ₃ where
     · rintro ⟨h, -⟩; tauto
 
 /-- `σ` evolves by steps. -/
-theorem seq_σ : FrameSeq σ := fun i => by
+theorem seq_σ : FrameSeq σ := frameSeq_iff.mpr fun i => by
   rcases i with _ | _ | _ | _ | i
   · exact Or.inr ⟨b₁, step_Φ₀_Φ₁⟩
   · exact Or.inr ⟨c, step_Φ₁_Ψ₂⟩
@@ -241,7 +241,7 @@ theorem frameNeverReturns_needs_rooted :
     FrameSeq τ ∧ ¬ (τ 0).Rooted ∧ (∀ i, (τ i).tree ⊆ ({g, b₁, y, x} : Set B1)) ∧
       Coherent ({g, b₁, y, x} : Set B1) ∧
       0 ≤ 1 ∧ 1 ≤ 3 ∧ x ∈ (τ 0).tree ∧ ¬ (x ∉ (τ 1).tree → x ∉ (τ 3).tree) := by
-  refine ⟨fun i => ?_, fun h => ?_, fun i => ?_, coherent_τ, by decide, by decide,
+  refine ⟨frameSeq_iff.mpr fun i => ?_, fun h => ?_, fun i => ?_, coherent_τ, by decide, by decide,
     by simp [τ, Τ₀], fun h => h (by simp [τ, Φ₁, g, b₁, x]) (by simp [τ, Τ₃])⟩
   · rcases i with _ | _ | _ | i
     · exact Or.inr ⟨b₁, step_Τ₀_Φ₁⟩

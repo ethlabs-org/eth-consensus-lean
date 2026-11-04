@@ -10,8 +10,11 @@ To check a claim: find its node in CLAIMS (its §"Lean status" names the Lean st
 statement in `ConsensusLean/Instances/Goldilocks/Statements/` (trusted surface, protected snapshot), then its row and
 modelling notes in the section below. The finished milestones are the statements of `Challenge.lean`; the
 comparator checks that `Solution.lean` proves exactly them, each by its `Proofs/<M>/Main.lean`. Every other
-statement (Common, Frame, Healing, the refinement interface) is outside `Challenge`; `docs/roadmap.md` gives its
-status.
+statement outside `Challenge` (including the refinement interface) has its status in
+`docs/roadmap.md`.
+Common and Frame claims are proof-side definitions in `Lemmas/Common/Claims` and
+`Lemmas/AC/FrameClaims`, outside the trusted surface and `Challenge`; their names and meanings
+are unchanged. The latter also owns the frame-sequence vocabulary, not needed by any Challenge statement.
 
 | `Challenge` statement | `Statements/` module | CLAIMS nodes | Section |
 |---|---|---|---|
@@ -106,7 +109,8 @@ not collide (consensus-lean#50).
 
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks `d9ea8d86` (goldilocks#21). Layout: decomposition §4.1
 (workbench `repos/goldilocks/notes/architecture/decomposition.md`). The statements are not a milestone of their
-own: `FGStore` and `ACBase` use them.
+own: `FGStore` and `ACBase` use the underlying Spec mathematics. Their claim aliases and bundles
+live in `Lemmas/Common/Claims` and `Lemmas/AC/FrameClaims`, not the protected statement inventory.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -115,7 +119,7 @@ own: `FGStore` and `ACBase` use them.
 | — | SPEC `shared/composition.tex` §Model; `shared/fg.tex` `δ_t` | shared parameters (the two delay bounds `Δ` and `Δ_F > 0` are not ordered: two-bound network, `docs/decisions.md` 2026-11-02), quorum, public time, `slot(t)` | — | `Consensus.Goldilocks.Params`, `Consensus.Goldilocks.Params.q`, `Consensus.Goldilocks.Params.IsPublic`, `Consensus.Goldilocks.Params.slotOf` |
 | — | SPEC `shared/composition.tex` §"The FG frame"; `goldilocks-spec.tex` `viable_ancestor` | frame, viable tree, viable ancestor, rooted tree | — | `Consensus.Goldilocks.Frame`, `Consensus.Goldilocks.Frame.viableTree`, `Consensus.Goldilocks.Frame.IsViableAncestor`, `Consensus.Goldilocks.Frame.viableAncestor`, `Consensus.Goldilocks.Frame.Rooted` |
 | G0.4 (frame) | CLAIMS G0.4 (frame) | a well-formed frame | — | `Consensus.Goldilocks.FrameOK` |
-| G0.3 (frame) | CLAIMS G0.3 (frame) | a frame step `⊑_B`, a frame sequence | — | `Consensus.Goldilocks.FrameStep`, `Consensus.Goldilocks.FrameSeq`, `Consensus.Goldilocks.FrameSeqIn` |
+| G0.3 (frame) | CLAIMS G0.3 (frame) | a frame step `⊑_B` (Spec), a frame sequence (`Lemmas/AC/FrameClaims`) | — | `Consensus.Goldilocks.FrameStep`, `Consensus.Goldilocks.FrameSeq`, `Consensus.Goldilocks.FrameSeqIn` |
 | F.2 | CLAIMS F.2 (tree mathematics) | antisymmetry, ancestors form a chain, deepest common ancestor | Common | `Consensus.Goldilocks.AncAntisymm`, `Consensus.Goldilocks.AncTotal`, `Consensus.Goldilocks.DeepestCommonAncestor` |
 | F.3 | CLAIMS F.3 | a collision-free digest determines the block | Common | `Consensus.Goldilocks.DigestDeterminesBlock` |
 | — | SPEC `shared/composition.tex` §Model (`slot(t)`) | the slot of a time | Common | `Consensus.Goldilocks.SlotOfSpec` |

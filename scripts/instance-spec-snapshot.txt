@@ -1551,27 +1551,6 @@ theorem Consensus.Goldilocks.FrameOK.rooted : ∀ {n : Nat} {FGP ACP : Type} {Φ
   #2061922089/-
 theorem Consensus.Goldilocks.FrameOK.viableHeads_subset : ∀ {n : Nat} {FGP ACP : Type} {Φ : Consensus.Goldilocks.Frame n FGP ACP}, Consensus.Goldilocks.FrameOK Φ → LE.le.{0} Φ.viableHeads Φ.tree
   #3557053409/-
-def Consensus.Goldilocks.FrameSeq : {n : Nat} → {FGP ACP : Type} → (Nat → Consensus.Goldilocks.Frame n FGP ACP) → Prop := fun {n} {FGP ACP} Φ => ∀ (i : Nat), Or (Eq.{1} (Φ (HAdd.hAdd.{0, 0, 0} i 1)) (Φ i)) (Exists.{1} fun B => Consensus.Goldilocks.FrameStep (Φ i) B (Φ (HAdd.hAdd.{0, 0, 0} i 1)))
-  #1245665414/229616560
-induct Consensus.Goldilocks.FrameSeqIn : {n : Nat} → {FGP ACP : Type} → (Nat → Consensus.Goldilocks.Frame n FGP ACP) → Set.{0} (Consensus.Goldilocks.Block n FGP ACP) → Prop
-  #890038319/-
-def Consensus.Goldilocks.FrameSeqIn.casesOn : {n : Nat} → {FGP ACP : Type} → {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} → {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)} → {motive : Consensus.Goldilocks.FrameSeqIn Φ U → Sort u} → (t : Consensus.Goldilocks.FrameSeqIn Φ U) → ((seq : Consensus.Goldilocks.FrameSeq Φ) → (rooted : (Φ 0).Rooted) → (subset : ∀ (i : Nat), LE.le.{0} (Φ i).tree U) → (coherent : Consensus.Goldilocks.Coherent U) → motive ⋯) → motive t := fun {n} {FGP ACP} {Φ} {U} {motive} t mk => mk ⋯ ⋯ ⋯ ⋯
-  #1961558252/3697103274
-theorem Consensus.Goldilocks.FrameSeqIn.coherent : ∀ {n : Nat} {FGP ACP : Type} {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)}, Consensus.Goldilocks.FrameSeqIn Φ U → Consensus.Goldilocks.Coherent U
-  #3765330431/-
-ctor Consensus.Goldilocks.FrameSeqIn.mk : ∀ {n : Nat} {FGP ACP : Type} {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)}, Consensus.Goldilocks.FrameSeq Φ → (Φ 0).Rooted → (∀ (i : Nat), LE.le.{0} (Φ i).tree U) → Consensus.Goldilocks.Coherent U → Consensus.Goldilocks.FrameSeqIn Φ U
-  #2564071464/-
-def Consensus.Goldilocks.FrameSeqIn.mk._flat_ctor #2564071464/-
-recursor Consensus.Goldilocks.FrameSeqIn.rec : {n : Nat} → {FGP ACP : Type} → {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} → {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)} → {motive : Consensus.Goldilocks.FrameSeqIn Φ U → Sort u} → ((seq : Consensus.Goldilocks.FrameSeq Φ) → (rooted : (Φ 0).Rooted) → (subset : ∀ (i : Nat), LE.le.{0} (Φ i).tree U) → (coherent : Consensus.Goldilocks.Coherent U) → motive ⋯) → (t : Consensus.Goldilocks.FrameSeqIn Φ U) → motive t
-  #1370924955/-
-def Consensus.Goldilocks.FrameSeqIn.recOn : {n : Nat} → {FGP ACP : Type} → {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} → {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)} → {motive : Consensus.Goldilocks.FrameSeqIn Φ U → Sort u} → (t : Consensus.Goldilocks.FrameSeqIn Φ U) → ((seq : Consensus.Goldilocks.FrameSeq Φ) → (rooted : (Φ 0).Rooted) → (subset : ∀ (i : Nat), LE.le.{0} (Φ i).tree U) → (coherent : Consensus.Goldilocks.Coherent U) → motive ⋯) → motive t := @Consensus.Goldilocks.FrameSeqIn.casesOn.{u}
-  #1961558252/2901145479
-theorem Consensus.Goldilocks.FrameSeqIn.rooted : ∀ {n : Nat} {FGP ACP : Type} {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)}, Consensus.Goldilocks.FrameSeqIn Φ U → (Φ 0).Rooted
-  #167885406/-
-theorem Consensus.Goldilocks.FrameSeqIn.seq : ∀ {n : Nat} {FGP ACP : Type} {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)}, Consensus.Goldilocks.FrameSeqIn Φ U → Consensus.Goldilocks.FrameSeq Φ
-  #1881082804/-
-theorem Consensus.Goldilocks.FrameSeqIn.subset : ∀ {n : Nat} {FGP ACP : Type} {Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP} {U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)}, Consensus.Goldilocks.FrameSeqIn Φ U → ∀ (i : Nat), LE.le.{0} (Φ i).tree U
-  #1900544505/-
 induct Consensus.Goldilocks.FrameStep : {n : Nat} → {FGP ACP : Type} → Consensus.Goldilocks.Frame n FGP ACP → Consensus.Goldilocks.Block n FGP ACP → Consensus.Goldilocks.Frame n FGP ACP → Prop
   #3275659364/-
 theorem Consensus.Goldilocks.FrameStep.F'_anc_B : ∀ {n : Nat} {FGP ACP : Type} {Φ : Consensus.Goldilocks.Frame n FGP ACP} {B : Consensus.Goldilocks.Block n FGP ACP} {Φ' : Consensus.Goldilocks.Frame n FGP ACP}, Consensus.Goldilocks.FrameStep Φ B Φ' → Consensus.Goldilocks.Anc (Insert.insert.{0, 0} B Φ.tree) Φ'.F B
@@ -2791,38 +2770,6 @@ def Consensus.Goldilocks.SA.SourceAge : Consensus.Goldilocks.SA.SAParams → Pro
   #1635895928/3312463606
 def Consensus.Goldilocks.SA.SourceCompatible : Consensus.Goldilocks.SA.SAParams → Prop := fun sp => ∀ (FGP : Type) (ro : Consensus.Goldilocks.SA.ReplayOrder sp FGP) (H : Set.{0} (Fin sp.n)) (U : Set.{0} (Consensus.Goldilocks.SA.Blk sp.n FGP)) (tr : Consensus.Goldilocks.SA.SATrace sp FGP ro) (proposer : Nat → Fin sp.n), Consensus.Goldilocks.SA.ACRun proposer tr H U → ∀ (s m : Nat) (w x : Fin sp.n) (i₀ i : Nat) (B : Consensus.Goldilocks.SA.Blk sp.n FGP) (CV : Set.{0} (Consensus.Goldilocks.SA.Vote sp.n)) (ℓ : Consensus.Goldilocks.ACLabel (Consensus.Goldilocks.SA.goldilocksSA sp FGP ro)) (C : Consensus.Goldilocks.SA.Blk sp.n FGP), Membership.mem.{0, 0} H w → Consensus.Goldilocks.SA.FastLockAt tr w i₀ s B CV → Consensus.Goldilocks.SyncAC (Consensus.Goldilocks.SA.goldilocksSA sp FGP ro) H U (sp.ts (Nat.cast.{0} s)) (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} (HAdd.hAdd.{0, 0, 0} s 1))) sp.Δ) tr → Consensus.Goldilocks.SA.Carry tr H U s CV → LT.lt.{0} (HMul.hMul.{0, 0, 0} 2 (Set.ncard.{0} (Compl.compl.{0} H))) sp.n → Membership.mem.{0, 0} H x → Consensus.Goldilocks.SA.ToFGAt tr x i ℓ C → LT.lt.{0} (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} (HAdd.hAdd.{0, 0, 0} s 1))) sp.Δ) (tr.time i) → LE.le.{0} (tr.time i) (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} m)) sp.Δ) → (∀ (z : Fin sp.n), Membership.mem.{0, 0} H z → ∀ (j : Nat), LT.lt.{0} j i → ∀ (e : Consensus.Goldilocks.SA.Em sp FGP), Consensus.Goldilocks.SA.VoteAt tr z j e → LT.lt.{0} s e.msg.slot → LE.le.{0} e.msg.slot m → Consensus.Goldilocks.SA.VoteExtends U e.msg B) → Or (Exists.{1} fun j => And (LT.lt.{0} j i) (Exists.{1} fun ℓ' => Exists.{1} fun e => And (Consensus.Goldilocks.SA.CastAt tr x j ℓ' e) (And (Eq.{1} e.msg.slot (HAdd.hAdd.{0, 0, 0} s 1)) (Consensus.Goldilocks.Compatible U ℓ'.frame.F B)))) (Exists.{1} fun k => And (LT.lt.{0} k i) (And (Consensus.Goldilocks.ACTrace.RestartAt tr x k) (LT.lt.{0} (sp.ts (Nat.cast.{0} s)) (tr.time k)))) → Consensus.Goldilocks.Compatible U C B
   #1635895928/482094496
-## ConsensusLean.Instances.Goldilocks.Statements.Common
-def Consensus.Goldilocks.AncAntisymm : Prop := ∀ (n : Nat) (FGP ACP : Type) (S : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)) (B C : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.Coherent S → Consensus.Goldilocks.Anc S B C → Consensus.Goldilocks.Anc S C B → Eq.{1} B C
-  #3944470172/2093066961
-def Consensus.Goldilocks.AncTotal : Prop := ∀ (n : Nat) (FGP ACP : Type) (S : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)) (A A' C : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.Coherent S → Consensus.Goldilocks.Anc S A C → Consensus.Goldilocks.Anc S A' C → Or (Consensus.Goldilocks.Anc S A A') (Consensus.Goldilocks.Anc S A' A)
-  #3944470172/729492270
-induct Consensus.Goldilocks.CommonStatements : Prop
-  #3944470172/-
-theorem Consensus.Goldilocks.CommonStatements.ancAntisymm : Consensus.Goldilocks.CommonStatements → Consensus.Goldilocks.AncAntisymm
-  #2933631961/-
-theorem Consensus.Goldilocks.CommonStatements.ancTotal : Consensus.Goldilocks.CommonStatements → Consensus.Goldilocks.AncTotal
-  #3890340743/-
-def Consensus.Goldilocks.CommonStatements.casesOn : {motive : Consensus.Goldilocks.CommonStatements → Sort u} → (t : Consensus.Goldilocks.CommonStatements) → ((ancAntisymm : Consensus.Goldilocks.AncAntisymm) → (ancTotal : Consensus.Goldilocks.AncTotal) → (deepestCommonAncestor : Consensus.Goldilocks.DeepestCommonAncestor) → (digestDeterminesBlock : Consensus.Goldilocks.DigestDeterminesBlock) → (slotOfSpec : Consensus.Goldilocks.SlotOfSpec) → motive ⋯) → motive t := fun {motive} t mk => mk ⋯ ⋯ ⋯ ⋯ ⋯
-  #1439297212/2905353522
-theorem Consensus.Goldilocks.CommonStatements.deepestCommonAncestor : Consensus.Goldilocks.CommonStatements → Consensus.Goldilocks.DeepestCommonAncestor
-  #3705446320/-
-theorem Consensus.Goldilocks.CommonStatements.digestDeterminesBlock : Consensus.Goldilocks.CommonStatements → Consensus.Goldilocks.DigestDeterminesBlock
-  #3250703633/-
-ctor Consensus.Goldilocks.CommonStatements.mk : Consensus.Goldilocks.AncAntisymm → Consensus.Goldilocks.AncTotal → Consensus.Goldilocks.DeepestCommonAncestor → Consensus.Goldilocks.DigestDeterminesBlock → Consensus.Goldilocks.SlotOfSpec → Consensus.Goldilocks.CommonStatements
-  #1708007338/-
-def Consensus.Goldilocks.CommonStatements.mk._flat_ctor #1708007338/-
-recursor Consensus.Goldilocks.CommonStatements.rec : {motive : Consensus.Goldilocks.CommonStatements → Sort u} → ((ancAntisymm : Consensus.Goldilocks.AncAntisymm) → (ancTotal : Consensus.Goldilocks.AncTotal) → (deepestCommonAncestor : Consensus.Goldilocks.DeepestCommonAncestor) → (digestDeterminesBlock : Consensus.Goldilocks.DigestDeterminesBlock) → (slotOfSpec : Consensus.Goldilocks.SlotOfSpec) → motive ⋯) → (t : Consensus.Goldilocks.CommonStatements) → motive t
-  #1510515771/-
-def Consensus.Goldilocks.CommonStatements.recOn : {motive : Consensus.Goldilocks.CommonStatements → Sort u} → (t : Consensus.Goldilocks.CommonStatements) → ((ancAntisymm : Consensus.Goldilocks.AncAntisymm) → (ancTotal : Consensus.Goldilocks.AncTotal) → (deepestCommonAncestor : Consensus.Goldilocks.DeepestCommonAncestor) → (digestDeterminesBlock : Consensus.Goldilocks.DigestDeterminesBlock) → (slotOfSpec : Consensus.Goldilocks.SlotOfSpec) → motive ⋯) → motive t := @Consensus.Goldilocks.CommonStatements.casesOn.{u}
-  #1439297212/3530822314
-theorem Consensus.Goldilocks.CommonStatements.slotOfSpec : Consensus.Goldilocks.CommonStatements → Consensus.Goldilocks.SlotOfSpec
-  #3762247634/-
-def Consensus.Goldilocks.DeepestCommonAncestor : Prop := ∀ (n : Nat) (FGP ACP : Type) (S : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)) (R B C : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.Coherent S → Consensus.Goldilocks.Anc S R B → Consensus.Goldilocks.Anc S R C → Exists.{1} fun D => And (Consensus.Goldilocks.Anc S D B) (And (Consensus.Goldilocks.Anc S D C) (∀ (D' : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.Anc S D' B → Consensus.Goldilocks.Anc S D' C → Consensus.Goldilocks.Anc S D' D))
-  #3944470172/2983958620
-def Consensus.Goldilocks.DigestDeterminesBlock : Prop := ∀ (n : Nat) (FGP ACP : Type) (dg : Consensus.Goldilocks.Digest FGP ACP) (B C : Consensus.Goldilocks.Block n FGP ACP), (Eq.{1} (dg B.parent B.slot B.input B.fgPayload B.acPayload) (dg C.parent C.slot C.input C.fgPayload C.acPayload) → And (Eq.{1} B.parent C.parent) (And (Eq.{1} B.slot C.slot) (And (Eq.{1} B.input C.input) (And (Eq.{1} B.fgPayload C.fgPayload) (Eq.{1} B.acPayload C.acPayload))))) → Consensus.Goldilocks.Block.RootOk dg B → Consensus.Goldilocks.Block.RootOk dg C → Eq.{1} B.root C.root → Eq.{1} B.proposer C.proposer → Eq.{1} B C
-  #3944470172/2115995359
-def Consensus.Goldilocks.SlotOfSpec : Prop := ∀ (P : Consensus.Goldilocks.Params) (t : Consensus.Time), LE.le.{0} 0 t → And (LE.le.{0} (P.slotTime (P.slotOf t)) t) (LT.lt.{0} t (P.slotTime (HAdd.hAdd.{0, 0, 0} (P.slotOf t) 1)))
-  #3944470172/405947044
 ## ConsensusLean.Instances.Goldilocks.Statements.Compose.Interface
 def Consensus.Goldilocks.Compose.ComposeInterfaceStatements : Prop := ∀ (P : Consensus.Goldilocks.Params) (FGP : Type) (A : Consensus.Goldilocks.ACInterface P FGP), Consensus.Goldilocks.Compose.InterfaceStatements A
   #3944470172/3064737200
@@ -3282,50 +3229,6 @@ def Consensus.Goldilocks.Store.QuorumFreeEntries : Consensus.Goldilocks.Params �
   #3751849574/3726425914
 def Consensus.Goldilocks.Store.namers : (P : Consensus.Goldilocks.Params) → (ACP : Type) → Set.{0} (Fin P.n) → Consensus.Goldilocks.FGTrace P ACP → Consensus.Time → Consensus.Goldilocks.NodeBlock P ACP → Set.{0} (Fin P.n) := fun P ACP H tr T₀ E => Set.ofPred.{0} fun v => Or (Not (Membership.mem.{0, 0} H v)) (Exists.{1} fun j => Exists.{1} fun a => And (tr.SignAt v j a) (And (LE.le.{0} (tr.time j) T₀) (Eq.{1} a.T E.root)))
   #1949824343/1451151600
-## ConsensusLean.Instances.Goldilocks.Statements.Frame
-def Consensus.Goldilocks.FrameEntersOnce : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP) (U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)), Consensus.Goldilocks.FrameSeqIn Φ U → ∀ (i j : Nat) (B : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.FrameStep (Φ i) B (Φ (HAdd.hAdd.{0, 0, 0} i 1)) → Consensus.Goldilocks.FrameStep (Φ j) B (Φ (HAdd.hAdd.{0, 0, 0} j 1)) → Eq.{1} i j
-  #3944470172/2606705145
-def Consensus.Goldilocks.FrameNeverReturns : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP) (U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)), Consensus.Goldilocks.FrameSeqIn Φ U → ∀ (i j k : Nat), LE.le.{0} i j → LE.le.{0} j k → ∀ (X : Consensus.Goldilocks.Block n FGP ACP), Membership.mem.{0, 0} (Φ i).tree X → Not (Membership.mem.{0, 0} (Φ j).tree X) → Not (Membership.mem.{0, 0} (Φ k).tree X)
-  #3944470172/2608999821
-def Consensus.Goldilocks.FrameParentClosed : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Consensus.Goldilocks.Frame n FGP ACP) (C : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.FrameOK Φ → Membership.mem.{0, 0} Φ.tree C → Ne.{1} C Φ.F → Exists.{1} fun P => And (Membership.mem.{0, 0} Φ.tree P) (And (Eq.{1} C.parent (Option.some.{0} P.root)) (LT.lt.{0} P.slot C.slot))
-  #3944470172/101509946
-def Consensus.Goldilocks.FrameRetention : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Nat → Consensus.Goldilocks.Frame n FGP ACP) (U : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)), Consensus.Goldilocks.FrameSeqIn Φ U → ∀ (i j : Nat), LE.le.{0} i j → ∀ (X : Consensus.Goldilocks.Block n FGP ACP), Membership.mem.{0, 0} (Φ i).tree X → Consensus.Goldilocks.Anc U (Φ j).F X → Membership.mem.{0, 0} (Φ j).tree X
-  #3944470172/4208529939
-induct Consensus.Goldilocks.FrameStatements : Prop
-  #3944470172/-
-def Consensus.Goldilocks.FrameStatements.casesOn : {motive : Consensus.Goldilocks.FrameStatements → Sort u} → (t : Consensus.Goldilocks.FrameStatements) → ((viableAncestorExists : Consensus.Goldilocks.ViableAncestorExists) → (viableAncestorSelf : Consensus.Goldilocks.ViableAncestorSelf) → (viableTreeAncestorClosed : Consensus.Goldilocks.ViableTreeAncestorClosed) → (parentClosed : Consensus.Goldilocks.FrameParentClosed) → (stepAddsBlock : Consensus.Goldilocks.FrameStepAddsBlock) → (retention : Consensus.Goldilocks.FrameRetention) → (neverReturns : Consensus.Goldilocks.FrameNeverReturns) → (entersOnce : Consensus.Goldilocks.FrameEntersOnce) → motive ⋯) → motive t := fun {motive} t mk => mk ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯ ⋯
-  #3079364006/4109961659
-theorem Consensus.Goldilocks.FrameStatements.entersOnce : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.FrameEntersOnce
-  #977411934/-
-ctor Consensus.Goldilocks.FrameStatements.mk : Consensus.Goldilocks.ViableAncestorExists → Consensus.Goldilocks.ViableAncestorSelf → Consensus.Goldilocks.ViableTreeAncestorClosed → Consensus.Goldilocks.FrameParentClosed → Consensus.Goldilocks.FrameStepAddsBlock → Consensus.Goldilocks.FrameRetention → Consensus.Goldilocks.FrameNeverReturns → Consensus.Goldilocks.FrameEntersOnce → Consensus.Goldilocks.FrameStatements
-  #403143121/-
-def Consensus.Goldilocks.FrameStatements.mk._flat_ctor #403143121/-
-theorem Consensus.Goldilocks.FrameStatements.neverReturns : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.FrameNeverReturns
-  #2637202087/-
-theorem Consensus.Goldilocks.FrameStatements.parentClosed : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.FrameParentClosed
-  #1533274735/-
-recursor Consensus.Goldilocks.FrameStatements.rec : {motive : Consensus.Goldilocks.FrameStatements → Sort u} → ((viableAncestorExists : Consensus.Goldilocks.ViableAncestorExists) → (viableAncestorSelf : Consensus.Goldilocks.ViableAncestorSelf) → (viableTreeAncestorClosed : Consensus.Goldilocks.ViableTreeAncestorClosed) → (parentClosed : Consensus.Goldilocks.FrameParentClosed) → (stepAddsBlock : Consensus.Goldilocks.FrameStepAddsBlock) → (retention : Consensus.Goldilocks.FrameRetention) → (neverReturns : Consensus.Goldilocks.FrameNeverReturns) → (entersOnce : Consensus.Goldilocks.FrameEntersOnce) → motive ⋯) → (t : Consensus.Goldilocks.FrameStatements) → motive t
-  #4030760268/-
-def Consensus.Goldilocks.FrameStatements.recOn : {motive : Consensus.Goldilocks.FrameStatements → Sort u} → (t : Consensus.Goldilocks.FrameStatements) → ((viableAncestorExists : Consensus.Goldilocks.ViableAncestorExists) → (viableAncestorSelf : Consensus.Goldilocks.ViableAncestorSelf) → (viableTreeAncestorClosed : Consensus.Goldilocks.ViableTreeAncestorClosed) → (parentClosed : Consensus.Goldilocks.FrameParentClosed) → (stepAddsBlock : Consensus.Goldilocks.FrameStepAddsBlock) → (retention : Consensus.Goldilocks.FrameRetention) → (neverReturns : Consensus.Goldilocks.FrameNeverReturns) → (entersOnce : Consensus.Goldilocks.FrameEntersOnce) → motive ⋯) → motive t := @Consensus.Goldilocks.FrameStatements.casesOn.{u}
-  #3079364006/2518276894
-theorem Consensus.Goldilocks.FrameStatements.retention : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.FrameRetention
-  #3441632167/-
-theorem Consensus.Goldilocks.FrameStatements.stepAddsBlock : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.FrameStepAddsBlock
-  #3226820393/-
-theorem Consensus.Goldilocks.FrameStatements.viableAncestorExists : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.ViableAncestorExists
-  #4203629612/-
-theorem Consensus.Goldilocks.FrameStatements.viableAncestorSelf : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.ViableAncestorSelf
-  #633276782/-
-theorem Consensus.Goldilocks.FrameStatements.viableTreeAncestorClosed : Consensus.Goldilocks.FrameStatements → Consensus.Goldilocks.ViableTreeAncestorClosed
-  #2736008/-
-def Consensus.Goldilocks.FrameStepAddsBlock : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ Φ' : Consensus.Goldilocks.Frame n FGP ACP) (B : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.FrameStep Φ B Φ' → And (Membership.mem.{0, 0} Φ'.tree B) (∀ (X : Consensus.Goldilocks.Block n FGP ACP), Membership.mem.{0, 0} Φ'.tree X → Or (Eq.{1} X B) (Membership.mem.{0, 0} Φ.tree X))
-  #3944470172/203904301
-def Consensus.Goldilocks.ViableAncestorExists : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Consensus.Goldilocks.Frame n FGP ACP) (B : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.FrameOK Φ → Membership.mem.{0, 0} Φ.tree B → And (Φ.IsViableAncestor B (Φ.viableAncestor B)) (∀ (A : Consensus.Goldilocks.Block n FGP ACP), Φ.IsViableAncestor B A → Eq.{1} A (Φ.viableAncestor B))
-  #3944470172/2809516025
-def Consensus.Goldilocks.ViableAncestorSelf : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Consensus.Goldilocks.Frame n FGP ACP) (B : Consensus.Goldilocks.Block n FGP ACP), Consensus.Goldilocks.FrameOK Φ → Or (Membership.mem.{0, 0} (Φ.viableTree Φ.tree) B) (Φ.Anc B Φ.fcRoot) → Eq.{1} (Φ.viableAncestor B) B
-  #3944470172/2594425254
-def Consensus.Goldilocks.ViableTreeAncestorClosed : Prop := ∀ (n : Nat) (FGP ACP : Type) (Φ : Consensus.Goldilocks.Frame n FGP ACP) (S : Set.{0} (Consensus.Goldilocks.Block n FGP ACP)) (A B : Consensus.Goldilocks.Block n FGP ACP), Membership.mem.{0, 0} (Φ.viableTree S) B → Membership.mem.{0, 0} S A → Φ.Anc Φ.fcRoot A → Φ.Anc A B → Membership.mem.{0, 0} (Φ.viableTree S) A
-  #3944470172/2450558903
 ## ConsensusLean.Instances.Goldilocks.Statements.Healing.AC
 def Consensus.Goldilocks.SA.ACHealingStandalone : {sp : Consensus.Goldilocks.SA.SAParams} → Prop := fun {sp} => ∀ (FGP : Type) (ro : Consensus.Goldilocks.SA.ReplayOrder sp FGP) (H : Set.{0} (Fin sp.n)) (U : Set.{0} (Consensus.Goldilocks.SA.Blk sp.n FGP)) (tr : Consensus.Goldilocks.SA.SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g : Consensus.Time), Consensus.Goldilocks.SA.ACRun proposer tr H U → Consensus.Goldilocks.SA.Driven proposer tr H → Consensus.Goldilocks.SA.TrivialFrames tr H → Consensus.Goldilocks.SA.HealthyAC tr H U g → Consensus.Goldilocks.SA.CatchAC tr H U g (HMul.hMul.{0, 0, 0} 2 sp.Δ) → ∀ (p : Nat) (P : Consensus.Goldilocks.SA.Blk sp.n FGP), Membership.mem.{0, 0} H (proposer p) → Consensus.Goldilocks.SA.HonestProposal tr (proposer p) p P → LE.le.{0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (Consensus.Goldilocks.SA.gbar g) (HMul.hMul.{0, 0, 0} 2 (Consensus.Goldilocks.SA.Θ sp))) (HMul.hMul.{0, 0, 0} 8 sp.Δ)) (sp.ts (Nat.cast.{0} p)) → And (∀ (x : Fin sp.n), Membership.mem.{0, 0} H x → ∀ (j : Nat) (e : Consensus.Goldilocks.SA.Em sp FGP), Consensus.Goldilocks.SA.VoteAt tr x j e → Eq.{1} e.msg.slot p → Eq.{1} e.msg.head P.root) (∀ (y : Fin sp.n), Membership.mem.{0, 0} H y → ∀ (j : Nat) (ℓ : Consensus.Goldilocks.ACLabel (Consensus.Goldilocks.SA.goldilocksSA sp FGP ro)), Consensus.Goldilocks.Trace.CallAt tr y j ℓ → LE.le.{0} (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} p)) (HMul.hMul.{0, 0, 0} 6 sp.Δ)) (tr.time j) → (Eq.{1} (tr.time j) (HAdd.hAdd.{0, 0, 0} (sp.ts (Nat.cast.{0} p)) (HMul.hMul.{0, 0, 0} 6 sp.Δ)) → Exists.{1} fun k => And (LE.le.{0} k j) (Exists.{1} fun ℓ' => And (Consensus.Goldilocks.Trace.CallAt tr y k ℓ') (And (Eq.{1} ℓ'.call Consensus.Goldilocks.ACInterface.Call.tick) (Eq.{1} (tr.time k) (tr.time j))))) → Consensus.Goldilocks.Anc U P (Consensus.Goldilocks.SA.acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
   #1635895928/2008704913

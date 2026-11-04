@@ -10,10 +10,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"), on the one-validator tick run of
 `GoldilocksWitness` (`n = 1`, `Δ = 1`, `t_s = 4s`, a tick at every time, no restart):
-`FrameSeqIn` (`Spec/Frame.lean`), the premise of `FrameRetention`, `FrameNeverReturns` and
-`FrameEntersOnce` (`Statements/Frame.lean`), holds for the frames that the validator's FG gives
-its AC, indexed by cut (`runFrame i`, `fg_to_ac(Σ)` of its state before cut `i`), inside the
-run's honest blocks (the blocks of its accepted trees).
+`FrameSeqIn`, the premise of `FrameRetention`, `FrameNeverReturns` and
+`FrameEntersOnce` (all in `Lemmas/AC/FrameClaims.lean`), holds for the validator's FG frames
+given to its AC, indexed by cut (`runFrame i`, `fg_to_ac(Σ)` of its state before cut `i`),
+inside the run's honest blocks (the blocks of its accepted trees).
 
 * `runFrame_seq`: at every cut the frame stays or takes one frame step. An AC cut, a refused
   block and an `fg_attest` cut leave `Σ` unchanged; `fg_on_attestation` writes only the pool,
@@ -54,7 +54,7 @@ theorem runFrame_ok (i : Nat) : FrameOK (runFrame i) :=
 /-! ## The premise -/
 
 /-- **The frames of the run evolve by steps.** -/
-theorem runFrame_seq : FrameSeq runFrame := fun i => by
+theorem runFrame_seq : FrameSeq runFrame := frameSeq_iff.mpr fun i => by
   have hk := Store.accept_is_frame_step _ _ _ _ (state_fg_reachable i)
   rcases Healing.fg_step tickRun_goldilocksRun.toLocalRun (Set.mem_univ v0) i with
     he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
@@ -138,18 +138,19 @@ theorem tickRun_frameSeq_steps :
 theorem runFrame_retention {i j : Nat} (hij : i ≤ j) {X : N1.Blk} (hX : X ∈ (runFrame i).tree)
     (hF : Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (runFrame j).F X) :
     X ∈ (runFrame j).tree :=
-  frame_statements.retention _ _ _ _ _ tickRun_frameSeqIn i j hij X hX hF
+  frameRetention_iff.mp frame_statements.retention _ _ _ _ _ tickRun_frameSeqIn i j hij X hX hF
 
 /-- **G0.3 (frame), a block that leaves the tree never returns, on the run.** -/
 theorem runFrame_neverReturns {i j k : Nat} (hij : i ≤ j) (hjk : j ≤ k) {X : N1.Blk}
     (hX : X ∈ (runFrame i).tree) (hXj : X ∉ (runFrame j).tree) : X ∉ (runFrame k).tree :=
-  frame_statements.neverReturns _ _ _ _ _ tickRun_frameSeqIn i j k hij hjk X hX hXj
+  frameNeverReturns_iff.mp frame_statements.neverReturns
+    _ _ _ _ _ tickRun_frameSeqIn i j k hij hjk X hX hXj
 
 /-- **G0.3 (frame), each block enters at most once, on the run.** -/
 theorem runFrame_entersOnce {i j : Nat} {B : N1.Blk}
     (hi : FrameStep (runFrame i) B (runFrame (i + 1)))
     (hj : FrameStep (runFrame j) B (runFrame (j + 1))) : i = j :=
-  frame_statements.entersOnce _ _ _ _ _ tickRun_frameSeqIn i j B hi hj
+  frameEntersOnce_iff.mp frame_statements.entersOnce _ _ _ _ _ tickRun_frameSeqIn i j B hi hj
 
 /-- `blk 1` enters the validator's frame at cut `34` and at no other cut. -/
 theorem blk1_enters_once {j : Nat} (hj : FrameStep (runFrame j) (blk 1) (runFrame (j + 1))) :
@@ -160,13 +161,13 @@ theorem blk1_enters_once {j : Nat} (hj : FrameStep (runFrame j) (blk 1) (runFram
 theorem runFrame_viableAncestor (i : Nat) {B : N1.Blk} (hB : B ∈ (runFrame i).tree) :
     (runFrame i).IsViableAncestor B ((runFrame i).viableAncestor B) ∧
       ∀ A, (runFrame i).IsViableAncestor B A → A = (runFrame i).viableAncestor B :=
-  frame_statements.viableAncestorExists _ _ _ _ _ (runFrame_ok i) hB
+  viableAncestorExists_iff.mp frame_statements.viableAncestorExists _ _ _ _ _ (runFrame_ok i) hB
 
 /-- **G0.4 (frame), parent-closed down to `Φ.F`, on the run's frames.** -/
 theorem runFrame_parentClosed (i : Nat) {C : N1.Blk} (hC : C ∈ (runFrame i).tree)
     (hne : C ≠ (runFrame i).F) :
     ∃ P ∈ (runFrame i).tree, C.parent = some P.root ∧ P.slot < C.slot :=
-  frame_statements.parentClosed _ _ _ _ _ (runFrame_ok i) hC hne
+  frameParentClosed_iff.mp frame_statements.parentClosed _ _ _ _ _ (runFrame_ok i) hC hne
 
 end Consensus.Goldilocks.Witness.One
 
