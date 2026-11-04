@@ -57,7 +57,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `cards/delta_transport_study.md`; lead-approved plan `cards/delta_halfopen_plan.md`): **half-open
   delivery**. `CommLog.PSync`/`SyncUntil` hold a message strictly before the bound (deadlines
   `max a g + Δ − 1`, `a + Δ − 1`, and `− 1` for rows), the paper's `[τ, max(τ, w) + Δ)`; so the
-  Goldilocks transport is `Δ_p = Δ_e` and `ΔF_p = ΔF_e` (`Setup.params`, `rowDelay`, `cF_spec`),
+  Goldilocks transport is `Δ_p = Δ_e` and `ΔF_p = ΔF_e` (`Setup.params`, `protoFGDelay`, `cF_spec`),
   superseding the #107 `Δ_p = Δ_e + 1` (2026-10-31). `Realizable` and `RealizableActive` quantify
   over `Δ > 1` and `ΔF > 1` ("just state Delta > 1"): at `Δ = 1` half-open delivery is same-time
   delivery, which no protocol-agnostic eager log meets. Behaviour still covers every `Δ ≥ 1`.
@@ -142,11 +142,11 @@ where it is recorded; "Francesco" marks the owner's decisions.
   envelope only through the rise timeout `6Δ + ΔF ≤ 4Δ·δt`, paid by `3c ≤ δt`). Provenance of
   `8X + 12` (workbench `confirmed_supply_row_use_audit.md`, at 03e10e76): the post-heal proofs do
   not consume the row-timing components, although their premise bundles still contain them; this
-  is not a theorem that removes all row assumptions. The protocol row delay `rowDelay` is the instantiation of
+  is not a theorem that removes all row assumptions. The protocol row delay `protoFGDelay` is the instantiation of
   `ΔF` (`FinalQuery.hsSharedUpTo`, the healthy-query wrapper); the transitional lift
   `rowDelay_le_of_healthy` (`ΔF ≤ Δ` at `r = 1`) is removed. At `r = 1` the contract constants
   and the window are unchanged (`c = 2`, `[0, 2, 4, 6]`, `8(X + 6) + 2`, `6 ≤ δt`) and so are the
-  proved claims; the transport now runs at the actual `rowDelay`, which differs from the former
+  proved claims; the transport now runs at the actual `protoFGDelay`, which differs from the former
   `Δ_p` instantiation whenever `ΔF ≠ Δ`. The route-A entry below records the `r = 1` constants.
 - 2026-11-02, Francesco ("1. Yes 2. we should edit the spec in consensus-lean"): the full-tree
   fallback for an honest vote's head. `tryVote` walks the viable tree of `SA.voteDomain`: the

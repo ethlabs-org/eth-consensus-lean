@@ -29,7 +29,7 @@ anchor gap `c` with `2 ≤ c`, the span `3c ≤ δt`, the final pattern `[0, c, 
 `ΔF` a parameter (`HSSharedUpTo` at `ΔF` and `6Δ + ΔF ≤ 4Δ·c` explicit) and the latency budget
 `hlat` of a span-`3c` window explicit. `final_window_extract_of_shared` is its instance at the
 FG gap `c = fgSlots` of the assumptions (latency `final_latency_gap`), and
-`final_window_extract_of` instantiates the protocol row delay `ΔF := rowDelay` only there.
+`final_window_extract_of` instantiates the protocol row delay `ΔF := protoFGDelay` only there.
 Proved here: `CatchRun 2Δ` (`catchRun_of_psync`), the recurrence from `Q.progress`, the
 two queries (`two_query_placement`), the seed height (`seed_height_held`), the anchor steps
 (`anchorSteps_gap`), the window fields (`finalWindow_data_of_honest_anchors_gap`, readiness by
@@ -306,7 +306,7 @@ theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
 
 /-- **Final-window extraction from explicit premises** (route A, gap 2). The statement of
 `final_window_extract`. The forwarding delay is instantiated here only: the protocol row delay
-`ΔF := rowDelay`, with the shared HS premises `FinalQuery.hsSharedUpTo`. -/
+`ΔF := protoFGDelay`, with the shared HS premises `FinalQuery.hsSharedUpTo`. -/
 theorem final_window_extract_of (Q : FinalQuery S A V) {ΔR a : Time}
     (hreset : Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon)
@@ -337,7 +337,7 @@ theorem final_window_extract_of (Q : FinalQuery S A V) {ΔR a : Time}
         Q.params.ts (W.start + 3 * A.fgSlots) ≤ b) ∧
       ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc)
         (W.block i.succ) := by
-  exact final_window_extract_of_shared S A V Q Q.hsSharedUpTo Q.rowDelay_delivery
+  exact final_window_extract_of_shared S A V Q Q.hsSharedUpTo Q.protoFGDelay_delivery
     hreset hpropose hplace hcarrier
 
 end Consensus.Goldilocks.Obligations

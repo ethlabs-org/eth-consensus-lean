@@ -100,7 +100,7 @@ Spec drift is checked by the snapshot diff, committed and recorded with each cha
 `ShapeObligations.correct` combines three theorems. `refinement` gives `Behaviour`;
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
 and `proposalLive_txLive` (proposal liveness and partial synchrony give
-transaction liveness; it needs catch-up `≥ Δ`, `Admissible.catchUp_pos`, so a
+transaction liveness; it needs catch-up `≥ ΔAC`, `Admissible.catchUp_pos`, so a
 ready proposer was awake over the delivery interval before its release). `sysOf_adequate` gives `Adequate`.
 `regimes_realizable` gives `RealizableActive`, hence `Realizable`
 (`RealizableActive.toRealizable`; its stress witness keeps keys `1` and `2`
@@ -155,14 +155,14 @@ that a claim or regime evaluates.
     that was never submitted it;
   - `SafeActive`: two ready readers, one of them at two times;
   - `OutageActive`: a ready source, a real sleeper inside the window and a
-    reader ready from the recovery point `b₁ + recovery·Δ`.
+    reader ready from the recovery point `b₁ + recovery·ΔAC`.
 
   A **stress witness** exercises liveness with many honest validators
   asleep, so a progress requirement cannot quietly demand near-full
   participation. For every provided available or stable output and every
   validator count, at *one* index (it may depend on the validators, not on
-  `Δ` or `ΔF`):
-  - `sleepyStress`: at every `Δ` and `ΔF`, a sleepy witness where at most
+  `ΔAC` or `ΔFG`):
+  - `sleepyStress`: at every `ΔAC` and `ΔFG`, a sleepy witness where at most
     two honest validators are awake at any one time (`AwakeAtMost 2`; the
     witness also has a faulty validator, and with `θ ≤ ½` two ready honest
     validators meet the sleepy threshold), with `prog[0, horizon]` and
@@ -183,9 +183,9 @@ protocols we accept are
 
 ### The property table (`Behaviour`)
 
-Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
-`heal(cap,i,g) = max g 0 + heal cap i·Δ`; `ready(g) = max g 0 + c + 1`;
-`lat = latency cap i·Δ`;
+Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·ΔAC`;
+`heal(cap,i,g) = max g 0 + heal cap i·ΔAC`; `ready(g) = max g 0 + c + 1`;
+`lat = latency cap i·ΔAC`;
 `prog[a,b]` = the progress requirement of `cap` at index `i` on `[a, b]`;
 `HC` = the excuse.
 
@@ -199,7 +199,7 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·Δ`;
 | available, stable | sleepy safety | `Sleepy` | `ReadySafe c g 0` |
 | available, stable | sleepy liveness | `Sleepy ∧ prog[0, horizon]` | `TxLive c g 0 lat` |
 | available, stable | healed safety ("stay in recovery") | `Healthy g ∧ prog[ready g, heal]` | `ReadySafe c g heal` |
-| stable | outage resilience | `Outage T b₀ b₁` | `ProtectedReadyFrom c stable target T (b₁ + recovery·Δ)` |
+| stable | outage resilience | `Outage T b₀ b₁` | `ProtectedReadyFrom c stable target T (b₁ + recovery·ΔAC)` |
 
 One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`,
 `healedSafe`, `persists`). Derived in L0 (`CorrectProtocol.*`,
@@ -210,24 +210,24 @@ One field per row (`finalAccountable`, `healthyLive`, `sleepySafe`, `sleepyLive`
 |---|---|
 | `final_agree` | `FaultsBelow α` ⇒ `Agree final 0 ∨ HC`, in any network |
 | `final_safe_healthy` | `Healthy g` ⇒ `Safe final 0 ∨ HC` (uses `β ≤ α`) |
-| `persists_final_compatible` | through an outage, the stable read at `T` and the final read of a reader ready from `b₁ + recovery·Δ` are compatible |
+| `persists_final_compatible` | through an outage, the stable read at `T` and the final read of a reader ready from `b₁ + recovery·ΔAC` are compatible |
 | **prefix forms** `sleepySafe_prefix` | `SyncUntil b ∧ SleepyOn θ c 0 b` ⇒ `ReadySafeUpTo c g 0 b ∨ HC`: the past is safe whatever happens after `b` |
 | `healedSafe_prefix` | partial synchrony with GST `g` for deadlines up to `b`, `HealthyOn β g b`, `prog[ready, heal]` and `heal ≤ b` ⇒ `ReadySafeUpTo c g heal b ∨ HC` |
-| `outage_prefix` | the outage regime up to `b` ⇒ protection of ready readers at reading times in `[b₁ + recovery·Δ, b]` ∨ HC |
+| `outage_prefix` | the outage regime up to `b` ⇒ protection of ready readers at reading times in `[b₁ + recovery·ΔAC, b]` ∨ HC |
 
 `TxLive c g start D` covers every submission: a transaction submitted to an
 awake honest node by `t` is in the `g`-read of every ready reader at every
-`t' ∈ [max t start + Δ + D, horizon]`. Safety has one body,
+`t' ∈ [max t start + ΔAC + D, horizon]`. Safety has one body,
 `AgreeAmong R`/`MonotoneAmong R` for a reader predicate `R` checked at each
 cut: `Agree`/`Monotone` (and `Safe`) take honest readers; `ReadySafe` takes ready readers
 only: honest, and awake throughout `[max 0 (t − c − 1), t]`. A node that
 has been asleep for long may still hold an old fork. `ProtectedReadyFrom`
 works as follows. Take a node **ready** at `T` and its `stable` read at `T`.
 That read is a prefix of the `target` read (the available output if
-provided, else the stable output) at every `t ∈ [b₁ + recovery·Δ, horizon]`,
+provided, else the stable output) at every `t ∈ [b₁ + recovery·ΔAC, horizon]`,
 for every node ready at `t`. The outage regime has no absolute participation
 premise: besides η-sleepy participation, no honest validator falls asleep in
-the no-sleep window `[b₀ − noSleep·Δ, b₁ + noSleep·Δ]` (clamped to
+the no-sleep window `[b₀ − noSleep·ΔAC, b₁ + noSleep·ΔAC]` (clamped to
 `[0, horizon]`; waking is allowed), and the faulty validators with the late
 wakers of that window are fewer than the honest validators awake at its start.
 
@@ -244,17 +244,17 @@ The delivery rule is Francesco's rule, normal delivery (`CommLog.Delivers.msgs`)
 > interval, and is re-served, strictly before the bound, to nodes that wake
 > later.
 
-The delivery interval is half-open, `[t, max(t, GST) + Δ)`, as in the paper's
+The delivery interval is half-open, `[t, max(t, GST) + ΔAC)`, as in the paper's
 `Sync`; on integer time "strictly before `d`" is "by `d − 1`". Formally, for a
-deadline function `dl` (`max a GST + Δ − 1` in partial synchrony): for every
+deadline function `dl` (`max a GST + ΔAC − 1` in partial synchrony): for every
 start `a ≥ t`, every honest node awake throughout `[a, dl a]` holds the message
-at `dl a`. At `a = t`: a node awake over `[t, max(t, GST) + Δ − 1]` has it by
-`max(t, GST) + Δ − 1`, so its tick at `max(t, GST) + Δ` (which runs before the
+at `dl a`. At `a = t`: a node awake over `[t, max(t, GST) + ΔAC − 1]` has it by
+`max(t, GST) + ΔAC − 1`, so its tick at `max(t, GST) + ΔAC` (which runs before the
 deliveries of that time) reads it. At a later `a`: a node that wakes at `a` and
-stays awake has it by `max(a, GST) + Δ − 1`, not at the wake itself (no instant
-re-delivery; tests `waker_within_bound`, `waker_not_instant`). At `Δ = 1` this
-is same-time delivery; realizability starts at `Δ = ΔF = 2` (`Realizable`), and
-every behaviour claim holds at every `Δ ≥ 1`.
+stays awake has it by `max(a, GST) + ΔAC − 1`, not at the wake itself (no instant
+re-delivery; tests `waker_within_bound`, `waker_not_instant`). At `ΔAC = 1` this
+is same-time delivery; realizability starts at `ΔAC = ΔFG = 2` (`Realizable`), and
+every behaviour claim holds at every `ΔAC ≥ 1`.
 
 **Two bounds.** The environment has a message bound `ΔAC` and an FG attestation bound `ΔFG`
 (`Env.ΔAC`, `Env.ΔFG`, both positive; neither bounds the other). The log carries
@@ -274,7 +274,7 @@ decision 2026-11-02). Every other protocol has none (`isFGAtt` defaults to
 - "Has it at `d`" is `Held`. The node sent or received the message
   at some `t' ≤ d`, and did not wake in `(t', d]`. Receipt at the deadline
   itself counts. A restart loses earlier receipts.
-- **Transactions** (`Delivers.txs`), the same rule at `dl` (bound `Δ`): a transaction submitted at
+- **Transactions** (`Delivers.txs`), the same rule at `dl` (bound `ΔAC`): a transaction submitted at
   `τ ≥ 0` to an awake honest node is held (`TxHeld`, in the inbox at some
   `τ' ∈ [0, d]`) at `dl a` by every honest node awake throughout `[a, dl a]`,
   for every `a ≥ τ`.
@@ -306,7 +306,7 @@ instance only under these hypotheses:
   `SendsFromZero`.
 
 It does not imply an arbitrary `SyncUntil b` or `OutageNet b₀ b₁`. Example:
-`Δ = 1`, `g = 10`, an honest send at `0` and an honest receiver awake
+`ΔAC = 1`, `g = 10`, an honest send at `0` and an honest receiver awake
 throughout; an eager-from-10 log may first deliver at `10`, missing the
 synchronous deadline `1`.
 
@@ -376,7 +376,7 @@ there (`final_safe_healthy`).
 `standard_admissible` shows that the standard numbers are admissible. The
 other numbers are not bounded and carry part of the verdict: a larger
 `catchUp` means fewer ready readers, a larger `lag` an earlier protected source
-(`T ≤ b₀ − lag·Δ`, a stronger premise),
+(`T ≤ b₀ − lag·ΔAC`, a stronger premise),
 a larger `η` a stricter outage participation condition, a larger `noSleep` a
 longer no-sleep window, a larger `recovery` a later protected reader, a small
 `budget` a short outage, and larger heal points and latencies weaker claims. Any `η` is
@@ -407,7 +407,7 @@ The slot is checked, within limits:
 
 - `Adequate.covers` transports it to the covering run.
 - `Realizable` requires it to hold on every witness, and, at some index
-  chosen before `Δ` and `ΔF`, on the stress witness with many honest
+  chosen before `ΔAC` and `ΔFG`, on the stress witness with many honest
   validators asleep. A reader that
   never holds fails `CorrectProtocol` (`false_progress_not_correct`); a requirement of
   near-full participation at every index fails the stress witness.
@@ -483,7 +483,7 @@ at a late GST or without silent runs.
 L0 cannot check that the system is a real distributed protocol. Example: an
 **oracle system** with `Valid = True`, no sends, `Excuse = False`,
 `convicts = False`, and every node reading all transactions submitted to an
-awake honest node by `t − Δ`, ordered by submission time. It computes its
+awake honest node by `t − ΔAC`, ordered by submission time. It computes its
 reads from ground truth that no node has, yet it can meet every L0
 condition. Likewise a
 system whose `Valid` contains only eager, Byzantine-free runs passes
@@ -536,7 +536,7 @@ The generated library root only collects imports.
 10. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
 11. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data (`sysExternal`).
 12. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
-13. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of Δ.
+13. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of ΔAC.
 14. `ConsensusLean/Spec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
 15. `ConsensusLean/Spec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
 16. `ConsensusLean/Spec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
@@ -749,7 +749,7 @@ within the execution conditions. There is no adaptive corruption.
   separately from receipt. Message and FG-attestation deadlines are unchanged.
   `Network.RawArrival.poisoned_arrival` tests a valid synchronous execution with
   an honest proposal's timely arrival and a prerequisite withheld from its recipient.
-- **Δ known; unit ticks:** honest code knows `n`, `ΔAC` and `ΔFG`. Every awake honest
+- **ΔAC, ΔFG known; unit ticks:** honest code knows `n`, `ΔAC` and `ΔFG`. Every awake honest
   node ticks at every integer time.
 - **Order within one time:** restarts, then ticks, then deliveries. What
   arrives at a deadline is processed at the delivery (whose duties and gossip
@@ -781,7 +781,7 @@ are the intended ones.
   fixed ⅔ with one honest sleeper (`healthy_needs_full_participation`).
   Liveness with honest validators asleep is asked by the sleepy regime and
   its stress witness.
-- Static adversary, equal weights, two delay bounds (`Δ` for messages and
+- Static adversary, equal weights, two delay bounds (`ΔAC` for messages and
   transactions, `ΔFG` for FG attestations), no probabilistic protocols, no
   proof of work, no non-validator readers, no responsiveness claim.
 - No transaction validity, fees, capacity or chain-quality bounds. Liveness
@@ -791,7 +791,7 @@ are the intended ones.
   with a recurrence requirement.
 - No committee premise: only `.fixed` committees can support claims.
   Gasper's partitioned selection is deferred.
-- Phases are multiples of `Δ`. For `pollSel := .fixed univ`, poll provenance
+- Phases are multiples of `ΔAC`. For `pollSel := .fixed univ`, poll provenance
   accepts any validator's header.
 - `notReadyAtMost m` (Tendermint's contract, a placeholder) is a pointwise
   bound: the non-ready set may change over time, so it does not by itself put
@@ -833,11 +833,11 @@ Challenge statement reaches them (`docs/decisions.md`, 2026-11-04).
 
 `ConsensusLean/Examples/Shape/Bft.lean` supplies the common final-only schema `bftCore`, affine bounds
 and `bftContract`: index `k : ℕ+`, standard thresholds, catch-up, heal point
-`max g 0 + (catchUp + 1 + heal k)·Δ`, and latency `latency k` in Δ-coefficients.
+`max g 0 + (catchUp + 1 + heal k)·ΔAC`, and latency `latency k` in ΔAC-coefficients.
 Outage numbers are unused because there is no stable output.
 
-`ConsensusLean/Examples/Shape/Streamlet.lean` gives `2·Δ` slots, one proposer per slot, polling disabled,
-and all-validator votes at offset `Δ`. Progress is five consecutive honest ready proposers
+`ConsensusLean/Examples/Shape/Streamlet.lean` gives `2·ΔAC` slots, one proposer per slot, polling disabled,
+and all-validator votes at offset `ΔAC`. Progress is five consecutive honest ready proposers
 in every window of `k` slots (`Pattern.range 5`); gap 6 supplies the tolerant index.
 
 `ConsensusLean/Examples/Shape/Tendermint.lean` gives a poll shape, no slot proposals or committee kinds,

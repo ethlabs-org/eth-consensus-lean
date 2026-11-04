@@ -13,13 +13,14 @@ public section
 The shared HS premises through the engine horizon, from the run data of a query alone (valid
 execution, no observed collision, `Healthy` at GST `g`), at a parametric row delay `Δ_F`.
 
-* `hsSharedUpTo_of_rows`: from row service at `Δ_F` (`PSyncFGRowTransport … Δ_F`) as a premise.
-* `rowDelay_delivery_of_healthy`, `rowDelay_timeout_of_healthy`: the healthy regime of `K S A`
-  bounds the engine FG delay by the contract's bound (`ΔFG ≤ (4·fgSlots − 6)·ΔAC`), so the
-  protocol FG delay `Δ_F,p = rowDelay (pubOf E)` satisfies `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`
-  (`fgDelay_bound_iff`, `3·fgSlots ≤ δ_t`). No order between `Δ` and `Δ_F` is used.
+* `hsSharedUpTo_of_rows`: from row service at `Δ_F` (`PSyncFGAttTransport … Δ_F`) as a premise.
+* `protoFGDelay_delivery_of_healthy`, `protoFGDelay_timeout_of_healthy`: the healthy regime of
+  `K S A` bounds the engine FG delay by the contract's bound (`ΔFG ≤ (4·fgSlots − 6)·ΔAC`), so the
+  protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)` satisfies
+  `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t` (`fgDelay_bound_iff`, `3·fgSlots ≤ δ_t`). No order
+  between `Δ` and `Δ_F` is used.
 * `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_F,p`, from the network's row
-  service at `Δ_F,p` (`signed_row_service_psync`). The lift (`PSyncFGRowTransport.mono`) exists,
+  service at `Δ_F,p` (`signed_row_service_psync`). The lift (`PSyncFGAttTransport.mono`) exists,
   but Accepted's chain uses it only at `le_rfl` (`Δ_F = Δ_F,p`).
 
 Fields: `noColl`, `genesisRoot` (`noCollTransport`, `simTrace_genesis_root_ok`); `sync`
@@ -46,7 +47,7 @@ only fills the field `ResetService.deltaF`; no order between `Δ` and `Δ_F` is 
 theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (goldilocks S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
     (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) {ΔF : Time}
-    (hrow : PSyncFGRowTransport S run.2 (simTrace S run.2 hn) (honestKeys S run.2) ΔF)
+    (hrow : PSyncFGAttTransport S run.2 (simTrace S run.2 hn) (honestKeys S run.2) ΔF)
     (hΔF : 0 < ΔF)
     (htd : 6 * (S.params (Model.pubOf run.1) hn).Δ + ΔF ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time)) :
@@ -83,30 +84,30 @@ theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
       (hawake y hy _ (Int.le_sub_one_of_lt hlt) (by linarith))
 
 /-- The protocol row delay is positive. -/
-theorem rowDelay_pos (pub : Model.Public) : 0 < rowDelay pub := by
-  rw [rowDelay_eq]
+theorem protoFGDelay_pos (pub : Model.Public) : 0 < protoFGDelay pub := by
+  rw [protoFGDelay_eq]
   exact pub.ΔFG_pos
 
 /-- **The FG transport of a healthy run of `K S A`**: the healthy regime bounds the engine FG
 delay by the contract's FG delay bound, `ΔFG ≤ (4·fgSlots − 6)·ΔAC`, so the protocol delays satisfy
-`6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots` (`fgDelay_bound_iff`), with `Δ_F,p = rowDelay (pubOf E)`. -/
-theorem rowDelay_delivery_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
-    {g : Time} (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) :
-    6 * (S.params (Model.pubOf run.1) hn).Δ + rowDelay (Model.pubOf run.1) ≤
+`6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots` (`fgDelay_bound_iff`), with `Δ_F,p = protoFGDelay (pubOf E)`. -/
+theorem protoFGDelay_delivery_of_healthy (run : (Sys (goldilocks S) V).Run)
+    (hn : 1 ≤ Fintype.card V) {g : Time} (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) :
+    6 * (S.params (Model.pubOf run.1) hn).Δ + protoFGDelay (Model.pubOf run.1) ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (A.fgSlots : Time) := by
   have h := healthy.2.2
   change run.1.ΔFG ≤ ((A.fgDelay : ℕ+) : Time) * run.1.ΔAC at h
-  rw [rowDelay_eq]
+  rw [protoFGDelay_eq]
   exact (fgDelay_bound_iff A run.1.ΔAC run.1.ΔFG).1 h
 
 /-- **The rise timeout of a healthy run of `K S A`** at the protocol row delay:
-`6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`, from `rowDelay_delivery_of_healthy` and
+`6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`, from `protoFGDelay_delivery_of_healthy` and
 `3·fgSlots ≤ δ_t` (`ContractAssumptions.timeout`). -/
-theorem rowDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
+theorem protoFGDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     {g : Time} (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) :
-    6 * (S.params (Model.pubOf run.1) hn).Δ + rowDelay (Model.pubOf run.1) ≤
+    6 * (S.params (Model.pubOf run.1) hn).Δ + protoFGDelay (Model.pubOf run.1) ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time) := by
-  have h := rowDelay_delivery_of_healthy S A V run hn healthy
+  have h := protoFGDelay_delivery_of_healthy S A V run hn healthy
   have hΔ := (S.params (Model.pubOf run.1) hn).toParams.hΔ
   have hc : (A.fgSlots : Time) ≤ (S.δt : Time) := by
     have := A.timeout
@@ -115,18 +116,18 @@ theorem rowDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 �
 
 /-- **The monotone lift**: the shared HS premises of a healthy run at every `Δ_F ≥ Δ_F,p` with
 `6Δ + Δ_F ≤ 4Δ·δt`, from the network's row service at the protocol row delay
-(`signed_row_service_psync`) lifted by `PSyncFGRowTransport.mono`. -/
+(`signed_row_service_psync`) lifted by `PSyncFGAttTransport.mono`. -/
 theorem hsSharedUpTo_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (goldilocks S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
     (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) {ΔF : Time}
-    (hΔF : rowDelay (Model.pubOf run.1) ≤ ΔF)
+    (hΔF : protoFGDelay (Model.pubOf run.1) ≤ ΔF)
     (htd : 6 * (S.params (Model.pubOf run.1) hn).Δ + ΔF ≤
       4 * (S.params (Model.pubOf run.1) hn).Δ * (S.δt : Time)) :
     Healing.HSSharedUpTo (simTrace S run.2 hn) (honestKeys S run.2) (digestOf S run.2) g
       ΔF run.2.horizon :=
   hsSharedUpTo_of_rows S A V run hn valid noCollision healthy
     ((signed_row_service_psync S run.2 hn valid).mono _ _ _ _ hΔF)
-    ((rowDelay_pos _).trans_le hΔF) htd
+    ((protoFGDelay_pos _).trans_le hΔF) htd
 
 end Consensus.Goldilocks.Obligations
 

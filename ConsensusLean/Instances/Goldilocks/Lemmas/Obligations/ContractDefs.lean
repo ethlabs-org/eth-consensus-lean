@@ -16,8 +16,8 @@ The characterising lemmas of the fixed assumptions (`ContractAssumptions`: the F
 (`finalWindow`, gap `fgSlots`), the coefficients (`contract_catchUp`,
 `contract_heal`, `contract_latency`) and the contract `goldilocksContract`, all defined in the
 statement module `Statements/Obligations`, and the abbreviation `K`. The FG transport is
-instantiated at the actual protocol FG delay `rowDelay` (HSSharedRun, HSSharedOfQuery); the
-monotone lift `PSyncFGRowTransport.mono` exists, but Accepted's chain uses it only at `le_rfl`. -/
+instantiated at the actual protocol FG delay `protoFGDelay` (HSSharedRun, HSSharedOfQuery); the
+monotone lift `PSyncFGAttTransport.mono` exists, but Accepted's chain uses it only at `le_rfl`. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape

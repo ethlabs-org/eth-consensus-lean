@@ -2268,7 +2268,7 @@
       "adversarial-pass-done": "n"
     },
     {
-      "name": "Consensus.Goldilocks.Obligations.rowDelay_pos",
+      "name": "Consensus.Goldilocks.Obligations.protoFGDelay_pos",
       "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Obligations/HSSharedRun.lean:84",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",

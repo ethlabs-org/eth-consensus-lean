@@ -18,9 +18,10 @@ parameter-only coefficients (`ResetCoefficients`).
 
 It is the instance of `exists_reset_of_drain_rounds_awake` (the rise-round route) at `λ = 2Δ`, the
 ready scalar `ready` (`ready ≥ 1`, so `max ready 0 = ready`), the gap `G = X`
-(`hgp_of_healthyQuery`) and the drain length `L_drain = healthyDrainLen`, with the protocol row
-delay `Δ_F = rowDelay`. The run premises come from `hsSharedUpTo_of_le`; the whole-run no-restart
-premise from the bounded one, since a restart is a labelled call at a time `≤ horizon`; Catch from
+(`hgp_of_healthyQuery`) and the drain length `L_drain = healthyDrainLen`, with the protocol FG
+delay `Δ_F = protoFGDelay`. The run premises come from `hsSharedUpTo_of_le`; the whole-run
+no-restart premise from the bounded one, since a restart is a labelled call at a time `≤ horizon`;
+Catch from
 `healthy_repair_catch`; the snapshot call condition from `cutZ_fit_of_catchUp`. The kernel's frame
 ends before `B = ready + R·Δ`, so the gap is needed only up to heal, given the fit
 `ready + R·Δ + ρ ≤ heal`. This module stays upstream of `FinalWindowDefs` and `HealedSafety`.
@@ -39,11 +40,11 @@ open SA (gbar)
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The shared HS premises of the query through the horizon at the protocol row delay
-`Δ_F,p = rowDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `rowDelay_timeout_of_healthy`). -/
+`Δ_F,p = protoFGDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `protoFGDelay_timeout_of_healthy`). -/
 private theorem healthy_hsShared (Q : HealthyPreparationQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
-      (rowDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
-  Q.hsSharedUpTo_of_le _ le_rfl (rowDelay_timeout_of_healthy S A V Q.run Q.hn Q.healthy)
+      (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
+  Q.hsSharedUpTo_of_le _ le_rfl (protoFGDelay_timeout_of_healthy S A V Q.run Q.hn Q.healthy)
 
 /-- The whole-run no-restart premise: a restart is a labelled call, at a time `≤ horizon`, so
 the bounded one of `healthy_hsShared` covers it. -/
@@ -55,7 +56,7 @@ private theorem healthy_noRestartAfter (Q : HealthyPreparationQuery S A V) :
 /-- **The reset envelope from the drain and the fit before heal.** With the drain at the engine
 horizon (`DrainOutputs`, gap `X`, length `healthyDrainLen`) and the fit
 `ready + R·Δ + r ≤ heal`: a reset with its premises through the horizon at the protocol row
-delay `Δ_F = rowDelay`, and
+delay `Δ_F = protoFGDelay`, and
 `a ≤ ready + R·Δ + r`. -/
 theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
     (hb : Q.heal ≤ Q.run.2.horizon)
@@ -124,7 +125,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
     hdrain
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake hrun hs.awake hH (b := Q.run.2.horizon)
     (by linarith)
-  refine ⟨rowDelay (Model.pubOf Q.run.1), a, reset_premises_of_healthy_query S A V Q hs.sync ha
+  refine ⟨protoFGDelay (Model.pubOf Q.run.1), a, reset_premises_of_healthy_query S A V Q hs.sync ha
     (by linarith) ⟨j, hj, hjt⟩, ?_⟩
   rw [hBeq] at hab
   linarith
@@ -194,7 +195,7 @@ set_option linter.unusedVariables false in
 reset with service through the horizon, its seed, and a query with the lower bound and the strict
 reserve). Labelled decomposition replacement (R0) of the former
 `healthy_old_inventory_initialize`: no old-entry inventory is produced or required. The reset is
-`healthy_reset_envelope` (`Δ_F = rowDelay`, `a ≤ ready + R·Δ`), the seed
+`healthy_reset_envelope` (`Δ_F = protoFGDelay`, `a ≤ ready + R·Δ`), the seed
 `ResetPremisesUpTo.reset_seed`, the base slot `slot(ready) + 1` and the query the maximum of the
 lower bound. Every timing bound is one step from the coefficient inequality
 `contract_heal_ge_reset`: with `B = R + 8k + 4X + 26`, `ready + B·Δ + 2 ≤ heal`, which covers

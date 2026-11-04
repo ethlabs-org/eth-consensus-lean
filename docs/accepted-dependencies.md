@@ -186,7 +186,7 @@ Names use the namespace stated in each row (under `Consensus.Goldilocks`).
 | `Consensus.Goldilocks.Obligations.sleepy_query_population` | Body closed via duration monotonicity and sleepy_faultBound; proved, no direct owner in the compiled audit at 70e90b44. |
 | `Consensus.Goldilocks.Obligations.sleepy_query_slot` | Body closed at 7547caee: actual recurrence/grid selection at exact cDur with strict freshness and 6Δp margin; proved, no direct owner in the compiled audit at 70e90b44. |
 | `Consensus.Goldilocks.Obligations.confirmed_slot_event` | Body closed via scheduled actual event and joined readiness transport, not eligibility-as-event by definition; proved, no direct owner in the compiled audit at 70e90b44. |
-| `Consensus.Goldilocks.Obligations.healthy_preparation_initialize` | Proved (HealthyResetEnvelope.lean; moved unchanged from HealthySuppliers to sit downstream of the reset envelope): the joint (E) tuple from `healthy_reset_envelope` (ΔF = rowDelay, a ≤ ready + R·Δ), the seed of `ResetPremisesUpTo.reset_seed`, base slot slot(ready)+1 and the query the maximum of the lower bound; every timing bound, including the reserve and the W record/cache/expiry/service terms, is one step from `contract_heal_ge_reset` (ready + (R+8k+4X+26)Δ + 2 ≤ heal). Closure: standard axioms only. |
+| `Consensus.Goldilocks.Obligations.healthy_preparation_initialize` | Proved (HealthyResetEnvelope.lean; moved unchanged from HealthySuppliers to sit downstream of the reset envelope): the joint (E) tuple from `healthy_reset_envelope` (ΔF = protoFGDelay, a ≤ ready + R·Δ), the seed of `ResetPremisesUpTo.reset_seed`, base slot slot(ready)+1 and the query the maximum of the lower bound; every timing bound, including the reserve and the W record/cache/expiry/service terms, is one step from `contract_heal_ge_reset` (ready + (R+8k+4X+26)Δ + 2 ≤ heal). Closure: standard axioms only. |
 | `Consensus.Goldilocks.Obligations.healthy_prepare` | Body proved: finite ready→heal record and recent stored-lock preparation from W and the preparation schedule; since R0 it consumes no inventory. Sorry-dependent, not a direct owner. |
 | `Consensus.Goldilocks.Obligations.healthy_repair_schedule` | Proved (f4997e9f) through the reserved route: `healthy_preparation_initialize` at the same `Q`, `h0`, `hb`, `hp`, then `healthy_repair_schedule_of_preparation` (580f1e4); the reserve is the schedule's own, paid by `contract_heal_ge_reset`. Statement and section parameters unchanged. |
 | `Consensus.Goldilocks.Obligations.healthy_preserve` | Body proved from the given base: records by induction and recent locks by `lock_origin` (R0 removed the cache and inventory steps). Only shared coefficient type dependencies remain; no direct sorry. |
@@ -295,7 +295,7 @@ Every positive outer gap X is an index; tolerance uses X=span+2. Timeout has no 
 The three numeric leaves must be solved jointly with the named endpoint suppliers;
 their arbitrary separate instantiation would not prove the endpoint. Local-pattern
 sufficiency remains OPEN, not supplied by the timeout inequality alone.
-The model maps the FG row delay to the actual engine bound, `rowDelay = ΔF` (half-open:
+The model maps the FG row delay to the actual engine bound, `protoFGDelay = ΔF` (half-open:
 Δ_F,p = Δ_F,e; no order between ΔF and Δ is assumed). The healthy regime's bound `ΔFG ≤ (4c − 6)·ΔAC`
 gives `6Δ + ΔF ≤ 4Δ·c` (`fgDelay_bound_iff`), so the FG gap is `c = fgSlots` (at least 2). Route A (#136): window coverage is the
 proved anchor route (`final_anchor_coverage` over `cacheCoverage_of_anchor_window_upTo`);
@@ -485,7 +485,7 @@ they do not discharge total successful publication or the remaining network supp
 | `stateAt_wrappersCover` | Proved by unconditional event induction: every held non-genesis root has a durable wrapper-map entry. |
 | `onBlock_queues_acceptance` | Proved: WrappersCover and an actual successful onBlock cut append the acceptance wrapper. |
 | `apply_forward_origin` | Proved: a queue member is old or comes from an actual successful cut at st.now. |
-| `PSyncFGRowTransport` | Named OPEN proposition: PSync plus actual attestation send/admission supplies bounded processing, with ΔF=sp.Δ. |
+| `PSyncFGAttTransport` | Named OPEN proposition: PSync plus actual attestation send/admission supplies bounded processing, with ΔF=sp.Δ. |
 
 Publication/network targets and their current status (proved rows are distinguished
 from the remaining planned targets):

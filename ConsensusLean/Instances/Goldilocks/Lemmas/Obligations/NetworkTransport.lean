@@ -17,10 +17,10 @@ public section
 These are goals for the concrete publisher/simulation adapter, not extra premises of Accepted.
 The trace parameters remain independent here. `Setup.params` gives protocol delay Δp = Δe: the
 engine holds an object strictly before `a + Δe` (by `a + Δe − 1`), which is the node's strict
-deadline `a + Δp`. FG row service has its own delay `Δ_F` (`PSyncFGRowTransport`): the engine
+deadline `a + Δp`. FG row service has its own delay `Δ_F` (`PSyncFGAttTransport`): the engine
 serves standalone rows (`isFGAtt`) strictly before its row bound `ΔF` (the `rows` clause of
 `PSync`), and `signed_row_service_psync` serves them at the protocol row delay
-`Δ_F,p = rowDelay (pubOf E) = ΔF`.
+`Δ_F,p = protoFGDelay (pubOf E) = ΔF`.
 Every other object (blocks, votes, forwarding and vote-forwarding wrappers) is served strictly
 before the bound `Δ`; no statement here claims a block before `ΔF`.
 All three suppliers include message, block, acceptance-relay and attestation service. Receipt
@@ -45,12 +45,12 @@ open AsChainShape Simulation
 
 open Shape Blocks
 
-/-- The protocol row delay of the public parameters: `ΔF_p = ΔF`, the engine row bound, as the
-protocol delay `Δ_p = Δ` (`Setup.params`): L0 delivers strictly before the bound (`CommLog.PSync`),
-which is the node's deadline `[τ, max(τ, w) + Δ_F)`. -/
-def rowDelay (pub : Model.Public) : Time := pub.ΔFG
+/-- The protocol FG delay of the public parameters: `ΔF_p = ΔFG`, the engine FG delay, as the
+protocol delay `Δ_p = ΔAC` (`Setup.params`): L0 delivers strictly before the bound
+(`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ_F)`. -/
+def protoFGDelay (pub : Model.Public) : Time := pub.ΔFG
 
-theorem rowDelay_eq (pub : Model.Public) : rowDelay pub = pub.ΔFG := by rfl
+theorem protoFGDelay_eq (pub : Model.Public) : protoFGDelay pub = pub.ΔFG := by rfl
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
@@ -89,7 +89,7 @@ not the block/message bound `Δ`) at recipient calls within the engine horizon. 
 processing of the identical attestation is sufficient; no processing after the source signing is
 required. This services an existing signed row and does not produce one. It has the shape of
 the trusted `AttDeliveredBy`, restricted to signings. -/
-def PSyncFGRowTransport : Prop :=
+def PSyncFGAttTransport : Prop :=
   ∀ g, rho.log.PSync rho.point g →
     ∀ x ∈ H, ∀ i a, tr.SignAt x i a →
       ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ rho.horizon →
@@ -98,7 +98,7 @@ def PSyncFGRowTransport : Prop :=
           tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
 
 /-- The signed-row service contract, without exposing its definition to consumers. -/
-theorem psyncFGRowTransport_iff : PSyncFGRowTransport S rho tr H ΔF ↔
+theorem psyncFGAttTransport_iff : PSyncFGAttTransport S rho tr H ΔF ↔
     ∀ g, rho.log.PSync rho.point g →
       ∀ x ∈ H, ∀ i a, tr.SignAt x i a →
         ∀ y ∈ H, ∀ j, tr.IsCall y j → tr.time j ≤ rho.horizon →
@@ -111,8 +111,8 @@ theorem psyncFGRowTransport_iff : PSyncFGRowTransport S rho tr H ΔF ↔
 `Δ₂ ≥ Δ₁`, since the row deadline is monotone in the delay. It is the only use of an order
 between row delays here; a consumer lifts the base row service at `Δ_F,p` only to a larger
 `Δ_F` (`hsSharedUpTo_of_healthy`). -/
-theorem PSyncFGRowTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGRowTransport S rho tr H Δ₁)
-    (h12 : Δ₁ ≤ Δ₂) : PSyncFGRowTransport S rho tr H Δ₂ := by
+theorem PSyncFGAttTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGAttTransport S rho tr H Δ₁)
+    (h12 : Δ₁ ≤ Δ₂) : PSyncFGAttTransport S rho tr H Δ₂ := by
   intro g hnet x hx i a hs y hy j hj hb hd
   obtain ⟨k, hkj, hp, ht⟩ := h g hnet x hx i a hs y hy j hj hb
     ((tr.deadline_mono_delta y j _ h12).trans hd)
@@ -933,16 +933,16 @@ theorem held_att_processed_before (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
 
 /-- **The base row supplier, at the row bound.** Partial synchrony of the engine log serves
 signed rows (`rows` clause, row bound `ΔF`) at bounded recipient calls at the protocol row delay
-`Δ_F,p = rowDelay (pubOf E) = ΔF`: the engine holds a row by `w + ΔF − 1`, strictly before the
+`Δ_F,p = protoFGDelay (pubOf E) = ΔF`: the engine holds a row by `w + ΔF − 1`, strictly before the
 row deadline `w + Δ_F,p`. No order between `Δ` and `ΔF` is used: the recipient's
 awake interval is the one of its call, and the row deadline is the call's deadline at `Δ_F,p`.
 An identical earlier processing is enough, and descent supplies the processing cut's own strict
 deadline. Every consumer takes row service at a parametric `Δ_F` as a premise
 (`resetService_of_psync`, `hsSharedUpTo_of_rows`) or lifts this one where an upper envelope of
-the row bound is in scope (`PSyncFGRowTransport.mono`). -/
+the row bound is in scope (`PSyncFGAttTransport.mono`). -/
 theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
-    PSyncFGRowTransport S rho (simTrace S rho hn) (honestKeys S rho)
-      (rowDelay (Model.pubOf E)) := by
+    PSyncFGAttTransport S rho (simTrace S rho hn) (honestKeys S rho)
+      (protoFGDelay (Model.pubOf E)) := by
   intro g hnet x hx i a hsign y hy j hj hb hd
   have run := simTrace_goldilocksRun S rho hn hv
   have hwf := signed_att_wellFormed S rho hn hv hx hsign
@@ -954,11 +954,11 @@ theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
     obtain ⟨w, hw, heq₀, haw⟩ := deadline_awake_interval S rho hn hv hy hj
       (hτ.trans (le_max_left _ g))
     have heq : (simTrace S rho hn).deadline y j (max ((simTrace S rho hn).time i) g)
-        (rowDelay (Model.pubOf E)) = w + rowDelay (Model.pubOf E) := by
+        (protoFGDelay (Model.pubOf E)) = w + protoFGDelay (Model.pubOf E) := by
       unfold RunTrace.deadline at heq₀ ⊢
       linarith
     have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
-    have slack : w + E.ΔFG - 1 < w + rowDelay (Model.pubOf E) := by
+    have slack : w + E.ΔFG - 1 < w + protoFGDelay (Model.pubOf E) := by
       change w + E.ΔFG - 1 < w + E.ΔFG
       linarith
     have hbound : w + E.ΔFG - 1 ≤ (simTrace S rho hn).time j :=
@@ -974,7 +974,7 @@ theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
       (heq ▸ slack) hd
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).deadline y k (max ((simTrace S rho hn).time i) g)
-          (rowDelay (Model.pubOf E))
+          (protoFGDelay (Model.pubOf E))
     · exact ⟨k, hkj, hp, hk⟩
     · have hkj' : k < j := lt_of_le_of_ne hkj (by intro he; subst k; exact hk ht)
       have hc : (simTrace S rho hn).IsCall y k := by
@@ -1283,7 +1283,7 @@ order between `Δ` and `Δ_F` is used. -/
 theorem resetService_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
-    (hrow : PSyncFGRowTransport S rho (simTrace S rho hn) (honestKeys S rho) ΔF)
+    (hrow : PSyncFGAttTransport S rho (simTrace S rho hn) (honestKeys S rho) ΔF)
     (hΔF : 0 < ΔF) :
     Healing.ResetService (simTrace S rho hn) (honestKeys S rho) g ΔF rho.horizon := by
   have bound {y j} (hj : (simTrace S rho hn).IsCall y j) :
@@ -1299,6 +1299,6 @@ theorem resetService_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVal
     rw [max_eq_left hg] at hd ⊢
     exact acceptance_relay_psync S rho hn hv hnc hnet hx hi
       (simTrace_time_nonneg S rho hn hv i) hg hy hj (bound hj) hd hF
-  · exact (psyncFGRowTransport_iff S rho _ _ _).mp hrow g hnet
+  · exact (psyncFGAttTransport_iff S rho _ _ _).mp hrow g hnet
 
 end Consensus.Goldilocks.Obligations
