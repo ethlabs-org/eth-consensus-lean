@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
 
@@ -37,69 +38,6 @@ namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-
-private theorem admitVote_keeps (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).votedSlot = A.votedSlot ∧
-      (admitVote sp A t v).restartTime = A.restartTime := by
-  unfold admitVote
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
-private theorem updateLatestConfirmed_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).votedSlot = A.votedSlot ∧
-      (updateLatestConfirmed sp A Φ C).restartTime = A.restartTime := by
-  unfold updateLatestConfirmed
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
-private theorem optimistic_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).votedSlot = A.votedSlot ∧
-      (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
-  unfold optimisticConfirmation
-  split
-  · exact ⟨rfl, rfl⟩
-  · exact updateLatestConfirmed_keeps _ _ _
-
-private theorem updateConfirmation_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (s : Nat) : (updateConfirmation sp A Φ t s).votedSlot = A.votedSlot ∧
-      (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
-  unfold updateConfirmation
-  dsimp only
-  split
-  · exact ⟨rfl, rfl⟩
-  · split_ifs
-    · exact ⟨rfl, rfl⟩
-    all_goals exact updateLatestConfirmed_keeps _ _ _
-
-private theorem blockReceipt_keeps (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).votedSlot = A.votedSlot ∧
-      (blockReceipt sp A t B).restartTime = A.restartTime := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n,
-      (l.foldl (fun A v => admitVote sp A t v) A').votedSlot = A'.votedSlot ∧
-      (l.foldl (fun A v => admitVote sp A t v) A').restartTime = A'.restartTime from
-    h { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
-  induction l with
-  | nil => exact fun _ => ⟨rfl, rfl⟩
-  | cons v l ih =>
-    intro A'
-    simp only [List.foldl_cons]
-    exact ⟨(ih _).1.trans (admitVote_keeps _ _ _).1, (ih _).2.trans (admitVote_keeps _ _ _).2⟩
-
-private theorem acProposal_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acProposal sp A Φ t).1.votedSlot = A.votedSlot ∧
-      (acProposal sp A Φ t).1.restartTime = A.restartTime := by
-  unfold acProposal
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
-private theorem acToFG_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
-      (acToFG sp A Φ t).1.restartTime = A.restartTime := by
-  unfold acToFG
-  split_ifs
-  · split
-    · exact ⟨rfl, rfl⟩
-    · split_ifs <;> exact ⟨rfl, rfl⟩
-  · exact ⟨rfl, rfl⟩
 
 /-- A call from `A` to `A'` with the emissions `es` keeps `restart_time`, and keeps `voted_slot`
 or emits a vote of the slot that `A'` records. -/

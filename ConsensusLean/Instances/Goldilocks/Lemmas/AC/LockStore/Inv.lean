@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
 
@@ -124,32 +125,6 @@ private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : Loc
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   exact ⟨E, hE, hEr.trans hr.symm, hEt, hl ▸ hlE⟩
 
-private theorem admitVote_keeps (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).locks = A.locks ∧
-      (admitVote sp A t v).latestConfirmed = A.latestConfirmed := by
-  unfold admitVote
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
-private theorem blockReceipt_keeps (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).locks = A.locks ∧
-      (blockReceipt sp A t B).latestConfirmed = A.latestConfirmed := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n, (l.foldl (fun A v => admitVote sp A t v) A').locks = A'.locks ∧
-      (l.foldl (fun A v => admitVote sp A t v) A').latestConfirmed = A'.latestConfirmed from
-    h _
-  induction l with
-  | nil => exact fun _ => ⟨rfl, rfl⟩
-  | cons v l ih =>
-    intro A'
-    simp only [List.foldl_cons]
-    exact ⟨(ih _).1.trans (admitVote_keeps _ _ _).1, (ih _).2.trans (admitVote_keeps _ _ _).2⟩
-
-private theorem updateLatestConfirmed_locks (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).locks = A.locks := by
-  unfold updateLatestConfirmed
-  split_ifs <;> rfl
-
 variable (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
 include hU hΦ hΦU
 
@@ -204,7 +179,7 @@ private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time
       · exact hYL
       · exact absurd (Or.inr (hLY.trans hYC)) hCL
     · have hconf' : ¬ conflictsWithLock sp A.locks Φ t C := hconf
-      simp only [updateLatestConfirmed_locks]
+      simp only [updateLatestConfirmed_keeps_locks]
       refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
         ).addLocks hU hΦ hΦU hCt hconf' rfl (fun p hp => ?_) ?_
       · have hp' : ∃ Y, (Y ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t Y) ∧
@@ -223,8 +198,8 @@ private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin
   · exact h
   · exact h
   all_goals
-    refine LockInv.optimistic hU hΦ hΦU (LockInv.of_eq ?_ (admitVote_keeps _ _ _).1
-      (admitVote_keeps _ _ _).2) _
+    refine LockInv.optimistic hU hΦ hΦU (LockInv.of_eq ?_ (admitVote_keeps_locks _ _ _).1
+      (admitVote_keeps_locks _ _ _).2) _
     first
     | exact LockInv.of_eq (h.unlock hU hΦ hΦU _ _ _) rfl rfl
     | exact LockInv.of_eq h rfl rfl
@@ -262,10 +237,10 @@ private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : L
     · exact h
   | message m =>
     exact LockInv.tryVote hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
-      (h.of_eq (admitVote_keeps _ _ _).1 (admitVote_keeps _ _ _).2) _) _ _
+      (h.of_eq (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2) _) _ _
   | block B =>
     exact LockInv.tryVote hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
-      (h.of_eq (blockReceipt_keeps _ _ _).1 (blockReceipt_keeps _ _ _).2) _) _ _
+      (h.of_eq (blockReceipt_keeps_locks _ _ _).1 (blockReceipt_keeps_locks _ _ _).2) _) _ _
   | restart =>
     obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP ro x A Φ t hΦ ht
     exact h.of_eq hl hr
@@ -360,10 +335,10 @@ theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : Loc
   | toFG => simp [ACInterface.step]
   | message m =>
     exact LockInv.tryVote_emits hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
-      (h.of_eq (admitVote_keeps _ _ _).1 (admitVote_keeps _ _ _).2) _) _ _
+      (h.of_eq (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2) _) _ _
   | block B =>
     exact LockInv.tryVote_emits hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
-      (h.of_eq (blockReceipt_keeps _ _ _).1 (blockReceipt_keeps _ _ _).2) _) _ _
+      (h.of_eq (blockReceipt_keeps_locks _ _ _).1 (blockReceipt_keeps_locks _ _ _).2) _) _ _
   | restart =>
     intro e he
     change e ∈ (acRestart sp ro x A Φ t).2 at he
@@ -407,10 +382,10 @@ theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : SAState sp.n}
   | toFG => simp [ACInterface.step]
   | message m =>
     exact LockInv.tryVote_readPoint hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
-      (h.of_eq (admitVote_keeps _ _ _).1 (admitVote_keeps _ _ _).2) _) _ _
+      (h.of_eq (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2) _) _ _
   | block B =>
     exact LockInv.tryVote_readPoint hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
-      (h.of_eq (blockReceipt_keeps _ _ _).1 (blockReceipt_keeps _ _ _).2) _) _ _
+      (h.of_eq (blockReceipt_keeps_locks _ _ _).1 (blockReceipt_keeps_locks _ _ _).2) _) _ _
   | restart =>
     intro e he
     change e ∈ (acRestart sp ro x A Φ t).2 at he
