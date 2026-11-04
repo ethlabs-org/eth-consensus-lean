@@ -32,8 +32,20 @@
 # ORB_CI_FULL_ENV: extra environment for check.sh --full (e.g. 'REPLAY_JOBS=5').
 set -uo pipefail
 HOME_DIR="${ORB_CI_HOME:-$HOME/orb-ci}"
+# The code repository (main, PRs, tags) and the coordination repository (issues, ci-inventory): scripts/repos.toml
+# on the checkout's origin/main (what orb-ci-refresh.sh fetched and cached the watcher from, not the working tree).
+repos() { git -C "$1" show origin/main:scripts/repos.toml |
+  python3 -I -c 'import sys, tomllib; print(tomllib.loads(sys.stdin.read())[sys.argv[1]])' "$2"; }
 if [[ "${1:-} ${2:-}" == "--full poll" ]]; then  # before the copy and gh: runs every minute
   mkdir -p "$HOME_DIR"
+  # No gh here: a GitHub origin URL must name the code repository itself (a clone of another one queues nothing).
+  code="$(repos "${ORB_CI_REPO:?}" code)" || { echo "cannot read scripts/repos.toml on origin/main"; exit 1; }
+  url="$(git -C "$ORB_CI_REPO" config remote.origin.url)"
+  if [[ "$url" =~ ^(https://|ssh://git@|git@)github\.com[:/](.+)$ ]]; then
+    slug="$(sed -E 's#\.git$##; s#/$##' <<<"${BASH_REMATCH[2]}")"
+    [[ "$slug" == "$code" ]] ||
+      { echo "origin is $url, but the code repository is $code (scripts/repos.toml): re-point origin"; exit 1; }
+  fi
   # One remote snapshot; peel annotated tags, retaining lightweight tags too.
   tags="$(git -C "${ORB_CI_REPO:?}" ls-remote origin 'refs/tags/milestone*' 'refs/tags/release*')" || exit 1
   TAGS="$tags" python3 -I - "$HOME_DIR" <<'PY'
@@ -63,10 +75,14 @@ fi
 REPO="$ORB_CI_REPO" WT="$HOME_DIR/wt" WT_PR="$HOME_DIR/wt-pr" LOGS="$HOME_DIR/logs" DONE="$HOME_DIR/done" ISSUE="${ORB_CI_ISSUE:-63}"
 INTERVAL="${ORB_CI_INTERVAL:-600}" FULL_DONE="$HOME_DIR/done-full-cold"
 [[ "${1:-}" != --full ]] || WT="$HOME_DIR/wt-full"
-SLUG="$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)"
 export PATH="$HOME/.elan/bin:$PATH"
 mkdir -p "$LOGS"; touch "$DONE"
 log() { echo "$(date -u +%FT%TZ) $*"; }
+CODE="$(repos "$REPO" code)" && ISSUES="$(repos "$REPO" issues)" ||
+  { log "cannot read scripts/repos.toml on origin/main"; exit 1; }
+ORIGIN="$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)"
+[[ "$ORIGIN" == "$CODE" ]] ||
+  { log "origin is ${ORIGIN:-unknown}, but the code repository is $CODE (scripts/repos.toml): re-point origin"; exit 1; }
 SIGN="${ORB_CI_SIGN:-— amp-orbs (process, orb-ci)}"
 # Heads of main and of PRs run in a sandbox (the watcher's own copy of ci-sandbox.sh: no network, credentials or
 # watcher state); ORB_CI_SANDBOX=0 turns it off for the fixtures only. The full tier (commits of main, release tags)
@@ -135,12 +151,12 @@ record() {  # record <ref> <sha> <mode> <result>: a row at the top of the issue'
   local body row
   row="| $(date -u '+%m-%d %H:%M') | $1 | \`${2:0:8}\` | $3 | $4 |"
   exec 8>"$HOME_DIR/issue.lock"; flock 8  # the full tier and the watcher both edit the table
-  body="$(gh issue view "$ISSUE" -R "$SLUG" --json body -q .body)" || { log "cannot read issue $ISSUE"; exec 8>&-; return; }
+  body="$(gh issue view "$ISSUE" -R "$ISSUES" --json body -q .body)" || { log "cannot read issue $ISSUE"; exec 8>&-; return; }
   body="$(ROW="$row" python3 -c 'import os, sys
 b = sys.stdin.read(); head, rest = b.split("|---|---|---|---|---|\n", 1); rows, tail = rest.split("<!-- /orb-ci results -->", 1)
 rows = [r for r in rows.splitlines() if r.startswith("|")][:39]
 print(head + "|---|---|---|---|---|\n" + "\n".join([os.environ["ROW"]] + rows) + "\n<!-- /orb-ci results -->" + tail, end="")' <<<"$body")" &&
-    gh issue edit "$ISSUE" -R "$SLUG" --body "$body" >/dev/null || log "cannot update issue $ISSUE"
+    gh issue edit "$ISSUE" -R "$ISSUES" --body "$body" >/dev/null || log "cannot update issue $ISSUE"
   exec 8>&-
 }
 
@@ -217,12 +233,12 @@ ${fails:-(no FAIL line; see the log $lg)}
 \`\`\`
 $SIGN"
   fi
-  if [[ "$kind" == pr ]]; then gh pr comment "$id" -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on PR #$id"
-  elif ((rc != 0)) && [[ "$kind" == main ]]; then gh issue comment 17 -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on #17"; fi
+  if [[ "$kind" == pr ]]; then gh pr comment "$id" -R "$CODE" --body "$body" >/dev/null || log "cannot comment on PR #$id"
+  elif ((rc != 0)) && [[ "$kind" == main ]]; then gh issue comment 17 -R "$ISSUES" --body "$body" >/dev/null || log "cannot comment on #17"; fi
   if [[ "$kind" != pr ]]; then
     python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" capture "$head" "$kind" "$CI_RUN" "$observed_at" \
       "$([[ "$rc" == 0 ]] && echo passed || echo failed)" || log "REPORT inventory capture failed for $head"
-    python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" flush "$SLUG" || log "REPORT inventory upload pending; retry next pass"
+    python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" flush "$ISSUES" "$CODE" || log "REPORT inventory upload pending; retry next pass"
   fi
   echo "$head $kind $rc $secs" >>"$DONE"
   log "$kind ${id:-main} ${head:0:8}: rc=$rc ${secs}s"
@@ -242,7 +258,7 @@ pass() {
   fi
   main_if_new
   local prs
-  prs="$(gh pr list -R "$SLUG" --state open --base main --json number,headRefOid,isDraft \
+  prs="$(gh pr list -R "$CODE" --state open --base main --json number,headRefOid,isDraft \
     -q '.[] | select(.isDraft | not) | "\(.number) \(.headRefOid)"')" || { log "PR list failed"; return; }
   while read -r n sha; do
     [[ -n "$n" ]] || continue
@@ -301,7 +317,7 @@ $(grep -E '^(FAIL|orb-ci FAIL|::error)' "$lg" | head -20 || true)
 \`\`\`
 (log: $lg)
 $SIGN"
-    gh issue comment 17 -R "$SLUG" --body "$body" >/dev/null || log "cannot comment on #17"
+    gh issue comment 17 -R "$ISSUES" --body "$body" >/dev/null || log "cannot comment on #17"
   fi
   echo "$head $kind $rc $secs" >>"$FULL_DONE"
   log "full $kind ${head:0:8}: rc=$rc ${secs}s"
@@ -344,9 +360,9 @@ full_pass() {  # full_pass nightly|tag|now|sha <commit> [<ref>]
 }
 
 if [[ "${1:-}" == --full ]]; then full_pass "${@:2}"; exit; fi
-log "orb-ci started: $SLUG, worktree $WT, every ${INTERVAL}s"
+log "orb-ci started: $CODE (issues: $ISSUES), worktree $WT, every ${INTERVAL}s"
 while true; do
-  python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" flush "$SLUG" || log "REPORT inventory upload pending; retry next pass"
+  python3 -I "$HOME_DIR/publish-inventory.py" --home "$HOME_DIR" flush "$ISSUES" "$CODE" || log "REPORT inventory upload pending; retry next pass"
   pass
   [[ "${1:-}" == --once ]] && break
   sleep "$INTERVAL"

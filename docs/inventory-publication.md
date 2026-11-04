@@ -55,7 +55,8 @@ be rendered as zero sorry or a successful proof status.
 capture. A later successful recheck cannot silently replace it. Git blob URLs
 are content-addressed; reports and latest are published in one atomic data-branch
 commit. Normal main checks and rechecks may advance latest only when their exact
-full source SHA equals freshly read remote main. This includes an existing immutable
+full source SHA equals freshly read remote main of the code repository (`code` in
+`scripts/repos.toml`; the data branch is in `issues`). This includes an existing immutable
 report, even if its original `checked_at` is older. Historical rechecks/retries still
 publish their immutable report but never replace latest. Full runs do not publish.
 Main is checked again immediately before updating the data ref; a changed head

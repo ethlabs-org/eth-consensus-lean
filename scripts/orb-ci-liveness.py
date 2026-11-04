@@ -11,7 +11,10 @@ import re
 import subprocess
 
 
-SLUG = "ethlabs-org/consensus-lean"
+# The code repository (main) and the coordination repository (issue #63): a copy of scripts/repos.toml, since this
+# hook is installed root-owned and never reads the writable checkout. Update both with that file.
+CODE_SLUG = "ethlabs-org/consensus-lean"
+ISSUES_SLUG = "ethlabs-org/consensus-lean"
 UNIT = "consensus-lean-orb-ci.service"
 GRACE = 1800
 
@@ -65,7 +68,7 @@ def check(st, now, alerts, read=user_read):
         errors.append("user service status unavailable (" + type(error).__name__ + ")")
 
     try:
-        head = json.loads(read("/usr/bin/gh", "api", f"repos/{SLUG}/git/ref/heads/main"))["object"]["sha"]
+        head = json.loads(read("/usr/bin/gh", "api", f"repos/{CODE_SLUG}/git/ref/heads/main"))["object"]["sha"]
         if not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):
             raise ValueError("invalid main SHA")
         if head != state.get("head"):
@@ -75,7 +78,7 @@ def check(st, now, alerts, read=user_read):
         errors.append("GitHub main head unavailable")
 
     try:
-        rows = published(json.loads(read("/usr/bin/gh", "api", f"repos/{SLUG}/issues/63"))["body"])
+        rows = published(json.loads(read("/usr/bin/gh", "api", f"repos/{ISSUES_SLUG}/issues/63"))["body"])
         pending = state.get("pending", [])
         # Polling intentionally coalesces heads. A published later observed head
         # covers superseded observations, but mere churn never resets the deadline.

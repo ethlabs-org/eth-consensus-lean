@@ -100,6 +100,9 @@ class OrbCI(unittest.TestCase):
         self.write(self.repo / "scripts/boundaries.toml",
                    '[checks]\ntrusted_paths = ["Trusted.lean"]\n')
         self.write(self.repo / "Trusted.lean", "-- trusted fixture\n")
+        # Split repositories: the code repository is origin (the gh stub's `repo view`); issues live elsewhere.
+        self.write(self.repo / "scripts/repos.toml",
+                   'code = "fixture/consensus-lean"\nissues = "fixture/coordination"\n')
         self.write(self.repo / "scripts/check.sh", CHECK, executable=True)
         self.write(self.repo / "scripts/review-boundary.sh", REVIEW, executable=True)
         self.base = self.commit("base")
@@ -195,6 +198,49 @@ class OrbCI(unittest.TestCase):
                     self.configure(output=output)
                     self.invoke("--once")
                     self.verdict(sha, passed, mode)
+
+    def gh_calls(self):
+        path = self.root / "gh.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def test_issues_go_to_the_coordination_repo_and_prs_to_the_code_repo(self):
+        sha = self.change()
+        self.configure(exit=1, inventory=True)
+        self.invoke("--once")
+        self.verdict(sha, False, "fast")  # the #63 row lands (issue view/edit on the coordination repo)
+        calls = self.gh_calls()
+        repo = lambda a: a[a.index("-R") + 1] if "-R" in a else None
+        issue = [a for a in calls if a[0] == "issue"]
+        prs = [a for a in calls if a[0] == "pr"]
+        api = [a for a in calls if a[0] == "api"]
+        self.assertTrue([a for a in issue if a[1] == "comment" and a[2] == "17"], "no #17 comment on failure")
+        self.assertTrue(issue and all(repo(a) == "fixture/coordination" for a in issue), issue)
+        self.assertTrue(prs and all(repo(a) == "fixture/consensus-lean" for a in prs), prs)
+        self.assertTrue(api and all(a[1].startswith("repos/fixture/coordination/") for a in api), api)
+
+    def test_refuses_an_origin_other_than_the_code_repo(self):
+        self.write(self.repo / "scripts/repos.toml",
+                   'code = "fixture/elsewhere"\nissues = "fixture/coordination"\n')
+        sha = self.change()  # read from origin/main, not the working tree
+        proc = subprocess.run(["bash", str(SCRIPT), "--once"], cwd=self.repo, env=self.env, text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertIn("but the code repository is fixture/elsewhere", proc.stdout)
+        self.assertFalse(self.rows(), "a row was recorded from a clone of another repository")
+        self.assertFalse(self.calls(), "checks ran from a clone of another repository")
+        self.assertNotIn(sha[:8], (self.root / "issue").read_text())
+
+    def test_tag_poll_refuses_a_github_origin_other_than_the_code_repo(self):
+        self.tag("milestone-x", self.base, False)
+        self.git("remote", "set-url", "origin", "https://github.com/fixture/elsewhere.git")
+        proc = subprocess.run(["bash", str(SCRIPT), "--full", "poll"], cwd=self.repo, env=self.env, text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+        self.assertNotEqual(proc.returncode, 0, proc.stdout)
+        self.assertIn("but the code repository is fixture/consensus-lean", proc.stdout)
+        self.assertFalse(self.lines("release-tags-seen"), "poll queued tags from another repository")
+        self.git("remote", "set-url", "origin", str(self.remote))
+        self.invoke("--full", "poll")  # control: the code repository's own clone queues the tag
+        self.assertEqual([line.split()[0] for line in self.lines("release-tags-seen")], ["refs/tags/milestone-x"])
 
     def test_nonzero_check_fails_despite_summary(self):
         sha = self.change()

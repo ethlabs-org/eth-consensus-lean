@@ -83,9 +83,14 @@ def api(slug, path, data=None, missing=False, method="POST"):
     return json.loads(proc.stdout)
 
 
-def publish(slug, item, request=api):
+def publish(slug, item, request=api, code=None):
+    # The ci-inventory branch lives in `slug` (the coordination repository); the freshness check reads the head of
+    # main in the code repository `code` (the same repository when not given).
     def call(path, data=None, missing=False, method="POST"):
         return request(slug, path, data, missing, method)
+
+    def code_main():
+        return request(code or slug, "git/ref/heads/main", None, False, "POST")["object"]["sha"]
 
     ref = call(f"git/ref/heads/{BRANCH}", missing=True)
     parent = ref["object"]["sha"] if ref else None
@@ -115,8 +120,7 @@ def publish(slug, item, request=api):
     latest = blob_json(files["latest.json"]) if "latest.json" in files else None
     # A current-head recheck may discover an existing immutable report. Historical
     # retries/rechecks must not replace discovery, regardless of their timestamps.
-    advance = (latest is None or latest["commit"] != report["commit"]) and (
-        call("git/ref/heads/main")["object"]["sha"] == report["commit"])
+    advance = (latest is None or latest["commit"] != report["commit"]) and code_main() == report["commit"]
     if advance:
         latest = {"schema_version": 1, "commit": report["commit"], "checked_at": report["checked_at"],
                   "published_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -133,7 +137,7 @@ def publish(slug, item, request=api):
     tree_sha = call("git/trees", tree_data)["sha"]
     commit_sha = call("git/commits", {"message": f"Inventory for {report['commit']}",
                                       "tree": tree_sha, "parents": [parent] if parent else []})["sha"]
-    if advance and call("git/ref/heads/main")["object"]["sha"] != report["commit"]:
+    if advance and code_main() != report["commit"]:
         raise RuntimeError("main advanced during publication; retained for retry")
     if parent:
         # GitHub refuses a non-fast-forward racing publisher; retry from fresh ref.
@@ -142,12 +146,12 @@ def publish(slug, item, request=api):
         call("git/refs", {"ref": f"refs/heads/{BRANCH}", "sha": commit_sha})
 
 
-def flush(home, slug):
+def flush(home, slug, code=None):
     failed = False
     outbox = home / "inventory-outbox"
     for path in sorted(outbox.glob("*.json")):
         try:
-            publish(slug, json.loads(path.read_text()))
+            publish(slug, json.loads(path.read_text()), code=code)
             path.unlink()
             print(f"inventory published: {path.stem}")
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
@@ -168,7 +172,9 @@ def main():
     cap.add_argument("checked_at")
     cap.add_argument("ci_result", choices=("passed", "failed"))
     push = sub.add_parser("flush")
-    push.add_argument("slug")
+    push.add_argument("slug", help="repository of the ci-inventory branch (`issues` in scripts/repos.toml)")
+    # Optional, so that a watcher cached before the split keeps working with this publisher (orb-ci-refresh.sh).
+    push.add_argument("code", nargs="?", help="repository whose main is checked (`code`); default: slug")
     args = parser.parse_args()
     args.home.mkdir(parents=True, exist_ok=True)
     with (args.home / "inventory.lock").open("w") as lock:
@@ -176,7 +182,7 @@ def main():
         if args.command == "capture":
             capture(args.home, args.sha, args.kind, Path(args.run) if args.run else None, args.checked_at, args.ci_result)
             return 0
-        return flush(args.home, args.slug)
+        return flush(args.home, args.slug, args.code)
 
 
 if __name__ == "__main__":

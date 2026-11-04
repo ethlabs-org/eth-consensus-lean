@@ -48,6 +48,23 @@ class Liveness(unittest.TestCase):
         # Aged/evicted row on unchanged main is still healthy.
         self.assertEqual(self.tick(100000), set())
 
+    def test_reads_main_from_the_code_repo_and_rows_from_the_issues_repo(self):
+        # Split repositories (scripts/repos.toml): main's head from `code`, the #63 rows from `issues`.
+        calls = []
+        def read(*args):
+            calls.append(args)
+            if "systemctl" in args[0]:
+                return "active"
+            return json.dumps({"object": {"sha": A}} if args[-1].endswith("/main") else {"body": body(row(A))})
+        with patch.object(liveness, "CODE_SLUG", "fx/code"), patch.object(liveness, "ISSUES_SLUG", "fx/coord"):
+            alerts = []
+            liveness.check(self.state, 0, alerts, read)
+        self.assertEqual(alerts, [])
+        paths = [a[-1] for a in calls if "systemctl" not in a[0]]
+        self.assertIn("repos/fx/code/git/ref/heads/main", paths)
+        self.assertIn("repos/fx/coord/issues/63", paths)
+        self.assertFalse([p for p in paths if "fx/code/issues" in p or "fx/coord/git" in p])
+
     def test_stopped_is_immediate_even_with_published_result(self):
         for status in ("inactive", "failed", "activating", ""):
             self.assertEqual(self.tick(10, rows=[row(A)], status=status), {"stopped"})

@@ -8,8 +8,13 @@
 #     `Trusted-surface: <what and why>` line);
 # then it records HEAD as verified (for the pre-push hook scripts/hooks/pre-push), pushes HEAD to main as a
 # fast-forward of the commit it checked against, and prints the check's result line. A landing that touches the
-# trusted surface is then recorded on issue PUSH_MAIN_TRUSTED_ISSUE (default 129) with `gh` (best effort: a failure
-# only warns; the commit lines are the durable record).
+# trusted surface is then recorded on issue PUSH_MAIN_TRUSTED_ISSUE (default 129) of the coordination repository
+# (`issues` in scripts/repos.toml) with `gh` (best effort: a failure only warns; the commit lines are the durable
+# record). It refuses a GitHub `origin` other than the code repository (`code` in scripts/repos.toml), before and
+# again right after fetching main. Both slugs come from scripts/repos.toml on the target, origin/main, not from HEAD: a
+# change that renames the code repository is checked against the name it lands under, and once it has landed, a
+# clone still pointing at the old name is refused. A target without the file (before it existed) has no guard, and
+# its records go to origin's repository.
 #
 # Contention (#50). The first round runs without a lock. If main moved meanwhile, the next rounds hold the landing
 # lock, the branch `push-main-lock` on the remote: one lander at a time rebases, checks and pushes, so its round cannot
@@ -24,6 +29,21 @@ started=$SECONDS
 timing() { echo "push-main: timing $1=$((SECONDS - $2))s"; }
 die() { echo "push-main: REFUSED: $*" >&2; release; exit 1; }
 remote=origin lock_ref=refs/heads/push-main-lock ttl="${PUSH_MAIN_LOCK_TTL:-1800}" held=""
+repos() { git show "$remote/main:scripts/repos.toml" |
+  python3 -I -c 'import sys, tomllib; print(tomllib.loads(sys.stdin.read())[sys.argv[1]])' "$1"; }
+guard() {  # sets code and issues from the target's scripts/repos.toml; refuses an origin that is another repository
+  local url slug=""
+  url="$(git config "remote.$remote.url")"  # as configured: insteadOf rewrites do not change which repository it is
+  [[ ! "$url" =~ ^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)(.*)$ ]] ||
+    slug="$(sed -E 's#\.git$##; s#/$##' <<<"${BASH_REMATCH[2]}")"
+  if git cat-file -e "$remote/main:scripts/repos.toml" 2>/dev/null; then
+    code="$(repos code)" && issues="$(repos issues)" || die "cannot read scripts/repos.toml on $remote/main"
+  else
+    code="" issues="$slug"
+  fi
+  [[ -z "$slug" || -z "$code" || "$slug" == "$code" ]] ||
+    die "$remote is $url, but the code repository is $code (scripts/repos.toml on $remote/main): use a clone of https://github.com/$code.git"
+}
 lock_info() {  # prints "<sha> <unix time> <owner...>" of the remote lock, or nothing
   local sha
   sha="$(git ls-remote "$remote" "$lock_ref" | cut -f1)"
@@ -69,7 +89,7 @@ $(GIT_LITERAL_PATHSPECS=1 git log --no-merges --full-history --format='- %h %s%n
 \`\`\`
 $(GIT_LITERAL_PATHSPECS=1 git diff --stat "$1" "$2" -- "${p[@]}")
 \`\`\`"
-  gh issue comment "${PUSH_MAIN_TRUSTED_ISSUE:-129}" -R "$(git remote get-url "$remote" | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##')" \
+  gh issue comment "${PUSH_MAIN_TRUSTED_ISSUE:-129}" -R "$issues" \
     --body "$body" >/dev/null 2>&1 && echo "push-main: recorded the trusted-surface change on issue #${PUSH_MAIN_TRUSTED_ISSUE:-129}" ||
     echo "push-main: WARNING: could not record the trusted-surface change on issue #${PUSH_MAIN_TRUSTED_ISSUE:-129}; post it by hand"
 }
@@ -79,7 +99,9 @@ trap 'rc=$?; release; timing total "$started"; echo "push-main: exit=$rc"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+guard
 git fetch -q --tags --force "$remote" main || die "cannot fetch $remote main"
+guard
 [[ -z "$(git status --porcelain)" ]] ||
   { git status --short >&2; die "uncommitted or untracked files (commit them, or remove them): the check would include them"; }
 tries="${PUSH_MAIN_TRIES:-6}"

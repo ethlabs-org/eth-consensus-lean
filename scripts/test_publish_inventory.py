@@ -141,7 +141,7 @@ class Publication(unittest.TestCase):
         self.api.main = B
         self.capture(B, date="2026-10-31T02:00:00Z")
         self.api.fail_write = True
-        publish = lambda slug, item: M["publish"](slug, item, self.api.request)
+        publish = lambda slug, item, code=None: M["publish"](slug, item, self.api.request, code)
         with patch.dict(M["flush"].__globals__, publish=publish):
             self.assertEqual(M["flush"](self.home, "fixture/repo"), 1)
             self.assertEqual(self.api.read("latest.json")["commit"], A)
@@ -150,6 +150,24 @@ class Publication(unittest.TestCase):
             self.assertEqual(M["flush"](self.home, "fixture/repo"), 0)
         self.assertEqual(self.api.read("latest.json")["commit"], B)
         self.assertFalse(list((self.home / "inventory-outbox").glob("*.json")))
+
+    def test_inventory_in_coordination_repo_tracks_main_of_code_repo(self):
+        # Split repositories: ci-inventory is written in the coordination repository, but `latest` follows the head
+        # of main in the code repository; the frozen coordination repository's own main must not decide it.
+        slugs = []
+        def request(slug, path, data=None, missing=False, method="POST"):
+            slugs.append((slug, path))
+            if path == "git/ref/heads/main":
+                return {"object": {"sha": A if slug == "fixture/code" else B}}
+            return self.api.request(slug, path, data, missing, method)
+        self.capture()
+        publish = lambda slug, item, code=None: M["publish"](slug, item, request, code)
+        with patch.dict(M["flush"].__globals__, publish=publish):
+            self.assertEqual(M["flush"](self.home, "fixture/coordination", "fixture/code"), 0)
+        self.assertEqual(self.api.read("latest.json")["commit"], A)
+        self.assertEqual({s for s, p in slugs if p == "git/ref/heads/main"}, {"fixture/code"})
+        self.assertEqual({s for s, p in slugs if p != "git/ref/heads/main"}, {"fixture/coordination"})
+        self.assertTrue(self.api.read("latest.json")["payload_api"].startswith("repos/fixture/coordination/"))
 
     def test_current_recheck_advances_existing_immutable_report(self):
         self.publish(self.capture())
