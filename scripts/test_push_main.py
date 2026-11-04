@@ -104,6 +104,22 @@ done
     print("PASS: a rule rejection by the remote (GH013) fails after one attempt, with no lock left")
 
 
+def check_transport_failure_fails_hard():
+    # A push that fails for another reason than a moved main (here the push URL is unreachable, as for a 403 or a
+    # network failure) stops after one round instead of being retried as contention; no lock is left.
+    with tempfile.TemporaryDirectory(prefix="push-main-test-") as tmp:
+        root = Path(tmp)
+        remote, repo, env = landing_repo(root)
+        base = run("git", "rev-parse", "main", cwd=remote)
+        run("git", "config", "remote.origin.pushurl", str(root / "unreachable.git"), cwd=repo)
+        rc, out = land(repo, env)
+        assert rc == 1 and "REFUSED: the push to main failed, not because main moved" in out, out
+        assert "rebased onto" not in out and "main moved at the last moment" not in out, out
+        assert run("git", "rev-parse", "main", cwd=remote) == base
+        assert not run("git", "branch", "--list", "push-main-lock", cwd=remote), "lock leaked"
+    print("PASS: a push failure that is not a moved main fails after one round, with no lock left")
+
+
 def check_refuses_a_commit_email_off_the_allowlist():
     with tempfile.TemporaryDirectory(prefix="push-main-test-") as tmp:
         root = Path(tmp)
@@ -279,4 +295,5 @@ if __name__ == "__main__":
     check_refuses_an_origin_other_than_the_code_repo()
     check_refuses_a_commit_email_off_the_allowlist()
     check_remote_rule_rejection_fails_hard()
+    check_transport_failure_fails_hard()
     check_renaming_the_code_repository_lands_under_the_old_name_then_freezes()

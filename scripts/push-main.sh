@@ -146,11 +146,14 @@ while :; do
         exit 0
       fi
       printf '%s\n' "$out" >&2
-      # The remote itself declined (a ruleset such as GH013 "must be made through a pull request", a protected
-      # branch, a hook): no rebase or retry can fix that, so stop at once (die releases the lock). Only a lease
-      # rejection (main moved) is contention.
+      # Only a lease rejection (` ! [rejected] ... (stale info)`, main moved) is contention. Anything else, such as
+      # the remote declining (a ruleset such as GH013 "must be made through a pull request", a protected branch, a
+      # hook: `[remote rejected]`) or an authentication or network failure, no rebase or retry can fix, so stop at
+      # once (die releases the lock).
       grep -q '\[remote rejected\]' <<<"$out" &&
         die "the remote declined the push to main, not because main moved ($(grep -m1 -oE 'GH[0-9]+[^.]*|\[remote rejected\].*' <<<"$out")): nothing was pushed; fix the access or the rule, then run this again"
+      grep -q '^ ! \[rejected\]' <<<"$out" ||
+        die "the push to main failed, not because main moved ($(grep -m1 -E 'fatal|error' <<<"$out" || echo 'see above')): nothing was pushed; fix it, then run this again"
       echo "push-main: the push was rejected (main moved at the last moment)"
     fi
   fi

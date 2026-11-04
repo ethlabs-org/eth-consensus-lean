@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Check that every new commit names only allowed email addresses (owner, 2026-11-04; docs/decisions.md).
 
-  scripts/check-commit-emails.py [--allowlist FILE] [<base> [<head>]]
+  scripts/check-commit-emails.py [--allowlist FILE] [--tags] [<base> [<head>]]
 
 Checks the commits reachable from <head> (default HEAD) and not from <base>: the author's and the committer's
 address, and the address of every `Co-authored-by:` trailer. With no <base>, or one that is not a commit here
 (a first push, a dispatch, a force push), it checks every commit reachable from <head>. An address passes if it
 ends with one of `suffixes` or equals one of `addresses` in scripts/commit-emails.toml (case-insensitive); a
-co-author trailer without an `<address>` fails. A failure names the commit and the field, never the address:
+co-author trailer without an `<address>` fails. With --tags it also checks the tagger of every annotated tag
+under refs/tags (lightweight tags have none). A failure names the commit and the field, never the address:
 CI logs are public, and the allowlist is public by design, so nothing private is written anywhere. This is a
 detector after upload (CI) and a guard before it (scripts/push-main.sh runs it on what it is about to push).
 """
@@ -33,6 +34,7 @@ def allowed(address, suffixes, addresses):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--allowlist", type=Path, default=Path(__file__).with_name("commit-emails.toml"))
+    parser.add_argument("--tags", action="store_true", help="also check the tagger of every annotated tag")
     parser.add_argument("base", nargs="?", default="")
     parser.add_argument("head", nargs="?", default="HEAD")
     args = parser.parse_args()
@@ -51,7 +53,7 @@ def main():
             print(f"check-commit-emails: base {base[:12]} is not a commit here: checking all of {args.head}")
     fmt = SEP.join(["%H", "%ae", "%ce", "%(trailers:key=Co-authored-by,valueonly,separator=%x1e)"]) + "%x00"
     out = git("log", "--no-show-signature", f"--format={fmt}", *revs, "--")
-    failures, commits, checked = [], 0, 0
+    failures, commits, checked, tags = [], 0, 0, 0
     for record in out.split("\x00"):
         record = record.strip("\n")
         if not record:
@@ -66,13 +68,25 @@ def main():
             checked += 1
             if not allowed(address, suffixes, addresses):
                 failures.append(f"FAIL[emails] {sha[:12]} {field}: address not on the allowlist ({args.allowlist.name})")
+    if args.tags:
+        for line in git("for-each-ref", "--format=%(objecttype) %(taggeremail) %(refname:short)", "refs/tags").splitlines():
+            kind, rest = line.split(" ", 1)
+            if kind != "tag":
+                continue
+            tagger, name = rest.split(" ", 1) if rest.startswith("<") else ("", rest)
+            checked += 1
+            tags += 1
+            if not allowed(tagger.strip("<>"), suffixes, addresses):
+                failures.append(f"FAIL[emails] tag {name} tagger: address not on the allowlist ({args.allowlist.name})")
     for line in failures:
         print(line)
     if failures:
-        print(f"check-commit-emails: {len(failures)} of {checked} addresses in {commits} commits are not allowed; "
+        print(f"check-commit-emails: {len(failures)} of {checked} addresses in {commits} commits"
+              f"{f' and {tags} tags' if args.tags else ''} are not allowed; "
               "rewrite the commits with an allowed address (a GitHub users.noreply.github.com address)")
         return 1
-    print(f"check-commit-emails: {checked} addresses in {commits} commits, all on the allowlist: pass")
+    print(f"check-commit-emails: {checked} addresses in {commits} commits"
+          f"{f' and {tags} tags' if args.tags else ''}, all on the allowlist: pass")
     return 0
 
 

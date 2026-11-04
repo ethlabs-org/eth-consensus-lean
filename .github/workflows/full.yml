@@ -23,7 +23,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A manual run per ref; a scheduled or tag run per commit, so a dispatch on main never displaces a pending nightly
+  # (a shared group keeps only the newest pending run). Never cancelled.
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.ref || github.sha }}
   cancel-in-progress: false
 
 jobs:

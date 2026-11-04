@@ -267,4 +267,6 @@ jobs:
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: python3 -I scripts/check-commit-emails.py "$BASE" "$HEAD_SHA"
+        # --tags: also the tagger of every annotated tag (the checkout fetches all tags), so a tag pushed with a
+        # private address is caught by the next check.
+        run: python3 -I scripts/check-commit-emails.py --tags "$BASE" "$HEAD_SHA"

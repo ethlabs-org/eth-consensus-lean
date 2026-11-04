@@ -70,6 +70,20 @@ class CommitEmails(unittest.TestCase):
                 rc, out = self.check(base)
                 self.assertEqual(rc, 1, out)
 
+    def test_tags_checks_annotated_taggers_only(self):
+        self.git("tag", "light")  # no tagger: skipped
+        self.git("tag", "-a", "-m", "ok", "milestone-ok", GIT_COMMITTER_NAME="T", GIT_COMMITTER_EMAIL=OK)
+        rc, out = self.check("--tags", self.base)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("1 addresses in 0 commits and 1 tags, all on the allowlist: pass", out)
+        self.git("tag", "-a", "-m", "bad", "release-bad", GIT_COMMITTER_NAME="T", GIT_COMMITTER_EMAIL=BAD)
+        rc, out = self.check("--tags", self.base)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("FAIL[emails] tag release-bad tagger: address not on the allowlist", out)
+        self.assertNotIn("milestone-ok tagger", out)
+        rc, out = self.check(self.base)  # without --tags, tags are not read
+        self.assertEqual(rc, 0, out)
+
     def test_range_excludes_the_base_and_no_base_checks_everything(self):
         bad = self.commit("old", author=BAD)
         rc, out = self.check(bad)  # nothing after the bad commit
