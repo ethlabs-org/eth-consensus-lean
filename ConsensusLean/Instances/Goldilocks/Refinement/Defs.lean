@@ -23,8 +23,9 @@ instance"):
   blocks (the engine releases only carried objects it has seen). A received object is processed
   only in a canonical form (`blockObj`, `voteObj`, `attObj`; read back by `decodeBlock`,
   `decodeVoteObj`, `decodeAttObj`, together `canonEvent`), anything else is dropped.
-* **Digest.** The engine hashes the header; the node's digest is `dgOf hash g`: `none ↦ g` (the
-  genesis root is a parameter) and `some r ↦ taggedRoot g (hash header)`. The injective tag
+* **Digest.** The engine hashes the header; the node's digest is `dgOf hash g`
+  (`dgOf`, `Lemmas/Refinement/TraceDefs`): `none ↦ g` (the genesis root is a parameter) and
+  `some r ↦ taggedRoot g (hash header)`. The injective tag
   reserves `g` for genesis; `parentRef` decodes other node roots to raw engine digests.
   In particular, `.digest g` names a non-genesis block, not a second genesis representation.
   Every admitted block satisfies `RootOk` without the shape evaluating the hash.
@@ -239,14 +240,6 @@ def parentRef (g : Nat) : Option Nat → ParentRef
 def parentRoot (g : Nat) : ParentRef → Option Nat
   | .root => some g
   | .digest r => some (taggedRoot g r)
-
-/-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
-root `g`; any other block's root is the tagged hash of its header (`parentRef` for the parent). -/
-def dgOf {n : Nat} (hash : Header Info → Nat) (g : Nat) : Digest (List (FG.Att n)) (Payload n) :=
-  fun par slot x atts p =>
-    match par with
-    | none => g
-    | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩)
 
 /-- The digest of header `h` among the digests `hs` the engine passed. -/
 def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
@@ -474,35 +467,6 @@ def dependencies (n : Nat) : Model.DependencyPolicy (Wire n) where
     | some parent =>
       simp only [hi, decide_eq_true_eq] at h ⊢
       exact hsub h
-
-/-- The node's cuts for the engine's delivery of the objects `os` to `y` at time `t`, given the
-digests `hs`, from cut `j` to cut `j'`: in order, one top-level event (`canonEvent`) per
-canonical object, its group at the next cut; nothing for a dropped object, nor for a canonical
-object whose handler makes no cut (a future-slot block, which `onBlock` refuses silently). -/
-inductive DeliverSeq (proposer : Nat → Fin sp.n) (tr : GoldilocksTrace sp ro)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) (y : Fin sp.n) (t : Time) :
-    List (Wire sp.n) → Nat → Nat → Prop
-  /-- No object, no cut. -/
-  | nil (j : Nat) : DeliverSeq proposer tr dg hs y t [] j j
-  /-- A canonical object: its event's group starts at `j`, and the rest follow it. -/
-  | event {o : Wire sp.n} {os : List (Wire sp.n)} {j j' : Nat}
-      (e : Node.Event (goldilocksNode sp ro)) : canonEvent sp ro hs o = some e →
-      tr.GroupAt proposer dg y j t e →
-      DeliverSeq proposer tr dg hs y t os
-        (j + (Node.exec proposer dg y (tr.state y j) t e).2.length) j' →
-      DeliverSeq proposer tr dg hs y t (o :: os) j j'
-  /-- A dropped object has no cut. -/
-  | drop {o : Wire sp.n} {os : List (Wire sp.n)} {j j' : Nat} : canonEvent sp ro hs o = none →
-      DeliverSeq proposer tr dg hs y t os j j' →
-      DeliverSeq proposer tr dg hs y t (o :: os) j j'
-  /-- A canonical object whose handler makes no cut (a future-slot block) is not an event of the
-  run (`GroupAt` needs a cut), so it has no cut either. -/
-  | noCut {o : Wire sp.n} {os : List (Wire sp.n)} {j j' : Nat}
-      (e : Node.Event (goldilocksNode sp ro)) : canonEvent sp ro hs o = some e →
-      (Node.exec proposer dg y (tr.state y j) t e).2 = [] →
-      DeliverSeq proposer tr dg hs y t os j j' →
-      DeliverSeq proposer tr dg hs y t (o :: os) j j'
 
 /-- Recording an own released object: the relay wrapper empties the relay queue; the own block
 (now with its digest) goes through the own `on_block`, as `propose_block` does; a released vote

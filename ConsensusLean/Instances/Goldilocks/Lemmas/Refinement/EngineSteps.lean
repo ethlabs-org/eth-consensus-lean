@@ -969,7 +969,8 @@ theorem blockOf_eq_mkBlock (k : Fin (Fintype.card V))
       mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho) k fg t x
         H p := by
   subst hslot
-  simp only [blockOf, mkBlock, digestOf_eq, dgOf]
+  simp only [blockOf, mkBlock, digestOf_eq]
+  erw [dgOf_eq]
   rw [parentRoot_parentRef]
 
 omit [DecidableEq V] in

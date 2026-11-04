@@ -68,7 +68,9 @@ theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho
       (Regimes.validOutput_of_mem hs.run hy hX).2 X .refl hg
     have he : X.root = taggedRoot S.genesisRoot
         (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
-      simpa [Block.RootOk, digestOf_eq, dgOf, headerOf, hpar] using hroot
+      simp only [Block.RootOk, digestOf_eq] at hroot
+      erw [dgOf_eq] at hroot
+      simpa [headerOf, hpar] using hroot
     simp only [parentRef, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
   let blocks := ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
   have hvalid : ∀ B ∈ ((simTrace S rho hn).state (rho.ownKey v)
@@ -144,6 +146,8 @@ theorem noCollRun_simTrace (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision
     obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hv hB
     exact ⟨hp, blockObj _ B, ⟨v, hv', hb⟩, rfl⟩
   intro B hB C hC heq
+  simp only [digestOf_eq] at heq
+  simp only [dgOf_eq (n := Fintype.card V) rho.hash S.genesisRoot] at heq
   rcases hB with rfl | hB <;> rcases hC with rfl | hC
   · exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   · obtain ⟨hp, _⟩ := hocc C hC
@@ -151,13 +155,13 @@ theorem noCollRun_simTrace (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision
     | none => exact False.elim (hp hc)
     | some p =>
       exact False.elim (taggedRoot_ne _ _
-        (by simpa [digestOf_eq, dgOf, hc, Params.genesisBlock] using heq.symm))
+        (by simpa [hc, Params.genesisBlock] using heq.symm))
   · obtain ⟨hp, _⟩ := hocc B hB
     cases hb : B.parent with
     | none => exact False.elim (hp hb)
     | some p =>
       exact False.elim (taggedRoot_ne _ _
-        (by simpa [digestOf_eq, dgOf, hb, Params.genesisBlock] using heq))
+        (by simpa [hb, Params.genesisBlock] using heq))
   · obtain ⟨hpB, hoB⟩ := hocc B hB
     obtain ⟨hpC, hoC⟩ := hocc C hC
     obtain ⟨pb, hpb⟩ := Option.ne_none_iff_exists'.mp hpB
@@ -165,7 +169,7 @@ theorem noCollRun_simTrace (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision
     have hh : rho.hash (headerOf (S.params (pubOf E) hn) B) =
         rho.hash (headerOf (S.params (pubOf E) hn) C) := by
       have h := congrArg (rawRoot S.genesisRoot) heq
-      simpa [digestOf_eq, dgOf, hpb, hpc, headerOf, rawRoot_taggedRoot] using h
+      simpa [hpb, hpc, headerOf, rawRoot_taggedRoot] using h
     have he : headerOf (S.params (pubOf E) hn) B = headerOf (S.params (pubOf E) hn) C := by
       by_contra h
       exact hnc ⟨_, _, h, hoB, hoC, hh⟩

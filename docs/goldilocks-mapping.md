@@ -762,8 +762,11 @@ G1.5. Goldilocks' `Params` needs `1 ≤ n`; the family keeps that dependence out
 The simulation interface and canonical trace are proof-side vocabulary in non-exposed
 `Lemmas/Refinement/Interface` and `TraceDefs`, not part of the trusted statement surface.
 The canonical construction and all claims retain their names and meanings; the Accepted proof
-uses them through characterising lemmas. `Refinement/Defs` and `Statements/Refinement/Accepted`
-remain protected and unchanged (2026-11-04 location decision, `docs/decisions.md`).
+uses them through characterising lemmas. The digest adapter `dgOf` and delivery relation
+`DeliverSeq` live beside their proof-side users in those leaves, not in `Refinement/Defs`.
+The remaining protocol definitions in `Refinement/Defs` and the complete
+`Statements/Refinement/Accepted` stay protected and unchanged
+(2026-11-04 location decision, `docs/decisions.md`).
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|

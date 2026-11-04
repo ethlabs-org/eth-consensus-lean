@@ -27,8 +27,8 @@ theorem simTrace_genesis_root_ok :
     ((S.params (pubOf E) hn).toParams.genesisBlock
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk
         (digestOf S rho) := by
-  rw [digestOf_eq]
-  rfl
+  simp only [Block.RootOk, digestOf_eq, Params.genesisBlock]
+  erw [dgOf_eq]
 
 /-- An honest-signed payload object of any called block was released before its engine event. -/
 private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}

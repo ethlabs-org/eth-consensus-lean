@@ -50,9 +50,8 @@ private theorem wireOK_of_delivered (o : (Model.protoOf (compiled (family S)) E)
     refine ⟨?_, hwf, hval⟩
     rw [digestOf_eq]
     change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
-    rw [hrt]
+    erw [dgOf_eq, hrt]
     simp only [headerOf, hr]
-    rfl
   · trivial
   · exact wellFormed_of_canonEvent he
 

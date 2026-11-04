@@ -189,9 +189,8 @@ private theorem decoded_block_root {o : Wire (Fintype.card V)}
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
   rw [digestOf_eq]
   change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
-  rw [← hroot]
+  erw [dgOf_eq, ← hroot]
   simp only [headerOf, hr]
-  rfl
 
 /-- A forwarding release during a tick identifies an actual successful proposal cut,
 including the digest-backed root rather than just the serialized block fields. -/

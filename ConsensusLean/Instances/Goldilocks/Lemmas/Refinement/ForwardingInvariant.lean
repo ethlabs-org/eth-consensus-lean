@@ -968,7 +968,8 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
       (headerOf (S.params (pubOf E) hn) B) B.proposer B.fgPayload B.acPayload = B := by
     obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.mp hpar
     change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
-    simp only [digestOf_eq, dgOf] at hroot
+    simp only [digestOf_eq] at hroot
+    erw [dgOf_eq] at hroot
     cases B
     simp_all only [blockOf, headerOf, parentRoot_parentRef]
   simp only [blockObj, recordOwn, headerOf, decodeInfo_encodeInfo]
@@ -1124,7 +1125,9 @@ theorem canonical_block_decodes {V : Type} [Fintype V] {E : Env V}
   have hhash : B.root = taggedRoot (S.params (pubOf E) hn).genesisRoot
       (rho.hash (headerOf (S.params (pubOf E) hn) B)) := by
     change B.root = digestOf S rho B.parent B.slot B.input B.fgPayload B.acPayload at hroot
-    simpa only [digestOf_eq, dgOf, hr, headerOf] using hroot
+    simp only [digestOf_eq] at hroot
+    erw [dgOf_eq] at hroot
+    simpa only [hr, headerOf] using hroot
   apply decodeBlock_blockObj _ B hpar (hhash ▸ taggedRoot_ne _ _) _ hwf hval
   rw [rootOf_digests_blockObj, hhash, rawRoot_taggedRoot]
 

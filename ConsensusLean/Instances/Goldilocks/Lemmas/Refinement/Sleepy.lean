@@ -516,6 +516,8 @@ theorem confirmed_inBy (hv : rho.ExecutionValid)
       exact False.elim (hpos (by simpa using this))
     · obtain ⟨j, x, _, _, _, d, p', _, hB, _⟩ := hg
       rw [hB, digestOf_eq]
+      simp only [Node.mkBlock]
+      erw [dgOf_eq]
       exact taggedRoot_ne _ _
   intro v hr
   let i := (chainTrace rho).endCut t

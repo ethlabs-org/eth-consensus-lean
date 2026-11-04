@@ -608,9 +608,8 @@ theorem simTrace_block_unforgeable (hv : rho.ExecutionValid) :
       obtain ⟨p, hp⟩ := Option.ne_none_iff_exists'.mp hpar
       rw [digestOf_eq]
       change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
-      rw [← hroot]
+      erw [dgOf_eq, ← hroot]
       simp only [headerOf, hp]
-      rfl
     have hsign : rho.signerOf (blockObj (S.params (pubOf E) hn) B) =
         some (rho.key B.proposer) := rfl
     rw [mem_honestKeys_iff] at hhon

@@ -82,6 +82,23 @@ open Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote Payload)
 
+/-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
+root `g`; any other block's root is the tagged hash of its header (`parentRef` for the parent). -/
+def dgOf {n : Nat} (hash : Header Info → Nat) (g : Nat) : Digest (List (FG.Att n)) (Payload n) :=
+  fun par slot x atts p =>
+    match par with
+    | none => g
+    | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩)
+
+/-- The node digest is genesis, or the tagged hash of its encoded header. -/
+theorem dgOf_eq {n : Nat} (hash : Header Info → Nat) (g : Nat) (par : Option Nat)
+    (slot x : Nat) (atts : List (FG.Att n)) (p : Payload n) :
+    dgOf hash g par slot x atts p =
+      match par with
+      | none => g
+      | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩) := by
+  rfl
+
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (family S)) E) (hn : 1 ≤ Fintype.card V)
 

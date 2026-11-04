@@ -379,6 +379,11 @@ where it is recorded; "Francesco" marks the owner's decisions.
   Challenge statements, Solution entries, comparator configuration, shape in `Refinement/Defs`
   and Accepted statement are unchanged. The endpoint proof still uses the construction and is
   axiom-audited; it is not additional material the endpoint's statement reader must trust.
+  The follow-up moves the unchanged digest adapter `dgOf` and delivery relation `DeliverSeq`
+  from `Refinement/Defs` beside their only users in those same proof-side leaves. All other
+  declarations in `Defs` are unchanged; its digest docstring points to the new location.
+  Neither helper is a dependency of its remaining declarations
+  or the certified endpoint statement. Their names, binders and canonical semantics stay intact.
 
 - 2026-11-03, Francesco (card: workbench `repos/consensus-lean/notes/cards/graded_fast_locks_v2.md` §5, §9–§16;
   read-backs T-01a19b8a, PASS): **graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock

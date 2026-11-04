@@ -399,6 +399,8 @@ theorem final_payload_projection
       exact False.elim ((W.proposals 0).1.2 (by simpa using hz))
     · obtain ⟨j, x, _, _, _, d, p, _, hB, _⟩ := hg
       rw [hB, digestOf_eq]
+      simp only [Node.mkBlock]
+      erw [dgOf_eq]
       exact taggedRoot_ne _ _
   exact finalized_inBy S r.2 hn hv
     (noCollRun_simTrace S r.2 hn hv hcollision) hc hdeadline hb hroot

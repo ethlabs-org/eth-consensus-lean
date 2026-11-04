@@ -2397,7 +2397,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Refinement.sleepy_safe_engine",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Sleepy.lean:868",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Refinement/Sleepy.lean:870",
       "owner-thread": "T-01a18fec-6e1e-7342-9ca9-8562977d7347",
       "area": "network+Sleepy",
       "status": "lean-proved",
