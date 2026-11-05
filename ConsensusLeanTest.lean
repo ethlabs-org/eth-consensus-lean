@@ -19,6 +19,7 @@ public import ConsensusLeanTest.Goldilocks.AC.ResultTransfer
 public import ConsensusLeanTest.Goldilocks.AC.SourceCompatible
 public import ConsensusLeanTest.Goldilocks.AC.Transfer
 public import ConsensusLeanTest.Goldilocks.AC.UnlockFrame
+public import ConsensusLeanTest.Goldilocks.CarryLater.Run
 public import ConsensusLeanTest.Goldilocks.Compose.ImpliedFields
 public import ConsensusLeanTest.Goldilocks.Compose.ProjectionRejection
 public import ConsensusLeanTest.Goldilocks.Compose.Restart
