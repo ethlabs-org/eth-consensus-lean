@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Duties
 /-! # Goldilocks node: handlers and duties
 
 composition.tex Figure "Node: handlers and duties", one function each, every handler returning
-the new node state and its cuts in order (decomposition §1.5):
+the new node state and its cuts in order:
 
 * `on_block(B)`: dropped when of a future slot (no call); else `fg_on_block(Σ, B)`, and, when
   the FG accepts, `ac_on_block(𝒜, fg_to_ac(Σ), t, B)` with the frame after the acceptance;
@@ -19,7 +19,8 @@ the new node state and its cuts in order (decomposition §1.5):
 signed by an honest key was sent by that node is a run condition (`Spec/Run`).
 
 This module holds only what the Challenge statements reach; the duties, the tick steps, `exec` and
-`WireOK` are in `Milestones/Spec/Node/Handlers` (docs/decisions.md, 2026-11-04). -/
+`WireOK` are in `Milestones/Spec/Node/Handlers` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks.Node
 

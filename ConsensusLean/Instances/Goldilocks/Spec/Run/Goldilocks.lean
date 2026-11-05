@@ -11,7 +11,8 @@ The Goldilocks protocol is the node (`Spec/Node`) with the Goldilocks SA as its 
 the node uses, `List (FG.Att n)`.
 
 This module holds only what the Challenge statements reach; its runs (`GoldilocksTrace`,
-`GoldilocksRun`) are in `Milestones/Spec/Run/Goldilocks` (docs/decisions.md, 2026-11-04). -/
+`GoldilocksRun`) are in `Milestones/Spec/Run/Goldilocks` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks
 

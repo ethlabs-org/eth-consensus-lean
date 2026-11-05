@@ -7,7 +7,7 @@ public import Mathlib.Tactic
 /-! # The network (L0)
 
 Network conditions on a run's communication log (`CommLog`, opaque messages).
-The delivery rule is Francesco's rule, normal delivery:
+The delivery rule is normal delivery:
 
 > every message an honest node sends at `t` is received, strictly before the
 > delivery bound, by every honest node that is awake over the delivery
@@ -57,7 +57,7 @@ def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
 `dlF` for FG attestations, for deadlines up to the time `cut` (a time, not a trace cut
 index) and up to the horizon. -/
 structure Delivers (dl dlF : Time → Time) (cut : Time) : Prop where
-  /-- Francesco's rule (normal delivery): an honest send at `t` of a message
+  /-- Normal delivery: an honest send at `t` of a message
   that is not an FG attestation is held at `dl a`, for every start `a ≥ t`, by every
   honest node awake throughout the delivery interval `[a, dl a]`. At `a = t`
   this is delivery by `dl t` (for `PSync`, strictly before the bound) to nodes

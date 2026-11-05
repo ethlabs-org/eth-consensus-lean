@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 
 /-! # Goldilocks SA: schedule and parameters
 
-goldilocks-spec.tex §"Schedule" (fradamt-agent/goldilocks `spec/fgsa-spec.tex`, pin `95681941`):
+`specs/goldilocks/tex/goldilocks-spec.tex` §"Schedule":
 slot `s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and its committee is all of `V`. The
 formula `t_s = 4Δs` also gives the times of negative slots (`ts` takes an integer slot), which
 the rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is `k ≥ 2` slots

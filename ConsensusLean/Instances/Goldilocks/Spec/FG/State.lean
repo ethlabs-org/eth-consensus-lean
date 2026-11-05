@@ -8,7 +8,7 @@ public import ConsensusLean.Init
 
 The finality gadget of the Goldilocks spec as pure functions of a chain
 (`specs/goldilocks/tex/shared/fg.tex` §"Attestations and chain state",
-Figure "FG: state transition"; loose BJ, goldilocks#14). Blocks are seen through
+Figure "FG: state transition"; loose BJ). Blocks are seen through
 `FGBlock`: their root, slot, proposer and attestations; the instance computes the
 root as the digest of the block, and a chain lists the blocks from genesis, so the
 parent links are implicit. Validators are `Fin n`, every weight is `1`, and the quorum
@@ -18,7 +18,7 @@ A chain is a list of blocks, oldest first, genesis implicit before the first.
 
 This module holds only what the Challenge statements reach; the chain state of a whole chain
 (`FGParams.chainState`) and its roots and attestations are in `Milestones/Spec/FG/State`
-(docs/decisions.md, 2026-11-04). -/
+(`docs/decisions.md` §"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks.FG
 
@@ -72,7 +72,7 @@ instance {n : Nat} (a : Att n) : Decidable a.WellFormed :=
 /-- What the FG sees of a block: root, slot, proposer and the attestation list
 (order and repeats are content). The proposer is carried but read by no FG function: the paper's
 `state_transition` proposer assertion is the run's credential (`stateTransition`,
-`docs/decisions.md` 2026-10-31). -/
+`docs/decisions.md` §"Goldilocks model choices"). -/
 structure FGBlock (n : Nat) where
   /-- The root of the block. -/
   root : Nat

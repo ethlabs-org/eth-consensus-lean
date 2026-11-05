@@ -11,7 +11,7 @@ the AC payload and the input, the encoded transactions the engine writes into ev
 (`Consensus.Blocks.Header.input`): the spec folds it into the AC payload ("the AC
 fixes the encoding of its payload"), the Lean keeps it as its own field so that the engine's
 header, hashed with its input, is a block of this type (the refinement, `docs/decisions.md`
-§"Goldilocks instance"). No handler reads it.
+§"Goldilocks model choices"). No handler reads it.
 The block is parametric in both payload types (`FGP`, `ACP`), so that the AC side never names
 the FG's attestations and the FG side never names the AC's payload; the node instantiates
 `FGP := List (FG.Att n)`. The order and the repeats of each payload are part of the block.
@@ -21,7 +21,8 @@ collision-freedom of the digest is a hypothesis where a statement needs it (clai
 axiom.
 
 This module holds only what the Challenge statements reach; the digest `Digest` and `Block.RootOk`
-are in `Milestones/Spec/Common/Block` (docs/decisions.md, 2026-11-04). -/
+are in `Milestones/Spec/Common/Block` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks
 

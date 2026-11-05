@@ -5,15 +5,15 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
 
 /-! # Goldilocks: AC call labels
 
-The label of a cut of the AC component trace (decomposition §2 D, `AC.LocalRun`), a `Trace` over the
+The label of a cut of the AC component trace, a `Trace` over the
 AC state alone whose labelled cuts are AC calls. Each label carries the call (`on_tick`, `proposal`,
 `to_fg`, `on_message(m)`, `on_block(B)`, `restart`), the **frame the call was given**, and the
 call's emissions (each with its internal read point and duty head). FG cuts and the other nodes'
 cuts are stutters (no label).
 
 This module holds only what the Challenge statements reach; the AC trace itself (`ACTrace`), its
-contract `ACLocalRun` and `SyncAC` are in `Milestones/Spec/AC/Trace` (docs/decisions.md,
-2026-11-04). -/
+contract `ACLocalRun` and `SyncAC` are in `Milestones/Spec/AC/Trace` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks
 

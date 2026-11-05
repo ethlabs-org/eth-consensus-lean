@@ -5,16 +5,16 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
 
 /-! # Goldilocks FG: validator client and slashing conditions
 
-The validator client of fg.tex §"Validator client" with loose BJ (goldilocks#14: the
+The validator client of fg.tex §"Validator client" with loose BJ (the
 finality pair is read from the entry state of the source) and the weakened E1
-(goldilocks#15: the timeout record is a set of roots, `permits` needs
+(the timeout record is a set of roots, `permits` needs
 `timeout[j] ⊆ {T}`, `height_pair` tests the lock first), and the slashing
 conditions of fg.tex §"Slashing conditions". The client's input is the entry state
 `σe = Σ.σ[T_c]` of its source (`fg_attest`): its height is the source's height `h_c`
 and its `Th` is `T_c` itself, so the height pair names `(σe.h, σe.Th)`.
 
 This module holds only what the Challenge statements reach; `Record.run`, a client run, is in
-`Milestones/Spec/FG/Client` (docs/decisions.md, 2026-11-04). -/
+`Milestones/Spec/FG/Client` (`docs/decisions.md` §"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks.FG
 

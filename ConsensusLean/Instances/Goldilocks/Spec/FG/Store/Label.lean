@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Sigma
 
 /-! # Goldilocks FG store: the labels of FG calls
 
-An FG call of a node with what it observes (decomposition §1.5: the component calls are the
-cuts of a run; claims C0.4, C0.5). `Spec/Node` records every FG call of a handler by its label;
+An FG call of a node with what it observes (the component calls are the cuts of a run;
+claims C0.4, C0.5). `Spec/Node` records every FG call of a handler by its label;
 the FG traces of `Spec/FG/Store` (FGStore part 2) use the same labels, so neither depends on
 the other. -/
 

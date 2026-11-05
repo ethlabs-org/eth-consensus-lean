@@ -12,7 +12,7 @@ obligations endpoint and the headline `GoldilocksCorrect` (`milestone_statements
 `lake comparator` (`comparator.json`, CI only) checks that the solution module `Solution` proves
 exactly these statements, built from Spec alone, under `propext`, `Quot.sound` and
 `Classical.choice`. The other Goldilocks milestones are proved lemmas, not certified here
-(docs/decisions.md, 2026-11-04). -/
+(`docs/decisions.md` §"Trusted surface and Challenge scope"). -/
 
 theorem Consensus.Review.obligationsSufficient : Consensus.Review.ObligationsSufficient := sorry
 theorem Consensus.Review.regimesRealizable : Consensus.Review.RegimesRealizable := sorry

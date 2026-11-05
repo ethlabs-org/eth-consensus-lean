@@ -12,7 +12,8 @@ or a failed assertion of `state_transition` (no write). An accepted block's atte
 the pool after the block's finality update.
 
 This module holds only what the Challenge statements reach; `Store.Step` and `Reachable` are in
-`Milestones/Spec/FG/Store/Handlers` (docs/decisions.md, 2026-11-04). -/
+`Milestones/Spec/FG/Store/Handlers` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks.Store
 

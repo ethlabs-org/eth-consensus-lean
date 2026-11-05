@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Frame
 /-! # Goldilocks: the AC interface
 
 The available chain as the node sees it (`specs/goldilocks/tex/shared/composition.tex`
-§"The available chain"; decomposition §2 D, `AC`): an AC has a state, wire messages, a block
+§"The available chain"): an AC has a state, wire messages, a block
 payload and nine functions over `(𝒜, Φ, t)`, never over the FG state. `ACInterface P FGP` is
 that record, executable: each call returns the new state and what it emits, and every function
 reads the frame `Φ` (a `Frame` whose blocks carry the FG payload `FGP`, which the AC never
@@ -21,14 +21,14 @@ these).
 
 This module holds only what the Challenge statements reach; the reachable states and the interface
 requirements (`ReachableAt`, `CallOK`, `Requirements`) are in `Milestones/Spec/AC/Interface`
-(docs/decisions.md, 2026-11-04). -/
+(`docs/decisions.md` §"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks
 
 /-- The head of a duty with its walk: the head, the block where the walk starts, and the domain
 whose viable tree it walks (the full tree for a proposal; for a vote the vote domain
 `SA.voteDomain`: the voter block tree, or the whole tree when the voter block tree's viable tree
-is empty, the full-tree fallback of `docs/decisions.md`, 2026-11-02). -/
+is empty, the full-tree fallback of `docs/decisions.md` §"Goldilocks model choices"). -/
 structure DutyHead (n : Nat) (FGP ACP : Type) where
   /-- The head. -/
   head : Block n FGP ACP
@@ -64,7 +64,7 @@ structure ACInterface (P : Params) (FGP : Type) where
   /-- The AC's wire checks of a message. -/
   validMsg : Msg → Prop
   /-- The state holds (has admitted) the message: an honest node forwards an AC message when its
-  AC admits it, also from a block's payload (composition.tex §"Model"; goldilocks#28, #32). -/
+  AC admits it, also from a block's payload (composition.tex §"Model"). -/
   holdsMsg : State → Msg → Prop
   /-- The AC payload of genesis. -/
   genesisPayload : Payload

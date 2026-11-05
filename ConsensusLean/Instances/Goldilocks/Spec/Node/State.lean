@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Trace
 /-! # Goldilocks node: the node state and the component calls
 
 The node composed with an AC (`specs/goldilocks/tex/shared/composition.tex` §"State",
-§"Node"; decomposition §2 D, `Node`): parametric in `A : ACInterface P (List (FG.Att P.n))`,
+§"Node"): parametric in `A : ACInterface P (List (FG.Att P.n))`,
 the AC whose blocks carry the FG's attestation list. The node keeps the FG state `Σ`
 (`Store P A.Payload`), the AC state `𝒜` and the validator's durable record `Λ`; the clock is
 an argument of every handler that calls the AC (`Spec/Node/Reachable` carries it). Only the FG
@@ -17,7 +17,7 @@ functions read and write `Σ`, only the AC functions read and write `𝒜`, and 
 reads and writes `Λ`.
 
 A node handler is a finite sequence of **component calls**, each exactly one FG call or one AC
-call, with the frame `fg_to_ac(Σ)` recomputed before each AC call (decomposition §1.5). The
+call, with the frame `fg_to_ac(Σ)` recomputed before each AC call. The
 calls are the **cuts** of a run (`Spec/Trace`, claims C0.4, C0.5): `Cut` records each with its
 observations, an AC call by its `ACLabel` (call, frame, emissions), an FG call by `FGLabel`
 (`Spec/FG/Store/Label`: the block and whether it was accepted; the attestation processed;

@@ -8,8 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
 
 What the FG gives to the AC (composition.tex §"The FG frame"):
 `Φ = fg_to_ac(Σ) = (tree, fc_root, viable_heads)`, with `Φ.F` the root of `Φ.tree` (the block
-`Σ.F`). This module holds the frame as a value, the FG surface the AC sees (decomposition §2 D,
-`Frame`):
+`Σ.F`). This module holds the frame as a value, the FG surface the AC sees
+(`Frame`):
 
 * `viableTree Φ S`: the blocks of `S` that extend `fc_root` and have a descendant in
   `S ∩ viable_heads` (composition.tex; it follows from the frame, it is not a part of it);
@@ -20,8 +20,8 @@ What the FG gives to the AC (composition.tex §"The FG frame"):
 Ancestry is `Anc` inside the frame's tree.
 
 This module holds only what the Challenge statements reach; `Frame.Rooted`, the well-formed frames
-`FrameOK` and the frame steps `FrameStep` are in `Milestones/Spec/Frame` (docs/decisions.md,
-2026-11-04). -/
+`FrameOK` and the frame steps `FrameStep` are in `Milestones/Spec/Frame` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks
 

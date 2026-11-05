@@ -11,7 +11,7 @@ restart, and calls `ac_on_block` at that time for every block of `Φ.tree` other
 in parent order. The spec does not fix the order of siblings, which matters (with three or more
 votes of one validator on sibling blocks, the order decides which two pass the cap, and the
 pool order); so the restart takes the order as a parameter (`ReplayOrder`), and the SA and its
-statements are parametric in it (fradamt-agent/goldilocks#26). -/
+statements are parametric in it. -/
 
 namespace Consensus.Goldilocks.SA
 

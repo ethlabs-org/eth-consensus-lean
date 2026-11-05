@@ -124,7 +124,7 @@ Outage numbers (slot `4ΔAC`; slow arming only):
 * budget `4k − 5` and look-back `η = 0` (`Params.standard`): the outage regime is plain sleepy;
   `4k − 5` is the bound of the obligations proof (the lock window keeps an unpolluted label for
   outages up to `(4k − 5)ΔAC`, `exists_unpolluted_label`).
-The decisions behind these numbers are in `docs/decisions.md`.
+The reasons behind these numbers are in `docs/decisions.md` §"Contract numbers".
 These numbers are not claimed minimal. -/
 abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) : Contract ProgressReq where

@@ -14,7 +14,7 @@ a frame tree): `Anc S B C` holds when `B = C` or parent edges inside `S` lead fr
 `B`.
 
 This module holds only what the Challenge statements reach; `Coherent` is in
-`Milestones/Spec/Common/Tree` (docs/decisions.md, 2026-11-04). -/
+`Milestones/Spec/Common/Tree` (`docs/decisions.md` §"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks
 

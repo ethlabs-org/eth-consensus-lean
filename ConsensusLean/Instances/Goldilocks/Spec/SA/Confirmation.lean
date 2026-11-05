@@ -18,7 +18,8 @@ conflicting live lock); and the confirmed tip. A slow lock of slot `s` lives thr
 fast lock gets `fastExpiry`.
 
 This module holds only what the Challenge statements reach; the fast test's selections `fastSelect`
-and `fastCounted` are in `Milestones/Spec/SA/Confirmation` (docs/decisions.md, 2026-11-04). -/
+and `fastCounted` are in `Milestones/Spec/SA/Confirmation` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Goldilocks.SA
 

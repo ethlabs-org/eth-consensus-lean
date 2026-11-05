@@ -12,7 +12,7 @@ written as a generic `ChainShape` so that the engine (`Spec/Model/Run`) runs it 
 L1 theorems (`System.NonFraming`, …) apply to it. The simulation statements
 (`Lemmas/Simulation/Interface`) say that every engine run of `compile (goldilocksShape sp ro)` is
 simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). Decisions
-(`docs/decisions.md` §"Goldilocks instance"):
+(`docs/decisions.md` §"Goldilocks model choices"):
 
 * **Wire format.** A block is a header item signed in role `.proposer s`: `pos` the slot,
   `input` the engine's payload (`Block.input`), `info` the FG payload (the attestation list)
@@ -208,9 +208,9 @@ strictly before `ΔAC`: blocks (with the attestations they carry), votes, `.forw
 `.voteForward` wrappers, the empty relay wrapper, and a mixed relay wrapper (attestations relayed
 together with a block or a vote).
 
-Model choice (owner decision, 2026-11-02): attestations bundled with a block or a vote in one
-relay wrapper are delivered strictly before `ΔAC`, the bound of the bundle; so such attestations
-reach the other nodes strictly before `ΔAC` instead of `ΔFG` (faster than a standalone
+Model choice (`docs/decisions.md` §"Network and delivery"): attestations bundled with a block or
+a vote in one relay wrapper are delivered strictly before `ΔAC`, the bound of the bundle; so such
+attestations reach the other nodes strictly before `ΔAC` instead of `ΔFG` (faster than a standalone
 attestation whenever `ΔAC < ΔFG`). -/
 def isFGAtt {n : Nat} : Wire n → Prop
   | .mk .none (.data .relay) cs => cs ≠ [] ∧ ∀ c ∈ cs, IsAttObj c
