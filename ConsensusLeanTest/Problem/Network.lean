@@ -1,8 +1,9 @@
 module
 public import ConsensusLeanTest.Model.Basic
 public import ConsensusLeanTest.Fixtures.Common
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import Mathlib.Tactic.FinCases
+public import Mathlib.Tactic.IntervalCases
 @[expose] public section
 
 /-! # Network tests (L0 delivery, L1 faithfulness)

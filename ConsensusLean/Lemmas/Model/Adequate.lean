@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Truncate
-public import Mathlib.Tactic
 
 public section
 

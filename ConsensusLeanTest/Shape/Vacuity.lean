@@ -2,7 +2,6 @@ module
 public import ConsensusLeanTest.Shape.Realizable
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Problem.Regimes
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 

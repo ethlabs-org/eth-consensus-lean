@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Lemmas.Model.View
-public import Mathlib.Tactic
 
 public section
 

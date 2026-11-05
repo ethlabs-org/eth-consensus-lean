@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Spec.Problem.Regimes
 public import ConsensusLean.Spec.Problem.Properties
-public import Mathlib.Tactic
 
 @[expose] public section
 

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Spec.Blocks.Progress
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import Mathlib.Tactic.Ring
 
 public section
 

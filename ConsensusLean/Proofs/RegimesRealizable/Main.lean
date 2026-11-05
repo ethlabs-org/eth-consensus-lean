@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Spec.Shape.Active
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Spec.Shape.ProgressFit
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

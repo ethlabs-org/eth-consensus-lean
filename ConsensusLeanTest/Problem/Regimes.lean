@@ -7,8 +7,8 @@ public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import Mathlib.Tactic.FinCases
 @[expose] public section
 
 /-! # Regime tests (L0)

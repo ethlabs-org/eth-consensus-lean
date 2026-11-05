@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Spec.Problem.Network
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

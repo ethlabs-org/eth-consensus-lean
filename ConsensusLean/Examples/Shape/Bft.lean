@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Spec.Shape.ProgressFit
-public import Mathlib.Tactic
 
 @[expose] public section
 

@@ -29,8 +29,10 @@ init_exempt = ["ConsensusLean.ToMathlib", "ConsensusLeanTest.ReviewGuard"]
 # Every directory <parent>.<M> below is one milestone layer, imported from other layers only through
 # <parent>.<M>.Main (Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception).
 milestone_parents = ["ConsensusLean.Proofs", "ConsensusLean.Instances.Goldilocks.Proofs"]
-# No umbrella imports: import the modules you need.
-forbidden_imports = ["Mathlib"]
+# No umbrella imports: import the modules you need. `Mathlib.Tactic` imports every tactic and the theory they
+# need (2.1 s and 3.3 GB to load against 0.9 s and 1.5 GB for `Mathlib.Tactic.Common`, which `Init` provides);
+# import the tactic modules a file uses, such as `Mathlib.Tactic.Linarith` or `Mathlib.Tactic.FinCases`.
+forbidden_imports = ["Mathlib", "Mathlib.Tactic"]
 
 # The checked libraries. A lib's root module is its name, and its name is its check-decls scope (step 3).
 # `default`: exactly the lakefile defaultTargets. `test_driver`: the lakefile testDriver.

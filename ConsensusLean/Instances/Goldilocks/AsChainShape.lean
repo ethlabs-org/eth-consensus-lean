@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Spec.Shape.Compile
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Tactic.Ring
 
 @[expose] public section
 

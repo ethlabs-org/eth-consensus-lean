@@ -13,6 +13,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchorRoute
+public import Mathlib.Data.Fin.VecNotation
 
 public section
 

@@ -2,7 +2,6 @@ module
 public import ConsensusLean
 public import Solution
 public import ConsensusLeanTest.Fixtures.Support
-public import Mathlib.Tactic
 @[expose] public section
 
 /-! # Positive controls
