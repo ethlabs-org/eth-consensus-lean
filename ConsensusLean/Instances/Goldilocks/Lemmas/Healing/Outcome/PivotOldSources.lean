@@ -76,12 +76,12 @@ theorem ResetPremisesUpTo.finalized_compatible_high_origin {b : Time}
           (congrArg (·.root) hg) ⟨x, ho.1, i, hO⟩))
     · obtain ⟨_, _, _, _, v, _, d, hdc, _, _, r, hrd, m, B, hB, hJB⟩ :=
         hp.left_entry_origin hz hJm hJT (by omega) hEC
-          (by have := Store.hj_lt_h hr hC; omega)
+          (by have := Store.hj_lt_h hr hC; (clear * - hJh this; omega))
       have hFB := (hFJ.mono hsub).trans hJB
-      rcases hp.origins_compatible hB (hcb r (by omega)) ho hib with h | h
+      rcases hp.origins_compatible hB (hcb r (by clear * - hdc hrd; omega)) ho hib with h | h
       · exact Or.inl (hFB.trans h)
       · exact Anc.total hU hFB h
-  · exact Or.inl (hp.low_finalized_below_origin hz c (by omega) ho)
+  · exact Or.inl (hp.low_finalized_below_origin hz c (by clear * - hh; omega) ho)
 
 /-- Compare the actual cache and origin within a fixed horizon using only held
 chains and prior signed-attestation origins. No later tick is required. -/
@@ -141,13 +141,14 @@ theorem ResetPremisesUpTo.finalized_below_high_origin {b : Time}
         (congrArg (·.root) (he.trans hg)) ⟨v, ho.1, r, hB⟩⟩
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj
   · obtain ⟨_, _, _, _, v, _, d, hdk, _, _, r, hrd, l, B, ho, hJB⟩ :=
-      hp.left_entry_origin hy hJm hJT (by omega) hEC
-        (by have := Store.hj_lt_h hr hC; omega)
-    exact ⟨v, r, l, B, ho, hp.run.time_mono (by omega), hkb r (by omega),
+      hp.left_entry_origin hy hJm hJT (by clear * - hChj hJh hh; omega) hEC
+        (by have := Store.hj_lt_h hr hC; (clear * - hJh this; omega))
+    exact ⟨v, r, l, B, ho, hp.run.time_mono (by clear * - hdk hrd; omega), hkb r (by
+        clear * - hdk hrd; omega),
       (hFJ.mono hsub).trans hJB⟩
   obtain ⟨v, r, l, B, ho, ht⟩ := seed
   exact ⟨v, r, l, B, ho, ht.trans ha, ht.trans hp.reset_le,
-    hp.low_finalized_below_origin hy k (by omega) ho⟩
+    hp.low_finalized_below_origin hy k (by clear * - hh; omega) ho⟩
 
 /-- Actual-call relay of a high supporting head to the proposal frame. -/
 theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
@@ -171,7 +172,7 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
     have := le_gbar g
     linarith
   have hsi : sp.slot (tr.time i) = u := by
-    rw [hti]; simpa using (SA.slot_arithmetic sp u).1 0 (by omega)
+    rw [hti]; simpa using (SA.slot_arithmetic sp u).1 0 (by clear * -; omega)
   have hts : sp.ts (u : Int) = sp.ts ((u : Int) - 1) + 4 * sp.Δ := by
     simp only [SAParams.ts]; ring
   have hrs := Compose.proposal_call_restarts hp.run hp.noColl hpH hci hcall hd
@@ -181,11 +182,12 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
     have hd := deadline_le_restarts (T := tr.projAC)
       (fun c' hc' hr' => hrs c' (hc'.trans hk) hr') (tr.projAC.time c)
     have := max_le hct.le (show sp.ts ((u : Int) - 1) ≤ sp.ts ((u : Int) - 1) + 2 * sp.Δ by
-      linarith)
+      linarith only [hΔ])
     change _ ≤ max (tr.time c) (sp.ts ((u : Int) - 1)) + sp.Δ at hd
-    linarith
+    linarith only [this, hd]
   obtain ⟨k, hki, hak, hkt⟩ := (hp.sync.syncAC hp.run le_rfl).2 z hz c B hacc hgc le_rfl
-    p hpH i ell hci (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith) hFB
+    p hpH i ell hci (by
+        have := hdl i le_rfl; change _ ≤ tr.time i; linarith only [hti, hΔ, hts, this]) hFB
   exact ⟨SA.mem_tree_of_acceptAt sp hr hpH hak hki hci hFB,
     Or.inr ⟨k, hak, lt_of_lt_of_le hkt (hdl k hki)⟩⟩
 
@@ -236,21 +238,21 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
     have htr : sp.ts l ≤ tr.time r := by
       rcases hfl with ⟨ell', C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell', A, _, hsl, _⟩
       · change tr.time r = sp.ts l + 6 * sp.Δ at ht
-        linarith
+        linarith only [hΔ, ht]
       · exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l).mpr (by omega)
     have hlu : l < u := by exact_mod_cast (SA.ts_lt_iff sp).mp (htr.trans_lt hrt)
-    have hts : sp.ts l ≤ sp.ts ((u : Int) - 1) := (SA.ts_le_iff sp).mpr (by omega)
+    have hts : sp.ts l ≤ sp.ts ((u : Int) - 1) := (SA.ts_le_iff sp).mpr (by clear * - hlu; omega)
     have hjt' : tr.time j ≤ sp.ts ((u : Int) - 1) + sp.Δ := by
       rw [hes] at hjt
       change tr.time j ≤ sp.ts l + sp.Δ at hjt
-      linarith
+      linarith only [hts, hjt]
     rcases Compose.frame_anc_accepted hr hz j ellZ hcz B hB't B .refl with hg | ⟨c, hcj, hacc⟩
     · exact False.elim ((hp.cutZ_lt_of_anc ho hz
         (mem_tree_of_frame hp.run hz hcz hB't) hOB).2 hg)
     have hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ := by
       have := hr.time_mono hcj
       change tr.time c ≤ tr.time j at this
-      linarith
+      linarith only [hΔ, hjt', this]
     have hBt := (hp.proposal_relay_high hpH hci hcall hd hti ho hOB hz hacc hct
       (hFO.trans hOB)).1
     exact Compose.mem_between hr.coherent hΦ hΦU hΦ.rooted.1 hBt hFO hOB
@@ -322,7 +324,7 @@ theorem ResetPremisesUpTo.held_target_proposal_root_before {b : Time}
           hpH hci).1.rooted.1
     exact hp.low_root_of_held_seed_at_call hx hBx hpH hS hci
       (mem_tree_of_frame hp.run hpH hci hSt) hlow hBS hheld
-  · exact hp.high_J_root_of_held_at_call_before hx hBx hpH hci (by omega) hcompare
+  · exact hp.high_J_root_of_held_at_call_before hx hBx hpH hci (by clear * - hlow; omega) hcompare
 
 /-- Root comparison for an actual proposal duty and an arbitrary held target. -/
 theorem held_target_proposal_root_before

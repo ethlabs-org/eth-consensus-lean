@@ -91,7 +91,8 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       rw [hti] at ht
       exact (not_lt_of_ge ht) hOld
     have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti hri ho
-    exact hp.high_origin_votes_before j hjb x r l O ho hrb y hy elly e hcy (by omega)
+    exact hp.high_origin_votes_before j hjb x r l O ho hrb y hy elly e hcy (by
+        clear * - hes hlu; omega)
   obtain ⟨hL, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hlL⟩ := hlock
   have heq := hPhi.coherent.1 hL (SA.viableAncestor_anc hPhi hB).1 hlL.symm
   rw [heq]
@@ -108,10 +109,10 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       rw [hti]
       exact SA.slot_of_mem sp u le_rfl (by
         have hΔ := sp.toParams.hΔ
-        simp only [SA.SAParams.ts]; push_cast; linarith)
+        simp only [SA.SAParams.ts]; push_cast; linarith only [hΔ])
     rw [hslot] at hlive
     rw [cleanLabel_eq]
-    omega
+    clear * - hlive hs h; omega
   obtain ⟨r, hri, D, horig, L, hLU, hLr, hLD⟩ :
       ∃ r < i, ∃ D,
         ((∃ CV, SA.FastLockAt tr.projAC p r l₁.slot D CV) ∨
@@ -137,18 +138,18 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       have hne : l₁.slot ≠ u := fun he =>
         proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
           p hpH r' hri' D' CV (he ▸ hop)
-      omega
+      clear * - hle hne; omega
     · have ht : tr.time r' = sp.ts l₁.slot + 6 * sp.Δ := hupd.2.2.1
       have hΔ := sp.toParams.hΔ
-      have ht' : sp.ts l₁.slot < sp.ts u := by linarith
+      have ht' : sp.ts l₁.slot < sp.ts u := by linarith only [hrt, ht, hΔ]
       exact_mod_cast (SA.ts_lt_iff sp).mp ht'
   apply (Anc.mono hPhiU ((SA.anc_viableAncestor ellp.frame B').trans hBB₁)).trans
     (hLD.trans (extend D ?_))
   rcases horig with ⟨CV, hf⟩ | hslow
   · exact hp.fast_source_votes_before hc hpH hf hlo ((hp.run.time_mono hri.le).trans hib)
-      j hjb y hy elly e hcy (by omega)
+      j hjb y hy elly e hcy (by clear * - hes hlt; omega)
   · exact hp.slow_source_votes_before hc hpH hslow hlo ((hp.run.time_mono hri.le).trans hib)
-      j hjb y hy elly e hcy (by omega)
+      j hjb y hy elly e hcy (by clear * - hes hlt; omega)
 
 section SourceVotes
 
@@ -286,32 +287,33 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
   right
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj
   · obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hJO⟩ :=
-      hp.left_entry_origin hy hJm hJT (by omega) hEB
-        (by have := Store.hj_lt_h hr hBm; omega)
+      hp.left_entry_origin hy hJm hJT (by clear * - hBhj hJh hh; omega) hEB
+        (by have := Store.hj_lt_h hr hBm; (clear * - hJh this; omega))
     have hlu : l < u := hes ▸ hp.row_origin_label_lt hy hc hW ha hv hs hdj hrd ho
     obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
     have hrt := hp.fastLock_time_lt hfl hlu
-      ((hp.run.time_mono (by omega : r ≤ j)).trans htupper)
-    refine ⟨v, r, l, O, ho, hrt, (hp.run.time_mono (by omega)).trans hjb, ?_⟩
+      ((hp.run.time_mono (by clear * - hdj hrd; omega : r ≤ j)).trans htupper)
+    refine ⟨v, r, l, O, ho, hrt, (hp.run.time_mono (by clear * - hdj hrd; omega)).trans hjb, ?_⟩
     rw [hfr]
     change Anc _ (tr.state y j).fg.fcRoot O
     rcases hroot with h | h
     · rw [h]; exact hJO
     · rw [h]; exact (hFJ.mono hsub).trans hJO
   obtain ⟨v, r, l, O, ho, hrb, hlu, hrt⟩ := hp.reset_seed_before_slot hR
-  have hFO := hp.low_finalized_below_origin hy j (by omega) ho
+  have hFO := hp.low_finalized_below_origin hy j (by clear * - hh; omega) ho
   refine ⟨v, r, l, O, ho, hrt, hrb, ?_⟩
   rw [hfr]
   change Anc _ (tr.state y j).fg.fcRoot O
   unfold Store.fcRoot
   split_ifs with hchoose
   · have hFO' : Anc (tr.HonestBlocks H) ell.frame.F O := by rw [hfr]; exact hFO
-    have hOt := hp.high_origin_held_at_vote ho hy hc (by omega) hFO'
+    have hOt := hp.high_origin_held_at_vote ho hy hc (by clear * - hes hlu; omega) hFO'
     have hOh := hp.high_of_anc ho hy hOt .refl
     have hOm := hmax O hOt
     have hJO : (tr.state y j).fg.Anc (tr.state y j).fg.J O := by
       by_contra hn
-      exact hchoose.2 ⟨hchoose.1, O, hOt, hp.anc_tree_of_anc hy hFO hOt, by omega, hn⟩
+      exact hchoose.2 ⟨hchoose.1, O, hOt, hp.anc_tree_of_anc hy hFO hOt, by
+          clear * - hh hchoose hOh hOm; omega, hn⟩
     exact hJO.mono hsub
   · exact hFO
 
