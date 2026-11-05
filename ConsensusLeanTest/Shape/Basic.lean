@@ -1,6 +1,6 @@
 module
-public import ConsensusLean
-public import Solution
+public import ConsensusLean.Spec.Shape.Run
+import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Fixtures.Support
 @[expose] public section

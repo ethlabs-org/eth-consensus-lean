@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.FG.Statements
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 @[expose] public section
 
 /-! # Witness and rejection for `FG.Retention` (G0.9 (a))

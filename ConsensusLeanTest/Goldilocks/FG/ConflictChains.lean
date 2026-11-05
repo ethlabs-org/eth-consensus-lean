@@ -1,5 +1,8 @@
 module
-public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section

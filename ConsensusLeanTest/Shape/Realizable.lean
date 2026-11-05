@@ -3,7 +3,9 @@ public import ConsensusLeanTest.Shape.Basic
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Shape.Controls
-public import ConsensusLean
+public import ConsensusLean.Examples.Shape.Tendermint
+import ConsensusLean.Lemmas.Tactic.Linarith
+import Mathlib.Order.Lattice.Nat
 @[expose] public section
 
 /-! # Coverage and progress-fit tests

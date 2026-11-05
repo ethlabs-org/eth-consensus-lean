@@ -1,5 +1,17 @@
 module
-public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
+import ConsensusLean.Lemmas.Tactic.Linarith
+public import Mathlib.Algebra.GroupWithZero.Nat
+import Mathlib.Order.Interval.Finset.Nat
+import Mathlib.Order.SuccPred.Nat
+import Mathlib.Tactic.Positivity.Finset
+import Mathlib.Algebra.Order.Field.Basic
+import Mathlib.Tactic.NormNum.OfScientific
+import Mathlib.Tactic.NormNum.DivMod
+import Mathlib.Tactic.NormNum.Abs
+import Mathlib.Data.Rat.Cast.Order
+import Mathlib.Tactic.NormNum.Pow
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
 

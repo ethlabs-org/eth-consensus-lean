@@ -1,6 +1,12 @@
 module
-public import ConsensusLean
-public import Solution
+public import ConsensusLean.Spec.Shape.Claims
+public import ConsensusLean.Spec.Shape.ProgressFit
+import ConsensusLean.Lemmas.Model.Adequate
+import ConsensusLean.Lemmas.Model.SysLog
+import ConsensusLean.Lemmas.Model.Protection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
+import ConsensusLean.Lemmas.Blocks.Facts
+import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Fixtures.Support
 @[expose] public section
