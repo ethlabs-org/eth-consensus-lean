@@ -1,8 +1,0 @@
-blank_issues_enabled: true
-contact_links:
-  - name: How we coordinate (claims, landing, reviews)
-    url: https://github.com/ethlabs-org/consensus-lean-coordination/issues/2
-    about: Read this before claiming work or opening a PR.
-  - name: Board (questions, pointers, decisions)
-    url: https://github.com/ethlabs-org/consensus-lean-coordination/issues/17
-    about: Ask a question or post a one-line pointer here.

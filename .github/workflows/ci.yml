@@ -1,4 +1,4 @@
-# CI of record (owner, 2026-11-04, docs/decisions.md): GitHub Actions; the box runs no CI.
+# CI of record: GitHub Actions (docs/decisions.md §"Repository, toolchain and trust checks").
 # Fast tier, on every pull request and every push to main: a cached build (Mathlib via `lake exe cache get`,
 # the project's .lake/build via actions/cache, falling back to main's latest) and `scripts/check.sh --fast`:
 # pins, build (--wfail), imports, check-decls, axiom audit (solution closure, tests), Spec surface + snapshot diff,
@@ -142,7 +142,7 @@ jobs:
           set -euo pipefail
           paths=(scripts lakefile.toml lakefile.lean lake-manifest.json lean-toolchain)
           # Step 4's reach report (a report, not a gate): only when the trusted surface (`trusted_paths` of
-          # scripts/boundaries.toml: Spec, statements, challenge, ...) or scripts/ changed (#13).
+          # scripts/boundaries.toml: Spec, statements, challenge, ...) or scripts/ changed.
           export GIT_LITERAL_PATHSPECS=1
           trusted="$(python3 -I -c 'import tomllib
           print("\n".join(tomllib.load(open("scripts/boundaries.toml", "rb"))["checks"]["trusted_paths"]))')" ||
@@ -204,8 +204,7 @@ jobs:
           { echo '```'; grep -E '^(SKIP|FAIL|check\.sh:)' "$RUNNER_TEMP/check.log" || echo "no check.sh result line"; echo '```'; } \
             >> "$GITHUB_STEP_SUMMARY"
 
-      # The sorry inventory (step 3c, report only) of main's heads, as an artifact of the run: it replaces the
-      # retired `ci-inventory` branch of the coordination repository (no cross-repository token in CI).
+      # The sorry inventory (step 3c, report only) of main's heads, as an artifact of the run.
       - name: Upload the sorry inventory (main)
         if: ${{ !cancelled() && github.event_name == 'push' && steps.docs.outputs.docs_only != 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -1,36 +1,26 @@
 # Contributing
 
-How to add statements, proofs and instances. The working rules for agents (worktrees, jobs, PRs, reviews)
-are in `AGENTS.md` and apply to everyone. The layout and its import rules are in README "Layout" and
-`scripts/boundaries.toml`; what is trusted is in `TRUST.md`. The rules below come from the adopted foundation
-plan (design record: `docs/decisions.md`); section numbers (§) refer to it.
+How to add statements, proofs and instances. The working rules (branches, checks, landing, commit messages)
+are in `AGENTS.md` and apply to everyone. The layout and its import rules are in `docs/layout.md` and
+`scripts/boundaries.toml`; what is trusted is in `TRUST.md`; the reasons behind the design are in
+`docs/decisions.md`.
 
-## Working together (issues and PRs)
+## Contributing a change
 
-People and agents coordinate in GitHub issues, never in the tree; the full rules are in
-[#2](https://github.com/ethlabs-org/consensus-lean-coordination/issues/2).
-
-- **Where:** one issue per piece of work, its body the status block (template "Work item"); one-line pointers,
-  questions and decisions on the board [#17](https://github.com/ethlabs-org/consensus-lean-coordination/issues/17); what each
-  agent can run on [#16](https://github.com/ethlabs-org/consensus-lean-coordination/issues/16); CI results are the
-  GitHub checks of each commit (the box rows of the old history are on
-  [#63](https://github.com/ethlabs-org/consensus-lean-coordination/issues/63)); trusted-surface changes on
-  [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129).
-- **Claim** before starting: assign yourself (or, for an agent, the `agent:*` label), add `in-progress`, prefix the
-  title with `CLAIM:` and fill in the status block. Claims expire; release with `RELEASED:` and the next step.
-- **Land:** branch `work/<name>/<task>` in this repository (forks are disabled). Either land it yourself with
-  `scripts/push-main.sh` (it runs the checks; you need the toolchain and memory for the build), or open a PR into
-  `main`: the `check` workflow (GitHub Actions) checks it, and after a green check on the exact head the
-  PR is merged with `gh pr merge --rebase --match-head-commit <sha>`. Whoever turns `main` red reverts at once.
+- **Branch** `work/<task>` and run `RUN_DIR="$(mktemp -d)" scripts/check-changed.sh` before you commit.
+- **Land** it yourself with `scripts/push-main.sh` (it runs the checks; you need the toolchain and memory for the
+  build), or open a pull request into `main`: the `check` workflow (GitHub Actions) checks it, and after a green
+  check on the exact head it is merged with `gh pr merge --rebase --match-head-commit <sha>`. Whoever turns
+  `main` red reverts at once.
 - **A statement you believe is false:** open an issue with the "Statement believed false" template and stop.
 
-## Statements (plan §4)
+## Statements
 
 A milestone statement is a `Prop` in `ConsensusLean/Statements/<M>.lean` (generic) or
 `ConsensusLean/Instances/<P>/Statements/<M>.lean` (instance, with one bundled parameter structure). It imports
 only Core, Spec and generic Statements (an instance's also its own Spec and, once it exists,
 `AsChainShape`; `scripts/boundaries.toml` is authoritative), so nothing proof-side changes how it
-elaborates. Since 2026-11-04 (`docs/decisions.md`) only the Challenge statements are there: a Goldilocks
+elaborates. Only the Challenge statements are there (`docs/decisions.md` §"Trusted surface and Challenge scope"): a Goldilocks
 milestone that is not one (all but the obligations endpoint) is stated in the untrusted
 `ConsensusLean/Instances/Goldilocks/Milestones/Statements/<M>.lean` under the same import rule (plus the
 Milestones copies of those layers), proved by its `Proofs/<M>/Main.lean` and pinned by
@@ -43,8 +33,9 @@ Each statement comes with:
    list it in `ConsensusLeanTest/Index.lean` (``` example := ``Name ```): check.sh step 12 checks every
    `Consensus.`-prefixed token of the file, prose or code, so a rename fails the build. Only declarations can be
    cited this way: name a namespace without the prefix (the `Shape` namespace).
-2. **A fidelity read-back** (before the statement lands): the Lean read back into prose (a subagent that did not write the
-   statement does this well) and compared with the reference. Check quantifier order, strict versus non-strict bounds, and empty inputs
+2. **A fidelity read-back** (before the statement lands, recorded as `Fidelity read-back: PASS` in the commit):
+   the Lean read back into prose (best by a reader who did not write the statement) and compared with the
+   reference. Check quantifier order, strict versus non-strict bounds, and empty inputs
    (no validators, empty windows, zero thresholds).
 3. **Witnesses** in `ConsensusLeanTest/`, each labelled by kind: (a) the hypotheses are jointly satisfiable;
    (b) an existential reachability example (e.g. one finalizing run with an admissible adversary); (c) only
@@ -57,7 +48,7 @@ Each statement comes with:
 Statements land as labelled trusted-surface commits (a `Trusted-surface:` line; `AGENTS.md`, "Trusted surface"),
 before proofs start. A commit that changes a statement and its proof together says so.
 
-## Proofs (plan §4, §5)
+## Proofs
 
 - A milestone's proofs live in `ConsensusLean/Proofs/<M>/` (or `Instances/<P>/Proofs/<M>/`) and end in
   `Main.lean`, which proves the statement. Files import downward and siblings of the same milestone; a helper
@@ -74,7 +65,7 @@ before proofs start. A commit that changes a statement and its proof together sa
   goal; no `unfold`/`change` through another module's definition (use its characterising lemmas, `AGENTS.md`
   "Visibility").
 
-## Style (plan §7, §8)
+## Style
 
 - **Naming and docstrings:** Mathlib's conventions: theorems in `snake_case`, named after their conclusion;
   types and `Prop`s in `UpperCamelCase`; other terms in `lowerCamelCase`. Every file starts with a module docstring
@@ -88,13 +79,13 @@ before proofs start. A commit that changes a statement and its proof together sa
 - **Generic proofs never unfold instance definitions**; the import matrix makes this structural.
 - **`ToMathlib/`** holds general lemmas staged for upstreaming; files there import only Mathlib.
 
-## Upgrades (plan §9)
+## Upgrades
 
-One upgrade owner, claude-ethlabs, runs toolchain and Mathlib bumps: `lean-toolchain`, the Mathlib `rev` in
-`lakefile.toml`, `lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one landing. The toolchain
+A toolchain or Mathlib bump changes `lean-toolchain`, the Mathlib `rev` in `lakefile.toml`,
+`lake-manifest.json`, `scripts/pins.toml` and the table in `TRUST.md`, in one landing. The toolchain
 and manifest are on the trusted surface, so a bump's commits carry a `Trusted-surface:` line. A bump runs the full
 tier before merge (cold build, rebuild canary, replay, `lake check`, paranoid comparator):
-`gh workflow run full.yml --ref <branch>` and verify that the run passed (README "Verification").
+`gh workflow run full.yml --ref <branch>` and verify that the run passed (`docs/checks.md` §"CI").
 
 ## License
 

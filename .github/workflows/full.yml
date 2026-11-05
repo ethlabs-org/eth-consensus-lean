@@ -1,8 +1,8 @@
-# CI of record (owner, 2026-11-04, docs/decisions.md): GitHub Actions; the box runs no CI.
+# CI of record: GitHub Actions (docs/decisions.md §"Repository, toolchain and trust checks").
 # Full tier: `scripts/check.sh --full` (every step and self-test, incl. leanchecker kernel replay, `lake check`
 # and `lake comparator --paranoid` in a bubblewrap sandbox) on a clean project build. Nightly (skipped when
 # main's head already passed a full run), on demand, and on `milestone*` / `release*` tags.
-# Two parallel jobs (#13): `lake check` (step 10, about 15 min of single-threaded export replay) and every
+# Two parallel jobs: `lake check` (step 10, about 15 min of single-threaded export replay) and every
 # other step (`--split main`); the run passes only if both do.
 # The fast tier (ci.yml) runs on every pull request and push to main.
 # Manual runs: `gh workflow run full.yml` (main) or `gh workflow run full.yml --ref <tag or branch>` (a milestone,
@@ -60,7 +60,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
-    # The box ran the unsplit tier in ~25 min on 8 CPUs; a cold split part on 4 vCPUs takes longer (lake check
+    # The unsplit tier takes ~25 min on 8 CPUs; a cold split part on 4 vCPUs takes longer (lake check
     # alone ~15 min single-threaded). Well inside the 6 h hosted limit.
     timeout-minutes: 180
     strategy:

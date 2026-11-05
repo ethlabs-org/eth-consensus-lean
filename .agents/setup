@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Amp orb setup: the toolchain and dependencies of CI (.github/workflows/ci.yml), installed once per
-# orb snapshot. Idempotent; a warm rerun only confirms what the snapshot already holds.
+# Development environment setup: the toolchain and dependencies of CI (.github/workflows/ci.yml), installed
+# once per environment snapshot. Idempotent; a warm rerun only confirms what the snapshot already holds.
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
@@ -46,9 +46,8 @@ install_toolchain() {
 }
 
 # lakeprof (Kha/lakeprof, Apache-2.0), pinned: build-level profiles (per-module times, critical path,
-# simulated parallelism, Chrome trace). Orbs only: external code is not installed on the shared box
-# (docs/notes/metrics-baseline.md). Linked into /usr/local/bin like the elan proxies. Optional: a failure
-# only warns (see `optional` below).
+# simulated parallelism, Chrome trace). Linked into /usr/local/bin like the elan proxies. Optional: a
+# failure only warns (see `optional` below).
 install_lakeprof() {
   local rev=4b456daea316fae73974c468e52b9b1807f6007d bin
   uv tool install --quiet --from "git+https://github.com/Kha/lakeprof@$rev" lakeprof || return 1
@@ -61,70 +60,9 @@ install_lakeprof() {
 # Run an optional step: its failure warns and setup goes on (a failed setup blocks the snapshot).
 optional() { "$@" || echo "WARNING: optional step $1 failed; setup continues without it" >&2; }
 
-# Orb-only notes for agents; the repository's AGENTS.md describes the shared box (`job --mem`).
-# Replace only a bounded block; preserve unknown/truncated blocks rather than guessing their end.
-# The legacy form ends at its old last line. Unrelated notes before and after the block are kept.
-write_agent_notes() {
-  local f="$HOME/.config/amp/AGENTS.md" marker="<!-- consensus-lean orb notes -->"
-  local end="<!-- /consensus-lean orb notes -->" legacy_last="  orb's memory (\`free -g\`)." stop
-  mkdir -p "${f%/*}"
-  if grep -Fqx "$marker" "$f" 2>/dev/null; then
-    stop="$(awk -v m="$marker" -v e="$end" -v l="$legacy_last" '
-      $0 == m {seen = 1}
-      seen && $0 == l {legacy = 1}
-      seen && $0 == e {ended = 1; exit}
-      END {if (ended) print e; else if (legacy) print l}
-    ' "$f")"
-    if [[ -z "$stop" ]]; then
-      echo "WARNING: unterminated consensus-lean orb notes; leaving $f unchanged" >&2
-      return 0
-    fi
-    if ! awk -v m="$marker" -v e="$stop" '
-      $0 == m {skip = 1} !skip {print} skip && $0 == e {skip = 0}
-      END {exit skip}
-    ' "$f" >"$f.tmp"; then
-      rm -f "$f.tmp"
-      echo "WARNING: unterminated consensus-lean orb notes; leaving $f unchanged" >&2
-      return 0
-    fi
-    mv "$f.tmp" "$f"
-  elif [[ -s "$f" ]]; then
-    echo >>"$f"
-  fi
-  cat >>"$f" <<EOF
-$marker
-# consensus-lean in an Amp orb
-
-- This orb is not the shared box: there is no \`job\`; run builds and checks directly. \`scripts/check.sh\`
-  refuses to start without \`RUN_DIR\` or \`CI\`, so give it a scratch directory:
-  \`RUN_DIR="\$(mktemp -d)" scripts/check-changed.sh\` (or \`scripts/check.sh --fast\`).
-- \`.agents/setup\` installed elan, the pinned toolchain, bubblewrap, the Lake packages and the Mathlib
-  cache, and prebuilt the default targets; \`lake build\` only rebuilds what changed.
-- Kernel replay is memory-heavy (about 3.3 GB per leanchecker process); keep parallel runs within the
-  orb's memory (\`free -g\`).
-- Profiling (profile before changing a proof for speed or raising heartbeats):
-  - One module, per declaration: \`python3 -I scripts/profile-module.py <file.lean>\` runs Lean's
-    \`trace.profiler\` through \`lake lean\` (imports must be built), prints wall time, peak RSS, the
-    slowest declarations and leaf steps, and writes a Firefox Profiler JSON
-    (https://profiler.firefox.com/from-file/). Inside a file, \`set_option trace.profiler true in\` before
-    one declaration shows the same tree in the editor.
-  - The build, per module: \`lakeprof\` is optionally installed; check \`command -v lakeprof\` first.
-    In a disposable worktree, record a cold build of the project's modules with
-    \`rm -rf .lake/build && LAKE_ARTIFACT_CACHE=false lakeprof record -o /tmp/cold.log lake build\`
-    (a cache hit is not a measurement), then \`lakeprof report -i /tmp/cold.log -p -s\` (critical path,
-    simulated time by core count), \`-a\` (average rebuild contribution), \`-c trace.json\` (open at
-    https://ui.perfetto.dev). \`lakeprof diff\` compares two logs.
-  - Before/after of a proof-speed change: \`python3 -I scripts/time-modules.py -o out.tsv <modules>\`
-    (each module alone, Lake's own setup), interleaved base/new, best of two on the same machine.
-    Historical measurements and failed experiments: \`docs/notes/build-speed.md\`.
-$end
-EOF
-}
-
 step "System packages (bubblewrap, jq)"; timed install_packages
 # The pre-push hook: a push to main must have passed scripts/push-main.sh (AGENTS.md "Land on main").
 step "git hooks (scripts/hooks)"; git config core.hooksPath scripts/hooks
-step "Agent notes (~/.config/amp/AGENTS.md)"; timed write_agent_notes
 step "elan v4.2.4"; timed install_elan
 step "Lean toolchain $(cat lean-toolchain)"; timed install_toolchain
 # Clones the pinned packages of lake-manifest.json and downloads Mathlib's prebuilt oleans.
