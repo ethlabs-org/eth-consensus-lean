@@ -188,7 +188,7 @@ key `0`. -/
 theorem badSel_bad (F : ChainShapeFamily O Info) {V : Type} [Fintype V] {E : Env V} {P : Nat}
     (hn : 0 < Fintype.card V) {s : Slot} (hs : s % P = P - 1) :
     badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) = {⟨0, hn⟩} := by
-  simp [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs]
+  simp only [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs, decide_true, ↓reduceIte]
 
 /-! ## Generic realizability
 
@@ -290,7 +290,9 @@ theorem realPoint_horizon : (realPoint key hn Δ hΔ ΔF hΔF awake H).horizon =
 
 theorem realPoint_faulty :
     (realPoint key hn Δ hΔ ΔF hΔF awake H).faulty = {kv key hn 0 (by decide)} := by
-  ext v; simp [EnvPoint.faulty, realPoint_eq]
+  ext v
+  simp only [EnvPoint.faulty, realPoint_eq, Finset.mem_sdiff, Finset.mem_univ, Finset.mem_erase,
+    ne_eq, and_true, Decidable.not_not, true_and, Finset.mem_singleton]
 
 theorem realPoint_honest {j : Nat} (hj : j < 5) (h0 : j ≠ 0) :
     kv key hn j hj ∈ (realPoint key hn Δ hΔ ΔF hΔF awake H).honest :=
@@ -391,7 +393,8 @@ theorem readyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ �
   have hr' : ((Fintype.card V : Nat) : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 2 := by exact_mod_cast hr
   have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
   push_cast
-  nlinarith [hθ.1, hθ.2]
+  linarith only [hr', hn', hθ.1, mul_le_mul_of_nonneg_right hθ.2
+    (by positivity : (0 : ℚ) ≤ ((p.readyAt c t).card : ℚ) + 1)]
 
 include hn in
 /-- The numbers: with `n ≥ 5` and at most two not ready, η-sleepy
@@ -403,7 +406,8 @@ theorem etaReadyAbove_of_card {p : EnvPoint V} {θ : ℚ} (hθ : 0 ≤ θ ∧ θ
   have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
   have key : ∀ A : Finset V, θ * (A.card : ℚ) < (p.readyAt c t).card := fun A => by
     have hs : (A.card : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast Finset.card_le_univ _
-    nlinarith [hθ.1, hθ.2]
+    linarith only [hs, hr', hn', hθ.1,
+      mul_le_mul_of_nonneg_right hθ.2 (Nat.cast_nonneg (α := ℚ) A.card)]
   unfold EnvPoint.EtaReadyAbove
   split_ifs
   · exact (p.readyAbove_iff_union θ c t).mpr (key _)
@@ -416,7 +420,7 @@ omit [DecidableEq V] in
 theorem one_lt_beta_mul_card {β : ℚ} (hβ : 1 / 3 ≤ β) : ((1 : Nat) : ℚ) < β * Fintype.card V := by
   have hn' : (5 : ℚ) ≤ (Fintype.card V : ℚ) := by exact_mod_cast hn
   push_cast
-  nlinarith
+  linarith only [hn', mul_le_mul_of_nonneg_right hβ (by positivity : (0 : ℚ) ≤ Fintype.card V)]
 
 end Point
 
@@ -447,7 +451,8 @@ theorem badSel_good_mem (F : ChainShapeFamily O Info) {E : Env V} {P : Nat}
       k.val = 1 := by
   have he : badSel F E P hn (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) =
       extremalSel F E (ShapeRole.proposer s : ShapeRole (F (pubOf E)).skel.Kind) := by
-    simp [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs]
+    simp only [badSel_apply F E P hn (.proposer s), badSlotRole_proposer, hs, decide_false,
+      Bool.false_eq_true, ↓reduceIte]
   rw [he]
   exact extremalSel_proposer_mem F hF h2 s k
 
@@ -468,7 +473,10 @@ theorem awakeUpTo_card (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.ca
   have he : ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key k) H).awakeAt t).map
       key.symm.toEmbedding = Finset.univ.filter (fun j => 1 ≤ j.val ∧ j.val ≤ k) := by
     ext j
-    simp [EnvPoint.awakeAt, realPoint_eq, awakeUpTo_apply, Fin.ext_iff]
+    simp only [EnvPoint.awakeAt, realPoint_eq, awakeUpTo_apply, decide_eq_true_eq,
+      Finset.mem_map_equiv, Equiv.symm_symm, Finset.mem_filter, Finset.mem_erase, ne_eq,
+      EmbeddingLike.apply_eq_iff_eq, Fin.ext_iff, Finset.mem_univ, and_true,
+      Equiv.symm_apply_apply, true_and, and_congr_left_iff]
     omega
   have hi : (Finset.univ.filter (fun j : Fin (Fintype.card V) =>
       1 ≤ j.val ∧ j.val ≤ k)).map Fin.valEmbedding = Finset.Icc 1 k := by
@@ -536,10 +544,10 @@ theorem allAwake_txLiveActive (p : EnvPoint V)
     realPoint_honest key hn hΔ hΔF allAwake H (by decide) (by decide),
     kv_ne key hn (by decide), ?_, hH, le_rfl,
     realPoint_honest key hn hΔ hΔF allAwake H (by decide) (by decide), fun _ _ _ => rfl⟩
-  · simp [realPoint_eq]
+  · simp only [realPoint_eq, and_self, ↓reduceIte, List.mem_cons, List.not_mem_nil, or_false]
   · intro τ
     have : kv key hn 2 (by decide) ≠ kv key hn 1 (by decide) := kv_ne key hn (by decide)
-    simp [realPoint_eq, this]
+    simp only [realPoint_eq, this, false_and, ↓reduceIte, List.not_mem_nil, not_false_eq_true]
 
 /-- Everyone awake: safety is active after `t₀` (keys `1` and `2` ready at
 `t₀ + 1`, key `1` again at `t₀ + 2`). -/
@@ -548,7 +556,7 @@ theorem allAwake_safeActive (c t₀ : Time) (hH : t₀ + 2 ≤ H) :
   have h1 := realPoint_honest key hn hΔ hΔF allAwake H (j := 1) (by decide) (by decide)
   have h2 := realPoint_honest key hn hΔ hΔF allAwake H (j := 2) (by decide) (by decide)
   exact ⟨kv key hn 1 (by decide), kv key hn 2 (by decide), t₀ + 1, t₀ + 2,
-    kv_ne key hn (by decide), lt_add_one t₀, by linarith, hH,
+    kv_ne key hn (by decide), lt_add_one t₀, add_lt_add_right one_lt_two t₀, hH,
     ⟨h1, fun _ _ _ => rfl⟩, ⟨h2, fun _ _ _ => rfl⟩, ⟨h1, fun _ _ _ => rfl⟩⟩
 
 /-- With key `1` always awake, a fitting recurrence holds under the extremal
@@ -591,10 +599,10 @@ theorem profile_txLiveActive (awake : V → Time → Bool)
     realPoint_honest key hn hΔ hΔF awake H (by decide) (by decide),
     kv_ne key hn (by decide), ?_, hH, le_rfl,
     realPoint_honest key hn hΔ hΔF awake H (by decide) (by decide), fun t _ _ => ha2 t⟩
-  · simp [realPoint_eq]
+  · simp only [realPoint_eq, and_self, ↓reduceIte, List.mem_cons, List.not_mem_nil, or_false]
   · intro τ
     have : kv key hn 2 (by decide) ≠ kv key hn 1 (by decide) := kv_ne key hn (by decide)
-    simp [realPoint_eq, this]
+    simp only [realPoint_eq, this, false_and, ↓reduceIte, List.not_mem_nil, not_false_eq_true]
 
 /-- With keys `1` and `2` always awake, safety is active after `t₀`. -/
 theorem profile_safeActive (awake : V → Time → Bool)
@@ -604,7 +612,7 @@ theorem profile_safeActive (awake : V → Time → Bool)
   have h1 := realPoint_honest key hn hΔ hΔF awake H (j := 1) (by decide) (by decide)
   have h2 := realPoint_honest key hn hΔ hΔF awake H (j := 2) (by decide) (by decide)
   exact ⟨kv key hn 1 (by decide), kv key hn 2 (by decide), t₀ + 1, t₀ + 2,
-    kv_ne key hn (by decide), lt_add_one t₀, by linarith, hH,
+    kv_ne key hn (by decide), lt_add_one t₀, add_lt_add_right one_lt_two t₀, hH,
     ⟨h1, fun t _ _ => ha1 t⟩, ⟨h2, fun t _ _ => ha2 t⟩, ⟨h1, fun t _ _ => ha1 t⟩⟩
 
 /-- The canonical run at a witness point, from GST `g`, with some injective
@@ -649,7 +657,7 @@ theorem sleepy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
         ((Sys F V).lat K cap i ⟨_, rho⟩) := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V)
   have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
-  have hH0 : 0 ≤ H := by linarith
+  have hH0 : 0 ≤ H := by linarith only [hH, hL, hlat, hΔ]
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ ΔF hΔF allAwake H) hH0 0
   refine ⟨Model.Run.mk (F := compiled F) (E := (realPoint key hn Δ hΔ ΔF hΔF allAwake H).env)
@@ -667,10 +675,10 @@ theorem sleepy_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
       rw [realPoint_faulty]; rfl
     · exact (allAwake_readyAt key hn hΔ hΔF H _ t).trans (Nat.le_succ _)
   · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) ≤ H
-    simp only [max_self, zero_add]; linarith
+    simp only [max_self, zero_add]; linarith only [hH, hΔ, hlat]
   · refine allAwake_txLiveActive key hn hΔ hΔF H _ rfl _ _ _ ?_
     change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
-    simp only [max_self, zero_add]; linarith
+    simp only [max_self, zero_add]; linarith only [hH, hL]
 
 /-- The healthy witness at GST `g` under an admissible selection `sel` at
 which the progress requirement holds: everyone awake (full participation, one
@@ -706,8 +714,8 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 
   have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
     add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
   have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
-    have := le_max_right g 0; linarith
-  have hH0 : 0 ≤ H := by linarith
+    have hg := le_max_right g 0; linarith only [hg, hc]
+  have hH0 : 0 ≤ H := by linarith only [h2, hheal]
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run_sel key F (realPoint key hn Δ hΔ ΔF hΔF allAwake H) hH0 g sel hsel
   have hse := Model.sysOf_eagerFrom (O := O) _ he
@@ -835,7 +843,7 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 :
       rho.point.AwakeAtMost 2 := by
   have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key 2)⟩ : Env V)
   have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
-  have hH0 : 0 ≤ H := by linarith
+  have hH0 : 0 ≤ H := by linarith only [hH, hL, hlat, hΔ]
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H) hH0 0
   refine ⟨Model.Run.mk (F := compiled F)
@@ -859,13 +867,13 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 :
         (((K.params.catchUp : Time) * Δ)) t).card := by exact_mod_cast hr
     have := ha.θ_range.2
     push_cast
-    nlinarith
+    linarith only [hr', this, mul_le_mul_of_nonneg_right this (zero_le_two.trans hr')]
   · change max 0 0 + progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, (awakeUpTo key 2)⟩ : Env V) ≤ H
-    simp only [max_self, zero_add]; linarith
+    simp only [max_self, zero_add]; linarith only [hH, hΔ, hlat]
   · refine profile_txLiveActive key hn hΔ hΔF H _ (by intro t; simp [awakeUpTo_apply, kv_eq])
       (by intro t; simp [awakeUpTo_apply, kv_eq]) _ rfl _ _ _ ?_
     change max 0 0 + Δ + (K.params.latency cap i : Time) * Δ ≤ H
-    simp only [max_self, zero_add]; linarith
+    simp only [max_self, zero_add]; linarith only [hH, hL]
   · intro t _ _
     change ((realPoint key hn Δ hΔ ΔF hΔF (awakeUpTo key 2) H).awakeAt t).card ≤ _
     rw [awakeUpTo_card key hn hΔ hΔF H 2 (by omega)]
@@ -886,7 +894,7 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
         rho.point := by
   have hT0 : 0 ≤ T := hT.1
   have hD : (0 : Time) ≤ (K.params.recovery : Time) * Δ := mul_nonneg (by positivity) hΔ.le
-  have hH0 : 0 ≤ H := by linarith
+  have hH0 : 0 ≤ H := by linarith only [hH, hD, hb, hTb, hT0, hΔ]
   have h12 : kv key hn 1 (by decide) ≠ kv key hn 2 (by decide) := kv_ne key hn (by decide)
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
     real_run key F (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H) hH0 0
@@ -906,9 +914,9 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
   obtain ⟨hns, hco⟩ := asleepAlways_cohort key hn hΔ hΔF H
     ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
   refine ⟨rho, rfl, rfl, ⟨hv, hnc, ?_, ⟨_, hh1⟩⟩,
-    ⟨hT, ⟨?_, hse.psync (by linarith) hΔ1 hΔF1⟩, ?_, hns, hco⟩,
+    ⟨hT, ⟨?_, hse.psync (by linarith only [hb, hTb, hT0, hΔ]) hΔ1 hΔF1⟩, ?_, hns, hco⟩,
     ⟨hT0, hTb, hb, ⟨_, hh1, fun u _ _ => hawake1 u⟩,
-      ⟨_, hh2, b₀, le_rfl, by linarith,
+      ⟨_, hh2, b₀, le_rfl, by linarith only [hb, hΔ],
         show asleepAlways (kv key hn 2 (by decide)) (kv key hn 2 (by decide)) b₀ = false by
           simp [asleepAlways_apply]⟩,
       ⟨_, H, hH, le_rfl, hh1, fun u _ _ => hawake1 u⟩⟩⟩
@@ -933,61 +941,66 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
   refine ⟨fun cap i Δ ΔF hΔ1 hΔF1 => ?_, fun cap i Δ ΔF g hΔ1 hΔF1 hr hg => ?_,
     fun cap hc ho => ?_, fun Δ ΔF k hΔ1 hΔF1 => ?_,
     fun cap ho Δ ΔF g hΔ1 hΔF1 hr hg => ?_⟩
-  · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn (by linarith) (by linarith)
-      _ ha hΔ1 hΔF1 hf cap i le_rfl
+  · obtain ⟨rho, -, -, hw, hs, hp, hpa, ht⟩ := sleepy_witness key hn (zero_lt_one.trans hΔ1)
+      (zero_lt_one.trans hΔF1) _ ha hΔ1 hΔF1 hf cap i le_rfl
     exact ⟨⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨hs, hp, ht⟩, hpa⟩
-  · have hΔ : 0 < Δ := by linarith
-    have hΔF : 0 < ΔF := by linarith
+  · have hΔ : 0 < Δ := zero_lt_one.trans hΔ1
+    have hΔF : 0 < ΔF := zero_lt_one.trans hΔF1
     have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V)
     have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
       add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
     have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
-      have := le_max_right g 0
+      have hg := le_max_right g 0
       have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
-      linarith
+      linarith only [hg, this]
     obtain ⟨rho, -, -, hw, he, hs, hp, hpa, ht, hsa⟩ := healthy_witness key hn hΔ hΔF
       ((max g 0 + (K.params.heal cap i : Time) * Δ) +
         (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) + Δ + 2) ha hΔ1 hΔF1 hf cap i g hr
-      (by linarith) (by linarith) (by linarith)
+      (by linarith only [hheal, hrdy, hlat, hL, hΔ]) (by linarith only [hheal, hrdy, hlat, hL, hΔ])
+      (by linarith only [hheal, hrdy, hlat, hL, hΔ])
     exact ⟨⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨he, hs, hp, ht⟩, hsa, hpa⟩
   · obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
     refine ⟨i, fun Δ ΔF hΔ1 hΔF1 => ?_⟩
     obtain ⟨rho, -, -, hw, hs, hp, hpa, hl, hb⟩ :=
-      sleepyStress_witness key hn (by linarith) (by linarith) _ ha hΔ1 hΔF1 hf cap i hi le_rfl
+      sleepyStress_witness key hn (zero_lt_one.trans hΔ1) (zero_lt_one.trans hΔF1) _ ha hΔ1 hΔF1
+        hf cap i hi le_rfl
     exact ⟨⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨hs, hp, hl⟩, hb, hpa⟩
-  · have hΔ : 0 < Δ := by linarith
-    have hΔF : 0 < ΔF := by linarith
+  · have hΔ : 0 < Δ := zero_lt_one.trans hΔ1
+    have hΔF : 0 < ΔF := zero_lt_one.trans hΔF1
     have hl : (0 : Time) ≤ (K.params.lag : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     have hk : (0 : Time) ≤ (k : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     have hbud : (1 : Time) ≤ (K.params.budget : Time) := by exact_mod_cast ha.budget_pos
     have hT : OutageTimes K.params Δ ((k : Time) * Δ)
         ((k : Time) * Δ + (K.params.lag : Time) * Δ + Δ)
         ((k : Time) * Δ + (K.params.lag : Time) * Δ + Δ + Δ) :=
-      ⟨hk, by linarith, by linarith, by nlinarith⟩
+      ⟨hk, by linarith only [hΔ], by linarith only [hΔ],
+        by linarith only [hk, hl, hΔ, le_mul_of_one_le_left hΔ.le hbud]⟩
     obtain ⟨rho, -, -, hw, ho, hoa⟩ := outage_witness (F := F) key hn hΔ hΔF _ ha hΔ1 hΔF1 hT
-      (by linarith) le_rfl le_rfl
+      (by linarith only [hl, hΔ]) le_rfl le_rfl
     exact ⟨⟨_, rho⟩, _, _, _, ⟨hw, rfl, rfl⟩, ho, hoa, le_rfl⟩
-  · have hΔ : 0 < Δ := by linarith
-    have hΔF : 0 < ΔF := by linarith
+  · have hΔ : 0 < Δ := zero_lt_one.trans hΔ1
+    have hΔF : 0 < ΔF := zero_lt_one.trans hΔF1
     obtain ⟨i, hi⟩ := ht cap ho (Fintype.card V)
     have hL := progLen_nonneg F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V)
     have hlat : 0 ≤ (K.params.latency cap i : Time) * Δ := mul_nonneg (by positivity) hΔ.le
     have hheal : 0 ≤ (max g 0 + (K.params.heal cap i : Time) * Δ) :=
       add_nonneg (le_max_right _ _) (mul_nonneg (by positivity) hΔ.le)
     have hrdy : 0 ≤ (max g 0 + (K.params.catchUp : Time) * Δ + 1) := by
-      have := le_max_right g 0
+      have hg := le_max_right g 0
       have : (0 : Time) ≤ (K.params.catchUp : Time) * Δ := mul_nonneg (by positivity) hΔ.le
-      linarith
+      linarith only [hg, this]
     obtain ⟨sel, hsel, hprog, hbad⟩ := bad_selection key hn hΔ hΔF
       ((max g 0 + (K.params.heal cap i : Time) * Δ) +
         (max g 0 + (K.params.catchUp : Time) * Δ + 1) + (K.params.latency cap i : Time) * Δ +
         progLen F K cap i (⟨Δ, hΔ, ΔF, hΔF, allAwake⟩ : Env V) + Δ + 2) allAwake (fun _ => rfl)
         hf cap i hi
     obtain ⟨rho, hpt, hk, hs, hw, he, hs', hp, hpa, ht', -⟩ :=
-      healthy_witness_sel key hn hΔ hΔF _ ha hΔ1 hΔF1 cap i g sel hsel hprog hr (by linarith)
-        (by linarith) (by linarith)
+      healthy_witness_sel key hn hΔ hΔF _ ha hΔ1 hΔF1 cap i g sel hsel hprog hr
+        (by linarith only [hheal, hrdy, hlat, hL, hΔ])
+        (by linarith only [hheal, hrdy, hlat, hL, hΔ])
+        (by linarith only [hheal, hrdy, hlat, hL, hΔ])
     exact ⟨i, ⟨_, rho⟩, ⟨hw, rfl, rfl⟩, ⟨he, hs', hp, ht'⟩, hpa,
       hbad rho hs hk (congrArg EnvPoint.honest hpt)⟩
 
