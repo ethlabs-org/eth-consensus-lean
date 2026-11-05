@@ -80,6 +80,7 @@ public import ConsensusLeanTest.Goldilocks.Run.Faulty
 public import ConsensusLeanTest.Goldilocks.Run.Statements
 public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Run
 public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Sleepy
+public import ConsensusLeanTest.Goldilocks.Runs.Data.Premises
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Run
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Sync
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Chain
