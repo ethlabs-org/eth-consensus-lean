@@ -86,7 +86,7 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
     have h1 := finalGrid_slotTime S A V Q 1
     simp only [TimeGrid.slotTime, SA.SAParams.ts] at h1
     push_cast at h1
-    linarith
+    linarith only [h1]
   have hspan : (finalGrid S A V Q).slotTime N +
       (((⟨finalWindow A, Q.index⟩ : Recurrence).pattern.span : Nat) : Time) *
         (finalGrid S A V Q).slotLen = Q.params.ts (N + 3 * c : Nat) := by
@@ -151,14 +151,14 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     rfl
   have hready : ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
     rw [hreadydef, ← hC]; rfl
+  have hcd : (0 : Time) ≤ ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd)
   have hr0 : 0 ≤ ready := by
-    rw [hready]; have := le_max_right Q.gst 0; positivity
+    rw [hready]; linarith only [le_max_right Q.gst 0, hcd]
   have hrmax : max ready 0 = ready := max_eq_left hr0
   have hgr : gbar Q.gst ≤ ready := by
     change max Q.gst 0 ≤ ready
-    rw [hready]; have : (0 : Time) ≤ ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC := by
-      positivity
-    linarith
+    rw [hready]; linarith only [hcd]
   have hcz := cutZ_fit_of_catchUp A V (contract_coefficients S A)
     (by rw [contract_coefficients_catchUp]; exact contract_catchUp_ge_sleepy S A) Q.run Q.hn Q.gst
   change Healing.cutZ Q.params.toParams Q.gst + D + 1 ≤ max ready 0 + 4 * D at hcz
@@ -175,15 +175,12 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     rw [he]
     exact_mod_cast h
   set Mf : Time := 20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56 with hMf
-  have hMf0 : 0 ≤ Mf := by rw [hMf]; positivity
   have hq : ready + Mf * D - 1 ≤ Q.query := by
-    have h1 := mul_le_mul_of_nonneg_right hbud (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)
-    rw [hready, hDe]; linarith
+    have h1 := mul_le_mul_of_nonneg_right hbud (zero_le_one.trans hd)
+    rw [hready, hDe]; linarith only [h1, hheal]
   have hqh : Q.query ≤ Q.run.2.horizon := by
-    have := Q.bounded
-    have : (0 : Time) ≤ ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC := by
-      positivity
-    linarith
+    linarith only [Q.bounded, (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd) :
+      (0 : Time) ≤ ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC)]
   -- the reset bound `B`
   set B := resetBoundRounds ready D (2 * D) Q.params.toParams.fg.δt X Ld with hBdef
   have hBeq : B = ready + (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D := by
@@ -191,12 +188,12 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hk2 : (2 : Time) ≤ S.k := by exact_mod_cast S.two_le_k
   have hX1 : (1 : Time) ≤ X := by exact_mod_cast Q.index.pos
   have hBc : B + (12 * (c : Time) - 2) * D ≤ Q.run.2.horizon := by
-    have := final_heal_horizon_fit (k := (S.k : Time)) (Ld := (Ld : Time)) hD (by positivity)
+    have := final_heal_horizon_fit (k := (S.k : Time)) (Ld := (Ld : Time)) hD (Nat.cast_nonneg _)
       (Nat.cast_nonneg X) (show 3 * (c : Time) ≤ (S.δt : Time) by exact_mod_cast h3c)
-    rw [hBeq]; rw [hMf] at hq; linarith
+    rw [hBeq]; rw [hMf] at hq; linarith only [this, hq, hqh]
   have hc2' : (2 : Time) ≤ c := by exact_mod_cast hc2
   have hBh : B ≤ Q.run.2.horizon := by
-    linarith [mul_nonneg (show (0 : Time) ≤ 12 * c - 2 by linarith) hD.le]
+    linarith only [hBc, mul_nonneg (show (0 : Time) ≤ 12 * c - 2 by linarith only [hc2']) hD.le]
   -- whole-run no restart: a restart is a labelled call, at a time `≤ horizon`
   have hnr : Healing.NoRestartAfter Q.trace H (gbar Q.gst) :=
     fun y hy k hk => hs.noRestart y hy k hk
@@ -233,15 +230,16 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     (fun s₀ N hs₀ hN => final_query_gap S A V Q hpat (by rw [hrmax]; exact hs₀) (by
       have : Q.params.ts (N + 3 * c : Nat) = Q.params.ts N + 12 * (c : Time) * D := by
         simp only [SA.SAParams.ts]; push_cast; ring
-      rw [this]; linarith))
+      rw [this]; linarith only [hN, hBc]))
     hdrain
-  have hLd0 : (0 : Time) ≤ Ld := by positivity
+  have hLd0 : (0 : Time) ≤ Ld := Nat.cast_nonneg _
   have h4B : ready + 4 * D ≤ B := by
     have : (4 : Time) * D ≤ (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D :=
-      mul_le_mul_of_nonneg_right (by linarith) hD.le
-    rw [hBeq]; linarith
+      mul_le_mul_of_nonneg_right (by linarith only [hLd0, hX1, Nat.cast_nonneg (α := Time) S.δt])
+        hD.le
+    rw [hBeq]; linarith only [this]
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake hrun hs.awake hH (b := Q.run.2.horizon)
-    (by linarith)
+    (by linarith only [hcz, h4B, hBh])
   refine ⟨ΔF, a, ⟨hrun, hs.noColl, hs.sync, hs.awake, hs.faults, ha, hab.trans hBh,
     ⟨j, hj, hjt⟩⟩, ?_⟩
   -- the placement (H3)
@@ -254,29 +252,30 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     have h1 := finalGrid_slotTime S A V Q 1
     simp only [TimeGrid.slotTime, SA.SAParams.ts] at h1
     push_cast at h1
-    linarith
+    linarith only [h1]
   have hseed : (finalGrid S A V Q).slotTime (finalSeedMin S A V Q a) ≤
       a + 4 * D * (2 * S.k + 5) := by
     have hu : finalSeedMin S A V Q a = Q.params.slot a + 2 * S.k + 5 := rfl
     rw [finalGrid_slotTime, hu]
     simp only [SA.SAParams.ts] at hsa ⊢
     rw [← hDdef] at hsa ⊢
-    push_cast; linarith
+    push_cast; linarith only [hsa]
   rw [hL, hrmax]
   push_cast
-  have hXδ : (0 : Time) ≤ (X + S.δt) * (4 * D) := by positivity
   apply add_le_of_le_sub_right
   apply max_le
   · have : (4 * (X : Time) + 4 * S.δt) * D ≤ Mf * D := by
       apply mul_le_mul_of_nonneg_right _ hD.le
-      rw [hMf]; have : (0 : Time) ≤ Ld := by positivity
-      linarith
-    linarith
+      rw [hMf]
+      linarith only [hLd0, Nat.cast_nonneg (α := Time) S.k, Nat.cast_nonneg (α := Time) S.δt,
+        Nat.cast_nonneg (α := Time) X]
+    have h1D : (1 : Time) ≤ D := hD
+    linarith only [this, hq, h1D]
   · have : (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D + 4 * D * (2 * S.k + 5) +
         (X + S.δt) * (4 * D) - 4 * D = Mf * D := by rw [hMf]; ring
     have hab' : a ≤ B := hab
     rw [hBeq] at hab'
-    linarith
+    linarith only [this, hab', hseed, hq]
 
 /-- **The reset premises and the placement of a final query** (the leaf `final_reset_premises`,
 Concrete.lean): a reset `a` with its premises through the horizon at GST `Q.gst`, and the
