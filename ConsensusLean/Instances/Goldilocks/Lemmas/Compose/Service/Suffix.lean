@@ -187,7 +187,7 @@ private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   · refine oldOrigin_iff.2 ⟨z, hz, c, l, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
     obtain ⟨-, ⟨-, -, htc, -⟩, -⟩ := hR
     have := hr.time_mono (show c ≤ j by omega)
-    linarith
+    linarith only [htc, this, hjj, htj]
   · refine oldOrigin_iff.2 ⟨z, hz, c, l, CV, Or.inr ⟨hOp, ?_⟩⟩
     obtain ⟨-, -, -, hsc, -⟩ := id hOp
     have hle := SA.slot_mono sp (hr.time_nonneg c) (hr.time_mono (show c ≤ j by omega))
@@ -259,7 +259,7 @@ private theorem voter_holds_proposal_before (hrun : GoldilocksRun proposer dg H 
   change max (tr.time (k + 1)) (sp.ts (s' : Int)) + sp.Δ ≤ tr.time j
   rw [hes] at ht
   have ht' : sp.ts ((s' + 1 : Nat) : Int) + sp.Δ ≤ tr.time j := not_lt.1 ht
-  rw [htl, htk, max_eq_left (by rw [hts]; linarith)]
+  rw [htl, htk, max_eq_left (by rw [hts]; linarith only [hΔ])]
   exact ht'
 
 end Run
@@ -550,8 +550,9 @@ private theorem competitor_reflect_before {b : Time}
       rw [hfr] at hlt
       change _ ≤ tr.time i
       rw [hti, hts]
-      have := max_le hlt.le (show sp.ts (s' : Int) ≤ sp.ts (s' : Int) + 3 * sp.Δ by linarith)
-      linarith
+      have := max_le hlt.le (show sp.ts (s' : Int) ≤ sp.ts (s' : Int) + 3 * sp.Δ from
+        le_add_of_nonneg_right (mul_nonneg zero_le_three hΔ.le))
+      linarith only [this]
     · -- an ancestor of `P` other than `P`, so of `Q`
       obtain rfl := eq_of_slot hrun hp hP (hΦyU hP't) (hP's.trans hPs.symm)
       have hBP : B ≠ P' := by
@@ -695,8 +696,9 @@ private theorem views_agree_before {b : Time}
       simp only [SA.freeze, hcast]
     rw [hfz] at hlt
     rw [hii, hti, hts]
-    have := max_le hlt.le (show sp.ts (s' : Int) ≤ sp.ts (s' : Int) + 3 * sp.Δ by linarith)
-    linarith
+    have := max_le hlt.le (show sp.ts (s' : Int) ≤ sp.ts (s' : Int) + 3 * sp.Δ from
+      le_add_of_nonneg_right (mul_nonneg zero_le_three hΔ.le))
+    linarith only [this]
   · -- a support head of `P` reaches the voter by its vote
     intro x hx Hd hHd hHdr hFHd
     by_cases hE : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ
@@ -718,9 +720,9 @@ private theorem views_agree_before {b : Time}
       have h1 : tr.projAC.time kx ≤ sp.ts ((s' + 1 : Nat) : Int) := by
         rw [← hti]; exact hr.time_mono hkx
       have h2 := max_le h1
-        (show sp.ts (s' : Int) ≤ sp.ts ((s' + 1 : Nat) : Int) by rw [hts]; linarith)
+        (show sp.ts (s' : Int) ≤ sp.ts ((s' + 1 : Nat) : Int) by rw [hts]; linarith only [hΔ])
       rw [hjj]
-      linarith [not_lt.1 hE]
+      linarith only [h2, not_lt.1 hE]
 
 omit hsl hpj hsD in
 /-- **No old child of `Q` is eligible at the voter** (the `X = Q` case of the
@@ -791,8 +793,9 @@ theorem old_child_ineligible_before {b : Time}
       rw [hfr] at hlt
       change _ ≤ tr.time i
       rw [hti, hts]
-      have := max_le hlt.le (show sp.ts (s' : Int) ≤ sp.ts (s' : Int) + 3 * sp.Δ by linarith)
-      linarith
+      have := max_le hlt.le (show sp.ts (s' : Int) ≤ sp.ts (s' : Int) + 3 * sp.Δ from
+        le_add_of_nonneg_right (mul_nonneg zero_le_three hΔ.le))
+      linarith only [this]
     · -- an ancestor of the slot-`s` block `P`: impossible
       obtain rfl := eq_of_slot hrun hp hP (hΦyU hP't) (hP's.trans hPs.symm)
       exact absurd (hBP'.mono hΦyU) hnBP
