@@ -67,7 +67,11 @@ step "elan v4.2.4"; timed install_elan
 step "Lean toolchain $(cat lean-toolchain)"; timed install_toolchain
 # Clones the pinned packages of lake-manifest.json and downloads Mathlib's prebuilt oleans.
 step "Lake packages and Mathlib cache"; timed lake exe cache get
-# Prebuild the default targets so the snapshot holds them (about 2 min cold, seconds warm). A broken
+# The project build of the newest green main run at or below HEAD (CI's `lake-build` artifact), so a snapshot
+# older than main rebuilds only the modules changed since, not the whole library. Optional: without gh access
+# or a matching artifact the prebuild below builds from scratch.
+step "Project build from CI (optional)"; timed optional scripts/restore-build.sh
+# Prebuild the default targets so the snapshot holds them (about 7 min cold on 4 cores, seconds when restored). A broken
 # commit must not fail setup: that would block the snapshot that holds everything above.
 step "lake build (default targets)"
 t=$SECONDS

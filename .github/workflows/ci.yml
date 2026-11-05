@@ -198,6 +198,24 @@ jobs:
           grep -q "^check.sh: PASSED ($mode mode" "$RUNNER_TEMP/check.log"
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
 
+      # The project build of main's green heads, for development environments that start from an older snapshot:
+      # .agents/setup restores the newest one at or below its commit (scripts/restore-build.sh), so a fresh
+      # environment rebuilds only what changed since. After the clean-tree step, so only a passing build is
+      # published. About 330 MB (zstd -3), kept 3 days; packing and uploading add well under a minute to main runs.
+      - name: Pack the project build (main)
+        if: github.event_name == 'push' && steps.docs.outputs.docs_only != 'true'
+        run: tar -C .lake -cf - build | zstd -T0 -3 -q -o "$RUNNER_TEMP/lake-build.tar.zst"
+
+      - name: Upload the project build (main)
+        if: github.event_name == 'push' && steps.docs.outputs.docs_only != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lake-build
+          path: ${{ runner.temp }}/lake-build.tar.zst
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Summary (the check's result line and its SKIP lines)
         if: always()
         run: |
