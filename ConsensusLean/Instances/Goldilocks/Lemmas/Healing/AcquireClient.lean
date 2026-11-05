@@ -8,8 +8,8 @@ public section
 
 `hs234-exact-interface.md` §5 "client progress" (P1/P2 of workbench#6). At an honest
 `fg_attest(C)` in the effective phase `(m, c)`, whose source `C` has state height `h ≥ ℓ`, entry
-`E` and is allowed in the phase geometry, the client signs a matching row `(h, E)` (target or
-timeout), or it signed one at an earlier cut (`client_progress`):
+`E` and is allowed in the phase geometry, the client signs a matching attestation `(h, E)` (target
+or timeout), or it signed one at an earlier cut (`client_progress`):
 
 * `height_pair` does not refuse. A lock at `h` naming `X ≠ E` was written by an earlier honest
   signing whose finality pair is `(h, X)` (`record_facts`, the record's only writer is
@@ -378,7 +378,7 @@ theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
 
 /-- **HS.4 (b), the client subclaim** (`hs234-exact-interface.md` §5, P1/P2 of workbench#6): at
 an honest `fg_attest(C)` in the phase, with `C` allowed, of state height `h ≥ ℓ` and entry `E`,
-the client signs a matching row for `E` at `h`, or signed one at an earlier cut. -/
+the client signs a matching attestation for `E` at `h`, or signed one at an earlier cut. -/
 theorem client_progress (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF) {i₀ m : Nat}
     {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} :

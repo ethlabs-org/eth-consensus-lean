@@ -4,21 +4,23 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing, HS.5: rows at `m` for a fixed upper proposal
+/-! # Goldilocks Healing, HS.5: attestations at `m` for a fixed upper proposal
 
 `hs5-exact-helpers.md` §2 ("keep the chosen `Y`"), over `Γ`
 (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `SettledIn … w i₀ m c`) and the client
 subclaim: for an honest proposal `Y` of slot `s` with `t_s ≥ r`, state height `m`, on a protected
 branch (the three clauses of `ProtectedBranch`, spelled out: `Service` imports this file) and in
 the phase through `v = t_s + 6Δ`, `Y` has an entry `E` at `m` and every honest validator has signed
-a matching row for `E` at `m` by `v` (`fixed_upper_rows_of`). No `ReadyProposal Y` is assumed.
+a matching attestation for `E` at `m` by `v` (`fixed_upper_rows_of`). No `ReadyProposal Y` is
+assumed.
 
 The assembly (proved): `Y` is held by its proposer after its cut, and its entry `E` at `m` is the
 entry state of its own chain (`Store.entry_state_of_source`). Every honest node receives, in
 `[t_s, v]`, a source `C ⪰ Y` (`AcquireSources.protected_sources`); at that cut (in the phase)
 `C` has height `m` (`≥ ht(Y) = m` along ancestry, `≤ m` the frontier), so its entry at `m` is `E`
 and it is allowed (`effAllowed_of_height`); the `fg_attest` of the same tick (`toFG_attest`,
-same FG state) and the client subclaim give the matching row, at the same time (no extra `Δ`).
+same FG state) and the client subclaim give the matching attestation, at the same time (no extra
+`Δ`).
 
 The sources (§§2.1–2.3) are `AcquireSources.protected_sources`, shared with HS.4. -/
 
@@ -32,9 +34,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
-/-- **Rows at `m` for a fixed upper proposal** (`hs5-exact-helpers.md` §2; the fixed-upper-proposal
-step of `Service`'s `consume_continue`, with `ProtectedBranch`, `ClientProgress` and `RowsBy`
-spelled out, and HS.2 as the hypothesis `hclean`). -/
+/-- **Attestations at `m` for a fixed upper proposal** (`hs5-exact-helpers.md` §2; the
+fixed-upper-proposal step of `Service`'s `consume_continue`, with `ProtectedBranch`,
+`ClientProgress` and `RowsBy` spelled out, and HS.2 as the hypothesis `hclean`). -/
 theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)

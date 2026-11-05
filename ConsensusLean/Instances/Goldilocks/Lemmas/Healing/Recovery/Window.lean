@@ -10,7 +10,7 @@ public section
 
 /-! # Goldilocks Recovery: the retained proposal's literal good window
 
-Actual signed rows reach the retained proposer's pool before its proposal cut. The carrier
+Actual signed attestations reach the retained proposer's pool before its proposal cut. The carrier
 is accepted by every honest validator: post-drain unanimity and the driven vote at `t_u + Δ`
 force each validator to have accepted the proposed block, independently of its later cache.
 -/
@@ -82,7 +82,7 @@ private theorem proposal_includes_pool (hp : ResetPremises tr H proposer dg g Δ
   have he : d.head = Pr := (honest_coherent hp).1 ⟨w, hw, k, hd⟩ ⟨w, hw, k, hPr⟩ hroot
   rwa [he] at hXd
 
-/-- Exact signed entry rows, delivered before the retained ready proposal, form the literal
+/-- Exact signed entry attestations, delivered before the retained ready proposal, form the literal
 `GoodWindow`. Neither report times nor signing times need a freshness lower bound. -/
 theorem good_window_of_rows (hp : ResetPremises tr H proposer dg g ΔF a)
     (hs : HSShared tr H dg g ΔF) {y w : Fin sp.n} (hy : y ∈ H) (hw : w ∈ H)

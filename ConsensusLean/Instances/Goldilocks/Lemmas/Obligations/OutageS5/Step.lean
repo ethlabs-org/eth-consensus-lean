@@ -403,13 +403,13 @@ theorem not_contest_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (h
       exact hJX hEX
   · exact hJX ((honest_held_anc D.hrun D.hnc hy (hJP.trans hPE) hEt).trans hEX)
 
-/-- **The honest rows at a restored vote are supported** (S5 card §12.8, source support): at
-an honest slot-`(q+1)` vote of `y` at cut `i`, every honest row of `y`'s tree has an honest source
-compatible with `P` (lock safety's (SRC) before `i`) and extended by an honest vote of a slot
+/-- **The honest attestations at a restored vote are supported** (S5 card §12.8, source support): at
+an honest slot-`(q+1)` vote of `y` at cut `i`, every honest attestation of `y`'s tree has an honest
+source compatible with `P` (lock safety's (SRC) before `i`) and extended by an honest vote of a slot
 `≤ q`. The source is the viable ancestor of a fast stored lock of the signer (`ac_to_fg`'s
 candidates are fast); its fast origin has an honest counted vote (`fastLock_honest_vote`), of the
 lock's slot, which is at most `q`: a fast update of a later slot is written after the vote, and
-an optimistic lock of slot `q + 1` before a held row is excluded
+an optimistic lock of slot `q + 1` before a held attestation is excluded
 (`no_optimistic_before_held_row_of`). -/
 theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H)
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -434,7 +434,7 @@ theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy :
   have hfr := (D.hrun.cutLaw a.val hav j _ hcj).1
   have hto : SA.ToFGAt tr.projAC a.val j ℓz src :=
     ⟨projAC_callAt.2 hcj, hcl, by rw [projAC_state D.hrun.toLocalRun hav j]; exact hC⟩
-  -- the source is an honest source of the row's target
+  -- the source is an honest source of the attestation's target
   have hcand := toFG_candidate hC
   have hst : src ∈ (tr.state a.val (j + 1)).fg.tree := by
     have h' := hcand.1.1

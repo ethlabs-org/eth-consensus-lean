@@ -220,7 +220,7 @@ def PropPlus (proposer : Nat → Fin sp.n) (g Gp : Time) : Prop :=
 /-- **The HS shared premises** (claims §"Healing: phase service") other than the two regime
 premises (`CatchRun`, `PropPlus`, taken separately): `NoColl` with a genesis whose root is its
 digest (the model's reading of `NoColl` for genesis, as C0.3), `Healthy(g)` (with `GST(g)`'s
-strict delivery, acceptance relay and row convention), no honest restart after `ḡ`, and the
+strict delivery, acceptance relay and attestation convention), no honest restart after `ḡ`, and the
 protocol's parameter bound `δ_t ≥ 𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` (from `δ_t ≥ x + 𝓕 + k_F`,
 `x, k_F ≥ 0`; `k ≥ 2` and `0 < Δ_F` are carried by `SAParams` and `SyncOn`; no order between
 `Δ` and `Δ_F` is assumed). Unforgeable
@@ -295,9 +295,9 @@ with `τ = ḡ`; the lock's block is the written block moved back to an ancestor
 attestation whose height pair has height `H_z + 1`;
 (c) if `a` is the reset `a_z`: `a > c_z` and no honest height pair of height `≥ H_z + 1` is
 signed before `a`; at the FG update (`fg_attest`) of each honest tick at `a` the accepted
-frontier is `≤ H_z + 1`, so every honest row signed at `a` has height `≤ H_z + 1`; for every set
-`𝓔` of entries of heights `≥ H_z + 1` the first clause of (K1_𝓔) of G1.10 holds with
-`T₀ = a − Δ`; and for every `T ≥ a` every honest row signed at `a` lies in `(T₀, T]`. -/
+frontier is `≤ H_z + 1`, so every honest attestation signed at `a` has height `≤ H_z + 1`; for every
+set `𝓔` of entries of heights `≥ H_z + 1` the first clause of (K1_𝓔) of G1.10 holds with
+`T₀ = a − Δ`; and for every `T ≥ a` every honest attestation signed at `a` lies in `(T₀, T]`. -/
 def CutAndReset : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)

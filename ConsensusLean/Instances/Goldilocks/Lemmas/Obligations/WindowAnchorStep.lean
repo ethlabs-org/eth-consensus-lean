@@ -13,16 +13,17 @@ of the honest-proposer gap. Honest proposers are used only at the window anchors
 between anchors may all be faulty. No density premise (`hM4`) is used here.
 
 * `anchor_height_step`: an honest anchor `X` whose parent `Pr` is above the previous anchor `A`
-  (in the proposer's store at the proposal cut), with a quorum of honest target rows for the
+  (in the proposer's store at the proposal cut), with a quorum of honest target attestations for the
   entry of `σ[Pr]` signed by `v` (`v + Δ_F ≤ t_{kX}`), is one height above `A` on its post-store.
   The anchor justifies `σ[Pr].h` (`justify_of_signed_rows'_upTo`), and `h_j < h`.
-* `anchor_height_step_or_crossed`: the same, with the rows needed only when `σ[Pr]` is still at
-  the height of `A`; if a block between `A` and `Pr` already crossed, the step holds by
+* `anchor_height_step_or_crossed`: the same, with the attestations needed only when `σ[Pr]` is still
+  at the height of `A`; if a block between `A` and `Pr` already crossed, the step holds by
   monotonicity.
 
-The row premise (`hsig`) is the explicit availability premise at the anchor: record usability
-and inclusion of the entry's target rows. Its timing content is that the entry is younger than
-`δt` while the rows are signed (honest validators sign target rows, not timeouts). -/
+The attestation premise (`hsig`) is the explicit availability premise at the anchor: record
+usability and inclusion of the entry's target attestations. Its timing content is that the entry is
+younger than `δt` while the attestations are signed (honest validators sign target attestations, not
+timeouts). -/
 
 namespace Consensus.Goldilocks.Obligations
 
@@ -33,8 +34,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- **The anchor height step.** An honest anchor `X` (proposal cut `kX`, parent `Pr`) with
-`A ⪯ Pr` in the proposer's store and a quorum of honest target rows for `σ[Pr]`'s entry signed by
-`v`: `σ[A].h + 1 ≤ σ[X].h` on the post-store of the cut. -/
+`A ⪯ Pr` in the proposer's store and a quorum of honest target attestations for `σ[Pr]`'s entry
+signed by `v`: `σ[A].h + 1 ≤ σ[X].h` on the post-store of the cut. -/
 theorem anchor_height_step (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
     (hs : Healing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {A X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -56,9 +57,9 @@ theorem anchor_height_step (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : 
   rw [← he] at hlt
   omega
 
-/-- **The anchor height step, rows only at the old height.** As `anchor_height_step`, but the
-rows are needed only when `σ[Pr]` is still at the height of `A`: otherwise a block between `A`
-and `Pr` already crossed, and `σ[A].h + 1 ≤ σ[Pr].h ≤ σ[X].h`. -/
+/-- **The anchor height step, attestations only at the old height.** As `anchor_height_step`, but
+the attestations are needed only when `σ[Pr]` is still at the height of `A`: otherwise a block
+between `A` and `Pr` already crossed, and `σ[A].h + 1 ≤ σ[Pr].h ≤ σ[X].h`. -/
 theorem anchor_height_step_or_crossed (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
     (hs : Healing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {A X Pr : SA.Blk sp.n (List (FG.Att sp.n))}

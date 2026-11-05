@@ -11,20 +11,21 @@ public section
 /-! # Goldilocks Obligations: `HSSharedUpTo` from a healthy run, at a parametric `Δ_F` (#136)
 
 The shared HS premises through the engine horizon, from the run data of a query alone (valid
-execution, no observed collision, `Healthy` at GST `g`), at a parametric row delay `Δ_F`.
+execution, no observed collision, `Healthy` at GST `g`), at a parametric FG delay `Δ_F`.
 
-* `hsSharedUpTo_of_rows`: from row service at `Δ_F` (`PSyncFGAttTransport … Δ_F`) as a premise.
+* `hsSharedUpTo_of_rows`: from attestation service at `Δ_F` (`PSyncFGAttTransport … Δ_F`) as a
+  premise.
 * `protoFGDelay_delivery_of_healthy`, `protoFGDelay_timeout_of_healthy`: the healthy regime of
   `K S A` bounds the engine FG delay by the contract's bound (`ΔFG ≤ (4·fgSlots − 6)·ΔAC`), so the
   protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)` satisfies
   `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t` (`fgDelay_bound_iff`, `3·fgSlots ≤ δ_t`). No order
   between `Δ` and `Δ_F` is used.
-* `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_F,p`, from the network's row
-  service at `Δ_F,p` (`signed_row_service_psync`). The lift (`PSyncFGAttTransport.mono`) exists,
-  but the obligations proof uses it only at `le_rfl` (`Δ_F = Δ_F,p`).
+* `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_F,p`, from the network's
+  attestation service at `Δ_F,p` (`signed_row_service_psync`). The lift (`PSyncFGAttTransport.mono`)
+  exists, but the obligations proof uses it only at `le_rfl` (`Δ_F = Δ_F,p`).
 
 Fields: `noColl`, `genesisRoot` (`noCollTransport`, `simTrace_genesis_root_ok`); `sync`
-(`resetService_of_psync` at `PSync g`, from `Healthy`, with the row service); `awake`
+(`resetService_of_psync` at `PSync g`, from `Healthy`, with the attestation service); `awake`
 (`HealthyOn`); `faults` (`|faulty| < n/3`, `β = 1/3`); `noRestart` (a restart at `t` has its node
 asleep at `t - 1`, `simTrace_asleep_before_restart`); `timeoutDelay` (the hypothesis
 `6Δ + Δ_F ≤ 4Δ·δt`). The query wrappers are thin instances: `FinalQuery.hsSharedUpTo` and
@@ -39,11 +40,12 @@ open Shape Blocks
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- **The shared HS premises of a healthy run through its horizon, from row service at `Δ_F`**,
-at GST `g` and the digest of the run. Only the run data of a query are used (valid execution, no
-observed collision, `Healthy` at `g`) plus three premises on `Δ_F`: row service at `Δ_F`
-(`hrow`), `6Δ + Δ_F ≤ 4Δ·δt` (`htd`, the field `timeoutDelay`), and `0 < Δ_F` (`hΔF`), which
-only fills the field `ResetService.deltaF`; no order between `Δ` and `Δ_F` is used. -/
+/-- **The shared HS premises of a healthy run through its horizon, from attestation service at
+`Δ_F`**, at GST `g` and the digest of the run. Only the run data of a query are used (valid
+execution, no observed collision, `Healthy` at `g`) plus three premises on `Δ_F`: attestation
+service at `Δ_F` (`hrow`), `6Δ + Δ_F ≤ 4Δ·δt` (`htd`, the field `timeoutDelay`), and `0 < Δ_F`
+(`hΔF`), which only fills the field `ResetService.deltaF`; no order between `Δ` and `Δ_F` is used.
+-/
 theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (goldilocks S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}
     (healthy : (Sys (goldilocks S) V).Healthy (K S A) g run) {ΔF : Time}
@@ -83,7 +85,7 @@ theorem hsSharedUpTo_of_rows (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fint
     exact simTrace_asleep_before_restart S run.2 hn valid y hy k hk
       (hawake y hy _ (Int.le_sub_one_of_lt hlt) (by linarith))
 
-/-- The protocol row delay is positive. -/
+/-- The protocol FG delay is positive. -/
 theorem protoFGDelay_pos (pub : Model.Public) : 0 < protoFGDelay pub := by
   rw [protoFGDelay_eq]
   exact pub.ΔFG_pos
@@ -100,7 +102,7 @@ theorem protoFGDelay_delivery_of_healthy (run : (Sys (goldilocks S) V).Run)
   rw [protoFGDelay_eq]
   exact (fgDelay_bound_iff A run.1.ΔAC run.1.ΔFG).1 h
 
-/-- **The rise timeout of a healthy run of `K S A`** at the protocol row delay:
+/-- **The rise timeout of a healthy run of `K S A`** at the protocol FG delay:
 `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`, from `protoFGDelay_delivery_of_healthy` and
 `3·fgSlots ≤ δ_t` (`ContractAssumptions.timeout`). -/
 theorem protoFGDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
@@ -115,7 +117,7 @@ theorem protoFGDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn :
   nlinarith
 
 /-- **The monotone lift**: the shared HS premises of a healthy run at every `Δ_F ≥ Δ_F,p` with
-`6Δ + Δ_F ≤ 4Δ·δt`, from the network's row service at the protocol row delay
+`6Δ + Δ_F ≤ 4Δ·δt`, from the network's attestation service at the protocol FG delay
 (`signed_row_service_psync`) lifted by `PSyncFGAttTransport.mono`. -/
 theorem hsSharedUpTo_of_healthy (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (goldilocks S) V).Valid run) (noCollision : ¬ run.2.HashCollision) {g : Time}

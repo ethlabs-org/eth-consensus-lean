@@ -8,8 +8,8 @@ paper results (claims HR.4, status M; `producer-reset-continuation.md` §5 (R4, 
 (HBoot, reviewed), §13 (JointRet, reviewed), §16 (high records); healing-simple `t1-proof.md` §9
 (the base case)): C1.1's first-violating-event induction over the run's cut index, with G1.10 at
 the height-scoped scope (`𝓔_B` the entries of height `≥ H_z + 1` that conflict with `B`,
-`T₀ = a_z − Δ`, every row signed at `a_z` covered by HR.1 (c)). It is not an instance of C1.1:
-(K0) and (K1) need not hold at `a_z`.
+`T₀ = a_z − Δ`, every attestation signed at `a_z` covered by HR.1 (c)). It is not an instance of
+C1.1: (K0) and (K1) need not hold at `a_z`.
 
 **The induction** (JointRet §13, over the cut index of the fixed run, as C1.1's `persist_inv`).
 The invariant at cut `k` has two parts:
@@ -28,5 +28,5 @@ with the origin (`vote_root_compatible`), then C1.1 (i) (`vote_viable_of_root`) 
 (`high_vote_extends`, C1.1's `vote_extends` without the window `(s, m]` and without `Clean`). The
 cut step (`retention_cut_step`) is G1.10 at the height-scoped scope. (R1)'s comparability is
 `origins_compatible` (A1.9's counting: `fastLock_compatible_of_votes`, `fastLock_same_slot`) over
-the votes of the invariant; (R1)'s rows are the provenance of the sources (`high_rows`, HR.1 (a));
-(R4) is the high-record lemma (`high_records`, §16). -/
+the votes of the invariant; (R1)'s attestations are the provenance of the sources (`high_rows`, HR.1
+(a)); (R4) is the high-record lemma (`high_records`, §16). -/

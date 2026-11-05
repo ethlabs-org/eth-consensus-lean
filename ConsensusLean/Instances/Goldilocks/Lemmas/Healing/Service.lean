@@ -19,13 +19,13 @@ service"; `phase-service.md` §§2–5 and §7), and the interface through which
 (`Producer(A)`, `producer` in `Reset`) consumes them:
 
 * `AcquiredPath` is HS.4 (a)'s second branch (the acquired common path: an honest unanimous
-  proposal `W` of slot `s` with an entry `E` at `h ∈ {ℓ, m}` whose reports or rows every honest
-  validator has by `t_s + 6Δ`, still in the phase), `ClientProgress` is HS.4 (b) (the client
+  proposal `W` of slot `s` with an entry `E` at `h ∈ {ℓ, m}` whose reports or attestations every
+  honest validator has by `t_s + 6Δ`, still in the phase), `ClientProgress` is HS.4 (b) (the client
   subclaim), and `common_path_acquisition'` restates HS.4 with them;
 * `consume_continue` is HS.5's consumption and continuation (`phase-service.md` §6, §8.1;
   workbench#6 P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
   three steps that HS.1–HS.4 do not export are `historical_source_rows` (proved, `Source`),
-  the rows of a fixed upper proposal (`fixed_upper_rows_of`, `ConsumeUpper`) and mature
+  the attestations of a fixed upper proposal (`fixed_upper_rows_of`, `ConsumeUpper`) and mature
   progress consumption (`mature_progress_of`, `ConsumeMature`) (over `ProtectedBranch`,
   `ReportsBy`, `RowsBy` and `PathAt`, the pieces of `AcquiredPath`).
 
@@ -83,8 +83,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `E` with state height `h`, with `w ≤ t_s` and `v = t_s + 6Δ ≤ w + D`; the phase is still `(m, c)`
 after all events at `v`; every honest slot-`s` vote is exactly `W` (viable or at or below
 `fc_root`); by `v` every honest validator has received a source with entry `E` at `h` or signed a
-matching row; and until the phase end every later honest vote and honest proposal parent extends
-`W`. -/
+matching attestation; and until the phase end every later honest vote and honest proposal parent
+extends `W`. -/
 def AcquiredPath (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) : Prop :=
@@ -113,7 +113,7 @@ def AcquiredPath (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- **The client subclaim** (HS.4 (b), P1/P2 of workbench#6): in the settled phase, at an honest
 `fg_attest` whose source `C` has state height `h ≥ ℓ` and entry `E` and is allowed in the phase
-geometry, the client signs a matching row for `E`, or has signed one at an earlier cut. -/
+geometry, the client signs a matching attestation for `E`, or has signed one at an earlier cut. -/
 def ClientProgress (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) : Prop :=
   ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
@@ -144,9 +144,9 @@ def ProtectedBranch (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     PhaseOn tr.projFG H i₀ k' m c →
     ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr
 
-/-- **Reports or rows by `v`** (HS.4 (a)'s acquisition clause): every honest validator has, by
-`v`, received a source (an `ac_to_fg` return) of state height `h` with entry `E`, or signed a
-matching row for `E` at `h`. -/
+/-- **Reports or attestations by `v`** (HS.4 (a)'s acquisition clause): every honest validator has,
+by `v`, received a source (an `ac_to_fg` return) of state height `h` with entry `E`, or signed a
+matching attestation for `E` at `h`. -/
 def ReportsBy (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (u v : Time) (h m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (E W : SA.Blk sp.n (List (FG.Att sp.n))) :
     Prop :=
@@ -155,14 +155,15 @@ def ReportsBy (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (u v : Time) (h 
       ((tr.state y k).fg.σ C.root).h = h ∧ EffAllowed (tr.state y k).fg m c C) ∨
     ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = h ∧ att.T = E.root
 
-/-- **Rows by `v`**: every honest validator has signed a matching row for `E` at `h` by `v` (so
-the matching rows have weight `n − f ≥ q`). -/
+/-- **Attestations by `v`**: every honest validator has signed a matching attestation for `E` at `h`
+by `v` (so the matching attestations have weight `n − f ≥ q`). -/
 def RowsBy (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (v : Time) (h : Nat)
     (E : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ v ∧ att.h = h ∧ att.T = E.root
 
 /-- **The acquired path without its acquisition clause**, for a fixed witness
-`(s, h, E, W, kW)`: the conjuncts of `AcquiredPath` other than the reports-or-rows clause. -/
+`(s, h, E, W, kW)`: the conjuncts of `AcquiredPath` other than the reports-or-attestations clause.
+-/
 def PathAt (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) (s h : Nat)
@@ -174,7 +175,8 @@ def PathAt (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (∀ jv, FirstCutAfter tr jv (sp.ts s + 6 * sp.Δ) → PhaseOn tr.projFG H i₀ jv m c) ∧
     ProtectedBranch tr H proposer i₀ m c s W
 
-/-- The acquired path is a witness with `PathAt` and its reports or rows by `v = t_s + 6Δ`. -/
+/-- The acquired path is a witness with `PathAt` and its reports or attestations by `v = t_s + 6Δ`.
+-/
 theorem acquiredPath_iff_exists (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (Gp w : Time)
     (i₀ m : Nat) (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))) :
@@ -206,17 +208,18 @@ theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr)
 /-! ### HS.5's consumption, one level down (proposed contract)
 
 The paper orb's skeptical read-back of `consume_continue` names three steps that HS.1–HS.4 do not
-export: (1) the row of a current source (HS.4's source arm, #88: a source in `[t_s, v]`, allowed in
-the phase), from the `fg_attest` of the same tick and `ClientProgress`; (2) for the chosen
-height-`m` proposal `Y` of the continuation, HS.3 exports only the votes and parent extension, not
-the rows; (3) the FG inclusion and acceptance of the crossing (P3). They are stated over the data
-the assembly has; their exact form is a proposed contract, not yet certified. -/
+export: (1) the attestation of a current source (HS.4's source arm, #88: a source in `[t_s, v]`,
+allowed in the phase), from the `fg_attest` of the same tick and `ClientProgress`; (2) for the
+chosen height-`m` proposal `Y` of the continuation, HS.3 exports only the votes and parent
+extension, not the attestations; (3) the FG inclusion and acceptance of the crossing (P3). They are
+stated over the data the assembly has; their exact form is a proposed contract, not yet certified.
+-/
 
-/-- **Current sources give matching rows** (`phase-service.md` §5 "an actual candidate passed to
-the FG serves `E`", §6): for the acquired path's witness, every honest validator that has, in
-`[t_s, v]`, `v = t_s + 6Δ`, received a source `C ⪰ W` of state height `h` with entry `E`, allowed
-in the phase (HS.4's current-source arm, #88), has signed a matching row for `E` at `h` by `v`:
-the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
+/-- **Current sources give matching attestations** (`phase-service.md` §5 "an actual candidate
+passed to the FG serves `E`", §6): for the acquired path's witness, every honest validator that has,
+in `[t_s, v]`, `v = t_s + 6Δ`, received a source `C ⪰ W` of state height `h` with entry `E`, allowed
+in the phase (HS.4's current-source arm, #88), has signed a matching attestation for `E` at `h` by
+`v`: the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
 `ClientProgress` applies (the phase holds through `v`; `toFG_attest` for the transport). -/
 theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF)
@@ -270,7 +273,7 @@ has changed by `w + A_HS`, `A = 2C + Δ`. It takes HS.1 and HS.2 as hypotheses d
 paper orb's proposed contract, not yet certified); HS.3 (b) follows from HS.2
 (`frozen_tree_agreement_clean`).
 
-Its proof is meant to assemble `historical_source_rows` (the witness's reports become rows),
+Its proof is meant to assemble `historical_source_rows` (the witness's reports become attestations),
 `mature_progress_of` (the crossing proposal `X` by `b ≤ w + C`; at `h = m` a crossing
 is a frontier rise), and, at `h = m − 1`, HS.3 (b) for `X` and for the next ready proposal `Y`
 after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_rows_of` for `Y` and

@@ -19,7 +19,7 @@ whole-run `ResetPremises`, whose `HealthyRun` asks every honest node to be awake
 supply them. This module states the bundle through a horizon `b` (`HealedUpTo`) and proves it
 from `ResetPremisesUpTo … b` and Catch(2Δ). The conclusions are restricted to the horizon:
 
-* records: rows signed at `time d ≤ b`, locks and R0 at cuts `time i ≤ b`; the entries are
+* records: attestations signed at `time d ≤ b`, locks and R0 at cuts `time i ≤ b`; the entries are
   high entries whose origin is written by `b` (`Healing.HighEntryUpTo`);
 * C3: proposals of slots `s` with `t_s ≤ b`. No other reserve: the lock write and the call are
   before `t_s`, so `t_s ≤ b` bounds every cut that the proof uses;
@@ -44,12 +44,12 @@ structure HighEntryUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g b :
     ((tr.state z m).fg.σ Z.root).Th = Z.root
 
 /-- **The record half of the Healed bundle through the horizon `b`.** `HealedRecords` with the
-rows signed by `b` and the locks and R0 at cuts by `b`. -/
+attestations signed by `b` and the locks and R0 at cuts by `b`. -/
 structure HealedRecordsUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g b : Time)
     (h₀ : Nat) (E : Nat → SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
   /-- RH: `h₀` is above the reset height. -/
   rh : HZ tr H g + 1 ≤ h₀
-  /-- C2*⁺ (i): every honest row signed by `b` at a height `≥ h₀` names the entry. -/
+  /-- C2*⁺ (i): every honest attestation signed by `b` at a height `≥ h₀` names the entry. -/
   fgAtts : ∀ v ∈ H, ∀ d att, tr.SignAt v d att → tr.time d ≤ b → h₀ ≤ att.h →
     att.T = (E att.h).root
   /-- C2*⁺ (ii): at a cut by `b`, every honest lock at a height `≥ h₀` is `⊥` or the entry. -/
@@ -84,8 +84,8 @@ theorem ResetPremisesUpTo.high_lock_entry_of_upTo
     (tr.state y i).record.lock h = none ∨ (tr.state y i).record.lock h = some E.root :=
   (hp.permits_high_entry_of_upTo hy hib hh hE).2.2
 
-/-- **A high entry through the horizon from an honest row signed by `b`.** The origin of the
-row's source is written before the row (`high_row_source`). -/
+/-- **A high entry through the horizon from an honest attestation signed by `b`.** The origin of the
+attestation's source is written before the attestation (`high_row_source`). -/
 theorem ResetPremisesUpTo.highEntryUpTo_of_row
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hdb : tr.time d ≤ b)
@@ -96,9 +96,9 @@ theorem ResetPremisesUpTo.highEntryUpTo_of_row
     hEO.mono fun D hD => ⟨v, hv, r, hD⟩⟩, ⟨v, hv, r, hE, hEh, hET⟩⟩, hEr⟩
 
 /-- **A high entry through the horizon from an honest record entry at a cut by `b`.** The
-target, timeout or lock entry `r` at a height `h ≥ H_z + 1` comes from an earlier row of the
-node (`client_record_origin_of_run`); for a lock, the finality pair of that row is below the
-row's entry (`signed_fin_pair_entry_of_run`). -/
+target, timeout or lock entry `r` at a height `h ≥ H_z + 1` comes from an earlier attestation of the
+node (`client_record_origin_of_run`); for a lock, the finality pair of that attestation is below the
+attestation's entry (`signed_fin_pair_entry_of_run`). -/
 theorem ResetPremisesUpTo.highEntryUpTo_of_record
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
     {i h r : Nat} (hib : tr.time i ≤ b) (hh : HZ tr H g + 1 ≤ h)

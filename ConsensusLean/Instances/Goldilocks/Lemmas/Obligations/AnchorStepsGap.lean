@@ -21,7 +21,7 @@ holds only for `ΔF := Δ_p`. For a larger `ΔF` (for example `ΔF = 32Δ`) the 
 slots apart, with `c_F := ⌈(6Δ + ΔF) / 4Δ⌉`. This module generalizes the gap-2 proofs.
 
 * `anchorStep_gap`: one step `A → X`, with `A` at slot `s` and `X` at slot `s + c`, `2 ≤ c`.
-  The premise `ΔF ≤ 2Δ` becomes the delivery premise `t_s + 6Δ + ΔF ≤ t_{s+c}`: the rows
+  The premise `ΔF ≤ 2Δ` becomes the delivery premise `t_s + 6Δ + ΔF ≤ t_{s+c}`: the attestations
   are signed by `t_s + 6Δ` and are delivered by `t_{s+c}`. `2 ≤ c` gives the adjacency
   (`anchors_chain_upTo`) and `t_s + 7Δ ≤ t_{s+c}` (`crossed_parents_above_upTo`).
 * `anchorSteps_gap`: the three steps of the window, anchors at `s₀ + [0, c, 2c, 3c]`. The
@@ -108,7 +108,7 @@ private theorem anchor_facts {g ΔR a b : Time}
 
 /-- **One route-A anchor step (gap `c`).** Honest proposals `A` at slot `s` and `X` at slot
 `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at an honest store
-that holds `A`: `AnchorStep tr H A X`. The rows are signed by `t_s + 6Δ`, and the delivery
+that holds `A`: `AnchorStep tr H A X`. The attestations are signed by `t_s + 6Δ`, and the delivery
 premise `t_s + 6Δ + ΔF ≤ t_{s+c}` delivers them by `t_{s+c}`. -/
 theorem anchorStep_gap {g ΔR a b gS ΔF : Time}
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔR a b)

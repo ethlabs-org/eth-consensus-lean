@@ -24,8 +24,8 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
   processing is never refused (`fg_on_attestation` only adds it to the pool, which keeps it,
   also across a restart), so an earlier one leaves `a` in the pool as a later one would; and an
   honest node forwards an admitted attestation as the same object, which the network counts as
-  held from an earlier receipt (absent a wake in between). Not in CLAIMS, whose `Sync` row has
-  attestations "in the same form" (not before the send). Blocks and messages keep the lower
+  held from an earlier receipt (absent a wake in between). Not in CLAIMS, whose `Sync` attestation
+  has attestations "in the same form" (not before the send). Blocks and messages keep the lower
   bound: they are forwarded in fresh wrappers, and an earlier receipt of a block can be refused.
   Over the run, "processed by `y` before the deadline" reads: at every call of `y` at or after
   the deadline, `y` has processed it at a cut before its own deadline (as `SyncAC`).

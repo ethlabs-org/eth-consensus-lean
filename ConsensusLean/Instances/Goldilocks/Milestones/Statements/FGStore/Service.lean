@@ -13,9 +13,9 @@ workbench `repos/goldilocks/notes/fg-liveness/r9-loose-bj/theorem.md` §3–§5.
 in the claims yet, and G1.10 at C1.1's scope is a composition statement.
 
 **Shape: over FG traces.** The conclusions are about one chain and the FG transition, but the
-good window is a premise on rows as they reach an honest proposer: when they are signed (P2, the
-emission deadline), that they are in the proposer's pool before its proposal (P3–P4), and that
-the proposal includes every pooled row valid against its parent's state (P5). Pools, signing
+good window is a premise on attestations as they reach an honest proposer: when they are signed (P2,
+the emission deadline), that they are in the proposer's pool before its proposal (P3–P4), and that
+the proposal includes every pooled attestation valid against its parent's state (P5). Pools, signing
 times and honest proposals exist only in an FG trace, so the statements are over FG traces
 (`FGLocalRun`), with the literal `GW` premises that the composition node C1.2 discharges; P7
 (durable, serialized honest clients) is part of `FGLocalRun`.
@@ -28,12 +28,13 @@ times and honest proposals exist only in an FG trace, so the statements are over
   (at its slot's start); "the chain of `B*`" is read in `p`'s store after that cut.
 * `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉` comes from the delivery bound `Δ_F`, which the FG lemmas do not read
   (P4 states the delivery it gives), so `c_F` is a parameter.
-* A faulty row has no signing time: P2 counts it when it is already on the chain of `B*`'s parent
-  or, through P3–P4, in the proposer's pool. "Already on the chain of `B*`" reads as on the chain
-  of `B*`'s parent (every row of `B*` itself is on `B*`'s chain, which would empty the deadline).
-* P5 includes every pooled row valid against the parent's state, as `proposal_attestations`
-  does; a malformed pooled row that `valid_attestation` accepts would make `B*` refused, so in a
-  trace whose pools hold one no window is good (a node's wire checks exclude it).
+* A faulty attestation has no signing time: P2 counts it when it is already on the chain of `B*`'s
+  parent or, through P3–P4, in the proposer's pool. "Already on the chain of `B*`" reads as on the
+  chain of `B*`'s parent (every attestation of `B*` itself is on `B*`'s chain, which would empty the
+  deadline).
+* P5 includes every pooled attestation valid against the parent's state, as `proposal_attestations`
+  does; a malformed pooled attestation that `valid_attestation` accepts would make `B*` refused, so
+  in a trace whose pools hold one no window is good (a node's wire checks exclude it).
 * "Finalized `P_E = (h−1, J_E)` at or before the block `X` that justifies `E`" reads as
   `σ[X].F = J_E` with `σ[X].h_F = h − 1` (the gate opens only when `h_F = h_j`, and no later pair
   is pending at `X`); "justified at `X`" as `σ[X].J = T_h`, `σ[X].h_j = h`; "`h` does not cross
@@ -51,8 +52,8 @@ def IsEntry (st : Store P ACP) (T : NodeBlock P ACP) : Prop :=
   T ∈ st.tree ∧ (st.σ T.root).Th = T.root
 
 /-- `B` is an honest proposal at cut `i` with parent `Pr`: the own proposal of the honest `p`,
-accepted at its slot's start, whose parent `Pr` is held, and which includes every row of `p`'s
-pool that is valid against `Pr`'s state and not on `Pr`'s chain (the composition's inclusion
+accepted at its slot's start, whose parent `Pr` is held, and which includes every attestation of
+`p`'s pool that is valid against `Pr`'s state and not on `Pr`'s chain (the composition's inclusion
 rule, uncapped). -/
 def HonestProposal (H : Set (Fin P.n)) (tr : FGTrace P ACP) (p : Fin P.n) (i : Nat)
     (B Pr : NodeBlock P ACP) : Prop :=
@@ -62,13 +63,13 @@ def HonestProposal (H : Set (Fin P.n)) (tr : FGTrace P ACP) (p : Fin P.n) (i : N
       ¬ (tr.store p i).OnChain Pr r → r ∈ B.fgPayload
 
 /-- **The good window `GW(E, a, k_F)`** for the entry with entry block `T`, with slack `c_F`,
-served by the block `Bs` that `p` proposes at cut `i` on the parent `Pr`, with the rows `R`:
+served by the block `Bs` that `p` proposes at cut `i` on the parent `Pr`, with the attestations `R`:
 * P1, P5: `Bs` is an honest proposal (accepted, so it passes `state_transition`) of a slot in
   `I(E, a, k_F) = [u + a + c_F, u + a + c_F + k_F]`, whose parent `Pr` extends `T`;
-* P2: the validators of `R` weigh at least `q`; each row is a target row for `E` (height `h`, root
-  `T_h`, no timeout), carrying `P_E` at an entry whose previous height is justified, and is on
-  `Pr`'s chain already or, when its signer is honest, signed by `t_{u+a} + 6Δ`;
-* P3–P4: each row is on `Pr`'s chain or in `p`'s pool at its proposal cut (processed at an
+* P2: the validators of `R` weigh at least `q`; each attestation is a target attestation for `E`
+  (height `h`, root `T_h`, no timeout), carrying `P_E` at an entry whose previous height is
+  justified, and is on `Pr`'s chain already or, when its signer is honest, signed by `t_{u+a} + 6Δ`;
+* P3–P4: each attestation is on `Pr`'s chain or in `p`'s pool at its proposal cut (processed at an
   earlier cut, before every object received at `t_{v*}`: the trace's tick order);
 * P6: `δ_t ≥ D = a + c_F + k_F` and `K_W ≥ 1`. -/
 structure GoodWindow (H : Set (Fin P.n)) (tr : FGTrace P ACP) (cF : Nat) (T : NodeBlock P ACP)
@@ -124,11 +125,12 @@ def PreviousHeightJustifiedEntry : Prop :=
 
 /-- **G1.7, entry whose previous height is not justified, two windows (theorem B).** Let `U` be an
 entry whose previous height is not justified (height `h`, entry block `T`) with `GW(U, a₀, k_F)`
-(target rows, no finality pair needed). Then `U` justifies at a block `X` of `B*₀`'s chain (so `u₁ =
-X.slot ≤ u₀ + D₀`), appending `Q = (h, T_h)`, and `X` enters a height whose previous height is
-justified `E₁` (its own entry) with predecessor `Q`. If moreover `GW(E₁, a₁, k_F)` for that actual
-entry `X`, with serving block `B*₁`, then on the chain of `B*₁` the pair `Q` is finalized at a block
-`Z ⪯ B*₁` (so by `u₁ + D₁ ≤ u₀ + D₀ + D₁`): `σ[Z].F = T_h`, which covers `T_h` and every ancestor.
+(target attestations, no finality pair needed). Then `U` justifies at a block `X` of `B*₀`'s chain
+(so `u₁ = X.slot ≤ u₀ + D₀`), appending `Q = (h, T_h)`, and `X` enters a height whose previous
+height is justified `E₁` (its own entry) with predecessor `Q`. If moreover `GW(E₁, a₁, k_F)` for
+that actual entry `X`, with serving block `B*₁`, then on the chain of `B*₁` the pair `Q` is
+finalized at a block `Z ⪯ B*₁` (so by `u₁ + D₁ ≤ u₀ + D₀ + D₁`): `σ[Z].F = T_h`, which covers `T_h`
+and every ancestor.
 -/
 def PreviousHeightNotJustifiedEntry : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
@@ -152,10 +154,10 @@ def PreviousHeightNotJustifiedEntry : Prop :=
 chain extends an entry `T` of slot `u` (height `h`), and let `g ≥ 1`, `r ≥ 1` with
 `C.slot ≥ u + max(δ_t, r) + g − 1`. If in every `g` consecutive slots after `u` up to `C.slot`
 the chain of `C` has an honest proposal whose proposer's pool, for a proposal of slot at least
-`u + r`, holds a progress quorum of current-entry rows (height `h`, root `T_h`, target or
+`u + r`, holds a progress quorum of current-entry attestations (height `h`, root `T_h`, target or
 timeout) before its proposal, then the chain of `C` leaves height `h`, by justification or
-timeout, within `max(δ_t, r) + g − 1` slots of `u`. (`r ≥ 1`: rows for an entry of slot `u` are
-signed from `t_u` on; at `max(δ_t, r) = 0` the bound would be one slot short.) -/
+timeout, within `max(δ_t, r) + g − 1` slots of `u`. (`r ≥ 1`: attestations for an entry of slot `u`
+are signed from `t_u` on; at `max(δ_t, r) = 0` the bound would be one slot short.) -/
 def Crossing : Prop :=
   ∀ (acp₀ : ACP) (H : Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP),
     FGLocalRun acp₀ H U tr → ∀ y ∈ H, ∀ (k : Nat) (C T : NodeBlock P ACP) (g r : Nat),

@@ -7,8 +7,8 @@ public section
 
 The slot constants of the paper proof chain (workbench `fg-liveness/r14-end-to-end`, README §2),
 as functions of the parameters only: `k` (lock lifetime in slots), `gapH` (the honest-proposer
-gap, r14 `g`; `g` stays the GST time in this project), `cF` (r14 `c`, the row delivery slots)
-and `δt` (the timeout delay). `P` is the number of phases per top height (3 under the premise
+gap, r14 `g`; `g` stays the GST time in this project), `cF` (r14 `c`, the attestation delivery
+slots) and `δt` (the timeout delay). `P` is the number of phases per top height (3 under the premise
 NF, `3 + 2m̄` with a bound `m̄` on finality moves). All values are in slots. -/
 
 namespace Consensus.Goldilocks.FGLive

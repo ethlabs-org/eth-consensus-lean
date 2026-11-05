@@ -13,7 +13,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks under `Sleepy`: where records, locks, sources, rows and caches come from
+/-! # Goldilocks under `Sleepy`: where records, locks, sources, attestations and caches come from
 
 The provenance part of S1 (workbench#11 §1, §4 "The event induction"), which needs no
 comparability: it holds of every Goldilocks run, by the handlers alone.
@@ -29,7 +29,7 @@ comparability: it holds of every Goldilocks run, by the handlers alone.
 * Every FG source is a live fast lock block, so on the chain (`source_on_chain`); every honest
   attestation names the entry of its source's state, an ancestor of the source
   (`row_on_chain`); every `Σ.F` and `Σ.J` is genesis or an entry with a target quorum, which has
-  an honest row since `q > f` (`caches_on_chain`). -/
+  an honest attestation since `q > f` (`caches_on_chain`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -504,7 +504,7 @@ private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG
     rw [← h.1]
     exact hT _ _ _ hp
 
-/-! ### The justified and finalized blocks of a chain have a quorum of rows -/
+/-! ### The justified and finalized blocks of a chain have a quorum of attestations -/
 
 /-- Some `q` validators each have an attestation on the chain naming `T`. -/
 private def Quorum (gp : FG.FGParams) (c : List (FG.FGBlock gp.n)) (T : Nat) : Prop :=
@@ -669,7 +669,7 @@ theorem source_on_chain (hrun : GoldilocksRun proposer dg H tr)
   have ⟨_, _, hi⟩ := exists_horizon hrun i
   (source_on_chain_upTo hrun hnc hy hi h).onOriginChain
 
-/-- **Every honest row signed at a cut within `b` names a block on the chain of the origins
+/-- **Every honest attestation signed at a cut within `b` names a block on the chain of the origins
 within `b`**: an honest attestation's height pair names the entry of its source's state, an
 ancestor of the source. -/
 theorem row_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -694,8 +694,8 @@ theorem row_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
   exact ⟨E, hsub hE, haT.symm,
     OnOriginChainWithin.of_anc hrun hnc (hsub hE) (hEsrc.mono hsub) hch⟩
 
-/-- **Every honest row names a block on the origin chain**: an honest attestation's height pair
-names the entry of its source's state, an ancestor of the source. -/
+/-- **Every honest attestation names a block on the origin chain**: an honest attestation's height
+pair names the entry of its source's state, an ancestor of the source. -/
 theorem row_on_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {x : Fin sp.n}
     (hx : x ∈ H) {k : Nat} {a : FG.Att sp.n} (h : tr.SignAt x k a) :
     ∃ E ∈ tr.HonestBlocks H, E.root = a.T ∧ OnOriginChain tr H E :=
@@ -704,7 +704,7 @@ theorem row_on_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg
   ⟨E, hE, hEr, hEc.onOriginChain⟩
 
 /-- **Every honest `Σ.F` and `Σ.J` at a cut within `b` is on the chain of the origins within
-`b`**, with `f < h_t` at some `t` (`f < n/2 < q`: a target quorum has an honest row). -/
+`b`**, with `f < h_t` at some `t` (`f < n/2 < q`: a target quorum has an honest attestation). -/
 theorem caches_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {t : Time} (hfb : tr.FaultBound H t) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time}
     (hi : ∀ k < i, tr.time k ≤ b) :
@@ -725,7 +725,7 @@ theorem caches_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     · exact onOriginChainWithin_iff.2 (Or.inl hg)
     obtain ⟨v, hvQ, hvH⟩ := honest_of_quorum hfb hQ
     obtain ⟨Z, hZ, a, ha, rfl, haT⟩ := hQv v hvQ
-    -- the block carrying the row was accepted by `y` at an earlier cut
+    -- the block carrying the attestation was accepted by `y` at an earlier cut
     rcases Store.tree_accepted hfg hy (hst ▸ hZ) with rfl | ⟨k, hki, hk⟩
     · simp [Params.genesisBlock] at ha
     obtain ⟨hkn, hkl⟩ := hk
@@ -746,7 +746,7 @@ theorem caches_on_chain_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   exact ⟨hX _ (Or.inr rfl) hFt, hX _ (Or.inl rfl) hJt⟩
 
 /-- **Every honest `Σ.F` and `Σ.J` is on the origin chain**, under `Sleepy` (`f < n/2 < q`: a
-target quorum has an honest row). -/
+target quorum has an honest attestation). -/
 theorem caches_on_chain (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {ΔF : Time}
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     OnOriginChain tr H (tr.state y i).fg.F ∧ OnOriginChain tr H (tr.state y i).fg.J :=

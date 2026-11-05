@@ -12,7 +12,7 @@ public section
 
 The report supplier is an explicit input; this module does not import its implementation.
 A higher report is converted to an actual first justification before timeout, preserving the
-previous-height finalization gate. Same-height reports supply the literal good-window rows.
+previous-height finalization gate. Same-height reports supply the literal good-window attestations.
 -/
 
 namespace Consensus.Goldilocks.Healing.Recovery
@@ -283,7 +283,7 @@ theorem drain_margins (hp : ResetPremises tr H proposer dg g ΔF a) {u : Nat}
   have hau : a ≤ sp.ts u := ha.le.trans ((SA.ts_le_iff sp).2 (by push_cast at hu; omega))
   exact ⟨by push_cast at hu; omega, hau, by linarith⟩
 
-/-- The supplier's actual reports yield either an identity quorum of exact entry rows
+/-- The supplier's actual reports yield either an identity quorum of exact entry attestations
 signed by `t_u + 6Δ`, or the full early outcome with its strict carrier deadline. -/
 theorem rows_or_early_outcome (supply : ReadyProposalReportSupply tr H proposer dg g ΔF a)
     (hp : ResetPremises tr H proposer dg g ΔF a) (hs : HSShared tr H dg g ΔF)

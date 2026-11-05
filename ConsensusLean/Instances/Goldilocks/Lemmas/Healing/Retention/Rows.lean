@@ -3,14 +3,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Proven
 
 public section
 
-/-! # Goldilocks Healing, HR.4: the sources of the high rows
+/-! # Goldilocks Healing, HR.4: the sources of the high attestations
 
-**Temporal source provenance** (`hr4-cut-scope.md` §4, `high_row_source`). An honest row signed
-at cut `d` names the entry `E` of its source `Q`, the block that the node's `ac_to_fg` returned at
-the cut before (`Compose.attest_source`): `Q` is the viable ancestor of a live fast lock's block,
-which sits below the stored block `O` of a fast-lock write of the same node at a cut `r < d`
-(`stored_fast_lock_provenance`), so `E ⪯ Q ⪯ O`. A high row (`att.h ≥ H_z + 1`) has a high
-source, so `O` is high (heights do not decrease along ancestry), the write is joined
+**Temporal source provenance** (`hr4-cut-scope.md` §4, `high_row_source`). An honest attestation
+signed at cut `d` names the entry `E` of its source `Q`, the block that the node's `ac_to_fg`
+returned at the cut before (`Compose.attest_source`): `Q` is the viable ancestor of a live fast
+lock's block, which sits below the stored block `O` of a fast-lock write of the same node at a cut
+`r < d` (`stored_fast_lock_provenance`), so `E ⪯ Q ⪯ O`. A high attestation (`att.h ≥ H_z + 1`) has
+a high source, so `O` is high (heights do not decrease along ancestry), the write is joined
 (`joined_of_fastLockAt`, `JoinedProjection`), and `(O, l)` is a high origin written by the signer
 before the signing. -/
 
@@ -132,7 +132,7 @@ theorem joinedAt_of_fastLockAt (hrun : GoldilocksRun proposer dg H tr)
   rw [← Compose.projAC_state hrun.toLocalRun hx]
   exact hj
 
-/-! ## The source of an honest row -/
+/-! ## The source of an honest attestation -/
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
 private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
@@ -147,9 +147,10 @@ private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.
     cases h
     exact (SA.deepest_mem hC').1
 
-/-- **Temporal source provenance of a high row** (`hr4-cut-scope.md` §4). An honest row of height
-`≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain of a high origin
-`(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the row's source `Q`. -/
+/-- **Temporal source provenance of a high attestation** (`hr4-cut-scope.md` §4). An honest
+attestation of height `≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain
+of a high origin `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the attestation's
+source `Q`. -/
 theorem ResetPremisesUpTo.high_row_source {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
@@ -217,7 +218,7 @@ theorem ResetPremisesUpTo.high_row_source {b : Time}
   refine ⟨r, by omega, l₀.slot, O, hoO, E, hEt, store_anc_of_honest_anc hp.run hp.noColl hv hEO hOt,
     hEr', by rw [hσE, hEh'], by rw [hσE, hETh']⟩
 
-/-- Whole-run specialization of actual signed-row provenance. -/
+/-- Whole-run specialization of actual signed-attestation provenance. -/
 theorem high_row_source (hp : ResetPremises tr H proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
     {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
     ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,

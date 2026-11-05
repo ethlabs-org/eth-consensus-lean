@@ -8,20 +8,21 @@ public section
 
 `hs5-exact-helpers.md` §3.1 (the FG part of `mature_progress_of`): an honest proposal
 `X` whose parent `Pr` has state height `h` and the entry `E` (slot `u`), with `u + δ_t ≤ X.slot`,
-and whose proposer has processed a matching row of every honest validator before its proposal
-cut, has state height `≥ h + 1` (`crossing_of_rows`).
+and whose proposer has processed a matching attestation of every honest validator before its
+proposal cut, has state height `≥ h + 1` (`crossing_of_rows`).
 
 * The chain argument (`crossing_step`, G1.8 (a)'s argument at one block; the store lemmas are
-  `FGStore/Service`'s private ones, repeated here): every row is in `X`'s payload or on `Pr`'s
-  chain; a row on the chain at height `h` was counted at its block, whose parent is at height `h`
-  with the entry `E` (a row is valid against its parent's state, and an entry block is one height
-  above its parent), and the bit stays while the chain keeps height `h`. So after `X`'s payload
-  every honest validator is in `prog`, `|H| ≥ q`, and `ThSlot + δ_t = u + δ_t ≤ X.slot`: the
-  target or timeout test raises the height.
+  `FGStore/Service`'s private ones, repeated here): every attestation is in `X`'s payload or on
+  `Pr`'s chain; an attestation on the chain at height `h` was counted at its block, whose parent is
+  at height `h` with the entry `E` (an attestation is valid against its parent's state, and an entry
+  block is one height above its parent), and the bit stays while the chain keeps height `h`. So
+  after `X`'s payload every honest validator is in `prog`, `|H| ≥ q`, and
+  `ThSlot + δ_t = u + δ_t ≤ X.slot`: the target or timeout test raises the height.
 * The run (`crossing_of_rows`): `X` is `propose_block`'s block, its payload the
   `proposal_attestations` of the proposer's store before the tick on the parent `Pr`
-  (`Compose.blockCall_cases`); a processed row is in the pool (the pool only grows), and a row
-  not on `Pr`'s chain is valid against `σ[Pr]` (height `h`, entry `E`), so it is in the payload.
+  (`Compose.blockCall_cases`); a processed attestation is in the pool (the pool only grows), and an
+  attestation not on `Pr`'s chain is valid against `σ[Pr]` (height `h`, entry `E`), so it is in the
+  payload.
 -/
 
 namespace Consensus.Goldilocks.Healing
@@ -39,8 +40,8 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
 
 /-- **The crossing at one block** (G1.8 (a)'s argument for one proposal): a held block `X` on
 the parent `Pr`, whose state has the height `h` of the entry `E ⪯ Pr` and the entry `E`, with
-`E.slot + δ_t ≤ X.slot`, and a set `S` of validators of weight `≥ q` each with a row for `E` at
-`h` in `X`'s payload or on `Pr`'s chain: `X` has state height `≥ h + 1`. -/
+`E.slot + δ_t ≤ X.slot`, and a set `S` of validators of weight `≥ q` each with an attestation for
+`E` at `h` in `X`'s payload or on `Pr`'s chain: `X` has state height `≥ h + 1`. -/
 theorem crossing_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X Pr E : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) (hpar : X.parent = some Pr.root)
     (hE : IsEntry P ACP (tr.store y i) E) (hEPr : (tr.store y i).Anc E Pr)
@@ -185,7 +186,7 @@ private theorem mem_atts_of_process (hrun : GoldilocksRun proposer dg H tr)
   · rw [tr.state_succ_of_call hc]
     exact mem_onBlock (hrun.cutLaw y hy k _ hc).2.1 (Or.inr ha)
 
-/-- Processed rows persist in the honest node's durable attestation pool. -/
+/-- Processed attestations persist in the honest node's durable attestation pool. -/
 theorem processed_att_retained (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {k j : Nat} {a : FG.Att sp.n}
     (h : tr.ProcessAttAt y k a) (hkj : k < j) : a ∈ (tr.state y j).fg.atts := by
@@ -193,8 +194,8 @@ theorem processed_att_retained (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **The mature crossing at an honest proposal** (`hs5-exact-helpers.md` §3.1): an honest
 proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by an honest node),
-`Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching row of every honest validator
-processed by the proposer before its proposal cut: `X` has state height `≥ h + 1`. -/
+`Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching attestation of every honest
+validator processed by the proposer before its proposal cut: `X` has state height `≥ h + 1`. -/
 theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
@@ -243,7 +244,7 @@ theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
       obtain rfl : Pr = X := hU.1 hPrU (hsub hp _ hXt) he
       exact lt_irrefl _ (hU.2 _ hPrU _ hPrU hpar)
     rw [tr.state_succ_of_call hacc, hsf, Function.update_of_ne hne]
-  -- the rows
+  -- the attestations
   have hrow : ∀ v ∈ (Finset.univ.filter (· ∈ H) : Finset (Fin sp.n)), ∃ a : FG.Att sp.n,
       a.val = v ∧ a.h = ((tr.projFG.store p (kX + 1)).σ E.root).h ∧ a.T = E.root ∧
       (a ∈ X.fgPayload ∨ (tr.projFG.store p (kX + 1)).OnChain Pr a) := by

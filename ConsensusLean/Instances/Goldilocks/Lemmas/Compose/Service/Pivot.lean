@@ -40,9 +40,9 @@ votes of an optimistic origin of label `s − 1`, relayed into the proposer's po
 Its anchor is below one (`proposal_anchor_old_of`): no honest optimistic check of slot `s` precedes
 the proposal (`proposal_no_optimistic`, so the proposer's stored locks are of slots below `s`),
 and `fc_root` is below an old origin at the proposal and at a vote (`proposal_fcRoot_old_of`,
-`vote_fcRoot_old_of`: the source labels of the honest rows held before `t_s`, §2). The path from
-`D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`, §2: the
-head height floor is at most the height of `D`, and `fc_root` is below `D`). -/
+`vote_fcRoot_old_of`: the source labels of the honest attestations held before `t_s`, §2). The path
+from `D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`, §2:
+the head height floor is at most the height of `D`, and `fc_root` is below `D`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -805,9 +805,9 @@ theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
       (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti x hx k' hki O CV)
 
 /-- **`fc_root` in a downward-closed set, from the sources**: at an honest node's cut whose honest
-rows all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or the
-entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F` is
-below `Σ.J`. -/
+attestations all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or
+the entry of such a source (`justified_honest_source`, `honest_source_entry`), so in `R`, and `Σ.F`
+is below `Σ.J`. -/
 theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
@@ -841,10 +841,11 @@ theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
 
 set_option linter.unusedVariables false in
-/-- **The proposer's honest rows have sources below old origins** (workbench#12 §2): every honest
-row the proposer holds was signed before cut `i`, with a source below an origin before the
-signing (`attestation_source`); a regular one of label `l` is written at `t_l + 6Δ ≤ t_s`, so
-`l ≤ s − 2`; an optimistic one has label at most `s`, and not `s` (`proposal_no_optimistic`). -/
+/-- **The proposer's honest attestations have sources below old origins** (workbench#12 §2): every
+honest attestation the proposer holds was signed before cut `i`, with a source below an origin
+before the signing (`attestation_source`); a regular one of label `l` is written at
+`t_l + 6Δ ≤ t_s`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
+(`proposal_no_optimistic`). -/
 private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -878,7 +879,7 @@ private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hn
       (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti z hz c (by omega) C CV)
 
 /-- **The proposer's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
-`F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest rows
+`F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest attestations
 (`proposal_rows_old_of`). -/
 private theorem proposal_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
@@ -1005,8 +1006,8 @@ private theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
     exact proposal_fcRoot_old_of hrun hnc hfault hp hc hcall hd hti
 
 /-- **A voter's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
-`F ≤ fc_root ≤ D_s` at the vote reads): every honest row the voter holds was signed before the
-vote, with a source below an origin before the signing (`attestation_source`); a regular one of
+`F ≤ fc_root ≤ D_s` at the vote reads): every honest attestation the voter holds was signed before
+the vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
 `s`, and not `s` (`no_optimistic_before_held_row`). -/
 theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -1130,9 +1131,9 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc :
 /-- **The proposal walk from `D` to `Q` is through viable heads** (workbench#12 §2: at `t_s`,
 `F ⪯ fc_root ⪯ D_s` and the head height floor is at most `ht(D_s)`, heights increase along the
 path), for `D` above every old origin. `fc_root` is genesis or below an old origin
-(`proposal_fcRoot_old_of`), so below `D ⪯ X`. The proposer's honest rows have sources below old
-origins, hence below `D` and pairwise compatible (`proposal_rows_old_of`), so with no contest the
-floor is reached by `X`, or a crossing entry `E ⪰ X` of the floor's height is below its source,
+(`proposal_fcRoot_old_of`), so below `D ⪯ X`. The proposer's honest attestations have sources below
+old origins, hence below `D` and pairwise compatible (`proposal_rows_old_of`), so with no contest
+the floor is reached by `X`, or a crossing entry `E ⪰ X` of the floor's height is below its source,
 below `D ⪯ X`, and `E = X` (`floor_or_crossing`). -/
 private theorem proposal_suffix_viable_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
@@ -1155,7 +1156,7 @@ private theorem proposal_suffix_viable_of (hrun : GoldilocksRun proposer dg H tr
     rcases proposal_fcRoot_old_of hrun hnc hf hp hc hcall hd hti with hg | ⟨O, hO, hfO⟩
     · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg (hΦU hXt)
     · exact (hfO.trans (hDold O hO)).trans hDXU
-  -- the sources of the proposer's honest rows are below old origins, below `D ⪯ X`
+  -- the sources of the proposer's honest attestations are below old origins, below `D ⪯ X`
   have hsrc := proposal_rows_old_of hrun hnc hf hp hc hcall hd hti
   rw [frame_of_projAC hrun hp hc] at hXt hfX ⊢
   obtain ⟨hXs, hFX⟩ := hXt

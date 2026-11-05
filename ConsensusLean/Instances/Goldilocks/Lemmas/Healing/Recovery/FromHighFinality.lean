@@ -23,7 +23,7 @@ pre-call `Σ.F` has state height `≥ H_z + 1` from `T ≥ ḡ` on), `Rec` holds
   origin of a slot starting after `T`.
 * R2 `high_origin_clean`: such an origin is `Clean` for every later slot. (K0) `Σ.F` by
   finalized/high-origin compatibility; `Σ.J` at `t_s` is high (the `Σ.F` at the node's next call
-  is), so its quorum carries no honest row naming a conflicting high entry
+  is), so its quorum carries no honest attestation naming a conflicting high entry
   (`no_honest_row_conflicting`). (K1) an excluded entry strictly extends a high `Σ.F`, so it is
   high and only faulty validators name it. (K2) `vote_height_lead` at each honest vote.
 * R3 `late_sources_compatible`: sources from `T` on are high and below high origins.
@@ -78,8 +78,9 @@ theorem high_F_firstCut (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gba
   exact hF.at_call y hy k hk.2 (le_trans hs.le (le_trans hj.1 (hp.run.time_mono hk.1)))
 
 
-/-- An honest row of a held entry `E` that conflicts with the high origin `B` cannot exist: a
-high row names an entry below a high origin, and every high origin is comparable with `B`. -/
+/-- An honest attestation of a held entry `E` that conflicts with the high origin `B` cannot exist:
+a high attestation names an entry below a high origin, and every high origin is comparable with `B`.
+-/
 theorem no_honest_row_conflicting (hp : ResetPremises tr H proposer dg g ΔF a)
     {x : Fin sp.n} {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) {z : Fin sp.n} (hz : z ∈ H) {m : Nat}

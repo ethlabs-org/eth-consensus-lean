@@ -39,7 +39,7 @@ open SA (gbar)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- The shared HS premises of the query through the horizon at the protocol row delay
+/-- The shared HS premises of the query through the horizon at the protocol FG delay
 `Δ_F,p = protoFGDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `protoFGDelay_timeout_of_healthy`). -/
 private theorem healthy_hsShared (Q : HealthyPreparationQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
@@ -55,7 +55,7 @@ private theorem healthy_noRestartAfter (Q : HealthyPreparationQuery S A V) :
 
 /-- **The reset envelope from the drain and the fit before heal.** With the drain at the engine
 horizon (`DrainOutputs`, gap `X`, length `healthyDrainLen`) and the fit
-`ready + R·Δ + r ≤ heal`: a reset with its premises through the horizon at the protocol row
+`ready + R·Δ + r ≤ heal`: a reset with its premises through the horizon at the protocol attestation
 delay `Δ_F = protoFGDelay`, and
 `a ≤ ready + R·Δ + r`. -/
 theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)

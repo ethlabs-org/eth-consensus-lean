@@ -45,7 +45,7 @@ structure BaseFacts (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₀ : Na
   /-- (3a) Caches. -/
   caches : ∀ y ∈ H, ∀ i, P (tr.time i) → sp.ts (s₀ + 2 : Nat) ≤ tr.time i →
     OnOriginChainFrom tr H (tr.state y i).fg.F s₀ ∧ OnOriginChainFrom tr H (tr.state y i).fg.J s₀
-  /-- (5) Rows at votes of slots `> s₀`. -/
+  /-- (5) Attestations at votes of slots `> s₀`. -/
   vote_rows : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → P (tr.time i) →
     ∀ s, e.msg.slot = s + 1 → s₀ ≤ s → ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload,
       a.val ∈ H → (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
@@ -55,7 +55,7 @@ structure BaseFacts (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s₀ : Na
       ∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
         ((tr.state x k).fg.σ D.root).Th = a.T) ∧ OriginFrom tr H C l s₀ ∧ l ≤ s ∧
           Anc (tr.HonestBlocks H) D C
-  /-- (5′) Rows at the cuts from `t_{s₀}`. -/
+  /-- (5′) Attestations at the cuts from `t_{s₀}`. -/
   event_rows : ∀ y ∈ H, ∀ i, P (tr.time i) → sp.ts s₀ ≤ tr.time i →
     ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
       (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →

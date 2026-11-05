@@ -167,7 +167,7 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
 /-- Extraction and endpoint budget (route A). A window of four honest anchors at the slots
 `start + [0, c, 2c, 3c]` after the query (the FG gap `c = fgSlots` of the assumptions, at least
 `2`), its route-A run premises, and its three anchor steps. Proved by
-`final_window_extract_of_gap'` at `c = fgSlots` and the protocol row delay `ΔF := protoFGDelay` (the
+`final_window_extract_of_gap'` at `c = fgSlots` and the protocol FG delay `ΔF := protoFGDelay` (the
 shared HS premises `FinalQuery.hsSharedUpTo`, the latency `final_latency_gap`) from
 `final_reset_premises` ((H1), (H3)) and the proved `final_duty_proposal` ((H2)); (H4) is proved
 there. Paper: workbench route_a_gap2.md, window_start_h0.md, anchor_row_supplier.md,

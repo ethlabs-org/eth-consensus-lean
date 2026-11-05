@@ -20,8 +20,9 @@ HR.3 over a Goldilocks run under the HS shared premises, `Catch(2Δ)` and `Prop�
 (c) the count (`reset_count`, `producer-reset-continuation.md` §§14–15): from `c_z`, every
 `Δ + A` the phase changes (settle within `Δ`, then produce within `A`); at most three phases per
 frontier value (HR.2) and two rises above `H_z` reach a block of state height `H_z + 2`, whose
-chain carries an honest row at `H_z + 1` (HR.1 (b)); so the reset exists by `c_z + 6(Δ + A)`.
-The reset is unique (`IsReset` is a least time), and the bound's closed forms are in `Arith`.
+chain carries an honest attestation at `H_z + 1` (HR.1 (b)); so the reset exists by
+`c_z + 6(Δ + A)`. The reset is unique (`IsReset` is a least time), and the bound's closed forms are
+in `Arith`.
 
 `settle` and `producer` are HS.0 and HS.5 (claims §"Healing: phase service"; phase-service.md
 §§1–8, the author's paper results with Astra's review applied), as the use in HR.3 needs them
@@ -32,7 +33,7 @@ effective phase (frontier `m`, case rank gap 0, top 1, contest 2) never falls (t
 only grow; HR.2 (b) at a fixed frontier) and rises at each phase change (HR.2 (b): a change at a
 fixed frontier raises the rank). It rises in each of the six windows `(c_z + n(Δ + A), c_z + (n +
 1)(Δ + A)]`, so the frontier after all events at `c_z + 6(Δ + A)` is `≥ H_z + 2`; an honest block
-of that state height carries an honest row of height `H_z + 1` (HR.1 (b)), signed before it
+of that state height carries an honest attestation of height `H_z + 1` (HR.1 (b)), signed before it
 (unforgeability on the FG projection, C0.5 (c)); the reset is the time of the first cut with such
 a signing.
 
@@ -378,7 +379,7 @@ theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   obtain ⟨-, -, -, hrow, -⟩ :=
     cut_and_reset sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl
   obtain ⟨Y, hYX, att, hatt, hval, hh⟩ := hrow y hy _ X hX (by omega)
-  -- HR.1 (b)'s row was signed before that cut, by unforgeability
+  -- HR.1 (b)'s attestation was signed before that cut, by unforgeability
   have hY : Y ∈ (tr.projFG.store y (fa (u 6))).tree := by
     rw [projFG_store hrun.toLocalRun hy]
     by_cases he : Y = X

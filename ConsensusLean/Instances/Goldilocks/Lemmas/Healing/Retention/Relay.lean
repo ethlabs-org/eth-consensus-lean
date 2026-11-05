@@ -23,7 +23,7 @@ open SA (SAParams ReplayOrder Vote Payload)
 open Compose
 
 /-- Reset service projects to AC synchrony on any source window after GST. Only
-message and relay service are used; signed-row processing times play no role. -/
+message and relay service are used; signed-attestation processing times play no role. -/
 theorem ResetService.syncAC {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF b lo hi : Time}

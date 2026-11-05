@@ -9,10 +9,11 @@ public section
 /-! # Goldilocks Obligations: the finality pair of an entry state (L5.4, fin-pair link)
 
 Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §5, L5.4. The premise `hsig` of
-`window_justifies_of_lock` asks that each honest target row for `(h, T)` carries, as its finality
-pair, `(σ.h_j, σ.J)` of every held honest state `σ` with `σ.T_h = T` that has its previous height
-justified with that pair pending. The row from `awake_signs_target` carries `Λ.finality_pair(σe)` of
-the entry state `σe = σ[T]`. These agree exactly when the record permits `(σ.h_j, σ.J)`:
+`window_justifies_of_lock` asks that each honest target attestation for `(h, T)` carries, as its
+finality pair, `(σ.h_j, σ.J)` of every held honest state `σ` with `σ.T_h = T` that has its previous
+height justified with that pair pending. The attestation from `awake_signs_target` carries
+`Λ.finality_pair(σe)` of the entry state `σe = σ[T]`. These agree exactly when the record permits
+`(σ.h_j, σ.J)`:
 
 * `J_hj_eq_of_anc`: along ancestry at one height, `J` and `h_j` stay (only a justification, which
   advances the height, sets them). `pending` is not constant within a height (the prune of
@@ -26,12 +27,12 @@ the entry state `σe = σ[T]`. These agree exactly when the record permits `(σ.
   `hsig` is not needed.
 * `finalityPair_entry_healed`: under `HealedRecords`, with `h₀ ≤ σ.h_j` and `σ.J = E σ.h_j`.
 * `J_eq_entry_of_healed`: under `HealedRecords` and `f < q`, `σ.J = E σ.h_j` when
-  `h₀ ≤ σ.h_j` and `1 ≤ σ.h_j` (an honest row of the target quorum names `E σ.h_j`).
+  `h₀ ≤ σ.h_j` and `1 ≤ σ.h_j` (an honest attestation of the target quorum names `E σ.h_j`).
 * `finalityPair_entry_healed'`: `finalityPair_entry_healed` without the `J` premise.
 
 Counterexample shape for dropping `permits`: `y`'s record has `target[σ.h_j] = some T' ≠ σ.J`
-(an own target row at `h_j` for another block, possible below `h₀`), so `finality_pair(σe)` is
-`⊥` while `σ` has its previous height justified. -/
+(an own target attestation at `h_j` for another block, possible below `h₀`), so `finality_pair(σe)`
+is `⊥` while `σ` has its previous height justified. -/
 
 namespace Consensus.Goldilocks.Healing
 

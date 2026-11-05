@@ -116,7 +116,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
   have hck' := hrun.time_mono hck.le
   have hkm' := hrun.time_mono hkm.le
   have hmi' := hrun.time_mono hmi.le
-  -- the row is signed at a public time, `t_{s+1}` or `t_{s+1} + Δ`
+  -- the attestation is signed at a public time, `t_{s+1}` or `t_{s+1} + Δ`
   obtain ⟨src, hsgc⟩ := hsg
   obtain ⟨q, hq⟩ := sign_at_public hrun hav hsgc
   have hq' : tr.time k = sp.Δ * q := hq
@@ -296,8 +296,8 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     omega
 
 /-- **Sources at a vote have labels at most `s`** (workbench#11 §3, R4; §4 "Extend the vote
-frontier"): at an honest slot-`(s+1)` vote, every honest row on a block the voter holds has a
-source below an origin of label at most `s`. A regular origin of label `l` is written at
+frontier"): at an honest slot-`(s+1)` vote, every honest attestation on a block the voter holds has
+a source below an origin of label at most `s`. A regular origin of label `l` is written at
 `t_l + 6Δ`, after the vote unless `l < s`; an optimistic one of label `l ≥ s + 2` after
 `t_{s+2}`; label `s + 1` is `no_optimistic_before_held_row`. -/
 private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -341,9 +341,9 @@ private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       simp only [SAParams.ts] at h' hti
       linarith [mul_le_mul_of_nonneg_left hl2' hΔ.le]
 
-/-- **S3 at full reads, over sources `G`**: with `f < n/2`, the honest rows at heights `≥ h_j`
-sourced by `G`, the sources pairwise compatible and compatible with `B`, a held block `B` is at or
-below `fc_root` or in the full viable tree. -/
+/-- **S3 at full reads, over sources `G`**: with `f < n/2`, the honest attestations at heights
+`≥ h_j` sourced by `G`, the sources pairwise compatible and compatible with `B`, a held block `B` is
+at or below `fc_root` or in the full viable tree. -/
 private theorem held_viable_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
@@ -469,7 +469,7 @@ theorem held_origin_viable_before {b : Time} (hrun : GoldilocksRun proposer dg H
       (by omega) (hC.within hi) (hC'.within hi)) hBc hBt
 
 /-- **S3 at votes, over sources `G`, on a window**: at an honest slot-`(s+1)` vote at a time
-`≤ b`, with the honest rows at heights `≥ h_j` sourced by `G` (sources pairwise compatible,
+`≤ b`, with the honest attestations at heights `≥ h_j` sourced by `G` (sources pairwise compatible,
 compatible with `B`, each extended by an honest vote of a slot `≤ s`) and the heads accepted
 before `t_{s₀}` caught up (`hold`), a block `B` that an honest slot-`s` vote extends is in the
 viable tree of the voter block tree, or at or below `fc_root`. -/

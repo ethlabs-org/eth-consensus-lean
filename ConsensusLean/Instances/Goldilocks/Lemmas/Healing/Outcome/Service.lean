@@ -18,13 +18,13 @@ Proved pieces toward C1.2 (`Compose.OutcomeService`, claims C1.2 at goldilocks `
 following fradamt-agent/workbench `producer-reset-continuation.md` §17, §18 (BA) and §26. C1.2
 itself is not proved here.
 
-* **Entry rows** (`EntryRows`): for a served entry `E = (h, T, u)`, by `t_u + 6Δ` either honest
-  validators of weight `q` have signed a target row for `E`, or an honest accepted block has
-  justified `E` (the retained justified crossing).
-* **Rows from reports** (workbench#30): the actual reports and their high origins
-  (`high_report_origin`), the honest records (`high_entry_eq`, `record_entry_eq`), the rows from
-  signatures and reports (`row_target_of_sign`, `row_of_sign`, `sign_of_report`) and their finite
-  forms through a horizon (`ResetPremisesUpTo.row_of_report`,
+* **Entry attestations** (`EntryRows`): for a served entry `E = (h, T, u)`, by `t_u + 6Δ` either
+  honest validators of weight `q` have signed a target attestation for `E`, or an honest accepted
+  block has justified `E` (the retained justified crossing).
+* **Attestations from reports** (workbench#30): the actual reports and their high origins
+  (`high_report_origin`), the honest records (`high_entry_eq`, `record_entry_eq`), the attestations
+  from signatures and reports (`row_target_of_sign`, `row_of_sign`, `sign_of_report`) and their
+  finite forms through a horizon (`ResetPremisesUpTo.row_of_report`,
   `ResetPremisesUpTo.row_signers_of_reports`).
 * **The carriers**: acceptance relay reaches only the honest nodes whose `Σ.F` the carrier
   extends; a carrier below a high origin is held or above every honest `Σ.F`
@@ -310,7 +310,7 @@ theorem ResetPremisesUpTo.record_entry_eq {b : Time}
       ((hp.run.time_mono (hqk.le.trans hki.le)).trans hib) ho hiob
       hJO hEB hy hz hJ hE (hJh.trans hEh.symm) hJT hET)
 
-/-- The target and timeout fields of a high entry's row do not require its
+/-- The target and timeout fields of a high entry's attestation do not require its
 predecessor to be high. -/
 private theorem sign_target_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -472,7 +472,7 @@ theorem ResetPremisesUpTo.sign_of_report {b : Time}
     · obtain ⟨k, hk, att, hsk, rfl⟩ := sent_origin hp.run hz (r + 1) hc
       exact ⟨k, att, hsk, (hp.run.time_mono hk.le).trans hts.le, by assumption⟩
 
-/-- A bounded same-height report supplies the exact entry row, with historical
+/-- A bounded same-height report supplies the exact entry attestation, with historical
 finality permission checked at the actual signing cut. -/
 theorem ResetPremisesUpTo.row_of_report {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

@@ -23,12 +23,12 @@ public section
   written by its signer before the signing (`high_row_source`).
 * **The report-time bound** (`row_origin_label_lt`): that origin's label is below the slot of an
   honest vote at cut `k`. For an optimistic origin of the vote's own slot `m`
-  (`row_origin_not_current`, the run's event order): the row is signed once
+  (`row_origin_not_current`, the run's event order): the attestation is signed once
   (`sign_unique`), in a tick, at a public time in `[t_m, t_m + Δ]`; at `t_m + Δ` the voter's tick
   precedes its acceptance of the carrying block and casts its vote
   (`vote_before_late_delivery`); at `t_m` the write is in the signer's tick, whose pools hold
   slot-`m` votes of the signer only, so `n = 1` and the signer is the voter, with its vote before
-  the row (`slot_start_optimistic`). -/
+  the attestation (`slot_start_optimistic`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -612,13 +612,13 @@ private theorem vote_before_late_delivery {b : Time}
 
 /-- **No optimistic source of the vote's own slot** (`hr4-boot-carry.md` §7, "R4's report-time
 argument bounds `l ≤ m − 1` before this vote"; §3, "a label-`(j+1)` optimistic source cannot be
-reported before `t_{j+1} + Δ`", and the `n = 1` causal exception). An honest row carried by a
-block that an honest voter holds before its slot-`m` vote is not signed after an optimistic
-fast-lock write of slot `m` by its signer: the row was signed once, before the voter accepted
-the block, at a public time in `[t_m, t_m + Δ]` (`sign_public`); at `t_m + Δ` the voter's tick,
-which casts its slot-`m` vote, precedes that acceptance (`vote_before_late_delivery`); at `t_m`
-the optimistic check of slot `m` inside the signer's tick sees only the signer's own slot-`m`
-vote, so `n = 1` and the signer is the voter, whose one slot-`m` vote would precede the row
+reported before `t_{j+1} + Δ`", and the `n = 1` causal exception). An honest attestation carried by
+a block that an honest voter holds before its slot-`m` vote is not signed after an optimistic
+fast-lock write of slot `m` by its signer: the attestation was signed once, before the voter
+accepted the block, at a public time in `[t_m, t_m + Δ]` (`sign_public`); at `t_m + Δ` the voter's
+tick, which casts its slot-`m` vote, precedes that acceptance (`vote_before_late_delivery`); at
+`t_m` the optimistic check of slot `m` inside the signer's tick sees only the signer's own slot-`m`
+vote, so `n = 1` and the signer is the voter, whose one slot-`m` vote would precede the attestation
 (`slot_start_optimistic`). -/
 theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -632,7 +632,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
   intro hopt
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  -- the row was signed at `d`, before `y` accepted `W`, before the vote
+  -- the attestation was signed at `d`, before `y` accepted `W`, before the vote
   rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨C, hcd⟩ := id hs
@@ -673,9 +673,9 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
     linarith
 
 /-- **The report-time bound** (`hr4-boot-carry.md` §7): the label of a high origin written by
-the signer of an honest row, before the signing, where the row is carried by a block that an
-honest voter holds before its vote, is below the vote's slot: a fast test of slot `l` writes at
-`t_l + 6Δ ≥ t_{l+1}`, an optimistic write of slot `l` is in slot `l ≤ m`, and not of slot `m`
+the signer of an honest attestation, before the signing, where the attestation is carried by a block
+that an honest voter holds before its vote, is below the vote's slot: a fast test of slot `l` writes
+at `t_l + 6Δ ≥ t_{l+1}`, an optimistic write of slot `l` is in slot `l ≤ m`, and not of slot `m`
 (`row_origin_not_current`). -/
 theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)

@@ -15,7 +15,7 @@ The assembly (proved): `Prop⁺` at `τ` selects the ready proposal `X` of slot 
 `τ ≤ t_x ≤ τ + G_p`, kept throughout (also when its parent already crossed). Its proposal cut is
 before `j_b`, so the protected parent clause gives `X`'s parent `Pr ⪰ W`, hence `W ⪯ X`; `E ⪯ Pr`
 gives `ht(Pr) ≥ h`. If `ht(Pr) > h`, `ht(X) ≥ h + 1` at once; if `ht(Pr) = h`, the crossing is
-`crossing_of_rows` (§3.1, `ConsumeCrossing`), with the rows delivered to the proposer before
+`crossing_of_rows` (§3.1, `ConsumeCrossing`), with the attestations delivered to the proposer before
 its cut by `GST(g)` (`rows_delivered`). Universal acceptance (§3.2): `X` is above the floor, so
 allowed at its proposer after its cut (`effAllowed_of_floor_lt`); HS.1 (`hret`) puts every
 honest `Σ.F` below `X` at the tick at `t_x + Δ` (before `j_b`); the acceptance relay of `GST(g)`
@@ -32,11 +32,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
-/-- **The rows reach the proposer before `t_x`** (`hs5-exact-helpers.md` §3.1, first paragraph;
-`GST(g)`'s attestation delivery): a row signed by an honest validator by `v` is processed by the
-honest proposer of slot `x`, `t_x ≥ v + Δ_F`, at a cut before its proposal cut (as an attestation
-or carried by an accepted block). Post-`g` rows have the deadline `time + Δ_F ≤ v + Δ_F`, pre-`g`
-rows the effective deadline `g + Δ_F` (no honest restart after `ḡ ≤ v`). -/
+/-- **The attestations reach the proposer before `t_x`** (`hs5-exact-helpers.md` §3.1, first
+paragraph; `GST(g)`'s attestation delivery): an attestation signed by an honest validator by `v` is
+processed by the honest proposer of slot `x`, `t_x ≥ v + Δ_F`, at a cut before its proposal cut (as
+an attestation or carried by an accepted block). Post-`g` attestations have the deadline
+`time + Δ_F ≤ v + Δ_F`, pre-`g` attestations the effective deadline `g + Δ_F` (no honest restart
+after `ḡ ≤ v`). -/
 theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)

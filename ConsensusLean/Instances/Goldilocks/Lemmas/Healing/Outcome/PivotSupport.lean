@@ -197,7 +197,7 @@ theorem crossing_below_proposal_parent
   hXO.trans (reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ O
     (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩))
 
-/-- The proposal root is genesis or below an old source. High `J` has a crossing row signed
+/-- The proposal root is genesis or below an old source. High `J` has a crossing attestation signed
 before the proposal. Low `J` is below the held reset seed by the root's no-contest condition. -/
 theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ))

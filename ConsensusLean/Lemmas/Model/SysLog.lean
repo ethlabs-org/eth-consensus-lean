@@ -69,8 +69,8 @@ theorem sysOf_held_iff (rho : Run F E) (w : V) (o : (protoOf F E).Object) (d : T
     · exact Or.inl ((sysOf_sent_iff ⟨E, rho⟩ w o t').mpr hs)
     · exact Or.inr ((sysOf_recv_iff ⟨E, rho⟩ w o t').mpr hs)
 
-/-- The message class of the system's log is the protocol's: a tagged object is a row exactly
-when the protocol classifies it as one (`Model.Protocol.isFGAtt`). -/
+/-- The message class of the system's log is the protocol's: a tagged object is an attestation
+exactly when the protocol classifies it as one (`Model.Protocol.isFGAtt`). -/
 theorem sysOf_log_fgAtt (rho : Run F E) (o : (protoOf F E).Object) :
     ((sysOf O F V).log ⟨E, rho⟩).fgAtt ⟨E, o⟩ ↔ (protoOf F E).isFGAtt o := by
   constructor

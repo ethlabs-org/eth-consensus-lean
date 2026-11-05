@@ -162,9 +162,9 @@ theorem relay_mem_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     z hz jz ℓz hcz (hd.trans hb) hd hF
   exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
 
-/-- **The honest rows at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old_of`): every
-honest row an honest slot-`s` voter holds was signed before the vote, with a source below an
-origin before the signing (`attestation_source`); a regular one of label `l` is written at
+/-- **The honest attestations at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old_of`):
+every honest attestation an honest slot-`s` voter holds was signed before the vote, with a source
+below an origin before the signing (`attestation_source`); a regular one of label `l` is written at
 `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
 (`no_optimistic_before_held_row`). -/
 private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -201,7 +201,7 @@ private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
 
 /-- **The head height floor at an honest vote is at most the height of a held block above every
 old origin** (workbench#12 §2,
-`floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest rows are below old
+`floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest attestations are below old
 origins (`vote_rows_old`), so below the block; so there is no contest, and the carrier of `h_max`
 crossed `h_max − 1` with such a source, whose entry, below the block, has height `h_max − 1`. -/
 private theorem vote_floor_le_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

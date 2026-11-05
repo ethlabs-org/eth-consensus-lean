@@ -316,7 +316,7 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
   · exact hFO
 
 /-- The vote root is genesis or below an old source (hence satisfies the original disjunction).
-An actual crossing row's origin label is strictly below the vote's label
+An actual crossing attestation's origin label is strictly below the vote's label
 (`row_origin_label_lt`); the low-`J` case relays the reset seed. -/
 private theorem reset_vote_root_source (hp : ResetPremises tr H proposer dg g ΔF a)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)

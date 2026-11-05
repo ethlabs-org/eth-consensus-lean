@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Persist, part 2: the honest rows after the cut name no excluded entry
+/-! # Goldilocks Persist, part 2: the honest attestations after the cut name no excluded entry
 
 C1.1's attestation step (claims C1.1, "Proof shape"): an honest attestation signed at a time in
 `(t_{s+1} + Δ, t_m + Δ]` has a source compatible with `B` (A1.9 at the node's `ac_to_fg` call

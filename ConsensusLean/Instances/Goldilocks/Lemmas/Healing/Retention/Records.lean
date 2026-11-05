@@ -10,8 +10,8 @@ public section
 (`record_attestation`, the only writer; the record is durable over restarts): its target and
 timeout entries at `h` name the height pair of an attestation it signed at `h`, its lock entry at
 `h` the finality pair `(h, ·)` of one (`client_record_origin`). A signed height pair of height
-`≥ H_z + 1` is signed at or after `a` (HR.1 (c)), so by (R1)'s rows it names the entry at its
-height of a high origin's chain; a finality pair names the entry at its height of an ancestor of
+`≥ H_z + 1` is signed at or after `a` (HR.1 (c)), so by (R1)'s attestations it names the entry at
+its height of a high origin's chain; a finality pair names the entry at its height of an ancestor of
 the source's entry (`signed_fin_pair_entry`, `chain_pairs_entry`), which is then on a high
 origin's chain too (`high_record_entry`). Two entries at one height of comparable chains are one
 block (entry constancy, `entry_root_eq`). -/
@@ -536,7 +536,7 @@ theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
     Goldilocks.Store.cache_invariants _ _ _ _ hr
   exact Or.inr (hp.finalized_descendant_report hy hW hF hWF.symm h he)
 
-/-- A signed row naming a held entry above the target produces an actual earlier
+/-- A signed attestation naming a held entry above the target produces an actual earlier
 higher report. The signing witness is retained explicitly; a covering origin alone
 does not supply this fact. Heights are compared at the resulting reporter's cut. -/
 theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}

@@ -7,8 +7,8 @@ public section
 /-! # Goldilocks Healing, HR.4: stored fast-lock provenance
 
 `SA.fast_lock_provenance` places every fast lock below the **raw** selection `D` of a fast-lock
-write; HR.4's rows need the **stored** block `O = Φ.viableAncestor D` of that write (`Φ` the frame
-of the writing call), since `Q ⪯ D` and `O ⪯ D` do not give `Q ⪯ O` (`hr4-cut-scope.md` §4).
+write; HR.4's attestations need the **stored** block `O = Φ.viableAncestor D` of that write (`Φ` the
+frame of the writing call), since `Q ⪯ D` and `O ⪯ D` do not give `Q ⪯ O` (`hr4-cut-scope.md` §4).
 `stored_fast_lock_provenance` keeps `O`: `add_locks` stores exactly `O` (`liveLocks` moves the new
 lock to its viable ancestor), the lock functions only move locks back (A0.4 (c)), a restart keeps
 the locks (A0.7), and every insertion is an optimistic check or the fast test of an update, in

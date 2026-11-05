@@ -10,17 +10,18 @@ public section
 Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §4, Lemma 3′, steps 3–6, at trace level.
 
 * `justify_step'` (one held block): a block `X` on the parent `Pr`, and a set `S` of weight `≥ q`
-  of validators, each with a target row (no timeout) for `Pr`'s entry `(h, T_h)` in `X`'s payload
-  or on `Pr`'s chain, and with the finality pair `(h_j, J)` when `Pr`'s state has its previous
-  height justified (pending there): `X`'s state justifies `(h, T_h)`, and at a height whose
-  previous height is justified it finalizes `h_j`. A row on the chain has its bits in `σ[Pr]`
-  (`Store.rows_counted`); one in the payload sets them in the counting (`Store.foldl_bits`); then
-  `FGParams.justify_of_target_previousHeightNotJustified` or
+  of validators, each with a target attestation (no timeout) for `Pr`'s entry `(h, T_h)` in `X`'s
+  payload or on `Pr`'s chain, and with the finality pair `(h_j, J)` when `Pr`'s state has its
+  previous height justified (pending there): `X`'s state justifies `(h, T_h)`, and at a height whose
+  previous height is justified it finalizes `h_j`. An attestation on the chain has its bits in
+  `σ[Pr]` (`Store.rows_counted`); one in the payload sets them in the counting (`Store.foldl_bits`);
+  then `FGParams.justify_of_target_previousHeightNotJustified` or
   `FGParams.justify_of_target_previousHeightJustified`.
 * `justify_of_rows'` (the run): an honest proposal `X` on `Pr`, where the proposer has processed
-  each row before its proposal cut (the delivery premise, M1): every row is in the pool, so it is
-  on `Pr`'s chain or in `proposal_attestations` (it is valid against `σ[Pr]`: it names the entry).
-  Honest rows are not equivocations; the weight is that of the honest signers, no `2q − n` slack.
+  each attestation before its proposal cut (the delivery premise, M1): every attestation is in the
+  pool, so it is on `Pr`'s chain or in `proposal_attestations` (it is valid against `σ[Pr]`: it
+  names the entry). Honest attestations are not equivocations; the weight is that of the honest
+  signers, no `2q − n` slack.
 -/
 
 namespace Consensus.Goldilocks.Healing
@@ -35,9 +36,9 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
   {tr : FGTrace P ACP}
 
 /-- **Lemma 3′ at one block** (s5 §4, steps 4–6): a held block `X` on the held parent `Pr`, and a
-set `S` of weight `≥ q` of validators, each with a target row for `Pr`'s entry in `X`'s payload or
-on `Pr`'s chain (with the finality pair `(h_j, J)` when `Pr`'s state has its previous height
-justified and the pair is pending): `X`'s state justifies `Pr`'s entry, and at a height whose
+set `S` of weight `≥ q` of validators, each with a target attestation for `Pr`'s entry in `X`'s
+payload or on `Pr`'s chain (with the finality pair `(h_j, J)` when `Pr`'s state has its previous
+height justified and the pair is pending): `X`'s state justifies `Pr`'s entry, and at a height whose
 previous height is justified it has `h_F = h_j`. By W2 (`FGParams.justify_of_target_chain`) a height
 whose previous height is justified has `(h_j, J)` pending or `h_F = h_j`; in the second case the
 target quorum alone passes the loose-BJ gate. -/
@@ -98,10 +99,10 @@ theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
     obtain ⟨rfl, -⟩ := h
     rfl
 
-/-- **The rows of an honest proposal** (s5 §4, step 3): for an honest proposal `X` at the cut `kX`
-on the held parent `Pr`, the FG projection is a local run, the store after the cut holds `X` and
-`Pr` with the same states, and every row that the proposer processed before `kX` and that names
-`Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
+/-- **The attestations of an honest proposal** (s5 §4, step 3): for an honest proposal `X` at the
+cut `kX` on the held parent `Pr`, the FG projection is a local run, the store after the cut holds
+`X` and `Pr` with the same states, and every attestation that the proposer processed before `kX` and
+that names `Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
 theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
     {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}

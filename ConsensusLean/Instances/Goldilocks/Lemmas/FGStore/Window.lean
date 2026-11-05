@@ -11,12 +11,12 @@ public section
 Under `GW(E, a, k_F)` (`GoodWindow`), the chain of the serving block `B*` justifies the entry `E` at
 `B*` or earlier, at a block `X` before which the height is not left; `X` enters the next height as
 its own entry, with `(h, T_h)` pending; and at an entry whose previous height is justified `X` has
-finalized `P_E` (`window_justifies`, theorem.md §3). The rows of `GW` are on `B*`'s chain (on the
-parent's, or pooled and so included by the honest proposal); while `h` is current they stay valid
-and their target and finality bits persist; no block before `B*` is old enough to time out (`v* ≤ u
-+ D ≤ u + δ_t`), and `B*` tests justification before the timeout. The state of a block is the same
-at every honest node that holds it (`σ_eq_of_held`): it is the fold over the block's chain, which
-the coherent `U` fixes. -/
+finalized `P_E` (`window_justifies`, theorem.md §3). The attestations of `GW` are on `B*`'s chain
+(on the parent's, or pooled and so included by the honest proposal); while `h` is current they stay
+valid and their target and finality bits persist; no block before `B*` is old enough to time out
+(`v* ≤ u + D ≤ u + δ_t`), and `B*` tests justification before the timeout. The state of a block is
+the same at every honest node that holds it (`σ_eq_of_held`): it is the fold over the block's chain,
+which the coherent `U` fixes. -/
 
 namespace Consensus.Goldilocks.Store
 
@@ -70,8 +70,8 @@ theorem foldl_bits {n : Nat} (σ : FG.ChainState n) (atts : List (FG.Att n)) :
     · obtain ⟨h1, h2⟩ := r2 a ha (hah.trans hh.symm) (haT.trans hT.symm)
       exact ⟨h1, fun pr hpr hm => h2 pr hpr (hp ▸ hm)⟩
 
-/-- An accepted block's rows are not above its parent's height; the block keeps the height and
-entry (its pending pairs among the parent's, its bits those of the counting), or enters the
+/-- An accepted block's attestations are not above its parent's height; the block keeps the height
+and entry (its pending pairs among the parent's, its bits those of the counting), or enters the
 next height as its own entry. -/
 private theorem step_shape {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') :
@@ -223,8 +223,8 @@ theorem anc_parent {st : Store P ACP} {X W W' : NodeBlock P ACP} (hW' : W' ∈ s
     obtain rfl : Z = W' := Option.some.inj (hZ.symm.trans (hr ▸ hW'))
     exact Or.inr hXZ
 
-/-- The rows on the chain of a held block are not above its height, and those on its entry have
-set their target bits (targets) and their finality bits (for pairs still pending). -/
+/-- The attestations on the chain of a held block are not above its height, and those on its entry
+have set their target bits (targets) and their finality bits (for pairs still pending). -/
 theorem rows_counted (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (m : Nat)
     {W : NodeBlock P ACP} (hW : W ∈ (tr.store y m).tree) :
     ∀ X, (tr.store y m).Anc X W → ∀ r ∈ X.fgPayload, r.h ≤ ((tr.store y m).σ W.root).h ∧
@@ -400,7 +400,8 @@ theorem window_justifies (hr : FGLocalRun acp₀ H U tr) {cF : Nat} {T : NodeBlo
   rcases walk Pr hTPr' .refl with ⟨⟨hh, hTh, hu, hj, hJ, hP⟩, hkeep⟩ | hgoal
   swap
   · exact hgoal
-  -- `Pr` still has the entry: `Bs` counts the rows of `R` that `Pr`'s chain has not counted.
+  -- `Pr` still has the entry: `Bs` counts the attestations of `R` that `Pr`'s chain has not
+  -- counted.
   obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP acp₀ _ hreach Pr (hsub hPr)
   obtain ⟨bf, bt, brow⟩ := foldl_bits { st'.σ Pr.root with s := Bs.slot } Bs.fgView.atts
   have hrc := rows_counted hr hp (i + 1) (hsub hPr)

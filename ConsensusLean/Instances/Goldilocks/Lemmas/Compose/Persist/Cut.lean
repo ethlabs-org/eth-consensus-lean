@@ -11,9 +11,9 @@ public section
 G1.10 at the scope of C1.1 at an honest call at cut `k` (claims C1.1, "Proof shape"): apply the
 FG statement over the FG projection of the run (`cut_scope`, FGStore) with `T₀ = t_{s+1} + Δ` and
 `T` the greatest public time before the call's time `a` for a step of a tick (or a restart) at a
-public `a`, else the greatest public time at most `a`. Then every honest row signed in `(T₀, T]`
-is at an earlier cut (a tick's rows precede the deliveries of its time), where the attestation
-step (`attest_not_excluded`) applies. -/
+public `a`, else the greatest public time at most `a`. Then every honest attestation signed in
+`(T₀, T]` is at an earlier cut (a tick's attestations precede the deliveries of its time), where the
+attestation step (`attest_not_excluded`) applies. -/
 
 namespace Consensus.Goldilocks.Compose
 

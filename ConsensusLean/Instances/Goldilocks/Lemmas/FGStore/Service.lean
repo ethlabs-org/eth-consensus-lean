@@ -10,8 +10,8 @@ public section
 G1.6 and G1.7's first window are theorem A's core (`window_justifies`); G1.7's second window is
 the core again at the actual entry `X`, whose state is the same at every honest node
 (`σ_eq_of_held`), so its `P_E` is `(h, T_h)`. G1.8 (a): from slot `u + max(δ_t, r)` on, the
-honest proposal of each `g`-slot window includes a progress quorum of current-entry rows, with a
-mature entry, so the height is left there at the latest. G1.8 (b) is G1.7 with `T₁ ⪯ T_h`.
+honest proposal of each `g`-slot window includes a progress quorum of current-entry attestations,
+with a mature entry, so the height is left there at the latest. G1.8 (b) is G1.7 with `T₁ ⪯ T_h`.
 G1.9 (a): the justification step does not raise the head height floor for `σ = σ[B]`. -/
 
 namespace Consensus.Goldilocks.Store
@@ -21,7 +21,8 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
 
 /-! ## One block of the state transition -/
 
-/-- Counting attestations keeps the progress bits and sets those of the rows on the entry. -/
+/-- Counting attestations keeps the progress bits and sets those of the attestations on the entry.
+-/
 theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
     {v : Fin n} (h : v ∈ σ.prog ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) :
     v ∈ (atts.foldl FG.ChainState.processAtt σ).prog := by
@@ -45,7 +46,7 @@ theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att 
       · exact Or.inr ⟨b, hb, hbv, hbh, hbT⟩
 
 /-- One accepted block keeps the height, the entry (and its slot) and the progress bits, adds
-the bits of its rows on the entry, and does not time out; or it enters the next height. -/
+the bits of its attestations on the entry, and does not time out; or it enters the next height. -/
 theorem step_entry {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') :
     (σ'.h = σ.h ∧ σ'.Th = σ.Th ∧ σ'.ThSlot = σ.ThSlot ∧
@@ -132,7 +133,7 @@ theorem entry_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H
     omega
   · omega
 
-/-- A row of a held block is valid against its parent's state, so its height is at most the
+/-- An attestation of a held block is valid against its parent's state, so its height is at most the
 parent's. -/
 theorem row_parent (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) {x : FG.Att P.n}
@@ -246,7 +247,7 @@ theorem crossing : Crossing P ACP := by
   have hPrTh : ((tr.store y k).σ Pr.root).Th = T.root := (hle.2 hPh).1.trans hT.2
   obtain ⟨E, hE, hEr, hEs⟩ := entry_slot hr hy hPrt
   rw [coh.1 hE hT.1 (hEr.trans hPrTh)] at hEs
-  -- Every pooled current-entry row is counted at `Pr` already, or included in `Y`.
+  -- Every pooled current-entry attestation is counted at `Pr` already, or included in `Y`.
   have hrows : ∀ x ∈ (tr.store p j).atts, x.h = ((tr.store y k).σ T.root).h → x.T = T.root →
       x.val ∈ ((tr.store y k).σ Pr.root).prog ∨ ∃ a ∈ Y.fgPayload, a.val = x.val ∧
         a.h = ((tr.store y k).σ Pr.root).h ∧ a.T = ((tr.store y k).σ Pr.root).Th := by

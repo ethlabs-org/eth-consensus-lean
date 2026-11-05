@@ -23,8 +23,8 @@ Workbench `notes/outage/outage_arming.md` (b4ba553), §§1–7. For an outage `[
 `σ + k < j₀`, `j₀ := coverLabel b₀` (§1); every honest vote of a slot in `(σ, j₀]` extends `C`
 (S-vote, §3); an honest updater whose slot's votes are delivered by `t_s + 2Δ ≤ b` has a result
 extending `C`, held in its frame when `Σ.F ⪯ C`, with an honest supporter (Lemma P, §5); the saved
-rows of an update extend `C` (§6.2); and the pure SA formation of a slow lock (§6.5). The veto
-analysis at the cover gate `j₀` (§7.4) takes the lock-safety input (N) as a hypothesis. -/
+attestations of an update extend `C` (§6.2); and the pure SA formation of a slow lock (§6.5). The
+veto analysis at the cover gate `j₀` (§7.4) takes the lock-safety input (N) as a hypothesis. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -38,9 +38,10 @@ theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : SAParams} {L : Set Lock}
   · exact Or.inl (hCD.trans h)
   · exact anc_total hΦ.coherent hCD h
 
-/-- **Slow formation** (§6.5, independent writes): rows above `C`, a result `D ⪰ C`, and no live
-lock conflicting with `C` store the slow lock of slot `s` and expiry `s + k` on the viable ancestor
-of the deepest unvetoed slow-test block `X`, `C ⪯ X ⪯ D`. A veto of `D` stops only the record. -/
+/-- **Slow formation** (§6.5, independent writes): attestations above `C`, a result `D ⪰ C`, and no
+live lock conflicting with `C` store the slow lock of slot `s` and expiry `s + k` on the viable
+ancestor of the deepest unvetoed slow-test block `X`, `C ⪯ X ⪯ D`. A veto of `D` stops only the
+record. -/
 theorem updateConfirmation_slow_lock_of {FGP : Type} {sp : SAParams} {A : SAState sp.n}
     {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {s : Nat} {C D : Blk sp.n FGP}
     (hD : getConfirmation sp A Φ s = some D) (hnvC : ¬ conflictsWithLock sp A.locks Φ t C)
@@ -373,7 +374,7 @@ theorem update_result_or_root (hrun : GoldilocksRun proposer dg H tr)
     (by linarith) hfb hFC
   exact Or.inr ⟨hFC, hCt, D, hD, hCD⟩
 
-/-! ### §6.2 The saved rows -/
+/-! ### §6.2 The saved attestations -/
 
 /-- The frame of an update is the node's frame at the update's cut. -/
 theorem update_frame (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
@@ -387,9 +388,9 @@ theorem update_frame (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
     | fg _ => cases hcl
   exact (hrun.cutLaw y hy c (.ac ℓ) ⟨hn, hc⟩).1
 
-/-- **The saved rows** (§6.2) at an update of slot `s ≥ k`: from row updates before it, no
-restart after the oldest row start, and a result above `C` at every row update, every row of the
-slow test names a block of the frame above `C`. -/
+/-- **The saved attestations** (§6.2) at an update of slot `s ≥ k`: from attestation updates before
+it, no restart after the oldest attestation start, and a result above `C` at every attestation
+update, every attestation of the slow test names a block of the frame above `C`. -/
 theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
@@ -679,8 +680,8 @@ theorem update_of_awakeOn (hrun : GoldilocksRun proposer dg H tr) {w : Fin sp.n}
 
 /-- **The first armed update** of slot `s` of a no-sleep holder `w` (§§4–6): it exists, its
 restarts are at or before `t_{s−k+1}`, and when `Σ.F ⪯ C` the origin `C` (of a label `σ ≤ s − k`)
-is in its frame below its result, which an honest pool vote supports, and every saved row of the
-slow test names a block of the frame above `C`. -/
+is in its frame below its result, which an honest pool vote supports, and every saved attestation of
+the slow test names a block of the frame above `C`. -/
 theorem armed_first_update (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)

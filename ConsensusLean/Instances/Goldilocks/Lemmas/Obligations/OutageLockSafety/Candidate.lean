@@ -36,7 +36,7 @@ private theorem entry_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · exact Anc.total hU hEDU h
 
 /-- **A held block compatible with every honest source stays a candidate** (card §6.3): with
-`f < n/2` and the honest rows of `y`'s tree sourced by `G`, a block `B` of the frame's tree
+`f < n/2` and the honest attestations of `y`'s tree sourced by `G`, a block `B` of the frame's tree
 compatible with every `G`-source is at or below `fc_root` or in the full viable tree. No pairwise
 premise on the sources. -/
 theorem held_candidate_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

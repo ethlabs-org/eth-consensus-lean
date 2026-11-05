@@ -668,8 +668,8 @@ theorem origins_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x x' :
     ((le_max_left _ _).trans (le_max_right _ _)) ho' ((le_max_right _ _).trans (le_max_right _ _))
 
 /-- **HR.4, height-scoped retention** (HBoot §11, JointRet §13, high records §16): (R1)'s
-comparability from the votes (`origins_compatible`), (R1)'s rows (`high_rows`), (R2) and (R3) from
-the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
+comparability from the votes (`origins_compatible`), (R1)'s attestations (`high_rows`), (R2) and
+(R3) from the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
 theorem height_scoped_retention : HeightScopedRetention := by
   intro sp ro proposer dg H tr g ΔF hrun hh hnc a ha
   have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha⟩

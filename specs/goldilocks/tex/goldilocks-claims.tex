@@ -96,10 +96,10 @@ are fixed here, and C1.1 is now the slot induction that joins the transfer
 steps.  A second independent review was also applied.  Draft~2 restates the
 FG nodes against loose BJ and the weakened E1, and replaces the liveness
 placeholder by the nodes of theorems A, B, C.  Draft~3 fixes C1.1 with the
-premise $\mathsf{Clean}$ (a row cut and a height lead), adds the step lemmas
+premise $\mathsf{Clean}$ (an attestation cut and a height lead), adds the step lemmas
 A1.8 (result transfer, no participation bound) and A1.9 (source
 compatibility), and states post-GST recovery as the open target O.1.
-Draft~4 applies two independent reviews of draft~3: the row cut is scoped above
+Draft~4 applies two independent reviews of draft~3: the attestation cut is scoped above
 the honest finalized tips with a new premise (K0) on the honest caches, the
 conflicting-justification part of C1.1 is the FG node G1.10, A1.9 is stated
 per time with explicit hypotheses, and O.1 is restated.  Draft~5 aligns the DAG with
@@ -170,7 +170,7 @@ the source $\mathit{fg\_confirmed}$, which the FG reads.  So an \textsf{A} node
 is stated over an AC state and a sequence of frames, never over~$\Sigma$, with
 G0.4 (frame) and G0.3 (frame) as hypotheses on the frames; an FG store node
 (G0.3, G0.4 (height), G1.4, G1.6--G1.10) is stated over the trajectory
-of~$\Sigma$ and the rows signed; a step lemma about many nodes (A1.2--A1.4,
+of~$\Sigma$ and the attestations signed; a step lemma about many nodes (A1.2--A1.4,
 A1.8, A1.9, G1.10) is stated over a \emph{component trace}: per node and per
 event, the component's state (and frame), what was received and accepted, and
 what was signed, with the network premises as predicates on that trace.  The
@@ -539,7 +539,7 @@ predecessor $P$ is pending in the parent state: (a) if after the block's
 attestations are counted the validators with a counted finality pair $P$
 have weight at least~$q$, then $h_F=h_j$ after the finality step of the same
 block; (b) if moreover $w(\Qtarget)\geq q$, the same block justifies.  (A
-timeout row that carries~$P$ sets a $\Qfin$ bit and no $\Qtarget$ bit.)}
+timeout attestation that carries~$P$ sets a $\Qfin$ bit and no $\Qtarget$ bit.)}
 {G0.2, G0.7}{instance-proposal \S2.6 (I7-LB); theorem.md \S3 step~4.}{S.}
 
 \dagnode{G0.9}{Retention}{(a) While a height whose previous height is justified is current, its
@@ -610,9 +610,9 @@ attestations that are slashable (E1 in its weakened form, or E2), including
 one attestation against itself.  Record invariants used: $\mathsf{target}[h]$
 is its first target at~$h$; $\mathsf{timeout}[h]$ is the set of roots its
 timeouts at~$h$ name; $\mathsf{lock}[h]$ is the target of its first finality
-pair at~$h$; and after a finality pair $(h,T)$ it sends no row at~$h$ naming a
+pair at~$h$; and after a finality pair $(h,T)$ it sends no attestation at~$h$ naming a
 block other than~$T$ ($\fname{height\_pair}$ tests the lock first), and
-after a row at~$h$ naming~$T'$ it sends no finality pair $(h,T)$ with
+after an attestation at~$h$ naming~$T'$ it sends no finality pair $(h,T)$ with
 $T\neq T'$ ($\fname{permits}$ requires $\mathsf{target}[h]\in\{\bot,T\}$ and
 $\mathsf{timeout}[h]\subseteq\{T\}$).  Hypotheses (discharged by G0.2 (a),
 (c), (d) where G1.4 uses this node): the state $\sigma_e$ passed to
@@ -865,7 +865,7 @@ E1/E2.  Target: \texttt{nonFraming}, \texttt{finalized\_accountable}.}
 refinement, which defines \texttt{conflicts}.}
 
 The liveness nodes G1.6--G1.9 are \emph{FG service lemmas}: they are about
-one chain and the FG transition, under premises on the rows that reach it.
+one chain and the FG transition, under premises on the attestations that reach it.
 That the AC and the network supply those premises, or that an accepted
 retained chain (retained: kept in the viable trees of honest nodes, the
 \texttt{JointRet} of workbench \texttt{producer-reset-continuation.md}) has
@@ -879,12 +879,12 @@ u+a+\cF+k_F]$; $D=a+\cF+k_F$.  \emph{Good window} $\mathsf{GW}(E,a,k_F)$:
 \item[P1] there is an accepted block $B^*$ (it passes
   $\fname{state\_transition}$) of a slot $v^*\in I(E,a,k_F)$ whose parent
   extends~$T_h$;
-\item[P2] validators of weight $\geq q$ each contribute a target row for~$E$,
+\item[P2] validators of weight $\geq q$ each contribute a target attestation for~$E$,
   carrying~$P_E$ at an entry whose previous height is justified, emitted by $t_{u+a}+6\Delta$ or already
   on the chain of~$B^*$;
-\item[P3--P4] those rows are processed into the pool of $B^*$'s proposer
+\item[P3--P4] those attestations are processed into the pool of $B^*$'s proposer
   before $t_{v^*}$;
-\item[P5] $B^*$ is honest and includes every pooled row that is valid against
+\item[P5] $B^*$ is honest and includes every pooled attestation that is valid against
   its parent's state and not on the parent's chain;
 \item[P6] $\delta_{\mathrm t}\geq D$ and $K_W\geq1$;
 \item[P7] honest clients are durable and serialized.
@@ -899,7 +899,7 @@ slot $u+D$.  (Not ``in a block of the window'': it can happen earlier.)}
 twice); its boundary trace is a test witness.}{M.}
 
 \dagnode{G1.7}{Entry whose previous height is not justified, two windows (theorem B)}{Let $U=(h,T_h,u_0)$
-be an entry whose previous height is not justified, $D_i=a_i+\cF+k_F$, with $\mathsf{GW}(U,a_0,k_F)$ (target rows, no finality pair
+be an entry whose previous height is not justified, $D_i=a_i+\cF+k_F$, with $\mathsf{GW}(U,a_0,k_F)$ (target attestations, no finality pair
 needed).  Then $U$ justifies at a slot $u_1\leq u_0+D_0$, appending
 $Q=(h,T_h)$, and its block enters a height $E_1$ whose previous height is justified, with predecessor~$Q$.
 If moreover $\mathsf{GW}(E_1,a_1,k_F)$ for that \emph{actual} entry, with
@@ -912,7 +912,7 @@ is \emph{covered} on a chain when $T\preceq\sigma.F$ there.  (a) Let $C$ be an
 accepted block whose chain extends an entry of slot~$u$ and has, in every $g$
 consecutive slots up to $C.\slot\geq u+\max(\delta_{\mathrm t},r)+g-1$, an
 honest block whose proposer's pool holds, before its proposal, a progress
-quorum of valid current-entry rows (from $t_{u+r}$ on, $r\geq1$ an integer;
+quorum of valid current-entry attestations (from $t_{u+r}$ on, $r\geq1$ an integer;
 the first block after the entry has slot $u+1$, goldilocks\#38).  Then
 on the chain of~$C$ the height is left, by justification or timeout, within
 $\max(\delta_{\mathrm t},r)+g-1$ slots of~$u$.  (b) If $m\geq1$ consecutive
@@ -946,7 +946,7 @@ its scope.  Let $\mathcal E$ be a set of blocks (the \emph{excluded entries}),
 $T_0$ and $T$ public times (multiples of~$\Delta$), and $y$ an honest node.
 Assume $\mathsf{NoColl}$, unforgeable signatures, that honest attestations are
 signed only at public times and that a block an honest node proposes at a
-public time~$a$ carries only honest rows signed before~$a$ (C0.5 (c), C0.4),
+public time~$a$ carries only honest attestations signed before~$a$ (C0.5 (c), C0.4),
 and:
 ($\mathrm K1_{\mathcal E}$) for every $E\in\mathcal E$, the validators that are
 faulty, or honest and sign at or before $T_0$ an attestation whose height pair
@@ -955,13 +955,13 @@ validator signs in $(T_0,T]$ names no block of~$\mathcal E$ in its height pair
 (no assumption when $T\leq T_0$).
 Let $\mathcal X$ be the blocks that $y$ accepts before $T+\Delta$, and a block
 that $y$ proposes at $T+\Delta$ (its attestations come from $y$'s pool at the
-proposal, so its honest rows were signed at or before~$T$).  Then for every
+proposal, so its honest attestations were signed at or before~$T$).  Then for every
 $X\in\mathcal X$ and every $E\in\mathcal E$ that is the entry of a height~$h$ on
 the chain of~$X$: $E$ gets neither a target nor a progress quorum on that chain,
-so $E$ is not justified there and $\sigma[X].h=h$.  (Rows for $E$ on any chain
+so $E$ is not justified there and $\sigma[X].h=h$.  (Attestations for $E$ on any chain
 come from the validators of ($\mathrm K1_{\mathcal E}$) and quorums need weight
 $q$ (G0.2 (f)).  Honest attestations are signed only in ticks, at public times;
-faulty rows are counted in ($\mathrm K1_{\mathcal E}$) whenever signed.)
+faulty attestations are counted in ($\mathrm K1_{\mathcal E}$) whenever signed.)
 
 \emph{The scope of C1.1.}  For a block~$B$ and a slot~$s$, take $T_0=t_{s+1}+\Delta$
 and $\mathcal E$ the blocks that conflict with~$B$ and strictly extend the
@@ -976,9 +976,9 @@ that it proposes there (before any object received at $T+\Delta$).  (Every
 entry of $X$'s chain that conflicts with~$B$ strictly extends $y$'s $\Sigma.F$
 at~$t_s$, so it is in~$\mathcal E$.)  The healing reset induction uses the same
 node with a height-scoped $\mathcal E$, for which (K0) need not hold; its reset
-must be defined by time, the first public time $a_z$ at which an honest row at
-the new height is signed, with $T_0<a_z$ and every row signed at~$a_z$ covered
-(several honest nodes can sign such rows in their ticks at~$a_z$, in any order).}
+must be defined by time, the first public time $a_z$ at which an honest attestation at
+the new height is signed, with $T_0<a_z$ and every attestation signed at~$a_z$ covered
+(several honest nodes can sign such attestations in their ticks at~$a_z$, in any order).}
 {G0.2, G0.3, G0.7, G1.1, F.3}{the gate only removes justifications
 (theorem.md \S8); old \texttt{CleanCut}; healing-simple \texttt{t1-proof.md}
 \S9 (\textsf{Reset}$(z)$).}{M.}
@@ -996,7 +996,7 @@ event and strictly earlier ones (for A1.2--A1.4 and A1.8: viability at that
 vote, in the voter's viable voter block tree or at or below its $\fcroot$).  A
 form ``if every honest voter of slot $m+1$ \ldots{} then every honest vote of
 slot $m+1$ \ldots'' does not close: the proposer's vote at~$t_{m+1}$ would need
-viability at the later votes of its slot, which needs the rows of the tick
+viability at the later votes of its slot, which needs the attestations of the tick
 at~$t_{m+1}$, which need that vote.  C1.1 discharges the hypotheses from the
 induction over events (F.5 (run)).  The step lemmas can be proved in parallel; C1.1
 is the join.
@@ -1145,7 +1145,7 @@ $\mathsf{Clean}(s,m,B)$:
 \begin{itemize}[itemsep=0pt,topsep=2pt]
 \item[(K0)] \emph{Honest caches.} At~$t_s$, the $\Sigma.F$ and the $\Sigma.J$ of
   every honest node are compatible with~$B$.
-\item[(K1)] \emph{Row cut.} ($\mathrm K1_{\mathcal E}$) of G1.10 at the scope of
+\item[(K1)] \emph{Attestation cut.} ($\mathrm K1_{\mathcal E}$) of G1.10 at the scope of
   C1.1: for every block $E'$ that conflicts with~$B$ and strictly extends the
   $\Sigma.F$ of some honest node at~$t_s$, the validators that are faulty, or
   honest and sign at or before $t_{s+1}+\Delta$ an attestation whose height pair
@@ -1172,7 +1172,7 @@ until its unlocking in slot $s+1$, at the latest at $t_{s+1}+\Delta$) can be
 released later by a faulty proposer; (K1) bounds them per entry above the
 honest finalized tips.  (K1) cannot bound all history: before GST honest
 validators can target one fork and time out on another, so the faulty
-validators plus those rows reach~$q$ for an entry of every fork; (K0) and the
+validators plus those attestations reach~$q$ for an entry of every fork; (K0) and the
 scope of (K1) say that honest finality has passed that dirt.  (K2) is the
 height race: a faulty proposer can release late blocks on~$B$'s own branch
 that raise $\hmax$, and so the head height floor, above every block of a
@@ -1187,20 +1187,20 @@ A1.3 after, whose hypotheses are about that vote, the votes of slot $s'-1$, and
 the earlier votes of slot~$s'$ (by (ii) at those events), all earlier.  At an honest attestation at time
 $t\in(t_{s+1}+\Delta,t_m+\Delta]$: its source is compatible with~$B$ by A1.9
 (its case (i) or (ii) by C0.4), whose hypotheses are the votes that precede it (by (ii)) and the honest
-caches (by G1.10 for earlier events, and (K0)); so its row names an entry of
+caches (by G1.10 for earlier events, and (K0)); so its attestation names an entry of
 the source's chain (G0.2 (c)), compatible with~$B$.  At any event at time~$a$
 (an acceptance, a vote, an unlocking): apply G1.10 with $T$ the greatest
 public time at most~$a$ when the event processes an object received at~$a$
-(a row of the tick at~$a$ precedes every object processed at~$a$), and the
+(an attestation of the tick at~$a$ precedes every object processed at~$a$), and the
 greatest public time strictly before~$a$ when the event is a step of the tick
 at~$a$ (the vote and unlocking at $t_{s'}+\Delta$, the proposer's unlocking
 at~$t_{s'}$, and the proposer's acceptance of its own block at~$t_{s'}$ and
 its vote and unlocking after it); at a tick the caches come only from blocks
 accepted before~$a$ and the node's own proposal at~$a$, so G1.10 (c), with its
-own-proposal clause, gives them.  Its row hypothesis then concerns honest
-rows that all precede the event, so the step uses only earlier facts; the
+own-proposal clause, gives them.  Its attestation hypothesis then concerns honest
+attestations that all precede the event, so the step uses only earlier facts; the
 votes of slot~$s'$ use $T\leq t_{s'}$, and the unlocking in slot $s+1$ has an
-empty row hypothesis.  (iii) for $\mathcal X_{s'}$ is the union
+empty attestation hypothesis.  (iii) for $\mathcal X_{s'}$ is the union
 of these steps.  (i) at a vote of slot~$s'$:
 the voter's $\fcroot$ is $\Sigma.F$ or $\Sigma.J$, compatible with~$B$ by (K0)
 and G1.10 (c) at that vote (G0.3); then (K2) and G0.4 (frame), G0.4 (height).}
@@ -1233,7 +1233,7 @@ $t_{u+\cF+k_F+1}$ (not that slot's start), with the same carrier conclusion in b
 outcome is on an accepted retained chain, whose carrier honest nodes receive
 within a further~$\Delta$).  At an entry~$E$ of slot~$u$ whose previous height is justified, with predecessor~$P_E$: either
 (i) the literal $\mathsf{GW}(E,0,k_F)$ holds on the retained inclusion chain,
-including a quorum of target rows that carry~$P_E$, or (ii) an accepted
+including a quorum of target attestations that carry~$P_E$, or (ii) an accepted
 retained chain has already justified~$E$ and finalized~$P_E$ (the gate).  At
 an entry~$U$ whose previous height is not justified: either $\mathsf{GW}(U,0,k_F)$ or an accepted retained
 chain has already justified~$U$ early; in both cases $U$ is justified by that
@@ -1250,7 +1250,7 @@ justified crossing of its entry ($\delta_{\mathrm t}\geq2$ rules out a timeout
 through $t_u+6\Delta$).  In the first case every honest validator has an actual
 source with entry~$E$ by $t_u+6\Delta$, or an earlier report of~$E$ suppresses
 it; by HR.4 (R1), (R4) and G0.10 its record allows a target at~$h$ and, at an
-entry whose previous height is justified, permits~$P_E$ (BA), so the honest rows give P2; they arrive before
+entry whose previous height is justified, permits~$P_E$ (BA), so the honest attestations give P2; they arrive before
 $t_{u+\cF}$, and the window's honest ready proposal with the retained-inclusion
 parent gives P1, P3--P5 (C0.3), unless a retained chain justifies~$E$ first,
 which is branch~(ii).  In the second case branch~(ii) holds.)  Faulty or old entries are not
@@ -1376,8 +1376,8 @@ composed-node run (Spec/Run), not over arbitrary AC states or frames.  Assume
 $\mathsf{NoColl}$, $\mathsf{GenRoot}$, unforgeable signatures, persistent honest client records,
 finite event prefixes, $\mathsf{Healthy}(g)$ with
 $g=\max(\mathrm{GST},0)$, no honest restart after~$g$, and strict acceptance
-relay and delivery as in $\mathsf{Sync}$; for rows the $\mathsf{GST}(g)$
-convention applies (an honest FG row sent before~$g$ is processed as if sent
+relay and delivery as in $\mathsf{Sync}$; for attestations the $\mathsf{GST}(g)$
+convention applies (an honest FG attestation sent before~$g$ is processed as if sent
 at~$g$, so it is delivered before $g+\Delta_F$; block acceptance relay alone
 does not give this).  Take the protocol's parameter bounds, $n-f$ honest
 validators and $q=\lceil 2n/3\rceil$.  A \emph{phase} is identified by the
@@ -1404,7 +1404,7 @@ vote relay with its ancestry (no requirement that every object accepted
 before~$w$ has already relayed).  Let $a$ be the least slot with
 $t_a\geq w+4\Delta$ and $r=t_{a+2k+2}$.  A \emph{source} is a block other than
 $\bot$ that $\fname{ac\_to\_fg}$ actually passes to $\fname{fg\_attest}$ (an
-unreported candidate is not one); a \emph{matching row} for an entry $E$ at
+unreported candidate is not one); a \emph{matching attestation} for an entry $E$ at
 height~$h$ is an honestly signed height pair $(h,E,\tau)$ with either
 value of~$\tau$.  The constants are
 \[
@@ -1529,7 +1529,7 @@ proposal~$W$ extending~$E$ with state height~$h$, such that $w\leq t_s$,
 $v=t_s+6\Delta\leq w+D<e$, every honest slot-$s$ vote is exactly~$W$, with $W$
 in its viable frozen tree or below its fork-choice root, and by~$v$ every
 honest validator has actually received a source with entry~$E$ or has already
-signed a matching row for~$E$ (so the report and row set has weight
+signed a matching attestation for~$E$ (so the report and attestation set has weight
 $n-f\geq q$, not only a quorum of suppressed live candidates); until~$e$ every
 later honest vote and every honest proposal parent from slot $s+1$ on extends
 $W$.  The witness is the first honest proposal after~$r$, of slot~$s_0$,
@@ -1540,7 +1540,7 @@ descendant at~$m$ shares its ancestor's entry at $m-1$).  Included client
 subclaim (P1/P2 of workbench\#6): in a settled effective phase, an actual
 source whose entry is $E$ at $h\geq\ell$ on an allowed branch is not refused
 by a conflicting client finality lock at~$h$, so the client emits a matching
-target or timeout, or its durable record already holds a matching row (not
+target or timeout, or its durable record already holds a matching attestation (not
 for an unreported candidate or a source below the floor).}
 {HS.1, HS.2, HS.3, F.1, F.5 (run), A0.3, A0.4, A0.6, A0.7, A0.8, A1.2, A1.3,
 A1.4, G0.2, G0.3, G0.3 (frame), G0.4 (frame), G0.4 (height), G0.5, G1.1,
@@ -1548,10 +1548,10 @@ G1.2, C0.3, C0.4, C0.5}{phase-service.md \S5, with the two-height suppression
 branch and its source and write-label classification; the P1/P2 proof is
 part of this node's evidence.}{M.}
 
-\dagnode{HS.5}{Row delivery, inclusion and PhaseService assembly}{Under the shared
+\dagnode{HS.5}{Attestation delivery, inclusion and PhaseService assembly}{Under the shared
 premises, for the witness $(s,h,E,W,v)$ of HS.4 let
 $b=\max(v+\Delta_F,\ t_{E.\slot+\delta_{\mathrm t}})+G+\Delta$.  Every matching
-row chosen in HS.4 is on the retained parent chain or in every honest
+attestation chosen in HS.4 is on the retained parent chain or in every honest
 inclusion proposer's pool by $v+\Delta_F$; until $\min(e,b)$ every honest
 inclusion proposal extends~$E$ and keeps the progress bits already included,
 unless $E$ has crossed, and such proposals are accepted and relayed.  These
@@ -1574,18 +1574,18 @@ effective phase change or frontier rise occurs by $w+A$, $A=2C+\Delta$
 ($\mathsf{Producer}(A)$ under the same premises; by $w+C$ when the first
 served entry is at~$m$).  Included consumption subclaim (P3 of
 workbench\#6): if at~$v$ a fixed viable entry $E$ at $h\geq\ell$ has matching
-progress rows of weight $\geq q$, on the selected chain or in its honest
+progress attestations of weight $\geq q$, on the selected chain or in its honest
 proposer's pool by $v+\Delta_F$, and honest ready proposals until crossing
 keep that branch and its progress bits, then an honest proposal after both
 $v+\Delta_F$ and $t_{E.\slot+\delta_{\mathrm t}}$ crosses~$h$, accepted by~$b$
 (the target arm may fire earlier; if loose BJ blocks it, the mature progress
-arm fires).  Its branch and row premises are discharged by HS.4 and the
+arm fires).  Its branch and attestation premises are discharged by HS.4 and the
 delivery above, not assumed as extra hypotheses of $\mathsf{PhaseService}(D)$.}
 {HS.1, HS.2, HS.3, HS.4, F.1, F.5 (run), G0.1 (chain), G0.1 (store), G0.2, G0.7,
 G0.9, A0.6, A0.9, C0.3, C0.4, C0.5}{phase-service.md \S6, \S8.1 and
 workbench\#6 P3.  The good-window hypotheses of G1.6 and G1.7 cannot replace
-the consumption proof's timeout and progress premises; row delivery and the
-$\mathsf{GST}$ row convention are run premises, not consequences of HS.1.}{S
+the consumption proof's timeout and progress premises; attestation delivery and the
+$\mathsf{GST}$ attestation convention are run premises, not consequences of HS.1.}{S
 after HS.4.  No clean target record or predecessor finality is assumed.}
 
 \section{Healing: top-level statements}\label{sec:healing-top}
@@ -1847,14 +1847,14 @@ be the first public time at which an honest validator signs one.  Then:
 \item $a_z>c_z$, and no honest height pair of height $\geq H_z+1$ is signed
   before $a_z$;
 \item at the FG update in each honest node's tick at~$a_z$, the accepted
-  frontier is at most $H_z+1$, so every honest row signed at~$a_z$ has height
+  frontier is at most $H_z+1$, so every honest attestation signed at~$a_z$ has height
   at most $H_z+1$;
 \item for every set $\mathcal E$ of entries of heights $\geq H_z+1$, the
   first clause of ($\mathrm K1_{\mathcal E}$) of G1.10 holds with
   $T_0=a_z-\Delta$.
 \end{itemize}
 This is the time-defined reset of G1.10: for every $T\geq a_z$, every honest
-row signed at~$a_z$ lies in $(T_0,T]$.}
+attestation signed at~$a_z$ lies in $(T_0,T]$.}
 {G0.2, A1.5, C0.4, C0.5, F.5 (run)}
 {healing-simple \texttt{t1-proof.md} \S7 (F1); \texttt{producer-reset-continuation.md}
 \S4 (R0), \S10 (first-time tick lemma); both reviews of workbench\#4.}
@@ -1947,7 +1947,7 @@ include the first-transfer votes before $a_z$.
 at~$h$ of the honest client records name at most one block.
 The proof is C1.1's first-violating-event induction, with G1.10 at the
 height-scoped scope: $\mathcal E_B$ is the set of entries of height
-$\geq H_z+1$ that conflict with~$B$, $T_0=a_z-\Delta$, and every row signed
+$\geq H_z+1$ that conflict with~$B$, $T_0=a_z-\Delta$, and every attestation signed
 at $a_z$ is covered.  It is not an instance of C1.1, because (K0) and (K1)
 need not hold at~$a_z$.}
 {HR.1, G1.10, G1.2, G0.2, G0.3, G0.4 (height), G0.5, A0.4, A1.2, A1.3, A1.4,
@@ -2260,7 +2260,7 @@ with~$B$.  OC is R.5's \texttt{persists} and \texttt{outage\_final\_compatible};
 \texttt{outageWindow} is (OC1) and (OC3) up to~$b_1$.  C1.1 is not the route
 through the outage.  After~$b_1$ it is open whether (OC4) needs C1.1's
 $\mathsf{Clean}$ (K0)--(K2) for the honest confirmations written after~$b_1$,
-and so a recovery from the rows signed during the outage, or only the old
+and so a recovery from the attestations signed during the outage, or only the old
 proof's own induction around~$B$; O.1 as stated (from $\mathsf{Healthy}$) does
 not apply, since $\mathsf{Outage}$ is not $\mathsf{Healthy}$, and the prefix up
 to~$b_0$ is clean by R.1's induction from time~$0$.  No step of OC is claimed
@@ -2667,7 +2667,7 @@ HS.4 & \texttt{Healing.CommonPathAcquisition} & proved
   (\texttt{common\_path\_acquisition})\\
 HS.5 & $\mathsf{Producer}(A)$ inside \texttt{Healing.ResetExistence} &
   partial: the producer is proved as part of HR.3; the named
-  phase-service, continuation and row-delivery assembly is not one
+  phase-service, continuation and attestation-delivery assembly is not one
   statement\\
 H.1, corollary & \texttt{SA.ACHealingStandalone},
   \texttt{SA.ACHealingStandaloneCorollary} & proved
@@ -2749,7 +2749,7 @@ conclusion does not expose the pair fields or the entry $E^{(2)}_j$.
 the readers' whole views, which is weaker than the two finalized output
 chains.  The node statement \texttt{Regimes.FinalAccountable} finds it on two
 held carrier chains, which need not be the finalized output prefixes (a
-finalizing row can come after the block it finalizes).  The restriction to
+finalizing attestation can come after the block it finalizes).  The restriction to
 the two finalized output chains is not transcribed.
 (3) C1.2 assumes the reset (\texttt{IsReset}); its existence and the
 retention are HR.3 and HR.4, separate results.  At an entry whose previous

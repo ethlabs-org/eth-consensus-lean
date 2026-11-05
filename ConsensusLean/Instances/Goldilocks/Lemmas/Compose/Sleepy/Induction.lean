@@ -25,8 +25,8 @@ at slot points `≤ b` only.
 From a start label `s₀` (R.6, after a heal), the same induction runs over the origins of labels
 `≥ s₀` under `SleepyFrom` (`Sync[t_{s₀}, ∞)`, `f < h_t` at the slot points from `t_{s₀}`) and the
 base facts `SleepyBase` (the pre-`s₀` history the steps read: the live locks of slots `< s₀` at
-the votes, the honest rows whose sources predate the window, the heads accepted before `t_{s₀}`,
-and the records, caches and sources the invariant states): `frontier_from`,
+the votes, the honest attestations whose sources predate the window, the heads accepted before
+`t_{s₀}`, and the records, caches and sources the invariant states): `frontier_from`,
 `sleepy_invariant_from`; at `s₀ = 0` the base facts hold of every run (`sleepyBase_zero`). -/
 
 namespace Consensus.Goldilocks.Compose

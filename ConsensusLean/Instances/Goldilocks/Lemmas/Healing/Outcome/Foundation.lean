@@ -116,9 +116,9 @@ private theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) 
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) s).2 (by omega)
 
 /-- **The reset seed** (workbench#29 §9): a high origin `(O, l)` with `l ≤ slot(a)`. An honest
-row of height `H_z + 1` is signed at `a` (`IsReset`); its source is below a high origin written
-by the signer before the row (`high_row_source`), and a fast lock written by `a` has a label
-`≤ slot(a)`. -/
+attestation of height `H_z + 1` is signed at `a` (`IsReset`); its source is below a high origin
+written by the signer before the attestation (`high_row_source`), and a fast lock written by `a` has
+a label `≤ slot(a)`. -/
 private theorem reset_seed (hp : ResetPremises tr H proposer dg g ΔF a) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ l ≤ sp.slot a := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun

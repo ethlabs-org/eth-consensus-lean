@@ -17,7 +17,7 @@ OPEN skeleton, owned by the simulation/obligations integration. CLAIMS R.1/R.2 p
 safety/inclusion/growth; they do not prove these finite engine bridges. No whole-run
 `SleepyRun` or `HealthyRun` is inferred from a finite engine horizon.
 
-There is no node-level prefix row (retired; the prefix claim is the generic
+There is no node-level prefix attestation (retired; the prefix claim is the generic
 `CorrectProtocol.sleepySafe_prefix`). The finite consumers below
 use `SleepyServiceBefore`, which permits retained stamped SA evidence and bounds
 the recipient's deadline, and bound all observations

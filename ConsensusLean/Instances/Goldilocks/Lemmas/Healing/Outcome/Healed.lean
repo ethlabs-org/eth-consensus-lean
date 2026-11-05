@@ -11,7 +11,7 @@ clean-height premise CH. Under the reset they hold without CH at every height `h
 the entry `E h` of the high chain at `h` (`HighEntry`: a block below a high origin, held by an
 honest node, whose state has height `h` and entry `E h` itself):
 
-* C2*⁺ (i), rows: every honest row at `h` names `E h` (`high_row_entry`);
+* C2*⁺ (i), attestations: every honest attestation at `h` names `E h` (`high_row_entry`);
 * C2*⁺ (ii), locks: every honest `Λ.lock[h]` is `⊥` or `E h`
   (`ResetPremisesUpTo.high_lock_entry_of_upTo`);
 * R0: `permits(Λ, h, E h)` at every cut (`permits_high_entry`).
@@ -37,7 +37,7 @@ structure HighEntry (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time)
   held : ∃ z ∈ H, ∃ m, Z ∈ (tr.state z m).fg.tree ∧ ((tr.state z m).fg.σ Z.root).h = h ∧
     ((tr.state z m).fg.σ Z.root).Th = Z.root
 
-/-- **C2*⁺ (i) under the reset (bounded form).** An honest row at a height `h ≥ H_z + 1`,
+/-- **C2*⁺ (i) under the reset (bounded form).** An honest attestation at a height `h ≥ H_z + 1`,
 signed by the horizon `b`, names the entry of the high chain at `h`. -/
 theorem ResetPremisesUpTo.high_row_entry {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
@@ -73,12 +73,12 @@ theorem ResetPremisesUpTo.permits_high_entry {b : Time}
     · exact Or.inr (by rw [key r (Or.inr (Or.inr hl))])
 
 /-- **The record half of the Healed bundle** from the height `h₀` on, for the entries `E h` of
-the chain: RH, C2*⁺ (i) rows, C2*⁺ (ii) locks, and R0 at `h₀` (s4 L4.7 (a)–(c)). -/
+the chain: RH, C2*⁺ (i) attestations, C2*⁺ (ii) locks, and R0 at `h₀` (s4 L4.7 (a)–(c)). -/
 structure HealedRecords (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (g : Time) (h₀ : Nat)
     (E : Nat → SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
   /-- RH: `h₀` is above the reset height. -/
   rh : HZ tr H g + 1 ≤ h₀
-  /-- C2*⁺ (i): every honest row at a height `≥ h₀` names the entry at its height. -/
+  /-- C2*⁺ (i): every honest attestation at a height `≥ h₀` names the entry at its height. -/
   fgAtts : ∀ v ∈ H, ∀ d att, tr.SignAt v d att → h₀ ≤ att.h → att.T = (E att.h).root
   /-- C2*⁺ (ii): every honest lock at a height `≥ h₀` is `⊥` or the entry at that height. -/
   locks : ∀ y ∈ H, ∀ i h, h₀ ≤ h →

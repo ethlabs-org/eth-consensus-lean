@@ -10,7 +10,7 @@ pre_advance_finality §26 Step A (F1) and §23 (the lower bound after `c_z + Δ`
 
 * `hmax_le_of_noAdvance` (F1): if no honest node signs at a height `> H_z` at a time `< T`,
   every honest `h_max` at a cut before `T` is `≤ H_z + 1`. A block of state height `≥ H_z + 2`
-  carries an honest row of height `H_z + 1` (G0.2 (f), `f < q`), signed before the block was
+  carries an honest attestation of height `H_z + 1` (G0.2 (f), `f < q`), signed before the block was
   accepted. Only `f < q` is used, not `Healthy(g)`.
 * `HZ_le_hmax`: every honest `h_max` is `≥ H_z` at a cut `m` after a call of the node at or after
   `max(c_z, g) + Δ` and after `ḡ + κ`. `H_z` is the `h_max` of an honest holder at the snapshot

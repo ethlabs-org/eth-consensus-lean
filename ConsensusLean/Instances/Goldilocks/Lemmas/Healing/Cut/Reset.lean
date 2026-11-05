@@ -17,20 +17,21 @@ HR.1 over a Goldilocks run under `Healthy(g)` and `NoColl`, with `c_z = t_{slot(
 the greatest honest `Σ.h_max` after all events at `c_z`. Proved on paper (claims HR.1, status S;
 healing-simple `t1-proof.md` §7 (F1), `producer-reset-continuation.md` §4 (R0) and §10 (the
 first-time tick lemma)), one lemma per conjunct:
-(a) an honest row signed at or before `c_z` has height `≤ Σ.h_max ≤ H_z` (the frontier only
+(a) an honest attestation signed at or before `c_z` has height `≤ Σ.h_max ≤ H_z` (the frontier only
 rises; `Healthy(g)` gives a cut after `c_z`) (`signed_le_HZ`); from `c_z` on, `ac_to_fg` returns
 the block of a live fast lock written after `ḡ` (A1.5 with `τ = ḡ` on the AC projection)
 (`toFG_fastLock`);
-(b) the chain of a block of state height `≥ H_z + 2` carries an honest row of height `H_z + 1`
-(G0.2 (f): a chain leaves a height only with `q > f` rows of it) (`honest_row_of_height`);
-(c) at the reset `a_z`: `a_z > c_z` (`cutZ_lt_reset`), no honest high row before it
-(`reset_le_of_high`), the frontier at the ticks at `a_z` is `≤ H_z + 1` (`hmax_le_at_reset`: a
-higher one carries an honest row of height `H_z + 1` signed before the tick, by the tick order),
-so the rows at `a_z` are `≤ H_z + 1` (`signed_le_at_reset`), and the namers of the high entries
-before `a_z − Δ` are the faulty validators, fewer than `q` (`namers_lt_q`: an honest namer would
-have signed a high row before `a_z`, the state of an entry being the same at every honest node);
-the last clause is time arithmetic. The coherence of the honest blocks (for (c)'s namers) and the
-honest-object facts of A1.5 come from `Compose.goldilocks_ac_projection`. -/
+(b) the chain of a block of state height `≥ H_z + 2` carries an honest attestation of height
+`H_z + 1` (G0.2 (f): a chain leaves a height only with `q > f` attestations of it)
+(`honest_row_of_height`); (c) at the reset `a_z`: `a_z > c_z` (`cutZ_lt_reset`), no honest high
+attestation before it (`reset_le_of_high`), the frontier at the ticks at `a_z` is `≤ H_z + 1`
+(`hmax_le_at_reset`: a higher one carries an honest attestation of height `H_z + 1` signed before
+the tick, by the tick order), so the attestations at `a_z` are `≤ H_z + 1` (`signed_le_at_reset`),
+and the namers of the high entries before `a_z − Δ` are the faulty validators, fewer than `q`
+(`namers_lt_q`: an honest namer would
+have signed a high attestation before `a_z`, the state of an entry being the same at every honest
+node); the last clause is time arithmetic. The coherence of the honest blocks (for (c)'s namers) and
+the honest-object facts of A1.5 come from `Compose.goldilocks_ac_projection`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -94,7 +95,7 @@ theorem signAt_entry (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
   exact Store.exists_entry_of_createAtt (Compose.fg_reachable hrun.toLocalRun hy k)
     (hrun.cutLaw y hy k _ hc).1
 
-/-- An honest signed row comes from an actual earlier report, with its full
+/-- An honest signed attestation comes from an actual earlier report, with its full
 entry/source witnesses. The report and signing have the same time and FG store. -/
 theorem signAt_report_entry (hrun : GoldilocksRun proposer dg H tr) {v : Fin sp.n}
     (hv : v ∈ H) {k : Nat} {a : FG.Att sp.n} (hs : tr.SignAt v k a) :
@@ -204,7 +205,7 @@ theorem signAt_h_le (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
 
 /-! ## HR.1 (a) -/
 
-/-- An actual cut after `c_z` bounds every honest row signed at or before `c_z`,
+/-- An actual cut after `c_z` bounds every honest attestation signed at or before `c_z`,
 without requiring healthy continuation of the run. -/
 theorem signed_le_HZ_of_snapshot (hrun : GoldilocksRun proposer dg H tr)
     (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
@@ -218,7 +219,7 @@ theorem signed_le_HZ_of_snapshot (hrun : GoldilocksRun proposer dg H tr)
     linarith [hj.2]
   exact (signAt_h_le hrun hy hs).trans ((hmax_mono hrun.toLocalRun hy hkj).trans (hmax_le_HZ hy hj))
 
-/-- **HR.1 (a), first part.** An honest row signed at or before `c_z` has height `≤ H_z`. -/
+/-- **HR.1 (a), first part.** An honest attestation signed at or before `c_z` has height `≤ H_z`. -/
 theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att)
@@ -284,7 +285,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoC
 /-! ## HR.1 (b) -/
 
 /-- **HR.1 (b) (G0.2 (f)).** The chain of an honest accepted block of state height `≥ H_z + 2`
-carries an honest row of height `H_z + 1`. -/
+carries an honest attestation of height `H_z + 1`. -/
 theorem honest_row_of_height (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) (hXh : HZ tr H g + 2 ≤ ((tr.state y i).fg.σ X.root).h) :
@@ -309,7 +310,7 @@ theorem cutZ_lt_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRu
   obtain ⟨y, hy, _⟩ := hR.1
   exact cutZ_lt_reset_of_snapshot hrun (exists_firstCutAfter hrun hh hy) hR
 
-/-- An honest row on a block that a node holds at its `fg_attest` cut was signed before the
+/-- An honest attestation on a block that a node holds at its `fg_attest` cut was signed before the
 reset when that cut is at or before the reset (it was signed before that cut's time), so its
 height is at most `H_z`. -/
 private theorem held_row_lt (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
@@ -329,7 +330,7 @@ private theorem held_row_lt (hrun : GoldilocksRun proposer dg H tr) (hh : tr.Hea
   have := hR.2 _ hattH j att hj hatth
   linarith
 
-/-- **HR.1 (c), no honest high row before the reset.** -/
+/-- **HR.1 (c), no honest high attestation before the reset.** -/
 theorem reset_le_of_high (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {a : Time}
     (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
@@ -386,7 +387,7 @@ theorem hmax_le_at_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.Health
   have := held_row_lt hrun hh hR hy hc hk.le hX
   omega
 
-/-- **HR.1 (c), the rows signed at the reset have height `≤ H_z + 1`.** -/
+/-- **HR.1 (c), the attestations signed at the reset have height `≤ H_z + 1`.** -/
 theorem signed_le_at_reset (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     {a : Time} (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) (hk : tr.time k = a) : att.h ≤ HZ tr H g + 1 := by
@@ -411,8 +412,8 @@ private theorem highEntry_h {E : SA.Blk sp.n (List (FG.Att sp.n))}
   exact ⟨y, hy, i, hE', hE'h ▸ hBh⟩
 
 /-- **HR.1 (c), the first clause of (K1_𝓔) of G1.10 with `T₀ = a_z − Δ`.** The namers of a high
-entry by `a_z − Δ` are the faulty validators: an honest one would have signed a row of height
-`≥ H_z + 1` (the entry's state is the same at every honest node) before `a_z`. -/
+entry by `a_z − Δ` are the faulty validators: an honest one would have signed an attestation of
+height `≥ H_z + 1` (the entry's state is the same at every honest node) before `a_z`. -/
 theorem namers_lt_q (hrun : GoldilocksRun proposer dg H tr) (hh : tr.HealthyRun H ΔF g)
     (hnc : Compose.NoCollRun dg tr) {a : Time} (hR : IsReset tr H g a)
     {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ HighEntries tr H (HZ tr H g)) :

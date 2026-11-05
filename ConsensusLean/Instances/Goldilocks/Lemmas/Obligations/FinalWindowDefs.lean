@@ -115,7 +115,7 @@ def AnchorRun : Prop :=
     Q.params.ts (W.start + 3 * W.gap) ≤ b
 
 /-- **Route-A anchor steps**: `σ[P_i].h + 1 ≤ σ[P_{i+1}].h` for the three gap-`c` steps, read at
-honest stores (`AnchorStep`). Paper: workbench route_a_gap2.md §1 (rows by `row_of_report`,
+honest stores (`AnchorStep`). Paper: workbench route_a_gap2.md §1 (attestations by `row_of_report`,
 or a crossing above the previous anchor; step 0 from the seed `h₀ ≥ HZ+2`). -/
 def AnchorSteps : Prop :=
   ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc) (W.block i.succ)

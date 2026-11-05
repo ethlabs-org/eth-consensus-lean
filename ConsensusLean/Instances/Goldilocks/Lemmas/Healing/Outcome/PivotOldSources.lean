@@ -84,7 +84,7 @@ theorem ResetPremisesUpTo.finalized_compatible_high_origin {b : Time}
   · exact Or.inl (hp.low_finalized_below_origin hz c (by omega) ho)
 
 /-- Compare the actual cache and origin within a fixed horizon using only held
-chains and prior signed-row origins. No later tick is required. -/
+chains and prior signed-attestation origins. No later tick is required. -/
 theorem finalized_compatible_high_origin_before
     (hp : ResetPremises tr H proposer dg g ΔF a) (Q : Time)
     {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (_hcQ : tr.time c ≤ Q)

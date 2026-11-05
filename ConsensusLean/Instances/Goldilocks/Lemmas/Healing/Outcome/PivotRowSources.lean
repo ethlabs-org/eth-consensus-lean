@@ -29,7 +29,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: sources of the proposal rows
+/-! # Goldilocks Healing: sources of the proposal attestations
 
 Prerequisites for the post-reset proposal pivot. -/
 
@@ -42,9 +42,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-! ### Sources of the proposer's rows -/
+/-! ### Sources of the proposer's attestations -/
 
-/-- A high row signed before a proposal has a strictly earlier source cut and label.
+/-- A high attestation signed before a proposal has a strictly earlier source cut and label.
 The entry remains explicit so a crossing proof can identify it by root coherence. -/
 theorem proposal_high_row_source_before (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
@@ -110,7 +110,7 @@ theorem origin_label_lt_at_proposal (hp : ResetPremises tr H proposer dg g ΔF a
     (hri : r < i) (ho : HighOrigin tr H g v r l O) : l < u :=
   (hp.toUpTo tr H le_rfl).origin_label_lt_at_proposal hpH hci hcall hti hri ho
 
-/-- A bounded high floor at an actual proposal has a strictly older signed-row source. -/
+/-- A bounded high floor at an actual proposal has a strictly older signed-attestation source. -/
 theorem ResetPremisesUpTo.high_floor_source_at_proposal {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x p : Fin sp.n} {r l i u : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -716,7 +716,7 @@ theorem clean_optimistic_proposal_parent
   exact (hp.toUpTo tr H (le_max_left _ _)).clean_optimistic_proposal_parent hc hx hpH hop hs hbr
     hR hci hcall hd hti hbi
 
-/-- The packed old-source interface of the proposal row ordering lemma. -/
+/-- The packed old-source interface of the proposal attestation ordering lemma. -/
 theorem proposal_high_row (hp : ResetPremises tr H proposer dg g ΔF a)
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)

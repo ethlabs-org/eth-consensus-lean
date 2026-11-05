@@ -19,8 +19,8 @@ Proved here: the label bound, half the committee, the low-`Σ.J` root, both carr
 the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from G1.2 over the run
 (`finalized_anc_of_height_lt_of_run`, `Retention/Finality`), and R5 below the floor (a counted head
 of the origin, relayed in time; `relay_mem_voterBlockTree`), activation (`activation_caches`, the
-rows' sources compared before the first cut of `t_{j+1}`, `origins_compatible_before`) and R5
-above the floor (`height_lead_above`: no high contest, then the crossing of the floor, through
+attestations' sources compared before the first cut of `t_{j+1}`, `origins_compatible_before`) and
+R5 above the floor (`height_lead_above`: no high contest, then the crossing of the floor, through
 `Retention/Prefix`, with the report-time bound `row_origin_not_current`). -/
 
 namespace Consensus.Goldilocks.Healing
@@ -71,8 +71,8 @@ theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)
 
 /-- **No high justification before the reset** (`hr4-boot-carry.md` §2): at a state all of
 whose earlier cuts are before `a`, every held block is justified at `≤ H_z`: otherwise it has state
-height `≥ H_z + 2` (`h_j < h`), so its chain carries an honest row of height `H_z + 1` (HR.1 (b)),
-signed before the state's cut, hence before `a`, against HR.1 (c). -/
+height `≥ H_z + 2` (`h_j < h`), so its chain carries an honest attestation of height `H_z + 1` (HR.1
+(b)), signed before the state's cut, hence before `a`, against HR.1 (c). -/
 theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : ∀ k' < k, tr.time k' < a) {X : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -102,8 +102,8 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
 
 /-- **HBoot, the caches before the reset** (§11 "Historical finality and acceptance";
 `t1-proof.md` §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
-(a justification at `h ≥ H_z + 1` needs an honest row at `h`, none before `a`, HR.1 (c)), and
-`Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is below every high origin:
+(a justification at `h ≥ H_z + 1` needs an honest attestation at `h`, none before `a`, HR.1 (c)),
+and `Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is below every high origin:
 its finality quorum meets the crossing quorum on a counted head's chain at its height in an honest
 validator (G1.2, G0.5, `f < 2q − n`). -/
 theorem ResetPremisesUpTo.boot_caches {b : Time}
@@ -249,9 +249,9 @@ theorem activated_origin_compatible_before
 "Retaining the witnesses and the frame"; §12, the pending boundary case). At the state at
 `t_{j+1}` after the reset (immediately before the first-transfer votes of the origin's label `j`,
 even when its write is later), every honest `Σ.F`, and every high honest `Σ.J`, is compatible with
-the origin's block: low finalized entries by G1.2, high ones through their row witnesses, whose
-sources are comparable with `B` by the label split (earlier labels by their votes, the same label
-by TSQ, later labels excluded by R4). -/
+the origin's block: low finalized entries by G1.2, high ones through their attestation witnesses,
+whose sources are comparable with `B` by the label split (earlier labels by their votes, the same
+label by TSQ, later labels excluded by R4). -/
 theorem ResetPremisesUpTo.activation_caches {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
@@ -280,7 +280,8 @@ theorem ResetPremisesUpTo.activation_caches {b : Time}
   have hact : i < k₁ ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k₁ :=
     Or.inr fun c hc => not_le.mp fun hle => absurd (hk₁.1.trans (hp.run.time_mono hle))
       (not_le.mpr hc)
-  -- every honest row on the store was signed before `k₁` and names an entry comparable with `B`
+  -- every honest attestation on the store was signed before `k₁` and names an entry comparable with
+  -- `B`
   have hrow : ∀ E ∈ (tr.state y k₁).fg.tree,
       HZ tr H g + 1 ≤ ((tr.state y k₁).fg.σ E.root).h →
       ((tr.state y k₁).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocks H) E B →
@@ -445,7 +446,7 @@ theorem high_origin_height_at_vote (hp : ResetPremises tr H proposer dg g ΔF a)
 /-- The floor crossing supplies an earlier high origin above `B` and a held entry at the
 receiver's floor. Heights of `B` are read at its source, where it is held. Pairwise comparison
 of earlier origins rules out a high contest; comparison with `B` orients the crossing.
-Neither a vote/cache invariant nor pivot service is assumed. The signed row witnessing
+Neither a vote/cache invariant nor pivot service is assumed. The signed attestation witnessing
 the crossing is retained for consumers that need an actual earlier report. -/
 theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -709,7 +710,8 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     unfold Store.headHeightFloor
     simp only [hcon, ↓reduceIte]
   rw [hfl] at hfloor
-  -- the crossing of the floor: its entry is named by an honest row with an earlier source origin
+  -- the crossing of the floor: its entry is named by an honest attestation with an earlier source
+  -- origin
   obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
   obtain ⟨E, hE, hEC, hEh, hET⟩ :=
     entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
@@ -1012,7 +1014,7 @@ theorem low_root_of_seed_before (hp : ResetPremises tr H proposer dg g ΔF a)
     Compatible (tr.HonestBlocks H) ell.frame.fcRoot B :=
   (hp.toUpTo tr H (le_refl a)).low_root_of_seed_before hx hBx hy hS hc hm hlow hBS hheld
 
-/-- All held honest rows justify root compatibility from bounded origin comparisons. -/
+/-- All held honest attestations justify root compatibility from bounded origin comparisons. -/
 theorem ResetPremisesUpTo.high_J_root_of_held_at_state_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -1303,12 +1305,12 @@ theorem half_committee (hp : ResetPremises tr H proposer dg g ΔF a) {s' : Nat}
     sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard :=
   (hp.toUpTo tr H (le_max_left a (sp.ts s' + sp.Δ))).half_committee hs (le_max_right _ _)
 
-/-- **(R4), the high-record lemma** (§16). From (R1): before `a` no honest row has height
+/-- **(R4), the high-record lemma** (§16). From (R1): before `a` no honest attestation has height
 `≥ H_z + 1` (HR.1 (c)), and its finality pair is below its height pair (G0.5), so the high record
 coordinates start empty; every later record write at `h ≥ H_z + 1` names the entry at `h` of the
-writing source's chain, which lies on the chain of a high origin (R1, rows), and the high origins
-are pairwise comparable (R1), so two named entries at one height are equal (entry constancy on a
-chain). Induction over the serialized honest client calls. -/
+writing source's chain, which lies on the chain of a high origin (R1, attestations), and the high
+origins are pairwise comparable (R1), so two named entries at one height are equal (entry constancy
+on a chain). Induction over the serialized honest client calls. -/
 theorem high_records (hp : ResetPremises tr H proposer dg g ΔF a)
     (hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B → HighOrigin tr H g x' i' j' B' →
       Compatible (tr.HonestBlocks H) B B')

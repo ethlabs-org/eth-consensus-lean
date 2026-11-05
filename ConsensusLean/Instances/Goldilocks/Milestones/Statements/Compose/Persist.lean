@@ -12,14 +12,14 @@ events of the run (F.5 (run)) that joins the per-vote transfer steps A1.2–A1.4
 the source step A1.9 and the FG cut G1.10 (`Statements/FGStore`). Its premises are the run
 premises of the claims (`Sync[t_s, t_m + Δ]`, `Carry`, half-committee honest votes, `f < h_t` at
 the vote times, `NoColl`, unforgeability from `GoldilocksRun`) and **`Clean(s, m, B)`**: (K0) the
-honest caches at `t_s` are compatible with `B`, (K1) the row cut of G1.10 at the scope of C1.1
-(`Store.namers` of the FG projection, at `T₀ = t_{s+1} + Δ`, below `q` for every entry that
+honest caches at `t_s` are compatible with `B`, (K1) the attestation cut of G1.10 at the scope of
+C1.1 (`Store.namers` of the FG projection, at `T₀ = t_{s+1} + Δ`, below `q` for every entry that
 conflicts with `B` and strictly extends an honest `Σ.F` at `t_s`), (K2) the height lead at each
 honest vote of a slot in `(s, m]`.
 
 The AC-side notions (votes, `Carry`, fast locks, `ac_to_fg`, viability at a vote) are read on
-the AC projection of the run (`SA.*` over `tr.projAC`), the FG-side ones (signings, the row cut)
-on its FG projection; the run premises (`Sync`, `f < h_t`) are the run's (`JoinedProjection`
+the AC projection of the run (`SA.*` over `tr.projAC`), the FG-side ones (signings, the attestation
+cut) on its FG projection; the run premises (`Sync`, `f < h_t`) are the run's (`JoinedProjection`
 bridges them to the AC projection's). "The state of `y` at `t`" is `y`'s state before the first
 cut of the run at a time `≥ t` (`FirstCutFrom`).
 
@@ -45,7 +45,7 @@ def excludedEntries (s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) :
     ∃ y ∈ H, ∃ j, tr.FirstCutFrom j (sp.ts s) ∧
       Anc (tr.HonestBlocks H) (tr.state y j).fg.F E' ∧ E' ≠ (tr.state y j).fg.F}
 
-/-- **`Clean(s, m, B)`** (claims C1.1): the premises on the honest caches, the rows and the
+/-- **`Clean(s, m, B)`** (claims C1.1): the premises on the honest caches, the attestations and the
 heights that the regime nodes discharge. -/
 structure Clean (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
   /-- (K0) Honest caches: at `t_s`, the `Σ.F` and the `Σ.J` of every honest node are compatible
@@ -53,8 +53,8 @@ structure Clean (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
   caches : ∀ y ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts s) →
     Compatible (tr.HonestBlocks H) (tr.state y j).fg.F B ∧
       Compatible (tr.HonestBlocks H) (tr.state y j).fg.J B
-  /-- (K1) FG attestation cut (the claims' row cut): for every excluded entry `E'`, the validators
-  that are faulty, or honest and
+  /-- (K1) FG attestation cut (the claims' attestation cut): for every excluded entry `E'`, the
+  validators that are faulty, or honest and
   sign at or before `t_{s+1} + Δ` an attestation whose height pair names `E'`, number fewer
   than `q`. -/
   fgAttCut : ∀ E' ∈ excludedEntries tr H s B,

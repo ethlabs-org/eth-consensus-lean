@@ -78,7 +78,7 @@ structure GSTRunUpTo (g ΔF b : Time) : Prop where
       tr.AttDeliveredBy y j (max (tr.time i) g) ΔF att
 
 /-- Reset service keeps the AC message/block/relay contracts, but requests only
-signed-row delivery by the deadline, without a row processing lower bound. -/
+signed-attestation delivery by the deadline, without an attestation processing lower bound. -/
 structure ResetService (g ΔF b : Time) : Prop where
   deltaF : 0 < ΔF
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
@@ -100,7 +100,7 @@ structure ResetService (g ΔF b : Time) : Prop where
       ∃ k ≤ j, tr.ProcessAttAt y k att ∧
         tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
 
-/-- Full GST supplies the weaker signed-row service. -/
+/-- Full GST supplies the weaker signed-attestation service. -/
 theorem ResetService.of_gst {g ΔF b : Time} (h : tr.GSTRun H ΔF g) :
     ResetService tr H g ΔF b := by
   refine ⟨h.deltaF, fun x hx i m hs => h.message x hx i m hs trivial,

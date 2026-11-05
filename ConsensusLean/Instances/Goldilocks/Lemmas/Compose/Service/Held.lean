@@ -14,10 +14,10 @@ workbench#12 §4, "`F ≤ P` through the update": at an honest node's joined upd
 * Every origin of a label at most `s` is below `P` (`origin_anc_proposal_before`: an honest slot-`s`
   vote is `P` and extends it, by S2 or as its honest supporter), so every honest slot-`(s+1)`
   vote extends `P` (`votes_succ_extend_before`, the later transfer for the protected block `P`).
-* The honest rows the updater holds were signed before `t_s + 6Δ`, with sources below origins of
-  labels at most `s + 1`: below `P`, or below an honest slot-`(s+1)` head that extends `P`; so
-  every such source is compatible with `P` (`rows_compatible_before`), and so is `Σ.J`, genesis or
-  the entry of one, and `Σ.F ⪯ Σ.J`.
+* The honest attestations the updater holds were signed before `t_s + 6Δ`, with sources below
+  origins of labels at most `s + 1`: below `P`, or below an honest slot-`(s+1)` head that extends
+  `P`; so every such source is compatible with `P` (`rows_compatible_before`), and so is `Σ.J`,
+  genesis or the entry of one, and `Σ.F ⪯ Σ.J`.
 * `Σ.F` is genesis, or strictly below a block `B` of the tree that finalizes it
   (`Store.F_lt_finalizer`, the FG store's strict finalization), of a slot at most `s + 1` (`B` is in
   the frame of the update, `frame_slot_le`); so `Σ.F` has a slot at most `s` and, compatible with
@@ -90,8 +90,8 @@ private theorem votes_succ_extend_before (hrun : GoldilocksRun proposer dg H tr)
       (fun z hz j' hj' e' hv hs => ih j' hj' z hz e' hv hs
         ((hrun.time_mono hj'.le).trans hjb))
 
-/-- **The rows the updater holds have sources compatible with `P`**: signed before `t_s + 6Δ`,
-with a source below an origin before the signing, of a label at most `s + 1`. -/
+/-- **The attestations the updater holds have sources compatible with `P`**: signed before
+`t_s + 6Δ`, with a source below an origin before the signing, of a label at most `s + 1`. -/
 private theorem rows_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →

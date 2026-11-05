@@ -4,12 +4,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpT
 
 public section
 
-/-! # Goldilocks Healing: Lemma 3′ and the crossing from signed rows through a horizon (#137)
+/-! # Goldilocks Healing: Lemma 3′ and the crossing from signed attestations through a horizon
+(#137)
 
 consensus-lean#137 (finite-horizon port). `justify_of_signed_rows'` and `cross_of_signed_rows`
 take the whole-run `HSShared`; here the delivery premise comes from `HSSharedUpTo … b` by
 `rows_delivered_upTo`, so the proposal cut needs `t_{kX} ≤ b`. No other fact after `b` is used:
-the parent is held at the proposal cut, and every row is signed by `v ≤ t_{kX} - Δ_F`. -/
+the parent is held at the proposal cut, and every attestation is signed by `v ≤ t_{kX} - Δ_F`. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -19,7 +20,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **Lemma 3′ from signed rows through the horizon `b`** (`justify_of_signed_rows'` from
+/-- **Lemma 3′ from signed attestations through the horizon `b`** (`justify_of_signed_rows'` from
 `HSSharedUpTo … b`, for a proposal cut with `t_{kX} ≤ b`). -/
 theorem justify_of_signed_rows'_upTo (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
@@ -52,7 +53,7 @@ theorem justify_of_signed_rows'_upTo (hrun : GoldilocksRun proposer dg H tr) {g 
   rw [hr] at this
   exact this
 
-/-- **L5.3 step 5 from signed rows through the horizon `b`** (`cross_of_signed_rows` from
+/-- **L5.3 step 5 from signed attestations through the horizon `b`** (`cross_of_signed_rows` from
 `HSSharedUpTo … b`, for a proposal cut with `t_{kX} ≤ b`). -/
 theorem cross_of_signed_rows_upTo (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)

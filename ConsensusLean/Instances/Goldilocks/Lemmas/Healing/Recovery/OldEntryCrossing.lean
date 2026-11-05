@@ -21,8 +21,8 @@ stretch, with `s < U.slot ≤ s + δ_t ≤ s + r_old`, and `U` is an actual run 
 
 * The report supply covers `P` by `t_s + 6Δ` (inclusive). If some honest report `C ⪰ P` is
   already higher than `P`, `C` is an actual honest block above `P` (it is used only as such, not
-  as a justification). Otherwise every honest validator signs the row `(σ[P].h, σ[P].T_h)` at
-  its report (`row_of_high_report`: `client_progress_of_lock`, with the lock at the high height
+  as a justification). Otherwise every honest validator signs the attestation `(σ[P].h, σ[P].T_h)`
+  at its report (`row_of_high_report`: `client_progress_of_lock`, with the lock at the high height
   free or the entry by `ResetPremisesUpTo.record_entry_eq`).
 * The stretch's ready proposal `X` of slot `s + δ_t` sits on a parent above the high origin of a
   report (`high_report_origin`, `ResetPremisesUpTo.reset_proposal_passes`), and `round_cross`
@@ -39,9 +39,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- **The row at a high report** (as `row_or_high_of_report` in `M1/Rise`, with the lock clause
-from high-record uniqueness instead of the frame kind). An honest report `R ⪰ P` at cut `i`, `P`
-high: `y` signed the row `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. -/
+/-- **The attestation at a high report** (as `row_or_high_of_report` in `M1/Rise`, with the lock
+clause from high-record uniqueness instead of the frame kind). An honest report `R ⪰ P` at cut `i`,
+`P` high: `y` signed the attestation `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. -/
 private theorem row_of_high_report (hp : ResetPremises tr H proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {R P : SA.Blk sp.n (List (FG.Att sp.n))} (hR : SA.ToFGAt tr.projAC y i ell R)
@@ -195,7 +195,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
     · obtain ⟨z, hz, r, ℓ, C, hC, hrt, hPC, hlt⟩ := hhi
       exact higher z hz r ℓ C hC hrt hPC hlt
     push Not at hhi
-    -- every honest validator signed `P`'s row at its report; the proposal of `s + δ_t`
+    -- every honest validator signed `P`'s attestation at its report; the proposal of `s + δ_t`
     obtain ⟨kx, X, hXr, -⟩ := hwindow (s + sp.toParams.δt) (by omega) (by omega)
     obtain ⟨hpxH, hpxe, -, hXprop, hXs, -⟩ := hXr
     obtain ⟨-, k, ℓ, d, pay, hc, hcall, hd, htc, hpar, -⟩ :=

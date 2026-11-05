@@ -10,7 +10,7 @@ Client safety (G0.5) from a record invariant over the attestations sent so far: 
 is the recorded target at its height, each timeout's root is in the recorded timeout set at
 its height, and each finality pair is the lock at its height and stays permitted. The
 invariant holds for the empty record and `createAtt` keeps it when the entry state's pairs
-are below its height; at the end it rules out E1 (the permitted pair meets every row at its
+are below its height; at the end it rules out E1 (the permitted pair meets every attestation at its
 height) and E2 (one recorded target per height). Aggregation (G0.10) unfolds `createAtt`. -/
 
 namespace Consensus.Goldilocks.FG

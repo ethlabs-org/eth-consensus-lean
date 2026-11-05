@@ -16,7 +16,7 @@ F3-lock lemma uses the NoAdvance premise.
   hypothesis, in place of `HSShared` and `PhaseOn`.
 * `lock_free_or_entry_of_frame` and `client_signs_of_frame` (O1-L): in kind F
   (`h_j < h`) or kind J (`h_j = h`, `Σ.J ⪯ C`) the lock at the source height is free or the
-  entry, so the client signs the row now or signed it before. -/
+  entry, so the client signs the attestation now or signed it before. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -140,7 +140,7 @@ theorem lock_none_of_noAdvance (hrun : GoldilocksRun proposer dg H tr) {g T : Ti
 
 /-- **A-item 3.** `client_progress` with the lock premise as a hypothesis (no `HSShared`, no
 phase): at an honest `fg_attest(C)` with `C` of state height `h` and entry `E`, if the lock at
-`h` is free or `E`, the client signs a row `(h, E)` now or signed one at an earlier cut. -/
+`h` is free or `E`, the client signs an attestation `(h, E)` now or signed one at an earlier cut. -/
 theorem client_progress_of_lock (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C signed))) {E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
@@ -240,7 +240,7 @@ theorem lock_free_or_entry_of_frame (hrun : GoldilocksRun proposer dg H tr)
   rw [hETh] at h2
   exact h1.symm.trans h2
 
-/-- **O1-L (§24.3), the row.** At an honest `fg_attest(C)` with `C` of state height `h` and
+/-- **O1-L (§24.3), the attestation.** At an honest `fg_attest(C)` with `C` of state height `h` and
 entry `E`, in kind F or kind J, the client signs `(h, E)` now or signed it before. -/
 theorem client_signs_of_frame (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -255,7 +255,7 @@ theorem client_signs_of_frame (hrun : GoldilocksRun proposer dg H tr)
   client_progress_of_lock hrun hy hc hE hCh
     (lock_free_or_entry_of_frame hrun hnc hf hy hE hCh hkind)
 
-/-- **The row at `H_z` before the advance (§24.4 ROW-sign, h = H_z).** -/
+/-- **The attestation at `H_z` before the advance (§24.4 ROW-sign, h = H_z).** -/
 theorem client_signs_HZ_of_noAdvance (hrun : GoldilocksRun proposer dg H tr) {g T : Time}
     (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hkT : tr.time k < T)

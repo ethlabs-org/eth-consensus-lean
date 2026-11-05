@@ -11,7 +11,7 @@ public section
 `hs5-exact-helpers.md` §4 (`consume_continue`, "two crossings with the original drain"): under
 `Γ`, with HS.1 and HS.2 as hypotheses (HS.3 (b) from HS.2, `frozen_tree_agreement_clean`),
 from the acquired path's witness (an honest proposal `W` of slot `s`, entry `E` at
-`h ∈ {ℓ, m}`, its protected parents, and the rows by `v = t_s + 6Δ` that
+`h ∈ {ℓ, m}`, its protected parents, and the attestations by `v = t_s + 6Δ` that
 `historical_source_rows` gives), the phase cannot stay `(m, c)` through the first cut `j_A` after
 `w + A`, `A = 2C + Δ` (`consume_continue_of`, proved from `mature_progress_of` and
 `fixed_upper_rows_of`).
@@ -24,9 +24,9 @@ from the acquired path's witness (an honest proposal `W` of slot `s`, entry `E` 
 3. `Prop⁺` at `t_x + 8Δ` gives a ready `Y`; the entry-independent envelope
    `B₂ = t_y + (7 + 4δ_t)Δ + Δ_F + G_p ≤ w + 2C < w + A` is bounded first. `X`'s protected parent
    clause gives `X ⪯ Y`, so `ht(Y) = m`; HS.3 (b) at `Y` protects it, `fixed_upper_rows_of` gives
-   its entry `E₂` and rows at `m` by `t_y + 6Δ` (every deadline below `B₂` has its first cut at
-   or before `j_A`, index inclusion), and `mature_progress_of` at `b₂ ≤ B₂` gives a ready proposal
-   of height `≥ m + 1` accepted at a time `< w + A`: a frontier rise, a contradiction. -/
+   its entry `E₂` and attestations at `m` by `t_y + 6Δ` (every deadline below `B₂` has its first cut
+   at or before `j_A`, index inclusion), and `mature_progress_of` at `b₂ ≤ B₂` gives a ready
+   proposal of height `≥ m + 1` accepted at a time `< w + A`: a frontier rise, a contradiction. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -57,7 +57,7 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
   linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left he sp.toParams.hΔ.le]
 
 /-- **HS.5's consumption and continuation in the phase** (`hs5-exact-helpers.md` §4;
-`Service`'s `consume_continue` with the acquired path destructured, its rows from
+`Service`'s `consume_continue` with the acquired path destructured, its attestations from
 `historical_source_rows`, and the phase `(m, c)` through `j_A`): a contradiction. -/
 theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF)

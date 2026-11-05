@@ -473,10 +473,11 @@ structure SleepyBase (s₀ : Nat) : Prop where
   sources : ∀ y ∈ H, ∀ i ℓ C, SA.ToFGAt tr.projAC y i ℓ C → sp.ts (s₀ + 2 : Nat) ≤ tr.time i →
     (∃ C' l, Origin tr H C' l ∧ l < s₀ ∧ Anc (tr.HonestBlocks H) C C') →
       OnOriginChainFrom tr H C s₀
-  /-- (5) **Rows at votes**, read by `vote_frame_from` (the source geometry of `Σ.J` and of the
-  floor crossing, at heights `≥ h_j`): at an honest vote of slot `s + 1 > s₀`, an honest row on a
-  block the voter holds, whose named entry has height `≥ h_j`, and whose signing source is below
-  an origin of a label `< s₀`, has an honest source below an origin of a label in `[s₀, s]`. -/
+  /-- (5) **Attestations at votes**, read by `vote_frame_from` (the source geometry of `Σ.J` and of
+  the floor crossing, at heights `≥ h_j`): at an honest vote of slot `s + 1 > s₀`, an honest
+  attestation on a block the voter holds, whose named entry has height `≥ h_j`, and whose signing
+  source is below an origin of a label `< s₀`, has an honest source below an origin of a label in
+  `[s₀, s]`. -/
   vote_rows : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → ∀ s, e.msg.slot = s + 1 →
     s₀ ≤ s → ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
       (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
@@ -486,9 +487,9 @@ structure SleepyBase (s₀ : Nat) : Prop where
       ∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧
         ((tr.state x k).fg.σ D.root).Th = a.T) ∧ OriginFrom tr H C l s₀ ∧ l ≤ s ∧
           Anc (tr.HonestBlocks H) D C
-  /-- (5) **Rows at cuts**, read by `held_origin_viable_from` (S3 at full reads): at a cut from
-  `t_{s₀}`, an honest row as in `vote_rows` has an honest source below an origin of a label
-  `≥ s₀`. -/
+  /-- (5) **Attestations at cuts**, read by `held_origin_viable_from` (S3 at full reads): at a cut
+  from `t_{s₀}`, an honest attestation as in `vote_rows` has an honest source below an origin of a
+  label `≥ s₀`. -/
   event_rows : ∀ y ∈ H, ∀ i, sp.ts s₀ ≤ tr.time i → ∀ X ∈ (tr.state y i).fg.tree,
     ∀ a ∈ X.fgPayload, a.val ∈ H → (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
       (∃ D C l, (∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧

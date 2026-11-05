@@ -10,7 +10,7 @@ public section
 consensus-lean#137 (finite-horizon port). `HSShared.healthy` is `HealthyRun`, which asks every
 honest node to be awake at all `t ≥ ḡ`; a finite trace is not awake after its horizon, so a
 finite query cannot supply `HSShared`. `HSSharedUpTo … b` keeps the other fields and replaces
-`Healthy(g)` and `NoRestartAfter ḡ` by their restrictions to the horizon `b`: the signed-row
+`Healthy(g)` and `NoRestartAfter ḡ` by their restrictions to the horizon `b`: the signed-attestation
 service of `ResetService` at receiver calls by `b`, wakefulness on `[ḡ, b]`, the fault bound,
 and no honest restart in `(ḡ, b]`. `HSShared.toUpTo` restricts the whole-run premises to any
 horizon. `rows_delivered_upTo` is `rows_delivered` for a proposal cut by `b`. -/
@@ -32,7 +32,7 @@ structure HSSharedUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   noColl : Compose.NoCollRun dg tr
   /-- Genesis's root is its digest (as in `HSShared`). -/
   genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
-  /-- GST service with signed-row delivery at receiver calls by `b`. -/
+  /-- GST service with signed-attestation delivery at receiver calls by `b`. -/
   sync : ResetService tr H g ΔF b
   /-- Every honest node is awake on `[ḡ, b]`. -/
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
@@ -43,10 +43,10 @@ structure HSSharedUpTo (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
   timeoutDelay : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.δt : Time)
 
-/-- **The rows reach the proposer strictly before `t_x`, through the horizon.** Signed-row
-service and a proposer restart-prefix bound suffice: when `v + Δ_F ≤ time kX ≤ b`, a row
-signed by `v ≥ ḡ` is processed at an earlier cut and strictly earlier time. No timeout-delay
-bound is needed, including when `v + Δ_F = time kX`. -/
+/-- **The attestations reach the proposer strictly before `t_x`, through the horizon.**
+Signed-attestation service and a proposer restart-prefix bound suffice: when
+`v + Δ_F ≤ time kX ≤ b`, an attestation signed by `v ≥ ḡ` is processed at an earlier cut and
+strictly earlier time. No timeout-delay bound is needed, including when `v + Δ_F = time kX`. -/
 theorem rows_delivered_upTo (hrun : GoldilocksRun proposer dg H tr)
     (hsvc : ResetService tr H g ΔF b) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}

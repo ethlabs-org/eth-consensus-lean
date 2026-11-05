@@ -6,21 +6,21 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing, HR.4: the cut step and the rows
+/-! # Goldilocks Healing, HR.4: the cut step and the attestations
 
-The cut step (`retention_cut_step`, G1.10 at the height-scoped scope) and (R1)'s rows
+The cut step (`retention_cut_step`, G1.10 at the height-scoped scope) and (R1)'s attestations
 (`high_rows`, the provenance of the high sources). Design: workbench#22 (`hr4-cut-scope.md`).
 
-* **Rows** (§4): an honest row of height `≥ H_z + 1` signed at cut `d` names the entry of the
-  chain of a high origin written by the signer before `d` (`high_row_source`, from the stored
-  fast-lock provenance).
+* **Attestations** (§4): an honest attestation of height `≥ H_z + 1` signed at cut `d` names the
+  entry of the chain of a high origin written by the signer before `d` (`high_row_source`, from the
+  stored fast-lock provenance).
 * **Prefix comparison** (§4): with `VoteInv` through cut `k`, every high origin written by `k` is
   comparable with every high origin active at `k` (`origins_compatible_prefix`): earlier labels
   by the honest votes of the later label (`fastLock_compatible_of_votes`; the votes of a pending
   label precede `t_{j+1}`), the same label by TSQ (`fastLock_same_slot`).
 * **The cut step** (§§2–3): every honest attestation on a block of the store after cut `k` was
-  signed before `k`, so (rows, prefix comparison) none names a high entry that conflicts with
-  `B`; the prefix-local core (`Store.entry_kept`) keeps such an entry unjustified, so a high
+  signed before `k`, so (attestations, prefix comparison) none names a high entry that conflicts
+  with `B`; the prefix-local core (`Store.entry_kept`) keeps such an entry unjustified, so a high
   `Σ.J` is compatible with `B` (`Store.J_compatible_of_rows`); `Σ.F ⪯ Σ.J` follows it, and a low
   one is below `B` by G1.2 at strict height (`low_finalized_below_origin`). No (K0) is used. -/
 
@@ -73,9 +73,9 @@ theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
     by_contra hck
     exact (not_lt_of_ge (h.trans (hp.run.time_mono (show k ≤ c by omega)))) hc
 
-/-! ### The cut step and the rows -/
+/-! ### The cut step and the attestations -/
 
-/-- A signed high row before a bounded cut names an entry comparable with an
+/-- A signed high attestation before a bounded cut names an entry comparable with an
 active bounded origin, using only vote extension through that cut. -/
 theorem ResetPremisesUpTo.row_compatible {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {k : Nat}
@@ -105,8 +105,8 @@ first-violating-event induction"; `hr4-cut-scope.md` §§2–4). (R2) after the 
 height `≥ H_z + 1` that conflict with `B`: every honest attestation on a block of the store after
 cut `k` was signed before `k` (unforgeability), so it names no entry of `𝓔_B` (`row_compatible`:
 its entry is below a high origin written before the signing, comparable with `B` by the votes
-through `k`); so the counted rows naming an entry of `𝓔_B` are faulty, fewer than `q`, and no
-entry of `𝓔_B` is justified on the store (`Store.J_compatible_of_rows`): a high `Σ.J` is
+through `k`); so the counted attestations naming an entry of `𝓔_B` are faulty, fewer than `q`, and
+no entry of `𝓔_B` is justified on the store (`Store.J_compatible_of_rows`): a high `Σ.J` is
 compatible with `B`, and so is `Σ.F ⪯ Σ.J`; when `Σ.J` is low, `Σ.F` is below `B` by G1.2
 (`low_finalized_below_origin`). No (K0) is used: `Store.cut_scope` (C1.1's scope) does not apply,
 since it assumes (K0) for `Σ.J` and (K1) for every conflicting entry above an honest `Σ.F` at `Ts`,
@@ -180,12 +180,12 @@ theorem retention_cut_step (hp : ResetPremises tr H proposer dg g ΔF a) (k : Na
     ((le_max_right _ _).trans (le_max_right _ _)) hy hc ho
     ((le_max_left _ _).trans (le_max_right _ _)) hact
 
-/-- **(R1), the rows** (HR.1 (a), A1.5 with `τ = ḡ`; §16; `hr4-cut-scope.md` §4). The source `C`
-of an honest row of height `≥ H_z + 1` is the viable ancestor of a live fast lock's block, which
-is at or below the stored block `B` of a fast-lock write of the signer before the signing
-(`stored_fast_lock_provenance`); the row's height pair is `C`'s height and entry, so `B` has state
-height `≥ σ[C].h ≥ H_z + 1` (a high origin), and the named entry is the entry at that height on
-`B`'s chain in the writer's tree (`high_row_source`). -/
+/-- **(R1), the attestations** (HR.1 (a), A1.5 with `τ = ḡ`; §16; `hr4-cut-scope.md` §4). The source
+`C` of an honest attestation of height `≥ H_z + 1` is the viable ancestor of a live fast lock's
+block, which is at or below the stored block `B` of a fast-lock write of the signer before the
+signing (`stored_fast_lock_provenance`); the attestation's height pair is `C`'s height and entry, so
+`B` has state height `≥ σ[C].h ≥ H_z + 1` (a high origin), and the named entry is the entry at that
+height on `B`'s chain in the writer's tree (`high_row_source`). -/
 theorem high_rows (hp : ResetPremises tr H proposer dg g ΔF a) :
     ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
       ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,

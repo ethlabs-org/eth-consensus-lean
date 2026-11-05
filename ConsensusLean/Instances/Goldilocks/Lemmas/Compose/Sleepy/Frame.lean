@@ -20,9 +20,10 @@ public section
 /-! # Goldilocks under `Sleepy`: honest-store frame geometry
 
 workbench#11 §3 (S3). With the source origins relevant at a cut compatible with an origin `C` and
-with each other, every target or progress quorum has an honest row (`q > f`), whose named entry is
-on the origin chain; comparable sources of one height name one entry, so there is no contest from
-genesis, the floor is `max(1, h_max − 1)`, and `fc_root` (`Σ.J` or `Σ.F`) is compatible with `C`.
+with each other, every target or progress quorum has an honest attestation (`q > f`), whose named
+entry is on the origin chain; comparable sources of one height name one entry, so there is no
+contest from genesis, the floor is `max(1, h_max − 1)`, and `fc_root` (`Σ.J` or `Σ.F`) is compatible
+with `C`.
 
 Both are stated for a block `B` with the hypotheses the argument uses, not only for origins, so
 that the proposal-adoption bootstrap (workbench#12 §4, S3P) applies them to the protected
@@ -76,7 +77,7 @@ private theorem anc_height (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy
     · exact ⟨by omega, fun _ => (h4 h1).1.trans (ih.2 (by omega))⟩
     · exact ⟨by omega, fun _ => by omega⟩
 
-/-- Every progress bit of a held block's state has its row on the block's chain, naming the
+/-- Every progress bit of a held block's state has its attestation on the block's chain, naming the
 entry. -/
 private theorem prog_rows (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀) {m : Nat}
     {W : NodeBlock P ACP} (hW : W ∈ (ftr.store y m).tree) :
@@ -108,8 +109,8 @@ private theorem prog_rows (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy 
       exact absurd hv (Finset.notMem_empty v)
 
 /-- **Crossing quorums**: every height `1 ≤ j` that a held block's chain left has an entry block
-`E` (height `j`, its own entry) on the chain and a quorum of validators with a row on the chain
-naming `E`. -/
+`E` (height `j`, its own entry) on the chain and a quorum of validators with an attestation on the
+chain naming `E`. -/
 private theorem crossing_quorum (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀)
     {m : Nat} {W : NodeBlock P ACP} (hW : W ∈ (ftr.store y m).tree) :
     ∀ j, 1 ≤ j → j < ((ftr.store y m).σ W.root).h →
@@ -296,8 +297,8 @@ private theorem honest_mem (hf : 2 * Hᶜ.ncard < sp.n) {Q : Finset (Fin sp.n)}
   have hq : sp.toParams.fg.q = (2 * sp.n + 2) / 3 := rfl
   omega
 
-/-- An honest row on the chain of a held block was signed by its signer before the node accepted
-the block, before the cut. -/
+/-- An honest attestation on the chain of a held block was signed by its signer before the node
+accepted the block, before the cut. -/
 theorem honest_row_signed_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
@@ -335,7 +336,7 @@ theorem isHonestSource_iff {D : SA.Blk sp.n (List (FG.Att sp.n))} {T : Nat} :
       ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T :=
   Iff.rfl
 
-/-- Every honest row on a block of `y`'s tree before cut `i` has a source satisfying `G`. -/
+/-- Every honest attestation on a block of `y`'s tree before cut `i` has a source satisfying `G`. -/
 def HonestRowsSourced (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H → ∃ D, G D ∧ IsHonestSource tr H D a.T
@@ -346,8 +347,8 @@ theorem honestRowsSourced_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y
         ∃ D, G D ∧ IsHonestSource tr H D a.T :=
   Iff.rfl
 
-/-- Every honest row on a block of `y`'s tree before cut `i` whose named entry has height at
-least `h₀` (in `y`'s states) has a source satisfying `G`: the rows the geometry reads at the
+/-- Every honest attestation on a block of `y`'s tree before cut `i` whose named entry has height at
+least `h₀` (in `y`'s states) has a source satisfying `G`: the attestations the geometry reads at the
 crossing heights `≥ h₀`. -/
 def RowsAbove (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i h₀ : Nat) : Prop :=
@@ -422,7 +423,7 @@ theorem attestation_source (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
     originBefore_iff.2 ⟨z, hz, c, by omega, CV, ho⟩,
     (Anc.mono (T := tr.HonestBlocks H) (fun _ hZ => ⟨x, hx, j, hZ.1⟩) hVB).trans hLC⟩
 
-/-! ### The store of an honest node whose honest rows have compatible sources -/
+/-! ### The store of an honest node whose honest attestations have compatible sources -/
 
 section Geometry
 
@@ -430,7 +431,7 @@ variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hf : 2
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
 include hrun hnc hf hy in
-/-- A crossing quorum has an honest row, whose source satisfies `G`. -/
+/-- A crossing quorum has an honest attestation, whose source satisfies `G`. -/
 private theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
     {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree) {j : Nat} (hj0 : h₀ ≤ j) (hj1 : 1 ≤ j)
@@ -504,7 +505,7 @@ theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
 
 include hrun hnc hf hy in
 /-- **The justification has an honest source**: at `h_j ≥ 1`, `Σ.J` is an entry block of height
-`h_j`, and an honest row of its target quorum has a source satisfying `G`. -/
+`h_j`, and an honest attestation of its target quorum has a source satisfying `G`. -/
 private theorem justified_honest_source_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hj : 1 ≤ (tr.state y i).fg.hj) :
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
@@ -601,7 +602,7 @@ theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
 
 end Geometry
 
-/-- The scoped floor argument needs a fault bound, not the Sleepy regime. Only honest rows
+/-- The scoped floor argument needs a fault bound, not the Sleepy regime. Only honest attestations
 whose entry height is at least the reader's `h_j` need source witnesses. -/
 theorem floor_or_crossing_scoped (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -626,7 +627,8 @@ section Wrappers
 variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
-/-- Justification provenance uses only the numerical fault bound and the supplied row sources. -/
+/-- Justification provenance uses only the numerical fault bound and the supplied attestation
+sources. -/
 theorem justified_honest_source_before (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}

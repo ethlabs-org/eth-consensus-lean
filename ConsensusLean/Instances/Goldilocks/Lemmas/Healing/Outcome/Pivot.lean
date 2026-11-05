@@ -44,8 +44,8 @@ The proof replaces Sleepy old origins with `OldSrc u`, HR.4 high origins before 
 * `D` is deepest among the walk's start and the old sources on the walk.
 
 Held viability lets the walk pass old sources. Fork-choice roots are genesis or below an old
-source: high `J` uses a crossing row; low `J` uses the relayed reset seed and no top-height contest.
-No universal low-row premise is needed. -/
+source: high `J` uses a crossing attestation; low `J` uses the relayed reset seed and no top-height
+contest. No universal low-attestation premise is needed. -/
 
 namespace Consensus.Goldilocks.Healing
 

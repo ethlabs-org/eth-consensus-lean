@@ -25,7 +25,7 @@ a settled time `w` for HS.2–HS.4, and `Prop⁺(G_p)` for HS.4). HS.0 (`Settle(
   "Label `j ≥ a`" is `t_j ≥ w + 4Δ`.
 * A **source** is a block `C` that `ac_to_fg` returns at an honest node (`SA.ToFGAt`) and so passes
   to `fg_attest`; its **entry at `h`** is the entry block `E ⪯ C` of state height `h` (`EntryOf`).
-  A **matching row** for `E` at `h` is an honestly signed attestation whose height pair is
+  A **matching attestation** for `E` at `h` is an honestly signed attestation whose height pair is
   `(h, E)`, target or timeout.
 
 Statements only: no proofs here. -/
@@ -250,12 +250,12 @@ the phase is still `(m, c)` after all events at `v` (`v < e`), every honest slot
 validator has actually received a current source of state height `h` with entry `E` (an `ac_to_fg`
 return in `[t_s, v]` of a block extending `W` and allowed in the phase geometry, so (b) applies to
 it; not a historical source, nor a higher descendant that suppresses the report at `h`) or has
-signed a matching row for `E` (so the report and row set has weight `n − f ≥ q`), and until the
-phase end every later honest vote and every honest proposal parent of a later slot extends `W`; (b)
-the client subclaim (P1/P2 of workbench#6): in the settled phase, at an honest `fg_attest` whose
-source `C` has state height `h ≥ ℓ` and entry `E` and is allowed in the phase geometry, the client
-signs a matching row for `E` (target or timeout), or has signed one at an earlier cut (its durable
-record holds it). -/
+signed a matching attestation for `E` (so the report and attestation set has weight `n − f ≥ q`),
+and until the phase end every later honest vote and every honest proposal parent of a later slot
+extends `W`; (b) the client subclaim (P1/P2 of workbench#6): in the settled phase, at an honest
+`fg_attest` whose source `C` has state height `h ≥ ℓ` and entry `E` and is allowed in the phase
+geometry, the client signs a matching attestation for `E` (target or timeout), or has signed one at
+an earlier cut (its durable record holds it). -/
 def CommonPathAcquisition : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)

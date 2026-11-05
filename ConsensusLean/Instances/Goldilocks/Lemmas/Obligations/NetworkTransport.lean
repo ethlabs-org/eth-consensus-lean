@@ -18,15 +18,15 @@ These are goals for the concrete publisher/simulation adapter, not extra premise
 `MeetsObligations`.
 The trace parameters remain independent here. `Setup.params` gives protocol delay Δp = Δe: the
 engine holds an object strictly before `a + Δe` (by `a + Δe − 1`), which is the node's strict
-deadline `a + Δp`. FG row service has its own delay `Δ_F` (`PSyncFGAttTransport`): the engine
-serves standalone rows (`isFGAtt`) strictly before its row bound `ΔF` (the `rows` clause of
-`PSync`), and `signed_row_service_psync` serves them at the protocol row delay
+deadline `a + Δp`. FG attestation service has its own delay `Δ_F` (`PSyncFGAttTransport`): the
+engine serves standalone attestations (`isFGAtt`) strictly before its FG delay `ΔF` (the `fgAtts`
+clause of `PSync`), and `signed_row_service_psync` serves them at the protocol FG delay
 `Δ_F,p = protoFGDelay (pubOf E) = ΔF`.
 Every other object (blocks, votes, forwarding and vote-forwarding wrappers) is served strictly
 before the bound `Δ`; no statement here claims a block before `ΔF`.
 All three suppliers include message, block, acceptance-relay and attestation service. Receipt
 alone proves none of the acceptance-relay fields. The finite `ResetService` assembly below
-uses the concrete message, block, relay and signed-row services; full GST remains separate.
+uses the concrete message, block, relay and signed-attestation services; full GST remains separate.
 -/
 
 namespace Consensus.Goldilocks.RunTrace
@@ -85,10 +85,10 @@ after the latter's cutoff. The concrete adapter must discharge the same four ser
 def SyncRunTransport : Prop :=
   sp.Δ ≤ ΔF → rho.log.PSync rho.point 0 → ∀ a b, 0 ≤ a → tr.SyncRun H ΔF a b
 
-/-- Signed FG rows are processed before the row deadline at row delay `Δ_F` (its own bound,
-not the block/message bound `Δ`) at recipient calls within the engine horizon. An earlier
+/-- Signed FG attestations are processed before the attestation deadline at FG delay `Δ_F` (its own
+bound, not the block/message bound `Δ`) at recipient calls within the engine horizon. An earlier
 processing of the identical attestation is sufficient; no processing after the source signing is
-required. This services an existing signed row and does not produce one. It has the shape of
+required. This services an existing signed attestation and does not produce one. It has the shape of
 the trusted `AttDeliveredBy`, restricted to signings. -/
 def PSyncFGAttTransport : Prop :=
   ∀ g, rho.log.PSync rho.point g →
@@ -98,7 +98,7 @@ def PSyncFGAttTransport : Prop :=
         ∃ k ≤ j, tr.ProcessAttAt y k a ∧
           tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
 
-/-- The signed-row service contract, without exposing its definition to consumers. -/
+/-- The signed-attestation service contract, without exposing its definition to consumers. -/
 theorem psyncFGAttTransport_iff : PSyncFGAttTransport S rho tr H ΔF ↔
     ∀ g, rho.log.PSync rho.point g →
       ∀ x ∈ H, ∀ i a, tr.SignAt x i a →
@@ -108,10 +108,10 @@ theorem psyncFGAttTransport_iff : PSyncFGAttTransport S rho tr H ΔF ↔
             tr.time k < tr.deadline y k (max (tr.time i) g) ΔF := by
   rfl
 
-/-- **The monotone lift of row service**: row service at `Δ₁` is row service at every
-`Δ₂ ≥ Δ₁`, since the row deadline is monotone in the delay. It is the only use of an order
-between row delays here; a consumer lifts the base row service at `Δ_F,p` only to a larger
-`Δ_F` (`hsSharedUpTo_of_healthy`). -/
+/-- **The monotone lift of attestation service**: attestation service at `Δ₁` is attestation service
+at every `Δ₂ ≥ Δ₁`, since the attestation deadline is monotone in the delay. It is the only use of
+an order between attestation delays here; a consumer lifts the base attestation service at `Δ_F,p`
+only to a larger `Δ_F` (`hsSharedUpTo_of_healthy`). -/
 theorem PSyncFGAttTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGAttTransport S rho tr H Δ₁)
     (h12 : Δ₁ ≤ Δ₂) : PSyncFGAttTransport S rho tr H Δ₂ := by
   intro g hnet x hx i a hs y hy j hj hb hd
@@ -119,19 +119,19 @@ theorem PSyncFGAttTransport.mono {Δ₁ Δ₂ : Time} (h : PSyncFGAttTransport S
     ((tr.deadline_mono_delta y j _ h12).trans hd)
   exact ⟨k, hkj, hp, ht.trans_le (tr.deadline_mono_delta y k _ h12)⟩
 
-/-- The engine log's message class is the Goldilocks row class (`isFGAtt`). -/
+/-- The engine log's message class is the Goldilocks attestation class (`isFGAtt`). -/
 theorem log_fgAtt_iff (o : Wire (Fintype.card V)) : rho.log.fgAtt o ↔ isFGAtt o := Iff.rfl
 
-/-- A standalone attestation is a row. -/
+/-- A standalone attestation is an attestation. -/
 theorem isFGAtt_attObj {n : Nat} (a : FG.Att n) : isFGAtt (attObj a) := by
   simp [isFGAtt, IsAttObj, attObj]
 
-/-- A forwarding wrapper is not a row. -/
+/-- A forwarding wrapper is not an attestation. -/
 theorem not_isFGAtt_forwardObj {sp : SA.SAParams} (origin : Fin sp.n) (t : Time)
     (parent : Option (Wire sp.n)) (B : Blk sp) : ¬ isFGAtt (forwardObj sp origin t parent B) := by
   simp [forwardObj, isFGAtt, IsAttObj]
 
-/-- An object that decodes as a forwarding wrapper is not a row. -/
+/-- An object that decodes as a forwarding wrapper is not an attestation. -/
 theorem not_isFGAtt_of_decodeForward {sp : SA.SAParams} {hs : List (Header Info × Nat)}
     {o : Wire sp.n} {q : Fin sp.n × Time × Option (Wire sp.n) × Blk sp}
     (h : decodeForward sp hs o = some q) : ¬ isFGAtt o := by
@@ -141,7 +141,8 @@ theorem not_isFGAtt_of_decodeForward {sp : SA.SAParams} {hs : List (Header Info 
 
 /-- Partial synchrony services an actual successful publication strictly before the
 protocol endpoint. The start may be a later wake; its entire engine delivery interval
-must be awake and inside the horizon. This proves holdings, not a node call or row production. -/
+must be awake and inside the horizon. This proves holdings, not a node call or attestation
+production. -/
 theorem publication_held_psync (hn : 1 ≤ Fintype.card V) {g : Time}
     (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
@@ -932,15 +933,15 @@ theorem held_att_processed_before (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
   · have he : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     exact he ▸ hk
 
-/-- **The base row supplier, at the row bound.** Partial synchrony of the engine log serves
-signed rows (`rows` clause, row bound `ΔF`) at bounded recipient calls at the protocol row delay
-`Δ_F,p = protoFGDelay (pubOf E) = ΔF`: the engine holds a row by `w + ΔF − 1`, strictly before the
-row deadline `w + Δ_F,p`. No order between `Δ` and `ΔF` is used: the recipient's
-awake interval is the one of its call, and the row deadline is the call's deadline at `Δ_F,p`.
-An identical earlier processing is enough, and descent supplies the processing cut's own strict
-deadline. Every consumer takes row service at a parametric `Δ_F` as a premise
-(`resetService_of_psync`, `hsSharedUpTo_of_rows`) or lifts this one where an upper envelope of
-the row bound is in scope (`PSyncFGAttTransport.mono`). -/
+/-- **The base attestation supplier, at the FG delay.** Partial synchrony of the engine log serves
+signed attestations (`fgAtts` clause, FG delay `ΔF`) at bounded recipient calls at the protocol FG
+delay `Δ_F,p = protoFGDelay (pubOf E) = ΔF`: the engine holds an attestation by `w + ΔF − 1`,
+strictly before the attestation deadline `w + Δ_F,p`. No order between `Δ` and `ΔF` is used: the
+recipient's awake interval is the one of its call, and the attestation deadline is the call's
+deadline at `Δ_F,p`. An identical earlier processing is enough, and descent supplies the processing
+cut's own strict deadline. Every consumer takes attestation service at a parametric `Δ_F` as a
+premise (`resetService_of_psync`, `hsSharedUpTo_of_rows`) or lifts this one where an upper envelope
+of the FG delay is in scope (`PSyncFGAttTransport.mono`). -/
 theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
     PSyncFGAttTransport S rho (simTrace S rho hn) (honestKeys S rho)
       (protoFGDelay (Model.pubOf E)) := by
@@ -1276,7 +1277,7 @@ theorem message_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVal
     · rw [Compose.projAC_deadline] at hlt
       exact hlt
 
-/-- The finite valid engine run supplies every reset-service field, with row service at a
+/-- The finite valid engine run supplies every reset-service field, with attestation service at a
 parametric `Δ_F` as a premise (`hrow`). Actual receiver calls lie within the engine horizon,
 including the unguarded AC fields; the message, block and relay fields are at `Δ`. The
 positivity `hΔF : 0 < Δ_F` fills the field `ResetService.deltaF` (Healing/Retention/Defs); no

@@ -931,7 +931,7 @@ theorem healthy_current_record_interval (D : HealthyRepairSchedule S A V Q)
 
 end EndpointProducers
 
-/-- OPEN comparability of actual stored-clock tips. Old-row realization,
+/-- OPEN comparability of actual stored-clock tips. Old-attestation realization,
 label replacement and head/lock/frame comparability remain obligations. InCuts
 includes cuts at heal before endCut heal; the state facts do not cover these. -/
 theorem healthy_cut_tips_comparable (Q : HealthyPreparationQuery S A V)
