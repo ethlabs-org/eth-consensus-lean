@@ -20,20 +20,20 @@ open Blocks
 /-- Convert a nonnegative node-delay tail to engine units, including a literal offset. -/
 theorem node_tail_le_engine {d B r : Time} (hd : 1 ≤ d) (hB : 0 ≤ B) (hr : 0 ≤ r) :
     B * (d + 1) + r ≤ (2 * B + r) * d := by
-  nlinarith [mul_nonneg hB (show 0 ≤ d - 1 by linarith),
+  linarith [mul_nonneg hB (show 0 ≤ d - 1 by linarith),
     mul_nonneg hr (show 0 ≤ d - 1 by linarith)]
 
 /-- Maturity includes catch-up inside healing, with the readiness unit charged once. -/
 theorem ready_le_heal {g d c h : Time} (hd : 1 ≤ d) (hh : c + 1 ≤ h) :
     max g 0 + c * d + 1 ≤ max g 0 + h * d := by
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hh (zero_le_one.trans hd)]
 
 /-- A producer taking `B(d+1)+r` after ready fits in this conditional healing budget. -/
 theorem ready_tail_le_heal {g d c h B r : Time} (hd : 1 ≤ d)
     (hB : 0 ≤ B) (hr : 0 ≤ r) (hh : c + 2 * B + r + 1 ≤ h) :
     max g 0 + c * d + 1 + (B * (d + 1) + r) ≤ max g 0 + h * d := by
   have := node_tail_le_engine hd hB hr
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hh (zero_le_one.trans hd)]
 
 /-- Strict pre-read reserve, including the worst one-unit stored-clock lag.
 `B` is the semantic repair budget; `K` is an independent budget sharing the envelope.
@@ -59,7 +59,7 @@ theorem final_recurrence_tail_le_latency (S : Setup) (A : ContractAssumptions S)
   have hX : 0 ≤ (X : Time) := by positivity
   have := node_tail_le_engine hd
     (show 0 ≤ 4 * ((X : Nat) + 3 * A.fgSlots) + B by linarith) hr
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hL (zero_le_one.trans hd)]
 
 /-- Recurrence is queried at the integer query itself: no fresh-slot rounding phase.
 The entire window must fit both the stop and the finite horizon. -/
@@ -115,7 +115,7 @@ theorem node_tail_le_ready_history {d B r c : Time} (hd : 1 ≤ d)
     (hB : 0 ≤ B) (hr : 0 ≤ r) (hc : 2 * B + r ≤ c) :
     B * (d + 1) + r ≤ c * d + 1 := by
   have := node_tail_le_engine hd hB hr
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- Choose a later-reader opening after all three lower bounds and inside ready history.
 This only supplies timing and wakefulness, not the missing semantic producer. -/

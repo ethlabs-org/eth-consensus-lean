@@ -62,8 +62,8 @@ theorem operational_update_read_after
     exact le_antisymm (hJ.1 e heJ) (ht ▸ hp.run.time_mono hje)
   have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 := by
     apply SA.slot_of_mem sp (u + 1)
-    · simp only [SA.SAParams.ts]; push_cast; nlinarith
-    · simp only [SA.SAParams.ts]; push_cast; nlinarith
+    · simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+    · simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
   have hclean : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ u := by
     rw [Healing.drainTime_eq] at hR
     have := (SA.ts_le_iff sp).mp hR

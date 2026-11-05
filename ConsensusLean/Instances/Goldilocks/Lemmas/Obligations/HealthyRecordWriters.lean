@@ -306,7 +306,7 @@ theorem young_optimistic_lock_persists
     push_cast at hyoung hfloor
     by_contra h
     have : (s : Int) + 3 ≤ sp.slot (tr.time j) := by omega
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)]
   -- live through `s + 2 ≤ e`; `he` covers a liveness premise on the expiry
   refine ⟨show sp.slot _ ≤ e by omega, hR,
     SA.viableAncestor_self (Compose.frameOK_state hp.run.toLocalRun hy j) hR hcandidate.symm, ?_⟩

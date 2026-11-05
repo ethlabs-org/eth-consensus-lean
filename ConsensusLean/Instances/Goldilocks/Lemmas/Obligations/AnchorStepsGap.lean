@@ -133,7 +133,7 @@ theorem anchorStep_gap {g ΔR a b gS ΔF : Time}
   have h8 : sp.ts s + 8 * sp.Δ ≤ sp.ts (s + c : Nat) := by
     rw [ts_add_gap (sp := sp)]
     have : (2 : Time) ≤ c := by exact_mod_cast hc2
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)]
   obtain ⟨⟨kA, hpropA⟩, hAHB, hAs, hu, hAg, hgu⟩ := anchor_facts hp hA hR
   obtain ⟨kX, hpropX⟩ := proposesAt_of_honestProposalRun hrun hX
   have hpX : proposer (s + c) ∈ H := hX.1

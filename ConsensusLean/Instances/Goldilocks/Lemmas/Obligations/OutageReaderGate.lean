@@ -56,7 +56,7 @@ private theorem duration_ge (Q : OutageQuery S A V) :
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [OutageQuery.duration, System.cDur, Params.standard, contract_coefficients_catchUp]
   change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- The outage's end is not before `0`. -/
 private theorem stop_nonneg (Q : OutageQuery S A V) : 0 ≤ Q.stop := by

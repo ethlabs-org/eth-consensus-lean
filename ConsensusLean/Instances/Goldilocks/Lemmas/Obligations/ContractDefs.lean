@@ -140,7 +140,7 @@ theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [F
   have hd : (1 : Time) ≤ r.1.ΔAC := r.1.ΔAC_pos
   have hc : (19 : Time) ≤ (C.catchUp : Nat) := by exact_mod_cast hC
   change 18 * r.1.ΔAC + 1 ≤ ((C.catchUp : Nat) : Time) * r.1.ΔAC
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- **The snapshot fit at readiness** for any coefficient record with catch-up `≥ 19`:
 `c_z + Δp + 1 ≤ max ready 0 + 4Δp`, the `lo` condition of `snapshotCall_of_awake` at the frame

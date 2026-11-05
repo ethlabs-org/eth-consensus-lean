@@ -38,7 +38,7 @@ theorem query_one_fit (G : TimeGrid) (ρ : Recurrence) {δt : Nat} {t₁ q : Tim
   have hg : (1 : Time) ≤ ((ρ.gap : Nat) : Time) := by exact_mod_cast ρ.gap.pos
   unfold Recurrence.len
   push_cast at hP ⊢
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hg hL.le, mul_nonneg (Int.natCast_nonneg δt) hL.le]
 
 /-- **Two-query placement.** Query 1 at `t₁ = max(max start 0, slotTime(u_min) − 1)` gives a seed
 slot `u ≥ u_min`, `0 < u`, strictly after `t₁` (`t₁ < slotTime u`), with its offset-0 duty; query 2
@@ -80,7 +80,7 @@ theorem two_query_placement {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
     have hlt : ((u + δt : Nat) : Time) * G.slotLen < (s₀ + 1 : Int) * G.slotLen := by
       unfold TimeGrid.slotTime at hu2 hs1
       push_cast at hP hu2 hs1 ⊢
-      nlinarith
+      linarith
     have h1 := lt_of_mul_lt_mul_right hlt hL.le
     have h2 : u + δt < s₀ + 1 := by exact_mod_cast h1
     exact Nat.lt_succ_iff.mp h2
@@ -88,7 +88,7 @@ theorem two_query_placement {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
     unfold TimeGrid.slotTime at hs2 ⊢
     unfold Recurrence.len
     push_cast at hs2 ⊢
-    nlinarith
+    linarith
   exact ⟨u, s₀, hmin, hpos, hsep, hu1, hu2, hdu 0 h0, hs1, hs2, hspan, hds⟩
 
 end Consensus.Goldilocks.Obligations

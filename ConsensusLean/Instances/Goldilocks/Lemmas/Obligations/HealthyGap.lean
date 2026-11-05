@@ -77,7 +77,7 @@ theorem hgp_of_healthyQuery (Q : HealthyPreparationQuery S A V)
   have hxN : Q.params.ts x ≤ Q.params.ts N := by
     have : (x : Time) ≤ (N : Time) := by exact_mod_cast (show x ≤ N by omega)
     simp only [SA.SAParams.ts]
-    nlinarith
+    exact mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four Q.params.toParams.hΔ.le)
   obtain ⟨k, P, hP, hk, -, -, hPs, -⟩ := duty_proposal_run S A V Q.run Q.hn Q.valid
     Q.noCollision hx0 ((hxN.trans hN).trans hb) hx
   exact ⟨x, hxl, hxr, hP.1, k, P, hk, hPs⟩

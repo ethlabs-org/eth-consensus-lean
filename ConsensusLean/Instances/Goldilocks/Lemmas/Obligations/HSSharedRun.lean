@@ -114,7 +114,7 @@ theorem protoFGDelay_timeout_of_healthy (run : (Sys (goldilocks S) V).Run) (hn :
   have hc : (A.fgSlots : Time) ≤ (S.δt : Time) := by
     have := A.timeout
     exact_mod_cast (show A.fgSlots ≤ S.δt by omega)
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_left hc (mul_nonneg zero_le_four hΔ.le)]
 
 /-- **The monotone lift**: the shared HS premises of a healthy run at every `Δ_F ≥ Δ_F,p` with
 `6Δ + Δ_F ≤ 4Δ·δt`, from the network's attestation service at the protocol FG delay

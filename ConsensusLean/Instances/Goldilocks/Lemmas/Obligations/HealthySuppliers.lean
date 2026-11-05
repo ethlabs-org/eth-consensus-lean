@@ -264,7 +264,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     rw [ht, Q.params.slotTime_eq] at this
     have he : (P.slot : Time) = (u : Time) := by
       simp only [SA.SAParams.ts] at this
-      nlinarith
+      exact mul_left_cancel₀ (mul_pos four_pos hDelta).ne' this.symm
     exact_mod_cast he
   have hdrain : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts u :=
     ((le_max_left _ _).trans ((le_max_right _ _).trans D.lower)).trans hlo.le
