@@ -38,7 +38,7 @@ Visibility (plan §3): the attribute `expose` (whole-file `@[expose] public sect
   through `attribute [expose]`; found in the code with comments and string/char literals blanked, inside a
   balanced `@[...]`/`attribute [...]` list, also as `«expose»`) only in a layer with `expose = true`; that flag
   never on a layer whose prefixes have a `Lemmas`, `Proofs`, `ToMathlib` or `Main` component. Not checked: the
-  bodies Lean exposes without the attribute (`abbrev`, instances of non-`Prop` classes); README "Layout". Known
+  bodies Lean exposes without the attribute (`abbrev`, instances of non-`Prop` classes); `docs/layout.md`. Known
   scan limit: inside an interpolated string (`s!"..{..}.."`), a `'"'` char literal ends the string early.
 check-decls exemptions: a module with a `Proofs` component must be under
   `[checks].proofs_component_prefixes` and in a layer no trusted layer may reach; `Exports` is refused.

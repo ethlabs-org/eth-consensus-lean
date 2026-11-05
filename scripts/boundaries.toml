@@ -52,7 +52,7 @@ name = "Solution"
 # The layer matrix (plan §2). A module is in the layer whose prefix covers it (prefixes never overlap).
 # `allow`: the other layers it may import directly, written out in full (the checker requires the lists to
 # be downward-closed, so this row also bounds everything the layer reaches). `trusted`: the Spec surface
-# (snapshot, extensions, theorems, grep 7b, the README file list, trusted_paths); it allows only trusted
+# (snapshot, extensions, theorems, grep 7b, the trusted-file list of docs/definition.md, trusted_paths); it allows only trusted
 # layers. `sorry`: unfinished proofs may stay here (plan §5: only Lemmas and Proofs, never a trusted layer;
 # check.sh steps 3 and 7 fail a `sorry` anywhere else, and step 3b fails one in the closure of the solution). Tests: `may_import_roots` (the generated roots,
 # import-only aggregates) and `may_import_all`. `expose`: `@[expose]` may appear here (plan §3: whole-file expose
@@ -795,8 +795,8 @@ Proofs.Healing.Main reaches HealthyEffective through ResetInv (H.3 in HealingRun
 # Settings of scripts/check.sh (check-boundaries.py reads only proofs_component_prefixes and trusted_paths).
 [checks]
 # The Spec surface is every module of a `trusted` layer above: the persisted-extension whitelist
-# (scripts/spec-extensions.txt), the snapshot (scripts/spec-snapshot.txt), `theorems`, grep 7b and the README
-# file list (step 12) cover each of them (their closure stays inside the trusted layers), so no module list
+# (scripts/spec-extensions.txt), the snapshot (scripts/spec-snapshot.txt), `theorems`, grep 7b and the
+# trusted-file list of docs/definition.md (step 12) cover each of them (their closure stays inside the trusted layers), so no module list
 # is kept by hand.
 # Module prefixes where a `Proofs` component is allowed (check-decls exempts definitions in modules with a
 # `Proofs` component from reaches-opaque: sound only where no trusted module can reach them, which

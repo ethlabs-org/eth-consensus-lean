@@ -28,7 +28,7 @@
 #                       targets only while no sorry layer holds `sorry` (plan §5)
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
 #                       Lean's kernel and every bundled external kernel (--paranoid)
-#   12 docs             README spec-file list = the files of the Spec surface (trusted layers);
+#   12 docs             docs/definition.md spec-file list = the files of the Spec surface (trusted layers);
 #                       names cited in the docs are in the name index (built: they exist)  (check-docs.py)
 #   13 metrics          depth, cones, expose and import counts (report)          (metrics-baseline.py)
 #   14 rebuild canary   a proof-only edit rebuilds one module (report); a        (lake; --full or --canary)
@@ -1238,23 +1238,23 @@ step_lake_comparator() {
 }
 
 # --- step 12: docs --------------------------------------------------------------------------------
-# docs_ok <README> <expected files...>: the backticked `*.lean` paths between the lines
+# docs_ok <doc> <expected files...>: the backticked `*.lean` paths between the lines
 # `<!-- spec-files -->` and `<!-- /spec-files -->` are exactly the expected files.
 docs_ok() {
-  local readme="$1" got want
+  local doc="$1" got want
   shift
-  grep -qx '<!-- spec-files -->' "$readme" && grep -qx '<!-- /spec-files -->' "$readme" ||
-    { echo "  FAIL[docs] $readme has no spec-files markers"; return 1; }
-  got="$(sed -n '/^<!-- spec-files -->$/,/^<!-- \/spec-files -->$/p' "$readme" | grep -oE '`[^`]+\.lean`' | tr -d '`' | LC_ALL=C sort -u)"
+  grep -qx '<!-- spec-files -->' "$doc" && grep -qx '<!-- /spec-files -->' "$doc" ||
+    { echo "  FAIL[docs] $doc has no spec-files markers"; return 1; }
+  got="$(sed -n '/^<!-- spec-files -->$/,/^<!-- \/spec-files -->$/p' "$doc" | grep -oE '`[^`]+\.lean`' | tr -d '`' | LC_ALL=C sort -u)"
   want="$(printf '%s\n' "$@" | LC_ALL=C sort -u)"
   [[ -n "$want" && "$got" == "$want" ]] ||
-    { echo "  FAIL[docs] $readme lists other files than expected:"; diff <(echo "$want") <(echo "$got") | sed 's/^/    /'; return 1; }
+    { echo "  FAIL[docs] $doc lists other files than expected:"; diff <(echo "$want") <(echo "$got") | sed 's/^/    /'; return 1; }
 }
 DOCS=(python3 -I scripts/check-docs.py)
 step_docs() {
   local files=() rc=0
   mapfile -t files < <(for m in "${SPEC_MODULES[@]}"; do mod_file "$m"; done)
-  { docs_ok README.md "${files[@]}" && echo "  README.md lists the ${#files[@]} files of the trusted layers"; } || rc=1
+  { docs_ok docs/definition.md "${files[@]}" && echo "  docs/definition.md lists the ${#files[@]} files of the trusted layers"; } || rc=1
   # The name index is a module of a test library, so step 1 builds it (and the generated root imports it).
   awk -F'\t' -v m="$NAME_INDEX" '$2 == m { print $1 }' "$INV" | grep -xF -f <(printf '%s\n' "${TEST_LIBS[@]}") >/dev/null ||
     { echo "  FAIL[docs] name_index_module $NAME_INDEX is not a module of a test library (${TEST_LIBS[*]})"; rc=1; }
@@ -1495,7 +1495,7 @@ full_only "10 lake check (+ fixtures/lakecheck-{bad,good})" step_lake_check
 # leanchecker skips the noconst-exempt parents (step 5); step 10's replay covers them, when it runs.
 [[ "$mode" != full ]] || have_bwrap || ((${#NOCONST_EXEMPT[@]} == 0)) || ci_only+=("kernel replay of ${NOCONST_EXEMPT[*]} (lake check)")
 full_only "11 lake comparator --paranoid (+ fixtures/comparator-{good,stmt,axiom,def}.json)" step_lake_comparator
-run_step "12 docs (README spec-files = the files of the trusted layers; cited names)" step_docs
+run_step "12 docs (docs/definition.md spec-files = the files of the trusted layers; cited names)" step_docs
 run_selftest "12 docs self-test (README-good, README-missing, fixtures/docs)" selftest_docs
 run_step "13 metrics (report)" step_metrics
 if [[ "$mode" == changed ]] || ((!canary)); then
