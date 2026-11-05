@@ -787,10 +787,13 @@ structure RowLaws (ctl : Bool) : Prop where
   atts : allPre attOK [] (rowsD ctl) = true
   msgs : allPre msgOK [] (rowsD ctl) = true
 
-theorem rowLaws : ∀ ctl, RowLaws ctl := by
-  intro ctl
-  exact ⟨by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel⟩
+/-- The three row laws of both variants in one kernel evaluation of the rows. -/
+private theorem rowChecks : ∀ ctl, (rowsD ctl).all (fun r => fgBlockOK r.cut) = true ∧
+    allPre attOK [] (rowsD ctl) = true ∧ allPre msgOK [] (rowsD ctl) = true := by
+  decide +kernel
+
+theorem rowLaws : ∀ ctl, RowLaws ctl := fun ctl =>
+  ⟨(rowChecks ctl).1, (rowChecks ctl).2.1, (rowChecks ctl).2.2⟩
 
 theorem label_row {ctl : Bool} {i : Nat} {ℓ : Cut N5} (h : (tr ctl).label i = some ℓ) :
     ∃ r, (rowsD ctl)[i]? = some r ∧ r.cut.interp ro = ℓ := by

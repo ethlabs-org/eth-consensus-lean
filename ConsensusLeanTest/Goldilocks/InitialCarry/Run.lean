@@ -260,14 +260,20 @@ theorem run_credential (ctl : Bool) : ∀ k y t B, y ∈ H →
     B.proposer = proposer B.slot :=
   (sched_runLaws ctl).credential
 
-theorem rowLaws : ∀ ctl, DataRun.RowLaws (dataD ctl) := by
-  intro ctl
-  exact ⟨by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel⟩
+/-- The row checks of both variants (the row laws, no restart, the row counts) in one kernel
+evaluation of the rows. -/
+private theorem rowChecks : (∀ ctl, (rowsD ctl).all (fun r => DataRun.fgBlockOK r.cut) = true ∧
+    allPre DataRun.attOK [] (rowsD ctl) = true ∧ allPre DataRun.msgOK [] (rowsD ctl) = true ∧
+    (rowsD ctl).all (fun r => !DataRun.isRestartCut r.cut) = true) ∧
+    (rowsD false).length = 266 ∧ (rowsD true).length = 274 := by
+  decide +kernel
+
+theorem rowLaws : ∀ ctl, DataRun.RowLaws (dataD ctl) := fun ctl =>
+  ⟨(rowChecks.1 ctl).1, (rowChecks.1 ctl).2.1, (rowChecks.1 ctl).2.2.1⟩
 
 /-- **No cut is a restart**, in both variants. -/
-theorem rows_no_restart : ∀ ctl, (rowsD ctl).all (fun r => !DataRun.isRestartCut r.cut) = true := by
-  decide +kernel
+theorem rows_no_restart : ∀ ctl, (rowsD ctl).all (fun r => !DataRun.isRestartCut r.cut) = true :=
+  fun ctl => (rowChecks.1 ctl).2.2.2
 
 /-- No honest node restarts. -/
 theorem not_restartAt (ctl : Bool) (y : Fin 5) (k : Nat) : ¬ (tr ctl).RestartAt y k := by
@@ -278,8 +284,7 @@ theorem not_restartAt (ctl : Bool) (y : Fin 5) (k : Nat) : ¬ (tr ctl).RestartAt
   cases this
 
 /-- **The row counts**: `266` cuts in the rejection run, `274` in the control. -/
-theorem rowsD_length : (rowsD false).length = 266 ∧ (rowsD true).length = 274 := by
-  decide +kernel
+theorem rowsD_length : (rowsD false).length = 266 ∧ (rowsD true).length = 274 := rowChecks.2
 
 theorem fgBlock_ok {ctl : Bool} {i : Nat} {y : Fin 5} {B : X.Blk}
     (h : (tr ctl).BlockCallAt y i B) : ∃ b ∈ X.roots, B = X.blk b :=
