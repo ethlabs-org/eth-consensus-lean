@@ -58,7 +58,9 @@ validator type.
 **Changes are recorded, not gated.** Every non-merge commit that touches a trusted path carries a line
 `Trusted-surface: <what changes and why>`; `scripts/review-boundary.sh` (self-tested on throwaway repositories)
 fails a change without it, reading the lists at HEAD and at the base as literal paths, united. So
-`git log --grep='^Trusted-surface:'` lists every change. The record covers the listed files' text, not everything
+`git log --grep='^Trusted-surface:'` lists every change. In CI the review boundary also writes each such
+commit's trusted paths and its Trusted-surface line to the summary of the `check` run, so the check run of every
+push and pull request records them. The record covers the listed files' text, not everything
 they import, and it records changes; it does not approve them. Reading the snapshot diff is part of making a Spec
 change; the comparator cannot replace that reading.
 

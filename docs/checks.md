@@ -195,19 +195,18 @@ Spec drift is checked by the snapshot diff, committed with each change.
 
 ## Step 3c: the sorry inventory (report only)
 
-Step 3c is **report only**, not a trust gate. `scripts/sorry-inventory.py` reads its configuration, a
-`toml sorry-inventory` block (`modules`, `roots`), and the compiled tables headed `Declaration` and
-`Paper argument/status` of its default ledger, or the one given with `--ledger`. Names must be fully qualified; other
-tables are explicitly listed as excluded (planned/draft material is not compiled coverage).
-Missing ledger, empty/missing roots, stale artifacts, nonexistent rows and unmapped direct
+Step 3c is **report only**, not a trust gate. `scripts/sorry-inventory.py` reads `scripts/sorry-inventory.toml`
+(or the file given with `--config`): `modules` and `roots`, and the table `mapped` from each sorry owner to its
+paper argument or OPEN (empty while the closure has no owner). Names must be fully qualified. A missing or
+malformed config, empty/missing roots, stale artifacts, nonexistent mapped names and unmapped direct
 `sorryAx` owners report incomplete; no generic `ShapeObligations` result substitutes for an absent
 instance assembly. `SpecSurface dependencies` loads private declarations without extension
 initializers and exports type/body edges. Cycle-safe reverse reachability lists every
 sorry-dependent ancestor **within the configured declaration closure**, not the whole import
 closure. One entry represents a direct owning declaration, not each source `sorry` occurrence.
-Files are logical paths relative to the owning module's package source root. JSON schema 1
+Files are logical paths relative to the owning module's package source root. JSON schema 2
 is saved at the printed `check.*/sorry-inventory.json` path under the run directory.
-`mapped` means rows exist and contain argument text or OPEN, not that the paper argument is
+`mapped` means every owner has a `mapped` entry with argument text or OPEN, not that the paper argument is
 valid or the proof is finished. Its regression fixtures are gates for the tool's behavior;
 inventory findings and runtime errors do not change existing check verdicts.
 
