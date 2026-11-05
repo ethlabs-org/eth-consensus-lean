@@ -144,7 +144,7 @@ theorem ts_add_two_le {m s : Nat}
   simp only [SAParams.ts] at h
   by_contra hc
   have h1 : (s : Int) ≤ m + 1 := by omega
-  linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left h1 sp.toParams.hΔ.le]
+  linarith only [h, sp.toParams.hΔ, mul_le_mul_of_nonneg_left h1 sp.toParams.hΔ.le]
 
 end Walk
 
@@ -185,7 +185,7 @@ theorem OldOrigin.within (hrun : GoldilocksRun proposer dg H tr)
     have hs : (m : Int) + 2 ≤ s := by exact_mod_cast hm
     have hΔ := sp.toParams.hΔ
     simp only [SAParams.ts] at hb ht
-    linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left hs sp.toParams.hΔ.le]
+    linarith only [hb, ht, sp.toParams.hΔ, mul_le_mul_of_nonneg_left hs sp.toParams.hΔ.le]
   · refine ⟨m, by omega, originWithin_iff.2 ⟨x, hx, k, CV, ?_, Or.inr hO⟩⟩
     obtain ⟨ℓ, A, _, hs, _⟩ := hO
     change sp.slot (tr.time k) = m at hs
@@ -297,13 +297,13 @@ private theorem proposer_relay_before (hrun : GoldilocksRun proposer dg H tr)
       sp.ts ((s : Int) - 1) + 3 * sp.Δ := fun c hc' => by
     have h1 := ac_deadline_le_of_restarts (T := tr.projAC)
       (fun k hk hrk => hrs k (hk.trans hc') hrk) (tr.projAC.time kx)
-    have h2 := max_le hkxt.le (show sp.ts ((s : Int) - 1) ≤ sp.ts ((s : Int) - 1) + 2 * sp.Δ by
-      linarith)
-    linarith
+    have h2 := max_le hkxt.le (show sp.ts ((s : Int) - 1) ≤ sp.ts ((s : Int) - 1) + 2 * sp.Δ from
+      le_add_of_nonneg_right (mul_nonneg zero_le_two hΔ.le))
+    linarith only [h1, h2]
   have hii : tr.projAC.time i = tr.time i := rfl
   have hdi : tr.projAC.deadline p i (tr.projAC.time kx) ≤ tr.time i := by
     have := hdl i le_rfl
-    linarith
+    linarith only [this, hti, hts, hΔ]
   obtain ⟨k', hk'i, hAp, hk't⟩ := hsync.relay x hx kx B hacc (hr.time_nonneg kx)
     p hp i ℓp hc (hdi.trans hb) hdi hFB
   exact ⟨SA.mem_tree_of_acceptAt sp hr hp hAp hk'i hc hFB,
@@ -338,8 +338,8 @@ private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H
     have : sp.ts (e.msg.slot : Int) ≤ sp.ts ((s : Int) - 1) := by
       simp only [SAParams.ts]
       exact mul_le_mul_of_nonneg_left (show (e.msg.slot : Int) ≤ (s : Int) - 1 by omega)
-        (by linarith)
-    linarith
+        (mul_nonneg zero_le_four hΔ.le)
+    linarith only [hjt, this]
   have hslot : Hd.slot ≤ e.msg.slot := by
     rw [(SA.castAt_spec hr hx ⟨hcx, hex⟩).2.1]
     exact SA.frame_slot_le sp hr hx hcx Hd hHd't
@@ -347,7 +347,7 @@ private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H
       tr.projAC.time kx < sp.ts ((s : Int) - 1) + 2 * sp.Δ := by
     rcases frame_anc_accepted hr hx j ℓx hcx Hd hHd't Hd .refl with hg | ⟨kx, hkx, hacc⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨kx, hacc, lt_of_le_of_lt (hr.time_mono hkx) (by linarith)⟩
+    · exact Or.inr ⟨kx, hacc, lt_of_le_of_lt (hr.time_mono hkx) (by linarith only [hjt', hΔ])⟩
   obtain ⟨h1, h2⟩ := proposer_relay_before hrun hnc hsync hp hc hcall hd hti hb hx hHd hacc hFHd
   exact ⟨h1, h2, hslot⟩
 
@@ -491,10 +491,12 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
       sp.ts (s' : Int) ≤ tr.projAC.time kx → tr.projAC.time kx < sp.ts (s' : Int) + 2 * sp.Δ →
       v ∈ A.pool s' ∨ v.val ∈ SA.equivocators {w | w ∈ A.pool s'} := by
     intro x hx kx v hsend hvs hk1 hk2
-    have h := SA.sync_before_forward hr hac hx hsend (by rw [hti, hts] at hb; linarith) hp hc
-      (fun k' hk' hrk' => (hrs k' hk' hrk').trans hk1) (by rw [hii, hti, hts]; linarith)
+    have h := SA.sync_before_forward hr hac hx hsend
+      (by rw [hti, hts] at hb; linarith only [hk2, hb, hΔ]) hp hc
+      (fun k' hk' hrk' => (hrs k' hk' hrk').trans hk1)
+      (by rw [hii, hti, hts]; linarith only [hk2, hΔ])
       (fun t ht1 ht2 => by
-        have := SA.slot_of_mem sp s' (hk1.trans ht1) (by rw [hts]; linarith)
+        have := SA.slot_of_mem sp s' (hk1.trans ht1) (by rw [hts]; linarith only [ht2, hk2, hΔ])
         omega)
     rwa [hvs] at h
   -- a vote of the pool whose head, of a slot at most its own, the proposer accepted is resolved
@@ -504,8 +506,10 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
     intro v hv Hv hHv hHvr hHvs hacc
     refine (hsupv v).2 ⟨⟨hv, hstamp v hv⟩, ?_⟩
     have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hp hc hHv hacc
-      (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk) (by linarith))
-      (Or.inl (by rw [hii, hti, hts]; linarith))
+      (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk) (lt_add_of_pos_right _ (mul_pos three_pos hΔ)))
+      (Or.inl (by
+        rw [hii, hti, hts]
+        exact add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num : (3 : Time) ≤ 4) hΔ.le)))
     unfold SA.resolutionTime
     split
     · rename_i hl
@@ -525,8 +529,9 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
       obtain ⟨ℓ, hu, _⟩ := hR
       have ht : tr.time k = sp.ts m + 6 * sp.Δ := hu.2.2.1
       have hm' : (m : Int) + 2 ≤ s' + 1 := by exact_mod_cast hm
+      rw [hts] at hti
       simp only [SAParams.ts] at ht hti
-      nlinarith
+      linarith only [ht, hti, hb, hΔ, mul_le_mul_of_nonneg_left hm' (SA.four_delta_pos sp).le]
     rcases Nat.lt_or_ge m s' with hm' | hm'
     · refine Or.inl ⟨m, hm', originWithin_iff.2 ⟨x, hx, k, CV, ?_, Or.inr hOp⟩⟩
       obtain ⟨ℓ, A, _, hs, _⟩ := hOp
@@ -553,7 +558,7 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
         rw [hes] at ht
         change tr.time j ≤ sp.ts s' + sp.Δ at ht
         rw [hti, hts] at hb
-        linarith
+        linarith only [ht, hb, hΔ]
       obtain ⟨Hd, hHd, hHdr, hOHd⟩ := hinv.vote_extends O m hOm w hw j e hv hjb (by omega)
       obtain ⟨hHdt, hacc, hHds⟩ := proposer_accepts_head_before hrun hnc hac hp hc hcall hd hti hb
         hw hv (by omega) hHd hHdr (hFO.trans hOHd)
@@ -565,7 +570,7 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
         exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 le_rfl
       have hvp : e.msg ∈ A.pool s' := by
         rcases hfwd w hw j e.msg ⟨ℓw, hcw, Or.inl ⟨e, hew, rfl⟩⟩ hes hj1
-          (by rw [hes] at hjt; linarith) with h | h
+          (by rw [hes] at hjt; linarith only [hjt, hΔ]) with h | h
         · exact h
         · exact absurd (hvw ▸ h) (hnoeq w hw)
       refine ⟨fun h => hnoeq w hw (by
@@ -580,7 +585,7 @@ private theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer d
       · exact Or.inr hw
     · have hcount : Hᶜ.ncard <
           {w | w ∈ H ∧ ∃ j e, SA.VoteAt tr.projAC w j e ∧ e.msg.slot = s'}.ncard := by
-        have hfault := hfb s' sp.Δ (by simp) (by rw [hti, hts] at hb; linarith)
+        have hfault := hfb s' sp.Δ (by simp) (by rw [hti, hts] at hb; linarith only [hb, hΔ])
         change Hᶜ.ncard <
           {w | w ∈ H ∧ tr.awake w (sp.ts s' + sp.Δ) ∧ tr.JoinedAt w (sp.ts s' + sp.Δ)}.ncard
           at hfault
@@ -757,7 +762,7 @@ theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr)
         have hslts : sp.slot (sp.ts s) = s := by
           simpa using (SA.slot_arithmetic sp s).1 0 (by omega)
         rw [htj, hslts] at h5
-        linarith
+        linarith only [h5, hΔ]
       · exact hnt h
       · exact hnp h
       have hup : e'.msg.val = p := hpu.2.2.symm.trans hpr.2.2
@@ -792,7 +797,8 @@ theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨x, hx, k', hki, CV, hR | hOp⟩ := originBefore_iff.1 hO
   · obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
     have := hr.time_mono hki.le
-    have := ts_add_two_le (sp := sp) (m := l.slot) (s := s) (by linarith [sp.toParams.hΔ])
+    have := ts_add_two_le (sp := sp) (m := l.slot) (s := s)
+      (by linarith only [htk, this, hii, hti, sp.toParams.hΔ])
     omega
   · have hsl_i : sp.slot (tr.time i) = s := by
       rw [hti]
@@ -866,7 +872,7 @@ private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hn
   · refine ⟨z, hz, c, l, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
     obtain ⟨-, ⟨-, -, htc, -⟩, -⟩ := hR
     have := hr.time_mono (show c ≤ i by omega)
-    linarith
+    linarith only [htc, this, hii, hti, hΔ]
   · refine ⟨z, hz, c, l, CV, Or.inr ⟨hOp, ?_⟩⟩
     obtain ⟨-, -, -, hsc, -⟩ := id hOp
     have hle := SA.slot_mono sp (hr.time_nonneg c) (hr.time_mono (show c ≤ i by omega))
@@ -1001,7 +1007,7 @@ private theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
       obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
       have := hr.time_mono hki.le
       have hii : tr.projAC.time i = tr.time i := rfl
-      linarith [sp.toParams.hΔ]
+      linarith only [htk, this, hii, hti, sp.toParams.hΔ]
     · exact ⟨x, hx, k', l.slot, CV, Or.inr ⟨hOp, by omega⟩⟩
   · rw [Set.mem_singleton_iff.1 hf]
     exact proposal_fcRoot_old_of hrun hnc hfault hp hc hcall hd hti
@@ -1036,7 +1042,7 @@ theorem vote_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
   · refine ⟨z, hz, c, l, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
     obtain ⟨-, ⟨-, -, htc, -⟩, -⟩ := hR
     have := hr.time_mono (show c ≤ j by omega)
-    linarith
+    linarith only [htc, this, hjj, htj]
   · refine ⟨z, hz, c, l, CV, Or.inr ⟨hOp, ?_⟩⟩
     obtain ⟨-, -, -, hsc, -⟩ := id hOp
     have hle := SA.slot_mono sp (hr.time_nonneg c) (hr.time_mono (show c ≤ j by omega))
@@ -1121,7 +1127,7 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc :
         obtain ⟨-, ⟨-, -, htk, -⟩, -⟩ := hR
         have := hr.time_mono hkj.le
         have hjj : tr.projAC.time j = tr.time j := rfl
-        linarith
+        linarith only [htk, this, hjj, htj]
       · refine ⟨x, hx, k', l₁.slot, CV, Or.inr ⟨hOp, ?_⟩⟩
         obtain ⟨-, -, -, hsk, -⟩ := hOp
         have := SA.slot_mono sp (hr.time_nonneg k') (hr.time_mono hkj.le)
