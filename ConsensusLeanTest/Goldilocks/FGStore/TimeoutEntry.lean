@@ -544,13 +544,26 @@ theorem trT_tree_subset (y : Fin P₁.n) (i : Nat) :
   · rw [FGTrace.store, h14] at hX; exact hC hX
   · rw [FGTrace.store, h15] at hX; exact mem_tree_stX hX
 
+/-- From cut `14` on, the time of `trT` is `6`. -/
+private theorem trT_time_tail (i : Nat) : trT.time (i + 14) = 6 := by
+  simp only [trT]; split_ifs <;> first | rfl | omega
+
+/-- The times of `trT` do not decrease from one cut to the next. -/
+private theorem trT_time_succ : ∀ i, trT.time i ≤ trT.time (i + 1)
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 => by decide
+  | i + 14 => by rw [trT_time_tail, Nat.add_right_comm, trT_time_tail]
+
+private theorem trT_time_mono {i j : Nat} (h : i ≤ j) : trT.time i ≤ trT.time j :=
+  monotone_nat_of_le_succ trT_time_succ h
+
 /-- The tick order of `trT`, (a): each own proposal is accepted at the first cut of its time. -/
 theorem trT_own_first (y : Fin P₁.n) (i : Nat) (B : NodeBlock P₁ Unit)
     (h : trT.CallAt y i (.block B true)) (k : Nat) (hk : k < i) : trT.time k < trT.time i := by
   rcases trT_label i _ h.2 with ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ |
     ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ |
     ⟨rfl, h'⟩ | ⟨rfl, h'⟩ | ⟨rfl, h'⟩ <;>
-    first | (cases h'; done) | (simp only [trT]; split_ifs <;> first | decide | omega)
+    first | (cases h'; done) |
+      exact lt_of_le_of_lt (trT_time_mono (Nat.le_pred_of_lt hk)) (by decide)
 
 /-- The tick order of `trT`, (b): before an `attest` call at its time, only the own proposal. -/
 theorem trT_attest_order (y : Fin P₁.n) (j : Nat) (src : NodeBlock P₁ Unit)
@@ -614,8 +627,8 @@ theorem trT_localRun : FGLocalRun () {w₀} {g₁, Bs, Bf, Bk, Bc, Bx} trT where
   init _ _ := rfl
   exec i ℓ h _ := trT_exec i ℓ h
   tree_subset y _ i := trT_tree_subset y i
-  time_nonneg i := by simp only [trT]; split_ifs <;> decide
-  time_mono i j hij := by simp only [trT]; split_ifs <;> first | decide | omega
+  time_nonneg i := le_trans (by decide) (trT_time_mono (Nat.zero_le i))
+  time_mono i j hij := trT_time_mono hij
   attest_public _ _ _ _ _ _ := one_dvd _
   own_first y _ i X h _ _ k hk _ _ := trT_own_first y i X h k hk
   attest_order y _ j src signed h i ℓ hij hi ht := trT_attest_order y j src signed h i ℓ hij hi ht

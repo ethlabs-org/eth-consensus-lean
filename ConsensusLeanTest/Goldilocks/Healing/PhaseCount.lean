@@ -247,14 +247,24 @@ theorem trP_tree_subset (y : Fin P₁.n) (i : Nat) : (trP.store y i).tree ⊆ UP
     · exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
     · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr rfl)))))
 
+/-- From cut `11` on, the time of `trP` is `5`. -/
+private theorem trP_time_tail (i : Nat) : trP.time (i + 11) = 5 := by
+  simp only [trP]; split_ifs <;> first | rfl | omega
+
+/-- The times of `trP` do not decrease from one cut to the next. -/
+private theorem trP_time_succ : ∀ i, trP.time i ≤ trP.time (i + 1)
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 => by decide
+  | i + 11 => by rw [trP_time_tail, Nat.add_right_comm, trP_time_tail]
+
+private theorem trP_time_mono {i j : Nat} (h : i ≤ j) : trP.time i ≤ trP.time j :=
+  monotone_nat_of_le_succ trP_time_succ h
+
 theorem trP_own_first (y : Fin P₁.n) (i : Nat) (B : NodeBlock P₁ Unit)
     (h : trP.CallAt y i (.block B true)) (k : Nat) (hk : k < i) : trP.time k < trP.time i := by
   rcases trP_label i _ h.2 with ⟨hi, h'⟩ | ⟨rfl, -⟩
   · rw [trP_time k (by omega), trP_time i (by omega)]
     exact trT_own_first y i B ⟨h.1, h'⟩ k hk
-  · change trP.time k < 5
-    simp only [trP]
-    split_ifs <;> decide
+  · exact lt_of_le_of_lt (trP_time_mono (Nat.le_pred_of_lt hk)) (by decide)
 
 theorem trP_attest_order (y : Fin P₁.n) (j : Nat) (src : NodeBlock P₁ Unit)
     (signed : Option (FG.Att P₁.n)) (h : trP.CallAt y j (.attest src signed)) (i : Nat)
@@ -292,8 +302,8 @@ theorem trP_localRun : FGLocalRun () {w₀} UP trP where
   init _ _ := rfl
   exec i ℓ h _ := trP_exec i ℓ h
   tree_subset y _ i := trP_tree_subset y i
-  time_nonneg i := by simp only [trP]; split_ifs <;> decide
-  time_mono i j hij := by simp only [trP]; split_ifs <;> first | decide | omega
+  time_nonneg i := le_trans (by decide) (trP_time_mono (Nat.zero_le i))
+  time_mono i j hij := trP_time_mono hij
   attest_public _ _ _ _ _ _ := one_dvd _
   own_first y _ i X h _ _ k hk _ _ := trP_own_first y i X h k hk
   attest_order y _ j src signed h i ℓ hij hi ht := trP_attest_order y j src signed h i ℓ hij hi ht
