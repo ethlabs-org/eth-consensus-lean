@@ -56,7 +56,7 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin {b : Time}
   refine (SA.ts_le_iff sp).2 ?_
   by_contra hlt
   have h₂ := (SA.ts_le_iff sp).2 (show (j : Int) + 1 ≤ ((sp.slot (gbar g) + 3 : Nat) : Int) by
-    omega)
+    clear * - hlt; omega)
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   simp only [SAParams.ts] at h₂ hck hkt'
   linarith
@@ -85,9 +85,10 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
     have hn := sp.toParams.hn
     change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
     change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    omega
+    clear * - hn h3; omega
   obtain ⟨Y, hYX, att, hatt, hattH, hatth⟩ :=
-    Store.exists_honest_att_of_lt hr hq hX (HZ tr H g + 1) (by omega) (by omega)
+    Store.exists_honest_att_of_lt hr hq hX (HZ tr H g + 1) (by clear * -; omega) (by
+        clear * - hjh hlt; omega)
   have hY : Y ∈ (tr.state y k).fg.tree := by
     by_cases he : Y = X
     · exact he ▸ hX
@@ -96,7 +97,7 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
   · cases hatt
   obtain ⟨j, hji, hj⟩ := hp.run.att_unforgeable y hy i att (Or.inr ⟨Y, ⟨true, hA⟩, hatt⟩) hattH
   have := hp.reset.2 _ hattH j att hj hatth
-  have := hk j (by omega)
+  have := hk j (by clear * - hik hji; omega)
   linarith
 
 /-- **HBoot, the caches before the reset.** At a state all of whose earlier cuts are before `a`: no
@@ -180,7 +181,8 @@ theorem historical_origins_compatible_before
   rcases lt_trichotomy l j with hlt | rfl | hgt
   · have hDO : Compatible (tr.HonestBlocks H) D O :=
       SA.fastLock_compatible_of_votes hrun hB.1 (Nat.lt_succ_self i) hfl hf
-        fun z hz q hq e he hs => hv x' r l O hO hr z hz q (by omega) e he (by omega)
+        fun z hz q hq e he hs => hv x' r l O hO hr z hz q (by clear * - hi hq; omega) e he (by
+            clear * - hlt hs; omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
   · have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
@@ -191,7 +193,8 @@ theorem historical_origins_compatible_before
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hDB : Compatible (tr.HonestBlocks H) D' B :=
       SA.fastLock_compatible_of_votes hrun hO.1 (Nat.lt_succ_self r) hfl' hf
-        fun z hz q hq e he hs => hv x i j B hB hi z hz q (by omega) e he (by omega)
+        fun z hz q hq e he hs => hv x i j B hB hi z hz q (by clear * - hr hq; omega) e he (by
+            clear * - hgt hs; omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hOD' hn hDB.symm
 
@@ -225,7 +228,7 @@ theorem activated_origin_compatible_before
       have hslot := (SA.ts_le_iff_le_slot sp (hrun.localRun.time_nonneg q)
         ((j + 1 : Nat) : Int)).mp htime
       have hcast := (SA.castAt_spec hrun.localRun hz ⟨hc, he⟩).2.1
-      omega
+      clear * - hs hslot hcast; omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
       SA.fastLock_compatible_of_votes hrun hB.1 (Nat.lt_succ_self i) hfl hf
         fun z hz q _ e he hs => hv x' r l O hO z hz q (hcut z hz q e he hs) e he (by omega)
@@ -239,7 +242,8 @@ theorem activated_origin_compatible_before
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hDB : Compatible (tr.HonestBlocks H) D' B :=
       SA.fastLock_compatible_of_votes hrun hO.1 (Nat.lt_succ_self r) hfl' hf
-        fun z hz q hq e he hs => hv x i j B hB z hz q (by omega) e he (by omega)
+        fun z hz q hq e he hs => hv x i j B hB z hz q (by clear * - hr hq; omega) e he (by
+            clear * - hgt hs; omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hOD' hn hDB.symm
 
@@ -294,8 +298,8 @@ theorem ResetPremisesUpTo.activation_caches {b : Time}
       hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
     obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ (hsub hE) (hE₀r.trans haT)
     have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩
-    rcases hp.origins_compatible_before hvote ho hg hact hoO (by omega) hib
-      ((hp.run.time_mono (by omega)).trans hkb) with
+    rcases hp.origins_compatible_before hvote ho hg hact hoO (by clear * - hi' hrd hdi; omega) hib
+      ((hp.run.time_mono (by clear * - hi' hrd hdi; omega)).trans hkb) with
       hBO | hOB
     · exact hnc (SA.anc_total hU hEO hBO)
     · exact hnc (Or.inl (hEO.trans hOB))
@@ -304,7 +308,7 @@ theorem ResetPremisesUpTo.activation_caches {b : Time}
     have hn := sp.toParams.hn
     change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at hf
     change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    omega
+    clear * - hn hf; omega
   have hJ : HZ tr H g + 1 ≤ (tr.state y k₁).fg.hj →
       Compatible (tr.HonestBlocks H) (tr.state y k₁).fg.J B :=
     Store.J_compatible_of_rows hreach hq hU hsub hgB hrow
@@ -313,7 +317,7 @@ theorem ResetPremisesUpTo.activation_caches {b : Time}
   by_cases hlow : (tr.state y k₁).fg.hj ≤ HZ tr H g
   · exact Or.inl (low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults
       hy ho.1 hBx ho.2.2.2 hlow)
-  · rcases hJ (by omega) with hJB | hBJ
+  · rcases hJ (by clear * - hlow; omega) with hJB | hBJ
     · exact Or.inl ((hFJ.mono hsub).trans hJB)
     · exact SA.anc_total hU (hFJ.mono hsub) hBJ
 
@@ -489,12 +493,16 @@ theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
     · exact hJC (hg ▸ (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
     have hJlt := Store.hj_lt_h hreach hBj
     obtain ⟨W₂, -, att₂, -, v₂, -, d₂, hd₂, -, -, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
-      hp.left_entry_origin hy hJm hJT (by omega) hEJB (by omega)
+      hp.left_entry_origin hy hJm hJT (by clear * - hmax hmj hBjhj hJh; omega) hEJB (by
+          clear * - hJh hJlt; omega)
     obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
-      entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by omega) (by omega)
+      entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by clear * - hmax hmj; omega) (by
+          clear * - hmj hCh; omega)
     obtain ⟨W₁, -, att₁, -, v₁, -, d₁, hd₁, -, -, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
-      hp.left_entry_origin hy hEC hECT (by omega) hECC (by omega)
-    obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by omega) ho₂ (by omega)
+      hp.left_entry_origin hy hEC hECT (by clear * - hmax hmj hECh; omega) hECC (by
+          clear * - hmj hCh hECh; omega)
+    obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by clear * - hd₁ hr₁; omega) ho₂ (by
+        clear * - hd₂ hr₂; omega)
     have h₁ := hECO.trans hO₁C
     have h₂ := hJO.trans hO₂C
     have hEC' := hp.mem_tree_of_anc hz h₁ hC'
@@ -516,11 +524,12 @@ theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
   rw [hfl] at hfloor
   obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
   obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-    entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
+    entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by clear * - hfloor; omega) (by
+        clear * - hCh; omega)
   obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, haT, r, hrd, l, O, hoO, hEO⟩ :=
-    hp.left_entry_origin hy hE hET (by omega) hEC (by omega)
+    hp.left_entry_origin hy hE hET (by omega) hEC (by clear * - hfloor hCh hEh; omega)
   have hBO : Anc (tr.HonestBlocks H) B O := by
-    rcases hcomp v r l O (by omega) hoO with h | h
+    rcases hcomp v r l O (by clear * - hd₁ hrd; omega) hoO with h | h
     · exact h
     · exfalso
       have hEB := hEO.trans h
@@ -528,9 +537,9 @@ theorem ResetPremisesUpTo.high_floor_signed_source_of_row_bound {b : Time}
       have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
         (hp.anc_tree_of_anc ho.1 hEB hBx)
       rw [hp.σ_eq_run ho.1 hy hEx hE] at hle
-      omega
-  exact ⟨v, r, l, O, E, by omega, hoO,
-    hrow W hW att ha v hv d₁ hsd hd₁ r l O hrd hoO, hE, hEO, hBO, by omega,
+      clear * - hfloor hEh hle; omega
+  exact ⟨v, r, l, O, E, by clear * - hd₁ hrd; omega, hoO,
+    hrow W hW att ha v hv d₁ hsd hd₁ r l O hrd hoO, hE, hEO, hBO, by clear * - hfl hEh; omega,
     d₁, att, hrd, hd₁, hsd, haT⟩
 
 /-- Whole-run specialization of the signed floor-crossing source. -/
@@ -681,12 +690,16 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     · exact hJC (hg ▸ (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
     have hJlt := Store.hj_lt_h hreach hBj
     obtain ⟨W₂, -, att₂, -, v₂, -, d₂, hd₂, -, -, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
-      left_entry_origin hp hy hJm hJT (by omega) hEJB (by omega)
+      left_entry_origin hp hy hJm hJT (by clear * - hmax hmj hBjhj hJh; omega) hEJB (by
+          clear * - hJh hJlt; omega)
     obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
-      entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by omega) (by omega)
+      entry_at_height hreach hC (h := (tr.state y k).fg.hj) (by clear * - hmax hmj; omega) (by
+          clear * - hmj hCh; omega)
     obtain ⟨W₁, -, att₁, -, v₁, -, d₁, hd₁, -, -, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
-      left_entry_origin hp hy hEC hECT (by omega) hECC (by omega)
-    obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by omega) ho₂ (by omega)
+      left_entry_origin hp hy hEC hECT (by clear * - hmax hmj hECh; omega) hECC (by
+          clear * - hmj hCh hECh; omega)
+    obtain ⟨z, hz, m', C', hC', hO₁C, hO₂C⟩ := hupper ho₁ (by clear * - hd₁ hr₁; omega) ho₂ (by
+        clear * - hd₂ hr₂; omega)
     have h₁ := hECO.trans hO₁C
     have h₂ := hJO.trans hO₂C
     have hEC' := mem_tree_of_anc hp hz h₁ hC'
@@ -711,9 +724,10 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
   -- origin
   obtain ⟨-, -, -, -, -, ⟨C, hC, hCh⟩, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hreach
   obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-    entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by omega) (by omega)
+    entry_at_height hreach hC (h := (tr.state y k).fg.hmax - 1) (by clear * - hfloor; omega) (by
+        clear * - hCh; omega)
   obtain ⟨W, hW, att, ha, v, hv, d₁, hd₁, hsd, -, r, hrd, l, O, hoO, hEO⟩ :=
-    left_entry_origin hp hy hE hET (by omega) hEC (by omega)
+    left_entry_origin hp hy hE hET (by omega) hEC (by clear * - hfloor hCh hEh; omega)
   -- the origin is comparable with `B`, and higher: it extends `B`
   have hts' : sp.ts e.msg.slot ≤ tr.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(SA.castAt_spec hr hy hc).2.1])
@@ -723,7 +737,8 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     Or.inr fun c hc => not_le.mp fun hle => absurd (hts.trans (hp.run.time_mono hle))
       (not_le.mpr hc)
   have hBO : Anc (tr.HonestBlocks H) B O := by
-    rcases origins_compatible_before hp hvk ho (g_le_ts hp ho le_rfl) hact hoO (by omega) with
+    rcases origins_compatible_before hp hvk ho (g_le_ts hp ho le_rfl) hact hoO (by
+        clear * - hd₁ hrd; omega) with
       h | h
     · exact h
     · exfalso
@@ -732,7 +747,7 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
       have hle := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun ho.1 i)
         (anc_tree_of_anc hp ho.1 hEB hBx)
       rw [σ_eq_run hp ho.1 hy hEx hE] at hle
-      omega
+      clear * - hfloor hEh hle; omega
   -- a counted head of the origin, relayed to the voter before its freeze
   obtain ⟨ℓw, D, CV, hcw, hflw, -, -, -, hOD, -⟩ := highOrigin_mem hp hoO
   obtain ⟨u, hu⟩ := fastLock_counted_nonempty hflw
@@ -750,12 +765,12 @@ theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat
     linarith
   have hlm := row_origin_label_lt hp hy hc hW ha hv hsd hd₁ hrd hoO
   have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts l + 2 * sp.Δ)) hoO.1 hkw hkwg
-    hkwt le_rfl hy hc (by omega) (hF.trans (hBO.trans hOHv))
+    hkwt le_rfl hy hc (by clear * - hlm; omega) (hF.trans (hBO.trans hOHv))
   have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
   have hh := σ_h_le_of_anc hreach (anc_tree_of_anc hp hy (hEO.trans hOHv) hHvy)
   refine ⟨Hv, hHvT, hBO.trans hOHv, ?_⟩
   change (tr.state y k).fg.headHeightFloor ≤ _
-  omega
+  clear * - hfl hEh hh; omega
 
 /-- A high origin above the raw target supplies a frozen viable witness when a held
 ancestor of the origin already meets the receiver's height floor. No retention invariant
@@ -845,7 +860,7 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     change g ≤ tr.time kw
     linarith
   have hHvT := relay_mem_voterBlockTree hr (sync_after hp (sp.ts j + 2 * sp.Δ)) ho.1 hkw hkwg
-    hkwt le_rfl hy hc (by omega) (hF.trans hBHv)
+    hkwt le_rfl hy hc (by clear * - hj; omega) (hF.trans hBHv)
   have hHvy : Hv ∈ (tr.state y k).fg.tree := frame_tree_subset hp hy hc.1 hHvT.1
   have hBy := mem_tree_of_anc hp hy hBHv hHvy
   have hh := σ_h_le_of_anc (Compose.fg_reachable hp.run.toLocalRun hy k)
@@ -872,7 +887,7 @@ theorem low_root_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x : F
     (Compose.fg_reachable hp.run.toLocalRun hy k)).2.2.2.2.1 D hD'.1
   have hJD : (tr.state y k).fg.Anc (tr.state y k).fg.J D := by
     by_contra hn
-    exact hroot.2 ⟨hroot.1, D, hD'.1, hD'.2, by omega, hn⟩
+    exact hroot.2 ⟨hroot.1, D, hD'.1, hD'.2, by clear * - hroot hlow hDh hDle; omega, hn⟩
   exact SA.anc_total (honest_coherent hp) (Anc.mono (fun X hX => ⟨y, hy, k, hX⟩) hJD) hBD
 
 /-- Low justification gives complete root compatibility using only post-cut relay. -/
@@ -902,7 +917,7 @@ theorem high_origin_low_J_root_before
     · have hD := acceptAt_mem hp ho.1 hq
       have hstart := (cutZ_lt_of_anc hp ho ho.1 hD hBD).1.le
       have htree := relay_mem_voterBlockTree_window_after hr hsync ho.1 hy hq hstart hqt hc
-        (by omega) hk (by rw [hFF]; exact hF.trans hBD)
+        (by clear * - hj; omega) hk (by rw [hFF]; exact hF.trans hBD)
       exact low_root_compatible hp ho hy hc hj hJ hlow htree hBD
   · exact Or.inl hF
 
@@ -931,7 +946,7 @@ theorem ResetPremisesUpTo.low_root_of_held_seed_at_state {b : Time}
     have hle := (Store.cache_invariants _ _ _ _ hreach).2.2.2.2.1 D hD
     have hJD : (tr.state y i).fg.Anc (tr.state y i).fg.J D := by
       by_contra h
-      exact hn ⟨he, D, hD, hFD, by omega, h⟩
+      exact hn ⟨he, D, hD, hFD, by clear * - hlow hDh he hle; omega, h⟩
     exact hJD.mono fun X hX => ⟨y, hy, i, hX⟩
   unfold Store.fcRoot
   split_ifs with hactive
@@ -1039,7 +1054,7 @@ theorem ResetPremisesUpTo.high_J_root_of_held_at_state_before {b : Time}
       hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
     obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ (hsub hE) (hE₀r.trans haT)
     have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩
-    rcases hcompare _ r l O (by omega) hoO with hBO | hOB
+    rcases hcompare _ r l O (by clear * - hi' hrd hdi; omega) hoO with hBO | hOB
     · exact hnc (SA.anc_total hU hEO hBO)
     · exact hnc (Or.inl (hEO.trans hOB))
   have hq : Hᶜ.ncard < sp.toParams.fg.q := by
@@ -1047,7 +1062,7 @@ theorem ResetPremisesUpTo.high_J_root_of_held_at_state_before {b : Time}
     have hn := sp.toParams.hn
     change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at hf
     change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    omega
+    clear * - hn hf; omega
   have hJ := Store.J_compatible_of_rows hreach hq hU hsub hgB hrow hhigh
   have hF : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F B := by
     obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
@@ -1172,7 +1187,7 @@ theorem first_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (hs : e.msg.slot = j + 1) (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV :=
   first_carry_of_finalized_anc hp k ho hfl hy hc hs
-    (vote_F_anc hp k ih ho hy hc (by omega) hroot)
+    (vote_F_anc hp k ih ho hy hc (by clear * - hs; omega) hroot)
 
 /-- **`Carry` at a later vote.** At an honest vote of slot `m' + 1`, `m' > j`, at which `B` is not
 below `fc_root`, the voter holds the honest slot-`m'` votes and has accepted their heads (which
@@ -1199,7 +1214,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
       have h₁ := SA.slot_mono sp (hr.time_nonneg k) (hr.time_mono (not_lt.mp hkk))
       have h₂ := (SA.castAt_spec hr hy hc).2.1
       change e'.msg.slot = m' at hvs
-      omega
+      clear * - hm' hk' h₁ h₂ hvs; omega
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz k' hk'k e' ⟨ℓk, hck, he'⟩ hvs
     obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr hz ⟨hck, he'⟩
     obtain rfl : Hd = Hv :=
@@ -1212,13 +1227,13 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
       have := hp.cutZ_le_ts_of_highOrigin ho
       have := lt_cutZ sp g
       have := le_gbar g
-      have := (SA.ts_le_iff sp).mpr (show (j : Int) ≤ m' by omega)
+      have := (SA.ts_le_iff sp).mpr (show (j : Int) ≤ m' by clear * - hjm; omega)
       linarith
     refine carryAt_of_writer_window hr (hp.sync.syncAC hp.run le_rfl)
       hgm le_rfl hz hy hc hm' ?_
     rintro v rfl
     refine ⟨hvs, ⟨k', ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
-      (SA.ts_le_iff_le_slot sp (hr.time_nonneg k') m').2 (by omega), hkt'⟩,
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg k') m').2 (by clear * - hvs hk'; omega), hkt'⟩,
       Hd, hHv, hHvr, hF.trans hBHv, ?_⟩
     rcases Compose.frame_anc_accepted hr hz k' ℓk hck Hd hHd Hd .refl with hg | ⟨k'', hk'', hacc⟩
     · exact Or.inl hg
@@ -1253,7 +1268,7 @@ theorem later_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (hroot : ¬ Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) :
     SA.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' (Compose.honestVotes tr H m') := by
   refine later_carry_of_finalized_anc hp k ho hy hc hm' hjm
-    (vote_F_anc hp k ih ho hy hc (by omega) hroot) ?_
+    (vote_F_anc hp k ih ho hy hc (by clear * - hm' hjm; omega) hroot) ?_
   rintro z hz q hq e' ⟨ell, hcall, hcast⟩ hslot
   exact ((voteInv_iff.1 (ih q hq).1) x i j B ho z hz ell e' ⟨hcall, hcast⟩
     (by rw [hslot]; exact hjm)).1
@@ -1278,7 +1293,8 @@ theorem ResetPremisesUpTo.half_committee {b : Time}
         tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts m + sp.Δ) - 1)
       rw [hsl, sp.slotTime_eq]
       exact ⟨by omega, (restart_le_before hp hy hk (hkt.trans hmb)).trans
-        ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ m - 1 by omega)))⟩
+        ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ m - 1 by
+            clear * - hm3; omega)))⟩
     obtain ⟨q, e, hv, he, -⟩ := Compose.vote_of_awake_joined hp.run hp.noColl hy
       (hp.awake y hy _ hgt hmb) hj
     exact ⟨hy, q, e, hv, he⟩
