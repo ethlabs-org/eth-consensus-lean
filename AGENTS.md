@@ -43,16 +43,16 @@ status) and `docs/decisions.md` (the design rationale). Checks and CI tiers: `do
   certification.
 - **Commit messages** state the reason if the change makes build or CI time worse, and name the declarations
   added or changed, their assumptions, every open `sorry`, and the commands actually run with their result.
-  Never claim a check you did not run. Two requirements are checked: a `Trusted-surface:` line in every commit
-  that touches the trusted surface (below), and author, committer and `Co-authored-by:` addresses on the
-  public allowlist `scripts/commit-emails.toml` (`scripts/check-commit-emails.py`, in `check` and push-main).
+  Never claim a check you did not run. Two requirements are checked: a `Trusted-surface:` line in every
+  non-merge commit that touches the trusted surface (below), and author, committer and `Co-authored-by:`
+  addresses on the public allowlist `scripts/commit-emails.toml` (`scripts/check-commit-emails.py`, in `check` and push-main).
 - **Trusted surface** (`ConsensusLean/{Init,Core,Spec,Statements,ToMathlib}` as `X.lean` and `X/**`,
   `Challenge.lean`, `comparator.json`, `lean-toolchain`, `lake-manifest.json`,
   `ConsensusLeanTest/Review{Axioms,Guard}.lean`, and for every protocol instance `<P>` the files
   `Instances/<P>/{Spec,Statements}` and `Instances/<P>/AsChainShape.lean`): the list is `trusted_paths` in
   `scripts/boundaries.toml` (united with the list at the base). A change to it is **recorded, not gated**: every
-  commit that touches a trusted path carries a line `Trusted-surface: <what changes and why>` in its message;
-  `scripts/review-boundary.sh` fails without it and records each commit's trusted paths in the summary of its
+  non-merge commit that touches a trusted path carries a line `Trusted-surface: <what changes and why>` in its
+  message; `scripts/review-boundary.sh` fails without it and records each commit's trusted paths in the summary of its
   `check` run. A statement change gets a fidelity read-back before landing (the Lean read back into prose and
   compared with the reference), recorded as a line `Fidelity read-back: PASS` in its commit message; the
   snapshots (step 4) are regenerated and committed.

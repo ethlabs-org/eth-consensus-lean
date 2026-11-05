@@ -450,8 +450,9 @@ detail in `TRUST.md`.
 
 - **Trust checks reuse existing tools** (EthLib check-decls, leanchecker, `#guard_msgs` axiom pins, `lake check`,
   `lake comparator`, axiom-audit) with thin glue; a home-grown checker was abandoned. turbo-lean is optional, for
-  per-declaration re-checks only. bubblewrap is installed wherever the checks run, so `lake check` and the
-  comparator run locally and in CI.
+  per-declaration re-checks only. `lake check` and the comparator run in a bubblewrap sandbox, which is installed
+  where the full checks run (the `full` workflow and the development setup); without it they are skipped and
+  listed as CI-only.
 - **CI is GitHub Actions.** `check` (`.github/workflows/ci.yml`) runs the fast tier and the review boundary on
   every pull request and every push to `main`; `full` (`full.yml`) runs the full tier nightly, on
   `milestone*`/`release*` tags and on demand. Green CI is the GitHub check of the commit; full-tier certification
@@ -464,12 +465,10 @@ detail in `TRUST.md`.
   push and in `scripts/push-main.sh` before the push, and a failure names the commit and field, never the address.
   Reason: no private address is ever written to the repository or a log. CI detects an upload after the fact;
   push-main stops a landing before it.
-- **Trusted-surface changes are recorded, not gated.** Every commit that touches a path of `trusted_paths` carries
-  a line `Trusted-surface: <what changes and why>`, checked by `scripts/review-boundary.sh`. Reason: there are no
-  review gates; the line keeps every trusted change visible and is machine-checked. An earlier approval tag on the
-  trusted surface was retired for that reason.
-- **`.github/CODEOWNERS` is not used**: Code Owner review is not enforced (it would be a review gate), and no check
-  reads the file.
+- **Trusted-surface changes are recorded, not gated.** Every non-merge commit that touches a path of
+  `trusted_paths` carries a line `Trusted-surface: <what changes and why>`, checked by `scripts/review-boundary.sh`.
+  Reason: there are no review gates; the line keeps every trusted change visible and is machine-checked.
+- **There is no `.github/CODEOWNERS`**: Code Owner review would be a review gate.
 
 ## Open questions
 
