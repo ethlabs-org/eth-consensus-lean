@@ -10,13 +10,13 @@ public section
 
 /-! # Goldilocks under `Sleepy`: what an origin carries to the next voters
 
-Transport and S3's non-root case: for an origin `C` of label `s` and an honest
-slot-`(s+1)` vote whose `Σ.F` is at or below `C`, the counted votes and heads reach the voter in
-time (`SA.CarryAt`), and, for a result, every slot-`s` vote of the voter's merged view reaches the
-writer (A1.8 (d)). Under `Sync[0, ∞)`: each counted vote was admitted by the writer (so forwarded)
-and each counted head accepted by it (so relayed) before `t_s + 2Δ`; the voter is joined at its
-vote, so awake since `t_s` with its pool kept, and processes them before `t_s + 3Δ`; the relay
-applies since the voter's `Σ.F` is below `C`, below each head. -/
+Transport and the non-root case of S3 (`SleepyInvariant`): for an origin `C` of label `s` and an
+honest slot-`(s+1)` vote whose `Σ.F` is at or below `C`, the counted votes and heads reach the voter
+in time (`SA.CarryAt`), and, for a result, every slot-`s` vote of the voter's merged view reaches
+the writer (A1.8 (d)). Under `Sync[0, ∞)`: each counted vote was admitted by the writer (so
+forwarded) and each counted head accepted by it (so relayed) before `t_s + 2Δ`; the voter is joined
+at its vote, so awake since `t_s` with its pool kept, and processes them before `t_s + 3Δ`; the
+relay applies since the voter's `Σ.F` is below `C`, below each head. -/
 
 namespace Consensus.Goldilocks.Compose
 

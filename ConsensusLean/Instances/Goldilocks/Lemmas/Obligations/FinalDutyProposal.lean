@@ -11,8 +11,9 @@ slot time is inside the horizon produces the designated proposer's actual propos
 accepted by its proposer, as an `HonestProposalRun`. It is generic in `s`: the seed slot and
 every window anchor use it, and it selects no offsets. Premises are the query's run fields
 (`valid`, `noCollision`) and the duty itself; the query's catch-up duration covers the protocol
-catch-up `18 Δp` through `contract_catchUp_ge_sleepy`. No recurrence, reset, M1 or `contract_heal`
-value is used. It is a thin instance of the run-level core `duty_proposal_run` (`ProposerGap`).
+catch-up `18 Δp` through `contract_catchUp_ge_sleepy`. No recurrence, reset, `Healing.M1` route or
+`contract_heal` value is used. It is a thin instance of the run-level core `duty_proposal_run`
+(`ProposerGap`).
 The chain is the one of `healthy_bounded_repairing_opening` (HealedSafety):
 `runProposer` membership, `ready_transport`, `Regimes.ready_proposer_proposes`,
 `Compose.proposal_accepted`, `Healing.honestProposalRun_of_proposesAt`. -/

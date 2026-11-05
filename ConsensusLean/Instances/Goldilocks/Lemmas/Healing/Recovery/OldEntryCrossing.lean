@@ -26,7 +26,7 @@ stretch, with `s < U.slot ≤ s + δ_t ≤ s + r_old`, and `U` is an actual run 
   free or the entry by `ResetPremisesUpTo.record_entry_eq`).
 * The stretch's ready proposal `X` of slot `s + δ_t` sits on a parent above the high origin of a
   report (`high_report_origin`, `ResetPremisesUpTo.reset_proposal_passes`), and `round_cross`
-  (M1) lifts it at least one height above `P` (`6Δ + Δ_F ≤ 4Δ c_F ≤ 4Δ δ_t`).
+  (`Healing.M1.Rise`) lifts it at least one height above `P` (`6Δ + Δ_F ≤ 4Δ c_F ≤ 4Δ δ_t`).
 * The first crossing on `P ⪯ D` is a block of a stretch slot, hence the stretch's ready proposal
   of that slot, and an entry accepted by its proposer. Replay-state heights are transported
   between the stores explicitly (`σ_eq_honest`). -/

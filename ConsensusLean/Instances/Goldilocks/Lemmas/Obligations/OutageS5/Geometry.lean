@@ -11,7 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
-/-! # Outage S5: the Hi geometry
+/-! # `OutageS5`: the Hi geometry
 
 A node is **Hi** at a cut (`HiAt`) when its justification cache `Σ.J` is strictly above the
 protected block `P`.

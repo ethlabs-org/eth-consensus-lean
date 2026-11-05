@@ -6,11 +6,10 @@ public section
 
 /-! # Key-dependent rise rounds
 
-recovery_time_savings item 1, piece (2). The rise reset stops after 0 or 1 rounds when the
-warm proposal is high. `FrameWindow.rise_reset_rounds` makes the round count `r ≤ 2` explicit:
-with `HZ + 1 ≤ σ[P].h + r` and `u + r·ρ + 1 ≤ N`, a reset by `t_{u+r·ρ+1} + 2Δ`.
-The proof uses the same public steps (`reset_of_height_advance`,
-`FrameWindow.reset_of_high_proposal`, `FrameWindow.round_of_warm`). -/
+The rise reset stops after 0 or 1 rounds when the warm proposal is high.
+`FrameWindow.rise_reset_rounds` makes the round count `r ≤ 2` explicit: with `HZ + 1 ≤ σ[P].h + r`
+and `u + r·ρ + 1 ≤ N`, a reset by `t_{u+r·ρ+1} + 2Δ`. The proof uses the same public steps
+(`reset_of_height_advance`, `FrameWindow.reset_of_high_proposal`, `FrameWindow.round_of_warm`). -/
 
 namespace Consensus.Goldilocks.Healing
 

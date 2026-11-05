@@ -7,15 +7,15 @@ public section
 
 /-! # At most 5 global frame changes, and the pigeonhole to a `FrameWindow`
 
-O2 and the window. Two layers:
+The bound and the window. Two layers:
 
 * `exists_const_window_seq` is pure counting: a sequential pigeonhole for a per-node monotone
   key with lag `Δ` and a window length per key value.
-* `exists_frameWindow_seq` applies it to the merged key `frameKey'` (MONO) and builds a
-  `FrameWindow` from the constant key (`frameWindow_of_frameKey'_eq`).
+* `exists_frameWindow_seq` applies it to the merged key `frameKey'` (monotone by `keyMerge_mono`)
+  and builds a `FrameWindow` from the constant key (`frameWindow_of_frameKey'_eq`).
 
-The range (F1 and the lower bound `h_max ≥ HZ` after `cutZ + Δ`) and the lag (L-H/L-J/L-C) are
-hypotheses here. -/
+The range (`hmax_le_of_noAdvance` and the lower bound `h_max ≥ HZ` after `cutZ + Δ`) and the lag
+(`frameKey_lag`) are hypotheses here. -/
 
 namespace Consensus.Goldilocks.Healing
 

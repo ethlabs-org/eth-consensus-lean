@@ -12,7 +12,7 @@ F3-lock lemma uses the NoAdvance premise.
 * `hj_ge_of_lock` (LH): an honest record lock at height `h` gives own `h_j ≥ h`.
 * `lock_root_eq_J` (kind J): a lock at `h = h_j` names `Σ.J`.
 * `lock_none_of_noAdvance` (F3-lock): before the advance there is no lock at `H_z`.
-* `client_progress_of_lock` (A-item 3): `client_progress` with the lock premise as a
+* `client_progress_of_lock`: `client_progress` with the lock premise as a
   hypothesis, in place of `HSShared` and `PhaseOn`.
 * `lock_free_or_entry_of_frame` and `client_signs_of_frame` (O1-L): in kind F
   (`h_j < h`) or kind J (`h_j = h`, `Σ.J ⪯ C`) the lock at the source height is free or the
@@ -138,9 +138,10 @@ theorem lock_none_of_noAdvance (hrun : GoldilocksRun proposer dg H tr) {g T : Ti
   have := hwf.2 (HZ tr H g, r) (by simp [hfin])
   omega
 
-/-- **A-item 3.** `client_progress` with the lock premise as a hypothesis (no `HSShared`, no
-phase): at an honest `fg_attest(C)` with `C` of state height `h` and entry `E`, if the lock at
-`h` is free or `E`, the client signs an attestation `(h, E)` now or signed one at an earlier cut. -/
+/-- **Client progress from the lock premise.** `client_progress` with the lock premise as a
+hypothesis (no `HSShared`, no phase): at an honest `fg_attest(C)` with `C` of state height `h` and
+entry `E`, if the lock at `h` is free or `E`, the client signs an attestation `(h, E)` now or signed
+one at an earlier cut. -/
 theorem client_progress_of_lock (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C signed))) {E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}

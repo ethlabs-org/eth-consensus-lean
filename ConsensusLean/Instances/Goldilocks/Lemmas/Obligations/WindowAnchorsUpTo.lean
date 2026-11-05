@@ -8,7 +8,7 @@ public section
 /-! # Goldilocks Obligations: window coverage from four anchors, through a horizon
 
 `anchors_chain_upTo` and `window_anchors_chain_upTo`:
-S3's anchor part from `ResetPremisesUpTo … b`, by C4 through the horizon
+The anchor part of S3 (`WindowAnchors`) from `ResetPremisesUpTo … b`, by C4 through the horizon
 (`honest_proposal_below_next_upTo`, `honest_proposal_below_later_upTo`). Guards: the later
 proposal of each pair has `t_{s₁} ≤ b`, and an adjacent pair `s₁ = s₀ + 1` also has the service
 reserve `t_{s₀} + 6Δ ≤ b`. For the four anchors this is `t_{s 3} ≤ b` and, when `s 3 = s 2 + 1`,

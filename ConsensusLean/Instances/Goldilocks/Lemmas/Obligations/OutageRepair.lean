@@ -12,7 +12,7 @@ public section
 /-! # Goldilocks outage: the repair of a ready reader's read (slow-only recovery)
 
 `outage_repair` and its consumer `outage_protected`, moved unchanged from `OutageSuppliers.lean`
-so that the assembly can import the arming, the lock module, the S5 suppliers and the reader
+so that the assembly can import the arming, the lock module, the `OutageS5` suppliers and the reader
 bridge, which all import `OutageSuppliers.lean`. -/
 
 namespace Consensus.Goldilocks.Obligations
@@ -25,11 +25,11 @@ set_option linter.unusedVariables false in
 /-- Slow-only recovery for ready readers from the recovery point `b₁ + recovery·Δe`
 (`recovery = 18`): the reader's read extends the ready source's read. The source is armed
 (`outage_arming`); the lock module's premise package and invariant come from the arming
-(`outageLockPremises_of_arming`, `outage_locks`) with S5's step (`outage_s5_step_query`); the
-reader reads above the armed read tip (`outage_reader_bridge`, with S5's suppliers
-`outage_reader_head`, `outage_reader_early`, `outage_reader_late`), and the ancestry of the two
-read tips is the engine read prefix (`outage_reader_prefix`). The armed-read witness `armed` of
-`outage_arm` is not needed. -/
+(`outageLockPremises_of_arming`, `outage_locks`) with the step `OutageS5Step`
+(`outage_s5_step_query`); the reader reads above the armed read tip (`outage_reader_bridge`, with
+the suppliers `outage_reader_head`, `outage_reader_early`, `outage_reader_late`), and the ancestry
+of the two read tips is the engine read prefix (`outage_reader_prefix`). The armed-read witness
+`armed` of `outage_arm` is not needed. -/
 theorem outage_repair (Q : OutageQuery S A V)
     (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T)

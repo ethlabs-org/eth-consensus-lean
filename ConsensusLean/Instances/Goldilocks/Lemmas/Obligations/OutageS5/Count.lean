@@ -6,7 +6,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage S5: the extending majority at the first restored label
+/-! # `OutageS5`: the extending majority at the first restored label
 
 The `q = r` arm of `restored_majority`. Given an honest call at or after `t_r + Δ`:
 

@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Obligations: the sufficient heal bound of the key-dependent rise route
 
-recovery_time_savings item 1, piece (4). The five-window sufficient heal bound with the
+The five-window sufficient heal bound with the
 key-dependent window of `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). The window of key
 value `v` has the length `len = 4D(L_drain + r·ρ + 2) + 2D`, `r = r(v) ≤ 2`, `ρ = δ_t + X − 1`,
 and the five attempts end by `lo + 5(4D(L_drain + 2) + 2D + λ) + 6·4Dρ` (`sum_riseLen` at

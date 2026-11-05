@@ -11,8 +11,8 @@ public section
 /-! # Finite drain reports
 
 The warm `FrameWindow` supplies unanimity and vote joinedness; the shorter
-closed P5b window supplies the actual adjacent read. Reports may precede
-that read, so following is proved for the actual returned report.
+closed window of `fresh_fast_lock_at_update` (`M1/FreshLock`) supplies the actual adjacent
+read. Reports may precede that read, so following is proved for the actual returned report.
 This is not a reset-time or joint coefficient-envelope theorem.
 -/
 

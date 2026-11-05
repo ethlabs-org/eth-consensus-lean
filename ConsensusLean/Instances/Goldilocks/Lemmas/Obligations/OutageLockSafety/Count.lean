@@ -16,7 +16,7 @@ public section
   cut before `i` by a validator that is not a late waker has a head compatible with `P`.
 * `OutageLockInv.result_compatible` (R): the result of an honest update of an unpolluted
   label at cut `i` is compatible with `P`; the three counts R-j₀ (pre-`b₀` service), R-mid (the
-  cohort `A₀` against `Hᶜ ∪ W`) and R-late (S5 and the fault bound). -/
+  cohort `A₀` against `Hᶜ ∪ W`) and R-late (`OutageS5StepAt` and the fault bound). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -320,7 +320,8 @@ theorem result_compatible {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n} (h
     · exact (hinv.votes v.val hvH j (by omega) e hve (by omega) (by omega) (Or.inr hA)).voteCompat
     · exact hinv.voteCompat_of_not_lateWaker hvH (fun h => hQ (Or.inr h)) (by omega) hve
         (by omega)
-  · -- R-late: every honest slot-`m` vote is compatible with `P` (S5), and reaches the update
+  · -- R-late: every honest slot-`m` vote is compatible with `P` (`OutageS5StepAt`), and
+    -- reaches the update
     have hT : {x | x ∈ H ∧ tr.awake x (sp.ts m + sp.Δ) ∧ tr.JoinedAt x (sp.ts m + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state y i).pool m} := by
       intro x hx

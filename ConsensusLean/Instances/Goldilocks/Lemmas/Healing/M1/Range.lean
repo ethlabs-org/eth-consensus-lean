@@ -6,9 +6,9 @@ public section
 
 /-! # The frame range: `H_z ≤ h_max ≤ H_z + 1` before the advance
 
-F1 and the lower bound after `c_z + Δ`.
+The upper bound before the advance and the lower bound after `c_z + Δ`.
 
-* `hmax_le_of_noAdvance` (F1): if no honest node signs at a height `> H_z` at a time `< T`,
+* `hmax_le_of_noAdvance`: if no honest node signs at a height `> H_z` at a time `< T`,
   every honest `h_max` at a cut before `T` is `≤ H_z + 1`. A block of state height `≥ H_z + 2`
   carries an honest attestation of height `H_z + 1` (G0.2 (f), `f < q`), signed before the block was
   accepted. Only `f < q` is used, not `Healthy(g)`.
@@ -24,8 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- **F1 (A-item 5).** Before the height advance (no honest signature of height `> H_z` at a
-time `< T`), every honest `h_max` at a cut before `T` is at most `H_z + 1`. -/
+/-- **The upper bound before the advance.** Before the height advance (no honest signature of height
+`> H_z` at a time `< T`), every honest `h_max` at a cut before `T` is at most `H_z + 1`. -/
 theorem hmax_le_of_noAdvance (hrun : GoldilocksRun proposer dg H tr)
     (hq : Hᶜ.ncard < sp.toParams.fg.q) {g T : Time}
     (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
@@ -82,7 +82,8 @@ theorem HZ_le_hmax (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoColl
   have h2 := frameKey_bounds (tr.state z m).fg
   omega
 
-/-- **The range `H_z ≤ h_max ≤ H_z + 1` on `[lo, T)`**, from F1 and the lower bound. -/
+/-- **The range `H_z ≤ h_max ≤ H_z + 1` on `[lo, T)`**, from `hmax_le_of_noAdvance` and the lower
+bound (`HZ_le_hmax`). -/
 theorem hmax_range (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) (hq : Hᶜ.ncard < sp.toParams.fg.q)
     {g ΔF b κ T lo : Time}

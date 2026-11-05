@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 
 public section
 
-/-! # The frame-key lag (L-H, L-J, L-C)
+/-! # The frame-key lag
 
 If an honest `x` has key `v` at cut `i`, an honest `z` has key
 `≥ v` at every cut `m` after a call of `z` at or after the relay deadline of `i`
@@ -117,7 +117,7 @@ theorem F_anc_of_hj_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
   rw [hst hy, hst hx] at h
   exact h hBf hFm hBfF.symm hBt (by omega)
 
-/-- **The frame-key lag (L-H, L-J, L-C).** Premises: relay (`ResetService`), catch-up
+/-- **The frame-key lag.** Premises: relay (`ResetService`), catch-up
 (`CatchRun g κ`), a call of `z` before `m` at or after the relay deadline of `i`, and
 `ḡ + κ ≤ time m`. The relay deadline is read from any bound `τ` on the times of the cuts before
 `i` (`frameKey_lag` takes `τ = time i`). -/
@@ -143,13 +143,13 @@ theorem frameKey_lag_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
   have hheld : ∀ {B : SA.Blk sp.n (List (FG.Att sp.n))}, B ∈ (tr.state x i).fg.tree →
       (tr.state x i).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h → B ∈ (tr.state z m).fg.tree :=
     fun hB hh => held_of_relay_le hrun hnc hf hsvc hcatch hx hz hB (hle.trans hh) hτ hcall hcm
-  -- L-H
+  -- the `h_max` carrier
   have hBhz := hheld hBh hBhh.ge
   have heq : (tr.state z m).fg.hmax = (tr.state x i).fg.hmax := by
     have := hgez Bh hBhz
     rw [σ_eq_honest hrun hnc hz hx hBhz hBh] at this
     omega
-  -- L-J
+  -- the `J` carrier
   have hjz := hj_lt_hmax hrun hz m
   have hjx := hj_lt_hmax hrun hx i
   have hb : (tr.state x i).fg.hmax = (tr.state x i).fg.hj + 1 →
@@ -172,7 +172,7 @@ theorem frameKey_lag_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
     have := (jMax_iff _).1 (jMax_of_reachable hRz) Bj hBjz _ hJz (by rw [hσ, hBjJ]) hFJ
     rw [hσ] at this
     omega
-  -- L-C
+  -- the contest witness
   have hC : (tr.state x i).fg.Contest → (tr.state z m).fg.Contest := by
     rintro ⟨hbx', W, hW, -, hWh, hJW⟩
     have hbz' := hb hbx'

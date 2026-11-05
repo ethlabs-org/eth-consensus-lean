@@ -13,18 +13,18 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks outage: S5's query-level suppliers of the reader bridge (O4)
+/-! # Goldilocks outage: the query-level suppliers of the reader bridge
 
 At the lock module's premise
 package `outageLockPremises_of_arming` of an armed ready source:
 
-* `outage_s5_step_query`: S5's step, the lock module's `OutageS5Step`;
+* `outage_s5_step_query`: the lock module's step `OutageS5Step`;
 * `outage_restored_votes`: the extending majority (`ExtendingMajority` at the origin) at every
   restored label with an honest call past its vote time;
 * `outage_reader_head`, `outage_reader_early`, `outage_reader_late`: the bridge's `hhead`,
   `hearly` and `hlate`.
 
-The S5 step and the extending majority come from `Compose.outage_s5_step` and
+The step and the extending majority come from `Compose.outage_s5_step` and
 `Compose.restored_majority` (`Obligations/OutageS5/Step.lean`), the early record from
 `Compose.record_above_of_update_r` (`Obligations/OutageS5/Record.lean`). -/
 
@@ -41,7 +41,8 @@ variable (Q : OutageQuery S A V)
   {v : V} (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon)
   (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v)
 
-/-- S5's hypothesis `hS` at the premise package: receiver service from `D.b₁ = Q.stop`. -/
+/-- The hypothesis `hS` of `Compose.outage_s5_step` at the premise package: receiver service from
+`D.b₁ = Q.stop`. -/
 private theorem premises_service :
     ∀ y ∈ honestKeys S Q.run.2, Compose.ReceiverServiceAfter (honestKeys S Q.run.2)
       (Q.trace.HonestBlocks (honestKeys S Q.run.2))
@@ -49,7 +50,7 @@ private theorem premises_service :
   rw [outageLockPremises_of_arming_b₁]
   exact outage_receiver_service S A V Q
 
-/-- **S5's step in query form** (the lock module's `hS5`), from S5's
+/-- **The step `OutageS5Step` in query form** (the lock module's `hS5`), from
 `Compose.outage_s5_step (D) (hS) : OutageS5StepAt D`. -/
 theorem outage_s5_step_query : OutageS5Step Q service hv hTh hsh ar := by
   have h := Compose.outageS5StepAt_iff.1
@@ -59,7 +60,7 @@ theorem outage_s5_step_query : OutageS5Step Q service hv hTh hsh ar := by
   exact h
 
 /-- **The extending majority at every restored label** with an honest call past its vote time, from
-S5's `Compose.restored_majority (D) (hS) (hinv) q (hq : D.r ≤ q) hcall`. -/
+`Compose.restored_majority (D) (hS) (hinv) q (hq : D.r ≤ q) hcall`. -/
 theorem outage_restored_votes (hS5 : OutageS5Step Q service hv hTh hsh ar)
     (q : Nat) (hq : Q.stop ≤ Q.params.ts q + Q.params.Δ)
     (hcall : ∃ x ∈ honestKeys S Q.run.2, ∃ i, Q.trace.IsCall x i ∧
@@ -103,7 +104,7 @@ theorem outage_reader_head (hS5 : OutageS5Step Q service hv hTh hsh ar)
     (gate_call Q hw G le_rfl)
   exact G.restored.trans (by linarith [Compose.ts_le_ts (sp := Q.params) (Nat.le_succ G.slot)])
 
-/-- **The early record** (`hearly`), from S5's
+/-- **The early record** (`hearly`), from
 `Compose.record_above_of_update_r (D) (hS) (hinv) hw hu`. -/
 theorem outage_reader_early (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {t : Time} {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :

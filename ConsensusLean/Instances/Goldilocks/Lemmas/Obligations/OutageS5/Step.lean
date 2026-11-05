@@ -23,7 +23,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage S5: the restored votes
+/-! # `OutageS5`: the restored votes
 
 Inside lock safety's cut
 induction, at an honest vote of slot `q + 1 > r` at cut `i`, from `OutageLockInv D i` and receiver
@@ -31,7 +31,7 @@ service from `b₁`:
 
 * `vote_extends_of_hi` (H1, vote form): under Hi the walk over the viable vote domain passes `P`
   (the domain is ancestor-closed, `voteDomain_anc`, its viable tree is nonempty, every viable head
-  is strictly above `P` by G3′);
+  is strictly above `P` by G3′, `above_of_hi_height` in `OutageS5/Geometry`);
 * `viable_at_vote_of_lo` (G4): under Lo (no contest, `not_contest_of_lo`) `P` is viable at the
   vote: the honest witness head is frozen (`honest_head_accepted_after`), and below the floor the
   `h_max` carrier's floor entry is above `P` with a source extended by an honest vote of a slot
@@ -356,7 +356,8 @@ theorem vote_extends_of_hi {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (
   refine ⟨_, hΦU (SA.getHead_mem' (hfr ▸ hΦ) (fun X hX => SA.voteDomain_subset_tree hX.1) _ _ _ _),
     hhead.symm, hanc⟩
 
-/-- **Lo is `Σ.J ⪯ P`**: `Σ.J` is compatible with `P` (OB-F), and not strictly above it. -/
+/-- **Lo is `Σ.J ⪯ P`**: `Σ.J` is compatible with `P` (OB-F, `OutageLockInv.caches`), and not
+strictly above it. -/
 theorem J_anc_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     (hk : k ≤ i) (hLo : ¬ HiAt tr H D.P y k) :
     Anc (tr.HonestBlocks H) (tr.state y k).fg.J D.P := by

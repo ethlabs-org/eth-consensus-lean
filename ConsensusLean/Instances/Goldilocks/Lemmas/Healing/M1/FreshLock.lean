@@ -10,8 +10,8 @@ public section
 
 Actual votes and strict early resolution are separate from unanimous vote agreement.
 The vote deadline uses explicit joinedness, rather than a stronger GST margin.
-This is the no-restart-from `ts(u−1)` premise for all honest nodes; the M1
-caller's schedule supplies it from no restart and `gbar ≤ ts(u−1)`.
+This is the no-restart-from `ts(u−1)` premise for all honest nodes; the
+frame-window caller's schedule supplies it from no restart and `gbar ≤ ts(u−1)`.
 The caller's sufficient bound is
 `slot(gbar)+5 ≤ u`. A restart between `ts(u−1)` and `ts u−2Δ` explains why the
 independent `+2Δ` margin is not a joinedness proof; this is premise analysis,
@@ -19,7 +19,7 @@ not a constructed counterexample satisfying every execution premise.
 
 The upstream producer of `hun` is `FrameWindow.honest_vote_heads_eq`
 (`AnchorPrefix`), with its slot `s+1 = u`, `gbar+4Δ ≤ ts s₀`, `s₀+2k ≤ u`
-and frame window `[ts s₀, ts u+Δ]`. The M1 caller must supply that wider warm
+and frame window `[ts s₀, ts u+Δ]`. The frame-window caller must supply that wider warm
 window; this leaf's shorter `[ts u, ts(u+1)+2Δ]` window does not imply it.
 The producer's `k > 0` follows from `SAParams.two_le_k`, and its service
 endpoint follows from this leaf's closed endpoint. No new unanimity induction
@@ -829,7 +829,7 @@ theorem FrameWindow.unanimous_update_no_veto
   · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi.1 hPhi.2 hLt h hvi.1)
   · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi.1 hPhi.2 hvi.1 h hLt)
 
-/-- P5b at every actual update: the raw result and fast selection are the actual
+/-- The fresh fast lock at every actual update: the raw result and fast selection are the actual
 honest proposal, it is not vetoed, and the post-state contains its fresh fast lock.
 The frame/service endpoint `ts(u+1)+2Δ` is closed, including the update itself. -/
 theorem fresh_fast_lock_at_update
@@ -891,8 +891,8 @@ theorem fresh_fast_lock_at_update
   exact SA.fastLock_mem_updateConfirmation_floor hvi.1 hva hconf hnv hfast
     (by rw [hslot]; have := sp.two_le_k; omega)
 
-/-- P5b's fresh fast lock is present at the immediately adjacent actual to-FG
-pre-state, not merely at an unrelated call sharing the same timestamp. -/
+/-- The fresh fast lock of `fresh_fast_lock_at_update` is present at the immediately adjacent actual
+to-FG pre-state, not merely at an unrelated call sharing the same timestamp. -/
 theorem fresh_fast_lock_update_toFG
     {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     {z : Fin sp.n} {kP : Nat}

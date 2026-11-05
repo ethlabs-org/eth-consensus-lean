@@ -19,10 +19,10 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks outage: the reader bridge (O4)
+/-! # Goldilocks outage: the reader bridge
 
 A reader ready at `t` from the
-recovery point reads above the armed read tip of the ready source, given S5's three inputs at the
+recovery point reads above the armed read tip of the ready source, given three inputs at the
 origin: the head at the read label (`hhead`), the record of an early reader that ran the gate of
 the first restored label (`hearly`), and the record of a late reader (`hlate`).
 
@@ -70,8 +70,8 @@ end Helpers
 
 variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
-/-- **O4, the reader bridge.** A reader ready at `t` from the recovery point reads above the armed
-read tip, given S5's head, early and late record inputs at the origin. -/
+/-- **The reader bridge.** A reader ready at `t` from the recovery point reads above the armed
+read tip, given the head, early and late record inputs at the origin. -/
 theorem outage_reader_bridge (Q : OutageQuery S A V)
     (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     {v : V} (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon)
@@ -79,7 +79,7 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
     (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t)
-    -- head at the read label (S5 `outage_reader_head`)
+    -- head at the read label (`outage_reader_head`)
     (hhead : ∀ G : OutageReaderGate S A V Q w t,
       Compose.ExtendingMajority Q.trace (honestKeys S Q.run.2) ar.origin (G.slot + 1) ∨
         Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin
@@ -88,13 +88,13 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
               (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t))).ac
             (Node.frame (Q.trace.state (Q.run.2.ownKey w)
               (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t))
-    -- early record (S5 `outage_reader_early`)
+    -- early record (`outage_reader_early`)
     (hearly : ∀ c ℓ, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) c Q.restoredLabel ℓ →
       ∀ c', c < c' → Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.origin
         ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey w) c'))
           (Q.trace.state (Q.run.2.ownKey w) c').ac.latestConfirmed).getD
           (Q.trace.state (Q.run.2.ownKey w) c').fg.F))
-    -- late record (S5 `outage_reader_late`)
+    -- late record (`outage_reader_late`)
     (hlate : (¬ ∃ c ℓ, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) c Q.restoredLabel ℓ) →
       (∃ s' c ℓ, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey w) c s' ℓ ∧ Q.restoredLabel < s' ∧
           Q.trace.time c ≤ t ∧

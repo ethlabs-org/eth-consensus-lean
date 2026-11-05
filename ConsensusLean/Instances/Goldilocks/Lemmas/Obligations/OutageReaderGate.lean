@@ -14,7 +14,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks outage: the reader's latest gate (O4, E0–E4) and the source prefix
+/-! # Goldilocks outage: the reader's latest gate (E0–E4) and the source prefix
 
 A reader ready at `t` from the recovery point `b₁ + 9Δ` has its latest gate `s = slot(t − 6Δ)`:
 `b₁ ≤ t_s + Δ`, the update of slot `s` at `d_s = t_s + 6Δ ≤ t < t_s + 10Δ` before the read cut, no

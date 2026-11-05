@@ -18,7 +18,7 @@ The chain step `FGParams.justify_of_target_chain` (`FGChain/Live`) at trace leve
   then `FGParams.justify_of_target_previousHeightNotJustified` or
   `FGParams.justify_of_target_previousHeightJustified`.
 * `justify_of_rows'` (the run): an honest proposal `X` on `Pr`, where the proposer has processed
-  each attestation before its proposal cut (the delivery premise, M1): every attestation is in the
+  each attestation before its proposal cut (the delivery premise): every attestation is in the
   pool, so it is on `Pr`'s chain or in `proposal_attestations` (it is valid against `σ[Pr]`: it
   names the entry). Honest attestations are not equivocations; the weight is that of the honest
   signers, no `2q − n` slack.

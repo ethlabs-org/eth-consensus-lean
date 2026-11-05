@@ -3,9 +3,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 
 public section
 
-/-! # Outage: the extending majority at a label (O4)
+/-! # Outage: the extending majority at a label
 
-The count form of the extending majority, in which O4 consumes S5.
+The count form of the extending majority, in which the reader bridge (`Obligations/OutageBridge`)
+consumes the restored votes (`Obligations/OutageS5`).
 
 * `ExtendingCasters tr H B q`: the honest slot-`q` casters whose vote extends `B`;
 * `Opponents tr H B q`: the faulty validators and the honest slot-`q` casters whose vote does not

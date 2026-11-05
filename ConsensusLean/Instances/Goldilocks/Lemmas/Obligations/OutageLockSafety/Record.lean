@@ -12,10 +12,10 @@ public section
 
 The writes of an honest record after its update of a restored label `m ≥ r` come from results of
 labels `> m` (compatible with `P` by (R)) and from optimistic selections (compatible with `P`,
-`fastLock_compatible`); with OB-F this is the landed `EffectiveRecordInterval`
-(`record_interval_after`). With the veto case of `late_reader_record_cover` (the live locks are
-compatible with `P` by (i)), an update result above `P` keeps the effective record above `P` at
-every later cut (`record_above_from`). -/
+`fastLock_compatible`); with OB-F (`OutageLockInv.caches`) this is the landed
+`EffectiveRecordInterval` (`record_interval_after`). With the veto case of
+`late_reader_record_cover` (the live locks are compatible with `P` by (i)), an update result above
+`P` keeps the effective record above `P` at every later cut (`record_above_from`). -/
 
 namespace Consensus.Goldilocks.Compose
 

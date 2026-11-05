@@ -5,19 +5,20 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 
 public section
 
-/-! # Goldilocks Obligations: the outage's receiver service (O4, cut 3)
+/-! # Goldilocks Obligations: the outage's receiver service
 
-Cut 3. `outage_receiver_service`
-is S5's `hS` in query form: every honest receiver gets the receiver-scoped strict AC service from
-the outage's end `Q.stop`. It is `receiverServiceAfter_of_psync` at `outage_psync`. -/
+`outage_receiver_service`
+is the hypothesis `hS` of `Compose.restored_majority` in query form: every honest receiver gets the
+receiver-scoped strict AC service from the outage's end `Q.stop`. It is
+`receiverServiceAfter_of_psync` at `outage_psync`. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- S5's `hS` in query form: receiver-scoped strict AC service from the outage's GST, for every
-honest receiver. -/
+/-- The hypothesis `hS` of `Compose.restored_majority` in query form: receiver-scoped strict AC
+service from the outage's GST, for every honest receiver. -/
 theorem outage_receiver_service (Q : OutageQuery S A V) :
     ∀ y ∈ honestKeys S Q.run.2,
       Compose.ReceiverServiceAfter (honestKeys S Q.run.2)

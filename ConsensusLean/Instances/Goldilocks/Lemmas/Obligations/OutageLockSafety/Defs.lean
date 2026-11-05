@@ -13,21 +13,22 @@ whose early cutoff is at or before `b₀`, `r` the first label whose last cast t
 
 * `OutageLockPremises`: the premise package. The arming inputs `lockPrev` and `lockCover`
   are fields in trace form; `lockCover` is conditional on (F), (VA) and (N), which the induction
-  discharges. The post-GST pool delivery `PG` is a field. The S5 step is not a field: it is the
-  hypothesis `hS5` of `outage_lock_inv`, which consumes `OutageLockInv D i`.
+  discharges. The post-GST pool delivery `PG` is a field. The step `OutageS5StepAt` is not a field:
+  it is the hypothesis `hS5` of `outage_lock_inv`, which consumes `OutageLockInv D i`.
 * `OutageLockInv D i`: the cut invariant at the cuts before `i`: honest votes of slots in
   `(σ, j₀ + k]` cast at or before `b₀` or by the cohort `A₀` extend `P` (`votes`); later votes are
-  compatible with `P` (`late`, from S5); results at unpolluted labels are compatible with `P`
-  (`results`); stored honest locks (`locks`, (i)), FG sources (`sources`) and the
-  caches `Σ.F`, `Σ.J` (`caches`, OB-F) are compatible with `P`; `P`, when in the frame, is a
-  viable-ancestor candidate (`viable`); and `A₀` keeps its label-`(j₀ − 1)` and label-`j₀` locks
-  (or root cover) through their lifetimes (`protPrev`, `protCover`, O2).
+  compatible with `P` (`late`, from `OutageS5StepAt`); results at unpolluted labels are compatible
+  with `P` (`results`); stored honest locks (`locks`, (i)), FG sources (`sources`) and the caches
+  `Σ.F`, `Σ.J` (`caches`, OB-F) are compatible with `P`; `P`, when in the frame, is a
+  viable-ancestor candidate (`viable`); and `A₀` keeps its label-`(j₀ − 1)` and label-`j₀` locks (or
+  root cover) through their lifetimes (`protPrev`, `protCover`).
 
 Differences in form from the paper argument's premise listing, each as its proofs or the landed
 arming use them:
 
-* the fault bound (`hFB`) is stated at every slot point that precedes an honest call (R-late
-  reads it at `t_m + Δ` for `m > j₀ + k`, from `EtaSleepyOn`);
+* the fault bound (`hFB`) is stated at every slot point that precedes an honest call (the count
+  R-late of `OutageLockInv.result_compatible` reads it at `t_m + Δ` for `m > j₀ + k`, from
+  `EtaSleepyOn`);
 * the cohort premises are stated over times (`hA₀awake`, `hA₀join`) and bound the no-sleep window
   end `z` from below at the times of honest calls (`hz`); a restart of `A₀` up to `z` is by
   `a + Δ`, the bound the abstract run interface `GoldilocksRun` gives (the first call after
@@ -46,7 +47,7 @@ section VoteCompat
 
 variable {FGP : Type} {n : Nat}
 
-/-- The head of the vote `v` is a block of `U` compatible with `B` (the S5 form:
+/-- The head of the vote `v` is a block of `U` compatible with `B` (the form of `OutageS5StepAt`:
 regression votes with head below `B` satisfy it). -/
 def VoteCompat (U : Set (SA.Blk n FGP)) (v : Vote n) (B : SA.Blk n FGP) : Prop :=
   ∃ Hd ∈ U, Hd.root = v.head ∧ Compatible U Hd B
@@ -171,7 +172,7 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
      (∀ y ∈ A₀, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = j₀ + 1 → j < c →
         SA.VoteExtends (tr.HonestBlocks H) e.msg P) →
      CoverBase tr H P j₀ x c ℓ)
-  /-- Post-GST pool delivery (O4): an honest update of a restored label holds every honest vote of
+  /-- Post-GST pool delivery: an honest update of a restored label holds every honest vote of
   that slot. -/
   PG : ∀ w ∈ H, ∀ c m ℓ, SA.UpdateAt tr.projAC w c m ℓ → r ≤ m →
     ∀ x ∈ H, ∀ i e, SA.VoteAt tr.projAC x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m
@@ -228,7 +229,7 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
     ∀ k, c < k → k ≤ i → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k →
       Prot D x k D.j₀ (D.j₀ + sp.k)
 
-/-- The S5 step that the lock module consumes (restated cut-indexed): from
+/-- The restored-vote step that the lock module consumes (restated cut-indexed): from
 the invariant at `i`, the votes of cut `i` past the lock lifetime have heads compatible with
 `P`. -/
 def OutageS5StepAt (D : OutageLockPremises tr H proposer dg) : Prop :=

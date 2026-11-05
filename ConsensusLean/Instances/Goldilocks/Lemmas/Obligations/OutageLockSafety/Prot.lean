@@ -9,14 +9,14 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
-/-! # Outage lock safety: O2 retention, one cut
+/-! # Outage lock safety: retention of the protection `Prot`, one cut
 
 * `unlockKeeps_of_voteCompat`: `unlock` at an honest AC call keeps a frame block `B`
   when every honest vote of the view's slot by a validator outside `W` has a head compatible with
   `B`, and `2·|Hᶜ ∪ W| < n`. It covers every call, so both unlock views.
 * `OutageVoteInv.prot_step`: the protection `Prot x k j m` (`j ≥ j₀ − 1`) carries to
-  `k + 1` through the lock's life (`slot(t_k) ≤ m ≤ expiry`), with (VA) at `k` and the caches at
-  `k + 1`.
+  `k + 1` through the lock's life (`slot(t_k) ≤ m ≤ expiry`), with (VA) (`OutageLockInv.viable`) at
+  `k` and the caches at `k + 1`.
 * `OutageVoteInv.vote_extends_of_prot`: an honest cast under the protection extends `P`. -/
 
 namespace Consensus.Goldilocks.Compose

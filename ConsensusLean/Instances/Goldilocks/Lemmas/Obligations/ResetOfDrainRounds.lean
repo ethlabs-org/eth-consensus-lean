@@ -13,8 +13,8 @@ public section
 
 /-! # Goldilocks Obligations: the reset from the drain with key-dependent rise rounds
 
-recovery_time_savings item 1, piece (4). The five-window drain reset with the key-dependent window
-of piece (3) and the `r`-round rise of piece (2):
+The five-window drain reset with the key-dependent window of `Healing.M1.RiseWindow` and the
+`r`-round rise of `Healing.M1.RiseRounds`:
 
 * the window of key value `v` has the length `len(v) = 4D(L_drain + 2) + r(v)·4Dρ + 2D`,
   `r(v) = 2 − ⌊(v − 2HZ)/2⌋`, `ρ = δ_t + G − 1`; the five attempts end by

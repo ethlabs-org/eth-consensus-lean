@@ -8,7 +8,7 @@ public section
 
 /-! # The call-lag premises from public ticks (`λ = 2Δ`)
 
-The premises `hcallZ`, `hcall` and `hsnap` of the M1 frame-window lemmas, produced
+The premises `hcallZ`, `hcall` and `hsnap` of the frame-window lemmas (`Healing.M1`), produced
 from wakefulness on `[ḡ, b]` alone.
 
 * `exists_call_of_public`: an awake honest node ticks at every public time of `[ḡ, b]`, and the

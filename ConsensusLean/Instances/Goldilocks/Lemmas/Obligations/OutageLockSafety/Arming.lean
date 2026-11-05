@@ -11,7 +11,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: the arming adapter and the query-level headers (M0 and M6)
+/-! # Outage lock safety: the arming adapter and the query-level headers
 
 `outageLockPremises_of_arming` builds the trace-level premise package of the lock module from an
 outage query, its pre-`b₀` service and an armed ready source (`OutageArming`, with `P` its
@@ -26,7 +26,7 @@ are used as they are. Two inputs are hypotheses of the adapter: `Q.T ≤ horizon
 (the degenerate case).
 
 The headers (`outage_locks`, `outage_reader_locks`, `outage_reader_frame`,
-`outage_record_above_from`) take the S5 step `OutageS5Step` as a
+`outage_record_above_from`) take the step `OutageS5Step` as a
 hypothesis. -/
 
 namespace Consensus.Goldilocks.Compose
@@ -72,7 +72,7 @@ open Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
-/-- The non-arming network input of the lock module, in query form: post-GST pool delivery (O4).
+/-- The non-arming network input of the lock module, in query form: post-GST pool delivery.
 An honest update of a label whose last cast time is at or after the stop holds every honest vote
 of that slot. -/
 structure OutageLockOthers (Q : OutageQuery S A V) : Prop where
@@ -83,8 +83,8 @@ structure OutageLockOthers (Q : OutageQuery S A V) : Prop where
 
 variable {S A V}
 
-/-- **PG is discharged** by the engine's partial synchrony from the stop (`outage_pool_delivery`,
-O4 cut 1). -/
+/-- **PG is discharged** by the engine's partial synchrony from the stop
+(`outage_pool_delivery`). -/
 theorem outage_lock_others (Q : OutageQuery S A V) : OutageLockOthers S A V Q :=
   ⟨outage_pool_delivery S A V Q⟩
 
@@ -190,7 +190,7 @@ private theorem origin_facts (Q : OutageQuery S A V)
     · exact (htC.mem he).2
 
 open Classical in
-/-- **The adapter (M0)**: the premise package of the lock module from an armed ready source,
+/-- **The adapter**: the premise package of the lock module from an armed ready source,
 with `P` its origin, `A₀` the holders, `W` the late wakers, `j₀` the cover label and `r` the
 restored label. -/
 noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
@@ -346,7 +346,7 @@ theorem outageLockPremises_of_arming_b₁ :
 theorem outageLockPremises_of_arming_r :
     (outageLockPremises_of_arming Q service hv hTh hsh ar).r = Q.restoredLabel := by rfl
 
-/-- The S5 step that the lock module consumes (restated cut-indexed): from the lock
+/-- The restored-vote step that the lock module consumes (restated cut-indexed): from the lock
 invariant at `i`, the votes of cut `i` past the lock lifetime have heads compatible with the
 origin. -/
 abbrev OutageS5Step : Prop :=
@@ -355,7 +355,7 @@ abbrev OutageS5Step : Prop :=
       Compose.coverLabel Q.params Q.start + Q.params.k < e.msg.slot →
       Compose.VoteCompat (Q.trace.HonestBlocks (honestKeys S Q.run.2)) e.msg ar.origin
 
-/-- **O2 + (i) + OB-F + VA** (M6): the outage lock invariant at every cut, given the S5 step. -/
+/-- **The outage lock invariant at every cut** (`OutageLockInv`), given the step `OutageS5Step`. -/
 theorem outage_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
     ∀ i, Compose.OutageLockInv (outageLockPremises_of_arming Q service hv hTh hsh ar) i :=
   Compose.outage_lock_inv _ (Compose.outageS5StepAt_iff.2 hS5)

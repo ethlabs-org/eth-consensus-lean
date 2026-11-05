@@ -7,7 +7,7 @@ public section
 
 /-! # The key-dependent rise window
 
-recovery_time_savings item 1, piece (3). On `HZ ≤ h_max ≤ HZ + 1` the merged key `κ′` has the
+On `HZ ≤ h_max ≤ HZ + 1` the merged key `κ′` has the
 five values `2HZ + j`, `j < 5`, with the floors `HZ − 1, HZ − 1, HZ, HZ, HZ + 1`. The rise
 from a warm proposal at or above the floor needs `r(v) = 2 − ⌊(v − 2HZ)/2⌋` rounds
 (`2, 2, 1, 1, 0`): `HZ + 1 ≤ floor + r(v)` (`le_floor_add_riseRounds`).

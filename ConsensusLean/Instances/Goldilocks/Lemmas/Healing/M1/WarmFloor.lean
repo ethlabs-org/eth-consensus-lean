@@ -6,7 +6,7 @@ public section
 
 /-! # The warm proposal is at or above the frame floor
 
-recovery_time_savings item 1, piece (1). Let `P` be the actual honest proposal of slot `u` in
+Let `P` be the actual honest proposal of slot `u` in
 the warm part of a `FrameWindow [t_{s₀}, t_N + 2Δ]` with floor `floor`. The proposer's own
 vote of slot `u` is cast at a cut `c` with `t_u ≤ t_c ≤ t_u + Δ`, inside the window. At that
 cast, `P` is a viable head (`FrameWindow.proposal_viable_at_cast`, spec fg.tex viable head

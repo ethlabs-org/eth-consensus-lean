@@ -14,7 +14,7 @@ public section
 
 Source labels at a vote bound the origins used by the frame argument. `Frame` supplies the
 honest-store geometry and `FrameFrozen` supplies the frozen witness; together they establish
-full-read and vote-frame viability. -/
+full-read and vote-frame viability (S3 of `SleepyInvariant`). -/
 
 namespace Consensus.Goldilocks.Compose
 

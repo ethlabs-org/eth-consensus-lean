@@ -11,14 +11,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage S5: the early record
+/-! # `OutageS5`: the early record
 
 An honest update of the
 first restored label `r` makes the effective record of its updater a block above `P` at every
 later cut (`record_above_of_update_r`):
 * when `P ⪯ Σ.F` at the update, the effective record is a block of a later frame, so it extends
   that frame's `Σ.F`, which extends the update's;
-* otherwise the gate's result extends `P` (O4's `gate_result_extends` with the cohort majority
+* otherwise the gate's result extends `P` (`gate_result_extends` with the cohort majority
   `restored_majority_at_r`), and lock safety's `record_above_from` keeps the record above `P`,
   whether the result is accepted or vetoed. -/
 

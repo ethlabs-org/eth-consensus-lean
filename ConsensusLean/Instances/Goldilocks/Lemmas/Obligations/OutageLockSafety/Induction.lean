@@ -14,13 +14,14 @@ public section
 
 /-! # Outage lock safety: the cut induction
 
-`outage_lock_inv`: from the premise package and the S5 step `hS5`, the outage lock invariant holds
-at every cut. The step from `i` to `i + 1` proves, in order: (H) for the casts at cut `i` (pre-`b₀`
-by `vote_extends_pre`, `A₀` by the protection at `i`), S5V at cut `i` (`hS5 i`; the `late` field of
-`OutageVoteInv`), (R) for the results at cut `i`, (i)
-at `i + 1`, (SRC) at `i`, OB-F and (VA) at `i + 1`, and the protections at `i + 1`, with their bases
-from the arming inputs: the label-`(j₀ − 1)` lock, and the label-`j₀` cover with (F), (VA) and (N)
-discharged from the invariant at the update's cut. -/
+`outage_lock_inv`: from the premise package and the step `hS5` (`OutageS5StepAt`), the outage lock
+invariant holds at every cut. The step from `i` to `i + 1` proves, in order: (H) for the casts at
+cut `i` (pre-`b₀` by `vote_extends_pre`, `A₀` by the protection at `i`), S5V at cut `i` (`hS5 i`;
+the `late` field of `OutageVoteInv`), (R) for the results at cut `i`, (i) at `i + 1`, (SRC) at `i`,
+OB-F and (VA) at `i + 1` (`OutageLockInv.caches`, `OutageLockInv.viable`), and the protections at
+`i + 1`, with their bases from the arming inputs: the label-`(j₀ − 1)` lock, and the label-`j₀`
+cover with (F), (VA) and (N) (`OutageArming.lockCover`) discharged from the invariant at the
+update's cut. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -227,8 +228,8 @@ private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x :
       · exact (hPL.mem hne).2
     exact prot_of_prevBase D hxH hu hF ⟨L, f, hL, hPL, hl⟩
 
-/-- **The outage lock invariant at every cut**: from the premise package and the S5
-step at each cut. -/
+/-- **The outage lock invariant at every cut**: from the premise package and the
+step `OutageS5StepAt` at each cut. -/
 theorem outage_lock_inv (D : OutageLockPremises tr H proposer dg) (hS5 : OutageS5StepAt D) :
     ∀ i, OutageLockInv D i := by
   have hU := D.coherent

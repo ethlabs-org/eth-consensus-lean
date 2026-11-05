@@ -8,9 +8,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the reset envelope (E) of a healthy preparation query (S5)
+/-! # Goldilocks Obligations: the reset envelope of a healthy preparation query
 
-S5. For a `HealthyPreparationQuery` with nonfinal
+For a `HealthyPreparationQuery` with nonfinal
 progress on `[ready, heal]` and `heal ≤ horizon`: a delay `Δ_F` and a reset `a` with
 `ResetPremisesUpTo … Q.gst Δ_F a horizon` and `a ≤ ready + R·Δ + ρ`, where `R = healthyResetCoeff`
 and `ρ = healthyResetSlack`, the literal slack `0` (not an FG delay bound), are the named
@@ -27,7 +27,7 @@ ends before `B = ready + R·Δ`, so the gap is needed only up to heal, given the
 `ready + R·Δ + ρ ≤ heal`. This module stays upstream of `FinalWindowDefs` and `HealedSafety`.
 
 The fit `hfit` of `healthy_reset_envelope_of_fit` is the window fit of the heal coefficient,
-`healthy_reset_fit` (S6), so `healthy_reset_envelope_of_drain` takes only the drain at
+`healthy_reset_fit`, so `healthy_reset_envelope_of_drain` takes only the drain at
 `healthyDrainLen`, and the leaf form `healthy_reset_envelope` takes the drain from
 `drainOutputs_of_service` (`DrainWarm`). -/
 
@@ -130,7 +130,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
   rw [hBeq] at hab
   linarith
 
-/-- **The window fit before heal** (S6): `ready + R·Δ + r ≤ heal` at every query, from the
+/-- **The window fit before heal**: `ready + R·Δ + r ≤ heal` at every query, from the
 coefficient inequality `contract_heal_ge_reset` alone. With engine delay `d ≥ 1`, `Δ = d`,
 `ready = g₀ + C·d + 1` and `heal = g₀ + H·d`, `H ≥ C + R + r + 1` gives
 `heal − ready − R·Δ − r ≥ r(d − 1) + d − 1 ≥ 0`. -/
@@ -155,7 +155,7 @@ theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
   nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC),
     mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.ΔAC - 1)]
 
-/-- **The reset envelope (E) from the drain.** `healthy_reset_envelope_of_fit` with the window fit
+/-- **The reset envelope from the drain.** `healthy_reset_envelope_of_fit` with the window fit
 `healthy_reset_fit`: the drain at `healthyDrainLen` is the only remaining input. -/
 theorem healthy_reset_envelope_of_drain (Q : HealthyPreparationQuery S A V)
     (hb : Q.heal ≤ Q.run.2.horizon)
@@ -169,7 +169,7 @@ theorem healthy_reset_envelope_of_drain (Q : HealthyPreparationQuery S A V)
         (healthyResetSlack S Q.index : Time) :=
   healthy_reset_envelope_of_fit S A V Q hb hp (healthy_reset_fit S A V Q) hdrain
 
-/-- **The reset envelope (E) of a healthy preparation query** (S5): from the query, `heal ≤ horizon`
+/-- **The reset envelope of a healthy preparation query**: from the query, `heal ≤ horizon`
 and nonfinal progress on `[ready, heal]` alone, a delay `Δ_F` and a reset `a` with its premises
 through the horizon and `a ≤ ready + R·Δ + r`, `R = healthyResetCoeff`, `r = healthyResetSlack`.
 The drain is `drainOutputs_of_service` at `L_drain = healthyDrainLen = 2k + X`, which pays its

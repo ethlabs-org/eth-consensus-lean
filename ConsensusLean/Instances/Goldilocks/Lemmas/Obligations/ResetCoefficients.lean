@@ -3,10 +3,10 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 
 public section
 
-/-! # Goldilocks Obligations: the named coefficients of the nonfinal reset envelope (S5/S6)
+/-! # Goldilocks Obligations: the named coefficients of the nonfinal reset envelope
 
 Characterising lemmas of parameter-only coefficients, functions of the setup `S` and the index `X`
-alone, shared by the reset envelope (`HealthyResetEnvelope`, S5) and the heal coefficient (S6), all
+alone, shared by the reset envelope (`HealthyResetEnvelope`) and the heal coefficient, all
 fixed before any run, GST or reset is chosen. `healthyDrainLen` and `healMargin` are defined in the
 statement module `Statements/Obligations` (the heal coefficient reads them); the envelope's
 `healthyResetCoeff` and `healthyResetSlack`, which no statement reads, are defined here.

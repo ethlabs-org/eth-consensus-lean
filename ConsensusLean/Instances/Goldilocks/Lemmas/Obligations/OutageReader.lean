@@ -10,9 +10,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the outage reader's network inputs (O4, cut 1)
+/-! # Goldilocks Obligations: the outage reader's network inputs
 
-Cut 1. `outage_psync` is the
+`outage_psync` is the
 engine's partial synchrony from the outage's end `b₁ = Q.stop`. `outage_pool_delivery` is the pool
 delivery `OutageLockOthers.pg` consumes: an honest slot-`m` vote is in the pool of every honest
 updater of slot `m` with `b₁ ≤ t_m + Δ`. The vote is cast in `[t_m, t_m + Δ]`, delivered under

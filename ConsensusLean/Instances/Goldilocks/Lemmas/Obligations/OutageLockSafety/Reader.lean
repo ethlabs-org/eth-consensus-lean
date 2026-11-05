@@ -26,7 +26,7 @@ From the invariant at every cut (`outage_lock_inv`):
   at every honest cut (`lockInv_state`, `liveBlocks_chain_at`);
 * `fastLock_compatible`: every honest fast lock block (update or optimistic
   selection) is compatible with `P`;
-* `readPoint_liveLockBlocks_compatible_at` (S5's `LiveLocksCompatible` at a cast's read point): the
+* `readPoint_liveLockBlocks_compatible_at` (live-lock compatibility at a cast's read point): the
   live lock blocks of an honest vote's read point are compatible with every block `B ⪯ P` (the
   read-point locks sit below stored locks or below the cut's optimistic selection,
   `SA.readPoint_locks_provenance`). -/
@@ -189,7 +189,7 @@ theorem fastLock_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy
     let ⟨j', hj', e, hve, he⟩ := fastLock_honest_vote D.hrun D.hnc hy hfl hv hvH
     ⟨j', Nat.lt_succ_of_le hj', e, hve, he⟩
 
-/-- **(i) at a read point, cut-indexed** (S5's `LiveLocksCompatible` inside the cut induction):
+/-- **(i) at a read point, cut-indexed** (live-lock compatibility inside the cut induction):
 at an honest vote of a slot `> 0` cast at cut `i`, the live lock blocks of the read point are
 compatible with every block `B ⪯ P`, from the invariant at the cast cut `i` only. The stored locks
 are the `locks` field at `i`; the read point's optimistic lock is written by the receipt's check

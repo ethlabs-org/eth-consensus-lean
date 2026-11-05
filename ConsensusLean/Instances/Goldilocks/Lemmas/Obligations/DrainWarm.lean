@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealComposeD
 
 public section
 
-/-! # Goldilocks Obligations: the drain outputs from finite service (P5)
+/-! # Goldilocks Obligations: the drain outputs from finite service
 
 `drainOutputs_of_service` supplies `DrainOutputs … G Ld b`, the input of
 `exists_reset_of_drain_rounds`, from the run premises up to the service horizon `b` alone: reset

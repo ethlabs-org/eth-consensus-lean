@@ -9,7 +9,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks: L1's delivery halves under receiver service (O4, cut 3)
+/-! # Goldilocks: the delivery halves of `vote_held_before_early` under receiver service
 
 Under `ReceiverServiceAfter` from `g ≤ t_q + Δ`, at a receiver call from `t_q + 2Δ` with no restart
 after `t_q`:

@@ -80,8 +80,8 @@ theorem floor_le_of_honest_ancestor (hrun : GoldilocksRun proposer dg H tr)
   rw [← σ_eq_honest hrun hnc hz hx hX hXt] at hle
   exact hh.trans hle
 
-/-- V_U for an honest-held descendant of a floor-viable source. All three cuts are
-arbitrary; in particular the source cut need not precede either of the others. -/
+/-- The finalized tip `Σ.F` is below an honest-held descendant of a floor-viable source. All
+three cuts are arbitrary; in particular the source cut need not precede either of the others. -/
 theorem finalized_below_floor_descendant (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y x z : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) (hz : z ∈ H)
@@ -331,9 +331,9 @@ theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
     exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
 
 /-- The vote-head classification for an older live read-point lock strictly above the current
-root. Liveness
-and the warmup bound derive the label lower bound; no write-cut or witness premise
-is supplied by the caller. The result is directly consumable by W-dichotomy. -/
+root. Liveness and the warmup bound derive the label lower bound; no write-cut or witness premise
+is supplied by the caller. The result is directly consumable by
+`FrameWindow.vote_head_classification`. -/
 theorem FrameWindow.live_old_lock_witness {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)

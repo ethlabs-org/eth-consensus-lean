@@ -13,15 +13,15 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks outage: the reader's gate count and read majority (O4 L1, L-gate, L3)
+/-! # Goldilocks outage: the reader's gate count and read majority (L1, L-gate, L3)
 
 Under receiver-scoped service
-after GST (`ReceiverServiceAfter`, O4 cut 2):
+after GST (`ReceiverServiceAfter`):
 
 * `vote_held_before_early` (L1): an honest slot-`q` vote whose head extends the receiver's `Σ.F`
   is pooled, its head is framed, and the vote is resolved before `t_q + 2Δ`, at every receiver
-  call from `t_q + 2Δ` without a restart after `t_q`. Cut 3's D3 with the voter's head facts
-  (`honest_head_frame`, `frame_anc_accepted`);
+  call from `t_q + 2Δ` without a restart after `t_q`. D3 of `OutageDelivery` with the voter's head
+  facts (`honest_head_frame`, `frame_anc_accepted`);
 * `gate_result_extends` (L-gate): at a joined honest update of a label from GST, with its frame
   below `B` and an extending majority for `B`, the update returns a result, and every result
   extends `B`;

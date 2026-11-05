@@ -12,7 +12,8 @@ The read tip `P` of a ready
 source at the end-of-`T` cut, an origin `C ⪰ P` within `T` of a label `σ` more than `k` labels
 before the cover label `j₀`, S-vote, and O1 at the labels `j₀ − 1` and `j₀` for the honest
 validators awake at the no-sleep window start. O1 at `j₀` takes the lock-safety inputs (F), (VA)
-(outside root cover) and (N) as premises of `lockCover`. -/
+(outside root cover) and (N) as premises of `lockCover` (S-vote, O1, (F), (VA), (N): as in
+`armed_lock_cover`, `OutageArmingSteps`). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
