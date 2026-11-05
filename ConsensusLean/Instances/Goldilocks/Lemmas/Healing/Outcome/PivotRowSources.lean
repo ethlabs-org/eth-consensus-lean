@@ -57,19 +57,20 @@ theorem proposal_high_row_source_before (hp : ResetPremises tr H proposer dg g �
       Compose.IsHonestSource tr H E att.T ∧ Anc (tr.HonestBlocks H) E O := by
   obtain ⟨r, hrk, l, O, ho, E, hE, hEO, hEr, -, hET⟩ := high_row_source hp hv hs hh
   obtain ⟨-, D, CV, -, hfl, -⟩ := highOrigin_mem hp ho
-  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono (by omega)
+  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono (by clear * - hki hrk; omega)
   have hlu : l < u := by
     have hle : l ≤ u := by
       have := (SA.ts_le_iff sp).1 ((ts_le_of_fastLock hp hfl).trans hrt)
       exact_mod_cast this
     by_contra hn
-    have hlu : l = u := by omega
+    have hlu : l = u := by clear * - hle hn; omega
     rw [hlu] at hfl
     rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | hop
     · have ht' : tr.time r = sp.ts u + 6 * sp.Δ := ht
       have := sp.toParams.hΔ
       linarith
-    · exact proposal_no_optimistic hp hpH hci hcall hti v hv r (by omega) D CV hop
+    · exact proposal_no_optimistic hp hpH hci hcall hti v hv r (by clear * - hki hrk; omega) D CV
+        hop
   exact ⟨r, l, O, E, hrk, hlu, ho,
     fastLock_time_lt hp hfl hlu (by have := sp.toParams.hΔ; linarith), hE, hEr,
     Compose.isHonestSource_iff.2 ⟨v, hv, r, hE, hET.trans hEr⟩,
@@ -98,7 +99,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
     have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
     have hne : l ≠ u := fun he => proposal_no_optimistic_of_run hp.run hp.noColl hf hpH
       hci hcall hti v ho.1 r hri D CV (he ▸ hop)
-    omega
+    clear * - hle hne; omega
 
 /-- An origin already preceding an honest signature before a proposal has an older label.
 This bound does not require the origin to precede a later receiving cast. -/
@@ -126,7 +127,7 @@ theorem ResetPremisesUpTo.high_floor_source_at_proposal {b : Time}
   obtain ⟨v, q, m, O, E, hqi, hO, hmu, hE, hEO, hBO, hfloor, _⟩ :=
     hp.high_floor_signed_source_of_row_bound ho hpH (u := u)
       (fun W hW att ha v hv d hsign hdi q m O hqd hO =>
-        hp.origin_label_lt_at_proposal hpH hci hcall hti (by omega) hO)
+        hp.origin_label_lt_at_proposal hpH hci hcall hti (by clear * - hdi hqd; omega) hO)
       (fun v q m O hqi hO v' q' m' O' hqi' hO' =>
         hp.origins_compatible hO ((hp.run.time_mono hqi.le).trans hib)
           hO' ((hp.run.time_mono hqi'.le).trans hib))
@@ -209,7 +210,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
         · have hSy := hp.mem_tree_of_anc hpH h hBy
           have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH h hBy)
           rw [← hp.σ_eq_run hS.1 hpH hSsrc hSy] at hh
-          omega
+          clear * - hfloor hSf hh; omega
       have hSt := held hS hqt hBS'
       refine ⟨S, hSt, hBS', ?_⟩
       change (tr.state p i).fg.headHeightFloor ≤ _
@@ -222,7 +223,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
         rcases hcompare z q' n O hqi ho with h | h
         · exact h
         · have hh := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH (hEO.trans h) hBy)
-          omega
+          clear * - hfloor hEf hh; omega
       obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
       have htime : tr.time q' < sp.ts u := by
         rcases hf with ⟨ell', C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell', A, _, hsl, _⟩
@@ -234,7 +235,7 @@ theorem ResetPremisesUpTo.held_target_proposal_domain_before {b : Time}
           have hΔ := sp.toParams.hΔ
           have hn2 : (n : Int) + 2 ≤ u := by
             by_contra h
-            have : (u : Int) ≤ n + 1 := by omega
+            have : (u : Int) ≤ n + 1 := by clear * - h; omega
             linarith [mul_le_mul_of_nonneg_left this hΔ.le]
           linarith [mul_le_mul_of_nonneg_left hn2 hΔ.le]
         · by_contra h
@@ -311,7 +312,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
         have hdl : tr.projAC.deadline p i (tr.time q) ≤ tr.time i := by
           have ht : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts s := by
             have hbase := (SA.ts_le_iff_le_slot sp (gbar_nonneg g)
-              (sp.slot (SA.gbar g))).mpr (by omega)
+              (sp.slot (SA.gbar g))).mpr (by clear * -; omega)
             simp only [SAParams.ts] at hbase hs ⊢
             push_cast at *
             linarith
@@ -382,8 +383,10 @@ theorem ResetPremisesUpTo.protected_source_compatible_high_origin {b : Time}
         intro z hz j hj e ⟨ell, hcast⟩ hes
         have hjb := (hp.run.time_mono (Nat.lt_succ_iff.mp hj)).trans hqb
         rcases hsource with ⟨CV, hfast⟩ | hslow
-        · exact hp.fast_source_votes_before hc hx hfast hs hrb j hjb z hz ell e hcast (by omega)
-        · exact hp.slow_source_votes_before hc hx hslow hs hrb j hjb z hz ell e hcast (by omega))
+        · exact hp.fast_source_votes_before hc hx hfast hs hrb j hjb z hz ell e hcast
+            (by clear * - h hes; omega)
+        · exact hp.slow_source_votes_before hc hx hslow hs hrb j hjb z hz ell e hcast
+            (by clear * - h hes; omega))
     rcases hEB with h | h
     · exact Or.inr (hDE.trans h)
     · exact SA.anc_total hr.coherent h hDE
@@ -423,7 +426,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
     have ht := hp.cutZ_le_ts_of_highOrigin hS
     have hz := lt_cutZ sp g
     have hsm : sp.ts (m + 1 : Nat) ≤ sp.ts s := (SA.ts_le_iff sp).mpr
-      (by rw [cleanLabel_eq] at hs; omega)
+      (by rw [cleanLabel_eq] at hs; clear * - hs hm; omega)
     have he : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
       simp only [SA.SAParams.ts]; push_cast; ring
     rw [he] at hsm
@@ -434,10 +437,10 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
     have hmu : m + 2 ≤ u := by
       rw [drainTime_eq] at hR
       have := (SA.ts_le_iff sp).mp hR
-      omega
+      clear * - hm this; omega
     rcases hf with ⟨ellX, R, ⟨_, _, ht, _⟩, _⟩ | ⟨ellX, A, _, hsl, _⟩
     · have ht' : tr.time q = sp.ts m + 6 * sp.Δ := ht
-      have htu := (SA.ts_le_iff sp).mpr (show (m : Int) + 2 ≤ u by omega)
+      have htu := (SA.ts_le_iff sp).mpr (show (m : Int) + 2 ≤ u by clear * - hmu; omega)
       simp only [SAParams.ts] at ht' htu ⊢
       have := sp.toParams.hΔ
       linarith
@@ -493,14 +496,15 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
   have hΔ := sp.toParams.hΔ
   have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
-  rcases hp.clean_source_proposal_domain_before hc hx hpH hsource hs (by omega) hrb hR
+  rcases hp.clean_source_proposal_domain_before hc hx hpH hsource hs (by clear * - hsu; omega)
+      hrb hR
       hci hcall hd hti hib with hBF | hV
   · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
     obtain ⟨A₁, _, hstart, _⟩ := Compose.acProposal_walk hd
     rw [hstart] at hhead
     exact hBF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A₁ (tr.time i)).trans hhead))
   have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU
-  obtain ⟨σ, rfl⟩ : ∃ σ, u = σ + 1 := ⟨u - 1, by omega⟩
+  obtain ⟨σ, rfl⟩ : ∃ σ, u = σ + 1 := ⟨u - 1, by clear * - hsu; omega⟩
   have hσ : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
     simp only [SA.SAParams.ts]; push_cast; ring
   have hσb : sp.ts σ + sp.Δ ≤ b := by rw [hti, hσ] at hib; linarith
@@ -513,12 +517,14 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
       rw [← hsl, hslot] at ht
       exact ht.trans hσb
     rcases hsource with ⟨CV, hfast⟩ | hslow
-    · exact hp.fast_source_votes_before hc hx hfast hs hrb q hqb z hz ell' e hc' (by omega)
-    · exact hp.slow_source_votes_before hc hx hslow hs hrb q hqb z hz ell' e hc' (by omega)
-  have hcut := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
+    · exact hp.fast_source_votes_before hc hx hfast hs hrb q hqb z hz ell' e hc'
+        (by clear * - hsu hslot; omega)
+    · exact hp.slow_source_votes_before hc hx hslow hs hrb q hqb z hz ell' e hc'
+        (by clear * - hsu hslot; omega)
+  have hcut := hp.clean_window_timing hs s (by have := sp.two_le_k; clear * - this; omega)
   have hσg : SA.gbar g + 4 * sp.Δ ≤ sp.ts σ := by
     have hz := lt_cutZ sp g
-    have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ σ by omega)
+    have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ σ by clear * - hsu; omega)
     linarith
   have hrestart : ∀ z ∈ H, ∀ q, tr.time q ≤ b → tr.projAC.RestartAt z q →
       tr.time q ≤ sp.ts ((σ : Int) - 1) := by
@@ -526,11 +532,11 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
     apply (restart_le_before hp hz (Compose.projAC_restartAt.mp hrest) hqb).trans
     rw [cutZ_eq] at hcut
     have := (SA.ts_le_iff sp).mp hcut
-    exact (SA.ts_le_iff sp).mpr (by omega)
+    exact (SA.ts_le_iff sp).mpr (by clear * - hsu this; omega)
   have hrs : ∀ q ≤ i, tr.projAC.RestartAt p q → tr.time q < sp.ts σ := by
     intro q hqi hrest
     exact (hrestart p hpH q ((hp.run.time_mono hqi).trans hib) hrest).trans_lt
-      ((SA.ts_lt_iff sp).mpr (by omega))
+      ((SA.ts_lt_iff sp).mpr (by clear * -; omega))
   have hhalf := SA.honest_voters_half_before hS hσg hσb
     (fun z hz q hqt hrest => hrestart z hz q (hqt.trans hσb) hrest)
   have hhalf' : sp.n ≤ 2 *
@@ -550,7 +556,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
     have hcomp : Compatible (tr.HonestBlocks H) O B := by
       rcases hO with ⟨ell', ⟨_, _, ht, _⟩, _⟩ | ⟨ellO, A, hpt, hsl, hsel, hCV⟩
       · have htime := hr.time_mono hqi.le
-        have hle := (SA.ts_le_iff sp).mpr (show (σ : Int) ≤ l.slot by omega)
+        have hle := (SA.ts_le_iff sp).mpr (show (σ : Int) ≤ l.slot by clear * - hlσ; omega)
         change tr.time q ≤ tr.time i at htime
         change tr.time q = sp.ts l.slot + 6 * sp.Δ at ht
         rw [hti, hσ] at htime
@@ -562,10 +568,10 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
             proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
               p hpH q hqi O CV (he ▸ ⟨ellO, A, hpt, hsl, hsel, hCV⟩)
           have hstart := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) (l.slot : Int)).mpr
-            (by change sp.slot (tr.time q) = l.slot at hsl; omega)
+            (by change sp.slot (tr.time q) = l.slot at hsl; clear * - hsl; omega)
           rw [hti] at htime
           have := (SA.ts_le_iff sp).mp (hstart.trans htime)
-          omega
+          clear * - hne this; omega
         have hΦU := (SA.frameIn_of_callAt hr hpH hpt.1).2
         unfold SA.optimisticSelect at hsel
         dsimp only at hsel
@@ -574,7 +580,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
         rw [hsl] at h34
         refine SA.origin_compatible hU hΦU h34 hf fun v hv hvH => ?_
         obtain ⟨hvs, q', _, e', hv', rfl⟩ := SA.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
-        exact votes _ hvH q' e' hv' (by rw [hvs]; omega)
+        exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
@@ -633,7 +639,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SA.SAParams.ts]; push_cast; ring
   have hsg : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
-    have ht := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
+    have ht := hp.clean_window_timing hs s (by have := sp.two_le_k; clear * - this; omega)
     have hz := lt_cutZ sp g
     linarith
   have hrs : ∀ k ≤ i, tr.projAC.RestartAt p k → tr.time k < sp.ts s := by
@@ -641,16 +647,16 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
     have ht := restart_le_before hp hpH (Compose.projAC_restartAt.mp hk)
       ((hp.run.time_mono hki).trans hib)
     have hs0 := (SA.ts_le_iff_le_slot sp (gbar_nonneg g)
-      (sp.slot (SA.gbar g))).mpr (by omega)
-    have hclean := hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
+      (sp.slot (SA.gbar g))).mpr (by clear * -; omega)
+    have hclean := hp.clean_window_timing hs s (by have := sp.two_le_k; clear * - this; omega)
     rw [cutZ_eq] at hclean
     have hlt : sp.slot (SA.gbar g) + 1 < s := by
       have := (SA.ts_le_iff sp).mp hclean
-      omega
+      clear * - this; omega
     exact ht.trans_lt ((SA.ts_lt_iff sp).mpr (by exact_mod_cast hlt))
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   rcases hp.clean_source_proposal_domain_before hc hx hpH (Or.inl ⟨CV, Or.inr hop⟩) hs
-      (by omega) hrb hR hci hcall hd hti hib with hBF | hV
+      (by clear * -; omega) hrb hR hci hcall hd hti hib with hBF | hV
   · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
     obtain ⟨A₁, _, hstart, _⟩ := Compose.acProposal_walk hd
     rw [hstart] at hhead
@@ -666,19 +672,20 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
     · have hle : l.slot ≤ s + 1 := by
         obtain ⟨ell', A, _, hsl, _⟩ := hop'
         change sp.slot (tr.time q) = l.slot at hsl
-        have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) (l.slot : Int)).mpr (by omega)
+        have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) (l.slot : Int)).mpr
+          (by clear * - hsl; omega)
         exact_mod_cast (SA.ts_le_iff sp).mp (this.trans hqt)
       have hne : l.slot ≠ s + 1 := by
         intro he
         exact proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
           p hpH q hqi D CV' (he ▸ hop')
-      have he : l.slot = s := by omega
+      have he : l.slot = s := by clear * - hls hle hne; omega
       rw [he] at hop'
       rcases hp.optimistic_sources_compatible hpH hx hop' hop with h | h
       · exact Or.inl (hLD.trans h)
       · exact SA.anc_total hr.coherent hLD h
     · have ht : tr.time q = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
-      have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ l.slot by omega)
+      have hle := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ l.slot by clear * - hls; omega)
       rw [hts] at hqt
       exfalso
       linarith
@@ -745,16 +752,20 @@ theorem ResetPremisesUpTo.no_high_contest {b : Time}
   · exact hJC (hg ▸ (Store.accepted_tree _ _ _ _ hreach).2.2.2 C hC)
   have hJlt := Store.hj_lt_h hreach hBj
   obtain ⟨_, _, _, _, v₂, _, d₂, hd₂, _, _, r₂, hr₂, l₂, O₂, ho₂, hJO⟩ :=
-    hp.left_entry_origin hpH hJm hJT (by omega) hEJB (by omega)
+    hp.left_entry_origin hpH hJm hJT (by clear * - hmax hmj hBjhj hJh; omega) hEJB
+      (by clear * - hJh hJlt; omega)
   obtain ⟨EC, hEC, hECC, hECh, hECT⟩ :=
-    entry_at_height hreach hC (h := (tr.state p i).fg.hj) (by omega) (by omega)
+    entry_at_height hreach hC (h := (tr.state p i).fg.hj) (by clear * - hmax hmj; omega)
+      (by clear * - hmj hCh; omega)
   obtain ⟨_, _, _, _, v₁, _, d₁, hd₁, _, _, r₁, hr₁, l₁, O₁, ho₁, hECO⟩ :=
-    hp.left_entry_origin hpH hEC hECT (by omega) hECC (by omega)
+    hp.left_entry_origin hpH hEC hECT (by clear * - hmax hmj hECh; omega) hECC
+      (by clear * - hmj hCh hECh; omega)
   have upper : ∃ z ∈ H, ∃ m W, W ∈ (tr.state z m).fg.tree ∧
       Anc (tr.HonestBlocks H) O₁ W ∧ Anc (tr.HonestBlocks H) O₂ W := by
     obtain ⟨_, _, _, _, _, _, _, _, _, hO₁⟩ := hp.highOrigin_mem ho₁
     obtain ⟨_, _, _, _, _, _, _, _, _, hO₂⟩ := hp.highOrigin_mem ho₂
-    rcases hp.origins_compatible ho₁ (hib r₁ (by omega)) ho₂ (hib r₂ (by omega)) with h | h
+    rcases hp.origins_compatible ho₁ (hib r₁ (by clear * - hd₁ hr₁; omega)) ho₂
+        (hib r₂ (by clear * - hd₂ hr₂; omega)) with h | h
     · exact ⟨v₂, ho₂.1, r₂, O₂, hO₂, h, .refl⟩
     · exact ⟨v₁, ho₁.1, r₁, O₁, hO₁, .refl, h⟩
   obtain ⟨z, hz, m, W, hW, hO₁W, hO₂W⟩ := upper
@@ -832,22 +843,23 @@ theorem ResetPremisesUpTo.held_high_origin_viable {b : Time}
     rw [hfl] at hfloor
     obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
     obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-      entry_at_height hreach hC (h := (tr.state p c).fg.hmax - 1) (by omega) (by omega)
+      entry_at_height hreach hC (h := (tr.state p c).fg.hmax - 1) (by clear * - hfloor; omega)
+        (by clear * - hCh; omega)
     obtain ⟨_, _, _, _, v, _, d, hdc, _, _, r, hrd, l, O, hoO, hEO⟩ :=
-      hp.left_entry_origin hpH hE hET (by omega) hEC (by omega)
+      hp.left_entry_origin hpH hE hET (by omega) hEC (by clear * - hfloor hCh hEh; omega)
     have hcmp : Compatible (tr.HonestBlocks H) E B := by
-      rcases hp.origins_compatible hoO ((hp.run.time_mono (by omega : r ≤ c)).trans hcb)
-          ho hib with h | h
+      rcases hp.origins_compatible hoO
+          ((hp.run.time_mono (by clear * - hdc hrd; omega : r ≤ c)).trans hcb) ho hib with h | h
       · exact Or.inl (hEO.trans h)
       · exact Anc.total hU hEO h
     have hBE : Anc (tr.HonestBlocks H) B E := by
       rcases hcmp with h | h
       · have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH h hBf.1)
-        omega
+        clear * - hfloor hEh this; omega
       · exact h
     refine ⟨C, hC, (hp.anc_tree_of_anc hpH hBE hE).trans hEC, ?_⟩
     change (tr.state p c).fg.headHeightFloor ≤ _
-    omega
+    clear * - hfl hCh; omega
   obtain ⟨C, hC, hBC, hvC⟩ := hdesc
   have hCf : C ∈ (Node.frame (tr.state p c)).tree := ⟨hC, hBf.2.trans hBC⟩
   have hCt : C ∈ ell.frame.tree := hfr ▸ hCf
