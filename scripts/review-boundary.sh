@@ -28,12 +28,20 @@ cell() { sed 's/|/\\|/g' <<<"$1"; }  # a Markdown table cell
 label_of() {  # label_of <commit>: the text of its Trusted-surface line (the line the check requires), or nothing
   git log -1 --format=%B "$1" | grep -m1 -E '^Trusted-surface: *[^ ]' | sed -E 's/^Trusted-surface: *//' || true
 }
+label_text_of() {  # label_text_of <commit>: that line with its continuation lines (up to a blank line or the next
+  # `Key: value` line, such as `Fidelity read-back: PASS`), joined by spaces: the text the summary shows
+  git log -1 --format=%B "$1" | awk '
+    !on && /^Trusted-surface: *[^ ]/ {on = 1; sub(/^Trusted-surface: */, ""); t = $0; next}
+    on && (/^[[:space:]]*$/ || /^[A-Z][A-Za-z -]*: /) {exit}
+    on {sub(/^[[:space:]]+/, ""); t = t " " $0}
+    END {print t}'
+}
 record() {  # record <commit...>: the summary table, one row per commit touching a trusted path
   local c paths label
   summary "| Commit | Subject | Trusted paths touched | Trusted-surface line |" "| --- | --- | --- | --- |"
   for c in "$@"; do
     paths="$(git show --format= --name-only "$c" -- "${protected[@]}" | sed 's/.*/`&`/' | paste -sd ' ' -)"
-    label="$(label_of "$c")"
+    label="$(label_text_of "$c")"
     summary "| \`$(git rev-parse --short "$c")\` | $(cell "$(git log -1 --format=%s "$c")") | $paths | $(cell "${label:-(none)}") |"
   done
 }
@@ -170,6 +178,12 @@ self_test() {
   expect_summary "a change outside the trusted paths: no table" "$other" "$m0" "touches no trusted path (pass)" "!| Commit |"
   git checkout -q --detach "$m0"; echo a8 >Spec/A.lean; echo c5 >Challenge.lean
   both="$(commit "Spec | Challenge$L")"
+  git checkout -q --detach "$m0"; echo a9 >Spec/A.lean
+  local multi
+  multi="$(commit $'Spec, a long label\n\nTrusted-surface: first line of the label,\n  continued here\nand here.\nFidelity read-back: PASS')"
+  expect pass "a labeled change whose Trusted-surface line continues on the next lines" "$multi" "$m0"
+  expect_summary "a multi-line Trusted-surface line: the row shows all of it, up to the next trailer" "$multi" "$m0" \
+    "| first line of the label, continued here and here. |" "!Fidelity read-back"
   expect_summary "a commit touching two trusted paths lists both; a | in the subject is escaped" "$both" "$m0" \
     "| Spec \\| Challenge | \`Challenge.lean\` \`Spec/A.lean\` | test change |"
   # The repository's own list (docs/decisions.md §"Trusted surface and Challenge scope"): a Shape example and a Goldilocks milestone statement
