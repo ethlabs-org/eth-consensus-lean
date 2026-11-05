@@ -142,18 +142,31 @@ private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp
   · rcases h₁ with h | h | h
     · exact absurd hj h
     · exact Or.inl h
-    · linarith
-  · linarith [h₂.1]
+    · exact absurd ht h.ne'
+  · exact absurd ht h₂.1.ne
   all_goals exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
 
 private theorem ts_succ_add (s : Nat) (a : Time) :
     sp.ts (s + 1 : Nat) + a = sp.ts s + 4 * sp.Δ + a := by
   simp only [SAParams.ts]; push_cast; ring
 
+private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ ≤ x + b * sp.Δ :=
+  add_le_add le_rfl (mul_le_mul_of_nonneg_right h sp.toParams.hΔ.le)
+
+private theorem add_mul_delta_lt {x a b : Time} (h : a < b) : x + a * sp.Δ < x + b * sp.Δ :=
+  add_lt_add_of_le_of_lt le_rfl (mul_lt_mul_of_pos_right h sp.toParams.hΔ)
+
+private theorem add_delta_add_delta (x : Time) : x + sp.Δ + sp.Δ = x + 2 * sp.Δ := by
+  rw [add_assoc, ← two_mul]
+
+private theorem add_mul_delta_add_delta (x a : Time) :
+    x + a * sp.Δ + sp.Δ = x + (a + 1) * sp.Δ := by
+  rw [add_assoc, add_one_mul]
+
 /-- The slot of a time in `[t_s, t_s + 4Δ)` is `s`. -/
 private theorem slot_of_lt {s : Nat} {t : Time} (h₁ : sp.ts s ≤ t) (h₂ : t < sp.ts s + 4 * sp.Δ) :
     sp.slot t = s :=
-  slot_of_mem sp s h₁ (by rw [← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add]; linarith)
+  slot_of_mem sp s h₁ (by rw [← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add, add_zero]; exact h₂)
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
@@ -171,8 +184,11 @@ private theorem update_restarts (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     rw [this, (acOnTick_votedStep Y _ _ _).1]
     exact hj
   have hsl : sp.slot (tr.time c) = s + 1 :=
-    slot_of_lt (s := s + 1) (by rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add]; linarith)
-      (by rw [ht, ts_succ_add]; linarith)
+    slot_of_lt (s := s + 1)
+      (by
+        rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add, add_zero]
+        exact add_mul_delta_le (by norm_num))
+      (by rw [ht, ts_succ_add, add_assoc, ← add_mul]; exact add_mul_delta_lt (by norm_num))
   intro k hk hrk
   have := ((joined_awake sp) FGP ro H U tr hr Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
@@ -204,7 +220,8 @@ private theorem admitted_in_window (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
       by_contra h
       have := ((ts_le_iff_le_slot sp (hr.time_nonneg k)) (s + 1 : Nat)).2 (by push_cast; omega)
       rw [← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add] at this
-      linarith
+      exact absurd ((this.trans_lt h3).trans_le hT)
+        (by rw [add_zero]; exact not_lt.2 (add_mul_delta_le (by norm_num)))
     omega
 
 /-- **A result's side.** At an honest update of slot `s` with result `D`: the node's restarts were
@@ -279,9 +296,17 @@ private theorem relayed_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   have hΔ := sp.toParams.hΔ
   obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
   refine ⟨v, rfl, hR, ?_⟩
-  have := sync_forward hr hsync hX hsend h1 (by rw [ts_succ_add]; linarith) hY hc
-    (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by rw [ht]; linarith)
-    fun t ht₁ ht₂ => by rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
+  have := sync_forward hr hsync hX hsend h1 (by
+    rw [ts_succ_add]
+    exact h2.le.trans ((add_mul_delta_le (by norm_num)).trans (le_add_of_nonneg_right hΔ.le))) hY hc
+    (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by
+      rw [ht]
+      exact (add_le_add h2.le le_rfl).trans
+        (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))
+    fun t ht₁ ht₂ => by
+      rw [slot_of_lt (s := s) (h1.trans ht₁) (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
+        (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))), hvs]
+      omega
   rwa [hvs] at this
 
 /-- Relay delivery to an update uses recipient deadlines only through `t_s + 3Δ`,
@@ -298,9 +323,16 @@ private theorem relayed_held_before (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
   have hΔ := sp.toParams.hΔ
   obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
   refine ⟨v, rfl, hR, ?_⟩
-  have := sync_before_forward hr hsync hX hsend (by linarith) hY hc
-    (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by rw [ht]; linarith)
-    fun t ht₁ ht₂ => by rw [slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]; omega
+  have := sync_before_forward hr hsync hX hsend ((add_le_add h2.le le_rfl).trans
+    (by rw [add_mul_delta_add_delta]; exact (add_mul_delta_le (by norm_num)).trans hb)) hY hc
+    (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by
+      rw [ht]
+      exact (add_le_add h2.le le_rfl).trans
+        (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))
+    fun t ht₁ ht₂ => by
+      rw [slot_of_lt (s := s) (h1.trans ht₁) (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
+        (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))), hvs]
+      omega
   rwa [hvs] at this
 
 /-- **Against an update.** At an honest update of slot `s` whose validators `S` support `DY`
@@ -365,7 +397,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem ts_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   simp only [SAParams.ts]
-  exact mul_nonneg (by linarith) (Int.natCast_nonneg s)
+  exact mul_nonneg (mul_nonneg (by norm_num) hΔ.le) (Int.natCast_nonneg s)
 
 /-- Slot starts are monotone in the slot. -/
 theorem ts_le_ts {s s' : Nat} (h : s ≤ s') : sp.ts s ≤ sp.ts s' :=
@@ -466,8 +498,9 @@ theorem vote_of_awake_joined (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have h0 := ts_nonneg (sp := sp) s
   have hslot : sp.slot (sp.ts s + sp.Δ) = s :=
-    SA.slot_of_mem sp s (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
-  obtain ⟨j, x, hj'⟩ := hrun.tick_of_awake y hy _ (by linarith)
+    SA.slot_of_mem sp s (le_add_of_nonneg_right hΔ.le)
+      (by simp only [SAParams.ts]; push_cast; linarith)
+  obtain ⟨j, x, hj'⟩ := hrun.tick_of_awake y hy _ (add_nonneg h0 hΔ.le)
     (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 1)
       (by simp only [SAParams.ts]; ring)) hw
   obtain ⟨-, hk, -⟩ := hj'
@@ -526,8 +559,15 @@ private theorem awake_participant (hrun : GoldilocksRun proposer dg H tr) (hnc :
   have := SA.sync_forward hr hsync hy
     ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
     hsk hk hX hu.1 (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk)
-    (by rw [hu.2.2.1]; linarith) fun t h₁ h₂ => by
-      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith)
+    (by
+      rw [hu.2.2.1]
+      exact (add_le_add hk le_rfl).trans
+        (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num)))
+    fun t h₁ h₂ => by
+      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by
+        rw [hts]
+        exact h₂.trans_le ((add_le_add hk le_rfl).trans
+          (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
   rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
@@ -557,16 +597,21 @@ theorem awake_participant_window_before (hrun : GoldilocksRun proposer dg H tr)
     simp only [SAParams.ts]; push_cast; ring
   have hkb : tr.projAC.time k + sp.Δ ≤ b := by
     change tr.time k + sp.Δ ≤ b
-    linarith
+    exact (add_le_add hk le_rfl).trans (((SA.add_delta_add_delta _).trans_le
+      (SA.add_mul_delta_le (by norm_num))).trans (ht.symm.trans_le hib))
   have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
     change tr.time k + sp.Δ ≤ tr.time i₀
-    linarith
+    exact (add_le_add hk le_rfl).trans (((SA.add_delta_add_delta _).trans_le
+      (SA.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
   have := SA.sync_window_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
     (ha.trans hsk) hkb hX hu.1
     (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
-      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith)
+      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by
+        rw [hts]
+        exact h₂.trans_le ((add_le_add hk le_rfl).trans
+          (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
   rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
@@ -595,16 +640,20 @@ theorem awake_participant_early (hrun : GoldilocksRun proposer dg H tr)
     simp only [SAParams.ts]; push_cast; ring
   have hkb : tr.projAC.time k + sp.Δ ≤ b := by
     change tr.time k + sp.Δ ≤ b
-    linarith
+    exact (add_le_add hk le_rfl).trans ((SA.add_delta_add_delta _).trans_le hb)
   have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
     change tr.time k + sp.Δ ≤ tr.time i₀
-    linarith
+    exact (add_le_add hk le_rfl).trans (((SA.add_delta_add_delta _).trans_le
+      (SA.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
   have := SA.sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy
     ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩ ((ts_nonneg s).trans hsk) hkb hX hu.1
     (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
-      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith)
+      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by
+        rw [hts]
+        exact h₂.trans_le ((add_le_add hk le_rfl).trans
+          (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
   rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
@@ -693,9 +742,11 @@ private theorem honest_supporter_win (hrun : GoldilocksRun proposer dg H tr) (hn
     have hmaj := SA.result_majority hR
     obtain ⟨ℓX, hu, -, hCV⟩ := hR
     have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    have hJ := faults_lt_awake_joined_win hwin hs₀ (by linarith)
+    have hJ := faults_lt_awake_joined_win hwin hs₀ ((add_le_add le_rfl
+      (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (ht₀.symm.trans_le hi₀))
     have hsync := syncAC_of_window hrun hwin (a := sp.ts s) (b' := sp.ts s + sp.Δ) (ts_le_ts hs₀)
-      (by linarith)
+      (le_sub_iff_add_le.2 ((SA.add_delta_add_delta _).trans_le
+        ((SA.add_mul_delta_le (by norm_num)).trans (ht₀.symm.trans_le hi₀))))
     have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
       awake_participant hrun hnc hsync hX hu hy.1 hy.2.1 hy.2.2
@@ -818,7 +869,11 @@ private theorem same_label_compatible_win (hrun : GoldilocksRun proposer dg H tr
       SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ)
         tr.projAC := fun hi ⟨_, hu, _⟩ => by
     have ht : tr.time _ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    exact syncAC_of_window hrun hwin (ts_le_ts hs₀) (by rw [hts]; linarith)
+    exact syncAC_of_window hrun hwin (ts_le_ts hs₀) (by
+      rw [hts]
+      refine le_sub_iff_add_le.2 ?_
+      rw [SA.add_mul_delta_add_delta, SA.add_mul_delta_add_delta]
+      exact (SA.add_mul_delta_le (by norm_num)).trans (ht.symm.trans_le hi))
   obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
     obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
   · -- RR: each side's counted validators reach the other writer, where none supports it
@@ -896,7 +951,7 @@ theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
       obtain ⟨_, hu, _⟩ := hR
       exact hu.2.2.1
     exact result_optimistic_compatible_label_before hrun hnc hsync
-      (by have := sp.toParams.hΔ; linarith) hX hx hR hO
+      ((SA.add_mul_delta_le (by norm_num)).trans (ht.symm.trans_le hi)) hX hx hR hO
   obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
     obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
   · by_contra hnc'
@@ -906,11 +961,11 @@ theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     have ht' : tr.time i' = sp.ts s + 6 * sp.Δ := ht'
     have h1 := SA.relayed_against_of_held hrun'.localRun
       (SA.relayed_held_before hrun'.localRun hs hX' hX hc ht
-        (by have := sp.toParams.hΔ; linarith) hrs) hS hSF'
+        ((SA.add_mul_delta_le (by norm_num)).trans (ht.symm.trans_le hi)) hrs) hS hSF'
       fun h => hnc' (Or.symm h)
     have h2 := SA.relayed_against_of_held hrun'.localRun
       (SA.relayed_held_before hrun'.localRun hs hX hX' hc' ht'
-        (by have := sp.toParams.hΔ; linarith) hrs') hS' hSF hnc'
+        ((SA.add_mul_delta_le (by norm_num)).trans (ht'.symm.trans_le hi')) hrs') hS' hSF hnc'
     omega
   · exact hro hX hX' hi hR hO'
   · exact Or.symm (hro hX' hX hi' hR' hO)
