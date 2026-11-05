@@ -107,8 +107,8 @@ theorem UpTo.operational_update_fresh_lock
   have hslot : sp.slot (tr.time j) = u + 1 := by
     rw [ht]
     apply SA.slot_of_mem sp (u + 1)
-    · simp only [SA.SAParams.ts]; push_cast; nlinarith
-    · simp only [SA.SAParams.ts]; push_cast; nlinarith
+    · simp only [SA.SAParams.ts]; push_cast; linarith
+    · simp only [SA.SAParams.ts]; push_cast; linarith
   rw [hpost]
   exact fastLock_mem_updateConfirmation_floor hPt (hframe ▸ hva) hconf hnv hfast
     (by rw [hslot]; omega)

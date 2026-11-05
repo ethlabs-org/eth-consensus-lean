@@ -346,7 +346,7 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
       exact_mod_cast (contract_coefficients S A).catchUp.pos
     change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
 
 /-- Conditional payload/read projection of the finite supplier package. Uses the engine's
 existing catch-up duration, raw own-block release, and final cache membership at endCut.

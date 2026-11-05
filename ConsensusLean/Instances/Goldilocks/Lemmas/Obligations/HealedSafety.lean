@@ -224,7 +224,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
     rw [Q.params.slotTime_eq] at this
     have he : (P.slot : Time) = (s : Time) := by
       simp only [SA.SAParams.ts] at this
-      nlinarith
+      exact (mul_left_cancel₀ (mul_pos (by norm_num : (0 : Time) < 4) hd).ne' this).symm
     exact_mod_cast he
   let O : HealthyRepairOpening S A V Q D :=
     ⟨s, k, P, hlo, hbound, hold, hlabel, hP, Compose.proposal_accepted hrun hnc hnode.1 hP,
@@ -342,7 +342,8 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
   have hq0 : 0 ≤ D.query := (le_max_right _ _).trans ((le_max_right _ _).trans
     ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
   have ht0 : 0 < (stateAt S Q.run.2 Q.hn v i).now := by
-    nlinarith [C.repaired, (show (0 : Time) ≤ Q.index from Nat.cast_nonneg _)]
+    linarith [C.repaired,
+      mul_nonneg (by positivity : (0 : Time) ≤ 4 * (Q.index : Time) + 6) hd.le]
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hinit |
       ⟨j, _, e, he, hev, _, _⟩
@@ -689,7 +690,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
         change s + 2 ≤ e at he
         by_contra h
         have : (s : Int) + 3 ≤ Q.params.slot t := by omega
-        nlinarith
+        linarith [mul_le_mul_of_nonneg_left this (by linarith : (0 : Time) ≤ 4 * Q.params.Δ)]
       · rw [SA.viableAncestor_self hPhi hRm (hcand n hqn.le le_rfl).symm]
         exact .refl
     · have hnext : Q.params.ts (s + 1 : Nat) + 6 * Q.params.Δ ≤ t := le_of_not_gt hyoung

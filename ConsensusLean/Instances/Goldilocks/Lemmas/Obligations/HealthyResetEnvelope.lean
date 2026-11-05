@@ -246,7 +246,8 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
   have hr0 : 0 ≤ Q.ready := by rw [hready]; positivity
   have hgr : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by
     change max Q.gst 0 + _ ≤ _
-    rw [hready, hΔ]; nlinarith
+    rw [hready, hΔ]
+    linarith [mul_le_mul_of_nonneg_right hC (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   -- the base slot `w = slot(ready) + 1`: `ready < t_w ≤ ready + 4Δ`
   have hts (s j : Nat) : Q.params.ts (s + j : Nat) = Q.params.ts s + 4 * Q.params.Δ * j := by
     simp only [SA.SAParams.ts]; push_cast; ring
