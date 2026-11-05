@@ -1,6 +1,6 @@
 # ConsensusLeanTest module map (docs/notes/apply-test-module-map.sh applies it): old module, new module, group.
-# Old names are the flat names of main 6ccbad87 (after the review renames) and of work/caspar/healthy-two-run
-# (group `pending:`, files not on main yet). Unchanged: ReviewAxioms, ReviewGuard, MilestoneAxioms, Index, Gaps.
+# Old names are the flat test module names before the move; the group `pending` marks modules of work not yet on
+# main, which the script moves once they exist. Unchanged: ReviewAxioms, ReviewGuard, MilestoneAxioms, Index, Gaps.
 # old module	new module	group
 ConsensusLeanTest.Common	ConsensusLeanTest.Fixtures.Common	fixtures
 ConsensusLeanTest.Support	ConsensusLeanTest.Fixtures.Support	fixtures
@@ -103,12 +103,12 @@ ConsensusLeanTest.GoldilocksInitialCarryRun	ConsensusLeanTest.Goldilocks.Initial
 ConsensusLeanTest.GoldilocksInitialCarryPremises	ConsensusLeanTest.Goldilocks.InitialCarry.Premises	InitialCarry
 ConsensusLeanTest.GoldilocksInitialCarryReject	ConsensusLeanTest.Goldilocks.InitialCarry.Reject	InitialCarry
 ConsensusLeanTest.GoldilocksInitialCarryControl	ConsensusLeanTest.Goldilocks.InitialCarry.Control	InitialCarry
-ConsensusLeanTest.GoldilocksTwoRun	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoChain	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoFacts	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoSA	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoAC	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.AC	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoStep	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoSync	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoReady	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Ready	pending:healthy-two-run
-ConsensusLeanTest.GoldilocksTwoGoodWindow	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.GoodWindow	pending:healthy-two-run
+ConsensusLeanTest.GoldilocksTwoRun	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run	pending
+ConsensusLeanTest.GoldilocksTwoChain	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain	pending
+ConsensusLeanTest.GoldilocksTwoFacts	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts	pending
+ConsensusLeanTest.GoldilocksTwoSA	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA	pending
+ConsensusLeanTest.GoldilocksTwoAC	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.AC	pending
+ConsensusLeanTest.GoldilocksTwoStep	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step	pending
+ConsensusLeanTest.GoldilocksTwoSync	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync	pending
+ConsensusLeanTest.GoldilocksTwoReady	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Ready	pending
+ConsensusLeanTest.GoldilocksTwoGoodWindow	ConsensusLeanTest.Goldilocks.Runs.TwoValidator.GoodWindow	pending

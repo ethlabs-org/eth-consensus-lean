@@ -15,7 +15,7 @@ rules="$(awk -F'\t' '!/^#/ && NF >= 2 {
   printf "s{\\b%s\\b(?!/)}{%s}g;\n", op, np
 }' "$map")"
 # Tracked text files, except symlinks (CLAUDE.md), the map and this script, the historical approval record,
-# docs/decisions.md (owned by a separate edit) and archive/.
+# docs/decisions.md (a record of past decisions, cited as written) and archive/.
 git ls-files -z -- '*.lean' '*.md' '*.toml' '*.yml' '*.sh' '*.py' '*.tex' ':!:docs/notes/test-module-map.tsv' ':!:docs/notes/apply-test-module-map.sh' \
   ':!:docs/notes/spec-review.md' ':!:docs/spec-review.md' ':!:docs/decisions.md' ':!:archive/**' |
   while IFS= read -r -d '' f; do [[ -L "$f" ]] || printf '%s\0' "$f"; done |
