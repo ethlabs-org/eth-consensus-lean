@@ -1,399 +1,406 @@
-# Design decisions (summary)
+# Design rationale
 
-A summary of the design record. The full record, with the reasoning, reviews and research behind each line,
-is in the team workbench (private): the [consensus-lean index][index] (decisions, plans, research, experiments
-since the move to this repository) and the earlier [layers plan][layers] (iterations 1–6 of the generic
-definition). Coordination decisions are in this repository's issues. Each line gives the date, the decision and
-where it is recorded; "Francesco" marks the owner's decisions.
+This file gives the reasons behind the design choices of the model and of the repository, and states only the
+rules that hold now. The per-statement detail is in the mapping (`docs/goldilocks-mapping.md`) and the per-check
+detail in `TRUST.md`.
 
-[index]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/README.md
-[layers]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/layers-plan.md
-[plan]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/plans/foundation-plan.md
-[validation]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/research/foundation-validation.md
-[rebuild]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/experiments/module-system-rebuild.md
-[checkers]: https://github.com/ethlabs-org/workbench/blob/goldilocks/main/repos/goldilocks/notes/generic-interface/consensus-lean/research/reuse-checkers.md
+## Correctness and the review statements
 
-## What a good protocol is
+- **A correct protocol is a fixed property table.** The generic layers define a correct protocol
+  (`CorrectProtocol`) as a fixed table of properties, each with a fixed regime; an instance supplies only numbers.
+  The precise protocol properties live in the instance's statements. Reason: a reviewer reads one definition for
+  every protocol, and an instance cannot tailor what "correct" means to what it can prove.
+- **Three layers.** L0 is the problem (what a correct protocol is), L1 the model (a generic execution engine), L2
+  the shape (a protocol skeleton compiled to the model). The network is part of L0, as a communication log, and L1
+  proves once that its log is faithful (`LogFaithful`), so no instance reproves delivery.
+- **Names say which is correctness and which is the obligations.** `CorrectProtocol` (with its lemmas
+  `CorrectProtocol.*`) is correctness; `ShapeObligations` (`Spec/Shape/Obligations.lean`, field `.correct`) is the
+  set of obligations a shape meets; the review statement `Review.ObligationsSufficient` says that meeting the
+  obligations gives a correct protocol. The families are `Model.ProtocolFamily` and `Shape.ChainShapeFamily`.
+- **The regimes' meaning.** Healthy means full participation with faults below ⅓. Liveness premises tolerate one
+  bad proposer slot per window (`ProgressTolerant`). The sleepy stress witness keeps at most two honest validators
+  awake. Available and stable monotonicity are conditional, final monotonicity is unconditional. `available` may
+  bind to `ac_confirmed`.
+- **`stable := final` is not a correct choice**: stable must be sleepy-live.
+- **The outage regime is η-sleepy, and its end acts as GST**: after an outage, every after-GST property applies.
+- **Per-slot proposer selection in the skeleton.** `Skeleton.proposerSel : Slot → SelSpec n`, so that a shape can
+  fix its schedule (`fun s => .fixed {p s}`) or leave the choice to the run (`fun _ => .sized 1`).
+  `ProgressReq.Fits (.recur _)` is `∀ s, proposerSel s = .sized 1`: a recurrence fits only a run-chosen proposer. A
+  `.fixed` schedule arm was rejected because the bad-proposer witness of `regimes_realizable` (`badSel`: a faulty
+  proposer at the periodic slots `s % P = P − 1`) needs a schedule-side condition: under a round-robin schedule with
+  period coprime to `P` those slots visit every validator, so the witness would need everyone faulty, and a
+  constant schedule has no witness at all. With the per-slot condition `regimes_realizable` stays proved (its
+  witnesses specialise the fitting hypothesis per slot). The Goldilocks skeleton uses `fun _ => .sized 1` with the
+  run's proposer `runProposer`, so its `.recur` progress patterns fit.
+- **A generic time grid.** `TimeGrid` supplies an absolute positive slot length, and the skeleton supplies duty
+  offsets in time units. Neither depends on the network delay generically; each instance constructs them from its
+  public parameters. The generic progress and realizability proofs need only a positive slot length, not scaling
+  or divisibility by the delay.
+- **Ordered duty batches.** A selected protocol duty returns an ordered list of candidates, all signed by its own
+  key in that duty's role. `releaseAll` checks each candidate against the holdings left by the successful earlier
+  candidates; a rejection does not retry or reorder the batch. This permits a same-event parent-wrapper
+  publication before a child's dependency check. Shape `pollBatch` defaults to the optional poll as a zero-or-one
+  list, and the other shape handlers likewise compile to zero-or-one lists. No network or realizability premise
+  depends on it, and delivery clocks need no change: `lastClock_deliver` and `now_eq_lastClock` establish the
+  receipt time from event order.
 
-- 2026-11-04, Francesco and the coordinator (review-surface naming, step 1 of the naming proposal): mechanical
-  renames, no statement changes. `Good` → `CorrectProtocol` (with its lemmas `CorrectProtocol.*`; files
-  `Spec/Problem/CorrectProtocol.lean`, `Lemmas/Problem/Facts/CorrectProtocol.lean`), `Accepted` → `ShapeObligations`
-  (`Spec/Shape/Obligations.lean`; `.good` → `.correct`), `Review.AcceptedGood` → `Review.ObligationsSufficient`,
-  `Model.Family` → `Model.ProtocolFamily`, `Shape.ShapeFamily` → `Shape.ChainShapeFamily`: the names say which is
-  correctness and which is the set of obligations that implies it. The other entries use the current names.
-- 2026-11-04, Francesco (raw-arrival audit, option 2): remove
-  `ExecutionValid.delivery_ready`. A delivery is a raw arrival into the existing
-  total `process` handler and log, independently of dependency readiness or
-  consensus admission. Buffering and retries belong to the family; no engine
-  buffer, new event kind or replay of `seen` is introduced. Dependencies still
-  guard outgoing releases. This supersedes the incoming-delivery part of the
-  2026-10-31 dependency repair below. Engine states, logs, views, excuses, progress,
-  message/FG-attestation deadlines and Held/Served are unchanged on each run;
-  valid runs only increase, so Behaviour and ShapeClaims only strengthen.
-  ShapeObligations under the new validity implies ShapeObligations under the old validity by
-  restricting claims. Do not infer arbitrary-System CorrectProtocol monotonicity from that
-  inclusion alone: its witnesses are existential. The existing canonical runs
-  still prove Adequate, Realizable and RealizableActive, including
-  `regimes_realizable`, with only validity-constructor adjustments; prefix closure
-  still uses truncation. The retained `Run.canonical_delivery_ready` theorem proves
-  that these canonical witnesses also satisfy the former incoming-readiness condition.
-  Goldilocks's carried parent-chain processing needs no
-  new admission premise. The poisoned-dependency exclusion is closed by construction.
-- 2026-11-04, lead (phase 2 of half-open delivery; W2's card `cards/coefficient_tightening.md`):
-  with `Δp = Δe` the Goldilocks contract numbers are the node numbers: catch-up `19`
-  (`18Δ + 1 ≤ 19Δ`), latency `4X + 6` (available, stable) and `4(X + 3·cF r) + 1` (final), lag
-  `4k + 6`, no-sleep `4k + 6`, recovery `9`, heal `catchUp + M_f` with
-  `M_f = 24 L_drain + 8k + 52δ_t + 52X + 44` (563 at `k = 2, X = 1, δ_t = 6`, was 1312;
-  superseded: five-window `M_f`, 483, then rise-round `M_f`, 387, both 2026-11-03, below). The
-  budget stays `4k − 6` (the node's phase-sensitive (V), `acceptance_outage_times`); `4k − 5`
-  is optional for Francesco (superseded: budget `4k − 5`, 2026-11-03, below). Every number moves toward stronger claims except catch-up, which is
-  mixed: more ready readers, but the healthy progress window (`healthyLive`, `healedSafe`,
-  `prog [ready, …]`) starts `18Δ` earlier, so those rows are incomparable with the old ones
-  (catch-up is a guarantee coefficient, Francesco 2026-10-31). No-sleep `4k + 6` no longer covers
-  `catchUp + 1` for `k ≤ 3`; no proof uses that relation. Supersedes the numbers of the entries
-  below (catch-up `37`, heal
-  `catchUp + 2M + 3`, lag `8k + 12`, no-sleep `max 38 (8k + 16)`, recovery `18`).
-- 2026-11-04, Francesco (option (a) of the Δ transport study, workbench
-  `cards/delta_transport_study.md`; lead-approved plan `cards/delta_halfopen_plan.md`): **half-open
-  delivery**. `CommLog.PSync`/`SyncUntil` hold a message strictly before the bound (deadlines
-  `max a g + Δ − 1`, `a + Δ − 1`, and `− 1` for rows), the paper's `[τ, max(τ, w) + Δ)`; so the
-  Goldilocks transport is `Δ_p = Δ_e` and `ΔF_p = ΔF_e` (`Setup.params`, `protoFGDelay`, `cF_spec`),
-  superseding the #107 `Δ_p = Δ_e + 1` (2026-10-31). `Realizable` and `RealizableActive` quantify
-  over `Δ > 1` and `ΔF > 1` ("just state Delta > 1"): at `Δ = 1` half-open delivery is same-time
-  delivery, which no protocol-agnostic eager log meets. Behaviour still covers every `Δ ≥ 1`.
-  Direction: `Delivers` at `dl − 1` implies it at `dl`, so `PSync`, `SyncUntil` and `OutageNet`
-  become strictly stronger premises, and with them `Sleepy`, `Healthy`, `Outage`, the prefix
-  lemmas and the Baseline healed prefix; every Behaviour row, and so `CorrectProtocol`, `ObligationsSufficient` and the
-  Accepted endpoint, is weaker at each fixed `Δ` (it covers the runs that deliver by `Δ − 1`), the
-  paper's reading. Phase 1 keeps every contract coefficient (they over-cover); tightening is
-  phase 2.
-- 2026-11-02, Francesco, lead-approved design (two-bound network, revision 3): **two delay
-  bounds**. `Env` and `Public` carry the message bound `Δ` and the row bound `ΔF` (both positive,
-  neither bounds the other). The log carries the protocol's message class (`CommLog.row`, filled
-  only from `Protocol.isRow` by `Model.Run.log` and `Model.tagLog`); `Delivers` serves rows within
-  `ΔF` (`rows`) and every other message and every transaction within `Δ` (`msgs`, `txs`; strictly
-  before the bound since 2026-11-04): no statement may claim a block or vote within `ΔF`, and when
-  `ΔF < Δ` rows may overtake blocks.
-  Contract units option A: `Params.rowRatio r ≥ 1`; only `System.Healthy` assumes `ΔF ≤ r·Δ` (an
-  upper envelope for the coefficients, never a deadline; a larger `r` weakens the premise). Sleepy
-  and Outage carry no ratio and so cover every `ΔF > 0` (a weaker premise, stronger claims);
-  sleepy row-independence is an audit question still open, and `η` stays as it is (its fixing is
-  a separate contract change). **Inherited semantic change, lead ruling 2026-11-02:** the
-  baseline sheet's weak-continuation premise (`WeakPremise`, `Statements/Baseline.lean`: healthy
-  up to the heal point, without the ratio) keeps its text and gets no ratio, and its targets
-  `weakSafe`, `weakInclude`, `weakGrow` (each with premise `WeakPremise ∧ gProg`) are not
-  weakened. Its meaning changes: its `PSync` now holds the family's own rows (`isRow`) to
-  `max a gst + ΔF` with no ratio, and its healthy part is `HealthyOn`, so the pre-heal phase is
-  unbounded in `ΔF` too. It newly admits runs with `ΔF > Δ` whose rows arrive after
-  `max a gst + Δ` but by `max a gst + ΔF`; at `ΔF < Δ` the row deadline is tighter, so the
-  premise is not uniformly weaker; for a family without rows nothing changes. The targets keep
-  their `Δ`-denominated times and must now hold with rows slower than `Δ` by any factor. They
-  are targets (bare fields of `GoldilocksExtraAt`; the node-level R.6 `WeakSafe`, `WeakInclude`,
-  `WeakGrow` were unproved and are retired, 2026-11-03), not proved here; `weakPremise_inhabited` is a satisfiability witness
-  at `ΔF := Δ` only. Whether they hold at `ΔF ≫ Δ` was an open audit item (moot since the sheet was archived,
-  2026-11-03); a plausible
-  risk, not a counterexample, is that AC recovery after GST may need FG rows, now unbounded before
-  `gHeal`. A counterexample would go through the believed-false process, with the statements
-  unchanged. **Node level** (the order part superseded 2026-11-03: `SyncOn` and `SyncBefore` carry
-  `Δ ≤ ΔF` again, as `delta_le`)**:** `SyncOn.deltaF` and `SyncBefore.deltaF` change from `Δ ≤ ΔF` to
-  `0 < ΔF`, which broadens every node statement built on them (`SyncRun`, `GSTRun`, `SleepyRun`,
-  `HealthyRun`, the R.6 weak premises, `HSShared`, the Persist, Run and Service rows, the healing
-  statements): they now admit `ΔF < Δ`, so their claims are stronger. The claims proved in
-  `Solution` remain proved (check.sh step 3b, standard axioms); the bare ones (R.6, the open
-  healing statements) are targets. Goldilocks: rows are standalone attestations and relay wrappers of
-  attestations only; a mixed relay wrapper (attestations with a block or a vote) and the empty
-  wrapper are delivered within `Δ` (Francesco's decision 2026-11-02, option (a)), so attestations
-  bundled with a block reach the others within `Δ`. Protocol row delay `ΔF_p = ΔF + 1`, as
-  `Δ_p = Δ + 1` (superseded 2026-11-04 by half-open delivery: `ΔF_p = ΔF`, `Δ_p = Δ`); the FG row gap at ratio `r` is `cF r = ⌈(r + 6)/4⌉` with
-  `6Δ_p + ΔF_p ≤ 4Δ_p·cF r` (`cF_spec`). **Transitional (keep-green):** the Goldilocks contract
-  keeps `rowRatio = 1` (`Params.standard`), so its healthy regime still requires `ΔF ≤ Δ`, the
-  case Francesco ruled out as a final state; this is not the arbitrary-ratio port, which chooses
-  `r` in the acceptance assumptions, adds `3·cF r ≤ δt`, and reworks the coefficients. Card:
-  workbench `two_bound_network.md`.
-- 2026-11-03, Francesco's request (lead-approved; read-back T-01a19b8a): the Goldilocks catch-up is a
-  flat `contract_catchUp = 37` (was `max 37 (8k + 4)`). No proof needs `8k + 4`: with the value
-  changed, the whole build failed only in tests that pinned the old formula. Effects (identical
-  for `k ≤ 4`; for `k ≥ 5`): admissibility holds; heal is lower by `8k + 4 − 37` at every
-  capability (`128k + 112δ_t + 160X + 224`); latency is unchanged; the ready and heal points move
-  earlier by the same amount, so `[ready, heal]` keeps its length; more validators are ready
-  (shorter `cDur`), so the sleepy and outage participation premises are weaker (no-sleep and
-  cohort unchanged). `sleepySafe`, `sleepyLive` (L0 `TxLive`; the shape-level
-  `ProposalLiveReady` also relaxes the proposer's readiness) and `persists` are stronger.
-  `healthyLive` (L0 `TxLive`; the shape-level `ProposalLiveReady` also relaxes the proposer's
-  readiness) has a stronger premise (under `Healthy` every honest validator is awake from
-  `max g 0`, so progress on `[ready_new, horizon]` implies it on the former `[ready, horizon]`)
-  and a stronger conclusion. `healedSafe` has a stronger conclusion and a premise not comparable
-  with the former one (its window `[ready, heal]` shifts earlier with the same length).
-- 2026-11-02, Francesco (η = 0, coefficient lane): the Goldilocks outage regime is plain sleepy.
-  `ContractAssumptions.lookback` is removed, `goldilocksContract` keeps `Params.standard`'s
-  `η = 0`, and the outage budget is `4k − 6` (was `min(lookback, 4k − 6)`). Statement impact:
-  `Outage`'s participation premise `EtaSleepyOn θ (η·Δ)` becomes plain sleepy and its window bound
-  `b₁ ≤ b₀ + budget·Δ` admits windows up to `(4k − 6)·Δ` (was `min(lookback, 4k − 6)·Δ`); both
-  weaken the outage premise, so `persists` claims at least as much as before. Its proof used only
-  the plain-sleepy consequence (`EtaReadyAbove.readyAbove`) and `budget ≤ 4k − 6`. This applies
-  to the acceptance contract; the Baseline sheet is unchanged and still pins `η = eta ≥ 1`
-  (OD-23), a stronger premise, so the acceptance claim is the stronger one.
-- 2026-11-02, coefficient lane (lead-approved plan): the arbitrary-ratio contract. The Goldilocks
-  acceptance assumptions choose the row ratio, `ContractAssumptions.rowRatio : ℕ+`, passed to
-  `Params.rowRatio` by `goldilocksContract`, so its healthy regime assumes `ΔF ≤ r·Δ` for that `r`.
-  With `c = cF r`: `ContractAssumptions.timeout` is `3c ≤ δt` (`six_le_δt` derived),
-  `finalWindow A = [0, c, 2c, 3c]` (span `3c`) and `contract_latency .final X = 8(X + 3c) + 2`; the
-  nonfinal latency `8X + 12` and `contract_heal` are unchanged (the row delay enters the reset
-  envelope only through the rise timeout `6Δ + ΔF ≤ 4Δ·δt`, paid by `3c ≤ δt`). Provenance of
-  `8X + 12` (workbench `confirmed_supply_row_use_audit.md`, at 03e10e76): the post-heal proofs do
-  not consume the row-timing components, although their premise bundles still contain them; this
-  is not a theorem that removes all row assumptions. The protocol row delay `protoFGDelay` is the instantiation of
-  `ΔF` (`FinalQuery.hsSharedUpTo`, the healthy-query wrapper); the transitional lift
-  `rowDelay_le_of_healthy` (`ΔF ≤ Δ` at `r = 1`) is removed. At `r = 1` the contract constants
-  and the window are unchanged (`c = 2`, `[0, 2, 4, 6]`, `8(X + 6) + 2`, `6 ≤ δt`) and so are the
-  proved claims; the transport now runs at the actual `protoFGDelay`, which differs from the former
-  `Δ_p` instantiation whenever `ΔF ≠ Δ`. The route-A entry below records the `r = 1` constants.
-- 2026-11-02, Francesco ("1. Yes 2. we should edit the spec in consensus-lean"): the full-tree
-  fallback for an honest vote's head. `tryVote` walks the viable tree of `SA.voteDomain`: the
-  voter block tree when its viable tree in the current frame is nonempty, else the whole frame
-  tree. `voterBlockTree` keeps its frozen meaning, so `ViableAtVote` and every trusted statement
-  are unchanged in meaning (coordinator decision after the T-6daee397 fidelity read, smallest
-  trusted diff). Paper: workbench `outage_restoration_s5.md` §11 (f7f7dbb), §11.5 (3828c33);
-  gate review e178adef; fixture e90575ed; audit a54316c.
-- 2026-11-02, Francesco: the generic outage is slow arming only, with no absolute-majority
-  participation premise. `System.Outage` drops `ReadyOfAll cover` and gains, after its existing
-  conjuncts, `NoSleepOn a z` (no honest validator falls asleep in `[a, z]`, waking allowed;
-  `a = b₀ − noSleep·Δ`, `z = b₁ + noSleep·Δ`, clamped to `[0, horizon]`) and `CohortOn a z`
-  (faulty plus late wakers fewer than the honest validators awake at `a`; half of all is the lemma
-  `CohortOn.two_mul_lt`). `CorrectProtocol.persists` protects every `Ready` reader from `b₁ + recovery·Δ`
-  (`ProtectedReadyFrom`), replacing `ResilienceReader` readers from `b₀`. New `Params` fields
-  `noSleep`, `recovery`. Accepted: lag `8k+12` (`(8k+12)Δe ≥ (4k+6)Δp`, the label before the
-  outage label armed by `b₀`), `noSleep = max 38 (8k+16)`, `recovery = 18`. The pinned
-  `FGSAParams` sheet (node Δ) follows: lag `4·lockK + 6`, `noSleep = max 19 (4·lockK + 8)`,
-  `recovery = 9`. A2 (`outageWindow`) drops `ReadyOfAll` for the same relative counts on
-  `[a, min b₁ horizon]`. `Params.cover` is kept (read by no regime). The node-level R.5
-  statements (`Statements/Regimes/Outage.lean`, parked, off the Solution path) are unchanged
-  (retired 2026-11-03). Cards:
-  workbench `outage_slow_only_delta.md`, read-backs 5d5e354 and 9f5d6a3.
-- 2026-11-02, claude-mac, owner direction Francesco ([#136]): route A for final liveness.
-  `finalWindow` offsets are `[0, 2, 4, 6]` (span 6), `ContractAssumptions.timeout` is
-  `6 ≤ δt`, and `contract_latency .final X = 8(X+6)+2`. The window coverage comes from the anchor
-  route (`cacheCoverage_of_anchor_window_upTo`, WindowAnchorRoute.lean): honest proposers only at
-  the four anchors, three gap-2 anchor steps, and `P₃.slot ≤ P₀.slot + δt`. Only this coverage
-  lemma needs `δt ≥ 6`; the seed needs `δt ≥ 4`. `δt` is a fixed constant, independent of the
-  honest-proposer gap X; tolerance keeps X = span+2 = 8 as an existential witness only, and every
-  leaf stays valid for all positive X. Francesco does not gate this decision (agents decide); his
-  earlier direction was a fixed δt, changed offsets, honest proposers only at anchors. The
-  independent read-back on #136 passed for the workbench cards `route_a_gap2.md`,
-  `window_start_h0.md`, `anchor_row_supplier.md` and `anchor_tick_ac_producer.md`. The old
-  first-crossing / bounded-crossing assembly (`[0, δt−1, δt+1, δt+3]`, `δt ≥ 4`) is retired.
-  Route B has no proved supplier.
+## Network and delivery
 
-- 2026-11-01, Francesco ([#17]): final liveness uses four anchors; the two-proposer route is parked.
+- **The normal-delivery rule.** An honest send at `t` is held at `dl a` by every honest node awake throughout
+  `[a, dl a]`, for every `a ≥ t`; a node that wakes at `u` gets the message by its deadline from `u`.
+- **Half-open delivery.** `CommLog.PSync` and `SyncUntil` hold a message strictly before the bound: deadlines
+  `max a g + ΔAC − 1` and `a + ΔAC − 1` (and `− 1` for rows), the paper's `[τ, max(τ, w) + Δ)`. So the
+  Goldilocks transport has the protocol delays equal to the engine delays (`Δ_p = Δ_e`, `ΔF_p = ΔF_e`;
+  `Setup.params`, `protoFGDelay`). The earlier inclusive form needed `Δ_p = Δ_e + 1`, whose extra unit only
+  converted the inclusive engine endpoint to the strict node endpoint and budgeted no relay delay; half-open
+  delivery makes it unnecessary.
+  - `Realizable` and `RealizableActive` quantify over `ΔAC > 1` and `ΔFG > 1`: at a delay of `1`, half-open
+    delivery is same-time delivery, which no protocol-agnostic eager log meets. Behaviour still covers every
+    delay `≥ 1`.
+  - Direction: `Delivers` at `dl − 1` implies it at `dl`, so `PSync`, `SyncUntil` and `OutageNet` are strictly
+    stronger premises than in the inclusive form, and with them `Sleepy`, `Healthy`, `Outage` and the prefix lemmas;
+    every Behaviour row, and so `CorrectProtocol`, `ObligationsSufficient` and `MeetsObligations`, is weaker at each
+    fixed delay (it covers the runs that deliver by `Δ − 1`). This is the paper's reading.
+- **Two delay bounds.** `Env` and `Model.Public` carry the message bound `ΔAC` and the row bound `ΔFG`,
+  both positive; neither bounds the other. The log carries the protocol's message class (`CommLog.fgAtt`, filled
+  only from `Protocol.isFGAtt` by `Model.Run.log` and `Model.tagLog`). `Delivers` serves rows within
+  `ΔFG` (`fgAtts`) and every other message and every transaction within `ΔAC` (`msgs`, `txs`). So no statement may
+  claim a block or a vote within `ΔFG`, and when `ΔFG < ΔAC` rows may overtake blocks.
+  - Only `System.Healthy` relates the two, by `ΔFG ≤ fgDelay·ΔAC` (`Params.fgDelay`, a plain `ΔAC`-coefficient: an
+    upper envelope for the coefficients, never a deadline; a larger bound weakens the premise). Sleepy and Outage
+    carry no ratio and so cover every `ΔFG > 0`: a weaker premise, stronger claims.
+  - Goldilocks rows are the standalone attestations and the relay wrappers of attestations only. A mixed relay
+    wrapper (attestations with a block or a vote) and the empty wrapper are delivered within `ΔAC`, so
+    attestations bundled with a block reach the others within `ΔAC`.
+- **The node-level attestation clause has no lower bound, and node premises assume `Δ ≤ Δ_F`.** `AttDeliveredBy`
+  has no `τ₀ ≤ time k`: a processing of the attestation before its signing or admission counts. Reason: an honest
+  node forwards an admitted attestation as the same object, and L0 counts an earlier receipt (`CommLog.Held`), so a
+  node can hold it from before the admission and receive nothing after it; an attestation's processing is never
+  refused and the pool keeps it, so an earlier processing is as good. Blocks and messages keep the lower bound: they
+  are forwarded in fresh wrappers, and an earlier receipt of a block can be refused.
+  - `SyncOn` and `SyncBefore` carry `delta_le : Δ ≤ Δ_F` (claims §"Parameters" assumes `Δ_F ≥ Δ`): an attestation
+    admitted from a block leaves in the block's relay wrapper, which is not a row and is served within
+    `Δ`. So the node statements built on them (`SyncRun`, `GSTRun`, `SleepyRun`, `HealthyRun`, `HSShared`, the
+    Persist, Run, Service and healing rows) cover only `Δ ≤ Δ_F`, the paper's range. No proof reads `delta_le`; the
+    consumers of the clause read signings only.
+  - The generic L0 two-bound network stays unordered. The open transports (`PSyncTransport`, `SyncUntilTransport`,
+    `SyncRunTransport`) take `Δ ≤ Δ_F` as a hypothesis; with the lower bound gone they owe no signer provenance for
+    attestations.
+  - `MeetsObligations` needs no `Δ ≤ Δ_F`: its closure mentions `SyncOn`/`SyncRun` only through the uninstantiated
+    `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/FrameLabels`, discharged with
+    the `SleepyServiceBefore` disjunct), and never constructs or reads them.
+  - Rejected: restricting the clause to signings (it drops the forwarding of admitted attestations) and a local
+    `max Δ Δ_F` deadline for admissions (two attestation fields).
+- **A delivery is a raw arrival.** There is no delivery-readiness condition in `ExecutionValid`: a delivery is a
+  raw arrival into the total `process` handler and the log, independently of dependency readiness or consensus
+  admission. Buffering and retries belong to the family; there is no engine buffer, no extra event kind and no
+  replay of `seen`. So valid runs only increase, Behaviour and the shape claims only strengthen, and the
+  poisoned-dependency exclusion is closed by construction. Do not infer monotonicity of `CorrectProtocol` for an
+  arbitrary system from that inclusion alone: its witnesses are existential. The canonical runs still prove
+  `Adequate`, `Realizable` and `RealizableActive` (including `regimes_realizable`), prefix closure still uses
+  truncation, and `Run.canonical_delivery_ready` proves that the canonical witnesses also satisfy the
+  incoming-readiness condition. Goldilocks's carried parent-chain processing needs no admission premise.
+- **Dependencies guard outgoing releases.** One monotone holdings policy governs release: the engine releases a
+  candidate only when its dependencies are already held. The predicate is decidable and depends only on the
+  holdings and the object, which preserves rehashing invariance; neither it nor the protocol handlers receives the
+  hash function. Other instances use the unrestricted policy. The canonical scheduler keeps first releases rather
+  than last duplicates, which preserves dependency order at the same timestamps.
+  - Goldilocks's fresh child forwarding wrapper depends on the complete same-origin signed parent wrapper, not
+    merely a raw parent hash. Carried references are recursively processed, not inert pointers. The pre-envelope
+    dependency must already be held; nesting it in the current envelope does not satisfy the requirement. Unlike
+    the earlier `depsS`, the policy does not require `parentFG.isSome`: accepted-parent and timely-processing
+    conclusions remain protocol proof obligations, as do source/time authentication, closure to prior processing
+    (or own acceptance) and the store-to-seen/no-suppressed-release joins.
+  - No FIFO channel, retry queue or separate full-ancestry envelope is assumed.
+- **Release at the delivery's own time.** What a delivery makes a node emit, relay or acknowledge leaves at the
+  delivery's time. A protocol has `deliverDuties : Time → List Duty` (default `[]`; a skeleton lists them as
+  `deliverOrder`), and `Run.step` at `.deliver v o t` runs them on the processed node and then the gossip
+  `releaseAll`, as an awake tick does; `releases v o t` holds at the delivery's time through `Run.SendsAt`, and
+  `Unforgeable`'s earlier send may be a delivery.
+  - Reason: the protocol texts read an admission or a vote cast at a receipt as an instantaneous send ("the network
+    relays each accepted object"; relay uses the acceptance time, also for an asleep receiver), the claims' proofs
+    A1.2/C1.1 (`writer_pool`), A1.3 (`fastLock_same_slot`), A1.7 (`honest_vote_at_update`) and the Sleepy invariant
+    rely on it, and model runs showed that release at the next awake tick, or even one unit late, breaks R.1/S1
+    under a sleeping admitter, while delivery-time release had no violation. Persistence across sleep alone is not
+    enough.
+  - Rejected: weakening `SyncOn`/`SyncAC` to the sender's first awake time (the proofs cannot absorb it), a
+    gossip-only release at deliveries (a vote cast at a receipt would still wait), and votes carrying their head
+    block (a spec change for an engine defect).
+  - The Goldilocks skeleton's delivery duty is one `.poll`, a drain: `fgDue` is false at every cut (set only by the
+    tick's `pollPropose`), so a delivery emits at most the queued vote and the relay gossip, and
+    `signed_only_in_ticks` stands.
+  - `CommLog.EagerFrom.recv` is strict (`max t g < a`): the canonical schedule fixes the deliveries at `a` before
+    the delivery-time releases at `a` exist, so those are served from `a + 1`. Every regime premise the witness runs
+    serve (`PSync`, `SyncUntil`, `OutageNet`) is still implied (`EagerFrom.psync`).
+- **Received payload objects are processed in preorder.** A delivery traverses the entire object closure,
+  processing a canonical block before its carried votes and attestations. Wrappers have no canonical node event,
+  and nested wrappers do not hide their contents. Payload votes get actual message calls, also when the containing
+  block is refused or silently dropped: this is independent service of authenticated carried objects, not
+  acceptance of the containing block. Block-before-payload preserves the block handler's priority (including any
+  vote it emits); the later message handlers use the resulting state. The one-vote invariant applies to arbitrary
+  same-time object lists, so one delivery poll still drains the emitted vote.
+- **Finite observation coverage is separate from labelled action coverage.** `Trace.observationHorizon` defaults to
+  `none` (the action-only horizon); `InHorizon` also admits a cut reaching a time covered by explicit finite
+  metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0, horizon]`, and stutter unlabelled at
+  `horizon + 1`. Reason: action-only coverage could never supply the strictly later cut that `sleepy_read_cut`
+  requires (a valid one-validator, `Δ = 2`, horizon-1 witness shows it). No engine premise, readiness condition,
+  handler call, signing or duty is added; canonical labelled cuts stay bounded by the engine horizon,
+  `Simulates.covered` still covers actions only, and both component projections preserve observation metadata.
+  Unlabelled padding alone is not a readiness repair.
+- **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires service only when
+  the recipient's protocol deadline, including its latest wake, is at most `b₀`. Pre-outage synchrony uses it
+  instead of `SyncRun 0 (b₀ − Δ)`, which imposed obligations after arbitrary later wakes inside the outage. The
+  cutoff is conservatively the protocol deadline itself: deadline `b₀` is covered, `b₀ + 1` is not. Attestation
+  deadlines use `Δ_F`; strict processing bounds and send-time lower bounds are kept. Acceptance relay remains an
+  explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent block.
 
-- 2026-10-31, coordinator (outage coefficient correctness audit after #125).
-  Accepted's engine-unit arming lag is `8k−8`, and its budget is `min(η,4k−6)`.
-  The former `4k−4` lag fails already at Δ_e=1, Δ_p=2. The former `4k−5`
-  budget can violate phase-sensitive (V): k=2, Δ_e=8, Δ_p=9, b₀=89 gives
-  remainder 35 and duration 24, totaling 59 > lifetime 54, even with node arming satisfied.
-  The corrected lag uses Δ_p≤2Δ_e; the budget reserves the full phase remainder
-  below 4Δ_p. A universal Lean theorem derives the unchanged node `OutageWindowTimes`
-  from the concrete contract's times (superseded 2026-11-03: the node row and the theorem are
-  retired). This strengthens the advertised outage premises
-  for correctness; it does not weaken (V), change lifetime, or prove network/participation
-  transport. Positive integer engine delays and k≥2 suffice; no new caller premise.
+## Contract numbers
 
-- 2026-10-31, coordinator (#107 protocol-delay implementation; superseded 2026-11-04 by
-  half-open delivery, `Δ_p = Δ_e`).
-  The concrete family's `Setup.params` uses `Δ_p = Δ_e + 1`; its skeleton and node slot
-  starts both use `4Δ_p`. The standalone node shape receives protocol parameters already
-  chosen, so its grid uses `sp.Δ` without adding another unit. Generic network delivery,
-  engine clocks, `SyncOn` and `SyncAC` are unchanged. The extra unit converts the inclusive
-  engine endpoint to the strict node endpoint only; it budgets no relay delay and proves
-  no actual row-production or network-to-node service obligation.
+- **Assumptions are minimal, guarantees may be loose.** Loose numbers are acceptable for the latency, healing-time
+  and catch-up guarantees, never as a reason to strengthen an assumption. Progress recurrence is as weak as the
+  proofs allow (no consecutive honest proposers), and the same premise-minimisation rule applies to every contract
+  assumption. The resilience fractions stay ⅓ and ½. These numbers are not claimed minimal.
+- **Fixed assumptions, then guarantees.** `ContractAssumptions` is fixed before any coefficient is chosen and is
+  independent of the outer gap `X`; the coefficients (`contract_coefficients`) are closed formulas in `k`, `δ_t`,
+  `fgSlots` and `X`. The outage lag, budget, no-sleep margin and recovery delay are fixed numbers, not guarantees.
+- **No ratio on the review surface.** `ContractAssumptions` takes the FG delay in slots, `fgSlots ≥ 2`, with the
+  timeout `3·fgSlots ≤ δ_t`; the contract sets `fgDelay := 4·fgSlots − 6`, so healthy runs have
+  `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the paper's `c_F ≤ fgSlots`). Nothing is lost against the earlier ratio
+  form (`r ≥ 1`, gap `cF r = ⌈(r + 6)/4⌉`): each contract is the ratio contract at `r = 4·fgSlots − 6`, and the
+  ratio endpoint at every `r` follows by monotonicity in `fgDelay` (the test `meets_obligations_at_every_bound`,
+  where `cF` now lives, off the trusted surface).
+- **All time numbers are `ΔAC`-coefficients**, the node and the engine delay alike (`Δ_p = Δ_e` under half-open
+  delivery). Current values:
+  - catch-up `19` (`contract_catchUp`): it covers the Sleepy margin, `18ΔAC + 1 ≤ 19ΔAC` for every `ΔAC ≥ 1`. It is
+    flat, not `k`-dependent: no proof needs a `k`-dependent catch-up.
+  - latency `4X + 6` for available and stable (independent of `fgSlots`), `4(X + 3·fgSlots) + 1` for final: the
+    final latency covers the window of span `3·fgSlots` (`finalWindow`) and one delay. The post-heal proofs do not
+    consume the row-timing components of their premise bundles, which is why the nonfinal latency does not read
+    `fgSlots`; this is not a theorem that removes all row assumptions.
+  - heal `catchUp + M_f` (`contract_heal`), with `M_f = healMargin = 20 L_drain + 8k + 28δ_t + 28X + 56` and
+    `L_drain = 2k + X` (expanded `48k + 28δ_t + 48X + 56`; heal `387` at `k = 2, X = 1, δ_t = 6`). It is the final
+    route's heal bound on the key-dependent rise-round route at `λ = 2Δ` (`exists_reset_of_drain_rounds_awake`,
+    `resetBoundRounds`, `healBoundCoeffRounds_at_two`), which gives a lower heal than the earlier five-window frame
+    route; the untrusted reset coefficient `healthyResetCoeff = 20 L_drain + 24(δ_t + X) + 40` moves with it, and
+    `M_f` also covers the nonfinal reset envelope for `δ_t ≥ 6` (`healMargin_ge_reset`, slack `4δ_t − 13`). A
+    smaller heal makes `healthyLive` and `healedSafe` hold from earlier and shortens `healedSafe`'s progress window,
+    so both get stronger; `Admissible` does not bound the heal, and the generic realizability witnesses give
+    `SafeActive` from every start, so realizability is unaffected.
+  - arming lag `4k + 6`: the label before the outage label (`k + 1½` slots before `b₀`) is fully armed by `b₀`.
+  - no-sleep margin `4k + 6`: the window `[b₀ − (4k + 6)ΔAC, b₁ + (4k + 6)ΔAC]` starts by `t_{j₀ − k}` (the formation
+    window of the arming lock) and ends after the restored votes of labels up to `j₀ + k`.
+  - recovery delay `9`: enough for the restored votes of the locked validators to bring the confirmed read back
+    above the record.
+  - outage budget `4k − 5`: the bound of the obligations proof. The lock window keeps an unpolluted label for gaps
+    up to `(4k − 5)Δ` (`exists_unpolluted_label`), and the restored label stays within `j₀ + k`
+    (`stop ≤ t_{j₀+k} + Δ`, one tick of slack, pure time arithmetic). A larger budget weakens `OutageTimes`, so
+    `persists` is stronger; no other row reads it, and `budget_pos` holds (`4k − 5 ≥ 3`). `4k − 4` would break the
+    restored-label bound: at `k = 2`, `Δ = 2`, start `11` (`j₀ = 0`) the bound is `18`; `4k − 5` gives stop `≤ 17`
+    and `4k − 4` gives `19 > 18`. The earlier `4k − 6` came from the node-level phase-sensitive outage condition
+    (V), which went with the node-level regime rows.
+  - look-back `η = 0` (`Params.standard`): see §"Regimes".
+- **Catch-up is a guarantee coefficient, but its effect is mixed.** A smaller catch-up makes more validators ready
+  (shorter `cDur`), which weakens the sleepy and outage participation premises, but it also starts the healthy
+  progress window (`healthyLive`, `healedSafe`, `prog [ready, …]`) earlier, so a catch-up change can make those
+  rows incomparable with the former ones. No-sleep `4k + 6` does not cover `catchUp + 1` for `k ≤ 3`; no proof uses
+  that relation.
 
-- 2026-10-31, coordinator (canonical collision transport, following #121).
-  Protect the canonical trace construction in `Statements/Refinement/Trace` (since moved); keep its proofs
-  in `Lemmas/Simulation/Trace`. Collision transport targets this constructed trace, not every
-  arbitrary simulation witness: simulation coverage alone does not identify all block calls
-  with engine objects. This deliberately narrows the transport target. Tagged genesis roots
-  make freshness unconditional, so neither transport nor finalized accountability assumes it.
-  All-occurrences provenance, including refused calls and non-honest nodes, remains OPEN;
-  this interface correction does not prove accountability or add an Accepted premise.
+## Regimes
 
-- 2026-10-31, coordinator and spec read-back ([#118](https://github.com/ethlabs-org/consensus-lean-coordination/issues/118)).
-  Separate finite observation coverage from labelled protocol-action coverage. `Trace.observationHorizon`
-  defaults to `none` (legacy action-only horizon); `InHorizon` also admits a cut reaching a time covered
-  by explicit finite metadata. Canonical traces set the engine horizon, clamp wakefulness to `[0,horizon]`,
-  and stutter unlabelled at `horizon+1`. No engine premise, generic readiness condition, handler call,
-  signing or duty is added. A valid one-validator, Δ=2, horizon=1 witness showed that the old filler could
-  never supply the strictly later cut required by `sleepy_read_cut`.
-  The horizon audit found six Healing consumers using only the retained cut/time bound, and three test
-  constructors using labelled coverage (now injected into the action alternative). Canonical labelled
-  cuts remain bounded by the engine horizon; `Simulates.covered` still covers actions only. Both component
-  projections preserve observation metadata. Unlabelled padding alone is not a readiness repair.
+- **The generic outage is slow arming only, with no absolute-majority participation premise.** `System.Outage` has
+  `NoSleepOn a z` (no honest validator falls asleep in `[a, z]`, waking allowed; `a = b₀ − noSleep·Δ`,
+  `z = b₁ + noSleep·Δ`, clamped to `[0, horizon]`) and `CohortOn a z` (faulty plus late wakers fewer than the
+  honest validators awake at `a`; half of all is the lemma `CohortOn.two_mul_lt`). `CorrectProtocol.persists`
+  protects every `Ready` reader from `b₁ + recovery·Δ` (`ProtectedReadyFrom`). `Params` has the fields `noSleep`
+  and `recovery`. `Params.cover` is kept but read by no regime.
+- **The Goldilocks outage regime is plain sleepy.** `goldilocksContract` keeps `Params.standard`'s `η = 0` and has
+  no look-back assumption, so `Outage`'s participation premise `EtaSleepyOn θ (η·Δ)` is plain sleepy and its window
+  bound is `b₁ ≤ b₀ + budget·Δ`. Reason: the proof uses only the plain-sleepy consequence
+  (`EtaReadyAbove.readyAbove`) and the budget bound, and a weaker premise makes `persists` claim more.
+- **Sleepy and Outage carry no ratio** (§"Network and delivery"); only Healthy bounds `ΔFG`.
+- **Node-level regime rows.** The node-level rows R.1, R.2, R.7 and R.8 (`Milestones/Statements/Regimes/{Sleepy,
+  Always}`) are proved milestones, and the obligations proof uses their definitions. The node-level rows R.3–R.6
+  (healed, final, outage, weak continuation) are not stated: R.3–R.5 correspond to the generic rows `healedSafe`,
+  `healthyLive` (through `ShapeObligations.correct`) and `persists` of `MeetsObligations`, and R.6 (weak
+  continuation) has no generic row. None of them was proved or reached by Challenge, Solution or the endpoint.
+- **No cross-node nesting statement.** Cross-node compatibility follows from healed safety plus R.8's
+  `OutputsNested`: a finalized read is below its node's confirmed read, which is compatible with the other ready
+  confirmed read. The same-instant ancestry is false (a carrier-delay replay shows it), and a lagged ancestry is not
+  stated. This does not change R.8's local nesting.
 
-- 2026-10-31, coordinator (Accepted existential guarantees, owner rule).
-  Restore the concrete family acceptance root with fixed assumptions and
-  existential finite catch-up, heal and latency coefficients. Standard fractions
-  stay 1/3 and 1/2; final progress is the chosen local pattern at every positive
-  outer gap X. The timeout package is fixed before choosing coefficients and
-  independent of X. Outage lag/budget/look-back are not existential guarantees.
-  Each numeric witness is a named OPEN leaf, shared by all nine claim adapters;
-  admissibility, singleton progress fit and tolerance are proved separately.
-  This is a proof skeleton, not a completed acceptance result, and does not
-  revive the legacy consecutive-pattern or latency formulas.
-  **Superseded by route A (2026-11-02, [#136], #141) for the final pattern:** the
-  `finalWindow` and δt sentences below are historical; see the 2026-11-02 entry.
-  Historical: current conservative `finalWindow` is [0, δt−1, δt+1, δt+3], with δt≥4;
-  replace it in one place if a weaker two-anchor recurrence is proved. Its
-  first-honest-descendant usable-row/earlier-justification supplier, inherited
-  progress bootstrap, productive AC chain and cache acceptance remain OPEN
-  (workbench healing-simple/four-anchor-window.md). The single-delivery-bound
-  model maps Δ_F := Δ_p, giving c_F=ceil(7/4)=2. This is weaker than the
-  intended network model: actual row delays in (Δ, Δ_F] cannot be represented
-  (r9 instance-proposal §3.8). The canonical FG-row service bridge is a named
-  OPEN transport obligation, not an additional Healthy premise.
-- 2026-10-31, coordinator-approved ordered duty batches (#107). A selected
-  protocol duty returns an ordered list of candidates, all signed by its own
-  key in that duty's role. The existing `releaseAll` checks each candidate
-  against the holdings left by successful earlier candidates; rejection does
-  not retry or reorder the batch. This permits same-event parent-wrapper
-  publication before a child's dependency check. Shape `pollBatch` defaults
-  to the existing optional poll as a zero-or-one list; other shape handlers
-  likewise compile to zero-or-one lists. No network or realizability premise
-  changes. This interface extension is separate from installing the revised
-  Goldilocks publisher. Delivery clocks need no change: `lastClock_deliver`
-  and `now_eq_lastClock` already establish the receipt time from event order.
-- 2026-10-31, concrete Goldilocks publisher (#107, implementation in progress).
-  Successful block cuts, including own-proposal acceptance, enqueue signed
-  timestamped wrappers. Duplicate/refused calls do not enqueue them. A durable
-  node-root-to-wrapper map supplies the exact same-origin parent; the next
-  selected poll drains the event queue in acceptance order through `releaseAll`.
-  Missing non-genesis parents produce no candidate: a reachable-state invariant
-  must exclude this case. Candidate construction is not successful publication;
-  the five publication contracts still require actual prefix-guard and provenance
-  proofs. Existing vote/attestation polling remains before the forwarding drain.
-  No timing API or generic execution premise changes. The old singleton poll
-  release analyses must account explicitly for forwarding releases and their
-  additions to `seen`; they cannot be reused as equalities for the new batches.
-- 2026-10-31, Francesco (contract assumptions versus guarantees). Loose numbers
-  are acceptable for latency, healing time and catch-up guarantees, not as a reason
-  to strengthen assumptions. Choose progress recurrence as weak as the proofs allow:
-  no consecutive honest proposers. Final recurrence is a good window every X slots:
-  two honest ready proposers separated within a bounded internal span, represented
-  by a generic `.recur` pattern with gap X. X is arbitrary; δt may depend on the
-  internal span, never on X. This supersedes both fixed gap 2 and the maximal
-  single-proposer gap derived from δt≥a+c+g−1. Exact window offsets and service
-  obligations await the healing owner's revised note.
-  The family PR may leave final recurrence parameterized while that research
-  continues, with δt ≥ c_F + a + k_F plus slack for fixed local service bounds;
-  none of these local parameters may silently depend on outer X.
-  Apply the same premise-minimization rule to the other family contract assumptions.
-- 2026-10-31, coordinator-directed selected-duty repair (runtime boundary).
-  Remove the proposer schedule from runtime `Params` and `FGParams`, rather than
-  reindexing `Store`, `NodeState` and `ACInterface` separately. After receiver
-  credential checking is assigned to execution validity, these runtime structures
-  have no need to know the selected identity. Pass the schedule separately to
-  node tick/proposal semantics and the statements that refer to the slot proposer;
-  the simulation supplies it from the run's selection. Genesis uses a fixed
-  validator index, not the slot-zero proposer. This requires propagating the
-  schedule through node execution/grouping laws, but avoids repeated state
-  transports and an arbitrary schedule hidden in runtime data. This is the chosen
-  architecture. The migration builds with warnings treated as errors and its tests
-  elaborate; trusted fidelity review and landing remain pending. The engine's
-  `dutyStep` gates both state mutation and release on selection. Delivered-block
-  proposer correspondence is an explicit `LocalRun.proposerCredential` obligation,
-  including faulty signers; the canonical simulation supplier remained OPEN then (since proved:
-  `simTrace_proposerCredential`, `Lemmas/Simulation/Run.lean`, used by `simTrace_goldilocksRun`).
-- 2026-10-31, coordinator-directed selected-duty repair. Restart replay order depends
-  only on validator count and genesis root: its data enumerates a frame's non-genesis
-  blocks in parent order. It has no proposer or timing dependence. Indexing that data
-  by these two values, and supplying it from `Setup` by validator count, preserves the
-  actual sibling order when simulation parameters use the run's proposer selection.
-  `ReplayOrder sp` remains notation for this proposer-independent type; no state transport
-  or freshly chosen replay order is needed for a different proposer schedule.
-- 2026-10-31, Francesco (coordinator-directed dependency repair). A single monotone
-  holdings policy governs release and delivery. The engine releases a candidate only
-  when its dependencies are already held, and valid receipts satisfy the same policy.
-  The predicate is decidable and depends only on holdings and the object, preserving
-  rehashing invariance; neither it nor protocol handlers receives the hash function.
-  Other instances use the unrestricted policy. The canonical scheduler retains first
-  releases rather than last duplicates, preserving dependency order at the same timestamps.
-  Goldilocks's fresh child forwarding wrapper depends on the complete same-origin signed
-  parent wrapper, not merely a raw parent hash. Carried references are recursively processed,
-  not inert pointers. The pre-envelope dependency must already be held; nesting it in the
-  current envelope does not satisfy that requirement. This differs from legacy `depsS`,
-  which also required `parentFG.isSome`; accepted-parent and timely-processing conclusions
-  remain protocol proof obligations. Source/time authentication, closure-to-prior-processing
-  (or own acceptance), and store-to-seen/no-suppressed-release joins must be proved separately.
-  No FIFO channel, retry queue or separate full-ancestry envelope is assumed.
-- 2026-10-31, Francesco (coordinator decision, #107). The generic `TimeGrid` supplies an
-  absolute positive slot length, and the skeleton supplies duty offsets in time units. Neither
-  depends on network Δ generically; each instance constructs them from its public parameters.
-  The generic progress and realizability proofs need only positive slot length, not scaling or
-  divisibility by Δ. Existing instances retain their concrete slot and phase times.
-  Goldilocks's subsequent family repair uses exactly Δ_p = Δ_e + 1, not 2Δ_e (superseded
-  2026-11-04 by half-open delivery: Δ_p = Δ_e).
-  Contract catch-up, heal and latency remain engine-delay coefficients; conservative numbers
-  are allowed to simplify proofs, but the intended resilience fractions 1/2 and 1/3 stay fixed.
-  This generic grid change does not yet change the Goldilocks family or its contract.
-- 2026-10-28, Francesco ([layers plan][layers], "Iteration 6"). The generic layers define a good protocol as a
-  fixed property table, each property with a fixed regime; an instance supplies only numbers. Precise protocol
-  properties live in the instance's properties sheet. Layers: L0 problem, L1 model, L2 shape. The network is
-  part of L0 (a communication log), and L1 proves once that its log is faithful (`LogFaithful`).
-- 2026-10-28, Francesco (same). `stable := final` is not good: stable must be sleepy-live. The outage regime is
-  η-sleepy; after an outage, every after-GST property applies (the outage end acts as GST).
-- 2026-10-29, Francesco ([layers plan][layers], "Moved to consensus-lean"; README "Scope"). Healthy means full
-  participation with faults below ⅓; liveness premises tolerate one bad proposer slot per window
-  (`ProgressTolerant`); the sleepy stress witness keeps at most two honest validators awake; available and
-  stable monotonicity stay conditional, final is unconditional; `available` may bind to `ac_confirmed`.
-- 2026-10-28, Francesco ([layers plan][layers], "Iteration 6"). Goldilocks gets pinned numbers and a properties
-  sheet now; the FG-SA migration comes later.
-- 2026-10-29, claude-ethlabs ([#38]). That sheet (`Instances/Goldilocks/{Spec,Statements}/Baseline.lean`) is a
-  pre-foundation baseline, **not approved**: no proof targets it until the first slice ([#10]) re-reviews it
-  against the current Goldilocks spec (`docs/goldilocks-mapping.md`). The files of the instance semantics and
-  statements (`Instances/<P>/{Spec,Statements}` as file and directory, `Instances/<P>/AsChainShape.lean`)
-  join `trusted_paths`, and their layers are `protected` (check-boundaries requires the coverage), so every edit
-  of those files is reviewed; the tag covers the sheet only as a frozen baseline. The Goldilocks import
-  exception to `Main` is limited to the two `Baseline` modules. The sheet moved to
-  `Instances/Goldilocks/{Spec,Statements}/Baseline.lean` (unchanged) so that milestone statements
-  `Statements/<M>.lean` can sit beside it (check.sh step 4: a module with descendants owns no constants).
-- 2026-11-03, Francesco (rule-cost sweep, workbench `cards/rule_cost_sweep.md`). **The Baseline sheet is
-  archived**: `Instances/Goldilocks/{Spec,Statements}/Baseline.lean` and its tests (`ConsensusLeanTest/Goldilocks`)
-  move to `archive/consensus-lean-baseline`, out of the build, the roots and the snapshots; their layers, the
-  Baseline entries of the import exception to `Main` and their index entries go. It was never approved and was
-  off every live path: nothing in the closure of `Challenge`, `Solution` or `Obligations.Concrete` imported it.
-  The positive controls keep their own copy of its schema and skeleton (`Tests.Controls.ctrlSchema`,
-  `ctrlSkeleton`). The open audit item on its weak-continuation premise is closed as moot.
+## Goldilocks model choices
 
-## Repository, toolchain and trust checks
+### The node as a chain shape
 
-- 2026-10-29 ([index]). Own repository (history of goldilocks `contract/` kept); Lean and Mathlib v4.35.0;
-  delivery is "normal": an honest send at `t` is held at `dl a` by every honest node awake throughout
-  `[a, dl a]`, for every `a ≥ t` (wakers get messages by `u + Δ`).
-- 2026-10-29 ([index], [checkers]). Trust checks reuse existing tools (EthLib check-decls, leanchecker,
-  `#guard_msgs` axiom pins, `lake check`, `lake comparator`, axiom-audit) with thin glue; the home-grown
-  checker was abandoned. turbo-lean is optional, for per-declaration re-checks only. bubblewrap is installed on
-  the shared box, so `lake check` and the comparator run locally.
-- 2026-10-29 ([index]). Rules about the project's structure must rest on external precedent, not on our own
-  projects ([validation]).
-- 2026-10-30 ([#41]). License Apache-2.0, as the Verified-zkEVM Lean libraries (ArkLib, CompPoly, VCVio) and
-  Mathlib; vendored copies keep their own licences.
+- **The Goldilocks node as a generic shape, simulated rather than equated** (`AsChainShape`). The wire format and
+  digest are the refinement's choices, not the spec's:
+  - `n`-independent bodies (the family needs one body type for every parameter set; a fixed-`n` body was rejected);
+  - canonical signed objects (a block's header carries the canonical objects of its payload, so the engine's view
+    contains the evidence G1.5 needs);
+  - a digest from the engine's hash with the genesis root as a parameter (a header naming genesis by digest is
+    dropped, so `RootOk` holds by construction).
+- **Step order** `[poll, poll, pollPropose, propose, poll, poll]`. The node's tick is the poll proposal step at the
+  public times (a duty, so it runs only awake; putting it in `clock` was rejected since `clock` runs asleep). Two
+  leading polls release the bodies queued since the last tick, so that a proposal carries only released objects
+  (filtering own objects out of the proposal was rejected); the trailing polls run the FG update and drain the
+  tick's vote and attestation.
+- **State.** The family's state is a Goldilocks state at every proof of `1 ≤ n` (`PubState`; a `dite`/cast family
+  was rejected).
+- **Simulation.** `Simulates` maps engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries
+  (`DeliverSeq`, one group per canonical object), restarts and releases; releases and relays are related at the
+  delivery time (`ReleasedFrom`, `RelayedFrom`). The proposer is the run's selection (`runProposer`), and
+  `selValid_proposer` (`ConsensusLeanTest/Goldilocks/Refinement/Simulation.lean`) derives the proposer equation
+  from `SelValid`, so engine-level Goldilocks theorems carry no proposer-selection hypothesis.
+- **The spec block carries the engine's input.** The engine hashes the whole header `(parent, pos, input, info)`
+  and `compile` writes `input := encodeTxs mempool` outside the shape's `Info`, so two engine blocks differing only
+  in `input` have different hashes; without the field they would have one spec content, `RootOk` with one digest
+  could not hold of both, and the refinement could not be stated faithfully. So `Common.Block` has a field
+  `input : Nat`, the digest is over `(parent, slot, input, FG payload, AC payload)`, and the node's tick event
+  carries the input (`Node.Event.tick x`; `mkBlock` writes it; the AC never reads it). Rejected: the input through
+  the AC payload via `ACInterface.proposal`, which changes the generic AC interface, the SA payload pair and every
+  proved AC file; the field leaves the AC and FG-store lemmas (generic in the block type) intact. The spec folds the
+  input into the AC payload (`specs/goldilocks/tex/shared/composition.tex`: the AC fixes the encoding of its
+  payload); the mapping records the field as that encoding.
+- **The proposer schedule is not runtime data.** The runtime `Params` and `FGParams` have no proposer schedule:
+  once receiver credential checking belongs to execution validity, `Store`, `NodeState` and `ACInterface` need not
+  know the selected identity. The schedule is passed separately to node tick/proposal semantics and to the
+  statements that refer to the slot proposer; the simulation supplies it from the run's selection. Genesis uses a
+  fixed validator index, not the slot-zero proposer. Reason: no repeated state transports and no arbitrary schedule
+  hidden in runtime data. The engine's `dutyStep` gates both state mutation and release on selection.
+  Delivered-block proposer correspondence is an explicit `LocalRun.proposerCredential` obligation, including
+  faulty signers, proved for the canonical simulation by `simTrace_proposerCredential` (`Lemmas/Simulation/Run`).
+- **Restart replay order is proposer-independent.** It depends only on the validator count and the genesis root:
+  its data enumerates a frame's non-genesis blocks in parent order, with no proposer or timing dependence. Indexing
+  it by these two values, supplied from `Setup` by validator count, keeps the actual sibling order when the
+  simulation parameters use the run's proposer selection. `ReplayOrder sp` is notation for this type; no state
+  transport or freshly chosen replay order is needed for a different proposer schedule.
+- **The publisher.** Successful block cuts, including own-proposal acceptance, enqueue signed timestamped wrappers;
+  duplicate or refused calls do not. A durable node-root-to-wrapper map supplies the exact same-origin parent; the
+  next selected poll drains the event queue in acceptance order through `releaseAll`, after the vote/attestation
+  polling. A missing non-genesis parent produces no candidate, and a reachable-state invariant must exclude that
+  case. Candidate construction is not successful publication: the publication contracts need their own
+  prefix-guard and provenance proofs, and release analyses must account for the forwarding releases and their
+  additions to `seen`.
+- **Collision transport targets the constructed trace.** It targets the canonical trace constructed from the
+  engine run, not every simulation witness: simulation coverage alone does not identify all block calls with
+  engine objects. Tagged genesis roots make freshness unconditional, so neither transport nor finalized
+  accountability assumes it.
 
-## Foundation plan (adopted 2026-10-29, all recommendations)
+### Protocol rules
 
-[The plan][plan]; adoption steps §11 are issues [#4]–[#11].
+- **Graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock is live at `t` while
+  `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps the locks. A slow lock
+  of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, max(s + 2, E + c))`, with `E` the
+  latest expiry of the node's live fast locks of earlier slots; it gets `s + 2` when no live fast lock of an
+  earlier slot remains (a gap in fast confirmations shortens it only once those locks have expired). `c ≥ 2` is a
+  parameter (`SAParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
+  is recent" comes from the run invariant `l.slot + 2 ≤ l.expiry ≤ l.slot + k` (`LocksWF`). The rule's four
+  choices:
+  - **per-slot `E`**: `E` counts only fast locks of earlier slots (`l.slot < s`). Without it, repeated optimistic
+    writes within one slot ratchet the expiry up to the cap; with it, the deadline grows by `c` per slot.
+  - **`E` is not filtered by branch**: it is the node's local fast-lock history, not support for the branch, so a
+    fast lock unlocked or moved back to `Φ.F` still feeds `E`, as do optimistic locks on genesis or on a common
+    prefix. Such a lock vetoes nothing, and no proof reads `E` beyond the bounds `[s + 2, s + k]`, so a filter would
+    add text and buy nothing.
+  - **independent fast and slow writes**: over the path, the deepest fast block gets a fast lock with
+    `fastExpiry` and the deepest slow block a slow lock with `s + k`, each written when it exists. The earlier form
+    (a slow-qualified update's fast lock getting `s + k`, "keep the highest deadline") was dropped: the spec loses
+    `lockBlock`, its conditional and the `≠ D` clause, and `SlowLockAt` loses two clauses. The outage arming uses
+    the slow lock, and no statement needs the deeper fast block to live more than two slots.
+  - **the veto stops only the record**: a result that conflicts with a live lock leaves `latest_confirmed`
+    unchanged, but the locks are still written, over the blocks of the result's path that conflict with no live
+    lock. This closes the veto branch of the outage cover base, and an unvetoed update behaves exactly as before
+    (the filter is vacuous). The fast write is kept as well (over a slow-only alternative). Its pre-GST effects
+    are bounded, pre-GST only, and leave `MeetsObligations` untouched: (i) the fast write is an FG source, so a
+    vetoed node may lose a finality bit; this is not veto-specific, since an unvetoed node with the same pool, no
+    lock and no FG view of the later block fast-locks the same ancestor and loses the same bit, while a node that
+    already holds that block normalizes the lock to a compatible viable ancestor and does not; (ii) a vetoed slow
+    lock may pin the node up to `k − 1` slots beyond the vetoing lock's expiry.
 
-- One certified library `ConsensusLean`, layers as module prefixes, a source-level boundary checker with one
-  config (`scripts/boundaries.toml`) instead of Mathlib's `directoryDependency` ([#5], [#6]).
-- `import all` only in tests (D1). Whole-file `@[expose]` in Spec and Statements, none in Lemmas, Proofs and
-  `Main`, so a proof edit rebuilds one module ([rebuild], [#8]).
-- Proof debt as in FLT and Carleson (D4): `sorry` only under `Lemmas/` and `Proofs/`, never an axiom; certified
-  means the closure of `Solution`, audited per PR; leanchecker and the comparator run nightly and at milestone
-  acceptance ([#7]).
-- Depth, cones and critical path are reports, not gates; the one-module rebuild property is a canary; chains
-  are allowed inside a milestone ([#4], [#7]).
-- A light roadmap with checked names now (`docs/roadmap.md`), leanblueprint later (trigger: a second instance or
-  outside contributors). The Spec package split waits for reuse outside the project.
+  `fastSelect` stays the raw test, so A1.4 (b) (`OptimisticNextUpdate`) keeps its meaning. `LocksMoveBack` states
+  the shape of the new locks, and `MovesBack` also keeps the expiry (a strengthening). Through
+  `FastUpdateAt`/`FastLockAt` the scope of A1.2, A1.5, A1.9, C1.1 and `RecentSourceNextVote` covers the fast locks
+  of vetoed updates (their arguments read the counted votes and `Carry`, not the record). No coefficient depends on
+  the rule. The LaTeX is `specs/goldilocks/tex/goldilocks-spec.tex` §"Locks" and §"Confirmation" (claims OC1).
+  Witnesses at `k = 6`, `c = 2`: `ConsensusLeanTest/Goldilocks/AC/GradedLocks.lean`.
+- **Full-tree fallback for an honest vote's head.** `tryVote` walks the viable tree of `SA.voteDomain`: the voter
+  block tree when its viable tree in the current frame is nonempty, else the whole frame tree. `voterBlockTree`
+  keeps its meaning, so `ViableAtVote` and every trusted statement are unchanged in meaning: the smallest trusted
+  diff.
+- **`ac_to_fg` returns only `fg_confirmed`** (or `⊥`). Nothing read the returned head: the node discards it, and
+  under loose BJ the finality pair comes from `finality_pair(Λ, σ_e)` on the source's entry state. So
+  `ACInterface.toFG`, `SA.acToFG` and `Node.acToFG` have no head component; requirement 1 (`ReqHeads`) has no
+  returned-head clause, requirement 2 (`ReqSource`) has no "the returned head extends it", and `Compose.SourceHeld`
+  has no such conjunct. No consumer of either fact existed, so they were dropped rather than restated on `ac_head`.
+  The node and the family behave as before (only an unread return value went), and the LaTeX (SPEC requirements 1
+  and 2, claims A0.6) agrees.
+- **HS.3 is stated as its after-`r` part only.** `FrozenTreeAgreement` (`Milestones/Statements/Healing/Service`)
+  states the second part of claims HS.3: with `Prop⁺(G_p)` and `t_s ≥ r`, every honest slot-`s` vote is `P` with
+  its ancestry retained, and later honest votes and proposal parents extend `P`. It omits the first part (every
+  honest slot-`s` vote is `P` under the explicit voter lock premise and the proposer-anchor premise, without
+  `Prop⁺` or `t_s ≥ r`). This deviates from claims HS.3, which states both parts. Reasons:
+  - The first part has no proof. Its route compiled except for one leaf, `voter_unlock_keeps_lock`: a voter keeps,
+    through its own `unlock`, a live lock above the proposer's lock `L`. The proposer's survival of `L` does not give
+    that: `opponents` counts only support votes whose head is in the frame's tree, so a voter whose `Σ.F` is below
+    the proposer's can count more opponents against the same votes. `unlockTarget_frame_dependent`
+    (`ConsensusLeanTest/Goldilocks/AC/UnlockFrame`) is a compiled instance of this at the lock-code level; it does
+    not show that the configuration is reachable under `AgreeSetting`. No counterexample to the leaf or to the first
+    part under their premises is known. A proof would need a new argument: the honest voters' locks required by the
+    proposer-anchor premise would have to bound the slot-`(s − 1)` votes.
+  - Nothing consumes the first part. HS.4, HS.5, HR.3 and H.4 use only the second (`frozen_tree_agreement_clean`,
+    from HS.2): `ready_protected`, `consume_continue_of`, `acquired_or_changed`.
+  - With the restatement HS.3 is proved (`frozen_tree_agreement`, from HS.2), and so is `PhaseServiceStatements`
+    (`phase_service_statements`). Restating the proposer-anchor premise over the voter's read-point locks was
+    rejected: that premise is the voter's state after its own `unlock`, nearly the step being claimed.
 
-## Goldilocks instance
+### Layout of the instance proofs
 
+- **Simulation and obligations are separate closures.** The proofs split by import closure into
+  `Lemmas/Simulation` (the simulation statements, namespace `Goldilocks.Simulation`, `SimulationStatements`), which
+  never imports the obligations, and `Lemmas/Obligations` with `Proofs/Obligations` (namespace
+  `Goldilocks.Obligations`). The field theorems of the obligations proof (`Lemmas/Obligations/Concrete`) follow
+  `MeetsObligations`: `meetsObligations_*`, with the existential endpoint `meetsObligations_exists`.
+  Block-acceptance names (`accepted_tree`, `accepted_in_view`, `accepted_child_decodes`, …) are a different concept.
+- **The Baseline sheet and its tests were removed.** The earlier pinned properties sheet was never approved and
+  was off every live path: nothing in the closure of `Challenge`, `Solution` or the obligations endpoint imported
+  it. The positive controls keep their own copy of its schema and skeleton (`Tests.Controls.ctrlSchema`,
+  `ctrlSkeleton`).
+
+## Final liveness
+
+- **Final recurrence is a good window every `X` slots.** The final pattern is a bounded window of honest ready
+  proposers with a fixed internal span, repeated with an arbitrary outer gap `X` (`.recur`). `δ_t` may depend on the
+  internal span, never on `X`; no local parameter may silently depend on `X`.
+- **Route A, four anchors.** `finalWindow A = [0, c, 2c, 3c]` at `c = fgSlots` (span `3c`, `[0, 2, 4, 6]` at
+  `fgSlots = 2`), with the timeout `3·fgSlots ≤ δ_t`. The window coverage comes from the anchor route
+  (`cacheCoverage_of_anchor_window_upTo`, `Lemmas/Obligations/WindowAnchorRoute`): honest proposers only at the four
+  anchors, three anchor steps of `c`, and `P₃.slot ≤ P₀.slot + δ_t`. Only this coverage lemma needs the span bound;
+  the seed needs `δ_t ≥ 4`. `δ_t` is a fixed constant, independent of `X`; tolerance keeps `X = span + 2` as an
+  existential witness only, and every leaf stays valid for all positive `X`. The row delay enters only through the
+  rise timeout `6Δ + ΔF ≤ 4Δ·δ_t`, paid by `3c ≤ δ_t`; the transport runs at the actual protocol FG delay
+  `protoFGDelay` (`FinalQuery.hsSharedUpTo`).
+- **Other routes.** The first-crossing/bounded-crossing assembly (`[0, δ_t − 1, δ_t + 1, δ_t + 3]`, `δ_t ≥ 4`) is
+  retired. The two-proposer route (route B) is parked: it has no proved supplier.
+
+## Trusted surface and Challenge scope
+
+- **Challenge certifies exactly six statements**: the four generic review statements
+  (`Review.ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`), the Goldilocks
+  `MeetsObligations` and the headline `GoldilocksCorrect`. Reason: keep the trusted surface to the generic definition
+  of a correct protocol plus the one instance endpoint and its headline. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
+  Service, Healing) are means to the endpoint, not claims a reviewer must read.
+  - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement
+    modules, and every declaration of the instance Spec that only they reach (a compiled walk of the statement
+    closure of the six roots, types and definition bodies, not proofs), live with unchanged names and bodies in
+    the untrusted `Instances/Goldilocks/Milestones/` layer family. It mirrors the Spec/Statements sub-layers, so the
+    allow matrix carries over; it allows `@[expose]` (the statements are unfolded by their proofs and tests) and no
+    `sorry`, which is why it is not `Lemmas`.
+  - What the six roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
+    `protected` layer may import only trusted and protected layers (check-boundaries.py), so that closure cannot
+    reach Milestones.
+  - The milestones stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and check.sh
+    step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
+    "proved (lemma)".
 - **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
   assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
   `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`. It is the composition of
@@ -401,475 +408,78 @@ where it is recorded; "Francesco" marks the owner's decisions.
   `meets_obligations`), with their parameters and no further hypothesis, so it adds no trusted reach: every
   constant it mentions is already reached by those two statements. It states the protocol's correctness in one
   place, so a reader need not compose the two statements.
-- 2026-11-05, coordinator (review-surface naming, step 3b): the field theorems of the obligations proof
-  (`Lemmas/Obligations/Concrete`) follow `MeetsObligations`: `accepted_{outputValid,nested,finalMonotone,
-  finalAccountable,healthyLive_final,healthyLive,sleepySafe,sleepyLive,healedSafe,persists,claims,progressFits,
-  progressTolerant,admissible}` → `meetsObligations_*`, the existential endpoint `accepted` →
-  `meetsObligations_exists` (the step 3c root), the test `accepted_realizable_small` →
-  `meetsObligations_realizable_small`. Untrusted lemmas; no alias (AGENTS.md "Cited names"). Block-acceptance
-  names (`accepted_tree`, `accepted_in_view`, `accepted_child_decodes`, ...) are a different concept and stay.
-- 2026-11-04, coordinator (review-surface naming, step 3): the Accepted sorry ledger and its tool follow the
-  obligations names, check-infra only: `docs/obligations-status.json`, `docs/obligations-dependencies.md`,
-  `scripts/obligations-status.py` (self-test `test_obligations_status.py`), the step 3c labels and the JSON field
-  `in_obligations_closure`. The tool's baseline moves from the archived `fd7f498` to the same tree in this
-  repository, `eed6d0b5`, and it maps the step-1 names of historical sorry owners to the declarations they became,
-  so no former owner loses its row. Commit SHAs written before the 2026-11-04 cutover (`79cdddc8`), in the ledger's
-  evidence and elsewhere, refer to the history archived in ethlabs-org/consensus-lean-coordination.
-- 2026-11-04, Francesco and the coordinator (review-surface naming, step 2): the delays are `ΔAC`/`ΔFG`
-  (`Env`, `Model.Public`), the FG attestation class `isFGAtt`/`CommLog.fgAtt`/`Delivers.fgAtts` (and the
-  Healing/FGStore `fgAtts`, `fgAttCut`), the generic contract number `Params.fgDelay` (the healthy regime's
-  `ΔFG ≤ fgDelay·ΔAC`, a plain `ΔAC`-coefficient; pure renames). **The review surface has no ratio** (option (a)
-  of the coordinator, Francesco's request): `ContractAssumptions` takes the FG delay in slots `fgSlots ≥ 2`
-  with the timeout `3·fgSlots ≤ δt`; the contract sets `fgDelay := 4·fgSlots − 6`, so healthy runs have
-  `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the paper's `c_F ≤ fgSlots`); the final window is
-  `[0, fgSlots, 2·fgSlots, 3·fgSlots]` and the final latency `4(X + 3·fgSlots) + 1`. Equivalent to the former
-  ratio form (`r ≥ 1`, gap `cF r = ⌈(r + 6)/4⌉`): each new contract is the former one at `r = 4·fgSlots − 6`,
-  and the former endpoint at every `r` follows by monotonicity in `fgDelay`
-  (`GoldilocksObligations.meets_obligations_at_every_bound`). `cF` leaves the trusted surface (it lives in that
-  test). Contracts whose numbers depend on the run's delays (option (b)) are deferred.
-- 2026-11-04, Francesco and the coordinator (review-surface naming, step 1 of the naming proposal): mechanical
-  renames and moves, no statement changes. `Refinement/Defs` becomes `AsChainShape` (namespace
-  `Goldilocks.AsChainShape`; `family` → `goldilocks`, `FamilyState` → `PubState`). The endpoint statement becomes
-  `Statements/Obligations`, in the root namespace: `AcceptedEndpoint` → `MeetsObligations`, `acceptanceContract` →
-  `goldilocksContract`, `AcceptanceAssumptions`/`AcceptanceCoefficients` → `ContractAssumptions`/`ContractCoefficients`,
-  `accepted_{catchUp,heal,latency,coefficients}` and their lemmas → `contract_*`. The proofs split by import
-  closure into `Lemmas/Simulation` (the simulation statements, namespace `Goldilocks.Simulation`;
-  `RefinementStatements` → `SimulationStatements`), which never imports the obligations, and `Lemmas/Obligations`
-  with `Proofs/Obligations` (namespace `Goldilocks.Obligations`). The instance trusted path
-  `Instances/<P>/Refinement/Defs.lean` becomes `Instances/<P>/AsChainShape.lean`. The other entries use the current
-  names and paths of what still exists. The row, ratio and delay names (`rowRatio`, `cF`, `Δ`/`ΔF`, `isRow`) are
-  step 2; the accepted-status ledger and its tool, step 3.
-- 2026-11-04, Francesco (trusted-surface reduction): move the Refinement simulation interface
-  and canonical trace construction into non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`,
-  with characterising lemmas for proof consumers. This supersedes the 2026-10-31 canonical-trace
-  protection decision **for location only**: collision transport still targets the same trace
-  constructed from the engine run, never an arbitrary simulation witness. Every definition,
-  simulation field, release/relay obligation and horizon clamp is unchanged. The certified
-  Challenge statements, Solution entries, comparator configuration, shape in `AsChainShape`
-  and Accepted statement are unchanged. The endpoint proof still uses the construction and is
-  axiom-audited; it is not additional material the endpoint's statement reader must trust.
-  The follow-up moves the unchanged digest adapter `dgOf` and delivery relation `DeliverSeq`
-  from `AsChainShape` beside their only users in those same proof-side leaves. All other
-  declarations in `Defs` are unchanged; its digest docstring points to the new location.
-  Neither helper is a dependency of its remaining declarations
-  or the certified endpoint statement. Their names, binders and canonical semantics stay intact.
+- **The simulation interface and canonical trace are proof-side.** The Refinement simulation interface and the
+  canonical trace construction are in the non-exposed `Lemmas/Simulation/{Interface,TraceDefs}`, with
+  characterising lemmas for proof consumers; the digest adapter `dgOf` and the delivery relation `DeliverSeq` sit
+  beside their only users there. Collision transport still targets the trace constructed from the engine run. The
+  endpoint proof uses the construction and is axiom-audited; it is not material the endpoint's statement reader must
+  trust. The milestone statements and this interface are placed differently on purpose: redoing the milestone
+  modules with characterising lemmas would be a large diff for no gain in review surface.
+- **Protocol instance files are trusted.** Every protocol instance's `Spec`, `Statements` and `AsChainShape.lean`
+  are in `trusted_paths`, and their layers are `protected`, so check-boundaries.py requires them to be covered.
+  Goldilocks is the only instance.
+- **The Shape examples are not on the trusted surface.** `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}`
+  form one unprotected `Examples` layer. Reason: they are demonstrations of `Shape` (contract values with fit and
+  tolerance proofs), not protocol instances, and no Challenge or comparator statement reaches them (a compiled
+  inventory finds all their declarations outside the statement and proof closures of the roots).
+  `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`,
+  since `Lemmas/Blocks/Facts` and the tests use them too.
+- **As much as possible stays off the trusted surface**: a definition that no Challenge statement needs moves to an
+  untrusted layer, keeping its name and body. `cF` (the ratio gap) is an example: it lives in a test.
 
-- 2026-11-03, Francesco (card: workbench `repos/consensus-lean/notes/cards/graded_fast_locks_v2.md` §5, §9–§16;
-  read-backs T-01a19b8a, PASS): **graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock
-  is live at `t` while `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps
-  the locks. A slow lock of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`: `min(s + k, max(s + 2,
-  E + c))`, with `E` the latest expiry of the node's live fast locks of earlier slots (the first decision below);
-  the lock gets `s + 2` when no live fast lock of an earlier slot remains (a gap in fast confirmations shortens it
-  only once those locks have expired). `E` is the node's local fast-lock history, not support for the branch: it
-  ignores which branch the locks are on, so a lock unlocked or moved back to `Φ.F` still counts, and so do
-  optimistic locks on genesis or on a common prefix. `c ≥ 2` is a new parameter (`SAParams.c`, `Setup.c`, no `c ≤
-  k`) that no coefficient reads. The cap is at the write; "a live lock is recent" comes from the run invariant
-  `l.slot + 2 ≤ l.expiry ≤ l.slot + k` (`LocksWF`). Francesco's four decisions on the rule (card §11–§12):
-  - **per-slot `E`**: `E` counts only fast locks of earlier slots (`l.slot < s`). Without it, repeated optimistic
-    writes within one slot ratchet the expiry up to the cap; with it, the deadline grows by `c` per slot, as
-    intended (§12.1).
-  - **`E` as is**: `E` is not filtered by branch: a fast lock moved back to `Φ.F` (by `unlock`'s fallback or by
-    `live_locks`) still feeds `E`, as do locks on a common prefix. Such a lock vetoes nothing, and no proof reads
-    `E` beyond the bounds `[s + 2, s + k]`, so a filter would add text and buy nothing (§12.2).
-  - **independent fast and slow writes, no B′**: over the path, the deepest fast block gets a fast lock with
-    `fastExpiry` and the deepest slow block a slow lock with `s + k`, each written when it exists. This replaces
-    B′ (a slow-qualified update's fast lock getting `s + k`, the earlier "keep the highest deadline" form): the
-    spec loses `lockBlock`, B′'s conditional and the `≠ D` clause, and `SlowLockAt` loses two clauses. The
-    outage arming uses the slow lock, and no statement needs the deeper fast block to live more than two slots
-    (§12.3).
-  - **the veto stops only the record (2(a))**: a result that conflicts with a live lock leaves
-    `latest_confirmed` unchanged, but the locks are still written, over the blocks of the result's path that
-    conflict with no live lock. This closes the outage cover base's veto branch (W2's finding), and an unvetoed
-    update behaves exactly as before (the filter is vacuous) (§10–§11). Francesco kept the fast write as well
-    (over the slow-only alternative). Pre-GST effects, both bounded, pre-GST only, and leaving Accepted
-    untouched: (i) the fast write is an FG source, so a vetoed node may lose a finality bit; this is not
-    veto-specific, since an unvetoed node with the same pool, no lock and no FG view of the later block fast-locks
-    the same ancestor and loses the same bit, while a node that already holds that block normalizes the lock to
-    a compatible viable ancestor and does not (skeptic trace T-ae2d2a56, counterfactual T-01a19c3a); (ii) a
-    vetoed slow lock `X` may pin the node up to `k − 1` slots beyond the vetoing lock's expiry (trace
-    T-ec68d127, read-back T-01a19c3a).
+## Repository, toolchain and trust checks
 
-  What changes: trusted `Spec/SA/{Schedule, State, Locks, Confirmation, Events}` (`SAParams.c`, `Lock.expiry`,
-  `Lock.LiveAt`, `fastExpiry`, `addLocks`'s `N` with expiries, `updateConfirmation`, `optimisticConfirmation`,
-  `FastUpdateAt` over the filtered path), `Statements/AC/Base` (`LocksMoveBack`: the shape of `N`, and `MovesBack`
-  also keeps the expiry, a strengthening), `Statements/Healing/AC` (`SlowLockAt`), `AsChainShape` (`Setup.c`),
-  and the LaTeX (`goldilocks-spec.tex` §"Locks", §"Confirmation"; lean notes P5; claims OC1). `fastSelect` stays the
-  raw test, so A1.4 (b) (`OptimisticNextUpdate`) keeps its meaning. No Challenge statement changes its text apart
-  from A0.4 (c)'s `MovesBack`/`LocksMoveBack` (above); through `FastUpdateAt`/`FastLockAt` the scope of A1.2, A1.5,
-  A1.9, C1.1 and `RecentSourceNextVote` widens to the fast locks of vetoed updates (their arguments read the counted
-  votes and `Carry`, not the record). No coefficient changes. Witnesses at `k = 6`, `c = 2`:
-  `ConsensusLeanTest/GoldilocksGradedLocks.lean`.
+### Foundations
 
-- 2026-11-03, Francesco (fradamt; option (C) of the HS.3 feasibility pass, coordinator T-01a19b22):
-  **HS.3 is stated as its after-`r` part only.** Approved by Francesco (fradamt) on 2026-11-03.
-  `FrozenTreeAgreement` (`Statements/Healing/Service`) keeps the premises and the conclusion of its
-  former second conjunct (b) (with `Prop⁺(G_p)` and `t_s ≥ r`: every honest slot-`s` vote is `P` with its ancestry retained, and later honest votes
-  and proposal parents extend `P`). It drops the first conjunct (a), the claims' first part: every
-  honest slot-`s` vote is `P` under the explicit voter lock premise and #100's proposer-anchor
-  premise, without `Prop⁺` or `t_s ≥ r`. This is a deviation from claims HS.3, which states both
-  parts. Why:
-  - (a) has no proof. Its Lean route compiled except for one leaf, `voter_unlock_keeps_lock`
-    (removed with its four users in 61076d7f, #136). The leaf says a voter keeps, through its own
-    `unlock`, a live lock above the proposer's lock `L`. The proposer's survival of `L` doesn't
-    give that: `opponents` counts only support votes whose head is in the frame's tree, so a voter
-    whose `Σ.F` is below the proposer's can count more opponents against the same votes.
-    `unlockTarget_frame_dependent` (ConsensusLeanTest/GoldilocksUnlockFrameWitness,
-    work/caspar/unlock-frame-witness 0cd8f7fd) is a compiled instance of this at the lock-code
-    level. It does not show that the configuration is reachable under `AgreeSetting`. No
-    counterexample to the leaf or to (a) under their premises is known. A proof of (a) would need
-    a new argument: the honest voters' locks required by #100's premise would have to bound the
-    slot-`(s−1)` votes. That is several days of work with uncertain outcome (workbench
-    C1-healing-open E2, research-cores core 7).
-  - Nothing consumes (a). HS.4, HS.5, HR.3 and H.4 use only (b) (`frozen_tree_agreement_clean`,
-    from HS.2): `ready_protected`, `consume_continue_of`, `acquired_or_changed`.
-  - With the restatement HS.3 is proved (`frozen_tree_agreement`, from HS.2), and so is the bundle
-    `PhaseServiceStatements` (`phase_service_statements`). The alternative was (A), proving (a)
-    as stated. (B), restating #100's premise over the voter's read-point locks, was rejected:
-    that premise is the voter's state after its own `unlock`, nearly the step being claimed.
-- 2026-11-03, Francesco (note: thread T-01a1a008, artifact "Attestation service premise"; consumer
-  analysis T-823fece2): **the attestation clause of `Sync` has no lower bound, and the Goldilocks
-  premises assume `Δ ≤ Δ_F`** (option (d)). `AttDeliveredBy` drops `τ₀ ≤ time k`: a processing of
-  the attestation before its signing or admission counts. Reason: an honest node forwards an admitted
-  attestation as the same object, and L0 counts an earlier receipt (`CommLog.Held`), so a node can
-  hold it from before the admission and receive nothing after it; an attestation's processing is
-  never refused and the pool keeps it, so an earlier processing is as good. Blocks and messages keep
-  the lower bound: they are forwarded in fresh wrappers, and an earlier receipt of a block can be
-  refused. `SyncOn` and `SyncBefore` gain `delta_le : Δ ≤ Δ_F` (claims §"Parameters" already
-  assumes `Δ_F ≥ Δ`): an attestation admitted from a block leaves in the block's relay wrapper,
-  which is not a row and is served within `Δ` (the 2026-11-02 bundling choice). The generic L0
-  two-bound network stays unordered (two-bound card b7b5b06). The open transports
-  (`PSyncTransport`, `SyncUntilTransport`, `SyncRunTransport`) take `Δ ≤ Δ_F` as a hypothesis; with
-  the lower bound gone they owe no signer provenance for attestations. No proof reads `delta_le`; the
-  consumers of the clause read signings only. This reverses the node-level half of the 2026-11-02
-  two-bound entry: the node statements built on `SyncOn`/`SyncBefore` (`SyncRun`, `GSTRun`,
-  `SleepyRun`, `HealthyRun`, `HSShared`, the Persist, Run, Service and healing rows) again cover
-  only `Δ ≤ Δ_F`, the paper's range, so as hypotheses they are narrower than since 2026-11-02.
-  Accepted is unchanged: its closure mentions `SyncOn`/`SyncRun` only through the uninstantiated
-  `SleepyWindow` disjunct of `vote_frame_of`'s service hypothesis (`Compose/Sleepy/FrameLabels`,
-  discharged with the `SleepyServiceBefore` disjunct); it never constructs or reads them, so
-  Accepted needs no `Δ ≤ Δ_F` (final-head review T-01a19c3a). Rejected: restricting the clause to signings (drops
-  the forwarding of admitted attestations) and a local `max Δ Δ_F` deadline for admissions (two
-  attestation fields).
-- 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md`, T-6daee397): **the
-  node-level regime rows R.3–R.6 are retired.** `Statements/Regimes/{Healed,Final,Outage,Weak}`
-  (28 declarations, none proved) are deleted, with the adapter `acceptance_outage_times`, its test
-  and the `HealedPremises`/`FinalPremises` witnesses. None of them was in Challenge, the
-  comparator, Solution or the declaration closure of the Accepted endpoint (compiled scan at
-  3b29a82d). R.3–R.5 correspond to the generic rows of the Accepted endpoint `healedSafe`,
-  `healthyLive` (through `ShapeObligations.correct`) and `persists`; R.6 (weak continuation) has no generic
-  row and is dropped. R.1, R.2, R.7 and R.8
-  (`Statements/Regimes/{Sleepy,Always}`) stay: they are Challenge rows, and the Accepted proof uses
-  13 of their definitions. This removes the node (V) that held the Accepted outage budget at
-  `4k − 6`.
-- 2026-11-03, Francesco (plan: workbench `cards/regimes_retire_budget.md` Part B, 1b5c38ba):
-  **the outage budget is `4k − 5`** (was `4k − 6`). It is the bound of the Accepted proof: the
-  lock window keeps an unpolluted label for gaps up to `(4k − 5)Δ` (`exists_unpolluted_label`),
-  and the restored label stays within `j₀ + k` (`stop ≤ t_{j₀+k} + Δ`, one tick of slack, pure
-  time arithmetic). A larger budget weakens `OutageTimes`, so `persists` is stronger; no other
-  row reads it, and `budget_pos` holds (`4k − 5 ≥ 3`). `4k − 4` would break the restored-label
-  bound (`stop ≤ t_{j₀+k} + Δ`): at `k = 2`, `Δ = 2`, start `11` (`j₀ = 0`) the bound is `18`;
-  `4k − 5` gives stop `≤ 17` (one tick of slack) and `4k − 4` gives `19 > 18`.
-- 2026-11-03, Francesco (plan: workbench `cards/heal_five_window.md` 3ff7d946, claude-mac PASS
-  on #136): **the heal coefficient moves to the five-window frame route** (superseded: rise-round
-  `M_f`, 387, below) (claude-mac's
-  `exists_reset_of_drain5_awake`, `resetBound5`, `healBoundCoeff5_at_two`, 386596cd/86795559):
-  `healMargin = 20 L_drain + 8k + 44δ_t + 44X + 40 = 48k + 44δ_t + 64X + 40` (was
-  `24 L_drain + 8k + 52δ_t + 52X + 44`); heal `19 + M_f` is `483` at `k = 2, X = 1, δ_t = 6`
-  (was `563`), lower by `8k + 8δ_t + 12X + 4` at every setup, capability and index. The
-  untrusted reset coefficient `healthyResetCoeff` moves with it (`20 L_drain + 40(δ_t + X) + 24`);
-  the nonfinal reserve keeps its slack `4δ_t − 13`. A smaller heal makes `healthyLive` and
-  `healedSafe` hold from earlier and shortens `healedSafe`'s progress window, so both are
-  stronger; `Admissible` does not bound the heal, and the generic realizability witnesses give
-  `SafeActive` from every start, so realizability is unaffected.
-- 2026-11-03, Francesco (fradamt, approved 2026-11-03; claude-mac's rise-round piece 4,
-  `work/fradamt/rounds-heal` f1e65861, reviewed by T-01a19c3a on #136): **the heal coefficient
-  moves to the key-dependent rise-round route** (`exists_reset_of_drain_rounds_awake`,
-  `resetBoundRounds`, `healBoundCoeffRounds_at_two`): `healMargin = 20 L_drain + 8k + 28δ_t + 28X + 56 =
-  48k + 28δ_t + 48X + 56` (was `20 L_drain + 8k + 44δ_t + 44X + 40`); heal `19 + M_f` is `387` at
-  `k = 2, X = 1, δ_t = 6` (was `483`), lower by `16(δ_t + X − 1) ≥ 96` at every setup, capability
-  and index (`δ_t ≥ 6` under the timeout). The untrusted `healthyResetCoeff` moves with it
-  (`20 L_drain + 24(δ_t + X) + 40`, `resetBoundRounds` at `λ = 2Δ`); the nonfinal reserve keeps
-  its slack `4δ_t − 13` and the final horizon fit its slack `8k + (4δ_t − 12c) + 4X + 18`. The
-  direction is that of the five-window entry above: both healthy claims get stronger and
-  realizability is unaffected.
-- 2026-11-03, Francesco: **`ac_to_fg` returns only `fg_confirmed`** (or `⊥`). Nothing read the
-  returned head: the node discards it, and since loose BJ (goldilocks#14, 37fc02fe) the finality
-  pair comes from `finality_pair(Λ, σ_e)` on the source's entry state. `ACInterface.toFG`,
-  `SA.acToFG` and `Node.acToFG` lose the head component; requirement 1 (`ReqHeads`) drops the
-  returned-head clause, requirement 2 (`ReqSource`) drops "the returned head extends it", and
-  `Compose.SourceHeld` drops the same conjunct. A compiled scan found no consumer of either
-  dropped fact, so they are dropped, not restated on `ac_head`. A0.6 (`InterfaceRequirements`) is
-  weaker; the statements that assume `Requirements` are stronger (Compose/AnyAC `TipsNested`,
-  `ProposalParentHeld`, `DutyHeadsHeld`; Compose/Node `ThreeTips`, `HonestBlockAccepted`,
-  `ACStatesReachable`, `SourcesHeld`; Compose/Run `ACProjection`, `FGProjection`); `SourceHeld` is
-  incomparable (weaker hypothesis and conclusion). The node and family S behave as before (only an
-  unread return value went), and `MeetsObligations` is unchanged. The Lean was ahead of SPEC
-  requirements 1 and 2 and claims A0.6 until the matching LaTeX edits landed in
-  `specs/goldilocks/tex/` (14cc8f74); they now agree.
-- 2026-10-31, coordinator-authorized R.5/OC repair ([#107](https://github.com/ethlabs-org/consensus-lean-coordination/issues/107)).
-  **Pre-outage synchrony cuts off recipient deadlines, not send times.** `SyncBefore` requires
-  service only when the recipient's protocol deadline, including its latest wake, is at most
-  `b₀`. `OutageRun` and `OutageWindow` use it instead of `SyncRun 0 (b₀ − Δ)`; the latter still
-  imposed obligations after arbitrary later wakes inside the outage. `SyncRun`, `SyncOn` and
-  the generic `Outage` are unchanged. The cutoff is conservatively the protocol deadline itself,
-  not its last admissible integer processing time: deadline `b₀` is covered, `b₀ + 1` is not.
-  With `Δ_p = Δ_e + 1`, a qualifying protocol deadline leaves the engine endpoint at most
-  `b₀ − 1` (superseded 2026-11-04: at `Δ_p = Δ_e` the half-open engine deadline itself is at most
-  `b₀ − 1`). Later calls still check qualifying pre-outage deadlines; attestation deadlines use
-  `Δ_F`. Strict processing bounds and send-time lower bounds are retained. This changes the
-  premises of the still-unproved outage rows, not their conclusions. Acceptance relay remains
-  an explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent
-  block. No ancestry, Catch, R.3 or R.4 decision is encoded, and no transport proof is claimed.
-- 2026-10-31, amp-orbs (architecture), transport repair under
-  [#107](https://github.com/ethlabs-org/consensus-lean-coordination/issues/107).
-  **Process received payload objects in preorder.** A delivery now traverses the entire object
-  closure, processing a canonical block before its carried votes and attestations. Wrappers have
-  no canonical node event; nested wrappers no longer hide their contents. The existing node
-  handlers are unchanged, but their engine-driven invocation sequence changes: payload votes get
-  actual message calls, including when the containing block is refused or silently dropped.
-  This is intentional independent service of authenticated carried objects, not acceptance of the
-  containing block. Block-before-payload preserves the existing block handler's priority (including
-  any vote it emits); subsequent message handlers use the resulting state. The one-vote invariant
-  applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.
-  This slice does not repair own-proposal payload processing, repeated-forwarding freshness under
-  `Held`, or the finite-window transport. It does not weaken `SyncRun` or claim that transport is proved.
-- 2026-10-31, Francesco ([#104](https://github.com/ethlabs-org/consensus-lean-coordination/issues/104), revised decision).
-  **Drop cross-node nesting rather than restate it.** Remove Baseline's `crossNest` and `weakCrossNest`,
-  R.3's `CrossNest` and R.6's `WeakCrossNest`, their bundle fields and the open `cross_nest_until` interface.
-  Cross-node compatibility follows from `HealedSafe`/`WeakSafe` plus R.8's `OutputsNested`: a finalized
-  read is below its node's confirmed read, which is compatible with the other ready confirmed read.
-  The same-instant ancestry is false (#104's carrier-delay replay); lagged ancestry is not stated.
-  This owner-approved target change supersedes the earlier decision to restate the Baseline fields in
-  #106's lagged form. It does not change R.4's cross-time growth or R.8's local nesting.
-- 2026-10-31, Francesco ([#107](https://github.com/ethlabs-org/consensus-lean-coordination/issues/107)).
-  **Delivery-time relay in the generic engine; protocol delay `Δ_p = Δ_e + 1`** (the `+ 1` superseded
-  2026-11-04 by half-open delivery, `Δ_p = Δ_e`; delivery-time relay stands). The extra unit absorbs
-  only the inclusive engine deadline versus the strict spec deadline (`≤` versus `<`), not relay latency.
-  Persistent relay at the next awake tick and even relay one unit late still break R.1 in the model;
-  persistence across sleep alone is not enough. This supersedes the earlier next-tick `+1/+2` analysis and
-  the proposed `Δ_p ≥ Δ_e + 2`. `SyncOn` and `SyncAC` stay unchanged. The Refinement transport from engine
-  `PSync`/`SyncUntil` to spec `GSTRun`/`SyncRun` remains a proof obligation with delivery-time relay and
-  the chosen delay, not a theorem supplied by this decision.
-- 2026-10-30, amp-orbs (architecture), under the coordinator's criterion "the smallest trusted change that keeps
-  every proved milestone's proofs intact" ([#17], Refinement). **The spec block carries the engine's input**: the
-  engine hashes the whole header `(parent, pos, input, info)` and `compile` writes `input := encodeTxs mempool`
-  outside the shape's `Info`, so two engine blocks differing only in `input` have different hashes but, without
-  the field, one spec content; `RootOk` with one digest cannot hold of both, and the refinement cannot be stated
-  faithfully. Chosen: (B) a field `input : Nat` of `Common.Block`, the digest over `(parent, slot, input, FG
-  payload, AC payload)`, and the node's tick event carrying the input (`Node.Event.tick x`; `mkBlock` writes it;
-  the AC never reads it). Rejected: (P) the input through the AC payload via `ACInterface.proposal`, which
-  changes the generic AC interface, the SA payload pair and every `Lemmas/AC` file (16 proved files) and
-  `Spec/SA`; (B) leaves `Lemmas/AC` and `Lemmas/FGStore` (generic in the block type, no block literals) intact
-  and touches `Spec/Common/Block`, `Spec/Node`, `Spec/Run/Model`, the `Statements/Compose` files that pattern
-  the tick, five `Lemmas/Compose` files and the Goldilocks tests. The spec folds the input into the AC payload
-  (composition.tex: the AC fixes the encoding of its payload); the mapping records the field as that encoding.
-- 2026-10-30, amp-orbs (architecture), Refinement statements ([#17]; `AsChainShape`,
-  `Statements/Obligations`). **The Goldilocks node as a generic shape, simulated rather than equated.** The wire
-  format and digest are the refinement's choices, not the spec's: `n`-independent bodies (the family needs one
-  body type for every parameter set; a fixed-`n` body was rejected), canonical signed objects (a block's header
-  carries the canonical objects of its payload, so the engine's view contains the evidence G1.5 needs), a digest
-  from the engine's hash with the genesis root as a parameter (a header naming genesis by digest is dropped, so
-  `RootOk` holds by construction). The step order is `[poll, poll, pollPropose, propose, poll, poll]`: the node's
-  tick is the poll proposal step at the public times (a duty, so it runs only awake; putting it in `clock` was
-  rejected since `clock` runs asleep), two leading polls release the bodies queued since the last tick so that a
-  proposal carries only released objects (rejected: filtering own objects out of the proposal), the trailing
-  polls run the FG update and drain the tick's vote and attestation. The family's state is a Goldilocks state at
-  every proof of `1 ≤ n` (`PubState`; a `dite`/cast family was rejected). The simulation (`Simulates`) maps
-  engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries (`DeliverSeq`, one group per
-  canonical object), restarts and releases; releases have the slack of the next awake tick (`ReleasedFrom`,
-  `RelayedFrom`). Two gaps recorded, not stated: the proposer selection was a hypothesis (`SelIs`; the generic
-  skeleton's `proposerSel` was one `SelSpec` for all slots, the shape cannot read the run's selection; the
-  coordinator's decision: a per-slot selection in the generic skeleton as Refinement PR 3, [#93], then drop
-  `SelIs`, so that engine-level Goldilocks theorems do not carry it; done, see the next entry); the network
-  premises' transport
-  (`Delivers` with `≤ max(a, g) + Δ` versus the spec's strict deadline; admission read as an instantaneous send
-  versus the engine's relay at the next awake tick) is left to the regimes milestone.
-- 2026-10-30, amp-orbs (architecture), per-slot proposer selection ([#93]; `Spec/Shape/Shape`,
-  `Spec/Shape/ProgressFit`, `AsChainShape`). **The skeleton's proposer selection is per slot, and a
-  recurrence still fits only a run-chosen proposer.** `Skeleton.proposerSel : Slot → SelSpec n`, so that a
-  shape can fix its schedule (`fun s => .fixed {p s}`) or leave the choice to the run (`fun _ => .sized 1`); the
-  other instances are unchanged (`fun _ => …`). `ProgressReq.Fits (.recur _)` becomes `∀ s, proposerSel s =
-  .sized 1`: a `.fixed` schedule arm was rejected because the bad-proposer witness of `regimes_realizable`
-  (`badSel`: a faulty proposer at the periodic slots `s % P = P − 1`) needs a schedule-side condition: under a
-  round-robin schedule with period coprime to `P` those slots visit every validator, so the witness would need
-  everyone faulty, and a constant schedule has no witness at all; with the lifted condition `regimes_realizable` stays proved (its witnesses specialise the
-  fitting hypothesis per slot). Goldilocks' progress regimes are therefore stated in the instance (the claims'
-  ready-proposer premise), not through `.recur`; its `Spec/Baseline` skeleton keeps `fun _ => .sized 1`. The
-  Refinement skeleton sets `fun s => .fixed {proposer s}` (superseded by #117, ac3e8d5c: it is now `fun _ => .sized 1`
-  with the run's proposer `runProposer`) and `SelIs` is dropped from `EngineSimulatesNode` and
-  `FinalizedAccountable`; `selValid_proposer` (`ConsensusLeanTest/GoldilocksSimulation.lean`) derives the former
-  hypothesis from `SelValid`. Baseline's `GoldilocksTarget` is not instantiated at the refinement family (its
-  bindings name `goldilocksSkeleton` over `goldilocksSchema`, and a fixed schedule does not fit its `.recur`
-  rows: a fixed schedule does not fit `.recur`, see above); the milestone statements are over `compiled (goldilocks S)` directly, and restating Baseline at the
-  refinement skeleton is left to the first-slice re-review ([#10], [#38]) as a recorded gap.
+- **Own repository**, Lean and Mathlib v4.35.0. License Apache-2.0, as the Verified-zkEVM Lean libraries (ArkLib,
+  CompPoly, VCVio) and Mathlib; vendored copies keep their own licences.
+- **Rules about the project's structure rest on external precedent**, not on the authors' own projects.
+- **One certified library** `ConsensusLean`, with layers as module prefixes and a source-level boundary checker
+  with one configuration (`scripts/boundaries.toml`) instead of Mathlib's `directoryDependency`.
+- **`import all` only in tests.** Whole-file `@[expose]` in Spec and Statements (and the Milestones layers); none in
+  Lemmas, Proofs and `Main`, so a proof edit rebuilds one module.
+- **Proof debt as in FLT and Carleson**: `sorry` only under `Lemmas/` and `Proofs/`, never an axiom; certified
+  means the closure of `Solution`, audited on every change; kernel replay and the comparator run nightly and at
+  milestone acceptance.
+- **Depth, cones and critical path are reports, not gates**; the one-module rebuild property is a canary; chains
+  are allowed inside a milestone.
+- **A light roadmap with checked names** (`docs/roadmap.md`) rather than a blueprint; leanblueprint becomes worth it
+  with a second instance or outside contributors. The Spec package split waits for reuse outside the project.
 
-- 2026-10-31, amp-orbs (architecture), delivery-time release in the engine ([#107], coordinator's decision
-  option (a); `Spec/Model/{Protocol,Run,Conditions}`, `Spec/Shape/{Shape,Compile}`, `Spec/Problem/Network`,
-  `AsChainShape`). **What a delivery makes a node emit, relay or acknowledge leaves at the delivery's own
-  time.** A protocol has `deliverDuties : Time → List Duty` (default `[]`; a skeleton lists them as
-  `deliverOrder`, default `[]`), and `Run.step` at `.deliver v o t` runs them on the processed node and then the
-  gossip `releaseAll`, as an awake tick does; `releasesAt` has a deliver branch, `releases v o t` holds at the
-  delivery's own time `t` through `Run.SendsAt` (a tick or a delivery of `v` at `t`), and `Unforgeable`'s
-  earlier send may be a delivery. Reason: the protocol texts read an admission or a vote cast at a receipt as an
-  instantaneous send (sa-protocol.tex "the network relays each accepted object"; fgsa-protocol Relay "use the
-  acceptance time, also for … an asleep receiver"), the claims' proofs A1.2/C1.1 (`writer_pool`), A1.3
-  (`fastLock_same_slot`) and A1.7 (`honest_vote_at_update`) and the Sleepy invariant rely on it, and the
-  sa-fg-model showed that release at the next awake tick, or even one unit late, breaks R.1/S1 under a
-  sleeping admitter while delivery-time release had no violation. Rejected: weakening `SyncOn`/`SyncAC` to the
-  sender's first awake time (the proofs cannot absorb it), a gossip-only release at deliveries (a vote cast at a
-  receipt would still wait), and votes carrying their head block (a spec change for an engine defect). The
-  Goldilocks skeleton's delivery duty is one `.poll`, a drain: `fgDue` is false at every cut (set only by the
-  tick's `pollPropose`), so a delivery emits at most the queued vote and the relay gossip and `signed_only_in_ticks`
-  stands. `CommLog.EagerFrom.recv` becomes strict (`max t g < a`): the canonical schedule fixes the deliveries at
-  `a` before the delivery-time releases at `a` exist, so those are served from `a + 1`. No `Statements/` file
-  names `EagerFrom`; `Spec/Problem/CorrectProtocol.lean` uses it existentially (`Adequate.covers`, `HealthyLive`), so the
-  strict form asks those witness runs for one receipt less (none at the send's own time), and every regime
-  premise they serve (`PSync`, `SyncUntil`, `OutageNet`: deadlines at least `a + Δ`, `Δ > 0`) is still
-  implied (`EagerFrom.psync`). The other instances' skeletons keep the default and rebuild unchanged. The Goldilocks `ReleasedFrom`/`RelayedFrom` and the six
-  release and relay fields of `Simulates` are restated at the delivery time in a second PR.
-- 2026-10-30, amp-orbs (coordinator), on the Regimes milestone (R.3). **Baseline's heal point is not raised to the
-  proved bound.** The target pins `gHeal = max(g, 0) + (29 + B_H^F(k))·Δ` (from the FG-SA analysis); the only
-  healing result, claims H.4, gives `T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`, far above it. R.3 is
-  stated over the run at a heal point `T ≥ T_heal` (`Statements/Regimes/Healed`), with H.4's open premises (H.3
-  (c)'s bridge, `(U_all)`, `(U_B)`) as named hypotheses, and with H.4's regime premises that the target lacks
-  (`Catch(2Δ)`, `Prop⁺(G_p)`, the `δ_t` bound and the genesis root of `HSShared`); Baseline's `gHeal` is unchanged.
-  Raising `gHeal` to H.4's bound would weaken the review target to fit the proof we have, which AGENTS.md rules out,
-  and a larger proven bound is not evidence that `gHeal` is false. **Baseline R.3 at `gHeal` remains open; what is
-  proved (once the proofs land) is R.3 at `T_heal` under those premises.** (Superseded
-  2026-11-03: the node-level R.3 is retired; see the 2026-11-03 entry.) `gHeal` changes only with a
-  counterexample (a reachable run that heals later than `gHeal`) or the owner's explicit decision (flagged to him).
-  Model evidence (workbench#8 `sa-fg-model`, measured at `528a15c`, recorded in the README at `e406004`): 9,600
-  `Healthy` runs (n ∈ {4, 5, 7}, k ∈ {2, 3}, δ_t ∈ {2, 3}; random, hostile and partition adversaries) all heal
-  within their horizon and none after `gHeal`; the largest available heal time is 0.049·`gHeal` and the largest
-  first-finality time 0.132·`gHeal`. The adversaries are not heal-delay optimizers and the horizons (128–224Δ after
-  `ḡ`) are below `gHeal`, so this is no counterexample search.
-- 2026-10-30, amp-orbs (spec), on the Regimes milestone (R.4), as for R.3 (coordinator's go-ahead). **R.4 is stated at
-  a heal point, not at the target's numbers**: over the run at a parameter `T ≥ max(T_heal, ḡ + T_rec)` with the
-  deadline `D_fin = 4Δ(W + 1 + M) + 2Δ` (claims C1.3), under R.3's premises and `UPat(W, M)` with `M ≥ M*`, the
-  regime claims node O.1 is proved under (`Statements/Regimes/Final`). `UPat` is a premise the target lacks: the
-  target asks for the contract's finality recurrence `gProg .final gf` only, and O.1's target for that premise has no
-  statement (claims §"O.1", open). Baseline's `gHealFin`, `finalCut` and `W_W(gf)` are unchanged; **Baseline R.4 at
-  its own numbers and premises remains open.** (Superseded 2026-11-03: the node-level R.4 is
-  retired; see the 2026-11-03 entry.)
+### Checks
 
-## Process
-
-- 2026-10-29, Francesco ([#2]). Claude (claude-ethlabs) and the Amp orbs push and merge their own green,
-  reviewed PRs and are responsible for them. Process speed (build, CI, iteration, review load) is part of
-  quality. Reviews are local, by model instances that did not write the change. All coordination lives in
-  issues and PR threads, never in the tree.
-- 2026-10-29, Francesco (`docs/spec-review.md`). The trusted surface is approved by the annotated tag
-  `spec-approved`, which claude-ethlabs moves only on the owner's authorization (or for a verbatim move with
-  machine-checked evidence, recorded in `docs/spec-review.md`).
-- 2026-10-29, claude-ethlabs within that authority ([#21], `TRUST.md`). Check infrastructure (`scripts/`,
-  `.github/`, the lakefile) is agent-reviewed: a change to what a trust check checks needs two independent
-  reviews linked in the PR and a pointer on [#17]; other changes one, and a pure speedup also evidence that every
-  check's verdict is unchanged (the same pass/fail on the fixtures). `.github/CODEOWNERS` names the owner for
-  the trusted surface, the infrastructure and the mapping docs (plan §4), but Code Owner review is not enforced
-  (enforcement through a ruleset stays open to the owner).
-- 2026-10-30, Francesco ([#2]). No imitation of human review process: there are no review gates between agents.
-  A subagent pass is a tool inside the author's own session. This replaces the review requirements of the
-  entries above; a check-infrastructure change still carries its fixture evidence.
-- 2026-10-30, Francesco ([#2]). **Nothing blocks on the owner**: he gives input and asks questions, and does not
-  approve PRs, statements or tag moves; agents own every decision and record it where the work is.
-  `spec-approved` stays, as an **agent approval**: an agent other than the change's author (claude-ethlabs, or
-  the amp-orbs coordinator) moves it after the author's fidelity read-back and a green fast check; the tag
-  message names the PR, the protected files changed and the evidence. This replaces the owner's authorization
-  in the entry on `spec-approved` above. First application: #49 (`f98ed97`), moved by amp-orbs.
-- 2026-11-01, Francesco ([#129]). **The `spec-approved` tag is retired while the work is active**: trusted-surface
-  changes are recorded, not gated. They land through `scripts/push-main.sh` like any change; each commit touching a
-  trusted path carries a `Trusted-surface: <what and why>` line (`scripts/review-boundary.sh` checks it), and
-  push-main comments each landing on [#129]. This replaces the tag entries above; no PR and no second agent.
-- 2026-10-30, amp-orbs (process), under that rule ([#50]). Trunk-based: after the local checks
-  (`scripts/check-changed.sh`; `--fast --selftests` for `scripts/` or build-configuration changes), rebase on
-  `origin/main` and push to `main`. CI runs on every push to `main`, and whoever made it red reverts at once. A PR
-  only for a trusted-surface change, since the tag must cover its head before it reaches `main`. (Superseded in
-  part: GitHub Actions is disabled, 2026-10-31, [#50], so box CI checks observed heads; the tag is retired,
-  2026-11-01, so a trusted-surface change needs no PR.)
-- 2026-11-04, lead (Francesco delegated it; rule-cost sweep item 9, workbench `cards/rule_cost_sweep.md`): **no
-  owner-review enforcement**. The open "branch ruleset enforcing owner review" item ([#21], option 2) is closed: it
-  contradicts "nothing blocks on the owner" (2026-10-30), and GitHub Actions is off. The step-12 check that
-  `.github/CODEOWNERS` lists exactly `trusted_paths` and `codeowners_extra` (and the keys `code_owner`,
-  `codeowners_extra`) is removed with its fixtures, since it guarded only that unenforced GitHub feature;
-  `.github/CODEOWNERS` stays as an informational file. The trusted surface is still `trusted_paths`, recorded by
-  `scripts/review-boundary.sh`; no other step-12 verdict changes.
-- 2026-11-04, lead (Francesco: as much as possible off the trusted surface): **the Shape examples leave the trusted
-  surface**. `Instances/{Bft,Streamlet,Tendermint}/Spec.lean` move to `ConsensusLean/Examples/Shape/{Bft,Streamlet,
-  Tendermint}.lean` (one unprotected `Examples` layer; the Streamlet/Tendermint → Bft import exception goes, since
-  they share the layer), and their `Instances/<P>/…` entries leave `trusted_paths`. Reason: they are demonstrations
-  of `Shape` (contract values with fit and tolerance proofs), not protocol instances, and no Challenge or comparator
-  statement reaches them: the compiled trusted-surface inventory at dd513f0f finds all their declarations
-  unreachable from the 53 roots, in the statement closure and in the proof closure. #38's rule (every protocol
-  instance's `Spec`, `Statements` and `AsChainShape.lean` are trusted) stands; Goldilocks is today's only
-  instance, and its layers stay `protected`, so check-boundaries.py still requires them to be covered.
-  `Blocks.Pattern.range` and the `Recurrence.BadSlotSlack` decidability instance stay in `Spec/Blocks/Progress`:
-  Streamlet was their only user on the trusted surface, but `Lemmas/Blocks/Facts` and the tests use them too.
-- 2026-11-04, Francesco: **Challenge certifies exactly five statements**: the four generic review statements
-  (`Review.ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`) and the Goldilocks
-  `MeetsObligations`. Reason: keep the trusted surface to the generic definition of a correct protocol plus
-  the one instance endpoint; the other 48 Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist,
-  Regimes, Service, Healing) are means to the endpoint, not claims a reviewer must read. They stay proved and built
-  as ordinary lemmas, but are no longer comparator roots and no longer trusted: their statement modules, and every
-  declaration of the instance Spec that only they reach (a compiled walk of the statement closure of the five roots,
-  types and definition bodies, not proofs), move with their names and bodies unchanged to the new untrusted
-  `Instances/Goldilocks/Milestones/` layer family. It mirrors the old Spec/Statements sub-layers, so the allow matrix
-  carries over; it allows `@[expose]` (the statements are unfolded by their proofs and tests) and no `sorry`, which
-  is why it is not `Lemmas`. The Refinement simulation interface and canonical trace moved the same day to
-  `Lemmas/Simulation/{Interface,TraceDefs}` with characterising lemmas instead; the two placements differ on
-  purpose (redoing the ~40 milestone modules that way would be a large diff for no gain in review surface). What
-  the five roots reach stays in `Spec/`, `Statements/Obligations` and `AsChainShape.lean`, protected; a
-  `protected` layer may now import only trusted and protected layers (check-boundaries.py), so that closure cannot
-  reach Milestones. The 48 stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and
-  check.sh step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
-  "proved (lemma)".
-- 2026-11-04, Francesco: **CI is GitHub Actions only; the box runs no CI.** This reverses "GitHub Actions is
-  disabled" (2026-10-31, [#50]): that was a billing decision, and the code repository `eth-consensus-lean` is to be
-  public, where the standard runners cost nothing (the two runs on it while private, 2026-11-04, started too). `check` (`.github/workflows/ci.yml`) runs the fast tier and the review
-  boundary on every pull request and every push to `main`; `full` (`full.yml`) runs the full tier nightly, on
+- **Trust checks reuse existing tools** (EthLib check-decls, leanchecker, `#guard_msgs` axiom pins, `lake check`,
+  `lake comparator`, axiom-audit) with thin glue; a home-grown checker was abandoned. turbo-lean is optional, for
+  per-declaration re-checks only. bubblewrap is installed wherever the checks run, so `lake check` and the
+  comparator run locally and in CI.
+- **CI is GitHub Actions.** `check` (`.github/workflows/ci.yml`) runs the fast tier and the review boundary on
+  every pull request and every push to `main`; `full` (`full.yml`) runs the full tier nightly, on
   `milestone*`/`release*` tags and on demand. Green CI is the GitHub check of the commit; full-tier certification
-  is a passing `full` run of the named commit. PRs run on `pull_request` (never `pull_request_target`) with a
-  read-only token and no secrets; a fresh hosted runner takes the place of the box's bubblewrap sandbox for a head's
-  code. No result is posted to the coordination repository: that would need a cross-repository token in CI, so
-  [#63] keeps the box rows of the old history, and the `ci-inventory` branch is retired (main runs upload the step
-  3c sorry inventory as an artifact). `notify.yml` is removed (its `NTFY_TOPIC` secret was never set).
-  `scripts/orb-ci.sh`, its helpers and the box units stay in the repository, unused, with their self-tests;
-  `scripts/push-main.sh` stays the landing path, its local check unchanged. `ci.yml` now installs bubblewrap: the
-  box CI sandbox self-test failed on Actions because `bwrap` was missing (runs 41800845655, 41830574497); no check is
-  weakened.
-- 2026-11-04, Francesco (cutover step 10): **commit emails are checked against a public allowlist** instead of an
-  ongoing private-address scan. `scripts/check-commit-emails.py` checks the author, committer and `Co-authored-by:`
-  addresses of every new commit against `scripts/commit-emails.toml` (GitHub `users.noreply.github.com` addresses
-  and the named service identities); it runs in `check` on every PR and main push and in `scripts/push-main.sh`
-  before the push, and a failure names the commit and field, never the address. So no private address is ever
-  written to the repository or a log. CI detects an upload after the fact; push-main stops a landing before it. The
-  migration operator's private exact-address scan stays an occasional manual check, outside the repository.
+  is a passing `full` run of the named commit. Reason: the standard public runners are free for a public
+  repository, and a fresh hosted runner is the sandbox for a head's code. PRs run on `pull_request` (never
+  `pull_request_target`) with a read-only token and no secrets.
+- **Commit emails are checked against a public allowlist.** `scripts/check-commit-emails.py` checks the author,
+  committer and `Co-authored-by:` addresses of every new commit against `scripts/commit-emails.toml` (GitHub
+  `users.noreply.github.com` addresses and the named service identities); it runs in `check` on every PR and main
+  push and in `scripts/push-main.sh` before the push, and a failure names the commit and field, never the address.
+  Reason: no private address is ever written to the repository or a log. CI detects an upload after the fact;
+  push-main stops a landing before it.
+- **Trusted-surface changes are recorded, not gated.** Every commit that touches a path of `trusted_paths` carries
+  a line `Trusted-surface: <what changes and why>`, checked by `scripts/review-boundary.sh`. Reason: there are no
+  review gates; the line keeps every trusted change visible and is machine-checked. An earlier approval tag on the
+  trusted surface was retired for that reason.
+- **`.github/CODEOWNERS` is not used**: Code Owner review is not enforced (it would be a review gate), and no check
+  reads the file.
 
-## Open, for the owner
+## Open questions
 
-- Audit (two-bound network, 2026-11-02): sleepy row-independence: do the sleepy claims hold at
-  every `ΔF > 0`, as `System.Sleepy` (no ratio) now states? Goldilocks's `sleepySafe`,
-  `sleepyLive` and `persists` are proved with no `rowRatio` premise, for each positive `ΔF`, in
-  the two-bound model (`Obligations.meetsObligations_exists`, standard axioms). That model still imposes finite
-  row delivery at `ΔF`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
-  `OutageNet`, whose `rows` clause delivers rows by `ΔF`. This is not independence from any
-  row-delivery assumption, and it does not allow unbounded or missing delivery. Generically the
-  question stays open.
-
-[#129]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/129
-[#2]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/2
-[#50]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/50
-[#41]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/41
-[#4]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/4
-[#5]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/5
-[#6]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/6
-[#7]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/7
-[#8]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/8
-[#10]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/10
-[#11]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/11
-[#93]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/93
-[#107]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/107
-[#17]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/17
-[#136]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/136
-[#21]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/21
-[#38]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/38
-[#63]: https://github.com/ethlabs-org/consensus-lean-coordination/issues/63
+- **Sleepy row-independence.** Do the sleepy claims hold at every `ΔFG > 0`, as `System.Sleepy` (no ratio) states,
+  for every family? Goldilocks's `sleepySafe`, `sleepyLive` and `persists` are proved with no ratio premise, for
+  each positive `ΔFG`, in the two-bound model (`Obligations.meetsObligations_exists`, standard axioms). That model
+  still imposes finite row delivery at `ΔFG`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
+  `OutageNet`, whose `fgAtts` clause delivers rows by `ΔFG`. This is not independence from any row-delivery
+  assumption, and it does not allow unbounded or missing delivery. Generically the question is open.
+- **All-occurrences provenance.** Collision transport targets the constructed trace; provenance over all
+  occurrences, including refused calls and non-honest nodes, is not stated.
+- **The first part of claims HS.3** (§"Goldilocks model choices"): neither a proof nor a counterexample is known.
+- **Contracts whose numbers depend on the run's delays**, rather than fixed `ΔAC`-coefficients, are deferred.
