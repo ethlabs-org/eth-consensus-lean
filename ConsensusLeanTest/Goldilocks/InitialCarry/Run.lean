@@ -292,9 +292,21 @@ theorem run_goldilocksRun (ctl : Bool) : GoldilocksRun proposer dg H (tr ctl) :=
 
 /-! ## `Sync[24, 33]` -/
 
+/-- The checks of the rejection run alone: one kernel declaration per variant, so the kernel's
+caches hold one run at a time. -/
+private theorem syncD_false : DataRun.syncD (dataD false) 24 33 = true ∧
+    DataRun.blockPosD (dataD false) = true := by
+  decide +kernel
+
+/-- The checks of the control alone. -/
+private theorem syncD_ctl : DataRun.syncD (dataD true) 24 33 = true ∧
+    DataRun.blockPosD (dataD true) = true := by
+  decide +kernel
+
 theorem syncD_true : ∀ ctl, DataRun.syncD (dataD ctl) 24 33 = true ∧
     DataRun.blockPosD (dataD ctl) = true := by
-  decide +kernel
+  intro ctl; cases ctl
+  exacts [syncD_false, syncD_ctl]
 
 /-- **`Sync[24, 33]`**, in both variants: `V`, accepted by `a` and `b` at `30`, reaches `c` at
 `30` (refused by its FG as a held root, accepted by its AC at `4`); `Da`, `Db` are accepted

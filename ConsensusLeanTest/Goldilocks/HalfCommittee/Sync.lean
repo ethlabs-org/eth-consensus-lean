@@ -178,7 +178,16 @@ def syncD (ctl : Bool) : Bool :=
 /-- Every block cut is the first cut of its group. -/
 def blockPosD (ctl : Bool) : Bool := (rowsD ctl).all fun r => (blockD r.cut).isNone || r.pos == 0
 
-theorem syncD_true : ∀ ctl, syncD ctl = true ∧ blockPosD ctl = true := by decide +kernel
+/-- The checks of the rejection run alone: one kernel declaration per variant, so the kernel's
+caches hold one run at a time. -/
+private theorem syncD_false : syncD false = true ∧ blockPosD false = true := by decide +kernel
+
+/-- The checks of the control alone. -/
+private theorem syncD_ctl : syncD true = true ∧ blockPosD true = true := by decide +kernel
+
+theorem syncD_true : ∀ ctl, syncD ctl = true ∧ blockPosD ctl = true := by
+  intro ctl; cases ctl
+  exacts [syncD_false, syncD_ctl]
 
 /-! ## From the checks to `Sync` -/
 
