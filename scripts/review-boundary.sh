@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Review boundary (a step of ci.yml's `check` job, of push-main.sh and of orb-ci.sh): a record of trusted-surface
-# changes, not an approval gate (owner, 2026-11-01: the `spec-approved` tag is retired while the work is active).
-# Run in the repository, on the commit to check (HEAD):
+# Review boundary (a step of ci.yml's `check` job and of push-main.sh): a record of trusted-surface changes, not an
+# approval gate. Run in the repository, on the commit to check (HEAD):
 #   scripts/review-boundary.sh [<base>]   check HEAD; <base> is the commit the change starts from (a PR's base,
 #                                         the commit a push to main replaced), if any
 #   scripts/review-boundary.sh --self-test   the verdicts on throwaway repositories (fixtures below)
@@ -11,7 +10,10 @@
 #   - The change <base>..HEAD touches no trusted path: pass.
 #   - Otherwise it prints the trusted files changed, and every non-merge commit of <base>..HEAD that touches a trusted
 #     path must carry a trailer line `Trusted-surface: <what changes and why>` (fail if one does not), so that
-#     `git log --grep='^Trusted-surface:'` lists every such change; push-main.sh also records it on an issue.
+#     `git log --grep='^Trusted-surface:'` lists every such change.
+# With GITHUB_STEP_SUMMARY set (GitHub Actions), it also appends the per-commit record to the run's summary: for each
+# commit of <base>..HEAD that touches a trusted path, the paths it touches and its Trusted-surface line, then the
+# verdict. So the `check` run of every push and pull request shows which trusted paths each commit changed.
 # Exit 0 = pass, 1 = fail.
 set -euo pipefail
 export GIT_LITERAL_PATHSPECS=1
@@ -21,9 +23,23 @@ paths_at() {  # paths_at <rev>: the list in <rev>'s boundaries.toml, one per lin
 print("\n".join(tomllib.loads(sys.stdin.read()).get("checks", {}).get("trusted_paths", [])))' 2>/dev/null || true
 }
 err() { echo "::error::$*"; }
+summary() { [[ -z "${GITHUB_STEP_SUMMARY:-}" ]] || printf '%s\n' "$@" >>"$GITHUB_STEP_SUMMARY"; }
+cell() { sed 's/|/\\|/g' <<<"$1"; }  # a Markdown table cell
+label_of() {  # label_of <commit>: the text of its Trusted-surface line (the line the check requires), or nothing
+  git log -1 --format=%B "$1" | grep -m1 -E '^Trusted-surface: *[^ ]' | sed -E 's/^Trusted-surface: *//' || true
+}
+record() {  # record <commit...>: the summary table, one row per commit touching a trusted path
+  local c paths label
+  summary "| Commit | Subject | Trusted paths touched | Trusted-surface line |" "| --- | --- | --- | --- |"
+  for c in "$@"; do
+    paths="$(git show --format= --name-only "$c" -- "${protected[@]}" | sed 's/.*/`&`/' | paste -sd ' ' -)"
+    label="$(label_of "$c")"
+    summary "| \`$(git rev-parse --short "$c")\` | $(cell "$(git log -1 --format=%s "$c")") | $paths | $(cell "${label:-(none)}") |"
+  done
+}
 
 check() {
-  local base="${1:-}" use_base=0 p c protected=() unlabeled=()
+  local base="${1:-}" use_base=0 p c protected=() unlabeled=() touching=()
   if [[ -n "$base" && ! "$base" =~ ^0+$ ]] && git cat-file -e "$base^{commit}" 2>/dev/null &&
      git merge-base --is-ancestor "$base" HEAD 2>/dev/null; then
     use_base=1
@@ -37,26 +53,35 @@ check() {
       { err "trusted_paths entry '$p' is not a plain relative path"; return 1; }
   done
   echo "trusted paths: ${protected[*]}"
+  summary "### Trusted surface (review boundary)" ""
   if ((!use_base)); then
-    echo "no usable base: nothing to compare (pass)"; return 0
+    echo "no usable base: nothing to compare (pass)"
+    summary "No usable base: nothing compared (pass)."; return 0
   fi
   local range
   range="$(git rev-parse --short "$base")..$(git rev-parse --short HEAD)"
   if git diff --quiet "$base" HEAD -- "${protected[@]}"; then
-    echo "the change $range touches no trusted path: pass"; return 0
+    echo "the change $range touches no trusted path: pass"
+    summary "The change \`$range\` touches no trusted path (pass)."; return 0
   fi
   echo "the change $range touches trusted paths (recorded, not gated):"
   git diff --stat "$base" HEAD -- "${protected[@]}"
-  for c in $(git rev-list --no-merges --full-history "$base..HEAD" -- "${protected[@]}"); do
-    git log -1 --format=%B "$c" | grep -qE '^Trusted-surface: *[^ ]' || unlabeled+=("$c")
+  mapfile -t touching < <(git rev-list --reverse --no-merges --full-history "$base..HEAD" -- "${protected[@]}")
+  for c in "${touching[@]}"; do
+    [[ -n "$(label_of "$c")" ]] || unlabeled+=("$c")
   done
+  summary "The change \`$range\` touches trusted paths in ${#touching[@]} commit(s):" ""
+  record "${touching[@]}"
+  summary ""
   if ((${#unlabeled[@]})); then
     for c in "${unlabeled[@]}"; do
       err "commit $(git log -1 --format='%h %s' "$c") touches the trusted surface without a 'Trusted-surface: <what and why>' line in its message"
     done
+    summary "**FAIL:** ${#unlabeled[@]} commit(s) without a Trusted-surface line."
     return 1
   fi
   echo "every commit touching it carries a Trusted-surface line: pass"
+  summary "Every commit touching it carries a Trusted-surface line (pass)."
 }
 
 # --- self-test: verdicts on throwaway repositories ------------------------------------------------
@@ -72,7 +97,7 @@ self_test() {
   expect() {  # expect <pass|fail> <label> <head> [<base>]
     local want="$1" label="$2" head="$3" base="${4:-}" rc=0 out
     git checkout -q --detach "$head"
-    out="$(bash "$script" $base 2>&1)" || rc=$?
+    out="$(GITHUB_STEP_SUMMARY='' bash "$script" $base 2>&1)" || rc=$?
     if { [[ "$want" == pass ]] && ((rc == 0)); } || { [[ "$want" == fail ]] && ((rc == 1)); }; then
       echo "  ok ($want): $label"
     else
@@ -118,6 +143,35 @@ self_test() {
   git checkout -q --detach "$other"; git merge -q --no-ff --no-edit "$spec"
   expect fail "a merge of an unlabeled trusted commit" HEAD "$other"
   expect pass "a base that is not an ancestor of HEAD: nothing to compare" "$spec" "$other"
+  # The run summary (GITHUB_STEP_SUMMARY): one row per commit that touches a trusted path, with the paths it touches
+  # and its Trusted-surface text; "!text" must be absent.
+  expect_summary() {  # expect_summary <label> <head> <base> <text...>
+    local label="$1" head="$2" base="$3" t ok=1 out
+    shift 3
+    out="$(mktemp)"  # outside the throwaway repository, so no commit picks it up
+    git checkout -q --detach "$head"
+    GITHUB_STEP_SUMMARY="$out" bash "$script" "$base" >/dev/null 2>&1 || true
+    for t in "$@"; do
+      if [[ "$t" == '!'* ]]; then ! grep -qF -- "${t#!}" "$out" || ok=0
+      else grep -qF -- "$t" "$out" || ok=0; fi
+    done
+    if ((ok)); then echo "  ok (summary): $label"
+    else echo "  WRONG (summary): $label"; sed 's/^/    /' "$out"; fails=1; fi
+    rm -f "$out"
+  }
+  local both
+  short() { git rev-parse --short "$1"; }
+  expect_summary "a labeled Spec change: its row, its paths, its label, pass" "$spec_l" "$m0" \
+    "| \`$(short "$spec_l")\` | Spec, labeled | \`Spec/A.lean\` | test change |" "1 commit(s)" "(pass)"
+  expect_summary "an unlabeled Spec change: its row says (none), and the verdict fails" "$spec" "$m0" \
+    "| \`$(short "$spec")\` | Spec, unlabeled | \`Spec/A.lean\` | (none) |" "**FAIL:** 1 commit(s)" "!(pass)"
+  expect_summary "an untrusted commit on top of a labeled one gets no row" "$mixed" "$m0" \
+    "| \`$(short "$spec_l")\` |" "!$(short "$mixed")\` |" "1 commit(s)"
+  expect_summary "a change outside the trusted paths: no table" "$other" "$m0" "touches no trusted path (pass)" "!| Commit |"
+  git checkout -q --detach "$m0"; echo a8 >Spec/A.lean; echo c5 >Challenge.lean
+  both="$(commit "Spec | Challenge$L")"
+  expect_summary "a commit touching two trusted paths lists both; a | in the subject is escaped" "$both" "$m0" \
+    "| Spec \\| Challenge | \`Challenge.lean\` \`Spec/A.lean\` | test change |"
   # The repository's own list (docs/decisions.md, 2026-11-04): a Shape example and a Goldilocks milestone statement
   # (the Milestones layers) are not on the trusted surface; the Goldilocks instance Spec and the endpoint statement are.
   local real ex gold ms acc

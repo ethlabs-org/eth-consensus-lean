@@ -242,11 +242,12 @@ jobs:
           retention-days: 30
 
       # Review boundary: a record of changes to the trusted surface (`trusted_paths` in scripts/boundaries.toml), not an
-      # approval (the `spec-approved` tag is retired, 2026-11-01; scripts/review-boundary.sh): it prints the trusted
-      # files a change touches and fails if a commit touching them lacks a `Trusted-surface: <what and why>` line.
-      # Check infrastructure (scripts/, .github/, lakefile.toml) is not on the trusted surface; agents maintain it
-      # (TRUST.md). These are steps of this job, not a job of their own: every job is billed at least one minute (#50).
-      # They run even when check.sh failed.
+      # approval (scripts/review-boundary.sh): it prints the trusted files a change touches, fails if a commit touching
+      # them lacks a `Trusted-surface: <what and why>` line, and writes the per-commit record (each commit's trusted
+      # paths and Trusted-surface line) to this run's summary, so every push and pull request carries it.
+      # Check infrastructure (scripts/, .github/, lakefile.toml) is not on the trusted surface (TRUST.md). These are
+      # steps of this job, not a job of their own: every job is billed at least one minute. They run even when
+      # check.sh failed.
       - name: Review-boundary self-test (verdicts on throwaway repositories)
         if: ${{ !cancelled() }}
         run: scripts/review-boundary.sh --self-test

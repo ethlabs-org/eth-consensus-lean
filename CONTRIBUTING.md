@@ -55,7 +55,7 @@ Each statement comes with:
    by exhaustive `decide`. Random testing (Plausible) is not a model check.
 
 Statements land as labelled trusted-surface commits (a `Trusted-surface:` line; `AGENTS.md`, "Trusted surface"),
-recorded on #129, before proofs start. A commit that changes a statement and its proof together says so.
+before proofs start. A commit that changes a statement and its proof together says so.
 
 ## Proofs (plan §4, §5)
 

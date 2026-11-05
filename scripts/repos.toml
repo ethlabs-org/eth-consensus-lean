@@ -1,8 +1,4 @@
-# Where the project lives on GitHub (owner/name): the one place for both slugs. Read by scripts/push-main.sh,
-# scripts/orb-ci.sh and scripts/obligations-status.py (scripts/orb-ci-liveness.py, installed root-owned on the box,
-# keeps a copy of both values: update it with this file).
-#   code: the code repository: main, the landing lock `push-main-lock`, pull requests; the `origin` of every clone
-#         (push-main.sh and orb-ci.sh refuse a GitHub origin that is another repository).
-#   issues: the coordination repository: the issues (#2, #17, #63, #129, #136) and the `ci-inventory` branch.
+# Where the project lives on GitHub (owner/name). Read by scripts/push-main.sh, which refuses a GitHub `origin`
+# that is another repository.
+#   code: the code repository: main, the landing lock `push-main-lock`, pull requests; the `origin` of every clone.
 code = "ethlabs-org/eth-consensus-lean"
-issues = "ethlabs-org/consensus-lean-coordination"

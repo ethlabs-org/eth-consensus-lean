@@ -82,8 +82,8 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   (united with the list at the base). Such a change is **recorded, not gated** (owner, 2026-11-01: the
   `spec-approved` tag is retired while the work is active): it lands through `scripts/push-main.sh` like any
   other change; every commit that touches a trusted path carries a line `Trusted-surface: <what changes and
-  why>` in its message (`scripts/review-boundary.sh` fails without it), and push-main comments the landing on
-  [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129). For a statement change, do a fidelity
+  why>` in its message (`scripts/review-boundary.sh` fails without it, and records each commit's trusted paths in the
+  summary of its `check` run). For a statement change, do a fidelity
   read-back (a subagent, in your own session) before landing and say so in the commit; the spec snapshot
   (step 4) still has to be regenerated and committed. Nothing waits for anyone.
 - **Check infrastructure** (`scripts/**`, `.github/**`, the lakefile) is not on the trusted surface; its author is

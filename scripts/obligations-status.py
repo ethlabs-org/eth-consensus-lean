@@ -14,15 +14,13 @@ import re
 import subprocess
 import sys
 import tempfile
-import tomllib
 
 # Whole-statement ratings supplied in this thread by the lead and healing paper owner,
 # 2026-11-01. Later reviewed JSON ratings override these initial classifications.
 LEAD = 'https://ampcode.com/threads/T-01a19205-229e-72c0-9a83-5119d88a0e27'
 PAPER = 'https://ampcode.com/threads/T-01a18b7f-055c-74c7-ae28-91217f676dcd'
-# The coordination repository's issue #136 (`issues` in scripts/repos.toml).
-ROUTE_A = ('https://github.com/' +
-           tomllib.loads(Path(__file__).with_name('repos.toml').read_text())['issues'] + '/issues/136')
+# The status source of the route-A ratings (scripts/repos.toml no longer names the issues repository).
+ROUTE_A = 'https://github.com/ethlabs-org/consensus-lean-coordination/issues/136'
 # Evidence of a proved row outside REFRESH: the compiled audit fact, not prose.
 PROVED_EVIDENCE = 'Proved; no direct owner in compiled audit at '
 # Rows whose RATINGS entry replaces the previous row's rating and evidence on every run.

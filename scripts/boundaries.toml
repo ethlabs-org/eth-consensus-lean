@@ -852,9 +852,9 @@ canary_statement_edit = ["theorem slotTime_add (s j : Slot) :",
 # name literal; building it (`lake test`) checks that each is a declaration.
 doc_name_files = ["docs/roadmap.md", "docs/goldilocks-mapping.md"]
 name_index_module = "ConsensusLeanTest.Index"
-# The trusted surface: scripts/review-boundary.sh (ci.yml, push-main.sh, orb-ci.sh) requires a `Trusted-surface:`
-# line in every commit that touches these paths (it reads this list at HEAD and at the base, and checks their union,
-# as literal paths), and push-main.sh records each such landing on issue #129. Not an approval gate (2026-11-01).
+# The trusted surface: scripts/review-boundary.sh (ci.yml, push-main.sh) requires a `Trusted-surface:` line in every
+# commit that touches these paths (it reads this list at HEAD and at the base, and checks their union, as literal
+# paths), and records each such commit's paths in the summary of the `check` run. Not an approval gate.
 # check-boundaries.py requires plain relative paths that cover the file of every module of a trusted layer:
 # each prefix of those layers as a file and as a directory. docs/notes/spec-review.md records them.
 trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean/Core.lean", "ConsensusLean/Core",

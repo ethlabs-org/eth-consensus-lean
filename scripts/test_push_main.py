@@ -15,7 +15,7 @@ def run(*args, cwd):
     return subprocess.check_output(args, cwd=cwd, text=True, stderr=subprocess.DEVNULL).strip()
 
 
-REPOS = 'code = "fixture/code"\nissues = "fixture/coordination"\n'
+REPOS = 'code = "fixture/code"\n'
 # The email allowlist check (its verdicts: test_check_commit_emails.py); EMAILS_FAIL=1 makes it reject.
 EMAILS = "import os, sys\nprint('emails fixture')\nsys.exit(int(os.environ.get('EMAILS_FAIL', '0')))\n"
 GH = """#!/bin/sh
@@ -63,17 +63,18 @@ def land(repo, env):
     return proc.returncode, proc.stdout
 
 
-def check_trusted_record_goes_to_the_issues_repo():
+def check_trusted_landing_posts_nothing():
+    # A landing that touches the trusted surface lands like any other and calls no GitHub API: its record is the
+    # commits' Trusted-surface lines and main's `check` run (scripts/review-boundary.sh).
     with tempfile.TemporaryDirectory(prefix="push-main-test-") as tmp:
         root = Path(tmp)
         remote, repo, env = landing_repo(root, trusted=True)
         rc, out = land(repo, env)
         assert rc == 0, out
         assert run("git", "rev-parse", "main", cwd=remote) == run("git", "rev-parse", "HEAD", cwd=repo)
-        calls = [c for c in (root / "gh.log").read_text().splitlines() if c.split(" ")[0] in ("issue", "pr", "api")]
-        assert calls and all(" -R fixture/coordination " in f" {c} " for c in calls), calls
-        assert any(c.startswith("issue comment 129 ") for c in calls), calls
-    print("PASS: the trusted-surface record goes to issue #129 of the coordination repository")
+        log = root / "gh.log"
+        assert not log.exists() or not log.read_text().strip(), log.read_text()
+    print("PASS: a trusted-surface landing makes no gh call")
 
 
 def check_remote_rule_rejection_fails_hard():
@@ -169,7 +170,7 @@ def check_renaming_the_code_repository_lands_under_the_old_name_then_freezes():
                 run("git", "config", key, value, cwd=clone)
             run("git", "remote", "set-url", "origin", url, cwd=clone)
         run("git", "commit", "--allow-empty", "-q", "-m", "stale change", cwd=stale)
-        (repo / "scripts/repos.toml").write_text('code = "fixture/renamed"\nissues = "fixture/coordination"\n')
+        (repo / "scripts/repos.toml").write_text('code = "fixture/renamed"\n')
         run("git", "commit", "-q", "-am", "rename the code repository", cwd=repo)
         rc, out = land(repo, env)
         assert rc == 0, out
@@ -291,7 +292,7 @@ if __name__ == "__main__":
         check(None, mutation)
     for mutation in ("dirty", "head"):
         check(None, mutation, before_rebase=True)
-    check_trusted_record_goes_to_the_issues_repo()
+    check_trusted_landing_posts_nothing()
     check_refuses_an_origin_other_than_the_code_repo()
     check_refuses_a_commit_email_off_the_allowlist()
     check_remote_rule_rejection_fails_hard()

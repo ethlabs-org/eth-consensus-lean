@@ -9,22 +9,20 @@
 #   - `scripts/check-commit-emails.py origin/main HEAD` passes (every author, committer and co-author address of the
 #     commits to push is on the public allowlist scripts/commit-emails.toml);
 # then it records HEAD as verified (for the pre-push hook scripts/hooks/pre-push), pushes HEAD to main as a
-# fast-forward of the commit it checked against, and prints the check's result line. A landing that touches the
-# trusted surface is then recorded on issue PUSH_MAIN_TRUSTED_ISSUE (default 129) of the coordination repository
-# (`issues` in scripts/repos.toml) with `gh` (best effort: a failure only warns; the commit lines are the durable
-# record). It refuses a GitHub `origin` other than the code repository (`code` in scripts/repos.toml), before and
-# again right after fetching main. Both slugs come from scripts/repos.toml on the target, origin/main, not from HEAD: a
-# change that renames the code repository is checked against the name it lands under, and once it has landed, a
-# clone still pointing at the old name is refused. A target without the file (before it existed) has no guard, and
-# its records go to origin's repository.
+# fast-forward of the commit it checked against, and prints the check's result line. The record of a trusted-surface
+# change is its commits' Trusted-surface lines and the `check` run of main's push (scripts/review-boundary.sh).
+# It refuses a GitHub `origin` other than the code repository (`code` in scripts/repos.toml), before and again right
+# after fetching main. The slug comes from scripts/repos.toml on the target, origin/main, not from HEAD: a change that
+# renames the code repository is checked against the name it lands under, and once it has landed, a clone still
+# pointing at the old name is refused. A target without the file (before it existed) has no guard.
 #
-# Contention (#50). The first round runs without a lock. If main moved meanwhile, the next rounds hold the landing
+# Contention. The first round runs without a lock. If main moved meanwhile, the next rounds hold the landing
 # lock, the branch `push-main-lock` on the remote: one lander at a time rebases, checks and pushes, so its round cannot
 # be overtaken by another push-main. Others wait for the lock (polling every 30 s) instead of checking in vain, and do
 # not push while someone else holds it. A lock older than PUSH_MAIN_LOCK_TTL seconds (default 1800) is taken over.
 # Correctness never depends on the lock: the push is a fast-forward of the checked base, so a push that would land an
 # unchecked combination is rejected by git. Rounds: PUSH_MAIN_TRIES (default 6).
-# Usage: scripts/push-main.sh   (in a job on the shared box; RUN_DIR is set if missing).
+# Usage: scripts/push-main.sh   (RUN_DIR is set if missing).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 started=$SECONDS
@@ -33,15 +31,15 @@ die() { echo "push-main: REFUSED: $*" >&2; release; exit 1; }
 remote=origin lock_ref=refs/heads/push-main-lock ttl="${PUSH_MAIN_LOCK_TTL:-1800}" held=""
 repos() { git show "$remote/main:scripts/repos.toml" |
   python3 -I -c 'import sys, tomllib; print(tomllib.loads(sys.stdin.read())[sys.argv[1]])' "$1"; }
-guard() {  # sets code and issues from the target's scripts/repos.toml; refuses an origin that is another repository
+guard() {  # sets code from the target's scripts/repos.toml; refuses an origin that is another repository
   local url slug=""
   url="$(git config "remote.$remote.url")"  # as configured: insteadOf rewrites do not change which repository it is
   [[ ! "$url" =~ ^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)(.*)$ ]] ||
     slug="$(sed -E 's#\.git$##; s#/$##' <<<"${BASH_REMATCH[2]}")"
   if git cat-file -e "$remote/main:scripts/repos.toml" 2>/dev/null; then
-    code="$(repos code)" && issues="$(repos issues)" || die "cannot read scripts/repos.toml on $remote/main"
+    code="$(repos code)" || die "cannot read scripts/repos.toml on $remote/main"
   else
-    code="" issues="$slug"
+    code=""
   fi
   [[ -z "$slug" || -z "$code" || "$slug" == "$code" ]] ||
     die "$remote is $url, but the code repository is $code (scripts/repos.toml on $remote/main): use a clone of https://github.com/$code.git"
@@ -78,22 +76,6 @@ release() {
   [[ -n "$held" ]] || return 0
   git push -q --force-with-lease="$lock_ref:$held" "$remote" ":$lock_ref" 2>/dev/null || true
   held=""
-}
-record_trusted() {  # record_trusted <base> <head>: comment on the log issue if <base>..<head> touches the trusted surface
-  local p=() body
-  mapfile -t p < <(for r in "$1" "$2"; do git show "$r:scripts/boundaries.toml" 2>/dev/null | python3 -I -c 'import sys, tomllib
-print("\n".join(tomllib.loads(sys.stdin.read()).get("checks", {}).get("trusted_paths", [])))' 2>/dev/null; done | awk NF | sort -u)
-  ((${#p[@]})) && ! GIT_LITERAL_PATHSPECS=1 git diff --quiet "$1" "$2" -- "${p[@]}" || return 0
-  body="**Trusted-surface change** landed on main: \`${1:0:8}..${2:0:8}\`
-
-$(GIT_LITERAL_PATHSPECS=1 git log --no-merges --full-history --format='- %h %s%n%(trailers:key=Trusted-surface,separator=%x20)' "$1..$2" -- "${p[@]}" | sed 's/^Trusted-surface:/  Trusted-surface:/')
-
-\`\`\`
-$(GIT_LITERAL_PATHSPECS=1 git diff --stat "$1" "$2" -- "${p[@]}")
-\`\`\`"
-  gh issue comment "${PUSH_MAIN_TRUSTED_ISSUE:-129}" -R "$issues" \
-    --body "$body" >/dev/null 2>&1 && echo "push-main: recorded the trusted-surface change on issue #${PUSH_MAIN_TRUSTED_ISSUE:-129}" ||
-    echo "push-main: WARNING: could not record the trusted-surface change on issue #${PUSH_MAIN_TRUSTED_ISSUE:-129}; post it by hand"
 }
 # Cancellation must stop the landing, not merely release its lock and resume.
 # EXIT performs cleanup for both normal completion and signal-triggered exits.
@@ -142,7 +124,6 @@ while :; do
         release
         timing delivery "$phase"
         echo "push-main: pushed ${head:0:8} to main after: $result"
-        record_trusted "$base" "$head"
         exit 0
       fi
       printf '%s\n' "$out" >&2
