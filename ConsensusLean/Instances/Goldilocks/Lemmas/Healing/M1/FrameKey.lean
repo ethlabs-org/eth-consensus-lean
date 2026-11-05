@@ -8,7 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 
 public section
 
-/-! # M1′ B1: the frame key of an honest store
+/-! # The frame key of an honest store
 
 The frame key of a store is
 `κ = 3·h_max + c`, with `c = 2` in a contest, `c = 1` at `h_max = h_j + 1` without a contest,
@@ -24,7 +24,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload)
 
 open Classical in
-/-- The FS′ frame key `3·h_max + c`. -/
+/-- The frame key `3·h_max + c`; equal keys give the fields of a `FrameWindow`. -/
 noncomputable def frameKey {P : Params} {ACP : Type} (st : Store P ACP) : Nat :=
   3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0)
 

@@ -173,7 +173,7 @@ theorem clean_fgAttCut (hp : ResetPremises tr H proposer dg g ΔF a) (hgT : gbar
   exact no_honest_row_conflicting hp ho hvH hE₁
     ((high_F_firstCut hp hgT hF hy hs hj).trans hh) hnc hvH hsd hT
 
-/-- **(K2) for a high origin**: R5 (`vote_height_lead`) at every honest vote of a later slot. -/
+/-- **(K2) for a high origin**: `vote_height_lead` at every honest vote of a later slot. -/
 theorem clean_heightLead (hp : ResetPremises tr H proposer dg g ΔF a)
     {x : Fin sp.n} {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (m : Nat) :

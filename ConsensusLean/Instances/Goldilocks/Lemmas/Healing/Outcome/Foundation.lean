@@ -700,7 +700,8 @@ theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
       ho' ((hp.run.time_mono hci'.le).trans hib)
 
 /-- Finite recent-result induction. Current vote domains and first-successor stored-lock
-comparisons are the explicit M4/M5 inputs, rather than whole-history invariants. -/
+comparisons are the explicit inputs `hdomain` and `hstored`, rather than whole-history
+invariants. -/
 theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}

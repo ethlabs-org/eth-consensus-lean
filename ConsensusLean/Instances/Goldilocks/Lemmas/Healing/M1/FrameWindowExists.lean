@@ -5,7 +5,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # M1′ B2/B3: at most 5 global frame changes, and the pigeonhole to a `FrameWindow`
+/-! # At most 5 global frame changes, and the pigeonhole to a `FrameWindow`
 
 O2 and the window. Two layers:
 

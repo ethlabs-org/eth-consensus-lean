@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 
 public section
 
-/-! # Goldilocks Obligations: definitions of the M1′ composition
+/-! # Goldilocks Obligations: definitions of the frame-window composition
 
 The drain interface `DrainOutputs` and the sub-interval restriction `frameWindow_sub`, inputs of
 the drain reset `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). This module imports only the
@@ -23,8 +23,9 @@ FrameWindow `[t_{s₀}, t_N + 2Δ]` with `ḡ + 4Δ ≤ t_{s₀}`, `s₀ + L_dra
 service horizon), no honest signature above `H_z` up to `t_N + 2Δ`, and the honest-proposer gap
 `G` on `[s₀, N]`: an actual warm honest
 proposal `P` of a slot `u ∈ [s₀ + 2k, s₀ + L_drain]` by its designated proposer, with
-`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset_rounds`). The O1-L lock clause is derived from the warm
-proposal and frame inside the rise, not an additional drain output. The uniform frame/warm
+`σ[P].h ≥ H_z − 1` (`hlow` of `rise_reset_rounds`). The lock clause of
+`lock_free_or_entry_of_frame` is derived from the warm proposal and frame inside the rise
+(`FrameWindow.report_kind_of_warm`), not an additional drain output. The uniform frame/warm
 producer remains an input; this interface strengthening does not construct it. -/
 structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
     (H : Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where

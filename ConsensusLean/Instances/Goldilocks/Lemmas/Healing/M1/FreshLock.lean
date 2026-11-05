@@ -382,7 +382,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
-/-- FS′ carries the actual honest proposal from a joined slot vote to every later
+/-- The `FrameWindow` carries the actual honest proposal from a joined slot vote to every later
 call through the closed update endpoint. -/
 theorem FrameWindow.proposal_viable_after_votes
     {u floor : Nat} {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}

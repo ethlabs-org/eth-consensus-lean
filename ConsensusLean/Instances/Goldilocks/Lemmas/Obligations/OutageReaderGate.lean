@@ -47,7 +47,8 @@ structure OutageReaderGate (Q : OutageQuery S A V) (w : V) (t : Time) where
       (Node.frame (Q.trace.state (Q.run.2.ownKey w)
         (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t).2 = ((slot + 1 : Nat) : Int)
 
-/-- The query's catch-up duration covers the node catch-up `18Δ` (G1, local copy). -/
+/-- The query's catch-up duration covers the node catch-up `18Δ`, from
+`contract_catchUp_ge_sleepy`. -/
 private theorem duration_ge (Q : OutageQuery S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
   have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by

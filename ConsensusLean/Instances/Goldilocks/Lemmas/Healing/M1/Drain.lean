@@ -10,7 +10,7 @@ public section
 
 /-! # Finite drain reports
 
-The warm FS′ window supplies unanimity and vote joinedness; the shorter
+The warm `FrameWindow` supplies unanimity and vote joinedness; the shorter
 closed P5b window supplies the actual adjacent read. Reports may precede
 that read, so following is proved for the actual returned report.
 This is not a reset-time or joint coefficient-envelope theorem.
@@ -132,7 +132,7 @@ theorem toFG_time_ge_of_ancestor_slot
   have hu : u ≤ sp.slot (tr.time i) := by omega
   exact (SA.ts_le_iff_le_slot sp (hac.localRun.time_nonneg i) _).2 (by exact_mod_cast hu)
 
-/-- Step F uses the actual report's adjacent FG attest, not a hypothetical
+/-- The rise reset uses the actual report's adjacent FG attest, not a hypothetical
 signature: suppression at the client still supplies the same reset witness. -/
 theorem reset_of_high_report {g : Time}
     (hrun : GoldilocksRun proposer dg H tr) (hq : Hᶜ.ncard < sp.toParams.fg.q)
@@ -188,8 +188,9 @@ theorem FrameWindow.reset_of_high_proposal
   obtain ⟨a, ha, hat⟩ := reset_of_high_report hrun hq hz hR hh'
   exact ⟨a, ha, hat.trans ht⟩
 
-/-- A floor-height source above the fork-choice root satisfies O1-L's
-kind alternative, including Contest and the equal-height kind-J case. -/
+/-- A floor-height source above the fork-choice root satisfies the kind alternative of
+`lock_free_or_entry_of_frame` (`M1/PreAdvanceFacts`), including Contest and the equal-height
+kind-J case. -/
 theorem report_kind_of_floor
     (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {R : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -213,8 +214,8 @@ theorem report_kind_of_floor
       · exact Or.inr ⟨by omega, hroot⟩
     · exact Or.inl (by omega)
 
-/-- An actual equal-height report above a warm proposal satisfies O1-L by the
-frame floor, with no additional lock premise. -/
+/-- An actual equal-height report above a warm proposal satisfies the kind premise of
+`lock_free_or_entry_of_frame` by the frame floor, with no additional lock premise. -/
 theorem FrameWindow.report_kind_of_warm
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}

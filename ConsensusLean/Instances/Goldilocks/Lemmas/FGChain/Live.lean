@@ -125,8 +125,8 @@ theorem early_cross_justifies {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     exact absurd (gp.timeout_step_slot h hh hne) (Nat.not_le.2 hs)
   exact ⟨hj, fun hb => gp.previousHeightJustified_justify_finalizes h hb hj⟩
 
-/-- **An entry whose previous height is justified justifies with a target and a finality quorum
-(Lemma 3′, the case whose previous height is justified).** On a chain, if the predecessor pair
+/-- **An entry whose previous height is justified justifies with a target and a finality
+quorum.** On a chain, if the predecessor pair
 `(h_j, J)` is pending, a block whose counted state has a target quorum and a finality quorum at
 `h_j` finalizes `h_j` and justifies the entry: the finality step picks `h_j` (no pending pair is
 higher), so the gate holds, and the justification arm runs before the timeout arm. -/
@@ -157,8 +157,8 @@ theorem justify_of_target_previousHeightJustified {c : List (FGBlock gp.n)} {σ 
     · simp [ChainState.advance, hr1]
     all_goals exact absurd ⟨hq, Or.inr hr1⟩ hj1
 
-/-- **A finalized predecessor justifies with a target quorum (Lemma 3′, W2 finalized
-case).** On a chain, if `h_F = h_j`, no pair is pending (pending heights are in `(h_F, h_j]`),
+/-- **A finalized predecessor justifies with a target quorum (the finalized case of
+W2).** On a chain, if `h_F = h_j`, no pair is pending (pending heights are in `(h_F, h_j]`),
 so the finality step keeps `h_F`, and the loose-BJ gate holds: a block whose counted state has a
 target quorum justifies the entry, with no finality quorum, and keeps `h_F = h_j`. -/
 theorem justify_of_target_finalized {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
@@ -184,7 +184,7 @@ theorem justify_of_target_finalized {c : List (FGBlock gp.n)} {σ σ' : ChainSta
   · exact absurd ⟨hq, Or.inr hfe⟩ hn
   · exact absurd ⟨hq, Or.inr hfe⟩ hn
 
-/-- **Lemma 3′ at one chain step, by W2.** On a chain, a block whose counted state has a
+/-- **Justification at one chain step, by W2.** On a chain, a block whose counted state has a
 target quorum, and a finality quorum at `h_j` when the height has its previous height justified and
 `(h_j, J)` is pending, justifies the entry, and at a height whose previous height is justified it
 has `h_F = h_j`. -/

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpT
 
 public section
 
-/-! # Goldilocks Healing: Lemma 3′ and the crossing from signed attestations through a horizon
+/-! # Goldilocks Healing: justification and crossing from signed attestations through a horizon
 
 `justify_of_signed_rows'` and `cross_of_signed_rows`
 take the whole-run `HSShared`; here the delivery premise comes from `HSSharedUpTo … b` by
@@ -19,8 +19,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **Lemma 3′ from signed attestations through the horizon `b`** (`justify_of_signed_rows'` from
-`HSSharedUpTo … b`, for a proposal cut with `t_{kX} ≤ b`). -/
+/-- **The justification from signed attestations through the horizon `b`**
+(`justify_of_signed_rows'` from `HSSharedUpTo … b`, for a proposal cut with `t_{kX} ≤ b`). -/
 theorem justify_of_signed_rows'_upTo (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}

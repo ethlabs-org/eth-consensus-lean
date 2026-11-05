@@ -9,7 +9,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Regular slow BASE on a finite FS′ window
+/-! # The regular slow next-vote base on a finite `FrameWindow`
 
 Saved results compare actual stored origins. Unlike the archived capped
 `frontier_first_transfer_slow`, the current proof uses emission read points,
@@ -23,7 +23,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
-/-- The viable-supporter branch of slow BASE. The witness is above the actual
+/-- The viable-supporter branch of the slow next-vote base. The witness is above the actual
 result C. Saved-result compatibility and causal induction supply lock passage;
 no compatibility or viability of receiving locks is assumed. -/
 theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
@@ -91,9 +91,9 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     (SA.writer_merged_window_before hS.run (SA.serviceWindowBefore_of_sync hS.sync)
       hx hm hu (hu.2.2.1.trans_le hmb) hy hcast hs)
 
-/-- Slow BASE from the actual selection and result, including all three OW
-supporter branches. The warm-window margin supplies saved-slot post-GST service;
-no separate slow margin is assumed. -/
+/-- The slow next-vote base from the actual selection and result, including all three supporter
+branches of `FrameWindow.vote_head_classification`. The warm-window margin supplies saved-slot
+post-GST service; no separate slow margin is assumed. -/
 theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
     {kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts s + 6 * sp.Δ)
@@ -160,7 +160,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
       (by linarith [sp.toParams.hΔ]) (by omega) (by omega) (by linarith [sp.toParams.hΔ])
       hz ⟨hc, he⟩ hes hA hop hQD (s + 1) le_rfl le_rfl).1
 
-/-- U-W from a regular next-vote base and its early supporter witness. Proposals
+/-- Unanimity propagation from a regular next-vote base and its early supporter witness. Proposals
 start at s+2: no circular proposal base is assumed at s+1. The archived
 `frontier_heads_transfer` induction used lease frames; here every frozen-domain
 stamp is derived at the actual emission read point. -/
@@ -191,9 +191,9 @@ theorem regular_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H
   exact later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
     hframe hw hat hcw hQw hh hJ hXQ hbase
 
-/-- MI-reg for an actual regular origin, with all supporter cases discharged.
+/-- Later-label propagation for an actual regular origin, with all supporter cases discharged.
 Votes start at s+1 and proposals at s+2. The early viable supporter, not a
-write-tick witness with an unproved strict timestamp, supplies every U-W step. -/
+write-tick witness with an unproved strict timestamp, supplies every propagation step. -/
 theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
     {kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
@@ -353,10 +353,10 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
     · intro _ y hy i ell' hc' hcall hti d pay hd
       exact hDQ.trans ((hheads r hrlo hrN).2 y hy i ell' hc' hcall hti d pay hd)
 
-/-- Step 4 passage with the regular residue eliminated. Same-write provenance
+/-- Lock passage with the regular residue eliminated. Same-write provenance
 supplies the selected raw block, its candidate and the actual regular/optimistic
-origin together. Only current-label optimistic writes remain for Step 6; this
-does not assert head=P (Step 5), causal closure (Step 6), DESC or drain. -/
+origin together. Only current-label optimistic writes remain for the causal closure; this
+does not assert head=P (`FrameWindow.honest_vote_heads_eq`), causal closure or drain. -/
 theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
     {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
@@ -488,7 +488,8 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
 
 /-- All actual read locks are below P under the strict earlier-cast IH. The
 regular passage is unconditional; only its exact current-label alternative
-uses causal minimality. This is the input to Step 5, not head equality itself. -/
+uses causal minimality. This is the input to head equality (`FrameWindow.honest_vote_heads_eq`),
+not head equality itself. -/
 theorem FrameWindow.read_locks_below_of_earlier_heads {s₀ p floor : Nat}
     {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts p + sp.Δ)
@@ -522,7 +523,7 @@ theorem FrameWindow.read_locks_below_of_earlier_heads {s₀ p floor : Nat}
     (hPhi.2 hdom.1.1) (fun x hx j hj e' he' hs' => hIH x hx j hj e' he' (hs'.trans hes))
     (hPhi.2 hB) hBr
 
-/-- Finite frame transport for Step 5. The receiver's finalized-ancestor guard
+/-- Finite frame transport for head equality. The receiver's finalized-ancestor guard
 is explicit; old acceptances use Catch and newer ones use their relay deadline.
 No settled phase, shared finalized root or frame equality is required. -/
 theorem frame_relay_before
@@ -562,7 +563,7 @@ theorem frame_relay_before
       y hy j elly hcy hg hjb hF
     exact SA.mem_tree_of_acceptAt sp hr hy hacc haj hcy hF
 
-/-- The finite Step 2 view comparison at an actual cast. Pre-freeze blocks
+/-- The finite view comparison at an actual cast. Pre-freeze blocks
 relay to the proposer; payload support heads are held at an early ready cast
 or relay by the deadline. The statement has no settled/phase assumption. -/
 theorem proposal_views_agree_before
@@ -640,7 +641,7 @@ theorem proposal_views_agree_before
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB
         (by linarith) (by rw [hti]; exact not_lt.1 hearly) hjb hFB
 
-/-- At two FS′ cuts a viable head transfers whenever it is held in the
+/-- At two cuts of the `FrameWindow` a viable head transfers whenever it is held in the
 receiver's frame. This uses the common floor and kind-J root, not a settled
 phase or equality of the frames. -/
 theorem FrameWindow.viableHead_transfer {lo hi : Time} {floor : Nat}
@@ -846,7 +847,7 @@ theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr)
 
 /-- Above both anchors, the actual proposal winner remains the voter's winner.
 Finite view equality and reflected competitors replace the settled-phase
-supplier. The path and frozen proposal are the Step 5 consumer geometry. -/
+supplier. The path and frozen proposal are the geometry that head equality consumes. -/
 theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ)
@@ -1056,7 +1057,7 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
     ⟨B, hBp, hBQ, help⟩ _)
 
 /-- A voter that reaches the actual proposal-parent path has head P. All
-suffix and stop obligations are discharged from finite FS′ data; reaching
+suffix and stop obligations are discharged from finite `FrameWindow` data; reaching
 the path is the remaining anchor-prefix obligation, not a head-equality premise. -/
 theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -1198,7 +1199,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
     · exact (Set.mem_singleton_iff.1 h) ▸ hfP
 
 /-- The voter reaches another honest finalized tip when its anchor is below
-that tip. FS′ supplies the floor for every viable head; the witness is in
+that tip. The `FrameWindow` supplies the floor for every viable head; the witness is in
 the actual frozen domain. This is the unequal-root prefix, without scores. -/
 theorem FrameWindow.finalized_anc_head_at_cast {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
 
 public section
 
-/-! # Goldilocks Healing: Lemma 3′ from signed attestations
+/-! # Goldilocks Healing: the justification from signed attestations
 
 `justify_of_rows'` (`ProposalJustifies`) with its two run-level premises discharged:
 

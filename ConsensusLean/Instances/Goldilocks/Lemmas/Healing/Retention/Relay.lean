@@ -278,7 +278,8 @@ theorem relay_mem_voterBlockTree_window_after
   exact ⟨hW, Or.inl hstamp⟩
 
 /-- Old acceptances use catch-up; post-start acceptances use window relay.
-The strict stamp is at the actual emission read point, suitable for U-W iteration. -/
+The strict stamp is at the actual emission read point, suitable for iterating the unanimity
+propagation (`unanimous_next_votes_of_witness`). -/
 theorem relay_readPoint_stamp_window_before
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)

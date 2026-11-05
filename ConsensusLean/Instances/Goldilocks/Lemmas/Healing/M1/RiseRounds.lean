@@ -20,7 +20,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-/-- **`r` rounds and Step F.** With the round count `r ≤ 2`:
+/-- **`r` rounds and the rise reset.** With the round count `r ≤ 2`:
 from the actual warm proposal `P` of slot `u` with `HZ + 1 ≤ σ[P].h + r` and
 `u + r·ρ + 1 ≤ N` (`ρ = δ_t + G − 1`), a reset by `t_{u+r·ρ+1} + 2Δ`. -/
 theorem FrameWindow.rise_reset_rounds
@@ -68,7 +68,7 @@ theorem FrameWindow.rise_reset_rounds
     fun v hv k att hs hkT => by
       by_contra h
       exact hadv ⟨v, hv, k, att, hs, hkT, by omega⟩
-  -- a high warm proposal of slot `w` gives the reset (Step F)
+  -- a high warm proposal of slot `w` gives the reset (`FrameWindow.reset_of_high_proposal`)
   have hF : ∀ w, s₀ + 2 * sp.k ≤ w → w + 1 ≤ u + r * ρ + 1 → ∀ Q kQ,
       tr.ProposesAt (proposer w) kQ Q → Q.slot = w → proposer w ∈ H →
       HZ tr H g + 1 ≤ ((tr.state (proposer w) (kQ + 1)).fg.σ Q.root).h →

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
 
 public section
 
-/-! # M1′ A2 and A3: honest locks before the advance (LH, F3-lock, O1-L)
+/-! # Honest locks before the advance (LH, F3-lock, O1-L)
 
 All lemmas hold at every honest cut; only the
 F3-lock lemma uses the NoAdvance premise.
@@ -255,7 +255,7 @@ theorem client_signs_of_frame (hrun : GoldilocksRun proposer dg H tr)
   client_progress_of_lock hrun hy hc hE hCh
     (lock_free_or_entry_of_frame hrun hnc hf hy hE hCh hkind)
 
-/-- **The attestation at `H_z` before the advance (ROW-sign, h = H_z).** -/
+/-- **The attestation at `H_z` before the advance.** -/
 theorem client_signs_HZ_of_noAdvance (hrun : GoldilocksRun proposer dg H tr) {g T : Time}
     (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hkT : tr.time k < T)

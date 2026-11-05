@@ -25,11 +25,12 @@ at a slot `u` after the drain, and an honest proposal `P₀` at a slot `s₀ ≥
 `h₀ ≥ HZ + 2` at the first anchor. Every proposer of a slot in `(u, s₀)` can be faulty.
 
 Proof: H0 at `Q` (`reset_seed_before_slot`, `operational_unanimous`,
-`old_origin_below_unanimous`); `Q ⪯ Pr = parent(P₀)` (C4). If `σ[Pr].h ≥ HZ + 2`, by
-monotonicity. Otherwise `σ[Q].h = σ[Pr].h = HZ + 1`: a higher report of the seed contradicts this
-(`crossed_parents_above_upTo`); so every honest node has a same-height report, hence a target
-attestation for the entry of `Q` signed by `ts(u) + 6Δ` (`sign_of_report`, `row_target_of_sign`; no
-`fin`), and `P₀` crosses by timeout (`cross_of_signed_rows_upTo`, age `ThSlot ≤ u`). -/
+`old_origin_below_unanimous`); `Q ⪯ Pr = parent(P₀)` (`honest_proposal_below_later_upTo`). If
+`σ[Pr].h ≥ HZ + 2`, by monotonicity. Otherwise `σ[Q].h = σ[Pr].h = HZ + 1`: a higher report of
+the seed contradicts this (`crossed_parents_above_upTo`); so every honest node has a same-height
+report, hence a target attestation for the entry of `Q` signed by `ts(u) + 6Δ` (`sign_of_report`,
+`row_target_of_sign`; no `fin`), and `P₀` crosses by timeout (`cross_of_signed_rows_upTo`, age
+`ThSlot ≤ u`). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -109,7 +110,7 @@ theorem seed_height {g ΔR a b gS ΔF : Time}
     hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
   have hOQ := UpTo.old_origin_below_unanimous hp hc hQH
     (fun y hy j e hv hjb hs' => hun y hy j e hv hs' hjb) hgu hR1 (by linarith) ho hrt
-  -- Step 2: Q ⪯ P₀ (C4), hence Q ⪯ Pr
+  -- Step 2: Q ⪯ P₀, hence Q ⪯ Pr
   have hQP := honest_proposal_below_later_upTo hp hc hQ hR hP₀ hus2 hb
   have hne : Q ≠ P₀ := by
     intro h

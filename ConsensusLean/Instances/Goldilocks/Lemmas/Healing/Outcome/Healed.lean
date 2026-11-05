@@ -18,7 +18,8 @@ honest node, whose state has height `h` and entry `E h` itself):
 `HealedRecords` collects them from a height `h₀` on, with RH (`H_z + 1 ≤ h₀`).
 `healed_records_of_reset_canonical_upTo` proves it from `ResetPremisesUpTo`, RH, and the high
 entries at the heights `≥ h₀`. RH and the high entries are explicit: in the paper they come from CH
-(iii) and from the lemma that gives C3 and C4, conditional on CH and FM. -/
+(iii) and from the lemma that gives the AC components C3 and C4 (the fields `Healed.c3` and
+`Healed.c4` of `Obligations.Healed`), conditional on CH and FM. -/
 
 namespace Consensus.Goldilocks.Healing
 

@@ -14,7 +14,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Recovery: two-window finalization (C1.3, C4)
+/-! # Goldilocks Recovery: two-window finalization (C1.3)
 
 `two_window_finalization`: a high post-drain ready proposal `U` of the stretch that is an actual
 run entry (`σ[U].h ≥ H_z + 2`) is finalized by an honest acceptance before `t_{v+M}`.
@@ -85,7 +85,7 @@ private theorem justifier_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : S
   · have := (hmid V hV hTV hVX hVX').1
     omega
 
-/-- **C4: two-window finalization.** -/
+/-- **Two-window finalization.** -/
 theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {kU iU : Nat}
     {U : SA.Blk sp.n (List (FG.Att sp.n))}
     (houtcome : Compose.OutcomeService)

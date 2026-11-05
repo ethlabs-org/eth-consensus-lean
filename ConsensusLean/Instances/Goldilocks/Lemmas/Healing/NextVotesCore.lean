@@ -160,7 +160,8 @@ theorem relay_source_at_proposal
       linarith) (Or.inl (by linarith))) ?_⟩
   exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top _)
 
-/-- U-W propagation from a next-vote base; boundary proposals need a separate base. -/
+/-- Unanimity propagation (as `unanimous_next_votes_of_witness`) from a next-vote base; boundary
+proposals need a separate base. -/
 theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -285,7 +286,8 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
       (by linarith) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd
       (mem_tree_of_frame hrun hy hc hQt)
 
-/-- OW's viable, common-J and optimistic-supporter branches, independent of lock kind. -/
+/-- The viable, common-J and optimistic-supporter branches of
+`FrameWindow.vote_head_classification`, independent of lock kind. -/
 theorem FrameWindow.next_votes_of_supporter {s₀ s floor : Nat}
     {kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts s + 6 * sp.Δ)

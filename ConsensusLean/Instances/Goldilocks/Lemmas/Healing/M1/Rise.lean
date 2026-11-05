@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # M1′ E1–E3: the rise (ROUND, two rounds, the high source)
+/-! # The rise (ROUND, two rounds, the high source)
 
 * `rows_delivered_service` (ROW-deliver): an attestation signed by `v ≥ ḡ` is processed by the
   honest proposer before its proposal cut when `v + Δ_F ≤ t_x ≤ b`. Only `ResetService.signedRow`
@@ -16,12 +16,12 @@ public section
   honest node has an attestation for `P`'s height and entry by `v`, or a block in `(P, D]` above
   `P`'s height: `σ[X].h ≥ σ[P].h + 1`. ROW-include is the landed `proposal_rows_placed` (the payload
   is the pool filtered by validity at the parent and "not on the chain"; no cap).
-* `row_or_high_of_report` (ROW-sign at the actual report, G1): an honest report `R ⪰ P` gives a
+* `row_or_high_of_report` (ROW-sign at the actual report): an honest report `R ⪰ P` gives a
   attestation for `(σ[P].h, σ[P].T_h)` signed by the report time, or `σ[R].h > σ[P].h`.
 * `FrameWindow.round_of_warm` (ROUND at a warm proposal): the drain's actual reports
   (`proposal_report_follow`) feed `round_cross` at the next honest proposal of slot
   `x ∈ [u + δ_t, N]`.
-* The rise reset itself (Step F) is `FrameWindow.rise_reset_rounds` in `M1/RiseRounds`.
+* The rise reset itself is `FrameWindow.rise_reset_rounds` in `M1/RiseRounds`.
 
 `Δ_F` stays a parameter: the timing premise is `6Δ + Δ_F ≤ 4Δ·δ_t`. -/
 
@@ -178,7 +178,8 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
 
 /-- **ROW-sign at the actual report.** An honest report `R ⪰ P` at cut `i` before `T`: `y` signed an
 attestation for `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. At equal heights the lock
-premise is the height `HZ` (F3-lock, from NoAdvance) or the O1-L kind clause. -/
+premise is the height `HZ` (`lock_none_of_noAdvance`, from NoAdvance) or the kind clause of
+`lock_free_or_entry_of_frame` (`M1/PreAdvanceFacts`). -/
 theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {g T : Time}
     (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
@@ -236,8 +237,8 @@ theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
 /-- **ROUND at a warm proposal.** `P` is the actual warm proposal of slot `u` (FrameWindow drain),
 `X` an actual honest proposal of slot `x ∈ [u + δ_t, N]`. The attestations come from the actual
 reports of `proposal_report_follow`; at each report of the same height as `P`, `report_kind_of_warm`
-derives O1-L from the frame floor. This strengthens the interface by removing the redundant lock
-premise, without changing the conclusion. -/
+derives the kind premise of `lock_free_or_entry_of_frame` from the frame floor. This strengthens
+the interface by removing the redundant lock premise, without changing the conclusion. -/
 theorem FrameWindow.round_of_warm
     {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}

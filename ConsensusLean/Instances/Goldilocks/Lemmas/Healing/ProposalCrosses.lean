@@ -6,15 +6,15 @@ public section
 /-! # Goldilocks Healing: an honest proposal crosses the entry
 
 The handoff of `E_0`, at block and trace level. The paper-conditional inputs stay premises: the
-set `S` of honest reporters of the entry (Lemma H), their attestations (R0-lock), and the slot
-`s**` of the proposal (M4, C4).
+set `S` of honest reporters of the entry, their attestations, and the slot `s**` of the
+proposal.
 
 * `rows_prog`: the attestations on the chain of a held block that name its entry have set their
   progress bits (targets and timeouts), as `Store.rows_counted` does for the target bits.
 * `cross_step` (one held block): attestations of weight `≥ q` that name `Pr`'s entry, in `X`'s
   payload or on `Pr`'s chain, and `X.slot ≥ ThSlot + δ_t`: `X` enters the next height
   (`FGParams.cross_of_progress`), as its own entry; the new height has its previous height justified
-  exactly when `X` justified the old one (Lemma X), and then, at an old height whose previous height
+  exactly when `X` justified the old one, and then, at an old height whose previous height
   is justified, `h_F = h_j`.
 * `cross_of_rows`, `cross_of_signed_rows`: the same at an honest proposal, with the attestations
   processed before the cut, or signed by `v` with `v ≥ ḡ`, `v + Δ_F ≤ t_{kX}` (`rows_delivered`).

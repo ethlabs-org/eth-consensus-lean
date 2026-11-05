@@ -133,9 +133,9 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
 
 /-- (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A. One reset `a`
 with a bound `ΔR` such that (H1) the reset premises `ResetPremisesUpTo` hold through the horizon at
-GST `Q.gst`, with the run proposer and digest (the M1′ reset), and (H3) the placement `(P)` holds
-with `u_min = finalSeedMin Q a = slot a + 2k + 5` (no time summand, which would make (H3)
-false for large GST). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1).
+GST `Q.gst`, with the run proposer and digest (the frame-window reset), and (H3) the placement
+`(P)` holds with `u_min = finalSeedMin Q a = slot a + 2k + 5` (no time summand, which would make
+(H3) false for large GST). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1).
 Proved by `final_reset_premises_of_query` (FinalResetPremises.lean): the generic reset kernel
 `exists_reset_of_drain_rounds_awake` with the drain `drainOutputs_of_service`, and the heal
 coefficient `contract_heal_ge_final`. -/

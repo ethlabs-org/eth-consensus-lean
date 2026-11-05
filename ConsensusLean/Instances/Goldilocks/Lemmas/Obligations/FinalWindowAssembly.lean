@@ -19,7 +19,7 @@ public section
 `final_window_extract` (Concrete.lean), from explicit premises only:
 
 * (H1) `hreset`: the reset premises `ResetPremisesUpTo` through the horizon, at GST `Q.gst`,
-  with the run proposer and digest (the M1′ reset `a`);
+  with the run proposer and digest (the reset `a` of the frame-window route, `Healing.M1`);
 * (H2) `hpropose`: duty → proposal (`HonestReadyIn` at slot `s` gives `HonestProposalRun` at `s`);
 * (H3) `hplace`: the placement `(P)` of the two queries, with `u_min = finalSeedMin Q a`;
 * (H4) `hcarrier`: the OPEN `carrierProcessed` field of `FinalWindowData` for the last anchor.

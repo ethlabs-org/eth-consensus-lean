@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 
 public section
 
-/-! # M1′ B2: the frame-key lag (L-H, L-J, L-C)
+/-! # The frame-key lag (L-H, L-J, L-C)
 
 If an honest `x` has key `v` at cut `i`, an honest `z` has key
 `≥ v` at every cut `m` after a call of `z` at or after the relay deadline of `i`

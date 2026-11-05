@@ -28,7 +28,7 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-/-- **A slow origin transfers to the votes** (A3/A5): for an honest slow lock of slot
+/-- **A slow origin transfers to the votes**: for an honest slow lock of slot
 `s` on `D` with `s − k + 1 ≥ r`, every honest vote of a slot after `s` extends `D`. At a
 slot-`(s+1)` vote, every live lock of a label `j < s` has `j ≥ s − k + 1 ≥ r`, so its origin
 result is compatible with the writer's saved result of label `j` (same-slot compatibility),

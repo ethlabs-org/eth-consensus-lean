@@ -15,9 +15,9 @@ update of any slot `s' ≥ s`, its record names a block extending the honest pro
 `s`, or its `Σ.F` extends `P` (then the record, if in the frame, extends `Σ.F`, and otherwise the
 confirmed tip is `Σ.F`). For `s' = s` this is `update_adopts`. For `s' > s`, `P` is a regular
 origin (the update of slot `s` at an honest joined node adopts it), every honest vote of slot `s'`
-extends it (S2), the honest batch of slot `s'` reaches the joined updater resolved, so when `P` is
-in the frame it has a strict majority and the result extends it, and is not vetoed; when `Σ.F`
-has passed `P`, the second disjunct holds. -/
+extends it (S2, `SleepyInvariantUpTo.vote_extends`), the honest batch of slot `s'` reaches the
+joined updater resolved, so when `P` is in the frame it has a strict majority and the result
+extends it, and is not vetoed; when `Σ.F` has passed `P`, the second disjunct holds. -/
 
 namespace Consensus.Goldilocks.Compose
 

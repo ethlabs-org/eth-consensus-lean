@@ -6,7 +6,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # M1′: the call-lag premises from public ticks (`λ = 2Δ`)
+/-! # The call-lag premises from public ticks (`λ = 2Δ`)
 
 The premises `hcallZ`, `hcall` and `hsnap` of the M1 frame-window lemmas, produced
 from wakefulness on `[ḡ, b]` alone.

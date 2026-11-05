@@ -194,7 +194,8 @@ at an honest vote of a slot `> 0` cast at cut `i`, the live lock blocks of the r
 compatible with every block `B ⪯ P`, from the invariant at the cast cut `i` only. The stored locks
 are the `locks` field at `i`; the read point's optimistic lock is written by the receipt's check
 before the call's own vote, so its counted honest votes were cast at cuts before `i`
-(`SA.readPoint_locks_provenance_strict`) and (H)/S5V at the cuts before `i` decide it. -/
+(`SA.readPoint_locks_provenance_strict`) and (H)/S5V at the cuts before `i` (`OutageVoteInv`) decide
+it. -/
 theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D i)
     {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)

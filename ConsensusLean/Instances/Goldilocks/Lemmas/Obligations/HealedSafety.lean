@@ -397,7 +397,8 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
   · exact hviable
 
 omit h0 hb hp W states in
-/-- M4 vote-domain input from the bounded actual-result theorem. -/
+/-- The vote-domain input `hdomain` of `Healing.ResetPremisesUpTo.late_result_prefix_votes_before`,
+from the bounded actual-result theorem. -/
 theorem healthy_current_vote_domain (D : HealthyRepairSchedule S A V Q)
     (hc : Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ))
     {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x r s CV}

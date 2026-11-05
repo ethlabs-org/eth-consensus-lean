@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 
 public section
 
-/-! # M1′ A1 and the frame range: `H_z ≤ h_max ≤ H_z + 1` before the advance
+/-! # The frame range: `H_z ≤ h_max ≤ H_z + 1` before the advance
 
 F1 and the lower bound after `c_z + Δ`.
 

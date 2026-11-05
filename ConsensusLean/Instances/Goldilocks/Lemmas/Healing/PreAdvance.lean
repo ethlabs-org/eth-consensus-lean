@@ -42,7 +42,7 @@ structure FrameWindow (lo hi : Time) (floor : Nat) (kindJ : Prop)
   root_eq : ∀ y ∈ H, ∀ i, lo ≤ tr.time i → tr.time i ≤ hi → kindJ →
     (tr.state y i).fg.J = J
 
-/-- Under FS′ the fork-choice root is constant in kind J and follows finalized
+/-- On a `FrameWindow` the fork-choice root is constant in kind J and follows finalized
 monotonicity otherwise (including Contest). -/
 theorem FrameWindow.fcRoot_mono {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -178,8 +178,9 @@ theorem floor_ancestor_mem_frame (hrun : GoldilocksRun proposer dg H tr)
     (Compose.honest_blocks_coherent hrun.toLocalRun hnc) hΦ hsub hΦ.fcRoot_mem
     (hroot.mono (fun B hB => ⟨y, hy, j, hB⟩)) hframe, hv⟩
 
-/-- A write-frame viable head remains a viable head at every later cut in FS′.
-This is the writer-local persistence needed by OW, not cross-node delivery. -/
+/-- A write-frame viable head remains a viable head at every later cut in the `FrameWindow`.
+This is the writer-local persistence needed by `FrameWindow.vote_head_classification`, not
+cross-node delivery. -/
 theorem FrameWindow.viableHead_persists {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
@@ -243,7 +244,8 @@ theorem FrameWindow.root_witness_of_earlier_call {lo hi : Time} {floor : Nat}
   intro r _ hrs
   exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
 
-/-- OW's strict-above-root stored-lock core. Old labels force the write into FS′
+/-- The strict-above-root stored-lock core of `FrameWindow.vote_head_classification`. Old
+labels force the write into the `FrameWindow`
 and before the vote freeze. The below-write-root alternative is impossible by root
 monotonicity; the viable witness remains viable and frozen at the writer's vote.
 Current-slot optimistic locks and the root itself are deliberately outside this core. -/
@@ -328,7 +330,8 @@ theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
     intro r _ hrs
     exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
 
-/-- OW for an older live read-point lock strictly above the current root. Liveness
+/-- The vote-head classification for an older live read-point lock strictly above the current
+root. Liveness
 and the warmup bound derive the label lower bound; no write-cut or witness premise
 is supplied by the caller. The result is directly consumable by W-dichotomy. -/
 theorem FrameWindow.live_old_lock_witness {s₀ floor : Nat} {hi : Time}
@@ -422,7 +425,8 @@ theorem prior_vote_call_before_freeze
     rw [heq]
     linarith
 
-/-- Writer-local OW at a vote, with an explicit earlier action cut for H-wit.
+/-- Writer-local vote-head classification at a vote, with an explicit earlier action cut for
+H-wit.
 The head is viable in its walked domain (the vote domain), the common kind-J root, or the anchor
 of a current-slot optimistic lock. No viability of a counted vote head is assumed. -/
 theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
@@ -510,7 +514,8 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
   rw [hHd, hAB, ← hBL]
   exact (SA.viableAncestor_anc hPhi.1 hB).2
 
-/-- Full writer-local OW with finite service supplying the prior-slot H-wit cut.
+/-- Full writer-local vote-head classification, with finite service supplying the prior-slot
+H-wit cut.
 The optimistic residue exports the actual counted pool through `OptimisticLockAt`;
 `SA.optimisticLockAt_spec` gives its threshold and honest-vote provenance. -/
 theorem FrameWindow.vote_head_classification_of_service {s₀ floor : Nat} {hi : Time}
@@ -573,7 +578,8 @@ theorem FrameWindow.vote_head_classification_of_service {s₀ floor : Nat} {hi :
     ht, htop, hcount, hHL.trans (SA.anc_tree_of_anc_U hAC.localRun.coherent
       hPhi.1 hPhi.2 hLt hLD hD)⟩)⟩
 
-/-- A viable head at one FS′ cut extends the finalized tip at any other FS′ cut. -/
+/-- A viable head at one cut of the `FrameWindow` extends the finalized tip at any other cut of
+it. -/
 theorem FrameWindow.finalized_below_viable {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
@@ -753,8 +759,9 @@ theorem FrameWindow.witness_path {lo hi : Time} {floor : Nat}
       simp [Goldilocks.Store.fcRoot, hk]
     exact he ▸ hFX
 
-/-- U-W's vote conclusion uses a common-floor witness above X in each target frozen domain.
-`floor` and `J` are the FS′ values supplied by `hframe`; the source cut is arbitrary.
+/-- The unanimity propagation's vote conclusion uses a common-floor witness above X in each
+target frozen domain.
+`floor` and `J` are the `FrameWindow` values supplied by `hframe`; the source cut is arbitrary.
 The kind-J condition is on X, not merely on its witness, and the stamp is read from
 the vote emission's read point, not its pre-call state. -/
 theorem unanimous_next_votes_of_witness (hrun : GoldilocksRun proposer dg H tr)
@@ -896,8 +903,9 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
     · exact Or.inl (hLO.trans hOX)
     · exact SA.anc_total hr.coherent hLO hXO
 
-/-- U-W at an actual next-slot proposal needs heldness of Q, not a frozen stamp.
-`floor` and `J` are the FS′ values supplied by `hframe`; the source cut is arbitrary. -/
+/-- The unanimity propagation at an actual next-slot proposal needs heldness of Q, not a frozen
+stamp.
+`floor` and `J` are the `FrameWindow` values supplied by `hframe`; the source cut is arbitrary. -/
 theorem unanimous_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)

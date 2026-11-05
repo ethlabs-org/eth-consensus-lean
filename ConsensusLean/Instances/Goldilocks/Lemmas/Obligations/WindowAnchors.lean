@@ -5,22 +5,21 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 
 public section
 
-/-! # Goldilocks Obligations: window coverage from the anchor facts S1–S4
+/-! # Goldilocks Obligations: window coverage from the anchor facts
 
-The four anchors `A = block 0 ⪯ … ⪯ B₃ = block 3` are given; the facts S1–S4 (Steps 1–3)
-are split as follows.
+The four anchors `A = block 0 ⪯ … ⪯ B₃ = block 3` are given; their facts are split as follows.
 
 * S3 (one surviving chain), anchor part, PROVED: `anchors_chain_upTo`,
   `window_anchors_chain_upTo` (C4: `honest_proposal_below_next_upTo`,
   `honest_proposal_below_later_upTo`). At the store of an honest
   holder of `B₃` the chain is store ancestry (`store_anc_of_honest_anc`).
-* Step 1, structural part, PROVED: `Store.first_crossing_of_anc`. On `A ⪯ B₃` with a higher
-  height at `B₃`, the first crossing `T_B` after `A` is held, `A ⪯ T_B ⪯ B₃`, it is at height
-  `σ[A].h + 1`, and it is its own entry block. So `A ⪯` the entry block of `T_B`
+* The first crossing, structural part, PROVED: `Store.first_crossing_of_anc`. On `A ⪯ B₃` with a
+  higher height at `B₃`, the first crossing `T_B` after `A` is held, `A ⪯ T_B ⪯ B₃`, it is at
+  height `σ[A].h + 1`, and it is its own entry block. So `A ⪯` the entry block of `T_B`
   (`Store.entry_anc_of_self`).
 
-S1, S2 and S4 (the outcome of the tables and the late crossings) are not stated here; the final
-window takes its coverage from `cacheCoverage_of_anchor_window_upTo` (`WindowAnchorRoute`). -/
+The other anchor facts (the outcome of the tables and the late crossings) are not stated here; the
+final window takes its coverage from `cacheCoverage_of_anchor_window_upTo` (`WindowAnchorRoute`). -/
 
 namespace Consensus.Goldilocks
 
@@ -28,7 +27,7 @@ namespace Store
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
 
-/-- **The first crossing after `A` (Step 1, structural part).** In a
+/-- **The first crossing after `A` (structural part).** In a
 reachable store, on a held `A ⪯ B` with `σ[A].h < σ[B].h`, a held `X` with `A ⪯ X ⪯ B` enters
 height `σ[A].h + 1` and is its own entry block (`σ[X].Th = X.root`). -/
 theorem first_crossing_of_anc (hr : st.Reachable acp₀) {A B : NodeBlock P ACP}

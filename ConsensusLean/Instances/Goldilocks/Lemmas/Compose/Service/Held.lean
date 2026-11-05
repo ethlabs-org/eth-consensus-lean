@@ -12,8 +12,9 @@ public section
 (its tick at `t_s + 6Δ`), its `Σ.F` is at or below the honest proposal `P` of slot `s`.
 
 * Every origin of a label at most `s` is below `P` (`origin_anc_proposal_before`: an honest slot-`s`
-  vote is `P` and extends it, by S2 or as its honest supporter), so every honest slot-`(s+1)`
-  vote extends `P` (`votes_succ_extend_before`, the later transfer for the protected block `P`).
+  vote is `P` and extends it, by S2 (`SleepyInvariantUpTo.vote_extends`) or as its honest
+  supporter), so every honest slot-`(s+1)` vote extends `P` (`votes_succ_extend_before`, the later
+  transfer for the protected block `P`).
 * The honest attestations the updater holds were signed before `t_s + 6Δ`, with sources below
   origins of labels at most `s + 1`: below `P`, or below an honest slot-`(s+1)` head that extends
   `P`; so every such source is compatible with `P` (`rows_compatible_before`), and so is `Σ.J`,

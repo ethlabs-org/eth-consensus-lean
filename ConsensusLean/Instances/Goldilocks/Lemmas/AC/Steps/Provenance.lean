@@ -424,7 +424,7 @@ theorem lock_candidate_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
     · obtain ⟨j, hj, h⟩ := ih l hl
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
 
-/-- OW's write-time alternative. The current lock is below a candidate at a genuine
+/-- The write-time alternative for a stored lock. The current lock is below a candidate at a genuine
 write cut, and that candidate is either below the write root or has a viable witness
 in the write frame. No viability of the raw selected block is assumed. -/
 theorem lock_write_witness (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)

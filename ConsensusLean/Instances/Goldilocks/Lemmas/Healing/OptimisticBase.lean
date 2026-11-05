@@ -16,8 +16,8 @@ public section
 
 An actual optimistic selection supplies the counted votes, including forwarded faulty
 votes. A write-time viable witness supplies the frozen path, not assumed vote-head viability.
-The vote and proposal bases are proved separately; later-slot U-W and drain composition
-are separate. -/
+The vote and proposal bases are proved separately; later-slot unanimity propagation and drain
+composition are separate. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -29,7 +29,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The optimistic base G(s+1,X), including below-floor X with a viable descendant Q.
 The actual write and its counted set are retained. Q is held at any honest early cut; its
-floor and J are the explicit FS′ values. Service/Catch ends at the next-slot horizon,
+floor and J are the explicit `FrameWindow` values. Service/Catch ends at the next-slot horizon,
 and no premise asserts viability of arbitrary honest vote heads. -/
 theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -178,11 +178,12 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
     · exact SA.anc_total hr.coherent (hLO.trans hOD) hXD
     · exact SA.anc_total hr.coherent hLO (hXD.trans hDO)
 
-/-- MI-opt's bounded later-label propagation: every honest vote and actual proposal
+/-- Bounded later-label propagation from an optimistic origin: every honest vote and actual proposal
 from s+1 through N extends X. The boundary proposal uses the optimistic base directly;
-later labels use U-W. This does not prove unlock passage, regular BASE, DESC or drain.
+later labels use unanimity propagation. This does not prove unlock passage, the regular next-vote
+base or drain.
 The archived capped H.2 induction (`frontier_heads_transfer`) uses leases rather than
-the current FS′ frame and emission-read-point stamps; only its label-induction pattern
+the current `FrameWindow` frame and emission-read-point stamps; only its label-induction pattern
 is reused here. All witness transport is derived from the actual optimistic write. -/
 theorem optimistic_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -290,7 +291,7 @@ private theorem proposal_root_viable (hrun : GoldilocksRun proposer dg H tr)
       (fun hm hn => (hk ⟨hm, hn⟩).elim) hQ Relation.ReflTransGen.refl
     exact ⟨Q, ht, hv, ha⟩
 
-/-- The OW-opt supporter branch of regular BASE. The early viable witness
+/-- The optimistic-supporter branch of the regular next-vote base. The early viable witness
 is produced at the actual supporter vote, not assumed at its optimistic write.
 The regular count/saved-result branches, vote agreement and current-slot optimistic induction
 remain separate. -/
@@ -483,7 +484,7 @@ theorem FrameWindow.proposal_viable_at_cast {s₀ p floor : Nat}
     ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩
   exact ⟨hv, hdom, hroot, P, hdom, hv, .refl⟩
 
-/-- The viable-supporter branch of regular fast BASE, through the writer's actual
+/-- The viable-supporter branch of the regular fast next-vote base, through the writer's actual
 finite update cutoff. The early witness is above the strict-majority result C,
 not merely the half-committee fast selection D. -/
 theorem regular_fast_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
@@ -572,10 +573,11 @@ theorem result_honest_supporter_before (hrun : GoldilocksRun proposer dg H tr)
   have := Set.ncard_le_ncard hHV
   omega
 
-/-- Regular fast BASE: actual update provenance supplies the result and its honest
-supporter; OW's viable, common-J and optimistic-stuck cases are all discharged.
+/-- The regular fast next-vote base: actual update provenance supplies the result and its honest
+supporter; the viable, common-J and optimistic-stuck cases of
+`FrameWindow.vote_head_classification` are all discharged.
 No supporter viability or write-time witness is assumed. This is the next-vote
-base only, not slow BASE, later-label MI-reg, vote agreement,
+base only, not the slow base, later-label `FrameWindow.regular_later_heads`, vote agreement,
 current-slot optimistic induction or drain. -/
 theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : SA.Blk sp.n (List (FG.Att sp.n))}

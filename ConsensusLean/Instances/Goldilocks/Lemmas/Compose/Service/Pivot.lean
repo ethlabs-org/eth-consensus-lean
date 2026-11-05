@@ -30,7 +30,8 @@ it. At a voter, the anchor is `fc_root` or a live lock block. `fc_root` and a lo
 than `s` sit below an old origin (`lock_origin`, the slot of an origin before the vote), hence
 below `D`; a lock of slot `s` sits below an optimistic selection with an honest supporter among
 the earlier slot-`s` votes, which are `P`. So the anchor is below `D` (then `X = D`, which the
-vote extends by S2), or on `P`'s chain above `D` (then `X` is the anchor).
+vote extends by S2, `SleepyInvariantUpTo.vote_extends`), or on `P`'s chain above `D` (then `X` is
+the anchor).
 
 The proposal walk passes every old origin (`proposal_walk_passes_old_before`, `SA.anc_getHead`): the
 proposer holds it or has it below `Σ.F` (`proposal_holds_old`: an honest supporting head is

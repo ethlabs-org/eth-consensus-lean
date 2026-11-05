@@ -395,7 +395,7 @@ theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
     (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
 
 /-- Any point between the actual voter anchor and a frozen viable block is
-itself frozen-viable. In Step 5 the upper block is P, not a transported
+itself frozen-viable. In head equality the upper block is P, not a transported
 lock witness. -/
 theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -648,7 +648,7 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
         linarith) hz hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS
 
-/-- Finite Step 5/6: every honest vote of the warm honest proposal's slot
+/-- Finite head equality and causal closure: every honest vote of the warm honest proposal's slot
 has exactly its root. Current-slot optimistic residues use only strictly
 earlier actual casts in the global-cut induction. -/
 theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
@@ -793,7 +793,7 @@ theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr)
   obtain rfl : W' = W := hac.localRun.coherent.1 hW' hW (hW'r.trans hWr.symm)
   exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)
 
-/-- Any honest FS′ root is below the head of an actual proposal read in
+/-- Any honest `FrameWindow` root is below the head of an actual proposal read in
 the same window. Kind J uses the common J; F/Contest uses finality geometry. -/
 theorem FrameWindow.fcRoot_anc_proposal_head {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
