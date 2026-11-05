@@ -37,7 +37,7 @@
 \end{itemize}}
 
 \title{Goldilocks: claims and proof architecture\\[2pt]
-\large draft 5: model, objects, proof DAG and modules}
+\large model, objects, proof DAG and modules}
 \author{}
 \date{}
 
@@ -50,81 +50,74 @@
 \texttt{shared/fg.tex}) gives the Goldilocks protocol and nothing else.  This
 file says what is proved about that protocol and how the proof decomposes.  It
 is the paper source of the Goldilocks statements of the Lean development in
-\texttt{fradamt-agent/consensus-lean} (\texttt{Instances/Goldilocks}, foundation
-step~7, consensus-lean\#10), which transcribes it.  It does not change the
+this repository (\texttt{Instances/Goldilocks}), which transcribes it.  It does not change the
 protocol: where a statement here and the protocol text disagree, the protocol
 text wins and the statement is wrong.
 
-\paragraph{Pins.}  Protocol: \texttt{fgsa-spec.tex} at goldilocks
-\texttt{95681941}, flattened SHA-256 \texttt{2a5519bc}
-(\texttt{python3 flatten.py fgsa-spec.tex | shasum -a 256}; the file is now
-\texttt{goldilocks-spec.tex}, in consensus-lean \texttt{specs/goldilocks/tex/}).  It includes
-loose BJ (goldilocks\#14: the justification gate at heights whose previous height is justified, the client
+\paragraph{Protocol.}  \texttt{goldilocks-spec.tex}, in this repository's
+\texttt{specs/goldilocks/tex/}.  It includes
+loose BJ (the justification gate at heights whose previous height is justified, the client
 finality pair read from the entry state, $K_W=2$,
-$\delta_{\mathrm t}\geq x+\cF+k_F$) and the weakened E1 (goldilocks\#15: the
+$\delta_{\mathrm t}\geq x+\cF+k_F$) and the weakened E1 (the
 timeout record is a set of roots, $\fname{permits}$ requires
 $\mathsf{timeout}[j]\subseteq\{T\}$, $\fname{height\_pair}$ tests the lock
 first, E1 fires only against a height pair naming another block).  The
-FG liveness nodes follow the paper theorems A, B and Corollary~C of
-goldilocks\#5 (workbench \texttt{notes/fg-liveness/r9-loose-bj/theorem.md}).
+FG liveness nodes follow the paper theorems A, B and Corollary~C of the FG
+liveness analysis for loose BJ (a paper proof, not in this repository).
 
-\paragraph{Lean.}  The Lean development happens only in consensus-lean's
-Goldilocks instance, with this file as its statement source
-(goldilocks\#16).  The old Goldilocks Lean in this repository (the round model) is not
+\paragraph{Lean.}  The Lean development happens only in this repository's
+Goldilocks instance, with this file as its statement source.  The old Goldilocks
+Lean (the round model, not in this repository) is not
 ported; its proofs are blueprints where the evidence lines cite them.
 
-\paragraph{Decisions} (goldilocks\#10).  D1: every bound is re-derived for
+\paragraph{Decisions.}  D1: every bound is re-derived for
 this protocol as a formula of its parameters; the property shapes of
-consensus-lean's \texttt{GoldilocksTarget} are kept.  D2: finality liveness
-keeps the contract's progress form; the good-window theorem (goldilocks\#5)
+the Lean \texttt{GoldilocksTarget} are kept.  D2: finality liveness
+keeps the contract's progress form; the good-window theorem
 is an extra, and the target's final rows follow from it by a corollary.  D3:
 the model is the whole protocol, fast path included; fast arming is a later
 extra.  D4: the protocol's sleep and restart model is the authority; the
-bridge to consensus-lean's \texttt{Ready} is node~F.4.  D5: the claims
-live here.  For D2 the r9 theorem changes the corollary: proposer recurrence
-alone does not give good windows (theorem.md \S6, item~4), so the target's
+bridge to the Lean \texttt{Ready} is node~F.4.  D5: the claims
+live here.  For D2 the good-window theorem changes the corollary: proposer recurrence
+alone does not give good windows, so the target's
 final rows need a recurrence of consecutive honest ready proposers and an AC
-service premise (instance proposal S5); recovery from any post-GST state is
+service premise; recovery from any post-GST state is
 open (L2 node R.4).
 
-\paragraph{Status of this draft.}  Sections \ref{sec:model}--\ref{sec:l1}
-are complete as a first draft: the model and its premises, the objects, and
-the foundation and component layers of the proof DAG.  Draft~1 had one
-independent review (goldilocks\#11); its findings (six false statements,
-missing $\mathsf{NoColl}$ and unforgeability premises, a circular frame node)
-are fixed here, and C1.1 is now the slot induction that joins the transfer
-steps.  A second independent review was also applied.  Draft~2 restates the
-FG nodes against loose BJ and the weakened E1, and replaces the liveness
-placeholder by the nodes of theorems A, B, C.  Draft~3 fixes C1.1 with the
-premise $\mathsf{Clean}$ (an attestation cut and a height lead), adds the step lemmas
+\paragraph{Status.}  Sections \ref{sec:model}--\ref{sec:l1}
+are complete: the model and its premises, the objects, and
+the foundation and component layers of the proof DAG.  C1.1 is the slot
+induction that joins the transfer steps, with the premise $\mathsf{Clean}$
+(an attestation cut, scoped above the honest finalized tips with the premise
+(K0) on the honest caches, and a height lead); the conflicting-justification
+part of C1.1 is the FG node G1.10, parametric in its scope.  The step lemmas
 A1.8 (result transfer, no participation bound) and A1.9 (source
-compatibility), and states post-GST recovery as the open target O.1.
-Draft~4 applies two independent reviews of draft~3: the attestation cut is scoped above
-the honest finalized tips with a new premise (K0) on the honest caches, the
-conflicting-justification part of C1.1 is the FG node G1.10, A1.9 is stated
-per time with explicit hypotheses, and O.1 is restated.  Draft~5 aligns the DAG with
+compatibility, stated per time with explicit hypotheses) belong to it.  The
+FG nodes are stated against loose BJ and the weakened E1, and the liveness
+nodes are those of theorems A, B, C.  The DAG follows
 the module decomposition (\S\ref{sec:dag-rules}, Table~\ref{tab:modules}): the
-step lemmas are stated per vote, G0.6 becomes the composition node C0.3 with a
+step lemmas are stated per vote, G0.6 is the composition node C0.3 with a
 fifth interface requirement A0.9, the frame nodes G0.3 (frame) and G0.4 (frame)
-are separated from the store, the tick order C0.4 and the event order F.5 are
-nodes, and G1.10 is parametric in its scope.  Draft~6 adds the healing
-phase-service nodes HS.0--HS.5 (Section~\ref{sec:healing-service}; workbench\#7):
+are separate from the store, and the tick order C0.4 and the event order F.5 are
+nodes.  The healing
+phase-service nodes HS.0--HS.5 (Section~\ref{sec:healing-service}) give
 fixed-phase service after the drain, with its settling and continuation
-interfaces, and no chosen-entry service across phase changes.  Draft~7 states
-C1.2 as outcome service (a literal good window, or an early justification that
-at an entry whose previous height is justified has already finalized the predecessor) and C1.3 as recurring finalizing coverage (workbench\#6
-\S26); G1.6--G1.8, the target rows of R.4 and O.1 (a)--(c) are unchanged.  Draft~8 adds the top-level
-healing statements H.1--H.4 and HR.1--HR.4 (Section~\ref{sec:healing-top};
-workbench \texttt{t2-statements.md}) and the premises $\mathsf{Catch}$ and
-$\mathsf{Prop}$.  Draft~9 fixes the recovery predicate $\mathsf{Rec}$, the
+interfaces, and no chosen-entry service across phase changes.  C1.2 is
+outcome service (a literal good window, or an early justification that
+at an entry whose previous height is justified has already finalized the
+predecessor) and C1.3 is recurring finalizing coverage.  The top-level
+healing statements H.1--H.4 and HR.1--HR.4 (Section~\ref{sec:healing-top})
+use the premises $\mathsf{Catch}$ and
+$\mathsf{Prop}$.  The recovery predicate $\mathsf{Rec}$, the
 pattern regime $\mathsf{UPat}$, node O.1 (recovery under that regime, not O.1's
-target), C1.3's statement, and HR.5 (G1.9 (b) after the reset).  The regime theorems
+target), C1.3's statement, and HR.5 (G1.9 (b) after the reset) are fixed;
+post-GST recovery is the open target O.1.  The regime theorems
 (Section~\ref{sec:l2}) are listed with their target rows and their uses; their
-premises and numbers wait for the instance statements (goldilocks\#7) and
+premises and numbers wait for the instance statements and
 the derivation of the bounds (D1).
 
 \begin{sloppypar}
-\paragraph{Lean status and the obligations target (2026-11-03).}  The
+\paragraph{Lean status and the obligations target.}  The
 obligations target is the concrete endpoint
 \texttt{MeetsObligations} (consensus-lean
 \texttt{Statements/Obligations}), proved by
@@ -195,9 +188,8 @@ blocks with injective roots and slots increasing along parent edges; the replay 
 $\fname{ac\_on\_block}$ inside $\fname{ac\_restart}$ is internal to the restart
 and re-processes blocks already in the frame.  C0.5 says that an honest node's
 AC states are reachable.  Table~\ref{tab:modules} maps the
-nodes to the modules of the Lean instance (consensus-lean
-\texttt{Instances/Goldilocks}, the ``component $\times$ level'' decomposition of
-workbench \texttt{notes/goldilocks/architecture/decomposition.md}).
+nodes to the modules of the Lean instance (\texttt{Instances/Goldilocks}, a
+``component $\times$ level'' decomposition).
 
 \begin{table}[!ht]
 \centering\footnotesize
@@ -213,27 +205,26 @@ AC (interface and SA, over frames) & F.1, A0.1--A0.9 & A1.1--A1.5, A1.8, A1.9\\
 Node & C0.1, C0.3, C0.4, C0.5, the restart half of C0.2 & ---\\
 Run & F.4, F.5 (run) & C1.1 (Persist), C1.2, C1.3, A1.6, A1.7 (Service), R.*, O.1\\
 Simulation & --- & G1.5; the engine simulates the node (C0.4 kept)\\
-Healing & --- & HS.0--HS.5 (\S\ref{sec:healing-service}); H.1, H.2 (AC, over driven AC traces), H.2 (run), HR.1, HR.2 (FG store level), HR.3, HR.4, H.3, H.4 (\S\ref{sec:healing-top}); formerly healing-simple \texttt{Producer(A)} (now HS.5), F1 (HR.1), F2 (HR.2), F3 and F4 ($=\mathsf{Reset}(z)$, restated by time at $a_z$: HR.4), F5 (H.2 (run) and H.3), A6 (H.1, H.2; in runs H.2 (run))\\
+Healing & --- & HS.0--HS.5 (\S\ref{sec:healing-service}); H.1, H.2 (AC, over driven AC traces), H.2 (run), HR.1, HR.2 (FG store level), HR.3, HR.4, H.3, H.4 (\S\ref{sec:healing-top}); earlier names \texttt{Producer(A)} (now HS.5), F1 (HR.1), F2 (HR.2), F3 and F4 ($=\mathsf{Reset}(z)$, restated by time at $a_z$: HR.4), F5 (H.2 (run) and H.3), A6 (H.1, H.2; in runs H.2 (run))\\
 \hline
 \end{tabular}
 \caption{Claims nodes by module.  G1.5 binds the evidence to the instance's
-\texttt{conflicts} and is stated with the refinement.  The healing nodes are
-those of workbench \texttt{notes/goldilocks/healing-simple} (goldilocks\#18),
-restated here in this shape (\S\ref{sec:healing-service},
-\S\ref{sec:healing-top}); their FG and AC kernels (F2; A1--A5) go to the FG store
+\texttt{conflicts} and is stated with the refinement.  The healing nodes
+restate an earlier healing analysis (not in this repository) in this shape
+(\S\ref{sec:healing-service}, \S\ref{sec:healing-top}); its FG and AC kernels (F2; A1--A5) go to the FG store
 and AC modules.}
 \label{tab:modules}
 \end{table}
 Rules.  (1) Node statements are fixed before any proof of a node that uses
 them; a proof task starts only when the statements of its uses are fixed.
-(2) A node changes only by an issue that names the nodes that use it.
+(2) A change of a node names the nodes that use it.
 (3) Each node names its \emph{evidence}: a paper argument (often a ``Why''
 note of the protocol text), an old proof for the round model
-(\texttt{goldilocks-round-model.tex}, the blueprint in workbench
-\texttt{notes/tip-stability/blueprint/}, the old Lean \texttt{FGSAClaims}), or
+(the earlier round-model protocol text, its blueprint and the old Lean
+\texttt{FGSAClaims}, none of them in this repository), or
 none.  Old proofs are for a different protocol: they give the argument's shape,
-not a proof of the node.  (4) The \emph{Task} line sizes the node: S (one
-agent, hours), M (one agent, a day or two), L (to be split further before
+not a proof of the node.  (4) The \emph{Task} line sizes the node's proof: S (a short
+proof), M (a longer proof), L (to be split further before
 proving).
 
 \section{Model}\label{sec:model}
@@ -297,7 +288,7 @@ $\mathsf{Sync}[a,b]$ & every block and AC message that an honest node sends
   after its next wake); an earlier processing, such as a receipt that
   admission refused before the object's slot, does not count, and a refused
   receipt triggers nothing (an honest node forwards an object when it accepts
-  it, composition \S``Model''; goldilocks\#28);
+  it, composition \S``Model'');
   attestations with $\Delta_F$, in the same form; and \emph{acceptance relay}: a block that an
   honest node accepts at $\tau\in[a,b]$ is accepted by every honest~$y$ whose
   $\Sigma.F$ it extends before $\max(\tau,w_y)+\Delta$ (the protocol refuses a
@@ -317,7 +308,7 @@ $\mathsf{Sleepy}$ & $\mathsf{Sync}[0,\infty)$ and $f<h_t$ at every
   $\Rightarrow$ joined (F.4)\\
 $\mathsf{Healthy}(g)$ & $\mathsf{GST}(g)$, every honest validator awake on
   $[\max(g,0),\infty)$, $f\leq\lfloor(n-1)/3\rfloor$ & \texttt{Healthy}
-  (full participation, decided 2026-10-29)\\
+  (full participation)\\
 $\mathsf{Outage}(T,b_0,b_1)$ & synchrony before~$b_0$, GST $b_1$, the
   participation of the target's outage regime, and the budget~(V) of the lean
   notes with this protocol's lock lifetime $(4k-2)\Delta$ (D1) &
@@ -332,8 +323,7 @@ $\mathsf{Catch}(\kappa)$ & accepted-old-block catch-up
   $\bar g$ is accepted before $\bar g+\kappa$ by every honest node whose
   $\Sigma.F$ at $\bar g+\kappa$ it extends, with its needed ancestry & none
   for an abstract node run:
-  \texttt{PSync} gives delivery, not acceptance (workbench
-  \texttt{t2-statements.md}, ``Mapping'', bridge B1); on the engine's
+  \texttt{PSync} gives delivery, not acceptance (bridge B1); on the engine's
   canonical simulation \texttt{catchRun\_of\_psync} gives
   $\mathsf{Catch}(2\Delta)$ from a valid execution, $\mathsf{NoColl}$,
   \texttt{PSync} and every honest node awake from $\max(g,0)$\\
@@ -348,8 +338,7 @@ $\mathsf{GenRoot}$ & the genesis block's root is the digest of its contents
 $\mathsf{Prop}(G_{\mathrm p})$, $\mathsf{Prop}^{+}(G_{\mathrm p})$ & an honest
   proposer (resp.\ ready proposal) in every window $[t,t+G_{\mathrm p}]$ from
   $\bar g$ (\S\ref{sec:healing-top}) & \texttt{gProg} only on
-  $[\mathtt{gReady},\mathtt{gHeal}]$ and without readiness (\texttt{t2-statements.md},
-  bridges B2, B3)\\
+  $[\mathtt{gReady},\mathtt{gHeal}]$ and without readiness (bridges B2, B3)\\
 \hline
 \end{longtable}
 
@@ -361,7 +350,7 @@ output is the chain of $\fname{ac\_confirmed}(\AC,\Fr,t)$; the head is
 $\fname{ac\_head}(\AC,\Fr,t)$.  The target's schema binds \texttt{confirmed}
 (the available and the stable output) to the confirmed output and
 \texttt{finalized} to the finalized output; the binding of available to
-$\fname{ac\_confirmed}$ was accepted on 2026-10-29 provided that under
+$\fname{ac\_confirmed}$ is accepted provided that under
 synchrony the head extends $\AC.\latestConfirmed$ (node A1.6).
 
 \section{Objects}\label{sec:objects}
@@ -440,7 +429,7 @@ and awake on $[\max(0,t-c-1),t]$ (consensus-lean \texttt{Ready} at catch-up~$c$)
 with $c+1\geq8\Delta$, then it is awake and joined at~$t$; in particular at
 $c=18\Delta$.  Proof shape: its latest restart is at or before $t-c-1$, or there
 is none, and $t-t_{\slot(t)-1}<8\Delta$.}
-{F.1}{goldilocks\#10 D4.  The two assumptions are part of the instance's
+{F.1}{Decision D4.  The two assumptions are part of the instance's
 bridge (obligation~3).}{S.}
 
 \dagnode{F.5 (schema)}{First violating position}{Let $P$ be a set of
@@ -473,7 +462,7 @@ initial state) is the fold of $\fname{state\_transition}$
 over it from the initial state; the chain is accepted when every step of the
 fold passes its assertions, and then every prefix is accepted.}
 {none}{FG \S Attestations and chain state.}{S.  In the FG safety milestone
-(consensus-lean\#44) the fold is the definition
+the fold is the definition
 \texttt{FGParams.chainState}, so this node has no separate statement there;
 the prefix clause is a lemma for the proofs.}
 
@@ -514,8 +503,7 @@ by a timeout (or $h=1$);
 finalized its predecessor, and
 $P$ is its newest pending pair.}
 {G0.1 (chain)}{FG state transition and the notes ``Why a height whose previous height is justified waits'' and
-``Why the client reads the entry state'' (fg.tex); theorem.md \S1 (entry
-constancy).}{M.  (a)--(e), (f)--(g) and (h)--(i) can be three tasks.}
+``Why the client reads the entry state'' (fg.tex).}{M.  (a)--(e), (f)--(g) and (h)--(i) can be three tasks.}
 
 \dagnode{G0.7}{Gated consumption (I7 restated)}{For every accepted~$B$,
 with $\sigma=\sigma[B.\parent]$ and $\sigma'=\sigma[B]$: (c0)
@@ -531,8 +519,7 @@ $\sigma'$ has its previous height justified, its predecessor is pending, and
 $\sigma'.s<\sigma'.T_h.\slot+\delta_{\mathrm t}$ (since
 $\Qtarget\subseteq\Qprog$, a mature height would have crossed).  The old
 unconditional ``a target quorum is consumed'' does not hold.}
-{G0.2}{fg.tex \fname{process\_height\_events}; instance-proposal \S2.6
-(I7-target).}{S.}
+{G0.2}{fg.tex \fname{process\_height\_events}.}{S.}
 
 \dagnode{G0.8}{Finality before the gate (I7-LB)}{At a height whose previous height is justified and whose
 predecessor $P$ is pending in the parent state: (a) if after the block's
@@ -540,7 +527,7 @@ attestations are counted the validators with a counted finality pair $P$
 have weight at least~$q$, then $h_F=h_j$ after the finality step of the same
 block; (b) if moreover $w(\Qtarget)\geq q$, the same block justifies.  (A
 timeout attestation that carries~$P$ sets a $\Qfin$ bit and no $\Qtarget$ bit.)}
-{G0.2, G0.7}{instance-proposal \S2.6 (I7-LB); theorem.md \S3 step~4.}{S.}
+{G0.2, G0.7}{paper proof (not in this repository).}{S.}
 
 \dagnode{G0.9}{Retention}{(a) While a height whose previous height is justified is current, its
 predecessor stays pending until it is finalized (no append happens; $K_W\geq1$
@@ -552,8 +539,7 @@ height whose previous height is not, timeout at a height whose previous
 height is justified, append at a height whose previous height is not, drops
 it ($[P]\to[P,Q]\to[Q,R]$) without covering it.  (c) is a test witness of the
 Lean development, not a theorem.}
-{G0.2, G0.7}{fg.tex ``Why a height whose previous height is justified waits''; theorem.md \S4, \S6
-item~3.}{S.}
+{G0.2, G0.7}{fg.tex ``Why a height whose previous height is justified waits''.}{S.}
 
 \dagnode{G0.3}{Cache invariants}{At an honest node at every time, through
 restarts: $\Sigma.F\in\T$; every block of $\Fr.\mathsf{tree}$ extends
@@ -620,7 +606,7 @@ $\fname{create\_attestation}$ has $\sigma_e.h=h_c$ and all its pending pairs
 and its $(h_j,J)$ below $\sigma_e.h$; then the finality pair of every honest
 attestation is below its height pair, so the client needs no clearing test
 and E1 of an attestation against itself never fires.}
-{none}{fg.tex \S Validator client, \S Slashing conditions; r10 reviews
+{none}{fg.tex \S Validator client, \S Slashing conditions
 (lock-first $\fname{height\_pair}$, set record); old
 \texttt{HonestNeverSlashedClaim}, \texttt{ClientSafety} (blueprint only).}{M.  Purely about
 $\fname{create\_attestation}$ and $\fname{record\_attestation}$: a good first
@@ -643,8 +629,8 @@ same when a later state or the head has finalized~$P$ (the client reads only
 $\sigma_e$).  Its users get ``at every honest validator'' from G0.1 (store),
 since each node's $\Sigma.\sigma$ at the entry block is $\sigma_e$, and from
 G0.5, since each honest record is the record of a client run.}
-{G0.1 (chain), G0.2 (h), (i), F.3}{fg.tex ``Why the client reads the entry state''; theorem.md
-\S1, \S5 (no record-induced cascade).}{S.}
+{G0.1 (chain), G0.2 (h), (i), F.3}{fg.tex ``Why the client reads the entry state''
+(no record-induced cascade).}{S.}
 
 \subsection{Available chain}
 
@@ -734,7 +720,7 @@ $p$ has slot $s-1$, a committee member and a valid seat signature (reachability
 admits only votes that passed the wire checks, and admission checks the slot),
 and the support list is a sublist of the votes.  Requirements 1--4 do not give
 this; it is a fifth interface requirement, which every AC must meet (a proposed
-addition to composition \S``The available chain'', goldilocks\#22), and for
+addition to composition \S``The available chain''), and for
 Goldilocks this node.  Requirement 5 is about the payload only: that the parent
 is held, with a smaller slot, follows from requirement 4 and C0.4 (C0.3).}
 {A0.1}{AC \S Node actions ``The proposal''; \S Votes ``The payload check''.}{S.}
@@ -786,8 +772,7 @@ the objects received at~$a$, each by its handler (whose AC part can again
 vote).  Every own object is processed at once.  This is a definition of the
 node, and the order that A1.9, G1.10 and C1.1 read.}
 {none}{composition \S``Node''; goldilocks-spec \S``Node actions''.}{S.  Definitional in
-the node; its preservation by the generic engine is a refinement obligation
-(consensus-lean\#45).}
+the node; its preservation by the generic engine is a refinement obligation.}
 
 \dagnode{C0.5}{Projection onto the components}{At an honest node: (a) the AC
 is called at nondecreasing times, first with the initial frame; the frames of
@@ -808,8 +793,8 @@ $\fname{state\_transition}$, with its slot's proposer and a parent of smaller
 slot (in the Lean model the slot's proposer is not a node check but the
 authenticated run law, \texttt{LocalRun.proposerCredential} for a delivered
 block, and, for the own block, the node's \texttt{Node.Proposes} check (it
-proposes only in a slot whose proposer it is), consensus-lean
-\texttt{docs/decisions.md} 2026-10-31; composition \S``Node'': $\fname{ac\_on\_block}$ runs only after
+proposes only in a slot whose proposer it is), \texttt{docs/decisions.md}
+\S``Goldilocks model choices''; composition \S``Node'': $\fname{ac\_on\_block}$ runs only after
 $\fname{fg\_on\_block}$ accepts, and the restart replays only blocks of
 $\Fr.\mathsf{tree}$), so its states are reachable, by induction over the calls
 (\S\ref{sec:dag-rules}); (c) the FG's inputs are the accepted blocks, the
@@ -826,8 +811,8 @@ $\sigma[B].F\preceq B$ (G0.2 (c)).}
 
 The accountable-safety argument splits into a counting fact, a fact about
 one chain, and the combination.  It uses only E1 against a height pair
-naming another block, so the weakened E1 (goldilocks\#15) keeps it, and the
-gate only removes justifications, so loose BJ keeps it (theorem.md \S8).
+naming another block, so the weakened E1 keeps it, and the
+gate only removes justifications, so loose BJ keeps it.
 
 \dagnode{G1.1}{Quorum intersection}{If $S_1,S_2\subseteq V$ and
 $|S_1|,|S_2|\geq q$ then $|S_1\cap S_2|\geq 2q-n\geq n/3$.}
@@ -861,18 +846,18 @@ store node over FG traces (honest caches, honest signers).}
 \dagnode{G1.5}{Evidence binding}{The slashable pairs of G1.3 are among the
 attestations included on the chains held by the two readers, taken together, and the Lean \texttt{conflicts} of the instance is
 E1/E2.  Target: \texttt{nonFraming}, \texttt{finalized\_accountable}.}
-{G1.3, G0.5}{migration obligation~7; goldilocks\#7.}{S, after \#7.  Stated with the
+{G1.3, G0.5}{migration obligation~7.}{S.  Stated with the
 refinement, which defines \texttt{conflicts}.}
 
 The liveness nodes G1.6--G1.9 are \emph{FG service lemmas}: they are about
 one chain and the FG transition, under premises on the attestations that reach it.
 That the AC and the network supply those premises, or that an accepted
 retained chain (retained: kept in the viable trees of honest nodes, the
-\texttt{JointRet} of workbench \texttt{producer-reset-continuation.md}) has
+paper predicate \texttt{JointRet}) has
 already justified the entry early (and, at an entry whose previous height is justified,
 finalized its predecessor through the gate), is the composition node C1.2
 (outcome service).  The FG lemmas keep their literal $\mathsf{GW}$ hypotheses
-and are applied only in the $\mathsf{GW}$ branch.  Notation (theorem.md \S1): an entry $E=(h,T_h,u)$ with $u=T_h.\slot$;
+and are applied only in the $\mathsf{GW}$ branch.  Notation: an entry $E=(h,T_h,u)$ with $u=T_h.\slot$;
 exposure $a\geq0$ (the spec's~$x$); window $I(E,a,k_F)=[u+a+\cF,\,
 u+a+\cF+k_F]$; $D=a+\cF+k_F$.  \emph{Good window} $\mathsf{GW}(E,a,k_F)$:
 \begin{itemize}[itemsep=0pt,topsep=2pt]
@@ -895,8 +880,8 @@ predecessor $P_E$ and $\mathsf{GW}(E,a,k_F)$.  Then on the chain of $B^*$:
 $E$ is justified at $B^*$ or earlier; $P_E$ is finalized at or before the
 block that justifies~$E$; and $h$ does not cross by timeout first.  So by
 slot $u+D$.  (Not ``in a block of the window'': it can happen earlier.)}
-{G0.1 (store), G0.2, G0.5, G0.7, G0.8, G0.9 (a), G0.10, F.2}{theorem.md \S3 (paper proof, checked
-twice); its boundary trace is a test witness.}{M.}
+{G0.1 (store), G0.2, G0.5, G0.7, G0.8, G0.9 (a), G0.10, F.2}{paper proof (not in this repository); its boundary trace is a test
+witness.}{M.}
 
 \dagnode{G1.7}{Entry whose previous height is not justified, two windows (theorem B)}{Let $U=(h,T_h,u_0)$
 be an entry whose previous height is not justified, $D_i=a_i+\cF+k_F$, with $\mathsf{GW}(U,a_0,k_F)$ (target attestations, no finality pair
@@ -905,7 +890,7 @@ $Q=(h,T_h)$, and its block enters a height $E_1$ whose previous height is justif
 If moreover $\mathsf{GW}(E_1,a_1,k_F)$ for that \emph{actual} entry, with
 serving block $B^*_1$, then on the chain of $B^*_1$ the pair $Q$ is finalized
 by $u_1+D_1\leq u_0+D_0+D_1$, which covers $T_h$ and every ancestor.}
-{G1.6, G0.2, G0.7, G0.9 (a), F.2}{theorem.md \S4.}{S.}
+{G1.6, G0.2, G0.7, G0.9 (a), F.2}{paper proof (not in this repository).}{S.}
 
 \dagnode{G1.8}{Crossing and coverage (corollary C)}{Say an entry block $T$
 is \emph{covered} on a chain when $T\preceq\sigma.F$ there.  (a) Let $C$ be an
@@ -913,20 +898,20 @@ accepted block whose chain extends an entry of slot~$u$ and has, in every $g$
 consecutive slots up to $C.\slot\geq u+\max(\delta_{\mathrm t},r)+g-1$, an
 honest block whose proposer's pool holds, before its proposal, a progress
 quorum of valid current-entry attestations (from $t_{u+r}$ on, $r\geq1$ an integer;
-the first block after the entry has slot $u+1$, goldilocks\#38).  Then
+the first block after the entry has slot $u+1$).  Then
 on the chain of~$C$ the height is left, by justification or timeout, within
 $\max(\delta_{\mathrm t},r)+g-1$ slots of~$u$.  (b) If $m\geq1$ consecutive
 entries cross by timeout on a chain, with delays $\tau_i$, and the next
 entry, whose previous height is not justified, and its actual successor entry, entered by justifying it, satisfy G1.7 with serving block
 $B^*_1$, the first failed entry is covered on the chain of $B^*_1$ within
 $\sum_i\tau_i+D_0+D_1$ slots.}
-{G1.6, G1.7, G0.7}{theorem.md \S5.}{S.}
+{G1.6, G1.7, G0.7}{paper proof (not in this repository).}{S.}
 
 \dagnode{G1.9}{Cache acceptance}{(a) Per call, for the call inside
 $\fname{fg\_on\_block}$ (so $\sigma[B]$ is the state of the block~$B$ it has just
 added: $\sigma[B].h_j<\sigma[B].h$ and $\sigma[B].F\preceq B$; over arbitrary
 $(\Sigma,\sigma)$ the justification step can open a contest and raise the head
-height floor, goldilocks\#38): when
+height floor): when
 $\fname{update\_finality}(\Sigma,\sigma[B])$ runs with
 $\Sigma.F\prec\sigma[B].F$, $\sigma[B].F\preceq\Sigma.J$ after that call's
 justification step, and $\fname{has\_viable\_descendant}(\Sigma,\sigma[B].F)$
@@ -938,7 +923,7 @@ $\sigma[B].F\preceq\Sigma.F$ at every honest acceptance of a Goldilocks run
 under $\mathsf{Healthy}(g)$ and $\mathsf{NoColl}$, without the reset or the
 height bound (of $\mathsf{Healthy}(g)$ only the fault bound is used).  The tested block is $\sigma[B].F$, not an ancestor's:
 a finalization on an ancestor's chain that the caches refused is not re-read.}
-{G0.3, G0.4 (height)}{theorem.md \S8 item~5; (b): HR.5.}{M; (a) fixed (goldilocks\#38); (b)
+{G0.3, G0.4 (height)}{paper argument (not in this repository); (b): HR.5.}{M; (b)
 is HR.5 (in the Lean without the reset or the height bound).}
 
 \dagnode{G1.10}{Quorum-free entries (the cut)}{An FG fact, parametric in
@@ -979,9 +964,9 @@ node with a height-scoped $\mathcal E$, for which (K0) need not hold; its reset
 must be defined by time, the first public time $a_z$ at which an honest attestation at
 the new height is signed, with $T_0<a_z$ and every attestation signed at~$a_z$ covered
 (several honest nodes can sign such attestations in their ticks at~$a_z$, in any order).}
-{G0.2, G0.3, G0.7, G1.1, F.3}{the gate only removes justifications
-(theorem.md \S8); old \texttt{CleanCut}; healing-simple \texttt{t1-proof.md}
-\S9 (\textsf{Reset}$(z)$).}{M.}
+{G0.2, G0.3, G0.7, G1.1, F.3}{the gate only removes justifications;
+old \texttt{CleanCut}; a paper proof of \textsf{Reset}$(z)$ (not in this
+repository).}{M.}
 
 \subsection{Available chain}
 
@@ -1031,14 +1016,14 @@ extends~$B$.  (Slow locks are excluded: their test reads only earlier saved
 results and carries no slot-$s$ evidence.  For the fast-test origin the
 argument is the result's strict majority of the writer's participants together
 with $\mathsf{Sync}$, not the bound $2|S|\geq n$: without $\mathsf{Sync}$ a
-faulty vote seen by the voter and not by the writer splits the walk.  Both
-counterexamples are recorded in goldilocks\#11.  The writer-pool condition
+faulty vote seen by the voter and not by the writer splits the walk.  Each
+exclusion has a counterexample.  The writer-pool condition
 A1.8 (d) follows from $\mathsf{Sync}[t_s,\tau]$: every slot-$s$ vote that $y$
 admits by its vote, $\tau\leq t_{s+1}+\Delta=t_s+5\Delta$, also from the payload
 of a block that the writer refuses, is forwarded and processed by the writer
 before its fast test at $t_s+6\Delta$, and a vote that $y$'s two-vote cap
 refused leaves two forwarded votes of its validator (composition
-\S``Model''; without that forwarding, goldilocks\#28's $n=5$ instance
+\S``Model''; without that forwarding, an $n=5$ instance
 breaks this node).)}
 {A0.3, A0.4, A0.6, A0.8, A1.1, G0.4 (frame), G0.3 (frame)}{blueprint \texttt{21-healing}
 (\texttt{healing\_first\_transfer\_fast}); \texttt{02-clean}.}{M.}
@@ -1115,7 +1100,7 @@ restarted after~$t_s$, and at the call $\Fr.F$ and $\fcroot$ are compatible
 with~$B$.  (One of the two holds at an honest node in a run: a node awake and
 joined at $t_{s+1}+\Delta$ runs that tick and votes by then, C0.4; otherwise it
 was asleep then or restarted after~$t_s$.  The hypothesis must not be read as
-vacuous when $x$ makes no unlocking in slot $s+1$: consensus-lean\#66.)  Then the $\mathit{fg\_confirmed}\neq\bot$ that
+vacuous when $x$ makes no unlocking in slot $s+1$: that reading is false.)  Then the $\mathit{fg\_confirmed}\neq\bot$ that
 $\fname{ac\_to\_fg}$ returns at~$x$ at~$t$ is compatible with~$B$.
 (The source at~$t$ is a fast lock of slot at least $\slot(t)-2$, written by an
 update that reads votes of an earlier slot, or by an optimistic confirmation
@@ -1208,8 +1193,7 @@ and G1.10 (c) at that vote (G0.3); then (K2) and G0.4 (frame), G0.4 (height).}
 \texttt{FrameClaimNext}, \texttt{SourceDisciplineClaim},
 \texttt{HeadReachesLoClaim}, \texttt{CleanCut}, \texttt{CleanHistory};
 blueprint \texttt{01}, \texttt{02} (\texttt{fj.frame.v4}); lean notes ``New
-contracts: Recent source, next vote''; workbench
-\nolinkurl{codex/reports/recent-source-astra-q1.md}.  The old proofs are for
+contracts: Recent source, next vote''.  The old proofs are for
 one FG action per round and no gate.}{L: the join of the step lemmas
 (A1.2--A1.4, A1.9, G1.10), which can be proved in parallel; the join itself
 is the induction over ticks.}
@@ -1223,10 +1207,10 @@ then $a_z$ exists (HR.3) and (R1)--(R4) hold (HR.4).  The entries served: an
 entry $E=(h,P,u)$ whose entry block~$P$ is an actual honest ready proposal of
 slot~$u$, with $t_u\geq R_z=t_{\slot(a_z)+2k+5}$ ($R_z\leq a_z+(8k+20)\Delta$),
 at height $h\geq H_z+1$, and, when $E$'s previous height is justified, with predecessor height
-$\geq H_z+1$ (so $h\geq H_z+2$; producer-reset-continuation \S18, BA); and
+$\geq H_z+1$ (so $h\geq H_z+2$; paper lemma BA); and
 (retained ready inclusion) some slot of $I(E,0,k_F)$ has an honest ready
 proposal whose parent extends~$P$, or extends an accepted retained chain that
-has already justified~$E$ (instance-proposal \S3.5 \texttt{ACService}).
+has already justified~$E$ (the AC service premise \texttt{ACService}).
 \emph{Conclusion.}  Such an entry gets \emph{outcome service} by the deadline of its
 window $I(E,0,k_F)$: the end of its last slot $u+\cF+k_F$, strictly before
 $t_{u+\cF+k_F+1}$ (not that slot's start), with the same carrier conclusion in both branches (the
@@ -1240,10 +1224,10 @@ chain has already justified~$U$ early; in both cases $U$ is justified by that
 deadline and the \emph{actual} successor entry, entered by justifying~$U$, whose predecessor is~$U$
 exists.  When that successor is itself an actual honest-ready entry, this node
 applies to it at its own slot and deadline; it does not promise finalization
-of~$U$ before that successor is serviced.  (Proof shape, the conditional duty join of phase-service \S10 and
-producer-reset-continuation \S22, \S23, \S26: labels before $\slot(a_z)+3$
+of~$U$ before that successor is serviced.  (Proof shape, the conditional duty join (a paper argument, not in this
+repository): labels before $\slot(a_z)+3$
 expire before~$R_z$; clean fast origins follow HR.4, clean raw slow targets
-follow \S10's transfer, stored images follow RN/RU.  From~$R_z$ every honest
+follow the clean slow transfer, stored images follow RN/RU.  From~$R_z$ every honest
 ready proposal~$P$ gets every honest slot-$u$ vote and, at $t_u+6\Delta$, a
 surviving fast write of~$P$ or a retained chain that extends~$P$ and carries a
 justified crossing of its entry ($\delta_{\mathrm t}\geq2$ rules out a timeout
@@ -1258,23 +1242,20 @@ served by this node (goldilocks-spec \S Schedule: ``an AC obligation''; H4).  Th
 needed: an early justification can use $q-f$ honest and $f$ faulty targets
 ($n=7$: three plus two), after which higher-source suppression can skip that
 height for every later honest source, so the existing duty interface does not
-entail a quorum of honest targets (workbench\#7 \S12 at \texttt{ec3aece}; no reachable
+entail a quorum of honest targets (no reachable
 counterexample is claimed).}
 {A1.5, A0.6, C0.3, C0.5, G0.2, G0.7, G0.10, G0.1 (store), G0.5, HR.1,
-HR.3, HR.4, HS.2, HS.3}{theorem.md \S8 items 1--2; instance-proposal
-\S2.2 (emission timing), \S3.5; workbench \texttt{phase-service.md} at
-\texttt{ec3aece} \S10--\S12 (\S9 superseded by \S10);
-\texttt{producer-reset-continuation.md} \S18 (BA), \S22 (RN, RU), \S23, \S26;
-all paper only.}{L.  Statement fixed; its proof is conditional on HR.4
+HR.3, HR.4, HS.2, HS.3}{paper arguments (not in this repository): emission
+timing, the AC service premise, the clean slow transfer and the lemmas BA, RN
+and RU; all paper only.}{L.  Statement fixed; its proof is conditional on HR.4
 (JointRet and the high records), the paper lemmas RN/RU and the clean slow
-transfer (producer-reset-continuation \S22; phase-service \S10), retained
+transfer, retained
 ready inclusion, and the regime premises.  The proof shape's ``clean fast
 origins follow HR.4'' does not hold for every clean-label fast lock: a
 clean-label optimistic lock can select, and store, a low ancestor of the high
 reset seed (at most $H_z$) that six seats support against five honest heads on
 the high descendant, so its stored block is not a high origin (model
-counterexample, workbench\#8 at \texttt{074d400},
-\texttt{tools/low\_optimistic.py}, seeds 0--3, $n=7$, $f=2$; safety holds and
+counterexample in simulation, seeds 0--3, $n=7$, $f=2$; safety holds and
 no low block was returned as an FG source in those runs).  Such a lock must
 inherit protection from the high seed it is an ancestor of (a high-or-seed-ancestor
 split), not be treated as an HR.4 origin; this is a gap in the proof shape, not
@@ -1302,25 +1283,24 @@ does not claim that a literal good window occurred in the early-justification
 branch.  An entry~$U$ whose entry block is not a fresh honest ready proposal
 first needs the old-entry crossing ($r_{\mathrm{old}}$).  HR.5 puts the
 finalization in the honest caches after acceptance relay.  A single honest
-proposer per window does not suffice (theorem.md \S6 item~4); R.4's deadlines
+proposer per window does not suffice; R.4's deadlines
 and proposer quantifiers are R.4's, not changed here.}
-{G1.6, G1.7, G1.8, G1.9, HR.3, HR.5, C1.2, A1.7}{instance-proposal \S3.6 (sketch);
-workbench \texttt{producer-reset-continuation.md} \S25 (old-entry crossing,
-$r_{\mathrm{old}}$), \S26 (outcome service through $U$ and its actual
-successor), \S27 (the uniform pattern wait: ``recurring finalizing coverage uses
-the same construction after each requested time''; the run length $M^*$ is that
-note's conditional coverage budget $b_0+r_{\mathrm{old}}+2(\cF+k_F)+1$ slots,
-then carrier relay~$\Delta$); paper only.  Falsification test: the same
-\texttt{sa-fg-model} runs and sweeps as node O.1: 13\,320, 1.34 million and
+{G1.6, G1.7, G1.8, G1.9, HR.3, HR.5, C1.2, A1.7}{paper arguments (not in
+this repository): the old-entry crossing ($r_{\mathrm{old}}$), outcome service
+through $U$ and its actual successor, and the uniform pattern wait (recurring
+finalizing coverage uses the same construction after each requested time; the
+run length $M^*$ is the conditional coverage budget
+$b_0+r_{\mathrm{old}}+2(\cF+k_F)+1$ slots, then carrier relay~$\Delta$); paper
+only.  Falsification test: the same simulation runs and sweeps as node O.1: 13\,320, 1.34 million and
 577\,200 coverage checks from $R_*$ with no violation; worst coverage delay
 $35.5\Delta$ and $39.5\Delta$ against $L+\Delta\geq213\Delta$, and $119.5\Delta$
 in the hard sweep against $L+\Delta$ up to $737\Delta$; coverage held from
-$\bar g$ in every sweep run.}{L.  Statement fixed (draft~9);
+$\bar g$ in every sweep run.}{L.  Statement fixed;
 conditional on C1.2 (including its open high-or-seed-ancestor split), the
-old-entry crossing by $t_s+L_{\mathrm{old}}$ (phase-service \S11 at
-\texttt{4eff8a2}, conditional on its \S10 and JointRet/RN; not a node), HR.5,
-and the uniform pattern; \S27 is a reviewed conditional assembly
-(workbench\#27, \texttt{o1-section27-review.md}), not a complete proof from the
+old-entry crossing by $t_s+L_{\mathrm{old}}$ (a paper argument, conditional on
+the clean slow transfer and JointRet/RN; not a node), HR.5,
+and the uniform pattern; the uniform-pattern wait is a conditional paper
+assembly, not a complete proof from the
 regime premises; the original-stored source provenance and the exact carrier
 acceptance also stay conditional.  Not claimed for a weaker proposer
 premise (\S``O.1'', Status).}
@@ -1355,9 +1335,8 @@ from its own first update of a slot $\geq s$.)}
 
 \section{Healing: phase service}\label{sec:healing-service}
 
-The nodes of this section are the phase-service nodes of workbench
-\texttt{notes/goldilocks/healing-simple/phase-service.md} (workbench\#7,
-\S7--\S8, at \texttt{041f37e}), in the run-level Healing module.  They are
+The nodes of this section are the phase-service nodes, in the run-level
+Healing module.  They are
 additions to the Healing module, not changes to A1.2--A1.4, A1.8, C1.1 or the
 protocol.  No edge leads from C1.1, C1.2, C1.3, $\mathsf{Reset}$, R.3, R.4,
 O.1 or the consensus-lean assembly back into an HS node, so no conclusion of
@@ -1428,7 +1407,7 @@ cut is assumed.  From the cut $c=t_{\slot(g)+3}$ this needs $c\geq g+\kappa$
 ($\kappa\leq2\Delta$ suffices); otherwise the cut is
 $t_{\slot(g+\kappa)+3}$; there $H$ is redefined, and no unbounded readiness
 wait is charged to $\mathsf{Settle}(\Delta)$.}
-{G1.1, G1.2, G0.3, F.2, F.3, C0.5}{phase-service.md \S8.2--\S8.3.}{S.  The
+{G1.1, G1.2, G0.3, F.2, F.3, C0.5}{paper proof (not in this repository).}{S.  The
 accepted-old-block bound~$\kappa$ is a regime premise: neither the
 acceptance-relay clause of $\mathsf{Sync}$ (acceptances at $\tau\geq g$) nor
 the $\mathsf{GST}$ convention (delivery, not acceptance, of old objects)
@@ -1449,7 +1428,7 @@ head on a protected path supplies a frozen viability witness whenever it is
 in the frozen block domain (not every later disclosed witness is already in
 that domain).}
 {G0.1 (store), G0.2, G0.3, G0.4 (height), G0.5, G1.1, G1.2, G1.4, F.2, F.3,
-C0.2, C0.5}{phase-service.md \S2.  The equal-height top-$J$ case uses the
+C0.2, C0.5}{paper proof (not in this repository).  The equal-height top-$J$ case uses the
 target uniqueness of G0.5 with quorum intersection, not a stronger E1.}{S.  A
 run-level FG/AC bridge, not a strengthening of G0.3 (frame).}
 
@@ -1475,7 +1454,7 @@ optimistic lock is claimed).  All conclusions persist through lower advances
 of $\Sigma.F$, with the original $a$ and~$r$.}
 {HS.0, HS.1, F.1, F.2, F.3, F.4, F.5 (schema), F.5 (run), A0.1, A0.2, A0.3,
 A0.4, A0.6, A0.7, A0.8, A1.2, A1.3, A1.4, A1.8, G0.4 (frame), G0.4 (height),
-C0.4, C0.5}{phase-service.md \S4.  HS.2 owns the ancestor-target score
+C0.4, C0.5}{paper proof (not in this repository).  HS.2 owns the ancestor-target score
 derivation and the proposal-boundary transfer variants instead of using
 A1.8's actual-result conclusion verbatim; the pool and score part of A1.1 is
 reproved with the retained heads (its full-frame equality premise is not
@@ -1490,7 +1469,7 @@ voters, apart from new exempt optimistic locks of slot~$s$, and that each
 voter's walk starts at or below the proposer's unlocked anchor: every live lock
 of the proposer after its unlocking at~$t_s$, of a label~$<s$, has its block at
 or below a live lock block of each honest slot-$s$ voter at its vote, or at or
-below that voter's fork-choice root (consensus-lean\#100: a lock only the
+below that voter's fork-choice root (a lock only the
 proposer holds, e.g.\ a pre-$\bar g$ optimistic lock that survives its unlocking
 because the honest votes for its ancestor do not oppose it, otherwise starts the
 proposal walk below where lock-free voters stop).  Then every honest
@@ -1505,17 +1484,16 @@ until~$e$, and every honest proposal parent from slot $s+1$ on extends~$P$.
 If $P$ is crossed its ancestry is still retained (this does not say that its
 entry stays current).}
 {HS.1, HS.2, F.2, F.3, F.5 (schema), F.5 (run), A0.1, A0.2, A0.3, A0.4,
-A0.6, A0.8, A0.9, A1.3, G0.2, C0.3, C0.4, C0.5}{phase-service.md \S3 and the
-common-batch part of \S5; the previous-slot view comparison is the direct
-pool argument of \S3, with no equality of the whole current frame.  The
-proposer-anchor premise was added after consensus-lean\#100: the paper argument
-(``with the anchors on the parent's path, induction on the child comparisons'';
-workbench\#26 \S4) does not show that a voter reaches the proposer's unlocked
-start, and its certification of the first part was retracted by its author.
-The gap is reachable: workbench \texttt{sa-fg-model} at \texttt{9c943b0},
-\texttt{tools/hs3a\_proposer\_lock.py} ($n=7$, $f=2$, $k=4$, $\delta_{\mathrm t}=2$,
+A0.6, A0.8, A0.9, A1.3, G0.2, C0.3, C0.4, C0.5}{paper proof (not in this repository), with the
+common-batch argument of HS.4; the previous-slot view comparison is a direct
+pool argument, with no equality of the whole current frame.  The
+proposer-anchor premise is needed: the paper argument
+(``with the anchors on the parent's path, induction on the child comparisons'')
+does not show that a voter reaches the proposer's unlocked
+start.
+The gap is reachable in simulation ($n=7$, $f=2$, $k=4$, $\delta_{\mathrm t}=2$,
 $\mathsf{Healthy}$ with the claims network; $s=j+3$ and $s=j+4$): every
-premise of the former statement holds and four honest slot-$s$ voters vote the
+premise of the statement without the anchor premise holds and four honest slot-$s$ voters vote the
 ancestor~$A\neq P$; the new premise fails there (the proposer's lock on
 $L\succ A$ is above every other voter's lock blocks and fork-choice root~$A$).}{M.  The
 two-voter local discriminator is absorbed here.  After~$r$, HS.2 supplies both
@@ -1537,14 +1515,14 @@ unless a height-$m$ descendant source suppresses service at $m-1$; then its
 slot-$(s_0+1)$ optimistic evidence transfers first and a second honest
 proposal is taken after $v_1+8\Delta$, where $v_1=t_{s_0}+6\Delta$ (no assumption that a reported
 descendant at~$m$ shares its ancestor's entry at $m-1$).  Included client
-subclaim (P1/P2 of workbench\#6): in a settled effective phase, an actual
+subclaim (P1/P2): in a settled effective phase, an actual
 source whose entry is $E$ at $h\geq\ell$ on an allowed branch is not refused
 by a conflicting client finality lock at~$h$, so the client emits a matching
 target or timeout, or its durable record already holds a matching attestation (not
 for an unreported candidate or a source below the floor).}
 {HS.1, HS.2, HS.3, F.1, F.5 (run), A0.3, A0.4, A0.6, A0.7, A0.8, A1.2, A1.3,
 A1.4, G0.2, G0.3, G0.3 (frame), G0.4 (frame), G0.4 (height), G0.5, G1.1,
-G1.2, C0.3, C0.4, C0.5}{phase-service.md \S5, with the two-height suppression
+G1.2, C0.3, C0.4, C0.5}{paper proof (not in this repository), with the two-height suppression
 branch and its source and write-label classification; the P1/P2 proof is
 part of this node's evidence.}{M.}
 
@@ -1556,10 +1534,10 @@ inclusion proposer's pool by $v+\Delta_F$; until $\min(e,b)$ every honest
 inclusion proposal extends~$E$ and keeps the progress bits already included,
 unless $E$ has crossed, and such proposals are accepted and relayed.  These
 conclusions and HS.4 hold across every lower advance of $\Sigma.F$ without
-replacing~$w$ or increasing~$D$, so $\mathsf{PhaseService}(D)$ (workbench\#6
-\S8) holds: a crossing of~$h$ is accepted by~$b$ when $e>b$, or the phase has
+replacing~$w$ or increasing~$D$, so $\mathsf{PhaseService}(D)$
+holds: a crossing of~$h$ is accepted by~$b$ when $e>b$, or the phase has
 ended or $h$ has crossed; the crossing-or-phase-end deadline is at most
-$w+C$.  \emph{Continuation} (\S8.1): if the service is at $m-1$ and no
+$w+C$.  \emph{Continuation}: if the service is at $m-1$ and no
 effective phase end or frontier rise occurs by $w+C$, the scheduled honest
 mature inclusion proposal~$X$ (the first honest ready one after
 $\max(v+\Delta_F,t_{E.\slot+\delta_{\mathrm t}})$, kept even if its parent chain
@@ -1572,8 +1550,8 @@ $t_x+\Delta+C$ unless the effective phase ends or the frontier rises first, with
 no new lock drain or settling interval.  So, from a settled~$w$, a strict
 effective phase change or frontier rise occurs by $w+A$, $A=2C+\Delta$
 ($\mathsf{Producer}(A)$ under the same premises; by $w+C$ when the first
-served entry is at~$m$).  Included consumption subclaim (P3 of
-workbench\#6): if at~$v$ a fixed viable entry $E$ at $h\geq\ell$ has matching
+served entry is at~$m$).  Included consumption subclaim
+(P3): if at~$v$ a fixed viable entry $E$ at $h\geq\ell$ has matching
 progress attestations of weight $\geq q$, on the selected chain or in its honest
 proposer's pool by $v+\Delta_F$, and honest ready proposals until crossing
 keep that branch and its progress bits, then an honest proposal after both
@@ -1582,17 +1560,15 @@ $v+\Delta_F$ and $t_{E.\slot+\delta_{\mathrm t}}$ crosses~$h$, accepted by~$b$
 arm fires).  Its branch and attestation premises are discharged by HS.4 and the
 delivery above, not assumed as extra hypotheses of $\mathsf{PhaseService}(D)$.}
 {HS.1, HS.2, HS.3, HS.4, F.1, F.5 (run), G0.1 (chain), G0.1 (store), G0.2, G0.7,
-G0.9, A0.6, A0.9, C0.3, C0.4, C0.5}{phase-service.md \S6, \S8.1 and
-workbench\#6 P3.  The good-window hypotheses of G1.6 and G1.7 cannot replace
+G0.9, A0.6, A0.9, C0.3, C0.4, C0.5}{paper proof (not in this repository), with
+the continuation and P3.  The good-window hypotheses of G1.6 and G1.7 cannot replace
 the consumption proof's timeout and progress premises; attestation delivery and the
 $\mathsf{GST}$ attestation convention are run premises, not consequences of HS.1.}{S
 after HS.4.  No clean target record or predecessor finality is assumed.}
 
 \section{Healing: top-level statements}\label{sec:healing-top}
 
-The top-level healing statements (workbench
-\texttt{repos/goldilocks/notes/healing-simple/t2-statements.md}, by
-claude-goldilocks-spec, checked by Astra).  H.1 and H.2 are AC nodes over
+This section gives the top-level healing statements.  H.1 and H.2 are AC nodes over
 driven AC traces; H.2 (run), HR.1, HR.3, HR.4, H.3 and H.4 are run nodes of
 the Healing module; HR.2 is an FG store node.  No HS node uses an H or HR
 node, and no H or HR node uses C1.1, C1.2, C1.3, O.1 or an R node.  They do
@@ -1602,7 +1578,7 @@ not discharge O.1 (a), the time-scoped O.1 (b), or $T_{\mathrm{rec}}$.
 bounds the time from a lock write to its expiry: a regular write lives
 at most $(4k-2)\Delta$, an optimistic one at most $4(k+1)\Delta$ (with $n=1$ the
 proposer's own vote can make an optimistic write at~$t_j$, which expires at
-the latest at $t_{j+k+1}$; AC \S Locks; healing-simple \texttt{t4-recheck.md} W2).
+the latest at $t_{j+k+1}$; AC \S Locks).
 $\Theta$ is not the client record~$\Lambda$.  For a time~$t$,
 $r_{\mathrm{AC}}(t)$ is the least slot with $t_{r_{\mathrm{AC}}(t)}\geq
 t+4\Delta$ and $s_{\mathrm{AC}}(t)$ the least slot with
@@ -1731,7 +1707,7 @@ $[t,t+G_{\mathrm p}]$ is in every honest confirmed tip from
 $t+G_{\mathrm p}+6\Delta$ on.  In particular there is one from
 $\bar g+2\Theta+14\Delta+G_{\mathrm p}=\bar g+(8k+22)\Delta+G_{\mathrm p}$ on.
 
-(Proof shape, T1 \S\S2--6.  Let $r=r_{\mathrm{AC}}(\bar g)$.
+(Proof shape.  Let $r=r_{\mathrm{AC}}(\bar g)$.
 Results of one slot $\geq r$ are compatible: regular with regular, regular
 with optimistic, and optimistic with optimistic.
 A fast origin of label $\geq r$ transfers to the next slot's honest votes and
@@ -1751,17 +1727,13 @@ Afterwards the record is never replaced by a block that conflicts with~$P$,
 and the head extends~$P$.)}
 {F.1, F.3, F.5 (schema), A0.1, A0.3, A0.4, A0.5, A0.6, A0.7, A0.8, A1.2,
 A1.3, A1.4, A1.8, G0.3 (frame), G0.4 (frame)}
-{healing-simple \texttt{t1-proof.md} \S\S1--6; \texttt{t1-t4-reviews.md}
-(two reviews; this statement applies the second review's fixes:
-$\mathsf{Catch}$ explicit, growth dropped, the G-free form);
-\texttt{t4-recheck.md} rows A1--A6, W1, W2; slides 9--14
-(\texttt{slides-extract.md}); old plain-SA Lean \texttt{recovered\_from\_engine},
-\texttt{fast\_source\_permanent\_support} (\texttt{t3-reuse-map.md}).}
-{M.  Proved on paper (T1 \S\S2--6); both reviews accept the standalone
-argument.  The driven-trace domain was added after the reviews, to exclude
-blocks that the composed node refuses; the proof already assumed it.  The
-drain arithmetic (review nit~9) would allow the threshold
-$\bar g+(8k+4)\Delta$.  That is not claimed: by the simplicity decision the
+{paper proof (not in this repository; with $\mathsf{Catch}$ explicit, no
+growth, and the G-free form); old plain-SA Lean \texttt{recovered\_from\_engine},
+\texttt{fast\_source\_permanent\_support}.}
+{M.  Proved on paper.  The driven-trace domain excludes
+blocks that the composed node refuses; the proof assumes it.  The
+drain arithmetic would allow the threshold
+$\bar g+(8k+4)\Delta$.  That is not claimed: for simplicity the
 node keeps $2\Theta+8\Delta$.}
 
 \dagnode{H.2}{AC inclusion from the retention premise}{An AC node over driven
@@ -1785,7 +1757,7 @@ Carry comes from relay: the counted heads extend the protected block, hence
 $\Fr.F$, unless the block is at or below $\fcroot$.
 The frame's move back only takes ancestors and keeps labels (A0.4 (c)), so
 the drain still counts labels.
-At~$P$, the comparison of phase-service \S3 is made with $\mathsf{Geo}(P)$ in
+At~$P$, the comparison of HS.3's proof is made with $\mathsf{Geo}(P)$ in
 place of a settled phase: a viable block of $y$'s voter tree has a witness
 that is a viable head for the proposer, and eligibility agrees.
 After $t_p+6\Delta$, the head extends~$P$, by two facts: $\mathsf{Inv}$ for
@@ -1796,18 +1768,13 @@ $\Fr.F\succeq P$.  In both cases the confirmed tip extends~$P$, because it
 extends $\Fr.F$ (A0.6).)}
 {F.1, F.3, F.5 (schema), A0.1, A0.3, A0.4, A0.5, A0.6, A0.7, A0.8, A1.2,
 A1.3, A1.4, A1.8, G0.3 (frame), G0.4 (frame)}
-{as H.1; healing-simple \texttt{t1-t4-reviews.md} (second review,
-blocking~3: the frame hypotheses); \texttt{phase-service.md} \S3 (proposal
-sandwich), \S4 (duty witness, ancestor-target transfer).}
-{M.  Proved on paper under its current premises; the reviews of
-\texttt{t1-t4-reviews.md} do not certify it.  The five open proofs of the
-earlier status are closed in workbench \texttt{healing-simple/h2-open-items.md},
-each after a skeptical subagent pass: (1) the retained-head score comparison,
-(2) ancestor-target transfer, (3) proposal-boundary transfer and (5) Carry at
-or below $\fcroot$ with the frame's move back during the drain in
-workbench\#13 (\texttt{ba18e93}); (4) sufficiency of $\mathsf{Geo}(P)$, that
-is (i), in workbench\#15 (\texttt{27e05af}); (ii) in workbench\#17
-(\texttt{75d4c5c}).  These paper reviews are not a Lean proof; the Lean
+{as H.1, with the frame hypotheses; the proofs of HS.3 (proposal
+sandwich) and HS.2 (duty witness, ancestor-target transfer).}
+{M.  Proved on paper under its current premises, with (1) the retained-head
+score comparison, (2) ancestor-target transfer, (3) proposal-boundary
+transfer, (4) sufficiency of $\mathsf{Geo}(P)$, that is (i), (5) Carry at
+or below $\fcroot$ with the frame's move back during the drain, and (ii).
+These paper proofs are not a Lean proof; the Lean
 statement \texttt{SA.ACInclusion} is proved separately
 (\S\ref{sec:lean-status}).}
 
@@ -1827,7 +1794,7 @@ run, with $\fname{ac\_confirmed}$ the node's AC confirmed tip.}
 {H.2, C0.4, C0.5, F.5 (run)}
 {composition \S``Node'', \S``Blocks''; fg.tex $\fname{state\_transition}$.}
 {S.  C0.5 (b) states that the AC sees only blocks that passed these
-acceptance tests (goldilocks\#35); that statement is definitional in the
+acceptance tests; that statement is definitional in the
 node, but the projection onto a driven trace is a proof
 (\S\ref{sec:lean-status}).}
 
@@ -1856,10 +1823,9 @@ be the first public time at which an honest validator signs one.  Then:
 This is the time-defined reset of G1.10: for every $T\geq a_z$, every honest
 attestation signed at~$a_z$ lies in $(T_0,T]$.}
 {G0.2, A1.5, C0.4, C0.5, F.5 (run)}
-{healing-simple \texttt{t1-proof.md} \S7 (F1); \texttt{producer-reset-continuation.md}
-\S4 (R0), \S10 (first-time tick lemma); both reviews of workbench\#4.}
-{S.  Proved on paper.  Reviewed in the workbench\#4 reviews; the first-time
-tick lemma (\S10) is the author's paper result.}
+{paper proof (not in this repository), with the lemma R0 and the first-time
+tick lemma.}
+{S.  Proved on paper.}
 
 \dagnode{HR.2}{Phase count}{An FG node, at store level, over the FG
 component trace.  Assume $\mathsf{NoColl}$, unforgeable signatures,
@@ -1880,9 +1846,8 @@ weakened E1).  An advance of an honest $\Sigma.F$ to a height below~$m$
 changes no phase.  So there are at most two effective phase changes per value
 of~$m$.}
 {G0.2, G0.3, G0.5, G1.1, G1.2}
-{healing-simple \texttt{t1-proof.md} \S8 (F2, first part); both reviews of
-workbench\#4; \texttt{producer-reset-continuation.md} \S14; slides 25, 26, 30.}
-{S.  Proved on paper (reviewed).}
+{paper proof (not in this repository; F2, first part).}
+{S.  Proved on paper.}
 
 \dagnode{HR.3}{Reset existence}{A run node.  Assume $\mathsf{Healthy}(g)$,
 $\mathsf{Catch}(2\Delta)$, $\mathsf{Prop}^{+}(G_{\mathrm p})$ and the HS
@@ -1908,22 +1873,18 @@ $\max(v+\Delta_F,t_{E.\slot+\delta_{\mathrm t}})$ crosses the entry, unless
 the entry has already crossed: by justification if that is enabled,
 otherwise by the mature progress arm.  Acceptance adds at most~$\Delta$.)}
 {HS.0, HS.5, HR.1, HR.2, G0.2}
-{falsification test (not a proof): workbench\#8 \texttt{search.py heal-top} at
-\texttt{4882de5}, 15081 $\mathsf{Healthy}$ runs ($n=4,7$; $k=2,3$; random,
+{falsification test (not a proof): a simulation search over 15081
+$\mathsf{Healthy}$ runs ($n=4,7$; $k=2,3$; random,
 hostile and partition adversaries) with no violation of HR.1, HR.3 or HR.4;
-largest $a_z-\bar g$ measured $30\Delta$ (branch
-\texttt{claims-healing-top} at \texttt{60550f5}, plain $\mathsf{Prop}$);
-heuristic maximization (\texttt{search.py maximize az} at \texttt{c1aea89},
-12354 runs, two independent searches) reaches $38\Delta$, with
+largest $a_z-\bar g$ measured $30\Delta$ (plain $\mathsf{Prop}$);
+heuristic maximization (12354 runs, two independent searches) reaches $38\Delta$, with
 $a_z=c_z+2G_{\mathrm p}+2\Delta$ (an honest proposer every third slot; the
 first honest proposal at $H_z$ contested by faulty siblings), against the
 bound's $n=7,k=2,G_{\mathrm p}=12\Delta$ instance, $1344\Delta$;
-\texttt{phase-service.md} \S\S1--8 (HS.0--HS.5 as on main);
-\texttt{producer-reset-continuation.md} \S3 (P3), \S\S14--15 (Settle, Exist,
-the constants).}
-{S given HS.0 and HS.5.  The HS nodes are the author's paper results, with
-Astra's review applied (phase-service at \texttt{4bc95bf}/\texttt{041f37e});
-the composed whole has not been reviewed.}
+the paper proofs of HS.0--HS.5 and of P3, Settle, Exist and the constants
+(not in this repository).}
+{S given HS.0 and HS.5.  The HS nodes are paper results; the composed whole
+has no paper proof of its own.}
 
 \dagnode{HR.4}{Height-scoped retention}{A run node.  Assume
 $\mathsf{Healthy}(g)$, $\mathsf{NoColl}$, unforgeable signatures, durable and
@@ -1952,13 +1913,9 @@ at $a_z$ is covered.  It is not an instance of C1.1, because (K0) and (K1)
 need not hold at~$a_z$.}
 {HR.1, G1.10, G1.2, G0.2, G0.3, G0.4 (height), G0.5, A0.4, A1.2, A1.3, A1.4,
 A1.5, C0.4, C0.5, F.5 (run)}
-{\texttt{producer-reset-continuation.md} \S5 (R4, R5), \S10, \S11 (HBoot),
-\S13 (JointRet), \S16 (high records); healing-simple \texttt{t1-proof.md}
-\S9 (the base case).}
-{M.  (R1)--(R4) are the author's paper results.  The earlier paper sections
-were reviewed: \S11 (workbench\#6 review 5711462214, at \texttt{6fd0f5f}) and
-\S13 (review 5711559955, at \texttt{cc90f27}).  Those reviews do not certify
-this node or the later forwarding clarification (goldilocks\#32).}
+{paper proofs (not in this repository) of R4, R5, the first-time tick lemma,
+HBoot, JointRet, the high records and the base case.}
+{M.  (R1)--(R4) are paper results.}
 
 \dagnode{HR.5}{Cache acceptance after the reset}{A run node (G1.9 (b) at
 high heights).  Assume the premises of HR.4 ($\mathsf{Healthy}(g)$,
@@ -1970,7 +1927,7 @@ before the call, because the three guards of G1.9 (a) hold).  (A per-acceptance 
 of~$B$ are premises.  It tests the finality of $B$ itself, not an ancestor's
 earlier refused update.)}
 {G1.9, HR.4, G1.2, G1.4, G0.5, G0.2, G0.3}
-{\texttt{producer-reset-continuation.md} \S18 (lemma CA; paper).  Proof shape:
+{paper lemma CA (not in this repository).  Proof shape:
 the old~$F$ and $F^*$ are compatible (G1.4); if $F\prec F^*$, $\sigma[B].J$
 extends $F$ and wins the justification comparison or loses to a higher~$J$,
 which is comparable with $F^*$ through the honest witnesses on the HR.4 chain;
@@ -1978,7 +1935,7 @@ a retained frontier block extends $F^*$ (G1.2) and is allowed, which gives the
 viable-descendant guard.}
 {M.  Proved in Lean (\texttt{cache\_acceptance\_after\_reset},
 \S\ref{sec:lean-status}); on paper conditional on HR.4 (R1)--(R4).  Falsification test: the
-\texttt{sa-fg-model} runs and sweeps of node O.1: 210\,356, 21.5 million and
+simulation runs and sweeps of node O.1: 210\,356, 21.5 million and
 19.5 million honest acceptances after $a_z$ with $\sigma[B].F$ of state height $\geq H_z+1$,
 no violation.}
 
@@ -1998,36 +1955,32 @@ parameters only, such that:
 \end{itemize}
 Candidate: $T_{\mathrm b}=8\Delta$, so that
 $r_{\mathrm{AC}}(a_z+T_{\mathrm b})\geq\slot(a_z)+3$, the first evidence slot
-of \texttt{producer-reset-continuation.md} \S\S22--23.
+of the clean slow transfer and the duty join.
 With H.2 (run), (a)--(c) give the conditional assembly H.4.}
 {HR.3, HR.4, HS.1, A0.4, A1.2, A1.3, A1.4, A1.8, G0.3, G0.4 (height), C0.5,
 F.5 (run)}
-{as HR.3 and HR.4; \texttt{phase-service.md} \S2 (lower $F$ and the phase
-geometry), \S10 (the floor-rise/RN join, which supersedes \S9);
-\texttt{producer-reset-continuation.md} \S\S21--23 (non-composition;
-slow-lock revival, lemmas RN and RU; the joined duty conclusion).}
+{as HR.3 and HR.4; paper arguments (not in this repository): lower $F$ and
+the phase geometry (HS.1), the floor-rise/RN join, non-composition,
+slow-lock revival, lemmas RN and RU, and the joined duty conclusion.}
 {L.  Proved in Lean (\texttt{non\_interference}, \S\ref{sec:lean-status}),
 with $T_{\mathrm b}=\max((8k+20)\Delta,8\Delta)$; the paper status follows.
 (a) is conditional on HR.3, and (b) is HR.4.  (c) has a
-\emph{conditional paper assembly} (workbench\#21, \texttt{ed7355f},
-\texttt{h3-assembly.md} \S\S1--6): $\mathsf{Inv}$ for (P1)--(P3) and
+\emph{conditional paper assembly}: $\mathsf{Inv}$ for (P1)--(P3) and
 settled-phase $\mathsf{Geo}$, with the explicit $T_{\mathrm b}=(8k+20)\Delta$
 (not the $8\Delta$ candidate above).  It imports whole-run HR.4 (stored high
 origins, including historical transfers), the original clean fast/slow
 supplier with historical duty witnesses and surviving-target
 compatibility/RN/RU/drain, RR/RF/RO/WP and the component, frame and FG steps;
-$\mathsf{Geo}$ also uses HS.1's settled same-effective-phase geometry.  A
-skeptical pass found no new finality-pattern, common-high-$F$ or
-clean-genesis premise.  (P3) is a finite unanimous-batch bootstrap before its
+$\mathsf{Geo}$ also uses HS.1's settled same-effective-phase geometry.  No new
+finality-pattern, common-high-$F$ or clean-genesis premise was found to be
+needed.  (P3) is a finite unanimous-batch bootstrap before its
 regular write, with an explicit bound on the supporting head's slot; delayed
-admissions use chronological source provenance.  This supersedes the
-pending-regular-only status of workbench\#20 (\texttt{bf819fd},
-\texttt{regular-admission-join.md}), which closed only the pending-regular
-admission join and not the (P1)--(P3) assembly.  It is not a Lean proof, nor
+admissions use chronological source provenance.  It covers the (P1)--(P3)
+assembly, not only the pending-regular admission join.  It is not a Lean proof, nor
 an independent certification of the imported suppliers.  The stronger
 all-read installed-record/RecRet result stays separate and is not a premise of
-(c)'s exact $\mathsf{Inv}$/$\mathsf{Geo}$ conclusion.  The open parts as first
-stated:
+(c)'s exact $\mathsf{Inv}$/$\mathsf{Geo}$ conclusion.  The open parts in
+their first form:
 (c1) Time scope: every protected block of a label
 $\geq r_{\mathrm{AC}}(a_z+T_{\mathrm b})$ is high, an ancestor of a high
 origin, or at or below $\fcroot$.  Each such block has an honest supporting
@@ -2035,8 +1988,7 @@ vote of its slot, and by (R3) that vote extends the earlier high origins.
 (c2) (R3) must be extended in two directions: from high fast origins to (P2)
 slow origins and (P3) unanimous proposals, and from the stored block to the
 raw selected block.  It must also be extended from votes to every event.
-The newer conditional duty join (phase-service \S10;
-producer-reset-continuation \S23) covers raw slow targets through RN.  It
+The conditional duty join (a paper argument, not in this repository) covers raw slow targets through RN.  It
 gives every honest ready proposal from $R=t_{\slot(a_z)+2k+5}$ a unanimous
 batch, and by its $+6\Delta$ update a surviving fast write or a retained
 justified-crossing chain.  That result is conditional on JointRet, the
@@ -2080,25 +2032,22 @@ growth or full recovery.
 ($\mathrm U_{B}$) and ($\mathrm U_{\mathrm{all}}$) are open.  HS.4 gives a
 unanimous~$P$ only inside a settled phase that lasts $D_{\mathrm{HS}}$.
 After the reset, the number of phase changes is not bounded independently of
-the height (producer-reset-continuation \S21), and $\mathsf{Geo}$ fails at
+the height, and $\mathsf{Geo}$ fails at
 slots that a frontier rise splits.  The candidate source for both premises is
-the conditional duty join (phase-service \S10; producer-reset-continuation
-\S23).  For honest \emph{ready} proposals from
+the conditional duty join.  For honest \emph{ready} proposals from
 $R\leq a_z+(8k+20)\Delta$, it gives the unanimous batch, conditional on
 JointRet, the high-record lemmas and the regime premises.}
 
 The settled-phase restriction is not a claim that all proposals stay in one
-phase.  In the formal $n=1$ tick witness (consensus-lean \texttt{352de9d}),
+phase.  In the formal $n=1$ tick witness (\texttt{ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run}),
 own acceptance raises the global honest frontier between proposal and vote;
 the bridge's $\mathsf{Geo}$ part is vacuous there, and $\mathsf{Geo}$ itself
-fails from slot~4.  This does not show general vacuity: the finite simulator
-replays \texttt{hs3a-proposer-lock-s7.json} and \texttt{hs3a-proposer-lock-s8.json} at workbench
-\texttt{874d170} have $n=7$, are settled at $w=27\Delta$ (joined, defining
+fails from slot~4.  This does not show general vacuity: two finite simulator
+replays have $n=7$, are settled at $w=27\Delta$ (joined, defining
 evidence and pre-GST catch-up checked at $w$), and keep frontier~3, top
 $J=B3$ and no contest through all slot~7 or~8 votes at $28\Delta$ or
 $32\Delta$.  Proposal $B5$ has parent $B4$ but justifies $B3$, so its
-acceptance does not raise the frontier.  Replay with
-\texttt{tools/settled\_replay.py} in \texttt{notes/sa-fg-model}; it checks
+acceptance does not raise the frontier.  The replay checks
 full accepted stores at event and pre-tick boundaries and the decision tape.
 This is finite-run simulator evidence, not a Lean construction or a proof
 of all-proposal inclusion.  Handling frontier-crossing slots remains a
@@ -2178,8 +2127,7 @@ R.3$^\dagger$ & \texttt{healedSafe}, \texttt{healthyLive} (available),
   blueprint 21\\
 R.4$^\dagger$ & \texttt{finalFirst}, \texttt{finalRecur}, \texttt{liveDC},
   \texttt{healthyLive} (final), \texttt{finalized\_txLive} & C1.3, G1.9,
-  R.3, and the open target O.1 (below) & theorem.md;
-  instance-proposal S3--S5\\
+  R.3, and the open target O.1 (below) & paper arguments (not in this repository)\\
 R.5$^\dagger$ & \texttt{persists}, \texttt{outageWindow},
   \texttt{outage\_final\_compatible} & A1.2, A1.3, C1.1; (V) with
   $(4k-2)\Delta$; the outage continuation OC (below, open) & old
@@ -2196,10 +2144,10 @@ R.8 & \texttt{nested}, \texttt{finalMonotone}, \texttt{outputValid} & C0.1,
 History, for the retired R.3: it was also open at the post-cut transfer of the available record: an unmoved
 or deeper $\AC.\latestConfirmed$ against the fast origins after the cut needs its
 own argument, because A1.6 is stated under $\mathsf{Sleepy}$ from time~$0$ and
-does not apply directly to a dirty suffix (workbench \S29 at \texttt{2bc912b}).
+does not apply directly to a dirty suffix.
 Open item for R.3: the record transfer (\texttt{RecRet}) after the cut.
 
-By the owner's revised decision (consensus-lean\#104), \texttt{crossNest}
+\texttt{crossNest}
 (R.3) and \texttt{weakCrossNest} (R.6) are dropped from both the target and
 the regime rows, not restated with a lag.  Cross-node compatibility follows
 from \texttt{HealedSafe}/\texttt{WeakSafe} and R.8's \texttt{OutputsNested}
@@ -2208,8 +2156,7 @@ Lagged ancestry is not stated.  The former same-instant ancestry fails for
 this protocol: an honest proposer can finalize~$F$ when it accepts its
 own block inside its tick, and the other nodes receive that block up
 to~$\Delta$ later.  Before then, a ready reader's confirmed read can be a
-strict ancestor of~$F$.  Evidence: the scripted workbench \texttt{sa-fg-model}
-grid at \texttt{48a21ba} (\texttt{runs/crossnest-shape-grid.json}).  It
+strict ancestor of~$F$.  Evidence: a scripted simulation grid.  It
 replays $n=10$, $f=3$ (seed 388) and $n=13$, $f=4$ (seed 427) past
 $T_{\mathrm{heal}}$, with $\Delta_F\in\{\Delta,2\Delta\}$ and carrier delay
 $0$, one unit or the latest legal; at the latest carrier time 94 and 189 read
@@ -2228,8 +2175,8 @@ $\mathsf{Sync}$ and $\mathsf{Carry}$ are unavailable; what keeps a ready read
 is the outage-continuation argument itself (protection by a lock through its
 lifetime under~(V)).  That argument has no paper proof for the composed
 Goldilocks node.  The evidence cited is for the old round model of Goldilocks:
-\texttt{goldilocks-round-model.tex}, ``Outage continuation under~(V)'' (a proof sketch;
-full argument in \texttt{drafts/outage-output-direct.md} \S\S1--10), and its
+the earlier round-model protocol text (not in this repository), ``Outage
+continuation under~(V)'' (a proof sketch), and its
 companion Lean \texttt{OutageContinuationClaim} (legacy \texttt{fgsa/}, assembled
 from that model's foundation and clean-cut suppliers), under that model's
 premise set (a healthy prefix up to~$b_0$, full-run partial synchrony with
@@ -2270,7 +2217,7 @@ proved here.
 
 O.1 was the premise that the retired R.4 needed; it is not a premise of
 the proved endpoint (\S\ref{sec:obligations}).  Its target (below) has no fixed
-statement for the contract's regime.  What is fixed (draft~9) is the
+statement for the contract's regime.  What is fixed is the
 recovery predicate $\mathsf{Rec}(t_0)$ and node O.1, which proves
 $\mathsf{Rec}$ from a parameter-only time under a \emph{bounded uniform
 proposer pattern}: the regime O.1 is proved under, not O.1's target itself.
@@ -2296,8 +2243,8 @@ state height need not be~$h$), at the reader's first source whose chain
 contains~$E$.  This covers the served entry here, whose sources all come
 after~$t_0$, and also entries at~$h$ whose earliest source is before~$t_0$
 on another branch.  That node O.1's assembly gives this broader form is a
-conditional paper argument (consensus-lean
-\texttt{docs/goldilocks-mapping.md}, O.1), not a Lean equivalence.
+conditional paper argument
+(\texttt{docs/goldilocks-mapping.md}, O.1), not a Lean equivalence.
 
 \paragraph{The pattern regime} $\mathsf{UPat}(W,M)$ with $W,M\geq1$ (slots):
 for every time $\tau\geq\bar g$ there is a slot~$v$ with
@@ -2307,13 +2254,12 @@ slots $v,\dots,v+M-1$ has an honest joined ready proposal
 in its window, for every entry whose entry block is an honest proposal of one
 of those slots (in particular the actual entries $U$ and $V$ of C1.3's
 construction), not merely for entries that happen to be served.  This is a \emph{uniform} wait: an eventual
-or merely recurrent pattern does not bound it (\texttt{producer-reset-continuation.md}
-\S27--\S28).  The constants: $d_F=\cF+k_F$;
+or merely recurrent pattern does not bound it.  The constants: $d_F=\cF+k_F$;
 $b_0=\lceil((8k+26)\Delta+G_{\mathrm p})/(4\Delta)\rceil+1$ (the fresh
-high-proposal acquisition, \S23--\S24);
+high-proposal acquisition);
 $L_{\mathrm{old}}=(7+4\delta_{\mathrm t})\Delta+\Delta_F+G_{\mathrm p}$ and
 $r_{\mathrm{old}}=\lceil L_{\mathrm{old}}/(4\Delta)\rceil+1$ (the old-entry
-crossing, \S25); $M^*=b_0+r_{\mathrm{old}}+2d_F+1$; and
+crossing); $M^*=b_0+r_{\mathrm{old}}+2d_F+1$; and
 $Z=24\Delta+12C_{\mathrm{HS}}$ (HR.3's reset bound after~$\bar g$).
 
 \dagnode{O.1}{Recovery under a bounded uniform pattern}{A run node.  Assume
@@ -2330,14 +2276,13 @@ a function of the parameters and of $W$, $M$, $G_{\mathrm p}$ only.  Moreover
 at every call of an honest node at a time $\geq T_F=\bar g+T_{\mathrm{rec}}-12\Delta$,
 $\Sigma.F$ has state height $\geq H_z+1$.}
 {HR.1, HR.3, HR.4, HR.5, C1.2, C1.3, A0.6, G0.3, G1.4, G1.6, G1.7, G0.2, G0.10}
-{\texttt{producer-reset-continuation.md} \S27 (the time-only recovery cut:
-first uniform pattern after $R_*=\bar g+Z+(8k+20)\Delta$, the \S26
+{paper proof (not in this repository): the time-only recovery cut
+(first uniform pattern after $R_*=\bar g+Z+(8k+20)\Delta$, C1.3's
 acquisition, crossing and two-window construction, CA (HR.5) and acceptance
-relay give $T_F$; $t_0=T_F+12\Delta$; (b) from the high-record lemma (\S16)
+relay give $T_F$; $t_0=T_F+12\Delta$; (b) from the high-record lemma
 and JointRet (HR.4); (K0), (K1) from JointRet's pending-origin comparison;
-(K2) from \S13's witness clauses and \S5's R4/R5), \S16, \S18, \S23--\S26; paper
-only.  Review (workbench\#27, \texttt{o1-section27-review.md} at
-\texttt{ad08ab7}): the constants and the $T_F$/$T_{\mathrm{rec}}$ arithmetic
+(K2) from JointRet's witness clauses and R4/R5); paper
+only.  The constants and the $T_F$/$T_{\mathrm{rec}}$ arithmetic
 pass (the last service is by $v+M^*-1$; C1.3's deadline has one slot of slack).
 Two proof clarifications: (K0) does not apply R2 backward or the pending-origin
 interface before activation; whole-run (R1) with the honest target provenance of
@@ -2345,16 +2290,15 @@ a historical high~$J$ gives $J$ compatible with~$B$, then $F\preceq J$; and (b):
 a high source alone does not give a high ancestral entry; a new entry~$E$
 entered after~$t_0$ is compared with a high $F_0$ already cached between $T_F$
 and~$t_0$ on their common source chain, where $E\preceq F_0$ is temporally
-impossible, so $F_0\prec E$ and $E$ is high.  Falsification test (not a proof): workbench \texttt{sa-fg-model} at
-\texttt{1dc1ca6} (\texttt{gmodel/o1.py}, README ``Claims draft 9''), 120 runs
+impossible, so $F_0\prec E$ and $E$ is high.  Falsification test (not a proof): a simulation of 120 runs
 ($n=4,7$; $k=2,3$; $\delta_{\mathrm t}=2,3$; runs of exactly $M^*$ honest
 proposers separated by 1--3 faulty slots, $k_F=0$, $\mathsf{Catch}(2\Delta)$
 network), no violation of $\mathsf{Rec}(\bar g+T_{\mathrm{rec}})$ (a)--(c) or of
 $T_F$; measured recovery by $28\Delta$ and high honest $F$ by $43\Delta$ after
 $\bar g$ against bounds $\geq1449\Delta$; the checks catch violations before
 $\bar g$ (controls).  Retained ready inclusion inside the pattern was not
-checked in these 120 runs.  Two box sweeps follow, with no failure of
-$\mathsf{Rec}$, $T_F$, C1.3 or HR.5.  The easy sweep (\texttt{1dc1ca6}):
+checked in these 120 runs.  Two larger sweeps follow, with no failure of
+$\mathsf{Rec}$, $T_F$, C1.3 or HR.5.  The easy sweep:
 12\,092 runs in 24 configurations, $k_F=0$, 1--3 faulty slots between runs
 of~$M^*$; worst measured recovery $40\Delta$ and high honest $F$ by $49\Delta$
 after~$\bar g$, against $T_{\mathrm{rec}}\geq1461\Delta$ and
@@ -2362,7 +2306,7 @@ $T_F\geq1449\Delta$; controls: (K0), (K1), (K2) violations before~$\bar g$ in
 every configuration, after~$\bar g$ and before the measured recovery (K1) in
 every configuration and (K0), (K2) in two each, and 4770 (b) violations from
 $t_0=0$; 324 honest proposals after $\bar g$ were not ready.  The hard sweep
-(\texttt{08b95d6}, $\mathsf{Catch}(2\Delta)$ network): 5200 runs in 288
+($\mathsf{Catch}(2\Delta)$ network): 5200 runs in 288
 configurations ($n=4,7$; $k=2,3$; $\delta_{\mathrm t}=3,4$; $k_F=1,2$; faulty
 gaps of 4, 8, 16, 24 slots, each the longest $\mathsf{UPat}$ allows for
 $W=M+G-1$, between runs of exactly~$M^*$; fresh-entry, late-disclosure,
@@ -2380,10 +2324,10 @@ after~$\bar g$ and before $T_{\mathrm{rec}}$, 944 (K1) and 4 (K2), all under
 the partition and slow-only-partition adversaries.  The bounds are far from
 tight in these runs.  These checks look for counterexamples and are not proofs.}
 {L.  Conditional on C1.2 (including its open high-or-seed-ancestor split), the
-old-entry crossing by $t_s+L_{\mathrm{old}}$ (phase-service \S11 at
-\texttt{4eff8a2}, conditional on its \S10 and JointRet/RN; not a node), HR.5,
-and the uniform pattern; \S27 is a reviewed conditional assembly
-(workbench\#27, \texttt{o1-section27-review.md}), not a complete proof from the
+old-entry crossing by $t_s+L_{\mathrm{old}}$ (a paper argument, conditional on
+the clean slow transfer and JointRet/RN; not a node), HR.5,
+and the uniform pattern; the uniform-pattern wait is a conditional paper
+assembly, not a complete proof from the
 regime premises; the original-stored source provenance and the exact carrier
 acceptance also stay conditional.  Not the
 target below: the pattern regime is stronger than single-proposer recurrence
@@ -2413,28 +2357,27 @@ $\Sigma.F$; such an entry is a bad window for G1.8, not a recovery failure; (c) 
 recurring finalizing coverage (through good windows, or through early
 justification that already finalizes) is C1.3's conclusion (under the pattern
 regime), not part of O.1: with an arbitrary proposer schedule faulty proposers can make
-every entry (theorem.md \S6 item~4).  Restating C1.3 this way does not
+every entry.  Restating C1.3 this way does not
 discharge any of (a)--(c).
 
-\emph{Status.}  Open for every design (theorem.md \S8 item~4; r7 open item~2);
+\emph{Status.}  Open for every design;
 corollary~C (G1.8) gives a conditional upper bound after bad entries, not a
 uniform recovery bound.  \texttt{MeetsObligations} does not depend on O.1: the L0
 contract's final healthy liveness, with a heal point fixed before the run,
 is proved for the endpoint by another route, its four-anchor final pattern
 with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:obligations}).  The
-earlier dependency (the retired R.4, and with it \texttt{MeetsObligations}, on O.1;
-instance-proposal Q1) is history.  O.1 stays a separate research target.
+earlier dependency (the retired R.4, and with it \texttt{MeetsObligations}, on O.1) is history.  O.1 stays a separate research target.
 The FG safety milestone (G0, G1.1--G1.5) does not
-depend on O.1.  Workbench \texttt{producer-reset-continuation.md} \S27 (main \texttt{ee6445a})
+depend on O.1.  A paper argument (not in this repository)
 gives a conditional, paper-only assembly, under an explicit uniform proposer
 wait~$W$ and C1.2's retained inclusion and acceptance, of
 $T_{\mathrm{rec}}=Z+(8k+20)\Delta+4\Delta(W+1+M)+13\Delta$ with
-$M=b_0+r_{\mathrm{old}}+2(\cF+k_F)+1$ (that note's symbols).  It is node O.1's
-proof; it does not discharge O.1's target.  \S32 (main \texttt{6208e42}) found that its first transfers
+$M=b_0+r_{\mathrm{old}}+2(\cF+k_F)+1$ (in that argument's symbols).  It is node O.1's
+proof; it does not discharge O.1's target.  Its first transfers
 need the writer-pool condition A1.8 (d) for votes carried by blocks the writer
 refused; the composition model forwards the votes a node admits from a
-block's payload (\S``Model'', workbench \S33 at \texttt{b527e2c}), so that
-condition follows from $\mathsf{Sync}$ (A1.2) and is no longer a premise.  The
+block's payload (\S``Model''), so that
+condition follows from $\mathsf{Sync}$ (A1.2) and is not a premise.  The
 assembly stays conditional and paper-only, and uniform~$W$ and C1.2 alone do
 not discharge O.1's target.  Eventual proposer
 recurrence alone cannot give a parameter-only $T_{\mathrm{rec}}$.  The
@@ -2444,12 +2387,9 @@ with a consecutive $M$-slot ready pattern, a sufficient horizon and
 $P=4R\Delta$ gives the conservative $W=R(g+1)$; C1.3 and node O.1 assume
 $\mathsf{UPat}$ directly, and its derivation from that instance is not a node; the weaker \texttt{SingleProposerRecurrence}
 (\texttt{V2/DCRegimes.lean}) keeps bounded individual gaps and eventual
-$M$-recurrence with no uniform~$W$ (workbench \S28--\S29 at main
-\texttt{2bc912b}; this refutes the implication to~$W$, not O.1, and no failing
+$M$-recurrence with no uniform~$W$ (this refutes the implication to~$W$, not O.1, and no failing
 protocol trace is claimed).  O.1 under such a weaker regime stays open and is
-not strengthened here.  An independently repeated composed-model replay at
-workbench \texttt{fdcca33} (\texttt{sa-fg-model/runs/fe-stall-alt-dt2-min.json};
-workbench\#19 at \texttt{4b1c10b}, \texttt{o1-proposer-timeout.md}) exhibits a
+not strengthened here.  An independently repeated composed-model replay exhibits a
 repeatable finality-starvation suffix under $\mathsf{Healthy}$ from genesis,
 $n=7$, $f=2$, $\Delta_F=\Delta$, $\delta_{\mathrm t}=2$ and alternating
 honest/faulty proposers ($G_{\mathrm p}=8\Delta$): 60 slots give 29 timeouts,
@@ -2457,7 +2397,7 @@ zero justifications and $F$ at genesis.  $\delta_{\mathrm t}\geq3$ defeats this
 two-slot captured cycle, consistent with $\delta_{\mathrm t}\geq x+\cF+k_F$ at
 $x=0$, $\cF=2$, $k_F=g-1=1$ (here $g=G_{\mathrm p}/4\Delta$ is the honest-proposer
 gap in slots, not GST); this does not establish general necessity or
-sufficiency of $\delta_{\mathrm t}\geq\cF+g-1$.  The model orb reports stalls
+sufficiency of $\delta_{\mathrm t}\geq\cF+g-1$.  The simulation reports stalls
 at $\delta_{\mathrm t}=g$ for $g=2,3,4$, also below equality at $g=4$,
 $\delta_{\mathrm t}=2$, and none in its finite samples at
 $\delta_{\mathrm t}\geq g+1$; it does not show that stalls occur exactly at
@@ -2468,8 +2408,8 @@ settles O.1 (b) or (c).  This is outside the window-qualified premise, not a
 refutation of that target.  The pattern regime of node O.1 does not
 contradict this evidence: an alternating schedule has no two consecutive
 honest proposers, so $\mathsf{UPat}(W,M)$ fails on it for every $M\geq2$.
-The exposure term (\texttt{o1-proposer-timeout.md}, ``the exposure term cannot
-simply be dropped'': $\delta_{\mathrm t}\geq x+\cF+b-1$ for a proposer gap of~$b$
+The exposure term (which cannot
+simply be dropped: $\delta_{\mathrm t}\geq x+\cF+b-1$ for a proposer gap of~$b$
 slots, $x$ the source exposure of the entry; its delayed-disclosure candidate
 was not realized in the model, and its obstruction is conditional on clean
 alternating executions) is handled in node O.1 only conditionally.  A
@@ -2478,14 +2418,13 @@ current entry of the stretch's fresh proposal can be an old entry, possibly
 faulty and disclosed late.  Node O.1 does not serve that entry with $x=0$: the
 $r_{\mathrm{old}}$ term of $M^*$ waits for its retained crossing (timeout or
 justification) by $t_s+L_{\mathrm{old}}$, after which the entries that are
-served are created by the stretch's honest proposals, with $x=0$
-(\texttt{producer-reset-continuation.md} \S21, \S25).  Here the acquired
+served are created by the stretch's honest proposals, with $x=0$.  Here the acquired
 proposal~$P$ is fresh inside the uninterrupted honest stretch and its chain
 remains retained: strict parent-slot growth and proposer authentication
 exclude a pre-stretch faulty block as a later descendant of~$P$; late siblings
 are covered by the duty-retention premise, not by $r_{\mathrm{old}}$.  That crossing bound is
-the old-entry supplier of workbench\#7 \S11, conditional on its duty theorem
-(\S10) and JointRet/RN, not a consequence of $\mathsf{UPat}$ alone.  The target for the contract's regime stays
+a paper old-entry supplier (not in this repository), conditional on its duty
+theorem and JointRet/RN, not a consequence of $\mathsf{UPat}$ alone.  The target for the contract's regime stays
 open: under $\mathsf{Healthy}$ with a weaker proposer premise (bounded
 single-proposer gaps, or an eventual pattern without a uniform wait), O.1 is
 neither proved nor refuted, and recovery from such a regime would be a separate
@@ -2493,8 +2432,7 @@ result.  Node O.1 does not mark that target proved.
 
 \section{Lean status}\label{sec:lean-status}
 
-The Lean counterpart of every node outside the lock nodes, at consensus-lean
-main of 2026-11-03 (names relative to \texttt{Consensus.Goldilocks}; the
+The Lean counterpart of every node outside the lock nodes, in this repository (names relative to \texttt{Consensus.Goldilocks}; the
 crosswalk is \texttt{docs/goldilocks-mapping.md}).  The lock nodes (F.1 (b),
 A0.4, A0.5, the lock part of A0.7, A1.1, A1.2, A1.5, C1.1, HR.4) are not covered
 here (A1.4, A1.9 and HS.2 have rows for their deviations).  \emph{Proved}: a proof of the indexed
@@ -2660,7 +2598,8 @@ HS.2 & \texttt{Healing.CleanLockDrain} & proved
   and later votes extend $B$ even when $B$ is at or below the voter's
   $\fcroot$\\
 HS.3 & \texttt{Healing.FrozenTreeAgreement} & after-$r$ part only (the
-  first part is not stated; decisions.md, HS.3): proved
+  first part is not stated; \texttt{docs/decisions.md} \S``Goldilocks model
+  choices'', HS.3): proved
   (\texttt{frozen\_tree\_agreement}, from HS.2); without
   $\mathsf{Prop}^+(G_p)$\\
 HS.4 & \texttt{Healing.CommonPathAcquisition} & proved
@@ -2784,8 +2723,8 @@ then G0.4 (height), G0.8, G0.9; then A0.2; then A0.4; then A0.5; then
 A0.6; then C0.5; then C0.1, C0.2, C0.3.  Second wave: the FG nodes
 G1.2--G1.4 and G1.6--G1.8 (FG service lemmas: no AC needed), the AC step
 lemmas A1.1--A1.5 and A1.8, and G1.10, all in parallel; A1.9 after
-A1.5.  Third: the join C1.1; G1.5 after goldilocks\#7 fixes the evidence
-binding; G1.9 (a) (its (b) is HR.5, after HR.4); C1.2 (outcome service) after HR.1,
+A1.5.  Third: the join C1.1; G1.5 after the evidence
+binding is fixed; G1.9 (a) (its (b) is HR.5, after HR.4); C1.2 (outcome service) after HR.1,
 HR.3, HR.4, HS.2 and HS.3.
 Fourth: A1.6, then A1.7, then C1.3 (finalizing coverage, after C1.2 and HR.5), then
 node O.1.  Healing service: HS.0 and HS.1 once their uses

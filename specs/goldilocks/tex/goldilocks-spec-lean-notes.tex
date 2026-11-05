@@ -70,7 +70,8 @@ old Lean model's names use FGSA for the protocol).
 
 \section{Relation to the Lean model}\label{sec:lean}
 
-The Lean model follows \texttt{goldilocks-round-model.tex}.  It keeps two stores,
+The Lean model follows the earlier round-model protocol text (not in this
+repository).  It keeps two stores,
 one for the FG and one for SA, and a per-block lock map.  This section
 lists the differences.  Items (a)--(g) change no output and no message
 of an honest node.  Items (h)--(k) change the behaviour.
@@ -163,7 +164,7 @@ the head height floor.  They agree: outside a contest the two heights are equal,
 and in a contest the block that carried the justification of~$\Sigma.J$
 has state height $\Sigma.h_j+1=\Sigma.\hmax$ and extends every candidate,
 because a candidate is an ancestor of~$\Sigma.J$.
-\texttt{fgsa-spec-delta.md} lists the remaining differences of form.
+The remaining differences are of form only.
 
 \paragraph{Changes of behaviour.}
 (h) \emph{The support list.}  By~(f), a proposer omits from
@@ -187,9 +188,8 @@ cannot vote for that proposal; the Lean model still counts the votes that
 it carries, and this form does not.
 (k) \emph{Sleep and restart.}  In the Lean model an asleep node still
 receives objects and runs its ticks and handlers; it only runs no duty
-and sends nothing.  A Lean restart keeps only~$\Lambda$ and the clock: since
-ruling~Y (on main from 6c36d481), \texttt{now} keeps the time of the last
-tick.  The sleep port replaces that with the exact wake time (see the stamp
+and sends nothing.  A Lean restart keeps only~$\Lambda$ and the clock:
+\texttt{now} keeps the time of the last tick.  The sleep port replaces that with the exact wake time (see the stamp
 rule above).  In this form an asleep node receives nothing and runs no tick, and
 a node that wakes restarts.  The restart keeps~$\Lambda$, $\Sigma$, the
 clock, the locks and the record, and it resets the rest of~$\AC$.  A
@@ -201,7 +201,7 @@ that runs while its delivery is under the control of the adversary is
 faulty.  The
 Lean claims assume no restart and use the Lean sleep model, so they do not
 cover this item.  The
-port is planned in \texttt{drafts/sleep-join-plan.md}: one premise~$E$ in
+planned port has one premise~$E$ in
 the shape of RLMD-GHOST Definition~3, with the locks in place of the
 retained votes.
 
@@ -210,10 +210,9 @@ Lean model.  They do not cover items (h)--(k).
 
 \section{The fast path: not yet in the Lean model}\label{sec:fast-path}
 
-The specification (research commit \texttt{57ce025} and later) has these
+The specification has these
 changes that the Lean model of record does not have.  That model is the
-repository \texttt{\textasciitilde/ethereum/lean/available-chain}, on
-\texttt{main} at \texttt{d72d3bc3}: the round model of the earlier
+old Lean development (not in this repository): the round model of the earlier
 specification.  The items of Section~\ref{sec:lean} and the claims of
 Section~\ref{sec:continuation-claims} refer to it, and none of those
 claims covers these changes.
@@ -283,22 +282,18 @@ claims covers these changes.
   at $\mathsf{timeout}[h]$ the set of the blocks that its timeouts at~$h$
   name, $\Call{permits}{}$ allows $(j,T)$ when that set is within~$\{T\}$,
   and $\Call{height\_pair}{}$ tests the lock before the timeout.  The Lean
-  evidence predicate (\nolinkurl{legacy/AvailableChainSimplexFG/Evidence.lean}:13--17,
-  \texttt{conflictsWithFinality}) makes every timeout at~$h$ conflict
+  evidence predicate (\texttt{conflictsWithFinality}) makes every timeout at~$h$ conflict
   with every finality pair at~$h$; it needs the root test on its timeout
   arm.  The Lean client record keeps a Boolean timeout, and its client
   safety reads the old order of $\Call{height\_pair}{}$
   (\texttt{ClientSafety.lean}).  No Lean claim covers this item.
 \end{itemize}
-The port is planned in \nolinkurl{codex/jobs/fastpath-lean-plan-v2.md}
-(v6, written for \texttt{332213d}) and the G2--G4 plans of the parent
-folder: a separate exact evaluator, so that a vote can be sent at a
+The planned port has a separate exact evaluator, so that a vote can be sent at a
 receipt; a new protocol instance for the specification (the eager
 instance), next to the round instance; receipt tests at the receipt time.
 
-\paragraph{Plan items that are stale for 57ce025.}
-The proof map \nolinkurl{codex/reports/ac-proofmap-astra-p1.md} found
-these.  The planned equality of two optimistic confirmations of one slot
+\paragraph{Plan items that are stale for this specification.}
+A proof map found these.  The planned equality of two optimistic confirmations of one slot
 is false: a node can confirm an ancestor and then a descendant, so the
 claim is compatibility.  The plans still select the source from the latest
 fast write and the optimistic field, use the expiry-guard equality and the
@@ -325,9 +320,8 @@ count at~$\Fr.F$ is the number of equivocators, not zero.
   step needs transferred votes, a new lock or the fork-choice root.  The
   outage continuation claim does not give this: it gives compatibility,
   not extension, and honest heads can move back.  A paper proof by
-  transferred honest support, with no renewed lock, is in
-  \nolinkurl{codex/reports/recent-source-astra-q1.md}, with named
-  premises (source service from slot~$j$, batch service, honest votes of
+  transferred honest support, with no renewed lock, exists outside this
+  repository, with named premises (source service from slot~$j$, batch service, honest votes of
   half of the committee in each slot, the voting path).  It can reuse the
   patterns of \texttt{healing\_first\_transfer\_fast} and
   \texttt{healing\_next\_transfer\_core}; the optimistic first transfer is
@@ -360,12 +354,10 @@ premise.  For every honest~$y$ and $b_0\leq t\leq\mathrm{horizon}$,
  B\preceq S_y(t),\qquad B\preceq\mathrm{stable}_y(t),\qquad
  B\preceq\mathrm{confirmed}_y(t),\qquad B\parallel F_y(t).
 \]
-\textsf{OutageContinuationClaim} is proved in Lean on \texttt{main},
-commit \texttt{a3983c38}.  The old budget
+\textsf{OutageContinuationClaim} is proved in the old Lean model.  The old budget
 $b_1-b_0\leq\min(\eta,L)$ does not suffice for this continuation:
-\newline\texttt{AvailableChainFGSAProofs/Tests/OutageAfterWindowCounterexample.lean}\newline
-on \texttt{main} gives a counterexample.  Sources: \nolinkurl{drafts/outage-output-direct.md},
-\S\S1,10, and \nolinkurl{drafts/outage-persist-reserve.md}.
+the old Lean model has a counterexample
+(\texttt{OutageAfterWindowCounterexample}).
 
 \paragraph{Weak continuation and corruption growth.}
 Set $\delta_{\mathrm t}=2R$.  A strong healing prefix with
@@ -389,9 +381,8 @@ all relevant carrier chains, including historical rows.  The companion
 gives the same safety, inclusion, and conditional joint growth for
 retained honest validators.  Its event index is computed in each run;
 the gate and seed stay fixed.  \textsf{WeakContinuationGrowthClaim}
-is proved in Lean on \texttt{main}, commit \texttt{8b09725a}.
-\texttt{nvGrowth\_complete} is the non-vacuity witness.  Sources: \nolinkurl{drafts/wc-corruption-growth.md}
-and \nolinkurl{drafts/wc-slashing-necessity.md}.
+is proved in the old Lean model.
+\texttt{nvGrowth\_complete} is the non-vacuity witness.
 
 \paragraph{Proof errata.}
 The P3 source-FG frame statement requires
@@ -401,8 +392,6 @@ Frame conclusions use the store and exact-FG frame premises and cover
 every contest witness.  The tail proof also covers mixed finality
 states: relay the finalized head and its certificate rows to the
 terminal proposer, then use window retention and row selection.
-K-TAIL r3 closes this case in Lean through \textsf{TailKernelClaim\_W}.
-Details: \nolinkurl{../blueprint/22-finality.md},
-\nolinkurl{../blueprint/23-continuation.md}, and the complete protocol.
+The old Lean model closes this case through \textsf{TailKernelClaim\_W}.
 
 \end{document}

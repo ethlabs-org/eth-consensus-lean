@@ -1,8 +1,8 @@
 # Build and proof speed: what was measured
 
-Report-only notes for whoever next makes the build faster. The measurements below are Parithosh's
-historical PR #148 results, not a new benchmark of current main. Numbers are from one 4-core, 7 GB
-Amp orb (Lean v4.35.0, Mathlib v4.35.0); compare only numbers taken on the same machine in the same
+Report-only notes for whoever next makes the build faster. The measurements below are historical
+results, not a new benchmark of current main. Unless stated otherwise, numbers are from one 4-core, 7 GB
+VM (Lean v4.35.0, Mathlib v4.35.0); compare only numbers taken on the same machine in the same
 session. The tools are adopted separately from the proof edits and tactic front end.
 
 ## How to measure
@@ -29,9 +29,9 @@ session. The tools are adopted separately from the proof edits and tactic front 
   run in the trust checks or change their verdicts; only their deterministic regression fixtures
   run in `check.sh --selftests`. Speed measurements are not statement-equivalence evidence.
 
-## Where the time goes (2026-11-02, main at `208c05b7`)
+## Where the time goes (main at `208c05b7`, measured on 2026-11-02)
 
-- 425 modules then (447 by 2026-11-03), about 1,500 CPU-s when each is elaborated alone; about 180 modules take under 2 s
+- 425 modules then (447 at `ad13a491`), about 1,500 CPU-s when each is elaborated alone; about 180 modules take under 2 s
   and about 25 take over 8 s. On 4 cores the build is bound by total CPU; on 8 or more by its critical
   path (lakeprof: about 220 s, through `Compose.Sleepy`, `Healing.Outcome.Pivot` and the
   `Refinement.Window*` chain).
@@ -48,7 +48,7 @@ session. The tools are adopted separately from the proof edits and tactic front 
 | `hnew _ (List.mem_singleton_self _)` against an unfolded singleton → `simp only [List.mem_singleton, forall_eq] at hnew` first | `Compose.Sleepy.Provenance` 6.1 → 2.7 s |
 | `simpa only [..., mul_comm] using h` → `rw [..., mul_comm]; exact_mod_cast h` | `Refinement.HealedSafety` −0.9 s wall, −3.6 s CPU |
 | Hot `simp`/`simp_all` → their `simp?`/`simp_all?` sets | `Refinement.Shape` 4.9 → 3.8 s; elsewhere often flat, so measure each |
-| `import ConsensusLean.Lemmas.Tactic.Linarith`: plain `linarith`/`nlinarith` first run without Mathlib's `natToInt` preprocessor (a quarter of all `linarith` time: it casts every ℕ fact of the context), on failure the elaborator falls back to Mathlib's rule (a failing call runs twice, and the cheap attempt's time and heartbeats count against the declaration's `maxHeartbeats` first, so a proof close to its limit could need a scoped raise; the whole library builds with the defaults). 4 of about 1,400 calls fall back | measured at `ad13a491` + the change, all 447 modules: the 150 that imported it then −7.8% wall, −8.2% CPU; the 297 others (controls) −0.5%; whole library −4.0% wall, −4.8% CPU. On `eth-consensus-lean` the front end landed alone (A4); `scripts/linarith-imports.py` then gave it to every module of the default libraries that calls plain `linarith`/`nlinarith` and may import the Lemmas layer: 213 modules, 208 of them by a direct import (the other five are the fixture module and the test modules Controls, Leaks, Realizable and Support, which reach it through their import of the root `ConsensusLean`, 10 plain calls, since A4). The trusted `AsChainShape.lean` calls `linarith` and is left without it. A new module that calls `linarith` gets the import from `python3 -I scripts/linarith-imports.py` (`--check` lists the missing ones); without it the module still builds, with Mathlib's front end |
+| `import ConsensusLean.Lemmas.Tactic.Linarith`: plain `linarith`/`nlinarith` first run without Mathlib's `natToInt` preprocessor (a quarter of all `linarith` time: it casts every ℕ fact of the context), on failure the elaborator falls back to Mathlib's rule (a failing call runs twice, and the cheap attempt's time and heartbeats count against the declaration's `maxHeartbeats` first, so a proof close to its limit could need a scoped raise; the whole library builds with the defaults). 4 of about 1,400 calls fall back | measured at `ad13a491` + the change, all 447 modules: the 150 that imported it then −7.8% wall, −8.2% CPU; the 297 others (controls) −0.5%; whole library −4.0% wall, −4.8% CPU. In this repository the front end landed alone; `scripts/linarith-imports.py` then gave it to every module of the default libraries that calls plain `linarith`/`nlinarith` and may import the Lemmas layer: 213 modules, 208 of them by a direct import (the other five are the fixture module and the test modules Controls, Leaks, Realizable and Support, which reach it through their import of the root `ConsensusLean`, 10 plain calls). The trusted `AsChainShape.lean` calls `linarith` and is left without it. A new module that calls `linarith` gets the import from `python3 -I scripts/linarith-imports.py` (`--check` lists the missing ones); without it the module still builds, with Mathlib's front end |
 
 Together (two commits, 28 Lemmas files, no statement changed), cold build of the default targets
 back to back against `208c05b7`: wall 413.7 → 397.2 s (−4.0%), CPU 1,494 → 1,468 s (−1.8%),
@@ -58,7 +58,7 @@ All four proof-speed commits together, cold build of the default targets back to
 `ad13a491`: wall 388.3 → 369.5 s (−4.9%), CPU 1,467 → 1,374 s (−6.3%), critical path
 242.3 → 223.8 s (−7.6%), simulated on 8 cores 267.0 → 246.6 s (−7.6%).
 
-The tactic front end on `eth-consensus-lean`, measured in a 2 vCPU orb (Xeon @ 2.6 GHz, 3 GB),
+The tactic front end in this repository, measured on a 2-vCPU, 3 GB VM (Xeon @ 2.6 GHz),
 base `3e503e87` (front end landed, no caller imports) against `59c7e3cd` (the 208 generated
 caller imports, `scripts/linarith-imports.py`), same machine, interleaved base/new/base/new,
 best of two:
@@ -90,7 +90,7 @@ chain (the `linarith` work above) are what shortens it.
 
 ## The edit loop
 
-What agents wait for is the rebuild after a commit, not a cold build. Replaying 40 consecutive
+What a contributor waits for is the rebuild after a commit, not a cold build. Replaying 40 consecutive
 `main` commits that touch Lean (`3d2270d1`..`ad13a491`) in a warm worktree, `lake build` after each:
 
 | Commits | Modules rebuilt | Wall each (4 cores) | Share of all rebuild time |
@@ -106,22 +106,22 @@ widely imported module rebuilds its whole cone: every large rebuild above added 
 proposed rule "Where a new lemma goes": put single-consumer helpers in the consumer or a small leaf,
 not in a widely imported module.
 
-## The pipeline: fresh orbs and stale trees
+## The pipeline: fresh environments and stale trees
 
-Amp reuses an orb snapshot (taken after `.agents/setup`) for up to 24 hours, and `main` moved 163
-commits in the 24 hours before 2026-11-03 (26 in 12 hours). A tree 26 commits behind rebuilt 476
-modules, the whole library, on its first `lake build` (1,774 CPU-s; 536 s wall on a busy 4-core
-orb), because three of those commits changed low Spec statements (`5de10bf6`, `a90299c1`,
+A fresh development environment can start from a snapshot taken after `.agents/setup` up to 24 hours
+earlier, and, measured on 2026-11-03, `main` had moved 163 commits in the previous 24 hours (26 in 12
+hours). A tree 26 commits behind rebuilt 476 modules, the whole library, on its first `lake build`
+(1,774 CPU-s; 536 s wall on a busy 4-core VM), because three of those commits changed low Spec statements (`5de10bf6`, `a90299c1`,
 `68a580f0`). Docstrings and comments are not the cause: rewording a docstring of
 `Spec.Problem.Basic` (imported by every module), or adding a comment line, left every importer up
-to date (`lake build --no-build ConsensusLean`). So a fresh orb typically pays a near-full build
+to date (`lake build --no-build ConsensusLean`). So a fresh environment typically pays a near-full build
 before its first check.
 
-The fix both earlier speedups used is a per-commit build cache (ml-dsa-fv: fresh orb 22.9 → 2.5
-min). Lake 4.35 has it built in: `lake cache put <mappings> --scope …` uploads a build's outputs to
+The fix both earlier speedups used is a per-commit build cache (ml-dsa-fv: fresh environment 22.9 →
+2.5 min). Lake 4.35 has it built in: `lake cache put <mappings> --scope …` uploads a build's outputs to
 an S3-compatible bucket (`LAKE_CACHE_KEY`), and `lake cache get --scope …` restores them, searching
-up to 100 earlier revisions. It needs a bucket and a key, and the box CI to upload after each
-green main build; an owner decision, not done here. The nightly full tier must keep building with
+up to 100 earlier revisions. It needs a bucket and a key, and the CI to upload after each
+green main build; not set up here. The nightly full tier must keep building with
 `LAKE_ARTIFACT_CACHE=false` (as `scripts/check.sh` does for its rebuild checks).
 
 ## What did not help (do not retry without a new idea)

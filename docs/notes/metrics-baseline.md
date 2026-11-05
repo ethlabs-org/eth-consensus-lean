@@ -1,11 +1,11 @@
-# Baseline metrics (foundation plan §11 step 1)
+# Baseline metrics
 
-> Measured at `888664e6`, before the move to one library (#5): the module names below are the old ones
+> Measured at `888664e6`, before the move to one library: the module names below are the old ones
 > (`ConsensusSpec.*`, `ConsensusProofs.*`, ...); the `[[layer]]` entries of `scripts/boundaries.toml` map the current names.
 
-Report-only numbers for the layout before the foundation reorg (#4), taken at `888664e6` (main,
-2026-10-29). Later steps compare against them. Nothing here is a gate: plan §6 makes depth, cones and
-critical path reports, with no thresholds.
+Report-only numbers for the layout before the foundation reorganisation, taken at `888664e6` (main,
+measured on 2026-10-29). Later steps compare against them. Nothing here is a gate: depth, cones and
+critical path are reports, with no thresholds.
 
 ## How to regenerate
 
@@ -13,17 +13,18 @@ critical path reports, with no thresholds.
 # Graph metrics and the layer map: no build, about 1 s. Exit 1 on a module without a layer.
 python3 -I scripts/metrics-baseline.py [--json out.json] [--no-modules]
 
-# Cold build profile of the default targets (in a job, in your own worktree): the project's own
+# Cold build profile of the default targets (8 CPUs, 16 GB, in your own worktree): the project's own
 # modules from scratch, dependencies from the hard-linked packages, Lake's artifact cache off so
 # that no project module is restored. Check first that the dependencies are built
 # (`lake build --no-build Mathlib.Tactic`), or Mathlib compiles.
-job --mem 16G --cpus 8 consensus-lean metrics-cold -- bash -lc 'cd <worktree> && rm -rf .lake/build &&
-  LAKE_ARTIFACT_CACHE=false /usr/bin/time -v -o "$RUN_DIR/time.txt" lake build -v > "$RUN_DIR/build.log" 2>&1'
-python3 -I scripts/metrics-baseline.py --timings <RUN_DIR>/build.log
+RUN_DIR="$(mktemp -d)"
+cd <worktree> && rm -rf .lake/build &&
+  LAKE_ARTIFACT_CACHE=false /usr/bin/time -v -o "$RUN_DIR/time.txt" lake build -v > "$RUN_DIR/build.log" 2>&1
+python3 -I scripts/metrics-baseline.py --timings "$RUN_DIR/build.log"
 ```
 
-The layer of a module is its `[[layer]]` in `scripts/boundaries.toml` (since step 3, #6, which replaced
-`scripts/layers.toml` with the boundary checker's config); a generated root is `Aggregate`, a module of a
+The layer of a module is its `[[layer]]` in `scripts/boundaries.toml` (since the boundary checker replaced
+`scripts/layers.toml` with its config); a generated root is `Aggregate`, a module of a
 target outside the checked libraries `(<target>)`. Milestones are the milestone layers (`Proofs.<M>`).
 
 Files that only check.sh compiles directly (the `scripts/fixtures/` files outside `CheckFixtures`) belong
@@ -31,7 +32,7 @@ to no target, so they are not counted. (`scripts/SpecSurface.lean` was one of th
 `spec-surface` executable, after this baseline.)
 
 The build profile uses Lake's own per-module times (`lake build -v`). lakeprof was not used:
-installing it from GitHub was not permitted in this session (external code on the shared box).
+installing it from GitHub was not permitted on the build machine (external code on a shared server).
 Lake's times give the same per-module data, and the script computes the critical path from them and
 the import graph.
 
@@ -44,7 +45,7 @@ prints as `1.0s`. Summed time and the critical path can therefore be a few secon
 |---|---|
 | Modules | 130 in lakefile targets, 88 of them in the default targets; every module has a layer (18 layers; Core is empty) |
 | Import depth (edges) | full graph: max 29; median 8 over the 88 default-target modules. The chain starts at the root `ConsensusTests`, runs through Tests and passes 6 aggregates |
-| Library depth | max 18: Test, Challenge, Solution and Tool modules left out, and an import of an aggregate counted as the aggregate's own imports. The plan's figures for comparison: Carleson 30, PFR 19, FLT 14, CSLib 13 |
+| Library depth | max 18: Test, Challenge, Solution and Tool modules left out, and an import of an aggregate counted as the aggregate's own imports. For comparison: Carleson 30, PFR 19, FLT 14, CSLib 13 |
 | Downstream cone | max 84/88 (95%, `ConsensusSpec.Problem.Basic`), median 28; 58 of 88 modules above 15% |
 | `@[expose]` | whole-file `@[expose] public section` in 109 of 123 `module` files, including all 27 Lemmas files, 3 Proofs files and 2 Main files; no per-declaration expose |
 | Imports (`module` files) | project: 270 public, 0 plain, 2 meta, 1 `import all` (in Test). External: 52 public, 13 distinct modules, no `import Mathlib`. 6 more imports in the 7 non-`module` files (check-decls copies) |
@@ -52,7 +53,7 @@ prints as `1.0s`. Summed time and the critical path can therefore be a few secon
 | Cold build, default targets | 49.4 s wall, 196 s CPU (158 user + 38 sys, 4.0 cores on average), peak RSS of one process 1.8 GB; 88 modules built, 167 s of module time in total |
 | Critical path | 47.5 s across 30 modules, the same chain as the maximal depth. The build is bound by this chain, not by cores |
 
-Machine: the shared ethlabs box, `job --mem 16G --cpus 8`, with one other 8-core job running (load
+Machine: an 8-CPU, 16 GB build job on a shared server, with one other 8-core job running (load
 about 8). Lean v4.35.0, Mathlib v4.35.0.
 
 ## Notes for the next steps
@@ -61,10 +62,10 @@ about 8). Lean v4.35.0, Mathlib v4.35.0.
   Instances → Tests and ends at the root `ConsensusTests`. On the way it passes 5 more aggregates:
   `ConsensusProofs.Problem`, `ConsensusProofs.Model.Canonical`, `ConsensusProofs.Model`,
   `ConsensusProofs.Shape` and `ConsensusInstances`. Each one adds a module load to the chain, and the 8
-  aggregates together take 9.2 s of module time. Removing aggregate imports inside the library (plan
-  §1, step 2) shortens the chain and shrinks cones.
-- **Edges the plan's matrix (§2) forbids** (see the layer-edge table below). Step 3 either moves them
-  or records them as reviewed exceptions:
+  aggregates together take 9.2 s of module time. Removing aggregate imports inside the library shortens
+  the chain and shrinks cones.
+- **Edges the layer matrix forbids** (see the layer-edge table below). The boundary checker's step either
+  moves them or records them as reviewed exceptions:
   - `Proofs.RegimesRealizable → Proofs.Behaviour` crosses milestones.
   - `Instances.Goldilocks.Spec → Main`: `ConsensusInstances.Goldilocks` imports
     `ConsensusProofs.Shape.Accepted` for its own theorems.
@@ -73,28 +74,28 @@ about 8). Lean v4.35.0, Mathlib v4.35.0.
   - `Instances.Bft.Spec → Aggregate`, and every other import of an aggregate.
 - **`Proofs` as a module component.** check-imports.py (now check-boundaries.py) refuses module components named `Proofs` or
   `Exports` because the vendored check-decls exempts them, hard-coded in `scripts/CheckDecls.lean`
-  (`inProofs`, `inExports`). The plan's `Proofs/<M>/` prefix needs one of three things:
+  (`inProofs`, `inExports`). The `Proofs/<M>/` prefix needs one of three things:
   - a different component name;
   - an edit to the vendored file, which breaks its verbatim status and `vendor.sha256`;
-  - check-decls dropped as a gate, which plan §5 already makes a review item.
+  - check-decls dropped as a gate, leaving it a review item.
 
-  The last two change a trust check, so they need two reviews (#21).
-- **Definitions outside the exposed layers.** Plan §3 removes expose from Lemmas, Proofs and Main.
+  The last two change a trust check.
+- **Definitions outside the exposed layers.** The target layout removes expose from Lemmas, Proofs and Main.
   These files still hold top-level definitions:
   - Lemmas: `Problem.Derived`, `Model.CanonicalStatement`, the `Model.Canonical.*` construction,
     `Adequate`, `Causal`, `Credentials`, `Protection`, `Truncate`.
   - Proofs: `Shape.Realizable`, with 9 definitions.
   - Main: `Shape.Service`.
 
-  Step 5 (#8) either moves the ones that are unfolded elsewhere down into Spec, which grows the trusted
-  surface, or asks for an approved exception to §3.
+  The visibility step either moves the ones that are unfolded elsewhere down into Spec, which grows the
+  trusted surface, or records a reviewed exception.
 - **Mixed files.** `ConsensusInstances.GoldilocksSheet` (mapped to Instances.Goldilocks.Statements)
   holds the reviewed target and 25 theorems. `Goldilocks`, `Bft`, `Streamlet` and `Tendermint` (mapped to
   their Spec layers) hold the theorems that make them accepted instances (`*_admissible`,
   `*_progressFits`, `*_progressTolerant`). Split them into Spec, Statements and Proofs when the
-  Goldilocks slice (step 7) starts.
+  Goldilocks first slice starts.
 - **Tool layer.** The 41 check-stack modules (check-decls, its fixtures and CheckFixtures) sit outside
-  the library layers; the plan moves checker fixtures into the test library.
+  the library layers; the target layout moves checker fixtures into the test library.
 
 ## Report
 
@@ -362,8 +363,8 @@ Cone: default-target modules that import it (`-`: not a default-target module). 
 
 ## Historical CI timings (GitHub-hosted runner)
 
-Moved from README (2026-11-04); Actions has been disabled since 2026-10-31 (#50). Before the tiers, every
+Kept for reference. Before the tiers, every
 push ran everything in about 50 minutes (build 3, check-decls 7.5, Spec surface 3.5, self-tests 4,
-leanchecker replay 9.5, `lake check` 19, comparator 1, setup 2). Fast tier (measured on PR #15, with
-self-tests because it changed `scripts/`): 17 minutes cold, 17 minutes with the build cache warm (setup 1.6,
+leanchecker replay 9.5, `lake check` 19, comparator 1, setup 2). Fast tier (measured on a change to `scripts/`,
+so with self-tests): 17 minutes cold, 17 minutes with the build cache warm (setup 1.6,
 build 0.2, check-decls 4–7.5, Spec surface 3, self-tests 4); without self-tests about 10–13 minutes.
