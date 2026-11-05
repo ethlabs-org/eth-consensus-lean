@@ -81,7 +81,7 @@ def OutputValid (rho : Model.Run (compiled F) E) (g : O.Id) : Prop :=
 roles of the grid, or at most `m` validators not ready. A shape without slot
 proposers (`proposerSel := fun _ => .fixed ∅`, e.g. a poll shape) never meets a
 recurrence with a window inside `[start, stop]` (`HonestReadyIn` needs a
-nonempty selection); acceptance therefore requires `.recur` only of shapes
+nonempty selection); the shape obligations therefore require `.recur` only of shapes
 with one proposer per slot (`ProgressFits`). -/
 def shapeHolds (F : ChainShapeFamily O Info) {V : Type} [Fintype V] [DecidableEq V] :
     ProgressReq → Time → Time → Time → (p : EnvPoint V) →

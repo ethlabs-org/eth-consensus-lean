@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 
 /-! # Comparator challenge (non-default library; never built by `lake build`)
 
-The review statements of `ConsensusLean/Statements/Review.lean` and the Goldilocks acceptance
+The review statements of `ConsensusLean/Statements/Review.lean` and the Goldilocks obligations
 endpoint (`milestone_statements_modules` in `scripts/boundaries.toml`) with `sorry` proofs.
 `lake comparator` (`comparator.json`, CI only) checks that the solution module `Solution` proves
 exactly these statements, built from Spec alone, under `propext`, `Quot.sound` and

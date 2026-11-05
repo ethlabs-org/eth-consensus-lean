@@ -11,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 
 Each statement of `ConsensusLean/Statements/Review.lean` is proved by the existing theorem whose
 type it is, so the kernel checks the statement against that theorem's type; the Goldilocks
-acceptance endpoint is proved by its milestone proof. This module is the comparator's solution
+obligations endpoint is proved by its milestone proof. This module is the comparator's solution
 module (`comparator.json`). The other Goldilocks milestones are proved lemmas, pinned by
 `ConsensusLeanTest/MilestoneAxioms.lean` (docs/decisions.md, 2026-11-04). -/
 
@@ -27,7 +27,7 @@ theorem heldIffServed : HeldIffServed := @Consensus.Model.Run.held_iff_served
 
 end Consensus.Review
 
-/-! Goldilocks meets the obligations: the concrete acceptance endpoint
+/-! Goldilocks meets the obligations: the concrete obligations endpoint
 (`Statements/Obligations`). -/
 
 /-- Goldilocks meets the obligations: `MeetsObligations`. -/

@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.AsChainShape
 
 /-! # Goldilocks meets the shape obligations (statement)
 
-The concrete acceptance endpoint of the Goldilocks family (`goldilocks S`, the node of
+The concrete obligations endpoint of the Goldilocks family (`goldilocks S`, the node of
 `AsChainShape` as a chain shape): for every setup `S` and every assumption set `A`, the family
 meets `ShapeObligations` (`Spec/Shape/Obligations`: shape claims, admissible numbers, a served
 ledger, progress that fits the skeleton and tolerates validators not ready and bad proposer slots)

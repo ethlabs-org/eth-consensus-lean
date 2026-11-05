@@ -15,7 +15,7 @@ parsed):
   declared in `ConsensusLean/Statements/Review.lean`, in any namespace, `private` (hence
   `import all`) or not, must have a pair (`Consensus.ReviewGuard.checkComplete`);
 * each `#guard_msgs` pins the exact axiom list (`propext`, `Classical.choice`, `Quot.sound`) of the
-  review theorems, of their source theorems and of the solution's Goldilocks acceptance endpoint
+  review theorems, of their source theorems and of the solution's Goldilocks obligations endpoint
   (whose statement is the milestone definition itself, so it needs no pair); an unfinished proof
   or a new axiom changes the message and fails the build. The other Goldilocks milestones are
   pinned, untrusted, by `ConsensusLeanTest/MilestoneAxioms.lean`. -/
