@@ -93,7 +93,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
   have hkΔ : 0 ≤ (sp.k : Time) * sp.Δ := mul_nonneg (Nat.cast_nonneg _) hΔ.le
   have hGp : 0 ≤ Gp := by
     obtain ⟨_, _, _, -, h₁, h₂, -⟩ := hp (gbar g) le_rfl
-    linarith
+    linarith only [h₂, h₁]
   have hC : C_HS sp ΔF Gp = D_HS sp Gp + 4 * sp.Δ * (sp.toParams.δt : Time) + ΔF + Gp + sp.Δ :=
     rfl
   have hA : A_HS sp ΔF Gp = 2 * C_HS sp ΔF Gp + sp.Δ := rfl
@@ -105,7 +105,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
   have hi₀ : ∀ k, w ≤ tr.time k → i₀ ≤ k := fun k hk => by
     by_contra hlt
     have := hset.2.1.2 k (not_le.1 hlt)
-    linarith
+    linarith only [hk, this]
   have hphase : ∀ k, tr.time k ≤ w + A_HS sp ΔF Gp → PhaseOn tr.projFG H i₀ k m c :=
     fun k hk k' h₁ h₂ => hOn k' h₁ (by have := hcutA k hk; omega)
   have hupto : ∀ T, T ≤ w + A_HS sp ΔF Gp → ∀ j, FirstCutAfter tr j T →
@@ -131,7 +131,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
   have hsucc : ∀ {a b : Nat}, a < b → sp.ts a + 4 * sp.Δ ≤ sp.ts b := fun {a b} h => by
     have : sp.ts ((a : Int) + 1) ≤ sp.ts b := (SA.ts_le_iff sp).2 (by omega)
     simp only [SAParams.ts] at this ⊢
-    linarith
+    linarith only [this]
   have hfloor : phaseFloor m c ≤ m := by cases c <;> simp only [phaseFloor] <;> omega
   -- the settled cut is at or before `W`'s proposal, at `t_s`
   have hi₀W : tr.time i₀ ≤ sp.ts s := by
@@ -158,11 +158,12 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     have h₂ := hpred z
     obtain ⟨hv, hl, hpa⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr g ΔF w i₀
       i₀ m c hrun hs hc hset le_rfl _ kZ z Z
-      hZ (hi₀ kZ (by linarith)) (by linarith) (by linarith [gbar_nonneg g])
+      hZ (hi₀ kZ (by linarith only [hws, hkZ, hΔ, h₁])) (by linarith only [hΔ, hi₀W, h₁, h₂]) (by
+          linarith only [gbar_nonneg g, hws, hΔ, hg8, h₁, h₂])
       (fun y hy k ℓ e hv he => hphase k (by
         have := cast_time_le_slot hrun hnc hy hv
         rw [he] at this
-        linarith)) (by linarith)
+        linarith only [hzA, this])) (by linarith only [hr, h₁, hΔ])
     exact ⟨fun y hy k ℓ e hv' he => let ⟨a, b, _⟩ := hv y hy k ℓ e hv' he;
       ⟨a, b.imp_left And.right⟩, hl, hpa⟩
   -- the first crossing, by `b₁ ≤ w + C`
@@ -176,35 +177,41 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
         sp.ts (E.slot + sp.toParams.δt : Nat) ≤
           w + D_HS sp Gp + 4 * sp.Δ * (sp.toParams.δt : Time) + ΔF)
     linarith
-  have hCA : C_HS sp ΔF Gp + sp.Δ ≤ A_HS sp ΔF Gp := by linarith
+  have hCA : C_HS sp ΔF Gp + sp.Δ ≤ A_HS sp ΔF Gp := by
+    linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD]
   obtain ⟨jb, hjb⟩ := exists_firstCutAfter_of_healthy hrun hs hpH
     (max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ)
   obtain ⟨x, kX, X, hXr, hx₁, hx₂, hXh, -, -⟩ := mature_progress_of hrun hs hc hp hset hret hW
     hWs hpH hE (h1.elim (·.ge) (fun h => h ▸ hfloor)) hws hparents hrows hjb
-    (hupto _ (by linarith) jb hjb)
+    (hupto _ (by linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD, hb₁]) jb hjb)
   obtain ⟨hpX, -, -, hpropX, hXs, -⟩ := id hXr
   have hkX := htime hpropX hXs
   have hX₁ : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts x := (le_max_left _ _).trans hx₁
   have hX₂ : sp.ts x + sp.Δ ≤ w + C_HS sp ΔF Gp := hx₂.trans hb₁
-  have hsx : s < x := hslot (by linarith)
-  have hXm := hcap hpX hpropX (by linarith) (by linarith)
+  have hsx : s < x := hslot (by linarith only [hX₁, hΔ, hΔF])
+  have hXm := hcap hpX hpropX (by linarith only [hws, hkX, hΔ, hΔF, hX₁]) (by
+      linarith only [hb₁, hCA, hx₂, hkX, hΔ])
   -- so `h = ℓ = m − 1` and `ht(X) = m`
   have hhm : h + 1 = m := by
     rcases h1 with rfl | rfl
     · cases c <;> simp only [phaseFloor] at hXh hXm ⊢ <;> omega
     · omega
-  obtain ⟨-, -, hXpar⟩ := hprot hXr hsx (by linarith)
+  obtain ⟨-, -, hXpar⟩ := hprot hXr hsx (by
+      linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD, hb₁, hx₂])
   -- the second proposal `Y`, after `t_x + 8Δ`, and the envelope `B₂ ≤ w + 2C`
-  obtain ⟨y, kY, Y, -, hy₁, hy₂, hYr⟩ := hp (sp.ts x + 8 * sp.Δ) (by linarith)
+  obtain ⟨y, kY, Y, -, hy₁, hy₂, hYr⟩ := hp (sp.ts x + 8 * sp.Δ) (by
+      linarith only [hws, hΔ, hg8, hX₁, hΔF])
   obtain ⟨hpY, -, -, hpropY, hYs, -⟩ := id hYr
   have hkY := htime hpropY hYs
-  have hxy : x < y := hslot (by linarith)
+  have hxy : x < y := hslot (by linarith only [hy₁, hΔ])
   have hB₂ : sp.ts y + 8 * sp.Δ + 4 * sp.Δ * (sp.toParams.δt : Time) + ΔF + Gp ≤
       w + A_HS sp ΔF Gp := by
-    linarith
+    linarith only [hΔ, hkΔ, hGp, hC, hA, hD, hb₁, hx₂, hy₂]
   have hYm : ((tr.post kY).fg.σ Y.root).h = m := by
-    refine le_antisymm (hcap hpY hpropY (by linarith) (by linarith)) ?_
-    obtain ⟨Pr, hpar, hXPr⟩ := hXpar y Y kY hxy hYs hpropY hpY (hphase kY (by linarith))
+    refine le_antisymm (hcap hpY hpropY (by linarith only [hws, hkY, hΔ, hΔF, hX₁, hy₁]) (by
+        linarith only [hΔF, hGp, hkY, hB₂, hΔ, hδ])) ?_
+    obtain ⟨Pr, hpar, hXPr⟩ := hXpar y Y kY hxy hYs hpropY hpY (hphase kY (by
+        linarith only [hΔF, hGp, hkY, hB₂, hΔ, hδ]))
     obtain ⟨-, hXt, hpostX⟩ := accept_of_proposesAt hrun hnc hpX hpropX
     obtain ⟨-, hYt, hpostY⟩ := accept_of_proposesAt hrun hnc hpY hpropY
     have hXY := anc_of_parentRoot ⟨_, hpX, _, hXt⟩ hXPr ⟨_, hpY, _, hYt⟩ hpar
@@ -215,15 +222,17 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
     rw [← σ_eq_honest hrun hnc hpX hpY hXt hXt'] at this
     rw [hpostY]
     omega
-  obtain ⟨hYv, hYl, hYp⟩ := hprot hYr (hsx.trans hxy) (by linarith)
+  obtain ⟨hYv, hYl, hYp⟩ := hprot hYr (hsx.trans hxy) (by
+      linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD, hb₁, hx₂, hy₂])
   obtain ⟨E₂, hE₂, hrows₂⟩ := fixed_upper_rows_of hrun hs hc hset hclean hcl hpropY hYs hpY
-    hYm (by linarith) hYv hYl hYp (hupto _ (by linarith))
+    hYm (by linarith only [hr, hX₁, hy₁, hΔ, hΔF]) hYv hYl hYp (hupto _ (by
+        linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD, hb₁, hx₂, hy₂]))
   have hE₂s := entry_slot_le hrun hnc hpY (accept_of_proposesAt hrun hnc hpY hpropY).2.2 hE₂
   rw [hYs] at hE₂s
   have hb₂ : max (sp.ts y + 6 * sp.Δ + ΔF) (sp.ts (E₂.slot + sp.toParams.δt : Nat)) + Gp +
       sp.Δ ≤ w + A_HS sp ΔF Gp := by
     have := ts_entry_le (sp := sp) hE₂s
-    have := max_le_iff.2 (⟨by linarith, by linarith⟩ :
+    have := max_le_iff.2 (⟨by linarith only [hδ], by linarith only [hΔ, hΔF, this]⟩ :
       sp.ts y + 6 * sp.Δ + ΔF ≤ sp.ts y + 6 * sp.Δ + 4 * sp.Δ * (sp.toParams.δt : Time) + ΔF ∧
         sp.ts (E₂.slot + sp.toParams.δt : Nat) ≤
           sp.ts y + 6 * sp.Δ + 4 * sp.Δ * (sp.toParams.δt : Time) + ΔF)
@@ -231,11 +240,13 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨jb₂, hjb₂⟩ := exists_firstCutAfter_of_healthy hrun hs hpY
     (max (sp.ts y + 6 * sp.Δ + ΔF) (sp.ts (E₂.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ)
   obtain ⟨x₂, kX₂, X₂, hX₂r, hx₂₁, hx₂₂, hX₂h, -, -⟩ := mature_progress_of hrun hs hc hp hset hret
-    hpropY hYs hpY hE₂ hfloor (by linarith) hYp hrows₂ hjb₂ (hupto _ hb₂ jb₂ hjb₂)
+    hpropY hYs hpY hE₂ hfloor (by
+        linarith only [hws, hX₁, hy₁, hΔ, hΔF]) hYp hrows₂ hjb₂ (hupto _ hb₂ jb₂ hjb₂)
   obtain ⟨hpX₂, -, -, hpropX₂, hX₂s, -⟩ := id hX₂r
   have hkX₂ := htime hpropX₂ hX₂s
   have := (le_max_left _ _).trans hx₂₁
-  have := hcap hpX₂ hpropX₂ (by linarith) (by linarith)
+  have := hcap hpX₂ hpropX₂ (by linarith only [hws, hkX₂, hΔ, hΔF, hX₁, hy₁, this]) (by
+      linarith only [hb₂, hx₂₂, hkX₂, hΔ])
   omega
 
 end Consensus.Goldilocks.Healing

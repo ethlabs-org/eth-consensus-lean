@@ -354,7 +354,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   have hphv := hon jv hjv
   have hkjv : k < jv := hjv.lt_of_time_le hrun.time_mono htk.le
   have hts2 : sp.ts ((s + 1 : Nat) : Int) + sp.Δ < sp.ts s + 6 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; linarith
+    simp only [SAParams.ts]; push_cast; linarith only [hΔ]
   -- an honest vote of a slot `≤ s + 1` is cast before `v`, in the phase
   have hvphase : ∀ z ∈ H, ∀ k' ℓ' e, SA.CastAt tr.projAC z k' ℓ' e → e.msg.slot ≤ s + 1 →
       PhaseOn tr.projFG H i₀ k' m c := by
@@ -362,10 +362,10 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     have h1 := cast_time_le_slot hrun hnc hz hv
     have h2 : sp.ts e.msg.slot ≤ sp.ts ((s + 1 : Nat) : Int) := (SA.ts_le_iff sp).2 (by omega)
     exact fun k'' h₁ h₂ => hphv k'' h₁
-      (h₂.trans (hjv.lt_of_time_le hrun.time_mono (by linarith)).le)
+      (h₂.trans (hjv.lt_of_time_le hrun.time_mono (by linarith only [hts2, h1, h2])).le)
   -- the reader's own slot-`s` vote, which is `Y`
   obtain ⟨iv, ev, ⟨ℓv, hcv, hev⟩, hevs⟩ :=
-    SA.honest_votes_in_slot hS (m := s) (by linarith) y hy
+    SA.honest_votes_in_slot hS (m := s) (by linarith only [hΔ, hts]) y hy
   have hcastv : SA.CastAt tr.projAC y iv ℓv ev := ⟨hcv, hev⟩
   have hhead := (hvotes y hy iv ℓv ev hcastv hevs).1
   have hvph := hvphase y hy iv ℓv ev hcastv (by omega)
@@ -386,7 +386,8 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
   rintro L ⟨hLt, l', ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩, hLr⟩
   obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
   obtain rfl : L = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hLt) (hΦU hvat) hLr.symm
-  have hclean' := live_lock_clean (hr.trans (by rw [htk]; linarith)) (SA.locksWF_state hr' hy k)
+  have hclean' := live_lock_clean (hr.trans (by
+      rw [htk]; linarith only [hΔ])) (SA.locksWF_state hr' hy k)
     ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩
   dsimp only at hclean'
   -- the image is below the stored block `O` of an origin that compares with `Y`
@@ -426,12 +427,12 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     have ht₁ : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
     rw [ht₁] at htr
     have hjs' : l₀.slot = s := by
-      have := (SA.ts_le_iff sp).1 (show sp.ts (l₀.slot : Int) ≤ sp.ts s by linarith)
+      have := (SA.ts_le_iff sp).1 (show sp.ts (l₀.slot : Int) ≤ sp.ts s by linarith only [htr])
       omega
     have hΦwU := (SA.frameIn_of_callAt hr' hy hcw).2
     obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hCHd⟩ :=
-      SA.result_extended hS (by rw [hjs']; linarith) hy hupd.1
-        (by rw [hupd.2.2.1]; linarith) hC
+      SA.result_extended hS (by rw [hjs']; linarith only [hΔ, hts]) hy hupd.1
+        (by rw [hupd.2.2.1]; linarith only [hΔ]) hC
     obtain rfl : Hd = Y :=
       hU.1 hHd hYU (hHdr.trans (hvotes z hz j' ℓe e ⟨hce, hee⟩ (hes.trans hjs')).1)
     have hDC : ℓw.frame.Anc D C := (SA.deepest_mem hD).1.1.2.2
@@ -443,12 +444,13 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
     have hwt : sp.ts l₀.slot ≤ tr.time r := by
       rcases hfl with ⟨ℓ₁, C, ⟨-, -, ht₁, -⟩, -⟩ | ⟨ℓ₁, A, -, hsl₁, -⟩
       · have ht₁' : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := ht₁
-        rw [ht₁']; linarith
+        rw [ht₁']; linarith only [hΔ]
       · exact (SA.ts_le_iff_le_slot sp (hr'.time_nonneg r) _).2 (by rw [hsl₁])
     have hj2 : l₀.slot ≤ s + 1 := by
       have := hrt r hrk
       have h' : sp.ts (l₀.slot : Int) < sp.ts ((s + 2 : Nat) : Int) := by
-        simp only [SAParams.ts] at hwt this ⊢; push_cast at hwt this ⊢; linarith
+        simp only [SAParams.ts] at hwt this ⊢; push_cast at hwt this ⊢; linarith only [hΔ, hwt,
+            this]
       have := (SA.ts_lt_iff sp).1 h'
       omega
     obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hDHd⟩ :=
@@ -511,33 +513,34 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hslot : sp.slot (sp.ts s + 6 * sp.Δ) = s + 1 :=
-    SA.slot_of_mem sp (s + 1) (by rw [hts1]; linarith)
-      (by simp only [SAParams.ts] at hts1 ⊢; push_cast at hts1 ⊢; linarith)
+    SA.slot_of_mem sp (s + 1) (by rw [hts1]; linarith only [hΔ])
+      (by simp only [SAParams.ts] at hts1 ⊢; push_cast at hts1 ⊢; linarith only [hΔ])
   have hs1 : 1 ≤ s := by
     by_contra h0
     obtain rfl : s = 0 := by omega
     have : sp.ts ((0 : Nat) : Int) = 0 := by simp [SAParams.ts]
-    linarith
+    linarith only [hΔ, hgb0, hts, this]
   -- the proposal and its allowedness
   obtain ⟨hacc, hYt₀, hpost⟩ := accept_of_proposesAt hrun hnc hpH hY
   have hkY : tr.time kY = sp.ts s := by rw [hY.2.2, hYs, sp.slotTime_eq]; rfl
   have hi₀kY : i₀ ≤ kY := le_of_settledIn hset (by rw [hkY]; linarith)
   obtain ⟨jv, hjv⟩ := exists_firstCutAfter_of_healthy hrun hs hy (sp.ts s + 6 * sp.Δ)
   have hphv := hon jv hjv
-  have hkYjv : kY < jv := hjv.lt_of_time_le hrun.time_mono (by rw [hkY]; linarith)
+  have hkYjv : kY < jv := hjv.lt_of_time_le hrun.time_mono (by rw [hkY]; linarith only [hΔ])
   have hall := proposal_allowed hrun hs hc hset hpH hY hYs (by linarith)
     (fun k' h1 h2 => hphv k' h1 (h2.trans hkYjv.le))
   rw [hpost] at hall
   -- `y`'s tick at `v`, not a proposal duty: `ac_on_tick`, then `ac_to_fg`
-  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts s + 6 * sp.Δ) (by linarith)
+  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts s + 6 * sp.Δ) (by
+      linarith only [hΔ, hts, hgb0])
     ⟨4 * (s : Int) + 6, by simp only [SAParams.ts]; ring⟩
-    (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith))
+    (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith only [hΔ, hts]))
   have hnP : ¬ Node.Proposes proposer y (sp.ts s + 6 * sp.Δ) := by
     rintro ⟨-, h, -⟩
     rw [show sp.toParams.slotOf (sp.ts s + 6 * sp.Δ) = s + 1 from hslot, sp.slotTime_eq] at h
     simp only [SAParams.ts] at hts1 h
     push_cast at hts1 h
-    linarith
+    linarith only [hΔ, h]
   obtain ⟨hcj, htj⟩ := tick_first_cut hg
   obtain ⟨ℓ', hcj1, hcall', htj1⟩ := tick_toFG_call hg hnP
   obtain ⟨ℓ, hcjAC, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp ro),
@@ -548,7 +551,7 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hkYj : kY < j := by
     by_contra h
     have := hrun.time_mono (not_lt.1 h)
-    linarith
+    linarith only [hΔ, hkY, htj, this]
   have hwin : PhaseOn tr.projFG H (kY + 1) (j + 1) m c :=
     fun k' h1 h2 => hphv k' (by omega) (by omega)
   -- `y` holds `Y` at its tick: relayed by `t_s + Δ`, `F ⪯ Y` by HS.1
@@ -560,11 +563,11 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
     have hkYw : kY + 1 ≤ Nat.find hex := by
       by_contra h
       have := hrun.time_mono (show Nat.find hex ≤ kY by omega)
-      linarith [hjw.1]
+      linarith only [hjw.1, hΔ, hkY, this]
     have hF := finalized_anc_of_allowed hrun hs (fun k' h1 h2 => hwin k' h1 (h2.trans (by omega)))
       hpH hall hy hkYw le_rfl
     exact Compose.tree_mono hl hy hjwj (relay_held hl hs.healthy hs.noRestart hc hpH hy hacc
-      (by linarith) (by rw [hkY]; linarith) hjw hF)
+      (by linarith only [hΔ, hts]) (by rw [hkY]; linarith only [hΔ]) hjw hF)
   -- `Y` is a viable head of `y`'s frame at the tick
   have hfr : ℓ.frame = Node.frame (tr.state y j) := Compose.frame_of_projAC hrun hy hcjAC
   have hΦ : FrameOK ℓ.frame := (SA.frameIn_of_callAt hr' hy hcjAC).1
@@ -585,7 +588,8 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hexact : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →
       e.msg.head = Y.root := fun x hx j e ⟨ℓ, hc, he⟩ hes => (hvotes x hx j ℓ e ⟨hc, he⟩ hes).1
   have htjAC : tr.projAC.time j = sp.ts s + 6 * sp.Δ := htj
-  obtain ⟨hconf, hnv, hfast, hpostj⟩ := SA.first_update_post hS (by linarith) hexact hy hcjAC
+  obtain ⟨hconf, hnv, hfast, hpostj⟩ := SA.first_update_post hS (by
+      linarith only [hΔ, hts]) hexact hy hcjAC
     hcall htjAC hYt (update_locks_compatible hrun hs hc hset hclean hY hYs hpH hr hvotes
       hlater hparents hon hy hcjAC htj)
   set A := tr.projAC.state y j with hA
@@ -607,7 +611,7 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hjoin : SA.joined sp (tr.projAC.state y (j + 1)) t := by
     have := hS.joined_state hy (j + 1) (by
       rw [htj1AC, hslot]; push_cast; simp only [add_sub_cancel_right]
-      linarith)
+      linarith only [hts, hΔ])
     rwa [htj1AC] at this
   -- every live lock at the `ac_to_fg` compares with `Y`, and `Y` is a fast candidate
   have hlv2 : sp.slot t ≤ s + 2 := by rw [hslot]; omega
@@ -683,7 +687,8 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
     have hsl : s ≤ sp.slot (tr.time a) := hYs ▸ hlaw
     have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg a) s).2 (by exact_mod_cast hsl)
     exact this.trans (hrun.time_mono ha.le)
-  · refine ⟨j + 1, ℓ', C, ⟨hcj1AC, hcall', ?_⟩, by rw [htj1]; linarith, by rw [htj1], hYCU⟩
+  · refine ⟨j + 1, ℓ', C, ⟨hcj1AC, hcall', ?_⟩, by rw [htj1]; linarith only [hΔ], by
+      rw [htj1], hYCU⟩
     rw [hfr', htj1AC]
     unfold SA.acToFG
     simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]

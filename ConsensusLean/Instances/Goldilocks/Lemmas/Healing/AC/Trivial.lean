@@ -123,10 +123,10 @@ theorem relay_accept (hS : StandaloneRun tr H U proposer g) {z : Fin sp.n} (hz :
   by_cases hgk : g ≤ tr.time k
   · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.2.1 z hz k X hacc hgk y hy i ℓ hc
       (by linarith [hS.deadline_le hy i (tr.time k)]) hF
-    exact ⟨k', hk'i, hacc', by linarith [hS.deadline_le hy k' (tr.time k)]⟩
+    exact ⟨k', hk'i, hacc', by linarith only [hS.deadline_le hy k' (tr.time k), hmax, hlt]⟩
   · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.catchUp z hz k X hacc
       (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy i ℓ hc (by linarith) hF
-    exact ⟨k', hk'i, hacc', by linarith⟩
+    exact ⟨k', hk'i, hacc', by linarith only [hT, hlt]⟩
 
 /-- **Block stamps under trivial frames**: the stamp of a root at an honest node before cut `i`
 is unset, or the root is genesis, or it is at least the time at which the node accepted a block
@@ -233,7 +233,7 @@ theorem stamp_lt_of_held_of_run (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     · obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy ⟨hc, he⟩
       have := vote_time_le hr hy ⟨ℓ, hc, he⟩
       rw [← hsl] at this
-      linarith
+      linarith only [hwT, this]
     · exact absurd (pool_mono hr hy (not_lt.1 hka) (fun k' h1 h2 => hnr k' h1 (h2.trans hk))
         _ hw) hnh
   · rw [hst, etime_of_lt_of]
@@ -327,27 +327,30 @@ theorem carry_of_sent (hS : StandaloneRun tr H U proposer g) {s : Nat}
           rw [trivial_F_eq hS hy hx hc hc₁]
           exact (hΦ₁.rooted.2 X hX₁).mono hΦ₁U
         obtain ⟨k'', -, hacc'', hlt⟩ := relay_accept hS hx hacc (T := sp.ts s + 2 * sp.Δ)
-          (lt_of_le_of_lt (hr.time_mono hk') ht₁) (by linarith) hy hc (by linarith) hF
-        exact ⟨k'', hacc'', by linarith⟩
+          (lt_of_le_of_lt (hr.time_mono hk') ht₁) (by linarith only [hs, hΔ]) hy hc (by
+              linarith only [hΔ, hti]) hF
+        exact ⟨k'', hacc'', by linarith only [hlt]⟩
   · obtain ⟨hvs, x, hx, k, hsend, hk1, hk2, -⟩ := hCV v hv
-    have hgk : gbar g ≤ tr.time k := by linarith
+    have hgk : gbar g ≤ tr.time k := by linarith only [hs, hk1, hk2]
     have hmax : max (tr.time k) g = tr.time k := max_eq_left ((le_gbar g).trans hgk)
     have hdk : ∀ c, tr.deadline y c (tr.time k) ≤ tr.time k + sp.Δ := fun c =>
       (hS.deadline_le hy c _).trans (by rw [max_eq_left hgk])
     obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hS.healthy.1 x hx k v hsend y hy i ℓ hc
-      (by rw [hmax]; linarith [hdk i])
+      (by rw [hmax]; linarith only [hdk i, hti, hk1, hk2])
     rw [hmax] at hk'dl
-    have hk'T : tr.time k' < sp.ts s + 3 * sp.Δ := by linarith [hdk k']
+    have hk'T : tr.time k' < sp.ts s + 3 * sp.Δ := by linarith only [hdk k', hk2, hk'dl]
     have hsl' : sp.slot (tr.time k') = s :=
-      slot_of_mem sp s (by linarith) (by rw [ts_succ]; linarith)
-    have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
+      slot_of_mem sp s (by linarith only [hk1, hkk']) (by
+          rw [ts_succ]; linarith only [hk1, hk2, hk'T])
+    have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith only [hes, hsl', hsl])
     have hT : ∀ w : Vote sp.n, w.slot = s → w ∈ (tr.state y (k' + 1)).pool s →
         HeldBefore e.readPoint w (sp.ts s + 3 * sp.Δ) := by
       intro w hws hw
       refine heldBefore_readPoint hr hy hca (by rw [hes, hws]; omega) ?_
       refine stamp_lt_of_held hS.toHealthyBase hy (by omega) (hws ▸ hw)
         (fun c hc' => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hc')) hk'T)
-        (by rw [hws]; linarith) (by linarith) fun c hc1 _ hrc => ?_
+        (by rw [hws]; linarith only [hk1, hk2]) (by
+            linarith only [hs, hk1, hk2]) fun c hc1 _ hrc => ?_
       have := hS.restart_le hy hrc
       have := hr.time_mono (show k' ≤ c by omega)
       linarith
@@ -391,12 +394,12 @@ theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
   have hk'i : k' ≤ i := by
     by_contra h
     have := hr.time_mono (le_of_lt (not_le.1 h))
-    linarith
+    linarith only [hΔ, hti, hlt, this]
   have hBy : B ∈ ℓ.frame.tree := by
     rw [htreey]; exact Set.mem_insert_of_mem _ ⟨k', hk'i, hacc'⟩
   have hst := blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hBy (Or.inr ⟨k', hacc', hlt⟩)
-    (fun k'' _ hr'' => lt_of_le_of_lt (hS.restart_le hy hr'') (by linarith))
-    (Or.inl (by linarith))
+    (fun k'' _ hr'' => lt_of_le_of_lt (hS.restart_le hy hr'') (by linarith only [hσ, hΔ]))
+    (Or.inl (by linarith only [hΔ, hti]))
   -- the read point's stamps are those after the call, which keeps `B`'s
   have hrp : e.readPoint.blockStamp B.root = (tr.state y i).blockStamp B.root := by
     have h1 : (tr.post i).blockStamp = e.readPoint.blockStamp := by
@@ -422,11 +425,11 @@ theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
       subst this
       have := accept_unique sp hr hy hacc' ⟨ℓ, hc.1, hB'⟩
       subst this
-      linarith
+      linarith only [hΔ, hlt, hti]
     · simp only [not_exists] at hb
       rw [hoth hb fun hrs => by
         have := hS.restart_le hy ⟨ℓ, hc.1, hrs⟩
-        linarith]
+        linarith only [hσ, hΔ, hti, this]]
   have hvbt : B ∈ voterBlockTree sp e.readPoint ℓ.frame (σ + 1) := by
     refine ⟨hBy, Or.inl ?_⟩
     rw [hrp, freeze, hσ1]
@@ -505,13 +508,15 @@ theorem trivial_viable (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy
   obtain ⟨k', hk'i, hacc', hlt⟩ :
       ∃ k' ≤ i, tr.AcceptAt y k' B ∧ tr.time k' < sp.ts σ + 3 * sp.Δ := by
     by_cases hgk : g ≤ tr.time k
-    · have hmax : max (tr.time k) (gbar g) ≤ sp.ts σ + sp.Δ := max_le htk (by linarith)
+    · have hmax : max (tr.time k) (gbar g) ≤ sp.ts σ + sp.Δ := max_le htk (by
+        linarith only [hσ, hΔ])
       obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.2.1 z hz k B hacc hgk y hy i ℓ hc.1
-        (by linarith [hS.deadline_le hy i (tr.time k)]) hF
-      exact ⟨k', hk'i, hacc', by linarith [hS.deadline_le hy k' (tr.time k)]⟩
+        (by linarith only [hS.deadline_le hy i (tr.time k), hΔ, hti, hmax]) hF
+      exact ⟨k', hk'i, hacc', by linarith only [hS.deadline_le hy k' (tr.time k), hΔ, hmax, hlt]⟩
     · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.catchUp z hz k B hacc
-        (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy i ℓ hc.1 (by linarith) hF
-      exact ⟨k', hk'i, hacc', by linarith⟩
+        (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy i ℓ hc.1 (by
+            linarith only [hσ, hΔ, hti]) hF
+      exact ⟨k', hk'i, hacc', by linarith only [hσ, hΔ, hlt]⟩
   exact viable_of_accepted hS hy hc hes hσ (hΦzU (by
     rw [htreez]; exact Set.mem_insert_of_mem _ ⟨k, hkj, hacc⟩)) (Or.inr ⟨k', hacc', hlt⟩)
 
@@ -537,7 +542,7 @@ private theorem admitted_of_pool (hS : StandaloneRun tr H U proposer g) {x : Fin
     have h4 : sp.slot (tr.time k) < s := by
       by_contra h
       have := (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
-      linarith
+      linarith only [hs, hΔ, h3, this]
     omega
 
 /-- **`Carry` for the counted votes of an update under trivial frames**: at an honest update of
@@ -614,7 +619,7 @@ theorem trivial_carry_fastLock (hS : StandaloneRun tr H U proposer g) {x : Fin s
       refine ⟨i₀, ⟨ℓ, hpt.1, Or.inr ⟨fun hrs => ?_, fun h => hv0 (hvs ▸ h), hpost⟩⟩, ht0.2,
         ht0.1, hhead⟩
       have := hS.restart_le hx ⟨ℓ, hpt.1, hrs⟩
-      linarith
+      linarith only [hs, ht0, this]
 
 /-- **`Carry` for the honest votes of a slot under trivial frames** (claims H.1 proof shape;
 A1.3's premise): every honest slot-`(m+1)` vote carries the honest slot-`m` votes, for
@@ -636,8 +641,9 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U proposer g) {m : Nat}
   have hG := getHead_mem' hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
     (mergedVoteView sp e'.readPoint ℓ.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
     (T := ℓ.frame.viableTree (voteDomain sp e'.readPoint ℓ.frame e'.msg.slot))
-  exact ⟨hvs, x, hx, j, ⟨ℓ, hc, Or.inl ⟨e', he, rfl⟩⟩, htj', by linarith, _, hΦU hG, hhead.symm,
-    Or.inr ⟨j, ℓ, hc, by linarith, hG⟩⟩
+  exact ⟨hvs, x, hx, j, ⟨ℓ, hc, Or.inl ⟨e', he, rfl⟩⟩, htj', by
+      linarith only [hΔ, htj], _, hΦU hG, hhead.symm,
+    Or.inr ⟨j, ℓ, hc, by linarith only [hΔ, htj], hG⟩⟩
 
 /-- Every honest node has an actual vote by the bounded slot deadline. Restart bounds
 are required only before that deadline, at the join threshold for this slot. -/
@@ -813,7 +819,7 @@ theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
       have hT : gbar g ≤ sp.ts ((sp.slot (tr.time j) : Int) - 1) := by
         rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
           push_cast; ring]
-        linarith
+        linarith only [hΔ, hmd]
       exact next_transfer sp FGP ro H U tr proposer hrun (m + d) x j B ℓ e hx hca (by omega)
         ih hhalf
         (hcarry x hx j e ⟨ℓ, hc, he⟩ (by omega)) (hS.faultBound (hr.time_nonneg j) hT)
@@ -842,9 +848,9 @@ theorem fast_origin_transfer_votes (hS : StandaloneRun tr H U proposer g) {x : F
       obtain ⟨-, hsl, -, -⟩ := castAt_spec hr hy hca
       have hT : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
         rw [← hsl, hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring]
-        linarith
+        linarith only [hs, hΔ]
       exact first_transfer sp FGP ro H U tr proposer hrun s x y i₀ i B CV ℓ e hx hfl hy hca hes
-        (hS.syncAC (by linarith) _) (hcarry y hy i e ⟨ℓ, hc, he⟩ hes)
+        (hS.syncAC (by linarith only [hs, hΔ]) _) (hcarry y hy i e ⟨ℓ, hc, he⟩ hes)
         (hS.faultBound (hr.time_nonneg i) hT) (trivial_viable hS hy hca hes hs hvB)
         (fun z hz j hj e' hv' hs' => ih j hj z hz e' hv' hs')
   have hs1 : gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) :=

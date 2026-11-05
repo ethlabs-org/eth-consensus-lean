@@ -136,12 +136,12 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
   have hi₀ : i₀ ≤ kP := by
     by_contra h
     have := hset.2.1.2 kP (not_le.1 h)
-    linarith
+    linarith only [hr, hΔ, ha, hrr, hkΔ, hkP, this]
   -- the proposer ticks at `t_{s−1}`, a time `≥ w`
   have hts1 : sp.ts ((s : Int) - 1) = sp.ts s - 4 * sp.Δ := by
     simp only [SAParams.ts]; ring
   have htime : tr.time i₀ ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ := by
-    have hgt : gbar g ≤ sp.ts ((s : Int) - 1) := by linarith
+    have hgt : gbar g ≤ sp.ts ((s : Int) - 1) := by linarith only [hg8, hts, hts1, hΔ]
     obtain ⟨j, _x, hne, hcs, -⟩ := hrun.tick_of_awake _ hpH _ (hgb0.trans hgt)
       ⟨4 * ((s : Int) - 1), by simp only [SAParams.ts]; ring⟩ (hs.healthy.2.1 _ hpH _ hgt)
     obtain ⟨-, ht, -, -, -⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
@@ -149,9 +149,9 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     have hij : i₀ ≤ j := by
       by_contra h
       have := hset.2.1.2 j (not_le.1 h)
-      linarith
+      linarith only [hr, hΔ, ha, hrr, hkΔ, hts1, ht, this]
     have := hrun.time_mono hij
-    linarith
+    linarith only [hΔ, ht, this]
   have hacr := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl
   have hvotes : ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       PhaseOn tr.projFG H i₀ k m c := fun y hy k ℓ e hv he => by
@@ -161,7 +161,8 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     rw [← h2, he] at this
     omega
   obtain ⟨h₁, h₂, h₃⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr g ΔF w i₀ i₀
-    m c hrun hs hc hset le_rfl _ kP s P hP hi₀ htime (by linarith) hvotes hr
+    m c hrun hs hc hset le_rfl _ kP s P hP hi₀ htime (by
+        linarith only [hr, hΔ, hg8, ha, hrr, hkΔ, hts1]) hvotes hr
   exact ⟨fun y hy k ℓ e hv he => let ⟨a, b, _⟩ := h₁ y hy k ℓ e hv he;
     ⟨a, b.imp_left And.right⟩, h₂, h₃⟩
 
@@ -239,7 +240,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg8 : gbar g + 8 * sp.Δ ≤ w := (le_max_right _ _).trans hset.1.late
   have hw4 := add_le_rTime sp w
-  have hts : gbar g + 12 * sp.Δ ≤ sp.ts s := by linarith
+  have hts : gbar g + 12 * sp.Δ ≤ sp.ts s := by linarith only [hr, hg8, hw4]
   have hsucc : ∀ a : Nat, sp.ts ((a + 1 : Nat) : Int) = sp.ts a + 4 * sp.Δ := fun a => by
     simp only [SAParams.ts]; push_cast; ring
   have hs2 : sp.ts ((s + 2 : Nat) : Int) ≤ sp.ts s' := (SA.ts_le_iff sp).2 (by omega)
@@ -271,11 +272,11 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
   have hwt : sp.ts l₀.slot ≤ tr.time r := by
     rcases hfl with ⟨ℓ₁, C₁, ⟨-, -, ht₁, -⟩, -⟩ | ⟨ℓ₁, A, -, hsl₁, -⟩
     · have ht₁' : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := ht₁
-      rw [ht₁']; linarith
+      rw [ht₁']; linarith only [hk, hk']
     · exact (SA.ts_le_iff_le_slot sp (hr'.time_nonneg r) _).2 (by rw [hsl₁])
   have hj2 : l₀.slot < s + 2 := by
     have := (SA.ts_lt_iff sp).1 (show sp.ts (l₀.slot : Int) < sp.ts ((s + 2 : Nat) : Int) by
-      linarith)
+      linarith only [hs2', hrt, hwt, hΔ])
     omega
   -- a label `≤ s` would put `C` below `P`: `C = P`, against the heights
   have hPU : P ∈ tr.HonestBlocks H := by
@@ -286,12 +287,12 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
     have hOP : Anc (tr.HonestBlocks H) (ℓw.frame.viableAncestor D) P := by
       rcases Nat.lt_or_ge l₀.slot s with hlt | hge
       · obtain ⟨iv, ev, ⟨ℓv, hcv, hev⟩, hevs⟩ :=
-          SA.honest_votes_in_slot hS (m := s) (by linarith) y hy
+          SA.honest_votes_in_slot hS (m := s) (by linarith only [hr, hk, hk', hg8, hw4]) y hy
         have hcv' : SA.CastAt tr.projAC y iv ℓv ev := ⟨hcv, hev⟩
         obtain ⟨jv, hjv⟩ := exists_firstCutAfter_of_healthy hrun hs hy (sp.ts s + 6 * sp.Δ)
         have hivt := cast_time_le_slot hrun hnc hy hcv'
         rw [hevs] at hivt
-        have hivjv : iv < jv := hjv.lt_of_time_le hrun.time_mono (by linarith)
+        have hivjv : iv < jv := hjv.lt_of_time_le hrun.time_mono (by linarith only [hk, hk', hivt])
         obtain ⟨Hd, hHd, hHdr, hOHd⟩ := hext iv y hy ℓv ev hcv' (by omega)
           (fun k'' h₁ h₂ => hon jv hjv k'' h₁ (by omega))
         obtain rfl : Hd = P := hU.1 hHd hPU (hHdr.trans (hvotes y hy iv ℓv ev hcv' hevs).1)
@@ -306,7 +307,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
     exact lt_irrefl _ hht
   -- `j = s + 1`: HS.2's proposal-boundary transfer at an honest slot-`s'` vote
   obtain ⟨kv, ev, ⟨ℓv, hcv, hev⟩, hevs⟩ :=
-    SA.honest_votes_in_slot hS (m := s') (by linarith) y hy
+    SA.honest_votes_in_slot hS (m := s') (by linarith only [hr, hk, hk', hg8, hw4, hs2, hs2']) y hy
   have hcv' : SA.CastAt tr.projAC y kv ℓv ev := ⟨hcv, hev⟩
   have hkvt := cast_time_le_slot hrun hnc hy hcv'
   rw [hevs] at hkvt
@@ -318,7 +319,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
     by_contra h
     have := hl.time_mono (not_lt.1 h)
     change tr.time kv ≤ tr.time r at this
-    linarith
+    linarith only [hΔ, hs2, hs2', hrt, hkv0, this]
   have hOP' := clean_fast_proposal hrun hs hc hset hy hO hclean hP' (by omega) hy hcv' hevs hkv
     hrkv fun z hz k'' hk'' e' ⟨ℓ', hc', he'⟩ hsl =>
       hext k'' z hz ℓ' e' ⟨hc', he'⟩ (by omega) (hkv.mono_right hk''.le)
@@ -469,17 +470,17 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
   have hD : D_HS sp Gp = (8 * (sp.k : Time) + 48) * sp.Δ + 2 * Gp := rfl
   have hGp : 0 ≤ Gp := by
     obtain ⟨s₀, k₀, B₀, -, h₁, h₂, -⟩ := hp (gbar g) le_rfl
-    linarith
+    linarith only [h₂, h₁]
   -- the cuts before the endpoint are in the phase
   have hi₀D : i₀ ≤ jD := by
     by_contra h
     have := hset.2.1.2 jD (not_le.1 h)
-    linarith [hjD.2]
+    linarith only [hjD.2, hΔ, hkΔ, hD, hGp, this]
   have hphD : PhaseAt tr.projFG H jD m c := hper jD hi₀D le_rfl
   have hltD : ∀ k, tr.time k ≤ w + D_HS sp Gp → k < jD := fun k hk => by
     by_contra h
     have := hrun.time_mono (not_lt.1 h)
-    linarith [hjD.2]
+    linarith only [hjD.2, hk, this]
   have hbefore : ∀ k, tr.time k ≤ w + D_HS sp Gp → PhaseOn tr.projFG H i₀ k m c :=
     fun k hk k' h₁ h₂ => hper k' h₁ (h₂.trans (hltD k hk).le)
   have hafter : ∀ t, t ≤ w + D_HS sp Gp → ∀ jv, FirstCutAfter tr jv t →
@@ -487,7 +488,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
     refine hper k' h₁ (h₂.trans ?_)
     by_contra h
     have := hjv.1 jD (not_le.1 h)
-    linarith [hjD.2]
+    linarith only [hjD.2, ht, this]
   have hfl := floor_cases m c
   -- the facts of a ready proposal after `r` that ends before the endpoint
   have ready : ∀ {s kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))},
@@ -512,17 +513,19 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
     have hkP : tr.time kP = sp.ts s := by
       rw [hprop.2.2, hPs, sp.slotTime_eq]; rfl
     obtain ⟨hcall, hPt, -⟩ := accept_of_proposesAt hrun hnc hpH hprop
-    have hkD := hltD kP (by linarith)
+    have hkD := hltD kP (by linarith only [ha, ha', hsD, hkP])
     have hpost : tr.post kP = tr.state (proposer s) (kP + 1) :=
       (tr.state_succ_of_call hcall).symm
     refine ⟨hkP, hkD, hPt, hpost, by rw [hpost]; exact h_le_of_phaseAt hrun hnc hpH hkD hphD hPt,
-      ready_allowed hrun hs hc hset hP (by linarith) (hbefore kP (by linarith)),
+      ready_allowed hrun hs hc hset hP (by linarith only [ha, ha', hrr, hr, hkΔ]) (hbefore kP (by
+          linarith only [ha, ha', hsD, hkP])),
       ready_protected hrun hs hc hset hclean hP hr fun k hk => hbefore k ?_⟩
     have : sp.ts ((s : Int) + 1) = sp.ts s + 4 * sp.Δ := by simp only [SAParams.ts]; ring
-    linarith
+    linarith only [ha, ha', hsD, hk, this]
   -- the first ready proposal after `r`
-  obtain ⟨s, kP, P, -, hs₁, hs₂, hP⟩ := hp (rTime sp w) (by linarith)
-  have hsD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; linarith
+  obtain ⟨s, kP, P, -, hs₁, hs₂, hP⟩ := hp (rTime sp w) (by linarith only [hg8, ha, ha', hrr, hkΔ])
+  have hsD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp := by
+    rw [hD]; linarith only [hΔ, ha', hrr, hGp, hs₂]
   obtain ⟨hkP, hkPD, hPt, hpostP, hPm, hallP, hvP, hlP, hpP⟩ := ready hP hs₁ hsD
   have honP := hafter _ hsD
   have hsrc := ready_sources hrun hs hc hset hclean hP hs₁ honP hvP hlP hpP
@@ -537,22 +540,26 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
     rw [hpostP] at hne₀
     have hC₀t := toFG_mem_tree hrun hy₀ hto₀
     have hPC₀h := h_le_of_anc_run hrun hnc hy₀ hpH hPC₀ hC₀t hPt
-    have hC₀m := h_le_of_phaseAt hrun hnc hy₀ (hltD k₀ (by linarith)).le hphD hC₀t
+    have hC₀m := h_le_of_phaseAt hrun hnc hy₀ (hltD k₀ (by
+        linarith only [ha, ha', hrr, hD, hGp, hs₂, hk₀'])).le hphD hC₀t
     have hPt₀ := mem_of_honest_anc hrun hnc hy₀ hPC₀ hC₀t
     have hσP := σ_eq_honest hrun hnc hy₀ hpH hPt₀ hPt
-    obtain ⟨sQ, kQ, Q, -, hq₁, hq₂, hQ⟩ := hp (sp.ts s + 14 * sp.Δ) (by linarith)
+    obtain ⟨sQ, kQ, Q, -, hq₁, hq₂, hQ⟩ := hp (sp.ts s + 14 * sp.Δ) (by
+        linarith only [hΔ, hg8, ha, hrr, hkΔ, hs₁])
     have hsQ : s + 2 ≤ sQ := by
       by_contra h
       have h' : (sQ : Int) ≤ s + 1 := by omega
-      have := mul_le_mul_of_nonneg_left h' (by linarith : (0 : Int) ≤ 4 * sp.Δ)
+      have := mul_le_mul_of_nonneg_left h' (by linarith only [hΔ] : (0 : Int) ≤ 4 * sp.Δ)
       simp only [SAParams.ts] at hq₁
-      linarith
-    have hQD : sp.ts sQ + 6 * sp.Δ ≤ w + D_HS sp Gp := by rw [hD]; linarith
-    obtain ⟨hkQ, hkQD, hQt, hpostQ, hQm, hallQ, hvQ, hlQ, hpQ⟩ := ready hQ (by linarith) hQD
+      linarith only [hΔ, hq₁, this]
+    have hQD : sp.ts sQ + 6 * sp.Δ ≤ w + D_HS sp Gp := by
+      rw [hD]; linarith only [hΔ, ha', hrr, hs₂, hq₂]
+    obtain ⟨hkQ, hkQD, hQt, hpostQ, hQm, hallQ, hvQ, hlQ, hpQ⟩ := ready hQ (by
+        linarith only [ha, ha', hs₁, hq₁]) hQD
     have hpQH : proposer sQ ∈ H := hQ.1
     obtain ⟨Pr, hpar, hC₀Pr⟩ := descendant_source_parent hrun hs hc hset hP hs₁ honP hvP hy₀
       hto₀ hk₀ hk₀' hPC₀ (by rw [hσP]; omega) (honestProposalRun_of_ready hrun hnc hQ) hsQ
-      fun k' hk' => hbefore k' (by linarith)
+      fun k' hk' => hbefore k' (by linarith only [ha, ha', hrr, hD, hs₂, hq₂, hk'])
     have hPrU : Pr ∈ tr.HonestBlocks H := by
       by_cases he : C₀ = Pr
       · exact he ▸ ⟨y₀, hy₀, k₀, hC₀t⟩
@@ -563,19 +570,21 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
       have := h_le_of_anc_run hrun hnc hpQH hy₀ hC₀Q hQt hC₀t
       rw [hpostQ] at hQm ⊢
       omega
-    have hsrcQ := ready_sources hrun hs hc hset hclean hQ (by linarith)
+    have hsrcQ := ready_sources hrun hs hc hset hclean hQ (by linarith only [ha, ha', hs₁, hq₁])
       (hafter _ hQD) hvQ hlQ hpQ
     refine acquired_of_sources hrun hs hQ hvQ hlQ hpQ hallQ (fun y hy => ?_) (Or.inr hQm')
-      (by linarith) (by linarith) hQD (hafter _ hQD)
+      (by linarith only [ha, ha', hrr, hs₁, hq₁, hkΔ]) (by
+          linarith only [ha, ha', hs₁, hq₁]) hQD (hafter _ hQD)
     obtain ⟨k, ℓ, C, hto, hk₁, hk₂, hQC⟩ := hsrcQ y hy
     have hCt := toFG_mem_tree hrun hy hto
     have h₁ := h_le_of_anc_run hrun hnc hy hpQH hQC hCt hQt
-    have h₂ := h_le_of_phaseAt hrun hnc hy (hltD k (by linarith)).le hphD hCt
+    have h₂ := h_le_of_phaseAt hrun hnc hy (hltD k (by
+        linarith only [ha, ha', hrr, hD, hs₂, hq₂, hk₂])).le hphD hCt
     rw [← hpostQ, hQm'] at h₁
     exact ⟨k, ℓ, C, hto, hk₁, hk₂, hQC, by omega⟩
   · -- every source has `P`'s height: `W = P`
     refine acquired_of_sources hrun hs hP hvP hlP hpP hallP (fun y hy => ?_) ?_
-      (by linarith) hs₁ hsD honP
+      (by linarith only [ha, ha', hrr, hs₁, hkΔ]) hs₁ hsD honP
     · obtain ⟨k, ℓ, C, hto, hk₁, hk₂, hPC⟩ := hsrc y hy
       exact ⟨k, ℓ, C, hto, hk₁, hk₂, hPC, by_contra fun hne =>
         hob ⟨y, hy, k, ℓ, C, hto, hk₁, hk₂, hPC, hne⟩⟩
