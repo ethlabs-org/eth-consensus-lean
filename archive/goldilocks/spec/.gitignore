@@ -1,8 +1,0 @@
-# LaTeX build output (build with latexmk; see README.md)
-*.aux
-*.fdb_latexmk
-*.fls
-*.log
-*.out
-*.pdf
-*.synctex.gz

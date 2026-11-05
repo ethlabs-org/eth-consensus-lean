@@ -43,7 +43,7 @@ changes to the claims are recorded in `docs/decisions.md` and in the rows they c
 The live spec is in this repository at [`specs/goldilocks/tex/`](../specs/goldilocks/tex/), edited here; it
 was copied from the Goldilocks repository (`fradamt-agent/goldilocks`, archived for the team at
 `ethlabs-org/goldilocks-archive`), `spec/` at `23f5fdaa`, whose frozen snapshot is
-[`archive/goldilocks/spec/`](../archive/goldilocks/spec/). The pins below ("at goldilocks `<commit>`") are
+[`archive/goldilocks/spec/`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/goldilocks/spec) (at `79cdddc8`; removed from the tree since). The pins below ("at goldilocks `<commit>`") are
 provenance in that history and stay as they are; new citations use consensus-lean commits of
 `specs/goldilocks/tex/`. File names below (`shared/fg.tex`, `composition.tex`, …) are relative to that folder.
 
@@ -56,7 +56,7 @@ provenance in that history and stay as they are; new citations use consensus-lea
 ## Baseline (archived)
 
 The pre-foundation pinned numbers (the archived `Shape.goldilocksContract` at `FGSAParams`) and the properties sheet
-(`GoldilocksTarget`, `GoldilocksExtraAt`) were never approved and are archived in `archive/consensus-lean-baseline`
+(`GoldilocksTarget`, `GoldilocksExtraAt`) were never approved and are archived in [`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline)
 (Francesco), with their tests. No statement, proof or milestone of this library depends on them.
 
 ## First slice (issue #10)
@@ -818,7 +818,7 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the entries on t
   carries only released objects, `protects` passes an honest node's own attestation, the digests cover a block's
   header), and one theorem per field of `GoldilocksRun` and `Simulates` over the trace (`Run`); `Simulation`
   assembles them (`engineSimulatesNode`).
-- **The Baseline target is archived** (`archive/consensus-lean-baseline`): no Baseline row is instantiated at the
+- **The Baseline target is archived** ([`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline)): no Baseline row is instantiated at the
   refinement family. The milestone statements are stated directly over `compiled (goldilocks S)`.
 
 ## Exclusions

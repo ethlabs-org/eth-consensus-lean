@@ -7,7 +7,7 @@ Provenance: copied byte-identically from
 [`ethlabs-org/goldilocks-archive`](https://github.com/ethlabs-org/goldilocks-archive) at
 [`23f5fdaa`](https://github.com/ethlabs-org/goldilocks-archive/tree/23f5fdaa232f06d9c8c01eb02830f5cfc3976b7d)
 (`spec/`, the history of `fradamt-agent/goldilocks`). The frozen copy of that snapshot is
-[`archive/goldilocks/spec/`](../../../archive/goldilocks/spec/), which is not edited; older pins (for example
+[`archive/goldilocks/spec/`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/goldilocks/spec) at commit `79cdddc8` (removed from the tree since), which is not edited; older pins (for example
 "CLAIMS at goldilocks `c4928a76`") refer to that history.
 
 | File | Title | What |
