@@ -2,17 +2,11 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 
 public section
