@@ -66,18 +66,18 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
   have htwo : 2 * Hᶜ.ncard < sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
-    omega
+    clear * - hf hn; omega
   apply next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm (by
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
-    linarith [sp.toParams.hΔ]) hmb hframe hw hat hcw hQw hh hJ hDQ
+    linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ hDQ
   intro y hy i ell e hcast hs hhigh hFD hviab ih
   have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
   change sp.slot (tr.time i) = s + 1 at hslot
   have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s
       (SA.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := by
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
-      hm hS.catchUp (by linarith [sp.toParams.hΔ]) hx hy hcast hs (hhigh.trans hmb)
+      hm hS.catchUp (by linarith only [sp.toParams.hΔ, hm]) hx hy hcast hs (hhigh.trans hmb)
     intro v hv
     obtain ⟨hvs, hw, Hv, hHv, hHvr, hCHv, ha⟩ := Compose.result_writer hr hx hres v hv
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
@@ -86,7 +86,8 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     hcarry hviab
     (SA.slow_stored_locks_before hS
       (fun z hz r hrs => hnr z hz r (Compose.projAC_restartAt.mp hrs)) hx hsl
-      (hu.2.2.1.trans_le hmb) hslow hy (by change s + 1 ≤ sp.slot (tr.time i); omega)
+      (hu.2.2.1.trans_le hmb) hslow hy
+      (by change s + 1 ≤ sp.slot (tr.time i); clear * - hslot; omega)
       (hhigh.trans hmb)) ih
     (SA.writer_merged_window_before hS.run (SA.serviceWindowBefore_of_sync hS.sync)
       hx hm hu (hu.2.2.1.trans_le hmb) hy hcast hs)
@@ -114,8 +115,8 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
   have hr := hS.run.localRun
   have hslow : gbar g ≤ sp.ts ((s : Int) - sp.k + 1) := by
     have hts : sp.ts s₀ ≤ sp.ts ((s : Int) - sp.k + 1) :=
-      (SA.ts_le_iff sp).2 (by omega)
-    linarith [sp.toParams.hΔ]
+      (SA.ts_le_iff sp).2 (by clear * - hwarm; omega)
+    linarith only [sp.toParams.hΔ, hm, hts]
   have hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int) :=
     hm.trans ((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀))
   obtain ⟨ellx, C, hu, hconf, hsel⟩ := hsl
@@ -123,8 +124,8 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
   have hres : SA.ResultAt tr.projAC x c s C
       (SA.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
-    simp only [SAParams.ts]; rw [Nat.cast_sub (by omega : 1 ≤ s)]; ring
-  have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith [sp.toParams.hΔ]
+    simp only [SAParams.ts]; rw [Nat.cast_sub (by clear * - hpos; omega : 1 ≤ s)]; ring
+  have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith only [sp.toParams.hΔ, hm, hprev]
   obtain ⟨z, hz, q, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr hms hx hres
       (hu.2.2.1.trans_le hmb)
@@ -138,26 +139,32 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
   apply hframe.next_votes_of_supporter hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr hDQ
   · intro hQ hh hJD
+    have hs₀s : s₀ ≤ s := by clear * - hwarm; omega
     apply regular_slow_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [sp.toParams.hΔ]) hslow hmb
+      (by linarith only [sp.toParams.hΔ, hm, hprev]) hslow hmb
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i
-          (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
+          (((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s)).trans hlo) hhi,
        fun y hy i hlo hhi => hframe.kind_iff y hy i
-          (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
+          (((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s)).trans hlo) hhi,
        fun y hy i hlo hhi => hframe.root_eq y hy i
-          (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi⟩
-      hx hsl ?_ hCQ hz (by linarith [sp.toParams.hΔ]) hc hQ hh hJD
+          (((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s)).trans hlo) hhi⟩
+      hx hsl ?_ hCQ hz (by linarith only [sp.toParams.hΔ, htq]) hc hQ hh hJD
     simpa only [Compose.frame_of_projAC hrun hx hu.1] using hres
   · intro hA a D' CV' hop hQD
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
         (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
-      ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith [sp.toParams.hΔ]),
-       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
-       fun y hy i hlo hhi => hframe.root_eq y hy i hlo (by linarith [sp.toParams.hΔ])⟩
+      ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo
+          (by linarith only [sp.toParams.hΔ, hts, hhi]),
+       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo
+          (by linarith only [sp.toParams.hΔ, hts, hhi]),
+       fun y hy i hlo hhi => hframe.root_eq y hy i hlo
+          (by linarith only [sp.toParams.hΔ, hts, hhi])⟩
     exact (hnext.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [sp.toParams.hΔ]) (by omega) (by omega) (by linarith [sp.toParams.hΔ])
+      (by linarith only [sp.toParams.hΔ, hm, hprev]) (by clear * - hwarm; omega)
+      (by clear * -; omega)
+      (by linarith only [sp.toParams.hΔ, hmb, hts])
       hz ⟨hc, he⟩ hes hA hop hQD (s + 1) le_rfl le_rfl).1
 
 /-- Unanimity propagation from a regular next-vote base and its early supporter witness. Proposals
@@ -229,8 +236,8 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
      fun y hy i hlo hhi => hframe.root_eq y hy i (hl.trans hlo) (hhi.trans hh')⟩
   have h6 : sp.ts s + 6 * sp.Δ ≤ sp.ts N + sp.Δ := by
     have ht := hts hsN
-    rw [show s + 2 = (s + 1) + 1 by omega, hstep, hstep] at ht
-    linarith [sp.toParams.hΔ]
+    rw [show s + 2 = (s + 1) + 1 by clear * -; omega, hstep, hstep] at ht
+    linarith only [sp.toParams.hΔ, ht]
   have hbase : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg D := by
     rcases horigin with ⟨CV, hfast⟩ | hslow
@@ -245,7 +252,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
       ((SA.deepest_mem hsel).1.1.2.2).mono (SA.frameIn_of_callAt hr hx hu.1).2⟩
   obtain ⟨z, hz, q, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr
-      (hm.trans (hts (by omega))) hx hres (by
+      (hm.trans (hts (by clear * - hwarm; omega))) hx hres (by
         obtain ⟨ell', hu, -, -⟩ := hres
         exact hu.2.2.1.trans_le (h6.trans hmb))
   have hDQ := hDC.trans hCQ
@@ -256,12 +263,12 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
   rw [hslot] at htq
   have hqt : sp.ts s₀ ≤ tr.time q :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg q) _).2 (by
-      change (s₀ : Int) ≤ sp.slot (tr.time q); rw [hslot]; omega)
+      change (s₀ : Int) ≤ sp.slot (tr.time q); rw [hslot]; clear * - hwarm; omega)
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+    clear * - hf hn; omega
   have hrootHeads : kindJ → Anc (tr.HonestBlocks H) D J →
       ∀ r, s + 1 ≤ r → r ≤ N →
         (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = r →
@@ -282,7 +289,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
       change sp.slot (tr.time i) = r at hsl
       have hlo : sp.ts s₀ ≤ tr.time i :=
         (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
-          change (s₀ : Int) ≤ sp.slot (tr.time i); rw [hsl]; omega)
+          change (s₀ : Int) ≤ sp.slot (tr.time i); rw [hsl]; clear * - hwarm hrlo; omega)
       have hhi := SA.vote_time_le hr hy ⟨elly, hcy, hey⟩
       change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
       rw [hsl] at hhi
@@ -292,7 +299,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
       have hRW := hRW.mono hPhiU
       rw [Compose.frame_of_projAC hrun hy hcy] at hRW
       change Anc (tr.HonestBlocks H) (tr.state y i).fg.fcRoot W at hRW
-      rw [hroot y hy i hlo (hhi.trans (by linarith [hts hrN]))] at hRW
+      rw [hroot y hy i hlo (hhi.trans (by linarith only [hts hrN]))] at hRW
       exact ⟨W, hPhiU hW, hWr, hDJ.trans hRW⟩
     · intro _ y hy i elly hcy hcall hti d pay hd
       obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcy
@@ -305,17 +312,18 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
         _ _ Relation.ReflTransGen.refl).mono hPhiU
       rw [Compose.frame_of_projAC hrun hy hcy] at hRW
       change Anc (tr.HonestBlocks H) (tr.state y i).fg.fcRoot _ at hRW
-      rw [hroot y hy i (by rw [hti]; exact hts (by omega))
-        (by rw [hti]; linarith [hts hrN, sp.toParams.hΔ])] at hRW
+      rw [hroot y hy i (by rw [hti]; exact hts (by clear * - hwarm hrlo; omega))
+        (by rw [hti]; linarith only [hts hrN, sp.toParams.hΔ])] at hRW
       exact hDJ.trans hRW
   obtain ⟨Hd, hHd, hHdr, hclass⟩ := hframe.vote_head_classification_of_service
-    hrun hnc hmf hS hnr hz ⟨hc, he⟩ (by linarith [hts (show s ≤ N by omega)])
+    hrun hnc hmf hS hnr hz ⟨hc, he⟩
+    (by linarith only [hts (show s ≤ N by clear * - hsN; omega), htq])
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by rw [hes]; exact hm.trans (hts hs₀))
-    (by rw [hes]; linarith [hts (show s - 1 ≤ N by omega)])
+    (by rw [hes]; linarith only [hts (show s - 1 ≤ N by clear * - hsN; omega), hmb])
     (by rw [hes]; simp only [SA.freeze]
-        have hprev : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
+        have hprev : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by clear * - hpos; omega
         rw [← hprev]
-        have := hm.trans (hts hs₀); linarith [sp.toParams.hΔ])
+        have := hm.trans (hts hs₀); linarith only [sp.toParams.hΔ, this])
   have hPhi := SA.frameIn_of_callAt hr hz hc
   have hEQ : Hd = Q := hr.coherent.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass
@@ -329,13 +337,16 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
       change Anc (tr.HonestBlocks H) (tr.state z q).fg.fcRoot Q at hroot
       rwa [show (tr.state z q).fg.fcRoot = (tr.state z q).fg.J from
           ite_eq_left ((hframe.kind_iff z hz q hqt
-            (by linarith [hts (show s ≤ N by omega)])).mpr hk),
-        hframe.root_eq z hz q hqt (by linarith [hts (show s ≤ N by omega)]) hk] at hroot
+            (by linarith only [hts (show s ≤ N by clear * - hsN; omega), htq])).mpr hk),
+        hframe.root_eq z hz q hqt (by linarith only [hts (show s ≤ N by clear * - hsN; omega), htq])
+          hk] at hroot
     by_cases hJD : kindJ → Anc (tr.HonestBlocks H) J D
     · exact regular_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
-        (by linarith [hts (show s₀ ≤ s by omega), sp.toParams.hΔ]) hmb
-        (hsub (hts (by omega)) le_rfl) hz (by linarith [sp.toParams.hΔ]) hc hHd
-        (by rw [← hframe.floor_eq z hz q hqt (by linarith [hts (show s ≤ N by omega)])]
+        (by linarith only [hts (show s₀ ≤ s by clear * - hwarm; omega), sp.toParams.hΔ, hm]) hmb
+        (hsub (hts (by clear * - hwarm; omega)) le_rfl) hz (by linarith only [sp.toParams.hΔ, htq])
+        hc hHd
+        (by rw [← hframe.floor_eq z hz q hqt
+              (by linarith only [hts (show s ≤ N by clear * - hsN; omega), htq])]
             exact hvQ.2.2.2) hJD hDQ hbase
     · push Not at hJD
       obtain ⟨hk, hn⟩ := hJD
@@ -343,7 +354,8 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
   · exact hrootHeads hj.1 (hj.2 ▸ hDQ)
   · obtain ⟨hA, l, hl, hls, a, hai, D', CV', hop, -, -, -, hQD⟩ := ho
     have hheads := hframe.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [hts (show s₀ ≤ s by omega), sp.toParams.hΔ]) (by omega) (by omega) hmb
+      (by linarith only [hts (show s₀ ≤ s by clear * - hwarm; omega), sp.toParams.hΔ, hm])
+      (by clear * - hwarm; omega) (by clear * - hsN; omega) hmb
       hz ⟨hc, he⟩ hes hA (hes ▸ hop) (hQD.mono hPhi.2)
     intro r hrlo hrN
     constructor
@@ -383,11 +395,11 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
         (l.slot = p ∧ ∃ a ≤ i, ∃ D CV, SA.OptimisticLockAt tr.projAC y a p D CV ∧
           sp.ts p ≤ tr.time a ∧ Anc (tr.HonestBlocks H) B' D)) := by
   have hΔ := sp.toParams.hΔ
-  have hm₀ : gbar g ≤ sp.ts s₀ := by linarith
+  have hm₀ : gbar g ≤ sp.ts s₀ := by linarith only [hm, hΔ]
   obtain ⟨hvP, hdomP⟩ := hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch
     hnr hm₀ hsp hp0 hpb hz hdesignated hactual hPs hy hc hes
   refine ⟨hvP, hdomP, ?_⟩
-  have hlabel : s₀ + sp.k ≤ l.slot := by omega
+  have hlabel : s₀ + sp.k ≤ l.slot := by clear * - hmargin hlive; omega
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
   have hslot : sp.slot (tr.time i) = p := ((SA.castAt_spec hr hy hc).2.1).symm.trans hes
@@ -397,12 +409,12 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
     obtain rfl : C = B' := hr.coherent.1 hC (hPhiU hB') (hCr.trans hBr.symm)
     rw [hes] at hs hop ht
     exact Or.inr ⟨hs, a, hai, D, CV, hop, ht, hCD⟩
-  have hold : l.slot + 1 ≤ p := by omega
-  have hk : 0 < sp.k := by omega
+  have hold : l.slot + 1 ≤ p := by clear * - hcurrent; omega
+  have hk : 0 < sp.k := by clear * - hlive hcurrent; omega
   obtain ⟨l₀, hl₀, hs, B, hB, hBr₀, C, hC, hCr, hCB⟩ :=
     SA.readPoint_locks_below_stored hr hy hc
       (by change 0 < sp.slot (tr.time i); rw [hslot]; exact hp0) l hl
-      (by change l.slot ≠ sp.slot (tr.time i); rw [hslot]; omega)
+      (by change l.slot ≠ sp.slot (tr.time i); rw [hslot]; clear * - hcurrent; omega)
   have hCE : C = B' := hPhi.coherent.1 hC hB' (hCr.trans hBr.symm)
   subst C
   obtain ⟨a, hai, ellw, D, ha, hD, ho, M, hM, hMr, hMA⟩ :=
@@ -434,21 +446,23 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
     change tr.time a = _ at ht
     have hgap : l.slot + 2 ≤ p := by
       by_contra hn
-      have he : p = l.slot + 1 := by omega
+      have he : p = l.slot + 1 := by clear * - hcurrent hn; omega
       have htime := hrun.time_mono hai.le
       rw [he] at hhigh
       simp only [SAParams.ts] at ht hhigh
       push_cast at hhigh
-      linarith
+      linarith only [hΔ, ht, htime, hhigh]
     have hDP := (hframe.regular_later_heads hrun hnc hsvc hawake hf hcatch hnr
-      hlabel (by omega) (by omega) hm hgap hpb hy horigin p (by omega) le_rfl).2
+      hlabel (by clear * - hlive hlabel hcurrent; omega)
+      (by clear * - hmargin hlive hcurrent; omega) hm hgap hpb hy horigin p
+      (by clear * - hcurrent; omega) le_rfl).2
         hgap z hz ip ellp hcp hcall hti d pay hd
     exact hBA.trans (hAD.trans (hDP.trans hHP))
   rcases ho with ⟨_, CV, hfast | hop⟩ | ⟨_, hslow⟩
   · exact Or.inl (hregular (Or.inl ⟨CV, hfast⟩))
   swap
   · exact Or.inl (hregular (Or.inr hslow))
-  have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by omega)
+  have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by clear * - hmargin hlive; omega)
   have hlow : sp.ts l.slot ≤ tr.time a := by
     obtain ⟨_, _, _, hs', _, _⟩ := hop
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg a) _).2 (by rw [hs'])
@@ -599,7 +613,7 @@ theorem proposal_views_agree_before
   have hPhiY := SA.frameIn_of_callAt hr hy hc.1
   have hPhiP := SA.frameIn_of_callAt hr hz hp.1
   apply SA.view_agree_window_before hS.run hz hy hdesignated hp hti hc
-    ⟨P, hP, hPs, hpay⟩ (SA.serviceWindowBefore_of_sync hS.sync) (by linarith) hipb
+    ⟨P, hP, hPs, hpay⟩ (SA.serviceWindowBefore_of_sync hS.sync) (by linarith only [hm, hΔ]) hipb
   · intro B hB _ hstamp hFB
     rw [SA.readPoint_blockStamp_eq hr hy hc] at hstamp
     rcases stamp_origin hr hy j elly hc.1 B hB with hg | ⟨q, -, ellq, hq, hBq, hsq⟩
@@ -614,13 +628,13 @@ theorem proposal_views_agree_before
       change tr.time q < SA.freeze sp (s + 1) at ht
       simpa only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
     exact frame_relay_before hS hnr hy hz hq hp.1 hBq
-      (by rw [hti, hts]; linarith) (by rw [hti, hts]; linarith) hipb hFB
+      (by rw [hti, hts]; linarith only [hm, hΔ]) (by rw [hti, hts]; linarith only [hqt]) hipb hFB
   · intro v hv B hB hBr hFB
     by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
     · obtain ⟨P', hP', hPs', hsup⟩ := SA.cast_ready hr hy hc (by rw [hes]; exact hearly)
       rw [hes] at hPs' hsup
       obtain rfl := proposal_frame_unique hrun hnc hz hdesignated hactual hPs
-        (by omega) hy hc.1 hP' hPs'
+        (by clear * -; omega) hy hc.1 hP' hPs'
       have hvs : v.slot + 1 = s + 1 := by
         obtain ⟨d, hd⟩ := hp.2.2
         have hpayeq : pay = SA.voteViewList (tr.projAC.state z ip) ellp.frame
@@ -631,7 +645,7 @@ theorem proposal_views_agree_before
           exact hd.2.symm
         have hsi : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
         rw [hpayeq, hsi] at hv
-        simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega,
+        simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by clear * -; omega,
           SA.voteViewList, SA.SAState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hv
@@ -639,7 +653,7 @@ theorem proposal_views_agree_before
       obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
       rwa [hr.coherent.1 (hPhiP.2 hB) (hPhiY.2 hB') (hBr.trans hBr'.symm)]
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB
-        (by linarith) (by rw [hti]; exact not_lt.1 hearly) hjb hFB
+        (by linarith only [hm, hΔ, hts, hjlo]) (by rw [hti]; exact not_lt.1 hearly) hjb hFB
 
 /-- At two cuts of the `FrameWindow` a viable head transfers whenever it is held in the
 receiver's frame. This uses the common floor and kind-J root, not a settled
@@ -692,7 +706,7 @@ theorem full_frame_viable_witness (hrun : GoldilocksRun proposer dg H tr)
         ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h := by
       change (if _ then _ else _) ≤ _
       rw [ite_eq_right hk.2, hk.1]
-      omega
+      clear * - hh; omega
     obtain ⟨hQt, hroot, hv⟩ := floor_ancestor_mem_frame hrun hnc hf hy hy hJt
       hheight (fun _ _ => Relation.ReflTransGen.refl) hJt Relation.ReflTransGen.refl
     exact ⟨_, hQt, hv, hroot⟩
@@ -761,7 +775,7 @@ theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
   have hipl : sp.ts s₀ ≤ tr.time ip := by
     rw [hti]; exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
   have hil : sp.ts s₀ ≤ tr.time i := hipl.trans (hti ▸ hlo)
-  have hiph : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith [sp.toParams.hΔ]
+  have hiph : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith only [sp.toParams.hΔ]
   have hvQ := proposal_parent_viable_full_frame hrun hnc hf hz hcp hcall
     (s := s + 1) (by rw [sp.slotTime_eq]; simpa [SAParams.ts] using hti) hpay
   have hQt := hPhip.1.viableHeads_subset hvQ
@@ -787,7 +801,8 @@ theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
           change tr.time q < SA.freeze sp (s + 1) at ht
           simpa only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] using ht
         exact frame_relay_before hS hnr hy hz hcq hcp hWq
-          (by rw [hti, hts]; linarith) (by rw [hti, hts]; linarith) (hti ▸ hpb) hFW
+          (by rw [hti, hts]; linarith only [hm, hhigh, hlo])
+          (by rw [hti, hts]; linarith only [hqt]) (hti ▸ hpb) hFW
       have hWv' := hvW
       rw [Compose.frame_of_projAC hrun hy hc.1] at hWv'
       have hWp' := hWp
@@ -796,7 +811,7 @@ theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
       rw [← Compose.frame_of_projAC hrun hz hcp] at hv
       exact ⟨W, hWp, hv, hBW.mono hPhi.2⟩
     · obtain rfl := proposal_frame_unique hrun hnc hz hdesignated hactual hPs
-        (by omega) hy hc.1 hP' hP's
+        (by clear * -; omega) hy hc.1 hP' hP's
       rcases Relation.ReflTransGen.cases_tail (hBW.trans hWP') with he | ⟨Y, hBY, hYP⟩
       · exact (hne he.symm).elim
       · obtain rfl : Y = d.head := hr.coherent.1 (hPhi.2 hYP.1) (hPhip.2 hQt)
@@ -887,7 +902,7 @@ theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
   have hPhip := SA.frameIn_of_callAt hr hz hcp
   have hslot : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
   have ⟨hst, hroot, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
-  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hw
+  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by clear * -; omega] at hw
   have hT : ellp.frame.viableTree ellp.frame.tree ⊆ ellp.frame.tree := fun _ h => h.1
   have hQt : d.head ∈ ellp.frame.tree := by
     rcases eq_or_ne d.start d.head with he | he
@@ -899,7 +914,8 @@ theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
     cases f with
     | zero => exact (hne hwalk).elim
     | succ f =>
-      rw [show f + 1 = 1 + f by omega, SA.ghost_add, SA.ghost_succ_of_best 0 X hC] at hwalk
+      rw [show f + 1 = 1 + f from Nat.add_comm f 1, SA.ghost_add,
+        SA.ghost_succ_of_best 0 X hC] at hwalk
       exact hwalk ▸ SA.anc_ghost hT f (hT hC.1.1)
   have hCP : Anc (tr.HonestBlocks H) C P :=
     (hCQ.mono hPhip.2).tail ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
@@ -941,13 +957,14 @@ theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
       have hle := (Anc.slot_le hPhip.1.coherent hCQ).1
       have hlt := hr.coherent.2 d.head (hPhip.2 hQt) P (hPhi.2 hPv.1.1) hparent
       rw [hslot, hPs] at *
-      omega
+      clear * - hle hlt; omega
     exact SA.isBest_transfer hXv hCs hv.2.1 hsc hT (fun _ h => h.1.1) hCy hrefl hC
   · have hXnv : X ∉ ell.frame.viableHeads := by
       intro hXv'
       have hiplo : sp.ts s₀ ≤ tr.time ip := by
         rw [hti]; exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
-      have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith [sp.toParams.hΔ]
+      have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
+        rw [hti]; linarith only [sp.toParams.hΔ]
       have hvX := hXv'
       have htX := hXt
       rw [Compose.frame_of_projAC hrun hy hc.1] at hvX
@@ -1005,7 +1022,7 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
   have hPhip := SA.frameIn_of_callAt hr hz hcp
   have hslot : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
   obtain ⟨hst, hroot, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
-  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hw
+  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by clear * -; omega] at hw
   have hvQ := proposal_parent_viable_full_frame hrun hnc hf hz hcp hcall
     (s := s + 1) (by rw [sp.slotTime_eq]; simpa [SAParams.ts] using hti) hpay
   have hQt := hPhip.1.viableHeads_subset hvQ
@@ -1018,7 +1035,8 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
       (by rw [← (SA.castAt_spec hr hy hc).2.1, hes])
   have hiplo : sp.ts s₀ ≤ tr.time ip := by
     rw [hti]; exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs₀)
-  have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by rw [hti]; linarith [sp.toParams.hΔ]
+  have hiphi : tr.time ip ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
+    rw [hti]; linarith only [sp.toParams.hΔ]
   have hvQ' := hvQ
   have hQy' := hQy
   rw [Compose.frame_of_projAC hrun hz hcp] at hvQ'
@@ -1034,13 +1052,13 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
     ⟨hcp, hcall, d, hpay⟩ hti hpayload hy hc hes hPv.1.1 hib
   have hstop := (SA.walkEnd_iff.1 hw).choose_spec.2
   have hcore := SA.stop_core hac hy hc hes hPs hparent hpH hng hPv
-  simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hcore
+  simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by clear * -; omega] at hcore
   apply hcore
   intro B hB hBQ hBs hel
   have hBp := hframe.frozen_competitor_reflect hrun hnc hS hnr hf hm hs₀ hz hdesignated
     hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh (hlo.trans hib)
     hQt (hroot.trans (hw.anc (fun X hX => hX.1) hst)) hBQ
-    (fun he => by rw [he, hPs] at hBs; omega) hB
+    (fun he => by rw [he, hPs] at hBs; clear * - hBs; omega) hB
   have hsc : SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B =
       SA.goldfishScore sp ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B := by
     simp only [SA.goldfishScore, hv.1, hv.2.2 B hBp.1 hB.1.1]
@@ -1048,7 +1066,7 @@ theorem FrameWindow.proposal_stop_before {s₀ s floor : Nat}
     rcases hel with hn | hs | hmj
     · exact (hn ⟨d.head, hvQy, hBQ⟩).elim
     · have hsi := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
-      omega
+      clear * - hBs hsi hs; omega
     · exact Or.inr (Or.inr (by rw [hv.2.1, hsc]; exact hmj))
   exact hstop (SA.exists_isBest hPhip.1
     (S := {C | C ∈ ellp.frame.viableTree ellp.frame.tree ∧ C.parent = some d.head.root ∧
@@ -1093,7 +1111,7 @@ theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
   have hPhip := SA.frameIn_of_callAt hr hz hcp
   have hslot : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
   obtain ⟨hst, _, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
-  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hw
+  simp only [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by clear * -; omega] at hw
   have hTp : ellp.frame.viableTree ellp.frame.tree ⊆ ellp.frame.tree := fun _ h => h.1
   have hTy : ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)) ⊆
       ell.frame.tree := fun _ h => h.1.1
@@ -1144,7 +1162,7 @@ theorem FrameWindow.vote_head_eq_of_path {s₀ s floor : Nat}
   have heq := (hvoter.of_anc hPhi.1.coherent hTy haX hXE).unique
     (SA.walkEnd_iff.2 ⟨f + 1, hfollow, hstopP⟩)
   have hspec := SA.castAt_head_of_viable hr hy hc (hes ▸ ⟨P, hPv⟩)
-  rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hspec
+  rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by clear * -; omega] at hspec
   exact hspec.trans (congrArg Block.root heq)
 
 /-- The actual vote anchor is below P under the strict earlier-cut IH.
@@ -1174,7 +1192,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
   have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
   have hm₀ : gbar g ≤ sp.ts s₀ := by
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-    linarith
+    linarith only [hm, hΔ]
   have hPv := (hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr hm₀
     hsp hp0 hpb hz hdesignated hactual hPs hy hc hes).1
   have hfP : Anc (tr.HonestBlocks H) ell.frame.fcRoot P :=
