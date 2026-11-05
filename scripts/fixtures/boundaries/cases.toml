@@ -89,7 +89,7 @@ expect = "FAIL[config] trusted layer Spec allows sorry"
 edit."boundaries.toml" = [['prefixes = ["Fx.Spec"]', '''prefixes = ["Fx.Spec"]
 sorry = true''']]
 
-# --- visibility (plan §3) --------------------------------------------------------------------------
+# --- visibility ------------------------------------------------------------------------------------
 # The fixture modules are never built: the FAIL[expose] cases test what the scanner finds in the text.
 [ExposeConfigLemmas]
 expect = "FAIL[config] layer Lemmas: expose = true on Lemmas, Proofs, ToMathlib or Main (Fx.Lemmas)"

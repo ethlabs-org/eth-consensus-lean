@@ -140,7 +140,7 @@ jobs:
           grep -qE "^check.sh: PART PASSED \(split $PART; [0-9]+ steps deferred to the other part\)$" "$RUNNER_TEMP/check.log"
           # The two parts must stay complements: lake-check ran step 10; main deferred exactly that one step.
           # Step 10 passing means its fixtures ran and `lake check` of the default targets passed, or was not run
-          # because the sorry layers hold `sorry` (plan §5): then the log has its NOTE and the run a warning.
+          # because the sorry layers hold `sorry`: then the log has its NOTE and the run a warning.
           case "$PART" in
             lake-check) grep -q '^PASS  10 lake check' "$RUNNER_TEMP/check.log" || exit 1 ;;
             main) { [[ "$(grep -c '^DEFER ' "$RUNNER_TEMP/check.log")" == 1 ]] &&

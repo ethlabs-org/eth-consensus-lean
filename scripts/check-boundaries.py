@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-level import boundaries (foundation plan §2) and the library inventory of the check stack.
+"""Source-level import boundaries (the layer matrix of scripts/boundaries.toml) and the library inventory of the check stack.
 
 One configuration file, scripts/boundaries.toml (the pattern of leanerSTFSpec's boundaries.toml and
 check_boundaries.py). Imports come from the pinned Lean parser (`lean --deps-json`: module headers only,
@@ -34,7 +34,7 @@ Imports (each module, each import): an edge outside `allow` fails unless an `[[e
   tests); an aggregate import is still held to `allow`.
 Init chain: every module of a layer, except under an `init_exempt` prefix, reaches `init_module` through
   public imports.
-Visibility (plan §3): the attribute `expose` (whole-file `@[expose] public section`, on a declaration, or
+Visibility: the attribute `expose` (whole-file `@[expose] public section`, on a declaration, or
   through `attribute [expose]`; found in the code with comments and string/char literals blanked, inside a
   balanced `@[...]`/`attribute [...]` list, also as `«expose»`) only in a layer with `expose = true`; that flag
   never on a layer whose prefixes have a `Lemmas`, `Proofs`, `ToMathlib` or `Main` component. Not checked: the
@@ -322,7 +322,7 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
     for n in sorted(protected):  # the protected surface's closure stays inside it (docs/decisions.md §"Trusted surface and Challenge scope")
         for x in sorted(allow[n] - trusted - protected):
             fails.append(f"FAIL[config] protected layer {n} allows the unprotected layer {x}")
-    for n, l in sorted(layers.items()):  # `sorry = true` (check.sh steps 3, 7): only Lemmas and Proofs (plan §5)
+    for n, l in sorted(layers.items()):  # `sorry = true` (check.sh steps 3, 7): only Lemmas and Proofs
         if l.get("sorry") is True:
             if n in trusted:
                 fails.append(f"FAIL[config] trusted layer {n} allows sorry")
@@ -331,7 +331,7 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
                     fails.append(f"FAIL[config] layer {n}: sorry = true outside Lemmas and Proofs ({p})")
                 if not any(under(p, d) for d in defaults):
                     fails.append(f"FAIL[config] layer {n}: sorry = true outside the default libraries ({p})")
-        if l.get("expose") is True:  # plan §3: Lemmas, Proofs, ToMathlib and Main carry no @[expose]
+        if l.get("expose") is True:  # Lemmas, Proofs, ToMathlib and Main carry no @[expose]
             for p in l["prefixes"]:
                 if {"Lemmas", "Proofs", "ToMathlib", "Main"} & set(p.split(".")):
                     fails.append(f"FAIL[config] layer {n}: expose = true on Lemmas, Proofs, ToMathlib or Main ({p})")
@@ -497,10 +497,10 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
             used.update(cov)
             return True
         return False
-    for m in owner:  # @[expose] only in the exposed layers (plan §3)
+    for m in owner:  # @[expose] only in the exposed layers
         L = layer.get(m)
         if L and not layers[L].get("expose") and has_expose(path_of[m].read_text()):
-            fails.append(f"FAIL[expose] {m}: @[expose] in layer {L}, which has no expose = true (plan §3: "
+            fails.append(f"FAIL[expose] {m}: @[expose] in layer {L}, which has no expose = true ("
                          "public theorems, private helpers; a characterising lemma instead of an exposed body)")
     for m in owner:  # direct imports
         L = layer.get(m)

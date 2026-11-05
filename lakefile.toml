@@ -6,7 +6,7 @@ defaultTargets = ["ConsensusLean"]
 testDriver = "ConsensusLeanTest"
 lintDriver = "batteries/runLinter"
 
-# FLT's options (plan §6) plus the longFile soft bound. `warn.sorry = false`: `sorry` does not warn, so
+# FLT's options plus the longFile soft bound. `warn.sorry = false`: `sorry` does not warn, so
 # `lake build --wfail` fails on every other warning while unfinished proofs stay possible; where `sorry` may
 # appear (only the `sorry = true` layers of scripts/boundaries.toml: Lemmas, Proofs) is checked by
 # scripts/check.sh (steps 3, 7) and the `Solution` closure must be free of it (step 3b, axiom audit).
@@ -26,7 +26,7 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.35.0"
 
-# The one certified library (plan §1): layers are module prefixes, not libraries: `Init` (curated imports),
+# The one certified library (docs/layout.md): layers are module prefixes, not libraries: `Init` (curated imports),
 # `Core`/`Spec`/`Statements` (TRUSTED: definitions and the review statements), `Lemmas`, `Proofs/<M>/`,
 # `Main`, `ToMathlib`, `Instances/<P>/`. The root `ConsensusLean.lean` is generated
 # (`lake exe mk_all --lib ConsensusLean --module`) and imports every module; nothing in the library imports it.

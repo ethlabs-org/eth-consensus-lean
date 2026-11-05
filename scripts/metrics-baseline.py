@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Baseline metrics of the module graph (foundation plan §11 step 1). Report-only: check.sh step 13 prints its totals.
+"""Baseline metrics of the module graph. Report-only: check.sh step 13 prints its totals.
 
 Reports, as Markdown on stdout: the layer of every module (the [[layer]] matrix of scripts/boundaries.toml),
 import depth, downstream cones, `@[expose]` and import-kind counts, lines, and (with --timings) a build

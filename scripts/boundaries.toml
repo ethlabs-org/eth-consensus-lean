@@ -2,8 +2,8 @@
 # CI's review-boundary job. Every library path, module prefix, layer and module name of the project lives here,
 # so a change of layout (a move of files) edits this file and nothing else in the check stack (fixtures aside).
 #
-# Layout (foundation plan §1): one certified library `ConsensusLean` whose layers are module prefixes, the tests
-# `ConsensusLeanTest` (lake test) and the comparator solution `Solution`. Import rules (plan §2): the [[layer]]
+# Layout (docs/layout.md): one certified library `ConsensusLean` whose layers are module prefixes, the tests
+# `ConsensusLeanTest` (lake test) and the comparator solution `Solution`. Import rules: the [[layer]]
 # matrix below, checked at source level by scripts/check-boundaries.py (its docstring has every rule).
 # Deviations from the plan's matrix are the [[exception]] entries at the end, each with its reason.
 
@@ -21,15 +21,15 @@ fixture_libs = ["CheckFixtures", "CheckDeclsTest", "Challenge"]
 tool_exes = ["check-decls", "axiom-audit", "spec-surface"]
 tool_libs = ["AxiomAudit"]
 
-# Every module (except a generated root) reaches this one through public imports (plan §1, CSLib Init).
+# Every module (except a generated root) reaches this one through public imports (as CSLib's Init).
 init_module = "ConsensusLean.Init"
-# Module prefixes exempt from the Init chain: ToMathlib imports only Mathlib (plan §1); ReviewGuard is a meta
+# Module prefixes exempt from the Init chain: ToMathlib imports only Mathlib; ReviewGuard is a meta
 # tool on `Lean` alone, shared with the fixtures of check.sh step 6.
 init_exempt = ["ConsensusLean.ToMathlib", "ConsensusLeanTest.ReviewGuard"]
 # Every directory <parent>.<M> below is one milestone layer, imported from other layers only through
-# <parent>.<M>.Main (plan §2: Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception).
+# <parent>.<M>.Main (Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception).
 milestone_parents = ["ConsensusLean.Proofs", "ConsensusLean.Instances.Goldilocks.Proofs"]
-# Umbrella imports (plan §0 rule 3d): import the modules you need.
+# No umbrella imports: import the modules you need.
 forbidden_imports = ["Mathlib"]
 
 # The checked libraries. A lib's root module is its name, and its name is its check-decls scope (step 3).
@@ -49,13 +49,13 @@ root_lists_all = true
 [[lib]]
 name = "Solution"
 
-# The layer matrix (plan §2). A module is in the layer whose prefix covers it (prefixes never overlap).
+# The layer matrix (docs/layout.md). A module is in the layer whose prefix covers it (prefixes never overlap).
 # `allow`: the other layers it may import directly, written out in full (the checker requires the lists to
 # be downward-closed, so this row also bounds everything the layer reaches). `trusted`: the Spec surface
 # (snapshot, extensions, theorems, grep 7b, the trusted-file list of docs/definition.md, trusted_paths); it allows only trusted
-# layers. `sorry`: unfinished proofs may stay here (plan §5: only Lemmas and Proofs, never a trusted layer;
+# layers. `sorry`: unfinished proofs may stay here (only Lemmas and Proofs, never a trusted layer;
 # check.sh steps 3 and 7 fail a `sorry` anywhere else, and step 3b fails one in the closure of the solution). Tests: `may_import_roots` (the generated roots,
-# import-only aggregates) and `may_import_all`. `expose`: `@[expose]` may appear here (plan §3: whole-file expose
+# import-only aggregates) and `may_import_all`. `expose`: `@[expose]` may appear here (whole-file expose
 # in Core, Spec, Statements, the instance Spec/Statements and Milestones layers, AsChainShape and Examples; none in Lemmas, Proofs, Main and ToMathlib,
 # where a definition used elsewhere gets characterising lemmas instead; check-boundaries.py refuses `expose` on a
 # Lemmas, Proofs, ToMathlib or Main layer). Solution and Test also have it: they are leaves (nothing imports them),
@@ -773,7 +773,7 @@ about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index
 
 
 
-# Reviewed deviations from the plan §2 matrix, each a debt with its reason. An exception lets the modules
+# Reviewed deviations from the layer matrix, each a debt with its reason. An exception lets the modules
 # under `from` import the modules under `to` (a milestone only through its `Main`), and so depend on what
 # those reach, through their own exceptions too; it does not extend to the importers of the `from` modules.
 # None may start in a
@@ -814,7 +814,7 @@ theorems_mode = "enforce"
 # imported directly by `review_root`.
 review_axioms_module = "ConsensusLeanTest.ReviewAxioms"
 review_root = "ConsensusLeanTest"
-# Comparator (plan §3). Step 9 checks comparator.json against these modules and against the closed Prop
+# Comparator. Step 9 checks comparator.json against these modules and against the closed Prop
 # definitions of `statements_module` (the review statements, paired with their source theorems by
 # `review_axioms_module`) and of `milestone_statements_modules` (today the Goldilocks obligations endpoint alone: a
 # statements module under `trusted_paths` whose closed Prop definitions `Solution` proves directly; docs/decisions.md
@@ -839,7 +839,7 @@ proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]
-# Rebuild canary (plan §6; check.sh step 14, a report): the proof-only edit `canary_proof_edit` = [old, new] (old
+# Rebuild canary (check.sh step 14, a report): the proof-only edit `canary_proof_edit` = [old, new] (old
 # occurring exactly once) of `canary_module` must leave its .olean.hash unchanged and every default target up to
 # date; the control `canary_statement_edit` (a statement change that every use still elaborates with: an extra
 # instance argument) must make them stale.
@@ -847,7 +847,7 @@ canary_module = "ConsensusLean.Lemmas.Blocks.Facts"
 canary_proof_edit = ["  unfold slotTime; push_cast; ring", "  have _canary : True := trivial; unfold slotTime; push_cast; ring"]
 canary_statement_edit = ["theorem slotTime_add (s j : Slot) :",
                          "theorem slotTime_add (s j : Slot) [Inhabited Unit] :"]
-# Step 12 (cited names, checkdecls-style; plan §4): every `Consensus.…` token in these docs (prose and code) must
+# Step 12 (cited names, checkdecls-style): every `Consensus.…` token in these docs (prose and code) must
 # be a plain name listed in `name_index_module` (a module of a test library) as `example := ``Name`, a resolved
 # name literal; building it (`lake test`) checks that each is a declaration.
 doc_name_files = ["docs/roadmap.md", "docs/goldilocks-mapping.md"]

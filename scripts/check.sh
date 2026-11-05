@@ -25,7 +25,7 @@
 #   8  vendored         sha256 of every vendored copy                           (scripts/vendor.sha256)
 #   9  comparator config  exact comparator.json + Challenge.lean            (jq, lean --deps-json)
 #   10 lake check       sandboxed build + export + replay; of the default       (needs bwrap)
-#                       targets only while no sorry layer holds `sorry` (plan §5)
+#                       targets only while no sorry layer holds `sorry`
 #   11 lake comparator  Spec statements vs proofs, axioms, sandboxed replay by  (needs bwrap)
 #                       Lean's kernel and every bundled external kernel (--paranoid)
 #   12 docs             docs/definition.md spec-file list = the files of the Spec surface (trusted layers);
@@ -122,7 +122,7 @@ if k == "libs":
     v = [l["name"] for l in c["lib"]]
 elif k in ("default_libs", "test_libs"):
     v = [l["name"] for l in c["lib"] if l.get("default" if k == "default_libs" else "test_driver") is True]
-elif k in ("sorry_layers", "sorry_prefixes"):  # the layers where `sorry` may stay (plan §5), and their prefixes
+elif k in ("sorry_layers", "sorry_prefixes"):  # the layers where `sorry` may stay, and their prefixes
     ls = [l for l in c["layer"] if l.get("sorry") is True]
     v = [l["name"] for l in ls] if k == "sorry_layers" else [p for l in ls for p in l["prefixes"]]
 else:
@@ -581,7 +581,7 @@ step_audit() {
   fi
   # A test, witness or rejection built on an unfinished lemma would prove nothing: no test declaration may
   # depend on sorryAx (or another non-standard axiom), also through an import. Main and the instances may
-  # (plan §5: they are not certified); the report lists them.
+  # (they are not certified); the report lists them.
   if ((do_audit_tests)); then
     for r in "${TEST_LIBS[@]}"; do
       echo "  gate: every declaration of the tests $r"
@@ -1204,7 +1204,7 @@ step_lake_check() {
   set +e
   local rc=0 n
   # `lake check` rejects every non-standard axiom of the default targets, so it applies only while no sorry layer
-  # holds `sorry` (plan §5). After that, certified = the closure of the solution: step 3b's audit, the kernel
+  # holds `sorry`. After that, certified = the closure of the solution: step 3b's audit, the kernel
   # replay of every leaf (step 5) and the comparator's sandboxed replay (step 11).
   [[ -s "$INV" ]] || python3 -I scripts/check-boundaries.py --config "$CFG" --lakefile lakefile.toml --inventory-out "$INV" >/dev/null
   if ! n="$(sorry_count "$INV")" || [[ -z "$n" ]]; then
@@ -1212,9 +1212,9 @@ step_lake_check() {
   elif ((n == 0)); then
     lake check || rc=1
   else
-    echo "  NOTE  lake check of the default targets not run: $n sorry/admit in the sorry layers (plan §5);"
+    echo "  NOTE  lake check of the default targets not run: $n sorry/admit in the sorry layers;"
     echo "        the Solution closure and the tests are audited (3b), and the solution replayed (5, 11)"
-    [[ -z "${CI:-}" ]] || echo "::warning title=lake check::not run on the default targets: $n sorry/admit in the sorry layers (plan §5)"
+    [[ -z "${CI:-}" ]] || echo "::warning title=lake check::not run on the default targets: $n sorry/admit in the sorry layers"
   fi
   # Rejected for the intended reason (the user axiom), not for a broken fixture or sandbox.
   expect_fail "error: Axiom 'ax' is not permitted; it is used by 't'" lake -d "$FX/lakecheck-bad" check || rc=1
@@ -1309,7 +1309,7 @@ step_metrics() {
 
 # --- step 14: rebuild canary (report) --------------------------------------------------------------
 # A proof-only edit (`canary_proof_edit` = [old, new] in boundaries.toml) of `canary_module` must rebuild that one
-# module: its .olean.hash unchanged and every default target still up to date (plan §6; Lake module/test.sh). A
+# module: its .olean.hash unchanged and every default target still up to date (as Lake's module/test.sh). A
 # regression is reported (a warning in CI), not failed. The control, a statement edit, must make the default
 # targets stale; if it does not, the canary cannot see a rebuild, and the step fails, as it does when an edit no
 # longer applies or the module cannot be restored.
