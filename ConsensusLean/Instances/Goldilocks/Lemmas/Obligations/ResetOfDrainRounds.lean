@@ -163,9 +163,10 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     rw [hddef, hρtdef, hρZ]
   have hB : lo + (5 * (d + 2 * D + lam) + 6 * ρt) = B := by
     rw [hsum, hBdef, resetBoundRounds_eq, hlodef]; ring
-  have hd0 : 0 ≤ d := by positivity
-  have hρt0 : 0 ≤ ρt := by positivity
-  have h2D : (0 : Time) ≤ 2 * D := by linarith
+  have hd0 : 0 ≤ d :=
+    mul_nonneg (mul_nonneg zero_le_four hD.le) (add_nonneg (Int.natCast_nonneg _) zero_le_two)
+  have hρt0 : 0 ≤ ρt := mul_nonneg (mul_nonneg zero_le_four hD.le) (Int.natCast_nonneg _)
+  have h2D : (0 : Time) ≤ 2 * D := by linarith only [hD]
   -- the advance case: an honest signature above `H_z` up to `B` is a reset
   by_cases hadv : ∃ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ B ∧
       HZ tr H g + 1 ≤ att.h
@@ -177,24 +178,25 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     by_contra h
     exact hadv ⟨v, hv, k, att, hs, Int.lt_add_one_iff.mp hkT, by omega⟩
   -- the key-dependent window
-  have hlo2 : gbar g + 2 * D ≤ lo := by rw [hlodef]; linarith
+  have hlo2 : gbar g + 2 * D ≤ lo := by rw [hlodef]; linarith only [hgr, hD]
   have hrange := hmax_range (T := B + 1) (lo := lo) hrun hnc hf2 hq hsvc hcatch hH hsnap hna
     hlo2
-      (fun z hz m hm hmT => hcallZ z hz m hm (by have := Int.lt_add_one_iff.mp hmT; linarith))
+      (fun z hz m hm hmT => hcallZ z hz m hm ((Int.lt_add_one_iff.mp hmT).trans hb))
   obtain ⟨v, hv1, hv2, af, haf, -, hwinE0, hK, floor, kindJ, J, hwin, -⟩ :=
     exists_riseWindow_of_service hrun hnc hf2 hsvc hcatch (lo := lo) (lam := lam)
       (T := B + 1) (HZ := HZ tr H g) hd0 hρt0 h2D hlam hlo2 hrange
       (fun z hz i m hi him hmT =>
-        hcall z hz i m hi him (by have := Int.lt_add_one_iff.mp hmT; linarith))
-      (by rw [hB]; linarith)
+        hcall z hz i m hi him ((Int.lt_add_one_iff.mp hmT).trans hb))
+      (by rw [hB]; exact lt_add_one B)
   obtain ⟨rr, hrrdef⟩ : ∃ rr, riseRounds (HZ tr H g) v = rr := ⟨_, rfl⟩
   have hrr2 : rr ≤ 2 := hrrdef ▸ riseRounds_le_two _ _
   set len : Time := riseLen d ρt (2 * D) (HZ tr H g) v with hlendef
   have hlenE : len = 4 * D * ((Ld : ℤ) + (rr : ℤ) * ((δt : ℤ) + G - 1) + 2) + 2 * D := by
     rw [hlendef, riseLen_eq, hrrdef, hddef, hρtdef, hρZ]; ring
   -- slot alignment
-  have h4D : 0 < 4 * D := by linarith
-  obtain ⟨s₀, hts₀lo, hts₀hi⟩ := exists_slot_align sp (af := af) (by linarith)
+  have h4D : 0 < 4 * D := by linarith only [hD]
+  obtain ⟨s₀, hts₀lo, hts₀hi⟩ := exists_slot_align sp (af := af)
+    (by linarith only [haf, hlodef, hr, hD, hlam])
   set N : Nat := s₀ + Ld + rr * ρ + 1 with hNdef
   have hpos : (0 : ℤ) ≤ ((s₀ : ℤ) + Ld) + (rr : ℤ) * ((δt : ℤ) + G - 1) + 1 := by
     have : (0 : ℤ) ≤ (rr : ℤ) * ((δt : ℤ) + G - 1) := by
@@ -205,15 +207,15 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     have hk : (0 : ℤ) ≤ sp.k := Int.natCast_nonneg _
     have hwinE : af + len ≤ lo + (5 * (4 * D * ((Ld : ℤ) + 2) + 2 * D + lam) +
         6 * (4 * D * ((δt : ℤ) + G - 1))) := by
-      rw [← hsum]; linarith
+      rw [← hsum]; exact hwinE0
     obtain ⟨h1, -, -, -⟩ := heal_bound_sufficient_rounds (D := D) (ready := r) (lam := lam)
       (k := sp.k) (δt := δt) (X := G) (Ld := Ld) (s₀ := s₀) (u := s₀ + Ld) (rr := rr)
       (a := 0) (sa := 0) (uMin := 0) (lo := lo) (af := af) (len := len)
       (heal := r + healBoundCoeffRounds sp.k δt G Ld * D + 5 * lam - 2)
       (q := r + healBoundCoeffRounds sp.k δt G Ld * D + 5 * lam - 2)
       hD hr hlam hk (by exact_mod_cast (show 1 ≤ δt by omega)) (by exact_mod_cast hG)
-      (by positivity) le_rfl hlenE hwinE hts₀hi
-      le_rfl (by have := mul_nonneg h4D.le hpos; linarith) (by simp) (by omega)
+      (Int.natCast_nonneg _) le_rfl hlenE hwinE hts₀hi
+      le_rfl (by linarith only [mul_nonneg h4D.le hpos, hD]) (by simp) (by omega)
       le_rfl le_rfl
     have hN' : sp.ts N = 4 * D * ((s₀ : ℤ) + Ld + (rr : ℤ) * ((δt : ℤ) + G - 1) + 1) := by
       rw [show sp.ts N = 4 * D * (N : ℤ) from rfl, hNdef]; push_cast; rw [hρZ]
@@ -221,23 +223,23 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     rw [hN']
     have := hwinE0
     rw [← hB] at ⊢
-    linarith
+    linarith only [h1, this]
   have hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * D)
       floor kindJ J :=
-    frameWindow_sub hwin hts₀lo (by linarith [hfitN.1])
-  have hts₀r : r + 4 * D ≤ sp.ts s₀ := by linarith
-  have hm : gbar g + 4 * D ≤ sp.ts s₀ := by linarith
-  have hmb : sp.ts N + 2 * D ≤ b := by linarith [hfitN.2]
+    frameWindow_sub hwin hts₀lo hfitN.1.le
+  have hts₀r : r + 4 * D ≤ sp.ts s₀ := by linarith only [hts₀lo, haf, hlam, hlodef]
+  have hm : gbar g + 4 * D ≤ sp.ts s₀ := by linarith only [hts₀r, hgr]
+  have hmb : sp.ts N + 2 * D ≤ b := by linarith only [hfitN.2, hb]
   have hts {x y : Nat} (h : x ≤ y) : sp.ts x ≤ sp.ts y :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast h)
   -- the gap, on a frame ending before `B`
-  have hgpN := hgp s₀ N hts₀r (by linarith [hfitN.2])
+  have hgpN := hgp s₀ N hts₀r (by linarith only [hfitN.2])
   -- the drain
   obtain ⟨u, hwarm, huLd, z, hz, hdes, kP, P, hP, hPs, -⟩ :=
     hdrain.warm hframe hm (by omega) hmb
-      (fun v hv k att hs hk => hna v hv k att hs (by linarith [hfitN.2])) hgpN
+      (fun v hv k att hs hk => hna v hv k att hs (by linarith only [hfitN.2, hk])) hgpN
   -- the rise rounds at the warm proposal
-  have hrise := rounds_le_warm_proposal hwin hK hv1 hts₀lo (by linarith [hfitN.1]) hrun hnc
+  have hrise := rounds_le_warm_proposal hwin hK hv1 hts₀lo (by linarith only [hfitN.1]) hrun hnc
     hsvc hawake hf hcatch hnr hm hwarm (by omega) hmb hz hdes hP hPs
   rw [hrrdef] at hrise
   -- the rise in `rr` rounds
@@ -246,7 +248,7 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     (by omega)
   refine ⟨a, ha, hab.trans ?_⟩
   have := hts (show u + rr * ρ + 1 ≤ N by omega)
-  linarith [hfitN.2]
+  linarith only [hfitN.2, this]
 
 /-- **The reset from the drain, key-dependent rise rounds, from wakefulness** (`λ = 2Δ`).
 `exists_reset_of_drain_rounds` with the snapshot, `hcallZ` and `hcall` produced by `CallLag` from
