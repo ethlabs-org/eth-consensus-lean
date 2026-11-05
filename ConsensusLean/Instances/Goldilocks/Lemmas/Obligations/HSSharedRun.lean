@@ -21,7 +21,7 @@ execution, no observed collision, `Healthy` at GST `g`), at a parametric row del
   between `Δ` and `Δ_F` is used.
 * `hsSharedUpTo_of_healthy`: the monotone lift, at every `Δ_F ≥ Δ_F,p`, from the network's row
   service at `Δ_F,p` (`signed_row_service_psync`). The lift (`PSyncFGAttTransport.mono`) exists,
-  but Accepted's chain uses it only at `le_rfl` (`Δ_F = Δ_F,p`).
+  but the obligations proof uses it only at `le_rfl` (`Δ_F = Δ_F,p`).
 
 Fields: `noColl`, `genesisRoot` (`noCollTransport`, `simTrace_genesis_root_ok`); `sync`
 (`resetService_of_psync` at `PSync g`, from `Healthy`, with the row service); `awake`

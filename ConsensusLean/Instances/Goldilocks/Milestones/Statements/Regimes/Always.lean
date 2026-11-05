@@ -26,8 +26,8 @@ allow the collision escape), and finalized safety the fault bound `f < 2q − n`
   attestation of an honest validator among its signings); and with `f < 2q − n` no two honest
   finalized tips conflict (`FinalizedSafe`, G1.4 over the run).
 
-These are run-level statements over the Goldilocks run; the Refinement milestone carries them to
-the model system. "Conflict" is incompatibility inside the honest blocks of the run.
+These are run-level statements over the Goldilocks run; the Simulation and Obligations proofs carry
+them to the model system. "Conflict" is incompatibility inside the honest blocks of the run.
 
 Statements only: no proofs here. -/
 

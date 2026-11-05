@@ -147,7 +147,7 @@ structure HealthyPreparationSchedule (Q : HealthyPreparationQuery S A V)
   reserve : query + (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1
 
 /-- Proven preservation of an explicitly supplied old-entry inventory. Since R0 no
-inventory is produced on the Accepted route, and no declaration consumes the preserved
+inventory is produced on the obligations route, and no declaration consumes the preserved
 inventory. It ranges over ALL later cuts, not merely end-of-time observations. It does not
 turn eventual coverage into prefix-produced coverage or give a vote label bound. -/
 theorem healthy_old_inventory_preserve (Q : HealthyPreparationQuery S A V)

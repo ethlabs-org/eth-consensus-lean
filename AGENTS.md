@@ -110,7 +110,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
 - **Unfinished proofs:** `sorry` only under `Lemmas/` and `Proofs/` (the `sorry = true` layers of
   `scripts/boundaries.toml`), never in Spec, Statements, Main, instances, tests or `Solution`, and never an axiom.
   `lake build --wfail` ignores it (`warn.sorry = false`) but fails on every other warning. The closure of
-  `Solution` (today `Main` and the acceptance endpoint), of each `proved_milestone_modules` entry (the other
+  `Solution` (today `Main` and the obligations endpoint), of each `proved_milestone_modules` entry (the other
   finished milestones) and of every test must be free of it, also through imports (check.sh step 3b); a new
   milestone stays out of `Main`/`Solution`/`proved_milestone_modules` until it is finished. Tests are named theorems, not
   proof `example`s (step 7: an example never enters the environment, so no check sees its proof; the name index's

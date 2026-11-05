@@ -75,11 +75,11 @@ A cut-graph traversal covered all 109 one-sided dependencies through proved chan
   (the proved milestones that are not Challenge statements; `ConsensusLeanTest/MilestoneAxioms.lean` pins their
   theorems), and so it does for every test declaration (a test built on an unfinished
   lemma proves nothing; grep step 7 refuses proof `example`s, which never enter the environment). `Solution` imports
-  `Main`, every generic milestone and the acceptance endpoint's `Main`, and `proved_milestone_modules` lists the
+  `Main`, every generic milestone and the obligations endpoint's `Main`, and `proved_milestone_modules` lists the
   other finished instance milestones' `Main`s, so all of them must be finished; a new milestone may stay unfinished while neither imports it (step 3b's
   report lists what is unfinished). The instances reach the generic library only through `Main`, inside the
   closure, so everything they use is finished today. Step 9 and the comparator check the closed statements of the
-  `milestone_statements_modules` (instance statements modules under `trusted_paths`; today the acceptance endpoint
+  `milestone_statements_modules` (instance statements modules under `trusted_paths`; today the obligations endpoint
   alone) next to the review statements. The review pins and the comparator check the axioms of the review and
   endpoint theorems too; `MilestoneAxioms` those of the other milestones (untrusted). axiom-audit's shared memo can under-count inside
   an inductive/constructor cycle when the declaration that uses the axiom directly is not audited (the tests gate,
@@ -120,7 +120,7 @@ Step 3c is **report only**, not a new trust gate. `scripts/sorry-inventory.py` r
 `Paper argument/status`. Names must be fully qualified; other
 tables are explicitly listed as excluded (planned/draft material is not compiled coverage).
 Missing ledger, empty/missing roots, stale artifacts, nonexistent rows and unmapped direct
-`sorryAx` owners report incomplete; no generic Accepted structure substitutes for an absent
+`sorryAx` owners report incomplete; no generic `ShapeObligations` result substitutes for an absent
 instance assembly. `SpecSurface dependencies` loads private declarations without extension
 initializers and exports type/body edges. Cycle-safe reverse reachability lists every
 sorry-dependent ancestor **within the configured declaration closure**, not the whole import
@@ -186,7 +186,7 @@ Goldilocks). The instance paths are on the trusted surface but are not trusted l
 layers, which may import only trusted and protected layers. The Shape examples
 `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are not instances and left the surface on 2026-11-04
 (no Challenge statement reaches them; `docs/decisions.md`). So did, the same day, the Goldilocks milestone
-statements other than the acceptance endpoint and the instance Spec only they reach
+statements other than the obligations endpoint and the instance Spec only they reach
 (`ConsensusLean/Instances/Goldilocks/Milestones/`): Challenge certifies the four review statements and the endpoint.
 `Lemmas/Problem/Derived.lean`, added for the now
 archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The

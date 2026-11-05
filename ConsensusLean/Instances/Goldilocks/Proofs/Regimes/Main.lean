@@ -11,7 +11,7 @@ Each row is a `Challenge` statement with its own theorem: R.7 and R.8 (the six r
 sleepy rows (R.1, R.2) are `sleepy_safe` (`Lemmas/Compose/Regimes/Sleepy`), `include_sleepy` and
 `grow_sleepy` (`Lemmas/Healing/Regimes/Inclusion`). The node-level rows
 R.3–R.6 (`Statements/Regimes/{Healed,Final,Outage,Weak}`) were retired unproved: R.3–R.5
-correspond to the generic rows `healedSafe`, `healthyLive` and `persists` of the Accepted endpoint;
-R.6 (weak continuation) has no generic row and is dropped. -/
+correspond to the generic rows `healedSafe`, `healthyLive` and `persists` of the obligations
+endpoint; R.6 (weak continuation) has no generic row and is dropped. -/
 
 end

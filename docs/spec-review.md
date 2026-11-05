@@ -105,7 +105,7 @@ The Spec import closure excludes project Lemmas, Proofs, Main, Instances, Soluti
 |---|---|
 | `ConsensusLean/Init.lean` | Curated public imports (`Mathlib.Init`, `Mathlib.Tactic.Common`); owns no declarations. Replaces the import-only root `ConsensusSpec.lean` of `4b7c5148` in the list. |
 | `Challenge.lean` | Non-default comparator challenge: imports exactly `ConsensusLean.Statements.Review` and the `milestone_statements_modules` (today `ConsensusLean.Instances.Goldilocks.Statements.Obligations`, since 2026-11-04 the one instance statement: `docs/decisions.md`) and states their five closed statements with `sorry` proofs. |
-| `comparator.json` | Challenge/solution modules, the five theorem names (four review and the Goldilocks acceptance endpoint `meetsObligations`) and three permitted axioms. |
+| `comparator.json` | Challenge/solution modules, the five theorem names (four review and the Goldilocks obligations endpoint `meetsObligations`) and three permitted axioms. |
 | `ConsensusLeanTest/ReviewAxioms.lean` | Compiled statement/type, binder-kind, completeness and exact axiom pins. |
 | `ConsensusLeanTest/ReviewGuard.lean` | Shared implementation of those statement/completeness checks, also used by negative fixtures. |
 | `lean-toolchain` | Exact Lean version: `leanprover/lean4:v4.35.0`. |

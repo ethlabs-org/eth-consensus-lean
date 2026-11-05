@@ -286,8 +286,8 @@ theorem fg_transport_slow : 6 * (1 : Time) + 34 ≤ 4 * 1 * (assumptionsGapTen.f
 theorem fg_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (assumptionsSmall.fgSlots : Time) :=
   (fgDelay_bound_iff assumptionsSmall 5 1).1 (by decide)
 
-/-- (a) **The Accepted endpoint is not vacuous**: there are a setup and an assumption set (`k = 2`,
-`δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
+/-- (a) **The obligations endpoint is not vacuous**: there are a setup and an assumption set
+(`k = 2`, `δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
 theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions S),
     ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A)) :=
   ⟨setupSmall, assumptionsSmall, meets_obligations setupSmall assumptionsSmall⟩

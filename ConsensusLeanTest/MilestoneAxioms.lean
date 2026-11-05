@@ -14,7 +14,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 
 /-! # Proved Goldilocks milestones (not certified)
 
-The finished Goldilocks milestones other than the acceptance endpoint, each a theorem whose
+The finished Goldilocks milestones other than the obligations endpoint, each a theorem whose
 statement is the milestone definition itself (`Instances/Goldilocks/Milestones/Statements`),
 proved by its milestone proof. They are not Challenge statements and not on the trusted surface
 (docs/decisions.md, 2026-11-04). These named theorems keep each one proved: check.sh step 3b

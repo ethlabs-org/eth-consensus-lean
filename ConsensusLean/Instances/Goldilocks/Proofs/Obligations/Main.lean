@@ -12,7 +12,7 @@ public section
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-/-- **Goldilocks meets the obligations**: the concrete acceptance endpoint. -/
+/-- **Goldilocks meets the obligations**: the concrete obligations endpoint. -/
 theorem meets_obligations : MeetsObligations := fun S A => meetsObligations_concrete S A
 
 end Consensus.Goldilocks.Obligations

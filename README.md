@@ -55,7 +55,7 @@ def HeldIffServed : Prop :=
       (CommLog.Held rho.point rho.log w o d ↔ rho.Served w o d)
 ```
 
-The acceptance premise is `Consensus.Shape.ShapeObligations`, from
+The obligations premise is `Consensus.Shape.ShapeObligations`, from
 `ConsensusLean/Spec/Shape/Obligations.lean`:
 
 ```lean
@@ -76,7 +76,7 @@ structure ShapeObligations (F : ChainShapeFamily O Info) (K : Contract ProgressR
 `ShapeObligations` carries the admissibility, progress-fit and progress-tolerance premises of
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
 `Solution.lean` proves each review statement by its source theorem, and the one instance statement
-of `Challenge.lean`, the Goldilocks acceptance endpoint `MeetsObligations` (the closed
+of `Challenge.lean`, the Goldilocks obligations endpoint `MeetsObligations` (the closed
 `Prop` definition of `milestone_statements_modules` in `scripts/boundaries.toml`), by its milestone
 proof. Challenge certifies these five statements and nothing else (`docs/decisions.md`,
 2026-11-04): the trusted surface is the generic definition of a correct protocol plus the one
@@ -109,7 +109,7 @@ proposer slot in every progress window). Corollary
 (`ConsensusLean/Main.lean`, `ShapeObligations.activeService`): a final or
 available output puts a relayed transaction into another honest node's
 read on a clean healthy witness (`ActiveService`). A silent service or empty
-outputs are therefore not accepted, for every protocol.
+outputs therefore cannot meet the obligations, for every protocol.
 
 ## The definition of a correct protocol
 
@@ -411,7 +411,7 @@ The slot is checked, within limits:
   validators asleep. A reader that
   never holds fails `CorrectProtocol` (`false_progress_not_correct`); a requirement of
   near-full participation at every index fails the stress witness.
-- In L2, acceptance also asks every provided output to have an index whose
+- In L2, the shape obligations also ask every provided output to have an index whose
   requirement tolerates a bad (faulty or not ready) proposer slot in every
   window (`ProgressTolerant`, below). "An honest ready proposer in *every*
   slot" (`recur ⟨single, 1⟩`) is rejected (`recur_single_one_not_tolerant`).
@@ -546,7 +546,7 @@ The generated library root only collects imports.
 20. `ConsensusLean/Spec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
 21. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
 22. `ConsensusLean/Spec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
-23. `ConsensusLean/Spec/Shape/Obligations.lean`: The acceptance premise `ShapeObligations`: protocol claims, admissible numbers, service, progress fit and tolerance.
+23. `ConsensusLean/Spec/Shape/Obligations.lean`: The obligations premise `ShapeObligations`: protocol claims, admissible numbers, service, progress fit and tolerance.
 24. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 
 <!-- /spec-files -->
@@ -563,7 +563,7 @@ Everything else is checked by Lean; `scripts/check.sh` checks the boundary:
 6. **Review pins:** require the tests root to import the compiled alpha-equality guards and exact axiom pins.
 7. **Backstop:** grep for `sorry`/`admit` outside the sorry layers (comments included; their count inside them, comments and strings removed and only as a term or tactic, is reported), proof `example`s (only a bare `example := @Name` or ``` example := ``Name ``` reference is allowed), native proofs, kernel bypasses and `debug.` options, Spec metacommands and unsafe lakefile options.
 8. **Vendored:** verify all vendored EthLib copies against `scripts/vendor.sha256`.
-9. **Comparator config:** pin challenge/solution modules, every statement name (the four review statements and the closed statements of the `milestone_statements_modules`, today the acceptance endpoint, each of which must have one) and exactly the three standard axioms; validate the Spec-only challenge.
+9. **Comparator config:** pin challenge/solution modules, every statement name (the four review statements and the closed statements of the `milestone_statements_modules`, today the obligations endpoint, each of which must have one) and exactly the three standard axioms; validate the Spec-only challenge.
 10. **Lake check (needs bubblewrap; skipped and listed as CI-only where `bwrap` is missing):** sandboxed build, export and kernel replay of the default targets, rejecting extra axioms. It rejects `sorryAx` too, so it checks the default targets only while the files of the sorry layers hold no `sorry`/`admit` term or tactic outside comments and strings (an `admit`-named field, binder or projection is not one; plan §5; otherwise a NOTE and, in CI, a warning); then the checks of the part proved in Solution, the `Solution` closure, are 3b, 5 and 11. Its fixtures always run.
 11. **Lake comparator (needs bubblewrap, likewise):** statement/axiom matching, sandboxed replay and agreement of reachable constants between challenge and solution exports.
 12. **Docs:** require the marked list above to equal every file of the trusted layers exactly, and every `Consensus.…` name cited in `docs/roadmap.md` and `docs/goldilocks-mapping.md` to be listed in `ConsensusLeanTest/Index.lean`, whose build checks that it exists.
@@ -582,7 +582,7 @@ lemmas, including `CorrectProtocol.served`; `ConsensusLean/Lemmas/Blocks/Facts.l
 `ConsensusLean/Lemmas/Shape/Payload.lean` proves the payload bridges;
 `ConsensusLean/Proofs/Behaviour/Main.lean`, `ConsensusLean/Proofs/RegimesRealizable/Main.lean`,
 and `ConsensusLean/Main.lean` prove
-refinement, coverage/witnesses, acceptance and `ShapeObligations.activeService`.
+refinement, coverage/witnesses, `ShapeObligations.correct` and `ShapeObligations.activeService`.
 `ConsensusLean/Lemmas/Model/` and `ConsensusLean/Proofs/Faithful/Main.lean` prove
 `sysOf_adequate`, `sysOf_log_faithful`,
 `Run.held_iff_served`, `sysOf_nonFraming` and `sysOf_laws`, with support for canonical runs
@@ -813,7 +813,7 @@ are the intended ones.
 
 ### Goldilocks
 
-The Goldilocks acceptance endpoint is `Instances/Goldilocks/Statements/Obligations` (trusted surface,
+The Goldilocks obligations endpoint is `Instances/Goldilocks/Statements/Obligations` (trusted surface,
 protected snapshot), stated over the Spec it reaches (`Instances/Goldilocks/Spec/`, `AsChainShape.lean`). The
 other milestone statements, and the Spec vocabulary only they use (traces, run premises, frame laws, the AC
 requirements, the node's tick steps), are proved lemmas in the untrusted `Instances/Goldilocks/Milestones/`
@@ -823,7 +823,7 @@ and status; the statement; its row and modelling notes in
 [`docs/goldilocks-mapping.md`](docs/goldilocks-mapping.md), whose §"Review path" lists the statements
 with their nodes; and the milestone proof `Proofs/<M>/Main.lean`, which `Solution.lean` (the endpoint) or
 `ConsensusLeanTest/MilestoneAxioms.lean` (the other milestones) cites. The concrete
-acceptance endpoint (`Statements/Obligations`) is proved through the refinement; the other milestones
+obligations endpoint (`Statements/Obligations`) is proved through the refinement; the other milestones
 are proved directly over their own models (FG chains, AC states, the node and its runs). Milestone status: `docs/roadmap.md`.
 
 ## Shape examples (`ConsensusLean/Examples/Shape/`): Bft, Streamlet and Tendermint
@@ -945,7 +945,7 @@ Goldilocks). The instance paths are on the trusted surface but are not trusted l
 layers, which may import only trusted and protected layers (check-boundaries.py). The Shape examples
 `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are not instances and left the surface on 2026-11-04
 (no Challenge statement reaches them; `docs/decisions.md`). So did, the same day, the Goldilocks milestone
-statements other than the acceptance endpoint and the instance Spec that only they reach: they are in
+statements other than the obligations endpoint and the instance Spec that only they reach: they are in
 `ConsensusLean/Instances/Goldilocks/Milestones/`, outside `trusted_paths` (Challenge certifies only the four review
 statements and the endpoint; `docs/decisions.md`).
 `Lemmas/Problem/Derived.lean`, added for the now

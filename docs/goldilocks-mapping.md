@@ -8,7 +8,7 @@ file per instance). Every Lean name here is fully qualified (namespace `Consensu
 
 To check a claim: find its node in CLAIMS (its §"Lean status" names the Lean statement and its status), read the
 statement, then its row and modelling notes in the section below. Challenge certifies one Goldilocks statement, the
-acceptance endpoint (`ConsensusLean/Instances/Goldilocks/Statements/Obligations`, trusted surface, protected
+obligations endpoint (`ConsensusLean/Instances/Goldilocks/Statements/Obligations`, trusted surface, protected
 snapshot); the comparator checks that `Solution.lean` proves it by `Proofs/Obligations/Main.lean`. The other
 finished milestones are proved lemmas (`docs/decisions.md`, 2026-11-04): their statements are in
 `ConsensusLean/Instances/Goldilocks/Milestones/Statements/` (not on the trusted surface), and
@@ -33,7 +33,7 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Compose.HeadExtendsRecord`, `Consensus.Goldilocks.Compose.Inclusion` | `Milestones/Statements/Compose/Service` | A1.6, A1.7 | Service | proved (lemma) |
 | the six rows of `Milestones/Statements/Regimes/Always` | `Milestones/Statements/Regimes/Always` | R.7, R.8 | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` | `Milestones/Statements/Regimes/Sleepy` | R.1, R.2 | Regimes | proved (lemma) |
-| `Consensus.Goldilocks.MeetsObligations` | `Statements/Obligations` | CLAIMS §"The acceptance endpoint" | Obligations | certified (Challenge) |
+| `Consensus.Goldilocks.MeetsObligations` | `Statements/Obligations` | CLAIMS §"The obligations endpoint" | Obligations | certified (Challenge) |
 
 The section pins ("CLAIMS pin", "SPEC pin") record the goldilocks commit each section was transcribed from; later
 changes to the claims are recorded in `docs/decisions.md` and in the rows they change.
@@ -93,7 +93,7 @@ tree, digests, readiness: run-level or generic). Witnesses in `ConsensusLeanTest
 `oneValidator_finalizes`, `previousHeightJustified_entry_after_justification`, `gate_keeps_target_quorum`; and the G0.9 (c) limit
 witness `window_drops_unfinalized` (the window drops an unfinalized pair).
 
-Refinement obligations recorded for the run-level milestone: the client's input `(h_c, T_c)` is read as `(σe.h,
+Simulation obligations recorded for the run-level milestone: the client's input `(h_c, T_c)` is read as `(σe.h,
 σe.Th)` of the entry state `σe = Σ.σ[T_c]` (true because the entry block's own state has `Th = T_c`,
 `HeightStep`); `h_c = ⊥` (no source) is modelled by omitting the input; `Att.WellFormed` (`h ≥ 1`; a finality pair
 has `h_f < h`) is the form that fg.tex §Attestations gives every attestation, which composition §Blocks checks on
@@ -638,32 +638,32 @@ Modelling choices:
   `tickRun_bridgeAt`, with `Geo` vacuous). Not provided (a follow-up): a run witness (kind (b)) that applies them to
   HR.1, HR.3, HR.4, H.2 (run), H.3 and H.4, and premise witnesses over driven SA traces for H.1/H.2 (H.1 needs an
   infinite live run of the Goldilocks SA with trivial frames; the tick run's frames are not trivial).
-- **Whole-run statements and Accepted**: `Healthy(g)` (`HealthyRun`, `Spec/Run/Premises`) keeps every honest
+- **Whole-run statements and MeetsObligations**: `Healthy(g)` (`HealthyRun`, `Spec/Run/Premises`) keeps every honest
   validator awake on `[max(g, 0), ∞)`, and a run's awake function lies in its horizon (`Node.LocalRun.awake_in_horizon`),
   so a run satisfying `Healthy(g)` with an honest validator is infinite. The trace of a model run is clamped to
   `[0, horizon]` (`awakeAt`, `Lemmas/Simulation/TraceDefs`). So the whole-run Healing statements (HR.1, HR.3, HR.4,
-  H.2 (run), H.3, H.4 and HS.1–HS.4) never apply to Accepted's runs, and none of them is in Accepted's closure:
-  Accepted's chain uses the finite-horizon forms (`ResetPremisesUpTo`, `HSSharedUpTo`, `GSTRunUpTo`) and the
+  H.2 (run), H.3, H.4 and HS.1–HS.4) never apply to the obligations proof's runs, and none of them is in its closure:
+  the obligations proof uses the finite-horizon forms (`ResetPremisesUpTo`, `HSSharedUpTo`, `GSTRunUpTo`) and the
   frame-window route (`Lemmas/Healing/M1`), not the phase service.
 
 ## Regimes
 
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `c6653258`, §"L2: regime theorems (skeleton)". Layout: the
 run-level forms of the rows of the (archived) target sheet, over the Goldilocks run (`GoldilocksRun`; `Compose.NoCollRun` only
-where the target row allows the collision escape); the Refinement milestone carries them to the model system. R.7 and R.8 (no regime premise) are in
+where the target row allows the collision escape); the Simulation and Obligations proofs carry them to the model system. R.7 and R.8 (no regime premise) are in
 `Milestones/Statements/Regimes/Always`; R.1 and R.2 (`Sleepy`) in `Milestones/Statements/Regimes/Sleepy`. The node-level R.3 (healed),
 R.4 (final), R.5 (`Outage`) and R.6 (`Weak`) were stated in `Statements/Regimes/{Healed,Final,Outage,Weak}` and
 retired unproved on 2026-11-03 (Francesco): R.3–R.5 correspond to the generic rows `healedSafe`, `healthyLive` and
-`persists` of the Accepted endpoint; R.6 (weak continuation) has no generic row and is dropped.
+`persists` of the obligations endpoint; R.6 (weak continuation) has no generic row and is dropped.
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
 | — | CLAIMS R.7 (G1.5's binding), R.8 (`outputValid`) | the attestations on the chain of a block of a node's tree; a valid output (in the tree, chain linked to genesis, each non-genesis block with its digest as root, accepted by the node, with its slot's proposer and an earlier parent) | Regimes | `Consensus.Goldilocks.Regimes.ChainAtts`, `Consensus.Goldilocks.Regimes.ValidOutput` |
 | R.8 | CLAIMS R.8 (uses C0.1, C0.2, F.2, F.3) | **`nested`**: finalized ⪯ confirmed ⪯ head at every honest cut; **`finalMonotone`**: the honest finalized tip moves only to descendants, across restarts; **`outputValid`**: the finalized and confirmed outputs are valid outputs of the node's tree | Regimes | `Consensus.Goldilocks.Regimes.OutputsNested`, `Consensus.Goldilocks.Regimes.FinalizedMonotone`, `Consensus.Goldilocks.Regimes.OutputsValid` |
-| — | CLAIMS R.1, R.2 (the target's `Ready`, `gc`, `gProg`) | a read point, a point between a node's events, and the first cut after a time; the catch-up `18Δ` in the protocol's `Δ` (at the Refinement's `Δp = Δe` it is `18Δe`, the target's `gc`); ready at `t` (honest, awake on `[max(0, t − c − 1), t]`); the confirmed read after all events at `t`; an honest proposal by a proposer ready at its release; one honest ready proposer in every window of `k` consecutive slots whose first slot starts after `a` and whose last slot starts by `b` | Regimes | `Consensus.Goldilocks.Regimes.CutAfter`, `Consensus.Goldilocks.Regimes.ReadPoint`, `Consensus.Goldilocks.Regimes.Boundary`, `Consensus.Goldilocks.Regimes.catchUp`, `Consensus.Goldilocks.Regimes.ReadyAt`, `Consensus.Goldilocks.Regimes.readAfter`, `Consensus.Goldilocks.Regimes.ReadyProposalAt`, `Consensus.Goldilocks.Regimes.ProposerRecurrence` |
+| — | CLAIMS R.1, R.2 (the target's `Ready`, `gc`, `gProg`) | a read point, a point between a node's events, and the first cut after a time; the catch-up `18Δ` in the protocol's `Δ` (at the simulation's `Δp = Δe` it is `18Δe`, the target's `gc`); ready at `t` (honest, awake on `[max(0, t − c − 1), t]`); the confirmed read after all events at `t`; an honest proposal by a proposer ready at its release; one honest ready proposer in every window of `k` consecutive slots whose first slot starts after `a` and whose last slot starts by `b` | Regimes | `Consensus.Goldilocks.Regimes.CutAfter`, `Consensus.Goldilocks.Regimes.ReadPoint`, `Consensus.Goldilocks.Regimes.Boundary`, `Consensus.Goldilocks.Regimes.catchUp`, `Consensus.Goldilocks.Regimes.ReadyAt`, `Consensus.Goldilocks.Regimes.readAfter`, `Consensus.Goldilocks.Regimes.ReadyProposalAt`, `Consensus.Goldilocks.Regimes.ProposerRecurrence` |
 | R.1 | CLAIMS R.1 (uses A1.2–A1.4, A1.6, C1.1, F.4) | **`sleepySafe`**: under `Sleepy` and `NoColl`, agreement of the confirmed reads of any two honest nodes at any cuts and times, and monotonicity of a node's reads at two read points between its events (`Boundary`), in cut order, where it is ready (catch-up `18Δ`). **Stronger than CLAIMS** (2026-11-03, trusted-strengthen): CLAIMS R.1 asks agreement of ready readers at read points only; the Lean agreement needs neither readiness nor read points, and the monotone half needs no time-`0` window (the proof never used it; the old Lean's time order `t ≤ t'` is dropped too). The prefix form **`confirmed_safe_sleepy_prefix`** has no node-level statement: it is the generic `Consensus.CorrectProtocol.sleepySafe_prefix` (`SyncUntil b` and sleepy on `[0, b]` give ready-reader safety up to `b`, or the run's excuse: the conclusion is `ReadySafeUpTo … ∨ S.Excuse r`), which the family gets from `Consensus.Shape.ShapeObligations.correct` at `Consensus.Goldilocks.Obligations.meets_obligations` (catch-up `contract_catchUp·Δe`; the archived target sheet's form at `gc = 18Δe` is not delivered) | Regimes | `Consensus.Goldilocks.Regimes.SleepySafe` |
 | R.2 | CLAIMS R.2 (uses A1.7, F.4) | **`includeSleepy`**: honest ready proposals are in every ready confirmed read from `τ + 6Δ`; **`growSleepy`**: with one honest ready proposer per `k` slots, a new common confirmed entry by `t + (4k + 6)Δ`, above every ready read at `t`. **Stronger than before** (CLAIMS gives only the row name): since 2026-11-04 (trusted-strengthen-3) `GrowSleepy` no longer assumes a node ready at `t + (4k + 6)Δ` (the proof never used it; the claims' R.2 row names `growSleepy` with no such premise), names `D = (4k + 6)Δ` with a `let`, and states "not in the reads at `t`" and "the reads at `t` are ancestors of the reads at `t + D`" as two flat conjuncts (the same proposition) | Regimes | `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` |
-| R.3–R.6 | CLAIMS R.3, R.4, R.5, R.6 | **retired** 2026-11-03 (Francesco): the node-level healed, final, outage and weak rows and their premises (28 declarations, never proved; outside Challenge, Solution and the declaration closure of the Accepted endpoint). R.3–R.5 correspond to the generic rows of the Accepted endpoint `healedSafe`, `healthyLive` (through `ShapeObligations.correct`) and `persists`; R.6 (weak continuation) has no generic row and is dropped | Regimes | — |
+| R.3–R.6 | CLAIMS R.3, R.4, R.5, R.6 | **retired** 2026-11-03 (Francesco): the node-level healed, final, outage and weak rows and their premises (28 declarations, never proved; outside Challenge, Solution and the declaration closure of the obligations endpoint). R.3–R.5 correspond to the generic rows of the obligations endpoint `healedSafe`, `healthyLive` (through `ShapeObligations.correct`) and `persists`; R.6 (weak continuation) has no generic row and is dropped | Regimes | — |
 | R.7 | CLAIMS R.7 (uses G1.3–G1.5) | **`finalAccountable`**: conflicting honest finalized tips convict `≥ 2q − n` validators from the attestations on two chains the readers hold; **`nonFraming`**: an honest validator signs no slashable pair; **`finalized_safe_below_third`**: with `f < 2q − n`, honest finalized tips never conflict | Regimes | `Consensus.Goldilocks.Regimes.FinalAccountable`, `Consensus.Goldilocks.Regimes.NonFraming`, `Consensus.Goldilocks.Regimes.FinalizedSafe` |
 
 Modelling choices:
@@ -674,10 +674,10 @@ Modelling choices:
   `τ + 6Δ`" includes the update tick at `τ + 6Δ` (consensus-lean#77). `Ready` is the model's: honest and awake on
   `[max(0, t − c − 1), t]` with `c = 18Δ`. `Sleepy`'s `f < h_t` is read at the slot points (`SleepyRun`). There is
   no node-level prefix form: the past-safety claim up to `b` is the generic `CorrectProtocol.sleepySafe_prefix` (the finite
-  node route the Refinement uses is `sleepy_safe_finite`). `ProposerRecurrence` is over the windows of `k` consecutive slots whose first slot starts
+  node route the obligations proof uses is `sleepy_safe_finite`). `ProposerRecurrence` is over the windows of `k` consecutive slots whose first slot starts
   after `a` and whose last slot starts by `b` (the target's `(t, t + 4kΔ]`), and
   `GrowSleepy` takes it up to its read time only (the target's `gProg … 0 horizon`). `confirmed_txLive_sleepy` is not stated over the run (no
-  transactions there): the Refinement derives it from `IncludeSleepy`.
+  transactions there): the obligations proof derives it from `IncludeSleepy`.
 - **Reads between AC calls** (checked 2026-10-30, consensus-lean#91). The confirmed output reads the AC state and
   the frame `fg_to_ac(Σ)`, and the frame reads only `Σ.T`, `Σ.F`, `Σ.J`, `h_max`, `h_j` and `σ`. Of the FG cuts,
   `fg_on_attestation` changes only the pool, `fg_attest` only the record and the pool, and a refused `fg_on_block`
@@ -710,7 +710,7 @@ Modelling choices:
   obligation 8's strict-vs-endpoint receipt is settled by the L0 text. The spec treats admission as an instantaneous send. The model's persistent-relay variants
   still break R.1 when relay waits for an awake tick or is one unit late, so buffering across sleep or adding
   relay slack is not the chosen repair. `SyncAC` stays unchanged, and `SyncOn` except for its attestation clause and `delta_le` (below). At `Δ_p = Δ_e` the engine
-  `PSync` supplies the node services the Accepted chain uses (`message_service_psync`,
+  `PSync` supplies the node services the obligations proof uses (`message_service_psync`,
   `block_service_psync`, `signed_row_service_psync`, `catchRun_of_psync`, `resetService_of_psync`); the full
   transport stays open: `PSync ⇒ GSTRun` (`PSyncTransport`), `SyncUntil ⇒ SyncBefore`
   (`SyncUntilTransport`) and `PSync 0 ⇒ SyncRun` (`SyncRunTransport`), in `Lemmas/Obligations/NetworkTransport`,
@@ -731,7 +731,7 @@ Modelling choices:
 - **`finalAccountable`** reads "conflicting honest reads convict from their own views" (G1.5: "among the attestations
   included on the chains held by the two readers, taken together") as: some block of each reader's tree at the cut
   of its read, whose chains' attestations together hold a slashable pair for each convicted validator. The fraction
-  is G1.3's `2q − n` (`≥ n/3`, G1.1); the contract's `α` is set by the Refinement.
+  is G1.3's `2q − n` (`≥ n/3`, G1.1); the contract's `α` is set by `goldilocksContract`.
 - **`NoColl`**: R.8 and `nonFraming` are `HoldsAlways` rows (no collision escape), so they take no `NoColl` and read
   ancestry in the node's own tree; `finalAccountable` and `finalized_safe_below_third` take it.
 - **`nonFraming`** is stated on honest signings. The target row itself follows from the model's `sysOf_nonFraming`; the
@@ -754,7 +754,7 @@ Modelling choices:
 ## AsChainShape, Simulation and Obligations
 
 CLAIMS pin: `goldilocks-claims.tex` at goldilocks main `4ea71d05` (the Refinement row of the module table: "G1.5; the
-engine simulates the node (C0.4 kept)"); the Accepted row follows CLAIMS §"The acceptance endpoint" in this
+engine simulates the node (C0.4 kept)"); the Obligations row follows CLAIMS §"The obligations endpoint" in this
 repository (2026-11-03). SPEC pin: `shared/composition.tex` at goldilocks `4ea71d05` (§"Blocks",
 §"Model"). Layout: decomposition §2 E (`Refinement`), §4.8. The milestone writes the Goldilocks node as a generic
 `ChainShape` (`AsChainShape`) so that the engine (`Spec/Model/Run`) runs it and the generic L1 theorems apply, and
@@ -763,7 +763,7 @@ G1.5. Goldilocks' `Params` needs `1 ≤ n`; the family keeps that dependence out
 
 The simulation interface and canonical trace are proof-side vocabulary in non-exposed
 `Lemmas/Simulation/Interface` and `TraceDefs`, not part of the trusted statement surface.
-The canonical construction and all claims retain their names and meanings; the Accepted proof
+The canonical construction and all claims retain their names and meanings; the obligations proof
 uses them through characterising lemmas. The digest adapter `dgOf` and delivery relation
 `DeliverSeq` live beside their proof-side users in those leaves, not in `AsChainShape`.
 The remaining protocol definitions in `AsChainShape` and the complete
@@ -782,9 +782,9 @@ The remaining protocol definitions in `AsChainShape` and the complete
 | — | CLAIMS §Outputs | the chain trace reads the shape's outputs of the node state at the shape's clock | Simulation | `Consensus.Goldilocks.Simulation.ReadIsOut` |
 | NoColl | CLAIMS §Premises (`NoColl`); F.3 | tagged roots make `GenesisFresh` unconditional; **`NoColl` transport**: a valid engine run with no observed hash collision gives `NoCollRun` over its canonical trace, not arbitrary simulation witnesses; the engine run and provenance suppliers it uses are proved (no `sorry` remains under `Lemmas/Simulation`) | Simulation | `Consensus.Goldilocks.Simulation.GenesisFresh`, `Consensus.Goldilocks.Simulation.NoCollTransport` |
 | G1.5 | CLAIMS G1.5 (targets `nonFraming`, `finalized_accountable`) | (a) `conflicts` holds exactly of the canonical objects of two `slashable` attestations; (b) every attestation included on an honest finalized read is in the reader's view as its canonical object; (c) in a valid run with no observed collision, two honest finalized reads are compatible or at least `2q − n` validators are slashable on the two views together (the run-level G1.3; the evidence is the two whole views, as in the generic L0 `convicts`, so (c) is weaker than G1.5, which takes the attestations included on the two chains; a chain-restricted form would be a separate statement); `nonFraming` is the generic `System.NonFraming` of the compiled family (Lemmas `sysOf_nonFraming`); the bundle | Simulation | `Consensus.Goldilocks.Simulation.ConflictsIff`, `Consensus.Goldilocks.Simulation.EvidenceInView`, `Consensus.Goldilocks.Simulation.FinalizedAccountable`, `Consensus.Goldilocks.Simulation.SimulationStatements` |
-| — | CLAIMS §"The acceptance endpoint" | **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every assumption set (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`), the family meets `ShapeObligations` at the contract `goldilocksContract A (contract_coefficients S A)` (standard thresholds; FG delay bound `4·fgSlots − 6` (healthy: `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC`); arming lag `4k + 6`, outage budget `4k − 5`, `η = 0`, no-sleep margin `4k + 6`, recovery delay `9`; final progress the window `[0, c, 2c, 3c]`, `c = fgSlots`, one proposer otherwise; catch-up `19`, heal `19 + M_f = 48k + 28δ_t + 48X + 75` at every capability (`M_f = 20(2k + X) + 8k + 28δ_t + 28X + 56`, the rise-round route), latency `4X + 6` (available, stable) and `4(X + 3·fgSlots) + 1` (final); `ΔAC`-coefficients, node and engine delay alike). Not vacuous: `Consensus.Goldilocks.Obligations.Test.Contract.meets_obligations_nonvacuous` instantiates it at a concrete setup and assumption set (`k = 2`, `δt = 6`, `fgSlots = 2`), and `Consensus.Goldilocks.Obligations.Test.Contract.meetsObligations_realizable_small` gives that contract's active regime witnesses on five validators (`regimes_realizable` from `ShapeObligations`'s fields) | Obligations | `Consensus.Goldilocks.finalWindow`, `Consensus.Goldilocks.ContractAssumptions`, `Consensus.Goldilocks.ContractCoefficients`, `Consensus.Goldilocks.goldilocksContract`, `Consensus.Goldilocks.contract_coefficients`, `Consensus.Goldilocks.MeetsObligations` |
+| — | CLAIMS §"The obligations endpoint" | **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every assumption set (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`), the family meets `ShapeObligations` at the contract `goldilocksContract A (contract_coefficients S A)` (standard thresholds; FG delay bound `4·fgSlots − 6` (healthy: `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC`); arming lag `4k + 6`, outage budget `4k − 5`, `η = 0`, no-sleep margin `4k + 6`, recovery delay `9`; final progress the window `[0, c, 2c, 3c]`, `c = fgSlots`, one proposer otherwise; catch-up `19`, heal `19 + M_f = 48k + 28δ_t + 48X + 75` at every capability (`M_f = 20(2k + X) + 8k + 28δ_t + 28X + 56`, the rise-round route), latency `4X + 6` (available, stable) and `4(X + 3·fgSlots) + 1` (final); `ΔAC`-coefficients, node and engine delay alike). Not vacuous: `Consensus.Goldilocks.Obligations.Test.Contract.meets_obligations_nonvacuous` instantiates it at a concrete setup and assumption set (`k = 2`, `δt = 6`, `fgSlots = 2`), and `Consensus.Goldilocks.Obligations.Test.Contract.meetsObligations_realizable_small` gives that contract's active regime witnesses on five validators (`regimes_realizable` from `ShapeObligations`'s fields) | Obligations | `Consensus.Goldilocks.finalWindow`, `Consensus.Goldilocks.ContractAssumptions`, `Consensus.Goldilocks.ContractCoefficients`, `Consensus.Goldilocks.goldilocksContract`, `Consensus.Goldilocks.contract_coefficients`, `Consensus.Goldilocks.MeetsObligations` |
 
-Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement entries):
+Modelling choices (`docs/decisions.md` §"Goldilocks instance", the entries on the chain shape, the simulation and the obligations):
 
 - **The wire format and the digest are the refinement's.** composition.tex fixes the signatures and that the root is
   the digest of the content, not an encoding; the refinement chooses an `n`-independent encoding (the family fixes
@@ -800,7 +800,7 @@ Modelling choices (`docs/decisions.md` §"Goldilocks instance", the Refinement e
   of queued bodies is the shape's own, through poll steps; the two leading polls make a proposal carry only
   released objects (the spec has no release step).
 - **Not stated: the network premises' transport.** The engine reads an admission as an instantaneous send
-  (`SendOrAdmitAt`); the deadlines, the services the Accepted proof uses and the open transport suppliers (not
+  (`SendOrAdmitAt`); the deadlines, the services the obligations proof uses and the open transport suppliers (not
   premises of `MeetsObligations`) are in the Regimes section's note "Network model vs the spec's premises".
 - **The proposer selection is the run's.** The generic skeleton's proposer selection is per slot
   (`proposerSel : Slot → SelSpec n`, consensus-lean#93); the Goldilocks skeleton sets it to `.sized 1` at every

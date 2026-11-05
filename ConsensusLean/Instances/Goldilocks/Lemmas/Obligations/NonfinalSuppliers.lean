@@ -182,7 +182,7 @@ structure ConfirmedProposal (Q : ConfirmedQuery S A V) where
   bounded : Q.trace.time cut ≤ Q.deadline
 
 /-- Concrete finite service inputs for the Sleepy inclusion consumer. These are
-supplier conclusions, never additional assumptions of the Accepted endpoint.
+supplier conclusions, never additional assumptions of the obligations endpoint.
 The duration inequality is directional and preserves the endpoint's exact cDur. -/
 structure SleepyProposalService (Q : ConfirmedQuery S A V)
     (P : ConfirmedProposal S A V Q) : Prop where

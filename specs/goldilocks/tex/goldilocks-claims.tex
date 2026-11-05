@@ -124,12 +124,12 @@ premises and numbers wait for the instance statements (goldilocks\#7) and
 the derivation of the bounds (D1).
 
 \begin{sloppypar}
-\paragraph{Lean status and the acceptance target (2026-11-03).}  The
-acceptance target is the concrete endpoint
+\paragraph{Lean status and the obligations target (2026-11-03).}  The
+obligations target is the concrete endpoint
 \texttt{MeetsObligations} (consensus-lean
 \texttt{Statements/Obligations}), proved by
 \texttt{meets\_obligations}; its contract and coefficients are in
-\S\ref{sec:accepted}.  It is not proved through the regime rows R.3--R.6 and
+\S\ref{sec:obligations}.  It is not proved through the regime rows R.3--R.6 and
 does not depend on O.1.  The pre-foundation baseline (\texttt{GoldilocksTarget},
 \texttt{GoldilocksExtraAt}) and the node statements of R.3--R.6 were retired
 unproved (consensus-lean \texttt{archive/consensus-lean-baseline},
@@ -158,8 +158,8 @@ proof may cite, and no others.  The layers are:
   interface requirements of composition \S``The available chain'' and the
   proposal payload (A0.6, A0.9).
 \item[L2, regimes:] the claims, one per target row (ids \textsf{R}).
-\item[L3, assembly:] the Lean acceptance endpoint (ids \textsf{T};
-  \S\ref{sec:accepted}), whose \texttt{ShapeObligations} contains the shape claims;
+\item[L3, assembly:] the Lean obligations endpoint (ids \textsf{T};
+  \S\ref{sec:obligations}), whose \texttt{ShapeObligations} contains the shape claims;
   done in consensus-lean.  The former \texttt{GoldilocksExtraAt} is retired
   with the baseline.
 \end{description}
@@ -322,7 +322,7 @@ $\mathsf{Outage}(T,b_0,b_1)$ & synchrony before~$b_0$, GST $b_1$, the
   participation of the target's outage regime, and the budget~(V) of the lean
   notes with this protocol's lock lifetime $(4k-2)\Delta$ (D1) &
   \texttt{Outage}; obligation~4 (the retired R.5 form; the endpoint's
-  outage numbers: \S\ref{sec:accepted})\\
+  outage numbers: \S\ref{sec:obligations})\\
 $\mathsf{Weak}$ & healthy up to the heal point, sleepy after it &
   \texttt{WeakPremise}; obligation~10 (retired with R.6)\\
 $\mathsf{NoColl}$ & no two distinct objects with one digest occur in the run &
@@ -2106,7 +2106,7 @@ separate recovery obligation; the settled-phase restriction is unchanged.
 
 \section{L2: regime theorems (skeleton)}\label{sec:l2}
 
-The acceptance target is the endpoint of \S\ref{sec:accepted}, proved in
+The obligations target is the endpoint of \S\ref{sec:obligations}, proved in
 Lean.  The table below lists one node per row of the retired
 \texttt{GoldilocksTarget}.  R.1, R.2, R.7 and R.8 are live node statements,
 proved in Lean (\S\ref{sec:lean-status}).  R.3--R.6 (marked~$\dagger$) are \emph{retired}:
@@ -2119,7 +2119,7 @@ the endpoint.  The endpoint supplies generic rows with related names
 contract; they are not proofs of the archived node statements, with their
 premises and constants, and R.6 has no generic row.
 
-\subsection{The acceptance endpoint}\label{sec:accepted}
+\subsection{The obligations endpoint}\label{sec:obligations}
 
 \begin{sloppypar}
 \texttt{MeetsObligations} (consensus-lean
@@ -2269,7 +2269,7 @@ proved here.
 \subsection*{O.1: recovery after GST}
 
 O.1 was the premise that the retired R.4 needed; it is not a premise of
-the proved endpoint (\S\ref{sec:accepted}).  Its target (below) has no fixed
+the proved endpoint (\S\ref{sec:obligations}).  Its target (below) has no fixed
 statement for the contract's regime.  What is fixed (draft~9) is the
 recovery predicate $\mathsf{Rec}(t_0)$ and node O.1, which proves
 $\mathsf{Rec}$ from a parameter-only time under a \emph{bounded uniform
@@ -2421,7 +2421,7 @@ corollary~C (G1.8) gives a conditional upper bound after bad entries, not a
 uniform recovery bound.  \texttt{MeetsObligations} does not depend on O.1: the L0
 contract's final healthy liveness, with a heal point fixed before the run,
 is proved for the endpoint by another route, its four-anchor final pattern
-with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:accepted}).  The
+with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:obligations}).  The
 earlier dependency (the retired R.4, and with it \texttt{MeetsObligations}, on O.1;
 instance-proposal Q1) is history.  O.1 stays a separate research target.
 The FG safety milestone (G0, G1.1--G1.5) does not
@@ -2733,7 +2733,7 @@ R.8 & \texttt{Regimes.OutputsNested}, \texttt{Regimes.FinalizedMonotone},
 Baseline & archived \texttt{Consensus.Shape.GoldilocksTarget},
   \texttt{Consensus.Shape.GoldilocksExtraAt} & retired, never the endpoint\\
 Obligations & \texttt{MeetsObligations} & proved
-  (\texttt{meets\_obligations}); \S\ref{sec:accepted}\\
+  (\texttt{meets\_obligations}); \S\ref{sec:obligations}\\
 \hline
 \end{longtable}}
 

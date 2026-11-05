@@ -13,7 +13,7 @@ public section
 
 OPEN implementation arguments, not paper proofs. The paper's forwarding rule motivates these
 interfaces but does not prove engine candidate ordering or signed-object provenance. In
-particular installing the signed publisher does not prove these contracts. The Accepted
+particular installing the signed publisher does not prove these contracts. The obligations
 assembly must construct an implementation and discharge every field, never assume this bundle
 as an additional regime premise. Parameters remain explicit until run-selected simulation lands.
 -/
@@ -620,7 +620,7 @@ theorem apply_forward_origin {sp : SA.SAParams}
 
 /-- The durable wrapper-map invariant required at a block call: each held non-genesis
 root has an own wrapper. This local invariant is to be proved along execution, never
-added to the generic Accepted or network premises. -/
+added to the generic `ShapeObligations` or network premises. -/
 def WrappersCover {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) : Prop :=
   ∀ root, root ≠ sp.genesisRoot → (st.node.fg.blocks root).isSome →
@@ -1390,7 +1390,7 @@ theorem publisherExecution_objects_seen :
   accepted_objects_seen S rho (publisherExecution S rho)
 
 /-- The five obligations the concrete revised publisher must discharge. OPEN: no complete
-instance is supplied, and this is not a new Accepted assumption. -/
+instance is supplied, and this is not a new obligations assumption. -/
 structure ForwardingContracts : Prop where
   executed : ∀ r, pubExec.actual r → ExecutedPublication S rho r
   /-- Completeness prevents selecting only convenient successful publications. Every actual

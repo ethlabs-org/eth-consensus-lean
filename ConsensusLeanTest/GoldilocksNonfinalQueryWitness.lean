@@ -8,7 +8,7 @@ public import ConsensusLean.Proofs.RegimesRealizable.Main
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
-/-! # Witnesses: the healthy-nonfinal and outage queries are inhabited at the Accepted contract
+/-! # Witnesses: the healthy-nonfinal and outage queries are inhabited at the obligations contract
 
 Kinds (a) and (r) (CONTRIBUTING "Statements") for the three engine queries that the nonfinal
 endpoints of `Lemmas/Obligations/Concrete` build: `ConfirmedQuery` (Healthy branch; the Sleepy
@@ -203,7 +203,7 @@ theorem healthyPreparationQuery_not_final {V : Type} [Fintype V] [DecidableEq V]
 /-! ## The outage witness of `regimes_realizable` at `K S A` -/
 
 /-- (a) An `OutageQuery` at `K S A`: the outage witness of `Shape.regimes_realizable` for the
-Accepted contract on five validators, at `Δ = ΔF = 2`, armed at `T ≥ 0`. -/
+obligations contract on five validators, at `Δ = ΔF = 2`, armed at `T ≥ 0`. -/
 theorem outageQuery_witness : ∃ Q : OutageQuery S A (Fin 5), 0 ≤ Q.T := by
   obtain ⟨r, T, b₀, b₁, ⟨⟨hv, hc, -, -⟩, -, -⟩, ho, -, -⟩ :=
     (Shape.regimes_realizable (goldilocks S) (K S A) (meetsObligations_admissible S A)

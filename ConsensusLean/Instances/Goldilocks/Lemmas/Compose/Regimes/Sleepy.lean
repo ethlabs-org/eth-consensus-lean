@@ -17,7 +17,7 @@ monotone half (`sleepy_ready_mono`). Together, `sleepy_safe : SleepySafe`.
 
 Up to a horizon `b`, `sleepy_safe_before` gives the two halves for ready readers at read points
 of times in `[0, b]` (`ReadySafeOn`) under `SleepyServiceBefore b` (the route of the finite
-Refinement form `sleepy_safe_finite`). There is no node-level prefix
+obligations form `sleepy_safe_finite`). There is no node-level prefix
 row: the prefix claim is the generic `CorrectProtocol.sleepySafe_prefix`. -/
 
 namespace Consensus.Goldilocks.Regimes

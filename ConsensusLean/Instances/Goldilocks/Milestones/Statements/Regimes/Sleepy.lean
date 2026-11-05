@@ -22,7 +22,7 @@ Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun
   slots, joint strict growth of the confirmed output by `t + (4k + 6)Δ` (`GrowSleepy`).
 
 **Vocabulary.** A node is **ready** at `t` (catch-up `c = 18Δ` in the protocol's `Δ`, `sp.Δ`; at
-the Refinement's `Δp = Δe` this is `18Δe`) when it is
+the simulation's `Δp = Δe` this is `18Δe`) when it is
 honest and awake throughout `[max(0, t − c − 1), t]` (`ReadyAt`, the model's `Point.Ready`). A
 **read** of `y` is its confirmed output at a read point `(j, t)` (`ReadPoint`: the state before cut
 `j` is the state at `t`), evaluated at `t` (`readAfter`); at `t = time j` this is `confirmedAt y j`,
@@ -33,7 +33,8 @@ and with `CutAfter j t` it is the read after all events at `t` (the model's end-
 start.
 
 The transaction rows (`confirmed_txLive_sleepy`) are not stated over the run: the run model has no
-transactions. They follow, in the Refinement, from `IncludeSleepy` and the proposals' payloads.
+transactions. They follow, in the obligations proof, from `IncludeSleepy` and the proposals'
+payloads.
 
 Statements only: no proofs here. -/
 
@@ -60,7 +61,7 @@ cut (position `≠ 0`) of an event of `y`. Inside an event the state can be one 
 reads, e.g. after an accepted `fg_on_block` and before its `ac_on_block`. -/
 def Boundary (y : Fin sp.n) (j : Nat) : Prop := tr.IsCall y j → tr.pos j = 0
 
-/-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the Refinement's `Δp = Δe` it is
+/-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the simulation's `Δp = Δe` it is
 `18Δe`). -/
 def catchUp (sp : SAParams) : Time := 18 * sp.Δ
 

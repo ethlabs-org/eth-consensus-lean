@@ -14,7 +14,8 @@ public section
 
 /-! # Open network transport suppliers
 
-These are goals for the concrete publisher/simulation adapter, not extra premises of Accepted.
+These are goals for the concrete publisher/simulation adapter, not extra premises of
+`MeetsObligations`.
 The trace parameters remain independent here. `Setup.params` gives protocol delay Δp = Δe: the
 engine holds an object strictly before `a + Δe` (by `a + Δe − 1`), which is the node's strict
 deadline `a + Δp`. FG row service has its own delay `Δ_F` (`PSyncFGAttTransport`): the engine

@@ -37,7 +37,7 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M13 window-only P1: sheet `outageWindow` and its test `outageWindow_prefix_only`.
 * M14 outage stable/finalized: closed; stable = confirmed (sheet test `stable_is_confirmed`, sheet `confirmed_persists`); `CorrectProtocol.persists_final_compatible` (sheet `outage_final_compatible`).
 * M15 pinned params: removed, the pinned sheet is archived; the live contract numbers are `goldilocksContract` at `contract_coefficients`.
-* M16 concrete instance: closed by the Accepted endpoint (`meetsObligations`); the unproved target sheet is archived.
+* M16 concrete instance: closed by the obligations endpoint (`meetsObligations`); the unproved target sheet is archived.
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.
 * M18 adaptive corruption: scope, static adversary.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).

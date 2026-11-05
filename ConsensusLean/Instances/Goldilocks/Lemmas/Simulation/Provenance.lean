@@ -11,7 +11,7 @@ public section
 
 /-! # Engine signing history before node simulation
 
-Implementation-refinement history for the Accepted skeleton. These declarations use
+Implementation-refinement history for the obligations skeleton. These declarations use
 actual engine duty prefixes, never `eventCuts`, `simTrace`, or `GoldilocksRun`. A poll's FG update
 is the only signing operation; all other operations preserve the client history, including
 restart. Queue provenance and unforgeability give the inverse from seen attestations to signings.

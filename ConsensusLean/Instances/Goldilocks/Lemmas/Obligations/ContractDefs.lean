@@ -9,7 +9,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the acceptance contract and its coefficients
+/-! # Goldilocks Obligations: the obligations contract and its coefficients
 
 The characterising lemmas of the fixed assumptions (`ContractAssumptions`: the FG delay in slots
 `fgSlots`, its FG delay bound `fgDelay = 4·fgSlots − 6`, and the timeout), the final pattern
@@ -17,7 +17,8 @@ The characterising lemmas of the fixed assumptions (`ContractAssumptions`: the F
 `contract_heal`, `contract_latency`) and the contract `goldilocksContract`, all defined in the
 statement module `Statements/Obligations`, and the abbreviation `K`. The FG transport is
 instantiated at the actual protocol FG delay `protoFGDelay` (HSSharedRun, HSSharedOfQuery); the
-monotone lift `PSyncFGAttTransport.mono` exists, but Accepted's chain uses it only at `le_rfl`. -/
+monotone lift `PSyncFGAttTransport.mono` exists, but the obligations proof uses it only at
+`le_rfl`. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape
@@ -129,7 +130,7 @@ theorem contract_coefficients_latency (S : Setup) (A : ContractAssumptions S) :
 noncomputable abbrev K (S : Setup) (A : ContractAssumptions S) :=
   goldilocksContract A (contract_coefficients S A)
 
-/-- The readiness duration of an acceptance contract with catch-up `≥ 19` covers `18Δ + 1`, for
+/-- The readiness duration of an obligations contract with catch-up `≥ 19` covers `18Δ + 1`, for
 any coefficient record `C`, so that it also serves the witnesses over `goldilocksContract A C`.
 At `K S A` the premise is `contract_catchUp_ge_sleepy`. -/
 theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]

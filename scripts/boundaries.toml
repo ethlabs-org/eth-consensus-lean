@@ -235,7 +235,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape"]
 protected = true
-about = "the concrete Goldilocks acceptance endpoint (simulation vocabulary is proof-side)"
+about = "the concrete Goldilocks obligations endpoint (simulation vocabulary is proof-side)"
 
 [[layer]]
 name = "Instances.Goldilocks.Milestones.Spec.Common"
@@ -738,7 +738,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.ComposeAnyAC", "Instances.Goldilocks.Proofs.Persist",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations"]
-about = "comparator solution: the review statements and the Goldilocks acceptance endpoint (through its Main)"
+about = "comparator solution: the review statements and the Goldilocks obligations endpoint (through its Main)"
 
 [[layer]]
 name = "Test"
@@ -816,7 +816,7 @@ review_axioms_module = "ConsensusLeanTest.ReviewAxioms"
 review_root = "ConsensusLeanTest"
 # Comparator (plan §3). Step 9 checks comparator.json against these modules and against the closed Prop
 # definitions of `statements_module` (the review statements, paired with their source theorems by
-# `review_axioms_module`) and of `milestone_statements_modules` (today the Goldilocks acceptance endpoint alone: a
+# `review_axioms_module`) and of `milestone_statements_modules` (today the Goldilocks obligations endpoint alone: a
 # statements module under `trusted_paths` whose closed Prop definitions `Solution` proves directly; docs/decisions.md,
 # 2026-11-04); the challenge imports exactly these modules, in this order. Step 11 runs `lake comparator` (where bwrap exists).
 challenge_module = "Challenge"
