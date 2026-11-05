@@ -13,34 +13,16 @@ the archive of the history before the email rewrite; code, branches and PRs are 
 ## Working on this repo
 
 - **Worktree per task.** Work on `work/<agent>/<task>` in your own worktree; never in a tree another
-  agent uses. On the shared box, seed a fresh worktree (no `.lake` yet) from a quiescent warm checkout:
-  `python3 -I scripts/worktree-setup.py <warm-source> <wt>` (run the script from a checkout that has it).
-  The toolchain, manifest and Lake configuration must match. This reuses packages **and project build
-  artifacts**: hard-links only the Lean outputs Lake v4.35 unlinks before rebuilding; copies mutable
-  traces, hashes, setup files, native outputs, package sources and Git metadata. Do not use `cp -al`
-  on an entire writable `.lake`: Lake overwrites some bookkeeping in place. Never seed from a live
-  watcher/build tree, edit shared outputs in place, or run `lake clean`/cache maintenance on the source
-  during setup. Do not edit linked artifacts manually; use Lake to rebuild. Re-audit the helper on a
-  Lean upgrade. No `lake exe cache get` on the box; normal builds use `LAKE_RESTORE_ARTIFACTS=true`.
-  Warm seeding is not a guaranteed setup speedup (measurements: `docs/notes/box-capacity.md`).
+  agent uses.
   No `git checkout <path>`, `git restore`, `git stash` or `git reset` that discards or hides work (plan §7):
   commit first, or ask.
-- **Every build in a job** (shared memory pool; OOM kills hit everyone):
-  from your worktree, agent builds and checks use
-  `scripts/agent-job.py <unique-name> -- bash -lc 'LAKE_RESTORE_ARTIFACTS=true <cmd>'`.
-  It waits through the per-user FIFO (two agent slots), delegates to `job --mem 16G --cpus 8
-  consensus-lean`, and returns the job's exit status. Landings stay on `job`, outside this queue.
-  One build at a time per agent; reviewers never build.
 - **Iterate locally:** `lake env lean <file>` for one file (its imports built), or
   `turbo-lean check <file> --decl <name>` for a single declaration only. `lake build` stays the gate.
   `lake build` builds only `ConsensusLean` by default; `lake test` builds `ConsensusLeanTest`
   (the lakefile's `testDriver`, not a default target).
   A single-module build does **not** check downstream callers after an interface change: use
-  `scripts/check-changed.sh` for that. Budget 16G/8 CPU per build; at most two concurrent agent builds
-  across the box while reserving another 16G/8 CPU for landings. Check `jobs-all` and available memory first;
-  do not infer spare capacity from warm cgroup accounting of shared pages. Concurrent Lake invocations
-  sharing one output directory are not established safe; do not do that. One build per agent still
-  applies. Measurements behind these numbers: `docs/notes/box-capacity.md`.
+  `scripts/check-changed.sh` for that. Concurrent Lake invocations sharing one output directory are not
+  established safe; do not do that.
 - **Generated roots:** `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of
   their library. Regenerate with `lake exe mk_all --lib ConsensusLean --module` and
   `lake exe mk_all --lib ConsensusLeanTest --module`; `check-boundaries.py` fails on an unlisted file.
@@ -67,7 +49,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   tags and on demand (`gh workflow run full.yml [--ref <ref>]`; run it for milestones and toolchain/Mathlib bumps).
   **Green CI means the GitHub check of the commit** (`check` for a PR or a main head, `full` for full
   certification). The earlier #63 rows stay as the record of the old history; new results are not posted there.
-  `scripts/orb-ci.sh`, its helpers and the box units remain in the repository but are unused. A PR is optional (for collaborators who cannot run the checks:
+  A PR is optional (for collaborators who cannot run the checks:
   `CONTRIBUTING.md` "Working together"), also for a trusted-surface change (below). The commit message (or PR body) ends with a cost line
   (`Cost: <agent-h> agent-h, <models>, <CPU-h> CPU-h`) and states the reason if the change makes build or CI
   time worse. An agent's commit also names the model in a trailer after the cost line,

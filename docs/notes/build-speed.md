@@ -122,7 +122,7 @@ min). Lake 4.35 has it built in: `lake cache put <mappings> --scope …` uploads
 an S3-compatible bucket (`LAKE_CACHE_KEY`), and `lake cache get --scope …` restores them, searching
 up to 100 earlier revisions. It needs a bucket and a key, and the box CI to upload after each
 green main build; an owner decision, not done here. The nightly full tier must keep building with
-`LAKE_ARTIFACT_CACHE=false` (as `scripts/orb-ci.sh` does).
+`LAKE_ARTIFACT_CACHE=false` (as `scripts/check.sh` does for its rebuild checks).
 
 ## What did not help (do not retry without a new idea)
 

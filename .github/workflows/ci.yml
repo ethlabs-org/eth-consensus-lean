@@ -91,17 +91,6 @@ jobs:
           lake --version
           jq --version
 
-      # The self-tests of scripts/ci-sandbox.sh (step 0) and test_orb_ci.py's sandbox case run bubblewrap; Ubuntu
-      # 24.04 ships without it and blocks unprivileged user namespaces through AppArmor. Without this step the
-      # sandbox self-test fails (its "ok" probes refuse to run unsandboxed): runs 41800845655 and 41830574497, 2026-11-04.
-      - name: Bubblewrap (sandbox self-tests)
-        if: steps.docs.outputs.docs_only != 'true'
-        run: |
-          set -euo pipefail
-          sudo apt-get update -q && sudo apt-get install -y -q bubblewrap
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          bwrap --ro-bind / / --unshare-all true    # smoke: fails the job if user namespaces are still blocked
-
       # Saved only right after `cache get` below, so an exact hit always holds Mathlib's oleans and `cache get` (a
       # ~22 s no-op then) is skipped. A docs-only run, which skips `cache get`, never saves it.
       - name: Restore Lake packages
