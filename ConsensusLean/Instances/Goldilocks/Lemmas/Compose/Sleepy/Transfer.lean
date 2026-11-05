@@ -189,8 +189,16 @@ private theorem vote_time_le (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
   have h : tr.time k ≤ sp.ts (e.msg.slot : Int) + sp.Δ := (cast_head_fcRoot hr hx ⟨hc, he⟩).2
   have h2 : sp.ts (e.msg.slot : Int) ≤ sp.ts (s : Int) := by
     unfold SAParams.ts
-    exact mul_le_mul_of_nonneg_left (by exact_mod_cast hs) (by linarith [sp.toParams.hΔ])
-  linarith
+    exact mul_le_mul_of_nonneg_left (by exact_mod_cast hs)
+      (mul_nonneg (by norm_num) sp.toParams.hΔ.le)
+  exact h.trans (add_le_add h2 le_rfl)
+
+private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ ≤ x + b * sp.Δ :=
+  add_le_add le_rfl (mul_le_mul_of_nonneg_right h sp.toParams.hΔ.le)
+
+private theorem add_mul_delta_add_delta (x a : Time) :
+    x + a * sp.Δ + sp.Δ = x + (a + 1) * sp.Δ := by
+  rw [add_assoc, add_one_mul]
 
 variable {b : Time} {s₀ : Nat}
 
@@ -231,7 +239,8 @@ private theorem honest_batch_carry_win (hrun : GoldilocksRun proposer dg H tr)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hti := (honest_vote_restarts hrun hnc hy hc hs).2
   have hsync := syncAC_of_window hrun hwin (a := sp.ts s₀) (b' := sp.ts s + 2 * sp.Δ) le_rfl
-    (by linarith)
+    (le_sub_iff_add_le.2 ((add_mul_delta_add_delta _ _).trans_le
+      ((add_mul_delta_le (by norm_num)).trans (hti.trans hib))))
   -- each vote of the batch, with its own validator as the writer
   have hone : ∀ v ∈ {v | ∃ x ∈ H, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = s},
       SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s {v} := by
@@ -243,7 +252,7 @@ private theorem honest_batch_carry_win (hrun : GoldilocksRun proposer dg H tr)
       hU.1 ((SA.frameIn_of_callAt hr hx hck).2 hHd) hHv (hHdr.trans hHvr.symm)
     have hkt' : tr.projAC.time k < sp.ts s + 2 * sp.Δ := by
       rw [hvs] at hkt
-      linarith
+      exact hkt.trans_lt (add_lt_add_of_le_of_lt le_rfl (lt_mul_of_one_lt_left hΔ (by norm_num)))
     refine carryAt_of_writer_win hr hsync (ts_le_ts hs₀) le_rfl hx hy hc hs ?_
       (acceptedBefore_of_old hrun hold hx)
     rintro v rfl
@@ -281,7 +290,7 @@ theorem honest_batch_carry_before (hrun : GoldilocksRun proposer dg H tr)
       hU.1 ((SA.frameIn_of_callAt hr hx hck).2 hHd) hHv (hHdr.trans hHvr.symm)
     have hkt' : tr.projAC.time k < sp.ts s + 2 * sp.Δ := by
       rw [hvs] at hkt
-      linarith
+      exact hkt.trans_lt (add_lt_add_of_le_of_lt le_rfl (lt_mul_of_one_lt_left hΔ (by norm_num)))
     refine carryAt_of_writer_before hr hsync.ac
       hx hy hc hs hib ?_
     rintro v rfl
@@ -498,7 +507,8 @@ private theorem later_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc 
   · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot hr hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
   exact vote_extends_of_batch hrun' hy hc hs (Or.inl hvB) hall
-    (faults_lt_honest_voters_win hrun hnc hwin hs₀ (by linarith))
+    (faults_lt_honest_voters_win hrun hnc hwin hs₀ ((add_le_add le_rfl
+      (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib)))
     (honest_batch_carry_win hrun hnc hwin hs₀ hy hc hs hib hold hall
       (Anc.mono hΦU (hΦ.rooted.2 B hvB.1.1))) hlocks
 
@@ -518,7 +528,8 @@ theorem later_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : 
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hti := (honest_vote_restarts hrun hnc hy hc hs).2
-  obtain ⟨x, hx, k, e', hv, hvs⟩ := honest_vote_exists_upTo hrun hnc hpre s (by linarith)
+  obtain ⟨x, hx, k, e', hv, hvs⟩ := honest_vote_exists_upTo hrun hnc hpre s ((add_le_add le_rfl
+    (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib))
   exact later_transfer_win hrun hnc hpre.window (Nat.zero_le s) hy hc hs hib (hold_zero hrun)
     (vote_frame_upTo hrun hnc hpre hP hy hc hs hib hB hBc
       ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩)
@@ -601,7 +612,9 @@ theorem votes_below_succ_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
         exact later_transfer_step_upTo hrun hnc hpre hP hy hc hs hib (origin_mem hrun hnc hC.origin)
           (fun C' j' hC' hj' => originsBelowUpTo_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
           (fun x hx k e' hv hs' => votesBelowUpTo_iff.1 hV C j hC x hx k e' hv
-            (by linarith [vote_time_le hrun hnc hx hv hs'.le]) (by omega) hs'.le) hE
+            ((vote_time_le hrun hnc hx hv hs'.le).trans ((add_le_add le_rfl
+              (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib)))
+            (by omega) hs'.le) hE
       · exact first_transfer_step_upTo hrun hnc hpre hP hy hc hs hib hC hE
   refine votesBelowUpTo_iff.2 fun C j hC y hy i e hv hib hj hm => ?_
   rcases Nat.lt_or_ge e.msg.slot (s + 1) with h | h
@@ -632,7 +645,9 @@ theorem votes_below_succ_before (hrun : GoldilocksRun proposer dg H tr)
           (origin_mem hrun hnc hC.origin)
           (fun C' j' hC' hj' => originsBelowUpTo_iff.1 hP C j C' j' (by omega) (by omega) hC hC')
           (fun x hx k e' hv hs' => votesBelowUpTo_iff.1 hV C j hC x hx k e' hv
-            (by linarith [vote_time_le hrun hnc hx hv hs'.le]) (by omega) hs'.le) hE
+            ((vote_time_le hrun hnc hx hv hs'.le).trans ((add_le_add le_rfl
+              (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib)))
+            (by omega) hs'.le) hE
       · exact first_transfer_step_before hrun hnc hb hsync hfb hP hy hc hs hib hC hE
   refine votesBelowUpTo_iff.2 fun C j hC y hy i e hv hib hj hm => ?_
   rcases Nat.lt_or_ge e.msg.slot (s + 1) with h | h

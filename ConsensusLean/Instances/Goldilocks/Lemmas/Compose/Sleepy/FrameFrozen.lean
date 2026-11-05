@@ -46,9 +46,15 @@ theorem deadline_le_of_restarts {y : Fin sp.n} {c : Nat} {a : Time}
   unfold RunTrace.deadline
   rcases hw : tr.lastWake y c with _ | w
   · change τ + Δ' ≤ max τ a + Δ'
-    linarith [le_max_left τ a]
+    exact add_le_add (le_max_left τ a) le_rfl
   · change max τ w + Δ' ≤ max τ a + Δ'
-    linarith [max_le_max (le_refl τ) (lastWake_le h w hw)]
+    exact add_le_add (max_le_max (le_refl τ) (lastWake_le h w hw)) le_rfl
+
+private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ ≤ x + b * sp.Δ :=
+  add_le_add le_rfl (mul_le_mul_of_nonneg_right h sp.toParams.hΔ.le)
+
+private theorem add_mul_delta_lt {x a b : Time} (h : a < b) : x + a * sp.Δ < x + b * sp.Δ :=
+  add_lt_add_of_le_of_lt le_rfl (mul_lt_mul_of_pos_right h sp.toParams.hΔ)
 
 private theorem optimistic_stamp (A : SA.SAState sp.n) (Φ : SA.Frm sp.n (List (FG.Att sp.n)))
     (t : Time) : (SA.optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
@@ -110,8 +116,8 @@ private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hn
     have h1 : tr.time k ≤ sp.ts (e'.msg.slot : Int) + sp.Δ := hkt
     have h2 : sp.ts (e'.msg.slot : Int) ≤ sp.ts (s : Int) := by
       unfold SAParams.ts
-      exact mul_le_mul_of_nonneg_left (by exact_mod_cast hs') (by linarith)
-    linarith
+      exact mul_le_mul_of_nonneg_left (by exact_mod_cast hs') (mul_nonneg (by norm_num) hΔ.le)
+    exact h1.trans (add_le_add h2 le_rfl)
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hrs' : ∀ c ≤ i, tr.RestartAt y c → tr.time c ≤ sp.ts s := fun c hc' ⟨ℓr, hcr, hrr⟩ =>
     hrs c hc' ⟨ℓr, projAC_callAt.2 hcr, hrr⟩
@@ -125,17 +131,20 @@ private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hn
     rw [frame_of_projAC hrun hy hc.1] at hFHd; exact hFHd
   have hdl : ∀ c ≤ i, tr.deadline y c (tr.time m) sp.Δ ≤ sp.ts s + 2 * sp.Δ := fun c hc' => by
     have := deadline_le_of_restarts (fun k hk hr' => hrs' k (hk.trans hc') hr') (tr.time m) sp.Δ
-    have := max_le hmt (show sp.ts s ≤ sp.ts s + sp.Δ by linarith)
-    linarith
+    refine this.trans ?_
+    rw [two_mul, ← add_assoc]
+    exact add_le_add (max_le hmt (le_add_of_nonneg_right hΔ.le)) le_rfl
   -- `Sync` relays the acceptance to `y` before `t_s + 2Δ`
   by_cases hm₀ : sp.ts s₀ ≤ tr.time m
   swap
   · exact hold x hx m Hd (projFG_callAt.1 hA) (not_le.1 hm₀) hFHd
-  have hdi : tr.deadline y i (tr.time m) sp.Δ ≤ tr.time i := by
-    linarith [hdl i le_rfl]
+  have hdi : tr.deadline y i (tr.time m) sp.Δ ≤ tr.time i :=
+    (hdl i le_rfl).trans ((add_mul_delta_le (by norm_num)).trans hti)
   have delivered := hservice.elim
     (fun hwin => (sleepyWindow_iff.1 hwin).2.1.relay x hx m Hd
-      (projFG_callAt.1 hA) ⟨hm₀, by linarith⟩ y hy i ⟨_, projAC_callAt.1 hc.1⟩ hdi hFy)
+      (projFG_callAt.1 hA) ⟨hm₀, le_sub_iff_add_le.2 ((add_le_add hmt le_rfl).trans (by
+        rw [add_assoc, ← two_mul]; exact (add_mul_delta_le (by norm_num)).trans (hti.trans hib)))⟩
+      y hy i ⟨_, projAC_callAt.1 hc.1⟩ hdi hFy)
     (fun hsync => hsync.relay x hx m Hd (projFG_callAt.1 hA) (hrun.time_nonneg m)
       y hy i ⟨_, projAC_callAt.1 hc.1⟩ (hdi.trans hib) hdi hFy)
   obtain ⟨k', hk'i, hAy, hk't⟩ := delivered
@@ -143,7 +152,8 @@ private theorem honest_head_accepted (hrun : GoldilocksRun proposer dg H tr) (hn
   have hk't' : tr.time k' < tr.deadline y k' (tr.time m) sp.Δ := hk't
   have := hdl k' hk'i
   exact Or.inr ⟨k' + 1, ⟨ℓy, projAC_callAt.2 hcy, hby⟩, by
-    change tr.time (k' + 1) < _; rw [hty]; linarith⟩
+    change tr.time (k' + 1) < _; rw [hty]
+    exact hk't'.trans_le (this.trans (add_mul_delta_le (by norm_num)))⟩
 
 /-- The emissions of `ac_on_tick` are made at `t_σ + Δ` only. -/
 private theorem acOnTick_emits {self : Fin sp.n} {A : SA.SAState sp.n}
@@ -194,7 +204,8 @@ theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hT : sp.ts s + 3 * sp.Δ < tr.projAC.time i := by
-    change sp.ts s + 3 * sp.Δ < tr.time i; linarith
+    change sp.ts s + 3 * sp.Δ < tr.time i
+    exact (add_mul_delta_lt (by norm_num)).trans_le hti
   -- in the voter's frame
   obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy _ _ hc.1
   have hXt : X ∈ ℓ.frame.tree := by
@@ -206,11 +217,12 @@ theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
     · have hki : k ≤ i := by
         by_contra h
         have := hr.time_mono (le_of_not_ge h)
-        linarith
+        exact lt_irrefl _ (hT.trans (this.trans_lt hkt))
       exact SA.mem_tree_of_acceptAt sp hr hy hk hki hc.1 hFX
   -- its stamp before the call is below the freeze
   have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hXt hacc
-    (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk) (by linarith)) (Or.inl hT.le)
+    (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk)
+      (lt_add_of_pos_right _ (mul_pos (by norm_num) hΔ))) (Or.inl hT.le)
   -- the call does not receive `X`, so the read point keeps that stamp
   have hne : ∀ B, ℓ.call = .block B → X.root ≠ B.root := by
     intro B hcall hXB

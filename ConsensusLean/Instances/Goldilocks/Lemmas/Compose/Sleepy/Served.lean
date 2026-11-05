@@ -385,7 +385,8 @@ private theorem served_tick (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.
     rcases hLσ.2.lt_or_eq with hlt | heq
     · by_contra hn
       obtain ⟨k, hk, hk1, hk2⟩ := hrun.restart_at_wake y hy _ _ hT0 hlt hn hrd.awake
-      linarith [hres k hk hk2]
+      exact absurd (hres k hk hk2)
+        (not_le.2 ((lt_add_of_pos_right _ (mul_pos two_pos hΔ)).trans hk1))
     · rw [heq]; exact hrd.awake
   obtain ⟨j₁, x₁, hj₁⟩ := hrun.tick_of_awake y hy _ hT0
     (Dvd.intro (4 * (L : Int) + 2) (by simp only [SAParams.ts]; ring)) hwT
@@ -467,10 +468,8 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
   obtain ⟨hTt, hres, jc, hjci, ℓj, hcj, htj⟩ := served_tick hrun hy hrd hL
   have hres' : ∀ r, tr.projAC.RestartAt y r → tr.projAC.time r ≤ t → tr.projAC.time r ≤ sp.ts L :=
     fun r ⟨ℓr, hcr, hrr⟩ hrt => hres r ⟨ℓr, projAC_callAt.1 hcr, hrr⟩ hrt
-  have hjct : ∀ r ≤ jc, tr.projAC.time r ≤ t := fun r h => by
-    have := hr.time_mono h
-    change _ ≤ tr.time jc at this
-    linarith
+  have hjct : ∀ r ≤ jc, tr.projAC.time r ≤ t := fun r h =>
+    (hr.time_mono h).trans (htj.trans_le hTt)
   obtain ⟨ℓ', hcall, hem⟩ := hv
   obtain ⟨⟨Hd', hHd'Φ, hHd'r, -⟩, htj'⟩ := cast_head_fcRoot hr hx ⟨hcall, hem⟩
   obtain rfl : Hd' = Hd :=
@@ -490,11 +489,11 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       rwa [hU.1 hHd ⟨y, hy, jc, hgen⟩ hg]
     · have hkt : tr.projAC.time k ≤ sp.ts L + sp.Δ := (hr.time_mono hk).trans htj'
       have hdl : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
-        have := ac_deadline_le_of_restarts (fun r hr' hrr => hres' r hrr (hjct r hr'))
-          (tr.projAC.time k)
         change _ ≤ tr.time jc
-        rw [htj]
-        linarith [max_le hkt (show sp.ts L ≤ sp.ts L + sp.Δ by linarith)]
+        rw [htj, two_mul, ← add_assoc]
+        exact (ac_deadline_le_of_restarts (fun r hr' hrr => hres' r hrr (hjct r hr'))
+          (tr.projAC.time k)).trans
+          (add_le_add (max_le hkt (le_add_of_nonneg_right hΔ.le)) le_rfl)
       obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ : ∃ k₂ ≤ jc, tr.projAC.AcceptAt y k₂ Hd' ∧
           tr.projAC.time k₂ < sp.ts L + 2 * sp.Δ := by
         have finish : (∃ k₂ ≤ jc, tr.projAC.AcceptAt y k₂ Hd' ∧
@@ -506,13 +505,16 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
             (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hk₂j)))
             (tr.projAC.time k)
           have hmax : max (tr.projAC.time k) (sp.ts L) ≤ sp.ts L + sp.Δ :=
-            max_le hkt (by linarith)
-          exact ⟨k₂, hk₂j, hk₂, by linarith⟩
+            max_le hkt (le_add_of_nonneg_right hΔ.le)
+          refine ⟨k₂, hk₂j, hk₂, hk₂t.trans_le (hd₂.trans ?_)⟩
+          rw [two_mul, ← add_assoc]
+          exact add_le_add hmax le_rfl
         rcases hsync with hsync | ⟨a, hsync, hcatch, ha⟩
         · apply finish
           exact hsync.elim
             (fun h => h.2 x hx k Hd' hkA (hr.time_nonneg k)
-              (by have hkt' : tr.time k ≤ sp.ts L + sp.Δ := hkt; linarith)
+              (le_sub_iff_add_le.2 ((add_le_add hkt le_rfl).trans
+                (by rw [add_assoc, ← two_mul]; exact hTt)))
               y hy jc ℓj hcj hdl hFj)
             (fun h => h.relay x hx k Hd' hkA (hr.time_nonneg k)
               y hy jc ℓj hcj (hdl.trans (hjct jc le_rfl)) hdl hFj)
@@ -521,12 +523,13 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
           · exact finish (hsync.relay x hx k Hd' hkA hka y hy jc ℓj hcj
               (hdl.trans (hjct jc le_rfl)) hdl hFj)
           · obtain ⟨k₂, hk₂j, hk₂, hk₂t⟩ := hcatch.relay x hx k Hd' hkA (lt_of_not_ge hka)
-              y hy jc ℓj hcj (by change a + _ ≤ tr.time jc; rw [htj]; linarith)
+              y hy jc ℓj hcj
+              (by change a + _ ≤ tr.time jc; rw [htj]; exact add_le_add ha le_rfl)
               (hjct jc le_rfl) hFj
-            exact ⟨k₂, hk₂j, hk₂, by linarith⟩
+            exact ⟨k₂, hk₂j, hk₂, hk₂t.trans_le (add_le_add ha le_rfl)⟩
       have h1 := (SA.accept_new sp hr hy hk₂).1
       obtain ⟨ℓk, hck, hkc⟩ := hk₂
-      refine ⟨?_, Or.inr ⟨k₂, ⟨ℓk, hck, hkc⟩, by linarith⟩⟩
+      refine ⟨?_, Or.inr ⟨k₂, ⟨ℓk, hck, hkc⟩, hk₂t⟩⟩
       have h2 := h1 ℓk hck
       rw [frame_of_projAC hrun hy hck] at h2
       exact (fg_grows hrun hy hk₂j).1 h2.1
@@ -538,9 +541,8 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
       (hanc jc) (hgr.2.trans hF) hinj⟩
   have hst := SA.blockStamp_lt_of_acceptedBefore sp hr hy hcj (by rw [hframe]; exact hHdjc) hacc
     (fun k hk hrk => by
-      have h3 : tr.time k ≤ sp.ts L := hres' k hrk (hjct k hk)
       change tr.time k < _
-      linarith)
+      exact (hres' k hrk (hjct k hk)).trans_lt (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
     (Or.inl (by change _ ≤ tr.time jc; rw [htj]))
   refine ⟨⟨hgr.1 hinj, anc_of_anc_superset hU (fun X hX => ⟨y, hy, i, hX⟩)
     (by simp [Params.genesisBlock]) (hanc i) hF (hgr.1 hinj)⟩, ?_⟩
@@ -548,7 +550,8 @@ private theorem head_in_frame (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     hjci (fun r h1 h2 hrr => ?_) (lt_trans hst (htop _))
   have h3 : tr.time r ≤ sp.ts L := hres' r hrr (hrd.before r h2)
   have h4 : tr.time jc ≤ tr.time r := hr.time_mono h1
-  linarith
+  rw [htj] at h4
+  exact absurd (h4.trans h3) (not_le.2 (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
 
 /-- Honest latest-view voters support a held target when their votes extend it and their
 heads are relayed with finite stamps. The target-vote and relay premises are independent of
@@ -666,22 +669,22 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) L).2 (by omega)
   have hres' : ∀ r, tr.projAC.RestartAt y r → tr.projAC.time r ≤ t → tr.projAC.time r ≤ sp.ts L :=
     fun r ⟨ℓr, hcr, hrr⟩ hrt => hres r ⟨ℓr, projAC_callAt.1 hcr, hrr⟩ hrt
-  have hjct : ∀ r ≤ jc, tr.projAC.time r ≤ t := fun r h => by
-    have := hr.time_mono h
-    change _ ≤ tr.time jc at this
-    linarith
+  have hjct : ∀ r ≤ jc, tr.projAC.time r ≤ t := fun r h =>
+    (hr.time_mono h).trans (htj.trans_le hTt)
   have hdl : ∀ c ≤ jc, tr.projAC.deadline y c (tr.projAC.time k) ≤ tr.projAC.time k + sp.Δ :=
     fun c hcj' => (ac_deadline_le_of_restarts
       (fun r hr' hrr => hres' r hrr (hjct r (hr'.trans hcj'))) _).trans
       (by rw [max_eq_left hk0])
   have hdj : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
-    have := hdl jc le_rfl; change _ ≤ tr.time jc; rw [htj]; linarith
+    change _ ≤ tr.time jc; rw [htj, two_mul, ← add_assoc]
+    exact (hdl jc le_rfl).trans (add_le_add hk le_rfl)
   have served : SA.MessageServedBefore tr.projAC y jc (tr.projAC.time k) e.msg := by
     rcases hsync with hsync | ⟨a, hsync, ha⟩
     · exact hsync.elim
         (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
           (h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
-          (by have hk' : tr.time k ≤ sp.ts L + sp.Δ := hk; linarith) y hy jc ℓj hcj hdj)))
+          (le_sub_iff_add_le.2 ((add_le_add hk le_rfl).trans
+            (by rw [add_assoc, ← two_mul]; exact hTt))) y hy jc ℓj hcj hdj)))
         (fun h => h.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
           y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj)
     · rw [← hL] at ha
@@ -699,12 +702,13 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
         have hbound := hres' jc ⟨ℓr, hcr, hrr'⟩ (hrd.before jc hri)
         change tr.time jc ≤ _ at hbound
         rw [htj] at hbound
-        linarith
+        exact absurd hbound (not_le.2 (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
       · have h₁ := hprev jc (by omega) ℓj hcj
         have h₂ := hres' r ⟨ℓr, hcr, hrr'⟩ (hrd.before r hri)
         change tr.time jc < _ at h₁
         rw [htj] at h₁
-        linarith) L
+        exact lt_irrefl _ (h₂.trans_lt ((lt_add_of_pos_right _ (mul_pos two_pos hΔ)).trans
+          (h₁.trans hu)))) L
     rcases (SA.poolEvidenceBefore_iff _ _ _).mp evidence with hv |
       ⟨a, _, _, hav, _, has, _, ha, _⟩
     · exact ⟨e.msg, mem_latest_votes hrun hnc hy hL
@@ -712,22 +716,26 @@ private theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc 
     · exact ⟨a, mem_latest_votes hrun hnc hy hL
         (hmono (by simpa only [has, hes] using ha.1)), hav.trans hval⟩
   obtain ⟨k', hk'j, hkk', hp, hk'dl⟩ := served
-  have hk'dl' : tr.projAC.time k' < sp.ts L + 2 * sp.Δ := by
-    have := hdl k' hk'j; linarith
+  have hk'dl' : tr.projAC.time k' < sp.ts L + 2 * sp.Δ :=
+    hk'dl.trans_le ((hdl k' hk'j).trans
+      (by rw [two_mul, ← add_assoc]; exact add_le_add hk le_rfl))
   have hk'i : k' < i :=
-    lt_of_lt_of_le (lt_of_le_of_ne hk'j (by rintro rfl; change tr.time k' < _ at hk'dl'; linarith))
+    lt_of_lt_of_le (lt_of_le_of_ne hk'j (by rintro rfl; exact hk'dl'.ne htj))
       hjci
   have hts1 : sp.ts ((L + 1 : Nat) : Int) = sp.ts L + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hsk' : sp.slot (tr.projAC.time k') = L :=
-    SA.slot_of_mem sp L (hk0.trans hkk') (by rw [hts1]; linarith)
+    SA.slot_of_mem sp L (hk0.trans hkk') (by
+      rw [hts1]
+      exact hk'dl'.trans
+        (add_lt_add_of_le_of_lt le_rfl (mul_lt_mul_of_pos_right (by norm_num) hΔ)))
   have hpm := SA.pool_mono hr hy (Nat.succ_le_of_lt hk'i) (fun r hr1 hr2 hrr => by
     obtain ⟨ℓr, hcr, hrr'⟩ := hrr
     obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr'
     obtain ⟨ℓ', hc', -⟩ := hp
     have h1 := hprev k' (by omega) ℓ' hc'
     have h2 := hres' r ⟨ℓr, hcr, hrr'⟩ (hrd.before r hr2)
-    linarith) L
+    exact lt_irrefl _ (h1.trans (hu.trans_le (h2.trans (hk0.trans hkk'))))) L
   rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
     h | ⟨a, ha, -, -, -, hav, -⟩
   · rw [hes] at h
