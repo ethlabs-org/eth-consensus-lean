@@ -34,7 +34,7 @@ infinite runs, which the obligations proof's finite model runs never satisfy (`d
 Current compiled audit: source `70e90b44` (main after `final_reset_premises` e621acd7, `healthy_confirmed_supply` db4b864f, `healthy_repair_schedule` f4997e9f and `outage_repair` 70e90b44, #136),
 regenerated in an Amp orb with `scripts/obligations-status.py`. The JSON records
 the exact source pin separately from its publication commit.
-Machine-readable rows and per-field edges are in `docs/obligations-status.json`.
+Machine-readable rows and per-field edges are in `docs/notes/obligations-status.json`.
 Regenerate with `python3 scripts/obligations-status.py` after building `ConsensusLean`
 and `spec-surface`, on every ledger update. Historical former sorry declarations
 since fd7f498 (`eed6d0b5` in this repository) remain in the inventory; body closure alone is not `lean-proved`.
@@ -208,10 +208,10 @@ Short names in this section are in `Consensus.Goldilocks` or its `Simulation` an
 namespaces.
 `C` abbreviates the set `{contract_catchUp, contract_heal, contract_latency}`. Since 4078bc74 none of
 them reaches `sorryAx`; the table below is since 4078bc74 (audit at 70e90b44)
-(`docs/obligations-status.json`, `fields`). `contract_coefficients_catchUp` and
+(`docs/notes/obligations-status.json`, `fields`). `contract_coefficients_catchUp` and
 `contract_coefficients_heal` are proved by `rfl`; neither is an owner.
 The rows that reach the final branch name their current owners from the fresh audit
-(`docs/obligations-status.json`, route A, #136). Since e621acd7 the final branch has no direct sorry
+(`docs/notes/obligations-status.json`, route A, #136). Since e621acd7 the final branch has no direct sorry
 owner: `final_reset_premises`, `final_window_extract` and `final_duty_proposal` have closed bodies. `final_inherited_progress` and `final_row_signers` are retired
 (route A), not proved; their earlier rows are kept under `retired` in the status ledger.
 `final_cache_acceptance` has a closed body and, since 4078bc74, a sorry-free closure. It is not a

@@ -283,7 +283,7 @@ def main():
     # The ledger's first audit (old-lineage fd7f498, before the 2026-11-04 cutover; same tree).
     baseline = run('git', 'rev-parse', 'eed6d0b5').strip()
     head = run('git', 'rev-parse', 'HEAD').strip()
-    path = Path('docs/obligations-status.json')
+    path = Path('docs/notes/obligations-status.json')
     previous = json.loads(path.read_text()) if path.exists() else {'rows': []}
     card_repositories(previous)
     if args.ingest_cards:

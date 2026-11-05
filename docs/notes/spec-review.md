@@ -67,7 +67,7 @@ the checks enforce.
 
 This record compares `2852f717` (the informal "B1 fixes" review) with the approved commit. It was written
 with git, Python and file reads only; the evidence script below reruns every textual claim.
-[TRUST.md](../TRUST.md) and [README.md](../README.md) give the fuller contract and assumptions.
+[TRUST.md](../../TRUST.md) and [README.md](../../README.md) give the fuller contract and assumptions.
 
 ## Protected paths and declarations
 

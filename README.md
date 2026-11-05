@@ -685,7 +685,7 @@ In `scripts/`:
 - `LICENSE.EthLib`, `vendor.sha256`: CC0 licence and hashes of every vendored copy.
 - `fixtures/`: build (`--wfail`), boundary, `sorry` placement, axiom-audit, Spec-surface, review-pin, grep, pins, docs, comparator and Lake-check controls.
 - `metrics-baseline.py`: report-only module metrics per layer of `boundaries.toml`
-  (`docs/metrics-baseline.md`); step 13 prints its totals.
+  (`docs/notes/metrics-baseline.md`); step 13 prints its totals.
 
 The fixture libraries are `Challenge` (`Challenge.lean`, comparator statements
 with placeholder proofs, importing exactly `ConsensusLean.Statements.Review` and the
@@ -964,10 +964,10 @@ at the base. A trusted-surface change is **recorded, not gated** (owner, 2026-11
 why>` line (`scripts/review-boundary.sh`, with fixtures, fails without it), so `git log --grep='^Trusted-surface:'`
 lists them, and push-main comments each landing on [#129](https://github.com/ethlabs-org/consensus-lean-coordination/issues/129).
 The annotated tag `spec-approved` (an agent approval from 2026-10-30) is retired and stays at its last commit; the
-approvals made under it are in `docs/spec-review.md`. The check infrastructure (`scripts/**`, `.github/**`,
+approvals made under it are in `docs/notes/spec-review.md`. The check infrastructure (`scripts/**`, `.github/**`,
 `lakefile.toml`, `lakefile.lean`, which must not exist) is not on the trusted surface: agents maintain it (`TRUST.md`).
 Reading the snapshot diff is part of making a Spec change; the comparator cannot replace that
-reading. `docs/spec-review.md` records what was approved and what changed since 2852f717.
+reading. `docs/notes/spec-review.md` records what was approved and what changed since 2852f717.
 
 Design and history: `docs/decisions.md` summarises the design decisions; the full record is in the workbench:
 the index of this repository's decisions, plans and research is

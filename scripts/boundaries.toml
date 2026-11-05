@@ -856,7 +856,7 @@ name_index_module = "ConsensusLeanTest.Index"
 # line in every commit that touches these paths (it reads this list at HEAD and at the base, and checks their union,
 # as literal paths), and push-main.sh records each such landing on issue #129. Not an approval gate (2026-11-01).
 # check-boundaries.py requires plain relative paths that cover the file of every module of a trusted layer:
-# each prefix of those layers as a file and as a directory. docs/spec-review.md records them.
+# each prefix of those layers as a file and as a directory. docs/notes/spec-review.md records them.
 trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean/Core.lean", "ConsensusLean/Core",
                  "ConsensusLean/Spec.lean", "ConsensusLean/Spec", "ConsensusLean/Statements.lean",
                  "ConsensusLean/Statements", "ConsensusLean/ToMathlib.lean", "ConsensusLean/ToMathlib",

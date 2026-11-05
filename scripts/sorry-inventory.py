@@ -98,7 +98,7 @@ def inventory(config, rows, records):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ledger", type=Path, default=Path("docs/obligations-dependencies.md"))
+    parser.add_argument("--ledger", type=Path, default=Path("docs/notes/obligations-dependencies.md"))
     parser.add_argument("--json-out", type=Path, required=True)
     args = parser.parse_args()
     result = {"schema_version": 1, "mode": "report-only", "status": "incomplete",

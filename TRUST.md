@@ -116,7 +116,7 @@ every new commit's author, committer and co-author addresses are on the public a
 
 Step 3c is **report only**, not a new trust gate. `scripts/sorry-inventory.py` reads the
 `toml sorry-inventory` block (`modules`, `roots`) of the obligations ledger
-(`docs/obligations-dependencies.md`) and its compiled tables headed `Declaration` and
+(`docs/notes/obligations-dependencies.md`) and its compiled tables headed `Declaration` and
 `Paper argument/status`. Names must be fully qualified; other
 tables are explicitly listed as excluded (planned/draft material is not compiled coverage).
 Missing ledger, empty/missing roots, stale artifacts, nonexistent rows and unmapped direct
@@ -201,7 +201,7 @@ requires every non-merge commit that touches them to carry a `Trusted-surface: <
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.ObligationsSufficient`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
-The `spec-approved` tag is retired (2026-11-01); its approvals are recorded in `docs/spec-review.md`.
+The `spec-approved` tag is retired (2026-11-01); its approvals are recorded in `docs/notes/spec-review.md`.
 
 ## Assumed, not proved; per-instance bindings
 

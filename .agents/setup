@@ -47,7 +47,7 @@ install_toolchain() {
 
 # lakeprof (Kha/lakeprof, Apache-2.0), pinned: build-level profiles (per-module times, critical path,
 # simulated parallelism, Chrome trace). Orbs only: external code is not installed on the shared box
-# (docs/metrics-baseline.md). Linked into /usr/local/bin like the elan proxies. Optional: a failure
+# (docs/notes/metrics-baseline.md). Linked into /usr/local/bin like the elan proxies. Optional: a failure
 # only warns (see `optional` below).
 install_lakeprof() {
   local rev=4b456daea316fae73974c468e52b9b1807f6007d bin
@@ -116,7 +116,7 @@ $marker
     https://ui.perfetto.dev). \`lakeprof diff\` compares two logs.
   - Before/after of a proof-speed change: \`python3 -I scripts/time-modules.py -o out.tsv <modules>\`
     (each module alone, Lake's own setup), interleaved base/new, best of two on the same machine.
-    Historical measurements and failed experiments: \`docs/build-speed.md\`.
+    Historical measurements and failed experiments: \`docs/notes/build-speed.md\`.
 $end
 EOF
 }

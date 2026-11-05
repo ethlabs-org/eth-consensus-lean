@@ -22,7 +22,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   watcher/build tree, edit shared outputs in place, or run `lake clean`/cache maintenance on the source
   during setup. Do not edit linked artifacts manually; use Lake to rebuild. Re-audit the helper on a
   Lean upgrade. No `lake exe cache get` on the box; normal builds use `LAKE_RESTORE_ARTIFACTS=true`.
-  Warm seeding is not a guaranteed setup speedup (measurements: `docs/box-capacity.md`).
+  Warm seeding is not a guaranteed setup speedup (measurements: `docs/notes/box-capacity.md`).
   No `git checkout <path>`, `git restore`, `git stash` or `git reset` that discards or hides work (plan §7):
   commit first, or ask.
 - **Every build in a job** (shared memory pool; OOM kills hit everyone):
@@ -40,7 +40,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   across the box while reserving another 16G/8 CPU for landings. Check `jobs-all` and available memory first;
   do not infer spare capacity from warm cgroup accounting of shared pages. Concurrent Lake invocations
   sharing one output directory are not established safe; do not do that. One build per agent still
-  applies. Measurements behind these numbers: `docs/box-capacity.md`.
+  applies. Measurements behind these numbers: `docs/notes/box-capacity.md`.
 - **Generated roots:** `ConsensusLean.lean` and `ConsensusLeanTest.lean` import every module of
   their library. Regenerate with `lake exe mk_all --lib ConsensusLean --module` and
   `lake exe mk_all --lib ConsensusLeanTest --module`; `check-boundaries.py` fails on an unlisted file.
@@ -104,7 +104,7 @@ the archive of the history before the email rewrite; code, branches and PRs are 
   importer. Put a helper that only a new file needs into that file (or into a new module importing what it
   needs), not into a widely imported module: of 40 replayed main commits, the 4 that added a helper to
   `AC/Steps/Nodes`, `AC/Steps/Core` or `Compose/Sleepy/Served` rebuilt 136–164 modules each (3 min on 4
-  cores), 62% of the rebuild time of all 40; the median commit rebuilt in 9 s (`docs/build-speed.md`).
+  cores), 62% of the rebuild time of all 40; the median commit rebuilt in 9 s (`docs/notes/build-speed.md`).
   If the helper needs a hub's private lemmas, move those lemmas to the hub's internal module instead
   of adding the helper to the hub.
 - **Unfinished proofs:** `sorry` only under `Lemmas/` and `Proofs/` (the `sorry = true` layers of

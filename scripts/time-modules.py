@@ -7,7 +7,7 @@ Runs `lean` on each module with the `.setup.json` Lake wrote for it (same option
 CPU count and job count. With `--jobs 1` (the default) each module runs alone. For a before/after
 comparison, use the same machine, toolchain, build options and job count, without competing builds.
 The CPU facts do not identify a physical machine: the caller must still ensure that the runs are
-comparable. Interleave base/new runs and take the best of two rounds (docs/build-speed.md).
+comparable. Interleave base/new runs and take the best of two rounds (docs/notes/build-speed.md).
 
 Exits 1 when the run is incomplete: no module to time, or a module whose run exits nonzero (for
 example, unbuilt imports or stale `.setup.json`). Failed rows are written with their exit code.

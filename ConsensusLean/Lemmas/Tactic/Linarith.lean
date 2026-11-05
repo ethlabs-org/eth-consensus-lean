@@ -9,7 +9,7 @@ Mathlib's `linarith` runs its `natToInt` preprocessor on every hypothesis in the
 comparison is cast to `ℤ` (one `push_cast` per hypothesis) and every `ℕ` atom gets a nonnegativity
 fact. The Goldilocks proofs carry large contexts full of `ℕ` indices and slots, while their
 arithmetic is almost always over `Time = ℤ`, so that preprocessing was a quarter of all `linarith`
-time (`docs/build-speed.md`).
+time (`docs/notes/build-speed.md`).
 
 Importing this module makes plain `linarith` and `nlinarith` (with optional extra terms, no `!`, no
 `only`, no configuration) first run without `natToInt`. If that fails, the tactic framework

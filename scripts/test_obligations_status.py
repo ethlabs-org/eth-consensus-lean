@@ -54,8 +54,8 @@ class StatusTests(unittest.TestCase):
                 file = Path('ConsensusLean/Instances/Goldilocks/Lemmas/Fixture.lean')
                 file.parent.mkdir(parents=True)
                 file.write_text(source)
-                ledger = Path('docs/obligations-status.json')
-                ledger.parent.mkdir()
+                ledger = Path('docs/notes/obligations-status.json')
+                ledger.parent.mkdir(parents=True)
                 if prior_rows is None:
                     prior_rows = [{'name': prefix + n, **prior(n)} for n in names]
                 ledger.write_text(json.dumps({'rows': prior_rows}))
