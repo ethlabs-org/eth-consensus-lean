@@ -1,6 +1,8 @@
 module
-public import ConsensusLean
-public import Solution
+public import ConsensusLean.Spec.Shape.Compile
+public import Mathlib.Algebra.Group.End
+import ConsensusLean.Lemmas.Blocks.Facts
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Test support (moved from the library; no library proof uses them)

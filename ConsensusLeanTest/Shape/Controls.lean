@@ -1,6 +1,9 @@
 module
-public import ConsensusLean
-public import Solution
+public import ConsensusLean.Proofs.RegimesRealizable.Main
+public import ConsensusLean.Spec.Shape.Obligations
+public import ConsensusLean.Examples.Shape.Bft
+import ConsensusLean.Main
+import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLeanTest.Fixtures.Support
 @[expose] public section
 

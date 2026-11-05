@@ -1,5 +1,6 @@
 module
-public import ConsensusLean
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 @[expose] public section

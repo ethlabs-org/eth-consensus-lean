@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.FG.Faulty
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 @[expose] public section
 
 /-! # Witness for `FinalityBeforeGate` (G0.8) and its quorum boundary

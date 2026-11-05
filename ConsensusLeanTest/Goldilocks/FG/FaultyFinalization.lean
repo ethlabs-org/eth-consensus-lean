@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.FG.Faulty
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 @[expose] public section
 
 /-! # A finalization with a faulty validator in the quorum, under `FinalizedSafety`'s premises

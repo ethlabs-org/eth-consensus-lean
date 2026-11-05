@@ -1,6 +1,9 @@
 module
 public import ConsensusLeanTest.Goldilocks.FG.ConflictChains
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+import Mathlib.Tactic.FinCases
 @[expose] public section
 
 /-! # Run-level rejection: two honest finalized tips conflict once the fault bound is dropped

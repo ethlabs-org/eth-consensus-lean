@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.FG.Statements
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 @[expose] public section
 
 /-! # Witness for `RetentionThroughAppend` (G0.9 (b)): the newest pending pair, not an older one

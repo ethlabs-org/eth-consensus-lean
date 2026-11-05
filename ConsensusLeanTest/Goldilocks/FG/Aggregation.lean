@@ -1,6 +1,8 @@
 module
 public import ConsensusLeanTest.Goldilocks.FG.Faulty
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Client
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 @[expose] public section
 
 /-! # Witnesses for `Aggregation` (G0.10), both branches of its `if`
