@@ -56,7 +56,8 @@ theorem h2_carry_fastLock (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp
       · exact absurd h' hBF
       · exact h'
     · exact (hΦ.rooted.2 B h.1).mono hΦU
-  refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by linarith) le_rfl
+  refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by
+      linarith only [hj, hΔ, hg]) le_rfl
     hx hy hc hs fun v hv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hBHv, h₃⟩ := Healing.fastLock_writer hr hx hfl v hv
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFB.trans hBHv, ?_⟩
@@ -66,8 +67,8 @@ theorem h2_carry_fastLock (hI : InclusionRun tr H U proposer g t₀) {x : Fin sp
   · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
   · -- accepted by the writer before `ḡ`: `Catch(2Δ)` at the vote
     obtain ⟨k', hk', hacc, hk't⟩ := hI.catchUp x hx kw Hv hkw (not_le.1 hkg) y hy k ℓ hc.1
-      (by linarith) (hFB.trans hBHv)
-    exact Or.inr (Or.inr ⟨k', hk', hacc, by linarith⟩)
+      (by linarith only [hj, hΔ, hg, htk, hts]) (hFB.trans hBHv)
+    exact Or.inr (Or.inr ⟨k', hk', hacc, by linarith only [hj, hΔ, hg, hk't]⟩)
 
 /-- **First transfer of a fast target** (A1.2 at each slot-`(j+1)` vote, by induction on cuts: the
 viability from `Inv` (the pair is P1), `Carry` from `h2_carry_fastLock` at a read above `Φ.F`; a
@@ -112,9 +113,10 @@ theorem raw_fast_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin
         exact anc_tree_of_anc_U hU hΦ hΦU (mem_tree_of_between hU hΦ hΦU hFB h hfc) h hfc
     have hT : gbar g ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) := by
       rw [← hsl, hes, show ((j + 1 : Nat) : Int) - 1 = (j : Int) by push_cast; ring]
-      linarith
+      linarith only [hj, hΔ, hg]
     exact first_transfer sp FGP ro H U tr proposer hrun j x y i k B CV ℓ e hx hfl hy hca hes
-      (hI.syncAC (by linarith) _) (hcarry y hy k ℓ e hca hes hBF) (hI.faultBound ht0 hT)
+      (hI.syncAC (by
+          linarith only [hj, hΔ, hg]) _) (hcarry y hy k ℓ e hca hes hBF) (hI.faultBound ht0 hT)
       hviab (fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
 
 /-- **First transfer of a slow target** (the writer's saved regular results `C_l ⪰ B` of
@@ -137,7 +139,7 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin
   have hres : ResultAt tr x i j C (fastCounted sp (tr.state x i) ℓX.frame j C) :=
     ⟨ℓX, hupd, hconf, rfl⟩
   have hjt : t₀ + 4 * sp.Δ ≤ sp.ts j := hj.trans ((ts_le_iff sp).2 (by omega))
-  have hwin : gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1) := by linarith
+  have hwin : gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1) := by linarith only [hj, hg]
   have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   suffices h : ∀ k, ∀ y ∈ H, ∀ e, VoteAt tr y k e → e.msg.slot = j + 1 → VoteExtends U e.msg B
@@ -158,7 +160,8 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin
     obtain ⟨hviab, hFB⟩ := inv_at_vote hI hP2 hy hca htk hBF
     -- `Carry` for the result's counted votes: relay after `ḡ`, `Catch(2Δ)` before
     have hCy : CarryAt tr U y k e j (fastCounted sp (tr.state x i) ℓX.frame j C) := by
-      refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by linarith)
+      refine carryAt_of_writer_catch hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by
+          linarith only [hΔ, hg, hjt])
         le_rfl hx hy hca hes fun v hv => ?_
       obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := Compose.result_writer hr hx hres v hv
       have hFHv : Anc U ℓ.frame.F Hv := hFB.trans (hDC.trans hCHv)
@@ -168,12 +171,12 @@ theorem raw_slow_first_votes (hI : InclusionRun tr H U proposer g t₀) {x : Fin
       by_cases hkg : gbar g ≤ tr.time kw
       · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
       · obtain ⟨k', hk', hacc, hk't⟩ := hI.catchUp x hx kw Hv hkw (not_le.1 hkg) y hy k ℓ hc
-          (by linarith) hFHv
-        exact Or.inr (Or.inr ⟨k', hk', hacc, by linarith⟩)
+          (by linarith only [hΔ, hg, hjt, hts, htk]) hFHv
+        exact Or.inr (Or.inr ⟨k', hk', hacc, by linarith only [hΔ, hg, hjt, hk't]⟩)
     exact result_transfer_anc sp hrun hx hres hDC hy hca hes hCy (hes ▸ hviab)
       (slow_live_locks hI.toHealthyBase hx hsl hwin hy hca hes
         fun z hz k' hk' e' hv' hs' => ih k' hk' z hz e' hv' hs')
-      (writer_merged hrun hx hupd hy hca hes (hI.syncAC (by linarith) _))
+      (writer_merged hrun hx hupd hy hca hes (hI.syncAC (by linarith only [hΔ, hg, hjt]) _))
 
 /-- **(P) from a writer, after the GST or by catch-up** (`carryAt_of_writer_catch` at the
 proposal duty): a slot-`σ` vote sent or admitted by an honest writer in `[t_σ, t_σ + 2Δ)`, whose
@@ -201,21 +204,22 @@ theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
     intro k hk τ hτ
     have h₁ := Healing.deadline_le_restarts
       (fun k' hk' hr' => (hrs k' (hk'.trans hk) hr').le) τ
-    have h₂ := max_lt hτ (show sp.ts σ < sp.ts σ + 2 * sp.Δ by linarith)
+    have h₂ := max_lt hτ (show sp.ts σ < sp.ts σ + 2 * sp.Δ by linarith only [hΔ])
     change tr.deadline x k τ ≤ max τ (sp.ts σ) + sp.Δ at h₁
-    linarith
+    linarith only [h₂, h₁]
   refine heldAtProposal_iff.2 ⟨?_, ?_⟩
   · obtain ⟨k, hsk, hk1, hk2⟩ := hsend
-    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hsync.1 w hw k v hsk (ha₀.trans hk1) (by linarith)
-      x hx i ℓ hc (by linarith [hdl i le_rfl _ hk2])
+    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hsync.1 w hw k v hsk (ha₀.trans hk1) (by
+        linarith only [hb, hk2])
+      x hx i ℓ hc (by linarith only [hdl i le_rfl _ hk2, ht, hk1, hk2, hts])
     have hk'lt : tr.time k' < sp.ts σ + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
-    have hk'i' : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
+    have hk'i' : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith only [hΔ, hts, hk'lt, ht])
     have hnr : ∀ r, k' + 1 ≤ r → r < i → ¬ tr.RestartAt x r := fun r h₁ h₂ hrr => by
       have := hrs r h₂.le hrr
       have := hr.time_mono (show k' ≤ r by omega)
       linarith
     have hsk' : sp.slot (tr.time k') = σ :=
-      slot_of_mem sp σ (hk1.trans hkk') (by rw [hts]; linarith)
+      slot_of_mem sp σ (hk1.trans hkk') (by rw [hts]; linarith only [hk1, hk2, hk'lt])
     have hmono := pool_mono hr hx (show k' + 1 ≤ i by omega) hnr σ
     rcases held_of_processAt hr hx hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
       h | ⟨a, ha, c, hc', hac, hav, hcv⟩
@@ -232,15 +236,17 @@ theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
         obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFHv
         · exact h ▸ hΦ.rooted.1
         · exact absurd (hcp.2.2.symm.trans hGp) (Option.some_ne_none _)
-      · obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw Hv hkw hkwa (by linarith) x hx i ℓ hc
-          (by linarith [hdl i le_rfl _ hkwt]) hFHv
+      · obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw Hv hkw hkwa (by
+          linarith only [hb, hkwt]) x hx i ℓ hc
+          (by linarith only [hdl i le_rfl _ hkwt, ht, hΔ, hts]) hFHv
         exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv,
           Or.inr ⟨ky, hacc, hkyt.trans (hdl ky hky _ hkwt)⟩⟩
       · exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv, Or.inr ⟨ky, hacc, hkyt⟩⟩
     refine ⟨Hv, hHt, hHvr, ?_⟩
     exact (blockStamp_lt_of_acceptedBefore sp hr hx hc hHt hAB
-      (fun k hk hrk => (hrs k hk hrk).trans (by linarith))
-      (Or.inl (by rw [ht, hts]; linarith))).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
+      (fun k hk hrk => (hrs k hk hrk).trans (by linarith only [hΔ]))
+      (Or.inl (by
+          rw [ht, hts]; linarith only [hΔ]))).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
 
 /-- At a proposal of slot `σ + 1` with `t_σ ≥ ḡ + 4Δ`, under `Inv` for a protected `(B, j)` with
 `j ≤ σ` and `B ⋠ Φ.F`, `B` is viable or below `fc_root` in the proposer's tree, above `Φ.F`. -/
@@ -324,7 +330,7 @@ theorem h2_votes_continue (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp
       have hT : gbar g ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) := by
         rw [← hsl, hes, show ((m + (d + 1) : Nat) : Int) - 1 = ((m + d : Nat) : Int) by
           push_cast; ring]
-        linarith
+        linarith only [hΔ, hmd]
       exact next_transfer sp FGP ro H U tr proposer hrun (m + d) y k B ℓ e hy hca
         (by omega) ih hhalf
         (h2_carry_votes hI hmd ih hy hca (by omega) hFB) (hI.faultBound ht0 hT) (hes ▸ hviab)
@@ -364,7 +370,7 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U proposer g t₀)
       hI.two_faulty_lt hx hopt hv)
   obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hv z hz k e hve hes
   obtain ⟨Hd, hHdt, hHdr, -, hh⟩ := late_vote_held_of_frame hI.toHealthyBase hx hc hm4
-    (by rw [ht, hts]; linarith) hz hve hes fun Hd hHd hHdr => by
+    (by rw [ht, hts]; linarith only [hΔ]) hz hve hes fun Hd hHd hHdr => by
       rw [hU.1 hHd hHd' (hHdr.trans hHd'r.symm)]
       exact hFB.trans hBHd'
   obtain ⟨hmem, -, hbs⟩ := hh i (Or.inl rfl)
@@ -418,7 +424,7 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
     · exact h
     · exact h.trans ((ts_le_iff sp).2 (by omega))
   have hrs : ∀ {z}, z ∈ H → ∀ k, tr.RestartAt z k → tr.time k < sp.ts j := fun hz k hrk =>
-    lt_of_le_of_lt (hI.restart_le hz hrk) (by linarith)
+    lt_of_le_of_lt (hI.restart_le hz hrk) (by linarith only [hΔ, hg, hjt])
   have hlater : ∀ z ∈ H, ∀ k e, VoteAt tr z k e → j < e.msg.slot → VoteExtends U e.msg B :=
     fun z hz k e hv hs => votesExtendAfter_iff.1 hvotes z hz k e hv hs
   -- (P) for the votes counted by an honest writer, given its writer facts
@@ -429,23 +435,25 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
       HeldAtProposal (tr.state x i) ℓ.frame j v := by
     intro X hX D hBD v hvs hsend ⟨Hv, hHv, hHvr, hDHv, hacc⟩
     have hFHv := hFB.trans (hBD.trans hDHv)
-    refine heldAtProposal_of_writer hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by linarith)
+    refine heldAtProposal_of_writer hr (hI.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) (by
+        linarith only [hΔ, hg, hjt])
       le_rfl hX hx hc ht (fun k _ hrk => hrs hx k hrk) hvs hsend ⟨Hv, hHv, hHvr, hFHv, ?_⟩
     rcases hacc with hgen | ⟨kw, hkw, hkwt⟩
     · exact Or.inl hgen
     by_cases hkg : gbar g ≤ tr.time kw
     · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
     · obtain ⟨k', hk', hacc', hk't⟩ := hI.catchUp X hX kw Hv hkw (not_le.1 hkg) x hx i ℓ hc
-        (by linarith) hFHv
-      exact Or.inr (Or.inr ⟨k', hk', hacc', by linarith⟩)
+        (by linarith only [hΔ, hg, ht, hts, hjt]) hFHv
+      exact Or.inr (Or.inr ⟨k', hk', hacc', by linarith only [hΔ, hg, hjt, hk't]⟩)
   have hW : ∀ {X i₀ ℓX}, X ∈ H → UpdateAt tr X i₀ j ℓX → ∀ v ∈ (tr.state x i).pool j,
       v ∈ (tr.state X i₀).pool j ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool j} :=
-    fun hX hupd => writer_pool_proposal hr hX hupd hx ht (hI.syncAC (by linarith) _)
+    fun hX hupd => writer_pool_proposal hr hX hupd hx ht (hI.syncAC (by
+        linarith only [hΔ, hg, hjt]) _)
       (fun k _ hrk => (hrs hX k hrk).le) (fun k _ hrk => hrs hx k hrk)
   rcases cleanOrigin_iff.1 hB with ⟨X, hX, i₀, CV, -, hfl, -⟩ | ⟨X, hX, i₀, -, hsl, hj⟩
   · have hsame : ∀ k CV' O, OptimisticLockAt tr x k j O CV' → Compatible U O B :=
       fun k CV' O hopt => fastLock_fastLock_compatible hI.toHealthyBase hx (Or.inr hopt) hX hfl
-        (by linarith)
+        (by linarith only [hΔ, hg, hjt])
     have hPCV : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame j v := fun v hv => by
       obtain ⟨h₁, h₂, h₃⟩ := Healing.fastLock_writer hr hX hfl v hv
       exact hP hX Relation.ReflTransGen.refl v h₁ h₂ h₃
@@ -459,7 +467,7 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
       ⟨ℓX, hupd, hconf, rfl⟩
     have hBC : Anc U B C :=
       Anc.mono (frameIn_of_callAt hr hX hupd.1).2 (deepest_mem hdeep).1.1.2.2
-    have hwin : gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1) := by linarith
+    have hwin : gbar g + 4 * sp.Δ ≤ sp.ts ((j : Int) - sp.k + 1) := by linarith only [hg, hj]
     have hall : ∀ l ∈ (tr.state x i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ Y ∈ U,
         Y.root = l.block → Compatible U Y B := by
       intro l hl hlive Y hY hYr
@@ -539,16 +547,18 @@ theorem h2_drain (hI : InclusionRun tr H U proposer g t₀) {y : Fin sp.n} (hy :
     have hw : sp.ts ((l.slot : Int) - sp.k + 1) = sp.ts l.slot - 4 * sp.Δ * (sp.k - 1) := by
       simp only [SAParams.ts]; ring
     have hwin : t₀ + 4 * sp.Δ ≤ sp.ts ((l.slot : Int) - sp.k + 1) := by
-      rw [hw]; linarith
+      rw [hw]; linarith only [hT, hΔ, hσ', hlk]
     have htj : sp.ts l.slot ≤ tr.time j := by
       obtain ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ := hsl
-      rw [ht]; linarith
+      rw [ht]; linarith only [hΔ]
     exact ⟨B, hLB, cleanOrigin_iff.2 (Or.inr ⟨y, hy, j,
-      joined_of_ge hI hy (hr.time_nonneg j) htj (by linarith), hsl, hwin⟩)⟩
+      joined_of_ge hI hy (hr.time_nonneg j) htj (by
+          linarith only [hT, hg, hσ', hlk, hkΔ, hw, hwin]), hsl, hwin⟩)⟩
   · obtain ⟨j, -, B, CV, hfl, hLB⟩ := fast_lock_provenance hr hy i l hl hf
-    have hj : t₀ + 4 * sp.Δ ≤ sp.ts l.slot := by linarith
+    have hj : t₀ + 4 * sp.Δ ≤ sp.ts l.slot := by linarith only [hT, hΔ, hσ', hlk, hkΔ]
     exact ⟨B, hLB, cleanOrigin_iff.2 (Or.inl ⟨y, hy, j, CV,
-      joined_of_ge hI hy (hr.time_nonneg j) (fastLock_time hI hfl) (by linarith), hfl, hj⟩)⟩
+      joined_of_ge hI hy (hr.time_nonneg j) (fastLock_time hI hfl) (by
+          linarith only [hg, hj]), hfl, hj⟩)⟩
 
 /-- **Settled locks**: from `t₀ + 2Θ + 4Δ` on, every lock live at an honest node is carried by
 every later honest duty. -/
