@@ -94,10 +94,10 @@ theorem blockObjs_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
     blockObjs (cs ++ cs') = blockObjs cs ++ blockObjs cs' := by simp [blockObjs]
 
 theorem attBodies_ac (ℓ : ACLabel (goldilocksNode sp ro)) : attBodies [Cut.ac ℓ] = [] := by
-  simp [attBodies]
+  simp only [attBodies, List.flatMap_cons, List.flatMap_nil, List.append_nil]
 
 theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp ro)) : blockObjs [Cut.ac ℓ] = [] := by
-  simp [blockObjs]
+  simp only [blockObjs, List.flatMap_cons, List.flatMap_nil, List.append_nil]
 
 /-- The cuts of the node's tick: the AC's tick, the proposal step, the FG update. -/
 theorem onTick_cuts (proposer : Nat → Fin sp.n)
@@ -126,12 +126,17 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
   unfold fgUpdate Node.tickStep
   simp only
   rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
-  · simp [attBodies, emitted, blockObjs, Node.acToFG]
+  · simp only [attBodies, acToFG, List.flatMap_cons, List.flatMap_nil, List.append_nil, emitted,
+      List.map_nil, blockObjs, List.mem_cons, reduceCtorEq, List.not_mem_nil, or_self,
+      IsEmpty.forall_iff, implies_true, and_self]
   · unfold Node.attest
     rcases h' : (Node.acToFG st.node st.now).1.fg.attest (Node.acToFG st.node st.now).1.record
       st.self C with _ | ⟨a, Λ'⟩
     · simp only [Node.acToFG] at h'
-      simp [h', attBodies, emitted, blockObjs, Node.acToFG]
+      simp only [acToFG, h', attBodies, List.flatMap_cons, List.flatMap_nil, List.append_nil,
+        emitted, List.map_nil, blockObjs, List.mem_cons, reduceCtorEq, Cut.fg.injEq,
+        FGLabel.attest.injEq, and_false, List.not_mem_nil, or_self, IsEmpty.forall_iff,
+        implies_true, and_self]
     · simp only [Node.acToFG] at h'
       simp only [h', Node.onAttestation, attBodies, emitted, blockObjs, Node.acToFG,
         List.flatMap_cons, List.flatMap_nil, List.append_nil, List.mem_cons,
@@ -151,12 +156,12 @@ theorem tickStep_proposal_attBodies (proposer : Nat → Fin sp.n)
   simp only [Node.tickStep]
   split_ifs
   · split
-    · simp [attBodies, Node.acProposal]
+    · rfl
     · simp only [Node.proposeBlock, Node.onBlock]
       split_ifs
-      · simp [attBodies, Node.acProposal]
-      · split <;> simp [attBodies, Node.acCall, Node.acProposal]
-  · simp [attBodies]
+      · rfl
+      · split <;> rfl
+  · rfl
 
 end TickCuts
 
@@ -213,10 +218,12 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
       erw [List.map_nil]
       simp only [ite_self, Model.releaseAll]
       refine ⟨by
-        simp [blockObjs, Node.acProposal]; rfl, ?_⟩
+        simp only [blockObjs, acProposal, List.flatMap_cons, List.flatMap_nil, List.append_nil]
+        rfl, ?_⟩
       change (a.1.1 hn).outbox = _
       rw [hact1]
-      simp [emitted, Node.acProposal]
+      simp only [emitted, acProposal, List.flatMap_cons, List.map_nil, List.flatMap_nil,
+        List.append_nil]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
       have hrole : (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
@@ -297,7 +304,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled 
       exact hp (heq.symm.trans hself.symm)
     simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.propose s hs) =
       .proposer s from rfl, hmem, ↓reduceIte]
-    simp [blockObjs, emitted]
+    simp only [blockObjs, List.flatMap_nil, emitted, List.append_nil, and_true]
     rfl
 
 end ProposeDuty
