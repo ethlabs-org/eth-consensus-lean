@@ -209,7 +209,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
     have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
     change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
@@ -222,7 +222,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
   have hDelta := Q.params.toParams.hΔ
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
-    nlinarith [D.reserve]
+    linarith [D.reserve]
   obtain ⟨u, hlo, hhi, hr⟩ := hrec D.query hq
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton] using hwin)
     (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
@@ -233,8 +233,8 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   rw [htime] at hlo hhi
   have hbound : Q.params.ts u ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by
     change Q.params.ts u ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
-    nlinarith
-  have hT : Q.params.ts u + 6 * Q.params.Δ < Q.heal - 1 := by nlinarith [D.reserve]
+    linarith
+  have hT : Q.params.ts u + 6 * Q.params.Δ < Q.heal - 1 := by linarith [D.reserve]
   have hTb : Q.params.ts u + 6 * Q.params.Δ ≤ Q.run.2.horizon := by linarith
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready

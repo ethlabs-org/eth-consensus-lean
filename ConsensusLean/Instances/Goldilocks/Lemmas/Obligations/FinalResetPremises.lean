@@ -178,7 +178,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hMf0 : 0 ≤ Mf := by rw [hMf]; positivity
   have hq : ready + Mf * D - 1 ≤ Q.query := by
     have h1 := mul_le_mul_of_nonneg_right hbud (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)
-    rw [hready, hDe]; nlinarith
+    rw [hready, hDe]; linarith
   have hqh : Q.query ≤ Q.run.2.horizon := by
     have := Q.bounded
     have : (0 : Time) ≤ ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC := by
@@ -195,7 +195,8 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
       (Nat.cast_nonneg X) (show 3 * (c : Time) ≤ (S.δt : Time) by exact_mod_cast h3c)
     rw [hBeq]; rw [hMf] at hq; linarith
   have hc2' : (2 : Time) ≤ c := by exact_mod_cast hc2
-  have hBh : B ≤ Q.run.2.horizon := by nlinarith
+  have hBh : B ≤ Q.run.2.horizon := by
+    linarith [mul_nonneg (show (0 : Time) ≤ 12 * c - 2 by linarith) hD.le]
   -- whole-run no restart: a restart is a labelled call, at a time `≤ horizon`
   have hnr : Healing.NoRestartAfter Q.trace H (gbar Q.gst) :=
     fun y hy k hk => hs.noRestart y hy k hk

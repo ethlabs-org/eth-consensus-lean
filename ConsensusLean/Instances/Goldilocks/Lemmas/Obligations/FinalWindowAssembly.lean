@@ -89,7 +89,7 @@ theorem final_latency_gap (Q : FinalQuery S A V) :
     contract_latency_final]
   change _ + 4 * _ * Q.run.1.ΔAC + Q.run.1.ΔAC ≤ _
   push_cast
-  nlinarith
+  linarith
 
 /-- **Final-window extraction at a gap `c` and a forwarding delay `ΔF`** (route A). From the
 shared HS premises `hs` at `ΔF`, the delivery inequality `hdel : 6Δ + ΔF ≤ 4Δ·c`, the span
@@ -158,7 +158,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   have hq : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0) 0 ≤ Q.query := by
     have h1 : G.slotLen ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) * G.slotLen := by
       have : (1 : Time) ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) := by push_cast; linarith
-      nlinarith
+      exact le_mul_of_one_le_left hL.le this
     have := le_max_left (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
       (G.slotTime (finalSeedMin S A V Q a) - 1)
     rw [max_eq_left (le_max_right _ _)]

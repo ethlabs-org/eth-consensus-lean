@@ -215,7 +215,7 @@ theorem healthy_repair_schedule_of_reset
   have hduration : 18 * Q.params.Δ + 1 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
     change 18 * Q.run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   have hΔ := Q.params.toParams.hΔ
   have hready : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by
     change max Q.gst 0 + 4 * Q.params.Δ ≤

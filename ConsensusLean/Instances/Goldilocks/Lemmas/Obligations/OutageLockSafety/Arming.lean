@@ -118,7 +118,7 @@ private theorem query_numbers (Q : OutageQuery S A V) :
   obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
     have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
     have hΔ := Q.params.toParams.hΔ
-    nlinarith)
+    linarith)
   have hbcast : ((4 * S.k - 5 : Nat) : Int) = 4 * (S.k : Int) - 5 := by omega
   have hb : ((4 * S.k - 5 : Nat) : Int) ≤ 4 * (S.k : Int) - 5 := hbcast.le
   change Q.stop ≤ Q.start + ((4 * S.k - 5 : Nat) : Int) * Q.run.1.ΔAC at hbud
@@ -134,9 +134,9 @@ private theorem query_numbers (Q : OutageQuery S A V) :
       t ≤ Q.run.2.horizon →
       t ≤ min (Q.stop + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC) Q.run.2.horizon
   push_cast
-  refine ⟨hg₁, by linarith, by linarith, hb01, by nlinarith, by linarith,
+  refine ⟨hg₁, by linarith, by linarith, hb01, by linarith, by linarith,
     fun t ht hth => le_min ?_ hth⟩
-  nlinarith
+  linarith
 
 /-- The restored label is the least `r` with `b₁ ≤ t_r + Δ`. -/
 theorem restoredLabel_spec (Q : OutageQuery S A V) :
@@ -313,7 +313,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
           (by simp only [SA.SAParams.ts]; simpa using hT0)).2
       simp only [SA.SAParams.ts] at h ⊢
       have : (0 : Time) ≤ (Q.params.k : Int) - 1 := by linarith
-      nlinarith
+      linarith [mul_nonneg this Q.params.toParams.hΔ.le]
     hz := fun t ht ⟨_, _, _, hc, hle⟩ => hnum.2.2.2.2.2.2 t ht (hle.trans (hcallh hc))
     lockPrev := fun x hx hg ⟨_, _, _, hc, hle⟩ => by
       obtain ⟨c, ℓ, hu, hb⟩ := ar.lockPrev x hx hg (hle.trans (hcallh hc))
