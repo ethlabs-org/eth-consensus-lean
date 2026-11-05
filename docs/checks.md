@@ -231,7 +231,9 @@ byte-identical to [ethereum/EthLib](https://github.com/ethereum/EthLib) at
 Hashes: upstream copy `0032a6629a73ac37f49ca52b9bd665f2c6755b6014d629f8775c6f850f273bb2`; with the performance
 patch `69b9fe48f5d913031348aa33895155e96236819ba7d86c9e36675a793c1241d6`; with the performance and frontier patches
 `03ed87d6cecae9a145ed47e56788978ffbe67a70055c3326f933a6d397edb10a`; with all three
-`b941e9baa619e80d954e2cdaf32ba7d5f48a8b29e4c888d3b97a91cee42aa367`. `scripts/test_check_decls.sh`:
+`b941e9baa619e80d954e2cdaf32ba7d5f48a8b29e4c888d3b97a91cee42aa367`; the vendored file, whose comments name the
+patches by what they do: `43c1701aa493f339eb590376709b47f65a948bdd6edb430efd86fa87173f1784`.
+`scripts/test_check_decls.sh`:
 `591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25`. `vendor.sha256` also pins fixtures/licence.
 check-decls runs imported modules' initializers: a defence against mistakes, not an adversarial checker.
 

@@ -31,7 +31,7 @@ stop, and what the model assumes about the world. [`docs/checks.md`](docs/checks
 
 The check suite itself (`scripts/**`, `.github/**`, the lakefile) is not trusted surface. A change to what a check
 checks comes with fixtures that show the new verdicts; a speedup comes with evidence that every fixture verdict is
-unchanged. `.github/CODEOWNERS` is informational; nothing checks it.
+unchanged.
 
 ## 2. The trusted surface
 
