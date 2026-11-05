@@ -96,7 +96,7 @@ theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
       (mem_tree_of_frame hrun hy hv.1 hP')
   · by_contra hn
     have := hl.time_mono (not_lt.1 hn)
-    linarith
+    linarith only [htP, hΔ, hearly, this]
 
 /-! ### The first proposal after an optimistic origin, for an ancestor (general frames) -/
 
@@ -208,7 +208,7 @@ private theorem proposer_high_locks
       change tr.time k' ≤ tr.time kP at h1
       change tr.time k' = _ at htk'
       rw [htk', htP, hσ] at h1
-      linarith
+      linarith only [hΔ, h2, h1]
     rcases (show l.slot = j ∨ j < l.slot by omega) with hlj | hlj
     · rw [hlj] at hopt
       exact hsame (by omega) k' CV O hopt
@@ -277,7 +277,7 @@ private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr)
   · exact hBF.trans ((hΦ.rooted.2 _ hdt).mono hΦU)
   -- (V) at the proposer
   have hVq := clean_vote_frame hrun hs hc hw hz hvz hj hes hext hpH hkP
-    (by rw [htP']; linarith) B .refl
+    (by rw [htP']; linarith only [hΔ, hjs', hj1]) B .refl
   rw [← Compose.frame_of_projAC hrun hpH hcP] at hVq
   rcases hVq with h | h
   · have hFB := (SA.anc_total hU h ((hΦ.rooted.2 _ hΦ.fcRoot_mem).mono hΦU)).resolve_left hBF
@@ -325,7 +325,7 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
   · exact hBF.trans ((hΦ.rooted.2 _ hdt).mono hΦU)
   -- (V) at the proposer
   have hVq := clean_vote_frame hrun hs hc hw hz hvz hjw hes hext hpH hkP
-    (by rw [htP, hσ]; linarith) B .refl
+    (by rw [htP, hσ]; linarith only [hΔ, hjσ']) B .refl
   rw [← Compose.frame_of_projAC hrun hpH hcP] at hVq
   obtain ⟨hV, hFB⟩ : (B ∈ ℓp.frame.tree ∧
       (B ∈ ℓp.frame.viableTree ℓp.frame.tree ∨ ℓp.frame.Anc B ℓp.frame.fcRoot)) ∧
@@ -347,14 +347,16 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
     by_contra hn
     have := hr.time_mono (not_lt.1 hn)
     change tr.time kP ≤ tr.time j' at this
-    linarith
-  have hσg : gbar g + 4 * sp.Δ ≤ sp.ts σ := by linarith
+    linarith only [htP, hΔ, hσ, h1, this]
+  have hσg : gbar g + 4 * sp.Δ ≤ sp.ts σ := by linarith only [hjw, hΔ, hw8, hjσ']
   have hPv : ∀ x ∈ H, ∀ j' e'', SA.VoteAt tr.projAC x j' e'' → e''.msg.slot = σ →
       SA.HeldAtProposal (tr.projAC.state p kP) ℓp.frame σ e''.msg := by
     intro x hx j' e'' hv'' hs''
     obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hB x hx j' e'' hv'' hs''
     obtain ⟨Hd, hHdt, hHdr, -, hh⟩ := SA.late_vote_held_of_frame hS hpH hcP hσg
-      (by change _ ≤ tr.time kP; rw [htP, hσ]; linarith) hx hv'' hs'' fun Hd hHd hHdr => by
+      (by
+          change _ ≤ tr.time kP; rw [htP,
+              hσ]; linarith only [hΔ]) hx hv'' hs'' fun Hd hHd hHdr => by
         rw [hU.1 hHd hHd' (hHdr.trans hHd'r.symm)]
         exact hFB.trans hBHd'
     obtain ⟨hmem, -, hbs⟩ := hh kP (Or.inl rfl)
@@ -374,7 +376,7 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
         change tr.time k' ≤ tr.time kP at h1
         change tr.time k' = _ at htk'
         rw [htk', htP, hσ] at h1
-        linarith
+        linarith only [hΔ, h2, h1]
       · obtain ⟨-, hΦoU⟩ := SA.frameIn_of_callAt hr hpH hpt.1
         unfold SA.optimisticSelect at hsel
         dsimp only at hsel
@@ -450,7 +452,7 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
     (by omega) hy hv he hk fun {kP ℓp d pay} hcP hcall hprop htP hkPk hV hFB => ?_
   have hpH := hP.1
   have htP' : tr.time kP = sp.ts (j + 1 : Nat) := htP
-  have hgj : gbar g ≤ sp.ts j := by linarith
+  have hgj : gbar g ≤ sp.ts j := by linarith only [hj, hw8, hΔ]
   have hj1 : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   -- (P): the counted votes reach the proposer
@@ -460,7 +462,8 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
     obtain ⟨h₁, h₂, Hv, hHv, hHvr, hDHv, h₃⟩ := fastLock_writer hr hx (Or.inr hopt) v hv'
     have hFHv := hFB.trans (hBD.trans hDHv)
     refine SA.heldAtProposal_of_writer hr (hS.syncAC le_rfl (sp.ts j + 2 * sp.Δ)) hgj le_rfl hx
-      hpH hcP htP' (fun k' _ hrk => lt_of_le_of_lt (hS.restart_le hpH hrk) (by linarith)) h₁ h₂
+      hpH hcP htP' (fun k' _ hrk => lt_of_le_of_lt (hS.restart_le hpH hrk) (by
+          linarith only [hj, hw8, hΔ])) h₁ h₂
       ⟨Hv, hHv, hHvr, hFHv, ?_⟩
     rcases h₃ with hgen | ⟨kw, hkw, hkwt⟩
     · exact Or.inl hgen
@@ -468,8 +471,9 @@ theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr)
     · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
     · obtain ⟨k', hk', hacc', hk't⟩ := hS.catchUp x hx kw Hv hkw (not_le.1 hkg)
         (proposer (j + 1)) hpH kP ℓp hcP
-        (by change _ ≤ tr.time kP; rw [htP', hj1]; linarith) hFHv
-      exact Or.inr (Or.inr ⟨k', hk', hacc', by change tr.time k' < _ at hk't ⊢; linarith⟩)
+        (by change _ ≤ tr.time kP; rw [htP', hj1]; linarith only [hj, hΔ, hw8]) hFHv
+      exact Or.inr (Or.inr ⟨k', hk', hacc', by
+          change tr.time k' < _ at hk't ⊢; linarith only [hj, hΔ, hw8, hk't]⟩)
   exact optimistic_first_proposal_anc hS.run hS.two_faulty_lt hx hopt hBD hpH hcP
     (SA.proposal_slot htP') hprop hV hPv
     (proposer_high_locks hS hpH htP' hkPk le_rfl hprior fun _ k' CV' O hopt' => by
@@ -530,7 +534,8 @@ theorem clean_slow_proposal (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
   have hBC : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) C :=
     Anc.mono hΦU ((SA.anc_viableAncestor _ D).trans (SA.deepest_mem hdeep).1.1.2.2)
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hCHd⟩ :=
-    SA.result_extended hS (by linarith) hx hupd.1 (by rw [hupd.2.2.1]; linarith) hconf
+    SA.result_extended hS (by linarith only [hΔ, hj', hw8]) hx hupd.1 (by
+        rw [hupd.2.2.1]; linarith only [hΔ]) hconf
   exact proposal_extends_of_batch hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩
     hP (he ▸ two_le_of_update hrun hs.noColl hupd hy hv hik) hy hv he hk hprior
 

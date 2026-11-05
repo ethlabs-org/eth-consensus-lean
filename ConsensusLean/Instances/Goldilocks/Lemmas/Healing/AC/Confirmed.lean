@@ -60,19 +60,20 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
     rwa [← hslot, hes] at hh
   have hti0 : sp.ts s ≤ tr.time i :=
     (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hslot, hes])
-  have hgi : gbar g ≤ tr.time i := by linarith
+  have hgi : gbar g ≤ tr.time i := by linarith only [hs, hti, hti0]
   have hdl := hdeadline j le_rfl (tr.time i) hgi
   rw [max_eq_left hti0] at hdl
   obtain ⟨q, hqj, hiq, hproc, hqt⟩ := hS.sync.message x hx i e.msg
     ⟨ellx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ hgi y hy j ell hc
-    (by linarith) (by linarith)
+    (by linarith only [ht, hjb, hti, hdl]) (by linarith only [ht, hti, hdl])
   have hqT : tr.time q < sp.ts s + 2 * sp.Δ := by
     have hqdl := hdeadline q hqj (tr.time i) hgi
     rw [max_eq_left hti0] at hqdl
-    linarith
-  have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith)
+    linarith only [hti, hqt, hqdl]
+  have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith only [hqT, ht])
   have hqs : sp.slot (tr.time q) = s :=
-    slot_of_mem sp s (by linarith) (by rw [SA.ts_succ]; linarith)
+    slot_of_mem sp s (by linarith only [hti0, hiq]) (by
+        rw [SA.ts_succ]; linarith only [hti, hti0, hqT])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (q + 1)).pool s := by
     rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
@@ -93,8 +94,8 @@ theorem late_vote_pool_before {b : Time} (hS : HealthyBaseUpTo tr H U proposer g
   have hst := stamp_lt_of_held_of_run hr hy (a := q + 1) (b := c) (by omega)
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
-    (by rw [hes]; linarith)
-    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith))
+    (by rw [hes]; linarith only [hti0, hqT, hiq])
+    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith only [hti0, hqT, hiq]))
     (fun k hqk hkc hrs => by
       have := hrestart k (by omega) hrs
       have := hr.time_mono (show q ≤ k by omega)
@@ -182,19 +183,21 @@ theorem late_vote_accepted_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H
       · exact he ▸ hPhi.rooted.1
       · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
     have hqtime := (hr.time_mono hqi).trans hti
-    have hmax : max (tr.time q) (sp.ts s) ≤ sp.ts s + sp.Δ := max_le hqtime (by linarith)
+    have hmax : max (tr.time q) (sp.ts s) ≤ sp.ts s + sp.Δ := max_le hqtime (by
+        linarith only [hDelta])
     obtain ⟨r, hrj, har, hrt⟩ : ∃ r ≤ j, tr.AcceptAt y r B ∧ tr.time r < sp.ts s + 2 * sp.Δ := by
       by_cases hgq : gbar g ≤ tr.time q
       · have hdl := hdeadline j le_rfl (tr.time q) hgq
         obtain ⟨r, hrj, har, hrt⟩ := hS.sync.relay x hx q B hacc hgq y hy j ell hc
-          (by linarith) (by linarith) hFB
-        exact ⟨r, hrj, har, by have := hdeadline r hrj (tr.time q) hgq; linarith⟩
+          (by linarith only [ht, hjb, hmax, hdl]) (by linarith only [ht, hmax, hdl]) hFB
+        exact ⟨r, hrj, har, by
+            have := hdeadline r hrj (tr.time q) hgq; linarith only [hmax, hrt, this]⟩
       · obtain ⟨r, hrj, har, hrt⟩ := hS.catchUp.relay x hx q B hacc (lt_of_not_ge hgq)
-          y hy j ell hc (by linarith) hjb hFB
-        exact ⟨r, hrj, har, by linarith⟩
+          y hy j ell hc (by linarith only [hs, ht, hDelta]) hjb hFB
+        exact ⟨r, hrj, har, by linarith only [hs, hDelta, hrt]⟩
     exact ⟨mem_tree_of_acceptAt sp hr hy har hrj hc hFB, Or.inr ⟨r, har, hrt⟩⟩
   have hstamp := blockStamp_lt_of_acceptedBefore sp hr hy hc hBy hAB
-    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith)) (Or.inl ht)
+    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith only [hDelta])) (Or.inl ht)
   exact ⟨B, hBy, hBr, hBs, hpool.1, hpool.2, hBr ▸ hstamp, hAB⟩
 
 /-- Guarded finite acceptance service resolves the head of an actual honest vote before
@@ -241,12 +244,12 @@ theorem honest_batch_carry_before {b : Time} (hS : HealthyBaseUpTo tr H U propos
     refine ⟨B, hPhiU hB, hBr, fun X hX => ?_⟩
     rcases acceptedBefore_ancestor hr hy hc.1 (hPhiU hB) hacc hX with hg | ⟨k, hk, hkt⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨k, hk, by linarith⟩
+    · exact Or.inr ⟨k, hk, by linarith only [hDelta, hkt]⟩
   · rintro v ⟨x, hx, i, e, hv, rfl, hes⟩
     obtain ⟨hp, hst⟩ := late_vote_readPoint_before hS hy hc hs' hs ht hjb hdeadline hrestart
       hx hv hes
     exact Or.inl ⟨hp, lt_trans hst
-      (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
+      (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith only [hDelta])))⟩
 
 /-- **A late honest vote is held**: for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
@@ -268,17 +271,19 @@ theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy :
   have hti' : sp.ts s ≤ tr.time i :=
     (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hslx, hes])
   -- the vote reaches `y` before `t_s + 2Δ`
-  have hgi : g ≤ tr.time i := (le_gbar g).trans (by linarith)
+  have hgi : g ≤ tr.time i := (le_gbar g).trans (by linarith only [hs, hti, hti'])
   have hmax : max (tr.time i) g = tr.time i := max_eq_left hgi
   have hdl : ∀ c, tr.deadline y c (tr.time i) ≤ tr.time i + sp.Δ := fun c =>
-    (hS.deadline_le hy c _).trans (by rw [max_eq_left (by linarith : gbar g ≤ tr.time i)])
+    (hS.deadline_le hy c _).trans (by rw [max_eq_left (by
+        linarith only [hs, hti, hti'] : gbar g ≤ tr.time i)])
   obtain ⟨k', hk'j, hik', hproc, hk'dl⟩ := hS.healthy.1 x hx i e.msg
-    ⟨ℓx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ y hy j ℓ hc (by rw [hmax]; linarith [hdl j])
+    ⟨ℓx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ y hy j ℓ hc (by rw [hmax]; linarith only [hdl j, ht, hti])
   rw [hmax] at hk'dl
-  have hk'T : tr.time k' < sp.ts s + 2 * sp.Δ := by linarith [hdl k']
-  have hk'j' : k' < j := lt_of_le_of_ne hk'j (by rintro rfl; linarith)
+  have hk'T : tr.time k' < sp.ts s + 2 * sp.Δ := by linarith only [hdl k', hti, hk'dl]
+  have hk'j' : k' < j := lt_of_le_of_ne hk'j (by rintro rfl; linarith only [hk'T, ht])
   have hsl' : sp.slot (tr.time k') = s :=
-    slot_of_mem sp s (by linarith) (by rw [SA.ts_succ]; linarith)
+    slot_of_mem sp s (by linarith only [hti', hik']) (by
+        rw [SA.ts_succ]; linarith only [hti, hti', hk'T])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (k' + 1)).pool s := by
     rcases held_of_processAt hr hy hproc (by rw [hsl', hes]; omega) (by rw [hsl', hes]) with
@@ -299,7 +304,8 @@ theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy :
   have hst := stamp_lt_of_held hS hy (a := k' + 1) (b := c) (by omega) (w := e.msg)
     (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hk'T)
-    (by rw [hes]; linarith) (by linarith) fun k h1 _ hrk => by
+    (by rw [hes]; linarith only [hti', hk'T, hik']) (by
+        linarith only [hs, hti', hk'T, hik']) fun k h1 _ hrk => by
       have := hS.restart_le hy hrk
       have := hr.time_mono (show k' ≤ k by omega)
       linarith
@@ -354,16 +360,17 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp
     obtain ⟨ka, hkaj, hacc', hlt⟩ : ∃ ka ≤ j, tr.AcceptAt y ka Hx ∧
         tr.time ka < sp.ts s + 2 * sp.Δ := by
       by_cases hgk : g ≤ tr.time kh
-      · have hmx : max (tr.time kh) (gbar g) ≤ sp.ts s + sp.Δ := max_le htkh (by linarith)
+      · have hmx : max (tr.time kh) (gbar g) ≤ sp.ts s + sp.Δ := max_le htkh (by
+          linarith only [hs, hΔ])
         obtain ⟨ka, hkaj, hacc', hlt⟩ := hS.healthy.2.1 x hx kh Hx hacc hgk y hy j ℓ hc
-          (by linarith [hS.deadline_le hy j (tr.time kh)]) hF
-        exact ⟨ka, hkaj, hacc', by linarith [hS.deadline_le hy ka (tr.time kh)]⟩
+          (by linarith only [hS.deadline_le hy j (tr.time kh), ht, hmx]) hF
+        exact ⟨ka, hkaj, hacc', by linarith only [hS.deadline_le hy ka (tr.time kh), hmx, hlt]⟩
       · obtain ⟨ka, hkaj, hacc', hlt⟩ := hS.catchUp x hx kh Hx hacc
-          (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy j ℓ hc (by linarith) hF
-        exact ⟨ka, hkaj, hacc', by linarith⟩
+          (lt_of_lt_of_le (not_le.1 hgk) (le_gbar g)) y hy j ℓ hc (by linarith only [hs, ht, hΔ]) hF
+        exact ⟨ka, hkaj, hacc', by linarith only [hs, hΔ, hlt]⟩
     exact ⟨mem_tree_of_acceptAt sp hr hy hacc' hkaj hc hF, Or.inr ⟨ka, hacc', hlt⟩⟩
   have hbs := blockStamp_lt_of_acceptedBefore sp hr hy hc hHt hAB
-    (fun k _ hrk => lt_of_le_of_lt (hS.restart_le hy hrk) (by linarith)) (Or.inl ht)
+    (fun k _ hrk => lt_of_le_of_lt (hS.restart_le hy hrk) (by linarith only [hs, hΔ])) (Or.inl ht)
   have hpost : (tr.state y (j + 1)).blockStamp Hx.root = (tr.state y j).blockStamp Hx.root := by
     have hst : tr.state y (j + 1) = tr.post j := by simp [Trace.state, hc.1, hc.2]
     have he := hr.exec j ℓ hc.2 (hc.1 ▸ hy)
@@ -390,7 +397,7 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp
     · simp only [not_exists] at hb
       rw [hoth hb fun hrs => by
         have := hS.restart_le hy ⟨ℓ, hc, hrs⟩
-        linarith]
+        linarith only [hs, ht, hΔ, this]]
   refine ⟨Hx, hHt, hHxr, hHxs, fun c hcj => ⟨(hpool c hcj).1, (hpool c hcj).2, ?_⟩⟩
   rw [← hHxr]
   rcases hcj with rfl | rfl
@@ -433,11 +440,13 @@ theorem proposal_mem_tree (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : 
   have hmax : max (sp.ts p) (gbar g) = sp.ts p := max_eq_left hpg
   obtain ⟨ka, hkaj, hacc, hlt⟩ := hS.healthy.2.1 _ hpH j₀ P ⟨ℓ₀, hc₀, hcall₀⟩
     (by rw [htj₀]; exact (le_gbar g).trans hpg) y hy j ℓ hc
-    (by rw [htj₀]; have := hS.deadline_le hy j (sp.ts p); rw [hmax] at this; linarith) hF
+    (by
+        rw [htj₀]; have := hS.deadline_le hy j
+            (sp.ts p); rw [hmax] at this; linarith only [ht, this]) hF
   have hdl := hS.deadline_le hy ka (tr.time j₀)
   rw [htj₀, hmax] at hdl
   rw [htj₀] at hlt
-  refine ⟨?_, ka, hkaj, hacc, by linarith⟩
+  refine ⟨?_, ka, hkaj, hacc, by linarith only [hlt, hdl]⟩
   rw [(hS.trivial y hy j ℓ hc).2.2.2]
   exact Set.mem_insert_of_mem _ ⟨ka, hkaj, hacc⟩
 
@@ -527,7 +536,7 @@ theorem origin_compatible_proposal (hS : StandaloneRun tr H U proposer g)
     have hBC : ℓ'.frame.Anc B C := (deepest_mem hB).1.1.2.2
     obtain ⟨z, hz, j', e, hv, hes, Hd, hHd, hHdr, hCHd⟩ :=
       result_extended hS.toHealthyBase hs hx hupd.1
-        (by rw [hupd.2.2.1]; linarith [sp.toParams.hΔ]) hC
+        (by rw [hupd.2.2.1]; linarith only [sp.toParams.hΔ]) hC
     exact compatible_of_vote hU hvotes hz hv (hes ▸ hps)
       ⟨Hd, hHd, hHdr, (Anc.mono hΦU hBC).trans hCHd⟩
 
@@ -554,7 +563,7 @@ theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Bl
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   have hΘ := Θ_nonneg sp
-  have hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p := by linarith
+  have hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p := by linarith only [hp, hΔ, hΘ]
   -- labels `≥ p`: by the origin, at any cut
   have hge : ∀ c' (l' : Lock), l' ∈ (tr.state y c').locks → p ≤ l'.slot → ∀ L' ∈ U,
       L'.root = l'.block → Compatible U L' P := by
@@ -572,7 +581,8 @@ theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Bl
   have hlt : ∀ l' ∈ (tr.state y j).locks, l'.slot < p → sp.slot (tr.time j) ≤ l'.slot + sp.k →
       ∀ L' ∈ U, L'.root = l'.block → Compatible U L' P := by
     intro l' hl' hpl hlive' L' hL' hL'r
-    obtain ⟨hve, -⟩ := locksSettled_iff.1 hset y hy j (by linarith) l' hl' hlive' L' hL' hL'r
+    obtain ⟨hve, -⟩ := locksSettled_iff.1 hset y hy j (by
+        linarith only [htj, hΔ]) l' hl' hlive' L' hL' hL'r
     obtain ⟨x, hx⟩ : H.Nonempty :=
       Set.nonempty_of_ncard_ne_zero (by have := two_faulty_lt_honest hS.toHealthyBase; omega)
     obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS.toHealthyBase hp4 x hx
@@ -587,7 +597,7 @@ theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Bl
   -- after the call: a lock of a label `< p` sits below one held before (no write of it)
   have hsl : p + 1 ≤ sp.slot (tr.time j) := by
     have := (ts_le_iff_le_slot sp (hr.time_nonneg j) (p + 1 : Nat)).1
-      (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith)
+      (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith only [htj, hΔ])
     exact_mod_cast this
   rcases lock_provenance_from hr hy (Nat.le_succ j) l hl with
     ⟨l', hl', hs', hb⟩ | ⟨j', hj1, hj2, B, hw, -⟩
@@ -601,8 +611,8 @@ theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Bl
     · omega
     · have h1 : sp.ts l.slot + 6 * sp.Δ < sp.ts p + 6 * sp.Δ := by
         have := (ts_lt_iff sp).2 (show (l.slot : Int) < p by exact_mod_cast hpl)
-        linarith
-      linarith
+        linarith only [this]
+      linarith only [htj, hu, h1]
 
 /-- **Every live lock block compares with `P`** at the state before (for a call at `t ≥ t_{p−1}`)
 or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame and time. -/
@@ -652,9 +662,10 @@ theorem first_update_post (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Bl
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
   have hts1 := SA.ts_succ (sp := sp) p
   have hslot : sp.slot (tr.time k) = p + 1 :=
-    slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith) (by rw [htk, SA.ts_succ, hts1]; linarith)
+    slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith only [hΔ]) (by
+        rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
   have hj := hS.joined_state hy k (by
-    rw [hslot, show (((p + 1 : Nat) : Int) - 1) = p by push_cast; ring]; linarith)
+    rw [hslot, show (((p + 1 : Nat) : Int) - 1) = p by push_cast; ring]; linarith only [hp4, hΔ])
   have hT2 : tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ := by rw [htk, hts1]; ring
   -- the tick is the slot-`p` update
   have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
@@ -666,7 +677,8 @@ theorem first_update_post (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Bl
     unfold acOnTick
     dsimp only
     rw [hslot]
-    have hc1 : ¬ tr.time k = sp.ts ((p + 1 : Nat) : Int) + sp.Δ := by intro h; linarith
+    have hc1 : ¬ tr.time k = sp.ts ((p + 1 : Nat) : Int) + sp.Δ := by
+      intro h; linarith only [htk, hΔ, hts1, h]
     have hc2 : (tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ ∧ 0 < p + 1) = True :=
       eq_true ⟨hT2, Nat.succ_pos p⟩
     simp only [hj, not_true_eq_false, hc1, hc2, ↓reduceIte, Nat.add_sub_cancel]
@@ -678,7 +690,7 @@ theorem first_update_post (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Bl
     intro u hu
     obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slot hS hp4 u hu
     obtain ⟨Hd, hHdt, hHdr, hHds, hh⟩ := late_vote_held_of_frame hS hy hc hp4
-      (by rw [htk]; linarith) hu hv hes fun Hd hHd hHdr => by
+      (by rw [htk]; linarith only [hΔ]) hu hv hes fun Hd hHd hHdr => by
         rw [hU.1 hHd (hΦU hPt) (hHdr.trans (hexact u hu i e hv hes))]
         exact (hΦ.rooted.2 P hPt).mono hΦU
     obtain ⟨hmem, hvst, hbst⟩ := hh k (Or.inl rfl)
@@ -975,21 +987,21 @@ theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n
       exact hR
     simp only [eq_false (not_not.2 hj), ↓reduceIte] at hopt ⊢
     by_cases hu : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
-    · have hv : ¬ t = sp.ts (sp.slot t) + sp.Δ := fun h => by linarith [hu.1]
+    · have hv : ¬ t = sp.ts (sp.slot t) + sp.Δ := fun h => by linarith only [hu.1, hΔ, h]
       simp only [eq_true hu, eq_false hv, ↓reduceIte] at hopt ⊢
       -- the update of slot `slot(t) − 1 ≥ p`
       refine RecP.ofUpdate (A := A) hR fun C hC => ?_
       have hs0 := hu.2
       have hsl : p + 1 ≤ sp.slot t := by
         have := (ts_le_iff_le_slot sp (ht ▸ hr.time_nonneg c) (p + 1 : Nat)).1
-          (by simp only [SAParams.ts] at htc ⊢; push_cast; linarith)
+          (by simp only [SAParams.ts] at htc ⊢; push_cast; linarith only [hΔ, htc])
         exact_mod_cast this
       have hts : sp.ts ((sp.slot t - 1 : Nat) : Int) + 4 * sp.Δ = sp.ts (sp.slot t) := by
         simp only [SAParams.ts]; push_cast [Nat.cast_sub (by omega : 1 ≤ sp.slot t)]; ring
       have hps : sp.ts p ≤ sp.ts ((sp.slot t - 1 : Nat) : Int) := (ts_le_iff sp).2 (by omega)
       rw [← hA] at hC
       obtain ⟨z, hz, j', e, hv, hes, hext⟩ := result_extended hS (hp.trans hps) hy hc
-        (by rw [ht]; linarith [hu.1]) hC
+        (by rw [ht]; linarith only [hu.1, hΔ, hts]) hC
       have hcomp := compatible_of_vote hU hvotes hz hv (by omega) hext
       have hCt := (deepest_mem hC).1.1
       rcases hcomp with h | h
@@ -1080,10 +1092,13 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
     have htc : sp.ts p + 6 * sp.Δ ≤ tr.time c := htk ▸ hr.time_mono hkc
     rcases Nat.eq_or_lt_of_le hkc with rfl | hkc
     · obtain rfl : ℓ = ℓk := Option.some.inj (hc.2.symm.trans hck.2)
-      exact first_update_record hS.toHealthyBase (by linarith) hexact hy hc hcallk htk
-        (proposal_mem_tree hS hpH hP (by linarith) hy hc (by linarith)).1
+      exact first_update_record hS.toHealthyBase (by
+          linarith only [hp, hΔ, hΘ]) hexact hy hc hcallk htk
+        (proposal_mem_tree hS hpH hP (by linarith only [hp, hΔ, hΘ]) hy hc (by
+            linarith only [htk, hΔ])).1
         (liveLock_compatible hS hp hset hexact hvotes hPU hy hc htc (Or.inl rfl))
-    have hPt := (proposal_mem_tree hS hpH hP (by linarith) hy hc (by linarith)).1
+    have hPt := (proposal_mem_tree hS hpH hP (by linarith only [hp, hΔ, hΘ]) hy hc (by
+        linarith only [hΔ, htc])).1
     rcases tr.noCall_or_lastCall y c with hn | ⟨c', hc'c, ℓ', hc', hnb⟩
     · exact absurd hck (hn k (Nat.zero_le _) hkc ℓk)
     have hkc' : k ≤ c' := by
@@ -1091,7 +1106,7 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
       exact hnb k (by omega) hkc ℓk hck
     have hR := ih c' hc'c ℓ' hc' hkc'
     rw [← tr.state_of_lastCall hc' hc'c hnb] at hR
-    exact record_step hS.toHealthyBase (by linarith) hvotes hy hc htc hPt
+    exact record_step hS.toHealthyBase (by linarith only [hp, hΔ, hΘ]) hvotes hy hc htc hPt
       (RecP.mono (trivial_tree_mono hS hy hc' hc hc'c.le) hR)
 
 /-! ## The head and the confirmed tip -/
@@ -1123,10 +1138,10 @@ theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P 
     have h2 : tr.time j < sp.ts (sp.slot (tr.time j)) + 4 * sp.Δ := by
       have := (ts_le_iff_le_slot sp ht0 ((sp.slot (tr.time j) : Int) + 1)).not.2 (by omega)
       simp only [SAParams.ts] at this ⊢
-      linarith
+      linarith only [this]
     have hs1 : p + 1 ≤ sp.slot (tr.time j) := by
       have := (ts_le_iff_le_slot sp ht0 (p + 1 : Nat)).1
-        (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith)
+        (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith only [htj, h1, h2])
       exact_mod_cast this
     unfold latestView
     dsimp only
@@ -1136,14 +1151,14 @@ theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P 
         by_contra hlt
         have heq : sp.slot (tr.time j) = p + 1 := by omega
         rw [heq] at h
-        exact h (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith)
+        exact h (by simp only [SAParams.ts] at htj ⊢; push_cast; linarith only [htj])
       have h1s : 1 ≤ sp.slot (tr.time j) := by omega
       refine ⟨sp.slot (tr.time j) - 1, by rw [Nat.cast_sub h1s]; push_cast; ring, by omega, ?_⟩
       have : sp.ts ((sp.slot (tr.time j) - 1 : Nat) : Int) + 4 * sp.Δ =
           sp.ts (sp.slot (tr.time j)) := by
         simp only [SAParams.ts]; rw [Nat.cast_sub h1s]; push_cast
         ring
-      linarith
+      linarith only [h1, h2, this]
   have hm4 : gbar g + 4 * sp.Δ ≤ sp.ts m := hp.trans ((ts_le_iff sp).2 (by omega))
   have hV : (latestView sp (tr.post j) ℓ.frame (tr.time j)).1 =
       voteView (tr.post j) ℓ.frame m ⊤ := by

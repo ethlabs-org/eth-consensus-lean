@@ -118,7 +118,7 @@ theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr) (hs : HSSh
       have := hrun.time_mono (not_lt.mp h)
       exact hlt (ht ▸ this)
     have := hprev j hjk ⟨_, hn, hl⟩
-    exact hgu (by linarith)
+    exact hgu (by linarith only [hp₀, ht, this])
 
 /-- **`f < h_t` after the cut** (`Healthy(g)`; HR.4's `fault_bound_late`). -/
 theorem faultBound_of_healthy (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
@@ -323,7 +323,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
     have := ((SA.joined_awake sp) FGP ro' H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
     rw [← hys] at this
     unfold SA.freeze
-    linarith
+    linarith only [hΔ, this]
   have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨k', hacc, hkt⟩)
     hrsy (Or.inl hfz)
   -- the vote's call does not accept `W`
@@ -332,7 +332,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
     have hB₀ := (SA.accept_new sp hr hy ⟨ℓ, hc.1, hcall⟩).1 ℓ hc.1
     obtain rfl : B₀ = W := hU.1 (hΦU hB₀) (hΦU hWt) hB.symm
     obtain rfl := SA.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
-    linarith
+    linarith only [hkt, hfz]
   have he := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
   rw [hc.1.1] at he
   have hpost : (T.post i).blockStamp W.root = (T.state y i).blockStamp W.root := by
@@ -393,8 +393,8 @@ theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     by_contra h
     have := hr.time_mono (not_lt.1 h)
     change tr.time k ≤ tr.time kz at this
-    linarith
-  have hi₀z : i₀ ≤ kz := le_of_settled hw (by linarith)
+    linarith only [hkt, htz', this]
+  have hi₀z : i₀ ≤ kz := le_of_settled hw (by linarith only [hj, htz, htz'])
   have hphz := hk kz hi₀z hkzk.le
   have hev : HoldsEvidence (tr.state z kz).fg m c := by
     have h := hw.1.evidence i₀ hw.2.1 m c hw.2.2 z hz
@@ -414,7 +414,7 @@ theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   · refine Or.inr ⟨kw, hkw, hacc, ?_⟩
     have := hr.time_mono hkw
     change tr.time kw ≤ tr.time kz at this
-    linarith
+    linarith only [hΔ, htz', this]
 
 /-- **Aligned witnesses at a vote**: under `Γ` (without
 `Prop⁺`), let an honest vote of a clean slot `j` extend `B`. At every in-phase honest vote of a
@@ -442,11 +442,11 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr) (hs : HSSha
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [(SA.castAt_spec hr hy hv).2.1])
   have hjσ : sp.ts j + 4 * sp.Δ ≤ sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ := by
     have := (SA.ts_le_iff sp).2 (show (j : Int) ≤ (e.msg.slot : Int) - 1 by omega)
-    linarith
+    linarith only [this]
   have hσ : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [SAParams.ts]; ring
   obtain ⟨hi₀z, hkzk, -, W, hBW, hWE, hWo⟩ :=
-    clean_vote_witness hrun hs hc hw hz hvz hj hes hext hk (by linarith)
+    clean_vote_witness hrun hs hc hw hz hvz hj hes hext hk (by linarith only [hΔ, hty, hjσ, hσ])
   have hon : PhaseOn tr.projFG H kz k m c := fun k' h1 h2 => hk k' (hi₀z.trans h1) h2
   have hret := viable_witness_retention_of hrun hs hon hz hWE hy hkzk.le le_rfl
   have hFW : Anc (tr.HonestBlocks H) ℓ.frame.F W := by
@@ -469,12 +469,13 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr) (hs : HSSha
       exact relay_mem_voterBlockTree hr hsync hz hacc hkg hkwt le_rfl hy hv (by omega) hFW
     · have hw8 := gbar_add_le_of_settled hw
       obtain ⟨k', hk', hacc', hk't⟩ :=
-        accept_of_catch hrun hc hz hacc (not_le.1 hkg) hy hv.1 (by linarith) hFW
+        accept_of_catch hrun hc hz hacc (not_le.1 hkg) hy hv.1 (by
+            linarith only [hj, hΔ, hty, hjσ, hσ, hw8]) hFW
       refine mem_voterBlockTree_of_accept hr hy hv
         (SA.mem_tree_of_acceptAt sp hr hy hacc' hk' hv.1 hFW) hacc' ?_
       unfold SA.freeze
       change tr.time k' < _
-      linarith
+      linarith only [hj, hΔ, hjσ, hw8, hk't]
   rw [Compose.frame_of_projAC hrun hy hv.1] at hWv' ⊢
   exact (hret.2.2 ℓ e hv (by rw [Compose.frame_of_projAC hrun hy hv.1]; exact hWv') B hBW).imp
     (fun h => by rwa [← Compose.frame_of_projAC hrun hy hv.1]) fun h => by
@@ -502,7 +503,7 @@ theorem clean_vote_frame (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hw8 := gbar_add_le_of_settled hw
   obtain ⟨hi₀z, hkzk, htz, W, hBW, hWE, hWo⟩ :=
-    clean_vote_witness hrun hs hc hw hz hvz hj hes hext hkq (by linarith)
+    clean_vote_witness hrun hs hc hw hz hvz hj hes hext hkq (by linarith only [hkt, hΔ])
   have hon : PhaseOn tr.projFG H kz kq m c := fun k' h1 h2 => hkq k' (hi₀z.trans h1) h2
   have hret := viable_witness_retention_of hrun hs hon hz hWE hq hkzk.le le_rfl
   have hWq : W ∈ (tr.state q kq).fg.tree := by
@@ -518,10 +519,10 @@ theorem clean_vote_frame (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
     have hz₁ : kz ≤ Nat.find hex := by
       by_contra hn
       have := hl.time_mono (not_le.1 hn).le
-      linarith [hj₁.1]
+      linarith only [hj₁.1, hkt, hΔ, htz, this]
     have hF := (viable_witness_retention_of hrun hs hon hz hWE hq hz₁ hle).1
     exact Compose.tree_mono hl hq hle (relay_held hl hs.healthy hs.noRestart hc hz hq haccr
-      (by linarith) (by rw [htw]; linarith) hj₁ hF)
+      (by linarith only [hj, hkt, hΔ, hw8]) (by rw [htw]; linarith only [hkt, hkwt]) hj₁ hF)
   exact fun X hXB => (hret.2.1 hWq).2.2 X (hXB.trans hBW)
 
 /-- **Frozen viability of a clean fast origin** (aligned
@@ -572,7 +573,8 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hBC : Anc (tr.HonestBlocks H) (ℓX.frame.viableAncestor D) C :=
     Anc.mono hΦU ((SA.anc_viableAncestor _ D).trans (SA.deepest_mem hdeep).1.1.2.2)
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hCHd⟩ :=
-    SA.result_extended hS (by linarith) hx hupd.1 (by rw [hupd.2.2.1]; linarith) hconf
+    SA.result_extended hS (by linarith only [hΔ, hj', hw8]) hx hupd.1 (by
+        rw [hupd.2.2.1]; linarith only [hΔ]) hconf
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩ hy hv
     hjs hk
 
@@ -617,8 +619,9 @@ theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   by_cases hkg : gbar g ≤ tr.time kw
   · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
   · obtain ⟨k', hk', hacc, hk't⟩ :=
-      accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by linarith) hFHv
-    exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith⟩)
+      accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by
+          linarith only [hΔ, hgj, htk, hts]) hFHv
+    exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith only [hΔ, hgj, hk't]⟩)
 
 /-- **`Carry` of a clean slow origin's result votes** (the slow
 helper): as `clean_fast_carry`, for the counted votes `CV` of every regular result `C` of the
@@ -665,8 +668,9 @@ theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   by_cases hkg : gbar g ≤ tr.time kw
   · exact Or.inr (Or.inl ⟨kw, hkw, hkg, hkwt⟩)
   · obtain ⟨k', hk', hacc, hk't⟩ :=
-      accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by linarith) hFHv
-    exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith⟩)
+      accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by
+          linarith only [hΔ, hgj, htk, hts]) hFHv
+    exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith only [hΔ, hgj, hk't]⟩)
 
 /-- **`Carry` of the preceding honest batch** (all-head `Carry`,
 the preceding common honest batch): under `Γ`, if every honest vote of a clean slot `m'`
@@ -714,18 +718,20 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     rintro v rfl
     refine ⟨hvs, ⟨k', ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
       (SA.ts_le_iff_le_slot sp (hr.time_nonneg k') m').2 (by omega), by
-        change tr.time k' < _; linarith⟩, Hd, hHv, hHvr, hFHd, ?_⟩
+        change tr.time k' < _; linarith only [hΔ, hkt]⟩, Hd, hHv, hHvr, hFHd, ?_⟩
     rcases Compose.frame_anc_accepted hr hz k' ℓk hck Hd hHd Hd .refl with hg | ⟨k'', hk'', hacc⟩
     · exact Or.inl hg
     have hk''t : tr.time k'' < sp.ts m' + 2 * sp.Δ := by
       have := hr.time_mono hk''
       change tr.time k'' ≤ tr.time k' at this
-      linarith
+      linarith only [hΔ, hkt, this]
     by_cases hkg : gbar g ≤ tr.time k''
     · exact Or.inr (Or.inl ⟨k'', hacc, hkg, hk''t⟩)
     · obtain ⟨k₂, hk₂, hacc₂, hk₂t⟩ :=
-        accept_of_catch hrun hc hz hacc (not_le.1 hkg) hy hv.1 (by linarith) hFHd
-      exact Or.inr (Or.inr ⟨k₂, hk₂, hacc₂, by change tr.time k₂ < _; linarith⟩)
+        accept_of_catch hrun hc hz hacc (not_le.1 hkg) hy hv.1 (by
+            linarith only [hΔ, hgm, htk, hts]) hFHd
+      exact Or.inr (Or.inr ⟨k₂, hk₂, hacc₂, by
+          change tr.time k₂ < _; linarith only [hΔ, hgm, hk₂t]⟩)
   exact ⟨hr.awake_of_call y hy k ℓ hv.1, (SA.castAt_spec hr hy hv).2.2.1,
     fun v hv' => (hone v hv').heads v rfl, fun v hv' => (hone v hv').holds v rfl⟩
 
