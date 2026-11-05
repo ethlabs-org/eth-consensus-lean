@@ -41,11 +41,11 @@ theorem h2_relay_held (hS : HealthyBase tr H U proposer g) {z : Fin sp.n} (hz : 
     · obtain ⟨b, hb, haccb, -⟩ := hS.healthy.2.1 z hz a X hacc hga y hy i ℓ hc
         (by
           have hdl := hS.deadline_le hy i (tr.time a)
-          have hm : max (tr.time a) (gbar g) ≤ T := max_le haT (by linarith)
-          linarith) hF
+          have hm : max (tr.time a) (gbar g) ≤ T := max_le haT (by linarith only [hT, hΔ])
+          linarith only [hi, hdl, hm]) hF
       exact ⟨b, hb, haccb⟩
     · obtain ⟨b, hb, haccb, -⟩ := hS.catchUp z hz a X hacc
-        ((not_le.1 hga).trans_le (le_gbar g)) y hy i ℓ hc (by linarith) hF
+        ((not_le.1 hga).trans_le (le_gbar g)) y hy i ℓ hc (by linarith only [hT, hi]) hF
       exact ⟨b, hb, haccb⟩
   exact mem_tree_of_acceptAt sp hr hy haccb hb hc hF
 
@@ -71,7 +71,8 @@ theorem h2_frozen_mem (hS : HealthyBase tr H U proposer g) {p k : Nat} {q y : Fi
   rw [hsta, hfz] at hst
   have hat : tr.time a < sp.ts p - sp.Δ :=
     WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst)
-  exact h2_relay_held hS hy hca hXa hat.le (by linarith) hq hck (by rw [htk]; linarith) hF
+  exact h2_relay_held hS hy hca hXa hat.le (by linarith only [hp]) hq hck (by
+      rw [htk]; linarith only []) hF
 
 /-- An honest proposal is the only block of its positive slot in honest frames. -/
 theorem h2_frame_slot_eq (hS : HealthyBase tr H U proposer g) {p : Nat} (hp : 0 < p)
@@ -81,7 +82,7 @@ theorem h2_frame_slot_eq (hS : HealthyBase tr H U proposer g) {p : Nat} (hp : 0 
     {X : Blk sp.n FGP} (hX : X ∈ ℓ.frame.tree) (hXs : X.slot = p) : X = P := by
   have hr := hS.run.localRun
   rcases frame_genesis_or_accepted sp hr hy hc X hX with h0 | ⟨j, -, hacc⟩
-  · omega
+  · (clear * - hp hXs h0; omega)
   have hXp := (hS.driven.blocks y hy j X hacc (accept_ne_genesis sp hr hy hacc)).1
   obtain ⟨-, -, -, -, -, -, -, -, -, hPs, hPp, -, a, -, ⟨ℓa, hca, hcalla⟩, -⟩ := hP
   have hPa := (accept_new sp hr hpH ⟨ℓa, hca, hcalla⟩).1 ℓa hca
@@ -106,7 +107,7 @@ theorem h2_support_mem (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp : 0 
     have hQP := h2_frame_slot_eq hS hp hpH hP hy hc.1 hQ (hQs.trans hes)
     rw [hQP, hes] at hsup
     obtain ⟨Hd', hHd', hHdr', -⟩ := hsup v (by simpa only [blockSupport, hpay] using hv)
-      (by omega)
+      (by clear * - hvs; omega)
     obtain rfl : Hd' = Hd := hr.coherent.1 ((frameIn_of_callAt hr hy hc.1).2 hHd')
       ((frameIn_of_callAt hr hpH hck).2 hHd) (hHdr'.trans hHdr.symm)
     exact hHd'
@@ -138,12 +139,13 @@ theorem h2_views_agree (hS : HealthyBase tr H U proposer g) {s k : Nat}
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   refine view_agree hS.run hpH hy rfl ⟨hck, hcall, d, hpay⟩ htk hc
-    ⟨P, hPy, hPs, hPpay⟩ (hS.syncAC (by linarith) _) ?_ ?_
+    ⟨P, hPy, hPs, hPpay⟩ (hS.syncAC (by linarith only [hlate, hΔ]) _) ?_ ?_
   · intro Hd hHd _ hst hF
-    exact h2_frozen_mem hS hpH hy hck htk (by rw [hts]; linarith) hc hHd hst hF
+    exact h2_frozen_mem hS hpH hy hck htk (by rw [hts]; linarith only [hlate, hΔ]) hc hHd hst hF
   · intro v hv Hd hHd hHdr hF
     have hsl : sp.slot (tr.time k) = s + 1 := by
-      rw [htk]; exact slot_of_mem sp (s + 1) le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
+      rw [htk]; exact slot_of_mem sp (s + 1) le_rfl ((ts_lt_iff sp).2 (by
+          push_cast; (clear * -; omega)))
     have hpay' := hpay
     unfold acProposal at hpay'
     split_ifs at hpay'
@@ -154,8 +156,9 @@ theorem h2_views_agree (hS : HealthyBase tr H U proposer g) {s k : Nat}
     rw [hs] at hv'
     have hvs := state_pool_slot sp hr hpH k s v
       ((mem_proposalView_votes hr hpH k s ℓp.frame v).1 (ofLists_support_subset _ _ _ _ hv'))
-    exact h2_support_mem hS (by omega) hpH hP hck htk hPpay (by rw [hts]; linarith)
-      hy hc hes hv (by omega) hHd hHdr hF
+    exact h2_support_mem hS (by clear * -; omega) hpH hP hck htk hPpay (by
+        rw [hts]; linarith only [hlate, hΔ])
+      hy hc hes hv (by clear * - hvs; omega) hHd hHdr hF
 
 /-- Viable voter competitors above the proposer's root reflect into its viable tree, with the
 proposal itself added. The witness is frozen (and relayed), or lies on the proposal ancestry. -/

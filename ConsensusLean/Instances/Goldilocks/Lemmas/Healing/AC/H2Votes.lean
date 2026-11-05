@@ -59,8 +59,8 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
     (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hsl])
   have hp0 : 0 < p := by
     have h0 : sp.ts 0 = 0 := by simp [SAParams.ts]
-    have : (0 : Int) < p := (ts_lt_iff sp).1 (by rw [h0]; linarith)
-    omega
+    have : (0 : Int) < p := (ts_lt_iff sp).1 (by rw [h0]; linarith only [hp, hΔ, hΘ, hg, hg0])
+    clear * - this; omega
   have hfc : Anc U ℓ.frame.fcRoot P :=
     (hΦ.fcRoot_anc_viableHeads P (hgeo k ℓp hck hcallk htk x hx i ℓ e hce hes).1).mono hΦU
   have hlock : ∀ D ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Anc U D P := by
@@ -72,10 +72,10 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
     by_cases hlp : l.slot = p
     · -- a slot-`p` lock: optimistic, with an honest supporter of an earlier cut on `P`
       obtain ⟨Φ', A, D', -, hΦ'U, -, h34, hpool, -, L, hL, hLr, hLD⟩ :=
-        lock_origin_readPoint hrun hx hce l hl (by rw [hes, hlp]; omega)
+        lock_origin_readPoint hrun hx hce l hl (by rw [hes, hlp]; (clear * -; omega))
       obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
       have hf := hI.two_faulty_lt
-      have hlt : Hᶜ.ncard < (optimisticVoters sp A Φ' l.slot D').ncard := by omega
+      have hlt : Hᶜ.ncard < (optimisticVoters sp A Φ' l.slot D').ncard := by clear * - h34 hf; omega
       obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hu⟩ :=
         Set.exists_mem_notMem_of_ncard_lt_ncard hlt
       have huH : v.val ∈ H := not_not.1 hu
@@ -92,10 +92,10 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
       replace hlive : sp.slot (tr.time i) ≤ l.slot + sp.k :=
         hlive.trans ((castAt_readPoint_locksWF hr hx hce).cap hl)
       rw [hsl] at hle hlive
-      obtain ⟨-, hprops⟩ := locksSettled_iff.1 hset x hx i (by linarith) l₀ hl₀
-        (by rw [hsl]; omega) B (hΦU hB) hBr
+      obtain ⟨-, hprops⟩ := locksSettled_iff.1 hset x hx i (by linarith only [hΔ, hti]) l₀ hl₀
+        (by rw [hsl]; (clear * - hsl₀ hlive; omega)) B (hΦU hB) hBr
       exact (hB'B.mono hΦU).trans ((proposalsExtendAfter_iff.1 hprops _ hpH k ℓp p d pay hck
-        hcallk htk (by omega) hpay).trans hdP)
+        hcallk htk (by clear * - hlp hsl₀ hle; omega) hpay).trans hdP)
   unfold getAnchor
   rcases hD : deepest ℓ.frame (liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i) ∪
       {ℓ.frame.fcRoot}) with _ | D
@@ -126,7 +126,7 @@ theorem h2_proposal_locks_below (hI : InclusionRun tr H U proposer g t₀) {p : 
     have htime : tr.time j = sp.ts p := le_antisymm ht hstart
     have hslots : sp.slot (tr.time j) = p := by
       rw [htime]
-      exact slot_of_mem sp p le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
+      exact slot_of_mem sp p le_rfl ((ts_lt_iff sp).2 (by push_cast; (clear * -; omega)))
     have hobj : (∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B := by
       rcases hop with ⟨m, hm, -⟩ | ⟨B, hB, -⟩ | ⟨e, he, -⟩
       · exact Or.inl ⟨m, hm⟩
@@ -143,7 +143,7 @@ theorem h2_proposal_locks_below (hI : InclusionRun tr H U proposer g t₀) {p : 
         rw [hcl] at hem
         change e ∈ (acOnTick sp _ _ _ _).2 at hem
         have hne : tr.time j ≠ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
-          rw [hslots, htime]; linarith
+          rw [hslots, htime]; linarith only [hΔ]
         unfold acOnTick at hem
         split_ifs at hem <;> simp_all
       | proposal => simp [hcl, ACInterface.step] at hem
@@ -155,7 +155,7 @@ theorem h2_proposal_locks_below (hI : InclusionRun tr H U proposer g t₀) {p : 
           (frameIn_of_callAt hr hpH hc).1 (hr.time_nonneg j)).1] at hem
         simp at hem
     have := hI.driven.proposal_first _ hpH j k ℓ ℓp hc hck hcall (htime.trans htk.symm) hobj
-    omega
+    clear * - hj this; omega
   · have hlt : sp.ts l.slot < sp.ts p := by rw [htj] at ht; linarith
     exact_mod_cast (ts_lt_iff sp).1 hlt
 
@@ -183,11 +183,11 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
   have hg0 := gbar_nonneg g
   have hp0 : 0 < p := by
     by_contra hn
-    have : p = 0 := by omega
+    have : p = 0 := by clear * - hn; omega
     subst p
     have hz : sp.ts (0 : Nat) = 0 := by simp [SAParams.ts]
     rw [hz] at hp
-    linarith
+    linarith only [hΔ, hΘ, hg, hg0, hp]
   obtain ⟨s, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.ne_of_gt hp0)
   have hP' := hP
   obtain ⟨k, ℓp, d, pay, hck, hcall, hpay, htk, hQP, hPs, -, hPpay,
@@ -202,7 +202,7 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
   have hPv := (hgeo k ℓp hck hcall htk x hx i ℓ e hc hes).1
   have hPt := hΦ.viableHeads_subset hPv
   obtain ⟨heq, hvot, hsup⟩ := h2_views_agree hS hpH hP hck hcall htk hpay hPpay hPs
-    (by rw [hts] at hp; linarith) hx hc hes hPt
+    (by rw [hts] at hp; linarith only [hg, hp, hΘ]) hx hc hes hPt
   have hsc : ∀ B ∈ ℓp.frame.tree, B ∈ ℓ.frame.tree →
       goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1))
         (((s + 1 : Nat) : Int) - 1) B =
@@ -210,7 +210,8 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
     intro B hBp hBy
     have hσ : ((s + 1 : Nat) : Int) - 1 = s := by push_cast; ring
     simp only [goldfishScore, hσ, heq, hsup B hBp hBy]
-  refine h2_compare_reader hS hp0 hpH hP hck hcall htk (by linarith) hgeo hPnot hPs
+  refine h2_compare_reader hS hp0 hpH hP hck hcall htk (by
+      linarith only [hΔ, hΘ, hg, hp]) hgeo hPnot hPs
     hpay hQP hx hc hes hvot hsc haP ?_
   obtain ⟨hst, hfs, hw⟩ := h2_parent_walkEnd hΦp hpay
   have hQt : d.head ∈ ℓp.frame.tree := by
