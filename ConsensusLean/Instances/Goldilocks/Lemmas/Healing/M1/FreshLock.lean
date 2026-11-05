@@ -106,19 +106,20 @@ theorem honest_vote_early_pool_before (hS : HealthyBaseUpTo tr H U proposer g b)
   rw [max_eq_left hti0] at hdl
   obtain ⟨q, hqj, hiq, hproc, hqt⟩ := hS.sync.message x hx i e.msg
     ⟨ellx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ hgi y hy j ell hc
-    (by linarith) (by linarith)
+    (by linarith only [ht, hjb, hti, hdl]) (by linarith only [ht, hti, hdl])
   have hqT : tr.time q < sp.ts u + 2 * sp.Δ := by
     have hqdl := hdeadline q hqj (tr.time i) hgi
     rw [max_eq_left hti0] at hqdl
-    linarith
-  have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith)
+    linarith only [hti, hqt, hqdl]
+  have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith only [hqT, ht])
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hqs : sp.slot (tr.time q) = u :=
-    slot_of_mem sp u (by linarith) (by rw [hts]; linarith)
+    slot_of_mem sp u (by linarith only [hti0, hiq]) (by rw [hts]; linarith only [hti, hti0, hqT])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (q + 1)).pool u := by
-    rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
+    rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; (clear * -; omega)) (by
+        rw [hqs, hes]) with
       h | ⟨v, hv, w, hw, hne, hvval, hwval⟩
     · rwa [hes] at h
     · exfalso
@@ -133,14 +134,15 @@ theorem honest_vote_early_pool_before (hS : HealthyBaseUpTo tr H U proposer g b)
         (hsv.trans hsw.symm)
       exact hne rfl
   intro c hcj
-  have hst := stamp_lt_of_held_of_run hr hy (a := q + 1) (b := c) (by omega)
+  have hst := stamp_lt_of_held_of_run hr hy (a := q + 1) (b := c) (by clear * - hqj' hcj; omega)
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts u + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
-    (by rw [hes]; linarith)
-    (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith))
+    (by rw [hes]; linarith only [hti0, hqT, hiq])
+    (fun k hk hrs => lt_trans (hrestart k (by clear * - hcj hk; omega) hrs) (by
+        linarith only [hti0, hqT, hiq]))
     (fun k hqk hkc hrs => by
-      have := hrestart k (by omega) hrs
-      have := hr.time_mono (show q ≤ k by omega)
+      have := hrestart k (by clear * - hcj hkc; omega) hrs
+      have := hr.time_mono (show q ≤ k by clear * - hqk; omega)
       linarith)
   rwa [hes] at hst
 
@@ -169,22 +171,24 @@ theorem unanimous_early_pool_of_proposal (hS : HealthyBaseUpTo tr H U proposer g
   have hdl := hdeadline j le_rfl (tr.time a) hga
   rw [hta, max_self] at hdl
   obtain ⟨q, hqj, haq, hqt⟩ := hS.sync.relay z hz a P hacc hga y hy j ell hc
-    (by rw [hta]; linarith) (by rw [hta]; linarith) ((hPhi.rooted.2 P hPt).mono hPhiU)
+    (by rw [hta]; linarith only [ht, hjb, hDelta, hdl]) (by
+        rw [hta]; linarith only [ht, hDelta, hdl]) ((hPhi.rooted.2 P hPt).mono hPhiU)
   rw [hta] at hqt
   have hqT : tr.time q < sp.ts u + 2 * sp.Δ := by
     have hdq := hdeadline q hqj (tr.time a) hga
     rw [hta, max_self] at hdq
-    linarith
+    linarith only [hDelta, hqt, hdq]
   have hbs := blockStamp_lt_of_acceptedBefore sp hr hy hc hPt (Or.inr ⟨q, haq, hqT⟩)
-    (fun k hk hrs => (hrestart k hk hrs).trans_le (by linarith)) (Or.inl ht)
+    (fun k hk hrs => (hrestart k hk hrs).trans_le (by linarith only [hDelta])) (Or.inl ht)
   intro x hx
-  obtain ⟨i, e, hv, hes, _⟩ := honest_votes_of_joined_before hS hgu (by linarith) hjoin x hx
+  obtain ⟨i, e, hv, hes, _⟩ := honest_votes_of_joined_before hS hgu (by
+      linarith only [ht, hjb, hDelta]) hjoin x hx
   have heP := hun x hx i e hv hes
   obtain ⟨hmem, hvs⟩ := honest_vote_early_pool_before hS hy hc hgu ht hjb hdeadline hrestart
     hx hv hes j (Or.inl rfl)
   obtain ⟨hval, -⟩ := castAt_spec hr hx ⟨hv.choose_spec.1, hv.choose_spec.2⟩
   refine ⟨e.msg, hmem, hval, heP,
-    resolutionTime_lt_of hPhi hPt heP.symm (by omega) hvs (heP ▸ hbs), ?_⟩
+    resolutionTime_lt_of hPhi hPt heP.symm (by clear * - hPs hes; omega) hvs (heP ▸ hbs), ?_⟩
   intro v' hv' hv'x
   obtain ⟨q', -, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hv' (hv'x ▸ hx)
   rw [hv'x] at he'
@@ -214,26 +218,27 @@ theorem unanimous_proposal_carry_before (hS : HealthyBaseUpTo tr H U proposer g 
   have hdl := hdeadline j le_rfl (tr.time a) hga
   rw [hta, max_self] at hdl
   obtain ⟨q, hqj, haq, hqt⟩ := hS.sync.relay z hz a P hacc hga y hy j ell hc.1
-    (by rw [hta]; linarith) (by rw [hta]; linarith) ((hPhi.rooted.2 P hPt).mono hPhiU)
+    (by rw [hta]; linarith only [ht, hjb, hDelta, hdl]) (by
+        rw [hta]; linarith only [ht, hDelta, hdl]) ((hPhi.rooted.2 P hPt).mono hPhiU)
   have hqT : tr.time q < sp.ts u + 2 * sp.Δ := by
     have hdq := hdeadline q hqj (tr.time a) hga
     rw [hta, max_self] at hdq
     rw [hta] at hqt
-    linarith
+    linarith only [hDelta, hqt, hdq]
   refine ⟨hr.awake_of_call y hy j ell hc.1, (castAt_spec hr hy hc).2.2.1, ?_, ?_⟩
   · rintro v ⟨x, hx, i, e, hv, rfl, hes⟩
     refine ⟨P, hPhiU hPt, (hun x hx i e hv hes).symm, fun X hX => ?_⟩
     rcases acceptedBefore_ancestor hr hy hc.1 (hPhiU hPt) (Or.inr ⟨q, haq, hqT⟩) hX with
       hg | ⟨r, hrX, hrT⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨r, hrX, by linarith⟩
+    · exact Or.inr ⟨r, hrX, by linarith only [hDelta, hrT]⟩
   · rintro v ⟨x, hx, i, e, hv, rfl, hes⟩
     have hheld : HeldBefore e'.readPoint e.msg (sp.ts u + 2 * sp.Δ) := by
-      apply heldBefore_readPoint hr hy hc (by omega)
+      apply heldBefore_readPoint hr hy hc (by clear * - hs hes; omega)
       simpa only [hes] using honest_vote_early_pool_before hS hy hc.1 hgu ht hjb
         hdeadline hrestart hx hv hes (j + 1) (Or.inr rfl)
     exact Or.inl ⟨hheld.1, lt_trans hheld.2
-      (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
+      (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith only [hDelta])))⟩
 
 /-- The unique early honest batch forces the raw result and fast selection.
 This is a pool calculation, independent of any lock-veto premise. -/
@@ -289,7 +294,8 @@ theorem confirmation_of_unanimous_early_pool
     have hPD := anc_deepest hPhi (fun B hB => hB.1)
       (fun B hB C hC => anc_total hPhi.coherent (hall B hB) (hall C hC)) hD P hPS
     rw [hD, Anc.antisymm hPhi.coherent hDP hPD]
-  exact ⟨hconf, fastSelect_eq_result hPhi hPt hPg (by unfold FastTest; omega)⟩
+  exact ⟨hconf, fastSelect_eq_result hPhi hPt hPg (by
+      unfold FastTest; (clear * - hf hHn hscore; omega))⟩
 
 /-- A half-committee supporting a block at an actual next-slot unlock makes all
 older lock labels compatible at every later cut. Provenance excludes intervening
@@ -316,8 +322,8 @@ theorem older_locks_compatible_after_unlock
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
     · exact anc_total hU hXY h
-  obtain ⟨L₀, hL₀⟩ := readPoint_locks hr hy hc (by omega)
-  have hsig : ((u + 1 : Nat) : Int) - 1 = u := by omega
+  obtain ⟨L₀, hL₀⟩ := readPoint_locks hr hy hc (by clear * - hs; omega)
+  have hsig : ((u + 1 : Nat) : Int) - 1 = u := by clear * -; omega
   have hA : ∀ l ∈ e.readPoint.locks, l.slot < u →
       ∀ X ∈ ell.frame.tree, X.root = l.block → Compatible U X P := by
     intro l hl hls X hX hXr
@@ -363,7 +369,7 @@ theorem older_locks_compatible_after_unlock
       rw [← hLL₁, hL₂Y] at hLL
       exact down hLL hYP
   · exfalso
-    have hmono := hr.time_mono (show j ≤ j' by omega)
+    have hmono := hr.time_mono (show j ≤ j' by clear * - hj'; omega)
     rcases horig with ⟨CV, ell', A', _, hsl', _⟩ | ⟨ell', _, _, ht', _⟩
     · have := slot_mono sp (hr.time_nonneg j) hmono
       omega
@@ -409,7 +415,7 @@ theorem FrameWindow.proposal_viable_after_votes
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hshortT : sp.ts u + sp.Δ ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-    rw [hts]; linarith
+    rw [hts]; linarith only [hlo, hhi, hts]
   have hub := hshortT.trans hTb
   have hshort : FrameWindow (tr := tr) (H := H) (sp.ts u) (sp.ts u + sp.Δ)
       floor kindJ J :=
@@ -424,14 +430,14 @@ theorem FrameWindow.proposal_viable_after_votes
       rw [← (SA.castAt_spec hr hy hcq).2.1, hes])
   have hqk : q ≤ k := by
     by_contra h
-    have htime := hrun.time_mono (show k ≤ q by omega)
+    have htime := hrun.time_mono (show k ≤ q by clear * - h; omega)
     change tr.time q ≤ _ at hqt
-    linarith
+    linarith only [hlo, hDelta, htime, hqt]
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+    clear * - hf hn; omega
   obtain ⟨hPt, hroot, hPv⟩ := hframe.viableHead_persists hrun hnc hmf hy hqk hqlo hhi hcq.1 hPv
   rw [← Compose.frame_of_projAC hrun hy hc] at hPt hroot hPv
   have hvi : P ∈ ell.frame.viableTree ell.frame.tree := ⟨hPt, hroot, P, hPt, hPv, .refl⟩
@@ -456,9 +462,9 @@ theorem FrameWindow.proposal_viable_at_update
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P := by
   obtain ⟨hvi, hva, _⟩ := hframe.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch hnr
     hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hu.1
-    (by rw [show tr.time k = sp.ts u + 6 * sp.Δ from hu.2.2.1]; linarith [sp.toParams.hΔ])
+    (by rw [show tr.time k = sp.ts u + 6 * sp.Δ from hu.2.2.1]; linarith only [sp.toParams.hΔ])
     (by rw [show tr.time k = sp.ts u + 6 * sp.Δ from hu.2.2.1]
-        simp only [SAParams.ts]; push_cast; linarith)
+        simp only [SAParams.ts]; push_cast; linarith only [])
   exact ⟨hvi, hva⟩
 
 /-- Finite unanimity and an actual honest proposal force confirmation and fast
@@ -485,13 +491,13 @@ theorem FrameWindow.unanimous_update_selection
       SA.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
       ell.frame.viableAncestor P = P := by
   have hDelta := sp.toParams.hΔ
-  have hgu : gbar g ≤ sp.ts u := by linarith
+  have hgu : gbar g ≤ sp.ts u := by linarith only [hmargin, hDelta]
   have hu0 : 0 < u := by
     by_contra h
-    have hu : u = 0 := by omega
+    have hu : u = 0 := by clear * - h; omega
     rw [hu] at hmargin
     simp only [Nat.cast_zero, SAParams.ts, mul_zero] at hmargin
-    linarith [SA.gbar_nonneg g]
+    linarith only [SA.gbar_nonneg g, hDelta, hmargin]
   obtain ⟨hvi, hva⟩ := hframe.proposal_viable_at_update hrun hnc hsvc hawake hf hcatch hnr
     hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hu
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
@@ -509,7 +515,7 @@ theorem FrameWindow.unanimous_update_selection
     intro r _ hrs
     have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
     change tr.time r < _
-    linarith
+    linarith only [hmargin, hDelta, this]
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
@@ -518,9 +524,10 @@ theorem FrameWindow.unanimous_update_selection
     rw [hts] at hb
     change tr.time k ≤ b
     rw [hkt]
-    linarith
+    linarith only [hTb, hts]
   have hpool := SA.unanimous_early_pool_of_proposal hS hgu hjoin hPs hun hz hacc hta hy hu.1
-    (by change sp.ts u + 2 * sp.Δ ≤ tr.time k; rw [hkt]; linarith) hkb hdeadline hrestart hvi.1
+    (by change sp.ts u + 2 * sp.Δ ≤ tr.time k; rw [hkt]; linarith only [hDelta])
+    hkb hdeadline hrestart hvi.1
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
     (SA.frameIn_of_callAt hr hy hu.1).1 hvi.1 hPg hf (SA.state_pool_slot sp hr hy k u) hpool
   exact ⟨hvi, hconf, hfast, hva⟩
@@ -546,18 +553,18 @@ theorem FrameWindow.unanimous_next_votes
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
-  have hgu : gbar g ≤ sp.ts u := by linarith
+  have hgu : gbar g ≤ sp.ts u := by linarith only [hmargin, hDelta]
   have hu0 : 0 < u := by
     by_contra h
-    have hu : u = 0 := by omega
+    have hu : u = 0 := by clear * - h; omega
     rw [hu] at hmargin
     simp only [Nat.cast_zero, SAParams.ts, mul_zero] at hmargin
-    linarith [SA.gbar_nonneg g]
+    linarith only [SA.gbar_nonneg g, hDelta, hmargin]
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hTb' := hTb
   rw [hts] at hTb'
-  have hex := SA.honest_votes_of_joined_before hS hgu (by linarith) hjoin
+  have hex := SA.honest_votes_of_joined_before hS hgu (by linarith only [hTb, hDelta, hts]) hjoin
   have hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ i e,
       SA.VoteAt tr.projAC x i e ∧ e.msg.slot = u}.ncard := by
     have hle := Set.ncard_le_ncard (s := H)
@@ -598,9 +605,9 @@ theorem FrameWindow.unanimous_next_votes
       intro q _ hq
       have := hnr y hy q (Compose.projAC_restartAt.mp hq)
       change tr.time q < _
-      linarith
-    have hlate : sp.ts u + 2 * sp.Δ ≤ tr.time i := by rw [hts] at hlo; linarith
-    have hfinite : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith
+      linarith only [hmargin, hDelta, this]
+    have hlate : sp.ts u + 2 * sp.Δ ≤ tr.time i := by rw [hts] at hlo; linarith only [hts, hlo, hhi]
+    have hfinite : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith only [hlo, hhi]
     obtain ⟨hvi, _, hPv⟩ := hframe.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch
       hnr hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hc.1 hlate hfinite
     have hPhi := SA.frameIn_of_callAt hr hy hc.1
@@ -611,19 +618,19 @@ theorem FrameWindow.unanimous_next_votes
     have hBP : B = P := hr.coherent.1 hB (hPhi.2 hvi.1) (hBr.trans (hun y hy q ev hv hes))
     rw [hBP] at haccB
     have hfreeze : SA.freeze sp e.msg.slot = sp.ts u + 3 * sp.Δ := by
-      rw [hs]; simp only [SA.freeze]; congr 1; congr 1; omega
+      rw [hs]; simp only [SA.freeze]; congr 1; congr 1; (clear * -; omega)
     have hdom := SA.voterBlockTree_of_acceptedBefore hr hy hc hvi.1
       (by rw [hfreeze]; exact haccB P .refl)
-      (fun r hri hrst => by rw [hfreeze]; have := hrs r hri hrst; linarith)
+      (fun r hri hrst => by rw [hfreeze]; have := hrs r hri hrst; linarith only [hlo, hhi, this])
       (by change SA.freeze sp e.msg.slot ≤ tr.time i
-          rw [hfreeze]; rw [hts] at hlo; linarith)
+          rw [hfreeze]; rw [hts] at hlo; linarith only [hts, hlo, hhi])
     rw [hs] at hdom
     apply SA.next_transfer_of_carry sp hS.run hy hc hs
       (fun x hx q ev hv hes => ⟨P, hPhi.2 hvi.1, (hun x hx q ev hv hes).symm, .refl⟩)
       hhalf hcarry
       (faultBound_of_service hawake hf hnr (hr.time_nonneg i)
         (by change gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
-            rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by omega]
+            rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by clear * -; omega]
             exact hgu) (hfinite.trans hTb))
       (Or.inl ⟨hdom, hvi.2.1, P, hdom, hPv, .refl⟩)
       (fun x hx q hqi ev hv hes => ih q hqi x hx ev hv hes)
@@ -651,27 +658,28 @@ theorem FrameWindow.older_locks_compatible_at_update
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
-  have hgu : gbar g ≤ sp.ts u := by linarith
+  have hgu : gbar g ≤ sp.ts u := by linarith only [hmargin, hDelta]
   have hu0 : 0 < u := by
     by_contra h
-    have hu : u = 0 := by omega
+    have hu : u = 0 := by clear * - h; omega
     rw [hu] at hmargin
     simp only [Nat.cast_zero, SAParams.ts, mul_zero] at hmargin
-    linarith [SA.gbar_nonneg g]
+    linarith only [SA.gbar_nonneg g, hDelta, hmargin]
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hTb' := hTb
   rw [hts] at hTb'
   have hslot : sp.slot (sp.ts (u + 1 : Nat) + sp.Δ) = u + 1 := by
-    apply SA.slot_of_mem sp (u + 1) (by linarith)
-    simp only [SAParams.ts]; push_cast; linarith
+    apply SA.slot_of_mem sp (u + 1) (by linarith only [hDelta])
+    simp only [SAParams.ts]; push_cast; linarith only [hDelta]
   have hjn : ∀ x ∈ H, SA.JoinedAt tr.projAC x (sp.ts (u + 1 : Nat) + sp.Δ) := by
     intro x hx r hrs _
     change tr.time r ≤ sp.ts ((sp.slot (sp.ts (u + 1 : Nat) + sp.Δ) : Int) - 1)
-    rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by omega]
+    rw [hslot, show ((u + 1 : Nat) : Int) - 1 = u by clear * -; omega]
     exact (hnr x hx r (Compose.projAC_restartAt.mp hrs)).trans hgu
   obtain ⟨j, e, ⟨ellj, hc⟩, hs, hjt⟩ := SA.honest_votes_of_joined_before hS
-    (by rw [hts]; linarith) (by rw [hts]; linarith) hjn y hy
+    (by rw [hts]; linarith only [hmargin, hDelta]) (by
+        rw [hts]; linarith only [hTb, hDelta, hts]) hjn y hy
   have hjslot : sp.slot (tr.time j) = u + 1 := (SA.castAt_spec hr hy hc).2.1.symm.trans hs
   have hjlo : sp.ts (u + 1 : Nat) ≤ tr.time j :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by
@@ -680,11 +688,12 @@ theorem FrameWindow.older_locks_compatible_at_update
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hjk : j < k := by
     by_contra h
-    have := hrun.time_mono (show k ≤ j by omega)
+    have := hrun.time_mono (show k ≤ j by clear * - h; omega)
     rw [hts] at hjt
-    linarith
-  have hjlate : sp.ts u + 2 * sp.Δ ≤ tr.time j := by rw [hts] at hjlo; linarith
-  have hjfinite : tr.time j ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith
+    linarith only [hDelta, hjt, hkt, this]
+  have hjlate : sp.ts u + 2 * sp.Δ ≤ tr.time j := by
+    rw [hts] at hjlo; linarith only [hts, hjlo, hjt]
+  have hjfinite : tr.time j ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith only [hjlo, hjt]
   obtain ⟨hvi, _⟩ := hframe.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch hnr
     hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hc.1 hjlate hjfinite
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
@@ -697,7 +706,7 @@ theorem FrameWindow.older_locks_compatible_at_update
     intro q _ hq
     have := hnr y hy q (Compose.projAC_restartAt.mp hq)
     change tr.time q < _
-    linarith
+    linarith only [hmargin, hDelta, this]
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, hacc, hta⟩ :=
     honestProposalRun_of_proposesAt hrun hnc hz hdesignated hactual hPs
   rw [← hdesignated] at hacc
@@ -707,13 +716,14 @@ theorem FrameWindow.older_locks_compatible_at_update
     have hn : H.ncard + Hᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     have := sp.toParams.hn
-    omega
+    clear * - hf hn; omega
   apply SA.older_locks_compatible_after_unlock hr hy hc hs hjk hvi.1 (S := H) _ hhalf
   intro x hx
-  obtain ⟨q, ev, hv, hes, _⟩ := SA.honest_votes_of_joined_before hS hgu (by linarith) hjoin x hx
+  obtain ⟨q, ev, hv, hes, _⟩ := SA.honest_votes_of_joined_before hS hgu (by
+      linarith only [hTb, hts, hjlo, hjt]) hjoin x hx
   have hval := (SA.castAt_spec hr hx ⟨hv.choose_spec.1, hv.choose_spec.2⟩).1
   have hheld : SA.HeldBefore e.readPoint ev.msg (sp.ts u + 2 * sp.Δ) := by
-    apply SA.heldBefore_readPoint hr hy hc (by omega)
+    apply SA.heldBefore_readPoint hr hy hc (by clear * - hs hes; omega)
     simpa only [hes] using SA.honest_vote_early_pool_before hS hy hc.1 hgu hjlate
       (hjfinite.trans hTb) hdl hrs hx hv hes (j + 1) (Or.inr rfl)
   obtain ⟨B, hB, hBr, haccB⟩ := hcarry.heads ev.msg ⟨x, hx, q, ev, hv, rfl, hes⟩
@@ -721,7 +731,7 @@ theorem FrameWindow.older_locks_compatible_at_update
   rw [hBP] at haccB
   have hsupp := SA.carried_supporter hS.run hy hc hs hvi.1 hes
     ⟨hheld.1, lt_trans hheld.2
-      (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
+      (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith only [hDelta])))⟩
     ⟨P, hPhi.2 hvi.1, (hun x hx q ev hv hes).symm, hPs.le, .refl, haccB P .refl⟩
     (SA.honest_not_equivocator hS.run hy hc (hval ▸ hx))
   rw [hval] at hsupp
@@ -751,11 +761,11 @@ theorem FrameWindow.unanimous_update_no_veto
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hDelta := sp.toParams.hΔ
-  have hf2 : 2 * Hᶜ.ncard < sp.n := by have := sp.toParams.hn; omega
+  have hf2 : 2 * Hᶜ.ncard < sp.n := by have := sp.toParams.hn; (clear * - hf hdesignated; omega)
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hslot : sp.slot (tr.time k) = u + 1 := by
     apply SA.slot_of_mem sp (u + 1)
-    all_goals rw [hkt]; simp only [SAParams.ts]; push_cast; linarith
+    all_goals rw [hkt]; simp only [SAParams.ts]; push_cast; linarith only [hDelta]
   have hPhi := SA.frameIn_of_callAt hr hy hu.1
   obtain ⟨hvi, _⟩ := hframe.unanimous_update_selection hrun hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
@@ -782,7 +792,7 @@ theorem FrameWindow.unanimous_update_no_veto
       · change sp.slot (tr.time r) = l.slot at hsl
         omega
       · have hls : (l.slot : Int) ≤ sp.slot (tr.projAC.time r) :=
-          (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) _).1 (by rw [hrt]; linarith)
+          (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) _).1 (by rw [hrt]; linarith only [hDelta])
         change (l.slot : Int) ≤ sp.slot (tr.time r) at hls
         omega
     cases hfast : l.fast
@@ -792,8 +802,8 @@ theorem FrameWindow.unanimous_update_no_veto
       have hrt : tr.projAC.time r = sp.ts l.slot + 6 * sp.Δ := hup.2.2.1
       have hku : tr.projAC.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
       have hls : l.slot = u := by
-        have := (SA.ts_le_iff sp).1 (show sp.ts l.slot ≤ sp.ts u by linarith)
-        omega
+        have := (SA.ts_le_iff sp).1 (show sp.ts l.slot ≤ sp.ts u by linarith only [hrt, hku, hmono])
+        clear * - hlt this; omega
       rw [hls] at hup hC
       have hCP : C = P := Option.some.inj (hC.symm.trans
         (hframe.unanimous_update_selection hrun hnc hsvc hawake hf hcatch hnr hmargin
@@ -810,7 +820,7 @@ theorem FrameWindow.unanimous_update_no_veto
       obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ :=
         SA.fastLock_honest_vote hS.run hf2 hy hfl
       apply down hLB
-      rcases (show l.slot = u ∨ l.slot = u + 1 by omega) with hs | hs
+      rcases (show l.slot = u ∨ l.slot = u + 1 by clear * - hlt hle; omega) with hs | hs
       · have hDP : D = P := hU.1 hD (hPhi.2 hvi.1) (hDr.trans (hun x hx q e hv (hes.trans hs)))
         rw [hDP] at hBD
         exact Or.inl hBD
@@ -867,7 +877,7 @@ theorem fresh_fast_lock_at_update
     simp only [SAParams.ts]; push_cast; ring
   have hslot : sp.slot (tr.projAC.time k) = u + 1 := by
     apply SA.slot_of_mem sp (u + 1)
-    all_goals rw [hkt]; simp only [SAParams.ts]; push_cast; linarith
+    all_goals rw [hkt]; simp only [SAParams.ts]; push_cast; linarith only [hDelta]
   have hpost : tr.projAC.post k =
       SA.updateConfirmation sp (tr.projAC.state y k) ell.frame (tr.projAC.time k) u := by
     have he := hr.exec k ell hu.1.2 (hu.1.1 ▸ hy)
@@ -880,7 +890,7 @@ theorem fresh_fast_lock_at_update
     dsimp only
     rw [hslot]
     have ht1 : ¬ tr.projAC.time k = sp.ts (u + 1 : Nat) + sp.Δ := by
-      rw [hkt, hts]; linarith
+      rw [hkt, hts]; linarith only [hDelta]
     have ht2 : tr.projAC.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
       rw [hkt, hts]; ring
     rw [ite_eq_right (not_not.mpr hu.2.2.2), ite_eq_right ht1,
@@ -889,7 +899,7 @@ theorem fresh_fast_lock_at_update
   refine ⟨hvi.1, hconf, hnv, hfast, hva, ?_⟩
   rw [hpost]
   exact SA.fastLock_mem_updateConfirmation_floor hvi.1 hva hconf hnv hfast
-    (by rw [hslot]; have := sp.two_le_k; omega)
+    (by rw [hslot]; have := sp.two_le_k; (clear * -; omega))
 
 /-- The fresh fast lock of `fresh_fast_lock_at_update` is present at the immediately adjacent actual
 to-FG pre-state, not merely at an unrelated call sharing the same timestamp. -/
@@ -925,7 +935,7 @@ theorem fresh_fast_lock_update_toFG
     simp only [SAParams.ts]; push_cast; ring
   have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 := by
     apply SA.slot_of_mem sp (u + 1)
-    all_goals simp only [SAParams.ts]; push_cast; linarith
+    all_goals simp only [SAParams.ts]; push_cast; linarith only [hDelta]
   have hj : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
       SA.joined sp (tr.projAC.state y i) (tr.time i) := by
     intro i hi
@@ -934,12 +944,12 @@ theorem fresh_fast_lock_update_toFG
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
-      rw [hi, hslot, show ((u + 1 : Nat) : Int) - 1 = u by omega]
+      rw [hi, hslot, show ((u + 1 : Nat) : Int) - 1 = u by clear * -; omega]
       have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
       change tr.time r ≤ _
-      linarith
+      linarith only [hmargin, hDelta, this]
   obtain ⟨k, ell, ell', hu, hcall, hto, htime, hframe', _⟩ := update_toFG_calls_of_awake hrun hy
-    (hawake y hy _ (by linarith) (by rwa [hT] at hTb)) hj
+    (hawake y hy _ (by linarith only [hmargin, hDelta]) (by rwa [hT] at hTb)) hj
   obtain ⟨_, hconf, hnv, hfast, hva, e, he, hlock⟩ := fresh_fast_lock_at_update hrun hnc hsvc
     hawake hf hcatch hnr hmargin hjoin hTb hframe hz hdesignated hactual hPs hun hy hu
   refine ⟨k, ell, ell', hu, hcall, hto, htime.trans hT.symm, hframe', hconf, hnv,
