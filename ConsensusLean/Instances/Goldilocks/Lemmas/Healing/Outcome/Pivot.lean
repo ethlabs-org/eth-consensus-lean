@@ -98,7 +98,7 @@ theorem ResetPremisesUpTo.reset_vote_anchor {b : Time}
     Anc.mono hPhiU (SA.anc_viableAncestor _ B)
   by_cases hls : l.slot = u
   · obtain ⟨Phi', A', D', _, hPhi'U, _, h34, hpool, _, L, hLU, hLr, hLD'⟩ :=
-      SA.lock_origin_readPoint hrun hy hcy l hl (by rw [hes, hls]; omega)
+      SA.lock_origin_readPoint hrun hy hcy l hl (by rw [hes, hls]; (clear * -; omega))
     obtain rfl : L = B := hU.1 hLU (hPhiU hB) (hLr.trans hBr.symm)
     have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos y; omega
     obtain ⟨x, ⟨v, hv, rfl, R, hRt, hRr, hDR⟩, hxH⟩ :=
@@ -177,23 +177,27 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old {b : Time}
   have hcon : ¬ (tr.state y j).fg.Contest := fun hcon => by
     unfold Store.headHeightFloor at hfloor
     simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by omega⟩
+    exact hnc ⟨hcon, by clear * - hBh hfloor; omega⟩
   have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
     unfold Store.headHeightFloor
     simp only [hcon, ↓reduceIte]
   rw [hfl] at hfloor
   obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
   obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-    entry_at_height hreach hC (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
+    entry_at_height hreach hC (h := (tr.state y j).fg.hmax - 1) (by clear * - hfloor; omega) (by
+        clear * - hCh; omega)
   obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hEO⟩ :=
-    hp.left_entry_origin hy hE hET (by omega) hEC (by omega)
+    hp.left_entry_origin hy hE hET (by clear * - hBh hfloor hEh; omega) hEC (by
+        clear * - hfloor hCh hEh; omega)
   have hlu : l < u := hes ▸ hp.row_origin_label_lt hy hc hW ha hv hs hdj hrd ho
   obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
   have hrt : tr.time r < sp.ts u := hp.fastLock_time_lt hf hlu
-    ((hp.run.time_mono (by omega)).trans (hes ▸ (Compose.cast_head_fcRoot hr hy hc).2))
-  have hEB := hEO.trans (hBold v r l O ho hrt ((hp.run.time_mono (by omega)).trans hjb))
+    ((hp.run.time_mono (by
+        clear * - hdj hrd; omega)).trans (hes ▸ (Compose.cast_head_fcRoot hr hy hc).2))
+  have hEB := hEO.trans (hBold v r l O ho hrt ((hp.run.time_mono (by
+      clear * - hdj hrd; omega)).trans hjb))
   have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hEB hB)
-  omega
+  clear * - hfloor hEh this; omega
 
 /-- A held block extending every pre-slot origin reaches the voter's height floor. -/
 theorem reset_vote_floor_above_old
@@ -415,7 +419,7 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
       exact (not_lt_of_ge ht) hrt
     have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti hri ho
     obtain ⟨Hd, hHd, hHdr, hDHd⟩ := hp.high_origin_votes_before j hjb x r l D ho
-      ((hp.run.time_mono hri.le).trans hib) y hy elly e hcy (by omega)
+      ((hp.run.time_mono hri.le).trans hib) y hy elly e hcy (by clear * - hes hlu; omega)
     rwa [hU.1 hHd (hPsiU hht) (hHdr.trans hhead)] at hDHd
   rcases hp.reset_vote_anchor hPU hR hPQ (hPhiU hQt) (Anc.mono hPhiU hDQ) (hPhiU hDt)
       hDold' hy hcy hes hjb hE (fun l hl hne hlive L hL hLr =>

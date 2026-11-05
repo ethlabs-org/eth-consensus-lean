@@ -64,7 +64,7 @@ theorem optimistic_prefix_compatible_old
       have hvotes := (historical_activation_before hp (tr.time q) q le_rfl).2
       exact ((rawVoteAt_iff _ _ _).mp hvotes O j
         ((historicalTargets_iff O j).mpr ⟨x, i, ho⟩) z hz ell e ⟨hc, he⟩
-        (by omega) le_rfl).1
+        (by clear * - hj hs; omega) le_rfl).1
     · obtain ⟨CV', hst⟩ := ho.2.2.1
       obtain ⟨_, C, hfl, hOC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
       have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H
@@ -117,12 +117,12 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
     · exact SA.anc_total hr.coherent hLD h
   · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
     have hslots : sp.ts u ≤ sp.ts (l.slot + 1 : Nat) :=
-      (SA.ts_le_iff sp).mpr (by omega)
+      (SA.ts_le_iff sp).mpr (by clear * - hlabel; omega)
     have hsucc : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
       simp only [SA.SAParams.ts]; push_cast; ring
     rw [hsucc] at hslots
     have := sp.toParams.hΔ
-    linarith
+    linarith only [hrt, ht, hslots, this]
 
 /-- At proposal time, stored high locks can only come from an optimistic write of the
 previous label. Regular updates are too late and current-label optimism is excluded. -/
@@ -167,11 +167,11 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
     have := (SA.ts_le_iff sp).mp hR
     rw [hslot] at hlive
     rw [cleanLabel_eq]
-    omega
+    clear * - hlive this; omega
   have hu : 0 < u := by
     rw [drainTime_eq] at hR
     have := (SA.ts_le_iff sp).mp hR
-    omega
+    clear * - this; omega
   obtain ⟨l₀, hl₀, hs, B, hB, hBr, L', hL', hL'r, hLB⟩ :=
     SA.readPoint_locks_below_stored hr hy hc
       (by change 0 < sp.slot (tr.time j); rw [hslot]; exact hu) l hl
@@ -196,17 +196,18 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
       · rcases hf with ⟨ellX, C, hupd, _⟩ | ⟨ellX, A, _, hsl, _⟩
         · have ht : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
           have := sp.toParams.hΔ
-          linarith
+          linarith only [ht, this]
         · change sp.slot (tr.time r) = l₀.slot at hsl
-          exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) l₀.slot).mpr (by omega)
+          exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) l₀.slot).mpr (by
+              clear * - hsl; omega)
       · have ht : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
         have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-        linarith
+        linarith only [ht, hΔ]
     have htj : l₀.slot ≤ sp.slot (tr.time j) := by
       exact_mod_cast (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg j) l₀.slot).mp
         (ht.trans (hp.run.time_mono hrj.le))
     omega
-  refine ⟨r, D, hrj, hclean, by omega, hs ▸ hraw, ?_⟩
+  refine ⟨r, D, hrj, hclean, by clear * - hne hs hle; omega, hs ▸ hraw, ?_⟩
   exact (Anc.mono hPhiU ((SA.anc_viableAncestor ell.frame L').trans hLB)).trans hXD
 
 /-- Whole-run specialization of actual read-point lock provenance. -/
@@ -248,7 +249,7 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
   by_cases hgap : l.slot + 2 ≤ u
   · exact hp.clean_source_proposal_parent_before hc hy hpH hsource hclean hgap hrb hR
       hci hcall hd hti hib
-  have he : u = l.slot + 1 := by omega
+  have he : u = l.slot + 1 := by clear * - hlu hgap; omega
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have htj := (Compose.cast_head_fcRoot hr hy hcy).2
   rw [hes, he] at htj
@@ -262,14 +263,14 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
       rw [hts] at htj
       change tr.time j ≤ _ at htj
       exfalso
-      linarith
+      linarith only [hrt, hΔ, ht, htj]
     · exact hp.clean_optimistic_proposal_parent hc hy hpH hop hclean hrb (he ▸ hR)
         hci hcall hd (he ▸ hti) hib
   · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
     rw [hts] at htj
     change tr.time j ≤ _ at htj
     exfalso
-    linarith
+    linarith only [hrt, hΔ, ht, htj]
 
 section Support
 
