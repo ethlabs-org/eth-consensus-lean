@@ -875,10 +875,10 @@ theorem operational_update_selection {b : Time}
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   have hjb : tr.time j ≤ b := ht ▸ hTb
-  have hub : sp.ts u + sp.Δ ≤ b := by linarith
+  have hub : sp.ts u + sp.Δ ≤ b := by linarith only [hTb, hDelta]
   have hun : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root := fun z hz q e hv hqb hs =>
-    hp.operational_unanimous hc hpH hdesignated hactual hPs hR (by linarith)
+    hp.operational_unanimous hc hpH hdesignated hactual hPs hR (by linarith only [hTb, hDelta])
       z hz q e hv hs hqb
   have hRnext := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
   have hu : 0 < u := by
@@ -896,9 +896,9 @@ theorem operational_update_selection {b : Time}
   have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
     (by obtain ⟨q, hq, _⟩ := hp.snapshot; exact ⟨q, hq⟩) hp.reset
   have ha0 : 0 ≤ a := by
-    have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
-    linarith
+    have h1 := Healing.lt_cutZ sp g
+    have h2 := SA.gbar_nonneg g
+    linarith only [h1, h2, hca, hDelta]
   have haR : a ≤ Healing.drainTime sp a := by
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
       have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
@@ -907,7 +907,7 @@ theorem operational_update_selection {b : Time}
     rw [Healing.drainTime_eq]
     exact (SA.ts_le_iff sp).2 (by push_cast; omega)
   have hFP := finalized_below_unanimous_at_update hp hc hPU hPs hu hun hgu hRnext hTb hy hup
-    (by rw [ht]; linarith [haR.trans hR])
+    (by rw [ht]; linarith only [haR.trans hR, hDelta])
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot hp hc hgu hRnext hub y hy
   obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hr hy hv
   have hPsiU := (SA.frameIn_of_callAt hr hy hv.1).2
@@ -920,7 +920,7 @@ theorem operational_update_selection {b : Time}
     by_contra hn
     have hm := hp.run.time_mono (Nat.le_of_not_ge hn)
     rw [ht] at hm
-    linarith
+    linarith only [hm, hq, hDelta]
   have hPt := SA.mem_tree_of_acceptAt sp hr hy haccept (hka.trans hqj) hup.1 hFP
   have hPg : P.root ≠ sp.genesisRoot := by
     intro he
@@ -929,12 +929,12 @@ theorem operational_update_selection {b : Time}
     have hz : P.slot = 0 := by rw [heq]; rfl
     omega
   have hpool := unanimous_pool hp hc hun hgu hRnext hy hup.1
-    (by rw [ht]; linarith) hjb hPt
+    (by rw [ht]; linarith only [hDelta]) hjb hPt
   have hts : Healing.cutZ sp.toParams g ≤ sp.ts u := hca.le.trans (haR.trans hR)
   have hvote : ∃ z ∈ H, ∃ q ell e, SA.CastAt tr.projAC z q ell e ∧
       tr.time q ≤ b ∧ e.msg.slot = u := ⟨y, hy, q, ellv, e, hv, hq.trans hub, hs⟩
   have hlocks := hp.call_locks_compatible_of_unanimous hc hPU hts hun hvote hy hup.1 hjb
-    (by rw [ht]; linarith) ht.le (fun r hr B CV ho =>
+    (by rw [ht]; linarith only [hR, hDelta]) ht.le (fun r hr B CV ho =>
       unanimous_next_optimistic_compatible hp hc hPU hPs hu hun hgu hRnext hub hy ho
         ((hp.run.time_mono hr.le).trans hjb))
   exact ⟨hPt, hp.ready_update_selection_of_pool hy hup hPt hPg hpool hlocks⟩
@@ -1392,13 +1392,13 @@ theorem report_cover_of_unanimous {b : Time}
   left
   intro y hy
   have hd := sp.toParams.hΔ
-  have hub : sp.ts u + sp.Δ ≤ b := by linarith
+  have hub : sp.ts u + sp.Δ ≤ b := by linarith only [hTb, hd]
   have hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := by
     have hbase := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (SA.gbar g))).2 (by rfl)
     simp only [SA.SAParams.ts] at hbase ⊢
     simp only [SA.SAParams.ts] at hgu
-    push_cast at *
-    linarith
+    push_cast at hbase hgu ⊢
+    linarith only [hbase, hgu]
   obtain ⟨j, ell, ell', hup, hto, htoeq, hnexttime, hframe, hjoined⟩ :=
     hp.update_toFG_calls hy hjoin hTb
   have hjtime : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
@@ -1406,14 +1406,14 @@ theorem report_cover_of_unanimous {b : Time}
   have hnextb : tr.time (j + 1) ≤ b := hnexttime ▸ hTb
   have hRT : Healing.drainTime sp a ≤ sp.ts u + 6 * sp.Δ := by
     simp only [SA.SAParams.ts] at hR ⊢
-    push_cast at *
-    linarith
+    push_cast at hR ⊢
+    linarith only [hR, hd]
   have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
     (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
   have ha0 : 0 ≤ a := by
-    have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
-    linarith
+    have h1 := Healing.lt_cutZ sp g
+    have h2 := SA.gbar_nonneg g
+    linarith only [h1, h2, hca, hd]
   have haT : a ≤ sp.ts u + 6 * sp.Δ := by
     have hanext : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
       have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
@@ -1433,7 +1433,7 @@ theorem report_cover_of_unanimous {b : Time}
     · exact h
     · exact False.elim (hescape ⟨x, hx, r, e, C, hto, ht, hPC, hh⟩)
   have hpool := unanimous_pool hp hc hun hgu hR hy hup.1
-    (by rw [hjtime]; linarith) hjb hPv.1
+    (by rw [hjtime]; linarith only [hd]) hjb hPv.1
   have hts : Healing.cutZ sp.toParams g ≤ sp.ts u := by
     have hk := sp.two_le_k
     apply hp.clean_window_timing (s := u) ?_ u (by omega)
@@ -1456,8 +1456,8 @@ theorem report_cover_of_unanimous {b : Time}
   have hsl : sp.slot (tr.time j) = u + 1 := by
     rw [hjtime]
     apply SA.slot_of_mem sp (u + 1)
-    · simp only [SA.SAParams.ts]; push_cast; linarith
-    · simp only [SA.SAParams.ts]; push_cast; linarith
+    · simp only [SA.SAParams.ts]; push_cast; linarith only [hd]
+    · simp only [SA.SAParams.ts]; push_cast; linarith only [hd]
   obtain ⟨r, e, R, hr, ht, hPR⟩ := report_of_viable_unanimous_pool hp hy hup hto htoeq
     hframe (hnexttime.trans hjtime.symm) hjoined hPg hPv hpool hlocks
     (fun C hC => by
