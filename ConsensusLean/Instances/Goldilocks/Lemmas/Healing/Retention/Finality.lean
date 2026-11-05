@@ -143,7 +143,7 @@ theorem replay_finalized_below_justification {P : Params} {ACP : Type} {acp₀ :
   by_cases hlt : ((tr.store x i).σ B.root).hF < ((tr.store y j).σ J.root).h
   · exact finalized_anc_of_lt_fg hr hH hx hy hB hX hXr hJ hlt
   · have he : X = J := self_entries_eq hry hXt hJ hXY' hJY
-      (by rw [← hσ, hXh]; omega) (by rw [← hσ]; exact hXT) hJT
+      (by rw [← hσ, hXh]; (clear * - hh hJh hlt; omega)) (by rw [← hσ]; exact hXT) hJT
     rw [he]
     exact .refl
 
@@ -218,7 +218,7 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
         exact ⟨hFJ, by simpa only [hs] using hn⟩
       have hh : (post.σ B.root).hj ≤ pre.hj := by
         by_contra h
-        exact hn (Or.inl (by omega))
+        exact hn (Or.inl (by clear * - h; omega))
       obtain ⟨_, hJpre, _, ⟨Y, hY, hYJ, hYh⟩, _⟩ :=
         Goldilocks.Store.cache_invariants P ACP acp₀ _ hpre
       have hxj := replay_finalized_below_justification hr hH hy hy hB hX hXr
@@ -248,7 +248,7 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
       rw [← hs]
       have hm : ins.hmax = pre.hmax := rfl
       unfold Goldilocks.Store.headHeightFloor
-      split_ifs <;> change _ ≤ (post.σ W.root).h <;> simp only [hm] <;> omega
+      split_ifs <;> change _ ≤ (post.σ W.root).h <;> simp only [hm] <;> (clear * - hWh; omega)
   have hc := Goldilocks.Store.cache_acceptance P ACP ins B X
     (ht ▸ hB) (by rw [← hs]; exact hlimits.2.1) hXF
     (by change Anc ins.tree X B; rw [← ht]; exact hXB)
@@ -292,7 +292,7 @@ theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr
     change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
     have hn := sp.toParams.hn
     change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
-    omega
+    clear * - h3 hn; omega
   have h := finalized_anc_of_lt_fg hfg hH hy hz (k := k) (m := m) (X := X) (F := F) (W := W)
   rw [hst hy, hst hz] at h
   exact h hX hF hFr hW hlt

@@ -171,13 +171,13 @@ theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSSh
       (tr.state z k').fg.hmax = (tr.state z k').fg.hj + 1 → ∃ J₀, c = .top J₀ ∧
         (tr.state z k').fg.J = J₀ ∧ (tr.state z k').fg.hmax = m := by
     intro hl1 hl2
-    have hj : (tr.state z k').fg.hj = m - 1 := by omega
+    have hj : (tr.state z k').fg.hj = m - 1 := by clear * - hmax hWf hfl hl1 hl2; omega
     cases c with
     | gap => exact absurd (by rw [← hj]; exact justifiedAt_own hrun hz k') (hph.2 _)
     | contest J₀ =>
       change m ≤ _ at hWf
-      omega
-    | top J₀ => exact ⟨J₀, rfl, J_eq_phase hrun hs hz hph.2.1 hj, by omega⟩
+      clear * - hmax hl1 hWf; omega
+    | top J₀ => exact ⟨J₀, rfl, J_eq_phase hrun hs hz hph.2.1 hj, by clear * - hmax hjlt hj; omega⟩
   refine ⟨hWz, hFW, ?_, ?_⟩
   · unfold Store.fcRoot
     split_ifs with hcond
@@ -198,7 +198,7 @@ theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSSh
       rw [hJ] at hBn
       exact hph.2.2 ⟨z, hz, B, by rw [store_eq hrun hz]; exact hB,
         by rw [store_eq hrun hz, hBh, hm], by rw [store_eq hrun hz]; exact hBn⟩
-    · omega
+    · (clear * - hmax hWf hfl; omega)
 
 /-- **HS.1, effective-phase viable-witness retention** (claims HS.1). -/
 theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr)

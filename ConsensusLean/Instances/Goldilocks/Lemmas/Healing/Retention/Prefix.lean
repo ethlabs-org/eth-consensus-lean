@@ -56,7 +56,7 @@ theorem entry_at_height {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P A
     · exact key hYW.2.1 he.symm
     · obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
       obtain ⟨Z, hZ, hZY, hZh, hZT⟩ := ih h1 (by
-        rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> omega)
+        rcases stateTransition_bits ht with ⟨hh, -⟩ | ⟨hh, -⟩ <;> (clear * - hlt hh; omega))
       exact ⟨Z, hZ, hZY.tail hYW, hZh, hZT⟩
 
 /-- **A chain that left an entry carries an honest attestation naming it** (the contrapositive of
@@ -111,15 +111,15 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
         c < k := by
       intro z hz c hc e ⟨ℓ, hcl, he⟩ hsl
       rcases hact with hik | hts
-      · omega
+      · (clear * - hc hik; omega)
       refine hts c (not_le.mp fun hge => ?_)
       have h₁ := (SA.castAt_spec hrl hz ⟨hcl, he⟩).2.1
       have h₃ := (SA.ts_le_iff_le_slot sp (hrl.time_nonneg c) ((j + 1 : Nat) : Int)).mp hge
-      omega
+      clear * - hsl h₁ h₃; omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
       SA.fastLock_compatible_of_votes hrun' ho.1 (Nat.lt_succ_self i) hfl hf
         fun z hz c hc e hve hsl => hvote ho' hrb z hz c (hcut z hz c hc e hve hsl)
-          ((hp.run.time_mono (by omega)).trans hib) e hve (by omega)
+          ((hp.run.time_mono (by clear * - hc; omega)).trans hib) e hve (by omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hBD (fun h => hn h.symm) hDO.symm
   · have hsync := hp.sync.syncAC hp.run (hi := sp.ts (l + 1 : Nat) + sp.Δ) hg
@@ -128,8 +128,9 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
     · exact SA.anc_total hU hBD (hOD'.trans h)
   · have hD'B : Compatible (tr.HonestBlocks H) D' B :=
       SA.fastLock_compatible_of_votes hrun' ho'.1 (Nat.lt_succ_self r) hfl' hf
-        fun z hz c hc e hve hsl => hvote ho hib z hz c (by omega)
-          ((hp.run.time_mono (by omega)).trans hrb) e hve (by omega)
+        fun z hz c hc e hve hsl => hvote ho hib z hz c (by clear * - hrk hc; omega)
+          ((hp.run.time_mono (by clear * - hc; omega)).trans hrb) e hve (by
+              clear * - hgt hsl; omega)
     by_contra hn
     exact SA.not_compatible_of_anc hU hOD' hn hD'B.symm
 
@@ -166,7 +167,7 @@ theorem ResetPremisesUpTo.left_entry_origin {b : Time}
     have hn := sp.toParams.hn
     change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
     change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    omega
+    clear * - hn h3; omega
   obtain ⟨W, hW, att, ha, haT, haH⟩ := honest_att_of_left
     (Compose.fg_reachable hp.run.toLocalRun hy k) hq hET hEC hlt
   rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i', hi', hA⟩
@@ -177,7 +178,7 @@ theorem ResetPremisesUpTo.left_entry_origin {b : Time}
   obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
     hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
   obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ ⟨y, hy, k, hE⟩ (hE₀r.trans haT)
-  exact ⟨W, hW, att, ha, att.val, haH, d, by omega, hsd, haT, r, hrd, l, O, hoO,
+  exact ⟨W, hW, att, ha, att.val, haH, d, by clear * - hi' hdi; omega, hsd, haT, r, hrd, l, O, hoO,
     hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩⟩
 
 /-- Whole-run specialization of left-entry provenance. -/
@@ -394,7 +395,7 @@ private theorem slot_start_optimistic {b : Time}
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ℓv, A, hpt, hsl, hsel, -⟩ := hopt
   have hslm : sp.slot (sp.ts m) = m := SA.slot_of_mem sp m le_rfl
-    ((SA.ts_lt_iff sp).2 (by push_cast; omega))
+    ((SA.ts_lt_iff sp).2 (by push_cast; (clear * -; omega)))
   have hrt : tr.time r = sp.ts m := by
     refine le_antisymm (hdt ▸ hp.run.time_mono hrd.le) ?_
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) (m : Int)).2 (by rw [hsl])
@@ -409,11 +410,11 @@ private theorem slot_start_optimistic {b : Time}
     cases hk
   have hnomsg : ∀ i, j ≤ i → i ≤ d → ∀ ℓ, tr.projAC.CallAt v i ℓ → ∀ mm, ℓ.call ≠ .message mm := by
     intro i h1 h2 ℓ hc mm hmm
-    have hl := (hg.2.1 (i - j) (by omega)).2.2.2.2
+    have hl := (hg.2.1 (i - j) (by clear * - hdj hkk h2; omega)).2.2.2.2
     rw [Nat.add_sub_cancel' h1, (Compose.projAC_callAt.mp hc).2] at hl
     have hmem := List.getElem_mem
       (l := (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x)).2)
-      (n := i - j) (by omega)
+      (n := i - j) (by clear * - hdj hkk h2; omega)
     rw [← Option.some.inj hl] at hmem
     cases (exec_ac_call v _ _ _ hmem).2 mm hmm
   have hpre : ∀ i < j, ∀ ℓ, tr.projAC.CallAt v i ℓ → tr.time i = sp.ts m → ℓ.call = .restart := by
@@ -424,7 +425,7 @@ private theorem slot_start_optimistic {b : Time}
     exact hr'
   have hjr : j ≤ r := by
     by_contra hlt
-    have hcl := hpre r (by omega) ℓv hpt.1 hrt
+    have hcl := hpre r (by clear * - hlt; omega) ℓv hpt.1 hrt
     rcases hpt.2 with ⟨mm, hmm, -⟩ | ⟨B, hB, -⟩ | ⟨e₀, he₀, -⟩
     · rw [hcl] at hmm; cases hmm
     · rw [hcl] at hB; cases hB
@@ -435,17 +436,19 @@ private theorem slot_start_optimistic {b : Time}
     have hws : w.slot = m := SA.state_pool_slot sp hr hv c m w hw
     have hle : ∀ k₁, k₁ < c → sp.slot (tr.projAC.time k₁) ≤ m := fun k₁ hk₁ => by
       rw [← hslm, ← hdt]
-      exact SA.slot_mono sp (hr.time_nonneg k₁) (hp.run.time_mono (by omega))
+      exact SA.slot_mono sp (hr.time_nonneg k₁) (hp.run.time_mono (by clear * - hc hk₁; omega))
     rcases SA.pool_origin hr hv c w (by rw [hws]; exact hw) with
       ⟨k₁, hk₁, hsend, -, hsl₁⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, -, -, B, hB, hwB⟩
-    · have hsk : sp.slot (tr.projAC.time k₁) = m := le_antisymm (hle k₁ hk₁) (by omega)
-      have htk : tr.time k₁ = sp.ts m := le_antisymm (hdt ▸ hp.run.time_mono (by omega))
+    · have hsk : sp.slot (tr.projAC.time k₁) = m := le_antisymm (hle k₁ hk₁) (by
+        clear * - hws hsl₁; omega)
+      have htk : tr.time k₁ = sp.ts m := le_antisymm (hdt ▸ hp.run.time_mono (by
+          clear * - hc hk₁; omega))
         ((SA.ts_le_iff_le_slot sp (hr.time_nonneg k₁) _).2 (by rw [hsk]))
       obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨hnr, hn, hh⟩⟩ := hsend
       · exact (SA.castAt_spec hr hv ⟨hc₁, he₁⟩).1
       · have hjk : j ≤ k₁ := by
           by_contra h
-          exact hnr (hpre k₁ (by omega) ℓ₁ hc₁ htk)
+          exact hnr (hpre k₁ (by clear * - h; omega) ℓ₁ hc₁ htk)
         have he := hr.exec k₁ ℓ₁ hc₁.2 (hc₁.1 ▸ hv)
         rw [hc₁.1] at he
         change w ∈ (tr.projAC.post k₁).pool w.slot at hh
@@ -454,7 +457,8 @@ private theorem slot_start_optimistic {b : Time}
         rw [hpost] at hh
         have hts : tr.projAC.time k₁ = sp.ts (sp.slot (tr.projAC.time k₁)) := by
           rw [hsk]; exact htk
-        rcases step_pool_new v _ ℓ₁.frame hts hΔ ℓ₁.call (hnomsg k₁ hjk (by omega) ℓ₁ hc₁) hnr
+        rcases step_pool_new v _ ℓ₁.frame hts hΔ ℓ₁.call (hnomsg k₁ hjk (by
+            clear * - hc hk₁; omega) ℓ₁ hc₁) hnr
           hh with h | h | ⟨B, hB, hwB⟩
         · exact absurd h hn
         · exact h
@@ -462,12 +466,12 @@ private theorem slot_start_optimistic {b : Time}
           have hBt := (SA.accept_new sp hr hv ⟨ℓ₁, hc₁, hB⟩).1 ℓ₁ hc₁
           have h₁ := (SA.frame_validPayload sp hr hv hc₁ B hBt).1 w hwB
           have h₂ := SA.frame_slot_le sp hr hv hc₁ B hBt
-          omega
+          clear * - hws hsk h₁ h₂; omega
     · exfalso
       have h₁ := (SA.frame_validPayload sp hr hv hc₁ B hB).1 w hwB
       have h₂ := SA.frame_slot_le sp hr hv hc₁ B hB
       have h₃ := hle k₁ hk₁
-      omega
+      clear * - hws h₁ h₂ h₃; omega
   -- so the pool of the optimistic check holds slot-`m` votes of the signer only
   have hP : ∀ w ∈ A.pool m, w.val = v := by
     intro w hw
@@ -482,7 +486,7 @@ private theorem slot_start_optimistic {b : Time}
         have h₁ := (SA.frame_validPayload sp hr hv hcv B hBt).1 w hwB
         have h₂ := SA.frame_slot_le sp hr hv hcv B hBt
         have h₃ : sp.slot (tr.projAC.time r) = m := hsl
-        omega
+        clear * - hsl hws h₁ h₂; omega
     · rcases admit_pool_mem hw with hw | rfl
       · exact hQ (r + 1) hrd w (SA.readPoint_pool hr hv ⟨hcv, he₀⟩ hw).1
       · exact (SA.castAt_spec hr hv ⟨hcv, he₀⟩).1
@@ -500,9 +504,10 @@ private theorem slot_start_optimistic {b : Time}
   rw [Set.ncard_singleton] at hle1
   have hn := sp.toParams.hn
   have hn' : sp.n = sp.toParams.n := rfl
-  refine ⟨by omega, ?_⟩
+  refine ⟨by (clear * - h34 hn' hle1 hn; omega), ?_⟩
   obtain ⟨i, w, hw, rfl, -⟩ :=
-    Set.nonempty_of_ncard_ne_zero (s := SA.optimisticVoters sp A ℓv.frame m D) (by omega)
+    Set.nonempty_of_ncard_ne_zero (s := SA.optimisticVoters sp A ℓv.frame m D) (by
+        clear * - h34 hn' hn; omega)
   have hwv := hP w hw
   obtain ⟨hws, j', hj', e', hve', he'⟩ := SA.optimisticPoint_pool_vote hrun' hv hpt hw (hwv ▸ hv)
   exact ⟨j', hj', e', hwv ▸ hve', by rw [he', hws]⟩
@@ -538,10 +543,10 @@ private theorem vote_before_late_delivery {b : Time}
     rw [hslot, sp.slotTime_eq] at hP2
     have : u = sp.ts e.msg.slot + sp.Δ := hu
     simp only [SAParams.ts] at this
-    linarith
+    linarith only [hΔ, hP2, this]
   rw [ht] at hgW
   -- the voter's tick at `t_m + Δ` precedes the delivery
-  obtain ⟨jt, x, hgt⟩ := hp.run.tick_of_awake y hy u (by linarith) hpub
+  obtain ⟨jt, x, hgt⟩ := hp.run.tick_of_awake y hy u (by linarith only [hΔ, hm0]) hpub
     (htk ▸ hp.run.awake_of_call y hy k ⟨_, Compose.projAC_callAt.mp hc.1⟩)
   obtain ⟨hct, htt⟩ := tick_first_cut hgt
   have hjti : jt < i := by
@@ -595,7 +600,7 @@ private theorem vote_before_late_delivery {b : Time}
   by_cases hvs : (tr.projAC.state y jt).votedSlot = (e.msg.slot : Int)
   · obtain ⟨j', hj', e', hve', hes⟩ := SA.cast_of_votedSlot hr hy jt e.msg.slot hvs
     have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr y hy j' k e' e hve' hve hes).1
-    omega
+    clear * - hik hjti hj' this; omega
   · have hexec := hr.exec jt ℓt hpt.2 (hpt.1 ▸ hy)
     rw [hpt.1, hcall] at hexec
     have hne := Compose.acOnTick_votes (ro' := ro) y _ ℓt.frame hjt
@@ -606,7 +611,7 @@ private theorem vote_before_late_delivery {b : Time}
     have hsl' := (SA.castAt_spec hr hy ⟨hpt, he'⟩).2.1
     have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr y hy jt k e' e ⟨ℓt, hpt, he'⟩ hve
       (by rw [hsl']; change sp.slot (tr.time jt) = _; rw [htt, hslot])).1
-    omega
+    clear * - hik hjti this; omega
 
 /-- **No optimistic source of the vote's own slot** (R4's report-time
 argument bounds `l ≤ m − 1` before this vote; a label-`(j+1)` optimistic source cannot be
@@ -652,23 +657,25 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
   have hts : sp.ts e.msg.slot = sp.Δ * (4 * (e.msg.slot : Int)) := by
     simp only [SAParams.ts]; ring
   have hc₁ : 4 * (e.msg.slot : Int) ≤ c :=
-    le_of_mul_le_mul_left (show sp.Δ * (4 * (e.msg.slot : Int)) ≤ sp.Δ * c by linarith) hΔ
+    le_of_mul_le_mul_left (show sp.Δ * (4 * (e.msg.slot : Int)) ≤ sp.Δ * c by
+        linarith only [hrt, hcτ, hts, h₁]) hΔ
   have hc₂ : c ≤ 4 * (e.msg.slot : Int) + 1 :=
     le_of_mul_le_mul_left (show sp.Δ * c ≤ sp.Δ * (4 * (e.msg.slot : Int) + 1) by
-      rw [mul_add, mul_one]; linarith) hΔ
-  obtain hcc | hcc : c = 4 * (e.msg.slot : Int) ∨ c = 4 * (e.msg.slot : Int) + 1 := by omega
+      rw [mul_add, mul_one]; linarith only [hkt, hcτ, hts, h₂, h₃]) hΔ
+  obtain hcc | hcc : c = 4 * (e.msg.slot : Int) ∨ c = 4 * (e.msg.slot : Int) + 1 := by
+    clear * - hc₁ hc₂; omega
   · -- signed at `t_m`: then `n = 1`, and the signer is the voter, with its vote before `d`
     obtain ⟨hn1, j', hj', e', hve', hes⟩ :=
       slot_start_optimistic hp hv hs (by rw [hcτ', hcc, hts]) hrd hopt
-    obtain rfl : v = y := Fin.ext (by have := v.2; have := y.2; omega)
+    obtain rfl : v = y := Fin.ext (by have := v.2; have := y.2; (clear * - hn1; omega))
     have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr v hy j' k e' e hve'
       ⟨ℓ, hc.1, hc.2⟩ hes).1
-    omega
+    clear * - hik hd₀ hrd hj' this; omega
   · -- signed at `t_m + Δ`: the voter accepted `W` at `t_m + Δ`, before its vote
-    refine vote_before_late_delivery hp hy hc hA hik (le_antisymm (by linarith) ?_)
+    refine vote_before_late_delivery hp hy hc hA hik (le_antisymm (by linarith only [hkt, h₃]) ?_)
     have : tr.time d₀ = sp.ts e.msg.slot + sp.Δ := by
       rw [hcτ', hcc, hts]; ring
-    linarith
+    linarith only [h₂, this]
 
 /-- **The report-time bound**: the label of a high origin written by
 the signer of an honest attestation, before the signing, where the attestation is carried by a block
@@ -687,16 +694,16 @@ theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ℓw, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
   have hk := (SA.castAt_spec hr hy hc).2.1
-  have htr : tr.projAC.time r ≤ tr.projAC.time k := hr.time_mono (by omega)
+  have htr : tr.projAC.time r ≤ tr.projAC.time k := hr.time_mono (by clear * - hdk hrd; omega)
   rcases hfl with ⟨ℓ', C, ⟨-, -, ht, -⟩, -, -, -, -⟩ | hopt
   · have h₁ : sp.ts (l + 1 : Nat) ≤ tr.projAC.time k := by
       have : sp.ts (l + 1 : Nat) = sp.ts l + 4 * sp.Δ := by
         simp only [SAParams.ts]; push_cast; ring
       rw [this]
       change tr.projAC.time r = sp.ts l + 6 * sp.Δ at ht
-      linarith
+      linarith only [hΔ, htr, ht]
     have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mp h₁
-    omega
+    clear * - hk this; omega
   · have hl : l ≤ e.msg.slot := by
       obtain ⟨-, -, -, hsl, -⟩ := hopt
       rw [hk, ← hsl]
