@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-push hook (enabled by `git config core.hooksPath scripts/hooks`; .agents/setup does it in orbs): a push to
+# pre-push hook (enabled by `git config core.hooksPath scripts/hooks`; .agents/setup does it): a push to
 # main must carry a commit that scripts/push-main.sh checked. Other branches and tags are not affected.
 marker="$(git rev-parse --git-common-dir)/push-main-verified"
 while read -r _lref lsha rref _rsha; do

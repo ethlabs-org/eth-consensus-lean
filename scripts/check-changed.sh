@@ -4,8 +4,8 @@
 # It builds the changed modules' downstream cone, runs check-decls on the affected libraries, the Spec
 # surface only if a Spec module changed and the grep backstop on the changed files, and prints every
 # step as PASS, FAIL or SKIP (with the reason). A change of scripts/ or of the build configuration falls
-# back to `check.sh --fast` (with the self-tests for scripts/). On the shared box run it in a job:
-#   job --mem 16G --cpus 8 consensus-lean <name> -- bash -lc "cd <worktree> && scripts/check-changed.sh"
+# back to `check.sh --fast` (with the self-tests for scripts/). Run it with a scratch RUN_DIR:
+#   RUN_DIR="$(mktemp -d)" scripts/check-changed.sh [<base>]
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 (($# <= 1)) || { echo "usage: scripts/check-changed.sh [<base>]" >&2; exit 2; }

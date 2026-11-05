@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that every new commit names only allowed email addresses (owner, 2026-11-04; docs/decisions.md).
+"""Check that every new commit names only allowed email addresses (scripts/commit-emails.toml).
 
   scripts/check-commit-emails.py [--allowlist FILE] [--tags] [<base> [<head>]]
 

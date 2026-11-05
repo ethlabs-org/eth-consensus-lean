@@ -134,13 +134,13 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Proofs.RegimesRealizable", "Proofs.Faithful"]
 about = "generic composition of the milestones (ShapeObligations.correct) and its corollaries"
 
-# Goldilocks (workbench repos/goldilocks/notes/architecture/decomposition.md §4.1, §4.2): components by level.
+# Goldilocks: components by level.
 # No FG layer allows AC or SA and no AC/SA layer allows an FG layer (they meet only in Spec.Frame and
 # Milestones.Spec.Trace); Milestones.Statements.FG allows only the chain-level FG; Milestones.Statements.ComposeAnyAC
 # states C0.* for any AC; Spec.Run never allows AsChainShape, Simulation or
 # Obligations. Each allow is the full downward closure.
 # The protected layers (Spec.*, AsChainShape, Statements.Obligations) hold what the six Challenge statements reach;
-# each Milestones.<L> layer (untrusted, docs/decisions.md 2026-11-04) mirrors the old layer <L>: the milestone
+# each Milestones.<L> layer (untrusted, docs/decisions.md §"Trusted surface and Challenge scope") mirrors the old layer <L>: the milestone
 # statements and the instance Spec only they reach, with <L>'s allow list plus <L> itself and the Milestones copy of
 # each entry.
 # Spec.FG is one prefix per file (so Spec.FG.Store is its own layer): a new chain-level FG file needs its own line.
@@ -710,7 +710,7 @@ prefixes = ["ConsensusLean.Examples"]
 expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec"]
 about = """Shape examples (Bft, Streamlet, Tendermint as contract values): not protocol instances and not on the
-trusted surface, since no Challenge statement reaches them (docs/decisions.md, 2026-11-04)"""
+trusted surface, since no Challenge statement reaches them"""
 
 [[layer]]
 name = "Solution"
@@ -769,7 +769,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Main", "Examples", "Solution"]
 may_import_roots = true
 may_import_all = true
-about = "tests, review pins (ReviewAxioms, ReviewGuard) and the README index"
+about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"
 
 
 
@@ -817,13 +817,13 @@ review_root = "ConsensusLeanTest"
 # Comparator (plan §3). Step 9 checks comparator.json against these modules and against the closed Prop
 # definitions of `statements_module` (the review statements, paired with their source theorems by
 # `review_axioms_module`) and of `milestone_statements_modules` (today the Goldilocks obligations endpoint alone: a
-# statements module under `trusted_paths` whose closed Prop definitions `Solution` proves directly; docs/decisions.md,
-# 2026-11-04); the challenge imports exactly these modules, in this order. Step 11 runs `lake comparator` (where bwrap exists).
+# statements module under `trusted_paths` whose closed Prop definitions `Solution` proves directly; docs/decisions.md
+# §"Trusted surface and Challenge scope"); the challenge imports exactly these modules, in this order. Step 11 runs `lake comparator` (where bwrap exists).
 challenge_module = "Challenge"
 solution_module = "Solution"
 statements_module = "ConsensusLean.Statements.Review"
 milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.Obligations"]
-# The proved milestones that are not Challenge statements (docs/decisions.md, 2026-11-04): their statements live in
+# The proved milestones that are not Challenge statements (docs/decisions.md §"Trusted surface and Challenge scope"): their statements live in
 # the untrusted Milestones layers, and step 3b gates the import closure of each entry module below like the
 # solution's (no sorry, only the three standard axioms); ConsensusLeanTest.MilestoneAxioms pins their theorems.
 proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main",
@@ -862,11 +862,11 @@ trusted_paths = ["ConsensusLean/Init.lean", "ConsensusLean/Init", "ConsensusLean
                  "ConsensusLean/Statements", "ConsensusLean/ToMathlib.lean", "ConsensusLean/ToMathlib",
                  "Challenge.lean", "comparator.json", "lean-toolchain", "lake-manifest.json",
                  "ConsensusLeanTest/ReviewAxioms.lean", "ConsensusLeanTest/ReviewGuard.lean",
-                 # Instance semantics and statements (#38; foundation plan §1, §4): for every protocol instance P
+                 # Instance semantics and statements: for every protocol instance P
                  # (today Goldilocks), Instances/P/{Spec,Statements} as file and directory and
                  # Instances/P/AsChainShape.lean, existing or not. The layers marked `protected` must be covered
                  # (check-boundaries.py). The Shape examples (ConsensusLean/Examples) are not instances and are not
-                 # listed (docs/decisions.md, 2026-11-04).
+                 # listed (docs/decisions.md §"Trusted surface and Challenge scope").
                  "ConsensusLean/Instances/Goldilocks/Spec.lean",
                  "ConsensusLean/Instances/Goldilocks/Spec", "ConsensusLean/Instances/Goldilocks/Statements.lean",
                  "ConsensusLean/Instances/Goldilocks/Statements",

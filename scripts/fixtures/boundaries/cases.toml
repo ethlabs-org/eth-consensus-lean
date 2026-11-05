@@ -486,7 +486,7 @@ name = "Lemmas"'''], ['trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spec
    'allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Main", "Sol", "Inst"]']]
 
 # A `protected` layer allows only trusted and protected layers, so the protected surface never reaches an untrusted
-# layer such as the Goldilocks Milestones (docs/decisions.md, 2026-11-04); ProtectedSurface is the control.
+# layer such as the Goldilocks Milestones (docs/decisions.md §"Trusted surface and Challenge scope"); ProtectedSurface is the control.
 [ProtectedAllowsUnprotected]
 expect = "FAIL[config] protected layer Inst allows the unprotected layer Lemmas"
 files."Fx/Inst/A.lean" = '''module

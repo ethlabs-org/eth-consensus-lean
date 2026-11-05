@@ -172,7 +172,7 @@ self_test() {
   both="$(commit "Spec | Challenge$L")"
   expect_summary "a commit touching two trusted paths lists both; a | in the subject is escaped" "$both" "$m0" \
     "| Spec \\| Challenge | \`Challenge.lean\` \`Spec/A.lean\` | test change |"
-  # The repository's own list (docs/decisions.md, 2026-11-04): a Shape example and a Goldilocks milestone statement
+  # The repository's own list (docs/decisions.md §"Trusted surface and Challenge scope"): a Shape example and a Goldilocks milestone statement
   # (the Milestones layers) are not on the trusted surface; the Goldilocks instance Spec and the endpoint statement are.
   local real ex gold ms acc
   local G=ConsensusLean/Instances/Goldilocks

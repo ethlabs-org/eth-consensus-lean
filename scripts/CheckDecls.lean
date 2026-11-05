@@ -273,7 +273,7 @@ def check (env : Environment) (scope : Std.HashSet ModuleIdx) : Array Finding :=
     c matches .defnInfo _ && !inProofs env n && !inExports env n && !isFormatting env n c
       && !initFns.contains n
   let (_, opaqueMemo) := (spec.forM fun (n, _) => discard (opaquesOf env n)).run {}
-  -- Local patch (consensus-lean #5): a definition that is not checked here (a proof, a C export, formatting or
+  -- Local patch (the frontier patch): a definition that is not checked here (a proof, a C export, formatting or
   -- an `initialize` function) carries nothing; what it reaches is reported at the checked definition that
   -- unfolds it.
   let checked : NameSet := spec.foldl (init := {}) fun s (n, _) => s.insert n
@@ -305,7 +305,7 @@ It is `unsafe` because loading the environment extensions runs their initializer
 The tool itself is not part of the checked scope. -/
 unsafe def run (args : List String) : IO UInt32 := do
   let usage := "usage: check-decls [--scope NAME] [--baseline FILE] [--sorry-ok PREFIX ...] [Module ...]"
-  -- Local patch (consensus-lean #7): `--sorry-ok PREFIX`, repeatable.
+  -- Local patch (the sorry-prefix patch): `--sorry-ok PREFIX`, repeatable.
   let rec parse : List String → Name → System.FilePath → List Name → List Name →
       Except String (Name × System.FilePath × List Name × List Name)
     | [], scope, baseline, ok, mods => .ok (scope, baseline, ok, mods.reverse)
@@ -331,7 +331,7 @@ unsafe def run (args : List String) : IO UInt32 := do
   let baseline ← readBaseline baselinePath
   let indices := scopeModules env scope
   let findings := check env indices
-  -- Local patch (consensus-lean #7): a `sorry` finding at a declaration of a module under a `--sorry-ok` prefix (the
+  -- Local patch (the sorry-prefix patch): a `sorry` finding at a declaration of a module under a `--sorry-ok` prefix (the
   -- layers where unfinished proofs may stay) is listed, but is not a finding. Every other kind still is.
   let allowedSorry (f : Finding) : Bool :=
     f.kind == "sorry" && (moduleOf? env f.decl).any fun m => sorryOk.any (·.isPrefixOf m)

@@ -44,7 +44,7 @@ check-decls exemptions: a module with a `Proofs` component must be under
   `[checks].proofs_component_prefixes` and in a layer no trusted layer may reach; `Exports` is refused.
 `[checks].trusted_paths` (CI's review-boundary list) holds plain relative paths only and covers the file
   of every module of a trusted layer and of every `protected` layer (an untrusted layer whose files the tag
-  still covers: the instance semantics and statements, #38).
+  still covers: the instance semantics and statements).
 Protected surface (the inventory's 6th column; check.sh step 4's instance snapshot): every module of a default
   lib whose file `trusted_paths` covers and whose layer is not trusted. Every module of a `protected` layer must
   be in it, and none of a trusted layer.
@@ -319,7 +319,7 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
         for x in sorted(allow[n] - trusted):
             fails.append(f"FAIL[config] trusted layer {n} allows the untrusted layer {x}")
     protected = {n for n, l in layers.items() if l.get("protected") is True}
-    for n in sorted(protected):  # the protected surface's closure stays inside it (docs/decisions.md, 2026-11-04)
+    for n in sorted(protected):  # the protected surface's closure stays inside it (docs/decisions.md §"Trusted surface and Challenge scope")
         for x in sorted(allow[n] - trusted - protected):
             fails.append(f"FAIL[config] protected layer {n} allows the unprotected layer {x}")
     for n, l in sorted(layers.items()):  # `sorry = true` (check.sh steps 3, 7): only Lemmas and Proofs (plan §5)

@@ -1,9 +1,8 @@
 # sha256 of every vendored file (checked by scripts/check.sh step 8).
-# EthLib (CC0-1.0), copied 2026-10-29 from the clone /srv/runs/fradamt/consensus-lean/reuse/src/EthLib; every file
-# is byte-identical to ethereum/EthLib 6390c73ef040311e807b9047d99dca6b1be1c42f except CheckDecls.lean, which
-# carries three local patches (TRUST.md): a performance patch (#13), the unchecked-child frontier fix (#5) and
-# `--sorry-ok` (#7).
-b941e9baa619e80d954e2cdaf32ba7d5f48a8b29e4c888d3b97a91cee42aa367  scripts/CheckDecls.lean
+# EthLib (CC0-1.0): every file is byte-identical to ethereum/EthLib 6390c73ef040311e807b9047d99dca6b1be1c42f
+# except CheckDecls.lean, which carries three local patches (TRUST.md): the module-index patch (a speedup), the
+# frontier patch (unchecked-child frontier fix) and the sorry-prefix patch (`--sorry-ok`).
+43c1701aa493f339eb590376709b47f65a948bdd6edb430efd86fa87173f1784  scripts/CheckDecls.lean
 591a1d993df5dc1a01a9cf645f71cbeffdb7da9fdff9e3ca8f5179f60ead9f25  scripts/test_check_decls.sh
 30e0ae65ec5035c7407009f4184164333a53d4328add72c55e7f0b5f751980e3  scripts/CheckDeclsTest.lean
 2e0cddcca85e19343dcea7103e2501ceb8b4f0d05efc9c25b218ae81ed168cc6  scripts/CheckDeclsForeign.lean
@@ -12,8 +11,8 @@ b941e9baa619e80d954e2cdaf32ba7d5f48a8b29e4c888d3b97a91cee42aa367  scripts/CheckD
 cf41e0fe76e238ff17f993167f072818749422139c460169fc2a9dee0d0db34f  scripts/CheckDeclsTest/Good.lean
 7d05fc8363171e48666f3b11473326b2066957ea819cc0930dc2c984bf913fff  scripts/CheckDeclsTest/Proofs/Native.lean
 36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673  scripts/LICENSE.EthLib
-# leanprover-community/axiom-audit (Apache-2.0) v0.1.2 = 46024e005996495c65ef609368e11ab39c4222e3, copied 2026-10-30
-# verbatim (Main.lean as AxiomAuditMain.lean; identical at 0b885d88a69982cd76990b502742690b80b1a685, main on that day).
+# leanprover-community/axiom-audit (Apache-2.0) v0.1.2 = 46024e005996495c65ef609368e11ab39c4222e3, copied
+# verbatim (Main.lean as AxiomAuditMain.lean; identical at 0b885d88a69982cd76990b502742690b80b1a685).
 4dfb9411b9b0671689e29bcf1c0f09d02b11cc44c033386d127d2c6873b4416b  scripts/AxiomAudit.lean
 de22f8dffed64104660e3326b969b29f21348fe5f15eb800f47d113b99ee5739  scripts/AxiomAuditMain.lean
 c95bae1d1ce0235ecccd3560b772ec1efb97f348a79f0fbe0a634f0c2ccefe2c  scripts/LICENSE.axiom-audit
