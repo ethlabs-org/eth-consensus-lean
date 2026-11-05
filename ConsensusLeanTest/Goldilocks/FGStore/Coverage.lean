@@ -220,8 +220,8 @@ theorem trV_agree (i : Nat) (hi : i ≤ 14) :
 
 /-- `trV` agrees with `trT` on the times of cuts `0`–`16`. -/
 theorem trV_time (i : Nat) (hi : i < 17) : trV.time i = trT.time i := by
-  simp only [trV, trT]
-  split_ifs <;> rfl
+  rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
+    first | rfl | omega
 
 /-- The labelled cuts of `trV`: those of `trT` up to cut `14`, then `15`–`17`. -/
 theorem trV_label (i : Nat) (ℓ : FGLabel P₁ Unit) (h : trV.label i = some ℓ) :
@@ -311,6 +311,18 @@ theorem trV_tree_subset (y : Fin P₁.n) (i : Nat) :
     · obtain ⟨k, rfl⟩ := Nat.exists_eq_add_of_le' h18
       rw [FGTrace.store, trV_state.2.2.2] at hX; exact mem_tree_stY hX
 
+/-- From cut `17` on, the time of `trV` is `7`. -/
+private theorem trV_time_tail (i : Nat) : trV.time (i + 17) = 7 := by
+  simp only [trV]; split_ifs <;> first | rfl | omega
+
+/-- The times of `trV` do not decrease from one cut to the next. -/
+private theorem trV_time_succ : ∀ i, trV.time i ≤ trV.time (i + 1)
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 => by decide
+  | i + 17 => by rw [trV_time_tail, Nat.add_right_comm, trV_time_tail]
+
+private theorem trV_time_mono {i j : Nat} (h : i ≤ j) : trV.time i ≤ trV.time j :=
+  monotone_nat_of_le_succ trV_time_succ h
+
 /-- The tick order of `trV`, (a): each own proposal is accepted at the first cut of its time. -/
 theorem trV_own_first (y : Fin P₁.n) (i : Nat) (B : NodeBlock P₁ Unit)
     (h : trV.CallAt y i (.block B true)) (k : Nat) (hk : k < i) : trV.time k < trV.time i := by
@@ -319,9 +331,7 @@ theorem trV_own_first (y : Fin P₁.n) (i : Nat) (B : NodeBlock P₁ Unit)
     exact trT_own_first y i B ⟨h.1, h'⟩ k hk
   · cases h'
   · cases h'
-  · change trV.time k < 7
-    simp only [trV]
-    split_ifs <;> decide
+  · exact lt_of_le_of_lt (trV_time_mono (Nat.le_pred_of_lt hk)) (by decide)
 
 /-- The tick order of `trV`, (b): before an `attest` call at its time, only the own proposal. -/
 theorem trV_attest_order (y : Fin P₁.n) (j : Nat) (src : NodeBlock P₁ Unit)
@@ -376,8 +386,8 @@ theorem trV_localRun : FGLocalRun () {w₀} {g₁, Bs, Bf, Bk, Bc, Bx, By} trV w
   init _ _ := rfl
   exec i ℓ h _ := trV_exec i ℓ h
   tree_subset y _ i := trV_tree_subset y i
-  time_nonneg i := by simp only [trV]; split_ifs <;> decide
-  time_mono i j hij := by simp only [trV]; split_ifs <;> first | decide | omega
+  time_nonneg i := le_trans (by decide) (trV_time_mono (Nat.zero_le i))
+  time_mono i j hij := trV_time_mono hij
   attest_public _ _ _ _ _ _ := one_dvd _
   own_first y _ i X h _ _ k hk _ _ := trV_own_first y i X h k hk
   attest_order y _ j src signed h i ℓ hij hi ht := trV_attest_order y j src signed h i ℓ hij hi ht
