@@ -82,7 +82,7 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
     have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
     simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
     change 18 * Q.run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   refine ⟨hduration, ?_, ?_⟩
   · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
       (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) le_rfl
