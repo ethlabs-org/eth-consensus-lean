@@ -11,7 +11,8 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 
 Each statement of `ConsensusLean/Statements/Review.lean` is proved by the existing theorem whose
 type it is, so the kernel checks the statement against that theorem's type; the Goldilocks
-obligations endpoint is proved by its milestone proof. This module is the comparator's solution
+obligations endpoint is proved by its milestone proof, and the headline `GoldilocksCorrect` by
+that proof and `ShapeObligations.correct`. This module is the comparator's solution
 module (`comparator.json`). The other Goldilocks milestones are proved lemmas, pinned by
 `ConsensusLeanTest/MilestoneAxioms.lean` (docs/decisions.md, 2026-11-04). -/
 
@@ -34,5 +35,12 @@ end Consensus.Review
 theorem Consensus.Goldilocks.meetsObligations :
     Consensus.Goldilocks.MeetsObligations :=
   Consensus.Goldilocks.Obligations.meets_obligations
+
+/-- Goldilocks is correct: `GoldilocksCorrect`, the obligations endpoint composed with
+`ShapeObligations.correct` (the theorem of `ObligationsSufficient`). -/
+theorem Consensus.Goldilocks.goldilocksCorrect :
+    Consensus.Goldilocks.GoldilocksCorrect := fun S A V =>
+  Consensus.Shape.ShapeObligations.correct
+    (Consensus.Goldilocks.Obligations.meets_obligations S A) V
 
 end

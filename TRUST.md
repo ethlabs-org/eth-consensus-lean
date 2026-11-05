@@ -187,7 +187,7 @@ layers, which may import only trusted and protected layers. The Shape examples
 `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` are not instances and left the surface on 2026-11-04
 (no Challenge statement reaches them; `docs/decisions.md`). So did, the same day, the Goldilocks milestone
 statements other than the obligations endpoint and the instance Spec only they reach
-(`ConsensusLean/Instances/Goldilocks/Milestones/`): Challenge certifies the four review statements and the endpoint.
+(`ConsensusLean/Instances/Goldilocks/Milestones/`): Challenge certifies the four review statements, the endpoint and the headline `GoldilocksCorrect`.
 `Lemmas/Problem/Derived.lean`, added for the now
 archived Goldilocks sheet, left the list with it (no trusted statement reads it, by a compiled type-closure walk). The
 record covers the listed files' text, not everything they import. `scripts/boundaries.toml`
@@ -201,6 +201,7 @@ requires every non-merge commit that touches them to carry a `Trusted-surface: <
 review pair (`ConsensusLeanTest/ReviewGuard.lean`, `ReviewGuard.checkComplete`; generated matchers
 are exempt). `ConsensusLeanTest/ReviewAxioms.lean` compiles alpha-equality/binder-kind and axiom pins.
 Primary: `Consensus.Review.ObligationsSufficient`; secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
+The Goldilocks headline `Consensus.Goldilocks.GoldilocksCorrect` composes the primary with `MeetsObligations`.
 The `spec-approved` tag is retired (2026-11-01); its approvals are recorded in `docs/notes/spec-review.md`.
 
 ## Assumed, not proved; per-instance bindings

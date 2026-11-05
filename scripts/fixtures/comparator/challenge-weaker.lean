@@ -11,5 +11,6 @@ theorem Consensus.Review.regimesRealizable : Consensus.Review.RegimesRealizable 
 theorem Consensus.Review.logFaithful : True := sorry
 theorem Consensus.Review.heldIffServed : Consensus.Review.HeldIffServed := sorry
 theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObligations := sorry
+theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect := sorry
 
 end

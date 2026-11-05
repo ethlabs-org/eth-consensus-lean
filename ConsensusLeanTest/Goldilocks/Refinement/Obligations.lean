@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
+public import Solution
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks acceptance coefficients
@@ -35,6 +36,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
 
 `contract_heal` (`catchUp + healMargin`, `contract_heal_val`) is pinned by `heal_drop`.
 
+* (a) The headline `GoldilocksCorrect` is not vacuous: `goldilocksCorrect_realizable_small`.
 * (a) The endpoint is not vacuous: `meets_obligations_nonvacuous` instantiates
   `MeetsObligations` (`meets_obligations`) at `setupSmall`, `assumptionsSmall`, and
   `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
@@ -301,6 +303,16 @@ theorem meetsObligations_realizable_small :
       (Fin 5) :=
   have h := meets_obligations setupSmall assumptionsSmall
   regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5) (by decide)
+
+/-- (a) **The headline is not vacuous**: `goldilocksCorrect` at `setupSmall`, `assumptionsSmall` on
+five validators gives the realizability branch of `CorrectProtocol`, a clean witness for every
+regime of the compiled Goldilocks system. -/
+theorem goldilocksCorrect_realizable_small :
+    Realizable (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5))
+      (shapeProgress (goldilocks setupSmall) (Fin 5))
+      (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall)) :=
+  (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).realizable
+    (by decide)
 
 /-! ## The fixed FG gap against the former FG delay bound
 

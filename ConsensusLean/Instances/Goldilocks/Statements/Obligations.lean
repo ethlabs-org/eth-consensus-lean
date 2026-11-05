@@ -31,6 +31,9 @@ The time numbers (catch-up, heal, latency, arming lag, outage budget, no-sleep m
 delay) are coefficients of `ΔAC`, the node and the engine delay alike (`Δp = Δe`: L0 delivers
 strictly before the bound).
 
+**The headline** (`GoldilocksCorrect`): with `ObligationsSufficient`, the endpoint makes the
+Goldilocks family, run by the general execution model, an L0 `CorrectProtocol` at that contract.
+
 Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks
@@ -142,6 +145,18 @@ Goldilocks family meets the obligations at the contract
 def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
     ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A))
+
+/-- **Goldilocks is correct**, the headline statement: for every setup `S`, every assumption set
+`A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite
+validator type `V`, the Goldilocks family, compiled and run by the general execution model
+(`sysOf schema (compiled (goldilocks S)) V`, with progress read by `shapeProgress`), is an L0
+`CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`. It composes
+`MeetsObligations` with the review statement `ObligationsSufficient`; it has their parameters and
+no further hypothesis. -/
+def GoldilocksCorrect : Prop :=
+  ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
+    CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
+      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
 
 end Consensus.Goldilocks
 

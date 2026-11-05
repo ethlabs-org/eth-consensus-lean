@@ -394,6 +394,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
+  assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
+  `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`. It is the composition of
+  `MeetsObligations` with `Review.ObligationsSufficient` (proved in `Solution` by `ShapeObligations.correct` of
+  `meets_obligations`), with their parameters and no further hypothesis, so it adds no trusted reach: every
+  constant it mentions is already reached by those two statements. It states the protocol's correctness in one
+  place, so a reader need not compose the two statements.
 - 2026-11-05, coordinator (review-surface naming, step 3b): the field theorems of the obligations proof
   (`Lemmas/Obligations/Concrete`) follow `MeetsObligations`: `accepted_{outputValid,nested,finalMonotone,
   finalAccountable,healthyLive_final,healthyLive,sleepySafe,sleepyLive,healedSafe,persists,claims,progressFits,

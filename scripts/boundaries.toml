@@ -139,7 +139,7 @@ about = "generic composition of the milestones (ShapeObligations.correct) and it
 # Milestones.Spec.Trace); Milestones.Statements.FG allows only the chain-level FG; Milestones.Statements.ComposeAnyAC
 # states C0.* for any AC; Spec.Run never allows AsChainShape, Simulation or
 # Obligations. Each allow is the full downward closure.
-# The protected layers (Spec.*, AsChainShape, Statements.Obligations) hold what the five Challenge statements reach;
+# The protected layers (Spec.*, AsChainShape, Statements.Obligations) hold what the six Challenge statements reach;
 # each Milestones.<L> layer (untrusted, docs/decisions.md 2026-11-04) mirrors the old layer <L>: the milestone
 # statements and the instance Spec only they reach, with <L>'s allow list plus <L> itself and the Milestones copy of
 # each entry.
