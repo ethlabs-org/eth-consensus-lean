@@ -59,7 +59,7 @@ private theorem ThSlot_le_slot' {P : Params} {ACP : Type} {acp₀ : ACP} {st : S
     have hsl : Y.slot < Y'.slot := hcoh.2 Y hY Y' hY' hp
     have := ih hY
     rcases P.fg.stateTransition_ThSlot ht with ⟨-, e, -⟩ | ⟨-, e, -⟩
-    · rw [e]; omega
+    · rw [e]; (clear * - hsl this; omega)
     · rw [e]; rfl
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
@@ -90,7 +90,7 @@ theorem rows_delivered_service {g ΔF b v : Time}
     (by linarith [hdl kX])
   refine ⟨k', lt_of_le_of_ne hk' fun h => ?_, hproc⟩
   subst h
-  linarith [hdl k']
+  linarith only [hdl k', hlt, hvx]
 
 /-- **ROUND at one honest proposal.** `X` is an honest proposal on the parent `D ⪰ P`, at a slot
 `≥ P.slot + δ_t`, with `v ≥ ḡ` and `v + Δ_F ≤ t_X ≤ b`. Every honest `y` either signed an
@@ -139,8 +139,9 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
   rw [← hσP]
   rw [← hσD] at hle'
   by_cases hlt : ((tr.state p kX).fg.σ P.root).h < ((tr.state p kX).fg.σ D.root).h
-  · omega
-  have hDh : ((tr.state p kX).fg.σ D.root).h = ((tr.state p kX).fg.σ P.root).h := by omega
+  · (clear * - hle' hlt; omega)
+  have hDh : ((tr.state p kX).fg.σ D.root).h = ((tr.state p kX).fg.σ P.root).h := by
+    clear * - hPDh hlt; omega
   have hDTh := Th_eq_of_anc hr hPDs hDh
   have hThS : ((tr.state p kX).fg.σ D.root).ThSlot ≤ P.slot := by
     rw [ThSlot_eq_of_anc' hr hPDs hDh]
@@ -156,12 +157,12 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
     have hn : H.ncard + Hᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     change (2 * sp.n + 2) / 3 ≤ _
-    omega
+    clear * - hf hn; omega
   have hcross := cross_of_rows hrun hnc hp hX hpar hPr S
     (fun z hz => (Finset.mem_filter.1 hz).2) hScard ?_ (by omega)
   · have h1 := hcross.1
     rw [he] at h1
-    omega
+    clear * - hPDh h1; omega
   intro y hyS
   have hy : y ∈ H := (Finset.mem_filter.1 hyS).2
   rcases hrow y hy with ⟨w, hw, c, hPw, k, att, hsig, hk, hah, haT⟩ |
@@ -174,7 +175,7 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
     have hRst := mem_of_honest_anc hrun hnc hp hRD hPr
     have hRDh := h_le_of_store_anc hr (store_anc_of_honest_anc hrun hnc hp hRD hPr)
     rw [σ_eq_honest hrun hnc hw hp hPw hPst, σ_eq_honest hrun hnc hw hp hRw hRst] at hhR
-    omega
+    clear * - hlt hhR hRDh; omega
 
 /-- **ROW-sign at the actual report.** An honest report `R ⪰ P` at cut `i` before `T`: `y` signed an
 attestation for `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. At equal heights the lock
@@ -208,7 +209,7 @@ theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+    clear * - hf hn; omega
   obtain ⟨hc, hto, hres⟩ := hR
   rw [Compose.projAC_state hrun.toLocalRun hy] at hres
   obtain ⟨sg, hatt, ht, hfg⟩ :=
@@ -264,43 +265,43 @@ theorem FrameWindow.round_of_warm
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
   have hk := sp.two_le_k
   have hΔ := sp.toParams.hΔ
-  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by omega⟩
+  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by clear * - hwarm hk; omega⟩
   have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast h)
   obtain ⟨-, k, ℓ, d, pay, hc, hcall, hd, htc, hpar, -⟩ :=
     honestProposalRun_of_proposesAt hrun hnc hp hdx hX hXs
   have hpx : proposer x ∈ H := hdx ▸ hp
   have hrep := fun y (hy : y ∈ H) => hframe.proposal_report_follow hrun hnc hsvc hawake hf
-    hcatch hnr hm hwarm (by omega) hmb hz hdes hP hPs hy
+    hcatch hnr hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs hy
   have hfol : ∀ y ∈ H, ∃ i ell R, SA.ToFGAt tr.projAC y i ell R ∧
       tr.time i ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ ∧ Anc (tr.HonestBlocks H) P R ∧
       Anc (tr.HonestBlocks H) R d.head := by
     intro y hy
     obtain ⟨i, ell, R, hR, hti, hPR, hf⟩ := hrep y hy
     exact ⟨i, ell, R, hR, hti, hPR,
-      hf x (by omega) hxN (proposer x) hpx k ℓ hc hcall htc d pay hd⟩
+      hf x (by clear * - hux hδ; omega) hxN (proposer x) hpx k ℓ hc hcall htc d pay hd⟩
   obtain ⟨-, hPm, -⟩ := accept_of_proposesAt hrun hnc hz hP
   obtain ⟨i₀, -, R₀, -, -, hPR₀, hR₀d⟩ := hfol z hz
   have htX : tr.time kX = sp.ts x := by
     have : tr.time kX = sp.ts X.slot := by rw [hX.2.2, sp.slotTime_eq]; rfl
     rw [this, hXs]
   have hv : gbar g ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ := by
-    have := hts (show s₀ ≤ s + 2 by omega); linarith
+    have := hts (show s₀ ≤ s + 2 by clear * - hwarm; omega); linarith only [hm, hΔ, this]
   have hvx : sp.ts (s + 2 : Nat) + 2 * sp.Δ + ΔF ≤ tr.time kX := by
     rw [htX]
-    have h1 := hts (show s + 1 + sp.toParams.fg.δt ≤ x by omega)
+    have h1 := hts (show s + 1 + sp.toParams.fg.δt ≤ x by clear * - hux; omega)
     have h2 : sp.ts (s + 1 + sp.toParams.fg.δt : Nat) =
         sp.ts (s + 2 : Nat) + 4 * sp.Δ * (sp.toParams.fg.δt : Time) - 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
-    linarith
+    linarith only [hΔF, h1, h2]
   refine round_cross hrun hnc hsvc hnr hf ⟨z, hz, kP + 1, hPm⟩ (hPR₀.trans hR₀d) hpar hp hX
-    hv hvx (by rw [htX]; linarith [hts hxN]) (by omega) ?_
+    hv hvx (by rw [htX]; linarith only [hts hxN, hmb, hΔ]) (by clear * - hXs hux hPs; omega) ?_
   intro y hy
   obtain ⟨i, ell, R, hR, hti, hPR, hRd⟩ := hfol y hy
   have hiT : tr.time i < T := lt_of_le_of_lt hti hT
   obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report hrun hnc hf hna hy hR hiT hPR
     (fun heq => Or.inr (hframe.report_kind_of_warm hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm (by omega) hmb hz hdes hP hPs y hy i ell R hR hPR hti heq))
+      hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs y hy i ell R hR hPR hti heq))
   rcases hor with ⟨k', att, hs, hk', hah, haT⟩ | hlt
   · exact Or.inl ⟨y, hy, i, hPy, k', att, hs, hk'.trans hti, hah, haT⟩
   · exact Or.inr ⟨R, hRd, y, hy, i, hPy, hRy, hlt⟩
