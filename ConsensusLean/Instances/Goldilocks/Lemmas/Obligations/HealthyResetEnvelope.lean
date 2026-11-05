@@ -152,7 +152,7 @@ theorem healthy_reset_fit (Q : HealthyPreparationQuery S A V) :
     exact_mod_cast (show _ ≤ _ by omega)
   have hr0 : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
   rw [hready, hheal, hΔ]
-  nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC),
+  linarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC),
     mul_nonneg hr0 (by linarith : (0 : Time) ≤ Q.run.1.ΔAC - 1)]
 
 /-- **The reset envelope from the drain.** `healthy_reset_envelope_of_fit` with the window fit
@@ -238,12 +238,12 @@ theorem healthy_preparation_initialize (Q : HealthyPreparationQuery S A V)
       rw [hBdef]
       linarith
     rw [hready, hheal, hΔ]
-    nlinarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
+    linarith [mul_le_mul_of_nonneg_right hH (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   have hR0 : (24 : Time) ≤ healthyResetCoeff S Q.index := by
     rw [healthyResetCoeff_val]; push_cast
     linarith [Nat.cast_nonneg (α := Time) (healthyDrainLen S Q.index)]
   have hX0 : (0 : Time) ≤ ((Q.index : Nat) : Time) := Nat.cast_nonneg _
-  have hr0 : 0 ≤ Q.ready := by rw [hready]; nlinarith [le_max_right Q.gst 0]
+  have hr0 : 0 ≤ Q.ready := by rw [hready]; positivity
   have hgr : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by
     change max Q.gst 0 + _ ≤ _
     rw [hready, hΔ]; nlinarith

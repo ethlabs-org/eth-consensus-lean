@@ -249,7 +249,7 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   have htpos : 0 < (stateAt S Q.run.2 Q.hn v i).now := by
     have := C.repaired
     have := Int.natCast_nonneg Q.index
-    nlinarith
+    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hs | ⟨j, _, e, he, hev, _, _⟩
@@ -354,7 +354,7 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
   obtain ⟨O, _⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
   have hc := healthy_repair_catch S A V Q
   have hbefore : Q.params.ts O.slot + 6 * Q.params.Δ <
-      (stateAt S Q.run.2 Q.hn v i).now := by nlinarith [O.bounded, C.repaired]
+      (stateAt S Q.run.2 Q.hn v i).now := by linarith [O.bounded, C.repaired]
   have hTb := hbefore.le.trans C.time_bound
   have hdrain : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts O.slot :=
     ((le_max_left _ _).trans ((le_max_right _ _).trans D.lower)).trans O.fresh.le
@@ -454,7 +454,7 @@ theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
   have hΔ := Q.params.toParams.hΔ
   have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now := by
     have hindex : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
-    nlinarith
+    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
   have hdrain := (le_max_of_le_right (le_max_left _ _)).trans D.lower
   obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label S A V Q D
     (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q)).ac
@@ -505,7 +505,7 @@ theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
     have := C.repaired
     have := Q.params.toParams.hΔ
     have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
-    nlinarith
+    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
   have hdrain : Healing.drainTime Q.params D.resetTime ≤
       (stateAt S Q.run.2 Q.hn v i).now :=
     ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hquery
@@ -558,7 +558,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
   have ht0 : 0 < t := by
     have := C.repaired
     have := Int.natCast_nonneg Q.index
-    dsimp [t]; nlinarith
+    dsimp [t]; linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hinit | ⟨j, hji, e, he, hnode, hstate, htime⟩
@@ -590,7 +590,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
   have hTt : Q.params.ts O.slot + 6 * Q.params.Δ < t := by
     have := O.bounded
     have := C.repaired
-    dsimp [t]; nlinarith
+    dsimp [t]; linarith
   have hTb := hTt.le.trans C.time_bound
   have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
       Q.params.ts O.slot := by
@@ -859,7 +859,7 @@ theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
     have := D.reserve
     have := Q.params.toParams.hΔ
     have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
-    nlinarith
+    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
   have hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s := by
     apply D.old_bound.trans
     rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩

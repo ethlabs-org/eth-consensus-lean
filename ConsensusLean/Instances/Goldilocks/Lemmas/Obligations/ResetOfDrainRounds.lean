@@ -61,8 +61,8 @@ theorem exists_slot_align (sp : SA.SAParams) {af : Time} (haf : 0 ≤ af) :
   have hs₀c : ((s₀Z.toNat : Nat) : ℤ) = s₀Z := Int.toNat_of_nonneg hs₀nn
   refine ⟨s₀Z.toNat, ?_, ?_⟩
   · change af ≤ 4 * sp.Δ * ((s₀Z.toNat : Nat) : ℤ)
-    rw [hs₀c]; nlinarith
-  · rw [hs₀c]; nlinarith
+    rw [hs₀c]; linarith
+  · rw [hs₀c]; linarith
 
 /-- **The rise rounds at the warm proposal.** On a window `[a_f, a_f + len]` with merged key
 `v ≥ 2HZ` and a `FrameWindow`, the actual warm proposal `P` of slot `u` of a slot-aligned frame

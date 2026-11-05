@@ -62,8 +62,8 @@ theorem heal_bound_sufficient_rounds {D ready heal q lo af len lam a : ℤ}
       ready + (20 * Ld + 24 * (δt + X - 1) + 54) * D + 5 * lam - 1 := by
     linarith
   have hDk : 0 ≤ D * k := mul_nonneg hD.le hk
-  have hDδ : D ≤ D * δt := by nlinarith
-  have hDX : D ≤ D * X := by nlinarith
+  have hDδ : D ≤ D * δt := le_mul_of_one_le_right hD.le hδ
+  have hDX : D ≤ D * X := le_mul_of_one_le_right hD.le hX
   have hDL : 0 ≤ D * Ld := mul_nonneg hD.le hLd
   refine ⟨hfit, ?_, ?_, ?_⟩
   · have : a ≤ 4 * D * (s₀ + Ld + rr * (δt + X - 1) + 1) + 2 * D := by linarith

@@ -44,7 +44,7 @@ session. The tools are adopted separately from the proof edits and tactic front 
 
 | Change | Measured (module alone, best of 2) |
 |---|---|
-| `nlinarith` that needs one product → `linarith [mul_le_mul_of_nonneg_left h hΔ.le]`, or plain `linarith` where it suffices (`nlinarith` multiplies every pair of hypotheses) | `Healing.Acquire` 11.6 → 5.2 s, `Compose.Sleepy.Frame` 7.2 → 4.7 s, `Healing.Outcome.Pivot` 12.6 → 10.8 s; 43 modules −8% wall |
+| `nlinarith` that needs one product → `linarith [mul_le_mul_of_nonneg_left h hΔ.le]`, or plain `linarith` where it suffices (`nlinarith` multiplies every pair of hypotheses) | `Healing.Acquire` 11.6 → 5.2 s, `Compose.Sleepy.Frame` 7.2 → 4.7 s, `Healing.Outcome.Pivot` 12.6 → 10.8 s; 43 modules −8% wall. A second pass at `b7bf2656` over the `Obligations` modules at the end of the critical path (27 of 32 calls: 15 plain `linarith`, 7 `linarith` with the one product, `le_mul_of_one_le_{left,right}` or `positivity` for the rest; the 5 left need cancellation or several products): 9 modules 45.5 → 38.9 s wall (−14.5%), 61.3 → 53.0 s CPU, the 6 on the critical path 32.1 → 28.3 s; `HealBoundRounds` 4.5 → 2.2 s, `FinalResetPremises` 6.5 → 4.6 s |
 | `hnew _ (List.mem_singleton_self _)` against an unfolded singleton → `simp only [List.mem_singleton, forall_eq] at hnew` first | `Compose.Sleepy.Provenance` 6.1 → 2.7 s |
 | `simpa only [..., mul_comm] using h` → `rw [..., mul_comm]; exact_mod_cast h` | `Refinement.HealedSafety` −0.9 s wall, −3.6 s CPU |
 | Hot `simp`/`simp_all` → their `simp?`/`simp_all?` sets | `Refinement.Shape` 4.9 → 3.8 s; elsewhere often flat, so measure each |
