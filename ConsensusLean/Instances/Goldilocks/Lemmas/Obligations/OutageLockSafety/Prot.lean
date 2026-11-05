@@ -9,7 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
-/-! # Outage lock safety: O2 retention, one cut (card §7.1, §7.2)
+/-! # Outage lock safety: O2 retention, one cut
 
 * `unlockKeeps_of_voteCompat` (§7.1(3)): `unlock` at an honest AC call keeps a frame block `B`
   when every honest vote of the view's slot by a validator outside `W` has a head compatible with

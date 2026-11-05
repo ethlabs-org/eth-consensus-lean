@@ -9,8 +9,8 @@ public section
 
 /-! # Goldilocks Healing, HS.3: the suffix of the proposal walk and the stop at `Q`
 
-`hs234-exact-interface.md` §4 (workbench#12 §3, as `Compose.suffix_agree_before` and
-`Compose.stop_at_parent_before`), in the settled phase of `AgreeSetting`: at every block `X ≠ Q` of
+As `Compose.suffix_agree_before` and
+`Compose.stop_at_parent_before`, in the settled phase of `AgreeSetting`: at every block `X ≠ Q` of
 the proposal walk at or above an honest slot-`s` voter's anchor, the proposer's best child is the
 voter's best child (`proposal_suffix`); and `P` is the voter's only eligible child of
 `Q = P.parent` (`proposal_only_child`). Their pieces:
@@ -31,9 +31,8 @@ When `X` is a proposer viable head, `C` (of a slot below `s`) is eligible there 
 majority only, so the best child carries over (`SA.isBest_transfer`); otherwise `X` is a viable
 head of neither frame and every child of `X` is eligible in both (`SA.isBest_transfer_low`). At
 `Q`, an old child eligible at the voter would be eligible at the proposer (`Q` a viable head of
-both, the same majorities), whose walk stopped at `Q`; then `SA.stop_core`. Model check of the
-literal statements and of the routes: sa-fg-model b843308 (`hs3_leaf_checks`), 244,689 and
-352,012 checks, no failure. -/
+both, the same majorities), whose walk stopped at `Q`; then `SA.stop_core`. A model check of the
+literal statements and of the routes (244,689 and 352,012 checks) found no failure. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -202,15 +201,15 @@ end Leaves
 
 /-! ### The suffix and the stop -/
 
-/-- **The suffix** (`hs234-exact-interface.md` §4, "restrict score comparison to a branching
-vertex `A` on `P`'s parent path above both roots"; workbench#12 §3, as
+/-- **The suffix** (score comparison restricted to a branching
+vertex `A` on `P`'s parent path above both roots; as
 `Compose.suffix_agree_before`): at every block `X` from `D` (on the proposal walk) to `Q`, `Q`
 excluded, at or above the voter's anchor (so above both roots), the proposer's best child is the
 voter's best child: the votes admitted in the voter view are the carried proposer view up to cap
 alternatives (the payload carries the proposer's pool; the voter's pre-freeze votes and support
 heads relay to the proposer by `t_s`), and a competing child viable at the voter has a pre-freeze
 allowed witness, at the proposer too (aligned readers, HS.1). Only the winner is compared (a
-voter-eligible competitor need not be proposer-eligible in reachable runs, sa-fg-model 7f7e660). -/
+voter-eligible competitor need not be proposer-eligible in reachable runs). -/
 theorem proposal_suffix
     (hS : AgreeSetting proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
@@ -299,8 +298,8 @@ theorem proposal_suffix
     · rwa [hΦp.coherent.1 (hΦp.viableHeads_subset hW) hXt hr] at hW
     · rwa [hΦy.coherent.1 (hΦy.viableHeads_subset hW) hXy hr] at hW
 
-/-- **`P` is the voter's only eligible child of `Q`** (`hs234-exact-interface.md` §4, "`P` is the
-unique honest current-slot child"; workbench#12 §3): another child of `Q` in the viable voter
+/-- **`P` is the voter's only eligible child of `Q`** (`P` is the
+unique honest current-slot child): another child of `Q` in the viable voter
 block tree is of an earlier slot (one block per honest proposer and slot, `SA.stop_core`), in the
 proposer's viable tree (`suffix_reflect`); its voter eligibility (no current-slot arm, `Q` a
 viable head of both frames, the same majorities) would make it eligible at the proposer, whose

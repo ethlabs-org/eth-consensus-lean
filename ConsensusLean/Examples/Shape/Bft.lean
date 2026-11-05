@@ -7,7 +7,7 @@ public import Mathlib.Tactic
 /-! # Streamlet and Tendermint as values (D-16; moved from the library)
 
 Shape examples, not protocol instances: no Challenge statement reaches them, so they are not on the
-trusted surface (`docs/decisions.md`, 2026-11-04).
+trusted surface (`docs/decisions.md` §"Trusted surface and Challenge scope").
 
 Both are final-only (`bftCore`) and share one contract shape, `bftContract`:
 index `k : ℕ+`, standard thresholds (the final output is accountable for a

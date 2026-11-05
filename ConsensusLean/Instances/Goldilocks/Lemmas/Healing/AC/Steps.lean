@@ -6,7 +6,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: the steps of H.1 (healing-simple `t1-proof.md` §§1–6)
+/-! # Goldilocks Healing: the steps of H.1 (T1 §§1–6)
 
 H.1 decomposed into the steps of T1 over a `StandaloneRun` (H.1's premises), with
 `r = r_AC(ḡ)`: a slot `j` is `≥ r` exactly when `ḡ + 4Δ ≤ t_j`. The steps live in sibling

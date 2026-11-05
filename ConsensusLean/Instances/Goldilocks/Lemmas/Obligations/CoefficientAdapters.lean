@@ -7,7 +7,7 @@ public section
 
 /-! # Conditional coefficient adapters
 
-Arithmetic and recurrence from workbench `coefficient-envelope-current.md` at 6414ac9.
+Arithmetic and recurrence of the coefficient envelope.
 These bounds do not choose the shared witnesses or supply semantic service producers.
 All readiness comparisons use the same interval; changing catch-up does not recover
 progress opportunities before the new start.

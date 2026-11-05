@@ -11,7 +11,7 @@ public section
 
 /-! # Goldilocks Healing: H.2 (i), the votes of a slot with an honest proposal and `Geo`
 
-workbench `h2-open-items.md` §§1, 4, 6, by induction on the cut of the first honest slot-`p`
+By induction on the cut of the first honest slot-`p`
 vote not on `P`: the voter's anchor is below `P` (`Duty(P)`'s first clause, §6 with §6.1,
 `h2_duty_anchor`); then the voter's walk reaches the proposer's path (§6, second clause),
 the retained heads give equal scores and majority eligibility on it (§1), `Geo` aligns the

@@ -18,7 +18,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the honest batch at an update
 
-workbench#12 §4: when every honest slot-`s` vote names a block `P` of a joined updater's frame,
+When every honest slot-`s` vote names a block `P` of a joined updater's frame,
 the honest slot-`s` votes reach the updater of slot `s`, held and resolved before `t_s + 2Δ`
 (the update analogue of `honest_batch_carry`). -/
 

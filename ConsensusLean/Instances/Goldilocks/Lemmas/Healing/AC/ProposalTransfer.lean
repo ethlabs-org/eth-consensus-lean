@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing: a good origin transfers to the proposal duty (T1 §3–§4)
 
-"The same argument applies at a proposal" (healing-simple `t1-proof.md` §3), over a
+"The same argument applies at a proposal" (T1 §3), over a
 `StandaloneRun`: the arguments are those of `ProposalCore` (A1.2, A1.3, A1.4 (a), A1.8 at the
 proposal duty, over any frames), and this file supplies their premises under trivial frames:
 

@@ -5,9 +5,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: window coverage from four anchors, through a horizon (#137)
+/-! # Goldilocks Obligations: window coverage from four anchors, through a horizon
 
-consensus-lean#137 (finite-horizon port). `anchors_chain_upTo` and `window_anchors_chain_upTo`:
+`anchors_chain_upTo` and `window_anchors_chain_upTo`:
 S3's anchor part from `ResetPremisesUpTo … b`, by C4 through the horizon
 (`honest_proposal_below_next_upTo`, `honest_proposal_below_later_upTo`). Guards: the later
 proposal of each pair has `t_{s₁} ≤ b`, and an adjacent pair `s₁ = s₀ + 1` also has the service

@@ -11,9 +11,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage S5: the early record (S5 card §9.2(b)–(c), §12.2)
+/-! # Outage S5: the early record
 
-Workbench `repos/consensus-lean/notes/outage/outage_restoration_s5.md`. An honest update of the
+An honest update of the
 first restored label `r` makes the effective record of its updater a block above `P` at every
 later cut (`record_above_of_update_r`):
 * when `P ⪯ Σ.F` at the update, the effective record is a block of a later frame, so it extends

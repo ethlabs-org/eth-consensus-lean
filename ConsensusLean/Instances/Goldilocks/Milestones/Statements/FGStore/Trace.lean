@@ -5,10 +5,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 
 /-! # Goldilocks milestone FGStore, part 2: FG traces (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (main `a470648c`), the
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 multi-node FG store nodes over FG traces (`FGLocalRun`): G1.4 (finalized safety) and the core of
-G1.10 (quorum-free entries), with the node's own proposal in its scope, which is the test case
-§4.7 case 2 of the decomposition note asks the trace contract to express before it is frozen
+G1.10 (quorum-free entries), with the node's own proposal in its scope, which is a test case
+that the trace contract has to express
 (the pool at the proposal step, the signing times of its honest attestations through unforgeability,
 and that no object received at the proposal time precedes the proposal). G1.6–G1.9 and
 G1.10's C1.1 scope ((a)–(c), with (K0)) are later statements of this part.

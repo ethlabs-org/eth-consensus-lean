@@ -13,8 +13,8 @@ open Compose
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {T : SATrace sp FGP ro}
 
-/-- **`Carry_y` from a writer, after the GST or by catch-up** (`h2-open-items.md` §5;
-`Healing.carryAt_of_writer_window` with a third case for a counted head: `y` itself accepted it
+/-- **`Carry_y` from a writer, after the GST or by catch-up**
+(`Healing.carryAt_of_writer_window` with a third case for a counted head: `y` itself accepted it
 at or before its vote and before `t_s + 3Δ`, as `Catch(2Δ)` gives for a head the writer accepted
 before `ḡ`): `Compose.carryAt_of_writer_heads`. -/
 theorem carryAt_of_writer_catch (hr : ACLocalRun (goldilocksSA sp FGP ro) H U T)

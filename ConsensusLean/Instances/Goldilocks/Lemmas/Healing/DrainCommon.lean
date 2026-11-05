@@ -12,8 +12,8 @@ public section
 
 /-! # Goldilocks Healing, HS.2: the settled setting and the common local facts
 
-`hs234-exact-interface.md` §1 (the context `Γ`: `GoldilocksRun`, `HSShared`, `Catch(2Δ)`,
-`Prop⁺(G_p)`, `SettledIn … w i₀ m c`) and §2 (the common local facts of HS.2–HS.4).
+The context `Γ` (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`,
+`Prop⁺(G_p)`, `SettledIn … w i₀ m c`) and the common local facts of HS.2–HS.4.
 
 * The settled time facts (proved): `w + 4Δ ≤ t_a` (`slotA_spec`), a clean label `j`
   (`t_j ≥ w + 4Δ`) is after `ḡ` and after the cut `c_z` (`gbar_le_of_clean`,
@@ -183,7 +183,7 @@ theorem half_committee_of_healthy (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ### `Carry` from a writer: the root split and the pre-`ḡ` catch-up -/
 
-/-- **The receiver-root split** (`hs234-exact-interface.md` §2.1): at an honest vote whose
+/-- **The receiver-root split**: at an honest vote whose
 `fc_root` is not above `B`, frozen viability of `B` puts `B` in the frame tree, so `Σ.F ⪯ B`. -/
 private theorem frame_F_anc_of_viable (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF)
@@ -244,8 +244,8 @@ private theorem ghost_mem {FGP : Type} {S T : Set (SA.Blk sp.n FGP)} (hTS : T �
       exact ghost_mem hTS f (hTS h.choose_spec.1.1)
     · exact ha
 
-/-- **An honest vote's head is in the full viable tree** when `fc_root` is
-(`hs234-exact-interface.md` §2.1): the anchor is in the full viable tree (`getAnchor_viable`), and
+/-- **An honest vote's head is in the full viable tree** when `fc_root` is:
+the anchor is in the full viable tree (`getAnchor_viable`), and
 every step of the walk is in the viable vote domain, a subset of the full one. -/
 private theorem head_viable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (SA.Blk sp.n FGP)}
     {T : SA.SATrace sp FGP ro'} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro') H U T)
@@ -359,7 +359,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
       rw [hoth hb hrs]
   exact ⟨hWt, Or.inl (by rw [SA.readPoint_blockStamp_eq hr hy hc, hpost]; exact hbs)⟩
 
-/-- **The aligned witness of a clean vote** (`hs234-exact-interface.md` §2.1): under `Γ`
+/-- **The aligned witness of a clean vote**: under `Γ`
 (without `Prop⁺`), let an honest vote of a clean slot `j` (`t_j ≥ w + 4Δ`, cut `kz`) extend `B`,
 and let the phase hold from `i₀` through a cut `k` after `t_j + Δ`. Then `i₀ ≤ kz < k`, the vote
 is cast by `t_j + Δ`, and `B` is below a block `W` effectively allowed at the vote (its head is in
@@ -417,7 +417,7 @@ theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     change tr.time kw ≤ tr.time kz at this
     linarith
 
-/-- **§2.1, aligned witnesses at a vote** (`hs234-exact-interface.md` §2.1): under `Γ` (without
+/-- **§2.1, aligned witnesses at a vote**: under `Γ` (without
 `Prop⁺`), let an honest vote of a clean slot `j` extend `B`. At every in-phase honest vote of a
 later slot, `B` is in the viable voter block tree or at or below `fc_root`: the witness `W` of
 `clean_vote_witness` relays (post-`ḡ`) or was caught up by `ḡ + 2Δ` (`Catch(2Δ)`) to the later
@@ -481,8 +481,8 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr) (hs : HSSha
     (fun h => by rwa [← Compose.frame_of_projAC hrun hy hv.1]) fun h => by
       rwa [← Compose.frame_of_projAC hrun hy hv.1]
 
-/-- **§2.1, aligned witnesses in a frame** (`hs234-exact-interface.md` §2.1, the proposal
-boundary of §2.2): under `Γ` (without `Prop⁺`), let an honest vote of a clean slot `j` extend
+/-- **§2.1, aligned witnesses in a frame** (the proposal
+boundary): under `Γ` (without `Prop⁺`), let an honest vote of a clean slot `j` extend
 `B`. At every in-phase cut of an honest node at a time `≥ t_j + 3Δ`, every ancestor of `B` is at
 or below its `fc_root` or in the viable tree of its frame: the witness `W` of
 `clean_vote_witness` is held there (genesis, or relayed by `t_j + 3Δ` above its `Σ.F` (HS.1 (a)),
@@ -525,8 +525,8 @@ theorem clean_vote_frame (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
       (by linarith) (by rw [htw]; linarith) hj₁ hF)
   exact fun X hXB => (hret.2.1 hWq).2.2 X (hXB.trans hBW)
 
-/-- **Frozen viability of a clean fast origin** (`hs234-exact-interface.md` §2.1 "aligned
-witnesses", §3 first helper): under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean
+/-- **Frozen viability of a clean fast origin** (aligned
+witnesses): under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean
 label `j` (`t_j ≥ w + 4Δ`) with stored block `B`. At every in-phase honest vote of a slot `> j`,
 `B` is in the viable voter block tree or at or below `fc_root`: an honest counted vote extends the
 selection `D ⪰ B` (`fastLock_honest_vote`; `viable_of_clean_vote`). -/
@@ -548,7 +548,7 @@ theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj hes ⟨Hd, hHd, hHdr, hBD.trans hDHd⟩ hy hv
     hjs hk
 
-/-- **Frozen viability of a clean slow origin** (`hs234-exact-interface.md` §2.1, §3 slow
+/-- **Frozen viability of a clean slow origin** (the slow
 helper): as `clean_fast_viable`, for a slow lock of label `j` with `t_{j−k+1} ≥ w + 4Δ` and
 stored block `B`: an honest slot-`j` vote extends the update's result `C ⪰ D ⪰ B`
 (`result_extended`; `viable_of_clean_vote`). -/
@@ -579,8 +579,8 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
 
 /-! ### §2.1: exact `Carry` -/
 
-/-- **`Carry` of a clean fast origin's counted votes** (`hs234-exact-interface.md` §2.1
-"all-head Carry"): at an in-phase honest slot-`(j+1)` vote whose `fc_root` is not above `B`,
+/-- **`Carry` of a clean fast origin's counted votes**
+(all-head `Carry`): at an in-phase honest slot-`(j+1)` vote whose `fc_root` is not above `B`,
 `Carry_y(j, CV)`: an honest counted head has an allowed descendant `D` with `F ⪯ D` (HS.1), so
 `F ⪯ B` (else `B ⪯ F ⪯ fc_root`), and every counted head, Byzantine ones included, extends `B`;
 the counted heads are resolved at the writer before `t_j + 2Δ` and relay (post-`ḡ`) or were caught
@@ -621,7 +621,7 @@ theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
       accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by linarith) hFHv
     exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith⟩)
 
-/-- **`Carry` of a clean slow origin's result votes** (`hs234-exact-interface.md` §2.1, §3 slow
+/-- **`Carry` of a clean slow origin's result votes** (the slow
 helper): as `clean_fast_carry`, for the counted votes `CV` of every regular result `C` of the
 writer's update (every counted head extends `C ⪰ S ⪰ B`, `S` the raw slow selection). -/
 theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
@@ -669,8 +669,8 @@ theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
       accept_of_catch hrun hc hx hkw (not_le.1 hkg) hy hv.1 (by linarith) hFHv
     exact Or.inr (Or.inr ⟨k', hk', hacc, by change tr.time k' < _; linarith⟩)
 
-/-- **`Carry` of the preceding honest batch** (`hs234-exact-interface.md` §2.1 "all-head Carry",
-§3 "the preceding common honest batch"): under `Γ`, if every honest vote of a clean slot `m'`
+/-- **`Carry` of the preceding honest batch** (all-head `Carry`,
+the preceding common honest batch): under `Γ`, if every honest vote of a clean slot `m'`
 extends `B`, then at an in-phase honest slot-`(m'+1)` vote at which `B` is frozen-viable and not
 at or below `fc_root`, `Carry_y(m', S_{m'})` holds for the honest slot-`m'` votes: `Σ.F ⪯ B` (the
 root split), so every honest head is above `Σ.F`; each was accepted by its voter before its vote,

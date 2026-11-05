@@ -5,9 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMatureUpT
 public section
 
 /-! # Goldilocks Healing: Lemma 3′ and the crossing from signed attestations through a horizon
-(#137)
 
-consensus-lean#137 (finite-horizon port). `justify_of_signed_rows'` and `cross_of_signed_rows`
+`justify_of_signed_rows'` and `cross_of_signed_rows`
 take the whole-run `HSShared`; here the delivery premise comes from `HSSharedUpTo … b` by
 `rows_delivered_upTo`, so the proposal cut needs `t_{kX} ≤ b`. No other fact after `b` is used:
 the parent is held at the proposal cut, and every attestation is signed by `v ≤ t_{kX} - Δ_F`. -/

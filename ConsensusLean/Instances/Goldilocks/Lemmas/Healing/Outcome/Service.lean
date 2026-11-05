@@ -14,14 +14,13 @@ public section
 
 /-! # Goldilocks Healing: building blocks of C1.2, AC outcome service for honest entries
 
-Proved pieces toward C1.2 (`Compose.OutcomeService`, claims C1.2 at goldilocks `6703bf05`),
-following fradamt-agent/workbench `producer-reset-continuation.md` §17, §18 (BA) and §26. C1.2
-itself is not proved here.
+Proved pieces toward C1.2 (`Compose.OutcomeService`, claims C1.2).
+C1.2 itself is not proved here.
 
 * **Entry attestations** (`EntryRows`): for a served entry `E = (h, T, u)`, by `t_u + 6Δ` either
   honest validators of weight `q` have signed a target attestation for `E`, or an honest accepted
   block has justified `E` (the retained justified crossing).
-* **Attestations from reports** (workbench#30): the actual reports and their high origins
+* **Attestations from reports**: the actual reports and their high origins
   (`high_report_origin`), the honest records (`high_entry_eq`, `record_entry_eq`), the attestations
   from signatures and reports (`row_target_of_sign`, `row_of_sign`, `sign_of_report`) and their
   finite forms through a horizon (`ResetPremisesUpTo.row_of_report`,
@@ -60,7 +59,7 @@ private theorem parent_mem (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
 
 end FGTraces
 
-/-! ## The first crossing of an entry before its timeout (workbench#30 §5)
+/-! ## The first crossing of an entry before its timeout
 
 As `Lemmas/FGStore/Window.lean` (`events_current`, `entry_facts`), at a reachable store. -/
 
@@ -83,7 +82,7 @@ private theorem source_entry {st : Store P ACP} (hr : st.Reachable acp₀) (src 
 
 end Walk
 
-/-! ## The honest client's records (workbench#30 §4) -/
+/-! ## The honest client's records -/
 
 section Client
 
@@ -140,7 +139,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp a : Time} {cF kF : Nat}
 
-/-! ## The actual reports (workbench#30 §3) -/
+/-! ## The actual reports -/
 
 /-- The selection of a fast-lock write is in the frame of its call (as in `Retention/Rows`). -/
 private theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
@@ -163,7 +162,7 @@ private theorem report_mem (hrun : GoldilocksRun proposer dg H tr)
     (h : SA.ToFGAt tr.projAC z r ℓ C) : C ∈ (tr.state z r).fg.tree :=
   mem_tree_of_frame hrun hz h.1 (SA.toFG_candidate h.2.2).1.1
 
-/-- **An actual high report has a stored high origin written before it** (workbench#30 §3, the
+/-- **An actual high report has a stored high origin written before it** (the
 prefix of `high_row_source`): `C` is the viable image of a live fast lock, below the stored block
 `B` of an earlier fast-lock write (`stored_fast_lock_provenance`); `B` is high as `C ⪯ B` is. -/
 theorem high_report_origin (hp : ResetPremises tr H proposer dg g ΔF a)
@@ -236,7 +235,7 @@ theorem ResetPremisesUpTo.high_report_origin {b : Time}
     hfl, hCO, hOD.2.mono hPhiwU⟩
   exact ⟨hz, joinedAt_of_fastLockAt hp.run hp.noColl hz hfl, ⟨CV, ellw, D, hcw, hfl, rfl⟩, hOh⟩
 
-/-! ## High entries and the honest records (workbench#30 §4) -/
+/-! ## High entries and the honest records -/
 
 /-- Historical self-entries under bounded high origins agree at equal height. -/
 theorem ResetPremisesUpTo.high_entry_eq {b : Time}
@@ -421,7 +420,7 @@ theorem ResetPremisesUpTo.row_of_sign {b : Time}
   unfold FG.Record.finalityPair
   simp only [hb, hperm, ↓reduceIte]
 
-/-! ## A higher report: the same first crossing and its origin (workbench#30 §5) -/
+/-! ## A higher report: the same first crossing and its origin -/
 
 /-- A bounded same-height report supplies an actual signature by its timestamp,
 including the case where a previously signed content suppresses the new call. -/

@@ -8,7 +8,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: the record from a restored update (card §8, `record_above_from`)
+/-! # Outage lock safety: the record from a restored update (`record_above_from`)
 
 The writes of an honest record after its update of a restored label `m ≥ r` come from results of
 labels `> m` (compatible with `P` by (R)) and from optimistic selections (compatible with `P`,

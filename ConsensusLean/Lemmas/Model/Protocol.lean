@@ -3,7 +3,7 @@ public import ConsensusLean.Spec.Model.Protocol
 
 public section
 
-/-! Proofs about `Protocol.lean` definitions (moved from it; plan §1.1). -/
+/-! Proofs about `Protocol.lean` definitions (moved from it). -/
 
 namespace Consensus.Model
 

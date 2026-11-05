@@ -23,9 +23,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage S5: the restored votes (S5 card §12.1, §12.2 (B), §12.8)
+/-! # Outage S5: the restored votes
 
-Workbench `repos/consensus-lean/notes/outage/outage_restoration_s5.md`. Inside lock safety's cut
+Inside lock safety's cut
 induction, at an honest vote of slot `q + 1 > r` at cut `i`, from `OutageLockInv D i` and receiver
 service from `b₁`:
 
@@ -368,7 +368,7 @@ theorem J_anc_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy : y 
       exact .refl
     · exact absurd (hiAt_iff.2 ⟨h, hr⟩) hLo
 
-/-- **Lo has no contest** (S5 card §12.8): a contest block's `h_j`-entry is compatible with `P`
+/-- **Lo has no contest**: a contest block's `h_j`-entry is compatible with `P`
 (its honest source is) and is not `Σ.J`; with `Σ.J ⪯ P` it would be `Σ.J` or above `Σ.J`. -/
 theorem not_contest_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : k ≤ i) (hLo : ¬ HiAt tr H D.P y k) : ¬ (tr.state y k).fg.Contest := by
@@ -403,7 +403,7 @@ theorem not_contest_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (h
       exact hJX hEX
   · exact hJX ((honest_held_anc D.hrun D.hnc hy (hJP.trans hPE) hEt).trans hEX)
 
-/-- **The honest attestations at a restored vote are supported** (S5 card §12.8, source support): at
+/-- **The honest attestations at a restored vote are supported** (source support): at
 an honest slot-`(q+1)` vote of `y` at cut `i`, every honest attestation of `y`'s tree has an honest
 source compatible with `P` (lock safety's (SRC) before `i`) and extended by an honest vote of a slot
 `≤ q`. The source is the viable ancestor of a fast stored lock of the signer (`ac_to_fg`'s
@@ -508,7 +508,7 @@ private theorem below_entry {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     · exact honest_held_anc D.hrun D.hnc hy h' hE
     · exact absurd h' no
 
-/-- **G4** (S5 card §9.3, §12.8): at a Lo honest vote of slot `q + 1 ≥ r + 1` above `Σ.F`, with
+/-- **G4**: at a Lo honest vote of slot `q + 1 ≥ r + 1` above `Σ.F`, with
 receiver service from `b₁`, a protected block `P` that some honest slot-`q` vote extends is
 viable at the vote. The witness head is frozen; below the floor (`h_max − 1`, no contest under
 Lo), the `h_max` carrier's floor entry is above `P` and the head of an honest vote extending its
@@ -639,7 +639,7 @@ private theorem caster_mem_r {x : Fin sp.n} (hx : x ∈ H) {k : Nat}
   have hz := D.hz (tr.time k) (by linarith) ⟨x, hx, k, hcallk, le_rfl⟩
   exact D.hawake x hx (tr.time k) (by linarith) hz (D.hrun.awake_of_call x hx k hcallk)
 
-/-- **INV, the inner cut induction** (S5 card §12.1): from the invariant at the cuts before `i`
+/-- **INV, the inner cut induction**: from the invariant at the cuts before `i`
 and receiver service from `b₁`, every honest vote at a cut `≤ i` of a slot after `r` extends `P`.
 Root cover, Hi (H1) or Lo (G4 and the batch walk: the honest slot-`q` votes, all extending `P`
 by induction, or `A₀`'s for `q = r`, are carried and outnumber the rest). It reads the invariant at
@@ -764,7 +764,7 @@ theorem outage_s5_inner
       (hviab ⟨x, D.hA₀ hx, j, e', hve, hvs, hall x hx j e' hve hvs⟩) D.hA₀ hSXv hall hW hcount
       (hcarry D.A₀ D.hA₀ hall) hL
 
-/-- **Lock safety's `hS5`** (af18331; S5 card §12.2): compatibility past the lock lifetime, from
+/-- **Lock safety's `hS5`**: compatibility past the lock lifetime, from
 the inner induction at the cast cut. -/
 theorem outage_s5_step
     (hS : ∀ y ∈ H, ReceiverServiceAfter H (tr.HonestBlocks H) D.b₁ y tr.projAC) :
@@ -782,7 +782,7 @@ theorem restored_votes_extend
       SA.VoteExtends (tr.HonestBlocks H) e.msg D.P :=
   fun y hy k e hv hs => outage_s5_inner D hS k (hinv k) k le_rfl y hy e hv hs
 
-/-- **S5-V at every restored label** (S5 card §12.1): `q = r` by the cohort count
+/-- **S5-V at every restored label**: `q = r` by the cohort count
 (`restored_majority_at_r`), `q > r` by INV and the fault bound (`extendingMajority_of_all`). -/
 theorem restored_majority
     (hS : ∀ y ∈ H, ReceiverServiceAfter H (tr.HonestBlocks H) D.b₁ y tr.projAC)

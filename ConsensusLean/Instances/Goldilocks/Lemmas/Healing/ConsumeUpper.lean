@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing, HS.5: attestations at `m` for a fixed upper proposal
 
-`hs5-exact-helpers.md` §2 ("keep the chosen `Y`"), over `Γ`
+Keeping the chosen `Y`, over `Γ`
 (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `SettledIn … w i₀ m c`) and the client
 subclaim: for an honest proposal `Y` of slot `s` with `t_s ≥ r`, state height `m`, on a protected
 branch (the three clauses of `ProtectedBranch`, spelled out: `Service` imports this file) and in
@@ -34,7 +34,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
-/-- **Attestations at `m` for a fixed upper proposal** (`hs5-exact-helpers.md` §2; the
+/-- **Attestations at `m` for a fixed upper proposal** (the
 fixed-upper-proposal step of `Service`'s `consume_continue`, with `ProtectedBranch`,
 `ClientProgress` and `RowsBy` spelled out, and HS.2 as the hypothesis `hclean`). -/
 theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)

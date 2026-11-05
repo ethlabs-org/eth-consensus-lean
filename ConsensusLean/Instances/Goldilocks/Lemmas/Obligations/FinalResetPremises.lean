@@ -12,15 +12,15 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the reset premises and the placement of a final query (#136)
+/-! # Goldilocks Obligations: the reset premises and the placement of a final query
 
-consensus-lean#136, route A, workbench `heal_bound.md`. `final_reset_premises_of_query` has the
+Route A. `final_reset_premises_of_query` has the
 statement of the leaf `final_reset_premises` (Concrete.lean): one reset `a` with (H1) its premises
 `ResetPremisesUpTo` through the horizon at GST `Q.gst`, and (H3) the placement with
 `u_min = finalSeedMin Q a = slot a + 2k + 5`. It is the instance at the protocol FG delay
 `ΔF := protoFGDelay` and the gap `c = fgSlots` of `final_reset_premises_of_shared`, which takes the
 shared HS premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c`
-and `3c ≤ δ_t` (workbench `two_bound_network.md` §4).
+and `3c ≤ δ_t`.
 
 The reset is `exists_reset_of_drain_rounds_awake` (the rise-round route) at the ready scalar
 `ready` (`ready ≥ 1`), the gap `G = X = Q.index`, the drain length

@@ -9,7 +9,7 @@ public section
 /-! # Goldilocks Healing: raw-target heldness at an arbitrary call
 
 The call-time form of `raw_writer_voterBlockTree_window_before` (`Retention/Relay`), for the H.3
-invariant after the reset (workbench `healing_bundles_route.md`, L9). A block below the result or
+invariant after the reset. A block below the result or
 fast-lock selection of an honest write of a clean label `s` is held by every honest AC call from
 `t_{s+1}` on whose finalized block is below it: the writer's counted head is genesis or was
 accepted before `t_s + 2Δ`, and reaches the call by Catch (accepted before `ḡ`) or by the GST

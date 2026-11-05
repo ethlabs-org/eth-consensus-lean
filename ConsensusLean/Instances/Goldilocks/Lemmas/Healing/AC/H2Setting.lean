@@ -7,7 +7,7 @@ public section
 
 H.2's premises over an AC trace of the SA (`InclusionRun`: `ACRun`, `Driven`, `Healthy(g)`,
 `Catch(2Δ)`, `t₀ ≥ ḡ` and `Inv(t₀)`; no trivial frames), and the clean raw origins of H.2's
-proof (workbench `h2-open-items.md` §6.1): the protected pairs `(B, j)` of kinds P1 (an honest
+proof: the protected pairs `(B, j)` of kinds P1 (an honest
 fast lock write of a slot `j` with `t_j ≥ t₀ + 4Δ`, on the block it selects, before its move
 back) and P2 (an honest slow lock write of a slot `j` with `t_{j−k+1} ≥ t₀ + 4Δ`), each at a
 node joined at the write. -/
@@ -24,7 +24,7 @@ structure InclusionRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (B
   le : gbar g ≤ t₀
   inv : Inv proposer tr H U t₀
 
-/-- **A clean raw origin** of label `j` on `B` (`h2-open-items.md` §6.1, the P1/P2 pairs of
+/-- **A clean raw origin** of label `j` on `B` (the P1/P2 pairs of
 `𝒫(t₀)`): an honest fast lock write of slot `j` with `t_j ≥ t₀ + 4Δ` on the block it selects,
 or an honest slow lock write of slot `j` with `t_{j−k+1} ≥ t₀ + 4Δ`, at a node joined at the
 write. -/

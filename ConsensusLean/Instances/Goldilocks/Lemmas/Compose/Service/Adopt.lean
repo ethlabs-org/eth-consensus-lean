@@ -14,10 +14,9 @@ public section
 
 /-! # Goldilocks under `Sleepy`: an honest proposal is adopted by the update of its slot
 
-workbench#12 (`sleepy-proposal-adoption.md`, f42c0ad), A1.7's supplier over the Sleepy
-invariant: every honest slot-`s` vote is the honest proposal `P` of slot `s` (§2, §3); at an
-honest node's joined update of slot `s`, the result is exactly `P` and not vetoed (§4,
-`adopt_result_before`: the S1P–S3P bootstrap with the Sleepy step lemmas for a protected block,
+A1.7's supplier over the Sleepy invariant: every honest slot-`s` vote is the honest proposal `P` of
+slot `s`; at an honest node's joined update of slot `s`, the result is exactly `P` and not vetoed
+(`adopt_result_before`: the S1P–S3P bootstrap with the Sleepy step lemmas for a protected block,
 `vote_frame`, `later_transfer_step_before`, `vote_locks_compatible_upTo`, `held_origin_viable`). The
 update then moves the record to `P`, or keeps an already deeper one (`update_adopts`). -/
 
@@ -28,7 +27,7 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
 
-/-- **`P` is in the updater's tree, above its `Σ.F`** (workbench#12 §4): `Σ.F ⪯ P`
+/-- **`P` is in the updater's tree, above its `Σ.F`**: `Σ.F ⪯ P`
 (`updater_F_anc_proposal_before`), so the acceptance relay brings `P`, accepted by its proposer at
 `t_s`, to the updater, joined (restarts at or before `t_s`), before `t_s + Δ ≤ t_s + 6Δ`
 (`relay_mem_before`). -/
@@ -102,7 +101,7 @@ theorem proposal_held_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payloa
     linarith
   exact ⟨hPt, SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.rooted.1 hF hPt⟩
 
-/-- **`P` has a strict majority at the update's test** (workbench#12 §4): every honest slot-`s`
+/-- **`P` has a strict majority at the update's test**: every honest slot-`s`
 vote is `P` (`honest_votes_eq_proposal_before`) and reaches the updater resolved
 (`honest_batch_at_update_before`); an honest validator has one slot-`s` vote in the pool
 (unforgeability, A0.8), so the honest slot-`s` voters support `P`; the other voters are faulty, and
@@ -170,7 +169,7 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
   change _ < 2 * (SA.supporters ℓ.frame _ s P).ncard
   omega
 
-/-- **No result of an honest joined update is vetoed** under `Sleepy` (workbench#8): a live lock
+/-- **No result of an honest joined update is vetoed** under `Sleepy`: a live lock
 block is an ancestor of a stored lock block, which is on the origin chain (S1); the result is an
 origin; blocks on the origin chain are compatible (S1), so the result is compatible with the live
 lock block. -/
@@ -243,8 +242,8 @@ private theorem confirmationScore_eq_zero {A : SA.SAState sp.n}
   rw [this] at hx
   exact not_top_lt hx
 
-/-- **The update of slot `s` returns exactly the honest proposal `P` of slot `s`, not vetoed**
-(workbench#12 §4): `P` is held above `Σ.F` with a strict majority, every block with a strict
+/-- **The update of slot `s` returns exactly the honest proposal `P` of slot `s`, not vetoed**:
+`P` is held above `Σ.F` with a strict majority, every block with a strict
 majority is on one chain with it (A0.3), and no block above it has a resolved slot-`s` supporter;
 no result is vetoed (`result_not_vetoed_before`). -/
 theorem adopt_result_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}

@@ -6,9 +6,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 
 public section
 
-/-! # Goldilocks Obligations: the anchor height step (#137, fixed `δt`)
+/-! # Goldilocks Obligations: the anchor height step (fixed `δt`)
 
-consensus-lean#137, corrected owner intent (2026-11-02): `δt` is a fixed constant, independent
+`δt` is a fixed constant, independent
 of the honest-proposer gap. Honest proposers are used only at the window anchors; the slots
 between anchors may all be faulty. No density premise (`hM4`) is used here.
 

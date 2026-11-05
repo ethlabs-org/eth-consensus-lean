@@ -11,8 +11,7 @@ public section
 
 /-! # Goldilocks: L1's delivery halves under receiver service (O4, cut 3)
 
-Workbench `notes/outage/outage_reader_bridge.md` §10.4 (rev 4.4), cut 3. Under
-`ReceiverServiceAfter` from `g ≤ t_q + Δ`, at a receiver call from `t_q + 2Δ` with no restart
+Under `ReceiverServiceAfter` from `g ≤ t_q + Δ`, at a receiver call from `t_q + 2Δ` with no restart
 after `t_q`:
 * D1: a held block (genesis, or accepted by an honest node by `t_q + Δ`) above `Σ.F` is in the
   frame, stamped before `t_q + 2Δ`;

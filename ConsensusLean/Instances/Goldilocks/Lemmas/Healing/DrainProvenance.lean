@@ -18,7 +18,7 @@ not fast only as its slow lock. This is the slow case of the induction of `fast_
 (`AC/Steps/Provenance`, whose per-function helpers are private there and repeated here with the
 slow write tracked; the shared `FromP` toolkit is `Lemmas/AC/LockProvenance`), with the stored
 block of HR.4's `stored_fast_lock_provenance` (`Retention/Provenance`)
-(`hs234-exact-interface.md` §3: "every lock image retains its original label").
+(every lock image retains its original label).
 `slow_lock_provenance` (`AC/SlowLock`) is its corollary for the raw selection `D`. -/
 
 namespace Consensus.Goldilocks.SA

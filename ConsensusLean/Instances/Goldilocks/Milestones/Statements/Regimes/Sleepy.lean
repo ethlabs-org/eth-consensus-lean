@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.R
 
 /-! # Goldilocks milestone Regimes: the sleepy rows (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: regime theorems
-(skeleton)" (main `5f3adb28`; R.1/R.2 unchanged since `c6653258`), rows R.1 and R.2, over the
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"L2: regime theorems
+(skeleton)", rows R.1 and R.2, over the
 Goldilocks run (`GoldilocksRun`, `Compose.NoCollRun`) under `Sleepy` (`SleepyRun`: `Sync[0, ∞)` and
 `f < h_t` at the slot points):
 

@@ -6,10 +6,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage S5: the extending majority at the first restored label (S5 card §12.5 A3)
+/-! # Outage S5: the extending majority at the first restored label
 
-Workbench `repos/consensus-lean/notes/outage/outage_restoration_s5.md`, the `q = r` arm of
-`restored_majority`. Given an honest call at or after `t_r + Δ`:
+The `q = r` arm of `restored_majority`. Given an honest call at or after `t_r + Δ`:
 
 * every member of the cohort `A₀` casts a slot-`r` vote (it is awake and joined at `t_r + Δ`,
   `OutageVoteInv.cohort_ready`), and that vote extends `P` (lock safety's (H) for `A₀`, at any

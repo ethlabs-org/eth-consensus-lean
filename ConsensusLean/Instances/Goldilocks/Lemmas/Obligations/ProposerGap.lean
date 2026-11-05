@@ -11,7 +11,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the proposer gap core (#136, S3)
+/-! # Goldilocks Obligations: the proposer gap core (S3)
 
 The upstream core of the honest-proposer gap. It does not import
 `FinalWindowAssembly`, `FinalWindowDefs` or `HealedSafety`.

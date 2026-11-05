@@ -19,7 +19,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- C1.1 (i) and (ii) at the honest votes cast at cut `k` of a slot in `(s, m]`. (i) reads "at or
 below `fc_root`" in the honest blocks (claims C1.1; the frame-tree reading of `ViableAtVote` fails
-once honest finality passes `B`, consensus-lean#78). -/
+once honest finality passes `B`). -/
 def VoteInv (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
   ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
     (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨

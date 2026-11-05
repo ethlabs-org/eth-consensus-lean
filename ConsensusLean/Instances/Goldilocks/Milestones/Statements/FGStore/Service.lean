@@ -5,12 +5,11 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.T
 
 /-! # Goldilocks milestone FGStore, part 3: the FG service lemmas (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (main `4ea71d05`), §"L1:
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, §"L1:
 components / Finality gadget": the good window `GW(E, a, k_F)`, G1.6 (entry whose previous height is
 justified, theorem A), G1.7 (entry whose previous height is not justified, two windows, theorem B),
-G1.8 (crossing and coverage, corollary C) and G1.9 (a) (cache acceptance, per call); paper proofs in
-workbench `repos/goldilocks/notes/fg-liveness/r9-loose-bj/theorem.md` §3–§5. G1.9 (b) is not fixed
-in the claims yet, and G1.10 at C1.1's scope is a composition statement.
+G1.8 (crossing and coverage, corollary C) and G1.9 (a) (cache acceptance, per call).
+G1.9 (b) is not fixed in the claims yet, and G1.10 at C1.1's scope is a composition statement.
 
 **Shape: over FG traces.** The conclusions are about one chain and the FG transition, but the
 good window is a premise on attestations as they reach an honest proposer: when they are signed (P2,

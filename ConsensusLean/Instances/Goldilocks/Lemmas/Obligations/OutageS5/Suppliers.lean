@@ -15,7 +15,7 @@ public section
 
 /-! # Goldilocks outage: S5's query-level suppliers of the reader bridge (O4)
 
-Workbench `notes/outage/outage_reader_bridge.md` §10.3 (rev 5.3). At the lock module's premise
+At the lock module's premise
 package `outageLockPremises_of_arming` of an armed ready source:
 
 * `outage_s5_step_query`: S5's step, the lock module's `OutageS5Step`;

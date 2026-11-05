@@ -30,7 +30,7 @@ public section
 
 /-! # Goldilocks Healing: the pivot of an honest ready proposal after the drain (interface)
 
-Post-reset `Compose.pivot_before` (A1.7, workbench#12 §2) for `ready_unanimous`: an honest ready
+Post-reset `Compose.pivot_before` (A1.7) for `ready_unanimous`: an honest ready
 proposal `P` at `t_u ≥ R` has duty head `Q = P.parent`. Under reset premises, `Catch(2Δ)`
 and three OPEN compatibility/support suppliers, its walk contains `D` with a viable
 path to `Q`. Each honest slot-`u` voter whose earlier honest slot-`u` votes are `P` walks

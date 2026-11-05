@@ -26,7 +26,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the served head (S4) and the record step (G3)
 
-workbench#11 §5, the facts the Service milestone reads (`ServedFacts`, in
+The facts the Service milestone reads (`ServedFacts`, in
 `Lemmas/Compose/Service/Sleepy`), from `SleepyInvariant`:
 
 * **The record step** (`record_step`, G3, at every honest cut): a record write takes an origin
@@ -881,7 +881,7 @@ theorem read_head_support_of_target_votes
   · exact Or.inr ⟨hv, read_majority_of_target_votes hrun hnc hy ht0 hle hti hw hj
       hsync hcatch hL ha hR hvotes hfault⟩
 
-/-- **The supporter majority of an older origin** (workbench#11 §2.4, §5): at a read at `t`, an
+/-- **The supporter majority of an older origin**: at a read at `t`, an
 origin `R` of the frame whose label is below the latest view's slot `l` is supported by a strict
 majority of the latest view's voters: the honest voters support it, the more than `f` validators
 awake and joined at `t_l + Δ` are voters, and the other voters are faulty. -/
@@ -987,7 +987,7 @@ private theorem record_writer (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
         at hl
       exact Or.inr ⟨m, Nat.lt_succ_self m, ℓ, hc, C, hC, hCr.symm, Or.inr ⟨⟨CV, hOm⟩, fun _ => hl⟩⟩
 
-/-- **The record's label or its fast lock** (workbench#11 §5): read at a time `t` at or after
+/-- **The record's label or its fast lock**: read at a time `t` at or after
 every cut before `i` (so `t ≥ 0` unless the record is genesis), a record block `R` of the frame
 that is not at or below `fc_root` is an origin of a label below the latest view's slot at `t` (a
 result, or an optimistic selection of an older slot), or a live lock block at `t` (an optimistic

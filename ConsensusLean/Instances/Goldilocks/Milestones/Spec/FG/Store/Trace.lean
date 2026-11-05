@@ -11,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 
 /-! # Goldilocks FG store: FG traces
 
-The FG component trace (decomposition §2 D, `FG.LocalRun`): a `Trace` over the FG state and the
+The FG component trace (`FG.LocalRun`): a `Trace` over the FG state and the
 client record `Σ × Λ` (the record is not part of `Σ`, fg.tex §"Validator client"), whose labelled
 cuts are FG calls (`FGLabel`): `fg_on_block` (accepted or refused), `fg_on_attestation`, and
 `fg_attest` with the attestation it signed. AC cuts and the other nodes' cuts are stutters. A

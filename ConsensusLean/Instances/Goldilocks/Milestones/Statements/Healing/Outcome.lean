@@ -6,12 +6,12 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 
 /-! # Goldilocks milestone Healing: AC outcome service for honest entries (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Available chain, after
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Available chain, after
 C1.1", over the Goldilocks run (`Spec/Run`, `GoldilocksRun`). Its premises are the healing regime,
 so it lives with the healing statements; its proof is `Healing.Recovery.outcome_service`
 (`Lemmas/Healing/Recovery/Reports`); its names stay in `Compose`.
 
-* **C1.2, AC outcome service for honest entries** (claims at goldilocks `6703bf05`, #37: its run
+* **C1.2, AC outcome service for honest entries** (claims C1.2: its run
   premises are the healing regime after the reset `a_z`): under `Healthy(g)`, `Catch(2Δ)` and the
   HS shared premises (the claims also assume `Prop⁺(G_p)`, which is not needed), an entry whose
   entry block `P` is an actual honest ready proposal of slot `u` with
@@ -48,7 +48,7 @@ def EarlyOutcome (T : SA.Blk sp.n (List (FG.Att sp.n))) (h : Nat) (bound : Bool)
       ((tr.post k).fg.σ X.root).F = Jr) ∧
     ∀ z ∈ H, ∃ k', tr.AcceptAt z k' X ∧ tr.time k' < T₁ + sp.Δ
 
-/-- **C1.2, AC outcome service for honest entries** (claims C1.2 at goldilocks `6703bf05`). Under
+/-- **C1.2, AC outcome service for honest entries** (claims C1.2). Under
 `Healthy(g)` (in `HSShared`), `Catch(2Δ)` and the HS shared premises, with the reset
 `a_z` (HR.1): let `T` be an entry of height `h ≥ H_z + 1` whose entry block is an actual honest
 ready proposal of slot `u` (made by the honest joined proposer at `t_u`) with `t_u ≥ R_z =

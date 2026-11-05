@@ -10,7 +10,7 @@ public section
 
 /-! # M1′ B1: the frame key of an honest store
 
-pre_advance_finality §23.1. The frame key of a store is
+The frame key of a store is
 `κ = 3·h_max + c`, with `c = 2` in a contest, `c = 1` at `h_max = h_j + 1` without a contest,
 and `c = 0` otherwise. This is the lexicographic key `(h_max, b, C)` of §23.1 coded in `ℕ`
 (a contest implies `b`).

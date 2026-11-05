@@ -17,9 +17,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 The finished Goldilocks milestones other than the obligations endpoint, each a theorem whose
 statement is the milestone definition itself (`Instances/Goldilocks/Milestones/Statements`),
 proved by its milestone proof. They are not Challenge statements and not on the trusted surface
-(docs/decisions.md, 2026-11-04). These named theorems keep each one proved: check.sh step 3b
-gates their closure (no unfinished proof, no other axiom), and the pins below fail on a new
-axiom. -/
+(`docs/decisions.md` §"Trusted surface and Challenge scope"). These named theorems keep each one
+proved: check.sh step 3b gates their closure (no unfinished proof, no other axiom), and the pins
+below fail on a new axiom. -/
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
 -- than 100 columns.

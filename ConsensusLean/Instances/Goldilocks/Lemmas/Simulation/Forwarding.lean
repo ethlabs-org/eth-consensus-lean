@@ -1290,8 +1290,8 @@ theorem publisherExecution_eventTime_eq (i : Nat) :
 
 /-- OPEN: honest signed publication must originate in actual acceptance at the stamp.
 Argument: only the acceptance handler queues these candidates; authentication rules out
-other honest origins. The engine digest identifies the root omitted by the wire header
-(#122); wire equality alone does not identify B. This remains a producer obligation. -/
+other honest origins. The engine digest identifies the root omitted by the wire header;
+wire equality alone does not identify B. This remains a producer obligation. -/
 def ForwardOrigin : Prop :=
   ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
     decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =

@@ -6,7 +6,7 @@ public section
 /-! # Goldilocks runs under `Sleepy`: the facts the Service milestone reads (interface)
 
 The Sleepy safety induction from time `0` (claims A1.6, its "own induction from time 0"; the same
-induction is R.1, `sleepySafe`; workbench#11, `Lemmas/Compose/Sleepy`). This file holds what A1.6
+induction is R.1, `sleepySafe`; `Lemmas/Compose/Sleepy`). This file holds what A1.6
 and A1.7 read of it, node-local at one cut of `y`:
 
 * `HeadSupport R` (G1, G2): the anchor is compatible with `R`, and `R` is at or below the anchor,

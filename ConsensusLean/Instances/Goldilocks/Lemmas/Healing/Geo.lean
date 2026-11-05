@@ -7,19 +7,19 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: settled-phase geometry (H.3 (c3), `h3-bridge.md` §5)
+/-! # Goldilocks Healing: settled-phase geometry (H.3 (c3))
 
 `geo_of_settled` proves `Geo(P)` for an honest proposal whose proposal and slot-`p` votes lie in one
 settled effective phase `(m, c)`, from HS.1 (`viable_witness_retention_of`, `Retain`). Its pieces:
 
-* **Aligned readers** (`phase-service.md` §2, "service readers are aligned after settling";
+* **Aligned readers** (service readers are aligned after settling;
   `viableHeads_iff`): at a cut of the phase, an honest node's head height floor is the phase floor
   and its `fc_root` is `Σ.F` (gap, contest) or the phase's `J` (top `J`), so a block it holds is
   a viable head of its frame exactly when it extends its `Σ.F` and is allowed in the effective
   geometry. The cache side needs `JMax` (`Σ.h_j` is at least the justified height of every held
   state whose `J` is a held block extending `Σ.F`, an FG store invariant), HR.2 (a) for `Σ.J`,
   and HS.1 for `Σ.F ⪯ J` and for the contest witness.
-* **The voter block tree** (`phase-service.md` §3): a block stamped before the freeze was held
+* **The voter block tree**: a block stamped before the freeze was held
   by the voter at an earlier call (`stamp_origin`, `readPoint_blockStamp_eq`), so accepted before
   `t_p − Δ` and relayed to the proposer by `t_p` (`relay_held`); the other blocks are ancestors
   of the slot's block, which is `P` (one block per honest proposer and slot).
@@ -307,7 +307,7 @@ theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : Compos
   | top J => exact ⟨hh m h.1, hsub h.2.1, hj J h.2.2⟩
   | contest J => exact ⟨hh m h.1, hsub h.2.1, hj J h.2.2.1, hc J h.2.2.2⟩
 
-/-- **Aligned readers** (`phase-service.md` §2): at a cut where the effective phase is `(m, c)`
+/-- **Aligned readers**: at a cut where the effective phase is `(m, c)`
 and an honest node holds the phase's evidence, a block it holds is a viable head of its frame
 exactly when it extends its `Σ.F` and is allowed in the effective phase geometry. The head height
 floor is the phase floor and `fc_root` is `Σ.F`, or the phase's `J` in the top-`J` case: the
@@ -617,7 +617,7 @@ theorem effAllowed_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
     (h : EffAllowed st m c A) (hW : W ∈ st.tree) (hAW : st.Anc A W) : EffAllowed st m c W :=
   ⟨hW, h.2.1.trans (h_le_of_store_anc hr hAW), fun J hJ => (h.2.2 J hJ).trans hAW⟩
 
-/-- **H.3 (c3), `Geo` in a settled phase** (`h3-bridge.md` §5). Let `P` be the honest proposal of
+/-- **H.3 (c3), `Geo` in a settled phase**. Let `P` be the honest proposal of
 slot `p` whose proposal and slot-`p` votes lie in one settled effective phase `(m, c)`. Every
 honest node there reads the effective geometry (`viableHeads_iff`). The proposal's parent is a
 viable head of the proposer (the walk starts in the viable tree, which holds the phase's frontier

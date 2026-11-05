@@ -5,7 +5,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the honest-proposer gap of a healthy query (#136, S3)
+/-! # Goldilocks Obligations: the honest-proposer gap of a healthy query (S3)
 
 `hgp_of_healthyQuery`: for a `HealthyPreparationQuery` with nonfinal progress on `[ready, heal]`,
 every slot window `[a, a + X)` with `X = Q.index` inside `[s₀, N]` has an actual honest designated

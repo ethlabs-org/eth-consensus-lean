@@ -7,7 +7,7 @@ public section
 
 With the front end imported, plain `linarith`/`nlinarith` first run without Mathlib's `natToInt`
 preprocessor and fall back to Mathlib's rule on failure; every other form is Mathlib's. These
-theorems pin the cases its review asked for: a goal that needs the ℕ facts (the fallback), a
+theorems pin these cases: a goal that needs the ℕ facts (the fallback), a
 nonlinear goal, extra terms, and that `!`, `only` and a configuration still reach Mathlib's rule
 with their own meaning (a configuration that makes Mathlib's tactic fail must still fail). -/
 

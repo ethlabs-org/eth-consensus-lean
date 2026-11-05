@@ -4,9 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchor
 
 public section
 
-/-! # Goldilocks Obligations: the anchor route to window coverage (#137, fixed `δt`)
+/-! # Goldilocks Obligations: the anchor route to window coverage (fixed `δt`)
 
-consensus-lean#137, owner intent (2026-11-02): `δt` is a fixed constant, independent of the
+`δt` is a fixed constant, independent of the
 honest-proposer gap `g`. Honest proposers are used only at the four anchors `P₀ ⪯ … ⪯ P₃`; the
 slots between anchors may be faulty. No density premise (`hM4`) and no
 window advance or window service premise.

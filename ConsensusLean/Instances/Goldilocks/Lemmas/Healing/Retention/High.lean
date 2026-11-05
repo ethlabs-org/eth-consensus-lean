@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing, HR.4: high blocks are accepted after the cut
 
-`hr4-boot-carry.md` §2: a block whose state height is `≥ H_z + 1` is not held by an honest node
+A block whose state height is `≥ H_z + 1` is not held by an honest node
 at a cut at or before `c_z` (`cutZ_lt_of_high`: the state before the first cut after `c_z` has
 `Σ.h_max ≤ H_z`); every honest block above a high origin is high (`high_of_anc`), so its
 acceptances are after `c_z`. With the store facts these need: heights do not decrease along
@@ -140,7 +140,7 @@ theorem h_le_HZ_of_firstCut {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     ((tr.state y j).fg.σ X.root).h ≤ HZ tr H g :=
   (hp.toUpTo tr H (le_refl a)).h_le_HZ_of_firstCut hy hj hX
 
-/-- **A high block is held only after `c_z`** (`hr4-boot-carry.md` §2): a block of state height
+/-- **A high block is held only after `c_z`**: a block of state height
 `≥ H_z + 1` held by an honest node before cut `k` puts `k` after `c_z`. -/
 theorem cutZ_lt_of_high (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)

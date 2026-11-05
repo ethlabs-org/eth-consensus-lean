@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks SA: the live locks at a vote's read point lie on one chain
 
-consensus-lean#135 (WI-15/16). At every honest vote the read point has the lock invariant
+At every honest vote the read point has the lock invariant
 (`castAt_readPoint_lockInv`): the state before the call has it (`lockInv_of_reachable`, moved
 to the call's frame by `LockInv.callOK`), and the receipt's optimistic check and `try_vote`'s
 unlocking keep it (`LockInv.step_readPoint`). So the live lock blocks of the read point lie on

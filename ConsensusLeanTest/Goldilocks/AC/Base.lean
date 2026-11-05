@@ -6,7 +6,7 @@ public import Mathlib.Data.Set.Finite.Basic
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 @[expose] public section
 
-/-! # Witnesses for the Goldilocks ACBase statements, and §4.7 case 1
+/-! # Witnesses for the Goldilocks ACBase statements, and `CaseOneA13`
 
 On `Spec/AC` and `Spec/SA`, labelled by kind (CONTRIBUTING "Statements"), with one validator,
 `Δ = 1`, `t_s = 4s`, `k = 2`:
@@ -21,8 +21,8 @@ On `Spec/AC` and `Spec/SA`, labelled by kind (CONTRIBUTING "Statements"), with o
 * (a) `acRun_one_tick`: that trace also satisfies the honest-object facts, so `ACRun` (the
   hypothesis of every ACSteps statement) is satisfiable.
 
-`CaseOneA13` is decomposition §4.7 case 1 written against the AC trace contract (a test of the
-contract, not a milestone statement: A1.3 is stated in ACSteps): A1.3 per vote, with #21's
+`CaseOneA13` is a test case written against the AC trace contract (a test of the
+contract, not a milestone statement: A1.3 is stated in ACSteps): A1.3 per vote, with the claims'
 hypotheses, `Sync_AC`, `Carry_y` and `f < h_τ` over the trace, and no FG state. -/
 
 namespace Consensus.Goldilocks.SA.Test
@@ -133,8 +133,8 @@ theorem localRun_one_tick :
     obtain ⟨rfl, rfl⟩ := oneTick_label h.2
     cases hr
 
-/-- **Decomposition §4.7 case 1: A1.3 per vote over an AC trace** (claims A1.3 at #21, merged as
-goldilocks main `c4928a76`; a test of the AC trace contract, not a milestone statement). For an
+/-- **A1.3 per vote over an AC trace** (claims A1.3; a test of the AC trace contract, not a
+milestone statement). For an
 honest `y` and its own vote emission `e` of slot `m + 1` at cut `i` (time `τ`): if every honest
 slot-`m` vote extends `B`, the honest slot-`m` voters are at least half of the committee,
 `Carry_y(m, S_m, B)` holds for their votes, `f < h_τ`, `Sync[t_m, τ]` holds, at `e` the block `B` is

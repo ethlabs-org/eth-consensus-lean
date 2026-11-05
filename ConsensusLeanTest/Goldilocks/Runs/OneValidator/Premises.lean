@@ -9,7 +9,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 /-! # A one-validator run of the Goldilocks node: the healing premises are consistent
 
-Non-vacuity of the healing premises (consensus-lean#69, the follow-up recorded in #87): a
+Non-vacuity of the healing premises: a
 `GoldilocksRun` meeting the HS shared premises, the reset and H.3 (c)'s bridge of the healing
 statements, and the pattern premises of node O.1 and C1.3 (`PatternPremises`). With
 one validator (`n = 1`, `f = 0`) this shows the premises **consistent**, not met with faults (a
@@ -587,7 +587,7 @@ theorem tickRun_hsShared (g : Time) : Healing.HSShared (tickRun N1 dg1) Set.univ
 On the one-validator tick run, with `c_F = 2`, `k_F = 0` (so `c_F + k_F ≤ δ_t = 2`), `W = 1`,
 `G_p ≥ 4Δ` and any `M ≥ M*`: the HS shared premises, `Catch(2Δ)`, `Prop⁺(G_p)`, the window
 parameters and `W ≥ 1` hold outright; `UPat(1, M)` (a ready proposal at every slot `≥ 1`,
-`tickRun_readyProposal`, with C1.2's retained inclusion) is a hypothesis here (W3). With `n = 1`
+`tickRun_readyProposal`, with C1.2's retained inclusion) is a hypothesis here. With `n = 1`
 and `f = 0` this shows the premises consistent, not met with faults. -/
 theorem tickRun_patternPremises (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hpat : Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0)

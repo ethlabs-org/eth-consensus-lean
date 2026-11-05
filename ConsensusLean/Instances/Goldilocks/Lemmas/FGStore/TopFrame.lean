@@ -6,8 +6,8 @@ public section
 
 /-! # Goldilocks FG store: the frame in a contest
 
-The deterministic core of the benign-contest lemma (workbench `fg-liveness/r14-end-to-end`,
-`s4b-contest-benign.md`, Lemma B): in a frontier contest the fork-choice root is `Σ.F`, the
+The deterministic core of the benign-contest lemma:
+in a frontier contest the fork-choice root is `Σ.F`, the
 head height floor is `h_max`, and every accepted block above `Σ.F` with state height at least
 `h_max` is a viable head. So a contest started by an off-chain justification at `h_max − 1`
 keeps as viable heads the blocks of a chain that already reached `h_max`. Without a contest

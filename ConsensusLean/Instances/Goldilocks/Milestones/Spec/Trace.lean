@@ -6,7 +6,7 @@ public import ConsensusLean.Spec.Problem.Basic
 /-! # Goldilocks: component traces
 
 The common event and cut carrier over which each component (the AC, the FG) states its
-multi-node facts (decomposition §2 D, `Trace`). A run of the node is a sequence of **cuts**; a
+multi-node facts (`Trace`). A run of the node is a sequence of **cuts**; a
 cut is one component call of one node (a tick step, a delivery or a restart expands, through the
 node handler, to a finite list of FG and AC calls; claims C0.4, C0.5). The cut index is the
 run's own order (claims F.5 (run)); a finite run stutters after its last cut.

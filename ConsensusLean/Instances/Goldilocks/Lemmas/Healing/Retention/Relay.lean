@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks Healing, HR.4: relay after the GST and the writers of fast locks
 
-`hr4-boot-carry.md` §§4–6 (workbench#23): the relay of a counted vote and its head to a next
+The relay of a counted vote and its head to a next
 voter under `Sync` on a window `[a₀, b]` instead of `Sync[0, b]` (`carryAt_of_writer_window`,
 the Sleepy `carryAt_of_writer_before` with the extra premise that the head was accepted at or after
 `a₀`), and what a writer of a fast lock did with its counted votes before `t_s + 2Δ`
@@ -122,7 +122,7 @@ theorem readPoint_pool_of_ne (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
   · exact ⟨Function.update_of_ne (Ne.symm hσ) _ _,
       fun u hu => Function.update_of_ne (by rintro rfl; exact hσ hu) _ _⟩
 
-/-- **`Carry_y` from a writer, after the GST** (`hr4-boot-carry.md` §4; the Sleepy
+/-- **`Carry_y` from a writer, after the GST** (the Sleepy
 `carryAt_of_writer_before` with `Sync[a₀, b]` instead of `Sync[0, b]`). For an honest `y` casting
 its slot-`(s+1)` vote, with `a₀ ≤ t_s` and `t_s + 2Δ ≤ b`: if each counted vote is of slot `s`, was
 sent or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s
@@ -146,7 +146,7 @@ theorem carryAt_of_writer_window (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
   · exact Or.inr (Or.inl hg)
   · exact Or.inl hw'
 
-/-- **Head-only relay to a voter, after the GST** (`hr4-boot-carry.md` §4, §7): a block `W`
+/-- **Head-only relay to a voter, after the GST**: a block `W`
 above the voter's `Σ.F` that an honest writer accepted in `[a₀, t_s + 2Δ)`, under `Sync[a₀, b]`
 with `t_s + 2Δ ≤ b`, is in the voter block tree of every honest vote of a slot `> s` (relayed to
 the voter, joined at its vote, before `t_{s} + 3Δ`, at or before its vote freeze). -/

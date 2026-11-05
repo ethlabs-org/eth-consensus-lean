@@ -239,7 +239,7 @@ theorem accepted_voter_tree (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
   exact ⟨hXt, Or.inl (by rw [hrp, hfz]; exact hbs)⟩
 
 /-- **An honest head of a slot at most `s` is in the voter block tree** of an honest slot-`(s+1)`
-vote (workbench#11 §3, the frozen witness): it was accepted by its voter by `t_m + Δ ≤ t_s + Δ`
+vote (the frozen witness): it was accepted by its voter by `t_m + Δ ≤ t_s + Δ`
 and relayed to `y` (joined, so awake since `t_s`, with `Σ.F` below it) before the freeze
 `t_s + 3Δ`. -/
 theorem honest_head_frozen (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Obligations: the outage's receiver service (O4, cut 3)
 
-Workbench `notes/outage/outage_reader_bridge.md` §10.4 (rev 4.4), cut 3. `outage_receiver_service`
+Cut 3. `outage_receiver_service`
 is S5's `hS` in query form: every honest receiver gets the receiver-scoped strict AC service from
 the outage's end `Q.stop`. It is `receiverServiceAfter_of_psync` at `outage_psync`. -/
 

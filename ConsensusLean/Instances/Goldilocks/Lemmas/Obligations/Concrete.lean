@@ -131,10 +131,10 @@ theorem final_window_of_production (Q : FinalQuery S A V) (start : Nat)
     carrier⟩⟩
 
 
-/-- (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136). One reset `a`
+/-- (H1)+(H3) of `final_window_extract_of'` (CarrierProcessed.lean), route A. One reset `a`
 with a bound `ΔR` such that (H1) the reset premises `ResetPremisesUpTo` hold through the horizon at
-GST `Q.gst`, with the run proposer and digest (Sol's M1′ reset), and (H3) the placement `(P)` holds
-with `u_min = finalSeedMin Q a = slot a + 2k + 5` (#145 removed a time summand that made (H3)
+GST `Q.gst`, with the run proposer and digest (the M1′ reset), and (H3) the placement `(P)` holds
+with `u_min = finalSeedMin Q a = slot a + 2k + 5` (no time summand, which would make (H3)
 false for large GST). (H1) and (H3) are one leaf because (H3) depends on the reset `a` of (H1).
 Proved by `final_reset_premises_of_query` (FinalResetPremises.lean): the generic reset kernel
 `exists_reset_of_drain_rounds_awake` with the drain `drainOutputs_of_service`, and the heal
@@ -149,7 +149,7 @@ theorem final_reset_premises (Q : FinalQuery S A V) :
         Q.query + (finalGrid S A V Q).slotLen :=
   final_reset_premises_of_query S A V Q
 
-/-- (H2) of `final_window_extract_of'` (CarrierProcessed.lean), route A (#136): the duty →
+/-- (H2) of `final_window_extract_of'` (CarrierProcessed.lean), route A: the duty →
 proposal adapter. An honest proposer that is ready in a slot `s > 0` with `t_s ≤ horizon`
 (`HonestReadyIn`) makes an honest proposal run at `s` (`HonestProposalRun`). Proved by
 `final_duty_proposal_run` (FinalDutyProposal.lean). -/
@@ -170,8 +170,7 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
 `final_window_extract_of_gap'` at `c = fgSlots` and the protocol FG delay `ΔF := protoFGDelay` (the
 shared HS premises `FinalQuery.hsSharedUpTo`, the latency `final_latency_gap`) from
 `final_reset_premises` ((H1), (H3)) and the proved `final_duty_proposal` ((H2)); (H4) is proved
-there. Paper: workbench route_a_gap2.md, window_start_h0.md, anchor_row_supplier.md,
-anchor_tick_ac_producer.md (read-back #136). -/
+there. -/
 theorem final_window_extract (Q : FinalQuery S A V) :
     ∃ W : FinalWindowData S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
       W.AnchorRun ∧ W.AnchorSteps := by
@@ -411,8 +410,7 @@ theorem final_payload_projection
 
 /-- Statement-only assembly of the OPEN route-A suppliers; not a completed liveness proof.
 Coverage is the anchor route (`final_anchor_coverage`); the open leaf is
-`final_reset_premises` (via `final_window_extract`; `final_duty_proposal` is proved).
-Paper: workbench route_a_gap2.md (read-back #136). -/
+`final_reset_premises` (via `final_window_extract`; `final_duty_proposal` is proved). -/
 theorem meetsObligations_healthyLive_final : ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
       (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
@@ -429,7 +427,7 @@ theorem meetsObligations_healthyLive_final : ∀ g, schema.output .final = some 
 
 /-- R3 available/stable inclusion; R4 final inclusion (both retired node-level rows).
 NO PAPER PROOF for the exact contract heal coefficient, bounded recurrence→node progress,
-or repaired engine timing transport. See generic-r3-bridge-audit.md.
+or repaired engine timing transport.
 This field must not acquire whole-run progress before ready as a premise. -/
 theorem meetsObligations_healthyLive : ∀ cap g, schema.output cap = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
@@ -460,8 +458,7 @@ theorem meetsObligations_healthyLive : ∀ cap g, schema.output cap = some g →
       (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)).trans ht
   exact confirmed_payload_projection S A V Q h0 P cover
 
-/-- R1, sleepy-record-invariant.md §§2–5.1 and sleepy-proposal-adoption.md
-§§2–4 (conditional S1–S4 package). NO PAPER PROOF for engine network,
+/-- R1 (conditional S1–S4 package). NO PAPER PROOF for engine network,
 readiness and read-cut transport. Node route: sleepy_invariant and ready reads. -/
 theorem meetsObligations_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → (Sys (goldilocks S) V).Holds
@@ -516,7 +513,7 @@ theorem meetsObligations_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .st
 
 /-- R3 healed safety. NO PAPER PROOF for bounded [ready,heal] recurrence
 to the whole-run healing premises of the retired node row R.3. RecRet also
-has no completed proof (rc-recret-induction.md §6). -/
+has no completed proof. -/
 theorem meetsObligations_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),
       (Sys (goldilocks S) V).Holds

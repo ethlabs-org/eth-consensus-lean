@@ -14,7 +14,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the route-A anchor steps at a general gap `c` (#136)
+/-! # Goldilocks Obligations: the route-A anchor steps at a general gap `c`
 
 The gap-2 route (`anchorSteps_gap2`) fixes the anchor gap at 2 slots and assumes `ΔF ≤ 2Δ`. That
 holds only for `ΔF := Δ_p`. For a larger `ΔF` (for example `ΔF = 32Δ`) the anchors must be `c ≥ c_F`

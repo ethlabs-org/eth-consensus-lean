@@ -15,15 +15,15 @@ public section
 /-! # Goldilocks Healing: the phase service HS.1–HS.4 and HS.5's consumption step
 
 The phase-service statements HS.1–HS.4 (`Statements/Healing/Service`; claims §"Healing: phase
-service"; `phase-service.md` §§2–5 and §7), and the interface through which HS.5
+service"), and the interface through which HS.5
 (`Producer(A)`, `producer` in `Reset`) consumes them:
 
 * `AcquiredPath` is HS.4 (a)'s second branch (the acquired common path: an honest unanimous
   proposal `W` of slot `s` with an entry `E` at `h ∈ {ℓ, m}` whose reports or attestations every
   honest validator has by `t_s + 6Δ`, still in the phase), `ClientProgress` is HS.4 (b) (the client
   subclaim), and `common_path_acquisition'` restates HS.4 with them;
-* `consume_continue` is HS.5's consumption and continuation (`phase-service.md` §6, §8.1;
-  workbench#6 P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
+* `consume_continue` is HS.5's consumption and continuation
+  (P3): from the acquired path, the phase changes by `w + A_HS`; one level down, its
   three steps that HS.1–HS.4 do not export are `historical_source_rows` (proved, `Source`),
   the attestations of a fixed upper proposal (`fixed_upper_rows_of`, `ConsumeUpper`) and mature
   progress consumption (`mature_progress_of`, `ConsumeMature`) (over `ProtectedBranch`,
@@ -31,25 +31,25 @@ service"; `phase-service.md` §§2–5 and §7), and the interface through which
 
 HS.1, HS.2 and HS.4 are proved (`Retain`, `Drain`, `Acquire`), and so is HS.3
 (`FrozenTreeAgreement`, the claims' after-`r` part (b)), from HS.2: `frozen_tree_agreement`, from
-`frozen_tree_agreement_clean` in `AgreeVotes`. This is the paper orb's proposed contract, not yet
+`frozen_tree_agreement_clean` in `AgreeVotes`. This is the paper's proposed contract, not yet
 certified.
 `consume_continue` and its two steps are assembled in `ConsumeContinue`, `ConsumeUpper`
-(`fixed_upper_rows_of`) and `ConsumeMature` (`mature_progress_of`) (`hs5-exact-helpers.md` §§2–4,
-with `ConsumeCrossing` for §3.1, the sources of §§2.1–2.3 in `AcquireSources`), over HS.1 and
+(`fixed_upper_rows_of`) and `ConsumeMature` (`mature_progress_of`) (with
+`ConsumeCrossing`, the sources in `AcquireSources`), over HS.1 and
 HS.2 as hypotheses (HS.3 (b) from HS.2). -/
 
 namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Payload gbar)
 
-/-- **HS.1, effective-phase viable-witness retention** (`phase-service.md` §2 "Why lower finality
-is benign", §7 HS.1; proved in `Retain`, `viable_witness_retention_of`). -/
+/-- **HS.1, effective-phase viable-witness retention** (why lower finality
+is benign; proved in `Retain`, `viable_witness_retention_of`). -/
 theorem viable_witness_retention : ViableWitnessRetention :=
   fun _ _ _ _ _ _ _ _ hrun hs _ _ _ _ _ hon _ hy _ hW _ hz _ h1 h2 =>
     viable_witness_retention_of hrun hs hon hy hW hz h1 h2
 
-/-- **HS.2, clean-lock transfer and two-window drain** (`phase-service.md` §4 "Clean evidence and
-the two-window drain", §7 HS.2; `hs234-exact-interface.md` §3, assembled in `Drain`). -/
+/-- **HS.2, clean-lock transfer and two-window drain** (clean evidence and
+the two-window drain; assembled in `Drain`). -/
 theorem clean_lock_drain : CleanLockDrain := by
   intro sp ro proposer dg H tr g ΔF w i₀ m c hrun hs hc hw
   refine ⟨fun _ hx _ _ _ _ ho hj _ hy _ _ _ hv hjs hk =>
@@ -67,8 +67,8 @@ theorem clean_lock_drain : CleanLockDrain := by
 theorem frozen_tree_agreement : FrozenTreeAgreement :=
   frozen_tree_agreement_clean clean_lock_drain
 
-/-- **HS.4, bounded common path and actual-report acquisition** (`phase-service.md` §5 "First
-proposal, actual reports, and the one extra wait", §7 HS.4). -/
+/-- **HS.4, bounded common path and actual-report acquisition** (first
+proposal, actual reports, and the one extra wait). -/
 theorem common_path_acquisition : CommonPathAcquisition :=
   fun _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
     ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain,
@@ -111,7 +111,7 @@ def AcquiredPath (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
       PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr
 
-/-- **The client subclaim** (HS.4 (b), P1/P2 of workbench#6): in the settled phase, at an honest
+/-- **The client subclaim** (HS.4 (b), P1/P2): in the settled phase, at an honest
 `fg_attest` whose source `C` has state height `h ≥ ℓ` and entry `E` and is allowed in the phase
 geometry, the client signs a matching attestation for `E`, or has signed one at an earlier cut. -/
 def ClientProgress (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (i₀ m : Nat)
@@ -207,18 +207,18 @@ theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ### HS.5's consumption, one level down (proposed contract)
 
-The paper orb's skeptical read-back of `consume_continue` names three steps that HS.1–HS.4 do not
-export: (1) the attestation of a current source (HS.4's source arm, #88: a source in `[t_s, v]`,
+`consume_continue` needs three steps that HS.1–HS.4 do not
+export: (1) the attestation of a current source (HS.4's source arm: a source in `[t_s, v]`,
 allowed in the phase), from the `fg_attest` of the same tick and `ClientProgress`; (2) for the
 chosen height-`m` proposal `Y` of the continuation, HS.3 exports only the votes and parent
 extension, not the attestations; (3) the FG inclusion and acceptance of the crossing (P3). They are
 stated over the data the assembly has; their exact form is a proposed contract, not yet certified.
 -/
 
-/-- **Current sources give matching attestations** (`phase-service.md` §5 "an actual candidate
-passed to the FG serves `E`", §6): for the acquired path's witness, every honest validator that has,
+/-- **Current sources give matching attestations** (an actual candidate
+passed to the FG serves `E`): for the acquired path's witness, every honest validator that has,
 in `[t_s, v]`, `v = t_s + 6Δ`, received a source `C ⪰ W` of state height `h` with entry `E`, allowed
-in the phase (HS.4's current-source arm, #88), has signed a matching attestation for `E` at `h` by
+in the phase (HS.4's current-source arm), has signed a matching attestation for `E` at `h` by
 `v`: the `ac_to_fg` return is followed at once by the `fg_attest` of the same tick, at which
 `ClientProgress` applies (the phase holds through `v`; `toFG_attest` for the transport). -/
 theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr)
@@ -264,13 +264,13 @@ theorem historical_source_rows (hrun : GoldilocksRun proposer dg H tr)
     · exact ⟨k', att, hsa, (hrun.time_mono hk'.le).trans (by rw [ht]; exact hv), hah, haT⟩
   · exact hrow
 
-/-- **HS.5, consumption and continuation** (`phase-service.md` §6, §8.1; workbench#6 P3): from
+/-- **HS.5, consumption and continuation** (P3): from
 the acquired path, a fresh honest ready inclusion proposal `X` (`Prop⁺` after
 `max(v + Δ_F, t_{E.slot + δ_t})`) crosses `h` by `b`; if `h = m` the crossing changes the phase
 within `C`; if `h = m − 1`, `X` has height `m` and is unanimous (HS.3 (b) with HS.2), and a second
 proposal `Y` after `t_X + 8Δ` gives the upper-height service within a second `C`; so the phase
 has changed by `w + A_HS`, `A = 2C + Δ`. It takes HS.1 and HS.2 as hypotheses deliberately (the
-paper orb's proposed contract, not yet certified); HS.3 (b) follows from HS.2
+paper's proposed contract, not yet certified); HS.3 (b) follows from HS.2
 (`frozen_tree_agreement_clean`).
 
 Its proof is meant to assemble `historical_source_rows` (the witness's reports become attestations),
@@ -280,7 +280,7 @@ after `t_X + 8Δ` (with HS.2's lock premise), `fixed_upper_rows_of` for `Y` and
 `mature_progress_of` again at `m` (by `t_X + Δ + C ≤ w + 2C`). The glue (a crossing
 proposal of height `m + 1` accepted in the phase is a frontier rise; `ht(Y) = m`; `E.slot ≤ s`;
 HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusion of first cuts)
-is proved in `ConsumeContinue` (`consume_continue_of`, `hs5-exact-helpers.md` §4). -/
+is proved in `ConsumeContinue` (`consume_continue_of`). -/
 theorem consume_continue (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain)

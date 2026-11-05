@@ -7,8 +7,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: origins and the record invariant (definitions)
 
-The vocabulary of the Sleepy safety invariant from genesis (fradamt-agent/workbench#11,
-`repos/goldilocks/notes/healing-simple/sleepy-record-invariant.md`, §1), over a Goldilocks run,
+The vocabulary of the Sleepy safety invariant from genesis, over a Goldilocks run,
 read on its AC projection, with ancestry inside the honest blocks of the run:
 
 * an **origin** of label `s` (`Origin`): the result `C ≠ ⊥` of an honest joined update of slot `s`
@@ -17,12 +16,12 @@ read on its AC projection, with ancestry inside the honest blocks of the run:
   time relative to the votes that read them;
 * `OnOriginChain B`: `B` is genesis or an ancestor of an origin (the ancestor closure of the
   origin chain);
-* `SleepyInvariant` (S1–S3 of the note, at every cut): origins are pairwise compatible; every
+* `SleepyInvariant` (S1–S3, at every cut): origins are pairwise compatible; every
   honest vote of a later slot extends an origin (label-strict transfer); every honest record is
   genesis or an origin; every honest `Σ.F`, `Σ.J`, stored lock and FG source is on the origin
   chain; and an origin that an honest node holds is at or below its `fc_root` or in its full
   viable tree;
-* the bounded frontier of the induction (§4, repaired): `OriginsBelow s` (`P_s`: origins of labels
+* the bounded frontier of the induction: `OriginsBelow s` (`P_s`: origins of labels
   below `s` compare pairwise) and `VotesBelow s` (`V_s`: every honest vote of a slot `m` with
   `j < m ≤ s` extends every origin of label `j < s`). -/
 
@@ -169,7 +168,7 @@ theorem votesBelow_iff {s : Nat} :
 
 variable (tr H)
 
-/-- **The Sleepy record invariant** (workbench#11 S1–S3). -/
+/-- **The Sleepy record invariant** (S1–S3). -/
 structure SleepyInvariant : Prop where
   /-- S1: any two origins are compatible. -/
   origins_compatible : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →

@@ -11,8 +11,8 @@ public section
 
 Blocks on the ancestor closure of the origin chain (`OnOriginChain`) are pairwise compatible once
 the origins are (S1): an ancestor of an origin is compatible with every ancestor of a compatible
-origin, and genesis is below every honest block. Hence R.1's safety part
-(workbench#11 §5): every honest `ac_confirmed` is an ancestor of the effective record (the record,
+origin, and genesis is below every honest block. Hence R.1's safety part:
+every honest `ac_confirmed` is an ancestor of the effective record (the record,
 or `Σ.F` when the record is not in the frame), which is on the chain, so the honest confirmed
 outputs are pairwise compatible, served or not. -/
 

@@ -14,7 +14,7 @@ witness, `servedAt_tickRun`, only reaches the update of slot `0`):
   the proposer joined there;
 * the cut: `i = 81`, the `ac_to_fg` at time `10 = t_1 + 6Δ`, right after the tick of cut `80`
   that runs the update of slot `1` (`UpdatedNoRestart` with `k = 80`). This is the boundary that
-  the update clause (consensus-lean#77) is about: `inclusion_update_boundary` shows the clause
+  the update clause is about: `inclusion_update_boundary` shows the clause
   fails at cut `80` itself, the first cut at `t_1 + 6Δ`, so `81` is the earliest cut where every
   premise holds;
 * the run is a `GoldilocksRun` with `NoColl` and `Sleepy` (`tickRun_service_premises`).
@@ -23,8 +23,8 @@ witness, `servedAt_tickRun`, only reaches the update of slot `0`):
 statement to them. The witness reads no lock or confirmation rule: the conclusion comes from
 `inclusion_sleepy`, not from evaluating `ac_confirmed`.
 
-Not covered here: rejections of the update clause (#77).
-On this run the #77 rejection is unavailable (with `n = 1` the optimistic confirmation already
+Not covered here: rejections of the update clause.
+On this run that rejection is unavailable (with `n = 1` the optimistic confirmation already
 moves the record to `blk 1` at `t_1`); it needs a fixture whose proposal is not optimistically
 confirmed before the update. With `n = 1` and `f = 0` this shows the premises consistent, not
 met with faults. -/

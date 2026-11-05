@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the updater's finalized tip is below the honest proposal
 
-workbench#12 §4, "`F ≤ P` through the update": at an honest node's joined update of slot `s`
+"`F ≤ P` through the update": at an honest node's joined update of slot `s`
 (its tick at `t_s + 6Δ`), its `Σ.F` is at or below the honest proposal `P` of slot `s`.
 
 * Every origin of a label at most `s` is below `P` (`origin_anc_proposal_before`: an honest slot-`s`
@@ -150,7 +150,7 @@ private theorem rows_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)
     exact Anc.total hU (hDC.trans hCH) hPH
 
-/-- **The updater's `Σ.F` is at or below `P`** (workbench#12 §4). -/
+/-- **The updater's `Σ.F` is at or below `P`**. -/
 private theorem updater_F_anc_of_rows (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocks H)

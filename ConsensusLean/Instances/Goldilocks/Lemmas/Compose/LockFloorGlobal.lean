@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks: every honest node keeps a lock above `B₀` over an interval
 
-consensus-lean#135 (WI-16), the floor form of global lock keeping. The invariant is "each honest
+The floor form of global lock keeping. The invariant is "each honest
 `x` holds a lock of slot `js x`, with expiry at least `m`, on a block `⪰ B₀` of its frame's tree"
 (`FloorAt`). The lock may move (`live_locks` to its viable ancestor, `unlock` to its unlock
 target); it stays `⪰ B₀` when `B₀` is its own viable ancestor and `unlock` keeps `B₀`

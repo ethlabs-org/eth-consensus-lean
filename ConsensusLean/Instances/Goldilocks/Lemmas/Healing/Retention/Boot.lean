@@ -13,7 +13,6 @@ public section
 HBoot (`boot_caches`), the activation of pending origins (`activation_caches`), the label bound,
 (K2)/R5 at votes (`vote_height_lead`), the low-`Σ.J` root (`low_root_compatible`), `Carry`
 (`first_carry`, `later_carry`), half the committee (`half_committee`) and (R4) (`high_records`).
-Paper: `hr4-boot-carry.md` (workbench#23), `producer-reset-continuation.md` §§5, 11, 13, 16.
 
 Proved here: the label bound, half the committee, the low-`Σ.J` root, both carries (relay after
 the GST, `Retention/Relay`), (R4) (`Retention/Records`), HBoot's caches from G1.2 over the run
@@ -69,7 +68,7 @@ theorem cutZ_le_ts_of_highOrigin (hp : ResetPremises tr H proposer dg g ΔF a)
     cutZ sp.toParams g ≤ sp.ts j :=
   (hp.toUpTo tr H (le_refl a)).cutZ_le_ts_of_highOrigin ho
 
-/-- **No high justification before the reset** (`hr4-boot-carry.md` §2): at a state all of
+/-- **No high justification before the reset**: at a state all of
 whose earlier cuts are before `a`, every held block is justified at `≤ H_z`: otherwise it has state
 height `≥ H_z + 2` (`h_j < h`), so its chain carries an honest attestation of height `H_z + 1` (HR.1
 (b)), signed before the state's cut, hence before `a`, against HR.1 (c). -/
@@ -101,7 +100,7 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
   linarith
 
 /-- **HBoot, the caches before the reset** (§11 "Historical finality and acceptance";
-`t1-proof.md` §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
+T1 §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
 (a justification at `h ≥ H_z + 1` needs an honest attestation at `h`, none before `a`, HR.1 (c)),
 and `Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is below every high origin:
 its finality quorum meets the crossing quorum on a counted head's chain at its height in an honest
@@ -365,7 +364,7 @@ private theorem vote_caches (hp : ResetPremises tr H proposer dg g ΔF a) (k : N
       exact hboot _ fun k'' hk'' =>
         lt_of_le_of_lt (hp.run.time_mono (Nat.lt_succ_iff.mp hk'')) (not_le.mp hak)
 
-/-- **The receiver-root split** (`hr4-boot-carry.md` §4): at an honest vote of a slot `> j` at
+/-- **The receiver-root split**: at an honest vote of a slot `> j` at
 which `B` is not below `fc_root`, the voter's `Σ.F` is below `B` (the caches compare them, and
 `Σ.F ⪯ fc_root`). -/
 private theorem vote_F_anc (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
@@ -643,7 +642,7 @@ theorem high_floor_source_before
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h :=
   high_floor_source_core hp ho hy hc hj hpair hcomp hfloor
 
-/-- **R5 above the floor** (`hr4-boot-carry.md` §7): the crossing origin's counted honest
+/-- **R5 above the floor**: the crossing origin's counted honest
 head is relayed before the voter's freeze and supplies a viable witness above `B`. -/
 theorem height_lead_above (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
@@ -812,7 +811,7 @@ theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
   (hp.toUpTo tr H (le_refl a)).raw_target_frozen_witness ho hy hc hl hFB hBO hE hEO hfloor
 
 /-- **(K2) at a vote, R5** (§5 Lemma R5; §11 item 1 for the votes through the ticks at `a_z`;
-§13 "Retaining the witnesses and the frame"; `t1-proof.md` §9 base case). At an honest vote of a
+§13 "Retaining the witnesses and the frame"; T1 §9 base case). At an honest vote of a
 slot `> j`, the voter block tree holds a viable descendant of the origin's block `B`, or
 `B ⪯ fc_root`: in the low-frontier regime `B` itself (height `H_z + 1`, relayed before the freeze);
 above it, the supporting head of an earlier comparable high source that crossed the floor (R4,
@@ -858,7 +857,7 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   exact ⟨Hv, hHvT, hBHv, hfl.trans hh⟩
 
 /-- **A low `Σ.J` does not veto a high origin** (§11, "an old conflicting J merely causes a
-contest"; `t1-proof.md` §9, the geometric statement). When the voter's root is a low `Σ.J`
+contest"; T1 §9, the geometric statement). When the voter's root is a low `Σ.J`
 (`h_max = h_j + 1 ≤ H_z + 1`, no contest) and its voter block tree holds a descendant `D` of the
 origin's block `B`, then `D` has state height `h_max` (`≥ σ[B].h ≥ H_z + 1`), so it extends `Σ.J`
 (no contest), and `Σ.J` is compatible with `B`. -/

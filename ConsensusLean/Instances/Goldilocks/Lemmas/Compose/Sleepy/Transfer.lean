@@ -13,11 +13,10 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the next vote batch (extending `V_s` to `V_{s+1}`)
 
-workbench#11 §2.3, §2.4 and §4 "Extend the vote frontier, simultaneously". Fix an honest
-slot-`(s+1)` vote, and assume `P_{s+1}`, `V_s` and that the honest slot-`(s+1)` votes at earlier
-cuts extend the block in question (the first-bad-vote argument). The lock and later-batch steps
-are stated for a block `B` with the hypotheses they use, so that the proposal-adoption bootstrap
-(workbench#12 §4) applies them to the protected proposal; for an origin `C` of label `j ≤ s`:
+Fix an honest slot-`(s+1)` vote, and assume `P_{s+1}`, `V_s` and that the honest slot-`(s+1)` votes
+at earlier cuts extend the block in question (the first-bad-vote argument). The lock and later-batch
+steps are stated for a block `B` with the hypotheses they use, so that the proposal-adoption
+bootstrap applies them to the protected proposal; for an origin `C` of label `j ≤ s`:
 
 * **Locks** (`vote_locks_compatible_upTo`): every live lock block after the unlocking is compatible
   with `C`: a lock of slot at most `s` sits below an origin of its slot, compared with `C` by

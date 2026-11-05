@@ -9,8 +9,6 @@ public section
 
 /-! # M1′ E1–E3: the rise (ROUND, two rounds, the high source)
 
-pre_advance_finality §24.4, §26 Step E/F, §27 and §30 G1; healing_parallel_plan §2 P6.
-
 * `rows_delivered_service` (ROW-deliver): an attestation signed by `v ≥ ḡ` is processed by the
   honest proposer before its proposal cut when `v + Δ_F ≤ t_x ≤ b`. Only `ResetService.signedRow`
   and `NoRestartAfter ḡ` are used (no `HSShared`).

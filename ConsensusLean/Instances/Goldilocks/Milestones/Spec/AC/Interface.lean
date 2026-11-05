@@ -6,11 +6,12 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 
 /-! # Goldilocks milestone vocabulary: reachable AC states and the interface requirements
 
-The part of `Spec/AC/Interface` that no Challenge statement reaches (docs/decisions.md, 2026-11-04):
-the milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/AC/Interface` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
-`ReachableAt` is the claims' reachability (goldilocks-claims.tex §"How to read the DAG",
-goldilocks#21): the states reached from the initial state and frame by calls at nondecreasing
+`ReachableAt` is the claims' reachability (goldilocks-claims.tex §"How to read the DAG"):
+the states reached from the initial state and frame by calls at nondecreasing
 times that obey the call law `CallOK`, inside one coherent set `U` (at a node, the accepted tree
 `Σ.T`, which only grows). That an honest node's AC states are reachable is claims C0.5. The
 restart replay is inside the restart call.

@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks Healing: H.2 (ii), persistent inclusion after a unanimous honest proposal
 
-workbench `h2-open-items.md` §7: the unanimous batch of slot `p` propagates to every later honest
+The unanimous batch of slot `p` propagates to every later honest
 vote (§7.1: `(P, p)` is protected by P3, so `h2_votes_continue`); every surviving lock image
 compares with `P` (§7.2, `h2_locks_compare`); the record read by `ac_confirmed` extends `P`
 (§§7.3–7.4, `h2_record_extends`), and so does the head (§7.5, `h2_head_extends`);

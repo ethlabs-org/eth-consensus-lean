@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 
 /-! # Goldilocks milestone Service: the available chain after C1.1 (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main
-`4ea71d05`) §"Available chain, after C1.1", over the Goldilocks run (`Spec/Run`,
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`
+§"Available chain, after C1.1", over the Goldilocks run (`Spec/Run`,
 `GoldilocksRun`) under `Sleepy` (`SleepyRun`) and `NoColl` (`NoCollRun`; the claims' standing
 assumption on the digest, taken explicitly here as every run-level statement does, since the
 SA's chain reasoning identifies blocks by root):
@@ -73,8 +73,8 @@ cut at a time `t` where it is joined, if it has not restarted at a cut in `(t_s 
 has run the update of slot `s` at a cut before this one with no restart since (`UpdatedNoRestart`,
 as A1.6). The update clause is needed at the boundary `t = t_s + 6Δ`: "at `t`" is the state
 before a cut at `t`, and the node's first cut there is the AC tick that runs the update of slot
-`s` (at `t_{s+1} + 2Δ`), so before it the record can still be older than `P`
-(consensus-lean#77); it also places `t` at or after that update. (The claims also assume
+`s` (at `t_{s+1} + 2Δ`), so before it the record can still be older than `P`;
+it also places `t` at or after that update. (The claims also assume
 `t ≥ t_s + 6Δ`, awake at `t` and awake and joined at `t_s + 6Δ`, and the genesis root; none is
 needed: the node is awake at its call at `t` (`awake_of_call`), the update's call is at
 `t_s + 6Δ` with the node joined there (`SA.UpdateAt`, a tick, so `joined_projection`), so it is

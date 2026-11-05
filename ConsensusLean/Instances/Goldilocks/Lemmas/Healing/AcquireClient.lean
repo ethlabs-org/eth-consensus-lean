@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing: HS.4 (b), the client subclaim
 
-`hs234-exact-interface.md` §5 "client progress" (P1/P2 of workbench#6). At an honest
+Client progress (P1/P2). At an honest
 `fg_attest(C)` in the effective phase `(m, c)`, whose source `C` has state height `h ≥ ℓ`, entry
 `E` and is allowed in the phase geometry, the client signs a matching attestation `(h, E)` (target
 or timeout), or it signed one at an earlier cut (`client_progress`):
@@ -317,8 +317,8 @@ theorem signed_fin_justified (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp
   rw [hWσ, hfin] at hfp
   exact Store.finalityPair_justified hr hW hfp.symm
 
-/-- **No conflicting finality lock at an allowed source's height** (`hs234-exact-interface.md`
-§5): at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state height
+/-- **No conflicting finality lock at an allowed source's height**:
+at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state height
 `h ≥ ℓ` and entry `E`, the record's lock at `h` is free or `E`. -/
 theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     {i₀ m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {y : Fin sp.n} (hy : y ∈ H)
@@ -376,7 +376,7 @@ theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     rw [hCTh, hZT, hZr] at this
     exact hne this.symm
 
-/-- **HS.4 (b), the client subclaim** (`hs234-exact-interface.md` §5, P1/P2 of workbench#6): at
+/-- **HS.4 (b), the client subclaim** (P1/P2): at
 an honest `fg_attest(C)` in the phase, with `C` allowed, of state height `h ≥ ℓ` and entry `E`,
 the client signs a matching attestation for `E` at `h`, or signed one at an earlier cut. -/
 theorem client_progress (hrun : GoldilocksRun proposer dg H tr)

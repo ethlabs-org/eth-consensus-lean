@@ -9,8 +9,8 @@ public section
 
 /-! # Goldilocks Simulation: proof-side simulation interface
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main
-`4ea71d05`), the Refinement row of the module table: **the engine simulates the node (C0.4
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`,
+the Refinement row of the module table: **the engine simulates the node (C0.4
 kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainShape`
 (`goldilocks S`) run by the generic engine (`Spec/Model/Run`) and the spec's own run model
 (`Spec/Run`, `GoldilocksRun`).
@@ -29,7 +29,7 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainSha
   emission or signing time (`ReleasedFrom`), an accepted block or a received attestation in a
   relay wrapper at the admission time (`RelayedFrom`), and an admitted or own vote in a signed,
   admission-stamped `.voteForward` envelope in that event (`vote_forwarded`). These obligations
-  include the horizon and do not depend on a future awake time (consensus-lean#107).
+  include the horizon and do not depend on a future awake time.
 * **Reads** (`ReadIsOut`): the chain trace reads the shape's outputs of the node state at the
   shape's clock, which is the time of the node's last tick or restart (`lastClock`).
 * **`NoColl` transport** (`NoCollTransport`): no observed hash collision gives the spec's
@@ -45,8 +45,8 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainSha
 Not stated: the transport of the engine's network premises (`CommLog.PSync`, `SyncUntil`) to the
 spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` holds a receipt by
 `max(a, g) + Δ − 1`, strictly before `max(a, g) + Δ`, as the spec requires processing strictly
-before `max(τ, w_y) + Δ'` (half-open delivery, 2026-11-04); the engine relays an admission at
-the admitting delivery's own time, as the spec's instantaneous send (consensus-lean#107). The
+before `max(τ, w_y) + Δ'` (half-open delivery); the engine relays an admission at
+the admitting delivery's own time, as the spec's instantaneous send. The
 open transport suppliers are in `Lemmas/Obligations/NetworkTransport`; they are not premises of
 `MeetsObligations`. `docs/goldilocks-mapping.md` §"AsChainShape, Simulation and Obligations" maps
 each statement.

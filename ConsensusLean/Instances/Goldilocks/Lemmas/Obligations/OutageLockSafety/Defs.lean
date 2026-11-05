@@ -6,11 +6,10 @@ public section
 
 /-! # Outage lock safety: the premise package and the cut invariant (definitions)
 
-The outage lock-safety card (workbench `repos/consensus-lean/notes/outage/outage_lock_safety.md`
-at af18331, §2–§3), at trace level. `P` is the protected block (`OutageArming.origin`): genesis or
-an origin within `b₀` of label `σ`. `j₀` is the last label whose early cutoff is at or before
-`b₀`, `r` the first label whose last cast time is at or after `b₁`; the labels `≤ j₀` and `≥ r`
-are unpolluted.
+The outage lock-safety argument, at trace level. `P` is the protected block
+(`OutageArming.origin`): genesis or an origin within `b₀` of label `σ`. `j₀` is the last label
+whose early cutoff is at or before `b₀`, `r` the first label whose last cast time is at or after
+`b₁`; the labels `≤ j₀` and `≥ r` are unpolluted.
 
 * `OutageLockPremises`: the premise package (§2). The arming inputs `lockPrev` and `lockCover`
   are fields in trace form; `lockCover` is conditional on (F), (VA) and (N), which the induction
@@ -19,12 +18,12 @@ are unpolluted.
 * `OutageLockInv D i`: the cut invariant (§3) at the cuts before `i`: honest votes of slots in
   `(σ, j₀ + k]` cast at or before `b₀` or by the cohort `A₀` extend `P` (`votes`); later votes are
   compatible with `P` (`late`, from S5); results at unpolluted labels are compatible with `P`
-  (`results`); stored honest locks (`locks`, the card's (i)), FG sources (`sources`) and the
+  (`results`); stored honest locks (`locks`, (i)), FG sources (`sources`) and the
   caches `Σ.F`, `Σ.J` (`caches`, OB-F) are compatible with `P`; `P`, when in the frame, is a
   viable-ancestor candidate (`viable`); and `A₀` keeps its label-`(j₀ − 1)` and label-`j₀` locks
   (or root cover) through their lifetimes (`protPrev`, `protCover`, O2).
 
-Differences in form from the card's §2 listing, each as the card's own proofs or the landed
+Differences in form from the paper argument's premise listing, each as its proofs or the landed
 arming use them:
 
 * the fault bound (`hFB`) is stated at every slot point that precedes an honest call (R-late
@@ -47,7 +46,7 @@ section VoteCompat
 
 variable {FGP : Type} {n : Nat}
 
-/-- The head of the vote `v` is a block of `U` compatible with `B` (the S5 form, read-back F1:
+/-- The head of the vote `v` is a block of `U` compatible with `B` (the S5 form:
 regression votes with head below `B` satisfy it). -/
 def VoteCompat (U : Set (SA.Blk n FGP)) (v : Vote n) (B : SA.Blk n FGP) : Prop :=
   ∃ Hd ∈ U, Hd.root = v.head ∧ Compatible U Hd B
@@ -105,7 +104,7 @@ theorem coverBase_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
         (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
   Iff.rfl
 
-/-- **The premise package of the outage lock module** (card §2), at trace level. -/
+/-- **The premise package of the outage lock module**, at trace level. -/
 structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) where
   /-- The outage start and stop. -/
@@ -199,7 +198,7 @@ structure OutageVoteInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
   late : ∀ x ∈ H, ∀ k < i, ∀ e, SA.VoteAt tr.projAC x k e → D.j₀ + sp.k < e.msg.slot →
     VoteCompat (tr.HonestBlocks H) e.msg D.P
 
-/-- **The outage lock invariant** at the cuts before `i` (card §3). -/
+/-- **The outage lock invariant** at the cuts before `i`. -/
 structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Prop
     extends OutageVoteInv D i where
   /-- (R) results at unpolluted labels are compatible with `P`. -/
@@ -229,7 +228,7 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
     ∀ k, c < k → k ≤ i → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k →
       Prot D x k D.j₀ (D.j₀ + sp.k)
 
-/-- The S5 step that the lock module consumes (856c1db, restated cut-indexed; read-back F2): from
+/-- The S5 step that the lock module consumes (restated cut-indexed): from
 the invariant at `i`, the votes of cut `i` past the lock lifetime have heads compatible with
 `P`. -/
 def OutageS5StepAt (D : OutageLockPremises tr H proposer dg) : Prop :=

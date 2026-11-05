@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 
 /-! # Goldilocks milestone FGStore, part 1: one FG store (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21), the
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 single-store nodes of the FG store level, against `Spec/FG/Store`: G0.1 (store), F.2 at the
 store, G0.3 (cache invariants), the FG kernel of the frame step,
 G0.4 (height) (the frame realization) and G0.2 (c), (h) at the store (`EntryStateOfSource`).

@@ -14,7 +14,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: consumers of the invariant (card §8, §9; O4 read-back d8f2833 §1)
+/-! # Outage lock safety: consumers of the invariant
 
 From the invariant at every cut (`outage_lock_inv`):
 

@@ -12,9 +12,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the carrier is processed by the deadline (#136)
+/-! # Goldilocks Obligations: the carrier is processed by the deadline
 
-consensus-lean#136. `carrier_processed_of_honest` proves the premise (H4) `hcarrier` of
+`carrier_processed_of_honest` proves the premise (H4) `hcarrier` of
 `final_window_extract_of` (FinalWindowAssembly.lean) from the `FinalQuery` alone: an honest
 proposal `P` of a slot `s` with `query < t_s` and `t_s + Δ ≤ deadline` gets a `BlockCallAt` by
 the deadline at every honest node that is ready at the deadline.

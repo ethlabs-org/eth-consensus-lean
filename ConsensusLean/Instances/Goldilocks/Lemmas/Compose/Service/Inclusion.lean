@@ -11,7 +11,7 @@ public section
 /-! # Goldilocks milestone Service: A1.7, inclusion
 
 At a cut `i` of A1.7, `y` ran its update of slot `s` at a cut `k₀ < i` with no restart since. That
-update adopts the honest proposal `P` (`update_adopts`, workbench#12), and the record step of the
+update adopts the honest proposal `P` (`update_adopts`), and the record step of the
 Sleepy invariant (`record_step`, at every honest cut) carries the record's descendant of `P` to
 `i`. If the record's block is in the frame, it has `HeadSupport` (`served_head_support`, after the
 update of `slot(t) − 2` or `slot(t) − 1`: `s` itself in the two slots after the update, else the

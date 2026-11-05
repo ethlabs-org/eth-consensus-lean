@@ -14,7 +14,8 @@ type it is, so the kernel checks the statement against that theorem's type; the 
 obligations endpoint is proved by its milestone proof, and the headline `GoldilocksCorrect` by
 that proof and `ShapeObligations.correct`. This module is the comparator's solution
 module (`comparator.json`). The other Goldilocks milestones are proved lemmas, pinned by
-`ConsensusLeanTest/MilestoneAxioms.lean` (docs/decisions.md, 2026-11-04). -/
+`ConsensusLeanTest/MilestoneAxioms.lean` (`docs/decisions.md`
+§"Trusted surface and Challenge scope"). -/
 
 namespace Consensus.Review
 

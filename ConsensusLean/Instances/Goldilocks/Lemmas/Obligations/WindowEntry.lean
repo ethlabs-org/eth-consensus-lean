@@ -6,9 +6,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 
 public section
 
-/-! # Goldilocks Obligations: the entry is justified on the parent's chain (L5.4, WI-19)
+/-! # Goldilocks Obligations: the entry is justified on the parent's chain (L5.4)
 
-Workbench `fg-liveness/r14-end-to-end`, s5 L5.4: the entry `(h, T)` is justified on the
+L5.4: the entry `(h, T)` is justified on the
 canonical chain, and the predecessor is finalized if the height has its previous height justified.
 
 * `Store.chain_states_of_anc`: the store bridge. For a held `X ⪯ W`, a chain `c` reaches

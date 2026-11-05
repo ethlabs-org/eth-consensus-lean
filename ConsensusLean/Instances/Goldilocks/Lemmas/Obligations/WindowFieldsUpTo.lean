@@ -4,9 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowD
 
 public section
 
-/-! # Goldilocks Obligations: the remaining final-window fields (#137)
+/-! # Goldilocks Obligations: the remaining final-window fields
 
-consensus-lean#137. `finalWindow_fields_of_honest_anchors` gives the proposal cuts, proposals,
+`finalWindow_fields_of_honest_anchors` gives the proposal cuts, proposals,
 acceptances and chain of `FinalWindowData`. Here, per field:
 * `slots`: from the honest-anchor slots (`honestProposalRun_slot`), for any offset function;
 * `ordered`: from the slots and `time_mono` (`strictMono_cut_of_proposesAt`);

@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks Obligations: the finality pair of an entry state (L5.4, fin-pair link)
 
-Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §5, L5.4. The premise `hsig` of
+L5.4. The premise `hsig` of
 `window_justifies_of_lock` asks that each honest target attestation for `(h, T)` carries, as its
 finality pair, `(σ.h_j, σ.J)` of every held honest state `σ` with `σ.T_h = T` that has its previous
 height justified with that pair pending. The attestation from `awake_signs_target` carries

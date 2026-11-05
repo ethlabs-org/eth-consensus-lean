@@ -8,8 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 A mechanism witness, not one of the witness kinds (a)–(c) of CONTRIBUTING "Statements" (it
 witnesses no statement's hypotheses): a concrete configuration of the SA lock code
 (`Spec/SA/Locks.lean`: `opponents`, `unlockTarget`), with no trace. It records the mechanism
-behind the open step of HS.3 (a), the retired `voter_unlock_keeps_lock` (AgreeLater, removed in
-61076d7f). The proposal walk starts at a live lock `L` that survives the proposer's `unlock`.
+behind the open step of HS.3 (a), the retired `voter_unlock_keeps_lock` (formerly in
+AgreeLater). The proposal walk starts at a live lock `L` that survives the proposer's `unlock`.
 `opponents` counts only support votes whose head is in the frame's tree, so a voter whose `Σ.F` is
 strictly below the proposer's can count more opponents of `L` against the same votes. Its `unlock`
 can then move the lock below `L`.
@@ -282,7 +282,7 @@ and `Φy.F ⪯ Φp.F`.
 **What it shows.** `opponents` counts only support votes whose head is in the frame's tree, so
 `unlockTarget` depends on the frame. A lock that survives the proposer's `unlock` need not
 survive the voter's, even against the same votes. That is the step HS.3 (a) needs and the
-retired leaf `voter_unlock_keeps_lock` (AgreeLater, removed in 61076d7f) stated: that a live lock
+retired leaf `voter_unlock_keeps_lock` (formerly in AgreeLater) stated: that a live lock
 block of the voter's read point extends the proposer's lock `L`. The proposer's survival does
 not transfer to the voter by the view comparison alone.
 

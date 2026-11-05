@@ -5,7 +5,7 @@ public section
 
 /-! # Goldilocks Healing, HR.4: the sources of the high attestations
 
-**Temporal source provenance** (`hr4-cut-scope.md` §4, `high_row_source`). An honest attestation
+**Temporal source provenance** (`high_row_source`). An honest attestation
 signed at cut `d` names the entry `E` of its source `Q`, the block that the node's `ac_to_fg`
 returned at the cut before (`Compose.attest_source`): `Q` is the viable ancestor of a live fast
 lock's block, which sits below the stored block `O` of a fast-lock write of the same node at a cut
@@ -147,7 +147,7 @@ private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.
     cases h
     exact (SA.deepest_mem hC').1
 
-/-- **Temporal source provenance of a high attestation** (`hr4-cut-scope.md` §4). An honest
+/-- **Temporal source provenance of a high attestation**. An honest
 attestation of height `≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain
 of a high origin `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the attestation's
 source `Q`. -/

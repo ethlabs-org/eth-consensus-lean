@@ -6,8 +6,8 @@ public section
 
 /-! # Goldilocks Healing, HS.5: mature progress consumption
 
-`hs5-exact-helpers.md` §3 ("choose `X` before inspecting its
-parent"), over `Γ` and the phase `(m, c)` through the first cut `j_b` after
+Choosing `X` before inspecting its
+parent, over `Γ` and the phase `(m, c)` through the first cut `j_b` after
 `b = τ + G_p + Δ`, `τ = max(v + Δ_F, t_{E.slot + δ_t})`, `v = t_s + 6Δ`
 (`mature_progress_of`; `Service` splits off the phase-change branch).
 
@@ -32,8 +32,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
-/-- **The attestations reach the proposer before `t_x`** (`hs5-exact-helpers.md` §3.1, first
-paragraph; `GST(g)`'s attestation delivery): an attestation signed by an honest validator by `v` is
+/-- **The attestations reach the proposer before `t_x`**
+(`GST(g)`'s attestation delivery): an attestation signed by an honest validator by `v` is
 processed by the honest proposer of slot `x`, `t_x ≥ v + Δ_F`, at a cut before its proposal cut (as
 an attestation or carried by an accepted block). Post-`g` attestations have the deadline
 `time + Δ_F ≤ v + Δ_F`, pre-`g` attestations the effective deadline `g + Δ_F` (no honest restart
@@ -56,7 +56,7 @@ theorem rows_delivered (hs : HSShared tr H dg g ΔF) {v : Time}
   subst h
   linarith [hdl k']
 
-/-- **Mature progress consumption in the phase** (`hs5-exact-helpers.md` §3; the mature-progress
+/-- **Mature progress consumption in the phase** (the mature-progress
 step of `Service`'s `consume_continue`, with the phase `(m, c)` through `j_b`, `RowsBy` spelled out
 and HS.1 as the hypothesis `hret`). -/
 theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)

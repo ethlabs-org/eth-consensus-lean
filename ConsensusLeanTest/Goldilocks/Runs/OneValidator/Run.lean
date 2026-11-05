@@ -6,8 +6,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 /-! # The one-validator tick run: the reset, the bridge and the pattern
 
 The remaining facts of the healing and pattern premises on the tick run of
-`Goldilocks/Runs/OneValidator/Premises`, proved outright (consensus-lean#69, W3), and the premises
-with no hypothesis left:
+`Goldilocks/Runs/OneValidator/Premises`, proved outright, and the premises with no hypothesis left:
 
 * **The run** (`good_tick`, `label_cases`): before every tick the state is `Good`; the labelled cuts
   of every tick are listed. So the validator signs exactly `att s` at `t_s` (`signAt_iff`), accepts

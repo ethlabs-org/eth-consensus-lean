@@ -4,7 +4,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the sufficient heal bound of the key-dependent rise route (#136)
+/-! # Goldilocks Obligations: the sufficient heal bound of the key-dependent rise route
 
 recovery_time_savings item 1, piece (4). The five-window sufficient heal bound with the
 key-dependent window of `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). The window of key

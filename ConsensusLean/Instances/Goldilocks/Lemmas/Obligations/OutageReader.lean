@@ -12,7 +12,7 @@ public section
 
 /-! # Goldilocks Obligations: the outage reader's network inputs (O4, cut 1)
 
-Workbench `notes/outage/outage_reader_bridge.md` §10.4 (rev 4.3), cut 1. `outage_psync` is the
+Cut 1. `outage_psync` is the
 engine's partial synchrony from the outage's end `b₁ = Q.stop`. `outage_pool_delivery` is the pool
 delivery `OutageLockOthers.pg` consumes: an honest slot-`m` vote is in the pool of every honest
 updater of slot `m` with `b₁ ≤ t_m + Δ`. The vote is cast in `[t_m, t_m + Δ]`, delivered under

@@ -7,7 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
-/-! # Outage lock safety: sources, OB-F and VA (card §6)
+/-! # Outage lock safety: sources, OB-F and VA
 
 * `source_compatible` (SRC, §6.1): an FG source is the viable ancestor of a stored live fast lock
   block, so it is compatible with `P` when the stored locks are.

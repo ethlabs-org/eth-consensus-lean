@@ -6,7 +6,7 @@ public section
 /-! # Goldilocks Healing, HR.4: the prefix-local quorum-free core
 
 The core of `Store.quorum_free_entries` (G1.10) at one reachable FG store, with the time bounds
-replaced by a premise on the store itself (`hr4-cut-scope.md` §2): if no attestation of an
+replaced by a premise on the store itself: if no attestation of an
 honest signer on a block of the store names the entry `E`, then the progress set of every state
 with entry `E` holds faulty validators only (fewer than `q`), so no block above an ancestor with
 entry `E` leaves its height or entry (`entry_kept`). The justification of a state names its
@@ -86,7 +86,7 @@ theorem J_height_le (hr : st.Reachable acp₀) {W J : NodeBlock P ACP}
         hJ hE ((hJr.trans hroot).trans hEr.symm)
       rw [he, hEh, hh]
 
-/-- **The prefix-local quorum-free core** (`hr4-cut-scope.md` §2; the counting of
+/-- **The prefix-local quorum-free core** (the counting of
 `Store.quorum_free_entries` at one store). If no honest signer has an attestation naming `E` on a
 block of the store and the faulty validators are fewer than `q`, then every block above an
 ancestor with entry `E` keeps that ancestor's height and the entry `E`. -/
@@ -141,7 +141,7 @@ theorem entry_kept (hr : st.Reachable acp₀) {H : Set (Fin P.n)} (hq : Hᶜ.nca
     · exact ⟨hh.trans ihh, hTh.trans ihT⟩
     · exact absurd hq' (not_le.2 (hcard p hpn))
 
-/-- **A high `Σ.J` is compatible with `B`** (`hr4-cut-scope.md` §3) when, for every high entry of
+/-- **A high `Σ.J` is compatible with `B`** when, for every high entry of
 the store that conflicts with `B`, no honest signer has an attestation naming it on a block of
 the store: otherwise its entry is kept above it (`entry_kept`), against `h_j < h` at the block
 whose state justifies it. A genesis `Σ.J` is below `B`. -/

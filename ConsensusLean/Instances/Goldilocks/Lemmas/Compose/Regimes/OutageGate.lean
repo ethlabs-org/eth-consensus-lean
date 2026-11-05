@@ -15,7 +15,7 @@ public section
 
 /-! # Goldilocks outage: the reader's gate count and read majority (O4 L1, L-gate, L3)
 
-Workbench `notes/outage/outage_reader_bridge.md` §10.1 (rev 5). Under receiver-scoped service
+Under receiver-scoped service
 after GST (`ReceiverServiceAfter`, O4 cut 2):
 
 * `vote_held_before_early` (L1): an honest slot-`q` vote whose head extends the receiver's `Σ.F`

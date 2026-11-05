@@ -5,9 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
 
 public section
 
-/-! # Goldilocks Obligations: `HSSharedUpTo` from a final query (#136)
+/-! # Goldilocks Obligations: `HSSharedUpTo` from a final query
 
-consensus-lean#136, route A. `FinalQuery.hsSharedUpTo_of_rows` supplies the shared HS premises
+Route A. `FinalQuery.hsSharedUpTo_of_rows` supplies the shared HS premises
 through the engine horizon at a parametric FG delay `Δ_F`, from attestation service at `Δ_F`; it is
 the query instance of the run-level `hsSharedUpTo_of_rows` (HSSharedRun), whose docstring lists the
 source of each field. `FinalQuery.hsSharedUpTo` is its instance at the protocol FG delay

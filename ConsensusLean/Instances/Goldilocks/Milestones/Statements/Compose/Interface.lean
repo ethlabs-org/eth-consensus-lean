@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 /-! # Goldilocks milestone Compose/AnyAC: the interface (statements)
 
 What the node and the FG may conclude about **any** AC at its reachable states with the frame
-of its last call (decomposition §2 D, "the FG input contract derived from A0.6/A0.9"; claims
+of its last call (the FG input contract derived from A0.6/A0.9; claims
 C0.1, C0.5 (c)): the parent of a proposal, the source `fg_confirmed`, the head of every emitted
 duty and the two AC tips are blocks of the frame's tree that extend its root `Φ.F`, and the
 tips are nested. Each statement assumes only its one interface requirement: requirement 3

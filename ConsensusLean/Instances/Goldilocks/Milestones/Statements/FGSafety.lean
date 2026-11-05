@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 
 /-! # Goldilocks milestone M₁: FG chain and client safety (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (main `00df7945`),
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`,
 nodes G0.2, G0.5, G0.7–G0.10, G1.1 and G1.3, against the FG of `Spec/FG/` (fg.tex with
 loose BJ and the weakened E1). Every statement is about the pure FG: chains, chain states
 and the client; none reads a run. The run-level nodes (the store G0.3/G0.4, finalized

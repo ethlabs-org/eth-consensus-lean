@@ -5,8 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 
 /-! # Goldilocks milestone ACSteps: the AC step lemmas over AC traces (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main `a470648c`;
-A1.9 at `688e287b`), the L1 nodes of the AC module (decomposition §3.1, §3.2): A1.1 (proposer and
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
+L1 nodes of the AC module: A1.1 (proposer and
 voters agree on unlocking), A1.2 (first transfer), A1.3 (next transfer), A1.4 (optimistic is fast),
 A1.5 (source age), A1.8 (result transfer) and A1.9 (source compatibility after the cut). A1.2–A1.4
 and A1.8 are stated **per vote**: the conclusion is about one honest vote and the hypotheses about
@@ -60,7 +60,7 @@ let an honest `y` cast its slot-`(s+1)` vote at cut `i` (time `τ`). Under `Sync
 `Carry_y(s, S, B)`, `f < h_τ`, `B` in `y`'s viable voter block tree or at or below its
 `fc_root` at that vote, and every honest slot-`(s+1)` vote at an earlier cut extending `B`, the
 vote extends `B`. (The writer-pool condition A1.8 (d) follows from `Sync`, which forwards votes
-admitted from a block's payload; goldilocks#32.) -/
+admitted from a block's payload.) -/
 def FirstTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
@@ -173,8 +173,8 @@ lock of slot `s` on `B` with counted votes `CV`. Assume `Sync[t_s, t_{s+1} + Δ]
 `t ∈ (t_{s+1} + Δ, t_m + Δ]`; assume every honest vote of a slot in `(s, m]` at an earlier cut
 extends `B`, and either (i) `x` cast its slot-`(s+1)` vote at an earlier cut, and at the unlocking
 before that vote (the vote's call) `Φ.F` is compatible with `B`, or (ii) `x` restarted after
-`t_s`, at an earlier cut (claims at goldilocks `688e287b`, goldilocks#33; not vacuous when `x`
-makes no unlocking in slot `s + 1`: consensus-lean#66). Then the block `fg_confirmed ≠ ⊥` that
+`t_s`, at an earlier cut (not vacuous when `x`
+makes no unlocking in slot `s + 1`). Then the block `fg_confirmed ≠ ⊥` that
 the call returns is compatible with `B`. (The claims also assume a public time, compatibility of
 `Φ.F` and `fc_root` with `B` at the call, and of `fc_root` at the vote's call; none is
 needed.) -/

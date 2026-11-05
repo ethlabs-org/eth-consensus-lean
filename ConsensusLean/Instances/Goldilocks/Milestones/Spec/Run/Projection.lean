@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 /-! # Goldilocks runs: projections onto the component traces
 
 A run (`RunTrace`) projects onto the AC trace and the FG trace that the component statements
-read (decomposition §2 D, "the node run projects onto the component traces"; claims C0.5):
+read (claims C0.5):
 
 * `projAC tr`: the same cuts, nodes, times, events, positions and awake function; the labelled
   cuts are the AC cuts of the run, with their `ACLabel` (the call, the frame it was given and

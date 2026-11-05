@@ -3,10 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 
 public section
 
-/-! # Goldilocks Healing: the record half of the Healed bundle (WI-17)
+/-! # Goldilocks Healing: the record half of the Healed bundle
 
-consensus-lean#135, WI-17; workbench `notes/fg-liveness/r14-end-to-end/s4-follow.md` §4.6–4.7
-(L4.6 `healed`, L4.7 `record_premises_on_C`). The paper derives C2*⁺ (i), (ii) and R0 from the
+For `healed` and `record_premises_on_C`. The paper derives C2*⁺ (i), (ii) and R0 from the
 clean-height premise CH. Under the reset they hold without CH at every height `h ≥ H_z + 1`, for
 the entry `E h` of the high chain at `h` (`HighEntry`: a block below a high origin, held by an
 honest node, whose state has height `h` and entry `E h` itself):

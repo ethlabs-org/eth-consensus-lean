@@ -25,7 +25,7 @@ Everything else is produced here or landed:
 * The endpoint: the selected proposal is `healthy_query_slot`/`confirmed_slot_event` at the
   query's own readiness, its coverage is `healthy_confirmed_coverage_of_service`, and the
   later-read continuation is the variant above at the end-of-time cuts of `t_u + 6Δ` and the
-  deadline (paper: workbench `healthy_confirmed_supply.md`, A1–A3).
+  deadline (A1–A3).
 
 `healthy_confirmed_supply` (NonfinalEndpoints) applies it to the proved initializer
 (`HealthyResetEnvelope`). -/

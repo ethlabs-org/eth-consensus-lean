@@ -8,9 +8,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.N
 
 /-! # Goldilocks milestone Persist, part 1: runs (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main
-`4ea71d05`), the run-level composition nodes that every later run-level milestone (Persist,
-Service, Healing, Regimes) reads, over the spec's own run model (`Spec/Run`, decomposition §2 D):
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`,
+the run-level composition nodes that every later run-level milestone (Persist,
+Service, Healing, Regimes) reads, over the spec's own run model (`Spec/Run`):
 
 * **F.5 (run), event order**: the cut order of a run is the order of the claims. By time; at one
   time, restarts before ticks before deliveries across the honest nodes; inside a tick, the
@@ -35,8 +35,8 @@ component traces (`ACProjection`, `FGProjection`, `GoldilocksACProjection`) also
 the objects of the run, the blocks that occur in it and genesis (`NoCollRun`, over
 `Compose.NoCollOn`); F.5 (run), F.4, `GroupStatesReachable`, `SyncProjection` and
 `JoinedProjection` take none. The two projections of an arbitrary AC also take the AC's
-requirements 1–5 and, for the FG projection, the genesis root, as C0.5 (a) and C0.3 do
-(consensus-lean#73). `docs/goldilocks-mapping.md` §"Persist" maps each statement to its node.
+requirements 1–5 and, for the FG projection, the genesis root, as C0.5 (a) and C0.3 do.
+`docs/goldilocks-mapping.md` §"Persist" maps each statement to its node.
 
 Statements only: no proofs here. -/
 
@@ -50,8 +50,8 @@ variable {P : Params} {A : NodeAC P}
 §"Premises": "no two distinct objects with one digest occur in the run"), the blocks that occur
 in it and genesis. Genesis is held by every node from `Store.init` but need not be the object of
 a block call, so `Occurs` alone could leave it out, while C0.3 (`HonestBlockAccepted`) takes
-`NoCollOn` on the tree with the own block, genesis included, for the own block's root to be new
-(consensus-lean#73). Every honest tree is inside this set: `Store.onBlock` adds only the block of
+`NoCollOn` on the tree with the own block, genesis included, for the own block's root to be new.
+Every honest tree is inside this set: `Store.onBlock` adds only the block of
 its call, and nothing removes a block. -/
 def NoCollRun (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A) : Prop :=
   NoCollOn dg (insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B})
@@ -101,7 +101,7 @@ def EventOrder : Prop :=
 integer time of `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` is awake and joined at `t ≥ 0`: its
 latest restart is at or before `t − c − 1`, or there is none, and `t − t_{slot(t) − 1} < 8Δ`.
 Times are from `0` (`t < 0` makes the awake interval empty, and no run law forces a node to be
-awake before `0`; consensus-lean#73). -/
+awake before `0`). -/
 def ReadyImpliesJoined : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
@@ -114,8 +114,7 @@ def ReadyImpliesJoined : Prop :=
 validators, inside the honest blocks of the run, for an AC with requirements 1–5 (as C0.5 (a)),
 under `NoColl`. Requirement 5 is needed: the own block's `ac_on_block` call must satisfy
 `CallOK`, whose `validPayload` the FG does not check (the FG accepts without reading the AC
-payload), so it holds only because the AC's own proposal passes `ac_valid_payload`
-(consensus-lean#73). -/
+payload), so it holds only because the AC's own proposal passes `ac_valid_payload`. -/
 def ACProjection : Prop :=
   ∀ (P : Params) (A : NodeAC P) (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n))
     (sg : A.Msg → Fin P.n) (tr : RunTrace A) (proposer : Nat → Fin P.n),
@@ -129,7 +128,7 @@ genesis whose root is its digest (the premises of C0.3), under `NoColl`. Its tic
 block is accepted in its tick, so the acceptance of the own proposal is the first FG cut at its
 time. The proof uses requirement 1 only for the parent of the own proposal: it extends `fc_root`,
 so it is held; without that the own block can be refused at the tick, then accepted later at the
-same time after its parent and a copy of it arrive, against `own_first` (consensus-lean#73).
+same time after its parent and a copy of it arrive, against `own_first`.
 Requirements 3 and 4 already give it (the parent is `ac_head` at the state `ac_proposal` leaves,
 which extends `fc_root`; `proposalHead_of_outputs_parent` in ConsensusLeanTest), so requirement 1
 adds nothing here beyond them; its vote-head clause is not used. The genesis root is taken as C0.3

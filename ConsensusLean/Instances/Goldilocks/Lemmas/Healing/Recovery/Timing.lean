@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks Recovery: timing and the selected pattern stretch (C0)
 
-The arithmetic and timing shared by the C1.3 lane (acquisition, old-entry crossing, two-window
+The arithmetic and timing shared by the C1.3 proof (acquisition, old-entry crossing, two-window
 service) under exactly `PatternPremises`; no stronger timeout or `Δ ≤ Δ_F` is assumed.
 
 * `pattern_reset`: a reset `a` with its whole-run premises, `a ≤ ḡ + Z` (HR.3,

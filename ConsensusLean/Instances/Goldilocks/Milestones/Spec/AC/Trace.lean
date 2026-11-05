@@ -7,10 +7,11 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 
 /-! # Goldilocks milestone vocabulary: AC traces
 
-The part of `Spec/AC/Trace` that no Challenge statement reaches (docs/decisions.md, 2026-11-04): the
-milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/AC/Trace` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
-The AC component trace (decomposition §2 D, `AC.LocalRun`): a `Trace` over the AC state alone,
+The AC component trace: a `Trace` over the AC state alone,
 whose labelled cuts are AC calls (`ACLabel`, `Spec/AC/Trace`). FG cuts and the other nodes' cuts
 are stutters (no label).
 
@@ -54,7 +55,7 @@ after which its AC holds `m` and before which it did not, whether `m` came as a 
 the payload of a block the call accepts (`on_block`). An honest node forwards an AC message when
 its AC admits it, also from the payload of an accepted block; a refused receipt is not
 forwarded, and the restart's replay re-processes blocks already accepted and sends nothing
-(composition.tex §"Model"; claims §"How to read the DAG", A0.7; goldilocks#28, #32). -/
+(composition.tex §"Model"; claims §"How to read the DAG", A0.7). -/
 def SendOrAdmit (x : Fin P.n) (i : Nat) (m : A.Msg) : Prop :=
   ∃ ℓ, tr.CallAt x i ℓ ∧ ((∃ e ∈ ℓ.emits, e.msg = m) ∨
     (ℓ.call ≠ .restart ∧ ¬ A.holdsMsg (tr.state x i) m ∧ A.holdsMsg (tr.post i) m))
@@ -108,7 +109,7 @@ structure ACLocalRun (A : ACInterface P FGP) (H : Set (Fin P.n)) (U : Set A.Blk)
     ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧
       ∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u
 
-/-- **`Sync[a, b]` over an AC trace** (claims §"Premises" at goldilocks `a470648c`). Messages:
+/-- **`Sync[a, b]` over an AC trace** (claims §"Premises"). Messages:
 every AC message that an honest `x` sends or admits at `τ ∈ [a, b]`, also from a block's
 payload (an honest node forwards an AC message when it admits it) is processed by every honest
 `y` at a time in `[τ, max(τ, w_y) + Δ)`: the delivery of that send or forward, not an earlier

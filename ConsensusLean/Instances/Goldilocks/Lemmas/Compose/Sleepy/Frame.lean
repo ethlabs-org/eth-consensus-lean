@@ -19,14 +19,14 @@ public section
 
 /-! # Goldilocks under `Sleepy`: honest-store frame geometry
 
-workbench#11 §3 (S3). With the source origins relevant at a cut compatible with an origin `C` and
-with each other, every target or progress quorum has an honest attestation (`q > f`), whose named
-entry is on the origin chain; comparable sources of one height name one entry, so there is no
+S3 of the Sleepy invariant. With the source origins relevant at a cut compatible with an origin `C`
+and with each other, every target or progress quorum has an honest attestation (`q > f`), whose
+named entry is on the origin chain; comparable sources of one height name one entry, so there is no
 contest from genesis, the floor is `max(1, h_max − 1)`, and `fc_root` (`Σ.J` or `Σ.F`) is compatible
 with `C`.
 
 Both are stated for a block `B` with the hypotheses the argument uses, not only for origins, so
-that the proposal-adoption bootstrap (workbench#12 §4, S3P) applies them to the protected
+that the proposal-adoption bootstrap (S3P) applies them to the protected
 proposal.
 
 `FrameFrozen` proves the frozen witness and `FrameLabels` assembles the following consequences:

@@ -8,9 +8,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the reset envelope (E) of a healthy preparation query (#136, S5)
+/-! # Goldilocks Obligations: the reset envelope (E) of a healthy preparation query (S5)
 
-workbench `healing_supply_repair_contracts.md` S5. For a `HealthyPreparationQuery` with nonfinal
+S5. For a `HealthyPreparationQuery` with nonfinal
 progress on `[ready, heal]` and `heal ≤ horizon`: a delay `Δ_F` and a reset `a` with
 `ResetPremisesUpTo … Q.gst Δ_F a horizon` and `a ≤ ready + R·Δ + ρ`, where `R = healthyResetCoeff`
 and `ρ = healthyResetSlack`, the literal slack `0` (not an FG delay bound), are the named
@@ -193,7 +193,7 @@ theorem healthy_reset_envelope (Q : HealthyPreparationQuery S A V)
 set_option linter.unusedVariables false in
 /-- **The joint preparation tuple (E)**: base timing and a finite preparation schedule (an actual
 reset with service through the horizon, its seed, and a query with the lower bound and the strict
-reserve). Labelled decomposition replacement (R0) of the former
+reserve). It replaces, as (R0), the former
 `healthy_old_inventory_initialize`: no old-entry inventory is produced or required. The reset is
 `healthy_reset_envelope` (`Δ_F = protoFGDelay`, `a ≤ ready + R·Δ`), the seed
 `ResetPremisesUpTo.reset_seed`, the base slot `slot(ready) + 1` and the query the maximum of the

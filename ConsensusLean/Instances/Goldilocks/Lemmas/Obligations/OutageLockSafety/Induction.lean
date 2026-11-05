@@ -12,7 +12,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: the cut induction (card §3, §7.3)
+/-! # Outage lock safety: the cut induction
 
 `outage_lock_inv`: from the premise package and the S5 step `hS5`, the outage lock invariant
 holds at every cut. The step from `i` to `i + 1` proves, in order: (H) for the casts at cut `i`
@@ -227,7 +227,7 @@ private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x :
       · exact (hPL.mem hne).2
     exact prot_of_prevBase D hxH hu hF ⟨L, f, hL, hPL, hl⟩
 
-/-- **The outage lock invariant at every cut** (card §3): from the premise package and the S5
+/-- **The outage lock invariant at every cut**: from the premise package and the S5
 step at each cut. -/
 theorem outage_lock_inv (D : OutageLockPremises tr H proposer dg) (hS5 : OutageS5StepAt D) :
     ∀ i, OutageLockInv D i := by

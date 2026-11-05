@@ -6,8 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Tree
 
 /-! # Goldilocks milestone vocabulary: well-formed frames and frame steps
 
-The part of `Spec/Frame` that no Challenge statement reaches (docs/decisions.md, 2026-11-04): the
-milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/Frame` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 * `FrameOK`: a well-formed frame (claims G0.4 (frame));
 * `FrameStep Φ B Φ'` (`Φ ⊑_B Φ'`): how a frame changes when the FG

@@ -5,7 +5,7 @@ public section
 
 /-! # Goldilocks SA: the opponents of a block are outside the validators that do not oppose it
 
-The static half of the drain link of consensus-lean#135 (WI-15/16; r14 s1 L1.2). Let `Hn` be a
+The static half of the drain link. Let `Hn` be a
 set of validators (the honest ones). If no validator of `Hn` equivocates in the votes of a view,
 and every slot-`s` support vote of a validator of `Hn` has heads in the tree that are compatible
 with `B`, then the opponents of `B` lie outside `Hn` (`opponents_subset_compl`). With

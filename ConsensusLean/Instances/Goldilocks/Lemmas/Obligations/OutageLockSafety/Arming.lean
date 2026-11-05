@@ -11,7 +11,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: the arming adapter and the query-level headers (card §11, M0 and M6)
+/-! # Outage lock safety: the arming adapter and the query-level headers (M0 and M6)
 
 `outageLockPremises_of_arming` builds the trace-level premise package of the lock module from an
 outage query, its pre-`b₀` service and an armed ready source (`OutageArming`, with `P` its
@@ -23,7 +23,7 @@ It proves the arithmetic N1–N6 from
 the cohort premises from `NoSleepOn` and `CohortOn` through the key transport. The arming fields
 are used as they are. Two inputs are hypotheses of the adapter: `Q.T ≤ horizon` (as for
 `outage_arming`) and `Q.start ≤ horizon`; beyond the horizon the reader conclusion is vacuous
-(card §1, degenerate case).
+(the degenerate case).
 
 The headers (`outage_locks`, `outage_reader_locks`, `outage_reader_frame`,
 `outage_record_above_from`) take the S5 step `OutageS5Step` as a
@@ -346,7 +346,7 @@ theorem outageLockPremises_of_arming_b₁ :
 theorem outageLockPremises_of_arming_r :
     (outageLockPremises_of_arming Q service hv hTh hsh ar).r = Q.restoredLabel := by rfl
 
-/-- The S5 step that the lock module consumes (856c1db, restated cut-indexed): from the lock
+/-- The S5 step that the lock module consumes (restated cut-indexed): from the lock
 invariant at `i`, the votes of cut `i` past the lock lifetime have heads compatible with the
 origin. -/
 abbrev OutageS5Step : Prop :=

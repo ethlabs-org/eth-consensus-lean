@@ -15,8 +15,8 @@ set_option linter.style.longLine false
 
 /-! # Gap dispositions (M1–M39)
 
-One line per row of the merged gap list (`gapreview/gaps-merged.md`) and the
-"vacuous system" row (plan: iteration 6, §8). Kinds: **construction** (the
+One line per row of the merged gap list and the
+"vacuous system" row. Kinds: **construction** (the
 fixed L0 definition says it; a theorem below), **test**, **sheet** and **obligation** (a row
 or a migration obligation of the archived target sheet, `archive/consensus-lean-baseline`, with
 its tests; not declarations of this library), **scope** (outside the definition), **removed**
@@ -41,13 +41,13 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.
 * M18 adaptive corruption: scope, static adversary.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).
-* M20 cross-node nesting: dropped by owner (#104); compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
+* M20 cross-node nesting: dropped; compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
 * M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`CorrectProtocol.final_safe_healthy`; `m21_healthy_faults_below`, `m21_final_safe_healthy`); test `faulty_third_not_healthy`.
 * M22 instance vs the archived development: removed, with the sheet's migration obligations (archived).
-* M23 cover / budget: sheet `budget_implies_V`; the outage has no cover (owner, 2026-11-02): the cohort count gives `OutageE1` (`EnvPoint.CohortOn.two_mul_lt`), obligation (4).
+* M23 cover / budget: sheet `budget_implies_V`; the outage has no cover: the cohort count gives `OutageE1` (`EnvPoint.CohortOn.two_mul_lt`), obligation (4).
 * M24 reader scope: construction, `ReadySafe` (ready readers) for available/stable, `AccountablySafe` (every honest reader) for final (`m24_sleepy_ready_safe`, `m24_final_accountable`).
 * M25 ready vs awake: healthy = every honest validator awake (full participation), readers and progress ready; test `healthy_rotating_sleeper`; obligation (6).
-* M26 two delay bounds: `Env` and `Public` carry `ΔAC` and `ΔFG` (`docs/decisions.md` 2026-11-02, two-bound network); `Realizable` quantifies every `ΔAC > 1` and `ΔFG > 1` (half-open delivery, 2026-11-04), the healthy regime within `ΔFG ≤ fgDelay·ΔAC`.
+* M26 two delay bounds: `Env` and `Public` carry `ΔAC` and `ΔFG` (`docs/decisions.md` §"Network and delivery"); `Realizable` quantifies every `ΔAC > 1` and `ΔFG > 1` (half-open delivery), the healthy regime within `ΔFG ≤ fgDelay·ΔAC`.
 * M27 small-Δ witnesses: `Realizable` quantifies every `Δ > 1` (from `Δ = 2`); test `healed_witness_late` (Δ = 7).
 * M28 recovery starts: construction, `heal = max g 0 + heal·Δ`, `ready = max g 0 + c + 1` (`m28_heal_anchor`, `m28_ready_anchor`).
 * M29 faulty proposer witnesses: `ProgressFits` (recurrence only on `.sized 1`); `ProgressTolerant` asks a bad proposer slot in every window (`Recurrence.BadSlotSlack`, witness `RealizableActive.badProposer`); tests `allProposers_unfit`, `allProposers_no_witness`, `recurrence_has_teeth`, `recur_single_one_not_tolerant`, `recur_single_one_bad_slots`.
@@ -64,7 +64,7 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * vacuous system: `CorrectProtocol = Behaviour ∧ Adequate ∧ Realizable`; tests `false_progress_not_correct`, `empty_valid_not_correct`, `excuse_true_not_correct`, `no_admissible_not_correct`; progress cannot read submissions (`censoring_progress_rejected`) or demand near-full participation (`notReadyAtMost_one_not_realizable`).
 * dependency-gated network: closed by construction; raw arrivals do not require dependency readiness.
   `Network.RawArrival.poisoned_arrival` admits the timely honest send/receipt with a withheld prerequisite.
-  The former audit's `not_psync_of_poisoned` exclusion no longer holds; buffering and admission belong
+  The former `not_psync_of_poisoned` exclusion no longer holds; buffering and admission belong
   to the family, while release guards and message/FG-attestation deadlines are unchanged.
 -/
 

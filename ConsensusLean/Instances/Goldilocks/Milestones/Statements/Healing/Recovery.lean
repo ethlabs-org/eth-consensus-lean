@@ -6,8 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.O
 
 /-! # Goldilocks milestone Healing: recovery under a bounded uniform pattern (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (main `5ae87546`, draft 9
-with goldilocks#48): §"O.1" (the recovery predicate `Rec(t₀)`, the pattern regime `UPat(W, M)` and
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`:
+§"O.1" (the recovery predicate `Rec(t₀)`, the pattern regime `UPat(W, M)` and
 its constants, node O.1), node C1.3 (recurring finalizing coverage) and node HR.5 (cache
 acceptance after the reset, G1.9 (b) at high heights), over the Goldilocks run.
 
@@ -15,9 +15,9 @@ acceptance after the reset, G1.9 (b) at high heights), over the Goldilocks run.
 for the contract's own proposer premise (bounded single-proposer gaps, or an eventual pattern
 without a uniform wait) has no statement here and stays open (claims §"O.1", Status).
 
-Node O.1 and C1.3 are conditional paper results (claims: a reviewed conditional assembly,
-workbench#27): on C1.2 (with its open high-or-seed-ancestor split), the old-entry crossing by
-`t_s + L_old` (phase-service §11, not a node), HR.5 and the uniform pattern.
+Node O.1 and C1.3 are conditional paper results (claims: a reviewed conditional assembly):
+on C1.2 (with its open high-or-seed-ancestor split), the old-entry crossing by
+`t_s + L_old` (not a node), HR.5 and the uniform pattern.
 
 Statements only: no proofs here. -/
 
@@ -74,8 +74,8 @@ holds no target, timeout or lock at `h` for another block. (This covers every en
 `t₀` at the height of a post-`t₀` honest source, which is the claims' served entry when the earliest
 honest source reaching `h` is after `t₀`; an earlier source of a different entry at `h` would be
 pre-`c_z` and so at height `≤ H_z` (by `H_z`'s and the store's `h_max` monotonicity), or a high
-origin comparable with the later ones (HR.4). Checked against node O.1's proof (§27, workbench#27
-§4): the conditional assembly covers this quantifier without asking that the earliest honest
+origin comparable with the later ones (HR.4). Checked against node O.1's proof:
+the conditional assembly covers this quantifier without asking that the earliest honest
 source reaching `h` be after `t₀`.) -/
 structure Rec (t₀ : Time) : Prop where
   /-- (a), (c) `Clean(s, m, B)` for the honest fast confirmations written after `t₀`. -/

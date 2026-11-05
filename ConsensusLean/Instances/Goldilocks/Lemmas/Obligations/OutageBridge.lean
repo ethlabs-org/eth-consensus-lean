@@ -21,7 +21,7 @@ public section
 
 /-! # Goldilocks outage: the reader bridge (O4)
 
-Workbench `notes/outage/outage_reader_bridge.md` §10.2 (rev 5.3). A reader ready at `t` from the
+A reader ready at `t` from the
 recovery point reads above the armed read tip of the ready source, given S5's three inputs at the
 origin: the head at the read label (`hhead`), the record of an early reader that ran the gate of
 the first restored label (`hearly`), and the record of a late reader (`hlate`).

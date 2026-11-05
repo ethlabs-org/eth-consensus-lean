@@ -13,7 +13,7 @@ public section
 
 /-! # Goldilocks Healing: three steps of H.1 (statements fixed)
 
-Three step lemmas of H.1 (healing-simple `t1-proof.md`) over a `StandaloneRun`, used by the
+Three step lemmas of H.1 (T1) over a `StandaloneRun`, used by the
 assembly in `Steps.lean`; their statements are fixed (the assembly depends on them as stated):
 
 * `origin_transfer_proposals`, T1 §3 at the proposal duty: a good origin is extended by the head

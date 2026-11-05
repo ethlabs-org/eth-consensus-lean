@@ -4,13 +4,13 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: two-query placement of the seed and the window (#136, route A)
+/-! # Goldilocks Obligations: two-query placement of the seed and the window (route A)
 
-consensus-lean#136, workbench `window_start_h0.md` §6 and `route_a_gap2.md` §3. Pure time and slot
-arithmetic on the results of `PatternRecurrence`. Query 1 at `t₁ = max(max start 0,
-slotTime(u_min) − 1)` returns the seed slot `u ≥ u_min`; query 2 at `q` returns the window start
-`s₀`. Under the placement condition `(P)`, `t₁ + (gap + δt)·slotLen ≤ q + slotLen`, the seed is
-at least `δt` slots before the window: `u + δt ≤ s₀`. Query 1 fits whenever query 2 fits.
+Pure time and slot arithmetic on the results of `PatternRecurrence`. Query 1 at
+`t₁ = max(max start 0, slotTime(u_min) − 1)` returns the seed slot `u ≥ u_min`; query 2 at `q`
+returns the window start `s₀`. Under the placement condition `(P)`,
+`t₁ + (gap + δt)·slotLen ≤ q + slotLen`, the seed is at least `δt` slots before the window:
+`u + δt ≤ s₀`. Query 1 fits whenever query 2 fits.
 
 No producer is assumed: the duties are `HonestReadyIn`, not proposals (duty → proposal is the
 adapter's step). -/

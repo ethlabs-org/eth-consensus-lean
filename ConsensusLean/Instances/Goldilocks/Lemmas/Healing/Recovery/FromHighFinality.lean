@@ -12,7 +12,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Recovery: `Rec` from permanent high finality (O.1, lane B)
+/-! # Goldilocks Recovery: `Rec` from permanent high finality (O.1)
 
 Under the reset premises, no honest restart after `ḡ`, and `HighFinalityFrom T` (every honest
 pre-call `Σ.F` has state height `≥ H_z + 1` from `T ≥ ḡ` on), `Rec` holds from `T + 12Δ`

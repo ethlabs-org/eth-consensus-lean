@@ -5,9 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
 
 /-! # Goldilocks milestone vocabulary: fast-confirmation helpers
 
-The part of `Spec/SA/Confirmation` that no Challenge statement reaches (docs/decisions.md,
-2026-11-04): the milestone statements use it; it is not on the trusted surface. Names and bodies are
-unchanged.
+The part of `Spec/SA/Confirmation` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 `fastSelect` and `fastCounted`: the block the fast test of an update selects, and the votes it
 counts. -/

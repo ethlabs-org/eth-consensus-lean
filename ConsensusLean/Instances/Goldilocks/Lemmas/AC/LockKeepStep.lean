@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks SA: a lock that every lock function keeps in place
 
-The "keep" half of the AC lock step (consensus-lean#135, WI-15/16). Take a lock `l` held before
+The "keep" half of the AC lock step. Take a lock `l` held before
 a call at time `t` with frame `Φ`, on a block `B` of the tree, with these conditions:
 
 * `l` does not expire at `t`: `slot(t) ≤ l.expiry` (`Lock.LiveAt`, `live_locks`);

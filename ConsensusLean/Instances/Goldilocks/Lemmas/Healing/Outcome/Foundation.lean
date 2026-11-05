@@ -15,9 +15,9 @@ public section
 
 /-! # Goldilocks Healing: post-reset source and transport foundations
 
-The objects of fradamt-agent/workbench `producer-reset-continuation.md` §22–§23 and
-`phase-service.md` §10 (HS.2) after the reset `a = a_z`, stated over the run, for every consumer
-(C1.2 here, H.3 (c)'s `Inv` half through workbench#21), not specialized to C1.2's entries.
+The objects of the post-reset argument (with HS.2)
+after the reset `a = a_z`, stated over the run, for every consumer
+(C1.2 here, H.3 (c)'s `Inv` half), not specialized to C1.2's entries.
 With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_z` of C1.2):
 
 * **RN, stored ancestry is irreversible** (§22): every lock stored at a later cut sits below a
@@ -115,7 +115,7 @@ private theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) 
   · have hsl' : sp.slot (tr.time i) = s := hsl
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) s).2 (by omega)
 
-/-- **The reset seed** (workbench#29 §9): a high origin `(O, l)` with `l ≤ slot(a)`. An honest
+/-- **The reset seed**: a high origin `(O, l)` with `l ≤ slot(a)`. An honest
 attestation of height `H_z + 1` is signed at `a` (`IsReset`); its source is below a high origin
 written by the signer before the attestation (`high_row_source`), and a fast lock written by `a` has
 a label `≤ slot(a)`. -/

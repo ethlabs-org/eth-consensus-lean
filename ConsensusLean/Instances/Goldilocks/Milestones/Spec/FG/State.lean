@@ -5,8 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.State
 
 /-! # Goldilocks milestone vocabulary: chain states of chains
 
-The part of `Spec/FG/State` that no Challenge statement reaches (docs/decisions.md, 2026-11-04): the
-milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/FG/State` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 A chain's chain state (`FGParams.chainState`) is the fold of `stateTransition` from
 `ChainState.init`; a failed assertion makes the fold `none` (the block is refused). `roots` and

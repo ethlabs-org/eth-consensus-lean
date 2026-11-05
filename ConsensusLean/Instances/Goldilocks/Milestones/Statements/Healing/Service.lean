@@ -6,8 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.S
 
 /-! # Goldilocks milestone Healing: the phase-service statements HS.1–HS.4 (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Healing: phase service"
-(goldilocks main `c6653258`; workbench `notes/goldilocks/healing-simple/phase-service.md` §§1–8),
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: phase service",
 over the Goldilocks run (`GoldilocksRun`) under the HS shared premises (`HSShared`, `Catch(2Δ)`,
 a settled time `w` for HS.2–HS.4, and `Prop⁺(G_p)` for HS.4). HS.0 (`Settle(Δ)`) and HS.5's
 `Producer(A)` are stated as HR.3 (a), (b) (`Statements/Healing/Run`, `ResetExistence`).
@@ -206,9 +205,9 @@ current). HS.2 supplies both lock premises of the claims' first part (the voter 
 proposer-anchor premise) for every such proposal, so neither is a premise here.
 
 This is the claims' after-`r` part only. The first part (every slot-`s` vote is `P`, viable at it
-with its parent path retained, under the explicit lock premise and the proposer-anchor premise of
-consensus-lean#100, without `Prop⁺` or `t_s ≥ r`) is not stated: its proof is open, and nothing
-consumes it (`docs/decisions.md`, HS.3). -/
+with its parent path retained, under the explicit lock premise and the proposer-anchor premise,
+without `Prop⁺` or `t_s ≥ r`) is not stated: its proof is open, and nothing consumes it
+(`docs/decisions.md` §"Goldilocks model choices"). -/
 def FrozenTreeAgreement : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
@@ -252,7 +251,7 @@ return in `[t_s, v]` of a block extending `W` and allowed in the phase geometry,
 it; not a historical source, nor a higher descendant that suppresses the report at `h`) or has
 signed a matching attestation for `E` (so the report and attestation set has weight `n − f ≥ q`),
 and until the phase end every later honest vote and every honest proposal parent of a later slot
-extends `W`; (b) the client subclaim (P1/P2 of workbench#6): in the settled phase, at an honest
+extends `W`; (b) the client subclaim (P1/P2): in the settled phase, at an honest
 `fg_attest` whose source `C` has state height `h ≥ ℓ` and entry `E` and is allowed in the phase
 geometry, the client signs a matching attestation for `E` (target or timeout), or has signed one at
 an earlier cut (its durable record holds it). -/

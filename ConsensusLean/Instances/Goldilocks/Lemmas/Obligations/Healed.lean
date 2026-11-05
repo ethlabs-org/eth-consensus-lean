@@ -3,15 +3,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Healed
 
 public section
 
-/-! # Goldilocks Obligations: the Healed bundle (WI-17)
+/-! # Goldilocks Obligations: the Healed bundle
 
-consensus-lean#135, WI-17; workbench `notes/fg-liveness/r14-end-to-end/s4-follow.md` §4.6
-(L4.6 `healed`) and `s5-justify.md` §1.2 (the components of Healed(S.heal) that s5 uses).
+L4.6 `healed`, with the components of Healed(S.heal) that the window proof uses.
 `Healed` extends the record half `Healing.HealedRecords` (C2*⁺ (i), (ii), R0, RH; L4.7, proved
 under the bounded reset by `healed_records_of_reset_canonical_upTo`) with
 the AC components C3 and C4 at the heal time `tH` as explicit fields. In the paper C3 and C4 are
 CONDITIONAL on CH and FM (L4.5); they are not proved here. C1 and C5 are `HealthyRun`; HV, P4,
-P5 and V0 are not fields (no Lean statement in the paper's form yet; see consensus-lean#137). -/
+P5 and V0 are not fields (no Lean statement in the paper's form yet). -/
 
 namespace Consensus.Goldilocks.Obligations
 

@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks: tree mathematics, digests and slot arithmetic (proof-side claims)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21), the
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 generic nodes of the Common module: F.2 (tree mathematics: inside a coherent set of blocks,
 ancestry is a partial order, the ancestors of a block form a chain, and two blocks with a
 common ancestor have a deepest one) and F.3 (digests: two well-rooted blocks whose contents

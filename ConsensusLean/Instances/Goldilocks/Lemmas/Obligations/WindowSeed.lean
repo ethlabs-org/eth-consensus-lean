@@ -17,14 +17,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the seed height of the route-A window (#136)
+/-! # Goldilocks Obligations: the seed height of the route-A window
 
-consensus-lean#136, workbench `window_start_h0.md` §1–§3 (r3). One honest **seed** proposal `Q`
+One honest **seed** proposal `Q`
 at a slot `u` after the drain, and an honest proposal `P₀` at a slot `s₀ ≥ u + δt` by the horizon
 `b`: `HZ + 2 ≤ σ[P₀].h` in every honest store that holds `P₀`. Hence H0 (`HZ + 1 ≤ h₀`) and
 `h₀ ≥ HZ + 2` at the first anchor. Every proposer of a slot in `(u, s₀)` can be faulty.
 
-Proof (card §1.3): H0 at `Q` (`reset_seed_before_slot`, `operational_unanimous`,
+Proof: H0 at `Q` (`reset_seed_before_slot`, `operational_unanimous`,
 `old_origin_below_unanimous`); `Q ⪯ Pr = parent(P₀)` (C4). If `σ[Pr].h ≥ HZ + 2`, by
 monotonicity. Otherwise `σ[Q].h = σ[Pr].h = HZ + 1`: a higher report of the seed contradicts this
 (`crossed_parents_above_upTo`); so every honest node has a same-height report, hence a target

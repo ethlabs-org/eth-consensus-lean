@@ -11,7 +11,7 @@ public section
 
 H.1's premises over an AC trace of the SA (`StandaloneRun`: `ACRun`, `Driven`, `TrivialFrames`,
 `Healthy(g)` and `Catch(2Δ)`; all but the trivial frames are `HealthyBase`, shared with H.2),
-and what they give at once (healing-simple `t1-proof.md` §1:
+and what they give at once (T1 §1:
 "every honest validator is awake from `g` onward ... There is no later restart"):
 
 * no honest node restarts after `ḡ` (`restart_le`): a restart is a wake, and an honest node is

@@ -6,7 +6,7 @@ public section
 
 /-! # M1′ A1 and the frame range: `H_z ≤ h_max ≤ H_z + 1` before the advance
 
-pre_advance_finality §26 Step A (F1) and §23 (the lower bound after `c_z + Δ`).
+F1 and the lower bound after `c_z + Δ`.
 
 * `hmax_le_of_noAdvance` (F1): if no honest node signs at a height `> H_z` at a time `< T`,
   every honest `h_max` at a cut before `T` is `≤ H_z + 1`. A block of state height `≥ H_z + 2`

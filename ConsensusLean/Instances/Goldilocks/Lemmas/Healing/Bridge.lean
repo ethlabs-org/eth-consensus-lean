@@ -8,12 +8,12 @@ public section
 
 /-! # Goldilocks Healing: H.3 (c), the `Geo` half of the bridge
 
-H.3 (c) is the bridge (claims H.3, status L), split as the paper splits it (workbench#14,
-healing-simple `h3-bridge.md` at `ab8459a`) into an `Inv` half and a `Geo` half. The whole-run
-`Inv` half and the combined bridge were retired with the reset-existence route (#136); this file
+H.3 (c) is the bridge (claims H.3, status L), split as the paper splits it
+into an `Inv` half and a `Geo` half. The whole-run
+`Inv` half and the combined bridge were retired with the reset-existence route; this file
 keeps:
 
-* `settled_geo`, the `Geo` half (H.3 (c3)): `h3-bridge.md` §5, from HS.1 and the proposal
+* `settled_geo`, the `Geo` half (H.3 (c3)): from HS.1 and the proposal
   sandwich (the floor and the case are fixed in a settled stable phase, `F` may advance); proved
   in `Geo` (`geo_of_settled`) over the HS.1 interface `viable_witness_retention`. It holds for
   every honest proposal of a settled phase: the reset, `T_b ≥ 8Δ`, `t_p` and `Prop⁺` are not
@@ -38,7 +38,7 @@ theorem _root_.Consensus.Goldilocks.SA.Inv.mono {sp : SAParams} {FGP : Type}
   · exact Or.inr (Or.inl ⟨x, hx, i, hj, hl, by linarith⟩)
   · exact Or.inr (Or.inr ⟨hp, hP, by linarith, hv⟩)
 
-/-- **H.3 (c3), `Geo` in a settled phase** (`h3-bridge.md` §5, from HS.1): for `T_b ≥ 8Δ`, every
+/-- **H.3 (c3), `Geo` in a settled phase** (from HS.1): for `T_b ≥ 8Δ`, every
 honest proposal of a slot `p ≥ s_AC(a_z + T_b)` whose proposal and votes lie in one settled
 effective phase has `Geo(P)` (`geo_of_settled`, which needs neither the reset nor the slot bound).
 -/

@@ -8,8 +8,6 @@ public section
 
 /-! # Goldilocks Healing, HR.4: origins before a cut and the sources of left entries
 
-`hr4-boot-carry.md` §§3, 7; `hr4-cut-scope.md` §4.
-
 * **Prefix comparison before a cut** (`origins_compatible_before`): with `VoteInv` at every cut
   `< k`, a high origin written before `k` is comparable with every high origin active before `k`
   (written before `k`, or whose label's votes all precede `k`). The strict-cut form of the cut
@@ -78,8 +76,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
-/-- **Prefix comparison of two high origins before a cut** (`hr4-cut-scope.md` §4,
-`hr4-boot-carry.md` §§3, 7). With `VoteInv` at every cut `< k`, a high origin `(B, j)` written
+/-- **Prefix comparison of two high origins before a cut**.
+With `VoteInv` at every cut `< k`, a high origin `(B, j)` written
 before `k` or whose slot-`j` votes all precede `k`, and a high origin `(O, l)` written before `k`,
 are comparable: for `l < j` the honest slot-`j` votes counted by `B`'s write extend `O`; for
 `j < l` those counted by `O`'s write extend `B`; for `l = j` the raw selections are compatible by
@@ -149,7 +147,7 @@ theorem origins_compatible_before (hp : ResetPremises tr H proposer dg g ΔF a) 
   · exact (le_max_left _ _).trans (le_max_right _ _)
   · exact (le_max_right _ _).trans (le_max_right _ _)
 
-/-- **The source of a left high entry** (`hr4-boot-carry.md` §7): a high entry `E` of an honest
+/-- **The source of a left high entry**: a high entry `E` of an honest
 store before cut `k` that a held chain has left is named by an honest attestation on a block of
 that store, signed before `k`, whose entry `E` lies below a high origin written by its signer
 before the signing (`high_row_source`). -/
@@ -377,7 +375,7 @@ private theorem restart_emits {b : Time} (hp : ResetPremisesUpTo tr H proposer d
   exact ((SA.restart_state sp) _ ro v (tr.projAC.state v i) ℓ.frame (tr.projAC.time i)
     (SA.frameIn_of_callAt hr hv hc).1 (hr.time_nonneg i)).1
 
-/-- **An optimistic write of slot `m` before a signing at `t_m`** (`hr4-boot-carry.md` §7, the
+/-- **An optimistic write of slot `m` before a signing at `t_m`** (the
 signing at a slot start). The signing is in the signer's tick at `t_m`, so the write is too
 (before the tick, the node's cuts at `t_m` are restarts), and so is every admission of a slot-`m`
 vote into the signer's pools by then (`ac_on_tick` at `t_m` and `ac_proposal` keep the pools,
@@ -509,7 +507,7 @@ private theorem slot_start_optimistic {b : Time}
   obtain ⟨hws, j', hj', e', hve', he'⟩ := SA.optimisticPoint_pool_vote hrun' hv hpt hw (hwv ▸ hv)
   exact ⟨j', hj', e', hwv ▸ hve', by rw [he', hws]⟩
 
-/-- **A delivery at `t_m + Δ` comes after the slot-`m` vote** (`hr4-boot-carry.md` §7, the
+/-- **A delivery at `t_m + Δ` comes after the slot-`m` vote** (the
 signing at `t_m + Δ`). At a public time a node's deliveries follow its tick, and its tick at
 `t_m + Δ` casts its slot-`m` vote unless it voted in slot `m` already; so an honest voter of slot
 `m` accepts no block at `t_m + Δ` before its vote. -/
@@ -610,9 +608,9 @@ private theorem vote_before_late_delivery {b : Time}
       (by rw [hsl']; change sp.slot (tr.time jt) = _; rw [htt, hslot])).1
     omega
 
-/-- **No optimistic source of the vote's own slot** (`hr4-boot-carry.md` §7, "R4's report-time
-argument bounds `l ≤ m − 1` before this vote"; §3, "a label-`(j+1)` optimistic source cannot be
-reported before `t_{j+1} + Δ`", and the `n = 1` causal exception). An honest attestation carried by
+/-- **No optimistic source of the vote's own slot** (R4's report-time
+argument bounds `l ≤ m − 1` before this vote; a label-`(j+1)` optimistic source cannot be
+reported before `t_{j+1} + Δ`, and the `n = 1` causal exception). An honest attestation carried by
 a block that an honest voter holds before its slot-`m` vote is not signed after an optimistic
 fast-lock write of slot `m` by its signer: the attestation was signed once, before the voter
 accepted the block, at a public time in `[t_m, t_m + Δ]` (`sign_public`); at `t_m + Δ` the voter's
@@ -672,7 +670,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
       rw [hcτ', hcc, hts]; ring
     linarith
 
-/-- **The report-time bound** (`hr4-boot-carry.md` §7): the label of a high origin written by
+/-- **The report-time bound**: the label of a high origin written by
 the signer of an honest attestation, before the signing, where the attestation is carried by a block
 that an honest voter holds before its vote, is below the vote's slot: a fast test of slot `l` writes
 at `t_l + 6Δ ≥ t_{l+1}`, an optimistic write of slot `l` is in slot `l ≤ m`, and not of slot `m`

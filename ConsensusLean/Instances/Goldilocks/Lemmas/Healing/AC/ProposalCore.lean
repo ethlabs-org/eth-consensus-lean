@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks Healing: the transfer to the proposal duty over any frames
 
-"The same argument applies at a proposal" (healing-simple `t1-proof.md` §3), over an AC run
+"The same argument applies at a proposal" (T1 §3), over an AC run
 (`ACRun`) with the frame facts as premises, so that H.1 (trivial frames, `StandaloneRun`) and H.2
 (general frames, `InclusionRun`) instantiate the same arguments. An honest `ac_proposal` of slot
 `σ + 1` (at cut `i` of `x`, label `ℓ`, frame `Φ = ℓ.frame`) walks the full viable tree with the

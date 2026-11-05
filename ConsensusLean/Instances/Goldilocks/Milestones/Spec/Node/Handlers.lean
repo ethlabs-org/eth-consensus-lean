@@ -6,9 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 
 /-! # Goldilocks milestone vocabulary: duties, tick steps and event execution
 
-The part of `Spec/Node/Handlers` that no Challenge statement reaches (docs/decisions.md,
-2026-11-04): the milestone statements use it; it is not on the trusted surface. Names and bodies are
-unchanged.
+The part of `Spec/Node/Handlers` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 * `propose_block(H, p)`: the block with parent `H`, slot `slot(t)`, proposer `self`, the
   attestations `proposal_attestations(Σ, H)` and the AC payload `p`, its root the digest of its

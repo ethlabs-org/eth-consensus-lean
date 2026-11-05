@@ -11,7 +11,6 @@ public section
 
 /-! # Goldilocks Healing: H.2, clean raw origins transfer, the drain, settled locks
 
-workbench `h2-open-items.md`:
 * §6.1 (with §§2–3 and §5's root-covered reads): a clean raw origin `(B, j)` is carried by every
   honest vote and honest proposal head of a later slot (`raw_origin_transfer`), by increasing
   duty label: the first slot-`(j+1)` votes from the raw evidence, fast (`raw_fast_first_votes`,

@@ -13,9 +13,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: assembly of the route-A final window (#136)
+/-! # Goldilocks Obligations: assembly of the route-A final window
 
-consensus-lean#136. `final_window_extract_of` has the statement of the leaf
+`final_window_extract_of` has the statement of the leaf
 `final_window_extract` (Concrete.lean), from explicit premises only:
 
 * (H1) `hreset`: the reset premises `ResetPremisesUpTo` through the horizon, at GST `Q.gst`,
@@ -24,7 +24,7 @@ consensus-lean#136. `final_window_extract_of` has the statement of the leaf
 * (H3) `hplace`: the placement `(P)` of the two queries, with `u_min = finalSeedMin Q a`;
 * (H4) `hcarrier`: the OPEN `carrierProcessed` field of `FinalWindowData` for the last anchor.
 
-`final_window_extract_of_gap` is the general form (workbench `two_bound_network.md` §4): an
+`final_window_extract_of_gap` is the general form: an
 anchor gap `c` with `2 ≤ c`, the span `3c ≤ δt`, the final pattern `[0, c, 2c, 3c]` (`hpat`),
 `ΔF` a parameter (`HSSharedUpTo` at `ΔF` and `6Δ + ΔF ≤ 4Δ·c` explicit) and the latency budget
 `hlat` of a span-`3c` window explicit. `final_window_extract_of_shared` is its instance at the
@@ -43,8 +43,8 @@ open SA (gbar)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
-/-- The least seed slot of a reset at `a`: past the drain, `slot(a) + 2k + 5`. A slot count only
-(#145): `ḡ + 4Δ ≤ t_u` is not part of it, the assembly reads it off the first query, which is
+/-- The least seed slot of a reset at `a`: past the drain, `slot(a) + 2k + 5`. A slot count only:
+`ḡ + 4Δ ≤ t_u` is not part of it, the assembly reads it off the first query, which is
 strictly after `ready ≥ ḡ + 18Δ + 1`. -/
 noncomputable abbrev finalSeedMin (Q : FinalQuery S A V) (a : Time) : Nat :=
   Q.params.slot a + 2 * Q.params.k + 5

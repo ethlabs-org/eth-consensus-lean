@@ -6,9 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
 
 /-! # Goldilocks milestone vocabulary: Goldilocks runs
 
-The part of `Spec/Run/Goldilocks` that no Challenge statement reaches (docs/decisions.md,
-2026-11-04): the milestone statements use it; it is not on the trusted surface. Names and bodies are
-unchanged.
+The part of `Spec/Run/Goldilocks` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 The Goldilocks node is `goldilocksNode sp ro` (`Spec/Run/Goldilocks`). `GoldilocksRun proposer dg H
 tr` is a run of it: `Node.LocalRun` with the vote's validator as the message signer, plus

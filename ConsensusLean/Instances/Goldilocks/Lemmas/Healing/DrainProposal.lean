@@ -8,10 +8,9 @@ public section
 
 /-! # Goldilocks Healing, HS.2: the proposal boundary
 
-`hs234-exact-interface.md` §2.2 (last paragraph) and §3 (last paragraph), under the settled
-context `Γ` of §1 (`DrainCommon`): the honest proposal `P` of a slot `s` follows a clean origin
-`(B, j)` with `j < s` whose writer wrote before an in-phase honest slot-`s` vote, when every
-honest vote of a slot `> j` before that vote extends `B`.
+Under the settled context `Γ` of `DrainCommon`: the honest proposal `P` of a slot `s` follows a
+clean origin `(B, j)` with `j < s` whose writer wrote before an in-phase honest slot-`s` vote, when
+every honest vote of a slot `> j` before that vote extends `B`.
 
 * The proposal's cut precedes the vote's cut (`proposal_cut_lt`): a late vote is after `t_s`,
   and an early one holds a slot-`s` block of the honest proposer, which it accepted after the
@@ -227,7 +226,7 @@ private theorem proposer_high_locks
   · exact Or.inl (hLO.trans h)
   · exact SA.anc_total hU hLO h
 
-/-- **The proposal follows `B` when its duty does** (`hs234-exact-interface.md` §2.2, the
+/-- **The proposal follows `B` when its duty does** (the
 proposal boundary): under `Γ` (without `Prop⁺`), let an honest vote of a clean slot `j` extend
 `B`, and `y` cast an in-phase honest vote of a slot `s > j`. The proposal of slot `s` precedes
 that vote (`proposal_cut_lt`); if its head extends `B` whenever (V) holds for `B` there and
@@ -287,8 +286,8 @@ private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr)
       ⟨hBt, Or.inr (SA.anc_tree_of_anc_U hU hΦ hΦU hBt h hΦ.fcRoot_mem)⟩ hFB
   · exact hcore hcP hcall hprop htP' hkPk ⟨h.1, Or.inl h⟩ ((hΦ.rooted.2 B h.1).mono hΦU)
 
-/-- **The proposal of slot `σ + 1` follows `B`, at its own cut** (`hs234-exact-interface.md`
-§2.2, keyed on the in-phase proposal cut; `proposal_extends_of_batch` keys it on a vote): under
+/-- **The proposal of slot `σ + 1` follows `B`, at its own cut**
+(keyed on the in-phase proposal cut; `proposal_extends_of_batch` keys it on a vote): under
 `Γ` (without `Prop⁺`), let an honest vote of a clean slot `jw ≤ σ` extend `B`, and let every
 honest vote of a slot `≥ σ` before the proposal's `ac_proposal` cut extend `B`. Then its head
 extends `B`: unless `B ⪯ Σ.F`, `B` is viable in the proposer's full tree (`clean_vote_frame`),
@@ -391,8 +390,8 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
   exact SA.batch_proposal hrun' hS.two_faulty_lt (SA.honest_voters_half hS hσg) hB hpH hcP
     (SA.proposal_slot htP) hprop hV hPv hhigh
 
-/-- **The proposal of a slot `s ≥ j + 2` follows `B`** (`hs234-exact-interface.md` §2.2, "for
-subsequent slots use the unanimous honest batch"): under `Γ` (without `Prop⁺`), let an honest
+/-- **The proposal of a slot `s ≥ j + 2` follows `B`** (for
+subsequent slots by the unanimous honest batch): under `Γ` (without `Prop⁺`), let an honest
 vote of a clean slot `j` extend `B`, and let every honest vote of a slot `> j` before an in-phase
 honest slot-`s` vote extend `B`. Then the honest slot-`s` proposal `P` extends `B`: its
 `ac_proposal` cut precedes the vote (`proposal_follows`), so `proposal_head_of_batch` applies at
@@ -419,8 +418,8 @@ theorem proposal_extends_of_batch (hrun : GoldilocksRun proposer dg H tr)
     (hk.mono_right hkPk.le) fun z hz k' hk' e' hv' hs' => hprior z hz k' (hk'.trans hkPk) e' hv'
       (by omega)
 
-/-- **The proposal of slot `j + 1` follows an optimistic origin** (`hs234-exact-interface.md`
-§2.2 "the same proof at a proposal boundary", §3): under `Γ` (without `Prop⁺`), let an honest
+/-- **The proposal of slot `j + 1` follows an optimistic origin**
+(the same proof at a proposal boundary): under `Γ` (without `Prop⁺`), let an honest
 optimistic lock of a clean label `j` select `D ⪰ B`, and let every honest vote of a slot `> j`
 before an in-phase honest slot-`(j+1)` vote extend `B`. Then the honest slot-`(j+1)` proposal
 extends `B` (`proposal_follows`): the counted votes and their heads reach the proposer (relay
@@ -502,8 +501,8 @@ private theorem two_le_of_update (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ### HS.2 (3) at the proposal boundary -/
 
-/-- **Proposal-boundary transfer of a clean slow origin** (`hs234-exact-interface.md` §2.2 last
-paragraph, §3 last paragraph): under `Γ` (without `Prop⁺`), let `x` write a slow lock of label
+/-- **Proposal-boundary transfer of a clean slow origin**:
+under `Γ` (without `Prop⁺`), let `x` write a slow lock of label
 `j` (`t_{j−k+1} ≥ w + 4Δ`) with stored block `B` before an in-phase honest vote of slot `s > j`,
 before which every honest vote of a slot `> j` extends `B`. Then the honest slot-`s` proposal
 extends `B`: the write is at `t_j + 6Δ`, so `s ≥ j + 2`, and an honest supporter of the update's
@@ -535,8 +534,8 @@ theorem clean_slow_proposal (hrun : GoldilocksRun proposer dg H tr) (hs : HSShar
   exact proposal_extends_of_batch hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩
     hP (he ▸ two_le_of_update hrun hs.noColl hupd hy hv hik) hy hv he hk hprior
 
-/-- **Proposal-boundary transfer of a clean fast origin** (`hs234-exact-interface.md` §2.2 last
-paragraph, §3 last paragraph): under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean
+/-- **Proposal-boundary transfer of a clean fast origin**:
+under `Γ` (without `Prop⁺`), let `x` write a fast lock of a clean
 label `j` with stored block `B` before an in-phase honest vote of slot `s > j`, before which every
 honest vote of a slot `> j` extends `B`. Then the honest slot-`s` proposal extends `B`: an honest
 counted vote extends the selection `D ⪰ B` (`fastLock_honest_vote`); for `s ≥ j + 2` the honest

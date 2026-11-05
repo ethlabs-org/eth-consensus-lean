@@ -180,7 +180,7 @@ theorem poll_duty_every_tick :
   ⟨by decide, ((pollShape pub2).skel.duties_spec _ _).mpr
     ⟨List.mem_cons_of_mem _ List.mem_cons_self, rfl⟩⟩
 
-/-- `shapeProgress` keeps its data fields (plan §2.1: only its proof fields `mono`/`shrink`
+/-- `shapeProgress` keeps its data fields (only its proof fields `mono`/`shrink`
 were rewritten, to inline term proofs). -/
 theorem shapeProgress_holds {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
     (F : ChainShapeFamily O Info) (V : Type) [Fintype V] [DecidableEq V] :

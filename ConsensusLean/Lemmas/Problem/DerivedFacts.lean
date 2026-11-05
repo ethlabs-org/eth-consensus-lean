@@ -7,7 +7,7 @@ public section
 
 `Trace.map` and `CommLog.SendsFromZero` with their characterising lemmas: read by
 the L0 facts and the proofs, by no instance statement. Split from `Derived.lean`
-so that editing them needs no tag move (#38 follow-up). Importers use this file;
+so that editing them needs no tag move. Importers use this file;
 it re-exports `Derived.lean`. -/
 
 namespace Consensus

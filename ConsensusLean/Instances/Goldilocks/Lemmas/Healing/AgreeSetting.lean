@@ -12,7 +12,7 @@ public section
 
 /-! # Goldilocks Healing, HS.3: the setting of frozen-tree agreement
 
-`hs234-exact-interface.md` §4 (HS.3 (a), with the restored settled premise of #95), the facts
+HS.3 (a), with its settled premise: the facts
 that do not compare walks:
 
 * **The phase-interval sandwich** (`phaseOn_squeeze`, `phaseOn_voter`): the phase `(m, c)` at
@@ -101,7 +101,7 @@ private theorem case_eq {β : Type} {c c' : PhaseCase β} (h₁ : c.rank ≤ c'.
     | omega
     | rw [Option.some.inj (ht _ rfl)]
 
-/-- **The phase-interval sandwich** (`hs234-exact-interface.md` §4): the phase `(m, c)` at two
+/-- **The phase-interval sandwich**: the phase `(m, c)` at two
 cuts `a ≤ b` is the phase at every cut between them. -/
 theorem phaseOn_squeeze (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF) {a b : Nat}
@@ -136,7 +136,7 @@ theorem le_of_settledIn (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hk : w ≤
   have := hw.2.1.2 k (not_le.1 h)
   linarith
 
-/-- **The phase from the settled cut** (`hs234-exact-interface.md` §4): with `i ≤ k` and the
+/-- **The phase from the settled cut**: with `i ≤ k` and the
 phase `(m, c)` on `[i, k]`, the phase is `(m, c)` on `[i₀, k]` (the sandwich on `[i₀, i]`). -/
 theorem phaseOn_voter (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hik : i ≤ k)
@@ -214,7 +214,7 @@ section Setting
 
 variable {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
 
-/-- **The setting of HS.3 (a)**: its premises (with the settled premise of #95), and the
+/-- **The setting of HS.3 (a)**: its premises (with the settled premise), and the
 proposal's `ac_proposal` call at cut `iP`, at `t_s`, with duty head `d` (`P.parent = d.head`)
 and payload `pay`. -/
 structure AgreeSetting (proposer : Nat → Fin sp.n)

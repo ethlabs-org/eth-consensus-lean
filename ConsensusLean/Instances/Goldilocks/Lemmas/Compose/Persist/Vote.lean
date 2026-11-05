@@ -167,7 +167,7 @@ theorem vote_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg 
 
 /-- **C1.1 (ii) at a vote**: when (i) holds at an honest vote of a slot `σ ∈ (s, m]` and every
 honest vote of a slot in `(s, m]` at an earlier cut extends `B`, the vote extends `B`: below
-`fc_root` by requirement 1, otherwise by A1.2 for `σ = s + 1` (its stored-block form, #75) and by
+`fc_root` by requirement 1, otherwise by A1.2 for `σ = s + 1` (its stored-block form) and by
 A1.3 after (every slot-`(σ − 1)` vote is at an earlier cut). -/
 theorem vote_extends (hrun : GoldilocksRun proposer dg H tr)
     {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}

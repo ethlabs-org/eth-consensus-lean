@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks Healing, HS.2: clean-lock transfer and the two-window drain
 
-`hs234-exact-interface.md` §3, under the settled context `Γ` of §1 (`DrainCommon`).
+Under the settled context `Γ` of `DrainCommon`.
 
 * **Extension** (proved): every in-phase honest vote of a slot `> j` extends a clean origin's
   stored block `B` (`clean_fast_extends`, `clean_slow_extends`), by induction on the cut of the
@@ -96,8 +96,8 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
       SA.slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
     exact hE _ hvH j hj e' hvote (by omega)
 
-/-- **First transfer of a clean slow origin** (`hs234-exact-interface.md` §3, the slow helper;
-§2.2's ancestor-target score lemma): under `Γ` (without `Prop⁺`), at an honest slot-`(j+1)` vote,
+/-- **First transfer of a clean slow origin** (the slow helper;
+the ancestor-target score lemma): under `Γ` (without `Prop⁺`), at an honest slot-`(j+1)` vote,
 given `Carry` of the writer's result votes, the frozen viability of the stored block `B` and the
 earlier honest votes of slots `> j` extending `B`, the vote extends `B`. This is A1.8 for the
 ancestor `B ⪯ D ⪯ C` of the update's result `C` (`result_transfer_anc`: the counted supporters
@@ -141,8 +141,8 @@ theorem clean_slow_first_extends (hrun : GoldilocksRun proposer dg H tr)
       fun z hz k' hk' e' hv' hs' => hprior z hz k' hk' e' hv' (by omega))
     (SA.writer_merged hS.run hx hupd hy hv he (hS.syncAC (by linarith) _))
 
-/-- **Stored slow-lock provenance** (`hs234-exact-interface.md` §3 "every lock image retains its
-original label"; the slow case of HR.4's `stored_fast_lock_provenance`): every slow lock an honest
+/-- **Stored slow-lock provenance** (every lock image retains its
+original label; the slow case of HR.4's `stored_fast_lock_provenance`): every slow lock an honest
 node holds before cut `k` sits below the stored block `Φ.viableAncestor D` of a slow-lock write of
 its slot at an earlier cut of the node (`add_locks` stores that block; the lock functions only
 move locks back; `SA.slow_lock_provenance_stored` over the AC projection). -/
@@ -292,7 +292,7 @@ theorem clean_slow_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
 
 /-! ### HS.2 (1), (2) -/
 
-/-- **HS.2 (1) at the next slot** (`hs234-exact-interface.md` §3 `clean_fast_next`). -/
+/-- **HS.2 (1) at the next slot**. -/
 theorem clean_fast_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
@@ -310,7 +310,7 @@ theorem clean_fast_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk⟩,
     clean_fast_carry hrun hs hc hw hx ho hj hy hv he hk⟩
 
-/-- **HS.2 (1) at a later slot** (`hs234-exact-interface.md` §3, the propagation helper). -/
+/-- **HS.2 (1) at a later slot** (the propagation helper). -/
 theorem clean_fast_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
@@ -323,7 +323,7 @@ theorem clean_fast_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hext := clean_fast_extends hrun hs hc hw hx ho hj
   exact ⟨hext k y hy ℓ e hv hjs hk, clean_fast_viable hrun hs hc hw hx ho hj hy hv hjs hk⟩
 
-/-- **HS.2 (2) at the next slot** (`hs234-exact-interface.md` §3, the slow helper). -/
+/-- **HS.2 (2) at the next slot** (the slow helper). -/
 theorem clean_slow_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
@@ -341,7 +341,7 @@ theorem clean_slow_next (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     clean_slow_viable hrun hs hc hw hx ho hj hy hv (by omega) hk⟩,
     fun _ _ hC hroot => clean_slow_carry hrun hs hc hw hx ho hj hy hv he hk hC hroot⟩
 
-/-- **HS.2 (2) at a later slot** (`hs234-exact-interface.md` §3, the propagation helper). -/
+/-- **HS.2 (2) at a later slot** (the propagation helper). -/
 theorem clean_slow_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
     {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
@@ -355,7 +355,7 @@ theorem clean_slow_later (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
 
 /-! ### HS.2 (3): the drain and the proposal boundary -/
 
-/-- **HS.2 (3), the two-window drain** (`hs234-exact-interface.md` §3 "the drain helper"): a
+/-- **HS.2 (3), the two-window drain**: a
 lock live at a time `t ≥ r` keeps its label `l` with `slot(t) ≤ l + k`; as
 `slot(t) ≥ a + 2k + 2`, `l ≥ a + k + 2`, so the lock is clean. -/
 theorem live_lock_clean {t : Time} (ht : rTime sp w ≤ t) {L : Set SA.Lock}
@@ -374,7 +374,7 @@ theorem live_lock_clean {t : Time} (ht : rTime sp w ≤ t) {L : Set SA.Lock}
   exact ⟨fun _ => ha.trans ((SA.ts_le_iff sp).2 (by omega)),
     fun _ => ha.trans ((SA.ts_le_iff sp).2 (by omega))⟩
 
-/-- **HS.2 (3), the proposal boundary** (`hs234-exact-interface.md` §3 last paragraph): at an
+/-- **HS.2 (3), the proposal boundary**: at an
 in-phase honest slot-`s` vote, `t_s ≥ r`, every live lock of a label `< s` has its block below the
 honest slot-`s` proposal `P` or at or below the voter's `fc_root`. -/
 theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr)

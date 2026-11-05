@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 
 /-! # Goldilocks milestone Healing: the run-level healing statements (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Healing: top-level
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level
 statements" (HR.1–HR.4, H.2 (run), H.3, H.4) and §"Healing: phase service" (the HS shared
 premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
 (`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`).
@@ -231,7 +231,7 @@ structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Ti
   noColl : Compose.NoCollRun dg tr
   /-- Genesis's root is its digest (as C0.3 and A1.7 take it): otherwise an honest proposal
   whose digest is the genesis root is refused by every FG, and the healing statements that need
-  honest proposals to be accepted (HR.3's reset, C1.2, H.3, H.4) fail (consensus-lean#73). -/
+  honest proposals to be accepted (HR.3's reset, C1.2, H.3, H.4) fail. -/
   genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- `Healthy(g)`. -/
   healthy : tr.HealthyRun H ΔF g
@@ -440,7 +440,7 @@ end Top
 
 /-- **H.2 (run), AC inclusion in runs.** In a Goldilocks run (unforgeable signatures) under
 `NoColl`, a genesis whose root is its digest (so that the honest proposal of driven-trace clause (b)
-is accepted, as C0.3; consensus-lean#73), `Healthy(g)` and `Catch(2Δ)`, the AC projection is a
+is accepted, as C0.3), `Healthy(g)` and `Catch(2Δ)`, the AC projection is a
 driven AC trace (clause (a) from the FG's acceptance tests, C0.5 (b) `Compose.ACSeesAcceptedBlocks`;
 clause (b) from C0.4) with `Healthy(g)` and `Catch(2Δ)` read on it, inside the honest blocks of the
 run; and H.2 holds for the run: for `t₀ ≥ ḡ` with `Inv(t₀)` on the projection and an honest proposal

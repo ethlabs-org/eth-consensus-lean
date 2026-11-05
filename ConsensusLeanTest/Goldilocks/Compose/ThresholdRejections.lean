@@ -18,7 +18,7 @@ conflicting children `B`, `C` of `g`:
   both; one equivocator (`2 · 1 < 3`), each block has two optimistic voters (`9 ≤ 9`, but
   `9 > 8`), and `B`, `C` conflict.
 * (r) `honestBlockAccepted_needs_genesisRoot`: `HonestBlockAccepted` (C0.3) without its premise
-  that genesis's root is its digest fails (consensus-lean#73 style). On
+  that genesis's root is its digest fails. On
   `Goldilocks/Compose/Statements`'s `rootAC` with a digest `dg₂` under which genesis (slot `0`) has
   digest `5 ≠ 0 = genesisRoot` and a slot-`1` block has digest `0`: the AC meets its requirements,
   the proposer's tick at `t_1 = 1` from the initial configuration is a step, and `ac_proposal`

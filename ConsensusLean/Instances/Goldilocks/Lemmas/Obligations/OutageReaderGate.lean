@@ -16,12 +16,11 @@ public section
 
 /-! # Goldilocks outage: the reader's latest gate (O4, E0–E4) and the source prefix
 
-Workbench `notes/outage/outage_reader_bridge.md` (35ec2da), §2, §3 and §10.2. A reader ready at
-`t` from the recovery point `b₁ + 9Δ` has its latest gate `s = slot(t − 6Δ)`: `b₁ ≤ t_s + Δ`,
-the update of slot `s` at `d_s = t_s + 6Δ ≤ t < t_s + 10Δ` before the read cut, no restart after
-`t_s` up to `t`, and the latest view at `t` of label `s + 1`. Only readiness, joining, the gate
-tick and the read cut are used: no vote, frame walk or voter tree. `outage_reader_prefix` turns
-ancestry of the two read tips into the prefix of the engine reads. -/
+A reader ready at `t` from the recovery point `b₁ + 9Δ` has its latest gate `s = slot(t − 6Δ)`:
+`b₁ ≤ t_s + Δ`, the update of slot `s` at `d_s = t_s + 6Δ ≤ t < t_s + 10Δ` before the read cut, no
+restart after `t_s` up to `t`, and the latest view at `t` of label `s + 1`. Only readiness,
+joining, the gate tick and the read cut are used: no vote, frame walk or voter tree.
+`outage_reader_prefix` turns ancestry of the two read tips into the prefix of the engine reads. -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation

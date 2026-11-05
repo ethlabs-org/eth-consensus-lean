@@ -3,11 +3,11 @@ public import ConsensusLean.Init
 
 public section
 
-/-! # Goldilocks FG liveness: the constants of the r14 proof chain
+/-! # Goldilocks FG liveness: the constants of the paper proof chain
 
-The slot constants of the paper proof chain (workbench `fg-liveness/r14-end-to-end`, README §2),
+The slot constants of the paper proof chain,
 as functions of the parameters only: `k` (lock lifetime in slots), `gapH` (the honest-proposer
-gap, r14 `g`; `g` stays the GST time in this project), `cF` (r14 `c`, the attestation delivery
+gap, the paper's `g`; `g` is the GST time here), `cF` (the paper's `c`, the attestation delivery
 slots) and `δt` (the timeout delay). `P` is the number of phases per top height (3 under the premise
 NF, `3 + 2m̄` with a bound `m̄` on finality moves). All values are in slots. -/
 

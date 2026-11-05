@@ -6,8 +6,8 @@ public section
 
 /-! # Goldilocks Healing, HS.3: the proposal's view and a voter's merged view agree
 
-`hs234-exact-interface.md` §4 (workbench#12 §3, first paragraph; as A1.7's view agreement in
-`Compose/Service/Suffix`): in the settled phase of `AgreeSetting`, the proposal's view
+As A1.7's view agreement in
+`Compose/Service/Suffix`: in the settled phase of `AgreeSetting`, the proposal's view
 (`View.ofLists pay`, the proposer's slot-`(s−1)` pool) and an honest slot-`s` voter's merged view
 have the same equivocators and voters, and the same supporters for every block of both trees
 (`SA.view_agree`: the voter's pre-freeze votes and blocks reach the proposer by `t_s`, the support

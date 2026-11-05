@@ -11,7 +11,7 @@ public section
 Under `GW(E, a, k_F)` (`GoodWindow`), the chain of the serving block `B*` justifies the entry `E` at
 `B*` or earlier, at a block `X` before which the height is not left; `X` enters the next height as
 its own entry, with `(h, T_h)` pending; and at an entry whose previous height is justified `X` has
-finalized `P_E` (`window_justifies`, theorem.md §3). The attestations of `GW` are on `B*`'s chain
+finalized `P_E` (`window_justifies`). The attestations of `GW` are on `B*`'s chain
 (on the parent's, or pooled and so included by the honest proposal); while `h` is current they stay
 valid and their target and finality bits persist; no block before `B*` is old enough to time out
 (`v* ≤ u + D ≤ u + δ_t`), and `B*` tests justification before the timeout. The state of a block is

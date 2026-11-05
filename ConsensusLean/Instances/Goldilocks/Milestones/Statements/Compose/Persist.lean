@@ -6,8 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.T
 
 /-! # Goldilocks milestone Persist, part 2: honest fast confirmations persist (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks main
-`4ea71d05`), C1.1 over the Goldilocks run (`Spec/Run`, `GoldilocksRun`): the induction over the
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`,
+C1.1 over the Goldilocks run (`Spec/Run`, `GoldilocksRun`): the induction over the
 events of the run (F.5 (run)) that joins the per-vote transfer steps A1.2–A1.4 (`Statements/AC`),
 the source step A1.9 and the FG cut G1.10 (`Statements/FGStore`). Its premises are the run
 premises of the claims (`Sync[t_s, t_m + Δ]`, `Carry`, half-committee honest votes, `f < h_t` at
@@ -121,7 +121,7 @@ of `X`; (b) if `X` conflicts with `B`, `σ[X].h ≤ σ[P].h + 1` for `P` the dee
 of `X` and `B`; (c) `y`'s `Σ.F` and `Σ.J` stay compatible with `B` on `[t_s, T + Δ)` (at every
 cut in it and at its end) and after the cut that accepts its own proposal at `T + Δ`.
 
-This spells G1.10's conclusion out at C1.1's scope because FGStore (#67) states only G1.10's
+This spells G1.10's conclusion out at C1.1's scope because FGStore states only G1.10's
 core (`QuorumFreeEntries`). When FGStore states G1.10 at C1.1's scope (with its excluded-entry
 set), this structure should become an instance of that statement over `tr.projFG`, not a
 restatement. -/
@@ -159,7 +159,7 @@ structure PersistAt (B : SA.Blk sp.n (List (FG.Att sp.n))) (s s' : Nat) : Prop w
   cut : ∀ y ∈ H, CutScopeAt tr H y B s (sp.ts s' + sp.Δ)
   /-- (i) viability at every honest vote of slot `s'`: `B` is in the viable voter block tree, or
   `B ⪯ fc_root` in the block order of the honest blocks (not inside the frame tree, which `B`
-  leaves once `Σ.F` passes it; goldilocks claims C1.1 (i), consensus-lean#78). -/
+  leaves once `Σ.F` passes it; claims C1.1 (i)). -/
   viable : ∀ y ∈ H, ∀ i ℓ e, SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s' →
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame s') ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot

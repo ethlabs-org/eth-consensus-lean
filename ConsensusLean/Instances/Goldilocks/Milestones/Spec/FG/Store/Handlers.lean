@@ -5,9 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
 
 /-! # Goldilocks milestone vocabulary: store steps
 
-The part of `Spec/FG/Store/Handlers` that no Challenge statement reaches (docs/decisions.md,
-2026-11-04): the milestone statements use it; it is not on the trusted surface. Names and bodies are
-unchanged.
+The part of `Spec/FG/Store/Handlers` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 `Store.Step`: one FG store step (an accepted block or a processed attestation); `Reachable`: the
 FG states that the handlers reach from the initial state. -/

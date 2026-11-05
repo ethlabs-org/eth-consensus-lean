@@ -8,7 +8,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: (i), no honest lock conflicting with `P` (card §5.2)
+/-! # Outage lock safety: (i), no honest lock conflicting with `P`
 
 Every stored honest lock lies below a block written at an earlier cut (`lock_origin`,
 `fast_lock_provenance`, `slow_lock_compatible`):

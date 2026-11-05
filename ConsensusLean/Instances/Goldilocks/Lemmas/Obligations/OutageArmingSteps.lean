@@ -18,7 +18,7 @@ public section
 
 /-! # Goldilocks outage: the arming steps (S-vote and slow-lock formation)
 
-Workbench `notes/outage/outage_arming.md` (b4ba553), §§1–7. For an outage `[b₀, b₁)` armed at
+For an outage `[b₀, b₁)` armed at
 `T` under the lag `(4k+6)Δ` (node units), every origin `C` within `T` has a label `σ` with
 `σ + k < j₀`, `j₀ := coverLabel b₀` (§1); every honest vote of a slot in `(σ, j₀]` extends `C`
 (S-vote, §3); an honest updater whose slot's votes are delivered by `t_s + 2Δ ≤ b` has a result

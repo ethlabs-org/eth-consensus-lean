@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 
 public section
 
-/-! # Goldilocks Obligations: the named coefficients of the nonfinal reset envelope (#136, S5/S6)
+/-! # Goldilocks Obligations: the named coefficients of the nonfinal reset envelope (S5/S6)
 
 Characterising lemmas of parameter-only coefficients, functions of the setup `S` and the index `X`
 alone, shared by the reset envelope (`HealthyResetEnvelope`, S5) and the heal coefficient (S6), all

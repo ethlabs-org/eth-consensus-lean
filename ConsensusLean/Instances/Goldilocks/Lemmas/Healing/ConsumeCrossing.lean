@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing, HS.5: the mature crossing
 
-`hs5-exact-helpers.md` §3.1 (the FG part of `mature_progress_of`): an honest proposal
+The FG part of `mature_progress_of`: an honest proposal
 `X` whose parent `Pr` has state height `h` and the entry `E` (slot `u`), with `u + δ_t ≤ X.slot`,
 and whose proposer has processed a matching attestation of every honest validator before its
 proposal cut, has state height `≥ h + 1` (`crossing_of_rows`).
@@ -192,7 +192,7 @@ theorem processed_att_retained (hrun : GoldilocksRun proposer dg H tr)
     (h : tr.ProcessAttAt y k a) (hkj : k < j) : a ∈ (tr.state y j).fg.atts := by
   exact atts_mono hrun hy (by omega) (mem_atts_of_process hrun hy h)
 
-/-- **The mature crossing at an honest proposal** (`hs5-exact-helpers.md` §3.1): an honest
+/-- **The mature crossing at an honest proposal**: an honest
 proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by an honest node),
 `Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching attestation of every honest
 validator processed by the proposer before its proposal cut: `X` has state height `≥ h + 1`. -/

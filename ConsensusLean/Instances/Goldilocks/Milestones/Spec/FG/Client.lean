@@ -5,8 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.FG.Client
 
 /-! # Goldilocks milestone vocabulary: client runs
 
-The part of `Spec/FG/Client` that no Challenge statement reaches (docs/decisions.md, 2026-11-04):
-the milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/FG/Client` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 `Record.run`: the record and the attestations sent, from a sequence of entry states. -/
 

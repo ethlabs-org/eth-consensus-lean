@@ -8,15 +8,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: C4 of the Healed bundle from the reset (WI-17)
+/-! # Goldilocks Obligations: C4 of the Healed bundle from the reset
 
-consensus-lean#135, WI-17; workbench `notes/fg-liveness/r14-end-to-end/s4-follow.md` L4.6 (C4,
-no reorg of honest blocks). Under `Healing.ResetPremises` and Catch(2Δ), an honest operational
-proposal of a post-drain slot `s` is an ancestor of every honest proposal of a slot `s' ≥ s + 2`
-(`honest_proposal_below_later_upTo`, from `UpTo.operational_proposal_below_later_parent`). Every
-honest proposal is operational (`proposesAt_of_honestProposalRun`), and the adjacent pairs
-`s' = s + 1` follow from the slot-`s` batch (`honest_proposal_below_next_upTo`,
-`SA.batch_proposal`). -/
+L4.6 (C4, no reorg of honest blocks). Under `Healing.ResetPremises` and Catch(2Δ), an honest
+operational proposal of a post-drain slot `s` is an ancestor of every honest proposal of a slot
+`s' ≥ s + 2` (`honest_proposal_below_later_upTo`, from
+`UpTo.operational_proposal_below_later_parent`). Every honest proposal is operational
+(`proposesAt_of_honestProposalRun`), and the adjacent pairs `s' = s + 1` follow from the slot-`s`
+batch (`honest_proposal_below_next_upTo`, `SA.batch_proposal`). -/
 
 namespace Consensus.Goldilocks.Obligations
 

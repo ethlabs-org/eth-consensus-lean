@@ -26,7 +26,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the suffix of the proposal walk
 
-workbench#12 §3: on the proposal walk from the pivot `D` to `Q = P.parent`, at every block below
+On the proposal walk from the pivot `D` to `Q = P.parent`, at every block below
 `Q` at or above a voter's anchor, the proposer's best child is the voter's best child. Its pieces:
 
 * `winner_on_path` (proved): the proposer's best child `C` at a block `X ≠ Q` of the walk is on
@@ -199,11 +199,11 @@ private theorem vote_rows_old (hrun : GoldilocksRun proposer dg H tr) (hnc : NoC
     exact (no_optimistic_before_held_row_of hrun hnc hf hy hc hes hm hmj hav
       hkm hsg hz hck hOp).elim
 
-/-- **The head height floor at an honest vote is at most the height of a held block above every
-old origin** (workbench#12 §2,
-`floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest attestations are below old
-origins (`vote_rows_old`), so below the block; so there is no contest, and the carrier of `h_max`
-crossed `h_max − 1` with such a source, whose entry, below the block, has height `h_max − 1`. -/
+/-- **The head height floor at an honest vote is at most the height of a held block above every old
+origin** (`floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest attestations are
+below old origins (`vote_rows_old`), so below the block; so there is no contest, and the carrier of
+`h_max` crossed `h_max − 1` with such a source, whose entry, below the block, has height
+`h_max − 1`. -/
 private theorem vote_floor_le_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -723,7 +723,7 @@ private theorem views_agree_before {b : Time}
       linarith [not_lt.1 hE]
 
 omit hsl hpj hsD in
-/-- **No old child of `Q` is eligible at the voter** (workbench#12 §3, the `X = Q` case of the
+/-- **No old child of `Q` is eligible at the voter** (the `X = Q` case of the
 leaves): a child `B ≠ P` of `Q` (of a slot below `s`) in the voter's viable voter block tree is
 stamped before the vote freeze (it is not an ancestor of the slot-`s` block `P`), so it is in the
 proposer's tree, and a viable head there (its height is at least `Q`'s, a proposer viable head);
@@ -863,9 +863,9 @@ theorem old_child_ineligible_before {b : Time}
 
 end Leaves
 
-/-- **The suffix** (workbench#12 §3; over the leaves above): at every block `X` from the pivot `D`
+/-- **The suffix** (over the leaves above): at every block `X` from the pivot `D`
 to `Q` (in the proposer's tree) at or above the voter's anchor, the proposer's best child is the
-voter's best child. Only the winner is compared: in reachable runs (sa-fg-model 7f7e660) a
+voter's best child. Only the winner is compared: in reachable runs a
 voter-eligible competitor need not be proposer-eligible (the frame moves between the proposal read
 and the vote, e.g. `Σ.F` rises to `X` when the node accepts `P`, and every child of `X` becomes
 eligible), and competitor scores differ between the views; below the voter's anchor the proposer's
@@ -938,7 +938,7 @@ theorem suffix_agree_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H
       competitor_reflect_before hrun hnc hp hP hPs hc hcall hd hti hPQ hviab hy hcy hes
         hs hib hDX hXQ hne hBX hB) hC
 
-/-- **`P` is in the voter's viable voter block tree** (workbench#12 §3: `P` extends every
+/-- **`P` is in the voter's viable voter block tree** (`P` extends every
 receiving `Σ.F`, so it is accepted by the joined voter before its vote, which waits for a ready
 proposal or `t_s + Δ`; it is viable, as an allowed witness above both floors). -/
 theorem proposal_at_voter_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}

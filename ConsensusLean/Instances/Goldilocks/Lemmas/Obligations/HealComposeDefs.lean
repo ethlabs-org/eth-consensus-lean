@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 
 public section
 
-/-! # Goldilocks Obligations: definitions of the M1′ composition (#136)
+/-! # Goldilocks Obligations: definitions of the M1′ composition
 
 The drain interface `DrainOutputs` and the sub-interval restriction `frameWindow_sub`, inputs of
 the drain reset `exists_reset_of_drain_rounds` (`ResetOfDrainRounds`). This module imports only the
@@ -18,7 +18,7 @@ section Drain
 
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- **The drain outputs (to be supplied by Sol's DrainWindow, P5).** For every slot-aligned
+/-- **The drain outputs (to be supplied by the DrainWindow, P5).** For every slot-aligned
 FrameWindow `[t_{s₀}, t_N + 2Δ]` with `ḡ + 4Δ ≤ t_{s₀}`, `s₀ + L_drain ≤ N`, `t_N + 2Δ ≤ b` (the
 service horizon), no honest signature above `H_z` up to `t_N + 2Δ`, and the honest-proposer gap
 `G` on `[s₀, N]`: an actual warm honest

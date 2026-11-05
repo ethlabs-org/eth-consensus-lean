@@ -5,8 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 
 /-! # Goldilocks milestone Healing: the AC healing statements (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"Healing: top-level
-statements" (draft 8, goldilocks#34; workbench `notes/goldilocks/healing-simple/t2-statements.md`),
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level statements",
 the AC-level healing node H.1 (standalone AC healing) and its corollary, over **driven** AC traces
 of the Goldilocks SA with **trivial frames**, and the healing vocabulary they read on an AC trace:
 `ḡ = max(g, 0)`, the lock lifetime bound `Θ = 4(k + 1)Δ`, `Healthy(g)` (`GST(g)`, every honest
@@ -73,7 +72,7 @@ def TrivialFrames (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
 returns the duty head `d` and the payload `pay`, and `P` has parent `d.head`, slot `s`, proposer
 `p` and payload `pay`; `p` passes it to its own `ac_on_block` at a later cut at the same time.
 (The parent is part of "the block made from `ac_proposal`": without it a block of the right slot
-and payload on another parent would count; consensus-lean#83.) -/
+and payload on another parent would count.) -/
 def HonestProposal (tr : SATrace sp FGP ro) (p : Fin sp.n) (s : Nat) (P : Blk sp.n FGP) : Prop :=
   ∃ k ℓ d pay, tr.CallAt p k ℓ ∧ ℓ.call = .proposal ∧
     (acProposal sp (tr.state p k) ℓ.frame (tr.time k)).2 = some (d, pay) ∧

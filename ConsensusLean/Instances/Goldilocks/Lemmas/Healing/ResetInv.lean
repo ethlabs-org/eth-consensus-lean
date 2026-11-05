@@ -15,7 +15,7 @@ public section
 The retention premise `Inv(a_z + T_b)` on the AC projection (claims H.3 (c1)/(c2)), with the
 parameter-only offset `T_b = (8k + 20)Δ` (`resetInvOffset`). The offset puts the label of every
 protected target after the drain `R = t_{slot(a_z) + 2k + 5}`, so every live lock at its votes is
-clean (workbench `healing_bundles_route.md` §4).
+clean.
 
 The proof works one protected target `(B, j)` at a time:
 

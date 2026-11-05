@@ -5,7 +5,7 @@ public import Mathlib.Tactic
 
 /-! # The attestation clause of `Sync`: the two traces that refuted the old form
 
-Before 2026-11-03 `SyncOn.attestation` asked that every attestation an honest node signs or
+The earlier form of `SyncOn.attestation` asked that every attestation an honest node signs or
 admits be processed by every honest node **not before the signing or admission** and strictly
 before the deadline at `Δ_F`, with no order between `Δ` and `Δ_F` (`LowerBoundAttClause` writes
 that clause out). Two run traces refute it. Each is meant as the node-level image of an engine
@@ -95,7 +95,7 @@ noncomputable def T2 : RunTrace (acOf 3 (by decide)) :=
   trace 3 (by decide) (fun i => if i = 0 then 2 else 1)
     (fun i => if i = 0 then 1 else if i = 1 then 3 else 4)
 
-/-- The attestation clause of `GSTRun H ΔF 0` before 2026-11-03: processing not before the
+/-- The earlier attestation clause of `GSTRun H ΔF 0`: processing not before the
 signing or admission, strictly before the deadline at `Δ_F`. -/
 def LowerBoundAttClause {d : Nat} {hd : 0 < d} (T : RunTrace (acOf d hd)) (ΔF : Time) : Prop :=
   ∀ x ∈ H, ∀ i a, T.SendOrAdmitAttAt x i a → ∀ y ∈ H, ∀ j, T.IsCall y j →

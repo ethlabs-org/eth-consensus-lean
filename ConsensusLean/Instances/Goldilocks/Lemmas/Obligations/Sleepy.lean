@@ -114,8 +114,8 @@ theorem sleepy_faultBound (hv : rho.ExecutionValid) {b : Time}
   rw [hf]
   exact hlt.trans_le hcount
 
-/-- OPEN missing service supplier (owner: timing/encoding integration), not a proved or
-assumed fact of the obligations endpoint. With the #125 timing adapter installed: finite engine
+/-- OPEN missing service supplier, not a proved or
+assumed fact of the obligations endpoint. With the timing adapter installed: finite engine
 deadline service yields node deadline-bounded service, including acceptance relay.
 Receipt alone does not prove acceptance relay; Δp = Δe matches only the strict endpoint.
 This definition records the missing obligation without adding a vacuous `hdelay` premise.
@@ -268,7 +268,7 @@ theorem sleepy_safe_finite (hv : rho.ExecutionValid)
   exact Regimes.sleepy_safe_before (simTrace_goldilocksRun S rho hn hv) hnc hb0 hsync hf
 
 set_option linter.unusedVariables false in
-/-- Finite R.2 inclusion consumer (owner: Regimes/Obligations). Re-run A1.7/F.4 only
+/-- Finite R.2 inclusion consumer. Re-run A1.7/F.4 only
 through the observation `t ≤ b`: the producer at `τ` is in the horizon, and its full `6Δ`
 margin ends before the observation. Every service dependency must fit `SleepyServiceBefore b`.
 `IncludeSleepy` is the paper source, not an applicable finite theorem. No future participation
@@ -299,7 +299,7 @@ theorem sleepy_include_finite (hv : rho.ExecutionValid)
     (fun s hs => hf s _ (by simp) hs) hy.1 hj hy htb
     (Regimes.ready_record_extends_before hrun hnc hb0 hsync hf hinv hP hmargin hy hj htb)
 
-/-- Finite R.2 growth consumer (owner: Regimes/Obligations). Select a ready scheduled
+/-- Finite R.2 growth consumer. Select a ready scheduled
 producer in `(t, t+4kΔ]`, leaving `6Δ` before `b = t+(4k+6)Δ`. Apply finite inclusion and
 finite safety; slot bounds exclude the new block from every earlier ready read. The explicit
 upper producer bound is needed to transport release/proposal evidence inside the horizon.
@@ -411,7 +411,7 @@ theorem sleepy_grow_finite (hv : rho.ExecutionValid)
   · exact h
   · exact absurd ((hinc y j hy hj).trans h) (hnot x jx hx hjx)
 
-/-- OPEN missing grid supplier (owner: family/timing integration). Single-pattern engine
+/-- OPEN missing grid supplier. Single-pattern engine
 recurrence must become node recurrence at exactly the same selected schedule. This is only
 a named obligation: the pending slot-grid repair must justify every window endpoint, rather
 than assuming the node recurrence in an unconditional obligations theorem. -/

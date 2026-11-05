@@ -9,7 +9,7 @@ public section
 /-! # Goldilocks Healing, HR.4: the cut step and the attestations
 
 The cut step (`retention_cut_step`, G1.10 at the height-scoped scope) and (R1)'s attestations
-(`high_rows`, the provenance of the high sources). Design: workbench#22 (`hr4-cut-scope.md`).
+(`high_rows`, the provenance of the high sources).
 
 * **Attestations** (§4): an honest attestation of height `≥ H_z + 1` signed at cut `d` names the
   entry of the chain of a high origin written by the signer before `d` (`high_row_source`, from the
@@ -100,7 +100,7 @@ theorem ResetPremisesUpTo.row_compatible {b : Time}
 /-- **The cut step: G1.10 at the height-scoped scope** (claims HR.4, G1.10 "The healing reset
 induction uses the same node with a height-scoped `𝓔`"; §12 "Steps available once each protected
 origin is admitted"; §13 "Retaining the witnesses and the frame", "Closing the
-first-violating-event induction"; `hr4-cut-scope.md` §§2–4). (R2) after the honest call at cut
+first-violating-event induction"). (R2) after the honest call at cut
 `k`, from the invariant at the earlier cuts and the votes of cut `k`. With `𝓔_B` the entries of
 height `≥ H_z + 1` that conflict with `B`: every honest attestation on a block of the store after
 cut `k` was signed before `k` (unforgeability), so it names no entry of `𝓔_B` (`row_compatible`:
@@ -180,7 +180,7 @@ theorem retention_cut_step (hp : ResetPremises tr H proposer dg g ΔF a) (k : Na
     ((le_max_right _ _).trans (le_max_right _ _)) hy hc ho
     ((le_max_left _ _).trans (le_max_right _ _)) hact
 
-/-- **(R1), the attestations** (HR.1 (a), A1.5 with `τ = ḡ`; §16; `hr4-cut-scope.md` §4). The source
+/-- **(R1), the attestations** (HR.1 (a), A1.5 with `τ = ḡ`; §16). The source
 `C` of an honest attestation of height `≥ H_z + 1` is the viable ancestor of a live fast lock's
 block, which is at or below the stored block `B` of a fast-lock write of the signer before the
 signing (`stored_fast_lock_provenance`); the attestation's height pair is `C`'s height and entry, so

@@ -5,7 +5,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Premises
 /-! # The one-validator tick run: its chain
 
 The tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`, `t_s = 4s`, `k = 2`,
-`δ_t = 2`) builds one chain (consensus-lean#69, W3). This file describes it and the FG side of each
+`δ_t = 2`) builds one chain. This file describes it and the FG side of each
 step:
 
 * **The chain** (`blk`): genesis, then the own proposal of every slot `s + 1` on the block of slot

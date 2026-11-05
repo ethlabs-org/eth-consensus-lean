@@ -10,7 +10,7 @@ public section
 
 /-! # Goldilocks Healing, HS.5: the shared facts of the consumption step
 
-`hs5-exact-helpers.md` §1 (the context `Γ` and the cut discipline) for the three steps of HS.5's
+The context `Γ` and the cut discipline for the three steps of HS.5's
 consumption (`ConsumeUpper`, `ConsumeMature`, `ConsumeContinue`):
 
 * cuts: a cut at a time `≤ T` is before the first cut after `T` (`FirstCutAfter.lt_of_time_le`),

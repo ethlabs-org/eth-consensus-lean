@@ -16,7 +16,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchor
 
 public section
 
-/-! # Goldilocks Obligations: the final query and its window data (#136)
+/-! # Goldilocks Obligations: the final query and its window data
 
 The `FinalQuery` and the `FinalWindowData` of the route-A final window, with the window
 predicates `AnchorRun`, `AnchorSteps` and `CacheCoverage`. They are in this module, not in
@@ -60,9 +60,9 @@ noncomputable abbrev deadline (Q : FinalQuery S A V) : Time :=
 end FinalQuery
 
 /-- Operational window witnesses only. The processing field is an OPEN endpoint-specific
-transport budget, not acceptance or a freely chosen output delay. Route A (#136, docs/decisions.md
-2026-11-02): four honest anchors at the slots `start + [0, c, 2c, 3c]` for the anchor gap
-`c = gap`, with `2 ≤ c` and the span `3c ≤ δt` (workbench `two_bound_network.md` §4; the gap
+transport budget, not acceptance or a freely chosen output delay. Route A (`docs/decisions.md`
+§"Final liveness"): four honest anchors at the slots `start + [0, c, 2c, 3c]` for the anchor gap
+`c = gap`, with `2 ≤ c` and the span `3c ≤ δt` (the gap
 `c = 2` is the current instance). -/
 structure FinalWindowData (Q : FinalQuery S A V) where
   start : Nat
@@ -115,8 +115,8 @@ def AnchorRun : Prop :=
     Q.params.ts (W.start + 3 * W.gap) ≤ b
 
 /-- **Route-A anchor steps**: `σ[P_i].h + 1 ≤ σ[P_{i+1}].h` for the three gap-`c` steps, read at
-honest stores (`AnchorStep`). Paper: workbench route_a_gap2.md §1 (attestations by `row_of_report`,
-or a crossing above the previous anchor; step 0 from the seed `h₀ ≥ HZ+2`). -/
+honest stores (`AnchorStep`): attestations by `row_of_report`,
+or a crossing above the previous anchor; step 0 from the seed `h₀ ≥ HZ+2`. -/
 def AnchorSteps : Prop :=
   ∀ i : Fin 3, AnchorStep Q.trace (honestKeys S Q.run.2) (W.block i.castSucc) (W.block i.succ)
 

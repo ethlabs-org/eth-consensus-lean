@@ -5,9 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 
 /-! # Goldilocks milestone vocabulary: the quorum
 
-The part of `Spec/Common/Params` that no Challenge statement reaches (docs/decisions.md,
-2026-11-04): the milestone statements use it; it is not on the trusted surface. Names and bodies are
-unchanged.
+The part of `Spec/Common/Params` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 `Params.q` is the quorum `q = ⌈2n/3⌉` on the shared parameters. -/
 

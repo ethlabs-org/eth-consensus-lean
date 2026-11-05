@@ -12,7 +12,7 @@ What a valid engine run (`ExecutionValid`) does to the shape's state at each eve
 `stateAt`: the node state inside the shape's state after an event of an honest node is the
 node's handler applied to the node state before it (a tick at a public time with the encoded
 mempool, a delivery one `canonEvent` after the other, a restart), the shape's clock is the time of
-the node's last tick or restart, and the obligations the #92 interface listed: at most two bodies
+the node's last tick or restart, and the interface's obligations: at most two bodies
 pending at a tick, a proposal carries only released objects (so `releasable` admits it), the
 own-object guard `protects` never blocks an honest node, and the digests the engine passes with a
 block object map its header to its root.

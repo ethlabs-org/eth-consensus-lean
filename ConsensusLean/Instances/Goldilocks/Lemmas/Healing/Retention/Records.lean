@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks Healing, HR.4: the high records (R4)
 
-`producer-reset-continuation.md` §16. An honest client record changes only when the node signs
+An honest client record changes only when the node signs
 (`record_attestation`, the only writer; the record is durable over restarts): its target and
 timeout entries at `h` name the height pair of an attestation it signed at `h`, its lock entry at
 `h` the finality pair `(h, ·)` of one (`client_record_origin`). A signed height pair of height

@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks: honest locks on `B` kept by every honest node over an interval
 
-consensus-lean#135 (WI-16), r14 s1 L1.2: the read-point premise `UnlockKeeps` of an induction
+The read-point premise `UnlockKeeps` of an induction
 over time in which each honest node keeps a lock on `B`. The votes that `unlock` reads at cut `j`
 are of slot `slot(t_j) − 1`, so their honest casts are at earlier cuts (`cast_lt_of_slot`). -/
 

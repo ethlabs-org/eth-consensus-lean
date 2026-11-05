@@ -10,8 +10,7 @@ For any node AC `A` with `n = 1` and `Δ = 1`, the run in which the validator ti
 `t ≥ 0` and nothing else happens (`tickRun`), its states, groups and cut law, and that it is a
 `Node.LocalRun` (`tickRun_localRun`); the shape of a tick's cuts; the attestation pool and (for the
 Goldilocks SA) the vote pool lemmas. Used by
-`ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises` (consensus-lean #69); see its docstring.
--/
+`ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises`; see its docstring. -/
 
 namespace Consensus.Goldilocks.Witness
 

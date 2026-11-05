@@ -11,10 +11,9 @@ public section
 
 /-! # Goldilocks Healing: current sources above a protected honest proposal
 
-`hs234-exact-interface.md` §5 "acquisition" and `hs5-exact-helpers.md` §§2.1–2.3, shared by HS.4
-(`Acquire.ready_sources`) and HS.5 (`ConsumeUpper.fixed_upper_rows_of`): over `Γ` (`GoldilocksRun`,
-`HSShared`, `Catch(2Δ)`, `SettledIn … w i₀ m c`), let `Y` be an honest proposal of
-slot `s` with `t_s ≥ r` on a protected branch (every honest slot-`s` vote is exactly `Y`, later
+Shared by HS.4 (`Acquire.ready_sources`) and HS.5 (`ConsumeUpper.fixed_upper_rows_of`): over `Γ`
+(`GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `SettledIn … w i₀ m c`), let `Y` be an honest proposal
+of slot `s` with `t_s ≥ r` on a protected branch (every honest slot-`s` vote is exactly `Y`, later
 votes and proposal parents extend it), in the phase through `v = t_s + 6Δ`. Then every honest node
 receives, in `[t_s, v]`, an `ac_to_fg` return `C ⪰ Y` (`protected_sources`).
 
@@ -22,7 +21,7 @@ The proof (proved; HS.2 enters as the hypothesis `CleanLockDrain`): `Y` is allow
 (`proposal_allowed`: its parent is a viable head of the proposer, read with `Geo`'s aligned
 readers). At `y`'s tick at `v` (not a slot start, so its cuts are `ac_on_tick`, then `ac_to_fg`)
 `y` holds `Y` (relayed by `t_s + Δ`, `F ⪯ Y` by HS.1), as a viable head (HS.1). Every live lock
-there compares with `Y` (`update_locks_compatible`, `hs5-exact-helpers.md` §2.2: a clean origin of
+there compares with `Y` (`update_locks_compatible`: a clean origin of
 a label `< s` by HS.2's transfer to an honest slot-`s` vote, which is `Y`; a label `≥ s` through
 an honest counted vote or result supporter of slot `s` or `s + 1`). The AC projection is a healthy
 driven trace (`DrainCommon.healthyBase_of_hs`), so H.1's `first_update_post` applies: the tick is
@@ -244,9 +243,9 @@ private theorem tick_toFG_call {y : Fin sp.n} {j : Nat} {t : Time} {x : Nat}
   obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 1 hk'
   exact ⟨_, ⟨hn, hl.trans (congrArg some hc)⟩, rfl, ht⟩
 
-/-- **An honest proposal of the settled phase is allowed** (`hs234-exact-interface.md` §4 "The
+/-- **An honest proposal of the settled phase is allowed** (the
 parent's full walk ends at an allowed head (`proposal_head_viable`); `P` is allowed by
-`effAllowed_of_anc`", `hs5-exact-helpers.md` §2.1): the proposer reads the effective geometry at
+`effAllowed_of_anc`): the proposer reads the effective geometry at
 its `ac_proposal` cut (`Geo.viableHeads_iff`; it holds the phase's evidence from `w` on, and the
 phase's frontier block is a viable head, HS.1), its walk starts in the viable tree and ends at a
 viable head, so an allowed parent, and `P` extends it. -/
@@ -310,8 +309,8 @@ theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
 /-! ## Every live lock at the update compares with `Y` -/
 
 /-- **Every live lock at the slot-`s` update compares with the protected proposal**
-(`hs5-exact-helpers.md` §2.2; `hs234-exact-interface.md` §5 "Compatibility with every live lock
-follows from the same cut induction used for transfer"): under `Γ` with HS.2 (`hclean`), let `Y`
+(compatibility with every live lock
+follows from the same cut induction used for transfer): under `Γ` with HS.2 (`hclean`), let `Y`
 be an honest proposal of slot `s` with `t_s ≥ r` on a protected branch, in the phase through
 `v = t_s + 6Δ`. At an honest node's tick at `v` (the slot-`s` update), every live lock compares
 with `Y`: each current image `L` sits below the stored block `B` of its clean origin (labels
@@ -470,14 +469,13 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ## The sources -/
 
-/-- **Every honest node receives a current source above a protected honest proposal**
-(`hs234-exact-interface.md` §5 "acquisition"; `hs5-exact-helpers.md` §§2.1–2.3): under `Γ` with
-HS.2 (`hclean`), for an honest proposal `Y` of slot `s` with `t_s ≥ r` on a protected branch, in
-the phase through `v = t_s + 6Δ`, every honest `y` has an `ac_to_fg` return `C ⪰ Y` in
+/-- **Every honest node receives a current source above a protected honest proposal**: under `Γ`
+with HS.2 (`hclean`), for an honest proposal `Y` of slot `s` with `t_s ≥ r` on a protected branch,
+in the phase through `v = t_s + 6Δ`, every honest `y` has an `ac_to_fg` return `C ⪰ Y` in
 `[t_s, v]`: at its tick at `v`, the slot-`s` update has result and fast selection `Y`, not vetoed
 (`first_update_post`, `update_locks_compatible`), so `Y` is a candidate of the following
-`ac_to_fg`, whose deepest candidate `C` extends `Y`; `C` is returned, or the report record names
-a block `R ⪰ C` that an earlier `ac_to_fg` returned (`fgReported_origin`), at a time `≥ t_s`. -/
+`ac_to_fg`, whose deepest candidate `C` extends `Y`; `C` is returned, or the report record names a
+block `R ⪰ C` that an earlier `ac_to_fg` returned (`fgReported_origin`), at a time `≥ t_s`. -/
 theorem protected_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kY : Nat}

@@ -14,7 +14,7 @@ public section
 
 /-! # Goldilocks Healing: the facts of HS.0 (bounded settling)
 
-HS.0 (`Settle(Δ)`, claims §"Healing: phase service"; `phase-service.md` §8.3) is assembled in
+HS.0 (`Settle(Δ)`, claims §"Healing: phase service") is assembled in
 `Reset.lean` (`settle`) from these facts:
 
 * **Strict-height finality at the stores** (G1.2, `finalized_anc`): with `f < 2q − n`, an honest
@@ -141,7 +141,7 @@ theorem phaseAt_eq (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q
     omega
   exact ⟨rfl, phaseAt_unique hr hH h h'⟩
 
-/-- **The evidence of a phase** (`phase-service.md` §8.3): if `y` holds at cut `i'` every block of
+/-- **The evidence of a phase**: if `y` holds at cut `i'` every block of
 state height `m` that an honest node holds at cut `i`, then it holds the defining evidence of
 the effective phase `(m, c)` at `i`: a block of height `m`; for a top `J` or a contest, a block
 justifying `J` at `m − 1`, which has state height `m` (`h_j < h ≤ m`), and `J`, its ancestor;

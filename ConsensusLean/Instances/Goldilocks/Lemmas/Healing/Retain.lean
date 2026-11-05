@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing: HS.1, effective-phase viable-witness retention
 
-Claims HS.1, `phase-service.md` §2 ("Why lower finality is benign"). Let the effective phase be
+Claims HS.1 (why lower finality is benign). Let the effective phase be
 `(m, c)` at every cut of `[i, k]`, and let `W`, held by an honest node at cut `i`, be allowed in
 the effective geometry (state height `≥ ℓ`, `ℓ = m` in a contest and `m − 1` otherwise; it
 extends `J` in the top-`J` case).
@@ -200,7 +200,7 @@ theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSSh
         by rw [store_eq hrun hz, hBh, hm], by rw [store_eq hrun hz]; exact hBn⟩
     · omega
 
-/-- **HS.1, effective-phase viable-witness retention** (claims HS.1, `phase-service.md` §2). -/
+/-- **HS.1, effective-phase viable-witness retention** (claims HS.1). -/
 theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF)
     {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}

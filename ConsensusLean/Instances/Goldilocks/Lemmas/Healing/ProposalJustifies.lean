@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing: an honest proposal justifies its parent's entry (Lemma 3′)
 
-Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §4, Lemma 3′, steps 3–6, at trace level.
+Lemma 3′, steps 3–6, at trace level.
 
 * `justify_step'` (one held block): a block `X` on the parent `Pr`, and a set `S` of weight `≥ q`
   of validators, each with a target attestation (no timeout) for `Pr`'s entry `(h, T_h)` in `X`'s

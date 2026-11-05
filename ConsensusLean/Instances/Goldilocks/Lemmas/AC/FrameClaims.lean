@@ -5,7 +5,7 @@ public section
 
 /-! # Goldilocks: proof-side frame claims
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21), the
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 frame-level consequences of nodes G0.3 (frame) and G0.4 (frame), against `Spec/Frame`:
 
 * G0.4 (frame): in a well-formed frame `viable_ancestor(Φ, B)` exists and is unique for

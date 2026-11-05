@@ -15,8 +15,7 @@ public section
 
 HR.1 over a Goldilocks run under `Healthy(g)` and `NoColl`, with `c_z = t_{slot(ḡ)+3}` and `H_z`
 the greatest honest `Σ.h_max` after all events at `c_z`. Proved on paper (claims HR.1, status S;
-healing-simple `t1-proof.md` §7 (F1), `producer-reset-continuation.md` §4 (R0) and §10 (the
-first-time tick lemma)), one lemma per conjunct:
+T1 §7 (F1)), one lemma per conjunct:
 (a) an honest attestation signed at or before `c_z` has height `≤ Σ.h_max ≤ H_z` (the frontier only
 rises; `Healthy(g)` gives a cut after `c_z`) (`signed_le_HZ`); from `c_z` on, `ac_to_fg` returns
 the block of a live fast lock written after `ḡ` (A1.5 with `τ = ḡ` on the AC projection)

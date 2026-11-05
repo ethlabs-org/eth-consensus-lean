@@ -369,7 +369,7 @@ theorem sleepy_query_producer (Q : ConfirmedQuery S A V)
   exact ⟨⟨B, k, he, hacc, hr, ht ▸ W.fresh, hbound⟩, hmargin⟩
 
 /-- Assembly of the named production, coefficient and finite-service obligations.
-The approved joint signature is unchanged; its body no longer hides those leaves. -/
+The joint signature is unchanged; its body no longer hides those leaves. -/
 theorem sleepy_serviced_proposal_supply (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy (K S A) Q.run)
     (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)

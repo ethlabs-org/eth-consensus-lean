@@ -33,7 +33,7 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
   before `g` processed as if sent at `g` (`eff τ = max τ g`). The claims' "as if sent at `g`"
   is read for the deadline only: the deadline becomes `max(g, w_y) + Δ`, while the lower bound
   of the delivery interval stays the real send time, so an object sent before `g` may be
-  delivered before `g` (goldilocks#7, wording clarification for the claims). The acceptance relay
+  delivered before `g`. The acceptance relay
   of `GST(g)` covers only acceptances at `τ ≥ g` (claims: `Sync`'s relay "covers only `τ ≥ g`";
   `GST(g)` re-delivers old objects, it does not make them accepted, since a block refused for a
   missing parent is not delivered again): pre-`g` acceptance catch-up is the separate regime
@@ -42,7 +42,7 @@ over a run (`Spec/Run/Model`), for the honest validators `H`:
   §"Parameters"; the generic network keeps the two bounds unordered), so every premise built on
   it has them. The order is there because an attestation admitted from a block is forwarded in
   the block's relay wrapper, which the network serves within `Δ`, not `Δ_F`
-  (`docs/decisions.md`, 2026-11-03).
+  (`docs/decisions.md` §"Network and delivery").
 * **`Sleepy`**: `Sync[0, ∞)` and `f < h_t` at every `t ∈ {t_s, t_s + Δ, t_s + 2Δ}`, `h_t` the
   honest validators awake and joined at `t` (`JoinedAt`: every restart at or before `t` is at
   or before `t_{slot(t) − 1}`; in slot `0`, no restart).
@@ -103,7 +103,7 @@ def AttDeliveredBy (y : Fin P.n) (j : Nat) (τ ΔF : Time) (a : FG.Att P.n) : Pr
   ∃ k ≤ j, tr.ProcessAttAt y k a ∧ tr.time k < tr.deadline y k τ ΔF
 
 /-- **`Sync` over a run**, for the sends in the window `W` with effective send time `eff`
-(claims §"Premises", `Sync[a, b]` and `GST(g)`; goldilocks `a470648c`). -/
+(claims §"Premises", `Sync[a, b]` and `GST(g)`). -/
 structure SyncOn (H : Set (Fin P.n)) (ΔF : Time) (W Wr : Time → Prop) (eff : Time → Time) :
     Prop where
   /-- The attestation delay `Δ_F` is positive. -/

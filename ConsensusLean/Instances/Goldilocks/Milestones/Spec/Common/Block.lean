@@ -5,8 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Block
 
 /-! # Goldilocks milestone vocabulary: block digests
 
-The part of `Spec/Common/Block` that no Challenge statement reaches (docs/decisions.md, 2026-11-04):
-the milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/Common/Block` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 `Digest` is the digest of a block's content `(parent root, slot, input, FG payload, AC payload)`;
 `Block.RootOk` says that a block's root is that digest (the wire check). -/

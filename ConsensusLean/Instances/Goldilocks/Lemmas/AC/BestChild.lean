@@ -14,7 +14,7 @@ majority), the two views have the same voters and the same scores on the blocks 
 compared: a competitor eligible in `Φy` but not in `Φp` has no majority, so its score is below
 `C`'s. When `X` is a viable head of neither frame, every child of `X` is eligible in both, and
 the same holds with the same scores (`isBest_transfer_low`). Used by the Sleepy suffix
-(`Compose/Service/Suffix`, workbench#12 §3) and HS.3 (`Healing/AgreeSuffix`). The anchor of a
+(`Compose/Service/Suffix`) and HS.3 (`Healing/AgreeSuffix`). The anchor of a
 well-formed frame extends `fc_root` (`fcRoot_anc_getAnchor`), and a nonempty set of tree blocks
 has a best block (`exists_isBest`). -/
 

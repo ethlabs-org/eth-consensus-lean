@@ -12,9 +12,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposalWind
 
 public section
 
-/-! # Goldilocks Obligations: parents above a crossing report, through a horizon (#137)
+/-! # Goldilocks Obligations: parents above a crossing report, through a horizon
 
-consensus-lean#137 (finite-horizon port). `crossed_parents_above` and the
+`crossed_parents_above` and the
 `window_justifies_or_parents_above` family from `HealedUpTo … b` and `HSSharedUpTo … b`. C3
 through the horizon needs `t_s ≤ b`, so case (A) bounds the parents of the honest proposals of
 slots `s` with `v + Δ ≤ t_s ≤ b`. -/

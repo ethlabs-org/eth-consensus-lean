@@ -8,8 +8,8 @@ public section
 
 /-! # Goldilocks Healing: HS.4 (a), the acquired common path
 
-`hs234-exact-interface.md` §5 "actual acquisition" (HS.4 (a), with #88's current-source arm),
-over `Γ` (§1: `GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `Prop⁺(G_p)`, `SettledIn … w i₀ m c`):
+HS.4 (a), with its current-source arm,
+over `Γ` (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`, `Prop⁺(G_p)`, `SettledIn … w i₀ m c`):
 either the phase has changed after all events at `w + D`, `D = (8k + 48)Δ + 2G_p`, or there is
 an honest proposal `W` of a slot `s` with `t_s ≥ r`, unanimous and protected (HS.3 (b)), whose
 entry `E` at `h = ht(W) ∈ {ℓ, m}` every honest node receives as a current source in
@@ -65,7 +65,7 @@ private theorem rTime_eq (w : Time) :
 
 /-! ## Phase persistence -/
 
-/-- **The phase persists through an unchanged endpoint** (`hs234-exact-interface.md` §5, §4's
+/-- **The phase persists through an unchanged endpoint** (the
 sandwich; HR.2): if the phase at `j` is the phase at `i₀`, it is `(m, c)` at every cut of
 `[i₀, j]` (vacuous when `j < i₀`): the frontier is squeezed to `m` (`Σ.h_max` only grows), and
 then the case rank is squeezed and the top `J` kept (`phaseAt_mono`). -/
@@ -100,8 +100,8 @@ private theorem floor_cases {β : Type} (m : Nat) (c : PhaseCase β) :
 
 /-! ## HS.3 (b) at a ready proposal -/
 
-/-- **HS.3 (b) at a ready proposal after `r`** (`hs234-exact-interface.md` §5 "HS.3(b) gives exact
-`P` votes and the later-parent property"): under `Γ`, a ready proposal `P` of slot `s` with
+/-- **HS.3 (b) at a ready proposal after `r`** (HS.3 (b) gives exact
+`P` votes and the later-parent property): under `Γ`, a ready proposal `P` of slot `s` with
 `t_s ≥ r`, in the phase through slot `s` (every honest slot-`s` vote is before `t_{s+1}`), is on
 a protected branch. HS.3 (b) is `frozen_tree_agreement_clean` from HS.2: its premises at `i = i₀`
 are discharged here (`i₀ ≤ k_P`; the proposer ticks at `t_{s−1} ∈ [w, t_{s−1} + 3Δ]`, so
@@ -167,8 +167,8 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
 
 /-! ## The open contracts -/
 
-/-- **A ready proposal of the settled phase is allowed** (`hs234-exact-interface.md` §4, §5;
-`AcquireSources.proposal_allowed` for the ready proposal). -/
+/-- **A ready proposal of the settled phase is allowed**
+(`AcquireSources.proposal_allowed` for the ready proposal). -/
 theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
     {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p kP s P)
@@ -177,8 +177,7 @@ theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr 
   proposal_allowed hrun hs hc hset hP.1 hP.2.2.2.1 hP.2.2.2.2.1 hws hon
 
 /-- **Every honest node receives a current source above a protected ready proposal**
-(`hs234-exact-interface.md` §5 "acquisition", first two paragraphs;
-`AcquireSources.protected_sources` for the ready proposal). -/
+(`AcquireSources.protected_sources` for the ready proposal). -/
 theorem ready_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
@@ -201,7 +200,7 @@ theorem ready_sources (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr 
     hparents hon
 
 /-- **A higher source above a protected proposal is below a later proposal's parent**
-(`hs234-exact-interface.md` §5, "The only obstruction" and "The provenance bridge"): under `Γ`,
+(the provenance bridge): under `Γ`,
 with `P` as in `ready_sources`, let an honest `ac_to_fg` return `C ⪰ P` at a cut `k` in
 `[t_s, t_s + 6Δ]` with `ht(C) > ht(P)`, and let `P'` be an honest proposal of a slot `s' ≥ s + 2`
 whose slot-`s'` votes lie in the phase. `C` is the viable ancestor of a live fast lock's block,
@@ -343,7 +342,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ## The assembly -/
 
-/-- **The acquired path at a witness** (`hs234-exact-interface.md` §5, last paragraphs): a
+/-- **The acquired path at a witness**: a
 protected ready proposal `W` of slot `s`, allowed, with `ht(W) ∈ {ℓ, m}`, whose height every
 honest node receives as a current source `C ⪰ W` in `[t_s, t_s + 6Δ]`: `C`'s entry at `ht(W)` is
 `W`'s (entry constancy), and `C` is allowed (it extends the allowed `W`). -/
@@ -420,9 +419,9 @@ private theorem acquired_of_sources (hrun : GoldilocksRun proposer dg H tr)
   exact effAllowed_of_anc hRy (effAllowed_transfer hrun hnc hpH hy hall
     (mem_of_honest_anc hrun hnc hy hWC hCt)) hCt hWCs
 
-/-- **HS.4 (a)** (`hs234-exact-interface.md` §5 "actual acquisition", timing): under `Γ`, with
+/-- **HS.4 (a)** (timing): under `Γ`, with
 HS.2 and HS.3 as opaque hypotheses, the phase has changed after all events at `w + D`, or the
-common path is acquired (HS.4 (a)'s second branch, with #88's current-source arm). -/
+common path is acquired (HS.4 (a)'s second branch, with its current-source arm). -/
 theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) :

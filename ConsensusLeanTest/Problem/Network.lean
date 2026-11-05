@@ -10,7 +10,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 * `waker_within_bound`: `Δ = 2`, GST `0`; validator 1 is
   asleep at `0` and `1` and awake from `2`. An honest send at `0` must be
   re-served to validator 1 strictly before the bound of its wake: held at
-  `3 = max 2 0 + Δ − 1` (Francesco's rule, normal delivery: awake over the
+  `3 = max 2 0 + Δ − 1` (the normal-delivery rule: awake over the
   delivery interval `[2, 3]`). `waker_within_bound_silent`: a log in which
   validator 1 never receives the message is not partially synchronous.
   `waker_not_instant`: receipt at `3` suffices; the rule does not demand
@@ -83,7 +83,7 @@ def ptW : EnvPoint (Fin 2) := ⟨envW, Finset.univ, 5, fun _ _ => []⟩
 def logW (recv : Fin 2 → Unit → Time → Prop) : CommLog (Fin 2) Unit :=
   ⟨fun v _ t => v = 0 ∧ t = 0, recv, fun _ _ => [], fun _ => False⟩
 
-/-- Francesco's rule for a waker: validator 1, asleep at `0`–`1` and awake from
+/-- The normal-delivery rule for a waker: validator 1, asleep at `0`–`1` and awake from
 `2`, must hold the message sent at `0` strictly before `max 2 0 + Δ = 4`, i.e. by `3`. -/
 theorem waker_within_bound (recv : Fin 2 → Unit → Time → Prop) (h : (logW recv).PSync ptW 0) :
     (logW recv).Held ptW 1 () 3 :=

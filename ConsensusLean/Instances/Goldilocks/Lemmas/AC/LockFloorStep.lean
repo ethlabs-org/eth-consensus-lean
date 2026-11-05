@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks SA: a lock floor that every lock function keeps
 
-The floor form of the AC lock step (consensus-lean#135, WI-16). Fix a block `B₀` of the tree
+The floor form of the AC lock step. Fix a block `B₀` of the tree
 that is its own viable ancestor, and a slot `j`. The floor of a lock set `L` is a lock `l ∈ L`
 of slot `j` with expiry `≥ m` on a block `B ⪰ B₀` of the tree. Locks may move:
 `live_locks` moves `l` to the viable ancestor of `B`, which is still `⪰ B₀`

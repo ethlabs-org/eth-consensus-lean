@@ -5,9 +5,9 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: the shared HS premises through a finite horizon (#137)
+/-! # Goldilocks Healing: the shared HS premises through a finite horizon
 
-consensus-lean#137 (finite-horizon port). `HSShared.healthy` is `HealthyRun`, which asks every
+`HSShared.healthy` is `HealthyRun`, which asks every
 honest node to be awake at all `t ≥ ḡ`; a finite trace is not awake after its horizon, so a
 finite query cannot supply `HSShared`. `HSSharedUpTo … b` keeps the other fields and replaces
 `Healthy(g)` and `NoRestartAfter ḡ` by their restrictions to the horizon `b`: the signed-attestation

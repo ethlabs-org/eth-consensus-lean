@@ -5,8 +5,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 /-! # Rejection test: the outage budget `4k − 4` breaks the restored-label bound
 
-The outage budget (`goldilocksContract`, `Statements/Obligations.lean`: `4k − 5` since
-`b75cd7c5`) bounds the outage length: `b₁ − b₀ ≤ budget · Δ`. The lock-safety arithmetic
+The outage budget (`goldilocksContract`, `Statements/Obligations.lean`: `4k − 5`)
+bounds the outage length: `b₁ − b₀ ≤ budget · Δ`. The lock-safety arithmetic
 (`OutageLockSafety/Arming.lean`, the private `query_numbers`, conjunct 5) needs the end of the
 outage before the restored-label bound of the cover label `j₀ = coverLabel b₀`:
 `b₁ ≤ t_{j₀+k} + Δ`, so that the first restored label (the least `r` with `b₁ ≤ t_r + Δ`) is at

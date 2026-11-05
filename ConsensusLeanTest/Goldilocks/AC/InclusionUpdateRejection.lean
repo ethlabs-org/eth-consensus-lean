@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 @[expose] public section
 
-/-! # A1.7 inclusion: the update clause is needed (consensus-lean#77)
+/-! # A1.7 inclusion: the update clause is needed
 
 Kind (r), a rejection test (CONTRIBUTING "Statements"), of the update clause
 `UpdatedNoRestart tr y i s` of `Compose.Inclusion`. The run is the two-validator asleep run `tr2`
@@ -292,7 +292,7 @@ def InclusionWithoutUpdate : Prop :=
           False) →
         Anc (tr.HonestBlocks H) P (tr.confirmedAt y i)
 
-/-- (r) **A1.7 without the update clause is false** (consensus-lean#77). -/
+/-- (r) **A1.7 without the update clause is false**. -/
 theorem not_inclusionWithoutUpdate : ¬ InclusionWithoutUpdate := by
   intro h
   obtain ⟨P, hrun, hnc, hsl, -, hP, hPs, hpj, hc, -, hyw, hyj, -, hyj₀, hnr, -, hnot⟩ :=

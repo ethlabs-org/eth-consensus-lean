@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 /-! # Goldilocks runs: the run model
 
 The spec's own run model (`specs/goldilocks/tex/goldilocks-claims.tex` §"Model",
-§"Runs"; `spec/shared/composition.tex` §"Model"; decomposition §2 D, `Run`): a **run** is a
+§"Runs"; `specs/goldilocks/tex/shared/composition.tex` §"Model"; `Run`): a **run** is a
 `Trace` over the node states, whose labelled cuts are the component calls (`Cut`) of the honest
 nodes, grouped by top-level event (`Node.Event`), with `Node.LocalRun` as the law that makes a
 trace a run of the protocol. Faulty nodes have no cuts: what they send is an input of the run.
@@ -29,17 +29,18 @@ trace a run of the protocol. Faulty nodes have no cuts: what they send is an inp
   restart and a restart is a wake (obligations (ii), (iii): sleep = no cuts, wake = a restart
   cut); the awake function is clamped to the run's horizon (a finite run is a prefix of the
   protocol's run and says nothing after its last cut, so no honest node is awake after it; the
-  obligation of workbench#5 for `ACLocalRun.restart_at_wake`); **unforgeability** as a run
+  obligation for `ACLocalRun.restart_at_wake`); **unforgeability** as a run
   condition (claims §"Runs"): a block of an honest proposer that an honest node processes is
   that proposer's own block, made at or before (the slot key of `B.proposer` signs `B`,
   composition.tex §"Blocks"); a block delivered to an honest node names its slot's proposer,
   faulty proposers included (`proposerCredential`, the engine's credentials: the paper's
   `state_transition` proposer assertion, removed from the model's `state_transition` with the
-  proposer schedule, `docs/decisions.md` 2026-10-31); an attestation of an honest signer that an
-  honest node processes, or that a processed block carries, was signed by that signer at an
-  earlier `fg_attest` cut; an AC message of an honest signer (by the signer map `sg`, a run
-  parameter: the AC interface has no signer) that an honest node receives was emitted by that
-  signer's node at an earlier cut. Faulty objects have no law: the adversary injects them.
+  proposer schedule, `docs/decisions.md` §"Goldilocks model choices"); an attestation of an
+  honest signer that an honest node processes, or that a processed block carries, was signed by
+  that signer at an earlier `fg_attest` cut; an AC message of an honest signer (by the signer
+  map `sg`, a run parameter: the AC interface has no signer) that an honest node receives was
+  emitted by that signer's node at an earlier cut. Faulty objects have no law: the adversary
+  injects them.
 * **Vocabulary.** The run-level events that the premises and the composition statements read:
   restarts, acceptances and refusals of blocks, signings, attestation and message processing,
   emissions and admissions (`SendOrAdmitAt`, mirroring `ACTrace.SendOrAdmit` with the AC's
@@ -112,7 +113,7 @@ def ProcessMsgAt (y : Fin P.n) (k : Nat) (m : A.Msg) : Prop :=
 /-- `x` sends the AC message `m` at cut `i` (an emission), or admits it there: an AC call other
 than a restart after which its AC holds `m` and before which it did not, whether `m` came as a
 message or from the payload of a block the call accepts (`ACTrace.SendOrAdmit`; an honest node
-forwards an AC message when its AC admits it; composition.tex §"Model", goldilocks#28, #32). -/
+forwards an AC message when its AC admits it; composition.tex §"Model"). -/
 def SendOrAdmitAt (x : Fin P.n) (i : Nat) (m : A.Msg) : Prop :=
   ∃ ℓ : ACLabel A, tr.CallAt x i (.ac ℓ) ∧ ((∃ e ∈ ℓ.emits, e.msg = m) ∨
     (ℓ.call ≠ .restart ∧ ¬ A.holdsMsg (tr.state x i).ac m ∧ A.holdsMsg (tr.post i).ac m))
@@ -206,7 +207,7 @@ def Event.phase {A : NodeAC P} : Event A → Nat
   | .tick _ => 1
   | _ => 2
 
-/-- **A run of the node** (claims §"Runs"; decomposition §2 D, `Node.LocalRun`), for the honest
+/-- **A run of the node** (claims §"Runs"; `Node.LocalRun`), for the honest
 validators `H`, the digest `dg` and the AC message signer map `sg`. -/
 structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload)

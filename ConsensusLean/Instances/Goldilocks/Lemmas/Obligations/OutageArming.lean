@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks outage: arming of a ready source
 
-Workbench `notes/outage/outage_arming.md` (b4ba553), §§1–7 and §10: the read tip `P` of a ready
+The read tip `P` of a ready
 source at the end-of-`T` cut, an origin `C ⪰ P` within `T` of a label `σ` more than `k` labels
 before the cover label `j₀`, S-vote, and O1 at the labels `j₀ − 1` and `j₀` for the honest
 validators awake at the no-sleep window start. O1 at `j₀` takes the lock-safety inputs (F), (VA)

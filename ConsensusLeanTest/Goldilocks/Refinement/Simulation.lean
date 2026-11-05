@@ -156,7 +156,7 @@ theorem projection_observation {sp : SA.SAParams}
     tr.projAC.observationHorizon = tr.observationHorizon ∧
       tr.projFG.observationHorizon = tr.observationHorizon := ⟨rfl, rfl⟩
 
-/-- Regression #118: a non-public terminal observation belongs to a valid run. -/
+/-- Regression: a non-public terminal observation belongs to a valid run. -/
 def terminalPoint : EnvPoint (Fin 1) :=
   ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, 1, fun _ _ => []⟩
 
@@ -284,7 +284,7 @@ theorem forwarding_root_alias (sp : SA.SAParams) (x : Fin sp.n) (t : Time)
   have hr := congrArg (fun C : Blk sp => C.root) h
   simp at hr
 
-/-- **Row classification** (`isFGAtt`, owner decision 2026-11-02): a standalone attestation and a
+/-- **Row classification** (`isFGAtt`): a standalone attestation and a
 relay wrapper of attestations only are rows (bound `ΔF`); a mixed relay wrapper (an attestation
 with a vote) and the empty relay wrapper are not (bound `Δ`). -/
 theorem isFGAtt_classification {n : Nat} (a : FG.Att n) (v : SA.Vote n) :

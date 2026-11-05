@@ -15,7 +15,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: where records, locks, sources, attestations and caches come from
 
-The provenance part of S1 (workbench#11 §1, §4 "The event induction"), which needs no
+The provenance part of S1, which needs no
 comparability: it holds of every Goldilocks run, by the handlers alone.
 
 * The record `latest_confirmed` is written only by `update_latest_confirmed`, with the result of a

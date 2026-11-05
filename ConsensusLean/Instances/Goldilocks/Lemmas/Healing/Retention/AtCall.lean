@@ -7,7 +7,7 @@ public section
 /-! # Goldilocks Healing: high-origin heldness and the low-`Σ.J` root at an arbitrary call
 
 Call-time forms of `high_origin_held_at_vote` and `low_root_of_seed_before` (`Retention/Boot`),
-for the H.3 invariant after the reset (workbench `healing_bundles_route.md`, L8/L9). The vote
+for the H.3 invariant after the reset. The vote
 forms read the voter block tree; here the counted head of a high origin of label `j` reaches an
 honest node by the GST acceptance relay at any of its AC calls from `t_{j+1}` on: the head was
 accepted by its honest writer at `kw` with `g ≤ t_kw < t_j + 2Δ`, no honest node restarts after

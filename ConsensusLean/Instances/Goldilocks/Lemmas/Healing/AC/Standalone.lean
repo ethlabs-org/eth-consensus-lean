@@ -9,8 +9,8 @@ public section
 
 H.1 over driven AC traces of the SA with trivial frames (the frame of every honest call is the
 tree of the blocks the node has accepted, rooted at genesis), under `Healthy(g)`, `Catch(2Δ)`,
-`NoColl` and unforgeable signatures. Proved on paper (healing-simple `t1-proof.md` §§2–6, both
-reviews in `t1-t4-reviews.md`): with `r = r_AC(ḡ)`, (§2) results of one slot `≥ r` are
+`NoColl` and unforgeable signatures. Proved on paper (T1 §§2–6): with
+`r = r_AC(ḡ)`, (§2) results of one slot `≥ r` are
 compatible; (§§3–4) a fast origin of label `≥ r`, and a slow origin whose window is `≥ r`,
 transfers to the next slot's honest votes and every later one (A1.2, A1.4, A1.3, A1.8); (§5) every
 other lock expires before `t_r + 2Θ`; (§6) at `P` the voter's tree is contained in the

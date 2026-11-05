@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks: a lock kept over an interval of cuts
 
-consensus-lean#135, WI-15/16. If an honest node `y` holds a lock `l` on `B` at cut `i`, and at
+If an honest node `y` holds a lock `l` on `B` at cut `i`, and at
 every cut `j ∈ [i, k)` the lock does not expire, `B` is in the frame's tree and its own viable
 ancestor, and `unlock` does not move it, then `y` holds `l` at cut `k`. -/
 

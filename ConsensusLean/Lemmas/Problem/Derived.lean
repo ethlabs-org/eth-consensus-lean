@@ -9,9 +9,9 @@ public section
 Not needed to read `CorrectProtocol`: no definition of `Behaviour`, `Adequate`,
 `Realizable` or `CorrectProtocol`, and no L1/L2 definition that the endpoints read, uses
 them. The Goldilocks baseline sheet read them, and this file was in `trusted_paths`
-for it (#38); the sheet is archived and no trusted statement reads them, so the file
+for it; the sheet is archived and no trusted statement reads them, so the file
 left the list. It holds those definitions and their characterising lemmas (which
-must sit with the unexposed bodies, plan §3); other derived notions and their
+must sit with the unexposed bodies); other derived notions and their
 lemmas are in `DerivedFacts.lean`. Names and bodies are those of the trusted files
 they came from. -/
 

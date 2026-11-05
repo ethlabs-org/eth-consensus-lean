@@ -5,7 +5,7 @@ public section
 
 /-! # Goldilocks Healing: an honest proposal crosses the entry (L5.3, steps 5–6)
 
-Workbench `fg-liveness/r14-end-to-end/s5-justify.md` §6, L5.3 (the handoff of `E_0`), steps 5–6,
+The handoff of `E_0` (L5.3, steps 5–6),
 at block and trace level. The paper-conditional inputs stay premises: the set `S` of honest
 reporters of the entry (step 2, Lemma H; case β of step 4), their attestations (step 3, R0-lock),
 and the slot `s**` of the proposal (steps 4 and 6, M4, C4).

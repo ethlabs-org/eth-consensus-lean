@@ -65,7 +65,7 @@ theorem vote_step (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **The cut step**: G1.10 at the scope of C1.1 at the honest call of cut `k`, from the
 invariant at every earlier cut. The honest attestations it needs are signed at
-earlier cuts, with sources compatible with `B` by A1.9 (its stored-block form, #75). -/
+earlier cuts, with sources compatible with `B` by A1.9 (its stored-block form). -/
 theorem cut_step (hrun : GoldilocksRun proposer dg H tr)
     (hp : PersistPremises tr H dg ΔF x i₀ s m B CV)
     (k : Nat) (ih : ∀ j < k, VoteInv tr H s m B j ∧ CutInv tr H s m B j) :

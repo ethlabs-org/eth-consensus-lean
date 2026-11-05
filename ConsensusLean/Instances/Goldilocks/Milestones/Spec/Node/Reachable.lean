@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handle
 
 /-! # Goldilocks node: reachable node states and the cut law
 
-`Node.Reachable` (decomposition §2 D): the configurations one honest node reaches by
+`Node.Reachable`: the configurations one honest node reaches by
 time-ordered events, under the order of composition.tex §"Model", §"Node" (claims C0.4):
 at a time, a restart comes before the tick and before any object of that time; the tick of a
 public time runs before the objects received at that time; every own object is processed

@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the record invariant from genesis
 
-workbench#11 §4 (the bounded frontier, at workbench `40d6006`): `P_0` and `V_0` hold vacuously;
+The bounded frontier: `P_0` and `V_0` hold vacuously;
 `P_s, V_s ⊢ P_{s+1}` (`origins_below_succ`) and `P_{s+1}, V_s ⊢ V_{s+1}` (`votes_below_succ`), so
 every finite frontier holds (`frontier`), and unbounded S1 and S2 follow. With the provenance of
 records, locks, sources and caches (`Sleepy/Provenance`) and full viability (`held_origin_viable`)

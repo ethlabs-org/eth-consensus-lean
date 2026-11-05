@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks SA: an honest vote extends a lock it reads
 
-consensus-lean#135 (WI-15/16), r14 s1 L1.2 (the intra-node part). The head walk starts at the
+The intra-node part of lock keeping. The head walk starts at the
 anchor, the deepest of the live lock blocks and `fc_root`. When a block `C` of that set is
 compatible with every live lock block, the anchor extends `C` (it is at least as deep), so the
 walk extends every ancestor of `C` (`anc_getHead_of_compat`). The live lock blocks

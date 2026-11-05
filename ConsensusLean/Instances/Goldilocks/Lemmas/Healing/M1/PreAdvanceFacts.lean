@@ -6,7 +6,7 @@ public section
 
 /-! # M1′ A2 and A3: honest locks before the advance (LH, F3-lock, O1-L)
 
-pre_advance_finality §24.2–§24.4 and §26 Step A. All lemmas hold at every honest cut; only the
+All lemmas hold at every honest cut; only the
 F3-lock lemma uses the NoAdvance premise.
 
 * `hj_ge_of_lock` (LH, §24.2): an honest record lock at height `h` gives own `h_j ≥ h`.

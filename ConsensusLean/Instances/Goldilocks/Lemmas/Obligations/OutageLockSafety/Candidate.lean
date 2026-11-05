@@ -8,7 +8,6 @@ public section
 
 /-! # Outage lock safety: a held block stays a viable-ancestor candidate without pairwise sources
 
-Outage lock-safety card (workbench `outage_lock_safety.md` §6.3, read-back fix F4).
 `held_viable_of` (`Sleepy/FrameLabels.lean`) excludes every contest through pairwise compatible
 sources. In the outage two honest sources can be siblings above the protected block, so a contest
 can occur; `held_candidate_of_rows` shows that a contest never removes the candidacy of a held
@@ -35,7 +34,7 @@ private theorem entry_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · exact Or.inl (hEDU.trans h)
   · exact Anc.total hU hEDU h
 
-/-- **A held block compatible with every honest source stays a candidate** (card §6.3): with
+/-- **A held block compatible with every honest source stays a candidate**: with
 `f < n/2` and the honest attestations of `y`'s tree sourced by `G`, a block `B` of the frame's tree
 compatible with every `G`-source is at or below `fc_root` or in the full viable tree. No pairwise
 premise on the sources. -/

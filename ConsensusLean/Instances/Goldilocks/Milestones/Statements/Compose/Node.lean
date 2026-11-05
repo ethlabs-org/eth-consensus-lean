@@ -7,8 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Client
 
 /-! # Goldilocks milestone Compose/AnyAC: the node (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` (goldilocks#21 and
-later), the composition nodes stated at **one node composed with any AC** that meets
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`,
+the composition nodes stated at **one node composed with any AC** that meets
 requirements 1–5 (`ACInterface.Requirements`), over the configurations the node reaches
 (`Node.Reachable`, `Spec/Node`): C0.2 (finalized monotone, also across restarts), C0.3
 (honest blocks are accepted), C0.4 (tick order) and C0.5 (projection onto the components: the
@@ -59,7 +59,7 @@ block `B` that `propose_block` makes passes the checks of its maker: `H` is held
 `Σ.F`, with a smaller slot (the proposal runs before the objects of `t_s`, C0.4, and the node
 drops blocks of a future slot); every attestation of `B` is valid against `Σ.σ[H]` and well
 formed (the form of fg.tex §"Attestations", checked on the wire by composition.tex §"Blocks";
-the Lean `state_transition` folds that check into the FG, consensus-lean#65); `B`'s payload
+the Lean `state_transition` folds that check into the FG); `B`'s payload
 passes `ac_valid_payload` (requirement 5); `B`'s root is the digest of its content; and, when
 the digest is collision free on the tree with `B`, no held block has its root and
 `fg_on_block(Σ, B)` accepts `B`. -/
@@ -117,7 +117,7 @@ def SignedOnlyInTicks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (C : A.Blk) (a : FG.Att P.n),
     Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2 → ∃ x, e = .tick x
 
-/-- **C0.5 (b), the AC sees only blocks the FG accepted** (claims C0.5 (b), goldilocks#36). In
+/-- **C0.5 (b), the AC sees only blocks the FG accepted** (claims C0.5 (b)). In
 the cuts of every event at every state, an AC cut with the call `ac_on_block(B)` comes right
 after the FG cut that accepts `B`, and at the FG state `Σ` before that cut `fg_on_block(Σ, B)`
 accepts: `B` is not of a future slot, its root is new, its full parent is held, it extends
@@ -125,8 +125,8 @@ accepts: `B` is not of a future slot, its root is new, its full parent is held, 
 slot, the assertion of `state_transition`). That its proposer is its slot's is not a node fact
 and is not part of this statement: no node check reads the proposer, and in a run it is the run
 law `LocalRun.proposerCredential` for a delivered block and `Proposes` for the own block
-(`accept_facts`; `docs/decisions.md` 2026-10-31). A restart passes no block: its replay runs
-inside `ac_restart`, over the frame's tree. -/
+(`accept_facts`; `docs/decisions.md` §"Goldilocks model choices"). A restart passes no block:
+its replay runs inside `ac_restart`, over the frame's tree. -/
 def ACSeesAcceptedBlocks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (ℓ : ACLabel A) (B : A.Blk),
     Cut.ac ℓ ∈ (exec proposer dg self st t e).2 → ℓ.call = .block B →

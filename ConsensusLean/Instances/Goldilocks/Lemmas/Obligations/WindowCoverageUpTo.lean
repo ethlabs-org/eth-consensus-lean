@@ -7,9 +7,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 
 public section
 
-/-! # Goldilocks Obligations: window coverage on the last anchor's post-store (#137)
+/-! # Goldilocks Obligations: window coverage on the last anchor's post-store
 
-consensus-lean#137. The window fields from four honest anchors
+The window fields from four honest anchors
 (`finalWindow_fields_of_honest_anchors`), for the final window read at the post-store
 `(tr.post k).fg` of the last anchor's proposal cut (the `coverage` input of
 `final_cache_acceptance`). -/

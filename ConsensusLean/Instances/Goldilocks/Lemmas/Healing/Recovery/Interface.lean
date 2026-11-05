@@ -10,18 +10,18 @@ These `Prop` structures fix the obligations without assuming proofs or introduci
 Implementations belong in separate Recovery modules; none of the structures is an
 extra premise of the public Recovery statements.
 
-* The C1.2 lane supplies `ReadyProposalReportSupply` and the existing exact
+* The C1.2 proof supplies `ReadyProposalReportSupply` and the existing exact
   `Compose.OutcomeService`. A higher report is not yet an `EarlyOutcome`: excluding an early
   timeout, extracting the actual justification and proving the predecessor gate and strict
-  carrier acceptance remain obligations of that lane. No stronger timeout is assumed here.
-* The C1.3 lane supplies `PatternCoverageSupply`: acquisition, retained old-entry crossing,
+  carrier acceptance remain obligations of that proof. No stronger timeout is assumed here.
+* The C1.3 proof supplies `PatternCoverageSupply`: acquisition, retained old-entry crossing,
   service of the new entry and its actual successor, and propagation to honest caches. The
   witness keeps the acquired proposal's high height, which public `FinalizingCoverage` omits.
-* The O.1 lane supplies `Rec` from permanent high finality (`rec_of_high_finality`). Its
+* The O.1 proof supplies `Rec` from permanent high finality (`rec_of_high_finality`). Its
   internal R1–R5 split is late stored-write highness (including vetoed writes), historical K0/K1
   and frozen-domain K2, source compatibility, new ancestral-entry highness, and record equality.
   No source-height or earliest-global-source restriction may replace `Rec.records`. Catch-up is
-  not needed by this lane's interface.
+  not needed by this interface.
 
 The shared seam is high finalized caches at honest pre-call states. At `t = Rstar`, the
 coverage deadline is `gbar g + T_rec - 12Δ`; O.1 then uses the unchanged `12Δ` margin.

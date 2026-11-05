@@ -11,10 +11,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
-/-! # Outage S5: the Hi geometry (S5 card §9.3, §12.2, §12.5 A1)
+/-! # Outage S5: the Hi geometry
 
-Workbench `repos/consensus-lean/notes/outage/outage_restoration_s5.md`. A node is **Hi** at a
-cut (`HiAt`) when its justification cache `Σ.J` is strictly above the protected block `P`.
+A node is **Hi** at a cut (`HiAt`) when its justification cache `Σ.J` is strictly above the
+protected block `P`.
 
 * `above_of_hi_height` (G3′): under Hi, every block of the node's tree at state height at least
   `h_j + 1` is strictly above `P`. Its height-`h_j` entry has an honest source compatible with `P`

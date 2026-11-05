@@ -6,8 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
 
 /-! # Goldilocks milestone Regimes: the rows that hold in every run (statements)
 
-Transcribed from fradamt-agent/goldilocks `spec/goldilocks-claims.tex` §"L2: regime theorems
-(skeleton)" (main `c6653258`), rows R.7 and R.8, over the Goldilocks run (`Spec/Run`,
+Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"L2: regime theorems
+(skeleton)", rows R.7 and R.8, over the Goldilocks run (`Spec/Run`,
 `GoldilocksRun`) with no regime premise: R.8 and non-framing hold in every run, also with digest
 collisions (the target rows are `HoldsAlways`), so they read ancestry in the node's own tree and
 take no `NoColl`; final accountability and finalized safety take `NoColl` (their target rows

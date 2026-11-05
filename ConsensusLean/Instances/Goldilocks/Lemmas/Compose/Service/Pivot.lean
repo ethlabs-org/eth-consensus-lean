@@ -17,7 +17,7 @@ public section
 
 /-! # Goldilocks under `Sleepy`: the pivot of an honest proposal
 
-workbench#12 §2.1, §2.2: for the honest proposal `P` of slot `s`, made from `ac_proposal`'s duty
+For the honest proposal `P` of slot `s`, made from `ac_proposal`'s duty
 head `Q = P.parent`, a block `D` on the proposal walk (between its start and `Q`) such that every
 honest slot-`s` voter whose earlier honest slot-`s` votes are `P` (the caller's strong induction on
 the cut) has a walk that passes a block `X` of the path from `D` through `Q` to `P`: `X` is `P`,
@@ -35,13 +35,13 @@ vote extends by S2), or on `P`'s chain above `D` (then `X` is the anchor).
 The proposal walk passes every old origin (`proposal_walk_passes_old_before`, `SA.anc_getHead`): the
 proposer holds it or has it below `Σ.F` (`proposal_holds_old`: an honest supporting head is
 relayed to the proposer, `proposer_relay_before`), and the children towards it win the walk
-(`proposal_best_toward_old_before`, the counts of §2.1: the honest slot-`(s−1)` batch, or the `3n/4`
+(`proposal_best_toward_old_before`, the counts: the honest slot-`(s−1)` batch, or the `3n/4`
 votes of an optimistic origin of label `s − 1`, relayed into the proposer's pool and resolved).
 Its anchor is below one (`proposal_anchor_old_of`): no honest optimistic check of slot `s` precedes
 the proposal (`proposal_no_optimistic`, so the proposer's stored locks are of slots below `s`),
 and `fc_root` is below an old origin at the proposal and at a vote (`proposal_fcRoot_old_of`,
-`vote_fcRoot_old_of`: the source labels of the honest attestations held before `t_s`, §2). The path
-from `D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`, §2:
+`vote_fcRoot_old_of`: the source labels of the honest attestations held before `t_s`). The path
+from `D` to `Q` is through viable heads of the proposal's frame (`proposal_suffix_viable_of`:
 the head height floor is at most the height of `D`, and `fc_root` is below `D`). -/
 
 namespace Consensus.Goldilocks.Compose
@@ -152,7 +152,7 @@ end Walk
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
-/-- **The old origins of slot `s`** (workbench#12 §2, the set whose deepest member is `D_s`): the
+/-- **The old origins of slot `s`** (the set whose deepest member is `D_s`): the
 regular origins of labels at most `s − 2` and the optimistic origins of labels at most `s − 1`,
 the origins whose events precede `t_s`. -/
 def OldOrigin (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s : Nat)
@@ -350,7 +350,7 @@ private theorem proposer_accepts_head_before (hrun : GoldilocksRun proposer dg H
   obtain ⟨h1, h2⟩ := proposer_relay_before hrun hnc hsync hp hc hcall hd hti hb hx hHd hacc hFHd
   exact ⟨h1, h2, hslot⟩
 
-/-- **The proposer holds every old origin, or it is below its `Σ.F`** (workbench#12 §2.1): an
+/-- **The proposer holds every old origin, or it is below its `Σ.F`**: an
 old origin has an honest supporting vote of a slot before `s` (`honest_supporter`), whose head
 reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head_before`); otherwise
 `Σ.F`, on the origin chain, is compatible with it (S1) and above it. -/
@@ -388,7 +388,7 @@ theorem proposal_holds_old_before (hrun : GoldilocksRun proposer dg H tr) (hnc :
     exact mem_between hU hΦ hΦU hΦ.rooted.1 hHdt hFO hOHd
   · exact Or.inr hOF
 
-/-- **The children towards an old origin win the proposal walk** (workbench#12 §2.1): at every
+/-- **The children towards an old origin win the proposal walk**: at every
 block `X` (of the full viable tree, with the proposal's slot-`(s−1)` pool view `pay`), a viable
 child `Cx` of `X` below an old origin held by the proposer is the best eligible child. A vote of
 the proposer's pool is held with a finite stamp; an honest validator has one vote in it
@@ -841,7 +841,7 @@ theorem fcRoot_of_rows_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
   · exact Or.inr (hRc _ _ (Anc.mono hsU hFJ) hJR)
 
 set_option linter.unusedVariables false in
-/-- **The proposer's honest attestations have sources below old origins** (workbench#12 §2): every
+/-- **The proposer's honest attestations have sources below old origins**: every
 honest attestation the proposer holds was signed before cut `i`, with a source below an origin
 before the signing (`attestation_source`); a regular one of label `l` is written at
 `t_l + 6Δ ≤ t_s`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
@@ -878,8 +878,8 @@ private theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hn
     exact absurd hOp
       (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti z hz c (by omega) C CV)
 
-/-- **The proposer's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
-`F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest attestations
+/-- **The proposer's `fc_root` is below an old origin, or genesis**
+(`F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest attestations
 (`proposal_rows_old_of`). -/
 private theorem proposal_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
@@ -918,7 +918,7 @@ private theorem proposal_lock_below (hrun : GoldilocksRun proposer dg H tr) (hnc
   exact ⟨l₁, hl₁, O, hO,
     (Anc.mono hΦU ((SA.anc_viableAncestor Φ _).trans hB'B₁)).trans hL₁O⟩
 
-/-- **The proposal walk passes every old origin** (workbench#12 §2.1): the origin is held by the
+/-- **The proposal walk passes every old origin**: the origin is held by the
 proposer (or below its `Σ.F`, below the walk's start), so viable or at or below `fc_root`
 (`held_origin_viable`); the proposer's live locks sit below origins, compatible with it (S1);
 and the children towards it win (`SA.anc_getHead`). -/
@@ -973,7 +973,7 @@ theorem proposal_walk_passes_old_before (hrun : GoldilocksRun proposer dg H tr)
   · exact Or.inl (hLO'.trans h)
   · exact SA.anc_total hU hLO' h
 
-/-- **The proposal's anchor is below an old origin, or genesis** (workbench#12 §2, "both
+/-- **The proposal's anchor is below an old origin, or genesis** ("both
 unlocked anchors are `≤ D_s`"): a live lock block sits below an origin before `t_s` of a slot
 below `s` (`proposal_locks_slot_of`), which is old (a regular origin of label `s − 1` is written at
 `t_s + 2Δ`); `fc_root` by `proposal_fcRoot_old_of`. -/
@@ -1005,8 +1005,8 @@ private theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
   · rw [Set.mem_singleton_iff.1 hf]
     exact proposal_fcRoot_old_of hrun hnc hfault hp hc hcall hd hti
 
-/-- **A voter's `fc_root` is below an old origin, or genesis** (workbench#12 §2,
-`F ≤ fc_root ≤ D_s` at the vote reads): every honest attestation the voter holds was signed before
+/-- **A voter's `fc_root` is below an old origin, or genesis**
+(`F ≤ fc_root ≤ D_s` at the vote reads): every honest attestation the voter holds was signed before
 the vote, with a source below an origin before the signing (`attestation_source`); a regular one of
 label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most
 `s`, and not `s` (`no_optimistic_before_held_row`). -/
@@ -1128,7 +1128,7 @@ private theorem vote_anchor_cases (hrun : GoldilocksRun proposer dg H tr) (hnc :
         omega
     exact (haB.trans (Anc.mono hΦU hB'B₁)).trans (hL₁O.trans (hDold O hOld))
 
-/-- **The proposal walk from `D` to `Q` is through viable heads** (workbench#12 §2: at `t_s`,
+/-- **The proposal walk from `D` to `Q` is through viable heads** (at `t_s`,
 `F ⪯ fc_root ⪯ D_s` and the head height floor is at most `ht(D_s)`, heights increase along the
 path), for `D` above every old origin. `fc_root` is genesis or below an old origin
 (`proposal_fcRoot_old_of`), so below `D ⪯ X`. The proposer's honest attestations have sources below
@@ -1176,7 +1176,7 @@ private theorem proposal_suffix_viable_of (hrun : GoldilocksRun proposer dg H tr
       ((hDold O hO).trans hDXU))
   exact hEh.ge
 
-/-- **The pivot** (workbench#12 §2.1, §2.2). For a voter, the earlier honest slot-`s` votes are
+/-- **The pivot**. For a voter, the earlier honest slot-`s` votes are
 assumed to be `P` (the caller's strong induction on the cut: a current-slot optimistic lock of the
 voter sits below one of them). -/
 theorem pivot_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}

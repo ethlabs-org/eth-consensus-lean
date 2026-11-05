@@ -484,7 +484,7 @@ inductive EngineDutyCut (v : V) (i p : Nat) :
 /-- A selected proposal duty actually scheduled at a tick, with its actual input node.
 The index and duty-list lookup supply the slot/time relation through the schedule; no bare
 time equality replaces the execution witness. `rho.dutyStep` must gate both `act` and its
-state effects by this selection, as in the approved engine repair. The clock uses the actual
+state effects by this selection, as in the engine repair. The clock uses the actual
 engine time; slot equalities follow from absolute slot lengths/phase offsets, not network Δ. -/
 def EngineProposalAt (v : V) (i p : Nat) (t : Time) (s : Slot)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) : Prop :=

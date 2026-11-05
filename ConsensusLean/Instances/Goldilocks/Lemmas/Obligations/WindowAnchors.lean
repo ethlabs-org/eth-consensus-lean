@@ -5,11 +5,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 
 public section
 
-/-! # Goldilocks Obligations: window coverage from the anchor facts S1–S4 (WI-20)
+/-! # Goldilocks Obligations: window coverage from the anchor facts S1–S4
 
-consensus-lean#135 WI-20, #137; workbench `notes/fg-liveness/r14-end-to-end/window-delta-t-4.md`
-§1 (S1–S4, Steps 1–3). The four anchors `A = block 0 ⪯ … ⪯ B₃ = block 3` are given; the facts
-of the note are split as follows.
+The four anchors `A = block 0 ⪯ … ⪯ B₃ = block 3` are given; the facts S1–S4 (Steps 1–3)
+are split as follows.
 
 * S3 (one surviving chain), anchor part, PROVED: `anchors_chain_upTo`,
   `window_anchors_chain_upTo` (C4: `honest_proposal_below_next_upTo`,
@@ -29,7 +28,7 @@ namespace Store
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
 
-/-- **The first crossing after `A` (window-delta-t-4.md §1, Step 1, structural part).** In a
+/-- **The first crossing after `A` (Step 1, structural part).** In a
 reachable store, on a held `A ⪯ B` with `σ[A].h < σ[B].h`, a held `X` with `A ⪯ X ⪯ B` enters
 height `σ[A].h + 1` and is its own entry block (`σ[X].Th = X.root`). -/
 theorem first_crossing_of_anc (hr : st.Reachable acp₀) {A B : NodeBlock P ACP}

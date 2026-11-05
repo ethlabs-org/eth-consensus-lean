@@ -11,7 +11,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the reset from the drain with key-dependent rise rounds (#136)
+/-! # Goldilocks Obligations: the reset from the drain with key-dependent rise rounds
 
 recovery_time_savings item 1, piece (4). The five-window drain reset with the key-dependent window
 of piece (3) and the `r`-round rise of piece (2):

@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing, HS.3: the ready proposal is frozen-viable at every slot-`s` vote
 
-`hs234-exact-interface.md` §4 ("use `P` itself as frozen witness for every ancestor"): at every
+With `P` itself as frozen witness for every ancestor: at every
 honest slot-`s` vote, `P` is held, allowed in the effective geometry, a viable head of the voter
 and in its viable voter block tree (`proposal_frozen_viable`). As `Geo.geo_of_settled`: the
 proposal's parent is a viable head of the proposer (its walk starts in the viable tree), so `P`
@@ -235,8 +235,8 @@ private theorem frozen_core
     ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩
   exact ⟨hPV, hΦy.fcRoot_anc_viableHeads P hPv, P, hPV, hPv, .refl⟩
 
-/-- **`P` is frozen-viable at every honest slot-`s` vote** (`hs234-exact-interface.md` §4, "use
-`P` itself as frozen witness"): `P` is held by the voter (ready at an early vote, `cast_ready`;
+/-- **`P` is frozen-viable at every honest slot-`s` vote** (with
+`P` itself as frozen witness): `P` is held by the voter (ready at an early vote, `cast_ready`;
 relayed by `t_s + Δ` otherwise, `relay_held`), allowed (its parent is a viable head of the
 proposer, whose walk starts in the viable tree, `proposal_head_viable`, read with the aligned
 readers at the proposal cut, which precedes the vote), so a viable head of the voter (HS.1,

@@ -11,7 +11,7 @@ public section
 /-! # R.7/R.8 engine transport
 
 Paper references are CLAIMS `goldilocks-claims.tex` R.7, R.8, F.2/F.3 and G1.5,
-and SPEC `shared/composition.tex` §Blocks/§Model, pinned in
+and SPEC `specs/goldilocks/tex/shared/composition.tex` §Blocks/§Model, pinned in
 `docs/goldilocks-mapping.md` §"AsChainShape, Simulation and Obligations". The proofs separate
 structural chains, observed objects, evidence binding and validator counts.
 

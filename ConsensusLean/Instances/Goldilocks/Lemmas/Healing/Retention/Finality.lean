@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks Healing, HR.4: a low `Σ.F` is below every high origin
 
-G1.2 at strict height (`hr4-cut-scope.md` §3, "For low finalized height `d ≤ H`"): the cut
+G1.2 at strict height (for a low finalized height `d ≤ H`): the cut
 step's conclusion for `Σ.F` when `Σ.J` is low. The finalized pair of a state names the entry of
 its height (`fin_pair_entry`: a pending pair is a past justification, whose block is the entry of
 the justified height), so a store's `Σ.F ⪯ Σ.J` is finalized at a height `≤ Σ.h_j`
@@ -267,7 +267,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
-/-- **G1.2 over the run** (claims G1.2, G1.3, G0.5; `hr4-cut-scope.md` §3). A block `F` finalized by
+/-- **G1.2 over the run** (claims G1.2, G1.3, G0.5). A block `F` finalized by
 the state of a held `X` in an honest store is an ancestor of every honest block `W` whose state
 height exceeds the finalized height: otherwise the finality quorum of `(h_F, F)` on `X`'s chain and
 the crossing quorum of `h_F` on `W`'s chain (whose roots do not contain `F`) share `2q − n > f`
@@ -297,11 +297,9 @@ theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr
   rw [hst hy, hst hz] at h
   exact h hX hF hFr hW hlt
 
-/-- **G1.2 at strict height: a low `Σ.F` is below an honest-held high block**
-(`hr4-cut-scope.md` §3, "For low finalized height `d ≤ H`, `B`'s accepted chain has height `> d`";
-claims G1.2;
-`producer-reset-continuation.md` §11 "Historical finality and acceptance"). When an honest
-node's `Σ.h_j ≤ H_z`, its `Σ.F ⪯ Σ.J` is genesis or finalized at a height
+/-- **G1.2 at strict height: a low `Σ.F` is below an honest-held high block** (for a low finalized
+height `d ≤ H`, `B`'s accepted chain has height `> d`; claims G1.2). When an honest node's
+`Σ.h_j ≤ H_z`, its `Σ.F ⪯ Σ.J` is genesis or finalized at a height
 `d = σ[Σ.F].h ≤ σ[Σ.J].h = Σ.h_j ≤ H_z < σ[B].h` (`fin_pair_entry`; a genesis `Σ.J` makes `Σ.F`
 genesis), so `Σ.F ⪯ B` by G1.2 (`finalized_anc_of_height_lt_of_run`). -/
 theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg H tr)

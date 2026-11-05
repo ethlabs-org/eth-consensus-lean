@@ -8,8 +8,8 @@ public section
 
 /-! # Goldilocks Healing, HS.3: frozen-tree agreement
 
-`hs234-exact-interface.md` §4 (HS.3 (a) with the restored settled premise of #95, and (b)), by
-the walk comparison of `Compose/Service/Agree` (workbench#12): the proposal walk (the full viable
+HS.3 (a) with its settled premise, and (b), by
+the walk comparison of `Compose/Service/Agree`: the proposal walk (the full viable
 tree, the slot-`(s−1)` pool view `pay`, from its unlocked anchor `d.start`) ends at `Q = d.head =
 parent(P)`, and each honest slot-`s` voter's walk (the viable voter block tree, the merged view,
 from its unlocked anchor) is compared with it, by induction on the cut of the first honest
@@ -78,10 +78,10 @@ private theorem proposal_walk
   rcases eq_or_ne d.start d.head with h | h
   exacts [h ▸ hst', (Anc.mem ha h).2]
 
-/-! ### The walk contracts (`hs234-exact-interface.md` §4) -/
+/-! ### The walk contracts -/
 
-/-- **The voter's anchor is below `P`** (`hs234-exact-interface.md` §4, "with anchors on the
-parent path"; "a first-violating slot-`s` vote excludes a new exempt optimistic anchor"): at an
+/-- **The voter's anchor is below `P`** (with anchors on the
+parent path; a first-violating slot-`s` vote excludes a new exempt optimistic anchor): at an
 honest slot-`s` vote, before which every honest slot-`s` vote is `P`, the anchor of the voter's
 walk is an ancestor of `P`: a read-point lock of a label `< s` sits below a stored live lock of
 that label (`readPoint_locks_below_stored`), below `P` or at or below `fc_root` (the lock
@@ -168,7 +168,7 @@ private theorem walk_passes_start
   exact ⟨SA.anc_tree_of_anc_U hU hΦ hΦU hat haS hst, hsG⟩
 
 /-- **A voter below the proposal walk's start reaches it, under HS.3 (b)'s premises**
-(`hs234-exact-interface.md` §3 "the proposal-boundary helper", §4 (b)), with `t_s ≥ r` in
+(the proposal-boundary helper), with `t_s ≥ r` in
 place of (a)'s start premise. `d.start` is the
 proposer's `fc_root` `R` (`voter_passes_proposer_root`) or a live lock block of the proposer,
 clean (HS.2 (3)), whose origin every later in-phase honest vote extends
@@ -198,7 +198,7 @@ theorem voter_reaches_start_clean
     exact voter_passes_proposer_root hS hlock hy hcy hes hIH hsP hbelow hlow
   · exact proposer_lock_extends hS hr h hy hcy hes
 
-/-- **The stop at `P`** (`hs234-exact-interface.md` §4; workbench#12 §3): at `Q` the voter's only
+/-- **The stop at `P`**: at `Q` the voter's only
 eligible child is `P` (`proposal_frozen_viable`, eligible as of the current slot;
 `proposal_only_child`), and its walk has no best child at `P`: a child of `P` would be of a slot
 above `s`, and the voter block tree of slot `s` has none (`voterBlockTree_slot_le`). -/
@@ -237,8 +237,8 @@ theorem proposal_stop
   have hlt := hΦ.coherent.2 P hPv.1.1 C hC.1.1.1.1 hC.1.2.1
   omega
 
-/-- **The later votes and proposal parents** (`hs234-exact-interface.md` §2.2 "for subsequent
-slots use the unanimous honest batch", §4 (b); open): under (b)'s premises, with every honest
+/-- **The later votes and proposal parents** (for subsequent
+slots by the unanimous honest batch; open): under (b)'s premises, with every honest
 slot-`s` vote exactly `P`, every honest in-phase vote of a later slot extends `P`, and every
 honest in-phase proposal of a later slot has a parent extending `P` (the honest batch, `n − f >
 2f`, beats every conflicting child and releases every older conflicting lock, by induction on the
@@ -263,7 +263,7 @@ theorem later_extend
   later_extend_of_setting hS hr fun y hy k ℓ e hv hs => (hvotes y hy k ℓ e hv hs).1
 
 /-- A slot-`s` block in the viable voter tree of slot `s` is a viable head
-(`hs234-exact-interface.md` §4, "cannot have an earlier-slot descendant"): its viable head
+(it cannot have an earlier-slot descendant): its viable head
 witness `W ⪰ P` in the voter block tree has no slot above `s` (`voterBlockTree_slot_le`), so it
 is `P`. -/
 theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr)
@@ -356,7 +356,7 @@ theorem voters_pass
     exact ⟨d.start, Or.inr ⟨.refl, hsd⟩, h1, h2⟩
 
 /-- **Every honest slot-`s` vote is `P`** given that every voter passes the path from `d.start`
-through `Q` to `P` (workbench#12 §2–§3, as `Compose.honest_votes_eq_proposal_before`), by induction
+through `Q` to `P` (as `Compose.honest_votes_eq_proposal_before`), by induction
 on the vote's cut: from the passed block `X` the voter's walk follows the proposal walk to `Q`
 (`proposal_suffix`) and steps to `P`, where it stops (`proposal_stop`, `ghost_follow`); with its
 full fuel it has stopped (`ghost_stopped`), so it ends at `P`. -/
@@ -497,7 +497,7 @@ theorem vote_conclusion
   ⟨hvotes y hy k e ⟨ℓ, hv⟩ hes, frozen_of_viableTree hS.run hS.shared.noColl hy hv hes
     hS.ready.2.2.2.2.1 (proposal_frozen_viable hS hy hv hes)⟩
 
-/-- **HS.3 (b)** (`hs234-exact-interface.md` §4 (b)), with HS.2 as a hypothesis: its fourth
+/-- **HS.3 (b)**, with HS.2 as a hypothesis: its fourth
 clause is (a)'s lock premise (the voters' cuts are in the phase from `i₀`, `phaseOn_voter`); the
 votes are `P` as in (a), with `voter_reaches_start_clean`; the later votes and parents are
 `later_extend`. -/

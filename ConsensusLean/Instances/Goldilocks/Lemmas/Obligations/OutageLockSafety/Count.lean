@@ -8,7 +8,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Outage lock safety: the counts (card §4, §5.0, §5.1)
+/-! # Outage lock safety: the counts
 
 * `OutageLockPremises.two_mul_lt` (N6): `2·|Hᶜ ∪ W| < n`.
 * `OutageLockPremises.compatible_of_within`: an origin within `b₀` is compatible with `P` (§4.2).

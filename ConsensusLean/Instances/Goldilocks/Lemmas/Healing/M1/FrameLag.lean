@@ -7,7 +7,7 @@ public section
 
 /-! # M1′ B2: the frame-key lag (L-H, L-J, L-C)
 
-pre_advance_finality §23.2. If an honest `x` has key `v` at cut `i`, an honest `z` has key
+If an honest `x` has key `v` at cut `i`, an honest `z` has key
 `≥ v` at every cut `m` after a call of `z` at or after the relay deadline of `i`
 (`frameKey_lag`). Each trigger block (the `h_max` carrier, the `J` carrier, the contest
 witness) is held by `x`, so it was accepted by an honest node: `ResetService.relay` delivers

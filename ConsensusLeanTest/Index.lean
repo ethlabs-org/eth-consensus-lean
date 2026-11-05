@@ -21,7 +21,7 @@ public import Solution
 
 /-! # Name index
 
-Every name a reviewer or the README relies on, checked to exist by the build:
+Every name a reviewer or the docs rely on, checked to exist by the build:
 `example := ``X` is a resolved name literal, which fails unless `X` is a declaration
 (`example := @X` would also accept a field projection of a constant, e.g. `@c.field`).
 This checks **existence only**, not strength: what a test

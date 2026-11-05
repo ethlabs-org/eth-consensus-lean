@@ -17,15 +17,15 @@ HR.3 over a Goldilocks run under the HS shared premises, `Catch(2Δ)` and `Prop�
 (claims HR.3, status S given HS.0 and HS.5; proved, `reset_existence`):
 (a) `c_z > ḡ + 8Δ` (`lt_cutZ`), so HS.0 (`Settle(Δ)`, `settle`) applies at every `u ≥ c_z`;
 (b) HS.5 (`Producer(A)`, `producer`): from a settled `w`, the effective phase changes by `w + A`;
-(c) the count (`reset_count`, `producer-reset-continuation.md` §§14–15): from `c_z`, every
+(c) the count (`reset_count`): from `c_z`, every
 `Δ + A` the phase changes (settle within `Δ`, then produce within `A`); at most three phases per
 frontier value (HR.2) and two rises above `H_z` reach a block of state height `H_z + 2`, whose
 chain carries an honest attestation at `H_z + 1` (HR.1 (b)); so the reset exists by
 `c_z + 6(Δ + A)`. The reset is unique (`IsReset` is a least time), and the bound's closed forms are
 in `Arith`.
 
-`settle` and `producer` are HS.0 and HS.5 (claims §"Healing: phase service"; phase-service.md
-§§1–8, the author's paper results with Astra's review applied), as the use in HR.3 needs them
+`settle` and `producer` are HS.0 and HS.5 (claims §"Healing: phase service"),
+as the use in HR.3 needs them
 (`κ = 2Δ`, `G = G_p`).
 
 `reset_count` is proved from HS.0, HS.5, HR.1 (b) and HR.2 (b): the potential `3m + rank` of the
@@ -37,7 +37,7 @@ of that state height carries an honest attestation of height `H_z + 1` (HR.1 (b)
 (unforgeability on the FG projection, C0.5 (c)); the reset is the time of the first cut with such
 a signing.
 
-`settle` is proved from the facts of `Settle` (`phase-service.md` §8.3): unless the phase changes,
+`settle` is proved from the facts of `Settle`: unless the phase changes,
 the phase at `u + Δ` is the one after `u`; its witnesses of state height `m` were accepted by `u`
 and extend every honest `Σ.F` at `u + Δ` (strict-height G1.2), so they reach every honest node by
 `Catch(2Δ)` or acceptance relay; joining and the catch-up at `u + Δ` follow from no restart after

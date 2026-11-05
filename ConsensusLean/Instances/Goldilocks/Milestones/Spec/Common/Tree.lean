@@ -5,8 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Tree
 
 /-! # Goldilocks milestone vocabulary: coherent block sets
 
-The part of `Spec/Common/Tree` that no Challenge statement reaches (docs/decisions.md, 2026-11-04):
-the milestone statements use it; it is not on the trusted surface. Names and bodies are unchanged.
+The part of `Spec/Common/Tree` that no Challenge statement reaches (`docs/decisions.md`
+§"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
+surface. Names and bodies are unchanged.
 
 `Coherent S` is what makes `S` a tree (claims F.2, F.3): roots are injective on `S` and slots
 strictly increase along its parent edges. -/

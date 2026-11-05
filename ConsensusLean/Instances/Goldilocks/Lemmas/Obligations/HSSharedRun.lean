@@ -8,7 +8,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: `HSSharedUpTo` from a healthy run, at a parametric `Δ_F` (#136)
+/-! # Goldilocks Obligations: `HSSharedUpTo` from a healthy run, at a parametric `Δ_F`
 
 The shared HS premises through the engine horizon, from the run data of a query alone (valid
 execution, no observed collision, `Healthy` at GST `g`), at a parametric FG delay `Δ_F`.

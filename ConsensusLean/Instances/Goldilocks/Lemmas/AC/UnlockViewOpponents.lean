@@ -7,8 +7,8 @@ public section
 
 /-! # Goldilocks SA: the opponents of the view that `unlock` reads
 
-The O-form of the unlock premise of `mem_step_locks_of_keep_view` (consensus-lean#135,
-WI-15/16). The view `unlockView A Φ t c` of an AC call `c` is built from votes of pools and
+The O-form of the unlock premise of `mem_step_locks_of_keep_view`.
+The view `unlockView A Φ t c` of an AC call `c` is built from votes of pools and
 from the votes and support entries of the blocks of `Φ.tree`. So, for a vote set `S` that holds
 these votes, its votes and its support lie in `S`, and its opponents lie in the opponents of the
 view `⟨S, S⟩` (`opponents` grows with the view).

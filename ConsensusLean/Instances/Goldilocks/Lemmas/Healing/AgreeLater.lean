@@ -12,8 +12,8 @@ public section
 
 /-! # Goldilocks Healing, HS.3 (b): later votes and proposal parents
 
-`hs234-exact-interface.md` §2.2 ("for subsequent slots use the unanimous honest batch") and §4
-(b), under the settled context `Γ` (`DrainCommon`): when every honest vote of a clean slot `s` is
+HS.3 (b), for subsequent slots by the unanimous honest batch,
+under the settled context `Γ` (`DrainCommon`): when every honest vote of a clean slot `s` is
 exactly `P`, every in-phase honest vote of a later slot extends `P` (`later_votes_extend`) and
 every in-phase honest proposal of a later slot has a parent extending `P`
 (`later_parents_extend`).
@@ -27,7 +27,7 @@ every in-phase honest proposal of a later slot has a parent extending `P`
   and time), so it is in the phase; ProposalCore's `batch_proposal` from the slot-`(s'−1)`
   honest batch (`DrainProposal`'s `proposal_head_of_batch`, keyed on the proposal cut).
 
-It also has the start of HS.3's walk comparison (§4, "the unequal-root prefix"): a voter below
+It also has the start of HS.3's walk comparison (the unequal-root prefix): a voter below
 the proposer's `fc_root` reaches it (`voter_passes_proposer_root`), and a clean proposer lock
 start is below the vote under (b)'s premises (`proposer_lock_extends`). -/
 
@@ -103,7 +103,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {g ΔF w : Time} {i₀ m : Nat}
   {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
 
-/-- **The later votes extend `P`** (`hs234-exact-interface.md` §2.2, §4 (b)): under `Γ` (without
+/-- **The later votes extend `P`** (HS.3 (b)): under `Γ` (without
 `Prop⁺`), when every honest vote of a slot `s` with `t_{s−1} ≥ w + 4Δ` is exactly `P`, every
 in-phase honest vote of a later slot extends `P`. -/
 theorem later_votes_extend (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
@@ -148,7 +148,7 @@ private theorem proposal_call_lt_own (hrun : GoldilocksRun proposer dg H tr) {p 
   have := hl.tick_unique p hpH j₀ j'' _ h₀ (by rw [← ht]; exact ⟨x, hg⟩)
   omega
 
-/-- **The later proposal parents extend `P`** (`hs234-exact-interface.md` §2.2, §4 (b)): under
+/-- **The later proposal parents extend `P`** (HS.3 (b)): under
 `Γ` (without `Prop⁺`), when every honest vote of a slot `s` with `t_{s−1} ≥ w + 4Δ` is exactly
 `P`, every in-phase honest proposal of a later slot has a parent extending `P`: its `ac_proposal`
 cut precedes its own block cut (`proposal_call_lt_own`), so it is in the phase, and every honest
@@ -198,7 +198,7 @@ theorem clean_pred_of_rTime {s : Nat} (hr : rTime sp w ≤ sp.ts s) :
   have hk := sp.two_le_k
   exact ⟨by omega, ha.trans ((SA.ts_le_iff sp).2 (by omega))⟩
 
-/-- **HS.3 (b)'s later votes and proposal parents** (`hs234-exact-interface.md` §2.2, §4 (b)), in
+/-- **HS.3 (b)'s later votes and proposal parents**, in
 HS.3's setting with `t_s ≥ r`: with every honest slot-`s` vote exactly `P`
 (`later_votes_extend`, `later_parents_extend`). -/
 theorem later_extend_of_setting {p : Fin sp.n} {kP s : Nat}
@@ -315,7 +315,7 @@ theorem proposer_stored_lock_lt
   omega
 
 /-- **A live lock block of the proposer's unlocked state is below every in-phase honest
-slot-`s` vote** (`hs234-exact-interface.md` §3 "the proposal-boundary helper", §4 (b)): the lock
+slot-`s` vote** (the proposal-boundary helper; HS.3 (b)): the lock
 sits below a stored live lock of the proposer (`unlock` moves locks back), of a label `< s`
 (`proposer_stored_lock_lt`), clean as `t_s ≥ r` (`live_lock_clean`), below the stored block `O`
 of an origin of its label written by the proposer (`stored_fast_lock_provenance`,
@@ -387,7 +387,7 @@ theorem proposer_lock_extends
     exact ⟨Hd, hHd, hHdr, hB'B₁.trans (hLO.trans hOHd)⟩
 
 /-- **Every live lock block of an honest slot-`s` voter's read point is below `P`**
-(`hs234-exact-interface.md` §4, "with anchors on the parent path"), at a vote before which every
+(with anchors on the parent path), at a vote before which every
 honest slot-`s` vote is `P`: a read-point lock of a label `< s` sits below a stored live lock of
 that label (`readPoint_locks_below_stored`), below `P` or at or below `fc_root ⪯ P` (the lock
 premise); a lock of a label `≥ s` sits below a block of three quarters of the committee in a
@@ -480,7 +480,7 @@ private theorem slot_lt_of_sibling {FGP : Type} {U : Set (SA.Blk sp.n FGP)} (hU 
   exact (Anc.slot_le hU hAq).1.trans_lt (hU.2 q hq.1 C hC (hpar.trans hq.2.2))
 
 /-- **The proposer's `fc_root` is below every viable head of an honest slot-`s` voter's voter
-block tree**, when `R ⪯ P` (`hs234-exact-interface.md` §4, "the unequal-root prefix"): such a
+block tree**, when `R ⪯ P` (the unequal-root prefix): such a
 head `W` is allowed (aligned readers at the vote, `viableHeads_iff`), so above the proposer's
 `Σ.F` (HS.1, `finalized_anc_of_allowed`); the proposer holds it (stamped before the freeze, it
 is relayed to the proposer by `t_s`, `mem_frame_of_relay`; otherwise it is below the slot-`s`
@@ -558,8 +558,8 @@ private theorem root_below_voterHeads
   rw [← hfrp] at hWvp
   exact Anc.mono hΦpU (hΦp.fcRoot_anc_viableHeads W hWvp)
 
-/-- **A voter below the proposer's `fc_root` reaches it** (`hs234-exact-interface.md` §4, "the
-unequal-root prefix"): in HS.3's setting, with (a)'s lock premise and `R ⪯ P` for the proposer's
+/-- **A voter below the proposer's `fc_root` reaches it** (the
+unequal-root prefix): in HS.3's setting, with (a)'s lock premise and `R ⪯ P` for the proposer's
 `fc_root` `R` (no premise of (b) is needed),
 an honest slot-`s` vote, before which every honest slot-`s` vote is `P`, extends `R`. When
 `R ⪯` the voter's `fc_root` the head extends it; otherwise `R` is frozen-viable (between the

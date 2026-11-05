@@ -11,13 +11,12 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Obligations: the Healed bundle through a finite horizon (WI-17, #137)
+/-! # Goldilocks Obligations: the Healed bundle through a finite horizon
 
-consensus-lean#137 (finite-horizon port). `Healed` needs the
-whole-run `ResetPremises`, whose `HealthyRun` asks every honest node to be awake at all
-`t ≥ ḡ`. A finite trace (simTrace) is not awake after its horizon, so a finite query cannot
-supply them. This module states the bundle through a horizon `b` (`HealedUpTo`) and proves it
-from `ResetPremisesUpTo … b` and Catch(2Δ). The conclusions are restricted to the horizon:
+`Healed` needs the whole-run `ResetPremises`, whose `HealthyRun` asks every honest node to be awake
+at all `t ≥ ḡ`. A finite trace (simTrace) is not awake after its horizon, so a finite query cannot
+supply them. This module states the bundle through a horizon `b` (`HealedUpTo`) and proves it from
+`ResetPremisesUpTo … b` and Catch(2Δ). The conclusions are restricted to the horizon:
 
 * records: attestations signed at `time d ≤ b`, locks and R0 at cuts `time i ≤ b`; the entries are
   high entries whose origin is written by `b` (`Healing.HighEntryUpTo`);

@@ -7,7 +7,7 @@ public section
 
 /-! # M1′ B2/B3: at most 5 global frame changes, and the pigeonhole to a `FrameWindow`
 
-pre_advance_finality §23.2 (O2) and §6 (window). Two layers:
+O2 and the window. Two layers:
 
 * `exists_const_window_seq` is pure counting: a sequential pigeonhole for a per-node monotone
   key with lag `Δ` and a window length per key value.

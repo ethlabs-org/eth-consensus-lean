@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
 
 public section
 
-/-! # Goldilocks Obligations: `HSSharedUpTo` from a Healthy preparation query (#136)
+/-! # Goldilocks Obligations: `HSSharedUpTo` from a Healthy preparation query
 
 `HealthyPreparationQuery.hsSharedUpTo_of_le`: the shared HS premises of a Healthy preparation
 query through the engine horizon, at every `Δ_F ≥ Δ_F,p` (the protocol FG delay `protoFGDelay`)

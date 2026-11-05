@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
 
 public section
 
-/-! # Goldilocks Obligations: a final query's proposer duty gives an actual proposal (#136)
+/-! # Goldilocks Obligations: a final query's proposer duty gives an actual proposal
 
 `final_duty_proposal_run`: in a final query, an honest-ready proposer duty at a slot `s > 0` whose
 slot time is inside the horizon produces the designated proposer's actual proposal at `t_s`,

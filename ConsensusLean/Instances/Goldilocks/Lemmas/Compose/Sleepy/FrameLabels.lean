@@ -295,8 +295,8 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
       (hs'.trans hs.symm)).1
     omega
 
-/-- **Sources at a vote have labels at most `s`** (workbench#11 §3, R4; §4 "Extend the vote
-frontier"): at an honest slot-`(s+1)` vote, every honest attestation on a block the voter holds has
+/-- **Sources at a vote have labels at most `s`** (R4):
+at an honest slot-`(s+1)` vote, every honest attestation on a block the voter holds has
 a source below an origin of label at most `s`. A regular origin of label `l` is written at
 `t_l + 6Δ`, after the vote unless `l < s`; an optimistic one of label `l ≥ s + 2` after
 `t_{s+2}`; label `s + 1` is `no_optimistic_before_held_row`. -/
@@ -427,7 +427,7 @@ private theorem held_origin_viable_of (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **S3 at full reads**: once all origins compare, a block `B` that an honest node holds before
 cut `i` and that is compatible with every origin whose event precedes the cut (an origin itself;
-a protected proposal before its update, workbench#12 §4 S3P) is at or below its `fc_root` or in
+a protected proposal before its update, S3P) is at or below its `fc_root` or in
 its full viable tree. -/
 theorem held_origin_viable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) (hP : ∀ s, OriginsBelow tr H s) {y : Fin sp.n} (hy : y ∈ H)
