@@ -163,14 +163,14 @@ theorem armed_label_lt {T b₀ : Time} {σ : Nat} (hT : 0 ≤ T)
     σ + sp.k < coverLabel sp b₀ ∧ sp.k < coverLabel sp b₀ := by
   have hΔ := sp.toParams.hΔ
   have hk : (0 : Time) ≤ sp.k := by positivity
-  obtain ⟨-, hlt⟩ := coverLabel_gates (sp := sp) (b₀ := b₀) (by nlinarith)
+  obtain ⟨-, hlt⟩ := coverLabel_gates (sp := sp) (b₀ := b₀) (by linarith [mul_nonneg hk hΔ.le])
   have h1 : sp.ts ((σ : Int) + sp.k) < sp.ts (coverLabel sp b₀) := by
     simp only [SAParams.ts] at hσ hlt ⊢
-    nlinarith
+    linarith
   have h2 : sp.ts (sp.k : Int) < sp.ts (coverLabel sp b₀) := by
     have h0 : (0 : Time) ≤ sp.ts σ := by simp only [SAParams.ts]; positivity
     simp only [SAParams.ts] at hσ hlt h0 ⊢
-    nlinarith
+    linarith
   have h1' := (SA.ts_lt_iff sp).1 h1
   have h2' := (SA.ts_lt_iff sp).1 h2
   constructor <;> omega

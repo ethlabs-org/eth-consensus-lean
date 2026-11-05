@@ -214,7 +214,7 @@ theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
   simp only [ConfirmedQuery.duration, System.cDur,
     Params.standard, contract_coefficients_catchUp]
   change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- Canonical recipient service through the actual query deadline. -/
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
@@ -285,7 +285,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
     rw [show (K S A).params.latency Q.cap Q.index = contract_latency S A Q.cap Q.index from
       congrFun (congrFun (contract_coefficients_latency S A) Q.cap) Q.index]
     change (4 * (Q.index : Time) + 6) * Q.run.1.ΔAC ≤ _
-    nlinarith
+    exact mul_le_mul_of_nonneg_right hlat (zero_le_one.trans hd)
   have hwin : Q.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.run.2.horizon := by
     have hb := Q.bounded
     have hp := Q.params.toParams.hΔ

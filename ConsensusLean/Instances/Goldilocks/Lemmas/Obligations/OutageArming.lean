@@ -43,7 +43,7 @@ theorem outage_duration_supply (Q : OutageQuery S A V) :
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [OutageQuery.duration, System.cDur, Params.standard, contract_coefficients_catchUp]
   change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- (A1) The lag `4k + 6` is the node lag `(4k+6)Δ`. -/
 theorem outage_node_lag (Q : OutageQuery S A V) :
@@ -54,7 +54,7 @@ theorem outage_node_lag (Q : OutageQuery S A V) :
   change Q.T + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC ≤ Q.start at hlag
   change Q.T + (4 * (S.k : Int) + 6) * Q.run.1.ΔAC ≤ Q.start
   push_cast at hlag
-  nlinarith
+  linarith
 
 /-- (A4)/(A5) The no-sleep window `[a, z]` starts by `t_{j₀−k}` (from `0`) and ends at or after
 every update of a label `≤ j₀` within the horizon. -/
@@ -74,7 +74,7 @@ theorem outage_window_cover (Q : OutageQuery S A V) :
   have hkj := (Compose.armed_label_lt (σ := 0) hT hlag (by simp [SA.SAParams.ts]; exact hT)).2
   obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
     have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
-    nlinarith)
+    linarith)
   have hhor : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
   have hC : ((4 * S.k + 6 : Nat) : Int) = 4 * (S.k : Int) + 6 := by push_cast; ring
   set j₀ := Compose.coverLabel Q.params Q.start
@@ -93,9 +93,9 @@ theorem outage_window_cover (Q : OutageQuery S A V) :
   · have : (0 : Time) ≤ (j₀ : Int) - S.k := by linarith
     positivity
   · rw [hC]
-    nlinarith
+    linarith
   · rw [hC]
-    nlinarith
+    linarith [mul_nonneg hk (zero_le_one.trans hd)]
 
 /-- **Arming of a ready source**: the read tip `P` at the end-of-`T` cut, an armed origin
 `C ⪰ P`, S-vote, and O1 at the labels `j₀ − 1` and `j₀ = coverLabel b₀` for the holders. -/
@@ -228,7 +228,7 @@ theorem outage_arming (Q : OutageQuery S A V)
   have hCb := hCw.mono hTb
   obtain ⟨hg₁, -⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
     have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
-    nlinarith)
+    linarith)
   -- the holders are honest and awake on the no-sleep window
   have hhold : ∀ w ∈ Q.holders,
       (Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run ≤

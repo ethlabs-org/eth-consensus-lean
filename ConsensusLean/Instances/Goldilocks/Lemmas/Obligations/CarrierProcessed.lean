@@ -113,7 +113,7 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
       exact_mod_cast (contract_coefficients S A).catchUp.pos
     change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hc1 (zero_le_one.trans Q.run.1.ΔAC_pos)]
   obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
     (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp hmem)
     (not_isFGAtt_of_decodeForward hdecode) hy Q.bounded

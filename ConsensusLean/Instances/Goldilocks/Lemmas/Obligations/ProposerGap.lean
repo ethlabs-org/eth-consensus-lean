@@ -57,12 +57,12 @@ theorem recurrence_gap (h : PatternRecurrence p key sel G ρ c start stop)
   have hsa : G.slotTime s₀ ≤ G.slotTime a := by
     unfold TimeGrid.slotTime
     have : (s₀ : Time) ≤ (a : Time) := by exact_mod_cast ha
-    nlinarith
+    exact mul_le_mul_of_nonneg_right this hL.le
   have hend : G.slotTime a - G.slotLen + (ρ.len : Time) * G.slotLen ≤
       G.slotTime N + (ρ.pattern.span : Time) * G.slotLen := by
     unfold TimeGrid.slotTime
     rw [hlen]
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right haN' hL.le]
   obtain ⟨s, hs₁, hs₂, hall⟩ := h (G.slotTime a - G.slotLen) (by linarith)
     (hend.trans hstop) (hend.trans hhor)
   have hall0 := hall 0 h0
@@ -93,7 +93,7 @@ theorem catchUp_le_cDur (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.c
     rw [contract_coefficients_catchUp]
     exact_mod_cast contract_catchUp_ge_sleepy S A
   change 18 * run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * run.1.ΔAC
-  nlinarith
+  linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- **Duty to actual proposal, run level.** In a valid, collision-free run, an honest-ready
 proposer duty at a slot `s > 0` with `t_s ≤ horizon` gives the run proposer's actual proposal `P`
@@ -144,7 +144,8 @@ theorem duty_proposal_run (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype
     rw [ht, (S.params (Model.pubOf run.1) hn).slotTime_eq] at this
     have he : (P.slot : Time) = (s : Time) := by
       simp only [SA.SAParams.ts] at this
-      nlinarith [(S.params (Model.pubOf run.1) hn).toParams.hΔ]
+      exact mul_left_cancel₀ (mul_pos four_pos (S.params (Model.pubOf run.1) hn).toParams.hΔ).ne'
+        this.symm
     exact_mod_cast he
   refine ⟨k, P, Healing.honestProposalRun_of_proposesAt hrun hnc' hnode.1 rfl hP hlabel, hP,
     Compose.proposal_accepted hrun hnc' hnode.1 hP, ht, hlabel, hnode⟩

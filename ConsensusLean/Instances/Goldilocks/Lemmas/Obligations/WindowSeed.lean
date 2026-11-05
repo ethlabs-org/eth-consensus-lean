@@ -100,7 +100,8 @@ theorem seed_height {g ΔR a b gS ΔF : Time}
     push_cast at this
     linarith
   have h2δ : (2 : Time) ≤ (sp.toParams.fg.δt : Time) := by exact_mod_cast hδ
-  have h8 : sp.ts u + 8 * sp.Δ ≤ sp.ts s₀ := by nlinarith
+  have h8 : sp.ts u + 8 * sp.Δ ≤ sp.ts s₀ := by
+    linarith [mul_le_mul_of_nonneg_left h2δ (mul_nonneg zero_le_four sp.toParams.hΔ.le)]
   have hus2 : u + 2 ≤ s₀ := by omega
   have hub : sp.ts u + 6 * sp.Δ ≤ b := by linarith
   -- Step 1: H0 at the seed
