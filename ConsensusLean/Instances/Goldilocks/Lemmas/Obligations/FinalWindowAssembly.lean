@@ -157,17 +157,16 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   have hbh : Q.deadline ≤ Q.run.2.horizon := Q.bounded
   have hq : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0) 0 ≤ Q.query := by
     have h1 : G.slotLen ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) * G.slotLen := by
-      have : (1 : Time) ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) := by push_cast; linarith
+      have : (1 : Time) ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) := by
+        push_cast; linarith only [hi, Int.natCast_nonneg S.δt]
       exact le_mul_of_one_le_left hL.le this
     have := le_max_left (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
       (G.slotTime (finalSeedMin S A V Q a) - 1)
     rw [max_eq_left (le_max_right _ _)]
-    linarith
+    linarith only [this, hplace, h1]
   rw [max_eq_left (le_max_right _ _)] at hq
-  have h3cΔ : (0 : Time) ≤ 4 * (((Q.index : Nat) : Time) + 3 * (c : Time)) * Q.params.Δ := by
-    positivity
   have hstop : Q.query + ((⟨finalWindow A, Q.index⟩ : Recurrence).len : Time) * G.slotLen ≤
-      Q.run.2.horizon := by rw [hlen]; linarith
+      Q.run.2.horizon := by rw [hlen]; linarith only [hlat, hbh, hΔ]
   obtain ⟨u, s₀, humin, hu0, hus, hut₁, -, hdu, hs₀q, -, hspan, hds⟩ :=
     two_query_placement (δt := S.δt) hrec (by rw [hpat]; simp) hplace hq hstop hstop
   rw [hlen, hspc, finalGrid_slotTime] at hspan
@@ -181,20 +180,20 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
       change max Q.gst 0 + 4 * Q.params.Δ <
         max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
       simp only [Regimes.catchUp] at hc
-      linarith
+      linarith only [hc, hΔ]
     have h1 := ((le_max_left _ _).trans (le_max_left _ _)).trans_lt hut₁
     rw [finalGrid_slotTime] at h1
-    linarith
+    linarith only [hready, h1]
   have hus' : u + Q.params.toParams.fg.δt ≤ s₀ := hus
   have hts : ∀ m n : Nat, m ≤ n → Q.params.ts m ≤ Q.params.ts n := fun m n h =>
     (SA.ts_le_iff Q.params).2 (by exact_mod_cast h)
   have hu₀ : Q.params.ts u ≤ Q.params.ts s₀ := hts _ _ ((Nat.le_add_right _ _).trans hus')
   have hR : Healing.drainTime Q.params a ≤ Q.params.ts s₀ := hRu.trans hu₀
   have hb3 : Q.params.ts (s₀ + 3 * c : Nat) ≤ Q.run.2.horizon := by
-    push_cast at hspan hlat ⊢; linarith
+    push_cast at hspan hlat ⊢; linarith only [hspan, hlat, hbh, hΔ]
   have hb₀ : Q.params.ts s₀ ≤ Q.run.2.horizon := (hts _ _ (by omega)).trans hb3
-  have hgS₀ : gbar Q.gst ≤ Q.params.ts s₀ + 6 * Q.params.Δ := by linarith
-  have hgSu : gbar Q.gst ≤ Q.params.ts u + 6 * Q.params.Δ := by linarith
+  have hgS₀ : gbar Q.gst ≤ Q.params.ts s₀ + 6 * Q.params.Δ := by linarith only [hgu, hu₀, hΔ]
+  have hgSu : gbar Q.gst ≤ Q.params.ts u + 6 * Q.params.Δ := by linarith only [hgu, hΔ]
   -- shared premises
   have hc : Healing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
@@ -215,7 +214,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
       (Nat.le_add_right _ _))
     ((hts _ _ (by have := hoff i; omega)).trans hb3) (hduty i)
   have hδ2 : 2 ≤ Q.params.toParams.fg.δt := by rw [hδeq]; omega
-  have hh₀ := seed_height_held hreset hc hs hδ2 hPs hu0 hRu (by linarith) (hP 0)
+  have hh₀ := seed_height_held hreset hc hs hδ2 hPs hu0 hRu hgu (hP 0)
     (by simpa using hus') (by simpa using hb₀) hgSu
   have hsteps := anchorSteps_gap hreset hc hs hc2 hdel (s₀ := s₀) (P := P) hP
     (by simpa using hR) hb3 (by simpa using hgS₀) hh₀
@@ -232,8 +231,8 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     rw [finalGrid_slotTime] at hR'
     have hti : Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) ≤ Q.run.2.horizon :=
       (hts _ _ (by have := hoff i; omega)).trans hb3
-    have h0 : (0 : Time) ≤ Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) := by
-      simp only [SA.SAParams.ts]; positivity
+    have h0 : (0 : Time) ≤ Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) :=
+      mul_nonneg (mul_nonneg zero_le_four hΔ.le) (Int.natCast_nonneg _)
     have hnode := ready_transport S Q.run.2 Q.hn Q.valid h0 hti hR'
     rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn _)) =
       runProposer S Q.run.2 Q.hn _ from Q.run.2.key.symm_apply_apply _] at hnode
@@ -241,12 +240,12 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     rw [hpr, Q.params.slotTime_eq]
     exact hnode
   have h3D : Q.params.ts (s₀ + 3 * c : Nat) + Q.params.Δ ≤ Q.deadline := by
-    push_cast at hspan hlat ⊢; linarith
+    push_cast at hspan hlat ⊢; linarith only [hspan, hlat]
   have hlast : Q.query < Q.params.ts (s₀ + 3 * c : Nat) := hs₀q.trans_le (hts _ _ (by omega))
   obtain ⟨W, hWs, hWg, hWb⟩ := finalWindow_data_of_honest_anchors_gap Q hreset hc hc2 h3c s₀ hP
     hR hb3 (by rw [Q.params.slotTime_eq]; simpa [SA.SAParams.ts] using hs₀q)
     (by rw [Q.params.slotTime_eq]; simp only [SA.SAParams.ts] at h3D; push_cast at h3D ⊢
-        linarith)
+        linarith only [h3D, hΔ])
     hready (hcarrier _ _ (by simpa using hP 3) (by simpa using hlast) (by simpa using h3D))
   subst hWs hWb hWg
   refine ⟨W, rfl, ?_, ⟨runProposer S Q.run.2 Q.hn, digestOf S Q.run.2, Q.gst, ΔR, a,
