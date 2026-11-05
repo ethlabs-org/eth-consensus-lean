@@ -7,7 +7,7 @@ public section
 
 /-! # Goldilocks Healing: an honest proposal justifies its parent's entry (Lemma 3′)
 
-Lemma 3′, steps 3–6, at trace level.
+Lemma 3′ at trace level.
 
 * `justify_step'` (one held block): a block `X` on the parent `Pr`, and a set `S` of weight `≥ q`
   of validators, each with a target attestation (no timeout) for `Pr`'s entry `(h, T_h)` in `X`'s
@@ -35,7 +35,7 @@ open _root_.Consensus.Goldilocks.Store
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- **Lemma 3′ at one block** (s5 §4, steps 4–6): a held block `X` on the held parent `Pr`, and a
+/-- **Lemma 3′ at one block**: a held block `X` on the held parent `Pr`, and a
 set `S` of weight `≥ q` of validators, each with a target attestation for `Pr`'s entry in `X`'s
 payload or on `Pr`'s chain (with the finality pair `(h_j, J)` when `Pr`'s state has its previous
 height justified and the pair is pending): `X`'s state justifies `Pr`'s entry, and at a height whose
@@ -99,7 +99,7 @@ theorem signAt_val (hrun : GoldilocksRun proposer dg H tr)
     obtain ⟨rfl, -⟩ := h
     rfl
 
-/-- **The attestations of an honest proposal** (s5 §4, step 3): for an honest proposal `X` at the
+/-- **The attestations of an honest proposal**: for an honest proposal `X` at the
 cut `kX` on the held parent `Pr`, the FG projection is a local run, the store after the cut holds
 `X` and `Pr` with the same states, and every attestation that the proposer processed before `kX` and
 that names `Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
@@ -155,7 +155,7 @@ theorem proposal_rows_placed (hrun : GoldilocksRun proposer dg H tr)
     · rw [hdroot, hah]
     · rw [hdroot, haT]
 
-/-- **Lemma 3′ at an honest proposal** (s5 §4): an honest proposal `X` at the cut `kX` on the parent
+/-- **Lemma 3′ at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent
 `Pr` of the proposer's tree, with parent state `σ = σ[Pr]` (the proposer's, at `kX`), and a set `S ⊆
 H` of weight `≥ q` of honest validators, each of which signed a target row for `(σ.h, σ.T_h)` (with
 the finality pair `(σ.h_j, σ.J)` at a height whose previous height is justified where it is pending)

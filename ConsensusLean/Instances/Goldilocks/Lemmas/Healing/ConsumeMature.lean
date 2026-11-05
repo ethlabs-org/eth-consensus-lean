@@ -15,8 +15,8 @@ The assembly (proved): `Prop⁺` at `τ` selects the ready proposal `X` of slot 
 `τ ≤ t_x ≤ τ + G_p`, kept throughout (also when its parent already crossed). Its proposal cut is
 before `j_b`, so the protected parent clause gives `X`'s parent `Pr ⪰ W`, hence `W ⪯ X`; `E ⪯ Pr`
 gives `ht(Pr) ≥ h`. If `ht(Pr) > h`, `ht(X) ≥ h + 1` at once; if `ht(Pr) = h`, the crossing is
-`crossing_of_rows` (§3.1, `ConsumeCrossing`), with the attestations delivered to the proposer before
-its cut by `GST(g)` (`rows_delivered`). Universal acceptance (§3.2): `X` is above the floor, so
+`crossing_of_rows` (`ConsumeCrossing`), with the attestations delivered to the proposer before
+its cut by `GST(g)` (`rows_delivered`). Universal acceptance: `X` is above the floor, so
 allowed at its proposer after its cut (`effAllowed_of_floor_lt`); HS.1 (`hret`) puts every
 honest `Σ.F` below `X` at the tick at `t_x + Δ` (before `j_b`); the acceptance relay of `GST(g)`
 (the proposer's acceptance at `t_x ≥ ḡ`, deadline `t_x + Δ`, no restart after `ḡ`) gives an

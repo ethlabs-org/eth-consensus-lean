@@ -10,7 +10,7 @@ public section
 
 /-! # Goldilocks Obligations: C4 of the Healed bundle from the reset
 
-L4.6 (C4, no reorg of honest blocks). Under `Healing.ResetPremises` and Catch(2Δ), an honest
+C4, no reorg of honest blocks. Under `Healing.ResetPremises` and Catch(2Δ), an honest
 operational proposal of a post-drain slot `s` is an ancestor of every honest proposal of a slot
 `s' ≥ s + 2` (`honest_proposal_below_later_upTo`, from
 `UpTo.operational_proposal_below_later_parent`). Every honest proposal is operational

@@ -12,7 +12,7 @@ public section
 
 The frame key of a store is
 `κ = 3·h_max + c`, with `c = 2` in a contest, `c = 1` at `h_max = h_j + 1` without a contest,
-and `c = 0` otherwise. This is the lexicographic key `(h_max, b, C)` of §23.1 coded in `ℕ`
+and `c = 0` otherwise. This is the lexicographic key `(h_max, b, C)` coded in `ℕ`
 (a contest implies `b`).
 
 * `frameKey_eq_*`: equal keys (at any two honest cuts) give equal `head_height_floor`, contest
@@ -24,7 +24,7 @@ namespace Consensus.Goldilocks.Healing
 open SA (SAParams ReplayOrder Payload)
 
 open Classical in
-/-- The FS′ frame key `3·h_max + c` (§23.1). -/
+/-- The FS′ frame key `3·h_max + c`. -/
 noncomputable def frameKey {P : Params} {ACP : Type} (st : Store P ACP) : Nat :=
   3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0)
 

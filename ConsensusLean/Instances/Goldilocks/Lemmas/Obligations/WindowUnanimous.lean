@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 
 public section
 
-/-! # Goldilocks Obligations: window reports from a unanimous slot (L5.4)
+/-! # Goldilocks Obligations: window reports from a unanimous slot
 
 `window_justifies_or_parents_above_after` takes the report duty `hreports'`: every honest node
 reports some `C ⪰ X` at a cut in `[tH, v]`, for each held `X` with root `T`. Here a unanimous

@@ -11,17 +11,17 @@ public section
 
 Under the settled context `Γ` of `DrainCommon`.
 
-* **Extension** (proved): every in-phase honest vote of a slot `> j` extends a clean origin's
-  stored block `B` (`clean_fast_extends`, `clean_slow_extends`), by induction on the cut of the
-  vote (the first violating event): a vote whose `fc_root` is above `B` extends it; a
-  slot-`(j+1)` vote by A1.2 for a fast origin (`first_transfer_stored`, with `Carry` and frozen
-  viability from §2.1 and `Sync` from `GST(g)` after `ḡ ≤ t_j`) or by A1.8 for the ancestor `B`
-  of the update's result for a slow one (`clean_slow_first_extends`, `result_transfer_anc`, the
-  live locks compared with `B` by `slow_live_locks_anc`); a later vote by A1.3
-  (`next_transfer`) from the preceding honest batch (half of the committee and `f < h_t` after
-  `c_z`, its `Carry` by §2.1).
+* **Extension** (proved): every in-phase honest vote of a slot `> j` extends a clean origin's stored
+  block `B` (`clean_fast_extends`, `clean_slow_extends`), by induction on the cut of the vote (the
+  first violating event): a vote whose `fc_root` is above `B` extends it; a slot-`(j+1)` vote by
+  A1.2 for a fast origin (`first_transfer_stored`, with `Carry` and frozen viability from
+  `DrainCommon` and `Sync` from `GST(g)` after `ḡ ≤ t_j`) or by A1.8 for the ancestor `B` of the
+  update's result for a slow one (`clean_slow_first_extends`, `result_transfer_anc`, the live locks
+  compared with `B` by `slow_live_locks_anc`); a later vote by A1.3 (`next_transfer`) from the
+  preceding honest batch (half of the committee and `f < h_t` after `c_z`, its `Carry` by
+  `DrainCommon`).
 * **HS.2 (1), (2)** at the next slot and later (`clean_fast_next`, `clean_fast_later`,
-  `clean_slow_next`, `clean_slow_later`): extension with §2.1's viability and `Carry`.
+  `clean_slow_next`, `clean_slow_later`): extension with `DrainCommon`'s viability and `Carry`.
 * **HS.2 (3), the drain** (`live_lock_clean`): a lock live at a time `≥ r` keeps its
   label `l` with `slot(now) ≤ l + k`, so `l ≥ a + k + 2`.
 * **HS.2 (3), the proposal boundary** (`live_lock_below_proposal`): a live lock of a slot-`s`
@@ -168,7 +168,7 @@ theorem faultBound_proj (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
   rw [← (Compose.joined_projection sp ro dg H tr proposer hrun y hy (tr.time k)).2.2]
   exact faultBound_of_healthy hrun hs hk
 
-/-- **Extension of an origin's block** (§3's event induction): given the first transfer (at the
+/-- **Extension of an origin's block** (the event induction): given the first transfer (at the
 slot-`(j+1)` votes, from the earlier votes) and the frozen viability at every in-phase honest vote
 of a slot `> j + 1`, every in-phase honest vote of a slot `> j` extends `B`. -/
 theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
@@ -234,7 +234,7 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
   · rw [← hm']
     exact fun z hz j' hj' e' hv' hsl' => hprior z hz j' hj' e' hv' (hsl' ▸ hjs)
 
-/-- **Extension of a clean fast origin** (§3): every in-phase honest vote of a slot `> j`
+/-- **Extension of a clean fast origin**: every in-phase honest vote of a slot `> j`
 extends the stored block `B`. -/
 theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)
@@ -274,7 +274,7 @@ private theorem clean_of_slow {j : Nat} (hj : w + 4 * sp.Δ ≤ sp.ts ((j : Int)
     w + 4 * sp.Δ ≤ sp.ts j :=
   hj.trans ((SA.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
 
-/-- **Extension of a clean slow origin** (§3): every in-phase honest vote of a slot `> j`
+/-- **Extension of a clean slow origin**: every in-phase honest vote of a slot `> j`
 extends the stored block `B`. -/
 theorem clean_slow_extends (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c)

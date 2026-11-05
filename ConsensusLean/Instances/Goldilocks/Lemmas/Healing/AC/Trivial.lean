@@ -5,7 +5,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: trivial frames, the honest batch, and fast-origin transfer (T1 §3)
+/-! # Goldilocks Healing: trivial frames, the honest batch, and fast-origin transfer
 
 Over a `StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)` (a slot `j` is `≥ r` exactly when
 `ḡ + 4Δ ≤ t_j`):
@@ -16,7 +16,7 @@ Over a `StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)` (a slot `j` is `�
   `Carry` (`carry_of_sent`, `trivial_carry_update`, `trivial_carry_fastLock`,
   `trivial_carry_votes`);
 * **the honest batch** (`honest_voters_half`): in a slot `≥ r` every honest node votes;
-* **T1 §3 for the votes**: `votes_continue` (A1.3 by induction on slots) and
+* **fast-origin transfer to the votes**: `votes_continue` (A1.3 by induction on slots) and
   `fast_origin_transfer_votes` (A1.2/A1.4 at the next slot by the first bad vote). -/
 
 namespace Consensus.Goldilocks.SA
@@ -696,7 +696,7 @@ theorem honest_voters_half_before {b : Time} (hS : HealthyBaseUpTo tr H U propos
   have := hS.faults
   omega
 
-/-- **Every honest node votes** in a slot `m ≥ r` (T1 §3, "the honest batch"): it is awake and
+/-- **Every honest node votes** in a slot `m ≥ r` (the honest batch): it is awake and
 joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it voted in slot
 `m` already. -/
 theorem honest_votes_in_slot (hS : HealthyBase tr H U proposer g) {m : Nat}
@@ -729,7 +729,7 @@ theorem honest_votes_in_slot (hS : HealthyBase tr H U proposer g) {m : Nat}
       all_goals first | rfl | exact absurd hj ‹_›
     exact ⟨c, e, ⟨ℓ, hc, h2 ▸ h3 ▸ hem⟩, by rw [hes, htc, hslot]⟩
 
-/-- **The honest batch** (T1 §3, "the honest batch has `n − f > n/2` seats"): in a slot
+/-- **The honest batch** (it has `n − f > n/2` seats): in a slot
 `m ≥ r` every honest node votes (it is awake and joined at `t_m + Δ`, runs its tick there
 (`Driven`), and `try_vote` votes unless it voted in slot `m` already), so the honest voters of
 slot `m` are at least half of the committee. -/
@@ -775,9 +775,9 @@ theorem fastLock_honest_vote (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard
     obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_vote hrun hx hpt hv (not_not.1 hu)
     exact ⟨_, not_not.1 hu, j, e, hve, hvs.trans hsl, R, hΦU hR, hRr, Anc.mono hΦU hBR⟩
 
-/-! ## T1 §3: a fast origin of label `≥ r` transfers -/
+/-! ## A fast origin of label `≥ r` transfers -/
 
-/-- **T1 §3, continuation** ("Induction on slots proves permanent vote support"; A1.3): if every
+/-- **Continuation** (induction on slots proves permanent vote support; A1.3): if every
 honest vote of a slot `m ≥ r` extends `B`, so does every honest vote of every later slot. -/
 theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
@@ -820,7 +820,7 @@ theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
         (trivial_viable hS hx hca (by omega) hmd ⟨z, hz, jz, ez, hvz, hsz, ih z hz jz ez hvz hsz⟩)
         (fun z' hz' j' hj' e' hv' hs' => ihj j' hj' z' hz' e' hv' (by omega))
 
-/-- **T1 §3, a fast origin transfers to the votes** (A1.2/A1.4 at slot `s + 1`, the first bad
+/-- **A fast origin transfers to the votes** (A1.2/A1.4 at slot `s + 1`, the first bad
 vote by induction on cuts, then `votes_continue`): every honest vote of a slot after the label
 `s ≥ r` of an honest fast lock extends its block. -/
 theorem fast_origin_transfer_votes (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n}

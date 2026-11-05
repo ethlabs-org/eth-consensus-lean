@@ -8,12 +8,11 @@ public section
 
 /-! # Goldilocks Healing: H.2 (ii), persistent inclusion after a unanimous honest proposal
 
-The unanimous batch of slot `p` propagates to every later honest
-vote (§7.1: `(P, p)` is protected by P3, so `h2_votes_continue`); every surviving lock image
-compares with `P` (§7.2, `h2_locks_compare`); the record read by `ac_confirmed` extends `P`
-(§§7.3–7.4, `h2_record_extends`), and so does the head (§7.5, `h2_head_extends`);
-`ac_confirmed` is their deepest common ancestor (`anc_acConfirmed`, from the frame lemma
-`anc_acConfirmed_of_frame` of `AC/Confirmed`). -/
+The unanimous batch of slot `p` propagates to every later honest vote (`(P, p)` is protected by P3,
+so `h2_votes_continue`); every surviving lock image compares with `P` (`h2_locks_compare`); the
+record read by `ac_confirmed` extends `P` (`h2_record_extends`), and so does the head
+(`h2_head_extends`); `ac_confirmed` is their deepest common ancestor (`anc_acConfirmed`, from the
+frame lemma `anc_acConfirmed_of_frame` of `AC/Confirmed`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -29,12 +28,12 @@ def LateRead (tr : SATrace sp FGP ro) (p : Nat) (y : Fin sp.n) (j : Nat)
     (tr.time j = sp.ts p + 6 * sp.Δ →
       ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j)
 
-/-- **§7.2, all surviving lock images compare with `P`**: from `t_p` on, every stored lock of an
-honest node live at a time `T ≥ t_p` is on a block compatible with `P`: a label `< p` sits below
-a clean raw origin (drain, §5), which an honest slot-`p` vote extends with `P` (§6.1); a label
-`≥ p` sits below a fast origin's block or a slow origin's result, which an honest vote of its
-slot extends (the fast test or optimistic seats; the result's majority over all honest voters),
-and that vote extends `P` (§7.1). -/
+/-- **All surviving lock images compare with `P`**: from `t_p` on, every stored lock of an honest
+node live at a time `T ≥ t_p` is on a block compatible with `P`: a label `< p` sits below a clean
+raw origin (`h2_drain`), which an honest slot-`p` vote extends with `P` (`raw_origin_votes`); a
+label `≥ p` sits below a fast origin's block or a slow origin's result, which an honest vote of its
+slot extends (the fast test or optimistic seats; the result's majority over all honest voters), and
+that vote extends `P` (`h2_votes_continue`). -/
 theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P) :
@@ -90,7 +89,7 @@ theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
       obtain ⟨z, hz, j', e, hve, hes, hext⟩ := fastLock_honest_vote hrun hI.two_faulty_lt hy hfl
       exact down hL'B (hcomp hz hve hext (hvotes z hz j' e hve (hes ▸ hpl)))
 
-/-! ## §7.4–7.5 helpers: the record read by `ac_confirmed`, the head from `fc_root` -/
+/-! ## Helpers: the record read by `ac_confirmed`, the head from `fc_root` -/
 
 /-- With `P ⪯ Φ.F`, the record read in `Φ` (the record's block, else `Φ.F`) extends `P`. -/
 private theorem rec_of_F {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
@@ -122,7 +121,7 @@ private theorem rec_to_tree (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK
     obtain ⟨hR, hRr⟩ := lookup_eq_some hl
     exact ⟨R, hR, hRr, anc_tree_of_anc_U hU hΦ hΦU hPt h hR⟩
 
-/-- **§7.4, frame changes**: across a frame step `Φ ⊑_B Φ'` with `P ⪯ Φ'.fc_root` or `P` viable in
+/-- **Frame changes**: across a frame step `Φ ⊑_B Φ'` with `P ⪯ Φ'.fc_root` or `P` viable in
 `Φ'`, the record read extending `P` persists (a pruned record `R ⪰ P` forces `P ⪯ Φ'.F`, since
 `Φ'.F ⪯ P ⪯ R` would retain `R`). -/
 private theorem rec_frameStep (hU : Coherent U) {Φ Φ' : Frm sp.n FGP} {B : Blk sp.n FGP}
@@ -178,7 +177,7 @@ private theorem fcRoot_anc_getHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : S
   exact ha.1.trans (anc_ghost hT _ ha.2)
 
 /-- The live lock blocks of an honest node's stored locks at a time `≥ t_p` compare with `P`, by
-§7.2 (each is the viable ancestor of a live lock's block). -/
+`h2_locks_compare` (each is the viable ancestor of a live lock's block). -/
 private theorem liveLock_compat (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {p : Nat}
     {P : Blk sp.n FGP}
     (hlocks : ∀ y ∈ H, ∀ i (T : Time), sp.ts p ≤ T → ∀ l ∈ (tr.state y i).locks,
@@ -194,11 +193,11 @@ private theorem liveLock_compat (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
   · exact Or.inl ((hva.mono hΦU).trans h)
   · exact anc_total hr.coherent (hva.mono hΦU) h
 
-/-- **§§7.3–7.4, the record**: at every late read, the record that `ac_confirmed` reads (the
-latest confirmed block in the frame, else `Φ.F`) extends `P`: the first test at `t_p + 6Δ`
-leaves a record extending `P` or `P ⪯ Φ.F` (its result is `P`, unvetoed by §7.2); every later
-call keeps it (its candidates compare with `P`, an ancestor candidate is refused), and so does
-every frame step (`Inv` for `P`). -/
+/-- **The record**: at every late read, the record that `ac_confirmed` reads (the latest confirmed
+block in the frame, else `Φ.F`) extends `P`: the first test at `t_p + 6Δ` leaves a record extending
+`P` or `P ⪯ Φ.F` (its result is `P`, unvetoed by `h2_locks_compare`); every later call keeps it (its
+candidates compare with `P`, an ancestor candidate is refused), and so does every frame step (`Inv`
+for `P`). -/
 theorem h2_record_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
@@ -291,8 +290,8 @@ theorem h2_record_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {
       (rec_to_tree hU hΦ hΦU hPF hPt hRc)
     exact rec_of_mem hΦ hR' hRr (hPR.mono hΦU)
 
-/-- **§7.5, full heads**: at every late read, the head extends `P`: `P ⪯ fc_root`, below every
-head; or `P` is viable (`Inv`), every live lock compares with `P` (§7.2) and the latest view's
+/-- **Full heads**: at every late read, the head extends `P`: `P ⪯ fc_root`, below every head; or
+`P` is viable (`Inv`), every live lock compares with `P` (`h2_locks_compare`) and the latest view's
 honest votes, all extending `P`, give every child toward `P` a strict majority. -/
 theorem h2_head_extends (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
@@ -330,7 +329,7 @@ theorem anc_acConfirmed (hI : InclusionRun tr H U proposer g t₀)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hI.run.localRun hy hc
   exact anc_acConfirmed_of_frame hI.run.localRun.coherent hΦ hΦU hC hH
 
-/-- **H.2 (ii), §7**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ`, if every
+/-- **H.2 (ii)**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ`, if every
 honest vote of slot `p` is `P`, then at every call of an honest node from `t_p + 6Δ` on (at
 `t_p + 6Δ` itself, from its tick there on), `P ⪯ ac_confirmed` after the call. -/
 theorem h2_proposal_confirmed (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
@@ -343,7 +342,7 @@ theorem h2_proposal_confirmed (hI : InclusionRun tr H U proposer g t₀) {p : Na
       Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)) := by
   have hΔ := sp.toParams.hΔ
   have hΘ := Θ_nonneg sp
-  -- `P` is a frame block, protected by P3; §7.1 propagates the unanimous batch
+  -- `P` is a frame block, protected by P3; `h2_votes_continue` propagates the unanimous batch
   have hPU : P ∈ U := by
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, j, -, ⟨ℓ, hc, hcall⟩, -⟩ := hP
     exact (frameIn_of_callAt hI.run.localRun hpH hc).2

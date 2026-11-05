@@ -61,7 +61,7 @@ theorem record_interval_after (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (
       exact ((hinv (q + 1)).results y hy q (Nat.lt_succ_self q) s C CV hR (Or.inr hrs)).symm
     · exact (fastLock_compatible hinv hy (Or.inr hO)).symm
 
-/-- **`record_above_from`** (§8): after an honest update of a restored label `m ≥ r` whose result
+/-- **`record_above_from`**: after an honest update of a restored label `m ≥ r` whose result
 `C` extends `P`, the effective record of the updater extends `P` at every later cut, whether the
 result is accepted or vetoed. -/
 theorem record_above_from (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} (hw : w ∈ H)

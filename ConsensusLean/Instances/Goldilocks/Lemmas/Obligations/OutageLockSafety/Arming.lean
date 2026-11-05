@@ -360,7 +360,7 @@ theorem outage_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
     ∀ i, Compose.OutageLockInv (outageLockPremises_of_arming Q service hv hTh hsh ar) i :=
   Compose.outage_lock_inv _ (Compose.outageS5StepAt_iff.2 hS5)
 
-/-- **(i) at a reader** (`outage_reader_locks`, S5-G): at every honest cut and time, the live
+/-- **(i) at a reader** (`outage_reader_locks`): at every honest cut and time, the live
 lock blocks are compatible with the read tip. -/
 theorem outage_reader_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
     ∀ y ∈ honestKeys S Q.run.2, ∀ (m : Nat) (τ : Time),
@@ -370,7 +370,7 @@ theorem outage_reader_locks (hS5 : OutageS5Step Q service hv hTh hsh ar) :
   fun _ hy m τ => Compose.liveLockBlocks_compatible (outage_locks Q service hv hTh hsh ar hS5)
     hy m τ (origin_facts Q service hv hTh ar).2.1
 
-/-- **The reader frame** (`outage_reader_frame`, S5-G1/G2): `fc_root` is compatible with the read
+/-- **The reader frame** (`outage_reader_frame`): `fc_root` is compatible with the read
 tip, and the tip, when in the frame, is below the anchor or in the full viable tree, at every
 honest cut. -/
 theorem outage_reader_frame (hS5 : OutageS5Step Q service hv hTh hsh ar)

@@ -22,7 +22,7 @@ and it is allowed (`effAllowed_of_height`); the `fg_attest` of the same tick (`t
 same FG state) and the client subclaim give the matching attestation, at the same time (no extra
 `Δ`).
 
-The sources (§§2.1–2.3) are `AcquireSources.protected_sources`, shared with HS.4. -/
+The sources are `AcquireSources.protected_sources`, shared with HS.4. -/
 
 namespace Consensus.Goldilocks.Healing
 

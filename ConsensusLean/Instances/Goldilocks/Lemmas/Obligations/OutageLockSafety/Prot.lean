@@ -11,13 +11,13 @@ public section
 
 /-! # Outage lock safety: O2 retention, one cut
 
-* `unlockKeeps_of_voteCompat` (§7.1(3)): `unlock` at an honest AC call keeps a frame block `B`
+* `unlockKeeps_of_voteCompat`: `unlock` at an honest AC call keeps a frame block `B`
   when every honest vote of the view's slot by a validator outside `W` has a head compatible with
   `B`, and `2·|Hᶜ ∪ W| < n`. It covers every call, so both unlock views.
-* `OutageVoteInv.prot_step` (§7.1): the protection `Prot x k j m` (`j ≥ j₀ − 1`) carries to
+* `OutageVoteInv.prot_step`: the protection `Prot x k j m` (`j ≥ j₀ − 1`) carries to
   `k + 1` through the lock's life (`slot(t_k) ≤ m ≤ expiry`), with (VA) at `k` and the caches at
   `k + 1`.
-* `OutageVoteInv.vote_extends_of_prot` (§7.2): an honest cast under the protection extends `P`. -/
+* `OutageVoteInv.vote_extends_of_prot`: an honest cast under the protection extends `P`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -52,7 +52,7 @@ private theorem held_vote_cast (hrun : GoldilocksRun proposer dg H tr) (hnc : No
     obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.carried_vote y hy j ℓ hcA C hC v hvB hvH
     exact ⟨k, e, he, hm⟩
 
-/-- **`unlock` keeps `B` against the honest non-late-waker votes** (§7.1(3)): at an AC cut `j`
+/-- **`unlock` keeps `B` against the honest non-late-waker votes**: at an AC cut `j`
 of an honest `y`, with `B` in the frame's tree and `2·|Hᶜ ∪ W| < n`, if every honest vote of
 slot `slot(t_j) − 1` cast before `j` by a validator outside `W` has a head compatible with `B`,
 the unlock target of `B` at the call's view is `B`. -/
@@ -106,7 +106,7 @@ theorem unlockKeeps {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n} (hy : y �
   unlockKeeps_of_voteCompat D.hrun D.hnc D.two_mul_lt hy hP
     fun x hx hxW k' hk' e hv hes => hvi.voteCompat_of_not_lateWaker hx hxW hk' hv (by omega)
 
-/-- **One step of the protection** (§7.1): `Prot x k j m` with `j₀ − 1 ≤ j`, within the lock's
+/-- **One step of the protection**: `Prot x k j m` with `j₀ − 1 ≤ j`, within the lock's
 life (`slot(t_k) ≤ m`), (VA) at `k` and the caches at `k + 1` give `Prot x (k + 1) j m`. -/
 theorem prot_step {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈ H) {j m : Nat}
     (hj : D.j₀ ≤ j + 1) (hk : sp.slot (tr.time k) ≤ m)
@@ -135,7 +135,7 @@ theorem prot_step {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈
   · exact Or.inl hs
   · exact Or.inr (hvi.unlockKeeps hx hP (by omega) ℓ hc)
 
-/-- **An honest cast under the protection extends `P`** (§7.2): at an honest cast at cut `k`,
+/-- **An honest cast under the protection extends `P`**: at an honest cast at cut `k`,
 within the life of `Prot x k j m` (`j₀ − 1 ≤ j`, `slot(t_k) ≤ m`), with (VA) at `k`, the vote
 extends `P`. -/
 theorem vote_extends_of_prot {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈ H)

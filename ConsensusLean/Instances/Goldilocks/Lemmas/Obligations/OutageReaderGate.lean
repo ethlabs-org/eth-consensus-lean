@@ -182,7 +182,7 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
   exact ⟨⟨s, hrestored, by simp only [SA.SAParams.ts]; linarith,
     by simp only [SA.SAParams.ts]; linarith, c₁, ℓ₁, hupd, hc₁j, hrestarts, hread, hview⟩⟩
 
-/-- §2: ancestry of the two tips is the engine read prefix. -/
+/-- Ancestry of the two tips is the engine read prefix. -/
 theorem outage_reader_prefix (Q : OutageQuery S A V) {v : V}
     (hv : Q.run.2.point.Ready Q.duration v Q.T) {t : Time} (hTt : Q.T ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t)

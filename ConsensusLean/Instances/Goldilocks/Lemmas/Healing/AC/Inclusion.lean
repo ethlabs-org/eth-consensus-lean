@@ -7,12 +7,11 @@ public section
 
 /-! # Goldilocks Healing: H.2, AC inclusion from the retention premise
 
-H.2 over driven AC traces of the SA with their frames, under `Healthy(g)`, `Catch(2Δ)` and
-`Inv(t₀)` (`InclusionRun`), assembled as follows: the locks are settled
-from `t₀ + 2Θ + 4Δ` (§5 drain and §6.1 raw-origin transfer, `H2Transfer`), so before every
-proposal of a slot `p` with `t_p ≥ t₀ + 2Θ + 8Δ`; then (i) from `Geo(P)` (§§1, 4, 6, `H2Votes`)
-and (ii) from the unanimous slot-`p` votes (§7, `H2Confirmed`). H.1 does not route through
-here. -/
+H.2 over driven AC traces of the SA with their frames, under `Healthy(g)`, `Catch(2Δ)` and `Inv(t₀)`
+(`InclusionRun`), assembled as follows: the locks are settled from `t₀ + 2Θ + 4Δ` (drain and
+raw-origin transfer, `H2Transfer`), so before every proposal of a slot `p` with
+`t_p ≥ t₀ + 2Θ + 8Δ`; then (i) from `Geo(P)` (`H2Votes`) and (ii) from the unanimous slot-`p` votes
+(`H2Confirmed`). H.1 does not route through here. -/
 
 namespace Consensus.Goldilocks.SA
 

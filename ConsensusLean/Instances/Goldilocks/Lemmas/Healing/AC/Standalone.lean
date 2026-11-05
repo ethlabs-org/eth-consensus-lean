@@ -9,13 +9,12 @@ public section
 
 H.1 over driven AC traces of the SA with trivial frames (the frame of every honest call is the
 tree of the blocks the node has accepted, rooted at genesis), under `Healthy(g)`, `Catch(2Δ)`,
-`NoColl` and unforgeable signatures. Proved on paper (T1 §§2–6): with
-`r = r_AC(ḡ)`, (§2) results of one slot `≥ r` are
-compatible; (§§3–4) a fast origin of label `≥ r`, and a slow origin whose window is `≥ r`,
-transfers to the next slot's honest votes and every later one (A1.2, A1.4, A1.3, A1.8); (§5) every
-other lock expires before `t_r + 2Θ`; (§6) at `P` the voter's tree is contained in the
-proposer's and the scores agree, so every honest slot-`p` vote is `P`, and from `t_p + 6Δ` the
-record extends `P`.
+`NoColl` and unforgeable signatures. Proved on paper (claims H.1, proof shape): with
+`r = r_AC(ḡ)`, results of one slot `≥ r` are compatible; a fast origin of label `≥ r`, and a
+slow origin whose window is `≥ r`, transfers to the next slot's honest votes and every later one
+(A1.2, A1.4, A1.3, A1.8); every other lock expires before `t_r + 2Θ`; at `P` the voter's tree is
+contained in the proposer's and the scores agree, so every honest slot-`p` vote is `P`, and from
+`t_p + 6Δ` the record extends `P`.
 
 The steps and their assembly are in `Steps.lean` (`ac_healing_standalone_of_parent`, H.1's
 conclusions for one honest proposal); H.1 rests only on the open step lemmas there.
@@ -26,7 +25,7 @@ payload and `Driven (b)` gives its proposal. -/
 
 namespace Consensus.Goldilocks.SA
 
-/-- **H.1, AC healing standalone** (T1 §§2–6). -/
+/-- **H.1, AC healing standalone** (claims H.1, proof shape). -/
 theorem ac_healing_standalone (sp : SAParams) : ACHealingStandalone (sp := sp) :=
   fun _ _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
     ac_healing_standalone_of_parent ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩ hpH hP hp

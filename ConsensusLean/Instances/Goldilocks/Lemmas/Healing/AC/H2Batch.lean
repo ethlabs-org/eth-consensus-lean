@@ -11,7 +11,7 @@ public section
 Under H.2's premises (`InclusionRun`, which extends H.1's `HealthyBase`, so H.1's honest-batch
 lemmas apply as they are): `Inv` at a vote not covered by `Φ.F` gives the viability of a
 protected block and `Φ.F ⪯ B` (`inv_at_vote`); and `Carry_y` for an honest batch extending `B`
-(`h2_carry_votes`, §5's transport: relay after `ḡ`, `Catch(2Δ)` before); every honest node is a
+(`h2_carry_votes`, by transport: relay after `ḡ`, `Catch(2Δ)` before); every honest node is a
 voter at an honest update (`honest_voter_at_update`), so a result has an honest supporter
 (`result_honest_supporter`). -/
 
@@ -70,7 +70,7 @@ theorem inv_at_vote (hI : InclusionRun tr H U proposer g t₀) {B : Blk sp.n FGP
     exact anc_tree_of_anc_U hU hΦ hΦU (mem_tree_of_between hU hΦ hΦU hFB h hΦ.fcRoot_mem) h
       hΦ.fcRoot_mem
 
-/-- **`Carry` for an honest batch extending `B`** (§6.1, later labels; §5's transport): at an
+/-- **`Carry` for an honest batch extending `B`** (later labels; by transport): at an
 honest vote of slot `m + 1` with `Φ.F ⪯ B`, where `t_m ≥ ḡ + 4Δ` and every honest vote of slot `m`
 extends `B`, `Carry_y` holds for the honest slot-`m` votes (each sent by its voter by
 `t_m + Δ`, its head in the voter's frame, accepted after `ḡ` or caught up by `Catch(2Δ)`). -/

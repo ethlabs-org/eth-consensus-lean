@@ -22,7 +22,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- **The joined duty, unanimity** (§23; the join with RN/RU): under the reset
+/-- **The joined duty, unanimity** (the join with RN/RU): under the reset
 premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
 `t_u ≥ R` is `P`. -/
 theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)

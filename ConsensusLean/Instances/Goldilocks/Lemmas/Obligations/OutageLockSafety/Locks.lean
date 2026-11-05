@@ -13,7 +13,7 @@ public section
 Every stored honest lock lies below a block written at an earlier cut (`lock_origin`,
 `fast_lock_provenance`, `slow_lock_compatible`):
 
-* a lock of a label `< j₀` lies below an origin within `b₀` (§4.2);
+* a lock of a label `< j₀` lies below an origin within `b₀` (`compatible_of_within`);
 * a fast lock (update or optimistic) of a slot `≥ j₀` on a block conflicting with `P` would have
   its counted validators in `Hᶜ ∪ W` (OL-W), against `n ≤ 2·|counted|` and N6;
 * a slow lock has an unpolluted label in its window (`exists_unpolluted_label`), whose results
@@ -64,7 +64,7 @@ private theorem within_of_label_lt (D : OutageLockPremises tr H proposer dg)
       omega
     linarith
 
-/-- **(i) at a cut** (§5.2): with (H)/S5V at the cuts before `n` and (R) at the cuts before `n`,
+/-- **(i) at a cut**: with (H)/S5V at the cuts before `n` and (R) at the cuts before `n`,
 every lock stored at cut `n` by an honest node names a held block compatible with `P`. -/
 theorem OutageVoteInv.locks_compatible {n : Nat} (hvi : OutageVoteInv D n)
     (hres : ∀ y ∈ H, ∀ k < n, ∀ m C CV, SA.ResultAt tr.projAC y k m C CV →
@@ -81,7 +81,7 @@ theorem OutageVoteInv.locks_compatible {n : Nat} (hvi : OutageVoteInv D n)
   have hl' : l ∈ (tr.projAC.state y n).locks := by
     rw [projAC_state D.hrun.toLocalRun hy n]; exact hl
   by_cases hs : l.slot < D.j₀
-  · -- §4.2: below an origin within `b₀`
+  · -- below an origin within `b₀`
     exact D.compatible_of hLU fun hP => compatible_of_anc hU hLC
       (D.hpre.origins_compatible C l.slot D.P D.σ (within_of_label_lt D hCo hs) hP)
   cases hf : l.fast

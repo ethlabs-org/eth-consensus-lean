@@ -393,7 +393,7 @@ theorem reset_of_high_source (hrun : GoldilocksRun proposer dg H tr)
     split_ifs at hcl <;> simp_all only [Bool.false_eq_true, ↓reduceIte,
       reduceCtorEq]
 
-/-- **The finality pair of an honest attestation names an entry of its source's chain** (§16; G0.2
+/-- **The finality pair of an honest attestation names an entry of its source's chain** (G0.2
 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an
 entry whose previous height is justified, or one of its pending pairs) names the entry at height `h`
 of an ancestor-or-self `J` of the source's entry `E` (whose root is the signed `T`). -/
@@ -570,7 +570,7 @@ theorem finality_below_or_higher_report (hp : ResetPremises tr H proposer dg g �
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
   (ResetPremises.toUpTo tr H hp le_rfl).finality_below_or_higher_report hy hcompat
 
-/-- **A high record entry names an entry of a high origin's chain** (§16): the target, timeout
+/-- **A high record entry names an entry of a high origin's chain**: the target, timeout
 or lock entry `r` at `h ≥ H_z + 1` of an honest record is the root of a block `Z` below the
 block of a high origin, the entry at height `h` of its chain. -/
 theorem high_record_entry (hp : ResetPremises tr H proposer dg g ΔF a)

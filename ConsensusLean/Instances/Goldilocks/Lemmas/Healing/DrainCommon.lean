@@ -21,7 +21,7 @@ The context `Γ` (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`,
   (`faultBound_of_healthy`) and the honest votes are half of the committee
   (`half_committee_of_healthy`); HR.4's `fault_bound_late` and `half_committee` restated over
   `HSShared` instead of `ResetPremises`.
-* §2.1, aligned witnesses (`viable_of_clean_vote`): an honest vote of a clean slot `j` that
+* Aligned witnesses (`viable_of_clean_vote`): an honest vote of a clean slot `j` that
   extends `B` makes `B` frozen-viable (or at or below `fc_root`) at every in-phase honest vote of
   a later slot. Its head lies in its voter's full viable tree (`fc_root` is there, by the phase's
   frontier block; `getAnchor_viable`), below a viable, hence effectively allowed
@@ -29,12 +29,11 @@ The context `Γ` (`GoldilocksRun`, `HSShared`, `Catch(2Δ)`,
   later voter block tree, and HS.1 retains its ancestors. Hence `clean_fast_viable` (an honest
   counted vote, `fastLock_honest_vote`) and `clean_slow_viable` (an honest supporter of the
   result, `result_extended`); no induction hypothesis is needed.
-* §2.1, exact `Carry`: the root split `Σ.F ⪯ B` at a vote whose `fc_root` is not above a
+* Exact `Carry`: the root split `Σ.F ⪯ B` at a vote whose `fc_root` is not above a
   frozen-viable `B`; then the counted votes of a clean fast origin (`clean_fast_carry`), of a
   clean slow origin's result (`clean_slow_carry`) and of the preceding honest batch
   (`honest_batch_carry`) are carried by H.2's `carryAt_of_writer_catch`.
-* §2.2, RR/RO: H.1's
-  `HealthyBase` comparisons over the AC projection (`healthyBase_of_hs`).
+* RR/RO: H.1's `HealthyBase` comparisons over the AC projection (`healthyBase_of_hs`).
 
 Everything here is proved.
 
@@ -221,7 +220,7 @@ private theorem accept_of_catch (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨hacc'', ht', -⟩ := ac_block_after hrun.toLocalRun hy hacc'
   exact ⟨k' + 1, by omega, hacc'', by rw [ht']; exact hj₀.2 k' hk'⟩
 
-/-! ### §2.1: aligned witnesses -/
+/-! ### Aligned witnesses -/
 
 /-- The AC projection under the HS premises is a healthy driven AC trace (H.1's `HealthyBase`). -/
 theorem healthyBase_of_hs (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF)
@@ -417,7 +416,7 @@ theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     change tr.time kw ≤ tr.time kz at this
     linarith
 
-/-- **§2.1, aligned witnesses at a vote**: under `Γ` (without
+/-- **Aligned witnesses at a vote**: under `Γ` (without
 `Prop⁺`), let an honest vote of a clean slot `j` extend `B`. At every in-phase honest vote of a
 later slot, `B` is in the viable voter block tree or at or below `fc_root`: the witness `W` of
 `clean_vote_witness` relays (post-`ḡ`) or was caught up by `ḡ + 2Δ` (`Catch(2Δ)`) to the later
@@ -481,7 +480,7 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr) (hs : HSSha
     (fun h => by rwa [← Compose.frame_of_projAC hrun hy hv.1]) fun h => by
       rwa [← Compose.frame_of_projAC hrun hy hv.1]
 
-/-- **§2.1, aligned witnesses in a frame** (the proposal
+/-- **Aligned witnesses in a frame** (the proposal
 boundary): under `Γ` (without `Prop⁺`), let an honest vote of a clean slot `j` extend
 `B`. At every in-phase cut of an honest node at a time `≥ t_j + 3Δ`, every ancestor of `B` is at
 or below its `fc_root` or in the viable tree of its frame: the witness `W` of
@@ -577,7 +576,7 @@ theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj' hes ⟨Hd, hHd, hHdr, hBC.trans hCHd⟩ hy hv
     hjs hk
 
-/-! ### §2.1: exact `Carry` -/
+/-! ### Exact `Carry` -/
 
 /-- **`Carry` of a clean fast origin's counted votes**
 (all-head `Carry`): at an in-phase honest slot-`(j+1)` vote whose `fc_root` is not above `B`,
@@ -730,7 +729,7 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   exact ⟨hr.awake_of_call y hy k ℓ hv.1, (SA.castAt_spec hr hy hv).2.2.1,
     fun v hv' => (hone v hv').heads v rfl, fun v hv' => (hone v hv').holds v rfl⟩
 
-/-! ### §2.2: raw-result comparisons -/
+/-! ### Raw-result comparisons -/
 
 end Consensus.Goldilocks.Healing
 

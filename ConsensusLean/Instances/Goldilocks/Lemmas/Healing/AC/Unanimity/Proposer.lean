@@ -6,7 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 
 public section
 
-/-! # Goldilocks Healing: the canonical walk from the proposal's anchor ends at `P` (T1 §6)
+/-! # Goldilocks Healing: the canonical walk from the proposal's anchor ends at `P` (H.1 (i))
 
 The proposer's walk from `d.start` has one step per block of its tree, so it stops, at
 `d.head = parent(P)`: no child of `d.head` in the proposer's tree is eligible, and `P` is not

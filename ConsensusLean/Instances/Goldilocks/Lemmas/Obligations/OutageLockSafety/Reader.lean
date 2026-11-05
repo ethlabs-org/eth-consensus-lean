@@ -18,13 +18,13 @@ public section
 
 From the invariant at every cut (`outage_lock_inv`):
 
-* `liveLockBlocks_compatible` ((i) at the reader, S5-G's lock half, `outage_reader_locks`): the
+* `liveLockBlocks_compatible` ((i) at the reader, `outage_reader_locks`): the
   live lock blocks of an honest stored lock set, in the node's frame, are compatible with every
   block `B ⪯ P` (the read tip is below the origin);
-* `reader_frame` (S5-G1/G2, `outage_reader_frame`): `fc_root` is compatible with `B`, and `B`,
+* `reader_frame` (`outage_reader_frame`): `fc_root` is compatible with `B`, and `B`,
   when in the frame, is below the anchor or in the full viable tree; the live-lock chain holds
   at every honest cut (`lockInv_state`, `liveBlocks_chain_at`);
-* `fastLock_compatible` (§5.2(a)(b)): every honest fast lock block (update or optimistic
+* `fastLock_compatible`: every honest fast lock block (update or optimistic
   selection) is compatible with `P`;
 * `readPoint_liveLockBlocks_compatible_at` (S5's `LiveLocksCompatible` at a cast's read point): the
   live lock blocks of an honest vote's read point are compatible with every block `B ⪯ P` (the
@@ -49,7 +49,7 @@ theorem compatible_of_anc_right (hU : Coherent (tr.HonestBlocks H))
   · exact Anc.total hU h hBP
   · exact Or.inr (hBP.trans h)
 
-/-- **(i) at a reader** (S5-G, `outage_reader_locks`): at every honest cut and time, the live lock
+/-- **(i) at a reader** (`outage_reader_locks`): at every honest cut and time, the live lock
 blocks of the stored locks in the node's frame are compatible with every block `B ⪯ P`. -/
 theorem liveLockBlocks_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H)
     (m : Nat) (τ : Time) {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -99,7 +99,7 @@ theorem liveBlocks_chain_at (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
     (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
     (frameOK_state hrun.toLocalRun hy m) fun _ hX => ⟨y, hy, m, hX.1⟩
 
-/-- **The reader frame** (S5-G1/G2, `outage_reader_frame`): at an honest cut, for every block
+/-- **The reader frame** (`outage_reader_frame`): at an honest cut, for every block
 `B ⪯ P`, `fc_root` is compatible with `B`, and `B`, when in the frame, is below the anchor or in
 the full viable tree (the live-lock chain by `liveBlocks_chain_at`). -/
 theorem reader_frame (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H) (m : Nat)
@@ -126,7 +126,7 @@ theorem reader_frame (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y �
       (liveBlocks_chain_at D.hrun D.hnc hy m t)).2 _ (Or.inr rfl)))
   · exact Or.inr h
 
-/-- **An honest fast lock block is compatible with `P`, cut-indexed** (§5.2(a)(b)): a fast update
+/-- **An honest fast lock block is compatible with `P`, cut-indexed**: a fast update
 lock or an optimistic selection of an honest node at cut `c`, whose counted honest votes were
 cast at cuts before `n`, from (H)/S5V at the cuts before `n` (`OutageVoteInv D n`) only. -/
 theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n} (hy : y ∈ H)
@@ -180,7 +180,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
   omega
 
 
-/-- **Every honest fast lock block is compatible with `P`** (§5.2(a)(b)): a fast update lock or an
+/-- **Every honest fast lock block is compatible with `P`**: a fast update lock or an
 optimistic selection of an honest node. -/
 theorem fastLock_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y ∈ H)
     {c s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}

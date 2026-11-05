@@ -4,7 +4,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: results of one slot `≥ r` are compatible (T1 §2)
+/-! # Goldilocks Healing: results of one slot `≥ r` are compatible (claims H.1, proof shape)
 
 Over a `StandaloneRun` (H.1's premises), for a slot `s` with `t_s ≥ ḡ + 4Δ` (`s ≥ r_AC(ḡ)`):
 
@@ -78,8 +78,8 @@ theorem fwd_reaches_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s 
       (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
   exact fwd_held hr hsync hX hY hc ht hrs (fwd_iff.2 hu)
 
-/-- **T1 §2, two fast origins of one slot** (fast test or optimistic, in any combination; the
-optimistic/optimistic case of T1 §2): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
+/-- **Two fast origins of one slot** (fast test or optimistic, in any combination; this includes
+the optimistic/optimistic case): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
 `f < n/2`. -/
 theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
@@ -88,7 +88,7 @@ theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U proposer g)
     (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
   fastLock_same_slot hS.run hx hfl hx' hfl' (hS.syncAC hs _) hS.two_faulty_lt
 
-/-- **T1 §2, regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
+/-- **Regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
 `s ≥ r` at honest nodes are compatible. -/
 theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
@@ -107,7 +107,7 @@ theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} 
   have h2 := against_update hr hsync hx hx' hc' ht' (fun k _ => hrs x' hx' k) hSs' hSF hnc
   omega
 
-/-- **T1 §2, regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
+/-- **Regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
 with an honest optimistic confirmation of slot `s`. -/
 theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}

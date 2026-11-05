@@ -3,9 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 
 public section
 
-/-! # Outage: the extending majority at a label (O4, S5-V)
+/-! # Outage: the extending majority at a label (O4)
 
-The count form of S5-V, in which O4 consumes S5.
+The count form of the extending majority, in which O4 consumes S5.
 
 * `ExtendingCasters tr H B q`: the honest slot-`q` casters whose vote extends `B`;
 * `Opponents tr H B q`: the faulty validators and the honest slot-`q` casters whose vote does not
@@ -38,7 +38,7 @@ def Opponents (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   Hᶜ ∪ {x | x ∈ H ∧ ∃ k e, SA.VoteAt tr.projAC x k e ∧ e.msg.slot = q ∧
     ¬ SA.VoteExtends (tr.HonestBlocks H) e.msg B}
 
-/-- S5-V: the extending casters of label `q` outnumber its opponents. -/
+/-- The extending majority: the extending casters of label `q` outnumber its opponents. -/
 def ExtendingMajority (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (B : SA.Blk sp.n (List (FG.Att sp.n))) (q : Nat) : Prop :=
   (Opponents tr H B q).ncard < (ExtendingCasters tr H B q).ncard

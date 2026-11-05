@@ -6,10 +6,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 
 public section
 
-/-! # Goldilocks Obligations: the entry is justified on the parent's chain (L5.4)
+/-! # Goldilocks Obligations: the entry is justified on the parent's chain
 
-L5.4: the entry `(h, T)` is justified on the
-canonical chain, and the predecessor is finalized if the height has its previous height justified.
+The entry `(h, T)` is justified on the canonical chain, and the predecessor is finalized if the
+height has its previous height justified.
 
 * `Store.chain_states_of_anc`: the store bridge. For a held `X ⪯ W`, a chain `c` reaches
   `σ[X]` and `c ++ d` reaches `σ[W]`; every block of `d` is held, between `X` and `W`, has a
@@ -37,7 +37,7 @@ canonical chain, and the predecessor is finalized if the height has its previous
   `X ⪯ C` for every held `X` of root `T` in case (A).
 * `window_justifies_or_parents_above_unanimous_entry`:
   `window_justifies_or_parents_above_unanimous''` with the same addition.
-* `window_entry_justified_or_window` (L5.4): in case (A), every honest proposal of a slot `s` with
+* `window_entry_justified_or_window`: in case (A), every honest proposal of a slot `s` with
   `v + Δ ≤ t_s` and `s ≤ σ[X].ThSlot + δt` has an honest parent `Pr ⪰ X` on whose chain a block
   justified `(h, T)` (and finalized the predecessor if its previous height is justified), at every
   honest holder. The bound `s ≤ σ[X].ThSlot + δt` stays a premise: the window gives only `v + Δ ≤

@@ -25,8 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **S5-V at the first restored label**: `A₀` casts and extends `P`; the opponents lie in
-`Hᶜ ∪ W`. -/
+/-- **`ExtendingMajority` at the first restored label**: `A₀` casts and extends `P`; the opponents
+lie in `Hᶜ ∪ W`. -/
 theorem restored_majority_at_r (D : OutageLockPremises tr H proposer dg)
     (hinv : ∀ i, OutageLockInv D i)
     (hcall : ∃ x ∈ H, ∃ i, tr.IsCall x i ∧ sp.ts D.r + sp.Δ ≤ tr.time i) :

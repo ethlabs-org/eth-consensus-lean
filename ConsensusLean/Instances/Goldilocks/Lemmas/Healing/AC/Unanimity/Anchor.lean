@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: where the honest slot-`p` walks start (T1 §6)
+/-! # Goldilocks Healing: where the honest slot-`p` walks start (H.1 (i))
 
 The anchor of an honest vote of slot `p`, and the anchor of the honest proposal of slot `p`
 (`d.start`), are `fc_root` (genesis) or a live lock block. A lock of a slot below `p` is settled

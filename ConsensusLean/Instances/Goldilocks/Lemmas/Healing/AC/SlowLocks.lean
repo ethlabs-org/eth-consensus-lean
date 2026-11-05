@@ -8,16 +8,16 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: the live locks at a vote after a slow origin (T1 §4)
+/-! # Goldilocks Healing: the live locks at a vote after a slow origin
 
-For an honest slow lock of slot `s` on `D` (window `≥ r`): at every honest slot-`(s+1)` vote,
-every live lock block after the unlocking is compatible with `D` (`slow_live_locks`), provided
-the earlier honest slot-`(s+1)` votes extend `D`. A live lock of label `j ≤ s` has
-`j ≥ s − k + 1 ≥ r` and sits below an origin of slot `j` (a result or an optimistic
-confirmation, `fast_lock_provenance`, `slow_lock_provenance`), compatible with the writer's own
-result of slot `j` (T1 §2), which extends `D` (`slow_window_results`: the saved results of the
-slow test, and the result `C` itself for `j = s`); one of label `s + 1` is optimistic over earlier
-honest slot-`(s+1)` votes. -/
+For an honest slow lock of slot `s` on `D` (window `≥ r`): at every honest slot-`(s+1)` vote, every
+live lock block after the unlocking is compatible with `D` (`slow_live_locks`), provided the earlier
+honest slot-`(s+1)` votes extend `D`. A live lock of label `j ≤ s` has `j ≥ s − k + 1 ≥ r` and sits
+below an origin of slot `j` (a result or an optimistic confirmation, `fast_lock_provenance`,
+`slow_lock_provenance`), compatible with the writer's own result of slot `j` (same-slot
+compatibility), which extends `D` (`slow_window_results`: the saved results of the slow test, and
+the result `C` itself for `j = s`); one of label `s + 1` is optimistic over earlier honest
+slot-`(s+1)` votes. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -76,10 +76,11 @@ theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
         Or.inl ⟨ℓX, hupd, hconf, rfl⟩⟩
     · exact ⟨L, hL, hLr, B, hLB, j, hj, CV, Or.inr hopt⟩
 
-/-- **The stored locks after a slow origin** (T1 §4): for an honest slow lock of slot `s` on `D`
+/-- **The stored locks after a slow origin**: for an honest slow lock of slot `s` on `D`
 whose window is `≥ r`, at any cut of an honest node in a slot after `s`, every stored lock of slot
 at most `s` that is live there is compatible with `D`: its slot is in the window, so its origin is
-compatible with the writer's saved result of that slot (T1 §2), which extends `D`. -/
+compatible with the writer's saved result of that slot (same-slot compatibility), which extends
+`D`. -/
 theorem slow_stored_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
@@ -130,7 +131,7 @@ theorem slow_stored_locks_before {b : Time} (hS : HealthyBaseUpTo tr H U propose
         (fun r _ hrs => (hnr x hx r hrs).trans hjr)).symm
   exact compat_of_below hr.coherent hLO hDR hcomp
 
-/-- **T1 §4, the live locks at a vote after a slow origin.** -/
+/-- **The live locks at a vote after a slow origin.** -/
 theorem slow_live_locks (hS : HealthyBase tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)

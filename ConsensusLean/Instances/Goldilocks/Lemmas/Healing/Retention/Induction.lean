@@ -229,8 +229,8 @@ theorem high_vote_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose
     (Compose.syncAC_mono hsync0 le_rfl (Compose.cast_head_fcRoot hr hy hc).2)
     hcarry hcarryLater hhalf hfault hviab hprior
 
-/-- **The vote step** (§13 "Closing the first-violating-event induction"; §11 item 2 for the
-votes through the ticks at `a_z`): (R3) at the honest votes of cut `k`, from the invariant at every
+/-- **The vote step** (of the first-violating-event induction; also for the votes through the
+ticks at `a_z`): (R3) at the honest votes of cut `k`, from the invariant at every
 earlier cut: (K2) by R5 (`vote_height_lead`) and the root's compatibility
 (`vote_root_compatible`) give (i) (`vote_viable_of_root`); (i), `Carry` (`first_carry`,
 `later_carry`), the half committee and `f < h_t` after `c_z` (`Healthy(g)`) and the earlier votes
@@ -654,7 +654,7 @@ theorem ResetPremisesUpTo.origins_compatible {b : Time}
   exact hp.high_origin_votes_before c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y hy ell e hc hj
 
 set_option linter.unusedVariables false in
-/-- **Two high origins are comparable** (§11 item 3, §13 "Activation uses earlier labels"), from
+/-- **Two high origins are comparable** (activation uses earlier labels), from
 (R3) at the votes up to the later write: for labels `j < j'`, the later lock is supported by an
 honest slot-`j'` vote (half of the committee, or three quarters, against `f < n/2`), which extends
 `B` (`fastLock_compatible_of_votes`); for `j = j'`, two fast locks of one slot are compatible
@@ -667,7 +667,7 @@ theorem origins_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x x' :
   (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time i')))).origins_compatible ho
     ((le_max_left _ _).trans (le_max_right _ _)) ho' ((le_max_right _ _).trans (le_max_right _ _))
 
-/-- **HR.4, height-scoped retention** (HBoot §11, JointRet §13, high records §16): (R1)'s
+/-- **HR.4, height-scoped retention** (HBoot, JointRet, the high records): (R1)'s
 comparability from the votes (`origins_compatible`), (R1)'s attestations (`high_rows`), (R2) and
 (R3) from the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
 theorem height_scoped_retention : HeightScopedRetention := by
@@ -704,7 +704,7 @@ theorem ResetPremisesUpTo.target_compatible_older_origin {b : Time}
   obtain rfl : HO = HB := hp.honest_coherent.1 hHO hHB (hOr.trans hBr.symm)
   exact SA.anc_total hp.honest_coherent hBB hOO
 
-/-- Conditional §75 domain reduction. The explicit producer hypotheses are the open
+/-- Conditional domain reduction. The explicit producer hypotheses are the open
 joint-induction boundary, not consequences asserted of reset premises. Frozen target
 membership must be produced before its receiver height is read. -/
 theorem held_target_vote_domain_before
@@ -861,7 +861,7 @@ theorem target_compatible_older_origin
     ho ((le_max_left _ _).trans (le_max_right _ _)) hz hv
     ((le_max_right _ _).trans (le_max_right _ _)) hs hml hB
 
-/-- §76 join: the remaining inputs are actual frozen service, an honest counted
+/-- The join: the remaining inputs are actual frozen service, an honest counted
 supporter, a seed witness, same-label comparison, and prospective prior-cut support. -/
 theorem slow_target_vote_domain_of_support_before
     (hp : ResetPremises tr H proposer dg g ΔF a)

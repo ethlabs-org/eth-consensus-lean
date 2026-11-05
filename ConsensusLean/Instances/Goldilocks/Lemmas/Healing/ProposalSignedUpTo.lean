@@ -52,7 +52,7 @@ theorem justify_of_signed_rows'_upTo (hrun : GoldilocksRun proposer dg H tr) {g 
   rw [hr] at this
   exact this
 
-/-- **L5.3 step 5 from signed attestations through the horizon `b`** (`cross_of_signed_rows` from
+/-- **The crossing from signed attestations through the horizon `b`** (`cross_of_signed_rows` from
 `HSSharedUpTo … b`, for a proposal cut with `t_{kX} ≤ b`). -/
 theorem cross_of_signed_rows_upTo (hrun : GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)

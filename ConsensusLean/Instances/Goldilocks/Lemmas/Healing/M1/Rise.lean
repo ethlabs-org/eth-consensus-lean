@@ -92,10 +92,10 @@ theorem rows_delivered_service {g ΔF b v : Time}
   subst h
   linarith [hdl k']
 
-/-- **ROUND at one honest proposal** (§24.4, §26 Step E). `X` is an honest proposal on the parent
-`D ⪰ P`, at a slot `≥ P.slot + δ_t`, with `v ≥ ḡ` and `v + Δ_F ≤ t_X ≤ b`. Every honest `y`
-either signed an attestation for `P`'s height and entry by `v`, or some block `R ⪯ D` is above `P`'s
-height. Then `X` is at least one height above `P`. -/
+/-- **ROUND at one honest proposal.** `X` is an honest proposal on the parent `D ⪰ P`, at a slot
+`≥ P.slot + δ_t`, with `v ≥ ḡ` and `v + Δ_F ≤ t_X ≤ b`. Every honest `y` either signed an
+attestation for `P`'s height and entry by `v`, or some block `R ⪯ D` is above `P`'s height. Then `X`
+is at least one height above `P`. -/
 theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {g ΔF b v : Time} (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
@@ -176,10 +176,9 @@ theorem round_cross (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCol
     rw [σ_eq_honest hrun hnc hw hp hPw hPst, σ_eq_honest hrun hnc hw hp hRw hRst] at hhR
     omega
 
-/-- **ROW-sign at the actual report** (§30 G1, §24.3–§24.4). An honest report `R ⪰ P` at cut `i`
-before `T`: `y` signed an attestation for `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. At
-equal heights the lock premise is the height `HZ` (F3-lock, from NoAdvance) or the O1-L kind clause.
--/
+/-- **ROW-sign at the actual report.** An honest report `R ⪰ P` at cut `i` before `T`: `y` signed an
+attestation for `(σ[P].h, σ[P].T_h)` by `t_i`, or `σ[R].h > σ[P].h`. At equal heights the lock
+premise is the height `HZ` (F3-lock, from NoAdvance) or the O1-L kind clause. -/
 theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {g T : Time}
     (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
@@ -234,11 +233,11 @@ theorem row_or_high_of_report (hrun : GoldilocksRun proposer dg H tr)
   · exact ⟨i + 1, att, ⟨R, hatt⟩, ht.le, hah, haT.trans hTh⟩
   · exact ⟨k', att, hs, hrun.time_mono (Nat.lt_succ_iff.mp hk'), hah, haT.trans hTh⟩
 
-/-- **ROUND at a warm proposal** (§26 Step E with §30 G1). `P` is the actual warm proposal of
-slot `u` (FrameWindow drain), `X` an actual honest proposal of slot `x ∈ [u + δ_t, N]`. The
-attestations come from the actual reports of `proposal_report_follow`; at each report of the same
-height as `P`, `report_kind_of_warm` derives O1-L from the frame floor. This strengthens the
-interface by removing the redundant lock premise, without changing the conclusion. -/
+/-- **ROUND at a warm proposal.** `P` is the actual warm proposal of slot `u` (FrameWindow drain),
+`X` an actual honest proposal of slot `x ∈ [u + δ_t, N]`. The attestations come from the actual
+reports of `proposal_report_follow`; at each report of the same height as `P`, `report_kind_of_warm`
+derives O1-L from the frame floor. This strengthens the interface by removing the redundant lock
+premise, without changing the conclusion. -/
 theorem FrameWindow.round_of_warm
     {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}

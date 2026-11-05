@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 
 public section
 
-/-! # Goldilocks Obligations: parents above a crossing report (L5.4)
+/-! # Goldilocks Obligations: parents above a crossing report
 
 Case (A) of `window_justifies_or_crossed` is an honest report `C` with `h < σ[C].h`. Through C3
 (`Healed.c3`) it bounds the parents of later honest proposals.

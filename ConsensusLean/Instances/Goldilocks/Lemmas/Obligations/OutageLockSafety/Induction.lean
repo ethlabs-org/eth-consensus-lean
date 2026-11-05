@@ -14,13 +14,12 @@ public section
 
 /-! # Outage lock safety: the cut induction
 
-`outage_lock_inv`: from the premise package and the S5 step `hS5`, the outage lock invariant
-holds at every cut. The step from `i` to `i + 1` proves, in order: (H) for the casts at cut `i`
-(pre-`b₀` by S2, `A₀` by the protection at `i`, §7.2), S5V at cut `i` (`hS5 i`), (R) for the
-results at cut `i` (§5.1), (i) at `i + 1` (§5.2), (SRC) at `i` (§6.1), OB-F and (VA) at `i + 1`
-(§6.2, §6.3), and the protections at `i + 1` (§7.1), with their bases from the arming inputs: the
-label-`(j₀ − 1)` lock, and the label-`j₀` cover with (F), (VA) and (N) discharged from the
-invariant at the update's cut (§7.3). -/
+`outage_lock_inv`: from the premise package and the S5 step `hS5`, the outage lock invariant holds
+at every cut. The step from `i` to `i + 1` proves, in order: (H) for the casts at cut `i` (pre-`b₀`
+by S2, `A₀` by the protection at `i`), S5V at cut `i` (`hS5 i`), (R) for the results at cut `i`, (i)
+at `i + 1`, (SRC) at `i`, OB-F and (VA) at `i + 1`, and the protections at `i + 1`, with their bases
+from the arming inputs: the label-`(j₀ − 1)` lock, and the label-`j₀` cover with (F), (VA) and (N)
+discharged from the invariant at the update's cut. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -46,7 +45,7 @@ private theorem prev_update_time (D : OutageLockPremises tr H proposer dg) {x : 
   linarith
 
 /-- The protected block is in `x`'s frame at its label-`j₀` update when `Σ.F ⪯ P` there: the
-label-`(j₀ − 1)` base (`lockPrev`) put it in the tree earlier (§7.3, VA). -/
+label-`(j₀ − 1)` base (`lockPrev`) put it in the tree earlier (VA). -/
 private theorem prev_mem (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} (hx : x ∈ D.A₀)
     {c : Nat} {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
     (hu : SA.UpdateAt tr.projAC x c D.j₀ ℓ)
@@ -85,7 +84,7 @@ private theorem prev_mem (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n
 
 namespace OutageLockInv
 
-/-- **The arming inputs (F), (VA), (N) at the label-`j₀` update** (§7.3): from the invariant at a
+/-- **The arming inputs (F), (VA), (N) at the label-`j₀` update**: from the invariant at a
 cut `≥ c`, the cover base holds at `x`'s label-`j₀` update at cut `c`. -/
 theorem cover_base {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : x ∈ D.A₀)
     {c : Nat} (hci : c ≤ i) {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
@@ -108,7 +107,7 @@ theorem cover_base {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : x �
     · exact hinv.votes y (D.hA₀ hy) j (by omega) e hv (by have := D.hσ; omega) (by omega)
         (Or.inr hy)
 
-/-- **(H) for a cast of `A₀` after `b₀`** (§7.2): through the label-`(j₀ − 1)` protection for
+/-- **(H) for a cast of `A₀` after `b₀`**: through the label-`(j₀ − 1)` protection for
 slots `≤ j₀ − 1 + k`, and through the cover protection for slot `j₀ + k`. -/
 theorem cohort_vote_extends {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x i e)
@@ -200,7 +199,7 @@ private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg) {x : 
   obtain ⟨L, f, hL, hPL, hl⟩ := hbase
   exact prot_of_lock D hx hu hF hl rfl le_rfl hL rfl hPL
 
-/-- **The base of the cover protection** (§7.3): the cover base at `x`'s label-`j₀` update at cut
+/-- **The base of the cover protection**: the cover base at `x`'s label-`j₀` update at cut
 `c`, with the caches at `c` and `c + 1`, gives the label-`j₀` protection at `c + 1`. -/
 private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {c : Nat} {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}

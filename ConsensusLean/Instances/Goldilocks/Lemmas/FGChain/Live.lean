@@ -48,9 +48,9 @@ theorem timeout_step_slot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · rw [he] at hh
     simp [hh₀] at hh
 
-/-- **A justification at a height whose previous height is justified finalizes its predecessor
-(L6.1).** A block that justifies the current height of a state whose previous height is justified
-has finalized the predecessor height `h_j` in its own finality step. -/
+/-- **A justification at a height whose previous height is justified finalizes its predecessor.** A
+block that justifies the current height of a state whose previous height is justified has finalized
+the predecessor height `h_j` in its own finality step. -/
 theorem previousHeightJustified_justify_finalizes {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') (hb : σ.previousHeightJustified) (hj : σ'.hj = σ.h) :
     σ'.hF = σ.hj := by
@@ -113,7 +113,7 @@ theorem justify_of_target_previousHeightNotJustified {σ σ' : ChainState gp.n} 
   · exact absurd ⟨hq, Or.inl (by simpa [ChainState.previousHeightJustified] using hnb)⟩ hn
   · exact absurd ⟨hq, Or.inl (by simpa [ChainState.previousHeightJustified] using hnb)⟩ hn
 
-/-- **An early crossing justifies (L5.4 step 4).** A block that enters the next height
+/-- **An early crossing justifies.** A block that enters the next height
 at a slot before `ThSlot + δt` justifies the old height (it is no timeout, lemma T), and at a
 height whose previous height is justified it has finalized the predecessor (the loose-BJ gate). -/
 theorem early_cross_justifies {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
@@ -203,7 +203,7 @@ theorem justify_of_target_chain {c : List (FGBlock gp.n)} {σ σ' : ChainState g
   · obtain ⟨h1, h2⟩ := gp.justify_of_target_previousHeightNotJustified h hq hb
     exact ⟨h1, h2, fun e => absurd e hb⟩
 
-/-- **A pending pair at height `h_j` is `(h_j, J)` (L6.0 (b), (c)).** On a chain, the
+/-- **A pending pair at height `h_j` is `(h_j, J)` (G0.2 (d), (e)).** On a chain, the
 pending heights are strictly increasing and the newest pair is `(h_j, J)`, so a pending pair at
 height `h_j` is that pair. -/
 theorem pending_eq_of_fst_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
@@ -239,7 +239,7 @@ private theorem step_fin {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
   · exact ⟨hfin', Or.inr ⟨rfl, rfl⟩⟩
   · exact ⟨hfin', Or.inr ⟨rfl, rfl⟩⟩
 
-/-- **Finalized at `h_j` means finalized `J` (L6.0 (b), (c)).** On a chain, if
+/-- **Finalized at `h_j` means finalized `J` (G0.2 (c)).** On a chain, if
 `h_F = h_j` then `F = J`. -/
 theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (he : σ.hF = σ.hj) : σ.F = σ.J := by
@@ -257,10 +257,9 @@ theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
     · have := gp.pending_eq_of_fst_eq_hj hc hm (by simp only; omega)
       rw [hJ]; exact (Prod.mk.inj this).2
 
-/-- **A justification at a height whose previous height is justified finalizes the predecessor block
-(L6.1 (i)).** On a chain, a block that justifies the current height of a state whose
-previous height is justified has `F = J` of the parent state: the predecessor block, not only its
-height. -/
+/-- **A justification at a height whose previous height is justified finalizes the predecessor
+block.** On a chain, a block that justifies the current height of a state whose previous height is
+justified has `F = J` of the parent state: the predecessor block, not only its height. -/
 theorem previousHeightJustified_justify_finalizes_block {c : List (FGBlock gp.n)}
     {σ σ' : ChainState gp.n} {B : FGBlock gp.n} (hc : gp.chainState c = some σ)
     (h : gp.stateTransition σ B = some σ')

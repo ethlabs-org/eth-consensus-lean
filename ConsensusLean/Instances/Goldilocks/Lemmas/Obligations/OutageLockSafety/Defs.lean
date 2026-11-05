@@ -11,11 +11,11 @@ The outage lock-safety argument, at trace level. `P` is the protected block
 whose early cutoff is at or before `b₀`, `r` the first label whose last cast time is at or after
 `b₁`; the labels `≤ j₀` and `≥ r` are unpolluted.
 
-* `OutageLockPremises`: the premise package (§2). The arming inputs `lockPrev` and `lockCover`
+* `OutageLockPremises`: the premise package. The arming inputs `lockPrev` and `lockCover`
   are fields in trace form; `lockCover` is conditional on (F), (VA) and (N), which the induction
   discharges. The post-GST pool delivery `PG` is a field. The S5 step is not a field: it is the
   hypothesis `hS5` of `outage_lock_inv`, which consumes `OutageLockInv D i`.
-* `OutageLockInv D i`: the cut invariant (§3) at the cuts before `i`: honest votes of slots in
+* `OutageLockInv D i`: the cut invariant at the cuts before `i`: honest votes of slots in
   `(σ, j₀ + k]` cast at or before `b₀` or by the cohort `A₀` extend `P` (`votes`); later votes are
   compatible with `P` (`late`, from S5); results at unpolluted labels are compatible with `P`
   (`results`); stored honest locks (`locks`, (i)), FG sources (`sources`) and the
@@ -27,7 +27,7 @@ Differences in form from the paper argument's premise listing, each as its proof
 arming use them:
 
 * the fault bound (`hFB`) is stated at every slot point that precedes an honest call (R-late
-  reads it at `t_m + Δ` for `m > j₀ + k`, §5.1, from `EtaSleepyOn`);
+  reads it at `t_m + Δ` for `m > j₀ + k`, from `EtaSleepyOn`);
 * the cohort premises are stated over times (`hA₀awake`, `hA₀join`) and bound the no-sleep window
   end `z` from below at the times of honest calls (`hz`); a restart of `A₀` up to `z` is by
   `a + Δ`, the bound the abstract run interface `GoldilocksRun` gives (the first call after

@@ -96,7 +96,7 @@ theorem outage_window_cover (Q : OutageQuery S A V) :
   · rw [hC]
     nlinarith
 
-/-- **Arming of a ready source** (§10): the read tip `P` at the end-of-`T` cut, an armed origin
+/-- **Arming of a ready source**: the read tip `P` at the end-of-`T` cut, an armed origin
 `C ⪰ P`, S-vote, and O1 at the labels `j₀ − 1` and `j₀ = coverLabel b₀` for the holders. -/
 structure OutageArming (Q : OutageQuery S A V) (v : V) where
   /-- `P`: the confirmed read's tip at the end-of-`T` cut. -/
@@ -107,19 +107,19 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
     chainTo (Q.trace.state (Q.run.2.ownKey v)
       (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T))).fg.blocks
       (tip.slot + 1) tip
-  /-- `tip` is the `readAfter` read tip of `v` at the end-of-`T` cut, at clock `T` (§3). -/
+  /-- `tip` is the `readAfter` read tip of `v` at the end-of-`T` cut, at clock `T`. -/
   tip_eq : tip = Regimes.readAfter Q.trace (Q.run.2.ownKey v)
     (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T
-  /-- Genesis tip (`origin := tip`), or `P ⪯ C` for an origin within `T` (§3). -/
+  /-- Genesis tip (`origin := tip`), or `P ⪯ C` for an origin within `T`. -/
   armed : (tip.root = Q.params.genesisRoot ∧ origin = tip) ∨
     (Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) tip origin ∧
       Compose.OriginWithin Q.trace (honestKeys S Q.run.2) origin σ Q.T ∧
       σ + Q.params.k < Compose.coverLabel Q.params Q.start)
-  /-- S-vote (§3). -/
+  /-- S-vote. -/
   votes : ∀ x ∈ honestKeys S Q.run.2, ∀ i e, SA.VoteAt Q.trace.projAC x i e → σ < e.msg.slot →
     e.msg.slot ≤ Compose.coverLabel Q.params Q.start →
     SA.VoteExtends (Q.trace.HonestBlocks (honestKeys S Q.run.2)) e.msg origin
-  /-- O1 at `j₀ − 1`, unconditional (§6). -/
+  /-- O1 at `j₀ − 1`, unconditional. -/
   lockPrev : ∀ w ∈ Q.holders, origin.root ≠ Q.params.genesisRoot →
     Q.params.ts (Compose.coverLabel Q.params Q.start) + 2 * Q.params.Δ ≤ Q.run.2.horizon →
     ∃ c ℓ, SA.UpdateAt Q.trace.projAC w c (Compose.coverLabel Q.params Q.start - 1) ℓ ∧
@@ -128,7 +128,7 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
          (⟨L.root, Compose.coverLabel Q.params Q.start - 1, f,
            Compose.coverLabel Q.params Q.start - 1 + Q.params.k⟩ : SA.Lock) ∈
            (Q.trace.state w (c + 1)).ac.locks)
-  /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update (§7). -/
+  /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update. -/
   lockCover : ∀ w ∈ Q.holders, origin.root ≠ Q.params.genesisRoot →
     Q.params.ts (Compose.coverLabel Q.params Q.start) + 6 * Q.params.Δ ≤ Q.run.2.horizon →
     ∃ c ℓ, SA.UpdateAt Q.trace.projAC w c (Compose.coverLabel Q.params Q.start) ℓ ∧
@@ -145,7 +145,7 @@ structure OutageArming (Q : OutageQuery S A V) (v : V) where
             Compose.coverLabel Q.params Q.start + Q.params.k⟩ : SA.Lock) ∈
             (Q.trace.state w (c + 1)).ac.locks))
 
-/-- **Arming** (§§1–7): every ready source at `T` within the horizon is armed. -/
+/-- **Arming**: every ready source at `T` within the horizon is armed. -/
 theorem outage_arming (Q : OutageQuery S A V)
     (service : Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon) :

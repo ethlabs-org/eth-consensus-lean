@@ -20,11 +20,11 @@ public section
 
 For an outage `[b₀, b₁)` armed at
 `T` under the lag `(4k+6)Δ` (node units), every origin `C` within `T` has a label `σ` with
-`σ + k < j₀`, `j₀ := coverLabel b₀` (§1); every honest vote of a slot in `(σ, j₀]` extends `C`
-(S-vote, §3); an honest updater whose slot's votes are delivered by `t_s + 2Δ ≤ b` has a result
-extending `C`, held in its frame when `Σ.F ⪯ C`, with an honest supporter (Lemma P, §5); the saved
-attestations of an update extend `C` (§6.2); and the pure SA formation of a slow lock (§6.5). The
-veto analysis at the cover gate `j₀` (§7.4) takes the lock-safety input (N) as a hypothesis. -/
+`σ + k < j₀`, `j₀ := coverLabel b₀`; every honest vote of a slot in `(σ, j₀]` extends `C`
+(S-vote); an honest updater whose slot's votes are delivered by `t_s + 2Δ ≤ b` has a result
+extending `C`, held in its frame when `Σ.F ⪯ C`, with an honest supporter (Lemma P); the saved
+attestations of an update extend `C`; and the pure SA formation of a slow lock. The veto analysis
+at the cover gate `j₀` takes the lock-safety input (N) as a hypothesis. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -38,7 +38,7 @@ theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : SAParams} {L : Set Lock}
   · exact Or.inl (hCD.trans h)
   · exact anc_total hΦ.coherent hCD h
 
-/-- **Slow formation** (§6.5, independent writes): attestations above `C`, a result `D ⪰ C`, and no
+/-- **Slow formation** (independent writes): attestations above `C`, a result `D ⪰ C`, and no
 live lock conflicting with `C` store the slow lock of slot `s` and expiry `s + k` on the viable
 ancestor of the deepest unvetoed slow-test block `X`, `C ⪯ X ⪯ D`. A veto of `D` stops only the
 record. -/
@@ -123,7 +123,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-! ### §1 The arithmetic -/
+/-! ### The arithmetic -/
 
 /-- The cover label of an outage start `b₀`: the label whose update `t_j + 6Δ` is the first
 after `b₀` (archive `coverLabel` for `b₀ ≥ 6Δ`). -/
@@ -184,9 +184,9 @@ theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H
       h.ac.relay x hx i B hB h0 y hy j ℓ hc (hd.trans hb) ht ha⟩,
     fun x hx i B hB h0 y hy j hc hd ht ha => h.relay x hx i B hB h0 y hy j hc (hd.trans hb) ht ha⟩
 
-/-! ### §3 S-vote -/
+/-! ### S-vote -/
 
-/-! ### §4 The receiver epoch -/
+/-! ### The receiver epoch -/
 
 /-- (R1) Awake on `[a, z]`: every restart up to `z` is at or before every public `τ ∈ [a, z]`. -/
 theorem restart_le_of_awakeOn (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
@@ -209,9 +209,9 @@ theorem restart_le_of_awakeOn (hrun : GoldilocksRun proposer dg H tr) {y : Fin s
   have := hb j hjk hjc
   linarith
 
-/-! ### §5 Lemma P -/
+/-! ### Lemma P -/
 
-/-- **Lemma P** (§5): an update whose slot's votes are delivered by `t_s + 2Δ ≤ b` (the update
+/-- **Lemma P**: an update whose slot's votes are delivered by `t_s + 2Δ ≤ b` (the update
 itself may be after `b`) has a result extending a bounded origin of an earlier label, held in its
 frame when `Σ.F ⪯ C`, with an honest supporter in its pool. -/
 theorem update_result_extends_origin (hrun : GoldilocksRun proposer dg H tr)
@@ -374,7 +374,7 @@ theorem update_result_or_root (hrun : GoldilocksRun proposer dg H tr)
     (by linarith) hfb hFC
   exact Or.inr ⟨hFC, hCt, D, hD, hCD⟩
 
-/-! ### §6.2 The saved attestations -/
+/-! ### The saved attestations -/
 
 /-- The frame of an update is the node's frame at the update's cut. -/
 theorem update_frame (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
@@ -388,7 +388,7 @@ theorem update_frame (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy 
     | fg _ => cases hcl
   exact (hrun.cutLaw y hy c (.ac ℓ) ⟨hn, hc⟩).1
 
-/-- **The saved attestations** (§6.2) at an update of slot `s ≥ k`: from attestation updates before
+/-- **The saved attestations** at an update of slot `s ≥ k`: from attestation updates before
 it, no restart after the oldest attestation start, and a result above `C` at every attestation
 update, every attestation of the slow test names a block of the frame above `C`. -/
 theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -458,12 +458,12 @@ theorem saved_rows_above (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
   refine ⟨R, hRΦ, ?_, SA.anc_tree_of_anc_U hU hΦ hHB hCΦ hCR hRΦ⟩
   rw [← projAC_state hrun.toLocalRun hy, hrs, hC'r]
 
-/-! ### §7.4 The veto analysis at the cover gate -/
+/-! ### The veto analysis at the cover gate -/
 
-/-- **An own optimistic selection is compatible with a later result of the same label**
-(§7.4(b)): its three quarters of optimistic voters are in the updater's slot-`s` pool at the
-result (no restart in between), and none of them supports a conflicting block, so a conflicting
-result would have at most a quarter of the committee as supporters, not a majority. -/
+/-- **An own optimistic selection is compatible with a later result of the same label**: its three
+quarters of optimistic voters are in the updater's slot-`s` pool at the result (no restart in
+between), and none of them supports a conflicting block, so a conflicting result would have at most
+a quarter of the committee as supporters, not a majority. -/
 theorem own_optimistic_compatible_result (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {k c s : Nat}
     {B' D : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (SA.Vote sp.n)}
@@ -509,7 +509,7 @@ theorem own_optimistic_compatible_result (hrun : GoldilocksRun proposer dg H tr)
   rw [Set.ncard_union_eq hdisj (Set.toFinite _) (Set.toFinite _)] at h2
   omega
 
-/-- **The veto analysis at the cover gate** (§7.4). At the first update of slot `s` (after `b`),
+/-- **The veto analysis at the cover gate.** At the first update of slot `s` (after `b`),
 whose slot's votes are delivered by `t_s + 2Δ ≤ b`, with a result `D ⪰ C` that an honest pool vote
 supports: every live block that vetoes `D` is that of a stored lock of slot `s + 1` and extends
 `C`. A vetoing lock of a label below `s` sits below an origin within `b`
@@ -655,7 +655,7 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ### The armed updates of a no-sleep holder -/
 
-/-- §4: a node awake on `[a, z]` with `a ≤ t_r` runs the update of every slot `q ≥ r` whose update
+/-- A node awake on `[a, z]` with `a ≤ t_r` runs the update of every slot `q ≥ r` whose update
 is by `z` (joined there: its restarts up to `z` are at or before `t_r`). -/
 theorem update_of_awakeOn (hrun : GoldilocksRun proposer dg H tr) {w : Fin sp.n} (hw : w ∈ H)
     {a z : Time} (haw : ∀ u, a ≤ u → u ≤ z → tr.awake w u) {r q : Nat} (ha : a ≤ sp.ts r)
@@ -678,7 +678,7 @@ theorem update_of_awakeOn (hrun : GoldilocksRun proposer dg H tr) {w : Fin sp.n}
   change _ ≤ sp.ts q
   linarith
 
-/-- **The first armed update** of slot `s` of a no-sleep holder `w` (§§4–6): it exists, its
+/-- **The first armed update** of slot `s` of a no-sleep holder `w`: it exists, its
 restarts are at or before `t_{s−k+1}`, and when `Σ.F ⪯ C` the origin `C` (of a label `σ ≤ s − k`)
 is in its frame below its result, which an honest pool vote supports, and every saved attestation of
 the slow test names a block of the frame above `C`. -/
@@ -766,7 +766,7 @@ private theorem locks_after_update (hrun : GoldilocksRun proposer dg H tr) (hnc 
     projAC_state hrun.toLocalRun hw]
   rfl
 
-/-- **O1 at an update within `b`** (§6): the first update of slot `s` of a no-sleep holder,
+/-- **O1 at an update within `b`**: the first update of slot `s` of a no-sleep holder,
 at a time `≤ b`, has root cover, or stores a lock of slot `s` on a block of its frame above `C`. -/
 theorem armed_lock_formed (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
@@ -803,7 +803,7 @@ theorem armed_lock_formed (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     (result_not_vetoed_before hrun hnc hinv hw hu (htc ▸ hsb) hD) hCt hCg hCD hrows hlive hcand
   exact Or.inr ⟨L, f, hL, hCL, (locks_after_update hrun hnc hw hu).symm ▸ hl⟩
 
-/-- **O1 at the cover gate** (§7): the first update of slot `s` of a no-sleep holder, whose
+/-- **O1 at the cover gate**: the first update of slot `s` of a no-sleep holder, whose
 slot's votes are delivered by `t_s + 2Δ ≤ b` but which may itself be after `b`. Given (F) `Σ.F`
 compatible with `C`, (VA) `C` a candidate when `Σ.F ⪯ C`, and (N) for the `Hold` votes of slot
 `s + 1` before it, it has root cover or stores a lock of slot `s` and expiry `s + k` above `C`.

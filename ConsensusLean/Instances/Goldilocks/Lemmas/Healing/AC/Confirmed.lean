@@ -10,27 +10,27 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: the confirmed tip after an honest proposal (T1 §6, H.1 (ii))
+/-! # Goldilocks Healing: the confirmed tip after an honest proposal (H.1 (ii))
 
 The helpers of `proposal_confirmed`, over a
 `StandaloneRun` (H.1's premises) and an honest proposal `P` of slot `p`:
 
-* `late_vote_held` (§2): at an honest call from `t_s + 2Δ` on (`s ≥ r`), every honest slot-`s`
+* `late_vote_held`: at an honest call from `t_s + 2Δ` on (`s ≥ r`), every honest slot-`s`
   vote is held, with its head in the call's frame, both resolved before `t_s + 2Δ`, before and
   after the call;
 * `proposal_mem_tree`: `P` is in every honest frame from `t_p + Δ` on;
-* `lock_compatible`, `liveLock_compatible` (§3): every lock live at an honest call from
+* `lock_compatible`, `liveLock_compatible`: every lock live at an honest call from
   `t_p + 6Δ` on, before or after it, compares with `P` (labels `< p` by `LocksSettled` and the
   exact slot-`p` votes, labels `≥ p` by their origin's honest supporter,
   `origin_compatible_proposal`);
-* `first_update_post`, `first_update_record` (§4): the slot-`p` update at `t_p + 6Δ` has result
+* `first_update_post`, `first_update_record`: the slot-`p` update at `t_p + 6Δ` has result
   `P`, not vetoed, with `P` passing the fast test, so its own fast selection
   (`fastSelect_eq_result`);
-* `record_step`, `record_extends` (§4): from that update on the record extends `P` (a candidate
+* `record_step`, `record_extends`: from that update on the record extends `P` (a candidate
   compares with `P`, and an ancestor candidate is refused);
-* `head_extends` (§5): the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
+* `head_extends`: the head extends `P` (the latest view is of a slot `≥ p + 1` whose honest
   batch is held and resolved);
-* `anc_acConfirmed_of_frame` (§5; frame-only, shared with H.2): then the confirmed tip extends
+* `anc_acConfirmed_of_frame` (frame-only, shared with H.2): then the confirmed tip extends
   `P`. -/
 
 namespace Consensus.Goldilocks.SA
@@ -248,7 +248,7 @@ theorem honest_batch_carry_before {b : Time} (hS : HealthyBaseUpTo tr H U propos
     exact Or.inl ⟨hp, lt_trans hst
       (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
 
-/-- **A late honest vote is held** (h1 §2): for a slot `s ≥ r` and an honest call at a time
+/-- **A late honest vote is held**: for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ`, every honest slot-`s` vote is held, with a stamp before `t_s + 2Δ`, before and after
 the call. -/
 theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
@@ -305,7 +305,7 @@ theorem late_vote_pool (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy :
       linarith
   rwa [hes] at hst
 
-/-- **A late honest batch** (h1 §2, H.2 §7.5): for a slot `s ≥ r` and an honest call at a time
+/-- **A late honest batch** (also for H.2 (ii)): for a slot `s ≥ r` and an honest call at a time
 `≥ t_s + 2Δ` whose `Φ.F` the vote's head extends, every honest slot-`s` vote is held, with its
 head in the call's frame (of slot at most `s`), and both its stamp and its head's are before
 `t_s + 2Δ`, before and after the call. -/
@@ -479,7 +479,7 @@ theorem two_faulty_lt_honest (hS : HealthyBase tr H U proposer g) : 2 * Hᶜ.nca
 
 /-- **A late result has an honest supporter**: the result `C` of an honest update of a slot
 `s ≥ r` (read at a time `≥ t_s + 2Δ`) is extended by an honest vote of slot `s`: its supporters
-are a strict majority of the voters, which include all honest validators (h1 §3). -/
+are a strict majority of the voters, which include all honest validators. -/
 theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
@@ -508,7 +508,7 @@ theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
   exact ⟨_, huH, j', e', hve, state_pool_slot sp hr hx c s _ hvp, R, hΦU hR, hRr,
     Anc.mono hΦU hCR⟩
 
-/-- **A lock origin of a slot `≥ p` compares with `P`** (h1 §3, `l ≥ p`): an honest fast lock
+/-- **A lock origin of a slot `≥ p` compares with `P`** (`l ≥ p`): an honest fast lock
 through an honest counted vote; an honest slow lock through an honest supporter of its update's
 result (not its fast test). -/
 theorem origin_compatible_proposal (hS : StandaloneRun tr H U proposer g)
@@ -537,7 +537,7 @@ private theorem compatible_down {B L P : Blk sp.n FGP} (hU : Coherent U) (hLB : 
   · exact Or.inl (hLB.trans h)
   · exact anc_total hU hLB h
 
-/-- **Every stored lock compares with `P`** (h1 §3), at the state before an honest call at a
+/-- **Every stored lock compares with `P`**, at the state before an honest call at a
 time `t ≥ t_{p−1}` (`hset`) and, for a call at `t ≥ t_p + 6Δ`, also after it, for the locks live
 at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock written by the call has a
 label `≥ p`); of a label `≥ p` by its origin. -/
@@ -628,7 +628,7 @@ theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P 
 
 /-! ## The first update at `t_p + 6Δ` -/
 
-/-- **The first update** (h1 §4): at an honest node's tick at `t_p + 6Δ`, with every honest
+/-- **The first update**: at an honest node's tick at `t_p + 6Δ`, with every honest
 slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,
 whose result is `P` (its honest batch is a strict majority, and every other passing block has only
 faulty supporters unless it is an ancestor of `P`), not vetoed, and `P` passes the fast test
@@ -762,7 +762,7 @@ theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   unfold fastSelect
   rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
 
-/-- **The first update repairs the record** (h1 §4): at an honest node's tick at `t_p + 6Δ`, with
+/-- **The first update repairs the record**: at an honest node's tick at `t_p + 6Δ`, with
 every honest slot-`p` vote exactly `P` and every live lock comparing with `P`, the slot-`p`
 result is `P` and is not vetoed (`first_update_post`), so the record after the tick extends
 `P`. -/
@@ -896,7 +896,7 @@ private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAStat
       exact RecP.ulc (A := { A with saved := Function.update A.saved s (some C.root) }) hR
         (deepest_mem hC).1.1 (hres C hC)
 
-/-- **An optimistic selection compares with `P`** (h1 §4): at an honest call at `t ≥ t_p + 6Δ`,
+/-- **An optimistic selection compares with `P`**: at an honest call at `t ≥ t_p + 6Δ`,
 from a state whose pools the call keeps, the block an optimistic check selects has three
 quarters of the committee as voters, one of them honest, whose vote (of a slot `> p`) extends
 `P`. -/
@@ -934,7 +934,7 @@ theorem optimisticSelect_compatible (hS : HealthyBase tr H U proposer g)
   · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hBt h hPt)
   · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hPt h hBt)
 
-/-- **The record step** (h1 §4): an honest call at `t ≥ t_p + 6Δ` keeps the record extending `P`:
+/-- **The record step**: an honest call at `t ≥ t_p + 6Δ` keeps the record extending `P`:
 every candidate it writes (an optimistic selection, or the result of an update of a slot `≥ p`)
 compares with `P`, and a restart keeps the record. -/
 theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
@@ -1053,7 +1053,7 @@ theorem trivial_tree_mono (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} 
     exact Set.mem_insert _ _
   · exact Set.mem_insert_of_mem _ ⟨k, hk.trans hcc, hacc⟩
 
-/-- **The record after the first update** (h1 §4): from an honest node's tick at `t_p + 6Δ` on,
+/-- **The record after the first update**: from an honest node's tick at `t_p + 6Δ` on,
 at every later call of the node, the record after the call names a block of the call's frame
 that extends `P`. -/
 theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
@@ -1096,8 +1096,8 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
 
 /-! ## The head and the confirmed tip -/
 
-/-- **The head extends `P`** (h1 §5, H.2 §7.5): at an honest call at `t ≥ t_p + 6Δ` whose frame has
-`P` in its viable tree, the head after the call extends `P`: the latest view is of a slot
+/-- **The head extends `P`** (also for H.2 (ii)): at an honest call at `t ≥ t_p + 6Δ` whose frame
+has `P` in its viable tree, the head after the call extends `P`: the latest view is of a slot
 `m ≥ p + 1` whose honest votes are all held and resolved and extend `P` (`n − f > n/2` supporters
 along `P`), and every live lock compares with `P`. -/
 theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
@@ -1208,10 +1208,10 @@ theorem head_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk s
     ⟨hPt, by rw [hfc]; exact hΦ.rooted.2 P hPt, P, hPt, by rw [hvh]; exact hPt,
       Relation.ReflTransGen.refl⟩ hlocks
 
-/-- **The confirmed tip from the frame** (h1 §5, H.2 §7): in a well-formed frame inside a coherent
-`U`, a block `P` below both the effective record (`latest_confirmed` if in the tree, else `Φ.F`)
-and the head is below the confirmed tip, the deepest common ancestor of the two (when `P` is not
-in the tree it is below `Φ.F`, which every block of the tree extends). -/
+/-- **The confirmed tip from the frame** (also for H.2 (ii)): in a well-formed frame inside a
+coherent `U`, a block `P` below both the effective record (`latest_confirmed` if in the tree, else
+`Φ.F`) and the head is below the confirmed tip, the deepest common ancestor of the two (when `P` is
+not in the tree it is below `Φ.F`, which every block of the tree extends). -/
 theorem anc_acConfirmed_of_frame (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} {t : Time} {P : Blk sp.n FGP}
     (hPC : Anc U P ((lookup Φ A.latestConfirmed).getD Φ.F))

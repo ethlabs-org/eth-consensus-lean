@@ -28,7 +28,7 @@ slot-`s` vote that is not `P` (`votes_eq_of_pass`):
 The frozen conjuncts of (a) follow from `P` being in the viable voter block tree
 (`frozen_of_viableTree`, `proposal_frozen_viable`). (b) takes HS.2 (`CleanLockDrain`) as a
 hypothesis: its fourth clause is (a)'s lock premise; the later votes and proposal parents are
-`later_extend` (open, the common-batch transfer of §2). -/
+`later_extend` (open, the common-batch transfer). -/
 
 namespace Consensus.Goldilocks.Healing
 

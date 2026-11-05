@@ -8,12 +8,12 @@ public section
 
 /-! # Goldilocks Healing: the transfer to the proposal duty over any frames
 
-"The same argument applies at a proposal" (T1 §3), over an AC run
-(`ACRun`) with the frame facts as premises, so that H.1 (trivial frames, `StandaloneRun`) and H.2
-(general frames, `InclusionRun`) instantiate the same arguments. An honest `ac_proposal` of slot
-`σ + 1` (at cut `i` of `x`, label `ℓ`, frame `Φ = ℓ.frame`) walks the full viable tree with the
-slot-`σ` votes it holds (`vote_view(𝒜, Φ, σ, ⊤)`), from the anchor of its locks after unlocking
-against that view (`acProposal_head`). Its head extends `B` when (`proposal_walk`)
+The argument at the votes applies at a proposal; here over an AC run (`ACRun`) with the frame facts
+as premises, so that H.1 (trivial frames, `StandaloneRun`) and H.2 (general frames, `InclusionRun`)
+instantiate the same arguments. An honest `ac_proposal` of slot `σ + 1` (at cut `i` of `x`, label
+`ℓ`, frame `Φ = ℓ.frame`) walks the full viable tree with the slot-`σ` votes it holds
+(`vote_view(𝒜, Φ, σ, ⊤)`), from the anchor of its locks after unlocking against that view
+(`acProposal_head`). Its head extends `B` when (`proposal_walk`)
 
 * **(V)** `B ∈ Φ.tree` and `B` is in the full viable tree or at or below `fc_root`,
 * every live lock after the unlocking is compatible with `B` (`unlocked_compatible`, from (L)),
@@ -315,8 +315,8 @@ private theorem proposal_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 
 /-! ## The honest batch at a proposal (A1.3) -/
 
-/-- **The honest batch at a proposal** (A1.3 at the proposal duty, T1 §3 "Thereafter the honest
-batch ... releases older conflicting locks"): when the honest voters of slot `σ` are half of the
+/-- **The honest batch at a proposal** (A1.3 at the proposal duty: thereafter the honest
+batch releases older conflicting locks): when the honest voters of slot `σ` are half of the
 committee and every honest slot-`σ` vote extends `B` and reaches the proposer (P), the head of an
 honest proposal of slot `σ + 1` extends `B`, under (V) and (L-high). -/
 theorem batch_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}

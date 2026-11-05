@@ -13,27 +13,27 @@ public section
 
 /-! # Goldilocks Healing: three steps of H.1 (statements fixed)
 
-Three step lemmas of H.1 (T1) over a `StandaloneRun`, used by the
-assembly in `Steps.lean`; their statements are fixed (the assembly depends on them as stated):
+Three step lemmas of H.1 over a `StandaloneRun`, used by the assembly in `Steps.lean`; their
+statements are fixed (the assembly depends on them as stated):
 
-* `origin_transfer_proposals`, T1 §3 at the proposal duty: a good origin is extended by the head
-  of every honest `ac_proposal` of a later slot;
-* `slow_origin_transfer_votes`, T1 §4 (slow origins): a slow origin whose window is `≥ r` is
-  extended by every honest vote of a later slot;
-* `proposal_votes`, T1 §6 (unanimity): with the locks settled from `t_{p−1}`, every honest vote of
-  slot `p` is the honest proposal `P`. -/
+* `origin_transfer_proposals`, the transfer at the proposal duty: a good origin is extended by
+  the head of every honest `ac_proposal` of a later slot;
+* `slow_origin_transfer_votes`, slow origins: a slow origin whose window is `≥ r` is extended by
+  every honest vote of a later slot;
+* `proposal_votes`, unanimity: with the locks settled from `t_{p−1}`, every honest vote of slot
+  `p` is the honest proposal `P`. -/
 
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-/-- **T1 §4, a slow origin transfers to the votes** (A3/A5): for an honest slow lock of slot
+/-- **A slow origin transfers to the votes** (A3/A5): for an honest slow lock of slot
 `s` on `D` with `s − k + 1 ≥ r`, every honest vote of a slot after `s` extends `D`. At a
 slot-`(s+1)` vote, every live lock of a label `j < s` has `j ≥ s − k + 1 ≥ r`, so its origin
-result is compatible with the writer's saved result of label `j` (T1 §2), which extends `D`;
-labels `s`, `s + 1` as in §3; then A1.8 for the ancestor `D` of the result, and
-`votes_continue`. -/
+result is compatible with the writer's saved result of label `j` (same-slot compatibility),
+which extends `D`; labels `s`, `s + 1` as for a fast origin; then A1.8 for the ancestor `D` of
+the result, and `votes_continue`. -/
 theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
@@ -84,10 +84,11 @@ theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U proposer g)
   · exact votesExtendAfter_iff.1 hcont y hy i e hv h
   · exact hnext i y hy e hv (by omega)
 
-/-- **T1 §3–§4 at the proposal duty** ("The same argument applies at a proposal"; T1 §6, "Every
-good lock from an older evidence slot has transferred"): the head of every honest proposal of a
-slot after the label of a good origin extends its block: its votes do (T1 §3, §4), then
-`proposals_extend_of_origin` (ProposalTransfer). -/
+/-- **The transfer at the proposal duty** (the argument at the votes applies at a proposal, and
+every good lock from an older evidence slot has transferred): the head of every honest proposal
+of a slot after the label of a good origin extends its block: its votes do
+(`fast_origin_transfer_votes`, `slow_origin_transfer_votes`), then `proposals_extend_of_origin`
+(ProposalTransfer). -/
 theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
     {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) : ProposalsExtendAfter tr H U j B := by
@@ -96,7 +97,7 @@ theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
   · exact fast_origin_transfer_votes hS hx hfl hs
   · exact slow_origin_transfer_votes hS hx hsl hs
 
-/-- **T1 §6, unanimity**: for an honest proposal `P` of slot `p` (with its parent the head of
+/-- **Unanimity**: for an honest proposal `P` of slot `p` (with its parent the head of
 its `ac_proposal`) at `t_p ≥ ḡ + 2Θ + 8Δ`, with the locks settled from `t_{p−1}`, every honest
 vote of slot `p` is `P`. Proved over the canonical walk in `Unanimity/Votes`
 (`proposal_votes_of_setting`; see that module's docstring). -/

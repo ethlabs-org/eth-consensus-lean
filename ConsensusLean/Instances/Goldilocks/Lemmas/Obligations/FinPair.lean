@@ -6,14 +6,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 
 public section
 
-/-! # Goldilocks Obligations: the finality pair of an entry state (L5.4, fin-pair link)
+/-! # Goldilocks Obligations: the finality pair of an entry state (the fin-pair link)
 
-L5.4. The premise `hsig` of
-`window_justifies_of_lock` asks that each honest target attestation for `(h, T)` carries, as its
-finality pair, `(σ.h_j, σ.J)` of every held honest state `σ` with `σ.T_h = T` that has its previous
-height justified with that pair pending. The attestation from `awake_signs_target` carries
-`Λ.finality_pair(σe)` of the entry state `σe = σ[T]`. These agree exactly when the record permits
-`(σ.h_j, σ.J)`:
+The premise `hsig` of `window_justifies_of_lock` asks that each honest target attestation for
+`(h, T)` carries, as its finality pair, `(σ.h_j, σ.J)` of every held honest state `σ` with
+`σ.T_h = T` that has its previous height justified with that pair pending. The attestation from
+`awake_signs_target` carries `Λ.finality_pair(σe)` of the entry state `σe = σ[T]`. These agree
+exactly when the record permits `(σ.h_j, σ.J)`:
 
 * `J_hj_eq_of_anc`: along ancestry at one height, `J` and `h_j` stay (only a justification, which
   advances the height, sets them). `pending` is not constant within a height (the prune of

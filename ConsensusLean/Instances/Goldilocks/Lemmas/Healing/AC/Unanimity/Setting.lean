@@ -3,19 +3,19 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 
 public section
 
-/-! # Goldilocks Healing: the setting of T1 §6 (unanimity)
+/-! # Goldilocks Healing: the setting of unanimity (H.1 (i))
 
 `proposal_votes`'s premises with the honest proposal unfolded: a `StandaloneRun`, the honest
 proposer `q` of slot `p` and its `ac_proposal` call at cut `k` at `t_p` (label `ℓp`, duty head
 `d`, payload `pay`), the block `P` it makes on `d.head`, `t_p ≥ ḡ + 2Θ + 8Δ`, and the locks
-settled from `t_{p−1}`. The canonical walk of T1 §6 is the proposer's walk (`ℓp.frame`'s scores
+settled from `t_{p−1}`. The canonical walk is the proposer's walk (`ℓp.frame`'s scores
 and eligibility at `t_p` against `View.ofLists pay`) on its tree with `P` added. -/
 
 namespace Consensus.Goldilocks.SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 
-/-- **The setting of T1 §6** for the honest proposal `P` of slot `p`, made from the
+/-- **The setting of unanimity** for the honest proposal `P` of slot `p`, made from the
 `ac_proposal` call at cut `k` with label `ℓp`, duty head `d` and payload `pay`. -/
 structure UnanimitySetting (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (schedule : Nat → Fin sp.n) (g : Time) (p : Nat) (P : Blk sp.n FGP) (k : Nat)

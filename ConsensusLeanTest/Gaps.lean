@@ -23,7 +23,8 @@ its tests; not declarations of this library), **scope** (outside the definition)
 (the gap's object no longer exists).
 
 * M1 weak continuation: construction, healed regime healthy to the horizon (`m1_healthy_awake_to_horizon`); sheet `weakSafe`, `weakInclude`, `weakGrow`; uniformity: obligation (10).
-* M2 corruption growth: scope, static adversary (`EnvPoint.honest` fixed per run); sheet §3 (A6).
+* M2 corruption growth: scope, static adversary (`EnvPoint.honest` fixed per run); the sheet
+  lists it as not yet stated (A6).
 * M3 FE/F4 pattern: `Pattern.range`; final progress `range (3R+κ)` (sheet `pp223_numbers`, `finRec_span`); sheet `range_head` (span loss); equivalence: gate F-2.
 * M4 psync mandated: construction, `Behaviour.healedSafe` and `Behaviour.healthyLive` (every provided output) are `Behaviour` fields (`m4_psync_live_mandated`); test `healed_witness_late`.
 * M5 final safety under asynchrony: construction, `Behaviour.finalAccountable` has premise `True`; `CorrectProtocol.final_agree` (`m5_final_agree`).
@@ -57,10 +58,10 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M33 chain quality: scope beyond the sheet's growth extras.
 * M34 conditional accountability: final accountability is unconditional from time `0` (stronger); accountability for conflicting available reads is out of scope.
 * M35 one GST / one outage: partially closed; prefix forms (`CorrectProtocol.sleepySafe_prefix`, `healedSafe_prefix`, `outage_prefix`; test `prefix_sync_then_async`); after an outage, GST `b₁` (`m35_outage_psync`); several GSTs/outages: scope.
-* M36 leak, HP latency: scope; sheet §3 (K1–K5, FL7/FL8).
+* M36 leak, HP latency: scope; the sheet lists them as not yet stated (K1–K5, FL7/FL8).
 * M37 model adequacy: `System.Adequate` with `sysOf_adequate`, `sysOf_log_faithful`, `Run.held_iff_served`; test `silent_run_valid`.
 * M38 global escape: removed, local accountability only; test `local_accountability_teeth`.
-* M39 HEAD: scope, protocol-internal; sheet §3.
+* M39 HEAD: scope, protocol-internal; the sheet lists it as not yet stated.
 * vacuous system: `CorrectProtocol = Behaviour ∧ Adequate ∧ Realizable`; tests `false_progress_not_correct`, `empty_valid_not_correct`, `excuse_true_not_correct`, `no_admissible_not_correct`; progress cannot read submissions (`censoring_progress_rejected`) or demand near-full participation (`notReadyAtMost_one_not_realizable`).
 * dependency-gated network: closed by construction; raw arrivals do not require dependency readiness.
   `Network.RawArrival.poisoned_arrival` admits the timely honest send/receipt with a withheld prerequisite.

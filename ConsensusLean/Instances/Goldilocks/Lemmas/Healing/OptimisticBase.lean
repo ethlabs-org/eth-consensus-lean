@@ -70,7 +70,7 @@ theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg
     change 0 < sp.n at hn
     omega) hy hcast hs hcarry hviab ih
 
-/-- The same-slot proposal base needed by L1.5 Step 4 at label s = s_p−1.
+/-- The same-slot proposal base at label s = s_p−1.
 An actual optimistic write and an early-held common-floor witness suffice; recipient
 heldness, counted-vote delivery and lock compatibility are derived, not assumed. -/
 theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
@@ -290,9 +290,10 @@ private theorem proposal_root_viable (hrun : GoldilocksRun proposer dg H tr)
       (fun hm hn => (hk ⟨hm, hn⟩).elim) hQ Relation.ReflTransGen.refl
     exact ⟨Q, ht, hv, ha⟩
 
-/-- §20.3's OW-opt supporter branch of regular BASE. The early viable witness
+/-- The OW-opt supporter branch of regular BASE. The early viable witness
 is produced at the actual supporter vote, not assumed at its optimistic write.
-The regular count/saved-result branches and Steps 5–6 remain separate. -/
+The regular count/saved-result branches, vote agreement and current-slot optimistic induction
+remain separate. -/
 theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
     {kindJ : Prop} {J L D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + sp.Δ)
@@ -382,8 +383,8 @@ theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
 
 /-- The actual heal proposal is a viable head in every honest slot-p vote's
 read domain. Heldness is derived from early readiness or finite relay; the slot-p
-proposal arm of voterBlockTree needs no frozen stamp. This is Step 4, not vote
-agreement (Step 5) or current-slot optimistic induction (Step 6).
+proposal arm of voterBlockTree needs no frozen stamp. This is not vote agreement
+or current-slot optimistic induction.
 The archived repair_h6_frame uses phase/RX-ing store frames, not read points. -/
 theorem FrameWindow.proposal_viable_at_cast {s₀ p floor : Nat}
     {kindJ : Prop} {J P : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -574,7 +575,8 @@ theorem result_honest_supporter_before (hrun : GoldilocksRun proposer dg H tr)
 /-- Regular fast BASE: actual update provenance supplies the result and its honest
 supporter; OW's viable, common-J and optimistic-stuck cases are all discharged.
 No supporter viability or write-time witness is assumed. This is the next-vote
-base only, not slow BASE, later-label MI-reg, Step 5/6 or drain. -/
+base only, not slow BASE, later-label MI-reg, vote agreement,
+current-slot optimistic induction or drain. -/
 theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : SA.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts s + 6 * sp.Δ)

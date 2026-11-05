@@ -370,7 +370,7 @@ theorem vote_locks_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc 
   exact absurd h (Nat.not_lt_zero _)
 
 
-/-- **First transfer on a window** (§2.3): an honest slot-`(s+1)` vote at a time `≤ b` extends
+/-- **First transfer on a window**: an honest slot-`(s+1)` vote at a time `≤ b` extends
 an origin `C` within `b` of label `s ≥ s₀` that is in its viable voter tree or at or below
 `fc_root` (`vote_frame`), with every live lock block compatible with `C`, when the heads accepted
 before `t_{s₀}` are caught up (`hold`) and the earlier honest slot-`(s+1)` votes extend `C`. -/
@@ -402,7 +402,7 @@ private theorem first_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc 
   · exact SA.optimistic_transfer_stored sp hrun' hx hO .refl (two_faults_lt_of_window hwin) hy
       hc hs (optimistic_carry_win hrun hnc hwin hx hs₀ hO hy hc hs hib hold hF) (Or.inl hv) hE
 
-/-- **First transfer up to `b`** (§2.3): an honest slot-`(s+1)` vote at a time `≤ b` extends an
+/-- **First transfer up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends an
 origin `C` within `b` of label `s` that the earlier honest slot-`(s+1)` votes extend. -/
 theorem first_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
@@ -470,7 +470,7 @@ theorem first_transfer_step_before (hrun : GoldilocksRun proposer dg H tr)
       (optimistic_carry_before hrun hnc hsync hx hO hy hc hs hib hF) (Or.inl hv) hE
 
 
-/-- **Later batch on a window** (§2.4): an honest slot-`(s+1)` vote at a time `≤ b` (`s ≥ s₀`)
+/-- **Later batch on a window**: an honest slot-`(s+1)` vote at a time `≤ b` (`s ≥ s₀`)
 extends a block `B` that every honest slot-`s` vote extends, that is in its viable voter tree or
 at or below `fc_root` (`vote_frame`), with every live lock block compatible with `B`, when the
 heads accepted before `t_{s₀}` are caught up (`hold`). -/
@@ -502,7 +502,7 @@ private theorem later_transfer_win (hrun : GoldilocksRun proposer dg H tr) (hnc 
     (honest_batch_carry_win hrun hnc hwin hs₀ hy hc hs hib hold hall
       (Anc.mono hΦU (hΦ.rooted.2 B hvB.1.1))) hlocks
 
-/-- **Later batch up to `b`** (§2.4): an honest slot-`(s+1)` vote at a time `≤ b` extends a block
+/-- **Later batch up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends a block
 `B` that every honest slot-`s` vote extends, compatible with every origin within `b` of label at
 most `s`, and extended by the earlier honest slot-`(s+1)` votes. -/
 theorem later_transfer_step_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)

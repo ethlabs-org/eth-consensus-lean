@@ -20,13 +20,13 @@ after the reset `a = a_z`, stated over the run, for every consumer
 (C1.2 here, H.3 (c)'s `Inv` half), not specialized to C1.2's entries.
 With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_z` of C1.2):
 
-* **RN, stored ancestry is irreversible** (§22): every lock stored at a later cut sits below a
+* **RN, stored ancestry is irreversible**: every lock stored at a later cut sits below a
   stored lock of its slot at an earlier cut, or below a fresh write between them
-  (`stored_lock_below`, `SA.lock_provenance_from` on the AC projection). **RU** (§22) is
+  (`stored_lock_below`, `SA.lock_provenance_from` on the AC projection). **RU** is
   `SA.unlock_compatible`: unlocking against a view with at least `n/2` validators whose slot-`s`
   support votes extend `B`, or that equivocate, moves every lock of a slot below `s` to a block
   compatible with `B`.
-* **The drain** (§23, HS.2 (3)): from `R` on, every live lock has a label at least `b + k + 2`, so
+* **The drain** (HS.2 (3)): from `R` on, every live lock has a label at least `b + k + 2`, so
   every lock with a label before `b` or a slow window straddling `b` has expired
   (`drain_live_locks`).
 * **Clean fast transfer** (`clean_fast_transfer`, HS.2 (1)): the stored block of a fast lock of
@@ -59,7 +59,7 @@ theorem drainTime_eq (a : Time) : drainTime sp a = sp.ts (sp.slot a + 2 * sp.k +
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
-/-- **The drain** (§23, HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
+/-- **The drain** (HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
 label at least `b + k + 2`; every lock of a label before `b`, and every slow lock whose window
 straddles `b`, has expired. The locks are those of a run (`LocksWF`: every expiry is at most
 `k` slots after the label), as every honest node's are (`SA.locksWF_state`). -/

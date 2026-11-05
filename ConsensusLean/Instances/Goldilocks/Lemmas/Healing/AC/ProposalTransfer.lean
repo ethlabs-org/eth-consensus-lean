@@ -5,11 +5,11 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: a good origin transfers to the proposal duty (T1 §3–§4)
+/-! # Goldilocks Healing: a good origin transfers to the proposal duty
 
-"The same argument applies at a proposal" (T1 §3), over a
-`StandaloneRun`: the arguments are those of `ProposalCore` (A1.2, A1.3, A1.4 (a), A1.8 at the
-proposal duty, over any frames), and this file supplies their premises under trivial frames:
+The same argument applies at a proposal, over a `StandaloneRun`: the arguments are those of
+`ProposalCore` (A1.2, A1.3, A1.4 (a), A1.8 at the proposal duty, over any frames), and this file
+supplies their premises under trivial frames:
 
 * (V) a block an honest node accepted before `t_σ + 3Δ` is accepted by the proposer by relay
   (`proposal_accept`), so it is in its tree, which is all viable (`TrivialFrames`);
@@ -17,8 +17,8 @@ proposal duty, over any frames), and this file supplies their premises under tri
   (`counted_at_proposal`) are held by the proposer, with heads in its tree accepted before it;
 * (W) from `Sync` after `ḡ` (`writer_pool_proposal`);
 * (L) the stored locks of slot `≥ σ` are optimistic (`proposal_high_lock`), compatible by the
-  votes after the origin and T1 §2 for slot `σ`; for a slow origin, the older live locks by T1 §2
-  against the writer's saved results.
+  votes after the origin and same-slot compatibility for slot `σ`; for a slow origin, the older
+  live locks by same-slot compatibility against the writer's saved results.
 
 `proposals_extend_of_origin` assembles them for H.1's `origin_transfer_proposals`, given that the
 votes after the origin extend `B`. -/
@@ -438,9 +438,9 @@ private theorem trivial_optimistic_first_proposal (hS : StandaloneRun tr H U pro
   exact heldAtProposal_iff.2 ⟨proposal_forward hS hx hc ht hσ hX hsend hvs h1 hkt, R, hRt, hRr,
     trivial_stamp hS hx hc hcall hRt hRacc⟩
 
-/-- A slow origin of slot `σ` whose window is `≥ r` (A1.8 for its block `D ⪯ C`, T1 §4) at the
-next proposal: every stored live lock there is compatible with `D` (T1 §2 against the writer's
-saved results, and the optimistic locks of later slots over votes extending `D`). -/
+/-- A slow origin of slot `σ` whose window is `≥ r` (A1.8 for its block `D ⪯ C`) at the next
+proposal: every stored live lock there is compatible with `D` (same-slot compatibility against
+the writer's saved results, and the optimistic locks of later slots over votes extending `D`). -/
 private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr X i₀ σ D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((σ : Int) - sp.k + 1))
@@ -480,7 +480,7 @@ private theorem trivial_slow_first_proposal (hS : StandaloneRun tr H U proposer 
 
 /-! ## Assembly -/
 
-/-- **A good origin transfers to the proposals** (T1 §3–§4 at the proposal duty): if every
+/-- **A good origin transfers to the proposals** (the transfer at the proposal duty): if every
 honest vote of a slot after the label `j` of a good origin on `B` extends `B`, the head of every
 honest proposal of a slot after `j` extends `B`: the first one by the origin's argument, the
 later ones by the honest batch. -/

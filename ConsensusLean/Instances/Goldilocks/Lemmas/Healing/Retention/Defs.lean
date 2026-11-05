@@ -153,7 +153,7 @@ def VoteInv (g : Time) (k : Nat) : Prop :=
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
 
 /-- (R2) after an honest call at cut `k` at a time `≥ a`, for every high origin `(B, j)` written
-at a cut `≤ k` or activated by then (`t_{j+1} ≤` the time of `k`; JointRet §13): `Σ.F` is
+at a cut `≤ k` or activated by then (`t_{j+1} ≤` the time of `k`; JointRet's activation): `Σ.F` is
 compatible with `B`, and so is `Σ.J` when `Σ.h_j ≥ H_z + 1`. -/
 def CacheInv (g a : Time) (k : Nat) : Prop :=
   ∀ y ∈ H, tr.IsCall y k → a ≤ tr.time k →

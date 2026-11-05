@@ -117,7 +117,7 @@ theorem F_anc_of_hj_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
   rw [hst hy, hst hx] at h
   exact h hBf hFm hBfF.symm hBt (by omega)
 
-/-- **The frame-key lag (L-H, L-J, L-C; §23.2).** Premises: relay (`ResetService`), catch-up
+/-- **The frame-key lag (L-H, L-J, L-C).** Premises: relay (`ResetService`), catch-up
 (`CatchRun g κ`), a call of `z` before `m` at or after the relay deadline of `i`, and
 `ḡ + κ ≤ time m`. The relay deadline is read from any bound `τ` on the times of the cuts before
 `i` (`frameKey_lag` takes `τ = time i`). -/

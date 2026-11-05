@@ -3,12 +3,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifie
 
 public section
 
-/-! # Goldilocks Healing: an honest proposal crosses the entry (L5.3, steps 5–6)
+/-! # Goldilocks Healing: an honest proposal crosses the entry
 
-The handoff of `E_0` (L5.3, steps 5–6),
-at block and trace level. The paper-conditional inputs stay premises: the set `S` of honest
-reporters of the entry (step 2, Lemma H; case β of step 4), their attestations (step 3, R0-lock),
-and the slot `s**` of the proposal (steps 4 and 6, M4, C4).
+The handoff of `E_0`, at block and trace level. The paper-conditional inputs stay premises: the
+set `S` of honest reporters of the entry (Lemma H), their attestations (R0-lock), and the slot
+`s**` of the proposal (M4, C4).
 
 * `rows_prog`: the attestations on the chain of a held block that name its entry have set their
   progress bits (targets and timeouts), as `Store.rows_counted` does for the target bits.
@@ -19,7 +18,7 @@ and the slot `s**` of the proposal (steps 4 and 6, M4, C4).
   is justified, `h_F = h_j`.
 * `cross_of_rows`, `cross_of_signed_rows`: the same at an honest proposal, with the attestations
   processed before the cut, or signed by `v` with `v ≥ ḡ`, `v + Δ_F ≤ t_{kX}` (`rows_delivered`).
-* `handoff_slot_le`: step 6, `s** ≤ s_h + δ_t + g` when `δ_t ≥ c + g − 1`.
+* `handoff_slot_le`: `s** ≤ s_h + δ_t + g` when `δ_t ≥ c + g − 1`.
 
 An early crossing (`X.slot < ThSlot + δ_t`) justifies: `FGParams.early_cross_justifies`, and with
 target attestations `justify_of_signed_rows'`. -/
@@ -123,11 +122,11 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
       · exact bp ((ih X hX' r hrX).2 hrh' hrT)
     · exact ⟨by omega, fun h' => by omega⟩
 
-/-- **L5.3 step 5 at one block**: a held block `X` on the held parent `Pr`, at a slot at least `δ_t`
-after `Pr`'s entry, and a set `S` of weight `≥ q` of validators, each with an attestation (target or
-timeout) for `Pr`'s entry in `X`'s payload or on `Pr`'s chain: `X` enters the next height as its own
-entry; it has its previous height justified exactly when `X` justified `Pr`'s entry, and then, at a
-height whose previous height is justified, `h_F = h_j`. -/
+/-- **The crossing at one block**: a held block `X` on the held parent `Pr`, at a slot at least
+`δ_t` after `Pr`'s entry, and a set `S` of weight `≥ q` of validators, each with an attestation
+(target or timeout) for `Pr`'s entry in `X`'s payload or on `Pr`'s chain: `X` enters the next height
+as its own entry; it has its previous height justified exactly when `X` justified `Pr`'s entry, and
+then, at a height whose previous height is justified, `h_F = h_j`. -/
 theorem cross_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X Pr : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) (hPr : Pr ∈ (tr.store y i).tree)
     (hpar : X.parent = some Pr.root)
@@ -167,12 +166,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **L5.3 step 5 at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent `Pr`
-of the proposer's tree, `σ = σ[Pr]`, at a slot `≥ σ.ThSlot + δ_t`, and a set `S ⊆ H` of weight `≥ q`
-of honest validators, each of which signed an attestation (target or timeout) for `(σ.h, σ.T_h)`
-that the proposer processed before `kX`: `X` enters the next height as its own entry; it has its
-previous height justified exactly when `X` justified `(σ.h, σ.T_h)`, and then, at a height whose
-previous height is justified, `h_F = σ.h_j`. -/
+/-- **The crossing at an honest proposal**: an honest proposal `X` at the cut `kX` on the parent
+`Pr` of the proposer's tree, `σ = σ[Pr]`, at a slot `≥ σ.ThSlot + δ_t`, and a set `S ⊆ H` of weight
+`≥ q` of honest validators, each of which signed an attestation (target or timeout) for
+`(σ.h, σ.T_h)` that the proposer processed before `kX`: `X` enters the next height as its own entry;
+it has its previous height justified exactly when `X` justified `(σ.h, σ.T_h)`, and then, at a
+height whose previous height is justified, `h_F = σ.h_j`. -/
 theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)

@@ -9,9 +9,9 @@ public section
 All lemmas hold at every honest cut; only the
 F3-lock lemma uses the NoAdvance premise.
 
-* `hj_ge_of_lock` (LH, §24.2): an honest record lock at height `h` gives own `h_j ≥ h`.
-* `lock_root_eq_J` (§24.3, kind J): a lock at `h = h_j` names `Σ.J`.
-* `lock_none_of_noAdvance` (F3-lock, §24.4): before the advance there is no lock at `H_z`.
+* `hj_ge_of_lock` (LH): an honest record lock at height `h` gives own `h_j ≥ h`.
+* `lock_root_eq_J` (kind J): a lock at `h = h_j` names `Σ.J`.
+* `lock_none_of_noAdvance` (F3-lock): before the advance there is no lock at `H_z`.
 * `client_progress_of_lock` (A-item 3): `client_progress` with the lock premise as a
   hypothesis, in place of `HSShared` and `PhaseOn`.
 * `lock_free_or_entry_of_frame` and `client_signs_of_frame` (O1-L): in kind F
@@ -65,7 +65,7 @@ private theorem F_h_le_hj (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
     rw [← hEJ, hEh, hBjhj] at hFh
     exact hFh
 
-/-- **Lemma LH (§24.2).** An honest record lock at height `h` gives own `h_j ≥ h`. Premises:
+/-- **Lemma LH.** An honest record lock at height `h` gives own `h_j ≥ h`. Premises:
 the run, no collision and `f < 2q − n`. -/
 theorem hj_ge_of_lock (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y : Fin sp.n} (hy : y ∈ H) {k h r : Nat}
@@ -123,7 +123,7 @@ theorem lock_root_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
   rw [store_eq_fg hrun hy, store_eq_fg hrun hy, hBJ, hBjJ] at he
   exact he
 
-/-- **F3-lock (§24.4).** Before the advance (no honest signature of height `> H_z` at a time
+/-- **F3-lock.** Before the advance (no honest signature of height `> H_z` at a time
 `< T`), an honest node has no lock at `H_z` at a cut before `T`: such a lock is the finality
 pair of a signed attestation of height `> H_z` (well-formedness). -/
 theorem lock_none_of_noAdvance (hrun : GoldilocksRun proposer dg H tr) {g T : Time}
@@ -194,7 +194,7 @@ theorem client_progress_of_lock (hrun : GoldilocksRun proposer dg H tr) {y : Fin
     obtain ⟨k', hk', att, hsa, rfl⟩ := hsent b hb
     exact Or.inr ⟨k', hk', att, hsa, hbh, hbT'⟩
 
-/-- **O1-L (§24.3), the lock.** At an honest cut, let `C` have state height `h` and entry `E`.
+/-- **O1-L, the lock.** At an honest cut, let `C` have state height `h` and entry `E`.
 In kind F (`h_j < h`) the lock at `h` is free. In kind J (`h_j = h` and `Σ.J ⪯ C`) it is free
 or `E`. -/
 theorem lock_free_or_entry_of_frame (hrun : GoldilocksRun proposer dg H tr)
@@ -240,7 +240,7 @@ theorem lock_free_or_entry_of_frame (hrun : GoldilocksRun proposer dg H tr)
   rw [hETh] at h2
   exact h1.symm.trans h2
 
-/-- **O1-L (§24.3), the attestation.** At an honest `fg_attest(C)` with `C` of state height `h` and
+/-- **O1-L, the attestation.** At an honest `fg_attest(C)` with `C` of state height `h` and
 entry `E`, in kind F or kind J, the client signs `(h, E)` now or signed it before. -/
 theorem client_signs_of_frame (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -255,7 +255,7 @@ theorem client_signs_of_frame (hrun : GoldilocksRun proposer dg H tr)
   client_progress_of_lock hrun hy hc hE hCh
     (lock_free_or_entry_of_frame hrun hnc hf hy hE hCh hkind)
 
-/-- **The attestation at `H_z` before the advance (§24.4 ROW-sign, h = H_z).** -/
+/-- **The attestation at `H_z` before the advance (ROW-sign, h = H_z).** -/
 theorem client_signs_HZ_of_noAdvance (hrun : GoldilocksRun proposer dg H tr) {g T : Time}
     (hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < T → att.h ≤ HZ tr H g)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hkT : tr.time k < T)

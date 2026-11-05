@@ -9,7 +9,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: every honest slot-`p` walk is the canonical walk (T1 §6)
+/-! # Goldilocks Healing: every honest slot-`p` walk is the canonical walk (H.1 (i))
 
 At every honest vote of slot `p`, the voter walks the canonical walk: at every block, its
 eligible children (in the viable voter block tree, with the merged view) are the eligible

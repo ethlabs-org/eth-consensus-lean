@@ -19,14 +19,14 @@ At the lock module's premise
 package `outageLockPremises_of_arming` of an armed ready source:
 
 * `outage_s5_step_query`: S5's step, the lock module's `OutageS5Step`;
-* `outage_restored_votes`: S5-V (`ExtendingMajority` at the origin) at every restored label with
-  an honest call past its vote time;
+* `outage_restored_votes`: the extending majority (`ExtendingMajority` at the origin) at every
+  restored label with an honest call past its vote time;
 * `outage_reader_head`, `outage_reader_early`, `outage_reader_late`: the bridge's `hhead`,
   `hearly` and `hlate`.
 
-The S5 step and S5-V come from `Compose.outage_s5_step` and `Compose.restored_majority`
-(`Obligations/OutageS5/Step.lean`), the early record from `Compose.record_above_of_update_r`
-(`Obligations/OutageS5/Record.lean`). -/
+The S5 step and the extending majority come from `Compose.outage_s5_step` and
+`Compose.restored_majority` (`Obligations/OutageS5/Step.lean`), the early record from
+`Compose.record_above_of_update_r` (`Obligations/OutageS5/Record.lean`). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -58,8 +58,8 @@ theorem outage_s5_step_query : OutageS5Step Q service hv hTh hsh ar := by
   rw [outageLockPremises_of_arming_P, outageLockPremises_of_arming_j₀] at h
   exact h
 
-/-- **S5-V at every restored label** with an honest call past its vote time, from S5's
-`Compose.restored_majority (D) (hS) (hinv) q (hq : D.r ≤ q) hcall`. -/
+/-- **The extending majority at every restored label** with an honest call past its vote time, from
+S5's `Compose.restored_majority (D) (hS) (hinv) q (hq : D.r ≤ q) hcall`. -/
 theorem outage_restored_votes (hS5 : OutageS5Step Q service hv hTh hsh ar)
     (q : Nat) (hq : Q.stop ≤ Q.params.ts q + Q.params.Δ)
     (hcall : ∃ x ∈ honestKeys S Q.run.2, ∃ i, Q.trace.IsCall x i ∧
@@ -86,7 +86,7 @@ private theorem gate_call {t : Time} {w : V} (hw : Q.run.2.point.Ready Q.duratio
   rw [hGt]
   linarith
 
-/-- **The head input** (`hhead`): S5-V at the read label. -/
+/-- **The head input** (`hhead`): `ExtendingMajority` at the read label. -/
 theorem outage_reader_head (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {t : Time} {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
     ∀ G : OutageReaderGate S A V Q w t,
@@ -121,7 +121,7 @@ theorem outage_reader_early (hS5 : OutageS5Step Q service hv hTh hsh ar)
   exact h
 
 /-- **The late record** (`hlate`): a reader without an update of the first restored label has its
-latest gate at a later label, where S5-V holds. -/
+latest gate at a later label, where `ExtendingMajority` holds. -/
 theorem outage_reader_late (hS5 : OutageS5Step Q service hv hTh hsh ar)
     {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :

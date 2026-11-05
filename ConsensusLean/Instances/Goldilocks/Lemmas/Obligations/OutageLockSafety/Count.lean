@@ -11,10 +11,10 @@ public section
 /-! # Outage lock safety: the counts
 
 * `OutageLockPremises.two_mul_lt` (N6): `2·|Hᶜ ∪ W| < n`.
-* `OutageLockPremises.compatible_of_within`: an origin within `b₀` is compatible with `P` (§4.2).
-* `OutageLockInv.voteCompat_of_not_lateWaker` (OL-W, §5.0): an honest vote of a slot `≥ j₀` at a
+* `OutageLockPremises.compatible_of_within`: an origin within `b₀` is compatible with `P`.
+* `OutageLockInv.voteCompat_of_not_lateWaker` (OL-W): an honest vote of a slot `≥ j₀` at a
   cut before `i` by a validator that is not a late waker has a head compatible with `P`.
-* `OutageLockInv.result_compatible` (R, §5.1): the result of an honest update of an unpolluted
+* `OutageLockInv.result_compatible` (R): the result of an honest update of an unpolluted
   label at cut `i` is compatible with `P`; the three counts R-j₀ (pre-`b₀` service), R-mid (the
   cohort `A₀` against `Hᶜ ∪ W`) and R-late (S5 and the fault bound). -/
 
@@ -102,14 +102,14 @@ theorem compatible_of (D : OutageLockPremises tr H proposer dg)
   · exact Or.inr (D.anc_of_genesis hg hC)
   · exact h hP
 
-/-- **§4.2**: an origin within `b₀` is compatible with `P`. -/
+/-- **An origin within `b₀` is compatible with `P`.** -/
 theorem compatible_of_within (D : OutageLockPremises tr H proposer dg)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s D.b₀) (hCU : C ∈ tr.HonestBlocks H) :
     Compatible (tr.HonestBlocks H) C D.P :=
   D.compatible_of hCU fun hP => D.hpre.origins_compatible C s D.P D.σ hC hP
 
-/-- **§4.1**: an honest vote at a time `≤ b₀` of a slot after `σ` extends `P`. -/
+/-- **An honest vote at a time `≤ b₀` of a slot after `σ` extends `P`.** -/
 theorem vote_extends_pre (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} (hx : x ∈ H)
     {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.VoteAt tr.projAC x k e) (hk : tr.time k ≤ D.b₀) (hs : D.σ < e.msg.slot) :
@@ -136,7 +136,7 @@ theorem ts_le_cast (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n} (hx 
   rw [hsl]
   exact this
 
-/-- **OL-W** (§5.0): at a cut before `i`, an honest vote of a slot `≥ j₀` whose voter is not a
+/-- **OL-W**: at a cut before `i`, an honest vote of a slot `≥ j₀` whose voter is not a
 late waker has a head compatible with `P`. -/
 theorem voteCompat_of_not_lateWaker {i : Nat} (hinv : OutageVoteInv D i) {x : Fin sp.n}
     (hx : x ∈ H) (hxW : x ∉ D.W) {k : Nat} (hk : k < i) {e : SA.Em sp (List (FG.Att sp.n))}
@@ -249,7 +249,7 @@ theorem cohort_ready (D : OutageLockPremises tr H proposer dg) {x : Fin sp.n}
   rw [← h']
   linarith
 
-/-- **(R) at cut `i`** (§5.1): the result of an honest update at cut `i` of an unpolluted label
+/-- **(R) at cut `i`**: the result of an honest update at cut `i` of an unpolluted label
 is compatible with `P`. -/
 theorem result_compatible {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n} (hy : y ∈ H)
     {m : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}

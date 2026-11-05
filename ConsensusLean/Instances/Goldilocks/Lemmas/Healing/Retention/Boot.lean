@@ -33,7 +33,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The base case, the vote premises and the records -/
 
-/-- **The label bound of a high origin** (§11, "Historical finality and acceptance": `j ≥ slot(c)`).
+/-- **The label bound of a high origin** (`j ≥ slot(c)`).
 The writer accepted the counted heads, of state height `≥ H_z + 1`, before `t_j + 2Δ`; no honest
 node accepts such a block at or before `c_z` (the definition of `H_z`), so `t_j + 2Δ > c_z`, and
 `t_j ≥ c_z` since both are slot starts. -/
@@ -99,12 +99,11 @@ theorem ResetPremisesUpTo.hj_le_HZ_of_before {b : Time}
   have := hk j (by omega)
   linarith
 
-/-- **HBoot, the caches before the reset** (§11 "Historical finality and acceptance";
-T1 §9). At a state all of whose earlier cuts are before `a`: no honest `Σ.J` is high
-(a justification at `h ≥ H_z + 1` needs an honest attestation at `h`, none before `a`, HR.1 (c)),
-and `Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is below every high origin:
-its finality quorum meets the crossing quorum on a counted head's chain at its height in an honest
-validator (G1.2, G0.5, `f < 2q − n`). -/
+/-- **HBoot, the caches before the reset.** At a state all of whose earlier cuts are before `a`: no
+honest `Σ.J` is high (a justification at `h ≥ H_z + 1` needs an honest attestation at `h`, none
+before `a`, HR.1 (c)), and `Σ.F`, of height `≤ H_z` (no chain has crossed `H_z + 1`, G0.2 (a)), is
+below every high origin: its finality quorum meets the crossing quorum on a counted head's chain at
+its height in an honest validator (G1.2, G0.5, `f < 2q − n`). -/
 theorem ResetPremisesUpTo.boot_caches {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
@@ -244,13 +243,12 @@ theorem activated_origin_compatible_before
     by_contra hn
     exact SA.not_compatible_of_anc hU hOD' hn hDB.symm
 
-/-- **Activation of a high origin** (§13 "Activation uses earlier labels, not D's own transfer",
-"Retaining the witnesses and the frame"; §12, the pending boundary case). At the state at
-`t_{j+1}` after the reset (immediately before the first-transfer votes of the origin's label `j`,
-even when its write is later), every honest `Σ.F`, and every high honest `Σ.J`, is compatible with
-the origin's block: low finalized entries by G1.2, high ones through their attestation witnesses,
-whose sources are comparable with `B` by the label split (earlier labels by their votes, the same
-label by TSQ, later labels excluded by R4). -/
+/-- **Activation of a high origin** (through earlier labels, not the origin's own transfer; also the
+pending boundary case). At the state at `t_{j+1}` after the reset (immediately before the
+first-transfer votes of the origin's label `j`, even when its write is later), every honest `Σ.F`,
+and every high honest `Σ.J`, is compatible with the origin's block: low finalized entries by G1.2,
+high ones through their attestation witnesses, whose sources are comparable with `B` by the label
+split (earlier labels by their votes, the same label by TSQ, later labels excluded by R4). -/
 theorem ResetPremisesUpTo.activation_caches {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
@@ -810,12 +808,11 @@ theorem raw_target_frozen_witness (hp : ResetPremises tr H proposer dg g ΔF a)
       Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D :=
   (hp.toUpTo tr H (le_refl a)).raw_target_frozen_witness ho hy hc hl hFB hBO hE hEO hfloor
 
-/-- **(K2) at a vote, R5** (§5 Lemma R5; §11 item 1 for the votes through the ticks at `a_z`;
-§13 "Retaining the witnesses and the frame"; T1 §9 base case). At an honest vote of a
-slot `> j`, the voter block tree holds a viable descendant of the origin's block `B`, or
+/-- **(K2) at a vote, R5** (Lemma R5; also for the votes through the ticks at `a_z`). At an honest
+vote of a slot `> j`, the voter block tree holds a viable descendant of the origin's block `B`, or
 `B ⪯ fc_root`: in the low-frontier regime `B` itself (height `H_z + 1`, relayed before the freeze);
-above it, the supporting head of an earlier comparable high source that crossed the floor (R4,
-R5). -/
+above it, the supporting head of an earlier comparable high source that crossed the floor (R4, R5).
+-/
 theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
     (ih : ∀ k' < k, VoteInv tr H g k' ∧ CacheInv tr H g a k') {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
@@ -856,11 +853,10 @@ theorem vote_height_lead (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   rw [← σ_eq_run hp ho.1 hy hBx hBy] at hh
   exact ⟨Hv, hHvT, hBHv, hfl.trans hh⟩
 
-/-- **A low `Σ.J` does not veto a high origin** (§11, "an old conflicting J merely causes a
-contest"; T1 §9, the geometric statement). When the voter's root is a low `Σ.J`
-(`h_max = h_j + 1 ≤ H_z + 1`, no contest) and its voter block tree holds a descendant `D` of the
-origin's block `B`, then `D` has state height `h_max` (`≥ σ[B].h ≥ H_z + 1`), so it extends `Σ.J`
-(no contest), and `Σ.J` is compatible with `B`. -/
+/-- **A low `Σ.J` does not veto a high origin** (an old conflicting `J` merely causes a contest).
+When the voter's root is a low `Σ.J` (`h_max = h_j + 1 ≤ H_z + 1`, no contest) and its voter block
+tree holds a descendant `D` of the origin's block `B`, then `D` has state height `h_max`
+(`≥ σ[B].h ≥ H_z + 1`), so it extends `Σ.J` (no contest), and `Σ.J` is compatible with `B`. -/
 theorem low_root_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin sp.n} {i j : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
@@ -1113,8 +1109,7 @@ theorem high_J_root_of_origins_before
   obtain ⟨-, -, -, -, -, -, -, -, -, hBx⟩ := highOrigin_mem hp ho
   exact high_J_root_of_held_before hp ho.1 hBx hy hc hhigh hcompare
 
-/-- **`Carry` at a first-transfer vote** (§11 "Historical finality and acceptance", §13
-"Retaining the witnesses and the frame"). At an honest vote of slot `j + 1` at which `B` is not
+/-- **`Carry` at a first-transfer vote.** At an honest vote of slot `j + 1` at which `B` is not
 below `fc_root` (so `Σ.F ⪯ B`), the voter holds the counted votes of the origin and has accepted
 their heads before `t_j + 3Δ`: the heads, of height `≥ H_z + 1`, were first accepted after `c_z`
 and before `t_j + 2Δ`, and extend `Σ.F`, so acceptance relay delivers them. -/
@@ -1179,10 +1174,9 @@ theorem first_carry (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)
   first_carry_of_finalized_anc hp k ho hfl hy hc hs
     (vote_F_anc hp k ih ho hy hc (by omega) hroot)
 
-/-- **`Carry` at a later vote** (§11 "First-violating-vote induction", §13 "Retaining the
-witnesses and the frame"). At an honest vote of slot `m' + 1`, `m' > j`, at which `B` is not below
-`fc_root`, the voter holds the honest slot-`m'` votes and has accepted their heads (which extend
-`B`, by the earlier votes, hence `Σ.F`) before `t_{m'} + 3Δ`, by relay. -/
+/-- **`Carry` at a later vote.** At an honest vote of slot `m' + 1`, `m' > j`, at which `B` is not
+below `fc_root`, the voter holds the honest slot-`m'` votes and has accepted their heads (which
+extend `B`, by the earlier votes, hence `Σ.F`) before `t_{m'} + 3Δ`, by relay. -/
 theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (k : Nat)
     {x : Fin sp.n} {i j : Nat}
@@ -1304,7 +1298,7 @@ theorem half_committee (hp : ResetPremises tr H proposer dg g ΔF a) {s' : Nat}
     sp.n ≤ 2 * {x' | x' ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard :=
   (hp.toUpTo tr H (le_max_left a (sp.ts s' + sp.Δ))).half_committee hs (le_max_right _ _)
 
-/-- **(R4), the high-record lemma** (§16). From (R1): before `a` no honest attestation has height
+/-- **(R4), the high-record lemma.** From (R1): before `a` no honest attestation has height
 `≥ H_z + 1` (HR.1 (c)), and its finality pair is below its height pair (G0.5), so the high record
 coordinates start empty; every later record write at `h ≥ H_z + 1` names the entry at `h` of the
 writing source's chain, which lies on the chain of a high origin (R1, attestations), and the high

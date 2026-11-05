@@ -13,8 +13,7 @@ public section
 /-! # Goldilocks Healing: HR.2, phase count
 
 HR.2, an FG store node over FG traces (`FGLocalRun`) with `f < 2q − n`. Proved on paper (claims
-HR.2, status S; T1 §8 (F2, first part)):
-(a) two honest accepted states with the same `h_j` have the same `J`
+HR.2, status S): (a) two honest accepted states with the same `h_j` have the same `J`
 (G1.1, G0.5: two justifications at one height have intersecting quorums, and an honest validator
 signs one target per height); (b) while the frontier `m` is fixed the effective phase moves only
 forward through gap, top `J`, contest — a justification at `m − 1`, once held by an honest node,

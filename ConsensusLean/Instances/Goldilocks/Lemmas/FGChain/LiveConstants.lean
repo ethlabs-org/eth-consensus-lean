@@ -22,10 +22,10 @@ def L (k : Nat) : Nat := k + 1
 /-- `D = max(c, δt)`. -/
 def D (cF δt : Nat) : Nat := max cF δt
 
-/-- One phase (s3 L3.3): `W = 2L + c + 2D + 6g − 6`. -/
+/-- One phase: `W = 2L + c + 2D + 6g − 6`. -/
 def W (k gapH cF δt : Nat) : Nat := 2 * L k + cF + 2 * D cF δt + 6 * gapH - 6
 
-/-- One top height (s3 L3.3): `R₁ = P · (W + g + c + 1)`. -/
+/-- One top height: `R₁ = P · (W + g + c + 1)`. -/
 def R1 (P k gapH cF δt : Nat) : Nat := P * (W k gapH cF δt + gapH + cF + 1)
 
 end Consensus.Goldilocks.FGLive

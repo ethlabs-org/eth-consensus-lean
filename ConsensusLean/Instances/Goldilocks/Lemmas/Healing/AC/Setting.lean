@@ -11,8 +11,8 @@ public section
 
 H.1's premises over an AC trace of the SA (`StandaloneRun`: `ACRun`, `Driven`, `TrivialFrames`,
 `Healthy(g)` and `Catch(2Δ)`; all but the trivial frames are `HealthyBase`, shared with H.2),
-and what they give at once (T1 §1:
-"every honest validator is awake from `g` onward ... There is no later restart"):
+and what they give at once (every honest validator is awake from `g` on, so there is no later
+restart):
 
 * no honest node restarts after `ḡ` (`restart_le`): a restart is a wake, and an honest node is
   awake from `ḡ` on;
@@ -372,9 +372,9 @@ theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t
 
 end HealthyBase
 
-/-! ### Vocabulary of the steps (T1 §§1–6) -/
+/-! ### Vocabulary of the steps -/
 
-/-- **A good origin** (T1 §1) of label `j` on `B`: an honest fast lock write of slot `j ≥ r`, or
+/-- **A good origin** of label `j` on `B`: an honest fast lock write of slot `j ≥ r`, or
 an honest slow lock write of slot `j` whose window `[j − k + 1, j]` is `≥ r`. -/
 def GoodOrigin (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (g : Time) (B : Blk sp.n FGP)
     (j : Nat) : Prop :=
@@ -393,7 +393,7 @@ def ProposalsExtendAfter (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set 
     ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
     (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) → Anc U B d.head
 
-/-- **Settled locks from `T`** (T1 §§3–5): at every cut of an honest node at a time `≥ T`,
+/-- **Settled locks from `T`**: at every cut of an honest node at a time `≥ T`,
 every stored lock live there (`slot(t) ≤ j + k`) is on a block that every honest vote and
 proposal head of a slot after its label `j` extends. -/
 def LocksSettled (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))

@@ -6,7 +6,7 @@ public section
 /-! # Goldilocks SA: A1.8 for an ancestor of the result
 
 A1.8 (`result_transfer`) with its hypotheses and conclusion about a block `D ⪯ C` of the result
-`C` (T1 §4: a slow lock's block is on its result's path). The counted supporters of `C` support
+`C` (a slow lock's block is on its result's path). The counted supporters of `C` support
 `D`, and they are a strict majority of the writer's participants. -/
 
 namespace Consensus.Goldilocks.SA

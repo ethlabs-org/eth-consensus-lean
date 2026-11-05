@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
 
 public section
 
-/-! # Goldilocks Healing: where a node's slow locks come from (T1 §1)
+/-! # Goldilocks Healing: where a node's slow locks come from
 
 Every lock that is not fast and that an honest node holds sits below (inside `U`) the block of a
 slow lock of its slot that the node itself wrote at an earlier cut (`SlowLockAt`, the update of
@@ -21,7 +21,7 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {U : Set (Blk sp.n FGP)}
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 
-/-- **T1 §1, slow lock provenance** ("every stored lock has such an origin", the slow case):
+/-- **Slow lock provenance** (every stored lock has such an origin, the slow case):
 every lock that is not fast and that an honest node holds before cut `i` sits below (inside `U`)
 the block of a slow lock of its slot that the node wrote at an earlier cut. -/
 theorem slow_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}

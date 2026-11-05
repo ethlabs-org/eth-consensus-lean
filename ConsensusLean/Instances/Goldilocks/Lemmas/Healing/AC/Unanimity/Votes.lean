@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Pro
 
 public section
 
-/-! # Goldilocks Healing: T1 §6, unanimity of the honest slot-`p` votes
+/-! # Goldilocks Healing: H.1 (i), unanimity of the honest slot-`p` votes
 
 Every honest walk of slot `p` is the canonical walk from its anchor (`vote_children_eq`), so
 the head of an honest slot-`p` vote is where the canonical walk from its anchor ends. Take the
@@ -63,7 +63,7 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp
   refine walkEnd_self fun ⟨C, hC⟩ => hstop ⟨C, ?_⟩
   exact (IsBest.congr (hag Hd).1 (hag Hd).2).2 hC
 
-/-- **T1 §6, unanimity**, in its setting. -/
+/-- **Unanimity** (H.1 (i)), in its setting. -/
 theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
   have hU : Coherent U := hs.standalone.run.localRun.coherent

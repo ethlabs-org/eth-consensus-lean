@@ -9,13 +9,13 @@ public section
 
 /-! # Outage lock safety: sources, OB-F and VA
 
-* `source_compatible` (SRC, §6.1): an FG source is the viable ancestor of a stored live fast lock
+* `source_compatible` (SRC): an FG source is the viable ancestor of a stored live fast lock
   block, so it is compatible with `P` when the stored locks are.
 * `rows_sourced`: the honest attestations of a tree are sourced by blocks compatible with `P` when
   the sources of the earlier cuts are.
-* `caches_compatible` (OB-F, §6.2): `Σ.J` is compatible with `P` (its quorum has an honest
+* `caches_compatible` (OB-F): `Σ.J` is compatible with `P` (its quorum has an honest
   attestation) and `Σ.F ⪯ Σ.J`.
-* VA (§6.3) is `held_candidate_of_rows` (`Candidate`) at `P`. -/
+* VA is `held_candidate_of_rows` (`Candidate`) at `P`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -38,7 +38,7 @@ private theorem createAtt_T {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG
     unfold FG.Record.heightPair at hp
     split_ifs at hp <;> cases hp <;> rfl
 
-/-- **(SRC)** (§6.1): an FG source at cut `k` is compatible with `B` when every lock stored at `k`
+/-- **(SRC)**: an FG source at cut `k` is compatible with `B` when every lock stored at `k`
 names a held block compatible with `B`. -/
 theorem source_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -85,7 +85,7 @@ theorem rows_sourced (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg
   exact ⟨src, hsrc a.val hav j (by omega) ℓ src hto,
     isHonestSource_iff.2 ⟨a.val, hav, j + 1, hst, hT.symm⟩⟩
 
-/-- **OB-F** (§6.2): with the honest attestations of `y`'s tree sourced by blocks compatible with a
+/-- **OB-F**: with the honest attestations of `y`'s tree sourced by blocks compatible with a
 block `B` of the honest blocks, `Σ.F` and `Σ.J` are compatible with `B`. -/
 theorem caches_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {n : Nat}

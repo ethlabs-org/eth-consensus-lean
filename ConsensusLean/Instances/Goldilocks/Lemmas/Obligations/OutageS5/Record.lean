@@ -32,7 +32,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable (D : OutageLockPremises tr H proposer dg)
 
-/-- **The early record** (§9.2(b)–(c)): an actual update at label `r` makes the effective record
+/-- **The early record**: an actual update at label `r` makes the effective record
 `⪰ P` at every later cut. -/
 theorem record_above_of_update_r
     (hS : ∀ y ∈ H, ReceiverServiceAfter H (tr.HonestBlocks H) D.b₁ y tr.projAC)

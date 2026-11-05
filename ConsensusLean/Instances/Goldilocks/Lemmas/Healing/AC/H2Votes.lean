@@ -11,11 +11,10 @@ public section
 
 /-! # Goldilocks Healing: H.2 (i), the votes of a slot with an honest proposal and `Geo`
 
-By induction on the cut of the first honest slot-`p`
-vote not on `P`: the voter's anchor is below `P` (`Duty(P)`'s first clause, §6 with §6.1,
-`h2_duty_anchor`); then the voter's walk reaches the proposer's path (§6, second clause),
-the retained heads give equal scores and majority eligibility on it (§1), `Geo` aligns the
-low-parent eligibility arm, and the persist/reflect comparison (§4) makes the vote `P`
+By induction on the cut of the first honest slot-`p` vote not on `P`: the voter's anchor is below
+`P` (`Duty(P)`'s first clause, `h2_duty_anchor`); then the voter's walk reaches the proposer's path
+(`Duty(P)`'s second clause), the retained heads give equal scores and majority eligibility on it,
+`Geo` aligns the low-parent eligibility arm, and the persist/reflect comparison makes the vote `P`
 (`h2_votes_of_duty`). -/
 
 namespace Consensus.Goldilocks.SA
@@ -24,7 +23,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {proposer : Nat → Fin sp.n}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time}
 
-/-- **§6 `Duty(P)`, first clause, with §6.1**: at every honest vote of slot `p` before the first
+/-- **`Duty(P)`, first clause**: at every honest vote of slot `p` before the first
 one not on `P`, the anchor of the voter's walk after its unlocking is an ancestor of `P`:
 `fc_root` is below the viable head `P` (`Geo`); a lock of a slot below `p` is settled, so the
 proposal head `parent(P)` extends it; a slot-`p` lock is optimistic, with an honest supporter
@@ -105,7 +104,7 @@ theorem h2_duty_anchor (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P :
     · exact hlock D h
     · rw [Set.mem_singleton_iff.1 h]; exact hfc
 
-/-- **§3, no current-slot lock at the proposal input** (claims, driven trace (b): at `t_p` the
+/-- **No current-slot lock at the proposal input** (claims, driven trace (b): at `t_p` the
 proposer runs its tick, then `ac_proposal`, then the objects received): every stored lock of the
 honest proposer of slot `p` at its `ac_proposal` at `t_p` has a slot below `p`: a slot-`p` lock
 needs an optimistic check at an object call at a time `≥ t_p`, after the proposal. -/
@@ -160,11 +159,11 @@ theorem h2_proposal_locks_below (hI : InclusionRun tr H U proposer g t₀) {p : 
   · have hlt : sp.ts l.slot < sp.ts p := by rw [htj] at ht; linarith
     exact_mod_cast (ts_lt_iff sp).1 hlt
 
-/-- **§§1, 4, with §6's second clause**: with every honest slot-`p` voter's anchor below `P` up to
+/-- **With `Duty(P)`'s second clause**: with every honest slot-`p` voter's anchor below `P` up to
 the first vote not on `P`, `Geo(P)` makes every honest vote of slot `p` the proposal (the
-reader's walk reaches the proposer's path, §6; on it the retained heads give equal scores and
-majority eligibility, §1; `Geo` aligns the low-parent arm; persistence and reflection along the
-path, §4). -/
+reader's walk reaches the proposer's path; on it the retained heads give equal scores and
+majority eligibility; `Geo` aligns the low-parent arm; persistence and reflection along the
+path). -/
 theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : t₀ + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
@@ -242,7 +241,7 @@ theorem h2_votes_of_duty (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
     obtain rfl := hU.1 hHd (hΦU hget) (hHdr.trans hh)
     exact hsHd
 
-/-- **H.2 (i), §§1, 4, 6**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ` with
+/-- **H.2 (i)**: for an honest proposal `P` of slot `p` at `t_p ≥ t₀ + 2Θ + 8Δ` with
 the locks settled from `t_{p−1}`, `Geo(P)` makes every honest vote of slot `p` the proposal (by
 induction on the cut of the first vote not on `P`). -/
 theorem h2_proposal_votes (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P : Blk sp.n FGP}

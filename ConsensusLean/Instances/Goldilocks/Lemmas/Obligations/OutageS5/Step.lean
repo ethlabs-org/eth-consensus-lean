@@ -35,13 +35,14 @@ service from `b₁`:
 * `viable_at_vote_of_lo` (G4): under Lo (no contest, `not_contest_of_lo`) `P` is viable at the
   vote: the honest witness head is frozen (`honest_head_accepted_after`), and below the floor the
   `h_max` carrier's floor entry is above `P` with a source extended by an honest vote of a slot
-  `≤ q` (`rows_supported`, §12.8), whose head is frozen and viable;
+  `≤ q` (`rows_supported`), whose head is frozen and viable;
 * `carryAt_after`: `Carry_y` for honest slot-`q` votes above `Σ.F`;
 * `outage_s5_inner` (INV): root cover, Hi, or Lo with the batch walk
   (`vote_extends_of_batch` for `q > r` by induction, `vote_extends_of_counted_batch` with the
   cohort `A₀` for `q = r`); the read point's live locks are compatible with `P` by
   `readPoint_liveLockBlocks_compatible_at` at the cast cut;
-* `outage_s5_step` (lock safety's `hS5`), `restored_votes_extend`, `restored_majority` (S5-V). -/
+* `outage_s5_step` (lock safety's `hS5`), `restored_votes_extend`, `restored_majority`
+  (`ExtendingMajority`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -782,7 +783,7 @@ theorem restored_votes_extend
       SA.VoteExtends (tr.HonestBlocks H) e.msg D.P :=
   fun y hy k e hv hs => outage_s5_inner D hS k (hinv k) k le_rfl y hy e hv hs
 
-/-- **S5-V at every restored label**: `q = r` by the cohort count
+/-- **`ExtendingMajority` at every restored label**: `q = r` by the cohort count
 (`restored_majority_at_r`), `q > r` by INV and the fault bound (`extendingMajority_of_all`). -/
 theorem restored_majority
     (hS : ∀ y ∈ H, ReceiverServiceAfter H (tr.HonestBlocks H) D.b₁ y tr.projAC)

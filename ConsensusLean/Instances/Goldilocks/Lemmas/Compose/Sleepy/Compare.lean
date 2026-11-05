@@ -794,7 +794,7 @@ theorem honest_supporter_before (hrun : GoldilocksRun proposer dg H tr) (hnc : N
     exact ⟨_, huH, j, e, hve, (hrun.time_mono hj).trans hi₀, hvs, R, hΦU hR, hRr,
       Anc.mono hΦU hCR⟩
 
-/-- **§2.1 up to `b`, an origin within `b` has an honest supporter**: an honest slot-`s` vote at a
+/-- **Up to `b`, an origin within `b` has an honest supporter**: an honest slot-`s` vote at a
 time `≤ b` whose head extends it. -/
 theorem honest_supporter_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
@@ -936,7 +936,7 @@ theorem same_label_compatible_before (hrun : GoldilocksRun proposer dg H tr)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc' (SA.anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
 
-/-- **§2.2 up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
+/-- **Up to `b`, origins within `b` of one label are compatible** (RR, RO, OO). -/
 theorem same_label_compatible_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :

@@ -6,21 +6,21 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing: the steps of H.1 (T1 §§1–6)
+/-! # Goldilocks Healing: the steps of H.1
 
-H.1 decomposed into the steps of T1 over a `StandaloneRun` (H.1's premises), with
-`r = r_AC(ḡ)`: a slot `j` is `≥ r` exactly when `ḡ + 4Δ ≤ t_j`. The steps live in sibling
-modules:
+H.1 decomposed into the steps of its paper proof (claims H.1, proof shape) over a
+`StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)`: a slot `j` is `≥ r` exactly when
+`ḡ + 4Δ ≤ t_j`. The steps live in sibling modules:
 
 * `Setting.lean`: the premises and the steps' vocabulary;
-* `SlowLock.lean`: T1 §1, slow lock provenance (the fast case is `fast_lock_provenance`);
-* `Compat.lean`: T1 §2, results of one slot `≥ r` are compatible;
-* `Trivial.lean`: viability and `Carry` under trivial frames, the honest batch, and T1 §3 for
-  the votes (`votes_continue`, `fast_origin_transfer_votes`);
-* `Transfer.lean`: T1 §3 at proposals, T1 §4 (slow origins) and T1 §6 (unanimity).
+* `SlowLock.lean`: slow lock provenance (the fast case is `fast_lock_provenance`);
+* `Compat.lean`: results of one slot `≥ r` are compatible;
+* `Trivial.lean`: viability and `Carry` under trivial frames, the honest batch, and the fast
+  origin's transfer to the votes (`votes_continue`, `fast_origin_transfer_votes`);
+* `Transfer.lean`: the transfer at proposals, the transfer of slow origins, and unanimity.
 
-This module has the rest: `good_origin_transfer` (T1 §§3–4), `drain` and `locks_settled`
-(T1 §5), `proposal_confirmed` (T1 §6, the confirmed tip) and the assembly
+This module has the rest: `good_origin_transfer`, `drain` and `locks_settled`,
+`proposal_confirmed` (the confirmed tip) and the assembly
 `ac_healing_standalone_of_parent`, H.1's conclusions for one honest proposal. -/
 
 namespace Consensus.Goldilocks.SA
@@ -28,10 +28,10 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-/-! ## T1 §4: a slow origin whose window is `≥ r` transfers -/
+/-! ## A slow origin whose window is `≥ r` transfers -/
 
-/-- **T1 §§3–4**: a good origin is carried by every honest vote and proposal head of a later
-slot. -/
+/-- **Transfer of a good origin**: a good origin is carried by every honest vote and proposal head
+of a later slot. -/
 theorem good_origin_transfer (hS : StandaloneRun tr H U proposer g) {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) :
     VotesExtendAfter tr H U j B ∧ ProposalsExtendAfter tr H U j B := by
@@ -40,9 +40,9 @@ theorem good_origin_transfer (hS : StandaloneRun tr H U proposer g) {B : Blk sp.
   · exact fast_origin_transfer_votes hS hx hfl hs
   · exact slow_origin_transfer_votes hS hx hsl hs
 
-/-! ## T1 §5: drain -/
+/-! ## Drain -/
 
-/-- **T1 §5, drain.** A lock that an honest node stores, live at a slot `σ` with
+/-- **Drain.** A lock that an honest node stores, live at a slot `σ` with
 `t_σ ≥ ḡ + 2Θ` (`σ ≤ j + k` for its label `j`), sits below a good origin of its label: its
 label is at least `σ − k`, so a fast one has `t_j ≥ ḡ + (4k + 8)Δ` and a slow one has
 `t_{j−k+1} ≥ ḡ + 12Δ`. -/
@@ -67,7 +67,7 @@ theorem drain (hS : StandaloneRun tr H U proposer g)
     simp only [SAParams.ts]
     nlinarith
 
-/-- **T1 §§3–5, settled locks**: from `ḡ + 2Θ + 4Δ` on, every lock live at an honest node is
+/-- **Settled locks**: from `ḡ + 2Θ + 4Δ` on, every lock live at an honest node is
 carried by every later honest duty. -/
 theorem locks_settled (hS : StandaloneRun tr H U proposer g) :
     LocksSettled tr H U (gbar g + 2 * Θ sp + 4 * sp.Δ) := by
@@ -91,9 +91,9 @@ theorem locks_settled (hS : StandaloneRun tr H U proposer g) :
   obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendAfter_iff.1 hv x hx j e he hs
   exact ⟨Hd, hHd, hHdr, hLB.trans hBHd⟩
 
-/-! ## T1 §6: the honest proposal -/
+/-! ## The honest proposal -/
 
-/-- **T1 §6, the confirmed tip**: when every honest vote of slot `p` and later extends the
+/-- **The confirmed tip**: when every honest vote of slot `p` and later extends the
 honest proposal `P` and the locks are settled, `P ⪯ ac_confirmed` at every honest call from
 `t_p + 6Δ` on (at `t_p + 6Δ`, from the tick there): the slot-`p` result is exactly `P` and is not
 vetoed (labels `p − 1`, `p`, `p + 1` as in the claims' proof shape), afterwards the record is
@@ -140,8 +140,8 @@ theorem proposal_confirmed (hS : StandaloneRun tr H U proposer g) {p : Nat} {P :
 
 /-! ## Assembly -/
 
-/-- **H.1 for an honest proposal with its parent** (T1 §§2–6): H.1's conclusions (i) and (ii)
-for an honest proposal whose parent is the head of its `ac_proposal`. -/
+/-- **H.1 for an honest proposal with its parent** (claims H.1, proof shape): H.1's conclusions (i)
+and (ii) for an honest proposal whose parent is the head of its `ac_proposal`. -/
 theorem ac_healing_standalone_of_parent (hS : StandaloneRun tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
     (hP : HonestProposal tr (proposer p) p P)
