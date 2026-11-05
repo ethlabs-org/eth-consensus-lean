@@ -37,7 +37,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
 
 * (a) The endpoint is not vacuous: `meets_obligations_nonvacuous` instantiates
   `MeetsObligations` (`meets_obligations`) at `setupSmall`, `assumptionsSmall`, and
-  `accepted_realizable_small` gives its contract's active witnesses on five validators
+  `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
   (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
   fields). -/
 
@@ -295,7 +295,7 @@ theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions 
 /-- (a) The active witnesses of the endpoint's contract at `setupSmall`, `assumptionsSmall` on five
 validators: sleepy, healthy, sleepy-stress, outage and bad-proposer runs exist
 (`Shape.regimes_realizable`, from the fields of `meets_obligations`). -/
-theorem accepted_realizable_small :
+theorem meetsObligations_realizable_small :
     RealizableActive (goldilocks setupSmall)
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall))
       (Fin 5) :=

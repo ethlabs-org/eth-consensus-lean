@@ -40,13 +40,13 @@ and `spec-surface`, on every ledger update. Historical former sorry declarations
 since fd7f498 (`eed6d0b5` in this repository) remain in the inventory; body closure alone is not `lean-proved`.
 Paper status is `unknown` unless an authoritative owner supplies a classification.
 The post-wiring audit uses `spec-surface dependencies --from
-Consensus.Goldilocks.Obligations.accepted --modules
+Consensus.Goldilocks.Obligations.meetsObligations_exists --modules
 ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete`, including type
 and body edges and cycle-safe transitive traversal. Short names below are in
 `Consensus.Goldilocks` or its `Simulation` and `Obligations` namespaces. Each set enumerates **direct sorry owners**;
 an assembly depending on them is not an additional leaf.
 
-Compiled closure: no direct owner in the audit at 70e90b44; `accepted` at
+Compiled closure: no direct owner in the audit at 70e90b44; `meetsObligations_exists` at
 [propext, Classical.choice, Quot.sound] (`#print axioms` at 70e90b44). Since dea4a19e (#136, sorry
 groups A, B and C deleted) no declaration in the import closure of `Obligations.Concrete` and
 `Solution` depends on `sorryAx` (`axiom-audit` at dea4a19e). Since 9089d1d7 (#136, sorry group D:
@@ -224,18 +224,18 @@ These are named sets of leaves, not extra assumptions.
 | contract_heal | none |
 | contract_latency | none |
 | contract_coefficients, contract_coefficients_catchUp | none |
-| accepted_outputValid | none |
-| accepted_nested | none |
-| accepted_finalMonotone | none |
-| accepted_finalAccountable | none |
-| accepted_healthyLive_final | none |
-| accepted_healthyLive | none |
-| accepted_sleepySafe | none |
-| accepted_sleepyLive | none |
-| accepted_healedSafe | none |
-| accepted_persists | none |
-| accepted_progressFits, accepted_progressTolerant, accepted_admissible | none |
-| accepted_claims, accepted | none (audit at 70e90b44) |
+| meetsObligations_outputValid | none |
+| meetsObligations_nested | none |
+| meetsObligations_finalMonotone | none |
+| meetsObligations_finalAccountable | none |
+| meetsObligations_healthyLive_final | none |
+| meetsObligations_healthyLive | none |
+| meetsObligations_sleepySafe | none |
+| meetsObligations_sleepyLive | none |
+| meetsObligations_healedSafe | none |
+| meetsObligations_persists | none |
+| meetsObligations_progressFits, meetsObligations_progressTolerant, meetsObligations_admissible | none |
+| meetsObligations_claims, accepted | none (audit at 70e90b44) |
 | engine_signings_nonFraming, engine_att_protected | none |
 | simTrace_forwardOrigin, simTrace_forwardHeldProcessed | none |
 | sleepy_ready, sleepy_faultBound, sleepy_read_cut, sleepy_proposal, sleepy_inBy | none |
@@ -266,7 +266,7 @@ modules = [
   "ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy",
   "ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete",
 ]
-roots = ["Consensus.Goldilocks.Obligations.accepted"]
+roots = ["Consensus.Goldilocks.Obligations.meetsObligations_exists"]
 ```
 
 Only tables headed `Declaration` and `Paper argument/status` below
@@ -323,22 +323,22 @@ Superseded argument: [general fixed timeout](https://github.com/fradamt-agent/wo
 | `Consensus.Goldilocks.contract_catchUp` | Fixed at `19` (half-open phase 2; was `37` at Δp=Δe+1 from 2026-11-03, Francesco's request, and `max 37 (8k + 4)` before): no proof needs more than the Sleepy margin `18Δ + 1 ≤ 19Δ`. |
 | `Consensus.Goldilocks.contract_heal` | Closed (4078bc74): `contract_catchUp + healMargin S X` at every capability (rise-round route, `healMargin = 20·L_drain + 8k + 28δt + 28X + 56`, the final route's margin `M_f`, 387 at k = 2, X = 1, δt = 6; five-window route (2026-11-03) had `20·L_drain + 8k + 44δt + 44X + 40`, 483; half-open phase 2 had `24·L_drain + 8k + 52δt + 52X + 44`, 563; was `contract_catchUp + 2·healMargin S X + 3`), a named parameter-only value (`ResetCoefficients`), chosen to fit the proved reset envelope (owner: adjust the constants to what can be proved). `contract_heal_ge_reset` is the coefficient inequality (★) of the nonfinal envelope and S0; `contract_heal_ge_final` the final route's heal-bound margin at λ = 2Δ. A later leaf that needs more raises `healMargin`; consumers use only these ≥-forms. |
 | `Consensus.Goldilocks.contract_latency` | OPEN: finite latency at every gap; final local-pattern service and cache acceptance unresolved. Spec orb. |
-| `Consensus.Goldilocks.Obligations.accepted_outputValid` | Proved through shape_outputValid; compiled closure has no sorryAx. |
-| `Consensus.Goldilocks.Obligations.accepted_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
-| `Consensus.Goldilocks.Obligations.accepted_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
-| `Consensus.Goldilocks.Obligations.accepted_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; no leaves are reachable (no direct owner in the compiled audit at 70e90b44). Encoding/transport is proved. |
-| `Consensus.Goldilocks.Obligations.accepted_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses accepted_healthyLive_final (sorry-free since e621acd7). `healthy_confirmed_supply` is proved since db4b864f; the compiled closure has no direct sorry owner. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_outputValid` | Proved through shape_outputValid; compiled closure has no sorryAx. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_nested` | Reduction to shape_nested; exact generic field, no collision escape. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_finalMonotone` | Reduction to shape_finalMonotone; exact generic field. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_finalAccountable` | Body closed through shape_finalAccountable at fixed 1/3; no leaves are reachable (no direct owner in the compiled audit at 70e90b44). Encoding/transport is proved. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_healthyLive` | Assembly: available/stable use healthy_confirmed_supply and proved payload projection; final uses meetsObligations_healthyLive_final (sorry-free since e621acd7). `healthy_confirmed_supply` is proved since db4b864f; the compiled closure has no direct sorry owner. |
 | `Consensus.Goldilocks.Obligations.final_reset_premises` | Body closed (route A, #136): `final_reset_premises_of_query` (FinalResetPremises.lean), the reset kernel `exists_reset_of_drain_rounds_awake` with `drainOutputs_of_service` and `contract_heal_ge_final`. (H1) `ResetPremisesUpTo` through the horizon at `Q.gst` with the run proposer and digest, for a reset `a` and bound `ΔR` (Sol's M1′), and (H3) the placement `(P)` with `u_min = finalSeedMin Q a = slot a + 2k + 5` (the heal coefficient; #145 removed a time summand that made (H3) false at large GST). One leaf: (H3) depends on the `a` of (H1). No producer is assumed. |
 | `Consensus.Goldilocks.Obligations.final_duty_proposal` | Body closed (route A, #136): (H2) duty → proposal adapter (Kev): for `0 < s` with `ts s ≤ horizon`, `HonestReadyIn` at slot `s` gives `HonestProposalRun` at `s`; proved by `final_duty_proposal_run` (FinalDutyProposal.lean). Reaches sorryAx only through the `FinalQuery` type (accepted coefficients). |
 | `Consensus.Goldilocks.Obligations.final_window_extract` | Body closed (route A, #136): `final_window_extract_of'` from `final_reset_premises` and `final_duty_proposal`; (H4) carrier processing is proved (`carrier_processed_of_honest`). Gives four honest anchors at start+[0,c,2c,3c] (c = fgSlots), the slack `ts(A3) + Δ ≤ deadline`, `AnchorRun` and `AnchorSteps` (reusable signer results: `row_of_report`, `row_signers_of_reports` in Healing/Outcome/Service.lean; paper handoff workbench b386900 `notes/cards/final_row_signers.md`). |
 | `Consensus.Goldilocks.Obligations.final_anchor_coverage` | Body closed: `AnchorRun` and `AnchorSteps` give A3 chain-finalized coverage of A0 through `cacheCoverage_of_anchor_window_upTo`; uses `6 ≤ δt` for `P₃.slot ≤ P₀.slot + δt`. |
 | `Consensus.Goldilocks.Obligations.final_cache_acceptance` | Body closed; no direct owner in the compiled audit at 70e90b44 (the type dependency on the coefficients is sorry-free since 4078bc74). Consumes only A3 chain-finalized coverage of A0, supplied by `final_anchor_coverage` (route A): actual cache ancestry at the exact engine-scaled query endpoint and later horizon-bounded ready CutAfter reads. Not arbitrary-delay acceptance or receipt alone. |
 | `Consensus.Goldilocks.Obligations.final_payload_projection` | Body closed conditional on window extraction with CacheCoverage of the extracted window (one premise; route A, #136): raw own-block release via simTrace_block_released and final-output chain membership at engine endCut. Preserves existing cDur, reader condition, latency scaling and collision escape; no forwarding-envelope origin assumption. |
-| `Consensus.Goldilocks.Obligations.accepted_healthyLive_final` | Assembly (route A, #136): extraction (`final_window_extract`, body closed from the proved `final_reset_premises` and `final_duty_proposal`), anchor coverage (`final_anchor_coverage`, body closed), cache acceptance and payload projection. Since e621acd7 its closure is sorry-free (`#print axioms`: `propext`, `Classical.choice`, `Quot.sound`). The first-crossing / bounded-crossing assembly and its leaves `final_inherited_progress`, `final_row_signers` are retired (git history before #136 route A). No new public Healthy premises; the accepted coefficients are closed since 4078bc74. |
-| `Consensus.Goldilocks.Obligations.accepted_sleepySafe` | Assembly over partly OPEN sleepy_safety_inputs and proved sleepy_safe_engine, with directional readiness and empty-V handling. |
-| `Consensus.Goldilocks.Obligations.accepted_sleepyLive` | Assembly over selected serviced Sleepy proposal, finite inclusion and proved payload projection; suppliers OPEN. |
-| `Consensus.Goldilocks.Obligations.accepted_healedSafe` | Assembly over finite preparation, progress-free preservation and arbitrary-cut adapters; since f4997e9f (`healthy_repair_schedule`) the compiled closure has no direct sorry owner. |
-| `Consensus.Goldilocks.Obligations.accepted_persists` | Assembly over pre-service, effective-record arming and actual repair; no late-wake SyncRun inference. No direct owner in the compiled audit at 70e90b44. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_healthyLive_final` | Assembly (route A, #136): extraction (`final_window_extract`, body closed from the proved `final_reset_premises` and `final_duty_proposal`), anchor coverage (`final_anchor_coverage`, body closed), cache acceptance and payload projection. Since e621acd7 its closure is sorry-free (`#print axioms`: `propext`, `Classical.choice`, `Quot.sound`). The first-crossing / bounded-crossing assembly and its leaves `final_inherited_progress`, `final_row_signers` are retired (git history before #136 route A). No new public Healthy premises; the accepted coefficients are closed since 4078bc74. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_sleepySafe` | Assembly over partly OPEN sleepy_safety_inputs and proved sleepy_safe_engine, with directional readiness and empty-V handling. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_sleepyLive` | Assembly over selected serviced Sleepy proposal, finite inclusion and proved payload projection; suppliers OPEN. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_healedSafe` | Assembly over finite preparation, progress-free preservation and arbitrary-cut adapters; since f4997e9f (`healthy_repair_schedule`) the compiled closure has no direct sorry owner. |
+| `Consensus.Goldilocks.Obligations.meetsObligations_persists` | Assembly over pre-service, effective-record arming and actual repair; no late-wake SyncRun inference. No direct owner in the compiled audit at 70e90b44. |
 | `Consensus.Goldilocks.Simulation.proposal_releasable` | Proved (f614a12): scheduled proposal dependencies are in the actual engine closure; Steps wrapper of scheduled_proposal_releasable. |
 | `Consensus.Goldilocks.Simulation.simTrace_att_unforgeable` | Proved (c52d387): actual canonical attestation origin/authentication history. |
 | `Consensus.Goldilocks.Simulation.simTrace_block_unforgeable` | Proved (f9963e2): valid canonical calls carrying an honest proposer's block have an earlier own-block cut. |
@@ -735,7 +735,7 @@ provenance evidence only; it does not initialize or renew old-entry coverage.
 
 ## Healed safety and outage endpoints now assemble named OPEN suppliers
 
-`accepted_healedSafe` and `accepted_persists` no longer contain direct sorries.
+`meetsObligations_healedSafe` and `meetsObligations_persists` no longer contain direct sorries.
 Their endpoint types and collision escapes are unchanged. This is skeleton
 wiring, not closure of either proof. The common coefficient definitions moved
 unchanged to `ContractDefs.lean` to avoid a supplier/Accepted import cycle.

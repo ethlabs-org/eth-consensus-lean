@@ -125,7 +125,8 @@ def declarations(text):
 # The 2026-11-04 review renames (docs/decisions.md). Step 1 split `Goldilocks.Refinement` into
 # `Goldilocks.AsChainShape`, `.Simulation`, `.Obligations` and the root `Consensus.Goldilocks`, and renamed
 # components; step 2 renamed the FG attestation lemmas; the naming leftovers renamed `rowDelay` (and its
-# lemmas) to `protoFGDelay` and `PSyncFGRowTransport` to `PSyncFGAttTransport`. Historical source blobs still
+# lemmas) to `protoFGDelay` and `PSyncFGRowTransport` to `PSyncFGAttTransport`; step 3b renamed Concrete's
+# field theorems and its existential endpoint (`accepted`, the step 3c root) after `MeetsObligations`. Historical source blobs still
 # carry the old names; `renamed` maps such a name to the one current declaration it became, so a former owner
 # keeps its row (and its provenance) across the renames.
 RENAMED_COMPONENTS = {
@@ -140,10 +141,16 @@ RENAMED_COMPONENTS = {
         'coefficients_catchUp', 'coefficients_heal', 'coefficients_latency')},
     **{'rowDelay' + s: 'protoFGDelay' + s for s in (
         '', '_eq', '_pos', '_delivery', '_delivery_of_healthy', '_timeout_of_healthy')},
-    'PSyncFGRowTransport': 'PSyncFGAttTransport',
+    'PSyncFGRowTransport': 'PSyncFGAttTransport', 'psyncFGRowTransport_iff': 'psyncFGAttTransport_iff',
     # Step 2 (FG attestation names) in the scanned Lemmas; its removed cF lemmas have no successor.
     'clean_rowCut': 'clean_fgAttCut', 'isRow_attObj': 'isFGAtt_attObj', 'log_row_iff': 'log_fgAtt_iff',
-    'not_isRow_forwardObj': 'not_isFGAtt_forwardObj', 'not_isRow_of_decodeForward': 'not_isFGAtt_of_decodeForward'}
+    'not_isRow_forwardObj': 'not_isFGAtt_forwardObj', 'not_isRow_of_decodeForward': 'not_isFGAtt_of_decodeForward',
+    # Step 3b: the field theorems and the existential endpoint of the obligations proof (Concrete).
+    'accepted': 'meetsObligations_exists',
+    **{'accepted_' + s: 'meetsObligations_' + s for s in (
+        'outputValid', 'nested', 'finalMonotone', 'finalAccountable', 'healthyLive_final', 'healthyLive',
+        'sleepySafe', 'sleepyLive', 'healedSafe', 'persists', 'claims', 'progressFits', 'progressTolerant',
+        'admissible')}}
 STEP1_OLD = 'Consensus.Goldilocks.Refinement.'
 STEP1_NEW = ('Consensus.Goldilocks.Obligations.', 'Consensus.Goldilocks.Simulation.',
              'Consensus.Goldilocks.AsChainShape.', 'Consensus.Goldilocks.')
@@ -152,6 +159,8 @@ STEP1_NEW = ('Consensus.Goldilocks.Obligations.', 'Consensus.Goldilocks.Simulati
 FIELD_PREFIXES = ('Consensus.Goldilocks.contract_', 'Consensus.Goldilocks.Obligations.contract_',
                   'Consensus.Goldilocks.Obligations.accepted_', 'Consensus.Goldilocks.Obligations.meetsObligations_',
                   'Consensus.Goldilocks.Simulation.accepted_')
+# (Since step 3b the field theorems are `meetsObligations_*`; `Obligations.accepted_*` keeps the block-acceptance
+# lemmas `accepted_child_decodes` and `accepted_slotTime_le`, and the root `meetsObligations_exists` is a key.)
 
 
 def renamed(name, current):
@@ -269,7 +278,7 @@ def main():
     parser.add_argument('--card-repo', default='fradamt-agent/workbench',
                         help='owner/repo containing the reviewed ingestion source commits')
     args = parser.parse_args()
-    root = 'Consensus.Goldilocks.Obligations.accepted'
+    root = 'Consensus.Goldilocks.Obligations.meetsObligations_exists'
     scope = 'ConsensusLean/Instances/Goldilocks/Lemmas'
     # The ledger's first audit (old-lineage fd7f498, before the 2026-11-04 cutover; same tree).
     baseline = run('git', 'rev-parse', 'eed6d0b5').strip()

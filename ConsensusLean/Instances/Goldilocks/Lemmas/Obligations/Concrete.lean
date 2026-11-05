@@ -51,27 +51,27 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- R8, claims C0.1/C0.2/F.2, node outputs_valid. NO PAPER PROOF for
 engine/read transport; replacement endpoint: engine_outputValid. -/
-theorem accepted_outputValid : (Sys (goldilocks S) V).HoldsAlways fun r =>
+theorem meetsObligations_outputValid : (Sys (goldilocks S) V).HoldsAlways fun r =>
     ∀ c g, schema.output c = some g → OutputValid r.2 g := by
   exact shape_outputValid V S
 
 /-- R8, claims C0.1/C0.2/F.2, node outputs_nested. NO PAPER PROOF for
 engine chain transport; replacement endpoint: engine_nested. -/
-theorem accepted_nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
+theorem meetsObligations_nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
     schema.output c₁ = some g₁ → schema.output c₂ = some g₂ →
     (Sys (goldilocks S) V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂ := by
   exact shape_nested V S
 
 /-- R8, claims F.2, node finalized_monotone. NO PAPER PROOF for engine
 read transport; replacement endpoint: engine_finalMonotone. -/
-theorem accepted_finalMonotone : ∀ g, schema.output .final = some g →
+theorem meetsObligations_finalMonotone : ∀ g, schema.output .final = some g →
     (Sys (goldilocks S) V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0 := by
   exact shape_finalMonotone V S
 
 /-- R7, claims G0.5 and G1.1–G1.5, node final_accountable.
 NO PAPER PROOF for held-tree evidence/view and collision transport. Raw
 GenesisFresh is not a premise here: the encoding must discharge root separation. -/
-theorem accepted_finalAccountable : ∀ g, schema.output .final = some g →
+theorem meetsObligations_finalAccountable : ∀ g, schema.output .final = some g →
     (Sys (goldilocks S) V).Holds (fun _ => True) fun r =>
       (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable
         (K S A).params.α g 0 := by
@@ -413,7 +413,7 @@ theorem final_payload_projection
 Coverage is the anchor route (`final_anchor_coverage`); the open leaf is
 `final_reset_premises` (via `final_window_extract`; `final_duty_proposal` is proved).
 Paper: workbench route_a_gap2.md (read-back #136). -/
-theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
+theorem meetsObligations_healthyLive_final : ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
       (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
         (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
@@ -431,7 +431,7 @@ theorem accepted_healthyLive_final : ∀ g, schema.output .final = some g →
 NO PAPER PROOF for the exact contract heal coefficient, bounded recurrence→node progress,
 or repaired engine timing transport. See generic-r3-bridge-audit.md.
 This field must not acquire whole-run progress before ready as a premise. -/
-theorem accepted_healthyLive : ∀ cap g, schema.output cap = some g →
+theorem meetsObligations_healthyLive : ∀ cap g, schema.output cap = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
       (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
         (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
@@ -442,7 +442,7 @@ theorem accepted_healthyLive : ∀ cap g, schema.output cap = some g →
   intro cap g hg idx gst r hv ⟨hh, hp⟩
   by_cases hf : cap = .final
   · subst cap
-    exact accepted_healthyLive_final S A V g hg idx gst r hv ⟨hh, hp⟩
+    exact meetsObligations_healthyLive_final S A V g hg idx gst r hv ⟨hh, hp⟩
   have hcap : cap = .available ∨ cap = .stable := by cases cap <;> simp_all
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
@@ -463,7 +463,7 @@ theorem accepted_healthyLive : ∀ cap g, schema.output cap = some g →
 /-- R1, sleepy-record-invariant.md §§2–5.1 and sleepy-proposal-adoption.md
 §§2–4 (conditional S1–S4 package). NO PAPER PROOF for engine network,
 readiness and read-cut transport. Node route: sleepy_invariant and ready reads. -/
-theorem accepted_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
+theorem meetsObligations_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → (Sys (goldilocks S) V).Holds
       ((Sys (goldilocks S) V).Sleepy (K S A)) fun r =>
         (chainTrace r.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) r) g 0 := by
@@ -491,7 +491,7 @@ theorem accepted_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
 
 /-- R2 inclusion/growth, node include_sleepy/grow_sleepy. NO PAPER PROOF yet pinned
 for the exact recurrence/readiness/deadline transport; keep this gap explicit. -/
-theorem accepted_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) →
+theorem meetsObligations_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ i : (K S A).Idx,
       (Sys (goldilocks S) V).Holds
         (fun r => (Sys (goldilocks S) V).Sleepy (K S A) r ∧
@@ -517,7 +517,7 @@ theorem accepted_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) �
 /-- R3 healed safety. NO PAPER PROOF for bounded [ready,heal] recurrence
 to the whole-run healing premises of the retired node row R.3. RecRet also
 has no completed proof (rc-recret-induction.md §6). -/
-theorem accepted_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
+theorem meetsObligations_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),
       (Sys (goldilocks S) V).Holds
         (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
@@ -556,7 +556,7 @@ theorem accepted_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) �
 Blocked by lifetime (4k−1 versus 4k−2) and finite pre-outage network scope:
 SyncUntil b₀ does not give unrestricted late-wake SyncRun calls. Do not
 insert that false implication as an intermediate lemma. -/
-theorem accepted_persists : ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
+theorem meetsObligations_persists : ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
     (Sys (goldilocks S) V).Holds ((Sys (goldilocks S) V).Outage (K S A) T b₀ b₁)
       fun r => (chainTrace r.2).ProtectedReadyFrom
         ((Sys (goldilocks S) V).cDur (K S A) r) g (resilienceTarget schema g) T
@@ -573,32 +573,32 @@ theorem accepted_persists : ∀ g, schema.output .stable = some g → ∀ T b₀
   exact outage_protected S A V Q v hvr t ht hth w hw
 
 /-- Exact nine-field assembly; the named gaps above are not a blanket claims assumption. -/
-theorem accepted_claims : ShapeClaims (goldilocks S) (K S A) := by
+theorem meetsObligations_claims : ShapeClaims (goldilocks S) (K S A) := by
   intro V _ _
   exact {
-    outputValid := accepted_outputValid S V
-    nested := accepted_nested S V
-    finalMonotone := accepted_finalMonotone S V
-    finalAccountable := accepted_finalAccountable S A V
-    healthyLive := accepted_healthyLive S A V
-    sleepySafe := accepted_sleepySafe S A V
-    sleepyLive := accepted_sleepyLive S A V
-    healedSafe := accepted_healedSafe S A V
-    persists := accepted_persists S A V }
+    outputValid := meetsObligations_outputValid S V
+    nested := meetsObligations_nested S V
+    finalMonotone := meetsObligations_finalMonotone S V
+    finalAccountable := meetsObligations_finalAccountable S A V
+    healthyLive := meetsObligations_healthyLive S A V
+    sleepySafe := meetsObligations_sleepySafe S A V
+    sleepyLive := meetsObligations_sleepyLive S A V
+    healedSafe := meetsObligations_healedSafe S A V
+    persists := meetsObligations_persists S A V }
 
 /-- Selection-aware singleton duties make every recurrence fit. -/
-theorem accepted_progressFits : ProgressFits (K S A) (goldilocks S) := by
+theorem meetsObligations_progressFits : ProgressFits (K S A) (goldilocks S) := by
   intro cap i pub s
   rfl
 
 /-- At an outer gap beyond the local span there is room for a bad slot. -/
-theorem accepted_progressTolerant : ProgressTolerant schema (K S A) := by
+theorem meetsObligations_progressTolerant : ProgressTolerant schema (K S A) := by
   intro cap _ N
   let P := if cap = .final then finalWindow A else Pattern.single
   exact ⟨⟨P.span + 2, by omega⟩, Nat.le_refl _⟩
 
 /-- Fixed thresholds and positive finite catch-up/budget are admissible. -/
-theorem accepted_admissible : (K S A).params.Admissible := by
+theorem meetsObligations_admissible : (K S A).params.Admissible := by
   rw [goldilocksContract_params_eq]
   exact {
     catchUp_pos := (contract_coefficients S A).catchUp.pos
@@ -611,14 +611,14 @@ theorem accepted_admissible : (K S A).params.Admissible := by
 /-- The concrete endpoint at the coefficients `contract_coefficients S A`. Every gap is a named
 numeric or adapter leaf; no simulation, GenesisFresh, or desired safety premise is added. -/
 theorem meetsObligations_concrete : ShapeObligations (goldilocks S) (K S A) :=
-  { claims := accepted_claims S A
-    admissible := accepted_admissible S A
+  { claims := meetsObligations_claims S A
+    admissible := meetsObligations_admissible S A
     serves := by simp [OutputSchema.Serves, schema]
-    progressFits := accepted_progressFits S A
-    progressTolerant := accepted_progressTolerant S A }
+    progressFits := meetsObligations_progressFits S A
+    progressTolerant := meetsObligations_progressTolerant S A }
 
 /-- The existential endpoint, from `meetsObligations_concrete`. -/
-theorem accepted : ∃ C : ContractCoefficients,
+theorem meetsObligations_exists : ∃ C : ContractCoefficients,
     ShapeObligations (goldilocks S) (goldilocksContract A C) :=
   ⟨_, meetsObligations_concrete S A⟩
 

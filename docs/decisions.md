@@ -394,6 +394,13 @@ where it is recorded; "Francesco" marks the owner's decisions.
 
 ## Goldilocks instance
 
+- 2026-11-05, coordinator (review-surface naming, step 3b): the field theorems of the obligations proof
+  (`Lemmas/Obligations/Concrete`) follow `MeetsObligations`: `accepted_{outputValid,nested,finalMonotone,
+  finalAccountable,healthyLive_final,healthyLive,sleepySafe,sleepyLive,healedSafe,persists,claims,progressFits,
+  progressTolerant,admissible}` → `meetsObligations_*`, the existential endpoint `accepted` →
+  `meetsObligations_exists` (the step 3c root), the test `accepted_realizable_small` →
+  `meetsObligations_realizable_small`. Untrusted lemmas; no alias (AGENTS.md "Cited names"). Block-acceptance
+  names (`accepted_tree`, `accepted_in_view`, `accepted_child_decodes`, ...) are a different concept and stay.
 - 2026-11-04, coordinator (review-surface naming, step 3): the Accepted sorry ledger and its tool follow the
   obligations names, check-infra only: `docs/obligations-status.json`, `docs/obligations-dependencies.md`,
   `scripts/obligations-status.py` (self-test `test_obligations_status.py`), the step 3c labels and the JSON field
@@ -835,7 +842,7 @@ where it is recorded; "Francesco" marks the owner's decisions.
 - Audit (two-bound network, 2026-11-02): sleepy row-independence: do the sleepy claims hold at
   every `ΔF > 0`, as `System.Sleepy` (no ratio) now states? Goldilocks's `sleepySafe`,
   `sleepyLive` and `persists` are proved with no `rowRatio` premise, for each positive `ΔF`, in
-  the two-bound model (`Obligations.accepted`, standard axioms). That model still imposes finite
+  the two-bound model (`Obligations.meetsObligations_exists`, standard axioms). That model still imposes finite
   row delivery at `ΔF`: `System.Sleepy` contains `PSync 0` and `System.Outage` contains
   `OutageNet`, whose `rows` clause delivers rows by `ΔF`. This is not independence from any
   row-delivery assumption, and it does not allow unbounded or missing delivery. Generically the

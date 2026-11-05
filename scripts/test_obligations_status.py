@@ -28,7 +28,7 @@ class StatusTests(unittest.TestCase):
         source = 'namespace ' + prefix[:-1] + '\n' + '\n'.join(
             'theorem ' + n + ' : True := by ' + ('sorry' if n in sorry else 'trivial')
             for n in names)
-        records = [{'declaration': 'Consensus.Goldilocks.Obligations.accepted',
+        records = [{'declaration': 'Consensus.Goldilocks.Obligations.meetsObligations_exists',
                     'dependencies': [prefix + n for n in names]}]
         records += [{'declaration': prefix + n,
                      'dependencies': ['sorryAx'] if n in sorry else
@@ -123,6 +123,16 @@ class StatusTests(unittest.TestCase):
                                  historical=historical, prior_rows=[], document=True)
         self.assertEqual([r['name'] for r in ledger['rows']],
                          [self.PREFIX + 'Obligations.protoFGDelay_pos'])
+        self.assertEqual(ledger['historical_removed'], [])
+
+    def test_step3b_renames_keep_former_owners(self):
+        # A historical owner among Concrete's field theorems keeps its row under its step-3b name.
+        historical = ('namespace Consensus.Goldilocks.Obligations\n'
+                      'theorem accepted_claims : True := by sorry\n')
+        ledger = self.regenerate(['Obligations.meetsObligations_claims'], set(), {}, lambda n: {},
+                                 historical=historical, prior_rows=[], document=True)
+        self.assertEqual([r['name'] for r in ledger['rows']],
+                         [self.PREFIX + 'Obligations.meetsObligations_claims'])
         self.assertEqual(ledger['historical_removed'], [])
 
     def test_proved_rows_refresh_ratings_and_skip_unproved_overrides(self):

@@ -31,9 +31,10 @@ witness of `Shape.regimes_realizable` at `K S A` on five validators.
   horizon is below the latency deadline is the run of no `ConfirmedQuery` (the `bounded` field
   is a real constraint); `outageQuery_start_ge`: no outage query starts before the arming lag
   `(4k + 6)Δ`; `healthyPreparationQuery_not_final`: the `nonfinal` guard excludes `.final`.
-* `*_applies`: the endpoint hypotheses of `accepted_healthyLive`, `accepted_healedSafe` and
-  `accepted_persists` build the query with exactly those run, capability, index, GST and times
-  (as `Concrete.lean` does), so the witnesses above are instances of what the endpoints use. -/
+* `*_applies`: the endpoint hypotheses of `meetsObligations_healthyLive`,
+  `meetsObligations_healedSafe` and `meetsObligations_persists` build the query with exactly those
+  run, capability, index, GST and times (as `Concrete.lean` does), so the witnesses above are
+  instances of what the endpoints use. -/
 
 namespace Consensus.Goldilocks.Obligations.Test.NonfinalQueryWitness
 open AsChainShape Simulation
@@ -205,8 +206,9 @@ theorem healthyPreparationQuery_not_final {V : Type} [Fintype V] [DecidableEq V]
 Accepted contract on five validators, at `Δ = ΔF = 2`, armed at `T ≥ 0`. -/
 theorem outageQuery_witness : ∃ Q : OutageQuery S A (Fin 5), 0 ≤ Q.T := by
   obtain ⟨r, T, b₀, b₁, ⟨⟨hv, hc, -, -⟩, -, -⟩, ho, -, -⟩ :=
-    (Shape.regimes_realizable (goldilocks S) (K S A) (accepted_admissible S A)
-      (accepted_progressFits S A) (accepted_progressTolerant S A) (Fin 5) (by decide)).outage
+    (Shape.regimes_realizable (goldilocks S) (K S A) (meetsObligations_admissible S A)
+      (meetsObligations_progressFits S A) (meetsObligations_progressTolerant S A) (Fin 5)
+      (by decide)).outage
       2 2 0 (by decide) (by decide)
   obtain ⟨Q, -, hT, -, -⟩ := outageQuery_applies S A r (by decide) T b₀ b₁ hv hc ho
   exact ⟨Q, hT ▸ Q.outage.1.1⟩
