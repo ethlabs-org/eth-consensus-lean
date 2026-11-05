@@ -49,13 +49,12 @@ private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
   unfold SA.tryVote
   dsimp only
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
     · exact absurd hj h
     · exact absurd h hv
-    · linarith
-  · linarith [h₂.1]
+    · exact absurd ht (ne_of_gt h)
+  · exact absurd ht (ne_of_lt h₂.1)
   all_goals simp
 
 /-- The AC calls of a tick: `ac_on_tick`, `ac_proposal`, `ac_to_fg`, and the own block's
@@ -101,7 +100,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h
-    linarith
+    linarith only [h]
   have hsi : sp.slot (tr.time i) = s + 1 := ((SA.castAt_spec hr hy hc).2.1.symm.trans hs)
   have hvi : SA.VoteAt tr.projAC y i e := ⟨ℓ, hc.1, hc.2⟩
   -- the selection is in slot `s + 1`
@@ -112,7 +111,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     have h' : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time c := h
     simp only [SAParams.ts] at h' ⊢
     push_cast at h'
-    linarith
+    linarith only [h']
   have hck' := hrun.time_mono hck.le
   have hkm' := hrun.time_mono hkm.le
   have hmi' := hrun.time_mono hmi.le
@@ -124,12 +123,12 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
     by_contra h
     have : q + 1 ≤ 4 * (s : Int) + 4 := by omega
     simp only [SAParams.ts] at hc0
-    linarith [mul_le_mul_of_nonneg_left this hΔ.le]
+    linarith only [hc0, hck', hq', hΔ, mul_le_mul_of_nonneg_left this hΔ.le]
   have hq2 : q ≤ 4 * (s : Int) + 5 := by
     by_contra h
     have : 4 * (s : Int) + 6 ≤ q := by omega
     simp only [SAParams.ts] at hti'
-    linarith [mul_le_mul_of_nonneg_left this hΔ.le]
+    linarith only [hti', hkm', hmi', hq', hΔ, mul_le_mul_of_nonneg_left this hΔ.le]
   rcases (show q = 4 * (s : Int) + 5 ∨ q = 4 * (s : Int) + 4 by omega) with hq5 | hq4
   · -- at `t_{s+1} + Δ`: the voter's tick there votes before the block arrives
     have hT : tr.time k = sp.ts s + 5 * sp.Δ := by
@@ -144,7 +143,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
       rw [h1, sp.slotTime_eq, htm] at hpt'
       simp only [SAParams.ts] at hpt'
       push_cast at hpt'
-      linarith
+      linarith only [hpt', hΔ]
     obtain ⟨jt, xt, hgt⟩ := hl.tick_of_awake y hy (tr.time m) (hl.time_nonneg m)
       ⟨q, by rw [htm, ← hT, hq']⟩ (hl.awake_of_call y hy m ⟨_, hm⟩)
     have hjm : jt < m := by
@@ -186,7 +185,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
         exact this
       · obtain ⟨u, -, hu, -, hbefore⟩ := hl.sleep_of_restart y hy k' hk'
         have := hbefore i hki ⟨_, projAC_callAt.1 hc.1⟩
-        linarith
+        linarith only [this, hu, hk'T, hti5]
     have hnr : ¬ tr.RestartAt y jt := by
       rintro ⟨ℓk, hck, hkr⟩
       have h₁ := hck.2
@@ -242,7 +241,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
         have h' : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time j' := h
         simp only [SAParams.ts] at h'
         push_cast at h'
-        rw [hT0]; simp only [SAParams.ts]; linarith
+        rw [hT0]; simp only [SAParams.ts]; linarith only [h']
       -- in a tick or a restart: before the signer's tick, or in it
       obtain ⟨g, eu, k₁, hg, hjeq, hk₁⟩ := call_in_group hl huH (projAC_callAt.1 hc')
       rw [htj] at hg hk₁
@@ -266,7 +265,7 @@ theorem no_optimistic_before_held_row_of (hrun : GoldilocksRun proposer dg H tr)
           rw [hsl', htj, hT0] at h5
           simp only [SAParams.ts] at h5
           push_cast at h5
-          linarith
+          linarith only [h5, hΔ]
         · exact absurd h hnp
         · exact absurd h hnt
         · exact hp.2.2.symm
@@ -320,7 +319,7 @@ private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : N
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h
-    linarith
+    linarith only [h]
   have hci : tr.time c ≤ tr.time i := hrun.time_mono (by omega)
   by_contra hl
   have hl' : (s : Int) + 1 ≤ (l : Int) := by exact_mod_cast Nat.lt_of_not_le hl
@@ -328,7 +327,7 @@ private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : N
   · -- a regular origin of label `l > s` is written at `t_l + 6Δ ≥ t_{s+1} + 6Δ`
     have htR' : tr.time c = sp.ts (l : Int) + 6 * sp.Δ := htR
     simp only [SAParams.ts] at htR' hti
-    linarith [mul_le_mul_of_nonneg_left hl' hΔ.le]
+    linarith only [htR', hti, hci, hΔ, mul_le_mul_of_nonneg_left hl' hΔ.le]
   · rcases Nat.lt_or_ge l (s + 2) with hl2 | hl2
     · obtain rfl : l = s + 1 := by omega
       exact no_optimistic_before_held_row_of hrun hnc hf hy hc hs hm hmi hav hkm hsg hz hck hO
@@ -339,7 +338,7 @@ private theorem vote_row_source (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       have h' : sp.ts (l : Int) ≤ tr.time c := h
       have hl2' : (s : Int) + 2 ≤ (l : Int) := by exact_mod_cast hl2
       simp only [SAParams.ts] at h' hti
-      linarith [mul_le_mul_of_nonneg_left hl2' hΔ.le]
+      linarith only [h', hti, hci, hΔ, mul_le_mul_of_nonneg_left hl2' hΔ.le]
 
 /-- **S3 at full reads, over sources `G`**: with `f < n/2`, the honest attestations at heights
 `≥ h_j` sourced by `G`, the sources pairwise compatible and compatible with `B`, a held block `B` is
