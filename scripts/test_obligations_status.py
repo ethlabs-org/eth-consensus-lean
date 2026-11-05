@@ -77,9 +77,8 @@ class StatusTests(unittest.TestCase):
             names, {'contract_heal'},
             {n: ['contract_heal'] for n in ('sleepy_query_sync', 'sleepy_safety_inputs',
                                             'final_duty_proposal')},
-            lambda n: {'status': 'paper-open (research)', 'obstruction': '#128 stale',
-                       'evidence': 'stale', 'derisk-verdict': 'complete',
-                       'adversarial-pass-done': 'y'})
+            lambda n: {'status': 'paper-open (research)', 'obstruction': 'stale obstruction',
+                       'evidence': 'stale', 'owner-thread': 'T-fixture', 'derisk-verdict': 'complete'})
         for n in names[1:3]:
             r = rows[n]
             self.assertFalse(r['direct_sorry'])
@@ -89,19 +88,19 @@ class StatusTests(unittest.TestCase):
             self.assertIn('Body proved', r['evidence'])
             self.assertIn('K S A', r['evidence'])
             self.assertNotIn('obstruction', r)
-            self.assertEqual(r['derisk-verdict'], 'complete')
+            # a prior ledger's routing and process fields are not carried into the public row
+            self.assertLessEqual(set(r), set(status.ROW_FIELDS))
         self.assertEqual(rows[names[3]]['status'], 'lean-proved')
         duty = rows['final_duty_proposal']
         self.assertFalse(duty['direct_sorry'])
         self.assertEqual(duty['lean-status'], 'sorry-dependent')
         self.assertEqual(duty['status'], 'unknown')
-        self.assertEqual(duty['status-source'], 'compiled dependency audit')
         self.assertIn('final_duty_proposal_run', duty['evidence'])
         self.assertIn('K S A', duty['evidence'])
         self.assertTrue(rows[names[0]]['direct_sorry'])
 
     def test_step1_renames_keep_former_owners(self):
-        # The historical blob names the former owner by its pre-2026-11-04 name: it keeps its row under
+        # The historical blob names the former owner by its earlier name: it keeps its row under
         # the name it became (the coefficient in the root namespace). A historical name that no current
         # declaration took stays historical.
         historical = ('namespace Consensus.Goldilocks.Refinement\n'
@@ -136,16 +135,15 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(ledger['historical_removed'], [])
 
     def test_proved_rows_refresh_ratings_and_skip_unproved_overrides(self):
-        # every row was reviewed before (status-source set), with stale prose evidence
+        # every row was reviewed before (it has a status), with stale prose evidence
         names = ['final_reset_premises', 'outage_arm', 'sleepy_query_sync', 'healthy_cut_agreement',
                  'outage_repair']
-        prior = lambda n: {'status': 'paper-partial', 'status-source': 'reviewed',
-                           'evidence': 'Open: stale prose that remains'}
+        prior = lambda n: {'status': 'paper-partial', 'evidence': 'Open: stale prose that remains'}
         rows = self.regenerate(names, {'outage_repair'}, {}, prior)
         # (a) a REFRESH name takes its current RATINGS entry, not the previous evidence
         self.assertIn('final_reset_premises', status.REFRESH)
         self.assertEqual(rows['final_reset_premises']['evidence'],
-                         status.RATINGS['final_reset_premises'][2])
+                         status.RATINGS['final_reset_premises'][1])
         self.assertEqual(rows['final_reset_premises']['status'], 'lean-proved')
         # (b) proved rows do not take the unproved-only overrides; their prose becomes the audit fact
         for n in ('outage_arm', 'sleepy_query_sync', 'healthy_cut_agreement'):
@@ -166,47 +164,34 @@ class StatusTests(unittest.TestCase):
         self.assertIn('healthy_repair_schedule', status.REFRESH)
         self.assertEqual(status.RATINGS['healthy_repair_schedule'][0], 'lean-proved')
         names = ['healthy_repair_schedule', 'outage_arm']
-        before = {'healthy_repair_schedule': status.RATINGS['healthy_repair_schedule'][2],
+        before = {'healthy_repair_schedule': status.RATINGS['healthy_repair_schedule'][1],
                   'outage_arm': status.PROVED_EVIDENCE + 'earlier.'}
-        prior = lambda n: {'status': 'lean-proved', 'status-source': 'compiled dependency audit',
-                           'evidence': before[n]}
+        prior = lambda n: {'status': 'lean-proved', 'evidence': before[n]}
         rows = self.regenerate(names, set(names), {}, prior)
         for n in names:
             self.assertTrue(rows[n]['direct_sorry'])
             self.assertNotEqual(rows[n]['status'], 'lean-proved')
             self.assertFalse(rows[n].get('evidence', '').startswith('Proved'))
-        # the proof rating (and its source) is not applied to the regressed REFRESH row
-        self.assertEqual(rows['healthy_repair_schedule']['status-source'],
-                         'compiled dependency audit')
 
     PRIVATE = '_private.ConsensusLean.Instances.Goldilocks.Lemmas.{}.0.' + PREFIX
-    CARRIED = {'status': 'lean-proved', 'status-source': 'compiled dependency audit',
-               'owner-thread': 'T-override', 'area': 'healing', 'card-path': 'cards/foo.md',
-               'card-commit': 'card-pin', 'card-repo': 'ethlabs-org/workbench',
-               'derisk-verdict': 'research', 'adversarial-pass-done': 'y',
-               'evidence': status.PROVED_EVIDENCE + 'oldsha.', 'last-changed': '2026-01-01'}
+    CARRIED = {'status': 'lean-proved', 'evidence': status.PROVED_EVIDENCE + 'oldsha.',
+               'owner-thread': 'T-override', 'card-path': 'cards/foo.md'}
 
     def test_private_to_public_rename_keeps_row_metadata(self):
         prior_rows = [{'name': self.PRIVATE.format('Old') + 'foo', **self.CARRIED}]
         row = self.regenerate(['foo'], set(), {}, None, prior_rows=prior_rows)['foo']
-        for key in ('owner-thread', 'card-path', 'card-commit', 'card-repo', 'derisk-verdict',
-                    'adversarial-pass-done', 'evidence'):
-            self.assertEqual(row[key], self.CARRIED[key])
+        self.assertEqual(row['evidence'], self.CARRIED['evidence'])
         self.assertEqual(row['status'], 'lean-proved')
-        self.assertNotEqual(row['last-changed'], '2026-01-01')
+        self.assertLessEqual(set(row), set(status.ROW_FIELDS))
         # the compiled closure still decides the status of a renamed row
         regressed = self.regenerate(['foo'], {'foo'}, {}, None, prior_rows=prior_rows)['foo']
         self.assertTrue(regressed['direct_sorry'])
         self.assertNotEqual(regressed['status'], 'lean-proved')
         self.assertNotIn('evidence', regressed)
-        self.assertEqual(regressed['card-path'], 'cards/foo.md')
 
     def assert_defaults(self, row):
-        self.assertEqual(row['owner-thread'], 'T-01a18fec-6e1e-7342-9ca9-8562977d7347')
-        self.assertEqual(row['area'], 'network+Sleepy')
-        self.assertIsNone(row['card-path'])
-        self.assertEqual(row['derisk-verdict'], 'none yet')
         self.assertEqual(row['evidence'], status.PROVED_EVIDENCE + 'fixture-.')
+        self.assertLessEqual(set(row), set(status.ROW_FIELDS))
 
     def test_ambiguous_rename_carries_nothing(self):
         prior_rows = [{'name': self.PRIVATE.format(m) + 'foo', **self.CARRIED} for m in ('A', 'B')]
@@ -218,23 +203,22 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(set(rows), {'foo'})
         self.assert_defaults(rows['foo'])
 
-    def test_card_repositories_preserve_mixed_pins(self):
-        archive = {'card-path': 'old.md', 'card-commit': 'old-pin'}
-        team = {'card-path': 'new.md', 'card-commit': 'new-pin',
-                'card-repo': 'ethlabs-org/workbench'}
-        shared = {'path': 'shared.md', 'commit': 'shared-pin'}
-        cores = {'path': 'cores.md', 'commit': 'cores-pin',
-                 'card-repo': 'ethlabs-org/workbench'}
-        document = {'audit_commit': 'audit-pin', 'rows': [archive, team, {}],
-                    'shared-cards': [shared], 'research-cores': cores}
-        status.card_repositories(document)
-        self.assertEqual(archive, {'card-path': 'old.md', 'card-commit': 'old-pin',
-                                  'card-repo': 'fradamt-agent/workbench'})
-        self.assertEqual(team['card-repo'], 'ethlabs-org/workbench')
-        self.assertIsNone(document['rows'][2]['card-repo'])
-        self.assertEqual(shared['card-repo'], 'fradamt-agent/workbench')
-        self.assertEqual(cores['card-repo'], 'ethlabs-org/workbench')
-        self.assertEqual(document['audit_commit'], 'audit-pin')
+    def test_retired_rows_keep_only_public_fields(self):
+        # A former owner that a reviewed refactor removed moves to `retired` with the current RETIRED texts and
+        # without its routing and process fields; an already retired row keeps its own texts.
+        gone = {'name': self.PREFIX + 'final_row_signers', 'status': 'paper-partial', 'evidence': 'e',
+                'owner-thread': 'T-x', 'card-path': 'cards/x.md', 'last-changed': '2026-01-01'}
+        kept = {'name': self.PREFIX + 'final_inherited_progress', 'status': 'retired (not proved)',
+                'retired-by': 'stale reason', 'retirement-note': 'stale note', 'area': 'final liveness'}
+        retired = status.retired_rows({'rows': [gone], 'retired': [kept]}, current={})
+        self.assertEqual([r['name'] for r in retired], [kept['name'], gone['name']])
+        for row in retired:
+            self.assertLessEqual(set(row), set(status.RETIRED_FIELDS))
+        self.assertEqual((retired[0]['retired-by'], retired[0]['retirement-note']), ('stale reason', 'stale note'))
+        self.assertEqual((retired[1]['retired-by'], retired[1]['retirement-note']),
+                         status.RETIRED['final_row_signers'])
+        self.assertEqual(retired[1]['status'], 'retired (not proved)')
+        self.assertEqual(retired[1]['status-before-retirement'], 'paper-partial')
 
     def test_comments_are_not_proof_holes(self):
         source = '''namespace Consensus.Test

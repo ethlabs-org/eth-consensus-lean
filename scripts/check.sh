@@ -1465,8 +1465,8 @@ run_if "$((do_audit || do_audit_tests || do_audit_report))" "nothing in the clos
   "3b axiom audit (closure of $SOLUTION, ${TEST_LIBS[*]}: gate; unfinished in ${DEFAULT_LIBS[*]}: report)" step_audit
 run_selftest "3b axiom audit self-test (CheckFixtures.Audit)" selftest_audit
 run_step "3c obligations sorry inventory (REPORT ONLY)" step_sorry_inventory
-run_selftest "3c sorry inventory self-test (private/type/cyclic dependencies, ledger)" python3 -I scripts/test_sorry_inventory.py
-run_selftest "3c obligations-status ledger self-test (body/type dependency rows, card pins, comments, closure)" python3 -I scripts/test_obligations_status.py
+run_selftest "3c sorry inventory self-test (private/type/cyclic dependencies, config, no-owner control)" python3 -I scripts/test_sorry_inventory.py
+run_selftest "3c obligations-status ledger self-test (body/type dependency rows, public fields, comments, closure)" python3 -I scripts/test_obligations_status.py
 if ((do_surface)); then
   run_step "4 Spec surface (extensions, snapshot, theorems, noconst)" step_surface
 else

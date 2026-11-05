@@ -19,4 +19,7 @@ inductive Cycle where
 
 theorem unrelated : True := by sorry
 
+-- A root whose closure has no sorry owner.
+theorem clean : True := trivial
+
 end SorryInventory

@@ -1,0 +1,14 @@
+# Step 3c (scripts/sorry-inventory.py, report only): the sorry owners in the declaration closure of `roots`,
+# loaded from `modules` (qualified names). An owner in that closure must have an entry in `mapped` (its paper
+# argument, or OPEN), else the report is incomplete. Today the closure has no sorry owner, so `mapped` is empty.
+modules = [
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy",
+  "ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete",
+]
+roots = ["Consensus.Goldilocks.Obligations.meetsObligations_exists"]
+
+[mapped]

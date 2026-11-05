@@ -1,56 +1,36 @@
 #!/usr/bin/env python3
 """Report compiled sorry owners and their ancestors; never a certification gate.
 
-Ledger contract: one fenced `toml sorry-inventory` block with modules and roots
-arrays (qualified Lean names). Empty roots explicitly mean missing assembly.
-Only tables headed `Declaration | ... | Paper argument/status` are compiled rows;
-each declaration cell is one backtick-quoted qualified name. Other tables are
-reported as excluded, not coverage. Paper text is recorded, not verified.
+Config contract (scripts/sorry-inventory.toml): `modules` and `roots`, arrays of qualified Lean
+names; empty roots explicitly mean missing assembly. The optional table `mapped` maps a sorry owner
+(a qualified name) to its paper argument or OPEN; an unmapped owner in the closure of the roots
+reports incomplete. Argument text is recorded, not verified.
 """
 import argparse
 import json
 from pathlib import Path
-import re
 import subprocess
 import tomllib
 
 
-def ledger(text):
-    blocks = re.findall(r"^```toml sorry-inventory\s*\n(.*?)^```\s*$", text, re.M | re.S)
-    if len(blocks) != 1:
-        raise ValueError("expected one toml sorry-inventory block")
-    config = tomllib.loads(blocks[0])
+def read_config(text):
+    config = tomllib.loads(text)
     for key in ("modules", "roots"):
         if not isinstance(config.get(key), list) or any(
                 not isinstance(n, str) or not n or n.startswith("--") for n in config[key]):
             raise ValueError(f"{key} must be an array of Lean names")
-    rows, excluded, issues = {}, [], []
-    header = None
-    for number, line in enumerate(text.splitlines(), 1):
-        if not line.startswith("|"):
-            header = None
+    mapped = config.get("mapped", {})
+    if not isinstance(mapped, dict):
+        raise ValueError("mapped must be a table of qualified names")
+    rows, issues = {}, []
+    for name, argument in mapped.items():
+        if "." not in name or name.startswith(".") or name.endswith("."):
+            issues.append(f"malformed mapped entry: {name}")
             continue
-        cells = [s.strip() for s in line.strip().strip("|").split("|")]
-        if header is None:
-            header = cells
-            if not (header[0] == "Declaration" and "Paper argument/status" in header):
-                excluded.append({"line": number, "header": header})
-            continue
-        if all(re.fullmatch(r":?-+:?", c) for c in cells):
-            continue
-        if header[0] != "Declaration" or "Paper argument/status" not in header:
-            continue
-        if len(cells) != len(header) or not re.fullmatch(r"`[^`]+\.[^`]+`", cells[0]):
-            issues.append(f"malformed compiled row at line {number}")
-            continue
-        name = cells[0][1:-1]
-        argument = cells[header.index("Paper argument/status")]
-        if name in rows:
-            issues.append(f"duplicate row: {name}")
-        if not argument:
+        if not isinstance(argument, str) or not argument.strip():
             issues.append(f"missing paper argument or OPEN: {name}")
-        rows[name] = {"line": number, "argument": argument}
-    return config, rows, excluded, issues
+        rows[name] = {"argument": argument if isinstance(argument, str) else ""}
+    return config, rows, issues
 
 
 def reachable(seeds, edges):
@@ -98,16 +78,16 @@ def inventory(config, rows, records):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ledger", type=Path, default=Path("docs/notes/obligations-dependencies.md"))
+    parser.add_argument("--config", type=Path, default=Path("scripts/sorry-inventory.toml"))
     parser.add_argument("--json-out", type=Path, required=True)
     args = parser.parse_args()
-    result = {"schema_version": 1, "mode": "report-only", "status": "incomplete",
-              "ledger": str(args.ledger), "roots": [], "modules": [], "sorries": [],
-              "rows": {}, "excluded_tables": [], "issues": []}
+    result = {"schema_version": 2, "mode": "report-only", "status": "incomplete",
+              "config": str(args.config), "roots": [], "modules": [], "sorries": [],
+              "rows": {}, "issues": []}
     try:
-        config, rows, excluded, issues = ledger(args.ledger.read_text())
+        config, rows, issues = read_config(args.config.read_text())
         result.update({"modules": config["modules"], "roots": config["roots"],
-                       "rows": rows, "excluded_tables": excluded, "issues": issues})
+                       "rows": rows, "issues": issues})
         if not config["roots"]:
             result["issues"].append("missing concrete obligations root: assembly unresolved (NOT MET)")
         seeds = sorted(set(config["roots"]) | rows.keys())
@@ -115,8 +95,7 @@ def main():
         if seeds:
             if not config["modules"]:
                 raise ValueError("modules required to validate roots and rows")
-            # Refuse stale module artifacts. All builds, including this freshness
-            # check, run inside the caller's job on the shared box.
+            # Refuse stale module artifacts.
             subprocess.run(["lake", "build", "--no-build", "spec-surface", *config["modules"]],
                            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             proc = subprocess.run(["lake", "exe", "spec-surface", "dependencies", "--from",
@@ -135,7 +114,7 @@ def main():
         result["issues"].append("missing concrete obligations root: assembly unresolved (NOT MET)")
     args.json_out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(f"REPORT sorry inventory: {result['status']}; {len(result['sorries'])} direct owners; "
-          f"{len(result['excluded_tables'])} noncompiled tables excluded; JSON: {args.json_out}")
+          f"JSON: {args.json_out}")
     for issue in result["issues"]:
         print(f"  REPORT {issue}")
     for owner in result["sorries"]:
