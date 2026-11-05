@@ -1,21 +1,21 @@
 module
-public import ConsensusLeanTest.Blocks
-public import ConsensusLeanTest.Common
-public import ConsensusLeanTest.Controls
+public import ConsensusLeanTest.Blocks.Basic
+public import ConsensusLeanTest.Fixtures.Common
+public import ConsensusLeanTest.Shape.Controls
 public import ConsensusLeanTest.Gaps
-public import ConsensusLeanTest.GoldilocksObligations
-public import ConsensusLeanTest.GoldilocksSimulation
-public import ConsensusLeanTest.CorrectProtocol
-public import ConsensusLeanTest.Leaks
-public import ConsensusLeanTest.Lift
-public import ConsensusLeanTest.Model
-public import ConsensusLeanTest.Network
-public import ConsensusLeanTest.Problem
-public import ConsensusLeanTest.Realizable
-public import ConsensusLeanTest.Regimes
-public import ConsensusLeanTest.Shape
-public import ConsensusLeanTest.Support
-public import ConsensusLeanTest.Vacuity
+public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
+public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
+public import ConsensusLeanTest.Problem.CorrectProtocol
+public import ConsensusLeanTest.Shape.Leaks
+public import ConsensusLeanTest.Model.Lift
+public import ConsensusLeanTest.Model.Basic
+public import ConsensusLeanTest.Problem.Network
+public import ConsensusLeanTest.Problem.Properties
+public import ConsensusLeanTest.Shape.Realizable
+public import ConsensusLeanTest.Problem.Regimes
+public import ConsensusLeanTest.Shape.Basic
+public import ConsensusLeanTest.Fixtures.Support
+public import ConsensusLeanTest.Shape.Vacuity
 public import ConsensusLean
 public import Solution
 

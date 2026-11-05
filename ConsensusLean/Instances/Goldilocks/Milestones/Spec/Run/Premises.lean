@@ -58,7 +58,7 @@ runs are `Nat`-indexed traces of the protocol running forever, and a finite trac
 that says nothing after its last cut, so it satisfies neither regime premise. That the two
 premises are satisfiable by such a run (together with `Node.LocalRun`) is the kind (a) witness
 `periodicRun_localRun` with `periodicRun_healthy` and `periodicRun_sleepy` in
-`ConsensusLeanTest/GoldilocksRun.lean`.
+`ConsensusLeanTest/Goldilocks/Run/Statements.lean`.
 
 `NoColl` is `Compose.NoCollRun` (`Statements/Compose/Run`: `Compose.NoCollOn` on the blocks
 that occur in the run and genesis), stated where it is used. `Outage` and `Weak` have no run

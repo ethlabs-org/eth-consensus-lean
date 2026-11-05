@@ -22,7 +22,7 @@ roots are injective by the duplicate-root test of `fg_on_block`, and slots incre
 assertion of `state_transition`), and that the first frame is rooted. `FrameNeverReturns` needs
 both: without coherence a block that left comes back under a reused root, and without the rooted
 first frame a block of the first tree whose parent is missing leaves and comes back once the
-parent arrives (`ConsensusLeanTest/GoldilocksFrameRejection.lean`:
+parent arrives (`ConsensusLeanTest/Goldilocks/Frame/Rejection.lean`:
 `frameNeverReturns_needs_coherent`, `frameNeverReturns_needs_rooted`). `FrameEntersOnce` needs
 coherence (`frameEntersOnce_needs_coherent`). Every frame after a step is rooted at its new
 `Φ.F`, so a block added by a step cannot be added again; `frame_statements` proves it through

@@ -117,7 +117,7 @@ jobs:
       - name: Build the heaviest test modules one at a time (clean project build; no .lake/build cache)
         run: |
           set -euo pipefail
-          for f in ConsensusLeanTest/GoldilocksHalfCommittee*.lean ConsensusLeanTest/GoldilocksInitialCarry*.lean; do
+          for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
             m="${f%.lean}"; m="${m//\//.}"
             echo "::group::lake build $m"; lake build --wfail --iofail "$m"; echo "::endgroup::"
           done

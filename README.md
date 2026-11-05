@@ -589,7 +589,7 @@ refinement, coverage/witnesses, `ShapeObligations.correct` and `ShapeObligations
 (`canonical_run_from`), truncation (`Run.truncate_*`), views (`Run.mem_viewIdx_iff`)
 and slashing protection (`honestNeverSlashed`). A node's `Run.ViewIdx` is the closure
 of its engine `seen` log; the view lemma gives the event-index form.
-Injective-hash lifting is checked in `ConsensusLeanTest/Lift.lean`.
+Injective-hash lifting is checked in `ConsensusLeanTest/Model/Lift.lean`.
 
 ## Layout
 
@@ -848,20 +848,27 @@ These are values and fit/tolerance proofs, with no concrete protocol proofs.
 
 ## Tests (`ConsensusLeanTest/`)
 
-`lake test` builds this library, including the review pins and citation index.
+`lake test` builds this library, including the review pins and citation index. The review files are at the top;
+the generic tests are grouped by layer and the Goldilocks tests by component (`docs/notes/test-module-map.tsv` maps the
+earlier flat names to these).
 
-- `Problem`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
-- `Network`: the delivery rule (wakers served strictly before the bound, not instantly), faithfulness, silent runs and truncation.
-- `Regimes`: what each regime admits and rejects; the explanatory L0 regime lemmas.
-- `CorrectProtocol`: vacuous systems are not correct; censoring progress, rotating sleepers, η-sleepy history.
-- `Model`, `Blocks`, `Shape`: model mechanics, recurrence, compiled roles and poll mode.
-- `Leaks`: do-nothing, fabricating and self-silencing protocols fail `ShapeClaims`; `recorder_live_testK` passes.
-- `Realizable`: coverage, `allProposers_no_witness`, late-GST and late-outage witnesses.
-- `Controls`: positive controls at explicit numbers.
-- `Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_obligations`.
-- `Lift`, `Support`, `Common`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean`.
-- `ReviewAxioms`, `ReviewGuard`: statement alpha-equality, completeness and axiom pins.
+- `ReviewAxioms`, `ReviewGuard`: statement alpha-equality, completeness and axiom pins. `MilestoneAxioms`: the axiom
+  pins of the other Goldilocks milestones.
 - `Gaps`: the gap dispositions. `Index`: every cited name, checked to exist.
+- `Problem/Properties`: every L0 property has teeth; local accountability (`local_accountability_teeth`).
+- `Problem/Network`: the delivery rule (wakers served strictly before the bound, not instantly), faithfulness, silent runs and truncation.
+- `Problem/Regimes`: what each regime admits and rejects; the explanatory L0 regime lemmas.
+- `Problem/CorrectProtocol`: vacuous systems are not correct; censoring progress, rotating sleepers, η-sleepy history.
+- `Model/Basic`, `Blocks/Basic`, `Shape/Basic`: model mechanics, recurrence, compiled roles and poll mode.
+- `Shape/Leaks`: do-nothing, fabricating and self-silencing protocols fail `ShapeClaims`; `recorder_live_testK` passes.
+- `Shape/Realizable`: coverage, `allProposers_no_witness`, late-GST and late-outage witnesses.
+- `Shape/Controls`: positive controls at explicit numbers.
+- `Shape/Vacuity`: admissibility rejections, progress fit and tolerance, forgery, `noService_not_obligations`.
+- `Model/Lift`, `Fixtures/{Support,Common}`: injective-hash lifting and fixtures; the former `Values` live in `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean`.
+- `Tactic/LinarithFrontEnd`: regressions for the `linarith` front end.
+- `Goldilocks/`: one folder per component (`FG`, `FGStore`, `Frame`, `AC`, `Compose`, `Run`, `Regimes`, `Persist`,
+  `Healing`, `Refinement`), with the concrete executions they share in `Runs/` and `Mirror/` (a computable mirror of
+  the node), and the five-validator runs that show a premise is needed in `HalfCommittee/` and `InitialCarry/`.
 
 ### Gap dispositions
 

@@ -10,7 +10,7 @@ public section
 Facts about the participation and fault-bound vocabulary of `Basic` that
 library proofs use: plain sleepy as a count over `ready ∪ faulty`, and a
 larger fault bound is weaker. The explanatory facts (threshold monotonicity,
-`η = 0`, the awake-count form) are checked in `ConsensusLeanTest/Regimes`. -/
+`η = 0`, the awake-count form) are checked in `ConsensusLeanTest/Problem/Regimes`. -/
 
 namespace Consensus
 
