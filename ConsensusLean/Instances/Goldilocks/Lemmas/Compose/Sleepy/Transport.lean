@@ -141,9 +141,10 @@ theorem carryAt_of_writer_heads
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
     have h₁ := ac_deadline_le_of_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
-    have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith)
+    have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ from
+      lt_add_of_pos_right _ (mul_pos two_pos hΔ))
     change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
-    linarith
+    linarith only [h₁, h₂]
   obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy i ℓ hc.1
   refine ⟨hr.awake_of_call y hy i ℓ hc.1, hyj, fun v hv => ?_, fun v hv => ?_⟩
   · -- the head: relayed to `y` before `t_s + 3Δ`, with its ancestors
@@ -153,9 +154,9 @@ theorem carryAt_of_writer_heads
     have hyacc : SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ) := by
       rcases hacc with ⟨kw, hkw, hakw, hkwt⟩ | hacc
       · have hdi : T.deadline y i (T.time kw) ≤ T.time i := by
-          linarith [hdl i le_rfl _ hkwt]
+          linarith only [hdl i le_rfl _ hkwt, hti, hΔ]
         have delivered := hsync.elim
-          (fun h => h.2 w hw kw Hv hkw hakw (by linarith) y hy i ℓ hc.1 hdi hFHv)
+          (fun h => h.2 w hw kw Hv hkw hakw (by linarith only [hkwt, hb]) y hy i ℓ hc.1 hdi hFHv)
           (fun h => h.relay w hw kw Hv hkw hakw y hy i ℓ hc.1 hdi hdi hFHv)
         obtain ⟨ky, hky, hacc', hkyt⟩ := delivered
         exact Or.inr ⟨ky, hacc', hkyt.trans (hdl ky hky _ hkwt)⟩
@@ -173,10 +174,10 @@ theorem carryAt_of_writer_heads
   · -- the vote: forwarded by `w`, processed by `y` before `t_s + 3Δ` and kept
     obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, -⟩ := hW v hv
     have hdi : T.deadline y i (T.time k) ≤ T.time i := by
-      linarith [hdl i le_rfl _ hk2]
+      linarith only [hdl i le_rfl _ hk2, hti, hΔ]
     have delivered := hsync.elim
       (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-        (h.1 w hw k v hsend (ha.trans hk1) (by linarith) y hy i ℓ hc.1 hdi)))
+        (h.1 w hw k v hsend (ha.trans hk1) (by linarith only [hk2, hb]) y hy i ℓ hc.1 hdi)))
       (fun h => h.message w hw k v hsend (ha.trans hk1) y hy i ℓ hc.1 hdi hdi)
     rcases (SA.messageServedBefore_iff _ _ _ _).mp delivered with delivered | retained
     swap
@@ -189,7 +190,7 @@ theorem carryAt_of_writer_heads
             have heq : r = i := by omega
             subst r
             have := hrsy i le_rfl hrr
-            linarith) hu
+            linarith only [this, hti, hΔ]) hu
         obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
         exact ⟨by rw [hus, ← hpool]; simpa only [hus] using hp.1,
           by rw [← hstamp u hus]; exact hp.2⟩
@@ -211,9 +212,9 @@ theorem carryAt_of_writer_heads
       obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
       have h₁ := hprev k' (by omega) ℓ' hc'
       have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
-      linarith
+      linarith only [h₁, h₂, hu, hk1, hkk']
     have hsk' : sp.slot (T.time k') = s :=
-      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith)
+      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith only [hk'lt, hΔ])
     -- every slot-`s` vote that `y` holds after `k'` is held at the vote, received before the freeze
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
         SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
@@ -232,12 +233,12 @@ theorem carryAt_of_writer_heads
           · -- `y`'s own slot-`s` vote, cast at most `Δ` after `t_s`
             have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
-            linarith
+            linarith only [h, hΔ]
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
               (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
       · rw [hst₁, SA.etime_of_lt_of]
         have := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
-        linarith
+        linarith only [this, hΔ]
     by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
     · exact Or.inl (hheld v hv')
     · rcases SA.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
@@ -319,7 +320,7 @@ theorem carryAt_of_writer_window_before (hr : ACLocalRun (SA.goldilocksSA sp FGP
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   obtain ⟨j, -, hj, hjt⟩ := hcatch.relay w hw k B hk hka y hy i ℓ hc.1
-    (by rw [hts] at hstart; linarith [sp.toParams.hΔ]) hi hanc
+    (by rw [hts] at hstart; linarith only [hstart, hcatchTime, sp.toParams.hΔ]) hi hanc
   exact Or.inr ⟨j, hj, hjt.trans_le hcatchTime⟩
 
 /-- Writer transport needs recipient service only up to the receiving vote's time. -/
@@ -340,7 +341,7 @@ theorem carryAt_of_writer_before (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     positivity
   exact carryAt_of_writer_window_before hr hsync hs0
     (κ := 0) ⟨fun _ _ k _ _ hk => absurd hk (not_lt.2 (hr.time_nonneg k))⟩
-    (by linarith [sp.toParams.hΔ]) hw hy hc hs hi hW
+    (by linarith only [hs0, sp.toParams.hΔ]) hw hy hc hs hi hW
 
 /-- **What a result's writer did with its counted votes**: each was admitted (or sent) by the
 writer at a time in `[t_s, t_s + 2Δ)` (its stamp, below the resolution time), and its head extends
@@ -382,7 +383,7 @@ theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
       have hBs := SA.frame_slot_le sp hr hX hck B hB
       have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
         have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 h
-        rw [hts] at this; linarith
+        rw [hts] at this; linarith only [this, hvst, hΔ]
       omega
   · rcases frame_anc_accepted hr hX i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
       hg | ⟨k, hk, hacc⟩
@@ -399,7 +400,7 @@ theorem result_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
         hki).trans_lt
         hbst
       rw [SA.etime_of_lt_of] at h
-      linarith
+      linarith only [h, hge]
 
 /-- **What an optimistic selection's writer did with its counted votes**: each was admitted (or
 sent) by the writer at a time in `[t_s, t_s + 2Δ)` (at or before the selection), and its head
@@ -511,7 +512,8 @@ theorem result_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
   have := vote_time_ge hrun hnc hy hc hs
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   exact carryAt_of_writer_win hr
-    (window_sync hrun hwin (b' := sp.ts s + 2 * sp.Δ) le_rfl (by linarith)) (ts_le_ts hs₀) le_rfl
+    (window_sync hrun hwin (b' := sp.ts s + 2 * sp.Δ) le_rfl (by linarith only [this, hib, hΔ]))
+    (ts_le_ts hs₀) le_rfl
     hX hy hc hs (fun v hv => by
       obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
       exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
@@ -550,7 +552,8 @@ theorem optimistic_carry_win {b : Time} (hrun : GoldilocksRun proposer dg H tr)
   have := vote_time_ge hrun hnc hy hc hs
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   exact carryAt_of_writer_win hr
-    (window_sync hrun hwin (b' := sp.ts s + 2 * sp.Δ) le_rfl (by linarith)) (ts_le_ts hs₀) le_rfl
+    (window_sync hrun hwin (b' := sp.ts s + 2 * sp.Δ) le_rfl (by linarith only [this, hib, hΔ]))
+    (ts_le_ts hs₀) le_rfl
     hx hy hc hs (fun v hv => by
       obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := hW v hv
       exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩)
@@ -623,9 +626,9 @@ theorem result_writer_pool_win {b : Time} (hrun : GoldilocksRun proposer dg H tr
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h
-    linarith
+    linarith only [h]
   exact SA.writer_merged hrun' hX hupd hy hc hs
-    (window_sync hrun hwin (b' := tr.time i) (ts_le_ts hs₀) (by linarith))
+    (window_sync hrun hwin (b' := tr.time i) (ts_le_ts hs₀) (by linarith only [hti, ht₀, hi₀]))
 
 end Consensus.Goldilocks.Compose
 
