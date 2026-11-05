@@ -155,9 +155,16 @@ before its first check.
 The fix both earlier speedups used is a per-commit build cache (ml-dsa-fv: fresh environment 22.9 →
 2.5 min). Lake 4.35 has it built in: `lake cache put <mappings> --scope …` uploads a build's outputs to
 an S3-compatible bucket (`LAKE_CACHE_KEY`), and `lake cache get --scope …` restores them, searching
-up to 100 earlier revisions. It needs a bucket and a key, and the CI to upload after each
-green main build; not set up here. The nightly full tier must keep building with
-`LAKE_ARTIFACT_CACHE=false` (as `scripts/check.sh` does for its rebuild checks).
+up to 100 earlier revisions. It needs a bucket and a key, so it is not set up here. Instead, the `check` workflow
+uploads each green main build's `.lake/build` as the artifact `lake-build` (about 330 MB with zstd -3,
+kept 3 days), and `.agents/setup` runs `scripts/restore-build.sh` before its prebuild: it downloads the
+artifact of the newest green main run at or below the checkout's commit, so the prebuild rebuilds only
+what changed since. It needs `gh` with a token (the Actions API asks for one even for a public
+repository); without it, or without a matching artifact, the prebuild builds from scratch as before.
+Lake still checks every restored output against its trace: a `.lake/build` packed at another path
+(CI's checkout) restored here was up to date for all 1,756 jobs of the library, tests, `Solution`
+and `Challenge`. The nightly full tier must keep building with `LAKE_ARTIFACT_CACHE=false` (as
+`scripts/check.sh` does for its rebuild checks).
 
 ## What did not help (do not retry without a new idea)
 
