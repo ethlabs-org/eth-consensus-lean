@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+public import Mathlib.Tactic.LinearCombination
 
 public section
 

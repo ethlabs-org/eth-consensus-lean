@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLeanTest.Fixtures.Common
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 

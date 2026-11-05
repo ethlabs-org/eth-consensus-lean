@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Spec.Problem.Network
-public import Mathlib.Tactic
+public import Mathlib.Data.PNat.Basic
 
 @[expose] public section
 

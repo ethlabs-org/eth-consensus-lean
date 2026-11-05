@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Spec.Blocks.TimeGrid
+public import Mathlib.Data.PNat.Basic
 
 @[expose] public section
 

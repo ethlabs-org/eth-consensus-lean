@@ -11,6 +11,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Lemmas.Tactic.Linarith
+public import Mathlib.Tactic.FinCases
+public import Mathlib.Data.Fin.VecNotation
 
 public section
 

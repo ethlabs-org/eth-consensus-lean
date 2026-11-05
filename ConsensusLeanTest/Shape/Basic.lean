@@ -3,7 +3,6 @@ public import ConsensusLean
 public import Solution
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Fixtures.Support
-public import Mathlib.Tactic
 @[expose] public section
 
 /-! # Shape tests

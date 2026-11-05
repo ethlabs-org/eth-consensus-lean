@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Examples.Shape.Bft
-public import Mathlib.Tactic
+public import Mathlib.Algebra.Order.Ring.Int
 
 @[expose] public section
 

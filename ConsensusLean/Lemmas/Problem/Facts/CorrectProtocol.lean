@@ -5,7 +5,6 @@ public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

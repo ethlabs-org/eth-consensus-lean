@@ -16,7 +16,6 @@ public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.Adequate
 public import ConsensusLeanTest.Fixtures.Common
-public import Mathlib.Tactic
 @[expose] public section
 
 /-! # Model (L1) tests

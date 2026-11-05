@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Spec.Problem.Basic
-public import Mathlib.Tactic
 
 @[expose] public section
 

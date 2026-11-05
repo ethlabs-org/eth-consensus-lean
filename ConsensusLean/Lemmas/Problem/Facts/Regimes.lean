@@ -1,8 +1,8 @@
 module
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Spec.Problem.Regimes
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Problem.Facts.Atoms
+public import Mathlib.Tactic.NormNum
 
 public section
 

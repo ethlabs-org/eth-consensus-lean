@@ -1,7 +1,6 @@
 module
 public import ConsensusLean
 public import Solution
-public import Mathlib.Tactic
 @[expose] public section
 
 /-! # Test support (moved from the library; no library proof uses them)

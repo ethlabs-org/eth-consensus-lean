@@ -8,7 +8,6 @@ public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLeanTest.Problem.Regimes
-public import Mathlib.Tactic
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 

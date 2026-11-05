@@ -4,7 +4,6 @@ public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Shape.Controls
 public import ConsensusLean
-public import Mathlib.Tactic
 @[expose] public section
 
 /-! # Coverage and progress-fit tests

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Spec.Problem.Properties
-public import Mathlib.Tactic
+public import Mathlib.Tactic.Positivity
 
 public section
 

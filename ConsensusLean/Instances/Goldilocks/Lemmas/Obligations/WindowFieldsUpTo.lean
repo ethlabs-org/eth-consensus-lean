@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowCoverageUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowDefs
+public import Mathlib.Tactic.FinCases
 
 public section
 

@@ -15,7 +15,6 @@ public import ConsensusLean.Lemmas.Model.Causal
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.Adequate
-public import Mathlib.Tactic
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 
 @[expose] public section

@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
+public import Mathlib.Tactic.IntervalCases
 @[expose] public section
 
 /-! # The FG frames of the one-validator tick run meet the premise of the frame statements

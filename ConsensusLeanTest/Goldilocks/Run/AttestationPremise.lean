@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
-public import Mathlib.Tactic
+public import Mathlib.Tactic.IntervalCases
+public import Mathlib.Tactic.Ring
 @[expose] public section
 
 /-! # The attestation clause of `Sync`: the two traces that refuted the old form
