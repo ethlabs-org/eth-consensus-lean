@@ -7,6 +7,14 @@ public import Mathlib.Tactic.IntervalCases
 
 public section
 
+/-! # Vote-pool and release-queue inventories
+
+`Pools` proves preservation under node operations; `Inventory` relates queued material to
+those pools; `ShapeInventory` lifts the facts to shape handlers; `EngineInventory` follows
+duties and deliveries. `scheduled_proposal_releasable` is the proposal-facing endpoint:
+the selected proposal's payload objects are already in the engine's seen closure.
+`Steps` uses this inventory to relate engine events to node steps. -/
+
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
 

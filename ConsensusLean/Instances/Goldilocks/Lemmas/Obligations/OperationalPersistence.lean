@@ -9,6 +9,12 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
+/-! # Persistence of a bounded operational proposal
+
+`operational_proposal_below_later_parent` puts a post-drain operational proposal below every
+bounded honest proposal parent at least two slots later. It consumes finite reset and catch-up
+premises and preserves the report's possibly old enclosing-origin label. -/
+
 namespace Consensus.Goldilocks.Obligations.UpTo
 
 open SA (SAParams ReplayOrder Payload)

@@ -10,6 +10,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
+/-! # Finite sleepy service and confirmed proposals
+
+`vote_message_service_other` handles another recipient's first-release vote envelope;
+`sleepyServiceBefore_of_syncUntil` packages service at bounded labelled cuts. `ConfirmedQuery`
+and `ConfirmedProposal` retain the query budget and actual proposal event. The later suppliers
+select a ready sleepy producer and establish its coverage, for projection by `NonfinalEndpoints`.
+Source self-service is separate from network holdings. -/
+
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 open Blocks Shape

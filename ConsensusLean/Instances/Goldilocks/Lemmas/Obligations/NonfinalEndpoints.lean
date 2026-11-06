@@ -6,6 +6,14 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelop
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
+
+/-! # Confirmed-chain endpoint suppliers
+
+`healthy_confirmed_supply` joins finite healthy preparation to selected-proposal coverage;
+`confirmed_payload_projection` converts that coverage to the engine payload obligation.
+`SleepySafetyQuery` and `sleepy_safety_inputs` supply the separate sleepy safety inputs.
+Available and stable reads share the confirmed-chain projection, not an extra run premise. -/
+
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 open Blocks Shape

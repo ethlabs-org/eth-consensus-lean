@@ -6,7 +6,10 @@ public section
 /-! # Goldilocks milestone Persist, part 2
 
 `PersistStatements` (C1.1 and its corollary) from `Lemmas/Compose/Persist/`. The bundle is proof
-packaging, not a statement: `Challenge` states each field on its own. -/
+packaging for milestone lemmas, pinned by `ConsensusLeanTest/MilestoneAxioms.lean`, not separate
+`Challenge` roots. `Challenge` certifies the obligations endpoint and the headline correctness
+statement, together with the four generic review statements; see `docs/decisions.md`,
+"Trusted surface and Challenge scope". -/
 
 namespace Consensus.Goldilocks.Compose
 

@@ -26,8 +26,10 @@ run bundle from H.3 as stated.
 suppliers close the bounded high-coverage construction, then the recovery adapter discharges
 all three unchanged public statements.
 
-The bundles are proof packaging, not statements: `Challenge` states each field on its own, and
-`Solution` projects them. -/
+These bundles package proved milestone lemmas, not separate `Challenge` roots. Their fields
+are pinned by `ConsensusLeanTest/MilestoneAxioms.lean`; `Challenge` certifies the obligations
+endpoint and the headline correctness statement, together with the four generic review statements.
+See `docs/decisions.md`, "Trusted surface and Challenge scope". -/
 
 namespace Consensus.Goldilocks.SA
 
