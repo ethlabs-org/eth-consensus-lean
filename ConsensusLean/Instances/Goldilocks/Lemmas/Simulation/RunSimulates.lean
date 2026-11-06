@@ -225,7 +225,7 @@ private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
     (he : rho.events[i]? = some (.deliver v o t)) :
     (stateAt S rho hn v i).now = t ∧ (stateAt S rho hn v i).self = rho.ownKey v :=
   ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he),
-    stateAt_self S rho hn v i⟩
+    self_eq_ownKey S rho hn v i⟩
 
 /-- A cut of a delivery to an honest node: its delivered object is queued by the delivery's
 `process` (`process_relay`) and relayed by the delivery's gossip at its own time
@@ -336,7 +336,7 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
       (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
     have hmem' := hmem
-    rw [← stateAt_self S rho hn v i] at hmem'
+    rw [← self_eq_ownKey S rho hn v i] at hmem'
     obtain ⟨hb, hval⟩ := (process_outbox (runProposer S rho hn) (digestOf S rho)
       (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow).2
       r hmem' ℓ hrl em hem
@@ -361,7 +361,7 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
         simp at hlen
     have hobj : voteObj em.msg = pollObj S rho v (Body.vote (encodeVote em.msg)) := by
       unfold voteObj pollObj
-      rw [hval, stateAt_self]
+      rw [hval, self_eq_ownKey]
       rfl
     rw [hobj]
     refine ⟨i, Or.inr ⟨o, he⟩, ?_⟩

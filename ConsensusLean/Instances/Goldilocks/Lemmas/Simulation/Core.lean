@@ -748,7 +748,7 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
     rfl
   have hself : (shapeOf S hn nd).self = rho.ownKey v := by
     rw [hshape]
-    exact (process_self _ _ _).trans (stateAt_self S rho hn v i)
+    exact (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
   have hfg : (shapeOf S hn nd).fgDue = false := by
     rw [hshape]
     exact (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
@@ -805,7 +805,7 @@ theorem delivery_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
     unfold process
     erw [foldl_processOne_node (sp := S.params (pubOf E) hn) (ro := S.ro _)
       (runProposer S rho hn) (digestOf S rho)]
-    rw [stateAt_self, hnow]
+    rw [self_eq_ownKey, hnow]
   apply delivery_voteForward_released S rho hn hv he (t, m)
   rw [← hnow]
   unfold process
@@ -911,10 +911,10 @@ theorem noRestart_between_same_time_sends (hv : rho.ExecutionValid)
     · rcases ha with ha | ⟨o, ha⟩ <;> rw [hr] at ha <;> cases ha
   have hle : u ≤ t := by
     rcases hb with hb | ⟨o, hb⟩ <;>
-      rcases keyLe_of_index_lt S rho hv hr hb hjb with h | h
+      rcases keyLe_of_lt S rho hv hr hb hjb with h | h
     all_goals first | exact h.le | exact h.1.le
   rcases ha with ha | ⟨o, ha⟩ <;>
-    rcases keyLe_of_index_lt S rho hv ha hr haj' with h | h
+    rcases keyLe_of_lt S rho hv ha hr haj' with h | h
   all_goals first
     | exact (not_lt_of_ge hle) h
     | simpa only [Model.Event.phase, Nat.reduceLeDiff] using h.2

@@ -180,7 +180,7 @@ theorem simTrace_time_mono (hv : rho.ExecutionValid) : Monotone (simTrace S rho 
     obtain ⟨-, i', ev', -, he', -, h2', -, -, ht', -⟩ := simTrace_cut S rho hn hl'
     rw [ht, ht']
     rcases (index_le S rho hn h1 h2' hkk').lt_or_eq with h | rfl
-    · rcases keyLe_of_index_lt S rho hv he he' h with h | h
+    · rcases keyLe_of_lt S rho hv he he' h with h | h
       · exact h.le
       · exact h.1.le
     · rw [he] at he'
@@ -206,7 +206,7 @@ theorem simTrace_phase_order (hv : rho.ExecutionValid) :
   obtain ⟨-, i', ev', he', -, h2', -, -, -, ht', hph'⟩ := groupAt_start S rho hn hg'
   rw [hph, hph']
   rcases (index_le S rho hn h1 h2' hjj'.le).lt_or_eq with h | rfl
-  · rcases keyLe_of_index_lt S rho hv he he' h with h | h
+  · rcases keyLe_of_lt S rho hv he he' h with h | h
     · rw [ht, ht'] at h; exact absurd h (lt_irrefl _)
     · exact h.2
   · rw [he] at he'
@@ -308,7 +308,7 @@ theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
     · have := cutMap_mono S rho hn (show ir + 1 ≤ i₀ from h)
       omega
     · exact h
-    · rcases keyLe_of_index_lt S rho hv he hir h with h' | ⟨h', h''⟩
+    · rcases keyLe_of_lt S rho hv he hir h with h' | ⟨h', h''⟩
       · exact absurd hwt' (not_le.mpr h')
       · cases ev with
         | restart v s =>
@@ -375,7 +375,7 @@ theorem simTrace_sleep_of_restart (hv : rho.ExecutionValid) :
     have hne : ev₁.time ≠ t := by
       intro heq
       rcases hi₁.lt_or_eq with hlt | rfl
-      · rcases keyLe_of_index_lt S rho hv he₁ he hlt with h' | ⟨-, h''⟩
+      · rcases keyLe_of_lt S rho hv he₁ he hlt with h' | ⟨-, h''⟩
         · have : ev₁.time < t := h'
           exact this.ne heq
         · cases ev₁ with
@@ -819,7 +819,7 @@ theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
           have hm := Option.some.inj hm
           rw [hm]
           apply emit_of_record S rho hn he (r := r) ?_ hl hem
-          rw [eventCuts_deliver S rho hn i v o t he, ← stateAt_self S rho hn v i]
+          rw [eventCuts_deliver S rho hn i v o t he, ← self_eq_ownKey S rho hn v i]
           exact hr
       · have hh := congrArg Model.Obj.msg heq; cases hh
       · have hh := congrArg Model.Obj.msg heq; cases hh

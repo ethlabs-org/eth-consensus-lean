@@ -666,7 +666,7 @@ theorem tick_before_stored_clock (hv : rho.ExecutionValid) {v : V} {p i : Nat} {
     change t ≤ 0 at hti
     linarith
   · have hqp : q < p := by omega
-    have horder := keyLe_of_index_lt S rho hv hq he hqp
+    have horder := keyLe_of_lt S rho hv hq he hqp
     have hte : t ≤ e.time := hti.trans_eq htime
     rcases horder with horder | ⟨heq, hphase⟩
     · exact (not_lt_of_ge hte) horder

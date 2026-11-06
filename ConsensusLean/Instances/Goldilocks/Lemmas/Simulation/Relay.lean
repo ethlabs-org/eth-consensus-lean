@@ -31,7 +31,7 @@ state to the simulating trace's cuts where the relay obligations of `Simulates` 
   `Model.Run.deliver`; `_restart`, `_tick`, `stateBefore_succ_of_ne`), what the shape's steps
   keep (`propose_keeps`, `nodeTick_keeps`, `poll_keeps`, `recordOwn_keeps`), the compiled
   duties (`act_preserves`, `tick_preserves`), and two invariants: the own index is the own key
-  (`stateAt_self`) and the relay queue is seen (`stateAt_relay_seen`).
+  (`self_eq_ownKey` of EngineSteps) and the relay queue is seen (`stateAt_relay_seen`).
 * **Relaying.** The gossip of a tick or a delivery releases the unsigned relay wrapper of the
   relay queue (`deliver_relays`): what a delivery queues leaves at the delivery's
   own time.
@@ -674,46 +674,6 @@ theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) → Prop)
     (fun s o hs _ hq => (recordOwn_eq S hn s o hs).symm ▸ hrec _ o hs hq)
     (hclock _ t h)
 
-/-- **The own index.** The Goldilocks state of node `v` holds `v`'s own key. -/
-theorem stateAt_self (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey v
-  | 0 => by rw [stateAt_zero]; rfl
-  | i + 1 => by
-    have ih := stateAt_self v i
-    cases he : rho.events[i]? with
-    | none =>
-      simp only [stateAt_eq, stateBefore_succ_none S rho he] at ih ⊢
-      exact ih
-    | some e =>
-      by_cases hne : e.node = v
-      · cases e with
-        | tick w t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          rw [stateAt_succ_tick S rho hn he]
-          exact tick_preserves S rho hn (fun st => st.self = rho.ownKey w) (fun _ _ h => h)
-            (fun st s h => (propose_keeps st s).2.trans h)
-            (fun st h => (nodeTick_keeps st).2.trans h)
-            (fun st t h => (poll_keeps st t).2.trans h)
-            (fun st o hs h => (recordOwn_keeps st o hs).2.trans h) _ w t
-            (by simpa only [stateAt_eq] using ih)
-        | deliver w o t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          rw [stateAt_succ_deliver S rho hn he]
-          exact deliver_pres S rho hn (fun st => st.self = rho.ownKey w)
-            (fun st t h => (poll_keeps st t).2.trans h)
-            (fun st _ _ hs h => (recordOwn_keeps st _ hs).2.trans h) w _ o t
-            ((process_relay (runProposer S rho hn) (digestOf S rho) _ _ i _ _ 0 rfl).2.2.1.trans
-              (by simpa only [stateAt_eq] using ih))
-        | restart w t =>
-          simp only [Model.Event.node] at hne
-          subst hne
-          rw [stateAt_succ_restart S rho hn he]
-          rfl
-      · simp only [stateAt_eq, stateBefore_succ_of_ne S rho he hne] at ih ⊢
-        exact ih
-
-
 /-- The relay queue after a delivery's `process` is in the closure of what the node has seen with
 the delivered object, if the queue before it was. -/
 theorem process_relay_seen {i : Nat} {v : V}
@@ -802,15 +762,6 @@ section
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E)
 
-/-- Two events of a valid run in index order are in time-and-phase order. -/
-theorem keyLe_of_index_lt (hv : rho.ExecutionValid) {i i' : Nat}
-    {ev ev' : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (he : rho.events[i]? = some ev) (he' : rho.events[i']? = some ev') (h : i < i') :
-    ev.keyLe ev' := by
-  obtain ⟨hi, rfl⟩ := List.getElem?_eq_some_iff.mp he
-  obtain ⟨hi', rfl⟩ := List.getElem?_eq_some_iff.mp he'
-  exact List.pairwise_iff_getElem.mp hv.sorted i i' hi hi' h
-
 /-- An event occurs at one index of a valid run. -/
 theorem index_eq_of_events (hv : rho.ExecutionValid) {i i' : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
@@ -832,7 +783,7 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     rcases lt_trichotomy it i with h | rfl | h
     · exact h
     · rw [he] at hit; cases hit
-    · rcases keyLe_of_index_lt S rho hv he hit h with h' | h'
+    · rcases keyLe_of_lt S rho hv he hit h with h' | h'
       · exact absurd h' (lt_irrefl _)
       · exact absurd h'.2 (by simp [Model.Event.phase])
   have key : ∀ m, it + 1 ≤ m → m ≤ i → lastClock S rho v m = t := by
@@ -845,8 +796,8 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
       cases hem : rho.events[m]? with
       | none => simpa [lastClock_succ, hem] using ihm
       | some e =>
-        have h1 := keyLe_of_index_lt S rho hv hit hem (by omega)
-        have h2 := keyLe_of_index_lt S rho hv hem he (by omega)
+        have h1 := keyLe_of_lt S rho hv hit hem (by omega)
+        have h2 := keyLe_of_lt S rho hv hem he (by omega)
         cases e with
         | tick v' t' =>
           simp only [lastClock_succ, hem]

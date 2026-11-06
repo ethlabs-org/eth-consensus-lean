@@ -820,7 +820,7 @@ theorem healthy_call_after_cut_time {i q : Nat} {y : Fin Q.params.n}
     have hil : i < Q.run.2.events.length := ((Nat.lt_succ_self i).trans_le hip).trans hplen
     have hei : Q.run.2.events[i]? = some Q.run.2.events[i] := List.getElem?_eq_getElem hil
     simp only [Model.Run.cutTime, hei]
-    rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he hip with ht | ht
+    rcases keyLe_of_lt S Q.run.2 Q.valid hei he hip with ht | ht
     · exact ht.le
     · exact ht.1.le
 
