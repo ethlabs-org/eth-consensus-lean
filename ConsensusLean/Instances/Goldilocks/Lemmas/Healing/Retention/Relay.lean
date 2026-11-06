@@ -76,11 +76,6 @@ section Deadline
 
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
 
-/-- A last wake is the time of a restart at or before the cut. -/
-theorem lastWake_restart {y : Fin P.n} {w : Time} :
-    ∀ {c : Nat}, T.lastWake y c = (w : WithBot Time) → ∃ k ≤ c, T.RestartAt y k ∧ T.time k = w :=
-  Compose.lastWake_coe
-
 /-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
 `max(τ, a) + Δ`. -/
 theorem deadline_le_restarts {y : Fin P.n} {c : Nat} {a : Time}
