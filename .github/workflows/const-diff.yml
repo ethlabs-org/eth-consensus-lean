@@ -1,0 +1,125 @@
+name: Constant equivalence report
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Ref whose merge base is compared with this head
+        default: main
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  const-diff:
+    name: Strict constant diff (report only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # Differences and unavailable comparisons are visible but do not block ordinary statement changes.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select merge base and pin the comparison tools
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
+        run: |
+          set -euo pipefail
+          base="$(git merge-base "$BASE_REF" HEAD)"
+          git worktree add --detach "$RUNNER_TEMP/const-base" "$base"
+          mkdir -p "$RUNNER_TEMP/const-report"
+          printf 'Base: %s\nHead: %s\n' "$base" "$(git rev-parse HEAD)" | tee "$RUNNER_TEMP/const-report/revisions.txt"
+          git diff --exit-code "$base" HEAD -- lean-toolchain lake-manifest.json || {
+            echo '::warning::Constant comparison unavailable: toolchain or dependencies changed'
+            exit 1
+          }
+
+      - name: Install pinned elan and toolchain
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/elan.tgz"
+          echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $RUNNER_TEMP/elan.tgz" | sha256sum --strict -c -
+          tar -xzf "$RUNNER_TEMP/elan.tgz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --no-modify-path --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Lake packages
+        id: pkgs
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
+
+      - name: Restore Mathlib cache on a miss
+        if: steps.pkgs.outputs.cache-hit != 'true'
+        run: lake exe cache get
+
+      - name: Restore project build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/build
+          key: lake-build-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-${{ github.event.pull_request.head.sha || github.sha }}
+          restore-keys: |
+            lake-build-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-
+
+      - name: Build and dump both isolated trees with the base tool
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/const-base"
+          mkdir -p "$base/.lake"
+          cp -a --reflink=auto .lake/packages "$base/.lake/"
+          if [[ -d .lake/build ]]; then cp -a --reflink=auto .lake/build "$base/.lake/"; fi
+          # Build sequentially: both the heavy tests and the dumps need most of a runner's memory.
+          for tree in "$base" "$GITHUB_WORKSPACE"; do
+            (
+              cd "$tree"
+              for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
+                m="${f%.lean}"; lake build --wfail --iofail "${m//\//.}"
+              done
+              lake build --wfail --iofail ConsensusLean Solution ConsensusLeanTest Challenge
+              if [[ "$tree" == "$base" ]]; then lake build --wfail --iofail const-dump; label=base; else label=head; fi
+              lake env "$base/.lake/build/bin/const-dump" "$RUNNER_TEMP/const-report/$label.tsv" ConsensusLean Solution ConsensusLeanTest
+              lake env "$base/.lake/build/bin/const-dump" "$RUNNER_TEMP/const-report/$label-challenge.tsv" Challenge
+            )
+          done
+
+      - name: Report strict differences without exceptions
+        run: |
+          set -euo pipefail
+          result=0
+          for suffix in '' '-challenge'; do
+            python3 -I "$RUNNER_TEMP/const-base/scripts/const-diff.py" \
+              "$RUNNER_TEMP/const-report/base$suffix.tsv" "$RUNNER_TEMP/const-report/head$suffix.tsv" \
+              2>&1 | tee "$RUNNER_TEMP/const-report/diff$suffix.txt" || result=1
+          done
+          exit "$result"
+
+      - name: Publish report summary
+        if: always()
+        run: |
+          {
+            echo '## Strict constant equivalence (report only)'
+            echo 'Compares the PR head with its merge base; Challenge is compared separately. No exceptions.'
+            echo '```'
+            cat "$RUNNER_TEMP/const-report/revisions.txt" || true
+            if [[ -f "$RUNNER_TEMP/const-report/diff.txt" && -f "$RUNNER_TEMP/const-report/diff-challenge.txt" ]]; then
+              cat "$RUNNER_TEMP/const-report"/diff*.txt
+            else
+              echo 'UNAVAILABLE: build, dump, or comparison setup failed; inspect the job log.'
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload comparison evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: constant-diff-report
+          path: ${{ runner.temp }}/const-report
+          retention-days: 30
