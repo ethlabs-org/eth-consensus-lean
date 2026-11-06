@@ -54,7 +54,7 @@ theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : 
     · exact hpost
     · exact absurd ⟨hc.1.1, by simp [hc.1.2]⟩ h
   · have := (frame_validPayload sp hr hy hc.1 B hB).1 v hv
-    omega
+    exact Nat.succ_injective (this.trans hBs)
 
 /-- The support of an honest voter's merged view is among its votes. -/
 theorem merged_support_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -248,7 +248,7 @@ theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y 
     · have hki : k ≤ i := by
         by_contra h
         have := hr.time_mono (le_of_not_ge h)
-        linarith
+        exact lt_irrefl _ (lt_trans (hT.trans_le this) hkt)
       exact mem_tree_of_acceptAt sp hr hy hk hki hc.1 hF
   -- the voter's restarts were before `t_s`
   have hjp : joined sp (tr.post i) (tr.time i) := by
@@ -260,7 +260,7 @@ theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y 
     have h := (joined_awake sp FGP ro H U tr hr y hy i ℓ hc.1 hjp).2 k hk hrk
     rw [hti] at h
     have : sp.ts (((s + 1 : Nat) : Int) - 1) = sp.ts s := by congr 1; push_cast; ring
-    linarith
+    exact (h.trans_eq this).trans_lt (lt_add_of_pos_right _ (mul_pos (by decide) hΔ))
   -- the head is not the block that this very call receives
   have hne : ∀ B, ℓ.call = .block B → v.head ≠ B.root := by
     intro B₀ hcall hB
@@ -282,13 +282,13 @@ theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y 
     · have hki : k < i := by
         by_contra h
         have := hr.time_mono (not_lt.1 h)
-        linarith
+        exact lt_irrefl _ (lt_trans (hT.trans_le this) hkt)
       obtain ⟨ℓk, hck, hkB⟩ := hk
       rcases hr.frameLaw y hy i ℓ hc.1 with ⟨hnc, -⟩ | ⟨j, ℓ', hj, hc', hnc, hok⟩
       · exact hnc k (Nat.zero_le _) hki ℓk hck
       have hkj : k ≤ j := by
         by_contra h
-        exact hnc k (by omega) hki ℓk hck
+        exact hnc k (Nat.lt_of_not_le h) hki ℓk hck
       have hst := key _ hok
       obtain rfl := hB₀ _ hst
       obtain ⟨-, hΦ'U⟩ : FrameOK ℓ'.frame ∧ ℓ'.frame.tree ⊆ U := by
@@ -304,12 +304,13 @@ theorem carried_supporter (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y 
   have hres : resolutionTime e.readPoint ℓ.frame v < ETime.of (freeze sp (s + 1)) := by
     unfold resolutionTime
     rw [← hHvr, lookup_of_mem hΦ hHvt]
-    simp only [show ¬ v.slot < Hv.slot by omega, ite_false, hfz]
+    simp only [not_lt.2 (hHvs.trans_eq hvs.symm), ite_false, hfz]
     exact max_lt hheld.2 (hHvr ▸ hbs)
   refine ⟨hneq, v, Or.inl ?_, rfl, by simp [hvs], Hv, hHvt, hHvr,
     anc_tree_of_anc_U hU hΦ hΦU hC hCHv hHvt⟩
   refine List.mem_filter.2 ⟨List.mem_filter.2 ⟨?_, ?_⟩, by simpa using hres⟩
-  · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+  · simp only [SAState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
+      not_lt.2 (sub_nonneg.2 (Int.ofNat_le.2 (Nat.le_add_left 1 s)))]
     simpa [hvs] using hheld.1
   · simpa [hfz] using hheld.2
 
@@ -329,7 +330,8 @@ theorem carried_cover (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ 
       u ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
     intro u hus hu
     refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
-    · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+    · simp only [SAState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
+        not_lt.2 (sub_nonneg.2 (Int.ofNat_le.2 (Nat.le_add_left 1 s)))]
       simpa [hus] using hu.1
     · simpa [freeze] using hu.2
   rcases hcarry.holds v hv with hheld | ⟨v₁, v₂, h12, -, -, hv₁, hv₂, hs₁, hs₂, hh₁, hh₂⟩
@@ -390,7 +392,7 @@ theorem counted_supporters (hrun : ACRun proposer tr H U) {X y : Fin sp.n} (hX :
       obtain ⟨hHd, hHdr⟩ := lookup_eq_some hl
       split_ifs at hvres with hlt
       · exact absurd hvres (by simp [ETime.of])
-      · exact ⟨Hd, hHd, hHdr, by omega⟩
+      · exact ⟨Hd, hHd, hHdr, Nat.le_of_not_lt hlt⟩
   have hCHd : Anc U C Hd := by
     obtain ⟨R, hR, hRr, hCR⟩ := hvanc
     have : R = Hd := hΦXU hR |> fun h => hU.1 h (hΦXU hHd) (hRr.trans hHdr.symm)
@@ -406,7 +408,8 @@ theorem counted_supporters (hrun : ACRun proposer tr H U) {X y : Fin sp.n} (hX :
           u ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
         intro u hus hu
         refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
-        · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+        · simp only [SAState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
+            not_lt.2 (sub_nonneg.2 (Int.ofNat_le.2 (Nat.le_add_left 1 s)))]
           simpa [hus] using hu.1
         · simpa [freeze] using hu.2
       exact h12 (hone _ hvw v₁ v₂ (hm v₁ hs₁ hh₁) (hm v₂ hs₂ hh₂) hv₁ hv₂)
