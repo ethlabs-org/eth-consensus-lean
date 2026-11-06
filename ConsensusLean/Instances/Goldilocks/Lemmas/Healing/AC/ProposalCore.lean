@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -137,15 +138,12 @@ theorem lowLocksCompatible_iff {A : SAState sp.n} {t : Time} {σ : Nat} {B : Blk
 
 /-! ## The proposal's view -/
 
-theorem etime_finite (t : Time) : ETime.of t < ⊤ :=
-  WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
-
 /-- A vote of an honest node's pool has a finite stamp. -/
 theorem pool_stamp_lt_top (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {v : Vote sp.n} (hv : v ∈ (tr.state y i).pool v.slot) :
     (tr.state y i).voteStamp v < ⊤ := by
   rcases pool_origin hr hy i v hv with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
-    rw [hst] <;> exact etime_finite _
+    rw [hst] <;> exact etime_of_lt_top _
 
 /-- The proposal's view holds exactly the pool's slot-`σ` votes (their stamps are finite). -/
 theorem mem_proposalView_votes (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
