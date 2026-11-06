@@ -199,13 +199,6 @@ section Pools
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
 
-private theorem optimistic_pool_eq (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
-    (SA.optimisticConfirmation sp A Φ t).pool = A.pool := by
-  unfold SA.optimisticConfirmation SA.updateLatestConfirmed
-  split
-  · rfl
-  · split_ifs <;> rfl
-
 private theorem admit_pool_mem {A : SA.SAState sp.n} {t : Time} {m w : SA.Vote sp.n} {σ : Nat}
     (h : w ∈ (SA.admitVote sp A t m).pool σ) : w ∈ A.pool σ ∨ w = m := by
   unfold SA.admitVote at h
@@ -247,7 +240,7 @@ private theorem tryVote_pool_mem (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : S
   split_ifs at h
   all_goals first
     | exact Or.inl h
-    | (rw [optimistic_pool_eq] at h
+    | (rw [SA.optimistic_pool] at h
        rcases admit_pool_mem h with h | rfl
        · exact Or.inl h
        · exact Or.inr rfl)
@@ -282,7 +275,7 @@ private theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.F
     change w ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.blockReceipt sp A t B) Φ t)
       Φ t).1.pool σ at h
     rcases tryVote_pool_mem _ _ _ _ h with h | h
-    · rw [optimistic_pool_eq] at h
+    · rw [SA.optimistic_pool] at h
       rcases receipt_pool_mem h with h | h
       · exact Or.inl h
       · exact Or.inr (Or.inr ⟨B, rfl, h⟩)
