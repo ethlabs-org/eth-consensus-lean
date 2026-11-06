@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

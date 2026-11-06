@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowSeed
