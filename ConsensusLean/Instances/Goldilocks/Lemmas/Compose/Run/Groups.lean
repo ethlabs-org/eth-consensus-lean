@@ -228,7 +228,8 @@ private theorem eventOK (h : Node.LocalRun proposer dg H sg tr)
     obtain ⟨j₀, hj₀, e₀, hg₀, hp₀⟩ := hi.phase.1 hph
     rw [le_antisymm hle (not_lt.1 hlt)] at hg₀
     have := h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hj₀
-    cases e <;> cases e₀ <;> simp_all [Event.phase]
+    cases e <;> cases e₀ <;>
+      simp only [Event.phase, Nat.reduceLeDiff, Nat.reduceLT] at hp hp₀ this
     exact absurd (h.tick_unique y hy j₀ j t ⟨_, hg₀⟩ ⟨_, hg⟩) (by omega)
   cases e with
   | tick x => exact ⟨h.tick_public y hy j t ⟨x, hg⟩, hpre (by simp [Event.phase])⟩
