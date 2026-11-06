@@ -129,7 +129,7 @@ theorem accepted_in_view (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hone
     have hq := ((process_relay (runProposer S rho hn)
       (digestOf S rho) (Model.digests rho.hash o) t j
       (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v j) 0 hnow).2.2.2 r
-      (by rw [stateAt_self]; exact hmem)).1 B hrl
+      (by rw [self_eq_ownKey]; exact hmem)).1 B hrl
     obtain ⟨cs, hx, hrel⟩ := deliver_relays S rho hn he hq
     exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inr ⟨o, he⟩, hrel⟩,
       .step hx (.refl _)⟩

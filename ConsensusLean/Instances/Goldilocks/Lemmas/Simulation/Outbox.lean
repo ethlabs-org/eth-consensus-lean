@@ -786,7 +786,7 @@ theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     (hv.tick_total v (hv.honest_only _ hmr) t' hh.1 hh.2 hw)
   have hrq : r < q := by
     rcases lt_trichotomy q r with h | rfl | h
-    · rcases keyLe_of_index_lt S rho hv hq hr h with h' | h'
+    · rcases keyLe_of_lt S rho hv hq hr h with h' | h'
       · exact absurd h' (lt_irrefl _)
       · exact absurd h'.2 (by simp [Model.Event.phase])
     · rw [hr] at hq; cases hq
@@ -795,8 +795,8 @@ theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     rcases lt_trichotomy q i with h | rfl | h
     · exact h
     · rw [he] at hq; cases hq
-    · have h1 := keyLe_of_index_lt S rho hv hr he hri
-      rcases keyLe_of_index_lt S rho hv he hq h with h' | h'
+    · have h1 := keyLe_of_lt S rho hv hr he hri
+      rcases keyLe_of_lt S rho hv he hq h with h' | h'
       · rcases h1 with h1 | h1
         · have a : t' < t := h1; have b : t < t' := h'; exact absurd (a.trans b) (lt_irrefl _)
         · have a : t' = t := h1.1; have b : t < t' := h'; rw [a] at b; exact absurd b (lt_irrefl _)

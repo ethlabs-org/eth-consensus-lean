@@ -509,7 +509,7 @@ theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} 
     h | ⟨B, p, r, hr, hb, hn', ht', hq, hd, ho⟩
   · rw [forwards_empty S rho hn hv v i] at h
     exact False.elim (List.not_mem_nil h)
-  · simp only [stateAt_self, ht] at hr hn' ht' hq
+  · simp only [self_eq_ownKey, ht] at hr hn' ht' hq
     have hr' : r ∈ eventCuts S rho hn i := by
       rw [eventCuts_deliver S rho hn i v o t he]
       exact hr

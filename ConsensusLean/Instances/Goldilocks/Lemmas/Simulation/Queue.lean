@@ -1342,7 +1342,7 @@ theorem delivery_outbox_vote_signer (hv : rho.ExecutionValid) {v : V}
     rw [outbox_empty S rho hn hv v hv' i] at hw
     cases hw
   have hs := process_owned (stateAt S rho hn v i) o (Model.digests rho.hash o) hb m hm
-  exact hs.trans ((process_self _ _ _).trans (stateAt_self S rho hn v i))
+  exact hs.trans ((process_self _ _ _).trans (self_eq_ownKey S rho hn v i))
 
 /-- Every envelope queued by an actual delivery has its canonical dependency held or at
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/

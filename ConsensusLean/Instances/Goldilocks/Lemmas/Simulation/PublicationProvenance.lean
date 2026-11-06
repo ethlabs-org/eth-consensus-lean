@@ -384,7 +384,7 @@ theorem received_forward_accepted_before (hv : rho.ExecutionValid)
   have htime : (simTrace S rho hn).time k ≤ u := by
     rw [ht]
     rcases hqi.lt_or_eq with hlt | rfl
-    · rcases keyLe_of_index_lt S rho hv hq he hlt with h | h
+    · rcases keyLe_of_lt S rho hv hq he hlt with h | h
       · exact h.le
       · exact h.1.le
     · rw [he] at hq

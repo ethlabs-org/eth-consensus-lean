@@ -458,7 +458,7 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
           have hil : i < Q.run.2.events.length := Nat.lt_of_succ_le (hip.trans hplen.le)
           have hei : Q.run.2.events[i]? = some Q.run.2.events[i] := List.getElem?_eq_getElem hil
           simp only [Model.Run.cutTime, hei]
-          rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he (Nat.lt_of_succ_le hip) with ht | ht
+          rcases keyLe_of_lt S Q.run.2 Q.valid hei he (Nat.lt_of_succ_le hip) with ht | ht
           · exact ht.le
           · exact ht.1.le
       change Q.trace.time a = T at hat

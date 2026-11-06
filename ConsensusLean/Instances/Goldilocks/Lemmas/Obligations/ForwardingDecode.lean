@@ -730,7 +730,7 @@ theorem stateAt_clock_bounds {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
           ∀ j f, i + 1 ≤ j → rho.events[j]? = some f → e.time ≤ f.time := by
         refine ⟨(hv.in_horizon e (List.mem_of_getElem? he)).1, ?_⟩
         intro j f hij hf
-        rcases keyLe_of_index_lt S rho hv he hf (by omega) with h | h
+        rcases keyLe_of_lt S rho hv he hf (by omega) with h | h
         · exact h.le
         · exact h.1.le
       cases e with
