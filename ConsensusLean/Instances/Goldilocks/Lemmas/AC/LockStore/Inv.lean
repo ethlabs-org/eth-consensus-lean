@@ -293,15 +293,15 @@ include hU hΦ hΦU
 
 private theorem LockInv.tryVote_emits {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
     (t : Time) : EmitOK U Φ t (SA.tryVote sp x A Φ t).1 (SA.tryVote sp x A Φ t).2 := by
-  unfold SA.tryVote EmitOK
+  unfold SA.tryVote
   dsimp only
   split_ifs with h1 h2 h3
-  · simp
-  · simp
-  · simp only [List.mem_singleton, forall_eq, Option.some.injEq, forall_eq']
+  · simp [EmitOK]
+  · simp [EmitOK]
+  · simp only [EmitOK, List.mem_singleton, forall_eq, Option.some.injEq, forall_eq']
     exact ⟨_, _, _, h.unlock hU hΦ hΦU _ _ _, by
       rw [optimistic_blockStamp, admitVote_blockStamp], rfl⟩
-  · simp only [List.mem_singleton, forall_eq, Option.some.injEq, forall_eq']
+  · simp only [EmitOK, List.mem_singleton, forall_eq, Option.some.injEq, forall_eq']
     exact ⟨_, _, _, h, by rw [optimistic_blockStamp, admitVote_blockStamp], rfl⟩
 
 /-- **The emitted duty heads of a call** from a state with the lock invariant at the call's
@@ -318,14 +318,17 @@ theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : Loc
     change EmitOK U Φ t (acOnTick sp x A Φ t).1 (acOnTick sp x A Φ t).2
     unfold acOnTick
     dsimp only
-    split_ifs
-    · intro e he d hd
-      obtain ⟨A₁, V, σ, h1, h2, h3⟩ := h.tryVote_emits hU hΦ hΦU x t e he d hd
-      exact ⟨A₁, V, σ, h1, h2.trans (update_blockStamp _ _ _ _).symm, h3⟩
-    · simp [EmitOK]
-    · exact h.tryVote_emits hU hΦ hΦU x t
-    · simp [EmitOK]
-    · simp [EmitOK]
+    split
+    · simp only [EmitOK, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+    · split
+      · split <;> dsimp only
+        · intro e he d hd
+          obtain ⟨A₁, V, σ, h1, h2, h3⟩ := h.tryVote_emits hU hΦ hΦU x t e he d hd
+          exact ⟨A₁, V, σ, h1, h2.trans (update_blockStamp _ _ _ _).symm, h3⟩
+        · simp only [EmitOK, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+      · split <;> dsimp only
+        · exact h.tryVote_emits hU hΦ hΦU x t
+        · simp only [EmitOK, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
   | proposal => simp [ACInterface.step]
   | toFG => simp [ACInterface.step]
   | message m =>
