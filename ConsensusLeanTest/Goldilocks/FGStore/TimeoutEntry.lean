@@ -419,14 +419,15 @@ theorem trT_label (i : Nat) (ℓ : FGLabel P₁ Unit) (h : trT.label i = some �
       (i = 12 ∧ ℓ = .attest Bc (some aC)) ∨ (i = 13 ∧ ℓ = .attestation aC) ∨
       (i = 14 ∧ ℓ = .block Bx true) := by
   rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
-    simp [trT] at h <;> simp [h]
+    dsimp only [trT] at h <;>
+    simp only [Option.some.injEq, reduceCtorEq] at h <;> simp [h]
 
 /-- After a labelled cut `i ≤ 14` of `trT`, the state of `w₀` is the cut's post-state. -/
 theorem trT_state_succ (i : Nat) (hi : i ≤ 14) : trT.state w₀ (i + 1) = trT.post i := by
   have h : trT.node i = w₀ ∧ trT.label i ≠ none := by
     refine ⟨rfl, ?_⟩
     rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
-      first | omega | simp [trT]
+      first | (dsimp only [trT]; exact Option.some_ne_none _) | omega
   rw [Trace.state, ite_eq_left h]
 
 /-- The states of `w₀` before each cut of `trT`. -/
