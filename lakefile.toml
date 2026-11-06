@@ -19,6 +19,14 @@ weak.linter.style.longFile = 1500
 weak.linter.mathlibStandardSet = true
 weak.linter.flexible = false
 weak.linter.style.header = false
+# Expensive syntax/info-tree checks run separately via scripts/lint-syntax.py.
+# Keep the other standard-set linters and Lean's unused-variable warnings in the strict build.
+weak.linter.style.whitespace = false
+weak.linter.unreachableTactic = false
+weak.linter.style.multiGoal = false
+weak.linter.style.cdot = false
+weak.linter.unusedTactic = false
+weak.linter.unnecessarySeqFocus = false
 maxSynthPendingDepth = 3
 
 [[require]]

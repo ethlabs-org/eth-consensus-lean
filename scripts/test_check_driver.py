@@ -15,7 +15,7 @@ CONFIG = Path(__file__).with_name("boundaries.toml").read_text()
 
 class DriverTests(unittest.TestCase):
     def drive(self, *args, bwrap=True, fail_build=False, replay=False, fail_leaf=False,
-              stale=False, changed=False, result_file=True, paths=None, graph=True):
+              stale=False, changed=False, result_file=True, paths=None, graph=True, fail_lint=False):
         with tempfile.TemporaryDirectory(prefix="check-driver-") as tmp:
             root = Path(tmp)
             scripts = root / "scripts"
@@ -41,6 +41,8 @@ replay_leaf() { echo "EXEC replay $1"; echo '1024 0.01' >"$WORK/time.$1"; }
                 stubs += 'replay_leaf() { echo "rejected $1"; return 1; }\n'
             if fail_build:
                 stubs += 'step_build() { echo "EXEC failed-build"; return 1; }\n'
+            if fail_lint:
+                stubs += 'step_syntax_lint() { echo "planted lint warning"; return 1; }\n'
             if stale:
                 stubs += 'lake() { return 1; }\n'
             if changed:
@@ -141,20 +143,23 @@ python3() {
         result = self.drive("--full", fail_build=True)
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("check.sh: FAILURES PRESENT", result.stdout)
-        for step in ("decls", "audit", "surface", "protected", "replay", "review",
+        for step in ("syntax_lint", "decls", "audit", "surface", "protected", "replay", "review",
                      "comparator_config", "lake_check", "lake_comparator", "canary"):
             self.assertNotIn("EXEC step_" + step + "\n", result.stdout)
         self.assertIn("EXEC step_grep", result.stdout)
         self.assertEqual(result.record["status"], "failed")
 
     def test_producer_and_shared_selftest_ownership(self):
-        result = self.drive("--full", "--split", "main", "--defer-replay")
+        result = self.drive("--full", "--split", "main", "--defer-replay", "--defer-lint")
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertNotIn("EXEC step_replay\n", result.stdout)
         self.assertIn("EXEC selftest_replay", result.stdout)
         self.assertIn("EXEC -I scripts/test_const_diff.py", result.stdout)
         self.assertIn({"step": "5 kernel replay", "reason": "owned by replay shards"},
                       result.record["steps_skipped"])
+        self.assertIn({"step": "1b deferred syntax lint", "reason": "owned by lint job"},
+                      result.record["steps_skipped"])
+        self.assertNotIn("EXEC step_syntax_lint\n", result.stdout)
         result = self.drive("--full", "--split", "lake-check", "--no-shared-selftests")
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("EXEC selftest_pins", result.stdout)
@@ -203,7 +208,7 @@ python3() {
 
     def test_invalid_modes_produce_failure_records(self):
         for args in (("--replay-shard", "0/4"), ("--defer-replay",),
-                     ("--no-shared-selftests",), ("--unknown",), ("--plan",)):
+                     ("--defer-lint",), ("--no-shared-selftests",), ("--unknown",), ("--plan",)):
             result = self.drive(*args)
             self.assertEqual(result.returncode, 2, result.stdout)
             self.assertEqual(result.record["status"], "failed")
@@ -216,7 +221,7 @@ python3() {
         self.assertNotIn("EXEC ", result.stdout)
 
     def test_plan_matches_execution_selection_without_running_checks(self):
-        for args in (("--fast",), ("--full",), ("--full", "--split", "main", "--defer-replay"),
+        for args in (("--fast",), ("--full",), ("--full", "--split", "main", "--defer-replay", "--defer-lint"),
                      ("--full", "--split", "lake-check", "--no-shared-selftests"), ("--changed",)):
             with self.subTest(args=args):
                 planned = self.drive(*args, "--plan", result_file=False, changed=True)
@@ -230,6 +235,13 @@ python3() {
                 self.assertEqual(labels, executed.record["steps_run"])
                 self.assertEqual([line for line in planned.stdout.splitlines() if line.startswith(("SKIP ", "DEFER "))],
                                  [line for line in executed.stdout.splitlines() if line.startswith(("SKIP ", "DEFER "))])
+
+    def test_lint_failure_fails_ci_result(self):
+        for args in (("--fast",), ("--changed",), ("--full",)):
+            result = self.drive(*args, changed=True, fail_lint=True)
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertEqual(result.record["status"], "failed")
+            self.assertIn("FAIL  1b deferred syntax lint", result.stdout)
 
     def test_plan_uses_real_changed_selection_and_conservative_fallbacks(self):
         cases = [({"docs/probe.md": "modified"}, True, "changed", "no Lean module changed", "no library affected"),

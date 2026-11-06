@@ -8,6 +8,8 @@
 #                       Lake resolves exactly those checkouts (LEAN_PATH)
 #   1  build            default targets + extras with --wfail --iofail; the     (lake; warn.sorry = false)
 #                       deliberately bad fixture libraries without
+#   1b syntax lint      six build-deferred linters, touched sources in fast/changed,
+#                       every source in full (or explicitly owned by the nightly lint job)
 #   2  boundaries       layer matrix, Init chain, roots, inventory (source)     (check-boundaries.py)
 #   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library;    (EthLib check-decls)
 #                       `sorry` only in the `sorry = true` layers (Lemmas, Proofs)
@@ -44,6 +46,7 @@
 #                        its self-test) and step 10, `main` = every other step; each prints DEFER for the other
 #                        part's steps and ends with `check.sh: PART PASSED (split <part>; ...)`
 #   --defer-replay       with --full --split main, defer production replay to consumer shards; its fixtures run
+#   --defer-lint         with --full --split main, defer whole-source syntax lint to its consumer job
 #   --no-shared-selftests with --full --split lake-check, defer ancillary step-0 self-tests to main (pins stay)
 #   --replay-shard I/N   only replay shard I of N (1-based) on a fresh built tree; requires --replay-inventory DIR
 #                        DIR/expected.txt lists all leaves, DIR/replayed.txt lists successful shard leaves:
@@ -78,8 +81,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 usage="usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--canary] [--no-build] [--update-snapshot] [--update-extensions]"
-usage+=$'\n       [--defer-replay] [--no-shared-selftests] [--result-file PATH] [--plan]\n       scripts/check.sh --replay-shard I/N --replay-inventory DIR [--result-file PATH]'
-mode=fast base="" split="" selftests=0 reach=0 canary=0 no_build=0 update_snapshot=0 update_extensions=0
+usage+=$'\n       [--defer-replay] [--defer-lint] [--no-shared-selftests] [--result-file PATH] [--plan]\n       scripts/check.sh --replay-shard I/N --replay-inventory DIR [--result-file PATH]\n       LINT_BASE selects the deferred-lint diff base in --fast (otherwise merge-base with origin/main).'
+mode=fast base="${LINT_BASE:-}" split="" selftests=0 reach=0 canary=0 no_build=0 update_snapshot=0 update_extensions=0
+defer_lint=0
 replay_shard="" replay_inventory="" defer_replay=0 no_shared_selftests=0 result_file=""
 plan=0
 result_status=failed steps_run=() steps_skipped=() expected_inventory="" replayed_inventory=""
@@ -122,6 +126,7 @@ while (($#)); do
     --replay-shard) (($# > 1)) || { echo "--replay-shard needs I/N" >&2; exit 2; }; replay_shard="$2"; shift ;;
     --replay-inventory) (($# > 1)) || { echo "--replay-inventory needs a directory" >&2; exit 2; }; replay_inventory="$2"; shift ;;
     --defer-replay) defer_replay=1 ;;
+    --defer-lint) defer_lint=1 ;;
     --no-shared-selftests) no_shared_selftests=1 ;;
     --plan) plan=1 ;;
     --result-file) (($# > 1)) || { echo "--result-file needs a path" >&2; exit 2; }; result_file="$2"; shift ;;
@@ -142,7 +147,7 @@ if [[ -n "$replay_shard" ]]; then
     ((${BASH_REMATCH[1]} <= ${BASH_REMATCH[2]})) && [[ -n "$replay_inventory" ]] ||
     { echo "check.sh: --replay-shard needs 1 <= I <= N and --replay-inventory DIR" >&2; exit 2; }
   for arg in "${args[@]}"; do
-    case "$arg" in --fast|--full|--changed|--selftests|--reach|--canary|--no-build|--update-*|--split|--defer-replay|--no-shared-selftests)
+    case "$arg" in --fast|--full|--changed|--selftests|--reach|--canary|--no-build|--update-*|--split|--defer-replay|--defer-lint|--no-shared-selftests)
       echo "check.sh: --replay-shard cannot be combined with $arg" >&2; exit 2 ;;
     esac
   done
@@ -152,6 +157,9 @@ elif [[ -n "$replay_inventory" ]]; then
 fi
 if ((defer_replay)) && [[ "$mode/$split" != full/main ]]; then
   echo "check.sh: --defer-replay requires --full --split main" >&2; exit 2
+fi
+if ((defer_lint)) && [[ "$mode/$split" != full/main ]]; then
+  echo "check.sh: --defer-lint requires --full --split main" >&2; exit 2
 fi
 if ((no_shared_selftests)) && [[ "$mode/$split" != full/lake-check ]]; then
   echo "check.sh: --no-shared-selftests requires --full --split lake-check" >&2; exit 2
@@ -1455,6 +1463,21 @@ canary_run() {  # canary_run <file> <hash file>, in a subshell that restores <fi
   echo "  ok: control: the statement edit makes the default targets stale"
 }
 
+step_syntax_lint() {
+  if [[ "$mode" == full ]]; then
+    python3 -I scripts/lint-syntax.py -j 2
+  else
+    local lint_base="$base"
+    if [[ -z "$lint_base" ]]; then lint_base="$(git merge-base HEAD origin/main 2>/dev/null || true)"; fi
+    if [[ -n "$lint_base" ]] && git cat-file -e "$lint_base^{commit}" 2>/dev/null; then
+      python3 -I scripts/lint-syntax.py -j 2 --changed "$lint_base"
+    else
+      echo "  no usable lint base: checking every source"
+      python3 -I scripts/lint-syntax.py -j 2
+    fi
+  fi
+}
+
 # --- driver ---------------------------------------------------------------------------------------
 overall=0
 skipped=()
@@ -1479,7 +1502,7 @@ run_step() {
     echo "DEFER $label (the other --split part)"; deferred+=("$label"); return 0
   fi
   # After a failed build, the steps that read build outputs would report on stale artifacts: not run.
-  if ((build_failed)) && [[ " 3 3b 3c 4 5 6 9 10 11 14 " == *" ${label%% *} "* ]]; then
+  if ((build_failed)) && [[ " 1b 3 3b 3c 4 5 6 9 10 11 14 " == *" ${label%% *} "* ]]; then
     skip_step "$label" "not run: step 1 failed, so the build outputs it reads may be stale"; return 0
   fi
   if ((plan)); then
@@ -1574,6 +1597,13 @@ else
   run_step "$build_label" step_build
 fi
 run_selftest "1 build self-test (--wfail on a replayed warning; warn.sorry = false)" selftest_build
+if ((defer_lint)); then
+  echo "DEFER 1b deferred syntax lint (owned by lint job)"
+  deferred+=("1b deferred syntax lint"); steps_skipped+=("1b deferred syntax lint" "owned by lint job")
+else
+  run_step "1b deferred syntax lint" step_syntax_lint
+fi
+run_selftest "1b deferred syntax lint self-test (six negative controls and selection)" python3 -I scripts/test_lint_syntax.py
 run_step "2 boundaries (check-boundaries.py, every checked library)" step_boundaries
 if ((!plan)) && in_part 2 && [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
