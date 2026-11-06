@@ -23,38 +23,22 @@ variable {FGP : Type} {sp : SAParams}
 
 /-! ## Locks below stored blocks -/
 
-/-- The block of `l'` is an ancestor (inside `U`) of the block of `l`, or `l' = l`. -/
-private def LockSitsBelow (U : Set (Blk sp.n FGP)) (l' l : Lock) : Prop :=
-  l' = l ∨ ∃ L₁ ∈ U, L₁.root = l'.block ∧ ∃ L₂ ∈ U, L₂.root = l.block ∧ Anc U L₁ L₂
-
-/-- The block of `l` is in `U` and an ancestor of `B` there. -/
-private def LockBelow (U : Set (Blk sp.n FGP)) (l : Lock) (B : Blk sp.n FGP) : Prop :=
-  ∃ L ∈ U, L.root = l.block ∧ Anc U L B
-
 /-- Every lock of `L'` sits below a lock of `L` with its slot and fast bit, or below a block `O`
 with `New l'.slot l'.fast O`. -/
 private def StoredFrom (U : Set (Blk sp.n FGP)) (L L' : Set Lock)
     (New : Nat → Bool → Blk sp.n FGP → Prop) : Prop :=
-  ∀ l' ∈ L', (∃ l ∈ L, l.fast = l'.fast ∧ l'.slot = l.slot ∧ LockSitsBelow U l' l) ∨
-    ∃ O, New l'.slot l'.fast O ∧ LockBelow U l' O
+  ∀ l' ∈ L', (∃ l ∈ L, l.fast = l'.fast ∧ l'.slot = l.slot ∧ SA.SitsBelow U l' l) ∨
+    ∃ O, New l'.slot l'.fast O ∧ SA.Below U l' O
 
 private theorem StoredFrom.of_eq {U : Set (Blk sp.n FGP)} {L L' : Set Lock}
     {New : Nat → Bool → Blk sp.n FGP → Prop} (h : L' = L) : StoredFrom U L L' New := by
   subst h
-  exact fun l hl => Or.inl ⟨l, hl, rfl, rfl, Or.inl rfl⟩
+  exact fun l hl => Or.inl ⟨l, hl, rfl, rfl, SA.sitsBelow_iff.2 (Or.inl rfl)⟩
 
 private theorem StoredFrom.mono {U : Set (Blk sp.n FGP)} {L L' : Set Lock}
     {New New' : Nat → Bool → Blk sp.n FGP → Prop} (h : StoredFrom U L L' New)
     (hN : ∀ s f B, New s f B → New' s f B) : StoredFrom U L L' New' := fun l hl =>
   (h l hl).imp_right fun ⟨B, h1, h2⟩ => ⟨B, hN _ _ _ h1, h2⟩
-
-private theorem LockBelow.of_sitsBelow {U : Set (Blk sp.n FGP)} (hU : Coherent U) {l' l : Lock}
-    {B : Blk sp.n FGP} (h : LockSitsBelow U l' l) (hB : LockBelow U l B) : LockBelow U l' B := by
-  rcases h with rfl | ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
-  · exact hB
-  obtain ⟨L, hL, hLr, hLB⟩ := hB
-  obtain rfl : A₂ = L := hU.1 hA₂ hL (hA₂r.trans hLr.symm)
-  exact ⟨A₁, hA₁, hA₁r, hA.trans hLB⟩
 
 private theorem StoredFrom.trans {U : Set (Blk sp.n FGP)} (hU : Coherent U) {L₁ L₂ L₃ : Set Lock}
     {New : Nat → Bool → Blk sp.n FGP → Prop} (h₁ : StoredFrom U L₁ L₂ New)
@@ -63,13 +47,13 @@ private theorem StoredFrom.trans {U : Set (Blk sp.n FGP)} (hU : Coherent U) {L�
   rcases h₂ l₃ hl₃ with ⟨l₂, hl₂, hf₂, hs₂, hb₂⟩ | ⟨B, hN, hB⟩
   · rcases h₁ l₂ hl₂ with ⟨l₁, hl₁, hf₁, hs₁, hb₁⟩ | ⟨B, hN, hB⟩
     · refine Or.inl ⟨l₁, hl₁, hf₁.trans hf₂, hs₂.trans hs₁, ?_⟩
-      rcases hb₂ with rfl | ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
+      rcases SA.sitsBelow_iff.1 hb₂ with rfl | ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
       · exact hb₁
-      rcases hb₁ with rfl | ⟨C₁, hC₁, hC₁r, C₂, hC₂, hC₂r, hC⟩
-      · exact Or.inr ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩
+      rcases SA.sitsBelow_iff.1 hb₁ with rfl | ⟨C₁, hC₁, hC₁r, C₂, hC₂, hC₂r, hC⟩
+      · exact SA.sitsBelow_iff.2 (Or.inr ⟨A₁, hA₁, hA₁r, A₂, hA₂, hA₂r, hA⟩)
       obtain rfl : A₂ = C₁ := hU.1 hA₂ hC₁ (hA₂r.trans hC₁r.symm)
-      exact Or.inr ⟨A₁, hA₁, hA₁r, C₂, hC₂, hC₂r, hA.trans hC⟩
-    · exact Or.inr ⟨B, hs₂ ▸ hf₂ ▸ hN, LockBelow.of_sitsBelow hU hb₂ hB⟩
+      exact SA.sitsBelow_iff.2 (Or.inr ⟨A₁, hA₁, hA₁r, C₂, hC₂, hC₂r, hA.trans hC⟩)
+    · exact Or.inr ⟨B, hs₂ ▸ hf₂ ▸ hN, SA.Below.of_sitsBelow hU hb₂ hB⟩
   · exact Or.inr ⟨B, hN, hB⟩
 
 /-- Locks that move back in a frame inside `U` sit below the locks they come from. -/
@@ -78,7 +62,8 @@ private theorem StoredFrom.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n 
     (h : MovesBack sp Φ L L') : StoredFrom U L L' New := by
   intro l' hl'
   obtain ⟨l, hl, hs, hfa, -, B, hB, hBr, B', hB', hB'r, hA⟩ := h l' hl'
-  exact Or.inl ⟨l, hl, hfa.symm, hs, Or.inr ⟨B', hΦ hB', hB'r, B, hΦ hB, hBr, hA.mono hΦ⟩⟩
+  exact Or.inl ⟨l, hl, hfa.symm, hs,
+    SA.sitsBelow_iff.2 (Or.inr ⟨B', hΦ hB', hB'r, B, hΦ hB, hBr, hA.mono hΦ⟩)⟩
 
 /-- `add_locks` with new locks: each new lock is stored on the viable ancestor of its block
 (`liveLocks`), and the old locks move back. -/
@@ -92,10 +77,11 @@ private theorem StoredFrom.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U
   rintro l' ⟨l, hl, B, hB, hBr, -, rfl⟩
   obtain ⟨hvt, hva⟩ := viableAncestor_anc hΦ hB
   rcases hl with hl | ⟨p, hp, rfl⟩
-  · exact Or.inl ⟨l, hl, rfl, rfl, Or.inr ⟨_, hΦU hvt, rfl, B, hΦU hB, hBr, hva.mono hΦU⟩⟩
+  · exact Or.inl ⟨l, hl, rfl, rfl,
+      SA.sitsBelow_iff.2 (Or.inr ⟨_, hΦU hvt, rfl, B, hΦU hB, hBr, hva.mono hΦU⟩)⟩
   · obtain ⟨D, hD, hDr, hND⟩ := hN p.1 p.2.1 p.2.2 hp
     obtain rfl : B = D := hU.1 (hΦU hB) (hΦU hD) (hBr.trans hDr.symm)
-    exact Or.inr ⟨_, hND, _, hΦU hvt, rfl, .refl⟩
+    exact Or.inr ⟨_, hND, SA.below_iff.2 ⟨_, hΦU hvt, rfl, .refl⟩⟩
 
 /-! ## What each SA function does to the locks -/
 
@@ -209,15 +195,6 @@ private theorem StoredFrom.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
   · exact StoredFrom.of_movesBack hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 _ _)
   · exact StoredFrom.of_eq rfl
 
-private theorem acToFG_locks_eq (A : SAState sp.n) (t : Time) :
-    (acToFG sp A Φ t).1.locks = A.locks := by
-  unfold acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
-
 /-! ## Over an SA trace -/
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
@@ -260,7 +237,7 @@ private theorem call_storedFrom (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
       obtain ⟨C₀, D₀, hC₀, hD₀, hO⟩ := hC hf
       exact ⟨_, ℓ, D₀, hc, Or.inl ⟨ℓ, C₀, hu, hA ▸ hC₀, hA ▸ hD₀, rfl⟩, hO⟩
   | proposal => exact StoredFrom.of_proposal hΦ hΦU A _
-  | toFG => exact StoredFrom.of_eq (acToFG_locks_eq A _)
+  | toFG => exact StoredFrom.of_eq (SA.toFG_locks A _)
   | message m =>
     rw [hcall] at hemits
     refine StoredFrom.trans hU ((StoredFrom.of_optimistic_admit hU hΦ hΦU A rfl _ m).mono
@@ -307,18 +284,13 @@ theorem stored_fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
       rcases call_storedFrom hr hx ⟨hnode.1, hℓ⟩ l hl with ⟨l₀, hl₀, hf₀, hs, hb⟩ | ⟨O, h, hB⟩
       · obtain ⟨r, hri, CV, ℓ', D, hc, hfl, hB⟩ := ih l₀ hl₀ (hf₀.trans hf)
         exact ⟨r, hri.trans (Nat.lt_succ_self i), CV, ℓ', D, hc, hs ▸ hfl,
-          LockBelow.of_sitsBelow hr.coherent hb hB⟩
+          SA.below_iff.1 (SA.Below.of_sitsBelow hr.coherent hb (SA.below_iff.2 hB))⟩
       · obtain ⟨CV, ℓ', D, hc, hfl, rfl⟩ := h hf
-        exact ⟨i, Nat.lt_succ_self i, CV, ℓ', D, hc, hfl, hB⟩
+        exact ⟨i, Nat.lt_succ_self i, CV, ℓ', D, hc, hfl, SA.below_iff.1 hB⟩
     · obtain ⟨r, hri, h⟩ := ih l hl hf
       exact ⟨r, hri.trans (Nat.lt_succ_self i), h⟩
 
 /-! ## The joined guard of a write -/
-
-private theorem admitVote_restartTime (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
-    (admitVote sp A t v).restartTime = A.restartTime := by
-  unfold admitVote
-  split_ifs <;> rfl
 
 private theorem blockReceipt_restartTime (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).restartTime = A.restartTime := by
@@ -330,7 +302,7 @@ private theorem blockReceipt_restartTime (A : SAState sp.n) (t : Time) (B : Blk 
   clear hA' this
   induction (blockVotes B) generalizing A' with
   | nil => rfl
-  | cons v l ih => rw [List.foldl_cons, ih, admitVote_restartTime]
+  | cons v l ih => rw [List.foldl_cons, ih, SA.admitVote_restartTime]
 
 /-- **A fast-lock write is joined**: its call is not a restart, and the state before it is
 joined at its time (the update's guard; the optimistic check's guard at a substep that keeps
@@ -353,7 +325,7 @@ theorem joined_of_fastLockAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     unfold joined at hj ⊢
     rwa [← h]
   rcases hA with ⟨m, hm, rfl⟩ | ⟨B, hB, rfl⟩ | ⟨e, he, rfl⟩
-  · exact ⟨hrs _ (admitVote_restartTime _ _ _) hjA, ℓ, hc, by rw [hm]; exact fun h => nomatch h⟩
+  · exact ⟨hrs _ (SA.admitVote_restartTime _ _ _) hjA, ℓ, hc, by rw [hm]; exact fun h => nomatch h⟩
   · exact ⟨hrs _ (blockReceipt_restartTime _ _ _) hjA, ℓ, hc,
       by rw [hB]; exact fun h => nomatch h⟩
   · have hnr : ℓ.call ≠ .restart := by
@@ -373,7 +345,7 @@ theorem joined_of_fastLockAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
       rw [← h1]
       exact step_restartTime x _ _ _ _ hnr
     have := restartTime_of_castAt hr hx ⟨hc, he⟩
-    exact ⟨hrs _ ((admitVote_restartTime _ _ _).trans (this.symm.trans hpr)) hjA, ℓ, hc, hnr⟩
+    exact ⟨hrs _ ((SA.admitVote_restartTime _ _ _).trans (this.symm.trans hpr)) hjA, ℓ, hc, hnr⟩
 
 end Consensus.Goldilocks.Healing
 
