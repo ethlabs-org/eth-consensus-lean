@@ -222,14 +222,14 @@ theorem client_record_origin_of_run (hrun : GoldilocksRun proposer dg H tr)
             · have key : (tr.state y i).record.target h = some r ∨
                   r ∈ (tr.state y i).record.timeout h ∨ (a'.h = h ∧ a'.T = r) := by
                 rcases hx with hx | hx
-                · simp only [FG.Record.recordAtt] at hx
+                · dsimp only [FG.Record.recordAtt] at hx
                   split_ifs at hx
                   · rw [Function.update_apply] at hx
                     split_ifs at hx with hh
                     · exact Or.inr (Or.inr ⟨hh.symm, Option.some.inj hx⟩)
                     · exact Or.inl hx
                   · exact Or.inl hx
-                · simp only [FG.Record.recordAtt] at hx
+                · dsimp only [FG.Record.recordAtt] at hx
                   split_ifs at hx
                   · rw [Function.update_apply] at hx
                     split_ifs at hx with hh
@@ -244,7 +244,7 @@ theorem client_record_origin_of_run (hrun : GoldilocksRun proposer dg H tr)
               · obtain ⟨k, hk, att, h'⟩ := ih₁ (Or.inr hx)
                 exact ⟨k, by omega, att, h'⟩
               · exact ⟨i, by omega, a', hs, h₁, h₂⟩
-            · simp only [FG.Record.recordAtt] at hx
+            · dsimp only [FG.Record.recordAtt] at hx
               rcases hf : a'.fin with _ | ⟨p₁, p₂⟩
               · rw [hf] at hx
                 dsimp only at hx
@@ -319,8 +319,7 @@ theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
   · have hg : ((tr.state y k).fg.σ src.root).Th = sp.genesisRoot := by
       rw [Store.σ_of_blocks_none hr hsrc]; rfl
     rw [hg, Store.σ_genesis hr] at hcl
-    exact Compose.createAtt_wellFormed (by simp [FG.ChainState.init])
-      (by simp [FG.ChainState.init]) (by simp [FG.ChainState.init]) hcl
+    exact Compose.createAtt_wellFormed le_rfl Nat.one_pos (by simp [FG.ChainState.init]) hcl
   · have hXr := Goldilocks.Store.Reachable.blocks_root hr hsrc
     have hX : X ∈ (tr.state y k).fg.tree := by
       change (tr.state y k).fg.blocks X.root = some X
@@ -331,6 +330,13 @@ theorem signAt_wellFormed (hrun : GoldilocksRun proposer dg H tr)
     rw [hXr] at hEr
     rw [← hEr] at hcl
     exact Compose.createAtt_wellFormed h1 h3 (fun p hp => lt_of_le_of_lt (h8 p hp).2 h3) hcl
+
+/-- With no lock at the height, `height_pair` returns that height and target. -/
+private theorem heightPair_of_lock_none {Λ : FG.Record} {hc Tc : Nat} (h : Λ.lock hc = none) :
+    ∃ τ, Λ.heightPair hc Tc = some (hc, Tc, τ) := by
+  unfold FG.Record.heightPair
+  simp only [h, ne_eq, not_true_eq_false, false_and, ↓reduceIte]
+  split_ifs <;> exact ⟨_, rfl⟩
 
 /-- An honest high FG source forces a reset, even when its client suppresses a new signature. -/
 theorem reset_of_high_source (hrun : GoldilocksRun proposer dg H tr)
@@ -388,10 +394,13 @@ theorem reset_of_high_source (hrun : GoldilocksRun proposer dg H tr)
     exfalso
     change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
       ((tr.state y k).fg.σ C.root).Th) = none at hcl
-    unfold FG.Record.createAtt FG.Record.heightPair at hcl
-    simp only [he, hlock, ne_eq, not_true_eq_false, false_and, ↓reduceIte] at hcl
-    split_ifs at hcl <;> simp_all only [Bool.false_eq_true, ↓reduceIte,
-      reduceCtorEq]
+    obtain ⟨τ, hτ⟩ := heightPair_of_lock_none
+      (Tc := ((tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th).Th) hlock
+    unfold FG.Record.createAtt at hcl
+    rw [he, hτ] at hcl
+    dsimp only at hcl
+    rw [hany τ] at hcl
+    simp only [Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at hcl
 
 /-- **The finality pair of an honest attestation names an entry of its source's chain** (G0.2
 (h)): the finality pair `(h, r)` that `fg_attest` signs (the justification of the entry state at an
