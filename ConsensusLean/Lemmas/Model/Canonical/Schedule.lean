@@ -71,7 +71,11 @@ omit [DecidableEq V] in
   classical
   delta wakeEvents
   simp only [List.mem_map, Finset.mem_toList, Finset.mem_filter]
-  aesop
+  constructor
+  · rintro ⟨v, ⟨hv, ht, hw⟩, rfl⟩
+    exact ⟨v, hv, ht, hw, rfl⟩
+  · rintro ⟨v, hv, ht, hw, rfl⟩
+    exact ⟨v, ⟨hv, ht, hw⟩, rfl⟩
 
 omit [DecidableEq V] in
 @[simp] theorem mem_tickEvents (t : Time) (e : Event V (protoOf F E).Object) :
@@ -80,7 +84,11 @@ omit [DecidableEq V] in
   classical
   delta tickEvents
   simp only [List.mem_map, Finset.mem_toList, Finset.mem_filter]
-  aesop
+  constructor
+  · rintro ⟨v, ⟨hv, hw⟩, rfl⟩
+    exact ⟨v, hv, hw, rfl⟩
+  · rintro ⟨v, hv, hw, rfl⟩
+    exact ⟨v, ⟨hv, hw⟩, rfl⟩
 
 @[simp] theorem mem_deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Object))
     (t : Time) (e : Event V (protoOf F E).Object) :
@@ -91,7 +99,11 @@ omit [DecidableEq V] in
   delta deliveryEvents
   split_ifs with hg
   · simp only [List.mem_flatMap, List.mem_map, Finset.mem_toList, Finset.mem_filter]
-    aesop
+    constructor
+    · rintro ⟨v, ⟨hv, hw⟩, o, ho, rfl⟩
+      exact ⟨hg, v, hv, hw, o, ho, rfl⟩
+    · rintro ⟨-, v, hv, hw, o, ho, rfl⟩
+      exact ⟨v, ⟨hv, hw⟩, o, ho, rfl⟩
   · simp [hg]
 
 theorem layer_time (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time)
