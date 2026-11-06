@@ -31,8 +31,7 @@ height has its previous height justified.
   below the entry block of `σ[X]`, the block of root `σ[B₃].F` is held and `B₀ ⪯` it (the
   `CacheCoverage` premise shape); `finalized_covers_of_window'`: per-height timing;
   `theorem_F_of_anc''`, `finalized_covers_of_window''`: each crossing early or justifying.
-  Helpers: `hF_mono`, `Th_eq_of_h_eq`,
-  `fin_pair_self_entry_or_zero`, `self_entry_anc_finalized`.
+  Helpers: `hF_mono`, `fin_pair_self_entry_or_zero`, `self_entry_anc_finalized`.
 * `window_justifies_or_parents_above_after'`: `window_justifies_or_parents_above_after` with
   `X ⪯ C` for every held `X` of root `T` in case (A).
 * `window_justifies_or_parents_above_unanimous_entry`:
@@ -218,21 +217,6 @@ theorem hF_mono (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc
     obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain P ACP acp₀ st hr Y hY
     exact ih.trans (FG.height_step P.fg _ _ _ _ hc ht).2.2.1
 
-/-- **The entry is constant at one height.** In a reachable store, for a held `X ⪯ Z` with
-`σ[Z].h = σ[X].h`, `σ[Z].Th = σ[X].Th`. -/
-theorem Th_eq_of_h_eq (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc X Z)
-    (hh : (st.σ Z.root).h = (st.σ X.root).h) : (st.σ Z.root).Th = (st.σ X.root).Th := by
-  induction hXZ with
-  | refl => rfl
-  | @tail Y Y' hXY hYY' ih =>
-    obtain ⟨-, hY', hp⟩ := hYY'
-    obtain ⟨-, -, -, ht⟩ := Healing.Store.step_σ hr hY' hp
-    have h1 := Healing.h_le_of_store_anc hr hXY
-    rcases P.fg.stateTransition_ThSlot ht with ⟨e, -, e'⟩ | ⟨e, -, -⟩
-    · rw [e']
-      exact ih (e.symm.trans hh)
-    · omega
-
 /-- **A self-entry at most the finalized height is below the finalized block.** In a reachable
 store, let `T ⪯ Z` be held with `σ[T].Th = T.root` and `σ[T].h ≤ σ[Z].hF`. Then the block of
 root `σ[Z].F` is held and `T ⪯` it. -/
@@ -254,7 +238,7 @@ theorem self_entry_anc_finalized (hr : st.Reachable acp₀) {T Z : NodeBlock P A
   rcases Anc.total hcoh hTZ hFZ with hTF | hFT
   · exact hTF
   · have h2 := Healing.h_le_of_store_anc hr hFT
-    have hEq := Th_eq_of_h_eq hr hFT (by omega)
+    have hEq := Healing.Th_eq_of_anc hr hFT (by omega)
     rw [hTs, hWT] at hEq
     have hb : st.blocks T.root = some T := hT
     rw [hEq] at hb
