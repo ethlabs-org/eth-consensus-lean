@@ -66,11 +66,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time}
 
-/-- The Goldilocks node's AC meets requirements 1–5. -/
-private theorem node_requirements : (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-
 /-- The deadline does not change at a cut that is not a restart. -/
 private theorem deadline_succ {y : Fin sp.n} {k : Nat} (hn : ¬ tr.RestartAt y (k + 1))
     (τ Δ' : Time) : tr.deadline y (k + 1) τ Δ' = tr.deadline y k τ Δ' := by
@@ -99,7 +94,7 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr)
       (Node.mkBlock dg p (tr.state p j).fg t x d.head pay) := by
   have h := hrun.toLocalRun
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hP
-  obtain ⟨hacc, ht2⟩ := own_block_accepted h node_requirements hroot hnc hp hg hP hr
+  obtain ⟨hacc, ht2⟩ := own_block_accepted h (Compose.requirements sp ro) hroot hnc hp hg hP hr
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after h hp hacc
   have hts : t = sp.ts (sp.slot t) := hP.2.1.trans (sp.slotTime_eq _)
   refine ⟨j + 1,
