@@ -68,13 +68,13 @@ check() {
   fi
   local range
   range="$(git rev-parse --short "$base")..$(git rev-parse --short HEAD)"
-  if git diff --quiet "$base" HEAD -- "${protected[@]}"; then
+  mapfile -t touching < <(git rev-list --reverse --no-merges --full-history "$base..HEAD" -- "${protected[@]}")
+  if ((${#touching[@]} == 0)) && git diff --quiet "$base" HEAD -- "${protected[@]}"; then
     echo "the change $range touches no trusted path: pass"
     summary "The change \`$range\` touches no trusted path (pass)."; return 0
   fi
   echo "the change $range touches trusted paths (recorded, not gated):"
   git diff --stat "$base" HEAD -- "${protected[@]}"
-  mapfile -t touching < <(git rev-list --reverse --no-merges --full-history "$base..HEAD" -- "${protected[@]}")
   for c in "${touching[@]}"; do
     [[ -n "$(label_of "$c")" ]] || unlabeled+=("$c")
   done
@@ -186,6 +186,21 @@ self_test() {
     "| first line of the label, continued here and here. |" "!Fidelity read-back"
   expect_summary "a commit touching two trusted paths lists both; a | in the subject is escaped" "$both" "$m0" \
     "| Spec \\| Challenge | \`Challenge.lean\` \`Spec/A.lean\` | test change |"
+  # Both edits must remain recorded even when the final tree equals the base.
+  local restored restored_l
+  git checkout -q --detach "$spec"; echo a >Spec/A.lean
+  restored="$(commit "restore Spec$L")"
+  expect fail "an unlabeled edit followed by a labeled restoration, zero net diff" "$restored" "$m0"
+  expect_summary "zero net diff still records both commits and the missing label" "$restored" "$m0" \
+    "| \`$(short "$spec")\` |" "| \`$(short "$restored")\` |" "2 commit(s)" "**FAIL:** 1 commit(s)"
+  git checkout -q --detach "$spec_l"; echo a >Spec/A.lean
+  restored_l="$(commit "restore labeled Spec$L")"
+  expect pass "a labeled edit and labeled restoration, zero net diff" "$restored_l" "$m0"
+  expect_summary "zero net diff with both labels still has two rows" "$restored_l" "$m0" \
+    "| \`$(short "$spec_l")\` |" "| \`$(short "$restored_l")\` |" "2 commit(s)" "(pass)"
+  git checkout -q --detach "$spec_l"; echo a >Spec/A.lean
+  commit 'restore Spec without label' >/dev/null
+  expect fail "a labeled edit followed by an unlabeled restoration, zero net diff" HEAD "$m0"
   # The repository's own list (docs/decisions.md §"Trusted surface and Challenge scope"): a Shape example and a Goldilocks milestone statement
   # (the Milestones layers) are not on the trusted surface; the Goldilocks instance Spec and the endpoint statement are.
   local real ex gold ms acc
