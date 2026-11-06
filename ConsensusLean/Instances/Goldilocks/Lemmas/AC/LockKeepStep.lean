@@ -56,7 +56,7 @@ theorem mem_optimisticConfirmation_of_keep {A : SAState sp.n} (hl : l ∈ A.lock
   unfold optimisticConfirmation
   split
   · exact hl
-  · rw [updateLatestConfirmed_locks_eq]
+  · rw [updateLatestConfirmed_keeps_locks]
     exact mem_addLocks_of_keep hl hk hB hBr hva
 
 /-- The confirmation update keeps such a lock. -/
@@ -71,7 +71,7 @@ theorem mem_updateConfirmation_of_keep {A : SAState sp.n} {s : Nat} (hl : l ∈ 
     all_goals
       first
       | exact mem_addLocks_of_keep hl hk hB hBr hva
-      | (rw [updateLatestConfirmed_locks_eq]; exact mem_addLocks_of_keep hl hk hB hBr hva)
+      | (rw [updateLatestConfirmed_keeps_locks]; exact mem_addLocks_of_keep hl hk hB hBr hva)
 
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : SAState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by

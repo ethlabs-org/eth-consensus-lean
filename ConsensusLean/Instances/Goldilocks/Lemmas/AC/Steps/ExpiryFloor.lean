@@ -85,7 +85,7 @@ theorem LocksWF.optimisticConfirmation {A : SAState sp.n} (h : LocksWF sp A.lock
   unfold SA.optimisticConfirmation
   split
   · exact h
-  · rw [updateLatestConfirmed_locks_eq]
+  · rw [updateLatestConfirmed_keeps_locks]
     refine h.addLocks Φ t _ fun p hp => ?_
     rw [Set.mem_singleton_iff] at hp
     subst hp
@@ -104,7 +104,7 @@ theorem LocksWF.updateConfirmation {A : SAState sp.n} (h : LocksWF sp A.locks)
   · split_ifs
     all_goals
       refine LocksWF.addLocks ?_ Φ t s fun p hp => ?_
-      · first | exact h | (rw [updateLatestConfirmed_locks_eq]; exact h)
+      · first | exact h | (rw [updateLatestConfirmed_keeps_locks]; exact h)
       · rcases hp with ⟨B, -, rfl⟩ | ⟨B, -, rfl⟩
         · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
         · dsimp only; omega

@@ -144,7 +144,7 @@ private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A :
   split_ifs with hconf
   all_goals
     refine ⟨?_, good_addLocks hΦ hD (by
-      first | exact h.2 | (rw [SA.updateLatestConfirmed_locks_eq]; exact h.2)) ?_⟩
+      first | exact h.2 | (rw [SA.updateLatestConfirmed_keeps_locks]; exact h.2)) ?_⟩
     · first
         | exact h.1
         | (change R (SA.updateLatestConfirmed sp _ Φ C).latestConfirmed

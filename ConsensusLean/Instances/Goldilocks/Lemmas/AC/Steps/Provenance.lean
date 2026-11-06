@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
@@ -69,12 +70,6 @@ theorem blockReceipt_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
   | nil => rfl
   | cons v l ih => rw [List.foldl_cons, ih, admitVote_locks_eq]
 
-/-- Updating the latest confirmed block keeps the locks. -/
-theorem updateLatestConfirmed_locks_eq (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (C : Blk sp.n FGP) : (updateLatestConfirmed sp A Φ C).locks = A.locks := by
-  unfold updateLatestConfirmed
-  split_ifs <;> rfl
-
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
@@ -85,7 +80,7 @@ private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU :
   unfold optimisticConfirmation
   rcases h : optimisticSelect sp A Φ t with _ | B
   · exact FromP.of_eq rfl
-  · rw [updateLatestConfirmed_locks_eq]
+  · rw [updateLatestConfirmed_keeps_locks]
     refine FromP.of_addLocks hU hΦ hΦU rfl fun r f e hr => ?_
     simp only [Set.mem_singleton_iff, Prod.mk.injEq] at hr
     obtain ⟨rfl, rfl, -⟩ := hr
@@ -153,7 +148,7 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
   rcases hC : getConfirmation sp A Φ s with _ | C
   · exact FromP.of_eq rfl
   · dsimp only
-    refine FromP.of_addLocks hU hΦ hΦU (by split_ifs <;> simp [updateLatestConfirmed_locks_eq])
+    refine FromP.of_addLocks hU hΦ hΦU (by split_ifs <;> simp [updateLatestConfirmed_keeps_locks])
       fun r f e hr => ?_
     rcases hr with ⟨D, hD, hr⟩ | ⟨D, hD, hr⟩
     · simp only [Prod.mk.injEq] at hr

@@ -376,12 +376,12 @@ theorem reclock_optimistic {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} 
     have hk : KeepAll Φ t A (SA.updateLatestConfirmed sp
         { A with locks := (SA.addLocks sp A.locks Φ t (sp.slot t)
       {(B.root, true, SA.fastExpiry sp A.locks Φ t (sp.slot t))}) } Φ B) :=
-      keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_locks_eq])
+      keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_keeps_locks])
     refine ⟨hk, (h.mono (fun _ h => h) fun _ h => Or.inl h).write hΦ hk hBt (ulc_rec _ _ _)
       (Or.inr ⟨Or.inr rfl, ?_⟩)⟩
     have he := SA.le_fastExpiry (sp := sp) A.locks Φ t (sp.slot t)
     refine ⟨_, he, ?_⟩
-    rw [SA.updateLatestConfirmed_locks_eq]
+    rw [SA.updateLatestConfirmed_keeps_locks]
     exact ⟨⟨B.root, sp.slot t, true, _⟩, Or.inr ⟨_, Set.mem_singleton _, rfl⟩, B, hBt, rfl,
       (Nat.le_add_right _ 2).trans he, rfl⟩
 
@@ -446,7 +446,7 @@ theorem reclock_update {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
     all_goals
       refine ⟨?_, (h.mono (fun _ h => Or.inl h) fun _ h => h).write hΦ ?_
         (SA.deepest_mem hC).1.1 (ulc_rec _ _ _) (Or.inl (Or.inr rfl))⟩ <;>
-      exact keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_locks_eq])
+      exact keepAll_addLocks hΦ (by rw [SA.updateLatestConfirmed_keeps_locks])
 
 theorem reclock_onTick {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : SA.Blk sp.n FGP → Prop} {A : SA.SAState sp.n} (h : RecLock Φ t r₀ Res Opt A)
