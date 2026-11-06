@@ -256,7 +256,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
     intro X hX
     have := Set.ext_iff.1 heq X
     simp only [Set.mem_ofPred_eq] at this
-    tauto
+    exact ⟨fun h => ((this.mp ⟨h, hX⟩).1), fun h => ((this.mpr ⟨h, hX⟩).1)⟩
   have hcomp : ∀ Hd : Blk sp.n FGP, Hd.slot ≤ s →
       (Compatible ℓp.frame.tree Hd B ↔ Compatible ℓy.frame.tree Hd B) := fun Hd hHd =>
     ⟨compatible_of_slot_le hΦp.coherent heq hHd hBs,
@@ -304,8 +304,8 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
               · exact Or.inl h
               · exact Or.inr ⟨k, h, by linarith [hr.time_mono hk]⟩
             · have := hrsp k hk hrk
-              rw [hti, hts] at *
-              linarith
+              rw [hti, hts]
+              linarith only [this, hΔ]
           refine Or.inr ⟨x, mem_voteViewList_snd.2 ⟨⟨hxP, hpool x hxP⟩,
             lt_top_iff_ne_top.2 (resolutionTime_ne_top hΦp hHdp hHdr hHd's (hpool x hxP).ne hbs)⟩,
             rfl, hxs, Hd', hHdp, hHdr, fun h => hnc ((hcomp _ hHds).1 h)⟩
