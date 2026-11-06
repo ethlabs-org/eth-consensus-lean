@@ -220,6 +220,58 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(retired[1]['status'], 'retired (not proved)')
         self.assertEqual(retired[1]['status-before-retirement'], 'paper-partial')
 
+    def test_same_named_privates_keep_their_own_module(self):
+        # Two modules declare a private `foo`, both former sorry owners: each compiled copy gets its own row,
+        # named by its own module and with its own file:line (not one row pairing one copy's name with the
+        # other's source line).
+        sources = {'A': 'namespace Consensus.Goldilocks\nprivate theorem foo : True := by trivial\n',
+                   'B': 'namespace Consensus.Goldilocks\n\n\nprivate theorem foo : True := by trivial\n'}
+        privates = {m: self.PRIVATE.format(m) + 'foo' for m in sources}
+        root = 'Consensus.Goldilocks.Obligations.meetsObligations_exists'
+        records = [{'declaration': root, 'dependencies': sorted(privates.values())}]
+        records += [{'declaration': p, 'dependencies': []} for p in privates.values()]
+
+        def run(*args):
+            if args[:2] == ('git', 'rev-parse'):
+                return 'fixture-pin\n'
+            if args[:2] == ('git', 'ls-tree'):
+                return ''.join(f'100644 blob {m}\t{files[m]}\n' for m in sources)
+            if args[:2] == ('git', 'cat-file'):
+                return sources[args[-1]].replace('trivial', 'sorry')
+            if args[:2] == ('git', 'rev-list'):
+                return ''
+            if args[:3] == ('lake', 'env', 'lean'):  # the environment's private names, in hash order
+                return ''.join(f'{self.PREFIX}foo\t{privates[m]}\n' for m in ('B', 'A'))
+            if args[:3] == ('lake', 'exe', 'spec-surface'):
+                self.assertEqual(sorted(args[6:8]), sorted(privates.values()))
+                return '\n'.join(json.dumps(r) for r in records)
+            self.fail(f'Unexpected command: {args}')
+
+        cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                files = {m: Path(f'ConsensusLean/Instances/Goldilocks/Lemmas/{m}.lean') for m in sources}
+                for m, f in files.items():
+                    f.parent.mkdir(parents=True, exist_ok=True)
+                    f.write_text(sources[m])
+                ledger = Path('docs/notes/obligations-status.json')
+                ledger.parent.mkdir(parents=True)
+                ledger.write_text(json.dumps({'rows': []}))
+                with patch.object(status, 'run', side_effect=run), \
+                        patch.object(status.subprocess, 'run'), \
+                        patch('sys.argv', ['obligations-status.py']):
+                    status.main()
+                rows = {r['name']: r for r in json.loads(ledger.read_text())['rows']}
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(set(rows), set(privates.values()))
+        self.assertEqual(rows[privates['A']]['file:line'], f'{files["A"]}:2')
+        self.assertEqual(rows[privates['B']]['file:line'], f'{files["B"]}:4')
+        for row in rows.values():
+            self.assertEqual(row['status'], 'lean-proved')
+            self.assertTrue(row['in_obligations_closure'])
+
     def test_comments_are_not_proof_holes(self):
         source = '''namespace Consensus.Test
 /- sorry /- nested -/ still a comment -/
