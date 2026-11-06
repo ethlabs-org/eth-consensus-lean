@@ -4,6 +4,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSupp
 import ConsensusLean.Lemmas.Model.SysLog
 
 public section
+
+/-! # Finite outage service and armed reads
+
+`OutageQuery` packages a valid collision-free engine run and its outage premise.
+`outage_pre_service` supplies service only through the finite horizon; `outage_arm` obtains
+the pre-outage armed read. Neither construction infers unrestricted whole-run synchrony. -/
+
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 open Blocks Shape

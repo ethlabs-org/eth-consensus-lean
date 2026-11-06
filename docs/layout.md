@@ -109,6 +109,38 @@ They may contain deliberately unfinished proofs or extra axioms; no checked libr
 
 ## Where the proofs are
 
+### Responsibility and entry-point guide
+
+Read the claim before its proof: [the definition](definition.md) explains the generic contract,
+[the mapping](goldilocks-mapping.md) identifies the Goldilocks statement, and
+[scenario coverage](scenario-coverage.md) distinguishes witnesses from proof packaging.
+The generated library root is an inventory, not the recommended reading order.
+
+| Question | Start here (paths under `ConsensusLean/`) | Responsibility / next layer |
+|---|---|---|
+| What does correctness require? | `Spec/Problem/CorrectProtocol.lean`, `Statements/Review.lean` | Generic property table and review roots; `Main.lean` composes the sufficiency proof. |
+| What does an execution mean? | `Spec/Model/Run.lean`, `Lemmas/Model/View.lean`, `Lemmas/Model/Laws.lean` | Events, holdings and reads; `Proofs/Faithful/Main.lean` packages communication faithfulness. |
+| How does a shape give correctness? | `Spec/Shape/Obligations.lean`, `Proofs/Behaviour/Main.lean` | Shape claims refine the generic properties; `Proofs/RegimesRealizable/Main.lean` constructs active regime witnesses. |
+| What is the concrete protocol? | `Instances/Goldilocks/Spec/`, `Instances/Goldilocks/AsChainShape.lean` | Node transition rules and their engine representation; `Statements/Obligations.lean` fixes the contract and endpoint. |
+| Where is a Goldilocks paper claim stated? | `Instances/Goldilocks/Milestones/Statements/` and the mapping | Milestone vocabulary outside the certified statement surface; `Proofs/<M>/Main.lean` packages proved fields. |
+| Where is the endpoint assembled? | `Instances/Goldilocks/Proofs/Obligations/Main.lean`, `Instances/Goldilocks/Lemmas/Obligations/Accepted.lean` | Endpoints consume finite regime suppliers, simulation and read projections, rather than assuming open whole-run transport goals. |
+
+The following paths are relative to `ConsensusLean/Instances/Goldilocks/Lemmas/`:
+
+| Area | Entry points and responsibilities |
+|---|---|
+| `Common/`, `FG/`, `FGChain/`, `FGStore/` | `Common/Claims` states tree/digest facts; `FG/` and `FGChain/` handle chain safety and replay; `FGStore/` lifts them to node stores and effective phases. Consult the milestone's proof entry rather than importing a large hub for one helper. |
+| `AC/` | `Basic` and `Trace` provide trace vocabulary; `Steps/` handles node-call preservation and locks; `FrameClaims` records frame statements. `ACBase` and `ACSteps` proof entries assemble the respective milestones. |
+| `Compose/` | `Run/` relates the node to AC/FG projections; `Persist/Induction` proves C1.1 and its next-vote corollary. `Service/{Record,Inclusion,Later}` and `Sleepy/{Served,Transport,Read}` separate service, transport and observable reads. Their parent modules only re-export interfaces. |
+| `Healing/` | `Assembly` packages run claims, `Service` packages phase service, `AC/Standalone` is the driven-AC endpoint, `Recovery/Assembly` packages HR.5/O.1/C1.3. `Retention/`, `Outcome/` and `Recovery/` supply preservation, outcome and finalization arguments; the corresponding milestone statements fix their contracts. |
+| `Simulation/` | `Interface` states the simulation bundle. `Core`/`Provenance` tie canonical objects and trace cuts to engine holdings; `Queue` follows pool/queue inventories; `Steps` identifies event-local node transitions; `Run` assembles run laws; `Release` follows the release path; `Transport` supplies read-side adapters. |
+| `Obligations/` | `ContractDefs` provides proof-side coefficient facts; `NonfinalSuppliers` supplies sleepy proposals, `HealthySuppliers` prepares bounded healthy state, `NonfinalEndpoints` projects confirmed coverage, and `OutageSuppliers` obtains armed pre-outage reads. `HealthyEffective` develops operational update/selection and report coverage; `OperationalPersistence` carries selected proposals into later parents. `NetworkTransport` distinguishes finite services from its stated open whole-run suppliers. `Accepted` assembles the obligations. |
+
+For a report-only inventory of the current checkout, run `python3 -I scripts/metrics-baseline.py`;
+`python3 -I scripts/module-cones.py --help` describes static downstream-cone reports. These are navigation
+aids, not graph-size gates or measured rebuild times. Historical measurements in `docs/notes/` retain
+their original scope. When a module is split, update this table by responsibility, not by line count.
+
 Proof support outside the trusted surface: `ConsensusLean/Lemmas/Problem/Derived.lean` defines
 `Agree`, `Safe`, `ReadySafeUpTo` and `FaultsBelow` with their characterising lemmas (not on the trusted surface: the
 Goldilocks sheet that read them is archived), and `ConsensusLean/Lemmas/Problem/DerivedFacts.lean` defines `SendsFromZero` and
@@ -127,6 +159,10 @@ of its engine `seen` log; the view lemma gives the event-index form.
 Injective-hash lifting is checked in `ConsensusLeanTest/Model/Lift.lean`.
 
 ## Tests (`ConsensusLeanTest/`)
+
+The [statement-to-scenario coverage map](scenario-coverage.md) records premise witnesses, reachable
+events, rejection/control pairs, arithmetic checks and branch limitations, especially for Healing
+and persistence. Use it before interpreting a missing-witness comment as a work queue.
 
 `lake test` builds this library, including the review pins and citation index. The review files are at the top;
 the generic tests are grouped by layer and the Goldilocks tests by component (`docs/notes/test-module-map.tsv` maps the

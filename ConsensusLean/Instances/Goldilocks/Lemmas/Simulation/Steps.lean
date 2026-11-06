@@ -3,6 +3,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 
 public section
 
+/-! # Engine events realize node steps
+
+Uses `Queue`'s inventories to prove proposal releasability and identify the node transition
+inside honest engine ticks, deliveries and restarts. Public-time ticks execute the node duty;
+non-public ticks leave the node unchanged. These event-local facts support the simulating
+trace's run laws and cut-map assembly in `Simulation/Run`. -/
+
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
 

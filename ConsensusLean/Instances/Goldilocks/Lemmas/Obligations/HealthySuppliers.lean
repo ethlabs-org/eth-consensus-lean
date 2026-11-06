@@ -14,6 +14,14 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
+
+/-! # Finite healthy preparation and preservation
+
+`HealthyPreparationQuery` fixes the engine run, regime and nonfinal capability without adding
+progress. The schedule and state-fact structures track the bounded preparation; `healthy_prepare`
+and `healthy_preserve` supply and retain the resulting state. Selected-proposal coverage is
+assembled separately by `NonfinalEndpoints`. -/
+
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 open Blocks Shape

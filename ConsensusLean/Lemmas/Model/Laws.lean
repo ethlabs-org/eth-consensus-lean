@@ -2,6 +2,13 @@ module
 public import ConsensusLean.Lemmas.Model.View
 
 public section
+
+/-! # System laws of the execution model
+
+`sysOf_laws` derives the generic system laws: ordered bounded cut times on valid runs,
+monotone conviction under view inclusion, and monotone views along cuts. `View` supplies the
+view interface; the protocol-independent time bounds remain local to this proof. -/
+
 namespace Consensus.Model
 
 variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O}
