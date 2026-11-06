@@ -85,18 +85,19 @@ theorem UpTo.operational_update_fresh_lock
   have hPj : P ∈ (Node.frame (tr.state y j)).tree := hframe ▸ hPt
   have hPU : P ∈ tr.HonestBlocks H := ⟨y, hy, j, hPj.1⟩
   have hun := hp.operational_unanimous hc hpH hdesignated hactual hPs hR
-    (show sp.ts u ≤ b by linarith)
-  have hRnext := hR.trans ((SA.ts_le_iff sp).mpr (show (u : Int) ≤ (u + 1 : Nat) by omega))
+    (show sp.ts u ≤ b by linarith only [hTb, hΔ])
+  have hRnext := hR.trans ((SA.ts_le_iff sp).mpr
+    (show (u : Int) ≤ (u + 1 : Nat) by exact_mod_cast Nat.le_succ u))
   have hu : 0 < u := by
     rw [Healing.drainTime_eq] at hR
     have := (SA.ts_le_iff sp).mp hR
-    omega
+    exact (Nat.succ_pos _).trans_le (by exact_mod_cast this)
   have hprefix : ∀ q < j, tr.time q ≤ b :=
     fun q hq => (hp.run.time_mono hq.le).trans (ht ▸ hTb)
   obtain ⟨v, r, m, S, hseed, hrb, -, hrt⟩ := hp.reset_seed_before_slot hRnext
   have hSP := UpTo.high_origins_before_next_slot_below hp hc hPU
     (fun z hz q e hv hqb hs => hun z hz q e hv hs hqb) hgu hRnext
-    (by linarith) hseed hrt hrb
+    (by linarith only [hTb, hΔ]) hseed hrt hrb
   have hva : (Node.frame (tr.state y j)).viableAncestor P = P := by
     apply SA.viableAncestor_self (Compose.frameOK_state hp.run.toLocalRun hy j) hPj
     exact (UpTo.held_target_ancestor_candidate_at_state hp hy hprefix hPj hseed hrb hSP
@@ -107,11 +108,11 @@ theorem UpTo.operational_update_fresh_lock
   have hslot : sp.slot (tr.time j) = u + 1 := by
     rw [ht]
     apply SA.slot_of_mem sp (u + 1)
-    · simp only [SA.SAParams.ts]; push_cast; linarith
-    · simp only [SA.SAParams.ts]; push_cast; linarith
+    · simp only [SA.SAParams.ts]; push_cast; linarith only [hΔ]
+    · simp only [SA.SAParams.ts]; push_cast; linarith only [hΔ]
   rw [hpost]
   exact fastLock_mem_updateConfirmation_floor hPt (hframe ▸ hva) hconf hnv hfast
-    (by rw [hslot]; omega)
+    (by rw [hslot]; exact Nat.le_succ _)
 
 end FiniteSupply
 
@@ -213,17 +214,15 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   -- the preparation query: `0 ≤ heal ≤ query ≤ deadline ≤ horizon`, progress on `[ready, heal]`
   have h0 : 0 ≤ Q'.heal := by
     change 0 ≤ max Q.gst 0 + ((K S A).params.heal Q.cap Q.index : Time) * Q.run.1.ΔAC
-    exact add_nonneg (le_max_right _ _) (mul_nonneg (Nat.cast_nonneg _) (by linarith))
+    exact add_nonneg (le_max_right _ _) (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd))
   have hqD : Q.query ≤ Q.deadline :=
-    le_add_of_nonneg_right (mul_nonneg (Nat.cast_nonneg _) (by linarith))
+    le_add_of_nonneg_right (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd))
   have hb : Q'.heal ≤ Q'.run.2.horizon := ht.trans (hqD.trans Q.bounded)
   have hp' : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q'.cap Q'.index
       Q'.ready Q'.heal Q'.run := (shapeProgress (goldilocks S) V).mono le_rfl hb hp
   obtain ⟨W, ⟨Dprep⟩⟩ := hinit Q' h0 hb hp'
   have hrh : Q'.ready ≤ Q'.heal := by
-    have := W.ready_le
-    have := W.records
-    linarith
+    linarith only [W.ready_le, W.records, hΔ]
   -- the selected proposal at the query's own readiness
   obtain ⟨Ws⟩ := healthy_query_slot S A V Q hp (max_le (hrh.trans ht) (h0.trans ht))
   obtain ⟨B, k, hBp, he, htk⟩ := confirmed_slot_event S A V Q Ws
@@ -232,14 +231,14 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
     (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
   have hmargin := Ws.margin
-  have hbound : Q.trace.time k ≤ Q.deadline := by rw [htk]; linarith
+  have hbound : Q.trace.time k ≤ Q.deadline := by rw [htk]; linarith only [hmargin, hΔ]
   refine ⟨⟨B, k, he, hacc, hr, htk ▸ Ws.fresh, hbound⟩, ?_⟩
   have hPs : B.slot = Ws.slot := by
     have h1 : Q.params.ts B.slot = Q.params.ts Ws.slot :=
       ((Q.params.slotTime_eq _).symm.trans he.2.2.symm).trans htk
     have h2 := (SA.ts_le_iff Q.params).1 h1.le
     have h3 := (SA.ts_le_iff Q.params).1 h1.ge
-    omega
+    exact_mod_cast le_antisymm h2 h3
   -- the finite inputs of `healthy_confirmed_coverage_of_service`
   have hc := healthy_repair_catch S A V Q'
   have hfresh := Ws.fresh
@@ -248,7 +247,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
     have : (0 : Time) ≤ (4 * (Q.index : Time) + 6) * Q.params.Δ :=
       mul_nonneg (by positivity) hΔ.le
     change Q'.heal ≤ Q.query at ht
-    linarith
+    linarith only [Dprep.reserve, this, ht, hfresh]
   have hlow := Dprep.lower
   simp only [max_le_iff] at hlow
   obtain ⟨-, hdr, -, hgr, -, -⟩ := hlow
@@ -262,10 +261,11 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
     fun y hy j ell hup => UpTo.operational_update_fresh_lock Dprep.reset hc hr.1 hBp he hPs
       hR hgu hTb hy hup
   -- readiness and end-of-time cuts at `T = t_u + 6Δ` and at the deadline
-  have hrT : Q'.ready ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := by
+  have hhT : Q'.heal ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := by
     change Q'.heal ≤ Q.query at ht
-    linarith
-  have hT0 : 0 ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := by linarith
+    linarith only [ht, hfresh, hΔ]
+  have hrT : Q'.ready ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := hrh.trans hhT
+  have hT0 : 0 ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := h0.trans hhT
   have hcut : ∃ i, Regimes.CutAfter Q.trace i (Q.params.ts Ws.slot + 6 * Q.params.Δ) := by
     obtain ⟨v, hv⟩ := Q.reader
     exact ⟨_, (confirmed_end_cut S A V Q hT0 hTb
@@ -282,9 +282,6 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   obtain ⟨hcD, hnD, htD, hlD⟩ := confirmed_end_cut S A V Q (hT0.trans hmargin) Q.bounded hvD
   obtain rfl := confirmed_cutAfter_unique S A V Q hi hcT
   obtain rfl := confirmed_cutAfter_unique S A V Q hj hcD
-  have hhT : Q'.heal ≤ Q.params.ts Ws.slot + 6 * Q.params.Δ := by
-    change Q'.heal ≤ Q.query at ht
-    linarith
   have hanc := healthy_cut_tips_ancestor_of_preparation S A V Q' h0 hb hp' W Dprep
     (Q.run.2.key y) ((chainTrace Q.run.2).endCut (Q.params.ts Ws.slot + 6 * Q.params.Δ))
     ((chainTrace Q.run.2).endCut Q.deadline) ⟨hlT, by rw [htT]; exact hhT⟩
