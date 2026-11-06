@@ -316,22 +316,29 @@ theorem relay_localRun :
   attest_public _ _ _ _ _ _ := one_dvd _
   own_first y _ i B h hp _ k hk ℓ hk' := by
     rcases i with _ | _ | _ | _ | _ | i <;>
-      simp [Trace.CallAt, tr₂] at h
+      dsimp only [Trace.CallAt, tr₂] at h <;>
+      simp only [Option.some.injEq, FGLabel.block.injEq, reduceCtorEq, and_true, and_false] at h
     · omega
     · obtain ⟨rfl, rfl⟩ := h
       exact absurd hp v₀_ne_v₁
   attest_order y _ j src signed h i ℓ hij hi _ := by
-    rcases j with _ | _ | _ | _ | _ | j <;> simp [Trace.CallAt, tr₂] at h
+    rcases j with _ | _ | _ | _ | _ | j <;>
+      dsimp only [Trace.CallAt, tr₂] at h <;>
+      simp only [Option.some.injEq, FGLabel.attest.injEq, reduceCtorEq, and_false] at h
     obtain ⟨rfl, rfl, rfl⟩ := h
     obtain rfl : i = 0 := by omega
     simp only [Trace.CallAt, tr₂, Option.some.injEq] at hi
     exact ⟨B₂, true, hi.2.symm, rfl, rfl⟩
   own_payload y _ i B h _ _ a ha := by
-    rcases i with _ | _ | _ | _ | _ | i <;> simp [Trace.CallAt, tr₂] at h
+    rcases i with _ | _ | _ | _ | _ | i <;>
+      dsimp only [Trace.CallAt, tr₂] at h <;>
+      simp only [Option.some.injEq, FGLabel.block.injEq, reduceCtorEq, and_true, and_false] at h
     all_goals (obtain ⟨-, rfl⟩ := h; simp [B₂] at ha)
   unforgeable y _ i a h _ := by
     obtain ⟨ℓ, hℓ, ha⟩ := h
-    rcases i with _ | _ | _ | _ | _ | i <;> simp [Trace.CallAt, tr₂] at hℓ <;>
+    rcases i with _ | _ | _ | _ | _ | i <;>
+      dsimp only [Trace.CallAt, tr₂] at hℓ <;>
+      simp only [Option.some.injEq, reduceCtorEq, and_false] at hℓ <;>
       obtain ⟨-, rfl⟩ := hℓ <;> simp [FGLabel.processed, B₂] at ha
     subst ha
     exact ⟨1, by omega, B₂, rfl, rfl⟩
