@@ -35,6 +35,9 @@ of height `3`, and its good-window branch is met literally.
 * it exercises only the branch of an entry whose previous height is justified (`bound = true`);
   the `bound = false` conjunct of C1.2 holds vacuously here;
 * there are no faults (`n = 2`, both honest), so the fault bounds are met only as `0 < …`;
+* `Δ = 1`, both validators are awake at every time `t ≥ 0`, and nobody restarts
+  (`run_facts.noRestart`), so every validator is joined throughout and no wake or rejoin case of
+  the delivery deadlines or of `ReadyProposal`'s joinedness is exercised;
 * both rows of `R` are already on `Pr`'s chain (carried by `blk 22` and `blk 31`), so the
   good window's `emitted` and `pooled` clauses are met through their on-chain alternative, and
   the pooled-row inclusion of a fresh row is exercised only by `Bs` carrying `(v0, 4)`;
