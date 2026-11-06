@@ -142,9 +142,28 @@ jobs:
         run: |
           set -euo pipefail
           jq -e --arg part "$PART" '.mode == "full" and .part == $part and .status == "passed" and .exit_code == 0' "$RUNNER_TEMP/result.json"
-          if [[ "$PART" == main ]]; then
-            jq -e 'any(.steps_skipped[]; .step == "5 kernel replay" and .reason == "owned by replay shards")' "$RUNNER_TEMP/result.json"
-          fi
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = json.loads((Path(os.environ['RUNNER_TEMP']) / 'result.json').read_text())
+          skipped = result['steps_skipped']
+          lake_check = '10 lake check (+ fixtures/lakecheck-{bad,good})'
+          if os.environ['PART'] == 'main':
+              assert sorted((s['step'], s['reason']) for s in skipped) == sorted([
+                  ('5 kernel replay', 'owned by replay shards'),
+                  (lake_check, 'the other --split part'),
+              ]), 'main must defer only production replay and lake check'
+          else:
+              assert lake_check in result['steps_run'], 'lake check did not run'
+              for s in skipped:
+                  number = s['step'].split()[0]
+                  shared = (number == '0' and 'self-test' in s['step'] and
+                            not s['step'].startswith('0 pins') and
+                            s['reason'] == 'shared self-test owned by split main')
+                  other = (number in {'1', '2', '3', '3b', '3c', '4', '5', '6', '7', '8', '9', '11', '12', '13', '14'} and
+                           s['reason'] == 'the other --split part')
+                  assert shared or other, f'unexpected skipped gate: {s}'
+          PY
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
 
       - name: Pack the exact clean build for replay
@@ -243,6 +262,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/replay.log"
           jq -e --arg part "$SHARD/4" --arg dir "$RUNNER_TEMP/inventory" \
             '.mode == "replay-shard" and .part == $part and .status == "passed" and .exit_code == 0 and
+             .steps_skipped == [] and
              .inventories.expected == ($dir + "/expected.txt") and .inventories.replayed == ($dir + "/replayed.txt")' "$RUNNER_TEMP/result.json"
           test -z "$(git status --porcelain)"
 
@@ -288,7 +308,7 @@ jobs:
               want = (shard / 'expected.txt').read_bytes()
               got = (shard / 'replayed.txt').read_bytes()
               assert want.endswith(b'\n') and b'\r' not in want
-              assert got.endswith(b'\n') and b'\r' not in got
+              assert (not got or got.endswith(b'\n')) and b'\r' not in got
               if expected is None:
                   expected = want
               assert want == expected, f'shard {i}: different expected inventory'
