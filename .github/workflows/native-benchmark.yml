@@ -1,0 +1,93 @@
+name: Native import benchmark
+
+on:
+  push:
+    branches: [work/native-deps]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Interpreted baseline revision
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [interpreted, native]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select baseline
+        if: matrix.mode == 'interpreted'
+        env:
+          BASE: ${{ inputs.base || 'origin/main' }}
+        run: git switch --detach "$BASE"
+
+      - name: Install pinned toolchain
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/elan.tgz"
+          echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $RUNNER_TEMP/elan.tgz" | sha256sum --strict -c -
+          tar -xzf "$RUNNER_TEMP/elan.tgz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --no-modify-path --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore interpreted dependency cache
+        id: pkgs
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
+
+      - name: Restore Mathlib on a miss
+        if: steps.pkgs.outputs.cache-hit != 'true'
+        run: lake exe cache get
+
+      - name: Measure native dependency build and compressed cache size
+        if: matrix.mode == 'native'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/measure"
+          lscpu > "$RUNNER_TEMP/measure/cpu.txt"
+          /usr/bin/time -v -o "$RUNNER_TEMP/measure/dependencies.time" lake build Mathlib:shared 2>&1 | tee "$RUNNER_TEMP/measure/dependencies.log"
+          find .lake/packages -name '*.so' -printf '%s %p\n' > "$RUNNER_TEMP/measure/libraries.txt"
+          tar -C .lake -cf - packages | zstd -T0 -3 -q -o "$RUNNER_TEMP/packages.tar.zst"
+          stat -c '%s' "$RUNNER_TEMP/packages.tar.zst" > "$RUNNER_TEMP/measure/packages.bytes"
+          rm "$RUNNER_TEMP/packages.tar.zst"
+
+      - name: Measure cold and warm fast checks
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/measure"
+          lscpu > "$RUNNER_TEMP/measure/cpu.txt"
+          git rev-parse HEAD > "$RUNNER_TEMP/measure/revision.txt"
+          for state in cold warm; do
+            export RUN_DIR="$RUNNER_TEMP/run-$state"
+            mkdir -p "$RUN_DIR"
+            /usr/bin/time -v -o "$RUNNER_TEMP/measure/$state.time" bash -euo pipefail -c '
+              for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
+                m="${f%.lean}"; lake build --wfail --iofail "${m//\//.}"
+              done
+              scripts/check.sh --fast --selftests --canary
+            ' 2>&1 | tee "$RUNNER_TEMP/measure/$state.log"
+          done
+
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-benchmark-${{ matrix.mode }}
+          path: ${{ runner.temp }}/measure
+          retention-days: 30

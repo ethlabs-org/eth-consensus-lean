@@ -34,16 +34,19 @@ rev = "v4.35.0"
 [[lean_lib]]
 name = "ConsensusLean"
 globs = ["ConsensusLean.*"]
+precompileImports = true
 
 # Tests (teeth, rejections, controls, review pins) and Index (README-cited names): `lake test`, never a
 # default target. Root generated likewise (`lake exe mk_all --lib ConsensusLeanTest --module`).
 [[lean_lib]]
 name = "ConsensusLeanTest"
 globs = ["ConsensusLeanTest.*"]
+precompileImports = true
 
 # Comparator solution (comparator.json): proofs of the review statements. Never a default target.
 [[lean_lib]]
 name = "Solution"
+precompileImports = true
 
 # Comparator challenge (comparator.json): the review statements with `sorry` proofs.
 # Never a default target; imports only the review statements module. Its template (check.sh step 9)
@@ -53,6 +56,7 @@ name = "Solution"
 [[lean_lib]]
 name = "Challenge"
 leanOptions = { weak.linter.style.longLine = false }
+precompileImports = true
 
 # Fixtures for the self-tests of scripts/check.sh. Deliberately bad (sorry, axioms, macros).
 # Never a default target; built only by check.sh. No root module: every fixture module is its own
