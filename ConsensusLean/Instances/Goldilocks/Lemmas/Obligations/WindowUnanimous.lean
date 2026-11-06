@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParents
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 
 public section

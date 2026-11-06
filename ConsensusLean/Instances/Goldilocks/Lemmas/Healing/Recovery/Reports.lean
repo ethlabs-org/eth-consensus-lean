@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Outcome
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -12,7 +12,7 @@ public section
 The bounded operational report theorem applies to arbitrary Goldilocks runs, not only the
 canonical engine. Restrict the whole-run reset premises to the update deadline and discharge
 its timing and proposal bookkeeping. Historical reports and the inclusive deadline are kept.
-The narrow import exception belongs to this adapter, not to the shared Recovery interface.
+The operational report supplier is shared within the Healing layer.
 -/
 
 namespace Consensus.Goldilocks.Healing.Recovery

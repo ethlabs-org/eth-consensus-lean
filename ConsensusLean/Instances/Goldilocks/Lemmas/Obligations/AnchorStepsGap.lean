@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchorRoute
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowUnanimous
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParentsUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4

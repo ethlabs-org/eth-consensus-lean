@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParentsUpTo
