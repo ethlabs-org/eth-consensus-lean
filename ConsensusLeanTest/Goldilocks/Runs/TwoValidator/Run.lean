@@ -23,7 +23,7 @@ returns that block and the node signs the row of its entry (a source not yet rep
 own proposal carries that row: a target quorum (`q = 1`) for the entry of the parent's height,
 with the finality pair of the previous one, so the parent's entry is justified and the chain
 enters the next height. So the frontier rises at every slot (the tick run of
-`GoldilocksTickRun`, the only such run).
+`OneValidator.TickRun`, the only such run).
 
 **The two-validator run.** Validator `v0` proposes every slot; `v1` never proposes. At every time
 `t ≥ 0`: `v0` ticks, `v1` ticks, then `v1` is delivered (in order) the blocks, votes and

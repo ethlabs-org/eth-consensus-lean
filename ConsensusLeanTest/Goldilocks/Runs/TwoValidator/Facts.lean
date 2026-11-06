@@ -4,7 +4,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 
 /-! # The healthy two-validator run: its observable events
 
-The events of the run of `GoldilocksTwoRun` that the network premises read, stated as one
+The events of the run of `TwoValidator.Run` that the network premises read, stated as one
 structure (`RunFacts`), so that the premises (`SyncOn`, `HealthyRun`) can be derived from these
 facts alone while the facts are proved from the state invariant:
 

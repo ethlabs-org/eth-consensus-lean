@@ -4,7 +4,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run
 
 /-! # The healthy two-validator run: its chain
 
-The chain that `v0` builds in the run of `GoldilocksTwoRun` (`n = 2`, `q = 2`, `k = c = 2`), with
+The chain that `v0` builds in the run of `TwoValidator.Run` (`n = 2`, `q = 2`, `k = c = 2`), with
 its FG side:
 
 * **The chain** (`blk`): genesis, then the own proposal of every slot `s + 1` on the block of slot
