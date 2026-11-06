@@ -344,9 +344,9 @@ theorem briefPoint_readyAt : briefPoint.readyAt 0 1 = {1, 2, 3} := by
       · exact h
       · norm_num at h
     clear hA h1
-    fin_cases v <;> simp_all
+    fin_cases v <;> norm_num at *
   · intro hv
-    refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> simp_all
+    refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> norm_num at *
 
 /-- Briefly awake participants count: validators `4`–`9`
 are awake only at `0`, so at time `1` they are not ready. With catch-up `0` the
@@ -395,11 +395,11 @@ theorem startPoint_readyAt {t : Time} (ht : 0 ≤ t) : startPoint.readyAt 0 t = 
     simp only [startPoint, decide_eq_true_eq] at h1
     simp only [startPoint, Finset.mem_erase, Finset.mem_univ, and_true] at hh
     clear hA hv
-    fin_cases v <;> simp_all
+    fin_cases v <;> norm_num at *
   · simp only [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.AwakeOnClosed, startPoint,
       Finset.mem_filter, Finset.mem_erase, Finset.mem_univ, and_true, decide_eq_true_eq]
     intro hv
-    refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> simp_all
+    refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> norm_num at *
 
 theorem startPoint_awakeIn (a b : Time) : startPoint.awakeIn a b ⊆ {1, 2} := by
   classical
