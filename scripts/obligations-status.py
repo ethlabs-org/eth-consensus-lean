@@ -244,15 +244,18 @@ def main():
         if filename.endswith('.lean'):
             historical.update(n for n, _, sorry in declarations(run('git', 'cat-file', 'blob', oid))
                               if sorry)
-    current = {}
+    # Source declarations by user name; `located` keeps each module's copy, since private declarations of
+    # several modules may share one user name.
+    current, located = {}, {}
     for source in sorted(Path(scope).rglob('*.lean')):
         for name, line, sorry in declarations(source.read_text()):
             current[name] = (str(source), line, sorry)
+            located[(str(source)[:-5].replace('/', '.'), name)] = current[name]
             if sorry:
                 historical.add(name)
     historical = {renamed(n, current) for n in historical}
     seeds = sorted(historical & current.keys())
-    modules = sorted({current[n][0][:-5].replace('/', '.') for n in seeds})
+    modules = sorted({m for m, n in located if n in seeds})
     subprocess.run(['lake', 'build', '--no-build', 'spec-surface', *modules], check=True)
     with tempfile.TemporaryDirectory() as directory:
         helper = Path(directory) / 'Names.lean'
@@ -266,11 +269,22 @@ def main : IO Unit := do
     if isPrivateName name then
       IO.println s!"{privateToUserName name}\t{name}"
 ''')
-        aliases = dict(line.split('\t') for line in run('lake', 'env', 'lean', '--run', str(helper)).splitlines())
-    for public, private in aliases.items():
-        if public in current:
-            current[private] = current[public]
-    seeds = [aliases.get(n, n) for n in seeds]
+        aliases = {}
+        for line in run('lake', 'env', 'lean', '--run', str(helper)).splitlines():
+            public, private = line.split('\t')
+            aliases.setdefault(public, []).append(private)
+    # A private name `_private.<Module>.0.<user name>` takes the source line of its own module's declaration, and
+    # each scanned module's copy of a seed is a seed of its own.
+    owned = {}
+    for public, privates in aliases.items():
+        for private in privates:
+            module = re.match(r'_private\.(.*?)\.0\.', private)[1]
+            if (module, public) in located:
+                current[private] = located[(module, public)]
+                owned.setdefault(public, []).append(private)
+            elif public in current:
+                current[private] = current[public]
+    seeds = sorted({p for n in seeds for p in owned.get(n) or aliases.get(n, [n])})
     records = [json.loads(line) for line in run(
         'lake', 'exe', 'spec-surface', 'dependencies', '--from', root, *seeds,
         '--modules', 'ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete',
