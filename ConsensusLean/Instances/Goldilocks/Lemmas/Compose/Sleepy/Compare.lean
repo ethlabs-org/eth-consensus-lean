@@ -146,10 +146,6 @@ private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp
   · exact absurd ht h₂.1.ne
   all_goals exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
 
-private theorem ts_succ_add (s : Nat) (a : Time) :
-    sp.ts (s + 1 : Nat) + a = sp.ts s + 4 * sp.Δ + a := by
-  simp only [SAParams.ts]; push_cast; ring
-
 private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ ≤ x + b * sp.Δ :=
   add_le_add le_rfl (mul_le_mul_of_nonneg_right h sp.toParams.hΔ.le)
 
@@ -162,11 +158,6 @@ private theorem add_delta_add_delta (x : Time) : x + sp.Δ + sp.Δ = x + 2 * sp.
 private theorem add_mul_delta_add_delta (x a : Time) :
     x + a * sp.Δ + sp.Δ = x + (a + 1) * sp.Δ := by
   rw [add_assoc, add_one_mul]
-
-/-- The slot of a time in `[t_s, t_s + 4Δ)` is `s`. -/
-private theorem slot_of_lt {s : Nat} {t : Time} (h₁ : sp.ts s ≤ t) (h₂ : t < sp.ts s + 4 * sp.Δ) :
-    sp.slot t = s :=
-  slot_of_mem sp s h₁ (by rw [← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add, add_zero]; exact h₂)
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
@@ -184,11 +175,11 @@ private theorem update_restarts (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     rw [this, (acOnTick_votedStep Y _ _ _).1]
     exact hj
   have hsl : sp.slot (tr.time c) = s + 1 :=
-    slot_of_lt (s := s + 1)
+    CompatibleSides.slot_of_lt (s := s + 1)
       (by
-        rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add, add_zero]
+        rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_add, add_zero]
         exact add_mul_delta_le (by norm_num))
-      (by rw [ht, ts_succ_add, add_assoc, ← add_mul]; exact add_mul_delta_lt (by norm_num))
+      (by rw [ht, ts_add, add_assoc, ← add_mul]; exact add_mul_delta_lt (by norm_num))
   intro k hk hrk
   have := ((joined_awake sp) FGP ro H U tr hr Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
@@ -199,30 +190,6 @@ private def Relayed (tr : SATrace sp FGP ro) (U : Set (Blk sp.n FGP)) (X : Fin s
     (D : Blk sp.n FGP) (u : Fin sp.n) : Prop :=
   ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ
-
-/-- A vote that an honest node holds before cut `c`, of slot `s`, admitted before a time of slot
-`s`, was admitted by the node at a time in `[t_s, T)`. -/
-private theorem admitted_in_window (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
-    {X : Fin sp.n} (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s)
-    (hv : v ∈ (tr.state X c).pool s) {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
-    (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
-    ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T := by
-  have hΔ := sp.toParams.hΔ
-  rcases pool_origin hr hX c v (hvs ▸ hv) with ⟨k, hk, hsend, hst, hsl⟩ |
-    ⟨k, hk, ℓ, hck, -, hst, B, hB, hvB⟩
-  · refine ⟨k, hsend, ?_, hlt k hk hst⟩
-    exact ((ts_le_iff_le_slot sp (hr.time_nonneg k)) _).2 (by rw [← hvs]; exact_mod_cast hsl)
-  · exfalso
-    have h1 := (frame_validPayload sp hr hX hck B hB).1 v hvB
-    have h2 := frame_slot_le sp hr hX hck B hB
-    have h3 := hlt k hk hst
-    have h4 : sp.slot (tr.time k) ≤ s := by
-      by_contra h
-      have := ((ts_le_iff_le_slot sp (hr.time_nonneg k)) (s + 1 : Nat)).2 (by push_cast; omega)
-      rw [← add_zero (sp.ts (s + 1 : Nat)), ts_succ_add] at this
-      exact absurd ((this.trans_lt h3).trans_le hT)
-        (by rw [add_zero]; exact not_lt.2 (add_mul_delta_le (by norm_num)))
-    omega
 
 /-- **A result's side.** At an honest update of slot `s` with result `D`: the node's restarts were
 at or before `t_s`; its counted validators `S` are more than half of its voters; each has a vote
@@ -244,7 +211,7 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
   refine ⟨ℓ, _, hu.1, hu.2.2.1, update_restarts hr hY hu, hmaj, ?_, ?_⟩
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvs := state_pool_slot sp hr hY c s v hvp
-    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_in_window hr hY hvs hvp le_rfl
+    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_of_held hr hY hvs hvp le_rfl
       fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres
@@ -280,7 +247,7 @@ private theorem optimistic_seats (hrun : ACRun proposer tr H U)
   have hvs := optimisticPoint_pool_slot hr hX hpt hv
   have htk : tr.time k < sp.ts s + 2 * sp.Δ := not_le.1 (not_or.1 (not_or.1 hcond).2).2
   refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-  exact admitted_in_window hr hX hvs (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
+  exact admitted_of_held hr hX hvs (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
 /-- A `Relayed` vote reaches an honest node's update of slot `s` (its restarts at or before `t_s`)
@@ -297,14 +264,15 @@ private theorem relayed_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   obtain ⟨v, rfl, hvs, hR, k, hsend, h1, h2⟩ := hu
   refine ⟨v, rfl, hR, ?_⟩
   have := sync_forward hr hsync hX hsend h1 (by
-    rw [ts_succ_add]
+    rw [ts_add]
     exact h2.le.trans ((add_mul_delta_le (by norm_num)).trans (le_add_of_nonneg_right hΔ.le))) hY hc
     (fun k' hk' hr' => (hrs k' hk' hr').trans h1) (by
       rw [ht]
       exact (add_le_add h2.le le_rfl).trans
         (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))
     fun t ht₁ ht₂ => by
-      rw [slot_of_lt (s := s) (h1.trans ht₁) (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
+      rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁)
+        (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
         (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))), hvs]
       omega
   rwa [hvs] at this
@@ -330,7 +298,8 @@ private theorem relayed_held_before (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
       exact (add_le_add h2.le le_rfl).trans
         (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))
     fun t ht₁ ht₂ => by
-      rw [slot_of_lt (s := s) (h1.trans ht₁) (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
+      rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁)
+        (ht₂.trans ((add_lt_add_of_lt_of_le h2 le_rfl).trans_le
         (by rw [add_mul_delta_add_delta]; exact add_mul_delta_le (by norm_num)))), hvs]
       omega
   rwa [hvs] at this
