@@ -177,27 +177,19 @@ theorem post_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
 
 private theorem tryVote_time {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {e : Em sp FGP} (he : e ∈ (tryVote sp x A Φ t).2) : t ≤ sp.ts (sp.slot t) + sp.Δ := by
-  unfold tryVote at he
-  dsimp only at he
-  split_ifs at he with h1 h2
-  · simp at he
-  · simp at he
-  all_goals exact not_lt.1 (not_or.1 (not_or.1 h1).2).2
+  by_contra ht
+  have hguard : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨
+      sp.ts (sp.slot t) + sp.Δ < t := Or.inr (Or.inr (lt_of_not_ge ht))
+  simp only [tryVote, hguard, ite_true] at he
+  exact List.not_mem_nil he
 
 /-- A `try_vote` emission is the caster's own vote of the slot of the call's time. The walk's
 domain is carried but not read. -/
 private theorem tryVote_emits_slot {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} {e : Em sp FGP} (he : e ∈ (tryVote sp x A Φ t).2) :
     e.msg.val = x ∧ e.msg.slot = sp.slot t := by
-  unfold tryVote at he
-  dsimp only at he
-  split_ifs at he with h1
-  · simp at he
-  · simp at he
-  all_goals
-    simp only [List.mem_singleton] at he
-    subst he
-    exact ⟨rfl, rfl⟩
+  have h := (tryVote_emits x A Φ t e he).1
+  exact ⟨h.1, h.2.1⟩
 
 /-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
 theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
@@ -219,7 +211,13 @@ theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin 
     change e ∈ (acOnTick sp x _ ℓ.frame _).2 at he'
     unfold acOnTick at he'
     dsimp only at he'
-    split_ifs at he' <;> first | exact le_of_eq ‹_› | simp at he'
+    split at he'
+    · exact absurd he' List.not_mem_nil
+    · change e ∈ (if tr.time j = sp.ts (sp.slot (tr.time j)) + sp.Δ then
+        tryVote sp x (tr.state x j) ℓ.frame (tr.time j) else (tr.state x j, [])).2 at he'
+      split at he'
+      · exact le_of_eq ‹_›
+      · exact absurd he' List.not_mem_nil
   | proposal => rw [hcall] at he'; simp [ACInterface.step] at he'
   | toFG => rw [hcall] at he'; simp [ACInterface.step] at he'
   | message m => rw [hcall] at he'; exact tryVote_time he'
@@ -250,7 +248,13 @@ theorem vote_signer_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : 
     change e ∈ (acOnTick sp x _ ℓ.frame _).2 at he'
     unfold acOnTick at he'
     dsimp only at he'
-    split_ifs at he' <;> first | exact tryVote_emits_slot he' | simp at he'
+    split at he'
+    · exact absurd he' List.not_mem_nil
+    · change e ∈ (if tr.time j = sp.ts (sp.slot (tr.time j)) + sp.Δ then
+        tryVote sp x (tr.state x j) ℓ.frame (tr.time j) else (tr.state x j, [])).2 at he'
+      split at he'
+      · exact tryVote_emits_slot he'
+      · exact absurd he' List.not_mem_nil
   | proposal => rw [hcall] at he'; simp [ACInterface.step] at he'
   | toFG => rw [hcall] at he'; simp [ACInterface.step] at he'
   | message m => rw [hcall] at he'; exact tryVote_emits_slot he'
