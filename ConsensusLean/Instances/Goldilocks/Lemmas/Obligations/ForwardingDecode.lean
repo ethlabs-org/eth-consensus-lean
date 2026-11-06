@@ -791,12 +791,22 @@ theorem decoded_held_tick {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
       · rename_i k s header carried heq; cases heq
       · exact h
     exact unsigned mc.1 mc.2
-  · rw [duties_eq S t ht, runDuties_fst_append]
-    erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
-    unfold dutiesInit
-    erw [runDuties_fst_append, runDuties_fst_append, runDuties_fst_cons,
-      runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
-    erw [← atProposal_eq S rho v (rho.stateBefore i v) t]
+  · -- The duty steps stated on the goal's own `ShapeDuty` lists, so plain `rw` applies (as in
+    -- `tick_node_eq`); `erw [← atProposal_eq …]` tried every projection at default transparency.
+    have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (x : Nat),
+        shapeOf S hn (rho.runDuties v nd' [.poll x]).1 = (poll (shapeOf S hn nd') x).1 :=
+      fun nd' x => dutyStep_poll S rho hn v nd' x hsel
+    have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E),
+        (rho.runDuties v nd' (dutiesInit S t)).1 =
+          (rho.runDuties v (rho.runDuties v (rho.runDuties v nd'
+            ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
+              List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
+            ((skeleton (pubOf E)).proposeAt t)).1 [.poll t.toNat]).1 := fun nd' =>
+      (runDuties_fst_append S rho v nd' _ _).trans
+        (congrArg (fun x => (rho.runDuties v x [.poll t.toNat]).1)
+          (runDuties_fst_append S rho v nd' _ _))
+    rw [duties_eq S t ht, runDuties_fst_append, hpoll, hinit, hpoll,
+      ← atProposal_eq S rho v (rho.stateBefore i v) t]
     exact decoded_held_poll _ _ (decoded_held_poll _ _ hprop.1 hprop.2).1
       (decoded_held_poll _ _ hprop.1 hprop.2).2
 
