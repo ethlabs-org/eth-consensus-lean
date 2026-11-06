@@ -9,6 +9,9 @@ import time
 
 
 SCRIPT = Path(__file__).with_name("push-main.sh").resolve()
+# The fixtures' Git ignores the user's global and system config: a global core.hooksPath would also apply to the
+# bare remote and disable the pre-receive hook that stands in for a remote rule.
+os.environ.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
 
 
 def run(*args, cwd):
