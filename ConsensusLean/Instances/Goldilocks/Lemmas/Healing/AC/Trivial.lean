@@ -26,22 +26,6 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-! ## Helpers -/
 
-/-- The walk of a subtree of a well-formed frame ends in the frame's tree. -/
-theorem getHead_mem' {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
-    (hT : T ⊆ Φ.tree) (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
-    getHead sp A Φ t T V σ ∈ Φ.tree := by
-  have ha : getAnchor sp A Φ t ∈ Φ.tree := by
-    unfold getAnchor
-    cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
-    | none => exact hΦ.fcRoot_mem
-    | some D =>
-      rcases (deepest_mem hd).1 with h | h
-      · exact h.1
-      · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
-  obtain h | h := eq_or_ne (getAnchor sp A Φ t) (getHead sp A Φ t T V σ)
-  · exact h ▸ ha
-  · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
-
 private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
     ∃ k ≤ c, tr.RestartAt y k ∧ tr.lastWake y c = (tr.time k : WithBot Time)
   | 0 => by
@@ -460,7 +444,7 @@ theorem trivial_viable (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy
   -- the head of `z`'s vote is in its tree
   obtain ⟨-, hslz, -, hhead⟩ := castAt_spec hr hz ⟨hcz, hez⟩
   have hHdt : Hd ∈ ℓz.frame.tree := by
-    have hm := getHead_mem' hΦz (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
+    have hm := getHead_mem hΦz (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
       (mergedVoteView sp e'.readPoint ℓz.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
       (T := ℓz.frame.viableTree (voteDomain sp e'.readPoint ℓz.frame e'.msg.slot))
     rwa [hU.1 hHdU (hΦzU hm) (hHdr.trans hhead)]
@@ -638,7 +622,7 @@ theorem trivial_carry_votes (hS : StandaloneRun tr H U proposer g) {m : Nat}
   rw [← hsl, hvs] at htj
   have htj' : sp.ts m ≤ tr.time j :=
     (ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [← hsl, hvs])
-  have hG := getHead_mem' hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
+  have hG := getHead_mem hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e'.readPoint (tr.time j)
     (mergedVoteView sp e'.readPoint ℓ.frame e'.msg.slot) ((e'.msg.slot : Int) - 1)
     (T := ℓ.frame.viableTree (voteDomain sp e'.readPoint ℓ.frame e'.msg.slot))
   exact ⟨hvs, x, hx, j, ⟨ℓ, hc, Or.inl ⟨e', he, rfl⟩⟩, htj', by

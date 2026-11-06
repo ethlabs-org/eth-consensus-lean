@@ -78,7 +78,7 @@ private theorem genesis_extended (hs : UnanimitySetting tr H U schedule g p P k 
     simp only [Option.some.injEq, Prod.mk.injEq] at hpay
     obtain ⟨rfl, -⟩ := hpay
     rw [trivial_F_eq hS hy hq hc hs.call]
-    exact (hΦ.rooted.2 _ (getHead_mem' hΦ (fun _ hB => hB.1) _ _ _ _)).mono hΦU
+    exact (hΦ.rooted.2 _ (getHead_mem hΦ (fun _ hB => hB.1) _ _ _ _)).mono hΦU
   · obtain ⟨hΦ', hΦ'U⟩ := frameIn_of_callAt hr hz hc'
     obtain ⟨Hd, hHd, hHdr, -⟩ := honest_head_frame hr hz ⟨hc', he'⟩
     rw [trivial_F_eq hS hy hz hc hc']

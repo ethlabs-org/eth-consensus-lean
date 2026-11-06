@@ -284,7 +284,7 @@ theorem proposal_head_mem {i : Nat} (hf : FrameOK (frame (config i).tree)) :
     (proposalData i (config i)).1.head ∈ (config i).tree := by
   simp only [proposalData, acProposal, joined_config, not_true_eq_false, ite_false,
     Option.getD_some]
-  exact getHead_mem' hf (fun _ h => h.1) _ _ _ _
+  exact getHead_mem hf (fun _ h => h.1) _ _ _ _
 
 /-- Finite, rooted frames and parent roots strictly below the child slot. -/
 theorem config_good (i : Nat) : FrameOK (frame (config i).tree) ∧
