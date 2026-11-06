@@ -55,14 +55,14 @@ theorem final_heal_horizon_fit {D Ld k δt X c : Time} (hD : 0 < D) (hk : 0 ≤ 
     (h3c : 3 * c ≤ δt) :
     (20 * Ld + 24 * δt + 24 * X + 40 + (12 * c - 2)) * D + 1 ≤
       (20 * Ld + 8 * k + 28 * δt + 28 * X + 56) * D := by
-  have h1 : 0 ≤ (4 * δt - 12 * c) * D := mul_nonneg (by linarith) hD.le
+  have h1 : 0 ≤ (4 * δt - 12 * c) * D := mul_nonneg (by linarith only [h3c]) hD.le
   have h2 : 0 ≤ k * D := mul_nonneg hk hD.le
   have h3 : 0 ≤ X * D := mul_nonneg hX hD.le
   have key : (20 * Ld + 8 * k + 28 * δt + 28 * X + 56) * D -
       ((20 * Ld + 24 * δt + 24 * X + 40 + (12 * c - 2)) * D + 1) =
       8 * (k * D) + (4 * δt - 12 * c) * D + 4 * (X * D) + 18 * D - 1 := by ring
-  have hD1 : (1 : Time) ≤ D := by change (0 : ℤ) < D at hD; change (1 : ℤ) ≤ D; omega
-  linarith
+  have hD1 : (1 : Time) ≤ D := hD
+  linarith only [key, h1, h2, h3, hD1]
 
 /-- **The honest-proposer gap of a final query** (premise `hgp` of the rise at `G = X`): for the
 final pattern `[0, c, 2c, 3c]` (`hpat`, span `3c`), with `max ready 0 + 4Δ ≤ t_{s₀}` and
@@ -103,15 +103,16 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
   have hx0 : 0 < x := by
     rcases Nat.eq_zero_or_pos x with h | h
     · exfalso
-      have hs0 : s₀ = 0 := by omega
+      have hs0 : s₀ = 0 := Nat.eq_zero_of_le_zero (hx₀.trans (hxl.trans h.le))
       subst hs0
       have := le_max_right ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0
       simp only [SA.SAParams.ts] at hs
       push_cast at hs
-      linarith
+      linarith only [hs, this, hΔ]
     · exact h
   have hxts : Q.params.ts x ≤ Q.params.ts (N + 3 * c : Nat) :=
-    (SA.ts_le_iff Q.params).2 (by exact_mod_cast (show x ≤ N + 3 * c by omega))
+    (SA.ts_le_iff Q.params).2 (by exact_mod_cast
+      (Nat.le_of_lt_succ (hxr.trans_le hxN)).trans (Nat.le_add_right N (3 * c)))
   obtain ⟨k, P, hP, hk, -, -, hPs, -⟩ := duty_proposal_run S A V Q.run Q.hn Q.valid
     Q.noCollision hx0 (hxts.trans hN) hx
   exact ⟨x, hxl, hxr, hP.1, k, P, hk, hPs⟩
@@ -135,7 +136,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   classical
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   set H := honestKeys S Q.run.2
-  set X : Nat := (Q.index : Nat) with hXdef
+  let X : Nat := (Q.index : Nat)
   set Ld : Nat := healthyDrainLen S Q.index with hLddef
   set ready := (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run with hreadydef
   set D := Q.params.Δ with hDdef
@@ -147,8 +148,8 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   -- the ready scalar
   have hC : (Sys (goldilocks S) V).cDur (K S A) Q.run =
       ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC := by
-    simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    rfl
+    change (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.ΔAC = _
+    rw [contract_coefficients_catchUp]
   have hready : ready = max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
     rw [hreadydef, ← hC]; rfl
   have hcd : (0 : Time) ≤ ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC :=
@@ -201,7 +202,8 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
         obtain ⟨ℓ, hc, -⟩ := hk
         obtain ⟨_, hl⟩ := hc
         intro hn
-        simp [hn] at hl))
+        rw [hn] at hl
+        cases hl))
   -- an honest node exists
   have hH : H.Nonempty := by
     by_contra hne
@@ -211,7 +213,8 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     have hn := Q.params.toParams.hn
     change 0 < Q.params.n at hn
     have hf' : 3 * Q.params.n ≤ Q.params.n - 1 := hf
-    omega
+    exact lt_irrefl _ (hf'.trans_lt
+      ((Nat.sub_lt hn Nat.one_pos).trans_le (Nat.le_mul_of_pos_left _ (by decide))))
   -- Catch with `κ = 2Δ`
   have hcatch : Healing.CatchRun Q.trace H Q.gst (2 * D) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
@@ -222,10 +225,12 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst X Ld
       Q.run.2.horizon :=
     drainOutputs_of_service hrun hs.noColl hs.sync hs.awake hs.faults hcatch hnr
-      (by rw [hLddef, healthyDrainLen_val, hk]; omega)
+      (by rw [hLddef, healthyDrainLen_val, hk]; exact Nat.le_succ _)
   -- the reset
   obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_awake hrun hs.noColl hs.faults hs.sync
-    hs.awake hcatch hnr hH (by rw [hδeq]; omega) (by rw [hδeq]; exact hs.timeoutDelay)
+    hs.awake hcatch hnr hH
+    (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
+    (by rw [hδeq]; exact hs.timeoutDelay)
     hr0 hgr Q.index.pos hcz hBh
     (fun s₀ N hs₀ hN => final_query_gap S A V Q hpat (by rw [hrmax]; exact hs₀) (by
       have : Q.params.ts (N + 3 * c : Nat) = Q.params.ts N + 12 * (c : Time) * D := by
