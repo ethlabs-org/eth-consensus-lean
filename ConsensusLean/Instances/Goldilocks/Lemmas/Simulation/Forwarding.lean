@@ -758,7 +758,9 @@ theorem wrappersCover_processOne {sp : SA.SAParams}
   · exact h
   · rename_i a _
     obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
-    simpa [relayIf, apply, Node.onAttestation, he, WrappersCover] using h
+    simpa only [WrappersCover, ne_eq, relayIf, ↓reduceIte, apply, Node.onAttestation, he,
+      List.foldl_cons, List.foldl_nil, not_and_self, decide_false, List.flatMap_cons,
+      List.flatMap_nil, List.append_nil, List.dedup_nil, List.filter_nil, List.map_nil] using h
   · exact h
 
 private theorem wrappersCover_fgUpdate {sp : SA.SAParams}
@@ -772,7 +774,7 @@ private theorem wrappersCover_fgUpdate {sp : SA.SAParams}
     · exact h
     · rename_i a record _
       obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
-      simpa [Node.acToFG, Node.onAttestation, he, WrappersCover] using h
+      simpa only [WrappersCover, ne_eq, Node.onAttestation, Node.acToFG, he] using h
 
 private theorem wrappersCover_poll {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) t
