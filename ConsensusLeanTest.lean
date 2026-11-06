@@ -95,8 +95,13 @@ public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Ticks
 public import ConsensusLeanTest.Goldilocks.Runs.SAHealing
 public import ConsensusLeanTest.Goldilocks.Runs.Schedule.LocalRun
 public import ConsensusLeanTest.Goldilocks.Runs.Schedule.Run
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.AC
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model.Basic
