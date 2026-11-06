@@ -102,6 +102,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.World
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model.Basic
