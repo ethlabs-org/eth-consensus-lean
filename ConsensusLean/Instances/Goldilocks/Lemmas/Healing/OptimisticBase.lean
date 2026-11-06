@@ -99,8 +99,7 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hslot := SA.proposal_slot (tr := tr.projAC) hti
   have hib : tr.time i ≤ b := hti ▸ hmb
   have hlo : sp.ts s ≤ tr.time i := by rw [hti, hts]; linarith
@@ -525,8 +524,7 @@ theorem regular_fast_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
   have hfl : SA.FastLockAt tr.projAC x c s D CV :=
     Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩
   apply next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm (by
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     linarith [sp.toParams.hΔ]) hmb hframe hw hat hcw hQw hh hJ hXQ
   intro y hy i ell e hcast hs hhigh hFX hviab ih
   have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
@@ -604,7 +602,7 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
   have hres : SA.ResultAt tr.projAC x c s C
       (SA.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
-    simp only [SAParams.ts]; rw [Nat.cast_sub (by omega : 1 ≤ s)]; ring
+    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, SA.ts_sub_one]
   have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith [sp.toParams.hΔ]
   obtain ⟨z, hz, q, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr hms hx hres
@@ -630,8 +628,7 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
       hx hfast ?_ hXD hCQ hz (by linarith [sp.toParams.hΔ]) hc hQ hh hJX
     simpa only [Compose.frame_of_projAC hrun hx hu.1] using hres
   · intro hA a D' CV' hop hQD
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
         (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith [sp.toParams.hΔ]),

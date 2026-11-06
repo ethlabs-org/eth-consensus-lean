@@ -427,8 +427,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_domain_before {b : Time}
     have hz := lt_cutZ sp g
     have hsm : sp.ts (m + 1 : Nat) ≤ sp.ts s := (SA.ts_le_iff sp).mpr
       (by rw [cleanLabel_eq] at hs; clear * - hs hm; omega)
-    have he : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
-      simp only [SA.SAParams.ts]; push_cast; ring
+    have he : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := SA.ts_succ m
     rw [he] at hsm
     have := sp.toParams.hΔ
     linarith
@@ -505,8 +504,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
     exact hBF.trans (Anc.mono hPhiU ((SA.fcRoot_anc_getAnchor hPhi A₁ (tr.time i)).trans hhead))
   have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU
   obtain ⟨σ, rfl⟩ : ∃ σ, u = σ + 1 := ⟨u - 1, by clear * - hsu; omega⟩
-  have hσ : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
+  have hσ : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := SA.ts_succ σ
   have hσb : sp.ts σ + sp.Δ ≤ b := by rw [hti, hσ] at hib; linarith
   have votes : ∀ z ∈ H, ∀ q e, SA.VoteAt tr.projAC z q e → e.msg.slot = σ →
       SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
@@ -636,8 +634,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
   have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hsg : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
     have ht := hp.clean_window_timing hs s (by have := sp.two_le_k; clear * - this; omega)
     have hz := lt_cutZ sp g

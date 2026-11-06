@@ -363,8 +363,7 @@ theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
       change ((s + 1 : Nat) : Int) ≤ sp.slot (tr.time i)
       rw [hslot])
-  have hstep : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hstep : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hcarry := SA.honest_batch_carry_before hS hy hc hes hm
     (by
       change sp.ts s + 2 * sp.Δ ≤ tr.time i
@@ -961,8 +960,7 @@ theorem FrameWindow.toFG_later_proposal_head
       · exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg a) _).2 (by rw [hs])
     have htj := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).1
       (hlow.trans (hrun.time_mono hai.le))
-    have htupper : sp.ts (u + 2 : Nat) = sp.ts (u + 1 : Nat) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+    have htupper : sp.ts (u + 2 : Nat) = sp.ts (u + 1 : Nat) + 4 * sp.Δ := SA.ts_succ (u + 1)
     by_contra hn
     have hlow' := (SA.ts_le_iff sp).2
       (show ((u + 2 : Nat) : Int) ≤ l₀.slot by
