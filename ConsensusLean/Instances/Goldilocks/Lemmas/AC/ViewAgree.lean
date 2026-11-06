@@ -226,10 +226,10 @@ private theorem view_agree_of_forward (hrun : ACRun proposer tr H U)
             (Or.inr (by rw [hcall]; simp))).trans (etime_of_lt_top _) |>.ne
           · rcases frame_accepted hr hp i hcp R hRp with h | ⟨k, hk, h⟩
             · exact Or.inl h
-            · exact Or.inr ⟨k, h, by linarith [hr.time_mono hk]⟩
-          · have := hrsp k hk hrk
-            rw [hti, hts] at *
-            linarith
+            · exact Or.inr ⟨k, h, (hr.time_mono hk).trans_lt (lt_add_one _)⟩
+          · have htime := hrsp k hk hrk
+            rw [hti, hts]
+            linarith only [htime, hΔ]
         exact mem_voteViewList_snd.2 ⟨⟨hxP, hpool x hxP⟩,
           lt_top_iff_ne_top.2 (resolutionTime_ne_top hΦp hRp hRr hHds (hpool x hxP).ne hbs)⟩
       · exact absurd (hpe ▸ hxP) hw
@@ -266,11 +266,13 @@ theorem view_agree_window_before (hrun : ACRun proposer tr H U)
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have hdl : tr.time k + sp.Δ ≤ tr.time i := by rw [hti, hts]; linarith
+  have hdl : tr.time k + sp.Δ ≤ tr.time i := by
+    rw [hti, hts]; linarith only [htk, hΔ]
   have h := sync_window_before_forward hrun.localRun hsync hy hsend (ha.trans hsk)
     (hdl.trans hb) hp hprop.1
     (fun k' hk' hr' => (hrs k' hk' hr').trans hsk) hdl fun t h₁ h₂ => by
-      rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hvs]; omega
+      rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith only [h₂, htk, hΔ]), hvs]
+      omega
   simpa only [hvs] using h
 
 /-- View agreement needs service only through the proposal cut. -/
@@ -322,10 +324,13 @@ theorem view_agree (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp.n} {i 
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have h := sync_forward hrun.localRun hsync hy hsend hsk (by rw [hts]; linarith) hp hprop.1
-    (fun k' hk' hr' => (hrs k' hk' hr').trans hsk) (by rw [hti, hts]; linarith)
+  have h := sync_forward hrun.localRun hsync hy hsend hsk
+    (by rw [hts]; linarith only [htk, hΔ]) hp hprop.1
+    (fun k' hk' hr' => (hrs k' hk' hr').trans hsk)
+    (by rw [hti, hts]; linarith only [htk, hΔ])
     fun t h₁ h₂ => by
-      rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hvs]; omega
+      rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith only [h₂, htk, hΔ]), hvs]
+      omega
   simpa only [hvs] using h
 
 end Consensus.Goldilocks.SA
