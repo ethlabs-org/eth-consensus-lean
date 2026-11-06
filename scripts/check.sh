@@ -50,6 +50,8 @@
 #                        LC_ALL=C sorted module names, one per line; sorted-index round-robin partition
 #   --result-file PATH   atomically write JSON on exit: mode, part, status, exit_code, steps_run,
 #                        steps_skipped (step/reason objects), and inventories (expected/replayed paths) for shards
+#   --plan               report normal-mode selection without executing checks; changed mode reads the import
+#                        graph to compute its cone. No passing check verdict is emitted. Requires RUN_DIR or CI.
 #   --changed [<base>]   the fast steps restricted to what changed since <base> (default: merge-base with
 #                        origin/main; uncommitted and untracked files count): build the changed modules'
 #                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
@@ -76,9 +78,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 usage="usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--canary] [--no-build] [--update-snapshot] [--update-extensions]"
-usage+=$'\n       [--defer-replay] [--no-shared-selftests] [--result-file PATH]\n       scripts/check.sh --replay-shard I/N --replay-inventory DIR [--result-file PATH]'
+usage+=$'\n       [--defer-replay] [--no-shared-selftests] [--result-file PATH] [--plan]\n       scripts/check.sh --replay-shard I/N --replay-inventory DIR [--result-file PATH]'
 mode=fast base="" split="" selftests=0 reach=0 canary=0 no_build=0 update_snapshot=0 update_extensions=0
 replay_shard="" replay_inventory="" defer_replay=0 no_shared_selftests=0 result_file=""
+plan=0
 result_status=failed steps_run=() steps_skipped=() expected_inventory="" replayed_inventory=""
 # Locate the result path before parsing, so even invalid arguments produce a failure record.
 args=("$@")
@@ -120,6 +123,7 @@ while (($#)); do
     --replay-inventory) (($# > 1)) || { echo "--replay-inventory needs a directory" >&2; exit 2; }; replay_inventory="$2"; shift ;;
     --defer-replay) defer_replay=1 ;;
     --no-shared-selftests) no_shared_selftests=1 ;;
+    --plan) plan=1 ;;
     --result-file) (($# > 1)) || { echo "--result-file needs a path" >&2; exit 2; }; result_file="$2"; shift ;;
     --changed) mode=changed; if (($# > 1)) && [[ "$2" != -* ]]; then base="$2"; shift; fi ;;
     --selftests) selftests=1 ;;
@@ -151,6 +155,9 @@ if ((defer_replay)) && [[ "$mode/$split" != full/main ]]; then
 fi
 if ((no_shared_selftests)) && [[ "$mode/$split" != full/lake-check ]]; then
   echo "check.sh: --no-shared-selftests requires --full --split lake-check" >&2; exit 2
+fi
+if ((plan)) && [[ -n "$replay_shard$result_file" ]]; then
+  echo "check.sh: --plan cannot be combined with --replay-shard or --result-file" >&2; exit 2
 fi
 if [[ -z "${RUN_DIR:-}" && -z "${CI:-}" ]]; then
   echo "check.sh: refusing to run without RUN_DIR or CI: set RUN_DIR to a scratch directory, e.g. RUN_DIR=\"\$(mktemp -d)\"" >&2
@@ -1475,6 +1482,9 @@ run_step() {
   if ((build_failed)) && [[ " 3 3b 3c 4 5 6 9 10 11 14 " == *" ${label%% *} "* ]]; then
     skip_step "$label" "not run: step 1 failed, so the build outputs it reads may be stale"; return 0
   fi
+  if ((plan)); then
+    echo "PLAN  $label (selected by $mode mode${split:+, split $split})"; return 0
+  fi
   echo "--- $label ---"
   steps_run+=("$label")
   local t0=$SECONDS v=PASS
@@ -1565,11 +1575,11 @@ else
 fi
 run_selftest "1 build self-test (--wfail on a replayed warning; warn.sorry = false)" selftest_build
 run_step "2 boundaries (check-boundaries.py, every checked library)" step_boundaries
-if in_part 2 && [[ ! -s "$INV" ]]; then
+if ((!plan)) && in_part 2 && [[ ! -s "$INV" ]]; then
   echo "check.sh: no inventory; the remaining steps need it"; echo; echo "check.sh: FAILURES PRESENT" >&2; exit 1
 fi
-! in_part 2 || mapfile -t SPEC_MODULES < <(inv_trusted)
-! in_part 2 || mapfile -t PROTECTED_MODULES < <(inv_protected)
+((plan)) || ! in_part 2 || mapfile -t SPEC_MODULES < <(inv_trusted)
+((plan)) || ! in_part 2 || mapfile -t PROTECTED_MODULES < <(inv_protected)
 run_selftest "2 boundaries self-test (fixtures/boundaries/cases.toml)" selftest_boundaries
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque, SorryPlace)" selftest_decls
@@ -1615,6 +1625,11 @@ if [[ "$mode" == changed ]] || ((!canary)); then
   skip_step "14 rebuild canary" "--full, or --canary (CI: when the build configuration changed)"
 else
   run_step "14 rebuild canary (report; the control must rebuild)" step_canary
+fi
+
+if ((plan)); then
+  echo "check.sh: PLAN ONLY ($mode mode; no checks executed; assumes selected checks succeed)"
+  exit 0
 fi
 
 echo

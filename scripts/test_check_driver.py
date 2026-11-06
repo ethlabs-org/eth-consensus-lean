@@ -15,7 +15,7 @@ CONFIG = Path(__file__).with_name("boundaries.toml").read_text()
 
 class DriverTests(unittest.TestCase):
     def drive(self, *args, bwrap=True, fail_build=False, replay=False, fail_leaf=False,
-              stale=False, changed=False):
+              stale=False, changed=False, result_file=True, paths=None, graph=True):
         with tempfile.TemporaryDirectory(prefix="check-driver-") as tmp:
             root = Path(tmp)
             scripts = root / "scripts"
@@ -46,6 +46,54 @@ replay_leaf() { echo "EXEC replay $1"; echo '1024 0.01' >"$WORK/time.$1"; }
             if changed:
                 # Isolate the result-file contract from graph selection (separate fixtures).
                 stubs += 'compute_changes() { BUILD_TARGETS=(); DECL_LIBS=(); do_surface=0; do_protected=0; do_comparator_config=0; do_audit=0; do_audit_tests=0; do_audit_report=0; }\n'
+            if paths is not None:
+                # Real Git discovery and cone selection; only graph extraction is replaced.
+                stubs += '''
+python3() {
+  if [[ "$2" == scripts/check-boundaries.py ]]; then
+    while (($#)); do
+      case "$1" in
+        --graph-out) cp scripts/graph.tsv "$2"; shift ;;
+        --inventory-out) cp scripts/inventory.tsv "$2"; shift ;;
+      esac
+      shift
+    done
+  elif [[ "$2" == - ]]; then command python3 "$@"
+  else echo "EXEC $*"
+  fi
+}
+'''
+                modules = [("ConsensusLean", "ConsensusLean.Spec.Probe", "-", "trusted", "protected"),
+                           ("ConsensusLean", "ConsensusLean.Lemmas.Probe", "ConsensusLean.Spec.Probe", "-", "-"),
+                           ("Solution", "Solution", "ConsensusLean.Lemmas.Probe", "-", "-"),
+                           ("ConsensusLeanTest", "ConsensusLeanTest", "ConsensusLean.Spec.Probe", "-", "-")]
+                modules = [row for row in modules if paths.get(row[1].replace(".", "/") + ".lean") != "deleted"]
+                (scripts / "graph.tsv").write_text("".join(f"{lib}\t{m}\t{dep}\n" for lib, m, dep, _, _ in modules) if graph else "")
+                (scripts / "inventory.tsv").write_text("".join(f"{lib}\t{m}\tleaf\tlayer\t{trust}\t{protected}\n"
+                                                              for lib, m, _, trust, protected in modules))
+                before, after = SOURCE.split("# --- driver ", 1)
+                (scripts / "check.sh").write_text(before + stubs + "\n# --- driver " + after)
+                def git(*cmd):
+                    return subprocess.check_output(["git", *cmd], cwd=root, stderr=subprocess.DEVNULL, text=True).strip()
+                git("init", "-q")
+                git("config", "user.name", "Fixture")
+                git("config", "user.email", "fixture@example.invalid")
+                for path, action in paths.items():
+                    if action != "untracked":
+                        p = root / path
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                        p.write_text("before\n")
+                git("add", ".")
+                git("commit", "-qm", "base")
+                base = git("rev-parse", "HEAD")
+                for path, action in paths.items():
+                    p = root / path
+                    if action == "deleted":
+                        p.unlink()
+                    else:
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                        p.write_text("after\n")
+                args = tuple(base if a == "BASE" else a for a in args)
             marker = "# --- driver "
             before, after = SOURCE.split(marker, 1)
             (scripts / "check.sh").write_text(before + stubs + "\n" + marker + after)
@@ -55,12 +103,13 @@ replay_leaf() { echo "EXEC replay $1"; echo '1024 0.01' >"$WORK/time.$1"; }
             result_path = root / "result.json"
             inventory = root / "inventory"
             args = [str(inventory) if a == "INVENTORY" else a for a in args]
-            result = subprocess.run(["bash", str(scripts / "check.sh"), *args,
-                                     "--result-file", str(result_path)], env=env,
+            result_args = ["--result-file", str(result_path)] if result_file else []
+            result = subprocess.run(["bash", str(scripts / "check.sh"), *args, *result_args], env=env,
                                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            result.record = json.loads(result_path.read_text())
+            result.record = json.loads(result_path.read_text()) if result_file else None
             result.inventories = {p.name: p.read_text().splitlines() for p in inventory.glob("*.txt")}
-            self.assertEqual(result.record["exit_code"], result.returncode, result.stdout)
+            if result_file:
+                self.assertEqual(result.record["exit_code"], result.returncode, result.stdout)
             return result
 
     def test_missing_sandbox_is_not_full_success(self):
@@ -154,11 +203,49 @@ replay_leaf() { echo "EXEC replay $1"; echo '1024 0.01' >"$WORK/time.$1"; }
 
     def test_invalid_modes_produce_failure_records(self):
         for args in (("--replay-shard", "0/4"), ("--defer-replay",),
-                     ("--no-shared-selftests",), ("--unknown",)):
+                     ("--no-shared-selftests",), ("--unknown",), ("--plan",)):
             result = self.drive(*args)
             self.assertEqual(result.returncode, 2, result.stdout)
             self.assertEqual(result.record["status"], "failed")
             self.assertEqual(result.record["steps_run"], [])
+
+    def test_plan_refuses_replay_execution_mode(self):
+        result = self.drive("--plan", "--replay-shard", "1/4", "--replay-inventory", "INVENTORY",
+                            result_file=False)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertNotIn("EXEC ", result.stdout)
+
+    def test_plan_matches_execution_selection_without_running_checks(self):
+        for args in (("--fast",), ("--full",), ("--full", "--split", "main", "--defer-replay"),
+                     ("--full", "--split", "lake-check", "--no-shared-selftests"), ("--changed",)):
+            with self.subTest(args=args):
+                planned = self.drive(*args, "--plan", result_file=False, changed=True)
+                executed = self.drive(*args, changed=True)
+                self.assertEqual(planned.returncode, 0, planned.stdout)
+                self.assertNotIn("EXEC ", planned.stdout)
+                self.assertIn("check.sh: PLAN ONLY", planned.stdout)
+                self.assertNotIn("check.sh: PASSED", planned.stdout)
+                labels = [line[6:].split(" (selected by ")[0] for line in planned.stdout.splitlines()
+                          if line.startswith("PLAN  ")]
+                self.assertEqual(labels, executed.record["steps_run"])
+                self.assertEqual([line for line in planned.stdout.splitlines() if line.startswith(("SKIP ", "DEFER "))],
+                                 [line for line in executed.stdout.splitlines() if line.startswith(("SKIP ", "DEFER "))])
+
+    def test_plan_uses_real_changed_selection_and_conservative_fallbacks(self):
+        cases = [({"docs/probe.md": "modified"}, True, "changed", "no Lean module changed", "no library affected"),
+                 ({"ConsensusLean/Spec/Probe.lean": "untracked"}, True, "changed", "downstream cone (built): 4 modules", "PLAN  4 Spec surface"),
+                 ({"ConsensusLean/Spec/Probe.lean": "deleted"}, True, "changed", "check-decls: ConsensusLean", "PLAN  4 Spec surface"),
+                 ({"ConsensusLean/Lemmas/Probe.lean": "modified"}, True, "changed", "downstream cone (built): 2 modules", "PLAN  3b axiom audit"),
+                 ({"docs/probe.md": "modified"}, False, "fast", "no import graph", "PLAN  1 build"),
+                 ({"scripts/probe.py": "untracked"}, True, "fast", "with the self-tests", "PLAN  0 pins self-test")]
+        for paths, graph, mode, first, second in cases:
+            with self.subTest(paths=paths, graph=graph):
+                result = self.drive("--changed", "BASE", "--plan", paths=paths, graph=graph, result_file=False)
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertIn(f"PLAN ONLY ({mode} mode", result.stdout)
+                self.assertIn(first, result.stdout)
+                self.assertIn(second, result.stdout)
+                self.assertNotIn("EXEC ", result.stdout)
 
 
 if __name__ == "__main__":
