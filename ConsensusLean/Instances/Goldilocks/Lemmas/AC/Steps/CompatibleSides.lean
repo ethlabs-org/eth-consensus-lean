@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
