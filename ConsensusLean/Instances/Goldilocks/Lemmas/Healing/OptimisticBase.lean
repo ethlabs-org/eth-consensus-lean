@@ -1,13 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
