@@ -43,6 +43,13 @@
 #   --split <part>       with --full, one of two parts run as parallel CI jobs: `lake-check` = step 0 (pins, with
 #                        its self-test) and step 10, `main` = every other step; each prints DEFER for the other
 #                        part's steps and ends with `check.sh: PART PASSED (split <part>; ...)`
+#   --defer-replay       with --full --split main, defer production replay to consumer shards; its fixtures run
+#   --no-shared-selftests with --full --split lake-check, defer ancillary step-0 self-tests to main (pins stay)
+#   --replay-shard I/N   only replay shard I of N (1-based) on a fresh built tree; requires --replay-inventory DIR
+#                        DIR/expected.txt lists all leaves, DIR/replayed.txt lists successful shard leaves:
+#                        LC_ALL=C sorted module names, one per line; sorted-index round-robin partition
+#   --result-file PATH   atomically write JSON on exit: mode, part, status, exit_code, steps_run,
+#                        steps_skipped (step/reason objects), and inventories (expected/replayed paths) for shards
 #   --changed [<base>]   the fast steps restricted to what changed since <base> (default: merge-base with
 #                        origin/main; uncommitted and untracked files count): build the changed modules'
 #                        downstream cone, check-decls on the affected libraries, Spec surface only if a Spec
@@ -69,12 +76,51 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 usage="usage: scripts/check.sh [--fast | --full [--split main|lake-check] | --changed [<base>]] [--selftests] [--reach] [--canary] [--no-build] [--update-snapshot] [--update-extensions]"
+usage+=$'\n       [--defer-replay] [--no-shared-selftests] [--result-file PATH]\n       scripts/check.sh --replay-shard I/N --replay-inventory DIR [--result-file PATH]'
 mode=fast base="" split="" selftests=0 reach=0 canary=0 no_build=0 update_snapshot=0 update_extensions=0
+replay_shard="" replay_inventory="" defer_replay=0 no_shared_selftests=0 result_file=""
+result_status=failed steps_run=() steps_skipped=() expected_inventory="" replayed_inventory=""
+# Locate the result path before parsing, so even invalid arguments produce a failure record.
+args=("$@")
+for ((a=0; a+1<${#args[@]}; a++)); do
+  [[ "${args[a]}" != --result-file ]] || result_file="${args[a+1]}"
+done
+write_result() {
+  local rc=$?
+  [[ -n "$result_file" ]] || return "$rc"
+  local written=0
+  command python3 -I - "$result_file" "$mode" "$split" "$replay_shard" "$result_status" "$rc" \
+    "$expected_inventory" "$replayed_inventory" "${#steps_run[@]}" "${steps_run[@]}" "${steps_skipped[@]}" <<'PY' || written=$?
+import json, os, sys, tempfile
+path, mode, part, shard, status, rc, expected, replayed, count, *steps = sys.argv[1:]
+count, rc = int(count), int(rc)
+data = dict(mode=mode, part=shard or part or None, status="failed" if rc and status != "partial" else status,
+            exit_code=rc, steps_run=steps[:count],
+            steps_skipped=[dict(step=s, reason=r) for s, r in zip(steps[count::2], steps[count+1::2])])
+if shard:
+    data["inventories"] = dict(expected=expected or None, replayed=replayed or None)
+directory = os.path.dirname(os.path.abspath(path))
+with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+os.replace(f.name, path)
+PY
+  ((written == 0)) || { echo "check.sh: cannot write result file $result_file" >&2; exit 1; }
+  return "$rc"
+}
+trap write_result EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 while (($#)); do
   case "$1" in
     --fast) mode=fast ;;
     --full) mode=full ;;
     --split) (($# > 1)) || { echo "--split needs a part" >&2; exit 2; }; split="$2"; shift ;;
+    --replay-shard) (($# > 1)) || { echo "--replay-shard needs I/N" >&2; exit 2; }; replay_shard="$2"; shift ;;
+    --replay-inventory) (($# > 1)) || { echo "--replay-inventory needs a directory" >&2; exit 2; }; replay_inventory="$2"; shift ;;
+    --defer-replay) defer_replay=1 ;;
+    --no-shared-selftests) no_shared_selftests=1 ;;
+    --result-file) (($# > 1)) || { echo "--result-file needs a path" >&2; exit 2; }; result_file="$2"; shift ;;
     --changed) mode=changed; if (($# > 1)) && [[ "$2" != -* ]]; then base="$2"; shift; fi ;;
     --selftests) selftests=1 ;;
     --reach) reach=1 ;;
@@ -82,11 +128,30 @@ while (($#)); do
     --no-build) no_build=1 ;;
     --update-snapshot) update_snapshot=1 ;;
     --update-extensions) update_extensions=1 ;;
-    -h|--help) echo "$usage"; exit 0 ;;
+    -h|--help) result_status=passed; echo "$usage"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; echo "$usage" >&2; exit 2 ;;
   esac
   shift
 done
+if [[ -n "$replay_shard" ]]; then
+  [[ "$replay_shard" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]] &&
+    ((${BASH_REMATCH[1]} <= ${BASH_REMATCH[2]})) && [[ -n "$replay_inventory" ]] ||
+    { echo "check.sh: --replay-shard needs 1 <= I <= N and --replay-inventory DIR" >&2; exit 2; }
+  for arg in "${args[@]}"; do
+    case "$arg" in --fast|--full|--changed|--selftests|--reach|--canary|--no-build|--update-*|--split|--defer-replay|--no-shared-selftests)
+      echo "check.sh: --replay-shard cannot be combined with $arg" >&2; exit 2 ;;
+    esac
+  done
+  mode=replay-shard
+elif [[ -n "$replay_inventory" ]]; then
+  echo "check.sh: --replay-inventory requires --replay-shard" >&2; exit 2
+fi
+if ((defer_replay)) && [[ "$mode/$split" != full/main ]]; then
+  echo "check.sh: --defer-replay requires --full --split main" >&2; exit 2
+fi
+if ((no_shared_selftests)) && [[ "$mode/$split" != full/lake-check ]]; then
+  echo "check.sh: --no-shared-selftests requires --full --split lake-check" >&2; exit 2
+fi
 if [[ -z "${RUN_DIR:-}" && -z "${CI:-}" ]]; then
   echo "check.sh: refusing to run without RUN_DIR or CI: set RUN_DIR to a scratch directory, e.g. RUN_DIR=\"\$(mktemp -d)\"" >&2
   exit 2
@@ -868,6 +933,15 @@ step_replay() {
   load_search_path || { echo "  cannot determine the Lean search path"; return 1; }
   mapfile -t leaves < <(inv_kind leaf)
   ((${#leaves[@]} > 0)) || { echo "  no leaf modules"; return 1; }
+  if [[ -n "$replay_shard" ]]; then
+    local shard="${replay_shard%/*}" total="${replay_shard#*/}" selected=()
+    mapfile -t leaves < <(printf '%s\n' "${leaves[@]}" | LC_ALL=C sort)
+    printf '%s\n' "${leaves[@]}" >"$expected_inventory" || return 1
+    for i in "${!leaves[@]}"; do
+      ((i % total == shard - 1)) && selected+=("${leaves[i]}")
+    done
+    leaves=("${selected[@]}")
+  fi
   for i in "${!leaves[@]}"; do
     replay_leaf "${leaves[i]}" >"$WORK/replay.$i.out" 2>&1 &
     pids+=("$!")
@@ -885,6 +959,10 @@ step_replay() {
     [[ "$kb" =~ ^[0-9]+$ ]] && ((kb > peak)) && peak=$kb
   done
   echo "  NOTE  leanchecker: $n leaf modules, $njobs at a time, $((SECONDS - start))s total, peak $((peak / 1024)) MB per process"
+  if [[ -n "$replay_shard" ]] && ((rc == 0)); then
+    : >"$replayed_inventory" || return 1
+    if ((${#leaves[@]})); then printf '%s\n' "${leaves[@]}" >"$replayed_inventory" || return 1; fi
+  fi
   set -e
   return "$rc"
 }
@@ -1390,6 +1468,7 @@ run_step() {
   local label="$1"
   shift
   if ! in_part "$label"; then
+    steps_skipped+=("$label" "the other --split part")
     echo "DEFER $label (the other --split part)"; deferred+=("$label"); return 0
   fi
   # After a failed build, the steps that read build outputs would report on stale artifacts: not run.
@@ -1397,26 +1476,58 @@ run_step() {
     skip_step "$label" "not run: step 1 failed, so the build outputs it reads may be stale"; return 0
   fi
   echo "--- $label ---"
+  steps_run+=("$label")
   local t0=$SECONDS v=PASS
   "$@" || { v=FAIL; overall=1; [[ "$label" != "1 build self-test"* && "${label%% *}" == 1 ]] && build_failed=1; }
   echo "  time: $((SECONDS - t0)) s"   # wall time of the step; verdict lines unchanged
   step_times+=("$((SECONDS - t0))s ${label%% (*}")
   printf '%s  %s\n' "$v" "$label"
 }
-skip_step() { echo "SKIP  $1 ($2)"; skipped+=("$1"); }
+skip_step() { echo "SKIP  $1 ($2)"; skipped+=("$1"); steps_skipped+=("$1" "$2"); }
 run_if() {  # run_if <0|1> <reason to skip> <label> <step...>
   if (($1)); then run_step "${@:3}"; else skip_step "$3" "$2"; fi
 }
-run_selftest() { run_if "$selftests" "self-test: --full or --selftests" "$@"; }
+run_selftest() {
+  if ((no_shared_selftests)) && [[ "$1" == "0 "* && "$1" != "0 pins self-test"* ]]; then
+    echo "DEFER $1 (shared self-test owned by split main)"
+    deferred+=("$1"); steps_skipped+=("$1" "shared self-test owned by split main")
+  else
+    run_if "$selftests" "self-test: --full or --selftests" "$@"
+  fi
+}
 full_only() {  # the heavy steps: --full only (CI: nightly, manual, milestone/release tags); bwrap ones need it
   if [[ "$mode" != full ]]; then
     skip_step "$1" "--full only: CI nightly"
   elif [[ "$2" == step_lake_* ]] && in_part "$1" && ! have_bwrap; then
+    steps_skipped+=("$1" "skipped: no bwrap")
     echo "SKIP  $1 (skipped: no bwrap)"; ci_only+=("$1")
   else
     run_step "$@"
   fi
 }
+
+if [[ "$mode" == replay-shard ]]; then
+  mkdir -p "$replay_inventory"
+  replay_inventory="$(cd "$replay_inventory" && pwd)"
+  expected_inventory="$replay_inventory/expected.txt"
+  replayed_inventory="$replay_inventory/replayed.txt"
+  rm -f "$expected_inventory" "$replayed_inventory"
+  run_step "1 freshness (already built targets, no compilation)" lake build --no-build "${LIBS[@]}"
+  run_step "2 boundaries (check-boundaries.py, every checked library)" step_boundaries
+  if ((overall == 0)) && [[ -s "$INV" ]]; then
+    run_step "5 kernel replay (shard $replay_shard)" step_replay
+  else
+    overall=1
+    skip_step "5 kernel replay (shard $replay_shard)" "freshness or inventory failed"
+  fi
+  if ((overall)); then
+    echo "check.sh: FAILURES PRESENT" >&2
+  else
+    result_status=passed
+    echo "check.sh: PART PASSED (replay shard $replay_shard)"
+  fi
+  exit "$overall"
+fi
 
 if [[ "$mode" == changed ]]; then compute_changes; fi
 # Self-test-only build targets: the fixture libraries except the comparator challenge (built in every
@@ -1477,7 +1588,12 @@ fi
 run_if "$do_protected" "no module of the protected surface in the downstream cone of the change, and no .lean file under trusted_paths deleted or outside the checked libraries" \
   "4 protected-surface snapshot (scripts/instance-spec-snapshot.txt)" step_protected
 run_selftest "4 Spec surface self-test (CheckFixtures)" selftest_surface
-full_only "5 kernel replay (leanchecker, every leaf module)" step_replay
+if ((defer_replay)); then
+  echo "DEFER 5 kernel replay (owned by replay shards)"
+  deferred+=("5 kernel replay"); steps_skipped+=("5 kernel replay" "owned by replay shards")
+else
+  full_only "5 kernel replay (leanchecker, every leaf module)" step_replay
+fi
 run_selftest "5 kernel replay self-test (BadSkipKernel, prefix refusal)" selftest_replay
 run_step "6 review pins ($REVIEW_ROOT imports $REVIEW_AXIOMS)" step_review
 run_selftest "6 review pins self-test (review-imports, ReviewAxioms*, Review{Eq,Binder,Complete,Escape}Bad, ReviewGuardGood, mutations)" selftest_review
@@ -1507,13 +1623,17 @@ printf '%s\n' "${step_times[@]}" | sort -rn | sed 's/^/  /'
 if ((overall)); then
   echo "check.sh: FAILURES PRESENT" >&2
 elif ((${#ci_only[@]})); then
+  result_status=partial
   echo "check.sh: PARTIAL (required checks unavailable: ${ci_only[*]})" >&2
   overall=1
 elif ((${#skipped[@]})); then
+  result_status=passed
   echo "check.sh: PASSED ($mode mode; ${#skipped[@]} steps skipped, listed as SKIP above)"
 elif [[ -n "$split" ]]; then
+  result_status=passed
   echo "check.sh: PART PASSED (split $split; ${#deferred[@]} steps deferred to the other part)"
 else
+  result_status=passed
   echo "check.sh: ALL CHECKS PASSED"
 fi
 exit "$overall"
