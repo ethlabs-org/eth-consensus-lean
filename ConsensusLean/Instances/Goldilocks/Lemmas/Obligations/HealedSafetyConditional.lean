@@ -419,29 +419,27 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
   let T := Q.params.ts O.slot + 6 * Q.params.Δ
   have hy := honest_ownKey (S := S) hv.1
   have hd := Q.params.toParams.hΔ
-  have hready : Q.ready < T := by
-    have : Q.ready ≤ D.query := (le_max_left _ _).trans D.lower
-    dsimp [T]
-    linarith [O.fresh]
-  have hTcut : T < Q.run.2.cutTime i := by
-    have hh : Q.heal ≤ Q.run.2.cutTime i := hi.2
-    dsimp [T]
-    linarith [O.bounded, D.reserve]
-  have hTb : T ≤ Q.run.2.horizon := by
-    dsimp [T]
-    linarith [O.bounded, D.reserve]
+  have h6 : (0 : Time) ≤ 6 * Q.params.Δ := mul_nonneg (by decide) hd.le
+  have hready : Q.ready < T :=
+    ((le_max_left _ _).trans D.lower).trans_lt (lt_add_of_lt_of_nonneg O.fresh h6)
+  have hTq : T < Q.heal - 1 := by
+    refine lt_of_le_of_lt ?_ D.reserve
+    rw [add_mul, ← add_assoc]
+    exact add_le_add O.bounded le_rfl
+  have hTcut : T < Q.run.2.cutTime i := (hTq.trans (sub_one_lt _)).trans_le hi.2
+  have hTb : T ≤ Q.run.2.horizon := (hTq.trans (sub_one_lt _)).le.trans hb
   have hT0 : 0 ≤ T := by
     have : 0 ≤ Q.ready := by
       change 0 ≤ max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
-      have := D.duration_bound
-      have := le_max_right Q.gst 0
-      linarith
+      exact add_nonneg (add_nonneg (le_max_right _ _)
+        ((mul_nonneg (by decide) hd.le).trans D.duration_bound)) zero_le_one
     exact this.trans hready.le
   have hr : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v T := by
     refine ⟨hv.1, fun t ht htt => Q.healthy.2.1.2 v hv.1 t ?_ (htt.trans hTb)⟩
     change max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 < T at hready
-    have := (le_max_right _ _).trans ht
-    linarith
+    refine (le_of_lt ?_).trans ((le_max_right _ _).trans ht)
+    rw [sub_sub, lt_sub_iff_add_lt, ← add_assoc]
+    exact hready
   obtain ⟨a, ell, ha, hat, hab, hcover⟩ := hrepair y hy
     (ready_transport S Q.run.2 Q.hn Q.valid hT0 hTb hr)
   have han : a < n := by
@@ -450,22 +448,22 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
         (by have hh := (Compose.projAC_callAt.mp ha.1).2; rw [hh]; simp)
     have hpi : p < i := by
       by_contra h
-      have hip : i ≤ p := by omega
+      have hip : i ≤ p := Nat.le_of_not_lt h
       have ht : Q.run.2.cutTime i ≤ Q.trace.time a := by
         rw [htime]
         cases i with
         | zero => exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).1
         | succ i =>
           have hplen := (List.getElem?_eq_some_iff.mp he).1
-          have hil : i < Q.run.2.events.length := by omega
+          have hil : i < Q.run.2.events.length := Nat.lt_of_succ_le (hip.trans hplen.le)
           have hei : Q.run.2.events[i]? = some Q.run.2.events[i] := List.getElem?_eq_getElem hil
           simp only [Model.Run.cutTime, hei]
-          rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he (by omega) with ht | ht
+          rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he (Nat.lt_of_succ_le hip) with ht | ht
           · exact ht.le
           · exact ht.1.le
       change Q.trace.time a = T at hat
-      linarith
-    exact lt_of_lt_of_le hap (cutMap_mono S Q.run.2 Q.hn (by omega))
+      exact lt_irrefl _ ((hTcut.trans_le ht).trans_eq hat)
+    exact lt_of_lt_of_le hap (cutMap_mono S Q.run.2 Q.hn hpi)
   have hU := Compose.honest_blocks_coherent D.reset.run.toLocalRun D.reset.noColl
   have hatnow := healthy_own_call_time_le_now S A V Q han ⟨_, Compose.projAC_callAt.mp ha.1⟩
   have hind : ∀ k, a + 1 ≤ k → k ≤ n → ∀ R,
@@ -479,36 +477,36 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
     | base =>
       intro _ R hR
       obtain ⟨x, hx, q, s, C, CV, hqa, hqt, hs, hC, hRC⟩ := hcover R hR
-      exact ⟨x, hx, q, s, C, CV, by omega, hqt.trans hatnow, hs, hC, hRC⟩
+      exact ⟨x, hx, q, s, C, CV, Nat.lt_succ_of_le hqa, hqt.trans hatnow, hs, hC, hRC⟩
     | succ k hak ih =>
       intro hkn R hR
       rcases Compose.record_step_origin D.reset.run hy k with heq | ⟨C, hC, hCr, s, CV, hs⟩
       · obtain ⟨x, hx, q, s, B, DV, hqk, hqb, hsl, hB, hRB⟩ :=
-          ih (by omega) R (record_lookup_of_later D.reset.run D.reset.noColl hy
+          ih (Nat.le_of_succ_le hkn) R (record_lookup_of_later D.reset.run D.reset.noColl hy
             (Nat.le_succ k) heq hR)
-        exact ⟨x, hx, q, s, B, DV, by omega, hqb, hsl, hB, hRB⟩
+        exact ⟨x, hx, q, s, B, DV, Nat.lt_succ_of_lt hqk, hqb, hsl, hB, hRB⟩
       · obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hR
         have hRC : R = C := hU.1 ⟨y, hy, k + 1, hRm.1⟩ ⟨y, hy, k, hC⟩
           (hRr.trans hCr.symm)
         have htk : T ≤ Q.trace.time k := by
           dsimp [T]
           rw [← hat]
-          exact D.reset.run.time_mono (by omega)
+          exact D.reset.run.time_mono (Nat.le_of_succ_le hak)
         have hsl : D.oldLabel ≤ s := by
           have hus : O.slot ≤ s := by
             rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
             · have ht : Q.trace.time k = Q.params.ts s + 6 * Q.params.Δ := hu.2.2.1
               dsimp [T] at htk
               have hh := (SA.ts_le_iff Q.params).mp
-                (show Q.params.ts O.slot ≤ Q.params.ts s by linarith)
+                (le_of_add_le_add_right (htk.trans_eq ht))
               omega
             · have hh := (SA.ts_le_iff_le_slot Q.params (D.reset.run.time_nonneg k) O.slot).mp
-                (show Q.params.ts O.slot ≤ Q.trace.time k by dsimp [T] at htk; linarith)
+                ((le_add_of_nonneg_right h6).trans htk)
               change Q.params.slot (Q.trace.time k) = s at hslot
               omega
           exact O.old_lt.le.trans hus
         have hkb : Q.trace.time k ≤ (stateAt S Q.run.2 Q.hn v i).now := by
-          apply healthy_own_call_time_le_now S A V Q (show k < cutMap S Q.run.2 Q.hn i by omega)
+          apply healthy_own_call_time_le_now S A V Q (show k < cutMap S Q.run.2 Q.hn i from hkn)
           rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, _⟩
           · exact ⟨_, Compose.projAC_callAt.mp hu.1⟩
           · exact ⟨_, Compose.projAC_callAt.mp ho.1⟩
@@ -516,7 +514,7 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
   cases hl : SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed with
   | none => exact Or.inl (by simp only [Option.getD_none])
   | some R =>
-    obtain ⟨x, hx, q, s, C, CV, hqn, hqb, hs, hC, hRC⟩ := hind n (by omega) le_rfl R hl
+    obtain ⟨x, hx, q, s, C, CV, hqn, hqb, hs, hC, hRC⟩ := hind n han le_rfl R hl
     exact Or.inr ⟨x, hx, q, s, C, CV, hqn, hqb, D.old_bound.trans hs, hC,
       by simpa only [hl, Option.getD_some] using hRC⟩
 
