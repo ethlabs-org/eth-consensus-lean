@@ -117,12 +117,17 @@ theorem writes_tryVote (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FG
       A.latestConfirmed (SA.tryVote sp x A Φ t).1.latestConfirmed := by
   unfold SA.tryVote
   dsimp only
-  split_ifs
-  · exact .refl
-  · exact .refl
-  all_goals
-    refine (writes_optimistic _ Φ t ?_).mono fun B hB => ⟨_, List.mem_singleton_self _, hB⟩
-    rw [admitVote_latestConfirmed]
+  by_cases h₁ : ¬ SA.joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
+  · rw [ite_eq_left h₁]
+    exact .refl
+  rw [ite_eq_right h₁]
+  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ SA.voteReady sp Φ (sp.slot t))
+  · rw [ite_eq_left h₂]
+    exact .refl
+  rw [ite_eq_right h₂]
+  refine (writes_optimistic _ Φ t ?_).mono fun B hB => ⟨_, List.mem_singleton_self _, hB⟩
+  rw [admitVote_latestConfirmed]
+  split_ifs <;> rfl
 
 theorem writes_updateConfirmation (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
     (s : Nat) :
@@ -151,14 +156,24 @@ theorem writes_onTick (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP
       A.latestConfirmed (SA.acOnTick sp x A Φ t).1.latestConfirmed := by
   unfold SA.acOnTick
   dsimp only
-  split_ifs with hj ht hu hu
-  · exfalso
-    have := sp.toParams.hΔ
-    linarith [ht.1.symm.trans hu]
-  · exact (writes_updateConfirmation A Φ t _).mono fun C h => Or.inr ⟨ht.1, ht.2, hj, h⟩
-  · exact (writes_tryVote x A Φ t).mono fun C h => Or.inl h
-  · exact .refl
-  · exact .refl
+  by_cases hj : SA.joined sp A t
+  · rw [ite_eq_right (not_not_intro hj)]
+    by_cases hu : t = sp.ts (sp.slot t) + sp.Δ
+    · rw [ite_eq_left hu]
+      by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
+      · exfalso
+        have := sp.toParams.hΔ
+        linarith [ht.1.symm.trans hu]
+      · rw [ite_eq_right ht]
+        exact (writes_tryVote x A Φ t).mono fun C h => Or.inl h
+    · rw [ite_eq_right hu]
+      by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
+      · rw [ite_eq_left ht]
+        exact (writes_updateConfirmation A Φ t _).mono fun C h => Or.inr ⟨ht.1, ht.2, hj, h⟩
+      · rw [ite_eq_right ht]
+        exact .refl
+  · rw [ite_eq_left hj]
+    exact .refl
 
 theorem proposal_latestConfirmed (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) : (SA.acProposal sp A Φ t).1.latestConfirmed = A.latestConfirmed := by
@@ -392,14 +407,22 @@ theorem reclock_tryVote {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
         (SA.tryVote sp x A Φ t).1 := by
   unfold SA.tryVote
   dsimp only
-  split_ifs
-  · exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
-  · exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
-  · refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
+  by_cases h₁ : ¬ SA.joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
+  · rw [ite_eq_left h₁]
+    exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
+  rw [ite_eq_right h₁]
+  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ SA.voteReady sp Φ (sp.slot t))
+  · rw [ite_eq_left h₂]
+    exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
+  rw [ite_eq_right h₂]
+  by_cases h₃ : 0 < sp.slot t
+  · rw [ite_eq_left h₃]
+    refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
       (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
     · exact keepAll_unlock hΦ rfl
     · rfl
-  · refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
+  · rw [ite_eq_right h₃]
+    refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
       (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
     · exact KeepAll.of_eq rfl
     · rfl
@@ -436,15 +459,25 @@ theorem reclock_onTick {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
         (SA.acOnTick sp x A Φ t).1 := by
   unfold SA.acOnTick
   dsimp only
-  split_ifs with hj ht hu hu
-  · exfalso
-    have := sp.toParams.hΔ
-    linarith [ht.1.symm.trans hu]
-  · exact (reclock_update hΦ h _).imp id fun hr => hr.mono
-      (fun C h => h.imp_right fun h => ⟨ht.1, ht.2, hj, h⟩) fun _ h => Or.inl h
-  · exact (reclock_tryVote hΦ h x).imp id fun hr => hr.mono (fun _ h => Or.inl h) fun _ h => h
-  · exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => Or.inl h) fun _ h => Or.inl h⟩
-  · exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => Or.inl h) fun _ h => Or.inl h⟩
+  by_cases hj : SA.joined sp A t
+  · rw [ite_eq_right (not_not_intro hj)]
+    by_cases hu : t = sp.ts (sp.slot t) + sp.Δ
+    · rw [ite_eq_left hu]
+      by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
+      · exfalso
+        have := sp.toParams.hΔ
+        linarith [ht.1.symm.trans hu]
+      · rw [ite_eq_right ht]
+        exact (reclock_tryVote hΦ h x).imp id fun hr => hr.mono (fun _ h => Or.inl h) fun _ h => h
+    · rw [ite_eq_right hu]
+      by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
+      · rw [ite_eq_left ht]
+        exact (reclock_update hΦ h _).imp id fun hr => hr.mono
+          (fun C h => h.imp_right fun h => ⟨ht.1, ht.2, hj, h⟩) fun _ h => Or.inl h
+      · rw [ite_eq_right ht]
+        exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => Or.inl h) fun _ h => Or.inl h⟩
+  · rw [ite_eq_left hj]
+    exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => Or.inl h) fun _ h => Or.inl h⟩
 
 theorem proposal_keeps {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SAState sp.n)
     (t : Time) : KeepAll Φ t A (SA.acProposal sp A Φ t).1 := by
