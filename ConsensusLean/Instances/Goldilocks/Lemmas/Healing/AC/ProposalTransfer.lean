@@ -99,7 +99,7 @@ theorem vote_head_accepted (hS : StandaloneRun tr H U proposer g)
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hz hc
   obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hz ⟨hc, he⟩
-  have hm := getHead_mem' hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time j)
+  have hm := getHead_mem hΦ (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time j)
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
     (T := ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot))
   obtain rfl := hU.1 hHd (hΦU hm) (hHdr.trans hhead)

@@ -248,7 +248,7 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
   replace hBmh : (st.σ Bm.root).h = st.hmax := hBmh
   -- below `Σ.F`: the head is a block of the tree, which extends `Σ.F`
   by_cases hPF : Anc (tr.HonestBlocks H) D.P st.F
-  · have hmem := SA.getHead_mem' hΦ (fun X hX => hdom hX.1) A t V σ
+  · have hmem := SA.getHead_mem hΦ (fun X hX => hdom hX.1) A t V σ
       (T := Φ.viableTree dom)
     exact hPF.trans (Anc.mono hΦU (hΦ.rooted.2 _ hmem))
   have hFP : Anc (tr.HonestBlocks H) st.F D.P :=
@@ -353,7 +353,7 @@ theorem vote_extends_of_hi {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (
   have hanc := anc_getHead_of_hi D hinv hy hHi e.readPoint (tr.time i)
     (SA.mergedVoteView sp e.readPoint (Node.frame (tr.state y i)) e.msg.slot)
     ((e.msg.slot : Int) - 1) (fun B hB => SA.voteDomain_subset_tree hB) hdomA hne hL
-  refine ⟨_, hΦU (SA.getHead_mem' (hfr ▸ hΦ) (fun X hX => SA.voteDomain_subset_tree hX.1) _ _ _ _),
+  refine ⟨_, hΦU (SA.getHead_mem (hfr ▸ hΦ) (fun X hX => SA.voteDomain_subset_tree hX.1) _ _ _ _),
     hhead.symm, hanc⟩
 
 /-- **Lo is `Σ.J ⪯ P`**: `Σ.J` is compatible with `P` (OB-F, `OutageLockInv.caches`), and not

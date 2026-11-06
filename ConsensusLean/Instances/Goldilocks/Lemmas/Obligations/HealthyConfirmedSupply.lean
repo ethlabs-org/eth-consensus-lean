@@ -182,7 +182,7 @@ theorem operational_update_read_after
           (hPe J hjJ.le le_rfl)))
         (fun h => Or.inr (SA.anc_tree_of_anc_U hp.honest_coherent hΦ hΦU
           (hPe J hjJ.le le_rfl) h hL.1))
-    · exact hPF.trans ((hΦ.rooted.2 _ (SA.getHead_mem' hΦ
+    · exact hPF.trans ((hΦ.rooted.2 _ (SA.getHead_mem hΦ
         (fun _ h => h.1) _ _ _ _)).mono hΦU)
   exact (exposed_prefix_preserved_of_record_head hp.honest_coherent hΦ hΦU).mpr
     ⟨hrecord, hhead⟩

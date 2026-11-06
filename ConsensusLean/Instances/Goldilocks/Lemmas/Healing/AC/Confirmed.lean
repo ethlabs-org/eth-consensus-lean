@@ -165,7 +165,7 @@ theorem late_vote_accepted_of_frame_before {b : Time} (hS : HealthyBaseUpTo tr H
     rwa [← hslx, hes] at hh
   obtain ⟨hPhix, hPhixU⟩ := frameIn_of_callAt hr hx hcx
   obtain ⟨B, hB, hBr⟩ : ∃ B ∈ ellx.frame.tree, B.root = e.msg.head :=
-    ⟨_, getHead_mem' hPhix (fun _ h => (voteDomain_subset_tree h.1)) e.readPoint (tr.time i)
+    ⟨_, getHead_mem hPhix (fun _ h => (voteDomain_subset_tree h.1)) e.readPoint (tr.time i)
       (mergedVoteView sp e.readPoint ellx.frame e.msg.slot) ((e.msg.slot : Int) - 1)
       (T := ellx.frame.viableTree (voteDomain sp e.readPoint ellx.frame e.msg.slot)),
       hhead.symm⟩
@@ -338,7 +338,7 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp
   -- the head: in `x`'s frame, accepted by `y` before `t_s + 2Δ`
   obtain ⟨hΦx, hΦxU⟩ := frameIn_of_callAt hr hx hcx
   obtain ⟨Hx, hHx, hHxr⟩ : ∃ Hx ∈ ℓx.frame.tree, Hx.root = e.msg.head :=
-    ⟨_, getHead_mem' hΦx (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time i)
+    ⟨_, getHead_mem hΦx (fun _ hX => (voteDomain_subset_tree hX.1)) e.readPoint (tr.time i)
       (mergedVoteView sp e.readPoint ℓx.frame e.msg.slot) ((e.msg.slot : Int) - 1)
       (T := ℓx.frame.viableTree (voteDomain sp e.readPoint ℓx.frame e.msg.slot)),
       hhead.symm⟩
@@ -1236,7 +1236,7 @@ theorem anc_acConfirmed_of_frame (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fr
     | none => exact hΦ.rooted.1
     | some R => exact (lookup_eq_some h).1
   have hHt : acHead sp A Φ t ∈ Φ.tree :=
-    getHead_mem' hΦ (T := Φ.viableTree Φ.tree) (fun _ hX => hX.1) _ _ _ _
+    getHead_mem hΦ (T := Φ.viableTree Φ.tree) (fun _ hX => hX.1) _ _ _ _
   unfold acConfirmed
   dsimp only
   have hFS : Φ.F ∈ {X | X ∈ Φ.tree ∧ Φ.Anc X ((lookup Φ A.latestConfirmed).getD Φ.F) ∧

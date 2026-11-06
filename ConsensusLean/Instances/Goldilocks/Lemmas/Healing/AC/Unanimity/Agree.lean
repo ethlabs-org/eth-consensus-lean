@@ -258,7 +258,7 @@ private theorem voterBlock_mem {s : Nat}
   right
   have hd : d.head ∈ ℓp.frame.tree := by
     rw [(acProposal_head hs.payload).2]
-    exact getHead_mem' hΨ (fun _ h => h.1) _ _ _ _
+    exact getHead_mem hΨ (fun _ h => h.1) _ _ _ _
   have hYd : Y = d.head := hU.1 (hΦU hYP.1) (hΨU hd)
     (Option.some.inj (hYP.2.2.symm.trans hs.parent))
   rw [hYd] at hBY

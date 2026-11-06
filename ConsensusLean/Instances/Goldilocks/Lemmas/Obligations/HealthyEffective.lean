@@ -40,7 +40,7 @@ theorem exposed_prefix_preserved_of_record_head (hU : Coherent U)
       | none => exact hΦ.rooted.1
       | some C => exact (SA.lookup_eq_some he).1
     have hH : SA.acHead sp A Φ t ∈ Φ.tree :=
-      SA.getHead_mem' hΦ (T := Φ.viableTree Φ.tree) (fun _ h => h.1) _ _ _ _
+      SA.getHead_mem hΦ (T := Φ.viableTree Φ.tree) (fun _ h => h.1) _ _ _ _
     unfold SA.acConfirmed at h
     cases hd : SA.deepest Φ {X | X ∈ Φ.tree ∧
         Φ.Anc X ((SA.lookup Φ A.latestConfirmed).getD Φ.F) ∧
@@ -257,7 +257,7 @@ theorem anc_acHead_of_current_certificate
     Anc U O (SA.acHead sp A Φ t) := by
   rcases hhead with hF | ⟨hO, hcomp, hsup⟩
   · have hH : SA.acHead sp A Φ t ∈ Φ.tree :=
-      SA.getHead_mem' hΦ (T := Φ.viableTree Φ.tree) (fun _ h => h.1) _ _ _ _
+      SA.getHead_mem hΦ (T := Φ.viableTree Φ.tree) (fun _ h => h.1) _ _ _ _
     exact hF.trans ((hΦ.rooted.2 _ hH).mono hΦU)
   · exact (SA.anc_acHead hΦ hO hcomp hsup).mono hΦU
 
