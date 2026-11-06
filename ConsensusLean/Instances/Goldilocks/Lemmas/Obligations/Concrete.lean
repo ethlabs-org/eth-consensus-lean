@@ -191,11 +191,11 @@ theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V 
   obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := W.anchorRun_iff.mp run
   have hg2 := W.gap_two
   have hg3 := W.gap_span
-  have hs0 : (W.block 0).slot = W.start := by simpa using W.slots 0
-  have hs3 : (W.block 3).slot = W.start + 3 * W.gap := by simpa using W.slots 3
+  have hs0 : (W.block 0).slot = W.start := W.slots 0
+  have hs3 : (W.block 3).slot = W.start + 3 * W.gap := W.slots 3
   have hmono : StrictMono fun i : Fin 4 => W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i := by
     refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
-    fin_cases i <;> simp <;> omega
+    fin_cases i <;> dsimp <;> omega
   have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
     change (W.block 3).slot ≤ (W.block 0).slot + S.δt
     omega
@@ -203,7 +203,7 @@ theorem final_anchor_coverage (Q : FinalQuery S A V) (W : FinalWindowData S A V 
     rw [← final_anchor_post S A V Q W 3]
     exact final_anchor_held S A V Q W
   obtain ⟨F, hF, hAF⟩ := cacheCoverage_of_anchor_window_upTo hp hc hP hmono
-    (by simpa using hR) (by simpa using hb) (by intro h; simp at h; omega)
+    hR hb (by intro h; simp at h; omega)
     (W.anchorSteps_iff.mp steps) hsl
     (W.ready 3).1 hB3
   refine ⟨F, ?_, hAF⟩
@@ -269,7 +269,8 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
     have hn : 3 * Q.run.2.point.faulty.card < Fintype.card V := by
-      exact_mod_cast (show (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by linarith)
+      exact_mod_cast (show (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by
+        linarith only [hpop])
     change Q.run.2.point.faulty.card < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
     omega
   obtain ⟨X, hX, hAX⟩ := coverage
@@ -304,7 +305,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     hy.1 (W.ready 3).1 hheld hdecode hdt' hj.2.le (hFX.trans hXB)
   have hkj' : k + 1 ≤ j := by
     have : k ≠ j := by intro he; subst k; exact (not_lt_of_ge hj.2.le) hkt
-    omega
+    exact Nat.lt_of_le_of_ne hkj this
   have hac : Q.trace.projFG.AcceptAt y k (W.block 3) := Compose.projFG_callAt.mpr hacc
   have hpostB : W.block 3 ∈ (Q.trace.projFG.store y (k + 1)).tree := by
     have h := Store.accept_onBlock fg hy.1 hac
@@ -346,7 +347,7 @@ theorem final_cache_acceptance (Q : FinalQuery S A V) (W : FinalWindowData S A V
       change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
       exact_mod_cast (contract_coefficients S A).catchUp.pos
     change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
-    linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
+    linarith only [mul_le_mul_of_nonneg_right hc hd.le]
 
 /-- Conditional payload/read projection of the finite supplier package. Uses the engine's
 existing catch-up duration, raw own-block release, and final cache membership at endCut.
@@ -483,7 +484,7 @@ theorem meetsObligations_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .st
       exact (max_le_max_left 0 (sub_le_sub_right (sub_le_sub_left hd t) 1)).trans hlo
     exact ⟨fun u v i j hi hj hu hv => safe.1 u v i j hi hj (ready _ _ hu) (ready _ _ hv),
       fun v i j hi hij hj hvi hvj => safe.2 v i j hi hij hj (ready _ _ hvi) (ready _ _ hvj)⟩
-  · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (by omega)
+  · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (Nat.lt_one_iff.mp (Nat.lt_of_not_le hn))
     exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
 
 /-- R2 inclusion/growth, node include_sleepy/grow_sleepy. NO PAPER PROOF yet pinned
@@ -542,7 +543,8 @@ theorem meetsObligations_healedSafe : ∀ cap g, (cap = .available ∨ cap = .st
         add_nonneg (le_max_right gst 0)
           (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)
       exact healthy_ready_safety S A V Q h0 hb hp
-    · have hempty : IsEmpty V := Fintype.card_eq_zero_iff.mp (by omega)
+    · have hempty : IsEmpty V :=
+        Fintype.card_eq_zero_iff.mp (Nat.lt_one_iff.mp (Nat.lt_of_not_le hn))
       exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩
   · have hnone : ∀ k, ¬ (chainTrace r.2).InCuts heal k :=
       fun k hk => hb (hk.2.trans (htime k hk.1))
