@@ -40,11 +40,9 @@ open SA (SAParams ReplayOrder Payload gbar)
 the positive `Δ` of `SAParams` it is `(8k + 20)Δ`, `resetInvOffset_eq`). -/
 def resetInvOffset (k : Nat) (Δ : Time) : Time := (8 * (k : Time) + 20) * max Δ 0
 
-theorem resetInvOffset_nonneg (k : Nat) (Δ : Time) : 0 ≤ resetInvOffset k Δ := by
-  unfold resetInvOffset
-  have : (0 : Time) ≤ k := Int.natCast_nonneg k
-  have : (0 : Time) ≤ max Δ 0 := le_max_right _ _
-  nlinarith
+theorem resetInvOffset_nonneg (k : Nat) (Δ : Time) : 0 ≤ resetInvOffset k Δ :=
+  mul_nonneg (add_nonneg (mul_nonneg (by norm_num) (Int.natCast_nonneg k)) (by norm_num))
+    (le_max_right _ _)
 
 theorem resetInvOffset_eq (k : Nat) {Δ : Time} (hΔ : 0 ≤ Δ) :
     resetInvOffset k Δ = (8 * (k : Time) + 20) * Δ := by
@@ -53,6 +51,10 @@ theorem resetInvOffset_eq (k : Nat) {Δ : Time} (hΔ : 0 ≤ Δ) :
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+
+/-- Fewer than a third faulty is fewer than half. -/
+private theorem two_mul_faulty_lt {f n : Nat} (hf : 3 * f ≤ n - 1) (hn : 0 < n) : 2 * f < n := by
+  omega
 
 /-- **The label of a protected target is after the drain** (route L1, label part): every
 `(B, j) ∈ 𝒫(a + T_b)` has `j ≥ slot(a) + 2k + 6`, so `t_j > R = t_{slot(a) + 2k + 5}`. The
@@ -77,16 +79,16 @@ theorem protected_label_after_drain (hp : ResetPremises tr H proposer dg g ΔF a
     apply (SA.ts_le_iff sp).mp
     simp only [SAParams.ts] at hsa hm ⊢
     push_cast
-    nlinarith
-  have hΘ : 0 ≤ 2 * SA.Θ sp + 4 * sp.Δ := by
-    unfold SA.Θ
-    have : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
-    nlinarith
+    linarith
+  have h4 : 4 * sp.Δ ≤ 2 * SA.Θ sp + 8 * sp.Δ :=
+    le_add_of_nonneg_of_le (mul_nonneg (by norm_num) (mul_nonneg (mul_nonneg (by norm_num)
+      (add_nonneg (Int.natCast_nonneg _) zero_le_one)) hΔ.le))
+      (mul_le_mul_of_nonneg_right (by norm_num) hΔ.le)
   rcases hB with ⟨-, -, -, -, -, -, hs⟩ | ⟨x, hx, i, hj, hl, hs⟩ | ⟨-, -, hs, -⟩
   · exact_mod_cast hlab j hs
   · have h := hlab _ hs
     omega
-  · exact_mod_cast hlab j (by linarith)
+  · exact_mod_cast hlab j ((add_le_add le_rfl h4).trans ((add_assoc _ _ _).symm.trans_le hs))
 
 /-- **The classes of a protected target** (route L1): a protected `(B, j)` after the reset is
 (a) a fast-test selection, below the result of its writer's update; (b) an optimistic selection;
@@ -118,7 +120,7 @@ theorem protected_target_cases (hp : ResetPremises tr H proposer dg g ΔF a)
     apply (SA.ts_le_iff sp).mp
     simp only [SAParams.ts] at hsa hm ⊢
     push_cast
-    nlinarith
+    linarith
   refine ⟨protected_label_after_drain hp hB, ?_⟩
   rcases hB with ⟨x, hx, i, CV, hj, hfl, -⟩ | ⟨x, hx, i, hj, hsl, hs⟩ | ⟨hp', hP, -, hun⟩
   · rcases hfl with hfu | hop
@@ -172,10 +174,13 @@ theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF 
   have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
   have hz := lt_cutZ sp g
-  have hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts j := by linarith
+  have hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts j :=
+    (add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num) hΔ.le)).trans
+      (hz.trans (hca.trans (hlt.trans_le hle))).le
   have hR : drainTime sp a ≤ sp.ts j := by
     rw [drainTime_eq]; exact (SA.ts_le_iff sp).2 (by push_cast; omega)
-  have hab : a ≤ sp.ts j + 6 * sp.Δ := by linarith
+  have hab : a ≤ sp.ts j + 6 * sp.Δ :=
+    (hlt.trans_le hle).le.trans (le_add_of_nonneg_right (mul_nonneg (by norm_num) hΔ.le))
   have hp' := hp.toUpTo tr H hab
   have hu : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts j := by
     have h₁ : sp.ts (sp.slot (SA.gbar g) : Int) ≤ SA.gbar g :=
@@ -183,7 +188,7 @@ theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF 
     have h₂ : sp.ts ((sp.slot (SA.gbar g) + 1 : Nat) : Int) =
         sp.ts (sp.slot (SA.gbar g) : Int) + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
-    linarith
+    exact h₂.trans_le ((add_le_add h₁ le_rfl).trans hgu)
   obtain ⟨i, ell, -, hup, -⟩ := hp'.update_toFG_calls hpj hu le_rfl
   obtain ⟨-, hconf, hnv, hsel, -⟩ := Obligations.UpTo.operational_update_selection hp' hc hpj rfl
     hactual hPs hR hgu le_rfl hpj hup
@@ -246,11 +251,7 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
   have hS := healthy_base_of_reset_catch hp hc
   have hr := hS.run.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hf : 2 * Hᶜ.ncard < sp.n := by
-    have := hp.healthy.2.2
-    have := Fin.pos x
-    have hn : sp.n = sp.toParams.n := rfl
-    omega
+  have hf : 2 * Hᶜ.ncard < sp.n := two_mul_faulty_lt hp.healthy.2.2 (Fin.pos x)
   have hfast : SA.FastLockAt tr.projAC x r s B CV := Or.inr hop
   -- the label is after the reset, hence after `ḡ + 4Δ`
   have hgs4 : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
@@ -261,10 +262,11 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
       omega
     have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts s :=
       (SA.ts_le_iff sp).2 (by rw [cleanLabel_eq] at hs; omega)
-    have := cutZ_lt_reset hp.run hp.healthy hp.reset
-    have := lt_cutZ sp g
-    linarith
-  have hgs : SA.gbar g ≤ sp.ts s := by linarith
+    exact (add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num) hΔ.le)).trans
+      ((lt_cutZ sp g).trans ((cutZ_lt_reset hp.run hp.healthy hp.reset).trans
+        (hlt.trans_le hle))).le
+  have hgs : SA.gbar g ≤ sp.ts s :=
+    (le_add_of_nonneg_right (mul_nonneg (by norm_num) hΔ.le)).trans hgs4
   have evidence : B ∈ (tr.state x r).fg.tree ∧
       ∃ z ∈ H, ∃ q e', SA.VoteAt tr.projAC z q e' ∧ e'.msg.slot = s ∧
         SA.VoteExtends (tr.HonestBlocks H) e'.msg B := by
@@ -289,9 +291,8 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
     exact raw_writer_voterBlockTree_window_before hr (reset_raw_sync_window_before hp (tr.time i))
       (catch_window_of_reset_catch hp hc (tr.time i)) hx hy (Or.inr hfast) .refl hcast
       (by omega) le_rfl
-      (by
-        have hm := (SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
-        linarith) hF
+      (add_le_add (hgs.trans ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)))
+        (mul_le_mul_of_nonneg_right (by norm_num) hΔ.le)) hF
   · obtain ⟨v, r₀, m, S, hS', -, hm⟩ := (hp.toUpTo tr H (le_refl a)).reset_seed
     have hms : m < s := by rw [cleanLabel_eq] at hs; omega
     exact ⟨v, r₀, m, S, hS', by omega,
@@ -348,9 +349,9 @@ private theorem gbar_add_le_ts_of_label (hp : ResetPremises tr H proposer dg g �
     have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
     omega
   have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
-  have := cutZ_lt_reset hp.run hp.healthy hp.reset
-  have := lt_cutZ sp g
-  linarith
+  exact (add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num) hΔ.le)).trans
+    ((lt_cutZ sp g).trans ((cutZ_lt_reset hp.run hp.healthy hp.reset).trans
+      (hlt.trans_le hle))).le
 
 /-- The writer of a protected target, its heldness at the writer, and an honest supporter. -/
 private theorem protected_writer (hp : ResetPremises tr H proposer dg g ΔF a)
@@ -375,18 +376,16 @@ private theorem protected_writer (hp : ResetPremises tr H proposer dg g ΔF a)
     have hCx := frame_tree_subset hp hx hupd.1 (SA.deepest_mem hconf).1.1
     refine ⟨mem_tree_of_anc hp hx hBC hCx, ?_⟩
     obtain ⟨z, hz, q, e', hv, hvs, D, hD, hDr, hCD⟩ :=
-      SA.result_extended hS hgs4 hx hupd.1 (by rw [hupd.2.2.1]; linarith) hconf
+      SA.result_extended hS hgs4 hx hupd.1
+        ((add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num) hΔ.le)).trans_eq
+          hupd.2.2.1.symm) hconf
     exact ⟨z, hz, q, e', hv, hvs, D, hD, hDr, hBC.trans hCD⟩
   refine ⟨hj, ?_⟩
   rcases hcase with ⟨x, hx, i, -, -, -, C, CV', hres, hBC⟩ | ⟨x, hx, i, CV, -, hop⟩ |
       ⟨x, hx, i, -, -, -, C, CV', hres, hBC⟩ | ⟨hpj, hP, -⟩
   · exact ⟨x, hx, i, C, CV', Or.inl hres, hBC, hres_ev hx hres hBC⟩
   · refine ⟨x, hx, i, B, CV, Or.inr (Or.inr hop), .refl, ?_⟩
-    have hf : 2 * Hᶜ.ncard < sp.n := by
-      have := hp.healthy.2.2
-      have := Fin.pos x
-      have hn : sp.n = sp.toParams.n := rfl
-      omega
+    have hf : 2 * Hᶜ.ncard < sp.n := two_mul_faulty_lt hp.healthy.2.2 (Fin.pos x)
     obtain ⟨ellX, A, hpt, hslot, hsel, -⟩ := hop
     have hΦU := (SA.frameIn_of_callAt hr hx hpt.1).2
     unfold SA.optimisticSelect at hsel
@@ -416,7 +415,8 @@ private theorem writer_compatible_same_label (hp : ResetPremises tr H proposer d
   have hS := healthy_base_of_reset_catch hp hc
   have hr := hS.run.localRun
   have hgs4 := gbar_add_le_ts_of_label hp hj
-  have hgs : SA.gbar g ≤ sp.ts j := by linarith [sp.toParams.hΔ]
+  have hgs : SA.gbar g ≤ sp.ts j :=
+    (le_add_of_nonneg_right (mul_nonneg (by norm_num) sp.toParams.hΔ.le)).trans hgs4
   obtain ⟨CV', hst⟩ := ho.2.2.1
   obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
   have hCD : Compatible (tr.HonestBlocks H) C D := by
@@ -469,7 +469,7 @@ theorem protected_call_viable (hp : ResetPremises tr H proposer dg g ΔF a)
       omega
     have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts (j + 1 : Nat) :=
       (SA.ts_le_iff sp).2 (by push_cast; omega)
-    linarith
+    exact (hlt.trans_le (hle.trans ht)).le
   have hcompare : ∀ v r₀ m O, r₀ < k → HighOrigin tr H g v r₀ m O →
       Compatible (tr.HonestBlocks H) B O := by
     intro v r₀ m O hri ho

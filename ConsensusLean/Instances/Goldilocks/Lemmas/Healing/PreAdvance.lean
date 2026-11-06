@@ -31,6 +31,24 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
+/-- An update of label `l` at `t_l + 6Δ` precedes the vote freeze of every slot `s ≥ l + 2`. -/
+private theorem ts_add_six_lt_freeze {l : Int} {s : Nat} (h : l + 2 ≤ (s : Int)) :
+    sp.ts l + 6 * sp.Δ < SA.freeze sp s := by
+  have hΔ := sp.toParams.hΔ
+  have := (SA.ts_le_iff sp).mpr (show l + 1 ≤ (s : Int) - 1 by omega)
+  unfold SA.freeze
+  simp only [SA.SAParams.ts] at this ⊢
+  linarith
+
+/-- Fewer than a third faulty is fewer than half. -/
+private theorem two_mul_faulty_lt {f n : Nat} (hf : 3 * f ≤ n - 1) (hn : 0 < n) : 2 * f < n := by
+  omega
+
+/-- Fewer than a third faulty is below the excess of two FG quorums over `n`. -/
+private theorem faulty_lt_quorum_excess {f n : Nat} (hf : 3 * f ≤ n - 1) (hn : 0 < n) :
+    f < 2 * ((2 * n + 2) / 3) - n := by
+  omega
+
 /-- Explicit F-independent frame data on a finite interval. F itself need not agree. -/
 structure FrameWindow (lo hi : Time) (floor : Nat) (kindJ : Prop)
     (J : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
@@ -148,8 +166,7 @@ theorem honest_votes_before_of_service (hrun : GoldilocksRun proposer dg H tr)
   intro x hx r _ hrs
   have hr := hnr x hx r (Compose.projAC_restartAt.mp hrs)
   rw [SA.ts_sub_one]
-  change tr.time r ≤ _
-  linarith
+  exact hr.trans (le_sub_iff_add_le.mpr hm)
 
 /-- An accepted descendant puts a floor-viable source in the receiver's frame, even when
 the source was originally witnessed at a later cut. -/
@@ -293,27 +310,16 @@ theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
       have hts := (SA.ts_le_iff sp).mpr (show (l.slot : Int) ≤ (e.msg.slot : Int) - 1 by omega)
       refine ⟨hlo, ?_⟩
       unfold SA.freeze
-      have := sp.toParams.hΔ
-      linarith
+      exact hlt.trans_le
+        (add_le_add hts (mul_le_mul_of_nonneg_right (by norm_num) sp.toParams.hΔ.le))
     · have ht := hu.2.2.1
       change tr.time a = _ at ht
       have hts₀ := (SA.ts_le_iff sp).mpr (show (s₀ : Int) ≤ l.slot by exact_mod_cast hlabel)
-      have hlabel' : l.slot + 2 ≤ e.msg.slot := by
-        by_contra hn
-        have heq : e.msg.slot = l.slot + 1 := by omega
-        have hmono := hrun.time_mono hai.le
-        rw [heq] at htvote
-        simp only [SA.SAParams.ts] at ht htvote
-        push_cast at htvote
-        have := sp.toParams.hΔ
-        linarith
-      have hts := (SA.ts_le_iff sp).mpr
-        (show (l.slot : Int) + 1 ≤ (e.msg.slot : Int) - 1 by omega)
-      simp only [SA.SAParams.ts] at ht hts hts₀
-      unfold SA.freeze
-      simp only [SA.SAParams.ts]
-      have := sp.toParams.hΔ
-      constructor <;> linarith
+      have hlabel' : l.slot + 2 ≤ e.msg.slot :=
+        Compose.ts_add_two_le ((ht.symm.trans_le (hrun.time_mono hai.le)).trans htvote)
+      exact ⟨hts₀.trans ((le_add_of_nonneg_right
+          (mul_nonneg (by norm_num) sp.toParams.hΔ.le)).trans_eq ht.symm),
+        ht.trans_lt (ts_add_six_lt_freeze (by exact_mod_cast hlabel'))⟩
   rcases hcase with hbelow | ⟨Q, hQ, hv, hAQ⟩
   · exfalso
     apply hstrict
@@ -398,12 +404,8 @@ theorem prior_vote_call_before_freeze
   obtain ⟨a, e₀, ⟨ell₀, ha, he⟩, hs, ht⟩ :=
     SA.honest_votes_in_slot_before hS (m := e.msg.slot - 1) hm hmb (fun x hx r _ hrs => by
       have hb := hnr x hx r (Compose.projAC_restartAt.mp hrs)
-      change tr.time r ≤ _
-      have := sp.toParams.hΔ
-      rw [hcast] at hm
-      simp only [SA.SAParams.ts] at hm ⊢
-      rw [hcast]
-      linarith) y hy
+      rw [hcast, SA.ts_sub_one]
+      exact hb.trans (le_sub_iff_add_le.mpr (hcast ▸ hm))) y hy
   have hslot := (SA.castAt_spec hr hy ⟨ha, he⟩).2.1
   have hislot := (SA.castAt_spec hr hy hc).2.1
   have hti := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) (e.msg.slot : Int)).mpr
@@ -414,7 +416,7 @@ theorem prior_vote_call_before_freeze
     change tr.time a ≤ _ at ht
     simp only [SA.SAParams.ts] at ht hti
     rw [hcast] at ht
-    nlinarith
+    linarith
   refine ⟨a, (le_of_not_gt fun h => hlt.not_ge (hr.time_mono h.le)), ell₀, ha, ?_, ?_⟩
   · apply (SA.ts_le_iff_le_slot sp (hr.time_nonneg a) _).mpr
     rw [← hslot, hs]
@@ -423,7 +425,7 @@ theorem prior_vote_call_before_freeze
     unfold SA.freeze
     have heq : (e.msg.slot : Int) - 1 = ((e.msg.slot - 1 : Nat) : Int) := by omega
     rw [heq]
-    linarith
+    exact ht.trans_lt (add_lt_add_of_le_of_lt le_rfl (lt_mul_of_one_lt_left hDelta (by norm_num)))
 
 /-- Writer-local vote-head classification at a vote, with an explicit earlier action cut for
 H-wit.
@@ -665,8 +667,11 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
   have hDelta := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
+  have hgm : gbar g ≤ sp.ts m :=
+    (le_add_of_nonneg_right (mul_nonneg (by norm_num) hDelta.le)).trans hm
   have hhalf := honest_voters_half_of_service hrun hnc hsvc hawake hf hcatch hnr hm
-    (show sp.ts m + sp.Δ ≤ b by linarith)
+    (show sp.ts m + sp.Δ ≤ b from (add_le_add ((le_add_of_nonneg_right
+      (mul_nonneg (by norm_num) hDelta.le)).trans_eq hts.symm) le_rfl).trans hmb)
   suffices hall : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → e.msg.slot = m + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X by
     exact fun y hy i e hv hs => hall i y hy e hv hs
@@ -691,13 +696,11 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
       apply deadline_le_restarts (a := sp.ts m)
       intro r _ hrs
       have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
-      change tr.time r ≤ _
-      linarith
+      exact this.trans hgm
     have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < sp.ts m := by
       intro k _ hk
       have := hnr y hy k (Compose.projAC_restartAt.mp hk)
-      change tr.time k < _
-      linarith
+      exact this.trans_lt ((lt_add_of_pos_right _ (mul_pos (by norm_num) hDelta)).trans_le hm)
     rcases hgeom y hy i ell e hcast hs with hbelow | ⟨hviab, hrelay⟩
     · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
       obtain ⟨W, hW, hWr, hXW⟩ := SA.castAt_head_anc hr hy hcast (Or.inr rfl)
@@ -705,14 +708,17 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
           (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
       exact ⟨W, hPhiU hW, hWr, hbelow.trans (hXW.mono hPhiU)⟩
     have hcarry := SA.honest_batch_carry_before hS hy hcast hs hm
-      (by change sp.ts m + 2 * sp.Δ ≤ tr.time i; linarith) (hhi.trans hmb) hdl hrs hrelay
+      (by
+        change sp.ts m + 2 * sp.Δ ≤ tr.time i
+        exact (add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num) hDelta.le)).trans
+          (hts.symm.trans_le hlo)) (hhi.trans hmb) hdl hrs hrelay
     exact SA.next_transfer_of_carry sp hS.run hy hcast hs hG hhalf hcarry
       (faultBound_of_service hawake hf hnr (hr.time_nonneg i)
         (by
           change gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
           rw [hslot]
           have heq : ((m + 1 : Nat) : Int) - 1 = m := by omega
-          rw [heq]; linarith) (hhi.trans hmb)) hviab
+          rw [heq]; exact hgm) (hhi.trans hmb)) hviab
       (fun x hx k hki ev hv hsx => ih k hki x hx ev hv hsx)
 
 /-- Local V for a witness also places every ancestor above F and the common J in the frame. -/
@@ -786,10 +792,8 @@ theorem unanimous_next_votes_of_witness (hrun : GoldilocksRun proposer dg H tr)
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+    exact faulty_lt_quorum_excess hf sp.toParams.hn
   apply unanimous_next_votes_of_geometry hrun hnc hsvc hawake hf hcatch hnr hm hmb hG
   intro y hy i ell e hc hs
   have hslot : sp.slot (tr.time i) = m + 1 := (SA.castAt_spec hr hy hc).2.1.symm.trans hs
@@ -846,13 +850,14 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
   have hDelta := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have hf2 : 2 * Hᶜ.ncard < sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    omega
+  have hf2 : 2 * Hᶜ.ncard < sp.n := two_mul_faulty_lt hf sp.toParams.hn
+  have hgm : gbar g ≤ sp.ts m :=
+    (le_add_of_nonneg_right (mul_nonneg (by norm_num) hDelta.le)).trans hm
   have hhalf := honest_voters_half_of_service hrun hnc hsvc hawake hf hcatch hnr hm
-    (show sp.ts m + sp.Δ ≤ b by linarith)
-  have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by linarith
+    (show sp.ts m + sp.Δ ≤ b from (add_le_add ((le_add_of_nonneg_right
+      (mul_nonneg (by norm_num) hDelta.le)).trans_eq hts.symm) le_rfl).trans hmb)
+  have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ :=
+    hti.le.trans (le_add_of_nonneg_right hDelta.le)
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
   rcases hgeom with hbelow | ⟨hV, hrelay⟩
   · have he := (SA.acProposal_head hd).2
@@ -868,13 +873,11 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
     apply deadline_le_restarts (a := sp.ts m)
     intro r _ hrs
     have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
-    change tr.time r ≤ _
-    linarith
+    exact this.trans hgm
   have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < sp.ts m := by
     intro k _ hk
     have := hnr y hy k (Compose.projAC_restartAt.mp hk)
-    change tr.time k < _
-    linarith
+    exact this.trans_lt ((lt_add_of_pos_right _ (mul_pos (by norm_num) hDelta)).trans_le hm)
   have hdel : ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = m →
       ∃ W ∈ ell.frame.tree, W.root = e.msg.head ∧ W.slot ≤ m ∧
         e.msg ∈ (tr.projAC.state y i).pool m ∧
@@ -882,7 +885,10 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
         (tr.projAC.state y i).blockStamp e.msg.head < SA.ETime.of (sp.ts m + 2 * sp.Δ) := by
     intro x hx k e hv hs
     exact SA.late_vote_held_of_frame_before hS hy hc hm
-      (by change sp.ts m + 2 * sp.Δ ≤ tr.time i; linarith) (hhi.trans hmb) hdl hrs hx hv hs
+      (by
+        change sp.ts m + 2 * sp.Δ ≤ tr.time i
+        exact (add_le_add le_rfl (mul_le_mul_of_nonneg_right (by norm_num) hDelta.le)).trans
+          (hts.symm.trans_le hti.ge)) (hhi.trans hmb) hdl hrs hx hv hs
       (hrelay x hx k e hv hs)
   refine SA.batch_proposal hS.run hf2 hhalf hG hy hc (SA.proposal_slot hti) hd
     hV ?_ ?_
@@ -929,15 +935,15 @@ theorem unanimous_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H t
     (hQy : Q ∈ (tr.state y i).fg.tree) : Anc (tr.HonestBlocks H) X d.head := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+    exact faulty_lt_quorum_excess hf sp.toParams.hn
   have hDelta := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have hlo : sp.ts m ≤ tr.time i := by linarith
-  have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by linarith
+  have hlo : sp.ts m ≤ tr.time i :=
+    (le_add_of_nonneg_right (mul_nonneg (by norm_num) hDelta.le)).trans_eq (hts.symm.trans hti.symm)
+  have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ :=
+    hti.le.trans (le_add_of_nonneg_right hDelta.le)
   apply unanimous_next_proposal_of_geometry hrun hnc hsvc hawake hf hcatch hnr hm hmb hG
     hy hc hcall hti hd
   rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hz hlo hhi hQ hh
