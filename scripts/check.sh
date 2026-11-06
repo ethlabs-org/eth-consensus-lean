@@ -1441,6 +1441,7 @@ if ((no_build)); then build_label+=" (freshness only, --no-build)"; fi
 
 run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
+run_selftest "0 check driver self-test (result states and stale-output refusal)" python3 -I scripts/test_check_driver.py
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
 run_selftest "0 commit email allowlist self-test (throwaway repositories)" python3 -I scripts/test_check_commit_emails.py
 run_selftest "0 report-only build timing self-test" python3 -I scripts/test_build_timing.py
@@ -1505,6 +1506,9 @@ printf '%s\n' "${step_times[@]}" | sort -rn | sed 's/^/  /'
 ((${#ci_only[@]} == 0)) || echo "CI-only: ${ci_only[*]}"
 if ((overall)); then
   echo "check.sh: FAILURES PRESENT" >&2
+elif ((${#ci_only[@]})); then
+  echo "check.sh: PARTIAL (required checks unavailable: ${ci_only[*]})" >&2
+  overall=1
 elif ((${#skipped[@]})); then
   echo "check.sh: PASSED ($mode mode; ${#skipped[@]} steps skipped, listed as SKIP above)"
 elif [[ -n "$split" ]]; then
