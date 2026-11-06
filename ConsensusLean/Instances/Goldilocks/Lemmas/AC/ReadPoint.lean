@@ -100,7 +100,7 @@ theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H
   unfold optimisticConfirmation at hl₁
   split at hl₁
   · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
-  rw [updateLatestConfirmed_locks_eq] at hl₁
+  rw [updateLatestConfirmed_keeps_locks] at hl₁
   obtain ⟨l₂, hl₂, hs₂, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
     ((locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
   rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩
@@ -179,7 +179,7 @@ theorem readPoint_locks_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
   split at hl₁
   · exact Or.inl ⟨l₁, hAl ▸ hl₁, B₁, hB₁, hB₁r, hA⟩
   rename_i B hsel
-  rw [updateLatestConfirmed_locks_eq] at hl₁
+  rw [updateLatestConfirmed_keeps_locks] at hl₁
   obtain ⟨l₂, hl₂, -, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
     ((locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
   obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)
@@ -223,7 +223,7 @@ theorem readPoint_locks_provenance_strict {proposer : Nat → Fin sp.n}
   split at hl₁
   · exact Or.inl ⟨l₁, hAl ▸ hl₁, B₁, hB₁, hB₁r, hA⟩
   rename_i B hsel
-  rw [updateLatestConfirmed_locks_eq] at hl₁
+  rw [updateLatestConfirmed_keeps_locks] at hl₁
   obtain ⟨l₂, hl₂, -, -, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
     ((locks_move_back sp) FGP ℓ.frame A.locks (tr.time i) hΦ).2.1 _ _ l₁ hl₁
   obtain rfl : B₁' = B₁ := hΦ.coherent.1 hB₁' hB₁ (hB₁'r.trans hB₁r.symm)

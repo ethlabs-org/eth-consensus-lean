@@ -95,7 +95,7 @@ private theorem StoredFrom.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (h
   unfold optimisticConfirmation
   rcases h : optimisticSelect sp A Φ t with _ | B
   · exact StoredFrom.of_eq rfl
-  · rw [updateLatestConfirmed_locks_eq]
+  · rw [updateLatestConfirmed_keeps_locks]
     refine StoredFrom.of_addLocks hU hΦ hΦU rfl fun r f e hr => ?_
     simp only [Set.mem_singleton_iff, Prod.mk.injEq] at hr
     obtain ⟨rfl, -⟩ := hr
@@ -150,7 +150,7 @@ private theorem StoredFrom.of_updateConfirmation (hU : Coherent U) (hΦ : FrameO
     refine StoredFrom.of_addLocks hU hΦ hΦU (by
         split_ifs
         · rfl
-        · exact updateLatestConfirmed_locks_eq _ _ _)
+        · exact updateLatestConfirmed_keeps_locks _ _ _)
       fun r f e hr => ?_
     rcases hr with ⟨D, hD, hr⟩ | ⟨D, hD, hr⟩
     · simp only [Prod.mk.injEq] at hr

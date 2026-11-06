@@ -81,7 +81,7 @@ private theorem readPoint_live_source {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   unfold optimisticConfirmation at hl₁
   split at hl₁
   · exact ⟨l₁, hAl ▸ hl₁, hlive₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
-  rw [updateLatestConfirmed_locks_eq] at hl₁
+  rw [updateLatestConfirmed_keeps_locks] at hl₁
   obtain ⟨l₂, hl₂, hlive₂, hs₂, -, B₂, hB₂, hB₂r, B₁', hB₁', hB₁'r, hA'⟩ :=
     liveLocks_live_source hΦ hl₁
   rcases hl₂ with hl₂ | ⟨p, hp, rfl⟩

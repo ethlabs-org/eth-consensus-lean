@@ -79,7 +79,7 @@ theorem updateConfirmation_slow_lock_of {FGP : Type} {sp : SAParams} {A : SAStat
   simp only [updateConfirmation, hD]
   split_ifs
   · exact hlocks _ rfl
-  · exact hlocks _ (updateLatestConfirmed_locks_eq _ _ _)
+  · exact hlocks _ (updateLatestConfirmed_keeps_locks _ _ _)
 
 /-- **Effective slow formation**: with `C` a candidate of `viable_ancestor` and unvetoed, the stored
 slow block extends `C` (`anc_viableAncestor_of_candidate`). -/

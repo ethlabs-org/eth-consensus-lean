@@ -346,7 +346,7 @@ theorem older_locks_compatible_after_unlock
     · rw [admitVote_locks_eq] at hl
       obtain ⟨Y, hY, hYr⟩ := hrb l hl
       exact ⟨Y, hY, hYr, hA l hl hls Y hY hYr⟩
-    · rw [updateLatestConfirmed_locks_eq] at hl
+    · rw [updateLatestConfirmed_keeps_locks] at hl
       obtain ⟨l₀, hl₀, hsl, _, _, X, hX, hXr, Y, hY, hYr, hYX⟩ :=
         ((locks_move_back sp) FGP ell.frame _ (tr.time j) hPhi).2.1 _ _ l hl
       rcases hl₀ with hl₀ | ⟨p, hp, rfl⟩

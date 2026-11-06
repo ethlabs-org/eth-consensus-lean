@@ -122,7 +122,7 @@ theorem floor_optimisticConfirmation {A : SAState sp.n} (hΦ : FrameOK Φ) (hB0 
   unfold optimisticConfirmation
   split
   · exact h
-  · rw [updateLatestConfirmed_locks_eq]
+  · rw [updateLatestConfirmed_keeps_locks]
     exact floor_addLocks hΦ hB0 hva0 hk h
 
 /-- The confirmation update keeps the floor. -/
@@ -139,7 +139,7 @@ theorem floor_updateConfirmation {A : SAState sp.n} {s : Nat} (hΦ : FrameOK Φ)
   · split_ifs <;>
       first
       | exact floor_addLocks hΦ hB0 hva0 hk h
-      | (rw [updateLatestConfirmed_locks_eq]; exact floor_addLocks hΦ hB0 hva0 hk h)
+      | (rw [updateLatestConfirmed_keeps_locks]; exact floor_addLocks hΦ hB0 hva0 hk h)
 
 /-- `try_vote` keeps the floor when `unlock` at the merged vote view of its input keeps `B₀`. -/
 theorem floor_tryVote (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)

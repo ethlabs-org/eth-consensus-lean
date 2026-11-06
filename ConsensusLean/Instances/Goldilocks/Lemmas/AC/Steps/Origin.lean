@@ -254,7 +254,7 @@ theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     unfold optimisticConfirmation
     rcases hsel : optimisticSelect sp A ell.frame (tr.time i) with _ | D
     · exact hAl ▸ hstored
-    rw [updateLatestConfirmed_locks_eq]
+    rw [updateLatestConfirmed_keeps_locks]
     apply transfer (((locks_move_back sp) FGP ell.frame A.locks (tr.time i) hPhi.1).2.1 _ _)
     rintro l (hl | ⟨p, hp, rfl⟩)
     · exact hstored l (hAl ▸ hl)
@@ -381,7 +381,7 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
   unfold optimisticConfirmation
   rcases hD : optimisticSelect sp A Φ t with _ | D
   · exact h
-  · rw [updateLatestConfirmed_locks_eq]
+  · rw [updateLatestConfirmed_keeps_locks]
     refine good_movesBack hU hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.1 _ _) ?_
     rintro l (hl | ⟨p, hp, rfl⟩) hs
     · exact h l hl hs

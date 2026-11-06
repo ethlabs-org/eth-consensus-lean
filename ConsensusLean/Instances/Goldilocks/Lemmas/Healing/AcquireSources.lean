@@ -205,7 +205,7 @@ private theorem update_locks {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : T
         (fun hc => SA.anc_total hΦ.coherent h.1.2.2 hc))⟩⟩, h.2⟩⟩)
   unfold SA.updateConfirmation
   simp only [hconf, hnv, ↓reduceIte]
-  refine ⟨_, by rw [SA.updateLatestConfirmed_locks_eq], ?_, ?_⟩
+  refine ⟨_, by rw [SA.updateLatestConfirmed_keeps_locks], ?_, ?_⟩
   swap
   · intro D hD
     exact ⟨_, SA.le_fastExpiry sp _ _ _ _, Or.inl ⟨D, (hpath _).trans hD, rfl⟩⟩
