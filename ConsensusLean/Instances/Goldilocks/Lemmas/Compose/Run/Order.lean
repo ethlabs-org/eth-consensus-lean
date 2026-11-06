@@ -31,18 +31,19 @@ theorem ready_implies_joined : ReadyImpliesJoined := by
   intro sp ro proposer dg H tr hrun y hy t c ht hc hawake
   have h := hrun.toLocalRun
   have hΔ := sp.toParams.hΔ
-  have hm : max 0 (t - c - 1) ≤ t := max_le ht (by linarith)
+  have hm : max 0 (t - c - 1) ≤ t := max_le ht (by linarith only [hc, hΔ])
   refine ⟨hawake t hm le_rfl, fun k hk hkt => ?_⟩
   obtain ⟨u, hu, huk, hs, hb⟩ := h.sleep_of_restart y hy k hk
   -- the sleep is before the window, so the window starts after `8Δ`
   have hum : u < max 0 (t - c - 1) := by
     by_contra hle
-    exact hs (hawake u (not_lt.1 hle) (by linarith))
+    exact hs (hawake u (not_lt.1 hle) (huk.le.trans hkt))
   have hmax : max 0 (t - c - 1) = t - c - 1 := max_eq_right (by
-    rcases lt_max_iff.1 hum with h0 | h1 <;> linarith)
+    rcases lt_max_iff.1 hum with hlt | hlt <;> linarith only [hu, hlt])
   rw [hmax] at hum
   have hsl : 2 ≤ sp.slot t := by
-    have := (ts_le_iff_le_slot sp ht 2).1 (by simp only [SAParams.ts]; linarith)
+    have := (ts_le_iff_le_slot sp ht 2).1
+      (by simp only [SAParams.ts]; linarith only [hum, hu, hc])
     exact_mod_cast this
   refine ⟨by change 0 < sp.slot t; omega, ?_⟩
   -- `t_{slot(t) − 1}` is a public time of the window, so the restart is not after it
@@ -63,18 +64,18 @@ theorem ready_implies_joined : ReadyImpliesJoined := by
     rw [hS]
     change t - c - 1 < 4 * sp.toParams.Δ * ((sp.slot t : Int) - 1)
     change t < 4 * sp.toParams.Δ * ((sp.slot t : Int) + 1) at hup
-    linarith
+    linarith only [hup, hc]
   by_contra hgt
   push Not at hgt
-  obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy _ (by linarith)
+  obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy _ (hu.trans (hum.trans hSw).le)
     (sp.toParams.slotTime_public _) (hawake _ (by rw [hmax]; exact hSw.le) hSt)
   obtain ⟨hjc, hjt⟩ := group_call hj
   have hjk : j < k := by
     by_contra hkj
     have := h.time_mono (not_lt.1 hkj)
-    linarith
+    linarith only [this, hjt, hgt]
   have := hb j hjk hjc
-  linarith
+  exact (not_le_of_gt this) (hjt ▸ (hum.trans hSw).le)
 
 end Consensus.Goldilocks.Compose
 
