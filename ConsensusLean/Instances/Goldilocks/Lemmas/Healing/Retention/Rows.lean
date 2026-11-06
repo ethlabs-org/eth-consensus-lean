@@ -134,19 +134,6 @@ theorem joinedAt_of_fastLockAt (hrun : GoldilocksRun proposer dg H tr)
 
 /-! ## The source of an honest attestation -/
 
-/-- A block that `ac_to_fg` returns is a candidate. -/
-private theorem mem_toFGCandidates' {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
-    {t : Time} {C : SA.Blk sp.n FGP} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (SA.deepest_mem hC').1
-
 /-- **Temporal source provenance of a high attestation**. An honest
 attestation of height `≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain
 of a high origin `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the attestation's
@@ -167,7 +154,7 @@ theorem ResetPremisesUpTo.high_row_source {b : Time}
   have hC' : (SA.acToFG sp (tr.projAC.state v d') ℓ.frame (tr.time d')).2 = some C := by
     rw [Compose.projAC_state hp.run.toLocalRun hv]
     exact hC
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := mem_toFGCandidates' hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨r, hrd, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     stored_fast_lock_provenance hr hv d' l₀ hl₀ hlf
