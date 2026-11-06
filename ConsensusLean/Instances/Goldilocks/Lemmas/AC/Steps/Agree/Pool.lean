@@ -153,8 +153,8 @@ theorem admitVote_held (A : SAState sp.n) {t : Time} {v : Vote sp.n}
   split_ifs with ha hb
   · left
     rcases ha with ha | ha | ha
-    · omega
-    · omega
+    · exact absurd h₁ (not_le.2 ha)
+    · exact absurd h₂ (not_le.2 ha)
     · exact ha
   · right
     generalize hL : ((A.pool v.slot).filter (fun x => x.val = v.val)).dedup = L at hb
@@ -461,15 +461,15 @@ private theorem held_of_deadline_processing
   have hd : tr.deadline X k' (tr.time k) = tr.time k + sp.Δ :=
     deadline_eq fun k'' hk'' hr' => hrs k'' (hk''.trans hk'i) hr'
   rw [hd] at hk'dl
-  have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; linarith)
+  have hk'lt : k' < i := lt_of_le_of_ne hk'i (by rintro rfl; exact absurd hdl (not_le.2 hk'dl))
   obtain ⟨h₁, h₂⟩ := hslot _ hkk' hk'dl
   have hmono := pool_mono hr hX (Nat.succ_le_of_lt hk'lt) (fun k'' hk'' hk''i hrk'' => by
     obtain ⟨ℓ'', hc'', hcall''⟩ := hrk''
     obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart X hX k'' ℓ'' hc'' hcall''
     obtain ⟨ℓ', hc', -⟩ := hproc
-    have := hprev k' (by omega) ℓ' hc'
-    have := hrs k'' hk''i.le ⟨ℓ'', hc'', hcall''⟩
-    linarith) v.slot
+    have h₃ := hprev k' hk'' ℓ' hc'
+    have h₄ := hrs k'' hk''i.le ⟨ℓ'', hc'', hcall''⟩
+    exact lt_irrefl _ ((h₃.trans hu).trans_le (h₄.trans hkk'))) v.slot
   rcases held_of_processAt hr hX hproc h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
   · exact Or.inl (hmono h)
   · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
