@@ -2,8 +2,8 @@
 # Full tier: `scripts/check.sh --full` (every step and self-test, incl. leanchecker kernel replay, `lake check`
 # and `lake comparator --paranoid` in a bubblewrap sandbox) on a clean project build. Nightly (skipped when
 # main's head already passed a full run), on demand, and on `milestone*` / `release*` tags.
-# Two parallel jobs: `lake check` (step 10, about 15 min of single-threaded export replay) and every
-# other step (`--split main`); the run passes only if both do.
+# A clean-build producer runs the main gates and replay fixtures; four consumers replay disjoint leaf sets.
+# A separate job runs `lake check`; certification also requires exact replay inventory coverage.
 # The fast tier (ci.yml) runs on every pull request and push to main.
 # Manual runs: `gh workflow run full.yml` (main) or `gh workflow run full.yml --ref <tag or branch>` (a milestone,
 # release or toolchain/Mathlib bump candidate). The checkers are the toolchain's own (pinned by lean-toolchain):
@@ -115,6 +115,7 @@ jobs:
 
       # Before check.sh's parallel build (4 jobs): two of these at once would exceed the runner's memory.
       - name: Build the heaviest test modules one at a time (clean project build; no .lake/build cache)
+        if: matrix.part == 'main'
         run: |
           set -euo pipefail
           for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
@@ -129,25 +130,42 @@ jobs:
           PART: ${{ matrix.part }}
         run: |
           set -o pipefail
-          scripts/check.sh --full --split "$PART" 2>&1 | tee "$RUNNER_TEMP/check.log"
+          if [[ "$PART" == main ]]; then
+            scripts/check.sh --full --split main --defer-replay --result-file "$RUNNER_TEMP/result.json" 2>&1 | tee "$RUNNER_TEMP/check.log"
+          else
+            scripts/check.sh --full --split lake-check --no-shared-selftests --result-file "$RUNNER_TEMP/result.json" 2>&1 | tee "$RUNNER_TEMP/check.log"
+          fi
 
-      - name: No skipped sandbox steps, nothing skipped, this part passed, tree clean
+      - name: Validate structured part result and clean tree
         env:
           PART: ${{ matrix.part }}
         run: |
           set -euo pipefail
-          if grep -E 'skipped: no bwrap|^SKIP ' "$RUNNER_TEMP/check.log"; then exit 1; fi
-          grep -qE "^check.sh: PART PASSED \(split $PART; [0-9]+ steps deferred to the other part\)$" "$RUNNER_TEMP/check.log"
-          # The two parts must stay complements: lake-check ran step 10; main deferred exactly that one step.
-          # Step 10 passing means its fixtures ran and `lake check` of the default targets passed, or was not run
-          # because the sorry layers hold `sorry`: then the log has its NOTE and the run a warning.
-          case "$PART" in
-            lake-check) grep -q '^PASS  10 lake check' "$RUNNER_TEMP/check.log" || exit 1 ;;
-            main) { [[ "$(grep -c '^DEFER ' "$RUNNER_TEMP/check.log")" == 1 ]] &&
-                    grep -q '^DEFER 10 lake check' "$RUNNER_TEMP/check.log"; } || exit 1 ;;
-            *) exit 1 ;;
-          esac
+          jq -e --arg part "$PART" '.mode == "full" and .part == $part and .status == "passed" and .exit_code == 0' "$RUNNER_TEMP/result.json"
+          if [[ "$PART" == main ]]; then
+            jq -e 'any(.steps_skipped[]; .step == "5 kernel replay" and .reason == "owned by replay shards")' "$RUNNER_TEMP/result.json"
+          fi
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
+      - name: Pack the exact clean build for replay
+        if: matrix.part == 'main'
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > "$RUNNER_TEMP/replay-identity"
+          sha256sum lean-toolchain lake-manifest.json >> "$RUNNER_TEMP/replay-identity"
+          tar -C .lake -cf - build | zstd -T0 -3 -q -o "$RUNNER_TEMP/replay-build.tar.zst"
+
+      - name: Upload the clean certification build
+        if: matrix.part == 'main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: replay-build
+          path: |
+            ${{ runner.temp }}/replay-build.tar.zst
+            ${{ runner.temp }}/replay-identity
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Summary (the part's result line and its SKIP/DEFER lines)
         if: always()
@@ -160,5 +178,127 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: check-log-full-${{ matrix.part }}
-          path: ${{ runner.temp }}/check.log
+          path: |
+            ${{ runner.temp }}/check.log
+            ${{ runner.temp }}/result.json
           retention-days: 30
+
+  replay:
+    name: Kernel replay shard ${{ matrix.shard }}/4
+    needs: full
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned elan and toolchain
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/elan.tgz"
+          echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $RUNNER_TEMP/elan.tgz" | sha256sum --strict -c -
+          tar -xzf "$RUNNER_TEMP/elan.tgz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --no-modify-path --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Lake packages
+        id: pkgs
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
+
+      - name: Restore Mathlib cache on a miss
+        if: steps.pkgs.outputs.cache-hit != 'true'
+        run: lake exe cache get
+
+      - name: Download this run's clean build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: replay-build
+          path: ${{ runner.temp }}/replay-build
+
+      - name: Verify build identity and unpack
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > "$RUNNER_TEMP/replay-identity"
+          sha256sum lean-toolchain lake-manifest.json >> "$RUNNER_TEMP/replay-identity"
+          cmp "$RUNNER_TEMP/replay-identity" "$RUNNER_TEMP/replay-build/replay-identity"
+          mkdir -p .lake
+          zstd -dc "$RUNNER_TEMP/replay-build/replay-build.tar.zst" | tar -C .lake -xf -
+
+      - name: Replay the shard (freshness checked, never rebuilt)
+        env:
+          CI: '1'
+          REPLAY_JOBS: '2'
+          SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          scripts/check.sh --replay-shard "$SHARD/4" --replay-inventory "$RUNNER_TEMP/inventory" --result-file "$RUNNER_TEMP/result.json" \
+            2>&1 | tee "$RUNNER_TEMP/replay.log"
+          jq -e --arg part "$SHARD/4" --arg dir "$RUNNER_TEMP/inventory" \
+            '.mode == "replay-shard" and .part == $part and .status == "passed" and .exit_code == 0 and
+             .inventories.expected == ($dir + "/expected.txt") and .inventories.replayed == ($dir + "/replayed.txt")' "$RUNNER_TEMP/result.json"
+          test -z "$(git status --porcelain)"
+
+      - name: Upload successful shard inventories
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: replay-inventory-${{ matrix.shard }}
+          path: ${{ runner.temp }}/inventory/*.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload replay log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: replay-log-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/replay.log
+            ${{ runner.temp }}/result.json
+          retention-days: 30
+
+  replay-coverage:
+    name: Exact replay coverage
+    needs: [full, replay]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: replay-inventory-*
+          path: inventories
+
+      - name: Require identical expectations, disjoint shards and complete coverage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('inventories')
+          expected = None
+          union = []
+          assert sorted(p.name for p in root.iterdir()) == [f'replay-inventory-{i}' for i in range(1, 5)]
+          for i in range(1, 5):
+              shard = root / f'replay-inventory-{i}'
+              want = (shard / 'expected.txt').read_bytes()
+              got = (shard / 'replayed.txt').read_bytes()
+              assert want.endswith(b'\n') and b'\r' not in want
+              assert got.endswith(b'\n') and b'\r' not in got
+              if expected is None:
+                  expected = want
+              assert want == expected, f'shard {i}: different expected inventory'
+              modules = got.splitlines()
+              assert modules == sorted(set(modules)), f'shard {i}: unsorted or duplicate modules'
+              assert modules == want.splitlines()[i - 1::4], f'shard {i}: wrong round-robin selection'
+              union.extend(modules)
+          leaves = expected.splitlines()
+          assert leaves == sorted(set(leaves)) and all(leaves), 'invalid expected inventory'
+          assert len(union) == len(set(union)), 'overlapping shards'
+          assert sorted(union) == leaves, 'missing or extra replay modules'
+          print(f'PASS: four disjoint shards replayed all {len(leaves)} expected leaves exactly once')
+          PY
