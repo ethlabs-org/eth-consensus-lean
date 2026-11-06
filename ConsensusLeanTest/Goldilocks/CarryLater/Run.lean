@@ -177,29 +177,65 @@ abbrev stateD (ctl : Bool) (y : Fin 5) (c : Nat) : X.NodeD := DataRun.stateD (da
 
 /-! ## The laws of the run -/
 
-theorem entryLaws : ∀ ctl, DataRun.EntryLaws (dataD ctl) := by
-  intro ctl
-  exact ⟨by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel, by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel, by revert ctl; decide +kernel, by revert ctl; decide +kernel⟩
+/-- The eight entry checks of both variants in one kernel evaluation of the entries. -/
+private theorem entryChecks : ∀ ctl, (entriesD ctl).IsChain DataRun.ordD ∧
+    (∀ en ∈ entriesD ctl, DataRun.dropD en = false) ∧
+    (∀ y : Fin 5, ∀ t < 39 + 1, awakeB y t = true →
+      ∃ en ∈ entriesD ctl, en.1 = y ∧ en.2.1 = t ∧ DataRun.isTick en.2.2 = true) ∧
+    (∀ en ∈ entriesD ctl, awakeB en.1 en.2.1 = true) ∧
+    allPre (fun acc en => (List.range en.2.1).all fun u =>
+      awakeB en.1 u || (acc.any fun en' => en'.1 = en.1 && u ≤ en'.2.1) ||
+        DataRun.isRestart en.2.2) [] (entriesD ctl) = true ∧
+    (honest.all fun y => (List.range (39 + 1)).all fun v =>
+      (List.range v).all fun u => awakeB y u || !awakeB y v || (entriesD ctl).any fun en =>
+        en.1 == y && DataRun.isRestart en.2.2 && decide (u < en.2.1) && decide (en.2.1 ≤ v)) =
+      true ∧
+    allPre (fun acc en => !DataRun.isRestart en.2.2 || (0 < en.2.1 &&
+      !awakeB en.1 (en.2.1 - 1) && acc.all fun en' => en'.1 != en.1 || en'.2.1 < en.2.1 - 1))
+      [] (entriesD ctl) = true ∧
+    (∀ en ∈ entriesD ctl, DataRun.wireD en.2.2 = true) := by
+  decide +kernel
+
+theorem entryLaws : ∀ ctl, DataRun.EntryLaws (dataD ctl) := fun ctl =>
+  have h := entryChecks ctl
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, h.2.2.2.2.2.1, h.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2⟩
 
 theorem awakeB_le {y : Fin 5} {t : Nat} (h : awakeB y t = true) : t ≤ 39 := by
   simp only [awakeB, Bool.and_eq_true, decide_eq_true_eq] at h; exact h.1
 
+/-- The checks on the rows of one variant: the row laws, only `c` restarts (once, at `25`), the
+row count `n`, `Sync[24, 33]`. -/
+private abbrev RowChecks (ctl : Bool) (n : Nat) : Prop :=
+  (rowsD ctl).all (fun r => DataRun.fgBlockOK r.cut) = true ∧
+    allPre DataRun.attOK [] (rowsD ctl) = true ∧ allPre DataRun.msgOK [] (rowsD ctl) = true ∧
+    (rowsD ctl).all (fun r => !DataRun.isRestartCut r.cut || (r.node == vc && r.time == 25)) =
+      true ∧ (rowsD ctl).length = n ∧
+    DataRun.syncD (dataD ctl) 24 33 = true ∧ DataRun.blockPosD (dataD ctl) = true
+
+/-- The checks of the rejection run in one kernel evaluation of its rows: one kernel declaration
+per variant, so the two run in parallel and the kernel's caches hold one run at a time. -/
+private theorem rowChecks_false : RowChecks false 344 := by
+  decide +kernel
+
+/-- The checks of the control in one kernel evaluation of its rows. -/
+private theorem rowChecks_true : RowChecks true 354 := by
+  decide +kernel
+
 theorem rowLaws : ∀ ctl, DataRun.RowLaws (dataD ctl) := by
-  intro ctl
-  exact ⟨by revert ctl; decide +kernel, by revert ctl; decide +kernel,
-    by revert ctl; decide +kernel⟩
+  intro ctl; cases ctl
+  exacts [⟨rowChecks_false.1, rowChecks_false.2.1, rowChecks_false.2.2.1⟩,
+    ⟨rowChecks_true.1, rowChecks_true.2.1, rowChecks_true.2.2.1⟩]
 
 /-- **Only `c` restarts** (once, at `25`), in both variants. -/
 theorem rows_restart_c : ∀ ctl,
     (rowsD ctl).all (fun r => !DataRun.isRestartCut r.cut || (r.node == vc && r.time == 25)) =
       true := by
-  decide +kernel
+  intro ctl; cases ctl
+  exacts [rowChecks_false.2.2.2.1, rowChecks_true.2.2.2.1]
 
 /-- **The row counts**: `344` cuts in the rejection run, `354` in the control. -/
-theorem rowsD_length : (rowsD false).length = 344 ∧ (rowsD true).length = 354 := by
-  decide +kernel
+theorem rowsD_length : (rowsD false).length = 344 ∧ (rowsD true).length = 354 :=
+  ⟨rowChecks_false.2.2.2.2.1, rowChecks_true.2.2.2.2.1⟩
 
 /-- **The run is a Goldilocks run**, in both variants. -/
 theorem run_goldilocksRun (ctl : Bool) : GoldilocksRun proposer dg H (tr ctl) :=
@@ -208,16 +244,15 @@ theorem run_goldilocksRun (ctl : Bool) : GoldilocksRun proposer dg H (tr ctl) :=
 
 /-! ## `Sync[24, 33]` -/
 
-/-- The `Sync[24, 33]` check of the rejection run (one kernel check per variant, so the two
-run in parallel). -/
+/-- The `Sync[24, 33]` check of the rejection run. -/
 theorem syncD_rejection : DataRun.syncD (dataD false) 24 33 = true ∧
-    DataRun.blockPosD (dataD false) = true := by
-  decide +kernel
+    DataRun.blockPosD (dataD false) = true :=
+  rowChecks_false.2.2.2.2.2
 
 /-- The `Sync[24, 33]` check of the control. -/
 theorem syncD_control : DataRun.syncD (dataD true) 24 33 = true ∧
-    DataRun.blockPosD (dataD true) = true := by
-  decide +kernel
+    DataRun.blockPosD (dataD true) = true :=
+  rowChecks_true.2.2.2.2.2
 
 theorem syncD_true : ∀ ctl, DataRun.syncD (dataD ctl) 24 33 = true ∧
     DataRun.blockPosD (dataD ctl) = true
