@@ -1553,6 +1553,7 @@ if ((no_build)); then build_label+=" (freshness only, --no-build)"; fi
 run_step "0 pins (toolchain + dependencies = scripts/pins.toml)" step_pins
 run_selftest "0 pins self-test (fixtures/pins-*)" selftest_pins
 run_selftest "0 check driver self-test (result states and stale-output refusal)" python3 -I scripts/test_check_driver.py
+run_selftest "0 build restoration self-test (optional restore and failure preservation)" python3 -I scripts/test_restore_build.py
 run_selftest "0 landing cancellation self-test (local Git remotes)" python3 -I scripts/test_push_main.py
 run_selftest "0 commit email allowlist self-test (throwaway repositories)" python3 -I scripts/test_check_commit_emails.py
 run_selftest "0 report-only build timing self-test" python3 -I scripts/test_build_timing.py
