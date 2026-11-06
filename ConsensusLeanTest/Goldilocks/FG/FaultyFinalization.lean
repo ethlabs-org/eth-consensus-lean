@@ -331,7 +331,9 @@ theorem ffTr_state :
 theorem ffTr_block_proposer {i : Nat} {B : NodeBlock P₄ Unit} {acc : Bool}
     (h : ffTr.label i = some (.block B acc)) : B.proposer = v₃ := by
   rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
-    simp [ffTr] at h <;> obtain ⟨rfl, -⟩ := h <;> rfl
+    dsimp only [ffTr] at h <;>
+    simp only [Option.some.injEq, FGLabel.block.injEq, reduceCtorEq] at h <;>
+    obtain ⟨rfl, -⟩ := h <;> rfl
 
 /-- Every FG state of validator `0` or `1` in `ffTr` holds blocks of `U` only. -/
 theorem ffTr_tree (y : Fin P₄.n) (i : Nat) : (ffTr.store y i).tree ⊆ U := by
@@ -398,7 +400,8 @@ theorem faulty_finalization_localRun : FGLocalRun () H₄ U ffTr where
   exec i ℓ h _ := by
     obtain ⟨h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, -⟩ := ffTr_state
     rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
-      simp only [ffTr, Option.some.injEq, reduceCtorEq] at h <;> subst h
+      dsimp only [ffTr] at h <;>
+      simp only [Option.some.injEq, reduceCtorEq] at h <;> subst h
     · change FGLabel.Step v₀ (ffTr.state v₀ 0) _ (s₀, rec₁ v₀)
       rw [h0]; exact ⟨rfl, by rw [attest_s₀]; exact ⟨rfl, rfl⟩⟩
     · change FGLabel.Step v₁ (ffTr.state v₁ 1) _ (s₀, rec₁ v₁)
@@ -435,7 +438,9 @@ theorem faulty_finalization_localRun : FGLocalRun () H₄ U ffTr where
   unforgeable y _ i a h ha := by
     obtain ⟨ℓ, hℓ, hp⟩ := h
     rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
-      simp [Trace.CallAt, ffTr] at hℓ <;> obtain ⟨-, rfl⟩ := hℓ <;>
+      dsimp only [Trace.CallAt, ffTr] at hℓ <;>
+      simp only [Option.some.injEq, reduceCtorEq, and_false] at hℓ <;>
+      obtain ⟨-, rfl⟩ := hℓ <;>
       simp only [FGLabel.processed, B₁, B₂, B₃, List.mem_cons, List.not_mem_nil,
         or_false] at hp <;>
       rcases hp with rfl | rfl | rfl <;>
