@@ -84,13 +84,14 @@ theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
   have hB : blockOf sp (rawRoot sp.genesisRoot B.root) (headerOf sp B)
       B.proposer B.fgPayload B.acPayload = B := by
     simp only [blockOf, headerOf, hr, parentRoot_parentRef, taggedRoot_rawRoot _ _ hne]
-    cases B; simp_all
+    cases B; simp_all only [ne_eq]
   have hinfo : decodeInfo sp.n (headerOf sp B).info = some (B.fgPayload, B.acPayload) := by
     simp [headerOf, decodeInfo_encodeInfo]
   classical
   simp only [decodeBlock, blockObj, hinfo, hroot]
   rw [hB]
-  simp [hval, headerOf]
+  simp only [headerOf, hval, and_true, true_and, ite_eq_left_iff, not_forall, reduceCtorEq,
+    imp_false, not_exists, Decidable.not_not]
   exact hwf
 
 /-- The canonical object of a vote decodes to the vote. -/
@@ -335,7 +336,8 @@ theorem decodeForward_genesis (hs : List (Header Info × Nat)) (origin : Fin sp.
     (hp : B.parent = some sp.genesisRoot) (ht : 0 ≤ t)
     (hslt : sp.toParams.slotTime B.slot ≤ t) :
     decodeForward sp hs (forwardObj sp origin t none B) = some (origin, t, none, B) := by
-  simp [forwardObj, decodeForward, hb, hp, ht, hslt]
+  simp only [forwardObj, Option.toList_none, List.nil_append, decodeForward, hb, ht, true_and,
+    Option.bind_eq_bind, Option.bind_some, hp, hslt, and_self, ↓reduceIte]
 
 /-- A non-genesis forwarding wrapper retains the exact same-origin parent wrapper. -/
 theorem decodeForward_parent (hs : List (Header Info × Nat)) (origin : Fin sp.n)
@@ -347,7 +349,9 @@ theorem decodeForward_parent (hs : List (Header Info × Nat)) (origin : Fin sp.n
     (hslt : sp.toParams.slotTime B.slot ≤ t) :
     decodeForward sp hs (forwardObj sp origin t (some parent) B) =
       some (origin, t, some parent, B) := by
-  simp [forwardObj, decodeForward, hb, hparent, hp, hg, hslot, hpt, ht, hslt]
+  simp only [forwardObj, Option.toList_some, List.cons_append, List.nil_append, decodeForward,
+    hb, hparent, ne_eq, ht, true_and, Option.bind_eq_bind, Option.bind_some, hg, not_false_eq_true,
+    hpt, hp, hslot, hslt, and_self, ↓reduceIte]
 
 /-- Successful parsing identifies the entire authenticated object, not only its timestamp. -/
 theorem forwardObj_of_decodeForward (hs : List (Header Info × Nat)) (o : Wire sp.n)
@@ -358,12 +362,18 @@ theorem forwardObj_of_decodeForward (hs : List (Header Info × Nat)) (o : Wire s
   split at h
   · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
     obtain ⟨C, _, h⟩ := h
-    split at h <;> simp_all [forwardObj]
+    split at h
+    · simp_all only [Option.some.injEq, Prod.mk.injEq, forwardObj, Model.Obj.mk.injEq,
+        List.self_eq_append_left, Option.toList_eq_nil_iff, and_self]
+    · cases h
   · simp only [Option.bind_eq_bind, Option.bind_eq_some_iff] at h
     obtain ⟨C, _, ⟨⟨k, pt, pp, A⟩, _, h⟩⟩ := h
-    split at h <;> simp_all [forwardObj]
-    rw [← h.2.2.1]
-    rfl
+    split at h
+    · simp_all only [ne_eq, Option.some.injEq, Prod.mk.injEq, forwardObj, Model.Obj.mk.injEq,
+        true_and, not_false_eq_true, and_self]
+      rw [← h.2.2.1]
+      rfl
+    · cases h
   · simp at h
 
 /-- Decoding a forwarding envelope identifies its canonical child using the supplied
@@ -510,7 +520,7 @@ theorem apply_voteForward_of_admission (st : State sp ro) r (v : Vote sp.n)
   apply List.mem_flatMap.mpr
   refine ⟨.ac ℓ, hℓ, ?_⟩
   rcases hsource with hm | ⟨B, hb, hv⟩ | ⟨e, he, hv⟩
-  · simp [hm]
+  · simp only [hm, List.cons_append, List.nil_append, List.mem_cons, List.mem_map, true_or]
   · exact List.mem_append_left _ (by simpa only [hb] using hv)
   · exact List.mem_append_right _ (List.mem_map.mpr ⟨e, he, hv⟩)
 
