@@ -735,7 +735,7 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
     by_contra h0
     obtain rfl : p = 0 := by omega
     have : sp.ts ((0 : Nat) : Int) = 0 := by simp [SAParams.ts]
-    linarith
+    linarith only [hΔ, hw8, hg0, hwp, this]
   obtain ⟨jℓ, hcj, hcallj⟩ := hacc
   have hPj : P ∈ jℓ.frame.tree := (SA.accept_new sp hr hpH ⟨jℓ, hcj, hcallj⟩).1 jℓ hcj
   have hslotP : ∀ P' ∈ ℓ.frame.tree, P'.slot = p → P' = P := by
@@ -764,10 +764,10 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
       have hjjv : kf + 1 ≤ jv := by
         by_contra hn
         have := hl.time_mono (not_le.1 hn).le
-        linarith [hjv.1]
+        linarith only [hΔ, htj', this, hjv.1]
       have hF := hHS (kf + 1) hj0 _ hpH P (hPallow _ hpH _ hPk) y hy jv hjjv (hjviv.trans hivK)
       exact Compose.tree_mono hl hy hjviv (relay_held hl hs.healthy hs.noRestart hc hpH hy hkf
-        (by linarith) (by rw [hkft, htj']) hjv hF)
+        (by linarith only [hwp, hΔ, hw8]) (by rw [hkft, htj']) hjv hF)
   have hPyE := hPallow y hy iv hPy
   have hFP := store_anc_of_honest_anc hrun hnc hy (hHS iv hiv0 y hy P hPyE y hy iv le_rfl hivK) hPy
   refine ⟨by rw [hfrv]; exact (hVH y hy iv hiv0 hivK P hPy).2 ⟨hFP, hPyE⟩, ?_⟩
@@ -797,7 +797,7 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
         have hX₁t := mem_tree_of_frame hrun hy hc₁ hX₁
         rcases Compose.tree_cases hl hy hX₁t with hg | ⟨m₁, hm₁, hacc₁⟩
         · exact hgen hg
-        have hk₁k : k₁ ≤ k := (hlt _ _ (by rw [ht₀']; linarith)).le
+        have hk₁k : k₁ ≤ k := (hlt _ _ (by rw [ht₀']; linarith only [hΔ, ht₁])).le
         have hXi : X ∈ (tr.state y (max i₀ k₁)).fg.tree :=
           Compose.tree_mono hl hy (le_max_right _ _) hX₁t
         have hF := hHS (max i₀ k₁) (le_max_left _ _) y hy X
@@ -806,7 +806,8 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
           exists_firstCutFrom_le (tr := tr) (j := k) (le_of_eq ht₀'.symm)
         have hm₁t := hl.time_mono hm₁.le
         exact Compose.tree_mono hl hpH hjwk (relay_held hl hs.healthy hs.noRestart hc hy hpH
-          hacc₁ (by linarith) (by linarith) hjw ((run_F_mono hl hpH hjwk).trans hF))
+          hacc₁ (by linarith only [hwp, hw2]) (by linarith only [ht₁, hm₁t]) hjw
+          ((run_F_mono hl hpH hjwk).trans hF))
       · obtain rfl := hslotP P' hP' hP's
         rcases Relation.ReflTransGen.cases_tail hXP' with rfl | ⟨Y, hXY, hYP⟩
         · exact absurd rfl hXP

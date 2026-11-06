@@ -177,22 +177,23 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
     have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
-    have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by linarith)
+    have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
+        linarith only [hkwt, hsm])
       (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
-        linarith)
+        linarith only [hΔ])
     change T.deadline y k (T.time kw) ≤ max (T.time kw) (sp.ts ((e.msg.slot : Int) - 1)) + sp.Δ
       at h₁
-    linarith
-  obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw W hkw ha₀ (by linarith) y hy i ℓ hc.1
-    (by linarith [hdl i le_rfl]) hF
+    linarith only [h₂, h₁]
+  obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw W hkw ha₀ (by linarith only [hkwt, hb]) y hy i
+    ℓ hc.1 (by linarith only [hΔ, hm, hti, hdl i le_rfl]) hF
   have hkyt' : T.time ky < SA.freeze sp e.msg.slot := by
     have := hdl ky hky
     unfold SA.freeze
-    linarith
-  have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith
+    linarith only [hkyt, this]
+  have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith only [hΔ, hm, hti]
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
   have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt'⟩)
-    (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith))
+    (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith only [hΔ]))
     (Or.inl hfz)
   have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by
     intro B₀ hcall hB
@@ -201,7 +202,7 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
       ((SA.frameIn_of_callAt hr hy hc.1).2 hWt) hB.symm
     have heq := SA.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
     rw [heq] at hkyt'
-    linarith
+    linarith only [hkyt', hfz]
   rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, Or.inl hbs⟩
 
@@ -234,26 +235,28 @@ private theorem relay_mem_voterBlockTree_window_aux
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
     have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
-    have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by linarith)
+    have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
+        linarith only [ht, hsm])
       (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
-        linarith)
+        linarith only [hΔ])
     change T.deadline y k (T.time kw) ≤ max (T.time kw) (sp.ts ((e.msg.slot : Int) - 1)) + sp.Δ
       at h₁
-    linarith
+    linarith only [h₂, h₁]
   have haccepted : ∃ ky ≤ i, T.AcceptAt y ky W ∧ T.time ky < SA.freeze sp e.msg.slot := by
     by_cases ha : a ≤ T.time kw
     · obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.relay w hw kw W hkw ha y hy i ℓ hc.1
-        (by linarith [hdl i le_rfl]) (by linarith [hdl i le_rfl]) hF
+        (by linarith only [hi, hΔ, hm, hti, hdl i le_rfl])
+        (by linarith only [hΔ, hm, hti, hdl i le_rfl]) hF
       refine ⟨ky, hky, hacc, ?_⟩
       have := hdl ky hky
       unfold SA.freeze
-      linarith
+      linarith only [hkyt, this]
     · exact hcatch (lt_of_not_ge ha)
   obtain ⟨ky, hky, hacc, hkyt⟩ := haccepted
-  have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith
+  have hfz : SA.freeze sp e.msg.slot ≤ T.time i := by unfold SA.freeze; linarith only [hΔ, hm, hti]
   have hWt := SA.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
   have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt⟩)
-    (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith))
+    (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold SA.freeze; linarith only [hΔ]))
     (Or.inl hfz)
   have hne : ∀ B, ℓ.call = .block B → W.root ≠ B.root := by
     intro B₀ hcall hB
@@ -262,7 +265,7 @@ private theorem relay_mem_voterBlockTree_window_aux
       ((SA.frameIn_of_callAt hr hy hc.1).2 hWt) hB.symm
     have heq := SA.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
     rw [heq] at hkyt
-    linarith
+    linarith only [hkyt, hfz]
   rw [← SA.readPoint_blockStamp hr hy hc hne] at hbs
   exact ⟨hWt, hbs⟩
 
@@ -300,10 +303,10 @@ theorem relay_readPoint_stamp_window_before
   have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [SAParams.ts]; ring
   obtain ⟨ky, hky, hacc, hkyt⟩ := hcatch.relay w hw kw W hkw ha y hy i ℓ hc.1
-    (by linarith) hi hF
+    (by linarith only [hcatchTime, hΔ, hti, hm]) hi hF
   refine ⟨ky, hky, hacc, ?_⟩
   unfold SA.freeze
-  linarith
+  linarith only [hcatchTime, hkyt]
 
 /-- Relay and catch-up place an accepted block in the later frozen voter domain. -/
 theorem relay_mem_voterBlockTree_window_before
@@ -357,7 +360,7 @@ theorem fastLock_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
         have hBs := SA.frame_slot_le sp hr hx hck B hB
         have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
           have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 h
-          rw [hts] at this; linarith
+          rw [hts] at this; linarith only [hΔ, hvst, this]
         omega
     · rcases frame_anc_accepted hr hx i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
         hg | ⟨k, hk, hacc⟩
@@ -373,7 +376,7 @@ theorem fastLock_writer (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
         have h := (blockStamp_ge_of_accept hr hx hacc (SA.accept_ne_genesis sp hr hx hacc) i₀
           hki).trans_lt hbst
         rw [SA.etime_of_lt_of] at h
-        linarith
+        linarith only [hge, h]
   · have hc := hp.1
     have hti : T.time i₀ < sp.ts (sp.slot (T.time i₀)) + 2 * sp.Δ := by
       unfold SA.optimisticSelect at hsel
@@ -478,8 +481,8 @@ theorem voterBlockTree_of_relay_source
     have hti : sp.ts e.msg.slot ≤ T.time i :=
       (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hys])
     have hfz : SA.freeze sp e.msg.slot < T.time i := by
-      unfold SA.freeze SAParams.ts at *
-      linarith
+      unfold SA.freeze SAParams.ts at hti ⊢
+      linarith only [hΔ, hti]
     have hrs : ∀ k ≤ i, T.RestartAt y k → T.time k < SA.freeze sp e.msg.slot := by
       have hj' : SA.joined sp (T.post i) (T.time i) := by
         unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
@@ -487,7 +490,7 @@ theorem voterBlockTree_of_relay_source
       have ht := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
       rw [← hys] at ht
       unfold SA.freeze
-      linarith
+      linarith only [hΔ, ht]
     have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hy hc.1 hDt (Or.inl hGr)
       hrs (Or.inl hfz.le)
     have hne : ∀ X, ℓ.call = .block X → G.root ≠ X.root := by

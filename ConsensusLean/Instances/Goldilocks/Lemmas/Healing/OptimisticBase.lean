@@ -59,7 +59,7 @@ theorem optimistic_next_votes_of_early_witness (hrun : GoldilocksRun proposer dg
   intro y hy i ell e hcast hs hhi hFX hviab ih
   have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
-      hm hS.catchUp (by linarith [sp.toParams.hΔ]) hx hy hcast hs (hhi.trans hmb)
+      hm hS.catchUp (by linarith only [hm, sp.toParams.hΔ]) hx hy hcast hs (hhi.trans hmb)
     intro v hv
     obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
@@ -103,7 +103,7 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
     simp only [SAParams.ts]; push_cast; ring
   have hslot := SA.proposal_slot (tr := tr.projAC) hti
   have hib : tr.time i ≤ b := hti ▸ hmb
-  have hlo : sp.ts s ≤ tr.time i := by rw [hti, hts]; linarith
+  have hlo : sp.ts s ≤ tr.time i := by rw [hti, hts]; linarith only [hΔ]
   have hf2 : 2 * Hᶜ.ncard < sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
@@ -157,11 +157,12 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
     obtain ⟨hvs, ⟨k, hsend, hklo, hkhi⟩, Hv, hHv, hHvr, hDHv, ha⟩ :=
       Compose.optimistic_writer_votes hr hx hopt v hv
     have hvheld := SA.sync_window_before_forward hr (SA.serviceWindowBefore_of_sync hS.sync)
-      hx hsend (hm.trans hklo) (by rw [hti, hts] at hib; linarith) hy hc
+      hx hsend (hm.trans hklo) (by rw [hti, hts] at hib; linarith only [hib, hklo, hkhi]) hy hc
       (fun k' hk' hrk => (hrs k' hk' hrk).trans hklo)
-      (by change tr.projAC.time k + sp.Δ ≤ tr.time i; rw [hti, hts]; linarith)
+      (by change tr.projAC.time k + sp.Δ ≤ tr.time i; rw [hti, hts]; linarith only [hklo, hkhi])
       (fun t htlo hthi => by
-        have hslt := SA.slot_of_mem sp s (hklo.trans htlo) (by rw [hts]; linarith)
+        have hslt := SA.slot_of_mem sp s (hklo.trans htlo)
+          (by rw [hts]; linarith only [hkhi, htlo, hthi])
         rw [hslt, hvs]; omega)
     obtain ⟨hHvt, hstamp⟩ := relay_source_at_proposal hS hm hx hy hc hti hib hrs hHv ha
       (hFX'.trans (hXD.trans hDHv))
@@ -219,7 +220,8 @@ theorem optimistic_later_heads_of_early_witness (hrun : GoldilocksRun proposer d
       fun y hy i hlo hhi => hframe.kind_iff y hy i (hl.trans hlo) (hhi.trans hh'),
       fun y hy i hlo hhi => hframe.root_eq y hy i (hl.trans hlo) (hhi.trans hh')⟩
   have hbase := optimistic_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm
-    (by linarith) (hsub le_rfl (by linarith)) hx hopt hXD hw hat hcw hQw hh hJ hXQ
+    (by linarith only [hmb, ht]) (hsub le_rfl (by linarith only [ht])) hx hopt hXD hw hat hcw hQw
+    hh hJ hXQ
   obtain ⟨hvote, hproposal⟩ := later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
     hm hmb hframe hw hat hcw hQw hh hJ hXQ hbase r hrlo hrN
   refine ⟨hvote, ?_⟩
@@ -227,7 +229,8 @@ theorem optimistic_later_heads_of_early_witness (hrun : GoldilocksRun proposer d
   · subst r
     intro y hy i ell hc hcall hti d pay hd
     exact optimistic_next_proposal_of_early_witness hrun hnc hsvc hawake hf hcatch hm
-      (by linarith [sp.toParams.hΔ]) (hsub le_rfl (by linarith [sp.toParams.hΔ]))
+      (by linarith only [hmb, ht, sp.toParams.hΔ])
+      (hsub le_rfl (by linarith only [ht, sp.toParams.hΔ]))
       hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd
   · exact hproposal (by omega)
 
@@ -361,17 +364,17 @@ theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
   have htN : sp.ts s ≤ sp.ts N :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast (show s ≤ N by omega))
   have hh : floor ≤ ((tr.state x i).fg.σ Q.root).h := by
-    rw [← hframe.floor_eq x hx i (hts.trans hlo) (by linarith)]
+    rw [← hframe.floor_eq x hx i (hts.trans hlo) (by linarith only [hhi, htN])]
     rw [Compose.frame_of_projAC hrun hx hc.1] at hvQ
     exact hvQ.2.2.2
   have hJ : kindJ → Anc (tr.HonestBlocks H) J L := by
     intro hk
-    have hki := (hframe.kind_iff x hx i (hts.trans hlo) (by linarith)).mpr hk
+    have hki := (hframe.kind_iff x hx i (hts.trans hlo) (by linarith only [hhi, htN])).mpr hk
     have hroot' := hroot.mono hPhiU
     rw [Compose.frame_of_projAC hrun hx hc.1] at hroot'
     change Anc (tr.HonestBlocks H) (tr.state x i).fg.fcRoot L at hroot'
     have he : (tr.state x i).fg.fcRoot = (tr.state x i).fg.J := ite_eq_left hki
-    rw [he, hframe.root_eq x hx i (hts.trans hlo) (by linarith) hk] at hroot'
+    rw [he, hframe.root_eq x hx i (hts.trans hlo) (by linarith only [hhi, htN]) hk] at hroot'
     exact hroot'
   have hsub : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
       floor kindJ J :=
@@ -379,7 +382,7 @@ theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
       fun y hy j hl hh => hframe.kind_iff y hy j (hts.trans hl) hh,
       fun y hy j hl hh => hframe.root_eq y hy j (hts.trans hl) hh⟩
   exact optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    hsub hx hop hLD hx (by have := sp.toParams.hΔ; linarith) hc.1 hQ hh hJ
+    hsub hx hop hLD hx (by linarith only [hhi, sp.toParams.hΔ]) hc.1 hQ hh hJ
     (hLQ.mono hPhiU)
 
 /-- The actual heal proposal is a viable head in every honest slot-p vote's
@@ -443,16 +446,16 @@ theorem FrameWindow.proposal_viable_at_cast {s₀ p floor : Nat}
   have hheldP := mem_tree_of_frame hrun hz hca hPt
   have hh : floor ≤ ((tr.state z ja).fg.σ P.root).h :=
     floor_le_of_honest_ancestor hrun hnc hz hz hH.1
-      (by rw [← hframe.floor_eq z hz ip (hti ▸ hts) (by rw [hti]; linarith)]
+      (by rw [← hframe.floor_eq z hz ip (hti ▸ hts) (by rw [hti]; linarith only [hΔ])]
           exact hH.2.2.2) hheldP hHP
   have hJ : kindJ → Anc (tr.HonestBlocks H) J P := by
     intro hk
     have hroot : Anc (tr.HonestBlocks H) (tr.state z ip).fg.fcRoot d.head :=
       hH.2.2.1.mono (fun B hB => ⟨z, hz, ip, hB⟩)
-    have hk' := (hframe.kind_iff z hz ip (hti ▸ hts) (by rw [hti]; linarith)).mpr hk
+    have hk' := (hframe.kind_iff z hz ip (hti ▸ hts) (by rw [hti]; linarith only [hΔ])).mpr hk
     change Anc _ (tr.state z ip).fg.fcRoot d.head at hroot
     have he : (tr.state z ip).fg.fcRoot = (tr.state z ip).fg.J := ite_eq_left hk'
-    rw [he, hframe.root_eq z hz ip (hti ▸ hts) (by rw [hti]; linarith) hk] at hroot
+    rw [he, hframe.root_eq z hz ip (hti ▸ hts) (by rw [hti]; linarith only [hΔ]) hk] at hroot
     exact hroot.trans hHP
   have hFP : Anc (tr.HonestBlocks H) ell.frame.F P := by
     rw [Compose.frame_of_projAC hrun hy hc.1]
@@ -533,7 +536,7 @@ theorem regular_fast_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
   change sp.slot (tr.time i) = s + 1 at hslot
   have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
-      hm hS.catchUp (by linarith [sp.toParams.hΔ]) hx hy hcast hs (hhigh.trans hmb)
+      hm hS.catchUp (by linarith only [hm, sp.toParams.hΔ]) hx hy hcast hs (hhigh.trans hmb)
     intro v hv
     obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := fastLock_writer hr hx hfl v hv
     refine ⟨hvs, hw, Hv, hHv, hHvr, ?_, ha⟩
@@ -620,25 +623,29 @@ theorem FrameWindow.regular_fast_next_votes {s₀ s floor : Nat}
     hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr hXQ
   · intro hQ hh hJX
     apply regular_fast_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [sp.toParams.hΔ]) hmb
+      (by linarith only [hms, sp.toParams.hΔ]) hmb
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i
           (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
        fun y hy i hlo hhi => hframe.kind_iff y hy i
           (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi,
        fun y hy i hlo hhi => hframe.root_eq y hy i
           (((SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ s by omega))).trans hlo) hhi⟩
-      hx hfast ?_ hXD hCQ hz (by linarith [sp.toParams.hΔ]) hc hQ hh hJX
+      hx hfast ?_ hXD hCQ hz (by linarith only [htq, sp.toParams.hΔ]) hc hQ hh hJX
     simpa only [Compose.frame_of_projAC hrun hx hu.1] using hres
   · intro hA a D' CV' hop hQD
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
         (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
-      ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo (by linarith [sp.toParams.hΔ]),
-       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith [sp.toParams.hΔ]),
-       fun y hy i hlo hhi => hframe.root_eq y hy i hlo (by linarith [sp.toParams.hΔ])⟩
+      ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo
+          (by linarith only [hts, hhi, sp.toParams.hΔ]),
+       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo
+          (by linarith only [hts, hhi, sp.toParams.hΔ]),
+       fun y hy i hlo hhi => hframe.root_eq y hy i hlo
+          (by linarith only [hts, hhi, sp.toParams.hΔ])⟩
     exact (hnext.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [sp.toParams.hΔ]) (by omega) (by omega) (by linarith [sp.toParams.hΔ])
+      (by linarith only [hms, sp.toParams.hΔ]) (by omega) (by omega)
+      (by linarith only [hmb, hts, sp.toParams.hΔ])
       hz ⟨hc, he⟩ hes hA hop hQD (s + 1) le_rfl le_rfl).1
 
 /-- The boundary optimistic anchor prefix, with actual CV delivery supplied
@@ -665,7 +672,7 @@ theorem optimistic_prefix_before (hrun : GoldilocksRun proposer dg H tr)
   have hr := hS.run.localRun
   have hcarry : SA.CarryAt tr.projAC (tr.HonestBlocks H) y i e s CV := by
     apply Compose.carryAt_of_writer_window_before hr (SA.serviceWindowBefore_of_sync hS.sync)
-      hm hS.catchUp (by linarith [sp.toParams.hΔ]) hx hy hc hes hib
+      hm hS.catchUp (by linarith only [hm, sp.toParams.hΔ]) hx hy hc hes hib
     intro v hv
     obtain ⟨hvs, hw, Hv, hHv, hHvr, hDHv, ha⟩ := Compose.optimistic_writer_votes hr hx hopt v hv
     exact ⟨hvs, hw, Hv, hHv, hHvr, hFD.trans hDHv, ha⟩
