@@ -1,6 +1,6 @@
 module
-public import ConsensusLeanTest.GoldilocksTwoAC
-public import ConsensusLeanTest.GoldilocksTwoFacts
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.AC
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts
 @[expose] public section
 
 /-! # The healthy two-validator run: the node's events

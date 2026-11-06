@@ -1,5 +1,5 @@
 module
-public import ConsensusLeanTest.GoldilocksTwoRun
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run
 @[expose] public section
 
 /-! # The healthy two-validator run: its chain

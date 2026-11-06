@@ -1,6 +1,6 @@
 module
-public import ConsensusLeanTest.GoldilocksWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Refinement.Relay
+public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Premises
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 @[expose] public section
 
 /-! # A healthy infinite two-validator run: the schedule
@@ -791,7 +791,7 @@ theorem headKey_exec (self : Fin sp.n) (st : St) (t : Time) (e : Node.Event N) {
     obtain ⟨rfl, -⟩ := List.cons.inj h
     simp [headKey, hℓ, normEv]
   | block B =>
-    obtain ⟨acc, rfl⟩ := Refinement.exec_block_head prop dg self st t B h
+    obtain ⟨acc, rfl⟩ := Simulation.exec_block_head prop dg self st t B h
     rfl
   | message m =>
     simp only [exec, onMessage, acCall] at h

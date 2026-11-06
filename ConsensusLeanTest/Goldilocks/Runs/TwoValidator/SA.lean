@@ -1,5 +1,5 @@
 module
-public import ConsensusLeanTest.GoldilocksTwoChain
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 @[expose] public section
 

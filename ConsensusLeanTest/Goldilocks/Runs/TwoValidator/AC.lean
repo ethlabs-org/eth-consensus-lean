@@ -1,5 +1,5 @@
 module
-public import ConsensusLeanTest.GoldilocksTwoSA
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
 @[expose] public section
 
 /-! # The healthy two-validator run: the SA's calls

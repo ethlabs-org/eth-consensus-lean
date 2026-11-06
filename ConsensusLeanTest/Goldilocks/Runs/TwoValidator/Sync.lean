@@ -1,5 +1,5 @@
 module
-public import ConsensusLeanTest.GoldilocksTwoFacts
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts
 
 public section
 

@@ -1,5 +1,5 @@
 module
-public import ConsensusLeanTest.GoldilocksTwoChain
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 @[expose] public section
 
 /-! # The healthy two-validator run: its observable events
