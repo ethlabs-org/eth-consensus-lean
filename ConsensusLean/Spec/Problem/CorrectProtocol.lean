@@ -18,7 +18,8 @@ contract `K` (numbers only). Three parts:
   and `ΔFG > 1` (the healthy regime within its FG delay bound), every GST and
   arbitrarily late outages, is met by a clean witness with
   active claims, plus a sleepy stress witness with at most two honest
-  validators awake.
+  validators awake; and the sleepy, healthy and outage regimes have witnesses on
+  which faults grow inside the active part (`GrowthActive`).
 
 What L0 cannot check, and L1 proves once for the model: the log is the
 engine's real communication (`Model.sysOf_log_faithful`), and the external data
@@ -63,7 +64,7 @@ structure External {V : Type} (S : System V) where
   Admits : (E : Env V) → Ext E → Prop
 
 /-- Progress requirements (leader-based progress), read **only** from the
-participation of the environment point — awake profile, honest set, horizon —
+participation of the environment point — awake profile, fault profile, horizon —
 and the external data; not from the submissions. `holds π c start stop p x`:
 requirement `π` with catch-up `c` holds on the window `[start, stop]`. A smaller
 window or a smaller horizon is weaker. -/
@@ -88,9 +89,11 @@ def prog (X : Progress S Prog) (K : Contract Prog) (cap : Capability) (i : K.Idx
 
 variable [Fintype V] [DecidableEq V]
 
-/-- A clean witness: valid, no excuse, a faulty and an honest validator. -/
+/-- A clean witness: valid, no excuse, faults that do not grow, a faulty
+validator and an honest one. The growth witnesses of `Realizable` are separate. -/
 def Witness (r : S.Run) : Prop :=
-  S.Valid r ∧ ¬ S.Excuse r ∧ (S.pt r).faulty.Nonempty ∧ (S.pt r).honest.Nonempty
+  S.Valid r ∧ ¬ S.Excuse r ∧ (S.pt r).ConstantFaults ∧ ((S.pt r).faultyAt 0).Nonempty ∧
+    ((S.pt r).honestAt 0).Nonempty
 
 /-- A clean witness at the delays `ΔAC` and `ΔFG`: a clean witness whose environment has them. -/
 def WitnessAt (ΔAC ΔFG : Time) (r : S.Run) : Prop :=
@@ -116,7 +119,8 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   laws : S.Laws
   admissible : K.params.Admissible
   serves : S.schema.Serves
-  /-- Honest validators are never convicted by honest evidence. -/
+  /-- A validator honest at a time is never convicted by the evidence nodes saw
+  while honest by then. -/
   nonFraming : S.HoldsAlways S.NonFraming
   /-- Lower-rank outputs are prefixes of higher-rank ones, unconditionally. -/
   nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → S.schema.output c₁ = some g₁ →
@@ -179,12 +183,12 @@ structure System.Adequate (S : System V) (X : Progress S Prog) : Prop where
     ∀ π c s t, t ≤ b → X.holds π c s t (S.pt r) (X.ext r) → X.holds π c s t (S.pt r') (X.ext r')
 
 /-- Non-vacuity of `TxLive` (used by realizability witnesses): a transaction
-submitted at `t ≥ 0` to an awake honest `u`, and a *different* honest `w`
+submitted at `t ≥ 0` to a `u` honest and awake at `t`, and a *different* `w`
 that never receives it by submission, ready at a reachable deadline
 `t' ≥ max t start + ΔAC + D`, `t' ≤ horizon`. -/
 def EnvPoint.TxLiveActive (p : EnvPoint V) (c start D : Time) : Prop :=
-  ∃ (x : Tx) (t t' : Time) (u w : V), 0 ≤ t ∧ u ∈ p.honest ∧
-    p.env.awake u t = true ∧ x ∈ p.submit u t ∧ w ∈ p.honest ∧ w ≠ u ∧
+  ∃ (x : Tx) (t t' : Time) (u w : V), 0 ≤ t ∧ p.HonestAt u t ∧
+    p.env.awake u t = true ∧ x ∈ p.submit u t ∧ w ≠ u ∧
     (∀ τ, x ∉ p.submit w τ) ∧
     max t start + p.env.ΔAC + D ≤ t' ∧ t' ≤ p.horizon ∧ p.Ready c w t'
 
@@ -200,8 +204,21 @@ in the window; and a node is ready at a time from the recovery point
 `b₁ + D` within the horizon (a protected reader). -/
 def OutageActive (c D T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
   0 ≤ T ∧ T < b₀ ∧ b₀ + p.env.ΔAC ≤ b₁ ∧ (∃ u, p.Ready c u T) ∧
-    (∃ v ∈ p.honest, ∃ t, b₀ ≤ t ∧ t < b₁ ∧ p.env.awake v t = false) ∧
+    (∃ v t, b₀ ≤ t ∧ t < b₁ ∧ p.HonestAt v t ∧ p.env.awake v t = false) ∧
     ∃ w t, b₁ + D ≤ t ∧ t ≤ p.horizon ∧ p.Ready c w t
+
+/-- Faults grow inside the active part of a run and the dynamic scopes are
+exercised: `u` is ready at `t₁` (a read that stays protected) and was submitted
+`x` while honest and awake at `τ ≤ t₁`; `u` is compromised at `κ`, with `t₁ < κ`
+(so `faultyAt 0 ⊊ faultyAt κ`); `u` is the only node `x` is submitted to; a
+*different* `w` is ready at `t₁` and at a deadline `t' ≥ max τ start + ΔAC + D` with
+`κ ≤ t' ≤ horizon` (the transaction stays owed after its only source is
+compromised, and `w` reads after `u`'s compromise). -/
+def GrowthActive (c start D : Time) (p : EnvPoint V) : Prop :=
+  ∃ (u w : V) (x : Tx) (τ t₁ κ t' : Time), u ≠ w ∧ 0 ≤ τ ∧ τ ≤ t₁ ∧ t₁ < κ ∧ κ ≤ t' ∧
+    t' ≤ p.horizon ∧ max τ start + p.env.ΔAC + D ≤ t' ∧ p.Ready c u t₁ ∧
+    p.env.awake u τ = true ∧ x ∈ p.submit u τ ∧ (∀ v s, x ∈ p.submit v s → v = u) ∧
+    u ∉ p.faultyAt 0 ∧ u ∈ p.faultyAt κ ∧ p.Ready c w t₁ ∧ p.Ready c w t'
 
 namespace System
 
@@ -240,7 +257,9 @@ agreement between readers or its monotonicity. The ordinary regime witnesses
 (`sleepy`, `healthy`, `outage`) show that the regimes can occur and do not depend
 on which outputs are provided: the sleepy and healthy witnesses are asked at
 every capability and index, provided or not, and the outage witness names no
-output; only `sleepyStress` is gated by the provided outputs. -/
+output; only `sleepyStress` is gated by the provided outputs. The growth
+witnesses (`sleepyGrowth`, `healthyGrowth`, `outageGrowth`) are valid and
+excuse-free runs whose faults grow inside their active part. -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   sleepy : ∀ cap i (ΔAC ΔFG : Time), 1 < ΔAC → 1 < ΔFG →
@@ -264,10 +283,65 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     ∃ r T b₀ b₁, S.WitnessAt ΔAC ΔFG r ∧ S.Outage K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁ (S.pt r) ∧
       (k : Time) * ΔAC ≤ T
+  /-- Growth, sleepy: at every delays, a valid excuse-free sleepy witness on which
+  faults grow inside the active part (`GrowthActive`), with sleepy liveness
+  exercised. -/
+  sleepyGrowth : ∀ cap i (ΔAC ΔFG : Time), 1 < ΔAC → 1 < ΔFG → ∃ r, S.Valid r ∧ ¬ S.Excuse r ∧
+    (S.pt r).env.ΔAC = ΔAC ∧ (S.pt r).env.ΔFG = ΔFG ∧ S.SleepyLive X K cap i r ∧
+    GrowthActive (S.cDur K r) 0 (S.lat K cap i r) (S.pt r)
+  /-- Growth, healthy: at every delays within the FG delay bound and every GST,
+  a valid excuse-free healthy witness on which faults grow inside the active
+  part, with healed liveness exercised. -/
+  healthyGrowth : ∀ cap i (ΔAC ΔFG g : Time), 1 < ΔAC → 1 < ΔFG →
+    ΔFG ≤ (K.params.fgDelay : Time) * ΔAC → 0 ≤ g → ∃ r, S.Valid r ∧ ¬ S.Excuse r ∧
+    (S.pt r).env.ΔAC = ΔAC ∧ (S.pt r).env.ΔFG = ΔFG ∧ S.HealthyLive X K cap i g r ∧
+    GrowthActive (S.cDur K r) (S.heal K cap i g r) (S.lat K cap i r) (S.pt r)
+  /-- Growth, outage: an active outage armed arbitrarily late whose protected
+  source, ready at `T`, is compromised at a later time `κ`, with a reader ready
+  at a time from both the recovery point and `κ`. -/
+  outageGrowth : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
+    ∃ r T b₀ b₁ u κ, S.Valid r ∧ ¬ S.Excuse r ∧ (S.pt r).env.ΔAC = ΔAC ∧
+    (S.pt r).env.ΔFG = ΔFG ∧ S.Outage K T b₀ b₁ r ∧
+    OutageActive (S.cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁ (S.pt r) ∧
+    (k : Time) * ΔAC ≤ T ∧ (S.pt r).Ready (S.cDur K r) u T ∧ T < κ ∧
+    u ∈ (S.pt r).faultyAt κ ∧ ∃ w t, S.recoveryAt K b₁ r ≤ t ∧ t ≤ (S.pt r).horizon ∧ κ ≤ t ∧
+      (S.pt r).Ready (S.cDur K r) w t
 
 /-- **A correct protocol.** -/
 structure CorrectProtocol (S : System V) (X : Progress S Prog) (K : Contract Prog) : Prop where
   behaviour : Behaviour S X K
+  adequate : S.Adequate X
+  realizable : 5 ≤ Fintype.card V → Realizable S X K
+
+/-! ### Correctness on a class of runs
+
+`CorrectProtocolOn S X K Q`: the property table on the runs whose environment
+point satisfies `Q`, with the adequacy and realizability of the whole system. At
+`Q = ConstantFaults` it is the property table of the static adversary, plus the
+adequacy and realizability (growth witnesses included) of the whole growing-fault
+system (`Review.ObligationsSufficientOn`). -/
+
+/-- `S` with its valid runs restricted to those satisfying `Q`. -/
+def System.restrict (S : System V) (Q : S.Run → Prop) : System V :=
+  { S with Valid := fun r => S.Valid r ∧ Q r }
+
+/-- A progress reader of `S`, as a progress reader of `S.restrict Q` (the same
+external data and requirements). -/
+def Progress.restrict {S : System V} (X : Progress S Prog) (Q : S.Run → Prop) :
+    Progress (S.restrict Q) Prog where
+  Ext := X.Ext
+  ext := X.ext
+  Admits := X.Admits
+  holds := X.holds
+  mono := X.mono
+  shrink := X.shrink
+  submit_irrel := X.submit_irrel
+
+/-- A correct protocol on the runs whose point satisfies `Q`: the property table
+on those runs, with the adequacy and realizability of the whole system. -/
+structure CorrectProtocolOn (S : System V) (X : Progress S Prog) (K : Contract Prog)
+    (Q : EnvPoint V → Prop) : Prop where
+  behaviour : Behaviour (S.restrict fun r => Q (S.pt r)) (X.restrict fun r => Q (S.pt r)) K
   adequate : S.Adequate X
   realizable : 5 ≤ Fintype.card V → Realizable S X K
 

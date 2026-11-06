@@ -22,20 +22,24 @@ namespace Run
 
 variable (rho : Run F E)
 
-/-- Unforgeable signatures: every object signed by an honest validator that
-occurs anywhere inside a delivered object was released by that validator at an
-earlier event. Faulty validators sign anything. -/
+/-- Unforgeable signatures: every signed object inside an object delivered at
+time `t` whose signer is honest at `t` was released by that signer at an earlier
+event. A key compromised by `t` signs anything, including objects that claim an
+earlier slot or role: the claimed slot is not the signing time (ordinary keys, no
+forward security). A genuine earlier release keeps its provenance after its
+signer is compromised. -/
 def Unforgeable : Prop :=
   ∀ (i : Nat) (w : V) (o : (protoOf F E).Object) (t : Time),
     rho.events[i]? = some (Event.deliver w o t) →
-    ∀ o', Obj.Contains o o' → ∀ u ∈ rho.honest, rho.signerOf o' = some u →
+    ∀ o', Obj.Contains o o' → ∀ u, rho.signerOf o' = some u → u ∉ rho.faultyAt t →
       ∃ (j : Nat) (t' : Time), j < i ∧ rho.SendsAt u j t' ∧ o' ∈ rho.releasesAt j
 
 /-- The run's selection is admissible for every role. -/
 def SelValid : Prop := (protoOf F E).SelAdmits rho.sel
 
 /-- Credentials: every signed object inside a delivered object is signed by a
-key selected for its role, faulty signers included. This is the soundness of
+key selected for its role, faulty and compromised signers included (a compromise
+creates no credential the selection did not give). This is the soundness of
 the deployed membership mechanism (a public committee list, VRF proofs, …): a
 model-adequacy binding, not something honest code checks. -/
 def Credentials : Prop :=
@@ -45,10 +49,14 @@ def Credentials : Prop :=
 
 /-- A valid execution.
 
-Schedule: events are in time order, finite, honest only, and every awake
-honest node ticks at every integer time of `[0, horizon]` (unit ticks).
-Sleep: an asleep node has no events; a node restarts exactly when it wakes
-(after time 0). Then unforgeable signatures, an admissible selection, and
+Schedule: events are in time order, finite, and each at a node honest at the
+event's time; every node honest and awake at an integer time of `[0, horizon]`
+ticks there (unit ticks). From its compromise on, a node has no engine events:
+what it does is adversarial injection (deliveries of the objects its key signs);
+its engine state stays where it was and is no longer a read of the property
+table. Compromise is neither a wake nor a restart and removes nothing from
+another node's `seen`. Sleep: an asleep node has no events; a node honest at a
+wake (after time 0) restarts exactly then. Then unforgeable signatures, an admissible selection, and
 credentials. -/
 structure ExecutionValid : Prop where
   -- Schedule.
@@ -56,14 +64,14 @@ structure ExecutionValid : Prop where
   sorted : rho.events.Pairwise Event.keyLe
   nodup : rho.events.Nodup
   in_horizon : ∀ e ∈ rho.events, 0 ≤ e.time ∧ e.time ≤ rho.horizon
-  honest_only : ∀ e ∈ rho.events, e.node ∈ rho.honest
-  tick_total : ∀ v ∈ rho.honest, ∀ t, 0 ≤ t → t ≤ rho.horizon →
+  honest_only : ∀ e ∈ rho.events, e.node ∉ rho.faultyAt e.time
+  tick_total : ∀ v t, 0 ≤ t → t ≤ rho.horizon → v ∉ rho.faultyAt t →
     E.awake v t = true → Event.tick v t ∈ rho.events
   -- Sleep.
   tick_awake : ∀ v t, Event.tick v t ∈ rho.events → E.awake v t = true
   deliver_awake : ∀ v o t, Event.deliver v o t ∈ rho.events → E.awake v t = true
   restart_at_wake : ∀ v t, Event.restart v t ∈ rho.events → 0 < t ∧ Wakes E v t
-  wake_restart : ∀ v ∈ rho.honest, ∀ t, 0 < t → t ≤ rho.horizon →
+  wake_restart : ∀ v t, 0 < t → t ≤ rho.horizon → v ∉ rho.faultyAt t →
     Wakes E v t → Event.restart v t ∈ rho.events
   -- Bindings.
   unforgeable : Unforgeable rho

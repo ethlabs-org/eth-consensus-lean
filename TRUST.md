@@ -49,11 +49,14 @@ and `Lemmas/Problem/Derived.lean`, which no trusted statement reads (by a compil
 
 `ConsensusLean/Statements/Review.lean` holds statements only: `ReviewGuard.checkComplete` requires every
 non-proof constant (generated matchers exempt) to have a review pair, and `ConsensusLeanTest/ReviewAxioms.lean`
-compiles alpha-equality, binder-kind and axiom pins. Primary statement: `Consensus.Review.ObligationsSufficient`;
-secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint
-`MeetsObligations` and the headline `Consensus.Goldilocks.GoldilocksCorrect`, which composes the primary with
-`MeetsObligations`: Goldilocks is a `CorrectProtocol` for every setup, every contract assumption and every finite
-validator type.
+compiles alpha-equality, binder-kind and axiom pins. Primary statement: `Consensus.Review.ObligationsSufficient`, and
+its form on a class of runs `ObligationsSufficientOn` (at constant faults, the static adversary at full strength);
+secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline.
+While the instance proofs migrate to growing faults these are certified for constant faults only:
+`MeetsObligationsConstant` and `Consensus.Goldilocks.GoldilocksCorrectConstant` (Goldilocks is a `CorrectProtocolOn`
+the runs whose faults do not grow, with the adequacy and realizability of the growing-fault system). The
+growing-fault `MeetsObligations` and `GoldilocksCorrect` are stated in `Instances/Goldilocks/Statements/Growing.lean`,
+not yet certified.
 
 **Changes are recorded, not gated.** Every non-merge commit that touches a trusted path carries a line
 `Trusted-surface: <what changes and why>`; `scripts/review-boundary.sh` (self-tested on throwaway repositories)
@@ -113,7 +116,12 @@ Model adequacy assumes one-key-per-validator PKI, sound membership credentials, 
 key/role-binding signatures, persistent client slashing protection, the stated delivery service
 (including forwarded adversarial objects and persistent transaction inboxes), known Δ and unit ticks,
 restart/tick/delivery event order and restarts at wakes, and hash collision resistance.
-Static, all-knowing adversary; no adaptive corruption. Per instance the reviewer binds outputs to user reads,
+All-knowing adversary whose set of compromised validators grows (`EnvPoint.faultyAt`, monotone): a compromise is
+immediate and permanent, with the ordinary signing key (no forward-secure keys, no corruption delay); it takes
+effect before every event of its time; an honest release keeps its provenance after its signer is compromised.
+Every lawful trace is quantified, so adaptive scheduling and corruption are covered; no probabilistic or
+computational adversary is modelled. The Goldilocks claims are certified for constant faults only while its proofs
+migrate (§2). Per instance the reviewer binds outputs to user reads,
 `conflicts` to the enforced slashing rule, and numbers to the intended values.
 
 ## 6. Out of scope

@@ -2,11 +2,13 @@
 
 A machine-checked proof, in [Lean 4](https://lean-lang.org), that **Goldilocks** is a correct consensus protocol under stated network and adversary assumptions. Goldilocks combines an *available chain* that keeps growing while many validators are offline with a *finality gadget* that finalizes blocks when the network is healthy; its specification is in [`specs/goldilocks/tex/`](specs/goldilocks/tex/).
 
+**Status of the growing adversary.** The model and the generic statements cover an adversary whose set of compromised validators grows over the run. The Goldilocks claims are certified for constant faults only, as `goldilocksCorrectConstant` and `meetsObligationsConstant`. The growing-fault Goldilocks statements, `GoldilocksCorrect` and `MeetsObligations` in [`Statements/Growing.lean`](ConsensusLean/Instances/Goldilocks/Statements/Growing.lean), are stated and not yet proved.
+
 The headline theorem is `goldilocksCorrect`. It says that Goldilocks is a `CorrectProtocol` for every finite set of validators and every choice of its parameters (the lock window `k ≥ 2`, the timeout `δt` and the rest), given two assumptions on its timing: `fgSlots`, which bounds the finality gadget's attestation delay in a healthy network (see the healthy regime below), is at least 2, and the timeout is at least `3·fgSlots`. Every timing constant in the guarantees is an explicit formula in these parameters. Its proof composes two parts. The first is generic: a precise definition of a correct consensus protocol, and a theorem that any protocol written in a standard blockchain form and meeting a list of conditions satisfies it. The second shows that Goldilocks meets those conditions.
 
 ## What "correct" means
 
-**The setting.** There are *n* validators, each with one signing key. Some are *faulty*: the adversary controls them completely and knows everything, but cannot forge honest signatures. The set of faulty validators is fixed for a run. Honest validators can be *asleep* (offline) and wake up later. Clients submit transactions to awake honest validators. Each honest validator *reads* chains from its local view; Goldilocks gives two reads: the **confirmed** chain (from the available chain) and the **finalized** chain (from the finality gadget).
+**The setting.** There are *n* validators, each with one signing key. Some are *faulty*: the adversary controls them completely and knows everything, but cannot forge honest signatures. The set of faulty validators can grow during a run. A compromise is immediate and permanent, and from then on the adversary holds the validator's ordinary key. It can sign anything with that key, including objects that claim an earlier slot, while what the validator did while honest stays honest. A constant set is the static adversary. Honest validators can be *asleep* (offline) and wake up later. Clients submit transactions to awake honest validators. Each honest validator *reads* chains from its local view; Goldilocks gives two reads: the **confirmed** chain (from the available chain) and the **finalized** chain (from the finality gadget).
 
 **The network.** Time is discrete. A message an honest validator sends at time *t* reaches every honest validator that stays awake, within a delay bound: `ΔAC` for ordinary messages and transactions, and `ΔFG` for finality-gadget attestations. Before the *global stabilization time* (GST) the network can be asynchronous; afterwards the bounds hold. A validator that wakes up is sent again what it missed, within the same bound.
 
@@ -56,10 +58,11 @@ The definition also rules out vacuous protocols: a protocol that never sends any
 | Goldilocks' timing constants (catch-up, healing time, latency) | `goldilocksContract` in [`Instances/Goldilocks/Statements/Obligations.lean`](ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean) |
 | the proofs | `ConsensusLean/Lemmas/`, `ConsensusLean/Proofs/`, `ConsensusLean/Instances/Goldilocks/Proofs/` |
 
-The certified result is six Lean statements, listed in [`Challenge.lean`](Challenge.lean). The headline is `goldilocksCorrect`. The other five support it:
+The certified result is seven Lean statements, listed in [`Challenge.lean`](Challenge.lean). While the Goldilocks proofs migrate to growing faults, the headline is `goldilocksCorrectConstant`: Goldilocks is correct on runs whose faults do not grow. The others support it:
 
-- `MeetsObligations`: Goldilocks meets the obligations;
-- `ObligationsSufficient`: every chain shape that meets them is correct;
+- `MeetsObligationsConstant`: Goldilocks meets the obligations on those runs;
+- `ObligationsSufficient`: every chain shape that meets them is correct, under growing faults;
+- `ObligationsSufficientOn`: the same on a class of runs, in particular on constant faults;
 - `RegimesRealizable`: the regimes can actually occur, so the guarantees are not vacuous;
 - `LogFaithful` and `HeldIffServed`: the execution model is faithful (what a node holds in the model is exactly what the network delivered to it).
 
@@ -67,7 +70,7 @@ The certified result is six Lean statements, listed in [`Challenge.lean`](Challe
 
 ## What you must trust, and how to check it
 
-You must trust Lean's kernel, the pinned Mathlib, and the files that *state* the claim: the definition, the execution model, the Goldilocks specification that the headline statement reads, and the six statements. Everything else, including every proof, is checked. [`TRUST.md`](TRUST.md) lists those files and says what each automatic check guarantees.
+You must trust Lean's kernel, the pinned Mathlib, and the files that *state* the claim: the definition, the execution model, the Goldilocks specification that the headline statement reads, and the certified statements. Everything else, including every proof, is checked. [`TRUST.md`](TRUST.md) lists those files and says what each automatic check guarantees.
 
 With [elan](https://github.com/leanprover/elan) installed:
 
@@ -81,12 +84,12 @@ CI runs the fast checks on every pull request and push to `main`, and the full c
 
 ## Scope
 
-Not modelled: an adaptive adversary, validators with different weights, probabilistic protocols, proof of work, readers that are not validators, responsiveness, and transaction validity, fees or capacity. Each run has at most one GST and one outage. The full list, with the reasons, is in [`docs/definition.md`](docs/definition.md#scope).
+Not modelled: a corruption delay or forward-secure keys, recovery from compromise, a probabilistic or computational model of adaptive corruption, validators with different weights, probabilistic protocols, proof of work, readers that are not validators, responsiveness, and transaction validity, fees or capacity. Each run has at most one GST and one outage. The full list, with the reasons, is in [`docs/definition.md`](docs/definition.md#scope).
 
 ## Repository map
 
 ```text
-Challenge.lean          the six certified statements (proofs left as `sorry`)
+Challenge.lean          the certified statements (proofs left as `sorry`)
 Solution.lean           their proofs
 comparator.json         how the comparator checks Solution against Challenge
 TRUST.md                what you must trust; what each check guarantees

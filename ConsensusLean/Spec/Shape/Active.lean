@@ -45,7 +45,8 @@ def ProgressActive (cap : Capability) (i : K.Idx) (start : Time) {E : Env V}
 
 /-- Every window of the progress requirement of `cap` at `i` holds a bad
 proposer slot on run `rho`: for a recurrence, every `gap` consecutive slots
-contain a slot whose proposer selection is nonempty and entirely faulty (so
+contain a slot whose proposer selection is nonempty and entirely faulty from
+the start (so
 every time window `(t, t + gap·slot]`, `t ≥ 0`, holds one). A bound on the
 validators not ready has no proposer slots: nothing is asked (its tolerant
 indices, `m ≥ n`, hold on every point, whoever leads). -/
@@ -54,7 +55,7 @@ def BadProposerEvery (cap : Capability) (i : K.Idx) {E : Env V}
   match K.progress cap i with
   | .recur ρ => ∀ a : Slot, ∃ s, a ≤ s ∧ s < a + (ρ.gap : Nat) ∧
       (rho.sel (ShapeRole.proposer s)).Nonempty ∧
-      ∀ k ∈ rho.sel (ShapeRole.proposer s), rho.key k ∉ rho.honest
+      ∀ k ∈ rho.sel (ShapeRole.proposer s), rho.key k ∈ rho.faultyAt 0
   | .notReadyAtMost _ => True
 
 /-- L0 `Realizable` of the compiled system, with every sleepy and healthy
@@ -92,6 +93,31 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
     ∃ i r, (Sys F V).WitnessAt ΔAC ΔFG r ∧
       (Sys F V).HealthyLive (shapeProgress F V) K cap i g r ∧
       ProgressActive F K cap i ((Sys F V).ready K g r) r.2 ∧ BadProposerEvery F K cap i r.2
+  /-- Growth, sleepy (L0 `Realizable.sleepyGrowth`, with an active progress
+  window). -/
+  sleepyGrowth : ∀ cap i (ΔAC ΔFG : Time), 1 < ΔAC → 1 < ΔFG → ∃ r, (Sys F V).Valid r ∧
+    ¬ (Sys F V).Excuse r ∧ ((Sys F V).pt r).env.ΔAC = ΔAC ∧ ((Sys F V).pt r).env.ΔFG = ΔFG ∧
+    (Sys F V).SleepyLive (shapeProgress F V) K cap i r ∧
+    GrowthActive ((Sys F V).cDur K r) 0 ((Sys F V).lat K cap i r) ((Sys F V).pt r) ∧
+    ProgressActive F K cap i 0 r.2
+  /-- Growth, healthy (L0 `Realizable.healthyGrowth`, with an active progress
+  window). -/
+  healthyGrowth : ∀ cap i (ΔAC ΔFG g : Time), 1 < ΔAC → 1 < ΔFG →
+    ΔFG ≤ (K.params.fgDelay : Time) * ΔAC → 0 ≤ g → ∃ r, (Sys F V).Valid r ∧
+    ¬ (Sys F V).Excuse r ∧ ((Sys F V).pt r).env.ΔAC = ΔAC ∧ ((Sys F V).pt r).env.ΔFG = ΔFG ∧
+    (Sys F V).HealthyLive (shapeProgress F V) K cap i g r ∧
+    GrowthActive ((Sys F V).cDur K r) ((Sys F V).heal K cap i g r) ((Sys F V).lat K cap i r)
+      ((Sys F V).pt r) ∧
+    ProgressActive F K cap i ((Sys F V).ready K g r) r.2
+  /-- Growth, outage (L0 `Realizable.outageGrowth`). -/
+  outageGrowth : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
+    ∃ r T b₀ b₁ u κ, (Sys F V).Valid r ∧ ¬ (Sys F V).Excuse r ∧
+    ((Sys F V).pt r).env.ΔAC = ΔAC ∧ ((Sys F V).pt r).env.ΔFG = ΔFG ∧
+    (Sys F V).Outage K T b₀ b₁ r ∧
+    OutageActive ((Sys F V).cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁
+      ((Sys F V).pt r) ∧ (k : Time) * ΔAC ≤ T ∧ ((Sys F V).pt r).Ready ((Sys F V).cDur K r) u T ∧
+    T < κ ∧ u ∈ ((Sys F V).pt r).faultyAt κ ∧ ∃ w t, (Sys F V).recoveryAt K b₁ r ≤ t ∧
+      t ≤ ((Sys F V).pt r).horizon ∧ κ ≤ t ∧ ((Sys F V).pt r).Ready ((Sys F V).cDur K r) w t
 
 end Activity
 

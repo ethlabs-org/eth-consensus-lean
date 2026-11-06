@@ -175,6 +175,51 @@ detail in `TRUST.md`.
   deadlines use `Δ_F`; strict processing bounds and send-time lower bounds are kept. Acceptance relay remains an
   explicit obligation: receipt alone cannot invent acceptance of a discarded missing-parent block.
 
+## Adversary growth
+
+- **Faults grow by identity.** The single source of truth is a monotone set `faultyAt t` of compromised
+  validators (L0 `EnvPoint`, L1 `Run`). Counts are derived. A non-decreasing count alone would admit a mobile
+  adversary that keeps every extracted key while the count stays small. Every honesty test reads the time of its
+  event: a validator in `faultyAt t` is faulty for every event stamped `t`. A constant set is the static adversary.
+- **Ordinary keys, immediate compromise.** From its compromise on, the adversary holds the validator's signing key.
+  It can sign objects that claim an earlier slot or role, since the claimed slot is not the signing time.
+  `Unforgeable` binds a signer honest at the delivery time, and `Credentials` binds every key, compromised or not.
+  No forward security and no corruption delay are modelled. A delay would need corruption requests as well as
+  effective compromise, and it does not stop old-key forgery once the key is extracted.
+- **Charging at consumption.** An honest signature made at `t` and consumed at `d` could be counted twice if its
+  signer were compromised in between and signed a conflicting object. Every participation budget is therefore the
+  static count on the view retained through the consumption horizon (`EnvPoint.retain`, `lookAhead`): support at
+  `t` counts only validators still honest then, against the faults of then. The windows are contract numbers.
+  Larger windows are stronger premises, and `Params.Admissible` leaves them unbounded, like `catchUp`.
+- **Scopes.** A read made while honest stays protected after its reader is compromised: reader predicates are
+  evaluated at each cut's time. A release, or a transaction submitted to a node honest and awake at the
+  submission, stays owed by the network after its sender or recipient is compromised (persistent network
+  ingress). Without that, a transaction whose only recipient is compromised before dissemination could never be
+  served. A recipient is served while it is honest through the deadline. Non-framing protects a validator honest
+  at `d` against the evidence nodes saw while honest by `d`. Past honesty does not prevent later conviction,
+  because an extracted key can sign a conflicting object.
+- **Goldilocks windows.** The numbers are the windows of the counts in the proofs, and none is a service
+  constant:
+  - sleepy look-ahead `5`: support at the participation point `t_s + Δ` of a slot's votes is last counted by the
+    slot's confirmation update at `t_s + 6Δ`, whose pool admits equivocating second votes;
+  - cohort look-ahead `0`: every count of the outage cohort ends by the update of label `j₀ + k`, at least `2Δ`
+    before the no-sleep window's end;
+  - proposer hold `1`: a proposer compromised before the slot's votes are cast can split them with a smaller-root
+    second proposal (fork choice breaks score ties by the smaller root), and all votes are cast by the tick at
+    `t_s + Δ`.
+  The healthy budget needs no window: it is the bound at the horizon, and claims through a time `b` need only the
+  faults by `b` (prefix closure). `ΔFG` enters no window. Increasing a window, or adding a premise, after the
+  statements land is a statement correction, raised with a counterexample.
+- **The static adversary keeps full strength.** `ShapeObligationsOn`, `CorrectProtocolOn` and
+  `Review.ObligationsSufficientOn` state the obligations and correctness on a class of runs. At constant faults
+  they are the static statements, so negative tests are also stated there. The growing-fault statements are
+  additional. While the Goldilocks proofs migrate, Challenge certifies its endpoint and headline at constant faults
+  (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`). The growing-fault pair is stated in
+  `Instances/Goldilocks/Statements/Growing.lean`, outside `milestone_statements_modules`, with its open proof in the
+  sorry-tolerant `Instances/Goldilocks/Proofs/Growing` layer.
+- **Continuation is not part of correctness.** A hand-over after healing is a separate side property, and it is
+  not stated here.
+
 ## Contract numbers
 
 - **Assumptions are minimal, guarantees may be loose.** Loose numbers are acceptable for the latency, healing-time
@@ -405,9 +450,11 @@ detail in `TRUST.md`.
 
 ## Trusted surface and Challenge scope
 
-- **Challenge certifies exactly six statements**: the four generic review statements
-  (`Review.ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`), the Goldilocks
-  `MeetsObligations` and the headline `GoldilocksCorrect`. Reason: keep the trusted surface to the generic definition
+- **Challenge certifies exactly seven statements**: the five generic review statements
+  (`Review.ObligationsSufficient`, `ObligationsSufficientOn`, `RegimesRealizable`, `LogFaithful`,
+  `HeldIffServed`), and the Goldilocks endpoint and headline, while the instance proofs migrate to growing faults
+  at constant faults (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`; §"Adversary growth"), afterwards
+  `MeetsObligations` and `GoldilocksCorrect`. Reason: keep the trusted surface to the generic definition
   of a correct protocol plus the one instance endpoint and its headline. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
   Service, Healing) are means to the endpoint, not claims a reviewer must read.
   - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement

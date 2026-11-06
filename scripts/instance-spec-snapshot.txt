@@ -1752,6 +1752,12 @@ def Consensus.Goldilocks.SA.voterBlockTree : {FGP : Type} → (sp : Consensus.Go
   #1748451001/2624507256
 def Consensus.Goldilocks.SA.voters : {n : Nat} → Set.{0} (Consensus.Goldilocks.SA.Vote n) → Set.{0} (Fin n) := fun {n} votes => Set.ofPred.{0} fun i => Exists.{1} fun x => And (Membership.mem.{0, 0} votes x) (Eq.{1} x.val i)
   #3667520359/1124413671
+## ConsensusLean.Instances.Goldilocks.Statements.Growing
+def Consensus.Goldilocks.GoldilocksCorrect : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S) (V : Type) [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V], Consensus.CorrectProtocol (Consensus.Model.sysOf Consensus.Goldilocks.AsChainShape.schema (Consensus.Shape.compiled (Consensus.Goldilocks.AsChainShape.goldilocks S)) V) (Consensus.Shape.shapeProgress (Consensus.Goldilocks.AsChainShape.goldilocks S) V) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
+  #3944470172/865842970
+def Consensus.Goldilocks.MeetsObligations : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S), Consensus.Shape.ShapeObligationsAs Consensus.Profile.ebbAndFlow (Consensus.Goldilocks.AsChainShape.goldilocks S) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
+  #3944470172/172576801
+theorem Consensus.Goldilocks.MeetsObligations._proof_1 #3700666351/-
 ## ConsensusLean.Instances.Goldilocks.Statements.Obligations
 induct Consensus.Goldilocks.ContractAssumptions : Consensus.Goldilocks.AsChainShape.Setup → Type
   #4238298358/-
@@ -1812,11 +1818,11 @@ recursor Consensus.Goldilocks.ContractCoefficients.rec : {motive : Consensus.Gol
   #2821311238/-
 def Consensus.Goldilocks.ContractCoefficients.recOn : {motive : Consensus.Goldilocks.ContractCoefficients → Sort u} → (t : Consensus.Goldilocks.ContractCoefficients) → ((catchUp : PNat) → (heal latency : Consensus.Capability → PNat → Nat) → motive { catchUp := catchUp, heal := heal, latency := latency }) → motive t := fun {motive} t mk => Consensus.Goldilocks.ContractCoefficients.rec.{u} mk t
   #3399423191/1294926426
-def Consensus.Goldilocks.GoldilocksCorrect : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S) (V : Type) [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V], Consensus.CorrectProtocol (Consensus.Model.sysOf Consensus.Goldilocks.AsChainShape.schema (Consensus.Shape.compiled (Consensus.Goldilocks.AsChainShape.goldilocks S)) V) (Consensus.Shape.shapeProgress (Consensus.Goldilocks.AsChainShape.goldilocks S) V) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
-  #3944470172/865842970
-def Consensus.Goldilocks.MeetsObligations : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S), Consensus.Shape.ShapeObligationsAs Consensus.Profile.ebbAndFlow (Consensus.Goldilocks.AsChainShape.goldilocks S) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
-  #3944470172/172576801
-theorem Consensus.Goldilocks.MeetsObligations._proof_1 #3700666351/-
+def Consensus.Goldilocks.GoldilocksCorrectConstant : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S) (V : Type) [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V], Consensus.CorrectProtocolOn (Consensus.Model.sysOf Consensus.Goldilocks.AsChainShape.schema (Consensus.Shape.compiled (Consensus.Goldilocks.AsChainShape.goldilocks S)) V) (Consensus.Shape.shapeProgress (Consensus.Goldilocks.AsChainShape.goldilocks S) V) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A)) fun p => p.ConstantFaults
+  #3944470172/641844679
+def Consensus.Goldilocks.MeetsObligationsConstant : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S), Consensus.Shape.ShapeObligationsOnAs Consensus.Profile.ebbAndFlow (Consensus.Goldilocks.AsChainShape.goldilocks S) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A)) fun x p => p.ConstantFaults
+  #3944470172/1354112079
+theorem Consensus.Goldilocks.MeetsObligationsConstant._proof_1 #3700666351/-
 def Consensus.Goldilocks.contract_catchUp : (S : Consensus.Goldilocks.AsChainShape.Setup) → Consensus.Goldilocks.ContractAssumptions S → PNat := fun S _A => Subtype.mk.{1} 19 Consensus.Goldilocks.contract_catchUp._proof_1
   #1823032384/3210429666
 theorem Consensus.Goldilocks.contract_catchUp._proof_1 #133040158/-
@@ -1830,8 +1836,8 @@ def Consensus.Goldilocks.contract_latency.match_1 #2825803619/468134226
 def Consensus.Goldilocks.finalWindow : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Consensus.Blocks.Pattern := fun {S} A => { offsets := List.cons.{0} 0 (List.cons.{0} A.fgSlots (List.cons.{0} (HMul.hMul.{0, 0, 0} 2 A.fgSlots) (List.cons.{0} (HMul.hMul.{0, 0, 0} 3 A.fgSlots) List.nil.{0}))), nonempty := ⋯ }
   #57060020/3416389647
 theorem Consensus.Goldilocks.finalWindow._proof_1 #1102947579/-
-def Consensus.Goldilocks.goldilocksContract : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Consensus.Goldilocks.ContractCoefficients → Consensus.Contract Consensus.Blocks.ProgressReq := fun {S} A C => { Idx := PNat, idx_nonempty := Consensus.Goldilocks.goldilocksContract._proof_1, params := have __src := Consensus.Params.standard C.catchUp.val (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6) (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 5) C.heal C.latency; { catchUp := __src.catchUp, θ := __src.θ, β := __src.β, cover := __src.cover, α := __src.α, lag := __src.lag, budget := __src.budget, η := __src.η, noSleep := HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6, recovery := 9, heal := __src.heal, latency := __src.latency, fgDelay := A.fgDelay }, progress := fun cap X => Consensus.Blocks.ProgressReq.recur { pattern := ite.{1} (Eq.{1} cap Consensus.Capability.final) (Consensus.Goldilocks.finalWindow A) Consensus.Blocks.Pattern.single, gap := X } }
-  #857968302/315960172
+def Consensus.Goldilocks.goldilocksContract : {S : Consensus.Goldilocks.AsChainShape.Setup} → Consensus.Goldilocks.ContractAssumptions S → Consensus.Goldilocks.ContractCoefficients → Consensus.Contract Consensus.Blocks.ProgressReq := fun {S} A C => { Idx := PNat, idx_nonempty := Consensus.Goldilocks.goldilocksContract._proof_1, params := have __src := Consensus.Params.standard C.catchUp.val (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6) (HSub.hSub.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 5) C.heal C.latency; { catchUp := __src.catchUp, θ := __src.θ, β := __src.β, cover := __src.cover, α := __src.α, lag := __src.lag, budget := __src.budget, η := __src.η, noSleep := HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 4 S.k) 6, recovery := 9, heal := __src.heal, latency := __src.latency, fgDelay := A.fgDelay, ahead := 5, cohortAhead := 0 }, progress := fun cap X => Consensus.Blocks.ProgressReq.recur { pattern := ite.{1} (Eq.{1} cap Consensus.Capability.final) (Consensus.Goldilocks.finalWindow A) Consensus.Blocks.Pattern.single, gap := X, hold := 1 } }
+  #857968302/487282340
 theorem Consensus.Goldilocks.goldilocksContract._proof_1 #3293017938/-
 def Consensus.Goldilocks.healMargin : Consensus.Goldilocks.AsChainShape.Setup → PNat → Nat := fun S X => HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HAdd.hAdd.{0, 0, 0} (HMul.hMul.{0, 0, 0} 20 (Consensus.Goldilocks.healthyDrainLen S X)) (HMul.hMul.{0, 0, 0} 8 S.k)) (HMul.hMul.{0, 0, 0} 28 S.δt)) (HMul.hMul.{0, 0, 0} 28 X.val)) 56
   #2671360635/222144714

@@ -16,12 +16,12 @@ whose duty acts at the proposal time, and blocks are items of the protocol.
 
 Honest code knows only the public parameters `n`, `ΔAC` and `ΔFG`, and its own key
 (`init` and `restore` receive it). It never sees the selection, the PKI, the
-honest set, the GST, the awake profile, the submission or relay functions, or
+fault profile, the GST, the awake profile, the submission or relay functions, or
 the hash function: the engine gives it its own and relayed transactions (at its
 ticks) and the digests of the items it receives or signs. It learns its own
 selection only by acting: dispatch is engine-side (a duty's message is signed
 only if the node's key is selected for the duty's role). Hiding the selection
-from honest code buys nothing against the static, all-knowing adversary, and
+from honest code buys nothing against the all-knowing adversary, and
 the model does not attempt it. -/
 
 namespace Consensus.Model

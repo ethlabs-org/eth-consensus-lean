@@ -461,6 +461,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.State
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
+public import ConsensusLean.Instances.Goldilocks.Statements.Growing
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLean.Lemmas.Model.Adequate
@@ -515,6 +516,7 @@ public import ConsensusLean.Spec.Shape.Active
 public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Spec.Shape.Compile
 public import ConsensusLean.Spec.Shape.Obligations
+public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Spec.Shape.ProgressFit
 public import ConsensusLean.Spec.Shape.Run
 public import ConsensusLean.Spec.Shape.Shape

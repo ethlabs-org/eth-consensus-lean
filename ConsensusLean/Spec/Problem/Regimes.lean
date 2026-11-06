@@ -35,6 +35,9 @@ each, for a larger value:
 * heal points: liveness and healed safety start later, weaker claims (and
   healed safety's progress premise covers a longer window);
 * latencies: later transaction deadlines, weaker claims;
+* look-aheads `ahead`, `cohortAhead`: participation and the outage cohort are
+  charged with later faults, and validators compromised by then leave the honest
+  support, a stronger premise (`EnvPoint.retain`; `0`: current faults);
 * FG delay bound `fgDelay`: the healthy regime assumes `ΔFG ≤ fgDelay·ΔAC`, so a
   larger bound weakens that premise (it admits slower FG attestations) and strengthens the
   claims; it is an upper envelope of the FG delay `ΔFG` for the coefficients, never
@@ -90,6 +93,16 @@ structure Params (Idx : Type) where
   the FG delay for the coefficients, not an order between the delays (`ΔFG < ΔAC` is allowed),
   and never a deadline (FG attestations are delivered strictly before `ΔFG`). -/
   fgDelay : ℕ+
+  /-- Participation look-ahead `ahead·ΔAC` of the sleepy and η-sleepy budgets:
+  participation at `t` is counted against the validators compromised by
+  `t + ahead·ΔAC` (clamped to the horizon, `EnvPoint.lookAhead`), and only
+  validators still honest then count as support (`EnvPoint.retain`). `0`: the
+  current faults. A larger look-ahead is a stronger premise, a weaker claim. -/
+  ahead : Nat
+  /-- Outage cohort look-ahead: the cohort count and the no-sleep window are read
+  on the view retained through `outageEnd + cohortAhead·ΔAC` (clamped to the
+  horizon, `System.cohortAt`). A larger look-ahead is a stronger premise. -/
+  cohortAhead : Nat
 
 namespace Params
 
@@ -114,6 +127,8 @@ def standard (catchUp lag budget : Nat) (heal latency : Capability → Idx → N
   heal := heal
   latency := latency
   fgDelay := 1
+  ahead := 0
+  cohortAhead := 0
 
 /-- Admissible numbers: thresholds no stronger than standard (the healthy
 fault bound `β ≥ ⅓`: a larger `β` admits more faults, a weaker premise),
@@ -133,33 +148,39 @@ namespace EnvPoint
 
 variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
 
-/-- Sleepy participation on `[a, b]`. -/
-def SleepyOn (θ : ℚ) (c a b : Time) : Prop := ∀ t, a ≤ t → t ≤ b → p.ReadyAbove θ c t
+/-- Sleepy participation on `[a, b]` with look-ahead `W` (a duration): at each
+`t`, the participation of `t` on the view retained through `lookAhead W t`. -/
+def SleepyOn (θ : ℚ) (c W a b : Time) : Prop :=
+  ∀ t, a ≤ t → t ≤ b → (p.retain (p.lookAhead W t)).ReadyAbove θ c t
 
-/-- η-sleepy participation (look-back `η`, a duration) on `[a, b]`. -/
-def EtaSleepyOn (θ : ℚ) (η c a b : Time) : Prop :=
-  ∀ t, a ≤ t → t ≤ b → p.EtaReadyAbove θ η c t
+/-- η-sleepy participation (look-back `η`, a duration) on `[a, b]` with
+look-ahead `W`. -/
+def EtaSleepyOn (θ : ℚ) (η c W a b : Time) : Prop :=
+  ∀ t, a ≤ t → t ≤ b → (p.retain (p.lookAhead W t)).EtaReadyAbove θ η c t
 
 /-- Healthy participation on `[max g 0, b]` (see `System.Healthy`): fewer
-than fraction `β` of all validators are faulty, and every honest validator is
-awake throughout (full participation). -/
+than fraction `β` of all validators are compromised by `b` (faults only grow, so
+at every time up to `b`), and every validator honest at a time of the window is
+awake then (full participation). -/
 def HealthyOn (β : ℚ) (g b : Time) : Prop :=
-  (p.faulty.card : ℚ) < β * Fintype.card V ∧ ∀ v ∈ p.honest, p.AwakeOnClosed v (max g 0) b
+  (p.faultCount b : ℚ) < β * Fintype.card V ∧
+    ∀ v t, max g 0 ≤ t → t ≤ b → p.HonestAt v t → p.env.awake v t = true
 
-/-- No honest validator falls asleep in `[a, b]`: one awake at a time of
+/-- No validator honest at `b` falls asleep in `[a, b]`: one awake at a time of
 `[a, b]` stays awake through `b`. Validators may wake inside the window. -/
 def NoSleepOn (a b : Time) : Prop :=
-  ∀ v ∈ p.honest, ∀ t, a ≤ t → t ≤ b → p.env.awake v t = true → p.AwakeOnClosed v t b
+  ∀ v, p.HonestAt v b → ∀ t, a ≤ t → t ≤ b → p.env.awake v t = true → p.AwakeOnClosed v t b
 
 /-- The late wakers of `[a, b]`: honest validators asleep at `a` and awake at
 some time of `[a, b]`. -/
 noncomputable def lateWakers (a b : Time) : Finset V := p.awakeIn a b \ p.awakeAt a
 
-/-- The outage cohort count on `[a, b]`: the faulty validators and the late
-wakers are fewer than the honest validators awake at `a` (so, the three sets
-being disjoint, fewer than half of all validators). -/
+/-- The outage cohort count on `[a, b]`: the validators compromised by `b` and
+the late wakers are fewer than the validators honest and awake at `a` (on a
+retained view the three sets are disjoint, so fewer than half of all
+validators). -/
 def CohortOn (a b : Time) : Prop :=
-  (p.faulty ∪ p.lateWakers a b).card < (p.awakeAt a).card
+  (p.faultyAt b ∪ p.lateWakers a b).card < (p.awakeAt a).card
 
 end EnvPoint
 
@@ -212,6 +233,15 @@ def outageStart (K : Contract Prog) (b₀ : Time) (r : S.Run) : Time :=
 def outageEnd (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
   min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) (S.pt r).horizon
 
+/-- The sleepy look-ahead `ahead·ΔAC` of run `r`. -/
+def aheadDur (K : Contract Prog) (r : S.Run) : Time :=
+  (K.params.ahead : Time) * (S.pt r).env.ΔAC
+
+/-- Where the outage cohort of `[b₀, b₁)` is charged: `outageEnd + cohortAhead·ΔAC`,
+clamped to the horizon. -/
+def cohortAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
+  min (S.outageEnd K b₁ r + (K.params.cohortAhead : Time) * (S.pt r).env.ΔAC) (S.pt r).horizon
+
 /-- The recovery point of an outage `[b₀, b₁)`: `b₁ + recovery·ΔAC`, from which
 every ready reader is protected (`Behaviour.persists`). -/
 def recoveryAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
@@ -219,15 +249,17 @@ def recoveryAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
 
 variable [Fintype V] [DecidableEq V]
 
-/-- **Sleepy**: synchrony (`PSync 0`) and, at every time, the ready honest
-validators exceed fraction `θ` of the ready and faulty ones. -/
+/-- **Sleepy**: synchrony (`PSync 0`) and, at every time `t`, the validators
+ready at `t` and still honest at `t + ahead·ΔAC` (clamped to the horizon) exceed
+fraction `θ` of them and the validators compromised by then (look-ahead `aheadDur`). -/
 def Sleepy (K : Contract Prog) (r : S.Run) : Prop :=
-  (S.log r).PSync (S.pt r) 0 ∧ (S.pt r).SleepyOn K.params.θ (S.cDur K r) 0 (S.pt r).horizon
+  (S.log r).PSync (S.pt r) 0 ∧
+    (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon
 
 /-- **Healthy from GST `g`**: partial synchrony with GST `g`, fewer than
-`β·n` faulty validators, and full participation: every honest validator is
-awake throughout `[max g 0, horizon]` (awake, not ready: readiness restricts
-readers and progress only); and the FG delay is within its bound,
+`β·n` validators compromised by the horizon, and full participation: every
+validator honest at a time of `[max g 0, horizon]` is awake then (awake, not
+ready: readiness restricts readers and progress only); and the FG delay is within its bound,
 `ΔFG ≤ fgDelay·ΔAC`. -/
 def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
   (S.log r).PSync (S.pt r) g ∧ (S.pt r).HealthyOn K.params.β g (S.pt r).horizon ∧
@@ -235,18 +267,20 @@ def Healthy (K : Contract Prog) (g : Time) (r : S.Run) : Prop :=
 
 /-- **Outage `[b₀, b₁)` armed at `T`** (`OutageTimes`): synchronous before
 `b₀`, partially synchronous with GST `b₁`, η-sleepy throughout (look-back
-`η·ΔAC`; `η = 0` is plain sleepy); no honest validator falls asleep in the
-no-sleep window `[a, z]` (`outageStart`, `outageEnd`; validators may wake in
-it); and the faulty validators with the late wakers of `[a, z]` are fewer
-than the honest validators awake at `a` (`CohortOn`; hence fewer than half of
-all validators, `EnvPoint.CohortOn.two_mul_lt`). No absolute fraction of
+`η·ΔAC`; `η = 0` is plain sleepy), with the sleepy look-ahead; and, on the view
+retained through `cohortAt` (the surviving cohort: a member compromised by then
+counts as faulty), no honest validator falls asleep in the no-sleep window
+`[a, z]` (`outageStart`, `outageEnd`; validators may wake in it), and the
+compromised validators with the late wakers of `[a, z]` are fewer than the
+honest validators awake at `a` (`CohortOn`; hence fewer than half of all
+validators, `EnvPoint.CohortOn.two_mul_lt`). No absolute fraction of
 validators needs to be awake or ready. -/
 def Outage (K : Contract Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
   OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧ (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
-    (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r) 0
-      (S.pt r).horizon ∧
-    (S.pt r).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-    (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
+    (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r)
+      (S.aheadDur K r) 0 (S.pt r).horizon ∧
+    ((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
+    ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
 
 end System
 

@@ -38,11 +38,13 @@ def chainTrace (rho : Model.Run (compiled F) E) : Trace V (Header Info) O.Id :=
   ⟨rho.point, rho.events.length, rho.cutTime,
     fun g v i => (F (pubOf E)).out g (rho.stateBefore i v).st.1⟩
 
-/-- Honest key `k` released header `h` at time `τ`, signed in a proposal role. -/
+/-- Key `k`, honest at `τ`, released header `h` at time `τ`, signed in a proposal
+role. -/
 def HonestProposal (rho : Model.Run (compiled F) E) (τ : Time) (k : Fin (Fintype.card V))
     (h : Header Info) : Prop :=
-  rho.key k ∈ rho.honest ∧ ∃ r : ShapeRole (F (pubOf E)).skel.Kind, ∃ cs, ProposalRole h r ∧
-    rho.releases (rho.key k) (Obj.mk (.signed k r) (.item h) cs) τ
+  rho.point.HonestAt (rho.key k) τ ∧
+    ∃ r : ShapeRole (F (pubOf E)).skel.Kind, ∃ cs, ProposalRole h r ∧
+      rho.releases (rho.key k) (Obj.mk (.signed k r) (.item h) cs) τ
 
 /-- Header `h` is in the `g`-read, at the end of time `t`, of every node ready
 at `t` with catch-up `c`. -/
@@ -65,13 +67,14 @@ def ProposalLiveReady (rho : Model.Run (compiled F) E) (c : Time) (g : O.Id) (st
     ∃ τ k h, t < τ ∧ rho.point.Ready c (rho.key k) τ ∧
       HonestProposal rho τ k h ∧ InBy rho c g h (t + (D : Time) * E.ΔAC)
 
-/-- Output validity of `g`: every honest read at every cut is linked from the
+/-- Output validity of `g`: every read at every cut at which its reader is honest
+is linked from the
 root under the run's hash, has increasing positions, and every header in it
 was seen by the reader as an item signed in a proposal role. Unconditional
 (holds even with collisions). No slot-time clause: poll positions are
 heights, and the transaction bridge never uses it. -/
 def OutputValid (rho : Model.Run (compiled F) E) (g : O.Id) : Prop :=
-  ∀ v ∈ rho.honest, ∀ i, i ≤ rho.events.length →
+  ∀ v i, i ≤ rho.events.length → rho.point.HonestAt v (rho.cutTime i) →
     Chain.Linked rho.hash ((chainTrace rho).read g v i) ∧
     Chain.PosIncreasing ((chainTrace rho).read g v i) ∧
     Chain.Provenant (rho.ViewIdx v i) ProposalRole ((chainTrace rho).read g v i)
@@ -107,7 +110,13 @@ def shapeProgress (F : ChainShapeFamily O Info) (V : Type) [Fintype V] [Decidabl
   shrink := by
     intro π c s e p x b hb h
     cases π with
-    | recur ρ => exact fun t ht hst hh => h t ht hst (le_trans hh hb)
+    | recur ρ =>
+      intro t ht hst hh
+      obtain ⟨s, h1, h2, h3⟩ := h t ht hst (le_trans hh hb)
+      refine ⟨s, h1, h2, fun j hj => ?_⟩
+      obtain ⟨hne, hk⟩ := h3 j hj
+      exact ⟨hne, fun k hk' => ⟨(hk k hk').1, fun hf =>
+        (hk k hk').2 (p.faultyAt_mono (min_le_min_left _ hb) hf)⟩⟩
     | notReadyAtMost m => exact fun t ht hst hh => h t ht hst (le_trans hh hb)
 
   submit_irrel := by

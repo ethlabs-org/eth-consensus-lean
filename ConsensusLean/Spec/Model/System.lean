@@ -23,8 +23,8 @@ the protocol's rule `conflicts` convicts them.
 The hash is arbitrary run data. `HashCollision`: two distinct observed items
 with one digest. No digest is reserved: a root (such as a genesis block) is an
 explicit constructor of the protocol's parent references, not a digest. An
-item is observed if it occurs in an object that an honest node released or
-received, at any depth, under any signature; this is exactly the set of items
+item is observed if it occurs in an object that a node released or
+received while honest, at any depth, under any signature; this is exactly the set of items
 whose digests the engine passes to honest code. Honest code still chooses what
 it signs, so collision resistance is an assumption about the deployed hash, not
 a theorem. -/
@@ -42,7 +42,7 @@ def Slashable (A : Set (protoOf F E).Object) (x : V) : Prop :=
   ∃ o ∈ A, ∃ o' ∈ A, rho.signerOf o = some x ∧ rho.signerOf o' = some x ∧
     (protoOf F E).conflicts o o' = true
 
-/-- An item is observed: it is said by an object the honest nodes saw. -/
+/-- An item is observed: it is said by an object nodes saw while honest. -/
 def ObservedItem (x : (protoOf F E).Item) : Prop :=
   ∃ o ∈ rho.Observed, o.item? = some x
 

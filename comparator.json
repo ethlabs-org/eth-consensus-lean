@@ -1,5 +1,7 @@
 { "challenge_module": "Challenge", "solution_module": "Solution",
   "theorem_names": ["Consensus.Review.obligationsSufficient", "Consensus.Review.regimesRealizable",
                     "Consensus.Review.logFaithful", "Consensus.Review.heldIffServed",
-                    "Consensus.Goldilocks.meetsObligations", "Consensus.Goldilocks.goldilocksCorrect"],
+                    "Consensus.Review.obligationsSufficientOn",
+                    "Consensus.Goldilocks.meetsObligationsConstant",
+                    "Consensus.Goldilocks.goldilocksCorrectConstant"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

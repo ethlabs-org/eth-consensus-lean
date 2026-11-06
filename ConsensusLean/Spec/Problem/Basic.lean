@@ -81,12 +81,26 @@ structure Env (V : Type) where
 def Wakes {V : Type} (E : Env V) (v : V) (t : Time) : Prop :=
   E.awake v t = true ∧ E.awake v (t - 1) = false
 
-/-- The environment point of a run: the environment, the honest nodes, the
-horizon, and the adversarially timed transactions submitted to each node.
-A transaction submitted to an awake honest node is relayed by the network. -/
+/-- The environment point of a run: the environment, the validators compromised
+by each time, the horizon, and the adversarially timed transactions submitted to
+each node. A transaction submitted to a node honest and awake at its submission
+is relayed by the network, also after that node is compromised.
+
+**Faults grow.** `faultyAt t` is the set of validators whose keys the adversary
+holds from time `t` on. It only grows (`faultyAt_mono`): a compromise is
+immediate and permanent, with the validator's ordinary signing key, and no
+validator recovers. **Time boundary:** a validator in `faultyAt t` is faulty for
+every event stamped `t` (restarts, ticks and deliveries of that time alike); one
+not in `faultyAt t` is honest at every time `≤ t`. A compromise changes no
+earlier event. The function is total. No event happens outside `[0, horizon]`;
+the regimes read it there, and claims that quantify over times (non-framing)
+read it elsewhere too, where monotonicity is its only constraint. A constant
+function is the static adversary (`ConstantFaults`). The validator universe, the PKI and the selection do not
+change: this is corruption growth, not membership change. -/
 structure EnvPoint (V : Type) where
   env : Env V
-  honest : Finset V
+  faultyAt : Time → Finset V
+  faultyAt_mono : Monotone faultyAt
   horizon : Time
   submit : V → Time → List Tx
 
@@ -94,59 +108,88 @@ namespace EnvPoint
 
 variable {V : Type} (p : EnvPoint V)
 
+/-- `v` is honest at `t`: not compromised by `t` (hence honest at every earlier
+time, `faultyAt_mono`). -/
+def HonestAt (v : V) (t : Time) : Prop := v ∉ p.faultyAt t
+
+/-- The faults do not grow: the static adversary. -/
+def ConstantFaults : Prop := ∀ t, p.faultyAt t = p.faultyAt 0
+
 /-- `v` is awake throughout `[a, b]`. -/
 def AwakeOnClosed (v : V) (a b : Time) : Prop :=
   ∀ u, a ≤ u → u ≤ b → p.env.awake v u = true
 
-/-- `v` is ready at `t` with catch-up `c` (a duration): honest, and awake
+/-- `v` is ready at `t` with catch-up `c` (a duration): honest at `t`, and awake
 throughout `[max 0 (t − c − 1), t]`. -/
 def Ready (c : Time) (v : V) (t : Time) : Prop :=
-  v ∈ p.honest ∧ p.AwakeOnClosed v (max 0 (t - c - 1)) t
+  p.HonestAt v t ∧ p.AwakeOnClosed v (max 0 (t - c - 1)) t
 
-/-- Transaction `x` was submitted to an awake honest node by time `t`. -/
+/-- Transaction `x` was submitted by time `t` to a node honest and awake when it
+was submitted (it stays owed after that node is compromised:
+`CommLog.Delivers.txs`). -/
 def SubmittedToSome (x : Tx) (t : Time) : Prop :=
-  ∃ v ∈ p.honest, ∃ τ, 0 ≤ τ ∧ τ ≤ t ∧ p.env.awake v τ = true ∧ x ∈ p.submit v τ
+  ∃ v τ, 0 ≤ τ ∧ τ ≤ t ∧ p.HonestAt v τ ∧ p.env.awake v τ = true ∧ x ∈ p.submit v τ
+
+/-- The consumption horizon of a count made at `t` with look-ahead `W` (a
+duration): `t + W`, clamped to the horizon (nothing executes after it). -/
+def lookAhead (W t : Time) : Time := min (t + W) p.horizon
 
 variable [Fintype V] [DecidableEq V]
 
-/-- The faulty validators. -/
-def faulty : Finset V := Finset.univ \ p.honest
+/-- The validators honest at `t`. -/
+def honestAt (t : Time) : Finset V := Finset.univ \ p.faultyAt t
 
-/-- The ready honest validators at `t`. -/
+/-- The number of validators compromised by `t`. -/
+def faultCount (t : Time) : Nat := (p.faultyAt t).card
+
+/-- The static view retained through `d`: every validator compromised by `d` is
+faulty from the start, every other validator honest throughout. A participation
+count on `p.retain d` at an earlier time charges the faults of `d` and leaves out
+of the honest support the validators that `d` finds compromised: the look-ahead
+form of a budget. An honest signature made at `t` and consumed by `d` is so not
+counted twice when its signer is compromised in between and signs a conflicting
+object. -/
+def retain (d : Time) : EnvPoint V :=
+  { p with faultyAt := fun _ => p.faultyAt d, faultyAt_mono := monotone_const }
+
+/-- The validators ready at `t` (ready includes honest at `t`). -/
 noncomputable def readyAt (c t : Time) : Finset V := by
   classical
-  exact p.honest.filter (fun v => p.Ready c v t)
+  exact Finset.univ.filter (fun v => p.Ready c v t)
 
-/-- The ready honest validators exceed fraction `θ` of the ready and faulty
-ones: `θ · (|ready| + |faulty|) < |ready|`. -/
+/-- The ready validators exceed fraction `θ` of the ready and the compromised
+ones: `θ · (|ready_t| + f_t) < |ready_t|`. -/
 def ReadyAbove (θ : ℚ) (c t : Time) : Prop :=
-  θ * ((p.readyAt c t).card + p.faulty.card : ℚ) < (p.readyAt c t).card
+  θ * ((p.readyAt c t).card + p.faultCount t : ℚ) < (p.readyAt c t).card
 
-/-- The honest validators awake at `t`. -/
+/-- The validators honest and awake at `t`. -/
 noncomputable def awakeAt (t : Time) : Finset V := by
   classical
-  exact p.honest.filter (fun v => p.env.awake v t = true)
+  exact (p.honestAt t).filter (fun v => p.env.awake v t = true)
 
 /-- At most `k` honest validators are awake at every time of `[0, horizon]`. -/
 def AwakeAtMost (k : Nat) : Prop :=
   ∀ t, 0 ≤ t → t ≤ p.horizon → (p.awakeAt t).card ≤ k
 
-/-- The honest validators awake at some time in `[a, b]`. -/
+/-- The validators honest and awake at some time in `[a, b]`. -/
 noncomputable def awakeIn (a b : Time) : Finset V := by
   classical
-  exact p.honest.filter (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.env.awake v u = true)
+  exact Finset.univ.filter
+    (fun v => ∃ u, a ≤ u ∧ u ≤ b ∧ p.HonestAt v u ∧ p.env.awake v u = true)
 
 /-- η-sleepy participation at `t` (look-back `η`, a duration). With `η ≤ 0`
-it is plain `ReadyAbove`. With `η > 0` the ready honest validators exceed
-fraction `θ` of those awake at some time in `[max 0 (t − η), t]` together with
-the faulty ones: `θ · |ready_t ∪ awake_[max 0 (t−η), t] ∪ faulty| < |ready_t|`.
+it is plain `ReadyAbove`. With `η > 0` the ready validators exceed fraction `θ`
+of those honest and awake at some time in `[max 0 (t − η), t]` together with
+those compromised by `t`:
+`θ · |ready_t ∪ awake_[max 0 (t−η), t] ∪ faultyAt t| < |ready_t|`.
 Anyone awake in the window counts against the threshold, even if never ready
 (this implies the awake-count form, `EnvPoint.EtaReadyAbove.awakeForm`,
 tests). The window is clamped at `0`; `ready_t` is in the union only for
-monotonicity. -/
+monotonicity. On a retained view (`retain`) the three sets are computed on one
+fixed partition, so the union keeps identities. -/
 def EtaReadyAbove (θ : ℚ) (η c t : Time) : Prop :=
   if η ≤ 0 then p.ReadyAbove θ c t
-  else θ * ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faulty).card : ℚ) <
+  else θ * ((p.readyAt c t ∪ p.awakeIn (max 0 (t - η)) t ∪ p.faultyAt t).card : ℚ) <
     (p.readyAt c t).card
 
 end EnvPoint
@@ -227,9 +270,12 @@ structure Laws : Prop where
   convicts_mono : ∀ r (A B : Set S.Obs) v, A ⊆ B → S.convicts r A v → S.convicts r B v
   view_mono : ∀ r v i j, i ≤ j → S.view r v i ⊆ S.view r v j
 
-/-- The evidence that the honest nodes saw over the whole run. -/
-def honestEvidence (r : S.Run) : Set S.Obs :=
-  {o | ∃ v ∈ (S.trace r).point.honest, o ∈ S.view r v (S.trace r).cuts}
+/-- The evidence nodes saw while honest, at cuts up to time `d`: the view of `v`
+at every cut `i` with `cutTime i ≤ d` at which `v` is honest. A later compromise
+of the observer removes nothing. -/
+def honestEvidenceBy (r : S.Run) (d : Time) : Set S.Obs :=
+  {o | ∃ v i, i ≤ (S.trace r).cuts ∧ (S.trace r).cutTime i ≤ d ∧
+    (S.trace r).point.HonestAt v ((S.trace r).cutTime i) ∧ o ∈ S.view r v i}
 
 end System
 

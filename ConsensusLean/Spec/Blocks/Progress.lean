@@ -22,8 +22,9 @@ pattern is nonempty, a gap and a bound are positive.
 
 A requirement holds on a window `[start, stop]`: windows and times start at or
 after `max start 0`, and the **whole pattern** of each window (the window plus
-the pattern's span) must end by `stop` and by the horizon. Nothing after
-`stop` is read. -/
+the pattern's span) must end by `stop` and by the horizon. Readiness after `stop`
+is not read; a recurrence's proposer hold (`Recurrence.hold`) reads honesty up to
+`hold·ΔAC` after a slot time, clamped to the horizon. -/
 
 namespace Consensus.Blocks
 
@@ -50,6 +51,11 @@ structure Recurrence where
   pattern : Pattern
   /-- The window length in slots. -/
   gap : ℕ+
+  /-- Proposer look-ahead, a `ΔAC`-coefficient: a good proposer of a slot is
+  ready at its slot time and still honest `hold·ΔAC` later, while the slot's
+  votes are cast (its key cannot contradict its proposal in that time). `0`:
+  honest at the slot time. A larger hold is a stronger premise. -/
+  hold : Nat := 0
 
 /-- The slots a recurrence window reads: the window plus the pattern's span. -/
 def Recurrence.len (ρ : Recurrence) : Nat := (ρ.gap : Nat) + ρ.pattern.span
@@ -75,16 +81,18 @@ inductive ProgressReq where
 variable {V : Type} [Fintype V]
 
 /-- The keys selected for slot `s` form a nonempty set, and each is ready at
-`t` (ready includes honest). -/
+`t` (ready includes honest at `t`) and still honest at `t + h`, clamped to the
+horizon (`EnvPoint.lookAhead`; nothing executes after it). -/
 def HonestReadyIn (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
-    (sel : Slot → Finset (Fin (Fintype.card V))) (s : Slot) (c t : Time) : Prop :=
-  (sel s).Nonempty ∧ ∀ k ∈ sel s, p.Ready c (key k) t
+    (sel : Slot → Finset (Fin (Fintype.card V))) (s : Slot) (c t h : Time) : Prop :=
+  (sel s).Nonempty ∧ ∀ k ∈ sel s, p.Ready c (key k) t ∧ p.HonestAt (key k) (p.lookAhead h t)
 
 /-- Pattern recurrence on `[start, stop]`: every window `(t, t + gap·slotLen]`
 with `t ≥ max start 0` whose whole pattern ends by `stop` and by the horizon
 (`t + (gap + span)·slotLen ≤ min stop horizon`) contains a start slot `s` at
 which the whole pattern is honest and ready: for each offset `j`, the keys
-selected for slot `s + j`, at the time of slot `s + j`. -/
+selected for slot `s + j`, ready at the time of slot `s + j` and still honest
+`hold·ΔAC` later. -/
 def PatternRecurrence (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
     (sel : Slot → Finset (Fin (Fintype.card V))) (G : TimeGrid) (ρ : Recurrence)
     (c start stop : Time) : Prop :=
@@ -93,6 +101,7 @@ def PatternRecurrence (p : EnvPoint V) (key : Fin (Fintype.card V) ≃ V)
     ∃ s, t < G.slotTime s ∧
       G.slotTime s ≤ t + ((ρ.gap : Nat) : Time) * G.slotLen ∧
       ∀ j ∈ ρ.pattern.offsets, HonestReadyIn p key sel (s + j) c (G.slotTime (s + j))
+        ((ρ.hold : Time) * p.env.ΔAC)
 
 /-- At most `m` validators are not ready (faulty, or honest and not ready) at
 `t`. -/

@@ -6,9 +6,10 @@ public import ConsensusLean.Spec.Model.Protocol
 
 /-! # Runs and the engine (L1)
 
-A run fixes everything the protocol does not choose: the honest set, the
-horizon, the scheduler's events, the PKI (which validator owns each key), the
-selection (which keys act in each role), the transactions submitted to every
+A run fixes everything the protocol does not choose: the validators
+compromised by each time (growing), the horizon, the scheduler's events, the
+PKI (which validator owns each key), the selection (which keys act in each
+role), the transactions submitted to every
 node and those the network relays to it, and the hash function. The engine runs the protocol on
 the events. Per node it keeps the protocol state and the `seen` log of every
 object the node released or received.
@@ -94,7 +95,11 @@ abbrev protoOf {O : OutputSchema} (F : ProtocolFamily O) (E : Env V) : Protocol 
 
 /-- A run of family `F` in environment `E`. -/
 structure Run {O : OutputSchema} (F : ProtocolFamily O) (E : Env V) where
-  honest : Finset V
+  /-- The validators compromised by each time (`EnvPoint.faultyAt`): only
+  growing, immediate and permanent; a validator in `faultyAt t` is faulty for
+  every event stamped `t`. -/
+  faultyAt : Time → Finset V
+  faultyAt_mono : Monotone faultyAt
   horizon : Time
   events : List (Event V (protoOf F E).Object)
   /-- The PKI: key `k` belongs to validator `key k`. A bijection, so distinct
@@ -114,7 +119,8 @@ structure Run {O : OutputSchema} (F : ProtocolFamily O) (E : Env V) where
 variable {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}
 
 /-- The environment point of a run. -/
-def Run.point (rho : Run F E) : EnvPoint V := ⟨E, rho.honest, rho.horizon, rho.submit⟩
+def Run.point (rho : Run F E) : EnvPoint V :=
+  ⟨E, rho.faultyAt, rho.faultyAt_mono, rho.horizon, rho.submit⟩
 
 /-- Own submissions and network ingress are indistinguishable to honest code. -/
 def Run.inbox (rho : Run F E) (v : V) (t : Time) : List Tx :=
@@ -282,10 +288,6 @@ those objects carry (`Run.mem_viewIdx_iff`). -/
 def ViewIdx (v : V) (i : Nat) : Set (protoOf F E).Object :=
   {o | o ∈ closure (rho.stateBefore i v).seen}
 
-/-- Everything the honest nodes saw in the run. -/
-def Observed : Set (protoOf F E).Object :=
-  {o | ∃ v ∈ rho.honest, o ∈ rho.ViewIdx v rho.events.length}
-
 /-- The time of event cut `i`: the time of its last event (`0` for the empty
 cut). -/
 def cutTime (i : Nat) : Time :=
@@ -294,6 +296,12 @@ def cutTime (i : Nat) : Time :=
   | k + 1 => match rho.events[k]? with
     | some e => e.time
     | none => 0
+
+/-- Everything nodes saw while honest: the view of `v` at every cut at whose
+time `v` is honest. A later compromise of the observer removes nothing. -/
+def Observed : Set (protoOf F E).Object :=
+  {o | ∃ v i, i ≤ rho.events.length ∧ rho.point.HonestAt v (rho.cutTime i) ∧
+    o ∈ rho.ViewIdx v i}
 
 /-- Output `g` of node `v` at event cut `i`. -/
 def readIdx (g : O.Id) (v : V) (i : Nat) : Ledger :=

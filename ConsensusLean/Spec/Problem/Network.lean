@@ -13,6 +13,11 @@ The delivery rule is normal delivery:
 > interval, and is re-served, strictly before the bound, to nodes that wake
 > later.
 
+Honesty is read at the time of each event (`EnvPoint.HonestAt`): the sender at
+its send, a submission's recipient at the submission, a receiver at the
+deadline (so throughout the interval, faults only growing). An owed send or
+submission stays owed after its sender or recipient is compromised.
+
 The delivery interval is half-open, `[t, max(t, GST) + ΔAC)`, as in the paper's
 `Sync`; on integer time, "strictly before `d`" is "by `d − 1`". `Delivers`
 states it for a deadline function `dl` (`msgs`, every message that is not an
@@ -56,22 +61,27 @@ def TxHeld (w : V) (x : Tx) (d : Time) : Prop :=
 `dlF` for FG attestations, for deadlines up to the time `cut` (a time, not a trace cut
 index) and up to the horizon. -/
 structure Delivers (dl dlF : Time → Time) (cut : Time) : Prop where
-  /-- Normal delivery: an honest send at `t` of a message
-  that is not an FG attestation is held at `dl a`, for every start `a ≥ t`, by every
-  honest node awake throughout the delivery interval `[a, dl a]`. At `a = t`
-  this is delivery by `dl t` (for `PSync`, strictly before the bound) to nodes
-  awake over `[t, dl t]`; at a later `a` it is re-service, by `dl a`, to a node
-  that wakes at `a` (a restart loses earlier receipts, see `Held`). -/
-  msgs : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ¬ L.fgAtt m → ∀ w ∈ p.honest, ∀ a, t ≤ a →
-    dl a ≤ cut → dl a ≤ p.horizon → p.AwakeOnClosed w a (dl a) → L.Held p w m (dl a)
+  /-- Normal delivery: a send at `t` by a node honest at `t`, of a message
+  that is not an FG attestation, is held at `dl a`, for every start `a ≥ t`, by every
+  node honest at `dl a` (hence throughout the interval) and awake throughout the
+  delivery interval `[a, dl a]`. The obligation stays after the sender is
+  compromised. At `a = t` this is delivery by `dl t` (for `PSync`, strictly before
+  the bound) to nodes awake over `[t, dl t]`; at a later `a` it is re-service, by
+  `dl a`, to a node that wakes at `a` (a restart loses earlier receipts, see
+  `Held`). -/
+  msgs : ∀ v m t, L.sent v m t → p.HonestAt v t → ¬ L.fgAtt m → ∀ w a, t ≤ a →
+    dl a ≤ cut → dl a ≤ p.horizon → p.HonestAt w (dl a) → p.AwakeOnClosed w a (dl a) →
+      L.Held p w m (dl a)
   /-- The same rule for FG attestations, with the FG deadline `dlF`. -/
-  fgAtts : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → L.fgAtt m → ∀ w ∈ p.honest, ∀ a, t ≤ a →
-    dlF a ≤ cut → dlF a ≤ p.horizon → p.AwakeOnClosed w a (dlF a) → L.Held p w m (dlF a)
-  /-- Transactions submitted to an awake honest node, likewise: held at
-  `dl a`, for every start `a` at or after the submission, by every honest node
-  awake throughout `[a, dl a]`. -/
-  txs : ∀ u ∈ p.honest, ∀ x τ, 0 ≤ τ → p.env.awake u τ = true → x ∈ p.submit u τ →
-    ∀ w ∈ p.honest, ∀ a, τ ≤ a → dl a ≤ cut → dl a ≤ p.horizon →
+  fgAtts : ∀ v m t, L.sent v m t → p.HonestAt v t → L.fgAtt m → ∀ w a, t ≤ a →
+    dlF a ≤ cut → dlF a ≤ p.horizon → p.HonestAt w (dlF a) → p.AwakeOnClosed w a (dlF a) →
+      L.Held p w m (dlF a)
+  /-- Persistent network ingress: a transaction submitted at `τ ≥ 0` to a node
+  honest and awake at `τ` is held at `dl a`, for every start `a ≥ τ`, by every node
+  honest at `dl a` and awake throughout `[a, dl a]`; the obligation stays after the
+  submission's recipient is compromised. -/
+  txs : ∀ u x τ, 0 ≤ τ → p.HonestAt u τ → p.env.awake u τ = true → x ∈ p.submit u τ →
+    ∀ w a, τ ≤ a → dl a ≤ cut → dl a ≤ p.horizon → p.HonestAt w (dl a) →
       p.AwakeOnClosed w a (dl a) → L.TxHeld w x (dl a)
 
 /-- Partial synchrony with GST `g`: held strictly before `max a g + ΔAC` (deadline
@@ -89,18 +99,19 @@ def SyncUntil (b : Time) : Prop :=
 synchronous with GST `b₁` (asynchronous during `[b₀, b₁)`). -/
 def OutageNet (b₀ b₁ : Time) : Prop := L.SyncUntil p b₀ ∧ L.PSync p b₁
 
-/-- Eager from `g`: every honest send at `t` is received by every honest node
-at every awake time `a` with `max t g < a ≤ horizon` (strictly after the send
+/-- Eager from `g`: every send at `t` by a node honest at `t` is received by
+every node honest and awake at a time `a` with `max t g < a ≤ horizon` (strictly after the send
 and after `g`: a send made in reaction to a receipt at `t` cannot be served at
 `t` itself); no message is received before `g`; transactions submitted to
-awake honest nodes are relayed at once to every awake honest node.
+nodes honest and awake at the submission are relayed at once to every node
+honest and awake.
 `g > horizon`: a silent network. -/
 structure EagerFrom (g : Time) : Prop where
-  recv : ∀ v ∈ p.honest, ∀ m t, L.sent v m t → ∀ w ∈ p.honest, ∀ a, max t g < a →
-    a ≤ p.horizon → p.env.awake w a = true → L.recv w m a
+  recv : ∀ v m t, L.sent v m t → p.HonestAt v t → ∀ w a, max t g < a →
+    a ≤ p.horizon → p.HonestAt w a → p.env.awake w a = true → L.recv w m a
   quiet : ∀ w m t, L.recv w m t → g ≤ t
-  txs : ∀ u ∈ p.honest, ∀ x τ, 0 ≤ τ → p.env.awake u τ = true → x ∈ p.submit u τ →
-    ∀ w ∈ p.honest, ∀ a, τ ≤ a → p.env.awake w a = true → x ∈ L.inbox w a
+  txs : ∀ u x τ, 0 ≤ τ → p.HonestAt u τ → p.env.awake u τ = true → x ∈ p.submit u τ →
+    ∀ w a, τ ≤ a → p.HonestAt w a → p.env.awake w a = true → x ∈ L.inbox w a
 
 /-- The log agrees with `L'` at all times `≤ b` (prefix agreement): sends,
 receipts and inboxes, and it has the same message class. Inbox agreement is

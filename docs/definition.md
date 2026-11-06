@@ -13,7 +13,12 @@ the chain shape: slots, proposers, votes and a state machine, compiled to an L1 
 
 ## The headline statement
 
-`Challenge.lean` certifies six statements. The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
+**While the Goldilocks proofs migrate to growing faults**, `Challenge.lean` certifies seven statements: the five
+review statements below and, for Goldilocks, `MeetsObligationsConstant` and `GoldilocksCorrectConstant`, the endpoint
+and headline below on the runs whose faults do not grow (`ShapeObligationsOnAs`, `CorrectProtocolOn` at
+`ConstantFaults`). The growing-fault endpoint and headline below are stated in
+`ConsensusLean/Instances/Goldilocks/Statements/Growing.lean` and not yet proved. The headline is
+`Consensus.Goldilocks.GoldilocksCorrect`, from
 `ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean` (in namespace `Consensus.Goldilocks`), together
 with the endpoint it composes:
 
@@ -86,10 +91,22 @@ def LogFaithful : Prop :=
 `Run.Served`. Exactly the type of `Consensus.Model.Run.held_iff_served`. -/
 def HeldIffServed : Prop :=
   ∀ {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}
-    (rho : Run F E), rho.ExecutionValid → ∀ {w : V}, w ∈ rho.honest →
-    ∀ (o : (protoOf F E).Object) {d : Time}, d ≤ rho.horizon →
+    (rho : Run F E), rho.ExecutionValid → ∀ (o : (protoOf F E).Object) {w : V} {d : Time},
+    w ∉ rho.faultyAt d → d ≤ rho.horizon →
       (CommLog.Held rho.point rho.log w o d ↔ rho.Served w o d)
+
+/-- **The review statement on a class of runs.** ... Exactly the type of
+`Consensus.Shape.ShapeObligationsOn.correct`. -/
+def ObligationsSufficientOn : Prop :=
+  ∀ {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+    {F : ChainShapeFamily O Info} {K : Contract ProgressReq} (Q : ∀ V : Type, EnvPoint V → Prop),
+    ShapeObligationsOn F K Q → ∀ (V : Type) [Fintype V] [DecidableEq V],
+      CorrectProtocolOn (sysOf O (compiled F) V) (shapeProgress F V) K (Q V)
 ```
+
+At `Q = fun _ p => p.ConstantFaults`, `ObligationsSufficientOn` is the review statement of the static
+adversary at full strength (with, in addition, the adequacy and growth realizability of the growing-fault
+system); the growing-fault statements are additional to it.
 
 The obligations premise is `Consensus.Shape.ShapeObligations`, from
 `ConsensusLean/Spec/Shape/Obligations.lean`:
@@ -232,7 +249,7 @@ Notation (the `System` accessors of `Regimes.lean`): `c = cDur = catchUp·ΔAC`;
 
 | Output | Property | Regime | Claim (`∨ HC` unless "always") |
 |---|---|---|---|
-| all | non-framing | always | honest validators are never convicted by honest evidence |
+| all | non-framing | always | a validator honest at `d` is never convicted by the evidence nodes saw while honest by `d` |
 | all | nesting | always | `final ⪯ stable ⪯ available` in every honest read, at every cut |
 | final | no rollback | always | `Monotone final 0` |
 | final | accountable safety | every environment and network (premise `True`) | two conflicting honest reads convict `≥ α·n` from their own two views (local) |
@@ -373,11 +390,11 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 
 | Regime | Definition |
 |---|---|
-| `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + \|faulty\|) < \|ready_t\|` |
-| `System.Healthy g` | `L.PSync p g ∧ \|faulty\| < β·n ∧ ∀ v ∈ honest, v awake throughout [max g 0, horizon] ∧ ΔFG ≤ fgDelay·ΔAC` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
-| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z` (`a`, `z`: `outageStart`, `outageEnd`) |
+| `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + f_d) < \|ready_t\|` on the view retained through `d = min (t + ahead·ΔAC) horizon` (ready at `t` and honest at `d`; `f_d` compromised by `d`) |
+| `System.Healthy g` | `L.PSync p g ∧ f_horizon < β·n ∧ ∀ t ∈ [max g 0, horizon], every validator honest at t is awake at t ∧ ΔFG ≤ fgDelay·ΔAC` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
+| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c (ahead·ΔAC) 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z`, the last two on the view retained through `cohortAt = min (z + cohortAhead·ΔAC) horizon` (`a`, `z`: `outageStart`, `outageEnd`; the surviving cohort) |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·ΔAC ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·ΔAC` |
-| η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·ΔAC), t] ∪ faulty\| < \|ready_t\|` |
+| η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·ΔAC), t] ∪ faulty\| < \|ready_t\|` on the same retained view (one fixed partition, so the union keeps identities) |
 
 With `η = 0`, η-sleepy is plain sleepy (tests: `etaSleepyOn_zero`,
 `System.outage_eta_zero`). For `η > 0`, every validator awake at some time
@@ -588,7 +605,8 @@ The generated library root only collects imports.
 22. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
 23. `ConsensusLean/Spec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
 24. `ConsensusLean/Spec/Shape/Obligations.lean`: The obligations premise `ShapeObligations`: protocol claims, admissible numbers, service, progress fit and tolerance; its profile-labelled form `ShapeObligationsAs`.
-25. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
+25. `ConsensusLean/Spec/Shape/OnRuns.lean`: The obligations on a class of runs (`ShapeClaimsOnAt`, `ShapeObligationsOn`, `ShapeObligationsOnAs`): each claim restricted to the runs whose point satisfies a predicate, at constant faults the static adversary.
+26. `ConsensusLean/Statements/Review.lean`: The five review statements as `Prop` definitions: `ObligationsSufficient`, `ObligationsSufficientOn`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 
 <!-- /spec-files -->
 
@@ -619,10 +637,39 @@ The generated library root only collects imports.
 
 ## Adversary model
 
-The adversary is static and all-knowing. The honest set is fixed per run.
-Faulty validators sign anything with their own keys (only `Unforgeable` and
-`Credentials` bind them). The scheduler chooses the events, relay and hash,
-within the execution conditions. There is no adaptive corruption.
+The adversary is all-knowing, and its set of compromised validators grows:
+`EnvPoint.faultyAt t` (and `Run.faultyAt`) is monotone in `t`. A compromise is
+immediate and permanent, and the adversary then holds the validator's ordinary
+key. It signs anything with it, including objects that claim an earlier slot or
+role, because the claimed slot is not the signing time. No forward-secure keys
+and no corruption delay are modelled. A validator in `faultyAt t` is faulty for
+every event stamped `t`, and a compromise changes no earlier event. From its
+compromise on, a node has no engine events: what it does is adversarial
+injection, which only `Unforgeable` (a signer honest at the delivery time had
+released the object) and `Credentials` bind. An honest release keeps its
+provenance, and a release or a submission stays owed by the network, after its
+sender or recipient is compromised. A read made while honest stays protected
+after its reader is compromised. The scheduler chooses the events, relay and
+hash within the execution conditions. Since every lawful trace is quantified,
+adaptive scheduling and corruption are covered. A probabilistic or
+computational adversary is not modelled. A constant `faultyAt` is the static
+adversary (`EnvPoint.ConstantFaults`).
+
+Every participation budget is today's static count evaluated on the view
+retained through the count's consumption horizon (`EnvPoint.retain`,
+`EnvPoint.lookAhead`). Participation at `t` is charged with the faults of
+`t + ahead·ΔAC`, and validators compromised by then do not count as support.
+The outage cohort is charged at `outageEnd + cohortAhead·ΔAC`. The healthy
+budget is the bound at the horizon, which by monotonicity is the bound at every
+time. A recurrence's good proposer stays honest `hold·ΔAC` after its slot. A
+larger window is a stronger premise. `ΔFG` enters no window.
+
+**Certified scope while the instance proofs migrate.** The generic statements
+are certified for growing faults. The Goldilocks claims are certified for
+constant faults only (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`).
+The growing-fault Goldilocks endpoint and headline (`MeetsObligations`,
+`GoldilocksCorrect`, `Instances/Goldilocks/Statements/Growing.lean`) are stated
+and not yet proved.
 
 ## Model-adequacy bindings (generic, read once)
 
@@ -678,7 +725,7 @@ are the intended ones.
   fixed ⅔ with one honest sleeper (`healthy_needs_full_participation`).
   Liveness with honest validators asleep is asked by the sleepy regime and
   its stress witness.
-- Static adversary, equal weights, two delay bounds (`ΔAC` for messages and
+- Growing compromise without delay, recovery or forward-secure keys; equal weights, two delay bounds (`ΔAC` for messages and
   transactions, `ΔFG` for FG attestations), no probabilistic protocols, no
   proof of work, no non-validator readers, no responsiveness claim.
 - No transaction validity, fees, capacity or chain-quality bounds. Liveness
