@@ -1808,8 +1808,8 @@ def Consensus.Goldilocks.ContractCoefficients.recOn : {motive : Consensus.Goldil
   #3399423191/1294926426
 def Consensus.Goldilocks.GoldilocksCorrect : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S) (V : Type) [inst : Fintype.{0} V] [inst_1 : DecidableEq.{1} V], Consensus.CorrectProtocol (Consensus.Model.sysOf Consensus.Goldilocks.AsChainShape.schema (Consensus.Shape.compiled (Consensus.Goldilocks.AsChainShape.goldilocks S)) V) (Consensus.Shape.shapeProgress (Consensus.Goldilocks.AsChainShape.goldilocks S) V) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
   #3944470172/865842970
-def Consensus.Goldilocks.MeetsObligations : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S), Consensus.Shape.ShapeObligations (Consensus.Goldilocks.AsChainShape.goldilocks S) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
-  #3944470172/3858507122
+def Consensus.Goldilocks.MeetsObligations : Prop := ∀ (S : Consensus.Goldilocks.AsChainShape.Setup) (A : Consensus.Goldilocks.ContractAssumptions S), Consensus.Shape.ShapeObligationsAs Consensus.Profile.ebbAndFlow (Consensus.Goldilocks.AsChainShape.goldilocks S) (Consensus.Goldilocks.goldilocksContract A (Consensus.Goldilocks.contract_coefficients S A))
+  #3944470172/172576801
 theorem Consensus.Goldilocks.MeetsObligations._proof_1 #3700666351/-
 def Consensus.Goldilocks.contract_catchUp : (S : Consensus.Goldilocks.AsChainShape.Setup) → Consensus.Goldilocks.ContractAssumptions S → PNat := fun S _A => Subtype.mk.{1} 19 Consensus.Goldilocks.contract_catchUp._proof_1
   #1823032384/3210429666

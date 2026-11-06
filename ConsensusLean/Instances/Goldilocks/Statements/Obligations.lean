@@ -10,6 +10,8 @@ The concrete obligations endpoint of the Goldilocks family (`goldilocks S`, the 
 `AsChainShape` as a chain shape): for every setup `S` and every assumption set `A`, the family
 meets `ShapeObligations` (`Spec/Shape/Obligations`: shape claims, admissible numbers, a served
 ledger, progress that fits the skeleton and tolerates validators not ready and bad proposer slots)
+as an Ebb-and-Flow protocol (`ShapeObligationsAs .ebbAndFlow`: the schema provides all three
+capabilities, available and stable aliased to `confirmed`, final served by `finalized`)
 at the contract `goldilocksContract A (contract_coefficients S A)`, whose every number is a closed
 formula in the protocol parameters `k`, `δ_t`, the FG delay in slots `fgSlots` and the outer
 gap `X`.
@@ -140,11 +142,13 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
 
 /-- **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every
 assumption set (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`), the
-Goldilocks family meets the obligations at the contract
-`goldilocksContract A (contract_coefficients S A)`, every number of which is fixed above. -/
+Goldilocks family meets the obligations as an Ebb-and-Flow protocol (its schema provides exactly
+the final, stable and available capabilities; available and stable are both the `confirmed`
+output) at the contract `goldilocksContract A (contract_coefficients S A)`, every number of which
+is fixed above. -/
 def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A))
+    ShapeObligationsAs .ebbAndFlow (goldilocks S) (goldilocksContract A (contract_coefficients S A))
 
 /-- **Goldilocks is correct**, the headline statement: for every setup `S`, every assumption set
 `A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite

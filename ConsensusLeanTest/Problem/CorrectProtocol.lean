@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Spec.Problem.CorrectProtocol
+public import ConsensusLean.Spec.Problem.Profile
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
@@ -42,7 +43,13 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 * `eta_sleepy_startup`: no participation history before time
   `0`; honest validators asleep throughout do not count at startup.
 * `stable_alias_final_sleepy_live` (override 3): a schema that aliases stable
-  to final must make the final output live in the sleepy regime. -/
+  to final must make the final output live in the sleepy regime.
+* Profiles (`Profile.Matches`): `profile_matches_controls` (three distinct outputs, one output
+  aliasing all three, final only with unadvertised identifiers, available and stable aliased);
+  `profile_exact_rejections` (rejection: the match is exact, not a lower bound or an upper bound);
+  `profile_unique` (at most one profile matches); `profile_matches_serves` (every profile serves
+  a ledger); `profile_not_exhaustive` (an available-only and a final-and-available schema serve a
+  ledger and match no profile). -/
 
 namespace Consensus.EnvPoint
 
@@ -458,6 +465,76 @@ theorem stable_alias_final_sleepy_live (h : CorrectProtocol S X K) {g : S.schema
   h.behaviour.sleepyLive .stable g (Or.inr rfl) hs i
 
 end Alias
+
+section Profiles
+
+/-- Three distinct outputs, one per capability. -/
+def schemaThree : OutputSchema :=
+  ⟨Fin 3, fun | .final => some 0 | .stable => some 1 | .available => some 2⟩
+
+/-- One output serving all three capabilities. -/
+def schemaOne : OutputSchema := ⟨Unit, fun _ => some ()⟩
+
+/-- Final only, with two identifiers that serve no capability. -/
+def schemaFinalOnly : OutputSchema := ⟨Fin 3, fun | .final => some 0 | _ => none⟩
+
+/-- Available and stable aliased to one output, no final. -/
+def schemaAvailStable : OutputSchema := ⟨Unit, fun | .final => none | _ => some ()⟩
+
+/-- Available only. -/
+def schemaAvailOnly : OutputSchema := ⟨Unit, fun | .available => some () | _ => none⟩
+
+/-- Final and available, no stable. -/
+def schemaFinalAvail : OutputSchema :=
+  ⟨Fin 2, fun | .final => some 0 | .available => some 1 | .stable => none⟩
+
+/-- Positive controls: each profile matches its schemas, with distinct or aliased outputs and with
+identifiers that serve no capability. -/
+theorem profile_matches_controls :
+    Profile.ebbAndFlow.Matches schemaThree ∧ Profile.ebbAndFlow.Matches schemaOne ∧
+      Profile.bft.Matches schemaFinalOnly ∧ Profile.available.Matches schemaAvailStable :=
+  ⟨fun cap => by cases cap <;> rfl, fun cap => by cases cap <;> rfl,
+    fun cap => by cases cap <;> rfl, fun cap => by cases cap <;> rfl⟩
+
+/-- Rejection: the match is exact. An all-three schema is neither BFT nor available (not a lower
+bound), a final-only schema is not Ebb-and-Flow or available, and an available-and-stable schema
+is not Ebb-and-Flow or BFT (not an upper bound). -/
+theorem profile_exact_rejections :
+    ¬ Profile.bft.Matches schemaThree ∧ ¬ Profile.available.Matches schemaThree ∧
+      ¬ Profile.ebbAndFlow.Matches schemaFinalOnly ∧ ¬ Profile.available.Matches schemaFinalOnly ∧
+      ¬ Profile.ebbAndFlow.Matches schemaAvailStable ∧ ¬ Profile.bft.Matches schemaAvailStable :=
+  ⟨fun h => absurd (h .stable) (by decide), fun h => absurd (h .final) (by decide),
+    fun h => absurd (h .stable) (by decide), fun h => absurd (h .final) (by decide),
+    fun h => absurd (h .final) (by decide), fun h => absurd (h .final) (by decide)⟩
+
+/-- At most one profile matches a schema. -/
+theorem profile_unique {p q : Profile} {O : OutputSchema} (hp : p.Matches O)
+    (hq : q.Matches O) : p = q := by
+  cases p <;> cases q <;> first
+    | rfl
+    | exact absurd ((hp .final).symm.trans (hq .final)) (by decide)
+    | exact absurd ((hp .stable).symm.trans (hq .stable)) (by decide)
+
+/-- Every profile serves a ledger: a schema matching it provides a final or an available output. -/
+theorem profile_matches_serves {p : Profile} {O : OutputSchema} (h : p.Matches O) : O.Serves := by
+  unfold OutputSchema.Serves
+  cases p
+  · exact Or.inl (by rw [h .final]; rfl)
+  · exact Or.inl (by rw [h .final]; rfl)
+  · exact Or.inr (by rw [h .available]; rfl)
+
+/-- The profiles are not exhaustive: an available-only and a final-and-available schema serve a
+ledger and match no profile. -/
+theorem profile_not_exhaustive :
+    schemaAvailOnly.Serves ∧ schemaFinalAvail.Serves ∧
+      ∀ p : Profile, ¬ p.Matches schemaAvailOnly ∧ ¬ p.Matches schemaFinalAvail := by
+  refine ⟨Or.inr rfl, Or.inl rfl, fun p => ?_⟩
+  cases p
+  · exact ⟨fun h => absurd (h .final) (by decide), fun h => absurd (h .stable) (by decide)⟩
+  · exact ⟨fun h => absurd (h .final) (by decide), fun h => absurd (h .available) (by decide)⟩
+  · exact ⟨fun h => absurd (h .stable) (by decide), fun h => absurd (h .final) (by decide)⟩
+
+end Profiles
 
 end Consensus.Shape.Tests.CorrectProtocol
 

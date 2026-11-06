@@ -41,7 +41,11 @@ Labelled by kind (CONTRIBUTING "Statements"):
   `MeetsObligations` (`meets_obligations`) at `setupSmall`, `assumptionsSmall`, and
   `meetsObligations_realizable_small` gives its contract's active witnesses on five validators
   (`Shape.regimes_realizable` from `ShapeObligations`'s admissibility, progress-fit and tolerance
-  fields). -/
+  fields).
+* The profile label is a restatement: `schema_profile` (the schema is Ebb-and-Flow, not BFT or
+  available, decided on the schema alone), `meetsObligations_iff_unlabelled` (the endpoint is
+  equivalent to the unlabelled obligations), and the rejections `not_obligationsAs_bft` and
+  `not_obligationsAs_available` (no contract makes the family a BFT or an available protocol). -/
 
 namespace Consensus.Goldilocks.Obligations.Test.Contract
 open AsChainShape Simulation
@@ -291,7 +295,8 @@ theorem fg_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (assumptionsSmall.fgS
 /-- (a) **The obligations endpoint is not vacuous**: there are a setup and an assumption set
 (`k = 2`, `δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
 theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A)) :=
+    ShapeObligationsAs .ebbAndFlow (goldilocks S)
+      (goldilocksContract A (contract_coefficients S A)) :=
   ⟨setupSmall, assumptionsSmall, meets_obligations setupSmall assumptionsSmall⟩
 
 /-- (a) The active witnesses of the endpoint's contract at `setupSmall`, `assumptionsSmall` on five
@@ -301,7 +306,7 @@ theorem meetsObligations_realizable_small :
     RealizableActive (goldilocks setupSmall)
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall))
       (Fin 5) :=
-  have h := meets_obligations setupSmall assumptionsSmall
+  have h := (meets_obligations setupSmall assumptionsSmall).2
   regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5) (by decide)
 
 /-- (a) **The headline is not vacuous**: `goldilocksCorrect` at `setupSmall`, `assumptionsSmall` on
@@ -313,6 +318,36 @@ theorem goldilocksCorrect_realizable_small :
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall)) :=
   (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).realizable
     (by decide)
+
+/-! ## The profile label
+
+`MeetsObligations` labels the endpoint `ShapeObligationsAs .ebbAndFlow`. The label is decided by
+the schema alone, so the labelled endpoint is the unlabelled one. -/
+
+/-- The schema is Ebb-and-Flow (final, stable and available, with available and stable aliased to
+`confirmed`), and neither BFT nor available: decided on the schema, not taken from the endpoint. -/
+theorem schema_profile :
+    Profile.ebbAndFlow.Matches schema ∧ ¬ Profile.bft.Matches schema ∧
+      ¬ Profile.available.Matches schema :=
+  ⟨fun cap => by cases cap <;> rfl, fun h => absurd (h .stable) (by decide),
+    fun h => absurd (h .final) (by decide)⟩
+
+/-- **The label is a restatement**: the endpoint is equivalent to the unlabelled obligations at
+every setup and assumption set. -/
+theorem meetsObligations_iff_unlabelled :
+    MeetsObligations ↔ ∀ (S : Setup) (A : ContractAssumptions S),
+      ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A)) :=
+  ⟨fun h S A => (h S A).2, fun h S A => ⟨schema_profile.1, h S A⟩⟩
+
+/-- Rejection: at no setup and contract is the family a BFT protocol. -/
+theorem not_obligationsAs_bft (S : Setup) (K : Contract ProgressReq) :
+    ¬ ShapeObligationsAs .bft (goldilocks S) K :=
+  fun h => schema_profile.2.1 h.1
+
+/-- Rejection: at no setup and contract is the family an available protocol. -/
+theorem not_obligationsAs_available (S : Setup) (K : Contract ProgressReq) :
+    ¬ ShapeObligationsAs .available (goldilocks S) K :=
+  fun h => schema_profile.2.2 h.1
 
 /-! ## The fixed FG gap against the former FG delay bound
 
@@ -446,14 +481,14 @@ theorem meetsObligations_iff_former :
       ShapeObligations (goldilocks S) (formerContract S r ht) := by
   constructor
   · intro h S r ht
-    refine shapeObligations_of_fgDelay_le ?_ (h S (formerAssumptions S r ht))
+    refine shapeObligations_of_fgDelay_le ?_ (h S (formerAssumptions S r ht)).2
     change (r : Nat) ≤ 4 * cF r - 6
     have := (cF_ceil r).1
     omega
   · intro h S A
     have hA := h S A.fgDelay (former_timeout A)
     rw [formerContract_eq A] at hA
-    exact hA
+    exact ⟨schema_matches_ebbAndFlow, hA⟩
 
 /-- **The former endpoint, at every FG delay bound `r`** with `3·cF r ≤ δt`: Goldilocks meets the
 obligations at the former contract (`meetsObligations_iff_former` at `meets_obligations`). -/

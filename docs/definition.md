@@ -20,11 +20,13 @@ with the endpoint it composes:
 ```lean
 /-- **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every
 assumption set (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`), the
-Goldilocks family meets the obligations at the contract
-`goldilocksContract A (contract_coefficients S A)`, every number of which is fixed above. -/
+Goldilocks family meets the obligations as an Ebb-and-Flow protocol (its schema provides exactly
+the final, stable and available capabilities; available and stable are both the `confirmed`
+output) at the contract `goldilocksContract A (contract_coefficients S A)`, every number of which
+is fixed above. -/
 def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A))
+    ShapeObligationsAs .ebbAndFlow (goldilocks S) (goldilocksContract A (contract_coefficients S A))
 
 /-- **Goldilocks is correct**, the headline statement: for every setup `S`, every assumption set
 `A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite
@@ -39,8 +41,9 @@ def GoldilocksCorrect : Prop :=
       (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
 ```
 
-`Solution.lean` proves it as `fun S A V => ShapeObligations.correct (Obligations.meets_obligations S A) V`: the
-generic statement `ObligationsSufficient` below, applied to the Goldilocks endpoint `MeetsObligations`. The other
+`Solution.lean` proves it as `fun S A V => ShapeObligations.correct (Obligations.meets_obligations S A).2 V`: the
+generic statement `ObligationsSufficient` below, applied to the Goldilocks endpoint `MeetsObligations` without its
+profile label (`.2`; the profile is below). The other
 four certified statements are the generic ones that follow.
 
 ## The statements
@@ -108,6 +111,32 @@ structure ShapeObligations (F : ChainShapeFamily O Info) (K : Contract ProgressR
 
 `ShapeObligations` carries the admissibility, progress-fit and progress-tolerance premises of
 `RegimesRealizable`, as well as the protocol's claims and its served-output condition.
+
+**Profiles.** An endpoint states which standard capability set the protocol provides, as a checked
+label (`ConsensusLean/Spec/Problem/Profile.lean`, `ConsensusLean/Spec/Shape/Obligations.lean`):
+
+```lean
+inductive Profile where
+  | ebbAndFlow  -- final, stable and available
+  | bft         -- final only
+  | available   -- available and stable, no final
+
+def Profile.Matches (p : Profile) (O : OutputSchema) : Prop :=
+  ∀ cap, (O.output cap).isSome = p.provides cap
+
+def ShapeObligationsAs (p : Profile) (F : ChainShapeFamily O Info) (K : Contract ProgressReq) : Prop :=
+  p.Matches O ∧ ShapeObligations F K
+```
+
+The match is exact (a capability of the profile is provided, every other one is not) and compares
+capabilities only: the output type is not fixed, outputs may alias (Goldilocks serves available and
+stable by one `confirmed` output) and identifiers that serve no capability are allowed. The three
+profiles are not exhaustive: an available-only schema matches none, and `ShapeObligations` and
+`CorrectProtocol` apply to it unchanged. A profile is a label, not a property set: `Behaviour`
+selects its rows from the schema alone, so the label adds no claim and removes none, and
+`ObligationsSufficient` stays the one generic review statement. The Goldilocks endpoint is
+`ShapeObligationsAs .ebbAndFlow`; the label is decided by its fixed schema, so the labelled endpoint
+is equivalent to the unlabelled one.
 
 `ShapeObligations.correct` combines three theorems. `refinement` gives `Behaviour`;
 its bridges are `ledgerTrace` (reads are `ledgerOf` of the output chains)
@@ -541,24 +570,25 @@ The generated library root only collects imports.
 4. `ConsensusLean/Spec/Problem/Properties.lean`: Trace claims: agreement, monotonicity, ready-reader safety, nesting, transaction liveness, resilience and local accountability.
 5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, sleepy/healthy/outage regimes and the `cDur`, `heal`, `ready`, `lat` accessors.
 6. `ConsensusLean/Spec/Problem/CorrectProtocol.lean`: External data and progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `CorrectProtocol`.
-7. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
-8. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces, selection admissibility and families.
-9. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state, releases, inboxes, views, slashing protection and local reads.
-10. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
-11. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data (`sysExternal`).
-12. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
-13. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of ΔAC.
-14. `ConsensusLean/Spec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
-15. `ConsensusLean/Spec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
-16. `ConsensusLean/Spec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
-17. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ChainShapeFamily`.
-18. `ConsensusLean/Spec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`).
-19. `ConsensusLean/Spec/Shape/Run.lean`: Compiled systems (`Sys`), chain traces, output validity, proposal liveness and `shapeProgress`.
-20. `ConsensusLean/Spec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
-21. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
-22. `ConsensusLean/Spec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
-23. `ConsensusLean/Spec/Shape/Obligations.lean`: The obligations premise `ShapeObligations`: protocol claims, admissible numbers, service, progress fit and tolerance.
-24. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
+7. `ConsensusLean/Spec/Problem/Profile.lean`: Profiles (`ebbAndFlow`, `bft`, `available`) and `Profile.Matches`, the exact capability set of a schema.
+8. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
+9. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces, selection admissibility and families.
+10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state, releases, inboxes, views, slashing protection and local reads.
+11. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
+12. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data (`sysExternal`).
+13. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
+14. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of ΔAC.
+15. `ConsensusLean/Spec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
+16. `ConsensusLean/Spec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
+17. `ConsensusLean/Spec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
+18. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ChainShapeFamily`.
+19. `ConsensusLean/Spec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`).
+20. `ConsensusLean/Spec/Shape/Run.lean`: Compiled systems (`Sys`), chain traces, output validity, proposal liveness and `shapeProgress`.
+21. `ConsensusLean/Spec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
+22. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
+23. `ConsensusLean/Spec/Shape/Active.lean`: Progress activity, `BadProposerEvery`, and `RealizableActive`, including its bad-proposer witness.
+24. `ConsensusLean/Spec/Shape/Obligations.lean`: The obligations premise `ShapeObligations`: protocol claims, admissible numbers, service, progress fit and tolerance; its profile-labelled form `ShapeObligationsAs`.
+25. `ConsensusLean/Statements/Review.lean`: The four review statements as `Prop` definitions: `ObligationsSufficient`, `RegimesRealizable`, `LogFaithful`, `HeldIffServed`.
 
 <!-- /spec-files -->
 
