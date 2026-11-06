@@ -90,7 +90,7 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
     intro k hk τ hτ
     have h₁ := ac_deadline_le_of_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
     change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
-    linarith [max_le hτ (show sp.ts s ≤ sp.ts s + sp.Δ by linarith)]
+    linarith only [h₁, max_le hτ (le_add_of_nonneg_right hΔ.le)]
   obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := SA.honest_head hrun hx hv
   obtain ⟨ℓv, hcv, hev⟩ := hv
   obtain ⟨hxv, hxs, -, -⟩ := SA.castAt_spec hr hx ⟨hcv, hev⟩
@@ -100,11 +100,11 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
   -- the vote is processed by the updater before `t_s + 2Δ`
   have hservice : SA.MessageServedBefore T y k₀ (T.time j) e.msg := by
     have hd : T.deadline y k₀ (T.time j) ≤ T.time k₀ := by
-      rw [htk₀]; linarith [hdl k₀ le_rfl _ htj]
+      rw [htk₀]; linarith only [hdl k₀ le_rfl _ htj, hΔ]
     rcases hsync with hs | hs
     · apply (SA.messageServedBefore_iff _ _ _ _).mpr
       exact Or.inl (hs.1 x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
-        (ha₀.trans hsj) (by rw [htk₀]; linarith) y hy k₀ ℓ hcy hd)
+        (ha₀.trans hsj) (by rw [htk₀]; linarith only [htj, hΔ]) y hy k₀ ℓ hcy hd)
     · exact hs.message x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
         (hr.time_nonneg j) y hy k₀ ℓ hcy (hdl k₀ le_rfl _ htj) hd
   have fresh : (∃ k' ≤ k₀, T.time j ≤ T.time k' ∧ T.ProcessAt y k' e.msg ∧
@@ -114,16 +114,17 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
     intro hdelivery
     obtain ⟨k', hk'k₀, hjk', hp, hk'dl⟩ := hdelivery
     have hk'lt : T.time k' < sp.ts s + 2 * sp.Δ := hk'dl.trans_le (hdl k' hk'k₀ _ htj)
-    have hk'k₀' : k' < k₀ := lt_of_le_of_ne hk'k₀ (by rintro rfl; rw [htk₀] at hk'lt; linarith)
+    have hk'k₀' : k' < k₀ := lt_of_le_of_ne hk'k₀ (by
+      rintro rfl; rw [htk₀] at hk'lt; linarith only [hk'lt, hΔ])
     have hsk' : sp.slot (T.time k') = s :=
-      SA.slot_of_mem sp s (hsj.trans hjk') (by rw [hts]; linarith)
+      SA.slot_of_mem sp s (hsj.trans hjk') (by rw [hts]; linarith only [hk'lt, hΔ])
     have hnr : ∀ r, k' + 1 ≤ r → r < k₀ + 1 → ¬ T.RestartAt y r := by
       rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
       obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
       obtain ⟨ℓ', hc', -⟩ := hp
       have h₁ := hprev k' (by omega) ℓ' hc'
       have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
-      linarith
+      exact (hsj.trans hjk').not_gt (h₁.trans (hu.trans_le h₂))
     have hpk' : e.msg ∈ (T.state y (k' + 1)).pool s := by
       rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
         h | ⟨a, ha, b, hb, hab, hav, hbv⟩
@@ -150,11 +151,11 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
       · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, he₁m⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
         · have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
           rw [he₁m, hes] at h
-          linarith
+          linarith only [h, hΔ]
         · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
             (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hes]; exact hpk')) hn₁
     · rw [hst₁, SA.etime_of_lt_of]
-      linarith [hrsy k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩]
+      linarith only [hrsy k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩, hΔ]
   have held : e.msg ∈ (T.state y k₀).pool s ∧
       (T.state y k₀).voteStamp e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
     rcases (SA.messageServedBefore_iff _ _ _ _).mp hservice with hfresh | hretained
@@ -187,10 +188,10 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
       have hrelay : ∃ ky ≤ k₀, T.AcceptAt y ky P ∧
           T.time ky < T.deadline y ky (T.time kx) := by
         have hd : T.deadline y k₀ (T.time kx) ≤ T.time k₀ := by
-          rw [htk₀]; linarith [hdl k₀ le_rfl _ hkxt]
+          rw [htk₀]; linarith only [hdl k₀ le_rfl _ hkxt, hΔ]
         rcases hsync with hs | hs
         · exact hs.2 x hx kx P hax (hPa kx hax)
-            (by rw [htk₀]; linarith) y hy k₀ ℓ hcy hd hFP
+            (by rw [htk₀]; linarith only [hkxt, hΔ]) y hy k₀ ℓ hcy hd hFP
         · exact hs.relay x hx kx P hax (hr.time_nonneg kx) y hy k₀ ℓ hcy
             (hdl k₀ le_rfl _ hkxt) hd hFP
       obtain ⟨ky, hky, hay, hkyt⟩ := hrelay
@@ -198,7 +199,9 @@ private theorem honest_vote_at_update_of_sync (hrun : SA.ACRun proposer T H U)
         SA.mem_tree_of_acceptAt sp hr hy hay hky hcy hFP⟩
   obtain ⟨hacc, hPt⟩ := hacc
   have hbst := SA.blockStamp_lt_of_acceptedBefore sp hr hy hcy hPt hacc
-    (fun k hk hrk => by linarith [hrsy k hk hrk]) (Or.inl (by rw [htk₀]; linarith))
+    (fun k hk hrk => (hrsy k hk hrk).trans_lt
+      (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
+    (Or.inl (by rw [htk₀]; linarith only [hΔ]))
   have hPs : P.slot ≤ e.msg.slot := by
     rw [hU.1 hHd₂ hPU (hHd₂r.trans hhead)] at hHd₂s
     exact hHd₂s
