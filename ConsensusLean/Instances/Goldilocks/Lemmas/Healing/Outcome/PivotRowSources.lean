@@ -42,6 +42,11 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
+/-- `3f ≤ n - 1` gives `2f < n`. -/
+private theorem two_faults_lt (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) : 2 * Hᶜ.ncard < sp.n := by
+  have hn : 0 < sp.n := sp.toParams.hn
+  omega
+
 /-! ### Sources of the proposer's attestations -/
 
 /-- A high attestation signed before a proposal has a strictly earlier source cut and label.
@@ -96,7 +101,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
       have hts : sp.ts l ≤ tr.time r :=
         (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l).mpr (by omega)
       exact_mod_cast (SA.ts_le_iff sp).mp (hts.trans hrt)
-    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
+    have hf : 2 * Hᶜ.ncard < sp.n := two_faults_lt hp.faults
     have hne : l ≠ u := fun he => proposal_no_optimistic_of_run hp.run hp.noColl hf hpH
       hci hcall hti v ho.1 r hri D CV (he ▸ hop)
     clear * - hle hne; omega
@@ -377,7 +382,7 @@ theorem ResetPremisesUpTo.protected_source_compatible_high_origin {b : Time}
     · exact SA.anc_total hr.coherent hBC (hDE.trans h)
   · obtain ⟨DV, hst⟩ := ho.2.2.1
     obtain ⟨_, E, hfl, hDE⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-    have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
+    have hf : 2 * Hᶜ.ncard < sp.n := two_faults_lt hp.faults
     have hEB : Compatible (tr.HonestBlocks H) E B :=
       SA.fastLock_compatible_of_votes hrun ho.1 (Nat.lt_succ_self q) hfl hf (by
         intro z hz j hj e ⟨ell, hcast⟩ hes
@@ -493,7 +498,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
-  have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos x; omega
+  have hf : 2 * Hᶜ.ncard < sp.n := two_faults_lt hp.faults
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   rcases hp.clean_source_proposal_domain_before hc hx hpH hsource hs (by clear * - hsu; omega)
       hrb hR

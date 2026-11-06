@@ -20,6 +20,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
+/-- `3f ≤ n - 1` gives `f < 2q - n`, the fault bound in quorum form. -/
+private theorem faults_lt_quorum_margin (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) :
+    Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+  have hn : 0 < sp.n := sp.toParams.hn
+  change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+  omega
+
 /-- The actual proposer's stored locks are older than its proposal slot.
 An optimistic write would require an honest vote before the proposal cut;
 a regular write is later even in time. -/
@@ -588,10 +595,7 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hPhip := SA.frameIn_of_callAt hr hz hcp
   have hΔ := sp.toParams.hΔ
-  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn : 0 < sp.n := sp.toParams.hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    clear * - hf hn; omega
+  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   obtain ⟨hst, _, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
   have hSQ := hw.anc (fun X hX => hX.1) hst
   have hQt : d.head ∈ ellp.frame.tree := by
@@ -672,10 +676,7 @@ theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn : 0 < sp.n := sp.toParams.hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    clear * - hf hn; omega
+  have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hsp : s₀ ≤ s + 1 := by clear * - hmargin; omega
   have hms : gbar g + 2 * sp.Δ ≤ sp.ts s := by
     have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by clear * - hmargin hk; omega)
@@ -866,11 +867,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head
       (SA.frameIn_of_callAt
         (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun hy hcw).2
     rw [Compose.frame_of_projAC hrun hy hcw] at hrootU
-    have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-      have hn := sp.toParams.hn
-      change 0 < sp.n at hn
-      change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-      clear * - hf hn; omega
+    have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
     apply hRA.trans (hrootU.trans ?_)
     exact hframe.fcRoot_anc_proposal_head hrun hnc hf' hy hz halo
       (by have ht := hts hrlo; have ht' := hts hrN
