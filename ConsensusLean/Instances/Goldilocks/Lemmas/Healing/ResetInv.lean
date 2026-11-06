@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRowSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AtCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RawAtCall
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -155,8 +155,8 @@ private theorem proposesAt_of_honestProposal (hrun : GoldilocksRun proposer dg H
 
 /-- **A unanimous protected proposal is an honest fast-update selection** (route L5′): an honest
 proposal of a post-drain slot `j` is the result and the fast selection of its own proposer's
-slot-`j` update (`Obligations.UpTo.operational_update_selection`, the one Obligations theorem this
-module imports; reviewed exception in `scripts/boundaries.toml`). -/
+slot-`j` update (`Obligations.UpTo.operational_update_selection`, supplied by the shared
+`OperationalReports` module in the Healing layer). -/
 theorem unanimous_target_fast_update (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} (hj : sp.slot a + 2 * sp.k + 6 ≤ j)

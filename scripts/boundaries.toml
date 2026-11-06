@@ -781,19 +781,6 @@ about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index
 # None may start in a
 # trusted layer, and every `from` and `to` entry must be used (a fixed deviation must be removed).
 
-[[exception]]
-from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ResetInv",
-  "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports",
-  "ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main"]
-to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective"]
-reason = """H.3's unanimous protected target (Inv after the reset) needs the post-drain update selection already
-proved as Obligations.UpTo.operational_update_selection; porting it into the Healing layer would duplicate about
-300 lines of lock lemmas that graded locks changes. There is no module cycle: nothing in Obligations imports
-ResetInv. ResetInv depends only on that one theorem's statement; if it moves, this exception follows it.
-Recovery.Reports depends only on UpTo.report_cover_of_proposal's statement to supply actual reports for C1.2;
-its Interface and Outcome modules remain independent of Obligations. If the theorem moves, this exception follows it.
-Proofs.Healing.Main reaches HealthyEffective through ResetInv (H.3 in HealingRunStatements)."""
-
 # Settings of scripts/check.sh (check-boundaries.py reads only proofs_component_prefixes and trusted_paths).
 [checks]
 # The Spec surface is every module of a `trusted` layer above: the persisted-extension whitelist
