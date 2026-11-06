@@ -82,10 +82,15 @@ private theorem paired_onBlock (y : Fin P.n) (st : NodeState A) (t : Time) (B : 
   split
   · exact paired_fg fun _ h => by cases h
   · refine ⟨fun k B' hk => ?_, fun k ℓ B' hk hb => ?_⟩
-    · rcases k with _ | _ | k <;> simp [acCall] at hk
+    · rcases k with _ | _ | k <;>
+        simp only [acCall, List.getElem?_cons_zero, List.getElem?_cons_succ,
+          List.getElem?_nil, Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq,
+          and_true, reduceCtorEq] at hk
       subst hk
       exact ⟨_, rfl, rfl⟩
-    · rcases k with _ | _ | k <;> simp [acCall] at hk
+    · rcases k with _ | _ | k <;>
+        simp only [acCall, List.getElem?_cons_zero, List.getElem?_cons_succ,
+          List.getElem?_nil, Option.some.injEq, Cut.ac.injEq, reduceCtorEq] at hk
       subst hk
       cases hb
       exact ⟨0, rfl, rfl⟩
@@ -132,14 +137,21 @@ theorem tick_attestation_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : F
     intro s m hm
     simp only [tickStep] at hm ⊢
     split at hm
-    · rcases m with _ | m <;> simp [acToFG] at hm
+    · rcases m with _ | m <;>
+        simp only [acToFG, List.getElem?_cons_zero, List.getElem?_cons_succ,
+          List.getElem?_nil, Option.some.injEq, reduceCtorEq] at hm
     · rename_i C hC
       simp only [attest] at hm ⊢
       split at hm
-      · rcases m with _ | _ | m <;> simp [acToFG] at hm
+      · rcases m with _ | _ | m <;>
+          simp only [acToFG, List.getElem?_cons_zero, List.getElem?_cons_succ,
+            List.getElem?_nil, Option.some.injEq, Cut.fg.injEq, reduceCtorEq] at hm
       · rename_i a' rec ha
         simp only [onAttestation] at hm ⊢
-        rcases m with _ | _ | _ | m <;> simp [acToFG] at hm
+        rcases m with _ | _ | _ | m <;>
+          simp only [acToFG, List.getElem?_cons_zero, List.getElem?_cons_succ,
+            List.getElem?_nil, Option.some.injEq, Cut.fg.injEq,
+            FGLabel.attestation.injEq, reduceCtorEq] at hm
         subst a'
         exact ⟨rfl, C, rfl⟩
   obtain ⟨hm, C, hC⟩ := hu _ hk
@@ -189,12 +201,19 @@ private theorem update_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (y : F
       (A.toFG st.ac (frame st) t).2 = some C := by
   simp only [tickStep, acToFG] at hm ⊢
   split at hm
-  · rcases m with _ | m <;> simp at hm
+  · rcases m with _ | m <;>
+      simp only [List.getElem?_cons_zero, List.getElem?_cons_succ, List.getElem?_nil,
+        Option.some.injEq, reduceCtorEq] at hm
   rename_i C' hC'
   simp only [attest] at hm
   split at hm
-  · rcases m with _ | _ | m <;> simp at hm
-  rcases m with _ | _ | _ | m <;> simp [onAttestation] at hm
+  · rcases m with _ | _ | m <;>
+      simp only [List.getElem?_cons_zero, List.getElem?_cons_succ, List.getElem?_nil,
+        Option.some.injEq, Cut.fg.injEq, FGLabel.attest.injEq, reduceCtorEq, and_false] at hm
+  rcases m with _ | _ | _ | m <;>
+    simp only [onAttestation, List.getElem?_cons_zero, List.getElem?_cons_succ,
+      List.getElem?_nil, Option.some.injEq, Cut.fg.injEq, FGLabel.attest.injEq,
+      reduceCtorEq] at hm
   obtain ⟨rfl, -⟩ := hm
   exact ⟨rfl, rfl, hC'⟩
 
@@ -269,7 +288,10 @@ private theorem onBlock_block {y : Fin P.n} {st : NodeState A} {t : Time} {B' B 
   unfold onBlock at hk
   split_ifs at hk
   · simp at hk
-  split at hk <;> rcases k with _ | _ | k <;> simp [acCall] at hk
+  split at hk <;> rcases k with _ | _ | k <;>
+    simp only [acCall, List.getElem?_cons_zero, List.getElem?_cons_succ,
+      List.getElem?_nil, Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq,
+      reduceCtorEq] at hk
   all_goals exact ⟨rfl, hk.1⟩
 
 /-- The FG update makes no block cut. -/
@@ -292,10 +314,12 @@ private theorem proposal_block (dg : Digest (List (FG.Att P.n)) A.Payload) (y : 
   simp only [tickStep] at hm
   split_ifs at hm with hp
   · split at hm
-    · rcases m with _ | m <;> simp [acProposal] at hm
+    · rcases m with _ | m <;>
+        simp only [acProposal, List.getElem?_cons_zero, List.getElem?_cons_succ,
+          List.getElem?_nil, Option.some.injEq, reduceCtorEq] at hm
     rename_i d p hdp
     rcases m with _ | m
-    · simp [acProposal] at hm
+    · simp only [acProposal, List.getElem?_cons_zero, Option.some.injEq, reduceCtorEq] at hm
     simp only [List.getElem?_cons_succ] at hm
     obtain ⟨rfl, rfl⟩ := onBlock_block (B' := mkBlock dg y _ t x d.head p) hm
     refine ⟨rfl, hp, d, p, hdp, rfl, ?_⟩
@@ -518,14 +542,18 @@ private theorem tick_before_attest (dg : Digest (List (FG.Att P.n)) A.Payload) (
     simp only [tickStep] at hm
     split_ifs at hm with hp
     · split at hm
-      · rcases m with _ | m <;> simp [acProposal] at hm
+      · rcases m with _ | m <;>
+          simp only [acProposal, List.getElem?_cons_zero, List.getElem?_cons_succ,
+            List.getElem?_nil, Option.some.injEq, reduceCtorEq] at hm
       rename_i d p _
       rcases m with _ | m
-      · simp [acProposal] at hm
+      · simp only [acProposal, List.getElem?_cons_zero, Option.some.injEq, reduceCtorEq] at hm
       simp only [List.getElem?_cons_succ, proposeBlock, onBlock] at hm
       split_ifs at hm
       · simp at hm
-      split at hm <;> rcases m with _ | _ | m <;> simp [acCall] at hm
+      split at hm <;> rcases m with _ | _ | m <;>
+        simp only [acCall, List.getElem?_cons_zero, List.getElem?_cons_succ,
+          List.getElem?_nil, Option.some.injEq, Cut.fg.injEq, reduceCtorEq] at hm
       all_goals
         subst hm
         exact ⟨_, _, rfl, rfl, hp.2.1.symm⟩
