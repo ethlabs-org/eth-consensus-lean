@@ -27,6 +27,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
+/-- `3f ≤ n - 1` gives `f < 2q - n`, the fault bound in quorum form. -/
+private theorem faults_lt_quorum_margin (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) :
+    Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+  have hn : 0 < sp.n := sp.toParams.hn
+  change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+  omega
+
 /-- The optimistic base G(s+1,X), including below-floor X with a viable descendant Q.
 The actual write and its counted set are retained. Q is held at any honest early cut; its
 floor and J are the explicit `FrameWindow` values. Service/Catch ends at the next-slot horizon,
@@ -108,9 +115,7 @@ theorem optimistic_next_proposal_of_early_witness (hrun : GoldilocksRun proposer
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     omega
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hQ := mem_tree_of_frame hrun hw hcw hQw
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
   have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
@@ -321,11 +326,7 @@ theorem FrameWindow.optimistic_supporter_later_heads {s₀ s N floor : Nat}
           some (d, pay) → Anc (tr.HonestBlocks H) L d.head) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hx hc.1
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hroot : ell.frame.Anc ell.frame.fcRoot L := by
     rw [hanchor]; exact SA.fcRoot_anc_getAnchor hPhi _ _
   have hvL : L ∈ ell.frame.viableTree ell.frame.tree := by
@@ -407,11 +408,7 @@ theorem FrameWindow.proposal_viable_at_cast {s₀ p floor : Nat}
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   obtain ⟨_, ip, ellp, d, pay, hcp, hcall, hd, hti, hparent, _, _, _, ja, _, hacc, hta⟩ :=
     honestProposalRun_of_proposesAt hrun hnc hz hdesignated hactual hPs
   rw [← hdesignated] at hcp hd hacc

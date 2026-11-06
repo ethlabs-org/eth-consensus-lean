@@ -21,6 +21,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 
+/-- `3f ≤ n - 1` gives `f < 2q - n`, the fault bound in quorum form. -/
+private theorem faults_lt_quorum_margin (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) :
+    Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+  have hn : 0 < sp.n := sp.toParams.hn
+  change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+  omega
+
 /-- The common witness/relay induction, with the lock-specific transfer left to the caller. -/
 theorem next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -47,11 +54,7 @@ theorem next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hQ := mem_tree_of_frame hrun hw hcw hQw
   have hQU : Q ∈ tr.HonestBlocks H := ⟨w, hw, a, hQ⟩
   have hsource : Q.root = sp.genesisRoot ∨
@@ -191,11 +194,7 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hQ := mem_tree_of_frame hrun hw hcw hQw
   have hQU : Q ∈ tr.HonestBlocks H := ⟨w, hw, a, hQ⟩
   have hsource : Q.root = sp.genesisRoot ∨
@@ -330,11 +329,7 @@ theorem FrameWindow.next_votes_of_supporter {s₀ s floor : Nat}
   have hqt : sp.ts s₀ ≤ tr.time q :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg q) _).2 (by
       change (s₀ : Int) ≤ sp.slot (tr.time q); rw [hslot]; omega)
-  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hrootVotes : kindJ → Anc (tr.HonestBlocks H) X J →
       ∀ y ∈ H, ∀ i ev, SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
         SA.VoteExtends (tr.HonestBlocks H) ev.msg X := by
