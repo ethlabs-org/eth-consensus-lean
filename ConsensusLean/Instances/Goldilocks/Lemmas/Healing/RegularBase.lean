@@ -165,37 +165,6 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
       (by linarith only [sp.toParams.hΔ, hmb, hts])
       hz ⟨hc, he⟩ hes hA hop hQD (s + 1) le_rfl le_rfl).1
 
-/-- Unanimity propagation from a regular next-vote base and its early supporter witness. Proposals
-start at s+2: no circular proposal base is assumed at s+1. The archived
-`frontier_heads_transfer` induction used lease frames; here every frozen-domain
-stamp is derived at the actual emission read point. -/
-theorem regular_later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
-    (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hnr : NoRestartAfter tr H (gbar g)) {s N floor : Nat}
-    (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
-    {kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s) (sp.ts N + sp.Δ)
-      floor kindJ J)
-    {w : Fin sp.n} (hw : w ∈ H) {a : Nat}
-    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
-    (hXQ : Anc (tr.HonestBlocks H) X Q)
-    (hbase : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
-    ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = r →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg X) ∧
-      (s + 2 ≤ r → ∀ y ∈ H, ∀ i ell, tr.projAC.CallAt y i ell → ell.call = .proposal →
-        tr.time i = sp.ts r →
-        ∀ d pay, (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
-          some (d, pay) → Anc (tr.HonestBlocks H) X d.head) := by
-  exact later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    hframe hw hat hcw hQw hh hJ hXQ hbase
-
 /-- Later-label propagation for an actual regular origin, with all supporter cases discharged.
 Votes start at s+1 and proposals at s+2. The early viable supporter, not a
 write-tick witness with an unproved strict timestamp, supplies every propagation step. -/
@@ -338,7 +307,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
         hframe.root_eq z hz q hqt (by linarith only [hts (show s ≤ N by clear * - hsN; omega), htq])
           hk] at hroot
     by_cases hJD : kindJ → Anc (tr.HonestBlocks H) J D
-    · exact regular_later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
+    · exact later_heads_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
         (by linarith only [hts (show s₀ ≤ s by clear * - hwarm; omega), sp.toParams.hΔ, hm]) hmb
         (hsub (hts (by clear * - hwarm; omega)) le_rfl) hz (by linarith only [sp.toParams.hΔ, htq])
         hc hHd
