@@ -34,7 +34,8 @@ theorem mem_foldl_prog {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
         unfold FG.ChainState.processAtt at h
         dsimp only at h
         repeat' split at h
-        all_goals aesop
+        all_goals simp_all
+        all_goals exact h.elim (fun h => Or.inr h.symm) Or.inl
       exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
     · exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'.1, hT ▸ hb'.2⟩
 
