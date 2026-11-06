@@ -198,7 +198,7 @@ theorem twoRun_goodWindow :
         run.time k' < sp.ts ((21 + 11 + 0 + 1 : Nat) : Int) + sp.Δ := by
   obtain ⟨hown, -, htime, hst, -⟩ := propose_cut (s := 32) (by decide)
   have hstore : run.projFG.store w0 (1024 * (4 * 32) + 2) = ((world (4 * 32)).1 w0).fg := by
-    rw [Healing.projFG_store_eq run_goldilocksRun trivial, hst]
+    rw [Compose.store_eq run_goldilocksRun trivial, hst]
   have hg := (world_good (4 * 32) w0).fg
   have hatts := (world_good (4 * 32) w0).atts
   rw [tip_four] at hg

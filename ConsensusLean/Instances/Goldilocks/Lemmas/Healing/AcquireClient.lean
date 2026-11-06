@@ -342,12 +342,12 @@ theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
     have hge := (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.2.2.2.1 B hB'
     have hjl := Store.hj_lt_h hr hB'
     have hmax := (hon k hk le_rfl).frontierAt.2 y hy
-    rw [projFG_store_eq hrun hy] at hmax
+    rw [Compose.store_eq hrun hy] at hmax
     have hBj' : ((tr.state y k).fg.σ B.root).hj = h := by rw [hσB]; exact hBj
     omega
-  have hJ : JustifiedAt tr.projFG H k h Z := ⟨y, hy, by rw [projFG_store_eq hrun hy]; exact hZ,
-    B, by rw [projFG_store_eq hrun hy]; exact hB', by rw [projFG_store_eq hrun hy, hσB, hBj],
-    by rw [projFG_store_eq hrun hy, hσB, hBJ, hZr]⟩
+  have hJ : JustifiedAt tr.projFG H k h Z := ⟨y, hy, by rw [Compose.store_eq hrun hy]; exact hZ,
+    B, by rw [Compose.store_eq hrun hy]; exact hB', by rw [Compose.store_eq hrun hy, hσB, hBj],
+    by rw [Compose.store_eq hrun hy, hσB, hBJ, hZr]⟩
   have hph := hon k hk le_rfl
   cases c with
   | gap =>

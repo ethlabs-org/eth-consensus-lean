@@ -115,14 +115,14 @@ theorem phaseOn_squeeze (hrun : GoldilocksRun proposer dg H tr)
     refine ⟨⟨y₀, hy₀, le_antisymm ?_ ?_⟩, fun y hy => ?_⟩
     · have := hFb y₀ hy₀
       have := hmax_mono hrun.toLocalRun hy₀ h₂
-      simp only [projFG_store_eq hrun hy₀] at *
+      simp only [Compose.store_eq hrun hy₀] at *
       omega
     · have := hmax_mono hrun.toLocalRun hy₀ h₁
-      simp only [projFG_store_eq hrun hy₀] at *
+      simp only [Compose.store_eq hrun hy₀] at *
       omega
     · have := hFb y hy
       have := hmax_mono hrun.toLocalRun hy h₂
-      simp only [projFG_store_eq hrun hy] at *
+      simp only [Compose.store_eq hrun hy] at *
       omega
   obtain ⟨c', hc'⟩ := phaseAt_some hF
   obtain ⟨r₁, t₁⟩ := phaseAt_mono hfg hq h₁ ha hc'
