@@ -37,7 +37,13 @@ theorem tryVote_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP
     (t : Time) : (tryVote sp x A Φ t).1.restartTime = A.restartTime := by
   unfold tryVote
   dsimp only
-  split_ifs <;> simp only [optimistic_restartTime, admitVote_restartTime]
+  split
+  · rfl
+  · split
+    · rfl
+    · rw [optimistic_restartTime, admitVote_restartTime]
+      dsimp only
+      split <;> rfl
 
 theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
@@ -52,7 +58,12 @@ theorem onTick_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (acOnTick sp x A Φ t).1.restartTime = A.restartTime := by
   unfold acOnTick
   dsimp only
-  split_ifs <;> simp only [updateConfirmation_restartTime, tryVote_restartTime]
+  split
+  · rfl
+  · split
+    · rw [updateConfirmation_restartTime]
+      split <;> first | exact tryVote_restartTime _ _ _ _ | rfl
+    · split <;> first | exact tryVote_restartTime _ _ _ _ | rfl
 
 private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
@@ -121,12 +132,11 @@ private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
   have hv : ∀ (A : SAState sp.n) (t : Time), (tryVote sp y A ℓ.frame t).2 ≠ [] →
       t ≤ sp.ts (sp.slot t) + sp.Δ := by
     intro A t h
-    unfold tryVote at h
-    dsimp only at h
-    split_ifs at h with h₁
-    · exact absurd rfl h
-    · exact absurd rfl h
-    all_goals exact not_lt.1 (not_or.1 (not_or.1 h₁).2).2
+    by_contra ht
+    have hguard : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨
+        sp.ts (sp.slot t) + sp.Δ < t := Or.inr (Or.inr (lt_of_not_ge ht))
+    simp only [tryVote, hguard, ite_true] at h
+    exact h rfl
   have hΦ : FrameOK ℓ.frame := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
       exact h.1.1
@@ -143,7 +153,13 @@ private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
     change (acOnTick sp y A ℓ.frame (tr.time i)).2 ≠ [] at hne
     unfold acOnTick at hne
     dsimp only at hne
-    split_ifs at hne <;> first | exact absurd rfl hne | exact hv _ _ hne
+    split at hne
+    · exact absurd rfl hne
+    · change (if tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ then
+        tryVote sp y A ℓ.frame (tr.time i) else (A, [])).2 ≠ [] at hne
+      split at hne
+      · exact hv _ _ hne
+      · exact absurd rfl hne
   | proposal => exact absurd rfl hne
   | toFG => exact absurd rfl hne
   | message m => exact hv _ _ hne
@@ -202,11 +218,12 @@ private theorem writer_pool_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n
       (ts_le_iff_le_slot sp (hr.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)
     have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
       have := cast_time_le hr hy hc
-      rw [hsi, hts] at this; linarith
-    have hki : tr.time k' ≤ tr.time i := hr.time_mono (by omega)
+      rw [hsi, hts] at this; linarith only [this]
+    have hki : tr.time k' ≤ tr.time i := hr.time_mono ((Nat.le_of_lt_succ hk').trans hk)
     have hrs : ∀ k'' ≤ i₀, tr.RestartAt X k'' → tr.time k'' ≤ tr.time k' :=
       fun k'' hk'' hr'' => (hrsX k'' hk'' hr'').trans hsk
-    have hdl : tr.time k' + sp.Δ ≤ tr.time i₀ := by rw [hupd.2.2.1]; linarith
+    have hdl : tr.time k' + sp.Δ ≤ tr.time i₀ := by
+      rw [hupd.2.2.1]; linarith only [hki, hti]
     have hslot : ∀ t, tr.time k' ≤ t → t < tr.time k' + sp.Δ →
         (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t := by
       intro t h₁ h₂
@@ -214,8 +231,9 @@ private theorem writer_pool_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n
       have ha := (ts_le_iff_le_slot sp ht s).1 (hsk.trans h₁)
       have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
         have := (ts_le_iff_le_slot sp ht _).2 h
-        rw [hts₂] at this; linarith
-      rw [hvs]; omega
+        rw [hts₂] at this; linarith only [this, h₂, hki, hti, hΔ]
+      clear * - ha hb hvs
+      omega
     have hheld := hsync.elim
       (fun h => sync_forward hr h hy hsend hsk hki hX hupd.1 hrs hdl hslot)
       (fun h => sync_window_before_forward hr h hy hsend hsk hdl hX hupd.1 hrs hdl hslot)
@@ -223,10 +241,11 @@ private theorem writer_pool_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n
   · -- a restart's vote is of a block of slot at most `s`, so of slot below `s`
     have hBv := (frame_validPayload sp hr hy hck B hB).1 v hvB
     have hBs := frame_slot_le sp hr hy hck B hB
-    have htk := hrsy k' (by omega) ⟨ℓk, hck, hrk⟩
+    have htk := hrsy k' ((Nat.le_of_lt_succ hk').trans hk) ⟨ℓk, hck, hrk⟩
     have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (tr.time k') := fun h => by
       have := (ts_le_iff_le_slot sp (hr.time_nonneg k') _).2 h
-      rw [hts] at this; linarith
+      rw [hts] at this; linarith only [this, htk, hΔ]
+    clear * - this hBv hBs hvs
     omega
 
 private theorem writer_merged_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n}
