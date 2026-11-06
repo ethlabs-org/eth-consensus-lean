@@ -37,7 +37,7 @@ variable {P : Params} {A : NodeAC P} (tr : RunTrace A)
 theorem deadline_mono_delta (y : Fin P.n) (k : Nat) (τ : Time) {Δ₁ Δ₂ : Time}
     (h : Δ₁ ≤ Δ₂) : tr.deadline y k τ Δ₁ ≤ tr.deadline y k τ Δ₂ := by
   unfold deadline
-  linarith
+  exact add_le_add le_rfl h
 
 end Consensus.Goldilocks.RunTrace
 
@@ -159,7 +159,7 @@ theorem publication_held_psync (hn : 1 ≤ Fintype.card V) {g : Time}
       ⟨r.event, (publisherExecution S rho).actual_event r hr,
         (publisherExecution S rho).actual_release r hr⟩ hrow y hy a ha hh hh hawake
   · change max a g + E.ΔAC - 1 < max a g + E.ΔAC
-    linarith
+    exact sub_one_lt _
 
 /-- Before an outage, only qualifying recipient deadlines receive service. The protocol
 deadline may equal the cutoff: the engine endpoint is still strictly below it. -/
@@ -176,7 +176,7 @@ theorem publication_held_syncUntil (hn : 1 ≤ Fintype.card V) {b : Time}
     rho.log.Held rho.point y r.object (a + E.ΔAC - 1) ∧ a + E.ΔAC - 1 < b := by
   have hlt : a + E.ΔAC - 1 < b := by
     change a + E.ΔAC ≤ b at hb
-    linarith
+    exact (sub_one_lt _).trans_le hb
   exact ⟨hnet.msgs _ hx _ _
     ⟨r.event, (publisherExecution S rho).actual_event r hr,
       (publisherExecution S rho).actual_release r hr⟩ hrow y hy a ha hlt.le hh hawake, hlt⟩
@@ -240,9 +240,9 @@ theorem deadline_awake_interval (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionV
       by_contra h
       obtain ⟨v, _, hvk, _, hvprev⟩ := hr.sleep_of_restart y hy k hk
       have := hvprev j (by omega) hj
-      linarith
+      linarith only [this, hvk, hkj]
     have := hrestart k hkidx hk
-    linarith
+    linarith only [this, huk, hau]
   exact (simTrace_awake_of S rho hn hv y hy u hwu).1
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
@@ -306,7 +306,7 @@ theorem publication_held_before_deadline (hn : 1 ≤ Fintype.card V)
   rw [heq] at hb hd ⊢
   have hslack : a + E.ΔAC - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.ΔAC - 1 < a + E.ΔAC
-    linarith
+    exact sub_one_lt _
   obtain ⟨hheld, _⟩ := publication_held_syncUntil S rho hn hnet r hr hx hrow
     ((mem_honestKeys_iff S rho y).mp hy)
     (ht ▸ ha) hb ((hslack.le.trans hb).trans hbh)
@@ -355,7 +355,7 @@ theorem held_forward_accepted_before (hn : 1 ≤ Fintype.card V) (hv : rho.Execu
         cases hq
         rfl
     rw [hu, ← htime] at hle
-    linarith
+    exact absurd (hle.trans_lt huD) (not_lt.mpr hj)
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
   rcases hsource with hs | hr
   · obtain ⟨i, hi, ho⟩ := hs
@@ -462,7 +462,7 @@ theorem publication_held_before_deadline_psync (hn : 1 ≤ Fintype.card V)
   have hga : max a g = a := max_eq_left (hg.trans ha)
   have hslack : a + E.ΔAC - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.ΔAC - 1 < a + E.ΔAC
-    linarith
+    exact sub_one_lt _
   have hheld := (publication_held_psync S rho hn hnet r hr hx hrow
     ((mem_honestKeys_iff S rho y).mp hy) (ht ▸ ha)
     (by rw [hga]; exact hslack.le.trans hb)
@@ -551,8 +551,9 @@ theorem catchRun_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     | some r =>
       have hl : (simTrace S rho hn).label j ≠ none := by rw [simTrace_label, hj]; simp
       have hh := simTrace_labelled_time_le S rho hn hv hl
-      linarith
-  have hservice : max g 0 + E.ΔAC - 1 ≤ rho.horizon := by linarith [E.ΔAC_pos]
+      linarith only [hh]
+  have hservice : max g 0 + E.ΔAC - 1 ≤ rho.horizon := by
+    linarith only [E.ΔAC_pos, hstart, hbound]
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S rho hn _ _ _).mp (forwardAtAcceptance S rho hn hv) x hx i B hi
   have hmax : max (max g 0) g = max g 0 := max_eq_left (le_max_left _ _)
@@ -569,7 +570,7 @@ theorem catchRun_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
   have hdeadline : max g 0 + (S.params (Model.pubOf E) hn).Δ ≤
       (simTrace S rho hn).time j := by
     change max g 0 + E.ΔAC ≤ _
-    linarith [E.ΔAC_pos]
+    linarith only [E.ΔAC_pos, hstart]
   obtain ⟨k, hkj, hk, hkt⟩ := held_forward_accepted_before S rho hn hv hnc hy hx hheld
     hdecode hslack hdeadline hF
   refine ⟨k, lt_of_le_of_ne hkj ?_, hk⟩
@@ -599,7 +600,7 @@ theorem publication_held_before_gst_deadline (hn : 1 ≤ Fintype.card V)
   have hga : max a g = a := max_eq_left ((le_max_right τ g).trans ha)
   have hslack : a + E.ΔAC - 1 < a + (S.params (Model.pubOf E) hn).Δ := by
     change a + E.ΔAC - 1 < a + E.ΔAC
-    linarith
+    exact sub_one_lt _
   have hheld := (publication_held_psync S rho hn hnet r hr hx hrow
     ((mem_honestKeys_iff S rho y).mp hy)
     (ht ▸ (le_max_left τ g).trans ha)
@@ -958,11 +959,11 @@ theorem signed_row_service_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
     have heq : (simTrace S rho hn).deadline y j (max ((simTrace S rho hn).time i) g)
         (protoFGDelay (Model.pubOf E)) = w + protoFGDelay (Model.pubOf E) := by
       unfold RunTrace.deadline at heq₀ ⊢
-      linarith
+      linarith only [heq₀]
     have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
     have slack : w + E.ΔFG - 1 < w + protoFGDelay (Model.pubOf E) := by
       change w + E.ΔFG - 1 < w + E.ΔFG
-      linarith
+      exact sub_one_lt _
     have hbound : w + E.ΔFG - 1 ≤ (simTrace S rho hn).time j :=
       slack.le.trans (heq ▸ hd)
     have held := hnet.fgAtts (rho.key x) ((mem_honestKeys_iff S rho x).mp hx)
@@ -1218,7 +1219,7 @@ theorem vote_message_service_psync_other (hn : 1 ≤ Fintype.card V)
     have hkj : k < j := by
       by_contra h
       have := simTrace_time_mono S rho hn hv (Nat.le_of_not_gt h)
-      linarith
+      linarith only [this, htime, hd]
     by_cases hk : (simTrace S rho hn).time k <
         (simTrace S rho hn).projAC.deadline y k (max τ g)
     · exact ⟨k, hkj.le, hlo, hp, hk⟩

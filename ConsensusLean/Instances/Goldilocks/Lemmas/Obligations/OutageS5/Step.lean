@@ -89,7 +89,7 @@ theorem honest_head_accepted_after (hrun : GoldilocksRun proposer dg H tr)
   have hkt' : tr.time k ≤ sp.ts q + sp.Δ := by
     have h1 : tr.time k ≤ sp.ts (e'.msg.slot : Int) + sp.Δ := hkt
     have h2 := ts_le_ts (sp := sp) hs'
-    linarith
+    linarith only [h1, h2]
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hrs' : ∀ c ≤ i, tr.RestartAt y c → tr.time c ≤ sp.ts q := fun c hc' ⟨ℓr, hcr, hrr⟩ =>
     hrs c hc' ⟨ℓr, projAC_callAt.2 hcr, hrr⟩
@@ -106,12 +106,12 @@ theorem honest_head_accepted_after (hrun : GoldilocksRun proposer dg H tr)
     have := deadline_le_of_restarts (fun k hk hr' => hrs' k (hk.trans hc') hr')
       (max (tr.time (m + 1)) g) sp.Δ
     have h₁ : max (max (tr.time (m + 1)) g) (sp.ts q) ≤ sp.ts q + sp.Δ :=
-      max_le (max_le hmt hg) (by linarith)
+      max_le (max_le hmt hg) (le_add_of_nonneg_right hΔ.le)
     change tr.deadline y c (max (tr.time (m + 1)) g) sp.Δ ≤ _
-    linarith
+    linarith only [this, h₁]
   obtain ⟨k', hk'i, hAy, hk't⟩ := hS.relay x hx (m + 1) Hd hacc i ℓ hc.1
-    (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith) hFHd
-  exact Or.inr ⟨k', hAy, by have := hdl k' hk'i; linarith⟩
+    (by have := hdl i le_rfl; change _ ≤ tr.time i; linarith only [this, hti, hΔ]) hFHd
+  exact Or.inr ⟨k', hAy, by have := hdl k' hk'i; linarith only [this, hk't, hΔ]⟩
 
 /-- **`Carry_y` after the outage's GST** (`carryAt_of_writer_window` with receiver service): at an
 honest slot-`(s+1)` vote of `y`, under receiver service from `g ≤ t_s + Δ`, `Carry_y(s, ·, ·)` holds
@@ -139,9 +139,9 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
     intro k hk τ hτ
     have h₁ := Healing.deadline_le_restarts (T := tr.projAC)
       (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
-    have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith)
+    have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith only [hΔ])
     change tr.projAC.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
-    linarith
+    linarith only [h₁, h₂]
   obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy i ℓ hc.1
   refine ⟨hr.awake_of_call y hy i ℓ hc.1, hyj, fun v hv => ?_, fun v hv => ?_⟩
   · -- the head and its ancestors are accepted before the freeze
@@ -171,9 +171,9 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
       rw [hev, hvs] at h
       exact h
     have hmx : max (tr.projAC.time k) g < sp.ts s + 2 * sp.Δ :=
-      max_lt (by linarith) (by linarith)
+      max_lt (by linarith only [hk2, hΔ]) (by linarith only [hg, hΔ])
     obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := hS.message x hx k v hsend i ℓ hc.1
-      (by have := hdl i le_rfl _ hmx; change _ ≤ tr.time i; linarith)
+      (by have := hdl i le_rfl _ hmx; change _ ≤ tr.time i; linarith only [this, hti, hΔ])
     have hk'lt : tr.projAC.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hmx)
     obtain ⟨ℓ', hc', -⟩ := id hp
     have hnr : ∀ r, k' + 1 ≤ r → r < i + 1 → ¬ tr.projAC.RestartAt y r := by
@@ -181,9 +181,9 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
       obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
       have h₁ := hprev k' (by omega) ℓ' hc'
       have h₂ : tr.projAC.time r ≤ sp.ts s := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
-      linarith
+      linarith only [h₁, h₂, hu, hk1, hkk']
     have hsk' : sp.slot (tr.projAC.time k') = s :=
-      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith)
+      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith only [hk'lt, hΔ])
     have hheld : ∀ u ∈ (tr.projAC.state y (k' + 1)).pool s,
         SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
@@ -200,12 +200,12 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
           · have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
-            linarith
+            linarith only [h, hΔ]
           · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
               (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
       · rw [hst₁, SA.etime_of_lt_of]
         have : tr.projAC.time k₁ ≤ sp.ts s := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
-        linarith
+        linarith only [this, hΔ]
     by_cases hv' : v ∈ (tr.projAC.state y (k' + 1)).pool s
     · exact Or.inl (hheld v hv')
     · rcases SA.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
@@ -428,7 +428,7 @@ theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy :
     rw [hs] at h
     simp only [SAParams.ts] at h ⊢
     push_cast at h
-    linarith
+    linarith only [h]
   refine honestRowsSourced_iff.2 fun X hX a ha hav => ?_
   obtain ⟨m, hmi, hm, k, hkm, hsg⟩ := honest_row_signed_before D.hrun D.hnc hy hX ha hav
   obtain ⟨src, hcall⟩ := id hsg
@@ -473,7 +473,7 @@ theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy :
     have hts : sp.ts (q + 1 : Nat) = sp.ts q + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     change tr.time j' ≤ tr.time i at hj'i
-    linarith
+    linarith only [ht, this, hts, hj'i, hti, hΔ]
   · rcases Nat.lt_or_ge l₀.slot (q + 2) with hl2 | hl2
     · obtain hq : l₀.slot = q + 1 := by omega
       rw [hq] at hO
@@ -487,7 +487,7 @@ theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy :
       have hts : sp.ts (q + 2 : Nat) = sp.ts q + 8 * sp.Δ := by
         simp only [SAParams.ts]; push_cast; ring
       change sp.ts (l₀.slot : Nat) ≤ tr.time j' at h'
-      linarith
+      linarith only [h', this, hts, hj'i, hti, hΔ]
 
 include D in
 /-- A block held below a source's entry height is below the entry. (As `Compose/Sleepy/Frame.lean`'s
@@ -532,7 +532,7 @@ theorem viable_at_vote_of_lo {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   have hFℓ : ℓ.frame.F = (tr.state y i).fg.F := by rw [hfr]; rfl
   have hg : D.b₁ ≤ sp.ts q + sp.Δ := by
     have := ts_le_ts (sp := sp) hrq
-    linarith [D.hr.1]
+    linarith only [this, D.hr.1]
   -- the head of an honest vote of a slot `≤ q` above `Σ.F` is frozen at `y`
   have frozen : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot ≤ q →
       ∀ Z, SA.VoteExtends (tr.HonestBlocks H) e'.msg Z →
@@ -622,7 +622,7 @@ private theorem cut_lt_of_slot {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {k
     simp only [SAParams.ts]; push_cast; ring
   by_contra hle
   have := D.hrun.time_mono (show k ≤ k' by omega)
-  linarith
+  linarith only [h1, h2, hts, this, hΔ]
 
 /-- An honest slot-`r` caster is in the cohort `A₀` or a late waker. -/
 private theorem caster_mem_r {x : Fin sp.n} (hx : x ∈ H) {k : Nat}
@@ -638,8 +638,10 @@ private theorem caster_mem_r {x : Fin sp.n} (hx : x ∈ H) {k : Nat}
     exact ⟨_, projAC_callAt.1 hc⟩
   have hrK := ts_le_ts (sp := sp) hrk.2
   have hjr := ts_le_ts (sp := sp) (show D.j₀ ≤ D.r by omega)
-  have hz := D.hz (tr.time k) (by linarith) ⟨x, hx, k, hcallk, le_rfl⟩
-  exact D.hawake x hx (tr.time k) (by linarith) hz (D.hrun.awake_of_call x hx k hcallk)
+  have hz := D.hz (tr.time k) (by linarith only [hts, hte, hrK, hjr, hΔ])
+    ⟨x, hx, k, hcallk, le_rfl⟩
+  exact D.hawake x hx (tr.time k) (by linarith only [ha, hts, hte, hrK, hjr, hΔ]) hz
+    (D.hrun.awake_of_call x hx k hcallk)
 
 /-- **INV, the inner cut induction**: from the invariant at the cuts before `i`
 and receiver service from `b₁`, every honest vote at a cut `≤ i` of a slot after `r` extends `P`.
@@ -677,10 +679,10 @@ theorem outage_s5_inner
   have hts : sp.ts (q + 1 : Nat) = sp.ts q + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hcallq : ∃ x ∈ H, ∃ j, tr.IsCall x j ∧ sp.ts q + sp.Δ ≤ tr.time j :=
-    ⟨y, hy, k, hcallk, by linarith⟩
+    ⟨y, hy, k, hcallk, by linarith only [htk, hts, hΔ]⟩
   have hg : D.b₁ ≤ sp.ts q + sp.Δ := by
     have := ts_le_ts (sp := sp) hrq
-    linarith [D.hr.1]
+    linarith only [this, D.hr.1]
   -- root cover
   by_cases hPF : Anc (tr.HonestBlocks H) D.P (tr.state y k).fg.F
   · obtain ⟨Hd, hHd, hHdr, -⟩ := SA.honest_head_frame hr hy hcast
