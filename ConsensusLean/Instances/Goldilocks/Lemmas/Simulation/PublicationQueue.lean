@@ -58,7 +58,8 @@ private theorem nodeTick_forwards (st : State sp ro) :
     (nodeTick st).forwards = st.forwards := by
   unfold nodeTick
   split
-  · simp [apply, acCall]
+  · simp only [apply, acCall, List.foldl_cons, List.foldl_nil, List.flatMap_cons, List.nil_append,
+      List.flatMap_nil, List.append_nil]
   · rfl
 
 private theorem stamped_apply (t : Time) (st : State sp ro) r
@@ -167,7 +168,7 @@ theorem proposal_duty_forward_origin (v : V)
           .proposer s := rfl
       simp only [Option.map, Option.toList_some, Model.Run.signedCandidate, hrole,
         hselected, ↓reduceIte] at hq
-      erw [List.map_cons, List.map_nil] at hq
+      dsimp only [List.map] at hq
       unfold Model.releaseAll at hq
       split at hq
       · change q ∈ (recordOwn (a.1.1 hn) _ _).forwards at hq
@@ -758,12 +759,12 @@ theorem held_release_or_receipt {v : V} {i : Nat} {o : Wire (Fintype.card V)}
                 simp only [Model.Run.releasesAt, he, Model.Run.tick]
                 split
                 · exact List.mem_append_left _ ho
-                · contradiction
+                · next hn => exact (hn ‹_›).elim
             · refine ⟨i, by omega, t, Or.inl ⟨Or.inl he, ?_⟩⟩
               simp only [Model.Run.releasesAt, he, Model.Run.tick]
               split
               · exact List.mem_append_right _ ho
-              · contradiction
+              · next hn => exact (hn ‹_›).elim
           · exact old ho
         | deliver w receipt t =>
           simp only [Model.Event.node] at hnode
