@@ -205,13 +205,17 @@ def votersD (ctl : Bool) (σ : Nat) : List (Fin 5) :=
   (rowsD ctl).filterMap fun r =>
     if (emsD r.cut).any (fun em => em.vote.slot == σ) then some r.node else none
 
-theorem checks_true : ∀ ctl, SourceD ctl ∧ rowsChk ctl = true ∧ CVoteD ctl ∧
-    1 ∈ (stateD ctl va (rowsD ctl).length).fg.tree := by
-  decide +kernel
-
-theorem voters_checks : votersD false 7 ⊆ [va, vb] ∧ [va, vb, vd] ⊆ votersD true 7 ∧
+private theorem premiseChecks : (∀ ctl, SourceD ctl ∧ rowsChk ctl = true ∧ CVoteD ctl ∧
+    1 ∈ (stateD ctl va (rowsD ctl).length).fg.tree) ∧
+    votersD false 7 ⊆ [va, vb] ∧ [va, vb, vd] ⊆ votersD true 7 ∧
     [va, vb, vd] ⊆ votersD true 8 := by
   decide +kernel
+
+theorem checks_true : ∀ ctl, SourceD ctl ∧ rowsChk ctl = true ∧ CVoteD ctl ∧
+    1 ∈ (stateD ctl va (rowsD ctl).length).fg.tree := premiseChecks.1
+
+theorem voters_checks : votersD false 7 ⊆ [va, vb] ∧ [va, vb, vd] ⊆ votersD true 7 ∧
+    [va, vb, vd] ⊆ votersD true 8 := premiseChecks.2
 
 
 /-! ## The run on data -/
