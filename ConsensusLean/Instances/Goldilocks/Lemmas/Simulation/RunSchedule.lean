@@ -67,13 +67,13 @@ private theorem time_bounds (hv : rho.ExecutionValid) (k : Nat) :
   cases hk : (allCuts S rho hn)[k]? with
   | none =>
     rw [(simTrace_of_getElem?_none S rho hn hk).2]
-    exact ⟨by linarith [hv.horizon_nonneg], le_rfl⟩
+    exact ⟨by linarith only [hv.horizon_nonneg], le_rfl⟩
   | some r =>
     have hl : (simTrace S rho hn).label k ≠ none := by rw [simTrace_label, hk]; simp
     obtain ⟨-, i, ev, -, he, -, -, -, -, ht, -⟩ := simTrace_cut S rho hn hl
     rw [ht]
     have h := hv.in_horizon ev (List.mem_of_getElem? he)
-    exact ⟨h.1, by linarith [h.2]⟩
+    exact ⟨h.1, by linarith only [h.2]⟩
 
 /-- Protocol actions, unlike observation filler, stay within the engine horizon. -/
 theorem simTrace_labelled_time_le (hv : rho.ExecutionValid) {k : Nat}
@@ -153,8 +153,9 @@ private theorem exists_wake (f : Time → Bool) {u t : Time} (hu : f u = false) 
   | succ n ih =>
     by_cases hft : f (u + n) = true
     · obtain ⟨w, h1, h2, h3⟩ := ih hft
-      exact ⟨w, h1, by push_cast at h2 ⊢; linarith, h3⟩
-    · refine ⟨u + (n + 1 : Nat), by push_cast; linarith, le_rfl, ht, ?_⟩
+      exact ⟨w, h1, by push_cast at h2 ⊢; linarith only [h2], h3⟩
+    · refine ⟨u + (n + 1 : Nat), by push_cast; linarith only [Int.natCast_nonneg n], le_rfl, ht,
+        ?_⟩
       have : u + ((n + 1 : Nat) : Int) - 1 = u + n := by push_cast; ring
       rw [this]
       simpa using hft
@@ -294,22 +295,21 @@ theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
       (hv.wake_restart _ ((mem_honestKeys_iff S rho y).mp hy) w
-        (by linarith) (by linarith) ⟨hw1, hw2⟩)
+        (by linarith only [hu0, huw]) (by linarith only [hwt', hth]) ⟨hw1, hw2⟩)
   obtain ⟨hR, hRt, hsucc⟩ := restart_at S rho hn hir
   rw [ownKey_key] at hR
   have hge : i ≤ cutMap S rho hn ir := by
     by_contra h
     have := hprev _ (by omega) ⟨_, hR.choose_spec.1⟩
     rw [hRt] at this
-    linarith
+    linarith only [this, huw]
   have hir₀ : ir = i₀ := by
     rcases lt_trichotomy ir i₀ with h | h | h
     · have := cutMap_mono S rho hn (show ir + 1 ≤ i₀ from h)
       omega
     · exact h
     · rcases keyLe_of_index_lt S rho hv he hir h with h' | ⟨h', h''⟩
-      · have : ev.time < w := h'
-        linarith
+      · exact absurd hwt' (not_le.mpr h')
       · cases ev with
         | restart v s =>
           simp only [Model.Event.node, Model.Event.time] at hkey h'
@@ -337,7 +337,7 @@ theorem simTrace_restart_at_wake (hv : rho.ExecutionValid) :
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
       (hv.wake_restart _ ((mem_honestKeys_iff S rho y).mp hy) w
-        (by linarith) (by linarith) ⟨hw1, hw2⟩)
+        (by linarith only [hu0, huw]) (by linarith only [hwv', hvh]) ⟨hw1, hw2⟩)
   obtain ⟨hR, ht, -⟩ := restart_at S rho hn hir
   rw [ownKey_key] at hR
   exact ⟨_, hR, by rw [ht]; exact huw, by rw [ht]; exact hwv'⟩
@@ -358,7 +358,8 @@ theorem simTrace_sleep_of_restart (hv : rho.ExecutionValid) :
   subst hkey
   obtain ⟨ht0, -, hw2⟩ := hv.restart_at_wake _ _ (List.mem_of_getElem? he)
   obtain ⟨-, -, hsucc⟩ := restart_at S rho hn he
-  refine ⟨t - 1, Int.le_sub_one_of_lt ht0, by linarith, fun h => ?_, fun j hj hcj => ?_⟩
+  refine ⟨t - 1, Int.le_sub_one_of_lt ht0, by rw [ht]; exact sub_one_lt t, fun h => ?_,
+    fun j hj hcj => ?_⟩
   · have := ((awake_iff' S rho hn y _).mp h).1
     rw [hw2] at this
     exact Bool.false_ne_true this
@@ -376,7 +377,7 @@ theorem simTrace_sleep_of_restart (hv : rho.ExecutionValid) :
       rcases hi₁.lt_or_eq with hlt | rfl
       · rcases keyLe_of_index_lt S rho hv he₁ he hlt with h' | ⟨-, h''⟩
         · have : ev₁.time < t := h'
-          linarith
+          exact this.ne heq
         · cases ev₁ with
           | restart v' s =>
             simp only [Model.Event.node, Model.Event.time] at hkey₁ heq
@@ -594,7 +595,10 @@ theorem simTrace_block_unforgeable (hv : rho.ExecutionValid) :
         simp only [exec, onBlock] at hmem
         split_ifs at hmem
         · simp at hmem
-        · split at hmem <;> simp [acCall] at hmem <;> simp_all
+        · split at hmem <;>
+            simp only [acCall, List.mem_cons, Cut.fg.injEq, FGLabel.block.injEq, reduceCtorEq,
+              List.not_mem_nil, or_self, or_false] at hmem <;>
+            simp_all only [ne_eq, reduceCtorEq, not_false_eq_true, not_lt]
       | message => simp [exec, onMessage, acCall] at hmem
       | attestation => simp [exec, onAttestation] at hmem
       | restart => simp [exec, Node.restart, acCall] at hmem
