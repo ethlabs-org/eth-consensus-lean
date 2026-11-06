@@ -34,6 +34,7 @@ theorem mem_foldl_prog_of {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att 
     have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
     have key : σ.prog ⊆ (σ.processAtt a).prog ∧
         (a.h = σ.h ∧ a.T = σ.Th → a.val ∈ (σ.processAtt a).prog) := by
+      clear * - σ a
       unfold FG.ChainState.processAtt
       rcases hf : a.fin with _ | q <;> dsimp only <;> split_ifs <;> simp_all
     rw [List.foldl_cons]
