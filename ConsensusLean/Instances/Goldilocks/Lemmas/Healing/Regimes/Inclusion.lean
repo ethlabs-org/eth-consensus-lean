@@ -202,7 +202,7 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun proposer dg H tr) (hnc : N
       simp [hj'] at hpr
     | some dp => exact ⟨dp.1, dp.2, rfl⟩
   obtain ⟨hacc, ht₂⟩ := Healing.own_block_accepted hrun.toLocalRun
-    (goldilocksNode_requirements sp ro) hrun.genesis_root_ok hnc hp hg hP hr
+    (requirements sp ro) hrun.genesis_root_ok hnc hp hg hP hr
   refine ⟨j + 2, _, ⟨⟨⟨true, hacc⟩, ?_⟩, rfl, ?_⟩, ht₂⟩
   · -- the own block is the third cut of the tick, so not the first of a group
     have hlen : 2 < (Node.exec proposer dg p (tr.state p j) (sp.ts s) (.tick x)).2.length := by
