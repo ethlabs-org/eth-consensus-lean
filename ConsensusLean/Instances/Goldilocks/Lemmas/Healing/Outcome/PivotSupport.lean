@@ -67,8 +67,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
   have hrb := (hp.run.time_mono hri.le).trans hib
   have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti hri ho
   obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by clear * - hlu; omega⟩
-  have hsucc : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
+  have hsucc : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   have below : Anc (tr.HonestBlocks H) O ell.frame.fcRoot →
       Anc (tr.HonestBlocks H) O d.head := by

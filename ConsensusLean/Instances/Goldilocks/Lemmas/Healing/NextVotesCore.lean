@@ -119,8 +119,7 @@ theorem relay_source_at_proposal
     Q ∈ ell.frame.tree ∧ (tr.projAC.state y i).blockStamp Q.root < ⊤ := by
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hi : tr.projAC.time i = sp.ts s + 4 * sp.Δ := hti.trans hts
   have hdl : ∀ k ≤ i, ∀ t, t < sp.ts s + 2 * sp.Δ →
       tr.projAC.deadline y k t < sp.ts s + 3 * sp.Δ := by
@@ -205,8 +204,7 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     · exact Or.inr ⟨q, ha, (hr.time_mono hqc).trans_lt hat⟩
   have hts {a b : Nat} (hab : a ≤ b) : sp.ts a ≤ sp.ts b :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hab)
-  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := SA.ts_succ a
   intro r hrlo
   induction r, hrlo using Nat.le_induction with
   | base => exact fun _ => ⟨hbase, fun h => by omega⟩
@@ -321,7 +319,7 @@ theorem FrameWindow.next_votes_of_supporter {s₀ s floor : Nat}
   have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
   have hr := hS.run.localRun
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
-    simp only [SAParams.ts]; rw [Nat.cast_sub (by omega : 1 ≤ s)]; ring
+    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, SA.ts_sub_one]
   have htq := SA.vote_time_le hr hz ⟨ell, hc⟩
   have hslot := (SA.castAt_spec hr hz hc).2.1.symm.trans hes
   change sp.slot (tr.time q) = s at hslot
@@ -348,8 +346,7 @@ theorem FrameWindow.next_votes_of_supporter {s₀ s floor : Nat}
     have hhi := SA.vote_time_le hr hy ⟨elly, hcy, hey⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
     rw [hsl] at hhi
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     have hhi' : tr.time i ≤ sp.ts s + 6 * sp.Δ := by linarith only [sp.toParams.hΔ, hhi, hts]
     obtain ⟨W, hW, hWr, hRW⟩ := SA.castAt_head_anc hr hy ⟨hcy, hey⟩ (Or.inr rfl)
       (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim

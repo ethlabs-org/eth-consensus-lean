@@ -300,8 +300,7 @@ private theorem clean_source_timing (hp : ResetPremises tr H proposer dg g ΔF a
   · exact ht.trans ((SA.ts_le_iff sp).mpr (by omega))
   · have hle : sp.ts ((l : Int) + 1) ≤ sp.ts ((s : Int) - sp.k + 1) :=
       (SA.ts_le_iff sp).mpr (by omega)
-    have he : sp.ts ((l : Int) + 1) = sp.ts l + 4 * sp.Δ := by
-      simp only [SA.SAParams.ts]; ring
+    have he : sp.ts ((l : Int) + 1) = sp.ts l + 4 * sp.Δ := SA.ts_succ l
     rw [he] at hle
     linarith
 
@@ -398,8 +397,7 @@ private theorem clean_source_vote_domain_step
   have hslot : sp.slot (sp.ts s + sp.Δ) = s := SA.slot_of_mem sp s (by linarith only [hΔ])
     (by simp only [SA.SAParams.ts]; push_cast; linarith only [hΔ])
   have hprev : SA.gbar g ≤ sp.ts ((s : Int) - 1) := by
-    have he : sp.ts ((s : Int) - 1) = sp.ts s - 4 * sp.Δ := by
-      simp only [SA.SAParams.ts]; ring
+    have he : sp.ts ((s : Int) - 1) = sp.ts s - 4 * sp.Δ := SA.ts_sub_one sp s
     rw [he]; linarith only [hgs4]
   have hparts := Compose.honest_participants_window_before hp.run hp.noColl
     (SA.serviceWindowBefore_of_sync (reset_raw_sync_window_before hp Q)) hgs hx hupd hrQ

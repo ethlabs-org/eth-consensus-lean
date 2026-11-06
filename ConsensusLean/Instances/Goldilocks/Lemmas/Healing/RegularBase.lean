@@ -68,8 +68,7 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     change 0 < sp.n at hn
     clear * - hf hn; omega
   apply next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm (by
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ hDQ
   intro y hy i ell e hcast hs hhigh hFD hviab ih
   have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
@@ -124,7 +123,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
   have hres : SA.ResultAt tr.projAC x c s C
       (SA.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
-    simp only [SAParams.ts]; rw [Nat.cast_sub (by clear * - hpos; omega : 1 ≤ s)]; ring
+    rw [Nat.cast_sub (by clear * - hpos; omega : 1 ≤ s), Nat.cast_one, SA.ts_sub_one]
   have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith only [sp.toParams.hΔ, hm, hprev]
   obtain ⟨z, hz, q, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr hms hx hres
@@ -151,8 +150,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
       hx hsl ?_ hCQ hz (by linarith only [sp.toParams.hΔ, htq]) hc hQ hh hJD
     simpa only [Compose.frame_of_projAC hrun hx hu.1] using hres
   · intro hA a D' CV' hop hQD
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     have hnext : FrameWindow (tr := tr) (H := H) (sp.ts s₀)
         (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J :=
       ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i hlo
@@ -227,8 +225,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
   have hr := hS.run.localRun
   have hts {a b : Nat} (hab : a ≤ b) : sp.ts a ≤ sp.ts b :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hab)
-  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := SA.ts_succ a
   have hsub {lo hi : Time} (hl : sp.ts s₀ ≤ lo) (hh' : hi ≤ sp.ts N + sp.Δ) :
       FrameWindow (tr := tr) (H := H) lo hi floor kindJ J :=
     ⟨fun y hy i hlo hhi => hframe.floor_eq y hy i (hl.trans hlo) (hhi.trans hh'),
@@ -604,8 +601,7 @@ theorem proposal_views_agree_before
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hslot := (SA.castAt_spec hr hy hc).2.1.symm.trans hes
   have hjlo : sp.ts (s + 1 : Nat) ≤ tr.time j :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [hslot])
@@ -767,8 +763,7 @@ theorem FrameWindow.frozen_competitor_reflect {s₀ s floor : Nat}
   have hr := hS.run.localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hPhip := SA.frameIn_of_callAt hr hz hcp
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2
       (by rw [← (SA.castAt_spec hr hy hc).2.1, hes])
