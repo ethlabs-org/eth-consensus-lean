@@ -36,6 +36,21 @@ def HealthyRecordCover (Q : HealthyPreparationQuery S A V) (cleanLabel : Nat)
     (SA.ResultAt Q.trace.projAC x q s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x q s C CV) ∧
     Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R C
 
+/-- A label `2k + 1` past a clean label is `k + 2` past it. -/
+private theorem clean_add_k_two_le {c k s : Nat} (hk : 2 ≤ k) (h : c + 2 * k + 1 ≤ s) :
+    c + k + 2 ≤ s := by
+  omega
+
+/-- The fault bound of a repair schedule, at the quorum arithmetic of the protocol. -/
+private theorem healthy_faults_lt_quorum (Q : HealthyPreparationQuery S A V)
+    (D : HealthyRepairSchedule S A V Q) :
+    (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.q - Q.params.n := by
+  have hf := D.reset.faults
+  have hn := Q.hn
+  change (honestKeys S Q.run.2)ᶜ.ncard < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
+  change 3 * (honestKeys S Q.run.2)ᶜ.ncard ≤ Fintype.card V - 1 at hf
+  omega
+
 section EndpointProducers
 variable (Q : HealthyPreparationQuery S A V)
   (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
@@ -92,14 +107,14 @@ theorem healthy_read_representative (D : HealthyRepairSchedule S A V Q)
     have hΔ := Q.params.toParams.hΔ
     change 0 < Q.params.Δ at hΔ
     have hΔ1 : 1 ≤ Q.params.Δ := hΔ
-    linarith
+    linarith only [hd, hΔ1]
   have hr : Q.run.2.point.Ready (((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) + 1)
       v (Q.run.2.cutTime i) := by simpa only [sub_add_cancel, chainTrace] using hv
   have hlag := stored_now_ge_cutTime_sub_one S Q.run.2 Q.hn Q.valid hi.1 hc hr
   have hfloor : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ <
       (stateAt S Q.run.2 Q.hn v i).now := by
     have hh : Q.heal ≤ Q.run.2.cutTime i := hi.2
-    linarith [D.reserve]
+    linarith only [D.reserve, hh, hlag]
   have ht0 := (now_bounds_cut S Q.run.2 Q.hn Q.valid v hi.1).1
   obtain ⟨q, hq, hs, hrp, hth⟩ : ∃ q ≤ Q.run.2.events.length,
       stateAt S Q.run.2 Q.hn v i = stateAt S Q.run.2 Q.hn v q ∧
@@ -109,10 +124,10 @@ theorem healthy_read_representative (D : HealthyRepairSchedule S A V Q)
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hs | ⟨j, hj, e, he, hev, hs, ht⟩
     · refine ⟨0, Nat.zero_le _, hs, ?_, ?_⟩
       · rw [hs, cutMap_zero, stateAt_eq]
-        exact ⟨fun k hk => by omega, D.reset.run.time_nonneg 0⟩
+        exact ⟨fun k hk => absurd hk (Nat.not_lt_zero k), D.reset.run.time_nonneg 0⟩
       · rw [hs, stateAt_eq]
         exact Q.valid.horizon_nonneg
-    · refine ⟨j + 1, by omega, hs, ?_, ?_⟩
+    · refine ⟨j + 1, hj.trans_le hi', hs, ?_, ?_⟩
       · rw [ht]
         exact readPoint_after_event S Q.run.2 Q.hn Q.valid he
       · rw [ht]
@@ -136,29 +151,31 @@ theorem healthy_read_label (D : HealthyRepairSchedule S A V Q)
   have hslot : (Q.params.slot D.resetTime + 2 * Q.params.k + 5 : Nat) ≤ Q.params.slot t := by
     rw [Healing.drainTime_eq] at ht
     exact_mod_cast (SA.ts_le_iff_le_slot Q.params ht0 _).mp ht
-  have hpos : 0 < Q.params.slot t := by omega
+  have hslot1 : Q.params.slot D.resetTime + 1 ≤ Q.params.slot t - 1 := by omega
+  have hpos : 0 < Q.params.slot t := (Nat.succ_pos _).trans_le (hslot1.trans (Nat.sub_le _ _))
   have ha0 : 0 ≤ D.resetTime := by
     obtain ⟨⟨y, hy, k, att, hk, _, he⟩, _⟩ := D.reset.reset
     exact he ▸ D.reset.run.time_nonneg k
   have ha : D.resetTime < Q.params.ts (Q.params.slot D.resetTime + 1 : Nat) := by
-    have hh := Int.lt_ediv_add_one_mul_self D.resetTime (by linarith : 0 < 4 * Q.params.Δ)
+    have hh := Int.lt_ediv_add_one_mul_self D.resetTime
+      (by linarith only [hΔ] : 0 < 4 * Q.params.Δ)
     rw [← SA.slot_eq Q.params ha0] at hh
     rw [SA.SAParams.ts, mul_comm]; exact_mod_cast hh
   have htlo := (SA.ts_le_iff_le_slot Q.params ht0 (Q.params.slot t)).mpr le_rfl
   by_cases hphase : Q.params.ts (Q.params.slot t) + 2 * Q.params.Δ ≤ t
-  · refine ⟨Q.params.slot t, ?_, ?_, by linarith⟩
+  · refine ⟨Q.params.slot t, ?_, ?_, by linarith only [hphase, hΔ]⟩
     · simp only [SA.latestView, ite_eq_left hphase]
-    · exact ha.le.trans ((SA.ts_le_iff Q.params).mpr (by exact_mod_cast (by omega :
-        Q.params.slot D.resetTime + 1 ≤ Q.params.slot t)))
+    · exact ha.le.trans ((SA.ts_le_iff Q.params).mpr
+        (by exact_mod_cast hslot1.trans (Nat.sub_le _ _)))
   · refine ⟨Q.params.slot t - 1, ?_, ?_, ?_⟩
     · simp only [SA.latestView, ite_eq_right hphase]
-      omega
-    · exact ha.le.trans ((SA.ts_le_iff Q.params).mpr (by exact_mod_cast (by omega :
-        Q.params.slot D.resetTime + 1 ≤ Q.params.slot t - 1)))
-    · have hs : ((Q.params.slot t - 1 : Nat) : Int) = (Q.params.slot t : Int) - 1 := by omega
+      exact Nat.cast_pred hpos
+    · exact ha.le.trans ((SA.ts_le_iff Q.params).mpr (by exact_mod_cast hslot1))
+    · have hs : ((Q.params.slot t - 1 : Nat) : Int) = (Q.params.slot t : Int) - 1 :=
+        Nat.cast_pred hpos
       simp only [SA.SAParams.ts] at htlo ⊢
       rw [hs]
-      linarith
+      linarith only [htlo, hΔ]
 
 set_option linter.unusedSectionVars false in
 /-- The original progress interval supplies an actual opening; finite catch and
@@ -178,20 +195,17 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   have hq : max Q.ready 0 ≤ D.query := max_le ((le_max_left _ _).trans D.lower) hq0
   have hd := Q.params.toParams.hΔ
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
-    linarith [D.reserve]
+    linarith only [D.reserve, hd]
   obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq
-    (by simpa only [Recurrence.len, Pattern.span, Pattern.single, List.foldr_cons, List.foldr_nil,
-        max_self, add_zero, goldilocks, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
-      Model.Run.point] using hwin.trans hb)
+    hwin (hwin.trans hb)
   have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
     change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
   rw [htime] at hlo hhi
   have hbound : Q.params.ts s ≤ D.query + 4 * (Q.index : Time) * Q.params.Δ := by
     change Q.params.ts s ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
-    linarith
-  have hsb : Q.params.ts s ≤ Q.run.2.horizon := by linarith [D.reserve]
+    linarith only [hhi]
+  have hsb : Q.params.ts s ≤ Q.run.2.horizon := by linarith only [hbound, D.reserve, hb, hd]
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
   have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
@@ -213,7 +227,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
     apply max_le_max_left
     have : Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
       simpa only [Regimes.catchUp] using D.duration_bound
-    linarith
+    linarith only [this]
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
   obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc (s := s)
@@ -231,6 +245,35 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
       ht, hnode⟩
   exact ⟨O, healthy_receiver_repair_of_opening S A V Q hb D O (healthy_repair_catch S A V Q)⟩
 
+omit h0 hb hp W states in
+/-- A time past the repair reserve of a query is past the query. -/
+private theorem healthy_lt_of_reserve {q t : Time}
+    (h : q + (4 * (Q.index : Time) + 6) * Q.params.Δ < t) : q < t := by
+  linarith only [h, mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le,
+    Q.params.toParams.hΔ]
+
+omit h0 hb hp W states in
+/-- The opening's update is before every repaired read. -/
+private theorem healthy_opening_before_read {D : HealthyRepairSchedule S A V Q}
+    (O : HealthyRepairOpening S A V Q D) {v : V} {i : Nat}
+    (C : HealthyReadContext S A V Q D v i) :
+    Q.params.ts O.slot + 6 * Q.params.Δ < (stateAt S Q.run.2 Q.hn v i).now := by
+  linarith only [O.bounded, C.repaired]
+
+omit h0 hb hp W states in
+/-- The opening's slot is after the slot that follows the network's join time. -/
+private theorem healthy_opening_join {D : HealthyRepairSchedule S A V Q}
+    (O : HealthyRepairOpening S A V Q D) :
+    Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts O.slot := by
+  have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts O.slot :=
+    ((le_max_left _ _).trans ((le_max_right _ _).trans
+      ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))).trans O.fresh.le
+  have hbase := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
+    (Q.params.slot (SA.gbar Q.gst))).mpr le_rfl
+  simp only [SA.SAParams.ts] at hbase hgu ⊢
+  push_cast
+  linarith only [hbase, hgu]
+
 /-- Current anchor candidates are compatible with the current looked-up record. -/
 theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
     {v : V} {i : Nat} (C : HealthyReadContext S A V Q D v i)
@@ -246,10 +289,8 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   simp only [max_le_iff] at hq
   obtain ⟨_, hqd, _, hqg, hq0⟩ := hq
   have hΔ := Q.params.toParams.hΔ
-  have htpos : 0 < (stateAt S Q.run.2 Q.hn v i).now := by
-    have := C.repaired
-    have := Int.natCast_nonneg Q.index
-    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
+  have htpos : 0 < (stateAt S Q.run.2 Q.hn v i).now :=
+    hq0.trans_lt (healthy_lt_of_reserve S A V Q C.repaired)
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hs | ⟨j, _, e, he, hev, _, _⟩
@@ -262,34 +303,22 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   obtain ⟨O, _⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
   have hdrain := hqd.trans O.fresh.le
   have hgu := hqg.trans O.fresh.le
-  have hbefore : Q.params.ts O.slot + 6 * Q.params.Δ <
-      (stateAt S Q.run.2 Q.hn v i).now := by
-    have := O.bounded
-    have := C.repaired
-    linarith
+  have hbefore := healthy_opening_before_read S A V Q O C
   have hTb := hbefore.le.trans C.time_bound
-  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
-      Q.params.ts O.slot := by
-    have hbase := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
-      (Q.params.slot (SA.gbar Q.gst))).mpr le_rfl
-    simp only [SA.SAParams.ts] at hbase hgu ⊢
-    push_cast at hbase hgu ⊢
-    linarith
+  have hjoin := healthy_opening_join S A V Q O
   obtain ⟨j, ell, _, hup, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
   have hjn : j < C.cut := by
     by_contra h
     have := C.readPoint.2.trans (D.reset.run.time_mono (Nat.le_of_not_gt h))
     have ht : Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ := hup.2.2.1
-    linarith
+    linarith only [this, ht, hbefore]
   obtain ⟨x, hx, r, s, CV, hrn, hus, hsource⟩ :=
     UpTo.record_source_after_operational_update D.reset hc O.ready.1 rfl O.proposes O.label
       hdrain hgu hTb hy hup hjn hR
   have hrb := (C.readPoint.1 r hrn).trans C.time_bound
   have hs : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 1 ≤ s := by
     rw [← D.cleanLabel_eq]
-    have := D.old_bound
-    have := O.old_lt
-    omega
+    exact D.old_bound.trans (O.old_lt.le.trans hus)
   have hib : ∀ q < C.cut, Q.trace.time q ≤ Q.run.2.horizon :=
     fun q hq => (C.readPoint.1 q hq).trans C.time_bound
   have hU := D.reset.honest_coherent
@@ -300,7 +329,7 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   intro X hX
   rcases hX with hX | hX
   · have hdrainNow := hdrain.trans (show Q.params.ts O.slot ≤
-        (stateAt S Q.run.2 Q.hn v i).now by linarith)
+        (stateAt S Q.run.2 Q.hn v i).now by linarith only [hbefore, hΔ])
     obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi
       (Compose.locksWF_state D.reset.run D.reset.noColl hy C.cut) hX
     rw [← Compose.projAC_state D.reset.run.toLocalRun hy C.cut] at hl
@@ -338,12 +367,10 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
       (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.latestConfirmed = some R) :
     R ∈ (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).viableTree
       (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree := by
-  have hd := Q.params.toParams.hΔ
   have hq0 : 0 ≤ D.query := (le_max_right _ _).trans ((le_max_right _ _).trans
     ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
-  have ht0 : 0 < (stateAt S Q.run.2 Q.hn v i).now := by
-    linarith [C.repaired,
-      mul_nonneg (by positivity : (0 : Time) ≤ 4 * (Q.index : Time) + 6) hd.le]
+  have ht0 : 0 < (stateAt S Q.run.2 Q.hn v i).now :=
+    hq0.trans_lt (healthy_lt_of_reserve S A V Q C.repaired)
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hinit |
       ⟨j, _, e, he, hev, _, _⟩
@@ -354,28 +381,21 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
   have hy := honest_ownKey (S := S) hv
   obtain ⟨O, _⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
   have hc := healthy_repair_catch S A V Q
-  have hbefore : Q.params.ts O.slot + 6 * Q.params.Δ <
-      (stateAt S Q.run.2 Q.hn v i).now := by linarith [O.bounded, C.repaired]
+  have hbefore := healthy_opening_before_read S A V Q O C
   have hTb := hbefore.le.trans C.time_bound
   have hdrain : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts O.slot :=
     ((le_max_left _ _).trans ((le_max_right _ _).trans D.lower)).trans O.fresh.le
   have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts O.slot :=
     ((le_max_left _ _).trans ((le_max_right _ _).trans
       ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))).trans O.fresh.le
-  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
-      Q.params.ts O.slot := by
-    have hbase := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
-      (Q.params.slot (SA.gbar Q.gst))).mpr le_rfl
-    simp only [SA.SAParams.ts] at hbase hgu ⊢
-    push_cast at hbase hgu ⊢
-    linarith
+  have hjoin := healthy_opening_join S A V Q O
   obtain ⟨j, ell, _, hup, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
   have hjtime : Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ := hup.2.2.1
   have hjn : j < C.cut := by
     by_contra h
-    have := C.readPoint.2.trans (D.reset.run.time_mono (by omega : C.cut ≤ j))
+    have := C.readPoint.2.trans (D.reset.run.time_mono (Nat.le_of_not_lt h))
     rw [hjtime] at this
-    linarith
+    linarith only [this, hbefore]
   obtain ⟨z, hz, q, l, DV, hqn, hul, hsource⟩ :=
     UpTo.record_source_after_operational_update D.reset hc O.ready.1 rfl O.proposes O.label
       hdrain hgu hTb hy hup hjn hR
@@ -439,7 +459,7 @@ theorem healthy_current_stored_locks (D : HealthyRepairSchedule S A V Q)
     (by simpa only [D.cleanLabel_eq] using hs) hrb hqb (by
       change s + 1 ≤ Q.params.slot (Q.trace.time q)
       change e.msg.slot = Q.params.slot (Q.trace.time q) at hslot
-      omega)
+      exact (hes.symm.trans hslot).le)
 
 set_option linter.unusedSectionVars false in
 set_option linter.unusedVariables false in
@@ -453,9 +473,8 @@ theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
   obtain ⟨q, hq, heq, hread, ht0, htb, hrepairTime, hready⟩ :=
     healthy_read_representative S A V Q D hi hv
   have hΔ := Q.params.toParams.hΔ
-  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now := by
-    have hindex : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
-    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
+  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now :=
+    (healthy_lt_of_reserve S A V Q hrepairTime).le
   have hdrain := (le_max_of_le_right (le_max_left _ _)).trans D.lower
   obtain ⟨L, hL, haL, hLt⟩ := healthy_read_label S A V Q D
     (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q)).ac
@@ -464,7 +483,7 @@ theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
   have haw := Compose.ready_implies_joined Q.params _ _ _ _ _ D.reset.run
     (Q.run.2.ownKey v) (honest_ownKey (S := S) hv.1) _
     ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) ht0
-    (by have := D.duration_bound; linarith) hready.2
+    (by linarith only [D.duration_bound, hΔ]) hready.2
   have hza : Healing.cutZ Q.params.toParams Q.gst < D.resetTime :=
     Healing.cutZ_lt_reset_of_snapshot D.reset.run
       (by obtain ⟨k, hk, _⟩ := D.reset.snapshot; exact ⟨k, hk⟩) D.reset.reset
@@ -482,7 +501,8 @@ theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
            sync := Healing.sync_window_at_reset_of_reset_before D.reset htb
            catchup := Healing.catch_window_at_reset_of_reset_catch_before D.reset
              (healthy_repair_catch S A V Q) htb
-           fault := Healing.fault_bound_late_before D.reset (by linarith) (hLt.trans htb) }⟩
+           fault := Healing.fault_bound_late_before D.reset
+             (by linarith only [hza, haL, hΔ]) (hLt.trans htb) }⟩
 
 omit h0 hb hp W states in
 /-- Normalized current live locks compare using their protected source provenance.
@@ -502,11 +522,8 @@ theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
     (Compose.fg_reachable D.reset.run.toLocalRun hy C.cut)).1
   have hsub : (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).tree ⊆
       Q.trace.HonestBlocks (honestKeys S Q.run.2) := fun X hX => ⟨_, hy, _, hX.1⟩
-  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now := by
-    have := C.repaired
-    have := Q.params.toParams.hΔ
-    have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
-    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
+  have hquery : D.query ≤ (stateAt S Q.run.2 Q.hn v i).now :=
+    (healthy_lt_of_reserve S A V Q C.repaired).le
   have hdrain : Healing.drainTime Q.params D.resetTime ≤
       (stateAt S Q.run.2 Q.hn v i).now :=
     ((le_max_of_le_right (le_max_left _ _)).trans D.lower).trans hquery
@@ -556,10 +573,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
     (show Q.ready ≤ D.query ∧ Healing.drainTime Q.params D.resetTime ≤ D.query ∧
       Q.params.ts D.oldLabel ≤ D.query ∧ SA.gbar Q.gst + 4 * Q.params.Δ ≤ D.query ∧
       0 ≤ D.query by simpa only [max_le_iff] using D.lower)
-  have ht0 : 0 < t := by
-    have := C.repaired
-    have := Int.natCast_nonneg Q.index
-    dsimp [t]; linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
+  have ht0 : 0 < t := hquery0.trans_lt (healthy_lt_of_reserve S A V Q C.repaired)
   have hv : v ∈ Q.run.2.honest := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hinit | ⟨j, hji, e, he, hnode, hstate, htime⟩
@@ -588,26 +602,17 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
       htree.2.1.1 hRm.1 htree.2.2.1 hgen
     rw [heq]
     exact (htree.2.2.2 _ hPhi.rooted.1.1).mono (Compose.fg_tree_subset_honest hy n)
-  have hTt : Q.params.ts O.slot + 6 * Q.params.Δ < t := by
-    have := O.bounded
-    have := C.repaired
-    dsimp [t]; linarith
+  have hTt : Q.params.ts O.slot + 6 * Q.params.Δ < t :=
+    healthy_opening_before_read S A V Q O C
   have hTb := hTt.le.trans C.time_bound
-  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
-      Q.params.ts O.slot := by
-    have hslot := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
-      (Q.params.slot (SA.gbar Q.gst))).2 le_rfl
-    have := O.fresh
-    simp only [SA.SAParams.ts] at hslot this ⊢
-    push_cast
-    linarith
+  have hjoin := healthy_opening_join S A V Q O
   obtain ⟨d, ellD, _, hup, _⟩ := D.reset.update_toFG_calls hy hjoin hTb
   have hdt : Q.trace.time d = Q.params.ts O.slot + 6 * Q.params.Δ := hup.2.2.1
   have hdn : d < n := by
     by_contra h
-    have := C.readPoint.2.trans (D.reset.run.time_mono (show n ≤ d by omega))
+    have := C.readPoint.2.trans (D.reset.run.time_mono (Nat.le_of_not_lt h))
     rw [hdt] at this
-    linarith
+    linarith only [this, hTt]
   obtain ⟨q, hqn, ell, hcall, hRq, hrest, hwriter⟩ :=
     last_record_writer D.reset.run D.reset.noColl hy hR hgen
   have hqt : Q.trace.time q ≤ t := C.readPoint.1 q hqn
@@ -635,9 +640,9 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
     rw [← C.latest] at hlatest
     have hclean : Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2 ≤ s := by
       rw [D.cleanLabel_eq] at hs
-      have := Q.params.two_le_k
-      omega
-    have hwindow : (s : Int) - Q.params.k < s := by have := Q.params.two_le_k; omega
+      exact clean_add_k_two_le Q.params.two_le_k hs
+    have hwindow : (s : Int) - Q.params.k < s :=
+      sub_lt_self _ (Int.natCast_pos.mpr (Nat.zero_lt_two.trans_le Q.params.two_le_k))
     exact ⟨x, hx, r, s, B, CV, hres, hRB, hrt.trans C.time_bound,
       D.reset.clean_window_timing hclean s hwindow, hs,
       by exact_mod_cast hlatest⟩
@@ -648,18 +653,13 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
     have hslot : Q.params.slot (Q.trace.time q) = s + 1 := by
       rw [htime]
       apply SA.slot_of_mem Q.params (s + 1) <;>
-        simp only [SA.SAParams.ts] <;> push_cast <;> linarith
+        simp only [SA.SAParams.ts] <;> push_cast <;> linarith only [hΔ]
     apply hraw y hy q s R CV hres .refl hqt
     rw [hslot] at hslotq
-    have := O.old_lt
-    have := D.old_bound
-    omega
+    exact Nat.lt_succ_iff.mp (D.old_bound.trans_lt (O.old_lt.trans_le hslotq))
   · let s := Q.params.slot (Q.trace.time q)
     have hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s := by
-      have := D.old_bound
-      have := O.old_lt
-      change D.cleanLabel + 2 * Q.params.k + 1 ≤ Q.params.slot (Q.trace.time q)
-      omega
+      exact D.old_bound.trans (O.old_lt.le.trans hslotq)
     have hsc : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 1 ≤ s := by
       simpa only [D.cleanLabel_eq] using hs
     have hcand : ∀ e, q ≤ e → e ≤ n →
@@ -679,8 +679,9 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
       rw [Compose.projAC_state D.reset.run.toLocalRun hy (q + 1)] at hwf
       have he := hwf.floor hlock
       have hl := UpTo.young_optimistic_lock_persists D.reset hc hy hy hop hsc hqb
-        (show q + 1 ≤ n by omega) C.readPoint.1 C.time_bound hyoung he hlock
-        (fun e hqe hen => ⟨hframe e (by omega) hen.le, hcand e (by omega) hen.le⟩)
+        hqn C.readPoint.1 C.time_bound hyoung he hlock
+        (fun e hqe hen => ⟨hframe e (Nat.le_of_succ_le hqe) hen.le,
+          hcand e (Nat.le_of_succ_le hqe) hen.le⟩)
       apply record_below_anchor_of_stored_live_lock hPhi hl hRm rfl ?_ ?_ hchain
       · have hfloor := (SA.ts_le_iff_le_slot Q.params C.time_nonneg
           (Q.params.slot t)).2 le_rfl
@@ -689,13 +690,16 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
         change Q.params.slot t ≤ e
         change s + 2 ≤ e at he
         by_contra h
-        have : (s : Int) + 3 ≤ Q.params.slot t := by omega
-        linarith [mul_le_mul_of_nonneg_left this (by linarith : (0 : Time) ≤ 4 * Q.params.Δ)]
+        have : (s : Int) + 3 ≤ Q.params.slot t := by
+          exact_mod_cast he.trans_lt (Nat.lt_of_not_le h)
+        linarith only [mul_le_mul_of_nonneg_left this
+          (by linarith only [hΔ] : (0 : Time) ≤ 4 * Q.params.Δ), hfloor, hyoung, hΔ]
       · rw [SA.viableAncestor_self hPhi hRm (hcand n hqn.le le_rfl).symm]
         exact .refl
     · have hnext : Q.params.ts (s + 1 : Nat) + 6 * Q.params.Δ ≤ t := le_of_not_gt hyoung
       have hjoinNext : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
-          Q.params.ts (s + 1 : Nat) := hjoin.trans ((SA.ts_le_iff Q.params).2 (by omega))
+          Q.params.ts (s + 1 : Nat) :=
+        hjoin.trans ((SA.ts_le_iff Q.params).2 (by exact_mod_cast hslotq.trans (Nat.le_succ _)))
       obtain ⟨j, ellJ, hu, hji⟩ := update_before_stored_clock S Q.run.2 Q.hn Q.valid
         D.reset hv hjoinNext hnext C.time_bound
       have hjt : Q.trace.time j = Q.params.ts (s + 1 : Nat) + 6 * Q.params.Δ := hu.2.2.1
@@ -715,7 +719,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
         rw [C.state_eq] at hFN
         exact hRF.trans hFN
       · right
-        exact hraw y hy j (s + 1) B DV hres hRB (hjt ▸ hnext) (by omega)
+        exact hraw y hy j (s + 1) B DV hres hRB (hjt ▸ hnext) (hs.trans (Nat.le_succ s))
 
 /-- Assemble the current whole-record certificate through the landed scoped adapters. -/
 theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
@@ -747,7 +751,7 @@ theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
   exact Or.inr ⟨healthy_current_record_viable S A V Q h0 hb hp W states D C
     hx hr hRB hrb hs hL hfc hR, x, hx, r, s, B, CV, hr, hRB, hrb, hs, hL,
     healthy_current_vote_domain S A V Q D hc hx hr hRB hrb
-      (by have := Q.params.two_le_k; omega),
+      (clean_add_k_two_le Q.params.two_le_k hlate),
     healthy_current_stored_locks S A V Q h0 hb hp W states D hx hr hRB hrb hlate⟩
 
 omit h0 hb hp W states in
@@ -783,13 +787,7 @@ theorem healthy_current_sources_compatible (D : HealthyRepairSchedule S A V Q)
   have hv' := honest_ownKey (S := S) hv
   rcases hR with rfl | ⟨x, hx, r, s, B, CV, _, hrb, hs, hB, hRB⟩
   · rcases hR' with rfl | ⟨y, hy, q, t, E, DV, _, hqb, ht, hE, hRE⟩
-    · have hf := D.reset.faults
-      have hn := Q.hn
-      have hf' : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.q - Q.params.n := by
-        change (honestKeys S Q.run.2)ᶜ.ncard <
-          2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
-        change 3 * (honestKeys S Q.run.2)ᶜ.ncard ≤ Fintype.card V - 1 at hf
-        omega
+    · have hf' := healthy_faults_lt_quorum S A V Q D
       exact Regimes.finalized_safe _ _ _ _ _ _ D.reset.run D.reset.noColl hf'
         _ hu' _ hv' _ _
     · exact tips_comparable_of_origin_witnesses S A V Q .refl hRE
@@ -812,19 +810,17 @@ theorem healthy_call_after_cut_time {i q : Nat} {y : Fin Q.params.n}
   obtain ⟨ell, _, hlabel⟩ := hq
   obtain ⟨_, p, e, _, he, _, hqp, _, _, htime, _⟩ :=
     simTrace_cut S Q.run.2 Q.hn (by rw [hlabel]; simp)
-  have hip : i ≤ p := by
-    by_contra h
-    have := cutMap_mono S Q.run.2 Q.hn (show p + 1 ≤ i by omega)
-    omega
+  have hip : i ≤ p := Nat.le_of_not_lt fun h =>
+    lt_irrefl q (hqp.trans_le ((cutMap_mono S Q.run.2 Q.hn h).trans hiq))
   rw [htime]
   cases i with
   | zero => exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).1
   | succ i =>
     have hplen := (List.getElem?_eq_some_iff.mp he).1
-    have hil : i < Q.run.2.events.length := by omega
+    have hil : i < Q.run.2.events.length := ((Nat.lt_succ_self i).trans_le hip).trans hplen
     have hei : Q.run.2.events[i]? = some Q.run.2.events[i] := List.getElem?_eq_getElem hil
     simp only [Model.Run.cutTime, hei]
-    rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he (by omega) with ht | ht
+    rcases keyLe_of_index_lt S Q.run.2 Q.valid hei he hip with ht | ht
     · exact ht.le
     · exact ht.1.le
 
@@ -857,21 +853,21 @@ theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
   have hbudget : Q.params.ts D.oldLabel + 6 * Q.params.Δ < Q.trace.time q := by
     have hlo : Q.params.ts D.oldLabel ≤ D.query :=
       (le_max_of_le_right (le_max_of_le_right (le_max_left _ _))).trans D.lower
-    have := D.reserve
-    have := Q.params.toParams.hΔ
-    have : (0 : Int) ≤ (Q.index : Time) := Int.natCast_nonneg _
-    linarith [mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
+    linarith only [hlo, D.reserve, ht,
+      mul_nonneg (Int.natCast_nonneg Q.index) Q.params.toParams.hΔ.le]
   have hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s := by
     apply D.old_bound.trans
     rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
     · have htime : Q.trace.time q = Q.params.ts s + 6 * Q.params.Δ := hu.2.2.1
       have hlt := (SA.ts_lt_iff Q.params).mp (show Q.params.ts D.oldLabel < Q.params.ts s by
-        linarith)
-      omega
+        linarith only [htime, hbudget])
+      exact_mod_cast hlt.le
     · have hh := (SA.ts_le_iff_le_slot Q.params (D.reset.run.time_nonneg q) D.oldLabel).mp
-        (show Q.params.ts D.oldLabel ≤ Q.trace.time q by linarith [Q.params.toParams.hΔ])
+        (show Q.params.ts D.oldLabel ≤ Q.trace.time q by
+          linarith only [hbudget, Q.params.toParams.hΔ])
       change Q.params.slot (Q.trace.time q) = s at hslot
-      omega
+      rw [← hslot]
+      exact_mod_cast hh
   rcases hcover with hF | ⟨x, hx, r, t, E, DV, _, hrb, hts, hE, hRE⟩
   · rw [hF]
     exact D.reset.finalized_compatible_clean_source (healthy_repair_catch S A V Q) hy hy hB
@@ -900,16 +896,10 @@ theorem healthy_current_record_next_floor (D : HealthyRepairSchedule S A V Q)
   have hy := honest_ownKey (S := S) hv.1
   intro q hiq hqj
   have hqb : ∀ p < q + 1, Q.trace.time p ≤ Q.run.2.horizon :=
-    fun p hpq => healthy_cut_prefix_time S A V Q hj.1 p (by omega)
+    fun p hpq => healthy_cut_prefix_time S A V Q hj.1 p ((Nat.lt_succ_iff.mp hpq).trans_lt hqj)
   rcases hcover with hF | ⟨x, hx, r, s, B, CV, _, hrb, hs, hB, hRB⟩
   · rw [hF]
-    have hf := D.reset.faults
-    have hn := Q.hn
-    have hf' : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.q - Q.params.n := by
-      change (honestKeys S Q.run.2)ᶜ.ncard <
-        2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
-      change 3 * (honestKeys S Q.run.2)ᶜ.ncard ≤ Fintype.card V - 1 at hf
-      omega
+    have hf' := healthy_faults_lt_quorum S A V Q D
     exact Regimes.finalized_safe _ _ _ _ _ _ D.reset.run D.reset.noColl hf' _ hy _ hy _ _
   · exact tips_comparable_of_origin_witnesses S A V Q .refl hRB
       (D.reset.finalized_compatible_clean_source (healthy_repair_catch S A V Q) hx hy hB
