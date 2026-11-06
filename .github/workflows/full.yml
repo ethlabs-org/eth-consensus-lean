@@ -131,7 +131,7 @@ jobs:
         run: |
           set -o pipefail
           if [[ "$PART" == main ]]; then
-            scripts/check.sh --full --split main --defer-replay --result-file "$RUNNER_TEMP/result.json" 2>&1 | tee "$RUNNER_TEMP/check.log"
+            scripts/check.sh --full --split main --defer-replay --defer-lint --result-file "$RUNNER_TEMP/result.json" 2>&1 | tee "$RUNNER_TEMP/check.log"
           else
             scripts/check.sh --full --split lake-check --no-shared-selftests --result-file "$RUNNER_TEMP/result.json" 2>&1 | tee "$RUNNER_TEMP/check.log"
           fi
@@ -150,9 +150,10 @@ jobs:
           lake_check = '10 lake check (+ fixtures/lakecheck-{bad,good})'
           if os.environ['PART'] == 'main':
               assert sorted((s['step'], s['reason']) for s in skipped) == sorted([
+                  ('1b deferred syntax lint', 'owned by lint job'),
                   ('5 kernel replay', 'owned by replay shards'),
                   (lake_check, 'the other --split part'),
-              ]), 'main must defer only production replay and lake check'
+              ]), 'main must defer only syntax lint, production replay and lake check'
           else:
               assert lake_check in result['steps_run'], 'lake check did not run'
               for s in skipped:
@@ -160,7 +161,7 @@ jobs:
                   shared = (number == '0' and 'self-test' in s['step'] and
                             not s['step'].startswith('0 pins') and
                             s['reason'] == 'shared self-test owned by split main')
-                  other = (number in {'1', '2', '3', '3b', '3c', '4', '5', '6', '7', '8', '9', '11', '12', '13', '14'} and
+                  other = (number in {'1', '1b', '2', '3', '3b', '3c', '4', '5', '6', '7', '8', '9', '11', '12', '13', '14'} and
                            s['reason'] == 'the other --split part')
                   assert shared or other, f'unexpected skipped gate: {s}'
           PY
@@ -200,6 +201,65 @@ jobs:
           path: |
             ${{ runner.temp }}/check.log
             ${{ runner.temp }}/result.json
+          retention-days: 30
+
+  syntax-lint:
+    name: Deferred syntax linters (all modules)
+    needs: full
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned elan and toolchain
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/elan.tgz"
+          echo "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63  $RUNNER_TEMP/elan.tgz" | sha256sum --strict -c -
+          tar -xzf "$RUNNER_TEMP/elan.tgz" -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/elan-init" -y --no-modify-path --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Lake packages
+        id: pkgs
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lake/packages
+          key: lake-pkgs-${{ runner.os }}-${{ hashFiles('lake-manifest.json', 'lean-toolchain') }}
+
+      - name: Restore Mathlib cache on a miss
+        if: steps.pkgs.outputs.cache-hit != 'true'
+        run: lake exe cache get
+
+      - name: Download this run's clean build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: replay-build
+          path: ${{ runner.temp }}/replay-build
+
+      - name: Verify build identity and unpack
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > "$RUNNER_TEMP/replay-identity"
+          sha256sum lean-toolchain lake-manifest.json >> "$RUNNER_TEMP/replay-identity"
+          cmp "$RUNNER_TEMP/replay-identity" "$RUNNER_TEMP/replay-build/replay-identity"
+          mkdir -p .lake
+          zstd -dc "$RUNNER_TEMP/replay-build/replay-build.tar.zst" | tar -C .lake -xf -
+
+      - name: Lint every source with two workers
+        run: |
+          set -euo pipefail
+          python3 -I scripts/lint-syntax.py -j 2 2>&1 | tee "$RUNNER_TEMP/lint.log"
+          test -z "$(git status --porcelain)"
+
+      - name: Upload lint log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: syntax-lint-log
+          path: ${{ runner.temp }}/lint.log
           retention-days: 30
 
   replay:

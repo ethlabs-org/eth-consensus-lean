@@ -196,6 +196,7 @@ jobs:
           FLAGS: ${{ steps.mode.outputs.flags }}
           DOCS_ONLY: ${{ steps.docs.outputs.docs_only }}
           BASE: ${{ steps.docs.outputs.base }}
+          LINT_BASE: ${{ steps.docs.outputs.base }}
         run: |
           set -euo pipefail
           mkdir -p "$RUN_DIR"

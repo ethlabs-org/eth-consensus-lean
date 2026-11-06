@@ -17,8 +17,14 @@ option relaxedAutoImplicit = false
 option warn.sorry = false
 option weak.linter.flexible = false
 option weak.linter.mathlibStandardSet = true
+option weak.linter.style.cdot = false
 option weak.linter.style.header = false
 option weak.linter.style.longFile = 1500
+option weak.linter.style.multiGoal = false
+option weak.linter.style.whitespace = false
+option weak.linter.unnecessarySeqFocus = false
+option weak.linter.unreachableTactic = false
+option weak.linter.unusedTactic = false
 option lean_lib Challenge weak.linter.style.longLine = false
 
 ## ConsensusLean.Init
