@@ -52,17 +52,22 @@ variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
 /-- Slot alignment: `s₀ = ⌈a_f / 4D⌉` has `a_f ≤ t_{s₀} < a_f + 4D`. -/
 theorem exists_slot_align (sp : SA.SAParams) {af : Time} (haf : 0 ≤ af) :
     ∃ s₀ : Nat, af ≤ sp.ts s₀ ∧ 4 * sp.Δ * (s₀ : ℤ) < af + 4 * sp.Δ := by
-  have h4D : 0 < 4 * sp.Δ := by have := sp.toParams.hΔ; linarith
+  have h4D : 0 < 4 * sp.Δ := by linarith only [sp.toParams.hΔ]
   set s₀Z : ℤ := (af + 4 * sp.Δ - 1) / (4 * sp.Δ) with hs₀Z
   have hs₀lo := Int.ediv_mul_le (af + 4 * sp.Δ - 1) h4D.ne'
   have hs₀hi := Int.lt_ediv_add_one_mul_self (af + 4 * sp.Δ - 1) h4D
   rw [← hs₀Z] at hs₀lo hs₀hi
-  have hs₀nn : 0 ≤ s₀Z := Int.ediv_nonneg (by linarith) h4D.le
+  have hs₀nn : 0 ≤ s₀Z := Int.ediv_nonneg (by linarith only [haf, h4D]) h4D.le
   have hs₀c : ((s₀Z.toNat : Nat) : ℤ) = s₀Z := Int.toNat_of_nonneg hs₀nn
   refine ⟨s₀Z.toNat, ?_, ?_⟩
   · change af ≤ 4 * sp.Δ * ((s₀Z.toNat : Nat) : ℤ)
-    rw [hs₀c]; linarith
-  · rw [hs₀c]; linarith
+    rw [hs₀c]; linarith only [hs₀hi]
+  · rw [hs₀c]; linarith only [hs₀lo]
+
+/-- The fault bound `3f ≤ n - 1` is below both quorum thresholds. -/
+private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1) :
+    f < (2 * n + 2) / 3 ∧ f < 2 * ((2 * n + 2) / 3) - n := by
+  omega
 
 /-- **The rise rounds at the warm proposal.** On a window `[a_f, a_f + len]` with merged key
 `v ≥ 2HZ` and a `FrameWindow`, the actual warm proposal `P` of slot `u` of a slot-aligned frame
@@ -87,11 +92,12 @@ theorem rounds_le_warm_proposal
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
     HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + riseRounds (HZ tr H g) v := by
   have hΔ := sp.toParams.hΔ
-  have hsN : sp.ts s₀ ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast (by omega : s₀ ≤ N))
+  have hsN : sp.ts s₀ ≤ sp.ts N :=
+    (SA.ts_le_iff sp).2 (by exact_mod_cast (Nat.le_add_right _ _).trans (hwarm.trans huN))
   have hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
       floor kindJ J := frameWindow_sub hwin haf hend
   obtain ⟨c, e, hvc, hes, hchi⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-    hcatch hnr (m := s₀) hm (by linarith) z hz
+    hcatch hnr (m := s₀) hm (by linarith only [hsN, hmb, hΔ]) z hz
   obtain ⟨ell, hc, he⟩ := hvc
   have hcast : SA.CastAt tr.projAC z c ell e := ⟨hc, he⟩
   have hlr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -100,18 +106,16 @@ theorem rounds_le_warm_proposal
     (SA.ts_le_iff_le_slot sp (hlr.time_nonneg c) _).2 (by
       change (s₀ : Int) ≤ sp.slot (tr.time c)
       rw [hslot])
-  have hc1 : af ≤ tr.time c := by linarith
-  have hc2 : tr.time c ≤ af + len := by linarith
+  have hc1 : af ≤ tr.time c := haf.trans hsc
+  have hc2 : tr.time c ≤ af + len := by linarith only [hchi, hsN, hend, hΔ]
   have hkey := hK z hz c hc1 hc2
-  have h1 : 1 ≤ (tr.state z c).fg.hmax := by
-    have := hj_lt_hmax hrun hz c
-    omega
+  have h1 : 1 ≤ (tr.state z c).fg.hmax := Nat.one_le_of_lt (hj_lt_hmax hrun hz c)
   have hZf := le_floor_add_riseRounds (tr.state z c).fg h1 (HZ := HZ tr H g)
     (by rw [hkey]; exact hv)
   rw [hkey, hwin.floor_eq z hz c hc1 hc2] at hZf
   have hPf := hframe.floor_le_warm_proposal hrun hnc hsvc hawake hf hcatch hnr hm hwarm
     huN hmb hz hdes hP hPs
-  omega
+  exact hZf.trans (Nat.add_le_add_right hPf _)
 
 /-- **The reset from the drain, key-dependent rise rounds.** The premises of
 the five-window drain reset with `resetBoundRounds` for its bound: the reset is at a time
@@ -139,22 +143,15 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     (hdrain : DrainOutputs tr proposer H g G Ld b) :
     ∃ a, IsReset tr H g a ∧ a ≤ resetBoundRounds r sp.Δ lam sp.toParams.fg.δt G Ld := by
   classical
-  set D := sp.Δ with hDdef
-  set δt := sp.toParams.fg.δt with hδdef
+  let D := sp.Δ
+  let δt := sp.toParams.fg.δt
   have hD : 0 < D := sp.toParams.hΔ
-  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < (2 * sp.n + 2) / 3
-    omega
-  have hf2 : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    have hn := sp.toParams.hn
-    change 0 < sp.n at hn
-    change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-    omega
+  obtain ⟨hq, hf2⟩ : Hᶜ.ncard < sp.toParams.fg.q ∧ Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n :=
+    faults_lt_quorums sp.toParams.hn hf
   set lo : Time := r + 4 * D with hlodef
-  set ρ : Nat := δt + G - 1 with hρdef
-  have hρZ : (ρ : ℤ) = (δt : ℤ) + (G : ℤ) - 1 := by omega
+  let ρ : Nat := δt + G - 1
+  have hρZ : (ρ : ℤ) = (δt : ℤ) + (G : ℤ) - 1 := by
+    rw [show ρ = δt + G - 1 from rfl, Nat.cast_sub (le_add_left hG), Nat.cast_add, Nat.cast_one]
   set d : Time := 4 * D * ((Ld : ℤ) + 2) with hddef
   set ρt : Time := 4 * D * (ρ : ℤ) with hρtdef
   set B := resetBoundRounds r D lam δt G Ld with hBdef
@@ -176,7 +173,7 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
   have hna : ∀ v ∈ H, ∀ k att, tr.SignAt v k att → tr.time k < B + 1 →
       att.h ≤ HZ tr H g := fun v hv k att hs hkT => by
     by_contra h
-    exact hadv ⟨v, hv, k, att, hs, Int.lt_add_one_iff.mp hkT, by omega⟩
+    exact hadv ⟨v, hv, k, att, hs, Int.lt_add_one_iff.mp hkT, Nat.lt_of_not_le h⟩
   -- the key-dependent window
   have hlo2 : gbar g + 2 * D ≤ lo := by rw [hlodef]; linarith only [hgr, hD]
   have hrange := hmax_range (T := B + 1) (lo := lo) hrun hnc hf2 hq hsvc hcatch hH hsnap hna
@@ -199,9 +196,7 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     (by linarith only [haf, hlodef, hr, hD, hlam])
   set N : Nat := s₀ + Ld + rr * ρ + 1 with hNdef
   have hpos : (0 : ℤ) ≤ ((s₀ : ℤ) + Ld) + (rr : ℤ) * ((δt : ℤ) + G - 1) + 1 := by
-    have : (0 : ℤ) ≤ (rr : ℤ) * ((δt : ℤ) + G - 1) := by
-      apply mul_nonneg <;> omega
-    omega
+    rw [← hρZ]; exact_mod_cast Nat.zero_le _
   -- the arithmetic of the frame (heal_bound_sufficient_rounds .1)
   have hfitN : sp.ts N + 2 * D < af + len ∧ sp.ts N + 2 * D ≤ B - 1 := by
     have hk : (0 : ℤ) ≤ sp.k := Int.natCast_nonneg _
@@ -213,9 +208,10 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
       (a := 0) (sa := 0) (uMin := 0) (lo := lo) (af := af) (len := len)
       (heal := r + healBoundCoeffRounds sp.k δt G Ld * D + 5 * lam - 2)
       (q := r + healBoundCoeffRounds sp.k δt G Ld * D + 5 * lam - 2)
-      hD hr hlam hk (by exact_mod_cast (show 1 ≤ δt by omega)) (by exact_mod_cast hG)
+      hD hr hlam hk (by exact_mod_cast (show 1 ≤ δt from le_trans (by decide) hδ))
+      (by exact_mod_cast hG)
       (Int.natCast_nonneg _) le_rfl hlenE hwinE hts₀hi
-      le_rfl (by linarith only [mul_nonneg h4D.le hpos, hD]) (by simp) (by omega)
+      le_rfl (by linarith only [mul_nonneg h4D.le hpos, hD]) (mul_zero _).le (by positivity)
       le_rfl le_rfl
     have hN' : sp.ts N = 4 * D * ((s₀ : ℤ) + Ld + (rr : ℤ) * ((δt : ℤ) + G - 1) + 1) := by
       rw [show sp.ts N = 4 * D * (N : ℤ) from rfl, hNdef]; push_cast; rw [hρZ]
@@ -234,20 +230,21 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
     (SA.ts_le_iff sp).2 (by exact_mod_cast h)
   -- the gap, on a frame ending before `B`
   have hgpN := hgp s₀ N hts₀r (by linarith only [hfitN.2])
+  have hLdN : s₀ + Ld ≤ N := (Nat.le_add_right _ _).trans (Nat.le_succ _)
   -- the drain
   obtain ⟨u, hwarm, huLd, z, hz, hdes, kP, P, hP, hPs, -⟩ :=
-    hdrain.warm hframe hm (by omega) hmb
+    hdrain.warm hframe hm hLdN hmb
       (fun v hv k att hs hk => hna v hv k att hs (by linarith only [hfitN.2, hk])) hgpN
+  have huN : u + rr * ρ + 1 ≤ N := Nat.add_le_add_right (Nat.add_le_add_right huLd _) 1
   -- the rise rounds at the warm proposal
   have hrise := rounds_le_warm_proposal hwin hK hv1 hts₀lo (by linarith only [hfitN.1]) hrun hnc
-    hsvc hawake hf hcatch hnr hm hwarm (by omega) hmb hz hdes hP hPs
+    hsvc hawake hf hcatch hnr hm hwarm (huLd.trans hLdN) hmb hz hdes hP hPs
   rw [hrrdef] at hrise
   -- the rise in `rr` rounds
   obtain ⟨a, ha, hab⟩ := hframe.rise_reset_rounds hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-    hδ hΔF hgpN hrr2 (show u + rr * ρ + 1 ≤ N by omega) hmb hz hdes hP hPs
-    (by omega)
+    hδ hΔF hgpN hrr2 huN hmb hz hdes hP hPs hrise
   refine ⟨a, ha, hab.trans ?_⟩
-  have := hts (show u + rr * ρ + 1 ≤ N by omega)
+  have := hts huN
   linarith only [hfitN.2, this]
 
 /-- **The reset from the drain, key-dependent rise rounds, from wakefulness** (`λ = 2Δ`).
@@ -276,14 +273,14 @@ theorem exists_reset_of_drain_rounds_awake (hrun : GoldilocksRun proposer dg H t
     have hc : (0 : ℤ) ≤ 20 * (Ld : ℤ) + 24 * ((sp.toParams.fg.δt : ℤ) + G - 1) + 60 := by omega
     have := mul_nonneg hc hΔ.le
     rw [resetBoundRounds_eq] at hb
-    linarith
-  obtain ⟨j, hj, -⟩ := snapshot_of_awake hrun hawake hH (by linarith)
+    linarith only [hb, this]
+  obtain ⟨j, hj, -⟩ := snapshot_of_awake hrun hawake hH (by linarith only [hcz, hrb])
   exact exists_reset_of_drain_rounds hrun hnc hf hsvc hawake hcatch hnr hH ⟨j, hj⟩ hδ hΔF
-    (by linarith) hr hgr hG
+    (by linarith only [hΔ]) hr hgr hG
     (fun z hz m hm hmb => snapshotCall_of_awake hrun hawake hcz (T := b + 1) le_rfl z hz m hm
-      (by linarith))
+      (Int.lt_add_one_iff.mpr hmb))
     (fun z hz i m hi him hmb => callLag_of_awake hrun hawake (lo := r + 4 * sp.Δ) (T := b + 1)
-      (by linarith) le_rfl z hz i m hi him (by linarith))
+      (by linarith only [hcz, hΔ]) le_rfl z hz i m hi him (Int.lt_add_one_iff.mpr hmb))
     hb hgp hdrain
 
 end Consensus.Goldilocks.Obligations
