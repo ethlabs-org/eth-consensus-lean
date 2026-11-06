@@ -63,6 +63,97 @@ def land(repo, env):
     return proc.returncode, proc.stdout
 
 
+def check_concurrent_landers():
+    with tempfile.TemporaryDirectory(prefix="push-main-race-") as tmp:
+        root = Path(tmp)
+        remote, first, env = landing_repo(root)
+        # Both landers encounter an existing owner before they can deliver. Shorten
+        # only the fixture's sleep executable; production still requests 30 seconds.
+        sleep = root / "bin/sleep"
+        sleep.write_text('#!/bin/sh\nexec /bin/sleep 0.05\n')
+        sleep.chmod(0o755)
+        script = first / "scripts/check.sh"
+        script.write_text('''#!/bin/sh
+if [ -e "$RUN_DIR/checked" ]; then
+  mkdir "$SHARED/checking" || { echo overlapping-checks; exit 1; }
+  /bin/sleep 0.2
+  rmdir "$SHARED/checking"
+fi
+touch "$RUN_DIR/checked"
+echo 'check.sh: PASSED (fixture)'
+''')
+        run("git", "add", ".", cwd=first)
+        run("git", "commit", "-qm", "check fixture", cwd=first)
+        second = root / "second"
+        run("git", "clone", "-q", str(first), str(second), cwd=root)
+        for key, value in (("user.name", "Test"), ("user.email", "test@example.invalid"),
+                           ("commit.gpgsign", "false"), ("core.hooksPath", "/dev/null")):
+            run("git", "config", key, value, cwd=second)
+        run("git", "remote", "set-url", "origin", str(remote), cwd=second)
+        for repo, name in ((first, "first-change"), (second, "second-change")):
+            (repo / name).write_text(name)
+            run("git", "add", ".", cwd=repo)
+            run("git", "commit", "-qm", name, cwd=repo)
+        tree = run("git", "rev-parse", "HEAD^{tree}", cwd=first)
+        lock = run("git", "commit-tree", "-m", "existing lock", tree, cwd=first)
+        run("git", "push", "-q", "origin", f"{lock}:refs/heads/push-main-lock", cwd=first)
+        logs, processes = [], []
+        try:
+            for i, repo in enumerate((first, second)):
+                run_dir = root / f"run{i}"
+                run_dir.mkdir()
+                log = (root / f"log{i}").open("w+")
+                logs.append(log)
+                processes.append(subprocess.Popen(["bash", str(SCRIPT)], cwd=repo, stdout=log,
+                                                  stderr=subprocess.STDOUT,
+                                                  env={**env, "RUN_DIR": str(run_dir), "SHARED": tmp}))
+            deadline = time.monotonic() + 20
+            while True:
+                outputs = []
+                for log in logs:
+                    log.seek(0)
+                    outputs.append(log.read())
+                if all("waiting for the landing lock" in out for out in outputs):
+                    break
+                assert time.monotonic() < deadline, outputs
+                time.sleep(0.02)
+            run("git", "push", "-q", "origin", ":refs/heads/push-main-lock", cwd=first)
+            for proc in processes:
+                assert proc.wait(timeout=30) == 0
+            for log in logs:
+                log.seek(0)
+                out = log.read()
+                assert "overlapping-checks" not in out, out
+                assert "push-main: contention wait=" in out and "active-lock=" in out, out
+            assert not run("git", "branch", "--list", "push-main-lock", cwd=remote)
+            for name in ("first-change", "second-change"):
+                assert run("git", "show", f"main:{name}", cwd=remote) == name
+        finally:
+            for proc in processes:
+                if proc.poll() is None:
+                    proc.terminate()
+                    proc.wait(timeout=10)
+            for log in logs:
+                log.close()
+    print("PASS: competing landers wait, serialize locked checks, and preserve both changes")
+
+
+def check_expired_lock_takeover():
+    with tempfile.TemporaryDirectory(prefix="push-main-expired-") as tmp:
+        root = Path(tmp)
+        remote, repo, env = landing_repo(root)
+        tree = run("git", "rev-parse", "HEAD^{tree}", cwd=repo)
+        lock = subprocess.check_output(["git", "commit-tree", "-m", "old lock", tree], cwd=repo,
+                                       env={**os.environ, "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}, text=True).strip()
+        run("git", "push", "-q", "origin", f"{lock}:refs/heads/push-main-lock", cwd=repo)
+        rc, out = land(repo, env)
+        assert rc == 0 and "taking over an expired lock" in out, out
+        assert "expired-lock=1" in out and "active-lock=0" in out, out
+        assert run("git", "rev-parse", "main", cwd=remote) == run("git", "rev-parse", "HEAD", cwd=repo)
+        assert not run("git", "branch", "--list", "push-main-lock", cwd=remote)
+    print("PASS: expired lock takeover preserves the checked head and releases the lock")
+
+
 def check_trusted_landing_posts_nothing():
     # A landing that touches the trusted surface lands like any other and calls no GitHub API: its record is the
     # commits' Trusted-surface lines and main's `check` run (scripts/review-boundary.sh).
@@ -286,6 +377,8 @@ echo 'check.sh: PASSED (fixture)'
 
 
 if __name__ == "__main__":
+    check_concurrent_landers()
+    check_expired_lock_takeover()
     for sig in (signal.SIGTERM, signal.SIGINT, None):
         check(sig)
     for mutation in ("dirty", "head", "gate"):
