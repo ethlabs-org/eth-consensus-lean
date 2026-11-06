@@ -956,8 +956,7 @@ theorem FrameWindow.proposal_suffix_before {s₀ s floor : Nat}
   · have hCs : C.slot ≠ sp.slot (tr.time ip) := by
       have hle := (Anc.slot_le hPhip.1.coherent hCQ).1
       have hlt := hr.coherent.2 d.head (hPhip.2 hQt) P (hPhi.2 hPv.1.1) hparent
-      rw [hslot, hPs] at *
-      clear * - hle hlt; omega
+      clear * - hle hlt hslot hPs; omega
     exact SA.isBest_transfer hXv hCs hv.2.1 hsc hT (fun _ h => h.1.1) hCy hrefl hC
   · have hXnv : X ∉ ell.frame.viableHeads := by
       intro hXv'
