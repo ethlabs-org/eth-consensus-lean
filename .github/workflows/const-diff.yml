@@ -31,7 +31,9 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
         run: |
           set -euo pipefail
-          base="$(git merge-base "$BASE_REF" HEAD)"
+          # Checkout fetches other branches as remote-tracking refs, not local branches.
+          ref="$(git rev-parse --verify "$BASE_REF^{commit}" 2>/dev/null || git rev-parse --verify "refs/remotes/origin/$BASE_REF^{commit}")"
+          base="$(git merge-base "$ref" HEAD)"
           git worktree add --detach "$RUNNER_TEMP/const-base" "$base"
           mkdir -p "$RUNNER_TEMP/const-report"
           printf 'Base: %s\nHead: %s\n' "$base" "$(git rev-parse HEAD)" | tee "$RUNNER_TEMP/const-report/revisions.txt"
