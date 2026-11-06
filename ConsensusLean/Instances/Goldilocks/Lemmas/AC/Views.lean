@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 
 public section
 
