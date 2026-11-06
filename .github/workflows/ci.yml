@@ -43,6 +43,20 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Review-boundary self-test (verdicts on throwaway repositories)
+        run: scripts/review-boundary.sh --self-test
+
+      - name: Review boundary (trusted-surface commits labelled)
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: scripts/review-boundary.sh "$BASE"
+
+      - name: Commit emails on the allowlist
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: python3 -I scripts/check-commit-emails.py --tags "$BASE" "$HEAD_SHA"
+
       - name: Classify docs-only changes (otherwise full fast tier)
         id: docs
         env:
@@ -95,6 +109,7 @@ jobs:
       # ~22 s no-op then) is skipped. A docs-only run, which skips `cache get`, never saves it.
       - name: Restore Lake packages
         id: pkgs
+        if: steps.docs.outputs.docs_only != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .lake/packages
@@ -103,6 +118,9 @@ jobs:
       - name: Restore Mathlib olean cache (not needed on an exact packages cache hit)
         if: steps.docs.outputs.docs_only != 'true' && steps.pkgs.outputs.cache-hit != 'true'
         run: lake exe cache get
+
+      - name: Check import boundaries before project builds
+        run: python3 -I scripts/check-boundaries.py
 
       - name: Save Lake packages (with Mathlib's oleans)
         if: steps.docs.outputs.docs_only != 'true' && steps.pkgs.outputs.cache-hit != 'true'
@@ -201,7 +219,7 @@ jobs:
       # The project build of main's green heads, for development environments that start from an older snapshot:
       # .agents/setup restores the newest one at or below its commit (scripts/restore-build.sh), so a fresh
       # environment rebuilds only what changed since. After the clean-tree step, so only a passing build is
-      # published. About 330 MB (zstd -3), kept 3 days; packing and uploading add well under a minute to main runs.
+      # published. About 450 MB (zstd -3), kept 90 days (the public-repository retention maximum).
       - name: Pack the project build (main)
         if: github.event_name == 'push' && steps.docs.outputs.docs_only != 'true'
         run: tar -C .lake -cf - build | zstd -T0 -3 -q -o "$RUNNER_TEMP/lake-build.tar.zst"
@@ -214,7 +232,7 @@ jobs:
           path: ${{ runner.temp }}/lake-build.tar.zst
           compression-level: 0
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 90
 
       - name: Summary (the check's result line and its SKIP lines)
         if: always()
@@ -233,7 +251,7 @@ jobs:
           retention-days: 90
 
       - name: Save project build (.lake/build)
-        if: ${{ !cancelled() && steps.docs.outputs.docs_only != 'true' && steps.build-cache.outputs.cache-hit != 'true' }}
+        if: success() && steps.docs.outputs.docs_only != 'true' && steps.build-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .lake/build
@@ -246,34 +264,3 @@ jobs:
           name: check-log
           path: ${{ runner.temp }}/check.log
           retention-days: 30
-
-      # Review boundary: a record of changes to the trusted surface (`trusted_paths` in scripts/boundaries.toml), not an
-      # approval (scripts/review-boundary.sh): it prints the trusted files a change touches, fails if a commit touching
-      # them lacks a `Trusted-surface: <what and why>` line, and writes the per-commit record (each commit's trusted
-      # paths and Trusted-surface line) to this run's summary, so every push and pull request carries it.
-      # Check infrastructure (scripts/, .github/, lakefile.toml) is not on the trusted surface (TRUST.md). These are
-      # steps of this job, not a job of their own: every job is billed at least one minute. They run even when
-      # check.sh failed.
-      - name: Review-boundary self-test (verdicts on throwaway repositories)
-        if: ${{ !cancelled() }}
-        run: scripts/review-boundary.sh --self-test
-
-      # A change that touches no trusted path passes; otherwise each commit touching it must be labelled.
-      - name: Review boundary (trusted-surface commits labelled)
-        if: ${{ !cancelled() }}
-        env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: scripts/review-boundary.sh "$BASE"
-
-      # Every new commit's author, committer and Co-authored-by addresses are on the public allowlist
-      # (scripts/commit-emails.toml). A PR checks its own commits (base..head, not GitHub's merge commit); a push to
-      # main the commits since the previous head; a dispatch or a first push the whole history. A failure names the
-      # commit and the field, never the address. Detection after upload; push-main.sh runs it before the push.
-      - name: Commit emails on the allowlist
-        if: ${{ !cancelled() }}
-        env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        # --tags: also the tagger of every annotated tag (the checkout fetches all tags), so a tag pushed with a
-        # private address is caught by the next check.
-        run: python3 -I scripts/check-commit-emails.py --tags "$BASE" "$HEAD_SHA"
