@@ -99,6 +99,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.AC
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.FactsProof
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.LocalRun
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
