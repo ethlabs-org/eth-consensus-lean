@@ -693,7 +693,7 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
     have hdl : ∀ k ≤ i, ∀ t, gbar g ≤ t →
         tr.projAC.deadline y k t ≤ max t (sp.ts m) + sp.Δ := by
       intro k _ t _
-      apply deadline_le_restarts (a := sp.ts m)
+      apply Compose.ac_deadline_le_of_restarts (a := sp.ts m)
       intro r _ hrs
       have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
       exact this.trans hgm
@@ -870,7 +870,7 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
   have hdl : ∀ k ≤ i, ∀ t, gbar g ≤ t →
       tr.projAC.deadline y k t ≤ max t (sp.ts m) + sp.Δ := by
     intro k _ t _
-    apply deadline_le_restarts (a := sp.ts m)
+    apply Compose.ac_deadline_le_of_restarts (a := sp.ts m)
     intro r _ hrs
     have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
     exact this.trans hgm

@@ -875,7 +875,7 @@ theorem optimistic_next_result_of_floor {b : Time}
       (by have := sp.two_le_k; omega) hrb q hqb z hz ellq e hcast (by omega)
   obtain ⟨hpool, hres⟩ := hp.extending_votes_resolved_before hc hy hu.1 hgu
     (by linarith) hjb
-    (fun k hkj t _ => Healing.deadline_le_restarts
+    (fun k hkj t _ => Compose.ac_deadline_le_of_restarts
       (fun k' hk' hk => (hrs k' (hk'.trans hkj) hk).le) t) hrs hFB hext
   have hall := honest_votes_in_slot hp hc hgu hR (show sp.ts (s + 1 : Nat) + sp.Δ ≤ b by linarith)
   have hH : H ⊆ {v | v ∈ H ∧ ∃ vote ∈ (tr.projAC.state y j).pool (s + 1), vote.val = v} := by

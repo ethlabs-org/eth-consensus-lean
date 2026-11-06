@@ -156,7 +156,7 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
   rw [hsi] at hrs
   have hdl : ∀ k ≤ i, tr.projAC.deadline p k (tr.projAC.time c) ≤
       sp.ts ((u : Int) - 1) + 3 * sp.Δ := fun k hk => by
-    have hd := deadline_le_restarts (T := tr.projAC)
+    have hd := Compose.ac_deadline_le_of_restarts (T := tr.projAC)
       (fun c' hc' hr' => hrs c' (hc'.trans hk) hr') (tr.projAC.time c)
     have := max_le hct.le (show sp.ts ((u : Int) - 1) ≤ sp.ts ((u : Int) - 1) + 2 * sp.Δ by
       linarith only [hΔ])

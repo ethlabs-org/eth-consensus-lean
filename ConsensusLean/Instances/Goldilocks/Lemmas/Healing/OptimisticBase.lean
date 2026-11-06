@@ -457,7 +457,7 @@ theorem FrameWindow.proposal_viable_at_cast {s₀ p floor : Nat}
       rw [hes] at hQs
       exact (proposal_frame_unique hrun hnc hz hdesignated hactual hPs hp0 hy hc.1 hQ hQs) ▸ hQ
     · have hdl : tr.projAC.deadline y i (tr.time ja) ≤ tr.time i := by
-        apply (deadline_le_restarts (a := gbar g) (fun r _ hrs =>
+        apply (Compose.ac_deadline_le_of_restarts (a := gbar g) (fun r _ hrs =>
           hnr y hy r (Compose.projAC_restartAt.mp hrs)) _).trans
         change max (tr.time ja) (gbar g) + sp.Δ ≤ tr.time i
         rw [hta, max_eq_left (hm.trans hts)]

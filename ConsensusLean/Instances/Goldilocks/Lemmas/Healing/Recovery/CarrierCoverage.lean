@@ -56,7 +56,7 @@ theorem restart_le_gbar (hp : ResetPremises tr H proposer dg g ΔF a) :
 theorem deadline_le_of_gbar (hp : ResetPremises tr H proposer dg g ΔF a) {y : Fin sp.n}
     (hy : y ∈ H) (k : Nat) {τ : Time} (hτ : gbar g ≤ τ) (Δ' : Time) :
     tr.deadline y k τ Δ' ≤ τ + Δ' := by
-  have h := deadline_le_restarts (T := tr.projAC) (c := k)
+  have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
     (fun k' _ hk' => restart_le_gbar hp y hy k' (Compose.projAC_restartAt.1 hk')) τ
   simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
   rw [max_eq_left hτ] at h

@@ -531,7 +531,7 @@ theorem frame_relay_before
     linarith
   by_cases hnew : gbar g ≤ tr.time k
   · have hdl : tr.projAC.deadline y j (tr.time k) ≤ tr.time j := by
-      have hd := deadline_le_restarts (T := tr.projAC) (c := j)
+      have hd := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
         (fun r _ hrs => hnr y hy r (Compose.projAC_restartAt.mp hrs)) (tr.time k)
       change _ ≤ max (tr.time k) (gbar g) + sp.Δ at hd
       rw [max_eq_left hnew] at hd

@@ -214,7 +214,7 @@ theorem UpTo.operational_proposal_below_next_parent {b : Time}
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he
   obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hy hci hgu
     (by change _ ≤ tr.time i; rw [hti, hσ]; linarith) hib
-    (fun k hki t _ => Healing.deadline_le_restarts
+    (fun k hki t _ => Compose.ac_deadline_le_of_restarts
       (fun k' hk' hr' => (hrs k' (hk'.trans hki) hr').le) t) hrs hz hv he
     (fun Hd hHd hHdr => by
       rw [hU.1 hHd hH' (hHdr.trans hHr'.symm)]

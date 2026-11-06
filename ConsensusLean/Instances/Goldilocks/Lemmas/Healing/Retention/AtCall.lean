@@ -53,7 +53,7 @@ theorem high_origin_held_at_call (hp : ResetPremises tr H proposer dg g ΔF a)
   -- the relay deadline at every cut of `y`: no restart after `ḡ < t_kw`
   have hdl : ∀ k', tr.projAC.deadline y k' (tr.projAC.time kw) ≤ tr.time kw + sp.Δ := by
     intro k'
-    have h₁ := deadline_le_restarts (T := tr.projAC) (c := k')
+    have h₁ := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k')
       (fun k'' _ hr' => (hnr y hy k'' (Compose.projAC_restartAt.1 hr')).trans
         (show gbar g ≤ tr.projAC.time kw from hkwg.le)) (tr.projAC.time kw)
     rw [max_eq_left le_rfl] at h₁

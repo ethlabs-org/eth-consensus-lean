@@ -202,7 +202,7 @@ theorem heldAtProposal_of_writer (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts σ + 2 * sp.Δ → tr.deadline x k τ < sp.ts σ + 3 * sp.Δ := by
     intro k hk τ hτ
-    have h₁ := Healing.deadline_le_restarts
+    have h₁ := Compose.ac_deadline_le_of_restarts
       (fun k' hk' hr' => (hrs k' (hk'.trans hk) hr').le) τ
     have h₂ := max_lt hτ (show sp.ts σ < sp.ts σ + 2 * sp.Δ by linarith only [hΔ])
     change tr.deadline x k τ ≤ max τ (sp.ts σ) + sp.Δ at h₁

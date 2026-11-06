@@ -137,7 +137,7 @@ theorem carryAt_after (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ →
       tr.projAC.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
-    have h₁ := Healing.deadline_le_restarts (T := tr.projAC)
+    have h₁ := Compose.ac_deadline_le_of_restarts (T := tr.projAC)
       (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
     have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith only [hΔ])
     change tr.projAC.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁

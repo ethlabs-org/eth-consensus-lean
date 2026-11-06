@@ -70,21 +70,6 @@ theorem ResetService.syncAC {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att s
     rw [he] at hlt
     simpa only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] using hlt
 
-/-! ### Deadlines -/
-
-section Deadline
-
-variable {P : Params} {FGP : Type} {A : ACInterface P FGP} {T : ACTrace A}
-
-/-- With every restart up to cut `c` at or before `a`, the deadline of `τ` is at most
-`max(τ, a) + Δ`. -/
-theorem deadline_le_restarts {y : Fin P.n} {c : Nat} {a : Time}
-    (h : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ a) (τ : Time) :
-    T.deadline y c τ ≤ max τ a + P.Δ :=
-  Compose.ac_deadline_le_of_restarts h τ
-
-end Deadline
-
 /-! ### One honest node over an SA trace -/
 
 section Node
@@ -168,7 +153,8 @@ theorem relay_mem_voterBlockTree (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H 
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
-    have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
+    have h₁ := Compose.ac_deadline_le_of_restarts
+      (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
     have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
         linarith only [hkwt, hsm])
       (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
@@ -226,7 +212,8 @@ private theorem relay_mem_voterBlockTree_window_aux
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
-    have h₁ := deadline_le_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
+    have h₁ := Compose.ac_deadline_le_of_restarts
+      (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') (T.time kw)
     have h₂ := max_lt (show T.time kw < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by
         linarith only [ht, hsm])
       (show sp.ts ((e.msg.slot : Int) - 1) < sp.ts ((e.msg.slot : Int) - 1) + 2 * sp.Δ by

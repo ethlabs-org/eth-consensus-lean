@@ -311,7 +311,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
   · have hFD := hFB.trans hBD
     have hDt : D ∈ ell.frame.tree := by
       by_cases hg : SA.gbar g ≤ tr.time q
-      · have hd := deadline_le_restarts (T := tr.projAC) (c := i)
+      · have hd := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := i)
           (fun k hki hr' => restart_le_before hp hpH (Compose.projAC_restartAt.mp hr')
             ((hp.run.time_mono hki).trans hib)) (tr.time q)
         have hdl : tr.projAC.deadline p i (tr.time q) ≤ tr.time i := by
@@ -593,7 +593,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he
   obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hσg
     (by change _ ≤ tr.time i; rw [hti, hσ]; linarith only [hΔ]) hib
-    (fun k hki t _ => deadline_le_restarts
+    (fun k hki t _ => Compose.ac_deadline_le_of_restarts
       (fun k' hk' hr' => (hrs k' (hk'.trans hki) hr').le) t) hrs hz hv he
     (fun Hd hHd hHdr => by
       rw [hU.1 hHd hH' (hHdr.trans hHr'.symm)]

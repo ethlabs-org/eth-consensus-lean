@@ -902,7 +902,7 @@ theorem raw_writer_held_at_slot_start
       by_cases hg : SA.gbar g ≤ tr.time q
       · have hdl : ∀ k ≤ i, tr.projAC.deadline p k (tr.time q) < sp.ts s + 3 * sp.Δ := by
           intro k hk
-          have hd := deadline_le_restarts
+          have hd := Compose.ac_deadline_le_of_restarts
             (T := tr.projAC) (c := k) (fun k' _ hr' => hS.restart_le hpH hr') (tr.time q)
           have ht : max (tr.time q) (SA.gbar g) < sp.ts s + 2 * sp.Δ := by
             apply max_lt hqt
@@ -933,7 +933,7 @@ theorem reset_accept_frame
   have hS := healthy_base_of_reset_catch hp hc
   have hr := hS.run.localRun
   by_cases hnew : SA.gbar g ≤ tr.time q
-  · have hd := deadline_le_restarts
+  · have hd := Compose.ac_deadline_le_of_restarts
       (T := tr.projAC) (c := j) (fun k _ hk => hS.restart_le hy hk) (tr.time q)
     have hdl : tr.projAC.deadline y j (tr.time q) ≤ tr.time j := by
       change _ ≤ max (tr.time q) (SA.gbar g) + sp.Δ at hd

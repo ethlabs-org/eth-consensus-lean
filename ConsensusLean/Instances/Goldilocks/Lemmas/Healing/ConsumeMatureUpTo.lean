@@ -58,7 +58,7 @@ theorem rows_delivered_upTo (hrun : GoldilocksRun proposer dg H tr)
     ∃ k' < kX, tr.ProcessAttAt p k' att ∧ tr.time k' < tr.time kX := by
   have hg : max (tr.time k) g ≤ v := max_le hk ((le_gbar g).trans hv)
   have hdl : ∀ j ≤ kX, tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := fun j hj => by
-    have h := deadline_le_restarts (T := tr.projAC) (c := j)
+    have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
       (fun r hr hrs => hnr r (hr.trans hj) (Compose.projAC_restartAt.1 hrs)) (max (tr.time k) g)
     simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
     have := max_le hg hv

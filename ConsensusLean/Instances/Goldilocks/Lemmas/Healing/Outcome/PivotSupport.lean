@@ -135,7 +135,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
     obtain ⟨H', hH', hHr', hOH⟩ := votes z hz q e hv hes
     obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hsg
       (by change _ ≤ tr.time i; rw [hti, hsucc]; linarith only [hΔ]) hib
-      (fun k hki t _ => deadline_le_restarts
+      (fun k hki t _ => Compose.ac_deadline_le_of_restarts
         (fun k' hk' hr' => (hrs k' (hk'.trans hki) hr').le) t) hrs hz hv hes
       (fun Hd hHd hHdr => by
         rw [hU.1 hHd hH' (hHdr.trans hHr'.symm)]

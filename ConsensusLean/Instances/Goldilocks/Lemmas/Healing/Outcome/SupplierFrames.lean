@@ -361,7 +361,7 @@ theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
   have hS := healthy_base_of_reset_catch_before hp hc
   have hr := hS.run.localRun
   by_cases hnew : SA.gbar g ≤ tr.time q
-  · have hd := deadline_le_restarts (T := tr.projAC) (c := j)
+  · have hd := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
       (fun k hkj hk => restart_le_before hp hy (Compose.projAC_restartAt.mp hk)
         ((hp.run.time_mono hkj).trans hjb)) (tr.time q)
     have hdl : tr.projAC.deadline y j (tr.time q) ≤ tr.time j := by

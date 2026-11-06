@@ -163,7 +163,7 @@ theorem effAllowed_of_floor_lt (hrun : GoldilocksRun proposer dg H tr)
 at an honest node is at most `max(τ, ḡ) + Δ'`, for every delivery parameter `Δ'`. -/
 theorem deadline_le_of_healthy (hs : HSShared tr H dg g ΔF) {y : Fin sp.n} (hy : y ∈ H)
     (k : Nat) (τ Δ' : Time) : tr.deadline y k τ Δ' ≤ max τ (gbar g) + Δ' := by
-  have h := deadline_le_restarts (T := tr.projAC) (c := k)
+  have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)
     (fun k' _ hk' => hs.noRestart y hy k' (Compose.projAC_restartAt.1 hk')) τ
   simp only [ACTrace.deadline, RunTrace.deadline, Compose.projAC_lastWake] at h ⊢
   linarith

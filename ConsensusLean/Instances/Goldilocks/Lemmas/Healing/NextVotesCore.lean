@@ -126,7 +126,7 @@ theorem relay_source_at_proposal
   have hdl : ∀ k ≤ i, ∀ t, t < sp.ts s + 2 * sp.Δ →
       tr.projAC.deadline y k t < sp.ts s + 3 * sp.Δ := by
     intro k hk t ht
-    have h := deadline_le_restarts (fun r hri hr => hrs r (hri.trans hk) hr) t
+    have h := Compose.ac_deadline_le_of_restarts (fun r hri hr => hrs r (hri.trans hk) hr) t
     have hm' : max t (sp.ts s) < sp.ts s + 2 * sp.Δ := max_lt ht (by linarith only [hΔ])
     change tr.projAC.deadline y k t ≤ max t (sp.ts s) + sp.Δ at h
     linarith only [hm', h]

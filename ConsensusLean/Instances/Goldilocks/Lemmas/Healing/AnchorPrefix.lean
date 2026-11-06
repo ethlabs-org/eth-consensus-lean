@@ -376,7 +376,7 @@ theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
       rw [hstep] at hstart
       linarith only [ht, hstart, hstep]) (ht.trans hmb)
     (fun k hk t ht => by
-      apply deadline_le_restarts (a := sp.ts s)
+      apply Compose.ac_deadline_le_of_restarts (a := sp.ts s)
       intro r _ hrs
       have := hnr y hy r (Compose.projAC_restartAt.mp hrs)
       change tr.time r ≤ _
