@@ -127,18 +127,18 @@ theorem ResetPremisesUpTo.call_locks_compatible_of_unanimous {b : Time}
     rcases horig with ⟨CV, ⟨ellr, C, hupd, _⟩ | hop⟩ | ⟨ellr, C, hupd, _⟩
     · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
       have hlt := (SA.ts_lt_iff sp).2 (show (u : Int) < l.slot by omega)
-      exfalso; linarith
+      exfalso; linarith only [hrt, htr, hlt]
     · have hsl : sp.slot (tr.time r) = l.slot := hop.choose_spec.choose_spec.2.1
       have hmono := SA.slot_mono sp (hr.time_nonneg r) hrt
       change sp.slot (tr.time r) ≤ sp.slot (sp.ts u + 6 * sp.Δ) at hmono
       have hs : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-        SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith)
-          (by simp only [SAParams.ts]; push_cast; linarith)
+        SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith only [hDelta])
+          (by simp only [SAParams.ts]; push_cast; linarith only [hDelta])
       rw [hsl, hs] at hmono
       exact hnext r hrj D CV (show l.slot = u + 1 by omega ▸ hop)
     · have htr : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
       have hlt := (SA.ts_lt_iff sp).2 (show (u : Int) < l.slot by omega)
-      exfalso; linarith
+      exfalso; linarith only [hrt, htr, hlt]
   rcases hDP with hDP | hPD
   · exact Or.inl (hLD.trans hDP)
   · exact SA.anc_total hr.coherent hLD hPD
@@ -175,7 +175,7 @@ theorem ResetPremisesUpTo.held_target_high_floor_report_before {b : Time}
         have ht : sp.ts l ≤ tr.time r' := by
           rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
           · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
-            linarith [sp.toParams.hΔ]
+            linarith only [ht, sp.toParams.hΔ]
           · change sp.slot (tr.time r') = l at hsl
             exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r') l).2 (by omega)
         have hlabel := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).1
@@ -274,8 +274,8 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
   have hslot : sp.slot (tr.time j) = u + 1 := by
     rw [ht]
     exact SA.slot_of_mem sp (u + 1)
-      (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-      (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+      (by simp only [SAParams.ts]; push_cast; linarith only [sp.toParams.hΔ])
+      (by simp only [SAParams.ts]; push_cast; linarith only [sp.toParams.hΔ])
   have hpost : tr.projAC.post j = SA.updateConfirmation sp A ell.frame (tr.time j) u := by
     have he := hr.exec j ell hu.1.2 (hu.1.1 ▸ hy)
     rw [hu.1.1, hu.2.1] at he
@@ -285,7 +285,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
     unfold SA.acOnTick
     dsimp only
     have hn1 : ¬ tr.time j = sp.ts (u + 1 : Nat) + sp.Δ := by
-      rw [ht]; simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+      rw [ht]; simp only [SAParams.ts]; push_cast; linarith only [sp.toParams.hΔ]
     have h2 : tr.time j = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
       rw [ht]; simp only [SAParams.ts]; push_cast; ring
     have hj : SA.joined sp A (tr.time j) := hu.2.2.2
@@ -400,7 +400,8 @@ theorem ResetPremisesUpTo.reset_frame_relay {b : Time}
     · exact he ▸ (SA.frameIn_of_callAt hr hy hcy).1.rooted.1
     · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
   · exact hp.reset_accept_frame hc hx hy ha hcy hjb hg hjoin
-      (by have := hp.run.time_mono hk; change tr.time k ≤ tr.time q at this; linarith) hF
+      (by have := hp.run.time_mono hk; change tr.time k ≤ tr.time q at this
+          linarith only [hq, this]) hF
 
 /-- The actual proposal reaches a voter's frame above its finalization root. -/
 theorem reset_proposal_frame
@@ -515,7 +516,7 @@ theorem reset_frozen_frame
     rw [hti]
     simp only [SA.freeze, SA.SAParams.ts] at ht ⊢
     push_cast at ht ⊢
-    linarith
+    linarith only [ht]
 
 /-- Guarded incidence gives view agreement on common held targets. Proposal heldness at the
 voter remains explicit; this lemma does not supply viable-tree membership. -/
@@ -625,7 +626,7 @@ theorem ResetPremisesUpTo.reset_frozen_frame {b : Time}
     rw [hti]
     simp only [SA.freeze, SA.SAParams.ts] at ht ⊢
     push_cast at ht ⊢
-    linarith
+    linarith only [ht]
 
 /-- Finite operational proposal and voter views agree on common held targets. -/
 theorem ResetPremisesUpTo.reset_views_agree {b : Time}
