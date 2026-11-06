@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 
 public section
 
@@ -25,9 +26,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- `3f ≤ n - 1` gives `f < 2q - n`, the fault bound in quorum form. -/
 private theorem faults_lt_quorum_margin (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) :
     Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-  have hn : 0 < sp.n := sp.toParams.hn
-  change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-  omega
+  exact sp.toParams.fg.faults_lt_quorum_margin hf
 
 /-- The optimistic base G(s+1,X), including below-floor X with a viable descendant Q.
 The actual write and its counted set are retained. Q is held at any honest early cut; its

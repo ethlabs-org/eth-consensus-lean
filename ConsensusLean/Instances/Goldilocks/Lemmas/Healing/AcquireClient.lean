@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 
 public section
 
@@ -178,19 +179,7 @@ private theorem foldl_newest_mem {l : List (Nat × Nat)} {acc : Option (Nat × N
       | none => some p
       | some r => if r.1 < p.1 then some p else some r) acc = some p) :
     acc = some p ∨ p ∈ l := by
-  induction l generalizing acc with
-  | nil => exact Or.inl h
-  | cons q l ih =>
-    rcases ih h with h' | h'
-    · rcases acc with _ | r
-      · simp only [Option.some.injEq] at h'
-        exact Or.inr (h' ▸ List.mem_cons_self)
-      · dsimp only at h'
-        split_ifs at h' with hlt
-        · simp only [Option.some.injEq] at h'
-          exact Or.inr (h' ▸ List.mem_cons_self)
-        · exact Or.inl h'
-    · exact Or.inr (List.mem_cons_of_mem _ h')
+  exact FG.Record.foldl_newest_mem_or_initial h
 
 /-- **A finality pair of a held state is the justification of a held state** (the entry's own
 justification at an entry whose previous height is justified, or a pending pair). -/

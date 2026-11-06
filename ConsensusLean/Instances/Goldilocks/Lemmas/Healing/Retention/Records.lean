@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 
 public section
 
@@ -98,19 +99,7 @@ private theorem foldl_newest_mem {l : List (Nat × Nat)} {acc : Option (Nat × N
       | none => some p
       | some r => if r.1 < p.1 then some p else some r) acc = some p) :
     acc = some p ∨ p ∈ l := by
-  induction l generalizing acc with
-  | nil => exact Or.inl h
-  | cons q l ih =>
-    rcases ih h with h' | h'
-    · rcases acc with _ | r
-      · simp only [Option.some.injEq] at h'
-        exact Or.inr (h' ▸ List.mem_cons_self)
-      · dsimp only at h'
-        split_ifs at h' with hlt
-        · simp only [Option.some.injEq] at h'
-          exact Or.inr (h' ▸ List.mem_cons_self)
-        · exact Or.inl h'
-    · exact Or.inr (List.mem_cons_of_mem _ h')
+  exact FG.Record.foldl_newest_mem_or_initial h
 
 /-- One accepted block: its justification is the parent's, or the parent's entry at the parent's
 height; its pending pairs are the parent's or the parent's `(h, T_h)`. -/
