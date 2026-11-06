@@ -227,22 +227,28 @@ instance (ctl : Bool) (y : Fin 5) (t : Nat) (v : X.V) (P : X.EmD → Bool) :
 def lockV (ctl : Bool) (em : X.EmD) : Bool :=
   ctl || decide ((⟨3, 4, false, 8⟩ : Lock) ∈ em.rp.locks)
 
+/-- The honest voters of slot `σ`. -/
+def votersD (ctl : Bool) (σ : Nat) : List (Fin 5) :=
+  (rowsD ctl).filterMap fun r =>
+    if (emsD r.cut).any (fun em => em.vote.slot == σ) then some r.node else none
+
+private theorem premiseChecks : (∀ ctl, SourceD ctl ∧ rowsChk ctl = true ∧
+    VoteRowD ctl vc 29 (vt vc 7 (cHead ctl)) (fun _ => true) ∧
+    VoteRowD ctl vc 33 (vt vc 8 (cHead ctl)) (lockV ctl) ∧
+    allR.all (· ∈ (stateD ctl va (rowsD ctl).length).fg.tree) = true) ∧
+    (∀ ctl, [va, vb, vc] ⊆ votersD ctl 7 ∧ [va, vb, vc] ⊆ votersD ctl 8) := by
+  decide +kernel
+
 /-- The checks on data: the source; the rows; `c`'s votes at `29` (slot `7`) and `33` (slot `8`)
 with head `cHead ctl`, and the lock `(V, 4, slow, 8)` at the slot-8 vote of the rejection run;
 every root of `allR` in `a`'s final tree. -/
 theorem checks_true : ∀ ctl, SourceD ctl ∧ rowsChk ctl = true ∧
     VoteRowD ctl vc 29 (vt vc 7 (cHead ctl)) (fun _ => true) ∧
     VoteRowD ctl vc 33 (vt vc 8 (cHead ctl)) (lockV ctl) ∧
-    allR.all (· ∈ (stateD ctl va (rowsD ctl).length).fg.tree) = true := by
-  decide +kernel
+    allR.all (· ∈ (stateD ctl va (rowsD ctl).length).fg.tree) = true := premiseChecks.1
 
-/-- The honest voters of slot `σ`. -/
-def votersD (ctl : Bool) (σ : Nat) : List (Fin 5) :=
-  (rowsD ctl).filterMap fun r =>
-    if (emsD r.cut).any (fun em => em.vote.slot == σ) then some r.node else none
-
-theorem voters_checks : ∀ ctl, [va, vb, vc] ⊆ votersD ctl 7 ∧ [va, vb, vc] ⊆ votersD ctl 8 := by
-  decide +kernel
+theorem voters_checks : ∀ ctl, [va, vb, vc] ⊆ votersD ctl 7 ∧ [va, vb, vc] ⊆ votersD ctl 8 :=
+  premiseChecks.2
 
 /-! ## The run on data -/
 
