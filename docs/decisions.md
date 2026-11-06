@@ -21,6 +21,27 @@ detail in `TRUST.md`.
   bad proposer slot per window (`ProgressTolerant`). The sleepy stress witness keeps at most two honest validators
   awake. Available and stable monotonicity are conditional, final monotonicity is unconditional. `available` may
   bind to `ac_confirmed`.
+- **Profiles are checked labels, not property sets.** `Profile` names three standard capability sets:
+  `ebbAndFlow` (final, stable, available), `bft` (final only) and `available` (available and stable).
+  `Profile.Matches p O` fixes the provided capabilities exactly (not a lower bound, so an all-three protocol cannot
+  be reviewed as BFT), compares capabilities only (the output type is not fixed and outputs may alias: Goldilocks
+  serves available and stable by `confirmed`) and is not exhaustive (an available-only schema matches no profile
+  and stays covered by `ShapeObligations` and `CorrectProtocol`). An endpoint states its profile with
+  `ShapeObligationsAs p F K := p.Matches O ∧ ShapeObligations F K`; the Goldilocks endpoint `MeetsObligations` is
+  `ShapeObligationsAs .ebbAndFlow`, a restatement of the unlabelled endpoint since its schema decides the label.
+  `CorrectProtocol`, `Behaviour`, `Realizable` and `ObligationsSufficient` are unchanged, with one generic review
+  statement: the table already selects its rows from the schema. So a BFT protocol keeps final monotonicity on
+  every network, final accountability in every environment and healthy liveness, and an available protocol keeps
+  for its available and stable outputs sleepy safety and liveness (`sleepySafe`, `sleepyLive`), outage
+  persistence of the stable output (`persists`), healthy liveness (`healthyLive`) and healed safety (`healedSafe`):
+  it need not be safe under asynchrony, but it recovers after it. Reason: a
+  reviewer sees the advertised capability set checked in the endpoint, while what is claimed of each capability
+  stays one fixed table.
+- **The ordinary regime witnesses are not gated by the provided outputs.** The `sleepy`, `healthy` and `outage`
+  witnesses of `Realizable` and `RealizableActive` show that the regimes can occur and do not depend on which
+  outputs are provided; they are asked at every capability and index. Only the sleepy stress witness and the
+  bad-proposer witness are gated by the provided outputs. Reason: gating the ordinary witnesses by profile would
+  drop non-vacuity obligations without adding a claim.
 - **`stable := final` is not a correct choice**: stable must be sleepy-live.
 - **The outage regime is η-sleepy, and its end acts as GST**: after an outage, every after-GST property applies.
 - **Per-slot proposer selection in the skeleton.** `Skeleton.proposerSel : Slot → SelSpec n`, so that a shape can

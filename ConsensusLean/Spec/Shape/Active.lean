@@ -59,7 +59,12 @@ def BadProposerEvery (cap : Capability) (i : K.Idx) {E : Env V}
 
 /-- L0 `Realizable` of the compiled system, with every sleepy and healthy
 witness (stress included) also having an active progress window
-(`ProgressActive`) from the start of its progress premise. -/
+(`ProgressActive`) from the start of its progress premise. The ordinary regime
+witnesses (`sleepy`, `healthy`, `outage`) show that the regimes can occur and do
+not depend on which outputs are provided: the sleepy and healthy witnesses are
+asked at every capability and index, provided or not, and the outage witness
+names no output; only `sleepyStress` and `badProposer` are gated by the provided
+outputs. -/
 structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
   sleepy : ∀ cap i (ΔAC ΔFG : Time), 1 < ΔAC → 1 < ΔFG → ∃ r, (Sys F V).WitnessAt ΔAC ΔFG r ∧
     (Sys F V).SleepyLive (shapeProgress F V) K cap i r ∧ ProgressActive F K cap i 0 r.2

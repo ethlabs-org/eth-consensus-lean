@@ -1452,6 +1452,55 @@ def Consensus.CommLog.SyncUntil : {V M : Type} → Consensus.EnvPoint V → Cons
   #1215548317/870988685
 def Consensus.CommLog.TxHeld : {V M : Type} → Consensus.CommLog V M → V → Consensus.Tx → Consensus.Time → Prop := fun {V M} L w x d => Exists.{1} fun τ => And (LE.le.{0} 0 τ) (And (LE.le.{0} τ d) (Membership.mem.{0, 0} (L.inbox w τ) x))
   #1781800056/89557351
+## ConsensusLean.Spec.Problem.Profile
+induct Consensus.Profile : Type
+  #3931117990/-
+def Consensus.Profile.Matches : Consensus.Profile → Consensus.OutputSchema → Prop := fun p O => ∀ (cap : Consensus.Capability), Eq.{1} (Option.isSome.{0} (O.output cap)) (p.provides cap)
+  #2205442702/2003821318
+def Consensus.Profile._sizeOf_1 #2121668474/332161559
+def Consensus.Profile._sizeOf_inst #3970306958/2465405890
+ctor Consensus.Profile.available : Consensus.Profile
+  #2721005257/-
+def Consensus.Profile.available.elim : {motive : Consensus.Profile → Sort u} → (t : Consensus.Profile) → Eq.{1} t.ctorIdx 2 → motive Consensus.Profile.available → motive t := fun {motive} t h available => Consensus.Profile.ctorElim.{u} 2 t ⋯ (PULift.up.{u, u} available)
+  #1755992674/308148841
+theorem Consensus.Profile.available.sizeOf_spec #316470457/-
+ctor Consensus.Profile.bft : Consensus.Profile
+  #2721005257/-
+def Consensus.Profile.bft.elim : {motive : Consensus.Profile → Sort u} → (t : Consensus.Profile) → Eq.{1} t.ctorIdx 1 → motive Consensus.Profile.bft → motive t := fun {motive} t h bft => Consensus.Profile.ctorElim.{u} 1 t ⋯ (PULift.up.{u, u} bft)
+  #1519815373/1284389364
+theorem Consensus.Profile.bft.sizeOf_spec #4102155994/-
+def Consensus.Profile.casesOn : {motive : Consensus.Profile → Sort u} → (t : Consensus.Profile) → motive Consensus.Profile.ebbAndFlow → motive Consensus.Profile.bft → motive Consensus.Profile.available → motive t := fun {motive} t ebbAndFlow bft available => Consensus.Profile.rec.{u} ebbAndFlow bft available t
+  #2539496807/95098118
+def Consensus.Profile.ctorElim : {motive : Consensus.Profile → Sort u} → (ctorIdx : Nat) → (t : Consensus.Profile) → Eq.{1} ctorIdx t.ctorIdx → Consensus.Profile.ctorElimType.{u} ctorIdx → motive t := fun {motive} ctorIdx t h k => Consensus.Profile.casesOn.{u} (motive := fun t => Eq.{1} ctorIdx t.ctorIdx → motive t) t (fun h => PULift.down.{u, u} (Eq.ndrec.{max 1 u, 1} k h)) (fun h => PULift.down.{u, u} (Eq.ndrec.{max 1 u, 1} k h)) (fun h => PULift.down.{u, u} (Eq.ndrec.{max 1 u, 1} k h)) h
+  #2279737990/3180522769
+def Consensus.Profile.ctorElimType #812242074/2626577363
+def Consensus.Profile.ctorIdx #2121668474/4233749946
+ctor Consensus.Profile.ebbAndFlow : Consensus.Profile
+  #2721005257/-
+def Consensus.Profile.ebbAndFlow.elim : {motive : Consensus.Profile → Sort u} → (t : Consensus.Profile) → Eq.{1} t.ctorIdx 0 → motive Consensus.Profile.ebbAndFlow → motive t := fun {motive} t h ebbAndFlow => Consensus.Profile.ctorElim.{u} 0 t ⋯ (PULift.up.{u, u} ebbAndFlow)
+  #2432512556/2139909819
+theorem Consensus.Profile.ebbAndFlow.sizeOf_spec #590654727/-
+def Consensus.Profile.noConfusion : {P : Sort v✝} → {x y : Consensus.Profile} → Eq.{1} x y → Consensus.Profile.noConfusionType.{v✝} P x y := fun {P} {x y} h => noConfusionEnum.{1, v✝} Consensus.Profile.ctorIdx h
+  #2413583662/1045410706
+def Consensus.Profile.noConfusionType #224621137/304546258
+def Consensus.Profile.ofNat #3341260670/2569200154
+theorem Consensus.Profile.ofNat_ctorIdx #2702245251/-
+def Consensus.Profile.provides : Consensus.Profile → Consensus.Capability → Bool := fun x x_1 => Consensus.Profile.provides.match_1.{1} (fun x x_2 => Bool) x x_1 (fun x => Bool.true) (fun _ => Bool.true) (fun _ => Bool.false) (fun _ => Bool.false) (fun _ => Bool.false) (fun _ => Bool.true) fun _ => Bool.true
+  #2205420644/1796913432
+def Consensus.Profile.provides.match_1 #3920693094/3444009836
+recursor Consensus.Profile.rec : {motive : Consensus.Profile → Sort u} → motive Consensus.Profile.ebbAndFlow → motive Consensus.Profile.bft → motive Consensus.Profile.available → (t : Consensus.Profile) → motive t
+  #2829101134/-
+def Consensus.Profile.recOn : {motive : Consensus.Profile → Sort u} → (t : Consensus.Profile) → motive Consensus.Profile.ebbAndFlow → motive Consensus.Profile.bft → motive Consensus.Profile.available → motive t := fun {motive} t ebbAndFlow bft available => Consensus.Profile.rec.{u} ebbAndFlow bft available t
+  #2539496807/95098118
+def Consensus.instDecidableEqProfile : DecidableEq.{1} Consensus.Profile := fun x y => if h : Eq.{1} x.ctorIdx y.ctorIdx then Decidable.isTrue ⋯ else Decidable.isFalse ⋯
+  #1375090004/3755747558
+theorem Consensus.instDecidableEqProfile._proof_1 #2059818099/-
+theorem Consensus.instDecidableEqProfile._proof_2 #478869819/-
+def Consensus.instReprProfile : Repr.{0} Consensus.Profile := Repr.mk.{0} Consensus.instReprProfile.repr
+  #388734127/1172529817
+def Consensus.instReprProfile.repr : Consensus.Profile → Nat → Std.Format := fun x prec => Consensus.instReprProfile.repr.match_1✝.{1} (fun x => Std.Format) x (fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Profile.ebbAndFlow")).group prec) (fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Profile.bft")).group prec) fun _ => Repr.addAppParen (Std.Format.nest (ite.{1} (GE.ge.{0} prec 1024) 1 2) (Std.Format.text "Consensus.Profile.available")).group prec
+  #1002072743/1033655915
+def _private.ConsensusLean.Spec.Problem.Profile.0.Consensus.instReprProfile.repr.match_1 #2307507528/3609173524
 ## ConsensusLean.Spec.Problem.Properties
 def Consensus.System.AccountablySafe : {V : Type} → [Fintype.{0} V] → (S : Consensus.System V) → S.Run → Rat → S.schema.Id → Consensus.Time → Prop := fun {V} [Fintype.{0} V] S r α g t₀ => (S.trace r).AccountablySafe (S.view r) (S.convicts r) α g t₀
   #2743147044/2215669525
@@ -1750,6 +1799,8 @@ def Consensus.Shape.ShapeObligations.recOn : {O : Consensus.OutputSchema} → {I
   #598018926/2708984976
 theorem Consensus.Shape.ShapeObligations.serves : ∀ {O : Consensus.OutputSchema} {Info : Type} [inst : DecidableEq.{1} Info] [inst_1 : Countable.{1} Info] {F : Consensus.Shape.ChainShapeFamily O Info} {K : Consensus.Contract Consensus.Blocks.ProgressReq}, Consensus.Shape.ShapeObligations F K → O.Serves
   #2765800555/-
+def Consensus.Shape.ShapeObligationsAs : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Profile → Consensus.Shape.ChainShapeFamily O Info → Consensus.Contract Consensus.Blocks.ProgressReq → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] p F K => And (p.Matches O) (Consensus.Shape.ShapeObligations F K)
+  #2279168430/4125543676
 ## ConsensusLean.Spec.Shape.ProgressFit
 def Consensus.Shape.ProgressFits : {O : Consensus.OutputSchema} → {Info : Type} → [inst : DecidableEq.{1} Info] → [inst_1 : Countable.{1} Info] → Consensus.Contract Consensus.Blocks.ProgressReq → Consensus.Shape.ChainShapeFamily O Info → Prop := fun {O} {Info} [DecidableEq.{1} Info] [Countable.{1} Info] K F => ∀ (cap : Consensus.Capability) (i : K.Idx) (pub : Consensus.Model.Public), Consensus.Shape.ProgressReq.Fits (F pub).skel (K.progress cap i)
   #1557578395/1425406981

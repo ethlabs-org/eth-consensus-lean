@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Spec.Shape.ProgressFit
 public import ConsensusLean.Spec.Shape.Active
+public import ConsensusLean.Spec.Problem.Profile
 
 @[expose] public section
 
@@ -21,7 +22,13 @@ finite validator type: `ShapeObligations.behaviour` (the refinement of the shape
 claims), the model's adequacy (`sysOf_adequate`, an L1 theorem, independent
 of the claims) and the generic `regimes_realizable` (from admissibility,
 progress fit and tolerance). Its corollary `ShapeObligations.activeService` (a final
-or available output actively serves transactions) is in `ConsensusLean/Main.lean`. -/
+or available output actively serves transactions) is in `ConsensusLean/Main.lean`.
+
+`ShapeObligationsAs p F K` is the same obligations under a profile label: the schema provides
+exactly the capabilities of `p` (`Profile.Matches`, `Spec/Problem/Profile`) and `F` meets
+`ShapeObligations F K`. Beyond fixing the capability set, the label adds no obligation and drops
+none: `ShapeObligations` and `CorrectProtocol` already read the provided capabilities from the
+schema. -/
 
 namespace Consensus.Shape
 
@@ -45,6 +52,12 @@ structure ShapeObligations (F : ChainShapeFamily O Info) (K : Contract ProgressR
   /-- Every provided output tolerates arbitrary numbers of validators not
   ready and a bad proposer slot in every window. -/
   progressTolerant : ProgressTolerant O K
+
+/-- The shape obligations under the profile label `p`: the schema provides exactly the
+capabilities of `p` (outputs may alias), and the family meets `ShapeObligations F K`. -/
+def ShapeObligationsAs (p : Profile) (F : ChainShapeFamily O Info) (K : Contract ProgressReq) :
+    Prop :=
+  p.Matches O ∧ ShapeObligations F K
 
 end Consensus.Shape
 

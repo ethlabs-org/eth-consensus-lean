@@ -37,11 +37,11 @@ theorem Consensus.Goldilocks.meetsObligations :
     Consensus.Goldilocks.MeetsObligations :=
   Consensus.Goldilocks.Obligations.meets_obligations
 
-/-- Goldilocks is correct: `GoldilocksCorrect`, the obligations endpoint composed with
-`ShapeObligations.correct` (the theorem of `ObligationsSufficient`). -/
+/-- Goldilocks is correct: `GoldilocksCorrect`, the obligations endpoint (without its profile
+label) composed with `ShapeObligations.correct` (the theorem of `ObligationsSufficient`). -/
 theorem Consensus.Goldilocks.goldilocksCorrect :
     Consensus.Goldilocks.GoldilocksCorrect := fun S A V =>
   Consensus.Shape.ShapeObligations.correct
-    (Consensus.Goldilocks.Obligations.meets_obligations S A) V
+    (Consensus.Goldilocks.Obligations.meets_obligations S A).2 V
 
 end

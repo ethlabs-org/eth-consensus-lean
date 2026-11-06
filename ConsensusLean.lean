@@ -505,6 +505,7 @@ public import ConsensusLean.Spec.Model.System
 public import ConsensusLean.Spec.Problem.Basic
 public import ConsensusLean.Spec.Problem.CorrectProtocol
 public import ConsensusLean.Spec.Problem.Network
+public import ConsensusLean.Spec.Problem.Profile
 public import ConsensusLean.Spec.Problem.Properties
 public import ConsensusLean.Spec.Problem.Regimes
 public import ConsensusLean.Spec.Shape.Active

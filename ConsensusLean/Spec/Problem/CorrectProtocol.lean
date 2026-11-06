@@ -236,7 +236,11 @@ two honest validators awake (sleepy stress witness). The sleepy witnesses
 carry liveness activity (`TxLiveActive`, inside `SleepyLive`) but no
 safety-activity (`SafeActive`) witness: `SafeActive` is asked only of the
 healthy witness, so no sleepy witness is required to exercise `sleepySafe`'s
-agreement between readers or its monotonicity. -/
+agreement between readers or its monotonicity. The ordinary regime witnesses
+(`sleepy`, `healthy`, `outage`) show that the regimes can occur and do not depend
+on which outputs are provided: the sleepy and healthy witnesses are asked at
+every capability and index, provided or not, and the outage witness names no
+output; only `sleepyStress` is gated by the provided outputs. -/
 structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     Prop where
   sleepy : ∀ cap i (ΔAC ΔFG : Time), 1 < ΔAC → 1 < ΔFG →
