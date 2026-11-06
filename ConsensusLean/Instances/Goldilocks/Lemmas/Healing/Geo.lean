@@ -554,13 +554,19 @@ theorem proposal_call_tick (h : Node.LocalRun proposer dg H sg tr)
     rw [hcs] at hq
     have hq1 : q = 1 := by
       obtain ⟨ℓu, hℓu, huc⟩ := huc
-      rcases hpc with ⟨-, rfl⟩ | ⟨-, ℓp, -, rfl | ⟨B, -, -, rfl | ⟨ℓ', hℓ', rfl⟩⟩⟩ <;>
-        rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
-        rcases q with _ | _ | _ | _ | _ | _ | _ | q <;>
-        simp only [List.cons_append, List.nil_append, List.getElem?_cons_succ,
-          List.getElem?_cons_zero, List.getElem?_nil, Option.some.injEq, Cut.ac.injEq,
-          reduceCtorEq] at hq <;>
-        first | rfl | (subst hq; simp_all only [reduceCtorEq])
+      rcases q with _ | _ | q
+      · simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at hq
+        subst hq
+        simp only [h0, reduceCtorEq] at hp
+      · rfl
+      · exfalso
+        rcases hpc with ⟨-, rfl⟩ | ⟨-, ℓp, -, rfl | ⟨B, -, -, rfl | ⟨ℓ', hℓ', rfl⟩⟩⟩ <;>
+          rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
+          simp only [List.cons_append, List.nil_append, List.getElem?_cons_succ] at hq <;>
+          have hmem := List.mem_of_getElem? hq <;>
+          simp only [List.mem_cons, List.not_mem_nil, Cut.ac.injEq, reduceCtorEq, or_false,
+            false_or] at hmem <;>
+          rcases hmem with rfl | rfl <;> simp_all only [reduceCtorEq]
     exact ⟨j, by omega, x, hg⟩
   | block B =>
     exfalso
