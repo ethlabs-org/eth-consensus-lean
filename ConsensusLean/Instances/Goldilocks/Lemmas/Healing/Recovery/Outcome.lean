@@ -1,4 +1,5 @@
 module
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Window

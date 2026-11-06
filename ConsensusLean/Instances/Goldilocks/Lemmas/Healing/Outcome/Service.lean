@@ -1,13 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

@@ -1,14 +1,10 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSourceVotes
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

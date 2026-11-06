@@ -1,8 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance
-public import ConsensusLean.Lemmas.Model.Objects
 
 public section
 

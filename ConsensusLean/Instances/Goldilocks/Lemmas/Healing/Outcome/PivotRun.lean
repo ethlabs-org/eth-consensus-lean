@@ -1,29 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Transfer
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
