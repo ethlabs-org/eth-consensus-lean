@@ -108,7 +108,8 @@ theorem sleepy_invariant_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
       Compatible (tr.HonestBlocks H) C C' := fun C s C' s' h h' =>
     originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
   have hfb : tr.FaultBound H (sp.ts (0 : Nat) + 0) := (sleepyPrefix_iff.1 hpre).2.2 0 0
-    (by simp) (by simpa [SAParams.ts] using (sleepyPrefix_iff.1 hpre).1)
+    (Or.inl rfl) (by simpa only [SAParams.ts, Nat.cast_zero, mul_zero, add_zero]
+      using (sleepyPrefix_iff.1 hpre).1)
   refine ⟨hcomp, fun C s hC y hy i e he hib hs => ?_,
     fun y hy i hi => record_origin_upTo hrun hnc hy hi,
     fun y hy i hi => caches_on_chain_upTo hrun hnc hfb hy hi, fun y hy i hi l hl => ?_,
@@ -128,7 +129,8 @@ theorem sleepy_invariant_before {b : Time} (hrun : GoldilocksRun proposer dg H t
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocks H) C C' := fun C s C' s' h h' =>
     originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
-  have hzero := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
+  have hzero := hfb 0 0 (Or.inl rfl)
+    (by simpa only [SAParams.ts, Nat.cast_zero, mul_zero, add_zero] using hb)
   have hf : 2 * Hᶜ.ncard < sp.n := by
     have h := hzero
     change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
