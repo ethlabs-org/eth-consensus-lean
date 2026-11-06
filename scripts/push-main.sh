@@ -52,25 +52,35 @@ lock_info() {  # prints "<sha> <unix time> <owner...>" of the remote lock, or no
   echo "$sha $(git log -1 --format='%ct %s' refs/push-main/lock)"
 }
 acquire() {  # take the lock (create, or take over an expired one); waits while someone else holds it
-  local info sha t owner now
+  local info sha t owner now attempts=0 active=0 races=0 expired=0 since=$SECONDS
   owner="$(hostname) $$ $(git rev-parse --short HEAD)"
   while :; do
+    attempts=$((attempts + 1))
     info="$(lock_info)" now="$(date +%s)"
     if [[ -z "$info" ]]; then
       held="$(git commit-tree -m "push-main lock: $owner" "$(git hash-object -t tree /dev/null)" </dev/null)"
-      git push -q --force-with-lease="$lock_ref:" "$remote" "$held:$lock_ref" 2>/dev/null && return 0
+      if git push -q --force-with-lease="$lock_ref:" "$remote" "$held:$lock_ref" 2>/dev/null; then
+        break
+      fi
+      races=$((races + 1))
     else
       read -r sha t _ <<<"$info"
       if ((now - t > ttl)); then
+        expired=$((expired + 1))
         echo "push-main: taking over an expired lock ($(cut -d' ' -f3- <<<"$info"), $((now - t)) s old)"
         held="$(git commit-tree -m "push-main lock: $owner" "$(git hash-object -t tree /dev/null)" </dev/null)"
-        git push -q --force-with-lease="$lock_ref:$sha" "$remote" "+$held:$lock_ref" 2>/dev/null && return 0
+        if git push -q --force-with-lease="$lock_ref:$sha" "$remote" "+$held:$lock_ref" 2>/dev/null; then
+          break
+        fi
+        races=$((races + 1))
       else
+        active=$((active + 1))
         echo "push-main: waiting for the landing lock ($(cut -d' ' -f3- <<<"$info"), $((now - t)) s old)"
       fi
     fi
     held=""; sleep 30
   done
+  echo "push-main: contention wait=$((SECONDS - since))s attempts=$attempts active-lock=$active lease-race=$races expired-lock=$expired"
 }
 release() {
   [[ -n "$held" ]] || return 0
