@@ -1,19 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedSafety
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
-public import ConsensusLean.Instances.Goldilocks.AsChainShape
-public import ConsensusLean.Spec.Shape.Obligations
-public import ConsensusLean.Lemmas.Problem.Facts.Regimes
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchorRoute
 public import Mathlib.Data.Fin.VecNotation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchorRoute
 
 public section
 
