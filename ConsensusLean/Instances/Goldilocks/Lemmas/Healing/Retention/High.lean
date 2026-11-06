@@ -89,8 +89,7 @@ theorem cutZ_lt_of_high {y : Fin sp.n} (hy : y ∈ H)
   obtain ⟨j, hj, -⟩ := hp.snapshot
   have hkj : k ≤ j := by
     by_contra hjk
-    have := hp.run.time_mono (le_of_not_ge hjk)
-    linarith [hj.2]
+    exact hk (hj.2.trans_le (hp.run.time_mono (le_of_not_ge hjk)))
   have hXj := Compose.tree_mono hp.run.toLocalRun hy hkj hX
   have := hp.h_le_HZ_of_firstCut hy hj hXj
   rw [hp.σ_eq_run hy hy hX hXj] at hXh

@@ -41,6 +41,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
+/-- An update of label `m` at `t_m + 6Δ` precedes the start of every slot `u ≥ m + 2`. -/
+private theorem ts_add_six_lt {m u : Int} (h : m + 2 ≤ u) : sp.ts m + 6 * sp.Δ < sp.ts u := by
+  have hΔ := sp.toParams.hΔ
+  have := (SA.ts_le_iff sp).mpr h
+  simp only [SAParams.ts] at this ⊢
+  linarith
+
 /-! ### Run facts -/
 
 /-- `f < n/2` under `Healthy(g)`. -/
@@ -60,7 +67,7 @@ theorem ts_le_of_fastLock (hp : ResetPremises tr H proposer dg g ΔF a) {x : Fin
   rcases hfl with ⟨ℓ, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
   · have ht' : tr.time i = sp.ts s + 6 * sp.Δ := ht
     rw [ht']
-    linarith
+    exact le_add_of_nonneg_right (mul_nonneg (Nat.ofNat_nonneg _) hΔ.le)
   · have hsl' : sp.slot (tr.time i) = s := hsl
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) s).2 (by omega)
 
@@ -70,16 +77,10 @@ theorem ResetPremisesUpTo.fastLock_time_lt {b : Time}
     {r m u : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.FastLockAt tr.projAC x r m D CV) (hmu : m < u)
     (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
-  have hΔ := sp.toParams.hΔ
   rcases hfl with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hsl, _⟩
   · have ht' : tr.time r = sp.ts m + 6 * sp.Δ := ht
     rw [ht'] at htr ⊢
-    simp only [SAParams.ts] at htr ⊢
-    have hm2 : (m : Int) + 2 ≤ u := by
-      by_contra h
-      have : (u : Int) ≤ m + 1 := by omega
-      linarith [mul_le_mul_of_nonneg_left this hΔ.le]
-    linarith [mul_le_mul_of_nonneg_left hm2 hΔ.le]
+    exact ts_add_six_lt (by exact_mod_cast Compose.ts_add_two_le htr)
   · change sp.slot (tr.time r) = m at hsl
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
@@ -108,10 +109,8 @@ theorem ResetPremisesUpTo.reset_seed_before_slot {b : Time}
   obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
   rcases hf with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hsl, _⟩
   · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
-    have htu := (SA.ts_le_iff sp).mpr (show (l : Int) + 2 ≤ u by omega)
-    simp only [SAParams.ts] at ht' htu ⊢
-    have := sp.toParams.hΔ
-    linarith
+    rw [ht']
+    exact ts_add_six_lt (by exact_mod_cast hlu)
   · change sp.slot (tr.time r) = l at hsl
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
@@ -136,16 +135,16 @@ theorem reset_lt_ts (hp : ResetPremises tr H proposer dg g ΔF a) {u : Nat}
   have hΔ := sp.toParams.hΔ
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
   have hlt := lt_cutZ sp g
-  have hg := le_gbar g
   have hg0 := gbar_nonneg g
-  have ha0 : 0 ≤ a := by linarith
+  have ha0 : 0 ≤ a := hg0.trans ((le_add_of_nonneg_right
+    (mul_nonneg (Nat.ofNat_nonneg _) hΔ.le)).trans (hlt.trans hca).le)
   have h3 : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
     have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
     omega
   have h4 : sp.ts ((sp.slot a : Int) + 1) ≤ drainTime sp a := by
     rw [drainTime_eq]
     exact (SA.ts_le_iff sp).2 (by push_cast; omega)
-  linarith
+  exact h3.trans_le (h4.trans hR)
 
 /-- No honest optimistic check selects a block of the proposal's slot before its actual call. -/
 theorem proposal_no_optimistic_of_run
