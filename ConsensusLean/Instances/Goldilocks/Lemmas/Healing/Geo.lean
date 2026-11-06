@@ -260,11 +260,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF : Time} {proposer : Nat → Fin sp.n}
 
-theorem projFG_store_eq (hrun : GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-
 /-- The FG projection of a run under the HS shared premises is an FG trace, with `f < 2q − n`. -/
 theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr H dg g ΔF) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
@@ -336,7 +331,7 @@ theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     hBjhj ▸ (Store.hj_lt_h hR hBj).trans_le (hge Bj hBj)
   have hmax : (tr.state z k).fg.hmax = m := by
     have h1 := hph.frontierAt.2 z hz
-    rw [projFG_store_eq hrun hz] at h1
+    rw [Compose.store_eq hrun hz] at h1
     obtain ⟨B, hB, hBh⟩ : ∃ B ∈ (tr.state z k).fg.tree, ((tr.state z k).fg.σ B.root).h = m := by
       cases c with
       | gap => exact hev
@@ -345,9 +340,9 @@ theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     have := hge B hB
     omega
   have hjust : JustifiedAt tr.projFG H k (tr.state z k).fg.hj (tr.state z k).fg.J :=
-    ⟨z, hz, by rw [projFG_store_eq hrun hz]; exact hJm, Bj,
-      by rw [projFG_store_eq hrun hz]; exact hBj, by rw [projFG_store_eq hrun hz]; exact hBjhj,
-      by rw [projFG_store_eq hrun hz]; exact hBjJ⟩
+    ⟨z, hz, by rw [Compose.store_eq hrun hz]; exact hJm, Bj,
+      by rw [Compose.store_eq hrun hz]; exact hBj, by rw [Compose.store_eq hrun hz]; exact hBjhj,
+      by rw [Compose.store_eq hrun hz]; exact hBjJ⟩
   -- with a justification at `m − 1` held whose `J` extends `Σ.F`, the cache is it
   have hcache : ∀ J₀ B₀, J₀ ∈ (tr.state z k).fg.tree → B₀ ∈ (tr.state z k).fg.tree →
       ((tr.state z k).fg.σ B₀.root).hj = m - 1 → ((tr.state z k).fg.σ B₀.root).J = J₀.root →
@@ -358,9 +353,9 @@ theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     have hhj : (tr.state z k).fg.hj = m - 1 := by omega
     refine ⟨hhj, hcoh.1 hJm hJ₀ ?_⟩
     have := J_eq_of_hj_eq hfg hq hz hz (i := k) (j := k) (B := Bj) (B' := B₀)
-      (by rw [projFG_store_eq hrun hz]; exact hBj) (by rw [projFG_store_eq hrun hz]; exact hB₀)
-      (by rw [projFG_store_eq hrun hz]; omega)
-    rw [projFG_store_eq hrun hz] at this
+      (by rw [Compose.store_eq hrun hz]; exact hBj) (by rw [Compose.store_eq hrun hz]; exact hB₀)
+      (by rw [Compose.store_eq hrun hz]; omega)
+    rw [Compose.store_eq hrun hz] at this
     rw [← hBjJ, ← hB₀J, this]
   -- the justification of a held state is a held ancestor
   have hJanc : ∀ J₀ B₀, J₀ ∈ (tr.state z k).fg.tree → B₀ ∈ (tr.state z k).fg.tree →
@@ -373,7 +368,7 @@ theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
     obtain rfl : E' = E := hcoh.1 hE' hE (hE'r.trans hEr.symm)
     exact ⟨hEB, hle⟩
   have hheld : ∀ B ∈ (tr.state z k).fg.tree, (tr.state z k).fg.σ B.root =
-      (tr.projFG.store z k).σ B.root := fun B _ => by rw [projFG_store_eq hrun hz]
+      (tr.projFG.store z k).σ B.root := fun B _ => by rw [Compose.store_eq hrun hz]
   refine viableHeads_iff_of ?_ ?_ ?_ hX
   all_goals cases c with
   | gap =>
@@ -391,8 +386,8 @@ theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared t
       (hF J₀ ⟨hJ₀, by change m - 1 ≤ _; omega, fun J e => by cases e; exact .refl⟩)
     have hcon : ¬ (tr.state z k).fg.Contest := by
       rintro ⟨-, B, hB, -, hBh, hn⟩
-      exact hph.2.2 ⟨z, hz, B, by rw [projFG_store_eq hrun hz]; exact hB,
-        by rw [projFG_store_eq hrun hz, hBh, hmax], by rw [projFG_store_eq hrun hz]; exact hn⟩
+      exact hph.2.2 ⟨z, hz, B, by rw [Compose.store_eq hrun hz]; exact hB,
+        by rw [Compose.store_eq hrun hz, hBh, hmax], by rw [Compose.store_eq hrun hz]; exact hn⟩
     have hm1 : (tr.state z k).fg.hmax = (tr.state z k).fg.hj + 1 := by omega
     first
       | (simp only [Store.headHeightFloor, hcon, ↓reduceIte, hmax]; rfl)
@@ -680,7 +675,7 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
   have hev : ∀ z ∈ H, ∀ k', i₀ ≤ k' → HoldsEvidence (tr.state z k').fg m c := by
     intro z hz k' hk'
     have := hset.evidence i₀ hi₀ m c (hwin i₀ le_rfl (hi₀k.trans (le_max_left _ _))) z hz
-    rw [projFG_store_eq hrun hz] at this
+    rw [Compose.store_eq hrun hz] at this
     exact holdsEvidence_mono hrun hnc hz hk' this
   have hVH : ∀ z ∈ H, ∀ k', i₀ ≤ k' → k' ≤ max k iv → ∀ X ∈ (tr.state z k').fg.tree,
       X ∈ (Node.frame (tr.state z k')).viableHeads ↔
@@ -714,8 +709,9 @@ theorem geo_of_settled (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared tr
       · cases c <;> (simp only [phaseFloor]; omega)
       · subst hJ
         by_contra hn
-        exact (hwin k hi₀k hkK).2.2 ⟨_, hpH, Bm, by rw [projFG_store_eq hrun hpH]; exact hBm,
-          by rw [projFG_store_eq hrun hpH]; exact hBmh, by rw [projFG_store_eq hrun hpH]; exact hn⟩
+        exact (hwin k hi₀k hkK).2.2 ⟨_, hpH, Bm, by rw [Compose.store_eq hrun hpH]; exact hBm,
+          by rw [Compose.store_eq hrun hpH]; exact hBmh,
+          by rw [Compose.store_eq hrun hpH]; exact hn⟩
     have hBv : Bm ∈ ℓ₀.frame.viableHeads := by
       rw [hfr₀]
       exact (hVH _ hpH k hi₀k hkK Bm hBm).2 ⟨store_anc_of_honest_anc hrun hnc hpH

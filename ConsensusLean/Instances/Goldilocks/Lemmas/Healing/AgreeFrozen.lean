@@ -161,7 +161,7 @@ private theorem frozen_core
   have hev : ∀ z ∈ H, ∀ k', i₀ ≤ k' → HoldsEvidence (tr.state z k').fg m c := by
     intro z hz k' hk'
     have := hS.settled.1.evidence i₀ hS.settled.2.1 m c hS.settled.2.2 z hz
-    rw [projFG_store_eq hrun hz] at this
+    rw [Compose.store_eq hrun hz] at this
     exact holdsEvidence_mono hrun hnc hz hk' this
   have hphP := hwin iP hiP0 hiPj.le
   -- the proposal's parent is a viable head of the proposer, so allowed
@@ -180,8 +180,9 @@ private theorem frozen_core
       · cases c <;> (simp only [phaseFloor]; omega)
       · subst hJ
         by_contra hn
-        exact hphP.2.2 ⟨_, hpH, Bm, by rw [projFG_store_eq hrun hpH]; exact hBm,
-          by rw [projFG_store_eq hrun hpH]; exact hBmh, by rw [projFG_store_eq hrun hpH]; exact hn⟩
+        exact hphP.2.2 ⟨_, hpH, Bm, by rw [Compose.store_eq hrun hpH]; exact hBm,
+          by rw [Compose.store_eq hrun hpH]; exact hBmh,
+          by rw [Compose.store_eq hrun hpH]; exact hn⟩
     have hBv : Bm ∈ ℓp.frame.viableHeads := by
       rw [hfr₀]
       exact viableHead_of_allowed hrun hs (fun k' h1 h2 => (le_antisymm h2 h1).symm ▸ hphP) hpH

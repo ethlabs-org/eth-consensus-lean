@@ -274,7 +274,7 @@ theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared 
   have hphP := hon iP hiP0 (by omega)
   have hev : HoldsEvidence (tr.state p iP).fg m c := by
     have := hset.1.evidence i₀ hset.2.1 m c hset.2.2 p hpH
-    rw [projFG_store_eq hrun hpH] at this
+    rw [Compose.store_eq hrun hpH] at this
     exact holdsEvidence_mono hrun hnc hpH hiP0 this
   -- the proposer's `fc_root` has a viable head above it: the phase's frontier block
   have hfr₀ : ℓp.frame = Node.frame (tr.state p iP) := Compose.frame_of_projAC hrun hpH hcP

@@ -280,8 +280,8 @@ private theorem fcRoot_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSSh
     · cases c <;> (simp only [phaseFloor]; omega)
     · subst hJ
       by_contra hn
-      exact hph.2.2 ⟨_, hz, Bm, by rw [projFG_store_eq hrun hz]; exact hBm,
-        by rw [projFG_store_eq hrun hz]; exact hBmh, by rw [projFG_store_eq hrun hz]; exact hn⟩
+      exact hph.2.2 ⟨_, hz, Bm, by rw [Compose.store_eq hrun hz]; exact hBm,
+        by rw [Compose.store_eq hrun hz]; exact hBmh, by rw [Compose.store_eq hrun hz]; exact hn⟩
   have hBv : Bm ∈ ℓz.frame.viableHeads := by
     rw [Compose.frame_of_projAC hrun hz hcz]
     exact (viableHeads_iff hrun hs hc hz hph hev hBm).2 ⟨store_anc_of_honest_anc hrun hs.noColl hz
@@ -398,7 +398,7 @@ theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr) (hs : HSShare
   have hphz := hk kz hi₀z hkzk.le
   have hev : HoldsEvidence (tr.state z kz).fg m c := by
     have h := hw.1.evidence i₀ hw.2.1 m c hw.2.2 z hz
-    rw [projFG_store_eq hrun hz] at h
+    rw [Compose.store_eq hrun hz] at h
     exact holdsEvidence_mono hrun hs.noColl hz hi₀z h
   obtain ⟨Hd, ⟨hHdt, -, W, hWt, hWv, hHdW⟩, hHdr⟩ :=
     head_viable hr hz hvz (fcRoot_viable hrun hs hc hz hcz hphz hev)

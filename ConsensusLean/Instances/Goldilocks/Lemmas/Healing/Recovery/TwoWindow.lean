@@ -164,7 +164,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
     · have hq' := hgw.proposal.1
       obtain ⟨V, hJ, hVBs, -⟩ := Store.window_justifies hfg hgw
       have hUq' := hgw.entry.1
-      simp only [projFG_store_eq hrun hq'] at hJ hVBs hUq'
+      simp only [Compose.store_eq hrun hq'] at hJ hVBs hUq'
       rw [hUσ hq' hUq'] at hJ
       refine ⟨q', hq', j + 1, V, hJ, ?_⟩
       have := (Anc.slot_le hcoh (hVBs.mono (hsub q' hq' _))).1
@@ -227,7 +227,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
     have hq' := hgw.proposal.1
     obtain ⟨Z, hJZ, -, -, -, -, hfin⟩ := Store.window_justifies hfg hgw
     have hVq' := hgw.entry.1
-    simp only [projFG_store_eq hrun hq'] at hJZ hfin hVq'
+    simp only [Compose.store_eq hrun hq'] at hJZ hfin hVq'
     rw [σ_eq_honest hrun hnc hq' hy hVq' hVm] at hfin
     have hFZ := (hfin hpjy).1
     rw [hVJ] at hFZ
