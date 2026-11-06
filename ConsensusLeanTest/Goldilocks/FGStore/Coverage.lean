@@ -241,7 +241,7 @@ theorem trV_state_succ (i : Nat) (hi : i ≤ 17) : trV.state w₀ (i + 1) = trV.
   have h : trV.node i = w₀ ∧ trV.label i ≠ none := by
     refine ⟨rfl, ?_⟩
     rcases i with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | i <;>
-      first | omega | simp [trV]
+      first | (dsimp only [trV]; exact Option.some_ne_none _) | omega
   rw [Trace.state, ite_eq_left h]
 
 /-- Before cuts `0`–`15`, the state of `w₀` in `trV` is the one in `trT`. -/
