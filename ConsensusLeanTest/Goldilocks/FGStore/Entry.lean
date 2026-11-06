@@ -289,7 +289,8 @@ theorem trJ_label (i : Nat) (ℓ : FGLabel P₁ Unit) (h : trJ.label i = some �
     (i = 0 ∧ ℓ = .attest g₁ (some a₀)) ∨ (i = 1 ∧ ℓ = .attestation a₀) ∨
       (i = 2 ∧ ℓ = .block Bs true) ∨ (i = 3 ∧ ℓ = .attest Bs (some a₁)) ∨
       (i = 4 ∧ ℓ = .attestation a₁) ∨ (i = 5 ∧ ℓ = .block Bf true) := by
-  rcases i with _ | _ | _ | _ | _ | _ | i <;> simp [trJ] at h <;> simp [h]
+  rcases i with _ | _ | _ | _ | _ | _ | i <;>
+    dsimp only [trJ] at h <;> simp only [Option.some.injEq, reduceCtorEq] at h <;> simp [h]
 
 /-- (a) `trJ` is an `FGLocalRun` for the honest set `{w₀}` inside `{genesis, Bs, Bf}`. -/
 theorem trJ_localRun : FGLocalRun () {w₀} {g₁, Bs, Bf} trJ where
