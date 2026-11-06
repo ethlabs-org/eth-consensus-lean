@@ -53,30 +53,62 @@ jobs:
         if: steps.pkgs.outputs.cache-hit != 'true'
         run: lake exe cache get
 
-      - name: Measure native dependency build and compressed cache size
+      - name: Native dependency cache key
         if: matrix.mode == 'native'
+        id: native-key
+        run: echo "key=$(python3 scripts/native-deps.py key)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore native dependency libraries and identity
+        if: matrix.mode == 'native'
+        id: native-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            .lake/packages
+            .lake/native-deps/identity.json
+          key: native-deps-${{ runner.os }}-${{ steps.native-key.outputs.key }}
+
+      - name: Measure native dependency build and compressed cache size
+        if: matrix.mode == 'native' && steps.native-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/measure"
           lscpu > "$RUNNER_TEMP/measure/cpu.txt"
-          /usr/bin/time -v -o "$RUNNER_TEMP/measure/dependencies.time" lake build Mathlib:shared 2>&1 | tee "$RUNNER_TEMP/measure/dependencies.log"
+          python3 -I scripts/test_native_deps.py
+          /usr/bin/time -v -o "$RUNNER_TEMP/measure/dependencies.time" python3 scripts/native-deps.py prepare 2>&1 | tee "$RUNNER_TEMP/measure/dependencies.log"
           find .lake/packages -name '*.so' -printf '%s %p\n' > "$RUNNER_TEMP/measure/libraries.txt"
           tar -C .lake -cf - packages | zstd -T0 -3 -q -o "$RUNNER_TEMP/packages.tar.zst"
           stat -c '%s' "$RUNNER_TEMP/packages.tar.zst" > "$RUNNER_TEMP/measure/packages.bytes"
           rm "$RUNNER_TEMP/packages.tar.zst"
 
+      - name: Verify and activate restored native libraries without invoking Lake
+        if: matrix.mode == 'native' && steps.native-cache.outputs.cache-hit == 'true'
+        run: python3 scripts/native-deps.py restore
+
+      - name: Save native dependency libraries
+        if: matrix.mode == 'native' && steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            .lake/packages
+            .lake/native-deps/identity.json
+          key: native-deps-${{ runner.os }}-${{ steps.native-key.outputs.key }}
+
       - name: Measure cold and warm fast checks
         env:
           CI: '1'
+          NATIVE_MODE: ${{ matrix.mode }}
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/measure"
           lscpu > "$RUNNER_TEMP/measure/cpu.txt"
           git rev-parse HEAD > "$RUNNER_TEMP/measure/revision.txt"
+          command=()
+          if [[ "$NATIVE_MODE" == native ]]; then command=(python3 scripts/native-deps.py run); fi
           for state in cold warm; do
             export RUN_DIR="$RUNNER_TEMP/run-$state"
             mkdir -p "$RUN_DIR"
-            /usr/bin/time -v -o "$RUNNER_TEMP/measure/$state.time" bash -euo pipefail -c '
+            /usr/bin/time -v -o "$RUNNER_TEMP/measure/$state.time" "${command[@]}" bash -euo pipefail -c '
               for f in ConsensusLeanTest/Goldilocks/{Mirror,HalfCommittee,InitialCarry}/*.lean; do
                 m="${f%.lean}"; lake build --wfail --iofail "${m//\//.}"
               done
