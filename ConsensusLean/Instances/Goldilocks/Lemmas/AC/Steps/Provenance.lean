@@ -113,16 +113,24 @@ private theorem FromP.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ
           optimisticSelect sp (admitVote sp e.readPoint t e.msg) Φ t = some D) := by
   unfold tryVote
   dsimp only
-  split_ifs with h1 h2 h3
-  · exact FromP.of_eq rfl
-  · exact FromP.of_eq rfl
-  · refine FromP.trans hU (FromP.of_movesBack hΦU
+  by_cases h1 : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
+  · rw [ite_eq_left h1]
+    exact FromP.of_eq rfl
+  rw [ite_eq_right h1]
+  by_cases h2 : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))
+  · rw [ite_eq_left h2]
+    exact FromP.of_eq rfl
+  rw [ite_eq_right h2]
+  by_cases h3 : 0 < sp.slot t
+  · rw [ite_eq_left h3]
+    refine FromP.trans hU (FromP.of_movesBack hΦU
       (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
         (mergedVoteView sp A Φ (sp.slot t))))
       (FromP.mono (FromP.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_)
     · rfl
     · exact fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, _, List.mem_singleton_self _, h⟩
-  · refine FromP.mono (FromP.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_
+  · rw [ite_eq_right h3]
+    refine FromP.mono (FromP.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_
     · rfl
     · exact fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, _, List.mem_singleton_self _, h⟩
 
@@ -195,17 +203,27 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
                 ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc X S} = some D)))) := by
   unfold acOnTick
   dsimp only
-  split_ifs with hj ht hu hu
-  · exfalso
-    have := sp.toParams.hΔ
-    linarith [ht.1.symm.trans hu]
-  · refine (FromP.of_updateConfirmation hU hΦ hΦU A t _).mono fun s f B h => ?_
-    obtain ⟨D, hD, heq, rfl, h2⟩ := h
-    exact ⟨D, hD, heq, Or.inr ⟨ht.1, ht.2, hj, rfl, h2⟩⟩
-  · exact (FromP.of_tryVote hU hΦ hΦU x A t).mono
-      fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, Or.inl h⟩
-  · exact FromP.of_eq rfl
-  · exact FromP.of_eq rfl
+  by_cases hj : joined sp A t
+  · rw [ite_eq_right (not_not_intro hj)]
+    by_cases hu : t = sp.ts (sp.slot t) + sp.Δ
+    · rw [ite_eq_left hu]
+      by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
+      · exfalso
+        have hΔ := sp.toParams.hΔ
+        linarith only [ht.1.symm.trans hu, hΔ]
+      · rw [ite_eq_right ht]
+        exact (FromP.of_tryVote hU hΦ hΦU x A t).mono
+          fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, Or.inl h⟩
+    · rw [ite_eq_right hu]
+      by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
+      · rw [ite_eq_left ht]
+        refine (FromP.of_updateConfirmation hU hΦ hΦU A t _).mono fun s f B h => ?_
+        obtain ⟨D, hD, heq, rfl, h2⟩ := h
+        exact ⟨D, hD, heq, Or.inr ⟨ht.1, ht.2, hj, rfl, h2⟩⟩
+      · rw [ite_eq_right ht]
+        exact FromP.of_eq rfl
+  · rw [ite_eq_left hj]
+    exact FromP.of_eq rfl
 
 /-! ## Over an SA trace -/
 
