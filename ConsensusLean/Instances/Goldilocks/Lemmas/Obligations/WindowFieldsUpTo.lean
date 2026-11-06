@@ -118,10 +118,13 @@ theorem finalWindow_data_of_honest_anchors_gap (Q : FinalQuery S A V)
     ∃ W : FinalWindowData S A V Q, W.start = start ∧ W.gap = c ∧ W.block = P := by
   have hs : StrictMono fun i : Fin 4 => start + ![0, c, 2 * c, 3 * c] i := by
     refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
-    fin_cases i <;> simp <;> omega
+    fin_cases i
+    · change start + 0 < start + c; omega
+    · change start + c < start + 2 * c; omega
+    · change start + 2 * c < start + 3 * c; omega
   obtain ⟨cut, hcut, hacc, -, -, hch, ht, hord, hfr, hbd⟩ :=
-    finalWindow_cuts_of_honest_anchors hp hc hP hs (by simpa using hR) (by simpa using hb)
-      (by intro h; simp at h; omega) (by simpa using hq) (by simpa using hD)
+    finalWindow_cuts_of_honest_anchors hp hc hP hs hR hb
+      (fun h => by change start + 3 * c = start + 2 * c + 1 at h; omega) hq hD
   refine ⟨⟨start, c, hc2, h3c, P, cut, window_slots_of_honest_anchors hP, hcut, hacc,
     fun i => ?_, hfr, hord, hbd, hch, hcarrier⟩, rfl, rfl, rfl⟩
   rw [ht i]

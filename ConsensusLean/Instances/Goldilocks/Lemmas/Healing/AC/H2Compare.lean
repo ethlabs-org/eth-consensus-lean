@@ -52,12 +52,12 @@ theorem h2_compare_reader (hS : HealthyBase tr H U proposer g) {p k : Nat} (hp :
     · exact (Anc.mem (hwp.anc (fun _ h => h.1) hst) he).2
   have hQP' : Anc U d.head P := .single ⟨hΦpU hQt, hPU, hQP⟩
   have hsP := hsQ.trans hQP'
-  set a := getAnchor sp e.readPoint ℓ.frame (tr.time i)
-  set Ty := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)
-  set sc := goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame p) ((p : Int) - 1)
-  set el := goldfishEligible sp ℓ.frame (tr.time i)
+  let a := getAnchor sp e.readPoint ℓ.frame (tr.time i)
+  let Ty := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)
+  let sc := goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame p) ((p : Int) - 1)
+  let el := goldfishEligible sp ℓ.frame (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame p) ((p : Int) - 1)
-  set Hd := ghost sp Ty sc el ℓ.frame.tree.ncard a
+  let Hd := ghost sp Ty sc el ℓ.frame.tree.ncard a
   have hTy : Ty ⊆ ℓ.frame.tree := fun _ h => h.1.1
   have hTyU := hTy.trans hΦU
   have hfa := fcRoot_anc_getAnchor hΦ e.readPoint (tr.time i)
