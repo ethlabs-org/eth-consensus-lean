@@ -44,7 +44,8 @@ private theorem mem_foldl_processAtt_prog {σ : ChainState n} {atts : List (Att 
         unfold processAtt at h
         dsimp only at h
         repeat' split at h
-        all_goals aesop
+        all_goals simp_all
+        all_goals exact h.elim (fun h => Or.inr h.symm) Or.inl
       exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
     · rw [hh, hT] at hb'
       exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
@@ -63,7 +64,8 @@ private theorem mem_foldl_processAtt_fin {σ : ChainState n} {atts : List (Att n
         unfold processAtt at h
         dsimp only at h
         repeat' split at h
-        all_goals aesop (add simp Function.update_apply)
+        all_goals simp_all [Function.update_apply]
+        all_goals split_ifs at h <;> aesop
       exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
     · rw [hp] at hb'
       exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
