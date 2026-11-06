@@ -1280,11 +1280,23 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
       (poll (poll (shapeOf S hn (rho.runDuties v (atProposal S rho v nd t)
           ((skeleton (pubOf E)).proposeAt t)).1) t.toNat).1
         t.toNat).1.node := by
-  rw [tick_of_awake S rho v nd t hw, gossip_node_eq, duties_eq S t ht, runDuties_fst_append]
-  erw [runDuties_fst_cons, runDuties_fst_nil, dutyStep_poll _ _ _ _ _ _ hsel]
-  unfold dutiesInit
-  erw [runDuties_fst_append, runDuties_fst_append, runDuties_fst_cons, runDuties_fst_nil,
-    dutyStep_poll _ _ _ _ _ _ hsel]
+  -- The goal's duty lists are typed at `ShapeDuty`, the step lemmas at the engine's `Duty`: stated
+  -- as local equations on the goal's own terms, the steps rewrite with plain `rw` (an `erw` would
+  -- try every projection of the goal at default transparency).
+  have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (x : Nat),
+      shapeOf S hn (rho.runDuties v nd' [.poll x]).1 = (poll (shapeOf S hn nd') x).1 :=
+    fun nd' x => dutyStep_poll S rho hn v nd' x hsel
+  have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E),
+      (rho.runDuties v nd' (dutiesInit S t)).1 =
+        (rho.runDuties v (rho.runDuties v (rho.runDuties v nd'
+          ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
+            List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1
+          ((skeleton (pubOf E)).proposeAt t)).1 [.poll t.toNat]).1 := fun nd' =>
+    (runDuties_fst_append S rho v nd' _ _).trans
+      (congrArg (fun x => (rho.runDuties v x [.poll t.toNat]).1)
+        (runDuties_fst_append S rho v nd' _ _))
+  rw [tick_of_awake S rho v nd t hw, gossip_node_eq, duties_eq S t ht, runDuties_fst_append, hpoll,
+    hinit, hpoll]
   rfl
 
 /-- **`Simulates.tick`'s node step at a non-public time.** An engine tick at a non-public time
