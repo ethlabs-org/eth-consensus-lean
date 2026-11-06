@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -148,7 +149,7 @@ private theorem trivial_stamp (hS : StandaloneRun tr H U proposer g) {x : Fin sp
     (hacc.imp id fun ⟨k, hk, hacc⟩ =>
       ⟨k, hacc, lt_of_le_of_lt (hr.time_mono hk.le) (lt_add_one _)⟩)
     (fun k hk _ => lt_of_le_of_lt (hr.time_mono hk) (lt_add_one _))
-    (Or.inr (by rw [hcall]; exact fun h => by cases h))) (etime_finite _)
+    (Or.inr (by rw [hcall]; exact fun h => by cases h))) (etime_of_lt_top _)
 
 /-- (V) under trivial frames: every block of the tree is viable. -/
 private theorem trivial_viable_at (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
