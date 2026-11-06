@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 
 public section
 
@@ -24,9 +25,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- `3f ≤ n - 1` gives `f < 2q - n`, the fault bound in quorum form. -/
 private theorem faults_lt_quorum_margin (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) :
     Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-  have hn : 0 < sp.n := sp.toParams.hn
-  change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
-  omega
+  exact sp.toParams.fg.faults_lt_quorum_margin hf
 
 /-- The common witness/relay induction, with the lock-specific transfer left to the caller. -/
 theorem next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)

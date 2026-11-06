@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 
 public section
 
@@ -33,15 +34,7 @@ private theorem foldl_newest_mem {l : List (Nat × Nat)} {o : Option (Nat × Nat
     (h : l.foldl (fun acc p => match acc with
       | none => some p
       | some r => if r.1 < p.1 then some p else some r) o = some p) : o = some p ∨ p ∈ l := by
-  induction l generalizing o with
-  | nil => exact Or.inl h
-  | cons x xs ih =>
-    rcases ih h with h | h
-    · rcases o with _ | r
-      · simp_all
-      · dsimp only at h
-        split_ifs at h <;> simp_all
-    · exact Or.inr (List.mem_cons_of_mem _ h)
+  exact Consensus.Goldilocks.FG.Record.foldl_newest_mem_or_initial h
 
 /-- The finality pair of an entry state is permitted and below its height. -/
 private theorem finalityPair_spec {Λ : Record} {σe : ChainState n}
