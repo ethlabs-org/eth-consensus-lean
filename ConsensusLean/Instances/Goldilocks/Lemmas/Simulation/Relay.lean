@@ -339,7 +339,9 @@ theorem processOne_eq (proposer : Nat → Fin sp.n)
   | none => exact ⟨[], by simp, by simp, rfl, rfl, rfl⟩
   | some e =>
     rcases canonEvent_eq_some he with ⟨B, rfl, -⟩ | ⟨v, rfl, -⟩ | ⟨a, rfl, -⟩
-    case inr.inl => exact ⟨[], by simp [apply], by simp, rfl, rfl, rfl⟩
+    case inr.inl =>
+      exact ⟨[], by simp only [apply, Bool.decide_and, decide_not, List.append_nil], by simp,
+        rfl, rfl, rfl⟩
     all_goals
       dsimp only
       refine ⟨_, by rw [relayIf_eq]; rfl, fun x hx => ?_, by rw [relayIf_eq]; rfl,
@@ -441,7 +443,8 @@ theorem process_relay (proposer : Nat → Fin sp.n)
           voteObj m ∈ os) ∧
         (∀ a, r.label = .fg (.attestation a) →
           attObj a ∈ (os.foldl (processOne hs) σ).relayBuf)
-  | [], σ, sub, ht => ⟨⟨[], by simp, by simp⟩, ht, rfl, by simp [deliverRecs_nil]⟩
+  | [], σ, sub, ht => ⟨⟨[], by simp, by simp⟩, ht, rfl, fun _ hr => by
+    rw [deliverRecs_nil] at hr; exact absurd hr List.not_mem_nil⟩
   | o :: os, σ, sub, ht => by
     obtain ⟨L₁, hL₁, hL₁o, hnow₁, hself₁, hnode₁⟩ := processOne_eq proposer dg hs σ o
     obtain ⟨⟨L, hL, hLos⟩, hnow, hself, hrec⟩ :=
@@ -850,9 +853,8 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
           split_ifs with hvv
           · subst hvv
             exfalso
-            have htt : t' = t := by
-              rcases h1 with h1 | h1 <;> rcases h2 with h2 | h2 <;>
-                simp only [Model.Event.time] at h1 h2 <;> first | linarith [h1.1, h2.1] | linarith
+            have htt : t' = t := le_antisymm (Or.elim h2 le_of_lt fun h => h.1.le)
+              (Or.elim h1 le_of_lt fun h => h.1.le)
             subst htt
             exact absurd (index_eq_of_events S rho hv hit hem) (by omega)
           · exact ihm
@@ -861,9 +863,7 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
           split_ifs with hvv
           · exfalso
             rcases h1 with h1 | h1
-            · rcases h2 with h2 | h2
-              · simp only [Model.Event.time] at h1 h2; linarith
-              · simp only [Model.Event.time] at h1 h2; linarith [h2.1]
+            · exact absurd (lt_of_lt_of_le h1 (Or.elim h2 le_of_lt fun h => h.1.le)) (lt_irrefl _)
             · exact absurd h1.2 (by simp [Model.Event.phase])
           · exact ihm
         | deliver v' o' t' => simpa [lastClock_succ, hem] using ihm
@@ -884,7 +884,7 @@ theorem runDuties_signed (v : V) :
     ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
       (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
       ∀ o ∈ (rho.runDuties v nd ds).2, ∃ k r m cs, o = Model.Obj.mk (.signed k r) m cs
-  | [], nd => by simp [rho.runDuties_nil]
+  | [], nd => fun _ ho => by rw [rho.runDuties_nil] at ho; exact absurd ho List.not_mem_nil
   | d :: ds, nd => by
     intro o ho
     rw [rho.runDuties_cons] at ho
@@ -1102,7 +1102,7 @@ theorem emits_val_of_mem_exec (proposer : Nat → Fin sp.n)
       CutChain self t st cs st' → Cut.ac ℓ ∈ cs → ∀ m ∈ ℓ.emits, m.msg.val = self := by
     intro st st' cs hc
     induction hc with
-    | nil => simp
+    | nil => exact fun h => absurd h List.not_mem_nil
     | @cons st₀ st₁ _ c cs hstep _ ih =>
       intro hm
       rcases List.mem_cons.mp hm with hm | hm
@@ -1252,7 +1252,8 @@ theorem process_outbox (proposer : Nat → Fin sp.n)
       ∀ r ∈ deliverRecs proposer dg hs σ.self t i os σ.node sub, ∀ ℓ, r.label = .ac ℓ →
         ∀ m ∈ ℓ.emits, Body.vote (encodeVote m.msg) ∈ (os.foldl (processOne hs) σ).outbox ∧
           m.msg.val = σ.self
-  | [], σ, sub, ht => ⟨⟨[], by simp⟩, by simp [deliverRecs_nil]⟩
+  | [], σ, sub, ht => ⟨⟨[], by simp⟩, fun _ hr => by
+    rw [deliverRecs_nil] at hr; exact absurd hr List.not_mem_nil⟩
   | o :: os, σ, sub, ht => by
     obtain ⟨-, -, -, hnow₁, hself₁, hnode₁⟩ := processOne_eq proposer dg hs σ o
     obtain ⟨⟨L, hL⟩, hrec⟩ :=
