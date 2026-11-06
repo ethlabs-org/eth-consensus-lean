@@ -8,8 +8,8 @@
 # an interrupted download or unpack leaves the previous build (or none), never a half-restored one.
 #
 # Needs `gh` authenticated for the code repository (scripts/repos.toml; the Actions API needs a token even for a
-# public repository) and zstd. Without them, or without a matching artifact (artifacts expire after a few days;
-# docs-only pushes upload none), it says why and exits 0: the build then runs from scratch as before.
+# public repository) and zstd. Missing tools fail clearly; callers may explicitly make restoration optional.
+# Without authentication or a matching artifact (docs-only pushes upload none), it exits 0 without restoring.
 #
 # Usage: scripts/restore-build.sh [--force]   (--force: restore even when .lake/build is already up to date)
 set -euo pipefail
@@ -19,8 +19,8 @@ skip() { echo "restore-build: $*; nothing restored"; exit 0; }
 force=0
 [[ "${1:-}" == --force ]] && force=1
 
-command -v gh >/dev/null || skip "gh not installed"
-command -v zstd >/dev/null || skip "zstd not installed"
+command -v gh >/dev/null || { echo "restore-build: required tool gh not installed" >&2; exit 1; }
+command -v zstd >/dev/null || { echo "restore-build: required tool zstd not installed" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || skip "gh is not authenticated"
 repo="$(python3 -I -c 'import tomllib; print(tomllib.load(open("scripts/repos.toml", "rb"))["code"])')"
 head="$(git rev-parse HEAD)"
@@ -49,7 +49,7 @@ while read -r id sha; do
        -q '.artifacts[] | select(.name == "lake-build" and (.expired | not)) | .name' | grep -qx lake-build; then
     found="$id $sha"; break
   fi
-done < <(gh api "repos/$repo/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=30" \
+done < <(gh api --paginate "repos/$repo/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=100" \
            -q '.workflow_runs[] | "\(.id) \(.head_sha)"' 2>/dev/null || true)
 [[ -n "$found" ]] || skip "no lake-build artifact of a green main run at or below HEAD ${head:0:8}"
 
