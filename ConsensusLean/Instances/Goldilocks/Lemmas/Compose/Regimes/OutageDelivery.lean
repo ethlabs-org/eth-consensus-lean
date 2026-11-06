@@ -121,18 +121,18 @@ theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
   obtain ⟨ℓv, hcv, hev⟩ := id hv
   -- the vote is processed by the receiver before `t_q + 2Δ` (fresh processing only)
   obtain ⟨k', hk'c, hjk', hp, hk'dl⟩ := hS.message x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
-    c ℓ hc (by linarith [hdl c le_rfl _ htj])
+    c ℓ hc ((hdl c le_rfl _ htj).trans hct)
   have hk'lt : T.time k' < sp.ts q + 2 * sp.Δ := hk'dl.trans_le (hdl k' hk'c _ htj)
-  have hk'c' : k' < c := lt_of_le_of_ne hk'c (by rintro rfl; linarith)
+  have hk'c' : k' < c := lt_of_le_of_ne hk'c (by rintro rfl; exact hk'lt.not_ge hct)
   have hsk' : sp.slot (T.time k') = q :=
-    SA.slot_of_mem sp q (hsj.trans hjk') (by rw [hts]; linarith)
+    SA.slot_of_mem sp q (hsj.trans hjk') (by rw [hts]; linarith only [hk'lt, hΔ])
   have hnr : ∀ r, k' + 1 ≤ r → r < c + 1 → ¬ T.RestartAt y r := by
     rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
     obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
     obtain ⟨ℓ', hc', -⟩ := hp
     have h₁ := hprev k' (by omega) ℓ' hc'
     have h₂ := hres r (by omega) ⟨ℓr, hcr, hrr⟩
-    linarith
+    exact (hsj.trans hjk').not_gt (h₁.trans (hu.trans_le h₂))
   have hpk' : e.msg ∈ (T.state y (k' + 1)).pool q := by
     rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
       h | ⟨a, ha, b, hb, hab, hav, hbv⟩
@@ -164,11 +164,12 @@ theorem vote_pooled_before_early (hrun : SA.ACRun proposer T H U)
         rw [hyx] at hv₁
         obtain ⟨rfl, -⟩ := SA.one_vote_per_slot sp FGP ro H U T hr x hx k₁ j e₁ e hv₁ hv
           (by rw [he₁m])
-        linarith
+        linarith only [htj, hΔ]
       · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
           (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hes]; exact hpk')) hn₁
   · rw [hst₁, SA.etime_of_lt_of]
-    linarith [hres k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩]
+    exact (hres k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩).trans_lt
+      (lt_add_of_pos_right _ (mul_pos two_pos hΔ))
 
 /-- D3 (L1 without its head facts). The vote is pooled, its head is held, and the vote is
 resolved before `t_q + 2Δ`, given the head's slot bound and its acceptance by the voter by
