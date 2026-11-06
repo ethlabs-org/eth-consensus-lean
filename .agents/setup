@@ -8,11 +8,13 @@ cd "$repo_root"
 step() { printf '\n==> %s\n' "$*"; }
 timed() { local t=$SECONDS; "$@"; printf '    (%ss)\n' "$((SECONDS - t))"; }
 
-# bubblewrap for `lake check` / `lake comparator` (check.sh steps 10-11); jq for step 9.
+# bubblewrap for `lake check` / `lake comparator`; jq for configuration checks; gh/zstd for build restore.
 install_packages() {
   local missing=()
   command -v bwrap >/dev/null || missing+=(bubblewrap)
   command -v jq >/dev/null || missing+=(jq)
+  command -v gh >/dev/null || missing+=(gh)
+  command -v zstd >/dev/null || missing+=(zstd)
   if ((${#missing[@]})); then
     sudo apt-get update -qq
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}"
@@ -60,7 +62,7 @@ install_lakeprof() {
 # Run an optional step: its failure warns and setup goes on (a failed setup blocks the snapshot).
 optional() { "$@" || echo "WARNING: optional step $1 failed; setup continues without it" >&2; }
 
-step "System packages (bubblewrap, jq)"; timed install_packages
+step "System packages (bubblewrap, jq, gh, zstd)"; timed install_packages
 # The pre-push hook: a push to main must have passed scripts/push-main.sh (AGENTS.md "Land on main").
 step "git hooks (scripts/hooks)"; git config core.hooksPath scripts/hooks
 step "elan v4.2.4"; timed install_elan
