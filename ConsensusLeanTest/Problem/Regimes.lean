@@ -245,19 +245,20 @@ theorem Outage.of_le {T b₀ b₁ : Time} (hc : K'.params.catchUp = K.params.cat
   have hC0 : (0 : Time) ≤ (K'.params.noSleep : Time) * (S.pt r).env.ΔAC := by positivity
   have ha : S.outageStart K b₀ r ≤ S.outageStart K' b₀ r := by
     unfold outageStart
-    exact min_le_min (max_le_max le_rfl (by nlinarith)) le_rfl
+    exact min_le_min (max_le_max le_rfl
+      (sub_le_sub_left (mul_le_mul_of_nonneg_right hC' hΔ) _)) le_rfl
   have hz : S.outageEnd K' b₁ r ≤ S.outageEnd K b₁ r := by
     unfold outageEnd
-    exact min_le_min (by nlinarith) le_rfl
+    exact min_le_min (add_le_add_right (mul_le_mul_of_nonneg_right hC' hΔ) _) le_rfl
   have haz : S.outageStart K' b₀ r ≤ S.outageEnd K' b₁ r := by
     unfold outageStart outageEnd
     exact min_le_min (max_le (by linarith) (by linarith)) le_rfl
   refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, hns.mono ha hz, hco.mono hns ha haz hz⟩
-  · nlinarith
-  · nlinarith
+  · exact le_trans (add_le_add_right (mul_le_mul_of_nonneg_right hl' hΔ) _) hlag
+  · exact hbud.trans (add_le_add_right (mul_le_mul_of_nonneg_right hb' hΔ) _)
   · rw [cDur_of_catchUp hc]
     have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
-    exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (by nlinarith)
+    exact EnvPoint.EtaSleepyOn.mono hs h0 hθ (mul_le_mul_of_nonneg_right hη' hΔ)
 
 end System
 
