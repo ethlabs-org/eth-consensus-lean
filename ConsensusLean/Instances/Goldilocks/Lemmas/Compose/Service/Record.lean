@@ -40,12 +40,6 @@ theorem head_confirmed_of_support {sp : SAParams} {ro : ReplayOrder sp (List (FG
   have hH := SA.anc_acHead hΦ hR.1 hs.anchor_compatible hs.support
   exact ⟨hH, SA.acConfirmed_eq hΦ hR.1 hR.2 hH⟩
 
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9). -/
-theorem goldilocksNode_requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-
 /-- **A1.6, head extends the record under synchrony.** -/
 theorem head_extends_record : HeadExtendsRecord := by
   intro sp ro proposer dg H tr ΔF hrun hnc hsl y hy i hs R hR
@@ -53,7 +47,7 @@ theorem head_extends_record : HeadExtendsRecord := by
     fun i' hii' hserv R' hR' => ?_⟩
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer
-      (goldilocksNode_requirements sp ro) hrun.toLocalRun hnc).coherent
+      (requirements sp ro) hrun.toLocalRun hnc).coherent
   -- the record's block moves forward along the window
   have key : ∀ m, i ≤ m → m ≤ i' → ∃ E ∈ tr.HonestBlocks H,
       E.root = (tr.state y m).ac.latestConfirmed ∧ Anc (tr.HonestBlocks H) R E := by
