@@ -180,6 +180,20 @@ theorem upTo_retainedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
     exact ⟨q, hq, hv, fun r hqr hri hr => hnr r hqr hri
       ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mp hr).2⟩
 
+/-- Carry only reads acceptances through the voting cut; its retained witnesses survive. -/
+theorem carryAt_upTo {y : Fin sp.n} {i s : Nat}
+    (hi : tr.time i ≤ d) {U : Set (Blk sp.n FGP)} {e : Em sp FGP} {CV : Set (Vote sp.n)}
+    (hbefore : sp.ts s + 3 * sp.Δ ≤ d) (h : CarryAt tr U y i e s CV) :
+    CarryAt (tr.upTo d) U y i e s CV := by
+  refine ⟨⟨h.awake, hi⟩, h.joined, ?_, h.holds⟩
+  intro v hv
+  obtain ⟨Hv, hHv, hr, ha⟩ := h.heads v hv
+  refine ⟨Hv, hHv, hr, fun X hX => ?_⟩
+  rcases ha X hX with hg | ⟨k, hk, ht⟩
+  · exact Or.inl hg
+  · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mpr
+      ⟨ht.le.trans hbefore, hk⟩, ht⟩
+
 theorem upTo_messageServedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
     (hi : tr.time i ≤ d) {v : Vote sp.n} {τ : Time} :
     MessageServedBefore (tr.upTo d) y i τ v ↔ MessageServedBefore tr y i τ v := by
