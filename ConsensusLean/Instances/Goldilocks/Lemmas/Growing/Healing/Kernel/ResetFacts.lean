@@ -65,6 +65,24 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before_at
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   sorry
 
+/-- R2: every later-label honest cast extends each high origin within the finite horizon.
+The origin write need not precede the cast; its writer's honesty is carried by HighOrigin. -/
+theorem ResetPremisesUpTo.high_origin_votes_before_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
+    ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
+      ∀ y ell e, y ∈ H (tr.time k) → SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
+        SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+  sorry
+
+/-- R1: high origins within the horizon are comparable, with each writer honest at its write. -/
+theorem ResetPremisesUpTo.origins_compatible_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x z : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
+    (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
+    Compatible (tr.HonestBlocksAt H) B O := by
+  sorry
+
 end Consensus.Goldilocks.Healing.Growing
 
 end
