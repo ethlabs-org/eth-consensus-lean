@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportsPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 
 public section
@@ -12,7 +13,7 @@ Stated under their final names and signatures so that the clean-source proposal 
 before they are proved.
 
 The restart bound and the healthy AC base on a read prefix are imported from their homes
-(`Growing/Healing/Restart`, `Healthy/ReportsPending`).
+(`Growing/Healing/Restart`, `Healthy/PrefixBase`).
 
 Owned by this cluster, and still open:
 
