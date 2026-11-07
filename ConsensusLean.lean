@@ -150,6 +150,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Regimes.Bridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
@@ -429,6 +430,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.N
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
@@ -439,6 +441,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
