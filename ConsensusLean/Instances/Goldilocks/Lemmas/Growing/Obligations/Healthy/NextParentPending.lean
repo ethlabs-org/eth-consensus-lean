@@ -1,16 +1,16 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
 
 public section
 
-/-! # Pending growing interface of the next-slot no-reorg step
+/-! # Growing interface of the next-slot no-reorg step
 
 `Healing.Growing.ResetPremisesUpTo.held_target_proposal_domain_before_at`, the growing form of
 `Healing.ResetPremisesUpTo.held_target_proposal_domain_before` (Outcome/PivotRowSources): the
 reader of the target is honest at its cut, the proposer at its proposal call, and ancestry and
 compatibility are over `HonestBlocksAt`.
 
-Each theorem here is an open `sorry`; this module is deleted when the home module lands. -/
+The original consumer name delegates to the proposal-domain implementation. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -36,7 +36,8 @@ theorem held_target_proposal_domain_before_at (hp : ResetPremisesUpTo tr H propo
     (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
       Compatible (tr.HonestBlocksAt H) B O) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
-  sorry
+  exact ProposalImpl.held_target_proposal_domain_before_at
+    hp hx hpH hBx hci hcall hd hti hib hheld hseed hcompare
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
