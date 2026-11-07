@@ -89,4 +89,17 @@ def NoCollTransportAt : Prop :=
     rho.ExecutionValid → ¬ rho.HashCollision →
       Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)
 
+variable (V) in
+/-- The quantified engine-simulation contract. -/
+theorem engineSimulatesNodeAt_iff : EngineSimulatesNodeAt V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
+      rho.ExecutionValid → ∃ tr ι, SimulatesAt S rho hn tr ι := by rfl
+
+variable (V) in
+/-- The quantified collision-transport contract. -/
+theorem noCollTransportAt_iff : NoCollTransportAt V S ↔
+    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
+      rho.ExecutionValid → ¬ rho.HashCollision →
+        Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn) := by rfl
+
 end Consensus.Goldilocks.Simulation

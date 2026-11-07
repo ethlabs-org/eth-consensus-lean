@@ -30,6 +30,20 @@ theorem mem_honestKeysAt_iff (t : Time) (y : Fin (Fintype.card V)) :
   rfl
 
 omit [DecidableEq V] in
+/-- The honesty map used by `SimulatesAt.run` clamps exactly as the L0 regimes do. -/
+theorem honestKeysAt_clamp (t : Time) :
+    honestKeysAt S rho (min t rho.horizon) = honestKeysAt S rho t := by
+  ext y
+  simp only [mem_honestKeysAt_iff, min_assoc, min_self]
+
+omit [DecidableEq V] in
+/-- Beyond the observation horizon the trace's honest set stays frozen. -/
+theorem honestKeysAt_after_horizon {t : Time} (ht : rho.horizon ≤ t) :
+    honestKeysAt S rho t = honestKeysAt S rho rho.horizon := by
+  ext y
+  simp only [mem_honestKeysAt_iff, min_eq_right ht, min_self]
+
+omit [DecidableEq V] in
 /-- Permanent compromise makes the time-indexed honest keys antitone. -/
 theorem honestKeysAt_antitone : Antitone (honestKeysAt S rho) := by
   intro s t hst y hy
