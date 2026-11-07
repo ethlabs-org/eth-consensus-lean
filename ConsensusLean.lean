@@ -184,11 +184,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Endpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Fields
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Pending
