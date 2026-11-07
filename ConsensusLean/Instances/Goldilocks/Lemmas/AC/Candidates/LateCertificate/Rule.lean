@@ -84,6 +84,11 @@ variable (sp) in
 def WeightAntitone (Φ : Frm sp.n FGP) (w : WLock) : Prop :=
   ∀ Y ∈ Φ.tree, ∀ D ∈ Φ.tree, Φ.Anc Y D → w.weight D.root ≤ w.weight Y.root
 
+theorem weightAntitone_iff (Φ : Frm sp.n FGP) (w : WLock) :
+    WeightAntitone sp Φ w ↔
+      ∀ Y ∈ Φ.tree, ∀ D ∈ Φ.tree, Φ.Anc Y D → w.weight D.root ≤ w.weight Y.root :=
+  Iff.rfl
+
 /-- **Evidence-release fixes every block at or below its choice**, for a lock whose weight is
 antitone along the chain: such a block is keepable (less evidence, more weight). -/
 theorem evidenceTarget_of_anc {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (V : View sp.n) (s : Int)
