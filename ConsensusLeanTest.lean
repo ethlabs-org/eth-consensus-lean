@@ -48,6 +48,7 @@ public import ConsensusLeanTest.Goldilocks.FGStore.TimeoutEntry
 public import ConsensusLeanTest.Goldilocks.Frame.Rejection
 public import ConsensusLeanTest.Goldilocks.Frame.Seq
 public import ConsensusLeanTest.Goldilocks.Frame.Statements
+public import ConsensusLeanTest.Goldilocks.Growing.Compose
 public import ConsensusLeanTest.Goldilocks.Growing.FG
 public import ConsensusLeanTest.Goldilocks.HalfCommittee.Control
 public import ConsensusLeanTest.Goldilocks.HalfCommittee.Premises
@@ -115,6 +116,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.World
+public import ConsensusLeanTest.GrowingAC
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model.Basic

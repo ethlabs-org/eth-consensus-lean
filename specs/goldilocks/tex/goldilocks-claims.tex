@@ -1732,9 +1732,14 @@ growth, and the G-free form); old plain-SA Lean \texttt{recovered\_from\_engine}
 \texttt{fast\_source\_permanent\_support}.}
 {M.  Proved on paper.  The driven-trace domain excludes
 blocks that the composed node refuses; the proof assumes it.  The
-drain arithmetic would allow the threshold
-$\bar g+(8k+4)\Delta$.  That is not claimed: for simplicity the
-node keeps $2\Theta+8\Delta$.}
+drain arithmetic gives the threshold
+$\bar g+(8k+4)\Delta$: a lock live at a slot~$\sigma$ with
+$t_\sigma\geq\bar g+8k\Delta$ sits below a good origin, so the locks are
+settled from the slot start $t_{p-1}$.  That stronger form, with the same
+premises and conclusions, is proved separately (Lean
+\texttt{ACHealingStandaloneTight}); its corollary is proposal-block
+inclusion (not transaction inclusion) from $\bar g+(8k+10)\Delta+G_p$.
+The node keeps $2\Theta+8\Delta$, which follows from it.}
 
 \dagnode{H.2}{AC inclusion from the retention premise}{An AC node over driven
 AC traces with their frames (G0.4 (frame), G0.3 (frame)), as A1.2--A1.4.  It

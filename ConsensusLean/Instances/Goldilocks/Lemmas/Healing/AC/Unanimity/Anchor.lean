@@ -63,7 +63,7 @@ theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     omega
 
 /-- The proposal head and every honest vote extend `Φ.F` (genesis) of an honest call. -/
-private theorem genesis_extended (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay)
+private theorem genesis_extended (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay)
     {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     Anc U ℓ.frame.F d.head ∧ ∀ z ∈ H, ∀ j e, VoteAt tr z j e → VoteExtends U e.msg ℓ.frame.F := by
@@ -86,7 +86,8 @@ private theorem genesis_extended (hs : UnanimitySetting tr H U schedule g p P k 
 
 /-- **The anchor of an honest slot-`p` vote**: a block of `U` that every honest vote of slot
 `p` and the proposal head extend, or extended by an honest slot-`p` vote of an earlier cut. -/
-theorem vote_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+theorem vote_anchor_cases_core
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     getAnchor sp e.readPoint ℓ.frame (tr.time j) ∈ U ∧
@@ -150,7 +151,7 @@ theorem vote_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d 
 
 /-- **The anchor of the proposal**: a block of `U` that every honest vote of slot `p` extends,
 or extended by some honest slot-`p` vote. -/
-theorem proposal_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
+theorem proposal_anchor_cases_core (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
     d.start ∈ U ∧
       ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p → VoteExtends U e.msg d.start) ∨
         ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = p ∧ VoteExtends U e.msg d.start) := by
@@ -226,6 +227,27 @@ theorem proposal_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓ
       rw [heq] at h1
       rw [hs.time, h1] at h2
       linarith
+
+/-! ## In the setting of unanimity -/
+
+/-- `vote_anchor_cases_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
+theorem vote_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
+    getAnchor sp e.readPoint ℓ.frame (tr.time j) ∈ U ∧
+      ((Anc U (getAnchor sp e.readPoint ℓ.frame (tr.time j)) d.head ∧
+        ∀ z ∈ H, ∀ j' e', VoteAt tr z j' e' → e'.msg.slot = p →
+          VoteExtends U e'.msg (getAnchor sp e.readPoint ℓ.frame (tr.time j))) ∨
+      ∃ z ∈ H, ∃ j' < j, ∃ e', VoteAt tr z j' e' ∧ e'.msg.slot = p ∧
+        VoteExtends U e'.msg (getAnchor sp e.readPoint ℓ.frame (tr.time j))) :=
+  vote_anchor_cases_core hs.toCore hx hc hes
+
+/-- `proposal_anchor_cases_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
+theorem proposal_anchor_cases (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
+    d.start ∈ U ∧
+      ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p → VoteExtends U e.msg d.start) ∨
+        ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = p ∧ VoteExtends U e.msg d.start) :=
+  proposal_anchor_cases_core hs.toCore
 
 end Consensus.Goldilocks.SA
 

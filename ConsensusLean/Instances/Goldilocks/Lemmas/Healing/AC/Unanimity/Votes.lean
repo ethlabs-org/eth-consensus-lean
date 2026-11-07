@@ -26,7 +26,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
 
 /-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor.** -/
-private theorem vote_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+private theorem vote_walkEnd
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧
@@ -37,9 +38,9 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp
   have hr := hs.standalone.run.localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc.1
-  have hhead := castAt_head_of_viable hr hx hc (hes ▸ vote_viable_nonempty hs hx hc hes)
+  have hhead := castAt_head_of_viable hr hx hc (hes ▸ vote_viable_nonempty_core hs hx hc hes)
   rw [hes] at hhead
-  have ha := (vote_anchor_cases hs hx hc hes).1
+  have ha := (vote_anchor_cases_core hs hx hc hes).1
   set T := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)
   have hT : T ⊆ ℓ.frame.tree := fun B hB => hB.1.1
   have hfin : T.Finite := hΦ.finite.subset hT
@@ -57,21 +58,22 @@ private theorem vote_walkEnd (hs : UnanimitySetting tr H U schedule g p P k ℓp
     · exact he ▸ ha
     · exact (Anc.mem (hw.anc (hT.trans hΦU) ha) he).2
   refine ⟨Hd, hHd, hhead.symm, ?_⟩
-  have hag := fun X => vote_children_eq hs hx hc hes X
+  have hag := fun X => vote_children_eq_core hs hx hc hes X
   refine hw.congr hU (hT.trans hΦU) ha hHd (fun X _ => hag X) ?_
   obtain ⟨-, -, hstop⟩ := walkEnd_iff.1 hw
   refine walkEnd_self fun ⟨C, hC⟩ => hstop ⟨C, ?_⟩
   exact (IsBest.congr (hag Hd).1 (hag Hd).2).2 hC
 
 /-- **Unanimity** (H.1 (i)), in its setting. -/
-theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
+theorem proposal_votes_of_setting_core
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
   have hU : Coherent U := hs.standalone.run.localRun.coherent
   -- the canonical walk
   set T := insert P (ℓp.frame.viableTree ℓp.frame.tree)
   set sc := goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1)
   set el := goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)
-  obtain ⟨hpw, hPU, hΦpU, hsd, hdP⟩ := proposal_walkEnd hs
+  obtain ⟨hpw, hPU, hΦpU, hsd, hdP⟩ := proposal_walkEnd_core hs
   have hTU : T ⊆ U := Set.insert_subset hPU fun B hB => hΦpU hB.1
   -- a vote extending a block: its head block extends it
   have hext : ∀ {e : Em sp FGP} {Hd B}, Hd ∈ U → Hd.root = e.msg.head →
@@ -91,7 +93,7 @@ theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k
   set a₀ := getAnchor sp e₀.readPoint ℓ₀.frame (tr.time (Nat.find hex))
   obtain ⟨E₀, hE₀, hE₀r, hw₀⟩ := vote_walkEnd hs hx₀ hc₀ hes₀
   obtain ⟨ha₀, ⟨ha₀d, hall₀⟩ | ⟨z, hz, j', hj', e', hv', hs', -⟩⟩ :=
-    vote_anchor_cases hs hx₀ hc₀ hes₀
+    vote_anchor_cases_core hs hx₀ hc₀ hes₀
   swap
   · exact absurd hs' (hmin j' hj' z hz e' hv')
   -- every honest slot-`p` vote has head `E₀`
@@ -103,7 +105,7 @@ theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k
     intro x hx ℓ e hc hes Hd hHd hHdr
     obtain ⟨Hw, hHw, hHwr, hw⟩ := vote_walkEnd hs hx hc hes
     obtain rfl : Hw = Hd := hU.1 hHw hHd (hHwr.trans hHdr.symm)
-    obtain ⟨ha, hcases⟩ := vote_anchor_cases hs hx hc hes
+    obtain ⟨ha, hcases⟩ := vote_anchor_cases_core hs hx hc hes
     have ha₀H : Anc U a₀ Hw := hext hHw hHwr (hall₀ x hx c e ⟨ℓ, hc⟩ hes)
     rcases anc_total hU (hw.anc hTU ha) ha₀H with h | h
     · exact hw.of_anc hU hTU h ha₀H |>.unique hw₀
@@ -117,7 +119,7 @@ theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k
       exact hw.unique (hw₀.of_anc hU hTU h haE)
   -- the canonical walk from `a₀` ends at `P`
   have hB : E₀ = P := by
-    obtain ⟨hsU, hscases⟩ := proposal_anchor_cases hs
+    obtain ⟨hsU, hscases⟩ := proposal_anchor_cases_core hs
     have ha₀P : Anc U a₀ P := ha₀d.trans hdP
     rcases anc_total hU (hsd.trans hdP) ha₀P with h | h
     · exact hw₀.unique (hpw.of_anc hU hTU h ha₀P)
@@ -132,6 +134,13 @@ theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k
   obtain ⟨ℓ₁, hc₁, he₁⟩ := hv₁
   obtain ⟨H₁, hH₁, hH₁r, -⟩ := honest_head hs.standalone.run hx₁ ⟨ℓ₁, hc₁, he₁⟩
   rw [← hH₁r, hA j₁ x₁ hx₁ ℓ₁ e₁ ⟨hc₁, he₁⟩ hes₁ H₁ hH₁ hH₁r, hB]
+
+/-! ## In the setting of unanimity -/
+
+/-- `proposal_votes_of_setting_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
+theorem proposal_votes_of_setting (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
+    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root :=
+  proposal_votes_of_setting_core hs.toCore
 
 end Consensus.Goldilocks.SA
 
