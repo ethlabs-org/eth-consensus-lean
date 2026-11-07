@@ -283,18 +283,27 @@ theorem honestBlocks_upTo_subset (hmono : Monotone tr.time) {H : Time → Set (F
   obtain ⟨i₀, -, hb, hs⟩ := Trace.upTo_state_exists tr hmono y i
   exact ⟨y, i₀, d, hd, hb, hy, hs ▸ hB⟩
 
+/-- **Ancestry comes down into the prefix.** If `C` is held in the prefix by a node honest at `d`,
+every ancestor of `C` inside the blocks held while honest is an ancestor inside the prefix's honest
+blocks (the honest trees are ancestor-closed, and `NoColl` makes the parent of a block the one block
+with its parent root). Open: needs the ancestor closure of honest trees and the coherence of the
+blocks held while honest. -/
+theorem anc_upTo_of_right {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n}
+    (_hrun : Growing.LocalRun proposer dg H sg tr) (_hnc : Compose.NoCollRun dg tr) (_hd : 0 ≤ d)
+    {B C : A.Blk} (_hC : C ∈ (tr.upTo d).HonestBlocks (H d))
+    (_h : Anc (tr.HonestBlocksAt H) B C) : Anc ((tr.upTo d).HonestBlocks (H d)) B C := by
+  sorry
+
 /-- Inside the blocks the prefix's nodes honest at `d` hold, ancestry is the run's ancestry inside
-the blocks held while honest. Open: the converse direction needs the ancestor closure of honest
-trees and the coherence of the blocks held while honest (`Compose.Growing.honest_blocks_coherent`,
-A3), so it is stated here with the run and `NoColl` premises it will use. -/
+the blocks held while honest (the converse direction is `anc_upTo_of_right`). -/
 theorem anc_upTo_iff {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
     {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n}
-    (hrun : Growing.LocalRun proposer dg H sg tr) (_hnc : Compose.NoCollRun dg tr) (hd : 0 ≤ d)
+    (hrun : Growing.LocalRun proposer dg H sg tr) (hnc : Compose.NoCollRun dg tr) (hd : 0 ≤ d)
     {B C : A.Blk} (_hB : B ∈ (tr.upTo d).HonestBlocks (H d))
-    (_hC : C ∈ (tr.upTo d).HonestBlocks (H d)) :
-    Anc ((tr.upTo d).HonestBlocks (H d)) B C ↔ Anc (tr.HonestBlocksAt H) B C := by
-  refine ⟨Anc.mono (honestBlocks_upTo_subset hrun.time_mono hd), fun _ => ?_⟩
-  sorry
+    (hC : C ∈ (tr.upTo d).HonestBlocks (H d)) :
+    Anc ((tr.upTo d).HonestBlocks (H d)) B C ↔ Anc (tr.HonestBlocksAt H) B C :=
+  ⟨Anc.mono (honestBlocks_upTo_subset hrun.time_mono hd), anc_upTo_of_right hrun hnc hd hC⟩
 
 /-- **Retention of `Sync`.** On the prefix through `d ≥ 0`, `SyncOnAt` gives `SyncOn` for the
 validators honest at `d`. -/

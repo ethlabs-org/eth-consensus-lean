@@ -147,6 +147,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
