@@ -1,13 +1,17 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 
 public section
 
 /-! # Frozen proof boundaries for the growing drain kernel
 
-All proof holes below are explicit work assignments. The health-dependent reset lower bound
-is frozen separately in ResetFacts. No deadline is lengthened here.
+All remaining proof holes below are explicit work assignments. The finite reset lower bound
+is proved separately in ResetSource. No deadline is lengthened here.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -37,7 +41,8 @@ theorem exists_frameWindow_seq_of_service_at
       (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
         frameKey' (tr.state y i).fg = v) ∧
       ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J := by
-  sorry
+  exact exists_frameWindow_seq_of_service_proof_at hrun hnc hf hsvc hcatch len hlen hlam hlo
+    hTb hrange hcall hT
 
 /-- Step 3: service gives warm proposals without any reset lower-bound premise. -/
 theorem drainOutputs_of_service_at
@@ -48,7 +53,7 @@ theorem drainOutputs_of_service_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
     DrainOutputs tr proposer H g G Ld b := by
-  sorry
+  exact KernelProof.drainOutputs_of_service_at hrun hnc hsvc hawake hf hcatch hnr hLd
 
 /-- Step 3: an honestly signed row remains owed after its signer is compromised. -/
 theorem rows_delivered_service_at {g ΔF b v : Time}
@@ -59,7 +64,7 @@ theorem rows_delivered_service_at {g ΔF b v : Time}
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin sp.n} {k : Nat}
     (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n} (hsig : tr.SignAt y k att)
     (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
-  sorry
+  exact KernelProof.rows_delivered_service_at hsvc hnr hrun hv hp hX hvx hkb hy hsig hk
 
 /-- Step 4: the reset bound from finite service, a bounded-gap proposer stream and drain.
 This asserts existence and an upper bound; the strict lower bound is a separate interface. -/
@@ -82,7 +87,8 @@ theorem exists_reset_of_drain_rounds_awake_at
     (hdrain : DrainOutputs tr proposer H g G Ld b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
-  sorry
+  exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
+    hH hδ hΔF hr hgr hG hcz hb hgp hdrain
 
 /-- Step 4 packaging: a bounded reset and a snapshot supply the existing finite reset record. -/
 theorem resetPremisesUpTo_of_reset_at

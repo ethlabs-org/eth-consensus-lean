@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 
 public section
 
@@ -31,18 +32,6 @@ theorem ResetPremisesUpTo.reset_vote_root_below_bound_at
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
-  sorry
-
-/-- Outcome supplier: a held bound on old origins is above the next-slot floor. -/
-theorem ResetPremisesUpTo.reset_vote_floor_above_old_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
-    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
-      tr.time r ≤ b → Anc (tr.HonestBlocksAt H) O B) :
-    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
   sorry
 
 /-- Kernel supplier: the bounded high origin's label is after the snapshot. -/
