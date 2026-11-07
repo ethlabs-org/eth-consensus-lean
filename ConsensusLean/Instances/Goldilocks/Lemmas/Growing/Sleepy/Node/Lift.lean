@@ -2,11 +2,18 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 
 public section
 
@@ -197,11 +204,10 @@ theorem exists_upTo_of_mem {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr
   obtain ⟨y, i, t, ht, hi, hy, hBt⟩ := hB
   exact ⟨t, ht, y, hy, i, by rw [Trace.upTo_state tr y hi]; exact hBt⟩
 
-/-- **The blocks held while honest are coherent** under `NoColl` (stand-in for the Compose
-growing-fault coherence lemma). -/
-theorem honestBlocksAt_coherent (_hrun : Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) := by
-  sorry
+/-- **The blocks held while honest are coherent** under `NoColl` (`honest_blocks_coherent`). -/
+theorem honestBlocksAt_coherent (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) :=
+  honest_blocks_coherent hrun hnc
 
 /-- Genesis is held while honest, below every block held while honest. -/
 theorem honestAt_genesis_anc (hrun : Growing.GoldilocksRun proposer dg H tr)
@@ -349,6 +355,247 @@ theorem SleepyServiceBefore.upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
     have hkd : tr.time k ≤ d := (hm hkj).trans hjd
     exact ⟨k, hkj, (RunTrace.upTo_acceptAt _).mpr ⟨hkd, hk⟩,
       by rw [RunTrace.upTo_deadline hm hkd]; exact hkt⟩
+
+/-! ### Node-local AC facts at a cut (lifted at the time of the cut) -/
+
+/-- The AC state of the prefix before a cut at a time `≤ d` is the run's. -/
+theorem projAC_upTo_state (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {i : Nat} (hi : tr.time i ≤ d) : (tr.projAC.upTo d).state y i = tr.projAC.state y i :=
+  ac_state_upTo (trA := tr.projAC) hrun.time_mono hi
+
+/-- **The AC run of the prefix** through `d ≥ 0`, for the validators honest at `d`. -/
+theorem acRun_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hd : 0 ≤ d) :
+    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) := by
+  have h := goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer (hrun.upTo hd) (hnc.upTo d)
+  rwa [RunTrace.upTo_projAC] at h
+
+/-- A frame of a call of a node honest then is well formed, inside the blocks held while honest. -/
+theorem frameIn_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H :=
+  have h := SA.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+  ⟨h.1, h.2.trans (upTo_subset hrun (hrun.time_nonneg i))⟩
+
+/-- The frame of a call of a node honest then is in the prefix's honest blocks at its time. -/
+theorem frame_upTo_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ℓ) :
+    ℓ.frame.tree ⊆ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
+  (SA.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)).2
+
+theorem castAt_spec_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) :
+    e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ SA.joined sp e.readPoint (tr.time i) ∧
+      e.msg.head = (SA.getHead sp e.readPoint ℓ.frame (tr.time i)
+        (ℓ.frame.viableTree (SA.voteDomain sp e.readPoint ℓ.frame e.msg.slot))
+        (SA.mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root :=
+  SA.castAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+
+theorem cast_head_fcRoot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) :
+    (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
+      tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
+  cast_head_fcRoot (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+
+theorem frame_of_projAC_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ℓ) : ℓ.frame = Node.frame (tr.state y i) := by
+  have h := frame_of_projAC (hrun.upTo (hrun.time_nonneg i)) hy
+    (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+  rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
+
+theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {i : Nat} (hy : y ∈ H (tr.time i)) : tr.projAC.state y i = (tr.state y i).ac := by
+  have h := projAC_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
+  rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl,
+    RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
+
+theorem frame_slot_le_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
+  SA.frame_slot_le sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+
+theorem state_pool_slot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (σ : Nat) :
+    ∀ v ∈ (tr.projAC.state y i).pool σ, v.slot = σ := by
+  have h := SA.state_pool_slot sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy i σ
+  rwa [projAC_upTo_state hrun le_rfl] at h
+
+/-- **Lemma G at a pool**: a vote of the pool of a node honest at cut `i` whose validator is honest
+at `i` was cast by it, at a cut at which it was honest. -/
+theorem pool_vote_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {σ : Nat} {v : Vote sp.n}
+    (hv : v ∈ (tr.projAC.state y i).pool σ) (hvH : v.val ∈ H (tr.time i)) :
+    ∃ j < i, ∃ e, HVoteAt tr H v.val j e ∧ e.msg = v := by
+  have hm := hrun.time_mono
+  obtain ⟨j, hj, e, hve, hev⟩ := (acRun_upTo hrun hnc (hrun.time_nonneg i)).honest.pool_vote y hy
+    i σ v (by rw [projAC_upTo_state hrun le_rfl]; exact hv) hvH
+  obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
+  exact ⟨j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
+
+/-- **One vote per slot** of a node honest at both casts. -/
+theorem one_vote_per_slot_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {x : Fin sp.n} {j j' : Nat} {e e' : SA.Em sp (List (FG.Att sp.n))}
+    (hv : HVoteAt tr H x j e) (hv' : HVoteAt tr H x j' e') (hs : e.msg.slot = e'.msg.slot) :
+    j = j' ∧ e = e' := by
+  wlog hjj : j ≤ j' generalizing j j' e e'
+  · obtain ⟨h1, h2⟩ := this hv' hv hs.symm (by omega)
+    exact ⟨h1.symm, h2.symm⟩
+  have hd := hrun.time_nonneg j'
+  have hjd := hrun.time_mono hjj
+  have hr := (acRun_upTo hrun hnc hd).localRun
+  exact SA.one_vote_per_slot sp _ ro _ _ _ hr x (hVoteAt_iff.1 hv').1 j j' e e'
+    (sa_voteAt_upTo.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩)
+    (sa_voteAt_upTo.mpr ⟨le_rfl, (hVoteAt_iff.1 hv').2⟩) hs
+
+/-- Every ancestor (held while honest) of a block of the frame of a call is genesis or was
+accepted by the caller by then. -/
+theorem frame_anc_accepted_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
+    {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hXB : Anc (tr.HonestBlocksAt H) X B) :
+    X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.projAC.AcceptAt y k X := by
+  have hd := hrun.time_nonneg i
+  rcases frame_anc_accepted (acRun_upTo hrun hnc hd).localRun hy i ℓ
+      ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) B hB X
+      (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd (frame_upTo_at hrun hnc hy hc hB) hXB)
+    with h | ⟨k, hk, hA⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨k, hk, ((ac_acceptAt_upTo _).mp hA).2⟩
+
+/-- A node honest at `t_s + Δ`, awake and joined then, casts a slot-`s` vote by then, at a cut at
+which it is honest. -/
+theorem vote_of_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {s : Nat} (hy : y ∈ H (sp.ts s + sp.Δ))
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    ∃ k e, HVoteAt tr H y k e ∧ e.msg.slot = s ∧ tr.time k ≤ sp.ts s + sp.Δ := by
+  have hd : 0 ≤ sp.ts s + sp.Δ := add_nonneg (by
+    simp only [SAParams.ts]
+    exact mul_nonneg (by linarith [sp.toParams.hΔ]) (by exact_mod_cast Nat.zero_le s))
+    sp.toParams.hΔ.le
+  obtain ⟨k, e, hv, hs, hk⟩ := vote_of_awake_joined (hrun.upTo hd) (hnc.upTo _) hy ⟨hw, le_rfl⟩
+    (joinedAt_upTo hj)
+  rw [RunTrace.upTo_projAC] at hv
+  obtain ⟨hkd, hv⟩ := sa_voteAt_upTo.mp hv
+  exact ⟨k, e, hVoteAt_iff.2 ⟨hrun.antitone hkd hy, hv⟩, hs, hk⟩
+
+/-- The counted votes of an optimistic selection by a node honest at its check: each is of the
+slot, sent or admitted by the checker in `[t_s, t_s + 2Δ)`, with a head held while honest above the
+selection, genesis or accepted by the checker before `t_s + 2Δ`. -/
+theorem optimistic_writer_votes_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {x : Fin sp.n} {i₀ s : Nat} (hx : x ∈ H (tr.time i₀))
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hO : SA.OptimisticLockAt tr.projAC x i₀ s C CV) :
+    ∀ v ∈ CV, v.slot = s ∧
+      (∃ k, x ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit x k v ∧ sp.ts s ≤ tr.time k ∧
+        tr.time k < sp.ts s + 2 * sp.Δ) ∧
+      ∃ Hv ∈ tr.HonestBlocksAt H, Hv.root = v.head ∧ Anc (tr.HonestBlocksAt H) C Hv ∧
+        (Hv.root = sp.genesisRoot ∨ ∃ k, x ∈ H (tr.time k) ∧ tr.projAC.AcceptAt x k Hv ∧
+          tr.time k < sp.ts s + 2 * sp.Δ) := by
+  have hd := hrun.time_nonneg i₀
+  have hsub := upTo_subset hrun hd
+  intro v hv
+  obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
+    optimistic_writer_votes (acRun_upTo hrun hnc hd).localRun hx
+      ((sa_optimisticLockAt_upTo hrun.time_mono).mpr ⟨le_rfl, hO⟩) v hv
+  obtain ⟨hkd, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
+  refine ⟨hvs, ⟨k, hrun.antitone hkd hx, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
+    hacc.imp_right fun ⟨k', hk', hk't⟩ => ?_⟩
+  obtain ⟨hk'd, hk'⟩ := (ac_acceptAt_upTo _).mp hk'
+  exact ⟨k', hrun.antitone hk'd hx, hk', hk't⟩
+
+/-- A block of the frame of a call at a time `≤ d`, of a node honest at `d`, is in the prefix's
+honest blocks through `d`. -/
+theorem mem_upTo_of_frame (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {k : Nat}
+    (hy : y ∈ H d) (hkd : tr.time k ≤ d) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ℓ) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
+    B ∈ (tr.upTo d).HonestBlocks (H d) := by
+  rw [frame_of_projAC_at hrun (hrun.antitone hkd hy) hc] at hB
+  exact ⟨y, hy, k, by rw [RunTrace.upTo_state_of_le hrun.time_mono hkd]; exact hB.1⟩
+
+/-- A block a node honest at cut `i` accepted at a cut `≤ i` and that extends the frame's `Σ.F`
+(inside the blocks held while honest) is in the frame. -/
+theorem mem_tree_of_acceptAt_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {k i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i)) (hk : tr.projAC.AcceptAt y k B)
+    (hki : k ≤ i) (hc : tr.projAC.CallAt y i ℓ) (hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
+    B ∈ ℓ.frame.tree := by
+  have hd := hrun.time_nonneg i
+  have hm := hrun.time_mono
+  have hr := (acRun_upTo hrun hnc hd).localRun
+  have hkd : tr.time k ≤ tr.time i := hm hki
+  have hk' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k B :=
+    (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩
+  obtain ⟨ℓk, hck, -⟩ := hk
+  have hBU : B ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
+    mem_upTo_of_frame hrun hy hkd hck
+      ((SA.accept_new sp hr hy hk').1 ℓk ((Trace.upTo_callAt_of_le tr.projAC hkd).mpr hck))
+  exact SA.mem_tree_of_acceptAt sp hr hy hk' hki ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+    (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hBU hFB)
+
+/-- A vote of the pool of a node honest at cut `i` has a finite stamp. -/
+theorem pool_stamp_lt_top_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {σ : Nat}
+    {v : Vote sp.n} (hv : v ∈ (tr.projAC.state y i).pool σ) :
+    (tr.projAC.state y i).voteStamp v < ⊤ := by
+  have hvs := state_pool_slot_at hrun hnc hy σ v hv
+  have h := SA.pool_origin (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy i v
+    (by rw [projAC_upTo_state hrun le_rfl, hvs]; exact hv)
+  rw [projAC_upTo_state hrun le_rfl] at h
+  rcases h with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
+  · rw [hst]; exact WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
+
+/-- A block of the frame that a node honest at cut `i` accepted before `T ≤ tr.time i`, with its
+restarts up to `i` before `T`, has a stamp before `T`. -/
+theorem blockStamp_lt_of_acceptedBefore_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) {T : Time}
+    (hacc : SA.AcceptedBefore tr.projAC y B T)
+    (hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < T) (hT : T ≤ tr.time i) :
+    (tr.projAC.state y i).blockStamp B.root < SA.ETime.of T := by
+  have hm := hrun.time_mono
+  have h := SA.blockStamp_lt_of_acceptedBefore sp
+    (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hB
+    (hacc.imp_right fun ⟨k, hk, hkT⟩ => ⟨k, (ac_acceptAt_upTo _).mpr ⟨(hkT.le.trans hT), hk⟩, hkT⟩)
+    (fun k hk hrk => hrs k hk ((ac_restartAt_upTo _).mp hrk).2) (Or.inl hT)
+  rwa [projAC_upTo_state hrun le_rfl] at h
+
+/-- **Forwarding under the finite service**: a vote sent or admitted at cut `k` by a node honest
+then reaches a node honest at its call `i` (not restarted since `t_k`, `t_k + Δ ≤ t_i`): it is in
+the receiver's pool, or its validator is an equivocator there. -/
+theorem sync_before_forward_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {ΔF b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
+    {y X : Fin sp.n} {k : Nat} {v : Vote sp.n} (hy : y ∈ H (tr.time k))
+    (hsend : tr.projAC.SendOrAdmit y k v) (hb : tr.time k + sp.Δ ≤ b) {i : Nat}
+    (hX : X ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt X i ℓ)
+    (hrs : ∀ k' ≤ i, tr.projAC.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
+    v ∈ (tr.projAC.state X i).pool v.slot ∨
+      v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i).pool v.slot} := by
+  have hm := hrun.time_mono
+  have hd := hrun.time_nonneg i
+  have hdl' : tr.projAC.deadline X i (tr.time k) ≤ tr.time k + sp.Δ :=
+    (ac_deadline_le_of_restarts hrs _).trans (by rw [max_self])
+  have hserv := hsync.message y k v hy hsend (hrun.time_nonneg k) X i ℓ hX hc
+    (hdl'.trans hb) (hdl'.trans hdl)
+  have h := SA.held_of_deadline_service (acRun_upTo hrun hnc hd).localRun (k := k) hX
+    (fun k' hk' hrk => hrs k' hk' ((ac_restartAt_upTo _).mp hrk).2) hdl hslot
+    (sa_messageServedBefore_upTo hm le_rfl hserv)
+  rwa [projAC_upTo_state hrun le_rfl] at h
 
 end Consensus.Goldilocks.Compose.Growing
 
