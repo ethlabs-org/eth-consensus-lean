@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.PivotPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RowSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RawReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.NextParentPending
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed

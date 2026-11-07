@@ -2,7 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularCommonBoundary
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SlowReadLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SlowTransfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SlowCounted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

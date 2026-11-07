@@ -217,7 +217,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Lo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.OptimisticDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.OptimisticParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pending
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.PivotPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RawWriterTree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliers
@@ -281,7 +280,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.W
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Lag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.CallLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.CallLocksPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Contest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
@@ -315,6 +313,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Fo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.HighFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ProposalReceipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RawReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ResultDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RetentionInputs

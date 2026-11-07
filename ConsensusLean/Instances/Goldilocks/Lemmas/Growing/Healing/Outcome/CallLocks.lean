@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.CallLocksPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FastVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SameSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
