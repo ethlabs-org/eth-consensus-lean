@@ -188,6 +188,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.B2
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Crossing
@@ -231,6 +232,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportsPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.SelectionPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNext
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowAnchorsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowCorePending
