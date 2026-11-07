@@ -5,6 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginCompare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighInduction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteDomain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.TargetCompare
 
 public section
 
@@ -53,7 +56,8 @@ theorem ResetPremisesUpTo.high_origin_votes_before_at
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  sorry
+  exact KernelProof.high_origin_votes_of_domain_before_at hp
+    (KernelProof.held_target_vote_domain_before_at hp)
 
 /-- R1: high origins within the horizon are comparable, with each writer honest at its write. -/
 theorem ResetPremisesUpTo.origins_compatible_at
@@ -89,7 +93,8 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before_at
       Compatible (tr.HonestBlocksAt H) O O') :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  sorry
+  exact KernelProof.held_target_vote_domain_before_at hp hx hy hBx hrb hcast hib hheld
+    hS hqb hm hBS hcompare hseedCompare hpair
 
 /-- An actual bounded supporter compares its target with an older bounded high origin. -/
 theorem ResetPremisesUpTo.target_compatible_older_origin_at
@@ -117,7 +122,7 @@ theorem ResetPremisesUpTo.target_compatible_later_origin_before_at
     (hsupport : ∀ z q e, q < i → Compose.Growing.HVoteAt tr H z q e →
       l < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B) :
     Compatible (tr.HonestBlocksAt H) B O := by
-  sorry
+  exact KernelProof.target_compatible_later_origin_before_at hp ho hri hrb hlm hsupport
 
 end Consensus.Goldilocks.Healing.Growing
 
