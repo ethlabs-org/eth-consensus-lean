@@ -25,7 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem reset_vote_root_below_proposal_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
-    (hactual : tr.ProposesAt p k P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
+    (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)

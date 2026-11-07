@@ -48,7 +48,7 @@ theorem reset_proposal_viable_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
   have hPhiU := Outcome.frame_tree_subset hrun hpi hci
   have hPsi := Outcome.frame_realized hrun hy hcy.1
   have hPsiU := Outcome.frame_tree_subset hrun hy hcy.1
-  have hroot := hp.reset_vote_root_below_proposal_at hc hpH hactual hR hci hcall hd hti hib hPQ
+  have hroot := hp.reset_vote_root_below_proposal_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ
     hy hcy hes hjb
   have hroot' := SA.anc_tree_of_anc_U hU hPsi hPsiU hPsi.fcRoot_mem hroot hPy
   have hPt : P ∈ SA.voterBlockTree sp e.readPoint elly.frame u :=
