@@ -20,17 +20,19 @@ variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
 
 /-- Plain sleepy as a count over `ready ∪ faulty` (the two are disjoint). -/
 theorem readyAbove_iff_union (θ : ℚ) (c t : Time) :
-    p.ReadyAbove θ c t ↔ θ * ((p.readyAt c t ∪ p.faulty).card : ℚ) < (p.readyAt c t).card := by
+    p.ReadyAbove θ c t ↔ θ * ((p.readyAt c t ∪ p.faultyAt t).card : ℚ) <
+      (p.readyAt c t).card := by
   classical
-  have hdis : Disjoint (p.readyAt c t) p.faulty := by
+  have hdis : Disjoint (p.readyAt c t) (p.faultyAt t) := by
     refine Finset.disjoint_left.mpr fun v hv hf => ?_
     unfold readyAt at hv
-    exact (Finset.mem_sdiff.mp hf).2 (Finset.mem_filter.mp hv).1
-  unfold ReadyAbove
+    exact (Finset.mem_filter.mp hv).2.1 hf
+  unfold ReadyAbove faultCount
   rw [Finset.card_union_of_disjoint hdis]
   push_cast
   rfl
 
+omit [DecidableEq V] in
 /-- A larger fault bound is weaker. -/
 theorem FaultsBelow.mono {β β' : ℚ} (h : p.FaultsBelow β') (hle : β' ≤ β) : p.FaultsBelow β :=
   faultsBelow_iff.mpr <|

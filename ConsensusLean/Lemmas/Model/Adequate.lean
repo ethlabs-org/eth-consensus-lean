@@ -44,8 +44,8 @@ theorem sysOf_eagerFrom (rho : Run F E) {g : Time}
     (h : CommLog.EagerFrom rho.point rho.log g) :
     CommLog.EagerFrom ((sysOf O F V).trace ⟨E, rho⟩).point ((sysOf O F V).log ⟨E, rho⟩) g := by
   refine ⟨?_, ?_, h.txs⟩
-  · rintro v hv m t ⟨o, rfl, hs⟩ w hw a ha hah haw
-    exact ⟨o, rfl, h.recv v hv o t hs w hw a ha hah haw⟩
+  · rintro v m t ⟨o, rfl, hs⟩ hv w a ha hah hw haw
+    exact ⟨o, rfl, h.recv v o t hs hv w a ha hah hw haw⟩
   · rintro w m t ⟨o, rfl, hr⟩
     exact h.quiet w o t hr
 
@@ -65,8 +65,10 @@ theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
   · rintro p hp ⟨key, sel⟩ hsel g
     obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf F p.env).Item
     obtain ⟨relay, events, hvalid, heager⟩ :=
-      canonical_run_from O F V p.env p.honest p.horizon hp key sel hsel p.submit hash g
-    refine ⟨⟨p.env, Run.mk p.honest p.horizon events key sel p.submit relay hash⟩,
+      canonical_run_from O F V p.env p.faultyAt p.faultyAt_mono p.horizon hp
+        key sel hsel p.submit hash g
+    refine ⟨⟨p.env, Run.mk p.faultyAt p.faultyAt_mono p.horizon
+      events key sel p.submit relay hash⟩,
       hvalid, ?_, rfl, sysOf_eagerFrom _ heager, fun _ _ _ _ h => h⟩
     rintro ⟨x, y, hxy, -, -, hh⟩
     exact hxy (hinj hh)

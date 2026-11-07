@@ -123,7 +123,7 @@ theorem canonical_delivery_ready (g : Time) :
   obtain ⟨k, hk, he⟩ := (rho.mem_stages g _ _).mp hm
   have ht : t = (k : Time) := rho.layer_time g _ _ he
   subst t
-  have hd : g ≤ (k : Time) ∧ v ∈ rho.honest ∧ E.awake v (k : Time) = true ∧
+  have hd : g ≤ (k : Time) ∧ v ∉ rho.faultyAt (k : Time) ∧ E.awake v (k : Time) = true ∧
       o ∈ rho.pool (rho.front (rho.stages g k) (k : Time)) := by
     simp only [layer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
       mem_deliveryEvents] at he
@@ -133,7 +133,8 @@ theorem canonical_delivery_ready (g : Time) :
     · cases h; exact ⟨hg, hw, ha, hp⟩
   let front := rho.front (rho.stages g k) (k : Time)
   let os := rho.pool front
-  let vs := (rho.honest.filter (fun w => E.awake w (k : Time) = true)).toList
+  let vs := ((Finset.univ \ rho.faultyAt (k : Time)).filter
+    (fun w => E.awake w (k : Time) = true)).toList
   have hv : v ∈ vs := by simp [vs, hd.2.1, hd.2.2.1]
   obtain ⟨before, after, hvs⟩ := List.mem_iff_append.mp hv
   obtain ⟨p, hp⟩ := List.mem_iff_getElem?.mp hd.2.2.2
@@ -188,10 +189,10 @@ honest node at every time `a` with `max t g < a ≤ horizon`. The bound is stric
 because a delivery at `a` can release at `a`, after the schedule's deliveries
 at `a` were fixed; such a release is served from `a + 1` on. -/
 theorem canonical_eagerFrom (g : Time) (h0 : 0 ≤ rho.horizon) :
-    ∀ v ∈ rho.honest, ∀ o t, (rho.withEvents (rho.canonicalEvents g)).releases v o t →
-      ∀ w ∈ rho.honest, ∀ a, max t g < a → a ≤ rho.horizon →
+    ∀ v o t, (rho.withEvents (rho.canonicalEvents g)).releases v o t → v ∉ rho.faultyAt t →
+      ∀ w a, max t g < a → a ≤ rho.horizon → w ∉ rho.faultyAt a →
         E.awake w a = true → (rho.withEvents (rho.canonicalEvents g)).receives w o a := by
-  intro v hv o t hr w hw a hmax hah haa
+  intro v o t hr _ w a hmax hah hw haa
   have hta : t < a := lt_of_le_of_lt (le_max_left t g) hmax
   have hga : g ≤ a := le_of_lt (lt_of_le_of_lt (le_max_right t g) hmax)
   change a ≤ rho.horizon at hah

@@ -54,6 +54,20 @@ theorem readAt_eq (h : tr'.PrefixOf tr b) {t : Time} (ht : t ≤ b) (g : Id) (v 
   rw [h.endCut_eq ht, h.read]
   rw [← h.endCut_eq ht]; exact Nat.findGreatest_le _
 
+/-- Liveness of the prefix is liveness of the full trace for deadlines up to `b`. -/
+theorem txLive {tr' tr : Trace V Tx Id} (h : tr'.PrefixOf tr b)
+    {c : Time} {g : Id} {start D : Time} (hl : tr'.TxLive c g start D) :
+    ∀ x t t', tr.point.SubmittedToSome x t → max t start + tr.point.env.ΔAC + D ≤ t' →
+      t' ≤ b → ∀ v, tr.point.Ready c v t' → x ∈ tr.readAt g v t' := by
+  intro x t t' hsub hdl htb v hv
+  have hp := h.point
+  have hs : tr'.point.SubmittedToSome x t := by rw [hp]; exact hsub
+  have hd : max t start + tr'.point.env.ΔAC + D ≤ t' := by rwa [hp]
+  have ht : t' ≤ tr'.point.horizon := by rwa [hp]
+  have hr : tr'.point.Ready c v t' := by rw [hp]; exact hv
+  have hh := hl x t t' hs hd ht v hr
+  rwa [h.readAt_eq htb] at hh
+
 /-- Ready-reader safety of the prefix is safety of the full trace up to `b`. -/
 theorem readySafeUpTo (h : tr'.PrefixOf tr b) {c : Time} {g : Id} {t₀ : Time}
     (hs : tr'.ReadySafe c g t₀) : tr.ReadySafeUpTo c g t₀ b := by

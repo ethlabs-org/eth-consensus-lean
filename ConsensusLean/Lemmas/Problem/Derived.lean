@@ -19,13 +19,14 @@ namespace Consensus
 
 namespace EnvPoint
 
-variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
+variable {V : Type} [Fintype V] (p : EnvPoint V)
 
 /-- Fewer than fraction `β` of all validators are faulty. -/
-def FaultsBelow (β : ℚ) : Prop := (p.faulty.card : ℚ) < β * Fintype.card V
+def FaultsBelow (β : ℚ) : Prop := (p.faultCount p.horizon : ℚ) < β * Fintype.card V
 
 variable {p} in
-theorem faultsBelow_iff {β : ℚ} : p.FaultsBelow β ↔ (p.faulty.card : ℚ) < β * Fintype.card V :=
+theorem faultsBelow_iff {β : ℚ} :
+    p.FaultsBelow β ↔ (p.faultCount p.horizon : ℚ) < β * Fintype.card V :=
   Iff.rfl
 
 end EnvPoint
@@ -35,7 +36,7 @@ namespace Trace
 variable {V α Id : Type} (tr : Trace V α Id)
 
 /-- No two honest reads of `g` at cuts from `t₀` on conflict. -/
-abbrev Agree (g : Id) (t₀ : Time) : Prop := tr.AgreeAmong (fun v _ => v ∈ tr.point.honest) g t₀
+abbrev Agree (g : Id) (t₀ : Time) : Prop := tr.AgreeAmong (fun v t => tr.point.HonestAt v t) g t₀
 
 /-- Safety of `g` from `t₀`. -/
 def Safe (g : Id) (t₀ : Time) : Prop := tr.Agree g t₀ ∧ tr.Monotone g t₀

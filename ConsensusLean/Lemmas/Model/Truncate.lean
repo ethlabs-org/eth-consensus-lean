@@ -175,16 +175,16 @@ theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
     exact ⟨(hv.in_horizon e (hsub e he)).1, (mem_truncate_events.mp he).2⟩
   · intro e he
     exact hv.honest_only e (hsub e he)
-  · intro v hvh t ht0 htb haw
-    exact mem_truncate_events.mpr ⟨hv.tick_total v hvh t ht0 (le_trans htb hbh) haw, htb⟩
+  · intro v t ht0 htb hvh haw
+    exact mem_truncate_events.mpr ⟨hv.tick_total v t ht0 (le_trans htb hbh) hvh haw, htb⟩
   · intro v t he
     exact hv.tick_awake v t (hsub _ he)
   · intro v o t he
     exact hv.deliver_awake v o t (hsub _ he)
   · intro v t he
     exact hv.restart_at_wake v t (hsub _ he)
-  · intro v hvh t ht0 htb hw
-    exact mem_truncate_events.mpr ⟨hv.wake_restart v hvh t ht0 (le_trans htb hbh) hw, htb⟩
+  · intro v t ht0 htb hvh hw
+    exact mem_truncate_events.mpr ⟨hv.wake_restart v t ht0 (le_trans htb hbh) hvh hw, htb⟩
   · intro i w o t hi o' hc u hu hsg
     have hil : i < (rho.truncate b).events.length := (List.getElem?_eq_some_iff.mp hi).1
     rw [truncate_getElem? hsplit hil] at hi
@@ -247,14 +247,18 @@ theorem truncate_prefix (hv : rho.ExecutionValid) (b : Time) :
     constructor
     · simp only [sysOf, tagLog, log, truncate_releases_iff hsplit hys ht]
     · simp only [sysOf, tagLog, log, truncate_receives_iff hsplit hys ht]
-  · rintro ⟨x, y, hxy, ⟨ox, ⟨vx, hvx, hox⟩, hx⟩, ⟨oy, ⟨vy, hvy, hoy⟩, hy⟩, hh⟩
-    have hmono : ∀ w o, o ∈ (rho.truncate b).ViewIdx w (rho.truncate b).events.length →
-        o ∈ rho.ViewIdx w rho.events.length := by
-      intro w o ho
-      rw [truncate_viewIdx hsplit w le_rfl] at ho
-      exact rho.viewIdx_mono (by omega) w ho
-    exact ⟨x, y, hxy, ⟨ox, ⟨vx, hvx, hmono vx ox hox⟩, hx⟩,
-      ⟨oy, ⟨vy, hvy, hmono vy oy hoy⟩, hy⟩, hh⟩
+  · rintro ⟨x, y, hxy, ⟨ox, ⟨vx, ix, hix, hvx, hox⟩, hx⟩,
+      ⟨oy, ⟨vy, iy, hiy, hvy, hoy⟩, hy⟩, hh⟩
+    change ix ≤ (rho.truncate b).events.length at hix
+    change iy ≤ (rho.truncate b).events.length at hiy
+    rw [truncate_cutTime hsplit hix] at hvx
+    rw [truncate_cutTime hsplit hiy] at hvy
+    rw [truncate_viewIdx hsplit vx hix] at hox
+    rw [truncate_viewIdx hsplit vy hiy] at hoy
+    have hix' : ix ≤ rho.events.length := by omega
+    have hiy' : iy ≤ rho.events.length := by omega
+    exact ⟨x, y, hxy, ⟨ox, ⟨vx, ix, hix', hvx, hox⟩, hx⟩,
+      ⟨oy, ⟨vy, iy, hiy', hvy, hoy⟩, hy⟩, hh⟩
 
 end Run
 

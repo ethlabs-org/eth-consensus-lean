@@ -38,10 +38,11 @@ variable {V M : Type} (p : EnvPoint V) (L : CommLog V M)
 
 /-- No honest send before time `0`. Every valid model run's log has this
 (`Model.Run.log_sendsFromZero`). -/
-def SendsFromZero : Prop := ∀ v ∈ p.honest, ∀ m t, L.sent v m t → 0 ≤ t
+def SendsFromZero : Prop := ∀ v m t, L.sent v m t → p.HonestAt v t → 0 ≤ t
 
 variable {p L} in
-theorem sendsFromZero_iff : SendsFromZero p L ↔ ∀ v ∈ p.honest, ∀ m t, L.sent v m t → 0 ≤ t :=
+theorem sendsFromZero_iff :
+    SendsFromZero p L ↔ ∀ v m t, L.sent v m t → p.HonestAt v t → 0 ≤ t :=
   Iff.rfl
 
 end CommLog

@@ -45,8 +45,9 @@ namespace Run
 
 /-- On a valid run, L0 holding is the engine's holding: restarts of an honest
 node are exactly its wakes in `(0, horizon]`. -/
-theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}
-    (hw : w ∈ rho.honest) (o : (protoOf F E).Object) {d : Time} (hd : d ≤ rho.horizon) :
+theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid)
+    (o : (protoOf F E).Object) {w : V} {d : Time} (hw : w ∉ rho.faultyAt d)
+    (hd : d ≤ rho.horizon) :
     CommLog.Held rho.point rho.log w o d ↔ rho.Served w o d := by
   constructor
   · rintro ⟨t', ht, hs, hn⟩
@@ -59,7 +60,8 @@ theorem held_iff_served (rho : Run F E) (hv : rho.ExecutionValid) {w : V}
     have ht0 : 0 ≤ t' := by
       rcases hs with ⟨i, hi | ⟨_, hi⟩, -⟩ | ⟨i, hi⟩ <;>
         exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
-    exact hn u (hv.wake_restart w hw u (lt_of_le_of_lt ht0 h₁) (le_trans h₂ hd) hwk) ⟨h₁, h₂⟩
+    exact hn u (hv.wake_restart w u (lt_of_le_of_lt ht0 h₁) (le_trans h₂ hd)
+      (fun hf => hw (rho.faultyAt_mono h₂ hf)) hwk) ⟨h₁, h₂⟩
 
 end Run
 

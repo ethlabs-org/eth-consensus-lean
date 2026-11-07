@@ -96,8 +96,9 @@ theorem deliver_state_mempool {rho : Model.Run (compiled F) E} (hv : rho.Executi
     (he : rho.events[i]? = some (.deliver v p τ)) :
     (rho.stateBefore i v).st.2 = Model.mempool rho.inbox v τ := by
   have hmem := List.mem_of_getElem? he
-  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp (hv.tick_total v (hv.honest_only _ hmem) τ
-    (hv.in_horizon _ hmem).1 (hv.in_horizon _ hmem).2 (hv.deliver_awake v p τ hmem))
+  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.mp (hv.tick_total v τ
+    (hv.in_horizon _ hmem).1 (hv.in_horizon _ hmem).2 (hv.honest_only _ hmem)
+    (hv.deliver_awake v p τ hmem))
   have hord {a b : Nat} {ea eb : Model.Event V (protoOf (compiled F) E).Object}
       (ha : rho.events[a]? = some ea) (hb : rho.events[b]? = some eb)
       (hab : a < b) : ea.time < eb.time ∨ (ea.time = eb.time ∧ ea.phase ≤ eb.phase) := by

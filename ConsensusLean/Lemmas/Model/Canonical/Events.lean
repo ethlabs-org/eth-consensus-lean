@@ -33,8 +33,8 @@ omit [DecidableEq V] in
     (rho.withEvents es).events = es := by rfl
 
 omit [DecidableEq V] in
-@[simp] theorem withEvents_honest (es : List (Event V (protoOf F E).Object)) :
-    (rho.withEvents es).honest = rho.honest := by rfl
+@[simp] theorem withEvents_faultyAt (es : List (Event V (protoOf F E).Object)) :
+    (rho.withEvents es).faultyAt = rho.faultyAt := by rfl
 
 omit [DecidableEq V] in
 @[simp] theorem withEvents_horizon (es : List (Event V (protoOf F E).Object)) :
