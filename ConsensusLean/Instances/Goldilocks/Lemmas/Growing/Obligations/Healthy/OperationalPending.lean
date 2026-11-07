@@ -14,8 +14,7 @@ held state at an observation time after the state's cuts, and the slot-`u` propo
 * `cutZ_lt_reset_of_snapshot_at` (`Healing.cutZ_lt_reset_of_snapshot`);
 * `ResetPremisesUpTo.operational_unanimous_at`, `ResetPremisesUpTo.reset_seed_before_slot_at`,
   `ResetPremisesUpTo.reset_proposal_passes_at`;
-* `old_origin_below_unanimous_at`, `report_cover_of_unanimous_at`
-  (`Obligations.UpTo.old_origin_below_unanimous`, `Obligations.UpTo.report_cover_of_unanimous`).
+* `report_cover_of_unanimous_at` (`Obligations.UpTo.report_cover_of_unanimous`).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -72,18 +71,6 @@ theorem reset_proposal_passes_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
 end ResetPremisesUpTo
 
 variable {b : Time}
-
-/-- A high origin before a unanimous post-drain slot `u` is below its proposal `P`. -/
-theorem old_origin_below_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ tr.HonestBlocksAt H)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (hub : sp.ts u + sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r m B) (ht : tr.time r < sp.ts u) :
-    Anc (tr.HonestBlocksAt H) B P := by
-  sorry
 
 /-- Reports above a unanimous post-drain proposal `P` of slot `u` by `t_u + 6Δ`: every node
 honest at `t_u + 6Δ` reports a descendant of `P`, or a node honest at its report reports a strict
