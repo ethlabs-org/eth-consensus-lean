@@ -57,6 +57,8 @@ While the instance proofs migrate to growing faults these are certified for cons
 the runs whose faults do not grow, with the adequacy and realizability of the growing-fault system). The
 growing-fault `MeetsObligations` and `GoldilocksCorrect` are stated in `Instances/Goldilocks/Statements/Growing.lean`,
 not yet certified.
+The interim certificate covers runs whose faulty set is constant at all times, so it says nothing about
+any part of a growing run until the dynamic pair is proved.
 
 **Changes are recorded, not gated.** Every non-merge commit that touches a trusted path carries a line
 `Trusted-surface: <what changes and why>`; `scripts/review-boundary.sh` (self-tested on throwaway repositories)

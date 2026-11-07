@@ -670,6 +670,8 @@ constant faults only (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`).
 The growing-fault Goldilocks endpoint and headline (`MeetsObligations`,
 `GoldilocksCorrect`, `Instances/Goldilocks/Statements/Growing.lean`) are stated
 and not yet proved.
+The interim certificate covers runs whose faulty set is constant at all times,
+so it says nothing about any part of a growing run until the dynamic pair is proved.
 
 ## Model-adequacy bindings (generic, read once)
 
