@@ -170,7 +170,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Goldiloc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Joined
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Sync
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Agreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Entries
