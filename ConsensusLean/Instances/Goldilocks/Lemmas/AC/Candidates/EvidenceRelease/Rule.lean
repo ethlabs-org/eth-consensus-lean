@@ -12,8 +12,9 @@ The candidate's unlock is an instance of the lock-rule interface (`Lemmas/AC/Loc
 * `wlockStore_lawful`: the weighted locks form a lawful store;
 * `evidenceKeep`: the release's keep premise at `Y`, that the evidence against `Y` lies in a set of
   fewer validators than the lock's weight at `Y`;
-* `evidenceStage_lawful`: the stage is lawful with that premise, so every step property of the
-  interface holds for the candidate;
+* `evidenceStage_lawful`, `evidenceStage_fixes`: the stage is lawful with that premise and fixes
+  its own choice for every lock, so every step property of the interface holds for the
+  candidate;
 * `unlockW_eq_unlockWith`: `unlockW` is the interface's unlock of that stage (by definition).
 
 Idempotence (A0.4 (d)), `unlockW_idempotent`, is the interface's `unlockWith_idempotent`. The
@@ -99,8 +100,12 @@ theorem evidenceStage_lawful : (evidenceStage sp).Lawful (evidenceKeep sp) where
     obtain ⟨O, hO, hOw⟩ := (evidenceKeep_iff _ Φ V s w Y).1 hk
     rw [evidenceStage_target]
     exact evidenceTarget_keeps hΦ V s w hY hYT hO hOw
+
+variable (sp) in
+/-- **The evidence stage fixes its own choice**, for every lock. -/
+theorem evidenceStage_fixes : (evidenceStage sp).Fixes fun _ _ => True where
   target_target := by
-    intro _ _ Φ V s w T hΦ hT
+    intro _ _ Φ V s w T hΦ hT _
     simp only [evidenceStage_target]
     exact evidenceTarget_evidenceTarget hΦ V s w hT
 
@@ -116,7 +121,8 @@ theorem unlockW_idempotent {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (L : Set WLock
     (s : Int) (V : View sp.n) :
     unlockW sp (unlockW sp L Φ t s V) Φ t s V = unlockW sp L Φ t s V := by
   simp only [unlockW_eq_unlockWith]
-  exact LockStore.unlockWith_idempotent wlockStore_lawful (evidenceStage_lawful sp) () hΦ L t s V
+  exact LockStore.unlockWith_idempotent wlockStore_lawful (evidenceStage_lawful sp)
+    (evidenceStage_fixes sp) () hΦ (fun _ _ => trivial) t s V
 
 end Consensus.Goldilocks.EvidenceRelease
 

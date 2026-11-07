@@ -16,8 +16,10 @@ parent's routes read of the unlock:
 * `LockStore.Lawful`: a move changes only the block of the forgotten lock, the second of two
   moves wins, and a move to a lock's own block is no move;
 * `UnlockStage.Lawful E K`, for a keep premise `K`: the stage's target is an ancestor in the tree,
-  it keeps a lock at or above `Y` under `K`, it fixes its own choice, and it reads a stored lock
-  only up to its block.
+  it keeps a lock at or above `Y` under `K`, and it reads a stored lock only up to its block;
+* `UnlockStage.Fixes E G`: the stage fixes its own choice for the stored locks satisfying `G` in
+  the frame (every lock for evidence-release; a composite of stages may need a condition on the
+  lock, such as a weight antitone along the chain).
 
 For a lawful store and stage:
 
@@ -29,7 +31,7 @@ For a lawful store and stage:
 * (K) `unlockWith_keeps`: a live stored lock whose parent target is at or above `Y` stays at or
   above `Y` under `K`;
 * A0.4 (c) `unlockWith_movesBack`, of the forgotten locks, the parent's statement `MovesBack`;
-* A0.4 (d) `unlockWith_idempotent`;
+* A0.4 (d) `unlockWith_idempotent`, for stored locks satisfying `G`;
 * A0.4 (e) reads only `opponents`, which a stage does not change;
 * the write: `lock_image_addLocksWith` (the forgotten `addLocksWith` is `add_locks`).
 
@@ -55,7 +57,7 @@ abbrev UnlockStage.Keep (sp : SAParams) (S : LockStore) (σ : Type) : Type 1 :=
   ∀ {FGP : Type}, σ → Frm sp.n FGP → View sp.n → Int → S.Lk → Blk sp.n FGP → Prop
 
 /-- A lawful stage with keep premise `K`: it moves to an ancestor in the tree, keeps under `K`,
-fixes its own choice, and reads a stored lock only up to its block. -/
+and reads a stored lock only up to its block. That it fixes its own choice is `Fixes`. -/
 structure UnlockStage.Lawful {sp : SAParams} {S : LockStore} {σ : Type}
     (E : UnlockStage sp S σ) (K : UnlockStage.Keep sp S σ) : Prop where
   /-- The target does not read the lock's block. -/
@@ -70,9 +72,17 @@ structure UnlockStage.Lawful {sp : SAParams} {S : LockStore} {σ : Type}
   keeps : ∀ {FGP : Type} (c : σ) {Φ : Frm sp.n FGP} (V : View sp.n) (s : Int) (w : S.Lk)
     {T Y : Blk sp.n FGP}, FrameOK Φ → Y ∈ Φ.tree → Φ.Anc Y T → K c Φ V s w Y →
     Φ.Anc Y (E.target c Φ V s w T)
+
+/-- A predicate on stored locks in a frame (for the fixed-point law: the locks it holds for). -/
+abbrev UnlockStage.Pred (sp : SAParams) (S : LockStore) : Type 1 :=
+  ∀ {FGP : Type}, Frm sp.n FGP → S.Lk → Prop
+
+/-- The stage fixes its own choice for the stored locks that satisfy `G` in the frame. -/
+structure UnlockStage.Fixes {sp : SAParams} {S : LockStore} {σ : Type}
+    (E : UnlockStage sp S σ) (G : UnlockStage.Pred sp S) : Prop where
   /-- The stage fixes its own choice. -/
   target_target : ∀ {FGP : Type} (c : σ) {Φ : Frm sp.n FGP} (V : View sp.n) (s : Int)
-    (w : S.Lk) {T : Blk sp.n FGP}, FrameOK Φ → T ∈ Φ.tree →
+    (w : S.Lk) {T : Blk sp.n FGP}, FrameOK Φ → T ∈ Φ.tree → G Φ w →
     E.target c Φ V s w (E.target c Φ V s w T) = E.target c Φ V s w T
 
 /-! ### Parent facts the idempotence uses -/
@@ -328,14 +338,15 @@ theorem unlockWith_movesBack {σ : Type} (hS : S.Lawful) {E : UnlockStage sp S �
 /-- Every lock of `unlockWith` is live, on a block that is its own viable ancestor and, for a slot
 below `s`, fixed by the parent's unlock and by the stage. -/
 private theorem unlockWith_fixed {σ : Type} (hS : S.Lawful) {E : UnlockStage sp S σ}
-    {K : UnlockStage.Keep sp S σ}
-    (hE : E.Lawful K) (c : σ)
-    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (L : Set S.Lk) (t : Time) (s : Int) (V : View sp.n) :
+    {K : UnlockStage.Keep sp S σ} {G : UnlockStage.Pred sp S}
+    (hE : E.Lawful K) (hF : E.Fixes G) (c : σ)
+    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set S.Lk} (hG : ∀ w ∈ L, G Φ w) (t : Time) (s : Int)
+    (V : View sp.n) :
     ∀ w ∈ S.unlockWith sp E c L Φ t s V, ∃ Y ∈ Φ.tree, Y.root = (S.lock w).block ∧
       (S.lock w).LiveAt sp t ∧ Φ.viableAncestor Y = Y ∧ (((S.lock w).slot : Int) < s →
         E.target c Φ V s w (unlockTarget sp Φ V s Y) = Y) := by
   intro w' hw'
-  obtain ⟨w, -, B₀, hB₀, -, hlive, rfl⟩ := mem_unlockWith_stored hS hE hΦ hw'
+  obtain ⟨w, hw, B₀, hB₀, -, hlive, rfl⟩ := mem_unlockWith_stored hS hE hΦ hw'
   obtain ⟨hvt, -⟩ := viableAncestor_anc hΦ hB₀
   have hcand := (viableAncestor_spec hΦ hB₀).2.1
   by_cases hlt : ((S.lock w).slot : Int) < s
@@ -348,21 +359,22 @@ private theorem unlockWith_fixed {σ : Type} (hS : S.Lawful) {E : UnlockStage sp
       viableAncestor_self hΦ hYt (ancestorCandidate_of_anc hΦ (hYT.trans hTB) hcand).symm,
       fun _ => ?_⟩
     rw [unlockTarget_eq_self_of_anc_unlockTarget hΦ V s hvt hYt hYT, hE.target_withBlock,
-      hE.target_target c V s w hΦ hTt]
+      hF.target_target c V s w hΦ hTt (hG w hw)]
   · rw [ite_eq_right hlt]
     obtain ⟨-, h1, -, h3⟩ := lock_withBlock_fields hS w (Φ.viableAncestor B₀).root
     exact ⟨_, hvt, (lock_withBlock_fields hS w _).1.symm, (by rw [Lock.LiveAt, h3]; exact hlive),
       viableAncestor_self hΦ hvt hcand.symm, fun h => absurd (h1 ▸ h) hlt⟩
 
-/-- **A0.4 (d) for `unlockWith`**: for a lawful stage, unlocking is idempotent for a fixed
-context, frame, slot, view and time. -/
+/-- **A0.4 (d) for `unlockWith`**: for a lawful stage that fixes its own choice for the stored
+locks, unlocking is idempotent for a fixed context, frame, slot, view and time. -/
 theorem unlockWith_idempotent {σ : Type} (hS : S.Lawful) {E : UnlockStage sp S σ}
-    {K : UnlockStage.Keep sp S σ}
-    (hE : E.Lawful K) (c : σ)
-    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (L : Set S.Lk) (t : Time) (s : Int) (V : View sp.n) :
+    {K : UnlockStage.Keep sp S σ} {G : UnlockStage.Pred sp S}
+    (hE : E.Lawful K) (hF : E.Fixes G) (c : σ)
+    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set S.Lk} (hG : ∀ w ∈ L, G Φ w) (t : Time) (s : Int)
+    (V : View sp.n) :
     S.unlockWith sp E c (S.unlockWith sp E c L Φ t s V) Φ t s V =
       S.unlockWith sp E c L Φ t s V := by
-  have hfix := unlockWith_fixed hS hE c hΦ L t s V
+  have hfix := unlockWith_fixed hS hE hF c hΦ hG t s V
   -- the second pass returns each lock of the first unchanged
   have hid : ∀ w ∈ S.unlockWith sp E c L Φ t s V, ∀ B ∈ Φ.tree, B.root = (S.lock w).block →
       (if ((S.lock w).slot : Int) < s then
@@ -423,6 +435,10 @@ theorem UnlockStage.id_lawful (sp : SAParams) (S : LockStore) (σ : Type) :
   target_withBlock _ _ _ _ _ _ _ := rfl
   target_anc := by intros; exact ⟨‹_›, .refl⟩
   keeps := by intros; assumption
+
+/-- The stage that adds nothing fixes its own choice for every lock. -/
+theorem UnlockStage.id_fixes (sp : SAParams) (S : LockStore) (σ : Type) :
+    (UnlockStage.id sp S σ).Fixes fun _ _ => True where
   target_target := by intros; rfl
 
 variable {sp : SAParams} {FGP : Type}
