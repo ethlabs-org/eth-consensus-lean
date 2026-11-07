@@ -778,7 +778,7 @@ theorem lastClock_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
   have hm := List.mem_of_getElem? he
   have hb := hv.in_horizon _ hm
   obtain ⟨it, hit⟩ := List.mem_iff_getElem?.mp
-    (hv.tick_total v (hv.honest_only _ hm) t hb.1 hb.2 (hv.deliver_awake v o t hm))
+    (hv.tick_total v t hb.1 hb.2 (hv.honest_only _ hm) (hv.deliver_awake v o t hm))
   have hlt : it < i := by
     rcases lt_trichotomy it i with h | rfl | h
     · exact h

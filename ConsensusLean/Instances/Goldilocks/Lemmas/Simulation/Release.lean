@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -678,7 +679,7 @@ against the node's `seen`, the canonical objects of the blocks of the node's tic
 and the second body of `Q` against the `seen` before each, and unsigned gossip; `Q` is the votes
 the tick's cuts emit followed by the attestation they sign, at most two bodies. -/
 theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t))
+    (_hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     (hrel : ∀ s (hs : 0 < s), (skeleton (pubOf E)).proposeAt t = [.propose s hs] →
       rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
@@ -714,7 +715,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
   have hw := hv.tick_awake v t hm
   have hsel : rho.ownKey v ∈ rho.sel .poll := by
     rw [selValid_poll S rho hv.selValid]; exact Finset.mem_univ _
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' i
+  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v i
   obtain ⟨-, hlen⟩ := (atMostOneVote_iff _).1 hamo
   have hf := fgDue_eq_false S rho hn v i
   have hself0 := self_eq_ownKey S rho hn v i
@@ -992,8 +993,9 @@ theorem preNode_eq_atProposal (v : V) (nd : Model.Node (Model.protoOf (compiled 
 
 /-- The proposal of an honest node's tick carries only objects the node has seen
 (`proposal_releasable`, Steps). -/
-theorem preNode_releasable (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t)) :
+theorem preNode_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {t : Time}
+    (hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t)) :
     ∀ s (hs : 0 < s), (skeleton (pubOf E)).proposeAt t = [.propose s hs] →
       rho.ownKey v ∈ rho.sel (.proposer s) → ∀ par info cs,
       (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
@@ -1001,12 +1003,12 @@ theorem preNode_releasable (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time
       ∀ o ∈ cs, o ∈ Model.closure (preNode S rho v (rho.stateBefore i v) t).seen := by
   rw [preNode_eq_atProposal]
   exact fun s hs hone hsel par info cs h =>
-    proposal_releasable S rho hn hv v hv' i t he s par info cs hs hone hsel h
+    proposal_releasable S rho hn hf hv v hv' i t he s par info cs hs hone hsel h
 
 /-- At a tick at a non-public time an honest node releases only its queued body and unsigned
 gossip. -/
 theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t))
+    (_hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t))
     (hnp : ¬ (S.params (pubOf E) hn).toParams.IsPublic t) :
     ∀ o ∈ rho.releasesAt i, o ∈ relHead S rho v (rho.stateBefore i v).seen
       (stateAt S rho hn v i).outbox.head? ∨ o.auth = .none := by
@@ -1015,7 +1017,7 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
   have hw := hv.tick_awake v t hm
   have hsel : rho.ownKey v ∈ rho.sel .poll := by
     rw [selValid_poll S rho hv.selValid]; exact Finset.mem_univ _
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' i
+  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v i
   obtain ⟨-, hlen⟩ := (atMostOneVote_iff _).1 hamo
   have hf := fgDue_eq_false S rho hn v i
   set nd := rho.stateBefore i v
@@ -1073,13 +1075,15 @@ theorem tick_other_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Tim
 
 /-- **Which attestations a tick releases.** An honest node releases an attestation object only
 at a tick at a public time, and only the attestation one of its tick's cuts signs. -/
-theorem att_released_inv (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[j]? = some (.tick v t)) {b : FG.Att (Fintype.card V)}
+theorem att_released_inv (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {j : Nat} {v : V} {t : Time}
+    (hv' : v ∉ rho.faultyAt 0) (he : rho.events[j]? = some (.tick v t))
+    {b : FG.Att (Fintype.card V)}
     (hb : (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ rho.releasesAt j) :
     (S.params (pubOf E) hn).toParams.IsPublic t ∧ ∃ C,
       Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' j
+  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v j
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
   have hnotpend : ∀ seen, (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
       relHead S rho v seen (stateAt S rho hn v j).outbox.head? := by
@@ -1090,7 +1094,7 @@ theorem att_released_inv (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
   by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
   · refine ⟨hp, ?_⟩
     obtain ⟨N4, N5, Q, R4, F, G, heq, -, -, hF, hG, -, hQ, hR4, -⟩ :=
-      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
     rw [heq] at hb
     have hQmem : ∀ seen ob, ob ∈ [Q.head?, Q.tail.head?] →
         (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ relHead S rho v seen ob →
@@ -1274,8 +1278,9 @@ the canonical object of the block of every block cut of the tick, the vote of ev
 the tick's AC cuts and the attestation of every signing cut. The attestation passes the own-object
 guard: every own attestation the node has seen, or released earlier in the tick, is one it signed
 in the simulating trace, and its signings there are pairwise not slashable (`hnf`). -/
-theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (he : rho.events[i]? = some (.tick v t))
+theorem tick_releases (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {t : Time}
+    (hv' : v ∉ rho.faultyAt 0) (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     (hnf : ∀ k k' a b, (simTrace S rho hn).SignAt (rho.ownKey v) k a →
       (simTrace S rho hn).SignAt (rho.ownKey v) k' b → ¬ FG.slashable a b) :
@@ -1293,10 +1298,10 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
     obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
     rw [hl]; exact List.getElem_mem _
-  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v hv' i
+  obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v i
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
   obtain ⟨N4, N5, Q, R4, F, G, heq, hseen4, hseen5, hF, -, hQlen, hQ, hR4, hcar, hN5⟩ :=
-    tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+    tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
   set nd := rho.stateBefore i v
   set R1 := relHead S rho v nd.seen (stateAt S rho hn v i).outbox.head?
   have hpos : ∀ q ∈ Q, Q.head? = some q ∨ Q.tail.head? = some q := by
@@ -1320,9 +1325,11 @@ theorem tick_releases (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     intro b' hb' ho
     rw [Model.closure_append] at ho
     rcases List.mem_append.mp ho with ho | ho
-    · obtain ⟨j, -, t', hej, hrj⟩ := rho.signed_seen_released hv ho hv' (hsigner b' hb')
+    · obtain ⟨j, -, t', hej, hrj⟩ := rho.signed_seen_released hv
+        (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1) ho
+        (by simpa only [rho.faultyAt_eq_zero hf] using hv') (hsigner b' hb')
       rcases hej with hej | ⟨o, hej⟩
-      · obtain ⟨hp', C, hc⟩ := att_released_inv S rho hn hv hv' hej hrj
+      · obtain ⟨hp', C, hc⟩ := att_released_inv S rho hn hf hv hv' hej hrj
         exact signAt_of_tick_cut S rho hn hej hp' hc
       · exact absurd hrj (deliver_not_att S rho hn hv hej b')
     · exfalso

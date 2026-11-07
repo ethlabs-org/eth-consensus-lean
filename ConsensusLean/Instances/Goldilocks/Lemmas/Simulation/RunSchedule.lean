@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
+import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -275,7 +276,7 @@ theorem simTrace_awake_of_call (hv : rho.ExecutionValid) :
   exact event_awake S rho hv he
 
 /-- The first call of an honest node after it was asleep is a restart. -/
-theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
+theorem simTrace_restart_of_sleep (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i (u : Time), (simTrace S rho hn).IsCall y i → 0 ≤ u →
       u < (simTrace S rho hn).time i → ¬ (simTrace S rho hn).awake y u →
       (∀ j < i, (simTrace S rho hn).IsCall y j → (simTrace S rho hn).time j < u) →
@@ -294,8 +295,10 @@ theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
   have hth := (hv.in_horizon ev (List.mem_of_getElem? he)).2
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
-      (hv.wake_restart _ ((mem_honestKeys_iff S rho y).mp hy) w
-        (by linarith only [hu0, huw]) (by linarith only [hwt', hth]) ⟨hw1, hw2⟩)
+      (hv.wake_restart _ w
+        (by linarith only [hu0, huw]) (by linarith only [hwt', hth])
+        (by simpa only [rho.faultyAt_eq_zero hf] using (mem_honestKeys_iff S rho y).mp hy)
+        ⟨hw1, hw2⟩)
   obtain ⟨hR, hRt, hsucc⟩ := restart_at S rho hn hir
   rw [ownKey_key] at hR
   have hge : i ≤ cutMap S rho hn ir := by
@@ -323,7 +326,7 @@ theorem simTrace_restart_of_sleep (hv : rho.ExecutionValid) :
   exact hR
 
 /-- A wake is a restart. -/
-theorem simTrace_restart_at_wake (hv : rho.ExecutionValid) :
+theorem simTrace_restart_at_wake (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ u v : Time, 0 ≤ u → u < v → ¬ (simTrace S rho hn).awake y u →
       (simTrace S rho hn).awake y v →
         ∃ k, (simTrace S rho hn).RestartAt y k ∧ u < (simTrace S rho hn).time k ∧
@@ -336,8 +339,10 @@ theorem simTrace_restart_at_wake (hv : rho.ExecutionValid) :
   obtain ⟨w, huw, hwv', hw1, hw2⟩ := exists_wake _ hwu hwv huv.le
   obtain ⟨ir, hir⟩ :=
     List.mem_iff_getElem?.mp
-      (hv.wake_restart _ ((mem_honestKeys_iff S rho y).mp hy) w
-        (by linarith only [hu0, huw]) (by linarith only [hwv', hvh]) ⟨hw1, hw2⟩)
+      (hv.wake_restart _ w
+        (by linarith only [hu0, huw]) (by linarith only [hwv', hvh])
+        (by simpa only [rho.faultyAt_eq_zero hf] using (mem_honestKeys_iff S rho y).mp hy)
+        ⟨hw1, hw2⟩)
   obtain ⟨hR, ht, -⟩ := restart_at S rho hn hir
   rw [ownKey_key] at hR
   exact ⟨_, hR, by rw [ht]; exact huw, by rw [ht]; exact hwv'⟩
@@ -505,8 +510,9 @@ private theorem ownBlock_of_tick_cut {i : Nat} {v : V} {t : Time}
   · rw [simTrace_label, hr']; exact congrArg some (hgr.2.2.2.2.trans hcm)
   · rw [simTrace_pos, hr']; simpa only [Option.elim_some, hgr.2.2.2.1] using hm0
 
-private theorem released_block_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hs : rho.SendsAt v i t) (hv' : v ∈ rho.honest)
+private theorem released_block_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {t : Time}
+    (hs : rho.SendsAt v i t) (hv' : v ∉ rho.faultyAt 0)
     {B : Blk (S.params (pubOf E) hn)} (hpar : B.parent ≠ none)
     (hroot : B.RootOk (digestOf S rho))
     (hb : blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) :
@@ -520,7 +526,7 @@ private theorem released_block_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {
   rcases hs with he | ⟨o, he⟩
   · by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · obtain ⟨N4, N5, Q, R4, F, G, hr, _, _, hF, hG, _, _, hR4, _⟩ :=
-        tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+        tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
       rw [hr] at hb
       have hb4 : blockObj (S.params (pubOf E) hn) B ∈ R4 := by
         rcases List.mem_append.mp hb with hb | hb
@@ -561,7 +567,7 @@ private theorem released_block_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {
 /-- A block of an honest proposer that an honest node processes is the proposer's own block,
 processed by the proposer at or before (the engine's `Credentials`: a delivered block object
 signed by an honest key was released by that key's node). -/
-theorem simTrace_block_unforgeable (hv : rho.ExecutionValid) :
+theorem simTrace_block_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i B, (simTrace S rho hn).BlockCallAt y i B →
       B.proposer ∈ honestKeys S rho → ∃ j ≤ i, (simTrace S rho hn).OwnBlockAt B.proposer j B := by
   rintro y _ k B ⟨acc, hnode, hlab⟩ hhon
@@ -620,8 +626,9 @@ theorem simTrace_block_unforgeable (hv : rho.ExecutionValid) :
         some (rho.key B.proposer) := rfl
     rw [mem_honestKeys_iff] at hhon
     obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _
-      (contains_of_mem_delivered ho) (rho.key B.proposer) hhon hsign
-    obtain ⟨q, hq, hown⟩ := released_block_cut S rho hn hv hs hhon hpar hroot' hb
+      (contains_of_mem_delivered ho) (rho.key B.proposer) hsign
+      (by simpa only [rho.faultyAt_eq_zero hf] using hhon)
+    obtain ⟨q, hq, hown⟩ := released_block_cut S rho hn hf hv hs hhon hpar hroot' hb
     have hle : cutMap S rho hn (j + 1) ≤ cutMap S rho hn i :=
       cutMap_mono S rho hn (Nat.succ_le_of_lt hj)
     exact ⟨q, by omega, hown⟩
@@ -749,18 +756,19 @@ private theorem emit_of_tick_body {i : Nat} {v : V} {t : Time}
   · exact (getElem_groupRecs _ _ _ _ _ _ _ q hq').2.2.2.2.trans hcq
 
 /-- A released canonical own vote comes from an emission before the event's end cut. -/
-theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hs : rho.SendsAt v i t) (hv' : v ∈ rho.honest) {m : Vote (Fintype.card V)}
+theorem released_vote_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {t : Time}
+    (hs : rho.SendsAt v i t) (hv' : v ∉ rho.faultyAt 0) {m : Vote (Fintype.card V)}
     (hb : voteObj m ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
   have hbody : ∀ b, voteObj m = pollObj S rho v b → b = Body.vote (encodeVote m) := by
     intro b heq
     exact (Model.Msg.data.inj (congrArg Model.Obj.msg heq)).symm
   rcases hs with he | ⟨o, he⟩
-  · have hnil := outbox_empty S rho hn hv v hv' i
+  · have hnil := outbox_empty S rho hn hv v i
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · obtain ⟨N4, N5, Q, R4, F, G, hr, _, _, hF, hG, _, hQ, hR4, _⟩ :=
-        tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+        tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
       have hq : ∀ seen ob, (∀ b, ob = some b → b ∈ Q) →
           voteObj m ∈ relHead S rho v seen ob →
           ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
@@ -813,7 +821,7 @@ theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
         rcases process_outbox_source (runProposer S rho hn) (digestOf S rho)
           (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow _ hb' with
           hb | ⟨r, hr, ℓ, hl, em, hem, heq⟩
-        · rw [outbox_empty S rho hn hv v hv' i] at hb; cases hb
+        · rw [outbox_empty S rho hn hv v i] at hb; cases hb
         · have hm := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj heq)
           rw [decodeVote_encodeVote, decodeVote_encodeVote] at hm
           have hm := Option.some.inj hm
@@ -827,7 +835,7 @@ theorem released_vote_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
 
 /-- An AC message of an honest signer that an honest node receives was emitted by that signer's
 node at an earlier cut. -/
-theorem simTrace_msg_unforgeable (hv : rho.ExecutionValid) :
+theorem simTrace_msg_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i (m : Vote (Fintype.card V)),
       (simTrace S rho hn).MsgCallAt y i m → m.val ∈ honestKeys S rho →
         ∃ j < i, (simTrace S rho hn).EmitAt m.val j m := by
@@ -870,8 +878,8 @@ theorem simTrace_msg_unforgeable (hv : rho.ExecutionValid) :
   subst o'
   rw [mem_honestKeys_iff] at hhon
   obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ (contains_of_mem_delivered ho)
-    (rho.key m.val) hhon rfl
-  obtain ⟨q, hq, hem⟩ := released_vote_cut S rho hn hv hs hhon hb
+    (rho.key m.val) rfl (by simpa only [rho.faultyAt_eq_zero hf] using hhon)
+  obtain ⟨q, hq, hem⟩ := released_vote_cut S rho hn hf hv hs hhon hb
   have hle : cutMap S rho hn (j + 1) ≤ cutMap S rho hn i :=
     cutMap_mono S rho hn (Nat.succ_le_of_lt hj)
   exact ⟨q, by omega, by simpa only [ownKey_key] using hem⟩

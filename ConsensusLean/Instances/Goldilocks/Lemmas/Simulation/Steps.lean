@@ -22,7 +22,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The release guarantee applies to the selected proposal at its scheduled slot start. -/
-theorem proposal_releasable (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
+theorem proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) (s : Slot) (par : ParentRef)
     (info : Info) (cs : List (Wire (Fintype.card V)))
     (hs : 0 < s) (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
@@ -30,7 +31,7 @@ theorem proposal_releasable (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
     (hprop : (propose (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)) s).2 =
       some (par, info, cs)) :
     ∀ o ∈ cs, o ∈ Model.closure (atProposal S rho v (rho.stateBefore i v) t).seen := by
-  apply scheduled_proposal_releasable S rho hn hv hv' (i := i) (p := 3) (t := t) (s := s)
+  apply scheduled_proposal_releasable S rho hn hf hv hv' (i := i) (p := 3) (t := t) (s := s)
     (hprop := hprop)
   rw [engineProposalAt_iff]
   refine ⟨he, hv.tick_awake v t (List.mem_of_getElem? he), hs, ?_, hselected, ?_⟩
@@ -43,7 +44,8 @@ theorem proposal_releasable (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
 
 /-- **`Simulates.tick`'s node step at a public time.** An engine tick of an honest node at a public
 time runs the node's tick with the encoded mempool on the node state before it. -/
-theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) (i : Nat)
+theorem node_of_tick_public (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    (v : V) (hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     (stateAt S rho hn v (i + 1)).node =
@@ -114,7 +116,7 @@ theorem node_of_tick_public (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.h
       dutyStep_propose_node S rho hn v _ s hs (selValid_proposer S rho hn hv.selValid s) hPself
         (by rw [hPnow, hts']; exact slotOf_slotTime _ s) (hPnow.trans hts')
         (fun hselected par info cs hprop =>
-          proposal_releasable S rho hn hv v hv' i t he s par info cs hs hone hselected hprop)]
+          proposal_releasable S rho hn hf hv v hv' i t he s par info cs hs hone hselected hprop)]
     erw [hPnode, hPnow, hPmem]
 
 end Engine

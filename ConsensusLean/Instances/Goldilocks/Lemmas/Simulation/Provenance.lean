@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 import ConsensusLean.Lemmas.Model.Objects
 import ConsensusLean.Lemmas.Model.Protection
+import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
@@ -681,7 +682,7 @@ gossip and releases preserve it, and each actual selected poll's FG update appen
 input. Restart preserves the durable record. The event/duty induction uses neither execution
 validity nor honesty; these interface arguments are retained for callers. -/
 theorem engine_event_signing_history (_hv : rho.ExecutionValid) {v : V}
-    (_hv' : v ∈ rho.honest) (i : Nat) :
+    (_hv' : v ∉ rho.faultyAt 0) (i : Nat) :
     ∃ inputs, FG.EntryInputs (S.params (pubOf E) hn).toParams.fg inputs ∧
       (stateAt S rho hn v i).node.record =
         (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).1 ∧
@@ -696,7 +697,7 @@ record from the empty record over valid entry inputs, containing all earlier act
 Induction runs over engine events and duties. The FG update appends its source's entry
 state, whose bounds give `EntryInputs`; all other duties, received-object processing, clocks,
 gossip and releases preserve the record. No proposal simulation or `GoldilocksRun` is assumed. -/
-theorem engine_signing_history (_hv : rho.ExecutionValid) {v : V} (_hv' : v ∈ rho.honest)
+theorem engine_signing_history (_hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ rho.faultyAt 0)
     {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) :
     ∃ inputs, FG.EntryInputs (S.params (pubOf E) hn).toParams.fg inputs ∧
@@ -757,7 +758,7 @@ theorem engine_restart_record (_hv : rho.ExecutionValid) {v : V} {i : Nat} {t : 
 signings in the history before an event after both signings, then apply client safety to its
 `EntryInputs`. No node-simulation or network-timing premise is needed. -/
 theorem engine_signings_nonFraming (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p j q : Nat} {a b : FG.Att (Fintype.card V)}
+    (hv' : v ∉ rho.faultyAt 0) {i p j q : Nat} {a b : FG.Att (Fintype.card V)}
     (ha : EngineSignsAt S rho hn v i p a) (hb : EngineSignsAt S rho hn v j q b) :
     ¬ FG.slashable a b := by
   obtain ⟨inputs, hi, _, hs⟩ := engine_event_signing_history S rho hn hv hv' (max i j + 1)
@@ -1342,8 +1343,8 @@ closure of `seen` at an actual duty boundary has an earlier actual signing. Unfo
 earlier honest releases; queue provenance identifies their FG signings. Within the same event
 the bound uses duty-prefix order, not strict event order.
 Carried attestations use recursive containment, including unsigned wrappers. -/
-theorem engine_seen_att_signed (hv : rho.ExecutionValid) {v u : V}
-    (_hv' : v ∈ rho.honest) (hu : u ∈ rho.honest) {i p : Nat}
+theorem engine_seen_att_signed (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v u : V}
+    (_hv' : v ∉ rho.faultyAt 0) (hu : u ∉ rho.faultyAt 0) {i p : Nat}
     {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) {a : FG.Att (Fintype.card V)}
     (ha : a.val = rho.ownKey u) (hm : attObj a ∈ Model.closure nd.seen) :
@@ -1353,7 +1354,12 @@ theorem engine_seen_att_signed (hv : rho.ExecutionValid) {v u : V}
     simp [ha, Model.Run.ownKey]
   have hbefore (hm : attObj a ∈ Model.closure (rho.stateBefore i v).seen) :
       ∃ j q, (j < i ∨ j = i ∧ u = v ∧ q < p) ∧ EngineSignsAt S rho hn u j q a := by
-    obtain ⟨j, hj, t, hs, hr⟩ := rho.signed_seen_released hv hm hu hsigner
+    have hi : i ≤ rho.events.length := by
+      cases hc with
+      | tick he _ _ => exact Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1
+      | deliver he _ => exact Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1
+    obtain ⟨j, hj, t, hs, hr⟩ := rho.signed_seen_released hv hi hm
+      (by simpa only [rho.faultyAt_eq_zero hf] using hu) hsigner
     obtain ⟨k, q, hk, ha⟩ := released_att_signed S rho hn hs hr
     exact ⟨k, q, Or.inl (by omega), ha⟩
   cases hc with
@@ -1389,7 +1395,8 @@ theorem engine_seen_att_signed (hv : rho.ExecutionValid) {v u : V}
       · have hcontains : Model.Obj.Contains o (attObj a) := by
           simp only [Model.closure, List.flatMap_singleton] at hm
           exact hm
-        obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v o t he _ hcontains u hu hsigner
+        obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v o t he _ hcontains u hsigner
+          (by simpa only [rho.faultyAt_eq_zero hf] using hu)
         obtain ⟨k, q, hk, hs'⟩ := released_att_signed S rho hn hs hr
         exact ⟨k, q, Or.inl (by omega), hs'⟩
     · have hprocess : Queued
@@ -1422,7 +1429,8 @@ A freshly generated attestation passes the candidate/seen protection boundary: s
 is impossible by client safety; any conflicting own-signed object in `seen` is another actual
 signing by `engine_seen_att_signed`. Include both conflict orientations. Earlier releases in
 the same event are included in this actual duty-prefix `seen`. -/
-theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+theorem engine_att_protected (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0)
     {i p : Nat} {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) {j q : Nat} {a : FG.Att (Fintype.card V)}
     (ha : EngineSignsAt S rho hn v j q a) :
@@ -1453,12 +1461,12 @@ theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
         · obtain ⟨b, c, hb, rfl, hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
           obtain rfl := hinj hb
           have hcval : c.val = rho.ownKey v := Option.some.inj hk
-          obtain ⟨j', q', _, hc'⟩ := engine_seen_att_signed S rho hn hv hv' hv' hc hcval ho
+          obtain ⟨j', q', _, hc'⟩ := engine_seen_att_signed S rho hn hf hv hv' hv' hc hcval ho
           exact engine_signings_nonFraming S rho hn hv hv' ha hc' hbc
         · obtain ⟨b, c, rfl, hc', hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
           obtain rfl := hinj hc'
           have hbval : b.val = rho.ownKey v := Option.some.inj hk
-          obtain ⟨j', q', _, hb⟩ := engine_seen_att_signed S rho hn hv hv' hv' hc hbval ho
+          obtain ⟨j', q', _, hb⟩ := engine_seen_att_signed S rho hn hf hv hv' hv' hc hbval ho
           exact engine_signings_nonFraming S rho hn hv hv' hb ha hbc
       change (_ != _ || !(conflicts (attObj a) o || conflicts o (attObj a))) = true
       simp [hconf.1, hconf.2]
@@ -1466,8 +1474,8 @@ theorem engine_att_protected (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.
   · rfl
 
 /-- The own-object guard admits the ordinary attestation produced by an actual poll. -/
-theorem engine_poll_att_protected (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat} {nd} {k : Nat}
+theorem engine_poll_att_protected (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
         ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
@@ -1478,7 +1486,7 @@ theorem engine_poll_att_protected (hv : rho.ExecutionValid) {v : V}
     Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
       (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := by
   obtain ⟨a, j, q, rfl, hval, ha⟩ := engine_poll_att_signed S rho hn hc hd hsel hm
-  have hp := engine_att_protected S rho hn hv hv' hc ha
+  have hp := engine_att_protected S rho hn hf hv hv' hc ha
   have he := hval.trans (cut_self S rho hn hc)
   have ho : attObj a = (.mk (.signed (rho.ownKey v) .poll)
       (.data (.att (encodeAtt a))) [] : Wire (Fintype.card V)) := by
@@ -1486,7 +1494,5 @@ theorem engine_poll_att_protected (hv : rho.ExecutionValid) {v : V}
     rw [he]
   rw [ho] at hp
   exact hp
-
 end Consensus.Goldilocks.Simulation
-
 end

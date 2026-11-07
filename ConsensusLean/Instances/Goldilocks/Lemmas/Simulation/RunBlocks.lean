@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -32,10 +33,11 @@ theorem simTrace_genesis_root_ok :
   erw [dgOf_eq]
 
 /-- An honest-signed payload object of any called block was released before its engine event. -/
-private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}
+private theorem block_payload_source (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {k : Nat} {y}
     {B : Blk (S.params (pubOf E) hn)} (hc : (simTrace S rho hn).BlockCallAt y k B)
     {o : Wire (Fintype.card V)} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
-    {u : V} (hu : u ∈ rho.honest) (hsign : rho.signerOf o = some u) :
+    {u : V} (hu : u ∉ rho.faultyAt 0) (hsign : rho.signerOf o = some u) :
     ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i := by
   obtain ⟨acc, hnode, hlab⟩ := hc
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
@@ -47,7 +49,10 @@ private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}
     exact (cutMap_mono S rho hn (show j + 1 ≤ i by omega)).trans hstart
   cases ev with
   | tick v t =>
-    have hv' := hv.honest_only _ (List.mem_of_getElem? he)
+    have hv' : v ∉ rho.faultyAt 0 := by
+      have hh := hv.honest_only _ (List.mem_of_getElem? he)
+      change v ∉ rho.faultyAt t at hh
+      simpa only [rho.faultyAt_eq_zero hf] using hh
     have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
@@ -58,20 +63,21 @@ private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}
     have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
     rw [← hc, hrl] at hcut
     obtain ⟨N4, N5, Q, R4, F, G, _, _, _, _, _, _, _, hR4, hcar, _⟩ :=
-      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hv hv' he)
+      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
     have hB : blockObj (S.params (pubOf E) hn) B ∈ R4 := by
       rw [hR4]; exact mem_blockObjs.mpr ⟨B, acc, hcut, rfl⟩
     have ho' := hcar _ hB o ho
-    have hnil := outbox_empty S rho hn hv v hv' i
+    have hnil := outbox_empty S rho hn hv v i
     have hrel : relHead S rho v (rho.stateBefore i v).seen
         (stateAt S rho hn v i).outbox.head? = [] := by
       apply List.eq_nil_iff_forall_not_mem.mpr
       intro x hx
       obtain ⟨b, hb, _⟩ := mem_relHead S rho hx
       simp [hnil] at hb
-    simp only [Model.Event.node] at ho'
     rw [hrel, List.append_nil] at ho'
-    obtain ⟨j, hj, t', hs, hr⟩ := rho.signed_seen_released hv ho' hu hsign
+    obtain ⟨j, hj, t', hs, hr⟩ := rho.signed_seen_released hv
+      (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1) ho'
+      (by simpa only [rho.faultyAt_eq_zero hf] using hu) hsign
     exact ⟨j, t', hbefore j hj, hs, hr⟩
   | deliver v x t =>
     rw [eventCuts_deliver S rho hn i v x t he] at hmem
@@ -92,7 +98,8 @@ private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}
     subst e
     obtain rfl := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
     have hcontains := (contains_of_mem_delivered hx).trans (Model.Obj.Contains.step ho (.refl o))
-    obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v x t he o hcontains u hu hsign
+    obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v x t he o hcontains u hsign
+      (by simpa only [rho.faultyAt_eq_zero hf] using hu)
     exact ⟨j, t', hbefore j hj, hs, hr⟩
   | restart v t =>
     rw [eventCuts_restart S rho hn i v t he] at hmem
@@ -103,7 +110,8 @@ private theorem block_payload_source (hv : rho.ExecutionValid) {k : Nat} {y}
     simp [exec, Node.restart, acCall] at hcut
 
 /-- Honest carried votes originate in earlier canonical emission cuts. -/
-theorem simTrace_carried_vote_unforgeable (hv : rho.ExecutionValid) :
+theorem simTrace_carried_vote_unforgeable (hf : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i B, (simTrace S rho hn).BlockCallAt y i B →
       ∀ v ∈ blockVotes B, v.val ∈ honestKeys S rho →
         ∃ j < i, (simTrace S rho hn).EmitAt v.val j v := by
@@ -111,23 +119,24 @@ theorem simTrace_carried_vote_unforgeable (hv : rho.ExecutionValid) :
   rw [mem_honestKeys_iff] at hh
   have hmem : voteObj m ∈ payloadObjs B.fgPayload B.acPayload :=
     List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
-  obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hv hc hmem hh
+  obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
     (show rho.signerOf (voteObj m) = some (rho.key m.val) from rfl)
-  obtain ⟨q, hq, he⟩ := released_vote_cut S rho hn hv hs hh hr
+  obtain ⟨q, hq, he⟩ := released_vote_cut S rho hn hf hv hs hh hr
   exact ⟨q, hq.trans_le hik, by simpa only [ownKey_key] using he⟩
 
-private theorem released_att_cut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (hs : rho.SendsAt v i t) (hv' : v ∈ rho.honest) {a : FG.Att (Fintype.card V)}
+private theorem released_att_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} {t : Time}
+    (hs : rho.SendsAt v i t) (hv' : v ∉ rho.faultyAt 0) {a : FG.Att (Fintype.card V)}
     (hb : attObj a ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).SignAt (rho.ownKey v) k a := by
   rcases hs with hs | ⟨o, hs⟩
-  · obtain ⟨hp, C, hc⟩ := att_released_inv S rho hn hv hv' hs hb
+  · obtain ⟨hp, C, hc⟩ := att_released_inv S rho hn hf hv hv' hs hb
     exact signAt_before_tick_end S rho hn hs hp hc
   · exact absurd hb (deliver_not_att S rho hn hv hs a)
 
 /-- An attestation of an honest signer that an honest node processes was signed by that signer
 at an earlier cut, including own processing and refused block payloads. -/
-theorem simTrace_att_unforgeable (hv : rho.ExecutionValid) :
+theorem simTrace_att_unforgeable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i a,
       ((simTrace S rho hn).AttCallAt y i a ∨
         ∃ B, (simTrace S rho hn).BlockCallAt y i B ∧ a ∈ B.fgPayload) →
@@ -138,9 +147,9 @@ theorem simTrace_att_unforgeable (hv : rho.ExecutionValid) :
   swap
   · have hmem : attObj a ∈ payloadObjs B.fgPayload B.acPayload :=
       List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
-    obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hv hc hmem hh
+    obtain ⟨i, t, hik, hs, hr⟩ := block_payload_source S rho hn hf hv hc hmem hh
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)
-    obtain ⟨q, hq, he⟩ := released_att_cut S rho hn hv hs hh hr
+    obtain ⟨q, hq, he⟩ := released_att_cut S rho hn hf hv hs hh hr
     exact ⟨q, hq.trans_le hik, by simpa only [ownKey_key] using he⟩
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, hi, he, hstart, _, hidx, _, _, _, hlab'⟩ := simTrace_cut S rho hn hl
@@ -208,8 +217,8 @@ theorem simTrace_att_unforgeable (hv : rho.ExecutionValid) :
       · cases h; exact ho
     subst o'
     obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ (contains_of_mem_delivered ho)
-      (rho.key a.val) hh rfl
-    obtain ⟨q, hq, hs⟩ := released_att_cut S rho hn hv hs hh hb
+      (rho.key a.val) rfl (by simpa only [rho.faultyAt_eq_zero hf] using hh)
+    obtain ⟨q, hq, hs⟩ := released_att_cut S rho hn hf hv hs hh hb
     have hle : cutMap S rho hn (j + 1) ≤ cutMap S rho hn i :=
       cutMap_mono S rho hn (Nat.succ_le_of_lt hj)
     exact ⟨q, by omega, by simpa only [ownKey_key] using hs⟩

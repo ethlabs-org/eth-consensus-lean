@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Lemmas.Problem.Constant
 public import Mathlib.Tactic.IntervalCases
 
 public section
@@ -931,12 +932,12 @@ private theorem duties_owned (v : V)
     rw [runDuties_fst_cons]
     exact ih _ (duty_owned S rho hn v nd d h)
 
-private theorem cut_owned (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+private theorem cut_owned (hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ rho.faultyAt 0)
     {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) :
     VoteOwned (shapeOf S hn nd) := by
   have hbase : VoteOwned (stateAt S rho hn v i) := by
     intro w hw
-    rw [outbox_empty S rho hn hv v hv' i] at hw
+    rw [outbox_empty S rho hn hv v i] at hw
     cases hw
   rw [stateAt_eq] at hbase
   cases hc with
@@ -947,14 +948,14 @@ private theorem cut_owned (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.hon
     exact process_owned _ _ _ hbase
 
 /-- Pending canonical votes at actual duty boundaries belong to the local signer. -/
-theorem duty_cut_vote_signer (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+theorem duty_cut_vote_signer (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.faultyAt 0)
     {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V))
     (hm : Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox) :
     m.val = rho.ownKey v :=
   (cut_owned S rho hn hv hv' hc m hm).trans (cut_self S rho hn hc)
 
-private theorem poll_duty_inventory (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat} {nd} {k : Nat}
+private theorem poll_duty_inventory (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
         ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
@@ -1008,7 +1009,7 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid) {v : V}
       rw [hval.trans (cut_self S rho hn hc)]
       rfl
     rw [ho]
-    exact hmem _ ha (engine_poll_att_protected S rho hn hv hv' hc hd hsel hpoll)
+    exact hmem _ ha (engine_poll_att_protected S rho hn hf hv hv' hc hd hsel hpoll)
 
 private def PayloadCarried (o : Wire (Fintype.card V)) : Prop :=
   ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
@@ -1107,8 +1108,8 @@ private theorem tick_duty_inventory (v : V)
       hsel, ↓reduceIte]
     exact h
 
-private theorem prefix_inventory (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) (i : Nat)
+private theorem prefix_inventory (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (hcut : ∀ p, p ≤ ds.length → EngineDutyCut S rho v i p
@@ -1138,10 +1139,11 @@ private theorem prefix_inventory (hv : rho.ExecutionValid) {v : V}
     | propose s hs => exact proposal_duty_inventory S rho hn v _ s hs hi
     | pollPropose k => exact tick_duty_inventory S rho hn v _ k hi
     | poll k =>
-      exact poll_duty_inventory S rho hn hv hv' (hcut p (Nat.le_of_lt hlt))
+      exact poll_duty_inventory S rho hn hf hv hv' (hcut p (Nat.le_of_lt hlt))
         (hsched p k (hd.trans (congrArg some he))) hi
 
-private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
+private theorem event_inventory (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    (v : V) (hv' : v ∉ rho.faultyAt 0) :
     ∀ i, Inventory (Available (rho.stateBefore i v).seen (stateAt S rho hn v i))
       (stateAt S rho hn v i).node := by
   intro i
@@ -1184,7 +1186,7 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
           split
           · rename_i hw
             apply hg
-            have hi := prefix_inventory S rho hn hv hv' i
+            have hi := prefix_inventory S rho hn hf hv hv' i
               ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
                 (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
               (fun p hp => .tick he hw hp)
@@ -1207,7 +1209,7 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
               exact List.mem_flatMap.mpr
                 ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
           rw [stateAt_eq] at hp
-          have hi := prefix_inventory S rho hn hv hv' i
+          have hi := prefix_inventory S rho hn hf hv hv' i
             ⟨(Model.protoOf (compiled (goldilocks S)) E).process (rho.stateBefore i v).st o
               (Model.digests rho.hash o), (rho.stateBefore i v).seen ++ [o]⟩ _
             (fun p hp => .deliver he hp)
@@ -1223,8 +1225,8 @@ private theorem event_inventory (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ r
 
 /-- At a tick duty prefix, every pooled vote is already held or pending in the
 ordinary outbox. This retains the actual prefix state needed by release guards. -/
-theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time}
+theorem tick_prefix_pool_available (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
     (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
     (σ : Nat) (m : Vote (Fintype.card V)) :
@@ -1236,12 +1238,12 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
       voteObj m ∈ Model.closure nd.seen ∨
         Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox := by
   intro nd hm
-  have hi := prefix_inventory S rho hn hv hv' i
+  have hi := prefix_inventory S rho hn hf hv hv' i
     ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
       (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
     (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
     (by
-      have hi := event_inventory S rho hn hv v hv' i
+      have hi := event_inventory S rho hn hf hv v hv' i
       rw [stateAt_eq] at hi
       exact hi) p hp
   rcases hi.votes σ m hm with h | ⟨w, heq, hw⟩ | ⟨a, heq, _⟩
@@ -1270,14 +1272,15 @@ theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
 
 /-- After processing a delivery, every stored vote is either actually held (including in
 the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
-theorem delivery_pool_available (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ rho.honest)
+theorem delivery_pool_available (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0)
     (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       Body.vote (encodeVote m) ∈
         (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox := by
-  have hi := event_inventory S rho hn hv v hv' i
+  have hi := event_inventory S rho hn hf hv v hv' i
   have hp : Inventory (Available ((rho.stateBefore i v).seen ++ [o])
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
@@ -1298,21 +1301,25 @@ theorem delivery_pool_available (hv : rho.ExecutionValid) {v : V} (hv' : v ∈ r
 
 /-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
 the reachable one-vote invariant rules out a later queued vote. -/
-theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
+theorem delivery_pool_held_or_head (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
     voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
         some (.vote (encodeVote m)) := by
-  have hv' := hv.honest_only _ (List.mem_of_getElem? he)
-  rcases delivery_pool_available S rho hn hv hv' i o σ m hm with hh | hq
+  have hv' : v ∉ rho.faultyAt 0 := by
+    have hh := hv.honest_only _ (List.mem_of_getElem? he)
+    change v ∉ rho.faultyAt t at hh
+    change rho.point.HonestAt v 0
+    exact (rho.point.honestAt_iff_zero hf v t).mp hh
+  rcases delivery_pool_available S rho hn hf hv hv' i o σ m hm with hh | hq
   · exact Or.inl hh
   right
   have hnow : (stateAt S rho hn v i).now = t :=
     (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
   have hpre : OneVote t (stateAt S rho hn v i) := by
-    rcases (outbox_inv S rho hn hv v hv' i).2 with h | h
+    rcases (outbox_inv S rho hn hv v i).2 with h | h
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o)
@@ -1332,34 +1339,35 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
 
 /-- Any ordinary vote left by delivery processing is signed by the receiving node. -/
 theorem delivery_outbox_vote_signer (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) (i : Nat)
+    (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (m : Vote (Fintype.card V))
     (hm : Body.vote (encodeVote m) ∈
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox) :
     m.val = rho.ownKey v := by
   have hb : VoteOwned (stateAt S rho hn v i) := by
     intro w hw
-    rw [outbox_empty S rho hn hv v hv' i] at hw
+    rw [outbox_empty S rho hn hv v i] at hw
     cases hw
   have hs := process_owned (stateAt S rho hn v i) o (Model.digests rho.hash o) hb m hm
   exact hs.trans ((process_self _ _ _).trans (self_eq_ownKey S rho hn v i))
 
 /-- Every envelope queued by an actual delivery has its canonical dependency held or at
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
-theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
+theorem delivery_voteForward_held_or_head (hf : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
         some (.vote (encodeVote tv.2)) :=
-  delivery_pool_held_or_head S rho hn hv he tv.2.slot tv.2
+  delivery_pool_held_or_head S rho hn hf hv he tv.2.slot tv.2
     (delivery_voteForward_in_pool S rho hn hv v i o tv htv)
 
 /-- Proposal payloads of actual scheduled honest duties were already released or received.
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
-theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time} {s : Slot}
+theorem scheduled_proposal_releasable (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time} {s : Slot}
     {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hscheduled : EngineProposalAt S rho v i p t s nd)
     {par : ParentRef} {info : Info} {cs : List (Wire (Fintype.card V))}
@@ -1368,12 +1376,12 @@ theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
   obtain ⟨he, hw, hs, hd, hsel, rfl⟩ :=
     (engineProposalAt_iff S rho v i p t s nd).mp hscheduled
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  have hi := prefix_inventory S rho hn hv hv' i
+  have hi := prefix_inventory S rho hn hf hv hv' i
     ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
       (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ _
     (fun q hq => .tick he hw hq) (fun q k hk => Or.inl ⟨t, he, hw, hk⟩)
     (by
-      have hi := event_inventory S rho hn hv v hv' i
+      have hi := event_inventory S rho hn hf hv v hv' i
       rw [stateAt_eq] at hi
       exact hi) p
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1)
@@ -1404,7 +1412,7 @@ theorem scheduled_proposal_releasable (hv : rho.ExecutionValid) {v : V}
           (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
         [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat]).1).outbox = []
       rw [← atProposal_eq]
-      exact atProposal_outbox_nil S rho hn hv i hv' s
+      exact atProposal_outbox_nil S rho hn hv i s
         (htime.trans (slotTime_eq S hn s).symm)
   intro o ho
   rcases proposal_inventory _ hi s hprop o ho with hseen | (⟨w, _, hw⟩ | ⟨a, _, ha⟩)
