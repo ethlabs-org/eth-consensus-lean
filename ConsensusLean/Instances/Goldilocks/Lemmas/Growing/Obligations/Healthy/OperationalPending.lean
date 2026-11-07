@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 
 public section
 
@@ -11,13 +13,12 @@ under their agreed names (static name + `_at`). Each node is honest at its own c
 held state at an observation time after the state's cuts, and the slot-`u` proposer through
 `t_u + hold`:
 
-* `ResetPremisesUpTo.cutZ_lt_reset_at` (`Healing.cutZ_lt_reset_of_snapshot`, with the finite
-  reset premises the growing argument needs);
-* `ResetPremisesUpTo.operational_unanimous_at`, `ResetPremisesUpTo.reset_seed_before_slot_at`,
-  `ResetPremisesUpTo.reset_proposal_passes_at`;
+* `ResetPremisesUpTo.operational_unanimous_at`, `ResetPremisesUpTo.reset_proposal_passes_at`;
 * `report_cover_of_unanimous_at` (`Obligations.UpTo.report_cover_of_unanimous`).
 
-Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
+It re-exports the proved `ResetPremisesUpTo.cutZ_lt_reset_at` (`Kernel/ResetSource`) and
+`ResetPremisesUpTo.reset_seed_before_slot_at` (`Kernel/Seed`). Each theorem here is an open
+`sorry`; this module is deleted when the home modules land. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -32,14 +33,6 @@ namespace ResetPremisesUpTo
 
 variable {b : Time}
 
-/-- **The snapshot cut `c_z` is strictly before the reset**, under the finite reset premises.
-The signer's source carries a live fast lock whose counted supporters (at least half of the
-committee) outnumber the faults at `c_z`, so a supporter honest at `c_z` holds the entry of
-height `H_z + 1`. -/
-theorem cutZ_lt_reset_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
-    cutZ sp.toParams g < a := by
-  sorry
-
 /-- Every vote of slot `u` by a node honest at its cut, by `b`, is for the post-drain operational
 proposal `P` of slot `u`, whose proposer is honest through `t_u + hold`. -/
 theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
@@ -50,12 +43,6 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
     (hub : sp.ts u ≤ b) :
     ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → e.msg.slot = u →
       tr.time j ≤ b → e.msg.head = P.root := by
-  sorry
-
-/-- A high origin before every post-drain slot. -/
-theorem reset_seed_before_slot_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {u : Nat}
-    (hR : drainTime sp a ≤ sp.ts u) :
-    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧ tr.time r < sp.ts u := by
   sorry
 
 /-- A post-drain proposal call of a node honest at it extends every high origin before its slot. -/
