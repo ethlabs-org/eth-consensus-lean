@@ -7,8 +7,9 @@ public import ConsensusLean.Init
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Idempotent
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Rule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Unlock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
@@ -18,6 +19,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockRule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv
