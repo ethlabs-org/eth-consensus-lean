@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 
 public section
 
@@ -79,14 +80,6 @@ theorem high_floor_signed_source_of_row_bound_at
       Anc (tr.HonestBlocksAt H) B O ∧
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
       ∃ d att, r < d ∧ d < k ∧ v ∈ H (tr.time d) ∧ tr.SignAt v d att ∧ att.T = E.root := by
-  sorry
-
-/-- **Half the committee votes**: the nodes honest at an observation `t ∈ [t_m + Δ, b]` that
-voted in slot `m` while honest are at least half the committee, for a slot `m` past `c_z`. -/
-theorem half_committee_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {m : Nat}
-    (hm : cutZ sp.toParams g ≤ sp.ts m) {t : Time} (hmt : sp.ts m + sp.Δ ≤ t) (htb : t ≤ b) :
-    sp.n ≤ 2 * {z | z ∈ H t ∧ ∃ q e, z ∈ H (tr.time q) ∧ SA.VoteAt tr.projAC z q e ∧
-      e.msg.slot = m}.ncard := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
