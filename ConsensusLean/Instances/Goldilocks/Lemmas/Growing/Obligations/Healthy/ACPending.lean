@@ -42,8 +42,9 @@ theorem honest_voters_half_before_at {b : Time} (hS : HealthyBaseUpTo tr H U pro
 
 /-- **The batch proposal** of slot `σ + 1` by a node honest at its proposal call `i`: with half
 of the committee voting `σ` by `t_σ + Δ` among the validators honest at `i`, every vote of slot
-`σ` of a voter honest at its cast extending `B`, the counted votes held at the proposal, `B` in the frame (viable or below `fc_root`) and the high locks compatible,
-`B` is an honest ancestor of the duty head. -/
+`σ` of a voter honest at its cast extending `B`, the counted votes held at the proposal, `B` in
+the frame (viable or below `fc_root`) and the high locks compatible, `B` is an honest ancestor of
+the duty head. -/
 theorem batch_proposal_at (hrun : ACRun proposer tr H U) {σ : Nat} {B : Blk sp.n FGP}
     {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
     (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
