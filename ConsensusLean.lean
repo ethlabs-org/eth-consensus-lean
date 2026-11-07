@@ -193,6 +193,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Batch
