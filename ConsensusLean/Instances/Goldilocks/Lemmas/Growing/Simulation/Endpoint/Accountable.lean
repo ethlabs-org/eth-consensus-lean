@@ -1,12 +1,12 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Prefix
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -46,30 +46,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- The FG projection of the prefix through `d ≥ 0` is a static FG run for the keys honest at `d`,
-over the blocks held while honest in the whole run. -/
-private theorem fg_run_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload (H d) (tr.HonestBlocksAt H)
-      (tr.upTo d).projFG := by
-  have hr := hrun.upTo hd
-  have hq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have h := Compose.fg_projection _ _ dg (H d) _ (tr.upTo d) proposer
-    ⟨hq.1, hq.2.1, hq.2.2.1, hq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hr.genesis_root_ok hr.toLocalRun (hnc.upTo d)
-  exact { h with
-    coherent := Compose.Growing.honest_blocks_coherent hrun hnc
-    tree_subset := fun y hy i => (h.tree_subset y hy i).trans
-      (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd) }
-
-/-- The FG store of a node honest at `d ≥ 0`, before a cut whose predecessors are at times `≤ d`,
-is its state's FG part in the run. -/
-private theorem store_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    {d : Time} (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {i : Nat}
-    (hi : ∀ k < i, tr.time k ≤ d) : (tr.upTo d).projFG.store y i = (tr.state y i).fg := by
-  change ((tr.upTo d).projFG.state y i).1 = _
-  rw [Compose.projFG_state (hrun.upTo hd).toLocalRun hy i, Trace.upTo_state _ y hi]
-
 /-- **Final accountability at read points under growing faults.** If the finalized tips of two
 nodes, each honest at a time `t ≥ 0` no earlier than every cut before its read, conflict inside
 the blocks held while honest, at least `2q − n` validators each have a slashable pair among the
@@ -86,11 +62,11 @@ theorem finalAccountable_readPoint
           ∃ b ∈ Regimes.ChainAtts tr y i X₁ ∪ Regimes.ChainAtts tr z j X₂,
             a.val = v ∧ FG.slashable a b := by
   obtain ⟨c₁, σ₁, h₁, hF₁, hU₁, hc₁, -, X₁, hX₁, hb₁⟩ :=
-    Store.finalized_chain (fg_run_upTo hrun hnc ht) hy i
+    Store.finalized_chain (fgRun_upTo hrun hnc ht) hy i
   obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, -, X₂, hX₂, hb₂⟩ :=
-    Store.finalized_chain (fg_run_upTo hrun hnc ht') hz j
-  rw [store_upTo hrun ht hy hi] at hF₁ hU₁ hc₁ hX₁ hb₁
-  rw [store_upTo hrun ht' hz hj] at hF₂ hU₂ hc₂ hX₂ hb₂
+    Store.finalized_chain (fgRun_upTo hrun hnc ht') hz j
+  rw [projFG_store_upTo hrun ht hy hi] at hF₁ hU₁ hc₁ hX₁ hb₁
+  rw [projFG_store_upTo hrun ht' hz hj] at hF₂ hU₂ hc₂ hX₂ hb₂
   obtain ⟨W, hW, hWv⟩ := FG.accountable_safety sp.toParams.fg c₁ c₂ σ₁ σ₂ h₁ h₂
     (fun h => hne (hc₂ _ hU₁ (hF₁ ▸ h))) (fun h => hne (hc₁ _ hU₂ (hF₂ ▸ h)).symm)
   have hmem : ∀ a ∈ sp.toParams.fg.chainAtts c₁ ++ sp.toParams.fg.chainAtts c₂,

@@ -170,10 +170,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Events
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Accepted
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.AtAcceptance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Receipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Tick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
