@@ -169,6 +169,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.StandIn.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ConditionalPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Pending
