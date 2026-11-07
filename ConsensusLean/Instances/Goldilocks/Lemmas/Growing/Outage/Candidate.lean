@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Candidate
 
@@ -9,8 +9,9 @@ public section
 
 `held_candidate_of_rows_at` is the static `held_candidate_of_rows` at a cut `i` of a node honest
 then, lifted to the prefix through `t_i`: the attestations of the node's tree by validators honest
-at `t_i` are sourced (`HonestRowsSourcedAt`: by a block of the tree of a validator honest at `t_i`,
-at a cut no later than `i`), and the count is `2 f_{t_i} < n` at the reading cut. -/
+at `t_i` are sourced (`HonestRowsSourcedAt`, `Sleepy/Node/Frame`: by a block of the tree of a
+validator honest at `t_i`, at a cut no later than `i`), and the count is `2 f_{t_i} < n` at the
+reading cut. `HonestRowsSourcedAt.upTo` reads the sourced rows in the prefix. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -19,22 +20,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-
-/-- The attestations of `y`'s tree at cut `i` by validators honest at `t_i` are sourced by blocks
-satisfying `G`: each names the entry of a block satisfying `G` held, at a cut no later than `i`,
-by a validator honest at `t_i`. -/
-def HonestRowsSourcedAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
-  ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time i) →
-    ∃ D, G D ∧ ∃ x k, x ∈ H (tr.time i) ∧ k ≤ i ∧ D ∈ (tr.state x k).fg.tree ∧
-      ((tr.state x k).fg.σ D.root).Th = a.T
-
-theorem honestRowsSourcedAt_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
-    {i : Nat} : HonestRowsSourcedAt tr H G y i ↔
-      ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time i) →
-        ∃ D, G D ∧ ∃ x k, x ∈ H (tr.time i) ∧ k ≤ i ∧ D ∈ (tr.state x k).fg.tree ∧
-          ((tr.state x k).fg.σ D.root).Th = a.T :=
-  Iff.rfl
 
 /-- **The sourced rows in the prefix**: at a cut `i` of a node honest then, the rows sourced by
 `G` are, in the prefix through `t_i`, rows sourced by the `G`-blocks held in the prefix. -/
@@ -47,7 +32,7 @@ theorem HonestRowsSourcedAt.upTo
     fun x k hk => RunTrace.upTo_state_of_le hrun.time_mono (hrun.time_mono hk)
   refine Compose.honestRowsSourced_iff.2 fun X hX a ha hav => ?_
   rw [hst y i le_rfl] at hX
-  obtain ⟨D, hD, x, k, hx, hki, hDt, hDT⟩ := hsrc X hX a ha hav
+  obtain ⟨D, hD, x, k, hx, hki, hDt, hDT⟩ := honestRowsSourcedAt_iff.1 hsrc X hX a ha hav
   have hDU : D ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
     ⟨x, hx, k, by rw [hst x k hki]; exact hDt⟩
   exact ⟨D, ⟨hD, hDU⟩, Compose.isHonestSource_iff.2 ⟨x, hx, k,
