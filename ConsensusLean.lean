@@ -150,6 +150,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
