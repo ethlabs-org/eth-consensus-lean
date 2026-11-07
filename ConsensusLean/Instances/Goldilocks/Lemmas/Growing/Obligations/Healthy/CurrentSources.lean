@@ -30,7 +30,8 @@ every reader honest at its read time and every source writer honest at its own c
   `healthy_current_record_sources_before_now_at`), so the interval contract holds.
 
 Finalized blocks compare by FG finalized safety at the later read time; a finalized block and a
-clean source, and two clean sources, by the reset kernel (`CurrentSourcesPending`). -/
+clean source, and two clean sources, by the clean-source comparisons
+(`finalized_compatible_clean_source_at`, `clean_sources_compatible_at`). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 

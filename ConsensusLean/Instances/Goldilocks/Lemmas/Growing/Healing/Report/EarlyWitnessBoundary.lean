@@ -3,7 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.N
 
 public section
 
-/-! # The common early-witness contract, independent of supporter propagation -/
+/-! # The common early-witness induction, independent of supporter propagation
+
+Forwarded to its proof, `KernelProof.next_votes_of_early_witness_at` in `Report/NextWitness`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

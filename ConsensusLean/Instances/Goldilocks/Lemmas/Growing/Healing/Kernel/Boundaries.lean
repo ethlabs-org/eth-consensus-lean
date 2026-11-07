@@ -8,10 +8,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 
 public section
 
-/-! # Frozen proof boundaries for the growing drain kernel
+/-! # The growing drain kernel's steps
 
-All remaining proof holes below are explicit work assignments. The finite reset lower bound
-is proved separately in ResetSource. No deadline is lengthened here.
+The frame window, the warm proposals, the owed rows and the reset bound, each forwarded to its
+proof (`exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`, and the
+`KernelProof` forms in `Kernel/DrainWarm`, `Kernel/DrainRows` and `Kernel/ResetRounds`), and the
+finite reset record they give. The finite reset lower bound is proved in `Kernel/ResetSource`.
+No deadline is lengthened here.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing

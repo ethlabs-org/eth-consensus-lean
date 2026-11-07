@@ -25,8 +25,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
-/-- The older, same-label and later cases of protected-source compatibility, without a
-dependency on the source-vote induction's pending interface. -/
+/-- The older, same-label and later cases of protected-source compatibility, with the source
+votes as explicit inputs. -/
 theorem protected_source_compatible_high_origin_of_sources_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))

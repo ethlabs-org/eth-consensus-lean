@@ -26,7 +26,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **An unchanged record keeps its lookup back to an earlier cut**: for a node honest at `t`,
 every cut before `j` at a time `≤ t`, a record looked up before `j` and unchanged since `i ≤ j` is
-already looked up before `i` (advancing finalization cannot re-admit it to the frame). -/
+already looked up before `i` (advancing finalization cannot bring it back into the frame). -/
 theorem record_lookup_of_later_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht : 0 ≤ t)

@@ -157,7 +157,7 @@ private theorem next_fault_bound (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
   have hn' : sp.n = sp.toParams.n := rfl
   omega
 
-/-- The reset premises admit `P` into every slot-`(u+1)` frozen viable tree. -/
+/-- The reset premises put `P` in every slot-`(u+1)` frozen viable tree. -/
 theorem unanimous_next_vote_viable_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)

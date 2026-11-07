@@ -4,7 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessU
 
 public section
 
-/-! # Frozen arbitrary-prefix unanimity suppliers
+/-! # Arbitrary-prefix unanimity suppliers
+
+Forwarded to their proofs in `WitnessUnanimity`.
 
 The prefix X need not be a proposal or have slot m. A separately held descendant Q
 supplies viability; prior votes need only extend X, not agree on a single head.

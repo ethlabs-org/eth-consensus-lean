@@ -5,7 +5,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.S
 
 public section
 
-/-! # Frozen common witness and supporter steps for regular propagation -/
+/-! # Common witness and supporter steps for regular propagation
+
+Forwarded to their proofs in `Report/RegularSupporter` and `Report/SupporterLater`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

@@ -36,8 +36,8 @@ private theorem entry_root_eq_at
       (mem_of_honest_anc_at hrun hnc ht hm hz h₁ hC)) hh
     rw [← hT₁, ← hT₂, this]
 
-/-- Earlier origins rule out a high contest at a reader's honest cut.
-The sole pending dependency is the kernel's frozen origin-comparability boundary. -/
+/-- Earlier origins rule out a high contest at a reader's honest cut. The origins are compared
+by the kernel's `ResetPremisesUpTo.origins_compatible_at`. -/
 theorem no_high_contest_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {p : Fin sp.n} {i : Nat} (hpH : p ∈ H (tr.time i)) (hib : tr.time i ≤ b) :

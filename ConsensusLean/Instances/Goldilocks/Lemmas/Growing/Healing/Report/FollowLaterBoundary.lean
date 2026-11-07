@@ -8,7 +8,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 
 public section
 
-/-! # Frozen optimistic propagation across independently honest cuts -/
+/-! # Optimistic propagation across independently honest cuts
+
+From the first-slot bases of `Report/FollowOptimisticBaseBoundary`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

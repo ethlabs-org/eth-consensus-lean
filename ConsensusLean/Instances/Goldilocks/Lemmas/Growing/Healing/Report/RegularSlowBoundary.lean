@@ -3,7 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.R
 
 public section
 
-/-! # Frozen regular slow next-vote supplier -/
+/-! # The regular slow next-vote supplier
+
+Forwarded to its proof, `KernelProof.regular_slow_next_votes_at` in `Report/RegularSlow`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

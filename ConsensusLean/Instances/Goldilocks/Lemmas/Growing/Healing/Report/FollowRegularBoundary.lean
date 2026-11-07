@@ -3,7 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.R
 
 public section
 
-/-! # Frozen regular-lock following across independently honest cuts -/
+/-! # Regular-lock following across independently honest cuts
+
+Forwarded to its proof, `KernelProof.regular_later_heads_at` in `Report/RegularLater`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

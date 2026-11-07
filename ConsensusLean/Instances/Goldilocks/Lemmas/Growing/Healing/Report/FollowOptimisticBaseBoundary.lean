@@ -4,7 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.O
 
 public section
 
-/-! # Frozen first-slot optimistic propagation bases -/
+/-! # First-slot optimistic propagation bases
+
+Forwarded to their proofs in `Report/OptimisticBaseVotes` and `Report/OptimisticBaseProposal`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 

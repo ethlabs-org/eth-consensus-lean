@@ -18,7 +18,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
-/-- The domain proof uses the shared floor port without copying its pending body. -/
+/-- The held-target proposal domain, with the high floor source of the proposal call as an
+explicit input. -/
 theorem held_target_proposal_domain_before_of_sources_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
@@ -126,7 +127,8 @@ theorem held_target_proposal_domain_before_of_sources_at
   rw [hfr] at hrootC ⊢
   exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
 
-/-- The agreed frozen domain, with independently honest source holder and proposer. -/
+/-- The held-target proposal domain, with independently honest source holder and proposer;
+the floor source is `high_floor_source_at_proposal_at`. -/
 theorem held_target_proposal_domain_before_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
