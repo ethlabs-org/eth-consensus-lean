@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularLater
 
 public section
 
@@ -36,7 +36,8 @@ theorem FrameWindow.regular_later_heads_at
         ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
         (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) D d.head) := by
-  sorry
+  exact KernelProof.regular_later_heads_at hframe hrun hnc hsvc hawake hf hcatch hnr hwarm hpos
+    hs₀ hm hsN hmb hx horigin
 
 /-- The regular residue of a cast's live lock is below the proposal; only a current
 optimistic write remains as a causal alternative. -/
