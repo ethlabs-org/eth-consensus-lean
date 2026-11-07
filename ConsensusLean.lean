@@ -207,6 +207,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.TargetCompare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.WalkInputs
@@ -230,6 +231,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportsPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Windows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
