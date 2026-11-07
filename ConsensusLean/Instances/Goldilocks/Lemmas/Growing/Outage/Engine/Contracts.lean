@@ -10,7 +10,7 @@ public section
 /-! # Outage engine part: the simulation contracts it consumes (stand-ins)
 
 The growing-fault simulation results the outage engine part consumes, stated with their agreed
-names and shapes and left open here until the simulation layer proves them; this module is
+names and shapes and left open here until the layers that own them prove them; this module is
 deleted then, and its importers import the simulation modules instead. The run itself,
 `simTraceAt_goldilocksRun`, is the simulation layer's (`Simulation/Run`).
 
