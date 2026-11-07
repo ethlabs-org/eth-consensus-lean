@@ -158,6 +158,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Agreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.StandIn.Inclusion
