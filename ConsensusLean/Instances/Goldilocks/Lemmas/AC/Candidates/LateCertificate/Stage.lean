@@ -26,6 +26,15 @@ spec, §"Rules"):
   (`CertPass`), or to `Φ.F`; any other lock keeps its place. With no certificate every block
   passes, so the lock stays at `T`.
 
+**One convention, as the reference simulator.** `CertPass` constrains only the formation slots that
+have a certificate, where the rule's wording tests every slot of `[a, j]`: for a slot without one
+the late certificate is empty (`lateSet_eq_empty_of_not_hasCert`), so that test asks `0 < W(Y)`.
+The two agree wherever the lock's weight at `Y` is positive (`certPass_iff_formation`), and with a
+certificate in the window passing already forces it. They differ only at a block of weight `0`
+when no formation slot has a certificate; there the stage keeps the lock at `T`. In the candidate
+`T` is evidence-release's target, which has positive weight (it is keepable) or is `Φ.F`, where
+both forms give `Φ.F`, so the candidate's result is the rule's (an argument, not a theorem here).
+
 The stage is lawful with keep premise `lateKeep` (for an eligible lock, the late certificate of
 each formation slot with one lies in a set of fewer validators than the weight) and fixes its own
 choice for every lock (`lateStage_lawful`, `lateStage_fixes`). -/
@@ -224,6 +233,29 @@ theorem certPass_of_keep {ctx : CertCtx sp.n} {Φ : Frm sp.n FGP} {V : View sp.n
   intro i hi₁ hi₂ hc
   obtain ⟨O, hO, hOw⟩ := hk he i hi₁ hi₂ hc
   exact lt_of_le_of_lt (Set.ncard_le_ncard hO O.toFinite) hOw
+
+/-- A slot without a certificate has an empty late certificate. -/
+theorem lateSet_eq_empty_of_not_hasCert {ctx : CertCtx sp.n} {Φ : Frm sp.n FGP} {i : Int}
+    (h : ¬ HasCert sp ctx Φ i) (Y : Blk sp.n FGP) : lateSet sp ctx Φ i Y = ∅ := by
+  ext v
+  simp only [Set.mem_empty_iff_false, iff_false]
+  rintro ⟨x, τ, hx, -, hxs, hτ, H, hH, hHr, hHs, -⟩
+  exact h ⟨x, τ, hx, hxs, hτ, H, hH, hHr, hHs⟩
+
+/-- **The test against the rule's wording.** Where the lock's weight at `Y` is positive, passing is
+the late certificate of every formation slot being below the weight. -/
+theorem certPass_iff_formation {ctx : CertCtx sp.n} {Φ : Frm sp.n FGP} {c : CLock}
+    {Y : Blk sp.n FGP} (hW : 0 < c.w.weight Y.root) :
+    CertPass sp ctx Φ c Y ↔ ∀ i : Int, c.a ≤ i → i ≤ c.w.lock.slot →
+      (lateSet sp ctx Φ i Y).ncard < c.w.weight Y.root := by
+  constructor
+  · intro h i hi₁ hi₂
+    by_cases hc : HasCert sp ctx Φ i
+    · exact h i hi₁ hi₂ hc
+    · rw [lateSet_eq_empty_of_not_hasCert hc, Set.ncard_empty]
+      exact hW
+  · intro h i hi₁ hi₂ _
+    exact h i hi₁ hi₂
 
 variable (sp) in
 /-- **The late-certificate stage is lawful.** -/
