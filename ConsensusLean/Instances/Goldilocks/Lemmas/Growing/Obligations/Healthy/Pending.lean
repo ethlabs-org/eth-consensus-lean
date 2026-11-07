@@ -14,6 +14,8 @@ signatures so the port compiles before they land:
   update after the drain, the counterpart of `Obligations.UpTo.operational_update_selection`;
 * `Healing.Growing.ResetPremisesUpTo.update_toFG_calls_at`: the joined update and to-FG call of
   a node honest at their time, the counterpart of `Healing.ResetPremisesUpTo.update_toFG_calls`;
+* `Obligations.Growing.catchRun_of_psync_at`: catch-up from partial synchrony and awake honest
+  nodes (on main in `Lemmas/Growing/Obligations/Network/PSync`, not yet on this branch's base);
 * `Obligations.Growing.healthy_preparation_initialize_at`: the base timing and finite preparation
   schedule of a healed-safety query, the counterpart of
   `Obligations.healthy_preparation_initialize`.
@@ -68,6 +70,25 @@ end Consensus.Goldilocks.Healing.Growing
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
+
+section Engine
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+  (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+
+/-- Old acceptances by nodes honest at their cut catch up before the first `2Δ` snapshot after
+GST at every node honest at that snapshot, when every node honest at a time of
+`[max g 0, horizon]` is awake then. -/
+theorem catchRun_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    {g : Time} (hnet : rho.log.PSync rho.point g)
+    (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → v ∉ rho.faultyAt u →
+      E.awake v u = true) :
+    Healing.Growing.CatchRun (simTraceAt S rho hn) (honestKeysAt S rho) g
+      (2 * (S.params (Model.pubOf E) hn).Δ) := by
+  sorry
+
+end Engine
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
