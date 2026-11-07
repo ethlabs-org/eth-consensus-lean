@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Instance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 
@@ -110,8 +110,8 @@ theorem tryVoteW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     ((tryVoteW sp self X Φ t).1.ac, (tryVoteW sp self X Φ t).2.map projEm) =
       tryVoteWith sp self (WLock.lock '' unlockW sp X.wlocks Φ t ((sp.slot t : Int) - 1)
         (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t := by
-  unfold tryVoteW tryVoteWith
-  dsimp only
+  unfold tryVoteW tryVoteE tryVoteWith
+  simp only [unlockStateE_evidenceStage]
   split_ifs with h₁ h₂ h₃
   · rfl
   · rfl
@@ -152,8 +152,8 @@ theorem locksForget_tryVoteW {X : WState sp.n} (hX : LocksForget X) (self : Fin 
     (Φ : Frm sp.n FGP) (t : Time) :
     LocksForget (tryVoteW sp self X Φ t).1 ∧
       ∀ e ∈ (tryVoteW sp self X Φ t).2, LocksForget e.readPoint := by
-  unfold tryVoteW
-  dsimp only
+  unfold tryVoteW tryVoteE
+  simp only [unlockStateE_evidenceStage]
   split_ifs with h₁ h₂ h₃
   · exact ⟨hX, fun _ h => absurd h List.not_mem_nil⟩
   · exact ⟨hX, fun _ h => absurd h List.not_mem_nil⟩
@@ -186,8 +186,8 @@ theorem locksForget_acOnTickW {X : WState sp.n} (hX : LocksForget X) (self : Fin
     LocksForget (acOnTickW sp self X Φ t).1 ∧
       ∀ e ∈ (acOnTickW sp self X Φ t).2, LocksForget e.readPoint := by
   have hv := locksForget_tryVoteW hX self Φ t
-  unfold acOnTickW
-  dsimp only
+  unfold acOnTickW acOnTickE
+  simp only [tryVoteE_evidenceStage]
   split_ifs <;>
     first
     | exact ⟨hX, fun _ h => absurd h List.not_mem_nil⟩
@@ -198,8 +198,8 @@ theorem locksForget_acOnTickW {X : WState sp.n} (hX : LocksForget X) (self : Fin
 /-- `ac_proposal` keeps the invariant. -/
 theorem locksForget_acProposalW {X : WState sp.n} (hX : LocksForget X) (Φ : Frm sp.n FGP)
     (t : Time) : LocksForget (acProposalW sp X Φ t).1 := by
-  unfold acProposalW
-  dsimp only
+  unfold acProposalW acProposalE
+  simp only [unlockStateE_evidenceStage]
   split_ifs <;> first | exact hX | exact locksForget_unlockState _ _ _ _ _
 
 /-- The parent's `ac_to_fg` keeps the locks. -/
@@ -250,7 +250,8 @@ theorem acProposalW_proj (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ((acProposalW sp X Φ t).1.ac, (acProposalW sp X Φ t).2) = acProposalWith sp
       (WLock.lock '' unlockW sp X.wlocks Φ t ((sp.slot t : Int) - 1)
         (View.ofLists (voteViewList X.ac Φ ((sp.slot t : Int) - 1) ⊤))) X.ac Φ t := by
-  unfold acProposalW acProposalWith
+  unfold acProposalW acProposalE acProposalWith
+  simp only [unlockStateE_evidenceStage]
   split_ifs <;> rfl
 
 /-! ### `ac_on_message`, `ac_on_block`, `ac_on_tick` -/
@@ -316,8 +317,8 @@ theorem acOnTickW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
         (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t := by
   have hv := tryVoteW_proj hX self Φ t
   have hf := (locksForget_tryVoteW hX self Φ t).1
-  unfold acOnTickW acOnTickWith
-  dsimp only
+  unfold acOnTickW acOnTickE acOnTickWith
+  simp only [tryVoteE_evidenceStage]
   split_ifs <;>
     first
     | rfl
@@ -340,7 +341,7 @@ theorem acOnBlockW_of_not_joined {X : WState sp.n} (hX : LocksForget X) (self : 
       hX.symm.trans (blockReceipt_keeps_locks X.ac t B).1.symm
     simp only [optimisticConfirmationW, withLocks, optimisticLocksW, optimisticConfirmation,
       hsel, hl]
-  simp only [acOnBlockW, hopt, tryVoteW, hnj, not_false_eq_true, true_or, ite_true]
+  simp only [acOnBlockW, acOnBlockE, hopt, tryVoteE, hnj, not_false_eq_true, true_or, ite_true]
 
 /-- **The restart, forgotten**: in a well-formed frame at `t ≥ 0`, the forgotten restart of the
 candidate is the parent's restart, and neither emits. -/

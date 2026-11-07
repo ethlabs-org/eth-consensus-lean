@@ -21,8 +21,10 @@ a frame of `U` whose finalized tip is at or below the current one:
 * `weightBelow_antitone`: such a weight is antitone along the chains of the current frame (a block
   between the current tip and a block of the write frame is a block of the write frame,
   `mem_tree_of_between`; ancestry in `U` between blocks of a frame is ancestry in the frame);
-* every handler keeps the invariant at its call's frame (`weightInv_tryVoteW`, …,
-  `weightInv_acRestartW`), and moving to a later frame keeps it (`WeightInv.later`);
+* every handler keeps the invariant at its call's frame, for every unlock stage, since an unlock
+  only moves stored locks (`written_unlockWith`; `weightInv_tryVoteE`, …, `weightInv_acRestartE`,
+  the handlers of `Spec/WeightedLocks/Actions` over a stage), and moving to a later frame keeps it
+  (`WeightInv.later`);
 * `weightInv_of_reachable`: it holds at every reachable state; `weightAntitone_of_reachable`: so
   every stored weight is antitone in the frame of the last call and in every later frame. -/
 
@@ -158,6 +160,11 @@ theorem WeightInv.later {U : Set (Blk sp.n FGP)} {Φ Φ' : Frm sp.n FGP} {X : WS
     (h : WeightInv sp U Φ X) (hF : Anc U Φ.F Φ'.F) : WeightInv sp U Φ' X :=
   ⟨fun w hw => (h.1 w hw).later hF, fun i => (h.2 i).later hF⟩
 
+/-- The initial state has no stored weight and no saved count. -/
+theorem weightInv_initial {U : Set (Blk sp.n FGP)} (Φ : Frm sp.n FGP) (g : Nat) :
+    WeightInv sp U Φ (WState.initial (n := sp.n) g) :=
+  ⟨fun w hw => absurd hw (Set.notMem_empty w), fun _ => Or.inl rfl⟩
+
 /-- A saved count is antitone along the chains of a frame no earlier than its own. -/
 theorem SavedBefore.antitone {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {g : Nat → Nat} (h : SavedBefore sp U Φ g) :
@@ -178,6 +185,13 @@ theorem WrittenBefore.antitone {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : 
   exact this Y hY D hD hYD
 
 /-! ### The writes and the moves -/
+
+/-- Under the invariant, every stored weight is antitone along the chains of every later frame of
+`U`. -/
+theorem WeightInv.treeAntitone {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ Φ' : Frm sp.n FGP}
+    {X : WState sp.n} (h : WeightInv sp U Φ X) (hF : Anc U Φ.F Φ'.F) (hΦ' : FrameOK Φ')
+    (hΦ'U : Φ'.tree ⊆ U) : ∀ w ∈ X.wlocks, TreeAntitone sp Φ' fun Y => w.weight Y.root :=
+  fun w hw => ((h.1 w hw).later hF).antitone hU hΦ' hΦ'U
 
 theorem writtenBefore_now {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {o : Nat} {f : Blk sp.n FGP → Nat} (hf : TreeAntitone sp Φ f) :
@@ -226,15 +240,16 @@ theorem written_addLocksWith {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP} {W N :
   rw [LockStore.addLocksWith_eq]
   exact written_liveLocks (fun w hw => hw.elim (hW w) (hN w)) Φ' t
 
-theorem written_unlockW {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP} {W : Set WLock}
-    (hW : ∀ w ∈ W, WrittenBefore sp U Φ w.weight) {Φ' : Frm sp.n FGP} (hΦ' : FrameOK Φ')
-    (t : Time) (s : Int) (V : View sp.n) :
-    ∀ w ∈ unlockW sp W Φ' t s V, WrittenBefore sp U Φ w.weight := by
-  intro w' hw'
-  rw [unlockW_eq_unlockWith] at hw'
-  obtain ⟨w, hw, ⟨r, rfl⟩, -⟩ :=
-    LockStore.unlockWith_backward wlockStore_lawful (evidenceStage_lawful sp) () hΦ' W t s V w' hw'
-  exact hW w hw
+/-- Any stage's unlock moves stored locks and keeps their weights. -/
+theorem written_unlockWith {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP} {W : Set WLock}
+    (hW : ∀ w ∈ W, WrittenBefore sp U Φ w.weight) {σ : Type} (E : UnlockStage sp wlockStore σ)
+    (c : σ) (Φ' : Frm sp.n FGP) (t : Time) (s : Int) (V : View sp.n) :
+    ∀ w ∈ wlockStore.unlockWith sp E c W Φ' t s V, WrittenBefore sp U Φ w.weight := by
+  rintro _ ⟨w, hw, -, -, -, rfl⟩
+  have h := written_liveLocks hW Φ' t w hw
+  split_ifs
+  · exact h
+  · exact h
 
 /-! ### The handlers -/
 
@@ -248,11 +263,6 @@ theorem weightInv_withLocks {Φ : Frm sp.n FGP} {X : WState sp.n} (h : WeightInv
     (A : SAState sp.n) {W : Set WLock} (hW : ∀ w ∈ W, WrittenBefore sp U Φ w.weight) :
     WeightInv sp U Φ (withLocks sp X A W) :=
   ⟨hW, h.2⟩
-
-theorem weightInv_unlockState {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {X : WState sp.n}
-    (h : WeightInv sp U Φ X) (t : Time) (s : Int) (V : View sp.n) :
-    WeightInv sp U Φ (unlockState sp X Φ t s V) :=
-  weightInv_withLocks h _ (written_unlockW h.1 hΦ t s V)
 
 theorem weightInv_optimisticConfirmationW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {X : WState sp.n} (h : WeightInv sp U Φ X) (t : Time) :
@@ -281,34 +291,44 @@ theorem weightInv_updateConfirmationW (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ
     · exact writtenBefore_fastWeight hΦ hΦU _ _ _
     · exact writtenBefore_slowWeight hU hΦ hΦU (savedBefore_saveCount hΦ hΦU h.2 X.ac s) _ _
 
-theorem weightInv_tryVoteW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+section Generic
+
+variable {σ : Type} (E : UnlockStage sp wlockStore σ) (c : σ)
+
+theorem weightInv_unlockStateE {Φ : Frm sp.n FGP} {X : WState sp.n} (h : WeightInv sp U Φ X)
+    (t : Time) (s : Int) (V : View sp.n) : WeightInv sp U Φ (unlockStateE sp E c X Φ t s V) :=
+  weightInv_withLocks h _ (written_unlockWith h.1 E c Φ t s V)
+
+theorem weightInv_tryVoteE {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {X : WState sp.n} (h : WeightInv sp U Φ X) (self : Fin sp.n) (t : Time) :
-    WeightInv sp U Φ (tryVoteW sp self X Φ t).1 := by
-  unfold tryVoteW
+    WeightInv sp U Φ (tryVoteE sp E c self X Φ t).1 := by
+  unfold tryVoteE
   dsimp only
   split_ifs
   · exact h
   · exact h
   · refine weightInv_optimisticConfirmationW hΦ hΦU ?_ t
-    exact weightInv_ac (weightInv_ac (weightInv_unlockState hΦ h t _ _) _) _
+    exact weightInv_ac (weightInv_ac (weightInv_unlockStateE E c h t _ _) _) _
   · refine weightInv_optimisticConfirmationW hΦ hΦU ?_ t
     exact weightInv_ac (weightInv_ac h _) _
 
-theorem weightInv_acOnMessageW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+theorem weightInv_acOnMessageE {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {X : WState sp.n} (h : WeightInv sp U Φ X) (self : Fin sp.n) (t : Time) (v : Vote sp.n) :
-    WeightInv sp U Φ (acOnMessageW sp self X Φ t v).1 :=
-  weightInv_tryVoteW hΦ hΦU (weightInv_optimisticConfirmationW hΦ hΦU (weightInv_ac h _) t) self t
+    WeightInv sp U Φ (acOnMessageE sp E c self X Φ t v).1 :=
+  weightInv_tryVoteE E c hΦ hΦU
+    (weightInv_optimisticConfirmationW hΦ hΦU (weightInv_ac h _) t) self t
 
-theorem weightInv_acOnBlockW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+theorem weightInv_acOnBlockE {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {X : WState sp.n} (h : WeightInv sp U Φ X) (self : Fin sp.n) (t : Time) (B : Blk sp.n FGP) :
-    WeightInv sp U Φ (acOnBlockW sp self X Φ t B).1 :=
-  weightInv_tryVoteW hΦ hΦU (weightInv_optimisticConfirmationW hΦ hΦU (weightInv_ac h _) t) self t
+    WeightInv sp U Φ (acOnBlockE sp E c self X Φ t B).1 :=
+  weightInv_tryVoteE E c hΦ hΦU
+    (weightInv_optimisticConfirmationW hΦ hΦU (weightInv_ac h _) t) self t
 
-theorem weightInv_acOnTickW (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem weightInv_acOnTickE (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {X : WState sp.n} (h : WeightInv sp U Φ X) (self : Fin sp.n) (t : Time) :
-    WeightInv sp U Φ (acOnTickW sp self X Φ t).1 := by
-  have hv := weightInv_tryVoteW hΦ hΦU h self t
-  unfold acOnTickW
+    WeightInv sp U Φ (acOnTickE sp E c self X Φ t).1 := by
+  have hv := weightInv_tryVoteE E c hΦ hΦU h self t
+  unfold acOnTickE
   dsimp only
   split_ifs
   · exact weightInv_updateConfirmationW hU hΦ hΦU hv t _
@@ -317,26 +337,22 @@ theorem weightInv_acOnTickW (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK
   · exact h
   · exact h
 
-theorem weightInv_acProposalW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {X : WState sp.n}
-    (h : WeightInv sp U Φ X) (t : Time) : WeightInv sp U Φ (acProposalW sp X Φ t).1 := by
-  unfold acProposalW
+theorem weightInv_acProposalE {Φ : Frm sp.n FGP} {X : WState sp.n} (h : WeightInv sp U Φ X)
+    (t : Time) : WeightInv sp U Φ (acProposalE sp E c X Φ t).1 := by
+  unfold acProposalE
   dsimp only
   split_ifs
-  · exact weightInv_unlockState hΦ h t _ _
+  · exact weightInv_unlockStateE E c h t _ _
   · exact h
 
-theorem weightInv_acToFGW {Φ : Frm sp.n FGP} {X : WState sp.n} (h : WeightInv sp U Φ X)
-    (t : Time) : WeightInv sp U Φ (acToFGW sp X Φ t).1 :=
-  h
-
-theorem weightInv_acRestartW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+theorem weightInv_acRestartE {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {X : WState sp.n} (h : WeightInv sp U Φ X) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (t : Time) : WeightInv sp U Φ (acRestartW sp ro self X Φ t).1 := by
-  unfold acRestartW
+    (t : Time) : WeightInv sp U Φ (acRestartE sp E c ro self X Φ t).1 := by
+  unfold acRestartE
   dsimp only
   have key : ∀ (l : List (Blk sp.n FGP)) (acc : WState sp.n × List (EmW sp FGP)),
       WeightInv sp U Φ acc.1 →
-      WeightInv sp U Φ (l.foldl (fun acc B => let r := acOnBlockW sp self acc.1 Φ t B;
+      WeightInv sp U Φ (l.foldl (fun acc B => let r := acOnBlockE sp E c self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc).1 := by
     intro l
     induction l with
@@ -344,15 +360,21 @@ theorem weightInv_acRestartW {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.t
     | cons B l ih =>
       intro acc hacc
       simp only [List.foldl_cons]
-      exact ih _ (weightInv_acOnBlockW hΦ hΦU hacc self t B)
+      exact ih _ (weightInv_acOnBlockE E c hΦ hΦU hacc self t B)
   exact key _ _ ⟨h.1, fun _ => Or.inl rfl⟩
+
+end Generic
+
+theorem weightInv_acToFGW {Φ : Frm sp.n FGP} {X : WState sp.n} (h : WeightInv sp U Φ X)
+    (t : Time) : WeightInv sp U Φ (acToFGW sp X Φ t).1 :=
+  h
 
 /-! ### Reachable states -/
 
-/-- The finalized tip of a call's frame is at or above the previous call's, inside `U`. -/
-theorem callOK_F_anc {ro : ReplayOrder sp FGP} {Φ Φ' : Frm sp.n FGP} {t : Time}
-    {c : (evidenceReleaseSA sp FGP ro).Call} (hΦU : Φ.tree ⊆ U)
-    (h : (evidenceReleaseSA sp FGP ro).CallOK U Φ t c Φ') : Anc U Φ.F Φ'.F := by
+/-- The finalized tip of a call's frame is at or above the previous call's, inside `U`, for
+every AC. -/
+theorem callOK_F_anc {P : Params} {A : ACInterface P FGP} {U : Set A.Blk} {Φ Φ' : A.Frm}
+    {t : Time} {c : A.Call} (hΦU : Φ.tree ⊆ U) (h : A.CallOK U Φ t c Φ') : Anc U Φ.F Φ'.F := by
   obtain ⟨⟨-, hΦ'U⟩, hc⟩ := h
   cases c with
   | block B =>
@@ -373,7 +395,7 @@ theorem weightInv_of_reachable (hU : Coherent U) {ro : ReplayOrder sp FGP} {self
     (h : (evidenceReleaseSA sp FGP ro).ReachableAt self U X Φ t) :
     (FrameOK Φ ∧ Φ.tree ⊆ U) ∧ WeightInv sp U Φ X := by
   induction h with
-  | init Φ _ hΦ => exact ⟨hΦ, fun w hw => absurd hw (Set.notMem_empty w), fun _ => Or.inl rfl⟩
+  | init Φ _ hΦ => exact ⟨hΦ, weightInv_initial Φ _⟩
   | @step X Φ Φ' t t' c _ _ hc ih =>
     obtain ⟨⟨hΦ, hΦU⟩, hinv⟩ := ih
     have hF := callOK_F_anc hΦU hc
@@ -381,12 +403,12 @@ theorem weightInv_of_reachable (hU : Coherent U) {ro : ReplayOrder sp FGP} {self
     have h' := hinv.later hF
     refine ⟨⟨hΦ', hΦ'U⟩, ?_⟩
     cases c with
-    | tick => exact weightInv_acOnTickW hU hΦ' hΦ'U h' self t'
-    | proposal => exact weightInv_acProposalW hΦ' h' t'
+    | tick => exact weightInv_acOnTickE (evidenceStage sp) () hU hΦ' hΦ'U h' self t'
+    | proposal => exact weightInv_acProposalE (evidenceStage sp) () h' t'
     | toFG => exact weightInv_acToFGW h' t'
-    | message m => exact weightInv_acOnMessageW hΦ' hΦ'U h' self t' m
-    | block B => exact weightInv_acOnBlockW hΦ' hΦ'U h' self t' B
-    | restart => exact weightInv_acRestartW hΦ' hΦ'U h' ro self t'
+    | message m => exact weightInv_acOnMessageE (evidenceStage sp) () hΦ' hΦ'U h' self t' m
+    | block B => exact weightInv_acOnBlockE (evidenceStage sp) () hΦ' hΦ'U h' self t' B
+    | restart => exact weightInv_acRestartE (evidenceStage sp) () hΦ' hΦ'U h' ro self t'
 
 /-- **Stored weights stay antitone along the chain**: at every reachable state of the
 evidence-release SA inside a coherent `U`, every stored weight is antitone along the chains of
@@ -396,8 +418,8 @@ theorem weightAntitone_of_reachable (hU : Coherent U) {ro : ReplayOrder sp FGP}
     {Φ : (evidenceReleaseSA sp FGP ro).Frm} {t : Time}
     (h : (evidenceReleaseSA sp FGP ro).ReachableAt self U X Φ t) {Φ' : Frm sp.n FGP}
     (hΦ' : FrameOK Φ') (hΦ'U : Φ'.tree ⊆ U) (hF : Anc U Φ.F Φ'.F) :
-    ∀ w ∈ X.wlocks, TreeAntitone sp Φ' fun Y => w.weight Y.root := fun w hw =>
-  (((weightInv_of_reachable hU h).2.1 w hw).later hF).antitone hU hΦ' hΦ'U
+    ∀ w ∈ X.wlocks, TreeAntitone sp Φ' fun Y => w.weight Y.root :=
+  (weightInv_of_reachable hU h).2.treeAntitone hU hF hΦ' hΦ'U
 
 end Consensus.Goldilocks.EvidenceRelease
 

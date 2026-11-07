@@ -12,7 +12,8 @@ holds of every stored weight, in the frame of the last call and every later fram
 coherent block set (`EvidenceRelease.weightAntitone_of_reachable`); the late-certificate stage
 moves locks and never changes a weight. So for locks whose weighted locks are stored locks of a
 reachable evidence-release state, the unlock is idempotent with no further hypothesis
-(`certUnlock_idempotent_of_reachable`). -/
+(`certUnlock_idempotent_of_reachable`). The same holds on the candidate's own runs, those of the
+late-certificate SA (`SA`, `unlockWith_certStageW_idempotent_of_reachable`). -/
 
 namespace Consensus.Goldilocks.LateCertificate
 

@@ -27,7 +27,8 @@ composite stage `certStage = evidenceStageC.comp lateStage`, with the arrival re
 
 Written weights are antitone along the chain in the frame of the write
 (`confirmationScore_antitone`, `optimisticVoters_antitone`); that they stay so in later frames is
-a property of runs, which the idempotence takes as a hypothesis. -/
+a property of runs, which the idempotence here takes as a hypothesis; it holds on the reachable
+states of evidence-release's SA (`RunInv`) and of the late-certificate SA (`SA`). -/
 
 namespace Consensus.Goldilocks.LateCertificate
 
@@ -172,7 +173,7 @@ theorem certStage_fixes : (certStage sp).Fixes (certGood sp) := by
 theorem certStage_target (ctx : CertCtx sp.n) (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int)
     (c : CLock) (T : Blk sp.n FGP) :
     (certStage sp).target ((), ctx) Φ V s c T =
-      lateTarget sp ctx Φ c (evidenceTarget sp Φ V s c.w T) := by
+      lateTarget sp ctx Φ c.a c.w (evidenceTarget sp Φ V s c.w T) := by
   unfold certStage
   rw [UnlockStage.comp_target, lateStage_target, evidenceStageC_target]
 
