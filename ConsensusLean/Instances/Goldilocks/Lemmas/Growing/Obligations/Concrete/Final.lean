@@ -10,6 +10,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalDutyProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.FinalPending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
