@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 
 public section
 
@@ -12,10 +13,7 @@ their agreed names (static name + `_at`), with each node honest at its own cut (
 `ResetPremisesUpTo.restart_le_before_at` is re-exported from `Growing/Healing/Restart`):
 
 * `Healing.Growing.ResetPremisesUpTo.high_origin_votes_before_at`
-  (`Healing.ResetPremisesUpTo.high_origin_votes_before`, retention R2);
-* `Healing.Growing.healthy_base_of_reset_catch_before_at`
-  (`Healing.healthy_base_of_reset_catch_before`, in prefix form: the static AC base on the prefix
-  through `d` over `H d`).
+  (`Healing.ResetPremisesUpTo.high_origin_votes_before`, retention R2).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -38,13 +36,6 @@ theorem high_origin_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g �
   sorry
 
 end ResetPremisesUpTo
-
-/-- Finite reset health supplies the static AC base on the prefix through every `d ∈ [0, b]`, over
-the validators honest at `d`. -/
-theorem healthy_base_of_reset_catch_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
-    SA.HealthyBaseUpTo (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
-  sorry
 
 end Consensus.Goldilocks.Healing.Growing
 
