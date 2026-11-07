@@ -43,6 +43,17 @@ theorem upTo_processAt {y : Fin P.n} {i : Nat} {m : A.Msg} :
   · rintro ⟨hi, ℓ, hc, hr⟩
     exact ⟨ℓ, ⟨hi, hc⟩, hr⟩
 
+theorem upTo_sendOrAdmit (hm : Monotone tr.time) {x : Fin P.n} {i : Nat} {m : A.Msg} :
+    SendOrAdmit (A := A) (tr.upTo d) x i m ↔ tr.time i ≤ d ∧ tr.SendOrAdmit x i m := by
+  simp only [SendOrAdmit, Trace.upTo_callAt, Trace.upTo_post]
+  constructor
+  · rintro ⟨ℓ, ⟨hi, hc⟩, he⟩
+    rw [Trace.upTo_state tr x (fun _ hk => (hm hk.le).trans hi)] at he
+    exact ⟨hi, ℓ, hc, he⟩
+  · rintro ⟨hi, ℓ, hc, he⟩
+    rw [Trace.upTo_state tr x (fun _ hk => (hm hk.le).trans hi)]
+    exact ⟨ℓ, ⟨hi, hc⟩, he⟩
+
 theorem upTo_lastWake (hm : Monotone tr.time) (y : Fin P.n) :
     ∀ {i : Nat}, tr.time i ≤ d → lastWake (A := A) (tr.upTo d) y i = tr.lastWake y i
   | 0, hi => by
