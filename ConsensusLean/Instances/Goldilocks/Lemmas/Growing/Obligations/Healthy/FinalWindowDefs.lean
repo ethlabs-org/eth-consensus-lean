@@ -25,6 +25,14 @@ def AnchorStepAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     A ∈ (tr.state z j).fg.tree ∧ X ∈ (tr.state z j').fg.tree ∧
     ((tr.state z j).fg.σ A.root).h + 1 ≤ ((tr.state z j').fg.σ X.root).h
 
+/-- The observations witnessing an anchor step, without exposing the definition's body. -/
+theorem anchorStepAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+    {A X : SA.Blk sp.n (List (FG.Att sp.n))} :
+    AnchorStepAt tr H A X ↔
+      ∃ z j j', z ∈ H (tr.time j) ∧ z ∈ H (tr.time j') ∧
+        A ∈ (tr.state z j).fg.tree ∧ X ∈ (tr.state z j').fg.tree ∧
+        ((tr.state z j).fg.σ A.root).h + 1 ≤ ((tr.state z j').fg.σ X.root).h := Iff.rfl
+
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The first seed slot after the reset's drain. -/
