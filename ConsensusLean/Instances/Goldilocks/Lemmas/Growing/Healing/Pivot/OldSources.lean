@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RetentionInputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Lemmas.Tactic.Linarith
