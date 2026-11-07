@@ -41,13 +41,14 @@ in `Statements/Growing.lean`, outside the Solution closure. Certification record
 the earlier static endpoint, not certification of the dynamic statements.
 
 The compiled Goldilocks counterexample to proposer `hold = 0` is pending the dynamic sleepy
-invariant. It is not a Phase 1 test and has no sorry'd test placeholder. The Phase 1 controls
-reject a proposer compromised within its hold window and reduce arbitrary holds to the original
+invariant. It is not among the constant-fault controls and has no unfinished test placeholder.
+The current controls reject a proposer compromised within its hold window and reduce arbitrary holds to the original
 recurrence on constant faults. Until the dynamic invariant is proved, `hold = 1` rests on the
 window audit and these constant-fault reductions.
 
 | Step | Lean names | Status |
 |---|---|---|
+| Dynamic certification swap: compiled proposer hold-zero counterexample (`ProposerHold.lean`) | — | prerequisite: prove the dynamic sleepy invariant, then compile the rejection test before certifying the growing-fault roots |
 | Pre-foundation baseline: pinned numbers and the properties sheet | — | archived ([`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline) at `79cdddc8`); no live statement depends on it |
 | First slice: Goldilocks Spec, `AsChainShape.lean`, `Statements/<M₁>`, witnesses, finite model; then a proof pilot | — | done: the Spec, `AsChainShape.lean`, the milestone statements and their witnesses exist, and the milestones are proved (the obligations endpoint in Solution, the others as lemmas: `docs/decisions.md` §"Trusted surface and Challenge scope") |
 | Certification: `Challenge`/`Solution` entries (`milestone_statements_modules` in `scripts/boundaries.toml`), kernel replay and comparator; Challenge certifies the four review statements, the obligations endpoint and the headline `GoldilocksCorrect` only, and the other milestones are proved lemmas (`proved_milestone_modules`, `docs/decisions.md` §"Trusted surface and Challenge scope") | — | certified (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips: cold build, every-leaf kernel replay, `lake check`, `lake comparator --paranoid` and the rebuild canary, each with its controls); commits after it are not covered |
