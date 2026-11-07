@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.StopAtParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SuffixBest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.CallLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Pivot
 
 public section
 
@@ -31,30 +32,6 @@ open Regimes.Growing (hold)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- (`Healing.ResetPremisesUpTo.reset_pivot`, Outcome/Pivot.) -/
-theorem reset_pivot_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
-    (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
-    (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ellp : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root) :
-    ∃ D, ellp.frame.Anc d.start D ∧ ellp.frame.Anc D d.head ∧
-      (∀ X, ellp.frame.Anc D X → ellp.frame.Anc X d.head → X ∈ ellp.frame.viableHeads) ∧
-      ∀ y j elly e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j elly e → e.msg.slot = u →
-        tr.time j ≤ b →
-        (∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
-          e'.msg.slot = u → e'.msg.head = P.root) →
-        ∃ X, (X = P ∨ (ellp.frame.Anc D X ∧ ellp.frame.Anc X d.head)) ∧
-          elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
-          elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
-            (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-            (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
-  sorry
 
 /-- (`Healing.ResetPremisesUpTo.clean_window_timing`, Outcome/FiniteSources.) -/
 theorem clean_window_timing_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {s : Nat}
