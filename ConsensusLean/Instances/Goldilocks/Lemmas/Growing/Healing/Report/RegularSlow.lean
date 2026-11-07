@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSlowWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSlowBoundary
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -58,7 +59,7 @@ theorem regular_slow_next_votes_at {s₀ s floor : Nat}
   change sp.slot (tr.time q) = s at hslot
   change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
   rw [hslot] at htq
-  apply hframe.next_votes_of_supporter_at hrun hnc hsvc hawake hf hcatch hnr
+  apply KernelProof.FrameWindow.next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm' hmb hz ⟨hc, he⟩ hes hQU hQr hDQ
   · intro hQ hh hJD
     have hs₀s : s₀ ≤ s := by omega
