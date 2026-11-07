@@ -164,6 +164,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.StandIn.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
