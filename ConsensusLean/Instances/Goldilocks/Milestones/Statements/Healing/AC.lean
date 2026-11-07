@@ -6,7 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 /-! # Goldilocks milestone Healing: the AC healing statements (statements)
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level statements",
-the AC-level healing node H.1 (standalone AC healing) and its corollary, over **driven** AC traces
+the AC-level healing node H.1 (standalone AC healing) and its corollary, also at the threshold
+`ḡ + (8k + 4)Δ` of the node's drain-arithmetic remark (whose corollary is proposal-block
+inclusion from `ḡ + (8k + 10)Δ + G_p`), over **driven** AC traces
 of the Goldilocks SA with **trivial frames**, and the healing vocabulary they read on an AC trace:
 `ḡ = max(g, 0)`, the lock lifetime bound `Θ = 4(k + 1)Δ`, `Healthy(g)` (`GST(g)`, every honest
 validator awake from `ḡ`, `3f ≤ n − 1`), `Catch(κ)` (accepted-old-block catch-up) and the proposer
@@ -161,6 +163,47 @@ def ACHealingStandaloneCorollary : Prop :=
             ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
           Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))
 
+/-- **H.1 at `ḡ + (8k + 4)Δ`.** `ACHealingStandalone` with the threshold `t_p ≥ ḡ + (8k + 4)Δ`
+in place of `ḡ + 2Θ + 8Δ = ḡ + (8k + 16)Δ`, and otherwise the same premises and conclusions:
+over a driven AC trace of the SA with trivial frames, under `Healthy(g)`, `Catch(2Δ)`, `NoColl`
+and unforgeable signatures, for an honest proposal `P` of slot `p` with
+`t_p ≥ ḡ + (8k + 4)Δ`, (i) every honest vote of slot `p` is `P`, and (ii) at every call of an
+honest node at a time `t ≥ t_p + 6Δ` (at `t_p + 6Δ` itself, from its tick there on),
+`P ⪯ ac_confirmed` after the call. Its threshold is `12Δ` lower, so it implies
+`ACHealingStandalone`. -/
+def ACHealingStandaloneTight : Prop :=
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g : Time),
+    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
+    CatchAC tr H U g (2 * sp.Δ) →
+    ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H →
+      HonestProposal tr (proposer p) p P →
+      gbar g + (8 * (sp.k : Time) + 4) * sp.Δ ≤ sp.ts p →
+      (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
+      (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
+        (tr.time j = sp.ts p + 6 * sp.Δ →
+          ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
+        Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
+
+/-- **H.1 at `ḡ + (8k + 4)Δ`, corollary: proposal-block inclusion.** Under H.1's premises and
+`Prop(G_p)`: for every `t ≥ ḡ + (8k + 4)Δ` there is an honest proposal block `P` released in
+`[t, t + G_p]` (when its proposer is joined there) that is in every honest node's confirmed tip
+from `t + G_p + 6Δ` on (at `t + G_p + 6Δ` itself, from its tick there on); so from
+`ḡ + (8k + 10)Δ + G_p` on. This is the inclusion of a proposal block, not of a transaction.
+`ACHealingStandaloneCorollary` with the lower threshold. -/
+def ACHealingStandaloneTightCorollary : Prop :=
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g Gp : Time),
+    ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
+    CatchAC tr H U g (2 * sp.Δ) → PropAC proposer H g Gp →
+    ∀ t, gbar g + (8 * (sp.k : Time) + 4) * sp.Δ ≤ t →
+      ∃ (p : Nat) (P : Blk sp.n FGP), t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
+        HonestProposal tr (proposer p) p P ∧
+        ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → t + Gp + 6 * sp.Δ ≤ tr.time j →
+          (tr.time j = t + Gp + 6 * sp.Δ →
+            ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
+          Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))
+
 /-- **A slow lock** of slot `s` on `B`, written at cut `i` of `x`: the update of slot `s` (at
 `t_s + 6Δ`, joined) returns `C` (vetoed or not), and `B` is the deepest block of `C`'s path that
 conflicts with no live lock and has the `k − 1` previous saved results as descendants, written
@@ -242,8 +285,9 @@ def ACInclusion : Prop :=
             ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
           Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)))
 
-/-! The closed forms of H.1, its corollary and H.2, for all SA parameters (the comparator's
-statements of this module, as `ACSteps` and `ACBase`); the corollary follows from H.1. -/
+/-! The closed forms of H.1, its corollary, H.1 at `ḡ + (8k + 4)Δ` and its corollary, and H.2,
+for all SA parameters (the comparator's statements of this module, as `ACSteps` and `ACBase`);
+each corollary follows from its H.1. -/
 
 /-- **H.1** (`ACHealingStandalone`) for all SA parameters. -/
 def ACHealingStandaloneAll : Prop := ∀ sp : SAParams, ACHealingStandalone (sp := sp)
@@ -251,6 +295,14 @@ def ACHealingStandaloneAll : Prop := ∀ sp : SAParams, ACHealingStandalone (sp 
 /-- **H.1, corollary** (`ACHealingStandaloneCorollary`) for all SA parameters. -/
 def ACHealingStandaloneCorollaryAll : Prop :=
   ∀ sp : SAParams, ACHealingStandaloneCorollary (sp := sp)
+
+/-- **H.1 at `ḡ + (8k + 4)Δ`** (`ACHealingStandaloneTight`) for all SA parameters. -/
+def ACHealingStandaloneTightAll : Prop := ∀ sp : SAParams, ACHealingStandaloneTight (sp := sp)
+
+/-- **H.1 at `ḡ + (8k + 4)Δ`, corollary** (`ACHealingStandaloneTightCorollary`) for all SA
+parameters. -/
+def ACHealingStandaloneTightCorollaryAll : Prop :=
+  ∀ sp : SAParams, ACHealingStandaloneTightCorollary (sp := sp)
 
 /-- **H.2** (`ACInclusion`) for all SA parameters. -/
 def ACInclusionAll : Prop := ∀ sp : SAParams, ACInclusion (sp := sp)
