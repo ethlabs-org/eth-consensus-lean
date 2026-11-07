@@ -10,9 +10,6 @@ The growing forms of the Healing lemmas that the seed height and the anchor step
 window consume, under their agreed names (static name + `_at`). Each node is honest at its own
 cut; a reader of a held state is honest at an observation time after the state's cuts:
 
-* `ResetPremisesUpTo.row_signers_of_reports_at` (`ResetPremisesUpTo.row_signers_of_reports`):
-  the reporters are the nodes honest at the report bound `d`, and so are the signers;
-* `ResetPremisesUpTo.sign_of_report_at`, `ResetPremisesUpTo.row_target_of_sign_at`;
 * `ResetPremisesUpTo.clean_source_proposal_parent_before_at`,
   `ResetPremisesUpTo.clean_optimistic_proposal_parent_at`.
 
@@ -29,55 +26,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 namespace ResetPremisesUpTo
 
 variable {b : Time}
-
-/-- Same-height reports, by `d`, from every node honest at `d` yield a quorum of nodes honest at
-`d` with exact entry signatures by `d`. Historical reports count without any freshness
-assumption. -/
-theorem row_signers_of_reports_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
-    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
-    {d : Time} (hd : 0 ≤ d) (hdb : d ≤ b)
-    (hreports : ∀ z, z ∈ H d → ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ d ∧
-      Anc (tr.HonestBlocksAt H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
-    ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
-      ∀ z ∈ ids, z ∈ H d ∧ ∃ att j, tr.SignAt z j att ∧ att.val = z ∧
-        att.h = σT.h ∧ att.T = T.root ∧ att.timeout = false ∧ tr.time j ≤ d ∧
-        (σT.previousHeightJustified → att.fin = some (σT.hj, σT.J)) := by
-  sorry
-
-/-- A bounded same-height report of a node honest at the report supplies a signature of it by
-the report's time, including the case where previously signed content suppresses the call. -/
-theorem sign_of_report_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
-    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h) (hTC : Anc (tr.HonestBlocksAt H) T C)
-    (hCh : ((tr.state z r).fg.σ C.root).h = σT.h)
-    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
-    (hTB : Anc (tr.HonestBlocksAt H) T B) :
-    ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.h = σT.h := by
-  sorry
-
-/-- Finite normalization of a high signature's target and timeout fields, for a signer honest
-at its signing. -/
-theorem row_target_of_sign_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {j : Nat} (hz : z ∈ H (tr.time j)) {att : FG.Att sp.n}
-    (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
-    {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
-    (hhT : HZ tr H g + 1 ≤ σT.h)
-    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
-    (hTB : Anc (tr.HonestBlocksAt H) T B) (hatt : att.h = σT.h) :
-    att.val = z ∧ att.T = T.root ∧ att.timeout = false := by
-  sorry
 
 /-- A clean fast or slow lock source, written at a cut of a node honest at it, extends the duty
 head of every later honest proposal call two slots on, within the finite horizon. -/
