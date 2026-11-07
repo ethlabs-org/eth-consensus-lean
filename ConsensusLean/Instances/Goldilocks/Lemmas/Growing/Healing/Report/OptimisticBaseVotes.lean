@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularCommonBoundary
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.EarlyWitnessBoundary
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
