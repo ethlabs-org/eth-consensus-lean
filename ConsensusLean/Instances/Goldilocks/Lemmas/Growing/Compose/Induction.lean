@@ -1,13 +1,14 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Cut
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 
 public section
 
 /-! # Persistence assembly from the cut induction
 
-The cut step is supplied explicitly while it is proved independently. No assumption about
-constant honesty is used: each vote and cache read is checked at its own horizon.
+The cut step and vote step close the strong induction. No assumption about constant honesty
+is used: each vote and cache read is checked at its own horizon.
 -/
 
 namespace Consensus.Goldilocks.Compose.Growing
@@ -58,6 +59,17 @@ theorem honest_fast_confirmations_persist_of_cut_step
   · have := (voteInv_iff.mp (hinv i).1 y hy ℓ e hc (hsl ▸ hs) (hsl ▸ hsm)).1
     rwa [hsl] at this
   · exact (voteInv_iff.mp (hinv i).1 y hy ℓ e ⟨hc, he⟩ (hsl ▸ hs) (hsl ▸ hsm)).2
+
+/-- C1.1: honest fast confirmations persist under growing faults. -/
+theorem honest_fast_confirmations_persist : HonestFastConfirmationsPersist :=
+  honest_fast_confirmations_persist_of_cut_step cut_inv_step
+
+/-- C1.1's corollary: the next slot's honest votes extend a recent source. -/
+theorem recent_source_next_vote : RecentSourceNextVote := by
+  intro sp ro dg H tr ΔF x i₀ i j m ℓ B CV proposer hrun hp _ _ _ hjm _ y k e hy hv hsl
+  exact (honest_fast_confirmations_persist sp ro dg H tr ΔF
+    x i₀ j (m + 1) B CV proposer hrun hp (m + 1)
+    (by omega) le_rfl).extends_ y k e hy hv hsl
 
 end Consensus.Goldilocks.Compose.Growing
 
