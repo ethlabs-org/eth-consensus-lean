@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 
@@ -88,6 +89,22 @@ theorem first_transfer_service_at
     (service_syncACAt hrun hsvc ((SA.le_gbar g).trans hm))
     (fastLock_carry_service_at hrun hnc hsvc hcatch hm hx hy hfl hc hs (hFB.trans hBD))
     (faultBound_of_service_at hrun hawake hf hnr (hrun.time_nonneg i) hprev hib) hviab hearlier
+
+/-- Finite service compares the receiver's merged votes with an independently honest writer. -/
+theorem writer_merged_service_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    {s : Nat} (hm : gbar g ≤ sp.ts s)
+    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
+    {ellx ell : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC x c s ellx) {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
+      v ∈ (tr.projAC.state x c).pool s ∨
+        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state x c).pool s} := by
+  exact SA.Growing.writer_merged
+    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
+    hx hu hy hc hs (service_syncACAt hrun hsvc ((SA.le_gbar g).trans hm))
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
