@@ -1,17 +1,18 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 
 public section
 
 /-! # Pending growing interface of the operational reports
 
 The growing forms of the Healing and AC lemmas that the operational report lemmas consume, under
-their agreed names (static name + `_at`), with each node honest at its own cut:
+their agreed names (static name + `_at`), with each node honest at its own cut (the proved
+`ResetPremisesUpTo.restart_le_before_at` is re-exported from `Growing/Healing/Restart`):
 
 * `Healing.Growing.ResetPremisesUpTo.high_origin_votes_before_at`
   (`Healing.ResetPremisesUpTo.high_origin_votes_before`, retention R2);
-* `Healing.Growing.ResetPremisesUpTo.restart_le_before_at` (`Healing.restart_le_before`);
 * `Healing.Growing.healthy_base_of_reset_catch_before_at`
   (`Healing.healthy_base_of_reset_catch_before`, in prefix form: the static AC base on the prefix
   through `d` over `H d`).
@@ -34,12 +35,6 @@ theorem high_origin_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g �
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  sorry
-
-/-- A restart of a node honest at it, by the horizon, is by the slot after `ḡ`. -/
-theorem restart_le_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hk : tr.RestartAt y k)
-    (hkb : tr.time k ≤ b) : tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
   sorry
 
 end ResetPremisesUpTo
