@@ -220,6 +220,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.TransferLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Suffix
