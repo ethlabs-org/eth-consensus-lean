@@ -168,6 +168,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Joined
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Outputs
