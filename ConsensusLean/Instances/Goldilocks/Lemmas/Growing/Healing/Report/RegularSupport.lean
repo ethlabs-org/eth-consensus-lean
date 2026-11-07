@@ -57,6 +57,30 @@ theorem result_honest_supporter_before_at
   exact ⟨z, q, hrun.antitone hqt hz, hqc, e, he, hmem, hes,
     R, hsub hR, hroot, hCR.mono hsub⟩
 
+/-- The fault margin at a healthy observation cut counts validators honest at that cut. -/
+theorem faultBound_of_service_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {g b : Time}
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hnr : NoRestartAfter tr H (gbar g)) {t : Time} (ht0 : 0 ≤ t)
+    (hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) (htb : t ≤ b) :
+    SA.FaultBoundAt tr.projAC H t t := by
+  have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
+    (SA.ts_le_iff_le_slot sp ht0 _).mpr (by omega)
+  have hsub : H t ⊆ {y | y ∈ H t ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
+    intro y hy
+    refine ⟨hy, hawake y t hy (hprev.trans hts) htb, ?_⟩
+    intro k hk hkt
+    exact (hnr y k (hrun.antitone hkt hy) (Compose.projAC_restartAt.mp hk)).trans hprev
+  have hle := Set.ncard_le_ncard hsub
+  have hn : (H t).ncard + (H t)ᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have hbound := hf t ht0 htb
+  have hnpos : 0 < sp.n := sp.toParams.hn
+  change (H t)ᶜ.ncard < {y | y ∈ H t ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t}.ncard
+  omega
+
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end

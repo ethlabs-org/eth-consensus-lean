@@ -181,6 +181,25 @@ theorem carry_of_service_senders
   exact (hacc X (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHv hX)).imp_right
     fun ⟨k, hk, hkt⟩ => ⟨k, ((ac_acceptAt_upTo _).mp hk).2, hkt⟩
 
+/-- A regular result's counted votes reach the next-slot cast even after its writer's compromise. -/
+theorem result_carry_service_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
+    {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : SA.ResultAt tr.projAC x c s C CV)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
+    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+  apply carry_of_service_senders hrun hnc hsvc hcatch hts hy hc hes
+  intro v hv
+  obtain ⟨hvs, ⟨k, hk, hsend, hlo, hhi⟩, Hv, -, hroot, hanc, hacc⟩ :=
+    result_writer_at hrun hnc hx hres v hv
+  refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi⟩, Hv, hroot, hFC.trans hanc, ?_⟩
+  exact hacc.imp_right fun ⟨k', hk', hacc', htime⟩ => ⟨x, k', hk', hacc', htime⟩
+
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end
