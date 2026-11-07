@@ -156,6 +156,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.AC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Compose
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.FGStore
