@@ -11,7 +11,8 @@ public section
 then, lifted to the prefix through `t_i`: the attestations of the node's tree by validators honest
 at `t_i` are sourced (`HonestRowsSourcedAt`, `Sleepy/Node/Frame`: by a block of the tree of a
 validator honest at `t_i`, at a cut no later than `i`), and the count is `2 f_{t_i} < n` at the
-reading cut. `HonestRowsSourcedAt.upTo` reads the sourced rows in the prefix. -/
+reading cut. `HonestRowsSourcedAt.upTo_held` reads the sourced rows in the prefix, each source
+held there. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -23,7 +24,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The sourced rows in the prefix**: at a cut `i` of a node honest then, the rows sourced by
 `G` are, in the prefix through `t_i`, rows sourced by the `G`-blocks held in the prefix. -/
-theorem HonestRowsSourcedAt.upTo
+theorem HonestRowsSourcedAt.upTo_held
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
     {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedAt tr H G y i) :
     HonestRowsSourced (tr.upTo (tr.time i)) (H (tr.time i))
@@ -56,7 +57,7 @@ theorem held_candidate_of_rows_at
     fun x k hk => RunTrace.upTo_state_of_le hm (hm hk)
   have hBU : B ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
     ⟨y, hy, i, by rw [hst y i le_rfl]; exact hBt.1⟩
-  have h := held_candidate_of_rows (hrun.upTo hd) (hnc.upTo _) hf hy i (hsrc.upTo hrun)
+  have h := held_candidate_of_rows (hrun.upTo hd) (hnc.upTo _) hf hy i (hsrc.upTo_held hrun)
     (fun D ⟨hD, hDU⟩ => compatible_upTo hrun hnc hd hDU hBU (hGB D hD))
     (by rw [hst y i le_rfl]; exact hBt)
   rwa [hst y i le_rfl] at h
