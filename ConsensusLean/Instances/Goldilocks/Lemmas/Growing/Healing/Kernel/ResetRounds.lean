@@ -2,7 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.NoAdvance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ReportBoundaries
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseRounds
 
 public section
