@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees

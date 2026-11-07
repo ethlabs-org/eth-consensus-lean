@@ -14,7 +14,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Lo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Opening
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedSafetyConditional
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows

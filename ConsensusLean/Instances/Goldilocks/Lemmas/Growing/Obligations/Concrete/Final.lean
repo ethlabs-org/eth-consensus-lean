@@ -3,7 +3,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalResetPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CarrierProcessed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowAnchorRoute
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Proposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalReplay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4

@@ -7,7 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.NextParentPending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -195,8 +195,8 @@ theorem UpTo.operational_proposal_below_next_parent_at
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hci'
   have hdom : Anc (tr.HonestBlocksAt H) P ell.frame.fcRoot ∨
       P ∈ ell.frame.viableTree ell.frame.tree := by
-    refine hp.held_target_proposal_domain_before_at (by rw [hkt']; exact hpk') hy hPx hci hcall
-      hd hti hib ?_ ?_ ?_
+    refine Healing.Growing.ProposalImpl.held_target_proposal_domain_before_at hp
+      (by rw [hkt']; exact hpk') hy hPx hci hcall hd hti hib ?_ ?_ ?_
     · intro hFP
       rw [Compose.frame_of_projAC (hp.run.upTo hi0) hy hci'',
         RunTrace.upTo_state_of_le hmono le_rfl] at hFP

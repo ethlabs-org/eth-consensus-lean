@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RowSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RawReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.NextParentPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRowSources
@@ -74,7 +74,8 @@ theorem clean_source_proposal_domain_before_at (hp : ResetPremisesUpTo tr H prop
     have ha0 : 0 ≤ a := (hp.run.time_nonneg q).trans hqa
     have := (SA.ts_le_iff_le_slot sp ha0 u).mp ((not_lt.mp h).trans hqa)
     clear * - this hau; omega
-  refine hp.held_target_proposal_domain_before_at hx hpH hBx hci hcall hd hti hib ?_ ?_ ?_
+  refine ProposalImpl.held_target_proposal_domain_before_at hp hx hpH hBx hci hcall hd hti hib
+    ?_ ?_ ?_
   · exact ProposalImpl.raw_writer_held_at_slot_start_at hp hc hx hpH hw hBC htiming hsu hci hti hib
   · exact ⟨v, q, m, S, hS, hqt,
       ProposalImpl.protected_source_compatible_high_origin_at hp hc hx hsource hs hrb hS

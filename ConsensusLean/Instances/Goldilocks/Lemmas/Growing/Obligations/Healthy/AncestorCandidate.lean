@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High

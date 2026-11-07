@@ -2,7 +2,20 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionFinalityProof
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CorePending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalViable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.StopAtParent
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SuffixBest
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.CallLocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 

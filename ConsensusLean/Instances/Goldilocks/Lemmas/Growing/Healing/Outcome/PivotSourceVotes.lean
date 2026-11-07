@@ -2,7 +2,13 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FastVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun

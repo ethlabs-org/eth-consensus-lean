@@ -1,5 +1,12 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Proposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix

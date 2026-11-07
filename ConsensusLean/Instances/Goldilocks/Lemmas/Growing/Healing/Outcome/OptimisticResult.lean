@@ -1,5 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FastVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
