@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticBaseProposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticBaseVotes
 
 public section
 
@@ -36,7 +37,8 @@ theorem optimistic_next_votes_of_early_witness_at
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  sorry
+  exact KernelProof.optimistic_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ
 
 /-- The first next-slot proposal follows the same prefix, before unanimity induction starts. -/
 theorem optimistic_next_proposal_of_early_witness_at
@@ -64,7 +66,8 @@ theorem optimistic_next_proposal_of_early_witness_at
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay)) :
     Anc (tr.HonestBlocksAt H) X d.head := by
-  sorry
+  exact KernelProof.optimistic_next_proposal_of_early_witness_at hrun hnc hsvc hawake hf hcatch
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd
 
 end Consensus.Goldilocks.Healing.Growing
 
