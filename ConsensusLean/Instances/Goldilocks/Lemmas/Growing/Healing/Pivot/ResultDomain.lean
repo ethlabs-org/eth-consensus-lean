@@ -133,12 +133,15 @@ theorem result_prefix_vote_domain_before_at
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcast : SA.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
-    (hprior : ∀ z q e', q < i → Compose.Growing.HVoteAt tr H z q e' →
+    (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', SA.VoteAt tr.projAC z q e' →
       s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   exact result_prefix_vote_domain_before_of_domain_at hp hc
-    (KernelProof.held_target_vote_domain_before_at hp) hx hy hres hBC hs hrb hcast hsi hib hprior
+    (KernelProof.held_target_vote_domain_before_at hp) hx hy hres hBC hs hrb hcast hsi hib
+    (fun z q e' hqi hv hslot =>
+      let ⟨hz, hv⟩ := Compose.Growing.hVoteAt_iff.mp hv
+      hprior z q hz hqi e' hv hslot)
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
