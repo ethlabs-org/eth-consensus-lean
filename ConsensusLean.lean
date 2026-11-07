@@ -7,6 +7,7 @@ public import ConsensusLean.Init
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Rule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
