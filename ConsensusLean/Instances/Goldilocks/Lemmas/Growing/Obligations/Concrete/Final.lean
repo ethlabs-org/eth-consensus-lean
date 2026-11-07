@@ -2,6 +2,14 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowFieldsUpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowFieldsUpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -15,7 +23,9 @@ time: a proposer at its acceptance, a reader at its read time.
 * `held_forward_blockCall_lt_at`: holdings of a wrapper of a signer honest at its stamp give a
   block call strictly before the deadline;
 * `publication_held_ready_tail_at`: one protocol-delay publication tail gives holdings strictly
-  before a ready read. -/
+  before a ready read;
+* `carrier_processed_of_honest_at`: (H4) of the final-window extraction, the carrier is processed
+  by the deadline at every node ready at the deadline. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
@@ -97,6 +107,73 @@ theorem publication_held_ready_tail_at (hn : 1 ≤ Fintype.card V) {g : Time}
   exact ⟨a + E.ΔAC - 1, hh, hlt⟩
 
 end Engine
+
+section Query
+
+variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+
+/-- **(H4) of the final-window extraction under growing faults.** Every node ready at the
+deadline processes an honest proposal of a slot `s` by the deadline, when `query < t_s` and
+`t_s + Δ ≤ deadline`. The proposer is read at its acceptance (honest through `t_s + hold`), the
+reader at the deadline. -/
+theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
+    ∀ s P, Healing.Growing.HonestProposalRun Q.trace Q.keys
+      (runProposer S Q.run.2 Q.hn) s P → Q.query < Q.params.ts s →
+      Q.params.ts s + Q.params.Δ ≤ Q.deadline →
+      ∀ y, Regimes.Growing.ReadyAt Q.trace Q.keys
+        ((Sys (goldilocks S) V).cDur (K S A) Q.run) y Q.deadline →
+      ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline := by
+  intro s P hP hq hD y hy
+  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun_at hrun hP
+  have htk : Q.trace.time k = Q.params.ts s := by
+    rw [hk.2.2, honestProposalRun_slot_at hP, Q.params.slotTime_eq]
+    simp [SA.SAParams.ts]
+  have hΔ := Q.run.1.ΔAC_pos
+  have hhold : Q.params.ts s ≤ Q.params.ts s + Regimes.Growing.hold Q.params := by
+    have : (0 : Time) ≤ Regimes.Growing.hold Q.params := Q.params.toParams.hΔ.le
+    linarith
+  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) :=
+    htk ▸ honestKeysAt_antitone S Q.run.2 hhold hP.1
+  obtain ⟨hacc, -, -⟩ := accept_of_proposesAt_at hrun hnc hmem hk
+  obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
+    (forwardAtAcceptanceAt_iff S Q.run.2 Q.hn _ _ _).mp
+      (forwardAtAcceptance_at S Q.run.2 Q.hn Q.valid) _ _ _ hmem hacc
+  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
+  have hg : max Q.gst 0 ≤ Q.query :=
+    (le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) hΔ.le)).trans Q.mature
+  have hmax : max (max (Q.params.ts s) Q.gst) 0 = Q.params.ts s := by
+    have h1 := le_max_left Q.gst 0
+    have h2 := le_max_right Q.gst 0
+    have h3 : Q.gst ≤ Q.params.ts s := by linarith
+    have h4 : (0 : Time) ≤ Q.params.ts s := by linarith
+    rw [max_eq_left h3, max_eq_left h4]
+  have hc : Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := by
+    have hc1 : (1 : Time) ≤ ((K S A).params.catchUp : Time) := by
+      rw [goldilocksContract_params_eq]
+      change (1 : Time) ≤ ((contract_coefficients S A).catchUp : Nat)
+      exact_mod_cast (contract_coefficients S A).catchUp.pos
+    change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
+    linarith [mul_le_mul_of_nonneg_right hc1 (zero_le_one.trans Q.run.1.ΔAC_pos)]
+  have hth : Q.params.ts s ≤ Q.run.2.horizon := by
+    have := Q.bounded
+    have : (0 : Time) ≤ Q.params.Δ := Q.params.toParams.hΔ.le
+    change Q.params.ts s ≤ Q.run.2.horizon
+    linarith
+  have hxk : Q.run.2.key (runProposer S Q.run.2 Q.hn s) ∉
+      Q.run.2.faultyAt (Q.trace.time k) :=
+    not_faulty_of_mem_honestKeysAt S Q.run.2 hmem le_rfl (htk ▸ hth)
+  obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail_at S Q.run.2 Q.hn hnet r hr
+    (by rw [horg, htime]; exact hxk)
+    (not_isFGAtt_of_decodeForward hdecode) hy Q.bounded
+    (by rw [htime, htk, hmax]; exact hD) hc
+  obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt_at S Q.run.2 Q.hn Q.valid hxk hheld
+    hdecode hdt
+  exact ⟨j, hj, hjt.le⟩
+
+end Query
 
 end Consensus.Goldilocks.Obligations.Growing
 
