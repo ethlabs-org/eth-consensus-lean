@@ -35,9 +35,10 @@ variable {A : NodeAC P} (tr : RunTrace A)
 abbrev upTo (d : Time) : RunTrace A := Trace.upTo tr d
 
 /-- The blocks of the trees that nodes hold while honest: `B` is in the tree of `y` before cut
-`i`, every cut before `i` is at a time `≤ t`, and `y` is honest at `t`. -/
+`i`, every cut before `i` is at a time `≤ t`, `t ≥ 0`, and `y` is honest at `t` (so a node faulty
+from the start contributes nothing, not even its initial tree). -/
 def HonestBlocksAt (H : Time → Set (Fin P.n)) : Set A.Blk :=
-  {B | ∃ y i t, (∀ k < i, tr.time k ≤ t) ∧ y ∈ H t ∧ B ∈ (tr.state y i).fg.tree}
+  {B | ∃ y i t, 0 ≤ t ∧ (∀ k < i, tr.time k ≤ t) ∧ y ∈ H t ∧ B ∈ (tr.state y i).fg.tree}
 
 end RunTrace
 

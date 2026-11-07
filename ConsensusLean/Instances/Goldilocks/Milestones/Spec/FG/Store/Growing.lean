@@ -26,8 +26,8 @@ structure FGLocalRun (acp₀ : ACP) (H : Time → Set (Fin P.n)) (U : Set (NodeB
   /-- Each call of a node honest at its time executes the FG on its pre-state. -/
   exec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H (tr.time i) →
     FGLabel.Step (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i)
-  /-- Every block of the tree that a node holds while honest lies in `U`. -/
-  tree_subset : ∀ y i t, (∀ k < i, tr.time k ≤ t) → y ∈ H t → (tr.store y i).tree ⊆ U
+  /-- Every block of the tree that a node holds while honest (at a time `t ≥ 0`) lies in `U`. -/
+  tree_subset : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → y ∈ H t → (tr.store y i).tree ⊆ U
   /-- Cuts are at times from `0` on. -/
   time_nonneg : ∀ i, 0 ≤ tr.time i
   /-- The cut order is by time. -/
