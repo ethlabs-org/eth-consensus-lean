@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ACWindowDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 
 public section
@@ -13,8 +13,8 @@ their agreed names (static name + `_at`), with each node honest at its own cut:
   (`Healing.ResetPremisesUpTo.high_origin_votes_before`, retention R2);
 * `Healing.Growing.ResetPremisesUpTo.restart_le_before_at` (`Healing.restart_le_before`);
 * `Healing.Growing.healthy_base_of_reset_catch_before_at`
-  (`Healing.healthy_base_of_reset_catch_before`);
-* `SA.Growing.honest_votes_in_slot_before_at` (`SA.honest_votes_in_slot_before`).
+  (`Healing.healthy_base_of_reset_catch_before`, in prefix form: the static AC base on the prefix
+  through `d` over `H d`).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -44,29 +44,13 @@ theorem restart_le_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
 
 end ResetPremisesUpTo
 
-/-- Finite reset health supplies the growing AC base through the horizon. -/
+/-- Finite reset health supplies the static AC base on the prefix through every `d ∈ [0, b]`, over
+the validators honest at `d`. -/
 theorem healthy_base_of_reset_catch_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) :
-    SA.Growing.HealthyBaseUpTo tr.projAC H (tr.HonestBlocksAt H) proposer g b := by
+    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
+    SA.HealthyBaseUpTo (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing
-
-namespace Consensus.Goldilocks.SA.Growing
-
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {proposer : Nat → Fin sp.n} {g : Time}
-
-/-- Every validator honest at the vote deadline `t_m + Δ` votes in slot `m` by then. -/
-theorem honest_votes_in_slot_before_at {b : Time} (hS : HealthyBaseUpTo tr H U proposer g b)
-    {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
-    (hrestart : ∀ x r, x ∈ H (tr.time r) → tr.time r ≤ sp.ts m + sp.Δ → tr.RestartAt x r →
-      tr.time r ≤ sp.ts ((m : Int) - 1)) :
-    ∀ x, x ∈ H (sp.ts m + sp.Δ) →
-      ∃ j e, VoteAt tr x j e ∧ e.msg.slot = m ∧ tr.time j ≤ sp.ts m + sp.Δ := by
-  sorry
-
-end Consensus.Goldilocks.SA.Growing
 
 end
