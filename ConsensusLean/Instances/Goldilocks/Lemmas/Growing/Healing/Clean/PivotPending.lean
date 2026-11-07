@@ -2,21 +2,20 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RowSources
 
 public section
 
 /-! # Pending pivot interface of the clean proposal domain
 
-The growing forms of two `Outcome/PivotRowSources` lemmas that the clean proposal domain reads,
-under their final names (static name + `_at`, in `ProposalImpl`), owned by the pivot ports. Each
-node is honest at its own cut, and ancestry and compatibility are over `HonestBlocksAt`:
+The growing form of the `Outcome/PivotRowSources` lemma that the clean proposal domain still reads
+from a stand-in, under its final name (static name + `_at`, in `ProposalImpl`), owned by the pivot
+ports: `ProposalImpl.raw_writer_held_at_slot_start_at` (home `Pivot/RawReceipt`), a raw writer's
+ancestor is held by a later slot-start reader. Each node is honest at its own cut, and ancestry is
+over `HonestBlocksAt`. `ProposalImpl.protected_source_compatible_high_origin_at` is proved in
+`Pivot/RowSources`, re-exported here.
 
-* `ProposalImpl.raw_writer_held_at_slot_start_at` (home `Pivot/RawReceipt`): a raw writer's
-  ancestor is held by a later slot-start reader;
-* `ProposalImpl.protected_source_compatible_high_origin_at`: a clean protected source is compatible
-  with every high origin written by the horizon.
-
-Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
+The theorem here is an open `sorry`; this module is deleted when its home module lands. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
@@ -36,19 +35,6 @@ theorem raw_writer_held_at_slot_start_at
     (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) : B ∈ ell.frame.tree := by
-  sorry
-
-/-- A clean protected source, written by a node honest at its write, is compatible with every
-high origin written by the horizon. -/
-theorem protected_source_compatible_high_origin_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} {r s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H (tr.time r))
-    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
-    Compatible (tr.HonestBlocksAt H) B D := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
