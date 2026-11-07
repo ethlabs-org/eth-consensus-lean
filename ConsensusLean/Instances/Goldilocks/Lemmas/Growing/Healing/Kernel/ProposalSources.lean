@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Healing.Proposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Healing.OriginLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ProposalReceipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -33,7 +35,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal_at
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {v : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (hri : r < i) (ho : HighOrigin tr H g v r l O) : l < u := by
-  sorry
+  exact ProposalSources.origin_label_lt_at_proposal_at hp hpH hci hcall hti hib hri ho
 
 /-- An old origin is held at the proposal, or below its finalized cache. -/
 theorem ResetPremisesUpTo.proposal_holds_old_at
@@ -59,7 +61,7 @@ theorem ResetPremisesUpTo.held_high_origin_viable_at
     (hib : tr.time i ≤ b) (ht : sp.ts (j + 1 : Nat) ≤ tr.time c)
     (hBt : B ∈ ell.frame.tree) :
     B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot := by
-  sorry
+  exact ProposalImpl.held_high_origin_viable_at hp hpH hc hcb ho hib ht hBt
 
 /-- Post-drain live high locks are compatible with each bounded high origin. -/
 theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old_at

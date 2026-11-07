@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RowSources
 
 public section
 
@@ -27,7 +28,7 @@ theorem protected_source_compatible_high_origin_at
     {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) B D := by
-  sorry
+  exact ProposalImpl.protected_source_compatible_high_origin_at hp hc hx hsource hs hrb ho hqb
 
 end Consensus.Goldilocks.Healing.Growing.WalkInputs
 
