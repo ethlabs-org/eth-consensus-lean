@@ -1,7 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReadContextDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CurrentChecksPending
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Opening
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedSafetyConditional

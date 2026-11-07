@@ -3,7 +3,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CurrentSourcesPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
