@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run

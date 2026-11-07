@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 
