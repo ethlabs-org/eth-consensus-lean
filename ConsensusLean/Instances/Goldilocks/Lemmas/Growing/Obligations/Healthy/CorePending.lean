@@ -5,17 +5,19 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
 
 public section
 
 /-! # Pending growing Healing Outcome core of the unanimity and report lemmas
 
-Growing forms (static name + `_at`, `Healing.Growing.ResetPremisesUpTo`) of the eight remaining
+Growing forms (static name + `_at`, `Healing.Growing.ResetPremisesUpTo`) of the seven remaining
 Outcome core lemmas that `operational_unanimous_at` and `report_cover_of_unanimous_at` consume;
-the proved `clean_window_timing_at` is re-exported from `Growing/Healing/Clean/Timing`. The
-slot-`u` proposer is honest through `t_u + hold`, every
-voter or caller at its own cut, unanimity and votes are quantified over voters honest at their
-cast, and ancestry is over `HonestBlocksAt`. Timing and margins are the static ones.
+the proved `clean_window_timing_at` and `reset_proposal_frame_at` are re-exported from
+`Growing/Healing/Clean/Timing` and `Growing/Healing/Outcome/ProposalFrame`. The slot-`u` proposer
+is honest through `t_u + hold`, every voter or caller at its own cut, unanimity and votes are
+quantified over voters honest at their cast, and ancestry is over `HonestBlocksAt`. Timing and
+margins are the static ones.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -65,18 +67,6 @@ theorem reset_vote_root_below_proposal_at (hp : ResetPremisesUpTo tr H proposer 
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) elly.frame.fcRoot P := by
-  sorry
-
-/-- (`Healing.ResetPremisesUpTo.reset_proposal_frame`, Outcome/SupplierFrames.) -/
-theorem reset_proposal_frame_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k j u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
-    (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
-    (hu : 0 < u) (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ell e)
-    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
-    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
-    (hF : Anc (tr.HonestBlocksAt H) ell.frame.F P) : P ∈ ell.frame.tree := by
   sorry
 
 /-- (`Healing.ResetPremisesUpTo.reset_proposal_viable`, Outcome/SupplierViews.) -/
