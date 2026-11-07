@@ -174,6 +174,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Ar
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Contracts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Query
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Gate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Locks
