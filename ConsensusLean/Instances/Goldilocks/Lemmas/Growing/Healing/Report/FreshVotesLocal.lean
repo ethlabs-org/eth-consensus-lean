@@ -95,45 +95,6 @@ theorem proposal_walk_end_at
     simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using hp
   exact Healing.proposal_walk_end (hrun.upTo hd) (hnc.upTo (tr.time ip)) hz hc' hp'
 
-/-- A healthy full frame has a viable head, with faults counted at this call only. -/
-theorem full_frame_viable_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i))
-    (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
-    ∃ Q ∈ (Node.frame (tr.state y i)).tree,
-      Q ∈ (Node.frame (tr.state y i)).viableHeads ∧
-      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q := by
-  have hr := hrun.toLocalRun
-  have hs := RunTrace.upTo_state_of_le (tr := tr) hr.time_mono (y := y) (i := i) le_rfl
-  have hw := Healing.full_frame_viable_witness (hrun.upTo (hr.time_nonneg i))
-    (hnc.upTo (tr.time i)) hf hy i
-  simpa only [hs] using hw
-
-/-- The actual proposal parent is viable in its writer's full frame before compromise. -/
-theorem proposal_parent_viable_full_frame_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i s : Nat}
-    (hy : y ∈ H (tr.time i))
-    (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
-    (hcall : ell.call = .proposal) (hti : tr.time i = sp.toParams.slotTime s)
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hp : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
-      some (d, pay)) : d.head ∈ ell.frame.viableHeads := by
-  have hr := hrun.toLocalRun
-  have hd := hr.time_nonneg i
-  have hc' : (tr.upTo (tr.time i)).projAC.CallAt y i ell := by
-    rw [RunTrace.upTo_projAC]
-    exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
-  have hs := Trace.upTo_state tr.projAC y (d := tr.time i) (i := i)
-    (fun k hk => hr.time_mono hk.le)
-  have hp' : (SA.acProposal sp ((tr.upTo (tr.time i)).projAC.state y i)
-      ell.frame ((tr.upTo (tr.time i)).time i)).2 = some (d, pay) := by
-    simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using hp
-  exact Healing.proposal_parent_viable_full_frame (hrun.upTo hd) (hnc.upTo (tr.time i))
-    hf hy hc' hcall hti hp'
-
 end Consensus.Goldilocks.Healing.Growing
 
 end
