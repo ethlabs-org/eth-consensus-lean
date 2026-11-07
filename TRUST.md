@@ -51,14 +51,9 @@ and `Lemmas/Problem/Derived.lean`, which no trusted statement reads (by a compil
 non-proof constant (generated matchers exempt) to have a review pair, and `ConsensusLeanTest/ReviewAxioms.lean`
 compiles alpha-equality, binder-kind and axiom pins. Primary statement: `Consensus.Review.ObligationsSufficient`, and
 its form on a class of runs `ObligationsSufficientOn` (at constant faults, the static adversary at full strength);
-secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline.
-While the instance proofs migrate to growing faults these are certified for constant faults only:
-`MeetsObligationsConstant` and `Consensus.Goldilocks.GoldilocksCorrectConstant` (Goldilocks is a `CorrectProtocolOn`
-the runs whose faults do not grow, with the adequacy and realizability of the growing-fault system). The
-growing-fault `MeetsObligations` and `GoldilocksCorrect` are stated in `Instances/Goldilocks/Statements/Growing.lean`,
-not yet certified.
-The interim certificate covers runs whose faulty set is constant at all times, so it says nothing about
-any part of a growing run until the dynamic pair is proved.
+secondaries: `RegimesRealizable`, `LogFaithful`, `HeldIffServed`. Challenge adds the Goldilocks endpoint and headline,
+`MeetsObligations` and `Consensus.Goldilocks.GoldilocksCorrect` (Goldilocks is a `CorrectProtocol` under the growing
+adversary), from `Instances/Goldilocks/Statements/Obligations.lean`.
 
 **Changes are recorded, not gated.** Every non-merge commit that touches a trusted path carries a line
 `Trusted-surface: <what changes and why>`; `scripts/review-boundary.sh` (self-tested on throwaway repositories)
