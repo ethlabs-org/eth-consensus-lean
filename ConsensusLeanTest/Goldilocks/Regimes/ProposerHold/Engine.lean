@@ -179,7 +179,7 @@ theorem early_closed : ∀ i, Early S i → ∀ o ∈ (rho S).releasesAt i, ∀ 
       have key : ∀ n : Nat, 0 < n → (n : Int) * 12 ≤ 13 → n = 1 := by intro n; omega
       exact key s hs het
     subst hs1
-    rw [rho_sel_proposer, if_pos rfl, Finset.mem_singleton, ownKey_eq] at hsel
+    simp only [rho_sel_proposer, ↓reduceIte, Finset.mem_singleton, ownKey_eq] at hsel
     have hv : v = 1 := by
       have := congrArg Fin.val hsel
       exact Fin.ext this
