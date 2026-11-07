@@ -164,6 +164,32 @@ theorem sync_window_before_forward
       (A := goldilocksSA sp FGP ro)).mp hjr).2) hdl hslot hp'
   simpa only [hs] using h
 
+theorem sync_forward
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {a b : Time} (hsync : SyncACAt (goldilocksSA sp FGP ro) H U a b tr)
+    {y X : Fin sp.n} {k : Nat} {v : Vote sp.n} (hy : y ∈ H (tr.time k))
+    (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k) (hb : tr.time k ≤ b)
+    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hX : X ∈ H (tr.time i))
+    (hc : tr.CallAt X i ℓ)
+    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
+    (hdl : tr.time k + sp.Δ ≤ tr.time i)
+    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
+    v ∈ (tr.state X i).pool v.slot ∨
+      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} := by
+  have hm := hr.time_mono
+  have hd : tr.deadline X i (tr.time k) = tr.time k + sp.Δ := deadline_eq hrs
+  have hp : MessageServedBefore tr X i (tr.time k) v :=
+    (messageServedBefore_iff _ _ _ _).mpr (Or.inl
+      (hsync.1 y k v hy hsend ha hb X i ℓ hX hc (by rw [hd]; exact hdl)))
+  have hp' := (upTo_messageServedBefore hm (d := tr.time i) le_rfl).mpr hp
+  have hs : (tr.upTo (tr.time i)).state X i = tr.state X i :=
+    Trace.upTo_state tr X fun _ hk => hm hk.le
+  have h := held_of_deadline_service (hr.upTo (hr.time_nonneg i)) hX
+    (fun j hj hjr => hrs j hj ((ACTrace.upTo_restartAt
+      (A := goldilocksSA sp FGP ro)).mp hjr).2) hdl hslot hp'
+  simpa only [hs] using h
+
 theorem relayed_held_before
     (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {s : Nat} {b : Time} (hsvc : ServiceBefore H U b tr)
