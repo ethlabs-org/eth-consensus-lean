@@ -34,7 +34,7 @@ theorem proposal_report_follow_at
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ)) :
     ∃ i ell R, y ∈ H (tr.time i) ∧ SA.ToFGAt tr.projAC y i ell R ∧
-      tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
+      sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
       Anc (tr.HonestBlocksAt H) P R ∧
       ∀ x, u + 3 ≤ x → x ≤ N → ∀ w c ellp, w ∈ H (tr.time c) →
         tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
