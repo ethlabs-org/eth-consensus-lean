@@ -34,6 +34,15 @@ theorem upTo_acceptAt {y : Fin P.n} {i : Nat} {B : A.Blk} :
   · rintro ⟨hi, ℓ, hc, hr⟩
     exact ⟨ℓ, ⟨hi, hc⟩, hr⟩
 
+theorem upTo_processAt {y : Fin P.n} {i : Nat} {m : A.Msg} :
+    ProcessAt (A := A) (tr.upTo d) y i m ↔ tr.time i ≤ d ∧ tr.ProcessAt y i m := by
+  simp only [ProcessAt, Trace.upTo_callAt]
+  constructor
+  · rintro ⟨ℓ, ⟨hi, hc⟩, hr⟩
+    exact ⟨hi, ℓ, hc, hr⟩
+  · rintro ⟨hi, ℓ, hc, hr⟩
+    exact ⟨ℓ, ⟨hi, hc⟩, hr⟩
+
 theorem upTo_lastWake (hm : Monotone tr.time) (y : Fin P.n) :
     ∀ {i : Nat}, tr.time i ≤ d → lastWake (A := A) (tr.upTo d) y i = tr.lastWake y i
   | 0, hi => by
@@ -153,6 +162,39 @@ theorem upTo_joinedAt {y : Fin sp.n} {t : Time} (ht : t ≤ d) :
     exact h k ⟨hkt.trans ht, hk⟩ hkt
   · intro h k hk hkt
     exact h k hk.2 hkt
+
+theorem upTo_retainedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
+    (hi : tr.time i ≤ d) {v : Vote sp.n} {T : Time} :
+    RetainedBefore (tr.upTo d) y i v T ↔ RetainedBefore tr y i v T := by
+  rw [retainedBefore_iff, retainedBefore_iff]
+  constructor
+  · rintro ⟨q, hq, hv, hnr⟩
+    have hqd := (hm hq).trans hi
+    rw [state_eq hm hqd] at hv
+    exact ⟨q, hq, hv, fun r hqr hri hr => hnr r hqr hri
+      ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr
+        ⟨(hm hri.le).trans hi, hr⟩)⟩
+  · rintro ⟨q, hq, hv, hnr⟩
+    have hqd := (hm hq).trans hi
+    rw [← state_eq hm hqd] at hv
+    exact ⟨q, hq, hv, fun r hqr hri hr => hnr r hqr hri
+      ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mp hr).2⟩
+
+theorem upTo_messageServedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
+    (hi : tr.time i ≤ d) {v : Vote sp.n} {τ : Time} :
+    MessageServedBefore (tr.upTo d) y i τ v ↔ MessageServedBefore tr y i τ v := by
+  rw [messageServedBefore_iff, messageServedBefore_iff,
+    ACTrace.upTo_deadline hm hi, upTo_retainedBefore hm hi]
+  apply or_congr_left
+  constructor
+  · rintro ⟨k, hk, hτ, hp, hd⟩
+    obtain ⟨hkd, hp⟩ := (ACTrace.upTo_processAt (A := goldilocksSA sp FGP ro)).mp hp
+    rw [ACTrace.upTo_deadline hm hkd] at hd
+    exact ⟨k, hk, hτ, hp, hd⟩
+  · rintro ⟨k, hk, hτ, hp, hd⟩
+    have hkd := (hm hk).trans hi
+    exact ⟨k, hk, hτ, (ACTrace.upTo_processAt (A := goldilocksSA sp FGP ro)).mpr ⟨hkd, hp⟩,
+      by rwa [ACTrace.upTo_deadline hm hkd]⟩
 
 end SA
 
