@@ -4,7 +4,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Domain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
 
 public section
@@ -17,7 +16,8 @@ before they are proved.
 The restart bound and the healthy AC base on a read prefix are imported from their homes
 (`Growing/Healing/Restart`, `Healthy/PrefixBase`).
 
-Owned by this cluster, and still open:
+The proposal domain is proved in `Clean/Domain`, which its consumers import directly; this module
+does not depend on it. Owned by this cluster, and still open:
 
 * `ResetPremisesUpTo.fast_source_votes_before_at` (the static clean fast-source vote retention of
   `Outcome/FiniteSources`; the slow one is proved in `Clean/SlowVotes`).
