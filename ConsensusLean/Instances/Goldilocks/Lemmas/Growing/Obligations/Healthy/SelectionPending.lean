@@ -7,9 +7,8 @@ public section
 /-! # Pending growing proposal-passes interface
 
 `Healing.Growing.ResetPremisesUpTo.reset_proposal_passes_at`, the growing form of the static
-`reset_proposal_passes`, whose home is the growing kernel's selection module. It sits apart from
-`OperationalPending` so that the operational report lemmas, which the selection cone imports, do
-not import it.
+`reset_proposal_passes`, whose home is the growing kernel's selection module. It sits in its own
+module so that the operational report lemmas, which the selection cone imports, do not import it.
 
 Each theorem here is an open `sorry`; this module is deleted when the home module lands. -/
 
