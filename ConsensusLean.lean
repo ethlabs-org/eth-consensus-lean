@@ -180,6 +180,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestPr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Lag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Quorum
@@ -191,8 +193,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.StandIn.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
@@ -200,6 +200,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Netw
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
