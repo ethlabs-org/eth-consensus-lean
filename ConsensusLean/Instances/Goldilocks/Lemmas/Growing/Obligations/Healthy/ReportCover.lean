@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CorePending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
@@ -135,36 +136,6 @@ theorem ready_update_selection_of_pool_at (_hp : ResetPremisesUpTo tr H proposer
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  sorry
-
-/-- Stand-in (frozen in `Growing/Healing/Clean/RetainedPending`): with low justification, the
-fork-choice root of a call holding a high seed is compatible with a block compatible with the
-seed. -/
-theorem low_root_of_held_seed_at_call_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H (tr.time r)) (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
-    (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
-    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
-    (hBS : Compatible (tr.HonestBlocksAt H) B S)
-    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
-  sorry
-
-/-- Stand-in (frozen in `Growing/Healing/Clean/RetainedPending`): with high justification, the
-fork-choice root of a call is compatible with a held block compatible with every high origin
-before the call. -/
-theorem high_J_root_of_held_at_call_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
-    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y k ell)
-    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
-    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocksAt H) B O) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
   sorry
 
 /-- Stand-in: a held target below the head-height floor, above a high seed and compatible with
