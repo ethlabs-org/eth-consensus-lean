@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 
 public section
 
@@ -63,6 +65,58 @@ theorem non_framing : NonFraming := by
     (tr.upTo (max (tr.time k) (tr.time k'))) proposer
     (h.upTo ((h.time_nonneg k).trans hkd)) v hv k k' a b
     ((RunTrace.upTo_signAt _).mpr ⟨hkd, ha⟩) ((RunTrace.upTo_signAt _).mpr ⟨hkd', hb⟩)
+
+private theorem fg_run {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) :
+    Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode sp ro).genesisPayload H
+      (tr.HonestBlocksAt H) tr.projFG :=
+  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
+  Compose.Growing.fg_projection _ _ dg H _ tr proposer
+    ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+    hrun.genesis_root_ok hrun.toLocalRun hnc
+
+private theorem store_eq {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
+    tr.projFG.store y i = (tr.state y i).fg := by
+  have h := Compose.projFG_state (hrun.toLocalRun.upTo (hrun.time_nonneg i)) hy i
+  rw [RunTrace.upTo_projFG,
+    Trace.upTo_state tr.projFG y (i := i) (fun k hk => hrun.time_mono hk.le),
+    RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
+  exact congrArg Prod.fst h
+
+/-- Conflicting finalizations expose a slashable quorum intersection in the held chains. -/
+theorem final_accountable : FinalAccountable := by
+  intro sp ro dg H tr proposer hrun hnc y z i j hy hz hne
+  have hr := fg_run hrun hnc
+  obtain ⟨c₁, σ₁, h₁, hF₁, hU₁, hc₁, _, X₁, hX₁, hb₁⟩ := hr.finalized_chain hy
+  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, _, X₂, hX₂, hb₂⟩ := hr.finalized_chain hz
+  rw [store_eq hrun hy] at hF₁ hU₁ hc₁ hX₁ hb₁
+  rw [store_eq hrun hz] at hF₂ hU₂ hc₂ hX₂ hb₂
+  obtain ⟨S, hS, hSv⟩ := FG.accountable_safety sp.toParams.fg c₁ c₂ σ₁ σ₂ h₁ h₂
+    (fun h => hne (hc₂ _ hU₁ (hF₁ ▸ h))) (fun h => hne (hc₁ _ hU₂ (hF₂ ▸ h)).symm)
+  have hmem : ∀ a ∈ sp.toParams.fg.chainAtts c₁ ++ sp.toParams.fg.chainAtts c₂,
+      a ∈ ChainAtts tr y i X₁ ∪ ChainAtts tr z j X₂ := by
+    intro a ha
+    rcases List.mem_append.1 ha with ha | ha
+    · obtain ⟨Y, hY, hYX, haY⟩ := hb₁ a ha
+      exact Or.inl ⟨Y, hY, hYX, haY⟩
+    · obtain ⟨Y, hY, hYX, haY⟩ := hb₂ a ha
+      exact Or.inr ⟨Y, hY, hYX, haY⟩
+  refine ⟨X₁, hX₁, X₂, hX₂, S, hS, fun v hv => ?_⟩
+  obtain ⟨a, ha, b, hb, hav, hab⟩ := hSv v hv
+  exact ⟨a, hmem a ha, b, hmem b hb, hav, hab⟩
+
+/-- Finalized tips agree with the quorum bound charged at the later reader horizon. -/
+theorem finalized_safe : FinalizedSafe := by
+  intro sp ro dg H tr proposer hrun hnc y z i j hy hz hf
+  have h := (fg_run hrun hnc).finalized_safety hy hz hf
+  rwa [store_eq hrun hy, store_eq hrun hz] at h
 
 end Consensus.Goldilocks.Regimes.Growing
 
