@@ -334,9 +334,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCompatibility
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionFinalityProof
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionInputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionOrigins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
