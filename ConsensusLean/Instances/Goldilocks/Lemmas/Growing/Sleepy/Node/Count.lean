@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
@@ -55,6 +56,29 @@ theorem two_faults_lt_of_faultBoundAt {t d : Time} (h : tr.FaultBoundAt H t d) :
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have : (H d)ᶜ.ncard < {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard := h
   omega
+
+/-- **The two count shapes from the slot-point counts** (the look-ahead budget clamped at `b`):
+`2 f_d < n` at `d ∈ [t_s, t_s + 4Δ)` from the count at `t_s` charged at `min (t_s + 5Δ) b ≥ d`,
+and the slot count at `d ∈ [t_s + Δ, t_s + 6Δ]` from the count at `t_s + Δ` charged at
+`min (t_s + 6Δ) b ≥ d`. -/
+theorem SleepyBounds.of_faultBoundAt (hanti : Antitone H) {b : Time}
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBoundAt H (sp.ts s + d) (min (sp.ts s + d + 5 * sp.Δ) b)) :
+    SleepyBounds tr H b := by
+  have hΔ := sp.toParams.hΔ
+  refine ⟨fun d h0 hdb => ?_, fun s d h1 hdb h6 => ?_⟩
+  · have hσ := (SA.ts_le_iff_le_slot sp h0 (sp.slot d)).2 le_rfl
+    have hlt : d < sp.ts ((sp.slot d : Int) + 1) := lt_of_not_ge fun h => by
+      have := (SA.ts_le_iff_le_slot sp h0 _).1 h
+      omega
+    have hts : sp.ts ((sp.slot d : Int) + 1) = sp.ts (sp.slot d : Int) + 4 * sp.Δ := by
+      simp only [SAParams.ts]; ring
+    have h := hfb (sp.slot d) 0 (by simp) (by simpa using hσ.trans hdb)
+    simp only [add_zero] at h
+    exact two_faults_lt_of_faultBoundAt
+      (RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h)
+  · have h := hfb s sp.Δ (by simp) (h1.trans hdb)
+    exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
 
 /-- **An origin within `b` has a supporter honest at its vote**: a slot-`s` vote at a time `≤ b`
 whose head extends it. A result's counted votes meet the validators honest at `d = t_s + 6Δ` that
