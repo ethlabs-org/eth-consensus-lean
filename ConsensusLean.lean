@@ -191,6 +191,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.B2
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Compatibility
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Domain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.OptimisticParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.PivotPending

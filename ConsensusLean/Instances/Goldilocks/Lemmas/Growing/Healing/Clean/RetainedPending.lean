@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 
 public section
 
@@ -27,15 +28,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- A low finalized block of a reader honest at `t ≤ b` is below every bounded high origin. -/
-theorem low_finalized_below_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (hib : tr.time i ≤ b) :
-    Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
-  sorry
 
 /-- A call of a node honest at it, with a high justified height, has its finalized-chain root
 compatible with every held block compatible with the earlier high origins. -/
