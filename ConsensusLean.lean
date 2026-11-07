@@ -12,6 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Rule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.SavedCounts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.WeightInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
