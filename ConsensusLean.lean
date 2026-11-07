@@ -165,6 +165,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport

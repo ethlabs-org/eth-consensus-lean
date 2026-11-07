@@ -46,7 +46,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The state before cut `j` of a node honest at `t ≥ 0`, with every cut before `j` at a time
 `≤ t`: a reachable store, a well-formed frame, and a tree inside the blocks held while honest
 (the static facts on the prefix through `t`). -/
-private theorem held_state (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem held_state (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} {j : Nat} {t : Time} (ht : 0 ≤ t) (hj : ∀ k < j, tr.time k ≤ t)
     (hy : y ∈ H t) :
     (tr.state y j).fg.Reachable (goldilocksNode sp ro).genesisPayload ∧
