@@ -20,7 +20,9 @@ deleted then, and its importers import the simulation modules instead. The run i
 * `receiverServiceAfterAt_of_psync`: partial synchrony from `g` gives every receiver the receiver
   service after `g`;
 * `outage_pool_delivery_at`: under partial synchrony from `g`, an update of slot `m` with
-  `g ≤ t_m + Δ` by a node honest at it holds every slot-`m` vote of a node honest at its cast.
+  `g ≤ t_m + Δ` by a node honest at it holds every slot-`m` vote of a node honest at its cast,
+  or its validator is an equivocator of that pool (a validator compromised after its cast can
+  fill its two slot-`m` pool places first).
 
 and the sleepy results it consumes, under the names agreed with the sleepy layer:
 
@@ -67,7 +69,8 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
       g ≤ (S.params (pubOf E) hn).ts m + (S.params (pubOf E) hn).Δ →
       ∀ x i e, x ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i) →
         SA.VoteAt (simTraceAt S rho hn).projAC x i e → e.msg.slot = m →
-        e.msg ∈ ((simTraceAt S rho hn).state w c).ac.pool m := by
+        e.msg ∈ ((simTraceAt S rho hn).state w c).ac.pool m ∨
+          e.msg.val ∈ SA.equivocators {v | v ∈ ((simTraceAt S rho hn).state w c).ac.pool m} := by
   sorry
 
 end Consensus.Goldilocks.Simulation

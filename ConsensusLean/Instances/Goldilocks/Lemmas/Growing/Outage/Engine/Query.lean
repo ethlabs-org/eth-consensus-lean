@@ -100,12 +100,14 @@ theorem outage_receiver_service_at (Q : OutageQueryAt S A V) (y : Fin (Fintype.c
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q) y
 
 /-- **Post-stop pool delivery**: an update of a slot `m` with `b₁ ≤ t_m + Δ`, by a node honest at
-it, holds every slot-`m` vote of a node honest at its cast. -/
+it, holds every slot-`m` vote of a node honest at its cast, or two other slot-`m` votes of its
+validator (equivocation evidence: the voter may be compromised after its cast). -/
 theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
     ∀ w c m ℓ, w ∈ Q.keys (Q.trace.time c) → SA.UpdateAt Q.trace.projAC w c m ℓ →
       Q.stop ≤ Q.params.ts m + Q.params.Δ →
       ∀ x i e, x ∈ Q.keys (Q.trace.time i) → SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
-        e.msg ∈ (Q.trace.state w c).ac.pool m :=
+        e.msg ∈ (Q.trace.state w c).ac.pool m ∨
+          e.msg.val ∈ SA.equivocators {v | v ∈ (Q.trace.state w c).ac.pool m} :=
   outage_pool_delivery_at S Q.run.2 Q.hn Q.valid
     (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (outage_psync_at Q)
 

@@ -138,9 +138,11 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg P) →
      CoverBaseAt tr H P j₀ x c ℓ)
   /-- Post-GST pool delivery: an update of a restored label by a node honest at it holds every
-  vote of that slot cast by a node honest at its cast. -/
+  vote of that slot cast by a node honest at its cast, or two other votes of that slot by the
+  same validator (which may be compromised after its cast). -/
   PG : ∀ w c m ℓ, w ∈ H (tr.time c) → SA.UpdateAt tr.projAC w c m ℓ → r ≤ m →
-    ∀ x i e, HVoteAt tr H x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m
+    ∀ x i e, HVoteAt tr H x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m ∨
+      e.msg.val ∈ SA.equivocators {v | v ∈ (tr.state w c).ac.pool m}
 
 variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
