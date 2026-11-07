@@ -12,9 +12,11 @@ time-indexed honest set `H` (antitone), over `Growing.FGLocalRun`:
 
 * **G1.4**: two nodes, each honest at its own cut, have compatible finalized tips when fewer than
   `2q − n` validators are compromised by the later of the two cuts.
-* **G1.10**: the namers of an entry are the validators compromised by the end `T` of the interval
-  or that sign an attestation naming it by `T₀`; the attestations signed in `(T₀, T]` are those of
-  validators honest at their signing; the accepting node is honest at its cut.
+* **G1.10**: the namers of an entry are charged at a consumption horizon `d ≥ T + Δ`, which every
+  acceptance the statement covers precedes: the validators compromised by `d`, or signing by `T₀`
+  an attestation naming it. The attestations signed in `(T₀, T]` are those of validators honest
+  at their signing; no premise excludes a compromise in `(T₀, T]`. The accepting node is honest at
+  its cut.
 * **The good window**: the proposal is an honest proposal of a proposer honest at its proposal
   cut. An attestation of the window is on the parent's chain, or, when its signer is honest at the
   window's deadline `t_{u+a} + 6Δ`, signed by that deadline (`emitted`).
@@ -38,18 +40,18 @@ def FinalizedSafety : Prop :=
       (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.fg.q - P.n →
       Compatible U (tr.store y i).F (tr.store z j).F
 
-/-- The validators that name the entry block `E` by `T₀` or are compromised by `T`: compromised
-by `T`, or signing by `T₀` an attestation whose target is `E`. -/
-noncomputable def namers (H : Time → Set (Fin P.n)) (tr : FGTrace P ACP) (T₀ T : Time)
+/-- The validators that name the entry block `E` by `T₀`, charged at the horizon `d`: compromised
+by `d`, or signing by `T₀` an attestation whose target is `E`. -/
+noncomputable def namers (H : Time → Set (Fin P.n)) (tr : FGTrace P ACP) (T₀ d : Time)
     (E : NodeBlock P ACP) : Set (Fin P.n) :=
-  {v | v ∉ H T ∨ ∃ j a, tr.SignAt v j a ∧ tr.time j ≤ T₀ ∧ a.T = E.root}
+  {v | v ∉ H d ∨ ∃ j a, tr.SignAt v j a ∧ tr.time j ≤ T₀ ∧ a.T = E.root}
 
 /-- **G1.10 under growing faults, quorum-free entries (the core).** -/
 def QuorumFreeEntries : Prop :=
   ∀ (acp₀ : ACP) (H : Time → Set (Fin P.n)) (U : Set (NodeBlock P ACP)) (tr : FGTrace P ACP)
-    (𝓔 : Set (NodeBlock P ACP)) (T₀ T : Time) (y : Fin P.n),
+    (𝓔 : Set (NodeBlock P ACP)) (T₀ T d : Time) (y : Fin P.n),
     Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr → P.IsPublic T₀ → P.IsPublic T →
-    (∀ E ∈ 𝓔, (namers P ACP H tr T₀ T E).ncard < P.fg.q) →
+    T + P.Δ ≤ d → (∀ E ∈ 𝓔, (namers P ACP H tr T₀ d E).ncard < P.fg.q) →
     (∀ v j a, v ∈ H (tr.time j) → tr.SignAt v j a → T₀ < tr.time j → tr.time j ≤ T →
       ∀ E ∈ 𝓔, a.T ≠ E.root) →
     ∀ i X, y ∈ H (tr.time i) → tr.AcceptAt y i X →

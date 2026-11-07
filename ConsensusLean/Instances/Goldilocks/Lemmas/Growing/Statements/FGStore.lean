@@ -38,8 +38,8 @@ theorem finalizedSafety_of_growing (h : Growing.FinalizedSafety P ACP) : Finaliz
 theorem quorumFreeEntries_of_growing (h : Growing.QuorumFreeEntries P ACP) :
     QuorumFreeEntries P ACP :=
   fun acp₀ H U tr 𝓔 T₀ T y hrun h₀ hT hy hq hs i X hX ht =>
-    h acp₀ (fun _ => H) U tr 𝓔 T₀ T y (Goldilocks.Growing.FGLocalRun.const_iff.mpr hrun) h₀ hT hq
-      (fun v j a hv ha hlo hhi => hs v hv j a ha hlo hhi) i X hy hX ht
+    h acp₀ (fun _ => H) U tr 𝓔 T₀ T (T + P.Δ) y (Goldilocks.Growing.FGLocalRun.const_iff.mpr hrun)
+      h₀ hT le_rfl hq (fun v j a hv ha hlo hhi => hs v hv j a ha hlo hhi) i X hy hX ht
 
 theorem previousHeightJustifiedEntry_of_growing (h : Growing.PreviousHeightJustifiedEntry P ACP) :
     PreviousHeightJustifiedEntry P ACP :=
