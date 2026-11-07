@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -7,8 +8,6 @@ public section
 
 /-! # Finite sleepy inclusion and growth of the engine under growing faults
 
-* `Regimes.Growing.ready_proposer_proposes_at`: a proposer ready at its slot start proposes then
-  (the static `ready_proposer_proposes` on the prefix through the slot start);
 * `sleepy_include_finite_at`: a proposal released at `τ` by a proposer ready at `τ` and honest
   through its hold `Δ` is in the read of every node ready at `t ∈ [τ + 6Δ, b]`;
 * `sleepy_grow_finite_at`: with one proposer ready at its slot start and honest through its hold
@@ -17,28 +16,6 @@ public section
 
 Both are the static finite consumers without a constant-fault premise: the proposer and the
 readers are honest at their own times. -/
-
-namespace Consensus.Goldilocks.Regimes.Growing
-
-open SA (SAParams ReplayOrder Payload)
-
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-
-/-- **A proposer ready at its slot start proposes then**, under growing faults: the static
-`ready_proposer_proposes` on the prefix through `t_s`. -/
-theorem ready_proposer_proposes_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {s : Nat} (hs : 0 < s)
-    (hready : ReadyAt tr H (catchUp sp) (proposer s) (sp.ts s)) :
-    ∃ k P, tr.ProposesAt (proposer s) k P ∧ tr.time k = sp.ts s := by
-  have ht0 : 0 ≤ sp.ts s := Compose.Growing.ts_natCast_nonneg s
-  obtain ⟨k, P, hP, hk⟩ := Regimes.ready_proposer_proposes (hrun.upTo ht0) (hnc.upTo _) hs
-    ⟨hready.1, fun τ h1 h2 => ⟨hready.2 τ h1 h2, h2⟩⟩
-  exact ⟨k, P, ⟨((RunTrace.upTo_ownBlockAt tr).1 hP.1).2, hP.2.1, hP.2.2⟩, hk⟩
-
-end Consensus.Goldilocks.Regimes.Growing
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
