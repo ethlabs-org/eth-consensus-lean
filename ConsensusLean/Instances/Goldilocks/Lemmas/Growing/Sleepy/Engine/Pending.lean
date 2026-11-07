@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 
@@ -10,8 +10,8 @@ public section
 Statements the engine transport consumes whose home modules are not on this branch yet, under
 their final names, so that the engine proofs compose against the final interface:
 
-* the canonical growing trace simulates the engine (`Simulation.simTraceAt_simulates`), hence is
-  a growing-fault run (`Simulation.simTraceAt_goldilocksRun`), home `Lemmas/Growing/Simulation/Run`;
+* the canonical growing trace simulates the engine (`Simulation.simTraceAt_simulates`, home
+  `Lemmas/Growing/Simulation/Run`);
 * the finite sleepy service from raw synchrony through `b`
   (`Simulation.sleepyServiceBefore_of_syncUntil_at`, home `Lemmas/Growing/Simulation/Service`);
 * ready-reader safety under growing faults (`Regimes.Growing.ReadySafeOn`) and the finite node
@@ -33,13 +33,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 theorem simTraceAt_simulates (hv : rho.ExecutionValid) :
     SimulatesAt S rho hn (simTraceAt S rho hn) (cutMap S rho hn) := by
   sorry
-
-/-- The canonical growing trace of a valid engine run is a growing-fault Goldilocks run for the
-time-indexed honest keys. -/
-theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
-    Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-      (honestKeysAt S rho) (simTraceAt S rho hn) :=
-  (simTraceAt_simulates S rho hn hv).run
 
 /-- **The finite sleepy service under growing faults** from raw synchrony through its deadline
 bound `b ≤ horizon`: senders honest at their sends, recipients honest at their reading calls
