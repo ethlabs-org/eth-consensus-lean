@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Healing.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
@@ -97,7 +98,8 @@ theorem optimistic_first_proposal_anc_at
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ell.frame σ v)
     (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B) :
     Anc U B d.head := by
-  sorry
+  exact ProposalSources.optimistic_first_proposal_anc_at hrun hf hX hopt hBD hx hc
+    hslot hprop hV hP hhigh
 
 end Consensus.Goldilocks.SA.Growing
 
