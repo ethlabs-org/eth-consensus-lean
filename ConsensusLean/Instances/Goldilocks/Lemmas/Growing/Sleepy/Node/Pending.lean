@@ -12,8 +12,6 @@ this branch yet, under their final names and statements:
 
 * `sleepy_invariant_at` (home `Lemmas/Growing/Sleepy/Node/Induction`): the dynamic invariant
   through `b` from the finite service and the two count shapes;
-* `ready_read_record_at` (home `Lemmas/Growing/Sleepy/Node/Read`): the ready read is the
-  effective record;
 * `later_transfer_step_at` (home `Lemmas/Growing/Sleepy/Node/Transfer`): the later transfer step
   for a protected block.
 
@@ -31,19 +29,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem sleepy_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBounds tr H b) : SleepyInvariantUpTo tr H b := by
-  sorry
-
-/-- **The ready read up to `b` is the effective record** under growing faults. -/
-theorem ready_read_record_at {b : Time} (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) {y : Fin sp.n} {j : Nat}
-    {t : Time} (hrp : Regimes.ReadPoint tr j t) (ht0 : 0 ≤ t)
-    (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
-    (∃ R ∈ (Node.frame (tr.state y j)).tree,
-        R.root = (tr.state y j).ac.latestConfirmed ∧ Regimes.readAfter tr y j t = R) ∨
-      ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
-          R.root = (tr.state y j).ac.latestConfirmed) ∧
-        Regimes.readAfter tr y j t = (tr.state y j).fg.F) := by
   sorry
 
 /-- **The later transfer step for a protected block** under growing faults. -/
