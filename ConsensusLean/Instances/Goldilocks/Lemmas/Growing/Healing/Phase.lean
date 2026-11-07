@@ -133,6 +133,34 @@ theorem phase_changes_le_two (hr : Consensus.Goldilocks.Growing.FGLocalRun acp�
   exact ⟨c, c', (phaseAt_upTo_iff (fun k hk => (hr.time_mono hk.le).trans hi)).mpr hc,
     (phaseAt_upTo_iff (fun k hk => (hr.time_mono hk.le).trans hib)).mpr hc', hne⟩
 
+/-- HR.2 (b)/(c), with precisely the fixed-cohort reading of the growing statement.
+A negative horizon has no observations, rather than requiring an extra premise. -/
+theorem phase_count_at (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
+    (d : Time) (hf : (H d)ᶜ.ncard < 2 * P.fg.q - P.n) :
+    (∀ m i j c c', i ≤ j → tr.time j ≤ d → PhaseAt tr (H d) i m c →
+      PhaseAt tr (H d) j m c' → c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
+    ∀ m, {i | tr.time (i + 1) ≤ d ∧ ∃ c c', PhaseAt tr (H d) i m c ∧
+      PhaseAt tr (H d) (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2 := by
+  constructor
+  · intro m i j c c' hij hj hc hc'
+    have hi := (hr.time_mono hij).trans hj
+    apply phaseAt_mono hr ((hr.time_nonneg j).trans hj) hf hij hj
+    · simpa only [max_eq_left hi] using hc
+    · simpa only [max_eq_left hj] using hc'
+  · intro m
+    by_cases hd : 0 ≤ d
+    · apply le_trans (Set.encard_le_encard ?_) (phase_changes_le_two hr hd hf m)
+      rintro i ⟨hib, c, c', hc, hc', hne⟩
+      have hi := (hr.time_mono i.le_succ).trans hib
+      exact ⟨hib, c, c', by simpa only [max_eq_left hi] using hc,
+        by simpa only [max_eq_left hib] using hc', hne⟩
+    · have he : {i | tr.time (i + 1) ≤ d ∧ ∃ c c', PhaseAt tr (H d) i m c ∧
+          PhaseAt tr (H d) (i + 1) m c' ∧ c ≠ c'} = ∅ := by
+        ext i
+        exact ⟨fun hi => (hd ((hr.time_nonneg (i + 1)).trans hi.1)).elim, False.elim⟩
+      rw [he, Set.encard_empty]
+      exact zero_le
+
 /-- A phase change persists within one fixed later-horizon cohort. This is the static
 potential argument on the retained run, not transport to a different cohort. -/
 theorem phaseChanged_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
