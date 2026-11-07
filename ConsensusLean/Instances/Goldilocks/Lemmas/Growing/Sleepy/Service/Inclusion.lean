@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
