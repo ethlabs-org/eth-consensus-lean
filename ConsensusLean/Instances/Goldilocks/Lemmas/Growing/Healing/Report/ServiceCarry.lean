@@ -93,7 +93,8 @@ theorem service_syncACAt
     simp only [RunTrace.deadline, RunTrace.lastWake, hnr, ite_false] at hlt ⊢
     exact hlt
 
-private theorem service_catch_at
+/-- Catch transfers a historically honest acceptance to an independently honest reader. -/
+theorem service_catch_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {g : Time} (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
