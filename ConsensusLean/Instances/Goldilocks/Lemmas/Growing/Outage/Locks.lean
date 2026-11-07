@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -23,7 +25,12 @@ compromised by `c`. After the write the lock is the writer's own state.
   `P`. Labels `< j₀` are within `b₀`; labels in `[j₀, j₀ + k]` count against `(H z)ᶜ ∪ W` at
   `t_c ≤ z`; later labels count against `(H (t_c))ᶜ` (`late`, and `2 f_{t_c} < n`);
 * `OutageVoteInv.stored_fastLock_compatible_at`: every stored fast lock of a node honest at the
-  reading cut names a held block compatible with `P`. -/
+  reading cut names a held block compatible with `P`;
+* `slow_lock_compatible_at`: a stored slow lock of a node honest at the reading cut is compatible
+  with `B` when one result of its node in the slow window is (node-local, the static proof read
+  on the prefix through the reading cut);
+* `OutageVoteInv.locks_compatible_at` ((i) at a cut): every stored lock of a node honest at the
+  reading cut names a held block compatible with `P`, from (H)/S5V and (R) at the earlier cuts. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -221,6 +228,83 @@ theorem OutageVoteInv.stored_fastLock_compatible_at {n : Nat} (hvi : OutageVoteI
   · have := fastLockAt_time_le D.hrun hfl
     have := ts_le_ts (sp := sp) hsK
     exact D.hzc _ (by linarith) ⟨y, c, hyc, fastLockAt_isCall hfl, le_rfl⟩
+
+/-- **A slow lock is compatible with `B` when one result in its slow window is**: at a cut `i`
+of a node honest then, a stored slow lock names a held block compatible with `B` when every
+result of the node at an earlier cut of one label `m` of the window is compatible with `B`. -/
+theorem slow_lock_compatible_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
+    {l : SA.Lock} (hl : l ∈ (tr.state x i).ac.locks) (hlf : l.fast = false)
+    (hgood : ∃ m : Int, (l.slot : Int) - sp.k < m ∧ m ≤ l.slot ∧ 0 ≤ m ∧
+      ∀ c C CV, c < i → SA.ResultAt tr.projAC x c m.toNat C CV →
+        Compatible (tr.HonestBlocksAt H) C B) :
+    ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L B := by
+  have hd := hrun.time_nonneg i
+  have hsub := upTo_subset hrun hd
+  have hU := honestBlocksAt_coherent hrun hnc
+  have hr := (acRun_upTo hrun hnc hd).localRun
+  have hl' : l ∈ ((tr.projAC.upTo (tr.time i)).state x i).locks := by
+    rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hx]; exact hl
+  obtain ⟨c, hci, ℓ, C, CV, hu, hC, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
+    SA.slow_lock_saved hr hx i l hl' hlf
+  obtain ⟨-, hC⟩ := (sa_resultAt_upTo hrun.time_mono).mp hC
+  obtain ⟨m, hm, hms, hm0, hgood⟩ := hgood
+  obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hx hu.1
+  refine ⟨L, hsub hL, hLr, compatible_of_head_anc hU (hLLb.mono hsub) ?_⟩
+  rcases hms.lt_or_eq with hms | hms
+  · obtain ⟨S, hS, hsaved, hLbS⟩ := hsave m hm hms
+    have hmn : (m.toNat : Int) = m := Int.toNat_of_nonneg hm0
+    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := SA.saved_result hr hx c m.toNat (by
+      simpa only [hmn] using hsaved)
+    obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
+    have hC'mem := (SA.frameIn_of_callAt hr hx hu'.1).2 (SA.deepest_mem hconf).1.1
+    have heq : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot
+    obtain ⟨-, hC'⟩ := (sa_resultAt_upTo hrun.time_mono).mp hC'
+    exact compatible_of_head_anc hU ((Anc.mono hΦU hLbS).mono hsub)
+      (heq ▸ hgood k C' CV' (hkc.trans hci) hC')
+  · have hmn : m.toNat = l.slot := by omega
+    exact compatible_of_head_anc hU ((Anc.mono hΦU hLbC).mono hsub)
+      (hgood c C CV hci (hmn ▸ hC))
+
+/-- **(i) at a cut**: with (H)/S5V at the cuts before `n` and (R) at the cuts before `n`, every
+lock stored at cut `n` by a node honest then names a held block compatible with `P`. A fast lock
+is counted at its writing cut (`stored_fastLock_compatible_at`); a slow lock has an unpolluted
+label in its window (`exists_unpolluted_label`), whose results are compatible with `P` (R). -/
+theorem OutageVoteInv.locks_compatible_at {n : Nat} (hvi : OutageVoteInv D n)
+    (hres : ∀ y k, k < n → y ∈ H (tr.time k) → ∀ m C CV, SA.ResultAt tr.projAC y k m C CV →
+      (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocksAt H) C D.P)
+    {y : Fin sp.n} (hy : y ∈ H (tr.time n)) {l : SA.Lock} (hl : l ∈ (tr.state y n).ac.locks) :
+    ∃ L ∈ (tr.state y n).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P := by
+  cases hf : l.fast
+  swap
+  · exact hvi.stored_fastLock_compatible_at hy hl hf
+  have hU := D.coherent
+  obtain ⟨L, hL, hLr, -⟩ := lock_origin_at D.hrun D.hnc hy l hl
+  have hgood : ∃ m : Int, (l.slot : Int) - sp.k < m ∧ m ≤ l.slot ∧ 0 ≤ m ∧
+      ∀ c C CV, c < n → SA.ResultAt tr.projAC y c m.toNat C CV →
+        Compatible (tr.HonestBlocksAt H) C D.P := by
+    obtain ⟨m, h1, h2, h3⟩ := exists_unpolluted_label sp D.hgap l.slot
+    have hres' : ∀ c C CV, c < n → ∀ m', SA.ResultAt tr.projAC y c m' C CV →
+        (m' ≤ D.j₀ ∨ D.r ≤ m') → Compatible (tr.HonestBlocksAt H) C D.P :=
+      fun c C CV hc m' hR hm' => hres y c hc (D.hrun.antitone (D.hrun.time_mono hc.le) hy)
+        m' C CV hR hm'
+    by_cases hm0 : 0 ≤ m
+    · refine ⟨m, h1, h2, hm0, fun c C CV hc hR => hres' c C CV hc m.toNat hR ?_⟩
+      have hmn : ((m.toNat : Nat) : Int) = m := Int.toNat_of_nonneg hm0
+      rcases h3 with h | h
+      · left
+        by_contra hgt
+        have := ts_le_ts (sp := sp) (show D.j₀ + 1 ≤ m.toNat by omega)
+        rw [hmn] at this
+        linarith [D.hj₀.2]
+      · right
+        exact D.hr.2 m.toNat (by rw [hmn]; exact h)
+    · exact ⟨0, by omega, by omega, le_rfl, fun c C CV hc hR => hres' c C CV hc 0 hR
+        (Or.inl (Nat.zero_le _))⟩
+  obtain ⟨L', hL'U, hL'r, hcomp⟩ := slow_lock_compatible_at D.hrun D.hnc hy hl hf hgood
+  obtain rfl : L' = L := hU.1 hL'U (mem_honestBlocksAt D.hrun hy hL) (hL'r.trans hLr.symm)
+  exact ⟨L', hL, hLr, hcomp⟩
 
 end Consensus.Goldilocks.Compose.Growing
 
