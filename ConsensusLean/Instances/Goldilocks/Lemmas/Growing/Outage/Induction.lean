@@ -21,8 +21,9 @@ at cut `i` by nodes honest then (pre-`b₀` by `vote_extends_pre`, `A₀` by the
 S5V at cut `i` (`hS5 i`), (R) for the results at cut `i`, (i) at `i + 1`, (SRC) at `i`, OB-F and
 (VA) at `i + 1`, and the protections at `i + 1`.
 
-OB-F and (VA) at cut `i + 1` of a node honest then are counted at the time of the node's call at
-`i` (an honest call, so `2 f_{t_i} < n`), reading the node's state at `i + 1` at `t_i`; with no
+The per-node fields are read at a time `t` at which the node is honest, after every cut before
+the state's cut. OB-F and (VA) at cut `i + 1` are counted at the time of the node's call at `i`
+(an honest call, so `2 f_{t_i} < n`), reading the node's state at `i + 1` at `t_i ≤ t`; with no
 call of the node at `i` its state is the one at `i`. At cut `0` the store is genesis. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
@@ -115,9 +116,9 @@ theorem cover_base_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : 
     CoverBaseAt tr H D.P D.j₀ x c ℓ := by
   have hfr := frame_of_projAC_at D.hrun hxc hu.1
   have hK := sp.two_le_k
-  refine hcond (hinv.caches x c hci hxc).1 (fun hFP => ?_) fun y hy j e hv hs hjc => ?_
+  refine hcond (hinv.caches_at_cut hci hxc).1 (fun hFP => ?_) fun y hy j e hv hs hjc => ?_
   · rw [hfr]
-    exact hinv.viable x c hci hxc (prev_mem D hx hxc hu hFP)
+    exact hinv.viable_at_cut hci hxc (prev_mem D hx hxc hu hFP)
   · by_cases hj : tr.time j ≤ D.b₀
     · exact D.vote_extends_pre hv hj (by have := D.hσ; omega)
     · exact hinv.votes y j (by omega) e hv (by have := D.hσ; omega) (by omega) (Or.inr hy)
@@ -145,7 +146,7 @@ theorem cohort_vote_extends_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.
     by_contra h
     have := ts_le_ts (sp := sp) (show e.msg.slot ≤ D.j₀ by omega)
     linarith [D.hj₀.1]
-  have hva := hinv.viable x i le_rfl hxi
+  have hva := hinv.viable_at_cut le_rfl hxi
   by_cases hg : D.P.root = sp.genesisRoot
   · exact D.vote_extends_of_genesis hg hv
   have hcall := hv.isCall
@@ -242,15 +243,14 @@ private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x :
 
 /-- At cut `0` the store of a node honest then is genesis: the caches are compatible with `P`
 and `P`, when in the frame, is a candidate. -/
-private theorem caches_zero (D : OutageLockPremises tr H proposer dg) {y : Fin sp.n}
-    (hy : y ∈ H (tr.time 0)) :
+private theorem caches_zero (D : OutageLockPremises tr H proposer dg) {y : Fin sp.n} {t : Time}
+    (hd : 0 ≤ t) (hy : y ∈ H t) :
     (Compatible (tr.HonestBlocksAt H) (tr.state y 0).fg.F D.P ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y 0).fg.J D.P) ∧
     (D.P ∈ (Node.frame (tr.state y 0)).tree →
       (Node.frame (tr.state y 0)).AncestorCandidate D.P) := by
   have hrun := D.hrun
-  have hd := hrun.time_nonneg 0
-  have h0 : ∀ k < 0, tr.time k ≤ tr.time 0 := fun _ hk => absurd hk (Nat.not_lt_zero _)
+  have h0 : ∀ k < 0, tr.time k ≤ t := fun _ hk => absurd hk (Nat.not_lt_zero _)
   have hst := Trace.upTo_state tr y h0
   have hgen : ∀ X ∈ (tr.state y 0).fg.tree,
       X = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := fun X hX => by
@@ -296,16 +296,17 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg) (hS5 : Outa
   | zero =>
     have hv0 : OutageVoteInv D 0 := ⟨fun _ k hk => absurd hk (Nat.not_lt_zero k),
       fun _ k hk => absurd hk (Nat.not_lt_zero k)⟩
-    refine ⟨hv0, fun _ k hk => absurd hk (Nat.not_lt_zero k), fun y k hk hy l hl => ?_,
-      fun _ k hk => absurd hk (Nat.not_lt_zero k), fun y k hk hy => ?_, fun y k hk hy => ?_,
+    refine ⟨hv0, fun _ k hk => absurd hk (Nat.not_lt_zero k), fun y k t hk ht0 ht hy l hl => ?_,
+      fun _ k hk => absurd hk (Nat.not_lt_zero k), fun y k t hk ht0 ht hy => ?_,
+      fun y k t hk ht0 ht hy => ?_,
       fun _ _ _ _ _ _ k hck hk => absurd (hck.trans_le hk) (Nat.not_lt_zero _),
       fun _ _ _ _ _ _ k hck hk => absurd (hck.trans_le hk) (Nat.not_lt_zero _)⟩
     · obtain rfl : k = 0 := Nat.le_zero.1 hk
-      exact hv0.locks_compatible_at (fun _ k hk => absurd hk (Nat.not_lt_zero k)) hy hl
+      exact hv0.locks_compatible_at (fun _ k hk => absurd hk (Nat.not_lt_zero k)) ht0 ht hy hl
     · obtain rfl : k = 0 := Nat.le_zero.1 hk
-      exact (caches_zero D hy).1
+      exact (caches_zero D ht0 hy).1
     · obtain rfl : k = 0 := Nat.le_zero.1 hk
-      exact (caches_zero D hy).2
+      exact (caches_zero D ht0 hy).2
   | succ i hinv =>
     -- 1. (H) and 1′. S5V at cut `i`
     have hvotes : ∀ x e, HVoteAt tr H x i e → D.σ < e.msg.slot →
@@ -330,47 +331,52 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg) (hS5 : Outa
         Compatible (tr.HonestBlocksAt H) C D.P :=
       fun y k hk hy m C CV hR hm => hvi.result_compatible_at hk.le hy hR hm
     -- 3. (i) at `i + 1`
-    have hlocks : ∀ y k, k ≤ i + 1 → y ∈ H (tr.time k) → ∀ l ∈ (tr.state y k).ac.locks,
-        ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
+    have hlocks : ∀ y k t, k ≤ i + 1 → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
+        ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
           Compatible (tr.HonestBlocksAt H) L D.P := by
-      intro y k hk hy l hl
+      intro y k t hk ht0 ht hy l hl
       rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.locks y k hk hy l hl
-      · exact hvi.locks_compatible_at hres hy hl
+      · exact hinv.locks y k t hk ht0 ht hy l hl
+      · exact hvi.locks_compatible_at hres ht0 ht hy hl
     -- 4. (SRC) at `i`
     have hsrc : ∀ y k, k < i + 1 → y ∈ H (tr.time k) → ∀ ℓ C, SA.ToFGAt tr.projAC y k ℓ C →
         Compatible (tr.HonestBlocksAt H) C D.P := by
       intro y k hk hy ℓ C h
       rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
       · exact hinv.sources y k hk hy ℓ C h
-      · exact source_compatible_at hrun D.hnc hy (hinv.locks y k le_rfl hy) h
+      · exact source_compatible_at hrun D.hnc hy (hinv.locks_at_cut le_rfl hy) h
     -- 5. OB-F and (VA) at `i + 1`, counted at the node's call at `i`
-    have hnew : ∀ y, y ∈ H (tr.time (i + 1)) →
+    have hnew : ∀ y (t : Time), 0 ≤ t → (∀ k < i + 1, tr.time k ≤ t) → y ∈ H t →
         (Compatible (tr.HonestBlocksAt H) (tr.state y (i + 1)).fg.F D.P ∧
           Compatible (tr.HonestBlocksAt H) (tr.state y (i + 1)).fg.J D.P) ∧
         (D.P ∈ (Node.frame (tr.state y (i + 1))).tree →
           (Node.frame (tr.state y (i + 1))).AncestorCandidate D.P) := by
-      intro y hy
-      have hy' : y ∈ H (tr.time i) := hrun.antitone (hrun.time_mono (Nat.le_succ i)) hy
+      intro y t ht0 ht hy
+      have hy' : y ∈ H (tr.time i) := hrun.antitone (ht i (Nat.lt_succ_self i)) hy
       by_cases hc : ∃ c, tr.CallAt y i c
       · exact hcand (i + 1) (tr.time i) hsrc y (hrun.time_nonneg i) (before_succ hrun i) hy'
           (D.two_faults_lt_at hy' hc)
       · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
-        exact ⟨hinv.caches y i le_rfl hy', hinv.viable y i le_rfl hy'⟩
-    have hcaches : ∀ y k, k ≤ i + 1 → y ∈ H (tr.time k) →
+        have ht' : ∀ k < i, tr.time k ≤ t := fun k hk => ht k (by omega)
+        exact ⟨hinv.caches y i t le_rfl ht0 ht' hy, hinv.viable y i t le_rfl ht0 ht' hy⟩
+    have hcaches : ∀ y k t, k ≤ i + 1 → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
         Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
           Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P := by
-      intro y k hk hy
+      intro y k t hk ht0 ht hy
       rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.caches y k hk hy
-      · exact (hnew y hy).1
-    have hviable : ∀ y k, k ≤ i + 1 → y ∈ H (tr.time k) →
+      · exact hinv.caches y k t hk ht0 ht hy
+      · exact (hnew y t ht0 ht hy).1
+    have hviable : ∀ y k t, k ≤ i + 1 → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
         D.P ∈ (Node.frame (tr.state y k)).tree →
         (Node.frame (tr.state y k)).AncestorCandidate D.P := by
-      intro y k hk hy
+      intro y k t hk ht0 ht hy
       rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.viable y k hk hy
-      · exact (hnew y hy).2
+      · exact hinv.viable y k t hk ht0 ht hy
+      · exact (hnew y t ht0 ht hy).2
+    have hcachesC : ∀ y k, k ≤ i + 1 → y ∈ H (tr.time k) →
+        Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P :=
+      fun y k hk hy => (hcaches y k (tr.time k) hk (hrun.time_nonneg k)
+        (fun _ hk' => hrun.time_mono hk'.le) hy).1
     have hslot_mono : sp.slot (tr.time (i - 1)) ≤ sp.slot (tr.time i) :=
       SA.slot_mono sp (hrun.time_nonneg _) (hrun.time_mono (Nat.sub_le i 1))
     -- 6. the protections at `i + 1`
@@ -382,12 +388,12 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg) (hS5 : Outa
       replace hkK : sp.slot (tr.time i) ≤ D.j₀ - 1 + sp.k := hkK
       rcases Nat.lt_succ_iff_lt_or_eq.1 hck with hci | rfl
       · exact hinv.toOutageVoteInv.prot_step_at hxi (by omega) hkK (by omega)
-          (hinv.viable x i le_rfl hxi) (hcaches x (i + 1) le_rfl hxk).1
+          (hinv.viable_at_cut le_rfl hxi) (hcachesC x (i + 1) le_rfl hxk)
           (hinv.protPrev x hx c ℓ hu hbase i hci le_rfl hxi (hslot_mono.trans hkK))
       · rcases prevBaseAt_iff.1 hbase with hroot | hlock
         · exact prot_iff.2 (Or.inr (hroot.trans
             (F_mono_at hrun (hrun.time_nonneg c) hxi (before_succ hrun c) (Nat.le_succ c))))
-        · exact prot_of_prevBase D hxi hu (hcaches x (c + 1) le_rfl hxk).1 hlock
+        · exact prot_of_prevBase D hxi hu (hcachesC x (c + 1) le_rfl hxk) hlock
     · intro x hx c ℓ hu hbase k hck hk hxk hkK
       rcases Nat.le_succ_iff.1 hk with hk | rfl
       · exact hinv.protCover x hx c ℓ hu hbase k hck hk hxk hkK
@@ -395,10 +401,10 @@ theorem outage_lock_inv_at (D : OutageLockPremises tr H proposer dg) (hS5 : Outa
       replace hkK : sp.slot (tr.time i) ≤ D.j₀ + sp.k := hkK
       rcases Nat.lt_succ_iff_lt_or_eq.1 hck with hci | rfl
       · exact hinv.toOutageVoteInv.prot_step_at hxi (by omega) hkK le_rfl
-          (hinv.viable x i le_rfl hxi) (hcaches x (i + 1) le_rfl hxk).1
+          (hinv.viable_at_cut le_rfl hxi) (hcachesC x (i + 1) le_rfl hxk)
           (hinv.protCover x hx c ℓ hu hbase i hci le_rfl hxi (hslot_mono.trans hkK))
-      · exact prot_of_coverBase D hx hxi hu (hinv.caches x c le_rfl hxi).1
-          (hcaches x (c + 1) le_rfl hxk).1 hbase
+      · exact prot_of_coverBase D hx hxi hu (hinv.caches_at_cut le_rfl hxi).1
+          (hcachesC x (c + 1) le_rfl hxk) hbase
 
 end Consensus.Goldilocks.Compose.Growing
 

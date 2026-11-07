@@ -1,5 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
@@ -81,22 +84,43 @@ theorem fastLockAt_time_le (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pr
       omega
     linarith
 
-/-- **Fast-lock provenance at the reading cut**: a stored fast lock of a node honest at cut `n`
+/-- The AC state of a node at cut `n`, read at a time `t` after every cut before `n` at which the
+node is honest, is the AC state of the prefix through `t`. -/
+private theorem projAC_state_by
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {n : Nat}
+    {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) :
+    (tr.projAC.upTo t).state y n = (tr.state y n).ac := by
+  have h := projAC_state (hrun.upTo ht0).toLocalRun hy n
+  rwa [RunTrace.upTo_projAC, Trace.upTo_state tr y ht] at h
+
+/-- **Fast-lock provenance at a read time**: a stored fast lock of a node honest at cut `n`
 lies below the block of a fast lock of its slot written at an earlier cut `c`, at which the node
-was honest. -/
+was honest. The lock is read at a time `t` at which the node is honest, after every cut before
+`n`. -/
 theorem fastLock_provenance_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} (hy : y ∈ H (tr.time n)) {l : SA.Lock}
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) {l : SA.Lock}
     (hl : l ∈ (tr.state y n).ac.locks) (hf : l.fast = true) :
     ∃ c < n, ∃ B CV, SA.FastLockAt tr.projAC y c l.slot B CV ∧ y ∈ H (tr.time c) ∧
       ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧ Anc (tr.HonestBlocksAt H) L B := by
-  have hd := hrun.time_nonneg n
-  have hl' : l ∈ ((tr.projAC.upTo (tr.time n)).state y n).locks := by
-    rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy]; exact hl
+  have hl' : l ∈ ((tr.projAC.upTo t).state y n).locks := by
+    rw [projAC_state_by hrun ht0 ht hy]; exact hl
   obtain ⟨c, hc, B, CV, hfl, L, hL, hLr, hLB⟩ :=
-    SA.fast_lock_provenance (acRun_upTo hrun hnc hd).localRun hy n l hl' hf
+    SA.fast_lock_provenance (acRun_upTo hrun hnc ht0).localRun hy n l hl' hf
   obtain ⟨hcd, hfl⟩ := (sa_fastLockAt_upTo hrun.time_mono).mp hfl
-  exact ⟨c, hc, B, CV, hfl, hrun.antitone hcd hy, L, upTo_subset hrun hd hL, hLr,
-    hLB.mono (upTo_subset hrun hd)⟩
+  exact ⟨c, hc, B, CV, hfl, hrun.antitone hcd hy, L, upTo_subset hrun ht0 hL, hLr,
+    hLB.mono (upTo_subset hrun ht0)⟩
+
+/-- A stored lock of a node at cut `n`, read at a time `t` at which it is honest after every cut
+before `n`, names a block of its tree. -/
+private theorem lock_held_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) {l : SA.Lock}
+    (hl : l ∈ (tr.state y n).ac.locks) : ∃ L ∈ (tr.state y n).fg.tree, L.root = l.block := by
+  have hst := Trace.upTo_state tr y ht
+  obtain ⟨L, hL, hLr, -⟩ := lock_origin (hrun.upTo ht0) (hnc.upTo _) hy n l (by rw [hst]; exact hl)
+  rw [hst] at hL
+  exact ⟨L, hL, hLr⟩
 
 /-- **The fast-lock count at the writer's cut**: the counted validators are at least half of the
 committee, and every counted vote is of the slot with a head held while honest above the
@@ -208,19 +232,19 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
     have := D.two_faults_lt_at hyc hcall
     omega
 
-/-- **Every stored fast lock of a node honest at the reading cut `n` names a held block
-compatible with `P`**, from (H)/S5V at the cuts before `n`: the lock's writing cut `c < n`
-(`fastLock_provenance_at`), the count at `c`. -/
+/-- **Every stored fast lock of a node at cut `n`, read at a time `t` at which it is honest after
+every cut before `n`, names a held block compatible with `P`**, from (H)/S5V at the cuts before
+`n`: the lock's writing cut `c < n` (`fastLock_provenance_at`), the count at `c`. -/
 theorem OutageVoteInv.stored_fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n)
-    {y : Fin sp.n} (hy : y ∈ H (tr.time n)) {l : SA.Lock} (hl : l ∈ (tr.state y n).ac.locks)
-    (hf : l.fast = true) :
+    {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t)
+    {l : SA.Lock} (hl : l ∈ (tr.state y n).ac.locks) (hf : l.fast = true) :
     ∃ L ∈ (tr.state y n).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P := by
   have hU := D.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨L, hL, hLr, -⟩ := lock_origin_at D.hrun D.hnc hy l hl
+  obtain ⟨L, hL, hLr⟩ := lock_held_by D.hrun D.hnc ht0 ht hy hl
   obtain ⟨c, hc, B, CV, hfl, hyc, L', hL'U, hL'r, hL'B⟩ :=
-    fastLock_provenance_at D.hrun D.hnc hy hl hf
-  obtain rfl : L' = L := hU.1 hL'U (mem_honestBlocksAt D.hrun hy hL) (hL'r.trans hLr.symm)
+    fastLock_provenance_at D.hrun D.hnc ht0 ht hy hl hf
+  obtain rfl : L' = L := hU.1 hL'U (tree_held_at ht0 hy ht hL) (hL'r.trans hLr.symm)
   refine ⟨L', hL, hLr, compatible_of_head_anc hU hL'B (fastLock_compatible_at hvi hyc hfl
     (fun v hv hvH => ?_) fun hsK => ?_)⟩
   · obtain ⟨j, hj, e, hve, he⟩ := fastLock_honest_vote_at D.hrun D.hnc hyc hfl hv hvH
@@ -230,22 +254,23 @@ theorem OutageVoteInv.stored_fastLock_compatible_at {n : Nat} (hvi : OutageVoteI
     exact D.hzc _ (by linarith) ⟨y, c, hyc, fastLockAt_isCall hfl, le_rfl⟩
 
 /-- **A slow lock is compatible with `B` when one result in its slow window is**: at a cut `i`
-of a node honest then, a stored slow lock names a held block compatible with `B` when every
-result of the node at an earlier cut of one label `m` of the window is compatible with `B`. -/
+of a node read at a time `t` at which it is honest after every cut before `i`, a stored slow lock
+names a held block compatible with `B` when every result of the node at an earlier cut of one
+label `m` of the window is compatible with `B`. -/
 theorem slow_lock_compatible_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (ht : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
     {l : SA.Lock} (hl : l ∈ (tr.state x i).ac.locks) (hlf : l.fast = false)
     (hgood : ∃ m : Int, (l.slot : Int) - sp.k < m ∧ m ≤ l.slot ∧ 0 ≤ m ∧
       ∀ c C CV, c < i → SA.ResultAt tr.projAC x c m.toNat C CV →
         Compatible (tr.HonestBlocksAt H) C B) :
     ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L B := by
-  have hd := hrun.time_nonneg i
-  have hsub := upTo_subset hrun hd
+  have hsub := upTo_subset hrun ht0
   have hU := honestBlocksAt_coherent hrun hnc
-  have hr := (acRun_upTo hrun hnc hd).localRun
-  have hl' : l ∈ ((tr.projAC.upTo (tr.time i)).state x i).locks := by
-    rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hx]; exact hl
+  have hr := (acRun_upTo hrun hnc ht0).localRun
+  have hl' : l ∈ ((tr.projAC.upTo t).state x i).locks := by
+    rw [projAC_state_by hrun ht0 ht hx]; exact hl
   obtain ⟨c, hci, ℓ, C, CV, hu, hC, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
     SA.slow_lock_saved hr hx i l hl' hlf
   obtain ⟨-, hC⟩ := (sa_resultAt_upTo hrun.time_mono).mp hC
@@ -267,27 +292,29 @@ theorem slow_lock_compatible_at
     exact compatible_of_head_anc hU ((Anc.mono hΦU hLbC).mono hsub)
       (hgood c C CV hci (hmn ▸ hC))
 
-/-- **(i) at a cut**: with (H)/S5V at the cuts before `n` and (R) at the cuts before `n`, every
-lock stored at cut `n` by a node honest then names a held block compatible with `P`. A fast lock
+/-- **(i) at a cut, read at a time**: with (H)/S5V at the cuts before `n` and (R) at the cuts before
+`n`, every lock stored at cut `n` by a node read at a time `t` at which it is honest, after every
+cut before `n`, names a held block compatible with `P`. A fast lock
 is counted at its writing cut (`stored_fastLock_compatible_at`); a slow lock has an unpolluted
 label in its window (`exists_unpolluted_label`), whose results are compatible with `P` (R). -/
 theorem OutageVoteInv.locks_compatible_at {n : Nat} (hvi : OutageVoteInv D n)
     (hres : ∀ y k, k < n → y ∈ H (tr.time k) → ∀ m C CV, SA.ResultAt tr.projAC y k m C CV →
       (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocksAt H) C D.P)
-    {y : Fin sp.n} (hy : y ∈ H (tr.time n)) {l : SA.Lock} (hl : l ∈ (tr.state y n).ac.locks) :
+    {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t)
+    {l : SA.Lock} (hl : l ∈ (tr.state y n).ac.locks) :
     ∃ L ∈ (tr.state y n).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P := by
   cases hf : l.fast
   swap
-  · exact hvi.stored_fastLock_compatible_at hy hl hf
+  · exact hvi.stored_fastLock_compatible_at ht0 ht hy hl hf
   have hU := D.coherent
-  obtain ⟨L, hL, hLr, -⟩ := lock_origin_at D.hrun D.hnc hy l hl
+  obtain ⟨L, hL, hLr⟩ := lock_held_by D.hrun D.hnc ht0 ht hy hl
   have hgood : ∃ m : Int, (l.slot : Int) - sp.k < m ∧ m ≤ l.slot ∧ 0 ≤ m ∧
       ∀ c C CV, c < n → SA.ResultAt tr.projAC y c m.toNat C CV →
         Compatible (tr.HonestBlocksAt H) C D.P := by
     obtain ⟨m, h1, h2, h3⟩ := exists_unpolluted_label sp D.hgap l.slot
     have hres' : ∀ c C CV, c < n → ∀ m', SA.ResultAt tr.projAC y c m' C CV →
         (m' ≤ D.j₀ ∨ D.r ≤ m') → Compatible (tr.HonestBlocksAt H) C D.P :=
-      fun c C CV hc m' hR hm' => hres y c hc (D.hrun.antitone (D.hrun.time_mono hc.le) hy)
+      fun c C CV hc m' hR hm' => hres y c hc (D.hrun.antitone (ht c hc) hy)
         m' C CV hR hm'
     by_cases hm0 : 0 ≤ m
     · refine ⟨m, h1, h2, hm0, fun c C CV hc hR => hres' c C CV hc m.toNat hR ?_⟩
@@ -302,8 +329,8 @@ theorem OutageVoteInv.locks_compatible_at {n : Nat} (hvi : OutageVoteInv D n)
         exact D.hr.2 m.toNat (by rw [hmn]; exact h)
     · exact ⟨0, by omega, by omega, le_rfl, fun c C CV hc hR => hres' c C CV hc 0 hR
         (Or.inl (Nat.zero_le _))⟩
-  obtain ⟨L', hL'U, hL'r, hcomp⟩ := slow_lock_compatible_at D.hrun D.hnc hy hl hf hgood
-  obtain rfl : L' = L := hU.1 hL'U (mem_honestBlocksAt D.hrun hy hL) (hL'r.trans hLr.symm)
+  obtain ⟨L', hL'U, hL'r, hcomp⟩ := slow_lock_compatible_at D.hrun D.hnc ht0 ht hy hl hf hgood
+  obtain rfl : L' = L := hU.1 hL'U (tree_held_at ht0 hy ht hL) (hL'r.trans hLr.symm)
   exact ⟨L', hL, hLr, hcomp⟩
 
 end Consensus.Goldilocks.Compose.Growing
