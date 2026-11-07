@@ -247,6 +247,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.O
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ProposalLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ServiceCarry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.SupporterLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Finality
