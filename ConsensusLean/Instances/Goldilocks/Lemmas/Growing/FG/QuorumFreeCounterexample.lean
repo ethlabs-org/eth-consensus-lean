@@ -6,8 +6,8 @@ public section
 /-! # A quorum created after the namer-count horizon
 
 Four validators are honest at time zero; validators 1, 2 and 3 are compromised at time one.
-At time two their forged target attestations justify genesis. They never sign in the trace,
-so the honest-signing quiet-window premise does not exclude these rows.
+At time two their forged target attestations justify genesis.
+The transition witness does not construct a signing trace or a full run.
 -/
 
 namespace Consensus.Goldilocks.Growing.QuorumFree
