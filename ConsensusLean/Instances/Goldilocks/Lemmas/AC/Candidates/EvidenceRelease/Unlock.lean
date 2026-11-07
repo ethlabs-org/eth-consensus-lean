@@ -36,7 +36,8 @@ The definitions and the step properties, with nothing of the parent's spec or pr
   `O` extends `Y`" and "the equivocators lie in `O`";
 * `unlockW_keeps`: (K) composed with the parent's keep, at the level of a lock of `unlockW`.
 
-Idempotence of `unlockW` is in `EvidenceRelease.Idempotent`. -/
+Idempotence of `unlockW`, and the candidate as an instance of the lock-rule interface, are in
+`EvidenceRelease.Rule`. -/
 
 namespace Consensus.Goldilocks.EvidenceRelease
 
