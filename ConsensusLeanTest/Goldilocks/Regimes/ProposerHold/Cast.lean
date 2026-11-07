@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import all ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import all ConsensusLean.Lemmas.Model.Retain
 import all ConsensusLean.Lemmas.Model.Canonical.Inject
+import all ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 @[expose] public section
 
 /-! # The proposer-hold counterexample: the honest slot-`1` votes (R-cast)
@@ -186,6 +187,97 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
           exact absurd ⟨Nat.zero_lt_one, fun a ha => (List.not_mem_nil (a := a) ha).elim⟩ h)
     rw [hlaw] at hst'
     cases hst'
+
+/-! ### The vote on a ready receipt -/
+
+section Receipt
+open SA
+variable {sp : SAParams} {FGP : Type}
+
+theorem rt_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+    (admitVote sp A t v).restartTime = A.restartTime := by
+  unfold admitVote; split_ifs <;> rfl
+
+theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
+  unfold optimisticConfirmation updateLatestConfirmed; split
+  · rfl
+  · split_ifs <;> rfl
+
+theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+    (blockReceipt sp A t B).restartTime = A.restartTime := by
+  unfold blockReceipt
+  generalize blockVotes B = l
+  suffices h : ∀ A' : SAState sp.n,
+      (l.foldl (fun A v => admitVote sp A t v) A').restartTime = A'.restartTime from h _
+  induction l with
+  | nil => exact fun _ => rfl
+  | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, rt_admitVote]
+
+/-- `try_vote` on a receipt by `t_s + Δ` of a joined node that has not voted in slot `s > 0` and
+holds a ready proposal of slot `s` casts a vote of slot `s`. -/
+theorem tryVote_ready (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
+    (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t ≤ sp.ts (sp.slot t) + sp.Δ)
+    (hs : 0 < sp.slot t) (hr : voteReady sp Φ (sp.slot t)) :
+    ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t := by
+  rcases vs_tryVote x A Φ t with h | h
+  · exfalso
+    unfold tryVote at h; dsimp only at h
+    split_ifs at h with h1 h2
+    · rcases h1 with h1 | h1 | h1
+      · exact h1 hj
+      · exact hv h1
+      · linarith
+    · rcases h2.2 with h2 | h2
+      · omega
+      · exact h2 hr
+    all_goals simp at h
+  · exact h.2
+
+end Receipt
+
+theorem slot_int {t : Time} (ht : 0 ≤ t) :
+    ((S.params (pubOf env) one_le_card).slot t : Int) = t / 12 := by
+  rw [SA.slot_eq _ ht]; rfl
+
+theorem slot_one {t : Time} (h12 : 12 ≤ t) (h13 : t ≤ 13) :
+    (S.params (pubOf env) one_le_card).slot t = 1 := by
+  have h : ((S.params (pubOf env) one_le_card).slot t : Int) = 1 := by
+    rw [slot_int (le_trans (by norm_num) h12)]
+    dsimp only [Time] at *
+    omega
+  exact_mod_cast h
+
+/-- **An honest node votes in slot `1` by `13` once it accepts the twin's block by `13`**: at the
+AC block call after the acceptance, it has voted in slot `1` already, or it votes now (the twin's
+block, or its `Σ.F`, is a ready proposal of slot `1`). -/
+theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
+    {X : Blk (S.params (pubOf env) one_le_card)} (hacc : (tr S).AcceptAt y k X)
+    (hX : blockObj (S.params (pubOf env) one_le_card) X = twin S) (hk : (tr S).time k ≤ 13) :
+    ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
+  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+  obtain ⟨hXs, hX1, hXp⟩ := of_twin hX
+  obtain ⟨hsl, hon, -, -⟩ := rhoc_run.cutLaw y hy k _ hacc
+  obtain ⟨ℓ, hcℓ, hcall, ht⟩ := Compose.accept_next rhoc_run.toLocalRun hy hacc
+  have hpost : (tr S).state y (k + 1) = (tr S).post k := by
+    simp only [Trace.state]; exact ite_eq_left ⟨hacc.1, by rw [hacc.2]; simp⟩
+  have hreach := Compose.fg_reachable rhoc_run.toLocalRun hy k
+  have hXt : X ∈ ((tr S).state y (k + 1)).fg.tree := by
+    rw [hpost, (Store.tree_grows _ _ _ _ hreach).1 X _ hon]
+    exact Set.mem_insert _ _
+  have h12 : 12 ≤ (tr S).time k := by
+    have h0 := (rhoc_run (S := S)).time_nonneg k
+    have := slot_int (S := S) h0
+    change X.slot ≤ (S.params (pubOf env) one_le_card).slot _ at hsl
+    rw [hXs] at hsl
+    have h1 : (1 : Int) ≤ (tr S).time k / 12 := by rw [← this]; exact_mod_cast hsl
+    dsimp only [Time] at *
+    omega
+  have hs1 : (S.params (pubOf env) one_le_card).slot ((tr S).time (k + 1)) = 1 :=
+    slot_one (by rw [ht]; exact h12) (by rw [ht]; exact hk)
+  have hvote : SA.VoteAt (tr S).projAC y (k + 1) = fun e => e ∈ ℓ.emits := by
+    sorry
+  sorry
 
 end Consensus.Goldilocks.Test.ProposerHold
 
