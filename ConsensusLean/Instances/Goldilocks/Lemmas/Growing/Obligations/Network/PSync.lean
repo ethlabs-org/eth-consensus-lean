@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -423,7 +423,7 @@ theorem resetService_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
     (hrow : PSyncFGAttTransportAt S rho (simTraceAt S rho hn) (honestKeysAt S rho) ΔF)
     (hΔF : 0 < ΔF) :
-    Healing.Growing.Pending.ResetService (simTraceAt S rho hn) (honestKeysAt S rho) g ΔF
+    Healing.Growing.ResetService (simTraceAt S rho hn) (honestKeysAt S rho) g ΔF
       rho.horizon := by
   refine ⟨hΔF, ?_, ?_, ?_, ?_⟩
   · intro x i m hx hi y j hy hj hd
