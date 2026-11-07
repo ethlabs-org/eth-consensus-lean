@@ -13,13 +13,9 @@ the chain shape: slots, proposers, votes and a state machine, compiled to an L1 
 
 ## The headline statement
 
-**While the Goldilocks proofs migrate to growing faults**, `Challenge.lean` certifies seven statements: the five
-review statements below and, for Goldilocks, `MeetsObligationsConstant` and `GoldilocksCorrectConstant`, the endpoint
-and headline below on the runs whose faults do not grow (`ShapeObligationsOnAs`, `CorrectProtocolOn` at
-`ConstantFaults`). The growing-fault endpoint and headline below are stated in
-`ConsensusLean/Instances/Goldilocks/Statements/Growing.lean` and not yet proved. The headline is
-`Consensus.Goldilocks.GoldilocksCorrect`, from
-`ConsensusLean/Instances/Goldilocks/Statements/Growing.lean` (in namespace `Consensus.Goldilocks`), together
+`Challenge.lean` certifies seven statements: the five review statements below and, for Goldilocks, the endpoint
+and headline below. The headline is `Consensus.Goldilocks.GoldilocksCorrect`, from
+`ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean` (in namespace `Consensus.Goldilocks`), together
 with the endpoint it composes:
 
 ```lean
@@ -664,14 +660,9 @@ budget is the bound at the horizon, which by monotonicity is the bound at every
 time. A recurrence's good proposer stays honest `hold·ΔAC` after its slot. A
 larger window is a stronger premise. `ΔFG` enters no window.
 
-**Certified scope while the instance proofs migrate.** The generic statements
-are certified for growing faults. The Goldilocks claims are certified for
-constant faults only (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`).
-The growing-fault Goldilocks endpoint and headline (`MeetsObligations`,
-`GoldilocksCorrect`, `Instances/Goldilocks/Statements/Growing.lean`) are stated
-and not yet proved.
-The interim certificate covers runs whose faulty set is constant at all times,
-so it says nothing about any part of a growing run until the dynamic pair is proved.
+**Certified scope.** The generic statements and the Goldilocks endpoint and
+headline (`MeetsObligations`, `GoldilocksCorrect`) are certified for growing
+faults.
 
 ## Model-adequacy bindings (generic, read once)
 

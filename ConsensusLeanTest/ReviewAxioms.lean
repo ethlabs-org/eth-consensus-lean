@@ -16,7 +16,7 @@ parsed):
   `import all`) or not, must have a pair (`Consensus.ReviewGuard.checkComplete`);
 * each `#guard_msgs` pins the exact axiom list (`propext`, `Classical.choice`, `Quot.sound`) of the
   review theorems, of their source theorems and of the solution's Goldilocks statements, the
-  constant-fault obligations endpoint and the headline `goldilocksCorrectConstant`
+  obligations endpoint `meetsObligations` and the headline `goldilocksCorrect`
   (whose statements are the milestone
   definitions themselves, so they need no pair); an unfinished proof
   or a new axiom changes the message and fails the build. The other Goldilocks milestones are
@@ -59,11 +59,11 @@ run_meta do
 /-- info: 'Consensus.Review.heldIffServed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.heldIffServed
 
-/-- info: 'Consensus.Goldilocks.meetsObligationsConstant' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.meetsObligationsConstant
+/-- info: 'Consensus.Goldilocks.meetsObligations' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.meetsObligations
 
-/-- info: 'Consensus.Goldilocks.goldilocksCorrectConstant' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.goldilocksCorrectConstant
+/-- info: 'Consensus.Goldilocks.goldilocksCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.goldilocksCorrect
 
 /-! ## Axiom pins: the source theorems -/
 

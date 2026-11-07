@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Statements.Growing
+public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Main
 
 public section

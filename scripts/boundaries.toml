@@ -251,19 +251,6 @@ protected = true
 about = "the concrete Goldilocks obligations endpoint (simulation vocabulary is proof-side)"
 
 [[layer]]
-name = "Instances.Goldilocks.Statements.Growing"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Statements.Growing"]
-expose = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
-         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations"]
-protected = true
-about = """the growing-fault Goldilocks endpoint and headline: stated, not a comparator root and not in
-milestone_statements_modules until proved (then merged into Statements.Obligations)"""
-
-[[layer]]
 name = "Instances.Goldilocks.Milestones.Spec.Common"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common"]
 expose = true
@@ -416,6 +403,18 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
          "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC"]
 about = "untrusted milestone layer: run-level composition, persistence, service, healing, regimes (listed by file: no Statements.Compose module)"
+
+[[layer]]
+name = "Instances.Goldilocks.Milestones.Statements.Obligations"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
+         "Instances.Goldilocks.Statements.Obligations"]
+about = """untrusted milestone layer: the constant-fault obligations pair (no Challenge statement reaches it since the
+endpoint moved to growing faults); leaf files only, no declaring Milestones/Statements/Obligations.lean"""
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Common"
@@ -728,7 +727,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
          "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
@@ -752,7 +752,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
          "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -766,9 +766,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Proofs.Obligations"]
-about = """Goldilocks growing-fault obligations endpoint (open): sorry-tolerant, outside Solution and
-outside proved_milestone_modules until finished; each other growing-fault milestone is its own layer
-Proofs.Growing.<M>"""
+about = """Goldilocks growing-fault obligations endpoint, the Goldilocks entry of Solution; each other
+growing-fault milestone is its own layer Proofs.Growing.<M>"""
 
 [[layer]]
 name = "Instances.Goldilocks.Proofs.Growing.FGStore"
@@ -779,7 +778,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
          "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -805,7 +804,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
          "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -852,7 +851,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
          "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
@@ -889,7 +889,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
          "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
@@ -905,7 +906,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC", "Instances.Goldilocks.Proofs.Persist",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
-         "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations"]
+         "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations",
+         "Instances.Goldilocks.Lemmas.Growing", "Instances.Goldilocks.Proofs.Growing.Obligations"]
 about = "comparator solution: the review statements and the Goldilocks obligations endpoint (through its Main)"
 
 [[layer]]
@@ -918,7 +920,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.WeightedLocks",
          "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
          "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",

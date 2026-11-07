@@ -37,9 +37,9 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M13 window-only P1: sheet `outageWindow` and its test `outageWindow_prefix_only`.
 * M14 outage stable/finalized: closed; stable = confirmed (sheet test `stable_is_confirmed`, sheet `confirmed_persists`); `CorrectProtocol.persists_final_compatible` (sheet `outage_final_compatible`).
 * M15 pinned params: removed, the pinned sheet is archived; the live contract numbers are `goldilocksContract` at `contract_coefficients`.
-* M16 concrete instance: the constant-fault obligations endpoint (`meetsObligationsConstant`) is proved; growing-fault Goldilocks obligations remain open.
+* M16 concrete instance: the obligations endpoint (`meetsObligations`) is proved for growing faults; the constant-fault endpoint is its corollary.
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.
-* M18 adaptive corruption: immediate permanent key exposure in the generic model; the growing-fault Goldilocks proof remains open.
+* M18 adaptive corruption: immediate permanent key exposure in the generic model, and the Goldilocks claims are certified for it.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).
 * M20 cross-node nesting: dropped; compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
 * M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`CorrectProtocol.final_safe_healthy`; `m21_healthy_faults_below`, `m21_final_safe_healthy`); test `faulty_third_not_healthy`.
