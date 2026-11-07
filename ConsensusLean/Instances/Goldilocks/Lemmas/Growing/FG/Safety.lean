@@ -17,20 +17,31 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Time → Set (Fin P.n)}
 
 /-- An honest store supplies a finalized chain and genuine signatures for signers still
 honest at its observation. Its reader need not remain honest after that observation. -/
+theorem FGLocalRun.finalized_chain_upTo (hr : FGLocalRun acp₀ H U tr)
+    {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
+    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
+    ∃ c σ, P.fg.chainState c = some σ ∧ σ.F = (tr.store y i).F.root ∧
+      (tr.store y i).F ∈ U ∧ (∀ X ∈ U, X.root ∈ P.fg.roots c → Compatible U X (tr.store y i).F) ∧
+      (∀ a ∈ P.fg.chainAtts c, a.val ∈ H t → ∃ k < i, tr.SignAt a.val k a) ∧
+      ∃ B ∈ (tr.store y i).tree, ∀ a ∈ P.fg.chainAtts c,
+        ∃ Y ∈ (tr.store y i).tree, (tr.store y i).Anc Y B ∧ a ∈ Y.fgPayload := by
+  have hs := Trace.upTo_state tr y hle
+  obtain ⟨c, σ, hc, hF, hU, hcompat, hsign, hchain⟩ :=
+    Store.finalized_chain (hr.upTo ht) hy i
+  simp only [FGTrace.store, hs] at hF hU hcompat hchain
+  refine ⟨c, σ, hc, hF, hU, hcompat, fun a ha hv => ?_, hchain⟩
+  obtain ⟨k, hk, src, hcall⟩ := hsign a ha hv
+  exact ⟨k, hk, src, ((Trace.upTo_callAt tr).mp hcall).2⟩
+
+/-- Cut-time specialization of the read-point finalized chain. -/
 theorem FGLocalRun.finalized_chain (hr : FGLocalRun acp₀ H U tr)
     {y : Fin P.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     ∃ c σ, P.fg.chainState c = some σ ∧ σ.F = (tr.store y i).F.root ∧
       (tr.store y i).F ∈ U ∧ (∀ X ∈ U, X.root ∈ P.fg.roots c → Compatible U X (tr.store y i).F) ∧
       (∀ a ∈ P.fg.chainAtts c, a.val ∈ H (tr.time i) → ∃ k < i, tr.SignAt a.val k a) ∧
       ∃ B ∈ (tr.store y i).tree, ∀ a ∈ P.fg.chainAtts c,
-        ∃ Y ∈ (tr.store y i).tree, (tr.store y i).Anc Y B ∧ a ∈ Y.fgPayload := by
-  have hs := Trace.upTo_state tr y (i := i) (fun k hk => hr.time_mono hk.le)
-  obtain ⟨c, σ, hc, hF, hU, hcompat, hsign, hchain⟩ :=
-    Store.finalized_chain (hr.upTo (hr.time_nonneg i)) hy i
-  simp only [FGTrace.store, hs] at hF hU hcompat hchain
-  refine ⟨c, σ, hc, hF, hU, hcompat, fun a ha hv => ?_, hchain⟩
-  obtain ⟨k, hk, src, hcall⟩ := hsign a ha hv
-  exact ⟨k, hk, src, ((Trace.upTo_callAt tr).mp hcall).2⟩
+        ∃ Y ∈ (tr.store y i).tree, (tr.store y i).Anc Y B ∧ a ∈ Y.fgPayload :=
+  hr.finalized_chain_upTo (hr.time_nonneg i) (fun _ hk => hr.time_mono hk.le) hy
 
 /-- Two finalized tips agree when fewer than `2q − n` validators are faulty at the later
 observation. The readers are required honest only at their respective observations. -/
@@ -67,9 +78,10 @@ theorem FGLocalRun.finalized_safety (hr : FGLocalRun acp₀ H U tr)
 
 /-- The finalized target obtained by replaying an honest reader's held carrier agrees with
 another honest reader's cache, charging certificate intersection at the later observation. -/
-theorem FGLocalRun.replay_finalized_safety (hr : FGLocalRun acp₀ H U tr)
-    {x y : Fin P.n} {i j : Nat} (hx : x ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
-    (hf : (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.fg.q - P.n)
+theorem FGLocalRun.replay_finalized_safety_upTo (hr : FGLocalRun acp₀ H U tr)
+    {x y : Fin P.n} {i j : Nat} {t : Time} (hx : x ∈ H (tr.time i))
+    (ht : 0 ≤ t) (hle : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t)
+    (hf : (H (max (tr.time i) t))ᶜ.ncard < 2 * P.fg.q - P.n)
     {B X : NodeBlock P ACP} (hB : B ∈ (tr.store x i).tree) (hX : X ∈ (tr.store x i).tree)
     (hXr : X.root = ((tr.store x i).σ B.root).F) : Compatible U X (tr.store y j).F := by
   have hR := hr.store_reachable hx
@@ -105,31 +117,40 @@ theorem FGLocalRun.replay_finalized_safety (hr : FGLocalRun acp₀ H U tr)
         ⟨_, hacc, haW⟩ (hr.antitone hki hav)
       exact ⟨l, hl.trans hk, hs⟩
   by_contra hne
-  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, ha₂, _⟩ := hr.finalized_chain hy
+  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, ha₂, _⟩ := hr.finalized_chain_upTo ht hle hy
   obtain ⟨S, hS, hSv⟩ := FG.accountable_safety P.fg _ _ _ _ hσ h₂
     (fun h => hne (hc₂ _ (hsub hX) (hXr ▸ h)))
     (fun h => hne (hcompat _ hU₂ (hF₂ ▸ h)).symm)
-  obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H (max (tr.time i) (tr.time j)) := by
+  obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H (max (tr.time i) t) := by
     by_contra! hS'
     have hcard := Set.ncard_le_ncard
-      (s := (S : Set (Fin P.fg.n))) (t := (H (max (tr.time i) (tr.time j)))ᶜ) hS'
+      (s := (S : Set (Fin P.fg.n))) (t := (H (max (tr.time i) t))ᶜ) hS'
     rw [Set.ncard_coe_finset] at hcard
-    have : ((H (max (tr.time i) (tr.time j)))ᶜ : Set (Fin P.fg.n)).ncard =
-        ((H (max (tr.time i) (tr.time j)))ᶜ : Set (Fin P.n)).ncard := rfl
+    have : ((H (max (tr.time i) t))ᶜ : Set (Fin P.fg.n)).ncard =
+        ((H (max (tr.time i) t))ᶜ : Set (Fin P.n)).ncard := rfl
     have : P.fg.n = P.n := rfl
     omega
   obtain ⟨a, ha, b, hb, rfl, hab⟩ := hSv v hvS
   have signs : ∀ z ∈ P.fg.chainAtts (c.map Block.fgView) ++ P.fg.chainAtts c₂, z.val = a.val →
-      ∃ k, tr.time k ≤ max (tr.time i) (tr.time j) ∧ tr.SignAt a.val k z := by
+      ∃ k, tr.time k ≤ max (tr.time i) t ∧ tr.SignAt a.val k z := by
     intro z hz hzv
     rcases List.mem_append.mp hz with hz | hz
     · obtain ⟨k, hk, hs⟩ := hsig z hz (hzv ▸ hr.antitone (le_max_left _ _) hv)
       exact ⟨k, (hr.time_mono hk.le).trans (le_max_left _ _), hzv ▸ hs⟩
     · obtain ⟨k, hk, hs⟩ := ha₂ z hz (hzv ▸ hr.antitone (le_max_right _ _) hv)
-      exact ⟨k, (hr.time_mono hk.le).trans (le_max_right _ _), hzv ▸ hs⟩
+      exact ⟨k, (hle k hk).trans (le_max_right _ _), hzv ▸ hs⟩
   obtain ⟨k, hk, hka⟩ := signs a ha rfl
   obtain ⟨l, hl, hlb⟩ := signs b hb hab.1.symm
   exact hr.non_framing hka hlb (hr.antitone (max_le hk hl) hv) hab
+
+/-- Cut-time specialization of replay safety; no later reader honesty is needed. -/
+theorem FGLocalRun.replay_finalized_safety (hr : FGLocalRun acp₀ H U tr)
+    {x y : Fin P.n} {i j : Nat} (hx : x ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
+    (hf : (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.fg.q - P.n)
+    {B X : NodeBlock P ACP} (hB : B ∈ (tr.store x i).tree) (hX : X ∈ (tr.store x i).tree)
+    (hXr : X.root = ((tr.store x i).σ B.root).F) : Compatible U X (tr.store y j).F :=
+  hr.replay_finalized_safety_upTo hx (hr.time_nonneg j)
+    (fun _ hk => hr.time_mono hk.le) hy hf hB hX hXr
 
 end Consensus.Goldilocks.Growing
 
