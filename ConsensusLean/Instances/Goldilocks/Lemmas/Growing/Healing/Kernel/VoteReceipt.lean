@@ -25,20 +25,17 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
-/-- A high origin supplies a frozen viable head above a target and a held floor witness. -/
-theorem raw_target_frozen_witness_at
+/-- A high origin's counted head is held at the later vote's freeze. -/
+theorem high_origin_frozen_head_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {r l k : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
-    (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
-    (hBO : Anc (tr.HonestBlocksAt H) B O) (_hE : E ∈ (tr.state y k).fg.tree)
-    (hEO : Anc (tr.HonestBlocksAt H) E O)
-    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
+    (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
     ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D := by
+      Anc (tr.HonestBlocksAt H) O D := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   obtain ⟨ellX, D, CV, hcx, hfl, hOD⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
@@ -119,7 +116,25 @@ theorem raw_target_frozen_witness_at
     linarith
   have hWT := relay_mem_voterBlockTree_at hp hzc₀ hacc₀ hgc
     (by have := sp.toParams.hΔ; linarith) hy hc (by omega)
-    (hFB.trans (hBO.trans hOW))
+    (hFO.trans hOW)
+  exact ⟨W, hWT, hOW⟩
+
+/-- A high origin supplies a frozen viable head above a target and a held floor witness. -/
+theorem raw_target_frozen_witness_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
+    (hy : y ∈ H (tr.time k))
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
+    (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
+    (hBO : Anc (tr.HonestBlocksAt H) B O) (_hE : E ∈ (tr.state y k).fg.tree)
+    (hEO : Anc (tr.HonestBlocksAt H) E O)
+    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
+    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D := by
+  have hm := hp.run.time_mono
+  obtain ⟨W, hWT, hOW⟩ := high_origin_frozen_head_at hp ho hrb hy hc hl (hFB.trans hBO)
   have hWy := (frame_tree_subset_at hp.run hp.noColl hy hc.1).2 hWT.1
   have hh := Healing.h_le_of_store_anc
     (fg_reachable_at hp.run (hp.run.time_nonneg k) (fun _ hq => hm hq.le) hy)

@@ -209,9 +209,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.TargetCompare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteDomain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteRelay
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.WalkInputs
