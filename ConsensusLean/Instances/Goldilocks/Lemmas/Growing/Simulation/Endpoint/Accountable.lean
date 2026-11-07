@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Pending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Prefix
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
@@ -29,9 +29,7 @@ the blocks held while honest.
 * `compatible_reads_at`: compatible tips inside the blocks held while honest give prefix-related
   finalized reads;
 * `engine_finalAccountable_at`: the fourth `ShapeClaimsAt` field for every `α ≤ 1/3`, with the
-  hash-collision escape.
-
-The collision transport `noCollRun_simTraceAt` is still a stand-in (`Endpoint/Pending`). -/
+  hash-collision escape. -/
 
 namespace Consensus.Goldilocks.Simulation
 
