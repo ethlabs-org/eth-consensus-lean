@@ -164,6 +164,27 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
         linarith)) x i e (Compose.Growing.hVoteAt_iff.1 hve).1
         (Compose.Growing.hVoteAt_iff.1 hve).2 hes }
 
+section Projections
+
+variable {Q : OutageQueryAt S A V}
+  {service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start} {v : V}
+  {hsh : Q.start ≤ Q.run.2.horizon} {ar : OutageArmingAt Q v}
+
+theorem outageLockPremises_of_arming_at_P :
+    (outageLockPremises_of_arming_at Q service hsh ar).P = ar.origin := by rfl
+
+theorem outageLockPremises_of_arming_at_j₀ :
+    (outageLockPremises_of_arming_at Q service hsh ar).j₀ =
+      Compose.coverLabel Q.params Q.start := by rfl
+
+theorem outageLockPremises_of_arming_at_b₁ :
+    (outageLockPremises_of_arming_at Q service hsh ar).b₁ = Q.stop := by rfl
+
+theorem outageLockPremises_of_arming_at_r :
+    (outageLockPremises_of_arming_at Q service hsh ar).r = Q.restoredLabel := by rfl
+
+end Projections
+
 end Consensus.Goldilocks.Obligations.Growing
 
 end
