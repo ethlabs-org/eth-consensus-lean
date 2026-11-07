@@ -77,6 +77,13 @@ public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLeanTest.Goldilocks.Refinement.Sleepy
 public import ConsensusLeanTest.Goldilocks.Regimes.BudgetTightness
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHold
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Cast
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Engine
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Node
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Read
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Run
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Static
 public import ConsensusLeanTest.Goldilocks.Regimes.Sleepy
 public import ConsensusLeanTest.Goldilocks.Run.AttestationPremise
 public import ConsensusLeanTest.Goldilocks.Run.Conflict
