@@ -1,5 +1,15 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Simulates
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Attestations
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Receipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Accepted
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.Tick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forward.AtAcceptance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
