@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
@@ -50,10 +52,9 @@ cut.
   comparisons, the fault bound at the voter's cut and the earlier votes (the static argument on
   the prefix through the vote).
 
-The results of other layers that these use are stated here under their names with the suffix
-`_stub`, with their owners' statements: the growing AC projection, the writer-pool merge and the
-growing form of `result_transfer_anc` (the AC layer), `carryAt_of_delivered` and
-`result_writer_at` (the sleepy node layer), and the seed layer's two facts above. Each is an
+The results of other layers that are not yet on this branch are stated here under their names
+with the suffix `_stub`, with their owners' statements: `carryAt_of_delivered` and
+`result_writer_at` (the sleepy node layer) and the seed layer's two facts above. Each is an
 open `sorry`. The per-cut node facts (`projAC_state_at`, `run_F_mono_at`, `acBlock_prev_at`,
 `accept_next_at`) are the static ones on the prefix through the cut. -/
 
@@ -166,43 +167,7 @@ namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
 open SA (SAParams ReplayOrder Payload Vote gbar)
 
-/-! ### Stand-ins for the AC and node layers -/
-
-/-- The growing AC projection (`Compose.Growing.goldilocks_ac_projection`); stand-in. -/
-theorem goldilocks_ac_projection_stub : Compose.Growing.GoldilocksACProjection := by
-  sorry
-
-/-- The writer-pool merge across a compromise (`SA.Growing.writer_merged`, same statement);
-stand-in until that module is on this branch. -/
-theorem writer_merged_stub {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-    {tr : SA.SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)}
-    {proposer : Nat → Fin sp.n}
-    (hrun : SA.Growing.ACRun proposer tr H U) {X : Fin sp.n} {i₀ s : Nat}
-    (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (SA.goldilocksSA sp FGP ro)}
-    (hupd : SA.UpdateAt tr X i₀ s ℓX) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncACAt (SA.goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.state X i₀).pool s} := by
-  sorry
-
-/-- Result transfer to a block `D ⪯ C` of the result `C` across a compromise (the growing form
-of `SA.result_transfer_anc`, to sit next to `SA.Growing.result_transfer`); stand-in. -/
-theorem result_transfer_anc_stub {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-    {tr : SA.SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)}
-    {proposer : Nat → Fin sp.n} (hrun : SA.Growing.ACRun proposer tr H U)
-    {s : Nat} {X y : Fin sp.n} {i₀ i : Nat} {C D : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hX : X ∈ H (tr.time i₀)) (hres : SA.ResultAt tr X i₀ s C CV) (hDC : Anc U D C)
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hcarry : SA.CarryAt tr U y i e s CV) (hviab : SA.ViableAtVote ℓ e (s + 1) D)
-    (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L D)
-    (hd : ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.state X i₀).pool s ∨ v.val ∈ SA.equivocators {w | w ∈ (tr.state X i₀).pool s}) :
-    SA.VoteExtends U e.msg D := by
-  sorry
+/-! ### Stand-ins for the node layer -/
 
 /-- `Carry_y` from deliveries, for one honest voter over an SA trace
 (`Compose.Growing.carryAt_of_delivered` of the node layer, same statement); stand-in until that
@@ -224,8 +189,8 @@ theorem carryAt_of_delivered_stub {FGP : Type} {sp : SAParams} {ro : ReplayOrder
   sorry
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- What a result's writer did with its counted votes, the writer honest at its update
 (`Compose.Growing.result_writer_at` of the node layer, same statement); stand-in until that
@@ -414,7 +379,7 @@ its slot-`(s+1)` vote, the slot-`s` votes each sent or admitted at a time in `[t
 a node honest then, with heads above the voter's `Σ.F` that are genesis or accepted while honest
 before `t_s + 2Δ`. Each delivery comes from the reset service, a pre-GST acceptance from the
 catch-up; the voter's side is read on the prefix through its vote. -/
-private theorem carry_of_senders (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem carry_of_senders (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : cutZ sp.toParams g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -551,8 +516,9 @@ theorem writer_merged_reset_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a 
     have := lt_cutZ sp g
     have := le_gbar g
     linarith
-  exact writer_merged_stub (goldilocks_ac_projection_stub sp ro dg H tr proposer hp.run hp.noColl)
-    hx hupd hy hcast hs (reset_syncACAt hp hg)
+  exact SA.Growing.writer_merged
+    (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl) hx hupd
+    hy hcast hs (reset_syncACAt hp hg)
 
 /-- **The live locks at a first-successor vote are compatible with `B`**, from the stored-lock
 comparisons at the cut, the fault bound at the voter's cut and the earlier votes of nodes honest

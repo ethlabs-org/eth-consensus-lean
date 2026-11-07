@@ -6,6 +6,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
@@ -28,8 +31,8 @@ votes of nodes honest at them, all extending `B` by induction, counted at the vo
 
 The node-local facts of the cast are read on the prefix through the cast's time
 (`castAt_facts_at`); the first transfer's carry, live locks and writer merge, and the later
-transfer's carry, are the reset-form suppliers of `Kernel/ResultSupport`. The growing next
-transfer is stated here under its name with the suffix `_stub`, an open `sorry`. -/
+transfer's carry, are the reset-form suppliers of `Kernel/ResultSupport`. The transfers are the
+growing AC layer's `result_transfer_anc` and `next_transfer`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -38,10 +41,6 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
-
-/-- The growing next transfer (`SA.Growing.next_transfer`); stand-in. -/
-theorem next_transfer_stub (sp : SAParams) : SA.Growing.NextTransfer sp := by
-  sorry
 
 /-! ### The induction -/
 
@@ -70,7 +69,7 @@ theorem late_result_prefix_votes_before_at
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hrun' := goldilocks_ac_projection_stub sp ro dg H tr proposer hrun hnc
+  have hrun' := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   intro i
   induction i using Nat.strong_induction_on with
@@ -93,7 +92,7 @@ theorem late_result_prefix_votes_before_at
     have hn : sp.n = sp.toParams.n := rfl
     omega
   by_cases hfirst : e.msg.slot = s + 1
-  · exact result_transfer_anc_stub hrun' hx hres hBC hy hcast hfirst
+  · exact SA.Growing.result_transfer_anc hrun' hx hres hBC hy hcast hfirst
       (result_carry_reset_at hp hc hx hres hts hy hcast hfirst (hFB.trans hBC))
       (by rw [← hfirst]; exact Or.inl hv)
       (live_locks_of_stored_at hrun hnc hf hy hcast hfirst hv.1.1
@@ -119,7 +118,8 @@ theorem late_result_prefix_votes_before_at
         have := SA.slot_mono sp hd (hrun.time_mono (Nat.le_of_not_gt hn))
         omega
       exact hprior z q e' hqi (Compose.Growing.hVoteAt_iff.2 ⟨hz, ell', hc'⟩) (by omega)
-    exact next_transfer_stub sp _ ro H _ tr.projAC proposer hrun' m y i B ell e hy hcast hm hall
+    exact SA.Growing.next_transfer sp _ ro H _ tr.projAC proposer hrun' m y i B ell e hy hcast hm
+      hall
       (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
       (honest_votes_carry_reset_at hp hc hy hcast hm hmts hall hFB)
       (fault_bound_late_at hp (t := tr.time i)
