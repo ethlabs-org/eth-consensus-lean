@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppl
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyConfirmedEndpoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -52,11 +53,11 @@ theorem confirmed_payload_projection (Q : ConfirmedQuery S A V)
   have hτ := h0.trans P.fresh.le
   have hprop : Regimes.ReadyProposalAt Q.trace (honestKeys S Q.run.2) Q.duration
       (Q.trace.time P.cut) P.block := ⟨_, P.cut, P.ready, P.proposal, rfl⟩
-  obtain ⟨k, hk, hr⟩ := ready_proposal S Q.run.2 Q.hn Q.valid hτ
+  obtain ⟨k, hk, hr⟩ := ready_proposal S Q.run.2 Q.hn Q.constant Q.valid hτ
     (P.bounded.trans Q.bounded) hprop
   refine ⟨_, k, headerOf Q.params P.block, P.fresh, hk, hr, ?_⟩
-  exact confirmed_inBy S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+  exact confirmed_inBy S Q.run.2 Q.hn Q.constant Q.valid
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
     (mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le)
     hτ P.bounded Q.bounded hprop coverage
 
@@ -65,6 +66,7 @@ supplier must therefore cover the whole finite execution independently of the
 liveness query supplier. The coefficient inequality is directional. -/
 structure SleepySafetyQuery where
   run : (Sys (goldilocks S) V).Run
+  constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   valid : (Sys (goldilocks S) V).Valid run
   noCollision : ¬ run.2.HashCollision
@@ -92,12 +94,15 @@ theorem sleepy_safety_inputs (Q : SleepySafetyQuery S A V) :
     change 18 * Q.run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
     linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
   refine ⟨hduration, ?_, ?_⟩
-  · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
-      (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) le_rfl
+  · exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.constant Q.valid
+      (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) le_rfl
       (sleepy_raw_syncUntil S A V Q.run Q.valid Q.sleepy Q.run.2.horizon)
-  · apply sleepy_faultBound S Q.run.2 Q.hn Q.valid le_rfl
+  · apply sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid
+      (W := (Sys (goldilocks S) V).aheadDur (K S A) Q.run) le_rfl
+    apply (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mpr
     intro t ht hth
-    exact half_ready_of_duration V Q.run.2.point (by linarith) (Q.sleepy.2 t ht hth)
+    exact half_ready_of_duration V Q.run.2.point (by linarith)
+      ((Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mp Q.sleepy.2 t ht hth)
 
 end Consensus.Goldilocks.Obligations
 end

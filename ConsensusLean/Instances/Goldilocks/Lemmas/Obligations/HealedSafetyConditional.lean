@@ -17,6 +17,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -153,8 +154,8 @@ theorem tips_comparable_of_origin_witnesses (Q : HealthyPreparationQuery S A V)
     (hCC : Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) C C') :
     Goldilocks.Compatible (Q.trace.HonestBlocks (honestKeys S Q.run.2)) R R' := by
   have hU := Compose.honest_blocks_coherent
-    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid).toLocalRun
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
   rcases hCC with h | h
   · exact Anc.total hU (hR.trans h) hR'
   · exact Anc.total hU hR (hR'.trans h)
@@ -417,7 +418,8 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
   let y := Q.run.2.ownKey v
   let n := cutMap S Q.run.2 Q.hn i
   let T := Q.params.ts O.slot + 6 * Q.params.Δ
-  have hy := honest_ownKey (S := S) hv.1
+  have hy := honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)
   have hd := Q.params.toParams.hΔ
   have h6 : (0 : Time) ≤ 6 * Q.params.Δ := mul_nonneg (by decide) hd.le
   have hready : Q.ready < T :=
@@ -435,7 +437,10 @@ theorem healthy_current_record_sources_before_now (D : HealthyRepairSchedule S A
         ((mul_nonneg (by decide) hd.le).trans D.duration_bound)) zero_le_one
     exact this.trans hready.le
   have hr : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v T := by
-    refine ⟨hv.1, fun t ht htt => Q.healthy.2.1.2 v hv.1 t ?_ (htt.trans hTb)⟩
+    have hh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1
+    refine ⟨(Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hh,
+      fun t ht htt => Q.healthy.2.1.2 v t ?_ (htt.trans hTb)
+        ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hh)⟩
     change max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 < T at hready
     refine (le_of_lt ?_).trans ((le_max_right _ _).trans ht)
     rw [sub_sub, lt_sub_iff_add_lt, ← add_assoc]

@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 /-! # The healthy confirmed-supply endpoint from the preparation initializer
 
@@ -145,17 +146,20 @@ theorem healthy_cut_tips_ancestor_of_preparation (Q : HealthyPreparationQuery S 
   rw [healthy_current_record_read S A V Q h0 hb hp W states D O hr hi hvi,
     healthy_current_record_read S A V Q h0 hb hp W states D O hr hj hvj]
   exact effective_record_of_interval D.reset.run D.reset.noColl
-    (honest_ownKey (S := S) hvi.1) (cutMap_mono S Q.run.2 Q.hn hij)
+    (honest_ownKey (S := S) ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hvi.1))
+    (cutMap_mono S Q.run.2 Q.hn hij)
     (healthy_current_record_interval S A V Q h0 hb hp W states D O hr hi hj hij hvi) .refl
 
 /-- Engine readiness from health: an honest validator is ready at every `t ∈ [ready, horizon]`
 (HealthyOn keeps it awake on `[max g 0, horizon]`). -/
 private theorem confirmed_ready_of_healthy (Q : ConfirmedQuery S A V)
     (hh : (Sys (goldilocks S) V).Healthy (K S A) Q.gst Q.run) {v : V}
-    (hv : v ∈ Q.run.2.point.honest) {t : Time}
+    (hv : Q.run.2.point.HonestAt v 0) {t : Time}
     (hr : (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run ≤ t) (htb : t ≤ Q.run.2.horizon) :
     Q.run.2.point.Ready Q.duration v t := by
-  refine ⟨hv, fun τ hτ hτt => hh.2.1.2 v hv τ ?_ (hτt.trans htb)⟩
+  refine ⟨(Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv,
+    fun τ hτ hτt => hh.2.1.2 v τ ?_ (hτt.trans htb)
+      ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv)⟩
   change max Q.gst 0 + Q.duration + 1 ≤ t at hr
   exact le_trans (show max Q.gst 0 ≤ t - Q.duration - 1 by linarith)
     ((le_max_right 0 _).trans hτ)
@@ -168,7 +172,7 @@ private theorem confirmed_end_cut (Q : ConfirmedQuery S A V) {v : V} {t : Time}
       (stateAt S Q.run.2 Q.hn v ((chainTrace Q.run.2).endCut t)).now = t ∧
       (chainTrace Q.run.2).cutTime ((chainTrace Q.run.2).endCut t) = t ∧
       (chainTrace Q.run.2).endCut t ≤ Q.run.2.events.length := by
-  obtain ⟨hcut, -, hnow⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid (c := Q.duration)
+  obtain ⟨hcut, -, hnow⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid (c := Q.duration)
     ((mul_nonneg (by norm_num) Q.params.toParams.hΔ.le :
       (0 : Time) ≤ Regimes.catchUp Q.params).trans
       (confirmed_duration_supply S A V Q)) ht hth hr
@@ -208,7 +212,7 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
           (Regimes.readAfter Q.trace y j Q.deadline) := by
   classical
   let Q' : HealthyPreparationQuery S A V :=
-    ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.valid, Q.noCollision, hh⟩
+    ⟨Q.run, Q.constant, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.valid, Q.noCollision, hh⟩
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ := Q.params.toParams.hΔ
   -- the preparation query: `0 ≤ heal ≤ query ≤ deadline ≤ horizon`, progress on `[ready, heal]`
@@ -228,8 +232,8 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   obtain ⟨B, k, hBp, he, htk⟩ := confirmed_slot_event S A V Q Ws
   have hr : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration B.proposer
       (Q.trace.time k) := by rw [hBp, htk]; exact Ws.ready
-  have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
+  have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hr.1 he
   have hmargin := Ws.margin
   have hbound : Q.trace.time k ≤ Q.deadline := by rw [htk]; linarith only [hmargin, hΔ]
   refine ⟨⟨B, k, he, hacc, hr, htk ▸ Ws.fresh, hbound⟩, ?_⟩
@@ -269,7 +273,8 @@ theorem healthy_confirmed_supply_of_initializer (Q : ConfirmedQuery S A V)
   have hcut : ∃ i, Regimes.CutAfter Q.trace i (Q.params.ts Ws.slot + 6 * Q.params.Δ) := by
     obtain ⟨v, hv⟩ := Q.reader
     exact ⟨_, (confirmed_end_cut S A V Q hT0 hTb
-      (confirmed_ready_of_healthy S A V Q hh hv.1 hrT hTb)).1⟩
+      (confirmed_ready_of_healthy S A V Q hh
+        ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1) hrT hTb)).1⟩
   refine healthy_confirmed_coverage_of_service S A V Q ⟨B, k, he, hacc, hr, htk ▸ Ws.fresh,
     hbound⟩ Dprep.reset hc hBp hPs hR hgu hmargin hlocks hcut ?_
   -- the later-read continuation from the preparation schedule

@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -83,7 +84,9 @@ private theorem gate_call {t : Time} {w : V} (hw : Q.run.2.point.Ready Q.duratio
   have hts : Q.params.ts (G.slot + 1 : Nat) = Q.params.ts G.slot + 4 * Q.params.Δ := by
     simp only [SA.SAParams.ts]; push_cast; ring
   have hle := Compose.ts_le_ts (sp := Q.params) hq
-  refine ⟨_, honest_ownKey (S := S) hw.1, G.cut, ⟨_, Compose.projAC_callAt.1 G.update.1⟩, ?_⟩
+  refine ⟨_, honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hw.1),
+    G.cut, ⟨_, Compose.projAC_callAt.1 G.update.1⟩, ?_⟩
   rw [hGt]
   linarith
 
@@ -116,7 +119,7 @@ theorem outage_reader_early (hS5 : OutageS5Step Q service hv hTh hsh ar)
   intro c ℓ hu c' hcc'
   have h := Compose.record_above_of_update_r (outageLockPremises_of_arming Q service hv hTh hsh ar)
     (premises_service Q service hv hTh hsh ar) (outage_locks Q service hv hTh hsh ar hS5)
-    (honest_ownKey (S := S) hw.1)
+    (honest_ownKey (S := S) ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hw.1))
     (by rw [outageLockPremises_of_arming_r]; exact hu) c' hcc'
   rw [outageLockPremises_of_arming_P] at h
   exact h

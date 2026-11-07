@@ -15,6 +15,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -133,8 +134,9 @@ theorem healthy_read_representative (D : HealthyRepairSchedule S A V Q)
       · rw [ht]
         exact (Q.valid.in_horizon e (List.mem_of_getElem? he)).2
   refine ⟨q, hq, ?_, hrp, ht0, hth, hfloor, ?_⟩
-  · rw [← simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 i hi.1,
-      ← simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 q hq, hs]
+  · have hh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1
+    rw [← simTrace_state S Q.run.2 Q.hn Q.constant Q.valid v hh i hi.1,
+      ← simTrace_state S Q.run.2 Q.hn Q.constant Q.valid v hh q hq, hs]
   · exact ready_transport S Q.run.2 Q.hn Q.valid ht0 hth
       (ready_at_stored_now S Q.run.2 Q.hn Q.valid hi.1 hc hr)
 
@@ -186,7 +188,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       Q.ready Q.heal := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
@@ -211,7 +213,7 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
   have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
     simp only [runProposer_eq, dite_eq_left hready.1]
     exact Finset.min'_mem _ _
-  have hR := hready.2 _ hmem
+  have hR := (hready.2 _ hmem).1
   rw [htime] at hR
   have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le) hsb hR
   rw [show Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
@@ -228,8 +230,8 @@ theorem healthy_bounded_repairing_opening (D : HealthyRepairSchedule S A V Q) :
     have : Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
       simpa only [Regimes.catchUp] using D.duration_bound
     linarith only [this]
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
   obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc (s := s)
     (Nat.zero_le D.oldLabel |>.trans_lt hold) hshort
   have hlabel : P.slot = s := by
@@ -291,13 +293,14 @@ theorem healthy_current_live_candidates (D : HealthyRepairSchedule S A V Q)
   have hΔ := Q.params.toParams.hΔ
   have htpos : 0 < (stateAt S Q.run.2 Q.hn v i).now :=
     hq0.trans_lt (healthy_lt_of_reserve S A V Q C.repaired)
-  have hv : v ∈ Q.run.2.honest := by
+  have hv : v ∉ Q.run.2.faultyAt 0 := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hs | ⟨j, _, e, he, hev, _, _⟩
     · rw [hs, stateAt_eq] at htpos
       change 0 < (0 : Time) at htpos
       exact (lt_irrefl (0 : Time) htpos).elim
-    · exact hev ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
+    · exact hev ▸ (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
+        (Q.valid.honest_only e (List.mem_of_getElem? he))
   have hy := honest_ownKey (S := S) hv
   have hc := healthy_repair_catch S A V Q
   obtain ⟨O, _⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
@@ -371,13 +374,14 @@ theorem healthy_current_record_viable (D : HealthyRepairSchedule S A V Q)
     ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
   have ht0 : 0 < (stateAt S Q.run.2 Q.hn v i).now :=
     hq0.trans_lt (healthy_lt_of_reserve S A V Q C.repaired)
-  have hv : v ∈ Q.run.2.honest := by
+  have hv : v ∉ Q.run.2.faultyAt 0 := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with hinit |
       ⟨j, _, e, he, hev, _, _⟩
     · rw [hinit, stateAt_eq] at ht0
       change (0 : Time) < 0 at ht0
       exact (lt_irrefl (0 : Time) ht0).elim
-    · exact hev ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
+    · exact hev ▸ (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
+        (Q.valid.honest_only e (List.mem_of_getElem? he))
   have hy := honest_ownKey (S := S) hv
   obtain ⟨O, _⟩ := healthy_bounded_repairing_opening S A V Q h0 hb hp W states D
   have hc := healthy_repair_catch S A V Q
@@ -481,7 +485,8 @@ theorem healthy_current_read_context (D : HealthyRepairSchedule S A V Q)
     (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn q)))
     ht0 (hdrain.trans hquery)
   have haw := Compose.ready_implies_joined Q.params _ _ _ _ _ D.reset.run
-    (Q.run.2.ownKey v) (honest_ownKey (S := S) hv.1) _
+    (Q.run.2.ownKey v) (honest_ownKey (S := S)
+      ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)) _
     ((Sys (goldilocks S) V).cDur (K S A) Q.run - 1) ht0
     (by linarith only [D.duration_bound, hΔ]) hready.2
   have hza : Healing.cutZ Q.params.toParams Q.gst < D.resetTime :=
@@ -508,7 +513,7 @@ omit h0 hb hp W states in
 /-- Normalized current live locks compare using their protected source provenance.
 The endpoint supplies honesty from its ready-reader hypothesis. -/
 theorem healthy_current_live_chain (D : HealthyRepairSchedule S A V Q)
-    {v : V} {i : Nat} (hv : v ∈ Q.run.2.honest) (C : HealthyReadContext S A V Q D v i) :
+    {v : V} {i : Nat} (hv : v ∉ Q.run.2.faultyAt 0) (C : HealthyReadContext S A V Q D v i) :
     ∀ X ∈ SA.liveLockBlocks Q.params (Q.trace.state (Q.run.2.ownKey v) C.cut).ac.locks
         (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut))
         (stateAt S Q.run.2 Q.hn v i).now,
@@ -574,12 +579,13 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
       Q.params.ts D.oldLabel ≤ D.query ∧ SA.gbar Q.gst + 4 * Q.params.Δ ≤ D.query ∧
       0 ≤ D.query by simpa only [max_le_iff] using D.lower)
   have ht0 : 0 < t := hquery0.trans_lt (healthy_lt_of_reserve S A V Q C.repaired)
-  have hv : v ∈ Q.run.2.honest := by
+  have hv : v ∉ Q.run.2.faultyAt 0 := by
     rcases stateAt_last_local_event S Q.run.2 Q.hn Q.valid v i with
       hinit | ⟨j, hji, e, he, hnode, hstate, htime⟩
     · have : t = 0 := by change (stateAt S Q.run.2 Q.hn v i).now = 0; rw [hinit, stateAt_eq]; rfl
       exact False.elim ((ne_of_gt ht0) this)
-    · exact hnode ▸ Q.valid.honest_only e (List.mem_of_getElem? he)
+    · exact hnode ▸ (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
+        (Q.valid.honest_only e (List.mem_of_getElem? he))
   have hy : y ∈ honestKeys S Q.run.2 := honest_ownKey hv
   have hc := healthy_repair_catch S A V Q
   have hU := D.reset.honest_coherent
@@ -700,7 +706,7 @@ theorem healthy_current_mature_or_anchor (D : HealthyRepairSchedule S A V Q)
       have hjoinNext : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤
           Q.params.ts (s + 1 : Nat) :=
         hjoin.trans ((SA.ts_le_iff Q.params).2 (by exact_mod_cast hslotq.trans (Nat.le_succ _)))
-      obtain ⟨j, ellJ, hu, hji⟩ := update_before_stored_clock S Q.run.2 Q.hn Q.valid
+      obtain ⟨j, ellJ, hu, hji⟩ := update_before_stored_clock S Q.run.2 Q.hn Q.constant Q.valid
         D.reset hv hjoinNext hnext C.time_bound
       have hjt : Q.trace.time j = Q.params.ts (s + 1 : Nat) + 6 * Q.params.Δ := hu.2.2.1
       have hjb := hjt ▸ hnext.trans C.time_bound
@@ -733,9 +739,10 @@ theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
         (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F := by
   obtain ⟨C⟩ := healthy_current_read_context S A V Q h0 hb hp W states D O hrepair hi hv
+  have hh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1
   have hc := healthy_repair_catch S A V Q
   have heq := read_eq_record_of_current_votes D.reset.run D.reset.noColl
-    (honest_ownKey (S := S) hv.1) C.time_nonneg C.readPoint C.awake C.joined
+    (honest_ownKey (S := S) hh) C.time_nonneg C.readPoint C.awake C.joined
     C.sync C.catchup C.latest C.reset_le (fun R hR => ⟨
       healthy_current_live_candidates S A V Q h0 hb hp W states D C hR, ?_⟩) C.fault
   · simpa only [Regimes.readAfter, C.state_eq] using heq
@@ -743,8 +750,8 @@ theorem healthy_current_record_read (D : HealthyRepairSchedule S A V Q)
   by_cases hfc : (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).Anc R
       (Node.frame (Q.trace.state (Q.run.2.ownKey v) C.cut)).fcRoot
   · exact Or.inl (hfc.trans ((SA.anc_getAnchor
-      (Compose.frameOK_state D.reset.run.toLocalRun (honest_ownKey (S := S) hv.1) C.cut)
-      (healthy_current_live_chain S A V Q D hv.1 C)).2 _ (Or.inr rfl)))
+      (Compose.frameOK_state D.reset.run.toLocalRun (honest_ownKey (S := S) hh) C.cut)
+      (healthy_current_live_chain S A V Q D hh C)).2 _ (Or.inr rfl)))
   rcases healthy_current_mature_or_anchor S A V Q h0 hb hp W states D O hrepair C hR with
     ha | ⟨x, hx, r, s, B, CV, hr, hRB, hrb, hs, hlate, hL⟩
   · exact Or.inl ha
@@ -775,7 +782,7 @@ theorem healthy_current_sources_compatible (D : HealthyRepairSchedule S A V Q)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)
     (hbi : ∀ q < cutMap S Q.run.2 Q.hn i, Q.trace.time q ≤ Q.run.2.horizon)
     (hbj : ∀ q < cutMap S Q.run.2 Q.hn j, Q.trace.time q ≤ Q.run.2.horizon)
-    (hu : u ∈ Q.run.2.honest) (hv : v ∈ Q.run.2.honest)
+    (hu : u ∉ Q.run.2.faultyAt 0) (hv : v ∉ Q.run.2.faultyAt 0)
     {R R' : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
     (hR : HealthyRecordCover S A V Q D.cleanLabel (Q.run.2.ownKey u)
       (cutMap S Q.run.2 Q.hn i) R)
@@ -841,7 +848,8 @@ theorem healthy_current_record_candidates (D : HealthyRepairSchedule S A V Q)
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
             (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) B := by
   have hcover := healthy_current_record_sources S A V Q h0 hb hp W states D O hrepair hi hv
-  have hy := honest_ownKey (S := S) hv.1
+  have hy := honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)
   intro q hiq hqj B s CV hB
   have hqb := healthy_cut_prefix_time S A V Q hj.1 q hqj
   have hcall : Q.trace.IsCall (Q.run.2.ownKey v) q := by
@@ -893,7 +901,8 @@ theorem healthy_current_record_next_floor (D : HealthyRepairSchedule S A V Q)
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
             (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
   have hcover := healthy_current_record_sources S A V Q h0 hb hp W states D O hrepair hi hv
-  have hy := honest_ownKey (S := S) hv.1
+  have hy := honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)
   intro q hiq hqj
   have hqb : ∀ p < q + 1, Q.trace.time p ≤ Q.run.2.horizon :=
     fun p hpq => healthy_cut_prefix_time S A V Q hj.1 p ((Nat.lt_succ_iff.mp hpq).trans_lt hqj)
@@ -917,7 +926,8 @@ theorem healthy_current_record_interval (D : HealthyRepairSchedule S A V Q)
       ((SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)))
         (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).ac.latestConfirmed).getD
           (Q.trace.state (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn i)).fg.F) := by
-  exact effectiveRecordInterval_of_candidates_before D.reset (honest_ownKey (S := S) hv.1)
+  exact effectiveRecordInterval_of_candidates_before D.reset (honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1))
     (healthy_current_record_candidates S A V Q h0 hb hp W states D O hrepair hi hj hij hv)
     (healthy_current_record_next_floor S A V Q h0 hb hp W states D O hrepair hi hj hij hv)
 
@@ -951,7 +961,9 @@ theorem healthy_cut_tips_comparable (Q : HealthyPreparationQuery S A V)
   dsimp only
   rw [hri, hrj]
   exact healthy_current_sources_compatible S A V Q h0 hb hp W states D hi hj
-    (healthy_cut_prefix_time S A V Q hi.1) (healthy_cut_prefix_time S A V Q hj.1) hu.1 hv.1
+    (healthy_cut_prefix_time S A V Q hi.1) (healthy_cut_prefix_time S A V Q hj.1)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hu.1)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)
     (healthy_current_record_sources S A V Q h0 hb hp W states D O hr hi hu)
     (healthy_current_record_sources S A V Q h0 hb hp W states D O hr hj hv)
 
@@ -981,7 +993,8 @@ theorem healthy_cut_tips_ancestor (Q : HealthyPreparationQuery S A V)
   rw [healthy_current_record_read S A V Q h0 hb hp W states D O hr hi hvi,
     healthy_current_record_read S A V Q h0 hb hp W states D O hr hj hvj]
   exact effective_record_of_interval D.reset.run D.reset.noColl
-    (honest_ownKey (S := S) hvi.1) (cutMap_mono S Q.run.2 Q.hn hij)
+    (honest_ownKey (S := S) ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hvi.1))
+    (cutMap_mono S Q.run.2 Q.hn hij)
     (healthy_current_record_interval S A V Q h0 hb hp W states D O hr hi hj hij hvi) .refl
 
 /-- Arbitrary-cut engine agreement reduces to the named open tip comparability
@@ -1002,11 +1015,13 @@ theorem healthy_cut_agreement (Q : HealthyPreparationQuery S A V)
       ((chainTrace Q.run.2).cutTime j)) :
     Consensus.Compatible ((chainTrace Q.run.2).read .confirmed u i)
       ((chainTrace Q.run.2).read .confirmed v j) := by
-  have hs := simTrace_simulates S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hs := simTrace_simulates S Q.run.2 Q.hn Q.constant Q.valid
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
+  have hhu := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hu.1
+  have hhv := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1
   rcases healthy_cut_tips_comparable S A V Q h0 hb hp W states u v i j hi hj hu hv with h | h
-  · exact Or.inl (confirmed_prefix_of_anc hs hnc hu.1 hv.1 hi.1 hj.1 h)
-  · exact Or.inr (confirmed_prefix_of_anc hs hnc hv.1 hu.1 hj.1 hi.1 h)
+  · exact Or.inl (confirmed_prefix_of_anc hs hnc hhu hhv hi.1 hj.1 h)
+  · exact Or.inr (confirmed_prefix_of_anc hs hnc hhv hhu hj.1 hi.1 h)
 
 /-- Arbitrary-cut monotonicity reduces to directed tip ancestry. Agreement
 alone is not used to infer temporal movement. -/
@@ -1026,8 +1041,10 @@ theorem healthy_cut_monotone (Q : HealthyPreparationQuery S A V)
       ((chainTrace Q.run.2).cutTime j)) :
     (chainTrace Q.run.2).read .confirmed v i <+:
       (chainTrace Q.run.2).read .confirmed v j := by
-  exact confirmed_prefix_of_anc (simTrace_simulates S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hvi.1 hvj.1 hi.1 hj.1
+  exact confirmed_prefix_of_anc (simTrace_simulates S Q.run.2 Q.hn Q.constant Q.valid)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hvi.1)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hvj.1) hi.1 hj.1
     (healthy_cut_tips_ancestor S A V Q h0 hb hp W states v i j hi hij hj hvi hvj)
 
 /-- Assembly with finite preparation; only the two named cut adapters remain

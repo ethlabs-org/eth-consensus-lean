@@ -16,6 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -107,13 +108,14 @@ theorem outage_reader_bridge (Q : OutageQuery S A V)
         (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t) := by
   classical
   obtain ⟨G⟩ := outage_reader_gate S A V Q ht hth hw
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
   have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
-  have hŵ := honest_ownKey (S := S) hw.1
+  have hŵ := honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hw.1)
   have hS := outage_receiver_service S A V Q _ hŵ
   have hspec := restoredLabel_spec Q
   have hts1 : ∀ s : Nat, Q.params.ts (s + 1 : Nat) = Q.params.ts s + 4 * Q.params.Δ := by

@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Re
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -158,8 +159,8 @@ private theorem origin_facts (Q : OutageQuery S A V)
       Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) ar.tip ar.origin ∧
       ar.origin ∈ Q.trace.HonestBlocks (honestKeys S Q.run.2) := by
   obtain ⟨⟨hT0, -, -, -⟩, -, heta, -, -⟩ := Q.outage
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
   have hlag := outage_node_lag S A V Q
   have hΔ := Q.params.toParams.hΔ
   have hTs : Q.T ≤ Q.start := by
@@ -168,15 +169,18 @@ private theorem origin_facts (Q : OutageQuery S A V)
   have hfb : ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
       Q.params.ts s + d ≤ Q.T →
         Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d) :=
-    sleepy_faultBound S Q.run.2 Q.hn Q.valid hTh fun t ht htb =>
-      half_ready_of_duration V Q.run.2.point (outage_duration_supply S A V Q)
-        ((show Q.run.2.point.EtaReadyAbove (1 / 2) _ Q.duration t from
-          heta t ht (htb.trans hTh)).readyAbove (by norm_num))
+    sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid
+      (W := (Sys (goldilocks S) V).aheadDur (K S A) Q.run) hTh
+      ((Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mpr fun t ht htb =>
+        half_ready_of_duration V Q.run.2.point (outage_duration_supply S A V Q)
+          (((Q.run.2.point.etaSleepyOn_iff Q.constant _ _ _ _ _ _).mp heta
+            t ht (htb.trans hTh)).readyAbove (by change (0 : ℚ) ≤ 1 / 2; norm_num)))
   have hinvT := Compose.sleepy_invariant_before hrun hnc hT0 (service.mono hTs) hfb
-  obtain ⟨hcut, -, -⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid (c := Q.duration)
+  obtain ⟨hcut, -, -⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid (c := Q.duration)
     ((by unfold Regimes.catchUp; positivity : (0 : Time) ≤ Regimes.catchUp Q.params).trans
       (outage_duration_supply S A V Q)) hT0 hTh hv
-  have hŵ := honest_ownKey (S := S) hv.1
+  have hŵ := honest_ownKey (S := S)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)
   have htipU : Regimes.readAfter Q.trace (Q.run.2.ownKey v)
       (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut Q.T)) Q.T ∈
         Q.trace.HonestBlocks (honestKeys S Q.run.2) :=
@@ -199,8 +203,8 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
     (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArming S A V Q v) :
     Compose.OutageLockPremises Q.trace (honestKeys S Q.run.2) (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2) :=
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
   have hnum := query_numbers Q
   have hr := restoredLabel_spec Q
   have hΔ := Q.params.toParams.hΔ
@@ -210,10 +214,12 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
   have hTs : Q.T ≤ Q.start := by
     have : (0 : Time) ≤ (4 * Q.params.k + 6) * Q.params.Δ := by positivity
     linarith
-  have hhalf : Q.run.2.point.SleepyOn (1 / 2) (Regimes.catchUp Q.params) 0 Q.run.2.horizon :=
-    fun t ht htb => half_ready_of_duration V Q.run.2.point (outage_duration_supply S A V Q)
-      ((show Q.run.2.point.EtaReadyAbove (1 / 2) _ Q.duration t from
-        Q.outage.2.2.1 t ht htb).readyAbove (by norm_num))
+  have hhalf : Q.run.2.point.SleepyOn (1 / 2) (Regimes.catchUp Q.params)
+      ((Sys (goldilocks S) V).aheadDur (K S A) Q.run) 0 Q.run.2.horizon :=
+    (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mpr fun t ht htb =>
+      half_ready_of_duration V Q.run.2.point (outage_duration_supply S A V Q)
+        (((Q.run.2.point.etaSleepyOn_iff Q.constant _ _ _ _ _ _).mp Q.outage.2.2.1
+          t ht htb).readyAbove (by change (0 : ℚ) ≤ 1 / 2; norm_num))
   have hcallh : ∀ {y : Fin (Fintype.card V)} {i : Nat}, Q.trace.IsCall y i →
       Q.trace.time i ≤ Q.run.2.horizon := fun {_ _} h => by
     obtain ⟨l, hl⟩ := h
@@ -260,23 +266,29 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
         · exact absurd (ho ▸ htg) hg
         · exact Or.inr (hCw.mono hTs)
     hpre := Compose.sleepy_invariant_before hrun hnc (hT0.trans hTs) service
-      (sleepy_faultBound S Q.run.2 Q.hn Q.valid hsh fun t ht htb => hhalf t ht (htb.trans hsh))
+      (sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid hsh
+        (W := (Sys (goldilocks S) V).aheadDur (K S A) Q.run)
+        ((Q.run.2.point.sleepyOn_iff Q.constant _ _ _ 0 _).mpr fun t ht htb =>
+          (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mp hhalf t ht (htb.trans hsh)))
     hpreSvc := service
     hFB := fun s ⟨_, _, _, hc, hle⟩ =>
-      sleepy_faultBound S Q.run.2 Q.hn Q.valid le_rfl hhalf s _ (by simp)
+      sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid le_rfl hhalf s _ (by simp)
         (hle.trans (hcallh hc))
     hA₀ := fun x hx => (mem_honestKeys_iff S Q.run.2 x).mpr
-      (Finset.mem_filter.1 (OutageQuery.mem_holders.1 hx)).1
+      ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
+        (Finset.mem_sdiff.mp (Finset.mem_filter.1 (OutageQuery.mem_holders.1 hx)).1).2)
     hW := ⟨fun x hx => (mem_honestKeys_iff S Q.run.2 x).mpr
-        (Finset.mem_filter.1 (Finset.mem_sdiff.1 hx).1).1,
+        (by
+          obtain ⟨_, t, _, _, hh, _⟩ := Finset.mem_filter.1 (Finset.mem_sdiff.1 hx).1
+          exact (Q.run.2.point.honestAt_iff_zero Q.constant _ t).mp hh),
       Set.disjoint_left.2 fun _ h₁ h₂ => (Finset.mem_sdiff.1 h₂).2 (OutageQuery.mem_holders.1 h₁)⟩
     hcohort := by
       have heq : (honestKeys S Q.run.2)ᶜ ∪ Q.lateKeys = Q.run.2.key ⁻¹'
-          (↑(Q.run.2.point.faulty ∪ Q.run.2.point.lateWakers
+          (↑(Q.run.2.point.faultyAt 0 ∪ Q.run.2.point.lateWakers
             ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run)
             ((Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run)) : Set V) := by
         ext x
-        simp [OutageQuery.lateKeys, mem_honestKeys_iff, EnvPoint.faulty]
+        simp [OutageQuery.lateKeys, mem_honestKeys_iff]
         exact Iff.rfl
       have hA : Q.holders = Q.run.2.key ⁻¹' (↑(Q.run.2.point.awakeAt
           ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run)) : Set V) := by
@@ -286,25 +298,44 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
         Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
           (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset,
         Set.ncard_coe_finset]
-      exact Q.outage.2.2.2.2
+      have hc := Q.outage.2.2.2.2
+      change (Q.run.2.point.retain _).CohortOn _ _ at hc
+      rw [Q.run.2.point.retain_eq Q.constant] at hc
+      unfold EnvPoint.CohortOn at hc
+      rw [Q.constant _] at hc
+      exact hc
     hawake := fun x hx t hat htz haw => by
       rw [simTrace_awake_iff, awakeAt_iff] at haw
       by_cases hxa : Q.run.2.key x ∈
           Q.run.2.point.awakeAt ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run)
       · exact Or.inl (OutageQuery.mem_holders.2 hxa)
       · exact Or.inr (Finset.mem_sdiff.2 ⟨Finset.mem_filter.2
-          ⟨(mem_honestKeys_iff S Q.run.2 x).mp hx, t, hat, htz, haw.1⟩, hxa⟩)
+          ⟨Finset.mem_univ _, t, hat, htz,
+            (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr
+              ((mem_honestKeys_iff S Q.run.2 x).mp hx), haw.1⟩, hxa⟩)
     hA₀awake := fun x hx t hat htz => by
       obtain ⟨hxh, hxa⟩ := Finset.mem_filter.1 (OutageQuery.mem_holders.1 hx)
+      have hxh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
+        (Finset.mem_sdiff.mp hxh).2
+      have hns := Q.outage.2.2.2.1
+      change (Q.run.2.point.retain _).NoSleepOn _ _ at hns
+      rw [Q.run.2.point.retain_eq Q.constant] at hns
       rw [simTrace_awake_iff, awakeAt_iff]
-      exact ⟨Q.outage.2.2.2.1 _ hxh _ le_rfl (hat.trans htz) hxa t hat htz,
+      exact ⟨hns _ ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hxh)
+        _ le_rfl (hat.trans htz) hxa t hat htz,
         hwin.1.trans hat, htz.trans (min_le_right _ _)⟩
     hA₀join := fun x hx k hk hkz => by
       obtain ⟨hxh, hxa⟩ := Finset.mem_filter.1 (OutageQuery.mem_holders.1 hx)
+      have hxh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
+        (Finset.mem_sdiff.mp hxh).2
+      have hns := Q.outage.2.2.2.1
+      change (Q.run.2.point.retain _).NoSleepOn _ _ at hns
+      rw [Q.run.2.point.retain_eq Q.constant] at hns
       refine Compose.restart_le_of_awake hrun ((mem_honestKeys_iff S Q.run.2 x).mpr hxh)
         hwin.1 (fun u hau huz => ?_) hk hkz
       rw [simTrace_awake_iff, awakeAt_iff]
-      exact ⟨Q.outage.2.2.2.1 _ hxh _ le_rfl (hau.trans huz) hxa u hau huz,
+      exact ⟨hns _ ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hxh)
+        _ le_rfl (hau.trans huz) hxa u hau huz,
         hwin.1.trans hau, huz.trans (min_le_right _ _)⟩
     ha := by
       have h := hwin.2.1
