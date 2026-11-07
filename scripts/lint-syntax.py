@@ -54,19 +54,28 @@ def main():
             touched = {p.removesuffix(".lean").replace("/", ".")
                        for p in changed if p.endswith(".lean")}
             modules = [m for m in modules if m in touched]
+    # Query all setups in one Lake invocation: saved .setup.json files are refreshed only
+    # by compilation, not by cache hits/restores, and can contain obsolete imports/options.
+    # Lake emits one JSON result per target, in argument order. Do not lint on query failure.
+    setups = []
+    if modules:
+        query = subprocess.run(["lake", "query", "--json", *[f"+{m}:setup" for m in modules]],
+                               capture_output=True, text=True)
+        if query.stderr:
+            print(query.stderr, end="", flush=True)
+        if query.returncode:
+            print("lint-syntax: FAIL (Lake setup query failed)", flush=True)
+            return 1
+        setups = [json.loads(line) for line in query.stdout.splitlines()]
+        if len(setups) != len(modules) or any(s["name"] != m for s, m in zip(setups, modules)):
+            raise ValueError("Lake setup query did not return the requested modules")
+    setups = dict(zip(modules, setups))
+
     def lint(module):
         with tempfile.TemporaryDirectory(prefix="lint-syntax-") as scratch:
             scratch = Path(scratch)
             source = Path(module.replace(".", "/") + ".lean")
-            setup_path = Path(".lake/build/ir") / source.with_suffix(".setup.json")
-            setup = json.loads(setup_path.read_text())
-            # Downloaded build setups name the producer's absolute workspace. Lake artifacts
-            # have the same package/build layout here; keep their suffix, not that workspace.
-            for artifacts in setup["importArts"].values():
-                for group in artifacts:
-                    for i, path in enumerate(group):
-                        if "/.lake/" in path:
-                            group[i] = str(Path.cwd() / ".lake" / path.split("/.lake/", 1)[1])
+            setup = setups[module]
             for name in DEFERRED:
                 setup["options"]["weak.linter." + name] = True
             lint_setup = scratch / "module.setup.json"

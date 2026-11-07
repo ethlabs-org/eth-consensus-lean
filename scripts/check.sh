@@ -74,6 +74,9 @@
 # It refuses to start without RUN_DIR (a scratch directory for its work files) or CI.
 
 set -euo pipefail
+# Lake otherwise restores only .ilean files on artifact hits; builds and setup queries
+# need the matching local .olean artifacts as well, including after cache fetches.
+export LAKE_RESTORE_ARTIFACTS=true
 # Under pipefail, never end a pipeline in `grep -q` (or any reader that stops early): it exits on the first match, the
 # producer gets SIGPIPE (141) and the pipeline counts as failed, at random on a busy machine. Let grep read all of
 # its input instead: `producer | grep ... >/dev/null`.

@@ -36,7 +36,7 @@ def landing_repo(root, repos=REPOS, trusted=False):
         run("git", "config", key, value, cwd=repo)
     scripts = repo / "scripts"
     scripts.mkdir()
-    (scripts / "check.sh").write_text("#!/bin/sh\necho 'check.sh: PASSED (fixture)'\n")
+    (scripts / "check.sh").write_text("#!/bin/sh\n[ \"$LAKE_RESTORE_ARTIFACTS\" = true ] || exit 1\necho 'check.sh: PASSED (fixture)'\n")
     (scripts / "review-boundary.sh").write_text("#!/bin/sh\nexit 0\n")
     (scripts / "repos.toml").write_text(repos)
     (scripts / "check-commit-emails.py").write_text(EMAILS)
@@ -56,7 +56,7 @@ def landing_repo(root, repos=REPOS, trusted=False):
     (bin_dir / "gh").write_text(GH)
     (bin_dir / "gh").chmod(0o755)
     env = {**os.environ, "RUN_DIR": str(root), "GH_LOG": str(root / "gh.log"),
-           "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+           "PATH": f"{bin_dir}:{os.environ['PATH']}", "LAKE_RESTORE_ARTIFACTS": "false"}
     return remote, repo, env
 
 

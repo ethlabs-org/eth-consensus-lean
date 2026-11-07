@@ -24,6 +24,9 @@
 # unchecked combination is rejected by git. Rounds: PUSH_MAIN_TRIES (default 6).
 # Usage: scripts/push-main.sh   (RUN_DIR is set if missing).
 set -euo pipefail
+# Restore .olean artifacts too: Lake's default artifact hits restore only .ilean,
+# leaving subsequent builds and lint setup queries without their compiled imports.
+export LAKE_RESTORE_ARTIFACTS=true
 cd "$(git rev-parse --show-toplevel)"
 started=$SECONDS
 timing() { echo "push-main: timing $1=$((SECONDS - $2))s"; }

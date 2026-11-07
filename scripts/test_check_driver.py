@@ -31,6 +31,7 @@ class DriverTests(unittest.TestCase):
             stubs += '''
 python3() { echo "EXEC $*"; }
 lake() { echo "EXEC lake $*"; }
+step_build() { [[ "$LAKE_RESTORE_ARTIFACTS" == true ]] || return 1; echo "EXEC step_build"; }
 step_boundaries() {
   printf 'Lib\tLib.Z\tleaf\tlayer\t-\t-\nLib\tLib.A\tleaf\tlayer\t-\t-\nLib\tLib.Parent\tparent\tlayer\t-\t-\nLib\tLib.C\tleaf\tlayer\t-\t-\nLib\tLib.B\tleaf\tlayer\t-\t-\nLib\tLib.D\tleaf\tlayer\t-\t-\n' >"$INV"
 }
@@ -102,6 +103,7 @@ python3() {
             env = {k: v for k, v in os.environ.items() if k != "CI"}
             env["RUN_DIR"] = tmp
             env["REPLAY_JOBS"] = "2"
+            env["LAKE_RESTORE_ARTIFACTS"] = "false"
             result_path = root / "result.json"
             inventory = root / "inventory"
             args = [str(inventory) if a == "INVENTORY" else a for a in args]
