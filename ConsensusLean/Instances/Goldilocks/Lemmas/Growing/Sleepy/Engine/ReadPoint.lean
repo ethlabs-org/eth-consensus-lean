@@ -138,18 +138,26 @@ noncomputable def lastOwn (v : V) (i : Nat) : Nat :=
   Nat.findGreatest (fun q => q = 0 ∨ ∃ e, rho.events[q - 1]? = some e ∧ e.node = v) i
 
 open Classical in
+/-- `lastOwn v i` is the greatest engine cut `q ≤ i` that is `0` or follows an event of `v`. -/
+theorem lastOwn_eq (v : V) (i : Nat) :
+    lastOwn S rho v i =
+      Nat.findGreatest (fun q => q = 0 ∨ ∃ e, rho.events[q - 1]? = some e ∧ e.node = v) i := by
+  rfl
+
+open Classical in
 theorem lastOwn_spec (v : V) (i : Nat) :
     lastOwn S rho v i ≤ i ∧ (lastOwn S rho v i = 0 ∨
       ∃ e, rho.events[lastOwn S rho v i - 1]? = some e ∧ e.node = v) := by
-  unfold lastOwn
+  rw [lastOwn_eq]
   exact ⟨Nat.findGreatest_le i, Nat.findGreatest_spec
     (P := fun q => q = 0 ∨ ∃ e, rho.events[q - 1]? = some e ∧ e.node = v) (m := 0)
     (Nat.zero_le i) (Or.inl rfl)⟩
 
 open Classical in
 theorem lastOwn_mono (v : V) {i i' : Nat} (h : i ≤ i') :
-    lastOwn S rho v i ≤ lastOwn S rho v i' :=
-  Nat.findGreatest_mono_right _ h
+    lastOwn S rho v i ≤ lastOwn S rho v i' := by
+  rw [lastOwn_eq, lastOwn_eq]
+  exact Nat.findGreatest_mono_right _ h
 
 open Classical in
 /-- No own event between `lastOwn v i` and `i` changes `v`'s engine state. -/
