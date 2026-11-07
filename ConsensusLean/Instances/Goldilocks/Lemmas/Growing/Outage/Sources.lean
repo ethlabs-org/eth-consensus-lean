@@ -16,7 +16,11 @@ public section
   honest at `t_n`, are sourced (`HonestRowsSourcedAt`) by blocks compatible with `B` when the
   sources at the earlier cuts of nodes honest then are. The attester signed at an earlier cut
   while honest, from its own source (Lemma G at the reading cut), so each attester is read on the
-  prefix through `t_n`. -/
+  prefix through `t_n`.
+* `J_compatible_at`, `caches_compatible_at` (OB-F): at a cut `n` of a node honest then, with
+  `2 f_{t_n} < n` and the rows sourced by blocks compatible with a block `B` held while honest
+  (not necessarily in the prefix through `t_n`), `Σ.J` is compatible with `B` (its quorum has a
+  member honest at `t_n`, whose source is above `Σ.J`), and `Σ.F ⪯ Σ.J`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -99,6 +103,59 @@ theorem rows_sourced_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
   have hT := createAtt_T (hrun.cutLaw a.val (j + 1) _ hcall hav1).1
   rw [← hEr, hET] at hT
   exact ⟨src, hsrc a.val j (by omega) hav' ℓ src hto, a.val, j + 1, hav, hj1, hst', hT.symm⟩
+
+/-- **`Σ.J` is compatible with a block compatible with every source satisfying `G`**, at a cut
+`i` of a node honest then, with `2 f_{t_i} < n`. The justification's honest source is found in the
+prefix through `t_i`; `B` is only held while honest. -/
+theorem J_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n) {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hsrc : HonestRowsSourcedAt tr H G y i) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B) (hB : B ∈ tr.HonestBlocksAt H) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J B := by
+  have hU := honestBlocksAt_coherent hrun hnc
+  have hd := hrun.time_nonneg i
+  have hr := hrun.upTo hd
+  have hsub := upTo_subset hrun hd
+  have hst : (tr.upTo (tr.time i)).state y i = tr.state y i :=
+    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
+  by_cases h0 : (tr.state y i).fg.hj = 0
+  · have hJ := justified_genesis hr (by rw [hst]; exact h0) hy
+    rw [hst] at hJ
+    rw [hJ]
+    exact Or.inl (honestAt_genesis_anc hrun hB).2
+  obtain ⟨-, -, D, ⟨hD, -⟩, hDs⟩ :=
+    justified_honest_source_before hr (hnc.upTo _) hf hy (hsrc.upTo hrun)
+      (by rw [hst]; omega)
+  rw [hst] at hDs
+  have hJ := (Store.cache_invariants _ _ _ _ (fg_reachable hr.toLocalRun hy i)).2.1
+  rw [hst] at hJ
+  obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hr (hnc.upTo _) hDs
+    ⟨y, hy, i, by rw [hst]; exact hJ⟩ rfl
+  have hJDU : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J D :=
+    (hJD.mono (fg_tree_subset_honest hx k)).mono hsub
+  rcases hGB D hD with h | h
+  · exact Or.inl (hJDU.trans h)
+  · exact Anc.total hU hJDU h
+
+/-- **OB-F**: at a cut `n` of a node honest then, with `2 f_{t_n} < n` and the rows sourced by
+blocks compatible with a block `B` held while honest, `Σ.F` and `Σ.J` are compatible with `B`. -/
+theorem caches_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} (hy : y ∈ H (tr.time n))
+    (hf : 2 * (H (tr.time n))ᶜ.ncard < sp.n) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBU : B ∈ tr.HonestBlocksAt H)
+    (hsrc : HonestRowsSourcedAt tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F B ∧
+      Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.J B := by
+  have hU := honestBlocksAt_coherent hrun hnc
+  have hd := hrun.time_nonneg n
+  have hst : (tr.upTo (tr.time n)).state y n = tr.state y n :=
+    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
+  have hJ := J_compatible_at hrun hnc hy hf hsrc (fun _ h => h) hBU
+  have hR := fg_reachable (hrun.upTo hd).toLocalRun hy n
+  rw [hst] at hR
+  obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
+  exact ⟨compatible_of_head_anc hU (hFJ.mono fun _ hX => mem_honestBlocksAt hrun hy hX) hJ, hJ⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

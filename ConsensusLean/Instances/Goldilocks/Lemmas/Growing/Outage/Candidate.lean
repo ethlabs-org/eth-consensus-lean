@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Candidate
 
 public section
@@ -35,6 +36,23 @@ theorem honestRowsSourcedAt_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} 
           ((tr.state x k).fg.σ D.root).Th = a.T :=
   Iff.rfl
 
+/-- **The sourced rows in the prefix**: at a cut `i` of a node honest then, the rows sourced by
+`G` are, in the prefix through `t_i`, rows sourced by the `G`-blocks held in the prefix. -/
+theorem HonestRowsSourcedAt.upTo
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
+    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedAt tr H G y i) :
+    HonestRowsSourced (tr.upTo (tr.time i)) (H (tr.time i))
+      (fun D => G D ∧ D ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) y i := by
+  have hst : ∀ x k, k ≤ i → (tr.upTo (tr.time i)).state x k = tr.state x k :=
+    fun x k hk => RunTrace.upTo_state_of_le hrun.time_mono (hrun.time_mono hk)
+  refine Compose.honestRowsSourced_iff.2 fun X hX a ha hav => ?_
+  rw [hst y i le_rfl] at hX
+  obtain ⟨D, hD, x, k, hx, hki, hDt, hDT⟩ := hsrc X hX a ha hav
+  have hDU : D ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
+    ⟨x, hx, k, by rw [hst x k hki]; exact hDt⟩
+  exact ⟨D, ⟨hD, hDU⟩, Compose.isHonestSource_iff.2 ⟨x, hx, k,
+    by rw [hst x k hki]; exact hDt, by rw [hst x k hki]; exact hDT⟩⟩
+
 /-- **A held block compatible with every source stays a candidate**, at a cut `i` of a node
 honest then, with `2 f_{t_i} < n`: a block `B` of the frame's tree compatible with every
 `G`-source is at or below `fc_root` or in the full viable tree. -/
@@ -53,15 +71,7 @@ theorem held_candidate_of_rows_at
     fun x k hk => RunTrace.upTo_state_of_le hm (hm hk)
   have hBU : B ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
     ⟨y, hy, i, by rw [hst y i le_rfl]; exact hBt.1⟩
-  have h := held_candidate_of_rows (hrun.upTo hd) (hnc.upTo _) hf hy i
-    (G := fun D => G D ∧ D ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
-    (Compose.honestRowsSourced_iff.2 fun X hX a ha hav => by
-      rw [hst y i le_rfl] at hX
-      obtain ⟨D, hD, x, k, hx, hki, hDt, hDT⟩ := hsrc X hX a ha hav
-      have hDU : D ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
-        ⟨x, hx, k, by rw [hst x k hki]; exact hDt⟩
-      exact ⟨D, ⟨hD, hDU⟩, Compose.isHonestSource_iff.2 ⟨x, hx, k,
-        by rw [hst x k hki]; exact hDt, by rw [hst x k hki]; exact hDT⟩⟩)
+  have h := held_candidate_of_rows (hrun.upTo hd) (hnc.upTo _) hf hy i (hsrc.upTo hrun)
     (fun D ⟨hD, hDU⟩ => compatible_upTo hrun hnc hd hDU hBU (hGB D hD))
     (by rw [hst y i le_rfl]; exact hBt)
   rwa [hst y i le_rfl] at h
