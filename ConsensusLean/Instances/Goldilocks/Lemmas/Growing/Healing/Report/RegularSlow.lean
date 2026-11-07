@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSlowWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSlowBoundary
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Lemmas.Tactic.Linarith
 

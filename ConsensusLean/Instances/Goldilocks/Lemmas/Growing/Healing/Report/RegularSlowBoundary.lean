@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSlow
 
 public section
 
@@ -29,7 +29,8 @@ theorem FrameWindow.regular_slow_next_votes_at {s₀ s floor : Nat}
     (hsl : SA.SlowLockAt tr.projAC x c s D) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
-  sorry
+  exact KernelProof.regular_slow_next_votes_at hframe hrun hnc hsvc hawake hf hcatch hnr
+    hwarm hpos hs₀ hm hmb hx hsl
 
 end Consensus.Goldilocks.Healing.Growing
 
