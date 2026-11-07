@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Growing
 
 @[expose] public section

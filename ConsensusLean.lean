@@ -429,14 +429,14 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local

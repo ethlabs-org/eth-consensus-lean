@@ -392,6 +392,7 @@ name = "Instances.Goldilocks.Milestones.Statements.Compose"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service",
+            "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes"]
 expose = true

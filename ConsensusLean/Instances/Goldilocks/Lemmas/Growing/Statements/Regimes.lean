@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 
 public section
@@ -7,7 +7,7 @@ public section
 /-! # The growing-fault regime and service rows imply the static rows
 
 At `H := fun _ => H₀` every statement of `Statements/Regimes/Growing` and
-`Statements/Compose/Service/Growing` is at least its static counterpart: the run, the blocks held
+`Statements/Compose/Growing/Service` is at least its static counterpart: the run, the blocks held
 while honest and `SleepyRunAt` (at every look-ahead) are the static ones
 (`Lemmas/Growing/Run/Const`), and every honesty test at a time is `· ∈ H₀`. So the growing-fault
 statements weaken no static statement. -/

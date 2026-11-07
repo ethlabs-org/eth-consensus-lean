@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 
@@ -9,7 +9,7 @@ public section
 
 At `H := fun _ => H₀` the run, the component contracts, the blocks held while honest, `Sync`, the
 counts and the namers are the static ones (`Lemmas/Growing/Run/Const`), so each statement of
-`Statements/Compose/{Run,Persist}/Growing` implies its static counterpart. -/
+`Statements/Compose/Growing/{Run,Persist}` implies its static counterpart. -/
 
 namespace Consensus.Goldilocks.Compose
 
