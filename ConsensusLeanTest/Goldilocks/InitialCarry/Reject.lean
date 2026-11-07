@@ -44,19 +44,6 @@ def noHeadD (r : RowD) : Bool :=
 theorem c_no_heads : (rowsD false).all (fun r => r.node != vc || noHeadD r) = true := by
   decide +kernel
 
-/-- **An acceptance of the AC projection is an `ac_on_block` row.** -/
-theorem acceptAt_row {ctl : Bool} {y : Fin 5} {k : Nat} {B : X.Blk}
-    (h : (tr ctl).projAC.AcceptAt y k B) :
-    ∃ r, (rowsD ctl)[k]? = some r ∧ r.node = y ∧
-      ∃ b M ems, r.cut = .ac (.block b) M ems ∧ B = X.blk b := by
-  obtain ⟨ℓ, hc, hcall⟩ := h
-  obtain ⟨r, hr, hn, call, M, ems, hcut, rfl⟩ := acRow hc
-  refine ⟨r, hr, hn, ?_⟩
-  cases call with
-  | block b =>
-    exact ⟨b, M, ems, hcut, by simpa [CallD.interp] using hcall.symm⟩
-  | _ => simp [CallD.interp] at hcall
-
 /-- `c` never accepts `Da` or `Db` in the rejection run. -/
 theorem c_not_accepted {h : Nat} (hh : h = 4 ∨ h = 5) (T : Time) :
     ¬ AcceptedBefore (tr false).projAC vc (X.blk h) T := by
@@ -65,7 +52,7 @@ theorem c_not_accepted {h : Nat} (hh : h = 4 ∨ h = 5) (T : Time) :
   · rw [hroot] at hg
     change h = 2 at hg
     omega
-  · obtain ⟨r, hr, hn, b, M, ems, hcut, hb⟩ := acceptAt_row hk
+  · obtain ⟨r, hr, hn, b, M, ems, hcut, hb⟩ := DataRun.acceptAt_row (runD false) hk
     have hrb : (X.blk b).root = h := by rw [← hb]; exact hroot
     have := List.all_eq_true.1 c_no_heads r (List.mem_of_getElem? hr)
     simp only [hn, bne_self_eq_false, Bool.false_or, noHeadD, hcut, hrb, Bool.and_eq_true,
@@ -89,7 +76,7 @@ theorem rejection_c_slot7 : ∃ k e, SA.VoteAt (tr false).projAC vc k e ∧ e.ms
     by change em.vote.head = 3; rw [hm]; rfl, fun v hvS => ?_,
     c_not_accepted (Or.inl rfl) 27, c_not_accepted (Or.inr rfl) 27⟩
   rw [he]
-  exact heldD_spec ((voteD_slot7 hchk hs).2.1 v hvS)
+  exact DataRun.heldD_spec ((voteChecks_slot7 hchk hs).2.1 v hvS)
 
 /-- **(ii) The initial `Carry(6, CV, B)` fails in the rejection run**, at `c`'s slot-7 vote: the
 only honest block with root `Da` is `Da` itself (`Anc.refl`), which `c` never accepts. -/
@@ -98,8 +85,8 @@ theorem rejection_not_carry : ¬ CarryHolds (tr false) H 6 CV := by
   obtain ⟨k, e, hv, hs, -, -, hDa, -⟩ := rejection_c_slot7
   obtain ⟨Hv, hU, hroot, hacc⟩ :=
     (h vc (show vc ≠ vf by decide) k e hv hs).heads (vt va 6 4) (show vt va 6 4 ∈ cvL by decide)
-  obtain ⟨r, hr, rfl⟩ := honest_sub hU
-  have hr4 : r = 4 := by rw [← blk_root (allR_closed.valid r hr)]; exact hroot
+  obtain ⟨r, hr, rfl⟩ := DataRun.honest_sub (runD false) frag_rows hU
+  have hr4 : r = 4 := by rw [← blk_root (DataRun.mem_allR.1 hr)]; exact hroot
   subst hr4
   exact hDa (hacc _ .refl)
 

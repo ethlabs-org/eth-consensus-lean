@@ -30,7 +30,8 @@ theorem accR_c : accR true vc 4 24 = true ∧ accR true vc 5 24 = true := by dec
 /-- **`c` accepts `Da` and `Db` at `23` in the control.** -/
 theorem control_c_accepts : AcceptedBefore (tr true).projAC vc (X.blk 4) 24 ∧
     AcceptedBefore (tr true).projAC vc (X.blk 5) 24 :=
-  ⟨accR_spec (by decide) accR_c.1, accR_spec (by decide) accR_c.2⟩
+  ⟨DataRun.accR_spec (runD true) (by decide) accR_c.1,
+    DataRun.accR_spec (runD true) (by decide) accR_c.2⟩
 
 theorem cvL_heads : ∀ v ∈ cvL, v.head ∈ allR := by decide
 
@@ -38,9 +39,9 @@ theorem cvL_heads : ∀ v ∈ cvL, v.head ∈ allR := by decide
 theorem control_carry : CarryHolds (tr true) H 6 CV := by
   intro y hy i e hv hs
   obtain ⟨r, hr, hn, call, M, ems, hc, em, hem, rfl, hchk, -⟩ := voteAt_row hv
-  obtain ⟨hj, hheld, hacc, -⟩ := voteD_slot7 hchk hs
-  refine carryAt_mk hy hv rfl CV (joined_row hr hj) fun v hvS => ?_
-  exact ⟨cvL_heads v hvS, hn ▸ hacc rfl v hvS, heldD_spec (hheld v hvS)⟩
+  obtain ⟨hj, hheld, hacc, -⟩ := voteChecks_slot7 hchk hs
+  refine carryAt_mk hy hv rfl CV (DataRun.joined_row (runD true) hr hj) fun v hvS => ?_
+  exact ⟨cvL_heads v hvS, hn ▸ hacc rfl v hvS, DataRun.heldD_spec (hheld v hvS)⟩
 
 /-- **The full premises of `RecentSourceNextVote` in the control.** -/
 theorem control_persistPremises :
