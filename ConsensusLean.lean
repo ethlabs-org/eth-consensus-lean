@@ -232,6 +232,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.LockLocal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticBaseVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticFirstProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ProposalLocks
