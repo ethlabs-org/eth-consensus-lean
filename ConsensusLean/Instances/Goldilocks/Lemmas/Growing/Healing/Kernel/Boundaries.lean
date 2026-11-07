@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
 
 public section
 
@@ -59,7 +60,7 @@ theorem rows_delivered_service_at {g ΔF b v : Time}
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin sp.n} {k : Nat}
     (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n} (hsig : tr.SignAt y k att)
     (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
-  sorry
+  exact KernelProof.rows_delivered_service_at hsvc hnr hrun hv hp hX hvx hkb hy hsig hk
 
 /-- Step 4: the reset bound from finite service, a bounded-gap proposer stream and drain.
 This asserts existence and an upper bound; the strict lower bound is a separate interface. -/

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainCrossing
 
 public section
 
@@ -39,7 +40,7 @@ theorem round_cross_at
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
-  sorry
+  exact KernelProof.round_cross_at hrun hnc hsvc hnr hPH hPD hpar hp hX hf hv hvx hkb hage hrow
 
 end Consensus.Goldilocks.Healing.Growing
 
