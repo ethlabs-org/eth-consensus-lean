@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 
 public section
 
@@ -21,9 +20,8 @@ under their agreed names, so that the transport proofs compose against the final
   `held_voteForward_source_or_process_at`,
   `tick_proposal_acceptance_queued_at`) and the acceptance-forwarding contract
   `ForwardAtAcceptanceAt`, home `Lemmas/Growing/Simulation/Forward`;
-* the healing targets of the network suppliers, `Healing.Growing.Pending.CatchRun` and
-  `Healing.Growing.Pending.ResetService` (in a namespace of their own, as copies of the agreed
-  definitions of `Milestones/Statements/Healing/Growing/Run` and
+* the healing target `Healing.Growing.Pending.ResetService` of the reset-service supplier (in a
+  namespace of its own, a copy of the agreed definition of
   `Lemmas/Growing/Healing/Retention/Defs`).
 
 Each theorem here is an open `sorry`, and each definition a copy of the agreed one; this module is
@@ -178,27 +176,6 @@ theorem forwardAtAcceptanceAt_iff : ForwardAtAcceptanceAt S rho hn tr cutMap pub
 end Consensus.Goldilocks.Simulation
 
 namespace Consensus.Goldilocks.Healing.Growing.Pending
-open SA (gbar)
-
-section Catch
-variable {P : Params} {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
-
-/-- **`Catch(κ)` over a run** under growing faults: a block accepted at a time `< ḡ` by a node
-honest at its acceptance is accepted before `ḡ + κ` by every validator `y` honest at `ḡ + κ` whose
-`Σ.F` at `ḡ + κ` it extends. -/
-def CatchRun (g κ : Time) : Prop :=
-  ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < gbar g →
-    ∀ y j, y ∈ H (gbar g + κ) → tr.FirstCutFrom j (gbar g + κ) →
-      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → ∃ k < j, tr.AcceptAt y k B
-
-/-- `CatchRun` without exposing its definition. -/
-theorem catchRun_iff (g κ : Time) : CatchRun tr H g κ ↔
-    ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < gbar g →
-      ∀ y j, y ∈ H (gbar g + κ) → tr.FirstCutFrom j (gbar g + κ) →
-        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → ∃ k < j, tr.AcceptAt y k B :=
-  Iff.rfl
-
-end Catch
 
 section Reset
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}

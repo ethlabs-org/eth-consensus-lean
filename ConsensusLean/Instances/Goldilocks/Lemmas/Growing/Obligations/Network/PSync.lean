@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -444,9 +445,8 @@ theorem catchRun_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVali
     {g : Time} (hnet : rho.log.PSync rho.point g)
     (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → v ∉ rho.faultyAt u →
       E.awake v u = true) :
-    Healing.Growing.Pending.CatchRun (simTraceAt S rho hn) (honestKeysAt S rho) g
+    Healing.Growing.CatchRun (simTraceAt S rho hn) (honestKeysAt S rho) g
       (2 * (S.params (Model.pubOf E) hn).Δ) := by
-  rw [Healing.Growing.Pending.catchRun_iff]
   intro x i B hx hi hbefore y j hy hfirst hF
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   have hstart := hfirst.1
