@@ -441,7 +441,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main

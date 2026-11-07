@@ -334,6 +334,80 @@ allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
 [[layer]]
 name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Growing"]']]
 
+# A milestone parent inside another parent's directory (the growing-fault milestones,
+# ConsensusLean.Instances.Goldilocks.Proofs.Growing.<M>): each <M> is a milestone of the inner parent.
+[NestedParent]
+files."Fx/Proofs/G/A/Main.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem ga : S := l\n"
+edit."Fx.lean" = [['public import Fx.Proofs.P.Aux', "public import Fx.Proofs.G.A.Main\npublic import Fx.Proofs.P.Aux"]]
+edit."boundaries.toml" = [['milestone_parents = ["Fx.Proofs"]', 'milestone_parents = ["Fx.Proofs", "Fx.Proofs.G"]'], ['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Proofs.G.A"
+prefixes = ["Fx.Proofs.G.A"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Proofs.G.A"]']]
+
+[NestedParentUndeclared]
+expect = "FAIL[config] layer Proofs.G.A: a milestone layer has the one prefix Fx.Proofs.<M>"
+files."Fx/Proofs/G/A/Main.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem ga : S := l\n"
+edit."Fx.lean" = [['public import Fx.Proofs.P.Aux', "public import Fx.Proofs.G.A.Main\npublic import Fx.Proofs.P.Aux"]]
+edit."boundaries.toml" = [['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Proofs.G.A"
+prefixes = ["Fx.Proofs.G.A"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Proofs.G.A"]']]
+
+[NestedParentStray]
+expect = "FAIL[milestone] Fx.Proofs.G.X: a milestone is a directory Fx.Proofs.G.<M>"
+files."Fx/Proofs/G/A/Main.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem ga : S := l\n"
+files."Fx/Proofs/G/X.lean" = "module\n\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [['public import Fx.Proofs.P.Aux', "public import Fx.Proofs.G.A.Main\npublic import Fx.Proofs.G.X\npublic import Fx.Proofs.P.Aux"]]
+edit."boundaries.toml" = [['milestone_parents = ["Fx.Proofs"]', 'milestone_parents = ["Fx.Proofs", "Fx.Proofs.G"]'], ['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Proofs.G.A"
+prefixes = ["Fx.Proofs.G.A"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Proofs.G.A"]']]
+
+[NestedParentEntry]
+expect = "FAIL[entry] Fx.Main imports Fx.Proofs.G.A.Aux: the milestone layer Proofs.G.A is entered only through Fx.Proofs.G.A.Main"
+files."Fx/Proofs/G/A/Main.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem ga : S := l\n"
+files."Fx/Proofs/G/A/Aux.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem gaux : S := l\n"
+files."Fx/Main.lean" = "module\n\npublic import Fx.Proofs.Q.Main\npublic import Fx.Proofs.G.A.Aux\n\ntheorem main : S := q\n"
+edit."Fx.lean" = [['public import Fx.Proofs.P.Aux', "public import Fx.Proofs.G.A.Aux\npublic import Fx.Proofs.G.A.Main\npublic import Fx.Proofs.P.Aux"]]
+edit."boundaries.toml" = [['milestone_parents = ["Fx.Proofs"]', 'milestone_parents = ["Fx.Proofs", "Fx.Proofs.G"]'], ['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Proofs.G.A"
+prefixes = ["Fx.Proofs.G.A"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Proofs.G.A"]'], ['allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q"]', 'allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Proofs.P", "Proofs.Q", "Proofs.G.A"]'], ['"Proofs.Q", "Main"]', '"Proofs.Q", "Main", "Proofs.G.A"]']]
+
+[NestedParentLayer]
+expect = "FAIL[config] layer Proofs.G: prefix Fx.Proofs.G covers the milestone parent Fx.Proofs.G"
+files."Fx/Proofs/G/A/Main.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem ga : S := l\n"
+edit."Fx.lean" = [['public import Fx.Proofs.P.Aux', "public import Fx.Proofs.G.A.Main\npublic import Fx.Proofs.P.Aux"]]
+edit."boundaries.toml" = [['milestone_parents = ["Fx.Proofs"]', 'milestone_parents = ["Fx.Proofs", "Fx.Proofs.G"]'], ['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Proofs.G"
+prefixes = ["Fx.Proofs.G"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Proofs.G"]']]
+
 [CrossMilestone]
 expect = "FAIL[import] Fx.Proofs.P.Main (layer Proofs.P) imported by Fx.Proofs.Q.Main (layer Proofs.Q)"
 edit."boundaries.toml" = [['''[[exception]]
