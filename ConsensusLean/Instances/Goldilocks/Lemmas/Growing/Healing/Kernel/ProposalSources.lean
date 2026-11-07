@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Healing.Proposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ProposalReceipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
@@ -45,7 +47,7 @@ theorem ResetPremisesUpTo.proposal_holds_old_at
     {x : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrt : tr.time r < sp.ts u) :
     O ∈ ell.frame.tree ∨ Anc (tr.HonestBlocksAt H) O ell.frame.F := by
-  sorry
+  exact ProposalImpl.proposal_holds_old_at hp hpH hci hcall hd hti hib ho hrt
 
 /-- A held high origin is viable or below the frame root at the honest reader. -/
 theorem ResetPremisesUpTo.held_high_origin_viable_at
@@ -70,7 +72,7 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old_at
     (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
     SA.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
-  sorry
+  exact ProposalImpl.proposal_stored_locks_compatible_old_at hp hc hpH hR hci hcall hti hib ho hqb
 
 end Consensus.Goldilocks.Healing.Growing
 
