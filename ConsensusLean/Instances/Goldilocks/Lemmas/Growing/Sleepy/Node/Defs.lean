@@ -88,12 +88,15 @@ def VotesBelowUpTo (s : Nat) (b : Time) : Prop :=
 def VotersAt (s : Nat) (d : Time) : Set (Fin sp.n) :=
   {x | x ∈ H d ∧ ∃ j e, HVoteAt tr H x j e ∧ e.msg.slot = s}
 
-/-- **The two count shapes through `b`**: `2 f_d < n` at every `d ∈ [0, b]`, and the slot count
-`f_d < h_{t_s + Δ}` at every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`. -/
+/-- **The count shapes through `b`**: `2 f_d < n` at every `d ∈ [0, b]`, the slot count
+`f_d < h_{t_s + Δ}` at every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, and the late count
+`f_d < h_{t_s + 2Δ}` at every `d ∈ [t_s + 2Δ, min b (t_s + 7Δ)]`. -/
 structure SleepyBounds (b : Time) : Prop where
   two : ∀ d, 0 ≤ d → d ≤ b → 2 * (H d)ᶜ.ncard < sp.n
   slot : ∀ (s : Nat) (d : Time), sp.ts s + sp.Δ ≤ d → d ≤ b → d ≤ sp.ts s + 6 * sp.Δ →
     tr.FaultBoundAt H (sp.ts s + sp.Δ) d
+  late : ∀ (s : Nat) (d : Time), sp.ts s + 2 * sp.Δ ≤ d → d ≤ b → d ≤ sp.ts s + 7 * sp.Δ →
+    tr.FaultBoundAt H (sp.ts s + 2 * sp.Δ) d
 
 /-- **The Sleepy record invariant up to `b`** (S1–S3). A node's state before cut `i` is read at a
 time `t ∈ [0, b]` at or after every earlier cut, with the node honest at `t` (the convention of
@@ -224,7 +227,8 @@ theorem OriginWithin.of_optimistic {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.
 /-- The bounds through `b` give the bounds through every `b' ≤ b`. -/
 theorem SleepyBounds.mono {b b' : Time} (h : SleepyBounds tr H b) (hb : b' ≤ b) :
     SleepyBounds tr H b' :=
-  ⟨fun d h0 hd => h.two d h0 (hd.trans hb), fun s d h1 hd h6 => h.slot s d h1 (hd.trans hb) h6⟩
+  ⟨fun d h0 hd => h.two d h0 (hd.trans hb), fun s d h1 hd h6 => h.slot s d h1 (hd.trans hb) h6,
+    fun s d h1 hd h7 => h.late s d h1 (hd.trans hb) h7⟩
 
 /-- The service through `b` gives the service through every `b' ≤ b`. -/
 theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H ΔF b)
