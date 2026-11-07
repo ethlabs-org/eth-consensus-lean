@@ -771,6 +771,31 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
 about = "Goldilocks growing-fault FG trace and service milestone"
 
 [[layer]]
+name = "Instances.Goldilocks.Proofs.Growing.AC"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
+         "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
+         "Instances.Goldilocks.Milestones.Spec.Common",
+         "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
+         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
+         "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
+         "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
+         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
+         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
+         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
+         "Instances.Goldilocks.Proofs.Obligations"]
+about = "Goldilocks growing-fault AC milestone"
+
+[[layer]]
 name = "Instances.Goldilocks.Main"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Main"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
@@ -861,7 +886,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations",
          "Instances.Goldilocks.Main", "Instances.Goldilocks.Proofs.Growing.Obligations",
-         "Instances.Goldilocks.Proofs.Growing.FGStore", "Examples", "Solution"]
+         "Instances.Goldilocks.Proofs.Growing.FGStore",
+         "Instances.Goldilocks.Proofs.Growing.AC", "Examples", "Solution"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"
@@ -910,6 +936,7 @@ milestone_statements_modules = ["ConsensusLean.Instances.Goldilocks.Statements.O
 # solution's (no sorry, only the three standard axioms); ConsensusLeanTest.MilestoneAxioms pins their theorems.
 proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main",
+                            "ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main",
