@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Contracts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArming
 import ConsensusLean.Lemmas.Model.SysLog
@@ -10,10 +11,9 @@ public section
 
 /-! # Outage engine part under growing faults: the query and its network inputs
 
-`OutageQueryAt` packages a valid collision-free engine run and its outage premise, with no
-constant-fault field: the trace is `simTraceAt` and the honest set is `honestKeysAt` (the keys
-uncompromised at each time). `OutageQuery.toAt` forgets the constant-fault field of a static
-query.
+`OutageQueryAt` (`Obligations/Growing/Queries/Defs`) packages a valid collision-free engine run
+and its outage premise, with no constant-fault field: the trace is `simTraceAt` and the honest set
+is `honestKeysAt` (the keys uncompromised at each time).
 
 * `outage_pre_service_at`: the finite Sleepy service through the outage start, saturating at
   the engine horizon;
@@ -28,35 +28,7 @@ query.
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
-variable (S : Setup) (A : ContractAssumptions S) (V : Type)
-  [Fintype V] [DecidableEq V]
-
-/-- **An outage query under growing faults**: a valid collision-free run with its outage
-premise. -/
-structure OutageQueryAt where
-  run : (Sys (goldilocks S) V).Run
-  hn : 1 ≤ Fintype.card V
-  T : Time
-  start : Time
-  stop : Time
-  valid : (Sys (goldilocks S) V).Valid run
-  noCollision : ¬ run.2.HashCollision
-  outage : (Sys (goldilocks S) V).Outage (K S A) T start stop run
-
-variable {S A V}
-
-/-- A static outage query, with its constant-fault field forgotten. -/
-def _root_.Consensus.Goldilocks.Obligations.OutageQuery.toAt (Q : OutageQuery S A V) :
-    OutageQueryAt S A V :=
-  ⟨Q.run, Q.hn, Q.T, Q.start, Q.stop, Q.valid, Q.noCollision, Q.outage⟩
-
-namespace OutageQueryAt
-abbrev params (Q : OutageQueryAt S A V) := S.params (Model.pubOf Q.run.1) Q.hn
-noncomputable abbrev trace (Q : OutageQueryAt S A V) := simTraceAt S Q.run.2 Q.hn
-noncomputable abbrev keys (Q : OutageQueryAt S A V) := honestKeysAt S Q.run.2
-noncomputable abbrev duration (Q : OutageQueryAt S A V) :=
-  (Sys (goldilocks S) V).cDur (K S A) Q.run
-end OutageQueryAt
+variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- A call of the trace is at or before the engine horizon. -/
 theorem OutageQueryAt.call_le_horizon (Q : OutageQueryAt S A V) {y : Fin (Fintype.card V)}
