@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 
 public section
 
@@ -40,29 +41,6 @@ theorem proposal_report_follow_at
         tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
         ∀ d pay, (SA.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
           some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
-  sorry
-
-/-- An actual report either supplies a row signed while honest or is strictly higher. -/
-theorem row_or_high_of_report_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {g T : Time}
-    (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hna : ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
-      tr.time k < T → att.h ≤ HZ tr H g)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {R P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : SA.ToFGAt tr.projAC y i ell R) (hiT : tr.time i < T)
-    (hPR : Anc (tr.HonestBlocksAt H) P R)
-    (hkind : ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
-      ((tr.state y i).fg.σ P.root).h = HZ tr H g ∨
-      (tr.state y i).fg.hj < ((tr.state y i).fg.σ P.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ P.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R)) :
-    P ∈ (tr.state y i).fg.tree ∧ R ∈ (tr.state y i).fg.tree ∧
-      ((∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ tr.time i ∧
-        att.h = ((tr.state y i).fg.σ P.root).h ∧
-        att.T = ((tr.state y i).fg.σ P.root).Th) ∨
-        ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ R.root).h) := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
