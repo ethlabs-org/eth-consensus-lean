@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowInduction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowOptimisticBaseBoundary
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
@@ -43,7 +45,28 @@ theorem optimistic_later_heads_of_early_witness_at
         ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
         (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) X d.head) := by
-  sorry
+  intro r hrlo hrN
+  have ht : sp.ts (s + 1 : Nat) ≤ sp.ts N :=
+    (SA.ts_le_iff sp).2 (by exact_mod_cast hrlo.trans hrN)
+  have hsub {lo hi : Time} (hl : sp.ts s ≤ lo) (hh' : hi ≤ sp.ts N + sp.Δ) :
+      FrameWindow tr H lo hi floor kindJ J :=
+    ⟨fun y i hy hlo hhi => hframe.floor_eq y i hy (hl.trans hlo) (hhi.trans hh'),
+     fun y i hy hlo hhi => hframe.kind_iff y i hy (hl.trans hlo) (hhi.trans hh'),
+     fun y i hy hlo hhi => hframe.root_eq y i hy (hl.trans hlo) (hhi.trans hh')⟩
+  have hbase := optimistic_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm
+    (by linarith only [hmb, ht]) (hsub le_rfl (by linarith only [ht])) hx hopt hXD hw hat hcw
+    hQw hh hJ hXQ
+  obtain ⟨hvote, hproposal⟩ := later_heads_of_early_witness_at hrun hnc hsvc hawake hf hcatch
+    hnr hm hmb hframe hw hat hcw hQw hh hJ hXQ hbase r hrlo hrN
+  refine ⟨hvote, ?_⟩
+  by_cases heq : r = s + 1
+  · subst r
+    intro y i ell hy hc hcall hti d pay hd
+    exact optimistic_next_proposal_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm
+      (by linarith only [hmb, ht, sp.toParams.hΔ])
+      (hsub le_rfl (by linarith only [ht, sp.toParams.hΔ]))
+      hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd
+  · exact hproposal (by omega)
 
 /-- The optimistic writer itself can supply the early viable witness. -/
 theorem optimistic_later_heads_of_witness_at
