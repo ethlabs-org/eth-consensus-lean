@@ -379,7 +379,7 @@ its slot-`(s+1)` vote, the slot-`s` votes each sent or admitted at a time in `[t
 a node honest then, with heads above the voter's `Σ.F` that are genesis or accepted while honest
 before `t_s + 2Δ`. Each delivery comes from the reset service, a pre-GST acceptance from the
 catch-up; the voter's side is read on the prefix through its vote. -/
-private theorem carry_of_senders (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+theorem carry_of_senders (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : cutZ sp.toParams g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
