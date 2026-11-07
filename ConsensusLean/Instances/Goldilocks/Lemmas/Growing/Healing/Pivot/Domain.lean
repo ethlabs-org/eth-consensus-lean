@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RootSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.HighFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -124,6 +125,26 @@ theorem held_target_proposal_domain_before_of_sources_at
   have hrootC := hrootB'.trans hBC'
   rw [hfr] at hrootC ⊢
   exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
+
+/-- The agreed frozen domain, with independently honest source holder and proposer. -/
+theorem held_target_proposal_domain_before_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
+    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
+    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
+      Compatible (tr.HonestBlocksAt H) B S)
+    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
+      Compatible (tr.HonestBlocksAt H) B O) :
+    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
+  exact held_target_proposal_domain_before_of_sources_at hp hx hpH hBx hci hcall hd hti hib
+    hheld hseed hcompare (fun _ _ _ _ ho hrb hfloor =>
+      high_floor_source_at_proposal_at hp ho hpH hci hcall hti hrb hib hfloor)
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
