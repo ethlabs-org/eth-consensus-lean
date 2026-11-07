@@ -286,7 +286,7 @@ theorem run_prog_zero (A : ContractAssumptions S) (C : ContractCoefficients) :
 
 /-- **The run fails the hold-`1` recurrence**: the window after `0` holds only slot `1`, whose
 proposer is compromised at `t_1 + ΔAC = 15`. So the run does not refute hold `1`. -/
-theorem run_not_prog_one (A : ContractAssumptions S) (C : ContractCoefficients) :
+theorem run_not_prog_hold_one (A : ContractAssumptions S) (C : ContractCoefficients) :
     ¬ (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
       (goldilocksContract A C) .available 1 0 41 (run S) := by
   intro h
