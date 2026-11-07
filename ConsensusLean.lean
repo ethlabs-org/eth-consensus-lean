@@ -150,6 +150,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Joined
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
