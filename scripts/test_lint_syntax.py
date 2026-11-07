@@ -154,7 +154,11 @@ for target in sys.argv[3:]:
         consumer.write_text("import Old\ndef probe := Run.mk 1\n")
         subprocess.run(["lake", "build", "+Probe"], cwd=tmp, check=True)
         saved = tmp / ".lake/build/ir/Probe.setup.json"
-        stale = saved.read_text()
+        # Cache hits need not write setup.json. Construct the old setup explicitly,
+        # before changing imports, so this control works with cold and warm caches.
+        stale = subprocess.check_output(["lake", "query", "--json", "+Probe:setup"], cwd=tmp, text=True)
+        saved.parent.mkdir(parents=True, exist_ok=True)
+        saved.write_text(stale)
         consumer.write_text("import New\ndef probe := Run.mk true 2\n")
         subprocess.run(["lake", "build", "+New"], cwd=tmp, check=True)
         old = subprocess.run(["lean", "Probe.lean", "--setup", str(saved)], cwd=tmp,
