@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Source
 
 public section
 
@@ -83,6 +84,125 @@ theorem sign_before_delivery
     simp [Node.Event.phase] at h'
   · have := group_start hg₁ hg' (le_of_lt hgt) (by omega)
     omega
+
+variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}
+  {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+
+/-- A caller honest at its source call either voted in slot `s + 1` or restarted after `t_s`.
+The tick and local voting history are retained only at that call's horizon. -/
+theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {y : Fin sp.n} {i : Nat}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hto : SA.ToFGAt tr.projAC y i ℓ C) (ht : sp.ts (s + 1 : Nat) + sp.Δ < tr.time i) :
+    (∃ j < i, ∃ ℓ' e, SA.CastAt tr.projAC y j ℓ' e ∧ e.msg.slot = s + 1) ∨
+      (∃ k < i, tr.projAC.RestartAt y k ∧ sp.ts s < tr.time k) := by
+  by_cases hres : ∃ k < i, tr.projAC.RestartAt y k ∧ sp.ts s < tr.time k
+  · exact Or.inr hres
+  left
+  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl).localRun
+  have hri := hr.upTo (hr.time_nonneg i)
+  have hlocal := hrun.toLocalRun.upTo (hrun.time_nonneg i)
+  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+  set u := sp.ts (s + 1 : Nat) + sp.Δ with hu
+  have hus : sp.ts s < u := by
+    have := (SA.ts_lt_iff sp).mpr (show ((s : Nat) : Int) < ((s + 1 : Nat) : Int) by omega)
+    linarith
+  have hu0 : 0 ≤ u := by simp only [hu, SA.SAParams.ts]; positivity
+  have hrestart : ∀ k, (tr.upTo (tr.time i)).RestartAt y k → tr.projAC.RestartAt y k := by
+    intro k hk
+    exact Compose.projAC_restartAt.mpr ((RunTrace.upTo_restartAt _).mp hk).2
+  have hcall := (RunTrace.upTo_isCall _).mpr
+    (show tr.time i ≤ tr.time i ∧ tr.IsCall y i from ⟨le_rfl, _, Compose.projAC_callAt.mp hto.1⟩)
+  have hawake : (tr.upTo (tr.time i)).awake y u := by
+    by_contra hna
+    obtain ⟨k, hk, hku, hki⟩ := hlocal.restart_at_wake y hy u (tr.time i) hu0 ht hna
+      (hlocal.awake_of_call y hy i hcall)
+    change u < tr.time k at hku
+    change tr.time k ≤ tr.time i at hki
+    rcases lt_trichotomy k i with hlt | rfl | hgt
+    · exact hres ⟨k, hlt, hrestart k hk, by linarith⟩
+    · obtain ⟨ℓk, hck, hkr⟩ := (RunTrace.upTo_restartAt _).mp hk |>.2
+      cases Option.some.inj ((Compose.projAC_callAt.mp hto.1).2.symm.trans hck.2)
+      rw [hto.2.1] at hkr
+      cases hkr
+    · obtain ⟨u', -, hu'k, -, hbefore⟩ := hlocal.sleep_of_restart y hy k hk
+      have := hbefore i hgt hcall
+      change tr.time i < u' at this
+      change u' < tr.time k at hu'k
+      linarith
+  have hpub : sp.toParams.IsPublic u :=
+    ⟨4 * (s + 1 : Nat) + 1, by simp only [hu, SA.SAParams.ts]; ring⟩
+  obtain ⟨j₀, xt, hj₀⟩ := hlocal.tick_of_awake y hy u hu0 hpub hawake
+  obtain ⟨ℓt, pc, uc, hlt, hcs, -, -⟩ :=
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y
+      ((tr.upTo (tr.time i)).state y j₀) u xt
+  have hlen : 0 <
+      (Node.exec proposer dg y ((tr.upTo (tr.time i)).state y j₀) u (.tick xt)).2.length := by
+    change 0 < (Node.onTick proposer dg y ((tr.upTo (tr.time i)).state y j₀) u xt).2.length
+    rw [hcs]; simp
+  obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hj₀.2.1 0 hlen
+  have hct : (tr.upTo (tr.time i)).CallAt y j₀ (.ac ℓt) := by
+    refine ⟨hn₀, ?_⟩
+    simp only [Nat.add_zero] at hl₀
+    rw [hl₀]
+    change some (Node.onTick proposer dg y ((tr.upTo (tr.time i)).state y j₀) u xt).2[0] = _
+    simp [hcs]
+  simp only [Nat.add_zero] at ht₀
+  change tr.time j₀ = u at ht₀
+  have hj₀i : j₀ < i := by
+    by_contra h
+    have := hrun.time_mono (not_lt.mp h)
+    linarith
+  have hpt := Compose.projAC_callAt.mpr hct
+  rw [RunTrace.upTo_projAC] at hpt
+  have hslot : sp.slot u = s + 1 := SA.slot_of_mem sp (s + 1) (by linarith)
+    (by have := (SA.ts_lt_iff sp).mpr
+          (show ((s + 1 : Nat) : Int) < ((s + 1 + 1 : Nat) : Int) by omega)
+        have h4 : sp.ts ((s + 1 + 1 : Nat) : Int) = sp.ts ((s + 1 : Nat) : Int) + 4 * sp.Δ := by
+          simp only [SA.SAParams.ts]; push_cast; ring
+        linarith)
+  set A := (tr.projAC.upTo (tr.time i)).state y j₀ with hA
+  by_cases hvs : A.votedSlot = ((s + 1 : Nat) : Int)
+  · obtain ⟨j, hj, e, ⟨ℓ', hc', he'⟩, hes⟩ := SA.cast_of_votedSlot hri hy j₀ (s + 1) hvs
+    exact ⟨j, hj.trans hj₀i, ℓ', e, (SA.upTo_castAt.mp ⟨hc', he'⟩).2, hes⟩
+  have hjr : (tr.upTo (tr.time i)).JoinedAt y u := by
+    intro k hk hku
+    change tr.time k ≤ u at hku
+    have hki : k < i := by
+      by_contra h
+      have := hrun.time_mono (not_lt.mp h)
+      linarith
+    have hks : tr.time k ≤ sp.ts s := by
+      by_contra h
+      exact hres ⟨k, hki, hrestart k hk, not_le.mp h⟩
+    refine ⟨by change 0 < sp.slot u; omega, ?_⟩
+    change tr.time k ≤ sp.toParams.slotTime (sp.slot u - 1)
+    rw [hslot, Nat.add_sub_cancel, sp.slotTime_eq]
+    exact hks
+  have hnr : ¬ (tr.upTo (tr.time i)).RestartAt y j₀ := by
+    rintro ⟨ℓk, hck, hkr⟩
+    cases Option.some.inj (hct.2.symm.trans hck.2)
+    rw [hlt] at hkr
+    cases hkr
+  have hjoined : SA.joined sp A u := by
+    rw [hA, ← RunTrace.upTo_projAC, Compose.projAC_state hlocal hy]
+    exact ((Compose.joined_projection sp ro dg (H (tr.time i)) (tr.upTo (tr.time i))
+      proposer (hrun.upTo (hrun.time_nonneg i)) y hy u).2.1 j₀ ⟨_, hct⟩ hnr ht₀).mp hjr
+  have hexec := hri.exec j₀ ℓt hpt.2 (hpt.1 ▸ hy)
+  change (SA.goldilocksSA sp _ ro).step ((tr.projAC.upTo (tr.time i)).node j₀)
+    ((tr.projAC.upTo (tr.time i)).state ((tr.projAC.upTo (tr.time i)).node j₀) j₀)
+    ℓt.frame (tr.time j₀) ℓt.call = _ at hexec
+  rw [hpt.1, hlt] at hexec
+  have hne := Compose.acOnTick_votes (ro' := ro) y A ℓt.frame hjoined
+    (by rw [hslot]; exact hvs) (by rw [hslot])
+  change (SA.goldilocksSA sp _ ro).step y A ℓt.frame (tr.time j₀) .tick = _ at hexec
+  rw [ht₀] at hexec
+  rw [hexec] at hne
+  obtain ⟨e, he⟩ := List.exists_mem_of_ne_nil _ hne
+  have hsl := (SA.castAt_spec hri hy ⟨hpt, he⟩).2.1
+  exact ⟨j₀, hj₀i, ℓt, e, (SA.upTo_castAt.mp ⟨hpt, he⟩).2,
+    by rw [hsl]; change sp.slot (tr.time j₀) = _; rw [ht₀, hslot]⟩
 
 end Consensus.Goldilocks.Compose.Growing
 
