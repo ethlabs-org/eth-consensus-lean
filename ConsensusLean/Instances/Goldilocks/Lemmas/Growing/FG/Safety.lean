@@ -65,6 +65,72 @@ theorem FGLocalRun.finalized_safety (hr : FGLocalRun acp₀ H U tr)
   obtain ⟨l, hl, hlb⟩ := signs b hb hab.1.symm
   exact hr.non_framing hka hlb (hr.antitone (max_le hk hl) hv) hab
 
+/-- The finalized target obtained by replaying an honest reader's held carrier agrees with
+another honest reader's cache, charging certificate intersection at the later observation. -/
+theorem FGLocalRun.replay_finalized_safety (hr : FGLocalRun acp₀ H U tr)
+    {x y : Fin P.n} {i j : Nat} (hx : x ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
+    (hf : (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * P.fg.q - P.n)
+    {B X : NodeBlock P ACP} (hB : B ∈ (tr.store x i).tree) (hX : X ∈ (tr.store x i).tree)
+    (hXr : X.root = ((tr.store x i).σ B.root).F) : Compatible U X (tr.store y j).F := by
+  have hR := hr.store_reachable hx
+  have hsub := hr.tree_subset x i (tr.time i) (hr.time_nonneg i)
+    (fun k hk => hr.time_mono hk.le) hx
+  obtain ⟨c, hc, hl, hlast, hσ⟩ := Store.chain_state_of_chain P ACP acp₀ _ hR B hB
+  obtain ⟨_, hcoh, hg, _⟩ := Store.accepted_tree P ACP acp₀ _ hR
+  obtain ⟨_, ⟨X', hX', hX'r, hXB⟩, _⟩ := Store.entry_state_of_source P ACP acp₀ _ hR B hB
+  have he : X' = X := hr.coherent.1 (hsub hX') (hsub hX) (hX'r.trans hXr.symm)
+  rw [he] at hXB
+  have hanc := Store.anc_of_linked c _ hg hc hl B (by
+    rcases hlast with ⟨rfl, rfl⟩ | h
+    · rfl
+    · simp [List.getLast?_cons, h])
+  have hcompat : ∀ Z ∈ U, Z.root ∈ P.fg.roots (c.map Block.fgView) → Compatible U Z X := by
+    intro Z hZU hZ
+    obtain ⟨W, hW, hWZ⟩ : ∃ W ∈ P.genesisBlock acp₀ :: c, W.root = Z.root := by
+      simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hZ
+    have hWt : W ∈ (tr.store x i).tree := by
+      rcases List.mem_cons.mp hW with rfl | h
+      exacts [hg, hc _ h]
+    rw [← hr.coherent.1 (hsub hWt) hZU hWZ]
+    exact (Goldilocks.Anc.total hcoh (hanc W hW) hXB).imp (Anc.mono hsub) (Anc.mono hsub)
+  have hsig : ∀ a ∈ P.fg.chainAtts (c.map Block.fgView), a.val ∈ H (tr.time i) →
+      ∃ k < i, tr.SignAt a.val k a := by
+    intro a ha hav
+    obtain ⟨_, hW, haW⟩ := List.mem_flatMap.mp ha
+    obtain ⟨W, hWc, rfl⟩ := List.mem_map.mp hW
+    rcases hr.tree_accepted hx (hc W hWc) with rfl | ⟨k, hk, hacc⟩
+    · cases haW
+    · have hki := hr.time_mono hk.le
+      obtain ⟨l, hl, hs⟩ := hr.unforgeable x k a (hr.antitone hki hx)
+        ⟨_, hacc, haW⟩ (hr.antitone hki hav)
+      exact ⟨l, hl.trans hk, hs⟩
+  by_contra hne
+  obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, ha₂, _⟩ := hr.finalized_chain hy
+  obtain ⟨S, hS, hSv⟩ := FG.accountable_safety P.fg _ _ _ _ hσ h₂
+    (fun h => hne (hc₂ _ (hsub hX) (hXr ▸ h)))
+    (fun h => hne (hcompat _ hU₂ (hF₂ ▸ h)).symm)
+  obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H (max (tr.time i) (tr.time j)) := by
+    by_contra! hS'
+    have hcard := Set.ncard_le_ncard
+      (s := (S : Set (Fin P.fg.n))) (t := (H (max (tr.time i) (tr.time j)))ᶜ) hS'
+    rw [Set.ncard_coe_finset] at hcard
+    have : ((H (max (tr.time i) (tr.time j)))ᶜ : Set (Fin P.fg.n)).ncard =
+        ((H (max (tr.time i) (tr.time j)))ᶜ : Set (Fin P.n)).ncard := rfl
+    have : P.fg.n = P.n := rfl
+    omega
+  obtain ⟨a, ha, b, hb, rfl, hab⟩ := hSv v hvS
+  have signs : ∀ z ∈ P.fg.chainAtts (c.map Block.fgView) ++ P.fg.chainAtts c₂, z.val = a.val →
+      ∃ k, tr.time k ≤ max (tr.time i) (tr.time j) ∧ tr.SignAt a.val k z := by
+    intro z hz hzv
+    rcases List.mem_append.mp hz with hz | hz
+    · obtain ⟨k, hk, hs⟩ := hsig z hz (hzv ▸ hr.antitone (le_max_left _ _) hv)
+      exact ⟨k, (hr.time_mono hk.le).trans (le_max_left _ _), hzv ▸ hs⟩
+    · obtain ⟨k, hk, hs⟩ := ha₂ z hz (hzv ▸ hr.antitone (le_max_right _ _) hv)
+      exact ⟨k, (hr.time_mono hk.le).trans (le_max_right _ _), hzv ▸ hs⟩
+  obtain ⟨k, hk, hka⟩ := signs a ha rfl
+  obtain ⟨l, hl, hlb⟩ := signs b hb hab.1.symm
+  exact hr.non_framing hka hlb (hr.antitone (max_le hk hl) hv) hab
+
 end Consensus.Goldilocks.Growing
 
 end

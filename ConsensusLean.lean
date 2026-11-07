@@ -150,6 +150,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Agreement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.QuorumFreeCounterexample
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
