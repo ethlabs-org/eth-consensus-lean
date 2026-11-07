@@ -24,6 +24,8 @@ the trace cut after its last own event before `i` (`cutMap (lastOwn v i)`), at i
 * `lastOwn v i`: the engine cut after `v`'s last own event before `i` (`0` if none), monotone in
   `i`, at which `v`'s engine state is its state at `i` (`stateAt_lastOwn`);
 * `cutMap_boundary`: the trace cut at an engine cut is a boundary of every node;
+* `lastOwn_readPoint`, `engine_read_eq_at`: for a node honest at `cutTime i`, that cut is a read
+  point at its stored clock, and every engine output at `i` is read from the trace state there;
 * `engine_read_point`: with catch-up `c + 1` at `cutTime i`, the trace cut `cutMap (lastOwn v i)`
   is a read point at the stored clock `t ∈ [0, horizon]`, the node is ready at `t` with catch-up
   `c` (honest at `t ≤ cutTime i`), and its engine confirmed read is the chain of `readAfter` there;
@@ -168,9 +170,44 @@ theorem stateAt_lastOwn (v : V) (i : Nat) :
     | none => rw [stateAt_succ_none S rho hn v he, ih (by omega)]
     | some e => rw [state_of_other S rho hn v m e he (hnot.2 e he), ih (by omega)]
 
+/-- The trace cut after `v`'s last own event before engine cut `i` is a read point at `v`'s
+stored clock at `i`, which is the time of that engine cut. -/
+theorem lastOwn_readPoint (hv : rho.ExecutionValid) (v : V) (i : Nat) :
+    Regimes.ReadPoint (simTraceAt S rho hn) (cutMap S rho hn (lastOwn S rho v i))
+        (stateAt S rho hn v i).now ∧
+      rho.cutTime (lastOwn S rho v i) = (stateAt S rho hn v i).now := by
+  have hs := stateAt_lastOwn S rho hn v i
+  obtain ⟨-, hq⟩ := lastOwn_spec S rho v i
+  generalize lastOwn S rho v i = q at hs hq ⊢
+  rw [simTraceAt_eq, hs]
+  cases q with
+  | zero =>
+    rw [cutMap_zero]
+    exact ⟨⟨fun k hk => absurd hk (Nat.not_lt_zero k), by
+      rw [stateAt_eq]; exact simTrace_time_nonneg S rho hn hv 0⟩, by rw [stateAt_eq]; rfl⟩
+  | succ j =>
+    obtain ⟨e, he, hev⟩ : ∃ e, rho.events[j]? = some e ∧ e.node = v := by
+      simpa only [Nat.add_one_ne_zero, false_or, Nat.add_sub_cancel] using hq
+    rw [now_after_local_event S rho hn hv he hev]
+    exact ⟨readPoint_after_event S rho hn hv he, by simp [Model.Run.cutTime, he]⟩
+
+/-- **Every engine output of a node honest at its engine cut is read at the trace cut after its
+last own event**, at its stored clock: the trace state there is the node's engine state. Only
+honesty at `rho.cutTime i` is used. -/
+theorem engine_read_eq_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+    (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) (g : Out) :
+    (chainTrace rho).read g v i =
+      outOf ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn (lastOwn S rho v i)))
+        (stateAt S rho hn v i).now g := by
+  have hnT := (now_bounds_cut S rho hn hv v hi).2
+  have hhq : v ∉ rho.faultyAt (rho.cutTime (lastOwn S rho v i)) := fun h =>
+    hh (rho.faultyAt_mono ((lastOwn_readPoint S rho hn hv v i).2.trans_le hnT) h)
+  rw [read_eq_out S rho hn, simTraceAt_state S rho hn hv hhq ((lastOwn_spec S rho v i).1.trans hi),
+    ← stateAt_lastOwn]
+
 /-- **The engine reader at its read point.** An engine node ready with catch-up `c + 1` at engine
 cut `i` is read at the trace cut `cutMap q` after its last own event, at its stored clock `t`:
-a boundary read point at which it is ready with catch-up `c`, in `[0, horizon]`, and its engine
+a read point at which it is ready with catch-up `c`, in `[0, horizon]`, and its engine
 confirmed read is the chain of `readAfter` there. -/
 theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v : V}
     {i : Nat} (hi : i ≤ rho.events.length) (hr : rho.point.Ready (c + 1) v (rho.cutTime i)) :
@@ -186,37 +223,15 @@ theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v
             (cutMap S rho hn (lastOwn S rho v i)) (stateAt S rho hn v i).now).slot + 1)
           (Regimes.readAfter (simTraceAt S rho hn) (rho.ownKey v)
             (cutMap S rho hn (lastOwn S rho v i)) (stateAt S rho hn v i).now) := by
-  have hs := stateAt_lastOwn S rho hn v i
-  obtain ⟨hqi, hq⟩ := lastOwn_spec S rho v i
   have hlaws := (Model.sysOf_laws schema (compiled (goldilocks S)) V).trace ⟨E, rho⟩ hv
   have hih := hlaws.cutTime_le_horizon i hi
   change rho.cutTime i ≤ rho.horizon at hih
   obtain ⟨hn0, hnT⟩ := now_bounds_cut S rho hn hv v hi
   have hnh : (stateAt S rho hn v i).now ≤ rho.horizon := hnT.trans hih
-  have hready := ready_transport_at S rho hn hv hn0 hnh
-    (ready_at_stored_now S rho hn hv hi hc hr)
-  generalize lastOwn S rho v i = q at hs hqi hq ⊢
-  -- the read point at the stored clock, which is the time of engine cut `q`
-  have hrp : Regimes.ReadPoint (simTraceAt S rho hn) (cutMap S rho hn q)
-        (stateAt S rho hn v i).now ∧ rho.cutTime q = (stateAt S rho hn v i).now := by
-    rw [simTraceAt_eq, hs]
-    cases q with
-    | zero =>
-      rw [cutMap_zero]
-      exact ⟨⟨fun k hk => absurd hk (Nat.not_lt_zero k), by
-        rw [stateAt_eq]; exact simTrace_time_nonneg S rho hn hv 0⟩, by rw [stateAt_eq]; rfl⟩
-    | succ j =>
-      obtain ⟨e, he, hev⟩ : ∃ e, rho.events[j]? = some e ∧ e.node = v := by
-        simpa only [Nat.add_one_ne_zero, false_or, Nat.add_sub_cancel] using hq
-      rw [now_after_local_event S rho hn hv he hev]
-      exact ⟨readPoint_after_event S rho hn hv he, by simp [Model.Run.cutTime, he]⟩
-  have hhq : v ∉ rho.faultyAt (rho.cutTime q) := fun h =>
-    hr.1 (rho.faultyAt_mono (hrp.2.trans_le hnT) h)
-  have hst := simTraceAt_state S rho hn hv hhq (hqi.trans hi)
-  refine ⟨hrp.1, hn0, hnh, hready, ?_⟩
-  rw [read_eq_out S rho hn, outOf]
-  unfold Regimes.readAfter
-  rw [hst, ← hs]
+  refine ⟨(lastOwn_readPoint S rho hn hv v i).1, hn0, hnh,
+    ready_transport_at S rho hn hv hn0 hnh (ready_at_stored_now S rho hn hv hi hc hr), ?_⟩
+  rw [engine_read_eq_at S rho hn hv hi hr.1, outOf]
+  rfl
 
 /-- Ancestry, inside the blocks held while honest, of the reads of two nodes each honest at its
 read time with every earlier cut no later is a prefix of their confirmed chains. -/
