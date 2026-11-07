@@ -26,7 +26,7 @@ The rows of `Statements/Regimes/{Sleepy,Always}` for a time-indexed honest set `
   bound, with each reader honest at its own cut.
 
 The margins (`τ + 6Δ`, `D = (4k + 6)Δ`) are those of the static rows. At `H := fun _ => H₀` each
-statement implies its static counterpart (`Lemmas/Growing/Regimes/Bridge`).
+statement implies its static counterpart (`Lemmas/Growing/Statements/Regimes`).
 
 Statements only: no proofs here. -/
 

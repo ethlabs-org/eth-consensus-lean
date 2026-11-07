@@ -16,7 +16,7 @@ A1.6 and A1.7 (`Statements/Compose/Service`) for a time-indexed honest set `H`, 
   `hold` after it is in the confirmed tip of every node honest at a later served cut, as in the
   static statement.
 
-At `H := fun _ => H₀` each implies its static counterpart (`Lemmas/Growing/Regimes/Bridge`).
+At `H := fun _ => H₀` each implies its static counterpart (`Lemmas/Growing/Statements/Regimes`).
 
 Statements only: no proofs here. -/
 
