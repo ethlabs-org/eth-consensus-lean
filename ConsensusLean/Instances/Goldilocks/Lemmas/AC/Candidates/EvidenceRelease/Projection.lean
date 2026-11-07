@@ -13,7 +13,7 @@ The forgetful projection of the evidence-release SA (`Spec/WeightedLocks`) to th
   holds initially and every handler keeps it, also at the read point of every emission
   (`locksForget_initial`, `locksForget_tryVoteW`, `locksForget_acOnMessageW`,
   `locksForget_acOnBlockW`, `locksForget_acOnTickW`, `locksForget_acProposalW`,
-  `locksForget_acToFGW`, `locksForget_acRestartW`);
+  `locksForget_acToFGW`, and for the restart the third conjunct of `acRestartW_proj`);
 * **the writes are the parent's**: under the invariant, the forgotten optimistic confirmation and
   the forgotten update are the parent's (`optimisticConfirmationW_ac`, `updateConfirmationW_ac`);
 * **the unlock is the only change**: `tryVoteWith` and `acProposalWith` are the parent's `try_vote`
