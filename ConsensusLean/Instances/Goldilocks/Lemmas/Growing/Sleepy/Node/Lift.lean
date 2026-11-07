@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -30,7 +31,9 @@ The tools that apply a static fact to the prefix `tr.upTo d` with the honest set
 * the transport of the finite service (`SleepyServiceBefore.upTo`) and of the slot count
   (`faultBound_upTo`);
 * the origin chain (`OnOriginChainWithin.compatible`, `OnOriginChainWithin.of_anc`), the σ-copies
-  of `Compose/Sleepy/Chain`.
+  of `Compose/Sleepy/Chain`;
+* node-local AC facts at a cut, lifted at the cut's time, and the stored locks below origins
+  before the cut (`lock_origin_at`).
 
 Ancestry comes down into the prefix by `RunTrace.anc_upTo_of_right`; conclusions go back up by
 `Anc.mono` with `RunTrace.honestBlocks_upTo_subset`. -/
@@ -596,6 +599,34 @@ theorem sync_before_forward_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (fun k' hk' hrk => hrs k' hk' ((ac_restartAt_upTo _).mp hrk).2) hdl hslot
     (sa_messageServedBefore_upTo hm le_rfl hserv)
   rwa [projAC_upTo_state hrun le_rfl] at h
+
+/-! ### Origins and stored locks -/
+
+/-- An origin of the prefix before cut `i` is an origin of the run before cut `i`. -/
+theorem originBefore_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat}
+    (h : Compose.OriginBefore (tr.upTo d) (H d) C s i) : OriginBefore tr H C s i := by
+  obtain ⟨x, hx, k, hk, CV, hO⟩ := Compose.originBefore_iff.1 h
+  rw [RunTrace.upTo_projAC] at hO
+  rcases hO with hO | hO
+  · obtain ⟨hkd, hO⟩ := (sa_resultAt_upTo hrun.time_mono).mp hO
+    exact originBefore_iff.2 ⟨x, k, CV, hk, hrun.antitone hkd hx, Or.inl hO⟩
+  · obtain ⟨hkd, hO⟩ := (sa_optimisticLockAt_upTo hrun.time_mono).mp hO
+    exact originBefore_iff.2 ⟨x, k, CV, hk, hrun.antitone hkd hx, Or.inr hO⟩
+
+/-- **Stored locks sit below origins** (`lock_origin` at the cut's time): every stored lock of a
+node honest at cut `i` names a block of its tree below an origin of the lock's slot before `i`. -/
+theorem lock_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
+    ∀ l ∈ (tr.state y i).ac.locks, ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧
+      ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocksAt H) L C := by
+  have hd := hrun.time_nonneg i
+  have hst := RunTrace.upTo_state_of_le (y := y) hrun.time_mono (le_refl (tr.time i))
+  intro l hl
+  obtain ⟨L, hL, hLr, C, hC, hLC⟩ := lock_origin (hrun.upTo hd) (hnc.upTo _) hy i l
+    (by rw [hst]; exact hl)
+  rw [hst] at hL
+  exact ⟨L, hL, hLr, C, originBefore_of_upTo hrun hC, hLC.mono (upTo_subset hrun hd)⟩
 
 end Consensus.Goldilocks.Compose.Growing
 
