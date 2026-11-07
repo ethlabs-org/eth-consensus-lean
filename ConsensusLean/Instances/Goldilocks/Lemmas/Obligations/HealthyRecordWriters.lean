@@ -390,7 +390,7 @@ theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
   have hfT : rho.faultyAt T = rho.faultyAt 0 := hf T
   obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp
     (hvalid.tick_total v T hT0.le hTb
-      (by change v ∉ rho.faultyAt T; rw [hfT]; exact hv) hawake')
+      (by rw [hfT]; exact hv) hawake')
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart
     obtain ⟨_, rec, hrec, hnode, htime, ell, hlabel, hcall⟩ :=

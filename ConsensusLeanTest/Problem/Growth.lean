@@ -91,7 +91,7 @@ theorem rotatingSupport_current_budget (t : Time) (ht : 0 ≤ t) (hb : t ≤ 10)
   rw [EnvPoint.ReadyAbove, hr]
   split_ifs <;> norm_num [EnvPoint.faultCount, rotatingSupport, point, *]
 
-/-- Replacing the window budget by every current budget would admit lost support. -/
+/-- Replacing the window budget by every current budget would allow lost support. -/
 theorem rotatingSupport_lookAhead_rejected :
     ¬ rotatingSupport.SleepyOn (1 / 2) 0 1 4 5 := by
   intro h
