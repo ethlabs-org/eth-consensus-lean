@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.TransferLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.VoteFrame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -16,8 +17,7 @@ the batch counted at the voter's cut, `vote_extends_of_batch_at`).
 
 `honest_batch_carry_at` carries every slot-`s` vote of a node honest at it to the vote, each voter
 its own writer, honest at its vote and at its acceptance of the head. The per-writer carry
-`carryAt_of_writer_at_stub` is the node-transport `carryAt_of_writer_at`, stated here with its
-agreed shape until that module is on this branch. -/
+is the node transport's `carryAt_of_writer_at`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -26,23 +26,6 @@ open SA (SAParams ReplayOrder Vote Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
-
-/-- The per-writer carry of the node transport layer (`carryAt_of_writer_at`), with its agreed
-shape; stand-in until that module is on this branch. -/
-theorem carryAt_of_writer_at_stub (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {s : Nat}
-    {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hi : tr.time i ≤ b)
-    {CV : Set (Vote sp.n)}
-    (hW : ∀ v ∈ CV, v.slot = s ∧
-      (∃ k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
-        tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv, Hv.root = v.head ∧ Anc (tr.HonestBlocksAt H) ℓ.frame.F Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
-          tr.time k < sp.ts s + 2 * sp.Δ)) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-  sorry
 
 /-- **The batch reaches a next-slot vote** under growing faults: at a slot-`(s+1)` vote of a node
 honest at its cut `i ≤ b` whose `Σ.F` is below `B`, every slot-`s` vote of a node honest at it,
@@ -74,7 +57,7 @@ theorem honest_batch_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     have hkt' : tr.time k < sp.ts s + 2 * sp.Δ := by
       rw [hvs] at hkt
       exact hkt.trans_lt (add_lt_add_of_le_of_lt le_rfl (lt_mul_of_one_lt_left hΔ (by norm_num)))
-    refine carryAt_of_writer_at_stub (w := x) hrun hnc hsync hy hc hs hib ?_
+    refine carryAt_of_writer_at (w := x) hrun hnc hsync hy hc hs hib ?_
     rintro v rfl
     refine ⟨hvs, ⟨k, hxk, ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
       (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) s).2 (by omega), hkt'⟩,

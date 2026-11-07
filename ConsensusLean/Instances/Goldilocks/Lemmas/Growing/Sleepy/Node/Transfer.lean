@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
@@ -13,10 +14,7 @@ public section
 * `vote_extends_of_counted_batch_at` (SA level): a counted batch of validators honest at the
   vote's cut `i`, whose witnessing votes are events of nodes honest at them, makes the successor
   vote extend `B` (the static `vote_extends_of_counted_batch` on the prefix through `tr.time i`).
-
-`acRun_upTo_of_growing` is the stand-in for the SA retention lemma of the growing AC layer
-(`SA.Growing.ACRun` on the prefix through `d ≥ 0` is a static `SA.ACRun` for `H d`, inside the
-same `U`). -/
+The prefix of the growing AC run is a static AC run (`SA.Growing.ACRun.upTo`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -26,11 +24,6 @@ section SA
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {tr' : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-
-/-- Stand-in: the prefix of a growing-fault AC run is a static AC run for `H d`, inside `U`. -/
-theorem acRun_upTo_of_growing (_hrun : SA.Growing.ACRun proposer tr' H U) {d : Time}
-    (_hd : 0 ≤ d) : SA.ACRun proposer (tr'.upTo d) (H d) U := by
-  sorry
 
 /-- **The counted batch** under growing faults: at a slot-`(s+1)` vote of a node honest at its cut
 `i`, a batch `SX` of validators honest at `i`, each with a slot-`s` vote (an event of a node honest
@@ -55,7 +48,7 @@ theorem vote_extends_of_counted_batch_at (hrun : SA.Growing.ACRun proposer tr' H
   have hm := hrun.localRun.time_mono
   have hanti := hrun.localRun.antitone
   have hd := hrun.localRun.time_nonneg i
-  have hr := acRun_upTo_of_growing hrun hd
+  have hr := SA.Growing.ACRun.upTo hrun hd
   have hc' : SA.CastAt (tr'.upTo (tr'.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
   -- a slot-`s` vote of a node honest at it is at a time before `t_{s+1} ≤ t_i`
   have hti : sp.ts ((s + 1 : Nat) : Int) ≤ tr'.time i := by
@@ -67,7 +60,7 @@ theorem vote_extends_of_counted_batch_at (hrun : SA.Growing.ACRun proposer tr' H
       tr'.time j ≤ tr'.time i := by
     intro x j e' hx ⟨ℓx, hcx, hex⟩ hes
     have hdj := hrun.localRun.time_nonneg j
-    have h := (SA.castAt_spec (acRun_upTo_of_growing hrun hdj).localRun hx
+    have h := (SA.castAt_spec (SA.Growing.ACRun.upTo hrun hdj).localRun hx
       (sa_castAt_upTo.mpr ⟨le_rfl, hcx, hex⟩)).2.1
     rw [hes] at h
     change s = sp.slot (tr'.time j) at h

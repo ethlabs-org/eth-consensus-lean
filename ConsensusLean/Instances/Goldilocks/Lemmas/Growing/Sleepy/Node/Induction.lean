@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.VotesBelow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Compare
 
 public section
 
@@ -11,11 +13,7 @@ The bounded frontier under growing faults: `P_0` and `V_0` hold vacuously;
 (`votes_below_succ_at`), so every finite frontier holds (`frontier_at`). With the provenance of
 records, caches, locks and sources, and full viability at the read time, this is
 `SleepyInvariantUpTo` (`sleepy_invariant_at`). Every quantifier of the induction ranges over events
-of nodes honest at them, so a later compromise removes nothing from it.
-
-The `_stub` declarations are stand-ins, with the exact statements, for the provenance results
-(`record_origin_at`, `caches_on_chain_at`, `source_on_chain_at`) and the origin step
-(`origins_below_succ_at`) of the dynamic node layer's other files. -/
+of nodes honest at them, so a later compromise removes nothing from it. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -24,41 +22,6 @@ open SA (SAParams ReplayOrder Vote Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
-
-/-! ### Stand-ins -/
-
-/-- Stand-in: the record of a reader honest at `t` names genesis or an origin within `b`. -/
-theorem record_origin_at_stub (_hrun : Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t b : Time} (_ht0 : 0 ≤ t)
-    (_hi : ∀ k < i, tr.time k ≤ t) (_htb : t ≤ b) (_hy : y ∈ H t) :
-    ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
-      (C.root = sp.genesisRoot ∨ ∃ s, OriginWithin tr H C s b) := by
-  sorry
-
-/-- Stand-in: an FG source of a node honest at its cut is on the chain of the origins within
-`b`. -/
-theorem source_on_chain_at_stub (_hrun : Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {b : Time} (_hy : y ∈ H (tr.time i))
-    (_hi : ∀ k < i, tr.time k ≤ b) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (_h : SA.ToFGAt tr.projAC y i ℓ C) :
-    OnOriginChainWithin tr H C b := by
-  sorry
-
-/-- Stand-in: the caches of a reader honest at `t` are on the chain of the origins within `b`. -/
-theorem caches_on_chain_at_stub (_hrun : Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t b : Time} (_ht0 : 0 ≤ t)
-    (_hi : ∀ k < i, tr.time k ≤ t) (_htb : t ≤ b) (_hy : y ∈ H t)
-    (_hf : 2 * (H t)ᶜ.ncard < sp.n) :
-    OnOriginChainWithin tr H (tr.state y i).fg.F b ∧
-      OnOriginChainWithin tr H (tr.state y i).fg.J b := by
-  sorry
-
-/-- Stand-in: `P_s` and `V_s` up to `b` give `P_{s+1}` up to `b`. -/
-theorem origins_below_succ_at_stub (_hrun : Growing.GoldilocksRun proposer dg H tr)
-    (_hnc : NoCollRun dg tr) {b : Time} (_hb : 0 ≤ b) (_hsync : SleepyServiceBefore tr H ΔF b)
-    (_hB : SleepyBounds tr H b) {s : Nat} (_hP : OriginsBelowUpTo tr H s b)
-    (_hV : VotesBelowUpTo tr H s b) : OriginsBelowUpTo tr H (s + 1) b := by
-  sorry
 
 /-! ### The frontier and the invariant -/
 
@@ -72,7 +35,7 @@ theorem frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCol
     exact ⟨originsBelowUpTo_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
       votesBelowUpTo_iff.2 fun _ _ _ _ _ _ _ _ h₁ h₂ => by omega⟩
   | succ s ih =>
-    have hP := origins_below_succ_at_stub hrun hnc hb hsync hB ih.1 ih.2
+    have hP := origins_below_succ_at hrun hnc hb hsync hB ih.1 ih.2
     exact ⟨hP, votes_below_succ_at hrun hnc hb hsync hB hP ih.2⟩
 
 /-- **S3 at a held origin, read at `t`**: a reader honest at `t ∈ [0, b]` (every earlier cut at or
@@ -113,10 +76,10 @@ theorem sleepy_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       Compatible (tr.HonestBlocksAt H) C C' := fun C s C' s' h h' =>
     originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
   refine ⟨hcomp, fun C s hC y i e he hib hs => ?_,
-    fun y i t ht0 hi htb hy => record_origin_at_stub hrun hnc ht0 hi htb hy,
-    fun y i t ht0 hi htb hy => caches_on_chain_at_stub hrun hnc ht0 hi htb hy (hB.two t ht0 htb),
+    fun y i t ht0 hi htb hy => record_origin_at hrun hnc ht0 hi htb hy,
+    fun y i t ht0 hi htb hy => caches_on_chain_at hrun hnc ht0 hi htb hy (hB.two t ht0 htb),
     fun y i t ht0 hi htb hy l hl => ?_,
-    fun y i hy hi ℓ C h => source_on_chain_at_stub hrun hnc hy hi h,
+    fun y i hy hi ℓ C h => source_on_chain_at hrun hnc hy hi h,
     fun y i t ht0 hi htb hy C s hC hCt => held_origin_viable_read hrun hnc ht0 hi hy
       (hB.two t ht0 htb) (fun C₁ s₁ C₂ s₂ h₁ h₂ => hcomp C₁ s₁ C₂ s₂ (h₁.mono htb) (h₂.mono htb))
       (fun C' s' hC' => hcomp C s C' s' hC (hC'.within fun k hk => (hi k hk).trans htb)) hCt⟩
