@@ -238,10 +238,13 @@ private theorem voter_of_ready (D : OutageLockPremises tr H proposer dg) {y : Fi
     (hjn : tr.JoinedAt x (sp.ts m + sp.Δ)) :
     x ∈ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
   obtain ⟨k', e, hve, hes, -⟩ := vote_of_awake_joined_at D.hrun D.hnc hx haw hjn
-  have hpool := D.PG y k m ℓ hy hu hm x k' e hve hes
-  rw [← projAC_state_at D.hrun hy] at hpool
   obtain ⟨hx', ℓ', hc', he'⟩ := hVoteAt_iff.1 hve
-  exact ⟨e.msg, hpool, (castAt_spec_at D.hrun D.hnc hx' ⟨hc', he'⟩).1⟩
+  have hval := (castAt_spec_at D.hrun D.hnc hx' ⟨hc', he'⟩).1
+  rcases D.PG y k m ℓ hy hu hm x k' e hve hes with hpool | ⟨v, hv, -, -, -, hvx, -⟩
+  · rw [← projAC_state_at D.hrun hy] at hpool
+    exact ⟨e.msg, hpool, hval⟩
+  · rw [← projAC_state_at D.hrun hy] at hv
+    exact ⟨v, hv, hvx.trans hval⟩
 
 /-- **(R) at a cut `k ≤ i`**: the result of an update of an unpolluted label by a node honest
 at it is compatible with `P`. Each branch counts at the writer's update cut `k`. -/
