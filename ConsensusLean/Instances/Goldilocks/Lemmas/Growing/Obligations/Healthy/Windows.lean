@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
@@ -259,6 +261,66 @@ theorem ResetPremisesUpTo.windows_at_reset_at {b ΔF' : Time}
   exact ⟨sync_window_at_reset_at hp.run hp.sync hga ht0,
     catch_window_at_reset_at hp.run hp.sync hc ht0 hca
       fun y k hy hk hkt => restart_le_before_at hp hy hk (hkt.trans htb)⟩
+
+/-- **Catch from `ḡ` on the prefix through `d`**: an acceptance before `ḡ` by a validator honest
+at `d` is accepted before `ḡ + 2Δ` by every validator honest at `d` whose finalized block it
+extends, as observed at a call in `[ḡ + 2Δ, d]` (the run's catch-up at the first cut from
+`ḡ + 2Δ ≤ d`, with each node honest at its own cut by antitonicity). -/
+theorem catch_window_at_gbar_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) :
+    CatchACWindowBefore (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) (gbar g)
+      (2 * sp.Δ) d := by
+  have hm := hrun.time_mono
+  have hpre := hrun.upTo hd0
+  rw [← RunTrace.upTo_projAC]
+  constructor
+  intro x hx i B ha hi y hy j ell hj ht hjd hF
+  change gbar g + 2 * sp.Δ ≤ tr.time j at ht
+  change tr.time j ≤ d at hjd
+  have hF' : Anc ((tr.upTo d).HonestBlocks (H d)) ((tr.upTo d).state y j).fg.F B := by
+    rw [Compose.frame_of_projAC hpre hy hj] at hF
+    exact hF
+  obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before hpre.toLocalRun hx ha
+  change tr.time (i' + 1) < gbar g at hi
+  change tr.time i' = tr.time (i' + 1) at hti
+  obtain ⟨hid, ha''⟩ := (RunTrace.upTo_acceptAt (tr := tr)).mp ha'
+  have hex : ∃ k, gbar g + 2 * sp.Δ ≤ tr.time k := ⟨j, ht⟩
+  have hj₀ : tr.FirstCutFrom (Nat.find hex) (gbar g + 2 * sp.Δ) :=
+    ⟨Nat.find_spec hex, fun k hk => not_le.1 (Nat.find_min hex hk)⟩
+  have hj₀j : Nat.find hex ≤ j := Nat.find_min' hex ht
+  have hj₀d : tr.time (Nat.find hex) ≤ d := (hm hj₀j).trans hjd
+  have hanc₀ := (run_F_mono hpre.toLocalRun hy hj₀j).trans hF'
+  rw [RunTrace.upTo_state_of_le hm hj₀d] at hanc₀
+  obtain ⟨k, hk, hak⟩ := hc x i' B (hrun.antitone hid hx) ha'' (by rw [hti]; exact hi) y _
+    (hrun.antitone (hj₀.1.trans hj₀d) hy) hj₀
+    (Anc.mono (RunTrace.honestBlocks_upTo_subset hm hd0) hanc₀)
+  have hkd : tr.time k ≤ d := (hm hk.le).trans hj₀d
+  obtain ⟨hak', htk, -⟩ :=
+    ac_block_after hpre.toLocalRun hy ((RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hkd, hak⟩)
+  refine ⟨k + 1, by omega, hak', ?_⟩
+  change tr.time (k + 1) < gbar g + 2 * sp.Δ
+  change tr.time (k + 1) = tr.time k at htk
+  rw [htk]
+  exact hj₀.2 k hk
+
+/-- **The healthy AC premises on a read prefix**: finite reset health and catch-up give the
+static healthy AC base of the validators honest at a read time `d ∈ [0, b]`, on the prefix
+through `d`, over the blocks they hold there. -/
+theorem healthy_base_of_reset_catch_before_at {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
+    SA.HealthyBaseUpTo (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
+  have hpre := hp.run.upTo hd0
+  have hncp := hp.noColl.upTo d
+  have hr := Compose.goldilocks_ac_projection sp ro dg (H d) (tr.upTo d) proposer hpre hncp
+  have hdr := projection_driven_of_run hpre hncp hpre.genesis_root_ok
+  rw [RunTrace.upTo_projAC] at hr hdr
+  refine ⟨hr, hdr, sync_window_at_reset_at hp.run hp.sync (SA.le_gbar g) hd0,
+    catch_window_at_gbar_at hp.run hc hd0, ?_, hp.faults d hd0 hdb⟩
+  intro y hy t hgt htd
+  exact (Trace.upTo_awake _ y t).mpr
+    ⟨hp.awake y t (hp.run.antitone htd hy) hgt (htd.trans hdb), htd⟩
 
 end Consensus.Goldilocks.Healing.Growing
 
