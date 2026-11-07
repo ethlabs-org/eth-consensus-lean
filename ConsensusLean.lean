@@ -153,7 +153,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Contracts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Query
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
