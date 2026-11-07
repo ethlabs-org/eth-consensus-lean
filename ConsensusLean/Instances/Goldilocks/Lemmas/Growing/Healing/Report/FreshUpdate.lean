@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUnlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 
 public section
 
@@ -17,6 +18,70 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+
+/-- Explicit joinedness, rather than a stronger GST margin, supplies actual votes
+by the slot deadline from the healthy base on that deadline's prefix. -/
+theorem honest_votes_of_joined_before_at
+    {g : Time} {u : Nat}
+    (hS : SA.HealthyBaseUpTo (tr.projAC.upTo (sp.ts u + sp.Δ))
+      (H (sp.ts u + sp.Δ)) ((tr.upTo (sp.ts u + sp.Δ)).HonestBlocks (H (sp.ts u + sp.Δ)))
+      proposer g (sp.ts u + sp.Δ))
+    (hgu : gbar g ≤ sp.ts u)
+    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) →
+      SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
+    ∀ x, x ∈ H (sp.ts u + sp.Δ) →
+      ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = u ∧
+        tr.time j ≤ sp.ts u + sp.Δ := by
+  intro x hx
+  obtain ⟨j, e, hv, hs, ht⟩ := SA.honest_votes_of_joined_before hS hgu le_rfl
+    (fun x hx r hrs hrt => by
+      obtain ⟨ell, hc, hrestart⟩ := hrs
+      exact hjoin x hx r
+        ⟨ell, ((Trace.upTo_callAt _).mp hc).2, hrestart⟩ hrt) x hx
+  obtain ⟨ell, hc, he⟩ := hv
+  exact ⟨j, e, ⟨ell, ((Trace.upTo_callAt _).mp hc).2, he⟩, hs, ht⟩
+
+/-- A vote by a validator still honest at the read has its strict early message
+stamp in the receiver's pool. Only the receiving prefix is used. -/
+theorem honest_vote_early_pool_before_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
+    {x : Fin sp.n} (hx : x ∈ H (tr.time j)) {i : Nat}
+    {e : SA.Em sp (List (FG.Att sp.n))}
+    (hv : SA.VoteAt tr.projAC x i e) (hes : e.msg.slot = u)
+    (hit : tr.time i ≤ tr.time j) :
+    e.msg ∈ (tr.projAC.state y j).pool u ∧
+      (tr.projAC.state y j).voteStamp e.msg < SA.ETime.of (sp.ts u + 2 * sp.Δ) := by
+  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
+    (hrun.time_nonneg j) hjb
+  have hs := Trace.upTo_state tr.projAC y (i := j)
+    (fun q hq => hrun.time_mono hq.le)
+  have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
+    (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
+  have hv' : SA.VoteAt (tr.projAC.upTo (tr.time j)) x i e := by
+    obtain ⟨ellx, hcx, he⟩ := hv
+    exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
+  have hrst : ∀ k ≤ j, ACTrace.RestartAt (tr.projAC.upTo (tr.time j)) y k →
+      tr.time k < sp.ts u := by
+    intro k _ ⟨ellk, hck, hk⟩
+    have hkt := ((Trace.upTo_callAt _).mp hck).1
+    have hbound := hnr y k (hrun.antitone hkt hy)
+      (Compose.projAC_restartAt.mp ⟨ellk, ((Trace.upTo_callAt _).mp hck).2, hk⟩)
+    linarith [sp.toParams.hΔ]
+  have hp := SA.honest_vote_early_pool_before hS hy hc'
+    (by linarith [sp.toParams.hΔ]) ht le_rfl
+    (fun k hkj t _ => Compose.ac_deadline_le_of_restarts
+      (fun r hr hrs => (hrst r (hr.trans hkj) hrs).le) t)
+    hrst hx hv' hes j (Or.inl rfl)
+  simpa only [hs] using hp
 
 /-- Wakefulness and the receiver's restart cutoff produce the actual adjacent calls. -/
 theorem update_toFG_calls_of_awake_at
