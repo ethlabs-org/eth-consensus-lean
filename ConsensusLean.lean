@@ -167,6 +167,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoCol
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Payload
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publication
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedAttestations
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
@@ -175,6 +176,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Resta
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.SigningPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Simulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
