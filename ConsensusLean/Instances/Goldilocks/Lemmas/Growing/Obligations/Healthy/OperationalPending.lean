@@ -13,8 +13,7 @@ under their agreed names (static name + `_at`). Each node is honest at its own c
 held state at an observation time after the state's cuts, and the slot-`u` proposer through
 `t_u + hold`:
 
-* `ResetPremisesUpTo.operational_unanimous_at`;
-* `report_cover_of_unanimous_at` (`Obligations.UpTo.report_cover_of_unanimous`).
+* `ResetPremisesUpTo.operational_unanimous_at`.
 
 It re-exports the proved `ResetPremisesUpTo.cutZ_lt_reset_at` (`Kernel/ResetSource`) and
 `ResetPremisesUpTo.reset_seed_before_slot_at` (`Kernel/Seed`). Each theorem here is an open
@@ -48,24 +47,6 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
 end ResetPremisesUpTo
 
 variable {b : Time}
-
-/-- Reports above a unanimous post-drain proposal `P` of slot `u` by `t_u + 6Δ`: every node
-honest at `t_u + 6Δ` reports a descendant of `P`, or a node honest at its report reports a strict
-height increase above `P`. -/
-theorem report_cover_of_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
-    (hPg : P.root ≠ sp.genesisRoot)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (hTb : sp.ts u + 6 * sp.Δ ≤ b) :
-    (∀ y, y ∈ H (sp.ts u + 6 * sp.Δ) → ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧
-      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P R) ∨
-    (∃ x r e C, x ∈ H (tr.time r) ∧ SA.ToFGAt tr.projAC x r e C ∧
-      tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
-      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
-  sorry
 
 end Consensus.Goldilocks.Healing.Growing
 
