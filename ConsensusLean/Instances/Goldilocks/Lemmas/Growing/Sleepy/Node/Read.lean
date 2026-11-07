@@ -1,8 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Read
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 
 public section
 
@@ -14,7 +17,8 @@ time `t`: the state of `y` before cut `i`, every earlier cut at a time `≤ t �
 * `confirmed_read_on_chain_at`: a confirmed read is held while honest and is on the chain of the
   origins within `b` (an ancestor of the effective record, which is the record's block or `Σ.F`);
 * `SleepyInvariantUpTo.read_compatible_at`: two such reads are compatible;
-* `SleepyInvariantUpTo.effective_record_mono_at`: the effective record only extends. -/
+* `SleepyInvariantUpTo.effective_record_mono_at`: the effective record only extends;
+* `ready_read_record_at`: the ready read is the effective record. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -179,6 +183,41 @@ theorem SleepyInvariantUpTo.effective_record_mono_at {b : Time} (hinv : SleepyIn
     · exact hCE.trans hCF
     · exact hF.trans hFC
     · exact hF
+
+/-- A node ready at `t ≥ 0` (catch-up `18Δ`, honest at `t`) is awake and joined at `t` (the static
+`ready_implies_joined` on the prefix through `t`). -/
+theorem ready_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+    {t : Time} (ht0 : 0 ≤ t) (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) :
+    tr.awake y t ∧ tr.JoinedAt y t := by
+  obtain ⟨hw, hj⟩ := ready_implies_joined sp ro dg (H t) (tr.upTo t) proposer (hrun.upTo ht0) y
+    hready.1 t (Regimes.catchUp sp) ht0 (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ])
+    (fun u h1 h2 => ⟨hready.2 u h1 h2, h2⟩)
+  exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).mpr ⟨hkt, hk⟩) hkt⟩
+
+/-- **The ready read is the effective record.** At a read point `(j, t)` with `0 ≤ t ≤ b` of a
+node ready at `t` (honest at `t`): when the frame holds the block `R` named by the record,
+`readAfter y j t = R`; otherwise it is `Σ.F`. The latest-view count is charged at `t`. -/
+theorem ready_read_record_at {ΔF b : Time} (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
+    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) {y : Fin sp.n} {j : Nat}
+    {t : Time} (hrp : Regimes.ReadPoint tr j t) (ht0 : 0 ≤ t)
+    (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
+    (∃ R ∈ (Node.frame (tr.state y j)).tree,
+        R.root = (tr.state y j).ac.latestConfirmed ∧ Regimes.readAfter tr y j t = R) ∨
+      ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
+          R.root = (tr.state y j).ac.latestConfirmed) ∧
+        Regimes.readAfter tr y j t = (tr.state y j).fg.F) := by
+  have hy : y ∈ H t := hready.1
+  have hΦ : FrameOK (Node.frame (tr.state y j)) :=
+    (Store.frame_realization _ _ _ _ (fg_reachable_at hrun ht0 hrp.1 hy)).1
+  by_cases hin : ∃ R ∈ (Node.frame (tr.state y j)).tree,
+      R.root = (tr.state y j).ac.latestConfirmed
+  · obtain ⟨R, hR, hRr⟩ := hin
+    obtain ⟨hc, hs⟩ := read_head_support_at hinv hrun hnc hsync hy ht0 htb
+      (fun s h1 h2 => hB.slot s t h1 htb h2.le) hrp.1 hrp.2 (ready_awake_joined_at hrun ht0 hready)
+      ⟨hR, hRr⟩
+    exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
+  · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
 
 end Consensus.Goldilocks.Compose.Growing
 
