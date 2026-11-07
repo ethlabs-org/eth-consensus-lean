@@ -186,6 +186,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.State
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalDelivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
