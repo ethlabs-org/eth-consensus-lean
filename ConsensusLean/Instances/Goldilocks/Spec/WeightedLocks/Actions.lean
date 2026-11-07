@@ -27,6 +27,11 @@ lock writes.
   initial, the replay goes through `acOnBlockW`); the weighted locks are kept, and the saved counts
   are dropped with the saved results.
 
+The handlers are written once over the unlock stage (`unlockStateE`, `tryVoteE`, `acOnMessageE`,
+`acOnBlockE`, `acOnTickE`, `acProposalE`, `acRestartE`, for a stage `E` with context `c`), and
+evidence-release's handlers are these at its stage `evidenceStage`; a variant that changes only
+the stage, and keeps its own context, reuses them.
+
 The emissions record the weighted state at their read point. -/
 
 namespace Consensus.Goldilocks.EvidenceRelease
@@ -60,11 +65,6 @@ abbrev EmW (sp : SAParams) (FGP : Type) :=
 def withLocks (X : WState sp.n) (A : SAState sp.n) (W : Set WLock) : WState sp.n :=
   { X with ac := { A with locks := WLock.lock '' W }, wlocks := W }
 
-/-- The unlock on the weighted state, against the slot-`s` votes of `V`. -/
-noncomputable def unlockState (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Int)
-    (V : View sp.n) : WState sp.n :=
-  withLocks sp X X.ac (unlockW sp X.wlocks Φ t s V)
-
 /-- `optimistic_confirmation` with the weighted write. -/
 noncomputable def optimisticConfirmationW (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     WState sp.n :=
@@ -77,17 +77,33 @@ noncomputable def updateConfirmationW (X : WState sp.n) (Φ : Frm sp.n FGP) (t :
   { withLocks sp X (updateConfirmation sp X.ac Φ t s) (updateLocksW sp X.wlocks X.ac X.counts Φ t s)
     with counts := saveCount sp X.counts X.ac Φ s }
 
+/-! ## The handlers over an unlock stage
+
+Every handler below is written once, for an unlock stage `E` on weighted locks reading a context
+`c`; the stage is used at the two unlock call sites and nowhere else. Evidence-release's handlers
+are these at its stage `evidenceStage` (no context). -/
+
+section Generic
+
+variable {σ : Type} (E : UnlockStage sp wlockStore σ) (c : σ)
+
+/-- The unlock of stage `E` with context `c` on the weighted state, against the slot-`s` votes of
+`V`. -/
+noncomputable def unlockStateE (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Int)
+    (V : View sp.n) : WState sp.n :=
+  withLocks sp X X.ac (wlockStore.unlockWith sp E c X.wlocks Φ t s V)
+
 open Classical in
-/-- `try_vote` at validator `self` on the weighted state: the parent's, with the weighted
-unlock. -/
-noncomputable def tryVoteW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+/-- `try_vote` at validator `self` on the weighted state: the parent's, with the unlock of stage
+`E`. -/
+noncomputable def tryVoteE (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     WState sp.n × List (EmW sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp X.ac t ∨ X.ac.votedSlot = s ∨ sp.ts s + sp.Δ < t then (X, [])
   else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (X, [])
   else
     let V := mergedVoteView sp X.ac Φ s
-    let X₁ := if 0 < s then unlockState sp X Φ t ((s : Int) - 1) V else X
+    let X₁ := if 0 < s then unlockStateE sp E c X Φ t ((s : Int) - 1) V else X
     let dom := voteDomain sp X₁.ac Φ s
     let H := getHead sp X₁.ac Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let X₂ := { X₁ with ac := { X₁.ac with votedSlot := s } }
@@ -96,41 +112,90 @@ noncomputable def tryVoteW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FG
     (X₃, [{ msg := vote, readPoint := X₂,
             head := some { head := H, start := getAnchor sp X₁.ac Φ t, dom := dom } }])
 
-/-- `ac_on_message` at validator `self` on the weighted state. -/
-noncomputable def acOnMessageW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+/-- `ac_on_message` at validator `self` on the weighted state, with the unlock of stage `E`. -/
+noncomputable def acOnMessageE (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (v : Vote sp.n) : WState sp.n × List (EmW sp FGP) :=
-  tryVoteW sp self (optimisticConfirmationW sp { X with ac := admitVote sp X.ac t v } Φ t) Φ t
+  tryVoteE sp E c self (optimisticConfirmationW sp { X with ac := admitVote sp X.ac t v } Φ t) Φ t
 
-/-- `ac_on_block` at validator `self` on the weighted state. -/
-noncomputable def acOnBlockW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+/-- `ac_on_block` at validator `self` on the weighted state, with the unlock of stage `E`. -/
+noncomputable def acOnBlockE (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) : WState sp.n × List (EmW sp FGP) :=
-  tryVoteW sp self (optimisticConfirmationW sp { X with ac := blockReceipt sp X.ac t B } Φ t) Φ t
+  tryVoteE sp E c self
+    (optimisticConfirmationW sp { X with ac := blockReceipt sp X.ac t B } Φ t) Φ t
 
 open Classical in
-/-- `ac_on_tick` at validator `self` on the weighted state. -/
-noncomputable def acOnTickW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+/-- `ac_on_tick` at validator `self` on the weighted state, with the unlock of stage `E`. -/
+noncomputable def acOnTickE (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     WState sp.n × List (EmW sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp X.ac t then (X, [])
   else
-    let r := if t = sp.ts s + sp.Δ then tryVoteW sp self X Φ t else (X, [])
+    let r := if t = sp.ts s + sp.Δ then tryVoteE sp E c self X Φ t else (X, [])
     let X₂ := if t = sp.ts s + 2 * sp.Δ ∧ 0 < s then updateConfirmationW sp r.1 Φ t (s - 1)
       else r.1
     (X₂, r.2)
 
 open Classical in
-/-- `ac_proposal` on the weighted state: the parent's, with the weighted unlock against the
+/-- `ac_proposal` on the weighted state: the parent's, with the unlock of stage `E` against the
 whole slot-`(s−1)` pool view. -/
-noncomputable def acProposalW (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+noncomputable def acProposalE (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     WState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
   if ¬ joined sp X.ac t then (X, none)
   else
     let s : Int := sp.slot t
     let p := voteViewList X.ac Φ (s - 1) ⊤
     let V := View.ofLists p
-    let X₁ := unlockState sp X Φ t (s - 1) V
+    let X₁ := unlockStateE sp E c X Φ t (s - 1) V
     let H := getHead sp X₁.ac Φ t (Φ.viableTree Φ.tree) V (s - 1)
     (X₁, some (⟨H, getAnchor sp X₁.ac Φ t, Φ.tree⟩, p))
+
+/-- `ac_restart` at validator `self` on the weighted state, replaying in the order `ro`: the
+parent's restart, with the weighted locks kept and the saved counts dropped; the replay goes
+through `acOnBlockE`. -/
+noncomputable def acRestartE (ro : ReplayOrder sp FGP) (self : Fin sp.n) (X : WState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) : WState sp.n × List (EmW sp FGP) :=
+  let A' : SAState sp.n := { SAState.initial sp.genesisRoot with
+    locks := X.ac.locks, latestConfirmed := X.ac.latestConfirmed,
+    restartTime := (t : WithBot Time) }
+  let X' : WState sp.n := { ac := A', wlocks := X.wlocks, counts := fun _ _ => 0 }
+  (ro.order t Φ).foldl
+    (fun acc B => let r := acOnBlockE sp E c self acc.1 Φ t B; (r.1, acc.2 ++ r.2)) (X', [])
+
+end Generic
+
+/-! ## Evidence-release's handlers: the generic ones at its stage -/
+
+/-- The unlock on the weighted state, against the slot-`s` votes of `V`. -/
+noncomputable def unlockState (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Int)
+    (V : View sp.n) : WState sp.n :=
+  unlockStateE sp (evidenceStage sp) () X Φ t s V
+
+/-- `try_vote` at validator `self` on the weighted state: the parent's, with the weighted
+unlock. -/
+noncomputable def tryVoteW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    WState sp.n × List (EmW sp FGP) :=
+  tryVoteE sp (evidenceStage sp) () self X Φ t
+
+/-- `ac_on_message` at validator `self` on the weighted state. -/
+noncomputable def acOnMessageW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (v : Vote sp.n) : WState sp.n × List (EmW sp FGP) :=
+  acOnMessageE sp (evidenceStage sp) () self X Φ t v
+
+/-- `ac_on_block` at validator `self` on the weighted state. -/
+noncomputable def acOnBlockW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (B : Blk sp.n FGP) : WState sp.n × List (EmW sp FGP) :=
+  acOnBlockE sp (evidenceStage sp) () self X Φ t B
+
+/-- `ac_on_tick` at validator `self` on the weighted state. -/
+noncomputable def acOnTickW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    WState sp.n × List (EmW sp FGP) :=
+  acOnTickE sp (evidenceStage sp) () self X Φ t
+
+/-- `ac_proposal` on the weighted state: the parent's, with the weighted unlock against the
+whole slot-`(s−1)` pool view. -/
+noncomputable def acProposalW (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    WState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
+  acProposalE sp (evidenceStage sp) () X Φ t
 
 /-- `ac_to_fg` on the weighted state: the parent's. -/
 noncomputable def acToFGW (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
@@ -142,12 +207,7 @@ noncomputable def acToFGW (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 parent's restart, with the weighted locks kept and the saved counts dropped. -/
 noncomputable def acRestartW (ro : ReplayOrder sp FGP) (self : Fin sp.n) (X : WState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : WState sp.n × List (EmW sp FGP) :=
-  let A' : SAState sp.n := { SAState.initial sp.genesisRoot with
-    locks := X.ac.locks, latestConfirmed := X.ac.latestConfirmed,
-    restartTime := (t : WithBot Time) }
-  let X' : WState sp.n := { ac := A', wlocks := X.wlocks, counts := fun _ _ => 0 }
-  (ro.order t Φ).foldl
-    (fun acc B => let r := acOnBlockW sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2)) (X', [])
+  acRestartE sp (evidenceStage sp) () ro self X Φ t
 
 end Consensus.Goldilocks.EvidenceRelease
 
