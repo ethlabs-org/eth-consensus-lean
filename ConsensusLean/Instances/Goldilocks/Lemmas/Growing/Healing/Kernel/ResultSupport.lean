@@ -224,8 +224,8 @@ theorem carryAt_of_delivered_stub {FGP : Type} {sp : SAParams} {ro : ReplayOrder
   sorry
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- What a result's writer did with its counted votes, the writer honest at its update
 (`Compose.Growing.result_writer_at` of the node layer, same statement); stand-in until that
