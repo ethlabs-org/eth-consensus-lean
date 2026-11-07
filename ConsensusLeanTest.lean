@@ -72,6 +72,7 @@ public import ConsensusLeanTest.Goldilocks.Mirror.Node
 public import ConsensusLeanTest.Goldilocks.Mirror.Setup
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
 public import ConsensusLeanTest.Goldilocks.Persist.RecentSource
+public import ConsensusLeanTest.Goldilocks.Refinement.Constant
 public import ConsensusLeanTest.Goldilocks.Refinement.Final
 public import ConsensusLeanTest.Goldilocks.Refinement.NonfinalQuery
 public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
