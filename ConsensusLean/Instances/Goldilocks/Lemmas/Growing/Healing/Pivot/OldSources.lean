@@ -147,6 +147,46 @@ theorem finalized_below_high_origin_at
   exact ⟨v, r, l, B, ho, hra.trans ha, hra.trans hp.reset_le,
     hp.low_finalized_below_origin_at ht hle hy hkb (by omega) ho (hra.trans hp.reset_le)⟩
 
+/-- A high descendant cannot be held before the snapshot by a holder still honest there.
+Honesty only at the earlier read would not suffice: that holder can disappear from HZ. -/
+theorem cutZ_lt_of_anc_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
+    (hz : z ∈ H (max (tr.time k) (cutZ sp.toParams g)))
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z k).fg.tree)
+    (hBW : Anc (tr.HonestBlocksAt H) B W) :
+    cutZ sp.toParams g < tr.time k := by
+  classical
+  by_contra h
+  have hkZ : tr.time k ≤ cutZ sp.toParams g := not_lt.mp h
+  have hzZ : z ∈ H (cutZ sp.toParams g) := by
+    rwa [max_eq_right hkZ] at hz
+  have hZ0 : 0 ≤ cutZ sp.toParams g := (hp.run.time_nonneg k).trans hkZ
+  have hhigh := hp.high_of_anc_at ho hZ0
+    (fun _ hq => (hp.run.time_mono hq.le).trans hkZ) hzZ hW hBW
+  obtain ⟨c, hc, _⟩ := hp.snapshot
+  have hkc : k ≤ c := by
+    by_contra hn
+    exact (not_lt_of_ge hkZ) (hc.2.trans_le (hp.run.time_mono (by omega)))
+  have hr := hp.run.upTo hZ0
+  have hWk : W ∈ ((tr.upTo (cutZ sp.toParams g)).state z k).fg.tree := by
+    rwa [Trace.upTo_state tr z (fun _ hq => (hp.run.time_mono hq.le).trans hkZ)]
+  have hWc := Compose.tree_mono hr.toLocalRun hzZ hkc hWk
+  rw [Trace.upTo_state tr z hc.1] at hWc
+  have hs := σ_eq_honest_at hp.run hp.noColl hZ0
+    (fun _ hq => (hp.run.time_mono hq.le).trans hkZ) hzZ hZ0 hc.1 hzZ hW hWc
+  have hbnd := (Store.cache_invariants _ _ _ _ (fg_reachable_at hp.run hZ0 hc.1 hzZ)).2.2.2.2.1
+    W hWc
+  have hmax : (tr.state z c).fg.hmax ≤ HZ tr H g := by
+    refine le_csSup (((Set.finite_range fun v => (tr.state v c).fg.hmax).subset ?_).bddAbove)
+      ⟨z, hzZ, c, hc, rfl⟩
+    rintro _ ⟨v, _, c', hc', rfl⟩
+    obtain rfl := hc'.unique hc
+    exact ⟨v, rfl⟩
+  rw [← hs] at hbnd
+  omega
+
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
 end
