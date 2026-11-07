@@ -151,7 +151,7 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
       rw [hes] at this
       exact_mod_cast this.le
     have hgj := hgu.trans hjt
-    have hroot := hp.reset_vote_root_below_proposal_at hc hpH hactual hR hci hcall hd hti hib
+    have hroot := hp.reset_vote_root_below_proposal_at hc hpH hactual hPs hR hci hcall hd hti hib
       hPQ hy hcy hes hjb
     have hPy := hp.reset_proposal_frame_at hc hpH hdesignated hactual hPs (by omega) hy hcy hes
       hjb hgj (hjoin.trans hjt) ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
