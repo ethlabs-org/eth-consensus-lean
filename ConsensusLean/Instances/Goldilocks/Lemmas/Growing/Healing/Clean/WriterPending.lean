@@ -7,17 +7,18 @@ public section
 
 /-! # Frozen growing interface of the AC writer comparisons
 
-The growing forms of three AC-level writer lemmas that the clean cluster consumes, frozen under
+The growing forms of the AC-level writer lemmas that the clean cluster consumes, frozen under
 their final names (static name + `_at`) for the AC ports owner. Each node is honest at its own
 cut: a writer at its write, a receiver at its cast. The writer's facts come from its own prefix,
 and the receiver's from the prefix through its cut. Service is the growing `ServiceWindowBefore`.
 The catch-up premise is the static `CatchACWindowBefore` with each node honest at its own cut,
 stated inline. No fault count or bound is added to the static statements:
 
-* `SA.Growing.result_result_compatible_window_before_at` and
-  `SA.Growing.result_optimistic_compatible_window_before_at` (`Healing/AC/Compat`). The static
-  restart bound over all honest nodes is read only for the writers, each at its own cuts;
-* `SA.Growing.raw_writer_voterBlockTree_window_before_at` (`Healing/Retention/Relay`).
+* `SA.Growing.raw_writer_voterBlockTree_window_before_at` (`Healing/Retention/Relay`), still open.
+
+`SA.Growing.result_result_compatible_window_before_at` and
+`SA.Growing.result_optimistic_compatible_window_before_at` (`Healing/AC/Compat`) are proved in
+`Growing/AC/WriterCompatible`, re-exported here.
 
 `first_transfer_stored`, `result_transfer` and `optimistic_transfer_stored` (main) and the
 next-transfer statement are reused, not restated. Each theorem here is an open `sorry`; this module
