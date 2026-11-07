@@ -163,9 +163,20 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Unlocked
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Update
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Attest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Cut
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.FGProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Joined
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Sync
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Agreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Entries
@@ -179,6 +190,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.LockWriter
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalDelivery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
@@ -194,6 +209,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.StandIn.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Windows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
@@ -559,6 +575,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main

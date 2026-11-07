@@ -27,6 +27,9 @@ frame rooted at genesis, and `block s` the honest proposal of slot `s`. From the
   confirmed from `t_p + 6Δ`; at `p = 8` a vote exists (`vote8`) and the confirmation holds from
   time `38` (`confirmed38`). Its corollary with `Prop(4)` (`proposerBound`): from `t ≥ 32`,
   an honest proposal in `[t, t + 4]` is confirmed from `t + 10` (`corollary42` at `t = 32`).
+* H.1 at `ḡ + (8k + 4)Δ` (`ac_healing_standalone_tight`): the same from `p ≥ 5`
+  (`healing_tight_live_witness`: a vote of slot `5` and the confirmation by the tick at `26`),
+  and proposal-block inclusion from `t + 10` for `t ≥ 20` (`common_confirmed_from30`).
 * H.2 (i) (`ac_inclusion` with `t₀ = 0`, `inv` and `geo`): every slot-`p` vote is `block p` for
   `p ≥ 8`. -/
 
@@ -279,6 +282,42 @@ theorem corollary42 (h : RunFacts tr U block) :
   refine ⟨p, P, h1, by linarith, hP, fun j ℓ hcj ht htick => ?_⟩
   exact hc v0 trivial j ℓ hcj (by rw [h42]; exact ht) (fun he => htick (by rw [he, h42]))
 
+/-- The bound `ḡ + (8k + 4)Δ ≤ t_p` of H.1 at `ḡ + (8k + 4)Δ` holds from slot `5`
+(`(8k + 4)Δ = 20 = t_5`), three slots below H.1's slot `8`. -/
+theorem start_le_tight {p : Nat} (hp : 5 ≤ p) :
+    gbar 0 + (8 * (sp1.k : Time) + 4) * sp1.Δ ≤ sp1.ts p := by
+  have hk : sp1.k = 2 := rfl
+  rw [gbar0, Δ1, ts1, hk]; push_cast; dsimp only [Time] at *; omega
+
+/-- **H.1 at `ḡ + (8k + 4)Δ` on the run**: for `p ≥ 5`, every slot-`p` vote is `block p`, and
+`block p` is below the confirmed tip at every call from `t_p + 6Δ` (at `t_p + 6Δ` itself, from
+the tick there on). -/
+theorem h1_tight (h : RunFacts tr U block) {p : Nat} (hp : 5 ≤ p) :
+    (∀ x ∈ (Set.univ : Set (Fin sp1.n)), ∀ j e, VoteAt tr x j e → e.msg.slot = p →
+      e.msg.head = (block p).root) ∧
+    (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ j ℓ, tr.CallAt y j ℓ →
+      sp1.ts p + 6 * sp1.Δ ≤ tr.time j →
+      (tr.time j = sp1.ts p + 6 * sp1.Δ →
+        ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
+      Anc U (block p) (acConfirmed sp1 (tr.post j) ℓ.frame (tr.time j))) :=
+  ac_healing_standalone_tight sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 h.run.run
+    h.run.driven h.run.trivial h.run.healthy h.run.catchUp p (block p) trivial
+    (h.honest p (by omega)) (start_le_tight hp)
+
+/-- **Proposal-block inclusion on the run** (the corollary of H.1 at `ḡ + (8k + 4)Δ`, `Prop(4)`):
+from every `t ≥ 20 = ḡ + (8k + 4)Δ`, an honest proposal in `[t, t + 4]` is below the confirmed
+tip at every call from `t + 10`. -/
+theorem corollary_tight (h : RunFacts tr U block) {t : Time} (ht : 20 ≤ t) :
+    ∃ (p : Nat) (P : Blk sp1.n Unit), t ≤ sp1.ts p ∧ sp1.ts p ≤ t + 4 ∧
+      HonestProposal tr v0 p P ∧
+      ∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ j ℓ, tr.CallAt y j ℓ → t + 4 + 6 * sp1.Δ ≤ tr.time j →
+        (tr.time j = t + 4 + 6 * sp1.Δ →
+          ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
+        Anc U P (acConfirmed sp1 (tr.post j) ℓ.frame (tr.time j)) :=
+  ac_healing_standalone_tight_corollary sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 4 h.run.run
+    h.run.driven h.run.trivial h.run.healthy h.run.catchUp proposerBound t
+    (by have hk : sp1.k = 2 := rfl; rw [gbar0, Δ1, hk]; push_cast; linarith)
+
 /-- **H.2 (i) on the run** (`t₀ = 0`, `Inv(0)`, `Geo`): for `p ≥ 8`, every slot-`p` vote is
 `block p`. -/
 theorem h2_votes (h : RunFacts tr U block) {p : Nat} (hp : 8 ≤ p) :
@@ -329,6 +368,36 @@ theorem common_confirmed_from42 :
         Anc blocks P (acConfirmed sp1 (run.post i) ℓ.frame (run.time i)) := by
   obtain ⟨p, P, hlow, hhigh, hp, hconfirm⟩ := concreteRunFacts.corollary42
   exact ⟨p, P, hlow, hhigh, hp, fun i ℓ hc ht => hconfirm i ℓ hc ht (fun _ => tick_before i)⟩
+
+/-- Kind (b) for H.1 at `ḡ + (8k + 4)Δ`, at slot `5`, below H.1's threshold slot `8`: the
+non-genesis proposal of slot `5` gets an actual vote, every slot-`5` vote is it, and the tick at
+time `26 = t_5 + 6Δ` (cut `104`) confirms it. -/
+theorem healing_tight_live_witness :
+    ∃ P : Blk sp1.n Unit, HonestProposal run v0 5 P ∧ P.root ≠ sp1.genesisRoot ∧
+      (∃ i e, VoteAt run v0 i e ∧ e.msg.slot = 5 ∧ e.msg.head = P.root) ∧
+      ∃ ℓ, run.CallAt v0 104 ℓ ∧ ℓ.call = .tick ∧
+        Anc blocks P (acConfirmed sp1 (run.post 104) ℓ.frame (run.time 104)) := by
+  obtain ⟨i, e, hv, hs⟩ := vote_each_slot (s := 5) (by omega)
+  obtain ⟨ℓ, hc, hk⟩ := call_exists (show call 104 = some .tick by simp [call, kind])
+  have h1 := concreteRunFacts.h1_tight (p := 5) le_rfl
+  have h26 : sp1.ts ((5 : Nat) : Int) + 6 * sp1.Δ = 26 := by rw [ts1, Δ1]; norm_num
+  refine ⟨block 5, honestProposal (by omega), ?_, ⟨i, e, hv, hs, h1.1 v0 trivial i e hv hs⟩,
+    ℓ, hc, hk, h1.2 v0 trivial 104 ℓ hc (by rw [h26]; norm_num [run])
+      (fun _ => tick_before 104)⟩
+  rw [block_root (by omega)]
+  decide
+
+/-- Proposal-block inclusion on the actual run, from `ḡ + (8k + 10)Δ + G_p = 30` (`t = 20`,
+`G_p = 4`), including the call at the deadline `30`. -/
+theorem common_confirmed_from30 :
+    ∃ (p : Nat) (P : Blk sp1.n Unit), 20 ≤ sp1.ts p ∧ sp1.ts p ≤ 24 ∧
+      HonestProposal run v0 p P ∧
+      ∀ i ℓ, run.CallAt v0 i ℓ → 30 ≤ run.time i →
+        Anc blocks P (acConfirmed sp1 (run.post i) ℓ.frame (run.time i)) := by
+  obtain ⟨p, P, hlow, hhigh, hp, hconfirm⟩ := concreteRunFacts.corollary_tight (t := 20) le_rfl
+  have h30 : (20 : Time) + 4 + 6 * sp1.Δ = 30 := by rw [Δ1]; norm_num
+  exact ⟨p, P, hlow, by linarith, hp, fun i ℓ hc ht => hconfirm v0 trivial i ℓ hc
+    (by rw [h30]; exact ht) (fun he => tick_before i)⟩
 
 /-- Kind (b): the premises, geometry, retention, an actual H.2(i) vote and an H.1 confirmation
 all hold on the same live run and the same non-genesis proposal. -/
