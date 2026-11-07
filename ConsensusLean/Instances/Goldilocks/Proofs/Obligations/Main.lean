@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks meets the shape obligations
 
-`MeetsObligations` (`Statements/Obligations`) from `Lemmas/Obligations/Concrete`
+`MeetsObligationsConstant` (`Statements/Obligations`) from `Lemmas/Obligations/Concrete`
 (`meetsObligations_concrete`, the endpoint at the coefficients `contract_coefficients`) and the
 profile label (`schema_matches_ebbAndFlow`: the schema provides all three capabilities). -/
 
@@ -18,8 +18,8 @@ available capabilities (available and stable aliased to `confirmed`). -/
 theorem schema_matches_ebbAndFlow : Profile.ebbAndFlow.Matches schema := by
   intro cap; cases cap <;> rfl
 
-/-- **Goldilocks meets the obligations**: the concrete obligations endpoint. -/
-theorem meets_obligations : MeetsObligations := fun S A =>
+/-- **Goldilocks meets the obligations on constant faults**: the concrete endpoint. -/
+theorem meets_obligations_constant : MeetsObligationsConstant := fun S A =>
   ⟨schema_matches_ebbAndFlow, meetsObligations_concrete S A⟩
 
 end Consensus.Goldilocks.Obligations
