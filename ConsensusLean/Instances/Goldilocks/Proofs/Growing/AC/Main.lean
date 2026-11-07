@@ -11,7 +11,7 @@ public section
 /-! # Goldilocks AC milestone under growing faults
 
 Each count is charged at its consuming cut; provenance retains the honesty of its writer
-at the write. Proposer agreement requires honesty through the consuming vote (#154).
+at the write. Proposer agreement requires honesty through the consuming vote.
 -/
 
 namespace Consensus.Goldilocks.SA.Growing
