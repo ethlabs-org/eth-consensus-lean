@@ -1,44 +1,19 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 
 public section
 
-/-! # Pending growing interface of the operational reports
+/-! # Growing interface of the operational reports
 
-The growing forms of the Healing and AC lemmas that the operational report lemmas consume, under
-their agreed names (static name + `_at`), with each node honest at its own cut (the proved
-`ResetPremisesUpTo.restart_le_before_at` and the prefix form of
-`healthy_base_of_reset_catch_before_at` are re-exported from `Growing/Healing/Restart` and
-`Healthy/PrefixBase`):
+The growing forms of the Healing and AC lemmas that the operational report lemmas consume have their
+homes: `ResetPremisesUpTo.high_origin_votes_before_at` (retention R2) in `Kernel/ResetFacts`,
+`ResetPremisesUpTo.restart_le_before_at` in `Growing/Healing/Restart` and the prefix form of
+`healthy_base_of_reset_catch_before_at` in `Healthy/PrefixBase`, re-exported here. This module holds
+no declarations; its importers can import the home modules directly, after which it is deleted. -/
 
-* `Healing.Growing.ResetPremisesUpTo.high_origin_votes_before_at`
-  (`Healing.ResetPremisesUpTo.high_origin_votes_before`, retention R2).
-
-Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
-
-namespace Consensus.Goldilocks.Healing.Growing
-
-open SA (SAParams ReplayOrder Payload gbar)
-
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-namespace ResetPremisesUpTo
-
-/-- High origins written by the horizon retain every later-label vote of a voter honest at its
-cast through the horizon. -/
-theorem high_origin_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
-    ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
-      ∀ y ell e, y ∈ H (tr.time k) → SA.CastAt tr.projAC y k ell e → j < e.msg.slot →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  sorry
-
-end ResetPremisesUpTo
-
-end Consensus.Goldilocks.Healing.Growing
 
 end
