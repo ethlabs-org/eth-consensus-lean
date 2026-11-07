@@ -57,10 +57,11 @@ theorem two_query_placement {p : EnvPoint V} {key : Fin (Fintype.card V) ≃ V}
       max (max start 0) (G.slotTime u_min - 1) < G.slotTime u ∧
       G.slotTime u ≤ max (max start 0) (G.slotTime u_min - 1) +
         ((ρ.gap : Nat) : Time) * G.slotLen ∧
-      HonestReadyIn p key sel u c (G.slotTime u) ∧
+      HonestReadyIn p key sel u c (G.slotTime u) ((ρ.hold : Time) * p.env.ΔAC) ∧
       q < G.slotTime s₀ ∧ G.slotTime s₀ ≤ q + ((ρ.gap : Nat) : Time) * G.slotLen ∧
       G.slotTime (s₀ + ρ.pattern.span) ≤ q + (ρ.len : Time) * G.slotLen ∧
-      ∀ j ∈ ρ.pattern.offsets, HonestReadyIn p key sel (s₀ + j) c (G.slotTime (s₀ + j)) := by
+      ∀ j ∈ ρ.pattern.offsets, HonestReadyIn p key sel (s₀ + j) c (G.slotTime (s₀ + j))
+        ((ρ.hold : Time) * p.env.ΔAC) := by
   set t₁ := max (max start 0) (G.slotTime u_min - 1) with ht₁
   have hL := G.slotLen_pos
   have hfit := query_one_fit G ρ hP

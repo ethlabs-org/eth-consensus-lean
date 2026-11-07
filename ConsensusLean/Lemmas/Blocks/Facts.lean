@@ -115,8 +115,13 @@ theorem PatternRecurrence.mono {start' stop' : Time}
 /-- A smaller horizon is weaker. -/
 theorem PatternRecurrence.shrink {b : Time} (hb : b ≤ p.horizon)
     (h : PatternRecurrence p key sel G ρ c start stop) :
-    PatternRecurrence { p with horizon := b } key sel G ρ c start stop :=
-  fun t ht hst hh => h t ht hst (le_trans hh hb)
+    PatternRecurrence { p with horizon := b } key sel G ρ c start stop := by
+  intro t ht hst hh
+  obtain ⟨s, hs, he, hall⟩ := h t ht hst (le_trans hh hb)
+  refine ⟨s, hs, he, fun j hj => ?_⟩
+  obtain ⟨hne, hkeys⟩ := hall j hj
+  exact ⟨hne, fun k hk => ⟨(hkeys k hk).1, fun hf => (hkeys k hk).2
+    (p.faultyAt_mono (min_le_min_left _ hb) hf)⟩⟩
 
 /-- A later start and an earlier stop are weaker. -/
 theorem NotReadyOn.mono [DecidableEq V] {m : Nat} {start' stop' : Time}
@@ -147,10 +152,11 @@ per window, losing the pattern's span at the end of the window `[start, stop]`
 (the single pattern reads only the window itself). -/
 theorem PatternRecurrence.single_of_zero (h0 : 0 ∈ ρ.pattern.offsets)
     (h : PatternRecurrence p key sel G ρ c start stop) :
-    PatternRecurrence p key sel G ⟨Pattern.single, ρ.gap⟩ c start
+    PatternRecurrence p key sel G ⟨Pattern.single, ρ.gap, ρ.hold⟩ c start
       (min stop p.horizon - (ρ.pattern.span : Time) * G.slotLen) := by
   intro t ht hst _
-  have hlen : ((⟨Pattern.single, ρ.gap⟩ : Recurrence).len : Time) = ((ρ.gap : Nat) : Time) := by
+  have hlen : ((⟨Pattern.single, ρ.gap, ρ.hold⟩ : Recurrence).len : Time) =
+      ((ρ.gap : Nat) : Time) := by
     simp [Recurrence.len, Pattern.span_single]
   have hlen' : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
     simp [Recurrence.len]
@@ -167,7 +173,7 @@ theorem PatternRecurrence.single_of_zero (h0 : 0 ∈ ρ.pattern.offsets)
 window (no domain hypothesis: windows start at `t ≥ 0`, gaps are positive). -/
 theorem patternRecurrence_of_all
     (h : ∀ s j, j ∈ ρ.pattern.offsets →
-      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j))) :
+      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) ((ρ.hold : Time) * p.env.ΔAC)) :
     PatternRecurrence p key sel G ρ c start stop := by
   intro t ht _ _
   obtain ⟨s, hs₁, hs₂⟩ :=
@@ -203,7 +209,7 @@ and the gap has the slack `span + 2 ≤ gap`, recurrence holds on every window,
 although every window holds a bad slot (`Recurrence.exists_bad_slot`). -/
 theorem patternRecurrence_of_periodic (hρ : ρ.BadSlotSlack)
     (h : ∀ s j, s % (ρ.pattern.span + 2) = 0 → j ∈ ρ.pattern.offsets →
-      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j))) :
+      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) ((ρ.hold : Time) * p.env.ΔAC)) :
     PatternRecurrence p key sel G ρ c start stop := by
   intro t ht _ _
   unfold Recurrence.BadSlotSlack at hρ
@@ -241,7 +247,7 @@ theorem PatternRecurrence.exists_inside (h : PatternRecurrence p key sel G ρ c 
     (hs : max start 0 + (ρ.len : Time) * G.slotLen ≤ stop)
     (ht : max start 0 + (ρ.len : Time) * G.slotLen ≤ p.horizon) :
     ∃ s, ∀ j ∈ ρ.pattern.offsets, G.slotTime (s + j) ≤ p.horizon ∧
-      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) := by
+      HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) ((ρ.hold : Time) * p.env.ΔAC) := by
   have hl := G.slotLen_pos
   obtain ⟨s, -, hs', hall⟩ := h (max start 0) le_rfl hs ht
   refine ⟨s, fun j hj => ⟨?_, hall j hj⟩⟩

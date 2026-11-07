@@ -32,17 +32,17 @@ theorem Delivers.reindex {dl dl' dlF dlF' f : Time → Time} {cut cut' : Time}
     (h : L.Delivers p dl dlF cut) (hf : ∀ a, a ≤ f a) (hd : ∀ a, dl' a = dl (f a))
     (hdF : ∀ a, dlF' a = dlF (f a)) (hc : cut' ≤ cut) : L.Delivers p dl' dlF' cut' := by
   constructor
-  · intro v hv m t hs hr w hw a hta hdc hdh haw
-    rw [hd] at hdc hdh haw ⊢
-    exact h.msgs v hv m t hs hr w hw (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh
+  · intro v m t hs hv hr w a hta hdc hdh hw haw
+    rw [hd] at hdc hdh hw haw ⊢
+    exact h.msgs v m t hs hv hr w (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh hw
       (haw.mono (hf a) le_rfl)
-  · intro v hv m t hs hr w hw a hta hdc hdh haw
-    rw [hdF] at hdc hdh haw ⊢
-    exact h.fgAtts v hv m t hs hr w hw (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh
+  · intro v m t hs hv hr w a hta hdc hdh hw haw
+    rw [hdF] at hdc hdh hw haw ⊢
+    exact h.fgAtts v m t hs hv hr w (f a) (le_trans hta (hf a)) (le_trans hdc hc) hdh hw
       (haw.mono (hf a) le_rfl)
-  · intro u hu x τ hτ hua hx w hw a hτa hdc hdh haw
-    rw [hd] at hdc hdh haw ⊢
-    exact h.txs u hu x τ hτ hua hx w hw (f a) (le_trans hτa (hf a)) (le_trans hdc hc) hdh
+  · intro u x τ hτ hu hua hx w a hτa hdc hdh hw haw
+    rw [hd] at hdc hdh hw haw ⊢
+    exact h.txs u x τ hτ hu hua hx w (f a) (le_trans hτa (hf a)) (le_trans hdc hc) hdh hw
       (haw.mono (hf a) le_rfl)
 
 /-- With no honest send before `0`, `PSync 0` is synchrony up to the horizon
@@ -51,41 +51,41 @@ theorem Delivers.reindex {dl dl' dlF dlF' f : Time → Time} {cut cut' : Time}
 theorem PSync.syncUntil_zero (hns : L.SendsFromZero p) (h : L.PSync p 0) (b : Time) :
     L.SyncUntil p b := by
   constructor
-  · intro v hv m t hs hr w hw a hta _ hdh haw
-    have ht0 := sendsFromZero_iff.mp hns v hv m t hs
-    have := h.msgs v hv m t hs hr w hw a hta
+  · intro v m t hs hv hr w a hta _ hdh hw haw
+    have ht0 := sendsFromZero_iff.mp hns v m t hs hv
+    have := h.msgs v m t hs hv hr w a hta
     simp only [max_eq_left (le_trans ht0 hta)] at this
-    exact this hdh hdh haw
-  · intro v hv m t hs hr w hw a hta _ hdh haw
-    have ht0 := sendsFromZero_iff.mp hns v hv m t hs
-    have := h.fgAtts v hv m t hs hr w hw a hta
+    exact this hdh hdh hw haw
+  · intro v m t hs hv hr w a hta _ hdh hw haw
+    have ht0 := sendsFromZero_iff.mp hns v m t hs hv
+    have := h.fgAtts v m t hs hv hr w a hta
     simp only [max_eq_left (le_trans ht0 hta)] at this
-    exact this hdh hdh haw
-  · intro u hu x τ hτ hua hx w hw a hτa _ hdh haw
-    have := h.txs u hu x τ hτ hua hx w hw a hτa
+    exact this hdh hdh hw haw
+  · intro u x τ hτ hu hua hx w a hτa _ hdh hw haw
+    have := h.txs u x τ hτ hu hua hx w a hτa
     simp only [max_eq_left (le_trans hτ hτa)] at this
-    exact this hdh hdh haw
+    exact this hdh hdh hw haw
 
 /-- An eager log meets every pair of deadline functions strictly above
 `max a g`, at every cut. -/
 theorem EagerFrom.delivers {g : Time} (h : L.EagerFrom p g) {dl dlF : Time → Time}
     (hdl : ∀ a, max a g < dl a) (hdlF : ∀ a, max a g < dlF a) (cut : Time) :
     L.Delivers p dl dlF cut := by
-  have hheld : ∀ {d : Time → Time}, (∀ a, max a g < d a) → ∀ v ∈ p.honest, ∀ m t,
-      L.sent v m t → ∀ w ∈ p.honest, ∀ a, t ≤ a → d a ≤ p.horizon →
+  have hheld : ∀ {d : Time → Time}, (∀ a, max a g < d a) → ∀ v m t,
+      L.sent v m t → p.HonestAt v t → ∀ w a, t ≤ a → d a ≤ p.horizon → p.HonestAt w (d a) →
         p.AwakeOnClosed w a (d a) → L.Held p w m (d a) := by
-    intro d hd v hv m t hs w hw a hta hdh haw
+    intro d hd v m t hs hv w a hta hdh hw haw
     have hle : max t g < d a := lt_of_le_of_lt (max_le_max hta le_rfl) (hd a)
-    exact held_of_recv (h.recv v hv m t hs w hw (d a) hle hdh
+    exact held_of_recv (h.recv v m t hs hv w (d a) hle hdh hw
       (haw (d a) (le_trans (le_max_left a g) (hd a).le) le_rfl))
   constructor
-  · intro v hv m t hs _ w hw a hta _ hdh haw
-    exact hheld hdl v hv m t hs w hw a hta hdh haw
-  · intro v hv m t hs _ w hw a hta _ hdh haw
-    exact hheld hdlF v hv m t hs w hw a hta hdh haw
-  · intro u hu x τ hτ hua hx w hw a hτa _ _ haw
+  · intro v m t hs hv _ w a hta _ hdh hw haw
+    exact hheld hdl v m t hs hv w a hta hdh hw haw
+  · intro v m t hs hv _ w a hta _ hdh hw haw
+    exact hheld hdlF v m t hs hv w a hta hdh hw haw
+  · intro u x τ hτ hu hua hx w a hτa _ _ hw haw
     have hle : τ ≤ dl a := le_trans hτa (le_trans (le_max_left a g) (hdl a).le)
-    exact ⟨dl a, le_trans hτ hle, le_rfl, h.txs u hu x τ hτ hua hx w hw (dl a) hle
+    exact ⟨dl a, le_trans hτ hle, le_rfl, h.txs u x τ hτ hu hua hx w (dl a) hle hw
       (haw (dl a) (le_trans (le_max_left a g) (hdl a).le) le_rfl)⟩
 
 /-- An eager log from `g` is partially synchronous with every GST `g' ≥ g`, at delays `Δ > 1`
@@ -121,16 +121,16 @@ theorem Delivers.prefix {L' : CommLog V M} {dl dlF : Time → Time} {cut b : Tim
     · exact Or.inr (((hag.1 w m t' hb').2).mpr hs)
   have hrow : ∀ m, L'.fgAtt m ↔ L.fgAtt m := fun m => by rw [hag.2.2]
   constructor
-  · intro v hv m t hs hr w hw a hta hdc hdh haw
+  · intro v m t hs hv hr w a hta hdc hdh hw haw
     have ht : t ≤ b := le_trans (le_trans hta (hdl a)) hdh
-    exact hheld w m _ hdh (h.msgs v hv m t (((hag.1 v m t ht).1).mp hs)
-      (fun h' => hr ((hrow m).mpr h')) w hw a hta hdc (le_trans hdh hb) haw)
-  · intro v hv m t hs hr w hw a hta hdc hdh haw
+    exact hheld w m _ hdh (h.msgs v m t (((hag.1 v m t ht).1).mp hs) hv
+      (fun h' => hr ((hrow m).mpr h')) w a hta hdc (le_trans hdh hb) hw haw)
+  · intro v m t hs hv hr w a hta hdc hdh hw haw
     have ht : t ≤ b := le_trans (le_trans hta (hdlF a)) hdh
-    exact hheld w m _ hdh (h.fgAtts v hv m t (((hag.1 v m t ht).1).mp hs) ((hrow m).mp hr)
-      w hw a hta hdc (le_trans hdh hb) haw)
-  · intro u hu x τ hτ hua hx w hw a hτa hdc hdh haw
-    obtain ⟨τ', h0, hτ', hin⟩ := h.txs u hu x τ hτ hua hx w hw a hτa hdc (le_trans hdh hb) haw
+    exact hheld w m _ hdh (h.fgAtts v m t (((hag.1 v m t ht).1).mp hs) hv ((hrow m).mp hr)
+      w a hta hdc (le_trans hdh hb) hw haw)
+  · intro u x τ hτ hu hua hx w a hτa hdc hdh hw haw
+    obtain ⟨τ', h0, hτ', hin⟩ := h.txs u x τ hτ hu hua hx w a hτa hdc (le_trans hdh hb) hw haw
     exact ⟨τ', h0, hτ', by rw [hag.2.1 w τ' (le_trans hτ' hdh)]; exact hin⟩
 
 end CommLog

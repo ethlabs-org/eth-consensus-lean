@@ -21,18 +21,19 @@ variable (rho : Run F E)
 
 noncomputable def wakeEvents (t : Time) : List (Event V (protoOf F E).Object) := by
   classical
-  exact ((rho.honest.filter (fun v => 0 < t ∧ Wakes E v t)).toList).map
+  exact (((Finset.univ \ rho.faultyAt t).filter (fun v => 0 < t ∧ Wakes E v t)).toList).map
     (fun v => .restart v t)
 
 noncomputable def tickEvents (t : Time) : List (Event V (protoOf F E).Object) := by
   classical
-  exact ((rho.honest.filter (fun v => E.awake v t = true)).toList).map
+  exact (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).map
     (fun v => .tick v t)
 
 noncomputable def deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Object))
     (t : Time) : List (Event V (protoOf F E).Object) := by
   classical
-  exact if g ≤ t then ((rho.honest.filter (fun v => E.awake v t = true)).toList).flatMap
+  exact if g ≤ t then (((Finset.univ \ rho.faultyAt t).filter
+    (fun v => E.awake v t = true)).toList).flatMap
     (fun v => (rho.pool es).map (fun o => .deliver v o t)) else []
 
 noncomputable def front (es : List (Event V (protoOf F E).Object)) (t : Time) :=
@@ -40,7 +41,7 @@ noncomputable def front (es : List (Event V (protoOf F E).Object)) (t : Time) :=
 
 theorem deliveryEvents_eq (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :
     rho.deliveryEvents g es t = if g ≤ t then
-      ((rho.honest.filter (fun v => E.awake v t = true)).toList).flatMap
+      (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).flatMap
         (fun v => (rho.pool es).map (fun o => .deliver v o t)) else [] := by rfl
 
 noncomputable def layer (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :=
@@ -51,7 +52,6 @@ noncomputable def stages (g : Time) : Nat → List (Event V (protoOf F E).Object
   | 0 => []
   | n + 1 => stages g n ++ rho.layer g (stages g n) (n : Time)
 
-omit [DecidableEq V] in
 theorem front_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
     rho.front es t = es ++ rho.wakeEvents t ++ rho.tickEvents t := by rfl
 
@@ -64,26 +64,26 @@ theorem layer_eq (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time
 theorem stages_succ (g : Time) (n : Nat) :
     rho.stages g (n + 1) = rho.stages g n ++ rho.layer g (rho.stages g n) (n : Time) := by rfl
 
-omit [DecidableEq V] in
 @[simp] theorem mem_wakeEvents (t : Time) (e : Event V (protoOf F E).Object) :
     e ∈ rho.wakeEvents t ↔
-      ∃ v ∈ rho.honest, 0 < t ∧ Wakes E v t ∧ e = .restart v t := by
+      ∃ v, v ∉ rho.faultyAt t ∧ 0 < t ∧ Wakes E v t ∧ e = .restart v t := by
   classical
   delta wakeEvents
-  simp only [List.mem_map, Finset.mem_toList, Finset.mem_filter]
+  simp only [List.mem_map, Finset.mem_toList, Finset.mem_filter,
+    Finset.mem_sdiff, Finset.mem_univ, true_and]
   constructor
   · rintro ⟨v, ⟨hv, ht, hw⟩, rfl⟩
     exact ⟨v, hv, ht, hw, rfl⟩
   · rintro ⟨v, hv, ht, hw, rfl⟩
     exact ⟨v, ⟨hv, ht, hw⟩, rfl⟩
 
-omit [DecidableEq V] in
 @[simp] theorem mem_tickEvents (t : Time) (e : Event V (protoOf F E).Object) :
     e ∈ rho.tickEvents t ↔
-      ∃ v ∈ rho.honest, E.awake v t = true ∧ e = .tick v t := by
+      ∃ v, v ∉ rho.faultyAt t ∧ E.awake v t = true ∧ e = .tick v t := by
   classical
   delta tickEvents
-  simp only [List.mem_map, Finset.mem_toList, Finset.mem_filter]
+  simp only [List.mem_map, Finset.mem_toList, Finset.mem_filter,
+    Finset.mem_sdiff, Finset.mem_univ, true_and]
   constructor
   · rintro ⟨v, ⟨hv, hw⟩, rfl⟩
     exact ⟨v, hv, hw, rfl⟩
@@ -93,12 +93,13 @@ omit [DecidableEq V] in
 @[simp] theorem mem_deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Object))
     (t : Time) (e : Event V (protoOf F E).Object) :
     e ∈ rho.deliveryEvents g es t ↔
-      g ≤ t ∧ ∃ v ∈ rho.honest, E.awake v t = true ∧
+      g ≤ t ∧ ∃ v, v ∉ rho.faultyAt t ∧ E.awake v t = true ∧
         ∃ o ∈ rho.pool es, e = .deliver v o t := by
   classical
   delta deliveryEvents
   split_ifs with hg
-  · simp only [List.mem_flatMap, List.mem_map, Finset.mem_toList, Finset.mem_filter]
+  · simp only [List.mem_flatMap, List.mem_map, Finset.mem_toList, Finset.mem_filter,
+      Finset.mem_sdiff, Finset.mem_univ, true_and]
     constructor
     · rintro ⟨v, ⟨hv, hw⟩, o, ho, rfl⟩
       exact ⟨hg, v, hv, hw, o, ho, rfl⟩
@@ -113,7 +114,8 @@ theorem layer_time (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Ti
   rcases he with (⟨v, _, _, _, rfl⟩ | ⟨v, _, _, rfl⟩) | ⟨_, v, _, _, o, _, rfl⟩ <;> rfl
 
 theorem layer_honest (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time)
-    {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer g es t) : e.node ∈ rho.honest := by
+    {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer g es t) :
+    e.node ∉ rho.faultyAt e.time := by
   simp only [layer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_deliveryEvents] at he
   rcases he with (⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, rfl⟩) | ⟨_, v, hv, _, o, _, rfl⟩ <;>
@@ -294,7 +296,7 @@ theorem canonical_valid_of (g : Time) (h0 : 0 ≤ rho.horizon)
   · intro e he
     obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ e).mp he
     exact rho.layer_honest g _ _ hk
-  · intro v hv t ht0 hh ha
+  · intro v t ht0 hh hv ha
     apply rho.canonical_layer g t ht0 hh
     simp only [layer_eq, List.mem_append]
     exact Or.inl (Or.inr ((rho.mem_tickEvents t _).mpr ⟨v, hv, ha, rfl⟩))
@@ -315,7 +317,7 @@ theorem canonical_valid_of (g : Time) (h0 : 0 ≤ rho.horizon)
     · cases h; exact ⟨hp, ha⟩
     · cases h
     · cases h
-  · intro v hv t hp hh hw
+  · intro v t hp hh hv hw
     apply rho.canonical_layer g t hp.le hh
     simp only [layer_eq, List.mem_append]
     exact Or.inl (Or.inl ((rho.mem_wakeEvents t _).mpr ⟨v, hv, hp, hw, rfl⟩))

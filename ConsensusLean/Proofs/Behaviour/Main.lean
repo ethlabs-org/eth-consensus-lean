@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Spec.Shape.Claims
+public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -71,7 +72,7 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
   rw [he] at hin
   have hmem : x ∈ decodeTxs h.input := by
     rw [honestProposal_payload hv hprop, decode_encodeTxs]
-    obtain ⟨u, hu, τ₀, hτ₀, hτ₀t, haw, hx⟩ := hsub
+    obtain ⟨u, τ₀, hτ₀, hτ₀t, hu, haw, hx⟩ := hsub
     have hτa : τ₀ ≤ τ - E.ΔAC := by dsimp only [Time] at *; omega
     have hga : gst ≤ τ - E.ΔAC := by dsimp only [Time] at *; omega
     have hdl : max (τ - E.ΔAC) gst + E.ΔAC - 1 = τ - 1 := by
@@ -89,9 +90,17 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
     have hτ1 : τ - 1 ≤ rho.point.horizon := by
       change τ - 1 ≤ rho.horizon; dsimp only [Time] at *; omega
     have held : CommLog.TxHeld rho.log (rho.key k) x (max (τ - E.ΔAC) gst + E.ΔAC - 1) :=
-      hs.txs u hu x τ₀ hτ₀ haw hx (rho.key k) hready.1 (τ - E.ΔAC) hτa
+      hs.txs u x τ₀ hτ₀ hu haw hx (rho.key k) (τ - E.ΔAC) hτa
         (by change _ + E.ΔAC - 1 ≤ _; rw [hdl]; exact hτ1)
         (by change _ + E.ΔAC - 1 ≤ _; rw [hdl]; exact hτ1)
+        (by
+          intro hmem
+          apply hready.1
+          exact rho.faultyAt_mono (by
+            change max _ _ + E.ΔAC - 1 ≤ τ
+            rw [hdl]
+            dsimp only [Time]
+            omega) hmem)
         (by change rho.point.AwakeOnClosed _ _ (_ + E.ΔAC - 1); rw [hdl]; exact hawake)
     rw [hdl] at held
     exact rho.txHeld_mem_mempool held (by dsimp only [Time]; omega)
@@ -115,8 +124,8 @@ the two conviction sets coincide, and compatibility transfers along `ledgerOf`. 
 theorem accountablySafe_ledger (rho : Model.Run (compiled F) E) {α : ℚ} {g : O.Id}
     (h : (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α g 0) :
     (sysOf O (compiled F) V).AccountablySafe ⟨E, rho⟩ α g 0 := by
-  intro u hu v hv i j hi hj
-  rcases h u hu v hv i j hi hj with hh | hh
+  intro u v i j hi hj hu hv
+  rcases h u v i j hi hj hu hv with hh | hh
   · exact Or.inl (Compatible.map ledgerOf_prefix hh)
   · right
     have hset : {o' | (⟨E, o'⟩ : (sysOf O (compiled F) V).Obs) ∈
@@ -186,6 +195,52 @@ theorem refinement (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V :
   · rintro g hg T b₀ b₁ ⟨E, rho⟩ hv hO
     simp only [ledgerTrace]
     refine (hc.persists g hg T b₀ b₁ ⟨E, rho⟩ hv hO).imp (fun h => ?_) id
+    unfold Trace.ProtectedReadyFrom
+    rw [Trace.map_point]
+    exact h.map ledgerOf_prefix
+
+/-- Refinement on a class of environment points, without restricting the
+model's independent coverage and realizability obligations. -/
+theorem refinementOn (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (V : Type)
+    [Fintype V] [DecidableEq V] (Q : EnvPoint V → Prop)
+    (hc : ShapeClaimsOnAt F K V Q) (ha : K.params.Admissible) (hs : O.Serves) :
+    Behaviour ((Sys F V).restrict fun r => Q ((Sys F V).pt r))
+      ((shapeProgress F V).restrict fun r => Q ((Sys F V).pt r)) K := by
+  dsimp only [System.restrict, Progress.restrict]
+  refine ⟨?_, ha, hs, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · have hl := Model.sysOf_laws O (compiled F) V
+    exact ⟨fun r hv => hl.trace r hv.1, hl.convicts_mono, hl.view_mono⟩
+  · intro r hv
+    exact Model.sysOf_nonFraming O (compiled F) V r hv.1
+  · rintro c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ ⟨hv, hq⟩
+    rw [ledgerTrace]
+    exact (hc.nested c₁ c₂ g₁ g₂ hlt h₁ h₂ ⟨E, rho⟩ hv hq).map ledgerOf_prefix
+  · rintro g hg ⟨E, rho⟩ ⟨hv, hq⟩
+    rw [ledgerTrace]
+    simp only [Trace.Monotone, Trace.map_point]
+    exact (hc.finalMonotone g hg ⟨E, rho⟩ hv hq).map ledgerOf_prefix
+  · rintro g hg ⟨E, rho⟩ ⟨hv, hq⟩ _
+    exact (hc.finalAccountable g hg ⟨E, rho⟩ hv hq).imp (accountablySafe_ledger rho) id
+  · rintro cap g hg i gst ⟨E, rho⟩ ⟨hv, hq⟩ hA
+    simp only [ledgerTrace]
+    exact (hc.healthyLive cap g hg i gst ⟨E, rho⟩ hv ⟨hq, hA⟩).imp
+      (proposalLive_txLive hv ha.catchUp_pos (psync_of_sys hA.1.1)
+        (gst_le_heal K rho cap i gst)) id
+  · rintro cap g hcap hg ⟨E, rho⟩ ⟨hv, hq⟩ hS
+    simp only [ledgerTrace]
+    exact (hc.sleepySafe cap g hcap hg ⟨E, rho⟩ hv ⟨hq, hS⟩).imp
+      (fun h => h.map ledgerOf_prefix) id
+  · rintro cap g hcap hg i ⟨E, rho⟩ ⟨hv, hq⟩ hA
+    simp only [ledgerTrace]
+    exact (hc.sleepyLive cap g hcap hg i ⟨E, rho⟩ hv ⟨hq, hA⟩).imp
+      (proposalLive_txLive hv ha.catchUp_pos (psync_of_sys hA.1.1) le_rfl) id
+  · rintro cap g hcap hg i gst ⟨E, rho⟩ ⟨hv, hq⟩ hA
+    simp only [ledgerTrace]
+    exact (hc.healedSafe cap g hcap hg i gst ⟨E, rho⟩ hv ⟨hq, hA⟩).imp
+      (fun h => h.map ledgerOf_prefix) id
+  · rintro g hg T b₀ b₁ ⟨E, rho⟩ ⟨hv, hq⟩ hO
+    simp only [ledgerTrace]
+    refine (hc.persists g hg T b₀ b₁ ⟨E, rho⟩ hv ⟨hq, hO⟩).imp (fun h => ?_) id
     unfold Trace.ProtectedReadyFrom
     rw [Trace.map_point]
     exact h.map ledgerOf_prefix

@@ -122,7 +122,7 @@ theorem selected_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object
   have hd : ∀ i, ∀ j ≤ i, ∀ w o t, rho.events[j]? = some (Event.deliver w o t) →
       rho.Authorized o :=
     fun _ j _ w o t he => hv.credentials j w o t he
-  obtain ⟨v, _, hov⟩ := ho
+  obtain ⟨v, i, _, _, hov⟩ := ho
   obtain ⟨j, o₀, _, hr, hc₀⟩ := rho.mem_viewIdx_iff.mp hov
   rcases hr with ⟨t, _, hr⟩ | ⟨t, he⟩
   · exact rho.releasesAt_authorized j (hd j) o₀ hr o' (hc₀.trans hc) k r ha

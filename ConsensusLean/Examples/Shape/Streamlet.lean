@@ -27,7 +27,7 @@ def streamletSkeleton (pub : Public) : Skeleton pub.n where
 
 /-- Streamlet progress: five consecutive honest proposers within every window
 of `k` slots. -/
-def streamletProg : Capability → ℕ+ → ProgressReq := fun _ k => .recur ⟨Pattern.range 5, k⟩
+def streamletProg : Capability → ℕ+ → ProgressReq := fun _ k => .recur ⟨Pattern.range 5, k, 0⟩
 
 /-- The Streamlet contract. -/
 abbrev streamletContract : Nat → Affine → Affine → Contract ProgressReq :=
@@ -45,7 +45,7 @@ bad proposer slot in every window: at gap `6`, five consecutive proposers
 (span `4`) leave room for one bad slot. -/
 theorem streamletContract_progressTolerant (catchUp : Nat) (heal latency : Affine) :
     ProgressTolerant bftCore (streamletContract catchUp heal latency) :=
-  fun _ _ _ => ⟨(6 : ℕ+), show (⟨Pattern.range 5, 6⟩ : Recurrence).BadSlotSlack by decide⟩
+  fun _ _ _ => ⟨(6 : ℕ+), show (⟨Pattern.range 5, 6, 0⟩ : Recurrence).BadSlotSlack by decide⟩
 
 end Consensus.Shape
 

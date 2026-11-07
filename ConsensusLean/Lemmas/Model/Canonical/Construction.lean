@@ -26,36 +26,36 @@ namespace Consensus.Model
 /-- All submissions accepted by awake honest sources through time `a`,
 relayed eagerly to every awake honest recipient. -/
 noncomputable def eagerRelay {V : Type} [Fintype V] [DecidableEq V]
-    (E : Env V) (honest : Finset V) (submit : V → Time → List Tx)
+    (E : Env V) (faultyAt : Time → Finset V) (submit : V → Time → List Tx)
     (w : V) (a : Time) : List Tx :=
-  if w ∈ honest ∧ E.awake w a = true then
-    honest.toList.flatMap fun u =>
-      mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
+  if w ∉ faultyAt a ∧ E.awake w a = true then
+    Finset.univ.toList.flatMap fun u =>
+      mempool (fun v τ => if v ∉ faultyAt τ ∧ E.awake v τ = true then submit v τ else []) u a
   else []
 
 theorem eagerRelay_apply {V : Type} [Fintype V] [DecidableEq V]
-    (E : Env V) (honest : Finset V) (submit : V → Time → List Tx) (w : V) (a : Time) :
-    eagerRelay E honest submit w a =
-      if w ∈ honest ∧ E.awake w a = true then
-        honest.toList.flatMap fun u =>
-          mempool (fun v τ => if E.awake v τ then submit v τ else []) u a
+    (E : Env V) (faultyAt : Time → Finset V) (submit : V → Time → List Tx) (w : V) (a : Time) :
+    eagerRelay E faultyAt submit w a =
+      if w ∉ faultyAt a ∧ E.awake w a = true then
+        Finset.univ.toList.flatMap fun u =>
+          mempool (fun v τ => if v ∉ faultyAt τ ∧ E.awake v τ = true then submit v τ else []) u a
       else [] := by rfl
 
 /-- The eager relay serves every awake honest recipient at every time from
 the submission on, whatever the event list. -/
 theorem eagerRelay_txs {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
     [DecidableEq V]
-    {E : Env V} (rho : Run F E) (hrel : rho.relay = eagerRelay E rho.honest rho.submit) :
+    {E : Env V} (rho : Run F E) (hrel : rho.relay = eagerRelay E rho.faultyAt rho.submit) :
     rho.EagerTxDelivery := by
   rw [Run.eagerTxDelivery_iff]
-  intro u hu x τ hτ haw hx w hw a hτa hwa
+  intro u x τ hτ hu haw hx w a hτa hw hwa
   dsimp only [Time] at *
   change x ∈ rho.submit w a ++ rho.relay w a
   apply List.mem_append_right
   rw [hrel]
-  simp only [eagerRelay_apply, hw, hwa, and_self, ↓reduceIte]
+  simp only [eagerRelay_apply, hw, hwa]
   apply List.mem_flatMap.mpr
-  refine ⟨u, Finset.mem_toList.mpr hu, ?_⟩
+  refine ⟨u, Finset.mem_toList.mpr (Finset.mem_univ u), ?_⟩
   rw [mempool, ite_eq_right (not_lt.mpr (le_trans hτ hτa))]
   apply List.mem_flatMap.mpr
   refine ⟨τ, ?_, ?_⟩
@@ -65,7 +65,7 @@ theorem eagerRelay_txs {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fin
     · have := Int.toNat_le_toNat hτa; omega
     · change τ ∈ [(τ.toNat : Int)]
       simp [Int.toNat_of_nonneg hτ]
-  · simpa [haw] using hx
+  · simpa [hu, haw] using hx
 
 /-- The canonical schedule with GST `g` is a valid execution. -/
 theorem Run.canonical_valid {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
@@ -80,19 +80,20 @@ theorem Run.canonical_valid {O : OutputSchema} {F : ProtocolFamily O} {V : Type}
 is causal (every delivery is an earlier release), so it carries no object
 that no honest node released. -/
 theorem canonical_run_from_causal (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
-    [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
+    [DecidableEq V] (E : Env V) (faultyAt : Time → Finset V) (hmono : Monotone faultyAt)
+    (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf F E).SelAdmits sel)
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
-      let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
+      let rho := Run.mk (F := F) (E := E) faultyAt hmono horizon events key sel submit relay hash
       rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g ∧ rho.Causal := by
   classical
-  let relay := eagerRelay E honest submit
-  let base := Run.mk (F := F) (E := E) honest horizon [] key sel submit relay hash
+  let relay := eagerRelay E faultyAt submit
+  let base := Run.mk (F := F) (E := E) faultyAt hmono horizon [] key sel submit relay hash
   refine ⟨relay, base.canonicalEvents g, ?_⟩
-  have hb : Run.mk (F := F) (E := E) honest horizon (base.canonicalEvents g) key sel submit relay
-      hash = base.withEvents (base.canonicalEvents g) := by
+  have hb : Run.mk (F := F) (E := E) faultyAt hmono horizon (base.canonicalEvents g)
+      key sel submit relay hash = base.withEvents (base.canonicalEvents g) := by
     rw [Run.withEvents_eq]
   simp only [hb]
   exact ⟨base.canonical_valid hh hsel g,
@@ -108,15 +109,16 @@ by every awake honest node. `g ≤ 0` is a synchronous run; `g` past the horizon
 is a silent run (no receipts at all); in between, the network is asynchronous
 before `g`. -/
 theorem canonical_run_from (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
-    [DecidableEq V] (E : Env V) (honest : Finset V) (horizon : Time) (hh : 0 ≤ horizon)
+    [DecidableEq V] (E : Env V) (faultyAt : Time → Finset V) (hmono : Monotone faultyAt)
+    (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf F E).SelAdmits sel)
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
-      let rho := Run.mk (F := F) (E := E) honest horizon events key sel submit relay hash
+      let rho := Run.mk (F := F) (E := E) faultyAt hmono horizon events key sel submit relay hash
       rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨relay, events, hv, he, -⟩ :=
-    canonical_run_from_causal O F V E honest horizon hh key sel hsel submit hash g
+    canonical_run_from_causal O F V E faultyAt hmono horizon hh key sel hsel submit hash g
   exact ⟨relay, events, hv, he⟩
 
 end Consensus.Model

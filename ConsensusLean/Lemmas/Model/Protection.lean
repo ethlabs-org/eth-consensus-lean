@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.View
+public import ConsensusLean.Lemmas.Model.Laws
 
 public section
 
@@ -205,62 +206,78 @@ theorem viewIdx_closure {v : V} {i : Nat} {o : (protoOf F E).Object}
 before `i`: every object it contains that is signed by an honest validator
 was released by that validator at an earlier sending event (a tick or a
 delivery). -/
-theorem seen_safe (hv : rho.ExecutionValid) (i : Nat) :
-    ∀ v, ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBefore i o := by
+theorem seen_safe (hv : rho.ExecutionValid) (H : V → Prop) (i : Nat)
+    (hH : ∀ k < i, ∀ e, rho.events[k]? = some e →
+      ∀ u, H u → u ∉ rho.faultyAt e.time) :
+    ∀ v, ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBeforeOn H i o := by
   induction i with
   | zero => simp [stateBefore, initWorld]
   | succ k ih =>
+    have ih := ih (fun j hj => hH j (by omega))
     cases he : rho.events[k]? with
     | none =>
       have hworld : rho.stateBefore (k + 1) = rho.stateBefore k := by
         simp [stateBefore, List.take_add_one, he]
       rw [hworld]
-      exact fun v o ho => rho.safeBefore_mono (Nat.le_succ k) (ih v o ho)
+      exact fun v o ho => rho.safeBeforeOn_mono (Nat.le_succ k) (ih v o ho)
     | some e =>
       rw [rho.stateBefore_succ he]
       cases e with
       | tick v t =>
-        have hsafe := (rho.tick_safe he (ih v)).1
+        have hsafe := rho.tick_safeOn he (ih v)
         intro w o ho
         by_cases hw : w = v
         · subst w; exact hsafe o (by simpa [step] using ho)
-        · exact rho.safeBefore_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
+        · exact rho.safeBeforeOn_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
       | restart v t =>
         intro w o ho
         by_cases hw : w = v
         · subst w
-          exact rho.safeBefore_mono (Nat.le_succ k) (ih v o (by simpa [step] using ho))
-        · exact rho.safeBefore_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
+          exact rho.safeBeforeOn_mono (Nat.le_succ k) (ih v o (by simpa [step] using ho))
+        · exact rho.safeBeforeOn_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
       | deliver v p t =>
-        have hp : rho.SafeBefore k p := safeBefore_iff.mpr fun d hd =>
-          signedBefore_iff.mpr (hv.unforgeable k v p t he d hd)
-        have hsafe := (rho.deliver_safe he (ih v) hp).1
+        have hp : rho.SafeBeforeOn H k p := (rho.safeBeforeOn_iff).mpr fun d hd u hs hu =>
+          hv.unforgeable k v p t he d hd u hs (hH k (by omega) _ he u hu)
+        have hsafe := rho.deliver_safeOn he (ih v) hp
         intro w o ho
         by_cases hw : w = v
         · subst w; exact hsafe o (by simpa [step] using ho)
-        · exact rho.safeBefore_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
+        · exact rho.safeBeforeOn_mono (Nat.le_succ k) (ih w o (by simpa [step, hw] using ho))
 
 /-- General invariant for every valid run: an object in the closure of a
 node's `seen` before event `i`, signed by honest `u`, was released by `u` at a
 sending event (tick or delivery) `j < i`. -/
 theorem signed_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : (protoOf F E).Object} {u : V}
-    (ho : o ∈ closure (rho.stateBefore i v).seen) (hu : u ∈ rho.honest)
+    (hi : i ≤ rho.events.length)
+    (ho : o ∈ closure (rho.stateBefore i v).seen) (hu : u ∉ rho.faultyAt (rho.cutTime i))
     (hs : rho.signerOf o = some u) :
     ∃ j < i, ∃ t, rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := by
   obtain ⟨r, hr, hc⟩ := (mem_closure_iff _ _).mp ho
-  obtain ⟨j, t, hj, he, hjo⟩ :=
-    signedBefore_iff.mp (safeBefore_iff.mp (rho.seen_safe hv i v r hr) o hc) u hu hs
+  have hH : ∀ k < i, ∀ e, rho.events[k]? = some e →
+      ∀ x, x ∉ rho.faultyAt (rho.cutTime i) → x ∉ rho.faultyAt e.time := by
+    intro k hk e he x hx hmem
+    have ht := ((sysOf_laws O F V).trace ⟨E, rho⟩ hv).cutTime_mono
+      (k + 1) i (by omega) hi
+    change rho.cutTime (k + 1) ≤ rho.cutTime i at ht
+    simp only [cutTime, he] at ht
+    exact hx (rho.faultyAt_mono ht hmem)
+  obtain ⟨j, t, hj, he, hjo⟩ := (rho.safeBeforeOn_iff).mp (rho.seen_safe hv
+    (fun x => x ∉ rho.faultyAt (rho.cutTime i)) i hH v r hr) o hc u hs hu
   exact ⟨j, hj, t, he, hjo⟩
 
 /-- Every object signed by an honest validator that an honest node saw was
 released by that validator at a sending event (a tick or a delivery). -/
 theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object}
-    (ho : o ∈ rho.Observed) {u : V} (hu : u ∈ rho.honest)
+    {d : Time}
+    (ho : ∃ v i, i ≤ rho.events.length ∧ rho.cutTime i ≤ d ∧ o ∈ rho.ViewIdx v i)
+    {u : V} (hu : u ∉ rho.faultyAt d)
     (hs : rho.signerOf o = some u) :
     ∃ j t, rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := by
-  obtain ⟨v, -, hov⟩ := ho
-  obtain ⟨j, -, t, he, hjo⟩ := rho.signed_seen_released hv (rho.viewIdx_closure hov) hu hs
+  obtain ⟨v, i, hi, ht, hov⟩ := ho
+  have hui : u ∉ rho.faultyAt (rho.cutTime i) := fun h => hu (rho.faultyAt_mono ht h)
+  obtain ⟨j, -, t, he, hjo⟩ :=
+    rho.signed_seen_released hv hi (rho.viewIdx_closure hov) hui hs
   exact ⟨j, t, he, hjo⟩
 
 /-- Two own-signed objects released by one tick never conflict. -/
@@ -314,11 +331,12 @@ theorem deliver_noConflict_seen {i : Nat} {v : V} {p : (protoOf F E).Object} {t 
 protocol: both conflicting objects were released by the validator itself, and
 the later one (by event, or by position within one tick or delivery) was
 checked against the earlier one. -/
-theorem honestNeverSlashed (hv : rho.ExecutionValid) :
-    ∀ v ∈ rho.honest, ¬ rho.Slashable rho.Observed v := by
-  rintro x hx ⟨o, ho, o', ho', hs, hs', hc⟩
-  obtain ⟨j, t, hj, hjo⟩ := rho.released_of_observed hv ho hx hs
-  obtain ⟨j', t', hj', hjo'⟩ := rho.released_of_observed hv ho' hx hs'
+theorem not_slashable_of_released {A : Set (protoOf F E).Object} {x : V}
+    (hr : ∀ o ∈ A, rho.signerOf o = some x →
+      ∃ j t, rho.SendsAt x j t ∧ o ∈ rho.releasesAt j) : ¬ rho.Slashable A x := by
+  rintro ⟨o, ho, o', ho', hs, hs', hc⟩
+  obtain ⟨j, t, hj, hjo⟩ := hr o ho hs
+  obtain ⟨j', t', hj', hjo'⟩ := hr o' ho' hs'
   have hk := rho.signer_of_signerOf hs
   have hk' := rho.signer_of_signerOf hs'
   have nc {i t c c'} (hi : rho.SendsAt x i t) (hc : c ∈ rho.releasesAt i)
@@ -349,28 +367,44 @@ theorem honestNeverSlashed (hv : rho.ExecutionValid) :
     rw [hc] at this
     cases this
 
+theorem honestNeverSlashed (hv : rho.ExecutionValid) :
+    ∀ v d, v ∉ rho.faultyAt d →
+      ¬ rho.Slashable {o | ∃ w i, i ≤ rho.events.length ∧
+        rho.cutTime i ≤ d ∧ o ∈ rho.ViewIdx w i} v := by
+  intro v d hvh
+  exact rho.not_slashable_of_released fun _ ho hs => rho.released_of_observed hv ho hvh hs
+
 end Run
 
 /-- The honest evidence of a system run is what the honest nodes of the run
 saw. -/
-theorem mem_honestEvidence_iff (rho : Run F E) (p : (protoOf F E).Object) :
-    (⟨E, p⟩ : (sysOf O F V).Obs) ∈ (sysOf O F V).honestEvidence ⟨E, rho⟩ ↔
+theorem mem_honestEvidence_iff (rho : Run F E) (hv : rho.ExecutionValid)
+    (p : (protoOf F E).Object) :
+    (⟨E, p⟩ : (sysOf O F V).Obs) ∈
+      (sysOf O F V).honestEvidenceBy ⟨E, rho⟩ rho.horizon ↔
       p ∈ rho.Observed := by
   constructor
-  · rintro ⟨w, hw, q, hq, heq⟩
+  · rintro ⟨w, i, hi, _, hw, q, hq, heq⟩
     obtain rfl : p = q := eq_of_heq (Sigma.mk.inj heq).2
-    exact ⟨w, hw, hq⟩
-  · rintro ⟨w, hw, hp⟩
-    exact ⟨w, hw, p, hp, rfl⟩
+    exact ⟨w, i, hi, hw, hq⟩
+  · rintro ⟨w, i, hi, hw, hp⟩
+    exact ⟨w, i, hi, ((sysOf_laws O F V).trace ⟨E, rho⟩ hv).cutTime_le_horizon i hi,
+      hw, p, hp, rfl⟩
 
 /-- L0 non-framing holds for every model system. -/
 theorem sysOf_nonFraming (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
     [DecidableEq V] : (sysOf O F V).HoldsAlways (sysOf O F V).NonFraming := by
-  rintro ⟨E, rho⟩ hv v hvh hconv
-  apply rho.honestNeverSlashed hv v hvh
+  rintro ⟨E, rho⟩ hv v d hvh hconv
+  apply rho.honestNeverSlashed hv v d hvh
   obtain ⟨o, ho, o', ho', h1, h2, h3⟩ := hconv
-  exact ⟨o, (mem_honestEvidence_iff rho o).mp ho, o', (mem_honestEvidence_iff rho o').mp ho',
-    h1, h2, h3⟩
+  have obs {p : (protoOf F E).Object}
+      (hp : (⟨E, p⟩ : (sysOf O F V).Obs) ∈
+        (sysOf O F V).honestEvidenceBy ⟨E, rho⟩ d) :
+      ∃ w i, i ≤ rho.events.length ∧ rho.cutTime i ≤ d ∧ p ∈ rho.ViewIdx w i := by
+    obtain ⟨w, i, hi, ht, _, q, hq, heq⟩ := hp
+    obtain rfl : p = q := eq_of_heq (Sigma.mk.inj heq).2
+    exact ⟨w, i, hi, ht, hq⟩
+  exact ⟨o, obs ho, o', obs ho', h1, h2, h3⟩
 
 end Consensus.Model
 

@@ -18,13 +18,13 @@ namespace Run
 
 /-- Eager ingress serves every awake honest recipient at the sampling time. -/
 def EagerTxDelivery (rho : Run F E) : Prop :=
-  ∀ u ∈ rho.honest, ∀ x τ, 0 ≤ τ → E.awake u τ = true → x ∈ rho.submit u τ →
-    ∀ w ∈ rho.honest, ∀ a, τ ≤ a → E.awake w a = true → x ∈ rho.inbox w a
+  ∀ u x τ, 0 ≤ τ → u ∉ rho.faultyAt τ → E.awake u τ = true → x ∈ rho.submit u τ →
+    ∀ w a, τ ≤ a → w ∉ rho.faultyAt a → E.awake w a = true → x ∈ rho.inbox w a
 
 omit [DecidableEq V] in
 theorem eagerTxDelivery_iff {rho : Run F E} : rho.EagerTxDelivery ↔
-    ∀ u ∈ rho.honest, ∀ x τ, 0 ≤ τ → E.awake u τ = true → x ∈ rho.submit u τ →
-      ∀ w ∈ rho.honest, ∀ a, τ ≤ a → E.awake w a = true → x ∈ rho.inbox w a := Iff.rfl
+    ∀ u x τ, 0 ≤ τ → u ∉ rho.faultyAt τ → E.awake u τ = true → x ∈ rho.submit u τ →
+      ∀ w a, τ ≤ a → w ∉ rho.faultyAt a → E.awake w a = true → x ∈ rho.inbox w a := Iff.rfl
 
 end Run
 end Consensus.Model

@@ -6,12 +6,9 @@ public section
 
 /-! # Causal runs convict nobody
 
-In a valid run whose network is causal (every delivery is an earlier
-release, as in the canonical run), every signed object anything honest saw
-has an honest signer: honest nodes sign only with their own key, and carry
-only what they saw. With `honestNeverSlashed`, the honest evidence convicts
-nobody, faulty validators included. Realizability witnesses use this to show
-that no accountability conclusion is met by slashing. -/
+Every signed object in a causal run has genuine release provenance, even
+after its signer is compromised. The engine's persistent slashing guard
+therefore excludes conflicting evidence for every validator. -/
 
 namespace Consensus.Model
 
@@ -22,122 +19,39 @@ namespace Run
 
 variable (rho : Run F E)
 
-/-- Every signed object inside `o` has an honest signer. -/
-def HonestSigned (o : (protoOf F E).Object) : Prop :=
-  ∀ d, Obj.Contains o d → ∀ u, rho.signerOf d = some u → u ∈ rho.honest
+/-- In a causal run every observed signature has genuine release provenance. -/
+theorem released_of_causal (hc : rho.Causal) {o : (protoOf F E).Object}
+    (ho : o ∈ rho.Observed) {u : V} (hs : rho.signerOf o = some u) :
+    ∃ j t, rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := by
+  obtain ⟨v, i, _, _, hov⟩ := ho
+  obtain ⟨p, hp, hpo⟩ := (mem_closure_iff _ _).mp hov
+  have hsafe := (rho.causal_safe hc i).1 v p hp
+  obtain ⟨j, t, _, hj, hr⟩ :=
+    signedBefore_iff.mp (safeBefore_iff.mp hsafe o hpo) u hs
+  exact ⟨j, t, hj, hr⟩
 
-omit [DecidableEq V] in
-/-- A tick of an honest node keeps `seen` honestly signed and releases only
-honestly signed objects. -/
-theorem tick_honestSigned (nd : Node (protoOf F E)) {v : V} (hv : v ∈ rho.honest) (t : Time)
-    (hs : ∀ o ∈ nd.seen, rho.HonestSigned o) :
-    (∀ o ∈ (rho.tick nd v t).1.seen, rho.HonestSigned o) ∧
-      (∀ o ∈ (rho.tick nd v t).2, rho.HonestSigned o) := by
-  have hr : ∀ o ∈ (rho.tick nd v t).2, ∀ u, rho.signerOf o = some u → u ∈ rho.honest := by
-    intro o ho u hu
-    rcases rho.tick_signerOf nd v t ho with h | h <;> rw [h] at hu
-    · cases hu
-    · exact Option.some.inj hu ▸ hv
-  obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat nd v t
-  rw [h2] at hr ⊢
-  rw [h1]
-  exact releaseAll_preserves rho.hash _
-    (fun d => ∀ u, rho.signerOf d = some u → u ∈ rho.honest) _ _ hs hr
-
-omit [DecidableEq V] in
-/-- A delivery of an honestly signed object to an honest node keeps `seen`
-honestly signed and releases only honestly signed objects. -/
-theorem deliver_honestSigned (nd : Node (protoOf F E)) {v : V} (hv : v ∈ rho.honest)
-    (p : (protoOf F E).Object) (t : Time) (hs : ∀ o ∈ nd.seen, rho.HonestSigned o)
-    (hp : rho.HonestSigned p) :
-    (∀ o ∈ (rho.deliver nd v p t).1.seen, rho.HonestSigned o) ∧
-      (∀ o ∈ (rho.deliver nd v p t).2, rho.HonestSigned o) := by
-  have hr : ∀ o ∈ (rho.deliver nd v p t).2, ∀ u, rho.signerOf o = some u → u ∈ rho.honest := by
-    intro o ho u hu
-    rcases rho.deliver_signerOf nd v p t ho with h | h <;> rw [h] at hu
-    · cases hu
-    · exact Option.some.inj hu ▸ hv
-  have hs' : ∀ o ∈ nd.seen ++ [p], rho.HonestSigned o := by
-    intro o ho
-    rcases List.mem_append.mp ho with ho | ho
-    · exact hs o ho
-    · rw [List.mem_singleton.mp ho]; exact hp
-  obtain ⟨cs, -, h2, h1⟩ := rho.deliver_flat nd v p t
-  rw [h2] at hr ⊢
-  rw [h1]
-  exact releaseAll_preserves rho.hash _
-    (fun d => ∀ u, rho.signerOf d = some u → u ∈ rho.honest) _ _ hs' hr
-
-/-- In a valid causal run, everything every node has seen is honestly
-signed. -/
-theorem seen_honestSigned (hv : rho.ExecutionValid) (hc : rho.Causal) (i : Nat) :
-    ∀ v, ∀ o ∈ (rho.stateBefore i v).seen, rho.HonestSigned o := by
-  induction i using Nat.strong_induction_on with
-  | _ i ih =>
-    cases i with
-    | zero => intro v o ho; simp [stateBefore, initWorld] at ho
-    | succ k =>
-      have old := ih k (Nat.lt_succ_self k)
-      cases he : rho.events[k]? with
-      | none =>
-        have hworld : rho.stateBefore (k + 1) = rho.stateBefore k := by
-          simp [stateBefore, List.take_add_one, he]
-        rw [hworld]
-        exact old
-      | some e =>
-        rw [rho.stateBefore_succ he]
-        have hnode : e.node ∈ rho.honest :=
-          hv.honest_only e (List.mem_of_getElem? he)
-        intro w o ho
-        cases e with
-        | tick v t =>
-          by_cases hw : w = v
-          · subst w
-            exact (rho.tick_honestSigned _ (v := v) hnode t (old v)).1 o (by simpa [step] using ho)
-          · exact old w o (by simpa [step, hw] using ho)
-        | restart v t =>
-          by_cases hw : w = v
-          · subst w; exact old v o (by simpa [step] using ho)
-          · exact old w o (by simpa [step, hw] using ho)
-        | deliver v p t =>
-          obtain ⟨j, u, t', hj, hju, hjo⟩ := causal_iff.mp hc k v p t he
-          have hp : rho.HonestSigned p := ih (j + 1) (by omega) u p (rho.releasesAt_seen hju hjo)
-          by_cases hw : w = v
-          · subst w
-            exact (rho.deliver_honestSigned _ (v := v) hnode p t (old v) hp).1 o
-              (by simpa [step] using ho)
-          · exact old w o (by simpa [step, hw] using ho)
-
-/-- In a valid causal run nobody, faulty validators included, is slashable on
-what the honest nodes saw. -/
-theorem not_slashable_of_causal (hv : rho.ExecutionValid) (hc : rho.Causal) (x : V) :
-    ¬ rho.Slashable rho.Observed x := by
-  intro hs
-  have hx : x ∈ rho.honest := by
-    obtain ⟨o, ⟨v, -, hov⟩, -, -, hsx, -⟩ := hs
-    obtain ⟨r, hr, hro⟩ := (mem_closure_iff _ _).mp (rho.viewIdx_closure hov)
-    exact rho.seen_honestSigned hv hc _ v r hr o hro x hsx
-  exact rho.honestNeverSlashed hv x hx hs
+theorem not_slashable_of_causal (hc : rho.Causal) (x : V) :
+    ¬ rho.Slashable rho.Observed x :=
+  rho.not_slashable_of_released fun _ ho hs => rho.released_of_causal hc ho hs
 
 end Run
 
-/-- If nobody is slashable on what the honest nodes saw, the honest evidence
-of the system run convicts nobody. -/
-theorem convicted_honestEvidence_eq_empty (rho : Run F E)
+/-- Horizon-bounded honest evidence convicts nobody in a causal run. -/
+theorem convicted_honestEvidence_eq_empty (rho : Run F E) (hv : rho.ExecutionValid)
     (h : ∀ x, ¬ rho.Slashable rho.Observed x) :
     Consensus.convicted ((sysOf O F V).convicts ⟨E, rho⟩)
-      ((sysOf O F V).honestEvidence ⟨E, rho⟩) = ∅ := by
+      ((sysOf O F V).honestEvidenceBy ⟨E, rho⟩ rho.horizon) = ∅ := by
   classical
   apply Finset.eq_empty_of_forall_notMem
   intro x hx
-  have hconv : (sysOf O F V).convicts ⟨E, rho⟩ ((sysOf O F V).honestEvidence ⟨E, rho⟩) x := by
+  have hconv : (sysOf O F V).convicts ⟨E, rho⟩
+      ((sysOf O F V).honestEvidenceBy ⟨E, rho⟩ rho.horizon) x := by
     unfold Consensus.convicted at hx
     simpa using hx
   apply h x
   obtain ⟨o, ho, o', ho', h1, h2, h3⟩ := hconv
-  exact ⟨o, (mem_honestEvidence_iff rho o).mp ho, o', (mem_honestEvidence_iff rho o').mp ho',
-    h1, h2, h3⟩
+  exact ⟨o, (mem_honestEvidence_iff rho hv o).mp ho,
+    o', (mem_honestEvidence_iff rho hv o').mp ho', h1, h2, h3⟩
 
 end Consensus.Model
-
 end

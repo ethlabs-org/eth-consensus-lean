@@ -177,11 +177,81 @@ theorem pool_ready (hc : rho.Causal) (p : Nat) (o : (protoOf F E).Object)
   exact (mem_closure_iff _ a).mpr ⟨r, hsub hr, hd⟩
 
 def SignedBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
-  ∀ u ∈ rho.honest, rho.signerOf o = some u →
+  ∀ u, rho.signerOf o = some u →
     ∃ j t, j < i ∧ rho.SendsAt u j t ∧ o ∈ rho.releasesAt j
 
 def SafeBefore (i : Nat) (o : (protoOf F E).Object) : Prop :=
   ∀ d, Obj.Contains o d → rho.SignedBefore i d
+
+/-- Provenance restricted to a specified set of signers. -/
+def SignedBeforeOn (H : V → Prop) (i : Nat) (o : (protoOf F E).Object) : Prop :=
+  ∀ u, rho.signerOf o = some u → H u →
+    ∃ j t, j < i ∧ rho.SendsAt u j t ∧ o ∈ rho.releasesAt j
+
+def SafeBeforeOn (H : V → Prop) (i : Nat) (o : (protoOf F E).Object) : Prop :=
+  ∀ d, Obj.Contains o d → rho.SignedBeforeOn H i d
+
+theorem safeBeforeOn_iff {H : V → Prop} {i : Nat} {o : (protoOf F E).Object} :
+    rho.SafeBeforeOn H i o ↔ ∀ d, Obj.Contains o d → ∀ u,
+      rho.signerOf d = some u → H u →
+        ∃ j t, j < i ∧ rho.SendsAt u j t ∧ d ∈ rho.releasesAt j := Iff.rfl
+
+theorem signedBeforeOn_mono {H : V → Prop} {i j : Nat} (hij : i ≤ j)
+    {o : (protoOf F E).Object} (h : rho.SignedBeforeOn H i o) :
+    rho.SignedBeforeOn H j o := by
+  intro u hs hu
+  obtain ⟨k, t, hk, he, ho⟩ := h u hs hu
+  exact ⟨k, t, lt_of_lt_of_le hk hij, he, ho⟩
+
+theorem safeBeforeOn_mono {H : V → Prop} {i j : Nat} (hij : i ≤ j)
+    {o : (protoOf F E).Object} (h : rho.SafeBeforeOn H i o) :
+    rho.SafeBeforeOn H j o := fun d hd => rho.signedBeforeOn_mono hij (h d hd)
+
+theorem tick_safeOn {H : V → Prop} {i : Nat} {v : V} {t : Time}
+    (hi : rho.events[i]? = some (.tick v t))
+    (hs : ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBeforeOn H i o) :
+    ∀ o ∈ (rho.tick (rho.stateBefore i v) v t).1.seen,
+      rho.SafeBeforeOn H (i + 1) o := by
+  have hr : ∀ o ∈ (rho.tick (rho.stateBefore i v) v t).2,
+      rho.SignedBeforeOn H (i + 1) o := by
+    intro o ho u hsigner _
+    rcases rho.tick_signerOf _ v t ho with hn | hv
+    · rw [hn] at hsigner; cases hsigner
+    · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
+      subst u
+      exact ⟨i, t, Nat.lt_succ_self i, Or.inl hi, by simpa only [releasesAt, hi] using ho⟩
+  obtain ⟨cs, -, h2, h1⟩ := rho.tick_flat (rho.stateBefore i v) v t
+  rw [h2] at hr
+  rw [h1]
+  exact (releaseAll_preserves rho.hash _ (rho.SignedBeforeOn H (i + 1)) _ _
+    (fun o ho d hd => rho.signedBeforeOn_mono (Nat.le_succ i) (hs o ho d hd)) hr).1
+
+theorem deliver_safeOn {H : V → Prop} {i : Nat} {v : V}
+    {p : (protoOf F E).Object} {t : Time}
+    (hi : rho.events[i]? = some (.deliver v p t))
+    (hs : ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBeforeOn H i o)
+    (hp : rho.SafeBeforeOn H i p) :
+    ∀ o ∈ (rho.deliver (rho.stateBefore i v) v p t).1.seen,
+      rho.SafeBeforeOn H (i + 1) o := by
+  have hr : ∀ o ∈ (rho.deliver (rho.stateBefore i v) v p t).2,
+      rho.SignedBeforeOn H (i + 1) o := by
+    intro o ho u hsigner _
+    rcases rho.deliver_signerOf _ v p t ho with hn | hv
+    · rw [hn] at hsigner; cases hsigner
+    · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
+      subst u
+      exact ⟨i, t, Nat.lt_succ_self i, Or.inr ⟨p, hi⟩,
+        by simpa only [releasesAt, hi] using ho⟩
+  have hs' : ∀ o ∈ (rho.stateBefore i v).seen ++ [p], rho.SafeBeforeOn H i o := by
+    intro o ho
+    rcases List.mem_append.mp ho with ho | ho
+    · exact hs o ho
+    · rw [List.mem_singleton.mp ho]; exact hp
+  obtain ⟨cs, -, h2, h1⟩ := rho.deliver_flat (rho.stateBefore i v) v p t
+  rw [h2] at hr
+  rw [h1]
+  exact (releaseAll_preserves rho.hash _ (rho.SignedBeforeOn H (i + 1)) _ _
+    (fun o ho d hd => rho.signedBeforeOn_mono (Nat.le_succ i) (hs' o ho d hd)) hr).1
 
 variable {rho} in
 theorem causal_iff : rho.Causal ↔ ∀ i w o t, rho.events[i]? = some (.deliver w o t) →
@@ -189,7 +259,7 @@ theorem causal_iff : rho.Causal ↔ ∀ i w o t, rho.events[i]? = some (.deliver
 
 variable {rho} in
 theorem signedBefore_iff {i : Nat} {o : (protoOf F E).Object} : rho.SignedBefore i o ↔
-    ∀ u ∈ rho.honest, rho.signerOf o = some u →
+    ∀ u, rho.signerOf o = some u →
       ∃ j t, j < i ∧ rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := Iff.rfl
 
 variable {rho} in
@@ -198,8 +268,8 @@ theorem safeBefore_iff {i : Nat} {o : (protoOf F E).Object} :
 
 theorem signedBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
     (h : rho.SignedBefore i o) : rho.SignedBefore j o := by
-  intro u hu hh
-  obtain ⟨k, t, hk, he, ho⟩ := h u hu hh
+  intro u hh
+  obtain ⟨k, t, hk, he, ho⟩ := h u hh
   exact ⟨k, t, lt_of_lt_of_le hk hij, he, ho⟩
 
 theorem safeBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
@@ -213,7 +283,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
     (∀ o ∈ rho.releasesAt i, rho.SafeBefore (i + 1) o) := by
   have hr : ∀ o ∈ (rho.tick (rho.stateBefore i v) v t).2,
       rho.SignedBefore (i + 1) o := by
-    intro o ho u hu hsigner
+    intro o ho u hsigner
     rcases rho.tick_signerOf _ v t ho with hn | hv
     · rw [hn] at hsigner; cases hsigner
     · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
@@ -236,7 +306,7 @@ theorem deliver_safe {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
     (∀ o ∈ rho.releasesAt i, rho.SafeBefore (i + 1) o) := by
   have hr : ∀ o ∈ (rho.deliver (rho.stateBefore i v) v p t).2,
       rho.SignedBefore (i + 1) o := by
-    intro o ho u hu hsigner
+    intro o ho u hsigner
     rcases rho.deliver_signerOf _ v p t ho with hn | hv
     · rw [hn] at hsigner; cases hsigner
     · have huv : u = v := Option.some.inj (hsigner.symm.trans hv)
@@ -255,9 +325,9 @@ theorem deliver_safe {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
   exact releaseAll_preserves rho.hash _ (rho.SignedBefore (i + 1)) _ _
     (fun o ho d hd => rho.signedBefore_mono (Nat.le_succ i) (hs' o ho d hd)) hr
 
-/-- Causal delivery of roots is enough for full structural unforgeability. -/
-theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
-  have inv : ∀ i, (∀ v o, o ∈ (rho.stateBefore i v).seen → rho.SafeBefore i o) ∧
+/-- Causal delivery preserves genuine provenance for every signer. -/
+theorem causal_safe (hc : rho.Causal) :
+    ∀ i, (∀ v o, o ∈ (rho.stateBefore i v).seen → rho.SafeBefore i o) ∧
       (∀ o ∈ rho.releasesAt i, rho.SafeBefore (i + 1) o) := by
     intro i
     induction i using Nat.strong_induction_on with
@@ -307,9 +377,11 @@ theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
           exact (rho.deliver_safe he (hseen v)
             (rho.safeBefore_mono (by omega) ((ih j hj).2 p hp))).2
         | restart v t => simp [releasesAt, he]
-  intro i w o t hi d hd u hu hh
+/-- Causal delivery of roots is enough for full structural unforgeability. -/
+theorem unforgeable_of_causal (hc : rho.Causal) : rho.Unforgeable := by
+  intro i w o t hi d hd u hh _
   obtain ⟨j, v, t', hj, he, ho⟩ := hc i w o t hi
-  have hs := (inv j).2 o ho d hd u hu hh
+  have hs := (rho.causal_safe hc j).2 o ho d hd u hh
   obtain ⟨k, t'', hk, hkt, hko⟩ := hs
   exact ⟨k, t'', by omega, hkt, hko⟩
 

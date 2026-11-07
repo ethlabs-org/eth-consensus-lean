@@ -89,27 +89,27 @@ theorem sysOf_delivers_iff (rho : Run F E) (dl dlF : Time → Time) (cut : Time)
   constructor
   · intro h
     refine ⟨?_, ?_, h.txs⟩
-    · intro v hv o t hs hr w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mp (h.msgs v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩
-        (fun h' => hr ((sysOf_log_fgAtt rho o).mp h')) w hw a hta hc hh ha)
-    · intro v hv o t hs hr w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mp (h.fgAtts v hv ⟨E, o⟩ t ⟨o, rfl, hs⟩
-        ((sysOf_log_fgAtt rho o).mpr hr) w hw a hta hc hh ha)
+    · intro v o t hs hv hr w a hta hc hh hw ha
+      exact (sysOf_held_iff rho w o _).mp (h.msgs v ⟨E, o⟩ t ⟨o, rfl, hs⟩ hv
+        (fun h' => hr ((sysOf_log_fgAtt rho o).mp h')) w a hta hc hh hw ha)
+    · intro v o t hs hv hr w a hta hc hh hw ha
+      exact (sysOf_held_iff rho w o _).mp (h.fgAtts v ⟨E, o⟩ t ⟨o, rfl, hs⟩ hv
+        ((sysOf_log_fgAtt rho o).mpr hr) w a hta hc hh hw ha)
   · intro h
     refine ⟨?_, ?_, h.txs⟩
-    · rintro v hv m t ⟨o, rfl, hs⟩ hr w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.msgs v hv o t hs
-        (fun h' => hr ((sysOf_log_fgAtt rho o).mpr h')) w hw a hta hc hh ha)
-    · rintro v hv m t ⟨o, rfl, hs⟩ hr w hw a hta hc hh ha
-      exact (sysOf_held_iff rho w o _).mpr (h.fgAtts v hv o t hs
-        ((sysOf_log_fgAtt rho o).mp hr) w hw a hta hc hh ha)
+    · rintro v m t ⟨o, rfl, hs⟩ hv hr w a hta hc hh hw ha
+      exact (sysOf_held_iff rho w o _).mpr (h.msgs v o t hs hv
+        (fun h' => hr ((sysOf_log_fgAtt rho o).mpr h')) w a hta hc hh hw ha)
+    · rintro v m t ⟨o, rfl, hs⟩ hv hr w a hta hc hh hw ha
+      exact (sysOf_held_iff rho w o _).mpr (h.fgAtts v o t hs hv
+        ((sysOf_log_fgAtt rho o).mp hr) w a hta hc hh hw ha)
 
 /-- On a valid run no send happens before time `0` (event times are in
 `[0, horizon]`), so the L0 convenience `CommLog.PSync.syncUntil_zero` applies. -/
 theorem Run.log_sendsFromZero (rho : Run F E) (hv : rho.ExecutionValid) :
     CommLog.SendsFromZero rho.point rho.log := by
   rw [CommLog.sendsFromZero_iff]
-  rintro v - o t ⟨i, hi | ⟨_, hi⟩, -⟩ <;> exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
+  rintro v o t ⟨i, hi | ⟨_, hi⟩, -⟩ - <;> exact (hv.in_horizon _ (List.mem_of_getElem? hi)).1
 
 end Consensus.Model
 
