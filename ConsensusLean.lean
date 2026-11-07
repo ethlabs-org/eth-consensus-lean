@@ -197,6 +197,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.PivotPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SourcePending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.WriterPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
