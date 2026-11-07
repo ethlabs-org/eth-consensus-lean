@@ -157,6 +157,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.AC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Compose
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.FGStore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Healing
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.HealingAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
@@ -443,6 +445,11 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.L
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.AC
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Recovery
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
