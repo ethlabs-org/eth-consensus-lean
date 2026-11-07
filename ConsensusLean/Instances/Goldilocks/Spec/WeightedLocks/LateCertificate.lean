@@ -42,9 +42,13 @@ evidence-release's except these:
 **One difference from evidence-release's interface**: `holdsMsg` also holds the archived votes.
 A vote too old for the pool that the node archives is accepted, so it is forwarded once like every
 accepted object; evidence-release holds only its pool. This includes a vote that arrived only in a
-block's payload, which the rule forwards only with the block: holding it over-approximates the
-rule's forwarding, as the parent's interface does for the payload votes its pool admits (in the
-trivial frame the block's relay delivers such a vote by the same deadline).
+block's payload, which the rule forwards only with the block, as the parent's interface holds the
+payload votes its pool admits. Holding it strengthens what a run-level delivery premise asks:
+the trace's `SyncAC` then asks every honest node to process the vote as a message
+(`ACTrace.ProcessAt`: a message call or the node's own emission), which the relay of the block
+does not supply, also in the trivial frame. No trace refinement to the rule's forwarding and no
+read equivalence is proved. The lemmas about this SA do not use `SyncAC`; a transfer of a
+run-level route to it needs a bridge for this difference or a cleared source-aware forwarding.
 
 The emissions record the state at their read point, with the archive as it stood when the
 handler ran. -/
