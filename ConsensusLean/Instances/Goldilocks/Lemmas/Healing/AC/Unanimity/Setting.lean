@@ -69,6 +69,74 @@ theorem UnanimitySetting.toCore {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)}
     hs.slot, hs.proposer, hs.acPayload, hs.accepted,
     by have := Θ_nonneg sp; linarith [hs.late], hs.settled⟩
 
+/-- `UnanimitySetting` with the unlock given by the oracle `u`: the proposal is the one at the
+locks `u k` of its call. -/
+structure UnanimitySettingU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (schedule : Nat → Fin sp.n) (g : Time) (p : Nat) (P : Blk sp.n FGP)
+    (k : Nat) (ℓp : ACLabel (goldilocksSA sp FGP ro))
+    (d : DutyHead sp.n FGP (Payload sp.n)) (pay : Payload sp.n) : Prop where
+  standalone : StandaloneRunU u tr H U schedule g
+  proposer_mem : schedule p ∈ H
+  call : tr.CallAt (schedule p) k ℓp
+  call_proposal : ℓp.call = .proposal
+  payload : (acProposalWith sp (u k) (tr.state (schedule p) k) ℓp.frame (tr.time k)).2 =
+    some (d, pay)
+  time : tr.time k = sp.ts p
+  parent : P.parent = some d.head.root
+  slot : P.slot = p
+  proposer : P.proposer = schedule p
+  acPayload : P.acPayload = pay
+  accepted : ∃ j, k < j ∧ tr.AcceptAt (schedule p) j P ∧ tr.time j = sp.ts p
+  late : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p
+  settled : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)
+
+/-- `UnanimitySettingCore` with the unlock given by the oracle `u`. -/
+structure UnanimitySettingCoreU (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (schedule : Nat → Fin sp.n) (g : Time)
+    (p : Nat) (P : Blk sp.n FGP) (k : Nat) (ℓp : ACLabel (goldilocksSA sp FGP ro))
+    (d : DutyHead sp.n FGP (Payload sp.n)) (pay : Payload sp.n) : Prop where
+  standalone : StandaloneRunU u tr H U schedule g
+  proposer_mem : schedule p ∈ H
+  call : tr.CallAt (schedule p) k ℓp
+  call_proposal : ℓp.call = .proposal
+  payload : (acProposalWith sp (u k) (tr.state (schedule p) k) ℓp.frame (tr.time k)).2 =
+    some (d, pay)
+  time : tr.time k = sp.ts p
+  parent : P.parent = some d.head.root
+  slot : P.slot = p
+  proposer : P.proposer = schedule p
+  acPayload : P.acPayload = pay
+  accepted : ∃ j, k < j ∧ tr.AcceptAt (schedule p) j P ∧ tr.time j = sp.ts p
+  late : gbar g + 8 * sp.Δ ≤ sp.ts p
+  settled : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)
+
+section
+variable {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+  {schedule : Nat → Fin sp.n} {g : Time} {p : Nat} {P : Blk sp.n FGP} {k : Nat}
+  {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
+  {pay : Payload sp.n}
+
+theorem UnanimitySettingU.toCore {u : Nat → Set Lock}
+    (hs : UnanimitySettingU u tr H U schedule g p P k ℓp d pay) :
+    UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay :=
+  ⟨hs.standalone, hs.proposer_mem, hs.call, hs.call_proposal, hs.payload, hs.time, hs.parent,
+    hs.slot, hs.proposer, hs.acPayload, hs.accepted,
+    by have := Θ_nonneg sp; linarith [hs.late], hs.settled⟩
+
+theorem UnanimitySetting.toU (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) :
+    UnanimitySettingU (parentOracle sp tr) tr H U schedule g p P k ℓp d pay :=
+  ⟨hs.standalone.toU, hs.proposer_mem, hs.call, hs.call_proposal,
+    by rw [acProposalWith_parentOracle hs.call hs.call_proposal]; exact hs.payload, hs.time,
+    hs.parent, hs.slot, hs.proposer, hs.acPayload, hs.accepted, hs.late, hs.settled.toU⟩
+
+theorem UnanimitySettingCore.toU (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
+    UnanimitySettingCoreU (parentOracle sp tr) tr H U schedule g p P k ℓp d pay :=
+  ⟨hs.standalone.toU, hs.proposer_mem, hs.call, hs.call_proposal,
+    by rw [acProposalWith_parentOracle hs.call hs.call_proposal]; exact hs.payload, hs.time,
+    hs.parent, hs.slot, hs.proposer, hs.acPayload, hs.accepted, hs.late, hs.settled.toU⟩
+
+end
+
 end Consensus.Goldilocks.SA
 
 end

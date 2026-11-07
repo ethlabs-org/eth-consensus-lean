@@ -61,22 +61,22 @@ private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU :
     split_ifs at hB
     exact ⟨B, (deepest_mem hB).1.1, rfl, rfl⟩
 
-private theorem FromP.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
-    FromP U A.locks (tryVote sp x A Φ t).1.locks (fun _ f _ => f = true) := by
+private theorem FromP.of_tryVote
+    {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    (x : Fin sp.n) (A : SAState sp.n) (t : Time)
+    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
+    FromP U A.locks (tryVoteWith sp x L A Φ t).1.locks (fun _ f _ => f = true) := by
   have hopt : ∀ (A' : SAState sp.n) (v : Vote sp.n) (L : Set Lock), A'.locks = L →
       FromP U L (optimisticConfirmation sp (admitVote sp A' t v) Φ t).locks
         (fun _ f _ => f = true) := fun A' v L hL => by
     have := FromP.of_optimistic hU hΦ hΦU (admitVote sp A' t v) t
     rwa [admitVote_locks_eq, hL] at this
-  unfold tryVote
+  unfold tryVoteWith
   dsimp only
   split_ifs
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl
-  · exact FromP.trans hU (FromP.of_movesBack hΦU
-      (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
-        (mergedVoteView sp A Φ (sp.slot t)))) (hopt _ _ _ rfl)
+  · exact FromP.trans hU (FromP.of_movesBack hΦU (hL.movesBack hΦ)) (hopt _ _ _ rfl)
   · exact hopt _ _ _ rfl
 
 /-- The slow lock that the update of slot `s` at `(A, Φ, t)` writes on `B` (vetoed or not). -/
@@ -117,13 +117,15 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
         imp_congr_right fun _ => imp_congr_right fun hj => ?_
       rw [Function.update_of_ne (ne_of_lt hj)]
 
-private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
-    FromP U A.locks (acOnTick sp x A Φ t).1.locks
+private theorem FromP.of_onTick
+    {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    (x : Fin sp.n) (A : SAState sp.n) (t : Time)
+    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
+    FromP U A.locks (acOnTickWith sp x L A Φ t).1.locks
       (fun s f B => f = true ∨
         (t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t ∧ joined sp A t ∧
           s = sp.slot t - 1 ∧ (f = false → ∃ D, SlowW A Φ t s D ∧ B = Φ.viableAncestor D))) := by
-  unfold acOnTick
+  unfold acOnTickWith
   dsimp only
   split_ifs with hj ht hu hu
   · exfalso
@@ -132,19 +134,19 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
   · refine (FromP.of_updateConfirmation hU hΦ hΦU A t _).mono fun s f B h => ?_
     obtain ⟨rfl, h2⟩ := h
     exact Or.inr ⟨ht.1, ht.2, hj, rfl, h2⟩
-  · exact (FromP.of_tryVote hU hΦ hΦU x A t).mono fun s f B h => Or.inl h
+  · exact (FromP.of_tryVote hU hΦ hΦU x A t hL).mono fun s f B h => Or.inl h
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 
-/-- A call of an honest node keeps its locks below earlier ones, or writes fast locks, or writes
-a slow lock of the slot of its update. -/
-private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- `call_fromP` with the unlock given. -/
+private theorem call_fromPU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = false → ∃ D, SlowLockAt tr x i s D ∧ O = ℓ.frame.viableAncestor D) := by
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hx hc
   have hU := hr.coherent
   have fast : ∀ s (f : Bool) (O : Blk sp.n FGP), f = true → f = false →
       ∃ D, SlowLockAt tr x i s D ∧ O = ℓ.frame.viableAncestor D :=
@@ -154,10 +156,12 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
   have hpost := congrArg Prod.fst he
   simp only at hpost
   rw [← hpost]
-  generalize hA : tr.state x i = A at hpost
+  have hlaw := hr.lawfulAt hx hc hΦ
+  generalize hA : tr.state x i = A at hpost hlaw
   cases hcall : ℓ.call with
   | tick =>
-    refine (FromP.of_onTick hU hΦ hΦU x A _).mono fun s f B h hf => ?_
+    rw [hcall] at hlaw
+    refine (FromP.of_onTick (L := u i) hU hΦ hΦU x A _ hlaw).mono fun s f B h hf => ?_
     rcases h with h | ⟨ht, hs0, hj, hs, hW⟩
     · exact fast s f B h hf
     · have hu : UpdateAt tr x i s ℓ := by
@@ -169,26 +173,35 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
         ring
       obtain ⟨D, ⟨C, h1, h2⟩, rfl⟩ := hW hf
       exact ⟨D, ⟨ℓ, C, hu, hA ▸ h1, hA ▸ h2⟩, rfl⟩
-  | proposal => exact FromP.of_proposal hΦ hΦU A _
+  | proposal => rw [hcall] at hlaw; exact FromP.of_proposalWith hΦ hΦU A _ hlaw
   | toFG => exact FromP.of_eq (toFG_locks A _)
   | message m =>
+    rw [hcall] at hlaw
     have h₁ := FromP.of_optimistic hU hΦ hΦU (admitVote sp A (tr.time i) m) (tr.time i)
     rw [admitVote_locks_eq] at h₁
-    exact (FromP.trans hU h₁ (FromP.of_tryVote hU hΦ hΦU x _ _)).mono fun s f B h hf =>
-      fast s f B h hf
+    exact (FromP.trans hU h₁ (FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
+      fun s f B h hf => fast s f B h hf
   | block B =>
+    rw [hcall] at hlaw
     have h₁ := FromP.of_optimistic hU hΦ hΦU (blockReceipt sp A (tr.time i) B) (tr.time i)
     rw [blockReceipt_locks] at h₁
-    exact (FromP.trans hU h₁ (FromP.of_tryVote hU hΦ hΦU x _ _)).mono fun s f B h hf =>
-      fast s f B h hf
+    exact (FromP.trans hU h₁ (FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
+      fun s f B h hf => fast s f B h hf
   | restart =>
     exact FromP.of_eq ((restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
       (hr.time_nonneg i)).2.1
 
-/-- **Stored slow-lock provenance**: every lock that is not fast and that an honest node holds
-before cut `i` sits below (inside `U`) the stored block `ℓ.frame.viableAncestor D` of a slow lock
-of its slot (selection `D`) that the node wrote at an earlier cut `j` (call label `ℓ`). -/
-theorem slow_lock_provenance_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+/-- A call of an honest node keeps its locks below earlier ones, or writes fast locks, or writes
+a slow lock of the slot of its update. -/
+private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    FromP U (tr.state x i).locks (tr.post i).locks
+      (fun s f O => f = false → ∃ D, SlowLockAt tr x i s D ∧ O = ℓ.frame.viableAncestor D) :=
+  call_fromPU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
+
+/-- `slow_lock_provenance_stored` with the unlock given. -/
+theorem slow_lock_provenance_storedU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
@@ -204,7 +217,7 @@ theorem slow_lock_provenance_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      rcases fromP_iff.1 (call_fromP hr hx ⟨hnode.1, hℓ⟩) l hl with
+      rcases fromP_iff.1 (call_fromPU hr hx ⟨hnode.1, hℓ⟩) l hl with
         ⟨l₀, hl₀, hf₀, hs, hb⟩ | ⟨O, h, hB⟩
       · obtain ⟨j, hj, ℓ', D, hc, h, hB⟩ := ih l₀ hl₀ (hf₀.trans hf)
         exact ⟨j, hj.trans (Nat.lt_succ_self i), ℓ', D, hc, hs ▸ h,
@@ -213,6 +226,16 @@ theorem slow_lock_provenance_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
         exact ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, below_iff.1 hB⟩
     · obtain ⟨j, hj, h⟩ := ih l hl hf
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
+
+/-- **Stored slow-lock provenance**: every lock that is not fast and that an honest node holds
+before cut `i` sits below (inside `U`) the stored block `ℓ.frame.viableAncestor D` of a slow lock
+of its slot (selection `D`) that the node wrote at an earlier cut `j` (call label `ℓ`). -/
+theorem slow_lock_provenance_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, l.fast = false →
+      ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
+        ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) :=
+  slow_lock_provenance_storedU (hr := hr.toU) (x := x) (hx := hx) (i := i)
 
 end Consensus.Goldilocks.SA
 

@@ -32,8 +32,9 @@ private theorem getAnchor_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SAStat
     · exact h.1
     · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
 
-/-- **The canonical walk from the proposal's anchor ends at `P`**, through `d.head`. -/
-theorem proposal_walkEnd_core (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
+/-- `proposal_walkEnd_core` with the unlock given. -/
+theorem proposal_walkEnd_coreU
+    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) :
     WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
         (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
         (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) d.start P ∧
@@ -41,12 +42,12 @@ theorem proposal_walkEnd_core (hs : UnanimitySettingCore tr H U schedule g p P k
   have hr := hs.standalone.run.localRun
   have hU := hr.coherent
   have hq := hs.proposer_mem
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hq hs.call
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hq hs.call
   have hslot : sp.slot (sp.ts p) = p :=
     slot_of_mem sp p le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
   have hpay := hs.payload
   rw [hs.time] at hpay
-  unfold acProposal at hpay
+  unfold acProposalWith at hpay
   split_ifs at hpay
   simp only [Option.some.injEq, Prod.mk.injEq, hslot] at hpay
   obtain ⟨hd, rfl⟩ := hpay
@@ -74,10 +75,10 @@ theorem proposal_walkEnd_core (hs : UnanimitySettingCore tr H U schedule g p P k
   have hPU : P ∈ U := by
     obtain ⟨j, -, hacc, -⟩ := hs.accepted
     obtain ⟨ℓ₁, hc₁, -⟩ := id hacc
-    exact (frameIn_of_callAt hr hq hc₁).2 ((accept_new sp hr hq hacc).1 ℓ₁ hc₁)
+    exact (frameIn_of_callAtU hr hq hc₁).2 ((accept_newU sp hr hq hacc).1 ℓ₁ hc₁)
   -- no block of the tree has a slot above `p`
   have hslot_le : ∀ C ∈ ℓp.frame.tree, C.slot ≤ p := fun C hC => by
-    have := frame_slot_le sp hr hq hs.call C hC
+    have := frame_slot_leU sp hr hq hs.call C hC
     rw [hs.time, hslot] at this
     exact this
   have hP₂ : WalkEnd (insert P T) sc el d.head P := by
@@ -101,6 +102,14 @@ theorem proposal_walkEnd_core (hs : UnanimitySettingCore tr H U schedule g p P k
   refine ⟨fun h => ⟨Set.mem_insert_of_mem _ h.1, h.2⟩, fun h => ⟨h.1.resolve_left ?_, h.2⟩⟩
   rintro rfl
   exact hX (Option.some.inj (h.2.1.symm.trans hs.parent))
+
+/-- **The canonical walk from the proposal's anchor ends at `P`**, through `d.head`. -/
+theorem proposal_walkEnd_core (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
+    WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
+        (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
+        (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) d.start P ∧
+      P ∈ U ∧ ℓp.frame.tree ⊆ U ∧ Anc U d.start d.head ∧ Anc U d.head P :=
+  proposal_walkEnd_coreU (hs := hs.toU)
 
 /-! ## In the setting of unanimity -/
 
