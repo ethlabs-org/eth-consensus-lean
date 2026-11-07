@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Quer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
 
 public section
 
@@ -12,9 +14,6 @@ public section
 Statements the endpoint consumes whose home modules are not on this branch yet, under their agreed
 names, so that the endpoint composes against the final interface:
 
-* the engine output transports without a constant-fault premise (`engine_outputValid_at`,
-  `engine_nested_at`, `engine_finalMonotone_at`, `engine_finalAccountable_at`), home
-  `Lemmas/Growing/Simulation/Endpoint`;
 * finite engine sleepy safety under growing faults (`sleepy_safe_engine_at`), home
   `Lemmas/Growing/Sleepy/Engine/Safety`;
 * healed safety of a healthy preparation query (`healthy_ready_safety_at`), home
@@ -25,37 +24,6 @@ names, so that the endpoint composes against the final interface:
   `Lemmas/Growing/Obligations/Concrete/Final`.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
-
-namespace Consensus.Goldilocks.Simulation
-
-open AsChainShape Blocks Shape
-open Consensus.Model (pubOf)
-
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E)
-
-/-- Engine outputs are valid on every valid run. -/
-theorem engine_outputValid_at (hv : rho.ExecutionValid) (g : Out) : OutputValid rho g := by
-  sorry
-
-/-- The engine's finalized read is a prefix of its confirmed read on every valid run. -/
-theorem engine_nested_at (hv : rho.ExecutionValid) :
-    (chainTrace rho).Nested .finalized .confirmed := by
-  sorry
-
-/-- The engine's finalized read never rolls back on every valid run. -/
-theorem engine_finalMonotone_at (hv : rho.ExecutionValid) :
-    (chainTrace rho).Monotone .finalized 0 := by
-  sorry
-
-/-- The engine's finalized read is accountably safe for `α ≤ 1/3`, or the run has a hash
-collision. -/
-theorem engine_finalAccountable_at (hv : rho.ExecutionValid) {α : ℚ} (hα : α ≤ 1 / 3) :
-    (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α .finalized 0 ∨
-      rho.HashCollision := by
-  sorry
-
-end Consensus.Goldilocks.Simulation
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
