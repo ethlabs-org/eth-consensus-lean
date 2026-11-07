@@ -20,9 +20,12 @@ constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
   time up to `t_{j₀+k} + 6Δ` that an honest call reaches is at or before `z` (`hzc`).
 * `two_mul_lt`: `2·|(H z)ᶜ ∪ W| < n`; `cohort_classify`: a vote cast in `[a, z]` by a node
   honest then is by `A₀`, by `W`, or by a validator compromised by `z`.
-* `OutageVoteInv`, `OutageLockInv`, `OutageS5StepAt`: the cut invariant, with every field at the
-  cut of its event or state. The protections `protPrev`, `protCover` constrain the state of a
-  member of `A₀` at cuts at which it is honest.
+* `OutageVoteInv`, `OutageLockInv`, `OutageS5StepAt`: the cut invariant, with every event field at
+  the cut of its event, and the per-node state fields (`locks`, `caches`, `viable`) at a read
+  time: a time at which the node is honest and after every cut before the state's cut (a reader
+  ready at `t` reads the state of the first cut after `t`, at which it may already be
+  compromised; `OutageLockInv.locks_at_cut` and the like give the cut form). The protections
+  `protPrev`, `protCover` constrain the state of a member of `A₀` at cuts at which it is honest.
 * `ExtendingMajorityAt tr H B q d`: the extending majority of label `q`, with the opponents
   charged at `d` (`(H d)ᶜ` and the slot-`q` casters honest at `d` whose vote does not extend `B`).
 
@@ -135,9 +138,11 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg P) →
      CoverBaseAt tr H P j₀ x c ℓ)
   /-- Post-GST pool delivery: an update of a restored label by a node honest at it holds every
-  vote of that slot cast by a node honest at its cast. -/
+  vote of that slot cast by a node honest at its cast, or two other votes of that slot by the
+  same validator (which may be compromised after its cast). -/
   PG : ∀ w c m ℓ, w ∈ H (tr.time c) → SA.UpdateAt tr.projAC w c m ℓ → r ≤ m →
-    ∀ x i e, HVoteAt tr H x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m
+    ∀ x i e, HVoteAt tr H x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m ∨
+      e.msg.val ∈ SA.equivocators {v | v ∈ (tr.state w c).ac.pool m}
 
 variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
@@ -201,19 +206,23 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
   `P`. -/
   results : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ m C CV, SA.ResultAt tr.projAC y k m C CV →
     (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocksAt H) C D.P
-  /-- (L) every lock stored at a cut at which its node is honest names a held block compatible
-  with `P`. -/
-  locks : ∀ y k, k ≤ i → y ∈ H (tr.time k) → ∀ l ∈ (tr.state y k).ac.locks,
-    ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P
+  /-- (L) every lock stored at a cut `k`, read at a time `t` at which its node is honest and after
+  every cut before `k`, names a held block compatible with `P`. -/
+  locks : ∀ y k t, k ≤ i → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
+    ∀ l ∈ (tr.state y k).ac.locks,
+      ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P
   /-- (SRC) every FG source of a node honest at its call is compatible with `P`. -/
   sources : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ ℓ C, SA.ToFGAt tr.projAC y k ℓ C →
     Compatible (tr.HonestBlocksAt H) C D.P
-  /-- (OB-F) the caches at cuts at which their node is honest are compatible with `P`. -/
-  caches : ∀ y k, k ≤ i → y ∈ H (tr.time k) →
+  /-- (OB-F) the caches at a cut `k`, read at a time `t` at which their node is honest and after
+  every cut before `k`, are compatible with `P`. -/
+  caches : ∀ y k t, k ≤ i → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
     Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P
-  /-- (VA) `P`, when in the frame of a node honest then, is a viable-ancestor candidate. -/
-  viable : ∀ y k, k ≤ i → y ∈ H (tr.time k) → D.P ∈ (Node.frame (tr.state y k)).tree →
+  /-- (VA) `P`, when in the frame of a node at a cut `k` read at a time `t` at which it is honest
+  and after every cut before `k`, is a viable-ancestor candidate. -/
+  viable : ∀ y k t, k ≤ i → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
+    D.P ∈ (Node.frame (tr.state y k)).tree →
     (Node.frame (tr.state y k)).AncestorCandidate D.P
   /-- (Prot) `A₀` keeps its label-`(j₀ − 1)` lock, or root cover, through its lifetime, at the
   cuts at which it is honest. -/
@@ -227,6 +236,30 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg) (i : Nat) : Pr
     CoverBaseAt tr H D.P D.j₀ x c ℓ →
     ∀ k, c < k → k ≤ i → x ∈ H (tr.time k) → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k →
       Prot D x k D.j₀ (D.j₀ + sp.k)
+
+namespace OutageLockInv
+
+variable {D : OutageLockPremises tr H proposer dg} {i : Nat}
+
+/-- The lock field read at the cut's own time. -/
+theorem locks_at_cut (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
+    (hy : y ∈ H (tr.time k)) : ∀ l ∈ (tr.state y k).ac.locks,
+      ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P :=
+  hinv.locks y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
+
+/-- The cache field read at the cut's own time. -/
+theorem caches_at_cut (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
+    (hy : y ∈ H (tr.time k)) : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
+      Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P :=
+  hinv.caches y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
+
+/-- The viability field read at the cut's own time. -/
+theorem viable_at_cut (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
+    (hy : y ∈ H (tr.time k)) : D.P ∈ (Node.frame (tr.state y k)).tree →
+      (Node.frame (tr.state y k)).AncestorCandidate D.P :=
+  hinv.viable y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
+
+end OutageLockInv
 
 /-- The restored-vote step that the lock module consumes: from the invariant at `i`, the votes
 of cut `i` past the lock lifetime, by nodes honest then, have heads compatible with `P`. -/
