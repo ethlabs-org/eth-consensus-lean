@@ -275,9 +275,44 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
     omega
   have hs1 : (S.params (pubOf env) one_le_card).slot ((tr S).time (k + 1)) = 1 :=
     slot_one (by rw [ht]; exact h12) (by rw [ht]; exact hk)
-  have hvote : SA.VoteAt (tr S).projAC y (k + 1) = fun e => e ∈ ℓ.emits := by
-    sorry
-  sorry
+  have hcAC : (tr S).projAC.CallAt y (k + 1) ℓ := Compose.projAC_callAt.mpr hcℓ
+  obtain ⟨hfr, hstep, -, -⟩ := rhoc_run.cutLaw y hy (k + 1) _ hcℓ
+  have hreach1 := Compose.fg_reachable rhoc_run.toLocalRun hy (k + 1)
+  have hc13 : ∀ c < k + 1, (tr S).time c ≤ 13 := fun c hc =>
+    ((rhoc_run (S := S)).time_mono (Nat.lt_succ_iff.mp hc)).trans hk
+  have hAC := Compose.projAC_state rhoc_run.toLocalRun hy (k + 1)
+  by_cases hv : ((tr S).state y (k + 1)).ac.votedSlot = 1
+  · obtain ⟨j, hj, e, he, hes⟩ := SA.vote_of_votedSlot hac hy (k + 1) 1 (by rw [hAC]; exact hv)
+    exact ⟨j, e, he, hes, ((rhoc_run (S := S)).time_mono hj.le).trans (ht ▸ hk)⟩
+  -- the frame holds a ready proposal of slot `1`: the twin's block, or `Σ.F`
+  have hready : SA.voteReady (S.params (pubOf env) one_le_card)
+      (Node.frame ((tr S).state y (k + 1))) 1 := by
+    obtain ⟨-, htc, hgm, hanc⟩ := Store.accepted_tree _ _ _ _ hreach1
+    have hF := (Store.cache_invariants _ _ _ _ hreach1).1
+    by_cases hFg : ((tr S).state y (k + 1)).fg.F.root = (S.params (pubOf env) one_le_card).genesisRoot
+    · refine ⟨X, ⟨hXt, ?_⟩, hXs, fun x hx => (List.not_mem_nil (hX1 ▸ hx)).elim⟩
+      rw [htc.1 hF hgm (hFg.trans rfl)]
+      exact hanc X hXt
+    · obtain ⟨hFs, hF1, -⟩ := of_twin (tree_twin hy hc13 hF hFg)
+      exact ⟨_, ⟨hF, .refl⟩, hFs, fun x hx => (List.not_mem_nil (hF1 ▸ hx)).elim⟩
+  have hrt : ((tr S).state y (k + 1)).ac.restartTime = ⊥ := by
+    rw [← hAC]
+    rcases SA.restartTime_state hac hy (k + 1) with h | ⟨c, -, hrc, -⟩
+    · exact h
+    · exact absurd (Compose.projAC_restartAt.mp hrc) no_restart
+  rw [hcall] at hstep
+  have hem := congrArg Prod.snd hstep
+  dsimp only at hem
+  obtain ⟨e, he, hes⟩ := tryVote_ready y ℓ.frame (t := (tr S).time (k + 1))
+    (A := SA.optimisticConfirmation _ (SA.blockReceipt _ ((tr S).state y (k + 1)).ac
+      ((tr S).time (k + 1)) X) ℓ.frame ((tr S).time (k + 1)))
+    (by unfold SA.joined; rw [rt_optimistic, rt_blockReceipt, hrt]; exact bot_le)
+    (by rw [SA.vs_optimistic, SA.vs_blockReceipt, hs1]; exact_mod_cast hv)
+    (by rw [hs1, ht]; change _ ≤ (4 * 3 * 1 + 3 : Int); dsimp only [Time] at hk ⊢; omega)
+    (by rw [hs1]; exact Nat.one_pos) (by rw [hs1, hfr]; exact hready)
+  refine ⟨k + 1, e, ⟨ℓ, hcAC, ?_⟩, hes.trans hs1, ht ▸ hk⟩
+  rw [← hem]
+  exact he
 
 end Consensus.Goldilocks.Test.ProposerHold
 
