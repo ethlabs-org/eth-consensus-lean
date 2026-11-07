@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
