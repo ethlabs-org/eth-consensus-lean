@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CandidateReport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HigherReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CorePending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
@@ -113,7 +114,7 @@ theorem finalized_compatible_before_update_at
     Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P := by
   sorry
 
-/-! ### Stand-ins: reset retention, update selection and reports -/
+/-! ### Stand-in: update selection from a unanimous pool -/
 
 namespace ResetPremisesUpTo
 
@@ -137,38 +138,6 @@ theorem ready_update_selection_of_pool_at (_hp : ResetPremisesUpTo tr H proposer
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  sorry
-
-/-- Stand-in: a held target below the head-height floor, above a high seed and compatible with
-every earlier high origin, is extended by an earlier strictly higher report. -/
-theorem held_target_high_floor_report_before_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y v : Fin sp.n} {i q m : Nat} (_hy : y ∈ H (tr.time i)) (_hib : tr.time i ≤ b)
-    {P S : SA.Blk sp.n (List (FG.Att sp.n))} (_hPy : P ∈ (tr.state y i).fg.tree)
-    (_hseed : HighOrigin tr H g v q m S) (_hSP : Anc (tr.HonestBlocksAt H) S P)
-    (_hpair : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      ∀ x' r' l' B', r' < i → HighOrigin tr H g x' r' l' B' →
-        Compatible (tr.HonestBlocksAt H) B B')
-    (_hseedcomp : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) S B)
-    (_hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B)
-    (_hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
-    ∃ x r ell C, x ∈ H (tr.time r) ∧ r < i ∧ SA.ToFGAt tr.projAC x r ell C ∧
-      Anc (tr.HonestBlocksAt H) P C ∧
-      ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
-  sorry
-
-/-- Stand-in: finality compatible with a target is below it, or an earlier strictly higher report
-extends the target. -/
-theorem finality_below_or_higher_report_at (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} (_hy : y ∈ H (tr.time k)) (_hkb : tr.time k ≤ b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hcompat : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P) :
-    Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F P ∨
-      ∃ z r ell C, z ∈ H (tr.time r) ∧ r < k ∧ SA.ToFGAt tr.projAC z r ell C ∧
-        Anc (tr.HonestBlocksAt H) P C ∧
-        ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   sorry
 
 end ResetPremisesUpTo
