@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -18,8 +19,9 @@ no constant-fault premise and no other premise beyond the field's own.
   look-ahead `5Δ` and catch-up `≥ 19Δ`;
 * `healedSafe`: healed safety of a healthy preparation query;
 * `persists`: outage protection of an outage query;
-* `healthyLive`: the final branch from `meetsObligations_healthyLive_final_growing`; the
-  confirmed branch and `sleepyLive` are open. -/
+* `healthyLive`: the final branch from `meetsObligations_healthyLive_final_growing`, the
+  confirmed branch from the healthy confirmed supply;
+* `sleepyLive`: the sleepy serviced proposal of the selected slot, with the proposer's hold. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
@@ -59,12 +61,6 @@ theorem meetsObligations_finalAccountable_growing : ∀ g, schema.output .final 
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
   exact engine_finalAccountable_at S r.2 hv (by norm_num [Params.standard])
-
-omit [DecidableEq V] in
-/-- Shortening the readiness duration preserves sleepy participation. -/
-theorem sleepyOn_of_duration (p : EnvPoint V) {c d W a b : Time} (hcd : c ≤ d)
-    (h : p.SleepyOn (1 / 2) d W a b) : p.SleepyOn (1 / 2) c W a b :=
-  fun t hat htb => half_ready_of_duration V _ hcd (h t hat htb)
 
 theorem meetsObligations_sleepySafe_growing : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → (Sys (goldilocks S) V).Holds
@@ -155,7 +151,8 @@ theorem meetsObligations_persists_growing : ∀ g, schema.output .stable = some 
   let Q : OutageQueryAt S A V := ⟨r, hn, T, b₀, b₁, hv, hcollision, ho⟩
   exact outage_protected_at S A V Q v hvr t ht hth w hw
 
-/-- Healthy liveness of the nonfinal (confirmed) capabilities. Open. -/
+/-- Healthy liveness of the nonfinal (confirmed) capabilities: the healthy confirmed supply and
+the payload projection. -/
 theorem meetsObligations_healthyLive_confirmed_growing : ∀ cap g, cap ≠ .final →
     schema.output cap = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
@@ -164,7 +161,23 @@ theorem meetsObligations_healthyLive_confirmed_growing : ∀ cap g, cap ≠ .fin
           ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r) g
         ((Sys (goldilocks S) V).heal (K S A) cap i gst r) ((K S A).params.latency cap i) := by
-  sorry
+  intro cap g hf hg idx gst r hv ⟨hh, hp⟩
+  have hcap : cap = .available ∨ cap = .stable := by cases cap <;> simp_all
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  intro t ht hb hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
+  let Q : ConfirmedQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, t, hv, hc,
+    Or.inr ⟨hh, hp, ht⟩, hb, hr⟩
+  obtain ⟨P, cover⟩ := healthy_confirmed_supply_at S A V Q hh hp ht
+  have h0 : 0 ≤ t :=
+    (add_nonneg (le_max_right gst 0)
+      (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)).trans ht
+  exact confirmed_payload_projection_at S A V Q h0 P cover
 
 theorem meetsObligations_healthyLive_growing : ∀ cap g, schema.output cap = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
@@ -186,7 +199,20 @@ theorem meetsObligations_sleepyLive_growing : ∀ cap g, (cap = .available ∨ c
           ((Sys (goldilocks S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r) g 0
         ((K S A).params.latency cap i) := by
-  sorry
+  intro cap g hcap hg idx r hv ⟨hs, hp⟩
+  have hg' : g = Out.confirmed := by
+    rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
+  subst g
+  by_cases hc : r.2.HashCollision
+  · exact Or.inr hc
+  left
+  intro t ht hb hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
+  let Q : ConfirmedQueryAt S A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
+    Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
+  obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply_at S A V Q hs hp ht
+  exact confirmed_payload_projection_at S A V Q ht P
+    (sleepy_serviced_proposal_coverage_at S A V Q P service)
 
 end Consensus.Goldilocks.Obligations.Growing
 
