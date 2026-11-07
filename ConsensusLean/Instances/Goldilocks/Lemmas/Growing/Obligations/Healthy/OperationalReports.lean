@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportsPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPending
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -56,11 +57,18 @@ theorem honest_votes_in_slot_at
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hub : sp.ts u + sp.Δ ≤ b) :
     ∀ y, y ∈ H (sp.ts u + sp.Δ) → ∃ j e, SA.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧
       tr.time j ≤ sp.ts u + sp.Δ := by
-  apply SA.Growing.honest_votes_in_slot_before_at (healthy_base_of_reset_catch_before_at hp hc)
-    hgu hub
-  intro y r hy hr hrs
-  exact restart_before_unanimous_slot_at hp hR hy (Compose.projAC_restartAt.mp hrs)
-    (hr.trans hub)
+  intro y hy
+  have hΔ := sp.toParams.hΔ
+  have hd0 : 0 ≤ sp.ts u + sp.Δ := by have := SA.gbar_nonneg g; linarith
+  have hS := healthy_base_of_reset_catch_before_at hp hc hd0 hub
+  obtain ⟨j, e, ⟨ℓ, hcj, hej⟩, hs, hjt⟩ := SA.honest_votes_in_slot_before hS hgu le_rfl
+    (fun x hx r hr hrs => by
+      obtain ⟨ℓ, hcr, hrl⟩ := hrs
+      have hcr' := ((Trace.upTo_callAt _).mp hcr).2
+      have hxr : x ∈ H (tr.time r) := hp.run.antitone hr hx
+      exact restart_before_unanimous_slot_at hp hR hxr
+        (Compose.projAC_restartAt.mp ⟨ℓ, hcr', hrl⟩) (hr.trans hub)) y hy
+  exact ⟨j, e, ⟨ℓ, ((Trace.upTo_callAt _).mp hcj).2, hej⟩, hs, hjt⟩
 
 /-- A high origin before a unanimous post-drain slot `u` is below its proposal `P`. -/
 theorem old_origin_below_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
