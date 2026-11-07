@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 public import Mathlib.Tactic.FinCases
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 
 public section
 
@@ -10,6 +12,9 @@ public section
 
 The growing form of `Obligations/WindowCoverageUpTo` and `Obligations/WindowFieldsUpTo`:
 
+* `honestProposalRun_slot_at`, `accept_of_proposesAt_at` (the static `accept_of_proposesAt` on the
+  prefix through the proposal cut), `proposer_mem_of_proposesAt_at`, `proposal_held_at`: an honest
+  proposal run's slot, cut, acceptance and holding;
 * `finalWindow_fields_of_honest_anchors_at`: proposal cuts, the proposers' acceptances, the
   post-store as the proposer's next state, and the anchor chain;
 * `window_slots_of_honest_anchors_at`, `strictMono_cut_of_proposesAt_at`,
@@ -27,6 +32,28 @@ section Generic
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+
+/-- The block of an honest proposal run of slot `s` has slot `s`. -/
+theorem honestProposalRun_slot_at {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : Healing.Growing.HonestProposalRun tr H proposer s P) : P.slot = s := by
+  obtain ⟨-, -, -, -, -, -, -, -, -, -, hs, -⟩ := hP
+  exact hs
+
+/-- **A proposal of a node honest at its proposal cut is accepted there**, with the block in its
+tree after the cut (the static `accept_of_proposesAt` on the prefix through the cut's time). -/
+theorem accept_of_proposesAt_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
+    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k)) (hW : tr.ProposesAt p k W) :
+    tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
+  have hd := hrun.time_nonneg k
+  have hb : ∀ m < k + 1, tr.time m ≤ tr.time k := fun _ hm => hrun.time_mono (by omega)
+  have hW' : (tr.upTo (tr.time k)).ProposesAt p k W :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hW.1⟩, hW.2.1, hW.2.2⟩
+  obtain ⟨ha, hmem, hpost⟩ := Healing.accept_of_proposesAt (hrun.upTo hd)
+    (hnc.upTo (tr.time k)) hp hW'
+  rw [Trace.upTo_state _ _ hb] at hmem hpost
+  exact ⟨((RunTrace.upTo_acceptAt _).mp ha).2, hmem, hpost⟩
 
 /-- The proposer of an honest anchor is honest at its proposal cut. -/
 theorem proposer_mem_of_proposesAt_at
