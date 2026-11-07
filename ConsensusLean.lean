@@ -239,6 +239,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.VoteF
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.VoteForwardRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Wire
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
