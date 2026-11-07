@@ -277,11 +277,11 @@ theorem upTo_occurs {B : A.Blk} (h : (tr.upTo d).Occurs B) : tr.Occurs B := by
   exact ⟨y, k, ((upTo_blockCallAt tr).mp hk).2⟩
 
 /-- The blocks that the prefix's nodes honest at `d` hold are held while honest in the run. -/
-theorem honestBlocks_upTo_subset (hmono : Monotone tr.time) {H : Time → Set (Fin P.n)} :
-    (tr.upTo d).HonestBlocks (H d) ⊆ tr.HonestBlocksAt H := by
+theorem honestBlocks_upTo_subset (hmono : Monotone tr.time) {H : Time → Set (Fin P.n)}
+    (hd : 0 ≤ d) : (tr.upTo d).HonestBlocks (H d) ⊆ tr.HonestBlocksAt H := by
   rintro B ⟨y, hy, i, hB⟩
   obtain ⟨i₀, -, hb, hs⟩ := Trace.upTo_state_exists tr hmono y i
-  exact ⟨y, i₀, d, hb, hy, hs ▸ hB⟩
+  exact ⟨y, i₀, d, hd, hb, hy, hs ▸ hB⟩
 
 /-- Inside the blocks the prefix's nodes honest at `d` hold, ancestry is the run's ancestry inside
 the blocks held while honest. Open: the converse direction needs the ancestor closure of honest
@@ -289,18 +289,18 @@ trees and the coherence of the blocks held while honest (`Compose.Growing.honest
 A3), so it is stated here with the run and `NoColl` premises it will use. -/
 theorem anc_upTo_iff {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
     {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n}
-    (hrun : Growing.LocalRun proposer dg H sg tr) (_hnc : Compose.NoCollRun dg tr)
+    (hrun : Growing.LocalRun proposer dg H sg tr) (_hnc : Compose.NoCollRun dg tr) (hd : 0 ≤ d)
     {B C : A.Blk} (_hB : B ∈ (tr.upTo d).HonestBlocks (H d))
     (_hC : C ∈ (tr.upTo d).HonestBlocks (H d)) :
     Anc ((tr.upTo d).HonestBlocks (H d)) B C ↔ Anc (tr.HonestBlocksAt H) B C := by
-  refine ⟨Anc.mono (honestBlocks_upTo_subset hrun.time_mono), fun _ => ?_⟩
+  refine ⟨Anc.mono (honestBlocks_upTo_subset hrun.time_mono hd), fun _ => ?_⟩
   sorry
 
-/-- **Retention of `Sync`.** On the prefix through `d`, `SyncOnAt` gives `SyncOn` for the
+/-- **Retention of `Sync`.** On the prefix through `d ≥ 0`, `SyncOnAt` gives `SyncOn` for the
 validators honest at `d`. -/
 theorem SyncOnAt.upTo (hmono : Monotone tr.time) {H : Time → Set (Fin P.n)} (hanti : Antitone H)
     {ΔF : Time} {W Wr : Time → Prop} {eff : Time → Time} (h : tr.SyncOnAt H ΔF W Wr eff)
-    (d : Time) : (tr.upTo d).SyncOn (H d) ΔF W Wr eff := by
+    (hd0 : 0 ≤ d) : (tr.upTo d).SyncOn (H d) ΔF W Wr eff := by
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => hanti ht
   refine ⟨h.deltaF, h.delta_le, fun x hx i m hs hw y hy j hc hd => ?_,
     fun x hx i B hs hw y hy j hc hd => ?_, fun x hx i B hs hw y hy j hc hd hanc => ?_,
@@ -327,7 +327,7 @@ theorem SyncOnAt.upTo (hmono : Monotone tr.time) {H : Time → Set (Fin P.n)} (h
     rw [upTo_deadline hmono hjd] at hd
     rw [upTo_state_of_le hmono hjd] at hanc
     obtain ⟨k, hkj, hk, hkd⟩ := h.relay x i B (anti hid hx) hs hw y j (anti hjd hy) hc hd
-      (Anc.mono (honestBlocks_upTo_subset hmono) hanc)
+      (Anc.mono (honestBlocks_upTo_subset hmono hd0) hanc)
     have hkd' : tr.time k ≤ d := (hmono hkj).trans hjd
     exact ⟨k, hkj, (upTo_acceptAt _).mpr ⟨hkd', hk⟩, by rwa [upTo_deadline hmono hkd']⟩
   · obtain ⟨hid, hs⟩ := (upTo_sendOrAdmitAttAt hmono).mp hs

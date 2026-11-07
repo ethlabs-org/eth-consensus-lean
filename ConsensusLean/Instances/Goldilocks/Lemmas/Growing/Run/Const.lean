@@ -17,12 +17,12 @@ growing-fault statement implies its static version. -/
 
 namespace Consensus.Goldilocks
 
-/-- Every finite prefix of a time sequence is bounded. -/
-private theorem exists_bound (f : Nat → Time) : ∀ i : Nat, ∃ t, ∀ k < i, f k ≤ t
-  | 0 => ⟨0, fun _ hk => absurd hk (Nat.not_lt_zero _)⟩
+/-- Every finite prefix of a time sequence has a bound `≥ 0`. -/
+private theorem exists_bound (f : Nat → Time) : ∀ i : Nat, ∃ t, 0 ≤ t ∧ ∀ k < i, f k ≤ t
+  | 0 => ⟨0, le_rfl, fun _ hk => absurd hk (Nat.not_lt_zero _)⟩
   | i + 1 => by
-    obtain ⟨t, ht⟩ := exists_bound f i
-    refine ⟨max t (f i), fun k hk => ?_⟩
+    obtain ⟨t, h0, ht⟩ := exists_bound f i
+    refine ⟨max t (f i), h0.trans (le_max_left _ _), fun k hk => ?_⟩
     rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
     · exact (ht k hk).trans (le_max_left _ _)
     · exact le_max_right _ _
@@ -122,11 +122,11 @@ variable {A : NodeAC P} {H : Set (Fin P.n)} (tr : RunTrace A)
 theorem honestBlocksAt_const : tr.HonestBlocksAt (fun _ => H) = tr.HonestBlocks H := by
   ext B
   constructor
-  · rintro ⟨y, i, _, _, hy, hB⟩
+  · rintro ⟨y, i, _, _, _, hy, hB⟩
     exact ⟨y, hy, i, hB⟩
   · rintro ⟨y, hy, i, hB⟩
-    obtain ⟨t, ht⟩ := exists_bound tr.time i
-    exact ⟨y, i, t, ht, hy, hB⟩
+    obtain ⟨t, h0, ht⟩ := exists_bound tr.time i
+    exact ⟨y, i, t, h0, ht, hy, hB⟩
 
 /-- With a constant honest set, the count charged at any horizon is `FaultBound`. -/
 theorem faultBoundAt_const (t d : Time) : tr.FaultBoundAt (fun _ => H) t d ↔ tr.FaultBound H t :=
@@ -303,8 +303,8 @@ theorem FGLocalRun.const_iff :
         init := h.init
         exec := fun i ℓ hl hy => h.exec i ℓ hl hy
         tree_subset := fun y hy i => by
-          obtain ⟨t, ht⟩ := exists_bound tr.time i
-          exact h.tree_subset y i t ht hy
+          obtain ⟨t, h0, ht⟩ := exists_bound tr.time i
+          exact h.tree_subset y i t h0 ht hy
         time_nonneg := h.time_nonneg
         time_mono := h.time_mono
         attest_public := fun y hy i src signed hc => h.attest_public y i src signed hy hc
@@ -318,7 +318,7 @@ theorem FGLocalRun.const_iff :
         coherent := h.coherent
         init := h.init
         exec := fun i ℓ hl hy => h.exec i ℓ hl hy
-        tree_subset := fun y i _ _ hy => h.tree_subset y hy i
+        tree_subset := fun y i _ _ _ hy => h.tree_subset y hy i
         time_nonneg := h.time_nonneg
         time_mono := h.time_mono
         attest_public := fun y i src signed hy hc => h.attest_public y hy i src signed hc
