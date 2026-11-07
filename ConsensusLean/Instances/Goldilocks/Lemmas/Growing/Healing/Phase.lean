@@ -43,6 +43,32 @@ theorem phaseAt_upTo_iff {d : Time} {i m : Nat} {c : PhaseCase (NodeBlock P ACP)
   cases c <;> simp only [PhaseAt, frontierAt_upTo_iff hi, justifiedAt_upTo_iff hi,
     contestAt_upTo_iff hi]
 
+/-- Equal justified heights agree across observations of the same later-horizon cohort.
+Only the states before the observations need to be within the retained prefix. -/
+theorem J_eq_of_hj_eq (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
+    {d : Time} (hd : 0 ≤ d) (hf : (H d)ᶜ.ncard < 2 * P.fg.q - P.n)
+    {y z : Fin P.n} (hy : y ∈ H d) (hz : z ∈ H d) {i j : Nat}
+    (hi : ∀ k < i, tr.time k ≤ d) (hj : ∀ k < j, tr.time k ≤ d)
+    {B B' : NodeBlock P ACP}
+    (hB : B ∈ (tr.store y i).tree) (hB' : B' ∈ (tr.store z j).tree)
+    (he : ((tr.store y i).σ B.root).hj = ((tr.store z j).σ B'.root).hj) :
+    ((tr.store y i).σ B.root).J = ((tr.store z j).σ B'.root).J := by
+  simpa only [FGTrace.store, Trace.upTo_state tr _ hi, Trace.upTo_state tr _ hj]
+    using Healing.J_eq_of_hj_eq (hr.upTo hd) hf hy hz (i := i) (j := j) (B := B) (B' := B')
+      (by simpa only [FGTrace.store, Trace.upTo_state tr _ hi] using hB)
+      (by simpa only [FGTrace.store, Trace.upTo_state tr _ hj] using hB')
+      (by simpa only [FGTrace.store, Trace.upTo_state tr _ hi,
+        Trace.upTo_state tr _ hj] using he)
+
+/-- A justified entry is unique across bounded cuts, without changing the cohort. -/
+theorem justifiedAt_unique (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
+    {d : Time} (hd : 0 ≤ d) (hf : (H d)ᶜ.ncard < 2 * P.fg.q - P.n)
+    {i j h : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hj : ∀ k < j, tr.time k ≤ d)
+    {J J' : NodeBlock P ACP} (hJ : JustifiedAt tr (H d) i h J)
+    (hJ' : JustifiedAt tr (H d) j h J') : J = J' := by
+  exact Healing.justifiedAt_unique (hr.upTo hd) hf
+    ((justifiedAt_upTo_iff hi).mpr hJ) ((justifiedAt_upTo_iff hj).mpr hJ')
+
 /-- A justification held by a validator honest at the later horizon stays held up to it. -/
 theorem justifiedAt_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
     {d : Time} (hd : 0 ≤ d) {i j h : Nat} (hij : i ≤ j)
