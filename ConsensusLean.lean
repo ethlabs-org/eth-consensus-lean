@@ -189,12 +189,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Group
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Payload
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolCap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolDelivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publication
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedAttestations
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
