@@ -132,8 +132,9 @@ Outage numbers (slot `4ΔAC`; slow arming only):
   `4k − 5` is the bound of the obligations proof (the lock window keeps an unpolluted label for
   outages up to `(4k − 5)ΔAC`, `exists_unpolluted_label`).
 The reasons behind these numbers are in `docs/decisions.md` §"Contract numbers".
-Growing-fault numbers (the windows of the counts in the proofs, `docs/decisions.md`
-§"Adversary growth"):
+Growing-fault proof targets read off the constant-fault proofs' window audit
+(`docs/decisions.md` §"Adversary growth"), not yet established for growing faults
+(`Statements/Growing`):
 * sleepy look-ahead `ahead = 5`: support at the participation point `t_s + Δ` of a
   slot's votes is last counted by the slot's confirmation update at `t_s + 6Δ`;
 * outage cohort look-ahead `0`: every count of the cohort ends by the update of

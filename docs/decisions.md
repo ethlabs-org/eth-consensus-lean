@@ -198,8 +198,8 @@ detail in `TRUST.md`.
   served. A recipient is served while it is honest through the deadline. Non-framing protects a validator honest
   at `d` against the evidence nodes saw while honest by `d`. Past honesty does not prevent later conviction,
   because an extracted key can sign a conflicting object.
-- **Goldilocks windows.** The numbers are the windows of the counts in the proofs, and none is a service
-  constant:
+- **Goldilocks windows.** These numbers are proof targets read off the constant-fault proofs' window audit,
+  not established for growing faults (`Statements/Growing`). None is a service constant:
   - sleepy look-ahead `5`: support at the participation point `t_s + Δ` of a slot's votes is last counted by the
     slot's confirmation update at `t_s + 6Δ`, whose pool admits equivocating second votes;
   - cohort look-ahead `0`: every count of the outage cohort ends by the update of label `j₀ + k`, at least `2Δ`
