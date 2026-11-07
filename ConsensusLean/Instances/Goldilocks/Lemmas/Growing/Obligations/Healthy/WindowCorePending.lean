@@ -10,9 +10,6 @@ The growing forms of the Healing lemmas that the seed height and the anchor step
 window consume, under their agreed names (static name + `_at`). Each node is honest at its own
 cut; a reader of a held state is honest at an observation time after the state's cuts:
 
-* `justify_of_signed_rows'_upTo_at`, `cross_of_signed_rows_upTo_at`
-  (`Healing.justify_of_signed_rows'_upTo`, `Healing.cross_of_signed_rows_upTo`): each signer is
-  honest at its signing;
 * `ResetPremisesUpTo.row_signers_of_reports_at` (`ResetPremisesUpTo.row_signers_of_reports`):
   the reporters are the nodes honest at the report bound `d`, and so are the signers;
 * `ResetPremisesUpTo.sign_of_report_at`, `ResetPremisesUpTo.row_target_of_sign_at`;
@@ -28,53 +25,6 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
-
-/-- **An honest proposal justifies the height of its parent's state** from a quorum of target
-attestations signed by `v`, each by a signer honest at its signing, delivered by the HS premises
-through the horizon. -/
-theorem justify_of_signed_rows'_upTo_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
-    (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
-    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
-    (hpar : X.parent = some Pr.root)
-    (S : Finset (Fin sp.n)) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
-      att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
-      att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
-      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
-        (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J) ∈
-          ((tr.state p kX).fg.σ Pr.root).pending →
-        att.fin = some (((tr.state p kX).fg.σ Pr.root).hj, ((tr.state p kX).fg.σ Pr.root).J))) :
-    ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h ∧
-      ((tr.post kX).fg.σ X.root).J = ((tr.state p kX).fg.σ Pr.root).Th ∧
-      (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
-        ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
-  sorry
-
-/-- **An honest proposal crosses by timeout** from a quorum of target attestations for its
-parent's entry signed by `v`, each by a signer honest at its signing, once the entry is `δt`
-slots old. -/
-theorem cross_of_signed_rows_upTo_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {g ΔF v b : Time}
-    (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
-    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
-    (hpar : X.parent = some Pr.root)
-    (S : Finset (Fin sp.n)) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
-      att.h = ((tr.state p kX).fg.σ Pr.root).h ∧ att.T = ((tr.state p kX).fg.σ Pr.root).Th)
-    (hage : ((tr.state p kX).fg.σ Pr.root).ThSlot + sp.toParams.fg.δt ≤ X.slot) :
-    ((tr.post kX).fg.σ X.root).h = ((tr.state p kX).fg.σ Pr.root).h + 1 ∧
-      ((tr.post kX).fg.σ X.root).Th = X.root ∧
-      (((tr.post kX).fg.σ X.root).previousHeightJustified ↔
-        ((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h) ∧
-      (((tr.post kX).fg.σ X.root).hj = ((tr.state p kX).fg.σ Pr.root).h →
-        ((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
-        ((tr.post kX).fg.σ X.root).hF = ((tr.state p kX).fg.σ Pr.root).hj) := by
-  sorry
 
 namespace ResetPremisesUpTo
 
