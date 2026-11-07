@@ -27,8 +27,10 @@ init_module = "ConsensusLean.Init"
 # tool on `Lean` alone, shared with the fixtures of check.sh step 6.
 init_exempt = ["ConsensusLean.ToMathlib", "ConsensusLeanTest.ReviewGuard"]
 # Every directory <parent>.<M> below is one milestone layer, imported from other layers only through
-# <parent>.<M>.Main (Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception).
-milestone_parents = ["ConsensusLean.Proofs", "ConsensusLean.Instances.Goldilocks.Proofs"]
+# <parent>.<M>.Main (Main may import every Proofs.<M>.Main; Proofs.<N>.Main only by an exception). A parent
+# inside another parent's directory (the growing-fault milestones, Proofs.Growing.<M>) owns its own <M>.
+milestone_parents = ["ConsensusLean.Proofs", "ConsensusLean.Instances.Goldilocks.Proofs",
+                     "ConsensusLean.Instances.Goldilocks.Proofs.Growing"]
 # No umbrella imports: import the modules you need. `Mathlib.Tactic` imports every tactic and the theory they
 # need (2.1 s and 3.3 GB to load against 0.9 s and 1.5 GB for `Mathlib.Tactic.Common`, which `Init` provides);
 # import the tactic modules a file uses, such as `Mathlib.Tactic.Linarith` or `Mathlib.Tactic.FinCases`.
@@ -717,8 +719,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
 about = "Goldilocks milestone"
 
 [[layer]]
-name = "Instances.Goldilocks.Proofs.Growing"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Growing"]
+name = "Instances.Goldilocks.Proofs.Growing.Obligations"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
@@ -739,8 +741,9 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Proofs.Obligations"]
-about = """Goldilocks growing-fault milestone (open): sorry-tolerant, outside Solution and outside
-proved_milestone_modules until finished"""
+about = """Goldilocks growing-fault obligations endpoint (open): sorry-tolerant, outside Solution and
+outside proved_milestone_modules until finished; each other growing-fault milestone is its own layer
+Proofs.Growing.<M>"""
 
 [[layer]]
 name = "Instances.Goldilocks.Main"
@@ -832,7 +835,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.ComposeAnyAC", "Instances.Goldilocks.Proofs.Persist",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations",
-         "Instances.Goldilocks.Main", "Instances.Goldilocks.Proofs.Growing", "Examples", "Solution"]
+         "Instances.Goldilocks.Main", "Instances.Goldilocks.Proofs.Growing.Obligations", "Examples", "Solution"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"

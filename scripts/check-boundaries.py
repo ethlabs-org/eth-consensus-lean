@@ -22,6 +22,7 @@ Layers: every module except a generated root is in exactly one `[[layer]]`: pref
   (where check.sh lets unfinished proofs stay) is allowed only on an untrusted layer whose every prefix is in a
   default library and has a `Lemmas` or `Proofs` component. Every directory `<parent>.<M>` under a
   `milestone_parents` entry is one milestone layer, entered from other layers only through `<parent>.<M>.Main`.
+  A parent may lie inside another parent's directory: a module or prefix belongs to its innermost parent only.
 Imports (each module, each import): an edge outside `allow` fails unless an `[[exception]]` lets the
   modules under its `from` import the modules under its `to`; an import into a milestone layer other than
   its entry fails, exception or not. The import closure of each module is walked too: it may hold only its
@@ -345,12 +346,14 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
     trusted_reach = reach(trusted)
     entry = {}  # milestone layer -> its entry module
     parents = cfg.get("milestone_parents", [])
+    def deepest(x):  # the innermost milestone parent strictly above x (a parent may sit inside another's directory)
+        return max((P for P in parents if under(x, P) and x != P), key=lambda P: P.count("."), default=None)
     for n, l in layers.items():
         for p in l["prefixes"]:
             for P in parents:
                 if under(P, p):
                     fails.append(f"FAIL[config] layer {n}: prefix {p} covers the milestone parent {P} (one layer per milestone)")
-                elif under(p, P):
+                elif under(p, P) and P == deepest(p):
                     if p.count(".") != P.count(".") + 1 or len(l["prefixes"]) != 1:
                         fails.append(f"FAIL[config] layer {n}: a milestone layer has the one prefix {P}.<M>, not {l['prefixes']}")
                     else:
@@ -414,7 +417,7 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
                 continue
             layer[m] = layer_of(m)
             for P in parents:
-                if under(m, P) and (m.count(".") < P.count(".") + 2 or layer[m] not in entry):
+                if under(m, P) and P == deepest(m) and (m.count(".") < P.count(".") + 2 or layer[m] not in entry):
                     fails.append(f"FAIL[milestone] {m}: a milestone is a directory {P}.<M> with its own layer "
                                  f"(boundaries.toml [[layer]] prefixes = [\"{'.'.join(m.split('.')[:P.count('.') + 2])}\"])")
             if layer[m] is None:

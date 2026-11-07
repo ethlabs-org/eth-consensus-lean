@@ -216,7 +216,8 @@ detail in `TRUST.md`.
   additional. While the Goldilocks proofs migrate, Challenge certifies its endpoint and headline at constant faults
   (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`). The growing-fault pair is stated in
   `Instances/Goldilocks/Statements/Growing.lean`, outside `milestone_statements_modules`, with its open proof in the
-  sorry-tolerant `Instances/Goldilocks/Proofs/Growing` layer.
+  sorry-tolerant `Instances/Goldilocks/Proofs/Growing/Obligations` milestone. Each growing-fault milestone is a
+  milestone of its own, `Instances/Goldilocks/Proofs/Growing/<M>`, entered through its `Main`.
 - **Continuation is not part of correctness.** A hand-over after healing is a separate side property, and it is
   not stated here.
 
