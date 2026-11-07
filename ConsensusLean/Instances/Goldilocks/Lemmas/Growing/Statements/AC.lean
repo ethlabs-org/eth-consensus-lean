@@ -51,7 +51,9 @@ theorem nextTransfer_of_growing (h : Growing.NextTransfer sp) : NextTransfer sp 
   refine h FGP ro (fun _ => H) U tr proposer (acRun_const.mpr hrun) m y i B ℓ e hy hc hs
     (fun x j e' hx hv' hs' => hall x hx j e' hv' hs') ?_ ?_ hf hv
     ((earlierVotesExtendAt_const _ _ _).mpr he)
-  · exact hhalf
+  · convert hhalf using 4
+    ext x
+    exact ⟨fun ⟨hx, j, e', _, h⟩ => ⟨hx, j, e', h⟩, fun ⟨hx, j, e', h⟩ => ⟨hx, j, e', hx, h⟩⟩
   · rw [honestVotes_const]
     exact hcarry
 

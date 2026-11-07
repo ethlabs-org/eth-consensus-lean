@@ -12,9 +12,10 @@ C1.1 (`Statements/Compose/Persist`) for a time-indexed honest set `H` (antitone)
 
 * the writer is honest at its write; votes are those of nodes honest at their votes; every node
   named at a cut is honest at that cut; caches at `t_s` are those of nodes honest at `t_s`;
-* the counts are charged where they are consumed: `f < h_t` at each vote time, and the
+* the counts are charged where they are consumed: `f < h_t` at each vote time; the
   half-committee of slot `s'` among the validators honest at `t_{s'+1} + Δ`, by when the votes of
-  slot `s' + 1` that read it are cast;
+  slot `s' + 1` that read it are cast, that voted in slot `s'` while honest; and `2 f < n` at
+  `t_m + Δ`, the last `ac_to_fg` call the attestations read;
 * **(K1)**, the attestation cut of G1.10 at the scope of C1.1, is charged at the consumption
   horizon of the whole induction, `d = t_m + 2Δ` (every block the cuts cover is accepted before
   `t_{s'} + 2Δ ≤ t_m + 2Δ`): the namers of an excluded entry are the validators compromised by
@@ -78,16 +79,19 @@ structure PersistPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (ΔF
   /-- `Carry(s, S, B)`. -/
   carry : SA.Growing.Carry tr.projAC H (tr.HonestBlocksAt H) s CV
   /-- For every slot `s' ∈ (s, m]`, at least half of the committee are validators honest at
-  `t_{s'+1} + Δ` that vote in slot `s'`. -/
+  `t_{s'+1} + Δ` that vote in slot `s'` while honest. -/
   halfCommittee : ∀ s', s < s' → s' ≤ m →
     sp.n ≤ 2 * {x' | x' ∈ H (sp.ts (s' + 1 : Nat) + sp.Δ) ∧
-      ∃ j e', SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard
+      ∃ j e', x' ∈ H (tr.time j) ∧ SA.VoteAt tr.projAC x' j e' ∧ e'.msg.slot = s'}.ncard
   /-- For every slot `s' ∈ (s, m]`, `Carry(s', S_{s'}, B)` for the votes of slot `s'`. -/
   carryLater : ∀ s', s < s' → s' ≤ m →
     SA.Growing.Carry tr.projAC H (tr.HonestBlocksAt H) s' (honestVotes tr H s')
   /-- `f < h_t` at every vote time `t ∈ (t_s, t_m + Δ]`, charged at that time. -/
   faultBound : ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → sp.ts s < tr.time i →
     tr.time i ≤ sp.ts m + sp.Δ → tr.FaultBoundAt H (tr.time i) (tr.time i)
+  /-- `2 f < n` at `t_m + Δ`, so at every call up to it (the last `ac_to_fg` call that C1.1's
+  attestations read is at `t_m + Δ`, possibly after every vote of slot `m`). -/
+  twoFaults : 2 * (H (sp.ts m + sp.Δ))ᶜ.ncard < sp.n
   /-- `NoColl` on the blocks of the run. -/
   noColl : NoCollRun dg tr
   /-- `Clean(s, m, B)`. -/

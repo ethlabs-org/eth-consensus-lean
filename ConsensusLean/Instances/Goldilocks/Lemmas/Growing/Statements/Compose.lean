@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 
 public section
 
@@ -91,7 +92,8 @@ private theorem excludedEntries_const (s : Nat) (B : SA.Blk sp.n (List (FG.Att s
 /-- Static premises of C1.1 are growing-fault premises of the constant honest set. -/
 private theorem persistPremises_of_static {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} (h : PersistPremises tr H dg ΔF x i₀ s m B CV) :
+    {CV : Set (Vote sp.n)} {proposer : Nat → Fin sp.n} (hrun : GoldilocksRun proposer dg H tr)
+    (h : PersistPremises tr H dg ΔF x i₀ s m B CV) :
     Compose.Growing.PersistPremises tr (fun _ => H) dg ΔF x i₀ s m B CV where
   writer_honest := h.writer_honest
   fastLock := h.fastLock
@@ -99,11 +101,15 @@ private theorem persistPremises_of_static {dg : Digest (List (FG.Att sp.n)) (Pay
   lt := h.lt
   sync := (RunTrace.syncRunAt_const tr).mpr h.sync
   carry := by rw [RunTrace.honestBlocksAt_const]; exact (SA.carry_const _ _).mpr h.carry
-  halfCommittee := h.halfCommittee
+  halfCommittee := fun s' h1 h2 => by
+    convert h.halfCommittee s' h1 h2 using 4
+    ext x'
+    exact ⟨fun ⟨hx, j, e', _, h⟩ => ⟨hx, j, e', h⟩, fun ⟨hx, j, e', h⟩ => ⟨hx, j, e', hx, h⟩⟩
   carryLater := fun s' h1 h2 => by
     rw [RunTrace.honestBlocksAt_const, honestVotes_const]
     exact (SA.carry_const _ _).mpr (h.carryLater s' h1 h2)
   faultBound := fun y i e hy hv h1 h2 => h.faultBound y hy i e hv h1 h2
+  twoFaults := faulty_lt_half hrun h
   noColl := h.noColl
   clean :=
     { caches := fun y j hy hj => by
@@ -138,13 +144,14 @@ theorem honestFastConfirmationsPersist_of_growing
     (h : Compose.Growing.HonestFastConfirmationsPersist) : HonestFastConfirmationsPersist :=
   fun sp ro dg H tr ΔF x i₀ s m B CV proposer hrun hp s' h1 h2 =>
     persistAt_to_static (h sp ro dg (fun _ => H) tr ΔF x i₀ s m B CV proposer
-      (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (persistPremises_of_static hp) s' h1 h2)
+      (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (persistPremises_of_static hrun hp)
+      s' h1 h2)
 
 theorem recentSourceNextVote_of_growing (h : Compose.Growing.RecentSourceNextVote) :
     RecentSourceNextVote := by
   intro sp ro dg H tr ΔF x i₀ i j m ℓ B CV proposer hrun hp hto hs hj hm y hy k e hv he
   have := h sp ro dg (fun _ => H) tr ΔF x i₀ i j m ℓ B CV proposer
-    (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (persistPremises_of_static hp)
+    (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (persistPremises_of_static hrun hp)
     hp.writer_honest hto hs hj hm y k e hy hv he
   simpa only [RunTrace.honestBlocksAt_const] using this
 

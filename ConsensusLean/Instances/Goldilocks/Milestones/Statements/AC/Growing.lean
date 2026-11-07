@@ -15,7 +15,9 @@ honest set `H` (antitone), over `Growing.ACLocalRun` / `SA.Growing.ACRun`:
 * every count is charged at the cut that performs it: `SA.FaultBoundAt tr H t t` at a vote
   (`f_t < h_t`), `2 f_t < n` at the voter's cut for the optimistic transfer, at the update's cut
   for the next update, and at the `ac_to_fg` call for source compatibility; the honest voters of
-  the next transfer are those honest at the voter's cut that voted in the slot;
+  the next transfer are those honest at the voter's cut that voted in the slot while honest (a
+  vote emitted after its voter's compromise is not an honest vote, whatever the voter's honesty
+  at another time);
 * the network premise is `SyncACAt`.
 
 The statements without an honest set (the pure SA facts of ACBase) are unchanged and are not
@@ -86,8 +88,8 @@ def FirstTransfer : Prop :=
     VoteExtends U e.msg B
 
 /-- **A1.3 under growing faults, next transfer (per vote).** The votes of slot `m` are those of
-nodes honest at their votes; the honest voters of slot `m` are counted at the voter's cut, and
-`f < h` is charged there. -/
+nodes honest at their votes; the honest voters of slot `m` are the validators honest at the
+voter's cut that voted in slot `m` while honest, and `f < h` is charged there. -/
 def NextTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
@@ -96,7 +98,8 @@ def NextTransfer : Prop :=
     y ∈ H (tr.time i) → CastAt tr y i ℓ e → e.msg.slot = m + 1 →
     (∀ x j e', x ∈ H (tr.time j) → VoteAt tr x j e' → e'.msg.slot = m →
       VoteExtends U e'.msg B) →
-    sp.n ≤ 2 * {x | x ∈ H (tr.time i) ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
+    sp.n ≤ 2 * {x | x ∈ H (tr.time i) ∧
+      ∃ j e', x ∈ H (tr.time j) ∧ VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
     CarryAt tr U y i e m
       {v | ∃ x j e', x ∈ H (tr.time j) ∧ VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} →
     FaultBoundAt tr H (tr.time i) (tr.time i) →
