@@ -512,6 +512,7 @@ public import ConsensusLean.Lemmas.Model.Mempool
 public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.Protection
 public import ConsensusLean.Lemmas.Model.Protocol
+public import ConsensusLean.Lemmas.Model.Retain
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.View
