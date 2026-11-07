@@ -1,5 +1,4 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
