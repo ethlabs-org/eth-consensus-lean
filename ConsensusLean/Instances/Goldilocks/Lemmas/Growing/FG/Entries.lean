@@ -15,7 +15,7 @@ namespace Consensus.Goldilocks.Store.Growing
 
 variable (P : Params) (ACP : Type)
 
-/-- The revised G1.10, using the consumption-horizon namer count (#151). -/
+/-- G1.10, using the consumption-horizon namer count. -/
 theorem quorum_free_entries : QuorumFreeEntries P ACP := by
   intro acp₀ H U tr 𝓔 T₀ T d y hr hT₀ hT hTd hK hquiet i X hy hX ht
   have hid : tr.time i ≤ d := (ht.elim (fun h => h.le) (fun h => h.1.le)).trans hTd
