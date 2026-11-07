@@ -249,9 +249,9 @@ over one cohort, with no change of `d` between them.
 `c_z + 6(Δ + A_HS) + LΔ` for every horizon `D` at or after that window whose cohort lags `H_z` by
 at most `L` at `c_z` (`LagWithin`). The count runs over the cohort `H D`, whose frontier at `c_z`
 can be below `H_z` when the holders of the top are compromised by `D`; the relay of the top block
-stays owed after their compromise, so the cohort catches up within `Δ` per unit of lag. `L` is
-fixed by the run through `LagWithin`; the strongest instance is the actual lag, and at a constant
-honest set it is `0`. -/
+stays owed after their compromise, so the cohort catches up within `Δ` in total, not per unit of
+lag; the lag is at most one. `L` is fixed by the run through `LagWithin`; the strongest instance is
+the actual lag, and at a constant honest set it is `0`. -/
 def ResetExistence : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
