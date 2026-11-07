@@ -5,6 +5,7 @@ public import ConsensusLeanTest.Shape.Controls
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
+public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHold
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Shape.Leaks
 public import ConsensusLeanTest.Model.Lift
@@ -761,6 +762,9 @@ example := ``Consensus.Goldilocks.Regimes.SleepySafe
 example := ``Consensus.Goldilocks.Regimes.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.GrowSleepy
 example := ``Consensus.Goldilocks.RunTrace.SyncBefore
+example := ``Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false
+example := ``Consensus.Goldilocks.Test.ProposerHold.claims_hold_zero_false
+example := ``Consensus.Goldilocks.Test.ProposerHold.obligations_hold_zero_false
 
 /-! ## Goldilocks AsChainShape, Simulation and Obligations (a milestone PR appends here only) -/
 
