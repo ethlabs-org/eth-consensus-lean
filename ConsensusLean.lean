@@ -197,6 +197,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Restart
