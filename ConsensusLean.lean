@@ -481,6 +481,7 @@ public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Canonical.Delivery
 public import ConsensusLean.Lemmas.Model.Canonical.Events
+public import ConsensusLean.Lemmas.Model.Canonical.Inject
 public import ConsensusLean.Lemmas.Model.Canonical.Network
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
