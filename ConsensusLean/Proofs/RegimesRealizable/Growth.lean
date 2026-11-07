@@ -137,11 +137,12 @@ theorem growthPoint_holds (F : ChainShapeFamily O Info) (K : Contract ProgressRe
       (by omega)
 
 /-- The source's pre-compromise read and its sole submission remain active at a later reader. -/
-theorem growthPoint_active (c start D : Time) (hκ : 0 < κ) (hκH : κ ≤ H)
+theorem growthPoint_active (c start D : Time) (hκ : 0 < κ) (hκΔ : κ < Δ) (hκH : κ ≤ H)
     (hH : max 0 start + Δ + D ≤ H) :
     GrowthActive c start D (growthPoint key hn Δ hΔ ΔF hΔF allAwake H κ) := by
   refine ⟨kv key hn 0 (by decide), kv key hn 1 (by decide), 42, 0, 0, κ, H,
-    kv_ne key hn (by decide), le_rfl, le_rfl, hκ, hκH, le_rfl, hH,
+    kv_ne key hn (by decide), le_rfl, le_rfl, hκ,
+    by simpa only [growthPoint_eq, realPoint_eq, zero_add] using hκΔ, hκH, le_rfl, hH,
     ⟨?_, fun _ _ _ => allAwake_apply _ _⟩, allAwake_apply _ _, ?_, ?_, ?_, ?_,
     ⟨growthPoint_honest key hn hΔ hΔF allAwake H κ (by decide) (by decide) _,
       fun _ _ _ => allAwake_apply _ _⟩,
@@ -223,7 +224,7 @@ theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract Progres
   refine ⟨⟨p.env, rho⟩, hv, hnc, rfl, rfl, Model.sysOf_eagerFrom rho he,
     ?_, ?_, growthPoint_holds key hn hΔ hΔF H 1 F K hf cap i _ _ _,
     growthPoint_txLiveActive key hn hΔ hΔF H 1 _ _ _ (by decide) ?_,
-    growthPoint_active key hn hΔ hΔF H 1 _ _ _ (by decide) hH ?_, ?_⟩
+    growthPoint_active key hn hΔ hΔF H 1 _ _ _ (by decide) hΔ1 hH ?_, ?_⟩
   · have hη := growthPoint_eta key hn hΔ hΔF allAwake H 1 ha.θ_range
       (fun c t => (allAwake_readyAt key hn hΔ hΔF H c t).trans (Nat.le_succ _))
       0 ((Sys F V).cDur K ⟨p.env, rho⟩) ((Sys F V).aheadDur K ⟨p.env, rho⟩) 0 H
