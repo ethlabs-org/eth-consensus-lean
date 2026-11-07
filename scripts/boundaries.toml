@@ -202,6 +202,15 @@ protected = true
 about = "the SA as an AC (polymorphic in the FG payload); no FG import"
 
 [[layer]]
+name = "Instances.Goldilocks.Spec.WeightedLocks"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.Frame",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA"]
+protected = true
+about = "lock rules after the SA's unlock (stored locks, an unlock stage) and the weighted-lock SA; no FG import"
+
+[[layer]]
 name = "Instances.Goldilocks.Spec.Node"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Spec.Node"]
 expose = true
@@ -442,6 +451,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.AC"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks",
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Statements.AC",
@@ -453,7 +463,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -471,7 +482,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Healing"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -490,7 +502,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Simulation"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
@@ -511,7 +524,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Obligations"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
@@ -532,7 +546,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
@@ -579,6 +594,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ACBase"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks",
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Statements.AC",
@@ -591,6 +607,7 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ACSteps"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks",
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Statements.AC",
@@ -603,7 +620,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -622,7 +640,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Persist"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -641,7 +660,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Service"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -661,7 +681,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Healing"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -681,7 +702,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Regimes"]
 sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
@@ -702,7 +724,8 @@ sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
@@ -725,7 +748,8 @@ sorry = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
          "Instances.Goldilocks.Milestones.Spec.Common",
@@ -751,7 +775,8 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Main"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
@@ -787,7 +812,8 @@ expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
@@ -815,7 +841,8 @@ expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Behaviour",
          "Proofs.RegimesRealizable", "Proofs.Faithful", "Main", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.WeightedLocks",
+         "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Statements.Growing",
          "Instances.Goldilocks.Milestones.Spec.Common",

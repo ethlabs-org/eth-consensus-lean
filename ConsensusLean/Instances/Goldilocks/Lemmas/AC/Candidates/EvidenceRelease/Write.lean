@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Writes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Rule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
@@ -6,7 +7,8 @@ public section
 
 /-! # Candidate `evidence-release`: the weighted write
 
-The candidate writes the parent's locks, each with a weight fixed at its write: for each block
+The writes are defined in `Spec/WeightedLocks/Writes`; this module proves what they do. The
+candidate writes the parent's locks, each with a weight fixed at its write: for each block
 `Y` at or below the block it was written on, the number of validators that the confirmation
 writing it counted for `Y` (`0` elsewhere, `weightBelow`):
 
@@ -21,7 +23,7 @@ writing it counted for `Y` (`0` elsewhere, `weightBelow`):
 
 The origin of every new lock is the root of the block it is written on.
 
-`updateNewLocks` names the new locks of the parent's update (its `N`), and
+`updateNewLocks` names the new locks of the parent's update (its `N`);
 `updateConfirmation_locks_of_none`, `updateConfirmation_locks_of_some` state the parent's locks
 after the update with it. The candidate's writes (`updateLocksW`, `optimisticLocksW`) are
 `addLocksWith` of the weighted new locks, and **forget to the parent's**:
@@ -38,16 +40,6 @@ namespace Consensus.Goldilocks.EvidenceRelease
 open SA
 
 variable {sp : SAParams} {FGP : Type}
-
-open Classical in
-variable (sp) in
-/-- A weight fixed at a write on the block of root `o`: `f Y` for the block `Y` of root `r` when
-`Y` is at or below `o` in the frame of the write, `0` otherwise. -/
-noncomputable def weightBelow (Φ : Frm sp.n FGP) (o : Nat) (f : Blk sp.n FGP → Nat) :
-    Nat → Nat :=
-  fun r => match lookup Φ r with
-    | some Y => if AncR Φ Y o then f Y else 0
-    | none => 0
 
 /-- On the chain of the written block, the weight is the writer's count. -/
 theorem weightBelow_of_anc {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {o : Nat}
@@ -73,35 +65,6 @@ theorem weightBelow_of_not_anc {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {o : Nat}
       exact congrArg some (hΦ.coherent.1 hY' hY hr)
   simp only [weightBelow, hl, hYo, ↓reduceIte]
 
-variable (sp) in
-/-- The count of the update of slot `s` by root, as it is saved with that slot's confirmation:
-the update's `confirmation_score` for the block of root `r` (`0` off the tree). -/
-noncomputable def updateCount (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Nat → Nat :=
-  fun r => ((lookup Φ r).map (confirmationScore sp A Φ s)).getD 0
-
-/-- The saved counts after the update of slot `s`: that slot's count saved, the others kept. -/
-noncomputable def saveCount (C : Int → Nat → Nat) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (s : Nat) : Int → Nat → Nat :=
-  Function.update C s (updateCount sp A Φ s)
-
-variable (sp) in
-/-- The weight of a fast lock of the update of slot `s` on the block of root `o`. -/
-noncomputable def fastWeight (A : SAState sp.n) (Φ : Frm sp.n FGP) (s o : Nat) : Nat → Nat :=
-  weightBelow sp Φ o (confirmationScore sp A Φ s)
-
-variable (sp) in
-/-- The weight of a slow lock of slot `s` on the block of root `o`, from the saved counts `C`:
-for each block at or below `o`, the maximum over the formation slots `s − k + 1, …, s` of the
-count saved for its root. -/
-noncomputable def slowWeight (Φ : Frm sp.n FGP) (C : Int → Nat → Nat) (s o : Nat) : Nat → Nat :=
-  weightBelow sp Φ o fun Y => (Finset.range sp.k).sup fun j => C ((s : Int) - j) Y.root
-
-variable (sp) in
-/-- The weight of an optimistic lock of slot `s` on the block of root `o`. -/
-noncomputable def optimisticWeight (A : SAState sp.n) (Φ : Frm sp.n FGP) (s o : Nat) :
-    Nat → Nat :=
-  weightBelow sp Φ o fun Y => (optimisticVoters sp A Φ s Y).ncard
-
 /-- A slow lock weighs at least each count saved in its formation window: the slots `s − j` for
 `j < k`. -/
 theorem le_slowWeight {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (C : Int → Nat → Nat) {s o : Nat}
@@ -115,8 +78,8 @@ update's own count. -/
 theorem confirmationScore_le_slowWeight {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (C : Int → Nat → Nat) (A : SAState sp.n) {s o : Nat} {Y : Blk sp.n FGP} (hY : Y ∈ Φ.tree)
     (hYo : AncR Φ Y o) (hk : 1 ≤ sp.k) :
-    confirmationScore sp A Φ s Y ≤ slowWeight sp Φ (saveCount C A Φ s) s o Y.root := by
-  have h := le_slowWeight hΦ (saveCount C A Φ s) hY hYo (s := s) (j := 0) (by omega)
+    confirmationScore sp A Φ s Y ≤ slowWeight sp Φ (saveCount sp C A Φ s) s o Y.root := by
+  have h := le_slowWeight hΦ (saveCount sp C A Φ s) hY hYo (s := s) (j := 0) (by omega)
   rw [Nat.cast_zero, sub_zero] at h
   have hl : lookup Φ Y.root = some Y := by
     cases h : lookup Φ Y.root with
@@ -145,24 +108,6 @@ theorem optimisticVoters_antitone (A : SAState sp.n) {Φ : Frm sp.n FGP} (s : Na
 
 /-! ### The writes of the update and of the optimistic confirmation -/
 
-open Classical in
-variable (sp) in
-/-- The new locks `N` of the parent's update of slot `s` (`none` when it has no result): a fast
-lock on the deepest unvetoed block of the result's path that passes the fast test, and a slow
-lock on the deepest one that the saved results of the previous `k − 1` slots extend. -/
-noncomputable def updateNewLocks (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    Option (Set (Nat × Bool × Nat)) :=
-  (getConfirmation sp A Φ s).map fun C =>
-    let A₁ := { A with saved := Function.update A.saved s (some C.root) }
-    let path := {B | B ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A₁.locks Φ t B}
-    let fast := FastTest sp A Φ s
-    let slow := fun B : Blk sp.n FGP => ∀ j : Int, (s : Int) - sp.k < j → j < s →
-      ∃ S ∈ Φ.tree, A₁.saved j = some S.root ∧ Φ.Anc B S
-    let D := deepest Φ {B | B ∈ path ∧ fast B}
-    let X := deepest Φ {B | B ∈ path ∧ slow B}
-    {p | (∃ B, D = some B ∧ p = (B.root, true, fastExpiry sp A.locks Φ t s)) ∨
-      (∃ B, X = some B ∧ p = (B.root, false, s + sp.k))}
-
 /-- The parent's update with no result keeps the locks. -/
 theorem updateConfirmation_locks_of_none {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {s : Nat} (h : updateNewLocks sp A Φ t s = none) :
@@ -182,14 +127,6 @@ theorem updateConfirmation_locks_of_some {A : SAState sp.n} {Φ : Frm sp.n FGP} 
   simp only [hC, Option.map_some]
   split_ifs <;> simp only [updateLatestConfirmed_keeps_locks]
 
-variable (sp) in
-/-- The weighted new locks of the update of slot `s`, from the parent's `N` and the saved counts
-`C` (after `saveCount`). -/
-noncomputable def updateWrites (A : SAState sp.n) (Φ : Frm sp.n FGP) (C : Int → Nat → Nat)
-    (s : Nat) (N : Set (Nat × Bool × Nat)) : Set WLock :=
-  {w | ∃ p ∈ N, w = ⟨⟨p.1, s, p.2.1, p.2.2⟩, p.1,
-    if p.2.1 then fastWeight sp A Φ s p.1 else slowWeight sp Φ C s p.1⟩}
-
 theorem mem_updateWrites {A : SAState sp.n} {Φ : Frm sp.n FGP} {C : Int → Nat → Nat} {s : Nat}
     {N : Set (Nat × Bool × Nat)} {w : WLock} :
     w ∈ updateWrites sp A Φ C s N ↔ ∃ p ∈ N, w = ⟨⟨p.1, s, p.2.1, p.2.2⟩, p.1,
@@ -206,15 +143,6 @@ theorem lock_image_updateWrites (A : SAState sp.n) (Φ : Frm sp.n FGP) (C : Int 
   · rintro ⟨p, hp, rfl⟩
     exact ⟨_, ⟨p, hp, rfl⟩, rfl⟩
 
-variable (sp) in
-/-- **The candidate's update write**: the stored weighted locks after the update of slot `s`,
-from the saved counts `C` before it (the update saves its own count first). -/
-noncomputable def updateLocksW (W : Set WLock) (A : SAState sp.n) (C : Int → Nat → Nat)
-    (Φ : Frm sp.n FGP) (t : Time) (s : Nat) : Set WLock :=
-  match updateNewLocks sp A Φ t s with
-  | none => W
-  | some N => wlockStore.addLocksWith sp W (updateWrites sp A Φ (saveCount C A Φ s) s N) Φ t
-
 /-- **The update write forgets to the parent's**: if the stored weighted locks forget to the
 parent's locks, so do they after the update. -/
 theorem lock_image_updateLocksW {W : Set WLock} {A : SAState sp.n} (hW : WLock.lock '' W = A.locks)
@@ -224,18 +152,11 @@ theorem lock_image_updateLocksW {W : Set WLock} {A : SAState sp.n} (hW : WLock.l
   cases h : updateNewLocks sp A Φ t s with
   | none => rw [updateConfirmation_locks_of_none h, hW]
   | some N =>
-    have himg := LockStore.lock_image_addLocksWith (S := wlockStore) W _ Φ t s
-      (lock_image_updateWrites A Φ (saveCount C A Φ s) s N)
+    have himg := LockStore.lock_image_addLocksWith (S := wlockStore) wlockStore_lawful W _ Φ t s
+      (lock_image_updateWrites A Φ (saveCount sp C A Φ s) s N)
     rw [hW] at himg
     rw [updateConfirmation_locks_of_some h]
     exact himg
-
-variable (sp) in
-/-- The weighted lock of the optimistic confirmation on `B`, of slot `slot(t)`. -/
-noncomputable def optimisticWrite (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (B : Blk sp.n FGP) : WLock :=
-  ⟨⟨B.root, sp.slot t, true, fastExpiry sp A.locks Φ t (sp.slot t)⟩, B.root,
-    optimisticWeight sp A Φ (sp.slot t) B.root⟩
 
 theorem optimisticWrite_lock (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) :
@@ -247,15 +168,6 @@ theorem optimisticWrite_weight (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) :
     (optimisticWrite sp A Φ t B).weight = optimisticWeight sp A Φ (sp.slot t) B.root := by
   rfl
-
-variable (sp) in
-/-- **The candidate's optimistic write**: the stored weighted locks after the optimistic
-confirmation. -/
-noncomputable def optimisticLocksW (W : Set WLock) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : Set WLock :=
-  match optimisticSelect sp A Φ t with
-  | none => W
-  | some B => wlockStore.addLocksWith sp W {optimisticWrite sp A Φ t B} Φ t
 
 /-- **The optimistic write forgets to the parent's.** -/
 theorem lock_image_optimisticLocksW {W : Set WLock} {A : SAState sp.n}
@@ -271,7 +183,8 @@ theorem lock_image_optimisticLocksW {W : Set WLock} {A : SAState sp.n}
       ext l
       simp only [Set.image_singleton, Set.mem_singleton_iff, Set.mem_ofPred_eq, exists_eq_left]
       rw [optimisticWrite_lock]
-    have himg := LockStore.lock_image_addLocksWith (S := wlockStore) W _ Φ t (sp.slot t) hN
+    have himg := LockStore.lock_image_addLocksWith (S := wlockStore) wlockStore_lawful W _ Φ t
+      (sp.slot t) hN
     rw [hW] at himg
     dsimp only
     rw [updateLatestConfirmed_keeps_locks]
