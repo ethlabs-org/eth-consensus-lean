@@ -10,8 +10,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Rule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Unlock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.WeightInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.Rule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.RunInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.Stage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
