@@ -13,10 +13,10 @@ import all ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 Each of the honest nodes `2, 3, 4` of the retained run receives the forged twin at `13`, before
 key `1`'s batch (held back until `14`). Its tree holds nothing else of a slot `≥ 1`
 (`tree_twin`), so it accepts the twin's block (or holds it already) and votes on it at once: the
-twin is a ready proposal of slot `1` and `13 < t_1 + Δ = 15` (`twin_vote`). One vote per slot then puts every
-honest slot-`1` vote at a time `≤ 13` (`vote_time`), where the voter's tree is genesis and the
-twin's block: every honest vote of a slot `≤ 1` has the head genesis or the twin's block
-(`vote_head`). -/
+twin is a ready proposal of slot `1` and `13 < t_1 + Δ = 15` (`twin_vote`). One vote per slot
+then puts every honest slot-`1` vote at a time `≤ 13` (`vote_time`), where the voter's tree is
+genesis and the twin's block: every honest vote of a slot `≤ 1` has the head genesis or the
+twin's block (`vote_head`). -/
 
 namespace Consensus.Goldilocks.Test.ProposerHold
 open AsChainShape Shape Blocks Simulation Node
