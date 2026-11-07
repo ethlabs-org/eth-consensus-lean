@@ -38,7 +38,7 @@ private theorem resolved_head {A : SAState sp.n} {Φ : Frm sp.n FGP} {v : Vote s
     · exact absurd rfl h
     · exact ⟨Hd, hHd, hr, by omega⟩
 
-/-- The repaired A1.1 form: proposer honesty covers both frame-reading cuts (#154). -/
+/-- Proposer honesty covers both frame-reading cuts. -/
 theorem proposer_voters_agree_of_honest_max
     {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U)
