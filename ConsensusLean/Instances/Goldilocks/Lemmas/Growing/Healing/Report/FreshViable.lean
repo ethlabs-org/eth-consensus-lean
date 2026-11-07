@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowOptimisticBoundary
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 
@@ -89,7 +89,7 @@ theorem FrameWindow.proposal_viable_after_votes_at
     have := hrun.time_mono (by omega : k ≤ q)
     linarith
   have hyq := hrun.antitone (hrun.time_mono hqk) hy
-  have hPv := (hshort.proposal_viable_at_cast_at hrun hnc hsvc hawake hf hcatch hnr hgu
+  have hPv := (KernelProof.proposal_viable_at_cast_at hshort hrun hnc hsvc hawake hf hcatch hnr hgu
     le_rfl hu0 (hshortT.trans hTb) hz hdes hP hPs hyq hcq hes).1
   have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
     (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
