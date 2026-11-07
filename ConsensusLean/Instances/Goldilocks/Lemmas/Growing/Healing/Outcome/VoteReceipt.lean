@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighOriginSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -8,6 +8,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLa
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
