@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RepairDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 
 public section
 
@@ -11,8 +12,6 @@ signatures so the port compiles before they land:
 
 * `Healing.Growing.operational_update_selection_at`: the operational selection at a bounded
   update after the drain, the counterpart of `Obligations.UpTo.operational_update_selection`;
-* `Healing.Growing.cutZ_lt_reset_at`: under health the reset is after the cut, the counterpart of
-  `Healing.cutZ_lt_reset_of_snapshot` (from the reset signing's counted voters, not a snapshot);
 * `Healing.Growing.ResetPremisesUpTo.update_toFG_calls_at`: the joined update and to-FG call of
   a node honest at their time, the counterpart of `Healing.ResetPremisesUpTo.update_toFG_calls`;
 * `Obligations.Growing.healthy_preparation_initialize_at`: the base timing and finite preparation
@@ -48,14 +47,6 @@ theorem operational_update_selection_at {b : Time}
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  sorry
-
-/-- Health supplies a snapshot-honest counted voter behind every reset signing. -/
-theorem cutZ_lt_reset_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hh : tr.HealthyRunAt H ΔF g)
-    (hR : IsReset tr H g a) :
-    cutZ sp.toParams g < a := by
   sorry
 
 /-- A node honest at `t_u + 6Δ` executes the joined update of label `u` and the to-FG call right
