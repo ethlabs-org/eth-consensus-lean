@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Le
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
 
 public section
 
@@ -30,30 +31,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- **A high floor has a signed source below a bounded row label**: for a reader honest at
-`t ≤ b`, a high origin under the reader's head-height floor yields a high origin, of a label
-below `u`, above an entry at or past the floor, signed by the origin's writer after the write. -/
-theorem high_floor_signed_source_of_row_bound_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {u : Nat}
-    (hrow : ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload,
-      ∀ v d, v ∈ H (tr.time d) → tr.SignAt v d att → d < k → ∀ r l O,
-        r < d → HighOrigin tr H g v r l O → l < u)
-    (hpair : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      ∀ v' r' l' O', r' < k → HighOrigin tr H g v' r' l' O' →
-      Compatible (tr.HonestBlocksAt H) O O')
-    (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocksAt H) B O)
-    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
-    ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < u ∧
-      E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocksAt H) E O ∧
-      Anc (tr.HonestBlocksAt H) B O ∧
-      (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
-      ∃ d att, r < d ∧ d < k ∧ v ∈ H (tr.time d) ∧ tr.SignAt v d att ∧ att.T = E.root := by
-  sorry
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
