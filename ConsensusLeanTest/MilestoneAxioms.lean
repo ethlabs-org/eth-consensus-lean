@@ -181,6 +181,17 @@ theorem Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll :
     Consensus.Goldilocks.SA.ACHealingStandaloneCorollaryAll :=
   Consensus.Goldilocks.SA.ac_healing_standalone_corollary
 
+/-- Goldilocks Healing: `ACHealingStandaloneTightAll` (H.1 at `ḡ + (8k + 4)Δ`). -/
+theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightAll :
+    Consensus.Goldilocks.SA.ACHealingStandaloneTightAll :=
+  Consensus.Goldilocks.SA.ac_healing_standalone_tight
+
+/-- Goldilocks Healing: `ACHealingStandaloneTightCorollaryAll` (H.1 at `ḡ + (8k + 4)Δ`,
+corollary: proposal-block inclusion). -/
+theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll :
+    Consensus.Goldilocks.SA.ACHealingStandaloneTightCorollaryAll :=
+  Consensus.Goldilocks.SA.ac_healing_standalone_tight_corollary
+
 /-- Goldilocks Healing: `ACInclusionAll` (H.2). -/
 theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll :=
   Consensus.Goldilocks.Healing.healing_ac_statements.inclusion
@@ -356,6 +367,16 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 
 /-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll
+
+/-- info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneTightAll
+
+/--
+info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll
 
 /-- info: 'Consensus.Goldilocks.SA.aCInclusionAll' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.SA.aCInclusionAll
