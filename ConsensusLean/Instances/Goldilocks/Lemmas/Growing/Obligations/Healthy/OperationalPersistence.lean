@@ -55,8 +55,7 @@ theorem UpTo.operational_proposal_below_later_parent_at
   have hPx := (accept_of_proposesAt_at hrun hnc hpk hactual).2.1
   have hPU : P ∈ tr.HonestBlocksAt H :=
     ⟨p, k + 1, tr.time k, hrun.time_nonneg k, hle1, hpk, hPx⟩
-  have hca := Healing.Growing.cutZ_lt_reset_of_snapshot_at hrun
-    (by obtain ⟨q, hq, _⟩ := hp.snapshot; exact ⟨q, hq⟩) hp.reset
+  have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
     have := SA.gbar_nonneg g
