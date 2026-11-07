@@ -11,6 +11,8 @@ signatures so the port compiles before they land:
 
 * `Healing.Growing.operational_update_selection_at`: the operational selection at a bounded
   update after the drain, the counterpart of `Obligations.UpTo.operational_update_selection`;
+* `Healing.Growing.cutZ_lt_reset_of_snapshot_at`: the reset is after the cut, the counterpart of
+  `Healing.cutZ_lt_reset_of_snapshot`;
 * `Healing.Growing.ResetPremisesUpTo.update_toFG_calls_at`: the joined update and to-FG call of
   a node honest at their time, the counterpart of `Healing.ResetPremisesUpTo.update_toFG_calls`;
 * `Obligations.Growing.healthy_preparation_initialize_at`: the base timing and finite preparation
@@ -46,6 +48,13 @@ theorem operational_update_selection_at {b : Time}
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
+  sorry
+
+/-- The reset is after the cut. -/
+theorem cutZ_lt_reset_of_snapshot_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))
+    (hR : IsReset tr H g a) : cutZ sp.toParams g < a := by
   sorry
 
 /-- A node honest at `t_u + 6Δ` executes the joined update of label `u` and the to-FG call right
