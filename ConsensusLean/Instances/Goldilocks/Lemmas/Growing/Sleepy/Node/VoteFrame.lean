@@ -170,7 +170,7 @@ private theorem add_mul_delta_le {x a b : Time} (h : a ≤ b) : x + a * sp.Δ �
 /-- At a slot-`(s+1)` vote of a node honest at its cut `i`, the voter's restarts up to the vote were
 at or before `t_s`, and the vote is cast from `t_s + 4Δ` on (`honest_vote_restarts` on the prefix
 through `tr.time i`). -/
-private theorem honest_vote_restarts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem honest_vote_restarts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {s : Nat} {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :

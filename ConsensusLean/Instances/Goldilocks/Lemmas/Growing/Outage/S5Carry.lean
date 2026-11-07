@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.VoteFrame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
@@ -19,8 +20,6 @@ public section
 At an honest slot-`(q+1)` vote of `y` at cut `i`, under receiver service from `g ≤ t_q + Δ`
 (`ReceiverServiceAfterAt`: senders honest at the send, the receiver honest at its call):
 
-* `honest_vote_restarts_at`: `y` has no restart after `t_q` up to `i`, and `t_q + 4Δ ≤ t_i`
-  (the static `honest_vote_restarts` on the prefix through `t_i`);
 * `honest_head_accepted_after_at`: the head of a vote of a slot at most `q`, by a node honest at
   its cast, above `y`'s `Σ.F`, is accepted by `y` before the freeze `t_q + 3Δ`: its voter accepted
   it at a cut at which it was honest, by `t_q + Δ`, and the relay serves `y`;
@@ -35,23 +34,6 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-
-/-- **A slot-`(s+1)` voter honest at its cut has no restart after `t_s`**, and votes from
-`t_s + 4Δ`. -/
-theorem honest_vote_restarts_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
-    (∀ c ≤ i, tr.projAC.RestartAt y c → tr.time c ≤ sp.ts s) ∧
-      sp.ts s + 4 * sp.Δ ≤ tr.time i := by
-  have hd := hrun.time_nonneg i
-  have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e := by
-    rw [RunTrace.upTo_projAC]; exact sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
-  obtain ⟨h1, h2⟩ := honest_vote_restarts (hrun.upTo hd) (hnc.upTo _) hy hc' hs
-  refine ⟨fun c hci hrc => h1 c hci ?_, h2⟩
-  rw [RunTrace.upTo_projAC]
-  exact (ac_restartAt_upTo _).mpr ⟨hrun.time_mono hci, hrc⟩
 
 /-- **An honest head of a slot at most `q` is accepted by `y` before the freeze `t_q + 3Δ`**,
 under receiver service from `g ≤ t_q + Δ`, at a slot-`(q+1)` vote of `y` honest at its cut whose
