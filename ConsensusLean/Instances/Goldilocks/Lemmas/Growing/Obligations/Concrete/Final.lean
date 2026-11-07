@@ -5,6 +5,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowFieldsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowAssembly
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HSSharedOfQuery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalDutyProposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.FinalPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
@@ -28,6 +32,9 @@ time: a proposer at its acceptance, a reader at its read time.
   before a ready read;
 * `carrier_processed_of_honest_at`: (H4) of the final-window extraction, the carrier is processed
   by the deadline at every node ready at the deadline;
+* `final_duty_proposal_at`, `final_window_extract_at`: the route-A window extraction of a final
+  query, with the carrier premise discharged;
+* `final_anchor_coverage_at`: the anchor route's coverage at the last anchor's store;
 * `final_payload_projection_at`: window extraction with cache coverage gives the final
   `healthyLive` field. -/
 
@@ -176,6 +183,62 @@ theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
   obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt_at S Q.run.2 Q.hn Q.valid hxk hheld
     hdecode hdt
   exact ⟨j, hj, hjt.le⟩
+
+/-- (H2) of the final-window extraction under growing faults: the duty → proposal adapter. -/
+theorem final_duty_proposal_at (Q : FinalQueryAt S A V) :
+    ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
+      HonestReadyIn Q.run.2.point Q.run.2.key
+      (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ((finalGridAt S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
+      ∃ P, Healing.Growing.HonestProposalRun Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn) s P := by
+  intro s hs hth hduty
+  obtain ⟨_, P, hP, -⟩ := final_duty_proposal_run_at S A V Q hs hth hduty
+  exact ⟨P, hP⟩
+
+/-- **Extraction and endpoint budget under growing faults** (route A): a window of four honest
+anchors at `start + [0, c, 2c, 3c]` after the query (`c = fgSlots`), with the publication slack,
+its anchor run and its three anchor steps. -/
+theorem final_window_extract_at (Q : FinalQueryAt S A V) :
+    ∃ W : FinalWindowDataAt S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
+      W.AnchorRun ∧ W.AnchorSteps := by
+  obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises_of_query_at S A V Q
+  obtain ⟨W, -, hslack, hrun, hsteps⟩ :=
+    final_window_extract_of_gap_at S A V Q A.two_le_fgSlots A.timeout (finalWindow_offsets A)
+      Q.hsSharedUpTo_at Q.protoFGDelay_delivery_at (final_latency_gap_at S A V Q) hreset
+      (final_duty_proposal_at S A V Q) hplace (carrier_processed_of_honest_at S A V Q)
+  exact ⟨W, hslack, hrun, hsteps⟩
+
+/-- **Window coverage by the anchor route under growing faults.** The run premises and the three
+anchor steps give, at the last anchor's store, the block `F` of root `σ[P₃].F` and `P₀ ⪯ F` inside
+the blocks held while honest. The last anchor's proposer is read at its acceptance. -/
+theorem final_anchor_coverage_at (Q : FinalQueryAt S A V) (W : FinalWindowDataAt S A V Q)
+    (run : W.AnchorRun) (steps : W.AnchorSteps) :
+    ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧ W.Extends (W.block 0) F := by
+  obtain ⟨proposer, dg, g, ΔF, a, b, hp, hc, hP, hR, hb⟩ := W.anchorRun_iff.mp run
+  have hg2 := W.gap_two
+  have hg3 := W.gap_span
+  have hs0 : (W.block 0).slot = W.start := W.slots 0
+  have hs3 : (W.block 3).slot = W.start + 3 * W.gap := W.slots 3
+  have hmono : StrictMono fun i : Fin 4 => W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i := by
+    refine Fin.strictMono_iff_lt_succ.mpr fun i => ?_
+    fin_cases i <;> dsimp <;> omega
+  have hsl : (W.block 3).slot ≤ (W.block 0).slot + Q.params.toParams.fg.δt := by
+    change (W.block 3).slot ≤ (W.block 0).slot + S.δt
+    omega
+  have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hle : ∀ q < W.cut 3 + 1, Q.trace.time q ≤ Q.trace.time (W.cut 3) :=
+    fun _ hq => hrun.time_mono (by omega)
+  have hB3 := (accept_of_proposesAt_at hrun hnc (W.ready 3).1 (W.proposals 3)).2.1
+  obtain ⟨F, hF, hAF⟩ := cacheCoverage_of_anchor_window_upTo_at hp hc hP hmono
+    hR hb (by intro h; simp at h; omega) (W.anchorSteps_iff.mp steps) hsl
+    (hrun.time_nonneg _) hle (W.ready 3).1 hB3
+  refine ⟨F, ?_, hAF⟩
+  change (Q.trace.post (W.cut 3)).fg.blocks ((Q.trace.post (W.cut 3)).fg.σ (W.block 3).root).F =
+    some F
+  rw [← Q.trace.state_succ_of_call (W.accepted 3)]
+  exact hF
 
 /-- **Payload/read projection of the final route under growing faults.** Window extraction with
 cache coverage of the extracted window, for every final query, gives the `healthyLive` field at

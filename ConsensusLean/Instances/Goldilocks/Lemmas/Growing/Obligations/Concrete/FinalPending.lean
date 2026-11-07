@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Spec.Shape.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 
 public section
 
@@ -12,7 +13,10 @@ Statements the final route consumes whose home modules are not on this branch ye
 
 * final-cache ancestry is engine finalized output under growing faults (`finalized_inBy_at`,
   home `Lemmas/Growing/Sleepy/Engine/Reads`, proved there; `ready_proposal_at` of the same home
-  is stood in by `Queries/Pending`).
+  is stood in by `Queries/Pending`);
+* the reset premises and seed placement of a final query under growing faults
+  (`final_reset_premises_of_query_at`, the growing form of `final_reset_premises_of_query`, home
+  with the growing Healing reset kernel).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -22,7 +26,11 @@ open AsChainShape Simulation
 open Blocks Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+variable (S : Setup)
+
+section Engine
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- **Final-cache ancestry is engine finalized output** under growing faults: if a non-genesis
@@ -39,6 +47,27 @@ theorem finalized_inBy_at (hv : rho.ExecutionValid)
         ((simTraceAt S rho hn).state y j).fg.F) :
     InBy rho c .finalized (headerOf (S.params (pubOf E) hn) P) t := by
   sorry
+
+end Engine
+
+section Query
+
+variable (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+
+/-- (H1)+(H3) of the final-window extraction under growing faults: one reset `a` with a bound
+`ΔR` whose per-cut reset premises hold through the horizon at GST `Q.gst`, with the run proposer
+and digest, and the seed placement at `finalSeedMinAt Q a`. -/
+theorem final_reset_premises_of_query_at (Q : FinalQueryAt S A V) :
+    ∃ ΔR a : Time,
+      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon ∧
+      max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
+          ((finalGridAt S A V Q).slotTime (finalSeedMinAt S A V Q a) - 1) +
+          ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGridAt S A V Q).slotLen ≤
+        Q.query + (finalGridAt S A V Q).slotLen := by
+  sorry
+
+end Query
 
 end Consensus.Goldilocks.Obligations.Growing
 
