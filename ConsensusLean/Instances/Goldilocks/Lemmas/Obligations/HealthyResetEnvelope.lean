@@ -75,7 +75,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
   have hδ6 : 6 ≤ S.δt := A.six_le_δt
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
   have hs := healthy_hsShared S A V Q
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   -- the ready scalar
   have hready : Q.ready = max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1 := rfl
   have hcDur : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run :=
@@ -184,8 +184,9 @@ theorem healthy_reset_envelope (Q : HealthyPreparationQuery S A V)
         (healthyResetSlack S Q.index : Time) := by
   have hs := healthy_hsShared S A V Q
   refine healthy_reset_envelope_of_drain S A V Q hb hp
-    (drainOutputs_of_service (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) hs.noColl hs.sync
-      hs.awake hs.faults (healthy_repair_catch S A V Q) (healthy_noRestartAfter S A V Q) ?_)
+    (drainOutputs_of_service (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
+      hs.noColl hs.sync hs.awake hs.faults (healthy_repair_catch S A V Q)
+      (healthy_noRestartAfter S A V Q) ?_)
   rw [healthyDrainLen_val]
   change 2 * S.k + (Q.index : Nat) ≤ 2 * S.k + (Q.index : Nat) + 1
   omega

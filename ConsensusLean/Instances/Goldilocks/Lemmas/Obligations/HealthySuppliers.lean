@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -32,6 +33,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
 /-- Healthy context carries no progress beyond the separately supplied interval. -/
 structure HealthyPreparationQuery where
   run : (Sys (goldilocks S) V).Run
+  constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   cap : Capability
   nonfinal : cap = .available ∨ cap = .stable
@@ -77,27 +79,31 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
       (Healing.cutZ Q.params.toParams Q.gst) ∧ Q.trace.time k ≤ Q.run.2.horizon) :
     Healing.ResetPremisesUpTo Q.trace (honestKeys S Q.run.2)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon := by
-  refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid,
-    noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision,
+  refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid,
+    noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision,
     hsync, ?_, ?_, hreset, ha, hsnapshot⟩
   · intro y hy t ht htb
     rw [simTrace_awake_iff, awakeAt_iff]
-    exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) ((mem_honestKeys_iff S Q.run.2 y).mp hy) t ht htb,
+    exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) t ht htb
+      ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr
+        ((mem_honestKeys_iff S Q.run.2 y).mp hy)),
       (le_max_right Q.gst 0).trans ht, htb⟩
   · have hpop := Q.healthy.2.1.1
-    change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
+    change ((Q.run.2.faultyAt Q.run.2.horizon).card : ℚ) <
+      (K S A).params.β * Fintype.card V at hpop
+    rw [Q.run.2.faultyAt_eq_zero Q.constant] at hpop
     rw [goldilocksContract_params_eq] at hpop
-    change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
-    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
-      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
+    change ((Q.run.2.faultyAt 0).card : ℚ) < 1 / 3 * Fintype.card V at hpop
+    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = (Q.run.2.faultyAt 0).card := by
+      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑(Q.run.2.faultyAt 0) : Set V) := by
         ext k
-        simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
+        simp [mem_honestKeys_iff]
       rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
-    have hnat : 3 * Q.run.2.point.faulty.card < Fintype.card V := by
-      exact_mod_cast (show (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by linarith)
-    change 3 * Q.run.2.point.faulty.card ≤ Fintype.card V - 1
+    have hnat : 3 * (Q.run.2.faultyAt 0).card < Fintype.card V := by
+      exact_mod_cast (show (3 : ℚ) * (Q.run.2.faultyAt 0).card < Fintype.card V by linarith)
+    change 3 * (Q.run.2.faultyAt 0).card ≤ Fintype.card V - 1
     omega
 
 /-- Finite catch service follows directly from the healthy engine's PSync and awake interval.
@@ -106,9 +112,10 @@ theorem healthy_repair_catch (Q : HealthyPreparationQuery S A V) :
     Healing.CatchRun Q.trace (honestKeys S Q.run.2) Q.gst (2 * Q.params.Δ) := by
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
-    hnet Q.healthy.2.1.2
+  exact catchRun_of_psync S Q.run.2 Q.hn Q.constant Q.valid
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
+    hnet (fun v hv t ht hb => Q.healthy.2.1.2 v t ht hb
+      ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv))
 
 /-- Global inventory obligation, exactly the initialization required by
 oldHonest_inventory_preserved. OldHonest includes signed entries not yet held by
@@ -162,7 +169,7 @@ theorem healthy_old_inventory_preserve (Q : HealthyPreparationQuery S A V)
     {s₀ : Nat} (base : HealthyOldInventory S A V Q s₀ Q.cut) :
     ∀ i, Q.cut ≤ i → HealthyOldInventory S A V Q s₀ i := by
   exact Healing.oldHonest_inventory_preserved
-    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) base
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid) base
 
 /-- Consumer-facing state facts at an arbitrary canonical cut, including cuts
 inside a timestamp: archival records and recent stored locks on the recent-origin
@@ -189,8 +196,8 @@ theorem healthy_locks (Q : HealthyPreparationQuery S A V) (s₀ i : Nat)
     ∃ L ∈ (Q.trace.state y i).fg.tree, L.root = l.block ∧
       Compose.OnOriginChainFrom Q.trace (honestKeys S Q.run.2) L s₀ := by
   obtain ⟨L, hL, hr, C, hC, hLC⟩ := Compose.lock_origin
-    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hy i l hl
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hy i l hl
   exact ⟨L, hL, hr, Compose.onOriginChainFrom_iff.2
     (Or.inr ⟨C, l.slot, Compose.originFrom_iff.2 ⟨hC.origin, hs⟩, hLC⟩)⟩
 
@@ -208,9 +215,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   classical
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  have hcatch := catchRun_of_psync S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
-    hnet Q.healthy.2.1.2
+  have hcatch := healthy_repair_catch S A V Q
   have hduration : Regimes.catchUp Q.params ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
     have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
       exact_mod_cast contract_catchUp_ge_sleepy S A
@@ -221,7 +226,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       Q.ready Q.heal := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.cDur, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
@@ -249,7 +254,7 @@ theorem healthy_prepare (Q : HealthyPreparationQuery S A V)
   have hmem : runProposer S Q.run.2 Q.hn u ∈ Q.run.2.sel (.proposer u) := by
     simp only [runProposer_eq, dite_eq_left hready.1]
     exact Finset.min'_mem _ _
-  have hR := hready.2 _ hmem
+  have hR := (hready.2 _ hmem).1
   rw [htime] at hR
   have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hq0.trans hlo.le)
     (show Q.params.ts u ≤ Q.run.2.horizon by linarith) hR
@@ -317,7 +322,7 @@ theorem healthy_preserve (Q : HealthyPreparationQuery S A V)
     (base : HealthyStateFacts S A V Q W.slot Q.cut) :
     ∀ i, Q.cut ≤ i → i ≤ cutMap S Q.run.2 Q.hn Q.run.2.events.length →
       HealthyStateFacts S A V Q W.slot i := by
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have htime : ∀ k, Q.cut ≤ k → Q.trace.label k ≠ none → Q.heal ≤ Q.trace.time k := by
     intro k hk hl
     obtain ⟨_, m, e, _, he, _, hmk, _, _, ht, _⟩ := simTrace_cut S Q.run.2 Q.hn hl

@@ -37,9 +37,9 @@ theorem outage_pool_delivery (Q : OutageQuery S A V) :
       ∀ x ∈ honestKeys S Q.run.2, ∀ i e, SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
         e.msg ∈ (Q.trace.state w c).ac.pool m := by
   intro w hw c m ℓ hu hstop x hx i e hv hes
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
   have hr := hrun'.localRun
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
   have hts : Q.params.ts (m + 1 : Nat) = Q.params.ts m + 4 * Q.params.Δ := by
@@ -72,7 +72,7 @@ theorem outage_pool_delivery (Q : OutageQuery S A V) :
   have hi : Q.trace.SendOrAdmitAt x i e.msg := by
     obtain ⟨ℓx, hcx, hex⟩ := hv
     exact ⟨ℓx, Compose.projAC_callAt.mp hcx, Or.inl ⟨e, hex, rfl⟩⟩
-  obtain ⟨k, hkc, hik, hp, hkdl⟩ := message_service_psync S Q.run.2 Q.hn Q.valid
+  obtain ⟨k, hkc, hik, hp, hkdl⟩ := message_service_psync S Q.run.2 Q.hn Q.constant Q.valid
     (outage_psync S A V Q) hx hi hw hj hb (by linarith [hdl c le_rfl])
   have hk_lt : Q.trace.time k < Q.params.ts m + 2 * Q.params.Δ :=
     hkdl.trans_le (hdl k hkc)

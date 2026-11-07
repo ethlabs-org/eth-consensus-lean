@@ -40,7 +40,7 @@ theorem hgp_of_healthyQuery (Q : HealthyPreparationQuery S A V)
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run) Q.ready Q.heal := by
+      ⟨Pattern.single, Q.index, 1⟩ ((Sys (goldilocks S) V).cDur (K S A) Q.run) Q.ready Q.heal := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using hp
   have htime : ∀ s : Nat, (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s =
@@ -53,7 +53,7 @@ theorem hgp_of_healthyQuery (Q : HealthyPreparationQuery S A V)
     push_cast at h1
     linarith
   have hspan : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime N +
-      (((⟨Pattern.single, Q.index⟩ : Recurrence).pattern.span : Nat) : Time) *
+      (((⟨Pattern.single, Q.index, 1⟩ : Recurrence).pattern.span : Nat) : Time) *
         (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotLen = Q.params.ts N := by
     simp [htime, Pattern.single, Pattern.span]
   have hgap := recurrence_gap hrec (by simp [Pattern.single]) (s₀ := s₀) (N := N)
@@ -78,7 +78,7 @@ theorem hgp_of_healthyQuery (Q : HealthyPreparationQuery S A V)
     have : (x : Time) ≤ (N : Time) := by exact_mod_cast (show x ≤ N by omega)
     simp only [SA.SAParams.ts]
     exact mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four Q.params.toParams.hΔ.le)
-  obtain ⟨k, P, hP, hk, -, -, hPs, -⟩ := duty_proposal_run S A V Q.run Q.hn Q.valid
+  obtain ⟨k, P, hP, hk, -, -, hPs, -⟩ := duty_proposal_run S A V Q.run Q.hn Q.constant Q.valid
     Q.noCollision hx0 ((hxN.trans hN).trans hb) hx
   exact ⟨x, hxl, hxr, hP.1, k, P, hk, hPs⟩
 

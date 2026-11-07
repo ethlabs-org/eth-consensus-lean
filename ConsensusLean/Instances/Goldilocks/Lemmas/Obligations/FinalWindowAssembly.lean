@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -108,7 +109,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((finalGrid S A V Q).slotTime s) →
+      ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P)
     (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
@@ -141,12 +142,12 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   have hspc := finalWindow_span_of_offsets (S := S) (A := A) hpat
   -- the recurrence of the query
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) G ⟨finalWindow A, Q.index⟩
+      (fun s => Q.run.2.sel (.proposer s)) G ⟨finalWindow A, Q.index, 1⟩
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run)
       Q.run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ↓reduceIte,
       Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using Q.progress
-  have hlen : ((⟨finalWindow A, Q.index⟩ : Recurrence).len : Time) * G.slotLen =
+  have hlen : ((⟨finalWindow A, Q.index, 1⟩ : Recurrence).len : Time) * G.slotLen =
       4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ := by
     simp only [Recurrence.len, hspc]
     change _ * (4 * Q.run.1.ΔAC) = 4 * _ * Q.run.1.ΔAC
@@ -165,7 +166,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     rw [max_eq_left (le_max_right _ _)]
     linarith only [this, hplace, h1]
   rw [max_eq_left (le_max_right _ _)] at hq
-  have hstop : Q.query + ((⟨finalWindow A, Q.index⟩ : Recurrence).len : Time) * G.slotLen ≤
+  have hstop : Q.query + ((⟨finalWindow A, Q.index, 1⟩ : Recurrence).len : Time) * G.slotLen ≤
       Q.run.2.horizon := by rw [hlen]; linarith only [hlat, hbh, hΔ]
   obtain ⟨u, s₀, humin, hu0, hus, hut₁, -, hdu, hs₀q, -, hspan, hds⟩ :=
     two_query_placement (δt := S.δt) hrec (by rw [hpat]; exact List.mem_cons_self) hplace hq hstop
@@ -199,19 +200,22 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   have hc : Healing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-    exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-      (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
+    exact catchRun_of_psync S Q.run.2 Q.hn Q.constant Q.valid
+      (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hnet
+      (fun v hv t ht hb => Q.healthy.2.1.2 v t ht hb
+        ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv))
   -- the seed and the anchors
-  obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) hdu
+  obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) (by simpa using hdu)
   have hoff : ∀ i : Fin 4, ![0, c, 2 * c, 3 * c] i ≤ 3 * c := by
     intro i; fin_cases i
     exacts [Nat.zero_le _, Nat.le_mul_of_pos_left c (by decide), Nat.mul_le_mul_right c (by decide),
       le_rfl]
   have hduty : ∀ i : Fin 4, HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (s₀ + ![0, c, 2 * c, 3 * c] i)
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) (G.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
+      ((Sys (goldilocks S) V).cDur (K S A) Q.run)
+      (G.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) Q.run.2.point.env.ΔAC := by
     intro i
-    exact hds _ (by rw [hpat]; exact List.mem_ofFn.2 ⟨i, rfl⟩)
+    simpa using hds _ (by rw [hpat]; exact List.mem_ofFn.2 ⟨i, rfl⟩)
   choose P hP using fun i : Fin 4 => hpropose _
     (Nat.lt_of_lt_of_le (Nat.lt_of_lt_of_le hu0 ((Nat.le_add_right _ _).trans hus'))
       (Nat.le_add_right _ _))
@@ -230,7 +234,7 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
         Q.run.2.sel (.proposer (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
       simp only [runProposer_eq, dite_eq_left hr.1]
       exact Finset.min'_mem _ _
-    have hR' := hr.2 _ hmem
+    have hR' := (hr.2 _ hmem).1
     rw [finalGrid_slotTime] at hR'
     have hti : Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) ≤ Q.run.2.horizon :=
       (hts _ _ (Nat.add_le_add_left (hoff i) _)).trans hb3
@@ -273,7 +277,7 @@ theorem final_window_extract_of_shared (Q : FinalQuery S A V) {ΔR a ΔF : Time}
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((finalGrid S A V Q).slotTime s) →
+      ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P)
     (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
@@ -316,7 +320,7 @@ theorem final_window_extract_of (Q : FinalQuery S A V) {ΔR a : Time}
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((finalGrid S A V Q).slotTime s) →
+      ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P)
     (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)

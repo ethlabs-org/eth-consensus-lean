@@ -39,7 +39,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- Holdings of an honest decoded wrapper strictly before `D` give a block call strictly
 before `D`. The form of `held_forward_blockCall_before` without an observation cut. -/
-theorem held_forward_blockCall_lt (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem held_forward_blockCall_lt (hn : 1 ≤ Fintype.card V)
+    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {y x : Fin (Fintype.card V)} (hx : x ∈ honestKeys S rho)
     {o : Wire (Fintype.card V)} {t d D : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
@@ -65,7 +66,7 @@ theorem held_forward_blockCall_lt (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
     obtain ⟨k, _, ha, ht⟩ := hacc
     exact ⟨k, ⟨true, hkey ▸ ha⟩, ht ▸ hstamp ▸ huD⟩
   · obtain ⟨i, hi⟩ := hr
-    have htu := received_forward_stamp_le S rho hn hv hi (.refl o)
+    have htu := received_forward_stamp_le S rho hn hconst hv hi (.refl o)
       ((mem_honestKeys_iff S rho x).mp hx) hdecode
     obtain ⟨k, _, hc, ht⟩ := received_forward_blockCall S rho hn hi (.refl o) hdecode htu
     exact ⟨k, hkey ▸ hc, ht ▸ huD⟩
@@ -86,16 +87,16 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
       ∃ j, Q.trace.BlockCallAt y j P ∧ Q.trace.time j ≤ Q.deadline := by
   intro s P hP hq hD y hy
   have hmem := hP.1
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun hrun hP
   obtain ⟨hacc, -, -⟩ := Healing.accept_of_proposesAt hrun
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hmem hk
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hmem hk
   have htk : Q.trace.time k = Q.params.ts s := by
     rw [hk.2.2, honestProposalRun_slot hP, Q.params.slotTime_eq]
     simp [SA.SAParams.ts]
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
-      (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ hmem _ _ hacc
+      (forwardAtAcceptance S Q.run.2 Q.hn Q.constant Q.valid) _ hmem _ _ hacc
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
   have hΔ := Q.run.1.ΔAC_pos
@@ -114,11 +115,12 @@ theorem carrier_processed_of_honest (Q : FinalQuery S A V) :
       exact_mod_cast (contract_coefficients S A).catchUp.pos
     change Q.run.1.ΔAC ≤ ((K S A).params.catchUp : Time) * Q.run.1.ΔAC + 1
     linarith [mul_le_mul_of_nonneg_right hc1 (zero_le_one.trans Q.run.1.ΔAC_pos)]
-  obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
+  obtain ⟨d, hheld, hdt⟩ := publication_held_ready_tail S Q.run.2 Q.hn Q.constant hnet r hr
     (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp hmem)
     (not_isFGAtt_of_decodeForward hdecode) hy Q.bounded
     (by rw [htime, htk, hmax]; exact hD) hc
-  obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.valid hmem hheld hdecode hdt
+  obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt S Q.run.2 Q.hn Q.constant Q.valid
+    hmem hheld hdecode hdt
   exact ⟨j, hj, hjt.le⟩
 
 /-- **Final-window extraction at a gap `c` with (H4) discharged.** `final_window_extract_of_gap`
@@ -136,7 +138,7 @@ theorem final_window_extract_of_gap' (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((finalGrid S A V Q).slotTime s) →
+      ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P)
     (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
@@ -167,7 +169,7 @@ theorem final_window_extract_of' (Q : FinalQuery S A V) {ΔR a : Time}
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((finalGrid S A V Q).slotTime s) →
+      ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P)
     (hplace : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
