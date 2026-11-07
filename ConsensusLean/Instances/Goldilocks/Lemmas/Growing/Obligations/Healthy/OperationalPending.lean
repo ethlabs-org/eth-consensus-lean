@@ -13,7 +13,7 @@ under their agreed names (static name + `_at`). Each node is honest at its own c
 held state at an observation time after the state's cuts, and the slot-`u` proposer through
 `t_u + hold`:
 
-* `ResetPremisesUpTo.operational_unanimous_at`, `ResetPremisesUpTo.reset_proposal_passes_at`;
+* `ResetPremisesUpTo.operational_unanimous_at`;
 * `report_cover_of_unanimous_at` (`Obligations.UpTo.report_cover_of_unanimous`).
 
 It re-exports the proved `ResetPremisesUpTo.cutZ_lt_reset_at` (`Kernel/ResetSource`) and
@@ -43,18 +43,6 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
     (hub : sp.ts u ≤ b) :
     ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → e.msg.slot = u →
       tr.time j ≤ b → e.msg.head = P.root := by
-  sorry
-
-/-- A post-drain proposal call of a node honest at it extends every high origin before its slot. -/
-theorem reset_proposal_passes_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
-    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
-    ∀ O, (∃ x r l, HighOrigin tr H g x r l O ∧ tr.time r < sp.ts u) →
-      Anc (tr.HonestBlocksAt H) O d.head := by
   sorry
 
 end ResetPremisesUpTo
