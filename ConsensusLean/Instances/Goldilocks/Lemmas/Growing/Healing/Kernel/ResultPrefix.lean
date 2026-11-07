@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
@@ -114,22 +115,6 @@ theorem honest_votes_carry_reset_stub (hp : ResetPremisesUpTo tr H proposer dg g
         v.slot = m} := by
   sorry
 
-/-- After the reset's catch-up, the validators honest at a cut at or after `t_m + Δ` that voted in
-label `m` while honest are at least half of the committee (the growing form of
-`ResetPremisesUpTo.half_committee`, counted at the cut); stand-in. -/
-theorem half_committee_at_stub (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {m : Nat}
-    (hm : cutZ sp.toParams g ≤ sp.ts m) {i : Nat} (hmi : sp.ts m + sp.Δ ≤ tr.time i)
-    (hib : tr.time i ≤ b) :
-    sp.n ≤ 2 * {z | z ∈ H (tr.time i) ∧ ∃ q e', z ∈ H (tr.time q) ∧
-      SA.VoteAt tr.projAC z q e' ∧ e'.msg.slot = m}.ncard := by
-  sorry
-
-/-- After the reset's catch-up, the fault bound at `t ≤ b`, charged at `t` (the growing form of
-`fault_bound_late_before`); stand-in. -/
-theorem fault_bound_late_at_stub (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {t : Time}
-    (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : SA.FaultBoundAt tr.projAC H t t := by
-  sorry
-
 /-! ### The cast's node-local facts -/
 
 /-- A cast of a node honest at its cut, read on the prefix through its time: its frame is held
@@ -229,9 +214,9 @@ theorem late_result_prefix_votes_before_at
         omega
       exact hprior z q e' hqi (Compose.Growing.hVoteAt_iff.2 ⟨hz, ell', hc'⟩) (by omega)
     exact next_transfer_stub sp _ ro H _ tr.projAC proposer hrun' m y i B ell e hy hcast hm hall
-      (half_committee_at_stub hp hmts (by linarith only [htime, hts1, hΔ]) hib)
+      (hp.half_committee_at hmts (t := tr.time i) (by linarith only [htime, hts1, hΔ]) hib)
       (honest_votes_carry_reset_stub hp hc hy hcast hm hib hmts hall hFB)
-      (fault_bound_late_at_stub hp (t := tr.time i)
+      (fault_bound_late_at hp (t := tr.time i)
         (hmts.trans (by linarith only [htime, hts1, hΔ])) hib)
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q e' hq
