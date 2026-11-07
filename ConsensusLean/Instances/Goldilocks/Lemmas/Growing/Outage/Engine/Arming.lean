@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.ArmingSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
