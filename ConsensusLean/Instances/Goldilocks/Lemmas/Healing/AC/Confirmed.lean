@@ -550,8 +550,9 @@ private theorem compatible_down {B L P : Blk sp.n FGP} (hU : Coherent U) (hLB : 
 time `t ≥ t_{p−1}` (`hset`) and, for a call at `t ≥ t_p + 6Δ`, also after it, for the locks live
 at `t`: of a label `< p` by `hset` and the exact slot-`p` votes (a lock written by the call has a
 label `≥ p`); of a label `≥ p` by its origin. -/
-theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
+theorem lock_compatible_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP}
+    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
@@ -563,7 +564,6 @@ theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Bl
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   have hΘ := Θ_nonneg sp
-  have hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p := by linarith only [hp, hΔ, hΘ]
   -- labels `≥ p`: by the origin, at any cut
   have hge : ∀ c' (l' : Lock), l' ∈ (tr.state y c').locks → p ≤ l'.slot → ∀ L' ∈ U,
       L'.root = l'.block → Compatible U L' P := by
@@ -614,10 +614,24 @@ theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Bl
         linarith only [this]
       linarith only [htj, hu, h1]
 
+/-- `lock_compatible_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
+theorem lock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
+    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j)
+    {c : Nat} (hcj : c = j ∨ c = j + 1) {l : Lock} (hl : l ∈ (tr.state y c).locks)
+    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k) {L : Blk sp.n FGP} (hL : L ∈ U)
+    (hLr : L.root = l.block) : Compatible U L P :=
+  lock_compatible_core hS (by linarith only [hp, sp.toParams.hΔ, Θ_nonneg sp])
+    hset hexact hvotes hPU hy htj hcj hl hlive hL hLr
+
 /-- **Every live lock block compares with `P`** at the state before (for a call at `t ≥ t_{p−1}`)
 or after (for a call at `t ≥ t_p + 6Δ`) an honest call, read at that call's frame and time. -/
-theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
+theorem liveLock_compatible_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP}
+    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
@@ -633,8 +647,21 @@ theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P 
   obtain rfl : L = ℓ.frame.viableAncestor B :=
     hΦ.coherent.1 hLt (mem_of_anc hva hB) hLr.symm
   exact compatible_down hU (hva.mono hΦU)
-    (lock_compatible hS hp hset hexact hvotes hPU hy htj hcj hl
+    (lock_compatible_core hS hp4 hset hexact hvotes hPU hy htj hcj hl
       (le_trans hlive ((locksWF_state hr hy c).cap hl)) (L := B) (hΦU hB) hBr)
+
+/-- `liveLock_compatible_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
+theorem liveLock_compatible (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
+    (hPU : P ∈ U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt y j ℓ) (htj : sp.ts p + 6 * sp.Δ ≤ tr.time j) {c : Nat}
+    (hcj : c = j ∨ c = j + 1) :
+    ∀ L ∈ liveLockBlocks sp (tr.state y c).locks ℓ.frame (tr.time j), Compatible U L P :=
+  liveLock_compatible_core hS (by linarith only [hp, sp.toParams.hΔ, Θ_nonneg sp])
+    hset hexact hvotes hPU hy hc htj hcj
 
 /-! ## The first update at `t_p + 6Δ` -/
 
@@ -1068,9 +1095,10 @@ theorem trivial_tree_mono (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} 
 /-- **The record after the first update**: from an honest node's tick at `t_p + 6Δ` on,
 at every later call of the node, the record after the call names a block of the call's frame
 that extends `P`. -/
-theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+theorem record_extends_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
-    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
+    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
@@ -1093,11 +1121,11 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
     rcases Nat.eq_or_lt_of_le hkc with rfl | hkc
     · obtain rfl : ℓ = ℓk := Option.some.inj (hc.2.symm.trans hck.2)
       exact first_update_record hS.toHealthyBase (by
-          linarith only [hp, hΔ, hΘ]) hexact hy hc hcallk htk
-        (proposal_mem_tree hS hpH hP (by linarith only [hp, hΔ, hΘ]) hy hc (by
+          linarith only [hp4, hΔ, hΘ]) hexact hy hc hcallk htk
+        (proposal_mem_tree hS hpH hP (by linarith only [hp4, hΔ, hΘ]) hy hc (by
             linarith only [htk, hΔ])).1
-        (liveLock_compatible hS hp hset hexact hvotes hPU hy hc htc (Or.inl rfl))
-    have hPt := (proposal_mem_tree hS hpH hP (by linarith only [hp, hΔ, hΘ]) hy hc (by
+        (liveLock_compatible_core hS hp4 hset hexact hvotes hPU hy hc htc (Or.inl rfl))
+    have hPt := (proposal_mem_tree hS hpH hP (by linarith only [hp4, hΔ, hΘ]) hy hc (by
         linarith only [hΔ, htc])).1
     rcases tr.noCall_or_lastCall y c with hn | ⟨c', hc'c, ℓ', hc', hnb⟩
     · exact absurd hck (hn k (Nat.zero_le _) hkc ℓk)
@@ -1106,8 +1134,22 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
       exact hnb k (by omega) hkc ℓk hck
     have hR := ih c' hc'c ℓ' hc' hkc'
     rw [← tr.state_of_lastCall hc' hc'c hnb] at hR
-    exact record_step hS.toHealthyBase (by linarith only [hp, hΔ, hΘ]) hvotes hy hc htc hPt
+    exact record_step hS.toHealthyBase (by linarith only [hp4, hΔ, hΘ]) hvotes hy hc htc hPt
       (RecP.mono (trivial_tree_mono hS hy hc' hc hc'c.le) hR)
+
+/-- `record_extends_core` from `t_p ≥ ḡ + 2Θ + 8Δ`. -/
+theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
+    (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ))
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓk : ACLabel (goldilocksSA sp FGP ro)}
+    (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
+    ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
+      ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
+  record_extends_core hS hpH hP (by linarith only [hp, sp.toParams.hΔ, Θ_nonneg sp])
+    hset hexact hvotes hy hck hcallk htk
 
 /-! ## The head and the confirmed tip -/
 

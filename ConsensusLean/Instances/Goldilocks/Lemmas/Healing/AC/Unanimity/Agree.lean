@@ -35,7 +35,7 @@ private theorem slot_ts (s : Nat) : sp.slot (sp.ts s) = s :=
   slot_of_mem sp s le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
 
 /-- The slot of the proposal is positive. -/
-private theorem slot_pos (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) : 0 < p := by
+private theorem slot_pos (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) : 0 < p := by
   have h := hs.late
   have := gbar_nonneg g
   have := Θ_nonneg sp
@@ -46,7 +46,7 @@ private theorem slot_pos (hs : UnanimitySetting tr H U schedule g p P k ℓp d p
   exact_mod_cast (ts_lt_iff sp).1 h0
 
 private theorem late_prev {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay) :
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) :
     gbar g + 4 * sp.Δ ≤ sp.ts s ∧ gbar g + sp.Δ ≤ sp.ts (s + 1 : Nat) := by
   have h := hs.late
   have := Θ_nonneg sp
@@ -57,7 +57,7 @@ private theorem late_prev {s : Nat}
 
 /-- The payload is the proposer's view of its slot-`s` pool. -/
 private theorem payload_eq {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay) :
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) :
     pay = voteViewList (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤ := by
   have h := hs.payload
   have hsl : sp.slot (tr.time k) = s + 1 := by rw [hs.time]; exact slot_ts (s + 1)
@@ -70,7 +70,7 @@ private theorem payload_eq {s : Nat}
   ring_nf
 
 /-- The only block of slot `p` of an honest frame is `P`. -/
-private theorem frame_slot_eq (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay)
+private theorem frame_slot_eq (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay)
     {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     {Q : Blk sp.n FGP} (hQ : Q ∈ ℓ.frame.tree) (hQs : Q.slot = p) : Q = P := by
@@ -168,7 +168,7 @@ private theorem mem_viableTree (hS : StandaloneRun tr H U schedule g) {y : Fin s
 
 /-- The voter holds `P`, and the heads of `P`'s support entries that the proposer holds. -/
 private theorem vote_holds {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay)
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = s + 1) :
     P ∈ ℓ.frame.tree ∧ ∀ v ∈ pay.2, ∀ Hd ∈ ℓp.frame.tree, Hd.root = v.head →
@@ -215,7 +215,7 @@ private theorem vote_holds {s : Nat}
 
 /-- A block of the voter's tree stamped before the vote freeze is in the proposer's tree. -/
 private theorem stamped_mem {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay)
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree)
     (hst : e.readPoint.blockStamp B.root < ETime.of (freeze sp (s + 1))) :
@@ -240,7 +240,7 @@ private theorem stamped_mem {s : Nat}
 
 /-- A block of the voter block tree is `P` or in the proposer's tree. -/
 private theorem voterBlock_mem {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay)
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) {B : Blk sp.n FGP}
     (hB : B ∈ voterBlockTree sp e.readPoint ℓ.frame (s + 1)) : B = P ∨ B ∈ ℓp.frame.tree := by
@@ -268,7 +268,7 @@ private theorem voterBlock_mem {s : Nat}
 
 /-- `P` has no supporters in the proposal's view (the proposer does not hold it yet). -/
 private theorem supporters_P_proposer {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay) :
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) :
     supporters ℓp.frame (View.ofLists pay) s P = ∅ := by
   have hr := hs.standalone.run.localRun
   obtain ⟨j₀, hkj, hacc, -⟩ := hs.accepted
@@ -277,7 +277,7 @@ private theorem supporters_P_proposer {s : Nat}
 
 /-- `P` has no slot-`s` supporters in the merged view: a support head has slot at most `s`. -/
 private theorem supporters_P_voter {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay) {x : Fin sp.n} (hx : x ∈ H)
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) {x : Fin sp.n} (hx : x ∈ H)
     {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e) :
     supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s P = ∅ := by
   obtain ⟨hΦ, -⟩ := frameIn_of_callAt hs.standalone.run.localRun hx hc.1
@@ -303,7 +303,7 @@ private theorem supporters_P_voter {s : Nat}
 /-- A block with a strict majority in the proposal's view has an honest supporter (every honest
 validator is a voter there, and none is an equivocator). -/
 private theorem honest_supporter {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay)
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay)
     {B : Blk sp.n FGP}
     (h : (voters (View.ofLists pay).votes).ncard <
       2 * goldfishScore sp ℓp.frame (View.ofLists pay) s B) :
@@ -342,7 +342,7 @@ private theorem honest_supporter {s : Nat}
 /-- A child with a strict majority in the proposal's view is in the voter's viable voter block
 tree: its honest supporter's slot-`s` vote extends it (`trivial_viable`). -/
 private theorem supported_viable {s : Nat}
-    (hs : UnanimitySetting tr H U schedule g (s + 1) P k ℓp d pay) {x : Fin sp.n} (hx : x ∈ H)
+    (hs : UnanimitySettingCore tr H U schedule g (s + 1) P k ℓp d pay) {x : Fin sp.n} (hx : x ∈ H)
     {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr x j ℓ e)
     (hes : e.msg.slot = s + 1) {B : Blk sp.n FGP} {r : Nat} (hBp : B.parent = some r)
     (hmaj : (voters (View.ofLists pay).votes).ncard <
@@ -373,7 +373,7 @@ private theorem supported_viable {s : Nat}
 
 /-- At an honest vote of slot `p`, the voter block tree has a viable block: the voter holds `P`,
 and every block of its tree is viable (trivial frames). -/
-theorem vote_viable_nonempty (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay)
+theorem vote_viable_nonempty_core (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)).Nonempty := by
@@ -387,7 +387,8 @@ theorem vote_viable_nonempty (hs : UnanimitySetting tr H U schedule g p P k ℓp
 /-- **The voter's walk is the canonical walk**: at an honest vote of slot `p`, the eligible
 children of every block, and their scores, are those of the proposer's viable tree with `P`
 added. -/
-theorem vote_children_eq (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+theorem vote_children_eq_core
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) (X : Blk sp.n FGP) :
     eligibleChildren (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p))
@@ -456,6 +457,31 @@ theorem vote_children_eq (hs : UnanimitySetting tr H U schedule g p P k ℓp d p
     by_cases hBP : B = P
     · rw [hBP]; exact hscoreP
     · exact hscore B hB.1.1 ((voterBlock_mem hs hx hc hB.1).resolve_left hBP)
+
+/-! ## In the setting of unanimity -/
+
+/-- `vote_viable_nonempty_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
+theorem vote_viable_nonempty (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
+    (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)).Nonempty :=
+  vote_viable_nonempty_core hs.toCore hx hc hes
+
+/-- `vote_children_eq_core` in `UnanimitySetting`, whose lateness gives the weak one. -/
+theorem vote_children_eq (hs : UnanimitySetting tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) (X : Blk sp.n FGP) :
+    eligibleChildren (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p))
+        (goldfishEligible sp ℓ.frame (tr.time j) (mergedVoteView sp e.readPoint ℓ.frame p)
+          ((p : Int) - 1)) X =
+      eligibleChildren (insert P (ℓp.frame.viableTree ℓp.frame.tree))
+        (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) X ∧
+    ∀ B ∈ eligibleChildren (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p))
+        (goldfishEligible sp ℓ.frame (tr.time j) (mergedVoteView sp e.readPoint ℓ.frame p)
+          ((p : Int) - 1)) X,
+      goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame p) ((p : Int) - 1) B =
+        goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1) B :=
+  vote_children_eq_core hs.toCore hx hc hes X
 
 end Consensus.Goldilocks.SA
 

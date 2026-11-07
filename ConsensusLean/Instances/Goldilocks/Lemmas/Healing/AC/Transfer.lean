@@ -97,6 +97,17 @@ theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
   · exact fast_origin_transfer_votes hS hx hfl hs
   · exact slow_origin_transfer_votes hS hx hsl hs
 
+/-- **Unanimity from `t_p ≥ ḡ + 8Δ`**: `proposal_votes` needs of the slot only
+`t_{p−1} ≥ ḡ + 4Δ` (and `p > 0`); the margin for the locks is all in `hset`. -/
+theorem proposal_votes_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP} (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
+    (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) :
+    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
+  obtain ⟨k, ℓp, d, pay, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc⟩ := hP
+  exact proposal_votes_of_setting_core
+    ⟨hS, hpH, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc, hp, hset⟩
+
 /-- **Unanimity**: for an honest proposal `P` of slot `p` (with its parent the head of
 its `ac_proposal`) at `t_p ≥ ḡ + 2Θ + 8Δ`, with the locks settled from `t_{p−1}`, every honest
 vote of slot `p` is `P`. Proved over the canonical walk in `Unanimity/Votes`
@@ -105,10 +116,8 @@ theorem proposal_votes (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
     (hpH : proposer p ∈ H) (hP : HonestProposal tr (proposer p) p P)
     (hp : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ)) :
-    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
-  obtain ⟨k, ℓp, d, pay, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc⟩ := hP
-  exact proposal_votes_of_setting
-    ⟨hS, hpH, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc, hp, hset⟩
+    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root :=
+  proposal_votes_core hS hpH hP (by linarith [Θ_nonneg sp]) hset
 
 end Consensus.Goldilocks.SA
 
