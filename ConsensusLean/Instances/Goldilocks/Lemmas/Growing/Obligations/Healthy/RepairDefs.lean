@@ -35,8 +35,9 @@ structure HealthyRepairScheduleAt (Q : HealthyPreparationQueryAt S A V) where
     (max (Q.params.ts oldLabel) (max (SA.gbar Q.gst + 4 * Q.params.Δ) 0))) ≤ query
   reserve : query + (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1
 
-/-- An operational opening: a proposal of a proposer ready at its slot start, after the query
-and within the progress window. -/
+/-- An operational opening: a proposal of a proposer ready at its slot start and still honest
+`Δ` later (the progress recurrence's proposer hold `1`, which keeps the slot's honest votes on
+the proposal), after the query and within the progress window. -/
 structure HealthyRepairOpeningAt (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) where
   slot : Nat
@@ -52,6 +53,7 @@ structure HealthyRepairOpeningAt (Q : HealthyPreparationQueryAt S A V)
   ready : Regimes.Growing.ReadyAt Q.trace Q.keys
     ((Sys (goldilocks S) V).cDur (K S A) Q.run)
     (runProposer S Q.run.2 Q.hn slot) (Q.params.ts slot)
+  held : runProposer S Q.run.2 Q.hn slot ∈ Q.keys (Q.params.ts slot + Q.params.Δ)
 
 /-- Immediate repair of every receiver ready at the opening's update: its update of the opening's
 label, and every record looked up just after it covered by a result or optimistic lock of a node
