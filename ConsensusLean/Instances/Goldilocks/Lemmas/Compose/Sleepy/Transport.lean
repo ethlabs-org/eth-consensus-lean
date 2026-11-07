@@ -30,9 +30,9 @@ section Node
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
 
-/-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
-node's frame at a call is genesis or was accepted by the node at that call or an earlier one. -/
-theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+/-- `frame_anc_accepted` with the unlock given. -/
+theorem frame_anc_acceptedU
+    {u : Nat → Set SA.Lock} (hr : SA.ACLocalRunU u H U T)
     {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by
@@ -77,6 +77,14 @@ theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
           exact h.1.2
       exact step _ hin' hok fun B hB X hX =>
         (ih j hj ℓ' hc' B hB X hX).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
+
+/-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
+node's frame at a call is genesis or was accepted by the node at that call or an earlier one. -/
+theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+    {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
+      Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X :=
+  frame_anc_acceptedU (hr := hr.toU) (y := y) (hy := hy)
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call. -/

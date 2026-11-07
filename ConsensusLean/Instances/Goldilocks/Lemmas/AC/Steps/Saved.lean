@@ -26,9 +26,10 @@ private theorem sv_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
   · rfl
   · split_ifs <;> rfl
 
-private theorem sv_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (tryVote sp x A Φ t).1.saved = A.saved := by
-  unfold tryVote; dsimp only
+private theorem sv_tryVote
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (tryVoteWith sp x L A Φ t).1.saved = A.saved := by
+  unfold tryVoteWith; dsimp only
   split_ifs <;> simp only [sv_optimistic, sv_admitVote]
 
 private theorem sv_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
@@ -53,19 +54,20 @@ private theorem sv_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s :
 
 /-- One call keeps the saved results, or is a joined tick at `t_{σ} + 6Δ` that writes
 `saved[σ]` with its update's result, or is a restart, which clears them. -/
-private theorem sv_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
+private theorem sv_step
+    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
     (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
-    let A' := ((goldilocksSA sp FGP ro).step self A Φ t c).1
+    let A' := (stepWith sp ro self L A Φ t c).1
     A'.saved = A.saved ∨ (c = .restart ∧ ∀ j, A'.saved j = none) ∨
       ∃ σ : Nat, c = .tick ∧ t = sp.ts σ + 6 * sp.Δ ∧ joined sp A t ∧
         A'.saved = Function.update A.saved σ ((getConfirmation sp A Φ σ).map Block.root) := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   cases c with
   | tick =>
-    change (acOnTick sp self A Φ t).1.saved = _ ∨
-      (_ ∧ ∀ j, (acOnTick sp self A Φ t).1.saved j = _) ∨
-      ∃ σ : Nat, _ ∧ _ ∧ _ ∧ (acOnTick sp self A Φ t).1.saved = _
-    unfold acOnTick; dsimp only
+    change (acOnTickWith sp self L A Φ t).1.saved = _ ∨
+      (_ ∧ ∀ j, (acOnTickWith sp self L A Φ t).1.saved j = _) ∨
+      ∃ σ : Nat, _ ∧ _ ∧ _ ∧ (acOnTickWith sp self L A Φ t).1.saved = _
+    unfold acOnTickWith; dsimp only
     by_cases hj : joined sp A t
     swap
     · have hc : (¬ joined sp A t) = True := eq_true hj
@@ -91,8 +93,8 @@ private theorem sv_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
       · rfl
   | proposal =>
     left
-    change (acProposal sp A Φ t).1.saved = _
-    unfold acProposal; split_ifs <;> rfl
+    change (acProposalWith sp L A Φ t).1.saved = _
+    unfold acProposalWith; split_ifs <;> rfl
   | toFG =>
     left
     change (acToFG sp A Φ t).1.saved = _
@@ -101,11 +103,11 @@ private theorem sv_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
     left
-    change (tryVote sp self _ Φ t).1.saved = _
+    change (tryVoteWith sp self L _ Φ t).1.saved = _
     rw [sv_tryVote, sv_optimistic, sv_admitVote]
   | block B =>
     left
-    change (tryVote sp self _ Φ t).1.saved = _
+    change (tryVoteWith sp self L _ Φ t).1.saved = _
     rw [sv_tryVote, sv_optimistic, sv_blockReceipt]
   | restart =>
     refine Or.inr (Or.inl ⟨rfl, fun j => ?_⟩)
@@ -113,10 +115,9 @@ private theorem sv_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
     rw [((restart_state sp) FGP ro self A Φ t hΦ ht).2.2.2.1]
     rfl
 
-/-- **A saved result comes from the node's update.** When the state of an honest node before
-cut `i` has `saved[j] = r`, the node's update of slot `j` at an earlier cut had a result with
-root `r`. -/
-theorem saved_result (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- `saved_result` with the unlock given. -/
+theorem saved_resultU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) (i j : Nat) {r : Nat} (h : (tr.state x i).saved j = some r) :
     ∃ k < i, ∃ C CV, ResultAt tr x k j C CV ∧ C.root = r := by
   induction i with
@@ -133,10 +134,10 @@ theorem saved_result (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin 
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hx)
       rw [hn.1] at he
       have hpost : tr.post i =
-          ((goldilocksSA sp FGP ro).step x (tr.state x i) ℓ.frame (tr.time i) ℓ.call).1 := by
+          (stepWith sp ro x (u i) (tr.state x i) ℓ.frame (tr.time i) ℓ.call).1 := by
         rw [he]
       rw [hst, hpost] at h
-      rcases sv_step (ro := ro) x (tr.state x i) (frameIn_of_callAt hr hx hc).1
+      rcases sv_step (L := u i) (ro := ro) x (tr.state x i) (frameIn_of_callAtU hr hx hc).1
           (hr.time_nonneg i) ℓ.call with hs | hs | ⟨σ, hcall, ht, hj, hs⟩
       · obtain ⟨k, hk, hk'⟩ := ih (hs ▸ h)
         exact ⟨k, hk.trans (Nat.lt_succ_self i), hk'⟩
@@ -155,6 +156,14 @@ theorem saved_result (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin 
       rw [hst] at h
       obtain ⟨k, hk, hk'⟩ := ih h
       exact ⟨k, hk.trans (Nat.lt_succ_self i), hk'⟩
+
+/-- **A saved result comes from the node's update.** When the state of an honest node before
+cut `i` has `saved[j] = r`, the node's update of slot `j` at an earlier cut had a result with
+root `r`. -/
+theorem saved_result (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) (i j : Nat) {r : Nat} (h : (tr.state x i).saved j = some r) :
+    ∃ k < i, ∃ C CV, ResultAt tr x k j C CV ∧ C.root = r :=
+  saved_resultU (hr := hr.toU) (x := x) (hx := hx) (i := i) (j := j) (r := r) (h := h)
 
 /-- The state after a call of an honest node. -/
 private theorem post_step (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
@@ -204,7 +213,7 @@ theorem saved_step_of_not_restart (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
   by_cases hn : tr.node i = x ∧ tr.label i ≠ none
   · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
     have hc : tr.CallAt x i ℓ := ⟨hn.1, hℓ⟩
-    rw [post_step hr hx hc]
+    rw [post_step hr hx hc, step_eq_stepWith]
     rcases sv_step (ro := ro) x (tr.state x i) (frameIn_of_callAt hr hx hc).1
         (hr.time_nonneg i) ℓ.call with hs | ⟨hcr, -⟩ | ⟨σ, hcall, ht, hj, hs⟩
     · exact Or.inl (congrFun hs j)

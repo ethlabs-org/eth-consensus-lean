@@ -26,13 +26,21 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- `frameIn_of_call` with the unlock given. -/
+theorem frameIn_of_callU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
 
-/-- Every block of an honest node's frame is genesis or was accepted by the node. -/
-theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U :=
+  frameIn_of_callU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
+
+/-- `frame_accepted` with the unlock given. -/
+theorem frame_acceptedU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X := by
@@ -65,8 +73,16 @@ theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
       · exact (ih j hj hc' X h).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
       · exact Or.inr ⟨i, le_rfl, ℓ, hc, h⟩
 
+/-- Every block of an honest node's frame is genesis or was accepted by the node. -/
+theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) :
+    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+      X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X :=
+  frame_acceptedU (hr := hr.toU) (y := y) (hy := hy) (i := i)
+
 /-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
-private theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+private theorem genesis_memU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
@@ -78,18 +94,26 @@ private theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y
     · exact ⟨Φ₀.F, hsub (htree ▸ rfl), hroot, hslot⟩
     · exact ih j hj hc'
 
-/-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. -/
-theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+/-- `frameBlock_unique` with the unlock given. -/
+theorem frameBlock_uniqueU
+    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
     (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
     (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' := by
   have hr := hrun.localRun
   have hprop : ∀ X, HonestFrameBlock tr H X → X.slot = σ → X.proposer = proposer σ := by
     rintro X ⟨y, hy, i, ℓ, hc, hX⟩ hXs
-    obtain ⟨G, hG, hGr, hGs⟩ := genesis_mem hr hy i hc
+    obtain ⟨G, hG, hGr, hGs⟩ := genesis_memU hr hy i hc
     refine hXs ▸ hrun.honest.proposer X ⟨y, hy, i, ℓ, hc, hX⟩ fun hXr => hσ ?_
-    rw [← hXs, hr.coherent.1 ((frameIn_of_call hr hy hc).2 hX) hG (hXr.trans hGr.symm), hGs]
+    rw [← hXs, hr.coherent.1 ((frameIn_of_callU hr hy hc).2 hX) hG (hXr.trans hGr.symm), hGs]
   exact hrun.honest.one_block B B' hB hB' (hprop B hB hs ▸ hp)
     ((hprop B hB hs).trans (hprop B' hB' hs').symm) (hs.trans hs'.symm)
+
+/-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. -/
+theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+    (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
+    (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' :=
+  frameBlock_uniqueU (hrun := hrun.toU) (σ := σ) (hσ := hσ) (hp := hp) (B := B) (B' := B')
+      (hB := hB) (hB' := hB') (hs := hs) (hs' := hs')
 
 /-- Ancestry below a block of slot at most `s` only reads the blocks of slot at most `s`. -/
 private theorem anc_of_slot_le {S S' : Set (Blk sp.n FGP)} (hS : Coherent S) {s : Nat}
@@ -153,18 +177,27 @@ theorem mem_voteViewList_snd {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
 theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
 
+/-- `proposal_payload` with the unlock given. -/
+theorem proposal_payloadWith
+    {L : Set Lock} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
+    (h : (acProposalWith sp L A Φ t).2 = some (d, pay)) :
+    joined sp A t ∧ pay = voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ ∧
+      (acProposalWith sp L A Φ t).1.restartTime = A.restartTime := by
+  unfold acProposalWith at h ⊢
+  dsimp only at h ⊢
+  split_ifs at h ⊢ with hj
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h
+    exact ⟨hj, h.2.symm, rfl⟩
+
 /-- The payload of a proposal is the proposer's view of the previous slot's pool, and the
 proposer is joined. -/
 theorem proposal_payload {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (acProposal sp A Φ t).2 = some (d, pay)) :
     joined sp A t ∧ pay = voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ ∧
-      (acProposal sp A Φ t).1.restartTime = A.restartTime := by
-  unfold acProposal at h ⊢
-  dsimp only at h ⊢
-  split_ifs at h ⊢ with hj
-  · simp only [Option.some.injEq, Prod.mk.injEq] at h
-    exact ⟨hj, h.2.symm, rfl⟩
+      (acProposal sp A Φ t).1.restartTime = A.restartTime :=
+  proposal_payloadWith (A := A) (Φ := Φ) (t := t) (d := d) (pay := pay) (h := h)
 
 variable (sp) in
 /-- **A1.1.** -/

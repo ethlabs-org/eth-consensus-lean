@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.RelSetting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.RelSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
@@ -56,6 +58,28 @@ structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (
     (proposer : Nat → Fin sp.n) (g : Time) : Prop extends HealthyBase tr H U proposer g where
   trivial : TrivialFrames tr H
 
+/-- `HealthyBase` with the unlock given by the oracle `u`. -/
+structure HealthyBaseU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop where
+  run : ACRunU u proposer tr H U
+  driven : DrivenU u proposer tr H
+  healthy : HealthyAC tr H U g
+  catchUp : CatchAC tr H U g (2 * sp.Δ)
+
+/-- `StandaloneRun` with the unlock given by the oracle `u`. -/
+structure StandaloneRunU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop
+    extends HealthyBaseU u tr H U proposer g where
+  trivial : TrivialFrames tr H
+
+theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
+    HealthyBaseU (parentOracle sp tr) tr H U proposer g :=
+  ⟨h.run.toU, h.driven.toU, h.healthy, h.catchUp⟩
+
+theorem StandaloneRun.toU (h : StandaloneRun tr H U proposer g) :
+    StandaloneRunU (parentOracle sp tr) tr H U proposer g :=
+  ⟨h.toHealthyBase.toU, h.trivial⟩
+
 theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
 
 theorem gbar_nonneg (g : Time) : 0 ≤ gbar g := le_max_right g 0
@@ -83,33 +107,34 @@ private theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
   | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, SA.admitVote_restartTime]
 
 /-- A call other than a restart keeps `restart_time`. -/
-private theorem rt_step (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+private theorem rt_step
+    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :
-    ((goldilocksSA sp FGP ro).step self A Φ t c).1.restartTime = A.restartTime := by
+    (stepWith sp ro self L A Φ t c).1.restartTime = A.restartTime := by
   cases c with
   | tick =>
-    change (acOnTick sp self A Φ t).1.restartTime = _
-    unfold acOnTick; dsimp only
-    split_ifs <;> simp only [SA.updateConfirmation_restartTime, SA.tryVote_restartTime]
+    change (acOnTickWith sp self L A Φ t).1.restartTime = _
+    unfold acOnTickWith; dsimp only
+    split_ifs <;> simp only [SA.updateConfirmation_restartTime, SA.tryVote_restartTimeWith]
   | proposal =>
-    change (acProposal sp A Φ t).1.restartTime = _
-    unfold acProposal; split_ifs <;> rfl
+    change (acProposalWith sp L A Φ t).1.restartTime = _
+    unfold acProposalWith; split_ifs <;> rfl
   | toFG =>
     change (acToFG sp A Φ t).1.restartTime = _
     unfold acToFG
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
-    change (tryVote sp self _ Φ t).1.restartTime = _
-    rw [SA.tryVote_restartTime, rt_optimistic, SA.admitVote_restartTime]
+    change (tryVoteWith sp self L _ Φ t).1.restartTime = _
+    rw [SA.tryVote_restartTimeWith, rt_optimistic, SA.admitVote_restartTime]
   | block B =>
-    change (tryVote sp self _ Φ t).1.restartTime = _
-    rw [SA.tryVote_restartTime, rt_optimistic, rt_blockReceipt]
+    change (tryVoteWith sp self L _ Φ t).1.restartTime = _
+    rw [SA.tryVote_restartTimeWith, rt_optimistic, rt_blockReceipt]
   | restart => exact absurd rfl hc
 
-/-- **The restart time of a state**: the state of an honest node before cut `i` has
-`restart_time = −∞`, or the time of a restart of the node at an earlier cut. -/
-theorem restartTime_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+/-- `restartTime_state` with the unlock given. -/
+theorem restartTime_stateU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     (tr.state y i).restartTime = ⊥ ∨
       ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) := by
@@ -127,22 +152,30 @@ theorem restartTime_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
       rw [hn.1] at he
       have hpost : tr.post i =
-          ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+          (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
         rw [he]
       rw [hst, hpost]
       by_cases hrs : ℓ.call = .restart
       · right
-        have hΦ := (frameIn_of_callAt hr hy hc).1
+        have hΦ := (frameIn_of_callAtU hr hy hc).1
         refine ⟨i, Nat.lt_succ_self i, ⟨ℓ, hc, hrs⟩, ?_⟩
         rw [hrs]
         exact ((restart_state sp) FGP ro y (tr.state y i) ℓ.frame (tr.time i) hΦ
           (hr.time_nonneg i)).2.2.2.2.2.2.1
-      · rw [rt_step y _ _ _ _ hrs]
+      · rw [rt_step (L := u i) y _ _ _ _ hrs]
         exact ih.imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans (Nat.lt_succ_self i), h⟩
     · have hst : tr.state y (i + 1) = tr.state y i := by
         simp only [Trace.state]; exact ite_eq_right hn
       rw [hst]
       exact ih.imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans (Nat.lt_succ_self i), h⟩
+
+/-- **The restart time of a state**: the state of an honest node before cut `i` has
+`restart_time = −∞`, or the time of a restart of the node at an earlier cut. -/
+theorem restartTime_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) :
+    (tr.state y i).restartTime = ⊥ ∨
+      ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) :=
+  restartTime_stateU (hr := hr.toU) (y := y) (hy := hy) (i := i)
 
 end RestartTime
 
@@ -179,42 +212,52 @@ private theorem vs_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
 
 /-- `try_vote` keeps `voted_slot` and emits nothing, or emits a vote of slot `slot(t)` and
 leaves `voted_slot = slot(t)`. -/
-private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    ((tryVote sp x A Φ t).1.votedSlot = A.votedSlot ∧ (tryVote sp x A Φ t).2 = []) ∨
-      ((tryVote sp x A Φ t).1.votedSlot = sp.slot t ∧
-        ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t) := by
-  unfold tryVote; dsimp only
+private theorem vs_tryVoteWith
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ((tryVoteWith sp x L A Φ t).1.votedSlot = A.votedSlot ∧ (tryVoteWith sp x L A Φ t).2 = []) ∨
+      ((tryVoteWith sp x L A Φ t).1.votedSlot = sp.slot t ∧
+        ∃ e ∈ (tryVoteWith sp x L A Φ t).2, e.msg.slot = sp.slot t) := by
+  unfold tryVoteWith; dsimp only
   split_ifs
   · exact Or.inl ⟨rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl⟩
   all_goals exact Or.inr ⟨by rw [vs_optimistic, vs_admitVote], _, List.mem_singleton_self _, rfl⟩
 
+private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ((tryVote sp x A Φ t).1.votedSlot = A.votedSlot ∧ (tryVote sp x A Φ t).2 = []) ∨
+      ((tryVote sp x A Φ t).1.votedSlot = sp.slot t ∧
+        ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t) := by
+  rw [tryVote_eq_tryVoteWith]
+  exact vs_tryVoteWith x A Φ t
+
 /-- A call other than a restart keeps `voted_slot`, or emits a vote of slot `slot(t)` and
 leaves `voted_slot = slot(t)`; a restart sets `voted_slot = −1`. -/
-private theorem vs_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
+private theorem vs_step
+    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
     (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
-    let r := (goldilocksSA sp FGP ro).step self A Φ t c
+    let r := stepWith sp ro self L A Φ t c
     r.1.votedSlot = A.votedSlot ∨ r.1.votedSlot = -1 ∨
       (r.1.votedSlot = sp.slot t ∧ ∃ e ∈ r.2, e.msg.slot = sp.slot t) := by
   cases c with
   | tick =>
-    change (acOnTick sp self A Φ t).1.votedSlot = _ ∨ (acOnTick sp self A Φ t).1.votedSlot = _ ∨
-      ((acOnTick sp self A Φ t).1.votedSlot = _ ∧ ∃ e ∈ (acOnTick sp self A Φ t).2, _)
-    unfold acOnTick; dsimp only
+    change (acOnTickWith sp self L A Φ t).1.votedSlot = _ ∨ (acOnTickWith sp self L A Φ
+        t).1.votedSlot = _ ∨
+      ((acOnTickWith sp self L A Φ t).1.votedSlot = _ ∧ ∃ e ∈ (acOnTickWith sp self L A Φ t).2, _)
+    unfold acOnTickWith; dsimp only
     split_ifs
     all_goals first
       | exact Or.inl rfl
       | exact Or.inl (vs_update _ _ _ _)
-      | (rcases vs_tryVote self A Φ t with h | h
+      | (rcases vs_tryVoteWith self A Φ t with h | h
          · exact Or.inl ((vs_update _ _ _ _).trans h.1)
          · exact Or.inr (Or.inr ⟨(vs_update _ _ _ _).trans h.1, h.2⟩))
-      | (rcases vs_tryVote self A Φ t with h | h
+      | (rcases vs_tryVoteWith self A Φ t with h | h
          · exact Or.inl h.1
          · exact Or.inr (Or.inr h))
   | proposal =>
     left
-    change (acProposal sp A Φ t).1.votedSlot = _
-    unfold acProposal; split_ifs <;> rfl
+    change (acProposalWith sp L A Φ t).1.votedSlot = _
+    unfold acProposalWith; split_ifs <;> rfl
   | toFG =>
     left
     change (acToFG sp A Φ t).1.votedSlot = _
@@ -222,24 +265,27 @@ private theorem vs_step (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
-    change (tryVote sp self _ Φ t).1.votedSlot = _ ∨ (tryVote sp self _ Φ t).1.votedSlot = _ ∨
-      ((tryVote sp self _ Φ t).1.votedSlot = _ ∧ ∃ e ∈ (tryVote sp self _ Φ t).2, _)
-    rcases vs_tryVote self (optimisticConfirmation sp (admitVote sp A t m) Φ t) Φ t with h | h
+    change (tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∨ (tryVoteWith sp self L _ Φ
+        t).1.votedSlot = _ ∨
+      ((tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∧ ∃ e ∈ (tryVoteWith sp self L _ Φ t).2, _)
+    rcases vs_tryVoteWith self (optimisticConfirmation sp (admitVote sp A t m) Φ t) Φ t with h | h
     · exact Or.inl (h.1.trans (by rw [vs_optimistic, vs_admitVote]))
     · exact Or.inr (Or.inr h)
   | block B =>
-    change (tryVote sp self _ Φ t).1.votedSlot = _ ∨ (tryVote sp self _ Φ t).1.votedSlot = _ ∨
-      ((tryVote sp self _ Φ t).1.votedSlot = _ ∧ ∃ e ∈ (tryVote sp self _ Φ t).2, _)
-    rcases vs_tryVote self (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t with h | h
+    change (tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∨ (tryVoteWith sp self L _ Φ
+        t).1.votedSlot = _ ∨
+      ((tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∧ ∃ e ∈ (tryVoteWith sp self L _ Φ t).2, _)
+    rcases vs_tryVoteWith self (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t with h
+        | h
     · exact Or.inl (h.1.trans (by rw [vs_optimistic, vs_blockReceipt]))
     · exact Or.inr (Or.inr h)
   | restart =>
     right; left
     exact ((restart_state sp) FGP ro self A Φ t hΦ ht).2.2.2.2.2.1
 
-/-- **The voted slot of a state**: when the state of an honest node before cut `i` has
-`voted_slot = σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut. -/
-theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+/-- `vote_of_votedSlot` with the unlock given. -/
+theorem vote_of_votedSlotU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ σ : Nat, (tr.state y i).votedSlot = σ → ∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ := by
   induction i with
@@ -259,7 +305,7 @@ theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
       rw [hn.1] at he
       rw [hst] at h
-      have hv := vs_step (ro := ro) y (tr.state y i) (frameIn_of_callAt hr hy hc).1
+      have hv := vs_step (L := u i) (ro := ro) y (tr.state y i) (frameIn_of_callAtU hr hy hc).1
         (hr.time_nonneg i) ℓ.call
       rw [he] at hv
       dsimp only at hv
@@ -274,14 +320,21 @@ theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
       obtain ⟨j, hj, h'⟩ := ih σ h
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h'⟩
 
-/-- `try_vote` at `t_s + Δ` of a joined node that has not voted in slot `s = slot(t)` casts a
-vote of slot `s`. -/
-theorem tryVote_votes (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
+/-- **The voted slot of a state**: when the state of an honest node before cut `i` has
+`voted_slot = σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut. -/
+theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) :
+    ∀ σ : Nat, (tr.state y i).votedSlot = σ → ∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ :=
+  vote_of_votedSlotU (hr := hr.toU) (y := y) (hy := hy) (i := i)
+
+/-- `tryVote_votes` with the unlock given. -/
+theorem tryVote_votesWith
+    {L : Set Lock} (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
     (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
-    ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t := by
-  rcases vs_tryVote x A Φ t with h | h
+    ∃ e ∈ (tryVoteWith sp x L A Φ t).2, e.msg.slot = sp.slot t := by
+  rcases vs_tryVoteWith x A Φ t with h | h
   · exfalso
-    unfold tryVote at h; dsimp only at h
+    unfold tryVoteWith at h; dsimp only at h
     split_ifs at h with h1 h2
     · rcases h1 with h1 | h1 | h1
       · exact h1 hj
@@ -291,11 +344,18 @@ theorem tryVote_votes (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t :
     all_goals simp at h
   · exact h.2
 
+/-- `try_vote` at `t_s + Δ` of a joined node that has not voted in slot `s = slot(t)` casts a
+vote of slot `s`. -/
+theorem tryVote_votes (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
+    (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
+    ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t :=
+  tryVote_votesWith (x := x) (A := A) (Φ := Φ) (t := t) (hj := hj) (hv := hv) (ht := ht)
+
 end VotedSlot
 
-namespace HealthyBase
+namespace HealthyBaseU
 
-variable (hS : HealthyBase tr H U proposer g)
+variable {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
 include hS
 
 /-- An honest node is awake from `ḡ` on. -/
@@ -340,7 +400,7 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (ht : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
     joined sp (tr.state y i) (tr.time i) := by
   unfold joined
-  rcases restartTime_state hS.run.localRun hy i with h | ⟨k, -, hrk, h⟩
+  rcases restartTime_stateU hS.run.localRun hy i with h | ⟨k, -, hrk, h⟩
   · rw [h]; exact bot_le
   · rw [h]; exact WithBot.coe_le_coe.mpr ((hS.restart_le hy hrk).trans ht)
 
@@ -369,6 +429,49 @@ theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have := hS.two_faulty_lt
   omega
+
+end HealthyBaseU
+
+namespace HealthyBase
+
+variable (hS : HealthyBase tr H U proposer g)
+include hS
+
+/-- An honest node is awake from `ḡ` on. -/
+theorem awake {y : Fin sp.n} (hy : y ∈ H) {t : Time} (ht : gbar g ≤ t) : tr.awake y t :=
+  hS.toU.awake hy ht
+
+/-- `f < n/2` (from `3f ≤ n − 1`). -/
+theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n :=
+  hS.toU.two_faulty_lt
+
+/-- **No restart after `ḡ`**: a restart is a wake, and an honest node is awake from `ḡ` on. -/
+theorem restart_le {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
+    tr.time k ≤ gbar g :=
+  hS.toU.restart_le hy hk
+
+/-- An honest node is joined at every `t` with `ḡ ≤ t_{slot(t)−1}`. -/
+theorem joinedAt {y : Fin sp.n} (hy : y ∈ H) {t : Time}
+    (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) : JoinedAt tr y t :=
+  hS.toU.joinedAt hy ht
+
+/-- The state of an honest node before a cut at a time `t` with `ḡ ≤ t_{slot(t)−1}` is
+joined at `t`. -/
+theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
+    (ht : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)) :
+    joined sp (tr.state y i) (tr.time i) :=
+  hS.toU.joined_state hy i ht
+
+/-- `Sync[a, b]` for every `a ≥ ḡ`. -/
+theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
+    SyncAC (goldilocksSA sp FGP ro) H U a b tr :=
+  hS.toU.syncAC ha b
+
+/-- `f < h_t` at every `t` with `ḡ ≤ t_{slot(t)−1}`: every honest node is awake and joined
+there. -/
+theorem faultBound {t : Time} (ht0 : 0 ≤ t) (ht : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) :
+    FaultBound tr H t :=
+  hS.toU.faultBound ht0 ht
 
 end HealthyBase
 
@@ -421,6 +524,73 @@ theorem locksSettled_iff {T : Time} : LocksSettled tr H U T ↔
     ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks,
       sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block →
         VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfter tr H U l.slot L := Iff.rfl
+
+/-- At a proposal call, the parent's oracle gives the parent's `ac_proposal`. -/
+theorem acProposalWith_parentOracle {x : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hc : tr.CallAt x i ℓ) (hcall : ℓ.call = .proposal) :
+    acProposalWith sp (parentOracle sp tr i) (tr.state x i) ℓ.frame (tr.time i) =
+      acProposal sp (tr.state x i) ℓ.frame (tr.time i) := by
+  simp only [parentOracle, hc.2, hc.1, hcall]
+  rfl
+
+/-- `ProposalsExtendAfter` with the unlock given: the heads of the proposals at the locks of the
+oracle. -/
+abbrev ProposalsExtendAfterU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (j : Nat) (B : Blk sp.n FGP) : Prop :=
+  ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
+    ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
+    (acProposalWith sp (u i) (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) →
+    Anc U B d.head
+
+/-- `LocksSettled` with the unlock given. -/
+abbrev LocksSettledU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (T : Time) : Prop :=
+  ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k →
+    ∀ L ∈ U, L.root = l.block →
+      VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfterU u tr H U l.slot L
+
+theorem proposalsExtendAfterU_iff {u : Nat → Set Lock} {j : Nat} {B : Blk sp.n FGP} :
+    ProposalsExtendAfterU u tr H U j B ↔
+      ∀ x ∈ H, ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)) (m : Nat) d pay, tr.CallAt x i ℓ →
+        ℓ.call = .proposal → tr.time i = sp.ts m → j < m →
+        (acProposalWith sp (u i) (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay) →
+        Anc U B d.head := Iff.rfl
+
+theorem locksSettledU_iff {u : Nat → Set Lock} {T : Time} : LocksSettledU u tr H U T ↔
+    ∀ y ∈ H, ∀ i, T ≤ tr.time i → ∀ l ∈ (tr.state y i).locks,
+      sp.slot (tr.time i) ≤ l.slot + sp.k → ∀ L ∈ U, L.root = l.block →
+        VotesExtendAfter tr H U l.slot L ∧ ProposalsExtendAfterU u tr H U l.slot L := Iff.rfl
+
+/-- At the parent's oracle, `ProposalsExtendAfterU` is `ProposalsExtendAfter`. -/
+theorem proposalsExtendAfterU_parent_iff {j : Nat} {B : Blk sp.n FGP} :
+    ProposalsExtendAfterU (parentOracle sp tr) tr H U j B ↔ ProposalsExtendAfter tr H U j B := by
+  constructor
+  · intro h x hx i ℓ m d pay hc hcall ht hj hp
+    exact h x hx i ℓ m d pay hc hcall ht hj ((acProposalWith_parentOracle hc hcall).symm ▸ hp)
+  · intro h x hx i ℓ m d pay hc hcall ht hj hp
+    exact h x hx i ℓ m d pay hc hcall ht hj ((acProposalWith_parentOracle hc hcall) ▸ hp)
+
+/-- At the parent's oracle, `LocksSettledU` is `LocksSettled`. -/
+theorem locksSettledU_parent_iff {T : Time} :
+    LocksSettledU (parentOracle sp tr) tr H U T ↔ LocksSettled tr H U T := by
+  constructor
+  · intro h y hy i hi l hl hk L hL hLr
+    exact (h y hy i hi l hl hk L hL hLr).imp_right proposalsExtendAfterU_parent_iff.1
+  · intro h y hy i hi l hl hk L hL hLr
+    exact (h y hy i hi l hl hk L hL hLr).imp_right proposalsExtendAfterU_parent_iff.2
+
+theorem LocksSettled.toU {T : Time} (h : LocksSettled tr H U T) :
+    LocksSettledU (parentOracle sp tr) tr H U T :=
+  locksSettledU_parent_iff.2 h
+
+theorem ProposalsExtendAfter.toU {j : Nat} {B : Blk sp.n FGP}
+    (h : ProposalsExtendAfter tr H U j B) :
+    ProposalsExtendAfterU (parentOracle sp tr) tr H U j B :=
+  proposalsExtendAfterU_parent_iff.2 h
+
+theorem LocksSettledU.mono {u : Nat → Set Lock} {T T' : Time} (h : LocksSettledU u tr H U T)
+    (hT : T ≤ T') : LocksSettledU u tr H U T' :=
+  fun y hy i hi => h y hy i (hT.trans hi)
 
 theorem LocksSettled.mono {T T' : Time} (h : LocksSettled tr H U T) (hT : T ≤ T') :
     LocksSettled tr H U T' :=
