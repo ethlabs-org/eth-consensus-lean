@@ -15,9 +15,7 @@ their final names, so that the engine proofs compose against the final interface
 * the finite sleepy service from raw synchrony through `b`
   (`Simulation.sleepyServiceBefore_of_syncUntil_at`, home `Lemmas/Growing/Simulation/Service`);
 * ready-reader safety under growing faults (`Regimes.Growing.ReadySafeOn`) and the finite node
-  safety `Regimes.Growing.sleepy_safe_at` (home `Lemmas/Growing/Sleepy/Node/Regimes`);
-* the finite node inclusion `Regimes.Growing.include_sleepy_at` (home
-  `Lemmas/Growing/Sleepy/Service/Inclusion`).
+  safety `Regimes.Growing.sleepy_safe_at` (home `Lemmas/Growing/Sleepy/Node/Regimes`).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -78,18 +76,6 @@ theorem sleepy_safe_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
     (hB : Compose.Growing.SleepyBounds tr H b) :
     ReadySafeOn tr H (catchUp sp) 0 b := by
-  sorry
-
-/-- **Finite inclusion under growing faults**: a proposal released at `τ` by a proposer ready at
-`τ` and honest through its hold is in the read of every node ready at `t ∈ [τ + 6Δ, b]`. -/
-theorem include_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {ΔF b : Time} (hb0 : 0 ≤ b)
-    (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
-    (hB : Compose.Growing.SleepyBounds tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposalAt tr H (catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time} {j : Nat}
-    (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b) (hy : ReadyAt tr H (catchUp sp) y t)
-    (hj : CutAfter tr j t) :
-    Anc (tr.HonestBlocksAt H) P (readAfter tr y j t) := by
   sorry
 
 end Consensus.Goldilocks.Regimes.Growing
