@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
@@ -105,67 +107,6 @@ theorem sync_window_at_reset_at
     exact hsy.1 x hx i m hm hi ((hsource y j _).trans ht) y hy j ell hj hd
   · intro x hx i B hB hi y hy j ell hj ht hd hF
     exact hsy.2 x hx i B hB hi ((hsource y j _).trans ht) y hy j ell hj hd hF
-
-/-- **A restart of a node honest at it is no later than the slot after `ḡ`**: the node is awake
-from `ḡ` on while honest, and ticks at the public time `t_{slot(ḡ)+1}`. -/
-theorem restart_le_before_at {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    (hk : tr.RestartAt y k) (hkb : tr.time k ≤ b) :
-    tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-  by_contra hlt
-  obtain ⟨u, -, huk, hu, hprev⟩ := hp.run.sleep_of_restart y k hy hk
-  have hp₀ : gbar g ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-    have h := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
-      ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
-    exact (not_le.mp h).le
-  by_cases hgu : gbar g ≤ u
-  · exact hu (hp.awake y u (hp.run.antitone huk.le hy) hgu (huk.le.trans hkb))
-  · have hlt' := (lt_of_not_ge hlt).le
-    obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y _ (hp.run.antitone hlt' hy)
-      ((SA.gbar_nonneg g).trans hp₀)
-      ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [SAParams.ts]; ring⟩
-      (hp.awake y _ (hp.run.antitone hlt' hy) hp₀ (hlt'.trans hkb))
-    obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
-    simp only [Nat.add_zero] at hn ht hl
-    have hjk : j < k := by
-      by_contra h
-      have := hp.run.time_mono (not_lt.mp h)
-      exact hlt (ht ▸ this)
-    have := hprev j hjk ⟨_, hn, hl⟩
-    exact hgu (by linarith)
-
-/-- **The late fault bound**: from the cut on, the faults at any `d ∈ [t, b]` are fewer than the
-validators honest at `d` that are awake and joined at `t`. -/
-theorem fault_bound_late_before_at {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
-    tr.FaultBoundAt H t d := by
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
-  have ht0 : 0 ≤ t := (SA.gbar_nonneg g).trans hgt
-  have hs : sp.slot (gbar g) + 3 ≤ sp.slot t := by
-    have h := (SA.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
-      ((cutZ_eq sp g) ▸ ht)
-    exact_mod_cast h
-  have hsub : H d ⊆ {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t} := by
-    intro y hy
-    have hyt := hp.run.antitone htd hy
-    refine ⟨hy, hp.awake y t hyt hgt (htd.trans hdb), fun k hk hkt => ?_⟩
-    change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
-    have he : sp.toParams.slotTime (sp.slot t - 1) = sp.ts ((sp.slot t - 1 : Nat) : Int) :=
-      sp.slotTime_eq _
-    refine ⟨by omega, (restart_le_before_at hp (hp.run.antitone hkt hyt) hk
-      (hkt.trans (htd.trans hdb))).trans ?_⟩
-    rw [he]
-    exact (SA.ts_le_iff sp).mpr (by omega)
-  have hle := Set.ncard_le_ncard hsub
-  have hn : (H d).ncard + (H d)ᶜ.ncard = sp.n := by
-    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h3 := hp.faults d (ht0.trans htd) hdb
-  have hpos := sp.toParams.hn
-  have hn' : sp.n = sp.toParams.n := rfl
-  unfold RunTrace.FaultBoundAt
-  refine lt_of_lt_of_le ?_ hle
-  omega
 
 /-- **Catch at the reset on the prefix through `t`**: an acceptance before the reset `a` by a
 validator honest at `t` is accepted before `a + 2Δ` by every validator honest at `t` whose
