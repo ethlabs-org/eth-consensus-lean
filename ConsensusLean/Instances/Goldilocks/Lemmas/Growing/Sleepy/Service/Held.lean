@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Agree
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Pending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Held
 import ConsensusLean.Lemmas.Tactic.Linarith
 

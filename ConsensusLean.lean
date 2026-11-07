@@ -186,8 +186,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
@@ -196,7 +198,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.B
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Suffix
