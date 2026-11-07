@@ -247,15 +247,14 @@ theorem catch_window_at_reset_at
     exact lt_of_lt_of_le hkt ((hdeadline k hk).trans (by linarith))
 
 /-- The reset's service windows on the prefix through a read time `t ≤ b`, from the finite reset
-premises. -/
-theorem ResetPremisesUpTo.windows_at_reset_at {b : Time}
+premises of a healthy run. -/
+theorem ResetPremisesUpTo.windows_at_reset_at {b ΔF' : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {t : Time} (ht0 : 0 ≤ t) (htb : t ≤ b) :
+    (hh : tr.HealthyRunAt H ΔF' g) {t : Time} (ht0 : 0 ≤ t) (htb : t ≤ b) :
     SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) a t (tr.projAC.upTo t) ∧
       CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
         (2 * sp.Δ) t := by
-  have hca := cutZ_lt_reset_of_snapshot_at hp.run
-    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
+  have hca := cutZ_lt_reset_at hp.run hp.noColl hh hp.reset
   have hga : g ≤ a := by linarith [SA.le_gbar g, lt_cutZ sp g, sp.toParams.hΔ]
   exact ⟨sync_window_at_reset_at hp.run hp.sync hga ht0,
     catch_window_at_reset_at hp.run hp.sync hc ht0 hca
