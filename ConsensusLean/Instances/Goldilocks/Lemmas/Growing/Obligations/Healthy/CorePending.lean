@@ -10,9 +10,10 @@ public section
 
 /-! # Pending growing Healing Outcome core of the unanimity and report lemmas
 
-Draft growing forms (static name + `_at`, `Healing.Growing.ResetPremisesUpTo`) of the nine Outcome
-core lemmas that `operational_unanimous_at` and `report_cover_of_unanimous_at` consume, for the
-kernel owner to accept or replace. The slot-`u` proposer is honest through `t_u + hold`, every
+Growing forms (static name + `_at`, `Healing.Growing.ResetPremisesUpTo`) of the eight remaining
+Outcome core lemmas that `operational_unanimous_at` and `report_cover_of_unanimous_at` consume;
+the proved `clean_window_timing_at` is re-exported from `Growing/Healing/Clean/Timing`. The
+slot-`u` proposer is honest through `t_u + hold`, every
 voter or caller at its own cut, unanimity and votes are quantified over voters honest at their
 cast, and ancestry is over `HonestBlocksAt`. Timing and margins are the static ones.
 
