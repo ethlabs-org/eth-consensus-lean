@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 
 public section
 
@@ -86,7 +87,8 @@ theorem exists_reset_of_drain_rounds_awake_at
     (hdrain : DrainOutputs tr proposer H g G Ld b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
-  sorry
+  exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
+    hH hδ hΔF hr hgr hG hcz hb hgp hdrain
 
 /-- Step 4 packaging: a bounded reset and a snapshot supply the existing finite reset record. -/
 theorem resetPremisesUpTo_of_reset_at
