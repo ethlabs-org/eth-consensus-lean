@@ -1,15 +1,16 @@
 module
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Blocks.Facts
+public import ConsensusLeanTest.Fixtures.Common
 import Mathlib.Tactic.NormNum
 import Mathlib.Tactic.FinCases
+@[expose] public section
 
-public section
+/-! # Multiple permanent compromises
 
-/-! # Growing-fault participation and proposer scopes
-
-Small profiles exercise corruption inside a look-ahead and after an honest
-read. These tests do not assume a protocol's correctness. -/
+The profile grows twice within the healthy claim window, with constant intervals
+between compromises. A constant profile is kept as a control.
+-/
 
 namespace Consensus.Tests.Growth
 
@@ -78,4 +79,46 @@ theorem prefix_budget :
 
 end Consensus.Tests.Growth
 
+namespace Consensus.Shape.Tests.Growth
+
+/-- Seven awake validators; key zero is compromised at two, key one at five. -/
+def growthPoint : EnvPoint (Fin 7) where
+  env := ⟨1, by decide, 1, by decide, fun _ _ => true⟩
+  faultyAt := fun t => (if 2 ≤ t then {0} else ∅) ∪ (if 5 ≤ t then {1} else ∅)
+  faultyAt_mono := by
+    intro a b hab
+    apply Finset.union_subset_union
+    · split_ifs with ha hb
+      · exact Finset.Subset.refl _
+      · exact False.elim (hb (ha.trans hab))
+      · exact Finset.empty_subset _
+      · exact Finset.Subset.refl _
+    · split_ifs with ha hb
+      · exact Finset.Subset.refl _
+      · exact False.elim (hb (ha.trans hab))
+      · exact Finset.empty_subset _
+      · exact Finset.Subset.refl _
+  horizon := 8
+  submit := fun _ _ => []
+
+/-- Two strict increases occur at different times inside the healthy window `[0, 8]`. -/
+theorem growthPoint_strict_growth :
+    ∃ t₀ t₁ t₂ : Time, 0 ≤ t₀ ∧ t₀ < t₁ ∧ t₁ < t₂ ∧ t₂ ≤ growthPoint.horizon ∧
+      growthPoint.faultyAt t₀ ⊂ growthPoint.faultyAt t₁ ∧
+      growthPoint.faultyAt t₁ ⊂ growthPoint.faultyAt t₂ := by
+  exact ⟨0, 2, 5, by decide, by decide, by decide, by decide, by decide, by decide⟩
+
+/-- Two compromises among seven validators remain below one third. -/
+theorem growthPoint_healthy : growthPoint.HealthyOn (1 / 3) 0 8 := by
+  exact ⟨by norm_num [EnvPoint.faultCount, growthPoint], fun _ _ _ _ _ => rfl⟩
+
+/-- The same healthy verdict holds on the constant two-fault control. -/
+theorem constantPoint_healthy : (growthPoint.retain 8).HealthyOn (1 / 3) 0 8 := by
+  exact ⟨by norm_num [EnvPoint.faultCount, EnvPoint.retain, growthPoint],
+    fun _ _ _ _ _ => rfl⟩
+
+/-- The control has constant faults, unlike the two-increase profile. -/
+theorem constantPoint_constant : (growthPoint.retain 8).ConstantFaults := fun _ => rfl
+
+end Consensus.Shape.Tests.Growth
 end

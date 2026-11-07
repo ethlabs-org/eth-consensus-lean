@@ -16,7 +16,8 @@ parsed):
   `import all`) or not, must have a pair (`Consensus.ReviewGuard.checkComplete`);
 * each `#guard_msgs` pins the exact axiom list (`propext`, `Classical.choice`, `Quot.sound`) of the
   review theorems, of their source theorems and of the solution's Goldilocks statements, the
-  obligations endpoint and the headline `goldilocksCorrect` (whose statements are the milestone
+  constant-fault obligations endpoint and the headline `goldilocksCorrectConstant`
+  (whose statements are the milestone
   definitions themselves, so they need no pair); an unfinished proof
   or a new axiom changes the message and fails the build. The other Goldilocks milestones are
   pinned, untrusted, by `ConsensusLeanTest/MilestoneAxioms.lean`. -/
@@ -34,6 +35,7 @@ open Lean Meta
 run_meta do
   let pairs := [
     (``Consensus.Review.ObligationsSufficient, ``Consensus.Shape.ShapeObligations.correct),
+    (``Consensus.Review.ObligationsSufficientOn, ``Consensus.Shape.ShapeObligationsOn.correct),
     (``Consensus.Review.RegimesRealizable, ``Consensus.Shape.regimes_realizable),
     (``Consensus.Review.LogFaithful, ``Consensus.Model.sysOf_log_faithful),
     (``Consensus.Review.HeldIffServed, ``Consensus.Model.Run.held_iff_served)]
@@ -45,6 +47,9 @@ run_meta do
 /-- info: 'Consensus.Review.obligationsSufficient' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.obligationsSufficient
 
+/-- info: 'Consensus.Review.obligationsSufficientOn' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Review.obligationsSufficientOn
+
 /-- info: 'Consensus.Review.regimesRealizable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.regimesRealizable
 
@@ -54,16 +59,19 @@ run_meta do
 /-- info: 'Consensus.Review.heldIffServed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Review.heldIffServed
 
-/-- info: 'Consensus.Goldilocks.meetsObligations' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.meetsObligations
+/-- info: 'Consensus.Goldilocks.meetsObligationsConstant' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.meetsObligationsConstant
 
-/-- info: 'Consensus.Goldilocks.goldilocksCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.goldilocksCorrect
+/-- info: 'Consensus.Goldilocks.goldilocksCorrectConstant' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.goldilocksCorrectConstant
 
 /-! ## Axiom pins: the source theorems -/
 
 /-- info: 'Consensus.Shape.ShapeObligations.correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Shape.ShapeObligations.correct
+
+/-- info: 'Consensus.Shape.ShapeObligationsOn.correct' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Shape.ShapeObligationsOn.correct
 
 /-- info: 'Consensus.Shape.regimes_realizable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Shape.regimes_realizable
