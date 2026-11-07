@@ -203,7 +203,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Pi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliersPending
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.RetainedPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SourcePending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
