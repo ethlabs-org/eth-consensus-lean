@@ -38,6 +38,7 @@ contract is Goldilocks's (`holdContract_one`). -/
 namespace Consensus.Goldilocks.Test.ProposerHold
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
+open Consensus.Goldilocks.Obligations.Test.Contract (setupSmall assumptionsSmall)
 
 variable {S : Setup}
 
@@ -72,13 +73,15 @@ without a hash collision, sleepy for the hold-`0` contract and meeting its recur
 available output and index `1`, `ProposalLiveReady` fails for the confirmed chain. -/
 theorem sleepyLive_hold_zero_false (A : ContractAssumptions S) :
     ¬ (Sys (goldilocks S) (Fin 5)).Holds
-        (fun r => (Sys (goldilocks S) (Fin 5)).Sleepy (holdContract A (contract_coefficients S A) 0) r ∧
+        (fun r =>
+          (Sys (goldilocks S) (Fin 5)).Sleepy (holdContract A (contract_coefficients S A) 0) r ∧
           (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
             (holdContract A (contract_coefficients S A) 0) .available 1 0
             ((Sys (goldilocks S) (Fin 5)).pt r).horizon r)
         (fun r => ProposalLiveReady r.2
           ((Sys (goldilocks S) (Fin 5)).cDur (holdContract A (contract_coefficients S A) 0) r)
-          Out.confirmed 0 ((holdContract A (contract_coefficients S A) 0).params.latency .available 1)) := by
+          Out.confirmed 0
+          ((holdContract A (contract_coefficients S A) 0).params.latency .available 1)) := by
   intro h
   rcases h (run S) (rho_valid S) ⟨run_sleepy A _ 0, run_prog_zero A _⟩ with hP | hE
   · have hD : (11 : Time) + (((holdContract A (contract_coefficients S A) 0).params.latency

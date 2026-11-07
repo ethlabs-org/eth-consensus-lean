@@ -414,7 +414,8 @@ theorem injectEvents_source {i : Nat} {w : V} {o : (protoOf F E).Object} {t : Ti
   obtain ⟨j, e, hje, hjt, ho⟩ := (rho.mem_duePool delay _ _ o).mp hp
   have hjl : j < (rho.front (rho.injectStages delay inj k) (k : Time)).length :=
     (List.getElem?_eq_some_iff.mp hje).1
-  have hni : ¬ Event.deliver w o (k : Time) ∈ rho.front (rho.injectStages delay inj k) (k : Time) := by
+  have hni :
+      ¬ Event.deliver w o (k : Time) ∈ rho.front (rho.injectStages delay inj k) (k : Time) := by
     intro h
     simp only [front_eq, List.mem_append] at h
     rcases h with (h | h) | h
@@ -478,7 +479,8 @@ theorem injectEvents_receives (h0 : 0 ≤ rho.horizon) {j : Nat}
       · cases h
   obtain ⟨j', hj'⟩ := List.mem_iff_getElem?.mp hfr
   have hj'l : j' < fr.length := (List.getElem?_eq_some_iff.mp hj').1
-  have hfull : rho.injectEvents delay inj = fr ++ tail := (rho.injectEvents_eq delay inj).trans htail
+  have hfull : rho.injectEvents delay inj = fr ++ tail :=
+    (rho.injectEvents_eq delay inj).trans htail
   have hjj : j' = j := by
     have hn : (rho.injectEvents delay inj).Nodup := rho.injectStages_nodup delay inj _
     exact (hn.getElem?_inj (by rw [hfull, List.length_append]; omega)).mp
@@ -582,7 +584,8 @@ theorem injectEvents_valid (h0 : 0 ≤ rho.horizon) (hsel : rho.SelValid)
             het⟩, hjr⟩)
     rcases rho.injectEvents_source delay inj hi with hp | ⟨j, hj, ej, hje, hjt, hjr⟩
     · exact absurd (hfaulty t w o hp o' hc u hh) hu
-    · obtain ⟨k, t', hk, hks, hko⟩ := hcl j ⟨ej, hje, (le_add_of_nonneg_right (hdelay ej)).trans hjt⟩
+    · obtain ⟨k, t', hk, hks, hko⟩ :=
+        hcl j ⟨ej, hje, (le_add_of_nonneg_right (hdelay ej)).trans hjt⟩
         o hjr o' hc u hh hu
       exact ⟨k, t', by omega, hks, hko⟩
   have hcr : r.Credentials := by

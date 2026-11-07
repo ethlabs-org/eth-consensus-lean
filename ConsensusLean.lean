@@ -470,6 +470,7 @@ public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Canonical.Delivery
 public import ConsensusLean.Lemmas.Model.Canonical.Events
+public import ConsensusLean.Lemmas.Model.Canonical.Inject
 public import ConsensusLean.Lemmas.Model.Canonical.Network
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
@@ -481,6 +482,7 @@ public import ConsensusLean.Lemmas.Model.Mempool
 public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.Protection
 public import ConsensusLean.Lemmas.Model.Protocol
+public import ConsensusLean.Lemmas.Model.Retain
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.View

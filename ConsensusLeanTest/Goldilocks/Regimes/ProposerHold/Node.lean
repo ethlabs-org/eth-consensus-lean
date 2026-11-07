@@ -10,9 +10,9 @@ import all ConsensusLean.Lemmas.Model.Retain
 
 The engine provenance of the full run (`Engine`), read through the node trace of the retained run:
 
-* `tree_twin` (**R-tree**): up to time `13`, every non-genesis block of an honest tree is the
+* `tree_twin`: up to time `13`, every non-genesis block of an honest tree is the
   forged twin's block;
-* `pool_vote_slot` (**R-votes**): every vote of key `0` or `1` in an honest pool is of slot `0` or
+* `pool_vote_slot`: every vote of key `0` or `1` in an honest pool is of slot `0` or
   `1`.
 
 A block in an honest tree was accepted from a delivered object or proposed by the node (and then
@@ -37,7 +37,8 @@ theorem rhoc_deliver {i : Nat} {w : Fin 5} {o : Obj S} {t : Time}
 /-- A release of the retained run is one of the full run, by a node other than `0` and `1`. -/
 theorem rhoc_release {i : Nat} {v : Fin 5} {o : Obj S} {t : Time} (hs : (rhoc S).SendsAt v i t)
     (ho : o ∈ (rhoc S).releasesAt i) :
-    ∃ (i' : Nat) (e : Ev S), (rho S).events[i']? = some e ∧ e.node = v ∧ e.time = t ∧ v ∉ ({0, 1} : Finset (Fin 5)) ∧
+    ∃ (i' : Nat) (e : Ev S), (rho S).events[i']? = some e ∧ e.node = v ∧ e.time = t ∧
+      v ∉ ({0, 1} : Finset (Fin 5)) ∧
       o ∈ (rho S).releasesAt i' := by
   obtain ⟨e, he, hn, ht⟩ := hs.exists_event
   obtain ⟨i', hi', rfl, hk⟩ := Model.Run.retain_getElem?_preimage he
@@ -48,10 +49,12 @@ theorem rhoc_release {i : Nat} {v : Fin 5} {o : Obj S} {t : Time} (hs : (rhoc S)
 /-! ### From node calls to engine objects -/
 
 /-- An AC message call of the retained trace processes a delivered vote object. -/
-theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat} {m : SA.Vote (Fintype.card (Fin 5))}
+theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
+    {m : SA.Vote (Fintype.card (Fin 5))}
     (hc : (tr S).MsgCallAt y k m) :
     ∃ (i : Nat) (w : Fin 5) (o : Obj S) (t : Time),
-      (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧ Model.Obj.Contains o (voteObj m) := by
+      (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
+        Model.Obj.Contains o (voteObj m) := by
   obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hc
   have hl : (tr S).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ :=
@@ -97,7 +100,8 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat} {m : SA.Vote (F
 /-- A block event of the retained trace processes a delivered block object. -/
 theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
     {B : Blk (S.params (pubOf env) one_le_card)}
-    (hg : (tr S).GroupAt (runProposer S (rhoc S) one_le_card) (digestOf S (rhoc S)) y j t (.block B)) :
+    (hg : (tr S).GroupAt (runProposer S (rhoc S) one_le_card) (digestOf S (rhoc S)) y j t
+      (.block B)) :
     ∃ (i : Nat) (w : Fin 5) (o : Obj S), (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
       Model.Obj.Contains o (blockObj (S.params (pubOf env) one_le_card) B) := by
   obtain ⟨r, i, ev, he, hstart, _, hidx, hpos, _, het, hphase⟩ :=
@@ -155,7 +159,7 @@ theorem block_source {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
     (simTrace_simulates S (rhoc S) one_le_card rhoc_const rhoc_valid).block_released y hy _ B hown
   exact Or.inr ⟨i, hs, ho⟩
 
-/-! ### R-tree: honest trees up to `13` -/
+/-! ### Honest trees up to `13` -/
 
 /-- **Up to `13`, a non-genesis block of an honest tree is the twin's block.** -/
 theorem tree_twin {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {c : Nat}
@@ -183,7 +187,7 @@ theorem headerOf_of_twin {B : Blk (S.params (pubOf env) one_le_card)}
   simp only [blockObj, twin, Model.Obj.msg] at this
   exact Model.Msg.item.inj this
 
-/-! ### R-votes: votes of the faulty keys in honest pools -/
+/-! ### Votes of the faulty keys in honest pools -/
 
 section ACStep
 variable {sp : SA.SAParams} {FGP : Type} {ro : SA.ReplayOrder sp FGP}
@@ -268,7 +272,8 @@ theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n 
       · split_ifs at h <;> exact absurd h hn
     · exact absurd h hn
   | message m =>
-    change x ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.admitVote sp A t m) Φ t) Φ t).1.pool σ at h
+    change x ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.admitVote sp A t m) Φ t) Φ
+      t).1.pool σ at h
     rcases tryVote_pool_sub self h with h | h
     · rw [SA.optimistic_pool_eq] at h
       rcases admitVote_pool_sub h with h | rfl
@@ -276,7 +281,8 @@ theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n 
       · exact Or.inl rfl
     · exact Or.inr (Or.inr h)
   | block B =>
-    change x ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.blockReceipt sp A t B) Φ t) Φ t).1.pool σ at h
+    change x ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.blockReceipt sp A t B) Φ t) Φ
+      t).1.pool σ at h
     rcases tryVote_pool_sub self h with h | h
     · rw [SA.optimistic_pool_eq] at h
       rcases blockReceipt_pool_sub h with h | h
@@ -308,11 +314,13 @@ theorem voteObj_mem_blockObj {B : Blk (S.params (pubOf env) one_le_card)}
     (List.mem_append_right _ (List.mem_map.mpr ⟨x, List.mem_append_left _ hx, rfl⟩))
     (Model.Obj.Contains.refl _)
 
-/-- **R-votes**: a vote of key `0` or `1` in an honest pool is of a slot up to `1`. -/
+/-- **The faulty keys' votes in honest pools**: a vote of key `0` or `1` in an honest pool is of
+a slot up to `1`. -/
 theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Nat)
     {x : SA.Vote (Fintype.card (Fin 5))} (hx : x ∈ ((tr S).state y c).ac.pool x.slot)
     (hxH : x.val ∉ H S) : x.slot ≤ 1 := by
-  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+  have hac :=
+    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   rw [← Compose.projAC_state rhoc_run.toLocalRun hy] at hx
   rcases SA.pool_origin hac hy c x hx with ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
   · rcases hsa with ⟨e, he, rfl⟩ | ⟨hnr, hpre, hpost⟩

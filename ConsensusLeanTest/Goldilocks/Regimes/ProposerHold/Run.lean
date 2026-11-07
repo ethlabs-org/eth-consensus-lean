@@ -72,7 +72,7 @@ theorem sel_admits : (Model.protoOf (compiled (goldilocks S)) env).SelAdmits (se
   intro r
   cases r with
   | proposer s =>
-    show (sel S (.proposer s)).card = min 1 (Fintype.card (Fin 5))
+    change (sel S (.proposer s)).card = min 1 (Fintype.card (Fin 5))
     simp only [sel]
     split_ifs <;> simp
   | duty _ k => exact k.elim
@@ -116,7 +116,8 @@ def delay (e : Ev S) : Time := if e.node = 1 ∧ e.time = 12 then 2 else 0
 def inj (t : Time) (_ : Fin 5) : List (Obj S) := if t = 13 then [twin S] else []
 
 /-- **The run.** -/
-noncomputable def rho : Model.Run (compiled (goldilocks S)) env := (base S).injectRun (delay S) (inj S)
+noncomputable def rho : Model.Run (compiled (goldilocks S)) env :=
+  (base S).injectRun (delay S) (inj S)
 
 theorem rho_faultyAt : (rho S).faultyAt = faulty := Model.Run.withEvents_faultyAt _ _
 
@@ -160,7 +161,7 @@ theorem rho_valid : (rho S).ExecutionValid := by
     obtain rfl := twin_contains S hd
     change some ((base S).key (key 1)) = some u at hu
     obtain rfl := Option.some.inj hu
-    show (1 : Fin 5) ∈ faulty 13
+    change (1 : Fin 5) ∈ faulty 13
     decide
   · intro t v o ho d hd k r ha
     obtain ⟨rfl, rfl⟩ := (mem_inj S).mp ho
@@ -233,7 +234,8 @@ theorem run_sleepy (A : ContractAssumptions S) (C : ContractCoefficients) (h : N
   norm_num [Finset.card_insert_of_notMem, Finset.mem_insert, Finset.mem_singleton]
 
 /-- The slot times of the run: slots of `4·ΔAC = 12`. -/
-theorem grid_slotTime (s : Nat) : (goldilocks S (pubOf env)).skel.grid.slotTime s = (s : Time) * 12 :=
+theorem grid_slotTime (s : Nat) :
+    (goldilocks S (pubOf env)).skel.grid.slotTime s = (s : Time) * 12 :=
   by change (s : Time) * (4 * 3) = _; norm_num
 
 /-- The proposer of slot `s` in the run. -/
@@ -248,7 +250,7 @@ theorem run_prog_zero (A : ContractAssumptions S) (C : ContractCoefficients) :
     (Sys (goldilocks S) (Fin 5)).prog (shapeProgress (goldilocks S) (Fin 5))
       (holdContract A C 0) .available 1 0 ((Sys (goldilocks S) (Fin 5)).pt (run S)).horizon
       (run S) := by
-  show PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
+  change PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
     (goldilocks S (pubOf env)).skel.grid ⟨Pattern.single, 1, 0⟩ _ 0 (rho S).point.horizon
   intro t ht0 hte _
   rw [rho_point] at hte
@@ -292,8 +294,8 @@ theorem run_not_prog_hold_one (A : ContractAssumptions S) (C : ContractCoefficie
   intro h
   change PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
     (goldilocks S (pubOf env)).skel.grid ⟨Pattern.single, 1, 1⟩ _ 0 41 at h
-  have h0 := h 0 le_rfl (by show (0 : Time) + ((1 + 0 : Nat) : Time) * (4 * 3) ≤ 41; norm_num)
-    (by rw [rho_point]; show (0 : Time) + ((1 + 0 : Nat) : Time) * (4 * 3) ≤ 41; norm_num)
+  have h0 := h 0 le_rfl (by change (0 : Time) + ((1 + 0 : Nat) : Time) * (4 * 3) ≤ 41; norm_num)
+    (by rw [rho_point]; change (0 : Time) + ((1 + 0 : Nat) : Time) * (4 * 3) ≤ 41; norm_num)
   obtain ⟨s, hs1, hs2, hs⟩ := h0
   rw [grid_slotTime] at hs1 hs2
   change _ ≤ (0 : Time) + ((1 : Nat) : Time) * (4 * 3) at hs2
@@ -304,7 +306,8 @@ theorem run_not_prog_hold_one (A : ContractAssumptions S) (C : ContractCoefficie
     exact key s h1 h2
   subst hs1'
   obtain ⟨-, hk⟩ := hs 0 (by simp [Pattern.single])
-  have hk1 := (hk (key 1) (by show key 1 ∈ (rho S).sel (.proposer (1 + 0)); rw [rho_sel_proposer]; simp)).2
+  have hk1 := (hk (key 1)
+    (by change key 1 ∈ (rho S).sel (.proposer (1 + 0)); rw [rho_sel_proposer]; simp)).2
   rw [rho_point, rho_key, grid_slotTime] at hk1
   change (1 : Fin 5) ∉ faulty (min (((1 + 0 : Nat) : Time) * 12 + ((1 : Nat) : Time) * 3) 41) at hk1
   exact hk1 (by rw [faulty_of_ge (by norm_num)]; decide)

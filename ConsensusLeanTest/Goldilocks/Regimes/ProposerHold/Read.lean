@@ -19,8 +19,9 @@ The read is the block named by the record or `Σ.F` (`ready_read_record_before`)
 below an origin within `41` (`record_origin_upTo`, `caches_on_chain_upTo`). An origin of a label
 `s ≥ 2` within `41` is impossible: an update of slot `s` is at `t_s + 6Δ ≥ 42`, and an optimistic
 confirmation needs four of the five validators among the slot-`s` voters of an honest pool, while
-the faulty keys `0` and `1` have none (R-votes). An origin of a label `≤ 1` has an honest supporter
-of its slot (`honest_supporter_before`), whose head is genesis or the twin's block (R-cast). -/
+the faulty keys `0` and `1` have none (`pool_vote_slot`). An origin of a label `≤ 1` has an honest
+supporter of its slot (`honest_supporter_before`), whose head is genesis or the twin's block
+(`vote_head`). -/
 
 namespace Consensus.Goldilocks.Test.ProposerHold
 open AsChainShape Shape Blocks Simulation Node
@@ -155,7 +156,8 @@ theorem read_hdr {h : Header Info}
     · rw [hCdef, hread]
       refine ⟨?_, (Store.cache_invariants _ _ _ _ hreach).1⟩
       rcases Compose.onOriginChainWithin_iff.mp (Compose.caches_on_chain_upTo rhoc_run rhoc_noColl
-          (rhoc_faultBound 0 0 (by simp) (by change 4 * 3 * ((0 : Nat) : Int) + 0 ≤ 41; norm_num)) hy hprev).1 with hg | ⟨D, s, hD, hFD⟩
+          (rhoc_faultBound 0 0 (by simp) (by change 4 * 3 * ((0 : Nat) : Int) + 0 ≤ 41; norm_num))
+          hy hprev).1 with hg | ⟨D, s, hD, hFD⟩
       · exact Or.inl hg
       · exact small_anc hFD (origin_small hD)
   obtain ⟨X, -, hXC, hXg, rfl⟩ := mem_chainTo hreach hC.2 hh

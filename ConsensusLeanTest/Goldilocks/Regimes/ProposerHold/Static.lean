@@ -99,7 +99,8 @@ theorem rhoc_noColl : Compose.NoCollRun (digestOf S (rhoc S)) (tr S) :=
 
 theorem rhoc_service :
     Compose.SleepyServiceBefore (tr S) (H S) (S.params (pubOf env) one_le_card).Δ 41 :=
-  Obligations.sleepyServiceBefore_of_syncUntil S (rhoc S) one_le_card rhoc_const rhoc_valid rhoc_noColl
+  Obligations.sleepyServiceBefore_of_syncUntil S (rhoc S) one_le_card rhoc_const rhoc_valid
+    rhoc_noColl
     (by rw [rhoc_horizon]) rhoc_sync
 
 theorem rhoc_faultBound : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf env) one_le_card).Δ,

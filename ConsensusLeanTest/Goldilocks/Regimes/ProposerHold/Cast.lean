@@ -8,12 +8,12 @@ import all ConsensusLean.Lemmas.Model.Canonical.Inject
 import all ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 @[expose] public section
 
-/-! # The proposer-hold counterexample: the honest slot-`1` votes (R-cast)
+/-! # The proposer-hold counterexample: the honest slot-`1` votes
 
 Each of the honest nodes `2, 3, 4` of the retained run receives the forged twin at `13`, before
-key `1`'s batch (held back until `14`). Its tree holds nothing else of a slot `≥ 1` (R-tree), so it
-accepts the twin's block (or holds it already) and votes on it at once: the twin is a ready
-proposal of slot `1` and `13 < t_1 + Δ = 15` (`twin_vote`). One vote per slot then puts every
+key `1`'s batch (held back until `14`). Its tree holds nothing else of a slot `≥ 1`
+(`tree_twin`), so it accepts the twin's block (or holds it already) and votes on it at once: the
+twin is a ready proposal of slot `1` and `13 < t_1 + Δ = 15` (`twin_vote`). One vote per slot then puts every
 honest slot-`1` vote at a time `≤ 13` (`vote_time`), where the voter's tree is genesis and the
 twin's block: every honest vote of a slot `≤ 1` has the head genesis or the twin's block
 (`vote_head`). -/
@@ -40,7 +40,7 @@ theorem twin_digests : Model.digests (rhoc S).hash (twin S) = [(hdr, 0)] := by
   rw [twin_parts]
   simp only [List.filterMap_cons, List.filterMap_nil, twin, Model.Obj.item?]
   simp only [Model.Run.retain_hash, rho_hash]
-  show [(hdr, (if hdr = hdr then 0 else enc hdr + 1 : Nat))] = _
+  change [(hdr, (if hdr = hdr then 0 else enc hdr + 1 : Nat))] = _
   simp only [↓reduceIte]
 
 theorem twinBlk_header : headerOf (S.params (pubOf env) one_le_card) (twinBlk S) = hdr := by
@@ -52,7 +52,8 @@ theorem twinBlk_obj : blockObj (S.params (pubOf env) one_le_card) (twinBlk S) = 
 theorem canon_twin :
     canonEvent (S.params (pubOf env) one_le_card) (S.ro _)
       (Model.digests (rhoc S).hash (twin S)) (twin S) = some (.block (twinBlk S)) := by
-  have h := decodeBlock_blockObj [(hdr, 0)] (twinBlk S) (by simp [twinBlk, blockOf, hdr, parentRoot])
+  have h := decodeBlock_blockObj [(hdr, 0)] (twinBlk S)
+    (by simp [twinBlk, blockOf, hdr, parentRoot])
     (taggedRoot_ne _ _)
     (by rw [twinBlk_header]; simp [rootOf, twinBlk, blockOf, rawRoot_taggedRoot])
     (by simp [twinBlk, blockOf])
@@ -135,7 +136,8 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
   obtain ⟨hne, hcuts, -⟩ := hg
   have hj13 : (tr S).time j = 13 := by simpa using (hcuts 0 (List.length_pos_of_ne_nil hne)).2.1
   have hc := before_13 hj13.le
-  by_cases hX : ∃ X ∈ ((tr S).state y j).fg.tree, X.root ≠ (S.params (pubOf env) one_le_card).genesisRoot
+  by_cases hX : ∃ X ∈ ((tr S).state y j).fg.tree,
+      X.root ≠ (S.params (pubOf env) one_le_card).genesisRoot
   · obtain ⟨X, hX, hXg⟩ := hX
     rcases Compose.tree_cases rhoc_run.toLocalRun hy hX with rfl | ⟨k, hk, hacc⟩
     · exact absurd rfl hXg
@@ -145,7 +147,8 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
   obtain ⟨acc, rfl⟩ : ∃ acc, c = .fg (.block (twinBlk S) acc) := by
     simp only [exec, onBlock] at hcs
     split_ifs at hcs
-    cases hfg : ((tr S).state y j).fg.onBlock (twinBlk S) <;> simp only [hfg, List.cons.injEq] at hcs
+    cases hfg : ((tr S).state y j).fg.onBlock (twinBlk S) <;>
+      simp only [hfg, List.cons.injEq] at hcs
     · exact ⟨false, hcs.1.symm⟩
     · exact ⟨true, hcs.1.symm⟩
   have hlab := (hcuts 0 (List.length_pos_of_ne_nil hne)).2.2.2.2
@@ -255,7 +258,8 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
     {X : Blk (S.params (pubOf env) one_le_card)} (hacc : (tr S).AcceptAt y k X)
     (hX : blockObj (S.params (pubOf env) one_le_card) X = twin S) (hk : (tr S).time k ≤ 13) :
     ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
-  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+  have hac :=
+    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨hXs, hX1, hXp⟩ := of_twin hX
   obtain ⟨hsl, hon, -, -⟩ := rhoc_run.cutLaw y hy k _ hacc
   obtain ⟨ℓ, hcℓ, hcall, ht⟩ := Compose.accept_next rhoc_run.toLocalRun hy hacc
@@ -289,7 +293,8 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
       (Node.frame ((tr S).state y (k + 1))) 1 := by
     obtain ⟨-, htc, hgm, hanc⟩ := Store.accepted_tree _ _ _ _ hreach1
     have hF := (Store.cache_invariants _ _ _ _ hreach1).1
-    by_cases hFg : ((tr S).state y (k + 1)).fg.F.root = (S.params (pubOf env) one_le_card).genesisRoot
+    by_cases hFg :
+        ((tr S).state y (k + 1)).fg.F.root = (S.params (pubOf env) one_le_card).genesisRoot
     · refine ⟨X, ⟨hXt, ?_⟩, hXs, fun x hx => (List.not_mem_nil (hX1 ▸ hx)).elim⟩
       rw [htc.1 hF hgm (hFg.trans rfl)]
       exact hanc X hXt
@@ -322,7 +327,8 @@ theorem deliverSeq_single {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.A
     (h : DeliverSeq proposer tr dg hs y t [o] j j') :
     (∃ e, canonEvent sp ro hs o = some e ∧ tr.GroupAt proposer dg y j t e) ∨
       canonEvent sp ro hs o = none ∨
-      ∃ e, canonEvent sp ro hs o = some e ∧ (Node.exec proposer dg y (tr.state y j) t e).2 = [] := by
+      ∃ e, canonEvent sp ro hs o = some e ∧
+        (Node.exec proposer dg y (tr.state y j) t e).2 = [] := by
   cases h with
   | event e hce hg _ => exact Or.inl ⟨e, hce, hg⟩
   | drop hce _ => exact Or.inr (Or.inl hce)
@@ -356,9 +362,11 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
 /-- **Every honest vote of a slot `≤ 1` is cast by `13`**: one of slot `0` before `12`, the one of
 slot `1` is the vote on the twin (one vote per slot). -/
 theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    {e : SA.Em (S.params (pubOf env) one_le_card) (List (FG.Att (S.params (pubOf env) one_le_card).n))}
+    {e : SA.Em (S.params (pubOf env) one_le_card)
+      (List (FG.Att (S.params (pubOf env) one_le_card).n))}
     (hv : SA.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) : (tr S).time j ≤ 13 := by
-  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+  have hac :=
+    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨ℓ, hc, he⟩ := hv
   have hsl : e.msg.slot = (S.params (pubOf env) one_le_card).slot ((tr S).time j) :=
     (SA.castAt_spec hac hy ⟨hc, he⟩).2.1
@@ -376,12 +384,14 @@ theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
 /-- **Every honest vote of a slot `≤ 1` has the head genesis or the twin's block**, a block of the
 voter's tree. -/
 theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    {e : SA.Em (S.params (pubOf env) one_le_card) (List (FG.Att (S.params (pubOf env) one_le_card).n))}
+    {e : SA.Em (S.params (pubOf env) one_le_card)
+      (List (FG.Att (S.params (pubOf env) one_le_card).n))}
     (hv : SA.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) :
     ∃ Hd ∈ ((tr S).state y j).fg.tree, Hd.root = e.msg.head ∧
       (Hd.root = (S.params (pubOf env) one_le_card).genesisRoot ∨
         blockObj (S.params (pubOf env) one_le_card) Hd = twin S) := by
-  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+  have hac :=
+    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   have hj := vote_time hy hv hs
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨⟨Hd, hHd, hr, -⟩, -⟩ := Compose.cast_head_fcRoot hac hy ⟨hc, he⟩
@@ -389,7 +399,8 @@ theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
   refine ⟨Hd, hHd.1, hr, ?_⟩
   by_cases hg : Hd.root = (S.params (pubOf env) one_le_card).genesisRoot
   · exact Or.inl hg
-  · exact Or.inr (tree_twin hy (fun c hcj => ((rhoc_run (S := S)).time_mono hcj.le).trans hj) hHd.1 hg)
+  · exact Or.inr (tree_twin hy (fun c hcj => ((rhoc_run (S := S)).time_mono hcj.le).trans hj)
+      hHd.1 hg)
 
 end Consensus.Goldilocks.Test.ProposerHold
 
