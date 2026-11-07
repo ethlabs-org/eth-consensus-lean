@@ -11,7 +11,8 @@ The statements of `Statements/AC/{Base,Steps}` that bind the honest set, for a t
 honest set `H` (antitone), over `Growing.ACLocalRun` / `SA.Growing.ACRun`:
 
 * a node named at a cut is honest at that cut's time; a vote or a lock write is by a node honest
-  at its own cut (an event fact, kept after a later compromise);
+  at its own cut (an event fact, kept after a later compromise); A1.1 reads the proposer at the
+  later of its proposal and the vote it is compared with;
 * every count is charged at the cut that performs it: `SA.FaultBoundAt tr H t t` at a vote
   (`f_t < h_t`), `2 f_t < n` at the voter's cut for the optimistic transfer, at the update's cut
   for the next update, and at the `ac_to_fg` call for source compatibility; the honest voters of
@@ -56,14 +57,16 @@ def OneVotePerSlot : Prop :=
     ∀ y i j e e', y ∈ H (max (tr.time i) (tr.time j)) →
       VoteAt tr y i e → VoteAt tr y j e' → e.msg.slot = e'.msg.slot → i = j ∧ e = e'
 
-/-- **A1.1 under growing faults**: proposer and voter honest at their own cuts. -/
+/-- **A1.1 under growing faults**: the voter honest at its vote cut, the proposer honest at the
+later of the proposal and vote cuts (a proposer compromised after its proposal and before the vote
+can equivocate with a second proposal of the slot, whose votes the voter's merged view admits). -/
 def ProposerVotersAgree : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U → ∀ (s : Nat) (p y : Fin sp.n) (i j : Nat)
       (ℓp ℓy : ACLabel (goldilocksSA sp FGP ro))
       (pay : Payload sp.n) (e : Em sp FGP),
-    p ∈ H (tr.time i) → y ∈ H (tr.time j) → p = proposer (s + 1) →
+    p ∈ H (max (tr.time i) (tr.time j)) → y ∈ H (tr.time j) → p = proposer (s + 1) →
     ProposalAt tr p i ℓp pay → tr.time i = sp.ts (s + 1 : Nat) →
     CastAt tr y j ℓy e → e.msg.slot = s + 1 →
     (∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay) →
