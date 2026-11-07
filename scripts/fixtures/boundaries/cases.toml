@@ -289,6 +289,51 @@ reason = "case: only M may reach P"
 
 [checks]''']]
 
+# A sibling layer that may use the static lemmas and that no static layer, `Main` or the solution may
+# import (the growing-fault siblings, `Instances.Goldilocks.Lemmas.Growing` in scripts/boundaries.toml).
+[SiblingLayer]
+files."Fx/Growing/Lemmas/G.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem g : S := l\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Growing.Lemmas.G\npublic import Fx.Init"]]
+edit."boundaries.toml" = [['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Growing"
+prefixes = ["Fx.Growing.Lemmas"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Growing"]']]
+
+[SiblingIntoStatic]
+expect = "FAIL[import] Fx.Growing.Lemmas.G (layer Growing) imported by Fx.Lemmas.N (layer Lemmas)"
+files."Fx/Growing/Lemmas/G.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem g : S := l\n"
+files."Fx/Lemmas/N.lean" = "module\n\npublic import Fx.Lemmas.M\npublic import Fx.Growing.Lemmas.G\n\ntheorem n : S := m\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Growing.Lemmas.G\npublic import Fx.Init"]]
+edit."boundaries.toml" = [['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Growing"
+prefixes = ["Fx.Growing.Lemmas"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Growing"]']]
+
+[SiblingIntoMain]
+expect = "FAIL[import] Fx.Growing.Lemmas.G (layer Growing) imported by Fx.Main (layer Main)"
+files."Fx/Growing/Lemmas/G.lean" = "module\n\npublic import Fx.Lemmas.L\n\ntheorem g : S := l\n"
+files."Fx/Main.lean" = "module\n\npublic import Fx.Proofs.Q.Main\npublic import Fx.Growing.Lemmas.G\n\ntheorem main : S := q\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Growing.Lemmas.G\npublic import Fx.Init"]]
+edit."boundaries.toml" = [['''[[layer]]
+name = "Proofs.P"''', '''[[layer]]
+name = "Growing"
+prefixes = ["Fx.Growing.Lemmas"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "Proofs.P"'''], ['"Main", "Sol"]', '"Main", "Sol", "Growing"]']]
+
 [CrossMilestone]
 expect = "FAIL[import] Fx.Proofs.P.Main (layer Proofs.P) imported by Fx.Proofs.Q.Main (layer Proofs.Q)"
 edit."boundaries.toml" = [['''[[exception]]
