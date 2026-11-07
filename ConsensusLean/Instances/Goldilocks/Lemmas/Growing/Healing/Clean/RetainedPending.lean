@@ -13,7 +13,9 @@ bounds `≤ b`, because growing faults are counted only through the horizon:
 
 * `low_finalized_below_origin_at`, `left_entry_origin_at`;
 * `high_J_root_of_held_at_call_before_at`, `low_root_of_held_seed_at_call_at`;
-* `high_floor_signed_source_of_row_bound_at`.
+* `high_floor_signed_source_of_row_bound_at`;
+* `half_committee_at`: the voters of slot `m` honest at a later observation `t ≤ b` are half
+  the committee.
 
 Each theorem here is an open `sorry`; this module is deleted when the proofs land. -/
 
@@ -98,6 +100,14 @@ theorem high_floor_signed_source_of_row_bound_at
       Anc (tr.HonestBlocksAt H) B O ∧
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h ∧
       ∃ d att, r < d ∧ d < k ∧ v ∈ H (tr.time d) ∧ tr.SignAt v d att ∧ att.T = E.root := by
+  sorry
+
+/-- **Half the committee votes**: the nodes honest at an observation `t ∈ [t_m + Δ, b]` that
+voted in slot `m` while honest are at least half the committee, for a slot `m` past `c_z`. -/
+theorem half_committee_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {m : Nat}
+    (hm : cutZ sp.toParams g ≤ sp.ts m) {t : Time} (hmt : sp.ts m + sp.Δ ≤ t) (htb : t ≤ b) :
+    sp.n ≤ 2 * {z | z ∈ H t ∧ ∃ q e, z ∈ H (tr.time q) ∧ SA.VoteAt tr.projAC z q e ∧
+      e.msg.slot = m}.ncard := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
