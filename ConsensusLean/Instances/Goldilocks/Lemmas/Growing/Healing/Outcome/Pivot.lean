@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotAn
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteParent
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotSourceVotes
 
 public section
 
@@ -219,6 +220,36 @@ theorem reset_pivot_of_start_supported_at
   have hat' := Compose.mem_between hU hPhi hPhiU hDt hQt hDa haQ
   exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hPhi hPhiU hDt hDa hat',
     SA.anc_tree_of_anc_U hU hPhi hPhiU hat' haQ hQt⟩, .refl, hah⟩
+
+open Regimes.Growing (hold)
+
+/-- The deepest old-source pivot is viable and supported at every honest cast. -/
+theorem reset_pivot_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
+    (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
+    (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ellp : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root) :
+    ∃ D, ellp.frame.Anc d.start D ∧ ellp.frame.Anc D d.head ∧
+      (∀ X, ellp.frame.Anc D X → ellp.frame.Anc X d.head → X ∈ ellp.frame.viableHeads) ∧
+      ∀ y j elly e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j elly e → e.msg.slot = u →
+        tr.time j ≤ b →
+        (∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
+          e'.msg.slot = u → e'.msg.head = P.root) →
+        ∃ X, (X = P ∨ (ellp.frame.Anc D X ∧ ellp.frame.Anc X d.head)) ∧
+          elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
+          elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
+            (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
+            (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+  refine hp.reset_pivot_of_start_supported_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ ?_
+  intro y j elly e hy hcy hes hjb
+  have hpI : p ∈ H (tr.time i) := hp.run.antitone
+    (by rw [hti]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
+  exact hp.proposal_start_supported_at hc hpI hR hci hcall hd hti hib hy hcy hes hjb
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
