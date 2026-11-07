@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Netw
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
 public import ConsensusLean.Spec.Shape.Claims
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ConfirmedSupply
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
