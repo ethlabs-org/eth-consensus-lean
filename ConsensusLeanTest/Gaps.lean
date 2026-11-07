@@ -22,8 +22,8 @@ its tests; not declarations of this library), **scope** (outside the definition)
 (the gap's object no longer exists).
 
 * M1 weak continuation: construction, healed regime healthy to the horizon (`m1_healthy_awake_to_horizon`); sheet `weakSafe`, `weakInclude`, `weakGrow`; uniformity: obligation (10).
-* M2 corruption growth: scope, static adversary (`EnvPoint.honest` fixed per run); the sheet
-  lists it as not yet stated (A6).
+* M2 corruption growth: the generic model uses nondecreasing `faultyAt`; growing-fault
+  realizability witnesses and rejection tests coexist with constant-fault controls.
 * M3 FE/F4 pattern: `Pattern.range`; final progress `range (3R+κ)` (sheet `pp223_numbers`, `finRec_span`); sheet `range_head` (span loss); equivalence: gate F-2.
 * M4 psync mandated: construction, `Behaviour.healedSafe` and `Behaviour.healthyLive` (every provided output) are `Behaviour` fields (`m4_psync_live_mandated`); test `healed_witness_late`.
 * M5 final safety under asynchrony: construction, `Behaviour.finalAccountable` has premise `True`; `CorrectProtocol.final_agree` (`m5_final_agree`).
@@ -37,9 +37,9 @@ its tests; not declarations of this library), **scope** (outside the definition)
 * M13 window-only P1: sheet `outageWindow` and its test `outageWindow_prefix_only`.
 * M14 outage stable/finalized: closed; stable = confirmed (sheet test `stable_is_confirmed`, sheet `confirmed_persists`); `CorrectProtocol.persists_final_compatible` (sheet `outage_final_compatible`).
 * M15 pinned params: removed, the pinned sheet is archived; the live contract numbers are `goldilocksContract` at `contract_coefficients`.
-* M16 concrete instance: closed by the obligations endpoint (`meetsObligations`); the unproved target sheet is archived.
+* M16 concrete instance: the constant-fault obligations endpoint (`meetsObligationsConstant`) is proved; growing-fault Goldilocks obligations remain open.
 * M17 eventual liveness: scope; every claim has a latency bound (`TxLive` deadline), so eventual-only liveness cannot be expressed; bounded latency implies it when the horizon passes the deadline.
-* M18 adaptive corruption: scope, static adversary.
+* M18 adaptive corruption: immediate permanent key exposure in the generic model; the growing-fault Goldilocks proof remains open.
 * M19 weights / committees: scope, equal weights (`Fintype V`, counts).
 * M20 cross-node nesting: dropped; compatibility follows from safety and local nesting; sheet `liveDC` retains its cross-time growth claim.
 * M21 recovery fault bound: construction, `HealthyOn.faultsBelow` and `β ≤ α` (`CorrectProtocol.final_safe_healthy`; `m21_healthy_faults_below`, `m21_final_safe_healthy`); test `faulty_third_not_healthy`.
@@ -78,6 +78,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {Prog : Type} {S : System V}
 
 /- M1: the healed regime requires every honest validator awake to the horizon
 ("stay in recovery"); a run that leaves it is outside the regime. -/
+omit [DecidableEq V] in
 theorem m1_healthy_awake_to_horizon (r : S.Run) (g : Time) (h : S.Healthy K g r) :
     (S.pt r).HealthyOn K.params.β g (S.pt r).horizon := h.2.1
 
@@ -97,6 +98,7 @@ theorem m5_final_agree (h : CorrectProtocol S X K) {g : S.schema.Id} (hg : S.sch
 
 /- M21: the healthy regime bounds the faults below `β ≤ α`, so final
 safety holds there. -/
+omit [DecidableEq V] in
 theorem m21_healthy_faults_below (r : S.Run) (g : Time) (h : S.Healthy K g r) :
     (S.pt r).FaultsBelow K.params.β := h.2.1.faultsBelow
 

@@ -94,12 +94,12 @@ def testK : Contract ProgressReq where
   Idx := ℕ+
   idx_nonempty := ⟨1⟩
   params := Params.standard 1 0 1 (fun _ _ => 1) (fun _ k => (k : Nat) + 2)
-  progress _ k := .recur ⟨Pattern.single, k⟩
+  progress _ k := .recur ⟨Pattern.single, k, 0⟩
 
 /-- The test recurrence tolerates any number of validators not ready and a
 bad proposer slot in every window (gap `2`). -/
 theorem testK_progressTolerant : ProgressTolerant schema testK :=
-  fun _ _ _ => ⟨(2 : ℕ+), show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
+  fun _ _ _ => ⟨(2 : ℕ+), show (⟨Pattern.single, 2, 0⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-- The test skeleton: slots of one `Δ`, one proposer per slot, polling
 disabled, one committee kind (every key). -/
@@ -151,9 +151,9 @@ def goodHash (h : Header Unit) : Nat := Encodable.encode h
 theorem goodHash_injective : Function.Injective goodHash := Encodable.encode_injective
 
 /-- The only validator is ready at every time. -/
-theorem env_ready (p : EnvPoint (Fin 1)) (hp : p.env = env) (hh : p.honest = Finset.univ)
+theorem env_ready (p : EnvPoint (Fin 1)) (hp : p.env = env) (hh : ∀ t, p.faultyAt t = ∅)
     (c t : Time) (v : Fin 1) : p.Ready c v t := by
-  refine ⟨by rw [hh]; exact Finset.mem_univ _, fun u _ _ => ?_⟩
+  refine ⟨by simp [EnvPoint.HonestAt, hh], fun u _ _ => ?_⟩
   rw [hp]
   rfl
 
@@ -168,9 +168,9 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     ¬ ShapeClaims F testK := by
   intro hc
   obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
-    Finset.univ 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
+    (fun _ => ∅) monotone_const 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled F) env :=
-    Model.Run.mk Finset.univ 3 es (pkiFin 1) sel (fun _ _ => []) relay goodHash
+    Model.Run.mk (fun _ => ∅) monotone_const 3 es (pkiFin 1) sel (fun _ _ => []) relay goodHash
   -- With one always-awake validator every receiver is the sender, which holds its own send
   -- from the send time on: `PSync 0` at `Δ = 1` (deadline `max a 0 + Δ − 1 ≥ a`) needs no
   -- network service (and no eager log, which would need `Δ > 1`).
@@ -184,27 +184,28 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     · exact absurd hwk.2 (by simp [Model.Run.point, env])
   have sync : CommLog.PSync r.point r.log 0 := by
     refine ⟨?_, ?_, ?_⟩
-    · intro v _ m t hs _ w _ a hta _ _ _
+    · intro v m t hs _ _ w a hta _ _ _ _
       rw [Subsingleton.elim w 0, Subsingleton.elim v 0] at *
       exact held m t a hs hta
-    · intro v _ m t hs _ w _ a hta _ _ _
+    · intro v m t hs _ _ w a hta _ _ _ _
       rw [Subsingleton.elim w 0, Subsingleton.elim v 0] at *
       exact held m t a hs hta
-    · intro u _ x τ _ _ hx
+    · intro u x τ _ _ _ hx
       exact absurd hx (List.not_mem_nil)
-  have hready : ∀ c t v, r.point.Ready c v t := env_ready r.point rfl rfl
-  have hfaulty : r.point.faulty = ∅ := by
-    simp [EnvPoint.faulty, r, Model.Run.point]
+  have hready : ∀ c t v, r.point.Ready c v t := env_ready r.point rfl (fun _ => rfl)
+  have hfaulty : ∀ t, r.point.faultyAt t = ∅ := fun _ => rfl
   have hreadyAt : ∀ c t, r.point.readyAt c t = Finset.univ := by
     intro c t
     ext v
     simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, iff_true]
-    exact ⟨Finset.mem_univ v, hready c t v⟩
+    exact ⟨trivial, hready c t v⟩
   have hsleepy : (Sys F (Fin 1)).Sleepy testK ⟨env, r⟩ := by
     refine ⟨(Model.sysOf_delivers_iff r _ _ _).mpr sync, ?_⟩
     intro t _ _
-    change r.point.ReadyAbove (1 / 2) _ t
-    unfold EnvPoint.ReadyAbove
+    change (r.point.retain _).ReadyAbove (1 / 2) _ t
+    have hr (d : Time) : r.point.retain d = r.point := rfl
+    rw [hr]
+    unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [hreadyAt, hfaulty]
     norm_num
   have hprog : (Sys F (Fin 1)).prog (shapeProgress F (Fin 1)) testK .available (1 : ℕ+) 0
@@ -212,7 +213,8 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     change PatternRecurrence r.point r.key (fun s => r.sel (ShapeRole.proposer s)) _ _ _ _ _
     apply patternRecurrence_of_all
     intro s j _
-    exact ⟨hprop (s + j), fun k _ => hready _ _ _⟩
+    exact ⟨hprop (s + j), fun k _ => ⟨hready _ _ _, by
+      simp [EnvPoint.HonestAt, hfaulty]⟩⟩
   rcases (hc (Fin 1)).sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) ⟨env, r⟩ valid
       ⟨hsleepy, hprog⟩ with hl | hcol
   · obtain ⟨τ, k, h, -, -, -, hin⟩ := hl 0 le_rfl
@@ -248,12 +250,14 @@ theorem proposeButGenesis : ¬ ShapeClaims (family true false false) testK :=
 theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
   intro hc
   obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema
-    (compiled (family false false true)) (Fin 1) env Finset.univ 0 le_rfl (pkiFin 1) testSel
+    (compiled (family false false true)) (Fin 1) env (fun _ => ∅) monotone_const
+    0 le_rfl (pkiFin 1) testSel
     (testSel_admits _ _ _) (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled (family false false true)) env :=
-    Model.Run.mk Finset.univ 0 es (pkiFin 1) testSel (fun _ _ => []) relay goodHash
+    Model.Run.mk (fun _ => ∅) monotone_const 0 es (pkiFin 1) testSel
+      (fun _ _ => []) relay goodHash
   have hv := (hc (Fin 1)).outputValid ⟨env, r⟩ valid .available () rfl 0
-    (by simp [r]) 0 (Nat.zero_le _)
+    0 (Nat.zero_le _) (by simp [EnvPoint.HonestAt, r, Model.Run.point])
   obtain ⟨_, _, _, _, hmem⟩ := hv.2.2 fab (List.mem_singleton_self _)
   obtain ⟨j, _, hj, _⟩ := r.mem_viewIdx_iff.mp hmem
   exact Nat.not_lt_zero _ hj
@@ -499,7 +503,7 @@ ready validator and recorded in its output at once, so `ProposalLive` holds
 for every catch-up, every start `≥ 0` and every latency `D ≥ 1` (in
 particular `testK`'s, `k + 2`). -/
 theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
-    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (c start : Time)
+    (hv : rho.ExecutionValid) (hh : ∀ t, rho.faultyAt t = ∅) (c start : Time)
     (hs : 0 ≤ start) (D : Nat) (hD : 1 ≤ D) :
     ProposalLive rho c () start D := by
   intro t hst ht
@@ -517,10 +521,9 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     exact Fin.ext (by omega)
   let v : Fin 1 := rho.key 0
   have hown : rho.ownKey v = 0 := hkey _ _
-  have hvh : v ∈ rho.honest := by rw [hh]; exact Finset.mem_univ _
+  have hvh : v ∉ rho.faultyAt (t + 1) := by simp [hh]
   have htick : Model.Event.tick v (t + 1) ∈ rho.events :=
-    hv.tick_total v hvh (t + 1) (by linarith)
-      (by linarith) rfl
+    hv.tick_total v (t + 1) (by linarith) (by linarith) hvh rfl
   obtain ⟨i, hi, hie⟩ := List.getElem_of_mem htick
   have hi' : rho.events[i]? = some (.tick v (t + 1)) := by rw [List.getElem?_eq_getElem hi, hie]
   let nd := rho.stateBefore i v
@@ -572,7 +575,8 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
     exact rho.runDuties_invariant (fun s => h ∈ rec s.1) v L _
       (fun s d _ hs => by rw [familyC_act]; exact hs)
       (fun s o hs _ hst => familyC_recordOwn_mono false s o hs hst) hrel.2
-  have hk0 : rho.key 0 ∈ rho.honest := by rw [hh]; exact Finset.mem_univ _
+  have hk0 : rho.point.HonestAt (rho.key 0) (t + 1) := by
+    simp [EnvPoint.HonestAt, Model.Run.point, hh]
   refine ⟨t + 1, 0, h, lt_add_one t, ⟨hk0, fun u _ _ => rfl⟩,
     ⟨hk0, ShapeRole.proposer s, [], rfl, i, Or.inl hi', ?_⟩, ?_⟩
   · rw [← hown]; exact hrel'.1
@@ -591,7 +595,7 @@ theorem recorder_live (rho : Model.Run (compiled (familyC false)) env)
 `testK`'s sleepy liveness conclusion at every index, from time 0, with its
 latency and catch-up. -/
 theorem recorder_live_testK (rho : Model.Run (compiled (familyC false)) env)
-    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) :
+    (hv : rho.ExecutionValid) (hh : ∀ t, rho.faultyAt t = ∅) (k : ℕ+) :
     ProposalLive rho ((Sys (familyC false) (Fin 1)).cDur testK ⟨env, rho⟩) () 0
       (testK.params.latency .available k) :=
   recorder_live rho hv hh _ _ le_rfl _ (by simp [testK, Params.standard])
@@ -600,7 +604,7 @@ theorem recorder_live_testK (rho : Model.Run (compiled (familyC false)) env)
 point after every GST (negative ones included: the heal point is relative to
 `max g 0`). -/
 theorem recorder_live_testK_healed (rho : Model.Run (compiled (familyC false)) env)
-    (hv : rho.ExecutionValid) (hh : rho.honest = Finset.univ) (k : ℕ+) (gst : Time) :
+    (hv : rho.ExecutionValid) (hh : ∀ t, rho.faultyAt t = ∅) (k : ℕ+) (gst : Time) :
     ProposalLive rho ((Sys (familyC false) (Fin 1)).cDur testK ⟨env, rho⟩) ()
       ((Sys (familyC false) (Fin 1)).heal testK .available k gst ⟨env, rho⟩)
       (testK.params.latency .available k) := by

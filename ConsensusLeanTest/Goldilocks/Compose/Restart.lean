@@ -32,7 +32,8 @@ open Consensus.Model (pubOf)
 /-- Validator `0` is asleep at time `0` only (awake from `1`); validator `1` is always awake.
 Engine `Δ = ΔF = 2`, horizon `64`, no submissions. -/
 def point : EnvPoint (Fin 2) :=
-  ⟨⟨2, by decide, 2, by decide, fun v t => decide (v ≠ 0 ∨ 1 ≤ t)⟩, Finset.univ, 64,
+  ⟨⟨2, by decide, 2, by decide, fun v t => decide (v ≠ 0 ∨ 1 ≤ t)⟩,
+    fun _ => ∅, monotone_const, 64,
     fun _ _ => []⟩
 
 theorem one_le_card : 1 ≤ Fintype.card (Fin 2) := by decide
@@ -76,15 +77,18 @@ theorem restart_at_one :
   obtain ⟨rho, hp, hk, -, hv, -, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
   have hn := one_le_card
-  have hhon : rho.honest = Finset.univ := congrArg EnvPoint.honest hp
+  have hhon (t : Time) : rho.faultyAt t = ∅ := congrArg (fun p => p.faultyAt t) hp
+  have hf : rho.point.ConstantFaults := fun t => by
+    change rho.faultyAt t = rho.faultyAt 0
+    rw [hhon, hhon]
   have hhor : rho.horizon = 64 := congrArg EnvPoint.horizon hp
-  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hrun := simTrace_goldilocksRun S rho hn hf hv
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hky : rho.key y = 0 := by rw [hk]; rfl
   have hy : y ∈ honestKeys S rho := by
     rw [mem_honestKeys_iff]
     rw [hhon]
-    exact Finset.mem_univ _
+    exact Finset.notMem_empty _
   have haw : ∀ u : Time, (simTrace S rho hn).awake y u ↔ 1 ≤ u ∧ u ≤ 64 := by
     intro u
     rw [simTrace_awake_iff, awakeAt_iff, hky, hhor]

@@ -110,6 +110,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.World
 public import ConsensusLeanTest.Index
 public import ConsensusLeanTest.MilestoneAxioms
 public import ConsensusLeanTest.Model.Basic
+public import ConsensusLeanTest.Model.Growth
 public import ConsensusLeanTest.Model.Lift
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Problem.Growth
