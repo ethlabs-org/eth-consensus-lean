@@ -342,12 +342,12 @@ theorem meetsObligations_iff_unlabelled :
 
 /-- Rejection: at no setup and contract is the family a BFT protocol. -/
 theorem not_obligationsAs_bft (S : Setup) (K : Contract ProgressReq) :
-    ¬ ShapeObligationsAs .bft (goldilocks S) K :=
+    ¬ ShapeObligationsOnAs .bft (goldilocks S) K (fun _ p => p.ConstantFaults) :=
   fun h => schema_profile.2.1 h.1
 
 /-- Rejection: at no setup and contract is the family an available protocol. -/
 theorem not_obligationsAs_available (S : Setup) (K : Contract ProgressReq) :
-    ¬ ShapeObligationsAs .available (goldilocks S) K :=
+    ¬ ShapeObligationsOnAs .available (goldilocks S) K (fun _ p => p.ConstantFaults) :=
   fun h => schema_profile.2.2 h.1
 
 /-! ## The fixed FG gap against the former FG delay bound

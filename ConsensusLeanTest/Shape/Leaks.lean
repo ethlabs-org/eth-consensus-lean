@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Spec.Shape.Claims
+public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Spec.Shape.ProgressFit
 import ConsensusLean.Lemmas.Model.Adequate
 import ConsensusLean.Lemmas.Model.SysLog
@@ -165,7 +166,7 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     (hprop : ∀ s, (sel (ShapeRole.proposer s)).Nonempty)
     (hout : ∀ rho : Model.Run (compiled F) env, rho.ExecutionValid →
       ∀ v i, (chainTrace rho).read () v i = []) :
-    ¬ ShapeClaims F testK := by
+    ¬ ShapeClaimsOnAt F testK (Fin 1) (fun p => p.ConstantFaults) := by
   intro hc
   obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
     (fun _ => ∅) monotone_const 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
@@ -215,8 +216,8 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     intro s j _
     exact ⟨hprop (s + j), fun k _ => ⟨hready _ _ _, by
       simp [EnvPoint.HonestAt, hfaulty]⟩⟩
-  rcases (hc (Fin 1)).sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) ⟨env, r⟩ valid
-      ⟨hsleepy, hprog⟩ with hl | hcol
+  rcases hc.sleepyLive .available () (Or.inl rfl) rfl (1 : ℕ+) ⟨env, r⟩ valid
+      ⟨fun _ => rfl, hsleepy, hprog⟩ with hl | hcol
   · obtain ⟨τ, k, h, -, -, -, hin⟩ := hl 0 le_rfl
       (show (0 : Int) + ((testK.params.latency .available (1 : ℕ+) : Nat) : Int) * env.ΔAC ≤ 3 by
         decide) ⟨0, hready _ _ _⟩
@@ -236,18 +237,21 @@ theorem testSel_admits (proposal vote bad : Bool) (r : ShapeRole Unit) :
   | poll => rfl
 
 /-- A protocol that never proposes has no live output. -/
-theorem silent : ¬ ShapeClaims (family false false false) testK :=
+theorem silent :
+    ¬ ShapeClaimsOnAt (family false false false) testK (Fin 1) (fun p => p.ConstantFaults) :=
   refuted_of_empty _ testSel (testSel_admits _ _ _) (fun _ => Finset.univ_nonempty)
     (fun _ _ _ _ => rfl)
 
 /-- A protocol that proposes but never outputs (genesis only) has no live
 output. -/
-theorem proposeButGenesis : ¬ ShapeClaims (family true false false) testK :=
+theorem proposeButGenesis :
+    ¬ ShapeClaimsOnAt (family true false false) testK (Fin 1) (fun p => p.ConstantFaults) :=
   refuted_of_empty _ testSel (testSel_admits _ _ _) (fun _ => Finset.univ_nonempty)
     (fun _ _ _ _ => rfl)
 
 /-- A protocol that outputs a header nobody signed violates output validity. -/
-theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
+theorem fabricated :
+    ¬ ShapeClaimsOnAt (family false false true) testK (Fin 1) (fun p => p.ConstantFaults) := by
   intro hc
   obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema
     (compiled (family false false true)) (Fin 1) env (fun _ => ∅) monotone_const
@@ -256,7 +260,7 @@ theorem fabricated : ¬ ShapeClaims (family false false true) testK := by
   let r : Model.Run (compiled (family false false true)) env :=
     Model.Run.mk (fun _ => ∅) monotone_const 0 es (pkiFin 1) testSel
       (fun _ _ => []) relay goodHash
-  have hv := (hc (Fin 1)).outputValid ⟨env, r⟩ valid .available () rfl 0
+  have hv := hc.outputValid ⟨env, r⟩ valid (fun _ => rfl) .available () rfl 0
     0 (Nat.zero_le _) (by simp [EnvPoint.HonestAt, r, Model.Run.point])
   obtain ⟨_, _, _, _, hmem⟩ := hv.2.2 fab (List.mem_singleton_self _)
   obtain ⟨j, _, hj, _⟩ := r.mem_viewIdx_iff.mp hmem
@@ -358,7 +362,8 @@ end C
 /-- Slashing protection silences a protocol whose `conflicts` is always true:
 it releases no signed object, so it never records a proposal and its output
 stays empty; liveness refutes it. -/
-theorem conflictsTrue_silent : ¬ ShapeClaims (familyC true) testK :=
+theorem conflictsTrue_silent :
+    ¬ ShapeClaimsOnAt (familyC true) testK (Fin 1) (fun p => p.ConstantFaults) :=
   refuted_of_empty _ testSel (by
       intro r
       cases r with

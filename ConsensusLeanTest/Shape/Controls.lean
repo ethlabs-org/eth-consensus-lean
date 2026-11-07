@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import ConsensusLean.Spec.Shape.Obligations
+public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Examples.Shape.Bft
 import ConsensusLean.Main
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -237,14 +238,22 @@ theorem ctrl_realizable : Realizable S X ctrlK :=
 `ShapeObligations` gives active service (`ShapeObligations.activeService`), a transaction relayed
 into the read of an honest node; the control family's reads are empty. So `ctrl_realizable`, a
 realizability certificate, is not acceptance. -/
-theorem ctrl_not_obligations (K : Contract ProgressReq) : ¬ ShapeObligations ctrlFamily K := by
+theorem ctrl_not_obligations (K : Contract ProgressReq) :
+    ¬ ShapeObligationsOn ctrlFamily K (fun _ p => p.ConstantFaults) := by
   intro h
-  obtain ⟨cap, g, hcap, hg, -⟩ := h.activeService
   obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨r, -, -, -, -, x, u, w, t, t', -, -, -, -, -, -, hx⟩ :=
-    (h.correct (Fin 5)).served (by simp) hcap hg i 2 0 (by norm_num) le_rfl
-  simp [Trace.readAt, sysOf, Model.Run.readIdx, Model.protoOf, compiled, ctrlFamily,
-    ctrlShape, compile, ledgerOf] at hx
+  have hc := h.correct _ (Fin 5)
+  have hrat : (2 : Time) ≤ (K.params.fgDelay : Time) * 2 :=
+    le_mul_of_one_le_left (by norm_num) (by exact_mod_cast K.params.fgDelay.pos)
+  obtain ⟨r, ⟨hw, _, _⟩, ⟨_, hH, hp, ha⟩, _⟩ :=
+    (hc.realizable (by simp)).healthy .available i 2 2 0
+      (by norm_num) (by norm_num) hrat le_rfl
+  rcases hc.behaviour.healthyLive .available _ rfl i 0 r
+      ⟨hw.1, hw.2.2.1⟩ ⟨hH, hp⟩ with hl | he
+  · obtain ⟨x, u, w, t, t', _, _, _, _, _, _, hx⟩ := hl.served ha
+    simp [Trace.readAt, sysOf, Model.Run.readIdx, Model.protoOf, compiled, ctrlFamily,
+      ctrlShape, compile, ledgerOf, System.restrict] at hx
+  · exact hw.2.1 he
 
 /-- **Outage control**: `T = 2 < b₀ = 6 < b₁ = 8` (at `Δ = 2`), honest `key 2` always
 asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is

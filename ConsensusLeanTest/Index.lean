@@ -36,14 +36,17 @@ check.sh step 12 checks against this file (`doc_name_files` in `scripts/boundari
 /-! ## Endpoints -/
 
 example := ``Consensus.Review.ObligationsSufficient
+example := ``Consensus.Review.ObligationsSufficientOn
 example := ``Consensus.Review.RegimesRealizable
 example := ``Consensus.Review.LogFaithful
 example := ``Consensus.Review.HeldIffServed
 example := ``Consensus.Review.obligationsSufficient
+example := ``Consensus.Review.obligationsSufficientOn
 example := ``Consensus.Review.regimesRealizable
 example := ``Consensus.Review.logFaithful
 example := ``Consensus.Review.heldIffServed
 example := ``Consensus.Shape.ShapeObligations.correct
+example := ``Consensus.Shape.ShapeObligationsOn.correct
 example := ``Consensus.Shape.ShapeObligations.activeService
 example := ``Consensus.Shape.refinement
 example := ``Consensus.Shape.regimes_realizable

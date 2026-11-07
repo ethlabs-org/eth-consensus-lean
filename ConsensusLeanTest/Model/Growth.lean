@@ -203,5 +203,34 @@ theorem compromise_preserves_seen :
       honestBit ∈ (growthRun.stateBefore 4 1).seen := by
   decide
 
+/-- The compromised key's pre-exposure read is covered by ready-reader safety. -/
+theorem growth_run_readySafe :
+    ((sysOf schema bitFamily (Fin 2)).trace ⟨bitEnv, growthRun⟩).ReadySafe 0 () 0 := by
+  constructor
+  · intro u v i j _ _ _ _
+    change Compatible [] []
+    exact Or.inl (List.prefix_refl _)
+  · intro v i j _ _ _ _ _
+    change ([] : List Tx) <+: []
+    exact List.prefix_refl _
+
+/-- Equal-time phases straddle exposure without changing their cut times;
+empty and terminal cuts keep the expected reads. -/
+theorem growth_run_cut_boundaries :
+    growthRun.cutTime 0 = 0 ∧ growthRun.cutTime 2 = 0 ∧
+      growthRun.cutTime 3 = 1 ∧ growthRun.cutTime 4 = 1 ∧
+      growthRun.point.HonestAt 1 (growthRun.cutTime 2) ∧
+      ¬ growthRun.point.HonestAt 1 (growthRun.cutTime 3) ∧
+      growthRun.readIdx () 1 0 = [] ∧ growthRun.readIdx () 1 4 = [] := by
+  simp [Run.cutTime, Run.point, EnvPoint.HonestAt, growthRun, faults, Event.time]
+  exact ⟨rfl, rfl⟩
+
+/-- Truncating before exposure retains the two equal-time honest events. -/
+theorem growth_run_prefix_before :
+    (growthRun.truncate 0).events = [.tick 0 0, .tick 1 0] ∧
+      ((sysOf schema bitFamily (Fin 2)).trace ⟨bitEnv, growthRun.truncate 0⟩).PrefixOf
+        ((sysOf schema bitFamily (Fin 2)).trace ⟨bitEnv, growthRun⟩) 0 := by
+  exact ⟨by rw [Run.truncate_eq]; rfl, (growthRun.truncate_prefix growth_run_valid 0).1⟩
+
 end Consensus.Shape.Tests.Model.Growth
 end

@@ -52,5 +52,18 @@ theorem honestReadyIn_constant_iff (hp : p.ConstantFaults)
     refine ⟨hne, fun k hk => ⟨h k hk, ?_⟩⟩
     exact (p.honestAt_iff_zero hp _ _).mpr ((p.honestAt_iff_zero hp _ _).mp (h k hk).1)
 
+/-- On constant faults, recurrence has exactly the original slot-readiness meaning,
+independently of its proposer hold. -/
+theorem patternRecurrence_constant_iff (hp : p.ConstantFaults)
+    (key : Fin (Fintype.card V) ≃ V) (sel : Slot → Finset (Fin (Fintype.card V)))
+    (G : TimeGrid) (ρ : Recurrence) (c start stop : Time) :
+    PatternRecurrence p key sel G ρ c start stop ↔
+      ∀ t, max start 0 ≤ t → t + (ρ.len : Time) * G.slotLen ≤ stop →
+        t + (ρ.len : Time) * G.slotLen ≤ p.horizon →
+        ∃ s, t < G.slotTime s ∧ G.slotTime s ≤ t + ((ρ.gap : Nat) : Time) * G.slotLen ∧
+          ∀ j ∈ ρ.pattern.offsets, (sel (s + j)).Nonempty ∧
+            ∀ k ∈ sel (s + j), p.Ready c (key k) (G.slotTime (s + j)) := by
+  simp only [PatternRecurrence, honestReadyIn_constant_iff hp]
+
 end Consensus.Blocks
 end

@@ -3,8 +3,12 @@ public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLean.Spec.Problem.Properties
+public import ConsensusLean.Lemmas.Model.Constant
+public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 import Mathlib.Tactic.NormNum
 import Mathlib.Tactic.FinCases
+import Mathlib.Tactic.IntervalCases
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # Multiple permanent compromises
@@ -63,6 +67,44 @@ theorem lookAhead_rejects_compromised_support : ¬ point.SleepyOn (1 / 2) 0 1 4 
   have hh := h 4 le_rfl le_rfl
   rw [EnvPoint.ReadyAbove, readyAt_eq] at hh
   norm_num [EnvPoint.retain, EnvPoint.lookAhead, EnvPoint.faultCount, point] at hh
+
+/-- Awake support rotates at compromise, so every current budget passes. -/
+def rotatingSupport : EnvPoint (Fin 5) :=
+  { point with env := ⟨1, by decide, 1, by decide,
+      fun v t => decide (v.val < 3 ∨ 4 ≤ t)⟩ }
+
+theorem rotatingSupport_current_budget (t : Time) (ht : 0 ≤ t) (hb : t ≤ 10) :
+    rotatingSupport.ReadyAbove (1 / 2) 0 t := by
+  classical
+  have hr : rotatingSupport.readyAt 0 t =
+      if 5 ≤ t then {2, 3, 4} else {0, 1, 2} := by
+    ext v
+    fin_cases v <;> interval_cases t <;>
+      norm_num [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.HonestAt,
+        EnvPoint.AwakeOnClosed, rotatingSupport, point] <;>
+      first
+      | solve | intro u hu hv; linarith
+      | solve | exact ⟨0, by decide, by decide, by decide⟩
+      | solve | exact ⟨1, by decide, by decide, by decide⟩
+      | solve | exact ⟨2, by decide, by decide, by decide⟩
+      | solve | exact ⟨3, by decide, by decide, by decide⟩
+  rw [EnvPoint.ReadyAbove, hr]
+  split_ifs <;> norm_num [EnvPoint.faultCount, rotatingSupport, point, *]
+
+/-- Replacing the window budget by every current budget would admit lost support. -/
+theorem rotatingSupport_lookAhead_rejected :
+    ¬ rotatingSupport.SleepyOn (1 / 2) 0 1 4 5 := by
+  intro h
+  have hh := h 4 le_rfl (by decide)
+  have hr : (rotatingSupport.retain (rotatingSupport.lookAhead 1 4)).readyAt 0 4 = {2} := by
+    classical
+    ext v
+    fin_cases v <;> norm_num [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.HonestAt,
+      EnvPoint.AwakeOnClosed, EnvPoint.retain, EnvPoint.lookAhead, rotatingSupport, point]
+      <;> exact ⟨3, le_rfl, by decide, by decide⟩
+  rw [EnvPoint.ReadyAbove, hr] at hh
+  norm_num [EnvPoint.faultCount, EnvPoint.retain, EnvPoint.lookAhead,
+    rotatingSupport, point] at hh
 
 /-- A prefix ending before compromise reads only the earlier faults. -/
 theorem prefix_budget :
@@ -123,6 +165,39 @@ theorem retained_cohort_rejected :
   · rw [EnvPoint.CohortOn, lateWakers_retained, awakeAt_retained]
     norm_num [EnvPoint.retain, point]
 
+/-- One existing fault grows to two while exactly two honest validators remain awake. -/
+def stressPoint : EnvPoint (Fin 5) :=
+  { point with
+    env := ⟨1, by decide, 1, by decide, fun v _ => decide (2 ≤ v.val ∧ v.val < 4)⟩
+    faultyAt := fun t => if 5 ≤ t then {0, 1} else {0}
+    faultyAt_mono := by
+      intro a b hab
+      dsimp only
+      split_ifs with ha hb
+      · exact Finset.Subset.refl _
+      · exact False.elim (hb (ha.trans hab))
+      · decide
+      · exact Finset.Subset.refl _ }
+
+/-- The one-to-two compromise crosses the strict sleepy budget with two supporters. -/
+theorem stressPoint_sleepy_rejected :
+    stressPoint.ReadyAbove (1 / 2) 0 4 ∧ ¬ stressPoint.SleepyOn (1 / 2) 0 1 4 5 := by
+  have hr (d : Time) : (stressPoint.retain d).readyAt 0 4 = {2, 3} := by
+    classical
+    ext v
+    fin_cases v <;> by_cases hd : 5 ≤ d <;>
+      norm_num [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.HonestAt,
+        EnvPoint.retain, EnvPoint.AwakeOnClosed, stressPoint, point, hd] <;>
+      exact ⟨3, le_rfl, by decide⟩
+  constructor
+  · have he : stressPoint.readyAt 0 4 = (stressPoint.retain 4).readyAt 0 4 := by rfl
+    rw [EnvPoint.ReadyAbove, he, hr]
+    norm_num [EnvPoint.faultCount, stressPoint, point]
+  · intro h
+    have hh := h 4 le_rfl (by decide)
+    rw [EnvPoint.ReadyAbove, hr] at hh
+    norm_num [EnvPoint.faultCount, EnvPoint.retain, EnvPoint.lookAhead, stressPoint, point] at hh
+
 end Consensus.Tests.Growth
 
 namespace Consensus.Shape.Tests.Growth
@@ -154,6 +229,28 @@ theorem growthPoint_strict_growth :
       growthPoint.faultyAt t₁ ⊂ growthPoint.faultyAt t₂ := by
   exact ⟨0, 2, 5, by decide, by decide, by decide, by decide, by decide, by decide⟩
 
+/-- A proposer ready at two is excluded when compromised inside its hold window. -/
+theorem proposer_hold_rejects_compromise :
+    Blocks.HonestReadyIn growthPoint (pkiFin 7) (fun _ => {1}) 0 0 2 0 ∧
+      ¬ Blocks.HonestReadyIn growthPoint (pkiFin 7) (fun _ => {1}) 0 0 2 3 := by
+  constructor
+  · refine ⟨by simp, fun k hk => ?_⟩
+    have hk' : k = 1 := Finset.mem_singleton.mp hk
+    subst k
+    refine ⟨⟨?_, fun _ _ _ => rfl⟩, ?_⟩ <;>
+      simp [EnvPoint.HonestAt, EnvPoint.lookAhead, growthPoint, pkiFin]
+  · intro h
+    have hh := (h.2 1 (Finset.mem_singleton_self _)).2
+    norm_num [EnvPoint.HonestAt, EnvPoint.lookAhead, growthPoint, pkiFin] at hh
+    exact hh (Fin.ext rfl)
+
+/-- Constant faults make every proposer hold agree with the original readiness requirement. -/
+theorem constant_proposer_hold (h : Time) :
+    Blocks.HonestReadyIn (growthPoint.retain 8) (pkiFin 7) (fun _ => {2}) 0 0 2 h ↔
+      ({2} : Finset (Fin 7)).Nonempty ∧
+        ∀ k ∈ ({2} : Finset (Fin 7)), (growthPoint.retain 8).Ready 0 (pkiFin 7 k) 2 :=
+  Blocks.honestReadyIn_constant_iff (fun _ => rfl) _ _ _ _ _ _
+
 /-- Two compromises among seven validators remain below one third. -/
 theorem growthPoint_healthy : growthPoint.HealthyOn (1 / 3) 0 8 := by
   exact ⟨by norm_num [EnvPoint.faultCount, growthPoint], fun _ _ _ _ _ => rfl⟩
@@ -165,6 +262,17 @@ theorem constantPoint_healthy : (growthPoint.retain 8).HealthyOn (1 / 3) 0 8 := 
 
 /-- The control has constant faults, unlike the two-increase profile. -/
 theorem constantPoint_constant : (growthPoint.retain 8).ConstantFaults := fun _ => rfl
+
+/-- Changing only the hold leaves every constant-fault recurrence verdict unchanged. -/
+theorem constant_recurrence_hold (G : Blocks.TimeGrid) (ρ : Blocks.Recurrence)
+    (hold : Nat) (c start stop : Time) :
+    Blocks.PatternRecurrence (growthPoint.retain 8) (pkiFin 7) (fun _ => {2}) G
+      { ρ with hold := hold } c start stop ↔
+    Blocks.PatternRecurrence (growthPoint.retain 8) (pkiFin 7) (fun _ => {2}) G
+      { ρ with hold := 0 } c start stop := by
+  rw [Blocks.patternRecurrence_constant_iff constantPoint_constant,
+    Blocks.patternRecurrence_constant_iff constantPoint_constant]
+  rfl
 
 /-- A third compromise crosses the strict one-third healthy threshold. -/
 def threeFaultPoint : EnvPoint (Fin 7) where
@@ -256,6 +364,45 @@ theorem historicalReads_not_initially_honest_nested :
   have hh := h 0 2 (by decide) (by simp [EnvPoint.HonestAt, growthPoint])
   change [1] <+: [2] at hh
   simp at hh
+
+section PrefixLiveness
+
+variable {Prog : Type} {S : System (Fin 7)} {X : Progress S Prog} {K : Contract Prog}
+
+/-- Sleepy liveness applies to a six-time-unit prefix spanning both compromises,
+without assuming synchrony after that prefix. -/
+theorem growing_sleepyLive_prefix (h : CorrectProtocol S X K)
+    {g : S.schema.Id} (hg : S.schema.output .available = some g)
+    (r : S.Run) (hv : S.Valid r) (hp : S.pt r = growthPoint) (i : K.Idx)
+    (hs : (S.log r).SyncUntil (S.pt r) 6)
+    (hb : (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 6)
+    (hx : S.prog X K .available i 0 6 r) :
+    (∀ x t t', (S.pt r).SubmittedToSome x t →
+      max t 0 + (S.pt r).env.ΔAC + S.lat K .available i r ≤ t' → t' ≤ 6 →
+      ∀ v, (S.pt r).Ready (S.cDur K r) v t' → x ∈ (S.trace r).readAt g v t') ∨
+      S.Excuse r :=
+  h.sleepyLive_prefix (Or.inl rfl) hg r hv i (by decide)
+    (by rw [hp]; decide) hs hb hx
+
+/-- Healthy prefix liveness uses the two-increase profile's healthy budget,
+not a terminal constant-fault projection. -/
+theorem growing_healthyLive_prefix (h : CorrectProtocol S X K)
+    {g : S.schema.Id} (hg : S.schema.output .final = some g)
+    (r : S.Run) (hv : S.Valid r) (hp : S.pt r = growthPoint) (i : K.Idx)
+    (hβ : K.params.β = 1 / 3)
+    (hs : (S.log r).Delivers (S.pt r)
+      (fun a => max a 0 + (S.pt r).env.ΔAC - 1)
+      (fun a => max a 0 + (S.pt r).env.ΔFG - 1) 8)
+    (hr : (S.pt r).env.ΔFG ≤ (K.params.fgDelay : Time) * (S.pt r).env.ΔAC)
+    (hx : S.prog X K .final i (S.ready K 0 r) 8 r) :
+    (∀ x t t', (S.pt r).SubmittedToSome x t →
+      max t (S.heal K .final i 0 r) + (S.pt r).env.ΔAC + S.lat K .final i r ≤ t' →
+      t' ≤ 8 → ∀ v, (S.pt r).Ready (S.cDur K r) v t' →
+        x ∈ (S.trace r).readAt g v t') ∨ S.Excuse r :=
+  h.healthyLive_prefix hg r hv i 0 (by decide) (by rw [hp]; exact le_rfl) hs
+    (by rw [hp, hβ]; exact growthPoint_healthy) hr hx
+
+end PrefixLiveness
 
 end Consensus.Shape.Tests.Growth
 end

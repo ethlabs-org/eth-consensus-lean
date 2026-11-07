@@ -731,6 +731,30 @@ theorem compromised_recipient_excluded :
     sourcePoint.HonestAt 0 0 ∧ ¬ sourcePoint.HonestAt 0 1 := by
   simp [EnvPoint.HonestAt, sourcePoint]
 
+/-- An honest pre-exposure message stays owed after its sender is compromised. -/
+theorem compromised_sender_message_owed (L : CommLog (Fin 2) Unit)
+    (h : L.PSync sourcePoint 0) (hs : L.sent 0 () 0) (hf : ¬ L.fgAtt ()) :
+    L.Held sourcePoint 1 () 1 := by
+  exact h.msgs 0 () 0 hs (by simp [EnvPoint.HonestAt, sourcePoint]) hf
+    1 0 le_rfl (by decide) (by decide)
+    (by simp [EnvPoint.HonestAt, sourcePoint]) (fun _ _ _ => rfl)
+
+/-- Key one wakes at two while the source is already compromised. -/
+def wakingPoint : EnvPoint (Fin 2) :=
+  { sourcePoint with env := ⟨2, by decide, 2, by decide,
+      fun v t => decide (v = 0 ∨ 2 ≤ t)⟩ }
+
+/-- A waking recipient is re-served by its own delay bound, not the original send's bound. -/
+theorem compromised_sender_waking_service (L : CommLog (Fin 2) Unit)
+    (h : L.PSync wakingPoint 0) (hs : L.sent 0 () 0) (hf : ¬ L.fgAtt ()) :
+    Wakes wakingPoint.env 1 2 ∧ L.Held wakingPoint 1 () 3 := by
+  refine ⟨by norm_num [Wakes, wakingPoint], ?_⟩
+  apply h.msgs 0 () 0 hs (by simp [EnvPoint.HonestAt, wakingPoint, sourcePoint]) hf
+    1 2 (by decide) (by decide) (by decide)
+    (by simp [EnvPoint.HonestAt, wakingPoint, sourcePoint])
+  intro u hu _
+  simp [wakingPoint, hu]
+
 end Compromise
 
 end Consensus.Shape.Tests.Network
