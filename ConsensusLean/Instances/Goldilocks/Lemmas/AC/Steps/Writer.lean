@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -131,7 +132,7 @@ private theorem blockReceipt_held (A : SAState sp.n) {t : Time} {B : Blk sp.n FG
     rw [List.foldl_cons]
     rcases List.mem_cons.1 hv with rfl | hv
     · have hs := foldl_admit_pool (t := t) (σ := v.slot) l (admitVote sp A' t v)
-      rcases admitVote_held A' h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
+      rcases admitVote_held A' _ _ h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
       · exact Or.inl (hs h)
       · exact Or.inr ⟨a, hs ha, b, hs hb, hab, hav, hbv⟩
     · exact ih _ hv

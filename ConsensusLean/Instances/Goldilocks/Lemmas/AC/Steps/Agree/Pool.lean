@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -146,43 +147,13 @@ theorem step_pool_subset {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAStat
   rw [step_eq_stepWith]
   exact (grow_step self A Φ t c hc).1 σ
 
-/-- Admitting a vote of the slot of `t` or the previous one leaves it in its pool, or two other
-votes of its validator there. -/
-theorem admitVote_held (A : SAState sp.n) {t : Time} {v : Vote sp.n}
-    (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t) :
-    v ∈ (admitVote sp A t v).pool v.slot ∨
-      v.val ∈ equivocators {w | w ∈ (admitVote sp A t v).pool v.slot} := by
-  unfold admitVote
-  split_ifs with ha hb
-  · left
-    rcases ha with ha | ha | ha
-    · exact absurd h₁ (not_le.2 ha)
-    · exact absurd h₂ (not_le.2 ha)
-    · exact ha
-  · right
-    generalize hL : ((A.pool v.slot).filter (fun x => x.val = v.val)).dedup = L at hb
-    have hnd : L.Nodup := hL ▸ List.nodup_dedup _
-    rcases L with _ | ⟨a, _ | ⟨b, l⟩⟩
-    · simp at hb
-    · simp at hb
-    have hmem : ∀ c ∈ a :: b :: l, c ∈ A.pool v.slot ∧ c.val = v.val := fun c hc => by
-      rw [← hL, List.mem_dedup, List.mem_filter] at hc
-      exact ⟨hc.1, of_decide_eq_true hc.2⟩
-    obtain ⟨ha, hav⟩ := hmem a List.mem_cons_self
-    obtain ⟨hb', hbv⟩ := hmem b (List.mem_cons_of_mem _ List.mem_cons_self)
-    refine ⟨a, ha, b, hb', ?_, hav, hbv⟩
-    rintro rfl
-    exact (List.nodup_cons.1 hnd).1 List.mem_cons_self
-  · left
-    simp
-
 /-- After a vote's receipt (an `on_message` call) or its emission, at a time of its slot or the
 next, the node holds it, or two other votes of its validator. -/
 private theorem held_after (A A' : SAState sp.n) {t : Time} {v : Vote sp.n}
     (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t)
     (h : Grow t (admitVote sp A t v) A') :
     v ∈ A'.pool v.slot ∨ v.val ∈ equivocators {w | w ∈ A'.pool v.slot} := by
-  rcases admitVote_held A h₁ h₂ with hv | ⟨a, ha, b, hb, hab, hav, hbv⟩
+  rcases admitVote_held A _ _ h₁ h₂ with hv | ⟨a, ha, b, hb, hab, hav, hbv⟩
   · exact Or.inl (h.1 _ hv)
   · exact Or.inr ⟨a, h.1 _ ha, b, h.1 _ hb, hab, hav, hbv⟩
 
