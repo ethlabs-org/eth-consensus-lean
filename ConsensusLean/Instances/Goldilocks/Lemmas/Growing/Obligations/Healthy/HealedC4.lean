@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 
 public section
 
@@ -30,7 +32,24 @@ theorem proposesAt_of_honestProposalRun_at
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P) :
     ∃ k, tr.ProposesAt (proposer s) k P := by
-  sorry
+  obtain ⟨hpH, -, -, -, -, -, -, -, -, -, -, hPp, -, j, -, hacc, htj⟩ := hP
+  change tr.time j = sp.ts s at htj
+  have hd := hrun.time_nonneg j
+  have hl := (hrun.upTo hd).toLocalRun
+  have hp : proposer s ∈ H (tr.time j) := hrun.antitone (by
+    rw [htj]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
+  have hacc' : (tr.upTo (tr.time j)).projAC.AcceptAt (proposer s) j P := by
+    obtain ⟨ℓ, hc, hb⟩ := hacc
+    rw [RunTrace.upTo_projAC]
+    exact ⟨ℓ, (Trace.upTo_callAt_of_le _ le_rfl).mpr hc, hb⟩
+  obtain ⟨j₀, -, ha, -⟩ := Healing.fg_accept_before hl hp hacc'
+  obtain ⟨j', -, ⟨acc, hc⟩, hpos⟩ := hl.block_unforgeable _ hp j₀ P ⟨true, ha⟩ (hPp ▸ hp)
+  rw [hPp] at hc
+  rcases Compose.blockCall_cases hl hp hc with hg | ⟨j₁, x, rfl, -, hpr, d', pay', -, hB, -⟩
+  · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  · have hs : P.slot = sp.toParams.slotOf (tr.time (j₁ + 2)) := by rw [hB]; rfl
+    have hown : (tr.upTo (tr.time j)).OwnBlockAt (proposer s) (j₁ + 2) P := ⟨⟨acc, hc⟩, hpos⟩
+    exact ⟨j₁ + 2, ((RunTrace.upTo_ownBlockAt _).mp hown).2, hPp, hs ▸ hpr.2.1⟩
 
 /-- **No reorg two slots on, through the horizon**, under growing faults. -/
 theorem honest_proposal_below_later_upTo_at
