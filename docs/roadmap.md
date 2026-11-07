@@ -43,15 +43,16 @@ the earlier static endpoint, not certification of the dynamic statements.
 The compiled Goldilocks counterexample to proposer `hold = 0` is the rejection test
 `ConsensusLeanTest/Goldilocks/Regimes/ProposerHold.lean`. The hold is a parameter of the L2
 progress contract. The test refutes the `sleepyLive` field of `ShapeClaimsAt` at hold `0`, and
-makes no claim that `GoldilocksCorrect` fails at hold `0`. It reads the claim on a retained
-constant-fault run (`Model.Run.retain`), so it does not wait for the dynamic sleepy invariant.
+makes no claim that `GoldilocksCorrect` fails at hold `0`. The refuting run has growing faults;
+key `2`'s read on it is computed on the run's retained constant-fault run (`Model.Run.retain`),
+so the test does not wait for the dynamic sleepy invariant.
 The constant-fault controls reject a proposer compromised within its hold window and reduce
 arbitrary holds to the original recurrence on constant faults. That `hold = 1` suffices rests on
 the window audit and these constant-fault reductions until the dynamic invariant is proved.
 
 | Step | Lean names | Status |
 |---|---|---|
-| Dynamic certification swap: compiled proposer hold-zero counterexample (`ProposerHold.lean`) | `Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.claims_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.obligations_hold_zero_false` | done: the three theorems refute the `sleepyLive` field of `ShapeClaimsAt` at hold `0` (no claim that `GoldilocksCorrect` fails at hold `0`), on a retained constant-fault run; the control `run_not_prog_hold_one` shows the run fails the hold-`1` recurrence |
+| Dynamic certification swap: compiled proposer hold-zero counterexample (`ProposerHold.lean`) | `Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.claims_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.obligations_hold_zero_false` | done: the three theorems refute the `sleepyLive` field of `ShapeClaimsAt` at hold `0` (no claim that `GoldilocksCorrect` fails at hold `0`), on a growing-fault run, with the read computed on its retained constant-fault run; the control `run_not_prog_hold_one` shows the run fails the hold-`1` recurrence |
 | Pre-foundation baseline: pinned numbers and the properties sheet | — | archived ([`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline) at `79cdddc8`); no live statement depends on it |
 | First slice: Goldilocks Spec, `AsChainShape.lean`, `Statements/<M₁>`, witnesses, finite model; then a proof pilot | — | done: the Spec, `AsChainShape.lean`, the milestone statements and their witnesses exist, and the milestones are proved (the obligations endpoint in Solution, the others as lemmas: `docs/decisions.md` §"Trusted surface and Challenge scope") |
 | Certification: `Challenge`/`Solution` entries (`milestone_statements_modules` in `scripts/boundaries.toml`), kernel replay and comparator; Challenge certifies the four review statements, the obligations endpoint and the headline `GoldilocksCorrect` only, and the other milestones are proved lemmas (`proved_milestone_modules`, `docs/decisions.md` §"Trusted surface and Challenge scope") | — | certified (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips: cold build, every-leaf kernel replay, `lake check`, `lake comparator --paranoid` and the rebuild canary, each with its controls); commits after it are not covered |

@@ -3,7 +3,7 @@ public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Read
 public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
 @[expose] public section
 
-/-! # Rejection test: proposer hold `0` refutes Goldilocks's sleepy liveness claim
+/-! # Rejection test: proposer hold `0` refutes Goldilocks's L2 `sleepyLive` claim
 
 The proposer hold is a parameter of the L2 progress contract: the recurrence `prog` of the
 contract asks of the selected proposer of a slot `s` that it be honest through `t_s + hold·ΔAC`.
@@ -68,9 +68,10 @@ theorem read_rho {h : Header Info}
   exact hh
 
 variable (S) in
-/-- **Proposer hold `0` refutes Goldilocks's sleepy liveness** (kind (c)): on a valid compiled run
-without a hash collision, sleepy for the hold-`0` contract and meeting its recurrence at the
-available output and index `1`, `ProposalLiveReady` fails for the confirmed chain. -/
+/-- **Proposer hold `0` refutes Goldilocks's L2 `sleepyLive` claim** (kind (c)): on a valid
+compiled run without a hash collision, sleepy for the hold-`0` contract and meeting its
+recurrence at the available output and index `1`, `ProposalLiveReady` fails for the confirmed
+chain. -/
 theorem sleepyLive_hold_zero_false (A : ContractAssumptions S) :
     ¬ (Sys (goldilocks S) (Fin 5)).Holds
         (fun r =>
