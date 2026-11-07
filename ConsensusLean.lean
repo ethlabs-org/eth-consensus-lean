@@ -164,6 +164,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Unlocked
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Update
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.WriterCompatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Attest
