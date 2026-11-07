@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 
 public section
 
@@ -29,34 +30,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- A call of a node honest at it, with a high justified height, has its finalized-chain root
-compatible with every held block compatible with the earlier high origins. -/
-theorem high_J_root_of_held_at_call_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
-    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y k ell)
-    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
-    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
-      Compatible (tr.HonestBlocksAt H) B O) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
-  sorry
-
-/-- A call of a node honest at it, with a low justified height and a held high seed, has its
-finalized-chain root compatible with every held block compatible with the seed. -/
-theorem low_root_of_held_seed_at_call_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hx : x ∈ H (tr.time r)) (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
-    (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
-    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
-    (hBS : Compatible (tr.HonestBlocksAt H) B S)
-    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
-  sorry
 
 /-- **A high floor has a signed source below a bounded row label**: for a reader honest at
 `t ≤ b`, a high origin under the reader's head-height floor yields a high origin, of a label
