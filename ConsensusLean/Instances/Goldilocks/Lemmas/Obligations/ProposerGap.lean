@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -47,7 +48,7 @@ theorem recurrence_gap (h : PatternRecurrence p key sel G ρ c start stop)
     (hstop : G.slotTime N + (ρ.pattern.span : Time) * G.slotLen ≤ stop)
     (hhor : G.slotTime N + (ρ.pattern.span : Time) * G.slotLen ≤ p.horizon) :
     ∀ a, s₀ ≤ a → a + (ρ.gap : Nat) ≤ N + 1 → ∃ x, a ≤ x ∧ x < a + (ρ.gap : Nat) ∧
-      HonestReadyIn p key sel x c (G.slotTime x) := by
+      HonestReadyIn p key sel x c (G.slotTime x) (ρ.hold * p.env.ΔAC) := by
   intro a ha haN
   have hL := G.slotLen_pos
   have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
@@ -100,11 +101,12 @@ proposer duty at a slot `s > 0` with `t_s ≤ horizon` gives the run proposer's 
 of slot `s` at a cut of time `t_s`, accepted by its proposer, ready there for the run catch-up
 duration, and an `HonestProposalRun`. -/
 theorem duty_proposal_run (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V)
-    (hv : (Sys (goldilocks S) V).Valid run) (hnc : ¬ run.2.HashCollision) {s : Nat} (hs : 0 < s)
+    (hf : run.2.point.ConstantFaults) (hv : (Sys (goldilocks S) V).Valid run)
+    (hnc : ¬ run.2.HashCollision) {s : Nat} {hold : Time} (hs : 0 < s)
     (hth : (S.params (Model.pubOf run.1) hn).ts s ≤ run.2.horizon)
     (hduty : HonestReadyIn run.2.point run.2.key (fun s => run.2.sel (.proposer s)) s
       ((Sys (goldilocks S) V).cDur (K S A) run)
-      ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s)) :
+      ((goldilocks S (Model.pubOf run.1)).skel.grid.slotTime s) hold) :
     ∃ k P, Healing.HonestProposalRun (simTrace S run.2 hn) (honestKeys S run.2)
         (runProposer S run.2 hn) s P ∧
       (simTrace S run.2 hn).ProposesAt (runProposer S run.2 hn s) k P ∧
@@ -120,7 +122,7 @@ theorem duty_proposal_run (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype
   have hmem : runProposer S run.2 hn s ∈ run.2.sel (.proposer s) := by
     simp only [runProposer_eq, dite_eq_left hduty.1]
     exact Finset.min'_mem _ _
-  have hR := hduty.2 _ hmem
+  have hR := (hduty.2 _ hmem).1
   rw [htime] at hR
   have h0 : (0 : Time) ≤ (S.params (Model.pubOf run.1) hn).ts s := by
     have := (S.params (Model.pubOf run.1) hn).toParams.hΔ
@@ -136,8 +138,8 @@ theorem duty_proposal_run (run : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype
     apply max_le_max_left
     have := catchUp_le_cDur S A V run hn
     linarith
-  have hrun := simTrace_goldilocksRun S run.2 hn hv
-  have hnc' := noCollRun_simTrace S run.2 hn hv hnc
+  have hrun := simTrace_goldilocksRun S run.2 hn hf hv
+  have hnc' := noCollRun_simTrace S run.2 hn hf hv hnc
   obtain ⟨k, P, hP, ht⟩ := Regimes.ready_proposer_proposes hrun hnc' hs hshort
   have hlabel : P.slot = s := by
     have := hP.2.2

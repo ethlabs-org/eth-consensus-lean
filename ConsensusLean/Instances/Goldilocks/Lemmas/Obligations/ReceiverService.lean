@@ -21,13 +21,14 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- PSync after `g` gives the receiver-scoped strict AC service for an honest receiver `y`. -/
-theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V)
+    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) :
     Compose.ReceiverServiceAfter (honestKeys S rho)
       ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) g y (simTrace S rho hn).projAC := by
-  have h := (simTrace_goldilocksRun S rho hn hv).toLocalRun
+  have h := (simTrace_goldilocksRun S rho hn hconst hv).toLocalRun
   have bound {j : Nat} {ℓ} (hc : (simTrace S rho hn).CallAt y j ℓ) :
       (simTrace S rho hn).time j ≤ rho.horizon :=
     simTrace_labelled_time_le S rho hn hv (by rw [hc.2]; simp)
@@ -37,7 +38,7 @@ theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
       rw [Compose.projAC_state h hx] at hm
       exact hm⟩
     have hc := Compose.projAC_callAt.1 hc
-    obtain ⟨k, hkj, htk, hp, hlt⟩ := message_service_psync S rho hn hv hnet hx hsa' hy
+    obtain ⟨k, hkj, htk, hp, hlt⟩ := message_service_psync S rho hn hconst hv hnet hx hsa' hy
       ⟨_, hc⟩ (bound hc) (by rw [← Compose.projAC_deadline]; exact hdl)
     refine ⟨k, hkj, htk, ?_, by rw [Compose.projAC_deadline]; exact hlt⟩
     rcases hp with ⟨ℓ', hc', hm'⟩ | ⟨ℓ', hc', hm'⟩
@@ -49,7 +50,7 @@ theorem receiverServiceAfter_of_psync (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
     have hfr : ℓ.frame.F = ((simTrace S rho hn).state y j).fg.F := by
       rw [(h.cutLaw y hy j _ hc).1]
       rfl
-    obtain ⟨k, hkj, hk, hlt⟩ := acceptance_relay_psync_any S rho hn hv hnc hnet hx hi'
+    obtain ⟨k, hkj, hk, hlt⟩ := acceptance_relay_psync_any S rho hn hconst hv hnc hnet hx hi'
       hy ⟨_, hc⟩ (bound hc)
       (by rw [hti, ← Compose.projAC_deadline]; exact hdl) (hfr ▸ hanc)
     obtain ⟨ℓ', hc', hb', htk⟩ := Compose.accept_next h hy hk

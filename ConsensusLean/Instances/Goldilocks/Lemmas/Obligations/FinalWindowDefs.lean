@@ -23,6 +23,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 No supplier conclusion is a new premise of Healthy. -/
 structure FinalQuery where
   run : (Sys (goldilocks S) V).Run
+  constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   index : (K S A).Idx
   gst : Time
