@@ -83,6 +83,60 @@ theorem honest_vote_early_pool_before_at
     hrst hx hv' hes j (Or.inl rfl)
   simpa only [hs] using hp
 
+/-- Early proposal resolution needs historical block relay only for the block
+stamp. Vote delivery and uniqueness are charged at the receiving cut. -/
+theorem unanimous_early_pool_of_blockStamp_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = u)
+    (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
+      e.msg.slot = u → e.msg.head = P.root)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
+    (hPt : P ∈ ell.frame.tree)
+    (hbs : (tr.projAC.state y j).blockStamp P.root <
+      SA.ETime.of (sp.ts u + 2 * sp.Δ))
+    (hvotes : ∀ x, x ∈ H (tr.time j) → ∃ i e,
+      SA.VoteAt tr.projAC x i e ∧ e.msg.slot = u ∧ tr.time i ≤ tr.time j) :
+    ∀ x, x ∈ H (tr.time j) → ∃ v ∈ (tr.projAC.state y j).pool u,
+      v.val = x ∧ v.head = P.root ∧
+      SA.resolutionTime (tr.projAC.state y j) ell.frame v <
+        SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
+  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
+    (hrun.time_nonneg j) hjb
+  have hr := hS.run.localRun
+  have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
+    (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
+  have hs := Trace.upTo_state tr.projAC y (i := j)
+    (fun q hq => hrun.time_mono hq.le)
+  have hPhi := SA.frameIn_of_callAt hr hy hc'
+  intro x hx
+  obtain ⟨i, e, hv, hes, hit⟩ := hvotes x hx
+  have hv' : SA.VoteAt (tr.projAC.upTo (tr.time j)) x i e := by
+    obtain ⟨ellx, hcx, he⟩ := hv
+    exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
+  have heP := hun x i e (hrun.antitone hit hx) hv hes
+  obtain ⟨hm, hvs⟩ := honest_vote_early_pool_before_at hrun hnc hsvc hawake hf hcatch hnr
+    hmargin hy hc ht hjb hx hv hes hit
+  have hval := (SA.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
+  refine ⟨e.msg, hm, hval, heP,
+    SA.resolutionTime_lt_of hPhi.1 hPt heP.symm (by omega) hvs (heP ▸ hbs), ?_⟩
+  intro v' hm' hv'x
+  have hm'' : v' ∈ ((tr.projAC.upTo (tr.time j)).state y j).pool u := by
+    rwa [hs]
+  obtain ⟨q, _, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hm'' (hv'x ▸ hx)
+  rw [hv'x] at he'
+  obtain ⟨_, rfl⟩ := (SA.one_vote_per_slot sp) _ _ _ _ _ hr x hx q i e' e he' hv'
+    ((SA.state_pool_slot sp hr hy j u _ hm'').trans hes.symm)
+  rfl
+
 /-- Wakefulness and the receiver's restart cutoff produce the actual adjacent calls. -/
 theorem update_toFG_calls_of_awake_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
