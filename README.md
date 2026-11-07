@@ -4,6 +4,8 @@ A machine-checked proof, in [Lean 4](https://lean-lang.org), that **Goldilocks**
 
 **Status of the growing adversary.** The model and the generic statements cover an adversary whose set of compromised validators grows over the run. The Goldilocks claims are certified for constant faults only, as `goldilocksCorrectConstant` and `meetsObligationsConstant`. The growing-fault Goldilocks statements, `GoldilocksCorrect` and `MeetsObligations` in [`Statements/Growing.lean`](ConsensusLean/Instances/Goldilocks/Statements/Growing.lean), are stated and not yet proved.
 
+The interim certificate covers runs whose faulty set is constant at all times, so it says nothing about any part of a growing run until the dynamic pair is proved.
+
 The proved headline theorem is `goldilocksCorrectConstant`. It says that Goldilocks is a `CorrectProtocolOn` constant-fault runs for every finite set of validators and every choice of its parameters (the lock window `k ≥ 2`, the timeout `δt` and the rest), given two assumptions on its timing: `fgSlots`, which bounds the finality gadget's attestation delay in a healthy network (see the healthy regime below), is at least 2, and the timeout is at least `3·fgSlots`. Adequacy and realizability still cover growing-fault runs. Every timing constant in the guarantees is an explicit formula in these parameters. Its proof composes two parts. The first is generic: a precise definition of a correct consensus protocol, and a theorem that any protocol written in a standard blockchain form and meeting a list of conditions on a class of runs satisfies it on that class. The second shows that Goldilocks meets those conditions on constant-fault runs.
 
 ## What "correct" means
@@ -16,11 +18,11 @@ The proved headline theorem is `goldilocksCorrectConstant`. It says that Goldilo
 
 | Regime | Network | Participation |
 |---|---|---|
-| sleepy | synchronous from the start | at every moment, *ready* honest validators outnumber faulty ones (a validator is ready when it has been awake for a short catch-up period) |
+| sleepy | synchronous from the start | at every time `t`, *ready* validators still honest at `min (t + ahead·ΔAC) horizon` outnumber the validators compromised by then (Goldilocks proof target: `ahead = 5`); under constant faults, the faulty ones (a validator is ready after a short awake catch-up period) |
 | healthy | synchronous after a GST, and `ΔFG` is at most (4·`fgSlots` − 6)·`ΔAC` | fewer than *n*/3 faulty; every honest validator awake after the GST |
 | outage | one bounded period of asynchrony | as sleepy; no honest validator falls asleep in a window around the outage, and the faulty and late-waking validators are fewer than the honest ones awake when that window starts |
 
-**The guarantees.**
+**The guarantees.** For Goldilocks, certified on constant-fault runs only; the growing-fault statements are stated and open.
 
 - **Always, in any network:** honest validators are never convicted by the evidence honest nodes see; the finalized chain never rolls back and is a prefix of the confirmed chain; and if two honest validators ever read conflicting finalized chains, the evidence in their views convicts at least *n*/3 validators (*accountable safety*).
 - **Sleepy regime:** the confirmed chain is *safe* (ready honest readers agree; the chains they read are prefixes of one another) and *live* (every transaction submitted to an awake honest validator appears in every ready reader's confirmed chain within a bounded latency).
@@ -61,7 +63,7 @@ The definition also rules out vacuous protocols: a protocol that never sends any
 The certified result is seven Lean statements, listed in [`Challenge.lean`](Challenge.lean). While the Goldilocks proofs migrate to growing faults, the headline is `goldilocksCorrectConstant`: Goldilocks is correct on runs whose faults do not grow. The others support it:
 
 - `MeetsObligationsConstant`: Goldilocks meets the obligations on those runs;
-- `ObligationsSufficient`: every chain shape that meets them is correct, under growing faults;
+- `ObligationsSufficient`: every chain shape that meets the growing-fault obligations (`ShapeObligations`, not yet shown for Goldilocks) is correct under growing faults;
 - `ObligationsSufficientOn`: the same on a class of runs, in particular on constant faults;
 - `RegimesRealizable`: the regimes can actually occur, so the guarantees are not vacuous;
 - `LogFaithful` and `HeldIffServed`: the execution model is faithful (what a node holds in the model is exactly what the network delivered to it).
@@ -83,6 +85,8 @@ RUN_DIR="$(mktemp -d)" scripts/check.sh --fast   # the trust checks; --full adds
 CI runs the fast checks on every pull request and push to `main`, and the full checks nightly ([`docs/checks.md`](docs/checks.md)).
 
 ## Scope
+
+The generic definition covers growing faults; Goldilocks is certified for constant faults only while its dynamic endpoint and headline remain open.
 
 Not modelled: a corruption delay or forward-secure keys, recovery from compromise, a probabilistic or computational model of adaptive corruption, validators with different weights, probabilistic protocols, proof of work, readers that are not validators, responsiveness, and transaction validity, fees or capacity. Each run has at most one GST and one outage. The full list, with the reasons, is in [`docs/definition.md`](docs/definition.md#scope).
 
