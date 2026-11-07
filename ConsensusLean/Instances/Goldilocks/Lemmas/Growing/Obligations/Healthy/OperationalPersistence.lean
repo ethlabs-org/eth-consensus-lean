@@ -1,9 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -27,23 +27,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- A report's block is held in the reporter's tree, for a reporter honest at the report. -/
-private theorem toFG_mem_tree_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {k : Nat}
-    (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC y k ℓ C) :
-    C ∈ (tr.state y k).fg.tree := by
-  have hd := hrun.time_nonneg k
-  have hle : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hrun.time_mono hq.le
-  have hto' : SA.ToFGAt (tr.upTo (tr.time k)).projAC y k ℓ C := by
-    obtain ⟨hc, hcall, hout⟩ := hto
-    rw [RunTrace.upTo_projAC]
-    refine ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hc, hcall, ?_⟩
-    rw [Trace.upTo_state tr.projAC y hle]
-    exact hout
-  have h := Healing.toFG_mem_tree (hrun.upTo hd) hy hto'
-  rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
 /-- **A post-drain operational proposal is below every bounded honest proposal parent at least
 two slots later**, under growing faults. -/
@@ -129,7 +112,7 @@ theorem UpTo.operational_proposal_below_later_parent_at
       exact ⟨w, r, ellr, C, hrun.antitone ht hw, hrep, ht, hPC⟩
     · obtain ⟨z, r, ellr, C, hz, hrep, ht, hPC, _⟩ := hsome
       exact ⟨z, r, ellr, C, hz, hrep, ht, hPC⟩
-  have hCt : C ∈ (tr.state z r).fg.tree := toFG_mem_tree_at hrun hz hrep
+  have hCt : C ∈ (tr.state z r).fg.tree := Healing.Growing.toFG_mem_tree_at hrun hz hrep
   have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg r) (fun _ hq => hrun.time_mono hq.le) hz
     hCt (hSP.trans hPC)
   obtain ⟨io, hior, jo, O, D, CV, hO, _, _, hCO, _⟩ :=
