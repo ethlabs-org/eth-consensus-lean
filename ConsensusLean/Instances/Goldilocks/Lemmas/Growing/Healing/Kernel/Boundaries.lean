@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.D
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
 
 public section
 
@@ -51,7 +52,7 @@ theorem drainOutputs_of_service_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
     DrainOutputs tr proposer H g G Ld b := by
-  sorry
+  exact KernelProof.drainOutputs_of_service_at hrun hnc hsvc hawake hf hcatch hnr hLd
 
 /-- Step 3: an honestly signed row remains owed after its signer is compromised. -/
 theorem rows_delivered_service_at {g ΔF b v : Time}
