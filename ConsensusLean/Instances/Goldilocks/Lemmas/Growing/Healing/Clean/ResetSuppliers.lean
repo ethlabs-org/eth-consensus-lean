@@ -5,7 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growin
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.ResetSuppliersPending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
@@ -49,8 +50,9 @@ cut.
   comparisons, the fault bound at the voter's cut and the earlier votes (the static argument on
   the prefix through the vote).
 
-The results of other layers that are not yet on this line are stood in, under their owners'
-names and statements, in `Clean/ResetSuppliersPending`. The per-cut node facts
+The node-layer and seed-layer facts are the proved `carryAt_of_delivered`, `result_writer_at`
+(`Growing/Sleepy/Node/Transport`) and `fault_bound_late_before_at` (`Growing/Healing/FaultBound`).
+The per-cut node facts
 (`projAC_state_at`, `run_F_mono_at`, `acBlock_prev_at`, `accept_next_at`) are the static ones on
 the prefix through the cut. -/
 
