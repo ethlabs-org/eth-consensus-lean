@@ -126,6 +126,8 @@ theorem rho_key : (rho S).key = Equiv.refl _ := Model.Run.withEvents_key _ _
 
 theorem rho_sel : (rho S).sel = sel S := Model.Run.withEvents_sel _ _
 
+theorem rho_hash : (rho S).hash = hash := by rfl
+
 theorem rho_point : (rho S).point = ⟨env, faulty, faulty_mono, 41, fun _ _ => []⟩ :=
   Model.Run.withEvents_point _ _
 
@@ -177,7 +179,7 @@ theorem rho_psync : (rho S).log.PSync (rho S).point 0 := by
 
 theorem rho_not_hashCollision : ¬ (rho S).HashCollision := by
   apply Model.Run.not_hashCollision_of_injective
-  rw [Model.Run.injectiveHash_iff, show (rho S).hash = hash from rfl]
+  rw [Model.Run.injectiveHash_iff, rho_hash]
   exact hash_injective
 
 /-! ### The contract at a proposer hold -/
