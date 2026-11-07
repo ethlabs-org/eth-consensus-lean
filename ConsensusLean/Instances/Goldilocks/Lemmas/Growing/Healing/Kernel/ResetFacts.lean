@@ -1,14 +1,15 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 
 public section
 
 /-! # Reset-source boundary for downstream kernel consumers
 
-The reset lower bound uses health and counted fast-lock voters, not Catch service.
-The seed is extracted from the reset signing itself. The finite result-prefix boundary
-reads every writer, cast and vote at its own cut.
+The finite reset lower bound and seed are supplied by ResetSource and Seed.
+The remaining induction boundaries read every writer, cast and vote at its own cut.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -18,28 +19,6 @@ open SA (SAParams ReplayOrder Payload Vote)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
-
-/-- Health supplies a snapshot-honest counted voter behind every reset signing. -/
-theorem cutZ_lt_reset_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hh : tr.HealthyRunAt H ΔF g)
-    (hR : IsReset tr H g a) :
-    cutZ sp.toParams g < a := by
-  sorry
-
-/-- Step 6 source supplier: an honestly signed reset has an earlier bounded high-origin seed. -/
-theorem ResetPremisesUpTo.reset_seed_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
-    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
-  sorry
-
-/-- Step 6 timing wrapper: the seed precedes every slot after the unchanged drain deadline. -/
-theorem ResetPremisesUpTo.reset_seed_before_slot_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {u : Nat}
-    (hR : drainTime sp a ≤ sp.ts u) :
-    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧
-      tr.time r < sp.ts u := by
-  sorry
 
 /-- Step 6 finite result induction, consumed by the latest-votes wrapper.
 The explicit domain and stored-lock inputs are unchanged from the static boundary. -/
