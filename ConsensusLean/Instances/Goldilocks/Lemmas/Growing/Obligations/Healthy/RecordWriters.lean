@@ -1,5 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordWritersPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SeedCall
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SourceOrigin
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.OptimisticResult
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RepairDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
