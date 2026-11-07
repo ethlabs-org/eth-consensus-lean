@@ -11,8 +11,6 @@ Statements the healthy confirmed supply (`ConfirmedSupply`) consumes whose home 
 this branch yet, under their agreed names:
 
 * `Healing.Growing.operational_update_selection_at`, home the growing kernel's selection module;
-* `Healing.Growing.ResetPremisesUpTo.held_target_ancestor_candidate_at_state_at`, home the
-  growing retention (the state-level root lemmas);
 * `healthy_preparation_initialize_at`, `healthy_repair_catch_at`, home
   `Lemmas/Growing/Obligations/Healthy/Preparation`;
 * `healthy_cut_tips_ancestor_at`, home `Lemmas/Growing/Obligations/Healthy/CutTips`.
@@ -45,21 +43,6 @@ theorem operational_update_selection_at {b : Time}
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  sorry
-
-/-- A target held at a state of a reader honest at `t ≤ b`, every earlier cut at a time `≤ t`,
-above a bounded high seed and compatible with every earlier high origin, is an ancestor
-candidate of the reader's frame (the growing form of `held_target_ancestor_candidate_at_state`).
--/
-theorem ResetPremisesUpTo.held_target_ancestor_candidate_at_state_at {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
-    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
-    (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B) :
-    (Node.frame (tr.state y i)).AncestorCandidate P := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing
