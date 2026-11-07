@@ -1,7 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -49,18 +48,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- The first cut after a time is a boundary of every node of the canonical growing trace: a call
-there is honest at its time (event-local honesty), and the static boundary applies on the prefix
-through it. -/
-private theorem cutAfter_boundary_at (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
-    {j : Nat} {t : Time} (hj : Regimes.CutAfter (simTraceAt S rho hn) j t) :
-    Regimes.Boundary (simTraceAt S rho hn) y j := by
-  rintro ⟨c, hc⟩
-  have hy := simTraceAt_call_honest S rho hn hv hc
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  exact Regimes.cutAfter_boundary (hrun.upTo (hrun.time_nonneg j)) hy hj
-    ⟨c, (Trace.upTo_callAt_of_le _ le_rfl).2 hc⟩
 
 /-- **Finite inclusion under growing faults.** Through `b ≥ 0`, under the finite service and the
 two count shapes, a proposal released at `τ` by a proposer ready at `τ` and honest through its
