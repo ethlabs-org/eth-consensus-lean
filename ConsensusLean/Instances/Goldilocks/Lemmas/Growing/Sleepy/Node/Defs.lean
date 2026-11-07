@@ -88,20 +88,14 @@ def VotesBelowUpTo (s : Nat) (b : Time) : Prop :=
 def VotersAt (s : Nat) (d : Time) : Set (Fin sp.n) :=
   {x | x ∈ H d ∧ ∃ j e, HVoteAt tr H x j e ∧ e.msg.slot = s}
 
-/-- **The count shapes through `b`**: `2 f_d < n` at every `d ∈ [0, b]`, the slot count
-`f_d < h_{t_s + Δ}` at every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, and the late count
-`f_d < h_{t_s + 2Δ}` at every `d ∈ [t_s + 2Δ, min b (t_s + 7Δ)]`. -/
+/-- **The two count shapes through `b`**: `2 f_d < n` at every `d ∈ [0, b]`, and the slot count
+`f_d < h_{t_s + Δ}` at every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`. -/
 structure SleepyBounds (b : Time) : Prop where
   two : ∀ d, 0 ≤ d → d ≤ b → 2 * (H d)ᶜ.ncard < sp.n
   slot : ∀ (s : Nat) (d : Time), sp.ts s + sp.Δ ≤ d → d ≤ b → d ≤ sp.ts s + 6 * sp.Δ →
     tr.FaultBoundAt H (sp.ts s + sp.Δ) d
-  late : ∀ (s : Nat) (d : Time), sp.ts s + 2 * sp.Δ ≤ d → d ≤ b → d ≤ sp.ts s + 7 * sp.Δ →
-    tr.FaultBoundAt H (sp.ts s + 2 * sp.Δ) d
 
-/-- **The Sleepy record invariant up to `b`** (S1–S3). A node's state before cut `i` is read at a
-time `t ∈ [0, b]` at or after every earlier cut, with the node honest at `t` (the convention of
-`HonestBlocksAt`): the state depends only on the earlier cuts. FG sources are the node's own event
-at cut `i`, so `sources` reads honesty at the cut. -/
+/-- **The Sleepy record invariant up to `b`** (S1–S3), every node at its own cut. -/
 structure SleepyInvariantUpTo (b : Time) : Prop where
   /-- S1: any two origins within `b` are compatible. -/
   origins_compatible : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
@@ -110,26 +104,25 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
   extends it. -/
   vote_extends : ∀ C s, OriginWithin tr H C s b → ∀ y i e, HVoteAt tr H y i e →
     tr.time i ≤ b → s < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg C
-  /-- S1: the state of a node before a cut whose earlier cuts are at times `≤ t ≤ b`, with the node
-  honest at `t`: the record names a block of its tree that is genesis or an origin within `b`. -/
-  record : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
+  /-- S1: at a cut within `b` of a node honest then, the record names a block of its tree that is
+  genesis or an origin within `b`. -/
+  record : ∀ y i, y ∈ H (tr.time i) → (∀ k < i, tr.time k ≤ b) →
     ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
       (C.root = sp.genesisRoot ∨ ∃ s, OriginWithin tr H C s b)
-  /-- S1: `Σ.F` and `Σ.J` are on the chain of the origins within `b` (state read at `t`). -/
-  caches : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
+  /-- S1: `Σ.F` and `Σ.J` are on the chain of the origins within `b`. -/
+  caches : ∀ y i, y ∈ H (tr.time i) → (∀ k < i, tr.time k ≤ b) →
     OnOriginChainWithin tr H (tr.state y i).fg.F b ∧
       OnOriginChainWithin tr H (tr.state y i).fg.J b
   /-- S1: every stored lock names a block of the node's tree on the chain of the origins within
-  `b` (state read at `t`). -/
-  locks : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
-    ∀ l ∈ (tr.state y i).ac.locks,
+  `b`. -/
+  locks : ∀ y i, y ∈ H (tr.time i) → (∀ k < i, tr.time k ≤ b) → ∀ l ∈ (tr.state y i).ac.locks,
     ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧ OnOriginChainWithin tr H L b
   /-- S1: every FG source is on the chain of the origins within `b`. -/
   sources : ∀ y i, y ∈ H (tr.time i) → (∀ k < i, tr.time k ≤ b) → ∀ ℓ C,
     SA.ToFGAt tr.projAC y i ℓ C → OnOriginChainWithin tr H C b
-  /-- S3 (full reads): an origin within `b` that the node holds (state read at `t`) is at or below
-  its `fc_root`, or in its full viable tree. -/
-  viable : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t → ∀ C s,
+  /-- S3 (full reads): an origin within `b` that the node holds is at or below its `fc_root`, or
+  in its full viable tree. -/
+  viable : ∀ y i, y ∈ H (tr.time i) → (∀ k < i, tr.time k ≤ b) → ∀ C s,
     OriginWithin tr H C s b → C ∈ (Node.frame (tr.state y i)).tree →
     (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
       C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
@@ -227,8 +220,7 @@ theorem OriginWithin.of_optimistic {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.
 /-- The bounds through `b` give the bounds through every `b' ≤ b`. -/
 theorem SleepyBounds.mono {b b' : Time} (h : SleepyBounds tr H b) (hb : b' ≤ b) :
     SleepyBounds tr H b' :=
-  ⟨fun d h0 hd => h.two d h0 (hd.trans hb), fun s d h1 hd h6 => h.slot s d h1 (hd.trans hb) h6,
-    fun s d h1 hd h7 => h.late s d h1 (hd.trans hb) h7⟩
+  ⟨fun d h0 hd => h.two d h0 (hd.trans hb), fun s d h1 hd h6 => h.slot s d h1 (hd.trans hb) h6⟩
 
 /-- The service through `b` gives the service through every `b' ≤ b`. -/
 theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H ΔF b)
@@ -238,53 +230,6 @@ theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H
     fun x i B hx hB h0 y j ℓ hy hc hd hdj ha => h.acRelay x i B hx hB h0 y j ℓ hy hc
       (hd.trans hb) hdj ha,
     fun x i B hx hB h0 y j hy hc hd hdj ha => h.relay x i B hx hB h0 y j hy hc (hd.trans hb) hdj ha⟩
-
-/-! ### The per-node fields at a cut -/
-
-/-- A cut `i` of a node honest then, with every earlier cut within `b ≥ 0`, is read at
-`t = tr.time (i − 1)` (or `0` at `i = 0`). -/
-theorem exists_read_time {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {proposer : Nat → Fin sp.n} (hrun : Growing.GoldilocksRun proposer dg H tr) {b : Time}
-    (hb : 0 ≤ b) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b) :
-    ∃ t, 0 ≤ t ∧ (∀ k < i, tr.time k ≤ t) ∧ t ≤ b ∧ y ∈ H t := by
-  rcases i with _ | k
-  · exact ⟨0, le_rfl, fun _ h => absurd h (Nat.not_lt_zero _), hb,
-      hrun.antitone (hrun.time_nonneg 0) hy⟩
-  · exact ⟨tr.time k, hrun.time_nonneg k, fun _ h => hrun.time_mono (Nat.lt_succ_iff.mp h),
-      hi k (Nat.lt_succ_self k), hrun.antitone (hrun.time_mono (Nat.le_succ k)) hy⟩
-
-section AtCut
-
-variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {proposer : Nat → Fin sp.n}
-  {b : Time} (hinv : SleepyInvariantUpTo tr H b) (hrun : Growing.GoldilocksRun proposer dg H tr)
-  (hb : 0 ≤ b) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b)
-include hinv hrun hb hy hi
-
-theorem SleepyInvariantUpTo.record_at_cut :
-    ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧
-      (C.root = sp.genesisRoot ∨ ∃ s, OriginWithin tr H C s b) :=
-  have ⟨t, h0, hit, htb, hyt⟩ := exists_read_time hrun hb hy hi
-  hinv.record y i t h0 hit htb hyt
-
-theorem SleepyInvariantUpTo.caches_at_cut :
-    OnOriginChainWithin tr H (tr.state y i).fg.F b ∧
-      OnOriginChainWithin tr H (tr.state y i).fg.J b :=
-  have ⟨t, h0, hit, htb, hyt⟩ := exists_read_time hrun hb hy hi
-  hinv.caches y i t h0 hit htb hyt
-
-theorem SleepyInvariantUpTo.locks_at_cut : ∀ l ∈ (tr.state y i).ac.locks,
-    ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧ OnOriginChainWithin tr H L b :=
-  have ⟨t, h0, hit, htb, hyt⟩ := exists_read_time hrun hb hy hi
-  hinv.locks y i t h0 hit htb hyt
-
-theorem SleepyInvariantUpTo.viable_at_cut : ∀ C s, OriginWithin tr H C s b →
-    C ∈ (Node.frame (tr.state y i)).tree →
-    (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
-      C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
-  have ⟨t, h0, hit, htb, hyt⟩ := exists_read_time hrun hb hy hi
-  hinv.viable y i t h0 hit htb hyt
-
-end AtCut
 
 end Consensus.Goldilocks.Compose.Growing
 
