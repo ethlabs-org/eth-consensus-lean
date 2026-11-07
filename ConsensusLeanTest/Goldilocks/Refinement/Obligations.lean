@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Main
+public import Solution
 @[expose] public section
 
 /-! # Witnesses for the Goldilocks acceptance coefficients
@@ -315,8 +316,7 @@ theorem goldilocksCorrect_realizable_small :
     Realizable (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5))
       (shapeProgress (goldilocks setupSmall) (Fin 5))
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall)) :=
-  (Consensus.Goldilocks.Obligations.goldilocks_correct_constant setupSmall assumptionsSmall
-    (Fin 5)).realizable
+  (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).realizable
     (by decide)
 
 /-! ## The profile label
