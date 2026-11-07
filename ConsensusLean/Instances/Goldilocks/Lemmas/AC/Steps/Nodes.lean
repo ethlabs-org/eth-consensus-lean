@@ -21,11 +21,11 @@ namespace Consensus.Goldilocks.SA
 
 variable (sp : SAParams)
 
-/-- The A1.3 transfer after delivery: synchronization is used to obtain CarryAt,
-not by the local transfer itself. -/
-theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+/-- `next_transfer_of_carry` with the unlock given. -/
+theorem next_transfer_of_carryU
+    {uL : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRun proposer tr H U) {m : Nat} {y : Fin sp.n} {i : Nat}
+    (hrun : ACRunU uL proposer tr H U) {m : Nat} {y : Fin sp.n} {i : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
@@ -36,13 +36,13 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B) : VoteExtends U e.msg B := by
   have hr := hrun.localRun
   have hU := hr.coherent
-  obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
+  obtain ⟨-, -, -, hhead⟩ := castAt_specU hr hy hc
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
       exact h.1
   have hσ : ((m + 1 : Nat) : Int) - 1 = (m : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hr hy hc
+  have hdomA := voteDomain_ancU hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -53,7 +53,7 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
   have hsupp : SX ⊆ supporters ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) m B := by
     rintro w ⟨hw, j, e', hv, hvs⟩
     obtain ⟨ℓw, hcw⟩ := id hv
-    have hvw : e'.msg.val = w := (castAt_spec hr hw hcw).1
+    have hvw : e'.msg.val = w := (castAt_specU hr hw hcw).1
     have hmem : e'.msg ∈ {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} :=
       ⟨w, hw, j, e', hv, rfl, hvs⟩
     -- `y` holds `e'.msg` itself (an honest validator has one slot-`m` vote)
@@ -69,18 +69,18 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
             simpa [hus] using hu.1
           · simpa [freeze] using hu.2
         obtain ⟨j₁, -, e₁, hv₁', he₁⟩ :=
-          honest_merged_vote hrun hy hc (hm v₁ hs₁ hh₁) (hv₁.trans hvw ▸ hw)
-        have := (one_vote_per_slot sp) FGP ro H U tr hr w hw j₁ j e₁ e'
+          honest_merged_voteU hrun hy hc (hm v₁ hs₁ hh₁) (hv₁.trans hvw ▸ hw)
+        have := (one_vote_per_slotU sp) FGP ro H U tr hr w hw j₁ j e₁ e'
           (hv₁.trans hvw ▸ hv₁') hv (by rw [he₁, hs₁, hvs])
         exact h1 (he₁ ▸ this.2 ▸ rfl)
     obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads _ hmem
-    obtain ⟨Hd, hHd, hHdr, hHds⟩ := honest_head hrun hw hv
+    obtain ⟨Hd, hHd, hHdr, hHds⟩ := honest_headU hrun hw hv
     obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hall w hw j e' hv hvs
     have h1 : Hd = Hv := hU.1 hHd hHv (hHdr.trans hHvr.symm)
     have h2 : Hd' = Hv := hU.1 hHd' hHv (hHd'r.trans hHvr.symm)
-    have := carried_supporter hrun hy hc hs hBt hvs hheld
+    have := carried_supporterU hrun hy hc hs hBt hvs hheld
       ⟨Hv, hHv, hHvr, h1 ▸ hvs ▸ hHds, h2 ▸ hBHd', hacc Hv Relation.ReflTransGen.refl⟩
-      (honest_not_equivocator hrun hy hc (hvw ▸ hw))
+      (honest_not_equivocatorU hrun hy hc (hvw ▸ hw))
     exact hvw ▸ this
   -- counting: the voters at `y` are honest slot-`m` voters or faulty, and `f < |SX|`
   have hHle : SX.ncard ≤ H.ncard := Set.ncard_le_ncard fun x hx => hx.1
@@ -92,8 +92,8 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
   have hvoters : voters (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ⊆ SX ∪ Hᶜ := by
     rintro w ⟨v, hv, rfl⟩
     by_cases hw : v.val ∈ H
-    · obtain ⟨j, -, e', hv', he'⟩ := honest_merged_vote hrun hy hc hv hw
-      exact Or.inl ⟨hw, j, e', hv', by rw [he']; exact merged_vote_slot hr hy hc v hv⟩
+    · obtain ⟨j, -, e', hv', he'⟩ := honest_merged_voteU hrun hy hc hv hw
+      exact Or.inl ⟨hw, j, e', hv', by rw [he']; exact merged_vote_slotU hr hy hc v hv⟩
     · exact Or.inr hw
   have h3 : (SX ∪ Hᶜ).ncard < 2 * SX.ncard := by
     have := Set.ncard_union_le SX Hᶜ
@@ -102,7 +102,7 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (m + 1)) (m : Int) (fun B hB => voteDomain_subset_tree
         hB) hdomA hviab.voteDomain
-    (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
+    (locks_compatibleU hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf2 hearlier fun Φ' A D _ hΦ'U _ h34 hpool _ =>
@@ -110,7 +110,7 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
           obtain ⟨hvs, j, -, e', hvote, rfl⟩ := hpool v hv hvH
           exact hall _ hvH j e' hvote hvs)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hr hy hc (m + 1)) (fun B hB =>
+      isBest_of_majority hΦ (merged_support_subsetU hr hy hc (m + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
         hsupp hvoters h3 hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
@@ -120,17 +120,48 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
+/-- The A1.3 transfer after delivery: synchronization is used to obtain CarryAt,
+not by the local transfer itself. -/
+theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {m : Nat} {y : Fin sp.n} {i : Nat}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
+    (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
+    (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard)
+    (hcarry : CarryAt tr U y i e m
+      {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m})
+    (hfault : FaultBound tr H (tr.time i)) (hviab : ViableAtVote ℓ e (m + 1) B)
+    (hearlier : EarlierVotesExtend tr H U i (m + 1) B) : VoteExtends U e.msg B :=
+  next_transfer_of_carryU (FGP := FGP) (ro := ro) (H := H) (U := U) (tr := tr)
+      (proposer := proposer) (hrun := hrun.toU) (m := m) (y := y) (i := i) (B := B) (ℓ := ℓ)
+          (e := e) (hy := hy) (hc := hc) (hs := hs) (hall := hall) (hhalf := hhalf)
+              (hcarry := hcarry) (hfault := hfault) (hviab := hviab) (hearlier := hearlier)
+
+/-- **A1.3**, over a run with the unlock given. -/
+theorem next_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (m : Nat) (y : Fin sp.n) (i : Nat)
+    (B : Blk sp.n FGP) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP)
+    (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
+    (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
+    (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard)
+    (hcarry : CarryAt tr U y i e m
+      {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m})
+    (hfault : FaultBound tr H (tr.time i)) (hviab : ViableAtVote ℓ e (m + 1) B)
+    (hearlier : EarlierVotesExtend tr H U i (m + 1) B) : VoteExtends U e.msg B :=
+  next_transfer_of_carryU sp hrun hy hc hs hall hhalf hcarry hfault hviab hearlier
+
 /-- **A1.3.** -/
 theorem next_transfer : NextTransfer sp :=
   fun _ _ _ _ _ _ hrun _ _ _ _ _ _ hy hc hs hall hhalf hcarry hfault hviab hearlier =>
     next_transfer_of_carry sp hrun hy hc hs hall hhalf hcarry hfault hviab hearlier
 
-/-- **A1.4 (a), for the stored block.** A1.4 (a) for a block `B ⪯ D` of an optimistic lock on
-`D` (the block the lock stores after moving back): every hypothesis and the conclusion are about
-`B`, with the counted votes `CV` of `D`. -/
-theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+/-- `optimistic_transfer_stored` with the unlock given. -/
+theorem optimistic_transfer_storedU
+    {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRun proposer tr H U) {s : Nat}
+    (hrun : ACRunU u proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hf : 2 * Hᶜ.ncard < sp.n)
@@ -140,7 +171,7 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨ℓx, A, hpt, hslx, hsel, rfl⟩ := hopt
-  obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
+  obtain ⟨-, -, -, hhead⟩ := castAt_specU hr hy hc
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
       exact h.1
@@ -149,7 +180,7 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hr hy hc
+  have hdomA := voteDomain_ancU hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -168,11 +199,11 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
   set V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-    exact carried_cover hrun hy hc hs hBt hcarry ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slot hr hx hpt hv) ⟨R, hΦxU hR, hRr,
-        (frame_slot_le sp hr hx hpt.1 R hR).trans hslx.le, hBD.trans (Anc.mono hΦxU hDR)⟩
+    exact carried_coverU hrun hy hc hs hBt hcarry ⟨hv, R, hR, hRr, hDR⟩
+      (optimisticPoint_pool_slotU hr hx hpt hv) ⟨R, hΦxU hR, hRr,
+        (frame_slot_leU sp hr hx hpt.1 R hR).trans hslx.le, hBD.trans (Anc.mono hΦxU hDR)⟩
   have hE : (equivocators V.votes).ncard ≤ Hᶜ.ncard :=
-    Set.ncard_le_ncard fun w hw hwH => honest_not_equivocator hrun hy hc hwH hw
+    Set.ncard_le_ncard fun w hw hwH => honest_not_equivocatorU hrun hy hc hwH hw
   have hcompl : SX.ncard + SXᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have hout : (voters V.votes \ SX).ncard ≤ SXᶜ.ncard :=
@@ -192,22 +223,22 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
     obtain ⟨w, ⟨⟨v₁, hv₁, rfl, R₁, hR₁, hR₁r, hBR₁⟩, v₂, hv₂, hv₂w, R₂, hR₂, hR₂r, hDR₂⟩, hwH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard hint
     have hwH : v₁.val ∈ H := not_not.1 hwH
-    obtain ⟨-, j₁, -, e₁, hvote₁, rfl⟩ := optimisticPoint_pool_vote hrun hx hpt hv₁ hwH
+    obtain ⟨-, j₁, -, e₁, hvote₁, rfl⟩ := optimisticPoint_pool_voteU hrun hx hpt hv₁ hwH
     obtain ⟨hs₂, j₂, -, e₂, hvote₂, rfl⟩ := hpool v₂ hv₂ (hv₂w ▸ hwH)
-    obtain ⟨-, rfl⟩ := (one_vote_per_slot sp) FGP ro H U tr hr _ hwH j₁ j₂ e₁ e₂ hvote₁
-      (hv₂w ▸ hvote₂) (by rw [optimisticPoint_pool_slot hr hx hpt hv₁, hs₂])
+    obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hwH j₁ j₂ e₁ e₂ hvote₁
+      (hv₂w ▸ hvote₂) (by rw [optimisticPoint_pool_slotU hr hx hpt hv₁, hs₂])
     obtain rfl : R₂ = R₁ := hU.1 (hΦ'U hR₂) (hΦxU hR₁) (hR₂r.trans hR₁r.symm)
     exact anc_total hU (Anc.mono hΦ'U hDR₂) (hBD.trans (Anc.mono hΦxU hBR₁))
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by omega
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i) V (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
-    (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
+    (locks_compatibleU hrun hy hc hs hBt (S := SX) (fun w hw => by
         rcases hcover hw with ⟨-, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩
         · exact Or.inl h)
       (by omega) hf hearlier hm)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_cover hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB =>
+      isBest_of_cover hΦ (merged_support_subsetU hr hy hc (s + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
         hcover h3 hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
@@ -216,17 +247,34 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
+/-- **A1.4 (a), for the stored block.** A1.4 (a) for a block `B ⪯ D` of an optimistic lock on
+`D` (the block the lock stores after moving back): every hypothesis and the conclusion are about
+`B`, with the counted votes `CV` of `D`. -/
+theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {s : Nat}
+    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hf : 2 * Hᶜ.ncard < sp.n)
+    (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hcarry : CarryAt tr U y i e s CV) (hviab : ViableAtVote ℓ e (s + 1) B)
+    (hearlier : EarlierVotesExtend tr H U i (s + 1) B) : VoteExtends U e.msg B :=
+  optimistic_transfer_storedU (FGP := FGP) (ro := ro) (H := H) (U := U) (tr := tr)
+      (proposer := proposer) (hrun := hrun.toU) (s := s) (x := x) (y := y) (i₀ := i₀) (i := i)
+          (B := B) (D := D) (CV := CV) (ℓ := ℓ) (e := e) (hx := hx) (hopt := hopt) (hBD := hBD)
+              (hf := hf) (hy := hy) (hc := hc) (hs := hs) (hcarry := hcarry) (hviab := hviab)
+                  (hearlier := hearlier)
+
 /-- **A1.4 (a).** -/
 theorem optimistic_transfer : OptimisticTransfer sp :=
   fun _ _ _ _ _ _ hrun _ _ _ _ _ _ _ _ _ hx hopt hf hy hc hs hcarry hviab hearlier =>
     optimistic_transfer_stored sp hrun hx hopt .refl hf hy hc hs hcarry hviab hearlier
 
-/-- **A1.2, for the stored block.** A1.2 for a block `B ⪯ D` of a fast lock on `D` (the block
-the lock stores after moving back): every hypothesis and the conclusion are about `B`, with the
-counted votes `CV` of `D`. -/
-theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+/-- `first_transfer_stored_of_pool` with the unlock given. -/
+theorem first_transfer_stored_of_poolU
+    {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRun proposer tr H U) {s : Nat}
+    (hrun : ACRunU u proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
@@ -253,9 +301,9 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
     omega
   rcases hfl with ⟨ℓX, C, hupd, hconf, hfs, rfl⟩ | hopt
   swap
-  · exact optimistic_transfer_stored sp hrun hx hopt hBD hf hy hc hs hcarry hviab hearlier
+  · exact optimistic_transfer_storedU sp hrun hx hopt hBD hf hy hc hs hcarry hviab hearlier
   -- the fast test of `x`'s update: `D` on the result `C`'s path, with half of the committee
-  obtain ⟨-, -, -, hhead⟩ := castAt_spec hr hy hc
+  obtain ⟨-, -, -, hhead⟩ := castAt_specU hr hy hc
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
       exact h.1
@@ -264,7 +312,7 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
       exact h.1.2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hr hy hc
+  have hdomA := voteDomain_ancU hr hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -274,7 +322,7 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
   set P := tr.state x i₀
   set SX := {w | ∃ v ∈ fastCounted sp P ℓX.frame s D, v.val = w}
   have hd := hmerged ℓX hupd
-  have hsupp := counted_supporters hrun hx hy hupd.1 hc hs hBD hcarry hviab hd
+  have hsupp := counted_supportersU hrun hx hy hupd.1 hc hs hBD hcarry hviab hd
   -- half of the committee are counted for `B`, and a strict majority of `x`'s participants
   have hhalf : sp.n ≤ 2 * SX.ncard := by
     refine hfast.trans (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
@@ -311,20 +359,65 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
         hB) hdomA hviab.voteDomain
-    (locks_compatible hrun hy hc hs hBt (S := SX) (fun w hw => by
+    (locks_compatibleU hrun hy hc hs hBt (S := SX) (fun w hw => by
         obtain ⟨-, x, hx, hxv, hxs, hxa⟩ := hsupp hw
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf hearlier hm)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hr hy hc (s + 1)) (fun B hB =>
+      isBest_of_majority hΦ (merged_support_subsetU hr hy hc (s + 1)) (fun B hB =>
           voteDomain_subset_tree hB.1)
-        hsupp (merged_voters_subset hr hy hc hd) hmaj hCx hp hCxC
+        hsupp (merged_voters_subsetU hr hy hc hd) hmaj hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
+
+/-- **A1.2, for the stored block.** A1.2 for a block `B ⪯ D` of a fast lock on `D` (the block
+the lock stores after moving back): every hypothesis and the conclusion are about `B`, with the
+counted votes `CV` of `D`. -/
+theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRun proposer tr H U) {s : Nat}
+    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
+    (hs : e.msg.slot = s + 1)
+    (hmerged : ∀ ℓX, UpdateAt tr x i₀ s ℓX →
+      ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+        v ∈ (tr.state x i₀).pool s ∨
+          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
+    (hpool : ∀ ℓX, UpdateAt tr x i₀ s ℓX → ∀ k ≤ i,
+      ∀ v ∈ (tr.state y (k + 1)).pool s,
+        v ∈ (tr.state x i₀).pool s ∨
+          v.val ∈ equivocators {w | w ∈ (tr.state x i₀).pool s})
+    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
+    (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
+    VoteExtends U e.msg B :=
+  first_transfer_stored_of_poolU (FGP := FGP) (ro := ro) (H := H) (U := U) (tr := tr)
+      (proposer := proposer) (hrun := hrun.toU) (s := s) (x := x) (y := y) (i₀ := i₀) (i := i)
+          (B := B) (D := D) (CV := CV) (ℓ := ℓ) (e := e) (hx := hx) (hfl := hfl) (hBD := hBD)
+              (hy := hy) (hc := hc) (hs := hs) (hmerged := hmerged) (hpool := hpool)
+                  (hcarry := hcarry) (hfault := hfault) (hviab := hviab) (hearlier := hearlier)
+
+/-- `first_transfer_stored` with the unlock given. -/
+theorem first_transfer_storedU
+    {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    (hrun : ACRunU u proposer tr H U) {s : Nat}
+    {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
+    (hs : e.msg.slot = s + 1)
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
+    (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
+    VoteExtends U e.msg B :=
+  first_transfer_stored_of_poolU sp hrun hx hfl hBD hy hc hs
+    (fun _ hu => writer_mergedU hrun hx hu hy hc hs hsync)
+    (fun _ hu _ hk => writer_poolU hrun hx hu hy hc hs hsync hk)
+    hcarry hfault hviab hearlier
 
 /-- A1.2 with source-window service supplying the writer pool interfaces. -/
 theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
@@ -338,10 +431,11 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
     (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
     (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
     VoteExtends U e.msg B :=
-  first_transfer_stored_of_pool sp hrun hx hfl hBD hy hc hs
-    (fun _ hu => writer_merged hrun hx hu hy hc hs hsync)
-    (fun _ hu _ hk => writer_pool hrun hx hu hy hc hs hsync hk)
-    hcarry hfault hviab hearlier
+  first_transfer_storedU (FGP := FGP) (ro := ro) (H := H) (U := U) (tr := tr)
+      (proposer := proposer) (hrun := hrun.toU) (s := s) (x := x) (y := y) (i₀ := i₀) (i := i)
+          (B := B) (D := D) (CV := CV) (ℓ := ℓ) (e := e) (hx := hx) (hfl := hfl) (hBD := hBD)
+              (hy := hy) (hc := hc) (hs := hs) (hsync := hsync) (hcarry := hcarry)
+                  (hfault := hfault) (hviab := hviab) (hearlier := hearlier)
 
 /-- A1.2 on a finite service prefix. The update can occur after the receiving
 vote; both pool inclusions use the actual writer's observation cutoff. -/
@@ -361,6 +455,19 @@ theorem first_transfer_stored_window_before {FGP : Type} {ro : ReplayOrder sp FG
     (fun _ hu => writer_merged_window_before hrun hsync hx ha hu hi₀ hy hc hs)
     (fun _ hu _ hk => writer_pool_window_before hrun hsync hx ha hu hi₀ hy hc hs hk)
     hcarry hfault hviab hearlier
+
+/-- **A1.2**, over a run with the unlock given. -/
+theorem first_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (s : Nat) (x y : Fin sp.n)
+    (i₀ i : Nat) (B : Blk sp.n FGP) (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro))
+    (e : Em sp FGP) (hx : x ∈ H) (hfl : FastLockAt tr x i₀ s B CV) (hy : y ∈ H)
+    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBound tr H (tr.time i))
+    (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
+    VoteExtends U e.msg B :=
+  first_transfer_storedU sp hrun hx hfl .refl hy hc hs hsync hcarry hfault hviab hearlier
 
 /-- **A1.2.** -/
 theorem first_transfer : FirstTransfer sp :=

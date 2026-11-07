@@ -16,12 +16,20 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
+/-- `readPoint_blockStamp_eq` with the unlock given. -/
+theorem readPoint_blockStamp_eqU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
+    e.readPoint.blockStamp = (tr.post i).blockStamp := by
+  rw [post_of_castAtU hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
+
 /-- The read point of an honest vote has the block stamps of the state its call leaves. -/
 theorem readPoint_blockStamp_eq (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
-    e.readPoint.blockStamp = (tr.post i).blockStamp := by
-  rw [post_of_castAt hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
+    e.readPoint.blockStamp = (tr.post i).blockStamp :=
+  readPoint_blockStamp_eqU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
 
 /-- A block already held in an earlier frame has an early read-point stamp. The
 stamp cases include restart replay; unique acceptance forbids a later overwrite. -/
@@ -44,10 +52,11 @@ theorem readPoint_blockStamp_lt_of_earlier_frame
   · rw [h]
     exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (hrs r hri hrst))
 
-private theorem tryVote_ready (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    {e : Em sp FGP} (he : e ∈ (tryVote sp x A Φ t).2) (ht : t < sp.ts (sp.slot t) + sp.Δ) :
+private theorem tryVote_ready
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    {e : Em sp FGP} (he : e ∈ (tryVoteWith sp x L A Φ t).2) (ht : t < sp.ts (sp.slot t) + sp.Δ) :
     voteReady sp Φ (sp.slot t) := by
-  unfold tryVote at he
+  unfold tryVoteWith at he
   dsimp only at he
   split_ifs at he with h1 h2
   · simp at he
@@ -56,42 +65,51 @@ private theorem tryVote_ready (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n F
     by_contra hn
     exact h2 ⟨ht, Or.inr hn⟩
 
-private theorem step_ready (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
+private theorem step_ready
+    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
     (hΦ : FrameOK Φ) (ht0 : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) {e : Em sp FGP}
-    (he : e ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).2)
+    (he : e ∈ (stepWith sp ro self L A Φ t c).2)
     (ht : t < sp.ts (sp.slot t) + sp.Δ) : voteReady sp Φ (sp.slot t) := by
   cases c with
   | tick =>
-    change e ∈ (acOnTick sp self A Φ t).2 at he
+    change e ∈ (acOnTickWith sp self L A Φ t).2 at he
     have htt : t = sp.ts (sp.slot t) + sp.Δ := by
-      unfold acOnTick at he
+      unfold acOnTickWith at he
       dsimp only at he
       split_ifs at he <;> first | assumption | simp at he
     linarith
   | message m => exact tryVote_ready self _ Φ t he ht
   | block B => exact tryVote_ready self _ Φ t he ht
-  | proposal => simp [ACInterface.step] at he
-  | toFG => simp [ACInterface.step] at he
+  | proposal => simp at he
+  | toFG => simp at he
   | restart =>
     change e ∈ (acRestart sp ro self A Φ t).2 at he
     rw [((restart_state sp) FGP ro self A Φ t hΦ ht0).1] at he
     simp at he
 
-/-- **An early vote is ready**: an honest vote cast before `t_s + Δ` has a block of its slot in
-its frame (`vote_ready`). -/
-theorem cast_ready (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+/-- `cast_ready` with the unlock given. -/
+theorem cast_readyU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
     voteReady sp ℓ.frame e.msg.slot := by
   obtain ⟨hcall, he⟩ := hc
   have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
   rw [hcall.1] at hx
-  obtain ⟨hΦ, -⟩ := frameIn_of_callAt hr hy hcall
-  have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
+  obtain ⟨hΦ, -⟩ := frameIn_of_callAtU hr hy hcall
+  have he' : e ∈ (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by rw [hx]; exact he
-  have hs := (castAt_spec hr hy ⟨hcall, he⟩).2.1
+  have hs := (castAt_specU hr hy ⟨hcall, he⟩).2.1
   rw [hs] at ht ⊢
-  exact step_ready y _ hΦ (hr.time_nonneg i) ℓ.call he' ht
+  exact step_ready (L := u i) y _ hΦ (hr.time_nonneg i) ℓ.call he' ht
+
+/-- **An early vote is ready**: an honest vote cast before `t_s + Δ` has a block of its slot in
+its frame (`vote_ready`). -/
+theorem cast_ready (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
+    voteReady sp ℓ.frame e.msg.slot :=
+  cast_readyU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (ht := ht)
 
 end Consensus.Goldilocks.SA
 

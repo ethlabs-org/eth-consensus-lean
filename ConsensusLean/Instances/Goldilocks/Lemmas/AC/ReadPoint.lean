@@ -18,6 +18,22 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
+/-- `tryVote_readPoint_locks_eq` with the unlock given. -/
+theorem tryVote_readPoint_locks_eqWith
+    {L : Set Lock} {x : Fin sp.n} {A : SAState sp.n}
+    {Φ : Frm sp.n FGP} {t : Time} {e : Em sp FGP} (he : e ∈ (tryVoteWith sp x L A Φ t).2) :
+    e.readPoint.locks = if 0 < sp.slot t then L else A.locks := by
+  unfold tryVoteWith at he
+  dsimp only at he
+  split_ifs at he with h1 h2 h3
+  · simp at he
+  · simp at he
+  all_goals
+    rw [List.mem_singleton] at he
+    subst he
+    split_ifs
+    rfl
+
 /-- The read point of `try_vote`'s emission holds the input's locks, unlocked against the merged
 view for a slot `s > 0`. -/
 theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : SAState sp.n}
@@ -35,6 +51,51 @@ theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : SAState sp.n}
     subst he
     split_ifs
     rfl
+
+/-- `vote_tryVote_input` with the unlock given. -/
+theorem vote_tryVote_inputU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∃ P, e ∈ (tryVoteWith sp y (u i) P ℓ.frame (tr.time i)).2 ∧
+      P = callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
+      callView sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
+        mergedVoteView sp P ℓ.frame (sp.slot (tr.time i)) ∧ (P = tr.state y i ∨
+      ∃ A : SAState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
+        A.locks = (tr.state y i).locks) := by
+  obtain ⟨hc, he⟩ := hc
+  have hΦ := (frameIn_of_callAtU hr hy hc).1
+  have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
+  rw [hc.1] at hx
+  have he' : e ∈ (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i)
+      ℓ.call).2 := by
+    rw [hx]
+    exact he
+  clear hx he
+  cases hcall : ℓ.call with
+  | tick =>
+    rw [hcall] at he'
+    change e ∈ (acOnTickWith sp y (u i) _ ℓ.frame _).2 at he'
+    unfold acOnTickWith at he'
+    dsimp only at he'
+    split_ifs at he' <;> first | exact ⟨_, he', rfl, rfl, Or.inl rfl⟩ | simp at he'
+  | proposal =>
+    rw [hcall] at he'
+    simp at he'
+  | toFG =>
+    rw [hcall] at he'
+    simp at he'
+  | message m =>
+    rw [hcall] at he'
+    exact ⟨_, he', rfl, rfl, Or.inr ⟨_, rfl, admitVote_locks_eq _ _ _⟩⟩
+  | block B =>
+    rw [hcall] at he'
+    exact ⟨_, he', rfl, rfl, Or.inr ⟨_, rfl, blockReceipt_locks _ _ _⟩⟩
+  | restart =>
+    rw [hcall] at he'
+    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
+    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
+    simp at he'
 
 /-- The input of the `try_vote` that emits an honest vote: the state before the call, or the
 optimistic check after the receipt of a message or a block, which keeps the locks. -/
@@ -78,23 +139,22 @@ theorem vote_tryVote_input (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
     rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
-/-- **The read point's locks come from the stored ones.** At an honest vote of a slot `> 0`,
-a lock of the read point of a slot other than the vote's sits (in the frame) below a stored
-lock of the same slot: `try_vote`'s unlocking and the receipt's optimistic check only move
-locks back, and the optimistic check writes locks of the vote's slot. -/
-theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+/-- `readPoint_locks_below_stored` with the unlock given. -/
+theorem readPoint_locks_below_storedU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
     ∀ l' ∈ e.readPoint.locks, l'.slot ≠ sp.slot (tr.time i) →
       ∃ l ∈ (tr.state y i).locks, l'.slot = l.slot ∧ ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧
         ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧ ℓ.frame.Anc B' B := by
-  obtain ⟨P, he, hP⟩ := vote_tryVote_input hr hy hc
-  have hΦ := (frameIn_of_callAt hr hy hc.1).1
+  obtain ⟨P, he, hPi, hV, hP⟩ := vote_tryVote_inputU hr hy hc
+  have hΦ := (frameIn_of_callAtU hr hy hc.1).1
+  have hlaw := hr.lawfulAt hy hc.1 hΦ
+  rw [← hPi, hV] at hlaw
   intro l' hl' hne
-  rw [tryVote_readPoint_locks_eq he] at hl'
+  rw [tryVote_readPoint_locks_eqWith he] at hl'
   simp only [hpos, ↓reduceIte] at hl'
-  obtain ⟨l₁, hl₁, hs₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ :=
-    ((locks_move_back sp) FGP ℓ.frame P.locks (tr.time i) hΦ).2.2 _ _ l' hl'
+  obtain ⟨l₁, hl₁, hs₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ := hlaw.movesBack hΦ l' hl'
   rcases hP with rfl | ⟨A, rfl, hAl⟩
   · exact ⟨l₁, hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
   unfold optimisticConfirmation at hl₁
@@ -109,6 +169,19 @@ theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H
   · rw [Set.mem_singleton_iff] at hp
     subst hp
     exact absurd (hs₁.trans hs₂) hne
+
+/-- **The read point's locks come from the stored ones.** At an honest vote of a slot `> 0`,
+a lock of the read point of a slot other than the vote's sits (in the frame) below a stored
+lock of the same slot: `try_vote`'s unlocking and the receipt's optimistic check only move
+locks back, and the optimistic check writes locks of the vote's slot. -/
+theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
+    ∀ l' ∈ e.readPoint.locks, l'.slot ≠ sp.slot (tr.time i) →
+      ∃ l ∈ (tr.state y i).locks, l'.slot = l.slot ∧ ∃ B ∈ ℓ.frame.tree, B.root = l.block ∧
+        ∃ B' ∈ ℓ.frame.tree, B'.root = l'.block ∧ ℓ.frame.Anc B' B :=
+  readPoint_locks_below_storedU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e)
+      (hc := hc) (hpos := hpos)
 
 /-- `vote_tryVote_input`, naming the optimistic point: after a message or block receipt, the
 `try_vote` input is the optimistic confirmation of the receipt state. -/

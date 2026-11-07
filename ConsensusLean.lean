@@ -39,6 +39,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule

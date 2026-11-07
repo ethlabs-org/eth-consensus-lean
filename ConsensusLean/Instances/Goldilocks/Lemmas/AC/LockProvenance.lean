@@ -88,14 +88,23 @@ theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
-theorem FromP.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
-    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop} :
-    FromP U A.locks (acProposal sp A Φ t).1.locks New := by
-  unfold acProposal
+/-- `FromP.of_proposal` with the unlock given. -/
+theorem FromP.of_proposalWith
+    {L : Set Lock} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
+    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop}
+    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1)
+      (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)) L) :
+    FromP U A.locks (acProposalWith sp L A Φ t).1.locks New := by
+  unfold acProposalWith
   dsimp only
   split_ifs
-  · exact FromP.of_movesBack hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 _ _)
+  · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
   · exact FromP.of_eq rfl
+
+theorem FromP.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
+    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop} :
+    FromP U A.locks (acProposal sp A Φ t).1.locks New :=
+  FromP.of_proposalWith hΦ hΦU A t (unlockRel_unlock hΦ _ _ _ _)
 
 theorem toFG_locks (A : SAState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by

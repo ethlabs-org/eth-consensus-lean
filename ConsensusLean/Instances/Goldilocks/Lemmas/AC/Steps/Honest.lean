@@ -33,9 +33,9 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
   · exact h ▸ ha
   · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
 
-/-- A vote of an honest validator in an honest voter's merged view was emitted by its node at
-a cut no later than the voter's call. -/
-theorem honest_merged_vote (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+/-- `honest_merged_vote` with the unlock given. -/
+theorem honest_merged_voteU
+    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
@@ -46,15 +46,25 @@ theorem honest_merged_vote (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y
     · simp at hv
     have hpost : v ∈ (tr.state y (i + 1)).pool ((σ : Int) - 1).toNat := by
       rw [show tr.state y (i + 1) = tr.post i by simp [Trace.state, hc.1.1, hc.1.2],
-        post_of_castAt hrun.localRun hy hc, optimistic_pool]
+        post_of_castAtU hrun.localRun hy hc, optimistic_pool]
       exact mem_admitVote_pool hv
     obtain ⟨j, hj, h⟩ := hrun.honest.pool_vote y hy _ _ v hpost hvH
     exact ⟨j, Nat.lt_succ_iff.1 hj, h⟩
   · obtain ⟨j, hj, h⟩ := hrun.honest.carried_vote y hy i ℓ hc.1 B hB v hv hvH
     exact ⟨j, hj.le, h⟩
 
-/-- An honest validator is not an equivocator in an honest voter's merged view. -/
-theorem honest_not_equivocator (hrun : ACRun proposer tr H U)
+/-- A vote of an honest validator in an honest voter's merged view was emitted by its node at
+a cut no later than the voter's call. -/
+theorem honest_merged_vote (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
+    {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
+    (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v :=
+  honest_merged_voteU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
+      (σ := σ) (v := v) (hv := hv) (hvH := hvH)
+
+/-- `honest_not_equivocator` with the unlock given. -/
+theorem honest_not_equivocatorU
+    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {w : Fin sp.n} (hw : w ∈ H) :
@@ -64,38 +74,62 @@ theorem honest_not_equivocator (hrun : ACRun proposer tr H U)
   obtain _ | s := σ
   · rcases hx with hx | ⟨B, hB, hBs, hv⟩
     · simpa [SAState.poolAt] using (List.mem_filter.1 hx).1
-    · have := (frame_validPayload sp hr hy hc.1 B hB).1 x hv
+    · have := (frame_validPayloadU sp hr hy hc.1 B hB).1 x hv
       omega
-  obtain ⟨j, -, e₁, hv₁, rfl⟩ := honest_merged_vote hrun hy hc hx hw
-  obtain ⟨j', -, e₂, hv₂, rfl⟩ := honest_merged_vote hrun hy hc hx' (hxx ▸ hw)
+  obtain ⟨j, -, e₁, hv₁, rfl⟩ := honest_merged_voteU hrun hy hc hx hw
+  obtain ⟨j', -, e₂, hv₂, rfl⟩ := honest_merged_voteU hrun hy hc hx' (hxx ▸ hw)
   rw [hxx] at hv₂
-  exact hne (congrArg Emission.msg (one_vote_per_slot sp _ _ _ _ _ hr _ (hxx ▸ hw) _ _ _ _ hv₁
-    hv₂ ((merged_vote_slot hr hy hc _ hx).trans (merged_vote_slot hr hy hc _ hx').symm)).2)
+  exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hr _ (hxx ▸ hw) _ _ _ _ hv₁
+    hv₂ ((merged_vote_slotU hr hy hc _ hx).trans (merged_vote_slotU hr hy hc _ hx').symm)).2)
 
-/-- An honest vote's head is a block of the call's frame, of a slot no later than the vote's. -/
-theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- An honest validator is not an equivocator in an honest voter's merged view. -/
+theorem honest_not_equivocator (hrun : ACRun proposer tr H U)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
+    {w : Fin sp.n} (hw : w ∈ H) :
+    w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
+  honest_not_equivocatorU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e)
+      (hc := hc) (σ := σ) (w := w) (hw := hw)
+
+/-- `honest_head_frame` with the unlock given. -/
+theorem honest_head_frameU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) :
     ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
   obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw x hx j ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;> exact h.1
-  obtain ⟨-, hs, -, hh⟩ := castAt_spec hr hx hc
+  obtain ⟨-, hs, -, hh⟩ := castAt_specU hr hx hc
   have hm := getHead_mem hΦ (T := ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame
     e.msg.slot)) (fun _ hB => voteDomain_subset_tree hB.1) e.readPoint (tr.time j)
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
-  exact ⟨_, hm, hh.symm, (frame_slot_le sp hr hx hc.1 _ hm).trans hs.ge⟩
+  exact ⟨_, hm, hh.symm, (frame_slot_leU sp hr hx hc.1 _ hm).trans hs.ge⟩
 
-/-- An honest vote's head is a block of its voter's frame, of a slot no later than the
-vote's. -/
-theorem honest_head (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
+/-- An honest vote's head is a block of the call's frame, of a slot no later than the vote's. -/
+theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) :
+    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot :=
+  honest_head_frameU (hr := hr.toU) (x := x) (hx := hx) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
+
+/-- `honest_head` with the unlock given. -/
+theorem honest_headU
+    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
     {e : Em sp FGP} (hv : VoteAt tr x j e) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hrun.localRun.frameLaw x hx j ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;>
       exact h.1
-  obtain ⟨Hd, hHd, h⟩ := honest_head_frame hrun.localRun hx ⟨hc, he⟩
+  obtain ⟨Hd, hHd, h⟩ := honest_head_frameU hrun.localRun hx ⟨hc, he⟩
   exact ⟨Hd, hΦU hHd, h⟩
+
+/-- An honest vote's head is a block of its voter's frame, of a slot no later than the
+vote's. -/
+theorem honest_head (hrun : ACRun proposer tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
+    {e : Em sp FGP} (hv : VoteAt tr x j e) :
+    ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot :=
+  honest_headU (hrun := hrun.toU) (x := x) (hx := hx) (j := j) (e := e) (hv := hv)
 
 end Consensus.Goldilocks.SA
 

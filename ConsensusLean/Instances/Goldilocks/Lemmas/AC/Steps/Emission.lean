@@ -45,9 +45,10 @@ theorem optimistic_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
   · rfl
   · exact updateLatestConfirmed_blockStamp _ _ _
 
-private theorem tryVote_emits (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    EmitsVotes x Φ t (tryVote sp x A Φ t) := by
-  unfold tryVote
+private theorem tryVote_emits
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    EmitsVotes x Φ t (tryVoteWith sp x L A Φ t) := by
+  unfold tryVoteWith
   dsimp only
   split_ifs with h1
   · simp [EmitsVotes]
@@ -56,9 +57,10 @@ private theorem tryVote_emits (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n F
     simp only [EmitsVotes, List.mem_singleton, forall_eq, and_true]
     exact ⟨rfl, rfl, not_not.1 (not_or.1 h1).1, rfl⟩
 
-private theorem onTick_emits (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    EmitsVotes x Φ t (acOnTick sp x A Φ t) := by
-  unfold acOnTick
+private theorem onTick_emits
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    EmitsVotes x Φ t (acOnTickWith sp x L A Φ t) := by
+  unfold acOnTickWith
   dsimp only
   split_ifs with _ ht hu hu
   · have := sp.toParams.hΔ
@@ -68,13 +70,14 @@ private theorem onTick_emits (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
   · simp [EmitsVotes]
   · simp [EmitsVotes]
 
-private theorem step_emits (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+private theorem step_emits
+    {L : Set Lock} (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
-    EmitsVotes y Φ t ((goldilocksSA sp FGP ro).step y A Φ t c) := by
+    EmitsVotes y Φ t (stepWith sp ro y L A Φ t c) := by
   cases c with
   | tick => exact onTick_emits y A _ _
-  | proposal => simp [EmitsVotes, ACInterface.step]
-  | toFG => simp [EmitsVotes, ACInterface.step]
+  | proposal => simp [EmitsVotes]
+  | toFG => simp [EmitsVotes]
   | message m => exact tryVote_emits y _ _ _
   | block B => exact tryVote_emits y _ _ _
   | restart =>
@@ -88,10 +91,12 @@ theorem step_emission_signer (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
     (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     {e : Em sp FGP} (he : e ∈ ((goldilocksSA sp FGP ro).step y A Φ t c).2) :
     e.msg.val = y :=
-  (step_emits y A Φ t c hΦ ht e he).1.1
+  (step_emits (L := parentUnlock sp A Φ t c) y A Φ t c hΦ ht e
+    (by rwa [step_eq_stepWith] at he)).1.1
 
 /-- An honest vote, and the state its call leaves. -/
-private theorem cast_emits (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+private theorem cast_emitsU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     VoteSpec y ℓ.frame (tr.time i) e ∧ tr.post i =
@@ -104,10 +109,21 @@ private theorem cast_emits (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
   rw [hc.1] at hx
   generalize tr.state y i = A at hx
   suffices h : EmitsVotes y ℓ.frame (tr.time i)
-      ((goldilocksSA sp FGP ro).step y A ℓ.frame (tr.time i) ℓ.call) by
+      (stepWith sp ro y (u i) A ℓ.frame (tr.time i) ℓ.call) by
     rw [hx] at h
     exact h e he
   exact step_emits y A ℓ.frame (tr.time i) ℓ.call hΦ (hr.time_nonneg i)
+
+/-- `castAt_spec` with the unlock given. -/
+theorem castAt_specU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
+      e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
+        (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot))
+        (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root :=
+  (cast_emitsU hr hy hc).1
 
 /-- **An honest vote.** -/
 theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -116,8 +132,28 @@ theorem castAt_spec (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin s
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
       e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
         (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot))
-        (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root :=
-  (cast_emits hr hy hc).1
+        (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root := by
+  apply castAt_specU <;>
+    first | assumption | exact ACLocalRun.toU ‹_›
+
+/-- `voterBlockTree_anc` with the unlock given. -/
+theorem voterBlockTree_ancU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
+      X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
+  intro B hB X hX
+  have hsp := stamp_parentU sp FGP ro y U hr.coherent _ _ _
+    (localRun_reachableU sp hr hy i ℓ hc.1)
+  have hle : (tr.post i).blockStamp X.root ≤ (tr.post i).blockStamp B.root := by
+    clear hB
+    induction hX with
+    | refl => exact le_rfl
+    | tail _ hp ih => exact ih.trans (hsp _ hp.2.1 _ hp.1 hp.2.2)
+  rw [(cast_emitsU hr hy hc).2, optimistic_blockStamp, admitVote_blockStamp] at hle
+  exact ⟨mem_of_anc hX hB.1, hB.2.imp hle.trans_lt
+    fun ⟨P, hP, hPs, hBP⟩ => ⟨P, hP, hPs, hX.trans hBP⟩⟩
 
 /-- The voter block tree of an honest vote is closed under ancestors in the frame (block stamps
 grow along parent edges, A0.1, at the state the call leaves, whose stamps are the read
@@ -127,17 +163,20 @@ theorem voterBlockTree_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
-  intro B hB X hX
-  have hsp := stamp_parent sp FGP ro y U hr.coherent _ _ _
-    (localRun_reachable _ _ _ _ _ _ hr y hy i ℓ hc.1)
-  have hle : (tr.post i).blockStamp X.root ≤ (tr.post i).blockStamp B.root := by
-    clear hB
-    induction hX with
-    | refl => exact le_rfl
-    | tail _ hp ih => exact ih.trans (hsp _ hp.2.1 _ hp.1 hp.2.2)
-  rw [(cast_emits hr hy hc).2, optimistic_blockStamp, admitVote_blockStamp] at hle
-  exact ⟨mem_of_anc hX hB.1, hB.2.imp hle.trans_lt
-    fun ⟨P, hP, hPs, hBP⟩ => ⟨P, hP, hPs, hX.trans hBP⟩⟩
+  apply voterBlockTree_ancU <;>
+    first | assumption | exact ACLocalRun.toU ‹_›
+
+/-- `castAt_head_of_viable` with the unlock given. -/
+theorem castAt_head_of_viableU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e)
+    (hne : (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)).Nonempty) :
+    e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
+      (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot))
+      (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root := by
+  rw [← viableTree_voteDomain_eq_of_viable hne]
+  exact (castAt_specU hr hy hc).2.2.2
 
 /-- **An honest vote whose voter block tree has a viable block**: its head is the walk over the
 viable voter block tree (the vote domain is the voter block tree, `voteDomain_eq_of_viable`). -/
@@ -148,8 +187,8 @@ theorem castAt_head_of_viable (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
     e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot))
       (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root := by
-  rw [← viableTree_voteDomain_eq_of_viable hne]
-  exact (castAt_spec hr hy hc).2.2.2
+  apply castAt_head_of_viableU <;>
+    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- Viability at a vote in the voter block tree gives viability in the vote domain. -/
 theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} {σ : Nat}
@@ -158,13 +197,32 @@ theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em
       ℓ.frame.Anc B ℓ.frame.fcRoot :=
   h.imp_left fun h => viableTree_voterBlockTree_subset_voteDomain h
 
+/-- `voteDomain_anc` with the unlock given. -/
+theorem voteDomain_ancU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
+      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
+  voteDomain_anc_closed (voterBlockTree_ancU hr hy hc)
+
 /-- The vote domain of an honest vote is closed under ancestors in the frame. -/
 theorem voteDomain_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
-      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
-  voteDomain_anc_closed (voterBlockTree_anc hr hy hc)
+      X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot := by
+  apply voteDomain_ancU <;>
+    first | assumption | exact ACLocalRun.toU ‹_›
+
+/-- `post_of_castAt` with the unlock given. -/
+theorem post_of_castAtU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) :
+    tr.post i = optimisticConfirmation sp (admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame
+      (tr.time i) :=
+  (cast_emitsU hr hy hc).2
 
 /-- The call that casts an honest vote leaves the state of the vote's own receipt: the read
 point with the own vote admitted and the optimistic check run. -/
@@ -172,15 +230,17 @@ theorem post_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     tr.post i = optimisticConfirmation sp (admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame
-      (tr.time i) :=
-  (cast_emits hr hy hc).2
+      (tr.time i) := by
+  apply post_of_castAtU <;>
+    first | assumption | exact ACLocalRun.toU ‹_›
 
-private theorem tryVote_time {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {e : Em sp FGP} (he : e ∈ (tryVote sp x A Φ t).2) : t ≤ sp.ts (sp.slot t) + sp.Δ := by
+private theorem tryVote_time
+    {L : Set Lock} {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {e : Em sp FGP} (he : e ∈ (tryVoteWith sp x L A Φ t).2) : t ≤ sp.ts (sp.slot t) + sp.Δ := by
   by_contra ht
   have hguard : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨
       sp.ts (sp.slot t) + sp.Δ < t := Or.inr (Or.inr (lt_of_not_ge ht))
-  simp only [tryVote, hguard, ite_true] at he
+  simp only [tryVoteWith, hguard, ite_true] at he
   exact List.not_mem_nil he
 
 /-- A `try_vote` emission is the caster's own vote of the slot of the call's time. The walk's
@@ -191,8 +251,9 @@ private theorem tryVote_emits_slot {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm s
   have h := (tryVote_emits x A Φ t e he).1
   exact ⟨h.1, h.2.1⟩
 
-/-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
-theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- `vote_time_le` with the unlock given. -/
+theorem vote_time_leU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
     tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
   obtain ⟨ℓ, hc, he⟩ := hv
@@ -201,25 +262,25 @@ theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin 
       exact hok.1.1
   have hx' := hr.exec j ℓ hc.2 (hc.1 ▸ hx)
   rw [hc.1] at hx'
-  have he' : e ∈ ((goldilocksSA sp FGP ro).step x (tr.state x j) ℓ.frame (tr.time j)
+  have he' : e ∈ (stepWith sp ro x (u j) (tr.state x j) ℓ.frame (tr.time j)
       ℓ.call).2 := by
     rw [hx']; exact he
   clear hx' he
   cases hcall : ℓ.call with
   | tick =>
     rw [hcall] at he'
-    change e ∈ (acOnTick sp x _ ℓ.frame _).2 at he'
-    unfold acOnTick at he'
+    change e ∈ (acOnTickWith sp x (u j) _ ℓ.frame _).2 at he'
+    unfold acOnTickWith at he'
     dsimp only at he'
     split at he'
     · exact absurd he' List.not_mem_nil
     · change e ∈ (if tr.time j = sp.ts (sp.slot (tr.time j)) + sp.Δ then
-        tryVote sp x (tr.state x j) ℓ.frame (tr.time j) else (tr.state x j, [])).2 at he'
+        tryVoteWith sp x (u j) (tr.state x j) ℓ.frame (tr.time j) else (tr.state x j, [])).2 at he'
       split at he'
       · exact le_of_eq ‹_›
       · exact absurd he' List.not_mem_nil
-  | proposal => rw [hcall] at he'; simp [ACInterface.step] at he'
-  | toFG => rw [hcall] at he'; simp [ACInterface.step] at he'
+  | proposal => rw [hcall] at he'; simp at he'
+  | toFG => rw [hcall] at he'; simp at he'
   | message m => rw [hcall] at he'; exact tryVote_time he'
   | block B => rw [hcall] at he'; exact tryVote_time he'
   | restart =>
@@ -227,6 +288,13 @@ theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin 
     change e ∈ (acRestart sp ro x _ ℓ.frame (tr.time j)).2 at he'
     rw [((restart_state sp) FGP ro x _ ℓ.frame (tr.time j) hΦ (hr.time_nonneg j)).1] at he'
     simp at he'
+
+/-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
+theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
+    tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
+  apply vote_time_leU <;>
+    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- An honest vote is its caster's, of the slot of its cast time. -/
 theorem vote_signer_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
