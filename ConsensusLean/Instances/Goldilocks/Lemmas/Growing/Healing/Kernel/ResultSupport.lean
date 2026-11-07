@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
@@ -32,12 +34,12 @@ cut.
 
 * `fault_bound_late_at`: from the reset's cut on, the fault bound at `t ≤ b` on the AC
   projection, charged at `t`. It is the run's late fault bound (`fault_bound_late_before_at`,
-  stated here with the seed layer's statement until that module is on this branch) read through
+  imported from the cycle-free `Healing/FaultBound` module) read through
   the joined projection on the prefix through `t`;
 * `ResetPremisesUpTo.half_committee_at`: after the reset's cut, the validators honest at
   `t ≥ t_m + Δ` that voted in slot `m` while honest are at least half of the committee: each is
   awake from `ḡ` and joined at `t_m + Δ` (its restarts are by the slot after `ḡ`,
-  `restart_le_before_at`, stated here with the seed layer's statement), so it votes in slot `m`
+  `restart_le_before_at`, imported from `Healing/Restart`), so it votes in slot `m`
   on the prefix through `t_m + Δ`; the count is `3 f_t ≤ n − 1` at `t`;
 * `reset_syncACAt`: from the GST on, the reset service is AC synchrony on the projection, with each
   sender honest at its send or acceptance and each recipient at its call (the growing form of
@@ -52,10 +54,9 @@ cut.
   comparisons, the fault bound at the voter's cut and the earlier votes (the static argument on
   the prefix through the vote).
 
-The results of other layers that are not yet on this branch are stated here under their names
-with the suffix `_stub`, with their owners' statements: `carryAt_of_delivered` and
-`result_writer_at` (the sleepy node layer) and the seed layer's two facts above. Each is an
-open `sorry`. The per-cut node facts (`projAC_state_at`, `run_F_mono_at`, `acBlock_prev_at`,
+The node-layer suppliers `carryAt_of_delivered` and `result_writer_at` are imported from
+`Growing/Sleepy/Node/Transport`; no supplier stand-ins remain. The per-cut node facts
+(`projAC_state_at`, `run_F_mono_at`, `acBlock_prev_at`,
 `accept_next_at`) are the static ones on the prefix through the cut. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
@@ -65,14 +66,6 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
-
-/-- The run's late fault bound (`Healing.Growing.fault_bound_late_before_at` of the seed layer,
-same statement); stand-in until that module is on this branch. -/
-theorem fault_bound_late_before_at_stub {b : Time}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
-    tr.FaultBoundAt H t d := by
-  sorry
 
 /-- **The late fault bound on the AC projection**: from the reset's cut on, at `t ≤ b`, the
 faults at `t` are fewer than the validators honest at `t` that are awake and joined at `t` in
@@ -86,7 +79,7 @@ theorem fault_bound_late_at {b : Time} (hp : ResetPremisesUpTo tr H proposer dg 
     have := lt_cutZ sp g
     have := gbar_nonneg g
     linarith
-  have h := fault_bound_late_before_at_stub hp ht le_rfl htb
+  have h := fault_bound_late_before_at hp ht le_rfl htb
   unfold RunTrace.FaultBoundAt at h
   unfold SA.FaultBoundAt
   refine h.trans_le (Set.ncard_le_ncard (fun z hz => ⟨hz.1, hz.2.1, ?_⟩) (Set.toFinite _))
@@ -100,15 +93,6 @@ theorem fault_bound_late_at {b : Time} (hp : ResetPremisesUpTo tr H proposer dg 
   refine hjp.mp hjpre k ?_ hkt
   rw [RunTrace.upTo_projAC]
   exact ⟨ℓ, (Trace.upTo_callAt _).mpr ⟨hkt, hc⟩, hr⟩
-
-/-- A restart of a node honest at it, by the horizon, is by the slot after `ḡ`
-(`Healing.Growing.restart_le_before_at` of the seed layer, same statement); stand-in until that
-module is on this branch. -/
-theorem restart_le_before_at_stub {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    (hk : tr.RestartAt y k) (hkb : tr.time k ≤ b) :
-    tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-  sorry
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -144,7 +128,7 @@ theorem ResetPremisesUpTo.half_committee_at (hp : ResetPremisesUpTo tr H propose
       change 0 < sp.slot (sp.ts m + sp.Δ) ∧
         tr.time k ≤ sp.toParams.slotTime (sp.slot (sp.ts m + sp.Δ) - 1)
       rw [hsl, sp.slotTime_eq]
-      exact ⟨by omega, (KernelProof.restart_le_before_at_stub hp
+      exact ⟨by omega, (hp.restart_le_before_at
         (hp.run.antitone (hkd.trans hmt) hz) hk (hkd.trans hdb)).trans
         ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (gbar g) + 1 ≤ m - 1 by
           clear * - hm3; omega)))⟩
@@ -167,45 +151,9 @@ namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
 open SA (SAParams ReplayOrder Payload Vote gbar)
 
-/-! ### Stand-ins for the node layer -/
-
-/-- `Carry_y` from deliveries, for one honest voter over an SA trace
-(`Compose.Growing.carryAt_of_delivered` of the node layer, same statement); stand-in until that
-module is on this branch. -/
-theorem carryAt_of_delivered_stub {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
-    (hr : Consensus.Goldilocks.ACLocalRun (SA.goldilocksSA sp FGP ro) H U T) {s : Nat}
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
-    {CV : Set (Vote sp.n)}
-    (hW : ∀ v ∈ CV, v.slot = s ∧
-      (∃ τ, sp.ts s ≤ τ ∧ τ < sp.ts s + 2 * sp.Δ ∧
-        (T.deadline y i τ ≤ T.time i → SA.MessageServedBefore T y i τ v)) ∧
-      ∃ Hv : SA.Blk sp.n FGP, Hv.root = v.head ∧
-        ((∃ τ, τ < sp.ts s + 2 * sp.Δ ∧ (T.deadline y i τ ≤ T.time i →
-            ∃ k ≤ i, T.AcceptAt y k Hv ∧ T.time k < T.deadline y k τ)) ∨
-          SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
-    SA.CarryAt T U y i e s CV := by
-  sorry
-
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- What a result's writer did with its counted votes, the writer honest at its update
-(`Compose.Growing.result_writer_at` of the node layer, same statement); stand-in until that
-module is on this branch. -/
-theorem result_writer_at_stub (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) :
-    ∀ v ∈ CV, v.slot = s ∧
-      (∃ k, X ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧
-        tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv ∈ tr.HonestBlocksAt H, Hv.root = v.head ∧ Anc (tr.HonestBlocksAt H) C Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ k, X ∈ H (tr.time k) ∧ tr.projAC.AcceptAt X k Hv ∧
-          tr.time k < sp.ts s + 2 * sp.Δ) := by
-  sorry
 
 /-! ### Node-local facts at a cut, on the prefix through its time -/
 
@@ -410,7 +358,7 @@ theorem carry_of_senders (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     linarith only [h, hts1]
-  have hcarry := carryAt_of_delivered_stub hr hy hc' hs (CV := CV) fun v hv => by
+  have hcarry := Compose.Growing.carryAt_of_delivered hr hy hc' hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [projAC_deadline_upTo hrun le_rfl] at hdl
@@ -456,7 +404,7 @@ theorem result_carry_reset_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
   carry_of_senders hp hc hts hy hcast hs fun v hv => by
     obtain ⟨h₁, ⟨k, hk⟩, Hv, -, hHvr, hCHv, h₃⟩ :=
-      result_writer_at_stub hp.run hp.noColl hx hres v hv
+      Compose.Growing.result_writer_at hp.run hp.noColl hx hres v hv
     exact ⟨h₁, ⟨x, k, hk⟩, Hv, hHvr, hFC.trans hCHv, h₃.imp_right fun ⟨k, hk⟩ => ⟨x, k, hk⟩⟩
 
 /-- **The label-`m` votes of nodes honest at them, all extending `B`, reach a label-`(m+1)` vote
