@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessUnanimity
 
 public section
 
@@ -41,7 +42,8 @@ theorem unanimous_next_votes_of_witness_at
       e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = m + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  sorry
+  exact KernelProof.unanimous_next_votes_of_witness_at hrun hnc hsvc hawake hf hcatch
+    hnr hm hmb hframe hz hQ hh hJ hXQ hheld hG
 
 /-- The same arbitrary prefix reaches an actual next-slot proposal head. -/
 theorem unanimous_next_proposal_of_witness_at
@@ -68,7 +70,8 @@ theorem unanimous_next_proposal_of_witness_at
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
     (hQy : Q ∈ (tr.state y i).fg.tree) : Anc (tr.HonestBlocksAt H) X d.head := by
-  sorry
+  exact KernelProof.unanimous_next_proposal_of_witness_at hrun hnc hsvc hawake hf hcatch
+    hnr hm hmb hframe hz hQ hh hJ hXQ hG hy hc hcall hti hd hQy
 
 end Consensus.Goldilocks.Healing.Growing
 
