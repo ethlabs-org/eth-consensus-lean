@@ -19,7 +19,7 @@ and headline below on the runs whose faults do not grow (`ShapeObligationsOnAs`,
 `ConstantFaults`). The growing-fault endpoint and headline below are stated in
 `ConsensusLean/Instances/Goldilocks/Statements/Growing.lean` and not yet proved. The headline is
 `Consensus.Goldilocks.GoldilocksCorrect`, from
-`ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean` (in namespace `Consensus.Goldilocks`), together
+`ConsensusLean/Instances/Goldilocks/Statements/Growing.lean` (in namespace `Consensus.Goldilocks`), together
 with the endpoint it composes:
 
 ```lean

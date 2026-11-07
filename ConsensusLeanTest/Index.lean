@@ -36,14 +36,17 @@ check.sh step 12 checks against this file (`doc_name_files` in `scripts/boundari
 /-! ## Endpoints -/
 
 example := ``Consensus.Review.ObligationsSufficient
+example := ``Consensus.Review.ObligationsSufficientOn
 example := ``Consensus.Review.RegimesRealizable
 example := ``Consensus.Review.LogFaithful
 example := ``Consensus.Review.HeldIffServed
 example := ``Consensus.Review.obligationsSufficient
+example := ``Consensus.Review.obligationsSufficientOn
 example := ``Consensus.Review.regimesRealizable
 example := ``Consensus.Review.logFaithful
 example := ``Consensus.Review.heldIffServed
 example := ``Consensus.Shape.ShapeObligations.correct
+example := ``Consensus.Shape.ShapeObligationsOn.correct
 example := ``Consensus.Shape.ShapeObligations.activeService
 example := ``Consensus.Shape.refinement
 example := ``Consensus.Shape.regimes_realizable
@@ -815,12 +818,14 @@ example := ``Consensus.Goldilocks.AsChainShape.goldilocks
 example := ``Consensus.Goldilocks.ContractAssumptions
 example := ``Consensus.Goldilocks.ContractCoefficients
 example := ``Consensus.Goldilocks.MeetsObligations
+example := ``Consensus.Goldilocks.MeetsObligationsConstant
 example := ``Consensus.Goldilocks.goldilocksContract
-example := ``Consensus.Goldilocks.meetsObligations
+example := ``Consensus.Goldilocks.meetsObligationsConstant
 example := ``Consensus.Goldilocks.GoldilocksCorrect
-example := ``Consensus.Goldilocks.goldilocksCorrect
+example := ``Consensus.Goldilocks.GoldilocksCorrectConstant
+example := ``Consensus.Goldilocks.goldilocksCorrectConstant
 example := ``Consensus.Goldilocks.contract_coefficients
-example := ``Consensus.Goldilocks.Obligations.meets_obligations
+example := ``Consensus.Goldilocks.Obligations.meets_obligations_constant
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.meets_obligations_nonvacuous
 example := ``Consensus.Goldilocks.Obligations.Test.Contract.meetsObligations_realizable_small
 example := ``Consensus.Goldilocks.Obligations.schema_matches_ebbAndFlow

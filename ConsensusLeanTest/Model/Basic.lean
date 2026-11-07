@@ -109,7 +109,7 @@ def batchProto (pub : Public) : Protocol pub Unit :=
 child-first refuses the child without retry. Unselected duties release neither. -/
 theorem signed_batch_dependency_order :
     let rho : Run (O := schema) batchProto (Env.mk 1 (by decide) 1 (by decide) (fun _ _ => true)) :=
-      Run.mk Finset.univ 1 [] (pkiFin 1) (fun _ => Finset.univ)
+      Run.mk (fun _ => ∅) monotone_const 1 [] (pkiFin 1) (fun _ => Finset.univ)
         (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
     let parent := Obj.mk (.signed (0 : Fin 1) false) (.item ()) []
     let child := Obj.mk (.signed (0 : Fin 1) false) (.data ()) []
@@ -139,7 +139,7 @@ theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := b
 /-- Ingress can inject an unsubmitted transaction. The cumulative inbox
 survives restarts and is available to the next clock. -/
 def relayedRun : Run family env :=
-  Run.mk Finset.univ 5 [.restart 0 3] (pkiFin 2) sel (fun _ _ => [])
+  Run.mk (fun _ => ∅) monotone_const 5 [.restart 0 3] (pkiFin 2) sel (fun _ _ => [])
       (fun _ t => if t = 2 then [42] else []) (fun _ => 0)
 
 theorem injected_held : CommLog.TxHeld relayedRun.log 0 42 3 :=
@@ -162,7 +162,7 @@ theorem relayed_mempool_after_restart : 42 ∈ mempool relayedRun.inbox 0 5 :=
   relayedRun.txHeld_mem_mempool held_at_deadline (by decide)
 
 theorem injected_not_submitted : ¬ relayedRun.point.SubmittedToSome 42 5 := by
-  rintro ⟨v, _, τ, _, _, _, hx⟩
+  rintro ⟨v, τ, _, _, _, _, hx⟩
   simp [relayedRun, Run.point] at hx
 
 /-- Validity rules out a negative horizon, for every protocol and
@@ -177,7 +177,8 @@ theorem negativeHorizon_not_valid {O : OutputSchema} (F : ProtocolFamily O) {V :
 `true`; a run that delivers an object signed by key `1` in role `true` has an
 admissible selection but violates `Credentials`. -/
 def forgedRun : Run family env :=
-  Run.mk Finset.univ 5 [.deliver 0 (.mk (.signed 1 true) (.data ()) []) 0] (pkiFin 2) sel
+  Run.mk (fun _ => ∅) monotone_const 5
+      [.deliver 0 (.mk (.signed 1 true) (.data ()) []) 0] (pkiFin 2) sel
       (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
 
 theorem forged_role_invalid : forgedRun.SelValid ∧ ¬ forgedRun.Credentials := by
@@ -193,9 +194,10 @@ theorem forged_role_not_valid : ¬ forgedRun.ExecutionValid :=
 /-- Unit ticks: with `Δ = 3`, every valid run of horizon at least `1` ticks
 an awake honest node at time `1`, which is not a multiple of `Δ` (so a
 `Δ`-grid schedule would not be valid). -/
-theorem unit_ticks (rho : Run family env) (hv : rho.ExecutionValid) (h0 : (0 : Fin 2) ∈ rho.honest)
+theorem unit_ticks (rho : Run family env) (hv : rho.ExecutionValid)
+    (h0 : rho.point.HonestAt (0 : Fin 2) 1)
     (hh : 1 ≤ rho.horizon) : Event.tick (0 : Fin 2) 1 ∈ rho.events ∧ ¬ (3 : Time) ∣ 1 :=
-  ⟨hv.tick_total 0 h0 1 (by decide) hh rfl, by decide⟩
+  ⟨hv.tick_total 0 1 (by decide) hh h0 rfl, by decide⟩
 
 /-- The test protocol with `conflicts` always true: every signed object would
 convict its signer. -/

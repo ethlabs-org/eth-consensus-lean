@@ -41,12 +41,12 @@ def roots (rho : Run F E) : List (protoOf F E).Object :=
 
 theorem observed_mem_roots {rho : Run F E} {o : (protoOf F E).Object}
     (ho : o ∈ rho.Observed) : o ∈ closure rho.roots := by
-  obtain ⟨v, hv, hov⟩ := ho
+  obtain ⟨v, i, hi, _, hov⟩ := ho
   obtain ⟨k, r, hk, he, hc⟩ := rho.mem_viewIdx_iff.mp hov
   apply List.mem_flatMap.mpr
   refine ⟨r, ?_, hc⟩
   apply List.mem_flatMap.mpr
-  refine ⟨k, List.mem_range.mpr hk, ?_⟩
+  refine ⟨k, List.mem_range.mpr (hk.trans_le hi), ?_⟩
   rcases he with ⟨t, ht, hr⟩ | ⟨t, ht⟩
   · exact List.mem_append_left _ hr
   · exact List.mem_append_right _ (by simp [ht])
@@ -99,9 +99,9 @@ theorem digests_eq_of_observed (rho : Run F E) (hash' : (protoOf F E).Item → N
   intro x hx
   obtain ⟨d, hd, he⟩ := List.mem_filterMap.mp hx
   have obs : d ∈ rho.Observed := by
-    obtain ⟨v, hv, hov⟩ := ho
+    obtain ⟨v, i, hi, hv, hov⟩ := ho
     obtain ⟨k, r, hk, hr, hc⟩ := rho.mem_viewIdx_iff.mp hov
-    exact ⟨v, hv, rho.mem_viewIdx_iff.mpr ⟨k, r, hk, hr, hc.trans hd⟩⟩
+    exact ⟨v, i, hi, hv, rho.mem_viewIdx_iff.mpr ⟨k, r, hk, hr, hc.trans hd⟩⟩
   exact Prod.ext rfl (ha x ⟨d, obs, he⟩)
 
 end Run
@@ -203,19 +203,26 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
   have tick_eq : ∀ i v t, rho.events[i]? = some (.tick v t) →
       r.tick (rho.stateBefore i v) v t = rho.tick (rho.stateBefore i v) v t := by
     intro i v t he
+    have hi := (List.getElem?_eq_some_iff.mp he).1
     refine rho.tick_rehash hash' _ v t fun o ho => ?_
     apply rho.digests_eq_of_observed hash' ha
-    refine ⟨v, hv.honest_only _ (List.mem_of_getElem? he), rho.mem_viewIdx_iff.mpr ⟨i, o,
-      (List.getElem?_eq_some_iff.mp he).1, Or.inl ⟨t, Or.inl he, ?_⟩, .refl _⟩⟩
-    simpa only [releasesAt, he] using ho
+    refine ⟨v, i + 1, by omega, ?_, rho.mem_viewIdx_iff.mpr ⟨i, o,
+      by omega, Or.inl ⟨t, Or.inl he, ?_⟩, .refl _⟩⟩
+    · simpa only [Run.point, Run.cutTime, EnvPoint.HonestAt, Event.node, he] using
+        hv.honest_only _ (List.mem_of_getElem? he)
+    · simpa only [releasesAt, he] using ho
   have deliver_same : ∀ i v o t, rho.events[i]? = some (.deliver v o t) →
       r.deliver (rho.stateBefore i v) v o t = rho.deliver (rho.stateBefore i v) v o t := by
     intro i v o t he
     have hv' := hv.honest_only _ (List.mem_of_getElem? he)
     have hi := (List.getElem?_eq_some_iff.mp he).1
+    have hh : rho.point.HonestAt v (rho.cutTime (i + 1)) := by
+      simpa only [Run.point, Run.cutTime, EnvPoint.HonestAt, Event.node, he] using hv'
     refine rho.deliver_rehash hash' _ v o t (rho.digests_eq_of_observed hash' ha
-      ⟨v, hv', rho.mem_viewIdx_iff.mpr ⟨i, o, hi, Or.inr ⟨t, he⟩, .refl _⟩⟩) fun o' ho => ?_
-    refine rho.digests_eq_of_observed hash' ha ⟨v, hv', rho.mem_viewIdx_iff.mpr ⟨i, o', hi,
+      ⟨v, i + 1, by omega, hh,
+        rho.mem_viewIdx_iff.mpr ⟨i, o, by omega, Or.inr ⟨t, he⟩, .refl _⟩⟩) fun o' ho => ?_
+    refine rho.digests_eq_of_observed hash' ha ⟨v, i + 1, by omega, hh,
+      rho.mem_viewIdx_iff.mpr ⟨i, o', by omega,
       Or.inl ⟨t, Or.inr ⟨o, he⟩, ?_⟩, .refl _⟩⟩
     simpa only [releasesAt, he] using ho
   have states : ∀ i, r.stateBefore i = rho.stateBefore i := by
@@ -251,7 +258,7 @@ theorem rehash_trace (rho : Run F E) (hv : rho.ExecutionValid) (hash' : (protoOf
 items observed by the first run (same honest set, horizon, events, PKI,
 selection, submissions and relay). -/
 structure SameTrace (rho r : Run F E) : Prop where
-  honest : r.honest = rho.honest
+  faultyAt : r.faultyAt = rho.faultyAt
   horizon : r.horizon = rho.horizon
   events : r.events = rho.events
   key : r.key = rho.key
@@ -270,7 +277,7 @@ theorem trace (hv : rho.ExecutionValid) :
   have hr : r = {rho with hash := r.hash} := by
     cases rho; cases r
     simp only [Run.mk.injEq]
-    exact ⟨h.honest, h.horizon, h.events, h.key, h.sel, h.submit, h.relay, trivial⟩
+    exact ⟨h.faultyAt, h.horizon, h.events, h.key, h.sel, h.submit, h.relay, trivial⟩
   rw [hr]
   exact rho.rehash_trace hv r.hash h.hash
 
@@ -280,7 +287,8 @@ theorem viewIdx_eq (hv : rho.ExecutionValid) : r.ViewIdx = rho.ViewIdx := by
   simp only [Run.ViewIdx, hs]
 
 theorem observed_eq (hv : rho.ExecutionValid) : r.Observed = rho.Observed := by
-  simp only [Run.Observed, h.honest, h.events, h.viewIdx_eq hv]
+  simp only [Run.Observed, Run.point, Run.cutTime, EnvPoint.HonestAt,
+    h.faultyAt, h.events, h.viewIdx_eq hv]
 
 theorem readIdx_eq (hv : rho.ExecutionValid) : r.readIdx = rho.readIdx := by
   obtain ⟨hs, _⟩ := h.trace hv
@@ -313,13 +321,13 @@ theorem executionValid (hv : rho.ExecutionValid) : r.ExecutionValid := by
   · simpa only [h.events] using hv.sorted
   · simpa only [h.events] using hv.nodup
   · simpa only [h.events, h.horizon] using hv.in_horizon
-  · simpa only [h.events, h.honest] using hv.honest_only
-  · simpa only [h.events, h.honest, h.horizon] using hv.tick_total
+  · simpa only [h.events, h.faultyAt] using hv.honest_only
+  · simpa only [h.events, h.faultyAt, h.horizon] using hv.tick_total
   · simpa only [h.events] using hv.tick_awake
   · simpa only [h.events] using hv.deliver_awake
   · simpa only [h.events] using hv.restart_at_wake
-  · simpa only [h.events, h.honest, h.horizon] using hv.wake_restart
-  · simpa only [Unforgeable, SendsAt, signerOf, h.events, h.honest, h.key, hr] using
+  · simpa only [h.events, h.faultyAt, h.horizon] using hv.wake_restart
+  · simpa only [Unforgeable, SendsAt, signerOf, h.events, h.faultyAt, h.key, hr] using
       hv.unforgeable
   · simpa only [SelValid, h.sel] using hv.selValid
   · simpa only [Credentials, h.events, h.sel] using hv.credentials

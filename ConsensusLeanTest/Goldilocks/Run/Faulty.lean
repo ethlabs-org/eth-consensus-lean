@@ -3,6 +3,7 @@ public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+public import ConsensusLean.Lemmas.Model.Constant
 @[expose] public section
 
 /-! # Witness: a Goldilocks run with one faulty validator meets the run-level fault premises
@@ -41,21 +42,25 @@ open Consensus.Model (pubOf)
 /-- Four validators, always awake, key `0` faulty, engine `Δ = ΔF = 2`, horizon `40`, no
 submissions. -/
 def point : EnvPoint (Fin 4) :=
-  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, {1, 2, 3}, 40, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩,
+    fun _ => {0}, monotone_const, 40, fun _ _ => []⟩
 
 theorem one_le_card : 1 ≤ Fintype.card (Fin 4) := by decide
 
 /-- The faulty key. -/
 def faultyKey : Fin (Fintype.card (Fin 4)) := ⟨0, one_le_card⟩
 
-theorem point_faulty : point.faulty = {0} := by decide
+theorem point_faulty (t : Time) : point.faultyAt t = {0} := rfl
 
-theorem point_ready (c t : Time) (v : Fin 4) (hv : v ∈ point.honest) : point.Ready c v t :=
+theorem point_ready (c t : Time) (v : Fin 4) (hv : point.HonestAt v t) : point.Ready c v t :=
   ⟨hv, fun _ _ _ => rfl⟩
 
-theorem point_readyAt (c t : Time) : point.readyAt c t = point.honest := by
+theorem point_readyAt (c t : Time) : point.readyAt c t = point.honestAt t := by
   ext v
-  simp only [EnvPoint.readyAt, Finset.mem_filter, and_iff_left_iff_imp]
+  simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, true_and,
+    EnvPoint.honestAt, Finset.mem_sdiff, Finset.mem_univ, true_and]
+  constructor
+  · exact fun h => h.1
   exact point_ready c t v
 
 variable (S : Setup)
@@ -94,11 +99,15 @@ theorem one_lt_threshold :
 
 variable {S} {rho : Model.Run (compiled (goldilocks S)) point.env}
 
+theorem point_constant (hp : rho.point = point) : rho.point.ConstantFaults := by
+  rw [hp]
+  exact fun _ => rfl
+
 /-- The faulty keys of a run at `point` are one: `f = 1`. -/
 theorem faulty_ncard (hp : rho.point = point) : (honestKeys S rho)ᶜ.ncard = 1 := by
-  have heq : (honestKeys S rho)ᶜ = rho.key ⁻¹' (↑rho.point.faulty : Set (Fin 4)) := by
+  have heq : (honestKeys S rho)ᶜ = rho.key ⁻¹' (↑(rho.point.faultyAt 0) : Set (Fin 4)) := by
     ext k
-    simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
+    simp [mem_honestKeys_iff, Model.Run.point]
   rw [heq, Set.ncard_preimage_of_injective_subset_range rho.key.injective
     (by simp [rho.key.surjective.range_eq]), Set.ncard_coe_finset, hp, point_faulty]
   rfl
@@ -124,7 +133,7 @@ theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) 
     ext y
     refine ⟨fun h => h.1, fun hy => ⟨hy, ?_⟩⟩
     exact Compose.ready_implies_joined _ _ _ _ _ _
-      (simTrace_goldilocksRun S rho one_le_card hv) y hy t
+      (simTrace_goldilocksRun S rho one_le_card (point_constant hp) hv) y hy t
       (8 * (S.params (pubOf point.env) one_le_card).Δ) ht (Int.le_add_one le_rfl)
       (fun u hu hu' => hawake y u ((le_max_left _ _).trans hu) (hu'.trans htb))
   change {y | _}.ncard = 3
@@ -147,14 +156,17 @@ theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
       (simTrace S rho one_le_card).FaultBound (honestKeys S rho)
         ((S.params (pubOf point.env) one_le_card).ts s + d) := by
   have hhor : rho.horizon = 40 := congrArg EnvPoint.horizon hp
-  refine sleepy_faultBound S rho one_le_card hv hhor.ge ?_
+  refine sleepy_faultBound S rho one_le_card (point_constant hp) hv (W := 0) hhor.ge ?_
+  rw [EnvPoint.sleepyOn_iff (point_constant hp)]
   intro t _ _
   unfold EnvPoint.ReadyAbove
-  rw [hp, point_readyAt, point_faulty]
-  norm_num [point]
+  rw [hp, point_readyAt]
+  norm_num [point, EnvPoint.honestAt, EnvPoint.faultCount,
+    show (Finset.univ \ {0} : Finset (Fin 4)).card = 3 from by decide]
 
 /-- A key outside the honest keys makes no call in `simTrace`. -/
-theorem not_callAt_of_not_honest (hv : rho.ExecutionValid) {y : Fin (Fintype.card (Fin 4))}
+theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card (Fin 4))}
     (hy : y ∉ honestKeys S rho) (k : Nat) (ℓ) : ¬ (simTrace S rho one_le_card).CallAt y k ℓ := by
   rintro ⟨hnode, hl⟩
   obtain ⟨_, _, ev, _, he, -, -, -, hn, -⟩ :=
@@ -162,7 +174,8 @@ theorem not_callAt_of_not_honest (hv : rho.ExecutionValid) {y : Fin (Fintype.car
   apply hy
   rw [mem_honestKeys_iff]
   rw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
-  exact hv.honest_only ev (List.mem_of_getElem? he)
+  simpa only [rho.faultyAt_eq_zero (point_constant hp)] using
+    hv.honest_only ev (List.mem_of_getElem? he)
 
 /-- The faulty key is silent: it has no engine event, and it makes no call in `simTrace`, so
 it signs no attestation and emits no AC message there. -/
@@ -172,16 +185,16 @@ theorem faulty_silent (hp : rho.point = point) (hk : rho.key = Equiv.refl _)
       (∀ k ℓ, ¬ (simTrace S rho one_le_card).CallAt faultyKey k ℓ) ∧
       (∀ k a, ¬ (simTrace S rho one_le_card).SignAt faultyKey k a) ∧
       ∀ k m, ¬ (simTrace S rho one_le_card).EmitAt faultyKey k m := by
-  have hhon : rho.honest = {1, 2, 3} := congrArg EnvPoint.honest hp
+  have hhon : rho.faultyAt 0 = {0} := congrArg (fun p => p.faultyAt 0) hp
   have hf : faultyKey ∉ honestKeys S rho := by
     rw [mem_honestKeys_iff]
     rw [hk, hhon]
     decide
-  have hc := not_callAt_of_not_honest hv hf
+  have hc := not_callAt_of_not_honest hp hv hf
   refine ⟨hf, fun e he h => hf ?_, hc, fun k a ⟨_, h⟩ => hc k _ h,
     fun k m ⟨_, h, _⟩ => hc k _ h⟩
   rw [mem_honestKeys_iff]
-  exact h ▸ hv.honest_only e he
+  simpa only [rho.faultyAt_eq_zero (point_constant hp), h] using hv.honest_only e he
 
 variable (S)
 
@@ -198,8 +211,8 @@ theorem faulty_run :
         (S.params (pubOf point.env) one_le_card).n := by
   obtain ⟨rho, hp, hk, hs, hv, hc, -, -⟩ := Shape.coverage (goldilocks S) point (by decide)
     (by exact Equiv.refl _) (sel S) (sel_admits S) 0
-  refine ⟨rho, hp, hk, hs, hv, simTrace_goldilocksRun S rho one_le_card hv,
-    noCollRun_simTrace S rho one_le_card hv hc, faulty_ncard hp, ?_⟩
+  refine ⟨rho, hp, hk, hs, hv, simTrace_goldilocksRun S rho one_le_card (point_constant hp) hv,
+    noCollRun_simTrace S rho one_le_card (point_constant hp) hv hc, faulty_ncard hp, ?_⟩
   rw [faulty_ncard hp]
   exact one_lt_threshold S
 

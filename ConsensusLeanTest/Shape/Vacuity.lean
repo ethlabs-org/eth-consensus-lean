@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.Shape.Realizable
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Problem.Regimes
+public import ConsensusLean.Spec.Shape.OnRuns
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
@@ -59,7 +60,7 @@ theorem notReadyAtMost_below_not_realizable {O : OutputSchema} {Info : Type}
   have hc : 0 ≤ S.cDur K r := mul_nonneg (by positivity) (S.pt r).env.ΔAC_pos.le
   have hD : 0 ≤ S.lat K .available i r :=
     mul_nonneg (by positivity) (S.pt r).env.ΔAC_pos.le
-  obtain ⟨x, t, t', u, w, ht, -, -, -, -, -, -, hdl, hth, -⟩ := hlive
+  obtain ⟨x, t, t', u, w, ht, -, -, -, -, -, hdl, hth, -⟩ := hlive
   have hH : 0 ≤ (S.pt r).horizon := by
     have := le_max_left t 0
     dsimp [S] at *
@@ -195,7 +196,7 @@ theorem recur_noSlack_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
 index) is rejected by acceptance (`ProgressTolerant`). -/
 theorem recur_single_one_not_tolerant {O : OutputSchema} (K : Contract ProgressReq)
     {cap : Capability} (ho : (O.output cap).isSome)
-    (hp : ∀ i, K.progress cap i = .recur ⟨Pattern.single, 1⟩) : ¬ ProgressTolerant O K :=
+    (hp : ∀ i, K.progress cap i = .recur ⟨Pattern.single, 1, 0⟩) : ¬ ProgressTolerant O K :=
   recur_noSlack_not_tolerant K ho fun i => ⟨_, hp i, by decide⟩
 
 /-- Why: `recur ⟨single, 1⟩` fails as soon as one whole window fits in
@@ -205,16 +206,16 @@ every window (`patternRecurrence_of_periodic`). -/
 theorem recur_single_one_bad_slots {V : Type} [Fintype V] (p : EnvPoint V)
     (key : Fin (Fintype.card V) ≃ V) (sel : Slot → Finset (Fin (Fintype.card V)))
     (G : TimeGrid) (c start stop : Time)
-    (hbad : ∀ s, (sel s).Nonempty ∧ ∀ k ∈ sel s, key k ∉ p.honest)
-    (hs : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen ≤ stop)
-    (ht : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) * G.slotLen ≤
+    (hbad : ∀ s, (sel s).Nonempty ∧ ∀ k ∈ sel s, ¬ p.HonestAt (key k) (G.slotTime s))
+    (hs : max start 0 + ((⟨Pattern.single, 1, 0⟩ : Recurrence).len : Time) * G.slotLen ≤ stop)
+    (ht : max start 0 + ((⟨Pattern.single, 1, 0⟩ : Recurrence).len : Time) * G.slotLen ≤
       p.horizon) :
-    ¬ PatternRecurrence p key sel G ⟨Pattern.single, 1⟩ c start stop := by
+    ¬ PatternRecurrence p key sel G ⟨Pattern.single, 1, 0⟩ c start stop := by
   intro h
   obtain ⟨s, hall⟩ := h.exists_inside hs ht
   obtain ⟨-, hr⟩ := hall 0 (List.mem_singleton_self _)
   obtain ⟨k, hk⟩ := (hbad (s + 0)).1
-  exact (hbad (s + 0)).2 k hk (hr.2 k hk).1
+  exact (hbad (s + 0)).2 k hk (hr.2 k hk).1.1
 
 
 end ProgressFit
@@ -240,7 +241,7 @@ open Consensus.Shape.Tests.Realizable (point3 sel3 sel3_admits)
 selection `sel3` (key 2 proposes every slot) that delivers to validator 1 a
 header of slot 0 signed by key 1 as proposer. -/
 def forgedProposal : Model.Run (compiled trivialFamily) point3.env :=
-  Model.Run.mk point3.honest point3.horizon
+  Model.Run.mk point3.faultyAt point3.faultyAt_mono point3.horizon
       [.deliver 1 (.mk (.signed ⟨1, by simp⟩ (ShapeRole.proposer 0))
         (.item ⟨.root, 0, 0, ()⟩) []) 0]
       (pkiFin 3) sel3 (fun _ _ => []) (fun _ _ => []) (fun _ => 1)
@@ -258,7 +259,8 @@ def noService (stable : Bool) : OutputSchema :=
 /-- An instance without a ledger service is never accepted (`ShapeObligations.serves`),
 whatever its claims. -/
 theorem noService_not_obligations (b : Bool) (F : ChainShapeFamily (noService b) Info)
-    (K : Contract ProgressReq) : ¬ ShapeObligations F K := by
+    (K : Contract ProgressReq) :
+    ¬ ShapeObligationsOn F K (fun _ p => p.ConstantFaults) := by
   intro h
   rcases h.serves with h | h <;> simp [noService] at h
 

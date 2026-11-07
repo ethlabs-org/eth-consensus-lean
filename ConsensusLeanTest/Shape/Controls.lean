@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import ConsensusLean.Spec.Shape.Obligations
+public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Examples.Shape.Bft
 import ConsensusLean.Main
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -138,8 +139,8 @@ abbrev ctrlK : Contract ProgressReq where
   idx_nonempty := ⟨1⟩
   params := ctrlParams
   progress
-    | .final, k => .recur ⟨Pattern.range 2, k⟩
-    | _, k => .recur ⟨Pattern.single, k⟩
+    | .final, k => .recur ⟨Pattern.range 2, k, 0⟩
+    | _, k => .recur ⟨Pattern.single, k, 0⟩
 
 theorem ctrlK_admissible : ctrlK.params.Admissible := by
   have h := Params.standard_admissible (Idx := ℕ+) (catchUp := 1) (lag := 1) (budget := 1)
@@ -156,9 +157,9 @@ consecutive ones). -/
 theorem ctrlK_progressTolerant : ProgressTolerant ctrlSchema ctrlK := by
   intro cap ho N
   cases cap
-  · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
-  · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
-  · exact ⟨3, show (⟨Pattern.range 2, 3⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨2, show (⟨Pattern.single, 2, 0⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨2, show (⟨Pattern.single, 2, 0⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨3, show (⟨Pattern.range 2, 3, 0⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-- The control system: five validators. -/
 abbrev S : System (Fin 5) := sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)
@@ -196,7 +197,8 @@ theorem positive_controls (cap : Capability) :
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧ S.Sleepy ctrlK r ∧
       S.prog X ctrlK cap k1 0 (S.pt r).horizon r ∧ ProgressActive ctrlFamily ctrlK cap k1 0 r.2 ∧
       (S.pt r).TxLiveActive (S.cDur ctrlK r) 0 (S.lat ctrlK cap k1 r) ∧
-      ∃ x, ∃ w ∈ r.2.honest, (∀ τ, x ∉ r.2.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
+      ∃ x, ∃ w ∈ r.2.point.honestAt 0, (∀ τ, x ∉ r.2.submit w τ) ∧
+        ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧
       (∀ w m t, (S.log r).recv w m t → 5 ≤ t) ∧ (S.log r).EagerFrom (S.pt r) 5 ∧
       S.Healthy ctrlK 5 r ∧ S.prog X ctrlK cap k1 (S.ready ctrlK 5 r) (S.pt r).horizon r ∧
@@ -236,14 +238,22 @@ theorem ctrl_realizable : Realizable S X ctrlK :=
 `ShapeObligations` gives active service (`ShapeObligations.activeService`), a transaction relayed
 into the read of an honest node; the control family's reads are empty. So `ctrl_realizable`, a
 realizability certificate, is not acceptance. -/
-theorem ctrl_not_obligations (K : Contract ProgressReq) : ¬ ShapeObligations ctrlFamily K := by
+theorem ctrl_not_obligations (K : Contract ProgressReq) :
+    ¬ ShapeObligationsOn ctrlFamily K (fun _ p => p.ConstantFaults) := by
   intro h
-  obtain ⟨cap, g, hcap, hg, -⟩ := h.activeService
   obtain ⟨i⟩ := K.idx_nonempty
-  obtain ⟨r, -, -, -, -, x, u, w, t, t', -, -, -, -, -, -, hx⟩ :=
-    (h.correct (Fin 5)).served (by simp) hcap hg i 2 0 (by norm_num) le_rfl
-  simp [Trace.readAt, sysOf, Model.Run.readIdx, Model.protoOf, compiled, ctrlFamily,
-    ctrlShape, compile, ledgerOf] at hx
+  have hc := h.correct _ (Fin 5)
+  have hrat : (2 : Time) ≤ (K.params.fgDelay : Time) * 2 :=
+    le_mul_of_one_le_left (by norm_num) (by exact_mod_cast K.params.fgDelay.pos)
+  obtain ⟨r, ⟨hw, _, _⟩, ⟨_, hH, hp, ha⟩, _⟩ :=
+    (hc.realizable (by simp)).healthy .available i 2 2 0
+      (by norm_num) (by norm_num) hrat le_rfl
+  rcases hc.behaviour.healthyLive .available _ rfl i 0 r
+      ⟨hw.1, hw.2.2.1⟩ ⟨hH, hp⟩ with hl | he
+  · obtain ⟨x, u, w, t, t', _, _, _, _, _, _, hx⟩ := hl.served ha
+    simp [Trace.readAt, sysOf, Model.Run.readIdx, Model.protoOf, compiled, ctrlFamily,
+      ctrlShape, compile, ledgerOf, System.restrict] at hx
+  · exact hw.2.1 he
 
 /-- **Outage control**: `T = 2 < b₀ = 6 < b₁ = 8` (at `Δ = 2`), honest `key 2` always
 asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is
@@ -253,9 +263,9 @@ theorem outage_control :
     ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧ S.Outage ctrlK 2 6 8 r ∧
       OutageActive (S.cDur ctrlK r) 6 2 6 8 (S.pt r) ∧
       S.outageStart ctrlK 6 r = 2 ∧ S.outageEnd ctrlK 8 r = 12 ∧ S.recoveryAt ctrlK 8 r = 14 ∧
-      kv key5 card5 2 (by decide) ∈ (S.pt r).honest ∧
+      (S.pt r).HonestAt (kv key5 card5 2 (by decide)) 0 ∧
       (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
-      (S.pt r).faulty.Nonempty := by
+      ((S.pt r).faultyAt 0).Nonempty := by
   obtain ⟨rho, hpt, -, hw, ho, hoa⟩ :=
     outage_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
       (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
@@ -264,7 +274,7 @@ theorem outage_control :
   have hR : ctrlK.params.recovery = 3 := rfl
   have hD : ((ctrlK.params.recovery : Nat) : Time) * 2 = 6 := by rw [hR]; norm_num
   rw [hD] at hoa
-  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.1⟩
+  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.2.1⟩
   · change min (max 0 (6 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.ΔAC))
       rho.point.horizon = 2
     rw [hpt, realPoint_env, realPoint_horizon, hC]
@@ -276,7 +286,7 @@ theorem outage_control :
   · change 8 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.ΔAC = 14
     rw [hpt, realPoint_env, hR]
     norm_num
-  · change _ ∈ rho.point.honest
+  · change rho.point.HonestAt _ 0
     rw [hpt]
     exact realPoint_honest key5 card5 two_pos two_pos _ 40 (j := 2) (by decide) (by decide)
   · intro t

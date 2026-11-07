@@ -49,6 +49,7 @@ variable (S : Setup) (A : ContractAssumptions S)
 theorem confirmedQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) (cap : Capability)
     (hcap : cap = .available ∨ cap = .stable) (idx : (K S A).Idx) (gst t : Time)
+    (hf : r.2.point.ConstantFaults)
     (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
     (hh : (Sys (goldilocks S) V).Healthy (K S A) gst r)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap idx
@@ -59,24 +60,26 @@ theorem confirmedQuery_applies {V : Type} [Fintype V] [DecidableEq V]
       (t + ((K S A).params.latency cap idx : Time) * r.1.ΔAC)) :
     ∃ Q : ConfirmedQuery S A V, Q.run = r ∧ Q.cap = cap ∧ Q.index = idx ∧ Q.gst = gst ∧
       Q.query = t :=
-  ⟨⟨r, hn, cap, hcap, idx, gst, t, hv, hc, Or.inr ⟨hh, hp, ht⟩, hb, hr⟩,
+  ⟨⟨r, hf, hn, cap, hcap, idx, gst, t, hv, hc, Or.inr ⟨hh, hp, ht⟩, hb, hr⟩,
     rfl, rfl, rfl, rfl, rfl⟩
 
 theorem healthyPreparationQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) (cap : Capability)
     (hcap : cap = .available ∨ cap = .stable) (idx : (K S A).Idx) (gst : Time)
+    (hf : r.2.point.ConstantFaults)
     (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
     (hh : (Sys (goldilocks S) V).Healthy (K S A) gst r) :
     ∃ Q : HealthyPreparationQuery S A V, Q.run = r ∧ Q.cap = cap ∧ Q.index = idx ∧
       Q.gst = gst :=
-  ⟨⟨r, hn, cap, hcap, idx, gst, hv, hc, hh⟩, rfl, rfl, rfl, rfl⟩
+  ⟨⟨r, hf, hn, cap, hcap, idx, gst, hv, hc, hh⟩, rfl, rfl, rfl, rfl⟩
 
 theorem outageQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) (T b₀ b₁ : Time)
+    (hf : r.2.point.ConstantFaults)
     (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
     (ho : (Sys (goldilocks S) V).Outage (K S A) T b₀ b₁ r) :
     ∃ Q : OutageQuery S A V, Q.run = r ∧ Q.T = T ∧ Q.start = b₀ ∧ Q.stop = b₁ :=
-  ⟨⟨r, hn, T, b₀, b₁, hv, hc, ho⟩, rfl, rfl, rfl, rfl⟩
+  ⟨⟨r, hf, hn, T, b₀, b₁, hv, hc, ho⟩, rfl, rfl, rfl, rfl⟩
 
 /-! ## The two-validator healthy run at `K S A` -/
 
@@ -98,7 +101,8 @@ theorem healthy_run_prog {H : Time} {r : (Sys (goldilocks S) (Fin 2)).Run}
   apply patternRecurrence_of_all
   intro s j _
   rw [hs, hp]
-  exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ => point_ready H _ _ _⟩
+  exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ =>
+    ⟨point_ready H _ _ _, by simp [EnvPoint.HonestAt, point]⟩⟩
 
 /-- (a) A `HealthyPreparationQuery` at `K S A`: the two-validator run, `.available`, index 1,
 GST 0. -/
@@ -107,7 +111,7 @@ theorem healthyPreparationQuery_witness (H : Time) (hH : 0 ≤ H) :
       Q.run.2.sel = sel S H ∧ Q.run.1 = (point H).env := by
   obtain ⟨r, hE, hp, hs, -, hv, hc, hh⟩ := healthy_run S A (contract_coefficients S A) H hH
   obtain ⟨Q, hQ, -⟩ := healthyPreparationQuery_applies S A r one_le_card .available
-    (Or.inl rfl) (1 : ℕ+) 0 hv hc hh
+    (Or.inl rfl) (1 : ℕ+) 0 (by rw [hp]; exact fun _ => rfl) hv hc hh
   exact ⟨Q, hQ ▸ hp, hQ ▸ hs, hQ ▸ hE⟩
 
 /-- (a) The reset fit of `healthy_reset_fit` on that query, with `ready < heal` strictly. -/
@@ -135,7 +139,8 @@ theorem confirmedQuery_healthy :
     healthy_run S A (contract_coefficients S A) (horizonT S A) (horizonT_nonneg S A)
   subst hE
   have hhor : rho.horizon = horizonT S A := congrArg EnvPoint.horizon hp
-  let Q : ConfirmedQuery S A (Fin 2) := ⟨⟨_, rho⟩, one_le_card, .available, Or.inl rfl,
+  let Q : ConfirmedQuery S A (Fin 2) := ⟨⟨_, rho⟩,
+    (by rw [hp]; exact fun _ => rfl), one_le_card, .available, Or.inl rfl,
     (1 : ℕ+), 0, healT S A, hv, hc,
     Or.inr ⟨hh, healthy_run_prog S A hp hs _ _,
       by change max (0 : Time) 0 + _ * 2 ≤ healT S A; simp⟩,
@@ -150,7 +155,8 @@ theorem confirmedQuery_producer :
     ∃ Q : ConfirmedQuery S A (Fin 2), Nonempty (ConfirmedProducerSlot S A (Fin 2) Q) := by
   obtain ⟨Q, hE, hp, hs, hc, hi, hg, hq, hh⟩ := confirmedQuery_healthy S A
   let P : HealthyPreparationQuery S A (Fin 2) :=
-    ⟨Q.run, Q.hn, .available, Or.inl rfl, (1 : ℕ+), 0, Q.valid, Q.noCollision, hh⟩
+    ⟨Q.run, Q.constant, Q.hn, .available, Or.inl rfl, (1 : ℕ+), 0,
+      Q.valid, Q.noCollision, hh⟩
   have hfit := healthy_reset_fit S A (Fin 2) P
   have hR : (0 : Time) ≤ healthyResetCoeff S P.index := Nat.cast_nonneg _
   have hΔ : (0 : Time) < P.params.Δ := P.params.toParams.hΔ
@@ -205,12 +211,12 @@ theorem healthyPreparationQuery_not_final {V : Type} [Fintype V] [DecidableEq V]
 /-- (a) An `OutageQuery` at `K S A`: the outage witness of `Shape.regimes_realizable` for the
 obligations contract on five validators, at `Δ = ΔF = 2`, armed at `T ≥ 0`. -/
 theorem outageQuery_witness : ∃ Q : OutageQuery S A (Fin 5), 0 ≤ Q.T := by
-  obtain ⟨r, T, b₀, b₁, ⟨⟨hv, hc, -, -⟩, -, -⟩, ho, -, -⟩ :=
+  obtain ⟨r, T, b₀, b₁, ⟨⟨hv, hc, hf, -, -⟩, -, -⟩, ho, -, -⟩ :=
     (Shape.regimes_realizable (goldilocks S) (K S A) (meetsObligations_admissible S A)
       (meetsObligations_progressFits S A) (meetsObligations_progressTolerant S A) (Fin 5)
       (by decide)).outage
       2 2 0 (by decide) (by decide)
-  obtain ⟨Q, -, hT, -, -⟩ := outageQuery_applies S A r (by decide) T b₀ b₁ hv hc ho
+  obtain ⟨Q, -, hT, -, -⟩ := outageQuery_applies S A r (by decide) T b₀ b₁ hf hv hc ho
   exact ⟨Q, hT ▸ Q.outage.1.1⟩
 
 /-- (a) Non-vacuous: `outage_node_lag` on that query, `T + (4k + 6)Δ ≤ b₀`. -/

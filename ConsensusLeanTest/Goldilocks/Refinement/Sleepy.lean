@@ -32,7 +32,8 @@ open Consensus.Model (pubOf)
 /-- Two validators, always awake and honest, engine `Δ = ΔF = 2` (so protocol `Δ_p = 2`),
 horizon `H`, no submissions. -/
 def point (H : Time) : EnvPoint (Fin 2) :=
-  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, H, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, fun _ => ∅, monotone_const,
+    H, fun _ _ => []⟩
 
 theorem one_le_card : 1 ≤ Fintype.card (Fin 2) := by decide
 
@@ -61,15 +62,14 @@ theorem sel_admits (H : Time) :
 
 /-- Every validator is ready at every time and duration. -/
 theorem point_ready (H c t : Time) (v : Fin 2) : (point H).Ready c v t :=
-  ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
+  ⟨by simp [EnvPoint.HonestAt, point], fun _ _ _ => rfl⟩
 
 theorem point_readyAt (H c t : Time) : (point H).readyAt c t = Finset.univ := by
   ext v
   simp only [EnvPoint.readyAt, Finset.mem_filter, Finset.mem_univ, iff_true]
-  exact ⟨Finset.mem_univ v, point_ready H c t v⟩
+  exact ⟨trivial, point_ready H c t v⟩
 
-theorem point_faulty (H : Time) : (point H).faulty = ∅ := by
-  simp [EnvPoint.faulty, point]
+theorem point_faulty (H t : Time) : (point H).faultyAt t = ∅ := rfl
 
 /-- The run of `Shape.coverage` at `point H`: valid, collision-free and Sleepy for every contract
 `goldilocksContract A C`. -/
@@ -85,9 +85,12 @@ theorem sleepy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : T
   · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
       (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide))
   · intro t _ _
-    change rho.point.ReadyAbove (1 / 2) _ t
-    unfold EnvPoint.ReadyAbove
-    rw [hp, point_readyAt, point_faulty]
+    change (rho.point.retain _).ReadyAbove (1 / 2) _ t
+    rw [hp]
+    have hr (d : Time) : (point H).retain d = point H := rfl
+    rw [hr]
+    unfold EnvPoint.ReadyAbove EnvPoint.faultCount
+    rw [point_readyAt, point_faulty]
     norm_num
 
 /-- (a) The `SleepySafetyQuery` fields, over `goldilocksContract A C`, are jointly satisfiable at
@@ -125,7 +128,8 @@ theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients
     apply patternRecurrence_of_all
     intro s j _
     rw [hs, hp]
-    exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ => point_ready H _ _ _⟩
+    exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ =>
+      ⟨point_ready H _ _ _, by simp [EnvPoint.HonestAt, point]⟩⟩
   · rw [hhor]
     change (0 : Time) + (C.latency .available 1 : Time) * 2 ≤ H
     linarith
@@ -148,15 +152,18 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     (le_trans (by decide) hH)
     (by exact Equiv.refl _) (sel S H) (sel_admits S H) 0
   have hn := one_le_card
-  have hhon : rho.honest = Finset.univ := congrArg EnvPoint.honest hp
+  have hhon (t : Time) : rho.faultyAt t = ∅ := congrArg (fun p => p.faultyAt t) hp
+  have hf : rho.point.ConstantFaults := fun t => by
+    change rho.faultyAt t = rho.faultyAt 0
+    rw [hhon, hhon]
   have hhor : rho.horizon = H := congrArg EnvPoint.horizon hp
-  have hrun := simTrace_goldilocksRun S rho hn hv
-  have hnc := noCollRun_simTrace S rho hn hv hc
+  have hrun := simTrace_goldilocksRun S rho hn hf hv
+  have hnc := noCollRun_simTrace S rho hn hf hv hc
   let y : Fin (Fintype.card (Fin 2)) := ⟨0, hn⟩
   have hy : y ∈ honestKeys S rho := by
     rw [mem_honestKeys_iff]
     rw [hhon]
-    exact Finset.mem_univ _
+    exact Finset.notMem_empty _
   let sp := S.params (pubOf (point H).env) hn
   have ht : sp.ts 0 + sp.Δ = 2 := by rfl
   have hawake : ∀ u : Time, 0 ≤ u → u ≤ 2 → (simTrace S rho hn).awake y u := by
@@ -171,7 +178,8 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
   obtain ⟨k, e, ⟨ℓ, hcall, he⟩, hslot, htime⟩ :=
     Compose.vote_of_awake_joined hrun hnc hy (s := 0) hw hj
   have hem : (simTrace S rho hn).EmitAt y k e.msg := ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
-  obtain ⟨i, -, -, hsend, hrel, -⟩ := simTrace_vote_forwarded S rho hn hv y hy k e.msg (Or.inl hem)
+  obtain ⟨i, -, -, hsend, hrel, -⟩ :=
+    simTrace_vote_forwarded S rho hn hf hv y hy k e.msg (Or.inl hem)
   exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, hsend, hrel⟩
 
 end Consensus.Goldilocks.Obligations.Test.SleepyWitness

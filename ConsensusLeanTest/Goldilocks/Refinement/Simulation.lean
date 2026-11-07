@@ -158,7 +158,8 @@ theorem projection_observation {sp : SA.SAParams}
 
 /-- Regression: a non-public terminal observation belongs to a valid run. -/
 def terminalPoint : EnvPoint (Fin 1) :=
-  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, 1, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, fun _ => ∅,
+    monotone_const, 1, fun _ _ => []⟩
 
 /-- A ready reader remains awake at the finite horizon, and a strictly later unlabelled
 cut exists. The old constant-horizon filler makes this conclusion impossible. -/
@@ -184,7 +185,7 @@ theorem terminal_observation (S : Setup) :
   have hr : rho.point.Ready (Regimes.catchUp (S.params (pubOf terminalPoint.env) (by decide)))
       0 rho.horizon := by
     rw [hp]
-    exact ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
+    exact ⟨by simp [EnvPoint.HonestAt, terminalPoint], fun _ _ _ => rfl⟩
   refine ⟨rho, hv, hh, hr, ?_, (allCuts S rho (by decide)).length, ?_, ?_⟩
   · rw [simTrace_awake_iff, awakeAt_iff]
     exact ⟨rfl, hv.horizon_nonneg, le_rfl⟩

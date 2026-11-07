@@ -186,19 +186,27 @@ theorem active_relay {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [Decid
     (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start) (hD : 0 ≤ D)
     (hawake : ∀ v t, E.awake v t = true)
     (ha : rho.point.TxLiveActive c start D) :
-    ∃ x, ∃ w ∈ rho.honest, (∀ τ, x ∉ rho.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ rho.relay w τ := by
-  obtain ⟨x, t, t', u, w, ht0, hu, hua, hx, hw, -, hnw, hdl, hth, -⟩ := ha
-  change u ∈ rho.honest at hu
-  change w ∈ rho.honest at hw
+    ∃ x, ∃ w ∈ rho.point.honestAt 0, (∀ τ, x ∉ rho.submit w τ) ∧
+      ∃ τ, 0 ≤ τ ∧ x ∈ rho.relay w τ := by
+  obtain ⟨x, t, t', u, w, ht0, hu, hua, hx, -, hnw, hdl, hth, hw, -⟩ := ha
   change x ∈ rho.submit u t at hx
   change ∀ τ, x ∉ rho.submit w τ at hnw
   change max t start + E.ΔAC + D ≤ t' at hdl
   change t' ≤ rho.horizon at hth
   have hm : max t gst ≤ max t start := max_le_max le_rfl hgs
   have hd : max t gst + E.ΔAC - 1 ≤ rho.horizon := by linarith
-  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u hu x t ht0 hua hx w hw t le_rfl hd hd
+  have hdeadline : max t gst + E.ΔAC - 1 ≤ t' := by linarith
+  have ht' : 0 ≤ t' := by
+    have hm0 : t ≤ max t start := le_max_left _ _
+    have hΔ := E.ΔAC_pos
+    linarith
+  have hw0 : w ∈ rho.point.honestAt 0 :=
+    Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, fun h =>
+      hw (rho.point.faultyAt_mono ht' h)⟩
+  obtain ⟨τ, hτ, -, hxτ⟩ := hs.txs u x t ht0 hu hua hx w t le_rfl hd hd
+    (fun h => hw (rho.point.faultyAt_mono hdeadline h))
     (fun u _ _ => hawake w u)
-  refine ⟨x, w, hw, hnw, τ, hτ, ?_⟩
+  refine ⟨x, w, hw0, hnw, τ, hτ, ?_⟩
   rcases List.mem_append.mp hxτ with h | h
   · exact absurd h (hnw τ)
   · exact h

@@ -40,7 +40,7 @@ theorem healthy_run (A : ContractAssumptions S) (C : ContractCoefficients) (H : 
   refine ⟨⟨(point H).env, rho⟩, rfl, hp, hs, hk, hv, hc, ?_, ⟨?_, ?_⟩, ?_⟩
   · exact (Model.sysOf_delivers_iff rho _ _ _).mpr
       (he.psync le_rfl (show (1 : Time) < 2 by decide) (show (1 : Time) < 2 by decide))
-  · change ((rho.point.faulty.card : ℚ)) < _ * _
+  · change ((rho.point.faultyAt rho.point.horizon).card : ℚ) < _ * _
     rw [hp, point_faulty]
     norm_num [Params.standard]
   · exact fun _ _ _ _ _ => rfl
@@ -72,7 +72,8 @@ theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients)
     apply patternRecurrence_of_all
     intro s j _
     rw [hs, hp]
-    exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ => point_ready H _ _ _⟩
+    exact ⟨⟨_, Finset.mem_singleton_self _⟩, fun _ _ =>
+      ⟨point_ready H _ _ _, by simp [EnvPoint.HonestAt, point]⟩⟩
   · change max (0 : Time) 0 + (C.heal .final 1 : Time) * 2 ≤ (C.heal .final 1 : Time) * 2
     simp
   · rw [hhor]
