@@ -159,6 +159,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Suffix
