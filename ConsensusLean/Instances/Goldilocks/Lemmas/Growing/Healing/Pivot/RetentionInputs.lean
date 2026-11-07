@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 
 public section
 
@@ -16,14 +16,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- The kernel owner's finite high-origin comparison contract. -/
-theorem origins_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {x z : Fin sp.n} {i j r l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
-    (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
-    Compatible (tr.HonestBlocksAt H) B O := by
-  sorry
 
 /-- Strict low-justification finality at an independently honest observation. -/
 theorem low_finalized_below_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
