@@ -43,6 +43,31 @@ theorem honest_votes_in_slot_at
       tr.time j ≤ sp.ts u + sp.Δ := by
   sorry
 
+/-- Outcome supplier: a next-slot frozen root lies below the common bound on old origins. -/
+theorem ResetPremisesUpTo.reset_vote_root_below_bound_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {u : Nat}
+    (hR : drainTime sp a ≤ sp.ts u) {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocksAt H)
+    (hbound : ∀ x r l B, HighOrigin tr H g x r l B → tr.time r < sp.ts u →
+      tr.time r ≤ b → Anc (tr.HonestBlocksAt H) B P)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
+    Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
+  sorry
+
+/-- Outcome supplier: a held bound on old origins is above the next-slot floor. -/
+theorem ResetPremisesUpTo.reset_vote_floor_above_old_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
+    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u →
+      tr.time r ≤ b → Anc (tr.HonestBlocksAt H) O B) :
+    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
+  sorry
+
 end Consensus.Goldilocks.Healing.Growing
 
 end
