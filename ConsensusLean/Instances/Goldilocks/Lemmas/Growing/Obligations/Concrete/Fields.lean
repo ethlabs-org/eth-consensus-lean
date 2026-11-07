@@ -150,7 +150,7 @@ theorem meetsObligations_persists_growing : ∀ g, schema.output .stable = some 
   intro v hvr t ht hth w hw
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
   let Q : OutageQueryAt S A V := ⟨r, hn, T, b₀, b₁, hv, hcollision, ho⟩
-  exact outage_protected_at S A V Q v hvr t ht hth w hw
+  exact outage_protected_at Q v hvr t ht hth w hw
 
 /-- Healthy liveness of the nonfinal (confirmed) capabilities: the healthy confirmed supply and
 the payload projection. -/

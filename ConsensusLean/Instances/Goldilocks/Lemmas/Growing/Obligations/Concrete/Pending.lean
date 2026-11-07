@@ -8,24 +8,22 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Repair
 
 public section
 
 /-! # Pending engine interface of the growing obligations endpoint
 
-Statements the endpoint consumes whose home modules are not on this branch yet, under their agreed
-names, so that the endpoint composes against the final interface:
+The statement the endpoint consumes whose home module is not on this branch yet, under its agreed
+name, so that the endpoint composes against the final interface: healed safety of a healthy
+preparation query (`healthy_ready_safety_at`), home `Lemmas/Growing/Obligations/Healthy`.
 
-* healed safety of a healthy preparation query (`healthy_ready_safety_at`), home
-  `Lemmas/Growing/Obligations/Healthy`;
-* outage protection of an outage query (`outage_protected_at`), home
-  `Lemmas/Growing/Outage/Engine/Repair`.
+It re-exports outage protection of an outage query (`outage_protected_at`) from
+`Outage/Engine/Repair`, the final branch of healthy liveness
+(`meetsObligations_healthyLive_final_growing`) from `Concrete/Final` and finite engine sleepy
+safety (`sleepy_safe_engine_at`) from `Sleepy/Engine/Safety`.
 
-It re-exports the final branch of healthy liveness (`meetsObligations_healthyLive_final_growing`)
-from `Concrete/Final` and finite engine sleepy safety (`sleepy_safe_engine_at`) from
-`Sleepy/Engine/Safety`.
-
-Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
+The theorem here is an open `sorry`; this module is deleted when its home module lands. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -47,14 +45,6 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
       Q.ready Q.heal Q.run) :
     (chainTrace Q.run.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       .confirmed Q.heal := by
-  sorry
-
-/-- **Outage protection under growing faults**: every node ready from the recovery point holds
-every confirmed block that a node ready at the arming time `T` held. -/
-theorem outage_protected_at (Q : OutageQueryAt S A V) :
-    (chainTrace Q.run.2).ProtectedReadyFrom Q.duration .confirmed
-      (resilienceTarget schema .confirmed) Q.T
-      ((Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run) := by
   sorry
 
 end Queries
