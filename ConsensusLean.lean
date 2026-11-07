@@ -231,10 +231,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RowClient
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RowGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Reset
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.StandIn.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationDefs
