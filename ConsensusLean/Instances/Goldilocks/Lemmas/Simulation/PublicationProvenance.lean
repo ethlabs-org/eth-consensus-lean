@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationQueue
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -257,11 +258,12 @@ theorem simTrace_forwardOrigin (hv : rho.ExecutionValid) :
 
 /-- Every authenticated wrapper in an actual receipt has a successful source cut
 before that receipt's event boundary, with the exact decoded block and stamp. -/
-theorem received_forward_source_acceptance (hv : rho.ExecutionValid) {i : Nat} {v : V}
+theorem received_forward_source_acceptance (hf : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     ∃ k < cutMap S rho hn i, (simTrace S rho hn).AcceptAt x k B ∧
@@ -270,7 +272,8 @@ theorem received_forward_source_acceptance (hv : rho.ExecutionValid) {i : Nat} {
     change o.signer?.map rho.key = some (rho.key x)
     rw [decodeForward_signer hd]
     rfl
-  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hx hsign
+  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign
+    (by simpa only [rho.faultyAt_eq_zero hf] using hx)
   have hkx : rho.ownKey (rho.key x) = x := rho.key.symm_apply_apply _
   have hd' := hd
   rw [← hkx] at hd'
@@ -306,15 +309,15 @@ theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V)}
 observation whenever the observation's finalized tip is below the received block.
 This uses the actual parent-first traversal and source provenance, not a historical
 possibly refused `BlockCallAt`. Previously accepted blocks persist across restart. -/
-theorem received_forward_accepted (hv : rho.ExecutionValid)
+theorem received_forward_accepted (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn))
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
     {x : Fin (Fintype.card V)} {u t : Time} {p : Option (Wire (Fintype.card V))}
     {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∈ rho.honest)
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∉ rho.faultyAt 0)
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B))
     (hij : cutMap S rho hn (i + 1) ≤ j)
@@ -324,7 +327,7 @@ theorem received_forward_accepted (hv : rho.ExecutionValid)
   have hy' : rho.ownKey v ∈ honestKeys S rho := by
     rw [mem_honestKeys_iff]
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
-  have hseq := simTrace_deliver S rho hn hv v hy i receipt u he
+  have hseq := simTrace_deliver S rho hn hf hv v hy i receipt u he
   obtain ⟨pre, post, hparts⟩ := contained_parts_infix hc
   change DeliverSeq (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
     _ _ _ _ _ _ receipt.parts _ _ at hseq
@@ -337,12 +340,12 @@ theorem received_forward_accepted (hv : rho.ExecutionValid)
       decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash receipt) q =
         some (x, tq, pq, C) → ∃ k, (simTrace S rho hn).AcceptAt x k C := by
     intro q tq pq C hq hdec
-    obtain ⟨k, _, ha, _⟩ := received_forward_source_acceptance S rho hn hv he (hc.trans hq) hx
+    obtain ⟨k, _, ha, _⟩ := received_forward_source_acceptance S rho hn hf hv he (hc.trans hq) hx
       ((decodeForward_receipt_iff S rho hn (hc.trans hq)).mp hdec)
     exact ⟨k, ha⟩
   have hheld := forward_receipt_held hrun hnc ((mem_honestKeys_iff S rho x).mpr hx)
     hy' hFB B o t p r e hd' hsub hej
-    (received_forward_stamp_le S rho hn hv he hc hx hd) .refl hsource
+    (received_forward_stamp_le S rho hn hf hv he hc hx hd) .refl hsource
   rcases Compose.tree_cases hrun.toLocalRun hy' hheld with hgen | ⟨k, hk, ha⟩
   · have hp := (decodeBlock_wire (decodeForward_child hd).1).2.1
     exact False.elim (hp (hgen ▸ rfl))
@@ -351,15 +354,15 @@ theorem received_forward_accepted (hv : rho.ExecutionValid)
 /-- A historical receipt before a strict deadline gives an acceptance before that
 deadline. The acceptance is bounded by its actual source event, never by the time
 of the next cut (which may belong to a later event or terminal filler). -/
-theorem received_forward_accepted_before (hv : rho.ExecutionValid)
+theorem received_forward_accepted_before (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hrun : GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn))
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V)}
     {x : Fin (Fintype.card V)} {u t deadline : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∈ rho.honest)
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (he : rho.events[i]? = some (.deliver v receipt u)) (hy : v ∉ rho.faultyAt 0)
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B))
     (hij : cutMap S rho hn (i + 1) ≤ j)
@@ -372,7 +375,7 @@ theorem received_forward_accepted_before (hv : rho.ExecutionValid)
     rw [mem_honestKeys_iff]
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hy
   have hFB' := (Healing.run_F_mono hrun.toLocalRun hy' hij).trans hFB
-  obtain ⟨k, hk, ha⟩ := received_forward_accepted S rho hn hv hrun hnc
+  obtain ⟨k, hk, ha⟩ := received_forward_accepted S rho hn hf hv hrun hnc
     he hy hc hx hd le_rfl hFB'
   obtain ⟨r, q, ev, _, hq, hstart, _, _, _, ht, _⟩ :=
     simTrace_cut S rho hn (by rw [ha.2]; simp)
@@ -394,12 +397,13 @@ theorem received_forward_accepted_before (hv : rho.ExecutionValid)
 
 /-- Prior authenticated holdings give a prior receipt call or an own acceptance.
 The receipt alternative deliberately retains refusal as a possibility. -/
-theorem simTrace_forwardHeldProcessed (hv : rho.ExecutionValid) :
+theorem simTrace_forwardHeldProcessed (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ForwardHeldProcessed S rho hn (simTrace S rho hn) (cutMap S rho hn) := by
   apply (forwardHeldProcessed_iff S rho hn _ _).mpr
   intro y _ i x t p B o hx ho hd
   have hy : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
-  rcases held_forward_tick_or_processed S rho hn hv ho ((mem_honestKeys_iff S rho x).mp hx) hd with
+  rcases held_forward_tick_or_processed S rho hn hf hv ho
+    ((mem_honestKeys_iff S rho x).mp hx) hd with
     ⟨hxy, j, hj, u, he, hr⟩ | ⟨k, hk, ht, hc⟩
   · rw [hxy] at hd
     obtain ⟨k, hk, ha, ht⟩ := tick_released_forward_acceptance S rho hn hv he hr hd

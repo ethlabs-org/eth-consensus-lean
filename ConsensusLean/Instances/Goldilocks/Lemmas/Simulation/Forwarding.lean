@@ -1295,7 +1295,7 @@ Argument: only the acceptance handler queues these candidates; authentication ru
 other honest origins. The engine digest identifies the root omitted by the wire header;
 wire equality alone does not identify B. This remains a producer obligation. -/
 def ForwardOrigin : Prop :=
-  ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
+  ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 → ∀ t p B,
     decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
       some (r.origin, t, p, B) →
     ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
@@ -1303,7 +1303,7 @@ def ForwardOrigin : Prop :=
 
 /-- Characterize the origin obligation without exposing its definition body. -/
 theorem forwardOrigin_iff : ForwardOrigin S rho hn tr cutMap pubExec ↔
-    ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
+    ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 → ∀ t p B,
       decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
         some (r.origin, t, p, B) →
       ∃ k, tr.AcceptAt r.origin k B ∧ tr.time k = t ∧
@@ -1335,7 +1335,7 @@ theorem forwardAtAcceptance_iff : ForwardAtAcceptance S rho hn tr cutMap pubExec
 /-- OPEN: parent references are taken from the origin's previously released wrappers;
 same-event publication order is candidate order, not strict timestamp order. -/
 def ForwardParentEarlier : Prop :=
-  ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest → ∀ t p B,
+  ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 → ∀ t p B,
     decodeForward (S.params (pubOf E) hn) (Model.digests rho.hash r.object) r.object =
       some (r.origin, t, some p, B) →
     ∃ q A pt pp ka kb, pubExec.actual q ∧ Publication.Before q r ∧ q.origin = r.origin ∧
@@ -1370,7 +1370,7 @@ theorem forwardHeldProcessed_iff : ForwardHeldProcessed S rho hn tr cutMap ↔
 /-- OPEN: accepted canonical objects and exact parent wrappers are in the publisher's seen
 closure at the actual candidate prefix; signing and dependency guards do not suppress it. -/
 def AcceptedObjectsSeen : Prop :=
-  ∀ r, pubExec.actual r → rho.key r.origin ∈ rho.honest →
+  ∀ r, pubExec.actual r → rho.key r.origin ∉ rho.faultyAt 0 →
     let nd := (Model.releaseAll (protoOf (compiled (goldilocks S)) E) rho.hash r.origin
       r.before (r.candidates.take r.index)).1
     ∀ o ∈ r.object.carried, o ∈ Model.closure nd.seen
