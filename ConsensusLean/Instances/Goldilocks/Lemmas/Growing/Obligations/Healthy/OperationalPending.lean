@@ -11,7 +11,8 @@ under their agreed names (static name + `_at`). Each node is honest at its own c
 held state at an observation time after the state's cuts, and the slot-`u` proposer through
 `t_u + hold`:
 
-* `cutZ_lt_reset_of_snapshot_at` (`Healing.cutZ_lt_reset_of_snapshot`);
+* `ResetPremisesUpTo.cutZ_lt_reset_at` (`Healing.cutZ_lt_reset_of_snapshot`, with the finite
+  reset premises the growing argument needs);
 * `ResetPremisesUpTo.operational_unanimous_at`, `ResetPremisesUpTo.reset_seed_before_slot_at`,
   `ResetPremisesUpTo.reset_proposal_passes_at`;
 * `report_cover_of_unanimous_at` (`Obligations.UpTo.report_cover_of_unanimous`).
@@ -27,16 +28,17 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
 
-/-- The snapshot cut `c_z` is strictly before the reset. -/
-theorem cutZ_lt_reset_of_snapshot_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g)) (hR : IsReset tr H g a) :
-    cutZ sp.toParams g < a := by
-  sorry
-
 namespace ResetPremisesUpTo
 
 variable {b : Time}
+
+/-- **The snapshot cut `c_z` is strictly before the reset**, under the finite reset premises.
+The signer's source carries a live fast lock whose counted supporters (at least half of the
+committee) outnumber the faults at `c_z`, so a supporter honest at `c_z` holds the entry of
+height `H_z + 1`. -/
+theorem cutZ_lt_reset_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) :
+    cutZ sp.toParams g < a := by
+  sorry
 
 /-- Every vote of slot `u` by a node honest at its cut, by `b`, is for the post-drain operational
 proposal `P` of slot `u`, whose proposer is honest through `t_u + hold`. -/
