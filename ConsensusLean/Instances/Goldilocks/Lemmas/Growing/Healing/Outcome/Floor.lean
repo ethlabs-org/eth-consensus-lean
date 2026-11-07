@@ -46,7 +46,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 /-- A bounded old-origin upper bound reaches the actual voter's height floor.
-Pending kernel dependencies are reset_seed_before_slot_at and origins_compatible_at. -/
+The remaining pending proof dependency is origins_compatible_at. -/
 theorem reset_vote_floor_above_old_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
