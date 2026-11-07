@@ -6,18 +6,19 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 
 public section
 
 /-! # Pending growing Healing Outcome core of the unanimity and report lemmas
 
-Growing forms (static name + `_at`, `Healing.Growing.ResetPremisesUpTo`) of the seven remaining
+Growing forms (static name + `_at`, `Healing.Growing.ResetPremisesUpTo`) of the six remaining
 Outcome core lemmas that `operational_unanimous_at` and `report_cover_of_unanimous_at` consume;
-the proved `clean_window_timing_at` and `reset_proposal_frame_at` are re-exported from
-`Growing/Healing/Clean/Timing` and `Growing/Healing/Outcome/ProposalFrame`. The slot-`u` proposer
-is honest through `t_u + hold`, every voter or caller at its own cut, unanimity and votes are
-quantified over voters honest at their cast, and ancestry is over `HonestBlocksAt`. Timing and
-margins are the static ones.
+the proved `clean_window_timing_at`, `reset_proposal_frame_at` and `update_toFG_calls_at` are
+re-exported from `Growing/Healing/Clean/Timing`, `Growing/Healing/Outcome/ProposalFrame` and
+`Growing/Healing/UpdateCalls`. The slot-`u` proposer is honest through `t_u + hold`, every voter
+or caller at its own cut, unanimity and votes are quantified over voters honest at their cast,
+and ancestry is over `HonestBlocksAt`. Timing and margins are the static ones.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -172,19 +173,6 @@ theorem call_locks_compatible_of_unanimous_at (hp : ResetPremisesUpTo tr H propo
       Compatible (tr.HonestBlocksAt H) B P) :
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocksAt H) L P := by
-  sorry
-
-/-- (`Healing.ResetPremisesUpTo.update_toFG_calls`, Outcome/Supplier.) The updater is honest at the
-update time `t_u + 6Δ`. -/
-theorem update_toFG_calls_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {u : Nat} (hy : y ∈ H (sp.ts u + 6 * sp.Δ))
-    (hu : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u)
-    (hub : sp.ts u + 6 * sp.Δ ≤ b) :
-    ∃ j ell ell', SA.UpdateAt tr.projAC y j u ell ∧
-      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
   sorry
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
