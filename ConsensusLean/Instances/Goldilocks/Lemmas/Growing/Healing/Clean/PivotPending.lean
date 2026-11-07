@@ -8,17 +8,17 @@ public section
 /-! # Pending pivot interface of the clean proposal domain
 
 The growing forms of two `Outcome/PivotRowSources` lemmas that the clean proposal domain reads,
-under their agreed names (static name + `_at`), owned by the pivot ports. Each node is honest at
-its own cut, and ancestry and compatibility are over `HonestBlocksAt`:
+under their final names (static name + `_at`, in `ProposalImpl`), owned by the pivot ports. Each
+node is honest at its own cut, and ancestry and compatibility are over `HonestBlocksAt`:
 
-* `ResetPremisesUpTo.raw_writer_held_at_slot_start_at`: a raw writer's ancestor is held by a later
-  slot-start reader;
-* `ResetPremisesUpTo.protected_source_compatible_high_origin_at`: a clean protected source is
-  compatible with every high origin written by the horizon.
+* `ProposalImpl.raw_writer_held_at_slot_start_at` (home `Pivot/RawReceipt`): a raw writer's
+  ancestor is held by a later slot-start reader;
+* `ProposalImpl.protected_source_compatible_high_origin_at`: a clean protected source is compatible
+  with every high origin written by the horizon.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
-namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
+namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
 open SA (SAParams ReplayOrder Payload)
 
@@ -51,6 +51,6 @@ theorem protected_source_compatible_high_origin_at
     Compatible (tr.HonestBlocksAt H) B D := by
   sorry
 
-end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
+end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
 end
