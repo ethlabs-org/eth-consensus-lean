@@ -102,6 +102,27 @@ theorem toFG_time_ge_of_ancestor_slot_at
     omega
   exact (SA.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast hu)
 
+/-- A proposer's stored locks have older labels at its own honest proposal call. -/
+theorem stored_lock_lt_at_proposal_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {s i : Nat}
+    (hf : 3 * (H (tr.time i))ᶜ.ncard ≤ sp.n - 1) (hs1 : 1 ≤ s)
+    {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer s ∈ H (tr.time i))
+    (hc : tr.projAC.CallAt (proposer s) i ell) (hcall : ell.call = .proposal)
+    (hti : tr.time i = sp.ts s) {l : SA.Lock}
+    (hl : l ∈ (tr.projAC.state (proposer s) i).locks) : l.slot < s := by
+  have hr := hrun.toLocalRun
+  have hd := hr.time_nonneg i
+  have hc' : (tr.upTo (tr.time i)).projAC.CallAt (proposer s) i ell := by
+    rw [RunTrace.upTo_projAC]
+    exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
+  have hl' : l ∈ ((tr.upTo (tr.time i)).projAC.state (proposer s) i).locks := by
+    simpa only [RunTrace.upTo_projAC,
+      Trace.upTo_state tr.projAC (proposer s) (d := tr.time i) (i := i)
+        (fun k hk => hr.time_mono hk.le)] using hl
+  exact Healing.stored_lock_lt_at_proposal (hrun.upTo hd) (hnc.upTo (tr.time i))
+    hf hs1 hz hc' hcall hti hl'
+
 end Consensus.Goldilocks.Healing.Growing
 
 end
