@@ -16,10 +16,9 @@ trace `simTraceAt` with the time-indexed honest keys `honestKeysAt`:
 * `sleepy_faultBoundAt`: the L0 sleepy budget with look-ahead `5Δ` (`EnvPoint.SleepyOn` on the
   view retained through `lookAhead (5Δ) t`) gives the slot-point count `FaultBoundAt t d` charged
   at `d = min (t + 5Δ) b`, for every slot point `t ≤ b ≤ horizon`;
-* `sleepy_bounds_at`: hence the two count shapes `SleepyBounds` through `b`;
-* `SleepyServiceSupplierAt`: the missing finite service supplier under growing faults, recorded
-  as a proposition (OPEN), as its static counterpart `SleepyServiceSupplier`. The finite rows take
-  the service as a premise. -/
+* `sleepy_bounds_at`: hence the two count shapes `SleepyBounds` through `b`.
+
+The finite service comes from `sleepyServiceBefore_of_syncUntil_at`. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -131,23 +130,6 @@ theorem sleepy_bounds_at (hv : rho.ExecutionValid) {b : Time} (hb : b ≤ rho.ho
     Compose.Growing.SleepyBounds (simTraceAt S rho hn) (honestKeysAt S rho) b :=
   Compose.Growing.SleepyBounds.of_faultBoundAt (honestKeysAt_antitone S rho)
     (sleepy_faultBoundAt S rho hn hv hb hhalf)
-
-/-- OPEN missing service supplier under growing faults, not a proved or assumed fact: finite
-engine deadline service through `b` yields the node's finite service through `b`, with senders
-honest at their sends and recipients honest at their reading calls. As for the static
-`SleepyServiceSupplier`, receipt alone does not prove acceptance relay. -/
-def SleepyServiceSupplierAt : Prop :=
-  ∀ b, 0 ≤ b → b ≤ rho.horizon → rho.ExecutionValid →
-    rho.log.SyncUntil rho.point b →
-    Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
-      (S.params (pubOf E) hn).Δ b
-
-theorem sleepyServiceSupplierAt_iff : SleepyServiceSupplierAt S rho hn ↔
-    ∀ b, 0 ≤ b → b ≤ rho.horizon → rho.ExecutionValid →
-      rho.log.SyncUntil rho.point b →
-      Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
-        (S.params (pubOf E) hn).Δ b :=
-  Iff.rfl
 
 end Consensus.Goldilocks.Obligations.Growing
 

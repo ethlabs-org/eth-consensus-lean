@@ -12,9 +12,12 @@ their final names, so that the engine proofs compose against the final interface
 
 * the canonical growing trace is a growing-fault run (`Simulation.simTraceAt_goldilocksRun`,
   home `Lemmas/Growing/Simulation/Run`);
-* ready-reader safety under growing faults (`Regimes.Growing.ReadySafeOn`), the finite node
-  safety `Regimes.Growing.sleepy_safe_at` and the finite node inclusion
-  `Regimes.Growing.include_sleepy_at` (home `Lemmas/Growing/Sleepy/Node/Regimes`).
+* the finite sleepy service from raw synchrony through `b`
+  (`Simulation.sleepyServiceBefore_of_syncUntil_at`, home `Lemmas/Growing/Simulation/Service`);
+* ready-reader safety under growing faults (`Regimes.Growing.ReadySafeOn`) and the finite node
+  safety `Regimes.Growing.sleepy_safe_at` (home `Lemmas/Growing/Sleepy/Node/Regimes`);
+* the finite node inclusion `Regimes.Growing.include_sleepy_at` (home
+  `Lemmas/Growing/Sleepy/Service/Inclusion`).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -31,6 +34,16 @@ time-indexed honest keys. -/
 theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
     Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeysAt S rho) (simTraceAt S rho hn) := by
+  sorry
+
+/-- **The finite sleepy service under growing faults** from raw synchrony through its deadline
+bound `b ≤ horizon`: senders honest at their sends, recipients honest at their reading calls
+(the growing-fault `sleepyServiceBefore_of_syncUntil`). -/
+theorem sleepyServiceBefore_of_syncUntil_at (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
+    Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
+      (S.params (pubOf E) hn).Δ b := by
   sorry
 
 end Consensus.Goldilocks.Simulation
