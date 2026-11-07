@@ -13,7 +13,6 @@ held state at an observation time after the state's cuts, and the slot-`u` propo
 
 * `cutZ_lt_reset_of_snapshot_at` (`Healing.cutZ_lt_reset_of_snapshot`);
 * `ResetPremisesUpTo.operational_unanimous_at`, `ResetPremisesUpTo.reset_seed_before_slot_at`,
-  `ResetPremisesUpTo.high_of_anc_at`, `ResetPremisesUpTo.high_report_origin_at`,
   `ResetPremisesUpTo.reset_proposal_passes_at`;
 * `old_origin_below_unanimous_at`, `report_cover_of_unanimous_at`
   (`Obligations.UpTo.old_origin_below_unanimous`, `Obligations.UpTo.report_cover_of_unanimous`).
@@ -56,27 +55,6 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
 theorem reset_seed_before_slot_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧ tr.time r < sp.ts u := by
-  sorry
-
-/-- A held descendant of a high origin has high state height, at a holder honest at an
-observation time after the held state's cuts. -/
-theorem high_of_anc_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hz : z ∈ H t) {W : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
-    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
-  sorry
-
-/-- A high report of a node honest at its cut has an earlier high origin of the same node. -/
-theorem high_report_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r)) {ell : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
-    (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
-    ∃ io < r, ∃ jo O D CV, HighOrigin tr H g z io jo O ∧ tr.time io ≤ b ∧
-      SA.FastLockAt tr.projAC z io jo D CV ∧ Anc (tr.HonestBlocksAt H) C O ∧
-      Anc (tr.HonestBlocksAt H) O D := by
   sorry
 
 /-- A post-drain proposal call of a node honest at it extends every high origin before its slot. -/
