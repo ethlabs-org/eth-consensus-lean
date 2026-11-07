@@ -12,7 +12,8 @@ call, ancestry over the blocks held while honest; otherwise the static statement
 
 * `ResetPremisesUpTo.reset_seed_held_at_call_at` (static `Healing/Outcome/Supplier`);
 * `ResetPremisesUpTo.clean_source_compatible_high_origin_at` (static
-  `Healing/Outcome/FiniteSources`);
+  `Healing/Outcome/FiniteSources`; proved, with this statement, in `Healing/Clean/SourceOrigin`
+  of the seed layer);
 * `optimistic_next_result_of_floor_at` (static `Healing/OperationalReports`).
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
@@ -37,8 +38,8 @@ theorem ResetPremisesUpTo.reset_seed_held_at_call_at
 /-- A clean raw source is compatible with every bounded high origin. -/
 theorem ResetPremisesUpTo.clean_source_compatible_high_origin_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} {r s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hx : x ∈ H (tr.time r))
+    {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r)) {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (SA.Vote sp.n)}
     (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
     (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
     {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
