@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Query
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Reader
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Step
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Reader
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Step
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageReaderGate
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
