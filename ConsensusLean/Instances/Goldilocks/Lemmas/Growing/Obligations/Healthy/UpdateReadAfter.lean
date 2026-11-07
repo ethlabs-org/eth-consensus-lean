@@ -193,7 +193,47 @@ theorem operational_update_read_after_at
       have hlock' : (⟨P.root, u, true, ex⟩ : SA.Lock) ∈ (tr.state y (j + 1)).ac.locks := by
         rw [← hstAC (j + 1) (by omega), tr.projAC.state_succ_of_call hup.1]
         exact hlock
-      sorry
+      have hkept : (⟨P.root, u, true, ex⟩ : SA.Lock) ∈ (tr.state y J).ac.locks := by
+        have h := Compose.lock_keep_interval_view hrT hy (show j + 1 ≤ J by omega)
+          (by rw [hst (j + 1) (by omega)]; exact hlock') (B := P) rfl (fun e hje heJ => by
+            have he := htime e (by omega) heJ
+            rw [hst e heJ.le]
+            refine ⟨?_, hPe e (by omega) heJ.le, hva e (by omega) heJ.le, ?_⟩
+            · change sp.slot (tr.time e) ≤ _
+              simp only [he, hslot]; omega
+            · intro ell' _; left
+              change (sp.slot (tr.time e) : Int) - 1 ≤ _
+              simp only [he, hslot]; push_cast; omega)
+        rwa [hst J le_rfl] at h
+      have hwf : SA.LocksWF sp (tr.state y J).ac.locks := by
+        have h := Compose.locksWF_state hrT hncT hy J
+        rwa [hst J le_rfl] at h
+      have hlive : P ∈ SA.liveLockBlocks sp (tr.state y J).ac.locks
+          (Node.frame (tr.state y J)) (sp.ts u + 6 * sp.Δ) := by
+        refine ⟨hPe J hjJ.le le_rfl, ⟨P.root, u, true, ex⟩, ?_, rfl⟩
+        refine ⟨⟨P.root, u, true, ex⟩, hkept, P, hPe J hjJ.le le_rfl, rfl, ?_, ?_⟩
+        · simp only [SA.Lock.LiveAt, hslot]; omega
+        · rw [hva J hjJ.le le_rfl]
+      apply Anc.mono hΦU
+      apply SA.anc_getHead_of_compat hΦ (Or.inl hlive) ?_ (fun _ h => h.1) _ _ .refl
+      intro L hL
+      obtain ⟨l, hl, B, hB, hBr, hlive, hLB⟩ := SA.mem_liveLockBlocks_of_wf hΦ hwf hL
+      have hPB := hp.clean_source_stored_lock_compatible_at hc hyj hT0 hleJ hy hTb
+        (Or.inl hRaw) hclean (ht ▸ hTb)
+        (by rw [hstAC J le_rfl]; exact hl)
+        (drain_stored_lock_label (hR.trans (by linarith)) hlive) (hΦU hB) hBr
+      have hanc : Anc (tr.HonestBlocksAt H) L B := by
+        rw [hLB]
+        exact (SA.viableAncestor_anc hΦ hB).2.mono hΦU
+      have hLP : Compatible (tr.HonestBlocksAt H) L P := by
+        rcases hPB with h | h
+        · exact SA.anc_total hU hanc h
+        · exact Or.inl (hanc.trans h)
+      exact hLP.elim
+        (fun h => Or.inl (SA.anc_tree_of_anc_U hU hΦ hΦU hL.1 h
+          (hPe J hjJ.le le_rfl)))
+        (fun h => Or.inr (SA.anc_tree_of_anc_U hU hΦ hΦU
+          (hPe J hjJ.le le_rfl) h hL.1))
     · exact hPF.trans ((hΦ.rooted.2 _ (SA.getHead_mem hΦ
         (fun _ h => h.1) _ _ _ _)).mono hΦU)
   exact (Obligations.exposed_prefix_preserved_of_record_head hU hΦ hΦU).mpr
