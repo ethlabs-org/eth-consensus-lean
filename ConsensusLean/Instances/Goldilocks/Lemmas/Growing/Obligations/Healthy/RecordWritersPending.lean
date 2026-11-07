@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SeedCall
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SourceOrigin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 
 public section
@@ -25,27 +27,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-- A bounded high seed, held at every later call above it from `a + Δ` on. -/
-theorem ResetPremisesUpTo.reset_seed_held_at_call_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ)) :
-    ∃ v r l S, HighOrigin tr H g v r l S ∧ tr.time r ≤ a ∧ tr.time r ≤ b ∧
-      ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
-        tr.projAC.CallAt y c ell → a + sp.Δ ≤ tr.time c → tr.time c ≤ b →
-        Anc (tr.HonestBlocksAt H) ell.frame.F S → S ∈ ell.frame.tree := by
-  sorry
-
-/-- A clean raw source is compatible with every bounded high origin. -/
-theorem ResetPremisesUpTo.clean_source_compatible_high_origin_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r)) {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)}
-    (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
-    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
-    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
-    Compatible (tr.HonestBlocksAt H) C D := by
-  sorry
 
 /-- A clean optimistic source above the next update's finalized block is extended by that
 update's result. -/

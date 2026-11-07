@@ -1,6 +1,14 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedSafetyConditional
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Pending
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RepairDefs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Preparation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
@@ -12,8 +20,8 @@ public section
 
 /-! # The repairing opening of a healed-safety query under growing faults
 
-* `healthy_repair_catch_at`: the query's catch-up from its partial synchrony and awake honest
-  nodes;
+* `healthy_repair_catch_at` (proved in `Healthy/Preparation`): the query's catch-up from its
+  partial synchrony and awake honest nodes;
 * `healthy_bounded_repairing_opening_at`: the progress recurrence on `[ready, heal]` supplies an
   opening, a proposal of a proposer ready at its slot start and still honest `Δ` later, within the
   repair window; every receiver ready at its update is then repaired
@@ -24,15 +32,6 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Blocks Shape
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
-
-/-- The catch-up service of a healed-safety query. -/
-theorem healthy_repair_catch_at (Q : HealthyPreparationQueryAt S A V) :
-    Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ) := by
-  have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
-    (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) hnet
-    (fun v u hu hub hv => Q.healthy.2.1.2 v u hu hub hv)
 
 /-- An honest proposal is accepted by its proposer, honest at the proposal. -/
 private theorem proposal_accepted_at {sp : SA.SAParams}
