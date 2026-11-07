@@ -74,12 +74,12 @@ theorem clean_source_proposal_domain_before_at (hp : ResetPremisesUpTo tr H prop
     have := (SA.ts_le_iff_le_slot sp ha0 u).mp ((not_lt.mp h).trans hqa)
     clear * - this hau; omega
   refine hp.held_target_proposal_domain_before_at hx hpH hBx hci hcall hd hti hib ?_ ?_ ?_
-  · exact hp.raw_writer_held_at_slot_start_at hc hx hpH hw hBC htiming hsu hci hti hib
+  · exact ProposalImpl.raw_writer_held_at_slot_start_at hp hc hx hpH hw hBC htiming hsu hci hti hib
   · exact ⟨v, q, m, S, hS, hqt,
-      hp.protected_source_compatible_high_origin_at hc hx hsource hs hrb hS
+      ProposalImpl.protected_source_compatible_high_origin_at hp hc hx hsource hs hrb hS
         (hqa.trans hp.reset_le)⟩
   · intro v q m O hqi ho
-    exact hp.protected_source_compatible_high_origin_at hc hx hsource hs hrb ho
+    exact ProposalImpl.protected_source_compatible_high_origin_at hp hc hx hsource hs hrb ho
       ((hm hqi.le).trans hib)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
