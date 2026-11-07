@@ -45,6 +45,26 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_at
     (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
   sorry
 
+/-- Kernel supplier: the bounded high origin's label is after the snapshot. -/
+theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b) :
+    cutZ sp.toParams g ≤ sp.ts j := by
+  sorry
+
+/-- Outcome supplier: a same-label source is below the unanimous head. -/
+theorem ResetPremisesUpTo.same_slot_source_below_unanimous_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x : Fin sp.n} {r u : Nat} (hx : x ∈ H (tr.time r))
+    {B P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (horig : (∃ CV, SA.FastLockAt tr.projAC x r u B CV) ∨ SA.SlowLockAt tr.projAC x r u B)
+    (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts u)
+    (hPU : P ∈ tr.HonestBlocksAt H)
+    (hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+      e.msg.slot = u → e.msg.head = P.root) : Anc (tr.HonestBlocksAt H) B P := by
+  sorry
+
 end Consensus.Goldilocks.Healing.Growing
 
 end
