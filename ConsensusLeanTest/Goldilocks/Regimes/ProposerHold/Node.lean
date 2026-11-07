@@ -287,6 +287,59 @@ theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n 
 
 end ACStep
 
+/-- No restart in the retained trace: everyone is awake throughout. -/
+theorem no_restart {y : Fin (Fintype.card (Fin 5))} {k : Nat} : ¬ (tr S).RestartAt y k := by
+  intro h
+  obtain ⟨i, -, -, he⟩ := simTrace_restart_event S (rhoc S) one_le_card h
+  have := (rhoc_valid.restart_at_wake _ _ (List.mem_of_getElem? he)).2
+  simp [Wakes, env] at this
+
+theorem val_faulty {x : SA.Vote (Fintype.card (Fin 5))} (h : x.val ∉ H S) :
+    x.val = key 0 ∨ x.val = key 1 := by
+  rw [mem_H] at h
+  by_cases h0 : x.val.val = 0
+  · exact Or.inl (Fin.ext h0)
+  · exact Or.inr (Fin.ext (by by_contra h1; exact h ⟨h0, h1⟩))
+
+theorem voteObj_mem_blockObj {B : Blk (S.params (pubOf env) one_le_card)}
+    {x : SA.Vote (Fintype.card (Fin 5))} (hx : x ∈ SA.blockVotes B) :
+    Model.Obj.Contains (blockObj (S.params (pubOf env) one_le_card) B) (voteObj x) :=
+  Model.Obj.Contains.step
+    (List.mem_append_right _ (List.mem_map.mpr ⟨x, List.mem_append_left _ hx, rfl⟩))
+    (Model.Obj.Contains.refl _)
+
+/-- **R-votes**: a vote of key `0` or `1` in an honest pool is of a slot up to `1`. -/
+theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Nat)
+    {x : SA.Vote (Fintype.card (Fin 5))} (hx : x ∈ ((tr S).state y c).ac.pool x.slot)
+    (hxH : x.val ∉ H S) : x.slot ≤ 1 := by
+  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+  rw [← Compose.projAC_state rhoc_run.toLocalRun hy] at hx
+  rcases SA.pool_origin hac hy c x hx with ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
+  · rcases hsa with ⟨e, he, rfl⟩ | ⟨hnr, hpre, hpost⟩
+    · exact absurd ((SA.castAt_spec hac hy ⟨hc, he⟩).1 ▸ hy) hxH
+    · have hex := hac.exec k ℓ hc.2 (hc.1 ▸ hy)
+      rw [hc.1] at hex
+      change x ∈ ((tr S).projAC.post k).pool x.slot at hpost
+      change x ∉ ((tr S).projAC.state y k).pool x.slot at hpre
+      have hp := congrArg Prod.fst hex
+      dsimp only at hp
+      rw [← hp] at hpost
+      rcases step_pool_new (ro := S.ro _) y ((tr S).projAC.state y k) ℓ.frame ((tr S).projAC.time k)
+        ℓ.call hnr hpost hpre with hm | ⟨B, hB, hxB⟩ | hval
+      · obtain ⟨i, w, o, t, hi, hcont⟩ := msg_delivered ⟨ℓ, Compose.projAC_callAt.mp hc, hm⟩
+        obtain ⟨i', hi'⟩ := rhoc_deliver hi
+        exact delivered_vote hi' _ hcont x rfl (val_faulty hxH)
+      · obtain ⟨i', rfl, hacc, -⟩ :=
+          Compose.acBlock_prev rhoc_run.toLocalRun hy (Compose.projAC_callAt.mp hc) hB
+        have hvB := voteObj_mem_blockObj hxB
+        rcases block_source hy ⟨true, hacc⟩ with ⟨i, w, o, hi, hcont⟩ | ⟨i, hs, ho⟩
+        · obtain ⟨i'', hi''⟩ := rhoc_deliver hi
+          exact delivered_vote hi'' _ (hcont.trans hvB) x rfl (val_faulty hxH)
+        · obtain ⟨i'', e, hi'', -, -, -, ho'⟩ := rhoc_release hs ho
+          exact released_vote i'' _ ho' _ hvB x rfl (val_faulty hxH)
+      · exact absurd (hval ▸ hy) hxH
+  · exact absurd ⟨ℓ, Compose.projAC_callAt.mp hc, hrs⟩ no_restart
+
 end Consensus.Goldilocks.Test.ProposerHold
 
 end
