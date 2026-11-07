@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.WriterCompatible
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 
 public section
@@ -27,30 +28,6 @@ namespace Consensus.Goldilocks.SA.Growing
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
-
-/-- Same-slot results of writers honest at their writes are compatible, using only service
-through their observation cutoff. -/
-theorem result_result_compatible_window_before_at (hrun : ACRun proposer tr H U)
-    {a b : Time} {s : Nat} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
-    {x x' : Fin sp.n} {i i' : Nat} (hx : x ∈ H (tr.time i)) (hx' : x' ∈ H (tr.time i'))
-    {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
-    (hR : ResultAt tr x i s C CV) (hR' : ResultAt tr x' i' s C' CV')
-    (hi : tr.time i ≤ b) (hi' : tr.time i' ≤ b)
-    (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s)
-    (hreset' : ∀ q ≤ i', tr.RestartAt x' q → tr.time q ≤ sp.ts s) :
-    Compatible U C C' := by
-  sorry
-
-/-- A result and an optimistic lock of one slot, by writers honest at their writes, agree with
-windowed message service. -/
-theorem result_optimistic_compatible_window_before_at (hrun : ACRun proposer tr H U)
-    {a b : Time} {s : Nat} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
-    {x x' : Fin sp.n} {i i' : Nat} (hx : x ∈ H (tr.time i)) (hx' : x' ∈ H (tr.time i'))
-    {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
-    (hR : ResultAt tr x i s C CV) (hO : OptimisticLockAt tr x' i' s O CV')
-    (hi : tr.time i ≤ b) (hi' : tr.time i' ≤ b)
-    (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s) : Compatible U C O := by
-  sorry
 
 /-- An ancestor of a raw writer's block, for a writer honest at its write, is available in the
 frozen block tree of a later voter honest at its cast. -/
