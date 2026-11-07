@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Domain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SlowVotes
 
 public section
 
@@ -18,8 +19,8 @@ The restart bound and the healthy AC base on a read prefix are imported from the
 
 Owned by this cluster, and still open:
 
-* `ResetPremisesUpTo.fast_source_votes_before_at`, `ResetPremisesUpTo.slow_source_votes_before_at`
-  (the static clean-source vote retention of `Outcome/FiniteSources`).
+* `ResetPremisesUpTo.fast_source_votes_before_at` (the static clean fast-source vote retention of
+  `Outcome/FiniteSources`; the slow one is proved in `Clean/SlowVotes`).
 
 Each source's writer is honest at its own write, each proposer, voter or caller at its own cut.
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
@@ -42,16 +43,6 @@ theorem fast_source_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g �
     (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfast : SA.FastLockAt tr.projAC x r s B CV)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
-    ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e, SA.CastAt tr.projAC y i ell e →
-      s < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  sorry
-
-/-- A clean slow source, written by a node honest at its write, is extended by every later vote
-of a node honest at it, through the horizon. -/
-theorem slow_source_votes_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hslow : SA.SlowLockAt tr.projAC x r s B)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
     ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e, SA.CastAt tr.projAC y i ell e →
       s < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
