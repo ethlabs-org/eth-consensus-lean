@@ -142,7 +142,7 @@ private theorem held_chain_obs
 /-- **`Σ.F` below a crossing**: a finalized block `F` of `y`'s chain to `X` (observed while honest
 at `u`) is below a block `W` held by `x` (observed while honest at `t`) whose state height exceeds
 the finalized height of `X`. Certificate intersection is charged at `max u t`. -/
-private theorem finalized_anc_obs
+theorem finalized_anc_obs
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
