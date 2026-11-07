@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionProof
 
 public section
 
@@ -32,7 +33,7 @@ theorem operational_update_selection_at {b : Time}
       tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  sorry
+  exact operational_update_selection_proof_at hp hc hhold hdesignated hactual hPs hR hgu hTb hy hup
 
 end Consensus.Goldilocks.Healing.Growing
 
