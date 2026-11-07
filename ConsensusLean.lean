@@ -472,6 +472,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.O
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations.Constant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
@@ -511,7 +512,6 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.State
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
-public import ConsensusLean.Instances.Goldilocks.Statements.Growing
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLean.Lemmas.Model.Adequate

@@ -2,6 +2,6 @@
   "theorem_names": ["Consensus.Review.obligationsSufficient", "Consensus.Review.regimesRealizable",
                     "Consensus.Review.logFaithful", "Consensus.Review.heldIffServed",
                     "Consensus.Review.obligationsSufficientOn",
-                    "Consensus.Goldilocks.meetsObligationsConstant",
-                    "Consensus.Goldilocks.goldilocksCorrectConstant"],
+                    "Consensus.Goldilocks.meetsObligations",
+                    "Consensus.Goldilocks.goldilocksCorrect"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }
