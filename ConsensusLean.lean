@@ -148,6 +148,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.FutureVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
@@ -157,6 +158,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Unlocked
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Update
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Writer
