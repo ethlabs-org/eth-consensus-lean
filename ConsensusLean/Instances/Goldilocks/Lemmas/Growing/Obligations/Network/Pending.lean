@@ -191,6 +191,13 @@ def CatchRun (g κ : Time) : Prop :=
     ∀ y j, y ∈ H (gbar g + κ) → tr.FirstCutFrom j (gbar g + κ) →
       Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → ∃ k < j, tr.AcceptAt y k B
 
+/-- `CatchRun` without exposing its definition. -/
+theorem catchRun_iff (g κ : Time) : CatchRun tr H g κ ↔
+    ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < gbar g →
+      ∀ y j, y ∈ H (gbar g + κ) → tr.FirstCutFrom j (gbar g + κ) →
+        Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → ∃ k < j, tr.AcceptAt y k B :=
+  Iff.rfl
+
 end Catch
 
 section Reset
