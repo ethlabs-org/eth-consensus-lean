@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportsPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Domain
 
 public section
 
@@ -16,8 +17,6 @@ The restart bound and the healthy AC base on a read prefix are imported from the
 
 Owned by this cluster, and still open:
 
-* `ResetPremisesUpTo.clean_source_proposal_domain_before_at`
-  (`ResetPremisesUpTo.clean_source_proposal_domain_before`);
 * `ResetPremisesUpTo.fast_source_votes_before_at`, `ResetPremisesUpTo.slow_source_votes_before_at`
   (the static clean-source vote retention of `Outcome/FiniteSources`).
 
@@ -35,22 +34,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 namespace ResetPremisesUpTo
 
 variable {b : Time}
-
-/-- A clean protected source, written by a node honest at its write, is below the frame root of
-every later proposal call of a node honest at it, or viable in its frame. -/
-theorem clean_source_proposal_domain_before_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {x p : Fin sp.n} {r s i u : Nat}
-    (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hsu : s < u) (hrb : tr.time r ≤ b)
-    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
-  sorry
 
 /-- A clean fast source, written by a node honest at its write, is extended by every later vote
 of a node honest at it, through the horizon. -/
