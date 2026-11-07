@@ -205,7 +205,8 @@ theorem proposal_holds_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     · exact (Anc.mem hOHd h).1
   have hFc : OnOriginChainWithin tr H ℓp.frame.F b := by
     rw [frame_of_projAC_at hrun hp hc]
-    exact (hinv.caches p i hp (fun k hk => (hrun.time_mono hk.le).trans hb)).1
+    exact (hinv.caches_at_cut hrun ((hrun.time_nonneg i).trans hb) hp
+      (fun k hk => (hrun.time_mono hk.le).trans hb)).1
   rcases OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible
       (hΦU hΦ.rooted.1) hOU hFc
       (onOriginChainWithin_iff.2 (Or.inr ⟨O, m, hOm, .refl⟩)) with hFO | hOF
