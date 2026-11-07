@@ -78,7 +78,9 @@ theorem localRun {U : Set (Blk sp.n FGP)} (hU : Coherent U) :
   time_mono := by
     intro a b hab
     change (if a = 0 then (0 : Time) else 2) ≤ (if b = 0 then 0 else 2)
-    split_ifs <;> norm_num; omega
+    split_ifs
+    all_goals norm_num
+    all_goals omega
   awake_of_call := by intros; trivial
   restart_of_sleep := by intro y i ℓ u hy hc; exact (no_honest_call sp FGP ro Φ hy hc).elim
   restart_at_wake := by intro y u v hy hu huv hs; exact (hs trivial).elim
