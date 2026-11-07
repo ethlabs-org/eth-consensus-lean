@@ -73,7 +73,8 @@ theorem operational_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF 
   change tr.time i = sp.ts (s + 1 : Nat) at hti
   change (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay) at hd
   have hib : tr.time i ≤ b := hti ▸ hub
-  obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := hp.reset_pivot_at hc hpH hactual hR hci hcall hd hti hib hPQ
+  obtain ⟨D, hsD, hDQ, hviab, hvot⟩ :=
+    hp.reset_pivot_at hc hpH hactual hPs hR hci hcall hd hti hib hPQ
   have hi0 := hp.run.time_nonneg i
   have hpi : p ∈ H (tr.time i) := hp.run.antitone (by rw [hti, hold]; linarith) hpH
   have hrp := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time i)) (tr.upTo (tr.time i))
