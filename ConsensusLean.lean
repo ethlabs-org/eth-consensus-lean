@@ -200,6 +200,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RowSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
