@@ -9,7 +9,7 @@ public section
 The dynamic obligations remain open while the certified constant-fault endpoint
 uses the existing milestone proofs. This module is outside the Solution closure.
 Certification of the dynamic roots also requires the compiled proposer hold-zero
-counterexample, after the dynamic sleepy invariant is proved.
+counterexample (`ConsensusLeanTest/Goldilocks/Regimes/ProposerHold.lean`).
 -/
 
 namespace Consensus.Goldilocks.Growing
