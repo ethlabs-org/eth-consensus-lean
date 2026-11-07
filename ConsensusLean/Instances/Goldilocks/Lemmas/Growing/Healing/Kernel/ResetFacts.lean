@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginCompare
 
 public section
 
@@ -61,7 +62,11 @@ theorem ResetPremisesUpTo.origins_compatible_at
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
     Compatible (tr.HonestBlocksAt H) B O := by
-  sorry
+  apply KernelProof.origins_compatible_before_at hp (k := max i r + 1) ?_
+    ho hib (Or.inl (by omega)) hO hrb (by omega)
+  intro x₀ i₀ j₀ B₀ ho₀ hi₀ y c e _ hy hcb hv hj
+  obtain ⟨ell, hc⟩ := hv
+  exact hp.high_origin_votes_before_at c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y ell e hy hc hj
 
 /-- Finite domain reduction with independently honest source and cast observations. -/
 theorem ResetPremisesUpTo.held_target_vote_domain_before_at
