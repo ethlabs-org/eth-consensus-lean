@@ -81,9 +81,7 @@ theorem occurring_observed_at (hv : rho.ExecutionValid)
     · rw [eventCuts_tick_public S rho hn i v t he hp] at hmem
       obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
       obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-      apply tick_block_parent
-      rw [← hrl, hl]
-      exact List.getElem_mem _
+      exact tick_block_parent _ _ _ _ _ _ (by rw [← hrl, hl]; exact List.getElem_mem _)
     · exact rho.mem_viewIdx_iff.mpr ⟨i, _, by omega,
         Or.inl ⟨t, Or.inl he, hrel⟩, .refl _⟩
   | deliver v o t =>
