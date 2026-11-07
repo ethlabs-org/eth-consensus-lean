@@ -12,10 +12,8 @@ this branch yet, under their final names and statements:
 
 * `sleepy_invariant_at` (home `Lemmas/Growing/Sleepy/Node/Induction`): the dynamic invariant
   through `b` from the finite service and the two count shapes;
-* `ready_read_record_at`, `SleepyInvariantUpTo.read_compatible_at`,
-  `SleepyInvariantUpTo.effective_record_mono_at` (home `Lemmas/Growing/Sleepy/Node/Read`): the
-  ready read is the effective record; reads of nodes honest at their read times are compatible;
-  the effective record only extends;
+* `ready_read_record_at` (home `Lemmas/Growing/Sleepy/Node/Read`): the ready read is the
+  effective record;
 * `later_transfer_step_at` (home `Lemmas/Growing/Sleepy/Node/Transfer`): the later transfer step
   for a protected block.
 
@@ -46,30 +44,6 @@ theorem ready_read_record_at {b : Time} (hrun : Growing.GoldilocksRun proposer d
       ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
           R.root = (tr.state y j).ac.latestConfirmed) ∧
         Regimes.readAfter tr y j t = (tr.state y j).fg.F) := by
-  sorry
-
-/-- **Reads of nodes honest at their read times are compatible** up to `b`. -/
-theorem SleepyInvariantUpTo.read_compatible_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) {y y' : Fin sp.n}
-    {i i' : Nat} {t t' : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
-    (hy : y ∈ H t) (ht0' : 0 ≤ t') (hi' : ∀ k < i', tr.time k ≤ t') (htb' : t' ≤ b)
-    (hy' : y' ∈ H t') (u u' : Time) :
-    Compatible (tr.HonestBlocksAt H)
-      ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u)
-      ((goldilocksNode sp ro).confirmed (tr.state y' i').ac (Node.frame (tr.state y' i')) u') := by
-  sorry
-
-/-- **The effective record only extends** up to `b`, for a node honest at a time `t' ≤ b` at or
-after every cut before `j`. -/
-theorem SleepyInvariantUpTo.effective_record_mono_at {b : Time}
-    (hinv : SleepyInvariantUpTo tr H b) (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t' : Time} (hij : i ≤ j)
-    (ht0 : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t') (ht'b : t' ≤ b) (hy : y ∈ H t') :
-    Anc (tr.HonestBlocksAt H)
-      ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
-        (Node.frame (tr.state y i)).F)
-      ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
-        (Node.frame (tr.state y j)).F) := by
   sorry
 
 /-- **The later transfer step for a protected block** under growing faults. -/
