@@ -95,8 +95,9 @@ not in `faultyAt t` is honest at every time `≤ t`. A compromise changes no
 earlier event. The function is total. No event happens outside `[0, horizon]`;
 the regimes read it there, and claims that quantify over times (non-framing)
 read it elsewhere too, where monotonicity is its only constraint. A constant
-function is the static adversary (`ConstantFaults`). The validator universe, the PKI and the selection do not
-change: this is corruption growth, not membership change. -/
+function is the static adversary (`ConstantFaults`). The validator universe, the
+PKI and the selection do not change: this is corruption growth, not membership
+change. -/
 structure EnvPoint (V : Type) where
   env : Env V
   faultyAt : Time → Finset V
