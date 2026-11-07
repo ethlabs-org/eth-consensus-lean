@@ -66,7 +66,8 @@ open Consensus.Shape.Tests.Shapes (trivialFamily pollSkel pollShape)
 /-- Three validators, validator 0 faulty, everyone awake, `Δ = 1`, horizon
 10, no submissions. -/
 def point3 : EnvPoint (Fin 3) :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ.erase 0, 10, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, fun _ => {0}, monotone_const,
+    10, fun _ _ => []⟩
 
 /-- Key 2 proposes at every slot; every key signs the committee kind; nobody
 polls. -/
@@ -102,15 +103,15 @@ fails whenever one window fits in the horizon. -/
 theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq Info]
     [Countable Info] {F : ChainShapeFamily O Info}
     (hF : ∀ pub s, (F pub).skel.proposerSel s = .sized (max 1 pub.n))
-    {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E)
-    (hsel : rho.SelValid) (hf : rho.point.faulty.Nonempty) (π : Recurrence) (c start stop : Time)
+    {V : Type} [Fintype V] {E : Env V} (rho : Model.Run (compiled F) E)
+    (hsel : rho.SelValid) (hf : (rho.point.faultyAt 0).Nonempty)
+    (π : Recurrence) (c start stop : Time)
     (hs : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen ≤ stop)
     (hw : max start 0 + (π.len : Time) * (F (pubOf E)).skel.grid.slotLen ≤ rho.horizon) :
     ¬ PatternRecurrence rho.point rho.key (fun s => rho.sel (ShapeRole.proposer s))
       (F (pubOf E)).skel.grid π c start stop := by
   intro h
   obtain ⟨f, hf⟩ := hf
-  have hfh : f ∉ rho.honest := (Finset.mem_sdiff.mp hf).2
   obtain ⟨s, -, -, hall⟩ := h (max start 0) le_rfl hs hw
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ π.pattern.nonempty
   have hadm := hsel (ShapeRole.proposer (s + j))
@@ -125,9 +126,12 @@ theorem allProposers_no_witness {O : OutputSchema} {Info : Type} [DecidableEq In
     Finset.eq_univ_of_card _ (by rw [hadm, Fintype.card_fin])
   have hk : rho.key.symm f ∈ rho.sel (ShapeRole.proposer (s + j)) := by
     rw [huniv]; exact Finset.mem_univ _
-  have := ((hall j hj).2 _ hk).1
-  rw [Equiv.apply_symm_apply] at this
-  exact hfh this
+  have hh := ((hall j hj).2 _ hk).1.1
+  rw [Equiv.apply_symm_apply] at hh
+  apply hh
+  apply rho.faultyAt_mono (show 0 ≤ (F (pubOf E)).skel.grid.slotTime (s + j) from ?_) hf
+  unfold TimeGrid.slotTime
+  exact mul_nonneg (Nat.cast_nonneg _) (F (pubOf E)).skel.grid.slotLen_pos.le
 
 section Rotating
 
@@ -165,7 +169,7 @@ theorem rotating_proposalLive_vacuous {O : OutputSchema} {Info : Type} [Decidabl
     rw [← hp]
     classical
     unfold EnvPoint.readyAt
-    exact Finset.mem_filter.mpr ⟨hv.1, hv⟩
+    exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, hv⟩
   rw [healthy_rotating_sleeper.2.2 t (by linarith)] at hmem
   exact Finset.notMem_empty _ hmem
 

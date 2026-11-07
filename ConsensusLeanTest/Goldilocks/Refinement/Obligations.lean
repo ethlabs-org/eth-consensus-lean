@@ -295,9 +295,9 @@ theorem fg_transport_fast : 6 * (5 : Time) + 1 ≤ 4 * 5 * (assumptionsSmall.fgS
 /-- (a) **The obligations endpoint is not vacuous**: there are a setup and an assumption set
 (`k = 2`, `δt = 6`, FG gap `2`), and the family meets the obligations at their contract. -/
 theorem meets_obligations_nonvacuous : ∃ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligationsAs .ebbAndFlow (goldilocks S)
-      (goldilocksContract A (contract_coefficients S A)) :=
-  ⟨setupSmall, assumptionsSmall, meets_obligations setupSmall assumptionsSmall⟩
+    ShapeObligationsOnAs .ebbAndFlow (goldilocks S)
+      (goldilocksContract A (contract_coefficients S A)) (fun _ p => p.ConstantFaults) :=
+  ⟨setupSmall, assumptionsSmall, meets_obligations_constant setupSmall assumptionsSmall⟩
 
 /-- (a) The active witnesses of the endpoint's contract at `setupSmall`, `assumptionsSmall` on five
 validators: sleepy, healthy, sleepy-stress, outage and bad-proposer runs exist
@@ -306,7 +306,7 @@ theorem meetsObligations_realizable_small :
     RealizableActive (goldilocks setupSmall)
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall))
       (Fin 5) :=
-  have h := (meets_obligations setupSmall assumptionsSmall).2
+  have h := (meets_obligations_constant setupSmall assumptionsSmall).2
   regimes_realizable _ _ h.admissible h.progressFits h.progressTolerant (Fin 5) (by decide)
 
 /-- (a) **The headline is not vacuous**: `goldilocksCorrect` at `setupSmall`, `assumptionsSmall` on
@@ -316,7 +316,7 @@ theorem goldilocksCorrect_realizable_small :
     Realizable (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5))
       (shapeProgress (goldilocks setupSmall) (Fin 5))
       (goldilocksContract assumptionsSmall (contract_coefficients setupSmall assumptionsSmall)) :=
-  (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).realizable
+  (Consensus.Goldilocks.goldilocksCorrectConstant setupSmall assumptionsSmall (Fin 5)).realizable
     (by decide)
 
 /-! ## The profile label
@@ -335,8 +335,9 @@ theorem schema_profile :
 /-- **The label is a restatement**: the endpoint is equivalent to the unlabelled obligations at
 every setup and assumption set. -/
 theorem meetsObligations_iff_unlabelled :
-    MeetsObligations ↔ ∀ (S : Setup) (A : ContractAssumptions S),
-      ShapeObligations (goldilocks S) (goldilocksContract A (contract_coefficients S A)) :=
+    MeetsObligationsConstant ↔ ∀ (S : Setup) (A : ContractAssumptions S),
+      ShapeObligationsOn (goldilocks S) (goldilocksContract A (contract_coefficients S A))
+        (fun _ p => p.ConstantFaults) :=
   ⟨fun h S A => (h S A).2, fun h S A => ⟨schema_profile.1, h S A⟩⟩
 
 /-- Rejection: at no setup and contract is the family a BFT protocol. -/
@@ -386,8 +387,9 @@ healthy regime's premise `ΔFG ≤ fgDelay·ΔAC` (`System.Healthy`, in `healthy
 `healedSafe`), so a smaller bound keeps every claim. -/
 theorem shapeObligations_of_fgDelay_le {O : OutputSchema} {Info : Type} [DecidableEq Info]
     [Countable Info] {F : ChainShapeFamily O Info} {K : Contract ProgressReq} {d : ℕ+}
-    (hd : d ≤ K.params.fgDelay) (h : ShapeObligations F K) :
-    ShapeObligations F (withFGDelay K d) := by
+    {Q : ∀ V : Type, EnvPoint V → Prop}
+    (hd : d ≤ K.params.fgDelay) (h : ShapeObligationsOn F K Q) :
+    ShapeObligationsOn F (withFGDelay K d) Q := by
   have hH : ∀ (V : Type) [Fintype V] [DecidableEq V] (g : Time) (r : (Sys F V).Run),
       (Sys F V).Healthy (withFGDelay K d) g r → (Sys F V).Healthy K g r := by
     intro V _ _ g r hr
@@ -404,11 +406,11 @@ theorem shapeObligations_of_fgDelay_le {O : OutputSchema} {Info : Type} [Decidab
       finalMonotone := c.finalMonotone
       finalAccountable := c.finalAccountable
       healthyLive := fun cap g hg i gst r hv hp =>
-        c.healthyLive cap g hg i gst r hv ⟨hH V gst r hp.1, hp.2⟩
+        c.healthyLive cap g hg i gst r hv ⟨hp.1, hH V gst r hp.2.1, hp.2.2⟩
       sleepySafe := c.sleepySafe
       sleepyLive := c.sleepyLive
       healedSafe := fun cap g hc hg i gst r hv hp =>
-        c.healedSafe cap g hc hg i gst r hv ⟨hH V gst r hp.1, hp.2⟩
+        c.healedSafe cap g hc hg i gst r hv ⟨hp.1, hH V gst r hp.2.1, hp.2.2⟩
       persists := c.persists }
 
 /-- The former gap is at least `2`. -/
@@ -433,7 +435,7 @@ noncomputable def formerContract (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt
 theorem former_contract_fields (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) (X : ℕ+) :
     (formerContract S r ht).params.fgDelay = r ∧
       (formerContract S r ht).progress .final X =
-        .recur { pattern := ⟨[0, cF r, 2 * cF r, 3 * cF r], by simp⟩, gap := X } ∧
+        .recur { pattern := ⟨[0, cF r, 2 * cF r, 3 * cF r], by simp⟩, gap := X, hold := 1 } ∧
       (formerContract S r ht).params.latency .final X = 4 * ((X : Nat) + 3 * cF r) + 1 :=
   ⟨rfl, rfl, rfl⟩
 
@@ -442,7 +444,7 @@ theorem former_contract_fields (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) 
 final progress and final latency. -/
 theorem contract_eq_former {S : Setup} (A : ContractAssumptions S) (X : ℕ+) :
     (K S A).params.fgDelay = A.fgDelay ∧
-      (K S A).progress .final X = .recur { pattern := finalWindow A, gap := X } ∧
+      (K S A).progress .final X = .recur { pattern := finalWindow A, gap := X, hold := 1 } ∧
       (finalWindow A).offsets = [0, cF A.fgDelay, 2 * cF A.fgDelay, 3 * cF A.fgDelay] ∧
       (K S A).params.latency .final X = 4 * ((X : Nat) + 3 * cF A.fgDelay) + 1 := by
   refine ⟨rfl, rfl, ?_, ?_⟩
@@ -477,8 +479,9 @@ every setup and every FG delay bound `r` with `3·cF r ≤ δt`. Forward: the as
 `cF r` give a bound `4·cF r − 6 ≥ r` (`cF_ceil`), and the obligations are monotone in it
 (`shapeObligations_of_fgDelay_le`). Backward: `formerContract_eq` at `r = fgDelay`. -/
 theorem meetsObligations_iff_former :
-    MeetsObligations ↔ ∀ (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt),
-      ShapeObligations (goldilocks S) (formerContract S r ht) := by
+    MeetsObligationsConstant ↔ ∀ (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt),
+      ShapeObligationsOn (goldilocks S) (formerContract S r ht)
+        (fun _ p => p.ConstantFaults) := by
   constructor
   · intro h S r ht
     refine shapeObligations_of_fgDelay_le ?_ (h S (formerAssumptions S r ht)).2
@@ -493,7 +496,8 @@ theorem meetsObligations_iff_former :
 /-- **The former endpoint, at every FG delay bound `r`** with `3·cF r ≤ δt`: Goldilocks meets the
 obligations at the former contract (`meetsObligations_iff_former` at `meets_obligations`). -/
 theorem meets_obligations_at_every_bound (S : Setup) (r : ℕ+) (ht : 3 * cF r ≤ S.δt) :
-    ShapeObligations (goldilocks S) (formerContract S r ht) :=
-  meetsObligations_iff_former.1 meets_obligations S r ht
+    ShapeObligationsOn (goldilocks S) (formerContract S r ht)
+      (fun _ p => p.ConstantFaults) :=
+  meetsObligations_iff_former.1 meets_obligations_constant S r ht
 
 end Consensus.Goldilocks.Obligations.Test.Contract

@@ -30,8 +30,10 @@ in `p'` at those times inherits the recurrence; in particular a point that
 agrees with `p` up to `min stop horizon` (suffix replacement). -/
 theorem PatternRecurrence.reads_upTo {p' : EnvPoint V}
     (hh : min stop p'.horizon ≤ p.horizon)
-    (hr : ∀ v t, t ≤ min stop p'.horizon → v ∈ p.honest → p.Ready c v t →
-      v ∈ p'.honest ∧ p'.Ready c v t)
+    (hr : ∀ v t, t ≤ min stop p'.horizon → p.Ready c v t → p'.Ready c v t)
+    (hhon : ∀ v t, t ≤ min stop p'.horizon →
+      p.HonestAt v (p.lookAhead ((ρ.hold : Time) * p.env.ΔAC) t) →
+      p'.HonestAt v (p'.lookAhead ((ρ.hold : Time) * p'.env.ΔAC) t))
     (h : PatternRecurrence p key sel G ρ c start stop) :
     PatternRecurrence p' key sel G ρ c start stop := by
   intro t ht hst hhz
@@ -39,25 +41,26 @@ theorem PatternRecurrence.reads_upTo {p' : EnvPoint V}
   obtain ⟨s, hs1, hs2, hall⟩ := h t ht hst (le_trans hm hh)
   refine ⟨s, hs1, hs2, fun j hj => ?_⟩
   obtain ⟨hne, hk⟩ := hall j hj
-  refine ⟨hne, fun k hk' => (hr _ _ ?_ (hk k hk').1 (hk k hk')).2⟩
-  have hl := G.slotLen_pos
-  have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
-  have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
-    simp [Recurrence.len]
-  rw [hlen] at hm
-  rw [G.slotTime_add]
-  nlinarith
+  have htime : G.slotTime (s + j) ≤ min stop p'.horizon := by
+    have hl := G.slotLen_pos
+    have hj' : (j : Time) ≤ ρ.pattern.span := by exact_mod_cast Pattern.le_span hj
+    have hlen : (ρ.len : Time) = ((ρ.gap : Nat) : Time) + (ρ.pattern.span : Time) := by
+      simp [Recurrence.len]
+    rw [hlen] at hm
+    rw [G.slotTime_add]
+    nlinarith
+  exact ⟨hne, fun k hk' => ⟨hr _ _ htime (hk k hk').1, hhon _ _ htime (hk k hk').2⟩⟩
 
 /-- Recurrence is non-vacuous: if one whole window fits in `[max start 0, stop]`
 and the horizon, the requirement yields an honest selected key. -/
 theorem PatternRecurrence.exists_honest (h : PatternRecurrence p key sel G ρ c start stop)
     (hs : max start 0 + (ρ.len : Time) * G.slotLen ≤ stop)
     (ht : max start 0 + (ρ.len : Time) * G.slotLen ≤ p.horizon) :
-    ∃ s k, k ∈ sel s ∧ key k ∈ p.honest := by
+    ∃ s k, k ∈ sel s ∧ p.HonestAt (key k) (G.slotTime s) := by
   obtain ⟨s, -, -, hall⟩ := h (max start 0) le_rfl hs ht
   obtain ⟨j, hj⟩ := List.exists_mem_of_ne_nil _ ρ.pattern.nonempty
   obtain ⟨⟨k, hk⟩, hks⟩ := hall j hj
-  exact ⟨s + j, k, hk, (hks k hk).1⟩
+  exact ⟨s + j, k, hk, (hks k hk).1.1⟩
 
 end Consensus.Blocks
 
@@ -86,11 +89,12 @@ theorem slack_grid_slots : slackGrid.slotAt? 0 16 = some 1 ∧
 
 /-- One validator, always awake, `Δ = 1`, horizon 100. -/
 def point1 : EnvPoint (Fin 1) :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, Finset.univ, 100, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, fun _ => ∅,
+    monotone_const, 100, fun _ _ => []⟩
 
 /-- The Streamlet pattern: five consecutive honest slots, within every window
 of 3 slots. -/
-def streamlet : Recurrence := ⟨Pattern.range 5, 3⟩
+def streamlet : Recurrence := ⟨Pattern.range 5, 3, 0⟩
 
 /-- Every slot is honest and ready on `point1`, so the Streamlet pattern recurs
 from any start. -/
@@ -98,9 +102,10 @@ theorem streamlet_recurrence (c start stop : Time) :
     PatternRecurrence point1 (pkiFin 1) (fun _ => Finset.univ) grid streamlet c start stop := by
   apply patternRecurrence_of_all
   intro s j _
-  refine ⟨⟨0, Finset.mem_univ _⟩, fun k _ => ⟨Finset.mem_univ _, ?_⟩⟩
-  intro u _ _
-  rfl
+  refine ⟨⟨0, Finset.mem_univ _⟩, fun k _ => ⟨⟨?_, ?_⟩, ?_⟩⟩
+  · simp [EnvPoint.HonestAt, point1]
+  · intro u _ _; rfl
+  · simp [EnvPoint.HonestAt, point1]
 
 /-- A non-positive start is the same premise as start 0. -/
 theorem recurrence_nonpos_start {V : Type} [Fintype V] (p : EnvPoint V)
@@ -134,7 +139,8 @@ theorem span_guard (c : Time) :
 /-- Two validators, always awake, `Δ = 1`, horizon 10; only validator 0 is
 honest. -/
 def point2 : EnvPoint (Fin 2) :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, {0}, 10, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, fun _ => {1},
+    monotone_const, 10, fun _ _ => []⟩
 
 /-- The only proposer key is the faulty validator 1's. -/
 def faultySel : Slot → Finset (Fin (Fintype.card (Fin 2))) := fun _ => {(pkiFin 2).symm 1}
@@ -144,9 +150,9 @@ start admits recurrence of one honest proposer once a window (one slot of one
 `Δ`) fits in the horizon. -/
 theorem recurrence_has_teeth (c start : Time) (hs : start ≤ 5) :
     ¬ PatternRecurrence point2 (pkiFin 2) faultySel ⟨1, by decide⟩
-      ⟨Pattern.single, 1⟩ c start 10 := by
+      ⟨Pattern.single, 1, 0⟩ c start 10 := by
   intro h
-  have hw : max start 0 + ((⟨Pattern.single, 1⟩ : Recurrence).len : Time) *
+  have hw : max start 0 + ((⟨Pattern.single, 1, 0⟩ : Recurrence).len : Time) *
       (⟨1, by decide⟩ : TimeGrid).slotLen ≤ 10 := by
     change max start 0 + ((1 + 0 : Nat) : Time) * ((1 : Nat) * 1) ≤ 10
     have : max start 0 ≤ 5 := max_le hs (by norm_num)
@@ -155,7 +161,7 @@ theorem recurrence_has_teeth (c start : Time) (hs : start ≤ 5) :
   obtain ⟨_, k, hk, hh⟩ := h.exists_honest hw hw
   simp only [faultySel, Finset.mem_singleton] at hk
   subst hk
-  simp [point2] at hh
+  simp [point2, EnvPoint.HonestAt] at hh
 
 /-- A two-header chain: inputs `[1, 2]` and `[2, 3]`. -/
 def twoHeaders : Chain Unit :=

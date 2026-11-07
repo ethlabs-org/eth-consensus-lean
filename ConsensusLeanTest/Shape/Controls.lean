@@ -138,8 +138,8 @@ abbrev ctrlK : Contract ProgressReq where
   idx_nonempty := ⟨1⟩
   params := ctrlParams
   progress
-    | .final, k => .recur ⟨Pattern.range 2, k⟩
-    | _, k => .recur ⟨Pattern.single, k⟩
+    | .final, k => .recur ⟨Pattern.range 2, k, 0⟩
+    | _, k => .recur ⟨Pattern.single, k, 0⟩
 
 theorem ctrlK_admissible : ctrlK.params.Admissible := by
   have h := Params.standard_admissible (Idx := ℕ+) (catchUp := 1) (lag := 1) (budget := 1)
@@ -156,9 +156,9 @@ consecutive ones). -/
 theorem ctrlK_progressTolerant : ProgressTolerant ctrlSchema ctrlK := by
   intro cap ho N
   cases cap
-  · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
-  · exact ⟨2, show (⟨Pattern.single, 2⟩ : Recurrence).BadSlotSlack by decide⟩
-  · exact ⟨3, show (⟨Pattern.range 2, 3⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨2, show (⟨Pattern.single, 2, 0⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨2, show (⟨Pattern.single, 2, 0⟩ : Recurrence).BadSlotSlack by decide⟩
+  · exact ⟨3, show (⟨Pattern.range 2, 3, 0⟩ : Recurrence).BadSlotSlack by decide⟩
 
 /-- The control system: five validators. -/
 abbrev S : System (Fin 5) := sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)
@@ -196,7 +196,8 @@ theorem positive_controls (cap : Capability) :
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧ S.Sleepy ctrlK r ∧
       S.prog X ctrlK cap k1 0 (S.pt r).horizon r ∧ ProgressActive ctrlFamily ctrlK cap k1 0 r.2 ∧
       (S.pt r).TxLiveActive (S.cDur ctrlK r) 0 (S.lat ctrlK cap k1 r) ∧
-      ∃ x, ∃ w ∈ r.2.honest, (∀ τ, x ∉ r.2.submit w τ) ∧ ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
+      ∃ x, ∃ w ∈ r.2.point.honestAt 0, (∀ τ, x ∉ r.2.submit w τ) ∧
+        ∃ τ, 0 ≤ τ ∧ x ∈ r.2.relay w τ) ∧
     (∃ r : S.Run, S.pt r = ptA ∧ S.Witness r ∧
       (∀ w m t, (S.log r).recv w m t → 5 ≤ t) ∧ (S.log r).EagerFrom (S.pt r) 5 ∧
       S.Healthy ctrlK 5 r ∧ S.prog X ctrlK cap k1 (S.ready ctrlK 5 r) (S.pt r).horizon r ∧
@@ -253,9 +254,9 @@ theorem outage_control :
     ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧ S.Outage ctrlK 2 6 8 r ∧
       OutageActive (S.cDur ctrlK r) 6 2 6 8 (S.pt r) ∧
       S.outageStart ctrlK 6 r = 2 ∧ S.outageEnd ctrlK 8 r = 12 ∧ S.recoveryAt ctrlK 8 r = 14 ∧
-      kv key5 card5 2 (by decide) ∈ (S.pt r).honest ∧
+      (S.pt r).HonestAt (kv key5 card5 2 (by decide)) 0 ∧
       (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
-      (S.pt r).faulty.Nonempty := by
+      ((S.pt r).faultyAt 0).Nonempty := by
   obtain ⟨rho, hpt, -, hw, ho, hoa⟩ :=
     outage_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
       (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
@@ -264,7 +265,7 @@ theorem outage_control :
   have hR : ctrlK.params.recovery = 3 := rfl
   have hD : ((ctrlK.params.recovery : Nat) : Time) * 2 = 6 := by rw [hR]; norm_num
   rw [hD] at hoa
-  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.1⟩
+  refine ⟨⟨_, rho⟩, hpt, hw, ho, hoa, ?_, ?_, ?_, ?_, ?_, hw.2.2.2.1⟩
   · change min (max 0 (6 - ((ctrlK.params.noSleep : Nat) : Time) * rho.point.env.ΔAC))
       rho.point.horizon = 2
     rw [hpt, realPoint_env, realPoint_horizon, hC]
@@ -276,7 +277,7 @@ theorem outage_control :
   · change 8 + ((ctrlK.params.recovery : Nat) : Time) * rho.point.env.ΔAC = 14
     rw [hpt, realPoint_env, hR]
     norm_num
-  · change _ ∈ rho.point.honest
+  · change rho.point.HonestAt _ 0
     rw [hpt]
     exact realPoint_honest key5 card5 two_pos two_pos _ 40 (j := 2) (by decide) (by decide)
   · intro t

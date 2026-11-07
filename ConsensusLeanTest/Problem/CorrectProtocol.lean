@@ -60,7 +60,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] (p : EnvPoint V)
 def AwakeOfAll (φ : ℚ) (t : Time) : Prop :=
   φ * Fintype.card V < ((p.awakeAt t).card : ℚ)
 
-omit [DecidableEq V] in
 /-- A smaller fraction of all validators honest and awake is weaker. -/
 theorem AwakeOfAll.mono {φ φ' : ℚ} {t : Time} (h : p.AwakeOfAll φ' t) (hle : φ ≤ φ') :
     p.AwakeOfAll φ t :=
@@ -74,17 +73,22 @@ theorem HealthyOn.awakeOfAll {β : ℚ} {g b t : Time} (h : p.HealthyOn β g b)
     (ht : max g 0 ≤ t) (htb : t ≤ b) : p.AwakeOfAll (1 - β) t := by
   classical
   obtain ⟨hc, ha⟩ := h
-  have hsub : p.honest ⊆ p.awakeAt t := by
+  have hsub : p.honestAt b ⊆ p.awakeAt t := by
     intro v hv
     unfold awakeAt
-    exact Finset.mem_filter.mpr ⟨hv, ha v hv t ht htb⟩
-  have : (p.honest.card : ℚ) ≤ (p.awakeAt t).card := by exact_mod_cast Finset.card_le_card hsub
-  have hsum : p.faulty.card + p.honest.card = Fintype.card V := by
-    unfold faulty
+    have hh : p.HonestAt v t := fun h => (Finset.mem_sdiff.mp hv).2 (p.faultyAt_mono htb h)
+    exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
+      ha v t ht htb hh⟩
+  have : ((p.honestAt b).card : ℚ) ≤ (p.awakeAt t).card := by
+    exact_mod_cast Finset.card_le_card hsub
+  have hsum : (p.faultyAt b).card + (p.honestAt b).card = Fintype.card V := by
+    unfold honestAt
     rw [Finset.card_sdiff_of_subset (Finset.subset_univ _), Finset.card_univ]
-    have := Finset.card_le_univ p.honest
+    have := Finset.card_le_univ (p.faultyAt b)
     omega
-  have hsum' : (p.faulty.card : ℚ) + p.honest.card = Fintype.card V := by exact_mod_cast hsum
+  have hsum' : ((p.faultyAt b).card : ℚ) + (p.honestAt b).card = Fintype.card V := by
+    exact_mod_cast hsum
+  unfold faultCount at hc
   unfold AwakeOfAll
   linarith
 
@@ -112,17 +116,19 @@ theorem censoring_progress_rejected (v : V) (π : Prog) (c s e : Time)
 
 /-- A progress reader that never holds: not good (for `|V| ≥ 5`). -/
 theorem false_progress_not_correct (hX : ∀ π c s e p x, ¬ X.holds π c s e p x)
-    (h5 : 5 ≤ Fintype.card V) : ¬ CorrectProtocol S X K := by
+    (h5 : 5 ≤ Fintype.card V) :
+    ¬ CorrectProtocolOn S X K (fun p => p.ConstantFaults) := by
   intro h
   obtain ⟨i⟩ := K.idx_nonempty
   obtain ⟨r, -, -, hp, -⟩ := (h.realizable h5).sleepy .available i 2 2 (by norm_num)
     (by norm_num)
   exact hX _ _ _ _ _ _ hp
 
-/-- A well-formed point: `Δ = 1`, GST `0`, everybody awake, nobody honest,
+/-- A well-formed point: `Δ = 1`, GST `0`, everybody honest and awake,
 horizon `0`, no submissions. -/
 def trivPoint (V : Type) : EnvPoint V :=
-  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, ∅, 0, fun _ _ => []⟩
+  ⟨⟨1, by decide, 1, by decide, fun _ _ => true⟩, fun _ => ∅,
+    monotone_const, 0, fun _ _ => []⟩
 
 omit [Fintype V] [DecidableEq V] in
 /-- No admissible external data (e.g. `Admits := False`): not adequate. -/
@@ -161,7 +167,8 @@ section Prefix
 /-- Two honest, always-awake validators, `Δ = 2` (deadlines `a + 1`), horizon `3`, no
 submissions. -/
 def prefixPoint : EnvPoint (Fin 2) :=
-  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, Finset.univ, 3, fun _ _ => []⟩
+  ⟨⟨2, by decide, 2, by decide, fun _ _ => true⟩, fun _ => ∅,
+    monotone_const, 3, fun _ _ => []⟩
 
 /-- Validator `0` sends at `2`; nobody ever receives anything. -/
 def prefixLog : CommLog (Fin 2) Unit :=
@@ -172,38 +179,41 @@ theorem prefixPoint_readyAt (c t : Time) : prefixPoint.readyAt c t = Finset.univ
   unfold EnvPoint.readyAt
   apply Finset.filter_true_of_mem
   intro v _
-  exact ⟨Finset.mem_univ _, fun _ _ _ => rfl⟩
+  exact ⟨by simp [EnvPoint.HonestAt, prefixPoint], fun _ _ _ => rfl⟩
 
-theorem prefixPoint_faulty : prefixPoint.faulty = ∅ := by
-  unfold EnvPoint.faulty prefixPoint; simp
+theorem prefixPoint_faulty (t : Time) : prefixPoint.faultyAt t = ∅ := rfl
 
 /-- A log synchronous up to `1` and silent after: the premises of
 `CorrectProtocol.sleepySafe_prefix` at `b = 1` hold (for every `θ ≤ ½` and catch-up), the
 full-run sleepy regime does not (for every contract numbers). -/
 theorem prefix_sync_then_async :
     prefixLog.SyncUntil prefixPoint 1 ∧
-      (∀ θ c, θ ≤ 1 / 2 → prefixPoint.SleepyOn θ c 0 1) ∧
+      (∀ θ c W, θ ≤ 1 / 2 → prefixPoint.SleepyOn θ c W 0 1) ∧
       ¬ prefixLog.PSync prefixPoint 0 ∧
       ∀ {Idx : Type} (P : Params Idx),
         ¬ (prefixLog.PSync prefixPoint 0 ∧
-          prefixPoint.SleepyOn P.θ ((P.catchUp : Time) * prefixPoint.env.ΔAC) 0
+          prefixPoint.SleepyOn P.θ ((P.catchUp : Time) * prefixPoint.env.ΔAC)
+            ((P.ahead : Time) * prefixPoint.env.ΔAC) 0
             prefixPoint.horizon) := by
   have hnp : ¬ prefixLog.PSync prefixPoint 0 := by
     intro h
-    obtain ⟨t', ht', hs, -⟩ := h.msgs 0 (Finset.mem_univ _) () 2 ⟨rfl, rfl⟩ id 1 (Finset.mem_univ _)
-      2 le_rfl (by decide) (by decide) (fun _ _ _ => rfl)
+    obtain ⟨t', ht', hs, -⟩ := h.msgs 0 () 2 ⟨rfl, rfl⟩
+      (by simp [EnvPoint.HonestAt, prefixPoint]) id 1
+      2 le_rfl (by decide) (by decide) (by simp [EnvPoint.HonestAt, prefixPoint])
+      (fun _ _ _ => rfl)
     rcases hs with ⟨h1, -⟩ | h1
     · exact absurd h1 (by decide)
     · exact h1
   refine ⟨⟨?_, fun _ _ _ _ _ h => h.elim, ?_⟩, ?_, hnp, fun P h => hnp h.1⟩
-  · rintro v - m t ⟨-, rfl⟩ - w - a ha hc - -
+  · rintro v m t ⟨-, rfl⟩ - - w a ha hc - - -
     have h2 : ∀ a : Int, 2 ≤ a → ¬ a + 2 - 1 ≤ 1 := by intro a h; omega
     exact absurd hc (h2 a ha)
-  · intro u _ x τ _ _ hx
+  · intro u x τ _ _ _ hx
     exact absurd hx (by simp [prefixPoint])
-  · intro θ c hθ t _ _
+  · intro θ c W hθ t _ _
+    change prefixPoint.ReadyAbove θ c t
     apply EnvPoint.ReadyAbove.mono _ _ hθ
-    unfold EnvPoint.ReadyAbove
+    unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [prefixPoint_readyAt, prefixPoint_faulty]
     norm_num
 
@@ -214,7 +224,8 @@ section Rotating
 /-- Four honest validators; at time `t`, validator `t mod 4` sleeps. `Δ = 1`,
 horizon `10`. -/
 def rotPoint : EnvPoint (Fin 4) :=
-  ⟨⟨1, by decide, 1, by decide, fun v t => decide (t % 4 ≠ ((v : Nat) : Int))⟩, Finset.univ, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide (t % 4 ≠ ((v : Nat) : Int))⟩,
+    fun _ => ∅, monotone_const, 10,
     fun _ _ => []⟩
 
 theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by
@@ -226,7 +237,8 @@ theorem rotPoint_awake_card (t : Int) : (rotPoint.awakeAt t).card = 3 := by
   obtain ⟨k, hk⟩ := hk
   have : rotPoint.awakeAt t = Finset.univ.erase k := by
     ext v
-    simp only [EnvPoint.awakeAt, rotPoint, Finset.mem_filter, Finset.mem_univ, true_and,
+    simp only [EnvPoint.awakeAt, EnvPoint.honestAt, rotPoint, Finset.sdiff_empty,
+      Finset.mem_filter, Finset.mem_univ, true_and,
       Finset.mem_erase, decide_eq_true_eq, ne_eq, and_true, hk]
     constructor
     · intro h hv; exact h (by rw [hv])
@@ -245,7 +257,8 @@ theorem healthy_rotating_sleeper :
     rw [rotPoint_awake_card]
     norm_num
   · intro β h
-    have hu := h.2 0 (Finset.mem_univ _) 0 (by simp) (by change _ ≤ (10 : Int); omega)
+    have hu := h.2 0 0 (by simp) (by change _ ≤ (10 : Int); omega)
+      (by simp [EnvPoint.HonestAt, rotPoint])
     simp [rotPoint] at hu
   · classical
     unfold EnvPoint.readyAt
@@ -262,8 +275,7 @@ theorem healthy_rotating_sleeper :
     simp only [rotPoint, decide_eq_true_eq] at hu
     exact hu (a3 t _ hv0 hv4)
 
-theorem rotPoint_faulty : rotPoint.faulty = ∅ := by
-  unfold EnvPoint.faulty rotPoint; simp
+theorem rotPoint_faulty (t : Time) : rotPoint.faultyAt t = ∅ := rfl
 
 /-- The rotation with catch-up `0` is plain ½-sleepy on `[0, 10]` (some
 validator is ready at every time), but not ½-η-sleepy with look-back `2`: at
@@ -271,27 +283,30 @@ time `4` only validators `1` and `2` are ready, while all four were awake at
 some time in `[2, 4]`. It does meet the awake-count form (three of four awake
 at every time): the contract's ready-numerator form is the stronger premise. -/
 theorem eta_sleepy_history_sensitive :
-    rotPoint.SleepyOn (1 / 2) 0 0 10 ∧ ¬ rotPoint.EtaSleepyOn (1 / 2) 2 0 0 10 ∧
-      ∀ t, (1 / 2 : ℚ) * ((rotPoint.awakeIn (max 0 (t - 2)) t ∪ rotPoint.faulty).card : ℚ) <
+    rotPoint.SleepyOn (1 / 2) 0 0 0 10 ∧ ¬ rotPoint.EtaSleepyOn (1 / 2) 2 0 0 0 10 ∧
+      ∀ t, (1 / 2 : ℚ) * ((rotPoint.awakeIn (max 0 (t - 2)) t ∪ rotPoint.faultyAt t).card : ℚ) <
         (rotPoint.awakeAt t).card := by
   classical
   refine ⟨fun t ht0 _ => ?_, fun h => ?_, fun t => ?_⟩
-  · have hne : (rotPoint.readyAt 0 t).Nonempty := by
+  · change rotPoint.ReadyAbove (1 / 2) 0 t
+    have hne : (rotPoint.readyAt 0 t).Nonempty := by
       refine ⟨⟨((t + 1) % 4).toNat, by omega⟩, ?_⟩
       unfold EnvPoint.readyAt
-      refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, Finset.mem_univ _, fun u h1 h2 => ?_⟩
+      refine Finset.mem_filter.mpr ⟨Finset.mem_univ _,
+        by simp [EnvPoint.HonestAt, rotPoint], fun u h1 h2 => ?_⟩
       simp only [rotPoint, decide_eq_true_eq, ne_eq]
       dsimp only [Time] at *
       omega
     have hc : (0 : ℚ) < (rotPoint.readyAt 0 t).card := by exact_mod_cast hne.card_pos
-    unfold EnvPoint.ReadyAbove
+    unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [rotPoint_faulty, Finset.card_empty]
     push_cast
     linarith
   · have h4 := h 4 (by norm_num) (by norm_num)
+    change rotPoint.EtaReadyAbove (1 / 2) 2 0 4 at h4
     rw [EnvPoint.EtaReadyAbove,
       ite_eq_right_of_eq_false _ _ (eq_false (show ¬ (2 : Time) ≤ 0 by norm_num))] at h4
-    have hin : rotPoint.readyAt 0 4 ∪ rotPoint.awakeIn (max 0 (4 - 2)) 4 ∪ rotPoint.faulty =
+    have hin : rotPoint.readyAt 0 4 ∪ rotPoint.awakeIn (max 0 (4 - 2)) 4 ∪ rotPoint.faultyAt 4 =
         Finset.univ := by
       apply Finset.eq_univ_of_forall
       intro v
@@ -299,10 +314,10 @@ theorem eta_sleepy_history_sensitive :
       unfold EnvPoint.awakeIn
       refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, ?_⟩
       fin_cases v
-      · exact ⟨2, by norm_num, by norm_num, by decide⟩
-      · exact ⟨2, by norm_num, by norm_num, by decide⟩
-      · exact ⟨3, by norm_num, by norm_num, by decide⟩
-      · exact ⟨2, by norm_num, by norm_num, by decide⟩
+      · exact ⟨2, by norm_num, by norm_num, by simp [EnvPoint.HonestAt, rotPoint], by decide⟩
+      · exact ⟨2, by norm_num, by norm_num, by simp [EnvPoint.HonestAt, rotPoint], by decide⟩
+      · exact ⟨3, by norm_num, by norm_num, by simp [EnvPoint.HonestAt, rotPoint], by decide⟩
+      · exact ⟨2, by norm_num, by norm_num, by simp [EnvPoint.HonestAt, rotPoint], by decide⟩
     have hat : rotPoint.readyAt 0 4 ⊆ {1, 2} := by
       intro v hv
       unfold EnvPoint.readyAt at hv
@@ -318,8 +333,8 @@ theorem eta_sleepy_history_sensitive :
     norm_num at h4
     linarith
   · rw [rotPoint_awake_card]
-    have : ((rotPoint.awakeIn (max 0 (t - 2)) t ∪ rotPoint.faulty).card : ℚ) ≤ 4 := by
-      have := Finset.card_le_univ (rotPoint.awakeIn (max 0 (t - 2)) t ∪ rotPoint.faulty)
+    have : ((rotPoint.awakeIn (max 0 (t - 2)) t ∪ rotPoint.faultyAt t).card : ℚ) ≤ 4 := by
+      have := Finset.card_le_univ (rotPoint.awakeIn (max 0 (t - 2)) t ∪ rotPoint.faultyAt t)
       rw [Fintype.card_fin] at this
       exact_mod_cast this
     push_cast
@@ -332,19 +347,20 @@ section EtaHistory
 /-- Ten validators, `0` faulty, `1`–`3` honest and always awake, `4`–`9`
 honest and awake only at time `0`. `Δ = 1`, horizon `10`. -/
 def briefPoint : EnvPoint (Fin 10) :=
-  ⟨⟨1, by decide, 1, by decide, fun v t => decide ((v : Nat) ≤ 3 ∨ t = 0)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v t => decide ((v : Nat) ≤ 3 ∨ t = 0)⟩,
+    fun _ => {0}, monotone_const, 10,
     fun _ _ => []⟩
 
-theorem briefPoint_faulty : briefPoint.faulty = {0} := by
-  unfold EnvPoint.faulty briefPoint; ext v; simp
+theorem briefPoint_faulty (t : Time) : briefPoint.faultyAt t = {0} := rfl
 
 theorem briefPoint_readyAt : briefPoint.readyAt 0 1 = {1, 2, 3} := by
   classical
   ext v
   simp only [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.AwakeOnClosed, briefPoint,
-    Finset.mem_filter, Finset.mem_erase, Finset.mem_univ, and_true, decide_eq_true_eq]
+    EnvPoint.HonestAt, Finset.mem_filter, Finset.mem_univ, true_and,
+    Finset.mem_singleton, decide_eq_true_eq]
   constructor
-  · rintro ⟨hv, -, hA⟩
+  · rintro ⟨hv, hA⟩
     have h1 := hA 1 (by norm_num) le_rfl
     have h3 : (v : Nat) ≤ 3 := by
       rcases h1 with h | h
@@ -353,7 +369,7 @@ theorem briefPoint_readyAt : briefPoint.readyAt 0 1 = {1, 2, 3} := by
     clear hA h1
     fin_cases v <;> norm_num at *
   · intro hv
-    refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> norm_num at *
+    refine ⟨?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> norm_num at *
 
 /-- Briefly awake participants count: validators `4`–`9`
 are awake only at `0`, so at time `1` they are not ready. With catch-up `0` the
@@ -364,32 +380,32 @@ theorem eta_sleepy_counts_brief :
     briefPoint.ReadyAbove (1 / 2) 0 1 ∧ ¬ briefPoint.EtaReadyAbove (1 / 2) 2 0 1 := by
   classical
   refine ⟨?_, fun h => ?_⟩
-  · unfold EnvPoint.ReadyAbove
+  · unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [briefPoint_readyAt, briefPoint_faulty]
     norm_num
   · rw [EnvPoint.EtaReadyAbove,
       ite_eq_right_of_eq_false _ _ (eq_false (show ¬ (2 : Time) ≤ 0 by norm_num))] at h
     have hin : briefPoint.readyAt 0 1 ∪ briefPoint.awakeIn (max 0 (1 - 2)) 1 ∪
-        briefPoint.faulty = Finset.univ := by
+        briefPoint.faultyAt 1 = Finset.univ := by
       apply Finset.eq_univ_of_forall
       intro v
       by_cases h0 : v = 0
       · exact Finset.mem_union_right _ (by rw [briefPoint_faulty, h0]; simp)
       · refine Finset.mem_union_left _ (Finset.mem_union_right _ ?_)
-        simp only [EnvPoint.awakeIn, briefPoint, Finset.mem_filter, Finset.mem_erase,
-          Finset.mem_univ, and_true, decide_eq_true_eq]
-        exact ⟨h0, 0, by norm_num, by norm_num, Or.inr rfl⟩
+        simp only [EnvPoint.awakeIn, briefPoint, EnvPoint.HonestAt, Finset.mem_filter,
+          Finset.mem_univ, true_and, Finset.mem_singleton, decide_eq_true_eq]
+        exact ⟨0, by norm_num, by norm_num, h0, Or.inr rfl⟩
     rw [hin, briefPoint_readyAt, Finset.card_univ, Fintype.card_fin] at h
     norm_num at h
 
 /-- Seven validators, `0` faulty, `1`–`2` honest and always awake, `3`–`6`
 honest and always asleep. `Δ = 1`, horizon `10`. -/
 def startPoint : EnvPoint (Fin 7) :=
-  ⟨⟨1, by decide, 1, by decide, fun v _ => decide ((v : Nat) ≤ 2)⟩, Finset.univ.erase 0, 10,
+  ⟨⟨1, by decide, 1, by decide, fun v _ => decide ((v : Nat) ≤ 2)⟩,
+    fun _ => {0}, monotone_const, 10,
     fun _ _ => []⟩
 
-theorem startPoint_faulty : startPoint.faulty = {0} := by
-  unfold EnvPoint.faulty startPoint; ext v; simp
+theorem startPoint_faulty (t : Time) : startPoint.faultyAt t = {0} := rfl
 
 theorem startPoint_readyAt {t : Time} (ht : 0 ≤ t) : startPoint.readyAt 0 t = {1, 2} := by
   classical
@@ -397,39 +413,41 @@ theorem startPoint_readyAt {t : Time} (ht : 0 ≤ t) : startPoint.readyAt 0 t = 
   constructor
   · intro hv
     unfold EnvPoint.readyAt at hv
-    obtain ⟨hh, -, hA⟩ := Finset.mem_filter.mp hv
+    obtain ⟨-, hh, hA⟩ := Finset.mem_filter.mp hv
     have h1 := hA t (max_le ht (by linarith)) le_rfl
     simp only [startPoint, decide_eq_true_eq] at h1
-    simp only [startPoint, Finset.mem_erase, Finset.mem_univ, and_true] at hh
+    simp only [EnvPoint.HonestAt, startPoint, Finset.mem_singleton] at hh
     clear hA hv
     fin_cases v <;> norm_num at *
   · simp only [EnvPoint.readyAt, EnvPoint.Ready, EnvPoint.AwakeOnClosed, startPoint,
-      Finset.mem_filter, Finset.mem_erase, Finset.mem_univ, and_true, decide_eq_true_eq]
+      EnvPoint.HonestAt, Finset.mem_filter, Finset.mem_univ, true_and,
+      Finset.mem_singleton, decide_eq_true_eq]
     intro hv
-    refine ⟨?_, ?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> norm_num at *
+    refine ⟨?_, fun u _ _ => ?_⟩ <;> fin_cases v <;> norm_num at *
 
 theorem startPoint_awakeIn (a b : Time) : startPoint.awakeIn a b ⊆ {1, 2} := by
   classical
   intro v hv
-  simp only [EnvPoint.awakeIn, startPoint, Finset.mem_filter, Finset.mem_erase,
-    Finset.mem_univ, and_true, decide_eq_true_eq] at hv
-  obtain ⟨h0, -, -, -, h2⟩ := hv
+  simp only [EnvPoint.awakeIn, startPoint, EnvPoint.HonestAt, Finset.mem_filter,
+    Finset.mem_univ, true_and, Finset.mem_singleton, decide_eq_true_eq] at hv
+  obtain ⟨_, _, _, h0, h2⟩ := hv
   fin_cases v <;> simp_all
 
 /-- No participation history before time `0`: honest
 validators `3`–`6` sleep throughout, and the run is ½-η-sleepy on `[0, 10]`
 for every look-back, startup included (`½·3 < 2`). Readiness at negative
 times (vacuous) would have counted all seven validators at the start. -/
-theorem eta_sleepy_startup (η : Time) : startPoint.EtaSleepyOn (1 / 2) η 0 0 10 := by
+theorem eta_sleepy_startup (η : Time) : startPoint.EtaSleepyOn (1 / 2) η 0 0 0 10 := by
   classical
   intro t ht _
+  change startPoint.EtaReadyAbove (1 / 2) η 0 t
   unfold EnvPoint.EtaReadyAbove
   split_ifs
-  · unfold EnvPoint.ReadyAbove
+  · unfold EnvPoint.ReadyAbove EnvPoint.faultCount
     rw [startPoint_readyAt ht, startPoint_faulty]
     norm_num
   · have hsub : startPoint.readyAt 0 t ∪ startPoint.awakeIn (max 0 (t - η)) t ∪
-        startPoint.faulty ⊆ {0, 1, 2} := by
+        startPoint.faultyAt t ⊆ {0, 1, 2} := by
       rw [startPoint_readyAt ht, startPoint_faulty]
       intro v hv
       simp only [Finset.mem_union] at hv
@@ -439,7 +457,7 @@ theorem eta_sleepy_startup (η : Time) : startPoint.EtaSleepyOn (1 / 2) η 0 0 1
         simp only [Finset.mem_insert, Finset.mem_singleton] at this ⊢; tauto
       · simp only [Finset.mem_insert, Finset.mem_singleton] at hv ⊢; tauto
     have hc : ((startPoint.readyAt 0 t ∪ startPoint.awakeIn (max 0 (t - η)) t ∪
-        startPoint.faulty).card : ℚ) ≤ 3 := by
+        startPoint.faultyAt t).card : ℚ) ≤ 3 := by
       have := (Finset.card_le_card hsub).trans (Finset.card_le_three)
       exact_mod_cast this
     have hr : ((startPoint.readyAt 0 t).card : ℚ) = 2 := by rw [startPoint_readyAt ht]; rfl
