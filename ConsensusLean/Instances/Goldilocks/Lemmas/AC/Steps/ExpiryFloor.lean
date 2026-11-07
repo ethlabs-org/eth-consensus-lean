@@ -69,6 +69,14 @@ theorem LocksWF.unlock {L : Set Lock} (h : LocksWF sp L) (Φ : Frm sp.n FGP) (t 
   have := h.liveLocks Φ t l hl
   split_ifs <;> exact this
 
+/-- Locks related by the unlock relation keep `LocksWF`: a moved lock keeps its slot and expiry. -/
+theorem LocksWF.unlockRel {L L' : Set Lock} (h : LocksWF sp L) {Φ : Frm sp.n FGP} {t : Time}
+    {s : Int} {V : View sp.n} (hL : UnlockRel sp L Φ t s V L') : LocksWF sp L' := by
+  intro l' hl'
+  obtain ⟨l, hl, -, -, -, -, hs, -, he, -, -⟩ := hL l' hl'
+  rw [hs, he]
+  exact h l hl
+
 /-- `add_locks` keeps `LocksWF` when every new lock of slot `s` has an expiry in
 `[s + 2, s + k]`. -/
 theorem LocksWF.addLocks {L : Set Lock} (h : LocksWF sp L) (Φ : Frm sp.n FGP) (t : Time)
@@ -109,6 +117,30 @@ theorem LocksWF.updateConfirmation {A : SAState sp.n} (h : LocksWF sp A.locks)
         · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
         · dsimp only; omega
 
+/-- `LocksWF.tryVote` with the unlock given. -/
+theorem LocksWF.tryVoteWith
+    {L : Set Lock} {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time)
+    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
+    LocksWF sp (SA.tryVoteWith sp x L A Φ t).1.locks ∧
+      ∀ e ∈ (SA.tryVoteWith sp x L A Φ t).2, LocksWF sp e.readPoint.locks := by
+  have hu : LocksWF sp (if 0 < sp.slot t then L else A.locks) := by
+    split_ifs
+    · exact h.unlockRel hL
+    · exact h
+  refine ⟨?_, fun e he => by rw [tryVote_readPoint_locks_eqWith he]; exact hu⟩
+  unfold SA.tryVoteWith
+  dsimp only
+  split_ifs with h₁ h₂ h₃
+  · exact h
+  · exact h
+  · refine LocksWF.optimisticConfirmation ?_ Φ t
+    rw [admitVote_locks_eq]
+    exact h.unlockRel hL
+  · refine LocksWF.optimisticConfirmation ?_ Φ t
+    rw [admitVote_locks_eq]
+    exact h
+
 /-- `try_vote` keeps `LocksWF`, in its post-state and in its emissions' read points. -/
 theorem LocksWF.tryVote {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
@@ -133,22 +165,24 @@ theorem LocksWF.tryVote {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.
     rw [admitVote_locks_eq]
     exact h
 
-/-- **One SA call keeps `LocksWF`**, in its post-state and in every emission's read point
-(a well-formed frame and `t ≥ 0` for the restart). -/
-theorem LocksWF.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF sp A.locks)
+/-- `LocksWF.step` with the unlock given. -/
+theorem LocksWF.stepWith
+    {L : Set Lock} {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF sp A.locks)
     (x : Fin sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    (c : (goldilocksSA sp FGP ro).Call) :
-    LocksWF sp ((goldilocksSA sp FGP ro).step x A Φ t c).1.locks ∧
-      ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, LocksWF sp e.readPoint.locks := by
+    (c : (goldilocksSA sp FGP ro).Call)
+    (hL : UnlockRel sp (callInput sp A Φ t c).locks Φ t ((sp.slot t : Int) - 1)
+      (callView sp A Φ t c) L) :
+    LocksWF sp (stepWith sp ro x L A Φ t c).1.locks ∧
+      ∀ e ∈ (stepWith sp ro x L A Φ t c).2, LocksWF sp e.readPoint.locks := by
   have hopt : ∀ {A' : SAState sp.n}, A'.locks = A.locks →
       LocksWF sp (SA.optimisticConfirmation sp A' Φ t).locks := fun hA =>
     LocksWF.optimisticConfirmation (hA ▸ h) Φ t
   cases c with
   | tick =>
-    change LocksWF sp (acOnTick sp x A Φ t).1.locks ∧
-      ∀ e ∈ (acOnTick sp x A Φ t).2, LocksWF sp e.readPoint.locks
-    have hv := h.tryVote x Φ t
-    unfold acOnTick
+    change LocksWF sp (acOnTickWith sp x L A Φ t).1.locks ∧
+      ∀ e ∈ (acOnTickWith sp x L A Φ t).2, LocksWF sp e.readPoint.locks
+    have hv := h.tryVoteWith x Φ t hL
+    unfold acOnTickWith
     dsimp only
     split_ifs <;> simp only [List.not_mem_nil, false_imp_iff, imp_true_iff, and_true] <;>
       first
@@ -157,20 +191,20 @@ theorem LocksWF.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF s
       | exact h.updateConfirmation Φ t _
       | exact h
   | proposal =>
-    refine ⟨?_, fun e he => by simp [ACInterface.step] at he⟩
-    change LocksWF sp (acProposal sp A Φ t).1.locks
-    unfold acProposal
+    refine ⟨?_, fun e he => by simp at he⟩
+    change LocksWF sp (acProposalWith sp L A Φ t).1.locks
+    unfold acProposalWith
     dsimp only
-    split_ifs <;> first | exact h | exact h.unlock Φ t _ _
+    split_ifs <;> first | exact h | exact h.unlockRel hL
   | toFG =>
-    refine ⟨?_, fun e he => by simp [ACInterface.step] at he⟩
+    refine ⟨?_, fun e he => by simp at he⟩
     change LocksWF sp (acToFG sp A Φ t).1.locks
     rw [acToFG_locks_eq]
     exact h
   | message v =>
-    exact (hopt (admitVote_locks_eq A t v)).tryVote x Φ t
+    exact (hopt (admitVote_locks_eq A t v)).tryVoteWith x Φ t hL
   | block B =>
-    exact (hopt (blockReceipt_locks A t B)).tryVote x Φ t
+    exact (hopt (blockReceipt_locks A t B)).tryVoteWith x Φ t hL
   | restart =>
     obtain ⟨he, hl, -⟩ := (restart_state sp) FGP ro x A Φ t hΦ ht
     change LocksWF sp (acRestart sp ro x A Φ t).1.locks ∧
@@ -179,13 +213,24 @@ theorem LocksWF.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF s
     · rw [hl]; exact h
     · rw [he] at he'; simp at he'
 
+/-- **One SA call keeps `LocksWF`**, in its post-state and in every emission's read point
+(a well-formed frame and `t ≥ 0` for the restart). -/
+theorem LocksWF.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF sp A.locks)
+    (x : Fin sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    LocksWF sp ((goldilocksSA sp FGP ro).step x A Φ t c).1.locks ∧
+      ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, LocksWF sp e.readPoint.locks := by
+  rw [step_eq_stepWith]
+  exact h.stepWith x hΦ ht c (unlockRel_unlock hΦ _ _ _ _)
+
 /-! ## Over an SA trace -/
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
   {tr : SATrace sp FGP ro}
 
-/-- **`LocksWF` at every honest state** of an SA trace. -/
-theorem locksWF_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+/-- `locksWF_state` with the unlock given. -/
+theorem locksWF_stateU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) : LocksWF sp (tr.state y i).locks := by
   induction i with
   | zero =>
@@ -200,22 +245,36 @@ theorem locksWF_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin
       have hcall : tr.CallAt y i ℓ := ⟨hc.1, hℓ⟩
       have hx := hr.exec i ℓ hℓ (hc.1 ▸ hy)
       rw [hc.1] at hx
-      have := (ih.step y (frameIn_of_callAt hr hy hcall).1 (hr.time_nonneg i) ℓ.call).1
+      have hΦ := (frameIn_of_callAtU hr hy hcall).1
+      have := (ih.stepWith y hΦ (hr.time_nonneg i) ℓ.call (hr.lawfulAt hy hcall hΦ)).1
       rw [hx] at this
       exact this
     · exact ih
 
-/-- **`LocksWF` at the read point of an honest cast.** -/
-theorem castAt_readPoint_locksWF (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+/-- **`LocksWF` at every honest state** of an SA trace. -/
+theorem locksWF_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (i : Nat) : LocksWF sp (tr.state y i).locks :=
+  locksWF_stateU (hr := hr.toU) (y := y) (hy := hy) (i := i)
+
+/-- `castAt_readPoint_locksWF` with the unlock given. -/
+theorem castAt_readPoint_locksWFU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LocksWF sp e.readPoint.locks := by
   obtain ⟨hc, he⟩ := hc
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have := ((locksWF_state hr hy i).step y (frameIn_of_callAt hr hy hc).1 (hr.time_nonneg i)
-    ℓ.call).2
+  have hΦ := (frameIn_of_callAtU hr hy hc).1
+  have := ((locksWF_stateU hr hy i).stepWith y hΦ (hr.time_nonneg i) ℓ.call
+    (hr.lawfulAt hy hc hΦ)).2
   rw [hx] at this
   exact this e he
+
+/-- **`LocksWF` at the read point of an honest cast.** -/
+theorem castAt_readPoint_locksWF (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LocksWF sp e.readPoint.locks :=
+  castAt_readPoint_locksWFU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
 
 end Consensus.Goldilocks.SA
 

@@ -25,9 +25,10 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
   {pay : Payload sp.n} {schedule : Nat → Fin sp.n}
 
-/-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor.** -/
-private theorem vote_walkEnd
-    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+/-- `vote_walkEnd` with the unlock given. -/
+private theorem vote_walkEndU
+    {u : Nat → Set Lock}
+    (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧
@@ -37,10 +38,10 @@ private theorem vote_walkEnd
         (getAnchor sp e.readPoint ℓ.frame (tr.time j)) Hd := by
   have hr := hs.standalone.run.localRun
   have hU := hr.coherent
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc.1
-  have hhead := castAt_head_of_viable hr hx hc (hes ▸ vote_viable_nonempty_core hs hx hc hes)
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hx hc.1
+  have hhead := castAt_head_of_viableU hr hx hc (hes ▸ vote_viable_nonempty_coreU hs hx hc hes)
   rw [hes] at hhead
-  have ha := (vote_anchor_cases_core hs hx hc hes).1
+  have ha := (vote_anchor_cases_coreU hs hx hc hes).1
   set T := ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame p)
   have hT : T ⊆ ℓ.frame.tree := fun B hB => hB.1.1
   have hfin : T.Finite := hΦ.finite.subset hT
@@ -58,22 +59,36 @@ private theorem vote_walkEnd
     · exact he ▸ ha
     · exact (Anc.mem (hw.anc (hT.trans hΦU) ha) he).2
   refine ⟨Hd, hHd, hhead.symm, ?_⟩
-  have hag := fun X => vote_children_eq_core hs hx hc hes X
+  have hag := fun X => vote_children_eq_coreU hs hx hc hes X
   refine hw.congr hU (hT.trans hΦU) ha hHd (fun X _ => hag X) ?_
   obtain ⟨-, -, hstop⟩ := walkEnd_iff.1 hw
   refine walkEnd_self fun ⟨C, hC⟩ => hstop ⟨C, ?_⟩
   exact (IsBest.congr (hag Hd).1 (hag Hd).2).2 hC
 
-/-- **Unanimity** (H.1 (i)), in its setting. -/
-theorem proposal_votes_of_setting_core
-    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
+/-- **The head of an honest slot-`p` vote ends the canonical walk from its anchor.** -/
+private theorem vote_walkEnd
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
+    ∃ Hd ∈ U, Hd.root = e.msg.head ∧
+      WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
+        (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
+        (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1))
+        (getAnchor sp e.readPoint ℓ.frame (tr.time j)) Hd :=
+  vote_walkEndU (hs := hs.toU) (x := x) (hx := hx) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
+      (hes := hes)
+
+/-- `proposal_votes_of_setting_core` with the unlock given. -/
+theorem proposal_votes_of_setting_coreU
+    {u : Nat → Set Lock}
+    (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
   have hU : Coherent U := hs.standalone.run.localRun.coherent
   -- the canonical walk
   set T := insert P (ℓp.frame.viableTree ℓp.frame.tree)
   set sc := goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1)
   set el := goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)
-  obtain ⟨hpw, hPU, hΦpU, hsd, hdP⟩ := proposal_walkEnd_core hs
+  obtain ⟨hpw, hPU, hΦpU, hsd, hdP⟩ := proposal_walkEnd_coreU hs
   have hTU : T ⊆ U := Set.insert_subset hPU fun B hB => hΦpU hB.1
   -- a vote extending a block: its head block extends it
   have hext : ∀ {e : Em sp FGP} {Hd B}, Hd ∈ U → Hd.root = e.msg.head →
@@ -91,9 +106,9 @@ theorem proposal_votes_of_setting_core
   have hmin : ∀ c < Nat.find hex, ∀ x ∈ H, ∀ e, VoteAt tr x c e → e.msg.slot ≠ p :=
     fun c hc x hx e ⟨ℓ, h, he⟩ hes => Nat.find_min hex hc ⟨x, hx, ℓ, e, ⟨h, he⟩, hes⟩
   set a₀ := getAnchor sp e₀.readPoint ℓ₀.frame (tr.time (Nat.find hex))
-  obtain ⟨E₀, hE₀, hE₀r, hw₀⟩ := vote_walkEnd hs hx₀ hc₀ hes₀
+  obtain ⟨E₀, hE₀, hE₀r, hw₀⟩ := vote_walkEndU hs hx₀ hc₀ hes₀
   obtain ⟨ha₀, ⟨ha₀d, hall₀⟩ | ⟨z, hz, j', hj', e', hv', hs', -⟩⟩ :=
-    vote_anchor_cases_core hs hx₀ hc₀ hes₀
+    vote_anchor_cases_coreU hs hx₀ hc₀ hes₀
   swap
   · exact absurd hs' (hmin j' hj' z hz e' hv')
   -- every honest slot-`p` vote has head `E₀`
@@ -103,9 +118,9 @@ theorem proposal_votes_of_setting_core
     induction c using Nat.strong_induction_on with
     | _ c ih =>
     intro x hx ℓ e hc hes Hd hHd hHdr
-    obtain ⟨Hw, hHw, hHwr, hw⟩ := vote_walkEnd hs hx hc hes
+    obtain ⟨Hw, hHw, hHwr, hw⟩ := vote_walkEndU hs hx hc hes
     obtain rfl : Hw = Hd := hU.1 hHw hHd (hHwr.trans hHdr.symm)
-    obtain ⟨ha, hcases⟩ := vote_anchor_cases_core hs hx hc hes
+    obtain ⟨ha, hcases⟩ := vote_anchor_cases_coreU hs hx hc hes
     have ha₀H : Anc U a₀ Hw := hext hHw hHwr (hall₀ x hx c e ⟨ℓ, hc⟩ hes)
     rcases anc_total hU (hw.anc hTU ha) ha₀H with h | h
     · exact hw.of_anc hU hTU h ha₀H |>.unique hw₀
@@ -113,13 +128,13 @@ theorem proposal_votes_of_setting_core
         rcases hcases with ⟨-, hall⟩ | ⟨z, hz, j', hj', e', hv', hs', hext'⟩
         · exact hext hE₀ hE₀r (hall x₀ hx₀ _ e₀ ⟨ℓ₀, hc₀⟩ hes₀)
         · obtain ⟨ℓ', hc', he'⟩ := hv'
-          obtain ⟨Hz, hHz, hHzr⟩ := honest_head hs.standalone.run hz ⟨ℓ', hc', he'⟩
+          obtain ⟨Hz, hHz, hHzr⟩ := honest_headU hs.standalone.run hz ⟨ℓ', hc', he'⟩
           have := ih j' hj' z hz ℓ' e' ⟨hc', he'⟩ hs' Hz hHz hHzr.1
           exact this ▸ hext hHz hHzr.1 hext'
       exact hw.unique (hw₀.of_anc hU hTU h haE)
   -- the canonical walk from `a₀` ends at `P`
   have hB : E₀ = P := by
-    obtain ⟨hsU, hscases⟩ := proposal_anchor_cases_core hs
+    obtain ⟨hsU, hscases⟩ := proposal_anchor_cases_coreU hs
     have ha₀P : Anc U a₀ P := ha₀d.trans hdP
     rcases anc_total hU (hsd.trans hdP) ha₀P with h | h
     · exact hw₀.unique (hpw.of_anc hU hTU h ha₀P)
@@ -127,13 +142,19 @@ theorem proposal_votes_of_setting_core
         rcases hscases with hall | ⟨z, hz, j', e', hv', hs', hext'⟩
         · exact hext hE₀ hE₀r (hall x₀ hx₀ _ e₀ ⟨ℓ₀, hc₀⟩ hes₀)
         · obtain ⟨ℓ', hc', he'⟩ := hv'
-          obtain ⟨Hz, hHz, hHzr⟩ := honest_head hs.standalone.run hz ⟨ℓ', hc', he'⟩
+          obtain ⟨Hz, hHz, hHzr⟩ := honest_headU hs.standalone.run hz ⟨ℓ', hc', he'⟩
           have := hA j' z hz ℓ' e' ⟨hc', he'⟩ hs' Hz hHz hHzr.1
           exact this ▸ hext hHz hHzr.1 hext'
       exact (hw₀.of_anc hU hTU h hsE).unique hpw
   obtain ⟨ℓ₁, hc₁, he₁⟩ := hv₁
-  obtain ⟨H₁, hH₁, hH₁r, -⟩ := honest_head hs.standalone.run hx₁ ⟨ℓ₁, hc₁, he₁⟩
+  obtain ⟨H₁, hH₁, hH₁r, -⟩ := honest_headU hs.standalone.run hx₁ ⟨ℓ₁, hc₁, he₁⟩
   rw [← hH₁r, hA j₁ x₁ hx₁ ℓ₁ e₁ ⟨hc₁, he₁⟩ hes₁ H₁ hH₁ hH₁r, hB]
+
+/-- **Unanimity** (H.1 (i)), in its setting. -/
+theorem proposal_votes_of_setting_core
+    (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
+    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root :=
+  proposal_votes_of_setting_coreU (hs := hs.toU)
 
 /-! ## In the setting of unanimity -/
 

@@ -27,10 +27,9 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
-/-- **The result side.** At an honest update of slot `s` with result `C`: its supporters `S`
-of `C` are more than half of its voters; each has a vote in its pool, extending `C`, and does
-not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
-private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+/-- `result_side` with the unlock given. -/
+private theorem result_sideU
+    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
     {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
@@ -40,7 +39,7 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
         ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U C R := by
   have hr := hrun.localRun
   obtain ⟨ℓ, ⟨hc, -, ht, -⟩, hC, -⟩ := hR
-  obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hY hc
+  obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hY hc
   refine ⟨ℓ, supporters ℓ.frame ⟨{v | v ∈ (tr.state Y c).pool s}, {v | v ∈ (tr.state Y c).pool s ∧
     resolutionTime (tr.state Y c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s C, hc, ht,
     ?_, ?_, ?_⟩
@@ -48,9 +47,9 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
     unfold confirmationScore at hmaj
     exact hmaj
   · rintro u ⟨-, v, ⟨hvp, hres⟩, rfl, -, R, hR, hRr, hDR⟩
-    have hvs := state_pool_slot sp hr hY c s v hvp
+    have hvs := state_pool_slotU sp hr hY c s v hvp
     rw [fwd_iff]
-    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_of_held hr hY hvs hvp le_rfl
+    refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, admitted_of_heldU hr hY hvs hvp le_rfl
       fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres
@@ -63,6 +62,20 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
     exact WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hst')
   · rintro u ⟨hneq, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hDR⟩
     exact ⟨hneq, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
+
+/-- **The result side.** At an honest update of slot `s` with result `C`: its supporters `S`
+of `C` are more than half of its voters; each has a vote in its pool, extending `C`, and does
+not equivocate there, and that vote was admitted in `[t_s, t_s + 2Δ)`. -/
+private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+    {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
+    ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
+      tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
+      (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
+      S ⊆ Fwd tr U Y s C ∧
+      ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
+        ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U C R :=
+  result_sideU (hrun := hrun.toU) (Y := Y) (hY := hY) (c := c) (s := s) (C := C) (CV := CV)
+      (hR := hR)
 
 /-- A forwardable slot-`s` vote (`Fwd`: sent or admitted by an honest `X` in `[t_s, t_s + 2Δ)`)
 reaches an honest node's update of slot `s` (its restarts at or before `t_s`) under `Sync`: the
@@ -78,6 +91,15 @@ theorem fwd_reaches_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s 
       (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
   exact fwd_held hr hsync hX hY hc ht hrs (fwd_iff.2 hu)
 
+/-- `fastLock_fastLock_compatible` with the unlock given. -/
+theorem fastLock_fastLock_compatibleU
+    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
+    {s : Nat} {x x' : Fin sp.n}
+    {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
+    (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
+    (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
+  fastLock_same_slotU hS.run hx hfl hx' hfl' (hS.syncAC hs _) hS.two_faulty_lt
+
 /-- **Two fast origins of one slot** (fast test or optimistic, in any combination; this includes
 the optimistic/optimistic case): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
 `f < n/2`. -/
@@ -86,11 +108,13 @@ theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U proposer g)
     {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
     (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
-  fastLock_same_slot hS.run hx hfl hx' hfl' (hS.syncAC hs _) hS.two_faulty_lt
+  fastLock_fastLock_compatibleU (hS := hS.toU) (s := s) (x := x) (x' := x') (i := i) (i' := i')
+      (B := B) (B' := B') (CV := CV) (CV' := CV') (hx := hx) (hfl := hfl) (hx' := hx')
+          (hfl' := hfl') (hs := hs)
 
-/-- **Regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
-`s ≥ r` at honest nodes are compatible. -/
-theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
+/-- `result_result_compatible` with the unlock given. -/
+theorem result_result_compatibleU
+    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hR' : ResultAt tr x' i' s C' CV')
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C C' := by
@@ -100,16 +124,26 @@ theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} 
   have hrs : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ sp.ts s := fun y hy k hk =>
     (hS.restart_le hy hk).trans (by linarith)
   by_contra hnc
-  obtain ⟨ℓ, S, hc, ht, hmaj, hSF, hSs⟩ := result_side hS.run hx hR
-  obtain ⟨ℓ', S', hc', ht', hmaj', hSF', hSs'⟩ := result_side hS.run hx' hR'
-  have h1 := against_update hr hsync hx' hx hc ht (fun k _ => hrs x hx k) hSs hSF'
+  obtain ⟨ℓ, S, hc, ht, hmaj, hSF, hSs⟩ := result_sideU hS.run hx hR
+  obtain ⟨ℓ', S', hc', ht', hmaj', hSF', hSs'⟩ := result_sideU hS.run hx' hR'
+  have h1 := against_updateU hr hsync hx' hx hc ht (fun k _ => hrs x hx k) hSs hSF'
     fun h => hnc (Or.symm h)
-  have h2 := against_update hr hsync hx hx' hc' ht' (fun k _ => hrs x' hx' k) hSs' hSF hnc
+  have h2 := against_updateU hr hsync hx hx' hc' ht' (fun k _ => hrs x' hx' k) hSs' hSF hnc
   omega
 
-/-- **Regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
-with an honest optimistic confirmation of slot `s`. -/
-theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
+/-- **Regular/regular**: two results (`get_confirmation`, vetoed or not) of one slot
+`s ≥ r` at honest nodes are compatible. -/
+theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
+    {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
+    (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hR' : ResultAt tr x' i' s C' CV')
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C C' :=
+  result_result_compatibleU (hS := hS.toU) (s := s) (x := x) (x' := x') (i := i) (i' := i')
+      (C := C) (C' := C') (CV := CV) (CV' := CV') (hx := hx) (hR := hR) (hx' := hx') (hR' := hR')
+          (hs := hs)
+
+/-- `result_optimistic_compatible` with the unlock given. -/
+theorem result_optimistic_compatibleU
+    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')
@@ -118,13 +152,24 @@ theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
   have hΔ := sp.toParams.hΔ
   have hsync := hS.syncAC (a := sp.ts s) (by linarith) (sp.ts (s + 1 : Nat) + sp.Δ)
   by_contra hnc
-  obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_side hS.run hx hR
-  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_side hS.run hx' hO
-  have h1 := against_update hr hsync hx' hx hc ht
+  obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_sideU hS.run hx hR
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hS.run hx' hO
+  have h1 := against_updateU hr hsync hx' hx hc ht
     (fun k _ hk => (hS.restart_le hx hk).trans (by linarith)) hSs hT fun h => hnc (Or.symm h)
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hle
   omega
+
+/-- **Regular/optimistic**: a result of slot `s ≥ r` at an honest node is compatible
+with an honest optimistic confirmation of slot `s`. -/
+theorem result_optimistic_compatible (hS : HealthyBase tr H U proposer g)
+    {s : Nat} {x x' : Fin sp.n}
+    {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
+    (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')
+    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C B :=
+  result_optimistic_compatibleU (hS := hS.toU) (s := s) (x := x) (x' := x') (i := i) (i' := i')
+      (C := C) (B := B) (CV := CV) (CV' := CV') (hx := hx) (hR := hR) (hx' := hx') (hO := hO)
+          (hs := hs)
 
 private theorem fwd_reaches_update_window_before
     (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time} {s : Nat}

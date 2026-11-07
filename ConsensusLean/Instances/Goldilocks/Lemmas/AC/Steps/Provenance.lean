@@ -100,13 +100,15 @@ private theorem FromP.of_optimistic_admit (hU : Coherent U) (hΦ : FrameOK Φ)
   have := FromP.of_optimistic hU hΦ hΦU (admitVote sp A t v) t
   rwa [admitVote_locks_eq, hL] at this
 
-private theorem FromP.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
-    FromP U A.locks (tryVote sp x A Φ t).1.locks
+private theorem FromP.of_tryVote
+    {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    (x : Fin sp.n) (A : SAState sp.n) (t : Time)
+    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
+    FromP U A.locks (tryVoteWith sp x L A Φ t).1.locks
       (fun s f B => ∃ D ∈ Φ.tree, B = Φ.viableAncestor D ∧
-        ∃ e ∈ (tryVote sp x A Φ t).2, f = true ∧ s = sp.slot t ∧
+        ∃ e ∈ (tryVoteWith sp x L A Φ t).2, f = true ∧ s = sp.slot t ∧
           optimisticSelect sp (admitVote sp e.readPoint t e.msg) Φ t = some D) := by
-  unfold tryVote
+  unfold tryVoteWith
   dsimp only
   by_cases h1 : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
   · rw [ite_eq_left h1]
@@ -118,9 +120,7 @@ private theorem FromP.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ
   rw [ite_eq_right h2]
   by_cases h3 : 0 < sp.slot t
   · rw [ite_eq_left h3]
-    refine FromP.trans hU (FromP.of_movesBack hΦU
-      (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
-        (mergedVoteView sp A Φ (sp.slot t))))
+    refine FromP.trans hU (FromP.of_movesBack hΦU (hL.movesBack hΦ))
       (FromP.mono (FromP.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_)
     · rfl
     · exact fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, _, List.mem_singleton_self _, h⟩
@@ -179,11 +179,13 @@ private theorem FromP.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
         imp_congr_right fun _ => imp_congr_right fun hm => ?_
       rw [Function.update_of_ne (ne_of_lt hm)]
 
-private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (x : Fin sp.n) (A : SAState sp.n) (t : Time) :
-    FromP U A.locks (acOnTick sp x A Φ t).1.locks
+private theorem FromP.of_onTick
+    {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    (x : Fin sp.n) (A : SAState sp.n) (t : Time)
+    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
+    FromP U A.locks (acOnTickWith sp x L A Φ t).1.locks
       (fun s f B => ∃ D ∈ Φ.tree, B = Φ.viableAncestor D ∧
-        ((∃ e ∈ (acOnTick sp x A Φ t).2, f = true ∧ s = sp.slot t ∧
+        ((∃ e ∈ (acOnTickWith sp x L A Φ t).2, f = true ∧ s = sp.slot t ∧
         optimisticSelect sp (admitVote sp e.readPoint t e.msg) Φ t = some D) ∨
         (t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t ∧ joined sp A t ∧
           s = sp.slot t - 1 ∧ (f = true → ∃ C, getConfirmation sp A Φ s = some C ∧
@@ -196,7 +198,7 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
             deepest Φ {X | X ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t X ∧
               ∀ m : Int, (s : Int) - sp.k < m → m < s →
                 ∃ S ∈ Φ.tree, A.saved m = some S.root ∧ Φ.Anc X S} = some D)))) := by
-  unfold acOnTick
+  unfold acOnTickWith
   dsimp only
   by_cases hj : joined sp A t
   · rw [ite_eq_right (not_not_intro hj)]
@@ -207,7 +209,7 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
         have hΔ := sp.toParams.hΔ
         linarith only [ht.1.symm.trans hu, hΔ]
       · rw [ite_eq_right ht]
-        exact (FromP.of_tryVote hU hΦ hΦU x A t).mono
+        exact (FromP.of_tryVote hU hΦ hΦU x A t hL).mono
           fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, Or.inl h⟩
     · rw [ite_eq_right hu]
       by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
@@ -224,16 +226,24 @@ private theorem FromP.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 
-/-- The frame of an honest node's call is well formed and inside `U`. -/
-theorem frameIn_of_callAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+/-- `frameIn_of_callAt` with the unlock given. -/
+theorem frameIn_of_callAtU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
 
+/-- The frame of an honest node's call is well formed and inside `U`. -/
+theorem frameIn_of_callAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U :=
+  frameIn_of_callAtU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
+
 /-- A call of an honest node keeps its locks below earlier ones or writes locks of its own cut:
 by an optimistic confirmation, or by the update of their slot (fast ones by its fast test). -/
-private theorem call_candidate_fromP
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+private theorem call_candidate_fromPU
+    {u : Nat → Set Lock}
+    (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f B => ∃ D ∈ ℓ.frame.tree, B = ℓ.frame.viableAncestor D ∧
@@ -250,7 +260,7 @@ private theorem call_candidate_fromP
           D ∈ ℓ.frame.tree ∧ ℓ.frame.Anc D C ∧
           ∀ m : Int, (s : Int) - sp.k < m → m < s →
             ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧ ℓ.frame.Anc D S)) := by
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hx hc
   have hU := hr.coherent
   have opt : ∀ s (f : Bool) B, f = true → (∃ CV, OptimisticLockAt tr x i s B CV) →
       (f = true → ∃ CV, FastLockAt tr x i s B CV) ∧
@@ -274,11 +284,12 @@ private theorem call_candidate_fromP
   have hemits := congrArg Prod.snd he
   simp only at hpost hemits
   rw [← hpost]
-  generalize hA : tr.state x i = A at hpost hemits opt
+  have hlaw := hr.lawfulAt hx hc hΦ
+  generalize hA : tr.state x i = A at hpost hemits opt hlaw
   cases hcall : ℓ.call with
   | tick =>
-    rw [hcall] at hemits
-    refine (FromP.of_onTick hU hΦ hΦU x A _).mono fun s f B h => ?_
+    rw [hcall] at hemits hlaw
+    refine (FromP.of_onTick (L := u i) hU hΦ hΦU x A _ hlaw).mono fun s f B h => ?_
     obtain ⟨D, hD, rfl, h⟩ := h
     refine ⟨D, hD, rfl, ?_⟩
     rcases h with ⟨e, he', hf, hs, hsel⟩ | ⟨ht, hs0, hj, hs, hC, hslow, hsl⟩
@@ -302,12 +313,12 @@ private theorem call_candidate_fromP
         obtain ⟨C', hC', hdeep'⟩ := hsl hf
         exact ⟨⟨ℓ, C', hu, hA ▸ hC', hA ▸ hdeep'⟩,
           ℓ, C, _, hu, ⟨ℓ, hu, hA ▸ hC, rfl⟩, hD, hBC, hA ▸ hsave⟩
-  | proposal => exact FromP.of_proposal hΦ hΦU A _
+  | proposal => rw [hcall] at hlaw; exact FromP.of_proposalWith hΦ hΦU A _ hlaw
   | toFG => exact FromP.of_eq (toFG_locks A _)
   | message m =>
-    rw [hcall] at hemits
+    rw [hcall] at hemits hlaw
     refine FromP.trans hU ((FromP.of_optimistic_admit hU hΦ hΦU A rfl _ m).mono
-      fun s f B h => ?_) ((FromP.of_tryVote hU hΦ hΦU x _ _).mono fun s f B h => ?_)
+      fun s f B h => ?_) ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono fun s f B h => ?_)
     · obtain ⟨D, hD, rfl, hf, hs, hsel⟩ := h
       refine ⟨D, hD, rfl, ?_, ?_, ?_⟩
       · exact (opt _ _ _ hf ⟨_, ℓ, _, ⟨hc, Or.inl ⟨m, hcall, hA ▸ rfl⟩⟩,
@@ -323,11 +334,11 @@ private theorem call_candidate_fromP
           ⟨e, hemits ▸ he', rfl⟩)⟩, hs.symm, hsel, rfl⟩
       · intro hf'; exact Bool.false_ne_true (hf'.symm.trans hf) |>.elim
   | block B =>
-    rw [hcall] at hemits
+    rw [hcall] at hemits hlaw
     have h₁ := FromP.of_optimistic hU hΦ hΦU (blockReceipt sp A (tr.time i) B) (tr.time i)
     rw [blockReceipt_locks] at h₁
     refine FromP.trans hU (h₁.mono fun s f B' h => ?_)
-      ((FromP.of_tryVote hU hΦ hΦU x _ _).mono fun s f B' h => ?_)
+      ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono fun s f B' h => ?_)
     · obtain ⟨D, hD, rfl, hf, hs, hsel⟩ := h
       refine ⟨D, hD, rfl, ?_, ?_, ?_⟩
       · exact (opt _ _ _ hf ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inl
@@ -346,7 +357,30 @@ private theorem call_candidate_fromP
     exact FromP.of_eq ((restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
       (hr.time_nonneg i)).2.1
 
-private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+
+/-- A call of an honest node keeps its locks below earlier ones or writes locks of its own cut:
+by an optimistic confirmation, or by the update of their slot (fast ones by its fast test). -/
+private theorem call_candidate_fromP
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    FromP U (tr.state x i).locks (tr.post i).locks
+      (fun s f B => ∃ D ∈ ℓ.frame.tree, B = ℓ.frame.viableAncestor D ∧
+        (f = true → ∃ CV, FastLockAt tr x i s D CV) ∧
+        ((∃ CV, OptimisticLockAt tr x i s D CV) ∨ ∃ ℓ', UpdateAt tr x i s ℓ') ∧
+        (f = false → (∃ ℓ C, UpdateAt tr x i s ℓ ∧
+          getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
+          deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
+            ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) X ∧
+            ∀ m : Int, (s : Int) - sp.k < m → m < s →
+              ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧
+                ℓ.frame.Anc X S} = some D) ∧ ∃ ℓ C CV,
+          UpdateAt tr x i s ℓ ∧ ResultAt tr x i s C CV ∧
+          D ∈ ℓ.frame.tree ∧ ℓ.frame.Anc D C ∧
+          ∀ m : Int, (s : Int) - sp.k < m → m < s →
+            ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧ ℓ.frame.Anc D S)) :=
+  call_candidate_fromPU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
+private theorem call_fromPU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f B => (f = true → ∃ CV, FastLockAt tr x i s B CV) ∧
@@ -357,12 +391,12 @@ private theorem call_fromP (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
             ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved m = some S.root ∧ ℓ.frame.Anc B S)) := by
   rw [fromP_iff]
   intro l hl
-  rcases fromP_iff.1 (call_candidate_fromP hr hx hc) l hl with h | ⟨A, ⟨D, hD, rfl, h⟩, hA⟩
+  rcases fromP_iff.1 (call_candidate_fromPU hr hx hc) l hl with h | ⟨A, ⟨D, hD, rfl, h⟩, hA⟩
   · exact Or.inl h
   obtain ⟨L, hL, hLr, hLA⟩ := below_iff.1 hA
   exact Or.inr ⟨D, ⟨h.1, h.2.1, fun hf => (h.2.2 hf).2⟩, below_iff.2 ⟨L, hL, hLr,
-    hLA.trans ((viableAncestor_anc (frameIn_of_callAt hr hx hc).1 hD).2.mono
-      (frameIn_of_callAt hr hx hc).2)⟩⟩
+    hLA.trans ((viableAncestor_anc (frameIn_of_callAtU hr hx hc).1 hD).2.mono
+      (frameIn_of_callAtU hr hx hc).2)⟩⟩
 
 /-- Same-write provenance, retaining the selected raw block and the stored candidate
 together with its actual fast or slow selection. A slow lock's block is the slow selection
@@ -456,7 +490,8 @@ theorem lock_write_witness (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 
 /-- Every lock that an honest node holds before cut `i` sits below the block of a lock of its
 slot and fast bit that the node wrote at an earlier cut. -/
-private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+private theorem provenanceU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ B,
       ((l.fast = true → ∃ CV, FastLockAt tr x j l.slot B CV) ∧
@@ -477,7 +512,7 @@ private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      rcases fromP_iff.1 (call_fromP hr hx ⟨hnode.1, hℓ⟩) l hl with
+      rcases fromP_iff.1 (call_fromPU hr hx ⟨hnode.1, hℓ⟩) l hl with
         ⟨l₀, hl₀, hf₀, hs, hb⟩ | ⟨B, h, hB⟩
       · obtain ⟨j, hj, B, h, hB⟩ := ih l₀ hl₀
         refine ⟨j, hj.trans (Nat.lt_succ_self i), B, ?_,
@@ -487,9 +522,24 @@ private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
     · obtain ⟨j, hj, h⟩ := ih l hl
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
 
+
+/-- Every lock that an honest node holds before cut `i` sits below the block of a lock of its
+slot and fast bit that the node wrote at an earlier cut. -/
+private theorem provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ B,
+      ((l.fast = true → ∃ CV, FastLockAt tr x j l.slot B CV) ∧
+        ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
+        (l.fast = false → ∃ ℓ C CV, UpdateAt tr x j l.slot ℓ ∧ ResultAt tr x j l.slot C CV ∧
+          B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc B C ∧
+          ∀ m : Int, (l.slot : Int) - sp.k < m → m < l.slot →
+            ∃ S ∈ ℓ.frame.tree, (tr.state x j).saved m = some S.root ∧ ℓ.frame.Anc B S)) ∧
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
+  provenanceU (hr := hr.toU) (x := x) (hx := hx) (i := i)
 /-- Between cuts `a ≤ b`, the locks of an honest node sit below locks of cut `a` or below locks
 that the node wrote in `[a, b)`. -/
-private theorem fromP_between (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+private theorem fromP_betweenU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
     FromP U (tr.state x a).locks (tr.state x b).locks fun s _ B => ∃ j, a ≤ j ∧ j < b ∧
       ((∃ CV, OptimisticLockAt tr x j s B CV) ∨ ∃ ℓ, UpdateAt tr x j s ℓ) := by
@@ -501,9 +551,25 @@ private theorem fromP_between (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
     rw [Trace.state] at hl
     split_ifs at hl with hnode
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hnode.2
-      exact (fromP_iff.1 (call_fromP hr hx ⟨hnode.1, hℓ⟩) l hl).imp_right fun ⟨B, h, hB⟩ =>
+      exact (fromP_iff.1 (call_fromPU hr hx ⟨hnode.1, hℓ⟩) l hl).imp_right fun ⟨B, h, hB⟩ =>
         ⟨B, ⟨b, hab, Nat.lt_succ_self b, h.2.1⟩, hB⟩
     · exact Or.inl ⟨l, hl, rfl, rfl, sitsBelow_iff.2 (Or.inl rfl)⟩
+
+/-- `lock_provenance_from` with the unlock given. -/
+theorem lock_provenance_fromU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
+    ∀ l ∈ (tr.state x b).locks,
+      (∃ l' ∈ (tr.state x a).locks, l'.slot = l.slot ∧
+        (l' = l ∨ ∃ L ∈ U, L.root = l.block ∧ ∃ L' ∈ U, L'.root = l'.block ∧ Anc U L L')) ∨
+      ∃ j, a ≤ j ∧ j < b ∧ ∃ B,
+        ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
+        ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
+  intro l hl
+  rcases fromP_iff.1 (fromP_betweenU hr hx hab) l hl with
+    ⟨l', hl', -, hs, hb⟩ | ⟨B, ⟨j, h1, h2, h⟩, hB⟩
+  · exact Or.inl ⟨l', hl', hs.symm, (sitsBelow_iff.1 hb).imp Eq.symm id⟩
+  · exact Or.inr ⟨j, h1, h2, B, h, below_iff.1 hB⟩
 
 /-- **Lock provenance from a cut.** Every lock that an honest node holds at cut `b` sits below a
 lock of its slot that it held at cut `a ≤ b`, or below the block of a lock of its slot that the
@@ -515,23 +581,38 @@ theorem lock_provenance_from (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
         (l' = l ∨ ∃ L ∈ U, L.root = l.block ∧ ∃ L' ∈ U, L'.root = l'.block ∧ Anc U L L')) ∨
       ∃ j, a ≤ j ∧ j < b ∧ ∃ B,
         ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
-        ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
-  intro l hl
-  rcases fromP_iff.1 (fromP_between hr hx hab) l hl with
-    ⟨l', hl', -, hs, hb⟩ | ⟨B, ⟨j, h1, h2, h⟩, hB⟩
-  · exact Or.inl ⟨l', hl', hs.symm, (sitsBelow_iff.1 hb).imp Eq.symm id⟩
-  · exact Or.inr ⟨j, h1, h2, B, h, below_iff.1 hB⟩
+        ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
+  lock_provenance_fromU (hr := hr.toU) (x := x) (hx := hx) (a := a) (b := b) (hab := hab)
+
+/-- `fast_lock_provenance` with the unlock given. -/
+theorem fast_lock_provenanceU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, l.fast = true →
+      ∃ j < i, ∃ B CV, FastLockAt tr x j l.slot B CV ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
+  intro l hl hf
+  obtain ⟨j, hj, B, ⟨h, -⟩, hB⟩ := provenanceU hr hx i l hl
+  obtain ⟨CV, h⟩ := h hf
+  exact ⟨j, hj, B, CV, h, hB⟩
 
 /-- **Fast-lock provenance.** Every fast lock that an honest node holds before cut `i` sits below
 the block of a fast lock of its slot that the node wrote at an earlier cut. -/
 theorem fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = true →
-      ∃ j < i, ∃ B CV, FastLockAt tr x j l.slot B CV ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
-  intro l hl hf
-  obtain ⟨j, hj, B, ⟨h, -⟩, hB⟩ := provenance hr hx i l hl
-  obtain ⟨CV, h⟩ := h hf
-  exact ⟨j, hj, B, CV, h, hB⟩
+      ∃ j < i, ∃ B CV, FastLockAt tr x j l.slot B CV ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
+  fast_lock_provenanceU (hr := hr.toU) (x := x) (hx := hx) (i := i)
+
+/-- `lock_provenance` with the unlock given. -/
+theorem lock_provenanceU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ B,
+      ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
+  intro l hl
+  obtain ⟨j, hj, B, ⟨-, h, -⟩, hB⟩ := provenanceU hr hx i l hl
+  exact ⟨j, hj, B, h, hB⟩
 
 /-- **Lock provenance.** Every lock, fast or slow, that an honest node holds before cut `i` sits
 below the block of a lock of its slot that the node wrote at an earlier cut: by an optimistic
@@ -540,10 +621,8 @@ theorem lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : F
     (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, ∃ j < i, ∃ B,
       ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
-      ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
-  intro l hl
-  obtain ⟨j, hj, B, ⟨-, h, -⟩, hB⟩ := provenance hr hx i l hl
-  exact ⟨j, hj, B, h, hB⟩
+      ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
+  lock_provenanceU (hr := hr.toU) (x := x) (hx := hx) (i := i)
 
 /-- A slow lock lies below the block selected by an update, which lies below that update's
 result and every saved result in its preceding slow window. -/

@@ -21,20 +21,28 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {U : Set (Blk sp.n FGP)}
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
 
+/-- `slow_lock_provenance` with the unlock given. -/
+theorem slow_lock_provenanceU
+    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) (i : Nat) :
+    ∀ l ∈ (tr.state x i).locks, l.fast = false →
+      ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
+  intro l hl hf
+  obtain ⟨j, hj, ℓ, D, hc, ⟨ℓ', C, hu, hC, hD⟩, L, hL, hLr, hLA⟩ :=
+    slow_lock_provenance_storedU hr hx i l hl hf
+  obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hu.1.2)
+  have hΦ := frameIn_of_callAtU hr hx hc
+  exact ⟨j, hj, D, ⟨ℓ, C, hu, hC, hD⟩, L, hL, hLr,
+    hLA.trans ((viableAncestor_anc hΦ.1 (deepest_mem hD).1.1.1).2.mono hΦ.2)⟩
+
 /-- **Slow lock provenance** (every stored lock has such an origin, the slow case):
 every lock that is not fast and that an honest node holds before cut `i` sits below (inside `U`)
 the block of a slow lock of its slot that the node wrote at an earlier cut. -/
 theorem slow_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
     (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
-      ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B := by
-  intro l hl hf
-  obtain ⟨j, hj, ℓ, D, hc, ⟨ℓ', C, hu, hC, hD⟩, L, hL, hLr, hLA⟩ :=
-    slow_lock_provenance_stored hr hx i l hl hf
-  obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hu.1.2)
-  have hΦ := frameIn_of_callAt hr hx hc
-  exact ⟨j, hj, D, ⟨ℓ, C, hu, hC, hD⟩, L, hL, hLr,
-    hLA.trans ((viableAncestor_anc hΦ.1 (deepest_mem hD).1.1.1).2.mono hΦ.2)⟩
+      ∃ j < i, ∃ B, SlowLockAt tr x j l.slot B ∧ ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
+  slow_lock_provenanceU (hr := hr.toU) (x := x) (hx := hx) (i := i)
 
 end Consensus.Goldilocks.SA
 
