@@ -210,6 +210,30 @@ theorem relayed_held_before
       omega
   rwa [hvs] at h
 
+/-- A release in the synchrony window reaches an update at the recipient's own cut. -/
+theorem relayed_held
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr)
+    {s : Nat} (hsync : SyncACAt (goldilocksSA sp FGP ro) H U
+      (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
+    (ht : tr.time c = sp.ts s + 6 * sp.Δ)
+    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
+    {D : Blk sp.n FGP} {u : Fin sp.n} (hu : u ∈ Relayed tr H U X s D) :
+    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
+      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨v, rfl, hvs, hR, k, hX, hsend, h1, h2⟩ := hu
+  refine ⟨v, rfl, hR, ?_⟩
+  have hb : tr.time k ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
+    rw [ts_add]; linarith
+  have h := sync_forward hr hsync hX hsend h1 hb hY hc
+    (fun j hj hjr => (hrs j hj hjr).trans h1) (by rw [ht]; linarith)
+    fun t ht₁ ht₂ => by
+      rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]
+      omega
+  rwa [hvs] at h
+
 /-- Relayed votes for an incompatible block occupy seats disjoint from the result's supporters.
 Only release deadlines through `t_s + 3Δ` are consumed. -/
 theorem relayed_against
