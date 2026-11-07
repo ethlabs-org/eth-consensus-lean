@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
@@ -17,9 +18,9 @@ public section
 
 On the prefix through a read time `t ≤ b`, the static AC catch-up window from the reset
 (`catch_window_at_reset_at`) and both windows from the finite reset premises
-(`ResetPremisesUpTo.windows_at_reset_at`), from the prefix service of `PrefixBase`. The restart
-bound and the late fault bound read each node's honesty at its own time (`restart_le_before_at`,
-`fault_bound_late_before_at`). -/
+(`ResetPremisesUpTo.windows_at_reset_at`), from the prefix service of `PrefixBase`, with the
+restart bound `ResetPremisesUpTo.restart_le_before_at`. The late fault bound reads each node's
+honesty at its own time (`fault_bound_late_before_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -28,34 +29,6 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
-
-/-- **A restart of a node honest at it is no later than the slot after `ḡ`**: the node is awake
-from `ḡ` on while honest, and ticks at the public time `t_{slot(ḡ)+1}`. -/
-theorem restart_le_before_at {b : Time} (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    (hk : tr.RestartAt y k) (hkb : tr.time k ≤ b) :
-    tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-  by_contra hlt
-  obtain ⟨u, -, huk, hu, hprev⟩ := hp.run.sleep_of_restart y k hy hk
-  have hp₀ : gbar g ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-    have h := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
-      ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
-    exact (not_le.mp h).le
-  by_cases hgu : gbar g ≤ u
-  · exact hu (hp.awake y u (hp.run.antitone huk.le hy) hgu (huk.le.trans hkb))
-  · have hlt' := (lt_of_not_ge hlt).le
-    obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y _ (hp.run.antitone hlt' hy)
-      ((SA.gbar_nonneg g).trans hp₀)
-      ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [SAParams.ts]; ring⟩
-      (hp.awake y _ (hp.run.antitone hlt' hy) hp₀ (hlt'.trans hkb))
-    obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
-    simp only [Nat.add_zero] at hn ht hl
-    have hjk : j < k := by
-      by_contra h
-      have := hp.run.time_mono (not_lt.mp h)
-      exact hlt (ht ▸ this)
-    have := hprev j hjk ⟨_, hn, hl⟩
-    exact hgu (by linarith)
 
 /-- **The late fault bound**: from the cut on, the faults at any `d ∈ [t, b]` are fewer than the
 validators honest at `d` that are awake and joined at `t`. -/
@@ -76,7 +49,7 @@ theorem fault_bound_late_before_at {b : Time} (hp : ResetPremisesUpTo tr H propo
     change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
     have he : sp.toParams.slotTime (sp.slot t - 1) = sp.ts ((sp.slot t - 1 : Nat) : Int) :=
       sp.slotTime_eq _
-    refine ⟨by omega, (restart_le_before_at hp (hp.run.antitone hkt hyt) hk
+    refine ⟨by omega, (hp.restart_le_before_at (hp.run.antitone hkt hyt) hk
       (hkt.trans (htd.trans hdb))).trans ?_⟩
     rw [he]
     exact (SA.ts_le_iff sp).mpr (by omega)
@@ -183,7 +156,7 @@ theorem ResetPremisesUpTo.windows_at_reset_at {b : Time}
   have hga : g ≤ a := by linarith [SA.le_gbar g, lt_cutZ sp g, sp.toParams.hΔ]
   exact ⟨sync_window_at_reset_at hp.run hp.sync hga ht0,
     catch_window_at_reset_at hp.run hp.sync hc ht0 hca
-      fun y k hy hk hkt => restart_le_before_at hp hy hk (hkt.trans htb)⟩
+      fun y k hy hk hkt => hp.restart_le_before_at hy hk (hkt.trans htb)⟩
 
 end Consensus.Goldilocks.Healing.Growing
 
