@@ -313,6 +313,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Fo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.HighFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ProposalReceipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RawReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ResultDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RetentionInputs
