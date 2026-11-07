@@ -2,13 +2,14 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
 
 public section
 
 /-! # Frozen proof boundaries for the growing drain kernel
 
-All proof holes below are explicit work assignments. The health-dependent reset lower bound
-is frozen separately in ResetFacts. No deadline is lengthened here.
+All remaining proof holes below are explicit work assignments. The finite reset lower bound
+is proved separately in ResetSource. No deadline is lengthened here.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -38,7 +39,8 @@ theorem exists_frameWindow_seq_of_service_at
       (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
         frameKey' (tr.state y i).fg = v) ∧
       ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J := by
-  sorry
+  exact exists_frameWindow_seq_of_service_proof_at hrun hnc hf hsvc hcatch len hlen hlam hlo
+    hTb hrange hcall hT
 
 /-- Step 3: service gives warm proposals without any reset lower-bound premise. -/
 theorem drainOutputs_of_service_at
