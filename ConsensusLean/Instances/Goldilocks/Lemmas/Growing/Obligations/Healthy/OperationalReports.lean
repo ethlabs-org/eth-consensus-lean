@@ -35,8 +35,7 @@ theorem restart_before_unanimous_slot_at
     {u : Nat} (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     {y : Fin sp.n} {r : Nat} (hy : y ∈ H (tr.time r)) (hr : tr.RestartAt y r)
     (hrb : tr.time r ≤ b) : tr.time r ≤ sp.ts ((u : Int) - 1) := by
-  have hca := cutZ_lt_reset_of_snapshot_at hp.run
-    (by obtain ⟨k, hk, -⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
+  have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
     have := SA.gbar_nonneg g
@@ -60,7 +59,8 @@ theorem honest_votes_in_slot_at
   apply SA.Growing.honest_votes_in_slot_before_at (healthy_base_of_reset_catch_before_at hp hc)
     hgu hub
   intro y r hy hr hrs
-  exact restart_before_unanimous_slot_at hp hR hy (Compose.projAC_restartAt.mp hrs) (hr.trans hub)
+  exact restart_before_unanimous_slot_at hp hR hy (Compose.projAC_restartAt.mp hrs)
+    (hr.trans hub)
 
 /-- A high origin before a unanimous post-drain slot `u` is below its proposal `P`. -/
 theorem old_origin_below_unanimous_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)

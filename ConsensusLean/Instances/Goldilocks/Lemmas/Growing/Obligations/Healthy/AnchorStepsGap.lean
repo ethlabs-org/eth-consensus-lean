@@ -56,8 +56,7 @@ private theorem anchor_facts_at {g ΔR a b : Time}
   have hle1 : ∀ q < k + 1, tr.time q ≤ tr.time k := fun _ hq => hp.run.time_mono (by omega)
   have hAH : A ∈ tr.HonestBlocksAt H := ⟨_, k + 1, tr.time k, h0, hle1, hm, hAm⟩
   have hAs := honestProposalRun_slot_at hA
-  have hca := Healing.Growing.cutZ_lt_reset_of_snapshot_at hp.run
-    (by obtain ⟨q, hq, _⟩ := hp.snapshot; exact ⟨q, hq⟩) hp.reset
+  have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
     have := SA.gbar_nonneg g
