@@ -195,6 +195,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Wire
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedRead
