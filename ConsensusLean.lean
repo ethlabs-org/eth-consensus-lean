@@ -207,6 +207,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Lag

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.B
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResultPrefix
 
 public section
 
@@ -42,7 +43,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before_at
     ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e,
       SA.CastAt tr.projAC y i ell e → s < e.msg.slot →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  sorry
+  exact KernelProof.late_result_prefix_votes_before_at hp hc hx hres hBC hrb hts hdomain hstored
 
 /-- R2: every later-label honest cast extends each high origin within the finite horizon.
 The origin write need not precede the cast; its writer's honesty is carried by HighOrigin. -/
