@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
 
 public section
 
@@ -19,9 +20,10 @@ names, so that the endpoint composes against the final interface:
 * healed safety of a healthy preparation query (`healthy_ready_safety_at`), home
   `Lemmas/Growing/Obligations/Healthy`;
 * outage protection of an outage query (`outage_protected_at`), home
-  `Lemmas/Growing/Outage/Engine/Repair`;
-* the final branch of healthy liveness (`meetsObligations_healthyLive_final_growing`), home
-  `Lemmas/Growing/Obligations/Concrete/Final`.
+  `Lemmas/Growing/Outage/Engine/Repair`.
+
+It re-exports the final branch of healthy liveness (`meetsObligations_healthyLive_final_growing`)
+from `Concrete/Final`.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -71,18 +73,6 @@ theorem outage_protected_at (Q : OutageQueryAt S A V) :
     (chainTrace Q.run.2).ProtectedReadyFrom Q.duration .confirmed
       (resilienceTarget schema .confirmed) Q.T
       ((Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run) := by
-  sorry
-
-/-- **Final healthy liveness under growing faults**: the `healthyLive` field of the shape claims
-at the final capability. -/
-theorem meetsObligations_healthyLive_final_growing : ∀ g, schema.output .final = some g →
-    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
-        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
-          ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
-      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
-        g ((Sys (goldilocks S) V).heal (K S A) .final i gst r)
-        ((K S A).params.latency .final i) := by
   sorry
 
 end Queries

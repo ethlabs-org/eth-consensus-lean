@@ -13,8 +13,8 @@ branch yet, under their agreed names:
 
 * `Regimes.Growing.ready_proposer_proposes_at`, home `Lemmas/Growing/Sleepy/Service/Inclusion`;
 * `ready_transport_at`, `sleepy_bounds_at` (`Lemmas/Growing/Sleepy/Engine/Transport`),
-  `ready_proposal_at`, `confirmed_inBy_at` (`Engine/Reads`), `sleepy_include_finite_at`
-  (`Engine/Inclusion`);
+  `ready_proposal_at`, `confirmed_inBy_at`, `finalized_inBy_at` (`Engine/Reads`),
+  `sleepy_include_finite_at` (`Engine/Inclusion`);
 * `healthy_confirmed_supply_at`, home `Lemmas/Growing/Obligations/Healthy`.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
@@ -81,6 +81,20 @@ theorem confirmed_inBy_at (hv : rho.ExecutionValid)
       Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
         (Regimes.readAfter (simTraceAt S rho hn) y j t)) :
     InBy rho c .confirmed (headerOf (S.params (pubOf E) hn) P) t := by
+  sorry
+
+/-- Finalized-cache inclusion in every ready read at `t` is engine finalized output at the end of
+`t`. -/
+theorem finalized_inBy_at (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
+    {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
+    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    (hroot : P.root ≠ (S.params (pubOf E) hn).genesisRoot)
+    (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho) c y t →
+      Regimes.CutAfter (simTraceAt S rho hn) j t →
+      Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
+        ((simTraceAt S rho hn).state y j).fg.F) :
+    InBy rho c .finalized (headerOf (S.params (pubOf E) hn) P) t := by
   sorry
 
 /-- **Finite inclusion under growing faults** through `b`. -/
