@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
 
 public section
 
@@ -15,15 +16,14 @@ public section
 Statements the endpoint consumes whose home modules are not on this branch yet, under their agreed
 names, so that the endpoint composes against the final interface:
 
-* finite engine sleepy safety under growing faults (`sleepy_safe_engine_at`), home
-  `Lemmas/Growing/Sleepy/Engine/Safety`;
 * healed safety of a healthy preparation query (`healthy_ready_safety_at`), home
   `Lemmas/Growing/Obligations/Healthy`;
 * outage protection of an outage query (`outage_protected_at`), home
   `Lemmas/Growing/Outage/Engine/Repair`.
 
 It re-exports the final branch of healthy liveness (`meetsObligations_healthyLive_final_growing`)
-from `Concrete/Final`.
+from `Concrete/Final` and finite engine sleepy safety (`sleepy_safe_engine_at`) from
+`Sleepy/Engine/Safety`.
 
 Each theorem here is an open `sorry`; this module is deleted when the home modules land. -/
 
@@ -32,24 +32,6 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
 open Blocks Shape
 open Consensus.Model (pubOf)
-
-section Engine
-
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-/-- **Finite safety of the engine's confirmed output under growing faults**, under the finite
-service and the L0 sleepy budget with look-ahead `5Δ` through the horizon. -/
-theorem sleepy_safe_engine_at (hv : rho.ExecutionValid)
-    (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
-    (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
-      (S.params (pubOf E) hn).Δ rho.horizon)
-    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
-      (5 * (S.params (pubOf E) hn).Δ) 0 rho.horizon) :
-    (chainTrace rho).ReadySafe (Regimes.catchUp (S.params (pubOf E) hn) + 1) .confirmed 0 := by
-  sorry
-
-end Engine
 
 variable (S : Setup)
 
