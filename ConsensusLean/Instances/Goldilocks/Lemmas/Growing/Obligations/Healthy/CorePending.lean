@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 
 public section
 
@@ -180,12 +181,6 @@ theorem call_locks_compatible_of_unanimous_at (hp : ResetPremisesUpTo tr H propo
       Compatible (tr.HonestBlocksAt H) B P) :
     ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocksAt H) L P := by
-  sorry
-
-/-- (`Healing.ResetPremisesUpTo.clean_window_timing`, Outcome/FiniteSources.) -/
-theorem clean_window_timing_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {s : Nat}
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) :
-    ∀ j : Nat, (s : Int) - sp.k < j → cutZ sp.toParams g ≤ sp.ts j := by
   sorry
 
 /-- (`Healing.ResetPremisesUpTo.update_toFG_calls`, Outcome/Supplier.) The updater is honest at the
