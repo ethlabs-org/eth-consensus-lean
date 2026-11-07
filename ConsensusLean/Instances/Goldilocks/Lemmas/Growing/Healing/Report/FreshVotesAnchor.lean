@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowCast
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.CurrentPassage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
@@ -41,8 +42,8 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
     (hBr : B.root = l.block) : Anc (tr.HonestBlocksAt H) B P := by
-  obtain ⟨_, hdom, hpass⟩ := hframe.current_lock_passage_of_regular_base_at hrun hnc hsvc
-    hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hl hlive hB hBr
+  obtain ⟨_, hdom, hpass⟩ := KernelProof.current_lock_passage_of_regular_base_at hframe hrun
+    hnc hsvc hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hl hlive hB hBr
   rcases hpass with h | ⟨hs, _⟩
   · exact h
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc

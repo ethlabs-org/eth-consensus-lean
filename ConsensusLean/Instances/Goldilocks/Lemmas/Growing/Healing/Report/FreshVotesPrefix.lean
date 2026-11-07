@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRegularBoundary
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowOptimisticBoundary
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticService
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ProposalLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
@@ -240,8 +241,8 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
     have hsl : sp.slot (tr.time ip) = s + 1 := SA.proposal_slot (tr := tr.projAC) hti
     rw [hsl] at hcap
     exact hcap
-  rcases hframe.proposal_lock_prefix_cases_at hrun hnc hsvc hawake hf hcatch hnr hm hmb hz'
-    hcp hti (hdes.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB with
+  rcases KernelProof.proposal_lock_prefix_cases_at hframe hrun hnc hsvc hawake hf hcatch hnr
+    hm hmb hz' hcp hti (hdes.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB with
     hbelow | hheads | ⟨a, _, D, CV, hza, hop, hSD⟩
   · exact hroot hbelow
   · exact honest_prefix_of_finality_before_at hrun hnc hsvc hawake hf hcatch hnr
@@ -250,7 +251,7 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
         linarith) hmb hheads hy hc hes hSv haS
   · have hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D :=
       (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
-    exact optimistic_prefix_before_at hrun hnc hsvc hawake hf hcatch
+    exact KernelProof.optimistic_prefix_before_at hrun hnc hsvc hawake hf hcatch
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
         linarith [sp.toParams.hΔ]) hza hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS
