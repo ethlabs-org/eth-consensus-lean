@@ -94,6 +94,74 @@ theorem previousHeightNotJustified_entry (P : Params) (ACP : Type) :
   obtain ⟨hF, hhF⟩ := hfin hb
   exact ⟨Z, hJZ.1, hZB, hF.trans hJ.2.2.2.1, hhF.trans hJ.2.2.1⟩
 
+/-- G1.8(b), transferring the finalized entry between independently honest windows. -/
+theorem coverage (P : Params) (ACP : Type) : Coverage P ACP := by
+  intro acp₀ H U tr hr cF T₁ T a₀ kF p i Bs Pr R hw hnb _ hT₁T _ _ X hJX hXB
+    a₁ p₁ i₁ Bs₁ Pr₁ R₁ hw₁
+  obtain ⟨X', hJ', hX'B, -, hh', -, -, hZ⟩ :=
+    previousHeightNotJustified_entry P ACP acp₀ H U tr hr cF T a₀ kF p i Bs Pr R hw hnb
+  have r₀ := hr.upTo (hr.time_nonneg i)
+  have r₁ := hr.upTo (hr.time_nonneg i₁)
+  have hs₀ : ∀ k, k ≤ i + 1 → (tr.upTo (tr.time i)).state p k = tr.state p k := by
+    intro k hk
+    exact Trace.upTo_state tr p fun l hl => hr.time_mono (by omega)
+  have hs₁ : ∀ k, k ≤ i₁ + 1 → (tr.upTo (tr.time i₁)).state p₁ k = tr.state p₁ k := by
+    intro k hk
+    exact Trace.upTo_state tr p₁ fun l hl => hr.time_mono (by omega)
+  have coh₀ : Coherent (tr.store p (i + 1)).tree := by
+    have h := r₀.coherent.mono (r₀.tree_subset p hw.proposal.1 (i + 1))
+    simpa only [FGTrace.store, hs₀ (i + 1) le_rfl] using h
+  have coh₁ : Coherent (tr.store p₁ (i₁ + 1)).tree := by
+    have h := r₁.coherent.mono (r₁.tree_subset p₁ hw₁.proposal.1 (i₁ + 1))
+    simpa only [FGTrace.store, hs₁ (i₁ + 1) le_rfl] using h
+  have hjlt : ∀ B ∈ (tr.store p (i + 1)).tree,
+      ((tr.store p (i + 1)).σ B.root).hj < ((tr.store p (i + 1)).σ B.root).h := by
+    intro B hB
+    have hB' : B ∈ (FGTrace.store (tr.upTo (tr.time i)) p (i + 1)).tree := by
+      simpa only [FGTrace.store, hs₀ (i + 1) le_rfl] using hB
+    simpa only [FGTrace.store, hs₀ (i + 1) le_rfl] using
+      (Store.one_le_h r₀ hw.proposal.1 hB').2
+  have hXX : X = X' := by
+    rcases Goldilocks.Anc.total coh₀ hXB hX'B with h | h
+    · by_contra hne
+      have := (hJ'.2.2.2.2 X hJX.1 hJX.2.1 h hne).1
+      have := hjlt X hJX.1
+      have := hJX.2.2.1
+      omega
+    · by_contra hne
+      have := (hJX.2.2.2.2 X' hJ'.1 hJ'.2.1 h (Ne.symm hne)).1
+      have := hjlt X' hJ'.1
+      have := hJ'.2.2.1
+      omega
+  rw [← hXX] at hZ
+  obtain ⟨Z, hZt, hZB, hF, -⟩ := hZ a₁ p₁ i₁ Bs₁ Pr₁ R₁ hw₁
+  have hX₁ : X ∈ (tr.store p₁ (i₁ + 1)).tree := by
+    have hw' := hw₁.upTo hr
+    simpa only [FGTrace.store, Store.tree, Set.mem_ofPred_eq, hs₁ (i₁ + 1) le_rfl] using
+      (Store.held_mono r₁ hw₁.proposal.1 (Nat.le_succ i₁) hw'.entry.1).1
+  have transfer := fun {A B} (h : (tr.store p (i + 1)).Anc A B)
+      (hB : B ∈ (tr.store p₁ (i₁ + 1)).tree) =>
+    anc_transfer hr (hr.time_nonneg i) (hr.time_nonneg i₁) hw.proposal.1 hw₁.proposal.1
+      (fun k hk => hr.time_mono (by omega)) (fun k hk => hr.time_mono (by omega)) h hB
+  have hTX := transfer hJX.2.1 hX₁
+  have hTt : T ∈ (tr.store p₁ (i₁ + 1)).tree := by
+    by_cases hTe : T = X
+    exacts [hTe ▸ hX₁, (Goldilocks.Anc.mem hTX hTe).1]
+  have hT₁T' : (tr.store p (i + 1)).Anc T₁ T := by
+    apply hT₁T.mono
+    intro B hB
+    have hB' : B ∈ (FGTrace.store (tr.upTo (tr.time i)) p i).tree := by
+      simpa only [FGTrace.store, hs₀ i (by omega)] using hB
+    simpa only [FGTrace.store, Store.tree, Set.mem_ofPred_eq, hs₀ (i + 1) le_rfl] using
+      (Store.held_mono r₀ hw.proposal.1 (Nat.le_succ i) hB').1
+  refine ⟨Z, hZt, hZB, ?_, T, hTt, hF.symm, transfer hT₁T' hTt⟩
+  have := (Goldilocks.Anc.slot_le coh₁ hZB).1
+  have := (Goldilocks.Anc.slot_le coh₀ hXB).1
+  have := (Goldilocks.Anc.slot_le coh₀ hT₁T').1
+  have := hw.window.2
+  have := hw₁.window.2
+  omega
+
 end Consensus.Goldilocks.Store.Growing
 
 end
