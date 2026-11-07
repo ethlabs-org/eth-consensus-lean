@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockTargetSelf
@@ -20,11 +21,10 @@ signed votes that do not extend it and outnumber that support are positive evide
 while silence counts for nothing. The parent's threshold, half of the committee as opponents, is
 kept as the first stage, so the candidate's lock is never above the parent's.
 
-The definitions and the step properties, with nothing of the parent's spec or proofs changed:
+The definitions (`WLock`, `liveLocksW`, `evidence`, `keepable`, `evidenceTarget` and `unlockW`, the
+parent's `unlock` followed by the release) are in `Spec/WeightedLocks/Evidence`. Here are their
+characterising lemmas and the step properties, with nothing of the parent's spec or proofs changed:
 
-* `WLock`, a lock with an origin and a weight, and `WLock.lock`, the forgetful map to `SA.Lock`
-  (two writes with the same lock tuple and different weights are distinct `WLock`s);
-* `liveLocksW` and `unlockW` (`E ∘ unlock`); `evidence`, `evidenceTarget`;
 * (B) `unlockW_backward`: every lock of `unlockW` is a lock of the parent's `unlock` (of the
   forgotten set) moved to an ancestor in the tree, with the same slot, fast bit and expiry, and its
   own origin and weight; `unlockW_covers`: every lock of the parent's `unlock` has such an image
@@ -43,51 +43,7 @@ namespace Consensus.Goldilocks.EvidenceRelease
 
 open SA
 
-variable (sp : SAParams) {FGP : Type}
-
-/-- A lock with its weight: the lock, the root of the block it was written on, and the weight by
-block root (the validators its formation counted for that block; `0` off the origin's chain). -/
-structure WLock where
-  /-- The lock as the parent stores it. -/
-  lock : Lock
-  /-- The root of the block the lock was written on. -/
-  origin : Nat
-  /-- The weight, by block root. -/
-  weight : Nat → Nat
-
-/-- `live_locks` on weighted locks: each live lock moved back to its viable ancestor, keeping its
-origin and weight. -/
-def liveLocksW (L : Set WLock) (Φ : Frm sp.n FGP) (t : Time) : Set WLock :=
-  {w' | ∃ w ∈ L, ∃ B ∈ Φ.tree, B.root = w.lock.block ∧ w.lock.LiveAt sp t ∧
-    w' = { w with lock := { w.lock with block := (Φ.viableAncestor B).root } }}
-
-/-- The evidence against `Y` in a view against the slot-`s` votes: the equivocators of its votes
-and the validators with a slot-`s` support vote whose head (in the tree) does not extend `Y`. -/
-def evidence (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (Y : Blk sp.n FGP) : Set (Fin sp.n) :=
-  equivocators V.votes ∪ {i | ∃ x ∈ V.support, x.val = i ∧ (x.slot : Int) = s ∧
-    ∃ H ∈ Φ.tree, H.root = x.head ∧ ¬ Φ.Anc Y H}
-
-/-- The blocks the evidence stage may keep a lock of weight `w` on, below `T`. -/
-def keepable (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (w : WLock) (T : Blk sp.n FGP) :
-    Set (Blk sp.n FGP) :=
-  {Y | Y ∈ Φ.tree ∧ Φ.Anc Y T ∧ (evidence sp Φ V s Y).ncard < w.weight Y.root}
-
-/-- Where the evidence stage moves a lock of weight `w` from `T`: the deepest keepable block below
-`T`, or `Φ.F`. -/
-noncomputable def evidenceTarget (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (w : WLock)
-    (T : Blk sp.n FGP) : Blk sp.n FGP :=
-  (deepest Φ (keepable sp Φ V s w T)).getD Φ.F
-
-/-- The candidate's `unlock` (`E ∘ unlock`): every live lock of a slot below `s` moves to the
-evidence target of its parent unlock target; the others keep their place. -/
-noncomputable def unlockW (L : Set WLock) (Φ : Frm sp.n FGP) (t : Time) (s : Int)
-    (V : View sp.n) : Set WLock :=
-  {w' | ∃ w ∈ liveLocksW sp L Φ t, ∃ B ∈ Φ.tree, B.root = w.lock.block ∧
-    w' = if (w.lock.slot : Int) < s then
-      { w with lock := { w.lock with
-        block := (evidenceTarget sp Φ V s w (unlockTarget sp Φ V s B)).root } } else w}
-
-variable {sp}
+variable {sp : SAParams} {FGP : Type}
 
 theorem mem_keepable {Φ : Frm sp.n FGP} {V : View sp.n} {s : Int} {w : WLock}
     {T Y : Blk sp.n FGP} :

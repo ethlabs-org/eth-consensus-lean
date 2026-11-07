@@ -618,6 +618,11 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.State
 public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Actions
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Evidence
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Instance
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Store
+public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Writes
 public import ConsensusLean.Instances.Goldilocks.Statements.Growing
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Lemmas.Blocks.Facts
