@@ -9,10 +9,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Projection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Rule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.WeightInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.Rule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.RunInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.SA
@@ -291,6 +293,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.FGSto
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Healing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.HealingAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Regimes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Candidates.EvidenceRelease
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Candidates.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase

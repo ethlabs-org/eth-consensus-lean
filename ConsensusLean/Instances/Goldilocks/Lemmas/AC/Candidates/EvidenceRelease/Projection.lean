@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RelTrace
 
 public section
 
@@ -31,7 +32,7 @@ namespace Consensus.Goldilocks.EvidenceRelease
 
 open SA
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : SAParams} {FGP : Type} {σ : Type} (E : UnlockStage sp wlockStore σ) (c : σ)
 
 /-- The parent state's locks are the forgotten weighted locks. -/
 def LocksForget {n : Nat} (X : WState n) : Prop :=
@@ -77,52 +78,35 @@ theorem updateConfirmationW_ac {X : WState sp.n} (hX : LocksForget X) (Φ : Frm 
 
 /-! ### The parent's handlers with the locks after the unlock given -/
 
-variable (sp) in
-open Classical in
-/-- The parent's `try_vote` at `self`, with `L₁` as the locks after its unlock (for `s > 0`). -/
-noncomputable def tryVoteWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
-  let s := sp.slot t
-  if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
-  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (A, [])
-  else
-    let V := mergedVoteView sp A Φ s
-    let A₁ := if 0 < s then { A with locks := L₁ } else A
-    let dom := voteDomain sp A₁ Φ s
-    let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
-    let A₂ := { A₁ with votedSlot := s }
-    let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := optimisticConfirmation sp (admitVote sp A₂ t vote) Φ t
-    (A₃, [{ msg := vote, readPoint := A₂,
-            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
-
-/-- **The parent's `try_vote`** is `tryVoteWith` of its own unlock. -/
-theorem tryVote_eq_tryVoteWith (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) :
-    tryVote sp self A Φ t = tryVoteWith sp self
-      (unlock sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)))
-      A Φ t := by
-  rfl
+/-- `tryVoteW_proj` for any unlock stage. -/
+theorem tryVoteE_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) :
+    ((tryVoteE sp E c self X Φ t).1.ac, (tryVoteE sp E c self X Φ t).2.map projEm) =
+      tryVoteWith sp self (WLock.lock '' wlockStore.unlockWith sp E c
+        X.wlocks Φ t ((sp.slot t : Int) - 1)
+        (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t := by
+  unfold tryVoteE tryVoteWith
+  dsimp only
+  split_ifs with h₁ h₂ h₃
+  · rfl
+  · rfl
+  · rw [optimisticConfirmationW_ac (locksForget_admitVote
+      (Y := { (unlockStateE sp E c X Φ t ((sp.slot t : Int) - 1)
+          (mergedVoteView sp X.ac Φ (sp.slot t)))
+        with ac := { (unlockStateE sp E c X Φ t _ _).ac with votedSlot := sp.slot t } })
+      ((locksForget_iff _).2 rfl) t _)]
+    rfl
+  · rw [optimisticConfirmationW_ac (locksForget_admitVote
+      (Y := { X with ac := { X.ac with votedSlot := sp.slot t } }) hX t _)]
+    rfl
 
 /-- **The candidate's `try_vote`, forgotten**, is `tryVoteWith` of the forgotten `unlockW`. -/
 theorem tryVoteW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
     ((tryVoteW sp self X Φ t).1.ac, (tryVoteW sp self X Φ t).2.map projEm) =
       tryVoteWith sp self (WLock.lock '' unlockW sp X.wlocks Φ t ((sp.slot t : Int) - 1)
-        (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t := by
-  unfold tryVoteW tryVoteE tryVoteWith
-  simp only [unlockStateE_evidenceStage]
-  split_ifs with h₁ h₂ h₃
-  · rfl
-  · rfl
-  · rw [optimisticConfirmationW_ac (locksForget_admitVote
-      (Y := { (unlockState sp X Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp X.ac Φ (sp.slot t)))
-        with ac := { (unlockState sp X Φ t _ _).ac with votedSlot := sp.slot t } })
-      ((locksForget_iff _).2 rfl) t _)]
-    rfl
-  · rw [optimisticConfirmationW_ac (locksForget_admitVote
-      (Y := { X with ac := { X.ac with votedSlot := sp.slot t } }) hX t _)]
-    rfl
+        (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t :=
+  tryVoteE_proj (evidenceStage sp) () hX self Φ t
 
 /-- Under the invariant, the locks after the candidate's unlock move the parent state's locks only
 back (A0.4 (c), the parent's `MovesBack`), the relation the routes read of the unlock. -/
@@ -147,13 +131,13 @@ theorem locksForget_unlockState (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (V : View sp.n) : LocksForget (unlockState sp X Φ t s V) :=
   locksForget_withLocks _ _ _
 
-/-- `try_vote` keeps the invariant, also at the read point of its emission. -/
-theorem locksForget_tryVoteW {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+/-- `locksForget_tryVoteW` for any unlock stage. -/
+theorem locksForget_tryVoteE {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
-    LocksForget (tryVoteW sp self X Φ t).1 ∧
-      ∀ e ∈ (tryVoteW sp self X Φ t).2, LocksForget e.readPoint := by
-  unfold tryVoteW tryVoteE
-  simp only [unlockStateE_evidenceStage]
+    LocksForget (tryVoteE sp E c self X Φ t).1 ∧
+      ∀ e ∈ (tryVoteE sp E c self X Φ t).2, LocksForget e.readPoint := by
+  unfold tryVoteE
+  dsimp only
   split_ifs with h₁ h₂ h₃
   · exact ⟨hX, fun _ h => absurd h List.not_mem_nil⟩
   · exact ⟨hX, fun _ h => absurd h List.not_mem_nil⟩
@@ -166,28 +150,49 @@ theorem locksForget_tryVoteW {X : WState sp.n} (hX : LocksForget X) (self : Fin 
     subst he
     exact (locksForget_iff _).2 hX
 
+/-- `try_vote` keeps the invariant, also at the read point of its emission. -/
+theorem locksForget_tryVoteW {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) :
+    LocksForget (tryVoteW sp self X Φ t).1 ∧
+      ∀ e ∈ (tryVoteW sp self X Φ t).2, LocksForget e.readPoint :=
+  locksForget_tryVoteE (evidenceStage sp) () hX self Φ t
+
+/-- `locksForget_acOnMessageW` for any unlock stage. -/
+theorem locksForget_acOnMessageE (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (v : Vote sp.n) :
+    LocksForget (acOnMessageE sp E c self X Φ t v).1 ∧
+      ∀ e ∈ (acOnMessageE sp E c self X Φ t v).2, LocksForget e.readPoint :=
+  locksForget_tryVoteE E c (locksForget_optimisticConfirmationW _ _ _) self Φ t
+
 /-- `ac_on_message` establishes the invariant, also at its emissions' read points. -/
 theorem locksForget_acOnMessageW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (v : Vote sp.n) :
     LocksForget (acOnMessageW sp self X Φ t v).1 ∧
       ∀ e ∈ (acOnMessageW sp self X Φ t v).2, LocksForget e.readPoint :=
-  locksForget_tryVoteW (locksForget_optimisticConfirmationW _ _ _) self Φ t
+  locksForget_acOnMessageE (evidenceStage sp) () self X Φ t v
+
+/-- `locksForget_acOnBlockW` for any unlock stage. -/
+theorem locksForget_acOnBlockE (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (B : Blk sp.n FGP) :
+    LocksForget (acOnBlockE sp E c self X Φ t B).1 ∧
+      ∀ e ∈ (acOnBlockE sp E c self X Φ t B).2, LocksForget e.readPoint :=
+  locksForget_tryVoteE E c (locksForget_optimisticConfirmationW _ _ _) self Φ t
 
 /-- `ac_on_block` establishes the invariant, also at its emissions' read points. -/
 theorem locksForget_acOnBlockW (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (B : Blk sp.n FGP) :
     LocksForget (acOnBlockW sp self X Φ t B).1 ∧
       ∀ e ∈ (acOnBlockW sp self X Φ t B).2, LocksForget e.readPoint :=
-  locksForget_tryVoteW (locksForget_optimisticConfirmationW _ _ _) self Φ t
+  locksForget_acOnBlockE (evidenceStage sp) () self X Φ t B
 
-/-- `ac_on_tick` keeps the invariant, also at its emissions' read points. -/
-theorem locksForget_acOnTickW {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+/-- `locksForget_acOnTickW` for any unlock stage. -/
+theorem locksForget_acOnTickE {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
-    LocksForget (acOnTickW sp self X Φ t).1 ∧
-      ∀ e ∈ (acOnTickW sp self X Φ t).2, LocksForget e.readPoint := by
-  have hv := locksForget_tryVoteW hX self Φ t
-  unfold acOnTickW acOnTickE
-  simp only [tryVoteE_evidenceStage]
+    LocksForget (acOnTickE sp E c self X Φ t).1 ∧
+      ∀ e ∈ (acOnTickE sp E c self X Φ t).2, LocksForget e.readPoint := by
+  have hv := locksForget_tryVoteE E c hX self Φ t
+  unfold acOnTickE
+  dsimp only
   split_ifs <;>
     first
     | exact ⟨hX, fun _ h => absurd h List.not_mem_nil⟩
@@ -195,12 +200,24 @@ theorem locksForget_acOnTickW {X : WState sp.n} (hX : LocksForget X) (self : Fin
     | exact hv
     | exact ⟨locksForget_updateConfirmationW _ _ _ _, fun _ h => absurd h List.not_mem_nil⟩
 
+/-- `ac_on_tick` keeps the invariant, also at its emissions' read points. -/
+theorem locksForget_acOnTickW {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) :
+    LocksForget (acOnTickW sp self X Φ t).1 ∧
+      ∀ e ∈ (acOnTickW sp self X Φ t).2, LocksForget e.readPoint :=
+  locksForget_acOnTickE (evidenceStage sp) () hX self Φ t
+
+/-- `locksForget_acProposalW` for any unlock stage. -/
+theorem locksForget_acProposalE {X : WState sp.n} (hX : LocksForget X) (Φ : Frm sp.n FGP)
+    (t : Time) : LocksForget (acProposalE sp E c X Φ t).1 := by
+  unfold acProposalE
+  dsimp only
+  split_ifs <;> first | exact hX | exact locksForget_withLocks _ _ _
+
 /-- `ac_proposal` keeps the invariant. -/
 theorem locksForget_acProposalW {X : WState sp.n} (hX : LocksForget X) (Φ : Frm sp.n FGP)
-    (t : Time) : LocksForget (acProposalW sp X Φ t).1 := by
-  unfold acProposalW acProposalE
-  simp only [unlockStateE_evidenceStage]
-  split_ifs <;> first | exact hX | exact locksForget_unlockState _ _ _ _ _
+    (t : Time) : LocksForget (acProposalW sp X Φ t).1 :=
+  locksForget_acProposalE (evidenceStage sp) () hX Φ t
 
 /-- The parent's `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
@@ -223,38 +240,40 @@ theorem acToFGW_proj (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 
 /-! ### `ac_proposal` -/
 
-variable (sp) in
-open Classical in
-/-- The parent's `ac_proposal`, with `L₁` as the locks after its unlock. -/
-noncomputable def acProposalWith (L₁ : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : SAState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
-  if ¬ joined sp A t then (A, none)
-  else
-    let s : Int := sp.slot t
-    let p := voteViewList A Φ (s - 1) ⊤
-    let V := View.ofLists p
-    let A₁ := { A with locks := L₁ }
-    let H := getHead sp A₁ Φ t (Φ.viableTree Φ.tree) V (s - 1)
-    (A₁, some (⟨H, getAnchor sp A₁ Φ t, Φ.tree⟩, p))
-
-/-- **The parent's `ac_proposal`** is `acProposalWith` of its own unlock. -/
-theorem acProposal_eq_acProposalWith (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    acProposal sp A Φ t = acProposalWith sp
-      (unlock sp A.locks Φ t ((sp.slot t : Int) - 1)
-        (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))) A Φ t := by
-  rfl
+/-- `acProposalW_proj` for any unlock stage. -/
+theorem acProposalE_proj (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ((acProposalE sp E c X Φ t).1.ac, (acProposalE sp E c X Φ t).2) = acProposalWith sp
+      (WLock.lock '' wlockStore.unlockWith sp E c
+        X.wlocks Φ t ((sp.slot t : Int) - 1)
+        (View.ofLists (voteViewList X.ac Φ ((sp.slot t : Int) - 1) ⊤))) X.ac Φ t := by
+  unfold acProposalE acProposalWith
+  dsimp only
+  split_ifs <;> rfl
 
 /-- **The candidate's `ac_proposal`, forgotten**, is `acProposalWith` of the forgotten
 `unlockW`. -/
 theorem acProposalW_proj (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ((acProposalW sp X Φ t).1.ac, (acProposalW sp X Φ t).2) = acProposalWith sp
       (WLock.lock '' unlockW sp X.wlocks Φ t ((sp.slot t : Int) - 1)
-        (View.ofLists (voteViewList X.ac Φ ((sp.slot t : Int) - 1) ⊤))) X.ac Φ t := by
-  unfold acProposalW acProposalE acProposalWith
-  simp only [unlockStateE_evidenceStage]
-  split_ifs <;> rfl
+        (View.ofLists (voteViewList X.ac Φ ((sp.slot t : Int) - 1) ⊤))) X.ac Φ t :=
+  acProposalE_proj (evidenceStage sp) () X Φ t
 
 /-! ### `ac_on_message`, `ac_on_block`, `ac_on_tick` -/
+
+/-- `acOnMessageW_proj` for any unlock stage. -/
+theorem acOnMessageE_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
+    let Y := optimisticConfirmationW sp { X with ac := admitVote sp X.ac t v } Φ t
+    ((acOnMessageE sp E c self X Φ t v).1.ac, (acOnMessageE sp E c self X Φ t v).2.map projEm) =
+      tryVoteWith sp self (WLock.lock '' wlockStore.unlockWith sp E c
+        Y.wlocks Φ t ((sp.slot t : Int) - 1)
+        (mergedVoteView sp Y.ac Φ (sp.slot t)))
+        (optimisticConfirmation sp (admitVote sp X.ac t v) Φ t) Φ t := by
+  intro Y
+  have hY : Y.ac = optimisticConfirmation sp (admitVote sp X.ac t v) Φ t :=
+    optimisticConfirmationW_ac (locksForget_admitVote hX t v) Φ t
+  rw [← hY]
+  exact tryVoteE_proj E c (locksForget_optimisticConfirmationW _ _ _) self Φ t
 
 /-- **`ac_on_message`, forgotten**: the parent's admission and optimistic confirmation, then
 `tryVoteWith` of the forgotten `unlockW` of the state after them. -/
@@ -264,12 +283,25 @@ theorem acOnMessageW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.
     ((acOnMessageW sp self X Φ t v).1.ac, (acOnMessageW sp self X Φ t v).2.map projEm) =
       tryVoteWith sp self (WLock.lock '' unlockW sp Y.wlocks Φ t ((sp.slot t : Int) - 1)
         (mergedVoteView sp Y.ac Φ (sp.slot t)))
-        (optimisticConfirmation sp (admitVote sp X.ac t v) Φ t) Φ t := by
+        (optimisticConfirmation sp (admitVote sp X.ac t v) Φ t) Φ t :=
+  acOnMessageE_proj (evidenceStage sp) () hX self Φ t v
+
+/-- `acOnBlockW_proj` for any unlock stage. -/
+theorem acOnBlockE_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
+    let Y := optimisticConfirmationW sp { X with ac := blockReceipt sp X.ac t B } Φ t
+    ((acOnBlockE sp E c self X Φ t B).1.ac, (acOnBlockE sp E c self X Φ t B).2.map projEm) =
+      tryVoteWith sp self (WLock.lock '' wlockStore.unlockWith sp E c
+        Y.wlocks Φ t ((sp.slot t : Int) - 1)
+        (mergedVoteView sp Y.ac Φ (sp.slot t)))
+        (optimisticConfirmation sp (blockReceipt sp X.ac t B) Φ t) Φ t := by
   intro Y
-  have hY : Y.ac = optimisticConfirmation sp (admitVote sp X.ac t v) Φ t :=
-    optimisticConfirmationW_ac (locksForget_admitVote hX t v) Φ t
+  have hR : LocksForget { X with ac := blockReceipt sp X.ac t B } :=
+    (locksForget_iff _).2 ((blockReceipt_keeps_locks X.ac t B).1.trans hX)
+  have hY : Y.ac = optimisticConfirmation sp (blockReceipt sp X.ac t B) Φ t :=
+    optimisticConfirmationW_ac hR Φ t
   rw [← hY]
-  exact tryVoteW_proj (locksForget_optimisticConfirmationW _ _ _) self Φ t
+  exact tryVoteE_proj E c (locksForget_optimisticConfirmationW _ _ _) self Φ t
 
 /-- **`ac_on_block`, forgotten**: the parent's receipt and optimistic confirmation, then
 `tryVoteWith` of the forgotten `unlockW` of the state after them. -/
@@ -279,46 +311,20 @@ theorem acOnBlockW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     ((acOnBlockW sp self X Φ t B).1.ac, (acOnBlockW sp self X Φ t B).2.map projEm) =
       tryVoteWith sp self (WLock.lock '' unlockW sp Y.wlocks Φ t ((sp.slot t : Int) - 1)
         (mergedVoteView sp Y.ac Φ (sp.slot t)))
-        (optimisticConfirmation sp (blockReceipt sp X.ac t B) Φ t) Φ t := by
-  intro Y
-  have hR : LocksForget { X with ac := blockReceipt sp X.ac t B } :=
-    (locksForget_iff _).2 ((blockReceipt_keeps_locks X.ac t B).1.trans hX)
-  have hY : Y.ac = optimisticConfirmation sp (blockReceipt sp X.ac t B) Φ t :=
-    optimisticConfirmationW_ac hR Φ t
-  rw [← hY]
-  exact tryVoteW_proj (locksForget_optimisticConfirmationW _ _ _) self Φ t
+        (optimisticConfirmation sp (blockReceipt sp X.ac t B) Φ t) Φ t :=
+  acOnBlockE_proj (evidenceStage sp) () hX self Φ t B
 
-variable (sp) in
-open Classical in
-/-- The parent's `ac_on_tick` at `self`, with `L₁` as the locks after the unlock of its vote. -/
-noncomputable def acOnTickWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
-  let s := sp.slot t
-  if ¬ joined sp A t then (A, [])
-  else
-    let r := if t = sp.ts s + sp.Δ then tryVoteWith sp self L₁ A Φ t else (A, [])
-    let A₂ := if t = sp.ts s + 2 * sp.Δ ∧ 0 < s then updateConfirmation sp r.1 Φ t (s - 1)
-      else r.1
-    (A₂, r.2)
-
-/-- **The parent's `ac_on_tick`** is `acOnTickWith` of its own unlock. -/
-theorem acOnTick_eq_acOnTickWith (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) :
-    acOnTick sp self A Φ t = acOnTickWith sp self
-      (unlock sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)))
-      A Φ t := by
-  rfl
-
-/-- **`ac_on_tick`, forgotten**: `acOnTickWith` of the forgotten `unlockW`. -/
-theorem acOnTickW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+/-- `acOnTickW_proj` for any unlock stage. -/
+theorem acOnTickE_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
-    ((acOnTickW sp self X Φ t).1.ac, (acOnTickW sp self X Φ t).2.map projEm) =
-      acOnTickWith sp self (WLock.lock '' unlockW sp X.wlocks Φ t ((sp.slot t : Int) - 1)
+    ((acOnTickE sp E c self X Φ t).1.ac, (acOnTickE sp E c self X Φ t).2.map projEm) =
+      acOnTickWith sp self (WLock.lock '' wlockStore.unlockWith sp E c
+        X.wlocks Φ t ((sp.slot t : Int) - 1)
         (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t := by
-  have hv := tryVoteW_proj hX self Φ t
-  have hf := (locksForget_tryVoteW hX self Φ t).1
-  unfold acOnTickW acOnTickE acOnTickWith
-  simp only [tryVoteE_evidenceStage]
+  have hv := tryVoteE_proj E c hX self Φ t
+  have hf := (locksForget_tryVoteE E c hX self Φ t).1
+  unfold acOnTickE acOnTickWith
+  dsimp only
   split_ifs <;>
     first
     | rfl
@@ -326,13 +332,21 @@ theorem acOnTickW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     | (rw [updateConfirmationW_ac hf, ← hv])
     | (rw [updateConfirmationW_ac hX]; rfl)
 
+/-- **`ac_on_tick`, forgotten**: `acOnTickWith` of the forgotten `unlockW`. -/
+theorem acOnTickW_proj {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) :
+    ((acOnTickW sp self X Φ t).1.ac, (acOnTickW sp self X Φ t).2.map projEm) =
+      acOnTickWith sp self (WLock.lock '' unlockW sp X.wlocks Φ t ((sp.slot t : Int) - 1)
+        (mergedVoteView sp X.ac Φ (sp.slot t))) X.ac Φ t :=
+  acOnTickE_proj (evidenceStage sp) () hX self Φ t
+
 /-! ### The restart -/
 
-/-- At a state whose receipt is not joined, `ac_on_block` is the receipt and emits nothing. -/
-theorem acOnBlockW_of_not_joined {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+/-- `acOnBlockW_of_not_joined` for any unlock stage. -/
+theorem acOnBlockE_of_not_joined {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP)
     (hnj : ¬ joined sp (blockReceipt sp X.ac t B) t) :
-    acOnBlockW sp self X Φ t B = ({ X with ac := blockReceipt sp X.ac t B }, []) := by
+    acOnBlockE sp E c self X Φ t B = ({ X with ac := blockReceipt sp X.ac t B }, []) := by
   have hsel : optimisticSelect sp (blockReceipt sp X.ac t B) Φ t = none := by
     simp only [optimisticSelect, hnj, not_false_eq_true, true_or, ite_true]
   have hopt : optimisticConfirmationW sp { X with ac := blockReceipt sp X.ac t B } Φ t =
@@ -341,14 +355,21 @@ theorem acOnBlockW_of_not_joined {X : WState sp.n} (hX : LocksForget X) (self : 
       hX.symm.trans (blockReceipt_keeps_locks X.ac t B).1.symm
     simp only [optimisticConfirmationW, withLocks, optimisticLocksW, optimisticConfirmation,
       hsel, hl]
-  simp only [acOnBlockW, acOnBlockE, hopt, tryVoteE, hnj, not_false_eq_true, true_or, ite_true]
+  simp only [acOnBlockE, hopt, tryVoteE, hnj, not_false_eq_true, true_or, ite_true]
 
-/-- **The restart, forgotten**: in a well-formed frame at `t ≥ 0`, the forgotten restart of the
-candidate is the parent's restart, and neither emits. -/
-theorem acRestartW_proj {X : WState sp.n} (hX : LocksForget X) (ro : ReplayOrder sp FGP)
+/-- At a state whose receipt is not joined, `ac_on_block` is the receipt and emits nothing. -/
+theorem acOnBlockW_of_not_joined {X : WState sp.n} (hX : LocksForget X) (self : Fin sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP)
+    (hnj : ¬ joined sp (blockReceipt sp X.ac t B) t) :
+    acOnBlockW sp self X Φ t B = ({ X with ac := blockReceipt sp X.ac t B }, []) :=
+  acOnBlockE_of_not_joined (evidenceStage sp) () hX self Φ t B hnj
+
+/-- `acRestartW_proj` for any unlock stage. -/
+theorem acRestartE_proj {X : WState sp.n} (hX : LocksForget X) (ro : ReplayOrder sp FGP)
     (self : Fin sp.n) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} (ht : 0 ≤ t) :
-    (acRestartW sp ro self X Φ t).1.ac = (acRestart sp ro self X.ac Φ t).1 ∧
-      (acRestartW sp ro self X Φ t).2 = [] ∧ LocksForget (acRestartW sp ro self X Φ t).1 := by
+    (acRestartE sp E c ro self X Φ t).1.ac = (acRestart sp ro self X.ac Φ t).1 ∧
+      (acRestartE sp E c ro self X Φ t).2 = [] ∧ LocksForget (acRestartE sp E c ro self X Φ
+          t).1 := by
   have hl := ro.parentOrder t Φ (parentOrder_exists sp hΦ)
   let A' : SAState sp.n := { SAState.initial sp.genesisRoot with
     locks := X.ac.locks, latestConfirmed := X.ac.latestConfirmed,
@@ -360,7 +381,7 @@ theorem acRestartW_proj {X : WState sp.n} (hX : LocksForget X) (ro : ReplayOrder
       ∀ (acc : WState sp.n × List (EmW sp FGP)) (pacc : SAState sp.n × List (Em sp FGP)),
       acc.1.ac = pacc.1 → acc.2 = [] → pacc.2 = [] → LocksForget acc.1 →
       RestartInv sp X.ac Φ t pacc.1 →
-      let r := l.foldl (fun acc B => let r := acOnBlockW sp self acc.1 Φ t B;
+      let r := l.foldl (fun acc B => let r := acOnBlockE sp E c self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc
       let q := l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) pacc
@@ -374,7 +395,7 @@ theorem acRestartW_proj {X : WState sp.n} (hX : LocksForget X) (ro : ReplayOrder
       have hR := h₁.blockReceipt sp hB hg
       have hnj := not_joined_of_restartTime sp ht hR.restartTime
       rw [← he] at hnj
-      have hw := acOnBlockW_of_not_joined hf self Φ t B hnj
+      have hw := acOnBlockE_of_not_joined E c hf self Φ t B hnj
       have hp := h₁.acOnBlock sp ht hB hg self
       simp only [List.foldl_cons]
       apply ih (fun C hC => hl C (List.mem_cons_of_mem _ hC))
@@ -388,6 +409,14 @@ theorem acRestartW_proj {X : WState sp.n} (hX : LocksForget X) (ro : ReplayOrder
   obtain ⟨h1, h2, -, h4⟩ := key (ro.order t Φ) (fun B hB => (hl.2.1 B).mp hB)
     ({ ac := A', wlocks := X.wlocks, counts := fun _ _ => 0 }, []) (A', []) rfl rfl rfl hX h₀
   exact ⟨h1, h2, h4⟩
+
+/-- **The restart, forgotten**: in a well-formed frame at `t ≥ 0`, the forgotten restart of the
+candidate is the parent's restart, and neither emits. -/
+theorem acRestartW_proj {X : WState sp.n} (hX : LocksForget X) (ro : ReplayOrder sp FGP)
+    (self : Fin sp.n) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} (ht : 0 ≤ t) :
+    (acRestartW sp ro self X Φ t).1.ac = (acRestart sp ro self X.ac Φ t).1 ∧
+      (acRestartW sp ro self X Φ t).2 = [] ∧ LocksForget (acRestartW sp ro self X Φ t).1 :=
+  acRestartE_proj (evidenceStage sp) () hX ro self hΦ ht
 
 end Consensus.Goldilocks.EvidenceRelease
 
