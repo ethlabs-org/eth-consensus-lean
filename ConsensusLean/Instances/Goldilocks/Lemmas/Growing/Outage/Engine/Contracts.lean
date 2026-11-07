@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 
 public section
 
@@ -19,7 +20,14 @@ deleted then, and its importers import the simulation modules instead. The run i
 * `receiverServiceAfterAt_of_psync`: partial synchrony from `g` gives every receiver the receiver
   service after `g`;
 * `outage_pool_delivery_at`: under partial synchrony from `g`, an update of slot `m` with
-  `g ≤ t_m + Δ` by a node honest at it holds every slot-`m` vote of a node honest at its cast. -/
+  `g ≤ t_m + Δ` by a node honest at it holds every slot-`m` vote of a node honest at its cast.
+
+and the sleepy results it consumes, under the names agreed with the sleepy layer:
+
+* `Compose.Growing.sleepy_invariant_at`: the finite service and the two count shapes through
+  `b ≥ 0` give the Sleepy record invariant up to `b`;
+* `Obligations.Growing.sleepy_bounds_at`: the L0 sleepy budget with look-ahead `5Δ` on `[0, b]`,
+  `b ≤ horizon`, gives the two count shapes through `b` on the canonical trace. -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -60,5 +68,35 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
   sorry
 
 end Consensus.Goldilocks.Simulation
+
+namespace Consensus.Goldilocks.Compose.Growing
+
+open SA (SAParams ReplayOrder Payload)
+
+theorem sleepy_invariant_at {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {ΔF b : Time}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) :
+    SleepyInvariantUpTo tr H b := by
+  sorry
+
+end Consensus.Goldilocks.Compose.Growing
+
+namespace Consensus.Goldilocks.Obligations.Growing
+
+open AsChainShape Simulation Shape
+open Consensus.Model (pubOf)
+
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+
+theorem sleepy_bounds_at (hv : rho.ExecutionValid) {b : Time} (hb : b ≤ rho.horizon)
+    (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
+      (5 * (S.params (pubOf E) hn).Δ) 0 b) :
+    Compose.Growing.SleepyBounds (simTraceAt S rho hn) (honestKeysAt S rho) b := by
+  sorry
+
+end Consensus.Goldilocks.Obligations.Growing
 
 end
