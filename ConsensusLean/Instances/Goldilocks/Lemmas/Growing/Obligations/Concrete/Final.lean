@@ -5,6 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowFieldsUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.FinalPending
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
@@ -25,7 +27,9 @@ time: a proposer at its acceptance, a reader at its read time.
 * `publication_held_ready_tail_at`: one protocol-delay publication tail gives holdings strictly
   before a ready read;
 * `carrier_processed_of_honest_at`: (H4) of the final-window extraction, the carrier is processed
-  by the deadline at every node ready at the deadline. -/
+  by the deadline at every node ready at the deadline;
+* `final_payload_projection_at`: window extraction with cache coverage gives the final
+  `healthyLive` field. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
@@ -172,6 +176,66 @@ theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
   obtain ⟨j, hj, hjt⟩ := held_forward_blockCall_lt_at S Q.run.2 Q.hn Q.valid hxk hheld
     hdecode hdt
   exact ⟨j, hj, hjt.le⟩
+
+/-- **Payload/read projection of the final route under growing faults.** Window extraction with
+cache coverage of the extracted window, for every final query, gives the `healthyLive` field at
+the final capability: the first anchor is an engine proposal released after the query by a key
+ready then, and its header is in the finalized read of every engine node ready at the deadline. -/
+theorem final_payload_projection_at
+    (windows : ∀ Q : FinalQueryAt S A V,
+      ∃ W : FinalWindowDataAt S A V Q, Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧
+        W.CacheCoverage) :
+    ∀ g, schema.output .final = some g →
+    ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
+      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
+        (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
+          ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
+      fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
+        g ((Sys (goldilocks S) V).heal (K S A) .final i gst r)
+        ((K S A).params.latency .final i) := by
+  intro g hg i gst r hv ⟨hhealthy, hprog⟩
+  have hg' : g = Out.finalized := Option.some.inj hg.symm
+  subst g
+  by_cases hcollision : r.2.HashCollision
+  · exact Or.inr hcollision
+  left
+  intro t hm hb hr
+  obtain ⟨v, hvr⟩ := hr
+  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
+  let Q : FinalQueryAt S A V := ⟨r, hn, i, gst, t, hv, hcollision, hhealthy, hprog, hm, hb, v, hvr⟩
+  obtain ⟨W, -, hcover⟩ := windows Q
+  have ht : 0 ≤ t := by
+    have hd := r.1.ΔAC_pos
+    have hg0 : (0 : Time) ≤ max gst 0 := le_max_right _ _
+    have hp : 0 ≤ ((K S A).params.heal .final i : Time) * r.1.ΔAC :=
+      mul_nonneg (Int.natCast_nonneg _) hd.le
+    exact (add_nonneg hg0 hp).trans hm
+  have hτ : 0 ≤ Q.trace.time (W.cut 0) := ht.trans W.fresh.le
+  have hτh : Q.trace.time (W.cut 0) ≤ r.2.horizon := (W.bounded 0).trans hb
+  have hproposal : Regimes.Growing.ReadyProposalAt Q.trace Q.keys
+      ((Sys (goldilocks S) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) 0 (W.block 0) :=
+    ⟨_, W.cut 0, W.ready 0, by rw [add_zero]; exact (W.ready 0).1, W.proposals 0, rfl⟩
+  obtain ⟨k, hk, hrel⟩ := ready_proposal_at S r.2 hn hv hτh hproposal
+  refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
+  have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) r := by
+    exact mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le
+  have hdeadline : 0 ≤ Q.deadline := ht.trans (by
+    change t ≤ t + _
+    exact le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le))
+  have hroot : (W.block 0).root ≠ Q.params.genesisRoot := by
+    have run := (simTraceAt_goldilocksRun S r.2 hn hv).upTo hτ
+    rcases Compose.blockCall_cases run.toLocalRun (W.ready 0).1
+        ((RunTrace.upTo_acceptAt _).mpr ⟨le_rfl, W.accepted 0⟩) with hg | hg
+    · have hz := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
+      simp only [Nat.add_zero] at hz
+      exact False.elim ((W.proposals 0).1.2 hz)
+    · obtain ⟨j, x, _, _, _, d, p, _, hB, _⟩ := hg
+      rw [hB, digestOf_eq]
+      simp only [Node.mkBlock]
+      erw [dgOf_eq]
+      exact taggedRoot_ne _ _
+  exact finalized_inBy_at S r.2 hn hv (noCollRun_simTraceAt S r.2 hn hv hcollision) hc hdeadline
+    hb hroot (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
 
 end Query
 
