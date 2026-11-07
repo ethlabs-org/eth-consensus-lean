@@ -26,9 +26,6 @@ and the sleepy results it consumes, under the names agreed with the sleepy layer
 
 * `Compose.Growing.sleepy_invariant_at`: the finite service and the two count shapes through
   `b ≥ 0` give the Sleepy record invariant up to `b`;
-* `Compose.Growing.confirmed_read_on_chain_at`: under the invariant up to `b`, the confirmed
-  read of a node honest at a read time `t ≤ b` (every earlier cut at a time `≤ t`) is held while
-  honest and on the chain of the origins within `b`;
 * `Obligations.Growing.ready_read_cut_at`: for an engine node ready at `t ∈ [0, horizon]`, the
   trace cut of the end-of-`t` engine cut is after `t`, a boundary of the node, with stored clock
   `t`;
@@ -85,19 +82,6 @@ theorem sleepy_invariant_at {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att s
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) :
     SleepyInvariantUpTo tr H b := by
-  sorry
-
-theorem confirmed_read_on_chain_at {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {b : Time}
-    (hinv : SleepyInvariantUpTo tr H b)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
-    (hy : y ∈ H t) (u : Time) :
-    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u ∈
-        tr.HonestBlocksAt H ∧
-      OnOriginChainWithin tr H
-        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u) b := by
   sorry
 
 end Consensus.Goldilocks.Compose.Growing
