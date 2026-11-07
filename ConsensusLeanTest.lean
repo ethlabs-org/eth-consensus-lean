@@ -51,7 +51,6 @@ public import ConsensusLeanTest.Goldilocks.Frame.Statements
 public import ConsensusLeanTest.Goldilocks.HalfCommittee.Control
 public import ConsensusLeanTest.Goldilocks.HalfCommittee.Premises
 public import ConsensusLeanTest.Goldilocks.HalfCommittee.Run
-public import ConsensusLeanTest.Goldilocks.HalfCommittee.Sync
 public import ConsensusLeanTest.Goldilocks.Healing.PhaseCount
 public import ConsensusLeanTest.Goldilocks.Healing.Recovery
 public import ConsensusLeanTest.Goldilocks.Healing.SA
@@ -84,6 +83,7 @@ public import ConsensusLeanTest.Goldilocks.Run.Faulty
 public import ConsensusLeanTest.Goldilocks.Run.Statements
 public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Run
 public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Sleepy
+public import ConsensusLeanTest.Goldilocks.Runs.Data.Five
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Premises
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Run
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Sync

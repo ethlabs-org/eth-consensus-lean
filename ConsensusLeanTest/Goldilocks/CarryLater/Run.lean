@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Sync
-public import ConsensusLeanTest.Goldilocks.HalfCommittee.Run
+public import ConsensusLeanTest.Goldilocks.Runs.Data.Five
 @[expose] public section
 
 /-! # The later-Carry run with five validators: schedule, `GoldilocksRun`, `Sync[24, 33]`
