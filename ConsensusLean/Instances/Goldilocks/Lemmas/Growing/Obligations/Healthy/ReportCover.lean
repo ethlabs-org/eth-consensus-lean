@@ -1,4 +1,7 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCompatibility
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionPool
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CandidateReport
@@ -30,8 +33,7 @@ finality below `P` (`finality_alternative_before_update_at`), in its full viable
 counts every validator honest at the update, so it confirms `P` and reports it at the adjacent
 `ac_to_fg` call (`report_of_viable_unanimous_pool_at`).
 
-The stand-ins at the top of the file are the growing forms of lemmas whose home is elsewhere, under
-their agreed names; each is an open `sorry`, and is deleted when its home module lands. -/
+The unanimous-slot selection helpers are imported from their growing proof homes. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -40,107 +42,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
-
-/-! ### Stand-ins: the unanimous-slot helpers (`Growing/Healing` selection) -/
-
-/-- Stand-in: every vote of slot `u` of a validator honest at the update cut is uniquely present
-and early-resolved in a post-service call holding `P`. -/
-theorem unanimous_pool_at (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    (_hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    {y : Fin sp.n} {j : Nat} (_hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
-    (_hcall : tr.projAC.CallAt y j ell) (_ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
-    (_hjb : tr.time j ≤ b) (_hPt : P ∈ ell.frame.tree) :
-    ∀ x, x ∈ H (tr.time j) → ∃ v ∈ (tr.projAC.state y j).pool u, v.val = x ∧ v.head = P.root ∧
-      SA.resolutionTime (tr.projAC.state y j) ell.frame v < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
-      ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
-  sorry
-
-/-- Stand-in: an optimistic selection of slot `u + 1` by a node honest at it is compatible with
-the unanimous proposal of slot `u`. -/
-theorem unanimous_next_optimistic_compatible_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (_hc : CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (_hP : P ∈ tr.HonestBlocksAt H)
-    (_hslot : P.slot = u) (_hu : 0 < u)
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (_hub : sp.ts u + sp.Δ ≤ b) {y : Fin sp.n} {j : Nat} (_hy : y ∈ H (tr.time j))
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (_hopt : SA.OptimisticLockAt tr.projAC y j (u + 1) D CV) (_hjb : tr.time j ≤ b) :
-    Compatible (tr.HonestBlocksAt H) D P := by
-  sorry
-
-/-- Stand-in: a high origin written by the update deadline is compatible with the unanimous
-proposal. -/
-theorem high_origin_compatible_before_update_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (_hc : CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P B : SA.Blk sp.n (List (FG.Att sp.n))} (_hP : P ∈ tr.HonestBlocksAt H)
-    (_hslot : P.slot = u) (_hu : 0 < u)
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (_hTb : sp.ts u + 6 * sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat}
-    (_ho : HighOrigin tr H g x r m B) (_ht : tr.time r ≤ sp.ts u + 6 * sp.Δ) :
-    Compatible (tr.HonestBlocksAt H) B P := by
-  sorry
-
-/-- Stand-in: a high origin before slot `u + 1` is below the unanimous proposal of slot `u`. -/
-theorem high_origins_before_next_slot_below_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (_hc : CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (_hP : P ∈ tr.HonestBlocksAt H)
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (_hub : sp.ts u + sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (_ho : HighOrigin tr H g x r m B)
-    (_ht : tr.time r < sp.ts (u + 1 : Nat)) (_hrb : tr.time r ≤ b) :
-    Anc (tr.HonestBlocksAt H) B P := by
-  sorry
-
-/-- Stand-in: finality at a cut after the reset, by the update deadline, is compatible with the
-unanimous proposal. -/
-theorem finalized_compatible_before_update_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (_hc : CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (_hP : P ∈ tr.HonestBlocksAt H)
-    (_hslot : P.slot = u) (_hu : 0 < u)
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (_hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {k : Nat} (_hy : y ∈ H (tr.time k))
-    (_ha : a ≤ tr.time k) (_ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
-    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P := by
-  sorry
-
-/-! ### Stand-in: update selection from a unanimous pool -/
-
-namespace ResetPremisesUpTo
-
-/-- Stand-in: a held update target whose pool counts every validator honest at the update, early
-resolved and unique, with every live lock compatible, is the update's confirmation and fast
-selection. -/
-theorem ready_update_selection_of_pool_at (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {j u : Nat} (_hy : y ∈ H (tr.time j)) (_hjb : tr.time j ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hu : SA.UpdateAt tr.projAC y j u ell) (_hPt : P ∈ ell.frame.tree)
-    (_hPg : P.root ≠ sp.genesisRoot)
-    (_hpool : ∀ v, v ∈ H (tr.time j) → ∃ vote ∈ (tr.projAC.state y j).pool u,
-      vote.val = v ∧ vote.head = P.root ∧
-      SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
-      ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
-    (_hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
-      Compatible (tr.HonestBlocksAt H) L P) :
-    SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
-      ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
-      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
-      tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
-      (tr.projAC.post j).latestConfirmed =
-        (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
-  sorry
-
-end ResetPremisesUpTo
 
 /-! ### Calls of a node honest at them -/
 
