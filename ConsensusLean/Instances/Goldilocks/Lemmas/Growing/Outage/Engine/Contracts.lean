@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
@@ -10,10 +10,9 @@ public section
 
 The growing-fault simulation results the outage engine part consumes, stated with their agreed
 names and shapes and left open here until the simulation layer proves them; this module is
-deleted then, and its importers import the simulation modules instead.
+deleted then, and its importers import the simulation modules instead. The run itself,
+`simTraceAt_goldilocksRun`, is the simulation layer's (`Simulation/Run`).
 
-* `simTraceAt_goldilocksRun`: a valid engine run is a growing-fault Goldilocks run for the keys
-  honest at each time;
 * `noCollRun_simTraceAt`: without an engine hash collision the trace has no collision;
 * `sleepyServiceBefore_of_syncUntil_at`: synchrony through `b ≤ horizon` gives the finite Sleepy
   service through `b`;
@@ -29,11 +28,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
-    Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-      (honestKeysAt S rho) (simTraceAt S rho hn) := by
-  sorry
 
 theorem noCollRun_simTraceAt (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) :
     Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn) := by
