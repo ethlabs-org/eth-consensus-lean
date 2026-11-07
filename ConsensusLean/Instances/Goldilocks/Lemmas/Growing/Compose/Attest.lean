@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Source
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Sync
 
 public section
 
@@ -203,6 +204,117 @@ theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
   have hsl := (SA.castAt_spec hri hy ⟨hpt, he⟩).2.1
   exact ⟨j₀, hj₀i, ℓt, e, (SA.upTo_castAt.mp ⟨hpt, he⟩).2,
     by rw [hsl]; change sp.slot (tr.time j₀) = _; rw [ht₀, hslot]⟩
+
+/-- Honest attestations in the persistence window name no excluded entry. -/
+theorem attest_not_excluded (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hp : PersistPremises tr H dg ΔF x i₀ s m B CV) {v : Fin sp.n} {j : Nat}
+    (hv : v ∈ H (tr.time j)) {a : FG.Att sp.n} (hs : tr.SignAt v j a)
+    (hT₀ : sp.ts (s + 1 : Nat) + sp.Δ < tr.time j)
+    (hTm : tr.time j ≤ sp.ts m + sp.Δ)
+    (ih : ∀ i < j, VoteInv tr H s m B i ∧ CutInv tr H s m B i) :
+    ∀ E ∈ excludedEntries tr H s B, a.T ≠ E.root := by
+  obtain ⟨C, hcall⟩ := hs
+  obtain ⟨j', rfl, ℓ, hc', hto, htime, hC, hfgeq⟩ := attest_source hrun hv hcall
+  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hp.noColl
+  have hr := hrun'.localRun
+  have hU := hr.coherent
+  have hv' : v ∈ H (tr.time j') := htime ▸ hv
+  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
+  have hpc := Compose.projAC_callAt.mpr hc'
+  have state {k : Nat} (hk : k ≤ j' + 1) : tr.projAC.state v k = (tr.state v k).ac := by
+    have h := Compose.projAC_state
+      (hrun.toLocalRun.upTo (hrun.time_nonneg (j' + 1))) hv k
+    rw [RunTrace.upTo_projAC] at h
+    rw [Trace.upTo_state tr.projAC v (i := k)
+      (fun l hl => hrun.time_mono (show l ≤ j' + 1 by omega)),
+      Trace.upTo_state tr v (i := k)
+        (fun l hl => hrun.time_mono (show l ≤ j' + 1 by omega))] at h
+    exact h
+  have hToFG : SA.ToFGAt tr.projAC v j' ℓ C := ⟨hpc, hto, by rw [state (by omega)]; exact hC⟩
+  have ih' : ∀ i < j', VoteInv tr H s m B i ∧ CutInv tr H s m B i := fun i hi => ih i (by omega)
+  have hlo : sp.ts (s + 1 : Nat) + sp.Δ < tr.time j' := htime ▸ hT₀
+  have hhi : tr.time j' ≤ sp.ts m + sp.Δ := htime ▸ hTm
+  have hs1 := (SA.ts_lt_iff sp).mpr (show ((s : Nat) : Int) < ((s + 1 : Nat) : Int) by omega)
+  have hsm := (SA.ts_le_iff sp).mpr (Int.ofNat_le.mpr hp.lt)
+  have hframe : ∀ k ≤ j', ∀ ℓk, tr.projAC.CallAt v k ℓk → sp.ts s ≤ tr.time k →
+      Compatible (tr.HonestBlocksAt H) ℓk.frame.F B := by
+    intro k hk ℓk hck hk₀
+    have hvk := hrun.antitone (hrun.time_mono hk) hv'
+    rw [(hrun.cutLaw v k _ (Compose.projAC_callAt.mp hck) hvk).1]
+    exact (state_caches hrun hp k (fun i hi => (ih' i (by omega)).2) v hvk hk₀
+      fun i hi => by have := hrun.time_mono (show i ≤ j' by omega); linarith).1
+  have hcase : (∃ i < j', ∃ ℓ' e, SA.CastAt tr.projAC v i ℓ' e ∧ e.msg.slot = s + 1 ∧
+      Compatible (tr.HonestBlocksAt H) ℓ'.frame.F B) ∨
+      (∃ k < j', tr.projAC.RestartAt v k ∧ sp.ts s < tr.time k) := by
+    refine (vote_or_restart hrun hp hv' hToFG hlo).imp_left ?_
+    rintro ⟨i, hi, ℓ', e, hce, hsl⟩
+    have hts : sp.ts e.msg.slot ≤ tr.time i :=
+      (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr
+        (by rw [(SA.castAt_spec (hr.upTo (hr.time_nonneg i))
+          (hrun.antitone (hrun.time_mono hi.le) hv') (SA.upTo_castAt.mpr ⟨le_rfl, hce⟩)).2.1]; rfl)
+    rw [hsl] at hts
+    exact ⟨i, hi, ℓ', e, hce, hsl, hframe i hi.le ℓ' hce.1 (by linarith)⟩
+  have hsync := sync_projection sp.toParams (goldilocksNode sp ro) dg H
+    (fun v => v.val) tr proposer ΔF (sp.ts s) (sp.ts m + sp.Δ) hrun.toLocalRun hp.sync
+  obtain ⟨ℓw, D, hcw, hflD, hBD⟩ := hp.fastLock
+  have hΦwU : ℓw.frame.tree ⊆ tr.HonestBlocksAt H := by
+    rcases hr.frameLaw x i₀ ℓw hp.writer_honest hcw with
+      ⟨_, Φ₀, _, _, h⟩ | ⟨j, ℓ', _, _, _, h⟩ <;> exact h.1.2
+  have hf : 2 * (H (tr.time j'))ᶜ.ncard < sp.n := by
+    have hsub : (H (tr.time j'))ᶜ ⊆ (H (sp.ts m + sp.Δ))ᶜ :=
+      Set.compl_subset_compl.mpr (hrun.antitone hhi)
+    have := Set.ncard_le_ncard hsub
+    linarith [hp.twoFaults]
+  have hCB := SA.Growing.source_compatible_stored sp _ ro proposer H _ tr.projAC hrun'
+    s m x v i₀ j' B D CV ℓ C hp.writer_honest hflD
+    (hBD ▸ Anc.mono hΦwU (SA.anc_viableAncestor ℓw.frame D))
+    ⟨fun x i e hx he ha hb => hsync.1 x i e hx he ha (by linarith),
+      fun x i X hx hX ha hb => hsync.2 x i X hx hX ha (by linarith)⟩
+    hp.carry hf hv' hToFG hlo hhi
+    (fun z i hi hz e ⟨ℓz, hcz, hez⟩ h₁ h₂ =>
+      (voteInv_iff.mp (ih' i hi).1 z hz ℓz e ⟨hcz, hez⟩ h₁ h₂).2) hcase
+  set st := (tr.state v (j' + 1)).fg with hst
+  have hsub : st.tree ⊆ tr.HonestBlocksAt H := fun X hX =>
+    ⟨v, j' + 1, tr.time (j' + 1), hrun.time_nonneg _,
+      (fun k hk => hrun.time_mono hk.le), hv, hX⟩
+  have hret := hrun.toLocalRun.upTo (hrun.time_nonneg (j' + 1))
+  have hstate := RunTrace.upTo_state_of_le (tr := tr) (y := v) hrun.time_mono
+    (le_refl (tr.time (j' + 1)))
+  have hreach := Compose.fg_reachable hret hv (j' + 1)
+  rw [hstate] at hreach
+  have hCt : C ∈ st.tree := by
+    have hri := hr.upTo (hr.time_nonneg j')
+    have hpc' := (Trace.upTo_callAt _).mpr ⟨le_rfl, hpc⟩
+    obtain ⟨Φp, tp, hreachA, htp, hok⟩ := pre_reachable hri hv' hpc'
+    have hΦ : ℓ.frame = Φp := by
+      have h := hok.2
+      rw [hto] at h
+      exact h
+    have hsrc := ((SA.interface_requirements sp _ ro).2.1 v _ hU _ _ _ hreachA)
+      (tr.time j') htp C (by
+        rw [Trace.upTo_state tr.projAC v (fun k hk => hr.time_mono hk.le),
+          state (by omega), ← hΦ]
+        exact hC)
+    have hCf : C ∈ ℓ.frame.tree := hΦ ▸ hsrc.1
+    rw [(hrun.cutLaw v j' _ hc' hv').1] at hCf
+    change C ∈ st.tree
+    rw [hfgeq]
+    exact hCf.1
+  have hcut := (hrun.cutLaw v (j' + 1) _ hcall hv).1
+  have hT : a.T = (st.σ (st.σ C.root).Th).Th := Compose.createAtt_T hcut
+  obtain ⟨⟨E, hE, hEr, hEC, _, hETh⟩, _, _⟩ :=
+    Store.entry_state_of_source sp.toParams (Payload sp.n) _ st hreach C hCt
+  have hTE : a.T = E.root := by rw [hT, ← hEr, hETh, hEr]
+  intro E' hE' hEq
+  obtain ⟨hnc, y, jy, hy, _, hanc, hne⟩ := hE'
+  have hE'U := (Anc.mem hanc hne.symm).2
+  have hEE : E' = E := hU.1 hE'U (hsub hE) (hEq.symm.trans hTE)
+  subst hEE
+  apply hnc
+  have hEC' := Anc.mono hsub hEC
+  rcases hCB with h | h
+  · exact Or.inl (hEC'.trans h)
+  · exact SA.anc_total hU hEC' h
 
 end Consensus.Goldilocks.Compose.Growing
 
