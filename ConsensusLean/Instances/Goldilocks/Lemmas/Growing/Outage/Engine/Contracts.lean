@@ -6,41 +6,27 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PoolD
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 
 public section
 
-/-! # Outage engine part: the sleepy results it consumes (stand-ins)
+/-! # Outage engine part: the engine sleepy results it consumes (stand-ins)
 
-The growing-fault sleepy results the outage engine part consumes, stated with their agreed names
-and shapes and left open here until the layers that own them prove them; this module is deleted
-then, and its importers import the owning modules instead. The simulation inputs (the run
+The growing-fault engine sleepy results the outage engine part consumes, stated with their agreed
+names and shapes and left open here until the layers that own them prove them; this module is
+deleted then, and its importers import the owning modules instead. The simulation inputs (the run
 `simTraceAt_goldilocksRun`, `noCollRun_simTraceAt`, `receiverServiceAfterAt_of_psync`,
-`outage_pool_delivery_at`) and the network input `sleepyServiceBefore_of_syncUntil_at` are
-proved in their own modules and re-exported here.
+`outage_pool_delivery_at`), the network input `sleepyServiceBefore_of_syncUntil_at` and the
+node layer's `Compose.Growing.sleepy_invariant_at` (`Sleepy/Node/Induction`) are proved in their
+own modules and re-exported here.
 
-* `Compose.Growing.sleepy_invariant_at`: the finite service and the two count shapes through
-  `b ≥ 0` give the Sleepy record invariant up to `b`;
 * `Obligations.Growing.ready_read_cut_at`: for an engine node ready at `t ∈ [0, horizon]`, the
   trace cut of the end-of-`t` engine cut is after `t`, a boundary of the node, with stored clock
   `t`;
 * `Obligations.Growing.sleepy_bounds_at`: the L0 sleepy budget with look-ahead `5Δ` on `[0, b]`,
   `b ≤ horizon`, gives the two count shapes through `b` on the canonical trace. -/
-
-namespace Consensus.Goldilocks.Compose.Growing
-
-open SA (SAParams ReplayOrder Payload)
-
-theorem sleepy_invariant_at {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {ΔF b : Time}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) :
-    SleepyInvariantUpTo tr H b := by
-  sorry
-
-end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
