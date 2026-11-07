@@ -144,6 +144,16 @@ later than `Φ`. -/
 def WeightInv (U : Set (Blk sp.n FGP)) (Φ : Frm sp.n FGP) (X : WState sp.n) : Prop :=
   (∀ w ∈ X.wlocks, WrittenBefore sp U Φ w.weight) ∧ ∀ i, SavedBefore sp U Φ (X.counts i)
 
+theorem weightInv_iff (U : Set (Blk sp.n FGP)) (Φ : Frm sp.n FGP) (X : WState sp.n) :
+    WeightInv sp U Φ X ↔
+      (∀ w ∈ X.wlocks, WrittenBefore sp U Φ w.weight) ∧ ∀ i, SavedBefore sp U Φ (X.counts i) :=
+  Iff.rfl
+
+/-- No saved count. -/
+theorem savedBefore_zero (U : Set (Blk sp.n FGP)) (Φ : Frm sp.n FGP) :
+    SavedBefore sp U Φ (fun _ => 0) :=
+  Or.inl rfl
+
 theorem WrittenBefore.later {U : Set (Blk sp.n FGP)} {Φ Φ' : Frm sp.n FGP} {g : Nat → Nat}
     (h : WrittenBefore sp U Φ g) (hF : Anc U Φ.F Φ'.F) : WrittenBefore sp U Φ' g := by
   obtain ⟨Φ₀, h₁, h₂, h₃, h₄⟩ := h
