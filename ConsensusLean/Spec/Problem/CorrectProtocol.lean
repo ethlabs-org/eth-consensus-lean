@@ -209,13 +209,15 @@ def OutageActive (c D T b₀ b₁ : Time) (p : EnvPoint V) : Prop :=
 
 /-- Faults grow inside the active part of a run and the dynamic scopes are
 exercised: `u` is ready at `t₁` (a read that stays protected) and was submitted
-`x` while honest and awake at `τ ≤ t₁`; `u` is compromised at `κ`, with `t₁ < κ`
+`x` while honest and awake at `τ ≤ t₁`; `u` is compromised at `κ`, with
+`t₁ < κ < τ + ΔAC` (before dissemination)
 (so `faultyAt 0 ⊊ faultyAt κ`); `u` is the only node `x` is submitted to; a
 *different* `w` is ready at `t₁` and at a deadline `t' ≥ max τ start + ΔAC + D` with
 `κ ≤ t' ≤ horizon` (the transaction stays owed after its only source is
 compromised, and `w` reads after `u`'s compromise). -/
 def GrowthActive (c start D : Time) (p : EnvPoint V) : Prop :=
-  ∃ (u w : V) (x : Tx) (τ t₁ κ t' : Time), u ≠ w ∧ 0 ≤ τ ∧ τ ≤ t₁ ∧ t₁ < κ ∧ κ ≤ t' ∧
+  ∃ (u w : V) (x : Tx) (τ t₁ κ t' : Time), u ≠ w ∧ 0 ≤ τ ∧ τ ≤ t₁ ∧ t₁ < κ ∧
+    κ < τ + p.env.ΔAC ∧ κ ≤ t' ∧
     t' ≤ p.horizon ∧ max τ start + p.env.ΔAC + D ≤ t' ∧ p.Ready c u t₁ ∧
     p.env.awake u τ = true ∧ x ∈ p.submit u τ ∧ (∀ v s, x ∈ p.submit v s → v = u) ∧
     u ∉ p.faultyAt 0 ∧ u ∈ p.faultyAt κ ∧ p.Ready c w t₁ ∧ p.Ready c w t'
