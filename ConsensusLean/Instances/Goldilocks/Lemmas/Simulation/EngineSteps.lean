@@ -668,7 +668,7 @@ theorem lastClock_of_deliver (hv : rho.ExecutionValid) (v : V) {i : Nat}
   have hw := hv.deliver_awake v o t hmem
   have hh := hv.in_horizon _ hmem
   simp only [Model.Event.node, Model.Event.time] at hhon hh
-  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.1 (hv.tick_total v hhon t hh.1 hh.2 hw)
+  obtain ⟨j, hj⟩ := List.mem_iff_getElem?.1 (hv.tick_total v t hh.1 hh.2 hhon hw)
   have hji : j < i := by
     rcases lt_trichotomy j i with h | rfl | h
     · exact h
@@ -763,7 +763,7 @@ theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
 /-- **`Simulates.deliver`'s node step.** An engine delivery to an honest node runs the handlers of
 the delivered canonical objects in order on the node state before it, with the digests the engine
 passes. -/
-theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.honest) (i : Nat)
+theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (t : Time)
     (he : rho.events[i]? = some (.deliver v o t)) :
     (stateAt S rho hn v (i + 1)).node =
@@ -786,7 +786,7 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.hone
 
 /-- **`Simulates.restart`'s node step.** An engine restart of an honest node runs the node's restart
 on the node state before it. -/
-theorem node_of_restart (_hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.honest) (i : Nat)
+theorem node_of_restart (_hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.restart v t)) :
     (stateAt S rho hn v (i + 1)).node =
       (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
@@ -1298,7 +1298,7 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
 
 /-- **`Simulates.tick`'s node step at a non-public time.** An engine tick at a non-public time
 leaves the node state unchanged: no slot starts, so no proposal, and the FG update is not due. -/
-theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∈ rho.honest)
+theorem node_of_tick_other (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faultyAt 0)
     (i : Nat)
     (t : Time) (he : rho.events[i]? = some (.tick v t))
     (hp : ¬ (S.params (pubOf E) hn).toParams.IsPublic t) :

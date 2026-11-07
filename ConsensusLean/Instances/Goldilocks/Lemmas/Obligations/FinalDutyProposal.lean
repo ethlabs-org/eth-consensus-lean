@@ -34,11 +34,11 @@ theorem final_catchUp_le_cDur (Q : FinalQuery S A V) :
 `t_s ≤ horizon` gives the run proposer's actual proposal `P` of slot `s` at a cut of time `t_s`,
 accepted by its proposer, ready there for the query's catch-up duration, and an
 `HonestProposalRun`. -/
-theorem final_duty_proposal_run (Q : FinalQuery S A V) {s : Nat} (hs : 0 < s)
+theorem final_duty_proposal_run (Q : FinalQuery S A V) {s : Nat} {hold : Time} (hs : 0 < s)
     (hth : Q.params.ts s ≤ Q.run.2.horizon)
     (hduty : HonestReadyIn Q.run.2.point Q.run.2.key (fun s => Q.run.2.sel (.proposer s)) s
       ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s)) :
+      ((goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s) hold) :
     ∃ k P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P ∧
       Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn s) k P ∧
@@ -46,7 +46,7 @@ theorem final_duty_proposal_run (Q : FinalQuery S A V) {s : Nat} (hs : 0 < s)
       Q.trace.time k = Q.params.ts s ∧ P.slot = s ∧
       Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) ((Sys (goldilocks S) V).cDur (K S A) Q.run)
         (runProposer S Q.run.2 Q.hn s) (Q.params.ts s) :=
-  duty_proposal_run S A V Q.run Q.hn Q.valid Q.noCollision hs hth hduty
+  duty_proposal_run S A V Q.run Q.hn Q.constant Q.valid Q.noCollision hs hth hduty
 
 end Consensus.Goldilocks.Obligations
 

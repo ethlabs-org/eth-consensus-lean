@@ -137,13 +137,13 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
   /-- Every labelled node cut lies in the range of some engine event. -/
   covered : ∀ k, tr.label k ≠ none → ∃ i < rho.events.length, ι i ≤ k ∧ k < ι (i + 1)
   /-- The node state inside the shape's state is the trace's state at the mapped cut. -/
-  state : ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+  state : ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
     (stateAt S rho hn v i).node = tr.state (rho.ownKey v) (ι i)
   /-- The shape's clock is the time of the node's last tick or restart. -/
   now : ∀ v i, (stateAt S rho hn v i).now = lastClock S rho v i
   /-- An engine tick of an honest node at a public time is the node's tick with the engine's
   input (the encoded mempool), one group. -/
-  tick_public : ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.tick v t) →
+  tick_public : ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
     (S.params (pubOf E) hn).toParams.IsPublic t →
       tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t
           (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
@@ -151,16 +151,16 @@ structure Simulates (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (ι 
           (tr.state (rho.ownKey v) (ι i)) t
           (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length
   /-- An engine tick at a non-public time has no cut. -/
-  tick_other : ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.tick v t) →
+  tick_other : ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
     ¬ (S.params (pubOf E) hn).toParams.IsPublic t → ι (i + 1) = ι i
   /-- An engine delivery to an honest node is the groups of the canonical objects it delivers,
   in order, with the digests the engine passes. -/
-  deliver : ∀ v ∈ rho.honest, ∀ i o t, rho.events[i]? = some (.deliver v o t) →
+  deliver : ∀ v, v ∉ rho.faultyAt 0 → ∀ i o t, rho.events[i]? = some (.deliver v o t) →
     DeliverSeq (runProposer S rho hn) tr (digestOf S rho)
       (Model.digests rho.hash o) (rho.ownKey v) t
       (delivered (S.params (pubOf E) hn) o) (ι i) (ι (i + 1))
   /-- An engine restart of an honest node is the node's restart group. -/
-  restart : ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.restart v t) →
+  restart : ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.restart v t) →
     tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t .restart ∧
       ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (tr.state (rho.ownKey v) (ι i)) t .restart).2.length
@@ -206,7 +206,7 @@ variable (V) in
 is simulated by a run of the spec's node. -/
 def EngineSimulatesNode : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι
+    rho.point.ConstantFaults → rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι
 
 variable (V) in
 /-- **Reads are the shape's outputs.** The chain trace of a run reads, at every cut, the output
@@ -228,7 +228,7 @@ are not covered: their simulation laws do not identify every occurrence with an 
 Tagged roots exclude genesis without an additional premise. -/
 def NoCollTransport : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → ¬ rho.HashCollision →
+    rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
       Compose.NoCollRun (digestOf S rho) (simTrace S rho hn)
 
 /-- **G1.5 (a), `conflicts` is E1/E2.** The instance's slashing rule holds of two objects exactly
@@ -242,8 +242,9 @@ variable (V) in
 at a cut is in that node's view at the cut, as its canonical object (every header of the read is
 of a block the node processed, whose object carries its payload's objects). -/
 def EvidenceInView : Prop :=
-  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E), rho.ExecutionValid →
-    ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+  ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E),
+    rho.point.ConstantFaults → rho.ExecutionValid →
+    ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
       ∀ h ∈ (chainTrace rho).read .finalized v i, ∀ atts (p : Payload (Fintype.card V)),
         decodeInfo (Fintype.card V) h.info = some (atts, p) →
           ∀ a ∈ atts, attObj a ∈ rho.ViewIdx v i
@@ -262,8 +263,9 @@ weaker than G1.5's: the slashable pairs may come from viewed attestations on nei
 chain-restricted statement would be a separate proposal. -/
 def FinalizedAccountable : Prop :=
   ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-    rho.ExecutionValid → ¬ rho.HashCollision →
-    ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
+    rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
+    ∀ u, u ∉ rho.faultyAt 0 → ∀ v, v ∉ rho.faultyAt 0 →
+      ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
       Consensus.Compatible ((chainTrace rho).read .finalized u i)
           ((chainTrace rho).read .finalized v j) ∨
         2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤
@@ -302,7 +304,7 @@ variable (V) in
 /-- Every valid engine run has a simulating node run. -/
 theorem engineSimulatesNode_iff : EngineSimulatesNode V S ↔
     ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι := by rfl
+      rho.point.ConstantFaults → rho.ExecutionValid → ∃ tr ι, Simulates S rho hn tr ι := by rfl
 
 variable (V) in
 /-- Engine reads are exactly the embedded node's outputs. -/
@@ -320,7 +322,7 @@ variable (V) in
 /-- Collision transport targets the canonical trace, not an arbitrary simulation. -/
 theorem noCollTransport_iff : NoCollTransport V S ↔
     ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.ExecutionValid → ¬ rho.HashCollision →
+      rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
         Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by rfl
 
 /-- Conflicts are exactly canonical slashable attestation pairs. -/
@@ -333,8 +335,9 @@ theorem conflictsIff_iff : ConflictsIff ↔
 variable (V) in
 /-- Finalized attestations are in the reader's engine view. -/
 theorem evidenceInView_iff : EvidenceInView V S ↔
-    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E), rho.ExecutionValid →
-      ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+    ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E),
+      rho.point.ConstantFaults → rho.ExecutionValid →
+      ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
         ∀ h ∈ (chainTrace rho).read .finalized v i, ∀ atts (p : Payload (Fintype.card V)),
           decodeInfo (Fintype.card V) h.info = some (atts, p) →
             ∀ a ∈ atts, attObj a ∈ rho.ViewIdx v i := by rfl
@@ -343,8 +346,9 @@ variable (V) in
 /-- Incompatible finalized reads convict the threshold from the union of the views. -/
 theorem finalizedAccountable_iff : FinalizedAccountable V S ↔
     ∀ (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V),
-      rho.ExecutionValid → ¬ rho.HashCollision →
-      ∀ u ∈ rho.honest, ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
+      rho.point.ConstantFaults → rho.ExecutionValid → ¬ rho.HashCollision →
+      ∀ u, u ∉ rho.faultyAt 0 → ∀ v, v ∉ rho.faultyAt 0 →
+        ∀ i ≤ rho.events.length, ∀ j ≤ rho.events.length,
         Consensus.Compatible ((chainTrace rho).read .finalized u i)
             ((chainTrace rho).read .finalized v j) ∨
           2 * (S.params (pubOf E) hn).toParams.q - Fintype.card V ≤

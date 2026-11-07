@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -84,7 +85,7 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
   have hb₁ := stop_nonneg S A V Q
   have hdur := duration_ge S A V Q
   have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have hts (n : Int) : sp.ts n = 4 * sp.Δ * n := rfl
   have ht0 : 0 ≤ t := by linarith
   -- E0: the reader is ready on the node trace
@@ -133,7 +134,7 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
     rw [Compose.projAC_state hrun.toLocalRun hy c₁, ht₁]
     exact hj₁
   -- E4: the read cut is after the gate
-  obtain ⟨hread, -, -⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid
+  obtain ⟨hread, -, -⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid
     (by rw [hcu] at hdur; linarith) ht0 hth hw
   have hc₁j : c₁ < j := by
     by_contra hh
@@ -198,10 +199,12 @@ theorem outage_reader_prefix (Q : OutageQuery S A V) {v : V}
   have hc : 0 ≤ Q.duration := le_trans (by
     change (0 : Time) ≤ 18 * Q.params.Δ
     have := Q.params.toParams.hΔ; positivity) (duration_ge S A V Q)
-  obtain ⟨-, -, hvT⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid hc hT0 (hTt.trans hth) hv
-  obtain ⟨-, -, hwt⟩ := ready_read_cut S Q.run.2 Q.hn Q.valid hc (hT0.trans hTt) hth hw
-  refine confirmed_prefix_of_anc (simTrace_simulates S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hv.1 hw.1
+  obtain ⟨-, -, hvT⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid hc hT0 (hTt.trans hth) hv
+  obtain ⟨-, -, hwt⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid hc (hT0.trans hTt) hth hw
+  refine confirmed_prefix_of_anc (simTrace_simulates S Q.run.2 Q.hn Q.constant Q.valid)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hv.1)
+    ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp hw.1)
     (Nat.findGreatest_le _) (Nat.findGreatest_le _) ?_
   rw [hvT, hwt]
   exact h

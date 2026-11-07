@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 
 import ConsensusLean.Lemmas.Model.SysLog
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -19,6 +20,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type)
 
 structure OutageQuery where
   run : (Sys (goldilocks S) V).Run
+  constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   T : Time
   start : Time
@@ -45,8 +47,8 @@ theorem outage_pre_service (Q : OutageQuery S A V) :
   have hnet : Q.run.2.log.SyncUntil Q.run.2.point b :=
     CommLog.Delivers.reindex h0 (f := id) (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl)
       (min_le_left _ _)
-  have service := sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+  have service := sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.constant Q.valid
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
     (min_le_right Q.start Q.run.2.horizon) hnet
   have bound {y j} (hj : Q.trace.IsCall y j) : Q.trace.time j ≤ Q.run.2.horizon := by
     obtain ⟨l, hl⟩ := hj
@@ -93,8 +95,9 @@ theorem outage_arm (Q : OutageQuery S A V)
   let st := Q.trace.state (Q.run.2.ownKey v) j
   let Φ := Node.frame st
   have hi : i ≤ Q.run.2.events.length := Nat.findGreatest_le _
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hy := honest_ownKey (S := S) hv.1
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
+  have hh := (Q.run.2.point.honestAt_iff_zero Q.constant v Q.T).mp hv.1
+  have hy := honest_ownKey (S := S) hh
   have hr := Compose.fg_reachable hrun.toLocalRun hy j
   have hΦ : FrameOK Φ := (Store.frame_realization _ _ _ _ hr).1
   let R := (SA.lookup Φ st.ac.latestConfirmed).getD Φ.F
@@ -117,7 +120,7 @@ theorem outage_arm (Q : OutageQuery S A V)
   refine ⟨⟨R, hR, hrecord, ?_⟩⟩
   change (chainTrace Q.run.2).read .confirmed v i <+: _
   rw [read_eq_out S Q.run.2 Q.hn, outOf,
-    simTrace_state S Q.run.2 Q.hn Q.valid v hv.1 i hi]
+    simTrace_state S Q.run.2 Q.hn Q.constant Q.valid v hh i hi]
   exact chainTo_prefix hr ((hanc (stateAt S Q.run.2 Q.hn v i).now).mono (fun _ h => h.1))
 
 end Consensus.Goldilocks.Obligations

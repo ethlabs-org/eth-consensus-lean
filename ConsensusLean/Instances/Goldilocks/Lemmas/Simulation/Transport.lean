@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -55,10 +56,12 @@ For every emitted header `mem_chainTo` supplies a held non-genesis block; `held_
 supplies its signed proposer-role object. No global root injectivity is used: coherence is
 local to this store. Empty V is vacuous. Status: argument complete for the current encoding;
 tagged-root changes must re-establish the parent/hash conversion identities. -/
-theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho g := by
-  intro v hv' i hi
+theorem engine_outputValid (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    (g : Out) : OutputValid rho g := by
+  intro v i hi hv'
+  have hv' : v ∉ rho.faultyAt 0 := (rho.point.honestAt_iff_zero hf v _).mp hv'
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  have hs := simTrace_simulates S rho hn hv
+  have hs := simTrace_simulates S rho hn hf hv
   have hy := honest_ownKey (S := S) hv'
   have hr := Compose.fg_reachable hs.run.toLocalRun hy (cutMap S rho hn i)
   have hhash : ∀ X ∈ ((simTrace S rho hn).state (rho.ownKey v)
@@ -87,7 +90,7 @@ theorem engine_outputValid (hv : rho.ExecutionValid) (g : Out) : OutputValid rho
     refine ⟨hstruct.1, hstruct.2, ?_⟩
     intro h hh
     obtain ⟨X, hX, _, hg, rfl⟩ := mem_chainTo hr hB hh
-    exact ⟨X.proposer, .proposer X.slot, _, rfl, held_in_view S rho hn hv hv' hX hg⟩
+    exact ⟨X.proposer, .proposer X.slot, _, rfl, held_in_view S rho hn hf hv hv' hX hg⟩
   rw [read_eq_out S rho hn]
   simp only [outOf, hs.state v hv' i hi]
   cases g with
@@ -102,11 +105,11 @@ Paper argument: fix a reader, obtain `n ≥ 1`, instantiate `simTrace_simulates`
 `outputs_nested` at the bounded engine cut. That proved bridge uses the actual shape clock
 and `chainTo_prefix`; no identification with the next cut's time is necessary.
 Status: proved relative to simulation. -/
-theorem engine_nested (hv : rho.ExecutionValid) :
+theorem engine_nested (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     (chainTrace rho).Nested .finalized .confirmed := by
-  intro v hv' i hi
+  intro v i hi hv'
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  exact outputs_nested (simTrace_simulates S rho hn hv) v hv' i hi
+  exact outputs_nested hf (simTrace_simulates S rho hn hf hv) v i hi hv'
 
 /-- CLAIMS R.8/C0.2: simulation's monotone cut map and `finalized_monotone` transport the
 durable finalized chain across ticks, deliveries and restarts. No collision escape.
@@ -114,11 +117,11 @@ Paper argument: a quantified reader supplies `n ≥ 1`. Instantiate `simTrace_si
 apply the proved `finalized_monotone` bridge: node monotonicity at the ordered mapped cuts,
 store-growth preservation of the earlier chain, then ancestry-to-prefix. `InCuts` supplies
 both read bounds. Empty V is vacuous. Status: argument complete relative to simulation. -/
-theorem engine_finalMonotone (hv : rho.ExecutionValid) :
+theorem engine_finalMonotone (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     (chainTrace rho).Monotone .finalized 0 := by
   intro v i j hi hij hj hv' hv''
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  exact finalized_monotone (simTrace_simulates S rho hn hv) v i j hi hij hj hv' hv''
+  exact finalized_monotone (simTrace_simulates S rho hn hf hv) v i j hi hij hj hv' hv''
 
 /-- CLAIMS F.3/§Premises, SPEC §Blocks: each occurring block's header is observed; equal
 non-genesis digests reduce to equal observed headers and the encoding is injective. Genesis
@@ -141,12 +144,14 @@ then places the canonical block object in the final engine view without acceptan
 The target no longer quantifies arbitrary simulation witnesses, whose laws do not supply
 this provenance.
 Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurrence coverage. -/
-theorem noCollRun_simTrace (hv : rho.ExecutionValid) (hnc : ¬ rho.HashCollision) :
+theorem noCollRun_simTrace (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    (hnc : ¬ rho.HashCollision) :
     Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by
   have hocc (B : Blk (S.params (pubOf E) hn)) (hB : (simTrace S rho hn).Occurs B) :
       B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B) := by
-    obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hv hB
-    exact ⟨hp, blockObj _ B, ⟨v, hv', hb⟩, rfl⟩
+    obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hf hv hB
+    exact ⟨hp, blockObj _ B, ⟨v, rho.events.length, le_rfl,
+      (rho.point.honestAt_iff_zero hf v _).mpr hv', hb⟩, rfl⟩
   intro B hB C hC heq
   simp only [digestOf_eq] at heq
   simp only [dgOf_eq (n := Fintype.card V) rho.hash S.genesisRoot] at heq
@@ -200,16 +205,16 @@ coherence identifies every union-path predecessor, so A and its chain occur as a
 there. Compare with A's reader using the shared-tip result. Handle either ancestry direction
 and use `read_finalized` at the bounded cuts. Status: argument complete relative to coherent
 honest blocks; the cross-store parent-walk lemma is proved. -/
-theorem compatible_reads (hv : rho.ExecutionValid)
+theorem compatible_reads (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    {u v : V} (hu : u ∈ rho.honest) (hv' : v ∈ rho.honest) {i j : Nat}
+    {u v : V} (hu : u ∉ rho.faultyAt 0) (hv' : v ∉ rho.faultyAt 0) {i j : Nat}
     (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (hc : Compatible ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
       ((simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i))
       ((simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j))) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
       ((chainTrace rho).read .finalized v j) := by
-  have hs := simTrace_simulates S rho hn hv
+  have hs := simTrace_simulates S rho hn hf hv
   have hu' := honest_ownKey (S := S) hu
   have hv'' := honest_ownKey (S := S) hv'
   have hri := Compose.fg_reachable hs.run.toLocalRun hu' (cutMap S rho hn i)
@@ -288,9 +293,9 @@ those blocks. Each `ChainAtts` membership includes a held block Y containing the
 `held_att_in_view` places it in the appropriate reader's view, hence in their union. Apply
 `convicted_count` to W and compose the bounds. X₁,X₂ need not be finalized ancestors.
 Status: argument complete relative to the named simulation/evidence/compatibility bridges. -/
-theorem final_accountable_of_noColl (hv : rho.ExecutionValid)
+theorem final_accountable_of_noColl (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
-    {u v : V} (hu : u ∈ rho.honest) (hv' : v ∈ rho.honest) {i j : Nat}
+    {u v : V} (hu : u ∉ rho.faultyAt 0) (hv' : v ∉ rho.faultyAt 0) {i j : Nat}
     (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length) :
     Consensus.Compatible ((chainTrace rho).read .finalized u i)
         ((chainTrace rho).read .finalized v j) ∨
@@ -300,18 +305,18 @@ theorem final_accountable_of_noColl (hv : rho.ExecutionValid)
   by_cases hc : Compatible ((simTrace S rho hn).HonestBlocks (honestKeys S rho))
       ((simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i))
       ((simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j))
-  · exact Or.inl (compatible_reads S rho hn hv hnc hu hv' hi hj hc)
+  · exact Or.inl (compatible_reads S rho hn hf hv hnc hu hv' hi hj hc)
   · right
     obtain ⟨X, _, Y, _, W, hW, hw⟩ := Regimes.final_accountable _ _ _ _ _ _
-      (simTrace_goldilocksRun S rho hn hv) hnc _ (honest_ownKey (S := S) hu)
+      (simTrace_goldilocksRun S rho hn hf hv) hnc _ (honest_ownKey (S := S) hu)
       _ (honest_ownKey (S := S) hv') _ _ hc
     have hmem : ∀ a ∈ Regimes.ChainAtts (simTrace S rho hn) (rho.ownKey u)
         (cutMap S rho hn i) X ∪ Regimes.ChainAtts (simTrace S rho hn) (rho.ownKey v)
         (cutMap S rho hn j) Y, attObj a ∈ rho.ViewIdx u i ∪ rho.ViewIdx v j := by
       intro a ha
       rcases ha with ⟨B, hB, _, ha⟩ | ⟨B, hB, _, ha⟩
-      · exact Or.inl (held_att_in_view S rho hn hv hu hB ha)
-      · exact Or.inr (held_att_in_view S rho hn hv hv' hB ha)
+      · exact Or.inl (held_att_in_view S rho hn hf hv hu hB ha)
+      · exact Or.inr (held_att_in_view S rho hn hf hv hv' hB ha)
     refine hW.trans (convicted_count S rho W ?_)
     intro k hk
     obtain ⟨a, ha, b, hb, hak, hab⟩ := hw k hk
@@ -325,9 +330,9 @@ Paper reduction: choose the canonical simulation, obtain its `NoCollRun` using
 Canonical collision transport is proved. No freshness premise remains. -/
 theorem finalizedAccountable : FinalizedAccountable V S := by
   rw [finalizedAccountable_iff]
-  intro E rho hn hv hnc u hu v hv' i hi j hj
-  exact final_accountable_of_noColl S rho hn hv
-    (noCollRun_simTrace S rho hn hv hnc)
+  intro E rho hn hf hv hnc u hu v hv' i hi j hj
+  exact final_accountable_of_noColl S rho hn hf hv
+    (noCollRun_simTrace S rho hn hf hv hnc)
     hu hv' hi hj
 
 section Claims
@@ -341,9 +346,10 @@ the valid-run hypothesis is `ExecutionValid`. Apply `engine_outputValid` to the 
 it covers both outputs, so the capability lookup hypothesis needs no additional reasoning.
 Status: argument complete relative to `engine_outputValid`. -/
 theorem shape_outputValid : (Sys (goldilocks S) V).HoldsAlways
-    (fun r => ∀ c g, schema.output c = some g → OutputValid r.2 g) := by
-  intro r hv c g _
-  exact engine_outputValid S r.2 hv g
+    (fun r => r.2.point.ConstantFaults → ∀ c g,
+      schema.output c = some g → OutputValid r.2 g) := by
+  intro r hv hf c g _
+  exact engine_outputValid S r.2 hf hv g
 
 /-- R.8 nesting, exact second `ShapeClaimsAt` field. Paper argument for the engine bridge:
 the schema aliases available/stable to confirmed and maps final to finalized; the only
@@ -353,26 +359,28 @@ stable/available compare confirmed with itself by reflexive prefix. Lookup equal
 g₁,g₂, and `HoldsAlways` supplies execution validity. Status: argument complete. -/
 theorem shape_nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
     schema.output c₁ = some g₁ → schema.output c₂ = some g₂ →
-      (Sys (goldilocks S) V).HoldsAlways (fun r => (chainTrace r.2).Nested g₁ g₂) := by
-  intro c₁ c₂ g₁ g₂ hr h₁ h₂ r hv
+      (Sys (goldilocks S) V).HoldsAlways (fun r => r.2.point.ConstantFaults →
+        (chainTrace r.2).Nested g₁ g₂) := by
+  intro c₁ c₂ g₁ g₂ hr h₁ h₂ r hv hf
   cases c₁ <;> cases c₂ <;> simp only [Capability.rank] at hr <;> try omega
   all_goals have he₁ := Option.some.inj h₁
   all_goals have he₂ := Option.some.inj h₂
   all_goals cases he₁; cases he₂
   · intro v _ i _
     exact ⟨[], by simp⟩
-  · exact engine_nested S r.2 hv
-  · exact engine_nested S r.2 hv
+  · exact engine_nested S r.2 hf hv
+  · exact engine_nested S r.2 hf hv
 
 /-- R.8 final monotonicity, exact third `ShapeClaimsAt` field. Paper argument: the lookup
 equality forces g=finalized. Unfold `HoldsAlways` to obtain execution validity, then apply
 `engine_finalMonotone`. No extra regime or collision premise. Status: argument complete. -/
 theorem shape_finalMonotone : ∀ g, schema.output .final = some g →
-    (Sys (goldilocks S) V).HoldsAlways (fun r => (chainTrace r.2).Monotone g 0) := by
-  intro g hg r hv
+    (Sys (goldilocks S) V).HoldsAlways (fun r => r.2.point.ConstantFaults →
+      (chainTrace r.2).Monotone g 0) := by
+  intro g hg r hv hf
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
-  exact engine_finalMonotone S r.2 hv
+  exact engine_finalMonotone S r.2 hf hv
 
 /-- R.7/G1.1/G1.5, exact fourth `ShapeClaimsAt` field for any contract with `α ≤ 1/3`.
 Paper reduction for the engine bridge: `q = ceil(2n/3)` gives `n/3 ≤ 2q−n`, and key
@@ -385,18 +393,21 @@ pair of honest reads. Write n=3m+r with r=0,1,2: `2q−n` is respectively m,m+1,
 rational cast is at least n/3. Since n≥0 and α≤1/3, nα≤n/3, which gives the exact field.
 Empty V has no honest reader and is vacuous. The assembly and arithmetic are proved. -/
 theorem shape_finalAccountable (K : Contract ProgressReq) (hα : K.params.α ≤ 1 / 3) :
-    ∀ g, schema.output .final = some g → (Sys (goldilocks S) V).Holds (fun _ => True)
+    ∀ g, schema.output .final = some g →
+      (Sys (goldilocks S) V).Holds (fun r => r.2.point.ConstantFaults)
       (fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0) := by
-  intro g hg r hv _
+  intro g hg r hv hf
   have hg' : g = .finalized := (Option.some.inj hg).symm
   subst g
   by_cases hc : r.2.HashCollision
   · exact Or.inr hc
   left
-  intro u hu v hv' i j hi hj
+  intro u v i j hi hj hu hv'
+  have hu : u ∉ r.2.faultyAt 0 := (r.2.point.honestAt_iff_zero hf u _).mp hu
+  have hv' : v ∉ r.2.faultyAt 0 := (r.2.point.honestAt_iff_zero hf v _).mp hv'
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨u⟩
   rcases (finalizedAccountable_iff V S).mp (finalizedAccountable V S)
-      r.1 r.2 hn hv hc u hu v hv' i hi.1 j hj.1 with h | h
+      r.1 r.2 hn hf hv hc u hu v hv' i hi.1 j hj.1 with h | h
   · exact Or.inl h
   right
   have hq : Fintype.card V ≤

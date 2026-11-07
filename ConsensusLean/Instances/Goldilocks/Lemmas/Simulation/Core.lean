@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -517,7 +518,7 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
 /-- A poll with at most one ordinary pending body releases its vote queue when
 each dependency is held or pending. The FG update appends only an attestation. -/
 theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat}
+    (hv' : v ∉ rho.faultyAt 0) {i p : Nat}
     {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) (t : Nat)
     (hlen : (shapeOf S hn nd).outbox.length ≤ 1)
@@ -563,8 +564,8 @@ theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
 
 /-- At an actual tick prefix with at most one pending ordinary body, a poll
 releases every queued vote envelope. Holdings are supplied by reachable inventory. -/
-theorem tick_prefix_voteForward_poll (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i p : Nat} {t : Time}
+theorem tick_prefix_voteForward_poll (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0) {i p : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
     (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length) :
     let nd := (rho.runDuties v
@@ -579,7 +580,7 @@ theorem tick_prefix_voteForward_poll (hv : rho.ExecutionValid) {v : V}
   intro nd hlen
   apply dutyStep_poll_voteForward_of_available S rho hn hv hv' (.tick he hw hp) t.toNat hlen
   intro q hq
-  apply tick_prefix_pool_available S rho hn hv hv' he hw hp q.2.slot q.2
+  apply tick_prefix_pool_available S rho hn hconst hv hv' he hw hp q.2.slot q.2
   apply runDuties_voteForward_in_pool S rho hn v _ _ ?_ q hq
   intro r hr
   change r ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hr
@@ -589,8 +590,8 @@ theorem tick_prefix_voteForward_poll (hv : rho.ExecutionValid) {v : V}
 
 /-- The tick's first trailing poll has the required one-body bound and releases
 all vote envelopes queued by the node tick and the optional own proposal. -/
-theorem tick_trailing_voteForward_poll (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+theorem tick_trailing_voteForward_poll (hconst : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.faultyAt 0) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) :
     let pre : List (Model.protoOf (compiled (goldilocks S)) E).Duty :=
       [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton (pubOf E)).proposeAt t
@@ -613,14 +614,14 @@ theorem tick_trailing_voteForward_poll (hv : rho.ExecutionValid) {v : V}
   have hlen : pre.length ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length := by
     rw [hd, List.length_append]
     omega
-  have h := tick_prefix_voteForward_poll S rho hn hv hv' he hw hlen
+  have h := tick_prefix_voteForward_poll S rho hn hconst hv hv' he hw hlen
   rw [htake] at h
   apply h
   dsimp only [nd, pre]
   erw [runDuties_fst_append]
   apply outbox_after_pre S rho hn v (stateAt S rho hn v i) t ht
     (fgDue_eq_false S rho hn v i)
-  · rw [outbox_empty S rho hn hv v hv' i]; simp
+  · rw [outbox_empty S rho hn hv v i]; simp
   · rw [stateAt_eq]
     exact pre_shape S rho hn v (rho.stateBefore i v) t (poll_selected S rho hv v)
 
@@ -664,8 +665,8 @@ theorem proposal_pool_insertion_queued (v : V)
     exact (dutyStep_propose_pres S rho hn Q hrec hprop v nd s hs ⟨rfl, hbase⟩).2
 
 /-- Envelopes queued before the tick's trailing polls are released by that tick. -/
-theorem tick_voteForward_released (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+theorem tick_voteForward_released (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) :
     let pre : List (Model.protoOf (compiled (goldilocks S)) E).Duty :=
       [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] ++ (skeleton (pubOf E)).proposeAt t
@@ -677,7 +678,7 @@ theorem tick_voteForward_released (hv : rho.ExecutionValid) {v : V}
         (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈ rho.releasesAt i := by
   intro pre nd q hq
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  have hrel := tick_trailing_voteForward_poll S rho hn hv hv' he q hq
+  have hrel := tick_trailing_voteForward_poll S rho hn hconst hv hv' he q hq
   simp only [Model.Run.releasesAt, he]
   rw [rho.tick_of_awake _ _ _ (hv.tick_awake v t (List.mem_of_getElem? he))]
   apply List.mem_append_left
@@ -689,8 +690,8 @@ theorem tick_voteForward_released (hv : rho.ExecutionValid) {v : V}
   exact duty_release_in_runDuties S rho v _ pre _ _ _ hrel
 
 /-- A tick's aggregate pool difference is queued before its trailing polls and released. -/
-theorem tick_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+theorem tick_pool_insertion_released (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (m : SA.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
@@ -723,14 +724,15 @@ theorem tick_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
     (atProposal S rho v (rho.stateBefore i v) t) t m
     (by rw [atProposal_now S rho hn v _ t hsel]; exact hbase) hpool
   rw [atProposal_now S rho hn v _ t hsel] at hq
-  apply tick_voteForward_released S rho hn hv hv' he (t, m)
+  apply tick_voteForward_released S rho hn hconst hv hv' he (t, m)
   erw [runDuties_fst_append]
   rw [atProposal_eq] at hq
   exact hq
 
 /-- Every envelope actually queued during delivery is released in that same engine event.
 Canonical dependencies are derived from reachable inventory and the actual ordinary prefix. -/
-theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
+theorem delivery_voteForward_released (hconst : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (tv : Time × SA.Vote (Fintype.card V))
@@ -759,7 +761,7 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
         (shapeOf S hn nd).outbox.head? = some (.vote (encodeVote q.2)) := by
     intro q hq
     rw [hshape]
-    exact delivery_voteForward_held_or_head S rho hn hv he q (hshape ▸ hq)
+    exact delivery_voteForward_held_or_head S rho hn hconst hv he q (hshape ▸ hq)
   have hrel : ∀ q ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
         (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
@@ -769,7 +771,8 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
     · push Not at hh
       obtain ⟨q, hq, hnot⟩ := hh
       have hhead := (hav q hq).resolve_left hnot
-      have hsign := delivery_outbox_vote_signer S rho hn hv hv' i o q.2
+      have hsign := delivery_outbox_vote_signer S rho hn hv
+        ((rho.point.honestAt_iff_zero hconst v t).mp hv') i o q.2
         (List.mem_of_mem_head? (Option.mem_def.mpr (hshape ▸ hhead)))
       apply dutyStep_poll_voteForward_of_own_vote S rho hn v nd t.toNat
         (poll_selected S rho hv v) hself q.2 hsign (by rw [hpre]; exact hhead)
@@ -790,7 +793,8 @@ theorem delivery_voteForward_released (hv : rho.ExecutionValid) {v : V}
 
 /-- A delivery's aggregate pool difference suffices for same-event forwarding,
 without identifying which nested message or block handler made the insertion. -/
-theorem delivery_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
+theorem delivery_pool_insertion_released (hconst : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (m : SA.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
@@ -801,12 +805,14 @@ theorem delivery_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
     (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
   have hnode : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node =
       (stateAt S rho hn v (i + 1)).node := by
-    rw [node_of_deliver S rho hn hv v (hv.honest_only _ (List.mem_of_getElem? he)) i o t he]
+    rw [node_of_deliver S rho hn hv v
+      ((rho.point.honestAt_iff_zero hconst v t).mp
+        (hv.honest_only _ (List.mem_of_getElem? he))) i o t he]
     unfold process
     erw [foldl_processOne_node (sp := S.params (pubOf E) hn) (ro := S.ro _)
       (runProposer S rho hn) (digestOf S rho)]
     rw [self_eq_ownKey, hnow]
-  apply delivery_voteForward_released S rho hn hv he (t, m)
+  apply delivery_voteForward_released S rho hn hconst hv he (t, m)
   rw [← hnow]
   unfold process
   exact foldl_processOne_pool_insertion_queued (sp := S.params (pubOf E) hn)
@@ -816,14 +822,14 @@ theorem delivery_pool_insertion_released (hv : rho.ExecutionValid) {v : V}
 
 /-- An honest emission cut cannot be a restart, even though `EmitAt` permits that call
 syntactically. This uses the actual cut law and the run's nonnegative clock. -/
-theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
+theorem simTrace_emission_not_restart (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho) {k : Nat}
     {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     (hc : (simTrace S rho hn).CallAt y k (.ac ℓ))
     {e : SA.Em (S.params (pubOf E) hn) (List (FG.Att (Fintype.card V)))}
     (he : e ∈ ℓ.emits) : ℓ.call ≠ .restart := by
   intro hr
-  have hrun := simTrace_goldilocksRun S rho hn hv
+  have hrun := simTrace_goldilocksRun S rho hn hconst hv
   have hstep := (hrun.cutLaw y hy k _ hc).2.1
   rw [hr] at hstep
   have hnil := restart_emits_nil (S.ro _) y (simTrace S rho hn |>.state y k).ac
@@ -835,15 +841,15 @@ theorem simTrace_emission_not_restart (hv : rho.ExecutionValid)
   exact List.not_mem_nil he
 
 /-- The first trace cut of a public tick is its actual AC-tick call. -/
-theorem tick_boundary_call (hv : rho.ExecutionValid) {v : V}
-    (hv' : v ∈ rho.honest) {i : Nat} {t : Time}
+theorem tick_boundary_call (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {v : V}
+    (hv' : v ∉ rho.faultyAt 0) {i : Nat} {t : Time}
     (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     (simTrace S rho hn).CallAt (rho.ownKey v) (cutMap S rho hn i)
       (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).2 ∧
       (simTrace S rho hn).time (cutMap S rho hn i) = t := by
-  have hg := (simTrace_tick_public_group S rho hn hv v hv' i t he hp).1
-  have hstate := simTrace_state S rho hn hv v hv' i
+  have hg := (simTrace_tick_public_group S rho hn hconst hv v hv' i t he hp).1
+  have hstate := simTrace_state S rho hn hconst hv v hv' i
     (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1)
   have hlen : 0 < (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
@@ -921,7 +927,8 @@ theorem noRestart_between_same_time_sends (hv : rho.ExecutionValid)
 
 /-- Retention also covers the later sending event's own cuts: its event cannot
 be a restart. This is the interval needed for a fresh admission inside that event. -/
-theorem pool_mono_through_same_time_send (hv : rho.ExecutionValid)
+theorem pool_mono_through_same_time_send (hconst : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
     {a b : Nat} {t : Time} (ha : rho.SendsAt (rho.key y) a t)
     (hb : rho.SendsAt (rho.key y) b t) {k l : Nat}
@@ -929,7 +936,7 @@ theorem pool_mono_through_same_time_send (hv : rho.ExecutionValid)
     (hlb : l ≤ cutMap S rho hn (b + 1)) (σ : Nat) :
     ((simTrace S rho hn).state y k).ac.pool σ ⊆
       ((simTrace S rho hn).state y l).ac.pool σ := by
-  have hr := simTrace_goldilocksRun S rho hn hv
+  have hr := simTrace_goldilocksRun S rho hn hconst hv
   have hnr : ∀ i, a ≤ i → i < b + 1 → ∀ u,
       rho.events[i]? ≠ some (.restart (rho.key y) u) := by
     intro i hai hib u he
@@ -942,7 +949,7 @@ theorem pool_mono_through_same_time_send (hv : rho.ExecutionValid)
 
 /-- Freshness at any sending-event cut gives an aggregate boundary pool insertion.
 Non-restart retention covers both sides of the source cut. -/
-theorem sending_event_pool_insertion (hv : rho.ExecutionValid)
+theorem sending_event_pool_insertion (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key y) i t)
@@ -958,13 +965,13 @@ theorem sending_event_pool_insertion (hv : rho.ExecutionValid)
       (stateAt S rho hn (rho.key y) j).node =
         (simTrace S rho hn).state y (cutMap S rho hn j) := by
     simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using
-      simTrace_state S rho hn hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy) j hj
+      simTrace_state S rho hn hconst hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy) j hj
   constructor
   · rw [hstate i hi.le]
     intro hm
-    exact hold (pool_mono_through_same_time_send S rho hn hv hy hs hs le_rfl hlo hhi.le _ hm)
+    exact hold (pool_mono_through_same_time_send S rho hn hconst hv hy hs hs le_rfl hlo hhi.le _ hm)
   · rw [hstate (i + 1) (by omega)]
-    apply pool_mono_through_same_time_send S rho hn hv hy hs hs
+    apply pool_mono_through_same_time_send S rho hn hconst hv hy hs hs
       (hlo.trans (Nat.le_succ k)) (by omega) le_rfl m.slot
     obtain ⟨c, hc⟩ := hc
     rwa [(simTrace S rho hn).state_succ_of_call hc]
@@ -972,7 +979,8 @@ theorem sending_event_pool_insertion (hv : rho.ExecutionValid)
 /-- Fresh admission rules out an earlier exact envelope once every earlier release
 is backed by a pool cut in its event. Only that release-to-pool supplier remains
 explicit; stamp authentication and restart-free retention are proved here. -/
-theorem admission_voteForward_first_of_release_pool (hv : rho.ExecutionValid)
+theorem admission_voteForward_first_of_release_pool (hconst : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key y) i t)
@@ -991,11 +999,12 @@ theorem admission_voteForward_first_of_release_pool (hv : rho.ExecutionValid)
   subst u
   obtain ⟨c, hjc, hcj, hm⟩ := hpool j hji hj
   have hck := hcj.trans ((cutMap_mono S rho hn (Nat.succ_le_of_lt hji)).trans hlo)
-  exact hf (pool_mono_through_same_time_send S rho hn hv hy hsend hs hjc hck hhi.le m.slot hm)
+  exact hf (pool_mono_through_same_time_send S rho hn hconst hv hy hsend hs
+    hjc hck hhi.le m.slot hm)
 
 /-- A fresh admission's exact signed envelope has no earlier release, even when
 the original vote signer is faulty. Event pool provenance discharges the supplier. -/
-theorem admission_voteForward_first (hv : rho.ExecutionValid)
+theorem admission_voteForward_first (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
     {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key y) i t)
@@ -1003,7 +1012,7 @@ theorem admission_voteForward_first (hv : rho.ExecutionValid)
     (hf : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot) :
     ∀ j < i, Model.Obj.mk (.signed y .poll)
       (.data (.voteForward t (encodeVote m))) [voteObj m] ∉ rho.releasesAt j := by
-  apply admission_voteForward_first_of_release_pool S rho hn hv hy hs hlo hhi hf
+  apply admission_voteForward_first_of_release_pool S rho hn hconst hv hy hs hlo hhi hf
   intro j _ hj
   obtain ⟨u, hsend⟩ := voteForward_release_sender S rho hj
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
@@ -1011,7 +1020,7 @@ theorem admission_voteForward_first (hv : rho.ExecutionValid)
   have hjlen : j + 1 ≤ rho.events.length := by
     rcases hsend with he | ⟨o, he⟩ <;>
       exact Nat.succ_le_of_lt (List.getElem?_eq_some_iff.mp he).1
-  rw [simTrace_state S rho hn hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy)
+  rw [simTrace_state S rho hn hconst hv (rho.key y) ((mem_honestKeys_iff S rho y).mp hy)
     (j + 1) hjlen, hkey] at hm
   exact ⟨cutMap S rho hn (j + 1), cutMap_mono S rho hn (Nat.le_succ j), le_rfl, hm⟩
 
@@ -1131,10 +1140,10 @@ theorem delivery_block_payload_processAt {i : Nat} {v : V}
 /-- An authenticated vote envelope received after its globally first release yields
 processing no earlier than that release. The first-release premise is essential:
 the wire timestamp alone does not authenticate a fresh source occurrence. -/
-theorem received_voteForward_processAt (hv : rho.ExecutionValid)
+theorem received_voteForward_processAt (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
     {receipt : Wire (Fintype.card V)} {m : SA.Vote (Fintype.card V)}
-    (hx : rho.key x ∈ rho.honest) (hs : rho.SendsAt (rho.key x) source τ)
+    (hx : rho.key x ∉ rho.faultyAt 0) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
       Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
         rho.releasesAt j)
@@ -1145,7 +1154,7 @@ theorem received_voteForward_processAt (hv : rho.ExecutionValid)
       (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
       (simTrace S rho hn).time k = u ∧ τ ≤ u := by
   obtain ⟨j, s, hji, hsend, hrel⟩ := hv.unforgeable i v receipt u he _ hc
-    (rho.key x) hx rfl
+    (rho.key x) rfl (by simpa only [rho.faultyAt_eq_zero hconst] using hx)
   have hsj : source ≤ j := by
     by_contra h
     exact hfirst j (Nat.lt_of_not_ge h) hrel
@@ -1164,10 +1173,11 @@ theorem received_voteForward_processAt (hv : rho.ExecutionValid)
 /-- Holdings of a first-release vote envelope either belong to its source or give
 an actual recipient processing cut between source time and the holding time.
 The source alternative is not itself a fresh-processing claim. -/
-theorem held_voteForward_source_or_process (hv : rho.ExecutionValid)
+theorem held_voteForward_source_or_process (hconst : rho.point.ConstantFaults)
+    (hv : rho.ExecutionValid)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ d : Time}
     {m : SA.Vote (Fintype.card V)}
-    (hx : rho.key x ∈ rho.honest) (hs : rho.SendsAt (rho.key x) source τ)
+    (hx : rho.key x ∉ rho.faultyAt 0) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
       Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
         rho.releasesAt j)
@@ -1189,7 +1199,7 @@ theorem held_voteForward_source_or_process (hv : rho.ExecutionValid)
         · exact (Model.Auth.signed.inj h).1
     exact Or.inl (hxy.trans (rho.key.symm_apply_apply y)).symm
   · obtain ⟨i, hi⟩ := hrecv
-    obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt S rho hn hv hx hs
+    obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt S rho hn hconst hv hx hs
       hfirst hi (.refl _)
     have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     rw [hkey] at hp
@@ -1197,7 +1207,7 @@ theorem held_voteForward_source_or_process (hv : rho.ExecutionValid)
 
 /-- Option C's publication supplier: actual same-event release and first release,
 not merely candidate construction or pool membership. -/
-theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
+theorem simTrace_vote_forwarded (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ k (m : SA.Vote (Fintype.card V)),
     let tr := simTrace S rho hn
     (tr.EmitAt y k m ∨
@@ -1216,14 +1226,14 @@ theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
       rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by
     rcases hsource with ⟨ℓ, hc, e, he, -⟩ | ⟨hc, -, -⟩
     · exact simTrace_call_sending_event S rho hn hc
-        (simTrace_emission_not_restart S rho hn hv hy hc he)
+        (simTrace_emission_not_restart S rho hn hconst hv hy hc he)
     · rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, -⟩
       · exact simTrace_call_sending_event S rho hn hc (by rw [hm]; simp)
       · exact simTrace_call_sending_event S rho hn hc (by rw [hb]; simp)
   obtain ⟨i, hlo, hhi, hs⟩ := hevent
   have hfresh : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, hf, -⟩
-    · have hr := simTrace_goldilocksRun S rho hn hv
+    · have hr := simTrace_goldilocksRun S rho hn hconst hv
       obtain ⟨ℓ, hc, e, he, hev⟩ := hem
       have hΦ : FrameOK ℓ.frame :=
         (hr.cutLaw y hy k _ hc).1 ▸
@@ -1244,40 +1254,40 @@ theorem simTrace_vote_forwarded (hv : rho.ExecutionValid) :
     · rcases hc with ⟨ℓ, hc, -⟩ | ⟨ℓ, B, hc, -⟩ <;> exact ⟨_, hc⟩
   have hpost : m ∈ ((simTrace S rho hn).post k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, -, hpost⟩
-    · exact Compose.emitted_vote_mem_post (simTrace_goldilocksRun S rho hn hv) hy hem
+    · exact Compose.emitted_vote_mem_post (simTrace_goldilocksRun S rho hn hconst hv) hy hem
     · exact hpost
-  obtain ⟨hold, hnew⟩ := sending_event_pool_insertion S rho hn hv hy hs hlo hhi
+  obtain ⟨hold, hnew⟩ := sending_event_pool_insertion S rho hn hconst hv hy hs hlo hhi
     hcall hfresh hpost
-  refine ⟨i, hlo, hhi, hs, ?_, admission_voteForward_first S rho hn hv hy hs hlo hhi hfresh⟩
+  refine ⟨i, hlo, hhi, hs, ?_, admission_voteForward_first S rho hn hconst hv hy hs hlo hhi hfresh⟩
   rcases hs with he | ⟨o, he⟩
-  · have hr := tick_pool_insertion_released S rho hn hv
+  · have hr := tick_pool_insertion_released S rho hn hconst hv
       ((mem_honestKeys_iff S rho y).mp hy) he m hold hnew
     simp only [Model.Run.ownKey, Equiv.symm_apply_apply] at hr
     exact hr
-  · have hr := delivery_pool_insertion_released S rho hn hv he m hold hnew
+  · have hr := delivery_pool_insertion_released S rho hn hconst hv he m hold hnew
     simp only [Model.Run.ownKey, Equiv.symm_apply_apply] at hr
     exact hr
 
 /-- The simulating trace and cut map of a valid engine run simulate it. -/
-theorem simTrace_simulates (hv : rho.ExecutionValid) :
+theorem simTrace_simulates (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     Simulates S rho hn (simTrace S rho hn) (cutMap S rho hn) where
-  run := simTrace_goldilocksRun S rho hn hv
+  run := simTrace_goldilocksRun S rho hn hf hv
   ι_zero := cutMap_zero S rho hn
   ι_mono := cutMap_mono S rho hn
   covered := simTrace_covered S rho hn
-  state := simTrace_state S rho hn hv
+  state := simTrace_state S rho hn hf hv
   now := now_eq_lastClock S rho hn hv
-  tick_public := simTrace_tick_public_group S rho hn hv
+  tick_public := simTrace_tick_public_group S rho hn hf hv
   tick_other := simTrace_tick_other S rho hn hv
-  deliver := simTrace_deliver S rho hn hv
-  restart := simTrace_restart S rho hn hv
+  deliver := simTrace_deliver S rho hn hf hv
+  restart := simTrace_restart S rho hn hf hv
   awake_of := simTrace_awake_of S rho hn hv
   awake_to := simTrace_awake_to S rho hn hv
-  block_released := simTrace_block_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
-  vote_released := simTrace_vote_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
-  att_released := simTrace_att_released S rho hn hv (simTrace_goldilocksRun S rho hn hv)
+  block_released := simTrace_block_released S rho hn hf hv (simTrace_goldilocksRun S rho hn hf hv)
+  vote_released := simTrace_vote_released S rho hn hf hv (simTrace_goldilocksRun S rho hn hf hv)
+  att_released := simTrace_att_released S rho hn hf hv (simTrace_goldilocksRun S rho hn hf hv)
   block_relayed := simTrace_block_relayed S rho hn hv
-  vote_forwarded := simTrace_vote_forwarded S rho hn hv
+  vote_forwarded := simTrace_vote_forwarded S rho hn hf hv
   att_relayed := simTrace_att_relayed S rho hn hv
 
 variable (V) in
@@ -1285,7 +1295,7 @@ variable (V) in
 family is simulated by `simTrace` with `cutMap`. -/
 theorem engineSimulatesNode : EngineSimulatesNode V S :=
   (engineSimulatesNode_iff V S).mpr
-    fun _ rho hn hv => ⟨simTrace S rho hn, cutMap S rho hn, simTrace_simulates S rho hn hv⟩
+    fun _ rho hn hf hv => ⟨simTrace S rho hn, cutMap S rho hn, simTrace_simulates S rho hn hf hv⟩
 
 end Consensus.Goldilocks.Simulation
 

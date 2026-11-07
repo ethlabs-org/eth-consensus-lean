@@ -68,7 +68,7 @@ theorem final_recurrence_anchors (S : Setup) (A : ContractAssumptions S) (X : �
     {key : Fin (Fintype.card V) ≃ V} {sel : Slot → Finset (Fin (Fintype.card V))}
     {G : TimeGrid} {d c start stop query : Time}
     (hG : G.slotLen = 4 * (d + 1))
-    (hp : PatternRecurrence p key sel G ⟨finalWindow A, X⟩ c start stop)
+    (hp : PatternRecurrence p key sel G ⟨finalWindow A, X, 1⟩ c start stop)
     (hq : max start 0 ≤ query)
     (hs : query + 4 * ((X : Nat) + 3 * A.fgSlots) * (d + 1) ≤ stop)
     (hh : query + 4 * ((X : Nat) + 3 * A.fgSlots) * (d + 1) ≤ p.horizon) :
@@ -76,14 +76,14 @@ theorem final_recurrence_anchors (S : Setup) (A : ContractAssumptions S) (X : �
       ∀ j ∈ (finalWindow A).offsets,
         G.slotTime (s + j) ≤ query +
           4 * ((X : Nat) + 3 * A.fgSlots) * (d + 1) ∧
-        HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) := by
-  have hlen : ((⟨finalWindow A, X⟩ : Recurrence).len : Time) * G.slotLen =
+        HonestReadyIn p key sel (s + j) c (G.slotTime (s + j)) p.env.ΔAC := by
+  have hlen : ((⟨finalWindow A, X, 1⟩ : Recurrence).len : Time) * G.slotLen =
       4 * ((X : Nat) + 3 * A.fgSlots) * (d + 1) := by
     simp only [Recurrence.len, finalWindow_span, hG]
     push_cast
     ring
   obtain ⟨s, hfresh, hfirst, hready⟩ := hp query hq (by rwa [hlen]) (by rwa [hlen])
-  refine ⟨s, hfresh, fun j hj => ⟨?_, hready j hj⟩⟩
+  refine ⟨s, hfresh, fun j hj => ⟨?_, by simpa using hready j hj⟩⟩
   have hjbound : (j : Time) ≤ 3 * (A.fgSlots : Time) := by
     have := Pattern.le_span hj
     rw [finalWindow_span] at this
@@ -108,7 +108,8 @@ theorem recurrence_of_duration_le {V : Type} [Fintype V] {p : EnvPoint V}
   intro t ht hs hh
   obtain ⟨s, hfirst, hlast, hall⟩ := h t ht hs hh
   refine ⟨s, hfirst, hlast, fun j hj => ?_⟩
-  exact ⟨(hall j hj).1, fun k hk => ready_of_duration_le hc ((hall j hj).2 k hk)⟩
+  exact ⟨(hall j hj).1, fun k hk =>
+    ⟨ready_of_duration_le hc ((hall j hj).2 k hk).1, ((hall j hj).2 k hk).2⟩⟩
 
 /-- A sufficient coefficient for retaining the whole node-delay tail in ready history. -/
 theorem node_tail_le_ready_history {d B r c : Time} (hd : 1 ≤ d)

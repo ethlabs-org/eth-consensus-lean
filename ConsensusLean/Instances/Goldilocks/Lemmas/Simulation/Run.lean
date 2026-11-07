@@ -132,13 +132,14 @@ omit [DecidableEq V] in
 /-- The engine event of a labelled cut of an honest key is an event of an honest node. -/
 private theorem honest_of_cut {y : Fin (Fintype.card V)} (hy : y ∈ honestKeys S rho)
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (h : rho.ownKey ev.node = y) : ev.node ∈ rho.honest := by
+    (h : rho.ownKey ev.node = y) : ev.node ∉ rho.faultyAt 0 := by
   rw [key_of_ownKey S rho h]
   exact (mem_honestKeys_iff S rho y).mp hy
 
 /-- A labelled cut of an honest node lies in the records of one handler call, starting at the
 trace's state. -/
-private theorem recBlock_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
+private theorem recBlock_of_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)}
     (hy : y ∈ honestKeys S rho) {k : Nat} (hnode : (simTrace S rho hn).node k = y)
     (hl : (simTrace S rho hn).label k ≠ none) :
     ∃ j1 st t id e, (∀ m < (groupRecs (runProposer S rho hn) (digestOf S rho) y st t id e).length,
@@ -153,7 +154,7 @@ private theorem recBlock_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card
       (allCuts S rho hn)[cutMap S rho hn i + m]? = (eventCuts S rho hn i)[m]? :=
     fun m hm => allCuts_getElem?_add S rho hn i m hi hm
   have hlen := cutMap_succ S rho hn i
-  have h0 := (simTrace_state S rho hn hv ev.node hv' i hi.le).symm
+  have h0 := (simTrace_state S rho hn hf hv ev.node hv' i hi.le).symm
   have hy' := hn'.symm.trans hnode
   cases ev with
   | tick v t =>
@@ -179,7 +180,8 @@ private theorem recBlock_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card
 
 /-- A labelled cut of an honest node lies in a group of the trace whose event passes the wire
 checks. -/
-private theorem group_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
+private theorem group_of_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)}
     (hy : y ∈ honestKeys S rho) {k : Nat} (hnode : (simTrace S rho hn).node k = y)
     (hl : (simTrace S rho hn).label k ≠ none) :
     ∃ j0 t e,
@@ -195,29 +197,29 @@ private theorem group_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)
     change rho.ownKey v = y at hy'
     subst hy'
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
-    · obtain ⟨hg, hlen⟩ := simTrace_tick_public_group S rho hn hv v hv' i t he hp
+    · obtain ⟨hg, hlen⟩ := simTrace_tick_public_group S rho hn hf hv v hv' i t he hp
       exact ⟨_, t, _, hg, h1, by omega, trivial⟩
     · have := simTrace_tick_other S rho hn hv v hv' i t he hp
       omega
   | deliver v o t =>
     change rho.ownKey v = y at hy'
     subst hy'
-    obtain ⟨-, hcov⟩ := deliverSeq_cover (simTrace_deliver S rho hn hv v hv' i o t he)
+    obtain ⟨-, hcov⟩ := deliverSeq_cover (simTrace_deliver S rho hn hf hv v hv' i o t he)
     obtain ⟨j0, e, o', ho, hce, hg, h3, h4⟩ := hcov k h1 h2
     exact ⟨j0, t, e, hg, h3, h4, wireOK_of_delivered S rho hn o ho hce⟩
   | restart v t =>
     change rho.ownKey v = y at hy'
     subst hy'
-    obtain ⟨hg, hlen⟩ := simTrace_restart S rho hn hv v hv' i t he
+    obtain ⟨hg, hlen⟩ := simTrace_restart S rho hn hf hv v hv' i t he
     exact ⟨_, t, _, hg, h1, by omega, trivial⟩
 
 /-- Every labelled cut of an honest node lies in the group of a top-level event. -/
-theorem simTrace_grouped (hv : rho.ExecutionValid) :
+theorem simTrace_grouped (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i c, (simTrace S rho hn).CallAt y i c →
       ∃ j e, (simTrace S rho hn).InGroup (runProposer S rho hn)
         (digestOf S rho) y j i ((simTrace S rho hn).time i) e := by
   rintro y hy i c ⟨hnode, hlab⟩
-  obtain ⟨j0, t, e, hg, h1, h2, -⟩ := group_of_cut S rho hn hv hy hnode (by rw [hlab]; simp)
+  obtain ⟨j0, t, e, hg, h1, h2, -⟩ := group_of_cut S rho hn hf hv hy hnode (by rw [hlab]; simp)
   have ht : (simTrace S rho hn).time i = t := by
     have := (hg.2.1 (i - j0) (by omega)).2.1
     rwa [Nat.add_sub_cancel' h1] at this
@@ -225,13 +227,13 @@ theorem simTrace_grouped (hv : rho.ExecutionValid) :
   exact ⟨j0, e, hg, h1, h2⟩
 
 /-- Every labelled cut of an honest node obeys the cut law: the handler's cut chain (C0.5). -/
-theorem simTrace_cutLaw (hv : rho.ExecutionValid) :
+theorem simTrace_cutLaw (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ i c, (simTrace S rho hn).CallAt y i c →
       CutStep y ((simTrace S rho hn).time i) ((simTrace S rho hn).state y i) c
         ((simTrace S rho hn).post i) := by
   rintro y hy i c ⟨hnode, hlab⟩
   obtain ⟨j1, st, t, id, e, hcut, h0, h1, h2⟩ :=
-    recBlock_of_cut S rho hn hv hy hnode (by rw [hlab]; simp)
+    recBlock_of_cut S rho hn hf hv hy hnode (by rw [hlab]; simp)
   obtain ⟨m, rfl⟩ : ∃ m, i = j1 + m := ⟨i - j1, by omega⟩
   have hm : m < (groupRecs (runProposer S rho hn) (digestOf S rho) y st t id e).length := by omega
   have hm' : m < (exec (runProposer S rho hn) (digestOf S rho) y st t e).2.length := by
@@ -259,7 +261,7 @@ theorem simTrace_cutLaw (hv : rho.ExecutionValid) :
 
 /-- A group of an honest node passes the wire checks: its first cut is a cut of an engine event's
 group, which starts there, and names the same event (up to a tick's input). -/
-theorem simTrace_wire (hv : rho.ExecutionValid) :
+theorem simTrace_wire (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ j t e,
       (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho) y j t e →
       WireOK (digestOf S rho) e := by
@@ -268,7 +270,7 @@ theorem simTrace_wire (hv : rho.ExecutionValid) :
   obtain ⟨hn0, -, -, -, hl0⟩ := hcuts 0 (List.length_pos_of_ne_nil hne)
   rw [Nat.add_zero] at hn0 hl0
   obtain ⟨j0, t0, e0, ⟨hne0, hc0, -⟩, h1, h2, hw0⟩ :=
-    group_of_cut S rho hn hv hy hn0 (by rw [hl0]; simp)
+    group_of_cut S rho hn hf hv hy hn0 (by rw [hl0]; simp)
   have hj : j0 = j := by
     have hev := (hc0 (j - j0) (by omega)).2.2.1
     rw [Nat.add_sub_cancel' h1] at hev
@@ -305,13 +307,13 @@ theorem simTrace_wire (hv : rho.ExecutionValid) :
 /-! ## The trace is a Goldilocks run -/
 
 /-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys. -/
-theorem simTrace_goldilocksRun (hv : rho.ExecutionValid) :
+theorem simTrace_goldilocksRun (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn) where
   init := simTrace_init S rho hn
-  grouped := simTrace_grouped S rho hn hv
-  cutLaw := simTrace_cutLaw S rho hn hv
-  wire := simTrace_wire S rho hn hv
+  grouped := simTrace_grouped S rho hn hf hv
+  cutLaw := simTrace_cutLaw S rho hn hf hv
+  wire := simTrace_wire S rho hn hf hv
   proposerCredential := simTrace_proposerCredential S rho hn hv
   time_nonneg := simTrace_time_nonneg S rho hn hv
   time_mono := simTrace_time_mono S rho hn hv
@@ -319,17 +321,17 @@ theorem simTrace_goldilocksRun (hv : rho.ExecutionValid) :
   phase_order := simTrace_phase_order S rho hn hv
   tick_public := simTrace_tick_public S rho hn hv
   tick_unique := simTrace_tick_unique S rho hn hv
-  tick_of_awake := simTrace_tick_of_awake S rho hn hv
+  tick_of_awake := simTrace_tick_of_awake S rho hn hf hv
   awake_in_horizon := simTrace_awake_in_horizon S rho hn
   awake_of_call := simTrace_awake_of_call S rho hn hv
-  restart_of_sleep := simTrace_restart_of_sleep S rho hn hv
-  restart_at_wake := simTrace_restart_at_wake S rho hn hv
+  restart_of_sleep := simTrace_restart_of_sleep S rho hn hf hv
+  restart_at_wake := simTrace_restart_at_wake S rho hn hf hv
   sleep_of_restart := simTrace_sleep_of_restart S rho hn hv
-  block_unforgeable := simTrace_block_unforgeable S rho hn hv
-  att_unforgeable := simTrace_att_unforgeable S rho hn hv
-  msg_unforgeable := simTrace_msg_unforgeable S rho hn hv
+  block_unforgeable := simTrace_block_unforgeable S rho hn hf hv
+  att_unforgeable := simTrace_att_unforgeable S rho hn hf hv
+  msg_unforgeable := simTrace_msg_unforgeable S rho hn hf hv
   genesis_root_ok := simTrace_genesis_root_ok S rho hn
-  carried_vote_unforgeable := simTrace_carried_vote_unforgeable S rho hn hv
+  carried_vote_unforgeable := simTrace_carried_vote_unforgeable S rho hn hf hv
 
 end Consensus.Goldilocks.Simulation
 

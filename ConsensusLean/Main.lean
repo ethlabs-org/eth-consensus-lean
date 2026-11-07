@@ -33,6 +33,17 @@ theorem ShapeObligations.correct {F : ChainShapeFamily O Info} {K : Contract Pro
     fun hn =>
       (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).toRealizable⟩
 
+/-- Claims on a class of runs give correctness there, with unrestricted adequacy and
+realizability. -/
+theorem ShapeObligationsOn.correct {F : ChainShapeFamily O Info} {K : Contract ProgressReq}
+    (Q : ∀ V : Type, EnvPoint V → Prop) (h : ShapeObligationsOn F K Q)
+    (V : Type) [Fintype V] [DecidableEq V] :
+    CorrectProtocolOn (sysOf O (compiled F) V) (shapeProgress F V) K (Q V) :=
+  ⟨refinementOn F K V (Q V) (h.claims V) h.admissible h.serves,
+    Model.sysOf_adequate _ rfl,
+    fun hn =>
+      (regimes_realizable F K h.admissible h.progressFits h.progressTolerant V hn).toRealizable⟩
+
 end Consensus.Shape
 
 /-! # Active service (L2, a checked corollary outside the trusted surface)
@@ -61,7 +72,7 @@ def ActiveService (F : ChainShapeFamily O Info) (K : Contract ProgressReq) (cap 
     ∃ r, (Sys F V).Witness r ∧ ((Sys F V).pt r).env.ΔAC = Δ ∧ (Sys F V).Healthy K gst r ∧
       (Sys F V).prog (shapeProgress F V) K cap i ((Sys F V).ready K gst r)
         ((Sys F V).pt r).horizon r ∧
-      ∃ x u w t t', u ∈ ((Sys F V).pt r).honest ∧ w ∈ ((Sys F V).pt r).honest ∧ w ≠ u ∧
+      ∃ x u w t t', ((Sys F V).pt r).HonestAt u t ∧ ((Sys F V).pt r).HonestAt w t' ∧ w ≠ u ∧
         x ∈ ((Sys F V).pt r).submit u t ∧ (∀ τ, x ∉ ((Sys F V).pt r).submit w τ) ∧
         t' ≤ ((Sys F V).pt r).horizon ∧ x ∈ ((Sys F V).trace r).readAt g w t'
 

@@ -783,7 +783,7 @@ theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
   obtain ⟨ht', hw, -⟩ := hv.restart_at_wake v t' hmr
   have hh := hv.in_horizon _ hmr
   obtain ⟨q, hq⟩ := List.mem_iff_getElem?.mp
-    (hv.tick_total v (hv.honest_only _ hmr) t' hh.1 hh.2 hw)
+    (hv.tick_total v t' hh.1 hh.2 (hv.honest_only _ hmr) hw)
   have hrq : r < q := by
     rcases lt_trichotomy q r with h | rfl | h
     · rcases keyLe_of_lt S rho hv hq hr h with h' | h'
@@ -806,7 +806,7 @@ theorem not_lastRestart_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
 /-- **At most one vote queued.** At every cut an honest node's outbox holds at most one body, a
 vote; unless its last event was a restart, a queued vote is one of the slot of its clock, cast by
 the node (`voted_slot`). -/
-theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
+theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
     ∀ i, AtMostOneVote (stateAt S rho hn v i) ∧
       (LastRestart S rho v i ∨ OneVote (stateAt S rho hn v i).now (stateAt S rho hn v i))
   | 0 => by
@@ -814,7 +814,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
     exact ⟨⟨fun b hb => absurd hb List.not_mem_nil, Nat.zero_le _⟩,
       Or.inr ⟨fun b hb => absurd hb List.not_mem_nil, Or.inl rfl⟩⟩
   | i + 1 => by
-    obtain ⟨ih₁, ih₂⟩ := outbox_inv hv v hv' i
+    obtain ⟨ih₁, ih₂⟩ := outbox_inv hv v i
     have hext : LastRestart S rho v i → (∀ e, rho.events[i]? = some e → e.node ≠ v) →
         LastRestart S rho v (i + 1) := by
       rintro ⟨r, hri, t, hr, hno⟩ hi
@@ -920,7 +920,7 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
   have hnow : (stateAt S rho hn v i).now = t :=
     (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
   have hpre : OneVote t (stateAt S rho hn v i) := by
-    rcases (outbox_inv S rho hn hv v (hv.honest_only _ hm) i).2 with h | h
+    rcases (outbox_inv S rho hn hv v i).2 with h | h
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
@@ -983,7 +983,7 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
   have hnow : (stateAt S rho hn v i).now = t :=
     (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
   have hpre : OneVote t (stateAt S rho hn v i) := by
-    rcases (outbox_inv S rho hn hv v (hv.honest_only _ hm) i).2 with h | h
+    rcases (outbox_inv S rho hn hv v i).2 with h | h
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
@@ -1004,11 +1004,11 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
 
 /-- Honest nodes have no pending bodies between engine events: ticks and deliveries drain
 their queues, and restarts emit nothing. -/
-theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) :
+theorem outbox_empty (hv : rho.ExecutionValid) (v : V) :
     ∀ i, (stateAt S rho hn v i).outbox = []
   | 0 => by rw [stateAt_zero]; rfl
   | i + 1 => by
-    have ih := outbox_empty hv v hv' i
+    have ih := outbox_empty hv v i
     cases he : rho.events[i]? with
     | none => rw [stateAt_succ_none S rho hn v he]; exact ih
     | some ev =>
@@ -1042,13 +1042,13 @@ theorem outbox_empty (hv : rho.ExecutionValid) (v : V) (hv' : v ∈ rho.honest) 
 
 /-- At a slot start the leading polls drain the queue and the AC tick emits no vote. -/
 theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : Time}
-    (hv' : v ∈ rho.honest) (s : Nat)
+    (s : Nat)
     (hts : t = (S.params (pubOf E) hn).toParams.slotTime s) :
     (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).outbox = [] := by
   rw [atProposal_shape S rho hn v _ t (poll_selected S rho hv v)]
   rw [← stateAt_eq S rho hn v i]
   set σ : State (S.params (pubOf E) hn) (S.ro _) := { stateAt S rho hn v i with now := t }
-  have hout : σ.outbox = [] := outbox_empty S rho hn hv v hv' i
+  have hout : σ.outbox = [] := outbox_empty S rho hn hv v i
   have hf : σ.fgDue = false := fgDue_eq_false S rho hn v i
   have hpre : pollPre σ = σ := by rw [pollPre_eq, hf]; rfl
   have hout2 : (poll (poll σ t.toNat).1 t.toNat).1.outbox = [] := by
@@ -1073,11 +1073,11 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
 there is no pending body after an honest event. -/
 theorem releasedFrom_of_pending (hv : rho.ExecutionValid) {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (he : rho.events[i]? = some ev) {b : Body}
+    (_he : rho.events[i]? = some ev) {b : Body}
     (hb : b ∈ (stateAt S rho hn ev.node (i + 1)).outbox) :
     ReleasedFrom S rho ev.node
       (Model.Obj.mk (.signed (rho.ownKey ev.node) .poll) (.data b) []) ev.time := by
-  rw [outbox_empty S rho hn hv ev.node (hv.honest_only _ (List.mem_of_getElem? he))] at hb
+  rw [outbox_empty S rho hn hv ev.node] at hb
   exact absurd hb List.not_mem_nil
 
 

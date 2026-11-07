@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -276,15 +277,17 @@ theorem poll_release_forward_queue (v : V)
 
 /-- An honestly signed forwarding envelope in seen closure has an actual prior release
 by that signer. This is authentication provenance, not yet an acceptance witness. -/
-theorem decoded_forward_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
+theorem decoded_forward_seen_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V} (hi : i ≤ rho.events.length)
     {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
     (ho : o ∈ Model.closure (rho.stateBefore i v).seen)
-    (hx : rho.key x ∈ rho.honest)
+    (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     ∃ j < i, ∃ u, rho.SendsAt (rho.key x) j u ∧ o ∈ rho.releasesAt j := by
-  apply rho.signed_seen_released hv ho hx
+  apply rho.signed_seen_released hv hi ho
+    (by simpa only [rho.faultyAt_eq_zero hf] using hx)
   change o.signer?.map rho.key = some (rho.key x)
   rw [decodeForward_signer hd]
   rfl
@@ -649,18 +652,20 @@ theorem received_forward_blockCall {i : Nat} {v : V}
 
 /-- Authentication and event order bound an honest forwarding envelope's stamp by
 its receipt time, even when the envelope is nested inside the delivered object. -/
-theorem received_forward_stamp_le (hv : rho.ExecutionValid) {i : Nat} {v : V}
+theorem received_forward_stamp_le (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {i : Nat} {v : V}
     {receipt o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t u : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∈ rho.honest)
+    (hc : Model.Obj.Contains receipt o) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) : t ≤ u := by
   have hsign : rho.signerOf o = some (rho.key x) := by
     change o.signer?.map rho.key = some (rho.key x)
     rw [decodeForward_signer hd]
     rfl
-  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hx hsign
+  obtain ⟨j, s, hj, hs, ho⟩ := hv.unforgeable i v receipt u he o hc (rho.key x) hsign
+    (by simpa only [rho.faultyAt_eq_zero hf] using hx)
   have hd' : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (rho.ownKey (rho.key x), t, p, B) := by
     simpa only [Model.Run.ownKey, Equiv.symm_apply_apply] using hd
@@ -793,10 +798,11 @@ theorem held_release_or_receipt {v : V} {i : Nat} {o : Wire (Fintype.card V)}
 
 /-- Held honest forwarding envelopes either were released locally, or already have a
 real receipt call before the requested cut. The latter may be a refused block call. -/
-theorem held_forward_release_or_call (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_forward_release_or_call (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} {i : Nat}
     {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∈ rho.honest)
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     (∃ j < i, ∃ u, rho.SendsAt v j u ∧ o ∈ rho.releasesAt j) ∨
@@ -805,7 +811,7 @@ theorem held_forward_release_or_call (hv : rho.ExecutionValid) {v : V} {i : Nat}
   obtain ⟨j, hj, u, h⟩ := held_release_or_receipt S rho ho
   rcases h with ⟨he, hr⟩ | ⟨receipt, he, hc⟩
   · exact Or.inl ⟨j, hj, u, he, hr⟩
-  · have htu := received_forward_stamp_le S rho hn hv he hc hx hd
+  · have htu := received_forward_stamp_le S rho hn hf hv he hc hx hd
     obtain ⟨k, hk, hcall, htime⟩ := received_forward_blockCall S rho hn he hc hd htu
     exact Or.inr ⟨k, hk.trans_le (cutMap_mono S rho hn (Nat.succ_le_of_lt hj)),
       htime ▸ htu, hcall⟩
@@ -863,25 +869,27 @@ theorem released_forward_signer {i : Nat} {v : V} {u : Time}
 
 /-- Holdings of another honest node's forwarding envelope always have an earlier
 receipt call; only the self-signed case needs the own-publication acceptance join. -/
-theorem held_other_forward_call (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_other_forward_call (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} {i : Nat}
     {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∈ rho.honest)
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∉ rho.faultyAt 0)
     (hne : x ≠ rho.ownKey v)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
       (simTrace S rho hn).BlockCallAt (rho.ownKey v) k B := by
-  rcases held_forward_release_or_call S rho hn hv ho hx hd with ⟨j, _, u, he, hr⟩ | h
+  rcases held_forward_release_or_call S rho hn hf hv ho hx hd with ⟨j, _, u, he, hr⟩ | h
   · exact False.elim (hne (released_forward_signer S rho hn he hr hd))
   · exact h
 
 /-- The only remaining origin case for held honest forwarding envelopes is a local
 tick publication. All receipts and local delivery publications already have trace witnesses. -/
-theorem held_forward_tick_or_processed (hv : rho.ExecutionValid) {v : V} {i : Nat}
+theorem held_forward_tick_or_processed (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} {i : Nat}
     {o : Wire (Fintype.card V)} {x : Fin (Fintype.card V)} {t : Time}
     {p : Option (Wire (Fintype.card V))} {B : Blk (S.params (Model.pubOf E) hn)}
-    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∈ rho.honest)
+    (ho : o ∈ Model.closure (rho.stateBefore i v).seen) (hx : rho.key x ∉ rho.faultyAt 0)
     (hd : decodeForward (S.params (Model.pubOf E) hn) (Model.digests rho.hash o) o =
       some (x, t, p, B)) :
     (x = rho.ownKey v ∧ ∃ j < i, ∃ u,
@@ -889,7 +897,7 @@ theorem held_forward_tick_or_processed (hv : rho.ExecutionValid) {v : V} {i : Na
     ∃ k < cutMap S rho hn i, t ≤ (simTrace S rho hn).time k ∧
       ((simTrace S rho hn).BlockCallAt (rho.ownKey v) k B ∨
         x = rho.ownKey v ∧ (simTrace S rho hn).AcceptAt (rho.ownKey v) k B) := by
-  rcases held_forward_release_or_call S rho hn hv ho hx hd with ⟨j, hj, u, he, hr⟩ | h
+  rcases held_forward_release_or_call S rho hn hf hv ho hx hd with ⟨j, hj, u, he, hr⟩ | h
   · have hxv := released_forward_signer S rho hn he hr hd
     subst x
     rcases he with he | ⟨receipt, he⟩

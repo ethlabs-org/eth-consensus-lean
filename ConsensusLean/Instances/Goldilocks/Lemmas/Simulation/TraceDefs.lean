@@ -105,7 +105,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The honest keys of the engine run. -/
-def honestKeys : Set (Fin (Fintype.card V)) := {k | rho.key k ∈ rho.honest}
+def honestKeys : Set (Fin (Fintype.card V)) := {k | rho.key k ∉ rho.faultyAt 0}
 
 /-- The tagged node digest induced by the engine hash. -/
 noncomputable def digestOf :
@@ -124,7 +124,7 @@ noncomputable def stateAt (v : V) (i : Nat) : State (S.params (pubOf E) hn) (S.r
 omit [DecidableEq V] in
 /-- Honest trace keys are exactly the keys of honest engine nodes. -/
 theorem mem_honestKeys_iff (y : Fin (Fintype.card V)) :
-    y ∈ honestKeys S rho ↔ rho.key y ∈ rho.honest := by rfl
+    y ∈ honestKeys S rho ↔ rho.key y ∉ rho.faultyAt 0 := by rfl
 
 omit [DecidableEq V] in
 /-- The trace uses the shape's tagged digest. -/

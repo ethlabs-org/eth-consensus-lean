@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 import ConsensusLean.Lemmas.Blocks.Facts
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -77,7 +78,7 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
       runProposer S Q.run.2 Q.hn x ∈ honestKeys S Q.run.2 ∧
       ∃ k P, Q.trace.ProposesAt (runProposer S Q.run.2 Q.hn x) k P ∧ P.slot = x := by
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (finalGrid S A V Q) ⟨finalWindow A, Q.index⟩
+      (fun s => Q.run.2.sel (.proposer s)) (finalGrid S A V Q) ⟨finalWindow A, Q.index, 1⟩
       ((Sys (goldilocks S) V).cDur (K S A) Q.run) ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run)
       Q.run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ↓reduceIte,
@@ -88,7 +89,7 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
     push_cast at h1
     linarith only [h1]
   have hspan : (finalGrid S A V Q).slotTime N +
-      (((⟨finalWindow A, Q.index⟩ : Recurrence).pattern.span : Nat) : Time) *
+      (((⟨finalWindow A, Q.index, 1⟩ : Recurrence).pattern.span : Nat) : Time) *
         (finalGrid S A V Q).slotLen = Q.params.ts (N + 3 * c : Nat) := by
     rw [← finalGrid_slotTime S A V Q, (finalGrid S A V Q).slotTime_add]
     simp [finalWindow_span_of_offsets S A hpat]
@@ -113,7 +114,7 @@ theorem final_query_gap (Q : FinalQuery S A V) {c : Nat}
   have hxts : Q.params.ts x ≤ Q.params.ts (N + 3 * c : Nat) :=
     (SA.ts_le_iff Q.params).2 (by exact_mod_cast
       (Nat.le_of_lt_succ (hxr.trans_le hxN)).trans (Nat.le_add_right N (3 * c)))
-  obtain ⟨k, P, hP, hk, -, -, hPs, -⟩ := duty_proposal_run S A V Q.run Q.hn Q.valid
+  obtain ⟨k, P, hP, hk, -, -, hPs, -⟩ := duty_proposal_run S A V Q.run Q.hn Q.constant Q.valid
     Q.noCollision hx0 (hxts.trans hN) hx
   exact ⟨x, hxl, hxr, hP.1, k, P, hk, hPs⟩
 
@@ -134,7 +135,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
           ((((Q.index : Nat) + S.δt : Nat) : Time)) * (finalGrid S A V Q).slotLen ≤
         Q.query + (finalGrid S A V Q).slotLen := by
   classical
-  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   set H := honestKeys S Q.run.2
   let X : Nat := (Q.index : Nat)
   set Ld : Nat := healthyDrainLen S Q.index with hLddef
@@ -219,8 +220,10 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hcatch : Healing.CatchRun Q.trace H Q.gst (2 * D) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-    exact catchRun_of_psync S Q.run.2 Q.hn Q.valid
-      (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hnet Q.healthy.2.1.2
+    exact catchRun_of_psync S Q.run.2 Q.hn Q.constant Q.valid
+      (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hnet
+      (fun v hv t ht hb => Q.healthy.2.1.2 v t ht hb
+        ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv))
   -- the drain
   have hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst X Ld
       Q.run.2.horizon :=

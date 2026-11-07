@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -38,8 +39,8 @@ theorem simTrace_covered :
 /-- The node state inside the shape's state is the trace's state at the mapped cut (by induction
 on the events, from `node_of_tick_public`, `node_of_tick_other`, `node_of_deliver`,
 `node_of_restart` and `state_of_other`). -/
-theorem simTrace_state (hv : rho.ExecutionValid) :
-    ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+theorem simTrace_state (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+    ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
       (stateAt S rho hn v i).node =
         (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
   intro v hv' i
@@ -73,7 +74,7 @@ theorem simTrace_state (hv : rho.ExecutionValid) :
       subst hne
       by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
       · rw [eventCuts_tick_public S rho hn i w t he hp] at hcut ⊢
-        rw [node_of_tick_public S rho hn hv w hv' i t he hp]
+        rw [node_of_tick_public S rho hn hf hv w hv' i t he hp]
         exact (state_of_group S rho hn _ _ hcut ih.symm).symm
       · rw [eventCuts_tick_other S rho hn i w t he hp, List.length_nil, Nat.add_zero,
           node_of_tick_other S rho hn hv w hv' i t he hp]
@@ -95,8 +96,8 @@ theorem simTrace_state (hv : rho.ExecutionValid) :
 
 /-- An engine tick of an honest node at a public time is the node's tick with the engine's input,
 one group. -/
-theorem simTrace_tick_public_group (hv : rho.ExecutionValid) :
-    ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.tick v t) →
+theorem simTrace_tick_public_group (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+    ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
       (S.params (pubOf E) hn).toParams.IsPublic t →
         (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho)
             (rho.ownKey v) (cutMap S rho hn i) t
@@ -108,7 +109,7 @@ theorem simTrace_tick_public_group (hv : rho.ExecutionValid) :
   intro v hv' i t he hp
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   rw [cutMap_succ, eventCuts_tick_public S rho hn i v t he hp]
-  have h0 := (simTrace_state S rho hn hv v hv' i hi.le).symm
+  have h0 := (simTrace_state S rho hn hf hv v hv' i hi.le).symm
   have hne := exec_tick_ne_nil (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).node t
     (encodeTxs (Model.mempool rho.inbox v t))
@@ -132,29 +133,30 @@ theorem simTrace_tick_public_group (hv : rho.ExecutionValid) :
   exact ⟨hG, congrArg (cutMap S rho hn i + ·) hlen⟩
 
 /-- An honest node awake at a public time (from `0` on) ticks there. -/
-theorem simTrace_tick_of_awake (hv : rho.ExecutionValid) :
+theorem simTrace_tick_of_awake (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ t, 0 ≤ t → (S.params (pubOf E) hn).toParams.IsPublic t →
       (simTrace S rho hn).awake y t →
       ∃ j, (simTrace S rho hn).TickAt (runProposer S rho hn) (digestOf S rho) y j t := by
   intro y hy t ht0 hp hw
   rw [mem_honestKeys_iff] at hy
   obtain ⟨hwE, -, hth⟩ := (awake_iff' S rho hn y t).mp hw
-  obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total _ hy t ht0 hth hwE)
-  obtain ⟨hg, -⟩ := simTrace_tick_public_group S rho hn hv _ hy i t he hp
+  obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total _ t ht0 hth
+    (by simpa only [rho.faultyAt_eq_zero hf] using hy) hwE)
+  obtain ⟨hg, -⟩ := simTrace_tick_public_group S rho hn hf hv _ hy i t he hp
   rw [ownKey_key] at hg
   exact ⟨_, _, hg⟩
 
 /-- An engine tick at a non-public time has no cut. -/
 theorem simTrace_tick_other (_hv : rho.ExecutionValid) :
-    ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.tick v t) →
+    ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.tick v t) →
       ¬ (S.params (pubOf E) hn).toParams.IsPublic t →
         cutMap S rho hn (i + 1) = cutMap S rho hn i := by
   intro v _ i t he hp
   rw [cutMap_succ, eventCuts_tick_other S rho hn i v t he hp, List.length_nil, Nat.add_zero]
 
 /-- An engine delivery to an honest node is the groups of the canonical objects it delivers. -/
-theorem simTrace_deliver (hv : rho.ExecutionValid) :
-    ∀ v ∈ rho.honest, ∀ i o t, rho.events[i]? = some (.deliver v o t) →
+theorem simTrace_deliver (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+    ∀ v, v ∉ rho.faultyAt 0 → ∀ i o t, rho.events[i]? = some (.deliver v o t) →
       DeliverSeq (runProposer S rho hn) (simTrace S rho hn) (digestOf S rho)
         (Model.digests rho.hash o) (rho.ownKey v) t
         (delivered (S.params (pubOf E) hn) o) (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
@@ -163,15 +165,15 @@ theorem simTrace_deliver (hv : rho.ExecutionValid) :
   rw [cutMap_succ, eventCuts_deliver S rho hn i v o t he]
   refine deliverSeq_of_recs S rho hn (runProposer S rho hn) (digestOf S rho)
     _ _ _ 0 _ (fun k hk => ?_)
-    (simTrace_state S rho hn hv v hv' i hi.le).symm (fun k s hk _ => ?_)
+    (simTrace_state S rho hn hf hv v hv' i hi.le).symm (fun k s hk _ => ?_)
   · rw [← eventCuts_deliver S rho hn i v o t he] at hk ⊢
     exact allCuts_getElem?_add S rho hn i k hi hk
   · have := range_of_event S rho hn hi hk
     rwa [cutMap_succ, eventCuts_deliver S rho hn i v o t he] at this
 
 /-- An engine restart of an honest node is the node's restart group. -/
-theorem simTrace_restart (hv : rho.ExecutionValid) :
-    ∀ v ∈ rho.honest, ∀ i t, rho.events[i]? = some (.restart v t) →
+theorem simTrace_restart (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
+    ∀ v, v ∉ rho.faultyAt 0 → ∀ i t, rho.events[i]? = some (.restart v t) →
       (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho)
         (rho.ownKey v) (cutMap S rho hn i) t .restart ∧
         cutMap S rho hn (i + 1) = cutMap S rho hn i +
@@ -180,7 +182,7 @@ theorem simTrace_restart (hv : rho.ExecutionValid) :
   intro v hv' i t he
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   rw [cutMap_succ, eventCuts_restart S rho hn i v t he]
-  have h0 := (simTrace_state S rho hn hv v hv' i hi.le).symm
+  have h0 := (simTrace_state S rho hn hf hv v hv' i hi.le).symm
   have hne := exec_restart_ne_nil (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).node t
   have hcut : ∀ k < (groupRecs (runProposer S rho hn) (digestOf S rho)
@@ -213,7 +215,7 @@ over the trace, a Goldilocks run). -/
 private theorem simTrace_nonFraming
     (hrun : GoldilocksRun (runProposer S rho hn)
       (digestOf S rho) (honestKeys S rho) (simTrace S rho hn))
-    {v : V} (hv' : v ∈ rho.honest) :
+    {v : V} (hv' : v ∉ rho.faultyAt 0) :
     ∀ k k' a b, (simTrace S rho hn).SignAt (rho.ownKey v) k a →
       (simTrace S rho hn).SignAt (rho.ownKey v) k' b → ¬ FG.slashable a b :=
   Regimes.non_framing _ _ _ _ _ _ hrun (rho.ownKey v)
@@ -264,7 +266,7 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
 
 /-- The engine releases an honest node's own block at the tick that proposes it (the proposal
 duty's candidate is `blockObj` of the block, `releasable` by `proposal_releasable`). -/
-theorem simTrace_block_released (hv : rho.ExecutionValid)
+theorem simTrace_block_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hrun : GoldilocksRun (runProposer S rho hn)
       (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
     ∀ y ∈ honestKeys S rho, ∀ k B, (simTrace S rho hn).OwnBlockAt y k B →
@@ -284,9 +286,11 @@ theorem simTrace_block_released (hv : rho.ExecutionValid)
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact ⟨i, Or.inl he, (tick_releases S rho hn hv
-      (hv.honest_only _ (List.mem_of_getElem? he)) he hp
-      (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
+    have hh : v ∉ rho.faultyAt 0 := by
+      simpa only [Model.Event.node, Model.Event.time, rho.faultyAt_eq_zero hf] using
+        hv.honest_only _ (List.mem_of_getElem? he)
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hf hv hh he hp
+      (simTrace_nonFraming S rho hn hrun hh)
       r hmem).1 B acc hrl hpos'⟩
   | deliver v o t =>
     exfalso
@@ -306,7 +310,7 @@ theorem simTrace_block_released (hv : rho.ExecutionValid)
 
 /-- The engine releases an honest node's vote at its emission time: the tick's trailing polls
 or the delivery's poll. A restart at its own time emits no vote. -/
-theorem simTrace_vote_released (hv : rho.ExecutionValid)
+theorem simTrace_vote_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hrun : GoldilocksRun (runProposer S rho hn)
       (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
     ∀ y ∈ honestKeys S rho, ∀ k m, (simTrace S rho hn).EmitAt y k m →
@@ -325,9 +329,11 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact ⟨i, Or.inl he, (tick_releases S rho hn hv
-      (hv.honest_only _ (List.mem_of_getElem? he)) he hp
-      (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
+    have hh : v ∉ rho.faultyAt 0 := by
+      simpa only [Model.Event.node, Model.Event.time, rho.faultyAt_eq_zero hf] using
+        hv.honest_only _ (List.mem_of_getElem? he)
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hf hv hh he hp
+      (simTrace_nonFraming S rho hn hrun hh)
       r hmem).2.1 ℓ hrl em hem⟩
   | deliver v o t =>
     have hm := List.mem_of_getElem? he
@@ -341,7 +347,7 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
       (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow).2
       r hmem' ℓ hrl em hem
     have hpre : OneVote t (stateAt S rho hn v i) := by
-      rcases (outbox_inv S rho hn hv v (hv.honest_only _ hm) i).2 with h | h
+      rcases (outbox_inv S rho hn hv v i).2 with h | h
       · exact absurd h (not_lastRestart_deliver S rho hv he)
       · rwa [hnow] at h
     have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht0
@@ -403,7 +409,7 @@ theorem simTrace_vote_released (hv : rho.ExecutionValid)
 
 /-- The engine releases an honest node's attestation at its signing time (queued by `fgUpdate`,
 released by the tick's last poll steps; `tick_releases`, `Release`). -/
-theorem simTrace_att_released (hv : rho.ExecutionValid)
+theorem simTrace_att_released (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hrun : GoldilocksRun (runProposer S rho hn)
       (digestOf S rho) (honestKeys S rho) (simTrace S rho hn)) :
     ∀ y ∈ honestKeys S rho, ∀ k a, (simTrace S rho hn).SignAt y k a →
@@ -422,9 +428,11 @@ theorem simTrace_att_released (hv : rho.ExecutionValid)
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact ⟨i, Or.inl he, (tick_releases S rho hn hv
-      (hv.honest_only _ (List.mem_of_getElem? he)) he hp
-      (simTrace_nonFraming S rho hn hrun (hv.honest_only _ (List.mem_of_getElem? he)))
+    have hh : v ∉ rho.faultyAt 0 := by
+      simpa only [Model.Event.node, Model.Event.time, rho.faultyAt_eq_zero hf] using
+        hv.honest_only _ (List.mem_of_getElem? he)
+    exact ⟨i, Or.inl he, (tick_releases S rho hn hf hv hh he hp
+      (simTrace_nonFraming S rho hn hrun hh)
       r hmem).2.2 src a hrl⟩
   | deliver v o t =>
     exfalso

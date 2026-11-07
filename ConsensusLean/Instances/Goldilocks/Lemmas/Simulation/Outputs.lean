@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -19,11 +20,12 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
 
 omit [DecidableEq V] in
 /-- The honest engine reader's key is honest in its simulating run. -/
-theorem honest_ownKey {v : V} (hv : v ∈ rho.honest) : rho.ownKey v ∈ honestKeys S rho := by
+theorem honest_ownKey {v : V} (hv : v ∉ rho.faultyAt 0) :
+    rho.ownKey v ∈ honestKeys S rho := by
   simpa only [mem_honestKeys_iff, Model.Run.ownKey, Equiv.apply_symm_apply] using hv
 
 /-- Read the finalized chain directly from the simulating node cut. -/
-theorem read_finalized (hs : Simulates S rho hn tr ι) {v : V} (hv : v ∈ rho.honest)
+theorem read_finalized (hs : Simulates S rho hn tr ι) {v : V} (hv : v ∉ rho.faultyAt 0)
     {i : Nat} (hi : i ≤ rho.events.length) :
     (chainTrace rho).read .finalized v i =
       chainTo (tr.state (rho.ownKey v) (ι i)).fg.blocks
@@ -36,7 +38,7 @@ theorem read_finalized (hs : Simulates S rho hn tr ι) {v : V} (hv : v ∈ rho.h
 cuts. Neither an end-of-time observation nor clock equality is required. -/
 theorem confirmed_prefix_of_anc (hs : Simulates S rho hn tr ι)
     (hnc : Compose.NoCollRun (digestOf S rho) tr)
-    {u v : V} (hu : u ∈ rho.honest) (hv : v ∈ rho.honest)
+    {u v : V} (hu : u ∉ rho.faultyAt 0) (hv : v ∉ rho.faultyAt 0)
     {i j : Nat} (hi : i ≤ rho.events.length) (hj : j ≤ rho.events.length)
     (ha : Anc (tr.HonestBlocks (honestKeys S rho))
       (Regimes.readAfter tr (rho.ownKey u) (ι i) (stateAt S rho hn u i).now)
@@ -44,13 +46,13 @@ theorem confirmed_prefix_of_anc (hs : Simulates S rho hn tr ι)
     (chainTrace rho).read .confirmed u i <+: (chainTrace rho).read .confirmed v j := by
   let C := fun v i => Regimes.readAfter tr (rho.ownKey v) (ι i)
     (stateAt S rho hn v i).now
-  have hC : ∀ v ∈ rho.honest, ∀ i,
+  have hC : ∀ v, v ∉ rho.faultyAt 0 → ∀ i,
       C v i ∈ (tr.state (rho.ownKey v) (ι i)).fg.tree := by
     intro v hv' i
     exact (Regimes.sa_tips (A := (tr.state (rho.ownKey v) (ι i)).ac)
       (Store.frame_realization _ _ _ _ (Compose.fg_reachable hs.run.toLocalRun
         (honest_ownKey (S := S) hv') (ι i))).1 _).1.1
-  have hread : ∀ v ∈ rho.honest, ∀ i ≤ rho.events.length,
+  have hread : ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
       (chainTrace rho).read .confirmed v i =
         chainTo (tr.state (rho.ownKey v) (ι i)).fg.blocks
           ((C v i).slot + 1) (C v i) := by
@@ -77,6 +79,8 @@ theorem confirmed_prefix_of_anc (hs : Simulates S rho hn tr ι)
 theorem finalized_monotone (hs : Simulates S rho hn tr ι) :
     (chainTrace rho).Monotone .finalized 0 := by
   intro v i j hi hij hj hv _
+  have hv : v ∉ rho.faultyAt 0 := fun h =>
+    hv (rho.faultyAt_mono hi.2 h)
   have hy := honest_ownKey (S := S) hv
   have hri := Compose.fg_reachable hs.run.toLocalRun hy (ι i)
   have hrj := Compose.fg_reachable hs.run.toLocalRun hy (ι j)
@@ -88,9 +92,10 @@ theorem finalized_monotone (hs : Simulates S rho hn tr ι) :
     (hs.ι_mono hij))
 
 /-- Nesting holds at the shape's actual clock; it need not equal the next node cut's time. -/
-theorem outputs_nested (hs : Simulates S rho hn tr ι) :
+theorem outputs_nested (hf : rho.point.ConstantFaults) (hs : Simulates S rho hn tr ι) :
     (chainTrace rho).Nested .finalized .confirmed := by
-  intro v hv i hi
+  intro v i hi hv
+  have hv : v ∉ rho.faultyAt 0 := (rho.point.honestAt_iff_zero hf v _).mp hv
   have hy := honest_ownKey (S := S) hv
   have hr := Compose.fg_reachable hs.run.toLocalRun hy (ι i)
   have hΦ := (Store.frame_realization _ _ _ _ hr).1

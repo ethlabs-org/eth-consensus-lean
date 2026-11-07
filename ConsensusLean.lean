@@ -431,6 +431,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Persist.Main
@@ -473,6 +474,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Network
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.Causal
+public import ConsensusLean.Lemmas.Model.Constant
 public import ConsensusLean.Lemmas.Model.Credentials
 public import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Lemmas.Model.Mempool
@@ -482,6 +484,7 @@ public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.View
+public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
@@ -495,6 +498,8 @@ public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Faithful.Main
+public import ConsensusLean.Proofs.RegimesRealizable.Basic
+public import ConsensusLean.Proofs.RegimesRealizable.Growth
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import ConsensusLean.Spec.Blocks.Chains
 public import ConsensusLean.Spec.Blocks.Payload

@@ -5,6 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppli
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageRepair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
 import ConsensusLean.Lemmas.Model.Laws
+import ConsensusLean.Lemmas.Model.Constant
+public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Spec.Shape.Obligations
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
@@ -52,27 +54,29 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 /-- R8, claims C0.1/C0.2/F.2, node outputs_valid. NO PAPER PROOF for
 engine/read transport; replacement endpoint: engine_outputValid. -/
 theorem meetsObligations_outputValid : (Sys (goldilocks S) V).HoldsAlways fun r =>
-    ∀ c g, schema.output c = some g → OutputValid r.2 g := by
+    r.2.point.ConstantFaults → ∀ c g, schema.output c = some g → OutputValid r.2 g := by
   exact shape_outputValid V S
 
 /-- R8, claims C0.1/C0.2/F.2, node outputs_nested. NO PAPER PROOF for
 engine chain transport; replacement endpoint: engine_nested. -/
 theorem meetsObligations_nested : ∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank →
     schema.output c₁ = some g₁ → schema.output c₂ = some g₂ →
-    (Sys (goldilocks S) V).HoldsAlways fun r => (chainTrace r.2).Nested g₁ g₂ := by
+    (Sys (goldilocks S) V).HoldsAlways fun r =>
+      r.2.point.ConstantFaults → (chainTrace r.2).Nested g₁ g₂ := by
   exact shape_nested V S
 
 /-- R8, claims F.2, node finalized_monotone. NO PAPER PROOF for engine
 read transport; replacement endpoint: engine_finalMonotone. -/
 theorem meetsObligations_finalMonotone : ∀ g, schema.output .final = some g →
-    (Sys (goldilocks S) V).HoldsAlways fun r => (chainTrace r.2).Monotone g 0 := by
+    (Sys (goldilocks S) V).HoldsAlways fun r =>
+      r.2.point.ConstantFaults → (chainTrace r.2).Monotone g 0 := by
   exact shape_finalMonotone V S
 
 /-- R7, claims G0.5 and G1.1–G1.5, node final_accountable.
 NO PAPER PROOF for held-tree evidence/view and collision transport. Raw
 GenesisFresh is not a premise here: the encoding must discharge root separation. -/
 theorem meetsObligations_finalAccountable : ∀ g, schema.output .final = some g →
-    (Sys (goldilocks S) V).Holds (fun _ => True) fun r =>
+    (Sys (goldilocks S) V).Holds (fun r => r.2.point.ConstantFaults) fun r =>
       (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable
         (K S A).params.α g 0 := by
   exact shape_finalAccountable V S (K S A) (by norm_num [Params.standard])
@@ -85,10 +89,10 @@ private theorem final_node_requirements (Q : FinalQuery S A V) :
 private theorem final_fg_run (Q : FinalQuery S A V) :
     FGLocalRun (goldilocksNode Q.params (S.ro _)).genesisPayload (honestKeys S Q.run.2)
       (Q.trace.HonestBlocks (honestKeys S Q.run.2)) Q.trace.projFG := by
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   exact Compose.fg_projection _ _ _ _ _ _ _ (final_node_requirements S A V Q)
     hr.genesis_root_ok hr.toLocalRun
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
 
 private theorem final_anchor_post (Q : FinalQuery S A V) (W : FinalWindowData S A V Q)
     (a : Fin 4) :
@@ -97,14 +101,14 @@ private theorem final_anchor_post (Q : FinalQuery S A V) (W : FinalWindowData S 
 
 private theorem final_store_reachable (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
     W.store.Reachable (goldilocksNode Q.params (S.ro _)).genesisPayload := by
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   change (Q.trace.post (W.cut 3)).fg.Reachable _
   rw [final_anchor_post S A V Q W 3]
   exact Compose.fg_reachable hr.toLocalRun (W.ready 3).1 _
 
 private theorem final_anchor_held (Q : FinalQuery S A V) (W : FinalWindowData S A V Q) :
     W.block 3 ∈ W.store.tree := by
-  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have hr := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have hon := (hr.cutLaw _ (W.ready 3).1 _ _ (W.accepted 3)).2.1
   change W.block 3 ∈ (Q.trace.post (W.cut 3)).fg.tree
   rw [(Store.tree_grows _ _ _ _ (Compose.fg_reachable hr.toLocalRun (W.ready 3).1 _)).1 _ _ hon]
@@ -157,7 +161,7 @@ theorem final_duty_proposal (Q : FinalQuery S A V) :
     ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      ((finalGrid S A V Q).slotTime s) →
+      ((finalGrid S A V Q).slotTime s) Q.run.2.point.env.ΔAC →
       ∃ P, Healing.HonestProposalRun Q.trace (honestKeys S Q.run.2)
         (runProposer S Q.run.2 Q.hn) s P := by
   intro s hs hth hduty
@@ -230,7 +234,7 @@ theorem final_cache_coverage_of_prior_cache (Q : FinalQuery S A V)
   intro y t j hdt hth hy hj
   obtain ⟨k, hkj, hk⟩ := producer F hF y t j hdt hth hy hj
   have hmono := (Compose.fg_grows
-    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid) hy.1 hkj).2
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid) hy.1 hkj).2
   rcases hk with h | h
   · exact (hAF.trans h).trans hmono
   · exact h.trans hmono
@@ -247,9 +251,9 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     (W : FinalWindowData S A V Q) (tail : FinalPublicationTail S A V Q W)
     (coverage : ∃ F, W.store.blocks (W.state (W.block 3)).F = some F ∧
       W.Extends (W.block 0) F) : W.CacheCoverage := by
-  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid
+  have run := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
   have fg := final_fg_run S A V Q
-  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision
+  have hnc := noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision
   have hst : ∀ z, z ∈ honestKeys S Q.run.2 → ∀ k,
       Q.trace.projFG.store z k = (Q.trace.state z k).fg := by
     intro z hz k
@@ -259,19 +263,23 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     exact congrArg NodeState.fg (final_anchor_post S A V Q W 3)
   have hf : (honestKeys S Q.run.2)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
     have hpop := Q.healthy.2.1.1
-    change (Q.run.2.point.faulty.card : ℚ) < (K S A).params.β * Fintype.card V at hpop
+    change ((Q.run.2.point.faultyAt Q.run.2.horizon).card : ℚ) <
+      (K S A).params.β * Fintype.card V at hpop
+    rw [Q.constant _] at hpop
     rw [goldilocksContract_params_eq] at hpop
-    change (Q.run.2.point.faulty.card : ℚ) < 1 / 3 * Fintype.card V at hpop
-    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = Q.run.2.point.faulty.card := by
-      have heq : (honestKeys S Q.run.2)ᶜ = Q.run.2.key ⁻¹' (↑Q.run.2.point.faulty : Set V) := by
-        ext k; simp [mem_honestKeys_iff, EnvPoint.faulty, Model.Run.point]
+    change ((Q.run.2.point.faultyAt 0).card : ℚ) < 1 / 3 * Fintype.card V at hpop
+    have hfault : (honestKeys S Q.run.2)ᶜ.ncard = (Q.run.2.point.faultyAt 0).card := by
+      have heq : (honestKeys S Q.run.2)ᶜ =
+          Q.run.2.key ⁻¹' (↑(Q.run.2.point.faultyAt 0) : Set V) := by
+        ext k; simp [mem_honestKeys_iff, Model.Run.point]
       rw [heq, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
         (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset]
     rw [hfault]
-    have hn : 3 * Q.run.2.point.faulty.card < Fintype.card V := by
-      exact_mod_cast (show (3 : ℚ) * Q.run.2.point.faulty.card < Fintype.card V by
+    have hn : 3 * (Q.run.2.point.faultyAt 0).card < Fintype.card V := by
+      exact_mod_cast (show (3 : ℚ) * (Q.run.2.point.faultyAt 0).card < Fintype.card V by
         linarith only [hpop])
-    change Q.run.2.point.faulty.card < 2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
+    change (Q.run.2.point.faultyAt 0).card <
+      2 * ((2 * Fintype.card V + 2) / 3) - Fintype.card V
     omega
   obtain ⟨X, hX, hAX⟩ := coverage
   have hXR := (final_store_reachable S A V Q W).blocks_root hX
@@ -286,7 +294,7 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
     exact hanc.mono (by rw [hsource]; exact fg.tree_subset _ (W.ready 3).1 _)
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptance_iff S Q.run.2 Q.hn _ _ _).mp
-      (forwardAtAcceptance S Q.run.2 Q.hn Q.valid) _ (W.ready 3).1 _ _ (W.accepted 3)
+      (forwardAtAcceptance S Q.run.2 Q.hn Q.constant Q.valid) _ (W.ready 3).1 _ _ (W.accepted 3)
   refine W.cacheCoverage_iff.mpr ?_
   intro y t j hdt hth hy hj
   have hsafe := Store.replay_finalized_safety fg hf (W.ready 3).1 hy.1
@@ -297,11 +305,11 @@ theorem final_cache_acceptance_of_publication_tail (Q : FinalQuery S A V)
   · exact hAX.trans hXF
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
-  obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn hnet r hr
+  obtain ⟨d, hheld, hdt'⟩ := publication_held_ready_tail S Q.run.2 Q.hn Q.constant hnet r hr
     (horg ▸ (mem_honestKeys_iff S Q.run.2 _).mp (W.ready 3).1)
     (not_isFGAtt_of_decodeForward hdecode) hy hth
     (by rw [htime]; exact tail.1.trans hdt) tail.2
-  obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.valid hnc
+  obtain ⟨k, hkj, hacc, hkt⟩ := held_forward_accepted_before S Q.run.2 Q.hn Q.constant Q.valid hnc
     hy.1 (W.ready 3).1 hheld hdecode hdt' hj.2.le (hFX.trans hXB)
   have hkj' : k + 1 ≤ j := by
     have : k ≠ j := by intro he; subst k; exact (not_lt_of_ge hj.2.le) hkt
@@ -359,13 +367,13 @@ theorem final_payload_projection
         W.CacheCoverage) :
     ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
+      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
         (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
           ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
         g ((Sys (goldilocks S) V).heal (K S A) .final i gst r) ((K S A).params.latency .final i) :=
             by
-  intro g hg i gst r hv ⟨hhealthy, hprog⟩
+  intro g hg i gst r hv ⟨hconst, hhealthy, hprog⟩
   have hg' : g = Out.finalized := Option.some.inj hg.symm
   subst g
   by_cases hcollision : r.2.HashCollision
@@ -374,7 +382,7 @@ theorem final_payload_projection
   intro t hm hb hr
   obtain ⟨v, hvr⟩ := hr
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  let Q : FinalQuery S A V := ⟨r, hn, i, gst, t, hv, hcollision, hhealthy,
+  let Q : FinalQuery S A V := ⟨r, hconst, hn, i, gst, t, hv, hcollision, hhealthy,
     hprog, hm, hb, v, hvr⟩
   obtain ⟨W, hslack, hcover⟩ := windows Q
   have ht : 0 ≤ t := by
@@ -388,7 +396,7 @@ theorem final_payload_projection
   have hproposal : Regimes.ReadyProposalAt Q.trace (honestKeys S r.2)
       ((Sys (goldilocks S) V).cDur (K S A) r) (Q.trace.time (W.cut 0)) (W.block 0) :=
     ⟨_, W.cut 0, W.ready 0, W.proposals 0, rfl⟩
-  obtain ⟨k, hk, hrel⟩ := ready_proposal S r.2 hn hv hτ hτh hproposal
+  obtain ⟨k, hk, hrel⟩ := ready_proposal S r.2 hn hconst hv hτ hτh hproposal
   refine ⟨Q.trace.time (W.cut 0), k, headerOf Q.params (W.block 0), W.fresh, hk, hrel, ?_⟩
   have hc : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) r := by
     exact mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le
@@ -396,7 +404,7 @@ theorem final_payload_projection
     change t ≤ t + _
     exact le_add_of_nonneg_right (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le))
   have hroot : (W.block 0).root ≠ Q.params.genesisRoot := by
-    have run := simTrace_goldilocksRun S r.2 hn hv
+    have run := simTrace_goldilocksRun S r.2 hn hconst hv
     rcases Compose.blockCall_cases run.toLocalRun (W.ready 0).1 (W.accepted 0) with hg | hg
     · have hz := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim ((W.proposals 0).1.2 (by simpa using hz))
@@ -405,8 +413,8 @@ theorem final_payload_projection
       simp only [Node.mkBlock]
       erw [dgOf_eq]
       exact taggedRoot_ne _ _
-  exact finalized_inBy S r.2 hn hv
-    (noCollRun_simTrace S r.2 hn hv hcollision) hc hdeadline hb hroot
+  exact finalized_inBy S r.2 hn hconst hv
+    (noCollRun_simTrace S r.2 hn hconst hv hcollision) hc hdeadline hb hroot
     (fun y j hy hj => W.cacheCoverage_iff.mp hcover y Q.deadline j le_rfl hb hy hj)
 
 /-- Statement-only assembly of the OPEN route-A suppliers; not a completed liveness proof.
@@ -414,7 +422,7 @@ Coverage is the anchor route (`final_anchor_coverage`); the open leaf is
 `final_reset_premises` (via `final_window_extract`; `final_duty_proposal` is proved). -/
 theorem meetsObligations_healthyLive_final : ∀ g, schema.output .final = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
+      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
         (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) .final i
           ((Sys (goldilocks S) V).ready (K S A) gst r) ((Sys (goldilocks S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
@@ -432,16 +440,16 @@ or repaired engine timing transport.
 This field must not acquire whole-run progress before ready as a premise. -/
 theorem meetsObligations_healthyLive : ∀ cap g, schema.output cap = some g →
     ∀ (i : (K S A).Idx) (gst : Time), (Sys (goldilocks S) V).Holds
-      (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
+      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
         (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
           ((Sys (goldilocks S) V).ready (K S A) gst r)
           ((Sys (goldilocks S) V).pt r).horizon r)
       fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
         g ((Sys (goldilocks S) V).heal (K S A) cap i gst r) ((K S A).params.latency cap i) := by
-  intro cap g hg idx gst r hv ⟨hh, hp⟩
+  intro cap g hg idx gst r hv ⟨hconst, hh, hp⟩
   by_cases hf : cap = .final
   · subst cap
-    exact meetsObligations_healthyLive_final S A V g hg idx gst r hv ⟨hh, hp⟩
+    exact meetsObligations_healthyLive_final S A V g hg idx gst r hv ⟨hconst, hh, hp⟩
   have hcap : cap = .available ∨ cap = .stable := by cases cap <;> simp_all
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
@@ -451,7 +459,7 @@ theorem meetsObligations_healthyLive : ∀ cap g, schema.output cap = some g →
   left
   intro t ht hb hr
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
-  let Q : ConfirmedQuery S A V := ⟨r, hn, cap, hcap, idx, gst, t, hv, hc,
+  let Q : ConfirmedQuery S A V := ⟨r, hconst, hn, cap, hcap, idx, gst, t, hv, hc,
     Or.inr ⟨hh, hp, ht⟩, hb, hr⟩
   obtain ⟨P, cover⟩ := healthy_confirmed_supply S A V Q hh hp ht
   have h0 : 0 ≤ t :=
@@ -463,9 +471,9 @@ theorem meetsObligations_healthyLive : ∀ cap g, schema.output cap = some g →
 readiness and read-cut transport. Node route: sleepy_invariant and ready reads. -/
 theorem meetsObligations_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → (Sys (goldilocks S) V).Holds
-      ((Sys (goldilocks S) V).Sleepy (K S A)) fun r =>
+      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Sleepy (K S A) r) fun r =>
         (chainTrace r.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) r) g 0 := by
-  intro cap g hcap hg r hv hs
+  intro cap g hcap hg r hv ⟨hconst, hs⟩
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
   subst g
@@ -473,10 +481,10 @@ theorem meetsObligations_sleepySafe : ∀ cap g, (cap = .available ∨ cap = .st
   · exact Or.inr hc
   left
   by_cases hn : 1 ≤ Fintype.card V
-  · let Q : SleepySafetyQuery S A V := ⟨r, hn, hv, hc, hs⟩
+  · let Q : SleepySafetyQuery S A V := ⟨r, hconst, hn, hv, hc, hs⟩
     obtain ⟨hd, hsync, hf⟩ := sleepy_safety_inputs S A V Q
-    have safe := sleepy_safe_engine S r.2 hn hv
-      (noCollRun_simTrace S r.2 hn hv hc) hsync hf
+    have safe := sleepy_safe_engine S r.2 hn hconst hv
+      (noCollRun_simTrace S r.2 hn hconst hv hc) hsync hf
     have ready : ∀ v t, r.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) r) v t →
         r.2.point.Ready (Regimes.catchUp (S.params (Model.pubOf r.1) hn) + 1) v t := by
       intro v t h
@@ -492,12 +500,12 @@ for the exact recurrence/readiness/deadline transport; keep this gap explicit. -
 theorem meetsObligations_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ i : (K S A).Idx,
       (Sys (goldilocks S) V).Holds
-        (fun r => (Sys (goldilocks S) V).Sleepy (K S A) r ∧
+        (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Sleepy (K S A) r ∧
           (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
             0 ((Sys (goldilocks S) V).pt r).horizon r)
         fun r => ProposalLiveReady r.2 ((Sys (goldilocks S) V).cDur (K S A) r)
           g 0 ((K S A).params.latency cap i) := by
-  intro cap g hcap hg idx r hv ⟨hs, hp⟩
+  intro cap g hcap hg idx r hv ⟨hconst, hs, hp⟩
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
   subst g
@@ -506,7 +514,7 @@ theorem meetsObligations_sleepyLive : ∀ cap g, (cap = .available ∨ cap = .st
   left
   intro t ht hb hr
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
-  let Q : ConfirmedQuery S A V := ⟨r, hn, cap, hcap, idx, 0, t, hv, hc,
+  let Q : ConfirmedQuery S A V := ⟨r, hconst, hn, cap, hcap, idx, 0, t, hv, hc,
     Or.inl ⟨hs, hp, ht⟩, hb, hr⟩
   obtain ⟨P, service⟩ := sleepy_serviced_proposal_supply S A V Q hs hp ht
   exact confirmed_payload_projection S A V Q ht P
@@ -518,13 +526,13 @@ has no completed proof. -/
 theorem meetsObligations_healedSafe : ∀ cap g, (cap = .available ∨ cap = .stable) →
     schema.output cap = some g → ∀ (i : (K S A).Idx) (gst : Time),
       (Sys (goldilocks S) V).Holds
-        (fun r => (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
+        (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Healthy (K S A) gst r ∧
           (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap i
             ((Sys (goldilocks S) V).ready (K S A) gst r)
             ((Sys (goldilocks S) V).heal (K S A) cap i gst r) r)
         fun r => (chainTrace r.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) r)
           g ((Sys (goldilocks S) V).heal (K S A) cap i gst r) := by
-  intro cap g hcap hg idx gst r hv ⟨hh, hp⟩
+  intro cap g hcap hg idx gst r hv ⟨hconst, hh, hp⟩
   have hg' : g = Out.confirmed := by
     rcases hcap with rfl | rfl <;> exact Option.some.inj hg.symm
   subst g
@@ -537,7 +545,7 @@ theorem meetsObligations_healedSafe : ∀ cap g, (cap = .available ∨ cap = .st
   let heal := (Sys (goldilocks S) V).heal (K S A) cap idx gst r
   by_cases hb : heal ≤ r.2.horizon
   · by_cases hn : 1 ≤ Fintype.card V
-    · let Q : HealthyPreparationQuery S A V := ⟨r, hn, cap, hcap, idx, gst, hv,
+    · let Q : HealthyPreparationQuery S A V := ⟨r, hconst, hn, cap, hcap, idx, gst, hv,
         hcollision, hh⟩
       have h0 : 0 ≤ Q.heal :=
         add_nonneg (le_max_right gst 0)
@@ -556,11 +564,12 @@ Blocked by lifetime (4k−1 versus 4k−2) and finite pre-outage network scope:
 SyncUntil b₀ does not give unrestricted late-wake SyncRun calls. Do not
 insert that false implication as an intermediate lemma. -/
 theorem meetsObligations_persists : ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
-    (Sys (goldilocks S) V).Holds ((Sys (goldilocks S) V).Outage (K S A) T b₀ b₁)
+    (Sys (goldilocks S) V).Holds
+      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Outage (K S A) T b₀ b₁ r)
       fun r => (chainTrace r.2).ProtectedReadyFrom
         ((Sys (goldilocks S) V).cDur (K S A) r) g (resilienceTarget schema g) T
         ((Sys (goldilocks S) V).recoveryAt (K S A) b₁ r) := by
-  intro g hg T b₀ b₁ r hv ho
+  intro g hg T b₀ b₁ r hv ⟨hconst, ho⟩
   have hg' : g = Out.confirmed := Option.some.inj hg.symm
   subst g
   by_cases hcollision : r.2.HashCollision
@@ -568,11 +577,12 @@ theorem meetsObligations_persists : ∀ g, schema.output .stable = some g → �
   left
   intro v hvr t ht hth w hw
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  let Q : OutageQuery S A V := ⟨r, hn, T, b₀, b₁, hv, hcollision, ho⟩
+  let Q : OutageQuery S A V := ⟨r, hconst, hn, T, b₀, b₁, hv, hcollision, ho⟩
   exact outage_protected S A V Q v hvr t ht hth w hw
 
 /-- Exact nine-field assembly; the named gaps above are not a blanket claims assumption. -/
-theorem meetsObligations_claims : ShapeClaims (goldilocks S) (K S A) := by
+theorem meetsObligations_claims : ∀ (V : Type) [Fintype V] [DecidableEq V],
+    ShapeClaimsOnAt (goldilocks S) (K S A) V (fun p => p.ConstantFaults) := by
   intro V _ _
   exact {
     outputValid := meetsObligations_outputValid S V
@@ -609,7 +619,8 @@ theorem meetsObligations_admissible : (K S A).params.Admissible := by
 
 /-- The concrete endpoint at the coefficients `contract_coefficients S A`. Every gap is a named
 numeric or adapter leaf; no simulation, GenesisFresh, or desired safety premise is added. -/
-theorem meetsObligations_concrete : ShapeObligations (goldilocks S) (K S A) :=
+theorem meetsObligations_concrete :
+    ShapeObligationsOn (goldilocks S) (K S A) (fun _ p => p.ConstantFaults) :=
   { claims := meetsObligations_claims S A
     admissible := meetsObligations_admissible S A
     serves := by simp [OutputSchema.Serves, schema]
@@ -618,7 +629,7 @@ theorem meetsObligations_concrete : ShapeObligations (goldilocks S) (K S A) :=
 
 /-- The existential endpoint, from `meetsObligations_concrete`. -/
 theorem meetsObligations_exists : ∃ C : ContractCoefficients,
-    ShapeObligations (goldilocks S) (goldilocksContract A C) :=
+    ShapeObligationsOn (goldilocks S) (goldilocksContract A C) (fun _ p => p.ConstantFaults) :=
   ⟨_, meetsObligations_concrete S A⟩
 
 end Consensus.Goldilocks.Obligations

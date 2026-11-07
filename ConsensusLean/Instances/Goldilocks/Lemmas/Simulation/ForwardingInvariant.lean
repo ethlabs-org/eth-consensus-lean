@@ -1058,7 +1058,8 @@ theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
 Coverage and carried-object readiness come from the reachable engine prefix. -/
 theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) (v : V) (hh : v ∈ rho.honest) (i : Nat) (t : Time)
+    (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    (v : V) (hh : v ∉ rho.faultyAt 0) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) (s : Slot) (hs : 0 < s)
     (hone : (skeleton (pubOf E)).proposeAt t = [.propose s hs])
     (ht : t = (S.params (pubOf E) hn).toParams.slotTime s)
@@ -1087,7 +1088,7 @@ theorem tick_proposal_acceptance_queued {V : Type} [Fintype V] [DecidableEq V] {
     (selValid_proposer S rho hn hv.selValid s) hself
     (by rw [hnow, ht]; exact slotOf_slotTime _ s) (hnow.trans ht)
     (fun hselected par info cs hprop =>
-      proposal_releasable S rho hn hv v hh i t he s par info cs hs hone hselected hprop)
+      proposal_releasable S rho hn hf hv v hh i t he s par info cs hs hone hselected hprop)
     hcover B (by simpa only [hnow, atProposal_mempool] using ha)
   exact ⟨p, by simpa only [hself, hnow] using hp⟩
 

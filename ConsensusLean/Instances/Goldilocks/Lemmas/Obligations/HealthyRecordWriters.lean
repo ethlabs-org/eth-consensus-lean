@@ -355,10 +355,11 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- A healthy update no later than the stored clock has actually completed.
 The equality case uses the engine tick's position, not trace-time comparison. -/
-theorem update_before_stored_clock (hvalid : rho.ExecutionValid) {g ΔF a : Time}
+theorem update_before_stored_clock (hf : rho.point.ConstantFaults)
+    (hvalid : rho.ExecutionValid) {g ΔF a : Time}
     (hp : Healing.ResetPremisesUpTo (simTrace S rho hn) (honestKeys S rho)
       (runProposer S rho hn) (digestOf S rho) g ΔF a rho.horizon)
-    {v : V} (hv : v ∈ rho.honest) {i u : Nat}
+    {v : V} (hv : v ∉ rho.faultyAt 0) {i u : Nat}
     (hslot : (S.params (Model.pubOf E) hn).ts
       ((S.params (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
         (S.params (Model.pubOf E) hn).ts u)
@@ -386,7 +387,10 @@ theorem update_before_stored_clock (hvalid : rho.ExecutionValid) {g ΔF a : Time
   rw [simTrace_awake_iff, awakeAt_iff] at hawake
   have hawake' : E.awake v T = true := by
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using hawake.1
-  obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp (hvalid.tick_total v hv T hT0.le hTb hawake')
+  have hfT : rho.faultyAt T = rho.faultyAt 0 := hf T
+  obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp
+    (hvalid.tick_total v T hT0.le hTb
+      (by rw [hfT]; exact hv) hawake')
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart
     obtain ⟨_, rec, hrec, hnode, htime, ell, hlabel, hcall⟩ :=
@@ -404,8 +408,8 @@ theorem update_before_stored_clock (hvalid : rho.ExecutionValid) {g ΔF a : Time
     dsimp [T] at hbound'
     linarith [sp.toParams.hΔ]
   have hpi := tick_before_stored_clock S rho hn hvalid he hT0 ht hnr
-  obtain ⟨hgroup, hlen⟩ := simTrace_tick_public_group S rho hn hvalid v hv p T he hpub
-  obtain ⟨hcall, htime⟩ := tick_boundary_call S rho hn hvalid hv he hpub
+  obtain ⟨hgroup, hlen⟩ := simTrace_tick_public_group S rho hn hf hvalid v hv p T he hpub
+  obtain ⟨hcall, htime⟩ := tick_boundary_call S rho hn hf hvalid hv he hpub
   obtain ⟨ell, hcallA, hcalltick⟩ : ∃ ell,
       tr.projAC.CallAt (rho.ownKey v) (cutMap S rho hn p) ell ∧
         ell.call = .tick := ⟨_, Compose.projAC_callAt.2 hcall, rfl⟩

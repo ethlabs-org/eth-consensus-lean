@@ -31,7 +31,8 @@ theorem hsSharedUpTo_of_rows (Q : FinalQuery S A V) (ΔF : Time)
     (hΔF : 0 < ΔF) (htd : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (S.δt : Time)) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
       ΔF Q.run.2.horizon :=
-  Obligations.hsSharedUpTo_of_rows S A V Q.run Q.hn Q.valid Q.noCollision Q.healthy hrow hΔF htd
+  Obligations.hsSharedUpTo_of_rows S A V Q.run Q.hn Q.constant Q.valid Q.noCollision
+    Q.healthy hrow hΔF htd
 
 /-- **The shared HS premises of a final query through its horizon**, at GST `Q.gst`, the
 protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)` with the network's attestation service there
@@ -40,7 +41,8 @@ of the run. This is the instantiation point of `Δ_F` for the final route. -/
 theorem hsSharedUpTo (Q : FinalQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
-  Q.hsSharedUpTo_of_rows _ (signed_row_service_psync S Q.run.2 Q.hn Q.valid) (protoFGDelay_pos _)
+  Q.hsSharedUpTo_of_rows _ (signed_row_service_psync S Q.run.2 Q.hn Q.constant Q.valid)
+    (protoFGDelay_pos _)
     (protoFGDelay_timeout_of_healthy S A V Q.run Q.hn Q.healthy)
 
 /-- **The FG transport of a final query** at its FG gap: `6Δ + Δ_F,p ≤ 4Δ·fgSlots`. -/

@@ -116,7 +116,7 @@ theorem goldilocksContract_params_eq {S : Setup} (A : ContractAssumptions S)
       { Params.standard C.catchUp (4 * S.k + 6)
         (4 * S.k - 5) C.heal C.latency with
         noSleep := 4 * S.k + 6, recovery := 9,
-        fgDelay := A.fgDelay } := by rfl
+        fgDelay := A.fgDelay, ahead := 5, cohortAhead := 0 } := by rfl
 
 theorem contract_coefficients_catchUp (S : Setup) (A : ContractAssumptions S) :
     (contract_coefficients S A).catchUp = contract_catchUp S A := by rfl

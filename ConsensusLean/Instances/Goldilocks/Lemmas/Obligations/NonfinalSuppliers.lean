@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Lemmas.Model.Constant
 
 public section
 
@@ -26,7 +27,7 @@ open Blocks Shape
 processing-cut deadline. Network holdings alone do not cover source self-service. -/
 theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) {b : Time} (hbh : b ≤ rho.horizon)
+    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid) {b : Time} (hbh : b ≤ rho.horizon)
     (hnet : rho.log.SyncUntil rho.point b)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
     (hx : x ∈ honestKeys S rho) (hy : y ∈ honestKeys S rho) (hne : y ≠ x)
@@ -44,7 +45,7 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
       (simTrace S rho hn).time k < (simTrace S rho hn).projAC.deadline y k τ := by
   induction j using Nat.strong_induction_on with
   | h j ih =>
-    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hv hy hj hτ
+    obtain ⟨a, ha, heq, hw⟩ := deadline_awake_interval S rho hn hconst hv hy hj hτ
     have heq' : (simTrace S rho hn).projAC.deadline y j τ =
         a + (S.params (Model.pubOf E) hn).Δ := by
       rw [Compose.projAC_deadline]
@@ -53,13 +54,13 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
       change a + E.ΔAC - 1 < a + E.ΔAC
       linarith
     have hbound : a + E.ΔAC - 1 ≤ b := hslack.le.trans (heq' ▸ hb)
-    have hheld := hnet.msgs (rho.key x) ((mem_honestKeys_iff S rho x).mp hx)
-      _ τ ⟨source, hs, hrel⟩
+    have hheld := hnet.msgs (rho.key x) _ τ ⟨source, hs, hrel⟩
+      ((rho.point.honestAt_iff_zero hconst _ _).mpr ((mem_honestKeys_iff S rho x).mp hx))
       (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) (rho.key y)
-      ((mem_honestKeys_iff S rho y).mp hy)
       a ha hbound (hbound.trans hbh)
+      ((rho.point.honestAt_iff_zero hconst _ _).mpr ((mem_honestKeys_iff S rho y).mp hy))
       (fun u hau hud => hw u hau (hud.trans (hslack.le.trans (heq' ▸ hd))))
-    rcases held_voteForward_source_or_process S rho hn hv
+    rcases held_voteForward_source_or_process S rho hn hconst hv
       ((mem_honestKeys_iff S rho x).mp hx) hs hfirst hheld with
       h | ⟨k, hp, hlo, hhi⟩
     · exact False.elim (hne h)
@@ -75,7 +76,7 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
     · have hm : (simTrace S rho hn).projAC.deadline y k τ ≤
           (simTrace S rho hn).projAC.deadline y j τ := by
         rw [Compose.projAC_deadline, Compose.projAC_deadline]
-        exact deadline_mono_cut S rho hn hv y τ (S.params (Model.pubOf E) hn).Δ hkj.le
+        exact deadline_mono_cut S rho hn hconst hv y τ (S.params (Model.pubOf E) hn).Δ hkj.le
       obtain ⟨l, hl, hlo', hp', hlt⟩ := ih k hkj ⟨_, Compose.projAC_callAt.mp hp.choose_spec.1⟩
         (hm.trans hb) (le_of_not_gt hk)
       exact ⟨l, hl.trans hkj.le, hlo', hp', hlt⟩
@@ -84,12 +85,12 @@ theorem vote_message_service_other {V : Type} [Fintype V] [DecidableEq V] {E : E
 Self-service uses fresh processing at the source time, never retention across a restart. -/
 theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid)
+    (hconst : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTrace S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
     Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho)
       (S.params (Model.pubOf E) hn).Δ b := by
-  have hr := simTrace_goldilocksRun S rho hn hv
+  have hr := simTrace_goldilocksRun S rho hn hconst hv
   apply Compose.sleepyServiceBefore_of_message_relay hr.toLocalRun
   · intro x hx i m hsrc h0 y hy j ℓ hj hb hd
     rw [SA.messageServedBefore_iff]
@@ -101,7 +102,7 @@ theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] 
         refine ⟨l, Compose.projAC_callAt.mp hl, ?_⟩
         rw [Compose.projAC_state hr.toLocalRun hx] at hm
         exact hm
-      obtain ⟨k, hp, ht⟩ := sendOrAdmit_process_same_time S rho hn hv hx hsource
+      obtain ⟨k, hp, ht⟩ := sendOrAdmit_process_same_time S rho hn hconst hv hx hsource
       have hlt : ∀ q, (simTrace S rho hn).time i <
           (simTrace S rho hn).projAC.deadline x q ((simTrace S rho hn).time i) := by
         intro q
@@ -119,12 +120,12 @@ theorem sleepyServiceBefore_of_syncUntil {V : Type} [Fintype V] [DecidableEq V] 
       · change (simTrace S rho hn).time k < _
         rw [ht]
         exact hlt k
-    · obtain ⟨r, -, -, hs, hrel, hf⟩ := simTrace_vote_forwarded S rho hn hv x hx i m
+    · obtain ⟨r, -, -, hs, hrel, hf⟩ := simTrace_vote_forwarded S rho hn hconst hv x hx i m
         (Compose.sendOrAdmit_forward_source hr hx hsrc)
-      exact vote_message_service_other S rho hn hv hbh hnet hx hy hxy h0 hs hrel hf
+      exact vote_message_service_other S rho hn hconst hv hbh hnet hx hy hxy h0 hs hrel hf
         ⟨_, Compose.projAC_callAt.mp hj⟩ hb hd
   · intro x hx i B hi h0 y hy j hj hb hd hF
-    exact acceptance_relay_syncUntil S rho hn hv hnc hbh hnet hx hi h0 hy hj hb hd hF
+    exact acceptance_relay_syncUntil S rho hn hconst hv hnc hbh hnet hx hi h0 hy hj hb hd hF
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
@@ -138,7 +139,7 @@ theorem sleepy_raw_syncUntil (r : (Sys (goldilocks S) V).Run)
   have hp : r.2.log.PSync r.2.point 0 := (Model.sysOf_delivers_iff _ _ _ _).mp hsleepy.1
   apply hp.syncUntil_zero ?_ b
   rw [CommLog.sendsFromZero_iff]
-  intro x hx m t hs
+  intro x m t hs hx
   obtain ⟨i, he | ⟨o, he⟩, -⟩ := hs
   · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
   · exact (hv.in_horizon _ (List.mem_of_getElem? he)).1
@@ -147,6 +148,7 @@ theorem sleepy_raw_syncUntil (r : (Sys (goldilocks S) V).Run)
 The endpoint readiness duration is unchanged; this is not protocol catchUp. -/
 structure ConfirmedQuery where
   run : (Sys (goldilocks S) V).Run
+  constant : run.2.point.ConstantFaults
   hn : 1 ≤ Fintype.card V
   cap : Capability
   nonfinal : cap = .available ∨ cap = .stable
@@ -228,10 +230,11 @@ theorem confirmed_duration_supply (Q : ConfirmedQuery S A V) :
 theorem sleepy_query_sync (Q : ConfirmedQuery S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy (K S A) Q.run) :
     Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.deadline := by
-  exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) Q.bounded
+  exact sleepyServiceBefore_of_syncUntil S Q.run.2 Q.hn Q.constant Q.valid
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) Q.bounded
     (sleepy_raw_syncUntil S A V Q.run Q.valid hsleepy Q.deadline)
 
+omit [DecidableEq V] in
 /-- Shortening the readiness duration preserves a strict half-ready population. -/
 theorem half_ready_of_duration (p : EnvPoint V) {c d t : Time} (hd : c ≤ d)
     (hh : p.ReadyAbove (1 / 2) d t) : p.ReadyAbove (1 / 2) c t := by
@@ -253,10 +256,13 @@ theorem sleepy_query_population (Q : ConfirmedQuery S A V)
     ∀ s : Nat, ∀ d ∈ ({0, Q.params.Δ, 2 * Q.params.Δ} : Set Time),
       Q.params.ts s + d ≤ Q.deadline →
         Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts s + d) := by
-  apply sleepy_faultBound S Q.run.2 Q.hn Q.valid Q.bounded
+  apply sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid
+    (W := (Sys (goldilocks S) V).aheadDur (K S A) Q.run) Q.bounded
+  apply (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mpr
   intro t ht htb
   exact half_ready_of_duration V Q.run.2.point (confirmed_duration_supply S A V Q)
-    (hsleepy.2 t ht (htb.trans Q.bounded))
+    ((Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mp hsleepy.2
+      t ht (htb.trans Q.bounded))
 
 /-- The recurrence/grid supplier selects readiness at exact endpoint cDur directly.
 Readiness merely at 18Δp cannot be upgraded to this field by monotonicity. -/
@@ -279,7 +285,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
   have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
   have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index⟩ Q.duration ready Q.run.2.horizon := by
+      ⟨Pattern.single, Q.index, 1⟩ Q.duration ready Q.run.2.horizon := by
     simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
       Model.sysExternal, ConfirmedQuery.duration, System.cDur, System.pt, Sys,
       Model.sysOf, Model.Run.point]
@@ -316,7 +322,7 @@ theorem healthy_query_slot (Q : ConfirmedQuery S A V) {ready : Time}
   have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
     simp only [runProposer_eq, dite_eq_left hready.1]
     exact Finset.min'_mem _ _
-  have hR := hready.2 _ hmem
+  have hR := (hready.2 _ hmem).1
   rw [htime] at hR
   have hnode := ready_transport S Q.run.2 Q.hn Q.valid (hquery0.trans hlo.le)
     ((le_add_of_nonneg_right (by positivity : 0 ≤ 6 * Q.params.Δ)).trans
@@ -350,8 +356,8 @@ theorem confirmed_slot_event (Q : ConfirmedQuery S A V)
       B.proposer = runProposer S Q.run.2 Q.hn W.slot ∧
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
   obtain ⟨k, B, hp, ht⟩ := Regimes.ready_proposer_proposes
-    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+    (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
     W.positive (confirmed_ready_mono S A V Q (confirmed_duration_supply S A V Q) W.ready)
   exact ⟨B, k, hp.2.1, hp.2.1 ▸ hp, ht⟩
 
@@ -368,8 +374,8 @@ theorem sleepy_query_producer (Q : ConfirmedQuery S A V)
   obtain ⟨B, k, hp, he, ht⟩ := confirmed_slot_event S A V Q W
   have hr : Regimes.ReadyAt Q.trace (honestKeys S Q.run.2) Q.duration
       B.proposer (Q.trace.time k) := by rw [hp, ht]; exact W.ready
-  have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.valid)
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision) hr.1 he
+  have hacc := Compose.proposal_accepted (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision) hr.1 he
   have hmargin : Q.trace.time k + 6 * Q.params.Δ ≤ Q.deadline := by
     rw [ht]; exact W.margin
   have hbound : Q.trace.time k ≤ Q.deadline :=
@@ -397,8 +403,8 @@ theorem sleepy_serviced_proposal_coverage (Q : ConfirmedQuery S A V)
       Anc (Q.trace.HonestBlocks (honestKeys S Q.run.2)) P.block
         (Regimes.readAfter Q.trace y j Q.deadline) := by
   intro y j hy hj
-  exact sleepy_include_finite S Q.run.2 Q.hn Q.valid
-    (noCollRun_simTrace S Q.run.2 Q.hn Q.valid Q.noCollision)
+  exact sleepy_include_finite S Q.run.2 Q.hn Q.constant Q.valid
+    (noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision)
     (W.nonnegative.trans P.bounded) Q.bounded W.sync W.population
     W.nonnegative P.bounded
     ⟨P.block.proposer, P.cut, confirmed_ready_mono S A V Q W.duration P.ready,
