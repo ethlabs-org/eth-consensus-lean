@@ -74,6 +74,44 @@ theorem honest_batch_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr
     (le_min hb le_rfl) hPt hall' x hxd j e hv' hes
   rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
 
+/-- **An honest vote at an update**: at the update of slot `s` of a node honest then, through `b`,
+a slot-`s` vote of a node honest at its vote and still honest at the update, whose head `Q` (a
+block held while honest) is above the update's `Σ.F`, is in the pool, resolved before
+`t_s + 2Δ`, with `Q` in the frame (the static `honest_vote_at_update_before` on the prefix through
+the update). -/
+theorem honest_vote_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n}
+    {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
+    (hFQ : Anc (tr.HonestBlocksAt H) ℓ.frame.F Q) {x : Fin sp.n} {j : Nat}
+    {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e) (hxd : x ∈ H (tr.time k₀))
+    (hes : e.msg.slot = s) (hhead : e.msg.head = Q.root) :
+    Q ∈ ℓ.frame.tree ∧ e.msg ∈ (tr.projAC.state y k₀).pool s ∧
+      SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
+        SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+  have hΔ := sp.toParams.hΔ
+  have hd := hrun.time_nonneg k₀
+  have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
+  have hU := honestBlocksAt_coherent hrun hnc
+  obtain ⟨hx, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hv
+  obtain ⟨⟨Hd, hHd, hHdr, -⟩, htj⟩ := cast_head_fcRoot_at hrun hnc hx ⟨hcx, hex⟩
+  have hjt : tr.time j ≤ tr.time k₀ := by rw [hes] at htj; linarith
+  -- the head is in the voter's tree at its vote, so a block of the prefix's honest blocks
+  have hHdQ : Hd = Q := hU.1 ((frameIn_at hrun hnc hx hcx).2 hHd) hQU (hHdr.trans hhead)
+  have hQU' : Q ∈ (tr.upTo (tr.time k₀)).HonestBlocks (H (tr.time k₀)) := by
+    refine ⟨x, hxd, j, ?_⟩
+    rw [Trace.upTo_state tr x fun k hk => (hrun.time_mono hk.le).trans hjt]
+    rw [frame_of_projAC_at hrun hx hcx] at hHd
+    exact hHdQ ▸ hHd.1
+  have hFQ' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hQU' hFQ
+  have hsvc := (SleepyServiceBefore.upTo hrun hsync hd).ac
+  rw [RunTrace.upTo_projAC] at hsvc
+  have h := Compose.honest_vote_at_update_before (acRun_upTo hrun hnc hd) hsvc (le_min hb le_rfl)
+    hy ((sa_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) hQU' hFQ' hxd
+    (sa_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩) hes hhead
+  rwa [projAC_upTo_state hrun le_rfl] at h
+
 end Consensus.Goldilocks.Compose.Growing
 
 end

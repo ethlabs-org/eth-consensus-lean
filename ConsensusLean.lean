@@ -193,6 +193,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.A
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Pending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
