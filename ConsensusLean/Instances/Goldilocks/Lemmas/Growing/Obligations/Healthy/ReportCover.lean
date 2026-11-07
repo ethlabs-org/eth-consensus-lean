@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNext
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CorePending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RetentionPending
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
@@ -56,21 +57,6 @@ theorem unanimous_pool_at (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
       ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
   sorry
 
-/-- Stand-in: an optimistic selection of slot `u + 1` by a node honest at it is compatible with
-the unanimous proposal of slot `u`. -/
-theorem unanimous_next_optimistic_compatible_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (_hc : CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (_hP : P ∈ tr.HonestBlocksAt H)
-    (_hslot : P.slot = u) (_hu : 0 < u)
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (_hub : sp.ts u + sp.Δ ≤ b) {y : Fin sp.n} {j : Nat} (_hy : y ∈ H (tr.time j))
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (_hopt : SA.OptimisticLockAt tr.projAC y j (u + 1) D CV) (_hjb : tr.time j ≤ b) :
-    Compatible (tr.HonestBlocksAt H) D P := by
-  sorry
-
 /-- Stand-in: a high origin written by the update deadline is compatible with the unanimous
 proposal. -/
 theorem high_origin_compatible_before_update_at
@@ -83,19 +69,6 @@ theorem high_origin_compatible_before_update_at
     (_hTb : sp.ts u + 6 * sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat}
     (_ho : HighOrigin tr H g x r m B) (_ht : tr.time r ≤ sp.ts u + 6 * sp.Δ) :
     Compatible (tr.HonestBlocksAt H) B P := by
-  sorry
-
-/-- Stand-in: a high origin before slot `u + 1` is below the unanimous proposal of slot `u`. -/
-theorem high_origins_before_next_slot_below_at
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) (_hc : CatchRun tr H g (2 * sp.Δ))
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (_hP : P ∈ tr.HonestBlocksAt H)
-    (_hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u → e.msg.head = P.root)
-    (_hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (_hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (_hub : sp.ts u + sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (_ho : HighOrigin tr H g x r m B)
-    (_ht : tr.time r < sp.ts (u + 1 : Nat)) (_hrb : tr.time r ≤ b) :
-    Anc (tr.HonestBlocksAt H) B P := by
   sorry
 
 /-- Stand-in: finality at a cut after the reset, by the update deadline, is compatible with the
