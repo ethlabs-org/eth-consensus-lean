@@ -1,16 +1,17 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteFloor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 
 public section
 
-/-! # Finite vote-domain assembly with the causal row bound explicit
+/-! # Finite vote-domain assembly at independently honest cuts
 
-This helper does not replace the frozen no-extra-premise endpoint. Its one
-additional input isolates the remaining vote-row exclusion proof.
+The row-parametric assembly is closed by the proved causal vote-row exclusion,
+yielding the exact frozen endpoint without a writer-survival premise.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
@@ -94,6 +95,32 @@ theorem held_target_vote_domain_of_row_bound_before_at
       exact raw_target_frozen_witness_at hp ho
         ((hp.run.time_mono hd.le).trans hib) hy hcast hn hFB hBO hE hEO hEf
   exact (vote_viable_of_root_at hp hy hcast hroot (Or.inl hkeep)).symm
+
+/-- Finite domain reduction with exactly the frozen earlier-comparison inputs. -/
+theorem held_target_vote_domain_before_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
+    (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcast : SA.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
+    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
+      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b) (hm : m < e.msg.slot)
+    (hBS : Compatible (tr.HonestBlocksAt H) B S)
+    (hcompare : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
+      Compatible (tr.HonestBlocksAt H) B O)
+    (hseedCompare : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
+      Compatible (tr.HonestBlocksAt H) S O)
+    (hpair : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
+      ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
+      Compatible (tr.HonestBlocksAt H) O O') :
+    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
+      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+  apply held_target_vote_domain_of_row_bound_before_at hp hx hy hBx hrb hcast hib hheld
+    hS hqb hm hBS hcompare hseedCompare hpair
+  intro W hW att ha z d hz hs hdi c l O hcd ho
+  exact row_origin_label_lt_at hp hy hcast hW ha hz hs hdi hcd ho
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
