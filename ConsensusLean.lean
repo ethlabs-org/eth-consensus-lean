@@ -174,6 +174,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Prot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
