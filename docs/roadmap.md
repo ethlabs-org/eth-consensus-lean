@@ -28,17 +28,13 @@ Corollary outside the trusted surface: `Consensus.Shape.ShapeObligations.activeS
 
 Mapping from the Goldilocks references to the Lean names: `docs/goldilocks-mapping.md`.
 
-**Growing-fault migration.** The generic roots cover nondecreasing compromised sets, including
-constant intervals. The current Goldilocks roots are
-`Consensus.Goldilocks.MeetsObligationsConstant`, proved by
-`Consensus.Goldilocks.Obligations.meets_obligations_constant` and exported as
-`Consensus.Goldilocks.meetsObligationsConstant`, and
-`Consensus.Goldilocks.GoldilocksCorrectConstant`, proved as
-`Consensus.Goldilocks.goldilocksCorrectConstant`. Only behaviour is restricted to constant faults;
-adequacy and realizability include growing faults. The dynamic statements
-`Consensus.Goldilocks.MeetsObligations` and `Consensus.Goldilocks.GoldilocksCorrect` are stated and open
-in `Statements/Growing.lean`, outside the Solution closure. Certification records below describe
-the earlier static endpoint, not certification of the dynamic statements.
+**Growing faults.** The generic roots and the Goldilocks roots cover nondecreasing compromised sets.
+The Goldilocks roots are `Consensus.Goldilocks.MeetsObligations`, proved by
+`Consensus.Goldilocks.Growing.meets_obligations` and exported as `Consensus.Goldilocks.meetsObligations`, and
+`Consensus.Goldilocks.GoldilocksCorrect`, proved as `Consensus.Goldilocks.goldilocksCorrect`. The constant-fault pair
+`Consensus.Goldilocks.MeetsObligationsConstant` and `Consensus.Goldilocks.GoldilocksCorrectConstant` is an untrusted
+corollary (`Consensus.Goldilocks.Obligations.meets_obligations_constant`,
+`Consensus.Goldilocks.Obligations.goldilocks_correct_constant`).
 
 The compiled Goldilocks counterexample to proposer `hold = 0` is the rejection test
 `ConsensusLeanTest/Goldilocks/Regimes/ProposerHold.lean`. The hold is a parameter of the L2
@@ -47,17 +43,18 @@ makes no claim that `GoldilocksCorrect` fails at hold `0`. The refuting run has 
 key `2`'s read on it is computed on the run's retained constant-fault run (`Model.Run.retain`),
 so the test does not wait for the dynamic sleepy invariant.
 The constant-fault controls reject a proposer compromised within its hold window and reduce
-arbitrary holds to the original recurrence on constant faults. That `hold = 1` suffices rests on
-the window audit and these constant-fault reductions until the dynamic invariant is proved.
+arbitrary holds to the original recurrence on constant faults. That `hold = 1` suffices is part of
+the certified endpoint `Consensus.Goldilocks.MeetsObligations`.
 
 | Step | Lean names | Status |
 |---|---|---|
-| Dynamic certification swap: compiled proposer hold-zero counterexample (`ProposerHold.lean`) | `Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.claims_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.obligations_hold_zero_false` | done: the three theorems refute the `sleepyLive` field of `ShapeClaimsAt` at hold `0` (no claim that `GoldilocksCorrect` fails at hold `0`), on a growing-fault run, with the read computed on its retained constant-fault run; the control `run_not_prog_hold_one` shows the run fails the hold-`1` recurrence |
+| Proposer hold-zero counterexample (`ProposerHold.lean`), the prerequisite of the swap | `Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.claims_hold_zero_false`, `Consensus.Goldilocks.Test.ProposerHold.obligations_hold_zero_false` | done: the three theorems refute the `sleepyLive` field of `ShapeClaimsAt` at hold `0` (no claim that `GoldilocksCorrect` fails at hold `0`), on a growing-fault run, with the read computed on its retained constant-fault run; the control `run_not_prog_hold_one` shows the run fails the hold-`1` recurrence |
+| Dynamic certification swap: the growing-fault endpoint and headline are the Challenge roots | `Consensus.Goldilocks.meetsObligations`, `Consensus.Goldilocks.goldilocksCorrect` | done; awaiting full-tier certification |
 | Pre-foundation baseline: pinned numbers and the properties sheet | — | archived ([`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline) at `79cdddc8`); no live statement depends on it |
 | First slice: Goldilocks Spec, `AsChainShape.lean`, `Statements/<M₁>`, witnesses, finite model; then a proof pilot | — | done: the Spec, `AsChainShape.lean`, the milestone statements and their witnesses exist, and the milestones are proved (the obligations endpoint in Solution, the others as lemmas: `docs/decisions.md` §"Trusted surface and Challenge scope") |
 | Certification: `Challenge`/`Solution` entries (`milestone_statements_modules` in `scripts/boundaries.toml`), kernel replay and comparator; Challenge certifies the four review statements, the obligations endpoint and the headline `GoldilocksCorrect` only, and the other milestones are proved lemmas (`proved_milestone_modules`, `docs/decisions.md` §"Trusted surface and Challenge scope") | — | certified (full tier PASSED on main b75cd7c586bcdb708d0c94e125307cf32edf051d, 1351 s, zero skips: cold build, every-leaf kernel replay, `lake check`, `lake comparator --paranoid` and the rebuild canary, each with its controls); commits after it are not covered |
-| Constant-fault obligations endpoint: the Goldilocks family meets `ShapeObligationsOnAs .ebbAndFlow` at `goldilocksContract` and `contract_coefficients` | `Consensus.Goldilocks.MeetsObligationsConstant`, `Consensus.Goldilocks.Obligations.meets_obligations_constant`, `Consensus.Goldilocks.meetsObligationsConstant` | proved in Solution; awaiting full-tier certification. Earlier static endpoint certified on main 2a9b34a11bb9f754a5526593fab6d72366c325a7 and re-certified on ebb2f2ec2783911997e7f4945684f54382690ea6, c361faa46d43bdbdbd6cca76f301e374bb8236ef and b75cd7c586bcdb708d0c94e125307cf32edf051d; these records do not certify the growing-fault migration |
-| Constant-fault headline (`Statements/Obligations`): for every setup, assumption set and finite validator type, `CorrectProtocolOn` constant faults, with unrestricted adequacy and realizability; composed by `ShapeObligationsOn.correct` | `Consensus.Goldilocks.GoldilocksCorrectConstant`, `Consensus.Goldilocks.goldilocksCorrectConstant` | proved in Solution; awaiting full-tier certification |
+| Constant-fault obligations endpoint: the Goldilocks family meets `ShapeObligationsOnAs .ebbAndFlow` at `goldilocksContract` and `contract_coefficients` | `Consensus.Goldilocks.MeetsObligationsConstant`, `Consensus.Goldilocks.Obligations.meets_obligations_constant` | proved (untrusted corollary, no longer a Challenge root). Earlier static endpoint certified on main 2a9b34a11bb9f754a5526593fab6d72366c325a7 and re-certified on ebb2f2ec2783911997e7f4945684f54382690ea6, c361faa46d43bdbdbd6cca76f301e374bb8236ef and b75cd7c586bcdb708d0c94e125307cf32edf051d; these records do not certify the growing-fault migration |
+| Constant-fault headline (`Statements/Obligations`): for every setup, assumption set and finite validator type, `CorrectProtocolOn` constant faults, with unrestricted adequacy and realizability; composed by `ShapeObligationsOn.correct` | `Consensus.Goldilocks.GoldilocksCorrectConstant`, `Consensus.Goldilocks.Obligations.goldilocks_correct_constant` | proved (untrusted corollary) |
 | Healing, the run bundle (`Milestones/Statements/Healing/Run`): HR.1–HR.4, H.2 on the run, H.3 FG non-interference and H.4 (with HR.2 as its closed form `PhaseCountAll`). H.3's `Inv(a_z + T_b)` half is proved after the reset with `T_b = max((8k + 20)Δ, 8Δ)` (`Lemmas/Healing/ResetInv`), so H.4's bridge premise is discharged by H.3; the statements are unchanged | `Consensus.Goldilocks.Healing.HealingRunStatements`, `Consensus.Goldilocks.Healing.healing_run_statements`, `Consensus.Goldilocks.Healing.NonInterference`, `Consensus.Goldilocks.Healing.non_interference` | proved (standard axioms; lemma, not certified; pinned by `ConsensusLeanTest/MilestoneAxioms`) |
 | Healing, the phase service (`Milestones/Statements/Healing/Service`): HS.1–HS.4 and their bundle, with HS.3 stated as the claims' after-`r` part (`docs/decisions.md` §"Goldilocks model choices", HS.3) and proved from HS.2 | `Consensus.Goldilocks.Healing.PhaseServiceStatements`, `Consensus.Goldilocks.Healing.phase_service_statements`, `Consensus.Goldilocks.Healing.FrozenTreeAgreement`, `Consensus.Goldilocks.Healing.frozen_tree_agreement`, `Consensus.Goldilocks.Healing.frozen_tree_agreement_clean` | proved (standard axioms; lemma, not certified; pinned by `ConsensusLeanTest/MilestoneAxioms`) |
 | Healing, re-proved without HS.3 (a): HR.3 reset existence, HS.4 common-path acquisition and H.4 available healing (conditional on the bridge, `BridgeAt`). Their consumers read only HS.3 (b), which follows from HS.2; the earlier proofs are restored over it, with no `reset_inv` | `Consensus.Goldilocks.Healing.ResetExistence`, `Consensus.Goldilocks.Healing.reset_existence`, `Consensus.Goldilocks.Healing.CommonPathAcquisition`, `Consensus.Goldilocks.Healing.common_path_acquisition`, `Consensus.Goldilocks.Healing.AvailableHealing`, `Consensus.Goldilocks.Healing.available_healing` | proved (standard axioms) |

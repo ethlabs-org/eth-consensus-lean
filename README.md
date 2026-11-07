@@ -2,11 +2,9 @@
 
 A machine-checked proof, in [Lean 4](https://lean-lang.org), that **Goldilocks** is a correct consensus protocol under stated network and adversary assumptions. Goldilocks combines an *available chain* that keeps growing while many validators are offline with a *finality gadget* that finalizes blocks when the network is healthy; its specification is in [`specs/goldilocks/tex/`](specs/goldilocks/tex/).
 
-**Status of the growing adversary.** The model and the generic statements cover an adversary whose set of compromised validators grows over the run. The Goldilocks claims are certified for constant faults only, as `goldilocksCorrectConstant` and `meetsObligationsConstant`. The growing-fault Goldilocks statements, `GoldilocksCorrect` and `MeetsObligations` in [`Statements/Growing.lean`](ConsensusLean/Instances/Goldilocks/Statements/Growing.lean), are stated and not yet proved.
+**The adversary grows.** The model, the generic statements and the Goldilocks claims cover an adversary whose set of compromised validators grows over the run; a constant set is the static adversary.
 
-The interim certificate covers runs whose faulty set is constant at all times, so it says nothing about any part of a growing run until the dynamic pair is proved.
-
-The proved headline theorem is `goldilocksCorrectConstant`. It says that Goldilocks is a `CorrectProtocolOn` constant-fault runs for every finite set of validators and every choice of its parameters (the lock window `k ≥ 2`, the timeout `δt` and the rest), given two assumptions on its timing: `fgSlots`, which bounds the finality gadget's attestation delay in a healthy network (see the healthy regime below), is at least 2, and the timeout is at least `3·fgSlots`. Adequacy and realizability still cover growing-fault runs. Every timing constant in the guarantees is an explicit formula in these parameters. Its proof composes two parts. The first is generic: a precise definition of a correct consensus protocol, and a theorem that any protocol written in a standard blockchain form and meeting a list of conditions on a class of runs satisfies it on that class. The second shows that Goldilocks meets those conditions on constant-fault runs.
+The proved headline theorem is `goldilocksCorrect`. It says that Goldilocks is a `CorrectProtocol` for every finite set of validators and every choice of its parameters (the lock window `k ≥ 2`, the timeout `δt` and the rest), given two assumptions on its timing: `fgSlots`, which bounds the finality gadget's attestation delay in a healthy network (see the healthy regime below), is at least 2, and the timeout is at least `3·fgSlots`. Every timing constant in the guarantees is an explicit formula in these parameters. Its proof composes two parts. The first is generic: a precise definition of a correct consensus protocol, and a theorem that any protocol written in a standard blockchain form and meeting a list of conditions on a class of runs satisfies it on that class. The second shows that Goldilocks meets those conditions.
 
 ## What "correct" means
 
@@ -42,11 +40,11 @@ The definition also rules out vacuous protocols: a protocol that never sends any
  Goldilocks node: finality gadget + available chain        ConsensusLean/Instances/Goldilocks/Spec/
         │  written as a chain shape                        .../Goldilocks/AsChainShape.lean
         ▼
- MeetsObligationsConstant: constant-fault obligations      .../Goldilocks/Statements/Obligations.lean
-        │  ObligationsSufficientOn: every chain shape that
-        │  meets obligations on a class is correct there   ConsensusLean/Statements/Review.lean
+ MeetsObligations: Goldilocks meets the obligations       .../Goldilocks/Statements/Obligations.lean
+        │  ObligationsSufficient: every chain shape that
+        │  meets the obligations is correct               ConsensusLean/Statements/Review.lean
         ▼
- goldilocksCorrectConstant: constant-fault correctness     .../Goldilocks/Statements/Obligations.lean
+ goldilocksCorrect: Goldilocks is correct                  .../Goldilocks/Statements/Obligations.lean
 ```
 
 | Protocol concept | Where it is in Lean |
@@ -60,11 +58,11 @@ The definition also rules out vacuous protocols: a protocol that never sends any
 | Goldilocks' timing constants (catch-up, healing time, latency) | `goldilocksContract` in [`Instances/Goldilocks/Statements/Obligations.lean`](ConsensusLean/Instances/Goldilocks/Statements/Obligations.lean) |
 | the proofs | `ConsensusLean/Lemmas/`, `ConsensusLean/Proofs/`, `ConsensusLean/Instances/Goldilocks/Proofs/` |
 
-The certified result is seven Lean statements, listed in [`Challenge.lean`](Challenge.lean). While the Goldilocks proofs migrate to growing faults, the headline is `goldilocksCorrectConstant`: Goldilocks is correct on runs whose faults do not grow. The others support it:
+The certified result is seven Lean statements, listed in [`Challenge.lean`](Challenge.lean). The headline is `goldilocksCorrect`: Goldilocks is correct. The others support it:
 
-- `MeetsObligationsConstant`: Goldilocks meets the obligations on those runs;
-- `ObligationsSufficient`: every chain shape that meets the growing-fault obligations (`ShapeObligations`, not yet shown for Goldilocks) is correct under growing faults;
-- `ObligationsSufficientOn`: the same on a class of runs, in particular on constant faults;
+- `MeetsObligations`: Goldilocks meets the obligations;
+- `ObligationsSufficient`: every chain shape that meets the obligations (`ShapeObligations`) is correct;
+- `ObligationsSufficientOn`: the same on a class of runs, in particular on constant faults, the static adversary at full strength;
 - `RegimesRealizable`: the regimes can actually occur, so the guarantees are not vacuous;
 - `LogFaithful` and `HeldIffServed`: the execution model is faithful (what a node holds in the model is exactly what the network delivered to it).
 

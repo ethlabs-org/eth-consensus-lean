@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Spec.Shape.Obligations
-public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 
 @[expose] public section
@@ -10,11 +9,9 @@ public import ConsensusLean.Instances.Goldilocks.AsChainShape
 The concrete obligations endpoint of the Goldilocks family (`goldilocks S`, the node of
 `AsChainShape` as a chain shape): for every setup `S` and every assumption set `A`, the family
 meets the shape obligations (shape claims, admissible numbers, a served ledger, progress that fits
-the skeleton and tolerates validators not ready and bad proposer slots) on runs whose faults do not
-grow, as an Ebb-and-Flow protocol (`ShapeObligationsOnAs .ebbAndFlow … ConstantFaults`,
-`Spec/Shape/OnRuns`: the schema provides all three capabilities, available and stable aliased to
-`confirmed`, final served by `finalized`); the growing-fault endpoint `MeetsObligations` is in
-`Statements/Growing`,
+the skeleton and tolerates validators not ready and bad proposer slots) on every run, faults
+growing over it, as an Ebb-and-Flow protocol (`ShapeObligationsAs .ebbAndFlow`: the schema provides
+all three capabilities, available and stable aliased to `confirmed`, final served by `finalized`),
 at the contract `goldilocksContract A (contract_coefficients S A)`, whose every number is a closed
 formula in the protocol parameters `k`, `δ_t`, the FG delay in slots `fgSlots` and the outer
 gap `X`.
@@ -36,10 +33,8 @@ The time numbers (catch-up, heal, latency, arming lag, outage budget, no-sleep m
 delay) are coefficients of `ΔAC`, the node and the engine delay alike (`Δp = Δe`: L0 delivers
 strictly before the bound).
 
-**The certified pair** (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`): the endpoint and
-the headline on runs whose faults do not grow, with `ObligationsSufficientOn`. The growing-fault
-endpoint and headline (`MeetsObligations`, `GoldilocksCorrect`) are stated in `Statements/Growing`
-and certified once proved.
+**The certified pair** (`MeetsObligations`, `GoldilocksCorrect`): the endpoint and the headline,
+with `ObligationsSufficient`.
 
 Statements only: no proofs here. -/
 
@@ -132,9 +127,7 @@ Outage numbers (slot `4ΔAC`; slow arming only):
   `4k − 5` is the bound of the obligations proof (the lock window keeps an unpolluted label for
   outages up to `(4k − 5)ΔAC`, `exists_unpolluted_label`).
 The reasons behind these numbers are in `docs/decisions.md` §"Contract numbers".
-Growing-fault proof targets read off the constant-fault proofs' window audit
-(`docs/decisions.md` §"Adversary growth"), not yet established for growing faults
-(`Statements/Growing`):
+The growing-fault windows (`docs/decisions.md` §"Adversary growth"):
 * sleepy look-ahead `ahead = 5`: support at the participation point `t_s + Δ` of a
   slot's votes is last counted by the slot's confirmation update at `t_s + 6Δ`;
 * outage cohort look-ahead `0`: every count of the cohort ends by the update of
@@ -159,28 +152,27 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
         gap := X
         hold := 1 }
 
-/-- **Goldilocks meets the obligations on constant faults**, the certified endpoint while the
-instance proofs migrate to growing faults: for every setup and every assumption set, the Goldilocks
-family meets the obligations as an Ebb-and-Flow protocol with the chain-level claims on the runs
-whose faults do not grow (the static adversary) and every other obligation unchanged, at the
-contract `goldilocksContract A (contract_coefficients S A)`. The growing-fault endpoint
-`MeetsObligations` is stated in `Statements/Growing`. -/
-def MeetsObligationsConstant : Prop :=
+/-- **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every
+assumption set (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`), the
+Goldilocks family meets the obligations as an Ebb-and-Flow protocol (its schema provides exactly
+the final, stable and available capabilities; available and stable are both the `confirmed`
+output) at the contract `goldilocksContract A (contract_coefficients S A)`, every number of which
+is fixed above. -/
+def MeetsObligations : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S),
-    ShapeObligationsOnAs .ebbAndFlow (goldilocks S)
-      (goldilocksContract A (contract_coefficients S A)) fun _ p => p.ConstantFaults
+    ShapeObligationsAs .ebbAndFlow (goldilocks S) (goldilocksContract A (contract_coefficients S A))
 
-/-- **Goldilocks is correct on constant faults**, the certified headline while the instance proofs
-migrate: for every setup, assumption set and finite validator type, the compiled Goldilocks family
-is a correct protocol on the runs whose faults do not grow (`CorrectProtocolOn`: the property table
-there), with the adequacy and realizability (growth witnesses included) of the whole growing-fault
-system. It composes `MeetsObligationsConstant` with `Review.ObligationsSufficientOn`. The
-growing-fault headline `GoldilocksCorrect` is stated in `Statements/Growing`. -/
-def GoldilocksCorrectConstant : Prop :=
+/-- **Goldilocks is correct**, the headline statement: for every setup `S`, every assumption set
+`A` (the FG delay in slots `fgSlots ≥ 2` and the timeout `3·fgSlots ≤ δ_t`) and every finite
+validator type `V`, the Goldilocks family, compiled and run by the general execution model
+(`sysOf schema (compiled (goldilocks S)) V`, with progress read by `shapeProgress`), is an L0
+`CorrectProtocol` at the contract `goldilocksContract A (contract_coefficients S A)`. It composes
+`MeetsObligations` with the review statement `ObligationsSufficient`; it has their parameters and
+no further hypothesis. -/
+def GoldilocksCorrect : Prop :=
   ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
-    CorrectProtocolOn (Model.sysOf schema (compiled (goldilocks S)) V)
+    CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
       (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
-      fun p => p.ConstantFaults
 
 end Consensus.Goldilocks
 

@@ -198,8 +198,8 @@ detail in `TRUST.md`.
   served. A recipient is served while it is honest through the deadline. Non-framing protects a validator honest
   at `d` against the evidence nodes saw while honest by `d`. Past honesty does not prevent later conviction,
   because an extracted key can sign a conflicting object.
-- **Goldilocks windows.** These numbers are proof targets read off the constant-fault proofs' window audit,
-  not established for growing faults (`Statements/Growing`). None is a service constant:
+- **Goldilocks windows.** These numbers are the windows of the growing-fault proofs' counts, read off the
+  constant-fault proofs' window audit. None is a service constant:
   - sleepy look-ahead `5`: support at the participation point `t_s + Δ` of a slot's votes is last counted by the
     slot's confirmation update at `t_s + 6Δ`, whose pool admits equivocating second votes;
   - cohort look-ahead `0`: every count of the outage cohort ends by the update of label `j₀ + k`, at least `2Δ`
@@ -213,11 +213,11 @@ detail in `TRUST.md`.
 - **The static adversary keeps full strength.** `ShapeObligationsOn`, `CorrectProtocolOn` and
   `Review.ObligationsSufficientOn` state the obligations and correctness on a class of runs. At constant faults
   they are the static statements, so negative tests are also stated there. The growing-fault statements are
-  additional. While the Goldilocks proofs migrate, Challenge certifies its endpoint and headline at constant faults
-  (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`). The growing-fault pair is stated in
-  `Instances/Goldilocks/Statements/Growing.lean`, outside `milestone_statements_modules`, with its open proof in the
-  sorry-tolerant `Instances/Goldilocks/Proofs/Growing/Obligations` milestone. Each growing-fault milestone is a
-  milestone of its own, `Instances/Goldilocks/Proofs/Growing/<M>`, entered through its `Main`.
+  additional. Challenge certifies the Goldilocks endpoint and headline under growing faults (`MeetsObligations`,
+  `GoldilocksCorrect`, `Statements/Obligations`), proved by `Instances/Goldilocks/Proofs/Growing/Obligations`; the
+  constant-fault pair (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`, `Milestones/Statements/Obligations/Constant`) is an
+  untrusted corollary. Each growing-fault milestone is a milestone of its own,
+  `Instances/Goldilocks/Proofs/Growing/<M>`, entered through its `Main`.
 - **Continuation is not part of correctness.** A hand-over after healing is a separate side property, and it is
   not stated here.
 
@@ -453,9 +453,8 @@ detail in `TRUST.md`.
 
 - **Challenge certifies exactly seven statements**: the five generic review statements
   (`Review.ObligationsSufficient`, `ObligationsSufficientOn`, `RegimesRealizable`, `LogFaithful`,
-  `HeldIffServed`), and the Goldilocks endpoint and headline, while the instance proofs migrate to growing faults
-  at constant faults (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`; §"Adversary growth"), afterwards
-  `MeetsObligations` and `GoldilocksCorrect`. Reason: keep the trusted surface to the generic definition
+  `HeldIffServed`), and the Goldilocks endpoint and headline, `MeetsObligations` and `GoldilocksCorrect`
+  (§"Adversary growth"). Reason: keep the trusted surface to the generic definition
   of a correct protocol plus the one instance endpoint and its headline. The other Goldilocks milestones (M₁, FGStore, ACBase, ACSteps, Compose, Persist, Regimes,
   Service, Healing) are means to the endpoint, not claims a reviewer must read.
   - They stay proved and built as ordinary lemmas, but are not comparator roots and not trusted: their statement
@@ -470,6 +469,21 @@ detail in `TRUST.md`.
   - The milestones stay gated: `ConsensusLeanTest/MilestoneAxioms.lean` states and axiom-pins each, and check.sh
     step 3b audits the closure of the `proved_milestone_modules` like the solution's. Their mapping rows read
     "proved (lemma)".
+- **The certified pair is the growing-fault pair; the constant-fault pair is a milestone statement.** The swap
+  moved the growing-fault statements `MeetsObligations` and `GoldilocksCorrect` from `Statements/Growing`
+  (deleted) into `Statements/Obligations`, with unchanged bodies, and renamed the Challenge, Solution and
+  comparator roots from `meetsObligationsConstant` and `goldilocksCorrectConstant` to `meetsObligations` and
+  `goldilocksCorrect`. The constant-fault pair, `MeetsObligationsConstant` and `GoldilocksCorrectConstant`,
+  unchanged in name and body, moved from `Statements/Obligations` to the leaf
+  `Milestones/Statements/Obligations/Constant`, outside the trusted surface, in the untrusted, exposed
+  `Milestones.Statements.Obligations` layer.
+  Reason: it is a statement no root reaches, which is what the Milestones family holds (exposed bodies, no iff
+  lemmas for its proofs and tests). The layer has no declaring `Milestones/Statements/Obligations.lean`, so no
+  module with descendants owns a constant (noconst). `Review.ObligationsSufficientOn` stays a root; it states
+  correctness on a class of runs, which the constant-fault rejection tests use. The certified pair implies the
+  constant-fault pair: `Growing.meetsObligationsConstant_of_growing` (`Proofs/Growing/Obligations/Main`) and the
+  test theorem `Obligations.Test.Constant.goldilocksCorrectConstant_of_growing`
+  (`ConsensusLeanTest/Goldilocks/Refinement/Constant`).
 - **The headline statement `GoldilocksCorrect`** is certified next to `MeetsObligations`: for every setup,
   assumption set and finite validator type, the Goldilocks family in the general execution model is an L0
   `CorrectProtocol` at `goldilocksContract A (contract_coefficients S A)`. It is the composition of
