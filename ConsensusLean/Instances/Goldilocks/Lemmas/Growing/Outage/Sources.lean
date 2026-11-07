@@ -125,7 +125,7 @@ theorem J_compatible_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
     rw [hJ]
     exact Or.inl (honestAt_genesis_anc hrun hB).2
   obtain ⟨-, -, D, ⟨hD, -⟩, hDs⟩ :=
-    justified_honest_source_before hr (hnc.upTo _) hf hy (hsrc.upTo hrun)
+    justified_honest_source_before hr (hnc.upTo _) hf hy (hsrc.upTo_held hrun)
       (by rw [hst]; omega)
   rw [hst] at hDs
   have hJ := (Store.cache_invariants _ _ _ _ (fg_reachable hr.toLocalRun hy i)).2.1
