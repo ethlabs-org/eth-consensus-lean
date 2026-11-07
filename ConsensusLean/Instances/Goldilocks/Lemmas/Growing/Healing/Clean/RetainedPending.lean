@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 
 public section
 
@@ -11,7 +12,7 @@ that the clean cluster and its consumers read, frozen under their final names (s
 time `t` after the state's cuts. Beyond the static statements, they add only the fault-count
 bounds `≤ b`, because growing faults are counted only through the horizon:
 
-* `low_finalized_below_origin_at`, `left_entry_origin_at`;
+* `low_finalized_below_origin_at` (`left_entry_origin_at` is proved in `Clean/LeftEntry`);
 * `high_J_root_of_held_at_call_before_at`, `low_root_of_held_seed_at_call_at`;
 * `high_floor_signed_source_of_row_bound_at`;
 * `half_committee_at`: the voters of slot `m` honest at a later observation `t ≤ b` are half
@@ -34,20 +35,6 @@ theorem low_finalized_below_origin_at (hp : ResetPremisesUpTo tr H proposer dg g
     {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) :
     Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
-  sorry
-
-/-- **Left-entry provenance**: a high entry left by a reader honest at `t ≤ b` is the target of
-a held attestation whose signer is honest at `t` and wrote a high origin above the entry before
-signing. -/
-theorem left_entry_origin_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
-    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
-      tr.SignAt v d att ∧ att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
-        Anc (tr.HonestBlocksAt H) E O := by
   sorry
 
 /-- A call of a node honest at it, with a high justified height, has its finalized-chain root
