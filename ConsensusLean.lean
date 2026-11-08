@@ -866,6 +866,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
@@ -888,6 +889,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.L
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Recovery

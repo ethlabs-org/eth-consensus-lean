@@ -322,7 +322,8 @@ expose = true
 allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.Frame",
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
-         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC"]
+         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "untrusted milestone layer: the SA as an AC (polymorphic in the FG payload); no FG import"
 
 [[layer]]
@@ -355,7 +356,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.FG",
          "Instances.Goldilocks.Milestones.Spec.Frame", "Instances.Goldilocks.Milestones.Spec.Trace",
          "Instances.Goldilocks.Milestones.Spec.FGStore", "Instances.Goldilocks.Milestones.Spec.AC",
-         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.Node"]
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.Node",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "untrusted milestone layer: runs (Trace NodeState, Node.LocalRun), premises, outputs, the concrete Goldilocks; never AsChainShape"
 
 [[layer]]
@@ -386,7 +388,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
-         "Instances.Goldilocks.Milestones.Spec.SA"]
+         "Instances.Goldilocks.Milestones.Spec.SA",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "untrusted milestone layer: AC statements over AC traces and frames; no FG"
 
 [[layer]]
@@ -422,7 +425,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
          "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
          "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
-         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC"]
+         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "untrusted milestone layer: run-level composition, persistence, service, healing, regimes (listed by file: no Statements.Compose module)"
 
 [[layer]]
