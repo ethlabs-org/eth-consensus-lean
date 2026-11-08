@@ -99,6 +99,7 @@ public import ConsensusLeanTest.Goldilocks.Run.AttestationPremise
 public import ConsensusLeanTest.Goldilocks.Run.Conflict
 public import ConsensusLeanTest.Goldilocks.Run.Faulty
 public import ConsensusLeanTest.Goldilocks.Run.Statements
+public import ConsensusLeanTest.Goldilocks.Run.TickOnce
 public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Run
 public import ConsensusLeanTest.Goldilocks.Runs.Asleep.Sleepy
 public import ConsensusLeanTest.Goldilocks.Runs.Data.Five
