@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.VotesBelow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Compare
 
@@ -8,10 +9,13 @@ public section
 
 /-! # Goldilocks under `Sleepy` with growing faults: the record invariant up to `b`
 
-The bounded frontier under growing faults: `P_0` and `V_0` hold vacuously;
-`P_s, V_s ⊢ P_{s+1}` (`origins_below_succ_at`) and `P_{s+1}, V_s ⊢ V_{s+1}`
-(`votes_below_succ_at`), so every finite frontier holds (`frontier_at`). With the provenance of
-records, caches, locks and sources, and full viability at the read time, this is
+The bounded frontier under growing faults, over the healed family from the floors `rL`, `rO`:
+from a seed `P_{s₀}`, `V_{s₀}`, the steps `P_s, V_s ⊢ P_{s+1}` (`origins_below_succ_at`) and
+`P_{s+1}, V_s ⊢ V_{s+1}` (`votes_below_succ_at`) give every finite frontier (`frontier_at`),
+given the slot counts and the service from `s₀`, the live locks of the votes after `s₀` from the
+lock floor on, and the frozen witness at those votes from `P` up to their slot. From genesis
+(floors `0`, `s₀ = 0`) the seed is vacuous and the frozen witness is `vote_frame_at`. With the
+provenance of records, caches, locks and sources, and full viability at the read time, this is
 `SleepyInvariantUpTo` (`sleepy_invariant_at`). Every quantifier of the induction ranges over events
 of nodes honest at them, so a later compromise removes nothing from it. -/
 
@@ -25,19 +29,44 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The frontier and the invariant -/
 
-/-- **Every finite frontier up to `b`** under growing faults. -/
+/-- **Every finite frontier up to `b` from a seed** under growing faults, over the healed family
+from the floors `rL`, `rO ≤ s₀`: the seed `P_{s₀}`, `V_{s₀}`; the slot counts from `σ₀ ≤ s₀` and
+the service from `a` (`a + κ ≤ t_{s₀}`); at every honest vote of a slot `s + 1 > s₀`, the live
+locks of slot at most `s` from the lock floor on (`hlive`), and, given `P_{s+1}`, the frozen
+witness for a member of label at most `s` with an honest slot-`s` supporter (`hframe`). -/
 theorem frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b) :
-    ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
+    (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s₀ : Nat} (hσ₀ : σ₀ ≤ s₀)
+    (hrO : rO ≤ s₀) (hsa : a + κ ≤ sp.ts s₀)
+    (hlive : ∀ s, s₀ ≤ s → ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e →
+      e.msg.slot = s + 1 → tr.time i ≤ b →
+      ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s → rL ≤ l.slot)
+    (hframe : ∀ s, s₀ ≤ s → HealedOriginsBelow tr H g rL rO (s + 1) b →
+      ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
+      tr.time i ≤ b → ∀ B j, HealedOrigin tr H g rL rO B j b → j ≤ s →
+      (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
+        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
+      B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+        Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
+    (hseed : HealedOriginsBelow tr H g rL rO s₀ b ∧ HealedVotesBelow tr H g rL rO s₀ b) :
+    ∀ s, HealedOriginsBelow tr H g rL rO s b ∧ HealedVotesBelow tr H g rL rO s b := by
+  have ha : a ≤ sp.ts s₀ := (le_add_of_nonneg_right hsync.kappa).trans hsa
+  have step : ∀ n, HealedOriginsBelow tr H g rL rO (s₀ + n) b ∧
+      HealedVotesBelow tr H g rL rO (s₀ + n) b := by
+    intro n
+    induction n with
+    | zero => exact hseed
+    | succ n ih =>
+      have hs : s₀ ≤ s₀ + n := Nat.le_add_right _ _
+      have hts := ts_le_ts (sp := sp) hs
+      have hP := origins_below_succ_at hrun hnc hsync hB (hσ₀.trans hs) (ha.trans hts) ih.1 ih.2
+      exact ⟨hP, votes_below_succ_at hrun hnc hsync hB (hσ₀.trans hs) (hrO.trans hs)
+        (hsa.trans hts) (hlive _ hs) (hframe _ hs hP) hP ih.2⟩
   intro s
-  induction s with
-  | zero =>
-    exact ⟨originsBelowUpTo_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
-      votesBelowUpTo_iff.2 fun _ _ _ _ _ _ _ _ h₁ h₂ => by omega⟩
-  | succ s ih =>
-    have hP := origins_below_succ_at hrun hnc hb hsync hB ih.1 ih.2
-    exact ⟨hP, votes_below_succ_at hrun hnc hb hsync hB hP ih.2⟩
+  rcases le_total s s₀ with h | h
+  · exact ⟨hseed.1.of_le h, hseed.2.of_le h⟩
+  · obtain ⟨n, rfl⟩ := Nat.exists_eq_add_of_le h
+    exact step n
 
 /-- **S3 at a held origin, read at `t`**: a reader honest at `t ∈ [0, b]` (every earlier cut at or
 before `t`), holding a block compatible with every origin before the cut, when the origins within
@@ -67,15 +96,35 @@ private theorem held_origin_viable_read (hrun : Growing.GoldilocksRun proposer d
     (by rw [hst]; exact hBt)
   rwa [hst] at h
 
+/-- **The healed frontier from genesis**: the floors `0` and the seed label `0` (vacuous seed),
+with the frozen witness `vote_frame_at`; every origin is a member. -/
+private theorem frontier_zero_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
+    (hB : SleepyBoundsFrom tr H 0 b) (g : Time) :
+    ∀ s, HealedOriginsBelow tr H g 0 0 s b ∧ HealedVotesBelow tr H g 0 0 s b := by
+  refine frontier_at hrun hnc (hsync.toFrom hrun) hB le_rfl le_rfl
+    (by rw [add_zero]; exact ts_natCast_nonneg 0) (fun _ _ _ _ _ _ _ _ _ _ _ _ _ => Nat.zero_le _)
+    (fun s _ hP y i ℓ e hy hc hs hib B j hBm hj hw => ?_)
+    ⟨healedOriginsBelow_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
+      healedVotesBelow_iff.2 fun _ _ _ _ _ _ _ _ h₁ h₂ => by omega⟩
+  have hP' := healedOriginsBelow_iff.1 hP
+  refine vote_frame_at hrun hnc hb hsync hB
+    (originsBelowUpTo_iff.2 fun C j C' j' hj hj' hC hC' =>
+      hP' C j C' j' hj hj' (.of_origin (Nat.zero_le _) hC) (.of_origin (Nat.zero_le _) hC'))
+    hy hc hs hib (hBm.mem hrun hnc)
+    (fun C j' hC hj' => hP' B j C j' (by omega) (by omega) hBm (.of_origin (Nat.zero_le _) hC)) hw
+
 /-- **The Sleepy record invariant up to `b` under growing faults** (S1–S3), from the finite
-service and the count shapes through `b`. -/
+service and the count shapes through `b`: the healed frontier from genesis
+(`frontier_zero_at`) restricted to the origins. -/
 theorem sleepy_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) : SleepyInvariantUpTo tr H b := by
-  have hF := frontier_at hrun hnc hb hsync hB
+  have hF := frontier_zero_at hrun hnc hb hsync hB 0
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocksAt H) C C' := fun C s C' s' h h' =>
-    originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
+    healedOriginsBelow_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega)
+      (.of_origin (Nat.zero_le _) h) (.of_origin (Nat.zero_le _) h')
   refine ⟨hcomp, fun C s hC y i e he hib hs => ?_,
     fun y i t ht0 hi htb hy => record_origin_at hrun hnc ht0 hi htb hy,
     fun y i t ht0 hi htb hy => caches_on_chain_at hrun hnc ht0 hi htb hy (hB.two t ht0 htb),
@@ -84,7 +133,8 @@ theorem sleepy_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     fun y i t ht0 hi htb hy C s hC hCt => held_origin_viable_read hrun hnc ht0 hi hy
       (hB.two t ht0 htb) (fun C₁ s₁ C₂ s₂ h₁ h₂ => hcomp C₁ s₁ C₂ s₂ (h₁.mono htb) (h₂.mono htb))
       (fun C' s' hC' => hcomp C s C' s' hC (hC'.within fun k hk => (hi k hk).trans htb)) hCt⟩
-  · exact votesBelowUpTo_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl
+  · exact healedVotesBelow_iff.1 (hF e.msg.slot).2 C s (.of_origin (Nat.zero_le _) hC) y i e he
+      hib hs le_rfl
   · obtain ⟨L, hL, hLr, D, hD, hLD⟩ := lock_write_at hrun hnc ht0 hi hy l hl
     obtain ⟨C, hC, hDC⟩ := hD.below_origin hrun hnc
     exact ⟨L, hL, hLr, onOriginChainWithin_iff.2 (Or.inr ⟨C, l.slot, hC.mono htb,

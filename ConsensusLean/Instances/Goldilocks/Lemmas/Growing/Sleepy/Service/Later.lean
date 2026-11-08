@@ -78,7 +78,7 @@ theorem update_adopts_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
   set d := tr.time k₀
   have hcount : (H d)ᶜ.ncard < (VotersAt tr H s' d).ncard :=
-    faults_lt_voters hrun hnc hB (by rw [ht]; linarith) hb (by rw [ht])
+    faults_lt_voters hrun hnc hB (Nat.zero_le _) (by rw [ht]; linarith) hb (by rw [ht])
   have hcut : ∀ k < k₀ + 1, tr.time k ≤ d := fun k hk => hrun.time_mono (by omega)
   have hvb : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s' → tr.time j ≤ b := by
     intro x j e hv hs

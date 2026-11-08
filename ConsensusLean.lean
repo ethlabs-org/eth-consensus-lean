@@ -150,10 +150,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.VoteFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
@@ -563,6 +565,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Tr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction

@@ -112,12 +112,14 @@ theorem vote_cut_lt (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCol
   exact ⟨hlt, lt_of_not_ge fun hij => absurd (hrun.time_mono hij) (not_le.2 (hlt.trans_le hi))⟩
 
 /-- **The later batch** under growing faults: at a slot-`(s+1)` vote of a node honest at its cut
-`i ≤ b`, if every earlier slot-`s` vote by a node honest at it extends `B` and is carried, and every
-live lock is compatible with `B`, the vote extends `B`. The batch is the slot-`s` voters still
-honest at `d = tr.time i`, which outnumber `(H d)ᶜ` (`faults_lt_voters`, `d ≤ t_s + 5Δ`); the static
-counted batch applies on the prefix through `d`. -/
+`i ≤ b`, for a slot `s ≥ σ₀` (its slot count available), if every earlier slot-`s` vote by a node
+honest at it extends `B` and is carried, and every live lock is compatible with `B`, the vote
+extends `B`. The batch is the slot-`s` voters still honest at `d = tr.time i`, which outnumber
+`(H d)ᶜ` (`faults_lt_voters`, `d ≤ t_s + 5Δ`); the static counted batch applies on the prefix
+through `d`. -/
 theorem vote_extends_of_batch_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} {y : Fin sp.n}
+    (hnc : NoCollRun dg tr) {b : Time} {σ₀ : Nat} (hB : SleepyBoundsFrom tr H σ₀ b) {s : Nat}
+    (hs₀ : σ₀ ≤ s) {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -177,7 +179,7 @@ theorem vote_extends_of_batch_at (hrun : Growing.GoldilocksRun proposer dg H tr)
         rw [he']; exact SA.merged_vote_slot hr.localRun hy hc' v hv
       · exact Or.inr hw)
     (by
-      have hcount := faults_lt_voters hrun hnc hB (s := s) (d := tr.time i)
+      have hcount := faults_lt_voters hrun hnc hB (s := s) (d := tr.time i) hs₀
         (by linarith) hib (by linarith)
       have := Set.ncard_union_le (VotersAt tr H s (tr.time i)) (H (tr.time i))ᶜ
       omega)
