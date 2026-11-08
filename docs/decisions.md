@@ -585,6 +585,25 @@ detail in `TRUST.md`.
 - **Profiles are per capability and index.** A profile is stated at the contract's `(cap, i)`, whose heal and
   latency coefficients it bounds. Reason: a bound shared by every index has no finite default for a contract whose
   heal coefficient grows with the index (Goldilocks' grows with the outer gap).
+- **The protection class is the contract's outage without its arming lag, at common numbers.** `ProtClass` keeps
+  `OutageNet`, η-sleepy participation, `NoSleepOn` and `CohortOn` on the retained view, and adds a lower bound `A`
+  on the cohort; the budget, the windows (η, noSleep, cohortAhead, ahead), the sleepy threshold θ and the
+  catch-up are coordinates of the point, so the class and the profile read no contract, and the arming lag is the
+  profile's bound `ℓ`, a premise of the claim. The profile is per source output, not per index (`persists` has no
+  index). Coverage is split: domain coverage asks a representative with cohort at least `A` and at most `fcap`
+  faults, boundary coverage asks exact `A` and `fcap`, for `fcap < A` and `θ·(A + fcap) < A`; both ask only at
+  realizable thresholds `0 ≤ θ < 1`, since the class is empty at `θ ≥ 1` (a finite bound there is a vacuous
+  implication and is never ranked). Reason: numbers taken from the contract would rank two protocols on different
+  classes and different ready readers; dropping `CohortOn` would drop the faults-plus-late-wakers margin, and a
+  cohort of exactly `A = 0` is unattainable under it, so the contract's `persists` row is the `A = 0` column of
+  domain coverage at the contract's numbers.
+- **The retention offset of the cohort is fixed by the protection order.** The order lets the look-back η, the
+  sleepy look-ahead and the threshold θ decrease (participation premises that strengthen as they grow), the
+  catch-up decrease (a longer one leaves fewer ready validators: a stronger premise and a weaker claim) and, at a
+  fixed `noSleep + cohortAhead`, the no-sleep margin decrease. Reason: a later retention point strengthens
+  `CohortOn` but weakens `NoSleepOn`, which constrains only the validators honest at that point (a validator
+  compromised between the two points may fall asleep inside the window), so neither direction includes the
+  classes.
 
 ## Open questions
 
