@@ -227,7 +227,11 @@ detail in `TRUST.md`.
   outputs stay safe and live. It is a single run with growing faults, which covers that claim's two runs (a source
   prefix and every retained-set continuation of it); no seed is fixed, because the claims are the generic
   ready-reader safety and transaction liveness. It is an untrusted milestone statement: not trusted, not in the
-  spec snapshots, not reached by Challenge, and not part of `CorrectProtocol` or `GoldilocksCorrect`.
+  spec snapshots, not reached by Challenge, and not part of `CorrectProtocol` or `GoldilocksCorrect`. It is
+  proved from `GoldilocksCorrect` (`goldilocks_continues`, `Instances/Goldilocks/Proofs/Growing/Continuation`):
+  past the horizon the hand-over is the healthy regime; before it, the healthy prefix through `T` seeds a
+  sleepy invariant on the chain healed by `T`, whose reads give safety from the heal point and whose
+  inclusion gives liveness for the deadlines after `T`.
 
 ## Contract numbers
 

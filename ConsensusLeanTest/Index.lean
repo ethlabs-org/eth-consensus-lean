@@ -880,6 +880,7 @@ example := ``Consensus.Continues
 example := ``Consensus.System.ConvictedBelow
 example := ``Consensus.System.Handover
 example := ``Consensus.Goldilocks.GoldilocksContinues
+example := ``Consensus.Goldilocks.goldilocks_continues
 
 /-! ## Tests: Continuation -/
 

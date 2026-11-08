@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Service.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
 
 @[expose] public section
 
@@ -425,5 +426,8 @@ info: 'Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll' depends on 
 
 /-- info: 'Consensus.Goldilocks.Healing.finalizingCoverage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Healing.finalizingCoverage
+
+/-- info: 'Consensus.Goldilocks.goldilocks_continues' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.goldilocks_continues
 
 end
