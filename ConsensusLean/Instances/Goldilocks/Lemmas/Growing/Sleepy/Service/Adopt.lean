@@ -96,7 +96,7 @@ theorem proposal_majority_at_update_at (hrun : Growing.GoldilocksRun proposer dg
   set A := tr.projAC.state y k₀
   set Hv := VotersAt tr H s d
   have hcount : (H d)ᶜ.ncard < Hv.ncard :=
-    faults_lt_voters hrun hnc hB (by rw [ht]; linarith) hb (by rw [ht])
+    faults_lt_voters hrun hnc hB (Nat.zero_le _) (by rw [ht]; linarith) hb (by rw [ht])
   -- a validator honest at `d` has one slot-`s` vote in the pool: its vote
   have hone : ∀ x j e, HVoteAt tr H x j e → x ∈ H d → e.msg.slot = s →
       ∀ v ∈ A.pool s, v.val = x → v = e.msg := by

@@ -403,7 +403,8 @@ theorem vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoC
   have h := vote_frame_core hrun' hnc' hf hy hc' hs (by rw [hst]; exact hsrc.above _) hGG
     (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ hFD => by
       obtain ⟨x', k', e'', hv', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
-        honest_supporter_at hrun hnc hsync hB ((originWithin_of_upTo hrun hC).mono hib)
+        honest_supporter_at hrun hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
+          (ts_natCast_nonneg _) ((originWithin_of_upTo hrun hC).mono hib)
       obtain ⟨W', hW', hDW'⟩ := honest_head_frozen_at hrun hnc hsync hy hc hs hib hv'
         (by omega) ⟨Hd, hHd, hHdr, (hDC.mono hsub).trans hCHd⟩ (hFD.mono hsub)
       exact ⟨W', hW', RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd

@@ -10,7 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.SeedCall
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
@@ -103,22 +103,16 @@ private theorem healedOrigin_cases {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att 
   rwa [healedOrigin_iff, originWithin_iff, lockWithin_iff] at hC
 
 /-- Every member of the healed family is below an origin of its label, written by a node honest
-at its cut, at a time `≤ b`. A high origin is the viable ancestor of a fast lock write. -/
+at its cut, at a time `≤ b` (`HealedOrigin.below_origin`). -/
 private theorem member_below_origin (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : HealedOrigin tr H g rL rO C s b) :
     ∃ x i O OV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
       (SA.ResultAt tr.projAC x i s O OV ∨ SA.OptimisticLockAt tr.projAC x i s O OV) ∧
       Anc (tr.HonestBlocksAt H) C O := by
-  rcases healedOrigin_cases hC with ⟨-, x, i, CV, hx, hib, h⟩ | ⟨-, x, i, hx, hib, h⟩ |
-    ⟨x, i, hib, ho⟩
-  · exact ⟨x, i, C, CV, hx, hib, h, .refl⟩
-  · obtain ⟨O, OV, hO, hCO⟩ := lock_below_origin_at hrun hnc hx h
-    exact ⟨x, i, O, OV, hx, hib, hO, hCO⟩
-  · obtain ⟨CV, ell, D, hcall, hfl, rfl⟩ := ho.2.2.1
-    obtain ⟨O, OV, hO, hDO⟩ := lock_below_origin_at hrun hnc ho.1 (Or.inl ⟨CV, hfl⟩)
-    have hΦU := (frameIn_at hrun hnc ho.1 hcall).2
-    exact ⟨x, i, O, OV, ho.1, hib, hO, (Anc.mono hΦU (SA.anc_viableAncestor _ D)).trans hDO⟩
+  obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
+  obtain ⟨x, i, OV, hx, hib, hO⟩ := originWithin_iff.1 hO
+  exact ⟨x, i, O, OV, hx, hib, hO, hCO⟩
 
 /-- A block below an origin of a label after the high-origin cutoff has an honest supporting vote
 of that slot, cast no later than the origin's cut. -/

@@ -362,6 +362,33 @@ theorem SleepyServiceBefore.upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact ⟨k, hkj, (RunTrace.upTo_acceptAt _).mpr ⟨hkd, hk⟩,
       by rw [RunTrace.upTo_deadline hm hkd]; exact hkt⟩
 
+/-- **Transport of the AC service from `a`** to the prefix through `d ≥ 0`: the static AC service
+window from `a` of the validators honest at `d`, with the deadline bound `min b d`. -/
+theorem SleepyServiceFrom.acWindow_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {ΔF a κ b : Time} (h : SleepyServiceFrom tr H ΔF a κ b) (hd : 0 ≤ d) :
+    SA.ServiceWindowBefore (H d) ((tr.upTo d).HonestBlocks (H d)) a (min b d)
+      (tr.upTo d).projAC := by
+  have hm := hrun.time_mono
+  have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => hrun.antitone ht
+  have hsub := upTo_subset hrun hd
+  rw [RunTrace.upTo_projAC]
+  refine ⟨fun x hx i v hv hai y hy j ℓ hc hdb hdj => ?_,
+    fun x hx i B hB hai y hy j ℓ hc hdb hdj ha => ?_⟩
+  · obtain ⟨hid, hv⟩ := (ac_sendOrAdmit_upTo hm).mp hv
+    obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
+    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    exact sa_messageServedBefore_upTo hm hjd
+      (h.message x i v (anti hid hx) hv hai y j ℓ (anti hjd hy) hc (hdb.trans (min_le_left _ _))
+        hdj)
+  · obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+    obtain ⟨hjd, hc⟩ := (Trace.upTo_callAt _).mp hc
+    rw [ac_deadline_upTo hm hjd] at hdb hdj
+    obtain ⟨k, hkj, hk, hkt⟩ := h.acRelay x i B (anti hid hx) hB hai y j ℓ (anti hjd hy) hc
+      (hdb.trans (min_le_left _ _)) hdj (ha.mono hsub)
+    have hkd : tr.time k ≤ d := (hm hkj).trans hjd
+    exact ⟨k, hkj, (ac_acceptAt_upTo _).mpr ⟨hkd, hk⟩,
+      by rw [ac_deadline_upTo hm hkd]; exact hkt⟩
+
 /-! ### Node-local AC facts at a cut (lifted at the time of the cut) -/
 
 /-- The AC state of the prefix before a cut at a time `≤ d` is the run's. -/

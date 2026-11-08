@@ -10,10 +10,11 @@ public section
 /-! # Goldilocks under `Sleepy` with growing faults: the later transfer step
 
 `later_transfer_step_at`: at a slot-`(s+1)` vote of a node honest at its cut `i ≤ b`, a block `B`
-held while honest, compatible with every origin within `b` of label at most `s`, that every
-slot-`s` vote of a node honest at it extends and that the earlier slot-`(s+1)` votes of nodes
-honest at them extend, is extended by the vote (`vote_frame_at`, `vote_locks_compatible_at`, and
-the batch counted at the voter's cut, `vote_extends_of_batch_at`).
+held while honest, compatible with every member of the healed family within `b` of label at most
+`s`, that every slot-`s` vote of a node honest at it extends and that the earlier slot-`(s+1)`
+votes of nodes honest at them extend, is extended by the vote (the frozen witness `hframe` from a
+slot-`s` voter still honest at `t_s + Δ`, `vote_locks_compatible_at`, and the batch counted at
+the voter's cut, `vote_extends_of_batch_at`).
 
 `honest_batch_carry_at` carries every slot-`s` vote of a node honest at it to the vote, each voter
 its own writer, honest at its vote and at its acceptance of the head. The per-writer carry
@@ -28,11 +29,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The batch reaches a next-slot vote** under growing faults: at a slot-`(s+1)` vote of a node
-honest at its cut `i ≤ b` whose `Σ.F` is below `B`, every slot-`s` vote of a node honest at it,
-all extending `B`, is carried; each voter is its own writer, honest at its vote and at its
-acceptance of the head. -/
+honest at its cut `i ≤ b` whose `Σ.F` is below `B`, with the service from `a` (`a + κ ≤ t_s`),
+every slot-`s` vote of a node honest at it, all extending `B`, is carried; each voter is its own
+writer, honest at its vote and at its acceptance of the head. -/
 theorem honest_batch_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {s : Nat}
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
+    (hsa : a + κ ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
@@ -57,7 +59,7 @@ theorem honest_batch_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     have hkt' : tr.time k < sp.ts s + 2 * sp.Δ := by
       rw [hvs] at hkt
       exact hkt.trans_lt (add_lt_add_of_le_of_lt le_rfl (lt_mul_of_one_lt_left hΔ (by norm_num)))
-    refine carryAt_of_writer_at (w := x) hrun hnc hsync hy hc hs hib ?_
+    refine carryAt_of_writer_at (w := x) hrun hnc hsync hsa hy hc hs hib ?_
     rintro v rfl
     refine ⟨hvs, ⟨k, hxk, ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
       (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) s).2 (by omega), hkt'⟩,
@@ -72,16 +74,24 @@ theorem honest_batch_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
 
 /-- **Later batch under growing faults**: a slot-`s` voter honest at `t_s + Δ` (the slot count
-there) gives the frame witness (`vote_frame_at`); below `fc_root` the vote extends `B`, otherwise
-the batch of every slot-`s` vote, carried and counted at the voter's cut, with the live locks
-compatible with `B` (`vote_locks_compatible_at`). -/
+there, `s ≥ σ₀`) gives the frame witness (`hframe`); below `fc_root` the vote extends `B`,
+otherwise the batch of every slot-`s` vote, carried and counted at the voter's cut, with the live
+locks compatible with `B` (`vote_locks_compatible_at`). -/
 theorem later_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b) {y : Fin sp.n}
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
+    (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
+    (hsa : a + κ ≤ sp.ts s) {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocksAt H)
-    (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C)
+    (hib : tr.time i ≤ b)
+    (hlive : ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
+      rL ≤ l.slot)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBc : ∀ C j, HealedOrigin tr H g rL rO C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C)
+    (hframe : (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
+        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
+      B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+        Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
     (hall : ∀ x k e', HVoteAt tr H x k e' → e'.msg.slot = s →
       SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
@@ -96,7 +106,7 @@ theorem later_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   -- a slot-`s` voter still honest at `t_s + Δ`
-  have hcount := faults_lt_voters hrun hnc hB (s := s) (d := sp.ts s + sp.Δ) le_rfl
+  have hcount := faults_lt_voters hrun hnc hB (s := s) (d := sp.ts s + sp.Δ) hs₀ le_rfl
     (by linarith) (by linarith)
   obtain ⟨x, hx⟩ : (VotersAt tr H s (sp.ts s + sp.Δ)).Nonempty := by
     rw [Set.nonempty_iff_ne_empty]
@@ -104,18 +114,17 @@ theorem later_transfer_step_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     rw [h, Set.ncard_empty] at hcount
     omega
   obtain ⟨-, k, e', hv, hvs⟩ := votersAt_iff.1 hx
-  have hvf := vote_frame_at hrun hnc hb hsync hB hP hy hc hs hib hBU hBc
-    ⟨x, k, e', hv, hvs, hall x k e' hv hvs⟩
+  have hvf := hframe ⟨x, k, e', hv, hvs, hall x k e' hv hvs⟩
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
   rcases hvf with hvB | hBf
   swap
   · obtain ⟨⟨Hd, hHd, hHdr, hfHd⟩, -⟩ := cast_head_fcRoot_at hrun hnc hy hc
     exact ⟨Hd, hΦU hHd, hHdr, hBf.trans (Anc.mono hΦU hfHd)⟩
-  exact vote_extends_of_batch_at hrun hnc hB hy hc hs hib (Or.inl hvB)
+  exact vote_extends_of_batch_at hrun hnc hB hs₀ hy hc hs hib (Or.inl hvB)
     (fun x j e' _ hv hvs => hall x j e' hv hvs)
-    (honest_batch_carry_at hrun hnc hsync hy hc hs hib hall
+    (honest_batch_carry_at hrun hnc hsync hsa hy hc hs hib hall
       (Anc.mono hΦU (hΦ.rooted.2 B hvB.1.1)))
-    (vote_locks_compatible_at hrun hnc hB hy hc hs hib hBc hE)
+    (vote_locks_compatible_at hrun hnc hB hy hc hs hib hlive hBc hE)
 
 end Consensus.Goldilocks.Compose.Growing
 
