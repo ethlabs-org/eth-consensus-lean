@@ -561,6 +561,31 @@ detail in `TRUST.md`.
   Reason: there are no review gates; the line keeps every trusted change visible and is machine-checked.
 - **There is no `.github/CODEOWNERS`**: Code Owner review would be a review gate.
 
+## Comparison properties
+
+- **An untrusted layer of comparison profiles.** `ConsensusLean/Comparison/` states bound functions over
+  environment parameters (`Bound Q := Q → WithTop ℕ`, a `ΔAC`-coefficient per point, `⊤` for no claim) and the
+  claims they bound; `Proofs/Comparison/` proves its order lemmas and the defaults from the contract, and
+  `Instances/Goldilocks/Milestones/Statements/Comparison/` holds the per-protocol statements. It imports only
+  Init, ToMathlib, Core and Spec, is outside `trusted_paths` and holds no `sorry`. Reason: comparing two
+  protocols' proved guarantees pointwise needs a fixed vocabulary of run classes and bounds, which no Challenge
+  statement reaches.
+- **Bound inputs are environment quantities only.** A bound reads a parameter point (incident length, fault cap,
+  asynchrony class), never a run's trace or outputs, and the run class of a point mentions no bound, so two bound
+  functions are compared on the same runs. Reason: a class that depends on a bound would let a candidate choose
+  its own domain.
+- **Monotone bounds, ordered by class inclusion.** Each parameter type has a coordinatewise order, a lemma proves
+  that it implies inclusion of the run classes, and every profile requires its bounds to be monotone in it, so
+  `bX ≤ bY` pointwise means "never worse". Reason: the order is not defined as inclusion itself, so the
+  coordinate reading and the class reading cannot drift.
+- **Coverage is a separate obligation.** For every feasible point with a finite bound, a valid, excuse-free run
+  attains the environment parameters with the claim active (`HealCoverage0`). It is not a field of a profile, and
+  the defaults from the contract give only the implication fields. Reason: the contract's realizability gives
+  witnesses at fixed points with silent adversaries, not at every parameter value.
+- **Profiles are per capability and index.** A profile is stated at the contract's `(cap, i)`, whose heal and
+  latency coefficients it bounds. Reason: a bound shared by every index has no finite default for a contract whose
+  heal coefficient grows with the index (Goldilocks' grows with the outer gap).
+
 ## Open questions
 
 - **Sleepy row-independence.** Do the sleepy claims hold at every `ΔFG > 0`, as `System.Sleepy` (no ratio) states,
