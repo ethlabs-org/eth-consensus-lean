@@ -7,8 +7,9 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
 
 The pre-confirmation (PC) layer of a candidate that adds expiring ½ pre-confirmations to a lock
 rule, at full committees (the committee of every slot is `V`, so `μ(K_s) = ⌊n/2⌋ + 1` for every
-slot, `pcMu`). It writes no lock and no record (the opt-in certified override is off); it changes
-only the block where a head walk starts.
+slot, `pcMu`). It adds no write mechanism to the core (the opt-in certified override is off): what
+it changes is the block where a head walk starts, and through the heads it selects, the inputs of
+the core's own update functions.
 
 * **Ack** (`Ack`): validator `val` acks the key `(slot, target)` as a member of the committee of
   slot `slot + j`, `j ∈ {2, 3}`. An ack is its own message (`Msg := Vote ⊕ Ack`): the code sends
@@ -41,10 +42,19 @@ only the block where a head walk starts.
   `headFrom` is the parent's head walk from a given start.
 
 The store is evaluated where the code evaluates it: the handlers (`Candidates/PreConfirmations/
-Actions`) keep the refreshed store after the calls that compute a head or decide an ack, and the
-pure reads (`ac_head`, `ac_confirmed`) evaluate it without keeping it. The code also caches the
-evaluation on (slot, tree size, number of keys, record version); the definitions evaluate at every
-call.
+Actions`) keep the refreshed store after the calls that compute a head or decide an ack. The reads
+(`ac_head`, `ac_confirmed`) are pure: they evaluate the store without keeping it. The code's reads
+keep it (its observation of the confirmed tip reaches the evaluation), and the one divergence this
+can cause is a `dead` mark: a read can mark two held conflicting keys dead, the mark is sticky, and
+when the older key leaves the window before the next kept evaluation, the code keeps the younger key
+dead while here it is authoritative (for example, keys of slots `s₂ < s₁` with conflicting targets,
+the slot-`s₂` key reaching its quorum late in slot `s₂ + e` after the node's last kept evaluation,
+and a read in that slot). A `valid` mark read off the same store is the same at the next kept
+evaluation. The reads are meant to be pure; the code's mutation at a read is the code's defect, not
+modelled here. The code also caches the evaluation on (slot, tree size, number of keys, record
+version); the definitions evaluate at every call. In the standalone code the tree only grows, so a
+hit on that key means the same inputs (`RefreshIdem`); in the code's composite the tree is the
+descendants of the finalized tip, which can change at the same size.
 
 Only trivial frames are in scope for the base: outside them the code clamps the base into the
 viable tree, which this layer does not model; here the projection falls back to `Φ.F` when no
@@ -166,7 +176,10 @@ def authority (P : PCStore sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Nat × Na
 /-! ## The base and the anchor -/
 
 /-- The D21 opponents of `Y` in a view: the validators that do not equivocate in its votes and
-have a support vote whose head (in the tree) conflicts with `Y`. -/
+have a support vote whose head (in the tree) conflicts with `Y`. The views the handlers pass have
+every support vote's head in the frame's tree (a vote is resolved only with its head in the tree,
+and a proposal's support entries are taken only with their head in the tree), so "in the tree"
+drops no support vote. -/
 def d21Opponents (Φ : Frm sp.n FGP) (V : View sp.n) (Y : Blk sp.n FGP) : Set (Fin sp.n) :=
   {i | i ∉ equivocators V.votes ∧ ∃ x ∈ V.support, x.val = i ∧
     ∃ H ∈ Φ.tree, H.root = x.head ∧ ¬ Compatible Φ.tree H Y}

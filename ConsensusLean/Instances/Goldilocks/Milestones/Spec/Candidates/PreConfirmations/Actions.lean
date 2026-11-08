@@ -16,7 +16,13 @@ with an unlock stage `E` and context `c` (`Candidates/EvidenceRelease`).
 with the block where each head walk starts given by `st` (a function of the state after the
 unlock, the view and its slot) instead of the parent's anchor. With `st` the parent's anchor
 (`parentStart`) they are the handlers of `Candidates/EvidenceRelease` (a lemma, by definition).
-The PC changes nothing else of the core: it writes no lock, no record and no saved row.
+The PC adds no write mechanism to the core: every core write is one of the same update functions,
+applied to the PC-selected vote. The writes are **not** in general equal to the core's at the
+parent's start: a different start can give a different head of the own vote, which is admitted to
+the pool before the optimistic confirmation of the same call, so the pool, the optimistic lock and
+its weight, `latestConfirmed` and, at later updates, the saved rows and counts may differ.
+`callStartPC` names the start of each call (the PC start of the store evaluated after the call's
+record and before the walk, `walkStorePC`).
 
 **The PC handlers** (state `PCState`: the core's weighted state and the PC store):
 * `tryVotePC`: the core's `try_vote` with the walk from the PC start of the store evaluated at the
@@ -257,6 +263,21 @@ noncomputable def acRestartPC (ro : ReplayOrder sp FGP) (self : Fin sp.n) (X : P
     PCStore.empty⟩
   (ro.order t Φ).foldl
     (fun acc B => let r := acOnBlockPC sp E c m self acc.1 Φ t B; (r.1, acc.2 ++ r.2)) (X', [])
+
+/-- The store a walking call reads its start from: the store evaluated at the call after the
+call's record (the received vote, or the accepted block's payload votes) and before the walk. -/
+noncomputable def walkStorePC {ro : ReplayOrder sp FGP} (X : PCState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : (goldilocksSA sp FGP ro).Call → PCStore sp.n
+  | .message v => refresh sp (recordVote sp X.store t v) Φ t
+  | .block B => refresh sp (recordVotes sp X.store t (blockVotes B)) Φ t
+  | _ => refresh sp X.store Φ t
+
+/-- The start of the walks of a call: the PC start of `walkStorePC` for the walking calls; the
+parent's anchor for a restart (whose replay runs on an emptied store, with no key). -/
+noncomputable def callStartPC {ro : ReplayOrder sp FGP} (X : PCState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : (goldilocksSA sp FGP ro).Call → StartFn sp FGP
+  | .restart => parentStart sp Φ t
+  | k => pcStartFn sp (walkStorePC sp X Φ t k) Φ t
 
 end PC
 

@@ -18,17 +18,22 @@ settling argument: they are about one store, one call, or the run's acks.
   (`UnlockStage.Fixes`, every lock) is stated over the lock-rule laws of `Lemmas/AC/LockRule`, so
   it is not a `Prop` here.
 
-**The core is untouched except for the start (E2).**
+**The core runs its own update functions at the PC's start (E2).** The PC adds no write mechanism:
+the core's writes are the same update functions, on the PC-selected vote. They are not in general
+equal to the core's writes at the parent's start (the own vote's head can differ, and it enters the
+pool before the same call's optimistic confirmation).
 * `AckCallCoreId`: an ack receipt leaves the core state as it is and emits nothing;
 * `ParentStartIsCore`: the core skeleton with the parent's start is the core's handlers at mode
   `m` and stage `E` (`Candidates/EvidenceRelease`);
-* `CoreStepAtStart`: every other call's core result and forgotten emissions are the core
-  skeleton's for some start (write inertness: the locks, weights, record, saved rows and counts
-  are the core's writes; the start is what the PC changes);
+* `CoreStepAtCallStart`: every other call's core result and forgotten emissions are the core
+  skeleton's at the call's named start `callStartPC` (the PC start of the store evaluated after
+  the call's record and before the walk);
+* `ProposalAtCallStart`: the proposal's core result, duty head and payload are the skeleton's at
+  that start (`stepEMAt` keeps only the state of a proposal);
 * `CoreStepOfNoKeys`: with no key in `pcs` the start is the parent's anchor, so the call is the
-  core's;
-* `RestartResets`: a restart is the core's restart and empties the store but for the record of
-  the replayed payloads;
+  core's (a conditional equality);
+* `RestartResets`: a restart is the core's restart, and the store after it has no ack, key, mark
+  or decision, and its vote record is that of the replayed payloads' votes;
 * `ProjStateCore`: on an honest node, the forgotten trace's state is the core of the state.
 
 **The store (E4).**
@@ -59,12 +64,12 @@ variable (sp : SAParams) (FGP : Type)
 /-! ## The one release -/
 
 /-- **The one release reads the code's scan**: the deepest ancestor `Y` in the tree of the lock's
-block `B` with `|evidence(Y)| < min(W(Y), μ_r)`, else `Φ.F`, is the stage's target from the
-parent's unlock target of `B`. -/
+block `B`, at or above `Φ.F`, with `|evidence(Y)| < min(W(Y), μ_r)`, else `Φ.F`, is the stage's
+target from the parent's unlock target of `B`. -/
 def OneReleaseScan : Prop :=
   ∀ {Φ : Frm sp.n FGP}, FrameOK Φ → ∀ (V : View sp.n) (s : Int) (w : WLock) (B : Blk sp.n FGP),
     B ∈ Φ.tree →
-    (deepest Φ {Y | Y ∈ Φ.tree ∧ Φ.Anc Y B ∧
+    (deepest Φ {Y | Y ∈ Φ.tree ∧ Φ.Anc Φ.F Y ∧ Φ.Anc Y B ∧
         (evidence sp Φ V s Y).ncard < min (w.weight Y.root) (releaseMu sp)}).getD Φ.F =
       oneReleaseTarget sp Φ V s w (unlockTarget sp Φ V s B)
 
@@ -94,16 +99,25 @@ def ParentStartIsCore : Prop :=
     acProposalEAt sp E c (parentStart sp Φ t) X Φ t = acProposalE sp E c X Φ t ∧
     acRestartEMAt sp E c m (parentStart sp Φ t) ro self X Φ t = acRestartEM sp E c m ro self X Φ t
 
-/-- **Write inertness**: every call other than an ack receipt has, on the core, the result and the
-forgotten emissions of the core skeleton for some start. -/
-def CoreStepAtStart : Prop :=
+/-- **The core at the call's start**: every call other than an ack receipt has, on the core, the
+result and the forgotten emissions of the core skeleton at the call's start `callStartPC`. -/
+def CoreStepAtCallStart : Prop :=
   ∀ (self : Fin sp.n) (X : PCState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (k : (preConfSAM sp E c m FGP ro).Call) (k' : (goldilocksSA sp FGP ro).Call),
-    projCallPC E c m ro k = some k' → ∃ st : StartFn sp FGP,
+    projCallPC E c m ro k = some k' →
       ((preConfSAM sp E c m FGP ro).step self X Φ t k).1.core =
-        (stepEMAt sp E c m ro st self X.core Φ t k').1 ∧
+        (stepEMAt sp E c m ro (callStartPC sp X Φ t k') self X.core Φ t k').1 ∧
       ((preConfSAM sp E c m FGP ro).step self X Φ t k).2.filterMap projEmPC =
-        (stepEMAt sp E c m ro st self X.core Φ t k').2.map projEm
+        (stepEMAt sp E c m ro (callStartPC sp X Φ t k') self X.core Φ t k').2.map projEm
+
+/-- **The proposal at its start**: the proposal's core result, and its duty head (head, start and
+domain) and payload, are the skeleton's at the PC start of the store evaluated at the call. -/
+def ProposalAtCallStart : Prop :=
+  ∀ (X : PCState sp.n) (Φ : Frm sp.n FGP) (t : Time),
+    (acProposalPC sp E c X Φ t).1.core =
+        (acProposalEAt sp E c (callStartPC (ro := ro) sp X Φ t .proposal) X.core Φ t).1 ∧
+      (acProposalPC sp E c X Φ t).2 =
+        (acProposalEAt sp E c (callStartPC (ro := ro) sp X Φ t .proposal) X.core Φ t).2
 
 /-- **No key, no change**: with no key in `pcs`, every call other than an ack receipt has, on the
 core, the core's result and forgotten emissions (the skeleton at the parent's start). -/
@@ -117,8 +131,8 @@ def CoreStepOfNoKeys : Prop :=
         (stepEMAt sp E c m ro (parentStart sp Φ t) self X.core Φ t k').2.map projEm
 
 /-- **A restart empties the store**: its core result and forgotten emissions are the core's
-restart, and the store after it has no ack, key, mark or decision (the record holds the replayed
-payloads' votes). -/
+restart, and the store after it has no ack, key, mark or decision, and its vote record is that of
+the replayed blocks' payload votes, recorded in the replay order from the empty store. -/
 def RestartResets : Prop :=
   ∀ (self : Fin sp.n) (X : PCState sp.n) (Φ : Frm sp.n FGP) (t : Time),
     ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.core =
@@ -129,7 +143,9 @@ def RestartResets : Prop :=
       ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.store.valid = ∅ ∧
       ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.store.dead = ∅ ∧
       (∀ s X' j, ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.store.acks s X' j = ∅) ∧
-      ∀ s, ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.store.myAcks s = none
+      (∀ s, ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.store.myAcks s = none) ∧
+      ((preConfSAM sp E c m FGP ro).step self X Φ t .restart).1.store.votes =
+        ((ro.order t Φ).foldl (fun P B => recordVotes sp P t (blockVotes B)) PCStore.empty).votes
 
 /-- **The forgotten state is the core**: on a run of the PC SA, the forgotten trace's state of an
 honest node is the core's parent state of its state (an ack receipt is a stutter of the forgotten
