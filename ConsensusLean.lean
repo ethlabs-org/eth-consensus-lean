@@ -844,6 +844,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.I
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.Viable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Counts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Delivery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Gate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.LockChain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Numbers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
