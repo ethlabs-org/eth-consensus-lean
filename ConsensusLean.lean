@@ -894,6 +894,8 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Realizable
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
