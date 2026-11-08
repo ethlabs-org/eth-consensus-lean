@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.TierA
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.LatencyAC
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Candidates
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Cost
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.CostRun
 public import ConsensusLean.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 
@@ -18,7 +19,8 @@ public section
 * The Tier A instances `healProfileAC0_free` and `signingRateAC0` (`TierA`),
   `proposalLatencyAC0_sync` and `proposalLatencyAC0_bridge` (`LatencyAC`), over candidate runs
   (`Candidates`), and the cost instances `carriedBoundAC0`, `lockMemoryAC0`, `lockMemoryERAC0`
-  and `lockMemoryCertAC0` (`Cost`). -/
+  and `lockMemoryCertAC0` (`Cost`), with `tickOnceRun`, their premise `TickOnce` on node runs
+  (`CostRun`). -/
 
 namespace Consensus.Goldilocks.Comparison
 

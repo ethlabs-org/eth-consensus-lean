@@ -12,6 +12,8 @@ docstring: **bound** (the bound function), **tier** (R: over every L0 system or 
 protocol; A: over AC traces of the Goldilocks SA), **premises** (what the instance
 assumes beyond the profile's class). A new instance adds an entry here.
 In the cost rows, "no opt." is `m.optimistic = false` and "tick" is the premise `TickOnce`.
+`TickOnce` is discharged on composite runs (`TickOnceRun`); the non-optimistic parent stage has
+no composite.
 
 | statement | bound | tier | premises |
 |---|---|---|---|
@@ -33,6 +35,7 @@ In the cost rows, "no opt." is `m.optimistic = false` and "tick" is the premise 
 | `LockMemoryAC0` | `lockBound m` locks, `max m.width 1` rows | A, static | parent, no opt., tick |
 | `LockMemoryERAC0` | the same | A, static | evidence release, no opt., tick |
 | `LockMemoryCertAC0` | the same | A, static | late certificate, no opt., tick |
+| `TickOnceRun` | one tick per node and time | A, on runs | node runs (`Node.LocalRun`) |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -121,6 +124,11 @@ the optimistic write; `TickOnce`. -/
 theorem lockMemoryCertAC0 : Consensus.Goldilocks.Comparison.LockMemoryCertAC0 :=
   Consensus.Goldilocks.Comparison.lockMemoryCertAC0
 
+/-- `TickOnce` on the AC projection of every node run; tier A, on runs; premise
+`Node.LocalRun`. -/
+theorem tickOnceRun : Consensus.Goldilocks.Comparison.TickOnceRun :=
+  Consensus.Goldilocks.Comparison.tickOnceRun
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -186,5 +194,8 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.lockMemoryCertAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.lockMemoryCertAC0
+
+/-- info: 'Consensus.Comparison.Registry.tickOnceRun' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.tickOnceRun
 
 end
