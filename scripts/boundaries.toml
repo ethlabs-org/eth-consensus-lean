@@ -344,7 +344,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
-about = "untrusted milestone layer: candidate lock rules' writes at a write mode (the weighted locks), uniform in the mode; imported only by Lemmas.Candidates, its proofs and the tests, never by another Milestones.Spec or statement layer"
+about = "untrusted milestone layer: candidate lock rules at a write mode (the weighted writes, and the evidence-release and late-certificate SAs with them), uniform in the mode; imported only by Lemmas.Candidates, its proofs and the tests, never by another Milestones.Spec or statement layer"
 
 [[layer]]
 name = "Instances.Goldilocks.Milestones.Spec.Node"
@@ -536,7 +536,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Spec.Candidates",
          "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
-about = "lemmas of the candidate lock rules' writes at a write mode (Milestones.Spec.Candidates); a leaf: only proofs and tests import it"
+about = "lemmas of the candidate lock rules' writes and handlers at a write mode (Milestones.Spec.Candidates); a leaf: only proofs and tests import it. Lemmas.AC's Candidates modules hold the candidates at the parent's mode, which the healing lemmas import; this layer holds their forms at every write mode"
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Compose"
