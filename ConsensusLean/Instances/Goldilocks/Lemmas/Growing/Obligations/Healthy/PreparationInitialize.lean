@@ -15,12 +15,15 @@ open AsChainShape Simulation Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 set_option linter.unusedVariables false in
-/-- An actual reset seed, a base slot and a repairing opening before the heal deadline. -/
-theorem healthy_preparation_initialize_at (Q : HealthyPreparationQueryAt S A V)
+/-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with eight
+slots of the heal margin to spare after the reserve: the query is at most `ready + (R + 8k + 20)Δ`
+and the heal point at least `ready + (R + 8k + 4X + 34)Δ + 2`. -/
+theorem healthy_preparation_initialize_late_at (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run) :
-    ∃ W : HealthyBaseTimingAt S A V Q, Nonempty (HealthyPreparationScheduleAt S A V Q W) := by
+    ∃ W : HealthyBaseTimingAt S A V Q, ∃ D : HealthyPreparationScheduleAt S A V Q W,
+      D.query + (4 * (Q.index : Time) + 14) * Q.params.Δ + 1 ≤ Q.heal := by
   obtain ⟨ΔF, a, hreset, ha⟩ := healthy_preparation_reset_at S A V Q hb hp
   obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed_at
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
@@ -45,6 +48,15 @@ theorem healthy_preparation_initialize_at (Q : HealthyPreparationQueryAt S A V)
         (contract_heal S A Q.cap Q.index : Time) := by
       have h1 := (Nat.cast_le (α := Time)).mpr (contract_heal_ge_reset S A Q.cap Q.index)
       rw [healthyResetSlack_val] at h1
+      push_cast at h1
+      rw [hBdef]
+      linarith only [h1]
+    rw [hready, hheal, hΔ]
+    linarith only [mul_le_mul_of_nonneg_right hH (zero_le_one.trans hd), hd]
+  have hB' : Q.ready + (B + 8) * Q.params.Δ + 2 ≤ Q.heal := by
+    have hH : ((contract_catchUp S A : Nat) : Time) + (B + 8) + 3 ≤
+        (contract_heal S A Q.cap Q.index : Time) := by
+      have h1 := (Nat.cast_le (α := Time)).mpr (contract_heal_ge_reset_late S A Q.cap Q.index)
       push_cast at h1
       rw [hBdef]
       linarith only [h1]
@@ -97,12 +109,24 @@ theorem healthy_preparation_initialize_at (Q : HealthyPreparationQueryAt S A V)
           (max_le (by linarith only [hr0, hRD, hkD, hD0])
             (by linarith only [hseed, ha, hkD, hD0])))))
   have hXD : (0 : Time) ≤ ((Q.index : Nat) : Time) * Q.params.Δ := mul_nonneg hX0 hD0
-  rw [hBdef] at hB
+  rw [hBdef] at hB hB'
   refine ⟨⟨w, hw1.le, by linarith only [hw2, hB, hRD, hkD, hXD, hD0],
     by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0],
     by rw [hts, hkk]; linarith only [hw2, hB, hRD, hkD, hXD, hD0],
-    by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0]⟩, ⟨?_⟩⟩
-  exact ⟨a, ΔF, hreset, v, r, l, O, hO, hra, hla, _, le_rfl, by linarith only [hq, hB]⟩
+    by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0]⟩,
+    ⟨a, ΔF, hreset, v, r, l, O, hO, hra, hla, _, le_rfl, by linarith only [hq, hB]⟩, ?_⟩
+  dsimp only
+  linarith only [hq, hB']
+
+/-- An actual reset seed, a base slot and a repairing opening before the heal deadline
+(`healthy_preparation_initialize_late_at`). -/
+theorem healthy_preparation_initialize_at (Q : HealthyPreparationQueryAt S A V)
+    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
+    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
+      Q.cap Q.index Q.ready Q.heal Q.run) :
+    ∃ W : HealthyBaseTimingAt S A V Q, Nonempty (HealthyPreparationScheduleAt S A V Q W) :=
+  let ⟨W, D, _⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
+  ⟨W, ⟨D⟩⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

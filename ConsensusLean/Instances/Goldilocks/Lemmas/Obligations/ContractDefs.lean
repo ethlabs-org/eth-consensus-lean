@@ -78,6 +78,16 @@ theorem contract_heal_ge_reset (S : Setup) (A : ContractAssumptions S) (cap : Ca
   have := healMargin_ge_reset S X A.six_le_δt
   omega
 
+/-- **The coefficient inequality with eight slots more**: the heal margin exceeds the reset
+reserve `R + 8k + 4X + 29` by `4δ_t − 13 ≥ 11` (at `δ_t ≥ 6`), so the reserve `+ 8` still fits. -/
+theorem contract_heal_ge_reset_late (S : Setup) (A : ContractAssumptions S) (cap : Capability)
+    (X : ℕ+) :
+    (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 ≤
+      contract_heal S A cap X := by
+  rw [contract_heal_val, healMargin_val, healthyResetCoeff_val]
+  have := A.six_le_δt
+  omega
+
 /-- The final route's coefficient form `contract_heal(final, X) ≥ C + M_f`,
 `M_f = 20 L_drain + 8k + 28δ_t + 28X + 56` at `λ = 2Δ` and `L_drain = healthyDrainLen` (the
 rise-round route, `healBoundCoeffRounds_at_two`). A budget for the final route, not a proof of its
