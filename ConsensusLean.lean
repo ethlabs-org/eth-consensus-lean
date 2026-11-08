@@ -877,6 +877,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growin
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Defaults
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.HealAC
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.HealACAt
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.SlowOnly
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.SlowOnlyOptimistic
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service
