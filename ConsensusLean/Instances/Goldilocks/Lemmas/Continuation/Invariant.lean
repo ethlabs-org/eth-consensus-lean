@@ -277,11 +277,40 @@ theorem seed_held_past_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
 
 /-! ### The seeded invariant -/
 
+/-- **The seeded invariant through `b` from a cover start `t_c`**: from the hand-over seed, the
+reset service and the slot counts from `r` through `b ≥ T`, conviction below a third, and the record
+cover through `T` from `t_c` on, the seeded invariant at the floors `(r, r + k − 1)` holds from
+`t₁ = max t_c t_{r+k}`. The frontier is `healed_frontier_at`; locks and sources go through the
+holder's lock write (`seeded_locks_at`, `seeded_sources_at`). -/
+theorem seeded_invariant_of_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hcv : ChainConvictedBelow tr H) {tc : Time}
+    (hcov : ∀ y n t, tc ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
+      HealedRecordCoverAt tr H (r + sp.k - 1) y n t
+        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+          (tr.state y n).fg.F)) :
+    SeededInvariant tr H g r (r + sp.k - 1) (max tc (sp.ts (r + sp.k : Nat))) b := by
+  have hdt : sp.ts (r + sp.k : Nat) ≤ max tc (sp.ts (r + sp.k : Nat)) := le_max_right _ _
+  have hF := healed_frontier_at hrun hnc hseed hTb hsvc hB hcv
+  exact ⟨seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv,
+    fun C s hC y i e he hib hs =>
+      healedVotesBelow_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl,
+    seeded_record_at hrun hnc hseed hTb hsvc hB hcv hdt
+      (fun y n t ht htT hy hrp => hcov y n t ((le_max_left _ _).trans ht) htT hy hrp),
+    fun y i t ht₁ hi htb hy hcall =>
+      seeded_caches_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
+    fun y i t ht₁ hi htb hy => seeded_locks_at hrun hnc hseed (hdt.trans ht₁) hi htb hy,
+    fun y i ℓ C hy hi hib h => seeded_sources_at hrun hnc hseed hy (hdt.trans hi) hib h,
+    fun y i t ht₁ hi htb hy hcall =>
+      seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
+    seed_held_past_at hrun hnc hseed hTb⟩
+
 /-- **The seeded invariant through `b`**: from the hand-over seed, the reset service and the slot
 counts from `r` through `b ≥ T`, and conviction below a third, the seeded invariant at the floors
 `(r, r + k − 1)` holds from a time `t₁ ∈ [t_{r+k}, T]`: the later of the seed's cover start and
-the drain `t_{r+k}`. The frontier is `healed_frontier_at`; locks and sources go through the
-holder's lock write (`seeded_locks_at`, `seeded_sources_at`). -/
+the drain `t_{r+k}` (`seeded_invariant_of_cover_at`). -/
 theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
@@ -296,21 +325,8 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     have hts : sp.ts ((σ + 1 : Nat) : Int) = sp.ts σ + 4 * sp.Δ := by
       simp only [SAParams.ts]; push_cast; ring
     linarith
-  set t₁ := max tc (sp.ts (r + sp.k : Nat))
-  have hdt : sp.ts (r + sp.k : Nat) ≤ t₁ := le_max_right _ _
-  have hF := healed_frontier_at hrun hnc hseed hTb hsvc hB hcv
-  refine ⟨t₁, max_le htcT hDT, hdt, seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv,
-    fun C s hC y i e he hib hs =>
-      healedVotesBelow_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl,
-    seeded_record_at hrun hnc hseed hTb hsvc hB hcv hdt
-      (fun y n t ht htT hy hrp => hcov y n t ((le_max_left _ _).trans ht) htT hy hrp),
-    fun y i t ht₁ hi htb hy hcall =>
-      seeded_caches_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
-    fun y i t ht₁ hi htb hy => seeded_locks_at hrun hnc hseed (hdt.trans ht₁) hi htb hy,
-    fun y i ℓ C hy hi hib h => seeded_sources_at hrun hnc hseed hy (hdt.trans hi) hib h,
-    fun y i t ht₁ hi htb hy hcall =>
-      seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
-    seed_held_past_at hrun hnc hseed hTb⟩
+  exact ⟨_, max_le htcT hDT, le_max_right _ _,
+    seeded_invariant_of_cover_at hrun hnc hseed hTb hsvc hB hcv hcov⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 
 public section
@@ -18,7 +19,9 @@ or before `T` and progress on `[ready, heal]` the query meets the premises of th
 * `Obligations.Growing.handover_query_at`: with `heal ≤ T` and progress on `[ready, heal]`, the
   query meets the premises of `handover_seed_at`;
 * `Obligations.Growing.handover_seed_of_handover_at`: the hand-over seed at `T` on the run's
-  canonical trace and honest keys.
+  canonical trace and honest keys;
+* `Obligations.Growing.handover_invariant_at`: the seed and a read start `t₁ ∈ [t_{r+k}, T]` with
+  `t₁ + 8Δ ≤ heal`, from which the seeded invariant holds through every `b ≥ T`.
 
 The bound must lie inside the run's horizon (`HealthyPreparationQueryAt.bound_le`): a hand-over
 past the horizon is a healthy run up to the horizon, covered by the healthy claims. -/
@@ -87,6 +90,34 @@ theorem handover_seed_of_handover_at (hn : 1 ≤ Fintype.card V) {r : (Sys (gold
       (runProposer S r.2 hn) (digestOf S r.2) g (protoFGDelay (Model.pubOf r.1)) T rL σ :=
   let h := handover_query_at hn hv hx hcap hh hTh hT hp
   handover_seed_at S A V (handoverQuery S A V hn hv hx hcap i hh hTh) h.1 h.2.1 h.2.2
+
+/-- **The seeded invariant of a healed-safety query** healthy up to its bound `T`, with
+`0 ≤ heal ≤ T` and progress on `[ready, heal]`: a hand-over seed at `T` and a read start
+`t₁ ∈ [t_{r+k}, T]` with `t₁ + 8Δ ≤ heal`, from which the seeded invariant holds through every
+`b ≥ T` with the reset service and the slot counts from `r` through `b` and conviction below a
+third. `t₁` is the later of the record cover's start and the drain `t_{r+k}`; both are at least
+eight slots before the heal point (`handover_seed_cover_at`), and `t₁` does not depend on `b`. -/
+theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
+    (hb : Q.heal ≤ Q.bound)
+    (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
+      Q.ready Q.heal Q.run) :
+    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
+        (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
+      ∃ t₁, t₁ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₁ ∧
+        t₁ + 8 * Q.params.Δ ≤ Q.heal ∧
+        ∀ b, Q.bound ≤ b →
+          Healing.Growing.ResetService Q.trace Q.keys Q.gst (protoFGDelay (Model.pubOf Q.run.1)) b →
+          Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r b →
+          Compose.Growing.ChainConvictedBelow Q.trace Q.keys →
+          Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁ b := by
+  obtain ⟨r, σ, hseed, t₀, ht₀T, hdt₀, hlate, hcov⟩ := handover_seed_cover_at S A V Q h0 hb hp
+  obtain ⟨a, hpr, -⟩ := hseed.reset
+  have hΔ := Q.params.toParams.hΔ
+  refine ⟨r, σ, hseed, max t₀ (Q.params.ts (r + Q.params.k : Nat)), max_le ht₀T (hdt₀.trans ht₀T),
+    le_max_right _ _, ?_, fun b hTb hsvc hB hcv =>
+      Compose.Growing.seeded_invariant_of_cover_at hpr.run hpr.noColl hseed hTb hsvc hB hcv hcov⟩
+  rw [max_eq_left hdt₀]
+  exact hlate
 
 end Consensus.Goldilocks.Obligations.Growing
 
