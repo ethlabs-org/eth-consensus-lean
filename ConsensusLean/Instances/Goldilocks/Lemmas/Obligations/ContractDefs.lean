@@ -78,8 +78,8 @@ theorem contract_heal_ge_reset (S : Setup) (A : ContractAssumptions S) (cap : Ca
   have := healMargin_ge_reset S X A.six_le_δt
   omega
 
-/-- **The coefficient inequality with eight slots more**: the heal margin exceeds the reset
-reserve `R + 8k + 4X + 29` by `4δ_t − 13 ≥ 11` (at `δ_t ≥ 6`), so the reserve `+ 8` still fits. -/
+/-- **The coefficient inequality with `8Δ` more**: the heal margin exceeds the reset reserve
+`R + 8k + 4X + 29` by `4δ_t − 13 ≥ 11` (at `δ_t ≥ 6`), so the reserve `+ 8` still fits. -/
 theorem contract_heal_ge_reset_late (S : Setup) (A : ContractAssumptions S) (cap : Capability)
     (X : ℕ+) :
     (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 ≤

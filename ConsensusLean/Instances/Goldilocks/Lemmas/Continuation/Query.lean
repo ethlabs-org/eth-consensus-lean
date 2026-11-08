@@ -21,7 +21,7 @@ or before `T` and progress on `[ready, heal]` the query meets the premises of th
 * `Obligations.Growing.handover_seed_of_handover_at`: the hand-over seed at `T` on the run's
   canonical trace and honest keys;
 * `Obligations.Growing.handover_invariant_at`: the seed and a read start `t₁ ∈ [t_{r+k}, T]` with
-  `t₁ + 8Δ ≤ heal`, from which the seeded invariant holds through every `b ≥ T`.
+  `t₁ + 8Δ + 1 ≤ heal`, from which the seeded invariant holds through every `b ≥ T`.
 
 The bound must lie inside the run's horizon (`HealthyPreparationQueryAt.bound_le`): a hand-over
 past the horizon is a healthy run up to the horizon, covered by the healthy claims. -/
@@ -93,10 +93,10 @@ theorem handover_seed_of_handover_at (hn : 1 ≤ Fintype.card V) {r : (Sys (gold
 
 /-- **The seeded invariant of a healed-safety query** healthy up to its bound `T`, with
 `0 ≤ heal ≤ T` and progress on `[ready, heal]`: a hand-over seed at `T` and a read start
-`t₁ ∈ [t_{r+k}, T]` with `t₁ + 8Δ ≤ heal`, from which the seeded invariant holds through every
-`b ≥ T` with the reset service and the slot counts from `r` through `b` and conviction below a
+`t₁ ∈ [t_{r+k}, T]` with `t₁ + 8Δ + 1 ≤ heal`, from which the seeded invariant holds through
+every `b ≥ T` with the reset service and the slot counts from `r` through `b` and conviction below a
 third. `t₁` is the later of the record cover's start and the drain `t_{r+k}`; both are at least
-eight slots before the heal point (`handover_seed_cover_at`), and `t₁` does not depend on `b`. -/
+`8Δ + 1` before the heal point (`handover_seed_cover_at`), and `t₁` does not depend on `b`. -/
 theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
@@ -104,7 +104,7 @@ theorem handover_invariant_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ 
     ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
       ∃ t₁, t₁ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₁ ∧
-        t₁ + 8 * Q.params.Δ ≤ Q.heal ∧
+        t₁ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ b, Q.bound ≤ b →
           Healing.Growing.ResetService Q.trace Q.keys Q.gst (protoFGDelay (Model.pubOf Q.run.1)) b →
           Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r b →

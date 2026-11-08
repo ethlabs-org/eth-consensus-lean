@@ -998,15 +998,15 @@ private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
       linarith
 
 /-- **The seeded frozen witness** (S3 at a vote after the split slot). At an honest vote of slot
-`s + 1 > σ + 1`, a member `B` of label `≤ s` extended by an honest slot-`s` vote is in the viable
-voter block tree or at or below `fc_root`, given `P_{s+1}`. The high rows of the voter's tree are
-sourced below members of labels `≤ s`, each extended by an honest vote of a slot `≤ s` and so
-frozen at the vote. `fc_root` is compatible with `B`: a high `Σ.J` is the entry of such a source,
-and a low reader's `fc_root` is below the held reset seed. Above `fc_root`, `B` is in the frame
-(between `Σ.F` and its frozen supporter) and has a viable frozen descendant: its supporter's head
-when the floor is at most its height; otherwise the frozen head above the crossing of the floor,
-which is a high row (the floor is at least `H_z + 1`, or the low reader's held seed is
-viable). -/
+`s + 1 > σ + 1`, a block `B` compatible with every member of label `≤ s` and extended by an honest
+slot-`s` vote is in the viable voter block tree or at or below `fc_root`, given `P_{s+1}`. The
+high rows of the voter's tree are sourced below members of labels `≤ s`, each extended by an
+honest vote of a slot `≤ s` and so frozen at the vote. `fc_root` is compatible with `B`: a high
+`Σ.J` is the entry of such a source, and a low reader's `fc_root` is below the held reset seed.
+Above `fc_root`, `B` is in the frame (between `Σ.F` and its frozen supporter) and has a viable
+frozen descendant: its supporter's head when the floor is at most its height; otherwise the
+frozen head above the crossing of the floor, which is a high row (the floor is at least
+`H_z + 1`, or the low reader's held seed is viable). -/
 theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
@@ -1015,13 +1015,16 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hP : HealedOriginsBelow tr H g r (r + sp.k - 1) (s + 1) b) {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hes : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
-    (hBm : HealedOrigin tr H g r (r + sp.k - 1) B j b) (hj : j ≤ s)
+    (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBc : ∀ C l, HealedOrigin tr H g r (r + sp.k - 1) C l b → l ≤ s →
+      Compatible (tr.HonestBlocksAt H) B C)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
   have hΔ := sp.toParams.hΔ
+  have hCB : ∀ C l, HealedOrigin tr H g r (r + sp.k - 1) C l b → l ≤ s →
+      Compatible (tr.HonestBlocksAt H) C B := fun C l hC hl => Or.symm (hBc C l hC hl)
   obtain ⟨hσT, hrσ, hgr⟩ := hseed.timing
   have hd := hrun.time_nonneg i
   have hi : ∀ k < i, tr.time k ≤ tr.time i := fun _ h => hrun.time_mono h.le
@@ -1074,7 +1077,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
       Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) D C) →
       Compatible (tr.HonestBlocksAt H) D B := by
     rintro D ⟨C, l, ⟨hC, hl, -⟩, -, hDC⟩
-    exact compatible_of_anc_left hU (hDC.mono hsub) (hPc C l B j hC hl hBm hj)
+    exact compatible_of_anc_left hU (hDC.mono hsub) (hCB C l hC hl)
   -- a crossing source above `B` gives a viable frozen witness
   have cross : ∀ D E, (∃ C l, Q C l ∧ C ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) ∧
       Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) D C) →
@@ -1106,7 +1109,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
         low_seed_held hrun hnc hcv hseed hd hi hy
           (seeded_reader_called_at hrun hseed hy hrk le_rfl) hlow
       have hSm : HealedOrigin tr H g r (r + sp.k - 1) S l b := .of_high (hqT.trans hTb) hS
-      have hSB := hPc S l B j hSm (by omega) hBm hj
+      have hSB := hCB S l hSm (by omega)
       refine ⟨compatible_of_anc_left hU (low_fcRoot_below hrun hnc hd hi hy hlow hS hSy hFS) hSB,
         fun hBt hFB hfl => ?_⟩
       have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by

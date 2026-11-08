@@ -15,15 +15,15 @@ open AsChainShape Simulation Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 set_option linter.unusedVariables false in
-/-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with eight
-slots of the heal margin to spare after the reserve: the query is at most `ready + (R + 8k + 20)Δ`
-and the heal point at least `ready + (R + 8k + 4X + 34)Δ + 2`. -/
+/-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with `8Δ`
+of the heal margin to spare after the reserve: the query is at most `ready + (R + 8k + 20)Δ` and the
+heal point at least `ready + (R + 8k + 4X + 34)Δ + 2`. -/
 theorem healthy_preparation_initialize_late_at (Q : HealthyPreparationQueryAt S A V)
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run) :
     ∃ W : HealthyBaseTimingAt S A V Q, ∃ D : HealthyPreparationScheduleAt S A V Q W,
-      D.query + (4 * (Q.index : Time) + 14) * Q.params.Δ + 1 ≤ Q.heal := by
+      D.query + (4 * (Q.index : Time) + 14) * Q.params.Δ + 2 ≤ Q.heal := by
   obtain ⟨ΔF, a, hreset, ha⟩ := healthy_preparation_reset_at S A V Q hb hp
   obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed_at
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos

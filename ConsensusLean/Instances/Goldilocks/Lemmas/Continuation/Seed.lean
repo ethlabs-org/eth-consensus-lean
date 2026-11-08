@@ -44,7 +44,7 @@ the later member's origin; two of one label through their underlying origins.
 * `Obligations.Growing.handover_seed_at`: a healed-safety query healthy up to its bound, with
   `heal ≤ bound` and progress on `[ready, heal]`, gives a seed at `T = bound` with the FG service
   delay `protoFGDelay`; `Obligations.Growing.handover_seed_cover_at` also gives its record cover
-  from a start `t₀ ∈ [t_{r+k}, T]` with `t₀ + 8Δ ≤ heal`. -/
+  from a start `t₀ ∈ [t_{r+k}, T]` with `t₀ + 8Δ + 1 ≤ heal`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -315,8 +315,8 @@ and the record cover from `t₀ = query + (4i + 6)Δ + 1` on; its reset premises
 service at `protoFGDelay`. The lock floor is `r = cleanLabel a + k + 2` and the split slot is
 `σ = slot T − 2`, so `t_σ + 8Δ = t_{slot T} ≤ T`. The schedule puts `drainTime a = t_{r+k}` at or
 before the query, so `t_{r+k+2} < T`, `r + k ≤ σ` and `t_{r+k} ≤ t₀`. The canonical preparation
-query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves eight more slots after the
-cover start: `t₀ + 8Δ ≤ heal`. -/
+query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves `8Δ + 1` after the cover
+start: `t₀ + 8Δ + 1 ≤ heal`. -/
 theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤ Q.heal)
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
@@ -324,7 +324,7 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
     ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ ∧
       ∃ t₀, t₀ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₀ ∧
-        t₀ + 8 * Q.params.Δ ≤ Q.heal ∧
+        t₀ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ y n t, t₀ ≤ t → t ≤ Q.bound → y ∈ Q.keys t → Regimes.ReadPoint Q.trace n t →
           Compose.Growing.HealedRecordCoverAt Q.trace Q.keys (r + Q.params.k - 1) y n t
             ((SA.lookup (Node.frame (Q.trace.state y n))
