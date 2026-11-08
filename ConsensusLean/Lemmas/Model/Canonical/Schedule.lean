@@ -39,6 +39,15 @@ noncomputable def deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Ob
 noncomputable def front (es : List (Event V (protoOf F E).Object)) (t : Time) :=
   es ++ rho.wakeEvents t ++ rho.tickEvents t
 
+theorem wakeEvents_eq (t : Time) : rho.wakeEvents t = (by
+    classical
+    exact (((Finset.univ \ rho.faultyAt t).filter (fun v => 0 < t ∧ Wakes E v t)).toList).map
+      (fun v => .restart v t)) := by rfl
+
+theorem tickEvents_eq (t : Time) : rho.tickEvents t =
+    (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).map
+      (fun v => .tick v t) := by rfl
+
 theorem deliveryEvents_eq (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :
     rho.deliveryEvents g es t = if g ≤ t then
       (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).flatMap

@@ -988,6 +988,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Network
 public import ConsensusLean.Lemmas.Model.Canonical.Parts
 public import ConsensusLean.Lemmas.Model.Canonical.Policy
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
+public import ConsensusLean.Lemmas.Model.Canonical.Twins
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.Causal
 public import ConsensusLean.Lemmas.Model.Constant
@@ -1023,11 +1024,15 @@ public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Domain
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Forgery
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.ForgeryAt
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Hold
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Hold1
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Late
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Main
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Plan
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Point
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Sleep
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Split
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.SplitCommon
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.SplitSleep
 public import ConsensusLean.Proofs.ComparisonCoverage.Witness
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic

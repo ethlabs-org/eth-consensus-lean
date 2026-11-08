@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Domain
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.SplitCommon
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Late
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.ForgeryAt
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -38,33 +38,6 @@ section Generic
 
 variable {F : Model.ProtocolFamily O} {E : Env V}
 
-/-- The injections of a forgery list: at `t`, to `u₀`, the forged objects of its entries timed
-`t`. -/
-private def planInj (u₀ : V) (fs : List (Forgery F E)) (t : Time) (v : V) :
-    List (protoOf F E).Object :=
-  if v = u₀ then (fs.filter fun x => decide (x.time = t)).map Forgery.obj else []
-
-private theorem mem_planInj {u₀ : V} {fs : List (Forgery F E)} {t : Time} {v : V}
-    {o : (protoOf F E).Object} :
-    o ∈ planInj u₀ fs t v ↔ v = u₀ ∧ ∃ x ∈ fs, x.time = t ∧ o = x.obj := by
-  unfold planInj
-  split_ifs with h
-  · simp only [List.mem_map, List.mem_filter, decide_eq_true_eq, h, true_and]
-    constructor
-    · rintro ⟨x, ⟨hx, ht⟩, rfl⟩; exact ⟨x, hx, ht, rfl⟩
-    · rintro ⟨x, hx, ht, rfl⟩; exact ⟨x, ⟨hx, ht⟩, rfl⟩
-  · simp [h]
-
-private theorem planInj_append {u₀ : V} {fs fs' : List (Forgery F E)} {t : Time}
-    (h : ∀ x ∈ fs', t < x.time) : planInj u₀ (fs ++ fs') t = planInj u₀ fs t := by
-  funext v
-  unfold planInj
-  split_ifs
-  · have h0 : fs'.filter (fun x => decide (x.time = t)) = [] :=
-      List.filter_eq_nil_iff.mpr fun x hx => by simp [(h x hx).ne']
-    rw [List.filter_append, h0, List.append_nil]
-  · rfl
-
 /-- A release at `t ≥ 0` of a scheduled run is one of every scheduled run of the same base with
 the same first `t + 1` stages. -/
 private theorem releases_of_stages (rho : Model.Run F E)
@@ -92,59 +65,6 @@ private theorem releases_of_stages (rho : Model.Run F E)
       (by rw [het]; exact lt_add_one t)
     rwa [show (t + 1).toNat = t.toNat + 1 by rw [Int.toNat_add ht0 zero_le_one]; rfl] at h
   exact rho.releases_restrict _ tail (htail ▸ rho.injectStages_nodup _ inj pol _) hin hr
-
-/-- With `ΔAC = 2`, the held split's filter serves everything on the front of a time `n` before
-`b₀` or from `b₁` on. -/
-private theorem holdPol_front (rho : Model.Run F E) (G : V → Bool) (b₀ b₁ : Time)
-    (hΔ : E.ΔAC = 2) (inj : Time → V → List (protoOf F E).Object)
-    (pol : List (Model.Event V (protoOf F E).Object) → V → (protoOf F E).Object → Time → Bool)
-    (n : ℕ) (hn : (n : Time) < b₀ ∨ b₁ ≤ n) (w : V) (o : (protoOf F E).Object) :
-    holdPol rho G b₀ b₁ (rho.front (rho.injectStages (fun _ => 0) inj pol n) (n : Time)) w o
-      (n : Time) = true := by
-  rw [holdPol_eq_true]
-  rintro ⟨hlt, d, -, k, r, -, -, hheld⟩
-  rcases hn with hn | hn
-  · obtain ⟨-, ⟨t', ht'⟩, hall⟩ := heldIn_iff.mp hheld
-    have hle := rho.front_releases_le _ (n : Time)
-      (fun e he => (rho.injectStages_time (fun _ => 0) inj pol n he).2) ht'
-    have := hall t' ht'
-    rw [hΔ] at this
-    tomega
-  · exact absurd hlt (not_lt.mpr hn)
-
-/-- Nobody releases before the first awake time `T₁`. -/
-private theorem le_of_inject_releases (rho : Model.Run F E) {T₁ : Time}
-    (hT : ∀ v t, E.awake v t = true → T₁ ≤ t) (inj : Time → V → List (protoOf F E).Object)
-    (pol : List (Model.Event V (protoOf F E).Object) → V → (protoOf F E).Object → Time → Bool)
-    {u : V} {o : (protoOf F E).Object} {t : Time}
-    (hr : (rho.injectRun (fun _ => 0) inj pol).releases u o t) : T₁ ≤ t := by
-  obtain ⟨i, hs, -⟩ := hr
-  have hev : ∀ e ∈ (rho.injectRun (fun _ => 0) inj pol).events,
-      (∀ v τ, e ≠ .restart v τ) → T₁ ≤ e.time := by
-    intro e he hne
-    rw [Model.Run.withEvents_events, Model.Run.injectEvents_eq] at he
-    obtain ⟨k, -, hk⟩ := (rho.mem_injectStages _ inj pol _ _).mp he
-    rcases (rho.mem_injectLayer _ inj pol _ _ _).mp hk with
-      ⟨v, -, -, -, rfl⟩ | ⟨v, -, haw, rfl⟩ | ⟨v, -, haw, p, -, rfl⟩
-    · exact absurd rfl (hne v _)
-    · exact hT v _ haw
-    · exact hT v _ haw
-  rcases hs with he | ⟨o', he⟩
-  · exact hev _ (List.mem_of_getElem? he) (fun _ _ h => by cases h)
-  · exact hev _ (List.mem_of_getElem? he) (fun _ _ h => by cases h)
-
-/-- A validator that releases is honest then. -/
-private theorem notMem_faulty_of_releases (rho : Model.Run F E)
-    {inj : Time → V → List (protoOf F E).Object}
-    {pol : List (Model.Event V (protoOf F E).Object) → V → (protoOf F E).Object → Time → Bool}
-    (hv : (rho.injectRun (fun _ => 0) inj pol).ExecutionValid) {u : V}
-    {o : (protoOf F E).Object} {t : Time}
-    (hr : (rho.injectRun (fun _ => 0) inj pol).releases u o t) : u ∉ rho.faultyAt t := by
-  obtain ⟨i, hs, -⟩ := hr
-  obtain ⟨e, he, hn, ht⟩ := hs.exists_event
-  have := hv.honest_only e (List.mem_of_getElem? he)
-  rw [Model.Run.withEvents_faultyAt, hn, ht] at this
-  exact this
 
 /-- **A held part is a fresh content**: when the held split's filter holds back an object at the
 start `b₀` of its incident (with `ΔAC = 2`), a part of it is a content that is not an FG
@@ -203,177 +123,9 @@ private theorem fresh_of_blocked (rho : Model.Run F E) (G : V → Bool) (b₀ b�
     rw [hΔ] at this
     tomega
 
-/-- **A fresh content exercises the split**: a content that is not an FG attestation, released by
-its honest signer at the start `b₀` of the held split's incident and by nobody before, is held from
-every honest node of the other group awake through the incident until `b₁`. -/
-private theorem exercised_of_fresh {rho : Model.Run F E} {G : V → Bool} {b₀ b₁ : Time}
-    {inj : Time → V → List (protoOf F E).Object} (h : HoldPremises rho G b₀ b₁ inj)
-    (hv : (holdRun rho G b₀ b₁ inj).ExecutionValid)
-    {k : Fin (Fintype.card V)} {r : (protoOf F E).Role} {d : (protoOf F E).Object}
-    (hs : d.auth = .signed k r) (hfg : ¬ (protoOf F E).isFGAtt d)
-    (hrel : (holdRun rho G b₀ b₁ inj).releases (rho.key k) d b₀)
-    (hnew : ∀ u t, t < b₀ → ¬ (holdRun rho G b₀ b₁ inj).releases u d t)
-    {w : V} (hwG : G w ≠ G (rho.key k)) (hw : ∀ t, w ∉ rho.faultyAt t)
-    (hwa : ∀ t, b₀ ≤ t → t ≤ b₁ → E.awake w t = true) (hb : b₀ + E.ΔAC ≤ b₁)
-    (hT : ∃ u, G u = true ∧ ∀ t, u ∉ rho.faultyAt t)
-    (hF : ∃ u, G u = false ∧ ∀ t, u ∉ rho.faultyAt t) :
-    Exercised (sysOf O F V) (.split G) b₀ b₁ ⟨E, holdRun rho G b₀ b₁ inj⟩ := by
-  set W := holdRun rho G b₀ b₁ inj with hW
-  have hpt : W.point = rho.point := Model.Run.withEvents_point _ _
-  have hkey : W.key = rho.key := Model.Run.withEvents_key _ _
-  have hk : ∀ t, rho.key k ∉ rho.faultyAt t := fun t => by
-    have h0 := notMem_faulty_of_releases rho hv hrel
-    rw [h.constFaults] at h0 ⊢
-    exact h0
-  have hsig : d.signer? = some k := by simp [Model.Obj.signer?, hs]
-  have hΔ := h.ΔAC_gt
-  have hb₀₁ : b₀ < b₁ := by linarith
-  obtain ⟨uT, huT, huT'⟩ := hT
-  obtain ⟨uF, huF, huF'⟩ := hF
-  refine ⟨⟨uT, huT, ?_⟩, ⟨uF, huF, ?_⟩, rho.key k, w, ⟨E, d⟩, b₀, fun h' => hwG h'.symm,
-    ⟨d, rfl, hrel⟩, ?_, ?_, le_rfl, ?_, ?_, ?_, ?_⟩
-  · change W.point.HonestAt uT W.point.horizon
-    rw [hpt]; exact huT' _
-  · change W.point.HonestAt uF W.point.horizon
-    rw [hpt]; exact huF' _
-  · change W.point.HonestAt (rho.key k) b₀
-    rw [hpt]; exact hk b₀
-  · exact fun h' => hfg ((Model.sysOf_log_fgAtt W d).mp h')
-  · change b₀ + E.ΔAC ≤ b₁
-    exact hb
-  · change W.point.HonestAt w b₁
-    rw [hpt]; exact hw b₁
-  · intro t h1 h2
-    exact hwa t h1 h2
-  · intro d' hd' hheld
-    obtain ⟨t', ht'd, hsr, -⟩ := (Model.sysOf_held_iff W w d d').mp hheld
-    rcases hsr with hsr | hsr
-    · have := W.releases_key_of_signer hsr hsig
-      rw [hkey] at this
-      exact hwG (by rw [this])
-    · refine hold_contentOriginHold h w d t' hsr ?_ (lt_of_le_of_lt ht'd hd') d
-        (Obj.Contains.refl d) k r hs (by rw [hkey]; exact fun h' => hwG h'.symm)
-        ⟨hfg, b₀, ⟨⟨?_, d, ?_, Obj.Contains.refl d⟩, ?_⟩, hb₀₁, by linarith⟩
-      · change W.point.HonestAt w t'
-        rw [hpt]; exact hw t'
-      · change W.point.HonestAt (W.key k) b₀
-        rw [hpt, hkey]; exact hk b₀
-      · rw [hkey]; exact hrel
-      · rintro t ⟨hh, o', hr', hc'⟩
-        obtain ⟨t'', ht'', hr''⟩ := W.part_released hv hr' hc' hs hh
-        by_contra hlt
-        exact hnew _ t'' (by linarith) hr''
-
 end Generic
 
-/-! ### Moving the plan -/
-
-section Plan
-
-variable {F : Model.ProtocolFamily O} {E : Env V}
-
-/-- The forgeries planned before `T₁`, moved to `T₁`. -/
-private def preAt (T₁ : Time) (fs : List (Forgery F E)) : List (Forgery F E) :=
-  (fs.filter fun x => decide (x.time < T₁)).map fun x => { x with time := T₁ }
-
-/-- The forgeries planned from `T₁` on, shifted by `sh`. -/
-private def postAt (T₁ sh : Time) (fs : List (Forgery F E)) : List (Forgery F E) :=
-  (fs.filter fun x => decide (T₁ ≤ x.time)).map fun x => { x with time := x.time + sh }
-
-omit [DecidableEq V] in
-private theorem mem_preAt {T₁ : Time} {fs : List (Forgery F E)} {x : Forgery F E} :
-    x ∈ preAt T₁ fs ↔ ∃ y ∈ fs, y.time < T₁ ∧ x = { y with time := T₁ } := by
-  unfold preAt
-  simp only [List.mem_map, List.mem_filter, decide_eq_true_eq]
-  constructor
-  · rintro ⟨y, ⟨hy, ht⟩, rfl⟩; exact ⟨y, hy, ht, rfl⟩
-  · rintro ⟨y, hy, ht, rfl⟩; exact ⟨y, ⟨hy, ht⟩, rfl⟩
-
-omit [DecidableEq V] in
-private theorem mem_postAt {T₁ sh : Time} {fs : List (Forgery F E)} {x : Forgery F E} :
-    x ∈ postAt T₁ sh fs ↔ ∃ y ∈ fs, T₁ ≤ y.time ∧ x = { y with time := y.time + sh } := by
-  unfold postAt
-  simp only [List.mem_map, List.mem_filter, decide_eq_true_eq]
-  constructor
-  · rintro ⟨y, ⟨hy, ht⟩, rfl⟩; exact ⟨y, hy, ht, rfl⟩
-  · rintro ⟨y, hy, ht, rfl⟩; exact ⟨y, ⟨hy, ht⟩, rfl⟩
-
-omit [DecidableEq V] in
-/-- An entry of the moved plan comes from an entry of the plan with the same key, role, message
-and tag, at a time no earlier. -/
-private theorem mem_moved {T₁ sh : Time} (hsh : 0 ≤ sh) {fs : List (Forgery F E)}
-    {x : Forgery F E} (hx : x ∈ preAt T₁ fs ++ postAt T₁ sh fs) :
-    ∃ y ∈ fs, x.key = y.key ∧ x.role = y.role ∧ x.msg = y.msg ∧ x.tag = y.tag ∧
-      y.time ≤ x.time ∧ T₁ ≤ x.time := by
-  rcases List.mem_append.mp hx with hx | hx
-  · obtain ⟨y, hy, ht, rfl⟩ := mem_preAt.mp hx
-    exact ⟨y, hy, rfl, rfl, rfl, rfl, ht.le, le_rfl⟩
-  · obtain ⟨y, hy, ht, rfl⟩ := mem_postAt.mp hx
-    exact ⟨y, hy, rfl, rfl, rfl, rfl, by dsimp only; linarith, by dsimp only; linarith⟩
-
-end Plan
-
 variable {Info : Type} [DecidableEq Info] [Countable Info]
-
-/-- **The moved plan's activity sets**: forging the plan's entries before `T₁` at `T₁` and the
-others `sh > 0` later, the keys forged on `[0, T₁ + sh)` are those of `Apre`, and those forged on
-`[T₁ + sh, H]` are those of `Apost` (for `H ≥ Hp + sh`). -/
-private theorem moved_sets {F : ChainShapeFamily O Info} {E : Env V}
-    {key : Fin (Fintype.card V) ≃ V} {Apre Apost : List V} {T₁ Hp : Time}
-    {sel : (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V))}
-    {fs : List (Forgery (compiled F) E)} (hP : PlanProps F E key Apre Apost T₁ Hp sel fs)
-    (hT : 0 ≤ T₁) {sh H : Time} (hsh : 0 < sh) (hH : Hp + sh ≤ H) :
-    (((preAt T₁ fs ++ postAt T₁ sh fs).filter
-        fun x => decide (0 ≤ x.time ∧ x.time < T₁ + sh)).map fun x => key x.key).toFinset =
-      Apre.toFinset ∧
-    (((preAt T₁ fs ++ postAt T₁ sh fs).filter
-        fun x => decide (T₁ + sh ≤ x.time ∧ x.time < H + 1)).map fun x => key x.key).toFinset =
-      Apost.toFinset := by
-  rw [← hP.pre, ← hP.post]
-  constructor <;> ext v <;>
-    simp only [List.mem_toFinset, List.mem_map, List.mem_filter, List.mem_append,
-      decide_eq_true_eq]
-  · constructor
-    · rintro ⟨x, ⟨hx | hx, hxt⟩, rfl⟩
-      · obtain ⟨y, hy, ht, rfl⟩ := mem_preAt.mp hx
-        exact ⟨y, ⟨hy, (hP.time_range y hy).1, ht⟩, rfl⟩
-      · obtain ⟨y, hy, ht, rfl⟩ := mem_postAt.mp hx
-        exact absurd hxt.2 (by dsimp only; linarith)
-    · rintro ⟨y, ⟨hy, -, ht⟩, rfl⟩
-      exact ⟨{ y with time := T₁ }, ⟨Or.inl (mem_preAt.mpr ⟨y, hy, ht, rfl⟩), hT,
-        by dsimp only; linarith⟩, rfl⟩
-  · constructor
-    · rintro ⟨x, ⟨hx | hx, hxt⟩, rfl⟩
-      · obtain ⟨y, hy, ht, rfl⟩ := mem_preAt.mp hx
-        exact absurd hxt.1 (by dsimp only; linarith)
-      · obtain ⟨y, hy, ht, rfl⟩ := mem_postAt.mp hx
-        refine ⟨y, ⟨hy, ht, ?_⟩, rfl⟩
-        have := (hP.time_range y hy).2
-        linarith
-    · rintro ⟨y, ⟨hy, ht, -⟩, rfl⟩
-      have := (hP.time_range y hy).2
-      exact ⟨{ y with time := y.time + sh }, ⟨Or.inr (mem_postAt.mpr ⟨y, hy, ht, rfl⟩),
-        by dsimp only; linarith, by dsimp only; linarith⟩, rfl⟩
-
-private theorem bool_of_ne {x y b : Bool} (h₁ : x ≠ y) (h₂ : y ≠ b) : x = b := by
-  cases x <;> cases y <;> cases b <;> simp_all
-
-omit [Fintype V] [DecidableEq V] in
-private theorem classGroups_two {a : IncidentClass V} (hs : a.IsSplit) (h : a.TwoGroups) :
-    (∃ v, classGroups a v = true) ∧ ∃ v, classGroups a v = false := by
-  cases a with
-  | any => exact hs.elim
-  | split G => rw [classGroups_split]; exact h
-  | splitHeld G => rw [classGroups_splitHeld]; exact h
-
-omit [Fintype V] [DecidableEq V] in
-private theorem exercised_async {S : System V} {a : IncidentClass V} (hs : a.IsSplit)
-    {b₀ b₁ : Time} {r : S.Run} (h : Exercised S (.split (classGroups a)) b₀ b₁ r) :
-    Exercised S a.async b₀ b₁ r := by
-  cases a with
-  | any => exact hs.elim
-  | split G => rw [classGroups_split] at h; exact h
-  | splitHeld G => rw [classGroups_splitHeld] at h; exact h
 
 /-- **The exercised Slice 1 witness without sleepers** (`m ≤ fcap`) at a point of the coverage
 domain with a split class. -/
@@ -520,7 +272,7 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
     rw [Model.Run.withEvents_eq]
     exact Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj)
   /- The reference run `R` and its cut `R'` at `H₀`. -/
-  let fsR := preAt T₁ fs
+  let fsR := preAt T₁ T₁ fs
   have hfsR : ∀ x ∈ fsR, key x.key ∈ A ∧ x.key ∈ sel x.role := fun x hx => by
     obtain ⟨y, hy, ht, rfl⟩ := mem_preAt.mp hx
     exact ⟨hkeys y hy, hP.cred y hy⟩
@@ -615,7 +367,8 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
   let m : (protoOf (compiled F) E).Object := Model.Obj.mk (.signed k rl) (.item hdr) cs
   have hmfg : ¬ (protoOf (compiled F) E).isFGAtt m := hnfg (pubOf E) k rl hdr cs hrole
   have hτR : R.releases v m τ := hrelR' hrel
-  have hτ0 : 0 ≤ τ := le_trans hT₁.le (le_of_inject_releases base hT injR polR hτR)
+  have hτ0 : 0 ≤ τ :=
+    le_trans hT₁.le (le_of_inject_releases base hT (fun _ => 0) injR polR hτR)
   have hτH₀ : τ ≤ H₀ := by
     obtain ⟨j, hj, -⟩ := hrel
     obtain ⟨e, he, -, het⟩ := hj.exists_event
@@ -632,7 +385,8 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
       have := R.releases_key_of_signer hr hsigm
       rwa [Model.Run.withEvents_key] at this
     subst hu
-    have ht0 : 0 ≤ t' := le_trans hT₁.le (le_of_inject_releases base hT injR polR hr)
+    have ht0 : 0 ≤ t' :=
+      le_trans hT₁.le (le_of_inject_releases base hT (fun _ => 0) injR polR hr)
     have hlt : t'.toNat < n₀ := (Int.toNat_lt ht0).mpr ht'
     exact Nat.find_min hex hlt (by rwa [Int.toNat_of_nonneg ht0])
   have ht₀τ : t₀ ≤ τ := by
@@ -640,7 +394,7 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
     have h2 : (0 : Int) ≤ τ := hτ0
     change (n₀ : Int) ≤ τ
     omega
-  have hT₁t₀ : T₁ ≤ t₀ := le_of_inject_releases base hT injR polR hrel₀
+  have hT₁t₀ : T₁ ≤ t₀ := le_of_inject_releases base hT (fun _ => 0) injR polR hrel₀
   /- The witness `W`: incident `[t₀, b₁)`, the plan's late forgeries shifted past `b₁`. -/
   let b₁ : Time := t₀ + (q.L : Time) * 2
   have hb₀₁ : t₀ ≤ b₁ := by simp only [b₁]; linarith
@@ -651,7 +405,7 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
   have hb₁sh : T₁ + sh = b₁ := by simp only [sh]; ring
   let fsW := fsR ++ postAt T₁ sh fs
   have hmovedW : ∀ x ∈ fsW, ∃ y ∈ fs, x.key = y.key ∧ x.role = y.role ∧ x.msg = y.msg ∧
-      x.tag = y.tag ∧ y.time ≤ x.time ∧ T₁ ≤ x.time := fun x hx => mem_moved hsh.le hx
+      x.tag = y.tag ∧ y.time ≤ x.time ∧ T₁ ≤ x.time := fun x hx => mem_moved le_rfl hsh.le hx
   have hfsW : ∀ x ∈ fsW, key x.key ∈ A ∧ x.key ∈ sel x.role := fun x hx => by
     obtain ⟨y, hy, hk, hr, -, -, -, -⟩ := hmovedW x hx
     rw [hk, hr]
@@ -673,8 +427,8 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
       polR (base.front (base.injectStages (fun _ => 0) injR polR n) (n : Time)) w o (n : Time) =
         true := fun n w o => by
     rcases lt_or_ge (n : Time) T₁ with h | h
-    · exact holdPol_front base G T₁ T₁ hΔ injR polR n (Or.inl h) w o
-    · exact holdPol_front base G T₁ T₁ hΔ injR polR n (Or.inr h) w o
+    · exact holdPol_front base G T₁ T₁ hΔ (fun _ => 0) injR polR n (Or.inl h) w o
+    · exact holdPol_front base G T₁ T₁ hΔ (fun _ => 0) injR polR n (Or.inr h) w o
   have hstage : ∀ n ≤ n₀, base.injectStages (fun _ => 0) injR polR n =
       base.injectStages (fun _ => 0) injW polW n :=
     base.injectStages_congr (fun _ => 0) injR polR
@@ -682,7 +436,7 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
         (show (n : Time) < t₀ by change (n : Int) < (n₀ : Int); omega) hb₀₁))
       (fun n hn w o => by
         rw [hpolR n w o]
-        exact (holdPol_front base G t₀ b₁ hΔ injR polR n
+        exact (holdPol_front base G t₀ b₁ hΔ (fun _ => 0) injR polR n
           (Or.inl (by change (n : Int) < (n₀ : Int); omega)) w o).symm)
   have ht₀H : t₀ ≤ base.horizon := by rw [hbH]; linarith
   /- A content first released at `t₀` on `W`, by its honest signer. -/
@@ -703,7 +457,7 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
           (fun n hn w o => by
             rw [hpolR n w o]
             rcases Nat.lt_succ_iff_lt_or_eq.mp hn with hn | rfl
-            · exact (holdPol_front base G t₀ b₁ hΔ injR polR n
+            · exact (holdPol_front base G t₀ b₁ hΔ (fun _ => 0) injR polR n
                 (Or.inl (by change (n : Int) < (n₀ : Int); omega)) w o).symm
             · cases h : polW (base.front (base.injectStages (fun _ => 0) injR polR n₀)
                 (n₀ : Time)) w o (n₀ : Time)
@@ -713,26 +467,28 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
       · refine releases_of_stages base (by linarith) ht₀H ?_ hrel₀
         rw [ht₀, Int.toNat_natCast]
         exact hstage' _ le_rfl
-      · have ht0 : 0 ≤ t := le_trans hT₁.le (le_of_inject_releases base hT injW polW hr)
+      · have ht0 : 0 ≤ t :=
+          le_trans hT₁.le (le_of_inject_releases base hT (fun _ => 0) injW polW hr)
         refine hmin u t ht (releases_of_stages base ht0 (by linarith) ?_ hr)
         exact (hstage (t.toNat + 1) ((Int.toNat_lt ht0).mpr ht)).symm
   /- The other group's honest node and the exercise. -/
-  have hk' : key k' ∉ A := by
-    have := notMem_faulty_of_releases base hvW hrelW
-    rwa [hfA] at this
+  have hWkey : W.key = base.key := Model.Run.withEvents_key _ _
+  have hWfa : W.faultyAt = base.faultyAt := Model.Run.withEvents_faultyAt _ _
   obtain ⟨w, hwG, hwA⟩ : ∃ w, G w ≠ G (key k') ∧ w ∉ A := by
     by_cases h : G v₀ = G (key k')
     · exact ⟨v₁, fun h' => hv₀G (h.trans h'.symm), hv₁A⟩
     · exact ⟨v₀, h, hv₀A⟩
-  have hgroups : ∀ b : Bool, ∃ u, G u = b ∧ ∀ t, u ∉ base.faultyAt t := by
+  have hgroups : ∀ b : Bool, ∃ u, G u = b ∧ ∀ t, u ∉ W.faultyAt t := by
     intro b
     by_cases h : G v₁ = b
-    · exact ⟨v₁, h, fun t => by rw [hfA]; exact hv₁A⟩
-    · refine ⟨v₀, ?_, fun t => by rw [hfA]; exact hv₀A⟩
+    · exact ⟨v₁, h, fun t => by rw [hWfa, hfA]; exact hv₁A⟩
+    · refine ⟨v₀, ?_, fun t => by rw [hWfa, hfA]; exact hv₀A⟩
       exact bool_of_ne hv₀G h
   have hexer : Exercised (Sys F V) q.a.async t₀ b₁ ⟨E, W⟩ :=
-    exercised_async hsplit (exercised_of_fresh hHPW hvW hs hfgd hrelW hnew hwG
-      (fun t => by rw [hfA]; exact hwA)
+    exercised_async hsplit (exercised_of_fresh hvW (hold_contentOriginHold hHPW)
+      (fun t => by rw [hWfa, hfA, hfA]) (by rw [hΔ]; exact one_lt_two) hs hfgd
+      (by rw [hWkey]; exact hrelW) hnew (by rw [hWkey]; exact hwG)
+      (fun t => by rw [hWfa, hfA]; exact hwA)
       (fun t h1 _ => by rw [hawE, decide_eq_true_iff]; linarith)
       (by rw [hΔ]; simp only [b₁]; linarith) (hgroups true) (hgroups false))
   /- The rest of the witness, as in `cov1_witness`. -/
@@ -740,28 +496,9 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
     change W.point = p
     simp only [W, holdRun, Model.Run.injectRun, Model.Run.withEvents_point]
     rfl
-  have hside : ∀ z ∈ fs, ∀ z' ∈ fs, z.key = z'.key → z.role = z'.role → z.msg = z'.msg →
-      z.tag = z'.tag → z.time < T₁ → z'.time < T₁ := fun z hz z' hz' h1 h2 h3 h4 hzt => by
-    rw [← hP.unique z hz z' hz' h1 h2 h3 h4]; exact hzt
-  have huniqW : ∀ x ∈ fsW, ∀ y ∈ fsW, x.key = y.key → x.role = y.role → x.msg = y.msg →
-      x.tag = y.tag → x.time = y.time := by
-    intro x hx y hy hk hr hm' htg
-    rcases List.mem_append.mp hx with hx | hx <;> rcases List.mem_append.mp hy with hy | hy
-    · obtain ⟨z, -, -, rfl⟩ := mem_preAt.mp hx
-      obtain ⟨z', -, -, rfl⟩ := mem_preAt.mp hy
-      rfl
-    · obtain ⟨z, hz, hzt, rfl⟩ := mem_preAt.mp hx
-      obtain ⟨z', hz', hzt', rfl⟩ := mem_postAt.mp hy
-      exact absurd (hside z hz z' hz' hk hr hm' htg hzt) (not_lt.mpr hzt')
-    · obtain ⟨z, hz, hzt, rfl⟩ := mem_postAt.mp hx
-      obtain ⟨z', hz', hzt', rfl⟩ := mem_preAt.mp hy
-      exact absurd (hside z' hz' z hz hk.symm hr.symm hm'.symm htg.symm hzt') (not_lt.mpr hzt)
-    · obtain ⟨z, hz, -, rfl⟩ := mem_postAt.mp hx
-      obtain ⟨z', hz', -, rfl⟩ := mem_postAt.mp hy
-      change z.time + sh = z'.time + sh
-      rw [hP.unique z hz z' hz' hk hr hm' htg]
-  have hFP : ForgeryPremisesAt base (shapeRoleFloor F V E) v₀ fsW injW polW :=
-    ⟨fun _ _ _ => mem_planInj, hvW, fun t => by rw [hfA, hfA],
+  have huniqW := moved_unique (T₁ := T₁) (τ := T₁) (sh := sh) hP.unique
+  have hFP : ForgeryPremisesAt base (shapeRoleFloor F V E) v₀ fsW injW (fun _ => 0) polW :=
+    ⟨fun _ _ _ => mem_planInj, fun _ => le_rfl, hvW, fun t => by rw [hfA, hfA],
       fun x hx => by rw [hfA]; exact (hfsW x hx).1, by rw [hfA]; exact hv₀A,
       fun x hx => by
         obtain ⟨-, -, -, -, -, -, -, hT'⟩ := hmovedW x hx
@@ -788,7 +525,7 @@ theorem cov1_split_witness_awake (F : ChainShapeFamily O Info) (K : Contract Pro
         fun x => key x.key).toFinset.card := fun a b => by
     change (activeFaulty W (shapeRoleFloor F V E) a b).card = _
     rw [activeFaulty_of_forgeriesAt hFP]
-  obtain ⟨hsetPre, hsetPost⟩ := moved_sets hP hT₁.le hsh (H := H)
+  obtain ⟨hsetPre, hsetPost⟩ := moved_sets hP (τ := T₁) (sh := sh) hT₁.le (by linarith) (H := H)
     (by simp only [H, sh, b₁]; linarith)
   rw [hb₁sh] at hsetPre hsetPost
   have hactpre : activity (compiled F) (shapeRoleFloor F V) ⟨E, W⟩ 0 (max b₁ 0) = q.hpre := by

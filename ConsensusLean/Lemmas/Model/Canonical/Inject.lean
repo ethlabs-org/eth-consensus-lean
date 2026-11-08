@@ -148,6 +148,13 @@ theorem mem_duePool (es : List (Event V (protoOf F E).Object)) (t : Time)
         ↓reduceIte]
       exact ho⟩
 
+theorem duePool_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
+    rho.duePool delay es t = (by
+      classical
+      exact ((List.range es.length).flatMap fun j =>
+        if ∃ e, es[j]? = some e ∧ e.time + delay e ≤ t then (rho.withEvents es).releasesAt j
+        else []).dedup) := by rfl
+
 /-- The deliveries at `t` after the prefix `es`: to every awake honest node `v`, the injections of
 `t` and the due releases that the delivery filter serves it (`pol es v o t`). -/
 noncomputable def injectDeliveries (es : List (Event V (protoOf F E).Object)) (t : Time) :
@@ -171,6 +178,13 @@ theorem mem_injectDeliveries (es : List (Event V (protoOf F E).Object)) (t : Tim
     exact ⟨v, hv, hw, o, ho, rfl⟩
   · rintro ⟨v, hv, hw, o, ho, rfl⟩
     exact ⟨v, ⟨hv, hw⟩, o, ho, rfl⟩
+
+theorem injectDeliveries_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
+    rho.injectDeliveries delay inj pol es t = (by
+      classical
+      exact (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).flatMap
+        (fun v => (inj t v ++ (rho.duePool delay es t).filter (fun o => pol es v o t)).dedup.map
+          (fun o => .deliver v o t))) := by rfl
 
 theorem injectDeliveries_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
     (rho.injectDeliveries delay inj pol es t).Nodup := by
@@ -206,6 +220,8 @@ noncomputable def injectEvents : List (Event V (protoOf F E).Object) :=
 theorem injectLayer_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
     rho.injectLayer delay inj pol es t = rho.wakeEvents t ++ rho.tickEvents t ++
       rho.injectDeliveries delay inj pol (rho.front es t) t := by rfl
+
+theorem injectStages_zero : rho.injectStages delay inj pol 0 = [] := by rfl
 
 theorem injectStages_succ (n : Nat) : rho.injectStages delay inj pol (n + 1) =
     rho.injectStages delay inj pol n ++
