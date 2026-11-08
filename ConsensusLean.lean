@@ -148,6 +148,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.SeedHeld
