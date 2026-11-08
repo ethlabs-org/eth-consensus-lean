@@ -11,19 +11,29 @@ HealProfile.lean`, `HealQ`), over AC traces of the Goldilocks SA with the unlock
 write mode of width `k`, and over the candidate lock rules' own runs (`Candidates.lean`). The heal
 claim is Slice 0's proposal-inclusion heal; the new coordinates only add premises.
 
-* **Activity on an AC trace** (the Tier A reading of Slice 1's `activity`, charged by its rule): the
-  signed contents of the AC are votes (signed by `v.val`) and blocks (signed by their proposer); an
-  honest node **receives** a content at a call that passes it in: an AC message (`message v`), or a
-  block (`block B`), with the votes of its payload (`blockVotes B`). A content's charging time is
-  `max t₀ t_s`, with `t₀` its first receipt by a node of `H` and `t_s` the start of its slot (the
-  duty floor). A validator is active on a window when it is outside `H` and some content it signs
-  has its charging time in the window (`ActiveAC`, `activityAC`; `activityFromAC` for the window
-  `[a, ∞)`). At Tier A every validator outside `H` is treated as Byzantine, so a validator of `Hᶜ`
-  that only sleeps and votes is charged too. A restart's replay of frame blocks is not a receipt.
-* **The content-origin hold on an AC trace** (`HoldAC G b₀ g`): no node of `H` of one group
-  receives before `g` a content signed by a validator of the other group whose first honest
-  release (the vote's emission by its own node in `H`, or the block's passing to its own proposer's
-  `ac_on_block`) is at `t₀ < g` with `b₀ < t₀ + Δ − 1` (`HeldOriginAC`).
+* **AC-call activity** (`ActiveAC`, `activityAC`, `activityFromAC`): a Tier A specialization of
+  Slice 1's charging rule (first origin, duty floor), not Slice 1's raw-receipt activity. The signed
+  contents are votes (signed by `v.val`) and blocks (signed by their proposer); a node of `H`
+  receives a content at an AC call that passes it in: an AC message (`message v`), or a block
+  (`block B`) with every vote of its payload (`blockVotes B`), whether or not the handler admits it.
+  It does not see contents buffered or rejected before any AC call, arbitrary outer containers, or
+  signatures inside the FG payload; a restart's replay of frame blocks, or a frame's provenance, is
+  no receipt. A content's charging time is `max t₀ t_s`, with `t₀` its first AC-call receipt by a
+  node of `H` and `t_s` the start of its slot. A validator is active on a window when it is outside
+  `H` and some content it signs has its charging time in the window; at Tier A every validator
+  outside `H` is treated as Byzantine, so a validator of `Hᶜ` that only sleeps and votes is charged
+  too. No equality with Slice 1's `activity` is claimed: relating the two (each counted content's
+  first network receipt, at any depth, to its first AC call) is a separate transport obligation.
+* **The Tier A hold** (`HoldAC G b₀ g`): no node of `H` of one group receives at an AC call before
+  `g` a content signed by a validator of the other group whose first release under **the Tier A
+  release convention** (`HonestReleaseAC`: the vote's `VoteAt` emission by its own node in `H`, or
+  the block's passing to its own proposer's `ac_on_block`) is at `b₀ ≤ t₀ < g` (`HeldOriginAC`).
+  The convention is an operational surrogate for Slice 1's first signer release at any nesting
+  depth, not a network release; relating them is a transport obligation. The window is the send
+  cut of the Slice 0 premise `SyncAC` on `[0, b₀ − 1]`, deliberately not Slice 1's deadline cut
+  (`b₀ < t₀ + ΔAC − 1`): content released before `b₀` is owed by that premise. The Tier A hold is
+  weaker than Slice 1's, so its class is larger; no equivalence, coverage or common domain with
+  Slice 1's held class is claimed.
 * `HealQ.slice0 q`: the Slice 0 point `⟨L, fcap, a.async⟩`.
 * `Slice1AC q b₀ g tr H`: the hold for `splitHeld`, activity at most `hpre` on `[0, ḡ)` and at most
   `hpost` from `ḡ`, and `m ≤ |Hᶜ|` (with `|Hᶜ| ≤ fcap` from Slice 0's clause, `fcap` caps `|Hᶜ|`,
@@ -92,22 +102,25 @@ def FirstReceiptAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (c : ContentAC 
 slot (the duty floor). -/
 def chargeAC (c : ContentAC sp FGP) (t₀ : Time) : Time := max t₀ (sp.ts c.slot)
 
-/-- Validator `x` is **active** at charging times satisfying `W`: it is outside `H`, and some
-content it signs has its first receipt by `H` at `t₀` with charging time in `W`. -/
+/-- Validator `x` is **active** (AC-call activity) at charging times satisfying `W`: it is outside
+`H`, and some content it signs has its first AC-call receipt by `H` at `t₀` with charging time in
+`W`. Not Slice 1's raw-receipt activity (module docstring). -/
 def ActiveAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (W : Time → Prop) (x : Fin sp.n) :
     Prop :=
   x ∉ H ∧ ∃ c t₀, c.signer = x ∧ FirstReceiptAC tr H c t₀ ∧ W (chargeAC c t₀)
 
-/-- The number of validators active on `[a, b)`. -/
+/-- **AC-call activity** on `[a, b)`: the number of validators active there (`ActiveAC`). -/
 noncomputable def activityAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (a b : Time) : ℕ :=
   {x | ActiveAC tr H (fun t => a ≤ t ∧ t < b) x}.ncard
 
-/-- The number of validators active on `[a, ∞)`. -/
+/-- **AC-call activity** on `[a, ∞)`. -/
 noncomputable def activityFromAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (a : Time) : ℕ :=
   {x | ActiveAC tr H (fun t => a ≤ t) x}.ncard
 
-/-- A node of `H` releases content `c` honestly at `t`: the vote's emission by its own node, or the
-block's passing to its own proposer's `ac_on_block`, at a cut of time `t`, the signer in `H`. -/
+/-- **The Tier A release convention**: content `c` is released honestly at `t` when its signer is
+in `H` and, at a cut of time `t`, its own node emits the vote (`VoteAt`), or passes the block to its
+own `ac_on_block`. An operational surrogate, not a generic network release (Slice 1 reads the first
+release by the signer at any nesting depth). -/
 def HonestReleaseAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (c : ContentAC sp FGP)
     (t : Time) : Prop :=
   c.signer ∈ H ∧
@@ -115,16 +128,16 @@ def HonestReleaseAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (c : ContentAC
     | .vote v => ∃ i e, VoteAt tr v.val i e ∧ e.msg = v ∧ tr.time i = t
     | .block B => ∃ i, tr.AcceptAt B.proposer i B ∧ tr.time i = t
 
-/-- **A held origin** for the incident `[b₀, g)`: the first honest release of `c` is at `t₀ < g`
-with `b₀ < t₀ + Δ − 1`, so synchrony before `b₀` does not owe its delivery. -/
+/-- **A held origin at Tier A** for the incident `[b₀, g)`: the first release of `c` under the
+Tier A release convention is at `b₀ ≤ t₀ < g`, the send cut of the premise `SyncAC` on
+`[0, b₀ − 1]` (deliberately not Slice 1's deadline cut). -/
 def HeldOriginAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (b₀ g : Time)
     (c : ContentAC sp FGP) : Prop :=
-  ∃ t₀, HonestReleaseAC tr H c t₀ ∧ (∀ t, HonestReleaseAC tr H c t → t₀ ≤ t) ∧ t₀ < g ∧
-    b₀ < t₀ + sp.Δ - 1
+  ∃ t₀, HonestReleaseAC tr H c t₀ ∧ (∀ t, HonestReleaseAC tr H c t → t₀ ≤ t) ∧ b₀ ≤ t₀ ∧ t₀ < g
 
-/-- **The content-origin hold** of the split `G` on an AC trace for the incident `[b₀, g)`: no node
-of `H` receives before `g` a content signed by a validator of the other group with a held
-origin. -/
+/-- **The Tier A hold** of the split `G` for the incident `[b₀, g)`: no node of `H` receives at an
+AC call before `g` a content signed by a validator of the other group with a held origin at Tier A
+(`HeldOriginAC`). Weaker than Slice 1's content-origin hold. -/
 def HoldAC (G : Fin sp.n → Bool) (H : Set (Fin sp.n)) (b₀ g : Time) (tr : SATrace sp FGP ro) :
     Prop :=
   ∀ z ∈ H, ∀ k ℓ c, tr.CallAt z k ℓ → tr.time k < g → CallReceives ℓ.call c →
@@ -144,8 +157,8 @@ def _root_.Consensus.Comparison.HealQ.slice0 {V : Type} (q : HealQ V) : Slice0Q 
   ⟨q.L, q.fcap, q.a.async⟩
 
 /-- **The Slice 1 coordinates on an AC trace** at `q` with incident `[b₀, g)`: the class's hold,
-activity at most `hpre` on `[0, ḡ)` and at most `hpost` from `ḡ`, and at least `m` validators
-outside `H`. -/
+AC-call activity at most `hpre` on `[0, ḡ)` and at most `hpost` from `ḡ`, and at least `m`
+validators outside `H`. -/
 def Slice1AC (q : HealQ (Fin sp.n)) (b₀ g : Time) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) :
     Prop :=
   HoldACOn H b₀ g tr q.a ∧ activityAC tr H 0 (gbar g) ≤ q.hpre ∧
