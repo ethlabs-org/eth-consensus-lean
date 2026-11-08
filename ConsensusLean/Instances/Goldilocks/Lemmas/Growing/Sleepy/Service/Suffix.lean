@@ -32,12 +32,12 @@ proposer's best child on the suffix from the pivot is the voter's (`suffix_agree
 child of `Q` is eligible at the voter (`old_child_ineligible_at`), and `P` is in the voter's
 viable voter block tree (`proposal_at_voter_at`).
 
-**Class L′ (copied static helper, lifted).** Every helper of `Compose/Service/Suffix` names only
-the proposer and the voter, at cuts up to the vote, and reads the old origins, the service and
-`2 f < n` as hypotheses. They are copied verbatim (made private) and applied to the prefix through
-the vote's time `d`, with the old origins of the run below `Q` (`proposal_walk_passes_old_at`),
-the service through `min b d` and `2 f_d < n`. When the static helpers are made public, the
-post-swap pass deletes these copies. -/
+**Private static helpers.** The helpers of `Compose/Service/Suffix` name only the proposer and the
+voter, at cuts up to the vote. Their private copies here are generalised: they take the voter's
+facts at `Q` (its fc root below `Q`, its head height floor) as hypotheses and the service as
+`SuffixService`, a window from a start `a` with catch-up `κ`, so the genesis forms and the seeded
+forms (`*_from`) share them. They are applied to the prefix through the vote's time `d`, with the
+service through `min b d` and `2 f_d < n`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -131,11 +131,12 @@ an honest node accepted at a time `τ` with `max(τ, a) + Δ` at most the time o
 honest `z` whose restarts up to it are at or before `a`, is in that call's frame when it extends
 its `Σ.F`. -/
 private theorem relay_mem_before (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
+    {a₀ κ b : Time} (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a₀ b tr.projAC)
+    (hcat : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a₀ κ b)
     {x z : Fin sp.n} (hx : x ∈ H) (hz : z ∈ H)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocks H) {jz : Nat}
     {ℓz : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z jz ℓz)
-    (hb : tr.time jz ≤ b) {a : Time}
+    (hb : tr.time jz ≤ b) (hκz : a₀ + κ ≤ tr.time jz) {a : Time}
     (hrs : ∀ c ≤ jz, tr.projAC.RestartAt z c → tr.projAC.time c ≤ a)
     (hacc : B.root = sp.genesisRoot ∨ ∃ kx, tr.projAC.AcceptAt x kx B ∧
       max (tr.projAC.time kx) a + sp.Δ ≤ tr.projAC.time jz)
@@ -150,9 +151,26 @@ private theorem relay_mem_before (hrun : GoldilocksRun proposer dg H tr) (hnc : 
     · exact h ▸ hΦ.rooted.1
     · exact absurd (hcp.2.2.symm.trans hGp) (Option.some_ne_none _)
   have hd := (ac_deadline_le_of_restarts hrs _).trans hdl
-  obtain ⟨k', hk', hAz, -⟩ := hsync.relay x hx kx B hkx (hr.time_nonneg kx)
-    z hz jz ℓz hcz (hd.trans hb) hd hF
-  exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
+  by_cases hka : a₀ ≤ tr.projAC.time kx
+  · obtain ⟨k', hk', hAz, -⟩ := hsync.relay x hx kx B hkx hka z hz jz ℓz hcz (hd.trans hb) hd hF
+    exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
+  · obtain ⟨k', hk', hAz, -⟩ :=
+      hcat.relay x hx kx B hkx (lt_of_not_ge hka) z hz jz ℓz hcz hκz hb hF
+    exact SA.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
+
+/-- **The service of the suffix lemmas** for slot `s`: the AC service window from `a` through `b`,
+with the catch-up of older acceptances before `a + κ ≤ t_{s−1}` at calls through `b`. -/
+private structure SuffixService (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp ro)
+    (a κ b : Time) (s : Nat) : Prop where
+  window : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC
+  caught : CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a κ b
+  kappa : 0 ≤ κ
+  start : a + κ ≤ sp.ts ((s : Int) - 1)
+
+/-- The catch-up is over by every call at or after `t_s`. -/
+private theorem SuffixService.le_time {a κ b : Time} {s j : Nat}
+    (h : SuffixService H tr a κ b s) (hj : sp.ts s ≤ tr.time j) : a + κ ≤ tr.time j :=
+  h.start.trans (((SA.ts_le_iff sp).2 (by omega)).trans hj)
 
 /-- **The honest attestations at a vote have old sources** (as `Pivot`'s `vote_fcRoot_old_of`):
 every honest attestation an honest slot-`s` voter holds was signed before the vote, with a source
@@ -223,10 +241,9 @@ frame (`SA.cast_ready`), which is `P` (`eq_of_slot`); a vote at `t_s + Δ` follo
 `P`, accepted by its proposer at `t_s`, to the voter (restarted at or before `t_{s−1}`), when `P`
 extends the voter's `Σ.F`. -/
 private theorem voter_holds_proposal_before (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
+    (hnc : NoCollRun dg tr) {a₀ κ b : Time} {s : Nat} (hsync : SuffixService H tr a₀ κ b s)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
@@ -245,12 +262,13 @@ private theorem voter_holds_proposal_before (hrun : GoldilocksRun proposer dg H 
   have hts : sp.ts ((s' + 1 : Nat) : Int) = sp.ts (s' : Int) + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
   have hΔ := sp.toParams.hΔ
-  refine relay_mem_before hrun hnc hsync hp hy (accepted_honest hrun hp hacc) hcy.1 hb
+  rw [hes] at ht
+  have ht' : sp.ts ((s' + 1 : Nat) : Int) + sp.Δ ≤ tr.time j := not_lt.1 ht
+  refine relay_mem_before hrun hnc hsync.window hsync.caught hp hy (accepted_honest hrun hp hacc)
+    hcy.1 hb (hsync.le_time (by linarith only [ht', hΔ]))
     (honest_vote_restarts hrun hnc hy hcy hes).1
     (Or.inr ⟨k + 1, ⟨ℓ, projAC_callAt.2 hcl, hbl⟩, ?_⟩) hFP
   change max (tr.time (k + 1)) (sp.ts (s' : Int)) + sp.Δ ≤ tr.time j
-  rw [hes] at ht
-  have ht' : sp.ts ((s' + 1 : Nat) : Int) + sp.Δ ≤ tr.time j := not_lt.1 ht
   rw [htl, htk, max_eq_left (by rw [hts]; linarith only [hΔ])]
   exact ht'
 
@@ -450,10 +468,10 @@ ancestor of `Q` (so of `P`) is in the voter's viable voter block tree. The voter
 `X`), so `C` is in the voter block tree as an ancestor of the slot-`s` block `P`; and `P` is a
 viable head of the voter: every old origin is below `Q` (`proposal_walk_passes_old_before`), so the
 floor at the vote is at most the height of `P` (`vote_floor_le_of`). -/
-private theorem winner_voter_tree_before {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hjb : tr.time j ≤ b)
-    (hf : 2 * Hᶜ.ncard < sp.n)
-    (holdQ : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head)
+private theorem winner_voter_tree_before {a₀ κ b : Time}
+    (hsync : SuffixService H tr a₀ κ b s) (hjb : tr.time j ≤ b)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h)
     {X C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hXQ : ℓp.frame.Anc X d.head)
     (hanc : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X)
@@ -484,11 +502,8 @@ private theorem winner_voter_tree_before {b : Time}
     SA.anc_tree_of_anc_U hU hΦy hΦyU hΦy.fcRoot_mem hfC hCt,
     P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_, hCPy⟩
   -- `P` is a viable head of the voter
-  have hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O P := fun O hO =>
-    (holdQ O hO).trans hQP
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfP ⊢
-  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfP,
-    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hPt.1 hold⟩
+  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfP, hflQ P hPt.1 hQP⟩
 
 omit hsl hpj hsD hDQ in
 /-- **Competitors reflect**: a child `B` of a block `X ≠ Q` of the suffix in the voter's viable
@@ -496,8 +511,8 @@ voter block tree is in the proposer's tree, stamped before the freeze (so accept
 relayed to the proposer by `t_s`) or an ancestor of the voter's slot-`s` block `P`, other than
 `P` (its parent is not `Q`), so below `Q`; and it is a viable head of the proposer (its height is
 at least that of `X`). -/
-private theorem competitor_reflect_before {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hib : tr.time i ≤ b)
+private theorem competitor_reflect_before {a₀ κ b : Time}
+    (hsync : SuffixService H tr a₀ κ b s) (hib : tr.time i ≤ b)
     {X B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hDX : ℓp.frame.Anc D X) (hXQ : ℓp.frame.Anc X d.head) (hne : X ≠ d.head)
     (hBX : B.parent = some X.root)
@@ -528,7 +543,8 @@ private theorem competitor_reflect_before {b : Time}
       have hcast : (((s' + 1 : Nat) : Int) - 1) = (s' : Int) := by push_cast; ring
       have hrsp := proposal_call_restarts hrun hnc hp hc hcall hd
       rw [hsi, hcast] at hrsp
-      refine relay_mem_before hrun hnc hsync hy hp hBU hc hib hrsp ?_ hFB
+      refine relay_mem_before hrun hnc hsync.window hsync.caught hy hp hBU hc hib
+        (hsync.le_time hti.ge) hrsp ?_ hFB
       rcases frame_anc_accepted hr hy j ℓy hcy.1 B hB.1.1 B .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       by_cases hg : B.root = sp.genesisRoot
@@ -605,8 +621,8 @@ private theorem winner_on_path {X C : SA.Blk sp.n (List (FG.Att sp.n))}
 omit hsl hpj hcall hti hsD hDQ hviab in
 /-- **The voter holds `P`** when its anchor is below a block `X ⪯ Q` of the proposer's tree: then
 `Σ.F ⪯ fc_root ⪯ anchor ⪯ X ⪯ P` (`voter_holds_proposal_before`). -/
-private theorem voter_holds_before {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hjb : tr.time j ≤ b)
+private theorem voter_holds_before {a₀ κ b : Time}
+    (hsync : SuffixService H tr a₀ κ b s) (hjb : tr.time j ≤ b)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hXQ : ℓp.frame.Anc X d.head)
     (hanc : Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X) :
     P ∈ ℓy.frame.tree := by
@@ -631,8 +647,8 @@ omit hsl hpj hsD hDQ hviab in
 equivocators and voters, and the same supporters for every block of both trees (`SA.view_agree`,
 with the Sleepy relay: a block the voter stamped before the vote freeze reaches the proposer by
 `t_s`, and `P`'s support heads reach the voter by its vote, ready or relayed). -/
-private theorem views_agree_before {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
+private theorem views_agree_before {a₀ κ b : Time}
+    (hsync : SuffixService H tr a₀ κ b s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hPy : P ∈ ℓy.frame.tree) :
     SA.equivocators (SA.View.ofLists pay).votes =
         SA.equivocators (SA.mergedVoteView sp e.readPoint ℓy.frame s).votes ∧
@@ -669,12 +685,20 @@ private theorem views_agree_before {b : Time}
   have hready : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ →
       SA.voteReady sp ℓy.frame (s' + 1) := fun h =>
     hes ▸ SA.cast_ready hr hy hcy (by rw [hes]; exact h)
-  refine hcast ▸ SA.view_agree_before hrun' hp hy hpp ⟨hc, hcall, d, hd⟩ hti hcy
-    ⟨P, hPy, hPs, hpay⟩ hsync hib ?_ ?_
+  have hj1 : sp.ts ((s' + 1 : Nat) : Int) ≤ tr.time j := by
+    have h := (SA.castAt_spec hr hy hcy).2.1
+    rw [hes] at h
+    exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [h])
+  refine hcast ▸ SA.view_agree_window_before hrun' hp hy hpp ⟨hc, hcall, d, hd⟩ hti hcy
+    ⟨P, hPy, hPs, hpay⟩ hsync.window (by
+      have h := hsync.start
+      rw [hcast] at h
+      linarith only [h, hsync.kappa]) hib ?_ ?_
   · -- a voter block stamped before the freeze reaches the proposer by `t_s`
     intro Hd hHd hHds hst hFHd
     have hHdU := hΦyU hHd
-    refine relay_mem_before hrun hnc hsync hy hp hHdU hc hib hrsp ?_ hFHd
+    refine relay_mem_before hrun hnc hsync.window hsync.caught hy hp hHdU hc hib
+      (hsync.le_time hti.ge) hrsp ?_ hFHd
     rcases frame_anc_accepted hr hy j ℓy hcy.1 Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
     · exact Or.inl hg
     by_cases hg : Hd.root = sp.genesisRoot
@@ -704,7 +728,8 @@ private theorem views_agree_before {b : Time}
         rw [SA.state_pool_slot sp hr hp i s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
-    · refine relay_mem_before hrun hnc hsync hp hy (hΦpU hHd) hcy.1 hjb hrsy ?_ hFHd
+    · refine relay_mem_before hrun hnc hsync.window hsync.caught hp hy (hΦpU hHd) hcy.1 hjb
+        (hsync.le_time hj1) hrsy ?_ hFHd
       rcases frame_anc_accepted hr hp i ℓp hc Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       right
@@ -724,10 +749,12 @@ proposer's tree, and a viable head there (its height is at least `Q`'s, a propos
 the proposal walk stopped at `Q`, so `B` has no strict majority in the proposal's view; the views
 agree on `B` (`views_agree_before`), and `Q` is a viable head of the voter (`vote_floor_le_of`), so
 `B` is ineligible at the voter too. -/
-private theorem old_child_ineligible_before {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hf : 2 * Hᶜ.ncard < sp.n)
-    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head)
+private theorem old_child_ineligible_before {a₀ κ b : Time}
+    (hsync : SuffixService H tr a₀ κ b s)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
@@ -771,7 +798,8 @@ private theorem old_child_ineligible_before {b : Time}
       have hcast : (((s' + 1 : Nat) : Int) - 1) = (s' : Int) := by push_cast; ring
       have hrsp := proposal_call_restarts hrun hnc hp hc hcall hd
       rw [hsi, hcast] at hrsp
-      refine relay_mem_before hrun hnc hsync hy hp hBU hc hib hrsp ?_ hFB
+      refine relay_mem_before hrun hnc hsync.window hsync.caught hy hp hBU hc hib
+        (hsync.le_time hti.ge) hrsp ?_ hFB
       rcases frame_anc_accepted hr hy j ℓy hcy.1 B hB.1.1 B .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       by_cases hg : B.root = sp.genesisRoot
@@ -829,10 +857,7 @@ private theorem old_child_ineligible_before {b : Time}
       SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay) ((s : Int) - 1) X})
       (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr h)⟩ _)
   -- `Q` is a viable head of the voter
-  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := by
-    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
-    · exact honest_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg hPU
-    · exact (hfO.trans (hold O hO)).trans hQP
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hfcQ.trans hQP
   have hPt := voter_holds_proposal_before hrun hnc hsync hp hP hPs hs0 hy hcy hes hjb
     ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfP)
   have hFQ : Anc (tr.HonestBlocks H) ℓy.frame.F d.head :=
@@ -842,8 +867,7 @@ private theorem old_child_ineligible_before {b : Time}
     hΦy.fcRoot_mem (below _ (hB.2.1.mono hΦyU) hfP) hQty
   have hQvy : d.head ∈ ℓy.frame.viableHeads := by
     rw [frame_of_projAC hrun hy hcy.1] at hQty hfQy ⊢
-    exact ⟨hQty.1, hQty.2, Anc.mono (fun X hX => hX.1) hfQy,
-      vote_floor_le_of hrun hnc hf hs0 hy hcy hes hQty.1 hold⟩
+    exact ⟨hQty.1, hQty.2, Anc.mono (fun X hX => hX.1) hfQy, hflQ _ hQty.1 .refl⟩
   -- the views agree on `B`
   obtain ⟨heq, hvot, hsup⟩ :=
     views_agree_before hrun hnc hp hP hPs hc hcall hd hti hPQ hy hcy hes hsync hib hjb hPt
@@ -861,22 +885,23 @@ end Leaves
 /-- `suffix_agree_before` from the service, `2 f < n` and the old origins below `Q`. -/
 private theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hs : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hnc : NoCollRun dg tr) {a₀ κ b : Time} {s : Nat} (hs : SuffixService H tr a₀ κ b s)
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
-    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
     (hDQ : ℓp.frame.Anc D d.head)
     (hviab : ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
       Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
       X ≠ d.head →
@@ -896,7 +921,7 @@ private theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
   have hCQ := winner_on_path hrun hnc hp hc hd hti hPQ hsD hDQ hviab hDX hXQ hne hC
   obtain ⟨⟨hCp, -⟩, hCX, -⟩ := hC.1
   have hCy := winner_voter_tree_before hrun hnc hp hP hPs hc hPQ hy hcy hes
-    hs hjb hf hold hXQ hanc hCX hCp hCQ
+    hs hjb hflQ hXQ hanc hCX hCp hCQ
   have hsc : ∀ B ∈ ℓp.frame.tree, B ∈ ℓy.frame.tree →
       SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
           ((s : Int) - 1) B =
@@ -918,18 +943,20 @@ private theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)
 /-- `proposal_at_voter_before` from the service, `2 f < n` and the old origins below `Q`. -/
 private theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hs : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC)
-    (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
+    (hnc : NoCollRun dg tr) {a₀ κ b : Time} {s : Nat} (hs : SuffixService H tr a₀ κ b s)
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hPQ : P.parent = some d.head.root)
-    (holdQ : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head) {y : Fin sp.n}
+    (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) (hjb : tr.time j ≤ b) :
+    (hes : e.msg.slot = s) (hjb : tr.time j ≤ b)
+    (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
     P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
@@ -942,13 +969,8 @@ private theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload 
   have hs0 : 0 < s := by
     have := hU.2 d.head (hΦpU hQt) P hPU hPQ
     omega
-  have hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O P := fun O hO =>
-    (holdQ O hO).trans hQP
-  -- `fc_root` of the voter is genesis or below an old origin, so below `P`
-  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := by
-    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes with hg | ⟨O, hO, hfO⟩
-    · exact honest_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg hPU
-    · exact hfO.trans (hold O hO)
+  -- `fc_root` of the voter is below `Q`, so below `P`
+  have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hfcQ.trans hQP
   have hPt := voter_holds_proposal_before hrun hnc hs
     hp hP hPs hs0 hy hcy hes hjb
     ((hΦy.F_anc_fcRoot.mono hΦyU).trans hfP)
@@ -957,8 +979,7 @@ private theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload 
   refine ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hfPy, P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_,
     .refl⟩
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfPy ⊢
-  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfPy,
-    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hPt.1 hold⟩
+  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfPy, hflQ P hPt.1 hQP⟩
 
 end Consensus.Goldilocks.Compose
 
@@ -972,34 +993,41 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The premises of the suffix lemmas, read in the prefix through the time `d` of a slot-`s` vote
-(the proposer honest at `t_s + Δ`, the voter at its vote): the proposer and the voter are honest at
-`d`, the proposal and the vote are calls of the prefix, the service runs through `min b d`, and the
-old origins of the prefix are below `Q` inside its honest blocks. -/
-private theorem suffix_lift (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
-    (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+(the proposer honest at `t_s + Δ`, the voter at its vote), under the service from `a` with its
+catch-up before `a + κ ≤ t_{s−1}`: the proposer and the voter are honest at `d`, the proposal and
+the vote are calls of the prefix, the service runs through `min b d`, and the voter's `fc_root`
+and head height floor are bounded by `Q` inside the prefix's honest blocks. -/
+private theorem suffix_lift_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
+    {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) (hib : tr.time i ≤ b)
-    (hjb : tr.time j ≤ b) :
+    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hs : a + κ ≤ sp.ts ((s : Int) - 1))
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
     0 ≤ tr.time j ∧ tr.time i ≤ tr.time j ∧ p ∈ H (tr.time j) ∧
       (tr.upTo (tr.time j)).ProposesAt p k P ∧
       (tr.upTo (tr.time j)).projAC.CallAt p i ℓp ∧
       (SA.acProposal sp ((tr.upTo (tr.time j)).projAC.state p i) ℓp.frame (tr.time i)).2 =
         some (d, pay) ∧
       SA.CastAt (tr.upTo (tr.time j)).projAC y j ℓy e ∧
-      SA.ServiceBefore (H (tr.time j)) ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)))
-        (min b (tr.time j)) (tr.upTo (tr.time j)).projAC ∧
-      2 * (H (tr.time j))ᶜ.ncard < sp.n ∧
-      ∀ O, Compose.OldOrigin (tr.upTo (tr.time j)) (H (tr.time j)) s O →
-        Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) O d.head := by
+      Compose.SuffixService (H (tr.time j)) (tr.upTo (tr.time j)) a κ (min b (tr.time j)) s ∧
+      Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) ℓy.frame.fcRoot d.head ∧
+      ∀ B ∈ ((tr.upTo (tr.time j)).state y j).fg.tree,
+        Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) d.head B →
+        ((tr.upTo (tr.time j)).state y j).fg.headHeightFloor ≤
+          (((tr.upTo (tr.time j)).state y j).fg.σ B.root).h := by
   have hΔ := sp.toParams.hΔ
+  have hm := hrun.time_mono
   have h0 := hrun.time_nonneg j
+  have hsub := upTo_subset hrun h0
   have hjt : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot_at hrun hnc hy hcy).2
   have hj1 : sp.ts s ≤ tr.time j := by
     have h := (castAt_spec_at hrun hnc hy hcy).2.1
@@ -1013,19 +1041,153 @@ private theorem suffix_lift (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc
   obtain ⟨hΦp, -⟩ := frameIn_at hrun hnc hpi hc
   have hQt : d.head ∈ ℓp.frame.tree := (acProposal_start_anc_head hΦp hd).2 |> fun h =>
     mem_of_anc_left h (acProposal_start_anc_head hΦp hd).1
-  have hold := proposal_walk_passes_old_at hrun hnc hsync hB hinv hpi hc hcall hd hti hib
+  have hQP := mem_upTo_of_frame hrun hpj hij hc hQt
+  have hst : (tr.upTo (tr.time j)).state y j = tr.state y j :=
+    Trace.upTo_state tr y fun k hk => hm hk.le
   refine ⟨h0, hij, hpj,
     ⟨(RunTrace.upTo_ownBlockAt tr).mpr ⟨hkt.trans_le hj1, hP.1⟩, hP.2.1, hP.2.2⟩,
-    ?_, ?_, ?_, (SleepyServiceBefore.upTo hrun hsync h0).ac, hB.two _ h0 hjb, fun O hO =>
-      RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 (mem_upTo_of_frame hrun hpj hij hc hQt)
-        (hold O (oldOrigin_of_upTo hrun hO))⟩
+    ?_, ?_, ?_, ⟨hsync.acWindow_upTo hrun h0,
+      ⟨fun x hx i' B hB hia z hz j' ℓ hc' hj' hjd' hF => ?_⟩, hsync.kappa, hs⟩,
+    RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hQP hfcQ, fun B hB hQB => ?_⟩
   · rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le tr.projAC hij).mpr hc
   · rw [RunTrace.upTo_projAC, projAC_upTo_state hrun hij]; exact hd
   · rw [RunTrace.upTo_projAC]; exact sa_castAt_upTo.mpr ⟨le_rfl, hcy⟩
+  · rw [RunTrace.upTo_projAC] at hB hc' ⊢
+    obtain ⟨hid, hB⟩ := (ac_acceptAt_upTo _).mp hB
+    obtain ⟨hjd, hc'⟩ := (Trace.upTo_callAt _).mp hc'
+    obtain ⟨k', hkj, hk, hkt'⟩ := hsync.acOld x i' B (hrun.antitone hid hx) hB hia z j' ℓ
+      (hrun.antitone hjd hz) hc' hj' (hF.mono hsub)
+    exact ⟨k', hkj.le, (ac_acceptAt_upTo _).mpr ⟨(hm hkj.le).trans hjd, hk⟩, hkt'⟩
+  · rw [hst] at hB ⊢
+    exact hflQ B hB (hQB.mono hsub)
 
-/-- **The suffix** under growing faults: at every block `X` from the pivot `D` to `Q` at or above
-the voter's anchor, the proposer's best child is the voter's best child. The proposer is honest at
-`t_s + Δ` (the hold), the voter at its vote. -/
+/-- The voter's `fc_root` and head height floor are bounded by `Q`, and `0 < s`, from the old
+origins (the genesis case): every old origin of the prefix through the vote is below `Q`
+(`proposal_walk_passes_old_at`), so `fc_root` is genesis or below `Q` (`vote_fcRoot_old_of`) and
+the floor is at most the height of every block above `Q` (`vote_floor_le_of`). -/
+private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s)
+    (hPQ : P.parent = some d.head.root) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    0 < s ∧ Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head ∧
+      ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
+        (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
+  have hΔ := sp.toParams.hΔ
+  have hm := hrun.time_mono
+  have h0 := hrun.time_nonneg j
+  have hsub := upTo_subset hrun h0
+  have hU := honestBlocksAt_coherent hrun hnc
+  have hjt : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot_at hrun hnc hy hcy).2
+  have hj1 : sp.ts s ≤ tr.time j := by
+    have h := (castAt_spec_at hrun hnc hy hcy).2.1
+    rw [hes] at h
+    exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by rw [← h])
+  have hij : tr.time i ≤ tr.time j := hti ▸ hj1
+  have hpj : p ∈ H (tr.time j) := hrun.antitone hjt hp
+  have hpi : p ∈ H (tr.time i) := hrun.antitone (by rw [hti]; linarith) hp
+  have hkt : tr.time k = sp.ts s := by
+    rw [hP.2.2, sp.slotTime_eq, hPs]; rfl
+  obtain ⟨hΦp, hΦpU⟩ := frameIn_at hrun hnc hpi hc
+  obtain ⟨hΦy, hΦyU⟩ := frameIn_at hrun hnc hy hcy.1
+  have hQt : d.head ∈ ℓp.frame.tree := (acProposal_start_anc_head hΦp hd).2 |> fun h =>
+    mem_of_anc_left h (acProposal_start_anc_head hΦp hd).1
+  have hQP := mem_upTo_of_frame hrun hpj hij hc hQt
+  have hst : (tr.upTo (tr.time j)).state y j = tr.state y j :=
+    Trace.upTo_state tr y fun k hk => hm hk.le
+  have hf := hB.two _ h0 hjb
+  have hold := proposal_walk_passes_old_at hrun hnc hsync hB hinv hpi hc hcall hd hti hib
+  have hold' : ∀ O, Compose.OldOrigin (tr.upTo (tr.time j)) (H (tr.time j)) s O →
+      Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) O d.head := fun O hO =>
+    RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hQP (hold O (oldOrigin_of_upTo hrun hO))
+  have hP' : (tr.upTo (tr.time j)).ProposesAt p k P :=
+    ⟨(RunTrace.upTo_ownBlockAt tr).mpr ⟨hkt.trans_le hj1, hP.1⟩, hP.2.1, hP.2.2⟩
+  have hc' : (tr.upTo (tr.time j)).projAC.CallAt p i ℓp := by
+    rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le tr.projAC hij).mpr hc
+  have hd' : (SA.acProposal sp ((tr.upTo (tr.time j)).projAC.state p i) ℓp.frame
+      (tr.time i)).2 = some (d, pay) := by
+    rw [RunTrace.upTo_projAC, projAC_upTo_state hrun hij]; exact hd
+  have hcy' : SA.CastAt (tr.upTo (tr.time j)).projAC y j ℓy e := by
+    rw [RunTrace.upTo_projAC]; exact sa_castAt_upTo.mpr ⟨le_rfl, hcy⟩
+  have hs0 : 0 < s := by
+    have := Compose.head_slot_lt (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hd' hPQ
+    omega
+  refine ⟨hs0, ?_, fun B hB hQB => ?_⟩
+  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes with
+      hg | ⟨O, hO, hfO⟩
+    · exact honestAt_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
+    · exact Anc.mono hsub (hfO.trans (hold' O hO))
+  · have hBP : B ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) :=
+      ⟨y, hy, j, by rw [hst]; exact hB⟩
+    have h := Compose.vote_floor_le_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
+      (by rw [hst]; exact hB) fun O hO =>
+        (hold' O hO).trans (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hBP hQB)
+    rwa [hst] at h
+
+/-- The genesis start of the catch-up: `0 + 0 ≤ t_{s−1}` for `s > 0`. -/
+private theorem genesis_start {s : Nat} (hs0 : 0 < s) : (0 : Time) + 0 ≤ sp.ts ((s : Int) - 1) := by
+  obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
+  rw [add_zero, show ((s' + 1 : Nat) : Int) - 1 = (s' : Int) by push_cast; ring]
+  exact ts_natCast_nonneg _
+
+/-- **The suffix** under growing faults, under the service from `a` with its catch-up before
+`a + κ ≤ t_{s−1}`, given that the voter's head height floor is at most the height of every block
+of its tree above `Q`: at every block `X` from the pivot `D` to `Q` at or above the voter's anchor,
+the proposer's best child is the voter's best child. The proposer is honest at `t_s + Δ` (the
+hold), the voter at its vote. -/
+theorem suffix_agree_from (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {p : Fin sp.n} {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s)
+    (hPQ : P.parent = some d.head.root)
+    {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
+    (hDQ : ℓp.frame.Anc D d.head)
+    (hviab : ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hs : a + κ ≤ sp.ts ((s : Int) - 1))
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+    ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
+      Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
+      X ≠ d.head →
+      ∀ C, SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
+          {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
+            SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay)
+              ((s : Int) - 1) B} C →
+        SA.IsBest sp (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
+            ((s : Int) - 1))
+          {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+            B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
+              (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
+  obtain ⟨h0, hij, hpj, hP', hc', hd', hcy', hsv, -, hflQ'⟩ :=
+    suffix_lift_from hrun hnc hsync hp hP hPs hc hd hti hy hcy hes hs hfcQ hflQ
+  intro X hDX hXQ hanc
+  have hpi : p ∈ H (tr.time i) := hrun.antitone hij hpj
+  have hXU := mem_upTo_of_frame hrun hpj hij hc (Compose.mem_of_anc_left hDX
+    (Compose.mem_of_anc_left hsD (acProposal_start_anc_head (frameIn_at hrun hnc hpi hc).1 hd).1))
+  exact Compose.suffix_agree_of (hrun.upTo h0) (hnc.upTo _) hsv hpj hP' hPs hc' hcall hd' hti hPQ
+    hsD hDQ hviab hy hcy' hes (le_min hib hij) (le_min hjb le_rfl) hflQ' X hDX hXQ
+    (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hXU hanc)
+
+/-- **The suffix** under growing faults (the form from `a = κ = 0`, with the old origins): at
+every block `X` from the pivot `D` to `Q` at or above the voter's anchor, the proposer's best child
+is the voter's best child. The proposer is honest at `t_s + Δ` (the hold), the voter at its
+vote. -/
 theorem suffix_agree_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
@@ -1054,19 +1216,47 @@ theorem suffix_agree_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
           {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
             B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
               (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
-  obtain ⟨h0, hij, hpj, hP', hc', hd', hcy', hs, hf, hold⟩ :=
-    suffix_lift hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti hy hcy hes hib hjb
-  intro X hDX hXQ hanc
-  have hpi : p ∈ H (tr.time i) := hrun.antitone hij hpj
-  have hXU := mem_upTo_of_frame hrun hpj hij hc (Compose.mem_of_anc_left hDX
-    (Compose.mem_of_anc_left hsD (acProposal_start_anc_head (frameIn_at hrun hnc hpi hc).1 hd).1))
-  exact Compose.suffix_agree_of (hrun.upTo h0) (hnc.upTo _) hs hf hpj hP' hPs hc' hcall hd' hti hPQ
-    hold hsD hDQ hviab hy hcy' hes (le_min hib hij) (le_min hjb le_rfl) X hDX hXQ
-    (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hXU hanc)
+  obtain ⟨hs0, hfcQ, hflQ⟩ := genesis_voter_facts hrun hnc hsync hB hinv hp hP hPs hc hcall hd
+    hti hPQ hy hcy hes hib hjb
+  exact suffix_agree_from hrun hnc (hsync.toFrom hrun) hp hP hPs hc hcall hd hti hPQ hsD hDQ hviab
+    hy hcy hes hib hjb (genesis_start hs0) hfcQ hflQ
 
+/-- **No old child of `Q` is eligible at the voter** under growing faults, under the service from
+`a` with its catch-up before `a + κ ≤ t_{s−1}`, given that the voter's `fc_root` is below `Q` and
+its head height floor is at most the height of every block of its tree above `Q` (the proposer
+honest at `t_s + Δ`, the voter at its vote). -/
+theorem old_child_ineligible_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
+    {p : Fin sp.n} {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s)
+    (hPQ : P.parent = some d.head.root)
+    {D : SA.Blk sp.n (List (FG.Att sp.n))} (hDQ : ℓp.frame.Anc D d.head)
+    (hviab : ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hs : a + κ ≤ sp.ts ((s : Int) - 1))
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h)
+    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hBv : B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
+    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
+    ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
+      (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B := by
+  obtain ⟨h0, hij, hpj, hP', hc', hd', hcy', hsv, hfcQ', hflQ'⟩ :=
+    suffix_lift_from hrun hnc hsync hp hP hPs hc hd hti hy hcy hes hs hfcQ hflQ
+  exact Compose.old_child_ineligible_before (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hcall
+    hd' hti hPQ hDQ hviab hy hcy' hes hsv (le_min hib hij) (le_min hjb le_rfl) hfcQ' hflQ' hBv
+    hBQ hBs
 
-/-- **No old child of `Q` is eligible at the voter** under growing faults (the proposer honest at
-`t_s + Δ`, the voter at its vote). -/
+/-- **No old child of `Q` is eligible at the voter** under growing faults (the form from
+`a = κ = 0`, with the old origins; the proposer honest at `t_s + Δ`, the voter at its vote). -/
 theorem old_child_ineligible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
@@ -1075,7 +1265,8 @@ theorem old_child_ineligible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
+    (hti : tr.time i = sp.ts s)
+    (hPQ : P.parent = some d.head.root)
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hDQ : ℓp.frame.Anc D d.head)
     (hviab : ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
@@ -1086,13 +1277,39 @@ theorem old_child_ineligible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
     ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B := by
-  obtain ⟨h0, hij, hpj, hP', hc', hd', hcy', hs, hf, hold⟩ :=
-    suffix_lift hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti hy hcy hes hib hjb
-  exact Compose.old_child_ineligible_before (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hcall
-    hd' hti hPQ hDQ hviab hy hcy' hes hs (le_min hib hij) (le_min hjb le_rfl) hf hold hBv hBQ hBs
+  obtain ⟨hs0, hfcQ, hflQ⟩ := genesis_voter_facts hrun hnc hsync hB hinv hp hP hPs hc hcall hd
+    hti hPQ hy hcy hes hib hjb
+  exact old_child_ineligible_from hrun hnc (hsync.toFrom hrun) hp hP hPs hc hcall hd hti hPQ hDQ
+    hviab hy hcy hes hib hjb (genesis_start hs0) hfcQ hflQ hBv hBQ hBs
 
-/-- **`P` is in the voter's viable voter block tree** under growing faults (the proposer honest at
-`t_s + Δ`, the voter at its vote). -/
+/-- **`P` is in the voter's viable voter block tree** under growing faults, under the service from
+`a` with its catch-up before `a + κ ≤ t_{s−1}`, given that the voter's `fc_root` is below `Q` and
+its head height floor is at most the height of every block of its tree above `Q` (the proposer
+honest at `t_s + Δ`, the voter at its vote). -/
+theorem proposal_at_voter_from (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
+    {p : Fin sp.n} {k : Nat}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts s)
+    (hPQ : P.parent = some d.head.root) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s) (hjb : tr.time j ≤ b)
+    (hs : a + κ ≤ sp.ts ((s : Int) - 1))
+    (hfcQ : Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head)
+    (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
+      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+    P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
+  obtain ⟨h0, -, hpj, hP', hc', hd', hcy', hsv, hfcQ', hflQ'⟩ :=
+    suffix_lift_from hrun hnc hsync hp hP hPs hc hd hti hy hcy hes hs hfcQ hflQ
+  exact Compose.proposal_at_voter_of (hrun.upTo h0) (hnc.upTo _) hsv hpj hP' hPs hc' hd' hPQ
+    hy hcy' hes (le_min hjb le_rfl) hfcQ' hflQ'
+
+/-- **`P` is in the voter's viable voter block tree** under growing faults (the form from
+`a = κ = 0`, with the old origins; the proposer honest at `t_s + Δ`, the voter at its vote). -/
 theorem proposal_at_voter_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
@@ -1101,16 +1318,16 @@ theorem proposal_at_voter_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    (hti : tr.time i = sp.ts s)
+    (hPQ : P.parent = some d.head.root) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
     P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
-  obtain ⟨h0, -, hpj, hP', hc', hd', hcy', hs, hf, hold⟩ :=
-    suffix_lift hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti hy hcy hes hib hjb
-  exact Compose.proposal_at_voter_of (hrun.upTo h0) (hnc.upTo _) hs hf hpj hP' hPs hc' hd' hPQ
-    hold hy hcy' hes (le_min hjb le_rfl)
+  obtain ⟨hs0, hfcQ, hflQ⟩ := genesis_voter_facts hrun hnc hsync hB hinv hp hP hPs hc hcall hd
+    hti hPQ hy hcy hes hib hjb
+  exact proposal_at_voter_from hrun hnc (hsync.toFrom hrun) hp hP hPs hc hd hti hPQ hy hcy hes
+    hjb (genesis_start hs0) hfcQ hflQ
 
 end Consensus.Goldilocks.Compose.Growing
 

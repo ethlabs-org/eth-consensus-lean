@@ -163,6 +163,49 @@ private theorem rows_compatible_at (hrun : Growing.GoldilocksRun proposer dg H t
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)
     exact Anc.total hU (hDC'.trans hCH) hPH
 
+/-- **The updater's `Σ.F` is at or below `P`** when it is compatible with `P`: `Σ.F` is genesis, or
+strictly below a block of the updater's frame, of a slot at most `s + 1`, so of a slot at most `s`,
+and a compatible block of a slot at most that of `P` is below it. -/
+theorem updater_F_anc_of_compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
+    (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    (hFR : Compatible (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P) :
+    Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
+  have hU := honestBlocksAt_coherent hrun hnc
+  have hd := hrun.time_nonneg k₀
+  have hr := hrun.upTo hd
+  have hst : (tr.upTo (tr.time k₀)).state y k₀ = tr.state y k₀ :=
+    Trace.upTo_state tr y fun k hk => hrun.time_mono hk.le
+  have hR := Compose.fg_reachable hr.toLocalRun hy k₀
+  rw [hst] at hR
+  obtain ⟨hFt, -, -, -⟩ := Store.cache_invariants _ _ _ _ hR
+  have hcoh := (Store.accepted_tree _ _ _ _ hR).2.1
+  have hsU : (tr.state y k₀).fg.tree ⊆ tr.HonestBlocksAt H := fun Z hZ =>
+    mem_honestBlocksAt hrun hy hZ
+  have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
+  -- `Σ.F` is genesis, or of a slot at most `s`
+  by_cases hg : (tr.state y k₀).fg.F =
+      sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+  · exact honestAt_genesis_root_anc hrun hU (hsU hFt) (by rw [hg]; rfl) hPU
+  obtain ⟨B, hBt, -, hFB, hne⟩ := Store.F_lt_finalizer hR hg
+  have hfr : ℓ.frame = Node.frame (tr.state y k₀) := frame_of_projAC_at hrun hy hu.1
+  have hBf : B ∈ ℓ.frame.tree := by rw [hfr]; exact ⟨hBt, hFB⟩
+  have hsl₀ : sp.slot (tr.time k₀) = s + 1 := by
+    have h6 : sp.ts s + 6 * sp.Δ = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ :=
+      (SA.slot_arithmetic sp s).2.2
+    rw [ht, h6]
+    simpa using (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
+  have hBs : B.slot ≤ s + 1 := hsl₀ ▸ frame_slot_le_at hrun hnc hy hu.1 B hBf
+  have hFs : (tr.state y k₀).fg.F.slot < B.slot := (Anc.slot_le hcoh hFB).2 hne
+  rcases hFR with h | hPF
+  · exact h
+  by_cases hPFe : P = (tr.state y k₀).fg.F
+  · exact hPFe ▸ .refl
+  have := (Anc.slot_le hU hPF).2 hPFe
+  omega
+
 /-- **The updater's `Σ.F` is at or below `P`**, from rows sourced compatibly with `P`: the static
 justification geometry on the prefix through the update, with `2 f_d < n` at the update. -/
 private theorem updater_F_anc_of_rows_at (hrun : Growing.GoldilocksRun proposer dg H tr)
@@ -211,26 +254,7 @@ private theorem updater_F_anc_of_rows_at (hrun : Growing.GoldilocksRun proposer 
     · exact Or.inl (honestAt_genesis_root_anc hrun hU (hsU hJt) hg hPU)
     · exact h
   have hFR : R (tr.state y k₀).fg.F := hRc _ _ (Anc.mono hsU hFJ) hJR
-  -- `Σ.F` is genesis, or of a slot at most `s`
-  by_cases hg : (tr.state y k₀).fg.F =
-      sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
-  · exact honestAt_genesis_root_anc hrun hU (hsU hFt) (by rw [hg]; rfl) hPU
-  obtain ⟨B, hBt, -, hFB, hne⟩ := Store.F_lt_finalizer hR hg
-  have hfr : ℓ.frame = Node.frame (tr.state y k₀) := frame_of_projAC_at hrun hy hu.1
-  have hBf : B ∈ ℓ.frame.tree := by rw [hfr]; exact ⟨hBt, hFB⟩
-  have hsl₀ : sp.slot (tr.time k₀) = s + 1 := by
-    have h6 : sp.ts s + 6 * sp.Δ = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ :=
-      (SA.slot_arithmetic sp s).2.2
-    rw [ht, h6]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
-  have hBs : B.slot ≤ s + 1 := hsl₀ ▸ frame_slot_le_at hrun hnc hy hu.1 B hBf
-  have hFs : (tr.state y k₀).fg.F.slot < B.slot := (Anc.slot_le hcoh hFB).2 hne
-  rcases hFR with h | hPF
-  · exact h
-  by_cases hPFe : P = (tr.state y k₀).fg.F
-  · exact hPFe ▸ .refl
-  have := (Anc.slot_le hU hPF).2 hPFe
-  omega
+  exact updater_F_anc_of_compatible hrun hnc hPU hPs hy hu hFR
 
 /-- **By the update every honest slot-`s` vote is `P`**, for a proposer honest at `t_s + Δ`,
 through `b ≥ t_s + 6Δ` (a slot-`s` vote is cast by `t_s + Δ`). -/
