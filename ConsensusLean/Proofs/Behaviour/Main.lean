@@ -21,7 +21,8 @@ The bridges are visible:
 * Regimes: the shape claims use the L0 regimes of the compiled system.
 * `proposalLive_txLive`: reader-conditional proposal liveness and partial synchrony with a GST at
   or before the start give transaction liveness (the payload bridge, at the
-  release time `τ`).
+  release time `τ`); `proposalLive_txLive_above`, for the deadlines from some `b`, from the
+  proposal liveness for those deadlines.
 * Accountability: the conviction sets of the chain trace and of the ledger
   system coincide.
 * Laws and non-framing are L1 theorems (`sysOf_laws`, `sysOf_nonFraming`). -/
@@ -40,34 +41,35 @@ theorem ledgerTrace (rho : Model.Run (compiled F) E) :
   rw [Trace.map_eq]
   rfl
 
-/-- Transaction bridge (at the release time `τ`): apply
-`ProposalLiveReady` at `t' − D·Δ`, with the reader `v` ready at the deadline
-`t'` as the witness that a ready reader exists; the honest proposal is released at
-`τ > max t start + Δ` (strictly), within the horizon, by a key ready at `τ` with
-catch-up `c₀·Δ ≥ Δ` (`1 ≤ c₀`, which admissible numbers give), so awake throughout
+/-- Transaction bridge (at the release time `τ`) for the deadlines `t' ≥ b`: apply the
+proposal liveness of `ProposalLiveReady`, needed only for the deadlines `≥ b`, at `t' − D·Δ`,
+with the reader `v` ready at the deadline `t'` as the witness that a ready reader exists; the
+honest proposal is released at `τ > max t start + Δ` (strictly), within the horizon, by a key
+ready at `τ` with catch-up `c₀·Δ ≥ Δ` (`1 ≤ c₀`, which admissible numbers give), so awake throughout
 `[τ − Δ, τ − 1]`. Partial synchrony with GST `gst ≤ start` (L0 delivery, held strictly
 before `max a gst + Δ`) at the start `a := τ − Δ > max t start ≥ gst`, whose delivery
 interval is `[τ − Δ, τ − 1]`, puts the transaction in that key's inbox by the deadline
 `τ − 1`, so in its mempool at the tick `τ`, which is the proposal's payload. The strict
 `τ > …` of `ProposalLiveReady` makes the start `τ − Δ` lie after the submission. Every
 submission is served, including those before `start` (deadline `max t start + Δ + D·Δ`). -/
-theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
-    {start gst : Time} {D : Nat} (hv : rho.ExecutionValid) (hc₀ : 1 ≤ c₀)
+theorem proposalLive_txLive_above {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
+    {start gst b : Time} {D : Nat} (hv : rho.ExecutionValid) (hc₀ : 1 ≤ c₀)
     (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start)
-    (hl : ProposalLiveReady rho (((c₀ : Nat) : Time) * E.ΔAC) g start D) :
-    ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.ΔAC) g start
-      (((D : Nat) : Time) * E.ΔAC) := by
-  rw [Trace.map_eq]
-  intro x t t' hsub hdt hh v hv'
-  change max t start + E.ΔAC + (D : Time) * E.ΔAC ≤ t' at hdt
-  change rho.point.SubmittedToSome x t at hsub
-  change t' ≤ rho.horizon at hh
+    (hl : ∀ t, start ≤ t → b ≤ t + (D : Time) * E.ΔAC → t + (D : Time) * E.ΔAC ≤ rho.horizon →
+      (∃ v, rho.point.Ready (((c₀ : Nat) : Time) * E.ΔAC) v (t + (D : Time) * E.ΔAC)) →
+      ∃ τ k h, t < τ ∧ rho.point.Ready (((c₀ : Nat) : Time) * E.ΔAC) (rho.key k) τ ∧
+        HonestProposal rho τ k h ∧
+        InBy rho (((c₀ : Nat) : Time) * E.ΔAC) g h (t + (D : Time) * E.ΔAC)) :
+    ∀ x t t', rho.point.SubmittedToSome x t → max t start + E.ΔAC + (D : Time) * E.ΔAC ≤ t' →
+      b ≤ t' → t' ≤ rho.horizon → ∀ v, rho.point.Ready (((c₀ : Nat) : Time) * E.ΔAC) v t' →
+      x ∈ ledgerOf ((chainTrace rho).readAt g v t') := by
+  intro x t t' hsub hdt hbt hh v hv'
   have hΔ := E.ΔAC_pos
   have hmt := le_max_left t start
   have hms := le_max_right t start
   obtain ⟨τ, k, h, hτ, hready, hprop, hin⟩ := hl (t' - (D : Time) * E.ΔAC)
-    (by dsimp only [Time] at *; omega) (by dsimp only [Time] at *; omega)
-    ⟨v, by rw [sub_add_cancel]; exact hv'⟩
+    (by dsimp only [Time] at *; omega) (by rw [sub_add_cancel]; exact hbt)
+    (by dsimp only [Time] at *; omega) ⟨v, by rw [sub_add_cancel]; exact hv'⟩
   have he : t' - (D : Time) * E.ΔAC + (D : Time) * E.ΔAC = t' := sub_add_cancel _ _
   rw [he] at hin
   have hmem : x ∈ decodeTxs h.input := by
@@ -104,8 +106,19 @@ theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O
         (by change rho.point.AwakeOnClosed _ _ (_ + E.ΔAC - 1); rw [hdl]; exact hawake)
     rw [hdl] at held
     exact rho.txHeld_mem_mempool held (by dsimp only [Time]; omega)
-  change x ∈ ledgerOf ((chainTrace rho).readAt g v t')
   exact (mem_ledgerOf _ _).mpr ⟨h, hin v hv', hmem⟩
+
+/-- Transaction bridge: `proposalLive_txLive_above` for each deadline `t'`, at `b := t'`. -/
+theorem proposalLive_txLive {rho : Model.Run (compiled F) E} {c₀ : Nat} {g : O.Id}
+    {start gst : Time} {D : Nat} (hv : rho.ExecutionValid) (hc₀ : 1 ≤ c₀)
+    (hs : CommLog.PSync rho.point rho.log gst) (hgs : gst ≤ start)
+    (hl : ProposalLiveReady rho (((c₀ : Nat) : Time) * E.ΔAC) g start D) :
+    ((chainTrace rho).map ledgerOf).TxLive (((c₀ : Nat) : Time) * E.ΔAC) g start
+      (((D : Nat) : Time) * E.ΔAC) := by
+  rw [Trace.map_eq]
+  intro x t t' hsub hdt hh v hv'
+  exact proposalLive_txLive_above hv hc₀ hs hgs (fun t h₁ _ h₂ h₃ => hl t h₁ h₂ h₃) x t t' hsub
+    hdt le_rfl hh v hv'
 
 /-- An object is in a node's system view iff it is in its run view. -/
 theorem mem_sysView (rho : Model.Run (compiled F) E) (v : V) (i : Nat)
