@@ -49,6 +49,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.OpponentsHonest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ParentOracleM
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
@@ -95,6 +96,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.Evidenc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LateCertificate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.Memory
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
@@ -873,6 +875,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.LateCertificate
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.Memory
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
@@ -898,6 +901,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.ParentOracleM
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
@@ -907,6 +911,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Candidates
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Cost
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Defaults
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.HealAC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.LatencyAC
