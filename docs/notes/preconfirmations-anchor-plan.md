@@ -117,8 +117,9 @@ verbatim.
 - `AuthorityCompatible`: authoritative targets are pairwise compatible (annihilation), so the projected targets
   of one call lie on one chain (both projections are ancestors of the deeper target).
 - `KeyProvenance`: a key has an honest acker with a fast-test decision, the input of `AnchorRel`.
-- `CoreStepAtCallStart`, `ProposalAtCallStart`, `ProjStateCore`: the forgotten trace's states are the core's, and
-  each call is the core skeleton at its named start `callStartPC`; `a` and `AnchorRel` abstract that start's base.
+- `ProjStateCore` (proved): the forgotten trace's states are the core's.
+- `CoreStepAtCallStart`, `ProposalAtCallStart` (stated, proofs pending): each call is the core skeleton at its named
+  start `callStartPC`; `a` and `AnchorRel` abstract that start's base.
 
 ## Size
 

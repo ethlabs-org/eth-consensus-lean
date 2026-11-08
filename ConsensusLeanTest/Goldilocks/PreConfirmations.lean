@@ -20,6 +20,16 @@ theorem oneRel_lawful (sp : SAParams) : (oneReleaseStage sp).Lawful (oneReleaseK
 theorem oneRelease_fixes (sp : SAParams) : (oneReleaseStage sp).Fixes fun _ _ => True :=
   oneReleaseStage_fixes sp
 
+theorem oneRel_unlockRel (sp : SAParams) (FGP : Type) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    (L : Set WLock) (t : Time) (s : Int) (V : View sp.n) :
+    UnlockRel sp (WLock.lock '' L) Φ t s V
+      (WLock.lock '' wlockStore.unlockWith sp (oneReleaseStage sp) () L Φ t s V) :=
+  oneRelease_unlockRel hΦ L t s V
+
+theorem opp_sub_evidence (sp : SAParams) (FGP : Type) (Φ : Frm sp.n FGP) (V : View sp.n)
+    (s : Int) (Y : Blk sp.n FGP) : opponents sp Φ V s Y ⊆ evidence sp Φ V s Y :=
+  opponents_subset_evidence Φ V s Y
+
 theorem oneRelease_scan (sp : SAParams) (FGP : Type) : OneReleaseScan sp FGP := oneReleaseScan
 
 theorem refresh_idem (sp : SAParams) (FGP : Type) : RefreshIdem sp FGP := refreshIdem
@@ -117,3 +127,9 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Goldilocks.PreConfirmations.Test.key_provenance' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.PreConfirmations.Test.key_provenance
+
+/-- info: 'Consensus.Goldilocks.PreConfirmations.Test.oneRel_unlockRel' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.PreConfirmations.Test.oneRel_unlockRel
+
+/-- info: 'Consensus.Goldilocks.PreConfirmations.Test.opp_sub_evidence' depends on axioms: [propext] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.PreConfirmations.Test.opp_sub_evidence
