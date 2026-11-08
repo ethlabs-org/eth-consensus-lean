@@ -138,6 +138,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Live
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveAdopt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveReader
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Record
