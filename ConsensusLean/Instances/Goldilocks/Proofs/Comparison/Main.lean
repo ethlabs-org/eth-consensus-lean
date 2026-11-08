@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Defaults
 public import ConsensusLean.Proofs.Comparison.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.TierA
 public import ConsensusLean.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 
@@ -10,7 +11,8 @@ public section
 
 * `goldilocks_heal_default0`, `goldilocks_txLatency_default0`: the composite defaults, from the
   endpoint (`Growing.meets_obligations`, whose shape obligations give the L0 `Behaviour`) and the
-  generic defaults `healDefault0`, `txLatencyDefault0`. -/
+  generic defaults `healDefault0`, `txLatencyDefault0`.
+* The Tier A instances `healProfileAC0_free` and `signingRateAC0` (`TierA`). -/
 
 namespace Consensus.Goldilocks.Comparison
 

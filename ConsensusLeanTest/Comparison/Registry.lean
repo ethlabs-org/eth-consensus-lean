@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
 One entry per proved profile instance: the statement it proves (whose type fixes the bound
 function, the tier and the premises), proved by its proof, with its axioms pinned. Columns of each
 docstring: **bound** (the bound function), **tier** (R: over every L0 system or the compiled
-protocol; A: over AC traces of the Goldilocks SA, none yet), **premises** (what the instance
+protocol; A: over AC traces of the Goldilocks SA), **premises** (what the instance
 assumes beyond the profile's class). A new instance adds an entry here.
 
 | statement | bound | tier | premises |
@@ -18,6 +18,8 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `TxLatencyDefault0` | `txLatDefault` | R | `Behaviour` |
 | `GoldilocksHealDefault0` | the same, at the endpoint's contract | R | none (the endpoint) |
 | `GoldilocksTxLatencyDefault0` | `txLatDefault`, endpoint contract | R | none (the endpoint) |
+| `HealProfileAC0Free` | `acFree0` (`8k + 4` at `2·fcap < n`) | A, static | width-k modes |
+| `SigningRateAC0` | one vote per slot | A, static | every mode |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -45,6 +47,14 @@ theorem goldilocksHealDefault0 : Consensus.Goldilocks.Comparison.GoldilocksHealD
 theorem goldilocksTxLatencyDefault0 : Consensus.Goldilocks.Comparison.GoldilocksTxLatencyDefault0 :=
   Consensus.Goldilocks.Comparison.goldilocks_txLatency_default0
 
+/-- Bound `acFree0`; tier A, static; every width-`k` write mode and unlock oracle. -/
+theorem healProfileAC0Free : Consensus.Goldilocks.Comparison.HealProfileAC0Free :=
+  Consensus.Goldilocks.Comparison.healProfileAC0_free
+
+/-- One vote per slot; tier A, static; every write mode and unlock oracle. -/
+theorem signingRateAC0 : Consensus.Goldilocks.Comparison.SigningRateAC0 :=
+  Consensus.Goldilocks.Comparison.signingRateAC0
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -69,5 +79,11 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.goldilocksTxLatencyDefault0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.goldilocksTxLatencyDefault0
+
+/-- info: 'Consensus.Comparison.Registry.healProfileAC0Free' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healProfileAC0Free
+
+/-- info: 'Consensus.Comparison.Registry.signingRateAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.signingRateAC0
 
 end
