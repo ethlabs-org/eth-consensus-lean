@@ -183,7 +183,7 @@ theorem meetsObligations_healthyLive_confirmed_growing : ∀ cap g, cap ≠ .fin
   intro t ht hb hr
   have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨hr.choose⟩
   let Q : ConfirmedQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, t, hv, hc,
-    Or.inr ⟨hh, hp, ht⟩, hb, hr⟩
+    Or.inr (Or.inl ⟨hh, hp, ht⟩), hb, hr⟩
   obtain ⟨P, cover⟩ := healthy_confirmed_supply_at S A V Q hh hp ht
   have h0 : 0 ≤ t :=
     (add_nonneg (le_max_right gst 0)

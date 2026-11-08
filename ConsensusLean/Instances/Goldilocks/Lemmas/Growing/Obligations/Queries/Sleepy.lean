@@ -59,14 +59,14 @@ structure SleepyProposalServiceAt (Q : ConfirmedQueryAt S A V)
   bounds : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline
 
 /-- Actual production from the selected slot: the canonical proposal event and its own
-acceptance, with the proposer's hold. -/
-theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V)
+acceptance, with the proposer's hold, for progress from a readiness start `ready ≤ query`. -/
+theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V) {ready : Time}
     (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
-      Q.cap Q.index 0 Q.run.2.horizon Q.run)
-    (hquery : 0 ≤ Q.query) :
+      Q.cap Q.index ready Q.run.2.horizon Q.run)
+    (hquery : max ready 0 ≤ Q.query) :
     ∃ P : ConfirmedProposalAt Q, Q.trace.time P.cut + 6 * Q.params.Δ ≤ Q.deadline ∧
       P.block.proposer ∈ Q.keys (Q.trace.time P.cut + Regimes.Growing.hold Q.params) := by
-  obtain ⟨W⟩ := confirmed_query_slot_at S A V Q hprogress (by simpa using hquery)
+  obtain ⟨W⟩ := confirmed_query_slot_at S A V Q hprogress hquery
   obtain ⟨B, k, hp, he, ht⟩ := confirmed_slot_event_at S A V Q W
   have hr : Regimes.Growing.ReadyAt Q.trace Q.keys Q.duration B.proposer (Q.trace.time k) := by
     rw [hp, ht]; exact W.ready
@@ -85,7 +85,7 @@ theorem sleepy_serviced_proposal_supply_at (Q : ConfirmedQueryAt S A V)
       Q.cap Q.index 0 Q.run.2.horizon Q.run)
     (hquery : 0 ≤ Q.query) :
     ∃ P : ConfirmedProposalAt Q, SleepyProposalServiceAt S A V Q P := by
-  obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at S A V Q hprogress hquery
+  obtain ⟨P, hm, hh⟩ := sleepy_query_producer_at S A V Q hprogress (by simpa using hquery)
   exact ⟨P, ⟨hquery.trans P.fresh.le, hm, confirmed_duration_supply_at S A V Q, hh,
     sleepy_query_sync_at S A V Q hsleepy, sleepy_query_bounds_at S A V Q hsleepy⟩⟩
 

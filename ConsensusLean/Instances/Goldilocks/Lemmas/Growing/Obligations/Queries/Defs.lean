@@ -12,7 +12,7 @@ of the compiled Goldilocks family together with the regime premises and the read
 Each is its constant-fault counterpart of `Lemmas/Obligations` without the constant-fault field:
 
 * `ConfirmedQueryAt`: a nonfinal (available or stable) liveness query, in the sleepy or the
-  healthy regime;
+  healthy regime, or handing over from the healthy to the sleepy regime;
 * `SleepySafetyQueryAt`: a sleepy run, for sleepy safety;
 * `FinalQueryAt`: a final liveness query in the healthy regime;
 * `HealthyPreparationQueryAt`: a run healthy up to a bound with a nonfinal capability, for healed
@@ -30,8 +30,10 @@ open Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- A nonfinal liveness query: a valid, collision-free run in the sleepy regime with progress on
-the whole run, or in the healthy regime with progress from readiness, a query time at least the
-heal point, and a ready reader at the deadline `query + latency·ΔAC ≤ horizon`. -/
+the whole run, or in the healthy regime, or handing over to the sleepy regime at a time `T` at or
+after the heal point (the regime conjuncts of `System.Handover`: healthy up to `T`, sleepy from
+`T`), with progress from readiness and a query time at least
+the heal point, and a ready reader at the deadline `query + latency·ΔAC ≤ horizon`. -/
 structure ConfirmedQueryAt where
   run : (Sys (goldilocks S) V).Run
   hn : 1 ≤ Fintype.card V
@@ -47,6 +49,17 @@ structure ConfirmedQueryAt where
       (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
         0 run.2.horizon run ∧ 0 ≤ query) ∨
     ((Sys (goldilocks S) V).Healthy (K S A) gst run ∧
+      (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
+        ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run ∧
+      (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ query) ∨
+    (∃ T, ((Sys (goldilocks S) V).log run).PSync ((Sys (goldilocks S) V).pt run) gst ∧
+      ((Sys (goldilocks S) V).pt run).HealthyOn (K S A).params.β gst T ∧
+      ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
+        ((K S A).params.fgDelay : Time) * ((Sys (goldilocks S) V).pt run).env.ΔAC ∧
+      ((Sys (goldilocks S) V).pt run).SleepyOn (K S A).params.θ
+        ((Sys (goldilocks S) V).cDur (K S A) run) ((Sys (goldilocks S) V).aheadDur (K S A) run) T
+        ((Sys (goldilocks S) V).pt run).horizon ∧
+      (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ T ∧
       (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) cap index
         ((Sys (goldilocks S) V).ready (K S A) gst run) run.2.horizon run ∧
       (Sys (goldilocks S) V).heal (K S A) cap index gst run ≤ query)
