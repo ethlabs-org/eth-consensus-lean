@@ -1,16 +1,10 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
 public import ConsensusLeanTest.Blocks.Basic
-public import ConsensusLeanTest.Comparison.Cost
-public import ConsensusLeanTest.Comparison.Registry
-public import ConsensusLeanTest.Comparison.Slice0
-public import ConsensusLeanTest.Comparison.Slice1
-public import ConsensusLeanTest.Comparison.Slice2
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Fixtures.Support
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks.AC.Base
-public import ConsensusLeanTest.Goldilocks.AC.CertModes
 public import ConsensusLeanTest.Goldilocks.AC.FastUpdate
 public import ConsensusLeanTest.Goldilocks.AC.GradedLocks
 public import ConsensusLeanTest.Goldilocks.AC.GradedVeto
@@ -25,7 +19,6 @@ public import ConsensusLeanTest.Goldilocks.AC.ResultTransfer
 public import ConsensusLeanTest.Goldilocks.AC.SourceCompatible
 public import ConsensusLeanTest.Goldilocks.AC.Transfer
 public import ConsensusLeanTest.Goldilocks.AC.UnlockFrame
-public import ConsensusLeanTest.Goldilocks.AC.WeightedModes
 public import ConsensusLeanTest.Goldilocks.CarryLater.Control
 public import ConsensusLeanTest.Goldilocks.CarryLater.Premises
 public import ConsensusLeanTest.Goldilocks.CarryLater.Reject
