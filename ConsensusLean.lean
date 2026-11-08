@@ -586,6 +586,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Regim
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Carry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Transfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Frontier.Viable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Compare
@@ -597,6 +604,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Inclusion
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.Delivery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.Gate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.LockChain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.ReadPointLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Outage.Ready
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.RelSetting
@@ -837,6 +849,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.SyncUntil
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
@@ -894,6 +907,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.R
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.SupportCounting
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.TickDuty
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations.Constant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
