@@ -86,6 +86,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
+public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.EvidenceRelease
+public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.WeightedWrites

@@ -548,6 +548,30 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
 about = "lemmas of the candidate lock rules' writes and handlers at a write mode (Milestones.Spec.Candidates); a leaf: only proofs and tests import it. Lemmas.AC's Candidates modules hold the candidates at the parent's mode, which the healing lemmas import; this layer holds their forms at every write mode"
 
 [[layer]]
+name = "Instances.Goldilocks.Lemmas.CandidateHealing"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame",
+         "Instances.Goldilocks.Spec.FGStore", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
+         "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
+         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
+         "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
+         "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
+         "Instances.Goldilocks.Milestones.Statements.FG",
+         "Instances.Goldilocks.Milestones.Statements.FGStore",
+         "Instances.Goldilocks.Milestones.Statements.AC",
+         "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Spec.Candidates", "Instances.Goldilocks.Lemmas.Healing",
+         "Instances.Goldilocks.Lemmas.Candidates"]
+about = "H.1 for the candidate lock rules at a write mode: the StandaloneRunU constructors from runs of the candidates at a mode (Lemmas.Candidates) and the tight H.1 corollaries at width k; a leaf: only Instances.Goldilocks.Proofs.Comparison and the tests import it, no statement layer"
+
+[[layer]]
 name = "Instances.Goldilocks.Lemmas.Compose"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose"]
 sorry = true
@@ -1024,7 +1048,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Proofs.Growing.Obligations", "Comparison", "Proofs.Comparison",
          "Instances.Goldilocks.Milestones.Statements.Comparison",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Lemmas.Candidates",
+         "Instances.Goldilocks.Milestones.Spec.Candidates",
+         "Instances.Goldilocks.Lemmas.CandidateHealing"]
 about = "Goldilocks milestone: the comparison instances (composite defaults from the endpoint)"
 
 [[layer]]
@@ -1135,7 +1162,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Examples", "Solution",
          "Comparison", "Proofs.Comparison", "Instances.Goldilocks.Milestones.Statements.Comparison",
          "Instances.Goldilocks.Proofs.Comparison", "Instances.Goldilocks.Milestones.Spec.WriteModes",
-         "Instances.Goldilocks.Milestones.Spec.Candidates", "Instances.Goldilocks.Lemmas.Candidates"]
+         "Instances.Goldilocks.Milestones.Spec.Candidates", "Instances.Goldilocks.Lemmas.Candidates",
+         "Instances.Goldilocks.Lemmas.CandidateHealing"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"
