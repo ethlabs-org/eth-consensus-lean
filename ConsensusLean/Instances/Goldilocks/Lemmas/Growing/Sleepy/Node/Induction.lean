@@ -85,14 +85,10 @@ theorem sleepy_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       (hB.two t ht0 htb) (fun C₁ s₁ C₂ s₂ h₁ h₂ => hcomp C₁ s₁ C₂ s₂ (h₁.mono htb) (h₂.mono htb))
       (fun C' s' hC' => hcomp C s C' s' hC (hC'.within fun k hk => (hi k hk).trans htb)) hCt⟩
   · exact votesBelowUpTo_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl
-  · -- `lock_origin` on the prefix through `t`, for the validators honest at `t`
-    have hst := Trace.upTo_state tr y (d := t) hi
-    obtain ⟨L, hL, hLr, C, hC, hLC⟩ := lock_origin (hrun.upTo ht0) (hnc.upTo _) hy i l
-      (by rw [hst]; exact hl)
-    rw [hst] at hL
-    exact ⟨L, hL, hLr, onOriginChainWithin_iff.2 (Or.inr ⟨C, l.slot,
-      (originBefore_of_upTo hrun hC).within fun k hk => (hi k hk).trans htb,
-      hLC.mono (upTo_subset hrun ht0)⟩)⟩
+  · obtain ⟨L, hL, hLr, D, hD, hLD⟩ := lock_write_at hrun hnc ht0 hi hy l hl
+    obtain ⟨C, hC, hDC⟩ := hD.below_origin hrun hnc
+    exact ⟨L, hL, hLr, onOriginChainWithin_iff.2 (Or.inr ⟨C, l.slot, hC.mono htb,
+      hLD.trans hDC⟩)⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

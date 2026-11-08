@@ -15,8 +15,9 @@ public section
 `vote_locks_compatible_at`: at a slot-`(s+1)` vote of a node honest at its cut `i ≤ b`, every live
 lock block is compatible with a block `B` that is compatible with every origin within `b` of label
 at most `s` and that the earlier slot-`(s+1)` votes of nodes honest at them extend. A lock of slot
-at most `s` sits below an origin of its slot; one of slot `s + 1` is optimistic, and its check at a
-cut `c ≤ i` is counted with `2 f < n` at that cut (`hB.two`). -/
+at most `s` sits below the holder's own lock write of its slot (`lock_write_at`); one of slot
+`s + 1` is optimistic, and its check at a cut `c ≤ i` is counted with `2 f < n` at that cut
+(`hB.two`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -58,19 +59,21 @@ theorem vote_locks_compatible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   subst hLe
   refine down (Anc.mono hΦU (SA.anc_viableAncestor _ B₀)) ?_
   rcases le_or_gt l₀.slot s with hle | hlt
-  · -- a lock of slot at most `s` sits below a stored lock, below an origin of its slot whose
-    -- event precedes the vote
+  · -- a lock of slot at most `s` sits below a stored lock, below the holder's own lock write of
+    -- its slot, below an origin of that slot within the vote's time
     obtain ⟨l₁, hl₁, hsl₁, B₁, hB₁, hB₁r, B₀', hB₀', hB₀'r, hA⟩ :=
       SA.readPoint_locks_below_stored hr hy hcT
         (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
     rw [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy] at hl₁
-    obtain ⟨L₁, hL₁, hL₁r, O, hO, hL₁O⟩ := lock_origin_at hrun hnc hy l₁ hl₁
-    obtain rfl : L₁ = B₁ := hU.1 ⟨y, i, tr.time i, hd, fun _ hk => hm hk.le, hy, hL₁⟩
-      (hΦU hB₁) (hL₁r.trans hB₁r.symm)
-    exact down ((Anc.mono hΦU hA).trans hL₁O)
-      (hBc O l₁.slot (hO.within fun _ hk => (hm hk.le).trans hib) (by omega)).symm
+    obtain ⟨L₁, hL₁, hL₁r, D, hD, hL₁D⟩ :=
+      lock_write_at hrun hnc hd (fun _ hk => hm hk.le) hy l₁ hl₁
+    obtain ⟨O, hO, hDO⟩ := hD.below_origin hrun hnc
+    obtain rfl : L₁ = B₁ := hU.1 (mem_honestBlocksAt hrun hy hL₁) (hΦU hB₁)
+      (hL₁r.trans hB₁r.symm)
+    exact down ((Anc.mono hΦU hA).trans (hL₁D.trans hDO))
+      (hBc O l₁.slot (hO.mono hib) (by omega)).symm
   · -- a lock of slot `s + 1` or later is optimistic, counted at the vote's cut, over earlier
     -- slot-`(s+1)` votes of nodes honest at them
     obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 
@@ -13,8 +13,8 @@ carries a frontier relative to two label floors instead: a lock floor `rL` and a
 `rO`. At the hand-over, `rL = cleanLabel a + k + 2` and `rO = rL + k − 1 = cleanLabel a + 2k + 1`
 for the reset `a` (`Healing.cleanLabel`). From genesis both floors are `0`.
 
-* `LockWithin`: a fast or slow lock write of label `s` on a block, by a writer honest at its
-  write, at a time `≤ b`.
+* `LockWithin` (`Sleepy/Node/Healed`): a fast or slow lock write of label `s` on a block, by a
+  writer honest at its write, at a time `≤ b`.
 * `HealedOrigin g rL rO C s b`, **the healed family**: an origin (`OriginWithin`) of label
   `≥ rO`, a lock write of label `≥ rL`, or the block of a high origin
   (`Healing.Growing.HighOrigin`) of label `s` written at a time `≤ b`.
@@ -40,13 +40,6 @@ open SA (SAParams ReplayOrder Vote Payload)
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-
-/-- **A lock write within `b`**: a fast lock (a fast update or an optimistic selection) or a slow
-lock of label `s` on the block `C`, written at cut `i` by a writer `x` honest at that cut, at a
-time `≤ b`. -/
-def LockWithin (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
-  ∃ x i, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-    ((∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C)
 
 /-- **The healed family** of label `s` within `b`, from the lock floor `rL` and the origin floor
 `rO`: an origin of label `≥ rO`, a lock write of label `≥ rL`, or the block of a high origin of
@@ -88,11 +81,6 @@ def HealedRecordCoverAt (rO : Nat) (y : Fin sp.n) (n : Nat) (t : Time)
 
 variable {tr H}
 
-theorem lockWithin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
-    LockWithin tr H C s b ↔ ∃ x i, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-      ((∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C) :=
-  Iff.rfl
-
 theorem healedOrigin_iff {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} :
     HealedOrigin tr H g rL rO C s b ↔
@@ -125,11 +113,6 @@ theorem healedRecordCoverAt_iff {rO : Nat} {y : Fin sp.n} {n : Nat} {t : Time}
         (SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) ∧
         Anc (tr.HonestBlocksAt H) R C :=
   Iff.rfl
-
-theorem LockWithin.mono {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
-    (h : LockWithin tr H C s b) (hb : b ≤ b') : LockWithin tr H C s b' :=
-  let ⟨x, i, hx, hi, h⟩ := h
-  ⟨x, i, hx, hi.trans hb, h⟩
 
 theorem HealedOrigin.mono {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b b' : Time} (h : HealedOrigin tr H g rL rO C s b) (hb : b ≤ b') :
