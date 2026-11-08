@@ -21,11 +21,12 @@ coefficient, and none is a step of a proof of short-asynchrony healing.
   three-quarter test is impossible when `h ≤ f ≤ m` and `2f < n`. Arithmetic only: the support
   bound `b + h` is the premise.
 * **(b) Same-row support** (paper `ae83bd82`, §7). At every cut of an honest node, the honest
-  identities that the fast counter (`fastCounted`) or the optimistic counter
-  (`optimisticVoters`) counts for a block `X` in row `j` are among the honest validators whose
-  actual row-`j` vote head descends from `X` in `U` (`rowSupport`); for conflicting blocks these
-  sets are disjoint. So two conflicting blocks cannot both reach half of the committee in one
-  row, at any honest cuts and with any mixture of the two counters, when each count has at most
+  identities that the fast counter (`fastCounted`) or the optimistic counter (`optimisticVoters`)
+  counts for a block `X` in row `j` are among the honest validators whose actual row-`j` vote head
+  descends from `X` in `U` (`rowSupport`); for conflicting blocks these sets are disjoint; and the
+  identities outside `H` they count have a row-`j` vote that an honest node admitted before the cut
+  (`CountedFaultyAdmitted`). So two conflicting blocks cannot both reach half of the committee in
+  one row, at any honest cuts and with any mixture of the two counters, when each count has at most
   `h` faulty identities and `2h < |Hᶜ|`. One such origin can still exist.
 * **(c) The same-row selector** (paper `e439ef2`, §10). Under a common full denominator `D`
   (the voters of the row's pool) at two update inputs, and with every counted supporter of a
@@ -101,6 +102,28 @@ def CountedHonestInRowSupport : Prop :=
     ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → ∀ (κ : Counter) (j : Nat) (X : Blk sp.n FGP),
       X ∈ ℓ.frame.tree →
         counted sp (tr.state y i) ℓ.frame j X κ ∩ H ⊆ rowSupport tr H U j X
+
+/-- A vote admitted by an honest node before cut `i`: at an earlier cut some node of `H` sent or
+admitted it (`SendOrAdmit`: an emission, or a call other than a restart after which its AC holds the
+vote and before which it did not, as a message or from the payload of an accepted block), or
+replayed it from a block of its frame at a restart. -/
+def HonestAdmittedBefore (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (i : Nat)
+    (v : Vote sp.n) : Prop :=
+  ∃ z ∈ H, ∃ k < i, tr.SendOrAdmit z k v ∨
+    ∃ ℓ, tr.CallAt z k ℓ ∧ ℓ.call = .restart ∧ ∃ B ∈ ℓ.frame.tree, v ∈ blockVotes B
+
+/-- **(b), the faulty part is admitted** (paper `ae83bd82`, §7, `E \ H ⊆ A_i`): over an AC trace of
+the SA at any write mode and unlock oracle, at every call of an honest node (cut `i`), every
+identity outside `H` that either counter counts for a block `X` of the call's frame in row `j`
+has a row-`j` vote that an honest node admitted before cut `i`. So a bound on the identities with
+admitted row-`j` content discharges the per-count premise of `NoConflictingHalfOrigins`. -/
+def CountedFaultyAdmitted : Prop :=
+  ∀ (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (m : WriteMode) (u : Nat → Set Lock),
+    ACLocalRunU m u H U tr →
+    ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → ∀ (κ : Counter) (j : Nat) (X : Blk sp.n FGP),
+      X ∈ ℓ.frame.tree → ∀ x ∈ counted sp (tr.state y i) ℓ.frame j X κ \ H,
+        ∃ v : Vote sp.n, v.val = x ∧ v.slot = j ∧ HonestAdmittedBefore tr H i v
 
 /-- **(b), disjointness** (paper `ae83bd82`, §7): over an AC trace of the SA at any write mode and
 unlock oracle, the row-`j` supports of two conflicting blocks of `U` are disjoint. -/
