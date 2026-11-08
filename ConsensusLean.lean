@@ -5,6 +5,7 @@ public import ConsensusLean.Comparison.Basic
 public import ConsensusLean.Comparison.Coverage
 public import ConsensusLean.Comparison.Defaults
 public import ConsensusLean.Comparison.Heal
+public import ConsensusLean.Comparison.HealCoverage
 public import ConsensusLean.Comparison.HealDefaults
 public import ConsensusLean.Comparison.HealProfile
 public import ConsensusLean.Comparison.Latency
@@ -984,6 +985,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Delivery
 public import ConsensusLean.Lemmas.Model.Canonical.Events
 public import ConsensusLean.Lemmas.Model.Canonical.Inject
 public import ConsensusLean.Lemmas.Model.Canonical.Network
+public import ConsensusLean.Lemmas.Model.Canonical.Parts
 public import ConsensusLean.Lemmas.Model.Canonical.Policy
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
@@ -1014,9 +1016,16 @@ public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Comparison.Main
-public import ConsensusLean.Proofs.ComparisonCoverage.Main
-public import ConsensusLean.Proofs.ComparisonCoverage.Witness
 public import ConsensusLean.Proofs.Comparison.Slice1
+public import ConsensusLean.Proofs.ComparisonCoverage.Main
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Boundary
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Domain
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Forgery
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Hold
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Main
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Plan
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Point
+public import ConsensusLean.Proofs.ComparisonCoverage.Witness
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic
 public import ConsensusLean.Proofs.RegimesRealizable.Growth

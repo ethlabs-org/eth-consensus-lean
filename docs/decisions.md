@@ -633,6 +633,15 @@ detail in `TRUST.md`.
   q.catchUp` and `K.θ ≤ q.θ`, whatever the incident length, activity, sleepers and class. Reason: the contract's
   claims cover its own ready readers, and a point with a longer catch-up has fewer readers; at a shorter catch-up
   the contract claims nothing about the extra readers, so the default is `⊤` there.
+- **Slice 1 coverage forges activity through a credentialed role.** The exact-activity witnesses deliver, to one
+  honest node, one forged object per active key and window, signed in a role whose selection admits the key: the
+  poll role when it admits every key, otherwise a committee kind at the slot of the key's index (its floor is the
+  slot's time, so each forgery is charged at its delivery). A family where no compromised key can hold a credential
+  has no run with positive activity, so `HealDomainSupport` asks for `ForgeableRole` only at points with positive
+  activity. The held split's witness withholds, before `b₁`, every object with a part signed by the opposite group
+  whose first release has its deadline past `b₀` (`holdPol`), which keeps in-group delivery and the synchronous
+  prefix. Reason: coverage must attain the activity parameters, and the contract's silent witnesses attain only
+  `h = 0`.
 
 ## Open questions
 
