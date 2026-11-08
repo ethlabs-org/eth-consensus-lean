@@ -131,6 +131,7 @@ public import ConsensusLeanTest.Problem.Continuation
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Problem.Growth
 public import ConsensusLeanTest.Problem.Network
+public import ConsensusLeanTest.Problem.Outage
 public import ConsensusLeanTest.Problem.Properties
 public import ConsensusLeanTest.Problem.Regimes
 public import ConsensusLeanTest.ReviewAxioms
