@@ -834,6 +834,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Tree
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Client
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
@@ -866,6 +867,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.N
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Continuation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local

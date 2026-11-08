@@ -143,7 +143,7 @@ about = "generic composition of the milestones (ShapeObligations.correct) and it
 # Milestones.Spec.Trace); Milestones.Statements.FG allows only the chain-level FG; Milestones.Statements.ComposeAnyAC
 # states C0.* for any AC; Spec.Run never allows AsChainShape, Simulation or
 # Obligations. Each allow is the full downward closure.
-# The protected layers (Spec.*, AsChainShape, Statements.Obligations) hold what the six Challenge statements reach;
+# The protected layers (Spec.*, AsChainShape, Statements.Obligations) hold what the seven Challenge statements reach;
 # each Milestones.<L> layer (untrusted, docs/decisions.md §"Trusted surface and Challenge scope") mirrors the old layer <L>: the milestone
 # statements and the instance Spec only they reach, with <L>'s allow list plus <L> itself and the Milestones copy of
 # each entry.
@@ -415,6 +415,24 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Statements.Obligations"]
 about = """untrusted milestone layer: the constant-fault obligations pair (no Challenge statement reaches it since the
 endpoint moved to growing faults); leaf files only, no declaring Milestones/Statements/Obligations.lean"""
+
+[[layer]]
+name = "Instances.Goldilocks.Milestones.Spec.Continuation"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+about = "untrusted milestone layer: the generic continuation side property (Handover, ConvictedBelow, Continues)"
+
+[[layer]]
+name = "Instances.Goldilocks.Milestones.Statements.Continuation"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Continuation"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.Node",
+         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Continuation"]
+about = "untrusted milestone layer: the Goldilocks continuation side property (not part of correctness)"
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Common"
@@ -919,6 +937,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Spec.Node",
          "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Statements.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.Continuation",
+         "Instances.Goldilocks.Milestones.Statements.Continuation",
          "Instances.Goldilocks.Milestones.Spec.Common",
          "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",

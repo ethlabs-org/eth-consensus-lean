@@ -218,8 +218,16 @@ detail in `TRUST.md`.
   constant-fault pair (`MeetsObligationsConstant`, `GoldilocksCorrectConstant`, `Milestones/Statements/Obligations/Constant`) is an
   untrusted corollary. Each growing-fault milestone is a milestone of its own,
   `Instances/Goldilocks/Proofs/Growing/<M>`, entered through its `Main`.
-- **Continuation is not part of correctness.** A hand-over after healing is a separate side property, and it is
-  not stated here.
+- **Continuation is not part of correctness.** A hand-over after healing is a separate side property:
+  `Continues` (`Instances/Goldilocks/Milestones/Spec/Continuation`, generic over `System`), stated for Goldilocks
+  as `GoldilocksContinues` (`Instances/Goldilocks/Milestones/Statements/Continuation`). A run healthy from GST up
+  to a hand-over time at or after the heal point is only sleepy afterwards, its corruption growing from below `β·n`
+  to `⌊(n − 1)/2⌋`, with fewer than `α·n` convicted by any two honest views (the generic form of the slashable
+  bound of `AvailableChain.FGSA.Run.WeakContinuationGrowthClaim`, archived at `79cdddc8`); its available and stable
+  outputs stay safe and live. It is a single run with growing faults, which covers that claim's two runs (a source
+  prefix and every retained-set continuation of it); no seed is fixed, because the claims are the generic
+  ready-reader safety and transaction liveness. It is an untrusted milestone statement: not trusted, not in the
+  spec snapshots, not reached by Challenge, and not part of `CorrectProtocol` or `GoldilocksCorrect`.
 
 ## Contract numbers
 

@@ -7,6 +7,7 @@ public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
 public import ConsensusLeanTest.Goldilocks.Refinement.Constant
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHold
+public import ConsensusLeanTest.Problem.Continuation
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Shape.Leaks
 public import ConsensusLeanTest.Model.Lift
@@ -31,9 +32,10 @@ proves is its own statement (compiled in the gate). The declaration check
 (`scripts/check.sh`, EthLib check-decls) scans every declaration of every module.
 
 Kept here: the endpoint theorems, every theorem of the rejecting-test files
-(`Problem`, `Network`, `Regimes`, `CorrectProtocol`, `Leaks`, `Vacuity`), the names cited
-by `Gaps` and the Goldilocks sheet, the former audit list, and every name cited by the docs that
-check.sh step 12 checks against this file (`doc_name_files` in `scripts/boundaries.toml`). -/
+(`Problem`, `Network`, `Regimes`, `CorrectProtocol`, `Continuation`, `Leaks`, `Vacuity`), the
+names cited by `Gaps` and the Goldilocks sheet, the former audit list, and every name cited by
+the docs that check.sh step 12 checks against this file (`doc_name_files` in
+`scripts/boundaries.toml`). -/
 
 /-! ## Endpoints -/
 
@@ -871,6 +873,22 @@ example := ``Consensus.Goldilocks.Simulation.simulation_statements
 example := ``Consensus.Goldilocks.Simulation.Test.skeleton_proposerSel
 example := ``Consensus.Goldilocks.Simulation.Test.selValid_proposer
 example := ``Consensus.Goldilocks.Simulation.Test.selValid_exists
+
+/-! ## Continuation (untrusted side property) -/
+
+example := ``Consensus.Continues
+example := ``Consensus.System.ConvictedBelow
+example := ``Consensus.System.Handover
+example := ``Consensus.Goldilocks.GoldilocksContinues
+
+/-! ## Tests: Continuation -/
+
+example := ``Consensus.Shape.Tests.Continuation.empty_valid_not_continues
+example := ``Consensus.Shape.Tests.Continuation.excuse_true_not_continues
+example := ``Consensus.Shape.Tests.Continuation.false_progress_not_continues
+example := ``Consensus.Shape.Tests.Continuation.handoverPoint_readyAbove
+example := ``Consensus.Shape.Tests.Continuation.handoverPoint_readyAt
+example := ``Consensus.Shape.Tests.Continuation.handover_witness
 
 /-! ## Tests: Blocks -/
 
