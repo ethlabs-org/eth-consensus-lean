@@ -835,6 +835,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowSeed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowUnanimous
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Env
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts

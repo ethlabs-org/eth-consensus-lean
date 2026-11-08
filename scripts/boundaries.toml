@@ -665,6 +665,29 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
 about = "the shape obligations of the Goldilocks family (MeetsObligations)"
 
 [[layer]]
+name = "Instances.Goldilocks.Lemmas.Protection"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Protection"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA", "Instances.Goldilocks.Spec.WeightedLocks",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
+         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
+         "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
+         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
+         "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.SA",
+         "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
+         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
+         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
+         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes", "Instances.Goldilocks.Lemmas.Obligations", "Comparison",
+         "Instances.Goldilocks.Milestones.Statements.Comparison",
+         "Instances.Goldilocks.Milestones.Spec.WeightedEm"]
+about = "lemmas of Tier A protection over AC traces (Milestones.Statements.Comparison.ProtACEnv/ProtAC); a leaf: only Proofs.Comparison and the tests allow it"
+
+[[layer]]
 name = "Instances.Goldilocks.Lemmas.Growing"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
@@ -1060,7 +1083,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Lemmas.Candidates",
          "Instances.Goldilocks.Milestones.Spec.Candidates",
-         "Instances.Goldilocks.Lemmas.CandidateHealing", "Instances.Goldilocks.Milestones.Spec.WeightedEm"]
+         "Instances.Goldilocks.Lemmas.CandidateHealing", "Instances.Goldilocks.Milestones.Spec.WeightedEm",
+         "Instances.Goldilocks.Lemmas.Protection"]
 about = "Goldilocks milestone: the comparison instances (composite defaults from the endpoint)"
 
 [[layer]]
@@ -1172,7 +1196,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Comparison", "Proofs.Comparison", "Instances.Goldilocks.Milestones.Statements.Comparison",
          "Instances.Goldilocks.Proofs.Comparison", "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Milestones.Spec.Candidates", "Instances.Goldilocks.Lemmas.Candidates",
-         "Instances.Goldilocks.Lemmas.CandidateHealing", "Instances.Goldilocks.Milestones.Spec.WeightedEm"]
+         "Instances.Goldilocks.Lemmas.CandidateHealing", "Instances.Goldilocks.Milestones.Spec.WeightedEm",
+         "Instances.Goldilocks.Lemmas.Protection"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"
