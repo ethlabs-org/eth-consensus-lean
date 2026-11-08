@@ -50,6 +50,10 @@ into every later state.
 * `sleepyServiceFrom_of_reset`: the reset service with the catch-up is the sleepy service from `ḡ`.
 * `seeded_reader_called_at`: a reader honest at `t ≥ t_{r+k}`, read at or before cut `i` with
   `t ≤ time i`, has an AC call before `i` at or after `t_{r−k−3}`.
+* `seeded_rows_above_at`: the high rows of a reader are sourced below members (`RowsAbove` at
+  `H_z + 1` on the prefix through the read).
+* `seeded_reader_on_chain_at`: `Σ.F` and `fc_root` of a reader with such a call are on the healed
+  chain.
 * `seeded_caches_of`, `seeded_viable_of`: the cache facts and the full-read viability of the seeded
   invariant, for a reader with such a call.
 * `seeded_vote_frame_of`: the frozen witness at a vote after the split slot. -/
@@ -565,8 +569,11 @@ private theorem onHealedChain_compatible (hrun : Growing.GoldilocksRun proposer 
   obtain ⟨C', s', hC', hYC'⟩ := onHealedChain_iff.1 hY
   exact compatible_of_anc_both (honestBlocksAt_coherent hrun hnc) hXC hYC' (hP C s C' s' hC hC')
 
-/-- The members below which the high rows of a reader at `t` are sourced (within `t`). -/
-private theorem rowsAbove_read (hrun : Growing.GoldilocksRun proposer dg H tr)
+/-- **The high rows of a seeded reader**, read at `t ≥ 0` (earlier cuts at times `≤ t`, the reader
+honest at `t`): on the prefix through `t`, every row of its tree naming a held entry of height
+`≥ H_z + 1`, by a signer honest at `t`, has an honest source below a member of the healed family
+within `t` held in the prefix (`RowsAbove` at height `H_z + 1`). -/
+theorem seeded_rows_above_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n} {i : Nat} {t : Time}
     (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
@@ -580,7 +587,7 @@ private theorem rowsAbove_read (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **`Σ.F` and `fc_root` of a seeded reader are on the healed chain.** Low (`h_j ≤ H_z`): both are
 below the held reset seed. High: `Σ.J` is the entry of an honest member of its target quorum
 (`f_t < n/2 < q`), whose source is below a member (the high rows); `Σ.F ⪯ Σ.J`. -/
-private theorem reader_on_chain (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b) {y : Fin sp.n}
     {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
@@ -606,7 +613,7 @@ private theorem reader_on_chain (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact ⟨below hFS hSc, below (low_fcRoot_below hrun hnc ht0 hi hy hlow hS hSy hFS) hSc⟩
   have hst := Trace.upTo_state tr y hi
   have hJ : OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.J b := by
-    have hsrc := rowsAbove_mono (rowsAbove_read hrun hnc hseed ht0 hi hy)
+    have hsrc := rowsAbove_mono (seeded_rows_above_at hrun hnc hseed ht0 hi hy)
       (show Healing.Growing.HZ tr H g + 1 ≤ ((tr.upTo t).state y i).fg.hj by rw [hst]; omega)
     obtain ⟨-, -, D, ⟨C, l, hC, -, hDC⟩, hDs⟩ := Compose.justified_honest_source_of
       (hrun.upTo ht0) (hnc.upTo _) hf hy hsrc (by rw [hst]; omega)
@@ -639,7 +646,7 @@ theorem seeded_caches_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
       ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b →
         C ∈ (Node.frame (tr.state y i)).tree →
         Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C := by
-  obtain ⟨hF, hfc⟩ := reader_on_chain hrun hnc hcv hseed hTb ht0 hi htb hy hf hcall
+  obtain ⟨hF, hfc⟩ := seeded_reader_on_chain_at hrun hnc hcv hseed hTb ht0 hi htb hy hf hcall
   exact ⟨hF, fun C s hC _ => onHealedChain_compatible hrun hnc hP hfc
     (onHealedChain_iff.2 ⟨C, s, hC, .refl⟩)⟩
 
@@ -674,7 +681,7 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
   have hsU : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H := fun X hX => ⟨y, i, t, ht0, hi, hy, hX⟩
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H := fun X hX => hsU hX.1
   have hΦs : (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree := fun X hX => hX.1
-  obtain ⟨-, hfc⟩ := reader_on_chain hrun hnc hcv hseed hTb ht0 hi htb hy hf hcall
+  obtain ⟨-, hfc⟩ := seeded_reader_on_chain_at hrun hnc hcv hseed hTb ht0 hi htb hy hf hcall
   rcases onHealedChain_compatible hrun hnc hP hfc hC with hfB | hBf
   swap
   · exact Or.inl (SA.anc_tree_of_anc_U hU hΦ hΦU hCt hBf hΦ.fcRoot_mem)
@@ -690,7 +697,7 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
   · exact ⟨C, hCt.1, .refl, hfl⟩
   -- the sources of the high rows compare with `C`, inside the prefix
   have hCP : C ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hCt.1⟩
-  have hsrc := rowsAbove_read hrun hnc hseed ht0 hi hy
+  have hsrc := seeded_rows_above_at hrun hnc hseed ht0 hi hy
   have hmem : ∀ {C'} {l : Nat}, HealedOrigin tr H g r (r + sp.k - 1) C' l t →
       OnHealedChain tr H g r (r + sp.k - 1) C' b :=
     fun hC' => onHealedChain_iff.2 ⟨_, _, hC'.mono htb, .refl⟩
