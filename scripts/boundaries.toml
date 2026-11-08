@@ -335,6 +335,18 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"
 about = "untrusted milestone layer: lock rules' write modes (the update's fast arm, the optimistic write, the slow width)"
 
 [[layer]]
+name = "Instances.Goldilocks.Milestones.Spec.Candidates"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.Frame",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks",
+         "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
+         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+about = "untrusted milestone layer: candidate lock rules' writes at a write mode (the weighted locks), uniform in the mode; imported only by Lemmas.Candidates, its proofs and the tests, never by another Milestones.Spec or statement layer"
+
+[[layer]]
 name = "Instances.Goldilocks.Milestones.Spec.Node"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node"]
 expose = true
@@ -511,6 +523,20 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Lemmas.Common"]
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.Candidates"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Candidates"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.WeightedLocks",
+         "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
+         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Spec.Candidates",
+         "Instances.Goldilocks.Milestones.Statements.AC",
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
+about = "lemmas of the candidate lock rules' writes at a write mode (Milestones.Spec.Candidates); a leaf: only proofs and tests import it"
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Compose"
@@ -1098,7 +1124,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Growing.Compose", "Instances.Goldilocks.Proofs.Growing.Continuation",
          "Examples", "Solution",
          "Comparison", "Proofs.Comparison", "Instances.Goldilocks.Milestones.Statements.Comparison",
-         "Instances.Goldilocks.Proofs.Comparison", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Proofs.Comparison", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Spec.Candidates", "Instances.Goldilocks.Lemmas.Candidates"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"

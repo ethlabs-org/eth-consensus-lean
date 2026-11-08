@@ -59,6 +59,9 @@ theorem locksForget_admitVote {Y : WState sp.n} (hY : LocksForget Y) (t : Time) 
 def projEm (e : EmW sp FGP) : Em sp FGP :=
   ⟨e.msg, e.readPoint.ac, e.head⟩
 
+theorem projEm_eq (e : EmW sp FGP) : projEm e = ⟨e.msg, e.readPoint.ac, e.head⟩ := by
+  rfl
+
 /-! ### The writes -/
 
 theorem optimisticConfirmationW_ac {X : WState sp.n} (hX : LocksForget X) (Φ : Frm sp.n FGP)
