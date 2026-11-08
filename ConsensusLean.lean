@@ -1,6 +1,7 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
 public import ConsensusLean.Comparison.Basic
+public import ConsensusLean.Comparison.Cost
 public import ConsensusLean.Comparison.Defaults
 public import ConsensusLean.Comparison.Heal
 public import ConsensusLean.Comparison.Latency
