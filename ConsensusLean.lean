@@ -31,6 +31,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertif
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.RunInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.SA
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.Stage
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.CarriedVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
@@ -96,6 +97,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.Evidenc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LateCertificate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LockCount
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LockCountER
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LockCountParent
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.Memory
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
@@ -132,6 +136,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.TickOnce
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
@@ -948,6 +953,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Candidates
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Cost
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.LatencyAC
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.TierA

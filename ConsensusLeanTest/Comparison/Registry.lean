@@ -11,6 +11,7 @@ function, the tier and the premises), proved by its proof, with its axioms pinne
 docstring: **bound** (the bound function), **tier** (R: over every L0 system or the compiled
 protocol; A: over AC traces of the Goldilocks SA), **premises** (what the instance
 assumes beyond the profile's class). A new instance adds an entry here.
+In the cost rows, "no opt." is `m.optimistic = false` and "tick" is the premise `TickOnce`.
 
 | statement | bound | tier | premises |
 |---|---|---|---|
@@ -28,6 +29,10 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `HealProfileCertParent0` | `acFree0` | A, cand. | late certificate (pool trace), parent mode |
 | `HealProfileMinimalAC0` | `acFree0` | A, cand. | minimal-ac, `slowOnly k false` |
 | `HealProfileMinimalACOptLocked0` | `acFree0` | A, cand. | minimal-ac + opt-locked (`k true`) |
+| `CarriedBoundAC0` | `|H| + 2·|Hᶜ|` carried votes | A, static | every mode, `HonestObjects` |
+| `LockMemoryAC0` | `lockBound m` locks, `max m.width 1` rows | A, static | parent, no opt., tick |
+| `LockMemoryERAC0` | the same | A, static | evidence release, no opt., tick |
+| `LockMemoryCertAC0` | the same | A, static | late certificate, no opt., tick |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -97,6 +102,25 @@ theorem healMinimalACOptLocked0 :
     Consensus.Goldilocks.Comparison.HealProfileMinimalACOptLocked0 :=
   Consensus.Goldilocks.Comparison.healProfileMinimalACOptLocked0
 
+/-- At most `|H| + 2·|Hᶜ|` distinct carried votes; tier A, static; every write mode and unlock
+oracle; premise `HonestObjects`. -/
+theorem carriedBoundAC0 : Consensus.Goldilocks.Comparison.CarriedBoundAC0 :=
+  Consensus.Goldilocks.Comparison.carriedBoundAC0
+
+/-- At most `lockBound m` unexpired locks and `max m.width 1` working saved rows, no future row;
+tier A, static; the parent's stage at every mode without the optimistic write; `TickOnce`. -/
+theorem lockMemoryAC0 : Consensus.Goldilocks.Comparison.LockMemoryAC0 :=
+  Consensus.Goldilocks.Comparison.lockMemoryAC0
+
+/-- The same for evidence release at every mode without the optimistic write; `TickOnce`. -/
+theorem lockMemoryERAC0 : Consensus.Goldilocks.Comparison.LockMemoryERAC0 :=
+  Consensus.Goldilocks.Comparison.lockMemoryERAC0
+
+/-- The same for the late-certificate rule (its evidence-release state) at every mode without
+the optimistic write; `TickOnce`. -/
+theorem lockMemoryCertAC0 : Consensus.Goldilocks.Comparison.LockMemoryCertAC0 :=
+  Consensus.Goldilocks.Comparison.lockMemoryCertAC0
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -150,5 +174,17 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.healMinimalACOptLocked0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.healMinimalACOptLocked0
+
+/-- info: 'Consensus.Comparison.Registry.carriedBoundAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.carriedBoundAC0
+
+/-- info: 'Consensus.Comparison.Registry.lockMemoryAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.lockMemoryAC0
+
+/-- info: 'Consensus.Comparison.Registry.lockMemoryERAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.lockMemoryERAC0
+
+/-- info: 'Consensus.Comparison.Registry.lockMemoryCertAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.lockMemoryCertAC0
 
 end
