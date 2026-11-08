@@ -4,6 +4,7 @@ public import ConsensusLeanTest.Blocks.Basic
 public import ConsensusLeanTest.Comparison.Registry
 public import ConsensusLeanTest.Comparison.Slice0
 public import ConsensusLeanTest.Comparison.Slice1
+public import ConsensusLeanTest.Comparison.Slice2
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Fixtures.Support
 public import ConsensusLeanTest.Gaps

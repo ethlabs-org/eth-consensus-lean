@@ -7,6 +7,7 @@ public import ConsensusLean.Comparison.Heal
 public import ConsensusLean.Comparison.HealProfile
 public import ConsensusLean.Comparison.Latency
 public import ConsensusLean.Comparison.Overlap
+public import ConsensusLean.Comparison.Protection
 public import ConsensusLean.Examples.Shape.Bft
 public import ConsensusLean.Examples.Shape.Streamlet
 public import ConsensusLean.Examples.Shape.Tendermint
