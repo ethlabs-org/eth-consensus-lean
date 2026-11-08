@@ -148,9 +148,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
