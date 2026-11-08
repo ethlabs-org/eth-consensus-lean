@@ -592,6 +592,37 @@ detail in `TRUST.md`.
   The twin runs are premises. Reason: the lemmas then hold for every profile whose classes give these claims, and
   a twin is a protocol-specific construction. The target's reading time is the time of an event cut, since safety
   checks readers at cut times while protection reads at the end of a time.
+- **Activity is charged once, at the content's first honest receipt or its slot.** The heal profile's activity
+  coordinates (`HealQ.hpre`, `HealQ.hpost`) count the validators with a signed content that the validator never
+  released while honest (own signatures nested at any depth of an honest release count as honest), charged to the
+  window of `max t₀ t_s`: `t₀` its first receipt by an honest node by any route, `t_s` the start of its signing
+  role's slot (`activeFaulty`). Reason: a later honest forwarding of old content (nested in a block after the
+  incident) is not new adversarial activity, the receipt log is an environment quantity where protocol admission
+  is not, and the floor charges a content for a future slot, received early, to its own slot. The two windows are
+  fixed at `max b₁ 0`, never at a candidate's heal point, so every candidate is compared on the same runs.
+- **Signature readings are canonical.** Activity and the held split read objects by signer and nesting, which
+  only the model's objects carry, so the Slice 1 class and profile are stated over model systems `sysOf O F V`
+  with the readings fixed from `Obj.auth` and `Obj.parts` (`activity`, `contentHold`); the only family input is
+  a time floor per signing role (`RoleFloor`), which reads the protocol's public roles and no run. Reason: an
+  abstract reading field could read a run's outputs, and the class must stay bound-independent.
+- **Readiness is a coordinate.** `HealQ` carries `θ` and `catchUp`, and the claims read the validators ready with
+  catch-up `catchUp·ΔAC`, so two protocols at one point are ranked on the same ready readers; a contract's default
+  is finite only where its own `θ` and `catchUp` are at most the point's. The progress premise stays the
+  contract's own requirement at its own catch-up. Slice 0's profiles read each contract's readiness and are
+  contract-readiness profiles.
+- **Participation counts whole-incident sleepers only.** `notAwakeHonest` counts the validators compromised by the
+  horizon and those honest and asleep throughout a nonempty incident window; the profile takes a lower bound `m`
+  on it. Reason: a validator asleep for part of the incident still votes in its other slots and can feed a
+  minority lock, and the window guard keeps the throughout-clause from holding vacuously on an empty window.
+- **The held split is a separate class, classified by first origin.** `IncidentClass.splitHeld G` is `split G`
+  plus the content-origin hold: no node of one group honest at the receipt receives before `b₁`, by any route, a
+  content of the other group whose first honest release by its signer is at `t₀ < b₁` with deadline
+  `t₀ + ΔAC − 1` past `b₀` (not owed by `SyncUntil b₀`). FG attestations are out of scope. Reason: holding
+  honest sends alone lets the adversary relay authentic honest content; holding every honest signature would
+  empty the class, since the synchronous prefix delivers it; classifying by the first release keeps later
+  re-releases of prefix stock unheld; keeping it out of `split` leaves the shared class unchanged.
+- **One coverage domain.** Domain and boundary coverage share `HealQ.DomainFeasible`, a conservative subdomain of
+  the points with nonempty classes; the boundary conditions coincide with it at the level of the point.
 
 ## Open questions
 
