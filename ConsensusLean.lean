@@ -643,6 +643,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Standalone
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting.Capacity
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting.Selector
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting.Support
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Agree
