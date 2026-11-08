@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SettledFrom
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -143,12 +144,12 @@ theorem locks_settled (hS : StandaloneRun tr H U proposer g) :
 
 /-! ## The honest proposal -/
 
-/-- `proposal_confirmed_core` with the unlock given. -/
-theorem proposal_confirmed_coreU
+/-- `proposal_confirmed_coreU` with the locks settled above the floor `p` only. -/
+theorem proposal_confirmed_core_fromU
     {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
+    (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ))
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P) :
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
       (tr.time j = sp.ts p + 6 * sp.Δ →
@@ -158,7 +159,7 @@ theorem proposal_confirmed_coreU
   have hΔ := sp.toParams.hΔ
   have hΘ := Θ_nonneg sp
   have hg0 := gbar_nonneg g
-  have hexact := proposal_votes_coreU hS hpH hP hp hset
+  have hexact := proposal_votes_core_fromU hS hpH hP hp hset
   have hPU : P ∈ U := by
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, j, -, ⟨ℓ, hc, hcall⟩, -⟩ := hP
     exact (frameIn_of_callAtU hr hpH hc).2 ((accept_newU sp hr hpH ⟨ℓ, hc, hcall⟩).1 ℓ hc)
@@ -177,14 +178,28 @@ theorem proposal_confirmed_coreU
       have := hr.time_mono (le_of_lt (not_le.1 h))
       linarith
   obtain ⟨R, hR, hRr, hPR⟩ :=
-    record_extends_coreU hS hpH hP (by linarith) hset hexact hvotes hy hck hcallk htk j ℓ hc hkj
+    record_extends_core_fromU hS hpH hP (by linarith) hset hexact hvotes hy hck hcallk htk j ℓ hc
+      hkj
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
   have hPt := (proposal_mem_treeU hS hpH hP (by linarith) hy hc (by linarith)).1
   have hlocks :=
-    liveLock_compatible_coreU hS (by linarith) hset hexact hvotes hPU hy hc ht (Or.inr rfl)
+    liveLock_compatible_core_fromU hS (by linarith) hset hexact hvotes hPU hy hc ht (Or.inr rfl)
   rw [show tr.state y (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2]] at hlocks
   exact anc_acConfirmed_of_record hr.coherent hΦ hΦU hR hRr hPR
     (head_extendsU hS (by linarith) hvotes hy hc ht hPt hlocks)
+
+/-- `proposal_confirmed_core` with the unlock given. -/
+theorem proposal_confirmed_coreU
+    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
+    (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
+    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P) :
+    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
+      (tr.time j = sp.ts p + 6 * sp.Δ →
+        ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
+      Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j)) :=
+  proposal_confirmed_core_fromU hS hpH hP hp (hset.toFrom p) hvotes
 
 /-- **The confirmed tip**, from `t_p ≥ ḡ + 8Δ`: when every honest vote of slot `p` and later
 extends the honest proposal `P` and the locks are settled, `P ⪯ ac_confirmed` at every honest
@@ -218,20 +233,21 @@ theorem proposal_confirmed (hS : StandaloneRun tr H U proposer g) {p : Nat} {P :
 
 /-! ## Assembly -/
 
-/-- `ac_healing_standalone_of_settled` with the unlock given. -/
-theorem ac_healing_standalone_of_settledU
+/-- **The settling seam above a floor**: `ac_healing_standalone_of_settledU` with the locks
+settled from `t_{p−1}` only above the floor `p`, the slot that its consumers read. -/
+theorem ac_healing_standalone_of_settled_fromU
     {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
     (hP : HonestProposalU u tr (proposer p) p P)
     (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)) :
+    (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ)) :
     (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
     (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
       (tr.time j = sp.ts p + 6 * sp.Δ →
         ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
       Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))) := by
   have hΔ := sp.toParams.hΔ
-  have hi := proposal_votes_coreU hS hpH hP hp hset
+  have hi := proposal_votes_core_fromU hS hpH hP hp hset
   have hPU : P ∈ U := by
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, j, -, ⟨ℓ, hc, hcall⟩, -⟩ := hP
     exact (frameIn_of_callAtU hS.run.localRun hpH hc).2
@@ -244,7 +260,21 @@ theorem ac_healing_standalone_of_settledU
     rcases Nat.eq_or_lt_of_le hle with h | h
     · exact hself x hx j e hv h.symm
     · exact votesExtendAfter_iff.1 hcont x hx j e hv h
-  exact ⟨hi, proposal_confirmed_coreU hS hpH hP hp hset hvotes⟩
+  exact ⟨hi, proposal_confirmed_core_fromU hS hpH hP hp hset hvotes⟩
+
+/-- `ac_healing_standalone_of_settled` with the unlock given. -/
+theorem ac_healing_standalone_of_settledU
+    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP} (hpH : proposer p ∈ H)
+    (hP : HonestProposalU u tr (proposer p) p P)
+    (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)) :
+    (∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root) ∧
+    (∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
+      (tr.time j = sp.ts p + 6 * sp.Δ →
+        ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
+      Anc U P (acConfirmed sp (tr.post j) ℓ.frame (tr.time j))) :=
+  ac_healing_standalone_of_settled_fromU hS hpH hP hp (hset.toFrom p)
 
 /-- **H.1 from settled locks** (claims H.1, proof shape): H.1's conclusions (i) and (ii) for an
 honest proposal `P` of slot `p` with `t_p ≥ ḡ + 8Δ` once the locks are settled from `t_{p−1}`.
