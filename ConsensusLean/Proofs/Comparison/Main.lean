@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Comparison.Defaults
+public import ConsensusLean.Proofs.Comparison.Overlap
 import Mathlib.Tactic.Linarith
 
 public section
@@ -15,7 +16,9 @@ public section
   the horizon).
 * `txLatencyDefault0`: the latency default from `Behaviour.sleepyLive`: with full participation
   every validator honest at the look-ahead is ready on the retained view, so `θ·n < n − f` gives
-  the sleepy participation (`sleepyOn_of_fullAwake`). -/
+  the sleepy participation (`sleepyOn_of_fullAwake`).
+* `overlap_same_run`, `overlap_two_run`: the frontier lemmas, proved in `Overlap.lean` and
+  imported here, the layer's entry module. -/
 
 namespace Consensus.Comparison
 

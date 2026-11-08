@@ -1017,6 +1017,7 @@ public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Comparison.Main
+public import ConsensusLean.Proofs.Comparison.Overlap
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic
 public import ConsensusLean.Proofs.RegimesRealizable.Growth
