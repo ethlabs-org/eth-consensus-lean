@@ -326,6 +326,14 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common"
 about = "untrusted milestone layer: the SA as an AC (polymorphic in the FG payload); no FG import"
 
 [[layer]]
+name = "Instances.Goldilocks.Milestones.Spec.WriteModes"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes"]
+expose = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.Frame",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA"]
+about = "untrusted milestone layer: lock rules' write modes (the update's fast arm, the optimistic write, the slow width)"
+
+[[layer]]
 name = "Instances.Goldilocks.Milestones.Spec.Node"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node"]
 expose = true
@@ -496,7 +504,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Spec.WeightedLocks",
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
-         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Statements.AC",
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Lemmas.Common"]
 
 [[layer]]
@@ -516,7 +525,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Healing"
@@ -535,7 +544,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "healing support (H.1, H.2, HR.1–HR.4, H.3, H.4, C1.2): AC healing over AC traces, the reset and retention over runs"
 
 [[layer]]
@@ -557,7 +567,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
-         "Instances.Goldilocks.Lemmas.Healing"]
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "the engine simulates the node (G1.5, C0.4 kept); never imports Obligations"
 
 [[layer]]
@@ -579,7 +589,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
-         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation"]
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "the shape obligations of the Goldilocks family (MeetsObligations)"
 
 [[layer]]
@@ -601,7 +612,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
-         "Instances.Goldilocks.Lemmas.Obligations"]
+         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = """growing-fault siblings of the Goldilocks lemmas: they may use every static lemma layer, and no
 static layer, trusted layer, Main or Solution may import them, so the static proofs and the
 constant-fault certificate do not depend on them"""
@@ -627,7 +638,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
-         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing"]
+         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = """continuation support (the side property GoldilocksContinues, not part of correctness): the
 growing-fault lemmas plus the continuation statements; only the continuation milestone and the tests
 import it, so no correctness proof depends on the side property"""
@@ -665,7 +677,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Statements.AC",
-         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -678,7 +691,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.Frame",
          "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.AC",
          "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Statements.AC",
-         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC"]
+         "Instances.Goldilocks.Lemmas.Common", "Instances.Goldilocks.Lemmas.AC",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -698,7 +712,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -718,7 +733,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose"]
+         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -739,7 +755,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
-         "Instances.Goldilocks.Lemmas.Healing"]
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -760,7 +776,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
-         "Instances.Goldilocks.Lemmas.Healing"]
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -781,7 +797,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
-         "Instances.Goldilocks.Lemmas.Healing"]
+         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -806,7 +822,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
-         "Instances.Goldilocks.Lemmas.Obligations"]
+         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone"
 
 [[layer]]
@@ -831,7 +847,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Proofs.Obligations"]
+         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = """Goldilocks growing-fault obligations endpoint, the Goldilocks entry of Solution; each other
 growing-fault milestone is its own layer Proofs.Growing.<M>"""
 
@@ -857,7 +873,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Proofs.Obligations"]
+         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks growing-fault FG trace and service milestone"
 
 [[layer]]
@@ -883,7 +899,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Proofs.Obligations"]
+         "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks growing-fault AC milestone"
 
 [[layer]]
@@ -905,7 +921,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
-         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing"]
+         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks growing Compose projections, persistence and always rows"
 
 [[layer]]
@@ -932,7 +949,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Lemmas.Continuation", "Instances.Goldilocks.Proofs.Obligations"]
+         "Instances.Goldilocks.Lemmas.Continuation", "Instances.Goldilocks.Proofs.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = """Goldilocks continuation after healing under corruption growth (the side property
 GoldilocksContinues, not part of correctness)"""
 
@@ -965,7 +983,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Healing", "Instances.Goldilocks.Proofs.Regimes",
          "Instances.Goldilocks.Proofs.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Proofs.Growing.Obligations", "Comparison", "Proofs.Comparison",
-         "Instances.Goldilocks.Milestones.Statements.Comparison"]
+         "Instances.Goldilocks.Milestones.Statements.Comparison",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "Goldilocks milestone: the comparison instances (composite defaults from the endpoint)"
 
 [[layer]]
@@ -994,7 +1013,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC", "Instances.Goldilocks.Proofs.Persist",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
-         "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations"]
+         "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "composition of the Goldilocks milestones"
 
 [[layer]]
@@ -1033,7 +1053,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.ComposeAnyAC", "Instances.Goldilocks.Proofs.Persist",
          "Instances.Goldilocks.Proofs.Service", "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes", "Instances.Goldilocks.Proofs.Obligations",
-         "Instances.Goldilocks.Lemmas.Growing", "Instances.Goldilocks.Proofs.Growing.Obligations"]
+         "Instances.Goldilocks.Lemmas.Growing", "Instances.Goldilocks.Proofs.Growing.Obligations",
+         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "comparator solution: the review statements and the Goldilocks obligations endpoint (through its Main)"
 
 [[layer]]
@@ -1073,7 +1094,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.Growing.Compose", "Instances.Goldilocks.Proofs.Growing.Continuation",
          "Examples", "Solution",
          "Comparison", "Proofs.Comparison", "Instances.Goldilocks.Milestones.Statements.Comparison",
-         "Instances.Goldilocks.Proofs.Comparison"]
+         "Instances.Goldilocks.Proofs.Comparison", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"

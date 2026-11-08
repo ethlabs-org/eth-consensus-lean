@@ -85,6 +85,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.StatementsBundle
@@ -865,6 +866,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
