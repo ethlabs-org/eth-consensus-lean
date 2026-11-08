@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -291,18 +292,6 @@ theorem stored_fast_lock_provenance (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
       exact ⟨r, hri.trans (Nat.lt_succ_self i), h⟩
 
 /-! ## The joined guard of a write -/
-
-private theorem blockReceipt_restartTime (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).restartTime = A.restartTime := by
-  unfold blockReceipt
-  generalize hA' : ({ A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :
-    SAState sp.n) = A'
-  have : A'.restartTime = A.restartTime := by rw [← hA']
-  rw [← this]
-  clear hA' this
-  induction (blockVotes B) generalizing A' with
-  | nil => rfl
-  | cons v l ih => rw [List.foldl_cons, ih, SA.admitVote_restartTime]
 
 /-- **A fast-lock write is joined**: its call is not a restart, and the state before it is
 joined at its time (the update's guard; the optimistic check's guard at a substep that keeps
