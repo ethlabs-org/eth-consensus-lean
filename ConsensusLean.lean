@@ -155,6 +155,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
