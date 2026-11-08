@@ -26,7 +26,7 @@ Reference snapshots that no target builds or checks (an earlier Goldilocks Lean 
 | `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`: what the endpoint statement reaches; `Statements/Obligations`: the endpoint). |
 | `Instances/<P>/Milestones/` | Goldilocks milestone vocabulary and statements, not on the trusted surface. |
 | `Examples/Shape/` | Shape examples, not on the trusted surface: Bft, Streamlet, Tendermint as contract values. |
-| `Comparison/` | Comparison properties, untrusted: bound functions over environment parameters and the profiles they bound (`docs/decisions.md` §"Comparison properties"); proofs in `Proofs/Comparison/`. |
+| `Comparison/` | Comparison properties, untrusted: bound functions over environment parameters and the profiles they bound (`docs/decisions.md` §"Comparison properties"); proofs in `Proofs/Comparison/`, coverage witnesses for chain shapes in `Proofs/ComparisonCoverage/`. |
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,
 so every module reaches it. It is part of the trusted surface.
@@ -47,6 +47,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Examples` (Shape examples, untrusted) | Init, ToMathlib, Core, Spec |
 | `Comparison` (untrusted) | Init, ToMathlib, Core, Spec |
 | `Proofs.Comparison` | the above, Comparison |
+| `Proofs.ComparisonCoverage` | Init, ToMathlib, Core, Spec, Statements, Lemmas, `Proofs.RegimesRealizable` (through its `Main`), Comparison |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `AsChainShape`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.{Simulation,Obligations}` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import either, and Simulation cannot import Obligations |
 | `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Service`, `Instances.Goldilocks.Proofs.Obligations` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |

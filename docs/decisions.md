@@ -582,6 +582,18 @@ detail in `TRUST.md`.
   attains the environment parameters with the claim active (`HealCoverage0`). It is not a field of a profile, and
   the defaults from the contract give only the implication fields. Reason: the contract's realizability gives
   witnesses at fixed points with silent adversaries, not at every parameter value.
+- **Coverage for chain shapes is constructed, under a support condition.** `Comparison/Coverage.lean` states the
+  Slice 0 coverage packages for every chain shape family (`ShapeHealCoverage0`, `ShapeTxLatencyCoverage0`,
+  `ShapeProposalLatencyCoverage0`); `Proofs/ComparisonCoverage/` proves them. A package covers the bounds that are
+  finite only where a witness can exist: the progress requirement of `(cap, i)` admits the fault cap (a bound on
+  the validators not ready must be at least it), and, for a split incident, the cap is below `β·n`. The split
+  witness holds an honest proposal across the groups until the incident ends; healthy liveness of the
+  synchronous canonical run supplies the proposal, which needs the healthy fault bound, and the proposal must not
+  be an FG attestation (`ProposalsNotFGAtt`). The witnesses run the canonical scheduler under a delivery policy
+  (`Lemmas/Model/Canonical/Policy.lean`), which agrees with the synchronous schedule before the incident.
+  Reason: the class at a point constrains no activity, so a silent adversary attains every fault cap, but the
+  exact incident length, the held cross-group message and the progress premise need a run that the eager logs
+  of `Adequate.covers` do not give.
 - **Profiles are per capability and index.** A profile is stated at the contract's `(cap, i)`, whose heal and
   latency coefficients it bounds. Reason: a bound shared by every index has no finite default for a contract whose
   heal coefficient grows with the index (Goldilocks' grows with the outer gap).

@@ -151,6 +151,14 @@ prefixes = ["ConsensusLean.Proofs.Comparison"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Comparison"]
 about = "milestone: the comparison layer's order lemmas and defaults from the contract"
 
+[[layer]]
+name = "Proofs.ComparisonCoverage"
+prefixes = ["ConsensusLean.Proofs.ComparisonCoverage"]
+sorry = true
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.RegimesRealizable",
+         "Comparison"]
+about = "milestone: Slice 0 coverage witnesses for chain shape families (from the canonical runs)"
+
 # Goldilocks: components by level.
 # No FG layer allows AC or SA and no AC/SA layer allows an FG layer (they meet only in Spec.Frame and
 # Milestones.Spec.Trace); Milestones.Statements.FG allows only the chain-level FG; Milestones.Statements.ComposeAnyAC
@@ -1175,7 +1183,8 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Comparison", "Proofs.Comparison", "Instances.Goldilocks.Milestones.Statements.Comparison",
          "Instances.Goldilocks.Proofs.Comparison", "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Milestones.Spec.Candidates", "Instances.Goldilocks.Lemmas.Candidates",
-         "Instances.Goldilocks.Lemmas.CandidateHealing", "Instances.Goldilocks.Milestones.Spec.WeightedEm"]
+         "Instances.Goldilocks.Lemmas.CandidateHealing", "Instances.Goldilocks.Milestones.Spec.WeightedEm",
+         "Proofs.ComparisonCoverage"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"
@@ -1236,7 +1245,8 @@ proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main",
                             "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports",
                             "ConsensusLean.Proofs.Comparison.Main",
-                            "ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main"]
+                            "ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main",
+                            "ConsensusLean.Proofs.ComparisonCoverage.Main"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]
