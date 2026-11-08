@@ -21,6 +21,8 @@ compatible with the transferred block `B`.
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams}
 
 /-- **Unlocking against support for `B`.** -/
@@ -103,7 +105,8 @@ theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree 
 
 /-- `locks_compatible` with the unlock given. -/
 theorem locks_compatibleU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H)
+    {i m : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨

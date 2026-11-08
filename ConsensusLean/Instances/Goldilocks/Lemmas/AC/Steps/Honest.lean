@@ -14,6 +14,8 @@ honest vote's head is a block of the voter's frame, of a slot no later than the 
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
@@ -35,7 +37,7 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
 
 /-- `honest_merged_vote` with the unlock given. -/
 theorem honest_merged_voteU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
@@ -46,7 +48,7 @@ theorem honest_merged_voteU
     · simp at hv
     have hpost : v ∈ (tr.state y (i + 1)).pool ((σ : Int) - 1).toNat := by
       rw [show tr.state y (i + 1) = tr.post i by simp [Trace.state, hc.1.1, hc.1.2],
-        post_of_castAtU hrun.localRun hy hc, optimistic_pool]
+        post_of_castAtU hrun.localRun hy hc, optimisticConfirmationM_keep _ optimistic_pool]
       exact mem_admitVote_pool hv
     obtain ⟨j, hj, h⟩ := hrun.honest.pool_vote y hy _ _ v hpost hvH
     exact ⟨j, Nat.lt_succ_iff.1 hj, h⟩
@@ -64,7 +66,7 @@ theorem honest_merged_vote (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy : y
 
 /-- `honest_not_equivocator` with the unlock given. -/
 theorem honest_not_equivocatorU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {w : Fin sp.n} (hw : w ∈ H) :
@@ -93,7 +95,7 @@ theorem honest_not_equivocator (hrun : ACRun proposer tr H U)
 
 /-- `honest_head_frame` with the unlock given. -/
 theorem honest_head_frameU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) :
     ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
@@ -114,7 +116,7 @@ theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x :
 
 /-- `honest_head` with the unlock given. -/
 theorem honest_headU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
     {e : Em sp FGP} (hv : VoteAt tr x j e) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
   obtain ⟨ℓ, hc, he⟩ := hv

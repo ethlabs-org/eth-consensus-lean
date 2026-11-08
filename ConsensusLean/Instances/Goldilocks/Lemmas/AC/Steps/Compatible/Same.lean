@@ -21,6 +21,8 @@ optimistic confirmation before `t_s + 2Δ`) are on compatible blocks, under
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
@@ -32,7 +34,8 @@ theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 
 /-- `update_side` with the unlock given. -/
 private theorem update_sideU
-    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H)
+    {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
@@ -52,7 +55,7 @@ private theorem update_sideU
     have he := hr.exec c ℓ hc.2 (hc.1 ▸ hY)
     rw [hc.1, hcall] at he
     have hpost : joined sp (tr.post c) (tr.time c) := by
-      have : tr.post c = (acOnTickWith sp Y (uL c) (tr.state Y c) ℓ.frame (tr.time c)).1 :=
+      have : tr.post c = (acOnTickWithM sp wm Y (uL c) (tr.state Y c) ℓ.frame (tr.time c)).1 :=
         (congrArg Prod.fst he).symm
       unfold joined at hj ⊢
       rw [this, SA.onTick_restartTimeWith]
@@ -106,7 +109,8 @@ private theorem update_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
 
 /-- `fastLock_same_slot` with the unlock given. -/
 theorem fastLock_same_slotU
-    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U) {s : Nat} {w x : Fin sp.n} {i₀ j : Nat}
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {s : Nat} {w x : Fin sp.n}
+    {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)

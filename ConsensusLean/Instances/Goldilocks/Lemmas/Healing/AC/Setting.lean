@@ -28,6 +28,8 @@ It also holds the vocabulary of H.1's steps (`GoodOrigin`, `VotesExtendAfter`,
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
@@ -82,28 +84,29 @@ theorem HealthyAC.two_faulty_lt (h : HealthyAC tr H U g) : 2 * Hᶜ.ncard < sp.n
   change 1 ≤ sp.n at this
   omega
 
-/-- `HealthyBase` with the unlock given by the oracle `u`, and with the fault bound the cone
-uses, `f < n/2`, in place of `3f ≤ n − 1`. -/
-structure HealthyBaseU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop where
-  run : ACRunU u proposer tr H U
+/-- `HealthyBase` with the writes of the mode `m` and the unlock given by the oracle `u`, and
+with the fault bound the cone uses, `f < n/2`, in place of `3f ≤ n − 1`. -/
+structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) :
+    Prop where
+  run : ACRunU m u proposer tr H U
   driven : DrivenU u proposer tr H
   healthy : HealthyACCore tr H U g
   faults : 2 * Hᶜ.ncard < sp.n
   catchUp : CatchAC tr H U g (2 * sp.Δ)
 
-/-- `StandaloneRun` with the unlock given by the oracle `u`. -/
-structure StandaloneRunU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop
-    extends HealthyBaseU u tr H U proposer g where
+/-- `StandaloneRun` with the writes of the mode `m` and the unlock given by the oracle `u`. -/
+structure StandaloneRunU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop
+    extends HealthyBaseU m u tr H U proposer g where
   trivial : TrivialFrames tr H
 
 theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
-    HealthyBaseU (parentOracle sp tr) tr H U proposer g :=
+    HealthyBaseU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=
   ⟨h.run.toU, h.driven.toU, h.healthy.core, h.healthy.two_faulty_lt, h.catchUp⟩
 
 theorem StandaloneRun.toU (h : StandaloneRun tr H U proposer g) :
-    StandaloneRunU (parentOracle sp tr) tr H U proposer g :=
+    StandaloneRunU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=
   ⟨h.toHealthyBase.toU, h.trivial⟩
 
 theorem le_gbar (g : Time) : g ≤ gbar g := le_max_left g 0
@@ -136,12 +139,13 @@ private theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
 private theorem rt_step
     {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :
-    (stepWith sp ro self L A Φ t c).1.restartTime = A.restartTime := by
+    (stepWithM sp ro wm self L A Φ t c).1.restartTime = A.restartTime := by
   cases c with
   | tick =>
-    change (acOnTickWith sp self L A Φ t).1.restartTime = _
-    unfold acOnTickWith; dsimp only
-    split_ifs <;> simp only [SA.updateConfirmation_restartTime, SA.tryVote_restartTimeWith]
+    change (acOnTickWithM sp wm self L A Φ t).1.restartTime = _
+    unfold acOnTickWithM; dsimp only
+    split_ifs <;> simp only [updateConfirmationM_field SAState.restartTime (fun _ _ => rfl),
+      SA.updateConfirmation_restartTime, SA.tryVote_restartTimeWith]
   | proposal =>
     change (acProposalWith sp L A Φ t).1.restartTime = _
     unfold acProposalWith; split_ifs <;> rfl
@@ -151,16 +155,17 @@ private theorem rt_step
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
-    change (tryVoteWith sp self L _ Φ t).1.restartTime = _
-    rw [SA.tryVote_restartTimeWith, rt_optimistic, SA.admitVote_restartTime]
+    change (tryVoteWithM sp wm self L _ Φ t).1.restartTime = _
+    rw [SA.tryVote_restartTimeWith, optimisticConfirmationM_keep _ rt_optimistic,
+      SA.admitVote_restartTime]
   | block B =>
-    change (tryVoteWith sp self L _ Φ t).1.restartTime = _
-    rw [SA.tryVote_restartTimeWith, rt_optimistic, rt_blockReceipt]
+    change (tryVoteWithM sp wm self L _ Φ t).1.restartTime = _
+    rw [SA.tryVote_restartTimeWith, optimisticConfirmationM_keep _ rt_optimistic, rt_blockReceipt]
   | restart => exact absurd rfl hc
 
 /-- `restartTime_state` with the unlock given. -/
 theorem restartTime_stateU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     (tr.state y i).restartTime = ⊥ ∨
       ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) := by
@@ -178,7 +183,7 @@ theorem restartTime_stateU
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
       rw [hn.1] at he
       have hpost : tr.post i =
-          (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+          (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
         rw [he]
       rw [hst, hpost]
       by_cases hrs : ℓ.call = .restart
@@ -220,7 +225,8 @@ private theorem vs_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
   · split_ifs <;> rfl
 
 private theorem vs_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    (updateConfirmation sp A Φ t s).votedSlot = A.votedSlot := by
+    (updateConfirmationM sp wm A Φ t s).votedSlot = A.votedSlot := by
+  rw [updateConfirmationM_field SAState.votedSlot (fun _ _ => rfl)]
   unfold updateConfirmation updateLatestConfirmed; dsimp only
   split
   · rfl
@@ -240,20 +246,22 @@ private theorem vs_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
 leaves `voted_slot = slot(t)`. -/
 private theorem vs_tryVoteWith
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    ((tryVoteWith sp x L A Φ t).1.votedSlot = A.votedSlot ∧ (tryVoteWith sp x L A Φ t).2 = []) ∨
-      ((tryVoteWith sp x L A Φ t).1.votedSlot = sp.slot t ∧
-        ∃ e ∈ (tryVoteWith sp x L A Φ t).2, e.msg.slot = sp.slot t) := by
-  unfold tryVoteWith; dsimp only
+    ((tryVoteWithM sp wm x L A Φ t).1.votedSlot = A.votedSlot ∧
+        (tryVoteWithM sp wm x L A Φ t).2 = []) ∨
+      ((tryVoteWithM sp wm x L A Φ t).1.votedSlot = sp.slot t ∧
+        ∃ e ∈ (tryVoteWithM sp wm x L A Φ t).2, e.msg.slot = sp.slot t) := by
+  unfold tryVoteWithM; dsimp only
   split_ifs
   · exact Or.inl ⟨rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl⟩
-  all_goals exact Or.inr ⟨by rw [vs_optimistic, vs_admitVote], _, List.mem_singleton_self _, rfl⟩
+  all_goals exact Or.inr ⟨by rw [optimisticConfirmationM_keep _ vs_optimistic, vs_admitVote], _,
+      List.mem_singleton_self _, rfl⟩
 
 private theorem vs_tryVote (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ((tryVote sp x A Φ t).1.votedSlot = A.votedSlot ∧ (tryVote sp x A Φ t).2 = []) ∨
       ((tryVote sp x A Φ t).1.votedSlot = sp.slot t ∧
         ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t) := by
-  rw [tryVote_eq_tryVoteWith]
+  rw [tryVote_eq_tryVoteWith, ← tryVoteWithM_parent]
   exact vs_tryVoteWith x A Φ t
 
 /-- A call other than a restart keeps `voted_slot`, or emits a vote of slot `slot(t)` and
@@ -261,15 +269,16 @@ leaves `voted_slot = slot(t)`; a restart sets `voted_slot = −1`. -/
 private theorem vs_step
     {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
     (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
-    let r := stepWith sp ro self L A Φ t c
+    let r := stepWithM sp ro wm self L A Φ t c
     r.1.votedSlot = A.votedSlot ∨ r.1.votedSlot = -1 ∨
       (r.1.votedSlot = sp.slot t ∧ ∃ e ∈ r.2, e.msg.slot = sp.slot t) := by
   cases c with
   | tick =>
-    change (acOnTickWith sp self L A Φ t).1.votedSlot = _ ∨ (acOnTickWith sp self L A Φ
+    change (acOnTickWithM sp wm self L A Φ t).1.votedSlot = _ ∨ (acOnTickWithM sp wm self L A Φ
         t).1.votedSlot = _ ∨
-      ((acOnTickWith sp self L A Φ t).1.votedSlot = _ ∧ ∃ e ∈ (acOnTickWith sp self L A Φ t).2, _)
-    unfold acOnTickWith; dsimp only
+      ((acOnTickWithM sp wm self L A Φ t).1.votedSlot = _ ∧ ∃ e ∈ (acOnTickWithM sp wm self L A Φ
+          t).2, _)
+    unfold acOnTickWithM; dsimp only
     split_ifs
     all_goals first
       | exact Or.inl rfl
@@ -291,19 +300,23 @@ private theorem vs_step
     split_ifs
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
-    change (tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∨ (tryVoteWith sp self L _ Φ
-        t).1.votedSlot = _ ∨
-      ((tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∧ ∃ e ∈ (tryVoteWith sp self L _ Φ t).2, _)
-    rcases vs_tryVoteWith self (optimisticConfirmation sp (admitVote sp A t m) Φ t) Φ t with h | h
-    · exact Or.inl (h.1.trans (by rw [vs_optimistic, vs_admitVote]))
+    change (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
+        (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
+      ((tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∧
+        ∃ e ∈ (tryVoteWithM sp wm self L _ Φ t).2, _)
+    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (admitVote sp A t m) Φ t) Φ t with
+        h | h
+    · exact Or.inl (h.1.trans (by rw [optimisticConfirmationM_keep _ vs_optimistic, vs_admitVote]))
     · exact Or.inr (Or.inr h)
   | block B =>
-    change (tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∨ (tryVoteWith sp self L _ Φ
-        t).1.votedSlot = _ ∨
-      ((tryVoteWith sp self L _ Φ t).1.votedSlot = _ ∧ ∃ e ∈ (tryVoteWith sp self L _ Φ t).2, _)
-    rcases vs_tryVoteWith self (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t with h
-        | h
-    · exact Or.inl (h.1.trans (by rw [vs_optimistic, vs_blockReceipt]))
+    change (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
+        (tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∨
+      ((tryVoteWithM sp wm self L _ Φ t).1.votedSlot = _ ∧
+        ∃ e ∈ (tryVoteWithM sp wm self L _ Φ t).2, _)
+    rcases vs_tryVoteWith self (optimisticConfirmationM sp wm (blockReceipt sp A t B) Φ t) Φ t with
+        h | h
+    · exact Or.inl (h.1.trans (by rw [optimisticConfirmationM_keep _ vs_optimistic,
+        vs_blockReceipt]))
     · exact Or.inr (Or.inr h)
   | restart =>
     right; left
@@ -311,7 +324,7 @@ private theorem vs_step
 
 /-- `vote_of_votedSlot` with the unlock given. -/
 theorem vote_of_votedSlotU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ σ : Nat, (tr.state y i).votedSlot = σ → ∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ := by
   induction i with
@@ -331,7 +344,8 @@ theorem vote_of_votedSlotU
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
       rw [hn.1] at he
       rw [hst] at h
-      have hv := vs_step (L := u i) (ro := ro) y (tr.state y i) (frameIn_of_callAtU hr hy hc).1
+      have hv := vs_step (wm := wm) (L := u i) (ro := ro) y (tr.state y i)
+          (frameIn_of_callAtU hr hy hc).1
         (hr.time_nonneg i) ℓ.call
       rw [he] at hv
       dsimp only at hv
@@ -357,10 +371,10 @@ theorem vote_of_votedSlot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
 theorem tryVote_votesWith
     {L : Set Lock} (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
     (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
-    ∃ e ∈ (tryVoteWith sp x L A Φ t).2, e.msg.slot = sp.slot t := by
+    ∃ e ∈ (tryVoteWithM sp wm x L A Φ t).2, e.msg.slot = sp.slot t := by
   rcases vs_tryVoteWith x A Φ t with h | h
   · exfalso
-    unfold tryVoteWith at h; dsimp only at h
+    unfold tryVoteWithM at h; dsimp only at h
     split_ifs at h with h1 h2
     · rcases h1 with h1 | h1 | h1
       · exact h1 hj
@@ -375,13 +389,14 @@ vote of slot `s`. -/
 theorem tryVote_votes (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
     (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ) :
     ∃ e ∈ (tryVote sp x A Φ t).2, e.msg.slot = sp.slot t :=
-  tryVote_votesWith (x := x) (A := A) (Φ := Φ) (t := t) (hj := hj) (hv := hv) (ht := ht)
+  tryVote_votesWith (wm := WriteMode.parent sp) (x := x) (A := A) (Φ := Φ) (t := t) (hj := hj)
+      (hv := hv) (ht := ht)
 
 end VotedSlot
 
 namespace HealthyBaseU
 
-variable {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
+variable {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)
 include hS
 
 /-- An honest node is awake from `ḡ` on. -/

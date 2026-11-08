@@ -21,6 +21,8 @@ gives "live ⇒ recent" (`LocksWF.slot_le_of_live`), the floor half a fresh fast
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams}
 
 /-- Every lock of `L` lives at least two slots and at most `k` slots past its slot. -/
@@ -117,27 +119,46 @@ theorem LocksWF.updateConfirmation {A : SAState sp.n} (h : LocksWF sp A.locks)
         · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
         · dsimp only; omega
 
+/-- `LocksWF.optimisticConfirmation` at the write mode `wm`. -/
+theorem LocksWF.optimisticConfirmationM {A : SAState sp.n} (h : LocksWF sp A.locks)
+    (Φ : Frm sp.n FGP) (t : Time) : LocksWF sp (SA.optimisticConfirmationM sp wm A Φ t).locks :=
+  optimisticConfirmationM_of (P := fun X => LocksWF sp X.locks) (h.optimisticConfirmation Φ t) h
+
+/-- `LocksWF.updateConfirmation` at the write mode `wm`. -/
+theorem LocksWF.updateConfirmationM {A : SAState sp.n} (h : LocksWF sp A.locks)
+    (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
+    LocksWF sp (SA.updateConfirmationM sp wm A Φ t s).locks := by
+  have hk := sp.two_le_k
+  rcases hC : getConfirmation sp A Φ s with _ | C
+  · rw [updateConfirmationM_locks_of_none hC]
+    exact h
+  · rw [updateConfirmationM_locks_of_some hC]
+    refine h.addLocks Φ t s fun p hp => ?_
+    rcases mem_newLocksM.1 hp with ⟨-, B, -, rfl⟩ | ⟨B, -, rfl⟩
+    · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
+    · dsimp only; omega
+
 /-- `LocksWF.tryVote` with the unlock given. -/
 theorem LocksWF.tryVoteWith
     {L : Set Lock} {A : SAState sp.n} (h : LocksWF sp A.locks) (x : Fin sp.n)
     (Φ : Frm sp.n FGP) (t : Time)
     (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
-    LocksWF sp (SA.tryVoteWith sp x L A Φ t).1.locks ∧
-      ∀ e ∈ (SA.tryVoteWith sp x L A Φ t).2, LocksWF sp e.readPoint.locks := by
+    LocksWF sp (SA.tryVoteWithM sp wm x L A Φ t).1.locks ∧
+      ∀ e ∈ (SA.tryVoteWithM sp wm x L A Φ t).2, LocksWF sp e.readPoint.locks := by
   have hu : LocksWF sp (if 0 < sp.slot t then L else A.locks) := by
     split_ifs
     · exact h.unlockRel hL
     · exact h
   refine ⟨?_, fun e he => by rw [tryVote_readPoint_locks_eqWith he]; exact hu⟩
-  unfold SA.tryVoteWith
+  unfold SA.tryVoteWithM
   dsimp only
   split_ifs with h₁ h₂ h₃
   · exact h
   · exact h
-  · refine LocksWF.optimisticConfirmation ?_ Φ t
+  · refine LocksWF.optimisticConfirmationM ?_ Φ t
     rw [admitVote_locks_eq]
     exact h.unlockRel hL
-  · refine LocksWF.optimisticConfirmation ?_ Φ t
+  · refine LocksWF.optimisticConfirmationM ?_ Φ t
     rw [admitVote_locks_eq]
     exact h
 
@@ -170,25 +191,25 @@ theorem LocksWF.stepWith
     {L : Set Lock} {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF sp A.locks)
     (x : Fin sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (c : (goldilocksSA sp FGP ro).Call)
-    (hL : UnlockRel sp (callInput sp A Φ t c).locks Φ t ((sp.slot t : Int) - 1)
-      (callView sp A Φ t c) L) :
-    LocksWF sp (stepWith sp ro x L A Φ t c).1.locks ∧
-      ∀ e ∈ (stepWith sp ro x L A Φ t c).2, LocksWF sp e.readPoint.locks := by
+    (hL : UnlockRel sp (callInputM sp wm A Φ t c).locks Φ t ((sp.slot t : Int) - 1)
+      (callViewM sp wm A Φ t c) L) :
+    LocksWF sp (stepWithM sp ro wm x L A Φ t c).1.locks ∧
+      ∀ e ∈ (stepWithM sp ro wm x L A Φ t c).2, LocksWF sp e.readPoint.locks := by
   have hopt : ∀ {A' : SAState sp.n}, A'.locks = A.locks →
-      LocksWF sp (SA.optimisticConfirmation sp A' Φ t).locks := fun hA =>
-    LocksWF.optimisticConfirmation (hA ▸ h) Φ t
+      LocksWF sp (SA.optimisticConfirmationM sp wm A' Φ t).locks := fun hA =>
+    LocksWF.optimisticConfirmationM (hA ▸ h) Φ t
   cases c with
   | tick =>
-    change LocksWF sp (acOnTickWith sp x L A Φ t).1.locks ∧
-      ∀ e ∈ (acOnTickWith sp x L A Φ t).2, LocksWF sp e.readPoint.locks
-    have hv := h.tryVoteWith x Φ t hL
-    unfold acOnTickWith
+    change LocksWF sp (acOnTickWithM sp wm x L A Φ t).1.locks ∧
+      ∀ e ∈ (acOnTickWithM sp wm x L A Φ t).2, LocksWF sp e.readPoint.locks
+    have hv := h.tryVoteWith (wm := wm) x Φ t hL
+    unfold acOnTickWithM
     dsimp only
     split_ifs <;> simp only [List.not_mem_nil, false_imp_iff, imp_true_iff, and_true] <;>
       first
-      | exact ⟨hv.1.updateConfirmation Φ t _, hv.2⟩
+      | exact ⟨hv.1.updateConfirmationM Φ t _, hv.2⟩
       | exact hv
-      | exact h.updateConfirmation Φ t _
+      | exact h.updateConfirmationM Φ t _
       | exact h
   | proposal =>
     refine ⟨?_, fun e he => by simp at he⟩
@@ -220,7 +241,7 @@ theorem LocksWF.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LocksWF s
     (c : (goldilocksSA sp FGP ro).Call) :
     LocksWF sp ((goldilocksSA sp FGP ro).step x A Φ t c).1.locks ∧
       ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, LocksWF sp e.readPoint.locks := by
-  rw [step_eq_stepWith]
+  rw [step_eq_stepWith, ← stepWithM_parent]
   exact h.stepWith x hΦ ht c (unlockRel_unlock hΦ _ _ _ _)
 
 /-! ## Over an SA trace -/
@@ -230,7 +251,7 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
 
 /-- `locksWF_state` with the unlock given. -/
 theorem locksWF_stateU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) : LocksWF sp (tr.state y i).locks := by
   induction i with
   | zero =>
@@ -258,7 +279,7 @@ theorem locksWF_state (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin
 
 /-- `castAt_readPoint_locksWF` with the unlock given. -/
 theorem castAt_readPoint_locksWFU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LocksWF sp e.readPoint.locks := by
   obtain ⟨hc, he⟩ := hc

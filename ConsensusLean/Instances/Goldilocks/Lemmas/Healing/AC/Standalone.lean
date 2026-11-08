@@ -29,6 +29,8 @@ proposal-block inclusion from `ḡ + (8k + 10)Δ + G_p`; it implies the corollar
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 /-- **H.1 at `ḡ + (8k + 4)Δ`** (claims H.1, proof shape, with the locks settled from the slot
 start `t_{p−1} ≥ ḡ + 8kΔ`). -/
 theorem ac_healing_standalone_tight (sp : SAParams) : ACHealingStandaloneTight (sp := sp) :=
@@ -51,7 +53,7 @@ theorem corollary_atU
     {u : Nat → Set Lock} {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
     {proposer : Nat → Fin sp.n} {g Gp c : Time} (hc : 4 * sp.Δ ≤ c)
-    (hS : StandaloneRunU u tr H U proposer g) (hprop : PropAC proposer H g Gp)
+    (hS : StandaloneRunU wm u tr H U proposer g) (hprop : PropAC proposer H g Gp)
     (h : ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H → HonestProposalU u tr (proposer p) p P →
       gbar g + c ≤ sp.ts p →
       ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → sp.ts p + 6 * sp.Δ ≤ tr.time j →
@@ -112,11 +114,13 @@ private theorem corollary_at {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp F
   exact ⟨p, P, h1, h2, (honestProposalU_parent_iff _ _ _ _).1 hP, h3⟩
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` with the unlock given** (`ac_healing_standalone_tight` for every lock
-rule related to the parent's unlock): H.1's conclusions at an honest proposal of `Prop(G_p)`. -/
+rule related to the parent's unlock, at every write mode of width `k`): H.1's conclusions at an
+honest proposal of `Prop(G_p)`. -/
 theorem ac_healing_standalone_tight_corollaryU {u : Nat → Set Lock} {FGP : Type} {sp : SAParams}
     {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n} {g Gp : Time}
-    (hS : StandaloneRunU u tr H U proposer g) (hprop : PropAC proposer H g Gp) (t : Time)
+    (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
+    (hprop : PropAC proposer H g Gp) (t : Time)
     (ht : gbar g + (8 * (sp.k : Time) + 4) * sp.Δ ≤ t) :
     ∃ (p : Nat) (P : Blk sp.n FGP), t ≤ sp.ts p ∧ sp.ts p ≤ t + Gp ∧
       HonestProposalU u tr (proposer p) p P ∧
@@ -128,7 +132,7 @@ theorem ac_healing_standalone_tight_corollaryU {u : Nat → Set Lock} {FGP : Typ
   have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
   have hkΔ := mul_nonneg hk hΔ.le
   exact corollary_atU (c := (8 * (sp.k : Time) + 4) * sp.Δ) (by linarith) hS hprop
-    (fun p P hpH hP hp => (ac_healing_standalone_of_parent_tightU hS hpH hP hp).2) t ht
+    (fun p P hpH hP hp => (ac_healing_standalone_of_parent_tightU hS hw hpH hP hp).2) t ht
 
 /-- **H.1 gives its corollary**: for `t ≥ ḡ + 2Θ + 8Δ`, `Prop(G_p)` gives a slot `p` with an
 honest proposer and `t ≤ t_p ≤ t + G_p`; the proposer is awake and joined at `t_p` (no restart

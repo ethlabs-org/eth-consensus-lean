@@ -20,6 +20,8 @@ relay applies since the voter's `Σ.F` is below `C`, below each head. -/
 
 namespace Consensus.Goldilocks.Compose
 
+variable {wm : SA.WriteMode}
+
 open SA (SAParams ReplayOrder Vote Payload)
 
 
@@ -32,7 +34,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- `frame_anc_accepted` with the unlock given. -/
 theorem frame_anc_acceptedU
-    {u : Nat → Set SA.Lock} (hr : SA.ACLocalRunU u H U T)
+    {u : Nat → Set SA.Lock} (hr : SA.ACLocalRunU wm u H U T)
     {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by

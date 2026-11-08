@@ -21,6 +21,8 @@ Over a `StandaloneRun` (H.1's premises), with `r = r_AC(ḡ)` (a slot `j` is `�
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
@@ -43,7 +45,7 @@ private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
 
 /-- `HealthyBase.deadline_le` with the unlock given. -/
 theorem HealthyBaseU.deadline_le
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     (c : Nat) (τ : Time) : tr.deadline y c τ ≤ max τ (gbar g) + sp.Δ := by
   unfold ACTrace.deadline
   rcases lastWake_cases (tr := tr) y c with h | ⟨k, -, hrk, h⟩
@@ -62,7 +64,7 @@ theorem HealthyBase.deadline_le (hS : HealthyBase tr H U proposer g) {y : Fin sp
 
 /-- `trivial_F_eq` with the unlock given. -/
 theorem trivial_F_eqU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {y z : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y z : Fin sp.n} (hy : y ∈ H)
     (hz : z ∈ H) {i j : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hc' : tr.CallAt z j ℓ') : ℓ.frame.F = ℓ'.frame.F := by
   have hr := hS.run.localRun
@@ -87,7 +89,7 @@ theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
 
 /-- `trivial_anc_mem` with the unlock given. -/
 theorem trivial_anc_memU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
         {k : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x k ℓ) {Hv X : Blk sp.n FGP}
     (hHv : Hv ∈ ℓ.frame.tree) (hX : Anc U X Hv) :
@@ -120,7 +122,7 @@ theorem trivial_anc_mem (hS : StandaloneRun tr H U proposer g) {x : Fin sp.n} (h
 
 /-- `relay_accept` with the unlock given. -/
 theorem relay_acceptU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
         {k : Nat}
     {X : Blk sp.n FGP} (hacc : tr.AcceptAt z k X) {T : Time} (hkT : tr.time k < T)
     (hT : gbar g + sp.Δ ≤ T) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -149,7 +151,7 @@ theorem relay_accept (hS : StandaloneRun tr H U proposer g) {z : Fin sp.n} (hz :
 
 /-- `blockStamp_cases` with the unlock given. -/
 theorem blockStamp_casesU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n}
     (hy : y ∈ H) (r : Nat) :
     ∀ i, (tr.state y i).blockStamp r = ⊤ ∨ r = sp.genesisRoot ∨
       ∃ k < i, ∃ X : Blk sp.n FGP, X.root = r ∧ tr.AcceptAt y k X ∧
@@ -178,7 +180,7 @@ theorem blockStamp_casesU
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
       rw [hn.1] at he
       have hpost : tr.post i =
-          (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+          (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
         rw [he]
       have hΦ := (frameIn_of_callAtU hr hy hc).1
       obtain ⟨hblk, -, hoth⟩ := stepWith_blockStamp_eq ro y (u i)
@@ -196,7 +198,7 @@ theorem blockStamp_casesU
       · have hR := (restart_state sp) FGP ro y (tr.state y i) ℓ.frame (tr.time i) hΦ
           (hr.time_nonneg i)
         have hq := hR.2.2.2.2.2.2.2.2.2.2 r
-        have hcall : stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
+        have hcall : stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
             acRestart sp ro y (tr.state y i) ℓ.frame (tr.time i) := by rw [hrs]
         rw [hcall]
         rcases hq with hq | ⟨hq, hne, X, hX, hXr⟩
@@ -233,7 +235,7 @@ theorem blockStamp_cases (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
 
 /-- `accepted_of_blockStamp_lt` with the unlock given. -/
 theorem accepted_of_blockStamp_ltU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {i r : Nat} {T : Time} (h : (tr.state y i).blockStamp r < ETime.of T) :
     r = sp.genesisRoot ∨ ∃ k < i, ∃ X : Blk sp.n FGP, X.root = r ∧ tr.AcceptAt y k X ∧
       tr.time k < T := by
@@ -252,7 +254,7 @@ theorem accepted_of_blockStamp_lt (hS : StandaloneRun tr H U proposer g) {y : Fi
 
 /-- `stamp_lt_of_held_of_run` with the unlock given. -/
 theorem stamp_lt_of_held_of_runU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T)
@@ -290,7 +292,7 @@ theorem stamp_lt_of_held_of_run (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
 
 /-- `stamp_lt_of_held` with the unlock given. -/
 theorem stamp_lt_of_heldU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
@@ -324,15 +326,17 @@ private theorem admitVote_stamp_ne {A : SAState sp.n} {t : Time} {v w : Vote sp.
   · exact Function.update_of_ne h _ _
 
 private theorem optimistic_pool_stamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmation sp A Φ t).pool = A.pool ∧
-      (optimisticConfirmation sp A Φ t).voteStamp = A.voteStamp := by
+    (optimisticConfirmationM sp wm A Φ t).pool = A.pool ∧
+      (optimisticConfirmationM sp wm A Φ t).voteStamp = A.voteStamp := by
+  refine optimisticConfirmationM_of (P := fun X => X.pool = A.pool ∧
+    X.voteStamp = A.voteStamp) ?_ ⟨rfl, rfl⟩
   unfold optimisticConfirmation updateLatestConfirmed; split
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- `heldBefore_readPoint` with the unlock given. -/
 theorem heldBefore_readPointU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
@@ -355,7 +359,7 @@ theorem heldBefore_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 
 /-- `carry_of_sent` with the unlock given. -/
 theorem carry_of_sentU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {s : Nat}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {CV : Set (Vote sp.n)}
     (hCV : ∀ v ∈ CV, v.slot = s ∧ ∃ x ∈ H, ∃ k, tr.SendOrAdmit x k v ∧ sp.ts s ≤ tr.time k ∧
       tr.time k < sp.ts s + 2 * sp.Δ ∧ ∃ Hv ∈ U, Hv.root = v.head ∧ (Hv.root = sp.genesisRoot ∨
@@ -447,7 +451,7 @@ theorem carry_of_sent (hS : StandaloneRun tr H U proposer g) {s : Nat}
 
 /-- `viable_of_accepted` with the unlock given. -/
 theorem viable_of_acceptedU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
@@ -482,12 +486,13 @@ theorem viable_of_acceptedU
   -- the read point's stamps are those after the call, which keeps `B`'s
   have hrp : e.readPoint.blockStamp B.root = (tr.state y i).blockStamp B.root := by
     have h1 : (tr.post i).blockStamp = e.readPoint.blockStamp := by
-      rw [post_of_castAtU hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
+      rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ SA.optimistic_blockStamp,
+        SA.admitVote_blockStamp]
     rw [← h1]
     have he := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
     rw [hc.1.1] at he
     have hpost : tr.post i =
-        (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+        (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
       rw [he]
     obtain ⟨hblk, -, hoth⟩ := stepWith_blockStamp_eq ro y (u i) (tr.state y i) hΦ (hr.time_nonneg i)
       ℓ.call
@@ -532,7 +537,7 @@ theorem viable_of_accepted (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n}
 
 /-- `trivial_viable` with the unlock given. -/
 theorem trivial_viableU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
         {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     (hes : e.msg.slot = σ + 1) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
@@ -623,7 +628,7 @@ theorem trivial_viable (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} (hy
 
 /-- `admitted_of_pool` with the unlock given. -/
 private theorem admitted_of_poolU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {s : Nat} (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) :
     ∀ c, ∀ v ∈ (tr.state x c).pool s, ∃ k < c, tr.SendOrAdmit x k v ∧
       sp.ts s ≤ tr.time k ∧ (tr.state x c).voteStamp v = ETime.of (tr.time k) := by
@@ -656,7 +661,7 @@ private theorem admitted_of_pool (hS : StandaloneRun tr H U proposer g) {x : Fin
 
 /-- `trivial_carry_update` with the unlock given. -/
 theorem trivial_carry_updateU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr x i₀ s ℓ)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (X : Blk sp.n FGP) :
     Carry tr H U s (fastCounted sp (tr.state x i₀) ℓ.frame s X) := by
@@ -697,7 +702,7 @@ theorem trivial_carry_update (hS : StandaloneRun tr H U proposer g) {x : Fin sp.
 
 /-- `trivial_carry_fastLock` with the unlock given. -/
 theorem trivial_carry_fastLockU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x i₀ s B CV)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Carry tr H U s CV := by
   have hr := hS.run.localRun
@@ -749,7 +754,7 @@ theorem trivial_carry_fastLock (hS : StandaloneRun tr H U proposer g) {x : Fin s
 
 /-- `trivial_carry_votes` with the unlock given. -/
 theorem trivial_carry_votesU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {m : Nat}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
     Carry tr H U m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} := by
   have hr := hS.run.localRun
@@ -837,7 +842,7 @@ theorem honest_voters_half_before {b : Time} (hS : HealthyBaseUpTo tr H U propos
 
 /-- `honest_votes_in_slot` with the unlock given. -/
 theorem honest_votes_in_slotU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {m : Nat}
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m := by
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
@@ -857,11 +862,11 @@ theorem honest_votes_in_slotU
     obtain ⟨e, hem, hes⟩ := tryVote_votesWith x ℓ.frame hj hv hT
     have he := hr.exec c ℓ hc.2 (hc.1 ▸ hx)
     rw [hc.1, hcall] at he
-    have h2 : (acOnTickWith sp x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
+    have h2 : (acOnTickWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 = ℓ.emits :=
       congrArg Prod.snd he
-    have h3 : (acOnTickWith sp x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 =
-        (tryVoteWith sp x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 := by
-      unfold acOnTickWith
+    have h3 : (acOnTickWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 =
+        (tryVoteWithM sp wm x (u c) (tr.state x c) ℓ.frame (tr.time c)).2 := by
+      unfold acOnTickWithM
       dsimp only
       split_ifs
       all_goals first | rfl | exact absurd hj ‹_›
@@ -876,7 +881,7 @@ theorem honest_votes_in_slot (hS : HealthyBase tr H U proposer g) {m : Nat}
 
 /-- `honest_voters_half` with the unlock given. -/
 theorem honest_voters_halfU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {m : Nat}
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard := by
   have hall := honest_votes_in_slotU hS hm
@@ -898,7 +903,7 @@ theorem honest_voters_half (hS : HealthyBase tr H U proposer g) {m : Nat}
 
 /-- `fastLock_honest_vote` with the unlock given. -/
 theorem fastLock_honest_voteU
-    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastLockAt tr x i₀ s B CV) :
@@ -941,7 +946,7 @@ theorem fastLock_honest_vote (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard
 
 /-- `votes_continue` with the unlock given. -/
 theorem votes_continueU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {m : Nat}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) {B : Blk sp.n FGP}
     (hB : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = m → VoteExtends U e.msg B) :
     VotesExtendAfter tr H U m B := by
@@ -992,7 +997,7 @@ theorem votes_continue (hS : StandaloneRun tr H U proposer g) {m : Nat}
 
 /-- `fast_origin_transfer_votes` with the unlock given. -/
 theorem fast_origin_transfer_votesU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n}
     (hx : x ∈ H)
     {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastLockAt tr x i₀ s B CV)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : VotesExtendAfter tr H U s B := by

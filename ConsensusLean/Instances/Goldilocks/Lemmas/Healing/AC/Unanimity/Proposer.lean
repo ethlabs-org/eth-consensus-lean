@@ -16,6 +16,8 @@ eligible child there, and stops (no block of the tree has a slot above `p`). -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
@@ -34,7 +36,7 @@ private theorem getAnchor_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SAStat
 
 /-- `proposal_walkEnd_core` with the unlock given. -/
 theorem proposal_walkEnd_coreU
-    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) :
+    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) :
     WalkEnd (insert P (ℓp.frame.viableTree ℓp.frame.tree))
         (goldfishScore sp ℓp.frame (View.ofLists pay) ((p : Int) - 1))
         (goldfishEligible sp ℓp.frame (sp.ts p) (View.ofLists pay) ((p : Int) - 1)) d.start P ∧

@@ -17,6 +17,8 @@ it for two other held votes of its validator (`writer_merged`, A1.8's condition 
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
@@ -37,20 +39,20 @@ private theorem optimistic_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
 /-- `tryVote_restartTime` with the unlock given. -/
 theorem tryVote_restartTimeWith
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : (tryVoteWith sp x L A Φ t).1.restartTime = A.restartTime := by
-  unfold tryVoteWith
+    (t : Time) : (tryVoteWithM sp wm x L A Φ t).1.restartTime = A.restartTime := by
+  unfold tryVoteWithM
   dsimp only
   split
   · rfl
   · split
     · rfl
-    · rw [optimistic_restartTime, admitVote_restartTime]
+    · rw [optimisticConfirmationM_keep _ optimistic_restartTime, admitVote_restartTime]
       dsimp only
       split <;> rfl
 
 theorem tryVote_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (tryVote sp x A Φ t).1.restartTime = A.restartTime :=
-  tryVote_restartTimeWith (x := x) (A := A) (Φ := Φ) (t := t)
+  tryVote_restartTimeWith (wm := WriteMode.parent sp) (x := x) (A := A) (Φ := Φ) (t := t)
 
 theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : (updateConfirmation sp A Φ t s).restartTime = A.restartTime := by
@@ -63,20 +65,21 @@ theorem updateConfirmation_restartTime (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
 /-- `onTick_restartTime` with the unlock given. -/
 theorem onTick_restartTimeWith
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : (acOnTickWith sp x L A Φ t).1.restartTime = A.restartTime := by
-  unfold acOnTickWith
+    (t : Time) : (acOnTickWithM sp wm x L A Φ t).1.restartTime = A.restartTime := by
+  unfold acOnTickWithM
   dsimp only
   split
   · rfl
   · split
-    · rw [updateConfirmation_restartTime]
+    · rw [updateConfirmationM_field SAState.restartTime (fun _ _ => rfl),
+        updateConfirmation_restartTime]
       split <;> first | exact tryVote_restartTimeWith _ _ _ _ | rfl
     · split <;> first | exact tryVote_restartTimeWith _ _ _ _ | rfl
 
 /-- A tick leaves the restart time. -/
 theorem onTick_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (acOnTick sp x A Φ t).1.restartTime = A.restartTime :=
-  onTick_restartTimeWith (x := x) (A := A) (Φ := Φ) (t := t)
+  onTick_restartTimeWith (wm := WriteMode.parent sp) (x := x) (A := A) (Φ := Φ) (t := t)
 
 private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
@@ -98,15 +101,15 @@ theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 
 private theorem tryVote_pool
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (σ : Nat) : A.pool σ ⊆ (tryVoteWith sp x L A Φ t).1.pool σ := by
-  unfold tryVoteWith
+    (σ : Nat) : A.pool σ ⊆ (tryVoteWithM sp wm x L A Φ t).1.pool σ := by
+  unfold tryVoteWithM
   dsimp only
   split_ifs
   · exact List.Subset.refl _
   · exact List.Subset.refl _
   all_goals
     intro w hw
-    rw [optimistic_pool]
+    rw [optimisticConfirmationM_keep _ optimistic_pool]
     exact mem_admitVote_pool hw
 
 private theorem foldl_admit_pool {t : Time} {σ : Nat} :
@@ -141,16 +144,16 @@ private theorem blockReceipt_held (A : SAState sp.n) {t : Time} {B : Blk sp.n FG
 
 /-- `cast_time_le` with the unlock given. -/
 private theorem cast_time_leU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) : tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ := by
-  have hv : ∀ (A : SAState sp.n) (t : Time), (tryVoteWith sp y (u i) A ℓ.frame t).2 ≠ [] →
+  have hv : ∀ (A : SAState sp.n) (t : Time), (tryVoteWithM sp wm y (u i) A ℓ.frame t).2 ≠ [] →
       t ≤ sp.ts (sp.slot t) + sp.Δ := by
     intro A t h
     by_contra ht
     have hguard : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨
         sp.ts (sp.slot t) + sp.Δ < t := Or.inr (Or.inr (lt_of_not_ge ht))
-    simp only [tryVoteWith, hguard, ite_true] at h
+    simp only [tryVoteWithM, hguard, ite_true] at h
     exact h rfl
   have hΦ : FrameOK ℓ.frame := by
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
@@ -158,20 +161,20 @@ private theorem cast_time_leU
   obtain ⟨hc, he⟩ := hc
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have hne : (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i)
+  have hne : (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 ≠ [] := by
     rw [hx]; exact List.ne_nil_of_mem he
   generalize tr.state y i = A at hne
   generalize ℓ.call = c at hne
   cases c with
   | tick =>
-    change (acOnTickWith sp y (u i) A ℓ.frame (tr.time i)).2 ≠ [] at hne
-    unfold acOnTickWith at hne
+    change (acOnTickWithM sp wm y (u i) A ℓ.frame (tr.time i)).2 ≠ [] at hne
+    unfold acOnTickWithM at hne
     dsimp only at hne
     split at hne
     · exact absurd rfl hne
     · change (if tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ then
-        tryVoteWith sp y (u i) A ℓ.frame (tr.time i) else (A, [])).2 ≠ [] at hne
+        tryVoteWithM sp wm y (u i) A ℓ.frame (tr.time i) else (A, [])).2 ≠ [] at hne
       split at hne
       · exact hv _ _ hne
       · exact absurd rfl hne
@@ -192,7 +195,7 @@ private theorem cast_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
 
 /-- `writer_pool_of_sync` with the unlock given. -/
 private theorem writer_pool_of_syncU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -224,7 +227,7 @@ private theorem writer_pool_of_syncU
     have he := hr.exec i₀ ℓX hcX.2 (hcX.1 ▸ hX)
     rw [hcX.1, htick] at he
     have hj' : joined sp (tr.post i₀) (tr.time i₀) := by
-      have hpost : tr.post i₀ = (acOnTickWith sp X (u i₀)
+      have hpost : tr.post i₀ = (acOnTickWithM sp wm X (u i₀)
           (tr.state X i₀) ℓX.frame (tr.time i₀)).1 :=
         (congrArg Prod.fst he).symm
       unfold joined; rw [hpost, onTick_restartTimeWith]; exact hjX
@@ -288,7 +291,7 @@ private theorem writer_pool_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n
 
 /-- `writer_merged_of_sync` with the unlock given. -/
 private theorem writer_merged_of_syncU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
@@ -317,13 +320,14 @@ private theorem writer_merged_of_syncU
   have hki' := slot_mono sp (hr.time_nonneg k) (hr.time_mono hki)
   have he := hr.exec k ℓk hck.2 (hck.1 ▸ hy)
   rw [hck.1, hcall] at he
-  have hpost : tr.post k = (tryVoteWith sp y (u k) (optimisticConfirmation sp
+  have hpost : tr.post k = (tryVoteWithM sp wm y (u k) (optimisticConfirmationM sp wm
       (blockReceipt sp (tr.state y k) (tr.time k) B) ℓk.frame (tr.time k)) ℓk.frame
       (tr.time k)).1 := (congrArg Prod.fst he).symm
   have hsub : ∀ w ∈ (blockReceipt sp (tr.state y k) (tr.time k) B).pool s,
       w ∈ (tr.state y (k + 1)).pool s := fun w hw => by
     rw [state_succ_of_call hck, hpost]
-    exact tryVote_pool (L := u k) _ _ _ _ _ (by rw [optimistic_pool]; exact hw)
+    exact tryVote_pool (L := u k) _ _ _ _ _
+      (by rw [optimisticConfirmationM_keep _ optimistic_pool]; exact hw)
   have hw := writer_pool_of_syncU hrun hX hupd hy hc hs hsync hki
   rcases blockReceipt_held (tr.state y k) hvB (t := tr.time k) (by omega) (by omega) with
     h | ⟨a, ha, b, hb, hab, hav, hbv⟩
@@ -351,7 +355,8 @@ private theorem writer_merged_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp
 
 /-- `writer_pool` with the unlock given. -/
 theorem writer_poolU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {X : Fin sp.n} (hX : X ∈ H)
+    {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -376,7 +381,8 @@ theorem writer_pool (hrun : ACRun proposer tr H U) {X : Fin sp.n} (hX : X ∈ H)
 
 /-- `writer_merged` with the unlock given. -/
 theorem writer_mergedU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {X : Fin sp.n} (hX : X ∈ H)
+    {i₀ s : Nat}
     {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
