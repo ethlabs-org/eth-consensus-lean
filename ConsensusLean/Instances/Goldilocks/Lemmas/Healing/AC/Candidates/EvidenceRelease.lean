@@ -34,7 +34,7 @@ theorem standaloneRunU_projTrace (hrun : ACLocalRun (evidenceReleaseSA sp FGP ro
     (htriv : TrivialFrames (projTrace tr) H) (hheal : HealthyAC (projTrace tr) H U g)
     (hcatch : CatchAC (projTrace tr) H U g (2 * sp.Δ)) :
     StandaloneRunU (erOracle tr) (projTrace tr) H U proposer g :=
-  ⟨⟨⟨localRunU_projTrace hrun, hobj⟩, hdr, hheal, hcatch⟩, htriv⟩
+  ⟨⟨⟨localRunU_projTrace hrun, hobj⟩, hdr, hheal.core, hheal.two_faulty_lt, hcatch⟩, htriv⟩
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` for evidence-release** (trivial frames): for an honest proposal `P`
 of slot `p` with `t_p ≥ ḡ + (8k + 4)Δ`, every honest vote of slot `p` is `P`, and at every

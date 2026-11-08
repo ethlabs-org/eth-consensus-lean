@@ -261,7 +261,7 @@ theorem late_vote_poolU
   have hdl : ∀ c, tr.deadline y c (tr.time i) ≤ tr.time i + sp.Δ := fun c =>
     (hS.deadline_le hy c _).trans (by rw [max_eq_left (by
         linarith only [hs, hti, hti'] : gbar g ≤ tr.time i)])
-  obtain ⟨k', hk'j, hik', hproc, hk'dl⟩ := hS.healthy.1 x hx i e.msg
+  obtain ⟨k', hk'j, hik', hproc, hk'dl⟩ := hS.healthy.message x hx i e.msg
     ⟨ℓx, hcx, Or.inl ⟨e, hex, rfl⟩⟩ y hy j ℓ hc (by rw [hmax]; linarith only [hdl j, ht, hti])
   rw [hmax] at hk'dl
   have hk'T : tr.time k' < sp.ts s + 2 * sp.Δ := by linarith only [hdl k', hti, hk'dl]
@@ -357,7 +357,7 @@ theorem late_vote_held_of_frameU
       by_cases hgk : g ≤ tr.time kh
       · have hmx : max (tr.time kh) (gbar g) ≤ sp.ts s + sp.Δ := max_le htkh (by
           linarith only [hs, hΔ])
-        obtain ⟨ka, hkaj, hacc', hlt⟩ := hS.healthy.2.1 x hx kh Hx hacc hgk y hy j ℓ hc
+        obtain ⟨ka, hkaj, hacc', hlt⟩ := hS.healthy.relay x hx kh Hx hacc hgk y hy j ℓ hc
           (by linarith only [hS.deadline_le hy j (tr.time kh), ht, hmx]) hF
         exact ⟨ka, hkaj, hacc', by linarith only [hS.deadline_le hy ka (tr.time kh), hmx, hlt]⟩
       · obtain ⟨ka, hkaj, hacc', hlt⟩ := hS.catchUp x hx kh Hx hacc
@@ -450,7 +450,7 @@ theorem proposal_mem_treeU
   have hF : Anc U ℓ.frame.F P := by
     rw [trivial_F_eqU hS hy hpH hc hc₀]; exact (hΦ₀.rooted.2 P hP₀).mono hΦ₀U
   have hmax : max (sp.ts p) (gbar g) = sp.ts p := max_eq_left hpg
-  obtain ⟨ka, hkaj, hacc, hlt⟩ := hS.healthy.2.1 _ hpH j₀ P ⟨ℓ₀, hc₀, hcall₀⟩
+  obtain ⟨ka, hkaj, hacc, hlt⟩ := hS.healthy.relay _ hpH j₀ P ⟨ℓ₀, hc₀, hcall₀⟩
     (by rw [htj₀]; exact (le_gbar g).trans hpg) y hy j ℓ hc
     (by
         rw [htj₀]; have := hS.deadline_le hy j
@@ -521,10 +521,12 @@ theorem compatible_of_vote {p : Nat} {P : Blk sp.n FGP} (hU : Coherent U)
   obtain rfl : Hd = Hd' := hU.1 hHd hHd' (hHdr.trans hHd'r.symm)
   exact anc_total hU hBHd hPHd'
 
-/-- `two_faulty_lt_honest` with the unlock given. -/
+set_option linter.unusedVariables false in
+-- `HealthyBaseU` bounds the faults by `f < n/2` only; the bound `3f ≤ n − 1` is given.
+/-- `two_faulty_lt_honest` with the unlock given, at `3f ≤ n − 1`. -/
 theorem two_faulty_lt_honestU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) : 2 * Hᶜ.ncard < H.ncard := by
-  have := hS.healthy.2.2.2
+    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
+    (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) : 2 * Hᶜ.ncard < H.ncard := by
   have hn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have := sp.toParams.hn
@@ -533,7 +535,7 @@ theorem two_faulty_lt_honestU
 
 /-- The honest validators are more than twice the faulty ones. -/
 theorem two_faulty_lt_honest (hS : HealthyBase tr H U proposer g) : 2 * Hᶜ.ncard < H.ncard :=
-  two_faulty_lt_honestU (hS := hS.toU)
+  two_faulty_lt_honestU (hS := hS.toU) hS.healthy.2.2.2
 
 /-- `result_extended` with the unlock given. -/
 theorem result_extendedU

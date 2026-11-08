@@ -129,7 +129,7 @@ theorem relay_acceptU
   have hΔ := sp.toParams.hΔ
   have hmax : max (tr.time k) (gbar g) < T := max_lt hkT (by linarith)
   by_cases hgk : g ≤ tr.time k
-  · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.2.1 z hz k X hacc hgk y hy i ℓ hc
+  · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.relay z hz k X hacc hgk y hy i ℓ hc
       (by linarith [hS.deadline_le hy i (tr.time k)]) hF
     exact ⟨k', hk'i, hacc', by linarith only [hS.deadline_le hy k' (tr.time k), hmax, hlt]⟩
   · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.catchUp z hz k X hacc
@@ -403,7 +403,7 @@ theorem carry_of_sentU
     have hmax : max (tr.time k) g = tr.time k := max_eq_left ((le_gbar g).trans hgk)
     have hdk : ∀ c, tr.deadline y c (tr.time k) ≤ tr.time k + sp.Δ := fun c =>
       (hS.deadline_le hy c _).trans (by rw [max_eq_left hgk])
-    obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hS.healthy.1 x hx k v hsend y hy i ℓ hc
+    obtain ⟨k', hk'i, hkk', hproc, hk'dl⟩ := hS.healthy.message x hx k v hsend y hy i ℓ hc
       (by rw [hmax]; linarith only [hdk i, hti, hk1, hk2])
     rw [hmax] at hk'dl
     have hk'T : tr.time k' < sp.ts s + 3 * sp.Δ := by linarith only [hdk k', hk2, hk'dl]
@@ -599,7 +599,7 @@ theorem trivial_viableU
     by_cases hgk : g ≤ tr.time k
     · have hmax : max (tr.time k) (gbar g) ≤ sp.ts σ + sp.Δ := max_le htk (by
         linarith only [hσ, hΔ])
-      obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.2.1 z hz k B hacc hgk y hy i ℓ hc.1
+      obtain ⟨k', hk'i, hacc', hlt⟩ := hS.healthy.relay z hz k B hacc hgk y hy i ℓ hc.1
         (by linarith only [hS.deadline_le hy i (tr.time k), hΔ, hti, hmax]) hF
       exact ⟨k', hk'i, hacc', by linarith only [hS.deadline_le hy k' (tr.time k), hΔ, hmax, hlt]⟩
     · obtain ⟨k', hk'i, hacc', hlt⟩ := hS.catchUp z hz k B hacc
