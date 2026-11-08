@@ -21,6 +21,7 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `GoldilocksTxLatencyDefault0` | `txLatDefault`, endpoint contract | R | none (the endpoint) |
 | `HealProfileAC0Free` | `acFree0` (`8k + 4` at `2·fcap < n`) | A, static | width-k modes |
 | `SigningRateAC0` | one vote per slot | A, static | every mode |
+| `HealDefault` | `healHsDefault`, `healHlDefault`, `healLatDefault` (Slice 1) | R | `Behaviour` |
 
 Coverage packages (shared across chain shape families; they read a protocol only through which
 bounds are finite):
@@ -79,6 +80,13 @@ theorem shapeTxLatencyCoverage0 : Consensus.Comparison.ShapeTxLatencyCoverage0 :
 theorem shapeProposalLatencyCoverage0 : Consensus.Comparison.ShapeProposalLatencyCoverage0 :=
   Consensus.Comparison.shapeProposalLatencyCoverage0
 
+/-- The order implies class inclusion (Slice 1 heal parameters). -/
+theorem healClassMono : Consensus.Comparison.HealClassMono := Consensus.Comparison.healClassMono
+
+/-- Bound `healHsDefault`/`healHlDefault`/`healLatDefault` (Slice 1); tier R; premise
+`Behaviour`. -/
+theorem healDefault : Consensus.Comparison.HealDefault := Consensus.Comparison.healDefault
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -118,5 +126,11 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.shapeProposalLatencyCoverage0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.shapeProposalLatencyCoverage0
+
+/-- info: 'Consensus.Comparison.Registry.healClassMono' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healClassMono
+
+/-- info: 'Consensus.Comparison.Registry.healDefault' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healDefault
 
 end

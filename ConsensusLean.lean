@@ -5,6 +5,7 @@ public import ConsensusLean.Comparison.Basic
 public import ConsensusLean.Comparison.Coverage
 public import ConsensusLean.Comparison.Defaults
 public import ConsensusLean.Comparison.Heal
+public import ConsensusLean.Comparison.HealDefaults
 public import ConsensusLean.Comparison.HealProfile
 public import ConsensusLean.Comparison.Latency
 public import ConsensusLean.Examples.Shape.Bft
@@ -1015,6 +1016,7 @@ public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Comparison.Main
 public import ConsensusLean.Proofs.ComparisonCoverage.Main
 public import ConsensusLean.Proofs.ComparisonCoverage.Witness
+public import ConsensusLean.Proofs.Comparison.Slice1
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic
 public import ConsensusLean.Proofs.RegimesRealizable.Growth

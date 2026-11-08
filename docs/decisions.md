@@ -628,6 +628,11 @@ detail in `TRUST.md`.
   re-releases of prefix stock unheld; keeping it out of `split` leaves the shared class unchanged.
 - **One coverage domain.** Domain and boundary coverage share `HealQ.DomainFeasible`, a conservative subdomain of
   the points with nonempty classes; the boundary conditions coincide with it at the level of the point.
+- **Slice 1 defaults read the contract only where the point's readiness is at least its own.** The defaults
+  (`HealDefault`) are the contract's heal and latency coefficients at points with `fcap < β·n`, `K.catchUp ≤
+  q.catchUp` and `K.θ ≤ q.θ`, whatever the incident length, activity, sleepers and class. Reason: the contract's
+  claims cover its own ready readers, and a point with a longer catch-up has fewer readers; at a shorter catch-up
+  the contract claims nothing about the extra readers, so the default is `⊤` there.
 
 ## Open questions
 
