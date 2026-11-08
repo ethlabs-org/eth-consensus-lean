@@ -585,6 +585,13 @@ detail in `TRUST.md`.
 - **Profiles are per capability and index.** A profile is stated at the contract's `(cap, i)`, whose heal and
   latency coefficients it bounds. Reason: a bound shared by every index has no finite default for a contract whose
   heal coefficient grows with the index (Goldilocks' grows with the outer gap).
+- **Frontier lemmas take the claims, not the classes.** The overlap lemmas (`Comparison/Overlap.lean`) bound a
+  heal point from below, for every system: protection of a ready source read (`ProtectedReadyFrom`) and ready-reader
+  safety from the heal point (`ReadySafe`), in one run or in two runs whose target reader has the same reads and
+  readiness through its reading time, rule out healing by the time of a ready read incompatible with the source.
+  The twin runs are premises. Reason: the lemmas then hold for every profile whose classes give these claims, and
+  a twin is a protocol-specific construction. The target's reading time is the time of an event cut, since safety
+  checks readers at cut times while protection reads at the end of a time.
 
 ## Open questions
 
