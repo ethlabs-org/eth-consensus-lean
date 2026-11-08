@@ -25,7 +25,11 @@ the unlock given, as at the parent's mode (`Lemmas/AC/Candidates/EvidenceRelease
   mode), is the parent's restart, which `stepWithM` takes at every mode
   (`acOnBlockEM_of_not_joined`, `acRestartEM_proj`);
 * lifted to traces: a run of the evidence-release SA at mode `m`, forgotten, is a run at mode `m`
-  with the unlock given by `erOracleM` (`localRunU_projTraceM`). -/
+  with the unlock given by `erOracleM` (`localRunU_projTraceM`).
+
+The parent's forms (`Lemmas/AC/Candidates/EvidenceRelease/Projection`, `RelTrace`) are kept as
+separate proofs, not corollaries at `WriteMode.parent sp`: the healing lemmas import them, and
+only leaf layers may import the Candidates layers, which hold the weighted locks. -/
 
 namespace Consensus.Goldilocks.EvidenceRelease
 
