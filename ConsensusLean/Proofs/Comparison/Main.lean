@@ -1,13 +1,15 @@
 module
 public import ConsensusLean.Comparison.Defaults
 public import ConsensusLean.Proofs.Comparison.Overlap
+public import ConsensusLean.Proofs.Comparison.HealProfileSlice0
 import Mathlib.Tactic.Linarith
 
 public section
 
 /-! # Comparison, Slice 0: the order lemmas and the defaults (proofs)
 
-* `slice0Class_mono`, `sync0Class_mono`: the coordinatewise orders imply class inclusion.
+* `slice0Class_mono`, `sync0Class_mono`: the coordinatewise orders imply class inclusion;
+  `healQ_slice0_mono` (`HealProfileSlice0`): the Slice 1 order passes to the Slice 0 points.
 * `healDefault0`: the heal defaults from `Behaviour.healedSafe` and `healthyLive` at GST `b₁`. The
   Slice 0 class with `fcap < β·n` is in `Healthy b₁` (`healthy_of_slice0Class`; `FullAwake` gives
   the full participation from `max b₁ 0`). Healed safety: when the heal point is within the horizon,

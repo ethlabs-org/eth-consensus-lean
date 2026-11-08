@@ -5,6 +5,7 @@ public import ConsensusLean.Comparison.Basic
 public import ConsensusLean.Comparison.Defaults
 public import ConsensusLean.Comparison.Heal
 public import ConsensusLean.Comparison.HealProfile
+public import ConsensusLean.Comparison.HealProfileSlice0
 public import ConsensusLean.Comparison.Latency
 public import ConsensusLean.Comparison.Overlap
 public import ConsensusLean.Comparison.Protection
@@ -938,6 +939,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Candidates
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.HealAC1
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.LatencyAC
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.TierA
@@ -1024,6 +1026,7 @@ public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
+public import ConsensusLean.Proofs.Comparison.HealProfileSlice0
 public import ConsensusLean.Proofs.Comparison.Main
 public import ConsensusLean.Proofs.Comparison.Overlap
 public import ConsensusLean.Proofs.Faithful.Main
