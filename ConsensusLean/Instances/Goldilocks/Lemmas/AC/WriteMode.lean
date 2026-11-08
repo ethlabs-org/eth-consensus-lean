@@ -1,7 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
-public import ConsensusLean.Instances.Goldilocks.Spec.WeightedLocks.Writes
 
 public section
 
@@ -18,10 +17,9 @@ The laws:
 
 * **the parent's mode**: at `WriteMode.parent sp` each handler is the parent's
   (`updateConfirmationM_parent`, `optimisticConfirmationM_parent`, `stepWithM_parent`,
-  `callInputM_parent`, `callViewM_parent`), and the new locks are the parent's
-  (`newLocksM_parent`); more generally `updateConfirmationM_of_parent` at every mode with the
-  fast arm and width `k`, and `optimisticConfirmationM_on` at every mode with the optimistic
-  write;
+  `callInputM_parent`, `callViewM_parent`); more generally `updateConfirmationM_of_parent` at
+  every mode with the fast arm and width `k`, and `optimisticConfirmationM_on` at every mode with
+  the optimistic write;
 * **the update at any mode** changes only the parent's fields and its locks
   (`updateConfirmationM_eq`), with `updateConfirmationM_locks_of_none`/`_of_some`, and its new
   locks are exactly its two arms (`mem_newLocksM`), with no fast lock without the fast arm
@@ -36,12 +34,6 @@ namespace Consensus.Goldilocks.SA
 variable {sp : SAParams} {FGP : Type}
 
 /-! ### The parent's mode -/
-
-theorem newLocksM_parent (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
-    (getConfirmation sp A Φ s).map (fun C => newLocksM sp (WriteMode.parent sp) A Φ t s C
-      (Function.update A.saved s (some C.root)) A.locks) =
-      EvidenceRelease.updateNewLocks sp A Φ t s :=
-  rfl
 
 theorem optimisticConfirmationM_on {m : WriteMode} (h : m.optimistic = true) :
     optimisticConfirmationM (FGP := FGP) sp m = optimisticConfirmation sp := by
