@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Frontier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Record
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.SeedHeld
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
@@ -35,8 +37,9 @@ vote cut after the split slot, has such a call (`seeded_reader_called_at`).
 
 `seeded_invariant_at` assembles them from the seed, the reset service and the counts through
 `b ≥ T`, and conviction below a third, with `t₁ ≥ t_{r+k}` the later of the seed's cover start and
-the drain `t_{r+k}`. The record cover after `T` and the held seed after `T` are separate lemmas,
-open (`sorry`) below. -/
+the drain `t_{r+k}`. Every field is proved: the record cover after `T` (`Continuation/Record`), the
+held seed after `T` (`Continuation/SeedHeld`), and the cache facts and the full-read viability
+(`Continuation/Rows`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -190,12 +193,8 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
 
 /-- **The record cover from `t₁` through `b`**. From the seed's cover through `T`, the record of a
 reader honest at a read point `t ∈ [t₁, b]` is its `Σ.F` or below an origin of label `≥ r + k − 1`
-written before the read.
-
-Open (`sorry`): after `T` the record is rewritten by results of label `≥ slot T − 1 > r + k − 1`
-or optimistic selections (lock members), and kept through the effective-record interval
-(`effective_record_of_interval_at`, §10.4 Mono, with the candidates compatible with the cover by
-the frontier and `Σ.F` by `caches`), §14.4. -/
+written before the read: after `T` a kept root keeps its block or follows `Σ.F`, and a new root
+is the reader's own result or selection, of label `≥ σ` (`seeded_record_cover_at`). -/
 theorem seeded_record_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {t₁ b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
@@ -209,7 +208,7 @@ theorem seeded_record_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
         ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F) := by
-  sorry
+  exact seeded_record_cover_at hrun hnc hseed hTb hsvc hB hcv hdt hcov
 
 /-- Any two members of the healed family within `b ≥ T` are compatible (`healed_frontier_at`). -/
 private theorem seeded_members_compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
@@ -264,13 +263,9 @@ theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv) ht0 hi htb hy
     (hB.two t ht0 htb) hcall hC hCt
 
-/-- **The held seed past `T`** (§14.5). The seed's high origin `S` is in the frame of every honest
-call at a time in `[t_{r−k−3}, b]` whose `Σ.F` it extends.
-
-Open (`sorry`): for a call after `T`, the caller is honest at `T` and awake on `[ḡ, T]`, so it has
-a call `c₀` in `[t_{r−k−3}, T]`; there `Σ.F ∼ S` (R2 within `T`), and `S` is in the FG tree
-(the bounded `HandoverSeed.seedHeld`, or `Store.accepted_tree` when `S ⪯ Σ.F`); the FG tree only
-grows along the run, and the frame holds every tree block above `Σ.F`. -/
+/-- **The held seed past `T`**. The seed's high origin `S` is in the frame of every honest call at
+a time in `[t_{r−k−3}, b]` whose `Σ.F` it extends: after `T`, through the caller's tick at
+`t_{r−k−3}` and the growth of its FG tree (`seed_held_through_at`). -/
 theorem seed_held_past_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time}
     (hTb : T ≤ b) :
@@ -278,7 +273,7 @@ theorem seed_held_past_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
       ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
         tr.projAC.CallAt y c ell → sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ b →
         Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree := by
-  sorry
+  exact seed_held_through_at hrun hnc hseed hTb
 
 /-! ### The seeded invariant -/
 
