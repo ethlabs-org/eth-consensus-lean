@@ -844,11 +844,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.I
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Frontier.Viable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.Arming
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.ArmingLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.ArmingRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.Floor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.ParentKeep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.Prot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Joint.S5
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Counts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Delivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Protection.AC.Rows.Gate
