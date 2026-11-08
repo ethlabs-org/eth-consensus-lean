@@ -929,6 +929,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Endpoint
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.LiveAfter
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Realizable
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Safe
