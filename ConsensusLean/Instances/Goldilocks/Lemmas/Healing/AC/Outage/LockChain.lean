@@ -29,10 +29,13 @@ namespace Consensus.Goldilocks.SA
 
 variable {sp : SAParams} {FGP : Type} {U : Set (Blk sp.n FGP)} {wm : WriteMode}
 
-/-! ### The lock functions at a mode keep the invariant -/
+/-! ### The lock functions at a mode keep the invariant
+
+Public, so that a layer that runs these lock functions in its own handlers (with another head
+walk) carries the invariant without restating them. -/
 
 /-- Locks that move back stay below the record. -/
-private theorem lockInv_movesBackAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
+theorem lockInv_movesBackAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
     {A A' : SAState sp.n} (h : LockInv U A Φ) (hm : MovesBack sp Φ A.locks A'.locks)
     (hl : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := lockInv_iff.1 h
@@ -41,7 +44,8 @@ private theorem lockInv_movesBackAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU 
   obtain rfl : X = B' := hU.1 hX (hΦU hB') (hXr.trans hB'r.symm)
   exact (Anc.mono hΦU hA).trans (hlE l hl B (hΦU hB) hBr)
 
-private theorem lockInv_of_eqAC {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : LockInv U A Φ)
+/-- The same locks and record keep the invariant. -/
+theorem lockInv_of_eqAC {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : LockInv U A Φ)
     (hl : A'.locks = A.locks) (hr : A'.latestConfirmed = A.latestConfirmed) :
     LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := lockInv_iff.1 h
@@ -51,7 +55,7 @@ open Classical in
 /-- New locks below a new record: the record moves to `C` (unless `C` is below it), and the
 stored locks become the live locks of the old ones with new ones on ancestors of `C`; when `C` is
 in the tree and conflicts with no live lock, the invariant holds after. -/
-private theorem lockInv_addLocksAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem lockInv_addLocksAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
     {N : Set (Nat × Bool × Nat)} {C : Blk sp.n FGP} (hC : C ∈ Φ.tree)
     (hconf : ¬ conflictsWithLock sp A.locks Φ t C)
@@ -97,7 +101,7 @@ private theorem lockInv_addLocksAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : 
     · exact Anc.mono hΦU hYC
 
 /-- New locks below a live lock, the record kept. -/
-private theorem lockInv_addLocks_belowAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem lockInv_addLocks_belowAC (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
     {N : Set (Nat × Bool × Nat)} (hlocks : A'.locks = SA.addLocks sp A.locks Φ t s N)
     (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧
@@ -124,7 +128,9 @@ variable (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tre
 include hU hΦ hΦU
 
 open Classical in
-private theorem lockInv_optimisticAC {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) :
+/-- The optimistic confirmation at mode `wm`: its new lock is on the optimistic selection, which
+conflicts with no live lock. -/
+theorem lockInv_optimisticAC {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) :
     LockInv U (optimisticConfirmationM sp wm A Φ t) Φ := by
   refine optimisticConfirmationM_of (P := fun X => LockInv U X Φ) ?_ h
   unfold optimisticConfirmation
@@ -144,7 +150,7 @@ private theorem lockInv_optimisticAC {A : SAState sp.n} (h : LockInv U A Φ) (t 
 open Classical in
 /-- The update at mode `wm`: every new lock (the fast arm's and the slow lock of width
 `wm.width`) is on a block of the result's path that conflicts with no live lock. -/
-private theorem lockInv_updateAC {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
+theorem lockInv_updateAC {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
     LockInv U (updateConfirmationM sp wm A Φ t s) Φ := by
   unfold updateConfirmationM
   rcases hC : getConfirmation sp A Φ s with _ | C
