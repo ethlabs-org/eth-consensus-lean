@@ -1,0 +1,73 @@
+module
+public import ConsensusLean.Proofs.Comparison.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
+
+@[expose] public section
+
+/-! # Comparison registry: the proved Slice 0 instances (Lean index)
+
+One entry per proved profile instance: the statement it proves (whose type fixes the bound
+function, the tier and the premises), proved by its proof, with its axioms pinned. Columns of each
+docstring: **bound** (the bound function), **tier** (R: over every L0 system or the compiled
+protocol; A: over AC traces of the Goldilocks SA, none yet), **premises** (what the instance
+assumes beyond the profile's class). A new instance adds an entry here.
+
+| statement | bound | tier | premises |
+|---|---|---|---|
+| `HealDefault0` | `hsDefault`, `hlDefault`, `latDefault` | R | `Behaviour` |
+| `TxLatencyDefault0` | `txLatDefault` | R | `Behaviour` |
+| `GoldilocksHealDefault0` | the same, at the endpoint's contract | R | none (the endpoint) |
+| `GoldilocksTxLatencyDefault0` | `txLatDefault`, endpoint contract | R | none (the endpoint) |
+-/
+
+namespace Consensus.Comparison.Registry
+
+/-- The order implies class inclusion (Slice 0 heal parameters). -/
+theorem slice0ClassMono : Consensus.Comparison.Slice0ClassMono :=
+  Consensus.Comparison.slice0Class_mono
+
+/-- The order implies class inclusion (Slice 0 synchronous class). -/
+theorem sync0ClassMono : Consensus.Comparison.Sync0ClassMono :=
+  Consensus.Comparison.sync0Class_mono
+
+/-- Bound `hsDefault`/`hlDefault`/`latDefault`; tier R; premise `Behaviour`. -/
+theorem healDefault0 : Consensus.Comparison.HealDefault0 := Consensus.Comparison.healDefault0
+
+/-- Bound `txLatDefault`; tier R; premise `Behaviour`. -/
+theorem txLatencyDefault0 : Consensus.Comparison.TxLatencyDefault0 :=
+  Consensus.Comparison.txLatencyDefault0
+
+/-- Goldilocks heal defaults at the endpoint's contract; tier R; no premise. -/
+theorem goldilocksHealDefault0 : Consensus.Goldilocks.Comparison.GoldilocksHealDefault0 :=
+  Consensus.Goldilocks.Comparison.goldilocks_heal_default0
+
+/-- Goldilocks transaction latency default at the endpoint's contract; tier R; no premise. -/
+theorem goldilocksTxLatencyDefault0 : Consensus.Goldilocks.Comparison.GoldilocksTxLatencyDefault0 :=
+  Consensus.Goldilocks.Comparison.goldilocks_txLatency_default0
+
+end Consensus.Comparison.Registry
+
+-- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
+-- than 100 columns.
+set_option linter.style.whitespace false
+set_option linter.style.longLine false
+
+/-- info: 'Consensus.Comparison.Registry.slice0ClassMono' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.slice0ClassMono
+
+/-- info: 'Consensus.Comparison.Registry.sync0ClassMono' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.sync0ClassMono
+
+/-- info: 'Consensus.Comparison.Registry.healDefault0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healDefault0
+
+/-- info: 'Consensus.Comparison.Registry.txLatencyDefault0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.txLatencyDefault0
+
+/-- info: 'Consensus.Comparison.Registry.goldilocksHealDefault0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.goldilocksHealDefault0
+
+/-- info: 'Consensus.Comparison.Registry.goldilocksTxLatencyDefault0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.goldilocksTxLatencyDefault0
+
+end

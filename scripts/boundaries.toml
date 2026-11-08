@@ -1132,7 +1132,9 @@ proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.
                             "ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main",
-                            "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports"]
+                            "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports",
+                            "ConsensusLean.Proofs.Comparison.Main",
+                            "ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

@@ -1,6 +1,7 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
 public import ConsensusLeanTest.Blocks.Basic
+public import ConsensusLeanTest.Comparison.Registry
 public import ConsensusLeanTest.Comparison.Slice0
 public import ConsensusLeanTest.Fixtures.Common
 public import ConsensusLeanTest.Fixtures.Support
