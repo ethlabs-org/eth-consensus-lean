@@ -896,6 +896,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
@@ -978,6 +979,7 @@ public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
+public import ConsensusLean.Proofs.Comparison.Main
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic
 public import ConsensusLean.Proofs.RegimesRealizable.Growth
