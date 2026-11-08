@@ -65,6 +65,7 @@ public import ConsensusLeanTest.Goldilocks.Healing.Recovery
 public import ConsensusLeanTest.Goldilocks.Healing.SA
 public import ConsensusLeanTest.Goldilocks.Healing.Settled
 public import ConsensusLeanTest.Goldilocks.Healing.Statements
+public import ConsensusLeanTest.Goldilocks.Healing.SupportCounting
 public import ConsensusLeanTest.Goldilocks.Healing.TickRun
 public import ConsensusLeanTest.Goldilocks.InitialCarry.Control
 public import ConsensusLeanTest.Goldilocks.InitialCarry.Premises

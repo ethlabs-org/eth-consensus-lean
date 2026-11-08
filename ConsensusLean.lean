@@ -931,6 +931,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.O
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.SupportCounting
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations.Constant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
