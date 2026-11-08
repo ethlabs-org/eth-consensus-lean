@@ -2,6 +2,12 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 
 public section
 
@@ -26,7 +32,9 @@ comparisons the continuation proof reads.
   low `Σ.J` below the seed).
 
 Each comparison ends in a crossing set of at least `2q − n ≥ n/3` validators with slashable pairs
-on the two chains, which `ChainConvictedBelow` excludes. Statements only for now. -/
+on the two chains, which `ChainConvictedBelow` excludes. The crossing sets come from
+`Continuation/HeldChains`, and the engine views of held attestations from
+`Continuation/HeldViews`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -62,7 +70,12 @@ theorem finalized_compatible_of_convictedBelow (hrun : Growing.GoldilocksRun pro
     {t t' : Time} (ht : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (ht' : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t') (hz : z ∈ H t') :
     Compatible (tr.HonestBlocksAt H) (tr.finalizedAt y i) (tr.finalizedAt z j) := by
-  sorry
+  by_contra hne
+  obtain ⟨X₁, hX₁, X₂, hX₂, W, hW, hw⟩ :=
+    Simulation.finalAccountable_readPoint hrun hnc ht hi hy ht' hj hz hne
+  have h3 := hcv y z i j t t' ht hi hy ht' hj hz X₁ hX₁ X₂ hX₂ W hw
+  have hq : sp.toParams.q = (2 * sp.n + 2) / 3 := rfl
+  omega
 
 /-- **Equal justified heights agree under conviction below a third** (HR.2(a) without a fault
 bound). For two blocks held by two readers, each honest at a time `≥ 0` at or after every cut
@@ -77,7 +90,15 @@ theorem J_eq_of_hj_eq_conv (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hB : B ∈ (tr.state y i).fg.tree) (hB' : B' ∈ (tr.state z j).fg.tree)
     (he : ((tr.state y i).fg.σ B.root).hj = ((tr.state z j).fg.σ B'.root).hj) :
     ((tr.state y i).fg.σ B.root).J = ((tr.state z j).fg.σ B'.root).J := by
-  sorry
+  by_contra hne
+  obtain ⟨W, hW, hw⟩ := Store.justified_crossing (fg_reachable_at hrun ht hi hy)
+    (fg_reachable_at hrun ht' hj hz) hB hB' he hne
+  have h3 := hcv y z i j t t' ht hi hy ht' hj hz B hB B' hB' W fun v hv => by
+    obtain ⟨a, ha, b, hb, hav, hab⟩ := hw v hv
+    exact ⟨a, Or.inl ha, b, Or.inr hb, hav, hab⟩
+  have hq : sp.toParams.fg.q = (2 * sp.n + 2) / 3 := rfl
+  have hn : sp.toParams.n = sp.n := rfl
+  omega
 
 end Consensus.Goldilocks.Compose.Growing
 
@@ -106,7 +127,20 @@ theorem finalized_anc_of_lt_conv (hrun : GoldilocksRun proposer dg H tr)
     (hW : W ∈ (tr.state z m).fg.tree)
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
     Anc (tr.HonestBlocksAt H) F W := by
-  sorry
+  by_contra hn
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  have hsub₁ : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H := fun _ h => ⟨y, k, t, ht, hk, hy, h⟩
+  have hsub₂ : (tr.state z m).fg.tree ⊆ tr.HonestBlocksAt H := fun _ h => ⟨z, m, u, hu, hm, hz, h⟩
+  obtain ⟨S, hS, hw⟩ := Store.finalized_crossing (Compose.Growing.fg_reachable_at hrun ht hk hy)
+    (Compose.Growing.fg_reachable_at hrun hu hm hz) hX hFr hW hlt fun Y hY hYW hYF => by
+      obtain rfl : Y = F := hU.1 (hsub₂ hY) (hsub₁ hF) hYF
+      exact hn (Anc.mono hsub₂ hYW)
+  have h3 := hcv y z k m t u ht hk hy hu hm hz X hX W hW S fun v hv => by
+    obtain ⟨a, ha, b, hb, hav, hab⟩ := hw v hv
+    exact ⟨a, Or.inl ha, b, Or.inr hb, hav, hab⟩
+  have hq : sp.toParams.fg.q = (2 * sp.n + 2) / 3 := rfl
+  have hn' : sp.toParams.n = sp.n := rfl
+  omega
 
 end Consensus.Goldilocks.Growing.GoldilocksRun
 
@@ -129,7 +163,40 @@ supplies `ChainConvictedBelow` to the seeded invariant and the continued reads. 
 theorem chainConvictedBelow_at (hv : rho.ExecutionValid)
     (hcb : (Sys (goldilocks S) V).ConvictedBelow (K S A) ⟨E, rho⟩) :
     Compose.Growing.ChainConvictedBelow (simTraceAt S rho hn) (honestKeysAt S rho) := by
-  sorry
+  classical
+  intro y z i j t t' ht hi hy ht' hj hz X₁ hX₁ X₂ hX₂ W hW
+  obtain ⟨q₁, hq₁, hh₁, hv₁⟩ := held_atts_in_view_at S rho hn hv ht hi hy
+  obtain ⟨q₂, hq₂, hh₂, hv₂⟩ := held_atts_in_view_at S rho hn hv ht' hj hz
+  set Vw := rho.ViewIdx (rho.key y) q₁ ∪ rho.ViewIdx (rho.key z) q₂
+  have hcount := convicted_count S rho (A := Vw) W fun k hk => by
+    obtain ⟨a, ha, b, hb, hak, hab⟩ := hW k hk
+    have hmem : ∀ c ∈ Regimes.ChainAtts (simTraceAt S rho hn) y i X₁ ∪
+        Regimes.ChainAtts (simTraceAt S rho hn) z j X₂, attObj c ∈ Vw := by
+      rintro c (⟨B, hB, -, hc⟩ | ⟨B, hB, -, hc⟩)
+      · exact Or.inl (hv₁ B hB c hc)
+      · exact Or.inr (hv₂ B hB c hc)
+    exact ⟨a, b, hmem a ha, hmem b hb, hak, hab⟩
+  have hc := hcb (rho.key y) (rho.key z) q₁ q₂ hq₁ hq₂ hh₁ hh₂
+  have hsub : convicted rho.Slashable Vw ⊆ convicted ((Sys (goldilocks S) V).convicts ⟨E, rho⟩)
+      ((Sys (goldilocks S) V).view ⟨E, rho⟩ (rho.key y) q₁ ∪
+        (Sys (goldilocks S) V).view ⟨E, rho⟩ (rho.key z) q₂) := by
+    intro x hx
+    simp only [convicted, Finset.mem_filter, Finset.mem_univ, true_and] at hx ⊢
+    obtain ⟨o, ho, o', ho', h⟩ := hx
+    refine ⟨o, ?_, o', ?_, h⟩
+    · rcases ho with ho | ho
+      · exact Or.inl ⟨o, ho, rfl⟩
+      · exact Or.inr ⟨o, ho, rfl⟩
+    · rcases ho' with ho' | ho'
+      · exact Or.inl ⟨o', ho', rfl⟩
+      · exact Or.inr ⟨o', ho', rfl⟩
+  have hle := (hcount.trans (Finset.card_le_card hsub))
+  have hα : (K S A).params.α = 1 / 3 := rfl
+  rw [hα] at hc
+  have hq : ((W.card : Nat) : ℚ) < 1 / 3 * Fintype.card V :=
+    lt_of_le_of_lt (by exact_mod_cast hle) hc
+  have : (3 * W.card : ℚ) < Fintype.card V := by linarith
+  exact_mod_cast this
 
 end Consensus.Goldilocks.Obligations.Growing
 
