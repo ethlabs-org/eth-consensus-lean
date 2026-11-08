@@ -188,7 +188,8 @@ theorem early_closed : ∀ i, Early S i → ∀ o ∈ (rho S).releasesAt i, ∀ 
     simp [delay, Model.Event.node, Model.Event.time] at hed
   · rintro i w o t ⟨e, he, het, hed⟩ hi
     rw [hi] at he; cases he
-    rcases (base S).injectEvents_source (delay S) (inj S) hi with hp | ⟨j, hj, ej, hje, hjt, hjr⟩
+    rcases (base S).injectEvents_source (delay S) (inj S)
+        (fun _ _ _ _ => true) hi with hp | ⟨j, hj, ej, hje, hjt, hjr⟩
     · left
       intro d hd
       obtain ⟨-, rfl⟩ := (mem_inj S).mp hp
@@ -207,7 +208,8 @@ theorem early_closed : ∀ i, Early S i → ∀ o ∈ (rho S).releasesAt i, ∀ 
 theorem delivered_proposal {i : Nat} {w : Fin 5} {o : Obj S} {t : Time}
     (hi : (rho S).events[i]? = some (.deliver w o t)) (ht : t ≤ 13) :
     ∀ d, Model.Obj.Contains o d → NoProposal S d := by
-  rcases (base S).injectEvents_source (delay S) (inj S) hi with hp | ⟨j, -, ej, hje, hjt, hjr⟩
+  rcases (base S).injectEvents_source (delay S) (inj S)
+      (fun _ _ _ _ => true) hi with hp | ⟨j, -, ej, hje, hjt, hjr⟩
   · intro d hd
     obtain ⟨-, rfl⟩ := (mem_inj S).mp hp
     rw [twin_contains S hd]
@@ -331,7 +333,8 @@ theorem released_vote : ∀ i, ∀ o ∈ (rho S).releasesAt i, ∀ d, Model.Obj.
           (node_ne_zero (List.mem_of_getElem? he))
       · exact key1_vote_slot he (Fin.ext (by rw [hn, hval', hval]; rfl)) ho
   · rintro i w o t - hi
-    rcases (base S).injectEvents_source (delay S) (inj S) hi with hp | ⟨j, hj, -, -, -, hjr⟩
+    rcases (base S).injectEvents_source (delay S) (inj S)
+        (fun _ _ _ _ => true) hi with hp | ⟨j, hj, -, -, -, hjr⟩
     · left
       intro d hd
       obtain ⟨-, rfl⟩ := (mem_inj S).mp hp
@@ -345,7 +348,8 @@ theorem released_vote : ∀ i, ∀ o ∈ (rho S).releasesAt i, ∀ d, Model.Obj.
 theorem delivered_vote {i : Nat} {w : Fin 5} {o : Obj S} {t : Time}
     (hi : (rho S).events[i]? = some (.deliver w o t)) :
     ∀ d, Model.Obj.Contains o d → NoLateVote S d := by
-  rcases (base S).injectEvents_source (delay S) (inj S) hi with hp | ⟨j, -, -, -, -, hjr⟩
+  rcases (base S).injectEvents_source (delay S) (inj S)
+      (fun _ _ _ _ => true) hi with hp | ⟨j, -, -, -, -, hjr⟩
   · intro d hd
     obtain ⟨-, rfl⟩ := (mem_inj S).mp hp
     rw [twin_contains S hd]

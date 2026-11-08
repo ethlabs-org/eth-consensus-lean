@@ -93,7 +93,8 @@ theorem twin_event {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
     exact this
   have hρ : Model.Event.deliver ((rhoc S).key y) (twin S) 13 ∈ (rho S).events := by
     rw [rho_events]
-    apply (base S).injectEvents_layer (delay S) (inj S) 13 (by norm_num) (by simp [base])
+    apply (base S).injectEvents_layer (delay S) (inj S)
+        (fun _ _ _ _ => true) 13 (by norm_num) (by simp [base])
     rw [Model.Run.mem_injectLayer]
     refine Or.inr (Or.inr ⟨(rhoc S).key y, ?_, rfl, twin S, Or.inl ((mem_inj S).mpr ⟨rfl, rfl⟩),
       rfl⟩)

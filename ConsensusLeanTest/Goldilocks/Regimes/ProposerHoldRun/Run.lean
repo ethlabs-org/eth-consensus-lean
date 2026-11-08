@@ -117,7 +117,7 @@ def inj (t : Time) (_ : Fin 5) : List (Obj S) := if t = 13 then [twin S] else []
 
 /-- **The run.** -/
 noncomputable def rho : Model.Run (compiled (goldilocks S)) env :=
-  (base S).injectRun (delay S) (inj S)
+  (base S).injectRun (delay S) (inj S) (fun _ _ _ _ => true)
 
 theorem rho_faultyAt : (rho S).faultyAt = faulty := Model.Run.withEvents_faultyAt _ _
 
@@ -134,7 +134,8 @@ theorem rho_point : (rho S).point = ⟨env, faulty, faulty_mono, 41, fun _ _ => 
 
 theorem rho_submit : (rho S).submit = fun _ _ => [] := congrArg EnvPoint.submit (rho_point S)
 
-theorem rho_events : (rho S).events = (base S).injectEvents (delay S) (inj S) :=
+theorem rho_events : (rho S).events = (base S).injectEvents (delay S) (inj S)
+    (fun _ _ _ _ => true) :=
   Model.Run.withEvents_events _ _
 
 theorem delay_nonneg (e : Ev S) : 0 ≤ delay S e := by
@@ -154,7 +155,8 @@ theorem twin_contains {d : Obj S} (h : Model.Obj.Contains (twin S) d) : d = twin
 /-- **The run is valid**: the twin is signed by key `1`, compromised at `13`, in the role the
 selection gives it. -/
 theorem rho_valid : (rho S).ExecutionValid := by
-  apply (base S).injectEvents_valid (delay S) (inj S) (by simp [base]) (sel_admits S)
+  apply (base S).injectEvents_valid (delay S) (inj S)
+      (fun _ _ _ _ => true) (by simp [base]) (sel_admits S)
     (delay_nonneg S)
   · intro t v o ho d hd u hu
     obtain ⟨rfl, rfl⟩ := (mem_inj S).mp ho
@@ -172,7 +174,8 @@ theorem rho_valid : (rho S).ExecutionValid := by
 
 /-- **The run is synchronous**: every delay is below `ΔAC = ΔFG = 3`. -/
 theorem rho_psync : (rho S).log.PSync (rho S).point 0 := by
-  apply (base S).injectEvents_psync (delay S) (inj S) (by simp [base]) (by decide) (by decide)
+  apply (base S).injectEvents_psync (delay S) (inj S) (fun _ _ _ _ => true) (by simp [base])
+    (by decide) (by decide) (fun _ _ _ _ => rfl)
     (fun e => ⟨delay_nonneg S e, delay_lt S e, delay_lt S e⟩)
   rw [Model.Run.eagerTxDelivery_iff]
   intro u x τ _ _ _ hx
