@@ -1,5 +1,9 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
+public import ConsensusLean.Comparison.Basic
+public import ConsensusLean.Comparison.Defaults
+public import ConsensusLean.Comparison.Heal
+public import ConsensusLean.Comparison.Latency
 public import ConsensusLean.Examples.Shape.Bft
 public import ConsensusLean.Examples.Shape.Streamlet
 public import ConsensusLean.Examples.Shape.Tendermint
@@ -861,6 +865,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Defaults
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service
