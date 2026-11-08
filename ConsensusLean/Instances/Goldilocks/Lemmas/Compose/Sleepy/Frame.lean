@@ -341,18 +341,28 @@ theorem honestRowsSourced_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y
         ∃ D, G D ∧ IsHonestSource tr H D a.T :=
   Iff.rfl
 
-/-- Every honest attestation on a block of `y`'s tree before cut `i` whose named entry has height at
-least `h₀` (in `y`'s states) has a source satisfying `G`: the attestations the geometry reads at the
-crossing heights `≥ h₀`. -/
+/-- Every honest attestation on a block of `y`'s tree before cut `i` that names a block of the tree
+(its entry) of height at least `h₀` (in `y`'s states) has a source satisfying `G`: the
+attestations the geometry reads at the crossing heights `≥ h₀`. An attestation may name a root
+the reader does not hold (a finality-pair attestation of a longer chain); the geometry never
+reads those. -/
 def RowsAbove (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i h₀ : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
+    (∃ E ∈ (tr.state y i).fg.tree, E.root = a.T) →
     h₀ ≤ ((tr.state y i).fg.σ a.T).h → ∃ D, G D ∧ IsHonestSource tr H D a.T
+
+theorem rowsAbove_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
+    {i h₀ : Nat} : RowsAbove tr H G y i h₀ ↔
+      ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
+        (∃ E ∈ (tr.state y i).fg.tree, E.root = a.T) →
+        h₀ ≤ ((tr.state y i).fg.σ a.T).h → ∃ D, G D ∧ IsHonestSource tr H D a.T :=
+  Iff.rfl
 
 theorem HonestRowsSourced.above {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
     {y : Fin sp.n} {i : Nat} (h : HonestRowsSourced tr H G y i) (h₀ : Nat) :
     RowsAbove tr H G y i h₀ :=
-  fun X hX a ha hav _ => h X hX a ha hav
+  fun X hX a ha hav _ _ => h X hX a ha hav
 
 /-- The entry an honest source names is its ancestor, an entry block of the source's height. -/
 theorem honest_source_entry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -426,7 +436,7 @@ variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hf : 2
 
 include hrun hnc hf hy in
 /-- A crossing quorum has an honest attestation, whose source satisfies `G`. -/
-private theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
+theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
     {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree) {j : Nat} (hj0 : h₀ ≤ j) (hj1 : 1 ≤ j)
     (hj2 : j < ((tr.state y i).fg.σ W.root).h) :
@@ -439,7 +449,7 @@ private theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y
   rw [store_eq hrun hy i] at hE hEW hEh hET hv
   obtain ⟨v, hvQ, hvH⟩ := honest_mem hf hQ
   obtain ⟨X, hX, -, a, ha, rfl, haT⟩ := hv v hvQ
-  obtain ⟨D, hD, hDs⟩ := hsrc X hX a ha hvH (by rw [haT, hEh]; exact hj0)
+  obtain ⟨D, hD, hDs⟩ := hsrc X hX a ha hvH ⟨E, hE, haT.symm⟩ (by rw [haT, hEh]; exact hj0)
   exact ⟨E, hE, hEW, hEh, hET, D, hD, haT ▸ hDs⟩
 
 include hrun hnc hy in
@@ -500,7 +510,7 @@ theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
 include hrun hnc hf hy in
 /-- **The justification has an honest source**: at `h_j ≥ 1`, `Σ.J` is an entry block of height
 `h_j`, and an honest attestation of its target quorum has a source satisfying `G`. -/
-private theorem justified_honest_source_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
+theorem justified_honest_source_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hj : 1 ≤ (tr.state y i).fg.hj) :
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
       ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
@@ -614,7 +624,7 @@ theorem floor_or_crossing_scoped (hrun : GoldilocksRun proposer dg H tr) (hnc : 
         ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
         X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧
         (tr.state y i).fg.IsViable X :=
-  floor_or_crossing_of hrun hnc hf hy hsrc hGG hGB hB
+  floor_or_crossing_of hrun hnc hf hy (fun X hX a ha hav _ h => hsrc X hX a ha hav h) hGG hGB hB
 
 section Wrappers
 

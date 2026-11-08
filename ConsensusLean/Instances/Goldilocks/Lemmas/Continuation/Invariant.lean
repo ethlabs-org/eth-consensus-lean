@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Frontier
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
@@ -8,28 +9,34 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # The seeded invariant after a hand-over (M8)
+/-! # The seeded invariant after a hand-over
 
 The fields of `SleepyInvariantUpTo` relative to the healed family at the floors `(rL, rO)`, for
-the states read at times `t ∈ [t₁, b]` (design §8.1 as amended by §14.3 and §15):
+the states read at times `t ∈ [t₁, b]`:
 
 * `origins_compatible`, `vote_extends`: the healed frontier at every label (`healed_frontier_at`);
 * `record`: the record at a read point is `Σ.F` or below an origin of label `≥ rO` written before
   the read (`HealedRecordCoverAt`);
 * `caches`: `Σ.F` is on the healed chain (ancestor form), and `fc_root` is compatible with every
-  member held in the frame (§14.3);
+  member held in the frame;
 * `locks`: every live lock block is on the healed chain, below its holder's own lock write, whose
   label is `≥ rL` after the drain (`lock_write_at`, `drain_live_locks`);
 * `sources`: every FG source from `t₁` on is on the healed chain, below the lock write of the live
   fast lock it is the viable ancestor of;
-* `viable`: S3 at full reads for the family;
+* `viable`: S3 at full reads for every block on the healed chain;
 * `seedHeld`: the reset seed is in the frame of every honest call from `t_{rL−k−3}` through `b`
-  whose `Σ.F` it extends (§13.2, extended past `T` by §14.5).
+  whose `Σ.F` it extends.
+
+`caches` and `viable` are read at states whose node has called from `t_{rL−k−3}` on before the
+read: a stale state from before the reset need not hold the reset seed, and its pre-reset `Σ.J`
+is then not compared with the family. A reader honest at a read point from `t_{r+k}` on, or at a
+vote cut after the split slot, has such a call (`seeded_reader_called_at`).
+`seeded_chain_candidate_at` reads `viable` as a viable-ancestor candidate.
 
 `seeded_invariant_at` assembles them from the seed, the reset service and the counts through
-`b ≥ T`, and conviction below a third, with `t₁` the later of the seed's cover start and the drain
-`t_{r+k}`. The record cover after `T`, the cache facts, the full-read viability and the held seed
-after `T` are separate lemmas, open (`sorry`) below. -/
+`b ≥ T`, and conviction below a third, with `t₁ ≥ t_{r+k}` the later of the seed's cover start and
+the drain `t_{r+k}`. The record cover after `T` and the held seed after `T` are separate lemmas,
+open (`sorry`) below. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -54,8 +61,11 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
       ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
         (tr.state y i).fg.F)
   /-- `Σ.F` is on the healed chain, and `fc_root` is compatible with every member held in the
-  frame (state read at `t ∈ [t₁, b]`). -/
+  frame (state read at `t ∈ [t₁, b]`, of a node that has called from `t_{rL−k−3}` on before the
+  read). -/
   caches : ∀ y i t, t₁ ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
+    (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+      sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) →
     OnHealedChain tr H g rL rO (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g rL rO C s b → C ∈ (Node.frame (tr.state y i)).tree →
         Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C
@@ -67,10 +77,13 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
   chain. -/
   sources : ∀ y i ℓ C, y ∈ H (tr.time i) → t₁ ≤ tr.time i → tr.time i ≤ b →
     SA.ToFGAt tr.projAC y i ℓ C → OnHealedChain tr H g rL rO C b
-  /-- S3 (full reads): a member held in the frame (state read at `t ∈ [t₁, b]`) is at or below
+  /-- S3 (full reads): a block on the healed chain held in the frame (state read at
+  `t ∈ [t₁, b]`, of a node that has called from `t_{rL−k−3}` on before the read) is at or below
   `fc_root` or in the full viable tree. -/
   viable : ∀ y i t, t₁ ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
-    ∀ C s, HealedOrigin tr H g rL rO C s b → C ∈ (Node.frame (tr.state y i)).tree →
+    (∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+      sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) →
+    ∀ C, OnHealedChain tr H g rL rO C b → C ∈ (Node.frame (tr.state y i)).tree →
       (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
         C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree
   /-- The reset seed: a high origin written by `b`, in the frame of every honest call at a time in
@@ -79,6 +92,20 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
     ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
       tr.projAC.CallAt y c ell → sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ b →
       Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree
+
+/-- **A block on the healed chain held in the frame is a viable-ancestor candidate**: at or below
+`fc_root`, or in the full viable tree (`SeededInvariant.viable`), for a reader honest at
+`t ∈ [t₁, b]` that has called from `t_{rL−k−3}` on before the read. -/
+theorem seeded_chain_candidate_at {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+    {g : Time} {rL rO : Nat} {t₁ b : Time}
+    (hinv : SeededInvariant tr H g rL rO t₁ b) {y : Fin sp.n} {i : Nat} {t : Time}
+    (ht₁ : t₁ ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+      sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : OnHealedChain tr H g rL rO C b)
+    (hCm : C ∈ (Node.frame (tr.state y i)).tree) :
+    (Node.frame (tr.state y i)).AncestorCandidate C :=
+  hinv.viable y i t ht₁ hi htb hy hcall C hC hCm
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
@@ -184,44 +211,58 @@ theorem seeded_record_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
           (tr.state y n).fg.F) := by
   sorry
 
-/-- **The seeded cache facts** (§4.2, §14.3). For a reader honest at `t ∈ [t₁, b]`, `Σ.F` is on
-the healed chain, and `fc_root` is compatible with every family member held in the frame.
+/-- Any two members of the healed family within `b ≥ T` are compatible (`healed_frontier_at`). -/
+private theorem seeded_members_compatible (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
+    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hcv : ChainConvictedBelow tr H) :
+    ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
+      HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C' :=
+  fun C s C' s' h h' => healedOriginsBelow_iff.1
+    (healed_frontier_at hrun hnc hseed hTb hsvc hB hcv (max s s' + 1)).1 C s C' s' (by omega)
+      (by omega) h h'
 
-Open (`sorry`): low `Σ.F` (`h_F ≤ H_z`) is below the reset seed (`low_finalized_below_origin_at`
-up to `T`, `GoldilocksRun.finalized_anc_of_lt_conv` after); high `Σ.F ⪯ Σ.J` is below the entry
-named by an honest quorum member's row, on a high origin's chain before `t₁` (`HandoverSeed.rows`)
-and below a lock write after (`seeded_sources_at`); `fc_root = Σ.J` low in the active case is
-compared through the held seed (`low_root_of_held_seed_at_call_at`, `J_eq_of_hj_eq_conv`). -/
+/-- **The seeded cache facts.** For a reader honest at `t ∈ [t₁, b]` that has called from
+`t_{r−k−3}` on before its read, `Σ.F` is on the healed chain, and `fc_root` is compatible with
+every family member held in the frame (`seeded_caches_of`: a low reader holds the reset seed, with
+`Σ.F` and `fc_root` below it; a high `Σ.J` is the entry of an honest source below a member). -/
 theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {t₁ b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
-    (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t) :
+    (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+      sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c) :
     OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b →
         C ∈ (Node.frame (tr.state y i)).tree →
-        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C := by
-  sorry
+        Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C :=
+  have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
+  seeded_caches_of hrun hnc hcv hseed hTb
+    (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv) ht0 hi htb hy
+    (hB.two t ht0 htb) hcall
 
-/-- **S3 at full reads for the family** (§14.3 `viable`). A member held in the frame of a reader
-honest at `t ∈ [t₁, b]` is at or below `fc_root` or in the full viable tree.
-
-Open (`sorry`): the genesis proof (`held_origin_viable_read`, through the static
-`held_origin_viable_before`) compares the reader's FG sources with every origin before the cut;
-after a hand-over only the family compares, so the rows of the reader's tree are classified as in
-`seeded_vote_frame_at` (high rows on the healed chain, low rows excluded by the held seed and
-`ChainConvictedBelow`). -/
+/-- **S3 at full reads for the healed chain.** A block on the healed chain held in the frame of a
+reader honest at `t ∈ [t₁, b]` that has called from `t_{r−k−3}` on before its read is at or below
+`fc_root` or in the full viable tree (`seeded_viable_of`: above `fc_root`, the block is viable, or
+below the crossing of the floor, a high row, or below the low reader's held seed). -/
 theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {t₁ b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
-    (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t) :
-    ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b → C ∈ (Node.frame (tr.state y i)).tree →
+    (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+      sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c) :
+    ∀ C, OnHealedChain tr H g r (r + sp.k - 1) C b → C ∈ (Node.frame (tr.state y i)).tree →
       (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
-        C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree := by
-  sorry
+        C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
+  have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
+  fun _ hC hCt => seeded_viable_of hrun hnc hcv hseed hTb
+    (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv) ht0 hi htb hy
+    (hB.two t ht0 htb) hcall hC hCt
 
 /-- **The held seed past `T`** (§14.5). The seed's high origin `S` is in the frame of every honest
 call at a time in `[t_{r−k−3}, b]` whose `Σ.F` it extends.
@@ -243,15 +284,15 @@ theorem seed_held_past_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
 
 /-- **The seeded invariant through `b`**: from the hand-over seed, the reset service and the slot
 counts from `r` through `b ≥ T`, and conviction below a third, the seeded invariant at the floors
-`(r, r + k − 1)` holds from a time `t₁ ≤ T`: the later of the seed's cover start and the drain
-`t_{r+k}`. The frontier is `healed_frontier_at`; locks and sources go through the holder's lock
-write (`seeded_locks_at`, `seeded_sources_at`). -/
+`(r, r + k − 1)` holds from a time `t₁ ∈ [t_{r+k}, T]`: the later of the seed's cover start and
+the drain `t_{r+k}`. The frontier is `healed_frontier_at`; locks and sources go through the
+holder's lock write (`seeded_locks_at`, `seeded_sources_at`). -/
 theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H) :
-    ∃ t₁, t₁ ≤ T ∧ SeededInvariant tr H g r (r + sp.k - 1) t₁ b := by
+    ∃ t₁, t₁ ≤ T ∧ sp.ts (r + sp.k : Nat) ≤ t₁ ∧ SeededInvariant tr H g r (r + sp.k - 1) t₁ b := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨hσT, hrσ, -⟩ := hseed.timing
   obtain ⟨tc, htcT, hcov⟩ := hseed.covered
@@ -263,18 +304,17 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   set t₁ := max tc (sp.ts (r + sp.k : Nat))
   have hdt : sp.ts (r + sp.k : Nat) ≤ t₁ := le_max_right _ _
   have hF := healed_frontier_at hrun hnc hseed hTb hsvc hB hcv
-  have hP : ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
-      HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C' :=
-    fun C s C' s' h h' => healedOriginsBelow_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega)
-      (by omega) h h'
-  refine ⟨t₁, max_le htcT hDT, hP, fun C s hC y i e he hib hs =>
-    healedVotesBelow_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl,
+  refine ⟨t₁, max_le htcT hDT, hdt, seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv,
+    fun C s hC y i e he hib hs =>
+      healedVotesBelow_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl,
     seeded_record_at hrun hnc hseed hTb hsvc hB hcv hdt
       (fun y n t ht htT hy hrp => hcov y n t ((le_max_left _ _).trans ht) htT hy hrp),
-    fun y i t ht₁ hi htb hy => seeded_caches_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy,
+    fun y i t ht₁ hi htb hy hcall =>
+      seeded_caches_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
     fun y i t ht₁ hi htb hy => seeded_locks_at hrun hnc hseed (hdt.trans ht₁) hi htb hy,
     fun y i ℓ C hy hi hib h => seeded_sources_at hrun hnc hseed hy (hdt.trans hi) hib h,
-    fun y i t ht₁ hi htb hy => seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy,
+    fun y i t ht₁ hi htb hy hcall =>
+      seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
     seed_held_past_at hrun hnc hseed hTb⟩
 
 end Consensus.Goldilocks.Compose.Growing

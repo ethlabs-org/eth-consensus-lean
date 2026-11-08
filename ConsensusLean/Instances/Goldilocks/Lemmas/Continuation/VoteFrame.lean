@@ -1,10 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
 
 public section
 
-/-! # The frozen witness at a vote after the hand-over (M8, S3 at votes)
+/-! # The frozen witness at a vote after the hand-over (S3 at votes)
 
 The sleepy V-step after the split slot transfers a member `B` of the healed family to an honest
 vote of a slot `s + 1 > σ + 1` only if `B` is in the vote's viable voter tree or at or below its
@@ -14,11 +15,12 @@ through the honest sources of the voter's high rows, which sit below origins of 
 
 After a hand-over the voter's tree holds pre-reset rows whose sources sit below origins of labels
 under the floors, outside the family, so the genesis classification of the rows does not apply.
-The seeded form splits on the voter's justified height `h_j` against the reset height `H_z`
-(design §4.2, §14.3): a high `Σ.J` is on the chain of a family member (the row of its honest
-quorum member, `HandoverSeed.rows` before `T`, the lock write of its source after `T`); a low
-`Σ.F` is below the reset seed (`GoldilocksRun.finalized_anc_of_lt_conv`), and a low `Σ.J` in the
-active case is below the seed by equal-height agreement (`J_eq_of_hj_eq_conv`). -/
+The seeded form (`seeded_vote_frame_of`, `Continuation/Rows`) splits on the voter's justified height
+`h_j` against the reset height `H_z`: the rows naming entries of height `≥ H_z + 1` have sources
+below members of labels at most `s` (the reset cluster's high rows before `T`, the signer's lock
+write after `T`); a high `Σ.J` is such an entry; a low reader's `fc_root` is below the held reset
+seed (`GoldilocksRun.finalized_anc_of_lt_conv` for `Σ.F`, no contest at the seed's height for
+`Σ.J`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -32,15 +34,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 slot `s + 1` with `s ≥ σ + 1`, cast at a time `≤ b`, a member `B` of the healed family within `b`
 of label at most `s`, extended by an honest slot-`s` vote, is in the vote's viable voter block
 tree or at or below its `fc_root`, given `P_{s+1}` up to `b`, the reset service through `b`, the
-seed's catch-up, the slot counts from `r` and conviction below a third.
-
-Open (`sorry`): the seeded classification of the voter's FG state. The genesis proof
-(`vote_frame_at`, through `vote_frame_core`) needs every honest row of the voter's tree at a height
-`≥ h_j` to have a source below an origin of label `≤ s` compatible with `B`; after a hand-over this
-holds for the rows at heights `≥ H_z + 1` (signed after the reset: `HandoverSeed.rows` up to `T`,
-the source's lock write after `T`, `lock_write_at`), and the low rows are excluded by the low-`J`
-case analysis of §4.2 with `ChainConvictedBelow` (the reset seed held at the vote,
-`HandoverSeed.seedHeld` extended past `T` by tree monotonicity, §14.5). -/
+seed's catch-up, the slot counts from `r` and conviction below a third (`seeded_vote_frame_of`). -/
 theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
@@ -54,8 +48,8 @@ theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
-  sorry
+      Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot :=
+  seeded_vote_frame_of hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib hBm hj hw
 
 end Consensus.Goldilocks.Compose.Growing
 
