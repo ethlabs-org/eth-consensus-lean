@@ -20,6 +20,8 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `GoldilocksTxLatencyDefault0` | `txLatDefault`, endpoint contract | R | none (the endpoint) |
 | `HealProfileAC0Free` | `acFree0` (`8k + 4` at `2·fcap < n`) | A, static | width-k modes |
 | `SigningRateAC0` | one vote per slot | A, static | every mode |
+| `ProposalLatencyAC0Sync` | `acLat0` (`6` at `2·f < n`), from slot 2 | A, static | width-k modes |
+| `ProposalLatencyAC0Bridge` | `G_p + 6` from `t₂` | A, static | width-k modes, `Prop(G_p)` |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -55,6 +57,14 @@ theorem healProfileAC0Free : Consensus.Goldilocks.Comparison.HealProfileAC0Free 
 theorem signingRateAC0 : Consensus.Goldilocks.Comparison.SigningRateAC0 :=
   Consensus.Goldilocks.Comparison.signingRateAC0
 
+/-- Bound `acLat0` from slot `2`; tier A, static; every width-`k` write mode and unlock oracle. -/
+theorem proposalLatencyAC0Sync : Consensus.Goldilocks.Comparison.ProposalLatencyAC0Sync :=
+  Consensus.Goldilocks.Comparison.proposalLatencyAC0_sync
+
+/-- Some honest proposal by `t + G_p + 6Δ` from `t₂`; tier A, static; premise `Prop(G_p)`. -/
+theorem proposalLatencyAC0Bridge : Consensus.Goldilocks.Comparison.ProposalLatencyAC0Bridge :=
+  Consensus.Goldilocks.Comparison.proposalLatencyAC0_bridge
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -85,5 +95,11 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.signingRateAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.signingRateAC0
+
+/-- info: 'Consensus.Comparison.Registry.proposalLatencyAC0Sync' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.proposalLatencyAC0Sync
+
+/-- info: 'Consensus.Comparison.Registry.proposalLatencyAC0Bridge' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.proposalLatencyAC0Bridge
 
 end
