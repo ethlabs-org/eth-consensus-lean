@@ -283,7 +283,7 @@ private theorem frameOK_of_call (h : ACLocalRun (evidenceReleaseSA sp FGP ro) H 
 /-- **A run of the evidence-release SA, forgotten, is a run with the unlock given** by
 `erOracle`. -/
 theorem localRunU_projTrace (h : ACLocalRun (evidenceReleaseSA sp FGP ro) H U tr) :
-    ACLocalRunU (erOracle tr) H U (projTrace tr) where
+    ACLocalRunU (WriteMode.parent sp) (erOracle tr) H U (projTrace tr) where
   coherent := h.coherent
   init y hy := by
     change (tr.init y).ac = _
@@ -292,13 +292,13 @@ theorem localRunU_projTrace (h : ACLocalRun (evidenceReleaseSA sp FGP ro) H U tr
   exec i ℓP hl hH := by
     obtain ⟨ℓ, hl', rfl⟩ := Option.map_eq_some_iff.1 hl
     have hc : tr.CallAt (tr.node i) i ℓ := ⟨rfl, hl'⟩
-    rw [projTrace_state]
+    rw [projTrace_state, stepWithM_parent]
     simp only [erOracle, hl']
     rw [stepWith_stepE _ _ (locksForget_state h hH i) _ (frameOK_of_call h hH hc)
       (h.time_nonneg i), ← step_eq_stepE, h.exec i ℓ hl' hH]
   lawful i ℓP hl hH hΦ := by
     obtain ⟨ℓ, hl', rfl⟩ := Option.map_eq_some_iff.1 hl
-    rw [projTrace_state]
+    rw [projTrace_state, callInputM_parent, callViewM_parent]
     simp only [erOracle, hl']
     exact unlockAtE_rel _ _ (unlockRel_unlockWith wlockStore_lawful (evidenceStage_lawful sp) () hΦ)
       (locksForget_state h hH i) _ _

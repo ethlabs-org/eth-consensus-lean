@@ -21,12 +21,14 @@ statements (`honest_votes_eq_proposal_before`). -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- `genesis_mem` with the unlock given. -/
 theorem genesis_memU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
@@ -77,7 +79,7 @@ private theorem ancR_transfer (hU : Coherent U) {Φ Ψ : Frm sp.n FGP} (hΦU : �
 
 /-- `view_agree_of_forward` with the unlock given. -/
 private theorem view_agree_of_forwardU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
@@ -339,7 +341,7 @@ theorem view_agree_before (hrun : ACRun proposer tr H U) {s : Nat} {p y : Fin sp
 
 /-- `view_agree` with the unlock given. -/
 theorem view_agreeU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {s : Nat} {p y : Fin sp.n} {i j : Nat}
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))

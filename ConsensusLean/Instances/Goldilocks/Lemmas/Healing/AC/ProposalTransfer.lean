@@ -26,6 +26,8 @@ votes after the origin extend `B`. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
@@ -35,7 +37,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- `proposal_forward` with the unlock given. -/
 theorem proposal_forwardU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {z : Fin sp.n}
@@ -67,7 +69,7 @@ theorem proposal_forward (hS : StandaloneRun tr H U proposer g)
 
 /-- `proposal_accept` with the unlock given. -/
 theorem proposal_acceptU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {z : Fin sp.n}
@@ -96,7 +98,7 @@ theorem proposal_accept (hS : StandaloneRun tr H U proposer g)
 
 /-- `trivial_mem_tree` with the unlock given. -/
 theorem trivial_mem_treeU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {X : Blk sp.n FGP} (hX : X ∈ U)
     (h : X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X) : X ∈ ℓ.frame.tree := by
@@ -119,7 +121,7 @@ theorem trivial_mem_tree (hS : StandaloneRun tr H U proposer g)
 
 /-- `vote_head_accepted` with the unlock given. -/
 theorem vote_head_acceptedU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {z : Fin sp.n} (hz : z ∈ H) {j : Nat}
     {e : Em sp FGP} (hv : VoteAt tr z j e) {X Hd : Blk sp.n FGP} (hHd : Hd ∈ U)
     (hHdr : Hd.root = e.msg.head) (hX : Anc U X Hd) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -168,7 +170,7 @@ private theorem compat_down (hU : Coherent U) {B X Y : Blk sp.n FGP} (hXY : Anc 
 
 /-- `restart_before` with the unlock given. -/
 private theorem restart_beforeU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {z : Fin sp.n} (hz : z ∈ H)
     {σ : Nat} (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {k : Nat} (hrk : tr.RestartAt z k) :
     tr.time k < sp.ts σ :=
   lt_of_le_of_lt (hS.restart_le hz hrk) (by have := sp.toParams.hΔ; linarith)
@@ -181,7 +183,7 @@ private theorem restart_before (hS : StandaloneRun tr H U proposer g) {z : Fin s
 
 /-- `trivial_writer_pool` with the unlock given. -/
 private theorem trivial_writer_poolU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -205,7 +207,7 @@ private theorem trivial_writer_pool (hS : StandaloneRun tr H U proposer g)
 
 /-- `trivial_stamp` with the unlock given. -/
 private theorem trivial_stampU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hcall : ℓ.call = .proposal) {R : Blk sp.n FGP} (hR : R ∈ ℓ.frame.tree)
     (hacc : R.root = sp.genesisRoot ∨ ∃ k < i, tr.AcceptAt x k R) :
@@ -229,7 +231,7 @@ private theorem trivial_stamp (hS : StandaloneRun tr H U proposer g) {x : Fin sp
 
 /-- `trivial_viable_at` with the unlock given. -/
 private theorem trivial_viable_atU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
     (hB : B ∈ ℓ.frame.tree) :
     B ∈ ℓ.frame.tree ∧ (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot) := by
@@ -248,7 +250,7 @@ private theorem trivial_viable_at (hS : StandaloneRun tr H U proposer g) {x : Fi
 
 /-- `honest_vote_at_proposal` with the unlock given. -/
 theorem honest_vote_at_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {w : Fin sp.n}
     (hw : w ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr w j e) (hes : e.msg.slot = σ) :
@@ -292,7 +294,7 @@ theorem honest_vote_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin 
 
 /-- `early_block_at_proposal` with the unlock given. -/
 theorem early_block_at_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (ht : tr.time i = sp.ts (σ + 1 : Nat)) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {R : Blk sp.n FGP}
     (hR : R ∈ U) (hRe : R.root = sp.genesisRoot ∨ ∃ z ∈ H, ∃ k₁ ℓ₁, tr.CallAt z k₁ ℓ₁ ∧
@@ -342,7 +344,7 @@ theorem early_block_at_proposal (hS : StandaloneRun tr H U proposer g) {x : Fin 
 
 /-- `counted_at_proposal` with the unlock given. -/
 theorem counted_at_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -416,7 +418,7 @@ theorem counted_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin sp.n
 
 /-- `result_block_at_proposal` with the unlock given. -/
 theorem result_block_at_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
@@ -443,7 +445,7 @@ theorem result_block_at_proposal (hS : StandaloneRun tr H U proposer g) {X : Fin
 
 /-- `trivial_counted_held` with the unlock given. -/
 private theorem trivial_counted_heldU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hupd : UpdateAt tr X i₀ σ ℓX)
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -471,7 +473,7 @@ private theorem trivial_counted_held (hS : StandaloneRun tr H U proposer g)
 
 /-- `trivial_high_locks` with the unlock given. -/
 private theorem trivial_high_locksU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H)
     {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {B : Blk sp.n FGP}
     (hlater : VotesExtendAfter tr H U σ B)
@@ -502,7 +504,7 @@ private theorem trivial_high_locks (hS : StandaloneRun tr H U proposer g)
 
 /-- `trivial_batch_proposal` with the unlock given. -/
 private theorem trivial_batch_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {σ : Nat}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {σ : Nat}
     (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ) {B : Blk sp.n FGP}
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
     (hlater : VotesExtendAfter tr H U σ B) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -539,7 +541,7 @@ private theorem trivial_batch_proposalU
 
 /-- `trivial_update_first_proposal` with the unlock given. -/
 private theorem trivial_update_first_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfu : FastUpdateAt tr X i₀ σ D CV) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ)
     (hlater : VotesExtendAfter tr H U σ D) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -564,7 +566,7 @@ private theorem trivial_update_first_proposalU
 
 /-- `trivial_optimistic_first_proposal` with the unlock given. -/
 private theorem trivial_optimistic_first_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr X i₀ σ D CV) (hσ : gbar g + 4 * sp.Δ ≤ sp.ts σ)
@@ -609,7 +611,7 @@ private theorem trivial_optimistic_first_proposalU
 
 /-- `trivial_slow_first_proposal` with the unlock given. -/
 private theorem trivial_slow_first_proposalU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr X i₀ σ D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((σ : Int) - sp.k + 1))
     (hlater : VotesExtendAfter tr H U σ D) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -651,7 +653,7 @@ private theorem trivial_slow_first_proposalU
 
 /-- `proposals_extend_of_origin` with the unlock given. -/
 theorem proposals_extend_of_originU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) (hvotes : VotesExtendAfter tr H U j B) :
     ProposalsExtendAfterU u tr H U j B := by

@@ -32,6 +32,8 @@ The helpers of `proposal_confirmed` (up to the first update in `ConfirmedBase`),
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
@@ -82,15 +84,15 @@ private theorem lc_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP)
 
 private theorem pool_sub_tryVote
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : ∀ σ, ∀ v ∈ A.pool σ, v ∈ (tryVoteWith sp x L A Φ t).1.pool σ := by
+    (t : Time) : ∀ σ, ∀ v ∈ A.pool σ, v ∈ (tryVoteWithM sp wm x L A Φ t).1.pool σ := by
   intro σ v hv
-  unfold tryVoteWith
+  unfold tryVoteWithM
   dsimp only
   split_ifs
   · exact hv
   · exact hv
   all_goals
-    rw [SA.optimistic_pool]
+    rw [optimisticConfirmationM_keep _ SA.optimistic_pool]
     unfold admitVote
     split_ifs
     · exact hv
@@ -103,7 +105,8 @@ private theorem pool_sub_tryVote
 private theorem RecP.ofOptimistic {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAState sp.n}
     {t : Time} (hR : RecP Φ P A)
     (hsel : ∀ B, optimisticSelect sp A Φ t = some B → Compatible Φ.tree B P) :
-    RecP Φ P (optimisticConfirmation sp A Φ t) := by
+    RecP Φ P (optimisticConfirmationM sp wm A Φ t) := by
+  refine optimisticConfirmationM_of (P := RecP Φ P) ?_ hR
   unfold optimisticConfirmation
   rcases h : optimisticSelect sp A Φ t with _ | B
   · exact hR
@@ -118,22 +121,24 @@ private theorem RecP.ofOptimistic {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SA
 private theorem RecP.ofTryVote
     {L : Set Lock} {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {x : Fin sp.n}
     {A : SAState sp.n} {t : Time} (hR : RecP Φ P A)
-    (hsel : ∀ A' B, A'.pool = (tryVoteWith sp x L A Φ t).1.pool →
+    (hsel : ∀ A' B, A'.pool = (tryVoteWithM sp wm x L A Φ t).1.pool →
       optimisticSelect sp A' Φ t = some B → Compatible Φ.tree B P) :
-    RecP Φ P (tryVoteWith sp x L A Φ t).1 := by
-  unfold tryVoteWith at hsel ⊢
+    RecP Φ P (tryVoteWithM sp wm x L A Φ t).1 := by
+  unfold tryVoteWithM at hsel ⊢
   dsimp only at hsel ⊢
   split_ifs at hsel ⊢
   · exact hR
   · exact hR
   all_goals
     exact RecP.ofOptimistic (RecP.of_eq (lc_admitVote _ _ _) hR) fun B hB =>
-      hsel _ B (SA.optimistic_pool _ _ _).symm hB
+      hsel _ B (optimisticConfirmationM_keep _ SA.optimistic_pool _ _ _ _).symm hB
 
 private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAState sp.n}
     {t : Time} {s : Nat} (hR : RecP Φ P A)
     (hres : ∀ C, getConfirmation sp A Φ s = some C → Compatible Φ.tree C P) :
-    RecP Φ P (updateConfirmation sp A Φ t s) := by
+    RecP Φ P (updateConfirmationM sp wm A Φ t s) := by
+  refine RecP.of_eq (updateConfirmationM_field SAState.latestConfirmed (fun _ _ => rfl) wm A Φ t s)
+    ?_
   unfold updateConfirmation
   dsimp only
   rcases hC : getConfirmation sp A Φ s with _ | C
@@ -147,7 +152,7 @@ private theorem RecP.ofUpdate {Φ : Frm sp.n FGP} {P : Blk sp.n FGP} {A : SAStat
 
 /-- `optimisticSelect_compatible` with the unlock given. -/
 theorem optimisticSelect_compatibleU
-    {uL : Nat → Set Lock} (hS : HealthyBaseU uL tr H U proposer g)
+    {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g)
     {p : Nat} {P : Blk sp.n FGP}
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -199,7 +204,7 @@ theorem optimisticSelect_compatible (hS : HealthyBase tr H U proposer g)
 
 /-- `record_step` with the unlock given. -/
 theorem record_stepU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -220,16 +225,16 @@ theorem record_stepU
   have he := hr.exec c ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at he
   have hpost : tr.post c =
-      (stepWith sp ro y (u c) (tr.state y c) ℓ.frame (tr.time c) ℓ.call).1 := by
+      (stepWithM sp ro wm y (u c) (tr.state y c) ℓ.frame (tr.time c) ℓ.call).1 := by
     rw [he]
   generalize hA : tr.state y c = A at hR hpost
   generalize ht : tr.time c = t at hopt hpost htc
   cases hcall : ℓ.call with
   | tick =>
     rw [hcall] at hpost
-    change tr.post c = (acOnTickWith sp y (u c) A ℓ.frame t).1 at hpost
+    change tr.post c = (acOnTickWithM sp wm y (u c) A ℓ.frame t).1 at hpost
     rw [hpost] at hopt ⊢
-    unfold acOnTickWith at hopt ⊢
+    unfold acOnTickWithM at hopt ⊢
     dsimp only at hopt ⊢
     by_cases hj : joined sp A t
     swap
@@ -280,22 +285,24 @@ theorem record_stepU
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
     rw [hcall] at hpost
-    change tr.post c = (tryVoteWith sp y (u c) (optimisticConfirmation sp (admitVote sp A t m)
-      ℓ.frame t) ℓ.frame t).1 at hpost
+    change tr.post c = (tryVoteWithM sp wm y (u c)
+      (optimisticConfirmationM sp wm (admitVote sp A t m) ℓ.frame t) ℓ.frame t).1 at hpost
     rw [hpost] at hopt ⊢
     refine RecP.ofTryVote (L := u c) (RecP.ofOptimistic (RecP.of_eq (lc_admitVote _ _ _) hR)
       fun B hB => hopt _ (fun σ v hv => ?_) B hB) fun A' B hA' hB =>
         hopt A' (fun σ v hv => by rw [← hA']; exact hv) B hB
-    exact pool_sub_tryVote (L := u c) _ _ _ _ σ v (by rw [SA.optimistic_pool]; exact hv)
+    exact pool_sub_tryVote (L := u c) _ _ _ _ σ v
+      (by rw [optimisticConfirmationM_keep _ SA.optimistic_pool]; exact hv)
   | block B =>
     rw [hcall] at hpost
-    change tr.post c = (tryVoteWith sp y (u c) (optimisticConfirmation sp (blockReceipt sp A t B)
-      ℓ.frame t) ℓ.frame t).1 at hpost
+    change tr.post c = (tryVoteWithM sp wm y (u c)
+      (optimisticConfirmationM sp wm (blockReceipt sp A t B) ℓ.frame t) ℓ.frame t).1 at hpost
     rw [hpost] at hopt ⊢
     refine RecP.ofTryVote (L := u c) (RecP.ofOptimistic (RecP.of_eq (lc_blockReceipt _ _ _) hR)
       fun B' hB' => hopt _ (fun σ v hv => ?_) B' hB') fun A' B' hA' hB' =>
         hopt A' (fun σ v hv => by rw [← hA']; exact hv) B' hB'
-    exact pool_sub_tryVote (L := u c) _ _ _ _ σ v (by rw [SA.optimistic_pool]; exact hv)
+    exact pool_sub_tryVote (L := u c) _ _ _ _ σ v
+      (by rw [optimisticConfirmationM_keep _ SA.optimistic_pool]; exact hv)
   | restart =>
     rw [hcall] at hpost
     change tr.post c = (acRestart sp ro y A ℓ.frame t).1 at hpost
@@ -318,7 +325,7 @@ theorem record_step (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n
 
 /-- `trivial_tree_mono` with the unlock given. -/
 theorem trivial_tree_monoU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {c c' : Nat} {ℓ ℓ' : ACLabel (goldilocksSA sp FGP ro)} (hc' : tr.CallAt y c' ℓ')
     (hc : tr.CallAt y c ℓ) (hcc : c' ≤ c) : ℓ'.frame.tree ⊆ ℓ.frame.tree := by
   intro X hX
@@ -336,10 +343,11 @@ theorem trivial_tree_mono (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} 
   trivial_tree_monoU (hS := hS.toU) (y := y) (hy := hy) (c := c) (c' := c') (ℓ := ℓ) (ℓ' := ℓ')
       (hc' := hc') (hc := hc) (hcc := hcc)
 
-/-- `record_extends_coreU` with the locks settled above the floor `p` only. -/
+/-- `record_extends_coreU` with the locks settled above the floor `p` only (at a mode of width
+`k`). -/
 theorem record_extends_core_fromU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
-    {P : Blk sp.n FGP}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
+    {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ))
@@ -367,7 +375,7 @@ theorem record_extends_core_fromU
           linarith only [hp4, hΔ, hΘ]) hexact hy hc hcallk htk
         (proposal_mem_treeU hS hpH hP (by linarith only [hp4, hΔ, hΘ]) hy hc (by
             linarith only [htk, hΔ])).1
-        (liveLock_compatible_core_fromU hS hp4 hset hexact hvotes hPU hy hc htc (Or.inl rfl))
+        (liveLock_compatible_core_fromU hS hw hp4 hset hexact hvotes hPU hy hc htc (Or.inl rfl))
     have hPt := (proposal_mem_treeU hS hpH hP (by linarith only [hp4, hΔ, hΘ]) hy hc (by
         linarith only [hΔ, htc])).1
     rcases tr.noCall_or_lastCall y c with hn | ⟨c', hc'c, ℓ', hc', hnb⟩
@@ -380,10 +388,10 @@ theorem record_extends_core_fromU
     exact record_stepU hS.toHealthyBaseU (by linarith only [hp4, hΔ, hΘ]) hvotes hy hc htc hPt
       (RecP.mono (trivial_tree_monoU hS hy hc' hc hc'c.le) hR)
 
-/-- `record_extends_core` with the unlock given. -/
+/-- `record_extends_core` with the unlock given, at a mode of width `k`. -/
 theorem record_extends_coreU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
-    {P : Blk sp.n FGP}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) (hw : wm.width = sp.k)
+    {p : Nat} {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
@@ -393,7 +401,7 @@ theorem record_extends_coreU
     (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
     ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
       ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  record_extends_core_fromU hS hpH hP hp4 (hset.toFrom p) hexact hvotes hy hck hcallk htk
+  record_extends_core_fromU hS hw hpH hP hp4 (hset.toFrom p) hexact hvotes hy hck hcallk htk
 
 /-- **The record after the first update**: from an honest node's tick at `t_p + 6Δ` on,
 at every later call of the node, the record after the call names a block of the call's frame
@@ -409,7 +417,8 @@ theorem record_extends_core (hS : StandaloneRun tr H U proposer g) {p : Nat}
     (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
     ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
       ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
-  record_extends_coreU (hS := hS.toU) (p := p) (P := P) (hpH := hpH) (hP := hP.toU) (hp4 := hp4)
+  record_extends_coreU (hS := hS.toU) (hw := rfl) (p := p) (P := P) (hpH := hpH) (hP := hP.toU)
+      (hp4 := hp4)
       (hset := hset.toU) (hexact := hexact) (hvotes := hvotes) (y := y) (hy := hy) (k := k)
           (ℓk := ℓk) (hck := hck) (hcallk := hcallk) (htk := htk)
 
@@ -431,7 +440,7 @@ theorem record_extends (hS : StandaloneRun tr H U proposer g) {p : Nat} {P : Blk
 
 /-- `head_extends_of_frame` with the unlock given. -/
 theorem head_extends_of_frameU
-    {uL : Nat → Set Lock} (hS : HealthyBaseU uL tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -542,7 +551,7 @@ theorem head_extends_of_frame (hS : HealthyBase tr H U proposer g) {p : Nat} {P 
 
 /-- `head_extends` with the unlock given. -/
 theorem head_extendsU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}

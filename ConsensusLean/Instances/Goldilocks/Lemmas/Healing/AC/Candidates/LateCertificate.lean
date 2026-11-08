@@ -36,7 +36,7 @@ theorem standaloneRunU_projTraceC (hrun : ACLocalRun (certRecoverySA sp FGP ro) 
     (hdr : DrivenU (certOracle tr) proposer (projTraceC tr) H)
     (htriv : TrivialFrames (projTraceC tr) H) (hheal : HealthyAC (projTraceC tr) H U g)
     (hcatch : CatchAC (projTraceC tr) H U g (2 * sp.Δ)) :
-    StandaloneRunU (certOracle tr) (projTraceC tr) H U proposer g :=
+    StandaloneRunU (WriteMode.parent sp) (certOracle tr) (projTraceC tr) H U proposer g :=
   ⟨⟨⟨localRunU_projTraceC hrun, hobj⟩, hdr, hheal.core, hheal.two_faulty_lt, hcatch⟩, htriv⟩
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` for the late-certificate rule** (trivial frames): for an honest
@@ -62,7 +62,7 @@ theorem cert_healing_standalone_tight (hrun : ACLocalRun (certRecoverySA sp FGP 
         ∃ k ≤ j, ∃ ℓ', (projTraceC tr).CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
       Anc U P (acConfirmed sp (tr.post j).er.ac ℓ.frame (tr.time j))) :=
   ac_healing_standalone_of_parent_tightU
-    (standaloneRunU_projTraceC hrun hobj hdr htriv hheal hcatch) hpH hP hp
+    (standaloneRunU_projTraceC hrun hobj hdr htriv hheal hcatch) rfl hpH hP hp
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` for the late-certificate rule, corollary** (proposal-block
 inclusion): under `Prop(G_p)`, for every `t ≥ ḡ + (8k + 4)Δ` an honest proposal released in
@@ -89,7 +89,7 @@ theorem cert_healing_standalone_tight_corollary
             tr.time k = tr.time j) →
         Anc U P (acConfirmed sp (tr.post j).er.ac ℓ.frame (tr.time j)) :=
   ac_healing_standalone_tight_corollaryU
-    (standaloneRunU_projTraceC hrun hobj hdr htriv hheal hcatch) hprop t ht
+    (standaloneRunU_projTraceC hrun hobj hdr htriv hheal hcatch) rfl hprop t ht
 
 end Consensus.Goldilocks.LateCertificate
 

@@ -15,15 +15,17 @@ optimistic confirmation at the same cut (`readPoint_locks_provenance`). -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
 /-- `tryVote_readPoint_locks_eq` with the unlock given. -/
 theorem tryVote_readPoint_locks_eqWith
     {L : Set Lock} {x : Fin sp.n} {A : SAState sp.n}
-    {Φ : Frm sp.n FGP} {t : Time} {e : Em sp FGP} (he : e ∈ (tryVoteWith sp x L A Φ t).2) :
+    {Φ : Frm sp.n FGP} {t : Time} {e : Em sp FGP} (he : e ∈ (tryVoteWithM sp wm x L A Φ t).2) :
     e.readPoint.locks = if 0 < sp.slot t then L else A.locks := by
-  unfold tryVoteWith at he
+  unfold tryVoteWithM at he
   dsimp only at he
   split_ifs at he with h1 h2 h3
   · simp at he
@@ -52,22 +54,23 @@ theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : SAState sp.n}
     split_ifs
     rfl
 
-/-- `vote_tryVote_input` with the unlock given. -/
+/-- `vote_tryVote_input` with the unlock given, the receipt's optimistic check at the writes of
+`wm`. -/
 theorem vote_tryVote_inputU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
-    ∃ P, e ∈ (tryVoteWith sp y (u i) P ℓ.frame (tr.time i)).2 ∧
-      P = callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
-      callView sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
+    ∃ P, e ∈ (tryVoteWithM sp wm y (u i) P ℓ.frame (tr.time i)).2 ∧
+      P = callInputM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
+      callViewM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
         mergedVoteView sp P ℓ.frame (sp.slot (tr.time i)) ∧ (P = tr.state y i ∨
-      ∃ A : SAState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
+      ∃ A : SAState sp.n, P = optimisticConfirmationM sp wm A ℓ.frame (tr.time i) ∧
         A.locks = (tr.state y i).locks) := by
   obtain ⟨hc, he⟩ := hc
   have hΦ := (frameIn_of_callAtU hr hy hc).1
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have he' : e ∈ (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i)
+  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by
     rw [hx]
     exact he
@@ -75,8 +78,8 @@ theorem vote_tryVote_inputU
   cases hcall : ℓ.call with
   | tick =>
     rw [hcall] at he'
-    change e ∈ (acOnTickWith sp y (u i) _ ℓ.frame _).2 at he'
-    unfold acOnTickWith at he'
+    change e ∈ (acOnTickWithM sp wm y (u i) _ ℓ.frame _).2 at he'
+    unfold acOnTickWithM at he'
     dsimp only at he'
     split_ifs at he' <;> first | exact ⟨_, he', rfl, rfl, Or.inl rfl⟩ | simp at he'
   | proposal =>
@@ -141,7 +144,7 @@ theorem vote_tryVote_input (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y 
 
 /-- `readPoint_locks_below_stored` with the unlock given. -/
 theorem readPoint_locks_below_storedU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hpos : 0 < sp.slot (tr.time i)) :
     ∀ l' ∈ e.readPoint.locks, l'.slot ≠ sp.slot (tr.time i) →
@@ -157,6 +160,10 @@ theorem readPoint_locks_below_storedU
   obtain ⟨l₁, hl₁, hs₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ := hlaw.movesBack hΦ l' hl'
   rcases hP with rfl | ⟨A, rfl, hAl⟩
   · exact ⟨l₁, hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
+  rw [optimisticConfirmationM_eq] at hl₁
+  split_ifs at hl₁
+  swap
+  · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
   unfold optimisticConfirmation at hl₁
   split at hl₁
   · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩

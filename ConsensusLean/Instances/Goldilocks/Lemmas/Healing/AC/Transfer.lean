@@ -26,12 +26,14 @@ statements are fixed (the assembly depends on them as stated):
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- `slow_origin_transfer_votes` with the unlock given. -/
 theorem slow_origin_transfer_votesU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) : VotesExtendAfter tr H U s D := by
@@ -96,7 +98,7 @@ theorem slow_origin_transfer_votes (hS : StandaloneRun tr H U proposer g)
 
 /-- `origin_transfer_proposals` with the unlock given. -/
 theorem origin_transfer_proposalsU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g)
     {B : Blk sp.n FGP} {j : Nat}
     (hB : GoodOrigin tr H g B j) : ProposalsExtendAfterU u tr H U j B := by
   refine proposals_extend_of_originU hS hB ?_
@@ -116,7 +118,7 @@ theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
 
 /-- `proposal_votes_coreU` with the locks settled above the floor `p` only. -/
 theorem proposal_votes_core_fromU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP} (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ)) :
@@ -127,7 +129,7 @@ theorem proposal_votes_core_fromU
 
 /-- `proposal_votes_core` with the unlock given. -/
 theorem proposal_votes_coreU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP} (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)) :

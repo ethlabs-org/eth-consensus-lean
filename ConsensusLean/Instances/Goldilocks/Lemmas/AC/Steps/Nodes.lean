@@ -19,13 +19,15 @@ The per-vote transfer lemmas over SA traces. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable (sp : SAParams)
 
 /-- `next_transfer_of_carry` with the unlock given. -/
 theorem next_transfer_of_carryU
     {uL : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU uL proposer tr H U) {m : Nat} {y : Fin sp.n} {i : Nat}
+    (hrun : ACRunU wm uL proposer tr H U) {m : Nat} {y : Fin sp.n} {i : Nat}
     {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
@@ -141,7 +143,7 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
 /-- **A1.3**, over a run with the unlock given. -/
 theorem next_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (m : Nat) (y : Fin sp.n) (i : Nat)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (m : Nat) (y : Fin sp.n) (i : Nat)
     (B : Blk sp.n FGP) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP)
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
@@ -161,7 +163,7 @@ theorem next_transfer : NextTransfer sp :=
 theorem optimistic_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU u proposer tr H U) {s : Nat}
+    (hrun : ACRunU wm u proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hf : 2 * Hᶜ.ncard < sp.n)
@@ -274,7 +276,7 @@ theorem optimistic_transfer : OptimisticTransfer sp :=
 theorem first_transfer_stored_of_poolU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU u proposer tr H U) {s : Nat}
+    (hrun : ACRunU wm u proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
@@ -405,7 +407,7 @@ theorem first_transfer_stored_of_pool {FGP : Type} {ro : ReplayOrder sp FGP} {H 
 theorem first_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-    (hrun : ACRunU u proposer tr H U) {s : Nat}
+    (hrun : ACRunU wm u proposer tr H U) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
@@ -459,7 +461,7 @@ theorem first_transfer_stored_window_before {FGP : Type} {ro : ReplayOrder sp FG
 /-- **A1.2**, over a run with the unlock given. -/
 theorem first_transferU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (s : Nat) (x y : Fin sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (s : Nat) (x y : Fin sp.n)
     (i₀ i : Nat) (B : Blk sp.n FGP) (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro))
     (e : Em sp FGP) (hx : x ∈ H) (hfl : FastLockAt tr x i₀ s B CV) (hy : y ∈ H)
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)

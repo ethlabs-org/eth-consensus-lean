@@ -24,12 +24,15 @@ update's side taken for any result. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- `result_side` with the unlock given. -/
 private theorem result_sideU
-    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H)
+        {c s : Nat}
     {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
     ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
@@ -93,7 +96,7 @@ theorem fwd_reaches_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s 
 
 /-- `fastLock_fastLock_compatible` with the unlock given. -/
 theorem fastLock_fastLock_compatibleU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
@@ -114,7 +117,7 @@ theorem fastLock_fastLock_compatible (hS : HealthyBase tr H U proposer g)
 
 /-- `result_result_compatible` with the unlock given. -/
 theorem result_result_compatibleU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hR' : ResultAt tr x' i' s C' CV')
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) : Compatible U C C' := by
@@ -143,7 +146,7 @@ theorem result_result_compatible (hS : HealthyBase tr H U proposer g) {s : Nat} 
 
 /-- `result_optimistic_compatible` with the unlock given. -/
 theorem result_optimistic_compatibleU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g)
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
     {i i' : Nat} {C B : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
     (hR : ResultAt tr x i s C CV) (hx' : x' ∈ H) (hO : OptimisticLockAt tr x' i' s B CV')

@@ -23,12 +23,14 @@ proposer. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- `frameIn_of_call` with the unlock given. -/
 theorem frameIn_of_callU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
@@ -40,7 +42,7 @@ theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : F
 
 /-- `frame_accepted` with the unlock given. -/
 theorem frame_acceptedU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X := by
@@ -82,7 +84,7 @@ theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
 
 /-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
 private theorem genesis_memU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
@@ -96,7 +98,7 @@ private theorem genesis_memU
 
 /-- `frameBlock_unique` with the unlock given. -/
 theorem frameBlock_uniqueU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
     (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
     (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' := by
   have hr := hrun.localRun

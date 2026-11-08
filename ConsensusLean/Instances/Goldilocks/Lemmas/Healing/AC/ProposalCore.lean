@@ -36,6 +36,8 @@ Conclusions: `batch_proposal` (A1.3), `update_first_proposal` (A1.2), `optimisti
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
@@ -74,14 +76,14 @@ theorem acProposal_eq_acProposalWith_slot {A : SAState sp.n} {Φ : Frm sp.n FGP}
   rw [acProposal_eq_acProposalWith, hslot, show ((σ + 1 : Nat) : Int) - 1 = σ by push_cast; ring]
 
 /-- The unlock relation at an honest proposal of slot `σ + 1`. -/
-theorem ACLocalRunU.lawful_proposal {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+theorem ACLocalRunU.lawful_proposal {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {x : Fin sp.n} (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt x i ℓ) (hcall : ℓ.call = .proposal) (hslot : sp.slot (tr.time i) = σ + 1) :
     UnlockRel sp (tr.state x i).locks ℓ.frame (tr.time i) σ
       (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) (u i) := by
   have h := hr.lawfulAt hx hc (frameIn_of_callAtU hr hx hc).1
   rw [hcall] at h
-  simp only [callInput, callView] at h
+  simp only [callInputM, callViewM] at h
   rwa [hslot, show ((σ + 1 : Nat) : Int) - 1 = σ by push_cast; ring] at h
 
 /-- `unlocked_compatible` for any locks related to the stored ones by the unlock relation. -/
@@ -180,7 +182,7 @@ theorem lowLocksCompatible_iff {A : SAState sp.n} {t : Time} {σ : Nat} {B : Blk
 
 /-- `pool_stamp_lt_top` with the unlock given. -/
 theorem pool_stamp_lt_topU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {v : Vote sp.n} (hv : v ∈ (tr.state y i).pool v.slot) :
     (tr.state y i).voteStamp v < ⊤ := by
   rcases pool_originU hr hy i v hv with ⟨k, -, -, hst, -⟩ | ⟨k, -, -, -, -, hst, -⟩ <;>
@@ -194,7 +196,7 @@ theorem pool_stamp_lt_top (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
 
 /-- `mem_proposalView_votes` with the unlock given. -/
 theorem mem_proposalView_votesU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {x : Fin sp.n} (hx : x ∈ H) (i σ : Nat) (Φ : Frm sp.n FGP) (v : Vote sp.n) :
     v ∈ (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes ↔
       v ∈ (tr.state x i).pool σ := by
@@ -218,7 +220,7 @@ theorem ofLists_support_subset (A : SAState sp.n) (Φ : Frm sp.n FGP) (σ : Int)
 
 /-- `proposalView_equivocator` with the unlock given. -/
 theorem proposalView_equivocatorU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {x : Fin sp.n} (hx : x ∈ H) (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n}
     (h : w ∈ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes) :
     w ∈ equivocators {v | v ∈ (tr.state x i).pool σ} :=
@@ -234,7 +236,7 @@ theorem proposalView_equivocator (hr : ACLocalRun (goldilocksSA sp FGP ro) H U t
 
 /-- `honest_pool_not_equivocator` with the unlock given. -/
 theorem honest_pool_not_equivocatorU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators {v | v ∈ (tr.state x i).pool σ} := by
   rintro ⟨a, ha, b, hb, hab, rfl, hbw⟩
@@ -256,7 +258,7 @@ theorem honest_pool_not_equivocator (hrun : ACRun proposer tr H U) {x : Fin sp.n
 
 /-- `honest_not_equivocator_proposal` with the unlock given. -/
 theorem honest_not_equivocator_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes := fun h =>
   honest_pool_not_equivocatorU hrun hx i σ hw (proposalView_equivocatorU hrun.localRun hx i σ Φ h)
@@ -270,7 +272,7 @@ theorem honest_not_equivocator_proposal (hrun : ACRun proposer tr H U) {x : Fin 
 
 /-- `proposal_supporter` with the unlock given. -/
 theorem proposal_supporterU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     {v : Vote sp.n} (hvs : v.slot = σ) (hv : v ∈ (tr.state x i).pool σ) {C R : Blk sp.n FGP}
     (hR : R ∈ ℓ.frame.tree) (hRr : R.root = v.head) (hRs : R.slot ≤ σ)
@@ -306,7 +308,7 @@ theorem proposal_supporter (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
 
 /-- `proposal_walk` with the unlock given. -/
 theorem proposal_walkU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
@@ -362,7 +364,7 @@ theorem proposal_walk (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin
 
 /-- `optimisticLock_compatible` with the unlock given. -/
 theorem optimisticLock_compatibleU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
     (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B) :
@@ -391,7 +393,7 @@ theorem optimisticLock_compatible (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.
 
 /-- `proposal_high_lock` with the unlock given. -/
 theorem proposal_high_lockU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) {l : Lock}
     (hl : l ∈ (tr.state x i).locks) (hlσ : σ ≤ l.slot) {X : Blk sp.n FGP} (hX : X ∈ U)
     (hXr : X.root = l.block) : ∃ O, Anc U X O ∧ ∃ k CV, OptimisticLockAt tr x k l.slot O CV := by
@@ -425,7 +427,7 @@ theorem proposal_slot {i σ : Nat} (ht : tr.time i = sp.ts (σ + 1 : Nat)) :
 
 /-- `proposal_locks` with the unlock given. -/
 private theorem proposal_locksU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
     {B : Blk sp.n FGP} {L : Set Lock} (hB : B ∈ ℓ.frame.tree)
     (hL : UnlockRel sp (tr.state x i).locks ℓ.frame (tr.time i) σ
@@ -470,7 +472,7 @@ private theorem proposal_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 
 /-- `batch_proposal` with the unlock given. -/
 theorem batch_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n) {σ : Nat}
     {B : Blk sp.n FGP}
     (hhalf : sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
@@ -553,7 +555,7 @@ theorem batch_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.
 
 /-- `pool_sent` with the unlock given. -/
 theorem pool_sentU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {z : Fin sp.n} (hz : z ∈ H)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {z : Fin sp.n} (hz : z ∈ H)
     {c σ : Nat} (hrs : ∀ k < c, tr.RestartAt z k → tr.time k < sp.ts σ) {v : Vote sp.n}
     (hv : v ∈ (tr.state z c).pool σ) :
     ∃ k < c, tr.SendOrAdmit z k v ∧ sp.ts σ ≤ tr.time k ∧
@@ -584,7 +586,7 @@ theorem pool_sent (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {z : Fin sp.
 
 /-- `writer_pool_proposal` with the unlock given. -/
 theorem writer_pool_proposalU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hupd : UpdateAt tr X i₀ σ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     (ht : tr.time i = sp.ts (σ + 1 : Nat))
@@ -632,7 +634,7 @@ theorem writer_pool_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
 
 /-- `counted_held` with the unlock given. -/
 private theorem counted_heldU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)} (hcX : tr.CallAt X i₀ ℓX)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt x i ℓ) {E : Blk sp.n FGP} {v : Vote sp.n}
@@ -690,7 +692,7 @@ private theorem counted_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {
 
 /-- `counted_supporters_proposal` with the unlock given. -/
 theorem counted_supporters_proposalU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {ℓX : ACLabel (goldilocksSA sp FGP ro)}
     (hcX : tr.CallAt X i₀ ℓX) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B E : Blk sp.n FGP}
@@ -728,7 +730,7 @@ theorem counted_supporters_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H 
 
 /-- `result_best_at_proposal` with the unlock given. -/
 theorem result_best_at_proposalU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hres : ResultAt tr X i₀ σ C CV) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) {B : Blk sp.n FGP}
@@ -783,7 +785,7 @@ theorem result_best_at_proposal (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
 
 /-- `result_first_proposal` with the unlock given. -/
 theorem result_first_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hres : ResultAt tr X i₀ σ C CV)
     (hDC : Anc U D C) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -836,7 +838,7 @@ theorem result_first_proposal (hrun : ACRun proposer tr H U)
 
 /-- `update_first_proposal` with the unlock given. -/
 theorem update_first_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfu : FastUpdateAt tr X i₀ σ D CV)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -903,7 +905,7 @@ theorem update_first_proposal (hrun : ACRun proposer tr H U)
 
 /-- `optimistic_first_proposal_stored` with the unlock given. -/
 theorem optimistic_first_proposal_storedU
-    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr X i₀ σ D CV) {B : Blk sp.n FGP} (hBD : Anc U B D)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
@@ -1020,7 +1022,7 @@ theorem optimisticLock_pair_compatible (hrun : ACRun proposer tr H U)
 
 /-- `optimistic_first_proposal` with the unlock given. -/
 theorem optimistic_first_proposalU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ σ : Nat} {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr X i₀ σ D CV) {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)

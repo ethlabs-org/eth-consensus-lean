@@ -13,16 +13,19 @@ of its slot (`cast_ready`, the `vote_ready` branch of `try_vote`). -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
 /-- `readPoint_blockStamp_eq` with the unlock given. -/
 theorem readPoint_blockStamp_eqU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
-  rw [post_of_castAtU hr hy hc, SA.optimistic_blockStamp, SA.admitVote_blockStamp]
+  rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ SA.optimistic_blockStamp,
+    SA.admitVote_blockStamp]
 
 /-- The read point of an honest vote has the block stamps of the state its call leaves. -/
 theorem readPoint_blockStamp_eq (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
@@ -54,9 +57,10 @@ theorem readPoint_blockStamp_lt_of_earlier_frame
 
 private theorem tryVote_ready
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    {e : Em sp FGP} (he : e ∈ (tryVoteWith sp x L A Φ t).2) (ht : t < sp.ts (sp.slot t) + sp.Δ) :
+    {e : Em sp FGP} (he : e ∈ (tryVoteWithM sp wm x L A Φ t).2)
+    (ht : t < sp.ts (sp.slot t) + sp.Δ) :
     voteReady sp Φ (sp.slot t) := by
-  unfold tryVoteWith at he
+  unfold tryVoteWithM at he
   dsimp only at he
   split_ifs at he with h1 h2
   · simp at he
@@ -68,13 +72,13 @@ private theorem tryVote_ready
 private theorem step_ready
     {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
     (hΦ : FrameOK Φ) (ht0 : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) {e : Em sp FGP}
-    (he : e ∈ (stepWith sp ro self L A Φ t c).2)
+    (he : e ∈ (stepWithM sp ro wm self L A Φ t c).2)
     (ht : t < sp.ts (sp.slot t) + sp.Δ) : voteReady sp Φ (sp.slot t) := by
   cases c with
   | tick =>
-    change e ∈ (acOnTickWith sp self L A Φ t).2 at he
+    change e ∈ (acOnTickWithM sp wm self L A Φ t).2 at he
     have htt : t = sp.ts (sp.slot t) + sp.Δ := by
-      unfold acOnTickWith at he
+      unfold acOnTickWithM at he
       dsimp only at he
       split_ifs at he <;> first | assumption | simp at he
     linarith
@@ -89,7 +93,7 @@ private theorem step_ready
 
 /-- `cast_ready` with the unlock given. -/
 theorem cast_readyU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
     voteReady sp ℓ.frame e.msg.slot := by
@@ -97,7 +101,7 @@ theorem cast_readyU
   have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
   rw [hcall.1] at hx
   obtain ⟨hΦ, -⟩ := frameIn_of_callAtU hr hy hcall
-  have he' : e ∈ (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i)
+  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by rw [hx]; exact he
   have hs := (castAt_specU hr hy ⟨hcall, he⟩).2.1
   rw [hs] at ht ⊢

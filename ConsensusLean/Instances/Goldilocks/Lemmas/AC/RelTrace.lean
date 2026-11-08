@@ -339,24 +339,24 @@ noncomputable abbrev parentOracle {ro : ReplayOrder sp FGP} (tr : SATrace sp FGP
   | some ℓ => parentUnlock sp (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call
   | none => ∅
 
-/-- **The AC trace contract with the unlock given by `u`**: `ACLocalRun` of the SA, except that
-each honest call executes `stepWith` at the locks `u i`, which the unlock relation ties to the
-call's unlock input. -/
-structure ACLocalRunU {ro : ReplayOrder sp FGP} (u : Nat → Set Lock) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) : Prop where
+/-- **The AC trace contract with the unlock given by `u` and the writes of mode `m`**:
+`ACLocalRun` of the SA, except that each honest call executes `stepWithM m` at the locks `u i`,
+which the unlock relation ties to the call's unlock input. -/
+structure ACLocalRunU {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lock)
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) : Prop where
   /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
   coherent : Coherent U
   /-- Each honest node starts from the initial AC state. -/
   init : ∀ y ∈ H, tr.init y = (goldilocksSA sp FGP ro).initial
-  /-- Each call of an honest node executes `stepWith` at the locks `u i`. -/
+  /-- Each call of an honest node executes `stepWithM m` at the locks `u i`. -/
   exec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
-    stepWith sp ro (tr.node i) (u i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call =
+    stepWithM sp ro m (tr.node i) (u i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call =
       (tr.post i, ℓ.emits)
   /-- The locks `u i` are related to the call's unlock input. -/
   lawful : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H → FrameOK ℓ.frame →
-    UnlockRel sp (callInput sp (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call).locks
+    UnlockRel sp (callInputM sp m (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call).locks
       ℓ.frame (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
-      (callView sp (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call) (u i)
+      (callViewM sp m (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call) (u i)
   /-- The frame law and the input contract (`ACLocalRun.frameLaw`). -/
   frameLaw : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
     (tr.NoCallBetween y 0 i ∧ ∃ Φ₀, (goldilocksSA sp FGP ro).InitialFrame Φ₀ ∧
@@ -382,13 +382,14 @@ structure ACLocalRunU {ro : ReplayOrder sp FGP} (u : Nat → Set Lock) (H : Set 
       ∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u
 
 /-- The unlock relation at an honest call with a well-formed frame. -/
-theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {u : Nat → Set Lock} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} (h : ACLocalRunU u H U tr) {y : Fin sp.n}
+theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    (h : ACLocalRunU m u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hΦ : FrameOK ℓ.frame) :
-    UnlockRel sp (callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call).locks ℓ.frame
+    UnlockRel sp (callInputM sp m (tr.state y i) ℓ.frame (tr.time i) ℓ.call).locks ℓ.frame
       (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
-      (callView sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call) (u i) := by
+      (callViewM sp m (tr.state y i) ℓ.frame (tr.time i) ℓ.call) (u i) := by
   have := h.lawful i ℓ hc.2 (hc.1 ▸ hy) hΦ
   rwa [hc.1] at this
 
@@ -396,14 +397,16 @@ theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {u : Nat → Set Lock} {H
 theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)}
     {tr : SATrace sp FGP ro} (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) :
-    ACLocalRunU (parentOracle sp tr) H U tr where
+    ACLocalRunU (WriteMode.parent sp) (parentOracle sp tr) H U tr where
   coherent := h.coherent
   init := h.init
   exec i ℓ hl hy := by
     have := h.exec i ℓ hl hy
     rw [step_eq_stepWith] at this
+    rw [stepWithM_parent]
     simpa only [parentOracle, hl] using this
   lawful i ℓ hl _ hΦ := by
+    rw [callInputM_parent, callViewM_parent]
     simp only [parentOracle, hl]
     exact unlockRel_unlock hΦ _ _ _ _
   frameLaw := h.frameLaw
@@ -419,45 +422,49 @@ theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H 
 /-- The states reached at validator `self` inside `U` by calls under the call law, each executing
 `stepWith` at locks related to its unlock input (`ACInterface.ReachableAt`, with the unlock
 given). -/
-inductive ReachableAtU {ro : ReplayOrder sp FGP} (self : Fin sp.n) (U : Set (Blk sp.n FGP)) :
+inductive ReachableAtU {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp.n)
+    (U : Set (Blk sp.n FGP)) :
     SAState sp.n → Frm sp.n FGP → Time → Prop
   /-- The initial state, with the initial frame, at time `0`. -/
   | init (Φ : Frm sp.n FGP) : (goldilocksSA sp FGP ro).InitialFrame Φ →
       (goldilocksSA sp FGP ro).FrameIn U Φ →
-      ReachableAtU self U (SAState.initial sp.genesisRoot) Φ 0
+      ReachableAtU m self U (SAState.initial sp.genesisRoot) Φ 0
   /-- One more call at locks `L₁` related to its unlock input. -/
   | step {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t t' : Time}
-      (c : (goldilocksSA sp FGP ro).Call) (L₁ : Set Lock) : ReachableAtU self U A Φ t → t ≤ t' →
+      (c : (goldilocksSA sp FGP ro).Call) (L₁ : Set Lock) : ReachableAtU m self U A Φ t → t ≤ t' →
       (goldilocksSA sp FGP ro).CallOK U Φ t' c Φ' →
-      UnlockRel sp (callInput sp A Φ' t' c).locks Φ' t' ((sp.slot t' : Int) - 1)
-        (callView sp A Φ' t' c) L₁ →
-      ReachableAtU self U (stepWith sp ro self L₁ A Φ' t' c).1 Φ' t'
+      UnlockRel sp (callInputM sp m A Φ' t' c).locks Φ' t' ((sp.slot t' : Int) - 1)
+        (callViewM sp m A Φ' t' c) L₁ →
+      ReachableAtU m self U (stepWithM sp ro m self L₁ A Φ' t' c).1 Φ' t'
 
 /-- **The parent's reachable states are reachable with the unlock given.** -/
 theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAt.toU {ro : ReplayOrder sp FGP}
     {self : Fin sp.n} {U : Set (Blk sp.n FGP)}
     {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t : Time}
     (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t) :
-    ReachableAtU (ro := ro) self U A Φ t := by
+    ReachableAtU (ro := ro) (WriteMode.parent sp) self U A Φ t := by
   induction h with
   | init Φ hi hf => exact .init Φ hi hf
   | @step A Φ Φ' t t' c _ ht hc ih =>
-    rw [step_eq_stepWith]
-    exact .step c _ ih ht hc (unlockRel_unlock hc.1.1 _ _ _ _)
+    rw [step_eq_stepWith, ← stepWithM_parent]
+    exact .step c _ ih ht hc (by
+      rw [callInputM_parent, callViewM_parent]; exact unlockRel_unlock hc.1.1 _ _ _ _)
 
 /-- An AC trace of the SA with the unlock given, its contract and the honest-object facts
 (`ACRun` with the unlock given). -/
-structure ACRunU (u : Nat → Set Lock) {ro : ReplayOrder sp FGP} (selectedProposer : Nat → Fin sp.n)
-    (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
+structure ACRunU (m : WriteMode) (u : Nat → Set Lock) {ro : ReplayOrder sp FGP}
+    (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) : Prop where
   /-- The AC trace contract with the unlock given. -/
-  localRun : ACLocalRunU u H U tr
+  localRun : ACLocalRunU m u H U tr
   /-- The honest-object facts. -/
   honest : HonestObjects selectedProposer tr H
 
 /-- The parent's runs are runs with the unlock given. -/
 theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n}
     {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-    (h : ACRun selectedProposer tr H U) : ACRunU (parentOracle sp tr) selectedProposer tr H U :=
+    (h : ACRun selectedProposer tr H U) :
+    ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U :=
   ⟨h.localRun.toU, h.honest⟩
 
 end Consensus.Goldilocks.SA

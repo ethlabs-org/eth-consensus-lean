@@ -13,6 +13,8 @@ node is the root of the result of that node's update of slot `j` at an earlier c
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
 
@@ -28,9 +30,9 @@ private theorem sv_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
 
 private theorem sv_tryVote
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (tryVoteWith sp x L A Φ t).1.saved = A.saved := by
-  unfold tryVoteWith; dsimp only
-  split_ifs <;> simp only [sv_optimistic, sv_admitVote]
+    (tryVoteWithM sp wm x L A Φ t).1.saved = A.saved := by
+  unfold tryVoteWithM; dsimp only
+  split_ifs <;> simp only [optimisticConfirmationM_keep _ sv_optimistic, sv_admitVote]
 
 private theorem sv_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).saved = A.saved := by
@@ -57,17 +59,17 @@ private theorem sv_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s :
 private theorem sv_step
     {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
     (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
-    let A' := (stepWith sp ro self L A Φ t c).1
+    let A' := (stepWithM sp ro wm self L A Φ t c).1
     A'.saved = A.saved ∨ (c = .restart ∧ ∀ j, A'.saved j = none) ∨
       ∃ σ : Nat, c = .tick ∧ t = sp.ts σ + 6 * sp.Δ ∧ joined sp A t ∧
         A'.saved = Function.update A.saved σ ((getConfirmation sp A Φ σ).map Block.root) := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   cases c with
   | tick =>
-    change (acOnTickWith sp self L A Φ t).1.saved = _ ∨
-      (_ ∧ ∀ j, (acOnTickWith sp self L A Φ t).1.saved j = _) ∨
-      ∃ σ : Nat, _ ∧ _ ∧ _ ∧ (acOnTickWith sp self L A Φ t).1.saved = _
-    unfold acOnTickWith; dsimp only
+    change (acOnTickWithM sp wm self L A Φ t).1.saved = _ ∨
+      (_ ∧ ∀ j, (acOnTickWithM sp wm self L A Φ t).1.saved j = _) ∨
+      ∃ σ : Nat, _ ∧ _ ∧ _ ∧ (acOnTickWithM sp wm self L A Φ t).1.saved = _
+    unfold acOnTickWithM; dsimp only
     by_cases hj : joined sp A t
     swap
     · have hc : (¬ joined sp A t) = True := eq_true hj
@@ -79,7 +81,9 @@ private theorem sv_step
       have hc₁ : (t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t) = True := eq_true hu
       have hc₂ : (t = sp.ts (sp.slot t) + sp.Δ) = False := eq_false hv
       simp only [hc₁, hc₂, ↓reduceIte]
-      refine Or.inr (Or.inr ⟨sp.slot t - 1, trivial, ?_, hj, sv_update _ _ _ _⟩)
+      refine Or.inr (Or.inr ⟨sp.slot t - 1, trivial, ?_, hj,
+        (updateConfirmationM_field SAState.saved (fun _ _ => rfl) _ _ _ _ _).trans
+          (sv_update _ _ _ _)⟩)
       have hs1 : ((sp.slot t - 1 : Nat) : Int) = (sp.slot t : Int) - 1 := by omega
       have e := hu.1
       simp only [SAParams.ts] at e ⊢
@@ -103,12 +107,12 @@ private theorem sv_step
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
     left
-    change (tryVoteWith sp self L _ Φ t).1.saved = _
-    rw [sv_tryVote, sv_optimistic, sv_admitVote]
+    change (tryVoteWithM sp wm self L _ Φ t).1.saved = _
+    rw [sv_tryVote, optimisticConfirmationM_keep _ sv_optimistic, sv_admitVote]
   | block B =>
     left
-    change (tryVoteWith sp self L _ Φ t).1.saved = _
-    rw [sv_tryVote, sv_optimistic, sv_blockReceipt]
+    change (tryVoteWithM sp wm self L _ Φ t).1.saved = _
+    rw [sv_tryVote, optimisticConfirmationM_keep _ sv_optimistic, sv_blockReceipt]
   | restart =>
     refine Or.inr (Or.inl ⟨rfl, fun j => ?_⟩)
     change (acRestart sp ro self A Φ t).1.saved j = none
@@ -117,7 +121,7 @@ private theorem sv_step
 
 /-- `saved_result` with the unlock given. -/
 theorem saved_resultU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) (i j : Nat) {r : Nat} (h : (tr.state x i).saved j = some r) :
     ∃ k < i, ∃ C CV, ResultAt tr x k j C CV ∧ C.root = r := by
   induction i with
@@ -134,7 +138,7 @@ theorem saved_resultU
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hx)
       rw [hn.1] at he
       have hpost : tr.post i =
-          (stepWith sp ro x (u i) (tr.state x i) ℓ.frame (tr.time i) ℓ.call).1 := by
+          (stepWithM sp ro wm x (u i) (tr.state x i) ℓ.frame (tr.time i) ℓ.call).1 := by
         rw [he]
       rw [hst, hpost] at h
       rcases sv_step (L := u i) (ro := ro) x (tr.state x i) (frameIn_of_callAtU hr hx hc).1
@@ -213,8 +217,9 @@ theorem saved_step_of_not_restart (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
   by_cases hn : tr.node i = x ∧ tr.label i ≠ none
   · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
     have hc : tr.CallAt x i ℓ := ⟨hn.1, hℓ⟩
-    rw [post_step hr hx hc, step_eq_stepWith]
-    rcases sv_step (ro := ro) x (tr.state x i) (frameIn_of_callAt hr hx hc).1
+    rw [post_step hr hx hc, step_eq_stepWith, ← stepWithM_parent]
+    rcases sv_step (wm := WriteMode.parent sp) (ro := ro) x (tr.state x i)
+        (frameIn_of_callAt hr hx hc).1
         (hr.time_nonneg i) ℓ.call with hs | ⟨hcr, -⟩ | ⟨σ, hcall, ht, hj, hs⟩
     · exact Or.inl (congrFun hs j)
     · exact absurd ⟨ℓ, hc, hcr⟩ hnr

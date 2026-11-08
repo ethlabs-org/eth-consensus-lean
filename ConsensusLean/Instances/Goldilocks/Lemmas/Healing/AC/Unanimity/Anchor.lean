@@ -19,6 +19,8 @@ later slot. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
@@ -26,7 +28,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- `anchor_cases` with the unlock given. -/
 private theorem anchor_casesU
-    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U schedule g)
+    {u : Nat → Set Lock} (hS : StandaloneRunU wm u tr H U schedule g)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) (A : SAState sp.n) (t : Time) :
     getAnchor sp A ℓ.frame t ∈ ℓ.frame.tree ∧ (getAnchor sp A ℓ.frame t = ℓ.frame.F ∨
@@ -60,7 +62,7 @@ private theorem anchor_cases (hS : StandaloneRun tr H U schedule g)
 
 /-- `stored_lock_slot_le` with the unlock given. -/
 theorem stored_lock_slot_leU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {l : Lock} (hl : l ∈ (tr.state y i).locks) :
     l.slot ≤ sp.slot (tr.time i) := by
   obtain ⟨j, hj, B, horig, -⟩ := lock_provenanceU hr hy i l hl
@@ -80,7 +82,7 @@ theorem stored_lock_slot_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
 
 /-- `genesis_extended` with the unlock given. -/
 private theorem genesis_extendedU
-    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay)
+    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay)
     {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     Anc U ℓ.frame.F d.head ∧ ∀ z ∈ H, ∀ j e, VoteAt tr z j e → VoteExtends U e.msg ℓ.frame.F := by
@@ -111,7 +113,7 @@ private theorem genesis_extended (hs : UnanimitySettingCore tr H U schedule g p 
 /-- `vote_anchor_cases_core` with the unlock given. -/
 theorem vote_anchor_cases_coreU
     {uL : Nat → Set Lock}
-    (hs : UnanimitySettingCoreU uL tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+    (hs : UnanimitySettingCoreU wm uL tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     getAnchor sp e.readPoint ℓ.frame (tr.time j) ∈ U ∧
@@ -191,7 +193,7 @@ theorem vote_anchor_cases_core
 
 /-- `proposal_anchor_cases_core` with the unlock given. -/
 theorem proposal_anchor_cases_coreU
-    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) :
+    {u : Nat → Set Lock} (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) :
     d.start ∈ U ∧
       ((∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = p → VoteExtends U e.msg d.start) ∨
         ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = p ∧ VoteExtends U e.msg d.start) := by

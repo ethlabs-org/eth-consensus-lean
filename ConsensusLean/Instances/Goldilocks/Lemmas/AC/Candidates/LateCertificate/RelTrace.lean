@@ -190,7 +190,7 @@ private theorem frameOK_of_call (h : ACLocalRun (certRecoverySA sp FGP ro) H U t
 /-- **A run of the late-certificate SA, forgotten, is a run with the unlock given** by
 `certOracle`. -/
 theorem localRunU_projTraceC (h : ACLocalRun (certRecoverySA sp FGP ro) H U tr) :
-    ACLocalRunU (certOracle tr) H U (projTraceC tr) where
+    ACLocalRunU (WriteMode.parent sp) (certOracle tr) H U (projTraceC tr) where
   coherent := h.coherent
   init y hy := by
     change (tr.init y).er.ac = _
@@ -201,13 +201,13 @@ theorem localRunU_projTraceC (h : ACLocalRun (certRecoverySA sp FGP ro) H U tr) 
     have hc : tr.CallAt (tr.node i) i ℓ := ⟨rfl, hl'⟩
     have hs := step_er (tr.node i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call
     rw [h.exec i ℓ hl' hH] at hs
-    rw [projTraceC_state]
+    rw [projTraceC_state, stepWithM_parent]
     simp only [certOracle, hl']
     rw [stepWith_stepE _ _ (locksForget_state_cert h hH i) _ (frameOK_of_call h hH hc)
       (h.time_nonneg i), ← hs.1, ← hs.2]
   lawful i ℓP hl hH hΦ := by
     obtain ⟨ℓ, hl', rfl⟩ := Option.map_eq_some_iff.1 hl
-    rw [projTraceC_state]
+    rw [projTraceC_state, callInputM_parent, callViewM_parent]
     simp only [certOracle, hl']
     exact unlockAtE_rel _ _ (unlockRel_certStageW hΦ _) (locksForget_state_cert h hH i) _ _
   frameLaw y hy i ℓP hc := by

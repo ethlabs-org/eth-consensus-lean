@@ -21,6 +21,8 @@ slot-`(s+1)` votes. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
   {proposer : Nat → Fin sp.n}
@@ -34,7 +36,7 @@ private theorem compat_of_below (hU : Coherent U) {L O D R : Blk sp.n FGP} (hLO 
 
 /-- `slow_window_results` with the unlock given. -/
 theorem slow_window_resultsU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
       ∃ k R CV, ResultAt tr x k j R CV ∧ Anc U D R := by
@@ -64,14 +66,14 @@ theorem slow_window_results (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x
 
 /-- `lock_below_origin` with the unlock given. -/
 theorem lock_below_originU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV := by
   intro l hl
   cases hf : l.fast
-  · obtain ⟨j, hj, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenanceU hr hy i l hl hf
-    obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := hsl
+  · obtain ⟨j, hj, B, hsl, L, hL, hLr, hLB⟩ := slow_lock_provenanceM hr hy i l hl hf
+    obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := slowLockAtW_iff.1 hsl
     have hΦU := (frameIn_of_callAtU hr hy hupd.1).2
     obtain ⟨⟨-, -, hBC⟩, -⟩ := (deepest_mem hdeep).1
     exact ⟨L, hL, hLr, C, hLB.trans (Anc.mono hΦU hBC), j, hj, _,
@@ -94,7 +96,7 @@ theorem lock_below_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y :
 
 /-- `slow_stored_locks` with the unlock given. -/
 theorem slow_stored_locksU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i)) :
@@ -160,7 +162,7 @@ theorem slow_stored_locks_before {b : Time} (hS : HealthyBaseUpTo tr H U propose
 
 /-- `slow_live_locks` with the unlock given. -/
 theorem slow_live_locksU
-    {u : Nat → Set Lock} (hS : HealthyBaseU u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
+    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts ((s : Int) - sp.k + 1)) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)

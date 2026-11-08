@@ -20,6 +20,8 @@ at `P` (`proposal_walkEnd`): so `E₀ = P`. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {p : Nat} {P : Blk sp.n FGP}
   {k : Nat} {ℓp : ACLabel (goldilocksSA sp FGP ro)} {d : DutyHead sp.n FGP (Payload sp.n)}
@@ -28,7 +30,7 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 /-- `vote_walkEnd` with the unlock given. -/
 private theorem vote_walkEndU
     {u : Nat → Set Lock}
-    (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
+    (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) (hes : e.msg.slot = p) :
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧
@@ -81,7 +83,7 @@ private theorem vote_walkEnd
 /-- `proposal_votes_of_setting_core` with the unlock given. -/
 theorem proposal_votes_of_setting_coreU
     {u : Nat → Set Lock}
-    (hs : UnanimitySettingCoreU u tr H U schedule g p P k ℓp d pay) :
+    (hs : UnanimitySettingCoreU wm u tr H U schedule g p P k ℓp d pay) :
     ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
   have hU : Coherent U := hs.standalone.run.localRun.coherent
   -- the canonical walk

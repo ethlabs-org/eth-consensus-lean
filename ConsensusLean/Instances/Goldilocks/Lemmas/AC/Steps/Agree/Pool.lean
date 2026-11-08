@@ -14,6 +14,8 @@ reads this to forward a voter's early votes to the proposer under `Sync`. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams}
 
 /-! ## The pools across one SA function -/
@@ -76,14 +78,17 @@ private theorem grow_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FG
   | cons v l ih => exact ih _ (h₀.trans (grow_admitVote _ _ _))
 
 private theorem grow_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    Grow t A (optimisticConfirmation sp A Φ t) := by
+    Grow t A (optimisticConfirmationM sp wm A Φ t) := by
+  refine optimisticConfirmationM_of (P := Grow t A) ?_ (Grow.of_eq rfl rfl)
   unfold optimisticConfirmation updateLatestConfirmed
   split
   · exact Grow.of_eq rfl rfl
   · split_ifs <;> exact Grow.of_eq rfl rfl
 
 private theorem grow_updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (s : Nat) : Grow t A (updateConfirmation sp A Φ t s) := by
+    (s : Nat) : Grow t A (updateConfirmationM sp wm A Φ t s) := by
+  rw [updateConfirmationM_eq]
+  change Grow t A (updateConfirmation sp A Φ t s)
   unfold updateConfirmation updateLatestConfirmed
   dsimp only
   split
@@ -92,8 +97,8 @@ private theorem grow_updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (
 
 private theorem grow_tryVote
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    Grow t A (tryVoteWith sp x L A Φ t).1 := by
-  unfold tryVoteWith
+    Grow t A (tryVoteWithM sp wm x L A Φ t).1 := by
+  unfold tryVoteWithM
   dsimp only
   split_ifs
   · exact Grow.of_eq rfl rfl
@@ -107,11 +112,11 @@ private theorem grow_tryVote
 private theorem grow_step
     {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
-    (hc : c ≠ .restart) : Grow t A (stepWith sp ro self L A Φ t c).1 := by
+    (hc : c ≠ .restart) : Grow t A (stepWithM sp ro wm self L A Φ t c).1 := by
   cases c with
   | tick =>
-    change Grow t A (acOnTickWith sp self L A Φ t).1
-    unfold acOnTickWith
+    change Grow t A (acOnTickWithM sp wm self L A Φ t).1
+    unfold acOnTickWithM
     dsimp only
     split_ifs
     · exact (grow_tryVote _ _ _ _).trans (grow_updateConfirmation _ _ _ _)
@@ -144,7 +149,7 @@ theorem step_pool_subset {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAStat
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
     (hc : c ≠ .restart) (σ : Nat) :
     A.pool σ ⊆ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool σ := by
-  rw [step_eq_stepWith]
+  rw [step_eq_stepWith, ← stepWithM_parent]
   exact (grow_step self A Φ t c hc).1 σ
 
 /-- After a vote's receipt (an `on_message` call) or its emission, at a time of its slot or the
@@ -163,7 +168,7 @@ variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
   {tr : SATrace sp FGP ro}
 
 private theorem frameOK_of_callU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
@@ -183,17 +188,18 @@ private theorem state_succ_of_not {y : Fin sp.n} {k : Nat}
 
 /-- A call other than a restart grows the pools. -/
 private theorem grow_callU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y k ℓ)
     (hnr : ℓ.call ≠ .restart) : Grow (tr.time k) (tr.state y k) (tr.post k) := by
   have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at he
-  have h := grow_step (L := u k) (ro := ro) y (tr.state y k) ℓ.frame (tr.time k) ℓ.call hnr
+  have h := grow_step (wm := wm) (L := u k) (ro := ro) y (tr.state y k) ℓ.frame (tr.time k)
+    ℓ.call hnr
   rwa [he] at h
 
 /-- `pool_origin` with the unlock given. -/
 theorem pool_originU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
     (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
       x.slot ≤ sp.slot (tr.time k)) ∨
@@ -245,7 +251,7 @@ theorem pool_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin s
 
 /-- `pool_mono` with the unlock given. -/
 theorem pool_monoU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b) (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k)
     (σ : Nat) : (tr.state y a).pool σ ⊆ (tr.state y b).pool σ := by
   induction b, hab using Nat.le_induction with
@@ -336,7 +342,7 @@ theorem serviceBefore_of_sync {b : Time} (h : SyncACBefore H U b tr) :
 
 /-- `heldBefore_mono` with the unlock given. -/
 theorem heldBefore_monoU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
     (hv : HeldBefore (tr.state y a) v T) : HeldBefore (tr.state y b) v T := by
@@ -364,7 +370,7 @@ theorem heldBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : F
 
 /-- `poolEvidenceBefore_mono` with the unlock given. -/
 theorem poolEvidenceBefore_monoU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
     (hv : PoolEvidenceBefore (tr.state y a) v T) :
@@ -396,7 +402,7 @@ theorem PoolEvidenceBefore.weaken {A : SAState sp.n} {v : Vote sp.n} {T F : Time
 
 /-- `RetainedBefore.evidence` with the unlock given. -/
 theorem RetainedBefore.evidenceU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n} {T : Time}
     (hv : RetainedBefore tr y j v T) : PoolEvidenceBefore (tr.state y j) v T := by
   obtain ⟨q, hq, hp, hnr⟩ := (retainedBefore_iff _ _ _ _).mp hv
@@ -420,7 +426,7 @@ theorem messageServedBefore_of_retained (y : Fin sp.n) {q j : Nat} (hqj : q ≤ 
 
 /-- `held_of_processAt` with the unlock given. -/
 theorem held_of_processAtU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {v : Vote sp.n} (hp : tr.ProcessAt y k v)
     (h₁ : (sp.slot (tr.time k) : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot (tr.time k)) :
     v ∈ (tr.state y (k + 1)).pool v.slot ∨
@@ -429,10 +435,10 @@ theorem held_of_processAtU
   · rw [state_succ_of_call hc]
     have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hm] at he
-    have h := (grow_optimistic (admitVote sp (tr.state y k) (tr.time k) v) ℓ.frame
-      (tr.time k)).trans (grow_tryVote (L := u k) y _ ℓ.frame (tr.time k))
-    change Grow _ _ (acOnMessageWith sp y (u k) (tr.state y k) ℓ.frame (tr.time k) v).1 at h
-    change acOnMessageWith sp y (u k) (tr.state y k) ℓ.frame (tr.time k) v = _ at he
+    have h := (grow_optimistic (wm := wm) (admitVote sp (tr.state y k) (tr.time k) v) ℓ.frame
+      (tr.time k)).trans (grow_tryVote (wm := wm) (L := u k) y _ ℓ.frame (tr.time k))
+    change Grow _ _ (acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) v).1 at h
+    change acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) v = _ at he
     rw [he] at h
     exact held_after _ _ h₁ h₂ h
   · rw [state_succ_of_call hc, post_of_castAtU hr hy ⟨hc, he⟩]
@@ -477,7 +483,7 @@ private theorem deadline_eq {y : Fin sp.n} {c : Nat} {τ : Time}
 equivocation, when the receiver has not restarted since the source time. -/
 private theorem held_of_deadline_processingU
     {u : Nat → Set Lock}
-    (hr : ACLocalRunU u H U tr) {X : Fin sp.n}
+    (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
     {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
     (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
@@ -507,7 +513,7 @@ private theorem held_of_deadline_processingU
 /-- `held_of_deadline_service` with the unlock given. -/
 theorem held_of_deadline_serviceU
     {u : Nat → Set Lock}
-    (hr : ACLocalRunU u H U tr) {X : Fin sp.n}
+    (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
     {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
     (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
@@ -540,7 +546,7 @@ theorem held_of_deadline_service
 
 /-- `sync_forward` with the unlock given. -/
 theorem sync_forwardU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {a b : Time}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {a b : Time}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k)
     (hb : tr.time k ≤ b) (hX : X ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -576,7 +582,7 @@ theorem sync_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Ti
 
 /-- `sync_window_before_forward` with the unlock given. -/
 theorem sync_window_before_forwardU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {a b : Time} (hsync : ServiceWindowBefore H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
     (ha : a ≤ tr.time k)
@@ -628,14 +634,14 @@ theorem sync_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {b
 
 /-- `readPoint_pool` with the unlock given. -/
 theorem readPoint_poolU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ℓ e) {x : Vote sp.n} {σ : Nat} (hx : x ∈ e.readPoint.pool σ) :
     x ∈ (tr.state y (j + 1)).pool σ ∧
       (x.slot = σ → (tr.state y (j + 1)).voteStamp x = e.readPoint.voteStamp x) := by
   rw [state_succ_of_call hc.1, post_of_castAtU hr hy hc]
   have hg := (grow_admitVote e.readPoint (tr.time j) e.msg).trans
-    (grow_optimistic _ ℓ.frame (tr.time j))
+    (grow_optimistic (wm := wm) _ ℓ.frame (tr.time j))
   exact ⟨hg.1 _ hx, fun h => (hg.2 x).1 (h ▸ hx)⟩
 
 /-- The state a cast leaves holds the votes of the vote's read point, with their stamps. -/
@@ -649,7 +655,7 @@ theorem readPoint_pool (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
 
 /-- `restartTime_of_castAt` with the unlock given. -/
 theorem restartTime_of_castAtU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ℓ e) : (tr.post j).restartTime = e.readPoint.restartTime := by
   have h₁ : ∀ (A : SAState sp.n) t v, (admitVote sp A t v).restartTime = A.restartTime := by
@@ -659,7 +665,7 @@ theorem restartTime_of_castAtU
     intro A Φ t; unfold optimisticConfirmation updateLatestConfirmed; split
     · rfl
     · split_ifs <;> rfl
-  rw [post_of_castAtU hr hy hc, h₂, h₁]
+  rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ h₂, h₁]
 
 /-- A cast leaves the restart time of its read point. -/
 theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -669,7 +675,7 @@ theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
 
 /-- `optimisticPoint_pool_post` with the unlock given. -/
 theorem optimisticPoint_pool_postU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {A : SAState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
     A.pool σ ⊆ (tr.state y (k + 1)).pool σ := by
@@ -677,19 +683,19 @@ theorem optimisticPoint_pool_postU
   · rw [state_succ_of_call hc]
     have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hm] at he
-    have h := (grow_optimistic (admitVote sp (tr.state y k) (tr.time k) m) ℓ.frame
-      (tr.time k)).trans (grow_tryVote (L := u k) y _ ℓ.frame (tr.time k))
-    change Grow _ _ (acOnMessageWith sp y (u k) (tr.state y k) ℓ.frame (tr.time k) m).1 at h
-    change acOnMessageWith sp y (u k) (tr.state y k) ℓ.frame (tr.time k) m = _ at he
+    have h := (grow_optimistic (wm := wm) (admitVote sp (tr.state y k) (tr.time k) m) ℓ.frame
+      (tr.time k)).trans (grow_tryVote (wm := wm) (L := u k) y _ ℓ.frame (tr.time k))
+    change Grow _ _ (acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) m).1 at h
+    change acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) m = _ at he
     rw [he] at h
     exact h.1 σ
   · rw [state_succ_of_call hc]
     have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hB] at he
-    have h := (grow_optimistic (blockReceipt sp (tr.state y k) (tr.time k) B) ℓ.frame
-      (tr.time k)).trans (grow_tryVote (L := u k) y _ ℓ.frame (tr.time k))
-    change Grow _ _ (acOnBlockWith sp y (u k) (tr.state y k) ℓ.frame (tr.time k) B).1 at h
-    change acOnBlockWith sp y (u k) (tr.state y k) ℓ.frame (tr.time k) B = _ at he
+    have h := (grow_optimistic (wm := wm) (blockReceipt sp (tr.state y k) (tr.time k) B) ℓ.frame
+      (tr.time k)).trans (grow_tryVote (wm := wm) (L := u k) y _ ℓ.frame (tr.time k))
+    change Grow _ _ (acOnBlockWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) B).1 at h
+    change acOnBlockWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) B = _ at he
     rw [he] at h
     exact h.1 σ
   · rw [state_succ_of_call hc, post_of_castAtU hr hy ⟨hc, he⟩]

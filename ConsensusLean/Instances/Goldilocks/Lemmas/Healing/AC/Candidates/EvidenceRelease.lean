@@ -33,7 +33,7 @@ theorem standaloneRunU_projTrace (hrun : ACLocalRun (evidenceReleaseSA sp FGP ro
     (hdr : DrivenU (erOracle tr) proposer (projTrace tr) H)
     (htriv : TrivialFrames (projTrace tr) H) (hheal : HealthyAC (projTrace tr) H U g)
     (hcatch : CatchAC (projTrace tr) H U g (2 * sp.Δ)) :
-    StandaloneRunU (erOracle tr) (projTrace tr) H U proposer g :=
+    StandaloneRunU (WriteMode.parent sp) (erOracle tr) (projTrace tr) H U proposer g :=
   ⟨⟨⟨localRunU_projTrace hrun, hobj⟩, hdr, hheal.core, hheal.two_faulty_lt, hcatch⟩, htriv⟩
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` for evidence-release** (trivial frames): for an honest proposal `P`
@@ -57,7 +57,7 @@ theorem er_healing_standalone_tight (hrun : ACLocalRun (evidenceReleaseSA sp FGP
         ∃ k ≤ j, ∃ ℓ', (projTrace tr).CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
       Anc U P (acConfirmed sp (tr.post j).ac ℓ.frame (tr.time j))) :=
   ac_healing_standalone_of_parent_tightU
-    (standaloneRunU_projTrace hrun hobj hdr htriv hheal hcatch) hpH hP hp
+    (standaloneRunU_projTrace hrun hobj hdr htriv hheal hcatch) rfl hpH hP hp
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` for evidence-release, corollary** (proposal-block inclusion): under
 `Prop(G_p)`, for every `t ≥ ḡ + (8k + 4)Δ` an honest proposal released in `[t, t + G_p]` is in
@@ -82,7 +82,7 @@ theorem er_healing_standalone_tight_corollary
             tr.time k = tr.time j) →
         Anc U P (acConfirmed sp (tr.post j).ac ℓ.frame (tr.time j)) :=
   ac_healing_standalone_tight_corollaryU
-    (standaloneRunU_projTrace hrun hobj hdr htriv hheal hcatch) hprop t ht
+    (standaloneRunU_projTrace hrun hobj hdr htriv hheal hcatch) rfl hprop t ht
 
 end Consensus.Goldilocks.EvidenceRelease
 

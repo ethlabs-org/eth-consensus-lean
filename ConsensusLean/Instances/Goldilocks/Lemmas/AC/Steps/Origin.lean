@@ -19,6 +19,8 @@ lock analysis reads both. -/
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
@@ -62,11 +64,11 @@ holds the input's pool and the input's locks unlocked against the merged view (f
 whose view is the input's. -/
 private theorem tryVote_em
     {L : Set Lock} {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {e : Em sp FGP} (he : e ∈ (tryVoteWith sp x L A Φ t).2) :
+    {e : Em sp FGP} (he : e ∈ (tryVoteWithM sp wm x L A Φ t).2) :
     e.msg.slot = sp.slot t ∧ t ≤ sp.ts (sp.slot t) + sp.Δ ∧
       e.readPoint.locks = (if 0 < sp.slot t then L else A.locks) ∧
       mergedVoteView sp e.readPoint Φ (sp.slot t) = mergedVoteView sp A Φ (sp.slot t) := by
-  unfold tryVoteWith at he
+  unfold tryVoteWithM at he
   dsimp only at he
   split_ifs at he with h1 h2 h3
   · simp at he
@@ -82,21 +84,22 @@ private theorem tryVote_em
 
 /-- `emits_tryVote` with the unlock given. -/
 private theorem emits_tryVoteU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
-    ∃ P, e ∈ (tryVoteWith sp y (u i) P ℓ.frame (tr.time i)).2 ∧
-      P = callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
-      callView sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
+    ∃ P, e ∈ (tryVoteWithM sp wm y (u i) P ℓ.frame (tr.time i)).2 ∧
+      P = callInputM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
+      callViewM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
         mergedVoteView sp P ℓ.frame (sp.slot (tr.time i)) ∧ (P = tr.state y i ∨
       ∃ A, ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B) ∧
-        P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧ A.locks = (tr.state y i).locks) := by
+        P = optimisticConfirmationM sp wm A ℓ.frame (tr.time i) ∧
+          A.locks = (tr.state y i).locks) := by
   obtain ⟨hc, he⟩ := hc
   have hΦ := (frameIn_of_callAtU hr hy hc).1
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have he' : e ∈ (stepWith sp ro y (u i) (tr.state y i) ℓ.frame (tr.time i)
+  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by
     rw [hx]
     exact he
@@ -104,8 +107,8 @@ private theorem emits_tryVoteU
   cases hcall : ℓ.call with
   | tick =>
     rw [hcall] at he'
-    change e ∈ (acOnTickWith sp y (u i) _ ℓ.frame _).2 at he'
-    unfold acOnTickWith at he'
+    change e ∈ (acOnTickWithM sp wm y (u i) _ ℓ.frame _).2 at he'
+    unfold acOnTickWithM at he'
     dsimp only at he'
     split_ifs at he' <;> first | exact ⟨_, he', rfl, rfl, Or.inl rfl⟩ | simp at he'
   | proposal =>
@@ -173,7 +176,7 @@ private theorem emits_tryVote (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) 
 unlock relation of slot `s − 1` against the merged view ties them to the locks of the input of
 the vote's `try_vote`. -/
 theorem readPoint_locksU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : 0 < e.msg.slot) :
     ∃ L, UnlockRel sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
@@ -194,7 +197,7 @@ theorem readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : F
     ∃ L, e.readPoint.locks = unlock sp L ℓ.frame (tr.time i) ((e.msg.slot : Int) - 1)
       (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) := by
   obtain ⟨P, he, -⟩ := emits_tryVote hr hy hc
-  obtain ⟨hes, -, hlocks, hview⟩ := tryVote_em he
+  obtain ⟨hes, -, hlocks, hview⟩ := tryVote_em (wm := WriteMode.parent sp) he
   rw [hes] at hs ⊢
   rw [hlocks, hview]
   split_ifs
@@ -208,12 +211,12 @@ private def PoolOK (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (A : SAState sp
 
 /-- `point_post` with the unlock given. -/
 private theorem point_postU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x j ℓ)
     {e : Em sp FGP} (he : e ∈ ℓ.emits) :
     (tr.state x (j + 1)).pool = (admitVote sp e.readPoint (tr.time j) e.msg).pool := by
   rw [show tr.state x (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2],
-    post_of_castAtU hr hx ⟨hc, he⟩, optimistic_pool]
+    post_of_castAtU hr hx ⟨hc, he⟩, optimisticConfirmationM_keep _ optimistic_pool]
 
 /-- The state the call leaves after an own vote's optimistic check holds that check's pools. -/
 private theorem point_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
@@ -224,7 +227,7 @@ private theorem point_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x 
 
 /-- `optimisticPoint_pool_slot` with the unlock given. -/
 theorem optimisticPoint_pool_slotU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr)
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     {A : SAState sp.n} (hp : OptimisticPoint tr x j ℓ A) {σ : Nat} {v : Vote sp.n}
     (hv : v ∈ A.pool σ) : v.slot = σ := by
@@ -249,7 +252,7 @@ theorem optimisticPoint_pool_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
 
 /-- `receipt_poolOK` with the unlock given. -/
 private theorem receipt_poolOKU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {A : SAState sp.n}
     (h : (∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y j) (tr.time j) m) ∨
       ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y j) (tr.time j) B) :
@@ -277,7 +280,7 @@ private theorem receipt_poolOK (hrun : ACRun proposer tr H U) {y : Fin sp.n} (hy
 
 /-- `optimisticPoint_pool_vote` with the unlock given. -/
 theorem optimisticPoint_pool_voteU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U)
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {A : SAState sp.n} (hp : OptimisticPoint tr x j ℓ A)
     {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ) (hvH : v.val ∈ H) :
@@ -365,7 +368,7 @@ theorem lock_write_readPoint (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
     dsimp only at hsel
     split_ifs at hsel
     exact hPhi.2 (deepest_mem hsel).1.1
-  rw [(tryVote_em he).2.2.1, ite_eq_left (hs ▸ hpos)] at hl
+  rw [(tryVote_em (wm := WriteMode.parent sp) he).2.2.1, ite_eq_left (hs ▸ hpos)] at hl
   exact transfer (((locks_move_back sp) FGP ell.frame P.locks (tr.time i) hPhi.1).2.2 _ _)
     hinput l hl
 
@@ -476,7 +479,9 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
     (h : ∀ l ∈ A.locks, s ≤ l.slot → Good tr H U y i l)
     (hnew : ∀ D, optimisticSelect sp A Φ t = some D →
       ∀ e, Good tr H U y i ⟨D.root, sp.slot t, true, e⟩) :
-    ∀ l ∈ (optimisticConfirmation sp A Φ t).locks, s ≤ l.slot → Good tr H U y i l := by
+    ∀ l ∈ (optimisticConfirmationM sp wm A Φ t).locks, s ≤ l.slot → Good tr H U y i l := by
+  refine optimisticConfirmationM_of
+    (P := fun X : SAState sp.n => ∀ l ∈ X.locks, s ≤ l.slot → Good tr H U y i l) ?_ h
   unfold optimisticConfirmation
   rcases hD : optimisticSelect sp A Φ t with _ | D
   · exact h
@@ -490,7 +495,7 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
 
 /-- `lock_origin_readPoint` with the unlock given. -/
 theorem lock_origin_readPointU
-    {u : Nat → Set Lock} (hrun : ACRunU u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     ∀ l ∈ e.readPoint.locks, (e.msg.slot : Int) - 1 ≤ l.slot →
       ∃ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ ∧ Φ.tree ⊆ U ∧

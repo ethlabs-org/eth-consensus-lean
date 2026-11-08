@@ -14,6 +14,8 @@ These facts are shared by fast-lock compatibility and Healing's result compatibi
 
 namespace Consensus.Goldilocks.SA
 
+variable {wm : SA.WriteMode}
+
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
@@ -42,7 +44,7 @@ theorem CompatibleSides.slot_of_lt {s : Nat} {t : Time}
 
 /-- `admitted_of_held` with the unlock given. -/
 theorem admitted_of_heldU
-    {u : Nat → Set Lock} (hr : ACLocalRunU u H U tr) {X : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {X : Fin sp.n}
     (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
     {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
     (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
@@ -76,7 +78,7 @@ theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {X : 
 
 /-- `optimistic_side` with the unlock given. -/
 theorem optimistic_sideU
-    {uL : Nat → Set Lock} (hrun : ACRunU uL proposer tr H U)
+    {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U)
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
@@ -114,7 +116,7 @@ theorem optimistic_side (hrun : ACRun proposer tr H U)
 
 /-- `fwd_held` with the unlock given. -/
 theorem fwd_heldU
-    {uL : Nat → Set Lock} (hr : ACLocalRunU uL H U tr) {s : Nat}
+    {uL : Nat → Set Lock} (hr : ACLocalRunU wm uL H U tr) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
@@ -147,7 +149,7 @@ theorem fwd_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {s : Nat}
 
 /-- `against_update` with the unlock given. -/
 theorem against_updateU
-    {uL : Nat → Set Lock} (hr : ACLocalRunU uL H U tr) {s : Nat}
+    {uL : Nat → Set Lock} (hr : ACLocalRunU wm uL H U tr) {s : Nat}
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
