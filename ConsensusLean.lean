@@ -106,12 +106,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.BatchWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy
