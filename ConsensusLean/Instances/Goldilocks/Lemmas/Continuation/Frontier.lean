@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.VoteFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
+import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
@@ -10,19 +11,15 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # The healed frontier after a hand-over (M6)
+/-! # The healed frontier after a hand-over
 
 The sleepy label induction (`frontier_at`) run from the hand-over seed instead of genesis, over the
 healed family at the floors `(r, r + k − 1)`, through any bound `b ≥ T`.
 
-* `sleepyServiceFrom_of_reset`: the reset service through `b` with the catch-up `CatchRun g κ` is
-  the sleepy service from `ḡ` with catch-up window `κ`: sends and acceptances from `ḡ ≥ g` are
-  delivered by `max τ g + Δ = τ + Δ`, and a block accepted before `ḡ` is accepted by every node
-  honest at a call from `ḡ + κ` on whose `Σ.F` it extends, before the first cut from `ḡ + κ`.
 * `HandoverSeed.frontier_upTo`: the seed's frontier through `σ + 1` up to `T` is the frontier
   through `σ + 1` up to every `b ≥ T`: every family member of label `≤ σ` is written by
   `t_σ + 6Δ ≤ T`, and every vote of a slot `≤ σ + 1` is cast before `t_{σ+2} = t_σ + 8Δ ≤ T`.
-* `healed_frontier_at` (§3.2): `frontier_at` from `s₀ = σ + 1` with the counts from `r`, the service
+* `healed_frontier_at`: `frontier_at` from `s₀ = σ + 1` with the counts from `r`, the service
   from `ḡ` (`ḡ + 2Δ ≤ t_r ≤ t_{σ+1}`), the drain bound on the live locks
   (`handover_live_lock_label_at`) and the seeded frozen witness (`seeded_vote_frame_at`). -/
 
@@ -33,62 +30,6 @@ open SA (SAParams ReplayOrder Vote Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF : Time}
-
-/-! ### The service after GST -/
-
-/-- The first cut at a time `≥ τ`, below a cut at a time `≥ τ`. -/
-private theorem exists_firstCutFrom {τ : Time} {j : Nat} (hj : τ ≤ tr.time j) :
-    ∃ j₀ ≤ j, tr.FirstCutFrom j₀ τ := by
-  classical
-  have hex : ∃ m, τ ≤ tr.time m := ⟨j, hj⟩
-  refine ⟨Nat.find hex, Nat.find_min' hex hj, Nat.find_spec hex, fun k hk => ?_⟩
-  exact lt_of_not_ge (Nat.find_min hex hk)
-
-/-- **The catch-up at the node**: a block accepted before `ḡ` by a node honest then is accepted,
-before `ḡ + κ`, by a node honest at a call from `ḡ + κ` on whose `Σ.F` it extends. -/
-private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr) {κ : Time}
-    (hc : Healing.Growing.CatchRun tr H g κ) {x : Fin sp.n} {i : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H (tr.time i)) (hB : tr.AcceptAt x i B)
-    (hi : tr.time i < SA.gbar g) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    (hj : SA.gbar g + κ ≤ tr.time j) (hF : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
-    ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < SA.gbar g + κ := by
-  obtain ⟨j₀, hj₀j, hfirst⟩ := exists_firstCutFrom hj
-  have hy₀ : y ∈ H (SA.gbar g + κ) := hrun.antitone hj hy
-  have hF₀ := (Obligations.Growing.run_F_mono_at hrun hy hj₀j).trans hF
-  obtain ⟨k, hk, hacc⟩ := hc x i B hx hB hi y j₀ hy₀ hfirst hF₀
-  exact ⟨k, hk.trans_le hj₀j, hacc, hfirst.2 k hk⟩
-
-/-- **The reset service with the catch-up is the sleepy service from `ḡ`**: sends and acceptances
-from `ḡ ≥ g` are served with the deadline from their own time (`ResetService.ac_service_at`,
-`ResetService.relay`); a block accepted before `ḡ` is caught up before `ḡ + κ` (`CatchRun`), at
-the node and, through the AC block call that follows each acceptance, at its AC projection. -/
-theorem sleepyServiceFrom_of_reset (hrun : Growing.GoldilocksRun proposer dg H tr) {κ b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hc : Healing.Growing.CatchRun tr H g κ)
-    (hκ : 0 ≤ κ) : SleepyServiceFrom tr H ΔF (SA.gbar g) κ b := by
-  have hac := hsvc.ac_service_at hrun (lo := SA.gbar g) (hi := b) (SA.le_gbar g)
-  refine ⟨hsvc.deltaF, hκ, hac.message, hac.relay, ?_, ?_, ?_⟩
-  · intro x i B hx hB hai y j hy hj _ hdl hF
-    have he : max (tr.time i) g = tr.time i := max_eq_left ((SA.le_gbar g).trans hai)
-    have h := hsvc.relay x i B hx hB ((SA.le_gbar g).trans hai) y j hy hj (by rw [he]; exact hdl)
-      hF
-    rwa [he] at h
-  · intro x i B hx hB hi y j hy _ hj hF
-    exact catch_old_at hrun hc hx hB hi hy hj hF
-  · intro x i B hx hB hi y j ℓ hy hcj hj hF
-    obtain ⟨ℓ₀, hc₀, hb⟩ := hB
-    obtain ⟨i', rfl, hi', hti⟩ :=
-      Obligations.Growing.acBlock_prev_at hrun hx (Compose.projAC_callAt.mp hc₀) hb
-    have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
-      rw [(hrun.cutLaw y j _ (Compose.projAC_callAt.mp hcj) hy).1]
-      rfl
-    obtain ⟨k, hkj, hk, hkt⟩ := catch_old_at hrun hc (hti ▸ hx) hi' (hti ▸ hi) hy hj (hfr ▸ hF)
-    obtain ⟨ℓ', hc', hb', htk⟩ := Obligations.Growing.accept_next_at hrun
-      (hrun.antitone (hrun.time_mono hkj.le) hy) hk
-    refine ⟨k + 1, ?_, ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, by rw [htk]; exact hkt⟩
-    by_contra hge
-    have := hrun.time_mono (Nat.le_of_not_lt hge)
-    rw [htk] at this
-    linarith
 
 /-! ### The seed through `b` -/
 
@@ -176,8 +117,8 @@ private theorem SleepyBoundsFrom.of_le {σ₀ σ₁ : Nat} {b : Time} (h : Sleep
     (hσ : σ₀ ≤ σ₁) : SleepyBoundsFrom tr H σ₁ b :=
   ⟨h.two, fun s d hs => h.slot s d (hσ.trans hs), fun s d hs => h.late s d (hσ.trans hs)⟩
 
-/-- **The healed frontier from the floor through the horizon** (§3.2, at the floors
-`(r, r + k − 1)` of §14.1): from the hand-over seed, with the reset service and the slot counts
+/-- **The healed frontier from the floor through the horizon** (at the floors
+`(r, r + k − 1)`): from the hand-over seed, with the reset service and the slot counts
 from `r` through `b ≥ T`, every finite frontier of the healed family holds up to `b`. The label
 induction (`frontier_at`) starts at `σ + 1`: the seed's frontier holds up to `b`
 (`HandoverSeed.frontier_upTo`); `r + k − 1 ≤ σ + 1`; the service is the sleepy service from `ḡ`
