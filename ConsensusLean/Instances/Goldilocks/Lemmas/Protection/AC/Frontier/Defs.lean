@@ -114,8 +114,10 @@ theorem OriginWithinAC.mono {C : Blk sp.n FGP} {s : Nat} {b b' : Time}
 /-! ### Service, faults and slot arithmetic -/
 
 /-- **The deadline-cut service gives the service before `b`**: a delivery owed when the
-receiver's deadline is at most `b` is owed by `SyncUntilAC` (whose cut is `b + 1`), processed
-since the receiver's latest restart, so served in the sense of `MessageServedBefore`. -/
+receiver's deadline is at most `b` is owed by `SyncUntilAC` (whose cut is `b + 1`), so served in
+the sense of `MessageServedBefore`. The no-restart clause of `SyncUntilAC.message` is not used:
+the frontier's retention across restarts comes from the restart bounds of the voters and the
+updaters (`vote_restartsAC`, `update_restartsAC`). -/
 theorem SyncUntilAC.service {b : Time} (h : SyncUntilAC tr H U b) :
     ServiceWindowBefore H U 0 b tr where
   message x hx i v hv _ y hy j ℓ hc hdb hdl := by

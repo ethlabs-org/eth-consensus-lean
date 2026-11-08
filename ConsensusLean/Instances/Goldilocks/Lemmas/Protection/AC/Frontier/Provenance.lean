@@ -11,15 +11,17 @@ public section
 The provenance part of the frontier, which needs no comparison and no network premise; it holds
 of every AC trace with the unlock given at a write mode:
 
-* **the record writes of a call** (`call_record_writeAC`, after `Compose.call_writes`): the record
+* **the record writes of a call** (`call_writesAC`, after `Compose.call_writes`): the record
   after an honest call is the record before it, or a block of the call's frame that is the result
   of the call's update or the selection of one of its optimistic checks. The update and the
   optimistic confirmation at mode `wm` write the record as the parent's do
-  (`updateConfirmationM_field`, `optimisticConfirmationM_of`); the given locks `u i` are not read;
+  (`updateConfirmationM_field`, `optimisticConfirmationM_of`); no property of the given locks
+  `u i` is needed;
 * `record_originAC`: hence, by induction over the cuts, the record names genesis or an origin
   written at an earlier cut;
 * `lock_below_originU` (Healing, with the unlock given): every stored lock sits below an origin of
-  its slot from an earlier cut. -/
+  its slot from an earlier cut; within `b` (`lock_below_originAC`), so on the chain of an origin
+  within `b` (`locks_withinAC`). -/
 
 namespace Consensus.Goldilocks.Comparison
 
@@ -207,15 +209,25 @@ theorem record_withinAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y �
   · exact Or.inr ⟨C, (frameIn_of_callAtU hr hy hc).2 hC, hCr, ⟨k, hk, ℓ, hc, hC⟩, s,
       originWithinAC_iff.2 ⟨y, hy, k, CV, hi k hk, hO⟩⟩
 
+/-- **Stored locks are below an origin of their slot within `b`**: at a cut within `b`, every
+stored lock names a block of `U` below an origin of the lock's slot within `b`
+(`lock_below_originU`). -/
+theorem lock_below_originAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H)
+    {b : Time} {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) :
+    ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧
+      ∃ O, Anc U L O ∧ OriginWithinAC tr H O l.slot b := by
+  intro l hl
+  obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr hy i l hl
+  exact ⟨L, hL, hLr, O, hLO, originWithinAC_iff.2 ⟨y, hy, k, CV, hi k hk, hO⟩⟩
+
 /-- **The lock field of the frontier**: at a cut within `b`, every stored lock names a block of
-`U` below an origin of its slot within `b` (`lock_below_originU`). -/
+`U` on the chain of an origin within `b` (`lock_below_originAC`). -/
 theorem locks_withinAC (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (hy : y ∈ H) {b : Time}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ b) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ OnOriginChainWithinAC tr H U L b := by
   intro l hl
-  obtain ⟨L, hL, hLr, O, hLO, k, hk, CV, hO⟩ := lock_below_originU hr hy i l hl
-  exact ⟨L, hL, hLr, onOriginChainWithinAC_iff.2
-    (Or.inr ⟨O, l.slot, originWithinAC_iff.2 ⟨y, hy, k, CV, hi k hk, hO⟩, hLO⟩)⟩
+  obtain ⟨L, hL, hLr, O, hLO, hO⟩ := lock_below_originAC hr hy hi l hl
+  exact ⟨L, hL, hLr, onOriginChainWithinAC_iff.2 (Or.inr ⟨O, l.slot, hO, hLO⟩)⟩
 
 end Consensus.Goldilocks.Comparison
 

@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -37,14 +39,6 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp
   {proposer : Nat → Fin sp.n} {b : Time}
 
 /-! ### Stamps and the writers' counted votes -/
-
-private theorem state_succ_not' {y : Fin sp.n} {k : Nat}
-    (hn : ∀ ℓ, ¬ tr.CallAt y k ℓ) : tr.state y (k + 1) = tr.state y k := by
-  rw [Trace.state]
-  split_ifs with h
-  · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 h.2
-    exact absurd ⟨h.1, hℓ⟩ (hn ℓ)
-  · rfl
 
 /-- `Compose.blockStamp_ge_of_accept` with the unlock given: after an honest node accepts a block
 other than genesis at cut `k`, its stamp is at least the time of `k`. -/
@@ -97,7 +91,7 @@ theorem blockStamp_ge_of_acceptU (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n} (
     · obtain ⟨ℓ, hcl⟩ := hn
       rw [state_succ_of_call hcl]
       exact hpost c ℓ hcl (by omega) (Or.inr ih)
-    · rw [state_succ_not' fun ℓ hcl => hn ⟨ℓ, hcl⟩]
+    · rw [Trace.state_succ_of_not tr fun ℓ hcl => hn ⟨ℓ, hcl⟩]
       exact ih
 
 /-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
@@ -314,18 +308,10 @@ theorem optimistic_carryAC (hr : ACLocalRunU wm u H U tr) (hsy : SyncUntilAC tr 
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hCHv, h₃⟩ := optimistic_writer_votesU hr hx hO v hv
   exact ⟨h₁, h₂, Hv, hHv, hHvr, hF.trans hCHv, h₃⟩
 
-/-! ### The writer-pool condition -/
+/-! ### The writer-pool condition
 
-private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
-    (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
-  unfold admitVote
-  split_ifs
-  · exact h
-  · exact h
-  · simp only [Function.update_apply]
-    split_ifs with he
-    · subst he; exact List.mem_append_left _ h
-    · exact h
+The pool helpers below are private in `AC/Steps/Writer` (for the parent mode); they are
+restated here at the write mode `wm`. -/
 
 private theorem tryVote_pool {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (σ : Nat) :
