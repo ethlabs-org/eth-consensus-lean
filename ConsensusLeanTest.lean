@@ -11,6 +11,7 @@ public import ConsensusLeanTest.Fixtures.Support
 public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks.AC.Base
 public import ConsensusLeanTest.Goldilocks.AC.CertModes
+public import ConsensusLeanTest.Goldilocks.AC.CostWitness
 public import ConsensusLeanTest.Goldilocks.AC.FastUpdate
 public import ConsensusLeanTest.Goldilocks.AC.GradedLocks
 public import ConsensusLeanTest.Goldilocks.AC.GradedVeto
