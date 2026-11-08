@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SettledFrom
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -335,13 +336,13 @@ theorem trivial_tree_mono (hS : StandaloneRun tr H U proposer g) {y : Fin sp.n} 
   trivial_tree_monoU (hS := hS.toU) (y := y) (hy := hy) (c := c) (c' := c') (ℓ := ℓ) (ℓ' := ℓ')
       (hc' := hc') (hc := hc) (hcc := hcc)
 
-/-- `record_extends_core` with the unlock given. -/
-theorem record_extends_coreU
+/-- `record_extends_coreU` with the locks settled above the floor `p` only. -/
+theorem record_extends_core_fromU
     {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP}
     (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
+    (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ))
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
     (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓk : ACLabel (goldilocksSA sp FGP ro)}
@@ -366,7 +367,7 @@ theorem record_extends_coreU
           linarith only [hp4, hΔ, hΘ]) hexact hy hc hcallk htk
         (proposal_mem_treeU hS hpH hP (by linarith only [hp4, hΔ, hΘ]) hy hc (by
             linarith only [htk, hΔ])).1
-        (liveLock_compatible_coreU hS hp4 hset hexact hvotes hPU hy hc htc (Or.inl rfl))
+        (liveLock_compatible_core_fromU hS hp4 hset hexact hvotes hPU hy hc htc (Or.inl rfl))
     have hPt := (proposal_mem_treeU hS hpH hP (by linarith only [hp4, hΔ, hΘ]) hy hc (by
         linarith only [hΔ, htc])).1
     rcases tr.noCall_or_lastCall y c with hn | ⟨c', hc'c, ℓ', hc', hnb⟩
@@ -378,6 +379,21 @@ theorem record_extends_coreU
     rw [← tr.state_of_lastCall hc' hc'c hnb] at hR
     exact record_stepU hS.toHealthyBaseU (by linarith only [hp4, hΔ, hΘ]) hvotes hy hc htc hPt
       (RecP.mono (trivial_tree_monoU hS hy hc' hc hc'c.le) hR)
+
+/-- `record_extends_core` with the unlock given. -/
+theorem record_extends_coreU
+    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP}
+    (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
+    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ))
+    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
+    (hvotes : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → p ≤ e.msg.slot → VoteExtends U e.msg P)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓk : ACLabel (goldilocksSA sp FGP ro)}
+    (hck : tr.CallAt y k ℓk) (hcallk : ℓk.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ) :
+    ∀ c (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y c ℓ → k ≤ c →
+      ∃ R ∈ ℓ.frame.tree, R.root = (tr.post c).latestConfirmed ∧ ℓ.frame.Anc P R :=
+  record_extends_core_fromU hS hpH hP hp4 (hset.toFrom p) hexact hvotes hy hck hcallk htk
 
 /-- **The record after the first update**: from an honest node's tick at `t_p + 6Δ` on,
 at every later call of the node, the record after the call names a block of the call's frame

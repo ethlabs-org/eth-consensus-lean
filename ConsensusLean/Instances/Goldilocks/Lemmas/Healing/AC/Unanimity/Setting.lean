@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SettledFrom
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -88,7 +89,7 @@ structure UnanimitySettingU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H :
   acPayload : P.acPayload = pay
   accepted : ∃ j, k < j ∧ tr.AcceptAt (schedule p) j P ∧ tr.time j = sp.ts p
   late : gbar g + 2 * Θ sp + 8 * sp.Δ ≤ sp.ts p
-  settled : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)
+  settled : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ)
 
 /-- `UnanimitySettingCore` with the unlock given by the oracle `u`. -/
 structure UnanimitySettingCoreU (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
@@ -108,7 +109,7 @@ structure UnanimitySettingCoreU (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
   acPayload : P.acPayload = pay
   accepted : ∃ j, k < j ∧ tr.AcceptAt (schedule p) j P ∧ tr.time j = sp.ts p
   late : gbar g + 8 * sp.Δ ≤ sp.ts p
-  settled : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)
+  settled : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ)
 
 section
 variable {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
@@ -127,13 +128,15 @@ theorem UnanimitySetting.toU (hs : UnanimitySetting tr H U schedule g p P k ℓp
     UnanimitySettingU (parentOracle sp tr) tr H U schedule g p P k ℓp d pay :=
   ⟨hs.standalone.toU, hs.proposer_mem, hs.call, hs.call_proposal,
     by rw [acProposalWith_parentOracle hs.call hs.call_proposal]; exact hs.payload, hs.time,
-    hs.parent, hs.slot, hs.proposer, hs.acPayload, hs.accepted, hs.late, hs.settled.toU⟩
+    hs.parent, hs.slot, hs.proposer, hs.acPayload, hs.accepted, hs.late,
+    hs.settled.toU.toFrom p⟩
 
 theorem UnanimitySettingCore.toU (hs : UnanimitySettingCore tr H U schedule g p P k ℓp d pay) :
     UnanimitySettingCoreU (parentOracle sp tr) tr H U schedule g p P k ℓp d pay :=
   ⟨hs.standalone.toU, hs.proposer_mem, hs.call, hs.call_proposal,
     by rw [acProposalWith_parentOracle hs.call hs.call_proposal]; exact hs.payload, hs.time,
-    hs.parent, hs.slot, hs.proposer, hs.acPayload, hs.accepted, hs.late, hs.settled.toU⟩
+    hs.parent, hs.slot, hs.proposer, hs.acPayload, hs.accepted, hs.late,
+    hs.settled.toU.toFrom p⟩
 
 end
 

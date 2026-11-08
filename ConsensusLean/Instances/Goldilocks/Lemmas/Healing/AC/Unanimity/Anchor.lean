@@ -166,11 +166,12 @@ theorem vote_anchor_cases_coreU
     rw [hsl] at hle
     have hlive := hlive.trans ((castAt_readPoint_locksWFU hr hx hc).cap hl)
     obtain ⟨hvotes, hprops⟩ :=
-      locksSettledU_iff.1 hs.settled x hx j (by linarith) l₀ hl₀ (by omega) B (hΦU hB) hBr
+      locksSettledFromU_iff.1 hs.settled x hx j (by linarith) l₀ hl₀ (by omega) B (hΦU hB) hBr
     have haB := hB'B.mono hΦU
-    refine ⟨haB.trans (proposalsExtendAfterU_iff.1 hprops _ hq k ℓp p d pay hs.call
-      hs.call_proposal hs.time (by omega) hs.payload), fun z hz j' e' hv hes' => ?_⟩
-    obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendAfter_iff.1 hvotes z hz j' e' hv (by omega)
+    refine ⟨haB.trans (proposalsExtendFromU_iff.1 hprops _ hq k ℓp p d pay hs.call
+      hs.call_proposal hs.time (by omega) le_rfl hs.payload), fun z hz j' e' hv hes' => ?_⟩
+    obtain ⟨Hd, hHd, hHdr, hBHd⟩ :=
+      votesExtendFrom_iff.1 hvotes z hz j' e' hv (by omega) hes'.ge
     exact ⟨Hd, hHd, hHdr, haB.trans hBHd⟩
 
 /-- **The anchor of an honest slot-`p` vote**: a block of `U` that every honest vote of slot
@@ -250,10 +251,10 @@ theorem proposal_anchor_cases_coreU
   · -- a stored lock of a lower slot: settled
     left
     obtain ⟨hvotes, -⟩ :=
-      locksSettledU_iff.1 hs.settled _ hq k (by rw [hs.time]; linarith) l₂ hl₂
+      locksSettledFromU_iff.1 hs.settled _ hq k (by rw [hs.time]; linarith) l₂ hl₂
         (hlive.trans ((locksWF_stateU hr hq k).cap hl₂)) B (hΦU hB₂) hB₂r
     intro z hz j e hv hes
-    obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendAfter_iff.1 hvotes z hz j e hv (by omega)
+    obtain ⟨Hd, hHd, hHdr, hBHd⟩ := votesExtendFrom_iff.1 hvotes z hz j e hv (by omega) hes.ge
     exact ⟨Hd, hHd, hHdr, haB.trans hBHd⟩
   · -- a stored lock of slot `p`: written by an optimistic confirmation before `t_p`
     right

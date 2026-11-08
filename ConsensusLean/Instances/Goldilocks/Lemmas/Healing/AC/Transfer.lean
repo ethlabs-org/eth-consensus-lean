@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SettledFrom
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
@@ -113,16 +114,25 @@ theorem origin_transfer_proposals (hS : StandaloneRun tr H U proposer g)
     (hB : GoodOrigin tr H g B j) : ProposalsExtendAfter tr H U j B :=
   proposalsExtendAfterU_parent_iff.1 (origin_transfer_proposalsU hS.toU hB)
 
+/-- `proposal_votes_coreU` with the locks settled above the floor `p` only. -/
+theorem proposal_votes_core_fromU
+    {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
+    {P : Blk sp.n FGP} (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
+    (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
+    (hset : LocksSettledFromU u tr H U p (sp.ts p - 4 * sp.Δ)) :
+    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
+  obtain ⟨k, ℓp, d, pay, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc⟩ := hP
+  exact proposal_votes_of_setting_coreU
+    ⟨hS, hpH, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc, hp, hset⟩
+
 /-- `proposal_votes_core` with the unlock given. -/
 theorem proposal_votes_coreU
     {u : Nat → Set Lock} (hS : StandaloneRunU u tr H U proposer g) {p : Nat}
     {P : Blk sp.n FGP} (hpH : proposer p ∈ H) (hP : HonestProposalU u tr (proposer p) p P)
     (hp : gbar g + 8 * sp.Δ ≤ sp.ts p)
     (hset : LocksSettledU u tr H U (sp.ts p - 4 * sp.Δ)) :
-    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root := by
-  obtain ⟨k, ℓp, d, pay, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc⟩ := hP
-  exact proposal_votes_of_setting_coreU
-    ⟨hS, hpH, hk, hkc, hpay, htk, hPd, hPs, hPq, hPa, hacc, hp, hset⟩
+    ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root :=
+  proposal_votes_core_fromU hS hpH hP hp (hset.toFrom p)
 
 /-- **Unanimity from `t_p ≥ ḡ + 8Δ`**: `proposal_votes` needs of the slot only
 `t_{p−1} ≥ ḡ + 4Δ` (and `p > 0`); the margin for the locks is all in `hset`. -/
