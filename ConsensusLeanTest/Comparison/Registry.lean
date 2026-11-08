@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Proofs.Comparison.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
+public import ConsensusLean.Proofs.ComparisonCoverage.Main
 
 @[expose] public section
 
@@ -20,6 +21,17 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `GoldilocksTxLatencyDefault0` | `txLatDefault`, endpoint contract | R | none (the endpoint) |
 | `HealProfileAC0Free` | `acFree0` (`8k + 4` at `2·fcap < n`) | A, static | width-k modes |
 | `SigningRateAC0` | one vote per slot | A, static | every mode |
+
+Coverage packages (shared across chain shape families; they read a protocol only through which
+bounds are finite):
+
+| statement | covers bounds finite only in | premises |
+|---|---|---|
+| `ShapeHealCoverage0` | `HealSupport0` | chain claims, fit, `ProposalsNotFGAtt`, `1 ≤ fgDelay` |
+| `ShapeTxLatencyCoverage0` | `LatencySupport0` | progress fit |
+| `ShapeProposalLatencyCoverage0` | `LatencySupport0` | progress fit |
+
+Every package also assumes the output it covers is provided.
 -/
 
 namespace Consensus.Comparison.Registry
@@ -55,6 +67,18 @@ theorem healProfileAC0Free : Consensus.Goldilocks.Comparison.HealProfileAC0Free 
 theorem signingRateAC0 : Consensus.Goldilocks.Comparison.SigningRateAC0 :=
   Consensus.Goldilocks.Comparison.signingRateAC0
 
+/-- Heal coverage for chain shapes. -/
+theorem shapeHealCoverage0 : Consensus.Comparison.ShapeHealCoverage0 :=
+  Consensus.Comparison.shapeHealCoverage0
+
+/-- Transaction latency coverage for chain shapes. -/
+theorem shapeTxLatencyCoverage0 : Consensus.Comparison.ShapeTxLatencyCoverage0 :=
+  Consensus.Comparison.shapeTxLatencyCoverage0
+
+/-- Proposal latency coverage for chain shapes. -/
+theorem shapeProposalLatencyCoverage0 : Consensus.Comparison.ShapeProposalLatencyCoverage0 :=
+  Consensus.Comparison.shapeProposalLatencyCoverage0
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -85,5 +109,14 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.signingRateAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.signingRateAC0
+
+/-- info: 'Consensus.Comparison.Registry.shapeHealCoverage0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.shapeHealCoverage0
+
+/-- info: 'Consensus.Comparison.Registry.shapeTxLatencyCoverage0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.shapeTxLatencyCoverage0
+
+/-- info: 'Consensus.Comparison.Registry.shapeProposalLatencyCoverage0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.shapeProposalLatencyCoverage0
 
 end
