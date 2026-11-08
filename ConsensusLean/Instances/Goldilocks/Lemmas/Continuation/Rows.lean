@@ -247,7 +247,7 @@ theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr) 
 /-! ### The low reader and the reset seed -/
 
 /-- The block of a high origin is in its writer's tree at the write. -/
-private theorem HighOrigin.mem_tree (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem HighOrigin.mem_tree (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {x : Fin sp.n} {q l : Nat} {S : SA.Blk sp.n (List (FG.Att sp.n))}
     (hS : Healing.Growing.HighOrigin tr H g x q l S) : S ∈ (tr.state x q).fg.tree := by
   obtain ⟨CV, ell, D, hcall, hfl, rfl⟩ := hS.2.2.1
@@ -306,7 +306,7 @@ private theorem low_finalized_below (hrun : Growing.GoldilocksRun proposer dg H 
 label `< r` written by `T`, with `Σ.F ⪯ S`: at the call at `t_{r−k−3}` before the read, `Σ.F` is
 below `S` (finality only grows, and the current `Σ.F` is below `S`), so the seed's holding at
 calls puts `S` in the frame there; the tree only grows. -/
-private theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {y : Fin sp.n} {i : Nat} {t : Time}
     (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
@@ -355,7 +355,7 @@ private theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **A low reader's `fc_root` is below a held high block `S` above its `Σ.F`**: if `fc_root` is
 `Σ.J`, then `h_max = h_j + 1 ≤ H_z + 1 ≤ h(S) ≤ h_max`, so `S` has the top height and, with no
 contest, extends `Σ.J`. -/
-private theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem low_fcRoot_below (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
     (hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g) {x : Fin sp.n} {q l : Nat}
@@ -496,7 +496,7 @@ private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr)
 /-- **The high rows on the prefix through `d`**, sourced below members satisfying `Q`: the
 `RowsAbove` premise of the store geometry at height `H_z + 1`, for every property `Q` of the
 members that the classification of each high row supplies. -/
-private theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d) {y : Fin sp.n}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hy : y ∈ H d)
@@ -539,7 +539,7 @@ private theorem rowsAbove_mono {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {
 
 /-- A block held below a source's entry height is below the entry (on a static run): the entry is
 below the source, which is compatible with the block. -/
-private theorem held_below_entry {Hs : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
+theorem held_below_entry {Hs : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
     (hrun : GoldilocksRun proposer dg Hs tr₀) (hnc : NoCollRun dg tr₀) {y : Fin sp.n}
     (hy : y ∈ Hs) {i : Nat} {B D E : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr₀.state y i).fg.tree) (hE : E ∈ (tr₀.state y i).fg.tree)
