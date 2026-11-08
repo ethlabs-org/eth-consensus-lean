@@ -87,6 +87,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.EvidenceRelease
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
@@ -846,6 +847,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.EvidenceRelease
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
