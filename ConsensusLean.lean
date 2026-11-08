@@ -873,6 +873,11 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.LateCertificate
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.PreConfirmations.Actions
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.PreConfirmations.OneRelease
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.PreConfirmations.Projection
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.PreConfirmations.Statements
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.PreConfirmations.Store
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
