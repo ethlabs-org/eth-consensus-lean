@@ -95,6 +95,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.Evidenc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.CandidateHealing.LateCertificate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.LateCertificate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.PreConfirmations.Handlers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.PreConfirmations.OneRelease
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.PreConfirmations.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.PreConfirmations.Store
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Claims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order

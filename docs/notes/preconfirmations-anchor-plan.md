@@ -43,8 +43,9 @@ Proposed shape, mirroring `u`:
   projection, against the call's view and slot, of the target of a key `(s, X)` with `slot(t) ≤ s + e` that has
   an honest acker with a fast-test decision (`AckDecidedAt`, through `KeyProvenance`), all stated on the forgotten
   trace through the existing `confirmationScore`;
-- the parent is `a := fun _ => none`, and `ACLocalRunU m u` is `ACLocalRunUA m u (fun _ => none)` by `rfl` (or an
-  `Iff.rfl` lemma if `ACLocalRunU` stays a separate structure).
+- the parent is `a := fun _ => none`. **Requirement:** `ACLocalRunU m u` stays the `a = none` case
+  definitionally: either an `abbrev` of `ACLocalRunUA m u (fun _ => none)`, or a separate structure with an
+  `Iff.rfl` equivalence. The cone's existing statements over `ACLocalRunU` then need no change.
 
 The start of each call is named, not only asserted to exist: `callStartPC` is the PC start of the store evaluated
 after the call's record and before its walk (`walkStorePC`), and `CoreStepAtCallStart` and `ProposalAtCallStart`
@@ -99,7 +100,14 @@ the parent's facts:
   pairwise compatible. It follows from the settled locks and the settled bases as soon as a later honest vote
   exists, since every lock and every base is then an ancestor of that vote's head.
 
-None of these is proved by this layer; they are the settling route's outputs.
+None of these is proved by this layer; they are the settling route's outputs. In a PC instance of Tier A's joint
+invariant, `StartAboveFloor` is a second per-call premise beside the floor-keep premise; the generic induction is
+unchanged.
+
+**A later statement question: the Tier A read.** Tier A's read statement reads `acConfirmed` of the call's
+post-state. Under the PC that read evaluates the store, so a PC Tier A profile needs the read oracle above (or a
+read statement over the PC state with `Φ` and `T` explicit), and cannot reuse the protected-ready statement
+verbatim.
 
 ## Lemmas this layer already gives the plan
 
