@@ -112,11 +112,21 @@ def HonestAdmittedBefore (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (i : Nat)
   ∃ z ∈ H, ∃ k < i, tr.SendOrAdmit z k v ∨
     ∃ ℓ, tr.CallAt z k ℓ ∧ ℓ.call = .restart ∧ ∃ B ∈ ℓ.frame.tree, v ∈ blockVotes B
 
-/-- **(b), the faulty part is admitted** (paper `ae83bd82`, §7, `E \ H ⊆ A_i`): over an AC trace of
-the SA at any write mode and unlock oracle, at every call of an honest node (cut `i`), every
-identity outside `H` that either counter counts for a block `X` of the call's frame in row `j`
-has a row-`j` vote that an honest node admitted before cut `i`. So a bound on the identities with
-admitted row-`j` content discharges the per-count premise of `NoConflictingHalfOrigins`. -/
+/-- **(b), the faulty part has honest pool provenance** (paper `ae83bd82`, §7, the provenance half
+of `E \ H ⊆ A_i`): over an AC trace of the SA at any write mode and unlock oracle, at every call of
+an honest node (cut `i`), every identity outside `H` that either counter counts for a block `X` of
+the call's frame in row `j` has a row-`j` vote that an honest node sent or admitted before cut `i`,
+or replayed from a block of a restart frame.
+
+This is a pool-origin statement, not the activity measure. `HonestAdmittedBefore` is not the
+first-receipt activity set of the design (raw receipts by any honest node in a window): the restart
+disjunct only witnesses the vote inside a frame block at a restart, which on an arbitrary
+`ACLocalRunU` frame gives no earlier network receipt event or time, and a restart replay is not a
+fresh charge; and an admission before cut `i` does not place the first receipt in any particular
+activity window (it may precede it). Discharging the per-count premise of
+`NoConflictingHalfOrigins` from an activity bound needs a separate transport obligation: the
+content origin of frame blocks and payloads, the first receipt of every counted faulty content
+(nested, rejected and orphan contents included), the duty floor, and membership in the window. -/
 def CountedFaultyAdmitted : Prop :=
   ∀ (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (m : WriteMode) (u : Nat → Set Lock),
