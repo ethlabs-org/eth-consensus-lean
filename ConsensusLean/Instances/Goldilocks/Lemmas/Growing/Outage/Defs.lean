@@ -15,9 +15,9 @@ constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
 
 * `OutageLockPremises`: the premise package. The cohort is retained at the window end `z`
   (`A₀ ⊆ H z`, `W ⊆ H z`, `|(H z)ᶜ ∪ W| < |A₀|`); a validator honest at `z` and awake in `[a, z]`
-  is in `A₀ ∪ W` (`hawake`). The fault bound is the two count shapes of `SleepyBounds` through
-  every horizon that an honest call reaches (`hB`). Every cohort count runs at a time `≤ z`: a
-  time up to `t_{j₀+k} + 6Δ` that an honest call reaches is at or before `z` (`hzc`).
+  is in `A₀ ∪ W` (`hawake`). The fault bound is the count shapes `SleepyBoundsFrom` from slot `0`
+  through every horizon that an honest call reaches (`hB`). Every cohort count runs at a time
+  `≤ z`: a time up to `t_{j₀+k} + 6Δ` that an honest call reaches is at or before `z` (`hzc`).
 * `two_mul_lt`: `2·|(H z)ᶜ ∪ W| < n`; `cohort_classify`: a vote cast in `[a, z]` by a node
   honest then is by `A₀`, by `W`, or by a validator compromised by `z`.
 * `OutageVoteInv`, `OutageLockInv`, `OutageS5StepAt`: the cut invariant, with every event field at
@@ -106,7 +106,7 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   /-- The pre-`b₀` service. -/
   hpreSvc : SleepyServiceBefore tr H sp.Δ b₀
   /-- The two count shapes through every horizon that an honest call reaches. -/
-  hB : ∀ b, (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ b ≤ tr.time i) → SleepyBounds tr H b
+  hB : ∀ b, (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ b ≤ tr.time i) → SleepyBoundsFrom tr H 0 b
   /-- The cohort, retained at `z`. -/
   hA₀ : A₀ ⊆ H z
   hW : W ⊆ H z ∧ Disjoint A₀ W

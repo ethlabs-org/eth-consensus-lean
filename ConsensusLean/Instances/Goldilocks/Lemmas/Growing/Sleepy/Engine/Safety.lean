@@ -42,7 +42,7 @@ theorem sleepy_safe_finite_at (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {b : Time} (hb0 : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
-    (hB : Compose.Growing.SleepyBounds (simTraceAt S rho hn) (honestKeysAt S rho) b) :
+    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b) :
     Regimes.Growing.ReadySafeOn (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) 0 b :=
   Regimes.Growing.sleepy_safe_at (simTraceAt_goldilocksRun S rho hn hv) hnc hb0 hsync hB
@@ -62,7 +62,9 @@ theorem sleepy_safe_engine_at (hv : rho.ExecutionValid)
     unfold Regimes.catchUp
     linarith [(S.params (pubOf E) hn).toParams.hΔ]
   have hsafe := sleepy_safe_finite_at S rho hn hv hnc hv.horizon_nonneg hsync
-    (sleepy_bounds_at S rho hn hv le_rfl hhalf)
+    (sleepy_bounds_at S rho hn hv le_rfl hhalf
+      (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) (S.params (pubOf E) hn).toParams.hΔ.le)
+      (le_max_right _ _))
   constructor
   · intro u v i j hi hj hu hv'
     obtain ⟨hrp, h0, hh, hra, hread⟩ := engine_read_point S rho hn hv hc0 hi.1 hu

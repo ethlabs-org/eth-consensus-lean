@@ -27,7 +27,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **Every finite frontier up to `b`** under growing faults. -/
 theorem frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) :
+    {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
+    (hB : SleepyBoundsFrom tr H 0 b) :
     ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
   intro s
   induction s with
@@ -70,7 +71,7 @@ private theorem held_origin_viable_read (hrun : Growing.GoldilocksRun proposer d
 service and the count shapes through `b`. -/
 theorem sleepy_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) : SleepyInvariantUpTo tr H b := by
+    (hB : SleepyBoundsFrom tr H 0 b) : SleepyInvariantUpTo tr H b := by
   have hF := frontier_at hrun hnc hb hsync hB
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocksAt H) C C' := fun C s C' s' h h' =>

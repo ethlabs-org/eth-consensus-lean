@@ -456,7 +456,7 @@ its `Σ.F`, below the walk's start), so viable or at or below `fc_root` (`held_o
 and the children towards it win (`proposal_best_toward_old_at`, `SA.anc_getHead`). -/
 theorem proposal_walk_passes_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
     (hp : p ∈ H (tr.time i))
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -499,7 +499,7 @@ hold), so at its proposal and at every slot-`s` vote. For a voter honest at its 
 slot-`s` votes by nodes honest at them are assumed to be `P` (the caller's strong induction on the
 cut). -/
 theorem pivot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}

@@ -41,10 +41,11 @@ theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
 /-- The two sleepy count shapes through the query deadline. -/
 theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy (K S A) Q.run) :
-    Compose.Growing.SleepyBounds Q.trace Q.keys Q.deadline :=
-  sleepy_bounds_at S Q.run.2 Q.hn Q.valid Q.bounded fun t ht htb =>
+    Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline :=
+  sleepy_bounds_at S Q.run.2 Q.hn Q.valid Q.bounded (fun t ht htb =>
     sleepyOn_of_duration V _ (confirmed_duration_supply_at S A V Q) hsleepy.2 t ht
-      (htb.trans Q.bounded)
+      (htb.trans Q.bounded))
+    (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) Q.params.toParams.hΔ.le) (le_max_right _ _)
 
 /-- Service inputs of the sleepy inclusion consumer for a confirmed proposal. These are supplier
 conclusions, never additional assumptions of the endpoint. -/
@@ -55,7 +56,7 @@ structure SleepyProposalServiceAt (Q : ConfirmedQueryAt S A V)
   duration : Regimes.catchUp Q.params ≤ Q.duration
   hold : P.block.proposer ∈ Q.keys (Q.trace.time P.cut + Regimes.Growing.hold Q.params)
   sync : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.deadline
-  bounds : Compose.Growing.SleepyBounds Q.trace Q.keys Q.deadline
+  bounds : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline
 
 /-- Actual production from the selected slot: the canonical proposal event and its own
 acceptance, with the proposer's hold. -/

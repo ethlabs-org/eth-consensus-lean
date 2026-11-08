@@ -156,7 +156,7 @@ theorem final_window_extract_of_gap_at (Q : FinalQueryAt S A V) {c : Nat} (hc2 :
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
     exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid
       (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) hnet
-      (fun v t ht hb hv => Q.healthy.2.1.2 v t ht hb hv)
+      (fun v t ht hb _ hv => Q.healthy.2.1.2 v t ht hb hv)
   -- the seed and the anchors
   obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) (by simpa using hdu)
   have hoff : ∀ i : Fin 4, ![0, c, 2 * c, 3 * c] i ≤ 3 * c := by

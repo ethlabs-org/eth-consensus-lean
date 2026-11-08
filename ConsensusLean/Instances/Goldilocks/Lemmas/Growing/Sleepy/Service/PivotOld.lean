@@ -187,7 +187,7 @@ reaches the proposer when `Σ.F` is below the origin (`proposer_accepts_head_at`
 `Σ.F`, on the origin chain, is compatible with it (S1) and above it. -/
 theorem proposal_holds_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
     (hp : p ∈ H (tr.time i))
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
@@ -228,7 +228,7 @@ optimistic origin of label `s − 1`, its at least `3n/4` counted votes are rela
 each of its seats supports it or equivocates, against `2 f_d < n` (`SA.isBest_of_cover`). -/
 theorem proposal_best_toward_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
     (hp : p ∈ H (tr.time i))
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)

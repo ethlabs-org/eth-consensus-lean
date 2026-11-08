@@ -310,7 +310,7 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
   rw [outageLockPremises_of_arming_at_P, outageLockPremises_of_arming_at_r] at hall
   exact Compose.Growing.extendingMajority_of_all_at hrun hnc
     (fun x k e hv hs => hall x k e hv (by rw [hs]; exact hrq)) hd₁
-    ((Q.bounds hdh).slot q d hd₁ le_rfl hd₂)
+    ((Q.bounds hdh).slot q d (Nat.zero_le _) hd₁ le_rfl hd₂)
 
 /-- **The reader bridge under growing faults.** A reader ready at `t` from the recovery point
 reads above the armed read tip of the ready source. -/

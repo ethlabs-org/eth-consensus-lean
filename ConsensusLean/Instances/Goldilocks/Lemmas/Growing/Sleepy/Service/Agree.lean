@@ -68,7 +68,7 @@ theorem proposal_data_at (hrun : Growing.GoldilocksRun proposer dg H tr) {p : Fi
 `P`, and its walk has no best child at `P`. The proposer is honest at the vote (cast by
 `t_s + Δ`), so `SA.stop_core` applies on the prefix through the vote. -/
 theorem stop_at_parent_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
@@ -116,7 +116,7 @@ vote not `P`; `pivot_at` reads the earlier ones), each voter's walk reaches a bl
 from the pivot `D` to `P`, follows the proposal walk to `Q`, steps to `P` and stops there. -/
 theorem honest_votes_eq_proposal_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s ≤ b) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root := by

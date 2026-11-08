@@ -117,7 +117,7 @@ live lock is compatible with `B`, the vote extends `B`. The batch is the slot-`s
 honest at `d = tr.time i`, which outnumber `(H d)ᶜ` (`faults_lt_voters`, `d ≤ t_s + 5Δ`); the static
 counted batch applies on the prefix through `d`. -/
 theorem vote_extends_of_batch_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hB : SleepyBounds tr H b) {s : Nat} {y : Fin sp.n}
+    (hnc : NoCollRun dg tr) {b : Time} (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}

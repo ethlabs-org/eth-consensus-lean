@@ -275,7 +275,7 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
   -- the slot count at the writer's update
   have hslot : (H (tr.time k))ᶜ.ncard < {x | x ∈ H (tr.time k) ∧ tr.awake x (sp.ts m + sp.Δ) ∧
       tr.JoinedAt x (sp.ts m + sp.Δ)}.ncard :=
-    (D.hB _ hcall).slot m (tr.time k) (by rw [ht]; linarith) le_rfl ht.le
+    (D.hB _ hcall).slot m (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) le_rfl ht.le
   rcases lt_or_ge m D.j₀ with hlt | hge
   · -- R-pre: the update is within `b₀`
     have hmj : sp.ts m + 6 * sp.Δ ≤ D.b₀ := by

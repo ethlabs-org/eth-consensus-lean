@@ -18,7 +18,7 @@ proposal `P` of slot `s` (by a proposer honest at `t_s + Δ`), or its `Σ.F` ext
   compromised by `d` (the slot count at `d`, the double-count channel), so the result extends `P`;
 * `later_update_adopts_gt_at`: `P` is an origin, the result of the update of slot `s` of a node
   honest, awake and joined at `t_s + 6Δ = t_{s+1} + 2Δ` (the `2Δ` slot-point count,
-  `SleepyBounds.late`);
+  `SleepyBoundsFrom.late`);
 * `later_update_adopts_at`: both cases. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
@@ -64,7 +64,7 @@ at the update, so `P` is in the frame with a strict majority, the deepest majori
 `Σ.F` extends it, is not vetoed, and the record moves to it or keeps a deeper one. -/
 theorem update_adopts_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPo : OriginWithin tr H P s b)
     (hPU : P ∈ tr.HonestBlocksAt H) {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀)) (hss : s < s')
@@ -200,10 +200,10 @@ theorem update_adopts_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 /-- **A strictly later update adopts the proposal** (`s < s'`): `P` is the result of the update
 of slot `s` of a node honest, awake and joined at `t_s + 6Δ = t_{s+1} + 2Δ` (the `2Δ` slot-point
-count `SleepyBounds.late`), hence an origin of label `s`. -/
+count `SleepyBoundsFrom.late`), hence an origin of label `s`. -/
 theorem later_update_adopts_gt_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀)) (hss : s < s')
@@ -218,8 +218,8 @@ theorem later_update_adopts_gt_at (hrun : Growing.GoldilocksRun proposer dg H tr
     linarith
   have hT : sp.ts (s + 1 : Nat) + 2 * sp.Δ = sp.ts s + 6 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  have hf := hB.late (s + 1) (sp.ts (s + 1 : Nat) + 2 * sp.Δ) le_rfl (by rw [hT]; exact hsb)
-    (by linarith)
+  have hf := hB.late (s + 1) (sp.ts (s + 1 : Nat) + 2 * sp.Δ) (Nat.zero_le _) le_rfl
+    (by rw [hT]; exact hsb) (by linarith)
   rw [hT] at hf
   obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hf).ne'
   obtain ⟨kx, ℓx, hux⟩ := update_of_awake_joined_at hrun hx hw hj
@@ -236,7 +236,7 @@ theorem later_update_adopts_gt_at (hrun : Growing.GoldilocksRun proposer dg H tr
 /-- **An update of any slot `s' ≥ s` adopts the proposal** of slot `s`, through `b`. -/
 theorem later_update_adopts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀)) (hss : s ≤ s')

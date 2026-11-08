@@ -57,7 +57,7 @@ released at `τ` by a proposer ready at `τ` and honest through its hold, and `y
 `t ∈ [τ + 6Δ, b]`, the record of `y` after all events at `t`, or its `Σ.F`, extends `P`. -/
 theorem ready_record_extends_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time} {j : Nat}
     (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t)
@@ -127,9 +127,9 @@ ready at `t ≤ b`. -/
 theorem read_extends_of_record_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) {y : Fin sp.n} {j : Nat}
-    {t : Time} (ht0 : 0 ≤ t) (hj : CutAfter tr j t) (hready : ReadyAt tr H (catchUp sp) y t)
-    (htb : t ≤ b) {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b) {y : Fin sp.n}
+    {j : Nat} {t : Time} (ht0 : 0 ≤ t) (hj : CutAfter tr j t)
+    (hready : ReadyAt tr H (catchUp sp) y t) (htb : t ≤ b) {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hE : ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocksAt H) P E ∨ Anc (tr.HonestBlocksAt H) P (tr.state y j).fg.F)) :
     Anc (tr.HonestBlocksAt H) P (readAfter tr y j t) := by
@@ -179,7 +179,8 @@ proposer ready at `τ` and honest through its hold is in the confirmed read of e
 theorem include_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
-    (hB : Compose.Growing.SleepyBounds tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {τ : Time}
+    {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (Regimes.catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time}
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
     (hy : ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t) :
@@ -200,7 +201,7 @@ is an ancestor of each ready read at `t + (4k + 6)Δ`. -/
 theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
-    (hB : Compose.Growing.SleepyBounds tr H b) {k : Nat} (hk : 1 ≤ k) {t : Time} (ht : 0 ≤ t)
+    (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {k : Nat} (hk : 1 ≤ k) {t : Time} (ht : 0 ≤ t)
     (htb : t + (4 * k + 6) * sp.Δ ≤ b)
     (hrec : ProposerRecurrence tr H proposer (Regimes.catchUp sp) k (hold sp) 0
       (t + (4 * k + 6) * sp.Δ)) :

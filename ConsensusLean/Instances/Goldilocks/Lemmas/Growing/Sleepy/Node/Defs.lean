@@ -17,10 +17,10 @@ Every node quantifier reads honesty at the cut of the event it constrains:
   of a node honest at its event cut. Events are immutable, so a later compromise removes no
   origin;
 * the frontier `OriginsBelowUpTo`, `VotesBelowUpTo`, the slot voters still honest at `d`
-  (`VotersAt`), the two count shapes `SleepyBounds` (`f_d < n / 2` at every `d ≤ b`, and the
-  slot count `FaultBoundAt (t_s + Δ) d` for `d ≤ t_s + 6Δ`), the finite service
-  `SleepyServiceBefore`, and the invariant `SleepyInvariantUpTo` (S1–S3, every node at its own
-  cut). -/
+  (`VotersAt`), the count shapes `SleepyBoundsFrom` (`f_d < n / 2` at every `d ≤ b`, and, for the
+  slots from a first slot on, the slot count `FaultBoundAt (t_s + Δ) d` for `d ≤ t_s + 6Δ`), the
+  finite service `SleepyServiceBefore`, and the invariant `SleepyInvariantUpTo` (S1–S3, every node
+  at its own cut). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -88,15 +88,16 @@ def VotesBelowUpTo (s : Nat) (b : Time) : Prop :=
 def VotersAt (s : Nat) (d : Time) : Set (Fin sp.n) :=
   {x | x ∈ H d ∧ ∃ j e, HVoteAt tr H x j e ∧ e.msg.slot = s}
 
-/-- **The count shapes through `b`**: `2 f_d < n` at every `d ∈ [0, b]`, the slot count
-`f_d < h_{t_s + Δ}` at every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, and the late count
-`f_d < h_{t_s + 2Δ}` at every `d ∈ [t_s + 2Δ, min b (t_s + 7Δ)]`. -/
-structure SleepyBounds (b : Time) : Prop where
+/-- **The count shapes through `b` for the slots from `σ₀` on**: `2 f_d < n` at every
+`d ∈ [0, b]`, and for every slot `s ≥ σ₀` the slot count `f_d < h_{t_s + Δ}` at every
+`d ∈ [t_s + Δ, min b (t_s + 6Δ)]` and the late count `f_d < h_{t_s + 2Δ}` at every
+`d ∈ [t_s + 2Δ, min b (t_s + 7Δ)]`. From genesis, `σ₀ = 0`. -/
+structure SleepyBoundsFrom (σ₀ : Nat) (b : Time) : Prop where
   two : ∀ d, 0 ≤ d → d ≤ b → 2 * (H d)ᶜ.ncard < sp.n
-  slot : ∀ (s : Nat) (d : Time), sp.ts s + sp.Δ ≤ d → d ≤ b → d ≤ sp.ts s + 6 * sp.Δ →
-    tr.FaultBoundAt H (sp.ts s + sp.Δ) d
-  late : ∀ (s : Nat) (d : Time), sp.ts s + 2 * sp.Δ ≤ d → d ≤ b → d ≤ sp.ts s + 7 * sp.Δ →
-    tr.FaultBoundAt H (sp.ts s + 2 * sp.Δ) d
+  slot : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s + sp.Δ ≤ d → d ≤ b →
+    d ≤ sp.ts s + 6 * sp.Δ → tr.FaultBoundAt H (sp.ts s + sp.Δ) d
+  late : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s + 2 * sp.Δ ≤ d → d ≤ b →
+    d ≤ sp.ts s + 7 * sp.Δ → tr.FaultBoundAt H (sp.ts s + 2 * sp.Δ) d
 
 /-- **The Sleepy record invariant up to `b`** (S1–S3). A node's state before cut `i` is read at a
 time `t ∈ [0, b]` at or after every earlier cut, with the node honest at `t` (the convention of
@@ -225,10 +226,11 @@ theorem OriginWithin.of_optimistic {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.
   ⟨x, i, CV, hx, hib, Or.inr h⟩
 
 /-- The bounds through `b` give the bounds through every `b' ≤ b`. -/
-theorem SleepyBounds.mono {b b' : Time} (h : SleepyBounds tr H b) (hb : b' ≤ b) :
-    SleepyBounds tr H b' :=
-  ⟨fun d h0 hd => h.two d h0 (hd.trans hb), fun s d h1 hd h6 => h.slot s d h1 (hd.trans hb) h6,
-    fun s d h1 hd h7 => h.late s d h1 (hd.trans hb) h7⟩
+theorem SleepyBoundsFrom.mono {σ₀ : Nat} {b b' : Time} (h : SleepyBoundsFrom tr H σ₀ b)
+    (hb : b' ≤ b) : SleepyBoundsFrom tr H σ₀ b' :=
+  ⟨fun d h0 hd => h.two d h0 (hd.trans hb),
+    fun s d hs h1 hd h6 => h.slot s d hs h1 (hd.trans hb) h6,
+    fun s d hs h1 hd h7 => h.late s d hs h1 (hd.trans hb) h7⟩
 
 /-- The service through `b` gives the service through every `b' ≤ b`. -/
 theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H ΔF b)

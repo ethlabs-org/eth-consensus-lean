@@ -216,7 +216,7 @@ theorem result_optimistic_compatible_at (hrun : Growing.GoldilocksRun proposer d
 cut; the shared validator of two optimistic selections is honest at the later check. -/
 theorem same_label_compatible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
     Compatible (tr.HonestBlocksAt H) C C' := by
   have hU := honestBlocksAt_coherent hrun hnc
@@ -273,7 +273,7 @@ honest supporter (`honest_supporter_at`, then `V_s`); origins of label `s` compa
 `same_label_compatible_at`. -/
 theorem origins_below_succ_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) {s : Nat} (hP : OriginsBelowUpTo tr H s b)
+    (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} (hP : OriginsBelowUpTo tr H s b)
     (hV : VotesBelowUpTo tr H s b) : OriginsBelowUpTo tr H (s + 1) b := by
   have hU := honestBlocksAt_coherent hrun hnc
   rw [originsBelowUpTo_iff] at hP ⊢

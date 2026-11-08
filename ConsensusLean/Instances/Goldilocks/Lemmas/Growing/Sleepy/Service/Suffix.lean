@@ -976,7 +976,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `d`, the proposal and the vote are calls of the prefix, the service runs through `min b d`, and the
 old origins of the prefix are below `Q` inside its honest blocks. -/
 private theorem suffix_lift (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
@@ -1027,7 +1027,7 @@ private theorem suffix_lift (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc
 the voter's anchor, the proposer's best child is the voter's best child. The proposer is honest at
 `t_s + Δ` (the hold), the voter at its vote. -/
 theorem suffix_agree_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
@@ -1069,7 +1069,7 @@ theorem suffix_agree_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
 `t_s + Δ`, the voter at its vote). -/
 theorem old_child_ineligible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -1095,7 +1095,7 @@ theorem old_child_ineligible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 `t_s + Δ`, the voter at its vote). -/
 theorem proposal_at_voter_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}

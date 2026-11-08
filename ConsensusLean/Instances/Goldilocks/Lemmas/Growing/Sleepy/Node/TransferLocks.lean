@@ -28,7 +28,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The live locks at a slot-`(s+1)` vote are compatible with `B`** under growing faults. -/
 theorem vote_locks_compatible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hB : SleepyBounds tr H b) {s : Nat} {y : Fin sp.n}
+    (hnc : NoCollRun dg tr) {b : Time} (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}

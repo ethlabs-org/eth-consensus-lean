@@ -195,7 +195,7 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
       (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1
     exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid hs.noColl hnet
-      (fun v t ht hb hv => Q.healthy.2.1.2 v t ht hb hv)
+      (fun v t ht hb _ hv => Q.healthy.2.1.2 v t ht hb hv)
   -- the drain
   have hdrain : Healing.Growing.DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst X Ld
       Q.run.2.horizon :=

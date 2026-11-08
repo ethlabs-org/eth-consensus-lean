@@ -89,7 +89,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
   have hTs : Q.T ≤ Q.start := by
     have : (0 : Time) ≤ (4 * Q.params.k + 6) * Q.params.Δ := by positivity
     linarith
-  have hBb : ∀ b, b ≤ Q.run.2.horizon → Compose.Growing.SleepyBounds Q.trace Q.keys b :=
+  have hBb : ∀ b, b ≤ Q.run.2.horizon → Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 b :=
     fun b hb => Q.bounds hb
   have hwin := outage_window_cover_at Q
   { b₀ := Q.start

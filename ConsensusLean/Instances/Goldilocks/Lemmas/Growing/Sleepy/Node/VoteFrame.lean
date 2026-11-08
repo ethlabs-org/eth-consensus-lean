@@ -296,7 +296,8 @@ theorem honest_head_frozen_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 /-- **S3 at votes under growing faults (the frozen witness)**. -/
 theorem vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (_hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    {b : Time} (_hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
+    (hB : SleepyBoundsFrom tr H 0 b)
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b) {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)

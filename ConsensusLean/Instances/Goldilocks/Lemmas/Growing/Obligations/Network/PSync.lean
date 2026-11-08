@@ -438,13 +438,14 @@ theorem resetService_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
   · exact (psyncFGAttTransportAt_iff S rho _ _ _).mp hrow g hnet
 
 /-- Old acceptances by nodes honest at their cut catch up before the first `2Δ` snapshot after GST
-at every node honest at that snapshot, when every node honest at a time of `[max g 0, horizon]` is
-awake then. The snapshot supplies the finite service horizon. -/
+at every node honest at that snapshot, when every node honest at a time of
+`[max g 0, max g 0 + Δ − 1]` (within the horizon) is awake then: the snapshot node's publication
+window. The snapshot supplies the finite service horizon. -/
 theorem catchRun_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
-    (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → v ∉ rho.faultyAt u →
-      E.awake v u = true) :
+    (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → u ≤ max g 0 + E.ΔAC - 1 →
+      v ∉ rho.faultyAt u → E.awake v u = true) :
     Healing.Growing.CatchRun (simTraceAt S rho hn) (honestKeysAt S rho) g
       (2 * (S.params (Model.pubOf E) hn).Δ) := by
   intro x i B hx hi hbefore y j hy hfirst hF
@@ -485,7 +486,7 @@ theorem catchRun_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVali
     (by rw [hmax]; exact hservice)
     (by
       rw [hmax]
-      exact fun u hlo hhi => hawake (rho.key y) u hlo (hhi.trans hservice)
+      exact fun u hlo hhi => hawake (rho.key y) u hlo (hhi.trans hservice) hhi
         (fun h => hyT (rho.faultyAt_mono (hhi.trans hdlT) h)))
   rw [hmax] at hheld hslack
   have hdeadline : max g 0 + (S.params (Model.pubOf E) hn).Δ ≤

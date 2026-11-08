@@ -53,7 +53,7 @@ theorem proposal_honest_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc 
 at a time `≤ b` is `P`. -/
 private theorem origin_anc_proposal_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b)
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
     (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root)
@@ -61,7 +61,8 @@ private theorem origin_anc_proposal_at (hrun : Growing.GoldilocksRun proposer dg
     (hC : OriginWithin tr H C j b) (hj : j ≤ s) : Anc (tr.HonestBlocksAt H) C P := by
   have hU := honestBlocksAt_coherent hrun hnc
   rcases hj.lt_or_eq with hlt | rfl
-  · have hcount := hB.slot s (sp.ts s + sp.Δ) le_rfl hsb (by linarith [sp.toParams.hΔ])
+  · have hcount := hB.slot s (sp.ts s + sp.Δ) (Nat.zero_le _) le_rfl hsb
+      (by linarith [sp.toParams.hΔ])
     obtain ⟨x, hx, hw, hjx⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hcount).ne'
     obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined_at hrun hnc hx hw hjx
     have hkb : tr.time k ≤ b := hkt.trans hsb
@@ -74,7 +75,7 @@ private theorem origin_anc_proposal_at (hrun : Growing.GoldilocksRun proposer dg
 protected block `P`). -/
 private theorem votes_succ_extend_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b)
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
     (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
@@ -100,7 +101,7 @@ update by a validator honest then, with a source below an origin before the sign
 most `s + 1`. -/
 private theorem rows_compatible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b)
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
     {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ)
@@ -228,7 +229,7 @@ private theorem updater_F_anc_of_rows_at (hrun : Growing.GoldilocksRun proposer 
 through `b ≥ t_s + 6Δ` (a slot-`s` vote is cast by `t_s + Δ`). -/
 theorem honest_votes_eq_proposal_at_update_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s + 6 * sp.Δ ≤ b) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root := by
@@ -244,7 +245,7 @@ theorem honest_votes_eq_proposal_at_update_at (hrun : Growing.GoldilocksRun prop
 for the proposal `P` of slot `s` by a proposer honest at `t_s + Δ`, through `b`. -/
 theorem updater_F_anc_proposal_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
+    (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}

@@ -33,7 +33,7 @@ theorem sleepy_include_finite_at (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {b : Time} (hb0 : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
-    (hB : Compose.Growing.SleepyBounds (simTraceAt S rho hn) (honestKeysAt S rho) b)
+    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b)
     {τ t : Time} {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) τ (Regimes.Growing.hold (S.params (pubOf E) hn))
@@ -59,7 +59,7 @@ theorem sleepy_grow_finite_at (hv : rho.ExecutionValid)
     (ht : 0 ≤ t) (hk : 1 ≤ k) (hb : b = t + (4 * k + 6) * (S.params (pubOf E) hn).Δ)
     (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
-    (hB : Compose.Growing.SleepyBounds (simTraceAt S rho hn) (honestKeysAt S rho) b)
+    (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b)
     (hrec : Regimes.Growing.ProposerRecurrence (simTraceAt S rho hn) (honestKeysAt S rho)
       (runProposer S rho hn) (Regimes.catchUp (S.params (pubOf E) hn)) k
       (Regimes.Growing.hold (S.params (pubOf E) hn)) 0 b) :

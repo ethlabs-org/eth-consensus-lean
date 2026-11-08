@@ -510,7 +510,7 @@ block of the frame above `C`. The slot counts are charged at the update times (`
 theorem armed_first_update_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b')
+    (hB : SleepyBoundsFrom tr H 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     {w : Fin sp.n} {a z : Time} (hw : w ∈ H z) (hzb : z ≤ b')
     (haw : ∀ u, a ≤ u → u ≤ z → tr.awake w u)
@@ -545,7 +545,7 @@ theorem armed_first_update_at
       sp.ts q + 6 * sp.Δ ≤ z → tr.FaultBoundAt H (sp.ts q + sp.Δ) (tr.time k) := by
     intro k q ℓ' hu' hqz
     have ht : tr.time k = sp.ts q + 6 * sp.Δ := hu'.2.2.1
-    exact hB.slot q (tr.time k) (by rw [ht]; linarith) (by rw [ht]; linarith) ht.le
+    exact hB.slot q (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) (by rw [ht]; linarith) ht.le
   have hτs := (SA.ts_le_iff sp).2 (show (s : Int) - sp.k + 1 ≤ s by omega)
   have h0 : (0 : Time) ≤ sp.ts (s - sp.k + 1 : Nat) := by simp only [SAParams.ts]; positivity
   have hnr : ∀ r ≤ Nat.find hex₀, tr.RestartAt w r →
@@ -618,7 +618,7 @@ private theorem slot_update_time {s : Nat} : sp.slot (sp.ts s + 6 * sp.Δ) = s +
 theorem armed_lock_formed_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b')
+    (hB : SleepyBoundsFrom tr H 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCU : C ∈ tr.HonestBlocksAt H) (hCg : C.root ≠ sp.genesisRoot)
     {w : Fin sp.n} {a z : Time} (hw : w ∈ H z) (hzb : z ≤ b')
@@ -638,7 +638,8 @@ theorem armed_lock_formed_at
   have hwc : w ∈ H (tr.time c) := hrun.antitone (htc ▸ hsz) hw
   refine ⟨c, ℓ, hu, ?_⟩
   rcases update_result_or_root_at hrun hnc hinv hsync hC hCU hwc (by omega) hu (htc ▸ hsb)
-      (hB.slot s (tr.time c) (by rw [htc]; linarith) (by rw [htc]; linarith) htc.le) with
+      (hB.slot s (tr.time c) (Nat.zero_le _) (by rw [htc]; linarith) (by rw [htc]; linarith)
+        htc.le) with
       hroot | ⟨hFC, -, -⟩
   · exact Or.inl hroot
   obtain ⟨hCt, D, hD, hCD, -, hrows⟩ := hP hFC
@@ -664,7 +665,7 @@ compromised by the update's time `t_s + 6Δ`; a slot-`(s + 1)` caster honest the
 theorem armed_lock_cover_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b')
+    (hB : SleepyBoundsFrom tr H 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCg : C.root ≠ sp.genesisRoot)
     {w : Fin sp.n} {a z : Time} (hw : w ∈ H z) (hzb : z ≤ b')

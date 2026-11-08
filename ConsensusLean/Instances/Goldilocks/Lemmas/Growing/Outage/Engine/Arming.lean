@@ -39,12 +39,13 @@ namespace OutageQueryAt
 /-- The two count shapes through every `b ≤ horizon`, from the η-sleepy premise (η-sleepy
 implies sleepy, at half readiness, with look-ahead `5Δ`). -/
 theorem bounds (Q : OutageQueryAt S A V) {b : Time} (hb : b ≤ Q.run.2.horizon) :
-    Compose.Growing.SleepyBounds Q.trace Q.keys b :=
-  sleepy_bounds_at S Q.run.2 Q.hn Q.valid hb fun t ht htb => by
+    Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 b :=
+  sleepy_bounds_at S Q.run.2 Q.hn Q.valid hb (fun t ht htb => by
     have h := (Q.outage.2.2.1 t ht (htb.trans hb)).readyAbove
       (by change (0 : ℚ) ≤ 1 / 2; norm_num)
     rw [Q.aheadDur_eq] at h
-    exact half_ready_of_duration V _ (outage_duration_supply_at Q) h
+    exact half_ready_of_duration V _ (outage_duration_supply_at Q) h)
+    (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) Q.params.toParams.hΔ.le) (le_max_right _ _)
 
 theorem end_le_horizon (Q : OutageQueryAt S A V) :
     (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run ≤ Q.run.2.horizon :=

@@ -39,10 +39,11 @@ theorem ts_natCast_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
 /-- **FB in voter form**: at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, the validators compromised by `d`
 are fewer than the slot-`s` voters still honest at `d`. -/
 theorem faults_lt_voters (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hB : SleepyBounds tr H b) {s : Nat} {d : Time} (h1 : sp.ts s + sp.Δ ≤ d)
+    {b : Time} (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} {d : Time} (h1 : sp.ts s + sp.Δ ≤ d)
     (hdb : d ≤ b) (h6 : d ≤ sp.ts s + 6 * sp.Δ) :
     (H d)ᶜ.ncard < (VotersAt tr H s d).ncard := by
-  refine (hB.slot s d h1 hdb h6).trans_le (Set.ncard_le_ncard (fun y hy => ?_) (Set.toFinite _))
+  refine (hB.slot s d (Nat.zero_le _) h1 hdb h6).trans_le
+    (Set.ncard_le_ncard (fun y hy => ?_) (Set.toFinite _))
   obtain ⟨k, e, hv, hs, -⟩ :=
     vote_of_awake_joined_at hrun hnc (hrun.antitone h1 hy.1) hy.2.1 hy.2.2
   exact votersAt_iff.2 ⟨hy.1, k, e, hv, hs⟩
@@ -57,29 +58,31 @@ theorem two_faults_lt_of_faultBoundAt {t d : Time} (h : tr.FaultBoundAt H t d) :
   have : (H d)ᶜ.ncard < {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard := h
   omega
 
-/-- **The two count shapes from the slot-point counts** (the look-ahead budget clamped at `b`):
-`2 f_d < n` at `d ∈ [t_s, t_s + 4Δ)` from the count at `t_s` charged at `min (t_s + 5Δ) b ≥ d`,
-the slot count at `d ∈ [t_s + Δ, t_s + 6Δ]` from the count at `t_s + Δ` charged at
-`min (t_s + 6Δ) b ≥ d`, and the late count likewise from `t_s + 2Δ`. -/
-theorem SleepyBounds.of_faultBoundAt (hanti : Antitone H) {b : Time}
-    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBoundAt H (sp.ts s + d) (min (sp.ts s + d + 5 * sp.Δ) b)) :
-    SleepyBounds tr H b := by
+/-- **The count shapes from the counts after a start `a`** (the look-ahead budget clamped at
+`b`), for the slots `s ≥ σ₀` whose slot point `t_s + Δ` is at or after `a`: `2 f_d < n` at
+`d ∈ [a, b]` from the count at `d` charged at `min (d + 5Δ) b ≥ d`, and at `d ∈ [0, a)` from the
+count at `a` (faults only grow; `a ≤ b` unless `a ≤ 0`); the slot count at
+`d ∈ [t_s + Δ, t_s + 6Δ]` from the count at `t_s + Δ` charged at `min (t_s + 6Δ) b ≥ d`, and the
+late count likewise from `t_s + 2Δ`. -/
+theorem SleepyBoundsFrom.of_faultBoundAt (hanti : Antitone H) {a b : Time} {σ₀ : Nat}
+    (hσ : a ≤ sp.ts σ₀ + sp.Δ) (hab : a ≤ max b 0)
+    (hfb : ∀ t, 0 ≤ t → a ≤ t → t ≤ b → tr.FaultBoundAt H t (min (t + 5 * sp.Δ) b)) :
+    SleepyBoundsFrom tr H σ₀ b := by
   have hΔ := sp.toParams.hΔ
-  refine ⟨fun d h0 hdb => ?_, fun s d h1 hdb h6 => ?_, fun s d h1 hdb h7 => ?_⟩
-  · have hσ := (SA.ts_le_iff_le_slot sp h0 (sp.slot d)).2 le_rfl
-    have hlt : d < sp.ts ((sp.slot d : Int) + 1) := lt_of_not_ge fun h => by
-      have := (SA.ts_le_iff_le_slot sp h0 _).1 h
-      omega
-    have hts : sp.ts ((sp.slot d : Int) + 1) = sp.ts (sp.slot d : Int) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; ring
-    have h := hfb (sp.slot d) 0 (by simp) (by simpa using hσ.trans hdb)
-    simp only [add_zero] at h
-    exact two_faults_lt_of_faultBoundAt
-      (RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h)
-  · have h := hfb s sp.Δ (by simp) (h1.trans hdb)
+  refine ⟨fun d h0 hdb => ?_, fun s d hs h1 hdb h6 => ?_, fun s d hs h1 hdb h7 => ?_⟩
+  · rcases le_or_gt a d with had | hda
+    · exact two_faults_lt_of_faultBoundAt
+        (RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) (hfb d h0 had hdb))
+    · have hab' : a ≤ b := (le_max_iff.mp hab).resolve_right (by linarith)
+      exact two_faults_lt_of_faultBoundAt (RunTrace.FaultBoundAt.mono_right hanti
+        (le_min (by linarith) hdb) (hfb a (by linarith) le_rfl hab'))
+  · have hts := ts_le_ts (sp := sp) hs
+    have h := hfb (sp.ts s + sp.Δ) (by linarith [ts_natCast_nonneg (sp := sp) s]) (by linarith)
+      (h1.trans hdb)
     exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
-  · have h := hfb s (2 * sp.Δ) (by simp) (h1.trans hdb)
+  · have hts := ts_le_ts (sp := sp) hs
+    have h := hfb (sp.ts s + 2 * sp.Δ) (by linarith [ts_natCast_nonneg (sp := sp) s])
+      (by linarith) (h1.trans hdb)
     exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
 
 /-- **An origin within `b` has a supporter honest at its vote**: a slot-`s` vote at a time `≤ b`
@@ -87,7 +90,7 @@ whose head extends it. A result's counted votes meet the validators honest at `d
 were awake and joined at `t_s + Δ` (all participants of the writer's update, the slot count at
 `d`); an optimistic selection's `3n/4` voters meet `H d` at the check's time `d` (`2 f_d < n`). -/
 theorem honest_supporter_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b)
+    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b) :
     ∃ x j e, HVoteAt tr H x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
@@ -98,7 +101,7 @@ theorem honest_supporter_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc
     have hmaj := SA.result_majority hR
     obtain ⟨ℓX, hu, -, hCV⟩ := hR
     have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    have hJ := hB.slot s (tr.time i₀) (by rw [ht₀]; linarith) hi₀ ht₀.le
+    have hJ := hB.slot s (tr.time i₀) (Nat.zero_le _) (by rw [ht₀]; linarith) hi₀ ht₀.le
     change (H (tr.time i₀))ᶜ.ncard < {y | y ∈ H (tr.time i₀) ∧ tr.awake y (sp.ts s + sp.Δ) ∧
       tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard at hJ
     have hsvc := (SleepyServiceBefore.upTo hrun hsync hd).ac

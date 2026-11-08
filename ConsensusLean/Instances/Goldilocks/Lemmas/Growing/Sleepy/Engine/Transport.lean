@@ -18,10 +18,11 @@ trace `simTraceAt` with the time-indexed honest keys `honestKeysAt`:
 
 * `ready_transport_at`: an engine node ready at `t ≤ horizon` is ready at `t` in the trace, with
   honesty read at `t` (no constant-fault premise);
-* `sleepy_faultBoundAt`: the L0 sleepy budget with look-ahead `5Δ` (`EnvPoint.SleepyOn` on the
-  view retained through `lookAhead (5Δ) t`) gives the slot-point count `FaultBoundAt t d` charged
-  at `d = min (t + 5Δ) b`, for every slot point `t ≤ b ≤ horizon`;
-* `sleepy_bounds_at`: hence the two count shapes `SleepyBounds` through `b`.
+* `sleepy_faultBoundAt`: the L0 sleepy budget with look-ahead `5Δ` on `[a, b]`
+  (`EnvPoint.SleepyOn` on the view retained through `lookAhead (5Δ) t`) gives the count
+  `FaultBoundAt t d` charged at `d = min (t + 5Δ) b`, at every `t ∈ [max a 0, b]`, `b ≤ horizon`;
+* `sleepy_bounds_at`: hence the count shapes `SleepyBoundsFrom σ₀` through `b`, for the slots
+  whose slot point `t_s + Δ` is at or after `a`.
 
 The finite service comes from `sleepyServiceBefore_of_syncUntil_at`. -/
 
@@ -67,34 +68,28 @@ theorem ready_transport_at (hv : rho.ExecutionValid) {c : Time} {v : V} {t : Tim
   rw [simTraceAt_awake_iff, awakeAt_iff, hkey]
   exact ⟨hr.2 τ hτ hτt, (le_max_left _ _).trans hτ, hτt.trans hth⟩
 
-/-- **The sleepy slot-point counts under growing faults.** Under the L0 sleepy budget with
-look-ahead `5Δ` on `[0, b]` (`b ≤ horizon`), at every slot point `t = t_s + d ≤ b`
-(`d ∈ {0, Δ, 2Δ}`), the keys compromised by `min (t + 5Δ) b` are fewer than the keys honest then,
-awake and joined at `t`. The engine count is charged at `lookAhead (5Δ) t ≥ min (t + 5Δ) b`;
-compromise only grows, and a ready node is honest, awake and (by its catch-up) joined at `t`. -/
-theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {b : Time} (hb : b ≤ rho.horizon)
+/-- **The sleepy counts under growing faults.** Under the L0 sleepy budget with look-ahead `5Δ`
+on `[a, b]` (`b ≤ horizon`), at every `t ∈ [max a 0, b]` the keys compromised by
+`min (t + 5Δ) b` are fewer than the keys honest then, awake and joined at `t`. The engine count is
+charged at `lookAhead (5Δ) t ≥ min (t + 5Δ) b`; compromise only grows, and a ready node is
+honest, awake and (by its catch-up) joined at `t`. -/
+theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
-      (5 * (S.params (pubOf E) hn).Δ) 0 b) :
-    ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf E) hn).Δ, 2 * (S.params (pubOf E) hn).Δ} : Set Time),
-      (S.params (pubOf E) hn).ts s + d ≤ b →
-      (simTraceAt S rho hn).FaultBoundAt (honestKeysAt S rho) ((S.params (pubOf E) hn).ts s + d)
-        (min ((S.params (pubOf E) hn).ts s + d + 5 * (S.params (pubOf E) hn).Δ) b) := by
+      (5 * (S.params (pubOf E) hn).Δ) a b)
+    {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) :
+    (simTraceAt S rho hn).FaultBoundAt (honestKeysAt S rho) t
+      (min (t + 5 * (S.params (pubOf E) hn).Δ) b) := by
   classical
-  intro s d hd htb
   have hΔ := (S.params (pubOf E) hn).toParams.hΔ
-  have ht : 0 ≤ (S.params (pubOf E) hn).ts s + d := by
-    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hd
-    rcases hd with rfl | rfl | rfl <;> dsimp [SA.SAParams.ts] <;> positivity
   set sp := S.params (pubOf E) hn
   set c := Regimes.catchUp sp
-  set t := sp.ts s + d
   set d' := min (t + 5 * sp.Δ) b
   set D := rho.point.lookAhead (5 * sp.Δ) t
   have hd'D : d' ≤ D := min_le_min_left _ hb
   have htd' : t ≤ d' := le_min (by linarith) htb
   have hd'h : d' ≤ rho.horizon := (min_le_right _ _).trans hb
   -- the engine count on the view retained through `D`
-  have hh := hhalf t ht htb
+  have hh := hhalf t hat htb
   set R := (rho.point.retain D).readyAt c t
   have hlt : (rho.faultyAt D).card < R.card := by
     have hq : ((rho.faultyAt D).card : ℚ) < R.card := by
@@ -127,14 +122,17 @@ theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {b : Time} (hb : b ≤ rho
     · exact rho.key.symm.injective.injOn
   exact hf.trans_lt (hlt.trans_le hcount)
 
-/-- **The two sleepy count shapes under growing faults** through `b ≤ horizon`, from the L0 sleepy
-budget with look-ahead `5Δ` on `[0, b]`. -/
-theorem sleepy_bounds_at (hv : rho.ExecutionValid) {b : Time} (hb : b ≤ rho.horizon)
+/-- **The sleepy count shapes under growing faults** through `b ≤ horizon`, from the L0 sleepy
+budget with look-ahead `5Δ` on `[a, b]`, for the slots `s ≥ σ₀` with `a ≤ t_{σ₀} + Δ` (and
+`a ≤ b` unless `a ≤ 0`). -/
+theorem sleepy_bounds_at (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
-      (5 * (S.params (pubOf E) hn).Δ) 0 b) :
-    Compose.Growing.SleepyBounds (simTraceAt S rho hn) (honestKeysAt S rho) b :=
-  Compose.Growing.SleepyBounds.of_faultBoundAt (honestKeysAt_antitone S rho)
-    (sleepy_faultBoundAt S rho hn hv hb hhalf)
+      (5 * (S.params (pubOf E) hn).Δ) a b)
+    {σ₀ : Nat} (hσ : a ≤ (S.params (pubOf E) hn).ts σ₀ + (S.params (pubOf E) hn).Δ)
+    (hab : a ≤ max b 0) :
+    Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) σ₀ b :=
+  Compose.Growing.SleepyBoundsFrom.of_faultBoundAt (honestKeysAt_antitone S rho) hσ hab
+    fun _ ht hat htb => sleepy_faultBoundAt S rho hn hv hb hhalf ht hat htb
 
 end Consensus.Goldilocks.Obligations.Growing
 

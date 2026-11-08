@@ -199,8 +199,8 @@ node ready at `t` (honest at `t`): when the frame holds the block `R` named by t
 `readAfter y j t = R`; otherwise it is `Σ.F`. The latest-view count is charged at `t`. -/
 theorem ready_read_record_at {ΔF b : Time} (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBounds tr H b) {y : Fin sp.n} {j : Nat}
-    {t : Time} (hrp : Regimes.ReadPoint tr j t) (ht0 : 0 ≤ t)
+    (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b) {y : Fin sp.n}
+    {j : Nat} {t : Time} (hrp : Regimes.ReadPoint tr j t) (ht0 : 0 ≤ t)
     (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
     (∃ R ∈ (Node.frame (tr.state y j)).tree,
         R.root = (tr.state y j).ac.latestConfirmed ∧ Regimes.readAfter tr y j t = R) ∨
@@ -214,7 +214,8 @@ theorem ready_read_record_at {ΔF b : Time} (hrun : Growing.GoldilocksRun propos
       R.root = (tr.state y j).ac.latestConfirmed
   · obtain ⟨R, hR, hRr⟩ := hin
     obtain ⟨hc, hs⟩ := read_head_support_at hinv hrun hnc hsync hy ht0 htb
-      (fun s h1 h2 => hB.slot s t h1 htb h2.le) hrp.1 hrp.2 (ready_awake_joined_at hrun ht0 hready)
+      (fun s h1 h2 => hB.slot s t (Nat.zero_le _) h1 htb h2.le) hrp.1 hrp.2
+      (ready_awake_joined_at hrun ht0 hready)
       ⟨hR, hRr⟩
     exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
   · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩

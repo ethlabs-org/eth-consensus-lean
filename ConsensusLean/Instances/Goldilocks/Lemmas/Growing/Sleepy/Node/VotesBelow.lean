@@ -25,7 +25,7 @@ vote's cut); for `j = s` the first step; both with the earlier slot-`(s+1)` vote
 induction on the cut. -/
 theorem votes_below_succ_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBounds tr H b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
+    (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
     (hV : VotesBelowUpTo tr H s b) : VotesBelowUpTo tr H (s + 1) b := by
   have key : ∀ i, ∀ y e, HVoteAt tr H y i e → tr.time i ≤ b → e.msg.slot = s + 1 →
       ∀ C j, OriginWithin tr H C j b → j ≤ s →
