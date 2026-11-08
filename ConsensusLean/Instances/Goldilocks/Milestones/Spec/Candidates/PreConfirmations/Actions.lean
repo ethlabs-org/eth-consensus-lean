@@ -265,7 +265,8 @@ noncomputable def acRestartPC (ro : ReplayOrder sp FGP) (self : Fin sp.n) (X : P
     (fun acc B => let r := acOnBlockPC sp E c m self acc.1 Φ t B; (r.1, acc.2 ++ r.2)) (X', [])
 
 /-- The store a walking call reads its start from: the store evaluated at the call after the
-call's record (the received vote, or the accepted block's payload votes) and before the walk. -/
+call's record (the received vote, or the payload votes of the block delivered to this AC handler,
+recorded whether or not the core admits them) and before the walk. -/
 noncomputable def walkStorePC {ro : ReplayOrder sp FGP} (X : PCState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (goldilocksSA sp FGP ro).Call → PCStore sp.n
   | .message v => refresh sp (recordVote sp X.store t v) Φ t
