@@ -23,7 +23,9 @@ restart):
   `restart_time` is the time of the node's latest restart, `restartTime_state`);
 * `Sync[a, b]` for every `a ≥ ḡ` (`syncAC`) and `f < h_t` there (`faultBound`), `f < n/2`.
 
-It also holds the vocabulary of H.1's steps (`GoodOrigin`, `VotesExtendAfter`,
+The settings at a write mode and an unlock oracle (`HealthyACCore`, `HealthyBaseU`,
+`StandaloneRunU`) are defined in `Milestones/Statements/Healing/ACU`; this module proves their
+facts. It also holds the vocabulary of H.1's steps (`GoodOrigin`, `VotesExtendAfter`,
 `ProposalsExtendAfter`, `LocksSettled`), shared by `Transfer.lean` and `Steps.lean`. -/
 
 namespace Consensus.Goldilocks.SA
@@ -60,19 +62,6 @@ structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (
     (proposer : Nat → Fin sp.n) (g : Time) : Prop extends HealthyBase tr H U proposer g where
   trivial : TrivialFrames tr H
 
-/-- **`Healthy(g)` without its fault clause**: the message and acceptance-relay service and the
-awake honest validators of `HealthyAC`, verbatim; the faults are bounded separately. -/
-structure HealthyACCore (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (g : Time) : Prop where
-  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmit x i m →
-    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (max (tr.time i) g) ≤ tr.time j →
-      ∃ k ≤ j, tr.time i ≤ tr.time k ∧ tr.ProcessAt y k m ∧
-        tr.time k < tr.deadline y k (max (tr.time i) g)
-  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → g ≤ tr.time i →
-    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ tr.time j →
-      Anc U ℓ.frame.F B → ∃ k ≤ j, tr.AcceptAt y k B ∧ tr.time k < tr.deadline y k (tr.time i)
-  awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → tr.awake y t
-
 /-- `Healthy(g)` gives its service and awake part. -/
 theorem HealthyAC.core (h : HealthyAC tr H U g) : HealthyACCore tr H U g :=
   ⟨h.1, h.2.1, h.2.2.1⟩
@@ -83,23 +72,6 @@ theorem HealthyAC.two_faulty_lt (h : HealthyAC tr H U g) : 2 * Hᶜ.ncard < sp.n
   have := sp.toParams.hn
   change 1 ≤ sp.n at this
   omega
-
-/-- `HealthyBase` with the writes of the mode `m` and the unlock given by the oracle `u`, and
-with the fault bound the cone uses, `f < n/2`, in place of `3f ≤ n − 1`. -/
-structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
-    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) :
-    Prop where
-  run : ACRunU m u proposer tr H U
-  driven : DrivenU u proposer tr H
-  healthy : HealthyACCore tr H U g
-  faults : 2 * Hᶜ.ncard < sp.n
-  catchUp : CatchAC tr H U g (2 * sp.Δ)
-
-/-- `StandaloneRun` with the writes of the mode `m` and the unlock given by the oracle `u`. -/
-structure StandaloneRunU (m : WriteMode) (u : Nat → Set Lock) (tr : SATrace sp FGP ro)
-    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop
-    extends HealthyBaseU m u tr H U proposer g where
-  trivial : TrivialFrames tr H
 
 theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
     HealthyBaseU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=

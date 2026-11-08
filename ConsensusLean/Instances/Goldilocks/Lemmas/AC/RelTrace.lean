@@ -2,106 +2,26 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 
 public section
 
-/-! # SA traces with the unlock given per call
+/-! # SA traces with the unlock given per call: the laws
 
-A lock rule that replaces the SA's `unlock` (the lock-rule interface, `LockRule`) runs the
-parent's handlers with other locks after the unlock. This module states the SA's handlers with
-the locks after the unlock given as an argument (`tryVoteWith`, `acProposalWith`, `acOnTickWith`,
-`acOnMessageWith`, `acOnBlockWith`, and the call `stepWith`), and an AC trace law over them:
-
-* the **unlock input** of a call (`callInput`, `callView`): the state whose locks the call's
-  unlock reads, and the view it reads them against (the merged vote view of the state `try_vote`
-  receives; the slot-`(s − 1)` pool view in `ac_proposal`);
-* **the unlock relation** (`UnlockRel`): every lock after the unlock is a live lock before it on a
-  block of the tree, with its slot, fast bit and expiry; a lock of a slot below `s` is on an
-  ancestor of its parent unlock target, any other on its viable ancestor. The parent's `unlock`
-  satisfies it (`unlockRel_unlock`), and so does every lawful unlock stage (`LockRule`);
-* **the trace law** (`ACLocalRunU u`): the AC trace contract with each honest call executing
-  `stepWith` at the locks `u i` of an oracle `u`, related to the call's unlock input by
-  `UnlockRel`. The parent's runs are such runs at the parent's own unlock (`ACLocalRun.toU`,
-  `step_eq_stepWith`).
-
-The other handlers (`ac_to_fg`, the restart, whose replay does not unlock) are the parent's. -/
+The vocabulary (the handlers with the locks after the unlock given and at a write mode, the
+unlock input of a call, the unlock relation `UnlockRel`, the parent's oracle and the trace law
+`ACLocalRunU m u`) is in `Milestones/Spec/SA/RelTrace`. This module proves its laws: the parent's
+calls are `stepWith` of their own unlock (`step_eq_stepWith`), the handlers at the parent's mode
+are the parent's (`stepWithM_parent` and the others, by `rfl`), the parent's `unlock` satisfies
+the relation (`unlockRel_unlock`) and related locks only move back (`UnlockRel.movesBack`), and
+the parent's runs and reachable states are such runs at the parent's mode and unlock
+(`ACLocalRun.toU`, `ACInterface.ReachableAt.toU`, `ACRun.toU`). -/
 
 namespace Consensus.Goldilocks.SA
 
 variable {sp : SAParams} {FGP : Type}
 
 /-! ### The handlers with the locks after the unlock given -/
-
-variable (sp) in
-open Classical in
-/-- The parent's `try_vote` at `self`, with `L₁` as the locks after its unlock (for `s > 0`). -/
-noncomputable abbrev tryVoteWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
-  let s := sp.slot t
-  if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
-  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (A, [])
-  else
-    let V := mergedVoteView sp A Φ s
-    let A₁ := if 0 < s then { A with locks := L₁ } else A
-    let dom := voteDomain sp A₁ Φ s
-    let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
-    let A₂ := { A₁ with votedSlot := s }
-    let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := optimisticConfirmation sp (admitVote sp A₂ t vote) Φ t
-    (A₃, [{ msg := vote, readPoint := A₂,
-            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
-
-variable (sp) in
-open Classical in
-/-- The parent's `ac_proposal`, with `L₁` as the locks after its unlock. -/
-noncomputable abbrev acProposalWith (L₁ : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : SAState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
-  if ¬ joined sp A t then (A, none)
-  else
-    let s : Int := sp.slot t
-    let p := voteViewList A Φ (s - 1) ⊤
-    let V := View.ofLists p
-    let A₁ := { A with locks := L₁ }
-    let H := getHead sp A₁ Φ t (Φ.viableTree Φ.tree) V (s - 1)
-    (A₁, some (⟨H, getAnchor sp A₁ Φ t, Φ.tree⟩, p))
-
-variable (sp) in
-open Classical in
-/-- The parent's `ac_on_tick` at `self`, with `L₁` as the locks after the unlock of its vote. -/
-noncomputable abbrev acOnTickWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
-  let s := sp.slot t
-  if ¬ joined sp A t then (A, [])
-  else
-    let r := if t = sp.ts s + sp.Δ then tryVoteWith sp self L₁ A Φ t else (A, [])
-    let A₂ := if t = sp.ts s + 2 * sp.Δ ∧ 0 < s then updateConfirmation sp r.1 Φ t (s - 1)
-      else r.1
-    (A₂, r.2)
-
-variable (sp) in
-/-- The parent's `ac_on_message` at `self`, with `L₁` as the locks after the unlock. -/
-noncomputable abbrev acOnMessageWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) : SAState sp.n × List (Em sp FGP) :=
-  tryVoteWith sp self L₁ (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ t
-
-variable (sp) in
-/-- The parent's `ac_on_block` at `self`, with `L₁` as the locks after the unlock. -/
-noncomputable abbrev acOnBlockWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) : SAState sp.n × List (Em sp FGP) :=
-  tryVoteWith sp self L₁ (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t
-
-variable (sp) in
-/-- A call of the SA at `self` with `L₁` as the locks after its unlock (`ac_to_fg` and the
-restart are the parent's: neither unlocks). -/
-noncomputable abbrev stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L₁ : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (goldilocksSA sp FGP ro).Call → SAState sp.n × List (Em sp FGP)
-  | .tick => acOnTickWith sp self L₁ A Φ t
-  | .proposal => ((acProposalWith sp L₁ A Φ t).1, [])
-  | .toFG => ((acToFG sp A Φ t).1, [])
-  | .message m => acOnMessageWith sp self L₁ A Φ t m
-  | .block B => acOnBlockWith sp self L₁ A Φ t B
-  | .restart => acRestart sp ro self A Φ t
 
 /-- `ac_proposal` with the locks after the unlock given keeps `voted_slot` and
 `restart_time`. -/
@@ -112,30 +32,6 @@ theorem acProposalWith_keeps (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FG
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-! ### The unlock input of a call -/
-
-variable (sp) in
-/-- The state whose locks the unlock of the call `c` reads: the state `try_vote` receives (after
-the receipt and the optimistic confirmation of a message or a block), else the state itself. -/
-noncomputable abbrev callInput {ro : ReplayOrder sp FGP} (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : (goldilocksSA sp FGP ro).Call → SAState sp.n
-  | .message v => optimisticConfirmation sp (admitVote sp A t v) Φ t
-  | .block C => optimisticConfirmation sp (blockReceipt sp A t C) Φ t
-  | _ => A
-
-variable (sp) in
-/-- The view the unlock of the call `c` reads (the pool view in `ac_proposal`, else the merged
-vote view of the call's input). -/
-noncomputable abbrev callView {ro : ReplayOrder sp FGP} (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (c : (goldilocksSA sp FGP ro).Call) : View sp.n :=
-  match c with
-  | .proposal => View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)
-  | _ => mergedVoteView sp (callInput sp A Φ t c) Φ (sp.slot t)
-
-variable (sp) in
-/-- The parent's locks after the unlock of the call `c`. -/
-noncomputable abbrev parentUnlock {ro : ReplayOrder sp FGP} (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (c : (goldilocksSA sp FGP ro).Call) : Set Lock :=
-  unlock sp (callInput sp A Φ t c).locks Φ t ((sp.slot t : Int) - 1) (callView sp A Φ t c)
 
 /-- **The parent's call is `stepWith` of its own unlock.** -/
 theorem step_eq_stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
@@ -175,83 +71,6 @@ theorem acOnTick_eq_acOnTickWith (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm 
       A Φ t := by
   rfl
 
-/-! ### The handlers at a write mode -/
-
-variable (sp) in
-open Classical in
-/-- `tryVoteWith` with the optimistic confirmation of mode `m`. -/
-noncomputable abbrev tryVoteWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
-  let s := sp.slot t
-  if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
-  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (A, [])
-  else
-    let V := mergedVoteView sp A Φ s
-    let A₁ := if 0 < s then { A with locks := L₁ } else A
-    let dom := voteDomain sp A₁ Φ s
-    let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
-    let A₂ := { A₁ with votedSlot := s }
-    let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t
-    (A₃, [{ msg := vote, readPoint := A₂,
-            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
-
-variable (sp) in
-open Classical in
-/-- `acOnTickWith` with the writes of mode `m`. -/
-noncomputable abbrev acOnTickWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
-  let s := sp.slot t
-  if ¬ joined sp A t then (A, [])
-  else
-    let r := if t = sp.ts s + sp.Δ then tryVoteWithM sp m self L₁ A Φ t else (A, [])
-    let A₂ := if t = sp.ts s + 2 * sp.Δ ∧ 0 < s then updateConfirmationM sp m r.1 Φ t (s - 1)
-      else r.1
-    (A₂, r.2)
-
-variable (sp) in
-/-- `acOnMessageWith` with the writes of mode `m`. -/
-noncomputable abbrev acOnMessageWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
-    SAState sp.n × List (Em sp FGP) :=
-  tryVoteWithM sp m self L₁ (optimisticConfirmationM sp m (admitVote sp A t v) Φ t) Φ t
-
-variable (sp) in
-/-- `acOnBlockWith` with the writes of mode `m`. -/
-noncomputable abbrev acOnBlockWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
-    SAState sp.n × List (Em sp FGP) :=
-  tryVoteWithM sp m self L₁ (optimisticConfirmationM sp m (blockReceipt sp A t B) Φ t) Φ t
-
-variable (sp) in
-/-- A call of the SA at `self` with `L₁` as the locks after its unlock and the writes of mode `m`
-(`ac_to_fg` and the restart are the parent's). -/
-noncomputable abbrev stepWithM (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
-    (L₁ : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (goldilocksSA sp FGP ro).Call → SAState sp.n × List (Em sp FGP)
-  | .tick => acOnTickWithM sp m self L₁ A Φ t
-  | .proposal => ((acProposalWith sp L₁ A Φ t).1, [])
-  | .toFG => ((acToFG sp A Φ t).1, [])
-  | .message v => acOnMessageWithM sp m self L₁ A Φ t v
-  | .block B => acOnBlockWithM sp m self L₁ A Φ t B
-  | .restart => acRestart sp ro self A Φ t
-
-variable (sp) in
-/-- The state whose locks the unlock of the call `c` reads at mode `m` (`callInput`). -/
-noncomputable abbrev callInputM {ro : ReplayOrder sp FGP} (m : WriteMode) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : (goldilocksSA sp FGP ro).Call → SAState sp.n
-  | .message v => optimisticConfirmationM sp m (admitVote sp A t v) Φ t
-  | .block C => optimisticConfirmationM sp m (blockReceipt sp A t C) Φ t
-  | _ => A
-
-variable (sp) in
-/-- The view the unlock of the call `c` reads at mode `m` (`callView`). -/
-noncomputable abbrev callViewM {ro : ReplayOrder sp FGP} (m : WriteMode) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) : View sp.n :=
-  match c with
-  | .proposal => View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)
-  | _ => mergedVoteView sp (callInputM sp m A Φ t c) Φ (sp.slot t)
-
 /-! ### The handlers at the parent's mode -/
 
 theorem tryVoteWithM_parent :
@@ -283,18 +102,6 @@ theorem callViewM_parent {ro : ReplayOrder sp FGP} :
   rfl
 
 /-! ### The unlock relation -/
-
-variable (sp) in
-/-- **The unlock relation**: every lock of `L'` is a live lock of `L` on a block `B` of the tree,
-with its slot, fast bit and expiry, on an ancestor (in the tree) of the unlock target of
-`B`'s viable ancestor when its slot is below `s`, and on that viable ancestor otherwise. -/
-abbrev UnlockRel (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Int) (V : View sp.n)
-    (L' : Set Lock) : Prop :=
-  ∀ l' ∈ L', ∃ l ∈ L, ∃ B ∈ Φ.tree, B.root = l.block ∧ l.LiveAt sp t ∧ l'.slot = l.slot ∧
-    l'.fast = l.fast ∧ l'.expiry = l.expiry ∧
-    ((l.slot : Int) < s → ∃ Y ∈ Φ.tree, Y.root = l'.block ∧
-      Φ.Anc Y (unlockTarget sp Φ V s (Φ.viableAncestor B))) ∧
-    (s ≤ (l.slot : Int) → l'.block = (Φ.viableAncestor B).root)
 
 theorem unlockRel_iff (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Int) (V : View sp.n)
     (L' : Set Lock) :
@@ -329,57 +136,6 @@ theorem UnlockRel.movesBack {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L L' : Set L
   · exact ⟨_, hva, (hge (not_lt.1 hsl)).symm, hvaB⟩
 
 /-! ### The trace law -/
-
-variable (sp) in
-/-- The parent's unlock oracle of a trace: at each labelled cut, the parent's locks after the
-unlock of the call at the pre-state. -/
-noncomputable abbrev parentOracle {ro : ReplayOrder sp FGP} (tr : SATrace sp FGP ro) (i : Nat) :
-    Set Lock :=
-  match tr.label i with
-  | some ℓ => parentUnlock sp (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call
-  | none => ∅
-
-/-- **The AC trace contract with the unlock given by `u` and the writes of mode `m`**:
-`ACLocalRun` of the SA, except that each honest call executes `stepWithM m` at the locks `u i`,
-which the unlock relation ties to the call's unlock input. -/
-structure ACLocalRunU {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lock)
-    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) : Prop where
-  /-- `U` is coherent: roots injective, slots increasing along parent edges. -/
-  coherent : Coherent U
-  /-- Each honest node starts from the initial AC state. -/
-  init : ∀ y ∈ H, tr.init y = (goldilocksSA sp FGP ro).initial
-  /-- Each call of an honest node executes `stepWithM m` at the locks `u i`. -/
-  exec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
-    stepWithM sp ro m (tr.node i) (u i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call =
-      (tr.post i, ℓ.emits)
-  /-- The locks `u i` are related to the call's unlock input. -/
-  lawful : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H → FrameOK ℓ.frame →
-    UnlockRel sp (callInputM sp m (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call).locks
-      ℓ.frame (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
-      (callViewM sp m (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call) (u i)
-  /-- The frame law and the input contract (`ACLocalRun.frameLaw`). -/
-  frameLaw : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
-    (tr.NoCallBetween y 0 i ∧ ∃ Φ₀, (goldilocksSA sp FGP ro).InitialFrame Φ₀ ∧
-      (goldilocksSA sp FGP ro).FrameIn U Φ₀ ∧
-      (goldilocksSA sp FGP ro).CallOK U Φ₀ (tr.time i) ℓ.call ℓ.frame) ∨
-    (∃ j ℓ', j < i ∧ tr.CallAt y j ℓ' ∧ tr.NoCallBetween y (j + 1) i ∧
-      (goldilocksSA sp FGP ro).CallOK U ℓ'.frame (tr.time i) ℓ.call ℓ.frame)
-  /-- Cuts are at times from `0` on. -/
-  time_nonneg : ∀ i, 0 ≤ tr.time i
-  /-- The cut order is by time. -/
-  time_mono : Monotone tr.time
-  /-- An honest node is called only while awake. -/
-  awake_of_call : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → tr.awake y (tr.time i)
-  /-- The first call of an honest node after it was asleep is a restart. -/
-  restart_of_sleep : ∀ y ∈ H, ∀ i ℓ (u : Time), tr.CallAt y i ℓ → 0 ≤ u → u < tr.time i →
-    ¬ tr.awake y u → (∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u) → ℓ.call = .restart
-  /-- A wake is a restart. -/
-  restart_at_wake : ∀ y ∈ H, ∀ u v : Time, 0 ≤ u → u < v → ¬ tr.awake y u → tr.awake y v →
-    ∃ k, tr.RestartAt y k ∧ u < tr.time k ∧ tr.time k ≤ v
-  /-- A restart is a wake. -/
-  sleep_of_restart : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → ℓ.call = .restart →
-    ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧
-      ∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u
 
 /-- The unlock relation at an honest call with a well-formed frame. -/
 theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
@@ -419,24 +175,6 @@ theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H 
 
 /-! ### Reachable states -/
 
-/-- The states reached at validator `self` inside `U` by calls under the call law, each executing
-`stepWith` at locks related to its unlock input (`ACInterface.ReachableAt`, with the unlock
-given). -/
-inductive ReachableAtU {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp.n)
-    (U : Set (Blk sp.n FGP)) :
-    SAState sp.n → Frm sp.n FGP → Time → Prop
-  /-- The initial state, with the initial frame, at time `0`. -/
-  | init (Φ : Frm sp.n FGP) : (goldilocksSA sp FGP ro).InitialFrame Φ →
-      (goldilocksSA sp FGP ro).FrameIn U Φ →
-      ReachableAtU m self U (SAState.initial sp.genesisRoot) Φ 0
-  /-- One more call at locks `L₁` related to its unlock input. -/
-  | step {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t t' : Time}
-      (c : (goldilocksSA sp FGP ro).Call) (L₁ : Set Lock) : ReachableAtU m self U A Φ t → t ≤ t' →
-      (goldilocksSA sp FGP ro).CallOK U Φ t' c Φ' →
-      UnlockRel sp (callInputM sp m A Φ' t' c).locks Φ' t' ((sp.slot t' : Int) - 1)
-        (callViewM sp m A Φ' t' c) L₁ →
-      ReachableAtU m self U (stepWithM sp ro m self L₁ A Φ' t' c).1 Φ' t'
-
 /-- **The parent's reachable states are reachable with the unlock given.** -/
 theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAt.toU {ro : ReplayOrder sp FGP}
     {self : Fin sp.n} {U : Set (Blk sp.n FGP)}
@@ -449,16 +187,6 @@ theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAt.toU {ro : ReplayOrde
     rw [step_eq_stepWith, ← stepWithM_parent]
     exact .step c _ ih ht hc (by
       rw [callInputM_parent, callViewM_parent]; exact unlockRel_unlock hc.1.1 _ _ _ _)
-
-/-- An AC trace of the SA with the unlock given, its contract and the honest-object facts
-(`ACRun` with the unlock given). -/
-structure ACRunU (m : WriteMode) (u : Nat → Set Lock) {ro : ReplayOrder sp FGP}
-    (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) : Prop where
-  /-- The AC trace contract with the unlock given. -/
-  localRun : ACLocalRunU m u H U tr
-  /-- The honest-object facts. -/
-  honest : HonestObjects selectedProposer tr H
 
 /-- The parent's runs are runs with the unlock given. -/
 theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n}
