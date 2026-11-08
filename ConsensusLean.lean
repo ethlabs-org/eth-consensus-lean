@@ -626,6 +626,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Anc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Proposer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Unanimity.Votes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.WidthVocab
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Acquire
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
