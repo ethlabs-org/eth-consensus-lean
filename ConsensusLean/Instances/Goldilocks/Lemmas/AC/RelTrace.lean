@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
 
 public section
 
@@ -172,6 +173,113 @@ theorem acOnTick_eq_acOnTickWith (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm 
     acOnTick sp self A Φ t = acOnTickWith sp self
       (unlock sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)))
       A Φ t := by
+  rfl
+
+/-! ### The handlers at a write mode -/
+
+variable (sp) in
+open Classical in
+/-- `tryVoteWith` with the optimistic confirmation of mode `m`. -/
+noncomputable abbrev tryVoteWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
+  let s := sp.slot t
+  if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
+  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (A, [])
+  else
+    let V := mergedVoteView sp A Φ s
+    let A₁ := if 0 < s then { A with locks := L₁ } else A
+    let dom := voteDomain sp A₁ Φ s
+    let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
+    let A₂ := { A₁ with votedSlot := s }
+    let vote : Vote sp.n := { val := self, slot := s, head := H.root }
+    let A₃ := optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t
+    (A₃, [{ msg := vote, readPoint := A₂,
+            head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }])
+
+variable (sp) in
+open Classical in
+/-- `acOnTickWith` with the writes of mode `m`. -/
+noncomputable abbrev acOnTickWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
+  let s := sp.slot t
+  if ¬ joined sp A t then (A, [])
+  else
+    let r := if t = sp.ts s + sp.Δ then tryVoteWithM sp m self L₁ A Φ t else (A, [])
+    let A₂ := if t = sp.ts s + 2 * sp.Δ ∧ 0 < s then updateConfirmationM sp m r.1 Φ t (s - 1)
+      else r.1
+    (A₂, r.2)
+
+variable (sp) in
+/-- `acOnMessageWith` with the writes of mode `m`. -/
+noncomputable abbrev acOnMessageWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
+    SAState sp.n × List (Em sp FGP) :=
+  tryVoteWithM sp m self L₁ (optimisticConfirmationM sp m (admitVote sp A t v) Φ t) Φ t
+
+variable (sp) in
+/-- `acOnBlockWith` with the writes of mode `m`. -/
+noncomputable abbrev acOnBlockWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
+    SAState sp.n × List (Em sp FGP) :=
+  tryVoteWithM sp m self L₁ (optimisticConfirmationM sp m (blockReceipt sp A t B) Φ t) Φ t
+
+variable (sp) in
+/-- A call of the SA at `self` with `L₁` as the locks after its unlock and the writes of mode `m`
+(`ac_to_fg` and the restart are the parent's). -/
+noncomputable abbrev stepWithM (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
+    (L₁ : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (goldilocksSA sp FGP ro).Call → SAState sp.n × List (Em sp FGP)
+  | .tick => acOnTickWithM sp m self L₁ A Φ t
+  | .proposal => ((acProposalWith sp L₁ A Φ t).1, [])
+  | .toFG => ((acToFG sp A Φ t).1, [])
+  | .message v => acOnMessageWithM sp m self L₁ A Φ t v
+  | .block B => acOnBlockWithM sp m self L₁ A Φ t B
+  | .restart => acRestart sp ro self A Φ t
+
+variable (sp) in
+/-- The state whose locks the unlock of the call `c` reads at mode `m` (`callInput`). -/
+noncomputable abbrev callInputM {ro : ReplayOrder sp FGP} (m : WriteMode) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) : (goldilocksSA sp FGP ro).Call → SAState sp.n
+  | .message v => optimisticConfirmationM sp m (admitVote sp A t v) Φ t
+  | .block C => optimisticConfirmationM sp m (blockReceipt sp A t C) Φ t
+  | _ => A
+
+variable (sp) in
+/-- The view the unlock of the call `c` reads at mode `m` (`callView`). -/
+noncomputable abbrev callViewM {ro : ReplayOrder sp FGP} (m : WriteMode) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) : View sp.n :=
+  match c with
+  | .proposal => View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)
+  | _ => mergedVoteView sp (callInputM sp m A Φ t c) Φ (sp.slot t)
+
+/-! ### The handlers at the parent's mode -/
+
+theorem tryVoteWithM_parent :
+    tryVoteWithM (FGP := FGP) sp (WriteMode.parent sp) = tryVoteWith sp :=
+  rfl
+
+theorem acOnTickWithM_parent :
+    acOnTickWithM (FGP := FGP) sp (WriteMode.parent sp) = acOnTickWith sp :=
+  rfl
+
+theorem acOnMessageWithM_parent :
+    acOnMessageWithM (FGP := FGP) sp (WriteMode.parent sp) = acOnMessageWith sp :=
+  rfl
+
+theorem acOnBlockWithM_parent :
+    acOnBlockWithM (FGP := FGP) sp (WriteMode.parent sp) = acOnBlockWith sp :=
+  rfl
+
+theorem stepWithM_parent (ro : ReplayOrder sp FGP) :
+    stepWithM sp ro (WriteMode.parent sp) = stepWith sp ro :=
+  rfl
+
+theorem callInputM_parent {ro : ReplayOrder sp FGP} :
+    callInputM (ro := ro) sp (WriteMode.parent sp) = callInput sp :=
+  rfl
+
+theorem callViewM_parent {ro : ReplayOrder sp FGP} :
+    callViewM (ro := ro) sp (WriteMode.parent sp) = callView sp :=
   rfl
 
 /-! ### The unlock relation -/
