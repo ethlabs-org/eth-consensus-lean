@@ -901,6 +901,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writ
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Candidates
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Defaults
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.HealAC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.LatencyAC
@@ -935,6 +936,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Candidates
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.LatencyAC
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.TierA

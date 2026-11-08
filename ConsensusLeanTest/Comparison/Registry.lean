@@ -22,6 +22,12 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `SigningRateAC0` | one vote per slot | A, static | every mode |
 | `ProposalLatencyAC0Sync` | `acLat0` (`6` at `2·f < n`), from slot 2 | A, static | width-k modes |
 | `ProposalLatencyAC0Bridge` | `G_p + 6` from `t₂` | A, static | width-k modes, `Prop(G_p)` |
+| `HealProfileER0Free` | `acFree0` | A, cand. | evidence release, width-`k` modes |
+| `HealProfileCert0Free` | `acFree0` | A, cand. | late certificate (pool trace), width-`k` modes |
+| `HealProfileERParent0` | `acFree0` | A, cand. | evidence release, parent mode |
+| `HealProfileCertParent0` | `acFree0` | A, cand. | late certificate (pool trace), parent mode |
+| `HealProfileMinimalAC0` | `acFree0` | A, cand. | minimal-ac, `slowOnly k false` |
+| `HealProfileMinimalACOptLocked0` | `acFree0` | A, cand. | minimal-ac + opt-locked (`k true`) |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -64,6 +70,32 @@ theorem proposalLatencyAC0Sync : Consensus.Goldilocks.Comparison.ProposalLatency
 /-- Some honest proposal by `t + G_p + 6Δ` from `t₂`; tier A, static; premise `Prop(G_p)`. -/
 theorem proposalLatencyAC0Bridge : Consensus.Goldilocks.Comparison.ProposalLatencyAC0Bridge :=
   Consensus.Goldilocks.Comparison.proposalLatencyAC0_bridge
+/-- Bound `acFree0`; tier A, candidate runs: evidence release, width-`k` modes. -/
+theorem healProfileER0Free : Consensus.Goldilocks.Comparison.HealProfileER0Free :=
+  Consensus.Goldilocks.Comparison.healProfileER0_free
+
+/-- Bound `acFree0`; tier A, candidate runs: late certificate (pool trace), width-`k` modes. -/
+theorem healProfileCert0Free : Consensus.Goldilocks.Comparison.HealProfileCert0Free :=
+  Consensus.Goldilocks.Comparison.healProfileCert0_free
+
+/-- Bound `acFree0`; tier A, candidate runs: evidence release, parent mode. -/
+theorem healProfileERParent0 : Consensus.Goldilocks.Comparison.HealProfileERParent0 :=
+  Consensus.Goldilocks.Comparison.healProfileERParent0
+
+/-- Bound `acFree0`; tier A, candidate runs: late certificate (pool trace), parent mode. -/
+theorem healProfileCertParent0 : Consensus.Goldilocks.Comparison.HealProfileCertParent0 :=
+  Consensus.Goldilocks.Comparison.healProfileCertParent0
+
+/-- Bound `acFree0`; tier A, candidate runs: minimal-ac, `slowOnly k false`. -/
+theorem healProfileMinimalAC0 : Consensus.Goldilocks.Comparison.HealProfileMinimalAC0 :=
+  Consensus.Goldilocks.Comparison.healProfileMinimalAC0
+
+/-- Bound `acFree0`; tier A, candidate runs: minimal-ac `w = k` + locked ¾ optimistic, evidence
+release's release (simulator class `minimal-ac+opt-locked`), `slowOnly k true`; integrated-pc's own
+single release is not covered. -/
+theorem healMinimalACOptLocked0 :
+    Consensus.Goldilocks.Comparison.HealProfileMinimalACOptLocked0 :=
+  Consensus.Goldilocks.Comparison.healProfileMinimalACOptLocked0
 
 end Consensus.Comparison.Registry
 
@@ -101,5 +133,22 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.proposalLatencyAC0Bridge' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.proposalLatencyAC0Bridge
+/-- info: 'Consensus.Comparison.Registry.healProfileER0Free' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healProfileER0Free
+
+/-- info: 'Consensus.Comparison.Registry.healProfileCert0Free' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healProfileCert0Free
+
+/-- info: 'Consensus.Comparison.Registry.healProfileERParent0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healProfileERParent0
+
+/-- info: 'Consensus.Comparison.Registry.healProfileCertParent0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healProfileCertParent0
+
+/-- info: 'Consensus.Comparison.Registry.healProfileMinimalAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healProfileMinimalAC0
+
+/-- info: 'Consensus.Comparison.Registry.healMinimalACOptLocked0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healMinimalACOptLocked0
 
 end

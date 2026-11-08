@@ -496,7 +496,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Spec.WriteModes", "Instances.Goldilocks.AsChainShape",
          "Instances.Goldilocks.Statements.Obligations", "Comparison",
-         "Instances.Goldilocks.Milestones.Statements.Compose"]
+         "Instances.Goldilocks.Milestones.Statements.Compose",
+         "Instances.Goldilocks.Spec.WeightedLocks",
+         "Instances.Goldilocks.Milestones.Spec.WeightedEm",
+         "Instances.Goldilocks.Milestones.Spec.Candidates"]
 about = "untrusted milestone layer: Goldilocks comparison statements (the composite defaults at the endpoint's contract; Tier A over the Milestones H.1 vocabulary)"
 
 [[layer]]
