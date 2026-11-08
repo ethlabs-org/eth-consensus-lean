@@ -28,6 +28,13 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `HealProfileCertParent0` | `acFree0` | A, cand. | late certificate (pool trace), parent mode |
 | `HealProfileMinimalAC0` | `acFree0` | A, cand. | minimal-ac, `slowOnly k false` |
 | `HealProfileMinimalACOptLocked0` | `acFree0` | A, cand. | minimal-ac + opt-locked (`k true`) |
+| `HealProfileAC1Free` | `acFree1` (`8k + 4` at `2·fcap < n`) | A, Slice 1 | width-k, every h, m |
+| `HealProfileER1Free` | `acFree1` | A, cand., S1 | evidence release, width-`k` modes |
+| `HealProfileCert1Free` | `acFree1` | A, cand., S1 | late certificate (pool trace) |
+| `HealProfileERParent1` | `acFree1` | A, cand., S1 | evidence release, parent mode |
+| `HealProfileCertParent1` | `acFree1` | A, cand., S1 | late certificate, parent mode |
+| `HealProfileMinimalAC1` | `acFree1` | A, cand., S1 | minimal-ac, `slowOnly k false` |
+| `HealProfileMinimalACOptLocked1` | `acFree1` | A, cand., S1 | minimal-ac + opt-locked |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -97,6 +104,42 @@ theorem healMinimalACOptLocked0 :
     Consensus.Goldilocks.Comparison.HealProfileMinimalACOptLocked0 :=
   Consensus.Goldilocks.Comparison.healProfileMinimalACOptLocked0
 
+/-- Bound `acFree1` (`8k + 4` at `2·fcap < n`); tier A, Slice 1; width-k modes, every h, m. -/
+theorem ac1Free : Consensus.Goldilocks.Comparison.HealProfileAC1Free :=
+  Consensus.Goldilocks.Comparison.healProfileAC1_free
+
+/-- Bound `acFree1`; tier A, cand., S1; evidence release, width-`k` modes. -/
+theorem er1Free : Consensus.Goldilocks.Comparison.HealProfileER1Free :=
+  Consensus.Goldilocks.Comparison.healProfileER1_free
+
+/-- Bound `acFree1`; tier A, cand., S1; late certificate (pool trace). -/
+theorem cert1Free : Consensus.Goldilocks.Comparison.HealProfileCert1Free :=
+  Consensus.Goldilocks.Comparison.healProfileCert1_free
+
+/-- Bound `acFree1`; tier A, cand., S1; evidence release, parent mode. -/
+theorem erParent1 : Consensus.Goldilocks.Comparison.HealProfileERParent1 :=
+  Consensus.Goldilocks.Comparison.healProfileERParent1
+
+/-- Bound `acFree1`; tier A, cand., S1; late certificate, parent mode. -/
+theorem certParent1 : Consensus.Goldilocks.Comparison.HealProfileCertParent1 :=
+  Consensus.Goldilocks.Comparison.healProfileCertParent1
+
+/-- Bound `acFree1`; tier A, cand., S1; minimal-ac, `slowOnly k false`. -/
+theorem minimalAC1 : Consensus.Goldilocks.Comparison.HealProfileMinimalAC1 :=
+  Consensus.Goldilocks.Comparison.healProfileMinimalAC1
+
+/-- Bound `acFree1`; tier A, cand., S1; minimal-ac + opt-locked. -/
+theorem minimalACOptLocked1 : Consensus.Goldilocks.Comparison.HealProfileMinimalACOptLocked1 :=
+  Consensus.Goldilocks.Comparison.healProfileMinimalACOptLocked1
+
+/-- The Slice 1 Tier A incident premises are monotone in the order of `HealQ`. -/
+theorem incidentAC1Mono : Consensus.Goldilocks.Comparison.IncidentAC1Mono :=
+  Consensus.Goldilocks.Comparison.incidentAC1_mono
+
+/-- The order of `HealQ` passes to the Slice 0 points. -/
+theorem healQSlice0Mono : Consensus.Comparison.HealQSlice0Mono :=
+  Consensus.Comparison.healQ_slice0_mono
+
 end Consensus.Comparison.Registry
 
 -- `#guard_msgs in #print axioms` puts the command off column 0; the pinned messages are longer
@@ -150,5 +193,32 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.healMinimalACOptLocked0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.healMinimalACOptLocked0
+
+/-- info: 'Consensus.Comparison.Registry.ac1Free' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.ac1Free
+
+/-- info: 'Consensus.Comparison.Registry.er1Free' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.er1Free
+
+/-- info: 'Consensus.Comparison.Registry.cert1Free' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.cert1Free
+
+/-- info: 'Consensus.Comparison.Registry.erParent1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.erParent1
+
+/-- info: 'Consensus.Comparison.Registry.certParent1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.certParent1
+
+/-- info: 'Consensus.Comparison.Registry.minimalAC1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.minimalAC1
+
+/-- info: 'Consensus.Comparison.Registry.minimalACOptLocked1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.minimalACOptLocked1
+
+/-- info: 'Consensus.Comparison.Registry.incidentAC1Mono' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.incidentAC1Mono
+
+/-- info: 'Consensus.Comparison.Registry.healQSlice0Mono' depends on axioms: [propext] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.healQSlice0Mono
 
 end

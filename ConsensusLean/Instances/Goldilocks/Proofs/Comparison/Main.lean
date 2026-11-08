@@ -4,6 +4,7 @@ public import ConsensusLean.Proofs.Comparison.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.TierA
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.LatencyAC
 public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Candidates
+public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.HealAC1
 public import ConsensusLean.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 
@@ -15,8 +16,8 @@ public section
   endpoint (`Growing.meets_obligations`, whose shape obligations give the L0 `Behaviour`) and the
   generic defaults `healDefault0`, `txLatencyDefault0`.
 * The Tier A instances `healProfileAC0_free` and `signingRateAC0` (`TierA`),
-  `proposalLatencyAC0_sync` and `proposalLatencyAC0_bridge` (`LatencyAC`), and over candidate
-  runs (`Candidates`). -/
+  `proposalLatencyAC0_sync` and `proposalLatencyAC0_bridge` (`LatencyAC`), over candidate runs
+  (`Candidates`), and at Slice 1 (`HealAC1`). -/
 
 namespace Consensus.Goldilocks.Comparison
 

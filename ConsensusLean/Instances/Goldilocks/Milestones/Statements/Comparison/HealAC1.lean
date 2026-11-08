@@ -31,9 +31,11 @@ claim is Slice 0's proposal-inclusion heal; the new coordinates only add premise
   The convention is an operational surrogate for Slice 1's first signer release at any nesting
   depth, not a network release; relating them is a transport obligation. The window is the send
   cut of the Slice 0 premise `SyncAC` on `[0, b₀ − 1]`, deliberately not Slice 1's deadline cut
-  (`b₀ < t₀ + ΔAC − 1`): content released before `b₀` is owed by that premise. The Tier A hold is
-  weaker than Slice 1's, so its class is larger; no equivalence, coverage or common domain with
-  Slice 1's held class is claimed.
+  (`b₀ < t₀ + ΔAC − 1`): content released before `b₀` is owed by that premise. It is a different
+  Tier A hold: no class inclusion, equivalence, coverage or common domain with Slice 1's held class
+  is claimed (across different receipt and release conventions none follows without transport;
+  even under aligned conventions the send cut holds content the deadline cut does not at `Δ = 1`,
+  `t₀ = b₀`, and only for `Δ ≥ 2` is its origin set a subset).
 * `HealQ.slice0 q` (`Comparison/HealProfileSlice0`): the Slice 0 point `⟨L, fcap, a.async⟩`.
 * `Slice1AC q b₀ g tr H`: the hold for `splitHeld`, activity at most `hpre` on `[0, ḡ)` and at most
   `hpost` from `ḡ`, and `m ≤ |Hᶜ|` (with `|Hᶜ| ≤ fcap` from Slice 0's clause, `fcap` caps `|Hᶜ|`,
@@ -137,7 +139,7 @@ def HeldOriginAC (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (b₀ g : Time)
 
 /-- **The Tier A hold** of the split `G` for the incident `[b₀, g)`: no node of `H` receives at an
 AC call before `g` a content signed by a validator of the other group with a held origin at Tier A
-(`HeldOriginAC`). Weaker than Slice 1's content-origin hold. -/
+(`HeldOriginAC`). A different hold from Slice 1's content-origin hold; no inclusion claimed. -/
 def HoldAC (G : Fin sp.n → Bool) (H : Set (Fin sp.n)) (b₀ g : Time) (tr : SATrace sp FGP ro) :
     Prop :=
   ∀ z ∈ H, ∀ k ℓ c, tr.CallAt z k ℓ → tr.time k < g → CallReceives ℓ.call c →
