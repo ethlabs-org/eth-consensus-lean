@@ -501,7 +501,7 @@ theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {d : Time} (hd : 0 ≤ d) {y : Fin sp.n}
     {i : Nat} (hi : ∀ k < i, tr.time k ≤ d) (hy : y ∈ H d)
     {Q : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
-    (hQ : ∀ m < i, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time m) →
+    (hQ : ∀ m < i, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H d →
       ∀ k < m, tr.SignAt a.val k a → ∀ c < k, ∀ C l O OV,
         HealedOrigin tr H g r (r + sp.k - 1) C l (tr.time c) →
         (SA.ResultAt tr.projAC a.val c l O OV ∨ SA.OptimisticLockAt tr.projAC a.val c l O OV) →
@@ -522,7 +522,7 @@ theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hCP := Compose.anc_mem hCOP hOP
   have hDP : D ∈ (tr.upTo d).HonestBlocks (H d) :=
     ⟨a.val, hav, k', by rw [Trace.upTo_state tr a.val hk'le]; exact hD⟩
-  refine ⟨D, ⟨C, l, hQ m hmi X hA a ha (hrun.antitone hmd hav) k hkm hS c hck C l O OV hC hO, hCP,
+  refine ⟨D, ⟨C, l, hQ m hmi X hA a ha hav k hkm hS c hck C l O OV hC hO, hCP,
     RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hCP hDC⟩, ?_⟩
   have hk'st := Trace.upTo_state tr a.val hk'le
   exact Compose.isHonestSource_iff.2 ⟨a.val, hav, k', by rw [hk'st]; exact hD,
@@ -1068,7 +1068,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hsrc := rowsAbove_of hrun hnc hseed hd hi hy (Q := Q)
     fun m hmi X hA a ha hav k hkm hS c hck C l O OV hC hO => by
       have hl := member_label_le hrun hnc (fun d h0 hdb => hB.two d h0 hdb) hy hc hes hib hmi hA
-        hav hkm hS hck hO
+        (hrun.antitone (hrun.time_mono hmi.le) hav) hkm hS hck hO
       have hCb : HealedOrigin tr H g r (r + sp.k - 1) C l b :=
         hC.mono ((hrun.time_mono (by omega : c ≤ i)).trans hib)
       obtain ⟨x, k', e', hv, hvs, hext⟩ := member_supported hrun hnc hseed hTb hsync hB hCb
