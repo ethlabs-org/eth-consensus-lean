@@ -96,8 +96,9 @@ def TickDuty (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
   ∀ y ∈ H, ∀ t, 0 ≤ t → sp.toParams.IsPublic t → tr.awake y t →
     ∃ i ℓ, tr.CallAt y i ℓ ∧ ℓ.call = .tick ∧ tr.time i = t
 
-/-- **Time progresses**: every time is exceeded by some cut, so only finitely many cuts are at
-or before any time (the infinite-trace specialisation). -/
+/-- **Time progresses**: every time is exceeded by some cut (the infinite-trace
+specialisation). With monotone cut times, which every run supplies (`ACLocalRun.time_mono`),
+only finitely many cuts are then at or before any time. -/
 def TimeProgressAC (tr : SATrace sp FGP ro) : Prop := ∀ t, ∃ i, t < tr.time i
 
 /-! ### Participation (static faults) -/

@@ -72,7 +72,8 @@ variable (sp) in
 /-- **The points inside the Goldilocks contract's outage** (K6's `PersistsPoint` read at the
 contract's numbers: budget `4k − 5`, `η = 0`, `ahead = 5`, `noSleep = 4k + 6`, `cohortAhead = 0`,
 `θ = 1/2`, `catchUp = 19`), at either source output: the AC's confirmed tip is both its stable and
-its available output. -/
+its available output. At `θ ≥ 1` the class is empty, so a finite default there is a vacuous
+implication; no coverage or ranking is claimed at any point. -/
 def ProtPointAC0 (q : ProtQ) : Prop :=
   q.β ≤ 4 * sp.k - 5 ∧ 5 ≤ q.ahead ∧ 4 * sp.k + 6 ≤ q.noSleep ∧
     q.noSleep + q.cohortAhead = 4 * sp.k + 6 ∧ (1 / 2 : ℚ) ≤ q.θ ∧ 19 ≤ q.catchUp

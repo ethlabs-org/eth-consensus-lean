@@ -7,7 +7,8 @@ public import ConsensusLeanTest.Goldilocks.AC.Base
 /-! # Tier A protection: sanity and rejection tests
 
 * `parentRunAC` is inhabited (the one-tick run), so the parent's profile is not vacuous by its
-  run predicate.
+  run predicate alone. The one-tick run inhabits `parentRunAC` only, not its intersection with
+  `ProtClassAC0`: the class's tick duty and time progress need an infinite run.
 * A validator with no call by `T` reads nothing (`ReadAC`).
 * The default lag and recovery are `⊤` outside the contract's outage (a budget above `4k − 5`, a
   catch-up below the contract's) and the contract's `4k + 6` and `9` at its numbers. -/
@@ -16,7 +17,8 @@ namespace Consensus.Goldilocks.Comparison.Test.ProtAC
 
 open SA Consensus.Comparison Consensus.Goldilocks.SA.Test
 
-/-- **The parent's run predicate is inhabited.** -/
+/-- **The parent's run predicate is inhabited** (by a run outside the class: one call at time
+`0`, so no time progress). -/
 theorem parentRunAC_oneTick : parentRunAC oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) :=
   ⟨_, acRun_one_tick⟩
 
