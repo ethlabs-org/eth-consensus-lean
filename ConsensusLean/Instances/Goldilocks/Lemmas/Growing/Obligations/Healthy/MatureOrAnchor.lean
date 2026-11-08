@@ -76,7 +76,7 @@ set_option linter.unusedVariables false in
 Young optimistic writers retain their normalized lock until the next-result deadline; older ones
 reach the next result or finalization at the reader's update of the next label. -/
 theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
@@ -90,7 +90,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
     (Node.frame (Q.trace.state y n)).Anc R
         (SA.getAnchor Q.params (Q.trace.state y n).ac (Node.frame (Q.trace.state y n)) t) ∨
       ∃ x r s B CV, x ∈ Q.keys (Q.trace.time r) ∧ SA.ResultAt Q.trace.projAC x r s B CV ∧
-        Anc (Q.trace.HonestBlocksAt Q.keys) R B ∧ Q.trace.time r ≤ Q.run.2.horizon ∧
+        Anc (Q.trace.HonestBlocksAt Q.keys) R B ∧ Q.trace.time r ≤ Q.bound ∧
         Healing.cutZ Q.params.toParams Q.gst ≤ Q.params.ts s ∧
         D.cleanLabel + 2 * Q.params.k + 1 ≤ s ∧ s < C.label := by
   let U := Q.trace.HonestBlocksAt Q.keys
@@ -99,7 +99,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  have hc := healthy_repair_catch_at S A V Q
+  have hc := healthy_schedule_catch_at S A V Q D
   have ht0 := C.time_nonneg
   have hnt := C.readPoint.1
   have htb := C.time_bound
@@ -142,7 +142,7 @@ theorem healthy_current_mature_or_anchor_at (Q : HealthyPreparationQueryAt S A V
       SA.ResultAt Q.trace.projAC x r s B CV → Anc U R B →
       Q.trace.time r ≤ t → D.cleanLabel + 2 * Q.params.k + 1 ≤ s →
       ∃ x r s B CV, x ∈ Q.keys (Q.trace.time r) ∧ SA.ResultAt Q.trace.projAC x r s B CV ∧
-        Anc (Q.trace.HonestBlocksAt Q.keys) R B ∧ Q.trace.time r ≤ Q.run.2.horizon ∧
+        Anc (Q.trace.HonestBlocksAt Q.keys) R B ∧ Q.trace.time r ≤ Q.bound ∧
         Healing.cutZ Q.params.toParams Q.gst ≤ Q.params.ts s ∧
         D.cleanLabel + 2 * Q.params.k + 1 ≤ s ∧ s < C.label := by
     intro x r s B CV hx hres hRB hrt hs

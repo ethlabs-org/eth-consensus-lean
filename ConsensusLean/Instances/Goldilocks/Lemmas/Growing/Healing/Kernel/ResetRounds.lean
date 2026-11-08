@@ -12,7 +12,29 @@ public section
 
 Relay calls are obtained from the receiving node's local prefix. Historical row and
 source witnesses are kept in the growing trace, independently of that prefix.
+
+The reset bound reads restarts only up to its service bound `b` (`NoRestartUpTo`): the rounds run
+on the honest sets truncated after `b`, on which no restart after `b` is honest.
 -/
+
+namespace Consensus.Goldilocks.Healing.Growing
+
+open SA (SAParams ReplayOrder)
+
+variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- No restart in `(t, b]` of a node honest at its restart: `NoRestartAfter` for the restarts up
+to `b`. -/
+def NoRestartUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (t b : Time) : Prop :=
+  ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t
+
+/-- The bounded no-restart premise, without exposing the definition's body. -/
+theorem noRestartUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {t b : Time} :
+    NoRestartUpTo tr H t b ↔
+      ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t :=
+  Iff.rfl
+
+end Consensus.Goldilocks.Healing.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -530,8 +552,9 @@ theorem rounds_le_warm_proposal_at
   exact hfloor.trans (Nat.add_le_add_right
     (floor_le_warm_proposal_at hrun hnc hwin hz hdes hP hPs hlo hhi hf) _)
 
-/-- Five integer-aligned attempts fit before the frozen bound, without extending service. -/
-theorem exists_reset_of_drain_rounds_awake_at
+/-- Five integer-aligned attempts fit before the frozen bound, without extending service, with no
+restart after GST at all. -/
+private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -660,6 +683,171 @@ theorem exists_reset_of_drain_rounds_awake_at
     hδ hG hΔF hgpN hmb hH hb hna rr hwarm huN
     (by linarith [hts huN]) hz hdes hP hPs hrise
   exact ⟨a, ha, hat.trans (by linarith [hts huN])⟩
+
+/-! ### Truncation after `b`
+
+The honest sets truncated after `b` keep every honesty read up to `b` and drop every later one, so
+a restart honest on them is at a time `≤ b`, where `NoRestartUpTo` bounds it. -/
+
+/-- The honest sets truncated after `b`: `y` is honest at `t ≤ b` as in `H`, and at no `t > b`. -/
+private def truncH (K : Time → Set (Fin sp.n)) (b : Time) : Time → Set (Fin sp.n) :=
+  fun t => {y | y ∈ K t ∧ t ≤ b}
+
+private theorem truncH_eq_of_le {b t : Time} (ht : t ≤ b) : truncH H b t = H t :=
+  Set.ext fun _ => and_iff_left ht
+
+/-- **The truncation is antitone.** Membership at `t'` gives `t' ≤ b`, hence `t ≤ b` for every
+`t ≤ t'`, and honesty at `t` is the antitonicity of `H`. -/
+private theorem truncH_antitone (hH : Antitone H) (b : Time) : Antitone (truncH H b) := by
+  intro t t' htt' y hy
+  exact ⟨hH htt' hy.1, htt'.trans hy.2⟩
+
+/-- **The run laws transfer to the truncation.** Antitonicity is `truncH_antitone`. Every other
+law of `GoldilocksRun` reads honesty only in its hypotheses, and `truncH H b t ⊆ H t`, so each law
+for `H` is the law for `truncH H b` (with the honesty premises projected by `.1`). -/
+private theorem goldilocksRun_truncH
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) (b : Time) :
+    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr where
+  antitone := truncH_antitone hrun.antitone b
+  init y hy := hrun.init y hy.1
+  grouped y i c hc hy := hrun.grouped y i c hc hy.1
+  cutLaw y i c hc hy := hrun.cutLaw y i c hc hy.1
+  wire y j t e hy := hrun.wire y j t e hy.1
+  proposerCredential y j t B hy := hrun.proposerCredential y j t B hy.1
+  time_nonneg := hrun.time_nonneg
+  time_mono := hrun.time_mono
+  finite := hrun.finite
+  phase_order y y' j j' t e e' hy hy' := hrun.phase_order y y' j j' t e e' hy.1 hy'.1
+  tick_public y j t hy := hrun.tick_public y j t hy.1
+  tick_unique y j j' t hy := hrun.tick_unique y j j' t hy.1
+  tick_of_awake y t hy := hrun.tick_of_awake y t hy.1
+  awake_in_horizon y t hy := hrun.awake_in_horizon y t hy.1
+  awake_of_call y i hy := hrun.awake_of_call y i hy.1
+  restart_of_sleep y i u hy := hrun.restart_of_sleep y i u hy.1
+  restart_at_wake y u v hy := hrun.restart_at_wake y u v hy.1
+  sleep_of_restart y i hy := hrun.sleep_of_restart y i hy.1
+  block_unforgeable y i B hy hB hp := hrun.block_unforgeable y i B hy.1 hB hp.1
+  att_unforgeable y i a hy ha hs := hrun.att_unforgeable y i a hy.1 ha hs.1
+  msg_unforgeable y i m hy hm hs := hrun.msg_unforgeable y i m hy.1 hm hs.1
+  genesis_root_ok := hrun.genesis_root_ok
+  carried_vote_unforgeable y i B hy hB v hv hs :=
+    hrun.carried_vote_unforgeable y i B hy.1 hB v hv hs.1
+
+private theorem honestBlocksAt_truncH_subset (b : Time) :
+    tr.HonestBlocksAt (truncH H b) ⊆ tr.HonestBlocksAt H :=
+  fun _ ⟨y, i, t, ht, hle, hy, hB⟩ => ⟨y, i, t, ht, hle, hy.1, hB⟩
+
+private theorem resetService_truncH {g ΔF b' : Time} (hs : ResetService tr H g ΔF b')
+    (b : Time) : ResetService tr (truncH H b) g ΔF b' where
+  deltaF := hs.deltaF
+  message x i m hx hm y j hy := hs.message x i m hx.1 hm y j hy.1
+  block x i B hx hB y j hy := hs.block x i B hx.1 hB y j hy.1
+  relay x i B hx hB hg y j hy hj hd hF :=
+    hs.relay x i B hx.1 hB hg y j hy.1 hj hd (Anc.mono (honestBlocksAt_truncH_subset b) hF)
+  signedRow x i att hx hsg y j hy := hs.signedRow x i att hx.1 hsg y j hy.1
+
+private theorem catchRun_truncH {g κ : Time} (hc : CatchRun tr H g κ) (b : Time) :
+    CatchRun tr (truncH H b) g κ :=
+  fun x i B hx hA hlt y j hy hfirst hF =>
+    hc x i B hx.1 hA hlt y j hy.1 hfirst (Anc.mono (honestBlocksAt_truncH_subset b) hF)
+
+/-- `H_z` is read at `c_z`, where the truncation is `H` itself. -/
+private theorem HZ_truncH {g b : Time} (hcz : cutZ sp.toParams g ≤ b) :
+    HZ tr (truncH H b) g = HZ tr H g := by
+  simp only [HZ, truncH_eq_of_le hcz]
+
+private theorem proposalGap_truncH {G s₀ N : Nat} {b : Time}
+    (hgp : ProposalGap tr H proposer G s₀ N) (hN : sp.ts N + sp.Δ ≤ b) :
+    ProposalGap tr (truncH H b) proposer G s₀ N := by
+  rw [proposalGap_iff] at hgp ⊢
+  intro a ha haN
+  obtain ⟨x, hax, hxa, hx, hP⟩ := hgp a ha haN
+  have hts : sp.ts x ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast (show x ≤ N by omega))
+  exact ⟨x, hax, hxa, ⟨hx, by linarith⟩, hP⟩
+
+private theorem proposalGap_of_truncH {G s₀ N : Nat} {b : Time}
+    (hgp : ProposalGap tr (truncH H b) proposer G s₀ N) : ProposalGap tr H proposer G s₀ N := by
+  rw [proposalGap_iff] at hgp ⊢
+  intro a ha haN
+  obtain ⟨x, hax, hxa, hx, hP⟩ := hgp a ha haN
+  exact ⟨x, hax, hxa, hx.1, hP⟩
+
+private theorem frameWindow_of_truncH {lo hi b : Time} {floor : Nat} {kindJ : Prop}
+    {J : SA.Blk sp.n (List (FG.Att sp.n))} (hw : FrameWindow tr (truncH H b) lo hi floor kindJ J)
+    (hhi : hi ≤ b) : FrameWindow tr H lo hi floor kindJ J :=
+  ⟨fun y i hy hl hh => hw.floor_eq y i ⟨hy, hh.trans hhi⟩ hl hh,
+    fun y i hy hl hh => hw.kind_iff y i ⟨hy, hh.trans hhi⟩ hl hh,
+    fun y i hy hl hh => hw.root_eq y i ⟨hy, hh.trans hhi⟩ hl hh⟩
+
+private theorem drainOutputs_truncH {g b : Time} {G Ld : Nat}
+    (hd : DrainOutputs tr proposer H g G Ld b) (hcz : cutZ sp.toParams g ≤ b) :
+    DrainOutputs tr proposer (truncH H b) g G Ld b where
+  warm := by
+    intro s₀ N floor kindJ J hw hm hN hmb hsig hgp
+    obtain ⟨u, hu, huL, z, kP, P, hz, hdes, hP, hPs, hh⟩ :=
+      hd.warm (frameWindow_of_truncH hw hmb) hm hN hmb
+        (fun v k att hv hs hk => by
+          have h := hsig v k att ⟨hv, hk.trans hmb⟩ hs hk
+          rwa [HZ_truncH hcz] at h)
+        (proposalGap_of_truncH hgp)
+    have hts : sp.ts u ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast (show u ≤ N by omega))
+    have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+    refine ⟨u, hu, huL, z, kP, P, ⟨hz, by linarith⟩, hdes, hP, hPs, ?_⟩
+    rwa [HZ_truncH hcz]
+
+private theorem isReset_of_truncH {g a b : Time} (hcz : cutZ sp.toParams g ≤ b)
+    (h : IsReset tr (truncH H b) g a) (hab : a ≤ b) : IsReset tr H g a := by
+  unfold IsReset at h ⊢
+  rw [HZ_truncH hcz] at h
+  obtain ⟨⟨y, k, att, hy, hs, hh, hk⟩, hmin⟩ := h
+  refine ⟨⟨y, k, att, hy.1, hs, hh, hk⟩, fun y' k' att' hy' hs' hh' => ?_⟩
+  by_cases hk' : tr.time k' ≤ b
+  · exact hmin y' k' att' ⟨hy', hk'⟩ hs' hh'
+  · exact hab.trans (lt_of_not_ge hk').le
+
+/-- **The reset bound from finite service**, reading restarts only up to `b`: the rounds of
+`exists_reset_of_drain_rounds_noRestartAfter_at` run on the honest sets truncated after `b`, where
+the premises up to `b` are those for `H`, no restart is honest after `b`, and `H_z` and the reset
+are those for `H` (`c_z` and the reset bound are `≤ b`). -/
+theorem exists_reset_of_drain_rounds_awake_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hsvc : ResetService tr H g ΔF b)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
+    (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
+    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
+    (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
+    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld ≤ b)
+    (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
+      sp.ts N + 2 * sp.Δ <
+        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
+      ProposalGap tr H proposer G s₀ N)
+    (hdrain : DrainOutputs tr proposer H g G Ld b) :
+    ∃ a, IsReset tr H g a ∧
+      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
+  have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+  have hlo : r + 4 * sp.Δ ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ)
+      sp.toParams.fg.δt G Ld := by
+    rw [Obligations.resetBoundRounds_eq]
+    have hc : (0 : Time) ≤ 20 * (Ld : Time) + 24 * ((sp.toParams.fg.δt : Time) + G - 1) := by
+      have h1 : (0 : Time) ≤ Ld := Nat.cast_nonneg _
+      have h2 : (0 : Time) ≤ sp.toParams.fg.δt := Nat.cast_nonneg _
+      have h3 : (1 : Time) ≤ G := by exact_mod_cast hG
+      linarith
+    nlinarith [mul_nonneg hc (show (0 : Time) ≤ sp.Δ by linarith)]
+  have hczb : cutZ sp.toParams g ≤ b := by linarith
+  obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_noRestartAfter_at
+    (goldilocksRun_truncH hrun b) hnc
+    (fun t ht htb => by rw [truncH_eq_of_le htb]; exact hf t ht htb)
+    (resetService_truncH hsvc b) (fun y t hy => hawake y t hy.1) (catchRun_truncH hcatch b)
+    (fun y k hy hk => noRestartUpTo_iff.mp hnr y k hy.1 hk hy.2)
+    (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hΔF hr hgr hG hcz hb
+    (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
+    (drainOutputs_truncH hdrain hczb)
+  exact ⟨a, isReset_of_truncH hczb ha (hab.trans hb), hab⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

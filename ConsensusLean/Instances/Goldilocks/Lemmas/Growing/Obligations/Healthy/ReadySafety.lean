@@ -30,10 +30,11 @@ private theorem one_le_cDur (Q : HealthyPreparationQueryAt S A V) :
   change 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
   nlinarith
 
-/-- **Healed safety under growing faults**: with progress on `[ready, heal]` and the heal point
-within the horizon, the confirmed reads of nodes ready from the heal point are safe. -/
+/-- **Healed safety under growing faults**: on a query healthy through the horizon, with progress
+on `[ready, heal]` and the heal point within the horizon, the confirmed reads of nodes ready from
+the heal point are safe. -/
 theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
-    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
+    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound) (hB : Q.run.2.horizon ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     (chainTrace Q.run.2).ReadySafe ((Sys (goldilocks S) V).cDur (K S A) Q.run)
@@ -51,17 +52,18 @@ theorem healthy_ready_safety_at (Q : HealthyPreparationQueryAt S A V)
     obtain ⟨hrp', h0'', hh', hra', hread'⟩ :=
       engine_read_point S Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hv)
     rw [hread, hread']
-    rcases healthy_cut_tips_comparable_at S A V Q h0 hb hp u v i j hi hj hu hv with hc | hc
+    rcases healthy_cut_tips_comparable_at S A V Q h0 hb hp u v i j hi hj hu hv (hh.trans hB)
+      (hh'.trans hB) with hc | hc
     · exact Or.inl (read_prefix S Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1 hc)
     · exact Or.inr (read_prefix S Q.run.2 Q.hn Q.valid hnc h0'' hrp'.1 hra'.1 h0' hrp.1 hra.1 hc)
   · intro v i j hi hij hj hvi hvj
-    obtain ⟨hrp, h0', hh, hra, hread⟩ :=
+    obtain ⟨hrp, h0', -, hra, hread⟩ :=
       engine_read_point S Q.run.2 Q.hn Q.valid hc0 hi.1 (hr hvi)
     obtain ⟨hrp', h0'', hh', hra', hread'⟩ :=
       engine_read_point S Q.run.2 Q.hn Q.valid hc0 hj.1 (hr hvj)
     rw [hread, hread']
     exact read_prefix S Q.run.2 Q.hn Q.valid hnc h0' hrp.1 hra.1 h0'' hrp'.1 hra'.1
-      (healthy_cut_tips_ancestor_at S A V Q h0 hb hp v i j hi hij hj hvi hvj)
+      (healthy_cut_tips_ancestor_at S A V Q h0 hb hp v i j hi hij hj hvi hvj (hh'.trans hB))
 
 end Consensus.Goldilocks.Obligations.Growing
 

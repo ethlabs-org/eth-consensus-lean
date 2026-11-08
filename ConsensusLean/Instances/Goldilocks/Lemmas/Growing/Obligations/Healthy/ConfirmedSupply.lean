@@ -222,7 +222,8 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
           (Regimes.readAfter Q.trace y j Q.deadline) := by
   classical
   let Q' : HealthyPreparationQueryAt S A V :=
-    ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.valid, Q.noCollision, hh⟩
+    ⟨Q.run, Q.hn, Q.cap, Q.nonfinal, Q.index, Q.gst, Q.run.2.horizon, Q.valid, Q.noCollision,
+      le_rfl, hh⟩
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hΔ := Q.params.toParams.hΔ
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
@@ -233,7 +234,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
     exact add_nonneg (le_max_right _ _) (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd))
   have hqD : Q.query ≤ Q.deadline :=
     le_add_of_nonneg_right (mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hd))
-  have hb : Q'.heal ≤ Q'.run.2.horizon := ht.trans (hqD.trans Q.bounded)
+  have hb : Q'.heal ≤ Q'.bound := ht.trans (hqD.trans Q.bounded)
   have hp' : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q'.cap Q'.index
       Q'.ready Q'.heal Q'.run := (shapeProgress (goldilocks S) V).mono le_rfl hb hp
   obtain ⟨W, ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q' h0 hb hp'
@@ -256,7 +257,6 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
     exact_mod_cast le_antisymm h2 h3
   have hhold : B.proposer ∈ Q.keys (Q.params.ts Ws.slot + Q.params.Δ) := hBp ▸ Ws.hold
   -- the finite inputs of the read at `t_u + 6Δ`
-  have hc := healthy_repair_catch_at S A V Q'
   have hfresh := Ws.fresh
   have hq : Dprep.query < Q.params.ts Ws.slot := by
     have : (0 : Time) ≤ (4 * (Q.index : Time) + 6) * Q.params.Δ :=
@@ -269,6 +269,9 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
   have hR : Healing.drainTime Q.params Dprep.resetTime ≤ Q.params.ts Ws.slot := hdr.trans hq.le
   have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts Ws.slot := hgr.trans hq.le
   have hTb : Q.params.ts Ws.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := hmargin.trans Q.bounded
+  have hc := healthy_repair_catch_at S A V Q' (by
+    change SA.gbar Q.gst + Q.params.Δ ≤ Q.run.2.horizon
+    linarith only [hgu, hTb, hΔ])
   have hlocks : ∀ y j ell, y ∈ Q.keys (Q.trace.time j) →
       SA.UpdateAt Q.trace.projAC y j Ws.slot ell →
       ∃ e, Ws.slot + 2 ≤ e ∧ (⟨B.root, Ws.slot, true, e⟩ : SA.Lock) ∈
@@ -304,6 +307,7 @@ theorem healthy_confirmed_supply_at (Q : ConfirmedQueryAt S A V)
     (Nat.le_findGreatest hlT (by rw [htT]; exact hmargin))
     ⟨hlD, by rw [htD]; exact hhT.trans hmargin⟩
     (by rw [htT]; exact hvT) (by rw [htD]; exact hvD)
+    (((now_bounds_cut S Q.run.2 Q.hn Q.valid (Q.run.2.key y) hlD).2.trans_eq htD).trans Q.bounded)
   rw [hnT, hnD, readAfter_lastOwn S A V Q hlT, readAfter_lastOwn S A V Q hlD,
     show Q.run.2.ownKey (Q.run.2.key y) = y from Q.run.2.key.symm_apply_apply _] at hanc
   exact hfirst.trans hanc

@@ -664,17 +664,17 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- A healthy update no later than the stored clock has actually completed, before the read point
 after the node's last own event. The equality case uses the engine tick's position, not trace-time
-comparison. Honesty is at the stored clock only. -/
-theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a : Time}
+comparison. Honesty is at the stored clock only, which is within the reset premises' bound. -/
+theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b : Time}
     (hp : ResetPremisesUpTo (simTraceAt S rho hn) (honestKeysAt S rho)
-      (runProposer S rho hn) (digestOf S rho) g ΔF a rho.horizon)
+      (runProposer S rho hn) (digestOf S rho) g ΔF a b) (hbh : b ≤ rho.horizon)
     {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt S rho hn v i).now)
     (hslot : (S.params (Model.pubOf E) hn).ts
       ((S.params (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
         (S.params (Model.pubOf E) hn).ts u)
     (ht : (S.params (Model.pubOf E) hn).ts u + 6 * (S.params (Model.pubOf E) hn).Δ ≤
       (stateAt S rho hn v i).now)
-    (htb : (stateAt S rho hn v i).now ≤ rho.horizon) :
+    (htb : (stateAt S rho hn v i).now ≤ b) :
     ∃ j ell, SA.UpdateAt (simTraceAt S rho hn).projAC (rho.ownKey v) j u ell ∧
       j < cutMap S rho hn (lastOwn S rho v i) := by
   let sp := S.params (Model.pubOf E) hn
@@ -683,7 +683,8 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a : T
   have hT0 : 0 < T := by
     dsimp [T, SA.SAParams.ts]
     positivity
-  have hTb : T ≤ rho.horizon := ht.trans htb
+  have hTb : T ≤ b := ht.trans htb
+  have hTh : T ≤ rho.horizon := hTb.trans hbh
   have hslot' : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := hslot
   have hgu : SA.gbar g ≤ sp.ts u := by
     have hnext := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
@@ -692,12 +693,12 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a : T
   have hvT : v ∉ rho.faultyAt T := fun h => hv (rho.faultyAt_mono ht h)
   have hpub : sp.toParams.IsPublic T :=
     ⟨4 * (u : Int) + 6, by dsimp [T, SA.SAParams.ts]; ring⟩
-  have hy : rho.ownKey v ∈ honestKeysAt S rho T := honest_ownKey_at S rho hvT hTb
+  have hy : rho.ownKey v ∈ honestKeysAt S rho T := honest_ownKey_at S rho hvT hTh
   have hawake := hp.awake _ T hy (by dsimp [T]; linarith) hTb
   have hawake' : E.awake v T = true := by
     simpa only [Model.Run.ownKey, Equiv.apply_symm_apply] using
       ((simTraceAt_awake_bounds S rho hn _ T).mp hawake).1
-  obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp (hvalid.tick_total v T hT0.le hTb hvT hawake')
+  obtain ⟨p, he⟩ := List.mem_iff_getElem?.mp (hvalid.tick_total v T hT0.le hTh hvT hawake')
   have hm := hp.run.time_mono
   have hnr : ∀ q < i, rho.events[q]? ≠ some (.restart v T) := by
     intro q _ hrestart

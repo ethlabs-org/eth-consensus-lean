@@ -24,7 +24,7 @@ structure HealthyRepairScheduleAt (Q : HealthyPreparationQueryAt S A V) where
   resetTime : Time
   deltaF : Time
   reset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-    (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst deltaF resetTime Q.run.2.horizon
+    (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst deltaF resetTime Q.bound
   cleanLabel : Nat
   cleanLabel_eq : cleanLabel = Healing.cleanLabel Q.params resetTime
   duration_bound : 18 * Q.params.Δ ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run
@@ -65,7 +65,7 @@ def HealthyReceiverRepairAt (Q : HealthyPreparationQueryAt S A V)
       (Q.params.ts O.slot + 6 * Q.params.Δ) → ∃ j ell,
     SA.UpdateAt Q.trace.projAC y j O.slot ell ∧
     Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ ∧
-    Q.trace.time j ≤ Q.run.2.horizon ∧
+    Q.trace.time j ≤ Q.bound ∧
     ∀ R, SA.lookup (Node.frame (Q.trace.state y (j + 1)))
       (Q.trace.state y (j + 1)).ac.latestConfirmed = some R →
       ∃ x q s C CV, x ∈ Q.keys (Q.trace.time q) ∧
@@ -96,7 +96,7 @@ theorem healthyReceiverRepairAt_iff {Q : HealthyPreparationQueryAt S A V}
           (Q.params.ts O.slot + 6 * Q.params.Δ) → ∃ j ell,
         SA.UpdateAt Q.trace.projAC y j O.slot ell ∧
         Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ ∧
-        Q.trace.time j ≤ Q.run.2.horizon ∧
+        Q.trace.time j ≤ Q.bound ∧
         ∀ R, SA.lookup (Node.frame (Q.trace.state y (j + 1)))
           (Q.trace.state y (j + 1)).ac.latestConfirmed = some R →
           ∃ x q s C CV, x ∈ Q.keys (Q.trace.time q) ∧

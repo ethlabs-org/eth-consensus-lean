@@ -169,16 +169,6 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
   have hc2' : (2 : Time) ≤ c := by exact_mod_cast hc2
   have hBh : B ≤ Q.run.2.horizon := by
     linarith only [hBc, mul_nonneg (show (0 : Time) ≤ 12 * c - 2 by linarith only [hc2']) hD.le]
-  -- whole-run no restart: a restart is a labelled call, at a time `≤ horizon`
-  have hnr : Healing.Growing.NoRestartAfter Q.trace H (gbar Q.gst) :=
-    fun y k hy hk => hs.noRestart y k hy hk (by
-      obtain ⟨ℓ, hc, -⟩ := hk
-      obtain ⟨_, hl⟩ := hc
-      have hl' : (simTrace S Q.run.2 Q.hn).label k ≠ none := by
-        rw [← simTraceAt_eq S Q.run.2 Q.hn]
-        exact fun h => by rw [h] at hl; cases hl
-      have h := simTrace_labelled_time_le S Q.run.2 Q.hn Q.valid hl'
-      rwa [← simTraceAt_eq S Q.run.2 Q.hn] at h)
   -- an honest node exists
   have hH : (H Q.run.2.horizon).Nonempty := by
     by_contra hne
@@ -200,11 +190,10 @@ theorem final_reset_premises_of_shared_at (Q : FinalQueryAt S A V) {c : Nat} (hc
   have hdrain : Healing.Growing.DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst X Ld
       Q.run.2.horizon :=
     Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
-      hnr
       (by rw [hLddef, healthyDrainLen_val, hk]; exact Nat.le_succ _)
   -- the reset
   obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at hrun hs.noColl
-    hs.faults hs.sync hs.awake hcatch hnr hH
+    hs.faults hs.sync hs.awake hcatch (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) hH
     (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
     (by rw [hδeq]; exact hs.timeoutDelay)
     hr0 hgr Q.index.pos hcz hBh

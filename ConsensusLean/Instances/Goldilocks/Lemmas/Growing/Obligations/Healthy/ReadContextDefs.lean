@@ -24,7 +24,7 @@ structure HealthyReadContextAt (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) (y : Fin Q.params.n) (n : Nat) (t : Time) where
   label : Nat
   time_nonneg : 0 ≤ t
-  time_bound : t ≤ Q.run.2.horizon
+  time_bound : t ≤ Q.bound
   repaired : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ < t
   readPoint : Regimes.ReadPoint Q.trace n t
   honest : y ∈ Q.keys t

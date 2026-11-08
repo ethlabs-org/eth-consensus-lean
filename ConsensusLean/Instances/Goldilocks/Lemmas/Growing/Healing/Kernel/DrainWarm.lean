@@ -175,7 +175,7 @@ theorem drainOutputs_of_service_at
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
+    (hcatch : CatchRun tr H g (2 * sp.Δ))
     {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
     DrainOutputs tr proposer H g G Ld b where
   warm := by

@@ -331,7 +331,7 @@ private theorem read_opening (Q : HealthyPreparationQueryAt S A V)
 /-- **Current anchor candidates are compatible with the current looked-up record**: the reader's
 live lock blocks and its fork-choice root, at a read point after the repair window. -/
 theorem healthy_current_live_candidates_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) {y : Fin Q.params.n} {n : Nat} {t : Time}
@@ -345,7 +345,7 @@ theorem healthy_current_live_candidates_at (Q : HealthyPreparationQueryAt S A V)
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  have hc := healthy_repair_catch_at S A V Q
+  have hc := healthy_schedule_catch_at S A V Q D
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame S A V Q D C
   obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
   obtain ⟨hdrain, hgu, hbefore, hdrainNow⟩ := read_opening S A V Q D O C
@@ -381,7 +381,7 @@ theorem healthy_current_live_candidates_at (Q : HealthyPreparationQueryAt S A V)
   · obtain rfl := Set.mem_singleton_iff.mp hX
     obtain ⟨z, r, l, S₀, hseed, hrb, -, -, hhold⟩ :=
       D.reset.reset_seed_held_at_read_at hc C.readPoint C.time_bound C.honest hdrain hgu hbefore
-    have hcmp : ∀ z r l B₀, Q.trace.time r ≤ Q.run.2.horizon →
+    have hcmp : ∀ z r l B₀, Q.trace.time r ≤ Q.bound →
         Healing.Growing.HighOrigin Q.trace Q.keys Q.gst z r l B₀ →
         Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) R B₀ := fun z r l B₀ hrb' ho =>
       tips_comparable_of_origin_witnesses_at S A V Q hRB .refl
@@ -396,7 +396,7 @@ set_option linter.unusedVariables false in
 repair window: the record's clean source and the guarded reset seed make it an ancestor
 candidate. The supplied recent result is not needed. -/
 theorem healthy_current_record_viable_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) {y : Fin Q.params.n} {n : Nat} {t : Time}
@@ -404,13 +404,13 @@ theorem healthy_current_record_viable_at (Q : HealthyPreparationQueryAt S A V)
     {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x : Fin Q.params.n} {r s : Nat}
     {CV : Set (SA.Vote Q.params.n)}
     (hx : x ∈ Q.keys (Q.trace.time r)) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
-    (hRB : Anc (Q.trace.HonestBlocksAt Q.keys) R B) (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hRB : Anc (Q.trace.HonestBlocksAt Q.keys) R B) (hrb : Q.trace.time r ≤ Q.bound)
     (hs : Healing.cutZ Q.params.toParams Q.gst ≤ Q.params.ts s) (hL : s < C.label)
     (hfc : ¬ (Node.frame (Q.trace.state y n)).Anc R (Node.frame (Q.trace.state y n)).fcRoot)
     (hR : SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed =
       some R) :
     R ∈ (Node.frame (Q.trace.state y n)).viableTree (Node.frame (Q.trace.state y n)).tree := by
-  have hc := healthy_repair_catch_at S A V Q
+  have hc := healthy_schedule_catch_at S A V Q D
   obtain ⟨hPhi, -, -, -⟩ := read_frame S A V Q D C
   obtain ⟨O, hrepair⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
   obtain ⟨hdrain, hgu, hbefore, -⟩ := read_opening S A V Q D O C
@@ -425,7 +425,7 @@ theorem healthy_current_record_viable_at (Q : HealthyPreparationQueryAt S A V)
     rw [← D.cleanLabel_eq]; exact hl
   obtain ⟨zS, qS, lS, S₀, hseed, hqSb, -, -, hhold⟩ :=
     D.reset.reset_seed_held_at_read_at hc C.readPoint C.time_bound C.honest hdrain hgu hbefore
-  have hcmp : ∀ z r l B₀, Q.trace.time r ≤ Q.run.2.horizon →
+  have hcmp : ∀ z r l B₀, Q.trace.time r ≤ Q.bound →
       Healing.Growing.HighOrigin Q.trace Q.keys Q.gst z r l B₀ →
       Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) R B₀ := fun z r l B₀ hrb' ho =>
     tips_comparable_of_origin_witnesses_at S A V Q hRE .refl
@@ -446,10 +446,10 @@ theorem healthy_current_vote_domain_at (Q : HealthyPreparationQueryAt S A V)
     {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x : Fin Q.params.n} {r s : Nat}
     {CV : Set (SA.Vote Q.params.n)}
     (hx : x ∈ Q.keys (Q.trace.time r)) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
-    (hRB : Anc (Q.trace.HonestBlocksAt Q.keys) R B) (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hRB : Anc (Q.trace.HonestBlocksAt Q.keys) R B) (hrb : Q.trace.time r ≤ Q.bound)
     (hs : D.cleanLabel + Q.params.k + 2 ≤ s) :
     ∀ z q ell e, z ∈ Q.keys (Q.trace.time q) → SA.CastAt Q.trace.projAC z q ell e →
-      Q.trace.time q ≤ Q.run.2.horizon → s < e.msg.slot →
+      Q.trace.time q ≤ Q.bound → s < e.msg.slot →
       (∀ w p e', p < q → Compose.Growing.HVoteAt Q.trace Q.keys w p e' → s < e'.msg.slot →
         SA.VoteExtends (Q.trace.HonestBlocksAt Q.keys) e'.msg R) →
       Anc (Q.trace.HonestBlocksAt Q.keys) R ell.frame.fcRoot ∨
@@ -467,10 +467,10 @@ theorem healthy_current_stored_locks_at (Q : HealthyPreparationQueryAt S A V)
     {R B : SA.Blk Q.params.n (List (FG.Att Q.params.n))} {x : Fin Q.params.n} {r s : Nat}
     {CV : Set (SA.Vote Q.params.n)}
     (hx : x ∈ Q.keys (Q.trace.time r)) (hr : SA.ResultAt Q.trace.projAC x r s B CV)
-    (hRB : Anc (Q.trace.HonestBlocksAt Q.keys) R B) (hrb : Q.trace.time r ≤ Q.run.2.horizon)
+    (hRB : Anc (Q.trace.HonestBlocksAt Q.keys) R B) (hrb : Q.trace.time r ≤ Q.bound)
     (hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s) :
     ∀ z q ell e, z ∈ Q.keys (Q.trace.time q) → SA.CastAt Q.trace.projAC z q ell e →
-      Q.trace.time q ≤ Q.run.2.horizon → e.msg.slot = s + 1 →
+      Q.trace.time q ≤ Q.bound → e.msg.slot = s + 1 →
       ∀ l ∈ (Q.trace.projAC.state z q).locks, Q.params.slot (Q.trace.time q) ≤ l.slot + Q.params.k →
         l.slot ≤ s → ∀ Y ∈ Q.trace.HonestBlocksAt Q.keys, Y.root = l.block →
           Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) Y R := by
@@ -484,7 +484,7 @@ theorem healthy_current_stored_locks_at (Q : HealthyPreparationQueryAt S A V)
   have he' : SA.CastAt (Q.trace.projAC.upTo (Q.trace.time q)) z q ell e :=
     SA.upTo_castAt.mpr ⟨le_rfl, he⟩
   have hslot := (SA.castAt_spec hac hz he').2.1
-  exact D.reset.result_prefix_stored_locks_at (healthy_repair_catch_at S A V Q) hx hz hr hRB
+  exact D.reset.result_prefix_stored_locks_at (healthy_schedule_catch_at S A V Q D) hx hz hr hRB
     (by simpa only [D.cleanLabel_eq] using hs) hrb hqb (by
       change e.msg.slot = Q.params.slot (Q.trace.time q) at hslot
       exact (hes.symm.trans hslot).le)
@@ -515,7 +515,7 @@ theorem healthy_current_live_chain_at (Q : HealthyPreparationQueryAt S A V)
   obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hX
   obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hY
   rw [← hst] at hl hm
-  have hBE := D.reset.clean_stored_locks_compatible_at (healthy_repair_catch_at S A V Q)
+  have hBE := D.reset.clean_stored_locks_compatible_at (healthy_schedule_catch_at S A V Q D)
     C.time_nonneg C.readPoint.1 C.honest C.time_bound hl hm
     (Healing.drain_stored_lock_label hdrain hlive) (Healing.drain_stored_lock_label hdrain hmive)
     (hsub hB) hBr (hsub hE) hEr

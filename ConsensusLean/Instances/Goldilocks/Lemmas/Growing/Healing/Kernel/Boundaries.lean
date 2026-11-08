@@ -53,10 +53,10 @@ theorem drainOutputs_of_service_at
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hcatch : CatchRun tr H g (2 * sp.Δ))
     {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
     DrainOutputs tr proposer H g G Ld b := by
-  exact KernelProof.drainOutputs_of_service_at hrun hnc hsvc hawake hf hcatch hnr hLd
+  exact KernelProof.drainOutputs_of_service_at hrun hnc hsvc hawake hf hcatch hLd
 
 /-- Step 3: an honestly signed row remains owed after its signer is compromised. -/
 theorem rows_delivered_service_at {g ΔF b v : Time}
@@ -69,15 +69,16 @@ theorem rows_delivered_service_at {g ΔF b v : Time}
     (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
   exact KernelProof.rows_delivered_service_at hsvc hnr hrun hv hp hX hvx hkb hy hsig hk
 
-/-- Step 4: the reset bound from finite service, a bounded-gap proposer stream and drain.
-This asserts existence and an upper bound; the strict lower bound is a separate interface. -/
+/-- Step 4: the reset bound from finite service, a bounded-gap proposer stream and drain, reading
+restarts only up to the service bound. This asserts existence and an upper bound; the strict lower
+bound is a separate interface. -/
 theorem exists_reset_of_drain_rounds_awake_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
     (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
     (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)

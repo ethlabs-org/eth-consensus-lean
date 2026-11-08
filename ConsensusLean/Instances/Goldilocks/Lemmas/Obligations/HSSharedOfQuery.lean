@@ -12,7 +12,7 @@ through the engine horizon at a parametric FG delay `Δ_F`, from attestation ser
 the query instance of the run-level `hsSharedUpTo_of_rows` (HSSharedRun), whose docstring lists the
 source of each field. `FinalQuery.hsSharedUpTo` is its instance at the protocol FG delay
 `Δ_F = protoFGDelay`, with the attestation service of `signed_row_service_psync` there;
-`timeoutDelay` is then `6Δ + Δ_F ≤ 4Δ·fgSlots ≤ 4Δ·δt` (`protoFGDelay_timeout_of_healthy`, from the
+`timeoutDelay` is then `6Δ + Δ_F ≤ 4Δ·fgSlots ≤ 4Δ·δt` (`protoFGDelay_timeout_of_fgDelay`, from the
 healthy FG delay bound and `3·fgSlots ≤ δt`). -/
 
 namespace Consensus.Goldilocks.Obligations
@@ -36,19 +36,19 @@ theorem hsSharedUpTo_of_rows (Q : FinalQuery S A V) (ΔF : Time)
 
 /-- **The shared HS premises of a final query through its horizon**, at GST `Q.gst`, the
 protocol FG delay `Δ_F,p = protoFGDelay (pubOf E)` with the network's attestation service there
-(`signed_row_service_psync`) and the rise timeout `protoFGDelay_timeout_of_healthy`, and the digest
+(`signed_row_service_psync`) and the rise timeout `protoFGDelay_timeout_of_fgDelay`, and the digest
 of the run. This is the instantiation point of `Δ_F` for the final route. -/
 theorem hsSharedUpTo (Q : FinalQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
   Q.hsSharedUpTo_of_rows _ (signed_row_service_psync S Q.run.2 Q.hn Q.constant Q.valid)
     (protoFGDelay_pos _)
-    (protoFGDelay_timeout_of_healthy S A V Q.run Q.hn Q.healthy)
+    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
 
 /-- **The FG transport of a final query** at its FG gap: `6Δ + Δ_F,p ≤ 4Δ·fgSlots`. -/
 theorem protoFGDelay_delivery (Q : FinalQuery S A V) :
     6 * Q.params.Δ + protoFGDelay (Model.pubOf Q.run.1) ≤ 4 * Q.params.Δ * (A.fgSlots : Time) :=
-  protoFGDelay_delivery_of_healthy S A V Q.run Q.hn Q.healthy
+  protoFGDelay_delivery_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
 
 end FinalQuery
 

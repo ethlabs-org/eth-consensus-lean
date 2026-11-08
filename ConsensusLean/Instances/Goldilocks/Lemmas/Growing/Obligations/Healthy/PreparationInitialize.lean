@@ -17,7 +17,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 set_option linter.unusedVariables false in
 /-- An actual reset seed, a base slot and a repairing opening before the heal deadline. -/
 theorem healthy_preparation_initialize_at (Q : HealthyPreparationQueryAt S A V)
-    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
+    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run) :
     ∃ W : HealthyBaseTimingAt S A V Q, Nonempty (HealthyPreparationScheduleAt S A V Q W) := by

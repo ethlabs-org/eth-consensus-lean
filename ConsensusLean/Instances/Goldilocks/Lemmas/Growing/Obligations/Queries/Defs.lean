@@ -15,7 +15,8 @@ Each is its constant-fault counterpart of `Lemmas/Obligations` without the const
   healthy regime;
 * `SleepySafetyQueryAt`: a sleepy run, for sleepy safety;
 * `FinalQueryAt`: a final liveness query in the healthy regime;
-* `HealthyPreparationQueryAt`: a healthy run with a nonfinal capability, for healed safety;
+* `HealthyPreparationQueryAt`: a run healthy up to a bound with a nonfinal capability, for healed
+  safety;
 * `OutageQueryAt`: an outage run, for persistence (`OutageQuery.toAt` forgets the constant-fault
   field of a static query).
 
@@ -107,8 +108,11 @@ noncomputable abbrev deadline (Q : FinalQueryAt S A V) : Time :=
   Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC
 end FinalQueryAt
 
-/-- A healed-safety query: a valid, collision-free healthy run and a nonfinal capability at an
-index. Progress is supplied separately, on `[ready, heal]`. -/
+/-- A healed-safety query: a valid, collision-free run, healthy up to a bound within the horizon
+(partial synchrony from GST, fewer than fraction `β` compromised by the bound, full participation
+on `[max gst 0, bound]`, the FG delay within its bound), and a nonfinal capability at an index.
+Progress is supplied separately, on `[ready, heal]`. At `bound = horizon` the health premise is
+`Healthy`. -/
 structure HealthyPreparationQueryAt where
   run : (Sys (goldilocks S) V).Run
   hn : 1 ≤ Fintype.card V
@@ -116,9 +120,14 @@ structure HealthyPreparationQueryAt where
   nonfinal : cap = .available ∨ cap = .stable
   index : (K S A).Idx
   gst : Time
+  bound : Time
   valid : (Sys (goldilocks S) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  healthy : (Sys (goldilocks S) V).Healthy (K S A) gst run
+  bound_le : bound ≤ run.2.horizon
+  healthy : ((Sys (goldilocks S) V).log run).PSync ((Sys (goldilocks S) V).pt run) gst ∧
+    ((Sys (goldilocks S) V).pt run).HealthyOn (K S A).params.β gst bound ∧
+    ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
+      ((K S A).params.fgDelay : Time) * ((Sys (goldilocks S) V).pt run).env.ΔAC
 
 namespace HealthyPreparationQueryAt
 variable {S A V}

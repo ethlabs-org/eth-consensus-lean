@@ -34,7 +34,7 @@ honest (`HonestBlocksAt`). The pure SA lemmas `result_label_lt_latest_of_time` a
 * `read_eq_record_of_current_votes_at`, `read_source_of_recent_result_at`: whole-record read
   equality at a read point, and the recent-result source arm it consumes;
 * `tips_comparable_of_origin_witnesses_at`;
-* `healthy_query_call_time_le_at`;
+* `healthy_query_call_time_le_at`; `healthy_schedule_catch_at`: the catch-up of a scheduled query;
 * `healthy_repair_schedule_of_reset_at`, `healthy_repair_schedule_of_preparation_at`,
   `healthy_repair_schedule_at`: the finite repair schedule;
 * `healthy_receiver_repair_of_opening_at`: the receiver repair at an operational opening;
@@ -153,13 +153,22 @@ theorem healthy_query_call_time_le_at (Q : HealthyPreparationQueryAt S A V)
   obtain ⟨ell, _, hlabel⟩ := hj
   exact simTraceAt_labelled_time_le S Q.run.2 Q.hn Q.valid (by rw [hlabel]; simp)
 
+/-- The catch-up of a query with a repair schedule: its reset, after the snapshot `c_z > ḡ + 8Δ`,
+is within the query's bound. -/
+theorem healthy_schedule_catch_at (Q : HealthyPreparationQueryAt S A V)
+    (D : HealthyRepairScheduleAt S A V Q) :
+    Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ) :=
+  healthy_repair_catch_at S A V Q (by
+    linarith [D.reset.cutZ_lt_reset_at, D.reset.reset_le, Healing.lt_cutZ Q.params Q.gst,
+      Q.params.toParams.hΔ])
+
 /-- A supplied finite reset and its strict joint reserve suffice for the canonical repair
 schedule. Neither the reset nor the reserve is produced here. -/
 theorem healthy_repair_schedule_of_reset_at
     (Q : HealthyPreparationQueryAt S A V) {ΔF a : Time}
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2)
-      Q.gst ΔF a Q.run.2.horizon)
+      Q.gst ΔF a Q.bound)
     (hreserve : max Q.ready (Healing.drainTime Q.params a) +
       (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1) :
     ∃ D : HealthyRepairScheduleAt S A V Q,
@@ -221,7 +230,7 @@ theorem healthy_repair_schedule_of_preparation_at
 /-- The repair schedule of the preparation initializer: its finite preparation schedule keeps
 its reset time, service delay and query (`healthy_repair_schedule_of_preparation_at`). -/
 theorem healthy_repair_schedule_at (Q : HealthyPreparationQueryAt S A V)
-    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.run.2.horizon)
+    (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
     Nonempty (HealthyRepairScheduleAt S A V Q) := by
@@ -232,13 +241,13 @@ theorem healthy_repair_schedule_at (Q : HealthyPreparationQueryAt S A V)
 /-- **Any bounded operational opening repairs the post-update source cover**, under growing
 faults. No current-read geometry or prior repair invariant is used. -/
 theorem healthy_receiver_repair_of_opening_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon) (D : HealthyRepairScheduleAt S A V Q)
+    (hb : Q.heal ≤ Q.bound) (D : HealthyRepairScheduleAt S A V Q)
     (O : HealthyRepairOpeningAt S A V Q D)
     (hc : Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ)) :
     HealthyReceiverRepairAt S A V Q D O := by
   rw [healthyReceiverRepairAt_iff]
   have hd := Q.params.toParams.hΔ
-  have hTb : Q.params.ts O.slot + 6 * Q.params.Δ ≤ Q.run.2.horizon := by
+  have hTb : Q.params.ts O.slot + 6 * Q.params.Δ ≤ Q.bound := by
     linarith [O.bounded, D.reserve]
   have hR : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts O.slot := by
     have := (le_max_left _ _).trans ((le_max_right _ _).trans D.lower)
@@ -270,7 +279,7 @@ below a result or optimistic lock of a node honest at its own cut, before `n` an
 theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
     (hrepair : HealthyReceiverRepairAt S A V Q D O) {y : Fin Q.params.n} {n : Nat} {t : Time}
-    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.run.2.horizon) (hy : y ∈ Q.keys t)
+    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.bound) (hy : y ∈ Q.keys t)
     (hrep : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ < t) :
     HealthyRecordCoverAt S A V Q D.cleanLabel y n t
       ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
@@ -304,11 +313,12 @@ theorem healthy_current_record_sources_before_now_at (Q : HealthyPreparationQuer
       refine (le_of_lt ?_).trans ((le_max_right _ _).trans hτ)
       rw [sub_sub, lt_sub_iff_add_lt, ← add_assoc]
       exact hready
-    have hτb : τ ≤ Q.run.2.horizon := hτT.trans (hTt.le.trans htb)
+    have hτb : τ ≤ Q.bound := hτT.trans (hTt.le.trans htb)
+    have hτh : τ ≤ Q.run.2.horizon := hτb.trans Q.bound_le
     have hyτ : y ∈ Q.keys τ := honestKeysAt_antitone S Q.run.2 hτT hyT
-    rw [mem_honestKeysAt_iff, min_eq_left hτb] at hyτ
+    rw [mem_honestKeysAt_iff, min_eq_left hτh] at hyτ
     rw [simTraceAt_awake_iff, awakeAt_iff]
-    exact ⟨Q.healthy.2.1.2 _ τ hgτ hτb hyτ, (le_max_right _ _).trans hgτ, hτb⟩
+    exact ⟨Q.healthy.2.1.2 _ τ hgτ hτb hyτ, (le_max_right _ _).trans hgτ, hτh⟩
   obtain ⟨a, ell, ha, hat, -, hcover⟩ := healthyReceiverRepairAt_iff.mp hrepair y hr
   have han : a < n := by
     by_contra h

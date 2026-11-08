@@ -20,8 +20,8 @@ public section
 
 /-! # The repairing opening of a healed-safety query under growing faults
 
-* `healthy_repair_catch_at` (proved in `Healthy/Preparation`): the query's catch-up from its
-  partial synchrony and awake honest nodes;
+* `healthy_schedule_catch_at` (proved in `Healthy/HealedSafetyConditional`): the query's catch-up
+  from its partial synchrony and awake honest nodes up to its bound;
 * `healthy_bounded_repairing_opening_at`: the progress recurrence on `[ready, heal]` supplies an
   opening, a proposal of a proposer ready at its slot start and still honest `Δ` later, within the
   repair window; every receiver ready at its update is then repaired
@@ -51,7 +51,7 @@ private theorem proposal_accepted_at {sp : SA.SAParams}
 opening of a proposer ready at its slot start and still honest `Δ` later; finite catch and the
 operational selection then repair every receiver ready at its update. -/
 theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) :
@@ -70,7 +70,8 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
   have hd := Q.params.toParams.hΔ
   have hwin : D.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.heal := by
     linarith only [D.reserve, hd]
-  obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq hwin (hwin.trans hb)
+  have hbh : Q.heal ≤ Q.run.2.horizon := hb.trans Q.bound_le
+  obtain ⟨s, hlo, hhi, hr⟩ := hrec D.query hq hwin (hwin.trans hbh)
   have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
     change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
     ring
@@ -79,7 +80,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     change Q.params.ts s ≤ D.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
     linarith only [hhi]
   have hsΔ : Q.params.ts s + Q.params.Δ ≤ Q.run.2.horizon := by
-    linarith only [hbound, D.reserve, hb, hd]
+    linarith only [hbound, D.reserve, hbh, hd]
   have hsb : Q.params.ts s ≤ Q.run.2.horizon := by linarith only [hsΔ, hd]
   have hready := hr 0 (by simp [Pattern.single])
   simp only [Nat.add_zero] at hready
@@ -131,7 +132,8 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
   let O : HealthyRepairOpeningAt S A V Q D :=
     ⟨s, k, P, hlo, hbound, hold, hlabel, hP, proposal_accepted_at hrun hnc hpk hP, ht, hnode,
       hheld⟩
-  exact ⟨O, healthy_receiver_repair_of_opening_at S A V Q hb D O (healthy_repair_catch_at S A V Q)⟩
+  exact ⟨O, healthy_receiver_repair_of_opening_at S A V Q hb D O
+    (healthy_schedule_catch_at S A V Q D)⟩
 
 end Consensus.Goldilocks.Obligations.Growing
 

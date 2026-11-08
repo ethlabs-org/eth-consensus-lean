@@ -78,10 +78,10 @@ private theorem source_mem (Q : HealthyPreparationQueryAt S A V) {x : Fin Q.para
   exact ⟨x, r, Q.trace.time r, hrun.time_nonneg r, fun q hq => hrun.time_mono hq.le, hx,
     (Healing.Growing.frame_tree_subset_at hrun hnc hx hc).2 hCt⟩
 
-/-- The fault bound of the reset schedule is below the FG quorum excess at every time of the
-horizon. -/
+/-- The fault bound of the reset schedule is below the FG quorum excess at every time up to the
+query's bound. -/
 private theorem faults_lt_excess (Q : HealthyPreparationQueryAt S A V)
-    (D : HealthyRepairScheduleAt S A V Q) {t : Time} (ht : 0 ≤ t) (htb : t ≤ Q.run.2.horizon) :
+    (D : HealthyRepairScheduleAt S A V Q) {t : Time} (ht : 0 ≤ t) (htb : t ≤ Q.bound) :
     (Q.keys t)ᶜ.ncard < 2 * Q.params.toParams.fg.q - Q.params.n := by
   have h := D.reset.faults t ht htb
   have := Q.hn
@@ -93,8 +93,8 @@ private theorem faults_lt_excess (Q : HealthyPreparationQueryAt S A V)
 its read time, compare, with the certificate intersection charged at the later read time. -/
 private theorem finalized_safe_read (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) {y z : Fin Q.params.n} {n n' : Nat} {t t' : Time}
-    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.run.2.horizon) (hy : y ∈ Q.keys t)
-    (hrp' : Regimes.ReadPoint Q.trace n' t') (ht'b : t' ≤ Q.run.2.horizon)
+    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.bound) (hy : y ∈ Q.keys t)
+    (hrp' : Regimes.ReadPoint Q.trace n' t') (ht'b : t' ≤ Q.bound)
     (hz : z ∈ Q.keys t') :
     Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys)
       (Q.trace.state y n).fg.F (Q.trace.state z n').fg.F := by
@@ -169,18 +169,18 @@ private theorem finalized_safe_read (Q : HealthyPreparationQueryAt S A V)
 writer honest at its write. -/
 private theorem finalized_compatible_source (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) {y : Fin Q.params.n} {n : Nat} {t : Time}
-    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.run.2.horizon) (hy : y ∈ Q.keys t)
+    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.bound) (hy : y ∈ Q.keys t)
     {x : Fin Q.params.n} {r s : Nat} {C : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
     {CV : Set (SA.Vote Q.params.n)} (hx : x ∈ Q.keys (Q.trace.time r))
     (hC : SA.ResultAt Q.trace.projAC x r s C CV ∨ SA.OptimisticLockAt Q.trace.projAC x r s C CV)
-    (hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s) (hrb : Q.trace.time r ≤ Q.run.2.horizon) :
+    (hs : D.cleanLabel + 2 * Q.params.k + 1 ≤ s) (hrb : Q.trace.time r ≤ Q.bound) :
     Goldilocks.Compatible (Q.trace.HonestBlocksAt Q.keys) (Q.trace.state y n).fg.F C := by
   rcases lt_or_ge t 0 with ht | ht
   · obtain rfl := readPoint_zero S A V Q hrp ht
     rw [finalized_zero]
     exact Or.inl (Compose.Growing.honestAt_genesis_anc
       (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid) (source_mem S A V Q hx hC)).2
-  exact D.reset.finalized_compatible_clean_source_at (healthy_repair_catch_at S A V Q) hx hC
+  exact D.reset.finalized_compatible_clean_source_at (healthy_schedule_catch_at S A V Q D) hx hC
     (by simpa only [D.cleanLabel_eq] using hs) hrb ht hrp.1 hy htb
 
 /-- **Two record covers compare**: the records of two readers, each honest at its read point,
@@ -188,8 +188,8 @@ covered by their finalized blocks or by clean sources of writers honest at their
 compatible in the blocks held while honest. -/
 theorem healthy_current_sources_compatible_at (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) {y z : Fin Q.params.n} {n n' : Nat} {t t' : Time}
-    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.run.2.horizon) (hy : y ∈ Q.keys t)
-    (hrp' : Regimes.ReadPoint Q.trace n' t') (ht'b : t' ≤ Q.run.2.horizon)
+    (hrp : Regimes.ReadPoint Q.trace n t) (htb : t ≤ Q.bound) (hy : y ∈ Q.keys t)
+    (hrp' : Regimes.ReadPoint Q.trace n' t') (ht'b : t' ≤ Q.bound)
     (hz : z ∈ Q.keys t') {R R' : SA.Blk Q.params.n (List (FG.Att Q.params.n))}
     (hR : HealthyRecordCoverAt S A V Q D.cleanLabel y n t R)
     (hR' : HealthyRecordCoverAt S A V Q D.cleanLabel z n' t' R') :
@@ -204,7 +204,7 @@ theorem healthy_current_sources_compatible_at (Q : HealthyPreparationQueryAt S A
     · exact (tips_comparable_of_origin_witnesses_at S A V Q .refl hRB
         (finalized_compatible_source S A V Q D hrp' ht'b hz hx hB hs (hrt.trans htb))).symm
     · exact tips_comparable_of_origin_witnesses_at S A V Q hRB hRE
-        (D.reset.clean_sources_compatible_at (healthy_repair_catch_at S A V Q) hx hx' hB hE
+        (D.reset.clean_sources_compatible_at (healthy_schedule_catch_at S A V Q D) hx hx' hB hE
           (by simpa only [D.cleanLabel_eq] using hs)
           (by simpa only [D.cleanLabel_eq] using hs') (hrt.trans htb) (hqt.trans ht'b))
 
@@ -214,11 +214,11 @@ of two read points, its results and optimistic selections between the two cuts, 
 after them, compare with its record at the first read point: the interval contract of that
 record holds. -/
 theorem healthy_current_record_interval_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon) (D : HealthyRepairScheduleAt S A V Q)
+    (hb : Q.heal ≤ Q.bound) (D : HealthyRepairScheduleAt S A V Q)
     (O : HealthyRepairOpeningAt S A V Q D) (hrepair : HealthyReceiverRepairAt S A V Q D O)
     {y : Fin Q.params.n} {n n' : Nat} {t t' : Time}
     (hrp : Regimes.ReadPoint Q.trace n t) (hrp' : Regimes.ReadPoint Q.trace n' t')
-    (hnn : n ≤ n') (htt : t ≤ t') (ht'b : t' ≤ Q.run.2.horizon) (hy : y ∈ Q.keys t')
+    (hnn : n ≤ n') (htt : t ≤ t') (ht'b : t' ≤ Q.bound) (hy : y ∈ Q.keys t')
     (hrep : D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ < t) :
     EffectiveRecordIntervalAt Q.trace Q.keys y n n'
       ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
@@ -226,8 +226,8 @@ theorem healthy_current_record_interval_at (Q : HealthyPreparationQueryAt S A V)
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hΔ := Q.params.toParams.hΔ
-  have hc := healthy_repair_catch_at S A V Q
-  have htb : t ≤ Q.run.2.horizon := htt.trans ht'b
+  have hc := healthy_schedule_catch_at S A V Q D
+  have htb : t ≤ Q.bound := htt.trans ht'b
   have hyt : y ∈ Q.keys t := hrun.antitone htt hy
   have hlow := D.lower
   simp only [max_le_iff] at hlow
@@ -241,7 +241,7 @@ theorem healthy_current_record_interval_at (Q : HealthyPreparationQueryAt S A V)
   apply effectiveRecordInterval_of_candidates_before_at hrun hnc ht'0 hrp'.1 hy
   · intro q hnq hqn' B s CV hB
     have hqt' : Q.trace.time q ≤ t' := hrp'.1 q hqn'
-    have hqb : Q.trace.time q ≤ Q.run.2.horizon := hqt'.trans ht'b
+    have hqb : Q.trace.time q ≤ Q.bound := hqt'.trans ht'b
     have hyq : y ∈ Q.keys (Q.trace.time q) := hrun.antitone hqt' hy
     have htq : t ≤ Q.trace.time q := hrp.2.trans (hrun.time_mono hnq)
     have hbudget : Q.params.ts D.oldLabel + 6 * Q.params.Δ < Q.trace.time q := by

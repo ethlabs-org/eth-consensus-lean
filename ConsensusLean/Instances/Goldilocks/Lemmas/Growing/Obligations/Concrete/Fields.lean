@@ -133,12 +133,12 @@ theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ c
   let heal := (Sys (goldilocks S) V).heal (K S A) cap idx gst r
   by_cases hb : heal ≤ r.2.horizon
   · by_cases hn : 1 ≤ Fintype.card V
-    · let Q : HealthyPreparationQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, hv,
-        hcollision, hh⟩
+    · let Q : HealthyPreparationQueryAt S A V := ⟨r, hn, cap, hcap, idx, gst, r.2.horizon, hv,
+        hcollision, le_rfl, hh⟩
       have h0 : 0 ≤ Q.heal :=
         add_nonneg (le_max_right gst 0)
           (mul_nonneg (Int.natCast_nonneg _) r.1.ΔAC_pos.le)
-      exact healthy_ready_safety_at S A V Q h0 hb hp
+      exact healthy_ready_safety_at S A V Q h0 hb le_rfl hp
     · have hempty : IsEmpty V :=
         Fintype.card_eq_zero_iff.mp (Nat.lt_one_iff.mp (Nat.lt_of_not_le hn))
       exact ⟨fun u => (hempty.false u).elim, fun v => (hempty.false v).elim⟩

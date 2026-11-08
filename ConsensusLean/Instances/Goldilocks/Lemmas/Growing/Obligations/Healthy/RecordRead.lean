@@ -100,15 +100,17 @@ private theorem healthy_engine_read_point_at {Q : HealthyPreparationQueryAt S A 
   have hhi : Q.heal ≤ Q.run.2.cutTime i := hi.2
   exact ⟨hrp, h0, hh, hra, by linarith only [D.reserve, hhi, hlag]⟩
 
-/-- **The read context** of a ready engine reader from the heal point, at its read point. -/
+/-- **The read context** of a ready engine reader from the heal point, at its read point within
+the query's bound. -/
 theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
     (D : HealthyRepairScheduleAt S A V Q) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
-      ((chainTrace Q.run.2).cutTime i)) :
+      ((chainTrace Q.run.2).cutTime i))
+    (htb : (stateAt S Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Nonempty (HealthyReadContextAt S A V Q D (Q.run.2.ownKey v)
       (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)) (stateAt S Q.run.2 Q.hn v i).now) := by
-  obtain ⟨hrp, ht0, htb, hra, hrep⟩ := healthy_engine_read_point_at S A V D hi hv
+  obtain ⟨hrp, ht0, -, hra, hrep⟩ := healthy_engine_read_point_at S A V D hi hv
   set t := (stateAt S Q.run.2 Q.hn v i).now
   set n := cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)
   set y := Q.run.2.ownKey v
@@ -124,7 +126,8 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
   obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht0) y hra.1 t
     _ ht0 hc8 fun u h1 h2 => ⟨hra.2 u h1 h2, h2⟩
   have hca := D.reset.cutZ_lt_reset_at
-  obtain ⟨hsync, hcatch⟩ := D.reset.windows_at_reset_at (healthy_repair_catch_at S A V Q) ht0 htb
+  obtain ⟨hsync, hcatch⟩ :=
+    D.reset.windows_at_reset_at (healthy_schedule_catch_at S A V Q D) ht0 htb
   have hfault := Healing.Growing.fault_bound_late_before_at D.reset
     (by linarith only [hca, haL, hΔ]) hLt htb
   exact ⟨{ label := L
@@ -143,16 +146,17 @@ theorem healthy_current_read_context_at (Q : HealthyPreparationQueryAt S A V)
            fault := hfault }⟩
 
 /-- **The current-record read**: a ready engine reader from the heal point, read at its read
-point, reads its effective record. -/
+point within the query's bound, reads its effective record. -/
 theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
     (D : HealthyRepairScheduleAt S A V Q) (O : HealthyRepairOpeningAt S A V Q D)
     (hrepair : HealthyReceiverRepairAt S A V Q D O) {v : V} {i : Nat}
     (hi : (chainTrace Q.run.2).InCuts Q.heal i)
     (hv : Q.run.2.point.Ready ((Sys (goldilocks S) V).cDur (K S A) Q.run) v
-      ((chainTrace Q.run.2).cutTime i)) :
+      ((chainTrace Q.run.2).cutTime i))
+    (htb : (stateAt S Q.run.2 Q.hn v i).now ≤ Q.bound) :
     Regimes.readAfter Q.trace (Q.run.2.ownKey v) (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
         (stateAt S Q.run.2 Q.hn v i).now =
       (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v)
@@ -161,17 +165,18 @@ theorem healthy_current_record_read_at (Q : HealthyPreparationQueryAt S A V)
           (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).ac.latestConfirmed).getD
         (Q.trace.state (Q.run.2.ownKey v)
           (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).fg.F := by
-  obtain ⟨C⟩ := healthy_current_read_context_at S A V Q D hi hv
+  obtain ⟨C⟩ := healthy_current_read_context_at S A V Q D hi hv htb
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
-  have hc := healthy_repair_catch_at S A V Q
+  have hc := healthy_schedule_catch_at S A V Q D
   have hhon : v ∉ Q.run.2.faultyAt (stateAt S Q.run.2 Q.hn v i).now := fun h =>
     hv.1 (Q.run.2.faultyAt_mono (now_bounds_cut S Q.run.2 Q.hn Q.valid v hi.1).2 h)
   have hupd : ∀ u : Nat, Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts u →
       Q.params.ts u + 6 * Q.params.Δ ≤ (stateAt S Q.run.2 Q.hn v i).now →
       ∃ j ell, SA.UpdateAt Q.trace.projAC (Q.run.2.ownKey v) j u ell ∧
         j < cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i) := fun u hslot ht =>
-    update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset hhon hslot ht C.time_bound
+    update_before_stored_clock_at S Q.run.2 Q.hn Q.valid D.reset Q.bound_le hhon hslot ht
+      C.time_bound
   have hΦ : FrameOK (Node.frame (Q.trace.state (Q.run.2.ownKey v)
       (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)))) := by
     have h := Compose.frameOK_state (hrun.upTo C.time_nonneg).toLocalRun C.honest

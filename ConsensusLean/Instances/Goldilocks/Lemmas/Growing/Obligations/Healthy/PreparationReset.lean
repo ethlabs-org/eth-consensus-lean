@@ -40,11 +40,11 @@ theorem healthy_preparation_reset_fit_at (Q : HealthyPreparationQueryAt S A V) :
 
 /-- Actual proposals from progress and finite healthy service supply a bounded reset. -/
 theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : Q.heal ≤ Q.run.2.horizon)
+    (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index Q.ready Q.heal Q.run) :
     ∃ ΔF a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon ∧
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.bound ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
         (healthyResetSlack S Q.index : Time) := by
   classical
@@ -68,10 +68,13 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
   change Healing.cutZ Q.params.toParams Q.gst + Q.params.Δ + 1 ≤ max Q.ready 0 + 4 * Q.params.Δ
     at hcz
   rw [max_eq_left hr0] at hcz
-  have hH : (Q.keys Q.run.2.horizon).Nonempty := by
+  have hb0 : 0 ≤ Q.bound := by
+    have := mul_nonneg (Nat.cast_nonneg (α := Time) (healthyResetCoeff S Q.index)) hΔ.le
+    linarith only [this, hfit, hr0, hb, Nat.cast_nonneg (α := Time) (healthyResetSlack S Q.index)]
+  have hH : (Q.keys Q.bound).Nonempty := by
     by_contra hne
     rw [Set.not_nonempty_iff_eq_empty] at hne
-    have hh := hf _ Q.valid.horizon_nonneg le_rfl
+    have hh := hf _ hb0 le_rfl
     rw [hne, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hh
     have hn := Q.params.toParams.hn
     change 0 < Q.params.n at hn
@@ -91,24 +94,24 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
   have h4B : Q.ready + 4 * Q.params.Δ ≤ Q.heal := by
     have := mul_le_mul_of_nonneg_right hR hΔ.le
     linarith only [this, hfit, hr, hΔ]
-  have hcatch := healthy_repair_catch_at S A V Q
+  have hcatch := healthy_repair_catch_at S A V Q (by linarith only [hgr, h4B, hb, hΔ])
   have hnr := healthy_preparation_noRestart_at S A V Q
-  have hdrain := Healing.Growing.drainOutputs_of_service_at hrun hnc hs haw hf hcatch hnr
+  have hdrain := Healing.Growing.drainOutputs_of_service_at hrun hnc hs haw hf hcatch
     (G := (Q.index : Nat)) (Ld := healthyDrainLen S Q.index)
     (by rw [healthyDrainLen_val]; change 2 * S.k + (Q.index : Nat) ≤ 2 * S.k + (Q.index : Nat) + 1
         omega)
   obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at hrun hnc hf hs
     haw hcatch hnr hH (by rw [hδeq]; have := A.six_le_δt; omega)
-    (protoFGDelay_timeout_of_healthy S A V Q.run Q.hn Q.healthy)
+    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
     hr0 hgr Q.index.pos hcz (hBh.trans hb) (fun s₀ N hs₀ hN => by
       apply Healing.Growing.proposalGap_iff.mpr
       intro c hc hcN
-      obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V Q hb hp
+      obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V Q
+        (hb.trans Q.bound_le) hp
         (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBh, hΔ]) c hc hcN
       exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain
-  have hb0 : 0 ≤ Q.run.2.horizon := Q.valid.horizon_nonneg
-  have haw' : ∀ y ∈ Q.keys Q.run.2.horizon, ∀ t, SA.gbar Q.gst ≤ t →
-      t ≤ Q.run.2.horizon → (Q.trace.upTo Q.run.2.horizon).awake y t := by
+  have haw' : ∀ y ∈ Q.keys Q.bound, ∀ t, SA.gbar Q.gst ≤ t →
+      t ≤ Q.bound → (Q.trace.upTo Q.bound).awake y t := by
     intro y hy t ht htb
     exact ⟨haw y t (hrun.antitone htb hy) ht htb, htb⟩
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0) haw' hH

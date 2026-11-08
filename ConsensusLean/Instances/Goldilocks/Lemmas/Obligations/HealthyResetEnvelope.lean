@@ -40,11 +40,11 @@ open SA (gbar)
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- The shared HS premises of the query through the horizon at the protocol FG delay
-`Δ_F,p = protoFGDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `protoFGDelay_timeout_of_healthy`). -/
+`Δ_F,p = protoFGDelay` (`6Δ + Δ_F,p ≤ 4Δ·fgSlots ≤ 4Δ·δ_t`, `protoFGDelay_timeout_of_fgDelay`). -/
 private theorem healthy_hsShared (Q : HealthyPreparationQuery S A V) :
     Healing.HSSharedUpTo Q.trace (honestKeys S Q.run.2) (digestOf S Q.run.2) Q.gst
       (protoFGDelay (Model.pubOf Q.run.1)) Q.run.2.horizon :=
-  Q.hsSharedUpTo_of_le _ le_rfl (protoFGDelay_timeout_of_healthy S A V Q.run Q.hn Q.healthy)
+  Q.hsSharedUpTo_of_le _ le_rfl (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
 
 /-- The whole-run no-restart premise: a restart is a labelled call, at a time `≤ horizon`, so
 the bounded one of `healthy_hsShared` covers it. -/
