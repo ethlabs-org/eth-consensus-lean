@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.RelTrace
@@ -328,21 +329,6 @@ noncomputable abbrev stepEM (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n F
   | .block B => acOnBlockEM sp E c m self X Φ t B
   | .restart => acRestartEM sp E c m ro self X Φ t
 
-variable (sp) in
-/-- The weighted state whose locks the unlock of the call reads (`callInput`). -/
-noncomputable abbrev callInputWM (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (goldilocksSA sp FGP ro).Call → WState sp.n
-  | .message v => optimisticConfirmationWM sp m { X with ac := admitVote sp X.ac t v } Φ t
-  | .block B => optimisticConfirmationWM sp m { X with ac := blockReceipt sp X.ac t B } Φ t
-  | _ => X
-
-variable (sp) in
-/-- The forgotten locks after the stage's unlock of the call's input. -/
-noncomputable abbrev unlockAtEM (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (k : (goldilocksSA sp FGP ro).Call) : Set Lock :=
-  WLock.lock '' wlockStore.unlockWith sp E c (callInputWM sp m X Φ t k).wlocks Φ t
-    ((sp.slot t : Int) - 1) (callViewM sp m X.ac Φ t k)
-
 theorem callInputWM_spec {X : WState sp.n} (hX : LocksForget X) (Φ : Frm sp.n FGP) (t : Time)
     (k : (goldilocksSA sp FGP ro).Call) :
     LocksForget (callInputWM sp m X Φ t k) ∧
@@ -418,16 +404,6 @@ variable {m : WriteMode}
 
 /-! ### Evidence-release's traces -/
 
-variable (ro) in
-/-- The parent's call of a call of the evidence-release SA at mode `m`. -/
-abbrev projCallM : (evidenceReleaseSAM sp m FGP ro).Call → (goldilocksSA sp FGP ro).Call
-  | .tick => .tick
-  | .proposal => .proposal
-  | .toFG => .toFG
-  | .message m => .message m
-  | .block B => .block B
-  | .restart => .restart
-
 theorem step_eq_stepEM (self : Fin sp.n) (X : WState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (k : (evidenceReleaseSAM sp m FGP ro).Call) :
     (evidenceReleaseSAM sp m FGP ro).step self X Φ t k =
@@ -443,33 +419,6 @@ theorem callOK_projCallM {U : Set (Blk sp.n FGP)} {Φ Φ' : Frm sp.n FGP} {t : T
     (h : (evidenceReleaseSAM sp m FGP ro).CallOK U Φ t k Φ') :
     (goldilocksSA sp FGP ro).CallOK U Φ t (projCallM ro k) Φ' := by
   cases k <;> exact h
-
-/-- The parent's label of a label of the evidence-release SA at mode `m`. -/
-abbrev projLabelM (ℓ : ACLabel (evidenceReleaseSAM sp m FGP ro)) :
-    ACLabel (goldilocksSA sp FGP ro) :=
-  ⟨projCallM ro ℓ.call, ℓ.frame, ℓ.emits.map projEm⟩
-
-/-- **The forgotten trace**: the parent's states, calls and emissions of an AC trace of the
-evidence-release SA at mode `m`. -/
-abbrev projTraceM (tr : ACTrace (evidenceReleaseSAM sp m FGP ro)) : SATrace sp FGP ro where
-  init y := (tr.init y).ac
-  node := tr.node
-  time := tr.time
-  event := tr.event
-  pos := tr.pos
-  label i := (tr.label i).map projLabelM
-  post i := (tr.post i).ac
-  awake := tr.awake
-  observationHorizon := tr.observationHorizon
-
-/-- The unlock oracle of a trace of the evidence-release SA at mode `m`: at each labelled cut, the
-forgotten locks after `unlockW` of the call's input. -/
-noncomputable abbrev erOracleM (tr : ACTrace (evidenceReleaseSAM sp m FGP ro)) (i : Nat) :
-    Set Lock :=
-  match tr.label i with
-  | some ℓ => unlockAtEM sp (evidenceStage sp) () m (tr.state (tr.node i) i) ℓ.frame (tr.time i)
-      (projCallM ro ℓ.call)
-  | none => ∅
 
 variable {tr : ACTrace (evidenceReleaseSAM sp m FGP ro)}
 

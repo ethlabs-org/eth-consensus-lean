@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WeightedEm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.LateCertificate.RunInv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
@@ -41,9 +42,6 @@ open SA EvidenceRelease
 variable {sp : SAParams} {FGP : Type}
 
 /-! ### The projection to evidence-release's state -/
-
-/-- An emission with its archive forgotten. -/
-def projC (e : EmC sp FGP) : EmW sp FGP := ⟨e.msg, e.readPoint.er, e.head⟩
 
 theorem map_projC_liftEm (arr : Archive sp.n) (l : List (EmW sp FGP)) :
     (l.map (liftEm sp arr)).map projC = l := by

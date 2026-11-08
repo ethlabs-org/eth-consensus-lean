@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WeightedEm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Candidates.EvidenceRelease.Write
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
@@ -54,10 +55,6 @@ theorem locksForget_withLocks (X : WState sp.n) (A : SAState sp.n) (W : Set WLoc
 theorem locksForget_admitVote {Y : WState sp.n} (hY : LocksForget Y) (t : Time) (v : Vote sp.n) :
     LocksForget { Y with ac := admitVote sp Y.ac t v } :=
   (locksForget_iff _).2 ((admitVote_keeps_locks Y.ac t v).1.trans hY)
-
-/-- The projection of an emission to the parent's state at its read point. -/
-def projEm (e : EmW sp FGP) : Em sp FGP :=
-  ⟨e.msg, e.readPoint.ac, e.head⟩
 
 theorem projEm_eq (e : EmW sp FGP) : projEm e = ⟨e.msg, e.readPoint.ac, e.head⟩ := by
   rfl
