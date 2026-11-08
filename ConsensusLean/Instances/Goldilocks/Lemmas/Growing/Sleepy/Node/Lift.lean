@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
@@ -15,6 +15,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
 public section
 
@@ -32,8 +34,9 @@ The tools that apply a static fact to the prefix `tr.upTo d` with the honest set
   (`faultBound_upTo`);
 * the origin chain (`OnOriginChainWithin.compatible`, `OnOriginChainWithin.of_anc`), the σ-copies
   of `Compose/Sleepy/Chain`;
-* node-local AC facts at a cut, lifted at the cut's time, and the stored locks below origins
-  before the cut (`lock_origin_at`).
+* node-local AC facts at a cut, lifted at the cut's time; the stored locks below the holder's own
+  lock writes (`lock_write_at`), and each lock write below an origin of its label
+  (`lock_below_origin_at`).
 
 Ancestry comes down into the prefix by `RunTrace.anc_upTo_of_right`; conclusions go back up by
 `Anc.mono` with `RunTrace.honestBlocks_upTo_subset`. -/
@@ -614,19 +617,80 @@ theorem originBefore_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr)
   · obtain ⟨hkd, hO⟩ := (sa_optimisticLockAt_upTo hrun.time_mono).mp hO
     exact originBefore_iff.2 ⟨x, k, CV, hk, hrun.antitone hkd hx, Or.inr hO⟩
 
-/-- **Stored locks sit below origins** (`lock_origin` at the cut's time): every stored lock of a
-node honest at cut `i` names a block of its tree below an origin of the lock's slot before `i`. -/
-theorem lock_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
+/-- A slow lock write of the prefix through `d` is one of the run, at a cut at a time `≤ d`. -/
+private theorem slowLockAt_of_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) {x : Fin sp.n}
+    {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (h : SA.SlowLockAt (tr.projAC.upTo d) x i s B) :
+    tr.time i ≤ d ∧ SA.SlowLockAt tr.projAC x i s B := by
+  obtain ⟨ℓ, C, hu, hconf, hdeep⟩ := h
+  obtain ⟨hid, hu⟩ := (sa_updateAt_upTo hrun.time_mono).mp hu
+  have hst := projAC_upTo_state hrun (y := x) hid
+  refine ⟨hid, ℓ, C, hu, by rwa [hst] at hconf, ?_⟩
+  simpa only [hst, Trace.upTo_time] using hdeep
+
+/-- **A lock write sits below an origin of its label**, written by the same node at the same cut:
+a fast update and a slow lock keep a prefix of their update's confirmation, the result; an
+optimistic selection is an origin. -/
+theorem lock_below_origin_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.time i))
+    {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (h : (∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C) :
+    ∃ O OV, (SA.ResultAt tr.projAC x i s O OV ∨ SA.OptimisticLockAt tr.projAC x i s O OV) ∧
+      Anc (tr.HonestBlocksAt H) C O := by
+  rcases h with ⟨CV, ⟨ℓ, O, hu, hconf, hdeep, -⟩ | hop⟩ | ⟨ℓ, O, hu, hconf, hdeep⟩
+  · exact ⟨O, _, Or.inl ⟨ℓ, hu, hconf, rfl⟩,
+      ((SA.deepest_mem hdeep).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2⟩
+  · exact ⟨C, CV, Or.inr hop, .refl⟩
+  · exact ⟨O, _, Or.inl ⟨ℓ, hu, hconf, rfl⟩,
+      ((SA.deepest_mem hdeep).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2⟩
+
+/-- A lock write within `b` sits below an origin of its label within `b`. -/
+theorem LockWithin.below_origin (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
+    (h : LockWithin tr H C s b) : ∃ O, OriginWithin tr H O s b ∧ Anc (tr.HonestBlocksAt H) C O := by
+  obtain ⟨x, i, hx, hib, h⟩ := lockWithin_iff.1 h
+  obtain ⟨O, OV, hO, hCO⟩ := lock_below_origin_at hrun hnc hx h
+  exact ⟨O, originWithin_iff.2 ⟨x, i, OV, hx, hib, hO⟩, hCO⟩
+
+/-- **Stored locks sit below the holder's own lock writes**: a node honest at `t ≥ 0`, read
+before cut `i` whose earlier cuts are at times `≤ t`, holds each stored lock on a block of its tree
+that is below a lock write of the lock's slot within `t` (`SA.fast_lock_provenance` and
+`SA.slow_lock_provenance` on the prefix through `t`: the holder wrote it at an earlier cut). -/
+theorem lock_write_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t)
+    (hy : y ∈ H t) :
     ∀ l ∈ (tr.state y i).ac.locks, ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧
-      ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocksAt H) L C := by
-  have hd := hrun.time_nonneg i
-  have hst := RunTrace.upTo_state_of_le (y := y) hrun.time_mono (le_refl (tr.time i))
+      ∃ B, LockWithin tr H B l.slot t ∧ Anc (tr.HonestBlocksAt H) L B := by
+  have hst := Trace.upTo_state tr y (d := t) hi
+  have hr := (acRun_upTo hrun hnc ht0).localRun
+  have hU := hr.coherent
+  have hsA : (tr.projAC.upTo t).state y i = (tr.state y i).ac := by
+    rw [← RunTrace.upTo_projAC, projAC_state (hrun.upTo ht0).toLocalRun hy i, hst]
   intro l hl
-  obtain ⟨L, hL, hLr, C, hC, hLC⟩ := lock_origin (hrun.upTo hd) (hnc.upTo _) hy i l
-    (by rw [hst]; exact hl)
+  obtain ⟨L, hL, hLr, -⟩ := lock_origin (hrun.upTo ht0) (hnc.upTo _) hy i l (by rw [hst]; exact hl)
+  have hLU : L ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, hL⟩
   rw [hst] at hL
-  exact ⟨L, hL, hLr, C, originBefore_of_upTo hrun hC, hLC.mono (upTo_subset hrun hd)⟩
+  have hl' : l ∈ ((tr.projAC.upTo t).state y i).locks := by rw [hsA]; exact hl
+  have hw : ∃ j < i, ∃ B, ((∃ CV, SA.FastLockAt (tr.projAC.upTo t) y j l.slot B CV) ∨
+      SA.SlowLockAt (tr.projAC.upTo t) y j l.slot B) ∧
+      ∃ L' ∈ (tr.upTo t).HonestBlocks (H t), L'.root = l.block ∧
+        Anc ((tr.upTo t).HonestBlocks (H t)) L' B := by
+    cases hf : l.fast
+    · obtain ⟨j, hj, B, h, hB⟩ := SA.slow_lock_provenance hr hy i l hl' hf
+      exact ⟨j, hj, B, Or.inr h, hB⟩
+    · obtain ⟨j, hj, B, CV, h, hB⟩ := SA.fast_lock_provenance hr hy i l hl' hf
+      exact ⟨j, hj, B, Or.inl ⟨CV, h⟩, hB⟩
+  obtain ⟨j, -, B, h, L', hL', hL'r, hL'B⟩ := hw
+  obtain rfl : L' = L := hU.1 hL' hLU (hL'r.trans hLr.symm)
+  have hjt : tr.time j ≤ t ∧ ((∃ CV, SA.FastLockAt tr.projAC y j l.slot B CV) ∨
+      SA.SlowLockAt tr.projAC y j l.slot B) := by
+    rcases h with ⟨CV, h⟩ | h
+    · obtain ⟨hjt, h⟩ := (SA.upTo_fastLockAt hrun.time_mono).mp h
+      exact ⟨hjt, Or.inl ⟨CV, h⟩⟩
+    · obtain ⟨hjt, h⟩ := slowLockAt_of_upTo hrun h
+      exact ⟨hjt, Or.inr h⟩
+  exact ⟨L', hL, hLr, B, lockWithin_iff.2 ⟨y, j, hrun.antitone hjt.1 hy, hjt.1, hjt.2⟩,
+    hL'B.mono (upTo_subset hrun ht0)⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

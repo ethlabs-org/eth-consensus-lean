@@ -563,6 +563,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Comp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame

@@ -426,15 +426,16 @@ theorem vote_anchor_cases_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   · exact Or.inl (h.mono hsub)
   · exact Or.inr ⟨h1.mono hsub, h2.mono hsub, hsub h3⟩
 
-/-- A live lock block of the proposal's anchor sits below an origin, of the slot of a stored
-lock, before the proposal (`lock_origin_at`; unlocking and `live_locks` only move locks back). -/
+/-- A live lock block of the proposal's anchor sits below the proposer's own lock write of the
+slot of a stored lock, written up to the proposal (`lock_write_at`; unlocking and `live_locks`
+only move locks back). -/
 theorem proposal_lock_below_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {p : Fin sp.n} {i : Nat} (hp : p ∈ H (tr.time i))
     {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ tr.HonestBlocksAt H)
     {t : Time} {σ : Int} {V : SA.View sp.n} {A₁ : SA.SAState sp.n}
     (hA₁ : A₁.locks = SA.unlock sp (tr.projAC.state p i).locks Φ t σ V) :
-    ∀ L ∈ SA.liveLockBlocks sp A₁.locks Φ t, ∃ l ∈ (tr.state p i).ac.locks, ∃ O,
-      OriginBefore tr H O l.slot i ∧ Anc (tr.HonestBlocksAt H) L O := by
+    ∀ L ∈ SA.liveLockBlocks sp A₁.locks Φ t, ∃ l ∈ (tr.state p i).ac.locks, ∃ D,
+      LockWithin tr H D l.slot (tr.time i) ∧ Anc (tr.HonestBlocksAt H) L D := by
   have hU := honestBlocksAt_coherent hrun hnc
   rintro L ⟨hL, l', ⟨l, hl, B, hB, hBr, -, rfl⟩, hlL⟩
   obtain rfl : L = Φ.viableAncestor B :=
@@ -444,11 +445,12 @@ theorem proposal_lock_below_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     ((SA.locks_move_back sp) _ Φ _ t hΦ).2.2 σ V l hl
   obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)
   rw [projAC_state_at hrun hp] at hl₁
-  obtain ⟨L₁, hL₁, hL₁r, O, hO, hL₁O⟩ := lock_origin_at hrun hnc hp l₁ hl₁
+  obtain ⟨L₁, hL₁, hL₁r, D, hD, hL₁D⟩ :=
+    lock_write_at hrun hnc (hrun.time_nonneg i) (fun _ hk => hrun.time_mono hk.le) hp l₁ hl₁
   obtain rfl : L₁ = B₁ :=
     hU.1 (mem_honestBlocksAt hrun hp hL₁) (hΦU hB₁) (hL₁r.trans hB₁r.symm)
-  exact ⟨l₁, hl₁, O, hO,
-    (Anc.mono hΦU ((SA.anc_viableAncestor Φ _).trans hB'B₁)).trans hL₁O⟩
+  exact ⟨l₁, hl₁, D, hD,
+    (Anc.mono hΦU ((SA.anc_viableAncestor Φ _).trans hB'B₁)).trans hL₁D⟩
 
 /-- **The proposal walk passes every old origin**: the origin is held by the proposer (or below
 its `Σ.F`, below the walk's start), so viable or at or below `fc_root` (`held_origin_viable_at`,
@@ -488,10 +490,11 @@ theorem proposal_walk_passes_old_at (hrun : Growing.GoldilocksRun proposer dg H 
   refine Anc.mono hΦU (SA.anc_getHead hU hΦ hΦU A₁ (tr.time i) _ _ (fun _ h => h)
     (fun B hB X hXB => SA.mem_of_anc hXB hB) hviab.symm ?_ hbest)
   intro L hL
-  obtain ⟨l, -, O', hO', hLO'⟩ := proposal_lock_below_at hrun hnc hp hΦ hΦU hA₁ L hL
-  rcases hinv.origins_compatible O' l.slot O m (hO'.within hib) hOm with h | h
-  · exact Or.inl (hLO'.trans h)
-  · exact SA.anc_total hU hLO' h
+  obtain ⟨l, -, D, hD, hLD⟩ := proposal_lock_below_at hrun hnc hp hΦ hΦU hA₁ L hL
+  obtain ⟨O', hO', hDO'⟩ := hD.below_origin hrun hnc
+  rcases hinv.origins_compatible O' l.slot O m (hO'.mono hb) hOm with h | h
+  · exact Or.inl ((hLD.trans hDO').trans h)
+  · exact SA.anc_total hU (hLD.trans hDO') h
 
 
 /-- **The pivot** under growing faults. The proposer of slot `s` is honest at `t_s + Δ` (the
