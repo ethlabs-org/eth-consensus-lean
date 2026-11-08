@@ -867,6 +867,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.EvidenceRelease
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.LateCertificate
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Candidates.WeightedWrites
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Params
@@ -894,6 +895,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WeightedEm
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
