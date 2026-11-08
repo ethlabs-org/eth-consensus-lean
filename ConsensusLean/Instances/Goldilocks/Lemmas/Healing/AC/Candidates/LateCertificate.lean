@@ -37,7 +37,7 @@ theorem standaloneRunU_projTraceC (hrun : ACLocalRun (certRecoverySA sp FGP ro) 
     (htriv : TrivialFrames (projTraceC tr) H) (hheal : HealthyAC (projTraceC tr) H U g)
     (hcatch : CatchAC (projTraceC tr) H U g (2 * sp.Δ)) :
     StandaloneRunU (certOracle tr) (projTraceC tr) H U proposer g :=
-  ⟨⟨⟨localRunU_projTraceC hrun, hobj⟩, hdr, hheal, hcatch⟩, htriv⟩
+  ⟨⟨⟨localRunU_projTraceC hrun, hobj⟩, hdr, hheal.core, hheal.two_faulty_lt, hcatch⟩, htriv⟩
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` for the late-certificate rule** (trivial frames): for an honest
 proposal `P` of slot `p` with `t_p ≥ ḡ + (8k + 4)Δ`, every honest vote of slot `p` is `P`, and at

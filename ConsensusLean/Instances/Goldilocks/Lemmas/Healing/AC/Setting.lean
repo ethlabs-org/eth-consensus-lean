@@ -58,12 +58,38 @@ structure StandaloneRun (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (
     (proposer : Nat → Fin sp.n) (g : Time) : Prop extends HealthyBase tr H U proposer g where
   trivial : TrivialFrames tr H
 
-/-- `HealthyBase` with the unlock given by the oracle `u`. -/
+/-- **`Healthy(g)` without its fault clause**: the message and acceptance-relay service and the
+awake honest validators of `HealthyAC`, verbatim; the faults are bounded separately. -/
+structure HealthyACCore (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (g : Time) : Prop where
+  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmit x i m →
+    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (max (tr.time i) g) ≤ tr.time j →
+      ∃ k ≤ j, tr.time i ≤ tr.time k ∧ tr.ProcessAt y k m ∧
+        tr.time k < tr.deadline y k (max (tr.time i) g)
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → g ≤ tr.time i →
+    ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ tr.time j →
+      Anc U ℓ.frame.F B → ∃ k ≤ j, tr.AcceptAt y k B ∧ tr.time k < tr.deadline y k (tr.time i)
+  awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → tr.awake y t
+
+/-- `Healthy(g)` gives its service and awake part. -/
+theorem HealthyAC.core (h : HealthyAC tr H U g) : HealthyACCore tr H U g :=
+  ⟨h.1, h.2.1, h.2.2.1⟩
+
+/-- `f < n/2`, from the fault clause `3f ≤ n − 1` of `Healthy(g)`. -/
+theorem HealthyAC.two_faulty_lt (h : HealthyAC tr H U g) : 2 * Hᶜ.ncard < sp.n := by
+  have := h.2.2.2
+  have := sp.toParams.hn
+  change 1 ≤ sp.n at this
+  omega
+
+/-- `HealthyBase` with the unlock given by the oracle `u`, and with the fault bound the cone
+uses, `f < n/2`, in place of `3f ≤ n − 1`. -/
 structure HealthyBaseU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) : Prop where
   run : ACRunU u proposer tr H U
   driven : DrivenU u proposer tr H
-  healthy : HealthyAC tr H U g
+  healthy : HealthyACCore tr H U g
+  faults : 2 * Hᶜ.ncard < sp.n
   catchUp : CatchAC tr H U g (2 * sp.Δ)
 
 /-- `StandaloneRun` with the unlock given by the oracle `u`. -/
@@ -74,7 +100,7 @@ structure StandaloneRunU (u : Nat → Set Lock) (tr : SATrace sp FGP ro) (H : Se
 
 theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
     HealthyBaseU (parentOracle sp tr) tr H U proposer g :=
-  ⟨h.run.toU, h.driven.toU, h.healthy, h.catchUp⟩
+  ⟨h.run.toU, h.driven.toU, h.healthy.core, h.healthy.two_faulty_lt, h.catchUp⟩
 
 theorem StandaloneRun.toU (h : StandaloneRun tr H U proposer g) :
     StandaloneRunU (parentOracle sp tr) tr H U proposer g :=
@@ -360,14 +386,11 @@ include hS
 
 /-- An honest node is awake from `ḡ` on. -/
 theorem awake {y : Fin sp.n} (hy : y ∈ H) {t : Time} (ht : gbar g ≤ t) : tr.awake y t :=
-  hS.healthy.2.2.1 y hy t ht
+  hS.healthy.awake y hy t ht
 
-/-- `f < n/2` (from `3f ≤ n − 1`). -/
-theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n := by
-  have := hS.healthy.2.2.2
-  have := sp.toParams.hn
-  change 1 ≤ sp.n at this
-  omega
+/-- `f < n/2`. -/
+theorem two_faulty_lt : 2 * Hᶜ.ncard < sp.n :=
+  hS.faults
 
 /-- **No restart after `ḡ`**: a restart is a wake, and an honest node is awake from `ḡ` on. -/
 theorem restart_le {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
@@ -410,9 +433,9 @@ theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
   have hg : ∀ τ, a ≤ τ → g ≤ τ := fun τ h => (le_gbar g).trans (ha.trans h)
   refine ⟨fun x hx i m hm hai _ y hy j ℓ hc hdl => ?_,
     fun x hx i B hB hai _ y hy j ℓ hc hdl hF =>
-      hS.healthy.2.1 x hx i B hB (hg _ hai) y hy j ℓ hc hdl hF⟩
+      hS.healthy.relay x hx i B hB (hg _ hai) y hy j ℓ hc hdl hF⟩
   have hmax : max (tr.time i) g = tr.time i := max_eq_left (hg _ hai)
-  have := hS.healthy.1 x hx i m hm y hy j ℓ hc (by rwa [hmax])
+  have := hS.healthy.message x hx i m hm y hy j ℓ hc (by rwa [hmax])
   simpa only [hmax] using this
 
 /-- `f < h_t` at every `t` with `ḡ ≤ t_{slot(t)−1}`: every honest node is awake and joined

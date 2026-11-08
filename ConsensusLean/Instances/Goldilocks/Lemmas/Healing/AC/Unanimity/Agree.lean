@@ -132,7 +132,7 @@ private theorem relay_leU
   have hΔ := sp.toParams.hΔ
   by_cases hga : g ≤ tr.time a
   · have hmax : max (tr.time a) (gbar g) ≤ T := max_le haT (by linarith)
-    obtain ⟨k', hk', hacc', -⟩ := hS.healthy.2.1 z hz a X hacc hga y hy i ℓ hc
+    obtain ⟨k', hk', hacc', -⟩ := hS.healthy.relay z hz a X hacc hga y hy i ℓ hc
       (by linarith [hS.deadline_le hy i (tr.time a)]) hF
     exact ⟨k', hk', hacc'⟩
   · obtain ⟨k', hk', hacc', -⟩ := hS.catchUp z hz a X hacc
