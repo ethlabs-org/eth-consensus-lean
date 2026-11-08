@@ -9,7 +9,7 @@ public section
 /-! # Goldilocks under `Sleepy` with growing faults: origins and frames of the prefix
 
 The origins of the prefix `tr.upTo d` for the validators honest at `d` are origins of the run
-(`originWithin_of_upTo`; `originBefore_of_upTo` and `lock_origin_at` are in `Node/Lift`), and their
+(`originWithin_of_upTo`; `originBefore_of_upTo` and `lock_write_at` are in `Node/Lift`), and their
 blocks are in the prefix's honest blocks (`origin_mem_upTo`). With these, an origin held at a cut
 is at or below `fc_root` or fully viable (`held_origin_viable_at`, with `2 f_d < n` at the reading
 cut). -/

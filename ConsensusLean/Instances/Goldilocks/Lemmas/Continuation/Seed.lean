@@ -92,24 +92,6 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fi
 
 /-! ### Family members below origins, their supporters and their later votes -/
 
-/-- A lock write is below an origin of its label by the same writer at the same cut: a slow lock
-and a fast update keep a prefix of their update's confirmation; an optimistic selection is an
-origin. -/
-private theorem lock_below_origin (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.time i))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : (∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C) :
-    ∃ O OV, (SA.ResultAt tr.projAC x i s O OV ∨ SA.OptimisticLockAt tr.projAC x i s O OV) ∧
-      Anc (tr.HonestBlocksAt H) C O := by
-  have hxU : (tr.state x i).fg.tree ⊆ tr.HonestBlocksAt H :=
-    fun _ h => ⟨x, i, tr.time i, hrun.time_nonneg i, fun _ hq => hrun.time_mono hq.le, hx, h⟩
-  rcases h with ⟨CV, ⟨ellX, O, hupd, hconf, hdeep, -⟩ | hop⟩ | ⟨ellX, O, hupd, hconf, hdeep⟩
-  · exact ⟨O, _, Or.inl ⟨ellX, hupd, hconf, rfl⟩, ((SA.deepest_mem hdeep).1.1.2.2).mono
-      ((Healing.Growing.frame_tree_subset_at hrun hnc hx hupd.1).2.trans hxU)⟩
-  · exact ⟨C, CV, Or.inr hop, .refl⟩
-  · exact ⟨O, _, Or.inl ⟨ellX, hupd, hconf, rfl⟩, ((SA.deepest_mem hdeep).1.1.2.2).mono
-      ((Healing.Growing.frame_tree_subset_at hrun hnc hx hupd.1).2.trans hxU)⟩
-
 /-- The healed family unpacked into its three kinds of members. -/
 private theorem healedOrigin_cases {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : HealedOrigin tr H g rL rO C s b) :
@@ -131,10 +113,10 @@ private theorem member_below_origin (hrun : Growing.GoldilocksRun proposer dg H 
   rcases healedOrigin_cases hC with ⟨-, x, i, CV, hx, hib, h⟩ | ⟨-, x, i, hx, hib, h⟩ |
     ⟨x, i, hib, ho⟩
   · exact ⟨x, i, C, CV, hx, hib, h, .refl⟩
-  · obtain ⟨O, OV, hO, hCO⟩ := lock_below_origin hrun hnc hx h
+  · obtain ⟨O, OV, hO, hCO⟩ := lock_below_origin_at hrun hnc hx h
     exact ⟨x, i, O, OV, hx, hib, hO, hCO⟩
   · obtain ⟨CV, ell, D, hcall, hfl, rfl⟩ := ho.2.2.1
-    obtain ⟨O, OV, hO, hDO⟩ := lock_below_origin hrun hnc ho.1 (Or.inl ⟨CV, hfl⟩)
+    obtain ⟨O, OV, hO, hDO⟩ := lock_below_origin_at hrun hnc ho.1 (Or.inl ⟨CV, hfl⟩)
     have hΦU := (frameIn_at hrun hnc ho.1 hcall).2
     exact ⟨x, i, O, OV, ho.1, hib, hO, (Anc.mono hΦU (SA.anc_viableAncestor _ D)).trans hDO⟩
 
