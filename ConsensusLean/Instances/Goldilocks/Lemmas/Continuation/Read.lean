@@ -120,10 +120,8 @@ theorem effective_record_on_healed_chain_at {rL rO : Nat} {t₁ b : Time}
     ⟨x, q, s, C, CV, hx, -, hqt, hs, hC, hRC⟩
   · rw [h]
     exact (hinv.caches y n t ht₁ hrp.1 htb hy).1
-  · refine onHealedChain_iff.2 ⟨C, s, HealedOrigin.of_origin hs ?_, hRC⟩
-    rcases hC with hC | hC
-    · exact OriginWithin.of_result hx (hqt.trans htb) hC
-    · exact OriginWithin.of_optimistic hx (hqt.trans htb) hC
+  · exact onHealedChain_iff.2 ⟨C, s, HealedOrigin.of_origin hs
+      (originWithin_iff.2 ⟨x, q, CV, hx, hqt.trans htb, hC⟩), hRC⟩
 
 /-- **Agreement of the effective records**: the effective records of two readers, each honest at
 a read point in `[t₁, b]`, are compatible inside the blocks held while honest. -/
@@ -141,27 +139,37 @@ theorem seeded_records_compatible_at (hrun : Growing.GoldilocksRun proposer dg H
     (effective_record_on_healed_chain_at hinv ht₁ htb hy hi)
     (effective_record_on_healed_chain_at hinv ht₁' htb' hz hj)
 
-/-- A result or optimistic selection written at or after `t_{rO+1}` has label at least `rO`: a
-result of label `s` is written at `t_s + 6Δ`, an optimistic selection in its slot `s`. -/
+/-- A result or optimistic selection of label `s` is written in `[t_s, t_s + 6Δ]`: a result at
+`t_s + 6Δ`, an optimistic selection in its slot `s`. -/
+private theorem origin_time_bounds {x : Fin sp.n} {q s : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (h0 : 0 ≤ tr.time q)
+    (hC : SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) :
+    sp.ts s ≤ tr.time q ∧ tr.time q ≤ sp.ts s + 6 * sp.Δ := by
+  have hΔ := sp.toParams.hΔ
+  rcases hC with ⟨ℓ, ⟨-, -, htq, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
+  · replace htq : tr.time q = sp.ts s + 6 * sp.Δ := htq
+    exact ⟨by linarith, htq.le⟩
+  · replace hsl : sp.slot (tr.time q) = s := hsl
+    have hhi : tr.time q < sp.ts ((s : Int) + 1) := lt_of_not_ge fun h => by
+      have := (SA.ts_le_iff_le_slot sp h0 _).1 h
+      omega
+    simp only [SAParams.ts] at hhi
+    exact ⟨(SA.ts_le_iff_le_slot sp h0 _).2 (by omega), by simp only [SAParams.ts]; linarith⟩
+
+/-- A result or optimistic selection written at or after `t_{rO+1}` has label at least `rO`. -/
 private theorem origin_label_ge {x : Fin sp.n} {q s rO : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hq : sp.ts (rO + 1 : Nat) ≤ tr.time q)
     (hC : SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) :
     rO ≤ s := by
   have hΔ := sp.toParams.hΔ
-  have h0 : (0 : Time) ≤ tr.time q := (ts_natCast_nonneg _).trans hq
-  rcases hC with ⟨ℓ, ⟨-, -, htq, -⟩, -⟩ | ⟨ℓ, A, -, hsl, -⟩
-  · replace htq : tr.time q = sp.ts s + 6 * sp.Δ := htq
-    by_contra hlt
-    have hle : ((s + 1 : Nat) : Int) ≤ (rO : Int) := by exact_mod_cast (not_le.mp hlt)
-    have hmul := mul_le_mul_of_nonneg_left hle (show (0 : Time) ≤ 4 * sp.Δ by linarith)
-    simp only [SAParams.ts] at htq hq
-    push_cast at hmul hq htq
-    nlinarith
-  · replace hsl : sp.slot (tr.time q) = s := hsl
-    have := (SA.ts_le_iff_le_slot sp h0 _).1 hq
-    rw [hsl] at this
-    omega
+  have hhi := (origin_time_bounds ((ts_natCast_nonneg _).trans hq) hC).2
+  by_contra hlt
+  have hle : ((s + 1 : Nat) : Int) ≤ (rO : Int) := by exact_mod_cast (not_le.mp hlt)
+  have hmul := mul_le_mul_of_nonneg_left hle (show (0 : Time) ≤ 4 * sp.Δ by linarith)
+  simp only [SAParams.ts] at hhi hq
+  push_cast at hmul hq hhi
+  nlinarith
 
 /-- **The effective record only extends** between two read points of one reader from
 `t₀ ≥ t_{rO+1}` on, both in `[t₁, b]`. The reader's results and optimistic selections in between
@@ -190,14 +198,14 @@ theorem seeded_effective_record_mono_at (hrun : Growing.GoldilocksRun proposer d
       hdt.trans (ht₀.trans (hi.2.trans (hrun.time_mono hiq)))
     have hyq : y ∈ H (tr.time q) := hrun.antitone hqt' hy'
     have hDm : HealedOrigin tr H g rL rO D s b := by
-      refine HealedOrigin.of_origin (origin_label_ge hqi hD) ?_
-      rcases hD with hD | hD
-      · exact OriginWithin.of_result hyq (hqt'.trans ht'b) hD
-      · exact OriginWithin.of_optimistic hyq (hqt'.trans ht'b) hD
+      exact HealedOrigin.of_origin (origin_label_ge hqi hD)
+        (originWithin_iff.2 ⟨y, q, CV, hyq, hqt'.trans ht'b, hD⟩)
     exact hO.compatible hrun hnc hinv.origins_compatible hDm
   · have hq1 : ∀ k < q + 1, tr.time k ≤ t' := fun k hk => hj.1 k (by omega)
     exact OnHealedChain.compatible_chain hrun hnc hinv.origins_compatible
       (hinv.caches y (q + 1) t' (ht₁.trans (ht₀.trans htt)) hq1 ht'b hy').1 hO
+
+private theorem catchUp_eq : Regimes.catchUp sp = 18 * sp.Δ := rfl
 
 /-- The latest view at a time `t ≥ 0` of slot at least one is a natural label `L`, the slot of
 `t` or the one before, with `t_L + Δ ≤ t < t_L + 6Δ`. -/
@@ -267,7 +275,7 @@ private theorem ready_reader_called_at (hrun : Growing.GoldilocksRun proposer dg
   obtain ⟨hw, hj⟩ : tr.awake y u ∧ tr.JoinedAt y u := by
     obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo hu0) y hyu u
       (8 * sp.Δ) hu0 (by linarith) fun v h1 h2 =>
-        ⟨hready.2 v (le_trans (max_le_max le_rfl (by unfold Regimes.catchUp; linarith)) h1)
+        ⟨hready.2 v (le_trans (max_le_max le_rfl (by rw [catchUp_eq]; linarith)) h1)
           (h2.trans hut.le), h2⟩
     exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
   obtain ⟨c, e, hv, hes, hcu⟩ := vote_of_awake_joined_at hrun hnc hyu hw hj
@@ -367,24 +375,13 @@ theorem seeded_stale_record_votes_at (hrun : Growing.GoldilocksRun proposer dg H
   -- the record was written before `t'`
   have hqt' : tr.time q < t' := by
     have hrk : sp.ts ((r + sp.k : Nat) : Int) + 8 * sp.Δ ≤ sp.ts L + 6 * sp.Δ := by linarith
-    rcases hC with ⟨ell, ⟨-, -, htq, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
-    · replace htq : tr.time q = sp.ts s + 6 * sp.Δ := htq
-      have hle := (SA.ts_le_iff sp).2 (show ((s + 2 : Nat) : Int) ≤ ((r + sp.k : Nat) : Int) by
-        omega)
-      rw [ht']
-      simp only [SAParams.ts] at hle hrk htq ⊢
-      push_cast at hle hrk htq ⊢
-      linarith
-    · replace hsl : sp.slot (tr.time q) = s := hsl
-      have hlt : tr.time q < sp.ts ((s + 1 : Nat) : Int) := lt_of_not_ge fun h => by
-        have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).1 h
-        omega
-      have hle := (SA.ts_le_iff sp).2 (show ((s + 2 : Nat) : Int) ≤ ((r + sp.k : Nat) : Int) by
-        omega)
-      rw [ht']
-      simp only [SAParams.ts] at hle hrk hlt ⊢
-      push_cast at hle hrk hlt ⊢
-      linarith
+    have hhi := (origin_time_bounds (hrun.time_nonneg q) hC).2
+    have hle := (SA.ts_le_iff sp).2 (show ((s + 2 : Nat) : Int) ≤ ((r + sp.k : Nat) : Int) by
+      omega)
+    rw [ht']
+    simp only [SAParams.ts] at hle hrk hhi ⊢
+    push_cast at hle hrk hhi ⊢
+    linarith
   -- the read point at `t'`
   have hex : ∃ k, t' ≤ tr.time k := ⟨j, ht't.trans hrp.2⟩
   set n := Nat.find hex with hn
@@ -414,21 +411,10 @@ theorem seeded_stale_record_votes_at (hrun : Growing.GoldilocksRun proposer dg H
     exact (SA.anc_tree_of_anc_U hU hΦ hΦU hRm hFF hΦ.rooted.1).trans hΦ.F_anc_fcRoot
   -- the member's label is below `L`
   have hs₀L : s₀ < L := by
-    rcases hC₀ with ⟨ell, ⟨-, -, htq, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
-    · replace htq : tr.time q₀ = sp.ts s₀ + 6 * sp.Δ := htq
-      by_contra h
-      have hle := (SA.ts_le_iff sp).2 (show (L : Int) ≤ (s₀ : Int) by omega)
-      linarith
-    · replace hsl : sp.slot (tr.time q₀) = s₀ := hsl
-      have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg q₀) (s₀ : Int)).2 (by omega)
-      by_contra h
-      have hle := (SA.ts_le_iff sp).2 (show (L : Int) ≤ (s₀ : Int) by omega)
-      linarith
-  have hmem : HealedOrigin tr H g r (r + sp.k - 1) C s₀ b := by
-    refine HealedOrigin.of_origin hs₀ ?_
-    rcases hC₀ with hC₀ | hC₀
-    · exact OriginWithin.of_result hx ((hq₀t.trans ht't).trans htb) hC₀
-    · exact OriginWithin.of_optimistic hx ((hq₀t.trans ht't).trans htb) hC₀
+    have hlo := (origin_time_bounds (hrun.time_nonneg q₀) hC₀).1
+    exact_mod_cast (SA.ts_lt_iff sp).1 (by linarith : sp.ts s₀ < sp.ts L)
+  have hmem : HealedOrigin tr H g r (r + sp.k - 1) C s₀ b := HealedOrigin.of_origin hs₀
+    (originWithin_iff.2 ⟨x, q₀, DV, hx, (hq₀t.trans ht't).trans htb, hC₀⟩)
   intro z q' e hv hq't hes
   obtain ⟨Hd, hHd, hHdr, hCHd⟩ :=
     hinv.vote_extends C s₀ hmem z q' e hv (hq't.trans htb) (by omega)
@@ -481,7 +467,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
     linarith
   obtain ⟨hw, hj⟩ : tr.awake y t ∧ tr.JoinedAt y t := by
     obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht0) y hy t
-      (Regimes.catchUp sp) ht0 (by unfold Regimes.catchUp; linarith)
+      (Regimes.catchUp sp) ht0 (by rw [catchUp_eq]; linarith)
       fun u h1 h2 => ⟨hready.2 u h1 h2, h2⟩
     exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
   have hsync := Healing.Growing.sync_window_at_reset_at hrun hsvc (SA.le_gbar g) ht0
@@ -549,11 +535,8 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
             SA.VoteExtends (tr.HonestBlocksAt H) e.msg R := by
       intro s CV hC hsL
       by_cases hs : r + sp.k - 1 ≤ s
-      · have hmem : HealedOrigin tr H g r (r + sp.k - 1) R s b := by
-          refine HealedOrigin.of_origin hs ?_
-          rcases hC with hC | hC
-          · exact OriginWithin.of_result hyq (hqt.trans htb) hC
-          · exact OriginWithin.of_optimistic hyq (hqt.trans htb) hC
+      · have hmem : HealedOrigin tr H g r (r + sp.k - 1) R s b :=
+          HealedOrigin.of_origin hs (originWithin_iff.2 ⟨y, q, CV, hyq, hqt.trans htb, hC⟩)
         exact ⟨(hinv.viable y j t ht₁ hrp.1 htb hy R s hmem hRm).resolve_left hRf,
           fun z q' e hv hq't hes => hinv.vote_extends R s hmem z q' e hv (hq't.trans htb)
             (by omega)⟩
@@ -561,8 +544,9 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
           seeded_stale_record_votes_at hrun hnc hinv hrp hdt₁ ht₁₈ htb hy hR hRf hRqfg hrest
             hC (by omega) hL⟩
     rcases hwriter with ⟨s, CV, hres⟩ | ⟨⟨CV, hop⟩, hlock⟩
-    · have htime : tr.time q = sp.ts s + 6 * sp.Δ := hres.choose_spec.1.2.2.1
-      have hlt := Obligations.result_label_lt_latest_of_time ht0 (htime ▸ hqt)
+    · obtain ⟨-, ⟨-, -, htime, -⟩, -⟩ := id hres
+      have hlt := Obligations.result_label_lt_latest_of_time ht0
+        ((show tr.time q = sp.ts s + 6 * sp.Δ from htime) ▸ hqt)
         (A := (tr.state y j).ac) (Φ := Node.frame (tr.state y j))
       exact Or.inr (hold s CV (Or.inl hres) (hL ▸ hlt))
     by_cases hsL : ((sp.slot (tr.time q) : Nat) : Int) < L
@@ -572,7 +556,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
     set s := sp.slot (tr.time q) with hsdef
     have hs : r + sp.k - 1 ≤ s := by omega
     have hmem : HealedOrigin tr H g r (r + sp.k - 1) R s b :=
-      HealedOrigin.of_origin hs (OriginWithin.of_optimistic hyq (hqt.trans htb) hop)
+      HealedOrigin.of_origin hs (originWithin_iff.2 ⟨y, q, CV, hyq, hqt.trans htb, Or.inr hop⟩)
     have hframe : ∀ m, q ≤ m → m ≤ j → R ∈ (Node.frame (tr.state y m)).tree :=
       fun m hqm hmj => Obligations.Growing.writer_mem_frame_between_at hrun hnc ht0 hrp.1 hy
         hqm hmj hRqfg hRm
