@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Comparison.Candidates
-public import ConsensusLean.Comparison.HealProfile
+public import ConsensusLean.Comparison.HealProfileSlice0
 
 @[expose] public section
 
@@ -34,7 +34,7 @@ claim is Slice 0's proposal-inclusion heal; the new coordinates only add premise
   (`b₀ < t₀ + ΔAC − 1`): content released before `b₀` is owed by that premise. The Tier A hold is
   weaker than Slice 1's, so its class is larger; no equivalence, coverage or common domain with
   Slice 1's held class is claimed.
-* `HealQ.slice0 q`: the Slice 0 point `⟨L, fcap, a.async⟩`.
+* `HealQ.slice0 q` (`Comparison/HealProfileSlice0`): the Slice 0 point `⟨L, fcap, a.async⟩`.
 * `Slice1AC q b₀ g tr H`: the hold for `splitHeld`, activity at most `hpre` on `[0, ḡ)` and at most
   `hpost` from `ḡ`, and `m ≤ |Hᶜ|` (with `|Hᶜ| ≤ fcap` from Slice 0's clause, `fcap` caps `|Hᶜ|`,
   the Tier A `nacap`).
@@ -151,10 +151,6 @@ def HoldACOn (H : Set (Fin sp.n)) (b₀ g : Time) (tr : SATrace sp FGP ro) :
   | .split _ => True
 
 /-! ### The Tier A incident premises at Slice 1 -/
-
-/-- The Slice 0 point of a Slice 1 point: `⟨L, fcap, a.async⟩`. -/
-def _root_.Consensus.Comparison.HealQ.slice0 {V : Type} (q : HealQ V) : Slice0Q V :=
-  ⟨q.L, q.fcap, q.a.async⟩
 
 /-- **The Slice 1 coordinates on an AC trace** at `q` with incident `[b₀, g)`: the class's hold,
 AC-call activity at most `hpre` on `[0, ḡ)` and at most `hpost` from `ḡ`, and at least `m`
