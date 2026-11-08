@@ -997,6 +997,7 @@ public import ConsensusLean.Lemmas.Problem.DerivedFacts
 public import ConsensusLean.Lemmas.Problem.Facts.Atoms
 public import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 public import ConsensusLean.Lemmas.Problem.Facts.Network
+public import ConsensusLean.Lemmas.Problem.Facts.Outage
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
@@ -1006,6 +1007,7 @@ public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Comparison.Main
+public import ConsensusLean.Proofs.Comparison.Protection
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic
 public import ConsensusLean.Proofs.RegimesRealizable.Growth

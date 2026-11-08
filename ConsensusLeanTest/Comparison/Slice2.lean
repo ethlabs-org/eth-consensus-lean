@@ -14,9 +14,9 @@ that do not put the class inside the contract's `Outage` (a shorter look-back, a
 point, a lower threshold, a shorter catch-up), and comparisons of points whose retention offsets
 differ. The `A = 0` column is domain-feasible, so is Astra's example (`n = 4`, `A = 1`, cap `3`,
 an unattained cap) and a threshold just below `1` (`θ = 99/100`, `n = 2`), a boundary point with
-`θ = 1/2` is feasible, every boundary-feasible point is domain-feasible, the default is monotone in
-the order, and the default is the contract's `lag` and `recovery` on the `A = 0` column of the
-stable source at the contract's numbers. -/
+`θ = 1/2` is feasible, every boundary-feasible point is domain-feasible, and the default is the
+contract's `lag` and `recovery` on the `A = 0` column of the stable source at the contract's
+numbers. The monotonicity of the default is proved in `Proofs/Comparison/Protection`. -/
 
 namespace Consensus.Comparison.Test
 
@@ -143,22 +143,6 @@ theorem default_short_catchUp_top (q : ProtQ) (h : q.catchUp < K.params.catchUp)
     protLagDefault K q = ⊤ ∧ protRecDefault K q = ⊤ := by
   have : ¬ PersistsPoint K q := fun hp => absurd hp.2.2.2.2.2.2.2 (by omega)
   simp [protLagDefault, protRecDefault, this]
-
-/-- The default arming lag is monotone in the order (so is the recovery delay, by the same
-argument): a `PersistsPoint` below a more adverse `PersistsPoint`. -/
-theorem persistsPoint_of_le {q q' : ProtQ} (h : q ≤ q') (hp : PersistsPoint K q') :
-    PersistsPoint K q := by
-  obtain ⟨hβ, -, -, hsrc, hη, ha, hns, hsum, hθ, hc⟩ := h
-  obtain ⟨hs', hβ', hη', ha', hns', hsum', hθ', hc'⟩ := hp
-  exact ⟨hsrc.trans hs', by omega, by omega, by omega, by omega, by omega, hθ'.trans hθ,
-    by omega⟩
-
-theorem protLagDefault_mono : AdverseMonotone (protLagDefault K) := by
-  intro q q' h
-  unfold protLagDefault
-  by_cases hp : PersistsPoint K q'
-  · simp [hp, persistsPoint_of_le h hp]
-  · simp [hp]
 
 variable [DecidableEq V] {S : System V}
 

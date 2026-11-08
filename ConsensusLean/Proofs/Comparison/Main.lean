@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Comparison.Defaults
+public import ConsensusLean.Proofs.Comparison.Protection
 import Mathlib.Tactic.Linarith
 
 public section
@@ -15,7 +16,10 @@ public section
   the horizon).
 * `txLatencyDefault0`: the latency default from `Behaviour.sleepyLive`: with full participation
   every validator honest at the look-ahead is ready on the retained view, so `θ·n < n − f` gives
-  the sleepy participation (`sleepyOn_of_fullAwake`). -/
+  the sleepy participation (`sleepyOn_of_fullAwake`).
+
+The layer's entry module: Slice 2's order lemma and protection default are in
+`Proofs/Comparison/Protection`, imported here. -/
 
 namespace Consensus.Comparison
 

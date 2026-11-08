@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Comparison.Main
 
 @[expose] public section
 
-/-! # Comparison registry: the proved Slice 0 instances (Lean index)
+/-! # Comparison registry: the proved instances (Lean index)
 
 One entry per proved profile instance: the statement it proves (whose type fixes the bound
 function, the tier and the premises), proved by its proof, with its axioms pinned. Columns of each
@@ -20,6 +20,7 @@ assumes beyond the profile's class). A new instance adds an entry here.
 | `GoldilocksTxLatencyDefault0` | `txLatDefault`, endpoint contract | R | none (the endpoint) |
 | `HealProfileAC0Free` | `acFree0` (`8k + 4` at `2·fcap < n`) | A, static | width-k modes |
 | `SigningRateAC0` | one vote per slot | A, static | every mode |
+| `ProtectionDefault` | `protLagDefault`, `protRecDefault` | R | `Behaviour` |
 -/
 
 namespace Consensus.Comparison.Registry
@@ -34,6 +35,13 @@ theorem sync0ClassMono : Consensus.Comparison.Sync0ClassMono :=
 
 /-- Bound `hsDefault`/`hlDefault`/`latDefault`; tier R; premise `Behaviour`. -/
 theorem healDefault0 : Consensus.Comparison.HealDefault0 := Consensus.Comparison.healDefault0
+
+/-- The order implies class inclusion (Slice 2 protection parameters, nonnegative threshold). -/
+theorem protClassMono : Consensus.Comparison.ProtClassMono := Consensus.Comparison.protClass_mono
+
+/-- Bound `protLagDefault`/`protRecDefault`; tier R; premise `Behaviour`. -/
+theorem protectionDefault : Consensus.Comparison.ProtectionDefault :=
+  Consensus.Comparison.protectionDefault
 
 /-- Bound `txLatDefault`; tier R; premise `Behaviour`. -/
 theorem txLatencyDefault0 : Consensus.Comparison.TxLatencyDefault0 :=
@@ -85,5 +93,11 @@ set_option linter.style.longLine false
 
 /-- info: 'Consensus.Comparison.Registry.signingRateAC0' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Comparison.Registry.signingRateAC0
+
+/-- info: 'Consensus.Comparison.Registry.protClassMono' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.protClassMono
+
+/-- info: 'Consensus.Comparison.Registry.protectionDefault' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Comparison.Registry.protectionDefault
 
 end

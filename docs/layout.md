@@ -46,7 +46,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Main` | the above, every `Proofs.<M>` |
 | `Examples` (Shape examples, untrusted) | Init, ToMathlib, Core, Spec |
 | `Comparison` (untrusted) | Init, ToMathlib, Core, Spec |
-| `Proofs.Comparison` | the above, Comparison |
+| `Proofs.Comparison` | Init, ToMathlib, Core, Spec, Statements, Lemmas, Comparison |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,SA,Node,Run}`, `AsChainShape`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC or SA layer and no AC or SA layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.{Simulation,Obligations}` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import either, and Simulation cannot import Obligations |
 | `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Persist`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Service`, `Instances.Goldilocks.Proofs.Obligations` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |

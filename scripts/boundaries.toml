@@ -148,7 +148,7 @@ about = "comparison properties: bound functions over environment parameters and 
 [[layer]]
 name = "Proofs.Comparison"
 prefixes = ["ConsensusLean.Proofs.Comparison"]
-allow = ["Init", "ToMathlib", "Core", "Spec", "Comparison"]
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Comparison"]
 about = "milestone: the comparison layer's order lemmas and defaults from the contract"
 
 # Goldilocks: components by level.
