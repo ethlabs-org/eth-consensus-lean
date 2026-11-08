@@ -61,6 +61,12 @@ def classGroups : IncidentClass V → V → Bool
   | .split G => G
   | .splitHeld G => G
 
+omit [Fintype V] [DecidableEq V] in
+theorem classGroups_split (G : V → Bool) : classGroups (.split G) = G := by rfl
+
+omit [Fintype V] [DecidableEq V] in
+theorem classGroups_splitHeld (G : V → Bool) : classGroups (.splitHeld G) = G := by rfl
+
 variable {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- The class premises of a filtered run: the incident network of the class's delivery

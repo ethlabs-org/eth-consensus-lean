@@ -394,6 +394,32 @@ theorem injectEvents_layer (t : Time) (h0 : 0 ≤ t) (hh : t ≤ rho.horizon)
     omega
   · simpa only [Int.toNat_of_nonneg h0] using he
 
+/-- **Agreeing schedulers have the same stages**: injections that agree at the times below `N`,
+and filters that agree there on the front of the stages so far, give the same first `N` stages. -/
+theorem injectStages_congr {inj' : Time → V → List (protoOf F E).Object}
+    {pol' : List (Event V (protoOf F E).Object) → V → (protoOf F E).Object → Time → Bool}
+    {N : Nat} (hinj : ∀ n < N, inj (n : Time) = inj' (n : Time))
+    (hpol : ∀ n < N, ∀ v o,
+      pol (rho.front (rho.injectStages delay inj pol n) (n : Time)) v o (n : Time) =
+        pol' (rho.front (rho.injectStages delay inj pol n) (n : Time)) v o (n : Time)) :
+    ∀ n ≤ N, rho.injectStages delay inj pol n = rho.injectStages delay inj' pol' n := by
+  intro n
+  induction n with
+  | zero => intro _; rfl
+  | succ n ih =>
+    intro hn
+    have hf : ∀ v, (rho.duePool delay (rho.front (rho.injectStages delay inj pol n) (n : Time))
+        (n : Time)).filter (fun o => pol (rho.front (rho.injectStages delay inj pol n) (n : Time))
+          v o (n : Time)) =
+        (rho.duePool delay (rho.front (rho.injectStages delay inj pol n) (n : Time))
+          (n : Time)).filter (fun o => pol' (rho.front (rho.injectStages delay inj pol n)
+            (n : Time)) v o (n : Time)) := fun v =>
+      List.filter_congr fun o _ => by rw [hpol n (by omega) v o]
+    rw [injectStages_succ, injectStages_succ, ← ih (by omega), injectLayer_eq, injectLayer_eq]
+    congr 2
+    unfold injectDeliveries
+    simp only [hinj n (by omega), hf]
+
 /-- The scheduled run. -/
 noncomputable abbrev injectRun : Run F E := rho.withEvents (rho.injectEvents delay inj pol)
 

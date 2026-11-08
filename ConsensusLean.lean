@@ -1021,10 +1021,13 @@ public import ConsensusLean.Proofs.ComparisonCoverage.Main
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Boundary
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Domain
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Forgery
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.ForgeryAt
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Hold
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Late
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Main
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Plan
 public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Point
+public import ConsensusLean.Proofs.ComparisonCoverage.Slice1.Split
 public import ConsensusLean.Proofs.ComparisonCoverage.Witness
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic

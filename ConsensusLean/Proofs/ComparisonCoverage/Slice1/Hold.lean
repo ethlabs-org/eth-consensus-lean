@@ -30,6 +30,13 @@ def HeldIn (rho : Model.Run F E) (b₀ : Time) (es : List (Event V (protoOf F E)
   ¬ (protoOf F E).isFGAtt d ∧ (∃ t₀, (rho.withEvents es).releases (rho.key k) d t₀) ∧
     ∀ t₀, (rho.withEvents es).releases (rho.key k) d t₀ → b₀ < t₀ + E.ΔAC - 1
 
+theorem heldIn_iff {rho : Model.Run F E} {b₀ : Time} {es : List (Event V (protoOf F E).Object)}
+    {k : Fin (Fintype.card V)} {d : (protoOf F E).Object} :
+    HeldIn rho b₀ es k d ↔ ¬ (protoOf F E).isFGAtt d ∧
+      (∃ t₀, (rho.withEvents es).releases (rho.key k) d t₀) ∧
+      ∀ t₀, (rho.withEvents es).releases (rho.key k) d t₀ → b₀ < t₀ + E.ΔAC - 1 :=
+  Iff.rfl
+
 /-- **The held split's delivery filter**: before `b₁`, `w` is not served an object with a part
 signed by a key of the group opposite to `w` that is held after `b₀` in the schedule so far. -/
 noncomputable def holdPol (rho : Model.Run F E) (G : V → Bool) (b₀ b₁ : Time) :
@@ -73,7 +80,7 @@ ticks of `a`. -/
 private noncomputable abbrev holdFront (a : Time) : List (Event V (protoOf F E).Object) :=
   rho.front (rho.injectStages (fun _ => 0) inj (holdPol rho G b₀ b₁) a.toNat) (a.toNat : Time)
 
-private theorem holdPol_eq_true {es : List (Event V (protoOf F E).Object)} {w : V}
+theorem holdPol_eq_true {es : List (Event V (protoOf F E).Object)} {w : V}
     {o : (protoOf F E).Object} {t : Time} :
     holdPol rho G b₀ b₁ es w o t = true ↔ ¬ (t < b₁ ∧ ∃ d, Obj.Contains o d ∧ ∃ k r,
       d.auth = .signed k r ∧ G (rho.key k) ≠ G w ∧ HeldIn rho b₀ es k d) := by
