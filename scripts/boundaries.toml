@@ -963,6 +963,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Lemmas.Continuation", "Instances.Goldilocks.Proofs.Obligations",
+         "Instances.Goldilocks.Proofs.Growing.Obligations",
          "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = """Goldilocks continuation after healing under corruption growth (the side property
 GoldilocksContinues, not part of correctness)"""
