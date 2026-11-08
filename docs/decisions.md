@@ -642,6 +642,19 @@ detail in `TRUST.md`.
   `CohortOn` but weakens `NoSleepOn`, which constrains only the validators honest at that point (a validator
   compromised between the two points may fall asleep inside the window), so neither direction includes the
   classes.
+- **Cost is stated over chain shapes, on every valid run, with no default** (`Comparison/Cost`). Signing rate,
+  carried signed objects and lock memory read signing roles and node states, which a generic `System` does not
+  have; the bounds are vectors over the role class without its slot (one coordinate per duty kind). The claims
+  have no regime, progress or excuse premise, and the contract fixes no cost, so `⊤` is the only generic value.
+  Reason: cost is structural, and a premise on the network or on collisions would let a protocol pay for a low
+  count with a narrower class.
+- **A signing rate counts own signatures at any depth.** `SigningRate` counts every object signed with the
+  validator's own key that occurs anywhere in what it releases while honest, not only top-level releases; poll
+  signatures have no coordinate (the poll role names no slot). Reason: a vote released inside a container is
+  still a vote.
+- **Cost measures are fixed per family.** `StateBound`/`LockMemory` take the family's state measures, and a
+  trivial measure makes the bound vacuous: each family fixes its measures in its frozen Milestones Spec, reads
+  them back against its protocol card and proves a sanity theorem tying each measure to its own state.
 
 ## Open questions
 
