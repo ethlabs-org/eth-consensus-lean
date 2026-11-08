@@ -198,7 +198,8 @@ theorem proposal_holds_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hp hc
   obtain ⟨m, hm, hOm⟩ := hO.within hrun (hti ▸ hb)
-  obtain ⟨x, j, e, hv, _, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hrun hnc hsync hB hOm
+  obtain ⟨x, j, e, hv, _, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hrun hnc
+    (hsync.toFrom hrun) hB (Nat.zero_le _) (ts_natCast_nonneg _) hOm
   have hOU : O ∈ tr.HonestBlocksAt H := by
     by_cases h : O = Hd
     · exact h ▸ hHd
@@ -393,7 +394,7 @@ theorem proposal_best_toward_old_at (hrun : Growing.GoldilocksRun proposer dg H 
         exact Or.inl (votersAt_iff.2
           ⟨hw, j, e, hve, state_pool_slot_at hrun hnc hp s' _ ((hvotes' _).1 hv)⟩)
       · exact Or.inr hw
-    · have hcount := faults_lt_voters hrun hnc hB (s := s') (d := tr.time i)
+    · have hcount := faults_lt_voters hrun hnc hB (s := s') (d := tr.time i) (Nat.zero_le _)
         (by rw [hti, hts]; linarith only [hΔ]) hb (by rw [hti, hts]; linarith only [hΔ])
       have := Set.ncard_union_le (VotersAt tr H s' (tr.time i)) (H (tr.time i))ᶜ
       omega

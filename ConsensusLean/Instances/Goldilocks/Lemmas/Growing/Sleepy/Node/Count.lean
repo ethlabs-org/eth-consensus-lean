@@ -36,13 +36,13 @@ theorem ts_natCast_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
   simp only [SAParams.ts]
   exact mul_nonneg (by linarith [sp.toParams.hΔ]) (by exact_mod_cast Nat.zero_le s)
 
-/-- **FB in voter form**: at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, the validators compromised by `d`
-are fewer than the slot-`s` voters still honest at `d`. -/
+/-- **FB in voter form**: for a slot `s ≥ σ₀`, at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, the
+validators compromised by `d` are fewer than the slot-`s` voters still honest at `d`. -/
 theorem faults_lt_voters (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hB : SleepyBoundsFrom tr H 0 b) {s : Nat} {d : Time} (h1 : sp.ts s + sp.Δ ≤ d)
-    (hdb : d ≤ b) (h6 : d ≤ sp.ts s + 6 * sp.Δ) :
+    {b : Time} {σ₀ : Nat} (hB : SleepyBoundsFrom tr H σ₀ b) {s : Nat} {d : Time} (hs : σ₀ ≤ s)
+    (h1 : sp.ts s + sp.Δ ≤ d) (hdb : d ≤ b) (h6 : d ≤ sp.ts s + 6 * sp.Δ) :
     (H d)ᶜ.ncard < (VotersAt tr H s d).ncard := by
-  refine (hB.slot s d (Nat.zero_le _) h1 hdb h6).trans_le
+  refine (hB.slot s d hs h1 hdb h6).trans_le
     (Set.ncard_le_ncard (fun y hy => ?_) (Set.toFinite _))
   obtain ⟨k, e, hv, hs, -⟩ :=
     vote_of_awake_joined_at hrun hnc (hrun.antitone h1 hy.1) hy.2.1 hy.2.2
@@ -86,12 +86,14 @@ theorem SleepyBoundsFrom.of_faultBoundAt (hanti : Antitone H) {a b : Time} {σ�
     exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
 
 /-- **An origin within `b` has a supporter honest at its vote**: a slot-`s` vote at a time `≤ b`
-whose head extends it. A result's counted votes meet the validators honest at `d = t_s + 6Δ` that
-were awake and joined at `t_s + Δ` (all participants of the writer's update, the slot count at
-`d`); an optimistic selection's `3n/4` voters meet `H d` at the check's time `d` (`2 f_d < n`). -/
+whose head extends it, for a label `s ≥ σ₀` whose service is available (`a ≤ t_s`). A result's
+counted votes meet the validators honest at `d = t_s + 6Δ` that were awake and joined at `t_s + Δ`
+(all participants of the writer's update, the slot count at `d`); an optimistic selection's `3n/4`
+voters meet `H d` at the check's time `d` (`2 f_d < n`). -/
 theorem honest_supporter_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b) :
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
+    (hB : SleepyBoundsFrom tr H σ₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hs : σ₀ ≤ s) (ha : a ≤ sp.ts s) (hC : OriginWithin tr H C s b) :
     ∃ x j e, HVoteAt tr H x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -101,14 +103,14 @@ theorem honest_supporter_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc
     have hmaj := SA.result_majority hR
     obtain ⟨ℓX, hu, -, hCV⟩ := hR
     have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-    have hJ := hB.slot s (tr.time i₀) (Nat.zero_le _) (by rw [ht₀]; linarith) hi₀ ht₀.le
+    have hJ := hB.slot s (tr.time i₀) hs (by rw [ht₀]; linarith) hi₀ ht₀.le
     change (H (tr.time i₀))ᶜ.ncard < {y | y ∈ H (tr.time i₀) ∧ tr.awake y (sp.ts s + sp.Δ) ∧
       tr.JoinedAt y (sp.ts s + sp.Δ)}.ncard at hJ
-    have hsvc := (SleepyServiceBefore.upTo hrun hsync hd).ac
+    have hsvc := hsync.acWindow_upTo hrun hd
     have hJV : {y | y ∈ H (tr.time i₀) ∧ tr.awake y (sp.ts s + sp.Δ) ∧
         tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy => by
-      have h := awake_participant_before (hrun.upTo hd) (hnc.upTo _) hsvc hX
+      have h := awake_participant_window_before (hrun.upTo hd) (hnc.upTo _) hsvc ha hX
         (by rw [RunTrace.upTo_projAC]; exact (sa_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩)
         (le_min hi₀ le_rfl) hy.1 ⟨hy.2.1, by rw [ht₀]; linarith⟩ (joinedAt_upTo hy.2.2)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h

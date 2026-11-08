@@ -16,9 +16,10 @@ public section
 
 The growing-fault forms of `Compose/Sleepy/Transport`. Each event is read with its node honest at
 its own cut: the writer of an origin at its event cut `i₀`, the next voter at its vote cut `i`;
-a vote or a head travels from the writer to the voter (`SleepyServiceBefore`) with the writer
-honest at its send or acceptance, which may be long before a compromise that comes before the
-vote.
+a vote or a head travels from the writer to the voter (`SleepyServiceFrom`, the service from a
+start `a` with `a + κ ≤ t_s`) with the writer honest at its send or acceptance, which may be long
+before a compromise that comes before the vote; a head the writer accepted before `a` reaches the
+voter by the catch-up, before `a + κ`.
 
 * `carryAt_of_writer_at`: `Carry_y` for votes released by a writer while honest in
   `[t_s, t_s + 2Δ)` whose heads, above the voter's `Σ.F`, are genesis or accepted by the writer
@@ -299,12 +300,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-! ### From the writer to the voter -/
 
 /-- **`Carry_y` from a writer, under growing faults**: for a node honest at its slot-`(s+1)` vote
-at a time `≤ b`, `Carry_y(s, ·, ·)` holds for votes of slot `s` that a writer `w` sent or admitted
-while honest at a time in `[t_s, t_s + 2Δ)`, whose heads are above the voter's `Σ.F` and are
-genesis or accepted by `w` while honest before `t_s + 2Δ`. -/
+at a time `≤ b`, with the service from `a` (`a + κ ≤ t_s`), `Carry_y(s, ·, ·)` holds for votes of
+slot `s` that a writer `w` sent or admitted while honest at a time in `[t_s, t_s + 2Δ)`, whose
+heads are above the voter's `Σ.F` and are genesis or accepted by `w` while honest before
+`t_s + 2Δ`. A head accepted before `a` is caught up by the voter before `a + κ ≤ t_s`. -/
 theorem carryAt_of_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {s : Nat}
-    {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
+    (hsa : a + κ ≤ sp.ts s) {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hi : tr.time i ≤ b)
     {CV : Set (Vote sp.n)}
@@ -319,22 +321,36 @@ theorem carryAt_of_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hd := hrun.time_nonneg i
   have hr := (acRun_upTo hrun hnc hd).localRun
   have hsub := upTo_subset hrun hd
+  have hΔ := sp.toParams.hΔ
+  have ha : a ≤ sp.ts s := (le_add_of_nonneg_right hsync.kappa).trans hsa
+  have hti : sp.ts s ≤ tr.time i := by
+    have h := (castAt_spec_at hrun hnc hy hc).2.1
+    rw [hs] at h
+    exact (SA.ts_le_iff_le_slot sp hd (s : Int)).2 (by omega)
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hcarry := carryAt_of_delivered hr hy hc' hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
       exact sa_messageServedBefore_upTo hm le_rfl (hsync.message w k v hwk hsend
-        (hrun.time_nonneg k) y i ℓ hy hc.1 (hdl.trans hi) hdl)
+        (ha.trans hk1) y i ℓ hy hc.1 (hdl.trans hi) hdl)
     rcases hacc with hg | ⟨kw, hwkw, hkw, hkwt⟩
     · exact Or.inr (Or.inl hg)
-    refine Or.inl ⟨tr.time kw, hkwt, fun hdl => ?_⟩
-    rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
-    obtain ⟨ky, hky, hacc', hkyt⟩ := hsync.acRelay w kw Hv hwkw hkw (hrun.time_nonneg kw) y i ℓ
-      hy hc.1 (hdl.trans hi) hdl hFHv
-    have hkyd : tr.time ky ≤ tr.time i := hm hky
-    exact ⟨ky, hky, (ac_acceptAt_upTo _).mpr ⟨hkyd, hacc'⟩,
-      by rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm hkyd]; exact hkyt⟩
+    by_cases hakw : a ≤ tr.time kw
+    · refine Or.inl ⟨tr.time kw, hkwt, fun hdl => ?_⟩
+      rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
+      obtain ⟨ky, hky, hacc', hkyt⟩ := hsync.acRelay w kw Hv hwkw hkw hakw y i ℓ
+        hy hc.1 (hdl.trans hi) hdl hFHv
+      have hkyd : tr.time ky ≤ tr.time i := hm hky
+      exact ⟨ky, hky, (ac_acceptAt_upTo _).mpr ⟨hkyd, hacc'⟩,
+        by rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm hkyd]; exact hkyt⟩
+    · -- a head accepted before `a`: caught up by the voter before `a + κ ≤ t_s`
+      obtain ⟨ky, -, hacc', hkyt⟩ := hsync.acOld w kw Hv hwkw hkw (lt_of_not_ge hakw) y i ℓ
+        hy hc.1 (hsa.trans hti) hFHv
+      have hkyd : tr.time ky ≤ tr.time i := (hkyt.trans_le (hsa.trans hti)).le
+      refine Or.inr (Or.inr ⟨ky, (ac_acceptAt_upTo _).mpr ⟨hkyd, hacc'⟩, ?_⟩)
+      change tr.time ky < sp.ts s + 3 * sp.Δ
+      linarith
   refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
   obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv
   refine ⟨Hv, hsub hHv, hHvr, fun X hX => ?_⟩
@@ -369,30 +385,32 @@ theorem result_writer_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 
 /-- **A result's counted votes reach the next voters** (`Carry_y`) under growing faults: the
 writer honest at its update, the voter at its slot-`(s+1)` vote at a time `≤ b`, with the
-voter's `Σ.F` at or below the result. -/
+voter's `Σ.F` at or below the result and the service from `a` (`a + κ ≤ t_s`). -/
 theorem result_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {X : Fin sp.n} {i₀ s : Nat}
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {X : Fin sp.n} {i₀ s : Nat}
+    (hsa : a + κ ≤ sp.ts s)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hX : X ∈ H (tr.time i₀))
     (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
-  carryAt_of_writer_at hrun hnc hsync hy hc hs hib fun v hv => by
+  carryAt_of_writer_at hrun hnc hsync hsa hy hc hs hib fun v hv => by
     obtain ⟨h₁, h₂, Hv, -, hHvr, hCHv, h₃⟩ := result_writer_at hrun hnc hX hR v hv
     exact ⟨h₁, h₂, Hv, hHvr, hF.trans hCHv, h₃⟩
 
 /-- **An optimistic selection's counted votes reach the next voters** (`Carry_y`) under growing
 faults, as `result_carry_at`, the checker honest at its check. -/
 theorem optimistic_carry_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {X : Fin sp.n}
-    {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
+    {X : Fin sp.n} {i₀ s : Nat} (hsa : a + κ ≤ sp.ts s)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hX : X ∈ H (tr.time i₀)) (hO : SA.OptimisticLockAt tr.projAC X i₀ s C CV) {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
     SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
-  carryAt_of_writer_at hrun hnc hsync hy hc hs hib fun v hv => by
+  carryAt_of_writer_at hrun hnc hsync hsa hy hc hs hib fun v hv => by
     obtain ⟨h₁, h₂, Hv, -, hHvr, hCHv, h₃⟩ := optimistic_writer_votes_at hrun hnc hX hO v hv
     exact ⟨h₁, h₂, Hv, hHvr, hF.trans hCHv, h₃⟩
 
@@ -403,8 +421,9 @@ sent or admitted at a time in `[t_s, t_s + 5Δ]` is held at an update of slot `s
 `t_s + 6Δ ≤ b`) of a writer honest then whose restarts are at or before `t_s`, or two other votes
 of its validator are. -/
 private theorem served_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {X x : Fin sp.n}
-    {c s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hX : X ∈ H (tr.time c))
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
+    {X x : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hX : X ∈ H (tr.time c))
     (hc : tr.projAC.CallAt X c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hcb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt X k → tr.time k ≤ sp.ts s) {v : Vote sp.n}
     (hvs : v.slot = s) {k : Nat} (hx : x ∈ H (tr.time k)) (hsend : tr.projAC.SendOrAdmit x k v)
@@ -421,7 +440,7 @@ private theorem served_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hdl := ac_deadline_le_of_restarts (T := tr.projAC) hrs' (tr.time k)
   change tr.projAC.deadline X c (tr.time k) ≤ max (tr.time k) (tr.time k) + sp.Δ at hdl
   rw [max_self] at hdl
-  have hserv := hsync.message x k v hx hsend (hrun.time_nonneg k) X c ℓ hX hc
+  have hserv := hsync.message x k v hx hsend (ha.trans h1) X c ℓ hX hc
     (by linarith) (by linarith)
   have hserv' := sa_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
   have h := SA.held_of_deadline_service hr.localRun hX
@@ -431,12 +450,12 @@ private theorem served_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       change tr.time k ≤ t at ht₁
       change t < tr.time k + sp.Δ at ht₂
       have ht0 : 0 ≤ t := (hrun.time_nonneg k).trans ht₁
-      have ha := (SA.ts_le_iff_le_slot sp ht0 s).1 (h1.trans ht₁)
+      have hsl := (SA.ts_le_iff_le_slot sp ht0 s).1 (h1.trans ht₁)
       have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
         have := (SA.ts_le_iff_le_slot sp ht0 _).2 h
         rw [hts₂] at this; linarith only [this, ht₂, h2, hΔ]
       rw [hvs]
-      clear * - ha hb
+      clear * - hsl hb
       omega) hserv'
   rw [projAC_upTo_state hrun le_rfl, hvs] at h
   exact h
@@ -446,8 +465,9 @@ private theorem served_held_at (hrun : Growing.GoldilocksRun proposer dg H tr)
 writer's pool, or its validator equivocates there. The voter relays each vote it admitted while
 honest; the writer receives it before its update (`t_s + 6Δ`). -/
 theorem result_writer_pool_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b) {X : Fin sp.n}
-    {i₀ s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
+    {X : Fin sp.n} {i₀ s : Nat} (ha : a ≤ sp.ts s)
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hX : X ∈ H (tr.time i₀)) (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -500,7 +520,7 @@ theorem result_writer_pool_at (hrun : Growing.GoldilocksRun proposer dg H tr)
         (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)
       have hki : tr.time k' ≤ tr.time i := hm ((Nat.le_of_lt_succ hk').trans hk)
       obtain ⟨-, hsend⟩ := (ac_sendOrAdmit_upTo hm).mp hsend
-      exact served_held_at hrun hnc hsync hX hupd.1 ht₀ hi₀ hrsX hvs (hrun.antitone hki hy)
+      exact served_held_at hrun hnc hsync ha hX hupd.1 ht₀ hi₀ hrsX hvs (hrun.antitone hki hy)
         hsend hsk (hki.trans hti)
     · -- a restart's vote is of a block of slot at most `slot(t_{k'})`, so of slot below `s`
       exfalso

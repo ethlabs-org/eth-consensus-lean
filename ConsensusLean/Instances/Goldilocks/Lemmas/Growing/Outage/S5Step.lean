@@ -422,7 +422,7 @@ theorem outage_s5_inner_at
         SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P := fun x j e' hjk hve hvs =>
       ih j hjk (by omega) x e' hve (by omega)
     have hB := D.hB (tr.time k) ⟨y, k, hy, hcallk, le_rfl⟩
-    have hcount := faults_lt_voters hrun D.hnc hB (s := q) (d := tr.time k)
+    have hcount := faults_lt_voters hrun D.hnc hB (s := q) (d := tr.time k) (Nat.zero_le _)
       (by linarith only [htk1, hts, hΔ]) le_rfl (by linarith only [htk', hs, hts, hΔ])
     obtain ⟨x, hx⟩ : (VotersAt tr H q (tr.time k)).Nonempty := by
       rw [Set.nonempty_iff_ne_empty]
@@ -431,7 +431,7 @@ theorem outage_s5_inner_at
       omega
     obtain ⟨-, j, e', hve, hvs⟩ := votersAt_iff.1 hx
     have hjk := (vote_cut_lt hrun D.hnc hve hvs htk1).2
-    exact vote_extends_of_batch_at hrun D.hnc hB hy hcast hs le_rfl
+    exact vote_extends_of_batch_at hrun D.hnc hB (Nat.zero_le _) hy hcast hs le_rfl
       (hviab ⟨x, j, e', hve, hvs, hall x j e' hjk hve hvs⟩) hall
       (by
         have h := hcarry Set.univ fun x _ j e' hve hvs =>

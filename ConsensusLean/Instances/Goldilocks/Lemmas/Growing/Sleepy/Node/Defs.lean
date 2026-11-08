@@ -19,8 +19,9 @@ Every node quantifier reads honesty at the cut of the event it constrains:
 * the frontier `OriginsBelowUpTo`, `VotesBelowUpTo`, the slot voters still honest at `d`
   (`VotersAt`), the count shapes `SleepyBoundsFrom` (`f_d < n / 2` at every `d ≤ b`, and, for the
   slots from a first slot on, the slot count `FaultBoundAt (t_s + Δ) d` for `d ≤ t_s + 6Δ`), the
-  finite service `SleepyServiceBefore`, and the invariant `SleepyInvariantUpTo` (S1–S3, every node
-  at its own cut). -/
+  finite service `SleepyServiceBefore` and its form from a start time `SleepyServiceFrom` (sends and
+  acceptances from `a`, older acceptances caught up by `a + κ`), and the invariant
+  `SleepyInvariantUpTo` (S1–S3, every node at its own cut). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -46,6 +47,37 @@ structure SleepyServiceBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fi
     ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
       tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
       Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → tr.BlockAcceptedBy y j (tr.time i) B
+
+/-- **The finite Sleepy service from `a`** under growing faults: the service of
+`SleepyServiceBefore` for the sends and acceptances at times `≥ a`, and the catch-up of older
+acceptances: a block that a node honest then accepted before `a` is accepted, before `a + κ`, by
+every node honest at a call from `a + κ` on whose `Σ.F` it extends (`old` at the node, `acOld` at
+its AC projection). From genesis `a = κ = 0`, and the catch-up is vacuous
+(`SleepyServiceBefore.toFrom`); after GST, `a = ḡ` with the catch-up window `κ`. -/
+structure SleepyServiceFrom (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+    (ΔF a κ b : Time) : Prop where
+  deltaF : 0 < ΔF
+  kappa : 0 ≤ κ
+  message : ∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → a ≤ tr.time i →
+    ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
+      tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
+      SA.MessageServedBefore tr.projAC y j (tr.time i) v
+  acRelay : ∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → a ≤ tr.time i →
+    ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
+      tr.projAC.deadline y j (tr.time i) ≤ tr.time j → Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
+      ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.projAC.deadline y k (tr.time i)
+  relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → a ≤ tr.time i →
+    ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
+      tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → tr.BlockAcceptedBy y j (tr.time i) B
+  old : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → tr.time i < a →
+    ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → a + κ ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B →
+      ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < a + κ
+  acOld : ∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → tr.time i < a →
+    ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → a + κ ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
+      ∃ k < j, tr.projAC.AcceptAt y k B ∧ tr.time k < a + κ
 
 variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
@@ -240,6 +272,17 @@ theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H
     fun x i B hx hB h0 y j ℓ hy hc hd hdj ha => h.acRelay x i B hx hB h0 y j ℓ hy hc
       (hd.trans hb) hdj ha,
     fun x i B hx hB h0 y j hy hc hd hdj ha => h.relay x i B hx hB h0 y j hy hc (hd.trans hb) hdj ha⟩
+
+/-- **The service from genesis is the service from `0`**, with a vacuous catch-up: every cut is
+at a time `≥ 0`. -/
+theorem SleepyServiceBefore.toFrom {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {proposer : Nat → Fin sp.n} (hrun : Growing.GoldilocksRun proposer dg H tr) {ΔF b : Time}
+    (h : SleepyServiceBefore tr H ΔF b) : SleepyServiceFrom tr H ΔF 0 0 b :=
+  ⟨h.deltaF, le_rfl, fun x i v hx hv _ => h.message x i v hx hv (hrun.time_nonneg i),
+    fun x i B hx hB _ => h.acRelay x i B hx hB (hrun.time_nonneg i),
+    fun x i B hx hB _ => h.relay x i B hx hB (hrun.time_nonneg i),
+    fun _ i _ _ _ hi => absurd hi (not_lt.2 (hrun.time_nonneg i)),
+    fun _ i _ _ _ hi => absurd hi (not_lt.2 (hrun.time_nonneg i))⟩
 
 /-! ### The per-node fields at a cut -/
 
