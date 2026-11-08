@@ -497,6 +497,18 @@ theorem honest_not_equivocator_pool (hS : HealthyBase tr H U proposer g)
   honest_not_equivocator_poolU (hS := hS.toU) (y := y) (hy := hy) (c := c) (s := s) (u := u)
       (hu := hu)
 
+/-- **A majority over a superset of `H` meets `H`**: a set `T` inside a vote set `W` that contains
+every validator of `H`, with `|W| < 2|T|`, has a member of `H` once at most `|H|` validators are
+outside `H` (the faulty members of `T` are counted inside `W`, next to `H`). -/
+private theorem exists_mem_of_majority {n : Nat} {H T W : Set (Fin n)} (hHW : H ⊆ W)
+    (hTW : T ⊆ W) (hmaj : W.ncard < 2 * T.ncard) (hf : Hᶜ.ncard ≤ H.ncard) : ∃ u ∈ H, u ∈ T := by
+  by_contra hno
+  have hdisj : Disjoint H T := Set.disjoint_left.2 fun u hu huT => hno ⟨u, hu, huT⟩
+  have h1 := Set.ncard_le_ncard (Set.union_subset hHW hTW)
+  rw [Set.ncard_union_eq hdisj] at h1
+  have h2 : T.ncard ≤ Hᶜ.ncard := Set.ncard_le_ncard fun u hu huH => hno ⟨u, huH, hu⟩
+  omega
+
 /-- A block extended by an honest vote of a slot `≥ p` compares with `P` (whose extension by every
 such vote is `hvotes`). -/
 theorem compatible_of_vote {p : Nat} {P : Blk sp.n FGP} (hU : Coherent U)
@@ -540,14 +552,15 @@ theorem result_extendedU
     obtain ⟨j, e, hv, hes⟩ := honest_votes_in_slotU hS hs u hu
     obtain ⟨hval, -⟩ := castAt_specU hr hu ⟨hv.choose_spec.1, hv.choose_spec.2⟩
     exact ⟨e.msg, (late_vote_poolU hS hx hc hs ht hu hv hes c (Or.inl rfl)).1, hval⟩
-  have h1 := Set.ncard_le_ncard hHv
-  have h2 := two_faulty_lt_honestU hS
-  obtain ⟨u, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hCR⟩, hu⟩ :=
-    Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
-      (t := supporters ℓ.frame ⟨{v | v ∈ (tr.state x c).pool s}, {v | v ∈ (tr.state x c).pool s ∧
-        resolutionTime (tr.state x c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s C)
-      (by omega)
-  have huH : v.val ∈ H := not_not.1 hu
+  have hf : Hᶜ.ncard ≤ H.ncard := by
+    have := hS.two_faulty_lt
+    have hn : H.ncard + Hᶜ.ncard = sp.n := by
+      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+    omega
+  obtain ⟨u, huH, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hCR⟩⟩ := exists_mem_of_majority hHv
+    (T := supporters ℓ.frame ⟨{v | v ∈ (tr.state x c).pool s}, {v | v ∈ (tr.state x c).pool s ∧
+      resolutionTime (tr.state x c) ℓ.frame v < ETime.of (sp.ts s + 2 * sp.Δ)}⟩ s C)
+    (fun u ⟨_, x, hx, hxu, _⟩ => ⟨x, hx.1, hxu⟩) hmaj hf
   obtain ⟨j', -, e', hve, rfl⟩ := hS.run.honest.pool_vote x hx c s _ hvp huH
   exact ⟨_, huH, j', e', hve, state_pool_slotU sp hr hx c s _ hvp, R, hΦU hR, hRr,
     Anc.mono hΦU hCR⟩
@@ -640,7 +653,11 @@ theorem lock_compatible_coreU
     obtain ⟨hve, -⟩ := locksSettledU_iff.1 hset y hy j (by
         linarith only [htj, hΔ]) l' hl' hlive' L' hL' hL'r
     obtain ⟨x, hx⟩ : H.Nonempty :=
-      Set.nonempty_of_ncard_ne_zero (by have := two_faulty_lt_honestU hS.toHealthyBaseU; omega)
+      Set.nonempty_of_ncard_ne_zero (by
+        have := hS.two_faulty_lt
+        have hn : H.ncard + Hᶜ.ncard = sp.n := by
+          rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+        omega)
     obtain ⟨i, e, hv, hes⟩ := honest_votes_in_slotU hS.toHealthyBaseU hp4 x hx
     obtain ⟨Hd, hHd, hHdr, hLHd⟩ := votesExtendAfter_iff.1 hve x hx i e hv (by omega)
     obtain rfl : Hd = P := hU.1 hHd hPU (hHdr.trans (hexact x hx i e hv hes))
@@ -825,7 +842,7 @@ theorem first_update_postU
     rwa [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at this
   have hHn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h2f := two_faulty_lt_honestU hS
+  have h2f := hS.two_faulty_lt
   have hHle := Set.ncard_le_ncard hHvot
   -- the honest validators support `P`
   have hscore : H.ncard ≤ confirmationScore sp A ℓ.frame p P := by
@@ -852,9 +869,8 @@ theorem first_update_postU
       by_contra hBP
       unfold confirmationScore at hmaj
       dsimp only at hmaj
-      refine absurd hmaj (not_lt.2 (le_trans (Nat.mul_le_mul_left 2
-        (Set.ncard_le_ncard (t := Hᶜ) ?_)) (by omega)))
-      rintro u ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩ hu
+      obtain ⟨u, hu, ⟨-, x, ⟨hx, -⟩, rfl, -, R, hR, hRr, hBR⟩⟩ := exists_mem_of_majority hHvot
+        (by rintro u ⟨-, x, hx, hxu, -⟩; exact ⟨x, hx.1, hxu⟩) hmaj (by omega)
       obtain ⟨v, -, -, hvh, -, huniq⟩ := hhon _ hu
       obtain rfl := huniq x hx rfl
       obtain rfl : R = P := hΦ.coherent.1 hR hPt (hRr.trans hvh)

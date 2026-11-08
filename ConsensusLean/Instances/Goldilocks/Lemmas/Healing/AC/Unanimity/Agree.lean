@@ -433,6 +433,18 @@ private theorem supporters_P_voter {s : Nat}
   supporters_P_voterU (s := s) (hs := hs.toU) (x := x) (hx := hx) (j := j) (ℓ := ℓ) (e := e)
       (hc := hc)
 
+/-- **A majority over a superset of `H` meets `H`**: a set `T` inside a vote set `W` that contains
+every validator of `H`, with `|W| < 2|T|`, has a member of `H` once at most `|H|` validators are
+outside `H` (the faulty members of `T` are counted inside `W`, next to `H`). -/
+private theorem exists_mem_of_majority {n : Nat} {H T W : Set (Fin n)} (hHW : H ⊆ W)
+    (hTW : T ⊆ W) (hmaj : W.ncard < 2 * T.ncard) (hf : Hᶜ.ncard ≤ H.ncard) : ∃ u ∈ H, u ∈ T := by
+  by_contra hno
+  have hdisj : Disjoint H T := Set.disjoint_left.2 fun u hu huT => hno ⟨u, hu, huT⟩
+  have h1 := Set.ncard_le_ncard (Set.union_subset hHW hTW)
+  rw [Set.ncard_union_eq hdisj] at h1
+  have h2 : T.ncard ≤ Hᶜ.ncard := Set.ncard_le_ncard fun u hu huH => hno ⟨u, huH, hu⟩
+  omega
+
 /-- `honest_supporter` with the unlock given. -/
 private theorem honest_supporterU
     {u : Nat → Set Lock} {s : Nat}
@@ -457,20 +469,24 @@ private theorem honest_supporterU
       (honest_vote_at_proposalU hS hpH hs.call hs.time hσ hw hv hes).1,
       (castAt_specU hr hw ⟨hcw, hew⟩).1⟩
   by_contra hno
-  have hsub : supporters ℓp.frame (View.ofLists (voteViewList
-      (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤)) s B ⊆ Hᶜ :=
-    fun w hw hwH => hno ⟨w, hwH, hw⟩
-  have heq : equivocators (View.ofLists (voteViewList
-      (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤)).votes ⊆ Hᶜ :=
-    fun w hw hwH => honest_not_equivocator_proposalU hrun hpH k s ℓp.frame hwH hw
-  have h1 := Set.ncard_le_ncard (Set.union_subset heq hsub)
-  rw [Set.ncard_union_eq (Set.disjoint_left.2 fun w hw hw' => hw'.1 hw)] at h1
-  have h2 := Set.ncard_le_ncard hvot
+  have hTW : equivocators (View.ofLists (voteViewList (tr.state (schedule (s + 1)) k)
+        ℓp.frame s ⊤)).votes ∪ supporters ℓp.frame (View.ofLists (voteViewList
+        (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤)) s B ⊆
+      voters (View.ofLists (voteViewList (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤)).votes := by
+    rintro w (⟨x, hx, -, -, -, hxw, -⟩ | ⟨-, x, hx, hxw, -⟩)
+    · exact ⟨x, hx, hxw⟩
+    · refine ⟨x, ?_, hxw⟩
+      change x ∈ (voteViewList (tr.state (schedule (s + 1)) k) ℓp.frame s ⊤).2 at hx
+      unfold voteViewList at hx ⊢
+      exact List.mem_of_mem_filter hx
   have hn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have h3 := hS.healthy.2.2.2
+  have hf := hS.two_faulty_lt
   unfold goldfishScore at h
-  omega
+  rw [← Set.ncard_union_eq (Set.disjoint_left.2 fun w hw hw' => hw'.1 hw)] at h
+  obtain ⟨w, hwH, hw | hw⟩ := exists_mem_of_majority hvot hTW h (by omega)
+  · exact honest_not_equivocator_proposalU hrun hpH k s ℓp.frame hwH hw
+  · exact hno ⟨w, hwH, hw⟩
 
 /-- A block with a strict majority in the proposal's view has an honest supporter (every honest
 validator is a voter there, and none is an equivocator). -/
