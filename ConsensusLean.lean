@@ -798,6 +798,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalResetPr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowAssembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecodeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedOfQuery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealBoundRounds
