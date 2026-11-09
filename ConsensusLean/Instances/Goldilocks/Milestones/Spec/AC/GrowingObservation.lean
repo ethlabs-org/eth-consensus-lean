@@ -1,0 +1,37 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Observation
+
+@[expose] public section
+
+namespace Consensus.Goldilocks.Growing
+
+variable {P : Params} {FGP : Type}
+
+/-- Structural AC run laws under time-indexed honesty, without an execution equation. -/
+structure ACObsRun (A : ACInterface P FGP) (H : Time → Set (Fin P.n))
+    (U : Set A.Blk) (tr : ACTrace A) : Prop where
+  antitone : Antitone H
+  coherent : Coherent U
+  init : ∀ y ∈ H 0, tr.init y = A.initial
+  frameLaw : ∀ y i ℓ, y ∈ H (tr.time i) → tr.CallAt y i ℓ →
+    (tr.NoCallBetween y 0 i ∧ ∃ Φ₀, A.InitialFrame Φ₀ ∧ A.FrameIn U Φ₀ ∧
+      A.CallOK U Φ₀ (tr.time i) ℓ.call ℓ.frame) ∨
+    (∃ j ℓ', j < i ∧ tr.CallAt y j ℓ' ∧ tr.NoCallBetween y (j + 1) i ∧
+      A.CallOK U ℓ'.frame (tr.time i) ℓ.call ℓ.frame)
+  time_nonneg : ∀ i, 0 ≤ tr.time i
+  time_mono : Monotone tr.time
+  awake_of_call : ∀ y i ℓ, y ∈ H (tr.time i) → tr.CallAt y i ℓ → tr.awake y (tr.time i)
+  restart_of_sleep : ∀ y i ℓ (u : Time), y ∈ H (tr.time i) → tr.CallAt y i ℓ →
+    0 ≤ u → u < tr.time i → ¬ tr.awake y u →
+    (∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u) → ℓ.call = .restart
+  restart_at_wake : ∀ y (u v : Time), y ∈ H v → 0 ≤ u → u < v →
+    ¬ tr.awake y u → tr.awake y v →
+    ∃ k, tr.RestartAt y k ∧ u < tr.time k ∧ tr.time k ≤ v
+  sleep_of_restart : ∀ y i ℓ, y ∈ H (tr.time i) → tr.CallAt y i ℓ → ℓ.call = .restart →
+    ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧
+      ∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u
+
+end Consensus.Goldilocks.Growing
+
+end
