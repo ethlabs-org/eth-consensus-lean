@@ -976,6 +976,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Events
 public import ConsensusLean.Lemmas.Model.Canonical.Inject
 public import ConsensusLean.Lemmas.Model.Canonical.InjectFilter
 public import ConsensusLean.Lemmas.Model.Canonical.Network
+public import ConsensusLean.Lemmas.Model.Canonical.Parts
 public import ConsensusLean.Lemmas.Model.Canonical.Schedule
 public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.Causal

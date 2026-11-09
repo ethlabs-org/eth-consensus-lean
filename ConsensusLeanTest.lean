@@ -128,6 +128,7 @@ public import ConsensusLeanTest.Model.Basic
 public import ConsensusLeanTest.Model.Growth
 public import ConsensusLeanTest.Model.InjectFilter
 public import ConsensusLeanTest.Model.Lift
+public import ConsensusLeanTest.Model.Parts
 public import ConsensusLeanTest.Problem.Continuation
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Problem.Growth
