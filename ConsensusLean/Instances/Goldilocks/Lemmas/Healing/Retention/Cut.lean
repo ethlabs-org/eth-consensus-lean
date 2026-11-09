@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
 public section
 
@@ -34,14 +35,6 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-! ### Run facts -/
-
-/-- A block below one that is compatible with `B` is compatible with `B`. -/
-private theorem compatible_of_anc' {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
-    {A B C : SA.Blk sp.n (List (FG.Att sp.n))} (hAC : Anc S A C) (hC : Compatible S C B) :
-    Compatible S A B := by
-  rcases hC with hCB | hBC
-  · exact Or.inl (hAC.trans hCB)
-  · exact Anc.total hS hAC hBC
 
 /-! ### The prefix comparison of origins -/
 
@@ -95,7 +88,7 @@ theorem ResetPremisesUpTo.row_compatible {b : Time}
   obtain rfl : E = E₀ := hU.1 hEU ⟨v, hv, r, hE₀⟩ (hEr.trans hE₀r.symm)
   have hBO := hp.origins_compatible_prefix hvote ho hib hact hoO (by omega)
     ((hp.run.time_mono hrd.le).trans hdb)
-  exact compatible_of_anc' hU (hE₀O.mono fun X hX => ⟨v, hv, r, hX⟩) hBO.symm
+  exact Goldilocks.Store.compatible_of_anc hU (hE₀O.mono fun X hX => ⟨v, hv, r, hX⟩) hBO.symm
 
 /-- **The cut step: G1.10 at the height-scoped scope** (claims HR.4, G1.10 "The healing reset
 induction uses the same node with a height-scoped `𝓔`"). (R2) after the honest call at cut `k`, from
@@ -161,7 +154,7 @@ theorem ResetPremisesUpTo.retention_cut_step {b : Time}
   by_cases hlow : (tr.state y (k + 1)).fg.hj ≤ HZ tr H g
   · exact Or.inl (low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults
       hy ho.1 hBt ho.2.2.2 hlow)
-  · exact compatible_of_anc' hU (hFJ.mono hsub) (hJ (by omega))
+  · exact Goldilocks.Store.compatible_of_anc hU (hFJ.mono hsub) (hJ (by omega))
 
 /-- Whole-run specialization of the finite cut step. -/
 theorem retention_cut_step (hp : ResetPremises tr H proposer dg g ΔF a) (k : Nat)

@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
 public section
 
@@ -23,24 +24,6 @@ namespace Consensus.Goldilocks.Healing
 
 open SA (SAParams ReplayOrder Vote Payload gbar)
 
-/-- One accepted block keeps the height and the entry, or enters the next height by itself; it
-keeps the justification, or justifies the parent's entry at the parent's height (the private
-`step_fields` of `Lemmas/FGStore/Cut.lean`). -/
-private theorem step_fields {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
-    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
-    ((σ'.h = σ.h ∧ σ'.Th = σ.Th) ∨ (σ'.h = σ.h + 1 ∧ σ'.Th = B.root)) ∧
-      ((σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h)) := by
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he]
-  dsimp only
-  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨Or.inr ⟨rfl, rfl⟩, Or.inr ⟨rfl, rfl⟩⟩
-  · exact ⟨Or.inr ⟨rfl, rfl⟩, Or.inl ⟨rfl, rfl⟩⟩
-  · exact ⟨Or.inl ⟨rfl, rfl⟩, Or.inl ⟨rfl, rfl⟩⟩
-
 /-- **Entry constancy** (G0.2 (i)): while the height stays along ancestry, the entry stays. -/
 theorem Th_eq_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
     (hr : st.Reachable acp₀) {A W : NodeBlock P ACP} (h : st.Anc A W)
@@ -50,7 +33,7 @@ theorem Th_eq_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
   | tail hAY hYW ih =>
     obtain ⟨-, -, -, ht⟩ := Store.step_σ hr hYW.2.1 hYW.2.2
     have h₁ := σ_h_le_of_anc hr hAY
-    rcases (step_fields ht).1 with ⟨he, hT⟩ | ⟨he, -⟩
+    rcases (Goldilocks.Store.step_fields ht).1 with ⟨he, hT⟩ | ⟨he, -⟩
     · rw [hT]; exact ih (by omega)
     · omega
 
@@ -107,7 +90,7 @@ private theorem step_pending {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
     {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
     ((σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h)) ∧
       ∀ p ∈ σ'.pending, p ∈ σ.pending ∨ p = (σ.h, σ.Th) := by
-  refine ⟨(step_fields h).2, ?_⟩
+  refine ⟨(Goldilocks.Store.step_fields h).2, ?_⟩
   obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
   obtain ⟨f, pr, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
   rw [he]

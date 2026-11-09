@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
 public section
 
@@ -18,23 +19,6 @@ namespace Consensus.Goldilocks.Healing
 namespace Store
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-
-/-- One accepted block keeps the height and the entry, or enters the next height by itself; it
-keeps the justification, or justifies the parent's entry at the parent's height. -/
-private theorem step_fields' {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
-    {B : FG.FGBlock gp.n} (h : gp.stateTransition σ B = some σ') :
-    ((σ'.h = σ.h ∧ σ'.Th = σ.Th) ∨ (σ'.h = σ.h + 1 ∧ σ'.Th = B.root)) ∧
-      ((σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h)) := by
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he]
-  dsimp only
-  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨Or.inr ⟨rfl, rfl⟩, Or.inr ⟨rfl, rfl⟩⟩
-  · exact ⟨Or.inr ⟨rfl, rfl⟩, Or.inl ⟨rfl, rfl⟩⟩
-  · exact ⟨Or.inl ⟨rfl, rfl⟩, Or.inl ⟨rfl, rfl⟩⟩
 
 /-- The state of a held block is above its justification: `h_j < h`. -/
 theorem hj_lt_h (hr : st.Reachable acp₀) {B : NodeBlock P ACP} (hB : B ∈ st.tree) :
@@ -56,7 +40,7 @@ theorem J_entry_of_reachable (hr : st.Reachable acp₀) {W : NodeBlock P ACP} (h
     exact ⟨_, hg, rfl, .refl, Or.inl rfl⟩
   | tail _ hYW ih =>
     obtain ⟨X, -, hXr, ht⟩ := step_σ hr hYW.2.1 hYW.2.2
-    rcases (step_fields' ht).2 with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
+    rcases (Goldilocks.Store.step_fields ht).2 with ⟨hJ, hj⟩ | ⟨hJ, hj⟩
     · obtain ⟨E, hE, h1, hEY, h2⟩ := ih
       refine ⟨E, hE, h1.trans hJ.symm, hEY.tail hYW, ?_⟩
       rw [hj]
@@ -77,7 +61,7 @@ theorem J_height_le (hr : st.Reachable acp₀) {W J : NodeBlock P ACP}
     exact Nat.zero_le _
   | tail _ hYW ih =>
     obtain ⟨_, _, _, ht⟩ := step_σ hr hYW.2.1 hYW.2.2
-    rcases (step_fields' ht).2 with ⟨hroot, hh⟩ | ⟨hroot, hh⟩
+    rcases (Goldilocks.Store.step_fields ht).2 with ⟨hroot, hh⟩ | ⟨hroot, hh⟩
     · rw [hh]
       exact ih hJ (hJr.trans hroot)
     · obtain ⟨⟨E, hE, hEr, _, hEh, _⟩, _⟩ :=

@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.ClientSteps
 
 public section
 
@@ -55,74 +56,6 @@ private theorem parent_mem (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y
 
 end FGTraces
 
-/-! ## The first crossing of an entry before its timeout
-
-As `Lemmas/FGStore/Window.lean` (`events_current`, `entry_facts`), at a reachable store. -/
-
-section Walk
-
-variable {P : Params} {ACP : Type} {acp₀ : ACP}
-
-/-- The block named by a source's `T_h` is held and is the entry of its own state. -/
-private theorem source_entry {st : Store P ACP} (hr : st.Reachable acp₀) (src : NodeBlock P ACP) :
-    ∃ E ∈ st.tree, E.root = (st.σ src.root).Th ∧ (st.σ E.root).Th = E.root := by
-  rcases hs : st.blocks src.root with _ | X
-  · have hg : (st.σ src.root).Th = P.genesisRoot := by rw [Store.σ_of_blocks_none hr hs]; rfl
-    refine ⟨_, Store.genesis_mem hr, hg.symm, ?_⟩
-    rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, Store.σ_genesis hr]; rfl
-  · have hXr : X.root = src.root := Goldilocks.Store.Reachable.blocks_root hr hs
-    have hX : X ∈ st.tree := by change st.blocks X.root = some X; rw [hXr]; exact hs
-    obtain ⟨⟨E, hE, hEr, -, -, hET⟩, -⟩ := Store.entry_state_of_source P ACP acp₀ _ hr X hX
-    rw [← hXr]
-    exact ⟨E, hE, hEr, hET.trans hEr.symm⟩
-
-end Walk
-
-/-! ## The honest client's records -/
-
-section Client
-
-/-- `create_attestation` signs `(h, T_h)` of its input with the record's finality pair and
-records it; a timeout only on a recorded timeout or another target at that height. -/
-private theorem createAtt_spec {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) :
-    a.val = v ∧ a.h = σe.h ∧ a.T = σe.Th ∧ a.fin = Λ.finalityPair σe ∧ Λ' = Λ.recordAtt a ∧
-      (a.timeout = true → Λ.timeout σe.h ≠ ∅ ∨ ∃ T', Λ.target σe.h = some T' ∧ T' ≠ σe.Th) := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · cases h
-  dsimp only at h
-  split_ifs at h
-  simp only [Option.some.injEq, Prod.mk.injEq] at h
-  obtain ⟨rfl, rfl⟩ := h
-  obtain ⟨rfl, rfl⟩ := Store.heightPair_eq hp
-  refine ⟨rfl, rfl, rfl, rfl, rfl, fun hτ => ?_⟩
-  unfold FG.Record.heightPair at hp
-  split_ifs at hp with h1 h2 h3 <;> simp only [Option.some.injEq, Prod.mk.injEq] at hp
-  · exact Or.inl h2
-  · simp_all
-  · push Not at h3
-    obtain ⟨T'', hT''⟩ := Option.ne_none_iff_exists'.1 h3.1
-    exact Or.inr ⟨T'', hT'', fun e => h3.2 (hT''.trans (by rw [e]))⟩
-
-/-- `create_attestation` signs nothing only on a lock of another root at the input's height, or
-a content of that height already sent. -/
-private theorem createAtt_none {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    (h : Λ.createAtt v σe = none) :
-    (Λ.lock σe.h ≠ none ∧ Λ.lock σe.h ≠ some σe.Th) ∨ ∃ b ∈ Λ.sent, b.1 = σe.h := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · unfold FG.Record.heightPair at hp
-    split_ifs at hp with h1
-    exact Or.inl h1
-  · obtain ⟨rfl, -⟩ := Store.heightPair_eq hp
-    dsimp only at h
-    split_ifs at h with hany
-    obtain ⟨b, hb, hb'⟩ := List.any_eq_true.1 hany
-    exact Or.inr ⟨b, hb, (of_decide_eq_true hb').1⟩
-
-end Client
-
 /-! ## Runs: deadlines and the relay of a carrier -/
 
 section Runs
@@ -136,20 +69,6 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {g ΔF Gp a : Time} {cF kF : Nat}
 
 /-! ## The actual reports -/
-
-/-- The selection of a fast-lock write is in the frame of its call (as in `Retention/Rows`). -/
-private theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (h : SA.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt x i ℓ) : D ∈ ℓ.frame.tree := by
-  rcases h with ⟨ℓ', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ℓ', A, ⟨hc', -⟩, -, hsel, -⟩
-  · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
-    exact (SA.deepest_mem hD).1.1.1
-  · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
-    unfold SA.optimisticSelect at hsel
-    dsimp only at hsel
-    split_ifs at hsel
-    exact (SA.deepest_mem hsel).1.1
 
 /-- The block of an actual report is in the reporter's FG tree. -/
 private theorem report_mem (hrun : GoldilocksRun proposer dg H tr)
@@ -316,7 +235,7 @@ private theorem sign_target_before {b : Time}
   have hcl := (hp.run.cutLaw y hy k _ hc).1
   change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
     ((tr.state y k).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨_, hah, haT, _, _, hτ⟩ := createAtt_spec hcl
+  obtain ⟨_, hah, haT, _, _, hτ⟩ := createAtt_fields hcl
   rw [← Bool.not_eq_true]
   intro hto
   rw [← hah, ← haT] at hτ
@@ -365,7 +284,7 @@ theorem ResetPremisesUpTo.row_target_of_sign {b : Time}
   have hcl := (hp.run.cutLaw z hz j _ hc).1
   change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
     ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨hv, _, _, _, _, _⟩ := createAtt_spec hcl
+  obtain ⟨hv, _, _, _, _, _⟩ := createAtt_fields hcl
   obtain ⟨q, hqj, l, O, hO, E, hE, hEO, hEr, hEh, hET⟩ := hp.high_row_source hz ⟨src, hc⟩ hh
   have hTr : att.T = T.root := hEr.symm.trans (hp.high_entry_eq hO
     ((hp.run.time_mono hqj.le).trans hjb) ho hiob
@@ -393,7 +312,7 @@ theorem ResetPremisesUpTo.row_of_sign {b : Time}
   have hcl := (hp.run.cutLaw z hz j _ hc).1
   change (tr.state z j).record.createAtt z ((tr.state z j).fg.σ
     ((tr.state z j).fg.σ src.root).Th) = some (att, _) at hcl
-  obtain ⟨_, _, haT, hfin, _, _⟩ := createAtt_spec hcl
+  obtain ⟨_, _, haT, hfin, _, _⟩ := createAtt_fields hcl
   refine ⟨hv, hTr, htimeout, fun hb => ?_⟩
   obtain ⟨E', hE', hE'r, hE'T⟩ := source_entry (Compose.fg_reachable hp.run.toLocalRun hz j) src
   have hR : ((tr.state z j).fg.σ src.root).Th = T.root := by
@@ -453,13 +372,13 @@ theorem ResetPremisesUpTo.sign_of_report {b : Time}
     have hcl := (hp.run.cutLaw z hz _ _ hs).1
     change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
       ((tr.state z (r + 1)).fg.σ C.root).Th) = some (att, _) at hcl
-    exact ⟨r + 1, att, ⟨C, hs⟩, hts.le, by rw [(createAtt_spec hcl).2.1, hσe]⟩
+    exact ⟨r + 1, att, ⟨C, hs⟩, hts.le, by rw [(createAtt_fields hcl).2.1, hσe]⟩
   | none =>
     have hcl := (hp.run.cutLaw z hz _ _ hs).1
     change (tr.state z (r + 1)).record.createAtt z ((tr.state z (r + 1)).fg.σ
       ((tr.state z (r + 1)).fg.σ C.root).Th) = none at hcl
     rw [hσe] at hcl
-    rcases createAtt_none hcl with ⟨hl, hl'⟩ | ⟨c, hc, _⟩
+    rcases createAtt_refused hcl with ⟨hl, hl'⟩ | ⟨c, hc, _⟩
     · obtain ⟨r', hr'⟩ := Option.ne_none_iff_exists'.1 hl
       have := hp.record_entry_eq hz (hts.le.trans hrb) hhT (Or.inr (Or.inr hr'))
         ho hiob hTB hy hT rfl hTe
