@@ -19,11 +19,11 @@ trace `simTraceAt` with the time-indexed honest keys `honestKeysAt`:
 
 * `ready_transport_at`: an engine node ready at `t ≤ horizon` is ready at `t` in the trace, with
   honesty read at `t` (no constant-fault premise);
-* `sleepy_faultBoundAt`: the L0 sleepy budget with look-ahead `5Δ` on `[a, b]`
+* `sleepy_bounds_at`: the L0 sleepy budget with look-ahead `5Δ` on `[a, b]`
   (`EnvPoint.SleepyOn` on the view retained through `lookAhead (5Δ) t`) gives the count
-  `FaultBoundAt t d` charged at `d = min (t + 5Δ) b`, at every `t ∈ [max a 0, b]`, `b ≤ horizon`;
-* `sleepy_bounds_at`: hence the count shapes `SleepyBoundsFrom σ₀` through `b`, for the slots
-  whose slot point `t_s + Δ` is at or after `a`.
+  `FaultBoundAt t d` charged at `d = min (t + 5Δ) b`, at every `t ∈ [max a 0, b]`, `b ≤ horizon`,
+  hence the count shapes `SleepyBoundsFrom σ₀` through `b`, for the slots whose slot point
+  `t_s + Δ` is at or after `a`.
 
 The finite service comes from `sleepyServiceBefore_of_syncUntil_at`. -/
 
@@ -111,7 +111,7 @@ on `[a, b]` (`b ≤ horizon`), at every `t ∈ [max a 0, b]` the keys compromise
 `min (t + 5Δ) b` are fewer than the keys honest then, awake and joined at `t`. The engine count is
 charged at `lookAhead (5Δ) t ≥ min (t + 5Δ) b`; compromise only grows, and a ready node is
 honest, awake and (by its catch-up) joined at `t`. -/
-theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.horizon)
+private theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
       (5 * (S.params (pubOf E) hn).Δ) a b)
     {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) :
