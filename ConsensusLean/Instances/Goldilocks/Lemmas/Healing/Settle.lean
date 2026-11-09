@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -48,36 +49,6 @@ section Stores
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- A held block of an honest store has a chain whose fold is its state, each of whose roots
-names a held ancestor, and each of whose attestations with an honest signer was signed before
-the cut. -/
-private theorem held_chain (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) :
-    ∃ c : List (NodeBlock P ACP),
-      P.fg.chainState (c.map Block.fgView) = some ((tr.store y i).σ B.root) ∧
-      (∀ r ∈ P.fg.roots (c.map Block.fgView),
-        ∃ Y ∈ (tr.store y i).tree, Y.root = r ∧ (tr.store y i).Anc Y B) ∧
-      ∀ a ∈ P.fg.chainAtts (c.map Block.fgView), a.val ∈ H → ∃ k < i, tr.SignAt a.val k a := by
-  have hR := store_reachable hr hy i
-  obtain ⟨c, hc, hl, hlast, hσ⟩ := chain_state_of_chain P ACP acp₀ _ hR B hB
-  obtain ⟨-, -, hg, -⟩ := accepted_tree P ACP acp₀ _ hR
-  have hanc := Store.anc_of_linked c _ hg hc hl B (by
-    rcases hlast with ⟨rfl, rfl⟩ | h
-    · rfl
-    · simp [List.getLast?_cons, h])
-  refine ⟨c, hσ, fun r hr' => ?_, fun a ha hav => ?_⟩
-  · obtain ⟨Y, hY, hYr⟩ : ∃ Y ∈ P.genesisBlock acp₀ :: c, Y.root = r := by
-      simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hr'
-    refine ⟨Y, ?_, hYr, hanc Y hY⟩
-    rcases List.mem_cons.1 hY with rfl | h
-    exacts [hg, hc _ h]
-  · obtain ⟨_, hX, haX⟩ := List.mem_flatMap.1 ha
-    obtain ⟨X, hXc, rfl⟩ := List.mem_map.1 hX
-    rcases tree_accepted hr hy (hc X hXc) with rfl | ⟨k, hk, hacc⟩
-    · cases haX
-    · obtain ⟨k', hk', hs⟩ := hr.unforgeable y hy k a ⟨_, hacc, haX⟩ hav
-      exact ⟨k', by omega, hs⟩
-
 /-- **G1.2 at the stores (strict height).** With `f < 2q − n`, the finalized tip of an honest
 node is an ancestor of every block an honest node holds whose state height is at least the first
 node's `Σ.h_max`: its finalized height `h_F` is below the height of the state that finalizes it,
@@ -86,36 +57,9 @@ quorum in an honest validator with an E1 pair (G1.2, G0.5). -/
 theorem finalized_anc (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
     {y z : Fin P.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : NodeBlock P ACP}
     (hB : B ∈ (tr.store z j).tree) (hle : (tr.store y i).hmax ≤ ((tr.store z j).σ B.root).h) :
-    (tr.store z j).Anc (tr.store y i).F B := by
-  obtain ⟨hF, -, -, -, hge, -, X, hX, hXF⟩ :=
-    cache_invariants P ACP acp₀ _ (store_reachable hr hy i)
-  obtain ⟨c₁, h₁, -, ha₁⟩ := held_chain hr hy hX
-  obtain ⟨c₂, h₂, hr₂, ha₂⟩ := held_chain hr hz hB
-  obtain ⟨-, hFj, hjh, -, hF0, -⟩ := FG.chain_invariants P.fg _ _ h₁
-  have hXh := hge X hX
-  suffices hmem : (tr.store y i).F.root ∈ P.fg.roots (c₂.map Block.fgView) by
-    obtain ⟨Y, hY, hYr, hYB⟩ := hr₂ _ hmem
-    rwa [hr.coherent.1 (hr.tree_subset z hz j hY) (hr.tree_subset y hy i hF) hYr] at hYB
-  rw [← hXF]
-  rcases Nat.eq_zero_or_pos ((tr.store y i).σ X.root).hF with h0 | h0
-  · rw [hF0 h0]
-    exact List.mem_cons_self
-  by_contra hnot
-  obtain ⟨S, hS, hSv⟩ := P.fg.finalization_meets_crossing h₁ h₂ h0 (by omega) hnot
-  obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H := by
-    by_contra! hS'
-    have := Set.ncard_le_ncard (s := (S : Set (Fin P.fg.n))) (t := Hᶜ) hS'
-    rw [Set.ncard_coe_finset] at this
-    have : (Hᶜ : Set (Fin P.fg.n)).ncard = (Hᶜ : Set (Fin P.n)).ncard := rfl
-    have : P.fg.n = P.n := rfl
-    omega
-  obtain ⟨a, ha, b, hb, rfl, hab⟩ := hSv v hvS
-  obtain ⟨inputs, hin, hrun⟩ := signed_run hr hv (i + j)
-  obtain ⟨k, hk, hka⟩ := ha₁ a ha hv
-  obtain ⟨k', hk', hkb⟩ := ha₂ b hb (hab.1 ▸ hv)
-  rw [← hab.1] at hkb
-  exact FG.client_safety P.fg a.val inputs hin a (hrun k (by omega) a hka) b
-    (hrun k' (by omega) b hkb) hab
+    (tr.store z j).Anc (tr.store y i).F B :=
+  F_anc_of_hmax_le_of_safe (store_reachable hr hy i) (store_reachable hr hz j) hr.coherent
+    (hr.tree_subset y hy i) (hr.tree_subset z hz j) hH (held_atts_safe hr hy hz i j) hB hle
 
 /-- Ancestors of a held block are held. -/
 theorem mem_of_anc {st : Store P ACP} {A B : NodeBlock P ACP} (h : st.Anc A B)
