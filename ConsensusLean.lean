@@ -7,6 +7,7 @@ public import ConsensusLean.Init
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.CallViewM
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
@@ -61,6 +62,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockTargetSelf
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UpdateTime
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd

@@ -29,6 +29,17 @@ noncomputable def tickEvents (t : Time) : List (Event V (protoOf F E).Object) :=
   exact (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).map
     (fun v => .tick v t)
 
+/-- The defining equation of `wakeEvents`, for modules that compare the layers of two runs. -/
+theorem wakeEvents_eq (t : Time) : rho.wakeEvents t = (by
+    classical
+    exact (((Finset.univ \ rho.faultyAt t).filter (fun v => 0 < t ∧ Wakes E v t)).toList).map
+      (fun v => .restart v t)) := by rfl
+
+/-- The defining equation of `tickEvents`, for modules that compare the layers of two runs. -/
+theorem tickEvents_eq (t : Time) : rho.tickEvents t =
+    (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).map
+      (fun v => .tick v t) := by rfl
+
 noncomputable def deliveryEvents (g : Time) (es : List (Event V (protoOf F E).Object))
     (t : Time) : List (Event V (protoOf F E).Object) := by
   classical
