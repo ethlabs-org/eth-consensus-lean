@@ -127,6 +127,13 @@ noncomputable def duePool (es : List (Event V (protoOf F E).Object)) (t : Time) 
     if ∃ e, es[j]? = some e ∧ e.time + delay e ≤ t then (rho.withEvents es).releasesAt j
     else []).dedup
 
+theorem duePool_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
+    rho.duePool delay es t = (by
+      classical
+      exact ((List.range es.length).flatMap fun j =>
+        if ∃ e, es[j]? = some e ∧ e.time + delay e ≤ t then (rho.withEvents es).releasesAt j
+        else []).dedup) := by rfl
+
 theorem mem_duePool (es : List (Event V (protoOf F E).Object)) (t : Time)
     (o : (protoOf F E).Object) :
     o ∈ rho.duePool delay es t ↔ ∃ j e, es[j]? = some e ∧ e.time + delay e ≤ t ∧
@@ -153,6 +160,13 @@ noncomputable def injectDeliveries (es : List (Event V (protoOf F E).Object)) (t
   classical
   exact (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).flatMap
     (fun v => (inj t v ++ rho.duePool delay es t).dedup.map (fun o => .deliver v o t))
+
+theorem injectDeliveries_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
+    rho.injectDeliveries delay inj es t = (by
+      classical
+      exact (((Finset.univ \ rho.faultyAt t).filter (fun v => E.awake v t = true)).toList).flatMap
+        (fun v => (inj t v ++ rho.duePool delay es t).dedup.map (fun o => .deliver v o t))) := by
+  rfl
 
 theorem mem_injectDeliveries (es : List (Event V (protoOf F E).Object)) (t : Time)
     (e : Event V (protoOf F E).Object) :
@@ -202,6 +216,8 @@ noncomputable def injectEvents : List (Event V (protoOf F E).Object) :=
 theorem injectLayer_eq (es : List (Event V (protoOf F E).Object)) (t : Time) :
     rho.injectLayer delay inj es t = rho.wakeEvents t ++ rho.tickEvents t ++
       rho.injectDeliveries delay inj (rho.front es t) t := by rfl
+
+theorem injectStages_zero : rho.injectStages delay inj 0 = [] := by rfl
 
 theorem injectStages_succ (n : Nat) : rho.injectStages delay inj (n + 1) =
     rho.injectStages delay inj n ++
