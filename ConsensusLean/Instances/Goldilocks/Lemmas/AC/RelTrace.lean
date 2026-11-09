@@ -12,10 +12,11 @@ The vocabulary (the handlers with the locks after the unlock given and at a writ
 unlock input of a call, the unlock relation `UnlockRel`, the parent's oracle and the trace law
 `ACLocalRunU m u`) is in `Milestones/Spec/SA/RelTrace`. This module proves its laws: the parent's
 calls are `stepWith` of their own unlock (`step_eq_stepWith`), the handlers at the parent's mode
-are the parent's (`stepWithM_parent` and the others, by `rfl`), the parent's `unlock` satisfies
-the relation (`unlockRel_unlock`) and related locks only move back (`UnlockRel.movesBack`), and
-the parent's runs and reachable states are such runs at the parent's mode and unlock
-(`ACLocalRun.toU`, `ACInterface.ReachableAt.toU`, `ACRun.toU`). -/
+are the parent's (`stepWithM_parent` and the others, by `rfl`), so are the call and the trace law
+from the parent's start (`stepWithMS_parentWalkStartFn`, `acLocalRunUS_parentWalkStartFn`, by
+`rfl`), the parent's `unlock` satisfies the relation (`unlockRel_unlock`) and related locks only
+move back (`UnlockRel.movesBack`), and the parent's runs and reachable states are such runs at
+the parent's mode and unlock (`ACLocalRun.toU`, `ACInterface.ReachableAt.toU`, `ACRun.toU`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -148,6 +149,15 @@ theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat 
       (callViewM sp m (tr.state y i) ℓ.frame (tr.time i) ℓ.call) (u i) := by
   have := h.lawful i ℓ hc.2 (hc.1 ▸ hy) hΦ
   rwa [hc.1] at this
+
+/-- At the parent's start, the call from a start is the parent's call. -/
+theorem stepWithMS_parentWalkStartFn (ro : ReplayOrder sp FGP) (m : WriteMode) :
+    stepWithMS sp ro m (parentWalkStartFn sp) = stepWithM sp ro m := rfl
+
+/-- At the parent's start at every call, the trace law from the starts is the parent's. -/
+theorem acLocalRunUS_parentWalkStartFn {ro : ReplayOrder sp FGP} (m : WriteMode)
+    (u : Nat → Set Lock) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) :
+    ACLocalRunUS m u (fun _ => parentWalkStartFn sp) H U tr = ACLocalRunU m u H U tr := rfl
 
 /-- **The parent's runs are runs with the unlock given**, at the parent's own unlock. -/
 theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
