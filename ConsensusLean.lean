@@ -992,6 +992,7 @@ public import ConsensusLean.Lemmas.Model.Canonical.Unforgeable
 public import ConsensusLean.Lemmas.Model.Causal
 public import ConsensusLean.Lemmas.Model.Constant
 public import ConsensusLean.Lemmas.Model.Credentials
+public import ConsensusLean.Lemmas.Model.Excuses
 public import ConsensusLean.Lemmas.Model.Laws
 public import ConsensusLean.Lemmas.Model.Mempool
 public import ConsensusLean.Lemmas.Model.Objects

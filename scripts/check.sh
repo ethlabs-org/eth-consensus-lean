@@ -896,6 +896,13 @@ selftest_surface() {
     echo "  ok: an auxiliary proof named by a theorem's statement is kept" ||
     { echo "  InstSnap.Base: the statement-named auxiliary of w_val is missing"; rc=1; }
   expect_fail 'FAIL[theorem]' "${SURFACE[@]}" theorems --allow /dev/null --modules CheckFixtures.BadTheorem.A || rc=1
+  # The validity split is the sole new ranged-theorem exception; unrelated proofs stay rejected.
+  expect_pass "${SURFACE[@]}" theorems --allow scripts/spec-theorems.txt \
+    --modules ConsensusLean.Spec.Model.Conditions || rc=1
+  expect_fail 'Consensus.Model.Run.executionValid_iff_structuralValid' \
+    "${SURFACE[@]}" theorems --allow /dev/null --modules ConsensusLean.Spec.Model.Conditions || rc=1
+  expect_fail 'FAIL[theorem]' "${SURFACE[@]}" theorems --allow scripts/spec-theorems.txt \
+    --modules CheckFixtures.BadTheorem.A || rc=1
   expect_fail 'FAIL[noconst]' "${SURFACE[@]}" noconst --modules CheckFixtures.RootDecl || rc=1
   expect_pass "${SURFACE[@]}" noconst --modules CheckFixtures.GoodSpec || rc=1
   d="$("${SURFACE[@]}" statements --modules CheckFixtures.ReviewBad.A)" || { echo "  statements failed"; rc=1; }

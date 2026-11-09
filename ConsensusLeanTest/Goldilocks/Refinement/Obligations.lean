@@ -319,6 +319,39 @@ theorem goldilocksCorrect_realizable_small :
   (Consensus.Goldilocks.goldilocksCorrect setupSmall assumptionsSmall (Fin 5)).realizable
     (by decide)
 
+/-- (a) The explicit excuses do not absorb all structural runs: reuse a clean,
+active sleepy realizability witness at delays two, and check the full property
+table and all three `HoldsAlways` rows without a collision escape on that run. -/
+theorem goldilocksCorrectWithExcuses_nonvacuous :
+    ∃ r : (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).Run,
+      r.2.StructuralValid ∧ ¬ r.2.BindingFailure ∧ ¬ r.2.HashCollision ∧
+      Behaviour ((Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).atRun r)
+        ((shapeProgress (goldilocks setupSmall) (Fin 5)).atRun r)
+        (goldilocksContract assumptionsSmall
+          (contract_coefficients setupSmall assumptionsSmall)) ∧
+      (Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).NonFraming r ∧
+      (∀ c₁ c₂ g₁ g₂, c₁.rank < c₂.rank → schema.output c₁ = some g₁ →
+        schema.output c₂ = some g₂ →
+        ((Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).trace r).Nested g₁ g₂) ∧
+      (∀ g, schema.output .final = some g →
+        ((Model.sysOf schema (compiled (goldilocks setupSmall)) (Fin 5)).trace r).Monotone
+          g 0) := by
+  obtain ⟨r, hw, _⟩ := goldilocksCorrect_realizable_small.sleepy .available 1 2 2
+    (by decide) (by decide)
+  have hv := r.2.executionValid_iff_structuralValid.mp hw.1.1
+  have hf : ¬ r.2.BindingFailure := by
+    rintro (hf | hf | hf)
+    · exact hf hv.2.1
+    · exact hf hv.2.2.1
+    · exact hf hv.2.2.2
+  refine ⟨r, hv.1, hf, hw.1.2.1, ?_⟩
+  rcases (Consensus.Goldilocks.goldilocksCorrectWithExcuses setupSmall assumptionsSmall
+    (Fin 5)).behaviour r hv.1 with hb | he
+  · exact ⟨hb, hb.nonFraming r rfl,
+      fun c₁ c₂ g₁ g₂ hlt hg₁ hg₂ => hb.nested c₁ c₂ g₁ g₂ hlt hg₁ hg₂ r rfl,
+      fun g hg => hb.finalMonotone g hg r rfl⟩
+  · exact (hf he).elim
+
 /-! ## The profile label
 
 `MeetsObligations` labels the endpoint `ShapeObligationsAs .ebbAndFlow`. The label is decided by

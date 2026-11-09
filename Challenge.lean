@@ -22,4 +22,12 @@ theorem Consensus.Review.obligationsSufficientOn : Consensus.Review.ObligationsS
 theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObligations := sorry
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect := sorry
 
+/-- On every structural run: the full behaviour on that single run, or a forgery,
+credential failure or inadmissible selection. Collisions excuse only `Holds`
+rows, never `HoldsAlways` rows. The laws `convicts_mono` and `view_mono` remain
+global over all runs. `SelValid` checks every role, including slots beyond the
+horizon, of selection data fixed before execution; a failure need not be observed.
+No execution binding is assumed; adequacy and realizability keep their clean witnesses. -/
+theorem Consensus.Goldilocks.goldilocksCorrectWithExcuses : Consensus.Goldilocks.GoldilocksCorrectWithExcuses := sorry
+
 end

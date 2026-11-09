@@ -4,3 +4,5 @@
 # Lemmas would be an orphan instance, found only where Lemmas is imported); proof-irrelevant.
 Consensus.Blocks.instCountableParentRef  # `Countable ParentRef`
 Consensus.Blocks.instCountableHeader     # `Countable (Header Info)` for `[Countable Info]`
+# The validity decomposition stays next to both records as a field-completeness drift guard.
+Consensus.Model.Run.executionValid_iff_structuralValid

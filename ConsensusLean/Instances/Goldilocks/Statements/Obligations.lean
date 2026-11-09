@@ -174,6 +174,23 @@ def GoldilocksCorrect : Prop :=
     CorrectProtocol (Model.sysOf schema (compiled (goldilocks S)) V)
       (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
 
+/-- **Goldilocks is correct or a binding fails.** For every setup, timing
+assumption set and finite validator type, on every structurally valid run the
+entire correctness property table holds on the single run `r` (validity means
+"is `r`"), or a signature forgery, credential failure or inadmissible selection
+holds. Collisions excuse only `Holds` rows, never `HoldsAlways` rows. The laws
+`convicts_mono` and `view_mono` remain global over all runs. `SelValid` ranges
+over every selection role, including slots beyond the horizon; selection is
+external data fixed before execution, so a failure need not be an observed event.
+No execution binding is an antecedent. Network regimes and proposer progress
+remain the premises of their respective rows. Adequacy and realizability retain
+their original valid, binding-sound, collision-free witnesses. -/
+def GoldilocksCorrectWithExcuses : Prop :=
+  ∀ (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V],
+    CorrectProtocolWithExcuses (Model.sysOf schema (compiled (goldilocks S)) V)
+      (shapeProgress (goldilocks S) V) (goldilocksContract A (contract_coefficients S A))
+      (fun r => r.2.StructuralValid) (fun r => r.2.BindingFailure)
+
 end Consensus.Goldilocks
 
 end

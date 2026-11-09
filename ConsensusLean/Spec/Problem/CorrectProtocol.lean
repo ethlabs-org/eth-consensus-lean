@@ -347,6 +347,36 @@ structure CorrectProtocolOn (S : System V) (X : Progress S Prog) (K : Contract P
   adequate : S.Adequate X
   realizable : 5 ≤ Fintype.card V → Realizable S X K
 
+/-- Restrict behaviour to the single run `r`: validity means "is `r`", and
+the original excuse is retained at that run. All reads, evidence and communication
+are unchanged; in particular validity does not retain `S.Valid`. The laws
+`convicts_mono` and `view_mono` still range over all runs. -/
+def System.atRun (S : System V) (r : S.Run) : System V :=
+  { S with Valid := fun s => s = r, Excuse := fun s => s = r ∧ S.Excuse r }
+
+/-- The same external data and progress requirements, for the single-run system. -/
+def Progress.atRun {S : System V} (X : Progress S Prog) (r : S.Run) :
+    Progress (S.atRun r) Prog where
+  Ext := X.Ext
+  ext := X.ext
+  Admits := X.Admits
+  holds := X.holds
+  mono := X.mono
+  shrink := X.shrink
+  submit_irrel := X.submit_irrel
+
+/-- The complete property table on a structural run, or an explicit binding failure.
+`Failure` names failed bindings, not additional premises. Behaviour retains the
+original excuse inside `Holds` rows; `HoldsAlways` rows have no collision escape.
+The laws `convicts_mono` and `view_mono` remain global over all runs.
+Adequacy and realizability retain the original clean witnesses. -/
+structure CorrectProtocolWithExcuses (S : System V) (X : Progress S Prog) (K : Contract Prog)
+    (Structural Failure : S.Run → Prop) : Prop where
+  behaviour : ∀ r, Structural r →
+    Behaviour (S.atRun r) (X.atRun r) K ∨ Failure r
+  adequate : S.Adequate X
+  realizable : 5 ≤ Fintype.card V → Realizable S X K
+
 end Consensus
 
 end

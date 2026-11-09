@@ -3,5 +3,6 @@
                     "Consensus.Review.logFaithful", "Consensus.Review.heldIffServed",
                     "Consensus.Review.obligationsSufficientOn",
                     "Consensus.Goldilocks.meetsObligations",
-                    "Consensus.Goldilocks.goldilocksCorrect"],
+                    "Consensus.Goldilocks.goldilocksCorrect",
+                    "Consensus.Goldilocks.goldilocksCorrectWithExcuses"],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"] }

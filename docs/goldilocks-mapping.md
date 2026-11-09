@@ -7,11 +7,13 @@ file per instance). Every Lean name here is fully qualified (namespace `Consensu
 ## Review path
 
 To check a claim: find its node in CLAIMS (its §"Lean status" names the Lean statement and its status), read the
-statement, then its row and modelling notes in the section below. Challenge certifies two Goldilocks statements,
-the endpoint `MeetsObligations` and headline `GoldilocksCorrect`
+statement, then its row and modelling notes in the section below. Challenge certifies three Goldilocks statements,
+the endpoint `MeetsObligations`, headline `GoldilocksCorrect`, and its additive explicit-excuse form
+`GoldilocksCorrectWithExcuses`
 (`ConsensusLean/Instances/Goldilocks/Statements/Obligations`, trusted surface, protected snapshot).
-The comparator checks that `Solution.lean` proves them, by `Proofs/Growing/Obligations/Main.lean` and
-`ShapeObligations.correct`. The constant-fault pair is an untrusted corollary. The other
+The comparator checks that `Solution.lean` proves them, by `Proofs/Growing/Obligations/Main.lean`,
+`ShapeObligations.correct` and the validity-split corollary in `Lemmas/Model/Excuses.lean`.
+The constant-fault pair is an untrusted corollary. The other
 finished milestones are proved lemmas (`docs/decisions.md` §"Trusted surface and Challenge scope"): their statements are in
 `ConsensusLean/Instances/Goldilocks/Milestones/Statements/` (not on the trusted surface), and
 `ConsensusLeanTest/MilestoneAxioms.lean` proves each by its `Proofs/<M>/Main.lean` and pins its axioms. Every other
@@ -37,7 +39,20 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Regimes.SleepySafe`, `Consensus.Goldilocks.Regimes.IncludeSleepy`, `Consensus.Goldilocks.Regimes.GrowSleepy` | `Milestones/Statements/Regimes/Sleepy` | R.1, R.2 | Regimes | proved (lemma) |
 | `Consensus.Goldilocks.MeetsObligations` (Ebb-and-Flow obligations) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" | Obligations | proved in Solution |
 | `Consensus.Goldilocks.GoldilocksCorrect` (`CorrectProtocol`) | `Statements/Obligations` | CLAIMS §"The obligations endpoint" with `ObligationsSufficient` | Obligations | proved in Solution |
+| `Consensus.Goldilocks.GoldilocksCorrectWithExcuses` (the same per-run table, or an explicit binding failure) | `Statements/Obligations` | CLAIMS §"The obligations endpoint", restated on structural runs | Obligations | proved in Solution |
 | `Consensus.Goldilocks.MeetsObligationsConstant`, `Consensus.Goldilocks.GoldilocksCorrectConstant` (on constant-fault runs) | `Milestones/Statements/Obligations/Constant` | CLAIMS §"The obligations endpoint" with `ObligationsSufficientOn` | Obligations | proved (corollary) |
+
+The additive headline `Consensus.Goldilocks.GoldilocksCorrectWithExcuses` keeps schedule and sleep as
+run premises. On each such run, the complete behaviour table holds on that single run, or there is
+a signature forgery, a credential failure, or an inadmissible selection. An observed hash collision
+excuses only `Holds` rows, never `HoldsAlways` rows (non-framing, nesting and final monotonicity).
+The laws `convicts_mono` and `view_mono` remain global over all runs. Selection admissibility is a
+deployment binding, not itself a cryptographic claim: `SelValid` checks every selection role,
+including slots beyond the horizon. Selection is external data fixed before execution; its failure
+is a concrete fact about run data, not necessarily an observed event.
+The network regimes, timing bounds and progress requirements of each row are
+unchanged; so are the original adequacy and realizability requirements. This is a deterministic,
+run-wide disjunction, not a probability bound or a proof of concrete cryptographic security.
 
 Changes to a transcribed claim are recorded in the rows they change and in `docs/decisions.md`
 §"Goldilocks model choices".

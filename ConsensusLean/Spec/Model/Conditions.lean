@@ -78,6 +78,47 @@ structure ExecutionValid : Prop where
   selValid : SelValid rho
   credentials : Credentials rho
 
+/-- Schedule and sleep alone: the structural fields of `ExecutionValid`, with
+no signature, selection-admissibility or credential binding. -/
+structure StructuralValid : Prop where
+  horizon_nonneg : 0 ≤ rho.horizon
+  sorted : rho.events.Pairwise Event.keyLe
+  nodup : rho.events.Nodup
+  in_horizon : ∀ e ∈ rho.events, 0 ≤ e.time ∧ e.time ≤ rho.horizon
+  honest_only : ∀ e ∈ rho.events, e.node ∉ rho.faultyAt e.time
+  tick_total : ∀ v t, 0 ≤ t → t ≤ rho.horizon → v ∉ rho.faultyAt t →
+    E.awake v t = true → Event.tick v t ∈ rho.events
+  tick_awake : ∀ v t, Event.tick v t ∈ rho.events → E.awake v t = true
+  deliver_awake : ∀ v o t, Event.deliver v o t ∈ rho.events → E.awake v t = true
+  restart_at_wake : ∀ v t, Event.restart v t ∈ rho.events → 0 < t ∧ Wakes E v t
+  wake_restart : ∀ v t, 0 < t → t ≤ rho.horizon → v ∉ rho.faultyAt t →
+    Wakes E v t → Event.restart v t ∈ rho.events
+
+/-- A failed execution binding: a delivered forgery, an unsound membership
+credential, or an inadmissible selection. Selection is included as a deployment
+binding, without claiming that committee admissibility itself is cryptographic.
+`SelValid` ranges over every selection role, including slots beyond the horizon.
+Selection is external data fixed before execution: its failure is a concrete
+fact about the run data, not necessarily an observed event. -/
+def BindingFailure : Prop :=
+  ¬ rho.Unforgeable ∨ ¬ rho.Credentials ∨ ¬ rho.SelValid
+
+/-- Execution validity splits into exactly the structural conditions and the
+three bindings. Both directions enumerate the fields to detect validity drift. -/
+theorem executionValid_iff_structuralValid :
+    rho.ExecutionValid ↔
+      rho.StructuralValid ∧ rho.Unforgeable ∧ rho.Credentials ∧ rho.SelValid := by
+  constructor
+  · intro h
+    rcases h with ⟨horizon, sorted, nodup, within, honest, total, tick, deliver,
+      restart, wake, unforgeable, selection, credentials⟩
+    exact ⟨⟨horizon, sorted, nodup, within, honest, total, tick, deliver, restart, wake⟩,
+      unforgeable, credentials, selection⟩
+  · rintro ⟨⟨horizon, sorted, nodup, within, honest, total, tick, deliver, restart, wake⟩,
+      unforgeable, credentials, selection⟩
+    exact ⟨horizon, sorted, nodup, within, honest, total, tick, deliver, restart, wake,
+      unforgeable, selection, credentials⟩
+
 /-- The run's communication log (L0 `CommLog`): engine releases, raw arrivals
 and inboxes, independently of handler admission. Network conditions are the L0 ones
 (`CommLog.PSync`, `CommLog.SyncUntil`, …) on `rho.point` and `rho.log`. -/
