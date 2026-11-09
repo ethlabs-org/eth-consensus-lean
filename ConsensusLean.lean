@@ -145,7 +145,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Live
@@ -177,6 +176,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety

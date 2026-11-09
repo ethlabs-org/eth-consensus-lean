@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldChains
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
@@ -33,7 +33,7 @@ comparisons the continuation proof reads.
 
 Each comparison ends in a crossing set of at least `2q − n ≥ n/3` validators with slashable pairs
 on the two chains, which `ChainConvictedBelow` excludes. The crossing sets come from
-`Continuation/HeldChains`, and the engine views of held attestations from
+`FGStore/HeldChains`, and the engine views of held attestations from
 `Continuation/HeldViews`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
