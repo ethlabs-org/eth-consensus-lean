@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineSteps
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ProvenanceGuard
 import ConsensusLean.Lemmas.Model.Candidates
 import ConsensusLean.Lemmas.Model.Protection
 
