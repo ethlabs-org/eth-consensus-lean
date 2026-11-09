@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotAnchor
@@ -87,21 +88,11 @@ theorem reset_suffix_viable_at
     (hsD : ell.frame.Anc d.start D)
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocksAt H) O D) :
-    ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads := by
-  intro X hDX _
-  have hPhi := Outcome.frame_realized hp.run hpH hci
-  have hPhiU := Outcome.frame_tree_subset hp.run hpH hci
-  have hXt : X ∈ ell.frame.tree := Compose.mem_of_anc_left hDX hDt
-  have hDXU := hDX.mono hPhiU
-  obtain ⟨A, _, hstart, _⟩ := Compose.acProposal_walk hd
-  have hfX : ell.frame.Anc ell.frame.fcRoot X := by
-    rw [hstart] at hsD
-    exact ((SA.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsD).trans hDX
-  rw [Outcome.frame_of_call hp.run hpH hci] at hXt hfX ⊢
-  obtain ⟨hXs, hFX⟩ := hXt
-  exact ⟨hXs, hFX, hfX.mono (fun _ h => h.1),
-    hp.proposal_floor_above_old_at hpH hR hci hcall hti hib hXs
-      (fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDXU)⟩
+    ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads :=
+  proposal_suffix_viable_of_floor (Outcome.frame_realized hp.run hpH hci)
+    (Outcome.frame_tree_subset hp.run hpH hci) (Outcome.frame_of_call hp.run hpH hci) hd hDt hsD
+    fun _ hX hDX => hp.proposal_floor_above_old_at hpH hR hci hcall hti hib hX
+      fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDX
 
 /-- Pivot construction with the independently supplied proposal-start support. -/
 theorem reset_pivot_of_start_supported_at
@@ -136,11 +127,8 @@ theorem reset_pivot_of_start_supported_at
     (by rw [hti]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
   have hr :=
     (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hU := hr.coherent
   have hPhi := Outcome.frame_realized hp.run hpI hci
   have hPhiU := Outcome.frame_tree_subset hp.run hpI hci
-  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQt : d.head ∈ ellp.frame.tree := Compose.mem_of_anc_left hsQ hst
   have hkt : tr.time k = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
   have hpK : p ∈ H (tr.time k) := hp.run.antitone
@@ -157,69 +145,32 @@ theorem reset_pivot_of_start_supported_at
       (Store.tree_grows _ _ _ _ (Compose.fg_reachable hret.toLocalRun hpK _)).1 P _
         (hret.toLocalRun.cutLaw p hpK _ _ hacc).2.1]
     exact Set.mem_insert _ _
-  have hpass := hp.reset_proposal_passes_at hc hpI hR hci hcall hd hti hib
-  let old : Set (SA.Blk sp.n (List (FG.Att sp.n))) :=
+  refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hPhi hPhiU hd hPQ
     {O | ∃ x r l, HighOrigin tr H g x r l O ∧ tr.time r < sp.ts u}
-  obtain ⟨D, hD⟩ := SA.exists_deepest hPhi (S := {X | X ∈ ellp.frame.tree ∧
-      ellp.frame.Anc d.start X ∧ ellp.frame.Anc X d.head ∧ (X = d.start ∨ X ∈ old)})
-    (fun X hX => hX.1) ⟨d.start, hst, .refl, hsQ, Or.inl rfl⟩
-  obtain ⟨hDt, hsD, hDQ, hDk⟩ := (SA.deepest_mem hD).1
-  have hmax := SA.anc_deepest hPhi (fun X hX => hX.1)
-    (fun X hX Y hY => Anc.total hPhi.coherent hX.2.2.1 hY.2.2.1) hD
-  have hDold : ∀ O ∈ old, Anc (tr.HonestBlocksAt H) O D := by
-    intro O hO
-    have hOQ := hpass O hO
-    rcases Anc.total hU hOQ (Anc.mono hPhiU hsQ) with h | h
-    · exact h.trans (Anc.mono hPhiU hsD)
-    have hOt := Compose.mem_between hU hPhi hPhiU hst hQt h hOQ
-    exact Anc.mono hPhiU (hmax O ⟨hOt, SA.anc_tree_of_anc_U hU hPhi hPhiU hst h hOt,
-      SA.anc_tree_of_anc_U hU hPhi hPhiU hOt hOQ hQt, Or.inr hO⟩)
-  have hDold' : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
-      Anc (tr.HonestBlocksAt H) O D :=
-    fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩
-  refine ⟨D, hsD, hDQ,
-    hp.reset_suffix_viable_at hpI hR hci hcall hd hti hib D hDt hsD hDold', ?_⟩
-  intro y j elly e hy hcy hes hjb hE
-  have hPsi := Outcome.frame_realized hp.run hy hcy.1
-  have hPsiU := Outcome.frame_tree_subset hp.run hy hcy.1
-  have hrj := hr.upTo (hp.run.time_nonneg j)
-  have hcj := SA.upTo_castAt.mpr (And.intro le_rfl hcy)
-  have hhead := (SA.castAt_spec hrj hy hcj).2.2.2
-  rw [hes] at hhead
-  have hat := Compose.anchor_tree hPsi e.readPoint (tr.time j)
-  have hah : elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j))
-      (SA.getHead sp e.readPoint elly.frame (tr.time j)
-        (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-        (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) :=
-    SA.anc_ghost (fun B hB => SA.voteDomain_subset_tree hB.1) _ hat
-  have hht := Compose.mem_of_anc_left hah hat
-  have hDh : Anc (tr.HonestBlocksAt H) D (SA.getHead sp e.readPoint elly.frame (tr.time j)
-      (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-      (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
-    rcases hDk with rfl | ⟨x, r, l, ho, hrt⟩
-    · exact hstart y j elly e hy hcy hes hjb
-    have hri : r < i := by
-      by_contra hn
-      have ht := hp.run.time_mono (Nat.le_of_not_gt hn)
-      rw [hti] at ht
-      exact (not_lt_of_ge ht) hrt
-    have hlu := hp.origin_label_lt_at_proposal_at hpI hci hcall hti hib hri ho
-    obtain ⟨Hd, hHd, hHdr, hDHd⟩ := hp.high_origin_votes_before_at j hjb x r l D ho
-      ((hp.run.time_mono hri.le).trans hib) y elly e hy hcy (by omega)
-    rwa [hU.1 hHd (hPsiU hht) (hHdr.trans hhead)] at hDHd
-  rcases hp.reset_vote_anchor_at hPU hR hPQ (hPhiU hQt) (Anc.mono hPhiU hDQ) (hPhiU hDt)
-      hDold' hy hcy hes hjb hE (fun l hl hne hlive L hL hLr =>
-        ProposalImpl.vote_old_live_lock_below_parent_at hp hc hpI hR hci hcall hd hti hib
-          hy hcy hes hjb hl hne hlive hL hLr) with haD | ⟨hDa, haP⟩
-  · have hDt' := Compose.mem_between hU hPsi hPsiU hat hht haD hDh
-    exact ⟨D, Or.inr ⟨.refl, hDQ⟩, SA.anc_tree_of_anc_U hU hPsi hPsiU hat haD hDt',
-      SA.anc_tree_of_anc_U hU hPsi hPsiU hDt' hDh hht⟩
-  by_cases haPe : SA.getAnchor sp e.readPoint elly.frame (tr.time j) = P
-  · exact ⟨P, Or.inl rfl, haPe ▸ .refl, haPe ▸ hah⟩
-  have haQ := Compose.anc_parent hU haP haPe hPQ (hPhiU hQt)
-  have hat' := Compose.mem_between hU hPhi hPhiU hDt hQt hDa haQ
-  exact ⟨_, Or.inr ⟨SA.anc_tree_of_anc_U hU hPhi hPhiU hDt hDa hat',
-    SA.anc_tree_of_anc_U hU hPhi hPhiU hat' haQ hQt⟩, .refl, hah⟩
+    (fun y j elly e => y ∈ H (tr.time j) ∧ SA.CastAt tr.projAC y j elly e ∧ e.msg.slot = u ∧
+      tr.time j ≤ b ∧ ∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
+        e'.msg.slot = u → e'.msg.head = P.root)
+    (hp.reset_proposal_passes_at hc hpI hR hci hcall hd hti hib)
+    (fun D hDt hsD hDold => hp.reset_suffix_viable_at hpI hR hci hcall hd hti hib D hDt hsD
+      fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩)
+    (fun _ _ _ _ h => ⟨Outcome.frame_realized hp.run h.1 h.2.1.1,
+      Outcome.frame_tree_subset hp.run h.1 h.2.1.1⟩)
+    (fun _ j _ _ h => h.2.2.1 ▸ (SA.castAt_spec (hr.upTo (hp.run.time_nonneg j)) h.1
+      (SA.upTo_castAt.mpr ⟨le_rfl, h.2.1⟩)).2.2.2)
+    (fun y j elly e h => hstart y j elly e h.1 h.2.1 h.2.2.1 h.2.2.2.1)
+    (fun O ⟨x, r, l, ho, hrt⟩ y j elly e ⟨hy, hcy, hes, hjb, _⟩ => by
+      have hri : r < i :=
+        lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hrt.trans_eq hti.symm)
+      have hlu := hp.origin_label_lt_at_proposal_at hpI hci hcall hti hib hri ho
+      exact hp.high_origin_votes_before_at j hjb x r l O ho
+        ((hp.run.time_mono hri.le).trans hib) y elly e hy hcy (by omega))
+    (fun D hDU hQU hDQ hDold y j elly e ⟨hy, hcy, hes, hjb, hE⟩ =>
+      hp.reset_vote_anchor_at hPU hR hPQ hQU hDQ hDU
+        (fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩) hy hcy hes hjb hE
+        fun l hl hne hlive L hL hLr => ProposalImpl.vote_old_live_lock_below_parent_at hp hc
+          hpI hR hci hcall hd hti hib hy hcy hes hjb hl hne hlive hL hLr)).imp
+    fun D ⟨hsD, hDQ, hV, h⟩ =>
+      ⟨hsD, hDQ, hV, fun y j elly e hy hcy hes hjb hE => h y j elly e ⟨hy, hcy, hes, hjb, hE⟩⟩
 
 open Regimes.Growing (hold)
 

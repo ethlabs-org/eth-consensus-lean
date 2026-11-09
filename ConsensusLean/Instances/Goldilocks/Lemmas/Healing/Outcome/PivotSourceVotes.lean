@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
@@ -216,20 +217,11 @@ theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) O D) :
     ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads := by
-  intro X hDX _
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
-  have hXt : X ∈ ell.frame.tree := Compose.mem_of_anc_left hDX hDt
-  have hDXU := hDX.mono hPhiU
-  obtain ⟨A, _, hstart, _⟩ := Compose.acProposal_walk hd
-  have hfX : ell.frame.Anc ell.frame.fcRoot X := by
-    rw [hstart] at hsD
-    exact ((SA.fcRoot_anc_getAnchor hPhi A (tr.time i)).trans hsD).trans hDX
-  rw [Compose.frame_of_projAC hp.run hpH hci] at hXt hfX ⊢
-  obtain ⟨hXs, hFX⟩ := hXt
-  refine ⟨hXs, hFX, hfX.mono (fun _ h => h.1), ?_⟩
-  exact hp.proposal_floor_above_old hpH hR hci hcall hti hib hXs
-    (fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDXU)
+  exact proposal_suffix_viable_of_floor hPhi hPhiU (Compose.frame_of_projAC hp.run hpH hci) hd
+    hDt hsD fun _ hX hDX => hp.proposal_floor_above_old hpH hR hci hcall hti hib hX
+      fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDX
 
 /-- Above every old source, the proposal walk consists of viable heads. The reset seed makes
 the suffix high; a higher floor would produce a high crossing below an old source, contradicting
