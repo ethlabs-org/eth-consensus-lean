@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -10,9 +11,11 @@ public section
 The bound and the window. Two layers:
 
 * `exists_const_window_seq` is pure counting: a sequential pigeonhole for a per-node monotone
-  key with lag `Δ` and a window length per key value.
+  key with lag `Δ` and a window length per key value (`exists_const_window_seq_of_mem` with
+  eligibility `y ∈ H`).
 * `exists_frameWindow_seq` applies it to the merged key `frameKey'` (monotone by `keyMerge_mono`)
-  and builds a `FrameWindow` from the constant key (`frameWindow_of_frameKey'_eq`).
+  and builds a `FrameWindow` from the constant key (`frameWindow_of_frameKey'_eq`, from
+  `frameData_of_frameKey'_eq`).
 
 The range (`hmax_le_of_noAdvance` and the lower bound `h_max ≥ HZ` after `cutZ + Δ`) and the lag
 (`frameKey_lag`) are hypotheses here. -/
@@ -37,56 +40,10 @@ theorem exists_const_window_seq {α : Type*} (H : Set α) (time : Nat → Time)
     ∃ v, base ≤ v ∧ v ≤ base + m ∧ ∃ a, lo + Δ ≤ a ∧
       a + len v ≤ lo + ∑ j ∈ Finset.range (v - base + 1), (len (base + j) + Δ) ∧
       ∀ y ∈ H, ∀ i, a ≤ time i → time i ≤ a + len v → key y i = v := by
-  classical
-  obtain ⟨S, hSdef⟩ : ∃ S : Nat → Time,
-      ∀ j, S j = ∑ i ∈ Finset.range j, (len (base + i) + Δ) := ⟨_, fun _ => rfl⟩
-  have hS0 : ∀ j, 0 ≤ S j := fun j => by
-    rw [hSdef]
-    exact Finset.sum_nonneg fun i _ => add_nonneg (hlen _) hΔ
-  have hSmono : ∀ j k, j ≤ k → S j ≤ S k := fun j k hjk => by
-    rw [hSdef, hSdef]
-    exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono hjk)
-      fun i _ _ => add_nonneg (hlen _) hΔ
-  have hSsucc : ∀ j, S (j + 1) = S j + (len (base + j) + Δ) := fun j => by
-    rw [hSdef, hSdef, Finset.sum_range_succ]
-  rw [← hSdef] at hT
-  by_contra hno
-  -- a failed attempt `j` leaves a key above `base + j` in its window
-  have step : ∀ j ≤ m,
-      (∀ z ∈ H, ∀ k, lo + S j + Δ ≤ time k → time k < T → base + j ≤ key z k) →
-      ∃ y ∈ H, ∃ i, lo + S j + Δ ≤ time i ∧ time i ≤ lo + S (j + 1) ∧ time i < T ∧
-        base + j + 1 ≤ key y i := by
-    intro j hj hinvj
-    have hTj : lo + S (j + 1) < T := by
-      have := hSmono (j + 1) (m + 1) (by omega)
-      linarith
-    by_contra hall
-    push Not at hall
-    apply hno
-    refine ⟨base + j, by omega, by omega, lo + S j + Δ, by linarith [hS0 j], ?_, ?_⟩
-    · rw [show base + j - base + 1 = j + 1 by omega, ← hSdef, hSsucc]
-      linarith
-    · intro y hy i hi1 hi2
-      have hiT : time i < T := by linarith [hSsucc j]
-      have h1 := hinvj y hy i hi1 hiT
-      have h2 := hall y hy i hi1 (by linarith [hSsucc j]) hiT
-      omega
-  have hinv : ∀ j, j ≤ m →
-      ∀ z ∈ H, ∀ k, lo + S j + Δ ≤ time k → time k < T → base + j ≤ key z k := by
-    intro j
-    induction j with
-    | zero =>
-      intro _ z hz k hk hkT
-      have := (hrange z hz k (by linarith [hS0 0]) hkT).1
-      omega
-    | succ j ih =>
-      intro hj z hz k hk hkT
-      obtain ⟨y, hy, i, hi1, hi2, hiT, hkey⟩ := step j (by omega) (ih (by omega))
-      have := hlag y hy z hz i k (by linarith [hS0 j]) hiT (by linarith) hkT
-      omega
-  obtain ⟨y, hy, i, hi1, -, hiT, hkey⟩ := step m le_rfl (hinv m le_rfl)
-  have := (hrange y hy i (by linarith [hS0 m]) hiT).2
-  omega
+  obtain ⟨v, h1, h2, a, h3, h4, hK⟩ := exists_const_window_seq_of_mem (fun y _ => y ∈ H) time
+    key base m len hlen hΔ (fun y i hy => hrange y hy i)
+    (fun x z i k hx hz => hlag x hx z hz i k) hT
+  exact ⟨v, h1, h2, a, h3, h4, fun y hy i => hK y i hy⟩
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
@@ -99,27 +56,12 @@ theorem frameWindow_of_frameKey'_eq (hrun : GoldilocksRun proposer dg H tr)
     (hK : ∀ y ∈ H, ∀ z ∈ H, ∀ i m, lo ≤ tr.time i → tr.time i ≤ hi → lo ≤ tr.time m →
       tr.time m ≤ hi → frameKey' (tr.state y i).fg = frameKey' (tr.state z m).fg) :
     ∃ floor kindJ J, FrameWindow (tr := tr) (H := H) lo hi floor kindJ J := by
-  classical
-  have hpos : ∀ y ∈ H, ∀ i, 1 ≤ (tr.state y i).fg.hmax := fun y hy i => by
-    have := hj_lt_hmax hrun hy i
-    omega
-  by_cases hex : ∃ y ∈ H, ∃ i, lo ≤ tr.time i ∧ tr.time i ≤ hi
-  · obtain ⟨y₀, hy₀, i₀, h₁, h₂⟩ := hex
-    let st := (tr.state y₀ i₀).fg
-    refine ⟨st.headHeightFloor, st.hmax = st.hj + 1 ∧ ¬st.Contest, st.J, ⟨?_, ?_, ?_⟩⟩
-    · intro y hy i hlo hhi
-      exact (frameKey'_eq_floor_kind (hpos y hy i) (hpos y₀ hy₀ i₀)
-        (hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂)).1
-    · intro y hy i hlo hhi
-      exact (frameKey'_eq_floor_kind (hpos y hy i) (hpos y₀ hy₀ i₀)
-        (hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂)).2
-    · intro y hy i hlo hhi hk
-      have he := hK y hy y₀ hy₀ i i₀ hlo hhi h₁ h₂
-      exact frameKey'_eq_J hrun hnc hf hy hy₀ he
-        ((frameKey'_eq_floor_kind (hpos y hy i) (hpos y₀ hy₀ i₀) he).2.2 hk)
-  · push Not at hex
-    refine ⟨0, True, sp.toParams.genesisBlock ([], []), ⟨?_, ?_, ?_⟩⟩ <;>
-      intro y hy i hlo hhi <;> exact absurd hhi (not_le.2 (hex y hy i hlo))
+  obtain ⟨floor, kindJ, J, h1, h2, h3⟩ := frameData_of_frameKey'_eq (fun y _ => y ∈ H) tr.time
+    (fun y i => (tr.state y i).fg) (sp.toParams.genesisBlock ([], []))
+    (fun y i hy => hj_lt_hmax hrun hy i) (fun y z i m hy hz => hK y hy z hz i m)
+    (fun _ _ _ _ hy hz _ _ _ _ he => J_eq_of_hj_eq_run hrun hnc hf hy hz he)
+  exact ⟨floor, kindJ, J, fun y hy i => h1 y i hy, fun y hy i => h2 y i hy,
+    fun y hy i => h3 y i hy⟩
 
 /-- **Sequential pigeonhole → ∃ FrameWindow.** `exists_const_window_seq` on the merged key
 `frameKey'` (5 values `2HZ, …, 2HZ + 4` on `HZ ≤ h_max ≤ HZ + 1`), with a window length
