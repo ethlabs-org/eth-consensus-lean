@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 
 public section
 
@@ -13,10 +14,11 @@ observation `t ≤ b`, every earlier cut at a time `≤ t`, a target held in the
 compatible with a bounded high seed that is held whenever it is above finalization, and compatible
 with every earlier high origin, is an ancestor candidate of the frame.
 
-The fork-choice root compares with the target by the state-level forms of the call-level root
-lemmas `high_J_root_of_held_at_call_before_at` and `low_root_of_held_seed_at_call_at` (the same
-arguments, with the reader's honesty read at `t`); an entry at or past the head-height floor
-above the target is the seed itself or comes from a high floor's signed source
+The store argument is `Store.guarded_seed_ancestor_candidate`. The fork-choice root compares
+with the target by the state-level forms of the call-level root lemmas
+`high_J_root_of_held_at_call_before_at` and `low_root_of_held_seed_at_call_at` (the same
+arguments, with the reader's honesty read at `t`); a seed below the head-height floor leaves an
+entry at or past it below an earlier high origin, from a high floor's signed source
 (`high_floor_signed_source_of_row_bound_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
@@ -154,83 +156,39 @@ theorem guarded_seed_ancestor_candidate_at_state_at
     (Node.frame (tr.state y i)).AncestorCandidate P := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hreach := fg_reachable_at hrun ht hle hy
-  have hPhi := (Store.frame_realization _ _ _ _ hreach).1
-  have hPhiU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H :=
-    fun X hX => ⟨y, i, t, ht, hle, hy, hX.1⟩
   have hPy := hPt.1
-  have hroot : Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot P := by
-    change Compatible _ (tr.state y i).fg.fcRoot P
-    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
+  have hSs := Outcome.high_origin_mem_at hrun hnc hseed
+  refine Store.guarded_seed_ancestor_candidate hreach
+    (Compose.Growing.honest_blocks_coherent hrun hnc) (fun X hX => ⟨y, i, t, ht, hle, hy, hX⟩)
+    (Healing.σ_h_le_of_anc hreach) hPt
+    (fun hSy => congrArg (·.h) (σ_eq_honest_at hrun hnc (hrun.time_nonneg q)
+      (fun r hr => hrun.time_mono hr.le) hseed.1 ht hle hy hSs hSy).symm)
+    hhold hPS ?_ (Origin := fun B => ∃ x r l, r < i ∧ HighOrigin tr H g x r l B)
+    (fun B ⟨x, r, l, hri, ho⟩ => hcompare x r l B hri ho) fun hSf => ?_
+  · by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
     · have hSy := hhold (hp.low_finalized_below_origin_at ht hle hy htb hlow hseed hqb)
       exact low_root_at_state hp ht hle hy htb hseed hqb hSy hlow hPS (fun _ => hPy)
     · exact high_J_root_at_state hp ht hle hy htb hPy (by omega)
         (fun x r l B hri ho => hcompare x r l B hri ho)
-  rcases hroot with hroot | hroot
-  swap
-  · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hPhiU hPt hroot hPhi.fcRoot_mem)
-  have hrootf := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hroot hPt
-  have witness : ∃ E ∈ (tr.state y i).fg.tree,
-      Anc (tr.HonestBlocksAt H) P E ∧
-      (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ E.root).h := by
-    by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
-    · exact ⟨P, hPy, .refl, hfloor⟩
-    have hSs := Outcome.high_origin_mem_at hrun hnc hseed
-    have hσS : S ∈ (tr.state y i).fg.tree →
-        (tr.state v q).fg.σ S.root = (tr.state y i).fg.σ S.root := fun hSy =>
-      σ_eq_honest_at hrun hnc (hrun.time_nonneg q) (fun r hr => hrun.time_mono hr.le)
-        hseed.1 ht hle hy hSs hSy
-    by_cases hSf : (tr.state y i).fg.headHeightFloor ≤ ((tr.state v q).fg.σ S.root).h
-    · have hPS' : Anc (tr.HonestBlocksAt H) P S := by
-        rcases hPS with h | h
-        · exact h
-        · have hSy := mem_of_honest_anc_at hrun hnc ht hle hy h hPy
-          have hSh := Healing.σ_h_le_of_anc hreach
-            (store_anc_of_honest_anc_at hrun hnc ht hle hy h hPy)
-          rw [hσS hSy] at hSf
-          omega
-      have hFS : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S :=
-        (hPt.2.mono (fun X hX => (⟨y, i, t, ht, hle, hy, hX⟩ : X ∈ tr.HonestBlocksAt H))).trans
-          hPS'
-      have hSy := hhold hFS
-      rw [hσS hSy] at hSf
-      exact ⟨S, hSy, hPS', hSf⟩
-    replace hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
-      omega
-    obtain ⟨x, r, l, O, E, hri, ho, -, hE, hEO, -, hEf, -⟩ :=
-      hp.high_floor_signed_source_of_row_bound_at hseed ht hle hy htb
-        (u := sp.slot t + 1)
-        (fun W hW att ha z d hz hs hdi r' l O hrd ho => by
-          obtain ⟨-, -, ⟨CV, ell, D, -, hfl, -⟩, -⟩ := ho
-          have htl : sp.ts l ≤ tr.time r' := by
-            rcases hfl with ⟨ell, C, ⟨-, -, htu, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
-            · change tr.time r' = sp.ts l + 6 * sp.Δ at htu
-              linarith [sp.toParams.hΔ]
-            · change sp.slot (tr.time r') = l at hsl
-              exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
-          have := (SA.ts_le_iff_le_slot sp ht l).1 (htl.trans (hle r' (by omega)))
-          omega)
-        (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
-          ((hle r hri).trans htb) ho' ((hle r' hr'i).trans htb))
-        (fun x r l B hri ho => hp.origins_compatible_at hseed hqb ho
-          ((hle r hri).trans htb)) hSf
-    have hPE : Compatible (tr.HonestBlocksAt H) P E := by
-      rcases hcompare x r l O hri ho with h | h
-      · exact SA.anc_total hU h hEO
-      · exact Or.inr (hEO.trans h)
-    rcases hPE with hPE | hEP
-    · exact ⟨E, hE, hPE, hEf⟩
-    · have := Healing.σ_h_le_of_anc hreach
-        (store_anc_of_honest_anc_at hrun hnc ht hle hy hEP hPy)
-      omega
-  obtain ⟨E, hE, hPE, hEf⟩ := witness
-  have hPEs := store_anc_of_honest_anc_at hrun hnc ht hle hy hPE hE
-  have hEt : E ∈ (Node.frame (tr.state y i)).tree := ⟨hE, hPt.2.trans hPEs⟩
-  have hPEf := SA.anc_tree_of_anc_U hU hPhi hPhiU hPt hPE hEt
-  refine Or.inr ⟨hPt, hrootf, E, hEt, ?_, hPEf⟩
-  have hRE := hrootf.trans hPEf
-  exact ⟨hE, hPt.2.trans hPEs, Anc.mono (fun _ h => h.1) hRE, hEf⟩
+  obtain ⟨x, r, l, O, E, hri, ho, -, hE, hEO, -, hEf, -⟩ :=
+    hp.high_floor_signed_source_of_row_bound_at hseed ht hle hy htb
+      (u := sp.slot t + 1)
+      (fun W hW att ha z d hz hs hdi r' l O hrd ho => by
+        obtain ⟨-, -, ⟨CV, ell, D, -, hfl, -⟩, -⟩ := ho
+        have htl : sp.ts l ≤ tr.time r' := by
+          rcases hfl with ⟨ell, C, ⟨-, -, htu, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
+          · change tr.time r' = sp.ts l + 6 * sp.Δ at htu
+            linarith [sp.toParams.hΔ]
+          · change sp.slot (tr.time r') = l at hsl
+            exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
+        have := (SA.ts_le_iff_le_slot sp ht l).1 (htl.trans (hle r' (by omega)))
+        omega)
+      (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
+        ((hle r hri).trans htb) ho' ((hle r' hr'i).trans htb))
+      (fun x r l B hri ho => hp.origins_compatible_at hseed hqb ho
+        ((hle r hri).trans htb)) hSf
+  exact ⟨O, ⟨x, r, l, hri, ho⟩, E, hE, hEO, hEf⟩
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

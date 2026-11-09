@@ -18,6 +18,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
@@ -717,63 +718,36 @@ theorem held_target_ancestor_candidate_at_state {b : Time}
       Compatible (tr.HonestBlocks H) P B) :
     (Node.frame (tr.state y i)).AncestorCandidate P := by
   have hreach := Compose.fg_reachable hp.run.toLocalRun hy i
-  have hPhi := (Store.frame_realization _ _ _ _ hreach).1
-  have hPhiU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H :=
-    fun X hX => ⟨y, hy, i, hX.1⟩
   have hPy := hPt.1
   have hSy := hp.mem_tree_of_anc hy hSP hPy
-  have hroot : Compatible (tr.HonestBlocks H) (Node.frame (tr.state y i)).fcRoot P := by
-    by_cases hlow : (tr.state y i).fg.hj ≤ Healing.HZ tr H g
+  obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := hp.highOrigin_mem hseed
+  refine Store.guarded_seed_ancestor_candidate hreach hp.honest_coherent
+    (fun X hX => ⟨y, hy, i, hX⟩) (Healing.σ_h_le_of_anc hreach) hPt
+    (fun hSy => congrArg (·.h) (hp.σ_eq_run hseed.1 hy hSs hSy).symm) (fun _ => hSy)
+    (Or.inr hSP) ?_
+    (Origin := fun B => ∃ x r l, r < i ∧ Healing.HighOrigin tr H g x r l B)
+    (fun B ⟨x, r, l, hri, ho⟩ => hcompare x r l B hri ho) fun hSf => ?_
+  · by_cases hlow : (tr.state y i).fg.hj ≤ Healing.HZ tr H g
     · exact hp.low_root_of_held_seed_at_state hy hPy hy hseed hSy hlow
         (Or.inr hSP) (fun _ => hPy)
     · exact hp.high_J_root_of_held_at_state_before hy hPy hy (by omega) hcompare
-  rcases hroot with hroot | hroot
-  swap
-  · exact Or.inl (SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU hPt hroot hPhi.fcRoot_mem)
-  have hrootf := SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU
-    hPhi.fcRoot_mem hroot hPt
-  have witness : ∃ E ∈ (tr.state y i).fg.tree,
-      Anc (tr.HonestBlocks H) P E ∧
-      (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ E.root).h := by
-    by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
-    · exact ⟨P, hPy, .refl, hfloor⟩
-    obtain ⟨-, -, -, -, -, -, -, -, -, hSs⟩ := hp.highOrigin_mem hseed
-    have hSh := Healing.σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hSP hPy)
-    have hSf : ((tr.state v q).fg.σ S.root).h < (tr.state y i).fg.headHeightFloor := by
-      rw [hp.σ_eq_run hseed.1 hy hSs hSy]
-      omega
-    obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, -⟩ :=
-      hp.high_floor_signed_source_of_row_bound hseed hy (u := sp.slot (tr.time i) + 1)
-        (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
-          obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
-          have ht : sp.ts l ≤ tr.time r' := by
-            rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
-            · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
-              linarith [sp.toParams.hΔ]
-            · change sp.slot (tr.time r') = l at hsl
-              exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r') l).2 (by omega)
-          have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).1
-            (ht.trans (hp.run.time_mono (by omega)))
-          omega)
-        (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible ho
-          (hib r hri) ho' (hib r' hr'i))
-        (fun x r l B hri ho => hp.origins_compatible hseed hqb ho
-          (hib r hri)) hSf
-    have hPE : Compatible (tr.HonestBlocks H) P E := by
-      rcases hcompare x r l B hri ho with h | h
-      · exact SA.anc_total hp.honest_coherent h hEB
-      · exact Or.inr (hEB.trans h)
-    rcases hPE with hPE | hEP
-    · exact ⟨E, hE, hPE, hEf⟩
-    · have := Healing.σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hEP hPy)
-      omega
-  obtain ⟨E, hE, hPE, hEf⟩ := witness
-  have hPEs := hp.anc_tree_of_anc hy hPE hE
-  have hEt : E ∈ (Node.frame (tr.state y i)).tree := ⟨hE, hPt.2.trans hPEs⟩
-  have hPEf := SA.anc_tree_of_anc_U hp.honest_coherent hPhi hPhiU hPt hPE hEt
-  refine Or.inr ⟨hPt, hrootf, E, hEt, ?_, hPEf⟩
-  have hRE := hrootf.trans hPEf
-  exact ⟨hE, hPt.2.trans hPEs, Anc.mono (fun _ h => h.1) hRE, hEf⟩
+  obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, -⟩ :=
+    hp.high_floor_signed_source_of_row_bound hseed hy (u := sp.slot (tr.time i) + 1)
+      (fun W hW att ha z hz d hd hdi r' l O hrd ho => by
+        obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
+        have ht : sp.ts l ≤ tr.time r' := by
+          rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
+          · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
+            linarith [sp.toParams.hΔ]
+          · change sp.slot (tr.time r') = l at hsl
+            exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r') l).2 (by omega)
+        have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg i) l).1
+          (ht.trans (hp.run.time_mono (by omega)))
+        omega)
+      (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible ho
+        (hib r hri) ho' (hib r' hr'i))
+      (fun x r l B hri ho => hp.origins_compatible hseed hqb ho (hib r hri)) hSf
+  exact ⟨B, ⟨x, r, l, hri, ho⟩, E, hE, hEB, hEf⟩
 
 /-- At a bounded call holding a target above a bounded high seed, compatible
 causal origins give full viability or an actual earlier strictly higher report. -/
