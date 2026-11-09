@@ -170,6 +170,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
