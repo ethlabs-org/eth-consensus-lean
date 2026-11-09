@@ -127,16 +127,18 @@ theorem _root_.Consensus.Goldilocks.SyncUntilAC.service {b : Time}
   relay x hx i B hB _ y hy j ℓ hc hdb hdl hanc :=
     h.relay x hx i B hB y hy j ℓ hc hdl (by linarith) hanc
 
-private theorem ts_nonnegAC (s : Nat) : (0 : Time) ≤ sp.ts s := by
+/-- Slot start times are nonnegative. -/
+theorem ts_nonnegAC (s : Nat) : (0 : Time) ≤ sp.ts s := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   simp only [SAParams.ts]
   exact mul_nonneg (mul_nonneg (by norm_num) hΔ.le) (Int.natCast_nonneg s)
 
-private theorem ts_succ₂AC (s : Nat) : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
+/-- `t_{s+2} = t_s + 8Δ`. -/
+theorem ts_succ₂AC (s : Nat) : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
   simp only [SAParams.ts]; push_cast; ring
 
 /-- The slot of `t_s + Δ` is `s`. -/
-private theorem slot_ts_deltaAC (s : Nat) : sp.slot (sp.ts s + sp.Δ) = s := by
+theorem slot_ts_deltaAC (s : Nat) : sp.slot (sp.ts s + sp.Δ) = s := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   exact slot_of_mem sp s (by linarith) (by rw [ts_succ]; linarith)
 
