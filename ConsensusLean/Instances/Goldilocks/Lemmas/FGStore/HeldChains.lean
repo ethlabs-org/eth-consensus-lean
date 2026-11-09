@@ -9,9 +9,8 @@ public section
 
 The chain-level G1.1 and G1.2 arguments at two reachable FG stores, stopped before the step that
 needs an honest validator: they return the crossing set of at least `2q − n` validators, each
-with a slashable pair among the attestations on the chains of the two held blocks. The
-continuation's conviction bridge (`Continuation/Accountable`) excludes that set with
-`ChainConvictedBelow` in place of the healthy fault bound.
+with a slashable pair among the attestations on the chains of the two held blocks. A fault
+bound, or any other premise that excludes such a set, completes the argument.
 
 * `Store.held_chain`: the chain of a held block of a reachable store, its state, and its
   attestations on the blocks at or below it;
