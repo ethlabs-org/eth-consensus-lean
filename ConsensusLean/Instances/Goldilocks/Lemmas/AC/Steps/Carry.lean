@@ -38,8 +38,9 @@ theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ :
     · exact h
 
 /-- `merged_vote_slot` with the unlock given. -/
-theorem merged_vote_slotU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+theorem merged_vote_slotUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) (hst : ∀ i, WalkStartLaw (st i)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s := by
@@ -49,15 +50,24 @@ theorem merged_vote_slotU
     split_ifs at hv with hneg
     · simp at hv
     have hpost : v ∈ (tr.post i).pool s := by
-      rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ optimistic_pool]
+      rw [post_of_castAtUS hr hst hy hc, optimisticConfirmationM_keep _ optimistic_pool]
       exact mem_admitVote_pool (by simpa using hv)
-    refine state_pool_slotU sp hr hy (i + 1) s v ?_
+    refine state_pool_slotUS sp hr hy (i + 1) s v ?_
     rw [Trace.state]
     split_ifs with h
     · exact hpost
     · exact absurd ⟨hc.1.1, by simp [hc.1.2]⟩ h
-  · have := (frame_validPayloadU sp hr hy hc.1 B hB).1 v hv
+  · have := (frame_validPayloadUS sp hr hy hc.1 B hB).1 v hv
     exact Nat.succ_injective (this.trans hBs)
+
+/-- Merged vote slots at the parent's walk start. -/
+theorem merged_vote_slotU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) {s : Nat} :
+    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s :=
+  merged_vote_slotUS (st := fun _ => parentWalkStartFn sp) hr
+    (fun _ => walkStartLaw_parentWalkStartFn) hy hc
 
 /-- Every vote of an honest voter's merged view of slot `s + 1` has slot `s`. -/
 theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -68,15 +78,25 @@ theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : 
       (s := s)
 
 /-- `merged_support_subset` with the unlock given. -/
-theorem merged_support_subsetU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+theorem merged_support_subsetUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
       (mergedVoteView sp e.readPoint ℓ.frame σ).votes := by
   rintro v (hv | ⟨B, hB, hBs, hv, -⟩)
   · exact Or.inl (List.mem_of_mem_filter hv)
-  · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2 v hv⟩
+  · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadUS sp hr hy hc.1 B hB).2 v hv⟩
+
+/-- Merged support inclusion at the parent's walk start. -/
+theorem merged_support_subsetU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) (σ : Nat) :
+    (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
+      (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
+  merged_support_subsetUS (st := fun _ => parentWalkStartFn sp) hr hy hc σ
 
 /-- The support of an honest voter's merged view is among its votes. -/
 theorem merged_support_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -99,17 +119,29 @@ theorem result_majority {X : Fin sp.n} {i₀ s : Nat} {C : Blk sp.n FGP} {CV : S
   exact ⟨x, ⟨hx, hval ▸ hw, hres, hanc⟩, hval⟩
 
 /-- `merged_voters_subset` with the unlock given. -/
-theorem merged_voters_subsetU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+theorem merged_voters_subsetUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) (hst : ∀ i, WalkStartLaw (st i)) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} {P : List (Vote sp.n)}
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
     voters (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ voters {v | v ∈ P} := by
   rintro w ⟨v, hv, rfl⟩
-  rcases hd v hv (merged_vote_slotU hr hy hc v hv) with h | ⟨x, hx, -, -, -, hxv, -⟩
+  rcases hd v hv (merged_vote_slotUS hr hst hy hc v hv) with h | ⟨x, hx, -, -, -, hxv, -⟩
   · exact ⟨v, h, rfl⟩
   · exact ⟨x, hx, hxv⟩
+
+/-- Merged voter inclusion at the parent's walk start. -/
+theorem merged_voters_subsetU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr y i ℓ e) {s : Nat} {P : List (Vote sp.n)}
+    (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+      v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
+    voters (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ voters {v | v ∈ P} :=
+  merged_voters_subsetUS (st := fun _ => parentWalkStartFn sp) hr
+    (fun _ => walkStartLaw_parentWalkStartFn) hy hc hd
 
 /-- Under the writer-pool condition (d), the voters of `y`'s merged view are participants at
 `X`. -/

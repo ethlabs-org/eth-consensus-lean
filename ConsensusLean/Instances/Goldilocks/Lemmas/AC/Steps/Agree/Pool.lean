@@ -95,10 +95,10 @@ private theorem grow_updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (
   · exact Grow.of_eq rfl rfl
   · split_ifs <;> exact Grow.of_eq rfl rfl
 
-private theorem grow_tryVote
+private theorem grow_tryVoteS (st : WalkStartFn sp FGP)
     {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    Grow t A (tryVoteWithM sp wm x L A Φ t).1 := by
-  unfold tryVoteWithM
+    Grow t A (tryVoteWithMS sp wm st x L A Φ t).1 := by
+  unfold tryVoteWithMS
   dsimp only
   split_ifs
   · exact Grow.of_eq rfl rfl
@@ -108,25 +108,30 @@ private theorem grow_tryVote
     first
     | exact Grow.of_eq rfl rfl
 
+private theorem grow_tryVote
+    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    Grow t A (tryVoteWithM sp wm x L A Φ t).1 :=
+  grow_tryVoteS (parentWalkStartFn sp) x A Φ t
+
 /-- A call other than a restart grows the pools (`Grow`). -/
-private theorem grow_step
+private theorem grow_stepS (st : WalkStartFn sp FGP)
     {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
-    (hc : c ≠ .restart) : Grow t A (stepWithM sp ro wm self L A Φ t c).1 := by
+    (hc : c ≠ .restart) : Grow t A (stepWithMS sp ro wm st self L A Φ t c).1 := by
   cases c with
   | tick =>
-    change Grow t A (acOnTickWithM sp wm self L A Φ t).1
-    unfold acOnTickWithM
+    change Grow t A (acOnTickWithMS sp wm st self L A Φ t).1
+    unfold acOnTickWithMS
     dsimp only
     split_ifs
-    · exact (grow_tryVote _ _ _ _).trans (grow_updateConfirmation _ _ _ _)
+    · exact (grow_tryVoteS st _ _ _ _).trans (grow_updateConfirmation _ _ _ _)
     · exact grow_updateConfirmation _ _ _ _
-    · exact grow_tryVote _ _ _ _
+    · exact grow_tryVoteS st _ _ _ _
     · exact Grow.of_eq rfl rfl
     · exact Grow.of_eq rfl rfl
   | proposal =>
-    change Grow t A (acProposalWith sp L A Φ t).1
-    unfold acProposalWith
+    change Grow t A (acProposalWithS sp st L A Φ t).1
+    unfold acProposalWithS
     dsimp only
     split_ifs <;> exact Grow.of_eq rfl rfl
   | toFG =>
@@ -138,10 +143,16 @@ private theorem grow_step
       · split_ifs <;> exact Grow.of_eq rfl rfl
     · exact Grow.of_eq rfl rfl
   | message m =>
-    exact ((grow_admitVote _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVote _ _ _ _)
+    exact ((grow_admitVote _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVoteS st _ _ _ _)
   | block B =>
-    exact ((grow_blockReceipt _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVote _ _ _ _)
+    exact ((grow_blockReceipt _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVoteS st _ _ _ _)
   | restart => exact absurd rfl hc
+
+private theorem grow_step
+    {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
+    (hc : c ≠ .restart) : Grow t A (stepWithM sp ro wm self L A Φ t c).1 :=
+  grow_stepS (parentWalkStartFn sp) self A Φ t c hc
 
 /-- A single non-restart call preserves every stored vote, without reachability or a
 coherent-universe premise. -/
@@ -173,6 +184,13 @@ private theorem frameOK_of_callU
     FrameOK ℓ.frame := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
 
+private theorem frameOK_of_callUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    FrameOK ℓ.frame := by
+  rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
+
 theorem state_succ_of_call {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
     (hc : tr.CallAt y k ℓ) : tr.state y (k + 1) = tr.post k := by
   rw [Trace.state]
@@ -187,19 +205,27 @@ private theorem state_succ_of_not {y : Fin sp.n} {k : Nat}
   rfl
 
 /-- A call other than a restart grows the pools. -/
-private theorem grow_callU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+private theorem grow_callUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y k ℓ)
     (hnr : ℓ.call ≠ .restart) : Grow (tr.time k) (tr.state y k) (tr.post k) := by
   have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at he
-  have h := grow_step (wm := wm) (L := u k) (ro := ro) y (tr.state y k) ℓ.frame (tr.time k)
+  have h := grow_stepS (st k) (wm := wm) (L := u k) (ro := ro) y (tr.state y k) ℓ.frame (tr.time k)
     ℓ.call hnr
   rwa [he] at h
 
-/-- `pool_origin` with the unlock given. -/
-theorem pool_originU
+private theorem grow_callU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y k ℓ)
+    (hnr : ℓ.call ≠ .restart) : Grow (tr.time k) (tr.state y k) (tr.post k) :=
+  grow_callUS (st := fun _ => parentWalkStartFn sp) hr hy hc hnr
+
+/-- `pool_origin` with the unlock given. -/
+theorem pool_originUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
     (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
       x.slot ≤ sp.slot (tr.time k)) ∨
@@ -219,12 +245,12 @@ theorem pool_originU
       · have he := hr.exec c ℓ hℓ (hn.1 ▸ hy)
         rw [hn.1, hrs] at he
         have hR := (restart_state sp) FGP ro y (tr.state y c) ℓ.frame (tr.time c)
-          (frameOK_of_callU hr hy hc) (hr.time_nonneg c)
+          (frameOK_of_callUS hr hy hc) (hr.time_nonneg c)
         change (acRestart sp ro y (tr.state y c) ℓ.frame (tr.time c)) = _ at he
         rw [he] at hR
         obtain ⟨hs, B, hB, hxB⟩ := hR.2.2.2.2.2.2.2.2.1 _ x hx
         exact Or.inr ⟨c, Nat.lt_succ_self c, ℓ, hc, hrs, hs, B, hB, hxB⟩
-      · have hg := grow_callU hr hy hc hrs
+      · have hg := grow_callUS hr hy hc hrs
         by_cases hx' : x ∈ (tr.state y c).pool x.slot
         · rw [(hg.2 x).1 hx']
           rcases ih hx' with ⟨k, hk, h⟩ | ⟨k, hk, h⟩
@@ -236,6 +262,16 @@ theorem pool_originU
       rcases ih hx with ⟨k, hk, h⟩ | ⟨k, hk, h⟩
       · exact Or.inl ⟨k, hk.trans (Nat.lt_succ_self c), h⟩
       · exact Or.inr ⟨k, hk.trans (Nat.lt_succ_self c), h⟩
+
+/-- Pool provenance at the parent's walk start. -/
+theorem pool_originU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
+    (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
+      x.slot ≤ sp.slot (tr.time k)) ∨
+    ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
+      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧ ∃ B ∈ ℓ.frame.tree, x ∈ blockVotes B :=
+  pool_originUS (st := fun _ => parentWalkStartFn sp) hr hy c x hx
 
 /-- **Where a held vote comes from.** A vote that an honest node holds before cut `c` (in the
 pool of its slot) was admitted by it at an earlier cut, at a time of slot at least the vote's,
@@ -250,8 +286,9 @@ theorem pool_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin s
   pool_originU (hr := hr.toU) (y := y) (hy := hy) (c := c) (x := x) (hx := hx)
 
 /-- `pool_mono` with the unlock given. -/
-theorem pool_monoU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+theorem pool_monoUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b) (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k)
     (σ : Nat) : (tr.state y a).pool σ ⊆ (tr.state y b).pool σ := by
   induction b, hab using Nat.le_induction with
@@ -263,9 +300,16 @@ theorem pool_monoU
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
       have hc : tr.CallAt y b ℓ := ⟨hn.1, hℓ⟩
       rw [state_succ_of_call hc]
-      exact (grow_callU hr hy hc fun h => hnr b hab (Nat.lt_succ_self b) ⟨ℓ, hc, h⟩).1 σ hv
+      exact (grow_callUS hr hy hc fun h => hnr b hab (Nat.lt_succ_self b) ⟨ℓ, hc, h⟩).1 σ hv
     · rw [state_succ_of_not hn]
       exact hv
+
+/-- Pool growth at the parent's walk start. -/
+theorem pool_monoU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {a b : Nat} (hab : a ≤ b) (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k)
+    (σ : Nat) : (tr.state y a).pool σ ⊆ (tr.state y b).pool σ :=
+  pool_monoUS (st := fun _ => parentWalkStartFn sp) hr hy hab hnr σ
 
 /-- Between restarts, an honest node's pools only grow. -/
 theorem pool_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -341,8 +385,9 @@ theorem serviceBefore_of_sync {b : Time} (h : SyncACBefore H U b tr) :
   serviceWindowBefore_of_sync ((syncACWindowBefore_zero_iff _ _ _ _).mpr h)
 
 /-- `heldBefore_mono` with the unlock given. -/
-theorem heldBefore_monoU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+theorem heldBefore_monoUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
     (hv : HeldBefore (tr.state y a) v T) : HeldBefore (tr.state y b) v T := by
@@ -353,12 +398,20 @@ theorem heldBefore_monoU
     by_cases hn : tr.node b = y ∧ tr.label b ≠ none
     · obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
       have hc : tr.CallAt y b ℓ := ⟨hn.1, hℓ⟩
-      have hg := grow_callU hr hy hc
+      have hg := grow_callUS hr hy hc
         (fun h => hnr b hab (Nat.lt_succ_self b) ⟨ℓ, hc, h⟩)
       rw [state_succ_of_call hc]
       exact ⟨hg.1 _ hv'.1, ((hg.2 v).1 hv'.1) ▸ hv'.2⟩
     · rw [state_succ_of_not hn]
       exact hv'
+
+/-- Stamp retention at the parent's walk start. -/
+theorem heldBefore_monoU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
+    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
+    (hv : HeldBefore (tr.state y a) v T) : HeldBefore (tr.state y b) v T :=
+  heldBefore_monoUS (st := fun _ => parentWalkStartFn sp) hr hy hab hnr hv
 
 /-- A held vote keeps its admission stamp between restarts. -/
 theorem heldBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
@@ -369,17 +422,27 @@ theorem heldBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : F
       (v := v) (T := T) (hv := hv)
 
 /-- `poolEvidenceBefore_mono` with the unlock given. -/
-theorem poolEvidenceBefore_monoU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+theorem poolEvidenceBefore_monoUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
     (hv : PoolEvidenceBefore (tr.state y a) v T) :
     PoolEvidenceBefore (tr.state y b) v T := by
   apply (poolEvidenceBefore_iff _ _ _).mpr
   rcases (poolEvidenceBefore_iff _ _ _).mp hv with hv | ⟨u, w, huw, huv, hwv, hus, hws, hu, hw⟩
-  · exact Or.inl (heldBefore_monoU hr hy hab hnr hv)
+  · exact Or.inl (heldBefore_monoUS hr hy hab hnr hv)
   · exact Or.inr ⟨u, w, huw, huv, hwv, hus, hws,
-      heldBefore_monoU hr hy hab hnr hu, heldBefore_monoU hr hy hab hnr hw⟩
+      heldBefore_monoUS hr hy hab hnr hu, heldBefore_monoUS hr hy hab hnr hw⟩
+
+/-- Retained evidence at the parent's walk start. -/
+theorem poolEvidenceBefore_monoU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
+    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
+    (hv : PoolEvidenceBefore (tr.state y a) v T) :
+    PoolEvidenceBefore (tr.state y b) v T :=
+  poolEvidenceBefore_monoUS (st := fun _ => parentWalkStartFn sp) hr hy hab hnr hv
 
 /-- Actual retained evidence survives a restart-free interval with its original stamps. -/
 theorem poolEvidenceBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)
@@ -401,12 +464,20 @@ theorem PoolEvidenceBefore.weaken {A : SAState sp.n} {v : Vote sp.n} {T F : Time
   · exact Or.inr ⟨a, b, hab, hav, hbv, has, hbs, lift a ha, lift b hb⟩
 
 /-- `RetainedBefore.evidence` with the unlock given. -/
-theorem RetainedBefore.evidenceU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+theorem RetainedBefore.evidenceUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n} {T : Time}
     (hv : RetainedBefore tr y j v T) : PoolEvidenceBefore (tr.state y j) v T := by
   obtain ⟨q, hq, hp, hnr⟩ := (retainedBefore_iff _ _ _ _).mp hv
-  exact poolEvidenceBefore_monoU hr hy hq hnr hp
+  exact poolEvidenceBefore_monoUS hr hy hq hnr hp
+
+/-- Observation evidence at the parent's walk start. -/
+theorem RetainedBefore.evidenceU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n} {T : Time}
+    (hv : RetainedBefore tr y j v T) : PoolEvidenceBefore (tr.state y j) v T :=
+  RetainedBefore.evidenceUS (st := fun _ => parentWalkStartFn sp) hr hy hv
 
 /-- The observation really holds the retained vote or both equivocation witnesses. -/
 theorem RetainedBefore.evidence (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr)

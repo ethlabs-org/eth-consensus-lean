@@ -109,6 +109,19 @@ private theorem tryVote_fields (self : Fin sp.n) (L : Set Lock) (A : SAState sp.
     rw [(optimistic_fields _ _ _).1, (optimistic_fields _ _ _).2, admitVote_blockStamp]
     exact ⟨fun h => admitVote_poolOK (by exact h) _ _, rfl⟩
 
+private theorem tryVote_fieldsS (st : WalkStartFn sp FGP) (self : Fin sp.n) (L : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (PoolOK A.pool → PoolOK (tryVoteWithMS sp wm st self L A Φ t).1.pool) ∧
+      (tryVoteWithMS sp wm st self L A Φ t).1.blockStamp = A.blockStamp := by
+  unfold tryVoteWithMS
+  dsimp only
+  split_ifs
+  · exact ⟨id, rfl⟩
+  · exact ⟨id, rfl⟩
+  all_goals
+    rw [(optimistic_fields _ _ _).1, (optimistic_fields _ _ _).2, admitVote_blockStamp]
+    exact ⟨fun h => admitVote_poolOK (by exact h) _ _, rfl⟩
+
 private theorem blockReceipt_fields (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (PoolOK A.pool → PoolOK (blockReceipt sp A t B).pool) ∧
       (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) := by
@@ -179,6 +192,45 @@ private theorem acOnMessage_fields (self : Fin sp.n) (L : Set Lock) (A : SAState
   unfold acOnMessageWithM
   rw [(tryVote_fields _ _ _ _ _).2, (optimistic_fields _ _ _).2, admitVote_blockStamp]
   refine ⟨fun h => (tryVote_fields _ _ _ _ _).1 ?_, rfl⟩
+  rw [(optimistic_fields _ _ _).1]
+  exact admitVote_poolOK h _ _
+
+private theorem acOnBlockWith_fieldsS (st : WalkStartFn sp FGP) (self : Fin sp.n)
+    (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
+    (PoolOK A.pool → PoolOK (acOnBlockWithMS sp wm st self L A Φ t B).1.pool) ∧
+      (acOnBlockWithMS sp wm st self L A Φ t B).1.blockStamp =
+        Function.update A.blockStamp B.root (ETime.of t) := by
+  unfold acOnBlockWithMS
+  rw [(tryVote_fieldsS st _ _ _ _ _).2, (optimistic_fields _ _ _).2, (blockReceipt_fields _ _ _).2]
+  refine ⟨fun h => (tryVote_fieldsS st _ _ _ _ _).1 ?_, rfl⟩
+  rw [(optimistic_fields _ _ _).1]
+  exact (blockReceipt_fields _ _ _).1 h
+
+private theorem acOnTick_fieldsS (st : WalkStartFn sp FGP) (self : Fin sp.n) (L : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (PoolOK A.pool → PoolOK (acOnTickWithMS sp wm st self L A Φ t).1.pool) ∧
+      (acOnTickWithMS sp wm st self L A Φ t).1.blockStamp = A.blockStamp := by
+  unfold acOnTickWithMS
+  dsimp only
+  split_ifs
+  all_goals
+    try rw [(updateConfirmation_fields _ _ _ _).1, (updateConfirmation_fields _ _ _ _).2]
+  all_goals first | exact ⟨id, rfl⟩ | exact tryVote_fieldsS st _ _ _ _ _
+
+private theorem acProposal_fieldsS (st : WalkStartFn sp FGP) (L : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (PoolOK A.pool → PoolOK (acProposalWithS sp st L A Φ t).1.pool) ∧
+      (acProposalWithS sp st L A Φ t).1.blockStamp = A.blockStamp := by
+  unfold acProposalWithS
+  split_ifs <;> exact ⟨id, rfl⟩
+
+private theorem acOnMessage_fieldsS (st : WalkStartFn sp FGP) (self : Fin sp.n) (L : Set Lock)
+    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
+    (PoolOK A.pool → PoolOK (acOnMessageWithMS sp wm st self L A Φ t v).1.pool) ∧
+      (acOnMessageWithMS sp wm st self L A Φ t v).1.blockStamp = A.blockStamp := by
+  unfold acOnMessageWithMS
+  rw [(tryVote_fieldsS st _ _ _ _ _).2, (optimistic_fields _ _ _).2, admitVote_blockStamp]
+  refine ⟨fun h => (tryVote_fieldsS st _ _ _ _ _).1 ?_, rfl⟩
   rw [(optimistic_fields _ _ _).1]
   exact admitVote_poolOK h _ _
 
@@ -293,6 +345,37 @@ private theorem acRestart_blockStamp_genesis (ro : ReplayOrder sp FGP) (self : F
     simp only [SAState.initial, ite_true]
   · exact absurd rfl h.2.1
 
+/-- Block stamp writes are independent of the head-walk start. -/
+theorem stepWithS_blockStamp_eq (st : WalkStartFn sp FGP) (ro : ReplayOrder sp FGP)
+    (self : Fin sp.n) (L : Set Lock)
+    (A : SAState sp.n)
+    {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    (c : (goldilocksSA sp FGP ro).Call) :
+    (∀ B, c = .block B → (stepWithMS sp ro wm st self L A Φ t c).1.blockStamp =
+        Function.update A.blockStamp B.root (ETime.of t)) ∧
+      (c = .restart → ∀ X ∈ Φ.tree, (stepWithMS sp ro wm st self L A Φ t c).1.blockStamp
+        X.root = if X.root = sp.genesisRoot then ⊥ else ETime.of t) ∧
+      ((∀ B, c ≠ .block B) → c ≠ .restart →
+        (stepWithMS sp ro wm st self L A Φ t c).1.blockStamp = A.blockStamp) := by
+  cases c with
+  | block B =>
+    refine ⟨fun B' hB => ?_, fun h => absurd h (by simp), fun h => absurd rfl (h B)⟩
+    cases hB
+    exact (acOnBlockWith_fieldsS st _ _ _ _ _ _).2
+  | restart =>
+    refine ⟨fun B h => absurd h (by simp), fun _ X hX => ?_, fun _ h => absurd rfl h⟩
+    split_ifs with hg
+    · rw [hg]; exact acRestart_blockStamp_genesis ro self A hΦ ht
+    · exact acRestart_blockStamp ro self A hΦ ht hX hg
+  | tick => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acOnTick_fieldsS st _ _ _ _ _).2⟩
+  | proposal => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acProposal_fieldsS st _ _ _ _).2⟩
+  | toFG => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acToFG_fields _ _ _).2⟩
+  | message m => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
+      fun _ _ => (acOnMessage_fieldsS st _ _ _ _ _ _).2⟩
+
 /-- `step_blockStamp_eq` with the locks after the unlock given. -/
 theorem stepWith_blockStamp_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : Set Lock)
     (A : SAState sp.n)
@@ -303,25 +386,8 @@ theorem stepWith_blockStamp_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : 
       (c = .restart → ∀ X ∈ Φ.tree, (stepWithM sp ro wm self L A Φ t c).1.blockStamp
         X.root = if X.root = sp.genesisRoot then ⊥ else ETime.of t) ∧
       ((∀ B, c ≠ .block B) → c ≠ .restart →
-        (stepWithM sp ro wm self L A Φ t c).1.blockStamp = A.blockStamp) := by
-  cases c with
-  | block B =>
-    refine ⟨fun B' hB => ?_, fun h => absurd h (by simp), fun h => absurd rfl (h B)⟩
-    cases hB
-    exact (acOnBlockWith_fields _ _ _ _ _ _).2
-  | restart =>
-    refine ⟨fun B h => absurd h (by simp), fun _ X hX => ?_, fun _ h => absurd rfl h⟩
-    split_ifs with hg
-    · rw [hg]; exact acRestart_blockStamp_genesis ro self A hΦ ht
-    · exact acRestart_blockStamp ro self A hΦ ht hX hg
-  | tick => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
-      fun _ _ => (acOnTick_fields _ _ _ _ _).2⟩
-  | proposal => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
-      fun _ _ => (acProposal_fields _ _ _ _).2⟩
-  | toFG => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
-      fun _ _ => (acToFG_fields _ _ _).2⟩
-  | message m => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
-      fun _ _ => (acOnMessage_fields _ _ _ _ _ _).2⟩
+        (stepWithM sp ro wm self L A Φ t c).1.blockStamp = A.blockStamp) :=
+  stepWithS_blockStamp_eq (parentWalkStartFn sp) ro self L A hΦ ht c
 
 /-- **How one lawful call writes the block stamps.** `ac_on_block(B)` at `t` stamps `B.root`
 with `t`; a restart at `t ≥ 0` with a well-formed frame stamps every block of the tree with `t`,
@@ -364,24 +430,25 @@ private theorem Inv.of_stamps {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (B
   ⟨h.frame, h.genesis, h.time.trans ht, hp,
     fun X hX => hs ▸ (h.stamp_le X hX).trans (ETime.of_le_of ht), hs ▸ h.stamp_parent⟩
 
-private theorem Inv.block {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
+private theorem Inv.blockS {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
     (hU : Coherent U) {self : Fin sp.n} {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t₀ t : Time}
     {B : Blk sp.n FGP} (h : Inv sp ro U A Φ t₀) (ht : t₀ ≤ t)
-    (hc : (goldilocksSA sp FGP ro).CallOK U Φ t (.block B) Φ') (L : Set Lock) :
-    Inv sp ro U (acOnBlockWithM sp wm self L A Φ' t B).1 Φ' t := by
+    (hc : (goldilocksSA sp FGP ro).CallOK U Φ t (.block B) Φ') (L : Set Lock)
+    (st : WalkStartFn sp FGP) :
+    Inv sp ro U (acOnBlockWithMS sp wm st self L A Φ' t B).1 Φ' t := by
   obtain ⟨⟨hΦ', hΦ'U⟩, hst, -, -⟩ := hc
-  obtain ⟨hp, hs⟩ := acOnBlockWith_fields self L A Φ' t B
+  obtain ⟨hp, hs⟩ := acOnBlockWith_fieldsS st self L A Φ' t B
   have hB : B ∈ Φ'.tree := by
     rw [hst.tree_eq]
     exact ⟨Set.mem_insert _ _, hst.F'_anc_B⟩
   have hold : ∀ X ∈ Φ'.tree, X ≠ B → X ∈ Φ.tree ∧
-      (acOnBlockWithM sp wm self L A Φ' t B).1.blockStamp X.root = A.blockStamp X.root := by
+      (acOnBlockWithMS sp wm st self L A Φ' t B).1.blockStamp X.root = A.blockStamp X.root := by
     intro X hX hXB
     have hX' := hX
     rw [hst.tree_eq] at hX'
     refine ⟨(Set.mem_insert_iff.mp hX'.1).resolve_left hXB, ?_⟩
     rw [hs, Function.update_of_ne fun hr => hXB (hΦ'.coherent.1 hX hB hr)]
-  have hBt : (acOnBlockWithM sp wm self L A Φ' t B).1.blockStamp B.root = ETime.of t := by
+  have hBt : (acOnBlockWithMS sp wm st self L A Φ' t B).1.blockStamp B.root = ETime.of t := by
     rw [hs, Function.update_self]
   refine ⟨⟨hΦ', hΦ'U⟩, h.genesis, h.time.trans ht, hp h.pool, fun X hX => ?_,
     fun C hC Pa hPa hCPa => ?_⟩
@@ -414,6 +481,13 @@ private theorem Inv.block {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (Blk s
       exact hst.new (this ▸ hp.1)
   rw [(hold C hC hCB).2, (hold Pa hPa hPaB).2]
   exact h.stamp_parent C (hold C hC hCB).1 Pa (hold Pa hPa hPaB).1 hCPa
+
+private theorem Inv.block {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
+    (hU : Coherent U) {self : Fin sp.n} {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t₀ t : Time}
+    {B : Blk sp.n FGP} (h : Inv sp ro U A Φ t₀) (ht : t₀ ≤ t)
+    (hc : (goldilocksSA sp FGP ro).CallOK U Φ t (.block B) Φ') (L : Set Lock) :
+    Inv sp ro U (acOnBlockWithM sp wm self L A Φ' t B).1 Φ' t :=
+  h.blockS sp hU ht hc L (parentWalkStartFn sp)
 
 private theorem Inv.restart {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
     (hU : Coherent U) {self : Fin sp.n} {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t₀ t : Time}
@@ -472,6 +546,55 @@ private theorem inv_of_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {self :
         (acOnMessage_fields _ L _ _ _ _).2
     | block B => exact ih.block sp hU ht hc L
     | restart => exact ih.restart sp hU ht hc
+
+/-- The reachable-state invariant is independent of the head-walk start. -/
+private theorem inv_of_reachableUS {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : SAState sp.n} {Φ : Frm sp.n FGP} {t₀ : Time}
+    (h : ReachableAtUS (ro := ro) wm self U A Φ t₀) : Inv sp ro U A Φ t₀ := by
+  induction h with
+  | init Φ hi hf => exact inv_of_reachableU (wm := wm) (self := self) sp hU (.init Φ hi hf)
+  | step c L st _ ht hc _ ih =>
+    cases c with
+    | tick =>
+      obtain ⟨-, rfl⟩ := hc
+      exact ih.of_stamps sp ht ((acOnTick_fieldsS st _ L _ _ _).1 ih.pool)
+        (acOnTick_fieldsS st _ L _ _ _).2
+    | proposal =>
+      obtain ⟨-, rfl⟩ := hc
+      exact ih.of_stamps sp ht ((acProposal_fieldsS st L _ _ _).1 ih.pool)
+        (acProposal_fieldsS st L _ _ _).2
+    | toFG =>
+      obtain ⟨-, rfl⟩ := hc
+      exact ih.of_stamps sp ht ((acToFG_fields _ _ _).1 ih.pool) (acToFG_fields _ _ _).2
+    | message m =>
+      obtain ⟨-, rfl, -⟩ := hc
+      exact ih.of_stamps sp ht ((acOnMessage_fieldsS st _ L _ _ _ _).1 ih.pool)
+        (acOnMessage_fieldsS st _ L _ _ _ _).2
+    | block B => exact ih.blockS sp hU ht hc L st
+    | restart => exact ih.restart sp hU ht hc
+
+/-- Pool form and capacity at a state reached from arbitrary starts. -/
+theorem pool_capUS (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (U : Set (Blk sp.n FGP)) (hU : Coherent U) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t₀ : Time)
+    (h : ReachableAtUS (ro := ro) wm self U A Φ t₀) :
+    ∀ σ, (∀ x ∈ A.pool σ, x.slot = σ) ∧
+      ∀ i : Fin sp.n, ((A.pool σ).filter (fun x => x.val = i)).dedup.length ≤ 2 :=
+  (inv_of_reachableUS sp hU h).pool
+
+/-- Stamps are bounded by the last call time, independently of the walk start. -/
+theorem tree_blockStamp_leUS {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : SAState sp.n} {Φ : Frm sp.n FGP} {t₀ : Time}
+    (h : ReachableAtUS (ro := ro) wm self U A Φ t₀) :
+    ∀ X ∈ Φ.tree, A.blockStamp X.root ≤ ETime.of t₀ :=
+  (inv_of_reachableUS sp hU h).stamp_le
+
+/-- Block stamps grow along parent edges, independently of the walk start. -/
+theorem stamp_parentUS (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (U : Set (Blk sp.n FGP)) (hU : Coherent U) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t₀ : Time)
+    (h : ReachableAtUS (ro := ro) wm self U A Φ t₀) :
+    ∀ B ∈ Φ.tree, ∀ Pa ∈ Φ.tree, B.parent = some Pa.root →
+      A.blockStamp Pa.root ≤ A.blockStamp B.root :=
+  (inv_of_reachableUS sp hU h).stamp_parent
 
 /-- **A0.1, pool capacity.** -/
 theorem pool_cap : PoolCap sp :=

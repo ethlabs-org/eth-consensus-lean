@@ -20,20 +20,20 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- The walk of a subtree of a well-formed frame ends in the frame's tree. -/
+theorem getHeadFrom_mem {st : WalkStartFn sp FGP} (hst : WalkStartLaw st)
+    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
+    (hT : T ⊆ Φ.tree) (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
+    getHeadFrom sp (st A Φ t V σ) Φ t T V σ ∈ Φ.tree := by
+  have ha := hst.mem A Φ t V σ hΦ
+  obtain h | h := eq_or_ne (st A Φ t V σ) (getHeadFrom sp (st A Φ t V σ) Φ t T V σ)
+  · exact h ▸ ha
+  · exact (Anc.mem (C := getHeadFrom sp (st A Φ t V σ) Φ t T V σ) (anc_ghost hT _ ha) h).2
+
+/-- The parent's walk of a subtree ends in the frame's tree. -/
 theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FGP)}
     (hT : T ⊆ Φ.tree) (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
-    getHead sp A Φ t T V σ ∈ Φ.tree := by
-  have ha : getAnchor sp A Φ t ∈ Φ.tree := by
-    unfold getAnchor
-    cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
-    | none => exact hΦ.fcRoot_mem
-    | some D =>
-      rcases (deepest_mem hd).1 with h | h
-      · exact h.1
-      · exact (Set.mem_singleton_iff.1 h) ▸ hΦ.fcRoot_mem
-  obtain h | h := eq_or_ne (getAnchor sp A Φ t) (getHead sp A Φ t T V σ)
-  · exact h ▸ ha
-  · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
+    getHead sp A Φ t T V σ ∈ Φ.tree :=
+  getHeadFrom_mem walkStartLaw_parentWalkStartFn hΦ hT A t V σ
 
 /-- `honest_merged_vote` with the unlock given. -/
 theorem honest_merged_voteU
@@ -94,18 +94,28 @@ theorem honest_not_equivocator (hrun : ACRun proposer tr H U)
       (hc := hc) (σ := σ) (w := w) (hw := hw)
 
 /-- `honest_head_frame` with the unlock given. -/
-theorem honest_head_frameU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+theorem honest_head_frameUS
+    {u : Nat → Set Lock} {st : Nat → WalkStartFn sp FGP}
+    (hr : ACLocalRunUS wm u st H U tr) (hst : ∀ i, WalkStartLaw (st i)) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) :
     ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
   obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw x hx j ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨k, ℓ', -, -, -, h⟩ <;> exact h.1
-  obtain ⟨-, hs, -, hh⟩ := castAt_specU hr hx hc
-  have hm := getHead_mem hΦ (T := ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame
+  obtain ⟨-, hs, -, hh⟩ := castAt_specUS hr hst hx hc
+  have hm := getHeadFrom_mem (hst j) hΦ (T := ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame
     e.msg.slot)) (fun _ hB => voteDomain_subset_tree hB.1) e.readPoint (tr.time j)
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
-  exact ⟨_, hm, hh.symm, (frame_slot_leU sp hr hx hc.1 _ hm).trans hs.ge⟩
+  exact ⟨_, hm, hh.symm, (frame_slot_leUS sp hr hx hc.1 _ hm).trans hs.ge⟩
+
+/-- Honest head membership at the parent's walk start. -/
+theorem honest_head_frameU
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hc : CastAt tr x j ℓ e) :
+    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot :=
+  honest_head_frameUS (st := fun _ => parentWalkStartFn sp) hr
+    (fun _ => walkStartLaw_parentWalkStartFn) hx hc
 
 /-- An honest vote's head is a block of the call's frame, of a slot no later than the vote's. -/
 theorem honest_head_frame (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}

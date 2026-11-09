@@ -24,13 +24,20 @@ variable {sp : SAParams} {FGP : Type}
 
 /-! ### The handlers with the locks after the unlock given -/
 
+/-- The proposal keeps the lifecycle fields independently of its walk start. -/
+theorem acProposalWithS_keeps (st : WalkStartFn sp FGP) (L : Set Lock) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) :
+    (acProposalWithS sp st L A Φ t).1.votedSlot = A.votedSlot ∧
+      (acProposalWithS sp st L A Φ t).1.restartTime = A.restartTime := by
+  unfold acProposalWithS
+  split_ifs <;> exact ⟨rfl, rfl⟩
+
 /-- `ac_proposal` with the locks after the unlock given keeps `voted_slot` and
 `restart_time`. -/
 theorem acProposalWith_keeps (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acProposalWith sp L A Φ t).1.votedSlot = A.votedSlot ∧
-      (acProposalWith sp L A Φ t).1.restartTime = A.restartTime := by
-  unfold acProposalWith
-  split_ifs <;> exact ⟨rfl, rfl⟩
+      (acProposalWith sp L A Φ t).1.restartTime = A.restartTime :=
+  acProposalWithS_keeps (parentWalkStartFn sp) L A Φ t
 
 /-! ### The unlock input of a call -/
 
@@ -184,6 +191,28 @@ theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H 
   sleep_of_restart := h.sleep_of_restart
 
 /-! ### Reachable states -/
+
+/-- States reachable by calls from arbitrary walk starts, with lawful unlocks. -/
+inductive ReachableAtUS {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp.n)
+    (U : Set (Blk sp.n FGP)) : SAState sp.n → Frm sp.n FGP → Time → Prop
+  | init (Φ : Frm sp.n FGP) : (goldilocksSA sp FGP ro).InitialFrame Φ →
+      (goldilocksSA sp FGP ro).FrameIn U Φ →
+      ReachableAtUS m self U (SAState.initial sp.genesisRoot) Φ 0
+  | step {A : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {t t' : Time}
+      (c : (goldilocksSA sp FGP ro).Call) (L₁ : Set Lock) (st : WalkStartFn sp FGP) :
+      ReachableAtUS m self U A Φ t → t ≤ t' →
+      (goldilocksSA sp FGP ro).CallOK U Φ t' c Φ' →
+      UnlockRel sp (callInputM sp m A Φ' t' c).locks Φ' t' ((sp.slot t' : Int) - 1)
+        (callViewM sp m A Φ' t' c) L₁ →
+      ReachableAtUS m self U (stepWithMS sp ro m st self L₁ A Φ' t' c).1 Φ' t'
+
+/-- Parent-start reachability is reachability from arbitrary starts. -/
+theorem ReachableAtU.toUS {ro : ReplayOrder sp FGP} {m : WriteMode} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    (h : ReachableAtU (ro := ro) m self U A Φ t) : ReachableAtUS (ro := ro) m self U A Φ t := by
+  induction h with
+  | init Φ hi hf => exact .init Φ hi hf
+  | step c L _ ht hc hu ih => exact .step c L (parentWalkStartFn sp) ih ht hc hu
 
 /-- **The parent's reachable states are reachable with the unlock given.** -/
 theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAt.toU {ro : ReplayOrder sp FGP}
