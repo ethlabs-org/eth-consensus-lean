@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 public import Mathlib.Order.Preorder.Finite
 
 public section
@@ -118,20 +119,7 @@ theorem compatible_F {Φ : Frm n FGP} (hΦ : FrameOK Φ) {H : Blk n FGP} (hH : H
 theorem anc_tree_of_anc_U {U : Set (Blk n FGP)} (hU : Coherent U) {Φ : Frm n FGP}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {B C : Blk n FGP} (hB : B ∈ Φ.tree)
     (h : Anc U B C) : C ∈ Φ.tree → Φ.Anc B C := by
-  induction h with
-  | refl => exact fun _ => Relation.ReflTransGen.refl
-  | @tail c d hBc e ih =>
-    intro hd
-    by_cases hdF : d = Φ.F
-    · subst hdF
-      have := Anc.antisymm hU (hBc.tail e) ((hΦ.rooted.2 B hB).mono hΦU)
-      exact this ▸ Relation.ReflTransGen.refl
-    obtain rfl | ⟨p, -, hp⟩ :=
-      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
-    · exact absurd rfl hdF
-    have hpc : p = c := hU.1 (hΦU hp.1) e.1 (Option.some_injective _ (hp.2.2.symm.trans e.2.2))
-    subst hpc
-    exact (ih hp.1).tail hp
+  exact Frame.anc_tree_of_anc_U hU hΦ hΦU hB h
 
 /-- In a well-formed frame, depth strictly increases along strict ancestry. -/
 theorem depth_lt_of_anc {Φ : Frm n FGP} (hΦ : FrameOK Φ) {A B : Blk n FGP}
