@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
 
 public section
 
@@ -14,7 +15,8 @@ If an honest `x` has key `v` at cut `i`, an honest `z` has key
 (`frameKey_lag`). Each trigger block (the `h_max` carrier, the `J` carrier, the contest
 witness) is held by `x`, so it was accepted by an honest node: `ResetService.relay` delivers
 it when `x` accepted it at a time `≥ g`, `CatchRun g κ` when earlier. In both cases the target
-precondition `Σ.F_z ⪯ B` holds because `σ[B].h ≥ h_max(z)` (`F_anc_of_hmax_le`).
+precondition `Σ.F_z ⪯ B` holds because `σ[B].h ≥ h_max(z)` (`F_anc_of_hmax_le`). The carrying of
+the three triggers into the key is `frameKey_le_of_relay`, with the relay `held_of_relay_le`.
 
 No time bound against `T`, no NoAdvance and no `h_max ≥ HZ` premise is necessary. -/
 
@@ -90,66 +92,14 @@ theorem frameKey_lag_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.N
     (hτ : ∀ k < i, tr.time k ≤ τ)
     (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max τ g) sp.Δ ≤ tr.time j)
     (hcm : gbar g + κ ≤ tr.time m) :
-    frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg := by
-  have hRx := Compose.fg_reachable hrun.toLocalRun hx i
-  have hRz := Compose.fg_reachable hrun.toLocalRun hz m
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  obtain ⟨-, hJx, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, ⟨Bh, hBh, hBhh⟩, -⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hRx
-  obtain ⟨-, -, -, -, hgez, -, -⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hRz
-  have hbx := frameKey_bounds (tr.state x i).fg
-  have hbz := frameKey_bounds (tr.state z m).fg
-  by_cases hlt : (tr.state x i).fg.hmax < (tr.state z m).fg.hmax
-  · omega
-  have hle : (tr.state z m).fg.hmax ≤ (tr.state x i).fg.hmax := not_lt.1 hlt
-  have hheld : ∀ {B : SA.Blk sp.n (List (FG.Att sp.n))}, B ∈ (tr.state x i).fg.tree →
-      (tr.state x i).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h → B ∈ (tr.state z m).fg.tree :=
-    fun hB hh => held_of_relay_le hrun hnc hf hsvc hcatch hx hz hB (hle.trans hh) hτ hcall hcm
-  -- the `h_max` carrier
-  have hBhz := hheld hBh hBhh.ge
-  have heq : (tr.state z m).fg.hmax = (tr.state x i).fg.hmax := by
-    have := hgez Bh hBhz
-    rw [σ_eq_honest hrun hnc hz hx hBhz hBh] at this
-    omega
-  -- the `J` carrier
-  have hjz := hj_lt_hmax hrun hz m
-  have hjx := hj_lt_hmax hrun hx i
-  have hb : (tr.state x i).fg.hmax = (tr.state x i).fg.hj + 1 →
-      (tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 := by
-    intro hbx'
-    have hBjh := Store.hj_lt_h hRx hBj
-    have hBjz := hheld hBj (by omega)
-    obtain ⟨E, hE, hEr, hEB, -⟩ := Store.J_entry_of_reachable hRx hBj
-    obtain rfl : E = (tr.state x i).fg.J :=
-      hU.1 ⟨x, hx, i, hE⟩ ⟨x, hx, i, hJx⟩ (hEr.trans hBjJ)
-    have hJz : (tr.state x i).fg.J ∈ (tr.state z m).fg.tree :=
-      mem_of_honest_anc hrun hnc hz (hEB.mono fun X hX => ⟨x, hx, i, hX⟩) hBjz
-    have hJh := Store.J_height_le hRx hBj hJx hBjJ.symm
-    by_contra hn
-    have hzlt : (tr.state z m).fg.hj < (tr.state x i).fg.hj := by omega
-    have hFJ := store_anc_of_honest_anc hrun hnc hz
-      (F_anc_of_hj_lt hrun hnc hf hz hx (m := m) (i := i) hJx
-        (by rw [hBjhj] at hJh; omega)) hJz
-    have hσ := σ_eq_honest hrun hnc hz hx hBjz hBj
-    have := (jMax_iff _).1 (jMax_of_reachable hRz) Bj hBjz _ hJz (by rw [hσ, hBjJ]) hFJ
-    rw [hσ] at this
-    omega
-  -- the contest witness
-  have hC : (tr.state x i).fg.Contest → (tr.state z m).fg.Contest := by
-    rintro ⟨hbx', W, hW, -, hWh, hJW⟩
-    have hbz' := hb hbx'
-    have hWz := hheld hW hWh.ge
-    have hσ := σ_eq_honest hrun hnc hz hx hWz hW
-    have hJ := J_eq_of_hj_eq_run hrun hnc hf hz hx (i := m) (m := i) (by omega)
-    refine ⟨hbz', W, hWz, ?_, by rw [hσ]; omega, ?_⟩
-    · exact store_anc_of_honest_anc hrun hnc hz
-        (F_anc_of_hmax_le hrun hnc hf hz hz hWz (by rw [hσ]; omega)) hWz
-    · intro hJW'
-      rw [hJ] at hJW'
-      exact hJW (store_anc_of_honest_anc hrun hnc hx
-        (hJW'.mono fun X hX => ⟨z, hz, m, hX⟩) hW)
-  rw [frameKey_def, frameKey_def]
-  split_ifs <;> first | omega | tauto
+    frameKey (tr.state x i).fg ≤ frameKey (tr.state z m).fg :=
+  frameKey_le_of_relay (Compose.fg_reachable hrun.toLocalRun hx i)
+    (Compose.fg_reachable hrun.toLocalRun hz m) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
+    (fun _ h => ⟨x, hx, i, h⟩) (fun _ h => ⟨z, hz, m, h⟩) hf
+    (held_atts_safe_run hrun hnc hz hx m i) (held_atts_safe_run hrun hnc hz hz m m)
+    (fun _ _ h hC => store_anc_of_honest_anc hrun hnc hx h hC)
+    (fun _ _ h hC => store_anc_of_honest_anc hrun hnc hz h hC)
+    (fun _ hB hh => held_of_relay_le hrun hnc hf hsvc hcatch hx hz hB hh hτ hcall hcm)
 
 /-- **The frame-key lag** with the relay deadline read from `time i`. -/
 theorem frameKey_lag (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)

@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -25,10 +26,11 @@ frame-key lag between two independently honest observations (`frameKey'_lag_obs`
 The frame data of a window agree across its honest cuts (`frameWindow_of_frameKey'_eq_obs`).
 
 Every cross-node fact is charged at the later of the two observations: certificate
-intersection for `Σ.F` below a crossing (`finalized_anc_obs`, `F_anc_of_hj_lt_obs`) and
-justification agreement (`J_eq_of_hj_eq_obs`), the static store-level arguments with
-`held_atts_safe_at` as their safety premise. Each chain's signatures are recovered at its own
-reader's time; no global cache invariant of a terminal honest cohort is used. -/
+intersection for `Σ.F` below a crossing (`finalized_anc_obs`, and inside the lag
+`frameKey_le_of_relay`) and justification agreement (`J_eq_of_hj_eq_obs`), the static
+store-level arguments with `held_atts_safe_at` as their safety premise. Each chain's signatures
+are recovered at its own reader's time; no global cache invariant of a terminal honest cohort is
+used. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -84,24 +86,6 @@ private theorem hj_lt_hmax_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRu
     (hy : y ∈ H t) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
   Store.hj_lt_hmax_of_reachable (fg_reachable_at hrun ht hle hy)
 
-/-- **`Σ.F` below every block of state height `> h_j`** (store-level G1.2) at two independently
-honest observations. -/
-private theorem F_anc_of_hj_lt_obs
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
-    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
-    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
-    (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
-    (hlt : (tr.state y m).fg.hj < ((tr.state x i).fg.σ B.root).h) :
-    Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B :=
-  honest_anc_of_store_anc_at ht hxtime hx <| Store.F_anc_of_hj_lt_of_safe
-    (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
-    (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
-    (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
-    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
-    hBt hlt
-
 /-! ### The frame-key lag between independently honest observations -/
 
 /-- **The frame-key lag** with the source `x` honest at its cut `i` and the receiver `z` honest at
@@ -122,76 +106,15 @@ theorem frameKey_lag_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
   have hzle : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
   have hfmi : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     rw [max_eq_right him]; exact hf _ hm0 hmb
-  have hfim : (H (max (tr.time m) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    rw [max_eq_left him]; exact hf _ hm0 hmb
-  have hfmm : (H (max (tr.time m) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
-    rw [max_self]; exact hf _ hm0 hmb
-  have hRx := fg_reachable_at hrun hi0 hxle hx
-  have hRz := fg_reachable_at hrun hm0 hzle hz
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  have memx : ∀ X ∈ (tr.state x i).fg.tree, X ∈ tr.HonestBlocksAt H :=
-    fun X hX => ⟨x, i, tr.time i, hi0, hxle, hx, hX⟩
-  have memz : ∀ X ∈ (tr.state z m).fg.tree, X ∈ tr.HonestBlocksAt H :=
-    fun X hX => ⟨z, m, tr.time m, hm0, hzle, hz, hX⟩
-  obtain ⟨-, hJx, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, ⟨Bh, hBh, hBhh⟩, -⟩ :=
-    Store.cache_invariants _ _ _ _ hRx
-  obtain ⟨-, -, -, -, hgez, -, -⟩ := Store.cache_invariants _ _ _ _ hRz
-  have hbx := frameKey_bounds (tr.state x i).fg
-  have hbz := frameKey_bounds (tr.state z m).fg
-  by_cases hlt : (tr.state x i).fg.hmax < (tr.state z m).fg.hmax
-  · omega
-  have hle : (tr.state z m).fg.hmax ≤ (tr.state x i).fg.hmax := not_lt.1 hlt
-  have hheld : ∀ {B : SA.Blk sp.n (List (FG.Att sp.n))}, B ∈ (tr.state x i).fg.tree →
-      (tr.state x i).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h → B ∈ (tr.state z m).fg.tree :=
-    fun hB hh => held_of_relay_le_at hrun hnc hsvc hcatch hi0 hx hz hfmi hB (hle.trans hh) hxle
-      hcall hcm
-  have hσ : ∀ {B : SA.Blk sp.n (List (FG.Att sp.n))}, B ∈ (tr.state z m).fg.tree →
-      B ∈ (tr.state x i).fg.tree →
-      (tr.state z m).fg.σ B.root = (tr.state x i).fg.σ B.root :=
-    fun hBz hBx => σ_eq_honest_at hrun hnc hm0 hzle hz hi0 hxle hx hBz hBx
-  -- the `h_max` carrier
-  have hBhz := hheld hBh hBhh.ge
-  have heq : (tr.state z m).fg.hmax = (tr.state x i).fg.hmax := by
-    have := hgez Bh hBhz
-    rw [hσ hBhz hBh] at this
-    omega
-  -- the `J` carrier
-  have hjz := hj_lt_hmax_obs hrun hm0 hzle hz
-  have hjx := hj_lt_hmax_obs hrun hi0 hxle hx
-  have hb : (tr.state x i).fg.hmax = (tr.state x i).fg.hj + 1 →
-      (tr.state z m).fg.hmax = (tr.state z m).fg.hj + 1 := by
-    intro hbx'
-    have hBjh := Store.hj_lt_h hRx hBj
-    have hBjz := hheld hBj (by omega)
-    obtain ⟨E, hE, hEr, hEB, -⟩ := Store.J_entry_of_reachable hRx hBj
-    obtain rfl : E = (tr.state x i).fg.J := hU.1 (memx E hE) (memx _ hJx) (hEr.trans hBjJ)
-    have hJz : (tr.state x i).fg.J ∈ (tr.state z m).fg.tree :=
-      mem_of_honest_anc_at hrun hnc hm0 hzle hz (hEB.mono memx) hBjz
-    have hJh := Store.J_height_le hRx hBj hJx hBjJ.symm
-    by_contra hn
-    have hzlt : (tr.state z m).fg.hj < (tr.state x i).fg.hj := by omega
-    have hFJ := store_anc_of_honest_anc_at hrun hnc hm0 hzle hz
-      (F_anc_of_hj_lt_obs hrun hnc hm0 hzle hz hi0 hxle hx hfim (m := m) (i := i) hJx
-        (by rw [hBjhj] at hJh; omega)) hJz
-    have hσj := hσ hBjz hBj
-    have := (jMax_iff _).1 (jMax_of_reachable hRz) Bj hBjz _ hJz (by rw [hσj, hBjJ]) hFJ
-    rw [hσj] at this
-    omega
-  -- the contest witness
-  have hC : (tr.state x i).fg.Contest → (tr.state z m).fg.Contest := by
-    rintro ⟨hbx', W, hW, -, hWh, hJW⟩
-    have hbz' := hb hbx'
-    have hWz := hheld hW hWh.ge
-    have hσW := hσ hWz hW
-    have hJ := J_eq_of_hj_eq_obs hrun hnc hm0 hzle hz hi0 hxle hx hfim (by omega)
-    refine ⟨hbz', W, hWz, ?_, by rw [hσW]; omega, ?_⟩
-    · exact store_anc_of_honest_anc_at hrun hnc hm0 hzle hz
-        (F_anc_of_hmax_le_at hrun hnc hm0 hzle hz hm0 hzle hz hfmm hWz (by rw [hσW]; omega)) hWz
-    · intro hJW'
-      rw [hJ] at hJW'
-      exact hJW (store_anc_of_honest_anc_at hrun hnc hi0 hxle hx (hJW'.mono memz) hW)
-  rw [frameKey_def, frameKey_def]
-  split_ifs <;> first | omega | tauto
+  exact frameKey_le_of_relay (fg_reachable_at hrun hi0 hxle hx) (fg_reachable_at hrun hm0 hzle hz)
+    (Compose.Growing.honest_blocks_coherent hrun hnc)
+    (fun _ h => ⟨x, i, tr.time i, hi0, hxle, hx, h⟩)
+    (fun _ h => ⟨z, m, tr.time m, hm0, hzle, hz, h⟩) (hf _ hm0 hmb)
+    (held_atts_safe_at hrun hnc hm0 hzle hz hi0 hxle hx le_rfl him)
+    (held_atts_safe_at hrun hnc hm0 hzle hz hm0 hzle hz le_rfl le_rfl)
+    (fun _ _ h hC => store_anc_of_honest_anc_at hrun hnc hi0 hxle hx h hC)
+    (fun _ _ h hC => store_anc_of_honest_anc_at hrun hnc hm0 hzle hz h hC)
+    (fun _ hB hh => held_of_relay_le_at hrun hnc hsvc hcatch hi0 hx hz hfmi hB hh hxle hcall hcm)
 
 /-- **The merged-key lag** between independently honest observations. -/
 theorem frameKey'_lag_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
