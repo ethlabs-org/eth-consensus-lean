@@ -96,7 +96,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
