@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
-import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 
 public section
 
@@ -27,26 +27,6 @@ private theorem entry_compatible (hr : Node.LocalRun proposer dg H sg tr)
   · exact Or.inl (hEDU.trans h)
   · exact Anc.total hf.coherent hEDU h
 
-/-- Ancestry in a coherent universe restricts to a rooted frame containing both endpoints,
-for arbitrary FG and AC payloads. -/
-theorem anc_tree_of_anc_U {n : Nat} {FGP ACP : Type} {U : Set (Block n FGP ACP)}
-    (hU : Coherent U) {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    {B C : Block n FGP ACP} (hB : B ∈ Φ.tree) (h : Anc U B C) : C ∈ Φ.tree → Φ.Anc B C := by
-  induction h with
-  | refl => exact fun _ => Relation.ReflTransGen.refl
-  | @tail c d hBc e ih =>
-    intro hd
-    by_cases hdF : d = Φ.F
-    · subst hdF
-      have := Anc.antisymm hU (hBc.tail e) ((hΦ.rooted.2 B hB).mono hΦU)
-      exact this ▸ Relation.ReflTransGen.refl
-    obtain rfl | ⟨p, -, hp⟩ :=
-      (Relation.ReflTransGen.cases_tail_iff _ _ _).1 (hΦ.rooted.2 d hd)
-    · exact absurd rfl hdF
-    have hpc : p = c := hU.1 (hΦU hp.1) e.1 (Option.some_injective _ (hp.2.2.symm.trans e.2.2))
-    subst hpc
-    exact (ih hp.1).tail hp
-
 /-- A held block compatible with every source stays a viable-ancestor candidate. -/
 theorem held_candidate_of_rows (hr : Node.LocalRun proposer dg H sg tr)
     (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
@@ -71,15 +51,15 @@ theorem held_candidate_of_rows (hr : Node.LocalRun proposer dg H sg tr)
     · exact Or.inl (hBt.2.mono hsU)
   rcases hfc with hfB | hBf
   swap
-  · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hBt hBf hΦ.fcRoot_mem)
-  have hΦfB := anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
+  · exact Or.inl (Frame.anc_tree_of_anc_U hU hΦ hΦU hBt hBf hΦ.fcRoot_mem)
+  have hΦfB := Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
   right
   by_cases hA : ∃ X ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc B X ∧
       (tr.state y i).fg.IsViable X
   · obtain ⟨X, hX, hBX, hXv⟩ := hA
     have hXΦ : X ∈ (Node.frame (tr.state y i)).tree := ⟨hX, hBt.2.trans hBX⟩
     exact ⟨hBt, hΦfB, X, hXΦ, ⟨hX, hXΦ.2, (Anc.mono hΦs hΦfB).trans hBX, hXv⟩,
-      anc_tree_of_anc_U hU hΦ hΦU hBt (Anc.mono hsU hBX) hXΦ⟩
+      Frame.anc_tree_of_anc_U hU hΦ hΦU hBt (Anc.mono hsU hBX) hXΦ⟩
   exfalso
   push Not at hA
   have hB := hBt.1

@@ -639,3 +639,66 @@ protected = true'''], ['trusted_paths = ["Fx/Init.lean", "Fx/ToMathlib", "Fx/Spe
 [TrustedPathMagic]
 expect = "FAIL[config] trusted_paths entry ':(exclude)Fx/Spec'"
 edit."boundaries.toml" = [['"Fx/Statements"]', '"Fx/Statements", ":(exclude)Fx/Spec"]']]
+
+# A low frame leaf is available to both AC and Compose without admitting the reverse edges.
+[SharedFrameAncestry]
+files."Fx/Frame/Ancestry.lean" = "module\npublic import Fx.Spec.A\npublic import Fx.Lemmas.L\npublic theorem ancestry : True := True.intro\n"
+files."Fx/AC/Basic.lean" = "module\npublic import Fx.Frame.Ancestry\npublic theorem ac : True := True.intro\n"
+files."Fx/Compose/Candidate.lean" = "module\npublic import Fx.Frame.Ancestry\npublic theorem candidate : True := True.intro\n"
+edit."Fx.lean" = [['public import Fx.Init', '''public import Fx.Init
+public import Fx.Frame.Ancestry
+public import Fx.AC.Basic
+public import Fx.Compose.Candidate''']]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Frame"
+prefixes = ["Fx.Frame"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "AC"
+prefixes = ["Fx.AC"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Frame"]
+
+[[layer]]
+name = "Compose"
+prefixes = ["Fx.Compose"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Frame", "AC"]
+
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Frame", "AC", "Compose"]']]
+
+[FrameCannotImportMain]
+expect = "FAIL[import] Fx.Main (layer Main) imported by Fx.Frame.Ancestry (layer Frame)"
+files."Fx/Frame/Ancestry.lean" = "module\npublic import Fx.Main\npublic theorem ancestry : True := True.intro\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Frame.Ancestry"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Frame"
+prefixes = ["Fx.Frame"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[exception]]''']]
+
+[ACCannotImportCompose]
+expect = "FAIL[import] Fx.Compose.Candidate (layer Compose) imported by Fx.AC.Basic (layer AC)"
+files."Fx/Frame/Ancestry.lean" = "module\npublic import Fx.Spec.A\npublic import Fx.Lemmas.L\npublic theorem ancestry : True := True.intro\n"
+files."Fx/AC/Basic.lean" = "module\npublic import Fx.Compose.Candidate\npublic theorem ac : True := True.intro\n"
+files."Fx/Compose/Candidate.lean" = "module\npublic import Fx.Frame.Ancestry\npublic theorem candidate : True := True.intro\n"
+edit."Fx.lean" = [['public import Fx.Init', '''public import Fx.Init
+public import Fx.Frame.Ancestry
+public import Fx.AC.Basic
+public import Fx.Compose.Candidate''']]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Frame"
+prefixes = ["Fx.Frame"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+
+[[layer]]
+name = "AC"
+prefixes = ["Fx.AC"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Frame"]
+
+[[layer]]
+name = "Compose"
+prefixes = ["Fx.Compose"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Frame", "AC"]
+
+[[exception]]''']]
