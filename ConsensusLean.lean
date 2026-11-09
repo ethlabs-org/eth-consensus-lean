@@ -845,6 +845,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowUnanim
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
