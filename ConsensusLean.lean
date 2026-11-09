@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.CallViewM
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
@@ -894,12 +895,14 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
