@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSignedAt
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 
 public section
 
@@ -40,44 +42,6 @@ theorem record_facts_at
     fun h r hl => let ⟨k, hk, a, ha, he⟩ := hlock h r hl
       ⟨k, hk, a, ((RunTrace.upTo_signAt tr).mp ha).2, he⟩⟩
 
-/-- A held chain supplies genuine signatures from validators honest at its reading time. -/
-private theorem held_chain_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree) :
-    ∃ c : List (SA.Blk sp.n (List (FG.Att sp.n))),
-      sp.toParams.fg.chainState (c.map Block.fgView) = some ((tr.state y i).fg.σ B.root) ∧
-      (∀ r ∈ sp.toParams.fg.roots (c.map Block.fgView),
-        ∃ Y ∈ (tr.state y i).fg.tree, Y.root = r ∧ (tr.state y i).fg.Anc Y B) ∧
-      ∀ a ∈ sp.toParams.fg.chainAtts (c.map Block.fgView), a.val ∈ H t →
-        ∃ k < i, tr.SignAt a.val k a := by
-  have hR := fg_reachable_at hrun ht hle hy
-  obtain ⟨c, hc, hl, hlast, hσ⟩ := Store.chain_state_of_chain _ _ _ _ hR B hB
-  obtain ⟨-, -, hg, -⟩ := Store.accepted_tree _ _ _ _ hR
-  have hanc := Store.anc_of_linked c _ hg hc hl B (by
-    rcases hlast with ⟨rfl, rfl⟩ | h
-    · rfl
-    · simp [List.getLast?_cons, h])
-  refine ⟨c, hσ, fun r hr => ?_, fun a ha hav => ?_⟩
-  · obtain ⟨Y, hY, hYr⟩ : ∃ Y ∈ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :: c,
-        Y.root = r := by
-      simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hr
-    refine ⟨Y, ?_, hYr, hanc Y hY⟩
-    rcases List.mem_cons.mp hY with rfl | h
-    exacts [hg, hc _ h]
-  · obtain ⟨_, hX, haX⟩ := List.mem_flatMap.mp ha
-    obtain ⟨X, hXc, rfl⟩ := List.mem_map.mp hX
-    have hs := Trace.upTo_state tr y hle
-    have hXt : X ∈ ((tr.upTo t).state y i).fg.tree := by rw [hs]; exact hc X hXc
-    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hXt with rfl | ⟨k, hk, hacc⟩
-    · cases haX
-    · obtain ⟨k', hk', hs'⟩ := hrun.toLocalRun.att_unforgeable y k a
-        (hrun.antitone (hle k hk) hy)
-        (Or.inr ⟨X, ⟨true, ((Trace.upTo_callAt tr).mp hacc).2⟩, haX⟩)
-        (hrun.antitone (hle k hk) hav)
-      exact ⟨k', hk'.trans hk, hs'⟩
-
 /-- Two signatures made before an honest reading cannot be slashable. -/
 private theorem not_slashable_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
@@ -94,43 +58,18 @@ private theorem not_slashable_at
     (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr ha'.choose_spec⟩) b
     (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hb'.choose_spec⟩)
 
-/-- In one honest store a finalized replay target precedes every higher state. -/
-private theorem finalized_anc_at
+/-- Attestations on blocks held at one honest observation, with a signer honest there, are not
+slashable: both were signed before the cut (`held_att_signed_at`). -/
+private theorem held_atts_safe_one
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} {i : Nat} {t : Time}
-    (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t)
-    (hf : (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {X F W : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
-    (hFt : F ∈ (tr.state y i).fg.tree) (hFr : F.root = ((tr.state y i).fg.σ X.root).F)
-    (hW : W ∈ (tr.state y i).fg.tree)
-    (hlt : ((tr.state y i).fg.σ X.root).hF < ((tr.state y i).fg.σ W.root).h) :
-    (tr.state y i).fg.Anc F W := by
-  have hR := fg_reachable_at hrun ht hle hy
-  have hcoh := (Store.accepted_tree _ _ _ _ hR).2.1
-  obtain ⟨c₁, h₁, -, ha₁⟩ := held_chain_at hrun ht hle hy hX
-  obtain ⟨c₂, h₂, hr₂, ha₂⟩ := held_chain_at hrun ht hle hy hW
-  obtain ⟨-, -, -, -, hF0, -⟩ := FG.chain_invariants sp.toParams.fg _ _ h₁
-  suffices hmem : F.root ∈ sp.toParams.fg.roots (c₂.map Block.fgView) by
-    obtain ⟨Y, hY, hYr, hYW⟩ := hr₂ _ hmem
-    rwa [hcoh.1 hY hFt hYr] at hYW
-  rw [hFr]
-  rcases Nat.eq_zero_or_pos ((tr.state y i).fg.σ X.root).hF with h0 | h0
-  · rw [hF0 h0]
-    exact List.mem_cons_self
-  by_contra hnot
-  obtain ⟨S, hS, hSv⟩ := sp.toParams.fg.finalization_meets_crossing h₁ h₂ h0 hlt hnot
-  obtain ⟨v, hvS, hv⟩ : ∃ v ∈ S, v ∈ H t := by
-    by_contra! hS'
-    have hcard := Set.ncard_le_ncard (s := (S : Set (Fin sp.toParams.fg.n))) (t := (H t)ᶜ) hS'
-    rw [Set.ncard_coe_finset] at hcard
-    have : sp.toParams.fg.n = sp.n := rfl
-    have : ((H t)ᶜ : Set (Fin sp.toParams.fg.n)).ncard = ((H t)ᶜ : Set (Fin sp.n)).ncard := rfl
-    omega
-  obtain ⟨a, ha, b, hb, rfl, hab⟩ := hSv v hvS
-  obtain ⟨k, hk, hka⟩ := ha₁ a ha hv
-  obtain ⟨l, hl, hlb⟩ := ha₂ b hb (hab.1 ▸ hv)
+    {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
+    (hy : y ∈ H t) (a b : FG.Att sp.n) (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
+    (hb : ∃ Y ∈ (tr.state y i).fg.tree, b ∈ Y.fgPayload) (hav : a.val ∈ H t) :
+    ¬ FG.slashable a b := fun hab => by
+  obtain ⟨k, hk, hka⟩ := held_att_signed_at hrun ht hle hy ha hav
+  obtain ⟨l, hl, hlb⟩ := held_att_signed_at hrun ht hle hy hb (hab.1 ▸ hav)
   rw [← hab.1] at hlb
-  exact not_slashable_at hrun ht hv (hle k hk) (hle l hl) hka hlb hab
+  exact not_slashable_at hrun ht hav (hle k hk) (hle l hl) hka hlb hab
 
 /-- A store's finalized cache lies below a held block above its justified height. -/
 private theorem F_anc_of_hj_lt_at
@@ -140,26 +79,10 @@ private theorem F_anc_of_hj_lt_at
     (hf : (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree)
     (hlt : (tr.state y i).fg.hj < ((tr.state y i).fg.σ B.root).h) :
-    (tr.state y i).fg.Anc (tr.state y i).fg.F B := by
+    (tr.state y i).fg.Anc (tr.state y i).fg.F B :=
   have hR := fg_reachable_at hrun ht hle hy
-  obtain ⟨-, hcoh, hg, hgen⟩ := Store.accepted_tree _ _ _ _ hR
-  obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
-    Store.cache_invariants _ _ _ _ hR
-  have hgF := hgen _ hFm
-  have hgenF : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
-      (tr.state y i).fg.Anc (tr.state y i).fg.F B := fun he => by
-    rw [hcoh.1 hFm hg he]
-    exact hgen B hB
-  rcases Store.fin_pair_entry hR hBf with he | ⟨W, hW, hWr, hWh⟩
-  · exact hgenF (hBfF.symm.trans he)
-  obtain rfl : W = (tr.state y i).fg.F := hcoh.1 hW hFm (hWr.trans hBfF)
-  obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hR hBj
-  obtain rfl : E = (tr.state y i).fg.J := hcoh.1 hE hJm (hEr.trans hBjJ)
-  rcases hcase with hEg | ⟨hEh, -⟩
-  · rw [hEg] at hFJ
-    exact hgenF (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have h₁ := h_le_of_store_anc hR hFJ
-  exact finalized_anc_at hrun ht hle hy hf hBf hFm hBfF.symm hB (by omega)
+  Store.F_anc_of_hj_lt_of_safe hR hR (Store.accepted_tree _ _ _ _ hR).2.1 subset_rfl subset_rfl
+    hf (held_atts_safe_one hrun ht hle hy) hB hlt
 
 /-- A finality lock cannot be above the node's own justification cache. -/
 theorem hj_ge_of_lock_at
@@ -205,68 +128,6 @@ theorem hj_ge_of_lock_at
       have := h_le_of_store_anc hR hEF
       omega
 
-private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
-    {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).target) :
-    v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-  induction atts generalizing σ with
-  | nil => exact Or.inl h
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
-    rcases ih h with h | ⟨b, hb, hb'⟩
-    · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
-        unfold FG.ChainState.processAtt at h
-        dsimp only at h
-        repeat' split at h
-        all_goals aesop
-      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
-    · rw [hh, hT] at hb'
-      exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
-
-private theorem justification_quorum (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
-    {σ : FG.ChainState gp.n} (h : gp.chainState c = some σ) :
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false) := by
-  refine gp.chainState_induction (P := fun c σ =>
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false))
-    ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init]⟩ ?_ h
-  intro c σ B σ' _ ⟨ht, hq⟩ hB
-  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append] at h ⊢
-    exact Or.inl h
-  have liftB : ∀ {a}, a ∈ B.atts → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append]
-    exact Or.inr (by simpa using h)
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
-  have hT := fun v => @mem_foldl_target _ { σ with s := B.slot } B.atts v
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hT ⊢
-  dsimp only at hT
-  have ht₀ : ∀ v ∈ t, ∃ a ∈ gp.chainAtts (c ++ [B]),
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-    intro v hv
-    rcases hT v hv with hv | ⟨a, ha, h'⟩
-    · obtain ⟨a, ha, h'⟩ := ht v hv
-      exact ⟨a, liftA ha, h'⟩
-    · exact ⟨a, liftB ha, h'⟩
-  have hq₀ : 1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧
-      ∀ v ∈ Q, ∃ a ∈ gp.chainAtts (c ++ [B]),
-        a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false := fun h1 =>
-    let ⟨Q, hQ, hv⟩ := hq h1
-    ⟨Q, hQ, fun v h => let ⟨a, ha, h'⟩ := hv v h; ⟨a, liftA ha, h'⟩⟩
-  obtain ⟨F, hF', σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨⟨hq', -⟩, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨by simp [FG.ChainState.advance], fun _ => ⟨t, hq', ht₀⟩⟩
-  · exact ⟨by simp [FG.ChainState.advance], hq₀⟩
-  · exact ⟨ht₀, hq₀⟩
-
 /-- Replay states in one honest store agree on equal-height justifications. -/
 private theorem J_eq_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
@@ -276,31 +137,9 @@ private theorem J_eq_at
     {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree)
     (hB' : B' ∈ (tr.state y i).fg.tree)
     (he : ((tr.state y i).fg.σ B.root).hj = ((tr.state y i).fg.σ B'.root).hj) :
-    ((tr.state y i).fg.σ B.root).J = ((tr.state y i).fg.σ B'.root).J := by
-  obtain ⟨c₁, h₁, -, ha₁⟩ := held_chain_at hrun ht hle hy hB
-  obtain ⟨c₂, h₂, -, ha₂⟩ := held_chain_at hrun ht hle hy hB'
-  rcases Nat.eq_zero_or_pos ((tr.state y i).fg.σ B.root).hj with h0 | h0
-  · rw [(FG.chain_invariants sp.toParams.fg _ _ h₁).2.2.2.1 h0,
-      (FG.chain_invariants sp.toParams.fg _ _ h₂).2.2.2.1 (he ▸ h0)]
-  by_contra hne
-  obtain ⟨Q₁, hQ₁, hv₁⟩ := (justification_quorum sp.toParams.fg h₁).2 h0
-  obtain ⟨Q₂, hQ₂, hv₂⟩ := (justification_quorum sp.toParams.fg h₂).2 (he ▸ h0)
-  obtain ⟨v, hvQ, hv⟩ : ∃ v ∈ Q₁ ∩ Q₂, v ∈ H t := by
-    by_contra! hS
-    have h1 := (FG.quorum_intersection sp.toParams.fg Q₁ Q₂ hQ₁ hQ₂).1
-    have hcard := Set.ncard_le_ncard
-      (s := ((Q₁ ∩ Q₂ : Finset _) : Set (Fin sp.toParams.fg.n))) (t := (H t)ᶜ) hS
-    rw [Set.ncard_coe_finset] at hcard
-    have : ((H t)ᶜ : Set (Fin sp.toParams.fg.n)).ncard = ((H t)ᶜ : Set (Fin sp.n)).ncard := rfl
-    have : sp.toParams.fg.n = sp.n := rfl
-    omega
-  obtain ⟨a, ha, rfl, hah, haT, hat⟩ := hv₁ v (Finset.mem_inter.1 hvQ).1
-  obtain ⟨b, hb, hvb, hbh, hbT, hbt⟩ := hv₂ a.val (Finset.mem_inter.1 hvQ).2
-  obtain ⟨k, hk, hka⟩ := ha₁ a ha hv
-  obtain ⟨l, hl, hlb⟩ := ha₂ b hb (hvb ▸ hv)
-  rw [hvb] at hlb
-  exact not_slashable_at hrun ht hv (hle k hk) (hle l hl) hka hlb
-    ⟨hvb.symm, Or.inr (Or.inr ⟨by rw [hah, hbh, he], hat, hbt, by rw [haT, hbT]; exact hne⟩)⟩
+    ((tr.state y i).fg.σ B.root).J = ((tr.state y i).fg.σ B'.root).J :=
+  Store.J_eq_of_hj_eq_of_safe (fg_reachable_at hrun ht hle hy) (fg_reachable_at hrun ht hle hy)
+    hf (held_atts_safe_one hrun ht hle hy) hB hB' he
 
 /-- A lock at the cache's justified height names the cache's justified root. -/
 theorem lock_root_eq_J_at

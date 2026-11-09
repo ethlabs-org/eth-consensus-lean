@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSignedAt
 
 public section
 
@@ -10,10 +11,10 @@ public section
 
 Attestations on blocks held by two readers, each observed while honest at its own time, with a
 signer honest at a time after both observations, are not slashable (`held_atts_safe_at`). Each
-signature is recovered at its own reader's horizon and both are charged on the prefix up to the
-later time, rather than through a terminal honest cohort. This is the safety premise of the
-static store-level crossing arguments (`Healing/HeldSafety`, `Healing/M1/StoreCache`,
-`Healing/M1/FrameLagCore`) for the growing readers.
+signature is recovered at its own reader's horizon (`held_att_signed_at`) and both are charged
+on the prefix up to the later time, rather than through a terminal honest cohort. This is the
+safety premise of the static store-level crossing arguments (`Healing/HeldSafety`,
+`Healing/M1/StoreCache`, `Healing/M1/FrameLagCore`) for the growing readers.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -23,24 +24,6 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-
-/-- An attestation on a block held at an observation honest at `t`, with a signer honest at `t`,
-was signed before the cut. -/
-private theorem held_att_signed_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
-    (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) {a : FG.Att sp.n}
-    (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload) (hav : a.val ∈ H t) :
-    ∃ k < i, tr.SignAt a.val k a := by
-  obtain ⟨X, hX, haX⟩ := ha
-  have hXt : X ∈ ((tr.upTo t).state y i).fg.tree := by rw [Trace.upTo_state tr y hle]; exact hX
-  rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hXt with rfl | ⟨k, hk, hacc⟩
-  · cases haX
-  · have hacc' := ((Trace.upTo_callAt tr).mp hacc).2
-    obtain ⟨k', hk', hs'⟩ := hrun.toLocalRun.att_unforgeable y k a
-      (hrun.antitone (hle k hk) hy) (Or.inr ⟨X, ⟨true, hacc'⟩, haX⟩)
-      (hrun.antitone (hle k hk) hav)
-    exact ⟨k', hk'.trans hk, hs'⟩
 
 /-- **Held attestations at independently honest observations are not slashable.** Attestations
 on blocks held by `y` (observed while honest at `u`) and by `x` (observed while honest at `t`),
