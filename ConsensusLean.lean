@@ -114,6 +114,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
