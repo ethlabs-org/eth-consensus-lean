@@ -9,6 +9,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.CallViewM
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.Identity
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.Packages
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.ServiceEquivalence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
@@ -98,6 +101,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FamilyIdentity
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FamilyPackages
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameCandidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
@@ -529,6 +534,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.FamilyIdentity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Attestations
@@ -931,6 +937,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.FamilyIdentity
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
