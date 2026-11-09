@@ -869,6 +869,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationQu
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule

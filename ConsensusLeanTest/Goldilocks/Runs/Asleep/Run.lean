@@ -1,6 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Premises
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 @[expose] public section
 
