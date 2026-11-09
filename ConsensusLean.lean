@@ -932,6 +932,14 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Dominance
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Locks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Records
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Retention
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Service
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Source
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Unlock
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Votes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
