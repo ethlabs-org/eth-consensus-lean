@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 
 public section
 
@@ -97,11 +98,8 @@ theorem store_eq_fg (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
 
 /-- `h_j < h_max` in every honest store. -/
 theorem hj_lt_hmax (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
-    (i : Nat) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax := by
-  have hR := Compose.fg_reachable hrun.toLocalRun hy i
-  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hR
-  exact hBjhj ▸ (Store.hj_lt_h hR hBj).trans_le (hge Bj hBj)
+    (i : Nat) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
+  Store.hj_lt_hmax_of_reachable (Compose.fg_reachable hrun.toLocalRun hy i)
 
 /-- `h_j` of an honest store does not decrease. -/
 theorem hj_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
@@ -145,23 +143,11 @@ theorem hj_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y �
 theorem J_eq_of_hj_eq_run (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
     {i m : Nat} (he : (tr.state y i).fg.hj = (tr.state z m).fg.hj) :
-    (tr.state y i).fg.J = (tr.state z m).fg.J := by
-  have hRy := Compose.fg_reachable hrun.toLocalRun hy i
-  have hRz := Compose.fg_reachable hrun.toLocalRun hz m
-  obtain ⟨-, hJy, -, ⟨By, hBy, hByJ, hByhj⟩, -⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hRy
-  obtain ⟨-, hJz, -, ⟨Bz, hBz, hBzJ, hBzhj⟩, -⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hRz
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hrun.genesis_root_ok hrun.toLocalRun hnc
-  have h := J_eq_of_hj_eq hfg hf hy hz (i := i) (j := m) (B := By) (B' := Bz)
-    (by rw [store_eq_fg hrun hy]; exact hBy) (by rw [store_eq_fg hrun hz]; exact hBz)
-    (by rw [store_eq_fg hrun hy, store_eq_fg hrun hz]; omega)
-  rw [store_eq_fg hrun hy, store_eq_fg hrun hz] at h
-  exact (Compose.honest_blocks_coherent hrun.toLocalRun hnc).1 ⟨y, hy, i, hJy⟩ ⟨z, hz, m, hJz⟩
-    (hByJ.symm.trans (h.trans hBzJ))
+    (tr.state y i).fg.J = (tr.state z m).fg.J :=
+  Store.J_eq_of_cache_hj_eq_of_safe (Compose.fg_reachable hrun.toLocalRun hy i)
+    (Compose.fg_reachable hrun.toLocalRun hz m) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
+    (fun _ h => ⟨y, hy, i, h⟩) (fun _ h => ⟨z, hz, m, h⟩) hf (held_atts_safe_run hrun hnc hy hz i m)
+    he
 
 /-- `Σ.F` of an honest store is below every honest-held block of state height `≥ h_max`
 (G1.2 with `h_F ≤ h_j < h ≤ h_max`). -/
@@ -169,24 +155,11 @@ theorem F_anc_of_hmax_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
     {i m : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z m).fg.tree)
     (hh : (tr.state y i).fg.hmax ≤ ((tr.state z m).fg.σ W.root).h) :
-    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W := by
-  have hR := Compose.fg_reachable hrun.toLocalRun hy i
-  obtain ⟨hF, -, -, -, hge, -, X, hX, hXF⟩ := Goldilocks.Store.cache_invariants _ _ _ _ hR
-  obtain ⟨c, -, -, -, hc⟩ := Goldilocks.Store.chain_state_of_chain _ _ _ _ hR X hX
-  have hinv := FG.chain_invariants _ _ _ hc
-  have hXh := hge X hX
-  have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
-    have h1 := hinv.2.1
-    have h2 := hinv.2.2.1
-    omega
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hrun.genesis_root_ok hrun.toLocalRun hnc
-  have h := finalized_anc_of_lt_fg hfg hf hy hz (k := i) (m := m)
-    (X := X) (F := (tr.state y i).fg.F) (W := W)
-  rw [store_eq_fg hrun hy, store_eq_fg hrun hz] at h
-  exact h hX hF hXF.symm hW hstrict
+    Anc (tr.HonestBlocks H) (tr.state y i).fg.F W :=
+  (Goldilocks.Store.F_anc_of_hmax_le_of_safe (Compose.fg_reachable hrun.toLocalRun hy i)
+    (Compose.fg_reachable hrun.toLocalRun hz m) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
+    (fun _ h => ⟨y, hy, i, h⟩) (fun _ h => ⟨z, hz, m, h⟩) hf (held_atts_safe_run hrun hnc hy hz i m)
+    hW hh).mono fun _ h => ⟨z, hz, m, h⟩
 
 /-- Equal merged keys at two honest cuts in kind J give equal `Σ.J`. -/
 theorem frameKey'_eq_J (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.NoCollRun dg tr)
