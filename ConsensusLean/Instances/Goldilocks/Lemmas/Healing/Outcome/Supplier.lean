@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.UnanimityWalk
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
@@ -13,7 +14,9 @@ public section
 /-! # Goldilocks Healing: post-reset duty suppliers
 
 The source and transport facts are in `Outcome.Foundation`; the proposal pivot is in
-`Outcome.Pivot`. The duty conclusions here may use both without an import cycle. -/
+`Outcome.Pivot`; the post-drain slot arithmetic and the voter's walk to the proposal, shared by
+both unanimity duties, are in `Outcome.UnanimityWalk`. The duty conclusions here may use all
+three without an import cycle. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -31,43 +34,15 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) : Unanimous tr H u P := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hac.localRun
-  have hDelta := sp.toParams.hΔ
-  have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
-  have hcut := lt_cutZ (sp := sp) g
-  have hga0 := SA.gbar_nonneg g
-  have ha0 : 0 ≤ a := by linarith
-  have ha : sp.ts (sp.slot a) ≤ a := by
-    exact (SA.ts_le_iff_le_slot sp ha0 _).2 (by omega)
-  have hu : sp.slot a + 2 * sp.k + 5 ≤ u := by
-    rw [drainTime_eq] at hR
-    exact_mod_cast (SA.ts_le_iff sp).1 hR
-  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by omega⟩
-  have hg : SA.gbar g ≤ sp.ts s := by
-    have hle : sp.ts (sp.slot a) + 4 * sp.Δ ≤ sp.ts s := by
-      have hs : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts s :=
-        (SA.ts_le_iff sp).2 (by omega)
-      simpa only [SAParams.ts, mul_add, mul_one] using hs
-    have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
-      omega
-    have he : sp.ts ((sp.slot a : Int) + 1) = sp.ts (sp.slot a) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; ring
-    rw [he] at ha'
-    linarith
-  have hgu : SA.gbar g + 2 * sp.Δ ≤ sp.ts (s + 1 : Nat) := by
-    have hs : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
-    linarith
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨s, rfl, hu, hg, hgu, -⟩ := post_drain_slot (cutZ_lt_reset hp.run hp.healthy hp.reset) hR
   obtain ⟨-, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, -, -, hpay, -⟩ :=
     honestProposalRun_of_ready hp.run hp.noColl hP
   rw [← hP.2.1] at hci hd
   change tr.time i = sp.ts (s + 1 : Nat) at hti
   change (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay) at hd
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := reset_pivot hp hc hP hR hci hcall hd hti hPQ
-  have hPhi := (SA.frameIn_of_callAt hr hP.1 hci).1
-  have hPhiU := (SA.frameIn_of_callAt hr hP.1 hci).2
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
   have hQt : d.head ∈ ellp.frame.tree := by
     rcases eq_or_ne d.start d.head with he | he
@@ -75,41 +50,6 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     · exact (Anc.mem hsQ he).2
   have hslot : sp.slot (tr.time i) = s + 1 := by
     rw [hti]; simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
-  set W₁ := SA.ghost sp (ellp.frame.viableTree ellp.frame.tree)
-    (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s) with hW₁
-  have hTp : ellp.frame.viableTree ellp.frame.tree ⊆ ellp.frame.tree := fun _ h => h.1
-  have hQ : d.head = W₁ ellp.frame.tree.ncard d.start := by
-    rw [hW₁]
-    unfold SA.acProposal at hd
-    split_ifs at hd
-    simp only [Option.some.injEq, Prod.mk.injEq] at hd
-    obtain ⟨rfl, rfl⟩ := hd
-    simp only [hslot, hcast]
-    rfl
-  have hstop₀ := SA.ghost_stopped hPhi.coherent hTp (hPhi.finite.subset hTp)
-    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-    (Set.ncard_le_ncard hTp hPhi.finite) d.start
-  rw [← hW₁] at hstop₀
-  have hstop₁ := hstop₀
-  rw [← hQ] at hstop₁
-  have hW₁add : ∀ a b x, W₁ (a + b) x = W₁ b (W₁ a x) := fun a b x => by
-    rw [hW₁]; exact SA.ghost_add a b x
-  have hstopQ : ∀ m, W₁ m d.head = d.head := fun m => by
-    have h0 : W₁ 0 d.head = d.head := rfl
-    rw [hW₁] at h0 ⊢
-    exact (SA.ghost_fuel_stable (f := 0) (Nat.zero_le m)
-      (by rw [h0]; exact hstop₁)).trans h0
-  have hXQend : ∀ {X}, ellp.frame.Anc D X → ellp.frame.Anc X d.head →
-      W₁ ellp.frame.tree.ncard X = d.head := by
-    intro X hDX hXQ
-    obtain ⟨kx, -, hkx⟩ := SA.ghost_visits hPhi.coherent hTp _ (hsD.trans hDX) (hQ ▸ hXQ)
-    rw [← hW₁] at hkx
-    have hadd := hW₁add kx ellp.frame.tree.ncard d.start
-    rw [hkx] at hadd
-    rw [← hadd, add_comm, hW₁add, ← hQ, hstopQ]
   intro y hy j
   induction j using Nat.strong_induction_on generalizing y with
   | _ j ih =>
@@ -119,8 +59,7 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     have hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
         e'.msg.slot = s + 1 → e'.msg.head = P.root :=
       fun x hx j' hj' e' hv' hs' => ih j' hj' x hx e' hv' hs'
-    have hPsi := (SA.frameIn_of_callAt hr hy hcy.1).1
-    have hPsiU := (SA.frameIn_of_callAt hr hy hcy.1).2
+    obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
     have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
       apply (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
       have := (SA.castAt_spec hr hy hcy).2.1
@@ -131,77 +70,15 @@ theorem ready_unanimous (hp : ResetPremises tr H proposer dg g ΔF a)
     have hPy := reset_proposal_frame hp hc hP (by omega) hy hcy hes hgj
       ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
     have hPv := reset_proposal_viable hp hc hP hR hci hcall hd hti hPQ hy hcy hes hPy hE
-    obtain ⟨hstep₀, hP₀⟩ := reset_stop_at_parent hp hc hP hR hci hcall hd hti hpay hPQ hy
+    obtain ⟨hstep, hP₀⟩ := reset_stop_at_parent hp hc hP hR hci hcall hd hti hpay hPQ hy
       hcy hes hPv hg (hti ▸ hgu) hgj hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hE
-    rw [hcast] at hXend
-    rw [SA.viableTree_voteDomain_eq_of_viable ⟨P, hPv⟩] at hXend
-    set W₂ := SA.ghost sp
-      (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
-      (SA.goldfishScore sp elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
-      (SA.goldfishEligible sp elly.frame (tr.time j)
-        (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s) with hW₂
-    have hTy : elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ⊆
-        elly.frame.tree := fun _ h => h.1.1
-    have hXP : ∃ fX, W₂ fX X = P := by
-      rcases hXc with rfl | ⟨hDX, hXQ⟩
-      · exact ⟨0, rfl⟩
-      refine ⟨ellp.frame.tree.ncard + 1, SA.ghost_follow _ X (hXQend hDX hXQ) hstop₁ ?_
-        hstep₀ hP₀⟩
-      intro m hm hne C hC
-      by_cases hXe : X = d.head
-      · exact absurd (by rw [hXe]; exact hstopQ m) hne
-      have hXt := (Anc.mem hXQ hXe).1
-      have hXm : ellp.frame.Anc X (W₁ m X) := SA.anc_ghost hTp m hXt
-      have hmem : W₁ m X ∈ ellp.frame.tree := by
-        rcases eq_or_ne (W₁ m X) X with he | he
-        · rw [he]; exact hXt
-        · exact (Anc.mem hXm (Ne.symm he)).2
-      have hend : W₁ (ellp.frame.tree.ncard - m) (W₁ m X) = d.head := by
-        rw [← hW₁add, Nat.add_sub_cancel' hm.le]
-        exact hXQend hDX hXQ
-      have hQm : ellp.frame.Anc (W₁ m X) d.head :=
-        hend ▸ SA.anc_ghost hTp _ hmem
-      have hCQ : ellp.frame.Anc C d.head := by
-        have hw := SA.walkEnd_ghost
-          (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-          (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-          hPhi.coherent hTp (hPhi.finite.subset hTp)
-          (Set.ncard_le_ncard hTp hPhi.finite) d.start
-        rw [← hW₁, ← hQ] at hw
-        obtain ⟨f, hf, -⟩ := SA.walkEnd_iff.1
-          (hw.of_anc hPhi.coherent hTp (hsD.trans (hDX.trans hXm)) hQm)
-        cases f with
-        | zero => exact absurd hf hne
-        | succ f =>
-          have h1 : W₁ 1 (W₁ m X) = C := SA.ghost_succ_of_best 0 _ hC
-          rw [hW₁] at h1
-          rw [show f + 1 = 1 + f by omega, SA.ghost_add, h1] at hf
-          exact hf ▸ SA.anc_ghost hTp f (hTp hC.1.1)
-      exact reset_suffix_best hp hc hP hci hcall hd hti hpay hPQ hy hcy hes hPv hg
-        (hti ▸ hgu) hgj hQt hQm hne (hviab _ (hDX.trans hXm) hQm) hCQ
-        ((haX.mono hPsiU).trans (hXm.mono hPhiU)) hC
-    obtain ⟨fX, hfX⟩ := hXP
     have hspec := SA.castAt_head_of_viable hr hy hcy (hes ▸ ⟨P, hPv⟩)
-    rw [hes, hcast] at hspec
-    rw [hspec]
-    congr 1
-    change W₂ elly.frame.tree.ncard (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) = P
-    obtain ⟨ky, -, hky⟩ := SA.ghost_visits hPsi.coherent hTy _ haX hXend
-    have hP₂ : W₂ (ky + fX) (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) = P := by
-      rw [hW₂, SA.ghost_add, ← hW₂]
-      rw [← hW₂] at hky
-      rw [hky]; exact hfX
-    have hstop₂ := SA.ghost_stopped hPsi.coherent hTy (hPsi.finite.subset hTy)
-      (sc := SA.goldfishScore sp elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
-      (el := SA.goldfishEligible sp elly.frame (tr.time j)
-        (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
-      (Set.ncard_le_ncard hTy hPsi.finite) (SA.getAnchor sp e.readPoint elly.frame (tr.time j))
-    rw [← hW₂] at hstop₂
-    have hmax₁ := SA.ghost_fuel_stable (le_max_left elly.frame.tree.ncard (ky + fX)) hstop₂
-    have hmax₂ := SA.ghost_fuel_stable (le_max_right elly.frame.tree.ncard (ky + fX)) (hP₂ ▸ hP₀)
-    rw [← hW₂] at hmax₁ hmax₂
-    rw [← hmax₁, hmax₂, hP₂]
+    rw [hes] at hspec
+    exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
+      hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => reset_suffix_best hp hc hP hci hcall
+        hd hti hpay hPQ hy hcy hes hPv hg (hti ▸ hgu) hgj hQt hBQ hne (hviab _ hDB hBQ) hCQ
+        ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))
 
 /-- Every bounded honest cast agrees with an actual honest proposal after the reset drain. -/
 theorem ResetPremisesUpTo.operational_unanimous {b : Time}
@@ -211,42 +88,9 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
     (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u) (hub : sp.ts u ≤ b) :
     ∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = u → tr.time j ≤ b →
       e.msg.head = P.root := by
-  have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
-  have hr := hac.localRun
-  have hDelta := sp.toParams.hΔ
-  have hca := cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨k, hk, _⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset
-  have hcut := lt_cutZ (sp := sp) g
-  have hga0 := SA.gbar_nonneg g
-  have ha0 : 0 ≤ a := by linarith
-  have hu : sp.slot a + 2 * sp.k + 5 ≤ u := by
-    rw [drainTime_eq] at hR
-    exact_mod_cast (SA.ts_le_iff sp).1 hR
-  obtain ⟨s, rfl⟩ : ∃ s, u = s + 1 := ⟨u - 1, by omega⟩
-  have hg : SA.gbar g ≤ sp.ts s := by
-    have hle : sp.ts (sp.slot a) + 4 * sp.Δ ≤ sp.ts s := by
-      have hs : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts s :=
-        (SA.ts_le_iff sp).2 (by omega)
-      simpa only [SAParams.ts, mul_add, mul_one] using hs
-    have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
-      omega
-    have he : sp.ts ((sp.slot a : Int) + 1) = sp.ts (sp.slot a) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; ring
-    rw [he] at ha'
-    linarith
-  have hgu : SA.gbar g + 2 * sp.Δ ≤ sp.ts (s + 1 : Nat) := by
-    have hs : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
-    linarith
-  have hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ sp.ts (s + 1 : Nat) := by
-    rw [cutZ_eq] at hca
-    have hqa := (SA.ts_le_iff_le_slot sp ha0 _).1 hca.le
-    have hqs : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts s :=
-      (SA.ts_le_iff sp).2 (by push_cast at hqa ⊢; omega)
-    have hs : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
-    linarith
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  obtain ⟨s, rfl, hu, hg, hgu, hjoin⟩ := post_drain_slot (cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨k, hk, _⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset) hR
   obtain ⟨_, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, _, _, hpay, _⟩ :=
     honestProposalRun_of_proposesAt hp.run hp.noColl hpH hdesignated hactual hPs
   rw [← hdesignated] at hci hd
@@ -254,8 +98,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
   change (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay) at hd
   have hib : tr.time i ≤ b := hti ▸ hub
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := hp.reset_pivot hc hpH hactual hR hci hcall hd hti hib hPQ
-  have hPhi := (SA.frameIn_of_callAt hr hpH hci).1
-  have hPhiU := (SA.frameIn_of_callAt hr hpH hci).2
+  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
   have hQt : d.head ∈ ellp.frame.tree := by
     rcases eq_or_ne d.start d.head with he | he
@@ -263,41 +106,6 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
     · exact (Anc.mem hsQ he).2
   have hslot : sp.slot (tr.time i) = s + 1 := by
     rw [hti]; simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
-  set W₁ := SA.ghost sp (ellp.frame.viableTree ellp.frame.tree)
-    (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s) with hW₁
-  have hTp : ellp.frame.viableTree ellp.frame.tree ⊆ ellp.frame.tree := fun _ h => h.1
-  have hQ : d.head = W₁ ellp.frame.tree.ncard d.start := by
-    rw [hW₁]
-    unfold SA.acProposal at hd
-    split_ifs at hd
-    simp only [Option.some.injEq, Prod.mk.injEq] at hd
-    obtain ⟨rfl, rfl⟩ := hd
-    simp only [hslot, hcast]
-    rfl
-  have hstop₀ := SA.ghost_stopped hPhi.coherent hTp (hPhi.finite.subset hTp)
-    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-    (Set.ncard_le_ncard hTp hPhi.finite) d.start
-  rw [← hW₁] at hstop₀
-  have hstop₁ := hstop₀
-  rw [← hQ] at hstop₁
-  have hW₁add : ∀ a b x, W₁ (a + b) x = W₁ b (W₁ a x) := fun a b x => by
-    rw [hW₁]; exact SA.ghost_add a b x
-  have hstopQ : ∀ m, W₁ m d.head = d.head := fun m => by
-    have h0 : W₁ 0 d.head = d.head := rfl
-    rw [hW₁] at h0 ⊢
-    exact (SA.ghost_fuel_stable (f := 0) (Nat.zero_le m)
-      (by rw [h0]; exact hstop₁)).trans h0
-  have hXQend : ∀ {X}, ellp.frame.Anc D X → ellp.frame.Anc X d.head →
-      W₁ ellp.frame.tree.ncard X = d.head := by
-    intro X hDX hXQ
-    obtain ⟨kx, _, hkx⟩ := SA.ghost_visits hPhi.coherent hTp _ (hsD.trans hDX) (hQ ▸ hXQ)
-    rw [← hW₁] at hkx
-    have hadd := hW₁add kx ellp.frame.tree.ncard d.start
-    rw [hkx] at hadd
-    rw [← hadd, add_comm, hW₁add, ← hQ, hstopQ]
   intro y hy j
   induction j using Nat.strong_induction_on generalizing y with
   | _ j ih =>
@@ -308,8 +116,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
         e'.msg.slot = s + 1 → e'.msg.head = P.root :=
       fun x hx j' hj' e' hv' hs' => ih j' hj' x hx e' hv' hs'
         ((hp.run.time_mono hj'.le).trans hjb)
-    have hPsi := (SA.frameIn_of_callAt hr hy hcy.1).1
-    have hPsiU := (SA.frameIn_of_callAt hr hy hcy.1).2
+    obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
     have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
       apply (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
       have := (SA.castAt_spec hr hy hcy).2.1
@@ -322,79 +129,17 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
       hjb hgj (hjoin.trans hjt) ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
     have hPv := hp.reset_proposal_viable hc hpH hactual hPs hR hci hcall hd hti hib hPQ
       hy hcy hes hjb hPy
-    obtain ⟨hstep₀, hP₀⟩ := hp.reset_stop_at_parent hc hpH hdesignated hactual hPs hR
+    obtain ⟨hstep, hP₀⟩ := hp.reset_stop_at_parent hc hpH hdesignated hactual hPs hR
       hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu) hgj
       (hti ▸ hjoin) (hjoin.trans hjt) hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hjb hE
-    rw [hcast] at hXend
-    rw [SA.viableTree_voteDomain_eq_of_viable ⟨P, hPv⟩] at hXend
-    set W₂ := SA.ghost sp
-      (elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)))
-      (SA.goldfishScore sp elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
-      (SA.goldfishEligible sp elly.frame (tr.time j)
-        (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s) with hW₂
-    have hTy : elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame (s + 1)) ⊆
-        elly.frame.tree := fun _ h => h.1.1
-    have hXP : ∃ fX, W₂ fX X = P := by
-      rcases hXc with rfl | ⟨hDX, hXQ⟩
-      · exact ⟨0, rfl⟩
-      refine ⟨ellp.frame.tree.ncard + 1, SA.ghost_follow _ X (hXQend hDX hXQ) hstop₁ ?_
-        hstep₀ hP₀⟩
-      intro m hm hne C hC
-      by_cases hXe : X = d.head
-      · exact absurd (by rw [hXe]; exact hstopQ m) hne
-      have hXt := (Anc.mem hXQ hXe).1
-      have hXm : ellp.frame.Anc X (W₁ m X) := SA.anc_ghost hTp m hXt
-      have hmem : W₁ m X ∈ ellp.frame.tree := by
-        rcases eq_or_ne (W₁ m X) X with he | he
-        · rw [he]; exact hXt
-        · exact (Anc.mem hXm (Ne.symm he)).2
-      have hend : W₁ (ellp.frame.tree.ncard - m) (W₁ m X) = d.head := by
-        rw [← hW₁add, Nat.add_sub_cancel' hm.le]
-        exact hXQend hDX hXQ
-      have hQm : ellp.frame.Anc (W₁ m X) d.head :=
-        hend ▸ SA.anc_ghost hTp _ hmem
-      have hCQ : ellp.frame.Anc C d.head := by
-        have hw := SA.walkEnd_ghost
-          (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-          (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-          hPhi.coherent hTp (hPhi.finite.subset hTp)
-          (Set.ncard_le_ncard hTp hPhi.finite) d.start
-        rw [← hW₁, ← hQ] at hw
-        obtain ⟨f, hf, _⟩ := SA.walkEnd_iff.1
-          (hw.of_anc hPhi.coherent hTp (hsD.trans (hDX.trans hXm)) hQm)
-        cases f with
-        | zero => exact absurd hf hne
-        | succ f =>
-          have h1 : W₁ 1 (W₁ m X) = C := SA.ghost_succ_of_best 0 _ hC
-          rw [hW₁] at h1
-          rw [show f + 1 = 1 + f by omega, SA.ghost_add, h1] at hf
-          exact hf ▸ SA.anc_ghost hTp f (hTp hC.1.1)
-      exact hp.reset_suffix_best hc hpH hdesignated hactual hPs hci hcall hd hti hpay hPQ
-        hy hcy hes hib hjb hPv hg (hti ▸ hgu) hgj (hti ▸ hjoin) (hjoin.trans hjt)
-        hQt hQm hne (hviab _ (hDX.trans hXm) hQm) hCQ
-        ((haX.mono hPsiU).trans (hXm.mono hPhiU)) hC
-    obtain ⟨fX, hfX⟩ := hXP
     have hspec := SA.castAt_head_of_viable hr hy hcy (hes ▸ ⟨P, hPv⟩)
-    rw [hes, hcast] at hspec
-    rw [hspec]
-    congr 1
-    change W₂ elly.frame.tree.ncard (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) = P
-    obtain ⟨ky, _, hky⟩ := SA.ghost_visits hPsi.coherent hTy _ haX hXend
-    have hP₂ : W₂ (ky + fX) (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) = P := by
-      rw [hW₂, SA.ghost_add, ← hW₂]
-      rw [← hW₂] at hky
-      rw [hky]; exact hfX
-    have hstop₂ := SA.ghost_stopped hPsi.coherent hTy (hPsi.finite.subset hTy)
-      (sc := SA.goldfishScore sp elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
-      (el := SA.goldfishEligible sp elly.frame (tr.time j)
-        (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s)
-      (Set.ncard_le_ncard hTy hPsi.finite) (SA.getAnchor sp e.readPoint elly.frame (tr.time j))
-    rw [← hW₂] at hstop₂
-    have hmax₁ := SA.ghost_fuel_stable (le_max_left elly.frame.tree.ncard (ky + fX)) hstop₂
-    have hmax₂ := SA.ghost_fuel_stable (le_max_right elly.frame.tree.ncard (ky + fX)) (hP₂ ▸ hP₀)
-    rw [← hW₂] at hmax₁ hmax₂
-    rw [← hmax₁, hmax₂, hP₂]
+    rw [hes] at hspec
+    exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
+      hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => hp.reset_suffix_best hc hpH
+        hdesignated hactual hPs hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu)
+        hgj (hti ▸ hjoin) (hjoin.trans hjt) hQt hBQ hne (hviab _ hDB hBQ) hCQ
+        ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))
 
 /-- Every honest node executes the joined update and immediately following joined to-FG call
 at the coverage deadline. This supplies calls, not a nonempty returned report. -/
