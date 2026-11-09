@@ -750,6 +750,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finali
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RawAtCall
