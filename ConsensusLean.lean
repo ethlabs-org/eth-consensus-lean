@@ -698,6 +698,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
