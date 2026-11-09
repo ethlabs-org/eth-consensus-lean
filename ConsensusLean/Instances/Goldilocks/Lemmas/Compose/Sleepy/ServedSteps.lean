@@ -32,8 +32,9 @@ served cuts of the latest view's slot (`exec_tick_cuts`, `tickAt_acCall`, `not_b
 supporters and the majority of the latest view (`latest_honest_supporter`, `latest_awake_voter`,
 `latest_majority`, with `latestView_lt_six`), the record writer and its label or lock
 (`record_writer`, `record_label_or_lock`), and the head support at a read (`head_support_at`,
-`read_head_support_of`). `ReadInvWith.awake` charges the slot count `FaultBoundAt H (t_s + Δ) t`
-only for the slots `s` with `t < t_s + 6Δ`, its one use being the latest view's slot at `t`. -/
+`read_head_support_of`). `ReadInvWith.awake` charges the slot count at `t_s + Δ`
+(`|Hᶜ|` below the honest validators awake and joined then) only for the slots `s` with
+`t_s + Δ ≤ t < t_s + 6Δ`, its one use being the latest view's slot at `t`. -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -199,9 +200,10 @@ structure ReadAtCut (proposer : Nat → Fin sp.n)
 /-- What the head support at a read of `y` before cut `i` at `t` reads of the invariant: a chain
 `Ch` of pairwise compatible honest blocks, closed under ancestors, that holds the record's block,
 the stored locks and the caches; origins `O`, among them those whose event precedes the cut,
-viable at the cuts up to `i` and extended by the earlier honest votes of later slots;
-`Sync[0, t − Δ]`; and `f < h_t` at the slot points `t_s + Δ ≤ t`. Under `Sleepy` with the full
-invariant (`ReadInv.of_full`), or up to `b ≥ t` (`ReadInv.of_upTo`). -/
+viable at the cuts up to `i` and extended by the earlier honest votes of later slots; the
+service `Service` (`ReadSyncOrService` at the served head); and `f < h_t` at the slot points
+`t_s + Δ ≤ t` with `t < t_s + 6Δ`. `Compose/Sleepy/Served` builds it under `Sleepy` from the full
+invariant, or from the invariant up to `b ≥ t`. -/
 structure ReadInvWith (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     (Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop)
     (O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time)
