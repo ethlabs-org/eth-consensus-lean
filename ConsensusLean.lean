@@ -858,6 +858,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingState
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
