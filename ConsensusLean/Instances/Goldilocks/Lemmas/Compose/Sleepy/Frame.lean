@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
 
@@ -110,11 +111,8 @@ private theorem below_entry {B D E : SA.Blk sp.n (List (FG.Att sp.n))}
 include hrun in
 /-- With `h_j = 0`, `Σ.J` is genesis. -/
 theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
-    (tr.state y i).fg.J = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := by
-  have hR := fg_reachable hrun.toLocalRun hy i
-  obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
-  obtain ⟨-, hcoh, hg, -⟩ := Store.accepted_tree _ _ _ _ hR
-  exact hcoh.1 hJ hg (hZJ.symm.trans ((honest_held_chain hrun hy hZ).2.2 (hZj.trans h0)))
+    (tr.state y i).fg.J = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+  FrameGeometry.justified_genesis hrun.toLocalRun h0 hy
 
 include hrun hnc hf hy in
 /-- **No contest from genesis.** -/

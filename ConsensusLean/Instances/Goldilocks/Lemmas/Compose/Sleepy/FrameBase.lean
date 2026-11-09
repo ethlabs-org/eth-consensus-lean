@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
@@ -34,53 +35,14 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H₀ : Set (Fin P.n)} {U : Se
 
 /-- An ancestor of a member is a member. -/
 theorem anc_mem {S : Set (NodeBlock P ACP)} {A W : NodeBlock P ACP} (h : Anc S A W)
-    (hW : W ∈ S) : A ∈ S := by
-  by_cases hne : A = W
-  · exact hne ▸ hW
-  · exact (Goldilocks.Anc.mem h hne).1
-
-/-- Along ancestry the height does not decrease; while it stays, the entry stays. -/
-private theorem anc_height (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀)
-    {m : Nat} {A W : NodeBlock P ACP} (h : (ftr.store y m).Anc A W) :
-    ((ftr.store y m).σ A.root).h ≤ ((ftr.store y m).σ W.root).h ∧
-      (((ftr.store y m).σ W.root).h = ((ftr.store y m).σ A.root).h →
-        ((ftr.store y m).σ W.root).Th = ((ftr.store y m).σ A.root).Th) := by
-  induction h with
-  | refl => exact ⟨le_rfl, fun _ => rfl⟩
-  | tail _ hYW ih =>
-    obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain P ACP acp₀ _
-      (Store.store_reachable hr hy m) _ hYW.1
-    obtain ⟨h1, -, -, h4, -⟩ := FG.height_step P.fg _ _ _ _ hc (Store.step_σ hr hy hYW.2.1 hYW.2.2)
-    have := ih.1
-    rcases h1 with h1 | h1
-    · exact ⟨by omega, fun _ => (h4 h1).1.trans (ih.2 (by omega))⟩
-    · exact ⟨by omega, fun _ => by omega⟩
+    (hW : W ∈ S) : A ∈ S :=
+  FrameGeometry.anc_mem h hW
 
 /-- One accepted block keeps the justification or justifies its parent's entry. -/
 theorem step_J {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') :
-    (σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h) := by
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he]
-  obtain ⟨F, hF, σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨-, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he'] <;>
-    simp [FG.ChainState.advance]
-
-/-- **Entry constancy on a height plateau**: two entry blocks of one height below one held block
-are equal. -/
-private theorem entry_unique (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀)
-    {m : Nat} {E E' W : NodeBlock P ACP} (hW : W ∈ (ftr.store y m).tree)
-    (hE : (ftr.store y m).Anc E W) (hE' : (ftr.store y m).Anc E' W)
-    (hh : ((ftr.store y m).σ E.root).h = ((ftr.store y m).σ E'.root).h)
-    (hT : ((ftr.store y m).σ E.root).Th = E.root)
-    (hT' : ((ftr.store y m).σ E'.root).Th = E'.root) : E = E' := by
-  have coh : Coherent (ftr.store y m).tree := hr.coherent.mono (hr.tree_subset y hy m)
-  apply coh.1 (anc_mem hE hW) (anc_mem hE' hW)
-  rcases Goldilocks.Anc.total coh hE hE' with h | h
-  · exact hT.symm.trans (((anc_height hr hy h).2 hh.symm).symm.trans hT')
-  · exact hT.symm.trans (((anc_height hr hy h).2 hh).trans hT')
+    (σ'.J = σ.J ∧ σ'.hj = σ.hj) ∨ (σ'.J = σ.Th ∧ σ'.hj = σ.h) :=
+  FrameGeometry.step_J h
 
 end Store
 
@@ -98,23 +60,21 @@ theorem projFG_localRun (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun
 
 theorem store_eq (hrun : GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.store y i = (tr.state y i).fg := by
-  change (tr.projFG.state y i).1 = _
-  rw [projFG_state hrun.toLocalRun hy i]
+    tr.projFG.store y i = (tr.state y i).fg :=
+  FrameGeometry.store_eq hrun.toLocalRun hy i
 
 /-- The tree of an honest node is among the honest blocks. -/
 theorem fg_tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y i).fg.tree ⊆ tr.HonestBlocks H :=
-  fun _ hZ => ⟨y, hy, i, hZ⟩
+  FrameGeometry.fg_tree_subset_honest hy i
 
 /-- Ancestry inside the honest blocks below a held block is ancestry in the holder's store. -/
 theorem honest_held_anc (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {A W : SA.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A W) (hW : W ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.Anc A W := by
-  rw [← store_eq hrun hy i] at hW ⊢
-  exact Store.anc_of_U (projFG_localRun hrun hnc) hy h hW
+    (tr.state y i).fg.Anc A W :=
+  FrameGeometry.honest_held_anc hrun.toLocalRun (projFG_localRun hrun hnc) hy h hW
 
 /-- State heights do not decrease along ancestry in an honest store, and equal heights have equal
 `Th`. -/
@@ -124,9 +84,8 @@ theorem honest_held_height (hrun : GoldilocksRun proposer dg H tr)
     (h : (tr.state y i).fg.Anc A W) :
     ((tr.state y i).fg.σ A.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ A.root).h →
-        ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ A.root).Th) := by
-  rw [← store_eq hrun hy i] at h ⊢
-  exact anc_height (projFG_localRun hrun hnc) hy h
+        ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ A.root).Th) :=
+  FrameGeometry.honest_held_height hrun.toLocalRun (projFG_localRun hrun hnc) hy h
 
 /-- Two entries of one state height below one held block are equal. -/
 theorem held_entry_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -135,9 +94,8 @@ theorem held_entry_unique (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     (hE : (tr.state y i).fg.Anc E W) (hE' : (tr.state y i).fg.Anc E' W)
     (hh : ((tr.state y i).fg.σ E.root).h = ((tr.state y i).fg.σ E'.root).h)
     (hT : ((tr.state y i).fg.σ E.root).Th = E.root)
-    (hT' : ((tr.state y i).fg.σ E'.root).Th = E'.root) : E = E' := by
-  rw [← store_eq hrun hy i] at hW hE hE' hh hT hT'
-  exact entry_unique (projFG_localRun hrun hnc) hy hW hE hE' hh hT hT'
+    (hT' : ((tr.state y i).fg.σ E'.root).Th = E'.root) : E = E' :=
+  FrameGeometry.held_entry_unique hrun.toLocalRun (projFG_localRun hrun hnc) hy hW hE hE' hh hT hT'
 
 /-- The chain invariants of a held block's state. -/
 theorem honest_held_chain (hrun : GoldilocksRun proposer dg H tr)
@@ -145,11 +103,8 @@ theorem honest_held_chain (hrun : GoldilocksRun proposer dg H tr)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree) :
     1 ≤ ((tr.state y i).fg.σ B.root).h ∧
       ((tr.state y i).fg.σ B.root).hj < ((tr.state y i).fg.σ B.root).h ∧
-      (((tr.state y i).fg.σ B.root).hj = 0 → ((tr.state y i).fg.σ B.root).J = sp.genesisRoot) := by
-  obtain ⟨c, -, -, -, hc⟩ :=
-    Store.chain_state_of_chain _ _ _ _ (fg_reachable hrun.toLocalRun hy i) B hB
-  obtain ⟨h1, -, h2, h3, -⟩ := FG.chain_invariants _ _ _ hc
-  exact ⟨h1, h2, h3⟩
+      (((tr.state y i).fg.σ B.root).hj = 0 → ((tr.state y i).fg.σ B.root).J = sp.genesisRoot) :=
+  FrameGeometry.honest_held_chain hrun.toLocalRun hy hB
 
 /-- An honest attestation on the chain of a held block was signed by its signer before the node
 accepted the block, before the cut. -/
@@ -232,12 +187,8 @@ theorem honest_source_entry (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
       (tr.state x k).fg.Anc E D ∧
       ((tr.state x k).fg.σ E.root).h = ((tr.state x k).fg.σ D.root).h ∧
       ((tr.state x k).fg.σ E.root).Th = E.root := by
-  obtain ⟨x, hx, k, hDt, hDT⟩ := hD
-  obtain ⟨⟨E', hE', hE'r, hE'D, hE'h, hE'T⟩, -⟩ :=
-    Store.entry_state_of_source _ _ _ _ (fg_reachable hrun.toLocalRun hx k) D hDt
-  obtain rfl : E' = E :=
-    (projFG_localRun hrun hnc).coherent.1 ⟨x, hx, k, hE'⟩ hE (hE'r.trans (hDT.trans hET.symm))
-  exact ⟨x, hx, k, hDt, hE', hE'D, hE'h, hE'T.trans hE'r.symm⟩
+  apply FrameGeometry.honest_source_entry hrun.toLocalRun (projFG_localRun hrun hnc) _ hE hET
+  exact FrameGeometry.isHonestSource_iff.2 (isHonestSource_iff.1 hD)
 
 /-- **An honest attestation names the entry of its source**, a block of the signer's tree below
 an origin whose event precedes the signing (the source is a live fast lock block,

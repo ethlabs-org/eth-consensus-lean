@@ -29,7 +29,8 @@ theorem fg_tree_subset_honest {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun _ hB => ⟨y, hy, i, hB⟩
 
 /-- An ancestor of a member is a member. -/
-theorem anc_mem {S : Set A.Blk} {B W : A.Blk} (h : Anc S B W) (hW : W ∈ S) : B ∈ S := by
+theorem anc_mem {ACP : Type} {S : Set (NodeBlock P ACP)} {B W : NodeBlock P ACP}
+    (h : Anc S B W) (hW : W ∈ S) : B ∈ S := by
   by_cases he : B = W
   · exact he ▸ hW
   · exact (Anc.mem h he).1
