@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -142,40 +143,16 @@ theorem frameWindow_of_frameKey'_eq_obs
       tr.time i ≤ hi → lo ≤ tr.time m → tr.time m ≤ hi →
       frameKey' (tr.state y i).fg = frameKey' (tr.state z m).fg) :
     ∃ floor kindJ J, FrameWindow tr H lo hi floor kindJ J := by
-  classical
-  have hpos : ∀ y i, y ∈ H (tr.time i) → 1 ≤ (tr.state y i).fg.hmax := fun y i hy => by
-    have := hj_lt_hmax_obs hrun (hrun.time_nonneg i) (fun k hk => hrun.time_mono hk.le) hy
-    omega
-  by_cases hex : ∃ y i, y ∈ H (tr.time i) ∧ lo ≤ tr.time i ∧ tr.time i ≤ hi
-  · obtain ⟨y₀, i₀, hy₀, h₁, h₂⟩ := hex
-    let st := (tr.state y₀ i₀).fg
-    refine ⟨st.headHeightFloor, st.hmax = st.hj + 1 ∧ ¬st.Contest, st.J, ⟨?_, ?_, ?_⟩⟩
-    · intro y i hy hlo hhi'
-      exact (frameKey'_eq_floor_kind (hpos y i hy) (hpos y₀ i₀ hy₀)
-        (hK y y₀ i i₀ hy hy₀ hlo hhi' h₁ h₂)).1
-    · intro y i hy hlo hhi'
-      exact (frameKey'_eq_floor_kind (hpos y i hy) (hpos y₀ i₀ hy₀)
-        (hK y y₀ i i₀ hy hy₀ hlo hhi' h₁ h₂)).2
-    · intro y i hy hlo hhi' hk
-      change (tr.state y₀ i₀).fg.hmax = (tr.state y₀ i₀).fg.hj + 1 ∧
-        ¬(tr.state y₀ i₀).fg.Contest at hk
-      change _ = (tr.state y₀ i₀).fg.J
-      have he := hK y y₀ i i₀ hy hy₀ hlo hhi' h₁ h₂
-      obtain ⟨hfl, hkd⟩ := frameKey'_eq_floor_kind (hpos y i hy) (hpos y₀ i₀ hy₀) he
-      have hk' := hkd.2 hk
-      have hj1 := hj_lt_hmax_obs hrun (hrun.time_nonneg i) (fun k hk => hrun.time_mono hk.le) hy
-      have hj2 := hj_lt_hmax_obs hrun (hrun.time_nonneg i₀)
-        (fun k hk => hrun.time_mono hk.le) hy₀
-      have hmax : max (tr.time i) (tr.time i₀) ≤ b := max_le (hhi'.trans hhi) (h₂.trans hhi)
-      apply J_eq_of_hj_eq_obs hrun hnc (hrun.time_nonneg i) (fun k hk => hrun.time_mono hk.le) hy
-        (hrun.time_nonneg i₀) (fun k hk => hrun.time_mono hk.le) hy₀
-        (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) hmax)
-      unfold Store.headHeightFloor at hfl
-      simp [hk.2, hk'.2] at hfl
-      omega
-  · push Not at hex
-    refine ⟨0, True, sp.toParams.genesisBlock ([], []), ⟨?_, ?_, ?_⟩⟩ <;>
-      intro y i hy hlo hhi' <;> exact absurd hhi' (not_le.2 (hex y i hy hlo))
+  have hle : ∀ i k, k < i → tr.time k ≤ tr.time i := fun _ _ hk => hrun.time_mono hk.le
+  obtain ⟨floor, kindJ, J, h1, h2, h3⟩ := frameData_of_frameKey'_eq
+    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => (tr.state y i).fg)
+    (sp.toParams.genesisBlock ([], []))
+    (fun y i hy => hj_lt_hmax_obs hrun (hrun.time_nonneg i) (hle i) hy) hK
+    (fun y z i m hy hz _ hi _ hm he => J_eq_of_hj_eq_obs hrun hnc (hrun.time_nonneg i) (hle i) hy
+      (hrun.time_nonneg m) (hle m) hz
+      (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hi.trans hhi) (hm.trans hhi)))
+      he)
+  exact ⟨floor, kindJ, J, ⟨h1, h2, h3⟩⟩
 
 /-- **Step 2 (proof of `exists_frameWindow_seq_of_service_at`)**: per-cut height range and relay
 calls produce a frame window, by the sequential pigeonhole over the cuts of nodes honest at them
