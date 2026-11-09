@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PhaseMono
 
@@ -22,139 +23,31 @@ stays held (durable stores), (a) makes its `J` unique, and a contest's witness b
 so at most two changes per value of `m`.
 
 The proof: a chain whose state has `h_j ≥ 1` carries a target quorum of non-timeout attestations
-with height pair `(h_j, J)` (`justification_quorum`, by induction over the chain, from the target
-bits); two such quorums at one height with different `J` meet in an honest validator, whose two
-attestations are an E2 pair, which client safety (G0.5) excludes (`J_eq_of_hj_eq`, part (a)). Honest
-stores keep their blocks and their states (`held_mono`), and ancestry of a held block does not
-change as the store grows (`Store.anc_transfer`), so justifications and contests stay (part
-(b)); with (a) the phase at a cut is unique, so a change raises the rank, which lies in
-`{0, 1, 2}` (part (c)). -/
+with height pair `(h_j, J)`; two such quorums at one height with different `J` cross in `2q − n`
+validators with E2 pairs (`Store.justified_crossing`), one of them honest, whose two
+attestations client safety (G0.5) excludes (`Store.J_eq_of_hj_eq_of_safe` with
+`held_atts_safe`; `J_eq_of_hj_eq`, part (a)). Honest stores keep their blocks and their states
+(`held_mono`), and ancestry of a held block does not change as the store grows
+(`Store.anc_transfer`), so justifications and contests stay (part (b)); with (a) the phase at a
+cut is unique, so a change raises the rank, which lies in `{0, 1, 2}` (part (c)). -/
 
 namespace Consensus.Goldilocks.Healing
 
 open Store
-
-/-! ## The target quorum of a justification, chain level -/
-
-/-- A target bit after counting is old or set by a counted non-timeout attestation on the
-entry. -/
-private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
-    {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).target) :
-    v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-  induction atts generalizing σ with
-  | nil => exact Or.inl h
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
-    rcases ih h with h | ⟨b, hb, hb'⟩
-    · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
-        unfold FG.ChainState.processAtt at h
-        dsimp only at h
-        repeat' split at h
-        all_goals aesop
-      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
-    · rw [hh, hT] at hb'
-      exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
-
-/-- **The target quorum of a justification.** Each target bit of a chain's state has its
-non-timeout attestation on the chain, and a justification `(h_j, J)` with `h_j ≥ 1` has a
-quorum of non-timeout attestations on the chain with height pair `(h_j, J)`. -/
-private theorem justification_quorum (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
-    {σ : FG.ChainState gp.n} (h : gp.chainState c = some σ) :
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false) := by
-  refine gp.chainState_induction (P := fun c σ =>
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false))
-    ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init]⟩ ?_ h
-  intro c σ B σ' _ ⟨ht, hq⟩ hB
-  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append] at h ⊢
-    exact Or.inl h
-  have liftB : ∀ {a}, a ∈ B.atts → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append]
-    exact Or.inr (by simpa using h)
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
-  have hT := fun v => @mem_foldl_target _ { σ with s := B.slot } B.atts v
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hT ⊢
-  dsimp only at hT
-  have ht₀ : ∀ v ∈ t, ∃ a ∈ gp.chainAtts (c ++ [B]),
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-    intro v hv
-    rcases hT v hv with hv | ⟨a, ha, h'⟩
-    · obtain ⟨a, ha, h'⟩ := ht v hv
-      exact ⟨a, liftA ha, h'⟩
-    · exact ⟨a, liftB ha, h'⟩
-  have hq₀ : 1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧
-      ∀ v ∈ Q, ∃ a ∈ gp.chainAtts (c ++ [B]),
-        a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false := fun h1 =>
-    let ⟨Q, hQ, hv⟩ := hq h1
-    ⟨Q, hQ, fun v h => let ⟨a, ha, h'⟩ := hv v h; ⟨a, liftA ha, h'⟩⟩
-  obtain ⟨F, hF', σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨⟨hq', -⟩, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨by simp [FG.ChainState.advance], fun _ => ⟨t, hq', ht₀⟩⟩
-  · exact ⟨by simp [FG.ChainState.advance], hq₀⟩
-  · exact ⟨ht₀, hq₀⟩
 
 /-! ## Part (a): one justified entry per height -/
 
 variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (NodeBlock P ACP)}
   {tr : FGTrace P ACP}
 
-/-- A held block of an honest store has a chain whose fold is its state, and every attestation
-of that chain with an honest signer was signed before the cut. -/
-private theorem held_chain (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
-    {B : NodeBlock P ACP} (hB : B ∈ (tr.store y i).tree) :
-    ∃ c : List (NodeBlock P ACP),
-      P.fg.chainState (c.map Block.fgView) = some ((tr.store y i).σ B.root) ∧
-      ∀ a ∈ P.fg.chainAtts (c.map Block.fgView), a.val ∈ H → ∃ k < i, tr.SignAt a.val k a := by
-  obtain ⟨c, hc, -, -, hσ⟩ := chain_state_of_chain P ACP acp₀ _ (store_reachable hr hy i) B hB
-  refine ⟨c, hσ, fun a ha hav => ?_⟩
-  obtain ⟨_, hX, haX⟩ := List.mem_flatMap.1 ha
-  obtain ⟨X, hXc, rfl⟩ := List.mem_map.1 hX
-  rcases tree_accepted hr hy (hc X hXc) with rfl | ⟨k, hk, hacc⟩
-  · cases haX
-  · obtain ⟨k', hk', hs⟩ := hr.unforgeable y hy k a ⟨_, hacc, haX⟩ hav
-    exact ⟨k', by omega, hs⟩
-
 /-- **HR.2 (a).** Two honest accepted states with the same `h_j` have the same `J`. -/
 theorem J_eq_of_hj_eq (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
     {y z : Fin P.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B B' : NodeBlock P ACP}
     (hB : B ∈ (tr.store y i).tree) (hB' : B' ∈ (tr.store z j).tree)
     (he : ((tr.store y i).σ B.root).hj = ((tr.store z j).σ B'.root).hj) :
-    ((tr.store y i).σ B.root).J = ((tr.store z j).σ B'.root).J := by
-  obtain ⟨c₁, h₁, ha₁⟩ := held_chain hr hy hB
-  obtain ⟨c₂, h₂, ha₂⟩ := held_chain hr hz hB'
-  rcases Nat.eq_zero_or_pos ((tr.store y i).σ B.root).hj with h0 | h0
-  · rw [(FG.chain_invariants P.fg _ _ h₁).2.2.2.1 h0,
-      (FG.chain_invariants P.fg _ _ h₂).2.2.2.1 (he ▸ h0)]
-  by_contra hne
-  obtain ⟨Q₁, hQ₁, hv₁⟩ := (justification_quorum P.fg h₁).2 h0
-  obtain ⟨Q₂, hQ₂, hv₂⟩ := (justification_quorum P.fg h₂).2 (he ▸ h0)
-  obtain ⟨v, hvQ, hv⟩ : ∃ v ∈ Q₁ ∩ Q₂, v ∈ H := by
-    by_contra! hS
-    have h1 := (FG.quorum_intersection P.fg Q₁ Q₂ hQ₁ hQ₂).1
-    have := Set.ncard_le_ncard (s := ((Q₁ ∩ Q₂ : Finset _) : Set (Fin P.fg.n))) (t := Hᶜ) hS
-    rw [Set.ncard_coe_finset] at this
-    have : (Hᶜ : Set (Fin P.fg.n)).ncard = (Hᶜ : Set (Fin P.n)).ncard := rfl
-    have : P.fg.n = P.n := rfl
-    omega
-  obtain ⟨a, ha, rfl, hah, haT, hat⟩ := hv₁ v (Finset.mem_inter.1 hvQ).1
-  obtain ⟨b, hb, hvb, hbh, hbT, hbt⟩ := hv₂ a.val (Finset.mem_inter.1 hvQ).2
-  obtain ⟨inputs, hin, hrun⟩ := signed_run hr hv (i + j)
-  obtain ⟨k, hk, hka⟩ := ha₁ a ha hv
-  obtain ⟨k', hk', hkb⟩ := ha₂ b hb (hvb ▸ hv)
-  rw [hvb] at hkb
-  exact FG.client_safety P.fg a.val inputs hin a (hrun k (by omega) a hka) b
-    (hrun k' (by omega) b hkb)
-    ⟨hvb.symm, Or.inr (Or.inr ⟨by rw [hah, hbh, he], hat, hbt, by rw [haT, hbT]; exact hne⟩)⟩
+    ((tr.store y i).σ B.root).J = ((tr.store z j).σ B'.root).J :=
+  J_eq_of_hj_eq_of_safe (store_reachable hr hy i) (store_reachable hr hz j) hH
+    (held_atts_safe hr hy hz i j) hB hB' he
 
 /-- With (a), a justified block at a height is unique across cuts (roots are injective on
 `U`). -/

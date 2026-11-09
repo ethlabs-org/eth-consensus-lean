@@ -259,6 +259,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.St
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Crossing
@@ -691,6 +692,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
