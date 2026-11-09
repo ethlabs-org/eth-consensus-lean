@@ -312,6 +312,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotSourceVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Relay
@@ -702,6 +703,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OptimisticBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.CastEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Healed
@@ -713,6 +715,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSourceVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotWalk
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ProposalStart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames

@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSou
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.CastEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
@@ -142,37 +144,14 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old {b : Time}
     (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) O B) :
     (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
-  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hy j
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot hR
-  have hBh := hp.high_of_anc ho₀ hy hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
-  have hnc := hp.no_high_contest hy j (fun q hq => (hp.run.time_mono hq.le).trans hjb)
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ (tr.state y j).fg.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by clear * - hBh hfloor; omega⟩
-  have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
-  obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-    entry_at_height hreach hC (h := (tr.state y j).fg.hmax - 1) (by clear * - hfloor; omega) (by
-        clear * - hCh; omega)
-  obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hEO⟩ :=
-    hp.left_entry_origin hy hE hET (by clear * - hBh hfloor hEh; omega) hEC (by
-        clear * - hfloor hCh hEh; omega)
-  have hlu : l < u := hes ▸ hp.row_origin_label_lt hy hc hW ha hv hs hdj hrd ho
-  obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
-  have hrt : tr.time r < sp.ts u := hp.fastLock_time_lt hf hlu
-    ((hp.run.time_mono (by
-        clear * - hdj hrd; omega)).trans (hes ▸ (Compose.cast_head_fcRoot hr hy hc).2))
-  have hEB := hEO.trans (hBold v r l O ho hrt ((hp.run.time_mono (by
-      clear * - hdj hrd; omega)).trans hjb))
-  have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hy hEB hB)
-  clear * - hfloor hEh this; omega
+  refine headHeightFloor_le_of_entries_below (Compose.fg_reachable hp.run.toLocalRun hy j)
+    (hp.high_of_anc ho₀ hy hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb))
+    (hp.no_high_contest hy j fun q hq => (hp.run.time_mono hq.le).trans hjb)
+    fun E hE C hET hEh hEC hlt => ?_
+  obtain ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hEO⟩ :=
+    hp.cast_entry_below_old hy hc hes hjb hE hET hEh hEC hlt
+  exact hp.anc_tree_of_anc hy (hEO.trans (hBold v r l O ho hrt hrb)) hB
 
 /-- A held block extending every pre-slot origin reaches the voter's height floor. -/
 theorem reset_vote_floor_above_old

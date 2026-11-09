@@ -3,6 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSup
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ProposalStart
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.CastEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
@@ -76,44 +79,19 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hr.coherent.1 hW (hPsiU hhead) (hWr.trans hheadr)
     exact hBW
-  obtain ⟨A₁, hA₁, hstart, _⟩ := Compose.acProposal_walk hd
-  rw [hstart]
-  rcases Compose.anchor_mem ellp.frame A₁ (tr.time i) with hlock | hroot
-  swap
-  · rw [Set.mem_singleton_iff.1 hroot]
+  rcases proposal_start_root_or_clean_lock hPhi (SA.locksWF_state hr hpH i) hR hti hd with
+    hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
+  · rw [hroot]
     rcases hp.reset_proposal_root_source hpH hR hci hcall hd hti hib with
       hg | ⟨x, r, l, O, ho, hOld, hrb, hfO⟩
     · exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg
         (hPsiU hhead)
     apply hfO.trans (extend O ?_)
-    have hri : r < i := by
-      by_contra hn
-      have ht := hp.run.time_mono (Nat.le_of_not_gt hn)
-      rw [hti] at ht
-      exact (not_lt_of_ge ht) hOld
+    have hri : r < i :=
+      lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hOld.trans_eq hti.symm)
     have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti hri ho
     exact hp.high_origin_votes_before j hjb x r l O ho hrb y hy elly e hcy (by
         clear * - hes hlu; omega)
-  obtain ⟨hL, l', ⟨l, hl, B, hB, hBr, hlive, rfl⟩, hlL⟩ := hlock
-  have heq := hPhi.coherent.1 hL (SA.viableAncestor_anc hPhi hB).1 hlL.symm
-  rw [heq]
-  rw [hA₁] at hl
-  replace hlive : sp.slot (tr.time i) ≤ l.slot + sp.k :=
-    hlive.trans (((SA.locksWF_state hr hpH i).unlock _ _ _ _).cap hl)
-  obtain ⟨l₁, hl₁, hs, _, _, B₁, hB₁, hB₁r, B', hB', hB'r, hBB₁⟩ :=
-    ((SA.locks_move_back sp) _ ellp.frame _ (tr.time i) hPhi).2.2 _ _ l hl
-  obtain rfl : B' = B := hPhi.coherent.1 hB' hB (hB'r.trans hBr.symm)
-  have hlo : cleanLabel sp a + sp.k + 2 ≤ l₁.slot := by
-    rw [drainTime_eq] at hR
-    have h := (SA.ts_le_iff sp).mp hR
-    have hslot : sp.slot (tr.time i) = u := by
-      rw [hti]
-      exact SA.slot_of_mem sp u le_rfl (by
-        have hΔ := sp.toParams.hΔ
-        simp only [SA.SAParams.ts]; push_cast; linarith only [hΔ])
-    rw [hslot] at hlive
-    rw [cleanLabel_eq]
-    clear * - hlive hs h; omega
   obtain ⟨r, hri, D, horig, L, hLU, hLr, hLD⟩ :
       ∃ r < i, ∃ D,
         ((∃ CV, SA.FastLockAt tr.projAC p r l₁.slot D CV) ∨
@@ -127,25 +105,10 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
   obtain rfl : L = B₁ := hr.coherent.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
-  have hlt : l₁.slot < u := by
-    obtain ⟨r', hri', D', hw, _⟩ := SA.lock_provenance hr hpH i l₁ hl₁
-    have hrt : tr.time r' ≤ sp.ts u := hti ▸ hp.run.time_mono hri'.le
-    rcases hw with ⟨CV, hop⟩ | ⟨ell, hupd⟩
-    · obtain ⟨_, _, _, hsl, _⟩ := id hop
-      have hts : sp.ts l₁.slot ≤ tr.time r' :=
-        (SA.ts_le_iff_le_slot sp (hr.time_nonneg r') l₁.slot).mpr (by omega)
-      have hle := (SA.ts_le_iff sp).mp (hts.trans hrt)
-      have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
-      have hne : l₁.slot ≠ u := fun he =>
-        proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
-          p hpH r' hri' D' CV (he ▸ hop)
-      clear * - hle hne; omega
-    · have ht : tr.time r' = sp.ts l₁.slot + 6 * sp.Δ := hupd.2.2.1
-      have hΔ := sp.toParams.hΔ
-      have ht' : sp.ts l₁.slot < sp.ts u := by linarith only [hrt, ht, hΔ]
-      exact_mod_cast (SA.ts_lt_iff sp).mp ht'
-  apply (Anc.mono hPhiU ((SA.anc_viableAncestor ellp.frame B').trans hBB₁)).trans
-    (hLD.trans (extend D ?_))
+  have hlt : l₁.slot < u := Compose.proposal_locks_slot_of hp.run hp.noColl
+    (by have := hp.faults; have := Fin.pos p; omega) hpH hci hcall hd hti l₁
+    (Compose.projAC_state hp.run.toLocalRun hpH i ▸ hl₁)
+  apply (Anc.mono hPhiU hsB₁).trans (hLD.trans (extend D ?_))
   rcases horig with ⟨CV, hf⟩ | hslow
   · exact hp.fast_source_votes_before hc hpH hf hlo ((hp.run.time_mono hri.le).trans hib)
       j hjb y hy elly e hcy (by clear * - hes hlt; omega)
@@ -251,63 +214,20 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
     ell.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
         Anc (tr.HonestBlocks H) ell.frame.fcRoot O := by
-  have hU := hp.honest_coherent
-  have hrun := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hr := Compose.fg_reachable hp.run.toLocalRun hy j
-  have hsub : (tr.state y j).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, j, hX⟩
   have hfr := Compose.frame_of_projAC hp.run hy hc.1
-  have htupper : tr.time j ≤ sp.ts u + sp.Δ := by
-    have ht := (Compose.cast_head_fcRoot hrun hy hc).2
-    rwa [hes] at ht
-  obtain ⟨hFm, hJm, hFJ, ⟨B, hBm, hBJ, hBhj⟩, hmax, _⟩ :=
-    Store.cache_invariants _ _ _ _ hr
-  obtain ⟨E, hEm, hEr, hEB, hcase⟩ := Store.J_entry_of_reachable hr hBm
-  obtain rfl : E = (tr.state y j).fg.J := hU.1 (hsub hEm) (hsub hJm) (hEr.trans hBJ)
-  have hroot : (tr.state y j).fg.fcRoot = (tr.state y j).fg.J ∨
-      (tr.state y j).fg.fcRoot = (tr.state y j).fg.F := by
-    unfold Store.fcRoot
-    split_ifs <;> simp
-  rcases hcase with hg | ⟨hJh, hJT⟩
-  · left
-    rw [hfr]
-    rcases hroot with h | h
-    · exact congrArg (·.root) (h.trans hg)
-    · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
-      rw [← hg] at hJF
-      have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
-      exact congrArg (·.root) (h.trans (he.trans hg))
-  right
-  by_cases hh : HZ tr H g + 1 ≤ (tr.state y j).fg.hj
-  · obtain ⟨W, hW, att, ha, v, hv, d, hdj, hs, _, r, hrd, l, O, ho, hJO⟩ :=
-      hp.left_entry_origin hy hJm hJT (by clear * - hBhj hJh hh; omega) hEB
-        (by have := Store.hj_lt_h hr hBm; (clear * - hJh this; omega))
-    have hlu : l < u := hes ▸ hp.row_origin_label_lt hy hc hW ha hv hs hdj hrd ho
-    obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
-    have hrt := hp.fastLock_time_lt hfl hlu
-      ((hp.run.time_mono (by clear * - hdj hrd; omega : r ≤ j)).trans htupper)
-    refine ⟨v, r, l, O, ho, hrt, (hp.run.time_mono (by clear * - hdj hrd; omega)).trans hjb, ?_⟩
-    rw [hfr]
-    change Anc _ (tr.state y j).fg.fcRoot O
-    rcases hroot with h | h
-    · rw [h]; exact hJO
-    · rw [h]; exact (hFJ.mono hsub).trans hJO
-  obtain ⟨v, r, l, O, ho, hrb, hlu, hrt⟩ := hp.reset_seed_before_slot hR
-  have hFO := hp.low_finalized_below_origin hy j (by clear * - hh; omega) ho
-  refine ⟨v, r, l, O, ho, hrt, hrb, ?_⟩
+  have hF : ∀ O, Anc (tr.HonestBlocks H) (tr.state y j).fg.F O →
+      Anc (tr.HonestBlocks H) ell.frame.F O := fun O h => by rw [hfr]; exact h
   rw [hfr]
-  change Anc _ (tr.state y j).fg.fcRoot O
-  unfold Store.fcRoot
-  split_ifs with hchoose
-  · have hFO' : Anc (tr.HonestBlocks H) ell.frame.F O := by rw [hfr]; exact hFO
-    have hOt := hp.high_origin_held_at_vote ho hy hc (by clear * - hes hlu; omega) hFO'
-    have hOh := hp.high_of_anc ho hy hOt .refl
-    have hOm := hmax O hOt
-    have hJO : (tr.state y j).fg.Anc (tr.state y j).fg.J O := by
-      by_contra hn
-      exact hchoose.2 ⟨hchoose.1, O, hOt, hp.anc_tree_of_anc hy hFO hOt, by
-          clear * - hh hchoose hOh hOm; omega, hn⟩
-    exact hJO.mono hsub
-  · exact hFO
+  refine (fcRoot_genesis_or_below_source hr hp.honest_coherent (fun X hX => ⟨y, hy, j, hX⟩)
+    (fun O => ∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b)
+    (fun E hE C hET hEh hEC hlt => hp.cast_entry_below_old hy hc hes hjb hE hET hEh hEC hlt)
+    (fun O ⟨_, _, _, ho, _⟩ W hW hOW => hp.high_of_anc ho hy hW hOW) fun hlow => ?_).imp
+    (congrArg Block.root) fun ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hO⟩ => ⟨v, r, l, O, ho, hrt, hrb, hO⟩
+  obtain ⟨v, r, l, O, ho, hrb, hlu, hrt⟩ := hp.reset_seed_before_slot hR
+  have hFO := hp.low_finalized_below_origin hy j hlow ho
+  have hOt := hp.high_origin_held_at_vote ho hy hc (by clear * - hes hlu; omega) (hF O hFO)
+  exact ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hFO, Or.inl ⟨hOt, hp.anc_tree_of_anc hy hFO hOt⟩⟩
 
 /-- The vote root is genesis or below an old source (hence satisfies the original disjunction).
 An actual crossing attestation's origin label is strictly below the vote's label

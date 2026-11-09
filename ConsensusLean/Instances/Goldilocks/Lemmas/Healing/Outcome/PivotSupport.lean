@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Pivot
@@ -198,93 +199,29 @@ theorem crossing_below_proposal_parent
   hXO.trans (reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ O
     (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩))
 
-/-- The proposal root is genesis or below an old source. High `J` has a crossing attestation signed
-before the proposal. Low `J` is below the held reset seed by the root's no-contest condition. -/
-theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
-    (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (_hPQ : P.parent = some d.head.root) :
-    ℓp.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O := by
-  have hpH := hP.1
-  have hU := honest_coherent hp
-  have hr := Compose.fg_reachable hp.run.toLocalRun hpH i
-  have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨p, hpH, i, hX⟩
-  have hfr := Compose.frame_of_projAC hp.run hpH hci
-  obtain ⟨hFm, hJm, hFJ, ⟨B, hBm, hBJ, hBhj⟩, hmax, -⟩ :=
-    Store.cache_invariants _ _ _ _ hr
-  obtain ⟨E, hEm, hEr, hEB, hcase⟩ := Store.J_entry_of_reachable hr hBm
-  obtain rfl : E = (tr.state p i).fg.J := hU.1 (hsub hEm) (hsub hJm) (hEr.trans hBJ)
-  have hroot : (tr.state p i).fg.fcRoot = (tr.state p i).fg.J ∨
-      (tr.state p i).fg.fcRoot = (tr.state p i).fg.F := by
-    unfold Store.fcRoot
-    split_ifs <;> simp
-  rcases hcase with hg | ⟨hJh, hJT⟩
-  · left
-    rw [hfr]
-    rcases hroot with h | h
-    · exact congrArg (·.root) (h.trans hg)
-    · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
-      rw [← hg] at hJF
-      have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
-      exact congrArg (·.root) (h.trans (he.trans hg))
-  by_cases hh : HZ tr H g + 1 ≤ (tr.state p i).fg.hj
-  · obtain ⟨W, hW, att, ha, v, hv, k', hki, hs, haT, -⟩ :=
-      left_entry_origin hp hpH hJm hJT (by clear * - hBhj hJh hh; omega) hEB
-        (by have := Store.hj_lt_h hr hBm; (clear * - hJh this; omega))
-    obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run hv hs
-    obtain rfl : E' = (tr.state p i).fg.J :=
-      hU.1 ⟨v, hv, k', hE'⟩ (hsub hJm) (hE'r.trans haT)
-    have hah : HZ tr H g + 1 ≤ att.h := by
-      rw [← hE'h, σ_eq_run hp hv hpH hE' hJm, hJh, hBhj]
-      exact hh
-    obtain ⟨D, O, hDs, hO, hDO⟩ := proposal_high_row hp hpH hci hcall hti hv hki hs hah
-    obtain ⟨z, hz, r, -, -, hJD, -, -⟩ :=
-      Compose.honest_source_entry hp.run hp.noColl hDs (hsub hJm) haT.symm
-    have hJO := (Anc.mono (T := tr.HonestBlocks H) (fun X hX => ⟨z, hz, r, hX⟩) hJD).trans hDO
-    right
-    refine ⟨O, hO, ?_⟩
-    rw [hfr]
-    change Anc _ (tr.state p i).fg.fcRoot O
-    rcases hroot with h | h
-    · rw [h]; exact hJO
-    · rw [h]; exact (hFJ.mono hsub).trans hJO
-  obtain ⟨v, r, l, O, ho, hl, hrt⟩ := reset_seed hp
-  have hO : OldSrc tr H g u O := oldSrc_iff.2 ⟨v, r, l, ho, hrt.trans_lt (reset_lt_ts hp hR)⟩
-  have hFO : Anc (tr.HonestBlocks H) (tr.state p i).fg.F O := by
-    rcases finalized_compatible_high_origin hp hpH
-      (by rw [hti]; exact (reset_lt_ts hp hR).le) ho with h | h
-    · exact h
-    · have hOJ := h.trans (hFJ.mono hsub)
-      have := high_of_anc hp ho hpH hJm hOJ
-      rw [hJh, hBhj] at this
-      clear * - hh this; omega
-  right
-  refine ⟨O, hO, ?_⟩
-  rw [hfr]
-  change Anc _ (tr.state p i).fg.fcRoot O
-  unfold Store.fcRoot
-  split_ifs with hchoose
-  · have hOt : O ∈ ℓp.frame.tree := by
-      rcases proposal_holds_old hp hpH (by rw [hti]; exact (reset_lt_ts hp hR).le)
-        hci hcall hd hti hO with h | h
-      · exact h
-      · rw [hfr] at h
-        have := high_of_anc hp ho hpH hJm (h.trans (hFJ.mono hsub))
-        rw [hJh, hBhj] at this
-        clear * - hh this; omega
-    rw [hfr] at hOt
-    have hOh := high_of_anc hp ho hpH hOt.1 .refl
-    have hOm := hmax O hOt.1
-    have hJO : (tr.state p i).fg.Anc (tr.state p i).fg.J O := by
-      by_contra hn
-      exact hchoose.2 ⟨hchoose.1, O, hOt.1, hOt.2, by clear * - hh hchoose hOh hOm; omega, hn⟩
-    exact hJO.mono hsub
-  · exact hFO
+/-- A high left entry of the proposer's store lies below a bounded pre-slot high origin: its
+crossing attestation's origin label is below the proposal slot. -/
+private theorem ResetPremisesUpTo.proposal_entry_below_old {b : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u)
+    (hib : tr.time i ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hE : E ∈ (tr.state p i).fg.tree) (hET : ((tr.state p i).fg.σ E.root).Th = E.root)
+    (hEh : HZ tr H g + 1 ≤ ((tr.state p i).fg.σ E.root).h) (hEC : (tr.state p i).fg.Anc E C)
+    (hlt : ((tr.state p i).fg.σ E.root).h < ((tr.state p i).fg.σ C.root).h) :
+    ∃ O, (∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b) ∧
+      Anc (tr.HonestBlocks H) E O := by
+  obtain ⟨_, _, _, _, v, _, k', hki, _, _, r, hrk, l, O, ho, hEO⟩ :=
+    hp.left_entry_origin hpH hE hET hEh hEC hlt
+  have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti (by
+      clear * - hki hrk; omega : r < i) ho
+  obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
+  have hrt : tr.time r < sp.ts u := hp.fastLock_time_lt hfl hlu (by
+    have := hp.run.time_mono (by clear * - hki hrk; omega : r ≤ i)
+    rw [hti] at this
+    have := sp.toParams.hΔ
+    linarith)
+  exact ⟨O, ⟨v, r, l, ho, hrt, (hp.run.time_mono (by clear * - hki hrk; omega)).trans hib⟩, hEO⟩
 
 /-- Bounded pre-slot origins suffice to bound an actual proposal's height floor. -/
 theorem ResetPremisesUpTo.proposal_floor_above_old {b : Time}
@@ -296,39 +233,14 @@ theorem ResetPremisesUpTo.proposal_floor_above_old {b : Time}
     (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) O B) :
     (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h := by
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hpH i
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot hR
-  have hBh := hp.high_of_anc ho₀ hpH hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
-  have hnc := hp.no_high_contest hpH i (fun q hq => (hp.run.time_mono hq.le).trans hib)
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ (tr.state p i).fg.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by clear * - hBh hfloor; omega⟩
-  have hfl : (tr.state p i).fg.headHeightFloor = (tr.state p i).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
-  obtain ⟨E, hE, hEC, hEh, hET⟩ :=
-    entry_at_height hreach hC (h := (tr.state p i).fg.hmax - 1) (by clear * - hfloor; omega) (by
-        clear * - hCh; omega)
-  obtain ⟨_, _, _, _, v, _, d, hdj, _, _, r, hrd, l, O, ho, hEO⟩ :=
-    hp.left_entry_origin hpH hE hET (by clear * - hBh hfloor hEh; omega) hEC (by
-        clear * - hfloor hCh hEh; omega)
-  have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti (by
-      clear * - hdj hrd; omega : r < i) ho
-  obtain ⟨_, D, CV, _, hf, _⟩ := hp.highOrigin_mem ho
-  have hrt : tr.time r < sp.ts u := hp.fastLock_time_lt hf hlu (by
-    have := hp.run.time_mono (by clear * - hdj hrd; omega : r ≤ i)
-    rw [hti] at this
-    have := sp.toParams.hΔ
-    linarith)
-  have hEB := hEO.trans (hBold v r l O ho hrt ((hp.run.time_mono (by
-      clear * - hdj hrd; omega)).trans hib))
-  have := σ_h_le_of_anc hreach (hp.anc_tree_of_anc hpH hEB hB)
-  clear * - hfloor hEh this; omega
+  refine headHeightFloor_le_of_entries_below (Compose.fg_reachable hp.run.toLocalRun hpH i)
+    (hp.high_of_anc ho₀ hpH hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb))
+    (hp.no_high_contest hpH i fun q hq => (hp.run.time_mono hq.le).trans hib)
+    fun E hE C hET hEh hEC hlt => ?_
+  obtain ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hEO⟩ :=
+    hp.proposal_entry_below_old hpH hci hcall hti hib hE hET hEh hEC hlt
+  exact hp.anc_tree_of_anc hpH (hEO.trans (hBold v r l O ho hrt hrb)) hB
 
 /-- A block above every old source reaches the proposal's floor. Only high crossing
 quorums matter: the reset seed already makes the block high. -/
@@ -354,68 +266,35 @@ theorem ResetPremisesUpTo.reset_proposal_root_source {b : Time}
     ell.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
         Anc (tr.HonestBlocks H) ell.frame.fcRoot O := by
-  have hU := hp.honest_coherent
   have hr := Compose.fg_reachable hp.run.toLocalRun hpH i
-  have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨p, hpH, i, hX⟩
   have hfr := Compose.frame_of_projAC hp.run hpH hci
-  obtain ⟨hFm, hJm, hFJ, ⟨B, hBm, hBJ, hBhj⟩, hmax, _⟩ :=
-    Store.cache_invariants _ _ _ _ hr
-  obtain ⟨E, hEm, hEr, hEB, hcase⟩ := Store.J_entry_of_reachable hr hBm
-  obtain rfl : E = (tr.state p i).fg.J := hU.1 (hsub hEm) (hsub hJm) (hEr.trans hBJ)
-  have hroot : (tr.state p i).fg.fcRoot = (tr.state p i).fg.J ∨
-      (tr.state p i).fg.fcRoot = (tr.state p i).fg.F := by
-    unfold Store.fcRoot
-    split_ifs <;> simp
-  rcases hcase with hg | ⟨hJh, hJT⟩
-  · left
-    rw [hfr]
-    rcases hroot with h | h
-    · exact congrArg (·.root) (h.trans hg)
-    · have hJF := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
-      rw [← hg] at hJF
-      have he := Anc.antisymm hU (hFJ.mono hsub) (hJF.mono hsub)
-      exact congrArg (·.root) (h.trans (he.trans hg))
-  right
-  by_cases hh : HZ tr H g + 1 ≤ (tr.state p i).fg.hj
-  · obtain ⟨_, _, _, _, v, _, k', hki, _, _, r, hrk, l, O, ho, hJO⟩ :=
-      hp.left_entry_origin hpH hJm hJT (by clear * - hBhj hJh hh; omega) hEB
-        (by have := Store.hj_lt_h hr hBm; (clear * - hJh this; omega))
-    have hlu := hp.origin_label_lt_at_proposal hpH hci hcall hti (by
-        clear * - hki hrk; omega : r < i) ho
-    obtain ⟨_, D, CV, _, hfl, _⟩ := hp.highOrigin_mem ho
-    have hrt : tr.time r < sp.ts u := hp.fastLock_time_lt hfl hlu (by
-      have := hp.run.time_mono (by clear * - hki hrk; omega : r ≤ i)
-      rw [hti] at this
-      have := sp.toParams.hΔ
-      linarith)
-    refine ⟨v, r, l, O, ho, hrt, (hp.run.time_mono (by clear * - hki hrk; omega)).trans hib, ?_⟩
-    rw [hfr]
-    change Anc _ (tr.state p i).fg.fcRoot O
-    rcases hroot with h | h
-    · rw [h]; exact hJO
-    · rw [h]; exact (hFJ.mono hsub).trans hJO
-  obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot hR
-  have hFO := hp.low_finalized_below_origin hpH i (by clear * - hh; omega) ho
-  refine ⟨v, r, l, O, ho, hrt, hrb, ?_⟩
   rw [hfr]
-  change Anc _ (tr.state p i).fg.fcRoot O
-  unfold Store.fcRoot
-  split_ifs with hchoose
-  · have hOt : O ∈ ell.frame.tree := by
-      rcases hp.proposal_holds_old hpH hci hcall hd hti hib ho hrt with h | h
-      · exact h
-      · rw [hfr] at h
-        have := hp.high_of_anc ho hpH hJm (h.trans (hFJ.mono hsub))
-        rw [hJh, hBhj] at this
-        clear * - hh this; omega
-    rw [hfr] at hOt
-    have hOh := hp.high_of_anc ho hpH hOt.1 .refl
-    have hOm := hmax O hOt.1
-    have hJO : (tr.state p i).fg.Anc (tr.state p i).fg.J O := by
-      by_contra hn
-      exact hchoose.2 ⟨hchoose.1, O, hOt.1, hOt.2, by clear * - hh hchoose hOh hOm; omega, hn⟩
-    exact hJO.mono hsub
-  · exact hFO
+  refine (fcRoot_genesis_or_below_source hr hp.honest_coherent (fun X hX => ⟨p, hpH, i, hX⟩)
+    (fun O => ∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b)
+    (fun E hE C hET hEh hEC hlt =>
+      hp.proposal_entry_below_old hpH hci hcall hti hib hE hET hEh hEC hlt)
+    (fun O ⟨_, _, _, ho, _⟩ W hW hOW => hp.high_of_anc ho hpH hW hOW) fun hlow => ?_).imp
+    (congrArg Block.root) fun ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hO⟩ => ⟨v, r, l, O, ho, hrt, hrb, hO⟩
+  obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot hR
+  have hheld := hp.proposal_holds_old hpH hci hcall hd hti hib ho hrt
+  rw [hfr] at hheld
+  exact ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hp.low_finalized_below_origin hpH i hlow ho, hheld⟩
+
+/-- The proposal root is genesis or below an old source. High `J` has a crossing attestation signed
+before the proposal. Low `J` is below the held reset seed by the root's no-contest condition. -/
+theorem reset_proposal_fcRoot (hp : ResetPremises tr H proposer dg g ΔF a)
+    (_hc : CatchRun tr H g (2 * sp.Δ))
+    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
+    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
+    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (_hPQ : P.parent = some d.head.root) :
+    ℓp.frame.fcRoot.root = sp.genesisRoot ∨
+      ∃ O, OldSrc tr H g u O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O :=
+  ((hp.toUpTo tr H (le_max_left a (tr.time i))).reset_proposal_root_source hP.1 hR hci hcall hd
+    hti (le_max_right _ _)).imp_right
+    fun ⟨v, r, l, O, ho, hrt, _, hO⟩ => ⟨O, oldSrc_iff.2 ⟨v, r, l, ho, hrt⟩, hO⟩
 
 
 end Consensus.Goldilocks.Healing

@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotAnchor
@@ -35,45 +37,14 @@ theorem proposal_floor_above_old_at
     (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h := by
   have ht := hp.run.time_nonneg i
   have hj : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hp.run.time_mono hq.le
-  have hreach := fg_reachable_at hp.run ht hj hpH
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hBh := Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hpH hB
-    (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
-  have hnc := Outcome.no_high_contest_at hp hpH hib
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ (tr.state p i).fg.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by omega⟩
-  have hfl : (tr.state p i).fg.headHeightFloor = (tr.state p i).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
-  obtain ⟨E, hE, hEC, hEh, hET⟩ := Healing.entry_at_height hreach hC
-    (h := (tr.state p i).fg.hmax - 1) (by omega) (by omega)
-  have hq : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q := by
-    have h3 := hp.faults (tr.time i) ht hib
-    have hn := sp.toParams.hn
-    change 3 * (H (tr.time i))ᶜ.ncard ≤ sp.toParams.n - 1 at h3
-    change (H (tr.time i))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    omega
-  obtain ⟨_, _, _, _, v, _, d, hdj, _, _, r, hrd, l, O, ho, hEO⟩ :=
-    Outcome.left_entry_origin_at (g := g) hp.run hp.noColl ht hj hpH hq hE hET
-      (by omega) hEC (by omega)
-  have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib (by omega : r < i) ho
-  obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
-  have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu (by
-    rw [← hti]
-    have := hp.run.time_mono (show r ≤ i by omega)
-    have := sp.toParams.hΔ
-    linarith)
-  have hEB := hEO.trans (hBold v r l O ho hrt
-    ((hp.run.time_mono (show r ≤ i by omega)).trans hib))
-  have hh := Healing.h_le_of_store_anc hreach
-    (store_anc_of_honest_anc_at hp.run hp.noColl ht hj hpH hEB hB)
-  omega
+  refine headHeightFloor_le_of_entries_below (fg_reachable_at hp.run ht hj hpH)
+    (Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hpH hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb))
+    (Outcome.no_high_contest_at hp hpH hib) fun E hE C hET hEh hEC hlt => ?_
+  obtain ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hEO⟩ :=
+    hp.proposal_entry_below_old_at hpH hci hcall hti hib hE hET hEh hEC hlt
+  exact store_anc_of_honest_anc_at hp.run hp.noColl ht hj hpH
+    (hEO.trans (hBold v r l O ho hrt hrb)) hB
 
 /-- The proposal suffix above all pre-slot high origins consists of viable heads. -/
 theorem reset_suffix_viable_at
