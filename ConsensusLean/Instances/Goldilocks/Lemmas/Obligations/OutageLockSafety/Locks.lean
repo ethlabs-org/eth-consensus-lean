@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.FamilyInstance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutagePostStop
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Unlocked
@@ -35,12 +36,8 @@ theorem fastLock_honest_vote (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     {CV : Set (Vote sp.n)} (hfl : SA.FastLockAt tr.projAC y j s B CV) {v : Vote sp.n}
     (hv : v ∈ CV) (hvH : v.val ∈ H) :
     ∃ j' ≤ j, ∃ e, SA.VoteAt tr.projAC v.val j' e ∧ e.msg = v := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
-  rcases hfl with ⟨ℓ, C, -, -, -, -, rfl⟩ | ⟨ℓ, A, hpt, -, -, rfl⟩
-  · obtain ⟨j', hj', e, hve, he⟩ := hrun'.honest.pool_vote y hy j s v hv.1 hvH
-    exact ⟨j', hj'.le, e, hve, he⟩
-  · obtain ⟨-, j', hj', e, hve, he⟩ := SA.optimisticPoint_pool_vote hrun' hy hpt hv.1 hvH
-    exact ⟨j', hj', e, hve, he⟩
+  exact FamilySafety.fastLock_honest_vote_family
+    (FamilySafety.lockFacts_goldilocks hrun hnc) hy hfl hv hvH
 
 /-- An origin of a label below `j₀` whose event precedes the cut is within `b₀`. -/
 private theorem within_of_label_lt (D : OutageLockPremises tr H proposer dg)
@@ -71,54 +68,7 @@ theorem OutageVoteInv.locks_compatible {n : Nat} (hvi : OutageVoteInv D n)
       (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocks H) C D.P)
     {y : Fin sp.n} (hy : y ∈ H) {l : SA.Lock} (hl : l ∈ (tr.state y n).ac.locks) :
     ∃ L ∈ (tr.state y n).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocks H) L D.P := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc
-  have hr := hrun'.localRun
-  have hU := D.coherent
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨L, hL, hLr, C, hCo, hLC⟩ := lock_origin D.hrun D.hnc hy n l hl
-  have hLU : L ∈ tr.HonestBlocks H := ⟨y, hy, n, hL⟩
-  refine ⟨L, hL, hLr, ?_⟩
-  have hl' : l ∈ (tr.projAC.state y n).locks := by
-    rw [projAC_state D.hrun.toLocalRun hy n]; exact hl
-  by_cases hs : l.slot < D.j₀
-  · -- below an origin within `b₀`
-    exact D.compatible_of hLU fun hP => compatible_of_anc hU hLC
-      (D.hpre.origins_compatible C l.slot D.P D.σ (within_of_label_lt D hCo hs) hP)
-  cases hf : l.fast
-  · -- a slow lock: an unpolluted label of its window
-    obtain ⟨L', hL'U, hL'r, hcomp⟩ := slow_lock_compatible D.hrun D.hnc hy hl hf (B := D.P) (by
-      obtain ⟨m, h1, h2, h3⟩ := exists_unpolluted_label sp D.hgap l.slot
-      by_cases hm0 : 0 ≤ m
-      · refine ⟨m, h1, h2, hm0, fun c C CV hc hR => hres y hy c hc m.toNat C CV hR ?_⟩
-        have hmn : ((m.toNat : Nat) : Int) = m := Int.toNat_of_nonneg hm0
-        rcases h3 with h | h
-        · left
-          by_contra hgt
-          have := ts_le_ts (sp := sp) (show D.j₀ + 1 ≤ m.toNat by omega)
-          rw [hmn] at this
-          linarith [D.hj₀.2]
-        · right
-          exact D.hr.2 m.toNat (by rw [hmn]; exact h)
-      · refine ⟨0, by omega, by omega, le_rfl, fun c C CV hc hR => hres y hy c hc 0 C CV hR
-          (Or.inl (Nat.zero_le _))⟩)
-    obtain rfl : L' = L := hU.1 hL'U hLU (hL'r.trans hLr.symm)
-    exact hcomp
-  · -- a fast lock of a slot `≥ j₀`: the counted validators outnumber `Hᶜ ∪ W`
-    obtain ⟨j, hj, B, CV, hfl, L', hL'U, hL'r, hL'B⟩ := SA.fast_lock_provenance hr hy n l hl' hf
-    obtain rfl : L' = L := hU.1 hL'U hLU (hL'r.trans hLr.symm)
-    refine compatible_of_anc hU hL'B (by_contra fun hB => ?_)
-    obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
-    have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ Hᶜ ∪ D.W := by
-      rintro u ⟨v, hv, rfl⟩
-      by_contra hu
-      simp only [Set.mem_union, Set.mem_compl_iff, not_or, not_not] at hu
-      obtain ⟨hvs, R, hRU, hRr, -, hBR⟩ := hCV v hv
-      obtain ⟨j', hj', e, hve, rfl⟩ := fastLock_honest_vote D.hrun D.hnc hy hfl hv hu.1
-      exact hB (compatible_of_voteCompat hU hRU hRr hBR
-        (hvi.voteCompat_of_not_lateWaker hu.1 hu.2 (by omega) hve (by omega)))
-    have := Set.ncard_le_ncard hsub
-    have := D.two_mul_lt
-    omega
+  exact FamilySafety.locks_compatible_instance hvi hres hy hl
 
 end Consensus.Goldilocks.Compose
 

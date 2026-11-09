@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Co
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Locks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Sources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Prot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.FamilyInduction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
@@ -232,116 +233,7 @@ private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg) {x :
 step `OutageS5StepAt` at each cut. -/
 theorem outage_lock_inv (D : OutageLockPremises tr H proposer dg) (hS5 : OutageS5StepAt D) :
     ∀ i, OutageLockInv D i := by
-  have hU := D.coherent
-  have hf := D.two_faults_lt
-  have hK := sp.two_le_k
-  have hσ := D.hσ
-  have hcand : ∀ n, (∀ x ∈ H, ∀ k < n, ∀ ℓ C, SA.ToFGAt tr.projAC x k ℓ C →
-      Compatible (tr.HonestBlocks H) C D.P) → ∀ y ∈ H,
-      (Compatible (tr.HonestBlocks H) (tr.state y n).fg.F D.P ∧
-        Compatible (tr.HonestBlocks H) (tr.state y n).fg.J D.P) ∧
-      (D.P ∈ (Node.frame (tr.state y n)).tree →
-        (Node.frame (tr.state y n)).AncestorCandidate D.P) := fun n hsrc y hy =>
-    ⟨caches_compatible D.hrun D.hnc hf hy D.hP.1 (rows_sourced D.hrun D.hnc hsrc hy),
-      fun hPt => held_candidate_of_rows D.hrun D.hnc hf hy n (rows_sourced D.hrun D.hnc hsrc hy)
-        (fun _ h => h) hPt⟩
-  intro i
-  induction i with
-  | zero =>
-    have hv0 : OutageVoteInv D 0 := ⟨fun _ _ k hk => absurd hk (Nat.not_lt_zero k),
-      fun _ _ k hk => absurd hk (Nat.not_lt_zero k)⟩
-    refine ⟨hv0, fun _ _ k hk => absurd hk (Nat.not_lt_zero k), fun y hy k hk l hl => ?_,
-      fun _ _ k hk => absurd hk (Nat.not_lt_zero k), fun y hy k hk => ?_, fun y hy k hk => ?_,
-      fun _ _ _ _ _ _ k hck hk => absurd (hck.trans_le hk) (Nat.not_lt_zero _),
-      fun _ _ _ _ _ _ k hck hk => absurd (hck.trans_le hk) (Nat.not_lt_zero _)⟩
-    · obtain rfl : k = 0 := Nat.le_zero.1 hk
-      exact hv0.locks_compatible (fun _ _ k hk => absurd hk (Nat.not_lt_zero k)) hy hl
-    · obtain rfl : k = 0 := Nat.le_zero.1 hk
-      exact (hcand 0 (fun _ _ k hk => absurd hk (Nat.not_lt_zero k)) y hy).1
-    · obtain rfl : k = 0 := Nat.le_zero.1 hk
-      exact (hcand 0 (fun _ _ k hk => absurd hk (Nat.not_lt_zero k)) y hy).2
-  | succ i hinv =>
-    -- 1. (H) and 1′. S5V at cut `i`
-    have hvotes : ∀ x ∈ H, ∀ e, SA.VoteAt tr.projAC x i e → D.σ < e.msg.slot →
-        e.msg.slot ≤ D.j₀ + sp.k → (tr.time i ≤ D.b₀ ∨ x ∈ D.A₀) →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg D.P := by
-      intro x hx e hv hs hsK hpre
-      by_cases hb : tr.time i ≤ D.b₀
-      · exact D.vote_extends_pre hx hv hb hs
-      · exact hinv.cohort_vote_extends (hpre.resolve_left hb) hv hsK (not_le.1 hb)
-    have hvi : OutageVoteInv D (i + 1) :=
-      ⟨fun x hx k hk e hv hs hsK hpre => by
-          rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
-          · exact hinv.votes x hx k hk e hv hs hsK hpre
-          · exact hvotes x hx e hv hs hsK hpre,
-        fun x hx k hk e hv hs => by
-          rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
-          · exact hinv.late x hx k hk e hv hs
-          · exact outageS5StepAt_iff.1 hS5 k hinv x hx e hv hs⟩
-    -- 2. (R) at cut `i`
-    have hres : ∀ y ∈ H, ∀ k < i + 1, ∀ m C CV, SA.ResultAt tr.projAC y k m C CV →
-        (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocks H) C D.P := by
-      intro y hy k hk m C CV hR hm
-      rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
-      · exact hinv.results y hy k hk m C CV hR hm
-      · exact hinv.toOutageVoteInv.result_compatible hy hR hm
-    -- 3. (i) at `i + 1`
-    have hlocks : ∀ y ∈ H, ∀ k ≤ i + 1, ∀ l ∈ (tr.state y k).ac.locks,
-        ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocks H) L D.P := by
-      intro y hy k hk l hl
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.locks y hy k hk l hl
-      · exact hvi.locks_compatible hres hy hl
-    -- 4. (SRC) at `i`
-    have hsrc : ∀ y ∈ H, ∀ k < i + 1, ∀ ℓ C, SA.ToFGAt tr.projAC y k ℓ C →
-        Compatible (tr.HonestBlocks H) C D.P := by
-      intro y hy k hk ℓ C h
-      rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
-      · exact hinv.sources y hy k hk ℓ C h
-      · exact source_compatible D.hrun D.hnc hy (hinv.locks y hy k le_rfl) h
-    -- 5. OB-F and (VA) at `i + 1`
-    have hnew := hcand (i + 1) hsrc
-    have hcaches : ∀ y ∈ H, ∀ k ≤ i + 1, Compatible (tr.HonestBlocks H) (tr.state y k).fg.F D.P ∧
-        Compatible (tr.HonestBlocks H) (tr.state y k).fg.J D.P := by
-      intro y hy k hk
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.caches y hy k hk
-      · exact (hnew y hy).1
-    have hviable : ∀ y ∈ H, ∀ k ≤ i + 1, D.P ∈ (Node.frame (tr.state y k)).tree →
-        (Node.frame (tr.state y k)).AncestorCandidate D.P := by
-      intro y hy k hk
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.viable y hy k hk
-      · exact (hnew y hy).2
-    have hslot_mono : sp.slot (tr.time (i - 1)) ≤ sp.slot (tr.time i) :=
-      SA.slot_mono sp (D.hrun.time_nonneg _) (D.hrun.time_mono (Nat.sub_le i 1))
-    -- 6. the protections at `i + 1`
-    refine ⟨hvi, hres, hlocks, hsrc, hcaches, hviable, ?_, ?_⟩
-    · intro x hx c ℓ hu hbase k hck hk hkK
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.protPrev x hx c ℓ hu hbase k hck hk hkK
-      have hxH := D.hA₀ hx
-      replace hkK : sp.slot (tr.time i) ≤ D.j₀ - 1 + sp.k := hkK
-      rcases Nat.lt_succ_iff_lt_or_eq.1 hck with hci | rfl
-      · exact hinv.prot_step hxH (by omega) hkK (hinv.viable x hxH i le_rfl)
-          (hcaches x hxH (i + 1) le_rfl).1
-          (hinv.protPrev x hx c ℓ hu hbase i hci le_rfl (hslot_mono.trans hkK))
-      · rcases prevBase_iff.1 hbase with hroot | hlock
-        · exact prot_iff.2 (Or.inr (hroot.trans
-            (Healing.run_F_mono D.hrun.toLocalRun hxH (Nat.le_succ c))))
-        · exact prot_of_prevBase D hxH hu (hcaches x hxH (c + 1) le_rfl).1 hlock
-    · intro x hx c ℓ hu hbase k hck hk hkK
-      rcases Nat.le_succ_iff.1 hk with hk | rfl
-      · exact hinv.protCover x hx c ℓ hu hbase k hck hk hkK
-      have hxH := D.hA₀ hx
-      replace hkK : sp.slot (tr.time i) ≤ D.j₀ + sp.k := hkK
-      rcases Nat.lt_succ_iff_lt_or_eq.1 hck with hci | rfl
-      · have hva := hinv.viable x hxH i le_rfl
-        have hF := (hcaches x hxH (i + 1) le_rfl).1
-        exact hinv.prot_step hxH (by omega) hkK hva hF (hinv.protCover x hx c ℓ hu hbase i hci
-          le_rfl (hslot_mono.trans hkK))
-      · exact prot_of_coverBase D hx hu (hinv.caches x hxH c le_rfl).1
-          (hcaches x hxH (c + 1) le_rfl).1 hbase
+  exact FamilySafety.outage_lock_inv_instance D hS5
 
 end Consensus.Goldilocks.Compose
 

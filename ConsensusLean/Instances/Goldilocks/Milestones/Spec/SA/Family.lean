@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 
 @[expose] public section
 
@@ -11,6 +12,24 @@ This trace-only interface does not relate full node states or engine executions.
 -/
 
 namespace Consensus.Goldilocks.SA
+
+/-- Release moves backward relative to the same locks' ordinary unlock, removes no lock
+identity, and leaves live locks of slot at least `s` unmoved. A keep law is separate. -/
+def UnlocksRel (sp : SAParams) {FGP : Type} (L : Set Lock) (Φ : Frm sp.n FGP)
+    (t : Time) (s : Int) (V : View sp.n) (L₁ : Set Lock) : Prop :=
+  (∀ l' ∈ L₁, ∃ l ∈ unlock sp L Φ t s V, l.slot = l'.slot ∧ l.fast = l'.fast ∧
+    l.expiry = l'.expiry ∧ ∃ T ∈ Φ.tree, T.root = l.block ∧ ∃ Y ∈ Φ.tree,
+      Y.root = l'.block ∧ Φ.Anc Y T) ∧
+  (∀ l ∈ unlock sp L Φ t s V, ∃ l' ∈ L₁, l'.slot = l.slot ∧ l'.fast = l.fast ∧
+    l'.expiry = l.expiry) ∧
+  (∀ l ∈ liveLocks sp L Φ t, s ≤ (l.slot : Int) → l ∈ L₁)
+
+/-- The walk starts at the deepest live lock above some base in the frame, or at that
+base. This does not assert dominance over locks that conflict with the base. -/
+def StartAllowed (sp : SAParams) {FGP : Type} (A : SAState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (a : Blk sp.n FGP) : Prop :=
+  ∃ Y ∈ Φ.tree,
+    a = (deepest Φ ({B ∈ liveLockBlocks sp A.locks Φ t | Φ.Anc Y B} ∪ {Y})).getD Y
 
 /-- Candidate operations with the SA's payload and block types, but arbitrary state and
 messages. A message view may forget acknowledgements without casting votes or blocks. -/
@@ -56,8 +75,16 @@ abbrev SAOperations.toAC {sp : SAParams} {FGP S M : Type} (A : SAOperations sp F
 /-- An AC trace viewed in SA vocabulary, without assuming the SA's transition law. -/
 structure SAFamily (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP)
     {S M : Type} (A : SAOperations sp FGP S M) where
+  /-- The independent lock-write choices. -/
+  mode : WriteMode
+  /-- The candidate's release rule, stated in projected vocabulary. -/
+  Unlocks : Set Lock → Frm sp.n FGP → Time → Int → View sp.n → Set Lock → Prop
+  /-- The permitted start of the candidate's fork-choice walk. -/
+  StartLaw : SAState sp.n → Frm sp.n FGP → Time → View sp.n → Int → Blk sp.n FGP → Prop
   /-- Forget candidate-specific state and calls. -/
   proj : ACTrace A.toAC → SATrace sp FGP ro
+  /-- A source justification not represented by an observed stored fast lock. -/
+  sourceEvidence : ACTrace A.toAC → Fin sp.n → Nat → Blk sp.n FGP → Prop
   /-- A candidate message is a vote or an extra message that is forgotten. -/
   voteView : M → Option (Vote sp.n)
   /-- Nodes keep their cut indices. -/
@@ -103,7 +130,11 @@ noncomputable def goldilocksOperations (sp : SAParams) (FGP : Type)
 /-- The SA itself forgets nothing. -/
 noncomputable def goldilocksFamily (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) :
     SAFamily sp FGP ro (goldilocksOperations sp FGP ro) where
+  mode := WriteMode.parent sp
+  Unlocks := UnlocksRel sp
+  StartLaw := fun A Φ t _ _ a => StartAllowed sp A Φ t a
   proj := id
+  sourceEvidence := fun _ _ _ _ => False
   voteView := some
   node := fun _ => rfl
   time := fun _ => rfl

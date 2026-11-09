@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.FamilyRetention
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
@@ -20,6 +21,8 @@ public section
 * `OutageVoteInv.vote_extends_of_prot`: an honest cast under the protection extends `P`. -/
 
 namespace Consensus.Goldilocks.Compose
+
+set_option backward.isDefEq.respectTransparency false
 
 open SA (SAParams ReplayOrder Payload Vote)
 
@@ -114,26 +117,19 @@ theorem prot_step {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} (hx : x ∈
       (Node.frame (tr.state x k)).AncestorCandidate D.P)
     (hF : Compatible (tr.HonestBlocks H) (tr.state x (k + 1)).fg.F D.P)
     (hp : Prot D x k j m) : Prot D x (k + 1) j m := by
-  have hU := D.coherent
-  have hFm := Healing.run_F_mono D.hrun.toLocalRun hx (Nat.le_succ k)
-  rcases prot_iff.1 hp with hfl | hroot
-  swap
-  · exact prot_iff.2 (Or.inr (hroot.trans hFm))
-  by_cases hroot' : Anc (tr.HonestBlocks H) D.P (tr.state x (k + 1)).fg.F
-  · exact prot_iff.2 (Or.inr hroot')
-  have hFP : Anc (tr.HonestBlocks H) (tr.state x (k + 1)).fg.F D.P := hF.resolve_right hroot'
-  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
-  have hP : D.P ∈ (tr.state x k).fg.toFrame.tree := SA.mem_of_anc hPB hB
-  have hP' : D.P ∈ (tr.state x (k + 1)).fg.toFrame.tree := by
-    have hPt := tree_mono D.hrun.toLocalRun hx (Nat.le_succ k) hP.1
-    exact frame_mem_of_tree D.hrun hx le_rfl hPt (honest_held_anc D.hrun D.hnc hx hFP hPt)
-  have hva0 : (tr.state x k).fg.toFrame.viableAncestor D.P = D.P :=
-    SA.viableAncestor_self (frameOK_state D.hrun.toLocalRun hx k) hP (hva hP).symm
-  refine prot_iff.2 (Or.inl (floor_run_view D.hrun hx k ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ hk hP hP'
-    hva0 fun ℓ hc => ?_))
-  by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
-  · exact Or.inl hs
-  · exact Or.inr (hvi.unlockKeeps hx hP (by omega) ℓ hc)
+  have hr := FamilySafety.retentionFacts_goldilocks D.hrun D.hnc
+    (fun _ hf _ hx _ _ hB hv => unlockKeeps_of_voteCompat D.hrun D.hnc hf hx hB hv)
+  have hp' : FamilySafety.Prot D.family x k j m := by
+    simpa only [FamilySafety.prot_iff, prot_iff, OutageLockPremises.family_P,
+      FamilySafety.floorAt_goldilocks D.hrun hx] using hp
+  have h := FamilySafety.OutageVoteInv.prot_step hr
+    (FamilySafety.voteTiming_goldilocks D.hrun D.hnc) (projFG_localRun D.hrun D.hnc)
+    (OutageVoteInv.family_iff.mpr hvi) hx
+    (by simpa only [OutageLockPremises.family_j₀] using hj) hk
+    (by simpa only [OutageLockPremises.family_P] using hva)
+    (by simpa only [OutageLockPremises.family_P] using hF) hp'
+  simpa only [FamilySafety.prot_iff, prot_iff, OutageLockPremises.family_P,
+    FamilySafety.floorAt_goldilocks D.hrun hx] using h
 
 /-- **An honest cast under the protection extends `P`**: at an honest cast at cut `k`,
 within the life of `Prot x k j m` (`j₀ − 1 ≤ j`, `slot(t_k) ≤ m`), with (VA) at `k`, the vote
@@ -144,37 +140,18 @@ theorem vote_extends_of_prot {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.n} 
       (Node.frame (tr.state x k)).AncestorCandidate D.P)
     (hp : Prot D x k j m) {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC x k e) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg D.P := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc).localRun
-  obtain ⟨ℓ, hc, he⟩ := hv
-  have hcast : SA.CastAt tr.projAC x k ℓ e := ⟨hc, he⟩
-  have hfr : ℓ.frame = Node.frame (tr.state x k) := (D.hrun.cutLaw x hx k _ (projAC_callAt.1 hc)).1
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hx hc
-  rcases prot_iff.1 hp with hfl | hroot
-  swap
-  · obtain ⟨Hd, hHd, hHdr, -⟩ := SA.honest_head_frame hr hx hcast
-    have hFHd : ℓ.frame.Anc ℓ.frame.F Hd := hΦ.rooted.2 Hd hHd
-    rw [hfr] at hFHd
-    exact ⟨Hd, hΦU hHd, hHdr, hroot.trans (hFHd.mono fun X hX => ⟨x, hx, k, hX.1⟩)⟩
-  obtain ⟨l, hl, hlj, hle, B, hB, hBr, hPB⟩ := hfl
-  have hP : D.P ∈ (tr.state x k).fg.toFrame.tree := SA.mem_of_anc hPB hB
-  have hva0 : (tr.state x k).fg.toFrame.viableAncestor D.P = D.P :=
-    SA.viableAncestor_self (frameOK_state D.hrun.toLocalRun hx k) hP (hva hP).symm
-  rw [← Node.frame, ← hfr] at hP hva0 hB hPB
-  have hl' : l ∈ (tr.projAC.state x k).locks := by
-    rw [projAC_state D.hrun.toLocalRun hx k]; exact hl
-  obtain ⟨C, hC, hPC⟩ := SA.exists_readPoint_liveLockBlocks_floor hr hx hcast hP hva0 hk
-    (by
-      by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ j
-      · exact Or.inl hs
-      · refine Or.inr ?_
-        have := hvi.unlockKeeps hx (by rw [← Node.frame, ← hfr]; exact hP) (by omega) ℓ
-          (projAC_callAt.1 hc)
-        rw [projAC_state D.hrun.toLocalRun hx k, hfr]
-        exact this)
-    ⟨l, hl', hlj, hle, B, hB, hBr, hPB⟩
-  obtain ⟨Hd, hHd, hHdr, hPHd⟩ := SA.castAt_head_anc hr hx hcast (Or.inl hC)
-    (SA.castAt_compatible_of_live hr hx hcast (Or.inl hC)) hPC
-  exact ⟨Hd, hΦU hHd, hHdr, hPHd.mono hΦU⟩
+  have hr := FamilySafety.retentionFacts_goldilocks D.hrun D.hnc
+    (fun _ hf _ hx _ _ hB hv => unlockKeeps_of_voteCompat D.hrun D.hnc hf hx hB hv)
+  have hp' : FamilySafety.Prot D.family x k j m := by
+    simpa only [FamilySafety.prot_iff, prot_iff, OutageLockPremises.family_P,
+      FamilySafety.floorAt_goldilocks D.hrun hx] using hp
+  simpa only [OutageLockPremises.family_P] using
+    FamilySafety.OutageVoteInv.vote_extends_of_prot hr
+      (FamilySafety.voteDominance_goldilocks D.hrun D.hnc)
+      (FamilySafety.voteTiming_goldilocks D.hrun D.hnc)
+      (OutageVoteInv.family_iff.mpr hvi) hx
+      (by simpa only [OutageLockPremises.family_j₀] using hj) hk
+      (by simpa only [OutageLockPremises.family_P] using hva) hp' hv
 
 end OutageVoteInv
 

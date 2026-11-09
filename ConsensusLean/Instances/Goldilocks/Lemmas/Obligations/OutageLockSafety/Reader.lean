@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.FamilyInstance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Locks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Sources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
@@ -56,15 +57,7 @@ theorem liveLockBlocks_compatible (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.
     (hBP : Anc (tr.HonestBlocks H) B D.P) :
     ∀ X ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) τ,
       Compatible (tr.HonestBlocks H) X B := by
-  intro X hX
-  have hU := D.coherent
-  have hΦ := frameOK_state D.hrun.toLocalRun hy m
-  have hΦU : (Node.frame (tr.state y m)).tree ⊆ tr.HonestBlocks H := fun Z hZ => ⟨y, hy, m, hZ.1⟩
-  obtain ⟨l, hl, B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hX
-  obtain ⟨L, hL, hLr, hLP⟩ := (hinv m).locks y hy m le_rfl l hl
-  obtain rfl : B₀ = L := hU.1 (hΦU hB₀) ⟨y, hy, m, hL⟩ (hB₀r.trans hLr.symm)
-  exact compatible_of_anc_right hU hBP
-    (compatible_of_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) hLP)
+  exact FamilySafety.liveLockBlocks_compatible_instance hinv hy m τ hBP
 
 /-- **The lock invariant at every honest cut**, in the cut's own frame: the stored record names a
 block of the node's tree above every stored lock block (`lockInv_of_reachable` at the last AC
@@ -72,21 +65,7 @@ call, or none at the initial state), and the record is in the frame once `Σ.F` 
 theorem lockInv_state (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) (m : Nat) :
     SA.LockInv (tr.HonestBlocks H) (tr.state y m).ac (Node.frame (tr.state y m)) := by
-  have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
-  have hU := hr.coherent
-  have hst := projAC_state hrun.toLocalRun hy m
-  obtain ⟨E, hEt, hEr, -⟩ := record_origin hrun hnc hy m
-  have hEU : E ∈ tr.HonestBlocks H := ⟨y, hy, m, hEt⟩
-  refine SA.lockInv_iff.2 ⟨E, hEU, hEr,
-    fun hFE => ⟨hEt, honest_held_anc hrun hnc hy hFE hEt⟩, fun l hl X hX hXr => ?_⟩
-  rw [← hst] at hl
-  rcases SA.state_reachable sp hr hy m with h0 | ⟨Φ, t, hreach, -⟩
-  · rw [h0] at hl
-    exact absurd hl (Set.notMem_empty l)
-  · obtain ⟨-, -, hli⟩ := SA.lockInv_of_reachable hU hreach
-    obtain ⟨E', hE'U, hE'r, -, hlE⟩ := SA.lockInv_iff.1 hli
-    obtain rfl : E' = E := hU.1 hE'U hEU (hE'r.trans (by rw [hst]; exact hEr.symm))
-    exact hlE l hl X hX hXr
+  exact FamilySafety.lockInv_state_instance hrun hnc hy m
 
 /-- **The live lock blocks of an honest node lie on one chain** at every cut and time, in the
 cut's frame (`lockInv_state`). -/
@@ -95,9 +74,7 @@ theorem liveBlocks_chain_at (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCol
     ∀ X ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) τ,
       ∀ Y ∈ SA.liveLockBlocks sp (tr.state y m).ac.locks (Node.frame (tr.state y m)) τ,
         Compatible (Node.frame (tr.state y m)).tree X Y :=
-  (lockInv_state hrun hnc hy m).liveBlocks_chain
-    (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
-    (frameOK_state hrun.toLocalRun hy m) fun _ hX => ⟨y, hy, m, hX.1⟩
+  FamilySafety.liveBlocks_chain_at_instance hrun hnc hy m τ
 
 /-- **The reader frame** (`outage_reader_frame`): at an honest cut, for every block
 `B ⪯ P`, `fc_root` is compatible with `B`, and `B`, when in the frame, is below the anchor or in
@@ -109,22 +86,7 @@ theorem reader_frame (hinv : ∀ i, OutageLockInv D i) {y : Fin sp.n} (hy : y �
         (Node.frame (tr.state y m)).Anc B
             (SA.getAnchor sp (tr.state y m).ac (Node.frame (tr.state y m)) t) ∨
           B ∈ (Node.frame (tr.state y m)).viableTree (Node.frame (tr.state y m)).tree) := by
-  have hU := D.coherent
-  have hΦ := frameOK_state D.hrun.toLocalRun hy m
-  refine ⟨?_, fun hBt => ?_⟩
-  · change Compatible _ (tr.state y m).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact compatible_of_anc_right hU hBP ((hinv m).caches y hy m le_rfl).2
-    · exact compatible_of_anc_right hU hBP ((hinv m).caches y hy m le_rfl).1
-  have hsrc : ∀ x ∈ H, ∀ k < m, ∀ ℓ C, SA.ToFGAt tr.projAC x k ℓ C →
-      Compatible (tr.HonestBlocks H) C D.P := fun x hx k hk => (hinv m).sources x hx k hk
-  rcases held_candidate_of_rows D.hrun D.hnc D.two_faults_lt hy m
-    (rows_sourced D.hrun D.hnc hsrc hy) (fun _ h => compatible_of_anc_right hU hBP h) hBt with
-    h | h
-  · exact Or.inl (h.trans ((SA.anc_getAnchor hΦ
-      (liveBlocks_chain_at D.hrun D.hnc hy m t)).2 _ (Or.inr rfl)))
-  · exact Or.inr h
+  exact FamilySafety.reader_frame_instance hinv hy m t hBP
 
 /-- **An honest fast lock block is compatible with `P`, cut-indexed**: a fast update
 lock or an optimistic selection of an honest node at cut `c`, whose counted honest votes were
@@ -134,50 +96,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
     (hfl : SA.FastLockAt tr.projAC y c s B CV)
     (hcut : ∀ v ∈ CV, v.val ∈ H → ∃ j < n, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v) :
     Compatible (tr.HonestBlocks H) B D.P := by
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc
-  have hU := D.coherent
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
-  by_cases hs : s < D.j₀
-  · -- an update or a selection of a label `< j₀` is within `b₀`
-    have hj₀ := D.hj₀.1
-    have hsj := ts_le_ts (sp := sp) (show s + 1 ≤ D.j₀ by omega)
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
-    rcases hfl with ⟨ℓ, C, hu, hC, hD, -⟩ | hO
-    · have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
-      obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hrun'.localRun hy hu.1
-      have hBC : ℓ.frame.Anc B C := (SA.deepest_mem hD).1.1.2.2
-      have hCU : C ∈ tr.HonestBlocks H := hΦU (SA.deepest_mem hC).1.1
-      exact compatible_of_anc hU (hBC.mono hΦU) (D.compatible_of_within
-        (originWithin_iff.2 ⟨y, hy, c, _, by linarith, Or.inl ⟨ℓ, hu, hC, rfl⟩⟩) hCU)
-    · obtain ⟨ℓ, A, hpt, hslot, hsel, -⟩ := id hO
-      have hlt : tr.time c < sp.ts (s + 1 : Nat) := by
-        by_contra h
-        have := (SA.ts_le_iff_le_slot sp (hrun'.localRun.time_nonneg c) ((s + 1 : Nat) : Int)).1
-          (not_lt.1 h)
-        rw [hslot] at this
-        omega
-      obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hrun'.localRun hy hpt.1
-      have hBt : B ∈ ℓ.frame.tree := by
-        unfold SA.optimisticSelect at hsel
-        dsimp only at hsel
-        split_ifs at hsel
-        exact (SA.deepest_mem hsel).1.1
-      exact D.compatible_of_within (originWithin_iff.2 ⟨y, hy, c, CV, by linarith, Or.inr hO⟩)
-        (hΦU hBt)
-  refine by_contra fun hB => ?_
-  have hsub : {u | ∃ v ∈ CV, v.val = u} ⊆ Hᶜ ∪ D.W := by
-    rintro u ⟨v, hv, rfl⟩
-    by_contra hu
-    simp only [Set.mem_union, Set.mem_compl_iff, not_or, not_not] at hu
-    obtain ⟨hvs, R, hRU, hRr, -, hBR⟩ := hCV v hv
-    obtain ⟨j', hj', e, hve, rfl⟩ := hcut v hv hu.1
-    exact hB (compatible_of_voteCompat hU hRU hRr hBR
-      (hvi.voteCompat_of_not_lateWaker hu.1 hu.2 hj' hve (by omega)))
-  have := Set.ncard_le_ncard hsub
-  have := D.two_mul_lt
-  omega
+  exact FamilySafety.fastLock_compatible_at_instance hvi hy hfl hcut
 
 
 /-- **Every honest fast lock block is compatible with `P`**: a fast update lock or an
@@ -203,23 +122,7 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
     (hBP : Anc (tr.HonestBlocks H) B D.P) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L B := by
-  intro L hL
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer D.hrun D.hnc
-  have hr := hrun'.localRun
-  have hU := D.coherent
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hL
-  obtain ⟨B', hB', hB'r, h⟩ := SA.readPoint_locks_provenance_strict hrun' hy hc hpos l' hl'
-  obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
-  refine compatible_of_anc_right hU hBP
-    (compatible_of_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
-  rcases h with ⟨l, hl, B₁, hB₁, hB₁r, hanc⟩ | ⟨B₁, CV, hfl, hcut, hanc⟩
-  · rw [projAC_state D.hrun.toLocalRun hy] at hl
-    obtain ⟨L', hL', hL'r, hcomp⟩ := hinv.locks y hy i le_rfl l hl
-    obtain rfl : B₁ = L' := hU.1 (hΦU hB₁) ⟨y, hy, i, hL'⟩ (hB₁r.trans hL'r.symm)
-    exact compatible_of_anc hU (hanc.mono hΦU) hcomp
-  · exact compatible_of_anc hU (hanc.mono hΦU)
-      (fastLock_compatible_at hinv.toOutageVoteInv hy (Or.inr hfl) hcut)
+  exact FamilySafety.readPoint_liveLockBlocks_compatible_at_instance hinv hy hc hpos hBP
 
 end Consensus.Goldilocks.Compose
 

@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
@@ -38,6 +40,40 @@ theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : SAParams} {L : Set Lock}
   · exact Or.inl (hCD.trans h)
   · exact anc_total hΦ.coherent hCD h
 
+/-- Slow formation reads only U.locks. In particular it does not require the mode's
+fast arm or optimistic arm; the saved window follows the selected slow width. -/
+theorem updateConfirmation_slow_lock_of_family {FGP : Type} {sp : SAParams}
+    {m : WriteMode} {A post : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+    {t : Time} {s : Nat} {C D : Blk sp.n FGP}
+    (hlocks : UpdateLocks m A post Φ t s)
+    (hD : getConfirmation sp A Φ s = some D) (hnvC : ¬ conflictsWithLock sp A.locks Φ t C)
+    (hCt : C ∈ Φ.tree) (hCg : C.root ≠ sp.genesisRoot) (hCD : Φ.Anc C D)
+    (hrows : ∀ j : Int, (s : Int) - m.width < j → j < s →
+      ∃ S ∈ Φ.tree, A.saved j = some S.root ∧ Φ.Anc C S)
+    (hlive : sp.slot t ≤ s + sp.k) :
+    ∃ X, X ∈ Φ.tree ∧ Φ.Anc C X ∧ Φ.Anc X D ∧
+      (⟨(Φ.viableAncestor X).root, s, false, s + sp.k⟩ : Lock) ∈ post.locks := by
+  classical
+  set S : Set (Blk sp.n FGP) := {B | (B ∈ confirmationPath sp Φ D ∧
+      ¬ conflictsWithLock sp A.locks Φ t B) ∧
+    ∀ j : Int, (s : Int) - m.width < j → j < s → ∃ R ∈ Φ.tree,
+      (Function.update A.saved s (some D.root)) j = some R.root ∧ Φ.Anc B R}
+  have hSt : S ⊆ Φ.tree := fun B hB => hB.1.1.1
+  have hCS : C ∈ S := by
+    refine ⟨⟨⟨hCt, hCg, hCD⟩, hnvC⟩, fun j hj₁ hj₂ => ?_⟩
+    obtain ⟨R, hR, hsv, hCR⟩ := hrows j hj₁ hj₂
+    exact ⟨R, hR, by rw [Function.update_of_ne (by omega)]; exact hsv, hCR⟩
+  have hch : ∀ B ∈ S, ∀ B' ∈ S, Compatible Φ.tree B B' := fun B hB B' hB' =>
+    anc_total hΦ.coherent hB.1.1.2.2 hB'.1.1.2.2
+  obtain ⟨X, hX⟩ := exists_deepest hΦ hSt ⟨C, hCS⟩
+  have hXS := (deepest_mem hX).1
+  refine ⟨X, hSt hXS, anc_deepest hΦ hSt hch hX C hCS, hXS.1.1.2.2, ?_⟩
+  rw [hlocks, updateConfirmationM_locks_of_some hD]
+  refine ⟨⟨X.root, s, false, s + sp.k⟩,
+    Or.inr ⟨(X.root, false, s + sp.k), ?_, rfl⟩,
+    X, hSt hXS, rfl, hlive, rfl⟩
+  exact mem_newLocksM.2 (Or.inr ⟨X, hX, rfl⟩)
+
 /-- **Slow formation** (independent writes): attestations above `C`, a result `D ⪰ C`, and no
 live lock conflicting with `C` store the slow lock of slot `s` and expiry `s + k` on the viable
 ancestor of the deepest unvetoed slow-test block `X`, `C ⪯ X ⪯ D`. A veto of `D` stops only the
@@ -52,34 +88,8 @@ theorem updateConfirmation_slow_lock_of {FGP : Type} {sp : SAParams} {A : SAStat
     ∃ X, X ∈ Φ.tree ∧ Φ.Anc C X ∧ Φ.Anc X D ∧
       (⟨(Φ.viableAncestor X).root, s, false, s + sp.k⟩ : Lock) ∈
         (updateConfirmation sp A Φ t s).locks := by
-  classical
-  set S : Set (Blk sp.n FGP) := {B | B ∈ {B | B ∈ confirmationPath sp Φ D ∧
-      ¬ conflictsWithLock sp A.locks Φ t B} ∧
-    ∀ j : Int, (s : Int) - sp.k < j → j < s → ∃ S ∈ Φ.tree,
-      (Function.update A.saved s ((some D).map Block.root)) j = some S.root ∧ Φ.Anc B S}
-  have hSt : S ⊆ Φ.tree := fun B hB => hB.1.1.1
-  have hCS : C ∈ S := by
-    refine ⟨⟨⟨hCt, hCg, hCD⟩, hnvC⟩, fun j hj₁ hj₂ => ?_⟩
-    obtain ⟨S', hS', hsv, hCS'⟩ := hrows j hj₁ hj₂
-    exact ⟨S', hS', by rw [Function.update_of_ne (by omega)]; exact hsv, hCS'⟩
-  have hch : ∀ B ∈ S, ∀ B' ∈ S, Compatible Φ.tree B B' := fun B hB B' hB' =>
-    anc_total hΦ.coherent hB.1.1.2.2 hB'.1.1.2.2
-  obtain ⟨X, hX⟩ := exists_deepest hΦ hSt ⟨C, hCS⟩
-  have hXS := (deepest_mem hX).1
-  refine ⟨X, hSt hXS, anc_deepest hΦ hSt hch hX C hCS, hXS.1.1.2.2, ?_⟩
-  have hlocks : ∀ A₂ : SAState sp.n, A₂.locks = A.locks →
-      (⟨(Φ.viableAncestor X).root, s, false, s + sp.k⟩ : Lock) ∈ addLocks sp A₂.locks Φ t s
-        {p | (∃ B, deepest Φ {B | B ∈ {B | B ∈ confirmationPath sp Φ D ∧
-            ¬ conflictsWithLock sp A.locks Φ t B} ∧ FastTest sp A Φ s B} = some B ∧
-            p = (B.root, true, fastExpiry sp A₂.locks Φ t s)) ∨
-          (∃ B, deepest Φ S = some B ∧ p = (B.root, false, s + sp.k))} := by
-    intro A₂ hA₂
-    exact ⟨⟨X.root, s, false, s + sp.k⟩, Or.inr ⟨_, Or.inr ⟨X, hX, rfl⟩, rfl⟩, X, hSt hXS, rfl,
-      hlive, rfl⟩
-  simp only [updateConfirmation, hD]
-  split_ifs
-  · exact hlocks _ rfl
-  · exact hlocks _ (updateLatestConfirmed_keeps_locks _ _ _)
+  exact updateConfirmation_slow_lock_of_family (m := WriteMode.parent sp) hΦ rfl
+    hD hnvC hCt hCg hCD hrows hlive
 
 /-- **Effective slow formation**: with `C` a candidate of `viable_ancestor` and unvetoed, the stored
 slow block extends `C` (`anc_viableAncestor_of_candidate`). -/
