@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -50,6 +51,43 @@ private theorem ready_implies_joined_at
   obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht) y hy t c ht hc
     fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
   exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
+
+/-- `2 f_d < n` from the count at `d`, with `h_t ≤ |H d|`. -/
+private theorem two_faults_lt_of_faultBoundAt {t d : Time} (h : tr.FaultBoundAt H t d) :
+    2 * (H d)ᶜ.ncard < sp.n := by
+  have hle : {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard ≤ (H d).ncard :=
+    Set.ncard_le_ncard fun x hx => hx.1
+  have hn : (H d).ncard + (H d)ᶜ.ncard = sp.n := by
+    rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have : (H d)ᶜ.ncard < {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard := h
+  omega
+
+/-- **The count shapes from the counts after a start `a`** (the look-ahead budget clamped at
+`b`), for the slots `s ≥ σ₀` whose slot point `t_s + Δ` is at or after `a`: `2 f_d < n` at
+`d ∈ [a, b]` from the count at `d` charged at `min (d + 5Δ) b ≥ d`, and at `d ∈ [0, a)` from the
+count at `a` (faults only grow; `a ≤ b` unless `a ≤ 0`); the slot count at
+`d ∈ [t_s + Δ, t_s + 6Δ]` from the count at `t_s + Δ` charged at `min (t_s + 6Δ) b ≥ d`, and the
+late count likewise from `t_s + 2Δ`. -/
+private theorem sleepyBoundsFrom_of_faultBoundAt (hanti : Antitone H) {a b : Time} {σ₀ : Nat}
+    (hσ : a ≤ sp.ts σ₀ + sp.Δ) (hab : a ≤ max b 0)
+    (hfb : ∀ t, 0 ≤ t → a ≤ t → t ≤ b → tr.FaultBoundAt H t (min (t + 5 * sp.Δ) b)) :
+    Compose.Growing.SleepyBoundsFrom tr H σ₀ b := by
+  have hΔ := sp.toParams.hΔ
+  refine ⟨fun d h0 hdb => ?_, fun s d hs h1 hdb h6 => ?_, fun s d hs h1 hdb h7 => ?_⟩
+  · rcases le_or_gt a d with had | hda
+    · exact two_faults_lt_of_faultBoundAt
+        (RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) (hfb d h0 had hdb))
+    · have hab' : a ≤ b := (le_max_iff.mp hab).resolve_right (by linarith)
+      exact two_faults_lt_of_faultBoundAt (RunTrace.FaultBoundAt.mono_right hanti
+        (le_min (by linarith) hdb) (hfb a (by linarith) le_rfl hab'))
+  · have hts := Compose.ts_le_ts (sp := sp) hs
+    have h0 := Compose.Growing.ts_natCast_nonneg (sp := sp) s
+    have h := hfb (sp.ts s + sp.Δ) (by linarith) (by linarith) (h1.trans hdb)
+    exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
+  · have hts := Compose.ts_le_ts (sp := sp) hs
+    have h0 := Compose.Growing.ts_natCast_nonneg (sp := sp) s
+    have h := hfb (sp.ts s + 2 * sp.Δ) (by linarith) (by linarith) (h1.trans hdb)
+    exact RunTrace.FaultBoundAt.mono_right hanti (le_min (by linarith) hdb) h
 
 end Lift
 
@@ -131,7 +169,7 @@ theorem sleepy_bounds_at (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.
     {σ₀ : Nat} (hσ : a ≤ (S.params (pubOf E) hn).ts σ₀ + (S.params (pubOf E) hn).Δ)
     (hab : a ≤ max b 0) :
     Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) σ₀ b :=
-  Compose.Growing.SleepyBoundsFrom.of_faultBoundAt (honestKeysAt_antitone S rho) hσ hab
+  sleepyBoundsFrom_of_faultBoundAt (honestKeysAt_antitone S rho) hσ hab
     fun _ ht hat htb => sleepy_faultBoundAt S rho hn hv hb hhalf ht hat htb
 
 end Consensus.Goldilocks.Obligations.Growing
