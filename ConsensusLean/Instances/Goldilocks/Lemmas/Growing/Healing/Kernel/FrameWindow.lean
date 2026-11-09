@@ -7,6 +7,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -29,70 +31,6 @@ time; no global cache invariant of a terminal honest cohort is used. -/
 namespace Consensus.Goldilocks.Healing.Growing
 
 open SA (SAParams ReplayOrder Payload gbar)
-
-/-! ### Justification quorums of a chain (as in `Growing/Healing/Agreement`) -/
-
-private theorem mem_foldl_target_obs {n : Nat} {σ : FG.ChainState n} {atts : List (FG.Att n)}
-    {v : Fin n} (h : v ∈ (atts.foldl FG.ChainState.processAtt σ).target) :
-    v ∈ σ.target ∨ ∃ a ∈ atts, a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-  induction atts generalizing σ with
-  | nil => exact Or.inl h
-  | cons a as ih =>
-    obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq σ [a]
-    have hh : (σ.processAtt a).h = σ.h := by simpa using congrArg FG.ChainState.h he
-    have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
-    rcases ih h with h | ⟨b, hb, hb'⟩
-    · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
-        unfold FG.ChainState.processAtt at h
-        dsimp only at h
-        repeat' split at h
-        all_goals aesop
-      exact this.imp_right fun h => ⟨a, List.mem_cons_self, h⟩
-    · rw [hh, hT] at hb'
-      exact Or.inr ⟨b, List.mem_cons_of_mem _ hb, hb'⟩
-
-private theorem justification_quorum_obs (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
-    {σ : FG.ChainState gp.n} (h : gp.chainState c = some σ) :
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false) := by
-  refine gp.chainState_induction (P := fun c σ =>
-    (∀ v ∈ σ.target, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) ∧
-    (1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c,
-      a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false))
-    ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init]⟩ ?_ h
-  intro c σ B σ' _ ⟨ht, hq⟩ hB
-  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append] at h ⊢
-    exact Or.inl h
-  have liftB : ∀ {a}, a ∈ B.atts → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
-    simp only [FG.FGParams.chainAtts, List.flatMap_append, List.mem_append]
-    exact Or.inr (by simpa using h)
-  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 hB
-  have hT := fun v => @mem_foldl_target_obs _ { σ with s := B.slot } B.atts v
-  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
-  rw [he] at hT ⊢
-  dsimp only at hT
-  have ht₀ : ∀ v ∈ t, ∃ a ∈ gp.chainAtts (c ++ [B]),
-      a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false := by
-    intro v hv
-    rcases hT v hv with hv | ⟨a, ha, h'⟩
-    · obtain ⟨a, ha, h'⟩ := ht v hv
-      exact ⟨a, liftA ha, h'⟩
-    · exact ⟨a, liftB ha, h'⟩
-  have hq₀ : 1 ≤ σ.hj → ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧
-      ∀ v ∈ Q, ∃ a ∈ gp.chainAtts (c ++ [B]),
-        a.val = v ∧ a.h = σ.hj ∧ a.T = σ.J ∧ a.timeout = false := fun h1 =>
-    let ⟨Q, hQ, hv⟩ := hq h1
-    ⟨Q, hQ, fun v h => let ⟨a, ha, h'⟩ := hv v h; ⟨a, liftA ha, h'⟩⟩
-  obtain ⟨F, hF', σ₁, rfl, -, hcase⟩ := gp.heightEvents_cases
-    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
-  rcases hcase with ⟨⟨hq', -⟩, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
-  · exact ⟨by simp [FG.ChainState.advance], fun _ => ⟨t, hq', ht₀⟩⟩
-  · exact ⟨by simp [FG.ChainState.advance], hq₀⟩
-  · exact ⟨ht₀, hq₀⟩
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
@@ -210,45 +148,11 @@ private theorem J_eq_obs
     {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y m).fg.tree)
     (hB' : B' ∈ (tr.state x i).fg.tree)
     (he : ((tr.state y m).fg.σ B.root).hj = ((tr.state x i).fg.σ B'.root).hj) :
-    ((tr.state y m).fg.σ B.root).J = ((tr.state x i).fg.σ B'.root).J := by
-  obtain ⟨c₁, h₁, -, ha₁⟩ := held_chain_obs hrun hu hytime hy hB
-  obtain ⟨c₂, h₂, -, ha₂⟩ := held_chain_obs hrun ht hxtime hx hB'
-  rcases Nat.eq_zero_or_pos ((tr.state y m).fg.σ B.root).hj with h0 | h0
-  · rw [(FG.chain_invariants sp.toParams.fg _ _ h₁).2.2.2.1 h0,
-      (FG.chain_invariants sp.toParams.fg _ _ h₂).2.2.2.1 (he ▸ h0)]
-  by_contra hne
-  obtain ⟨Q₁, hQ₁, hv₁⟩ := (justification_quorum_obs sp.toParams.fg h₁).2 h0
-  obtain ⟨Q₂, hQ₂, hv₂⟩ := (justification_quorum_obs sp.toParams.fg h₂).2 (he ▸ h0)
-  obtain ⟨v, hvQ, hv⟩ : ∃ v ∈ Q₁ ∩ Q₂, v ∈ H (max u t) := by
-    by_contra! hS
-    have h1 := (FG.quorum_intersection sp.toParams.fg Q₁ Q₂ hQ₁ hQ₂).1
-    have hcard := Set.ncard_le_ncard
-      (s := ((Q₁ ∩ Q₂ : Finset _) : Set (Fin sp.toParams.fg.n)))
-      (t := (H (max u t))ᶜ) hS
-    rw [Set.ncard_coe_finset] at hcard
-    have : ((H (max u t))ᶜ : Set (Fin sp.toParams.fg.n)).ncard =
-        ((H (max u t))ᶜ : Set (Fin sp.n)).ncard := rfl
-    have : sp.toParams.fg.n = sp.n := rfl
-    omega
-  obtain ⟨a, ha, rfl, hah, haT, hat⟩ := hv₁ v (Finset.mem_inter.1 hvQ).1
-  obtain ⟨b, hb, hvb, hbh, hbT, hbt⟩ := hv₂ a.val (Finset.mem_inter.1 hvQ).2
-  obtain ⟨k, hk, hka⟩ := ha₁ a ha (hrun.antitone (le_max_left _ _) hv)
-  obtain ⟨l, hl, hlb⟩ := ha₂ b hb (hvb ▸ hrun.antitone (le_max_right _ _) hv)
-  rw [hvb] at hlb
-  have hd : 0 ≤ max u t := hu.trans (le_max_left _ _)
-  have hr := (hrun.upTo hd)
-  have hka' : (tr.upTo (max u t)).SignAt a.val k a :=
-    (RunTrace.upTo_signAt tr).mpr ⟨(hytime k hk).trans (le_max_left _ _), hka⟩
-  have hlb' : (tr.upTo (max u t)).SignAt a.val l b :=
-    (RunTrace.upTo_signAt tr).mpr ⟨(hxtime l hl).trans (le_max_right _ _), hlb⟩
-  have hfg := Compose.fg_projection sp.toParams (goldilocksNode sp ro) dg (H (max u t))
-    (fun v => v.val) (tr.upTo (max u t)) proposer (Compose.requirements sp ro)
-    hr.genesis_root_ok hr.toLocalRun (hnc.upTo _)
-  obtain ⟨inputs, hin, hs⟩ := Store.signed_run hfg hv (max k l + 1)
-  have ha' := hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka'.choose_spec⟩
-  have hb' := hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb'.choose_spec⟩
-  exact FG.client_safety sp.toParams.fg a.val inputs hin a ha' b hb'
-    ⟨hvb.symm, Or.inr (Or.inr ⟨by rw [hah, hbh, he], hat, hbt, by rw [haT, hbT]; exact hne⟩)⟩
+    ((tr.state y m).fg.σ B.root).J = ((tr.state x i).fg.σ B'.root).J :=
+  Store.J_eq_of_hj_eq_of_safe (fg_reachable_at hrun hu hytime hy)
+    (fg_reachable_at hrun ht hxtime hx) hf
+    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    hB hB' he
 
 /-- `Σ.J` of two stores observed while honest with equal `h_j` agree. -/
 private theorem J_eq_of_hj_eq_obs
