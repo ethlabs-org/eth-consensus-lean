@@ -14,6 +14,10 @@ it from their own signatures.
 
 * `Store.J_eq_of_hj_eq_of_safe`: two held blocks of two reachable stores with the same `h_j`
   have the same `J`.
+* `Store.finalized_anc_of_safe` (G1.2): a block finalized at height `h_F` by a held block of
+  one store is a store ancestor of every block of the other store of state height `> h_F`;
+  `Store.F_anc_of_hmax_le_of_safe`: so `Σ.F` of the first store is below every block of the
+  other of state height `≥ h_max` (`h_F ≤ h_j < h ≤ h_max`).
 * `held_atts_safe`: over an FG trace, attestations on blocks held by honest nodes with an honest
   signer are not slashable (unforgeability, `Store.signed_run`, client safety G0.5). -/
 
@@ -48,6 +52,48 @@ theorem J_eq_of_hj_eq_of_safe {st₁ st₂ : Store P ACP} (hR₁ : st₁.Reachab
   obtain ⟨v, hvW, hv⟩ := exists_mem_of_ncard_compl_lt hW hV
   obtain ⟨a, ⟨Y, hY, -, ha⟩, b, ⟨Y', hY', -, hb⟩, rfl, hab⟩ := hw v hvW
   exact hsafe a b ⟨Y, hY, ha⟩ ⟨Y', hY', hb⟩ hv hab
+
+/-- **G1.2 at the stores.** A block `F` finalized by the state of a held `X` of `st₁` is a store
+ancestor of every held `W` of `st₂` whose state height exceeds the finalized height: otherwise
+`F` is not on `W`'s chain (roots are injective on the coherent `U`), and the finality and
+crossing quorums meet in `2q − n` validators with slashable pairs, one of them in `V`. -/
+theorem finalized_anc_of_safe {st₁ st₂ : Store P ACP} (hR₁ : st₁.Reachable acp₀)
+    (hR₂ : st₂.Reachable acp₀) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub₁ : st₁.tree ⊆ U) (hsub₂ : st₂.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    {X F W : NodeBlock P ACP} (hX : X ∈ st₁.tree) (hF : F ∈ st₁.tree)
+    (hFr : F.root = (st₁.σ X.root).F) (hW : W ∈ st₂.tree)
+    (hlt : (st₁.σ X.root).hF < (st₂.σ W.root).h) : st₂.Anc F W := by
+  by_contra hn
+  obtain ⟨S, hS, hw⟩ := finalized_crossing hR₁ hR₂ hX hFr hW hlt fun Y hY hYW hYr =>
+    hn (hU.1 (hsub₂ hY) (hsub₁ hF) hYr ▸ hYW)
+  obtain ⟨v, hvS, hv⟩ := exists_mem_of_ncard_compl_lt hS hV
+  obtain ⟨a, ⟨Y, hY, -, ha⟩, b, ⟨Y', hY', -, hb⟩, rfl, hab⟩ := hw v hvS
+  exact hsafe a b ⟨Y, hY, ha⟩ ⟨Y', hY', hb⟩ hv hab
+
+/-- **`Σ.F` below every block of state height `≥ h_max`** (G1.2 with `h_F ≤ h_j < h ≤ h_max`
+on the chain of the block whose state finalizes `Σ.F`). -/
+theorem F_anc_of_hmax_le_of_safe {st₁ st₂ : Store P ACP} (hR₁ : st₁.Reachable acp₀)
+    (hR₂ : st₂.Reachable acp₀) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub₁ : st₁.tree ⊆ U) (hsub₂ : st₂.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    -- Safety: attestations on held blocks of `st₁` and `st₂` with a signer in `V` are not
+    -- slashable.
+    (hsafe : ∀ a b, (∃ Y ∈ st₁.tree, a ∈ Y.fgPayload) → (∃ Y ∈ st₂.tree, b ∈ Y.fgPayload) →
+      a.val ∈ V → ¬ FG.slashable a b)
+    {B : NodeBlock P ACP} (hB : B ∈ st₂.tree) (hle : st₁.hmax ≤ (st₂.σ B.root).h) :
+    st₂.Anc st₁.F B := by
+  obtain ⟨hF, -, -, -, hge, -, X, hX, hXF⟩ := cache_invariants _ _ _ _ hR₁
+  obtain ⟨c, -, -, -, hc⟩ := chain_state_of_chain _ _ _ _ hR₁ X hX
+  have hinv := FG.chain_invariants _ _ _ hc
+  have hXh := hge X hX
+  have h1 := hinv.2.1
+  have h2 := hinv.2.2.1
+  exact finalized_anc_of_safe hR₁ hR₂ hU hsub₁ hsub₂ hV hsafe hX hF hXF.symm hB (by omega)
 
 end Store
 
