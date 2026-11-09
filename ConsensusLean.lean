@@ -705,6 +705,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Range
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Rise
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Warm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.WarmFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.NextVotesCore

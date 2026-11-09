@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -25,8 +26,9 @@ The frame data of a window agree across its honest cuts (`frameWindow_of_frameKe
 
 Every cross-node fact is charged at the later of the two observations: certificate
 intersection for `Σ.F` below a crossing (`finalized_anc_obs`, `F_anc_of_hj_lt_obs`) and
-justification agreement (`J_eq_obs`). Each chain's signatures are recovered at its own reader's
-time; no global cache invariant of a terminal honest cohort is used. -/
+justification agreement (`J_eq_of_hj_eq_obs`), the static store-level arguments with
+`held_atts_safe_at` as their safety premise. Each chain's signatures are recovered at its own
+reader's time; no global cache invariant of a terminal honest cohort is used. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -59,25 +61,9 @@ theorem finalized_anc_obs
     (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
     hX hFt hFr hW hlt
 
-/-- **Equal justified heights agree** at two independently honest observations: two
-justification quorums of one height meet in a validator honest at `max u t`, whose two
-attestations would be an E2 pair. -/
-private theorem J_eq_obs
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
-    (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
-    (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
-    (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y m).fg.tree)
-    (hB' : B' ∈ (tr.state x i).fg.tree)
-    (he : ((tr.state y m).fg.σ B.root).hj = ((tr.state x i).fg.σ B'.root).hj) :
-    ((tr.state y m).fg.σ B.root).J = ((tr.state x i).fg.σ B'.root).J :=
-  Store.J_eq_of_hj_eq_of_safe (fg_reachable_at hrun hu hytime hy)
-    (fg_reachable_at hrun ht hxtime hx) hf
-    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
-    hB hB' he
-
-/-- `Σ.J` of two stores observed while honest with equal `h_j` agree. -/
+/-- `Σ.J` of two stores observed while honest with equal `h_j` agree: two justification quorums
+of one height meet in a validator honest at `max u t`, whose two attestations would be an E2
+pair. -/
 private theorem J_eq_of_hj_eq_obs
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
@@ -85,22 +71,18 @@ private theorem J_eq_of_hj_eq_obs
     (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
     (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (he : (tr.state y m).fg.hj = (tr.state x i).fg.hj) :
-    (tr.state y m).fg.J = (tr.state x i).fg.J := by
-  have hRy := fg_reachable_at hrun hu hytime hy
-  have hRx := fg_reachable_at hrun ht hxtime hx
-  obtain ⟨-, hJy, -, ⟨By, hBy, hByJ, hByhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hRy
-  obtain ⟨-, hJx, -, ⟨Bx, hBx, hBxJ, hBxhj⟩, -⟩ := Store.cache_invariants _ _ _ _ hRx
-  have h := J_eq_obs hrun hnc hu hytime hy ht hxtime hx hf hBy hBx (by omega)
-  exact (Compose.Growing.honest_blocks_coherent hrun hnc).1 ⟨y, m, u, hu, hytime, hy, hJy⟩
-    ⟨x, i, t, ht, hxtime, hx, hJx⟩ (hByJ.symm.trans (h.trans hBxJ))
+    (tr.state y m).fg.J = (tr.state x i).fg.J :=
+  Store.J_eq_of_cache_hj_eq_of_safe (fg_reachable_at hrun hu hytime hy)
+    (fg_reachable_at hrun ht hxtime hx) (Compose.Growing.honest_blocks_coherent hrun hnc)
+    (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩) (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
+    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    he
 
 /-- `h_j < h_max` at a store observed while honest. -/
 private theorem hj_lt_hmax_obs (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
-    (hy : y ∈ H t) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax := by
-  have hR := fg_reachable_at hrun ht hle hy
-  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ := Store.cache_invariants _ _ _ _ hR
-  exact hBjhj ▸ (Store.hj_lt_h hR hBj).trans_le (hge Bj hBj)
+    (hy : y ∈ H t) : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
+  Store.hj_lt_hmax_of_reachable (fg_reachable_at hrun ht hle hy)
 
 /-- **`Σ.F` below every block of state height `> h_j`** (store-level G1.2) at two independently
 honest observations. -/
@@ -112,36 +94,13 @@ private theorem F_anc_of_hj_lt_obs
     (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
     (hlt : (tr.state y m).fg.hj < ((tr.state x i).fg.σ B.root).h) :
-    Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
-  have hreach := fg_reachable_at hrun hu hytime hy
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocksAt H :=
-    fun _ hX => ⟨y, m, u, hu, hytime, hy, hX⟩
-  have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
-  have hg := Store.genesis_mem hreach
-  have hgB : Anc (tr.HonestBlocksAt H)
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
-    ((Store.accepted_tree _ _ _ _ (fg_reachable_at hrun ht hxtime hx)).2.2.2 B hBt).mono
-      (fun X hX => (⟨x, i, t, ht, hxtime, hx, hX⟩ : X ∈ tr.HonestBlocksAt H))
-  obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
-    Store.cache_invariants _ _ _ _ hreach
-  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
-      (tr.state y m).fg.F := (Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFm
-  have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →
-      Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := fun he => by
-    rw [hcoh.1 hFm hg he]
-    exact hgB
-  rcases Store.fin_pair_entry hreach hBf with he | ⟨W, hW, hWr, hWh⟩
-  · exact hgen (hBfF.symm.trans he)
-  obtain rfl : W = (tr.state y m).fg.F := hcoh.1 hW hFm (hWr.trans hBfF)
-  obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hreach hBj
-  obtain rfl : E = (tr.state y m).fg.J := hcoh.1 hE hJm (hEr.trans hBjJ)
-  rcases hcase with hEg | ⟨hEh, -⟩
-  · rw [hEg] at hFJ
-    exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have h₁ := h_le_of_store_anc hreach hFJ
-  exact finalized_anc_obs hrun hnc hu hytime hy ht hxtime hx hf hBf hFm hBfF.symm hBt
-    (by omega)
+    Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B :=
+  honest_anc_of_store_anc_at ht hxtime hx <| Store.F_anc_of_hj_lt_of_safe
+    (fg_reachable_at hrun hu hytime hy) (fg_reachable_at hrun ht hxtime hx)
+    (Compose.Growing.honest_blocks_coherent hrun hnc) (fun _ h => ⟨y, m, u, hu, hytime, hy, h⟩)
+    (fun _ h => ⟨x, i, t, ht, hxtime, hx, h⟩) hf
+    (held_atts_safe_at hrun hnc hu hytime hy ht hxtime hx (le_max_left _ _) (le_max_right _ _))
+    hBt hlt
 
 /-! ### The frame-key lag between independently honest observations -/
 

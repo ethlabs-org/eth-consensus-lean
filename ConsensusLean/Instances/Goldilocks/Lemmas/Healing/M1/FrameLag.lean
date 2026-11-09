@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
 
 public section
 
@@ -72,44 +73,11 @@ theorem F_anc_of_hj_lt (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.No
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H)
     {m i : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
     (hlt : (tr.state y m).fg.hj < ((tr.state x i).fg.σ B.root).h) :
-    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
-  have hreach := Compose.fg_reachable hrun.toLocalRun hy m
-  have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
-  have hsub : (tr.state y m).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, m, hX⟩
-  have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
-  have hg := Store.genesis_mem hreach
-  have hgB : Anc (tr.HonestBlocks H)
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
-    ((Goldilocks.Store.accepted_tree _ _ _ _
-      (Compose.fg_reachable hrun.toLocalRun hx i)).2.2.2 B hBt).mono
-        (fun X hX => (⟨x, hx, i, hX⟩ : X ∈ tr.HonestBlocks H))
-  obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hreach
-  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
-      (tr.state y m).fg.F := (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFm
-  have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →
-      Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := fun he => by
-    rw [hcoh.1 hFm hg he]
-    exact hgB
-  rcases Store.fin_pair_entry hreach hBf with he | ⟨W, hW, hWr, hWh⟩
-  · exact hgen (hBfF.symm.trans he)
-  obtain rfl : W = (tr.state y m).fg.F := hcoh.1 hW hFm (hWr.trans hBfF)
-  obtain ⟨E, hE, hEr, -, hcase⟩ := Store.J_entry_of_reachable hreach hBj
-  obtain rfl : E = (tr.state y m).fg.J := hcoh.1 hE hJm (hEr.trans hBjJ)
-  rcases hcase with hEg | ⟨hEh, -⟩
-  · rw [hEg] at hFJ
-    exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have h₁ := h_le_of_store_anc hreach hFJ
-  have hreq := SA.interface_requirements sp (List (FG.Att sp.n)) ro
-  have hfg := Compose.fg_projection _ _ dg H _ tr proposer
-    ⟨hreq.1, hreq.2.1, hreq.2.2.1, hreq.2.2.2, SA.proposal_payload_valid sp _ ro⟩
-    hrun.genesis_root_ok hrun.toLocalRun hnc
-  have hst : ∀ {w : Fin sp.n}, w ∈ H → ∀ i, tr.projFG.store w i = (tr.state w i).fg :=
-    fun hw i => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hw i]
-  have h := finalized_anc_of_lt_fg hfg hf hy hx (k := m) (m := i) (X := Bf)
-    (F := (tr.state y m).fg.F) (W := B)
-  rw [hst hy, hst hx] at h
-  exact h hBf hFm hBfF.symm hBt (by omega)
+    Anc (tr.HonestBlocks H) (tr.state y m).fg.F B :=
+  (Store.F_anc_of_hj_lt_of_safe (Compose.fg_reachable hrun.toLocalRun hy m)
+    (Compose.fg_reachable hrun.toLocalRun hx i) (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
+    (fun _ h => ⟨y, hy, m, h⟩) (fun _ h => ⟨x, hx, i, h⟩) hf (held_atts_safe_run hrun hnc hy hx m i)
+    hBt hlt).mono fun _ h => ⟨x, hx, i, h⟩
 
 /-- **The frame-key lag.** Premises: relay (`ResetService`), catch-up
 (`CatchRun g κ`), a call of `z` before `m` at or after the relay deadline of `i`, and
