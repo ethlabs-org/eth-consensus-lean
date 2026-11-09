@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run

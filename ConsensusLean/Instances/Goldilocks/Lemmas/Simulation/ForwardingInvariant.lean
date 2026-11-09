@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationProvenance
