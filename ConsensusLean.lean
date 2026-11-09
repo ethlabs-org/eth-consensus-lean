@@ -888,8 +888,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingObservation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Observation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.SyncUntil
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
@@ -904,7 +907,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
@@ -914,6 +919,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
