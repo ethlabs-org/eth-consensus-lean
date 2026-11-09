@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 
 public section
