@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.B2
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 
@@ -19,13 +20,6 @@ open SA (SAParams ReplayOrder Payload gbar)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-
-private theorem deadline_mono (y : Fin sp.n) (j : Nat) {τ τ' : Time} (h : τ ≤ τ') (Δ' : Time) :
-    tr.deadline y j τ Δ' ≤ tr.deadline y j τ' Δ' := by
-  unfold RunTrace.deadline
-  cases tr.lastWake y j with
-  | bot => exact add_le_add_left h _
-  | coe w => exact add_le_add_left (max_le_max h le_rfl) _
 
 /-- Relay and catch-up carry a held block to a receiver whose height has not passed it. -/
 theorem held_of_relay_le_at
@@ -69,7 +63,7 @@ theorem held_of_relay_le_at
   have hxk := hrun.antitone (hτ k hk) hx
   by_cases hg : g ≤ tr.time k
   · obtain ⟨j, hjm, hcj, hdl⟩ := hcall
-    have hdl' := (deadline_mono z j (max_le_max (hτ k hk) le_rfl) sp.Δ).trans hdl
+    have hdl' := (tr.deadline_mono z j (max_le_max (hτ k hk) le_rfl) sp.Δ).trans hdl
     obtain ⟨k', hk'j, ha', -⟩ := hsvc.relay x k B hxk ha hg z j
       (hrun.antitone (hrun.time_mono hjm.le) hz) hcj hdl' (hF j hjm.le)
     exact hlift k' (by omega) ha'

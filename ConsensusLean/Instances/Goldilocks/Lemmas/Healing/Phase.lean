@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Entries
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Cut
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PhaseMono
 
 public section
 
@@ -166,20 +167,6 @@ theorem justifiedAt_unique (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 
     (hBJ.symm.trans ((J_eq_of_hj_eq hr hH hy hz hB hB' (hBh.trans hBh'.symm)).trans hBJ'))
 
 /-! ## Part (b): justifications and contests stay -/
-
-/-- A justification held at an honest node stays held. -/
-private theorem justifiedAt_mono (hr : FGLocalRun acp₀ H U tr) {i j : Nat} (hij : i ≤ j)
-    {h : Nat} {J : NodeBlock P ACP} (hJ : JustifiedAt tr H i h J) : JustifiedAt tr H j h J := by
-  obtain ⟨y, hy, hJ, B, hB, hh, hJr⟩ := hJ
-  obtain ⟨hB', hσ⟩ := held_mono hr hy hij hB
-  exact ⟨y, hy, (held_mono hr hy hij hJ).1, B, hB', by rw [hσ]; exact hh, by rw [hσ]; exact hJr⟩
-
-/-- A contest held at an honest node stays held. -/
-private theorem contestAt_mono (hr : FGLocalRun acp₀ H U tr) {i j : Nat} (hij : i ≤ j)
-    {m : Nat} {J : NodeBlock P ACP} (hc : ContestAt tr H i m J) : ContestAt tr H j m J := by
-  obtain ⟨y, hy, B, hB, hh, hn⟩ := hc
-  obtain ⟨hB', hσ⟩ := held_mono hr hy hij hB
-  exact ⟨y, hy, B, hB', by rw [hσ]; exact hh, fun ha => hn (Store.anc_transfer hr hy hy ha hB)⟩
 
 /-- **HR.2 (b).** While the frontier stays, the phase moves only forward, with one `J`. -/
 theorem phaseAt_mono (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)

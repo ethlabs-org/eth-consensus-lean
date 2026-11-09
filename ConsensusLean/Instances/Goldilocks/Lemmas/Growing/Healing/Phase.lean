@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Phase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PhaseMono
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
 public section
@@ -75,11 +76,8 @@ theorem justifiedAt_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H 
     (hj : ∀ k < j, tr.time k ≤ d) {J : NodeBlock P ACP}
     (hJ : JustifiedAt tr (H d) i h J) : JustifiedAt tr (H d) j h J := by
   have hi : ∀ k < i, tr.time k ≤ d := fun k hk => hj k (hk.trans_le hij)
-  obtain ⟨y, hy, hJ, B, hB, hh, hJr⟩ := (justifiedAt_upTo_iff hi).mpr hJ
-  obtain ⟨hB', hσ⟩ := Store.held_mono (hr.upTo hd) hy hij hB
-  apply (justifiedAt_upTo_iff hj).mp
-  exact ⟨y, hy, (Store.held_mono (hr.upTo hd) hy hij hJ).1, B, hB',
-    by rw [hσ]; exact hh, by rw [hσ]; exact hJr⟩
+  exact (justifiedAt_upTo_iff hj).mp
+    (Healing.justifiedAt_mono (hr.upTo hd) hij ((justifiedAt_upTo_iff hi).mpr hJ))
 
 /-- A contest's holder survives throughout the fixed horizon comparison. -/
 theorem contestAt_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)
@@ -87,11 +85,8 @@ theorem contestAt_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U 
     (hj : ∀ k < j, tr.time k ≤ d) {J : NodeBlock P ACP}
     (hc : ContestAt tr (H d) i m J) : ContestAt tr (H d) j m J := by
   have hi : ∀ k < i, tr.time k ≤ d := fun k hk => hj k (hk.trans_le hij)
-  obtain ⟨y, hy, B, hB, hh, hn⟩ := (contestAt_upTo_iff hi).mpr hc
-  obtain ⟨hB', hσ⟩ := Store.held_mono (hr.upTo hd) hy hij hB
-  apply (contestAt_upTo_iff hj).mp
-  exact ⟨y, hy, B, hB', by rw [hσ]; exact hh,
-    fun ha => hn (Store.anc_transfer (hr.upTo hd) hy hy ha hB)⟩
+  exact (contestAt_upTo_iff hj).mp
+    (Healing.contestAt_mono (hr.upTo hd) hij ((contestAt_upTo_iff hi).mpr hc))
 
 /-- At a fixed frontier, phases of one later-horizon cohort move only forward. -/
 theorem phaseAt_mono (hr : Consensus.Goldilocks.Growing.FGLocalRun acp₀ H U tr)

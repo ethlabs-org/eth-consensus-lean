@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 
 public section
 
@@ -31,13 +32,6 @@ theorem accept_mem' (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy :
     (Compose.fg_reachable hrun.toLocalRun hy k)).1 B _ (hrun.toLocalRun.cutLaw y hy k _ h).2.1]
   exact Set.mem_insert _ _
 
-private theorem deadline_mono (y : Fin sp.n) (j : Nat) {τ τ' : Time} (h : τ ≤ τ') (Δ' : Time) :
-    tr.deadline y j τ Δ' ≤ tr.deadline y j τ' Δ' := by
-  unfold RunTrace.deadline
-  cases tr.lastWake y j with
-  | bot => exact add_le_add_left h _
-  | coe w => exact add_le_add_left (max_le_max h le_rfl) _
-
 /-- A block held by an honest `x` at `i`, of height at least `h_max(z)` at `m`, is held by `z`
 at `m`: by relay (accepted at `≥ g`) or by catch-up (accepted before `g`). The relay deadline is
 read from any bound `τ` on the times of the cuts before `i`. -/
@@ -63,7 +57,7 @@ theorem held_of_relay_le (hrun : GoldilocksRun proposer dg H tr) (hnc : Compose.
   by_cases hg : g ≤ tr.time k
   · obtain ⟨j, hjm, hcj, hdl⟩ := hcall
     have hdl' : tr.deadline z j (max (tr.time k) g) sp.Δ ≤ tr.time j :=
-      (deadline_mono z j (max_le_max hki le_rfl) sp.Δ).trans hdl
+      (tr.deadline_mono z j (max_le_max hki le_rfl) sp.Δ).trans hdl
     obtain ⟨k', hk'j, ha, -⟩ :=
       hsvc.relay x hx k B hacc hg z hz j hcj hdl' (hF j hjm.le)
     exact hlift k' (by omega) ha
