@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Retention
 
 public section
 
