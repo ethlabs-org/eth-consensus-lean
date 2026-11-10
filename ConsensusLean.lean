@@ -961,6 +961,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.PersistKernel
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Continuation
