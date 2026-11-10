@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ProvenanceGuard
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.DutyRelease
 import ConsensusLean.Lemmas.Model.Candidates
 import ConsensusLean.Lemmas.Model.Protection
 
@@ -22,24 +23,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 omit [DecidableEq V] in
-private theorem duties_append_at (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds ds') :
-    rho.runDuties v nd (ds ++ ds') =
-      let r := rho.runDuties v nd ds
-      let r' := rho.runDuties v r.1 ds'
-      (r'.1, r.2 ++ r'.2) := by
-  unfold Model.Run.runDuties
-  rw [List.foldl_append]
-  generalize ds.foldl _ _ = acc
-  induction ds' generalizing acc with
-  | nil => simp
-  | cons d ds' ih =>
-    dsimp only
-    rw [List.foldl_cons, List.foldl_cons, ih]
-    conv_rhs => rw [ih]
-    simp only [List.append_assoc, List.nil_append]
-
-omit [DecidableEq V] in
 /-- A duty release comes from one actual prefix, not a replayed node handler. -/
 private theorem release_duty_at (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
@@ -49,7 +32,7 @@ private theorem release_duty_at (v : V)
   induction ds using List.reverseRecOn with
   | nil => cases ho
   | append_singleton ds d ih =>
-    rw [duties_append_at] at ho
+    rw [runDuties_append] at ho
     rcases List.mem_append.mp ho with ho | ho
     · obtain ⟨p, d', hp, ho⟩ := ih ho
       have hlt := (List.getElem?_eq_some_iff.mp hp).1
@@ -68,62 +51,13 @@ private theorem released_poll_at {v : V} {i p : Nat} {nd}
         ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some d)
     (hr : attObj a ∈ (rho.dutyStep v nd d).2) :
     a.val = rho.ownKey v ∧ ∃ j q, EngineSignsAt S rho hn v j q a := by
-  unfold Model.Run.dutyStep at hr
-  split at hr
-  · rename_i hsel
-    obtain ⟨m, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp
-      (Model.releaseAll_subset _ _ _ _ _ hr)
-    have he' := he
-    change (Model.Obj.mk (.signed a.val (ShapeRole.poll : ShapeRole Empty))
-      (.data (Body.att (encodeAtt a))) [] : Wire (Fintype.card V)) = _ at he'
-    injection he' with hauth hmsg hcs
-    subst m cs
-    cases d with
-    | act s k => exact k.elim
-    | propose s hs =>
-      have hh : (ShapeRole.poll : ShapeRole Empty) = .proposer s := by injection hauth
-      cases hh
-    | pollPropose t =>
-      change _ ∈ (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
-      simp only [goldilocks, dite_eq_left hn] at hm
-      cases hm
-    | poll t =>
-      have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
-        change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
-          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        simp only [goldilocks, dite_eq_left hn] at hm
-        change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
-          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
-        have hp := Prod.mk.inj heq
-        have hb' := Model.Msg.data.inj hp.1
-        have hcs' := hp.2
-        subst b cs
-        simp only [pollBatch, List.mem_append] at hb
-        rcases hb with (hb | hb) | hb
-        · exact Option.mem_toList.mp hb
-        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-          cases heq
-        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-          cases heq
-      obtain ⟨b, j, q, heq, hval, hs⟩ := engine_poll_att_signed S rho hn hc hd hsel hp
-      have hab : a = b := by
-        have hh := congrArg (decodeAtt (Fintype.card V)) heq
-        simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hh
-      subst b
-      exact ⟨hval.trans (cut_self S rho hn hc), j, q, hs⟩
-  · cases hr
-
-omit [DecidableEq V] in
-private theorem gossip_not_att_at (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (k : Fin (Fintype.card V)) (t : Time) (a : FG.Att (Fintype.card V)) :
-    attObj a ∉ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
-      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).2 := by
-  intro ha
-  obtain ⟨mc, _, he⟩ := Model.mem_gossipCandidates.mp
-    (Model.releaseAll_subset _ _ _ _ _ ha)
-  have hh := congrArg Model.Obj.auth he
-  cases hh
+  obtain ⟨t, rfl, hsel, hp⟩ := dutyStep_att_poll S rho hn nd d hr
+  obtain ⟨b, j, q, heq, hval, hs⟩ := engine_poll_att_signed S rho hn hc hd hsel hp
+  have hab : a = b := by
+    have hh := congrArg (decodeAtt (Fintype.card V)) heq
+    simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hh
+  subst b
+  exact ⟨hval.trans (cut_self S rho hn hc), j, q, hs⟩
 
 /-- Any actual attestation release has an actual engine signing. This is purely
 node-local: it needs neither constant faults nor honesty after the sending event. -/
@@ -141,7 +75,7 @@ theorem released_att_signed_at {v : V} {i : Nat} {t : Time}
         exact (released_poll_at S rho hn
           (.tick he hw (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1))
           (Or.inl ⟨t, he, hw, hd⟩) hr).2
-      · exact False.elim (gossip_not_att_at S rho _ _ t a ha)
+      · exact False.elim (attObj_not_mem_gossip S rho _ _ t a ha)
     · cases ha
   · simp only [Model.Run.releasesAt, he, Model.Run.deliver] at ha
     rcases List.mem_append.mp ha with ha | ha
@@ -149,48 +83,7 @@ theorem released_att_signed_at {v : V} {i : Nat} {t : Time}
       exact (released_poll_at S rho hn
         (.deliver he (Nat.le_of_lt (List.getElem?_eq_some_iff.mp hd).1))
         (Or.inr ⟨t, o, he, hd⟩) hr).2
-    · exact False.elim (gossip_not_att_at S rho _ _ t a ha)
-
-omit [DecidableEq V] in
-private theorem duties_closure_at (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
-    (a : FG.Att (Fintype.card V))
-    (ha : attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen) :
-    attObj a ∈ Model.closure nd.seen ∨ attObj a ∈ (rho.runDuties v nd ds).2 := by
-  induction ds using List.reverseRecOn with
-  | nil => exact Or.inl ha
-  | append_singleton ds d ih =>
-    rw [duties_append_at] at ha ⊢
-    change _ ∨ attObj a ∈ _ ++ (rho.dutyStep v (rho.runDuties v nd ds).1 d).2
-    change attObj a ∈ Model.closure (rho.dutyStep v (rho.runDuties v nd ds).1 d).1.seen at ha
-    unfold Model.Run.dutyStep at ha ⊢
-    split at ha
-    · rename_i hsel
-      simp only [hsel, ↓reduceIte]
-      let Q := fun o => o = attObj a →
-        attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen ∨
-          attObj a ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-            rho.hash (rho.ownKey v)
-            ⟨((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).1,
-              (rho.runDuties v nd ds).1.seen⟩
-            (rho.signedCandidate v d
-              ((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).2)).2
-      have hp := Model.releaseAll_preserves rho.hash (rho.ownKey v) Q
-        ⟨((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).1,
-          (rho.runDuties v nd ds).1.seen⟩
-        (rho.signedCandidate v d
-          ((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).2)
-        (fun o ho b hb he => Or.inl (he ▸ (Model.mem_closure_iff _ _).mpr ⟨o, ho, hb⟩))
-        (fun o ho he => Or.inr (he ▸ ho))
-      obtain ⟨o, ho, hc⟩ := (Model.mem_closure_iff _ _).mp ha
-      rcases hp.1 o ho _ hc rfl with hh | hh
-      · rcases ih hh with hh | hh
-        · exact Or.inl hh
-        · exact Or.inr (List.mem_append_left _ hh)
-      · exact Or.inr (List.mem_append_right _ hh)
-    · rename_i hsel
-      simp only [hsel, ↓reduceIte, List.append_nil]
-      exact ih ha
+    · exact False.elim (attObj_not_mem_gossip S rho _ _ t a ha)
 
 /-- A seen attestation has a genuine signing if its signer is still honest at the
 current event, not merely at the preceding engine cut. The latter would allow a forgery
@@ -216,7 +109,7 @@ theorem engine_seen_att_signed_at (hv : rho.ExecutionValid) {v u : V}
   cases hc with
   | tick he hw hp =>
     rename_i t
-    rcases duties_closure_at S rho v _ _ a hm with hm | hm
+    rcases attObj_mem_closure_runDuties S rho v _ _ a hm with hm | hm
     · exact hbefore (List.getElem?_eq_some_iff.mp he).1 hm
     · obtain ⟨q, d, hd, hr⟩ := release_duty_at S rho v _ _ hm
       have hq : q < p := lt_of_lt_of_le
@@ -230,7 +123,7 @@ theorem engine_seen_att_signed_at (hv : rho.ExecutionValid) {v u : V}
       exact huv ▸ ⟨j, r, hs⟩
   | deliver he hp =>
     rename_i t o
-    rcases duties_closure_at S rho v _ _ a hm with hm | hm
+    rcases attObj_mem_closure_runDuties S rho v _ _ a hm with hm | hm
     · rw [Model.closure_append] at hm
       rcases List.mem_append.mp hm with hm | hm
       · exact hbefore (List.getElem?_eq_some_iff.mp he).1 hm

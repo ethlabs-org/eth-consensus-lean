@@ -6,6 +6,7 @@ import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.DutyRelease
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 
 public section
@@ -1019,72 +1020,15 @@ private theorem duty_released_att {v : V} {signed : FG.Att (Fintype.card V) → 
     (h : Queued (nd.st.1 hn) signed)
     {a : FG.Att (Fintype.card V)} (ha : attObj a ∈ (rho.dutyStep v nd d).2) :
     signed a ∨ Signs S rho hn v nd d a := by
-  unfold Model.Run.dutyStep at ha
-  split at ha
-  · rename_i hsel
-    have hc := Model.releaseAll_subset _ _ _ _ _ ha
-    obtain ⟨m, cs, hm, _, he⟩ := rho.mem_signedCandidate.mp hc
-    have he' := he
-    change (Model.Obj.mk (.signed a.val (ShapeRole.poll : ShapeRole Empty))
-      (.data (Body.att (encodeAtt a))) [] : Wire (Fintype.card V)) = _ at he'
-    injection he' with hauth hmsg hcs
-    subst m cs
-    cases d with
-    | act s k => exact k.elim
-    | propose s hs =>
-      have hh : (ShapeRole.poll : ShapeRole Empty) = .proposer s := by
-        injection hauth
-      cases hh
-    | pollPropose t =>
-      change _ ∈ (Option.map _ ((goldilocks S (pubOf E)).pollPropose nd.st.1 t).2).toList at hm
-      simp only [goldilocks, dite_eq_left hn] at hm
-      cases hm
-    | poll t =>
-      have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
-        change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
-          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        simp only [goldilocks, dite_eq_left hn] at hm
-        change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
-          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
-        have hp := Prod.mk.inj heq
-        have hb' := Model.Msg.data.inj hp.1
-        have hcs' := hp.2
-        subst b cs
-        simp only [pollBatch, List.mem_append] at hb
-        rcases hb with (hb | hb) | hb
-        · exact Option.mem_toList.mp hb
-        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-          cases heq
-        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-          cases heq
-      obtain ⟨b, hb, _, hs⟩ := (poll_queued (nd.st.1 hn) t h).2 _ _ hp
-      have hab : a = b := by
-        have hh := congrArg (decodeAtt (Fintype.card V)) hb
-        simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hh
-      subst b
-      rcases hs with hs | ⟨hd, C, Λ', hC, hs⟩
-      · exact Or.inl hs
-      · exact Or.inr ⟨t, rfl, hsel, hd, C, Λ', hC, hs⟩
-  · cases ha
-
-omit [DecidableEq V] in
-private theorem duties_pair_append (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds ds') :
-    rho.runDuties v nd (ds ++ ds') =
-      let r := rho.runDuties v nd ds
-      let r' := rho.runDuties v r.1 ds'
-      (r'.1, r.2 ++ r'.2) := by
-  unfold Model.Run.runDuties
-  rw [List.foldl_append]
-  generalize ds.foldl _ _ = acc
-  induction ds' generalizing acc with
-  | nil => simp
-  | cons d ds' ih =>
-    dsimp only
-    rw [List.foldl_cons, List.foldl_cons, ih]
-    conv_rhs => rw [ih]
-    simp only [List.append_assoc, List.nil_append]
+  obtain ⟨t, rfl, hsel, hp⟩ := dutyStep_att_poll S rho hn nd d ha
+  obtain ⟨b, hb, _, hs⟩ := (poll_queued (nd.st.1 hn) t h).2 _ _ hp
+  have hab : a = b := by
+    have hh := congrArg (decodeAtt (Fintype.card V)) hb
+    simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hh
+  subst b
+  rcases hs with hs | ⟨hd, C, Λ', hC, hs⟩
+  · exact Or.inl hs
+  · exact Or.inr ⟨t, rfl, hsel, hd, C, Λ', hC, hs⟩
 
 omit [DecidableEq V] in
 private theorem duties_released_att {v : V} {signed : FG.Att (Fintype.card V) → Prop}
@@ -1096,7 +1040,7 @@ private theorem duties_released_att {v : V} {signed : FG.Att (Fintype.card V) �
   induction ds using List.reverseRecOn with
   | nil => cases ha
   | append_singleton ds d ih =>
-    rw [duties_pair_append] at ha
+    rw [runDuties_append] at ha
     rcases List.mem_append.mp ha with ha | ha
     · rcases ih ha with ha | ⟨q, d', hq, hs⟩
       · exact Or.inl ha
@@ -1113,17 +1057,6 @@ private theorem duties_released_att {v : V} {signed : FG.Att (Fintype.card V) �
         · simpa [List.getElem?_append, hlt] using hqd
         · simpa only [List.take_append_of_le_length (Nat.le_of_lt hlt)] using hs
       · exact Or.inr ⟨ds.length, d, by simp, by simpa using hs⟩
-
-omit [DecidableEq V] in
-private theorem gossip_not_att (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (k : Fin (Fintype.card V)) (t : Time) (a : FG.Att (Fintype.card V)) :
-    attObj a ∉ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
-      (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).2 := by
-  intro ha
-  obtain ⟨mc, _, he⟩ := Model.mem_gossipCandidates.mp
-    (Model.releaseAll_subset _ _ _ _ _ ha)
-  have hh := congrArg Model.Obj.auth he
-  cases hh
 
 private theorem released_att_signed {v : V} {i : Nat} {t : Time}
     (hs : rho.SendsAt v i t) {a : FG.Att (Fintype.card V)}
@@ -1142,7 +1075,7 @@ private theorem released_att_signed {v : V} {i : Nat} {t : Time}
         rcases h with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
         · exact ⟨j, q, Nat.le_of_lt hj, hs⟩
         · exact ⟨i, q, Nat.le_refl _, signs_of_tick S rho hn he hw hd hs⟩
-      · exact False.elim (gossip_not_att S rho _ _ t a ha)
+      · exact False.elim (attObj_not_mem_gossip S rho _ _ t a ha)
     · cases ha
   · simp only [Model.Run.releasesAt, he, Model.Run.deliver] at ha
     rcases List.mem_append.mp ha with ha | ha
@@ -1158,48 +1091,7 @@ private theorem released_att_signed {v : V} {i : Nat} {t : Time}
       rcases h with ⟨j, q, hj, hs⟩ | ⟨q, d, hd, hs⟩
       · exact ⟨j, q, Nat.le_of_lt hj, hs⟩
       · exact ⟨i, q, Nat.le_refl _, signs_of_deliver S rho hn he hd hs⟩
-    · exact False.elim (gossip_not_att S rho _ _ t a ha)
-
-omit [DecidableEq V] in
-private theorem duties_closure (v : V)
-    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (ds)
-    (a : FG.Att (Fintype.card V))
-    (ha : attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen) :
-    attObj a ∈ Model.closure nd.seen ∨ attObj a ∈ (rho.runDuties v nd ds).2 := by
-  induction ds using List.reverseRecOn with
-  | nil => exact Or.inl ha
-  | append_singleton ds d ih =>
-    rw [duties_pair_append] at ha ⊢
-    change _ ∨ attObj a ∈ _ ++ (rho.dutyStep v (rho.runDuties v nd ds).1 d).2
-    change attObj a ∈ Model.closure (rho.dutyStep v (rho.runDuties v nd ds).1 d).1.seen at ha
-    unfold Model.Run.dutyStep at ha ⊢
-    split at ha
-    · rename_i hsel
-      simp only [hsel, ↓reduceIte]
-      let Q := fun o => o = attObj a →
-        attObj a ∈ Model.closure (rho.runDuties v nd ds).1.seen ∨
-          attObj a ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
-            rho.hash (rho.ownKey v)
-            ⟨((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).1,
-              (rho.runDuties v nd ds).1.seen⟩
-            (rho.signedCandidate v d
-              ((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).2)).2
-      have hp := Model.releaseAll_preserves rho.hash (rho.ownKey v) Q
-        ⟨((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).1,
-          (rho.runDuties v nd ds).1.seen⟩
-        (rho.signedCandidate v d
-          ((Model.protoOf (compiled (goldilocks S)) E).act (rho.runDuties v nd ds).1.st d).2)
-        (fun o ho b hb he => Or.inl (he ▸ (Model.mem_closure_iff _ _).mpr ⟨o, ho, hb⟩))
-        (fun o ho he => Or.inr (he ▸ ho))
-      obtain ⟨o, ho, hc⟩ := (Model.mem_closure_iff _ _).mp ha
-      rcases hp.1 o ho _ hc rfl with hh | hh
-      · rcases ih hh with hh | hh
-        · exact Or.inl hh
-        · exact Or.inr (List.mem_append_left _ hh)
-      · exact Or.inr (List.mem_append_right _ hh)
-    · rename_i hsel
-      simp only [hsel, ↓reduceIte, List.append_nil]
-      exact ih ha
+    · exact False.elim (attObj_not_mem_gossip S rho _ _ t a ha)
 
 /-- The node key at an actual duty boundary is its own engine key. -/
 theorem cut_self {v : V} {i p : Nat} {nd}
@@ -1317,7 +1209,7 @@ theorem engine_seen_att_signed (hf : rho.point.ConstantFaults) (hv : rho.Executi
   cases hc with
   | tick he hw hp =>
     rename_i t
-    rcases duties_closure S rho v _ _ a hm with hm | hm
+    rcases attObj_mem_closure_runDuties S rho v _ _ a hm with hm | hm
     · exact hbefore hm
     · have hh := duties_released_att S rho hn
         ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
@@ -1340,7 +1232,7 @@ theorem engine_seen_att_signed (hf : rho.point.ConstantFaults) (hv : rho.Executi
         exact ⟨i, q, Or.inr ⟨rfl, rfl, hq⟩, hs'⟩
   | deliver he hp =>
     rename_i t o
-    rcases duties_closure S rho v _ _ a hm with hm | hm
+    rcases attObj_mem_closure_runDuties S rho v _ _ a hm with hm | hm
     · rw [Model.closure_append] at hm
       rcases List.mem_append.mp hm with hm | hm
       · exact hbefore hm
