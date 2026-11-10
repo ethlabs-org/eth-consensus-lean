@@ -13,6 +13,7 @@ public import ConsensusLeanTest.Goldilocks.AC.Inclusion
 public import ConsensusLeanTest.Goldilocks.AC.InclusionUpdateRejection
 public import ConsensusLeanTest.Goldilocks.AC.JoinedRestart
 public import ConsensusLeanTest.Goldilocks.AC.LockRule
+public import ConsensusLeanTest.Goldilocks.AC.LockStore
 public import ConsensusLeanTest.Goldilocks.AC.Optimistic
 public import ConsensusLeanTest.Goldilocks.AC.ProposerVoters
 public import ConsensusLeanTest.Goldilocks.AC.ResultTransfer
