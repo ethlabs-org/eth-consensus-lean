@@ -17,11 +17,20 @@ variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp
 
 theorem healthyAC_const {g : Time} :
     Growing.HealthyAC tr (fun _ => H) U g ↔ HealthyAC tr H U g := by
-  simp only [Growing.HealthyAC, HealthyAC]; aesop
+  constructor
+  · rintro ⟨h1, h2, h3, h4⟩
+    exact ⟨fun x hx i m hs y hy j ℓ hc hd => h1 x i m hx hs y j ℓ hy hc hd,
+      fun x hx i B ha hg y hy j ℓ hc hd hF => h2 x i B hx ha hg y j ℓ hy hc hd hF,
+      fun y hy t ht => h3 y t ht hy, h4 0⟩
+  · rintro ⟨h1, h2, h3, h4⟩
+    exact ⟨fun x i m hx hs y j ℓ hy hc hd => h1 x hx i m hs y hy j ℓ hc hd,
+      fun x i B hx ha hg y j ℓ hy hc hd hF => h2 x hx i B ha hg y hy j ℓ hc hd hF,
+      fun y t ht hy => h3 y hy t ht, fun _ => h4⟩
 
 theorem catchAC_const {g κ : Time} :
     Growing.CatchAC tr (fun _ => H) U g κ ↔ CatchAC tr H U g κ := by
-  simp only [Growing.CatchAC, CatchAC]; aesop
+  exact ⟨fun h x hx i B ha ht y hy j ℓ hc hg hF => h x i B hx ha ht y j ℓ hy hc hg hF,
+    fun h x i B hx ha ht y j ℓ hy hc hg hF => h x hx i B ha ht y hy j ℓ hc hg hF⟩
 
 theorem trivialFrames_const :
     Growing.TrivialFrames tr (fun _ => H) ↔ TrivialFrames tr H := by
@@ -53,7 +62,15 @@ theorem driven_const :
 
 theorem protected_const {t₀ : Time} {B : Blk sp.n FGP} {j : Nat} :
     Growing.Protected proposer tr (fun _ => H) t₀ B j ↔ Protected proposer tr H t₀ B j := by
-  simp only [Growing.Protected, Protected]; aesop
+  constructor
+  · rintro (⟨x, i, CV, hx, h⟩ | ⟨x, i, hx, h⟩ | ⟨h1, h2, h3, h4⟩)
+    · exact Or.inl ⟨x, hx, i, CV, h⟩
+    · exact Or.inr (Or.inl ⟨x, hx, i, h⟩)
+    · exact Or.inr (Or.inr ⟨h1, h2, h3, fun x hx k e hv hs => h4 x k e hx hv hs⟩)
+  · rintro (⟨x, hx, i, CV, h⟩ | ⟨x, hx, i, h⟩ | ⟨h1, h2, h3, h4⟩)
+    · exact Or.inl ⟨x, i, CV, hx, h⟩
+    · exact Or.inr (Or.inl ⟨x, i, hx, h⟩)
+    · exact Or.inr (Or.inr ⟨h1, h2, h3, fun x k e hx hv hs => h4 x hx k e hv hs⟩)
 
 theorem inv_const {t₀ : Time} :
     Growing.Inv proposer tr (fun _ => H) U t₀ ↔ Inv proposer tr H U t₀ := by

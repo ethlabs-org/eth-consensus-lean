@@ -24,19 +24,29 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : Goldil
 theorem hz_const (g : Time) : Growing.HZ tr (fun _ => H) g = HZ tr H g := rfl
 
 theorem isReset_const {g a : Time} : Growing.IsReset tr (fun _ => H) g a ↔ IsReset tr H g a := by
-  simp only [Growing.IsReset, IsReset, hz_const]; aesop
+  simp only [Growing.IsReset, IsReset, hz_const]
+  constructor
+  · rintro ⟨⟨y, k, att, hy, h⟩, h2⟩
+    exact ⟨⟨y, hy, k, att, h⟩, fun y hy k att hs hh => h2 y k att hy hs hh⟩
+  · rintro ⟨⟨y, hy, k, att, h⟩, h2⟩
+    exact ⟨⟨y, k, att, hy, h⟩, fun y k att hy hs hh => h2 y hy k att hs hh⟩
 
 theorem highEntries_const (Hz : Nat) :
     Growing.HighEntries tr (fun _ => H) Hz = HighEntries tr H Hz := by
-  ext E; simp only [Growing.HighEntries, HighEntries, Set.mem_ofPred_eq]; aesop
+  ext E
+  constructor
+  · rintro ⟨y, i, hy, h⟩; exact ⟨y, hy, i, h⟩
+  · rintro ⟨y, hy, i, h⟩; exact ⟨y, i, hy, h⟩
 
 theorem catchRun_const {g κ : Time} :
     Growing.CatchRun tr (fun _ => H) g κ ↔ CatchRun tr H g κ := by
-  simp only [Growing.CatchRun, CatchRun, RunTrace.honestBlocksAt_const]; aesop
+  simp only [Growing.CatchRun, CatchRun, RunTrace.honestBlocksAt_const]
+  exact ⟨fun h x hx i B ha ht y hy j hj hF => h x i B hx ha ht y j hy hj hF,
+    fun h x i B hx ha ht y j hy hj hF => h x hx i B ha ht y hy j hj hF⟩
 
 theorem noRestartAfter_const {t : Time} :
-    Growing.NoRestartAfter tr (fun _ => H) t ↔ NoRestartAfter tr H t := by
-  simp only [Growing.NoRestartAfter, NoRestartAfter]; aesop
+    Growing.NoRestartAfter tr (fun _ => H) t ↔ NoRestartAfter tr H t :=
+  ⟨fun h y hy k hr => h y k hy hr, fun h y k hy hr => h y hy k hr⟩
 
 theorem settledAt_const {d g κ w : Time} :
     Growing.SettledAt tr (fun _ => H) d g κ w ↔ SettledAt tr H g κ w := by
@@ -53,7 +63,11 @@ theorem settledAt_const {d g κ w : Time} :
 theorem readyProposal_const {p : Fin sp.n} {k s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} :
     Growing.ReadyProposal tr (fun _ => H) proposer p k s B ↔
       ReadyProposal tr H proposer p k s B := by
-  simp only [Growing.ReadyProposal, ReadyProposal]; aesop
+  constructor
+  · rintro ⟨h1, h2, h3, h4, h5, h6⟩
+    exact ⟨h1, h2, h3, h4, h5, fun x hx hs y hy j hj => h6 x hx hs y j hy hj⟩
+  · rintro ⟨h1, h2, h3, h4, h5, h6⟩
+    exact ⟨h1, h2, h3, h4, h5, fun x hx hs y j hy hj => h6 x hx hs y hy j hj⟩
 
 theorem propPlus_const {g Gp : Time} :
     Growing.PropPlus tr (fun _ => H) proposer g Gp ↔ PropPlus tr H proposer g Gp := by
@@ -83,8 +97,8 @@ theorem retentionAt_to_static {g a : Time} (h : Growing.RetentionAt tr (fun _ =>
     · obtain ⟨y, hy, i, h'⟩ := hr'; exact ⟨y, i, hy, h'⟩
 
 theorem unanimous_const {p : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} :
-    Growing.Unanimous tr (fun _ => H) p P ↔ Unanimous tr H p P := by
-  simp only [Growing.Unanimous, Unanimous]; aesop
+    Growing.Unanimous tr (fun _ => H) p P ↔ Unanimous tr H p P :=
+  ⟨fun h x hx j e hv hs => h x j e hx hv hs, fun h x j e hx hv hs => h x hx j e hv hs⟩
 
 theorem honestProposalRun_const {p : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} :
     Growing.HonestProposalRun tr (fun _ => H) proposer p P ↔ HonestProposalRun tr H proposer p P :=
@@ -92,7 +106,9 @@ theorem honestProposalRun_const {p : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
 
 theorem includedFrom_const {t₁ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))} :
     Growing.IncludedFrom tr (fun _ => H) t₁ P ↔ IncludedFrom tr H t₁ P := by
-  simp only [Growing.IncludedFrom, IncludedFrom, RunTrace.honestBlocksAt_const]; aesop
+  simp only [Growing.IncludedFrom, IncludedFrom, RunTrace.honestBlocksAt_const]
+  exact ⟨fun h y hy j ℓ hc ht hk => h y j ℓ hy hc ht hk,
+    fun h y j ℓ hy hc ht hk => h y hy j ℓ hc ht hk⟩
 
 theorem inSettledPhase_const {d g : Time} {p : Nat} :
     Growing.InSettledPhase tr (fun _ => H) d g p ↔ InSettledPhase tr H g p := by
