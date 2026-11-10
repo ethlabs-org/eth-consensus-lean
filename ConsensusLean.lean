@@ -894,6 +894,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWra
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PoolInsertionRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ProvenanceGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationDecode
