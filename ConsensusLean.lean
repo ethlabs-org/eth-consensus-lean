@@ -131,6 +131,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixWindow
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.VoterWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.CarryServed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain

@@ -3,13 +3,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSuffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.VoterWalk
 
 public section
 
 /-! # Goldilocks Healing, HS.3: frozen-tree agreement
 
-HS.3 (a) with its settled premise, and (b), by
-the walk comparison of `Compose/Service/Agree`: the proposal walk (the full viable
+HS.3 (a) with its settled premise, and (b), by the walk comparison
+`Compose.voter_walk_eq_proposal` (`Compose/Service/VoterWalk`): the proposal walk (the full viable
 tree, the slot-`(s−1)` pool view `pay`, from its unlocked anchor `d.start`) ends at `Q = d.head =
 parent(P)`, and each honest slot-`s` voter's walk (the viable voter block tree, the merged view,
 from its unlocked anchor) is compared with it, by induction on the cut of the first honest
@@ -378,7 +379,7 @@ theorem votes_eq_of_pass
   have hd := hS.payload
   have hti := hS.time
   have hp := hS.ready.1
-  obtain ⟨-, hΦpU⟩ := SA.frameIn_of_callAt hr hp hc
+  obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hp hc
   obtain ⟨-, -, hsD⟩ := proposal_walk hS
   suffices main : ∀ j, (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
       e'.msg.slot = s → e'.msg.head = P.root) →
@@ -392,92 +393,20 @@ theorem votes_eq_of_pass
     rw [hti]
     have := (SA.slot_arithmetic sp s).1 0 (by omega)
     simpa using this
-  -- the proposal walk: from its start to `Q`, where it stops
-  have hΦp := (SA.frameIn_of_callAt hr hp hc).1
-  set W₁ := SA.ghost sp (ℓp.frame.viableTree ℓp.frame.tree)
-    (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
-    (SA.goldfishEligible sp ℓp.frame (tr.time iP) (SA.View.ofLists pay) ((s : Int) - 1))
-    with hW₁
-  have hTp : ℓp.frame.viableTree ℓp.frame.tree ⊆ ℓp.frame.tree := fun _ h => h.1
-  have hQ : d.head = W₁ ℓp.frame.tree.ncard d.start := by
-    rw [(acProposal_spec hd).2, hsl_i]
-  have hstop₀ := SA.ghost_stopped hΦp.coherent hTp (hΦp.finite.subset hTp)
-    (sc := SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
-    (el := SA.goldfishEligible sp ℓp.frame (tr.time iP) (SA.View.ofLists pay) ((s : Int) - 1))
-    (Set.ncard_le_ncard hTp hΦp.finite) d.start
-  rw [← hW₁] at hstop₀
-  have hstop₁ := hstop₀
-  rw [← hQ] at hstop₁
-  have hW₁add : ∀ a b x, W₁ (a + b) x = W₁ b (W₁ a x) := fun a b x => by
-    rw [hW₁]; exact SA.ghost_add a b x
-  have hstopQ : ∀ m, W₁ m d.head = d.head := fun m => by
-    have h0 : W₁ 0 d.head = d.head := by rw [hW₁]; rfl
-    rw [hW₁] at h0 ⊢
-    exact (SA.ghost_fuel_stable (f := 0) (Nat.zero_le m) (by rw [h0]; exact hstop₁)).trans h0
-  -- the proposal walk from a block `X` of its path from `d.start` ends at `Q`
-  have hXQend : ∀ {X}, ℓp.frame.Anc d.start X → ℓp.frame.Anc X d.head →
-      W₁ ℓp.frame.tree.ncard X = d.head := by
-    intro X hDX hXQ
-    obtain ⟨kx, -, hkx⟩ := SA.ghost_visits hΦp.coherent hTp _ hDX (hQ ▸ hXQ)
-    rw [← hW₁] at hkx
-    rw [← hkx, ← hW₁add, add_comm, hW₁add, ← hQ, hstopQ]
   -- the voter's walk passes a block `X` of the path from `d.start` through `Q` to `P`
   obtain ⟨hstep₀, hP₀⟩ := proposal_stop hS hy hcast hes
   have hsuf := proposal_suffix hS .refl hsD hy hcast hes
-  have hΦy := (SA.frameIn_of_callAt hr hy hcy).1
-  have hΦyU := (SA.frameIn_of_callAt hr hy hcy).2
+  obtain ⟨hΦy, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy
   obtain ⟨X, hXc, haX, hXend⟩ := hpass y hy j ℓy e hcast hes hIH
-  set W₂ := SA.ghost sp (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-    (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
-    (SA.goldfishEligible sp ℓy.frame (tr.time j) (SA.mergedVoteView sp e.readPoint ℓy.frame s)
-      ((s : Int) - 1)) with hW₂
-  -- from `X`, the voter's walk ends at `P`
-  have hXP : ∃ fX, W₂ fX X = P := by
-    rcases hXc with rfl | ⟨hDX, hXQ⟩
-    · exact ⟨0, rfl⟩
-    refine ⟨ℓp.frame.tree.ncard + 1, SA.ghost_follow _ X ?_ hstop₁ ?_ hstep₀ hP₀⟩
-    · exact hXQend hDX hXQ
-    · intro m hm hne
-      by_cases hXQ' : X = d.head
-      · exact absurd (by rw [hXQ']; exact hstopQ m) hne
-      have hXt : X ∈ ℓp.frame.tree := (Anc.mem hXQ hXQ').1
-      have hXm : ℓp.frame.Anc X (W₁ m X) := by rw [hW₁]; exact SA.anc_ghost hTp m hXt
-      have hQm : ℓp.frame.Anc (W₁ m X) d.head := by
-        have hmem : W₁ m X ∈ ℓp.frame.tree := by
-          rcases eq_or_ne (W₁ m X) X with h | h
-          · rw [h]; exact hXt
-          · exact (Anc.mem hXm (Ne.symm h)).2
-        have hend : W₁ (ℓp.frame.tree.ncard - m) (W₁ m X) = d.head := by
-          rw [← hW₁add, Nat.add_sub_cancel' hm.le]
-          exact hXQend hDX hXQ
-        rw [← hend, hW₁]
-        exact SA.anc_ghost hTp _ hmem
-      exact hsuf _ (hDX.trans hXm) hQm hne ((haX.mono hΦyU).trans (hXm.mono hΦpU))
-  obtain ⟨fX, hfX⟩ := hXP
   have hspec := SA.castAt_head_of_viable hr hy hcast
     (hes ▸ ⟨P, proposal_frozen_viable hS hy hcast hes⟩)
   rw [hes] at hspec
   rw [hspec]
   congr 1
-  have hTy : ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ⊆ ℓy.frame.tree :=
-    fun B hB => hB.1.1
-  change W₂ ℓy.frame.tree.ncard (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) = P
-  obtain ⟨ky, -, hky⟩ := SA.ghost_visits hΦy.coherent hTy _ haX hXend
-  have hP₂ : W₂ (ky + fX) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) = P := by
-    rw [hW₂, SA.ghost_add, ← hW₂]
-    rw [← hW₂] at hky
-    rw [hky]; exact hfX
-  have hstop₂ := SA.ghost_stopped hΦy.coherent hTy (hΦy.finite.subset hTy)
-    (sc := SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
-      ((s : Int) - 1))
-    (el := SA.goldfishEligible sp ℓy.frame (tr.time j)
-      (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1))
-    (Set.ncard_le_ncard hTy hΦy.finite) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j))
-  rw [← hW₂] at hstop₂
-  have hmax₁ := SA.ghost_fuel_stable (le_max_left (ℓy.frame.tree.ncard) (ky + fX)) hstop₂
-  have hmax₂ := SA.ghost_fuel_stable (le_max_right (ℓy.frame.tree.ncard) (ky + fX)) (hP₂ ▸ hP₀)
-  rw [← hW₂] at hmax₁ hmax₂
-  rw [← hmax₁, hmax₂, hP₂]
+  -- from `X`, the voter's walk follows the proposal walk to `Q`, steps to `P` and stops
+  exact Compose.voter_walk_eq_proposal hd hsl_i hΦp hΦpU hΦy hΦyU .refl hsD
+    (fun B hB => hB.1.1) hXc haX hXend hstep₀ hP₀
+    fun X hDX hXQ ha hne => hsuf X hDX hXQ hne ha
 
 /-- **The per-vote conclusion of HS.3 (a)** from the votes: every honest slot-`s` vote is `P`,
 `P` is a viable head in the viable voter block tree, and its ancestors are retained. -/
