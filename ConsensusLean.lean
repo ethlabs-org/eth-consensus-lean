@@ -983,6 +983,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Votes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Persist
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Service

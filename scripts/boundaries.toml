@@ -388,6 +388,7 @@ about = "untrusted milestone layer: C0.1, C0.3, C0.4, C0.2: stated for any AC (n
 [[layer]]
 name = "Instances.Goldilocks.Milestones.Statements.Compose"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run",
+            "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Persist",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.PersistKernel",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Service",
