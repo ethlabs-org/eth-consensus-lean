@@ -7,6 +7,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Publication
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReadTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
@@ -83,50 +85,8 @@ theorem accepted_in_view_at (hv : rho.ExecutionValid) {v : V} {k i : Nat}
     (hki : k < cutMap S rho hn i) :
     blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i := by
   rw [simTraceAt_eq] at hacc
-  obtain ⟨hnode, hlab⟩ := hacc
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, j, ev, _, he, hjk, _, hidx, hn', _, _, hlab'⟩ := simTrace_cut S rho hn hl
-  have hji : j < i := by
-    by_contra h
-    have := cutMap_mono S rho hn (not_lt.1 h)
-    omega
-  have hrl : r.label = .fg (.block B true) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  have hkey : ev.node = v := rho.key.symm.injective (hn'.symm.trans hnode)
-  cases ev with
-  | tick w t =>
-    change w = v at hkey
-    subst w
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn j v t he hp] at hmem
-      simp at hmem
-    have hr0 : r.pos ≠ 0 := by
-      intro hr0
-      obtain ⟨_, _, _, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
-      cases h
-    have hrel := (tick_block_vote_releases_at S rho hn hv he hp r hmem).1 B true hrl hr0
-    exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inl he, hrel⟩, .refl _⟩
-  | deliver w o t =>
-    change w = v at hkey
-    subst w
-    rw [eventCuts_deliver S rho hn j v o t he] at hmem
-    have hnow := (now_eq_lastClock S rho hn hv v j).trans (lastClock_deliver S rho hv he)
-    have hq := ((process_relay (runProposer S rho hn)
-      (digestOf S rho) (Model.digests rho.hash o) t j
-      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v j) 0 hnow).2.2.2 r
-      (by rw [self_eq_ownKey]; exact hmem)).1 B hrl
-    obtain ⟨cs, hx, hrel⟩ := deliver_relays S rho hn he hq
-    exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inr ⟨o, he⟩, hrel⟩,
-      .step hx (.refl _)⟩
-  | restart w t =>
-    exfalso
-    rw [eventCuts_restart S rho hn j w t he] at hmem
-    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hlabk, hrl] at hcut
-    simp [exec, Node.restart, acCall] at hcut
+  exact accepted_in_view_of_releases S rho hn hv
+    (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).1) hacc hki
 
 /-- A held non-genesis block of a node honest at its engine cut is in its engine view there. -/
 theorem held_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
@@ -167,33 +127,14 @@ theorem engine_outputValid_at (hv : rho.ExecutionValid) (g : Out) : OutputValid 
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
   set T := (simTraceAt S rho hn).upTo (rho.cutTime i)
   have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i)
-  have hhash : ∀ X ∈ (T.state (rho.ownKey v) (cutMap S rho hn i)).fg.tree,
-      X.root ≠ (S.params (pubOf E) hn).genesisRoot →
-      parentRef (S.params (pubOf E) hn).genesisRoot (some X.root) =
-        .digest (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
-    intro X hX hg
-    obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
-      (Regimes.validOutput_of_mem hrun hy hX).2 X .refl hg
-    have he : X.root = taggedRoot S.genesisRoot
-        (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
-      simp only [Block.RootOk, digestOf_eq] at hroot
-      erw [dgOf_eq] at hroot
-      simpa [headerOf, hpar] using hroot
-    simp only [parentRef, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
-  let blocks := (T.state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
-  have hvalid : ∀ B ∈ (T.state (rho.ownKey v) (cutMap S rho hn i)).fg.tree,
-      Chain.Linked rho.hash (chainTo blocks (B.slot + 1) B) ∧
-      Chain.PosIncreasing (chainTo blocks (B.slot + 1) B) ∧
-      Chain.Provenant (rho.ViewIdx v i) ProposalRole (chainTo blocks (B.slot + 1) B) := by
-    intro B hB
-    have hstruct := chainTo_append_valid hr rho.hash hhash hB (Nat.lt_succ_self _) []
-      trivial trivial
-    simp only [List.append_nil] at hstruct
-    refine ⟨hstruct.1, hstruct.2, ?_⟩
-    intro h hmem
-    obtain ⟨X, hX, _, hg, rfl⟩ := mem_chainTo hr hB hmem
-    rw [hs] at hX
-    exact ⟨X.proposer, .proposer X.slot, _, rfl, held_in_view_at S rho hn hv hi hh hX hg⟩
+  have hvalid := reader_chains_valid S rho hn (cutMap S rho hn i) i hr
+    (fun X hX hg => by
+      obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
+        (Regimes.validOutput_of_mem hrun hy hX).2 X .refl hg
+      exact ⟨hroot, P, hpar⟩)
+    fun X hX hg => by
+      rw [hs] at hX
+      exact held_in_view_at S rho hn hv hi hh hX hg
   rw [read_eq_out S rho hn]
   simp only [outOf, ← simTraceAt_state S rho hn hv hh hi, ← hs]
   cases g with

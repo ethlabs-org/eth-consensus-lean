@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReadTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -122,32 +123,9 @@ theorem compatible_reads_at (hv : rho.ExecutionValid)
   obtain ⟨hri, hsi⟩ := held_tree_at S rho hn hv hi hu
   obtain ⟨hrj, hsj⟩ := held_tree_at S rho hn hv hj hv'
   have hU := Compose.Growing.honest_blocks_coherent (simTraceAt_goldilocksRun S rho hn hv) hnc
-  have hFi := (Store.cache_invariants _ _ _ _ hri).1
-  have hFj := (Store.cache_invariants _ _ _ _ hrj).1
   rw [read_finalized_at S rho hn hv u hi, read_finalized_at S rho hn hv v hj]
-  rcases hc with hc | hc
-  · left
-    have ha := anc_in_store hrj hU hsj hc hFj
-    have hm : (simTraceAt S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i) ∈
-        ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn j)).fg.tree := by
-      by_cases he : (simTraceAt S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i) =
-          (simTraceAt S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j)
-      · exact he ▸ hFj
-      · exact (Anc.mem ha he).1
-    simp only [RunTrace.finalizedAt]
-    rw [chainTo_agree hri hrj hU hsi hsj hFi hm]
-    exact chainTo_prefix hrj ha
-  · right
-    have ha := anc_in_store hri hU hsi hc hFi
-    have hm : (simTraceAt S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j) ∈
-        ((simTraceAt S rho hn).state (rho.ownKey u) (cutMap S rho hn i)).fg.tree := by
-      by_cases he : (simTraceAt S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j) =
-          (simTraceAt S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i)
-      · exact he ▸ hFi
-      · exact (Anc.mem ha he).1
-    simp only [RunTrace.finalizedAt]
-    rw [chainTo_agree hrj hri hU hsj hsi hFj hm]
-    exact chainTo_prefix hri ha
+  exact chainTo_compatible hri hrj hU hsi hsj (Store.cache_invariants _ _ _ _ hri).1
+    (Store.cache_invariants _ _ _ _ hrj).1 hc
 
 /-- Two finalized reads of nodes each honest at its own engine cut are prefix-related, or their
 two views convict `2q − n` validators. -/

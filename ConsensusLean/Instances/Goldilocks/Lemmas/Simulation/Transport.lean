@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
 public import ConsensusLean.Spec.Shape.Claims
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReadTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -64,33 +66,12 @@ theorem engine_outputValid (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVa
   have hs := simTrace_simulates S rho hn hf hv
   have hy := honest_ownKey (S := S) hv'
   have hr := Compose.fg_reachable hs.run.toLocalRun hy (cutMap S rho hn i)
-  have hhash : ∀ X ∈ ((simTrace S rho hn).state (rho.ownKey v)
-      (cutMap S rho hn i)).fg.tree, X.root ≠ (S.params (pubOf E) hn).genesisRoot →
-      parentRef (S.params (pubOf E) hn).genesisRoot (some X.root) =
-        .digest (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
-    intro X hX hg
-    obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
-      (Regimes.validOutput_of_mem hs.run hy hX).2 X .refl hg
-    have he : X.root = taggedRoot S.genesisRoot
-        (rho.hash (headerOf (S.params (pubOf E) hn) X)) := by
-      simp only [Block.RootOk, digestOf_eq] at hroot
-      erw [dgOf_eq] at hroot
-      simpa [headerOf, hpar] using hroot
-    simp only [parentRef, he, rawRoot_taggedRoot, taggedRoot_ne, ite_false]
-  let blocks := ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)).fg.blocks
-  have hvalid : ∀ B ∈ ((simTrace S rho hn).state (rho.ownKey v)
-      (cutMap S rho hn i)).fg.tree,
-      Chain.Linked rho.hash (chainTo blocks (B.slot + 1) B) ∧
-      Chain.PosIncreasing (chainTo blocks (B.slot + 1) B) ∧
-      Chain.Provenant (rho.ViewIdx v i) ProposalRole (chainTo blocks (B.slot + 1) B) := by
-    intro B hB
-    have hstruct := chainTo_append_valid hr rho.hash hhash hB (Nat.lt_succ_self _) []
-      trivial trivial
-    simp only [List.append_nil] at hstruct
-    refine ⟨hstruct.1, hstruct.2, ?_⟩
-    intro h hh
-    obtain ⟨X, hX, _, hg, rfl⟩ := mem_chainTo hr hB hh
-    exact ⟨X.proposer, .proposer X.slot, _, rfl, held_in_view S rho hn hf hv hv' hX hg⟩
+  have hvalid := reader_chains_valid S rho hn (cutMap S rho hn i) i hr
+    (fun X hX hg => by
+      obtain ⟨hroot, _, _, P, _, hpar, _⟩ :=
+        (Regimes.validOutput_of_mem hs.run hy hX).2 X .refl hg
+      exact ⟨hroot, P, hpar⟩)
+    fun X hX hg => held_in_view S rho hn hf hv hv' hX hg
   rw [read_eq_out S rho hn]
   simp only [outOf, hs.state v hv' i hi]
   cases g with
@@ -147,46 +128,10 @@ Tagged freshness is proved by `genesisFresh`; it does not by itself prove occurr
 theorem noCollRun_simTrace (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     (hnc : ¬ rho.HashCollision) :
     Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by
-  have hocc (B : Blk (S.params (pubOf E) hn)) (hB : (simTrace S rho hn).Occurs B) :
-      B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B) := by
-    obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hf hv hB
-    exact ⟨hp, blockObj _ B, ⟨v, rho.events.length, le_rfl,
-      (rho.point.honestAt_iff_zero hf v _).mpr hv', hb⟩, rfl⟩
-  intro B hB C hC heq
-  simp only [digestOf_eq] at heq
-  simp only [dgOf_eq (n := Fintype.card V) rho.hash S.genesisRoot] at heq
-  rcases hB with rfl | hB <;> rcases hC with rfl | hC
-  · exact ⟨rfl, rfl, rfl, rfl, rfl⟩
-  · obtain ⟨hp, _⟩ := hocc C hC
-    cases hc : C.parent with
-    | none => exact False.elim (hp hc)
-    | some p =>
-      exact False.elim (taggedRoot_ne _ _
-        (by simpa [hc, Params.genesisBlock] using heq.symm))
-  · obtain ⟨hp, _⟩ := hocc B hB
-    cases hb : B.parent with
-    | none => exact False.elim (hp hb)
-    | some p =>
-      exact False.elim (taggedRoot_ne _ _
-        (by simpa [hb, Params.genesisBlock] using heq))
-  · obtain ⟨hpB, hoB⟩ := hocc B hB
-    obtain ⟨hpC, hoC⟩ := hocc C hC
-    obtain ⟨pb, hpb⟩ := Option.ne_none_iff_exists'.mp hpB
-    obtain ⟨pc, hpc⟩ := Option.ne_none_iff_exists'.mp hpC
-    have hh : rho.hash (headerOf (S.params (pubOf E) hn) B) =
-        rho.hash (headerOf (S.params (pubOf E) hn) C) := by
-      have h := congrArg (rawRoot S.genesisRoot) heq
-      simpa [hpb, hpc, headerOf, rawRoot_taggedRoot] using h
-    have he : headerOf (S.params (pubOf E) hn) B = headerOf (S.params (pubOf E) hn) C := by
-      by_contra h
-      exact hnc ⟨_, _, h, hoB, hoC, hh⟩
-    have hpar := congrArg (fun h => parentRoot S.genesisRoot h.parent) he
-    have hslot := congrArg Header.pos he
-    have hin := congrArg Header.input he
-    have hinfo := congrArg (fun h => decodeInfo (Fintype.card V) h.info) he
-    simp only [headerOf, hpb, hpc, parentRoot_parentRef] at hpar
-    simp only [headerOf, decodeInfo_encodeInfo, Option.some.injEq, Prod.mk.injEq] at hinfo
-    exact ⟨by simpa [hpb, hpc] using hpar, hslot, hin, hinfo.1, hinfo.2⟩
+  refine noCollRun_of_observed S rho hn hnc fun B hB => ?_
+  obtain ⟨hp, v, hv', hb⟩ := occurring_in_view S rho hn hf hv hB
+  exact ⟨hp, blockObj _ B, ⟨v, rho.events.length, le_rfl,
+    (rho.point.honestAt_iff_zero hf v _).mpr hv', hb⟩, rfl⟩
 
 variable (V) in
 /-- Collision transport, bundled over all engine runs. -/
@@ -224,32 +169,9 @@ theorem compatible_reads (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVali
       (simTrace S rho hn).HonestBlocks (honestKeys S rho) := fun _ h => ⟨_, hu', _, h⟩
   have hsj : ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn j)).fg.tree ⊆
       (simTrace S rho hn).HonestBlocks (honestKeys S rho) := fun _ h => ⟨_, hv'', _, h⟩
-  have hFi := (Store.cache_invariants _ _ _ _ hri).1
-  have hFj := (Store.cache_invariants _ _ _ _ hrj).1
   rw [read_finalized hs hu hi, read_finalized hs hv' hj]
-  rcases hc with hc | hc
-  · left
-    have ha := anc_in_store hrj hU hsj hc hFj
-    have hm : (simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i) ∈
-        ((simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn j)).fg.tree := by
-      by_cases he : (simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i) =
-          (simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j)
-      · exact he ▸ hFj
-      · exact (Anc.mem ha he).1
-    simp only [RunTrace.finalizedAt]
-    rw [chainTo_agree hri hrj hU hsi hsj hFi hm]
-    exact chainTo_prefix hrj ha
-  · right
-    have ha := anc_in_store hri hU hsi hc hFi
-    have hm : (simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j) ∈
-        ((simTrace S rho hn).state (rho.ownKey u) (cutMap S rho hn i)).fg.tree := by
-      by_cases he : (simTrace S rho hn).finalizedAt (rho.ownKey v) (cutMap S rho hn j) =
-          (simTrace S rho hn).finalizedAt (rho.ownKey u) (cutMap S rho hn i)
-      · exact he ▸ hFi
-      · exact (Anc.mem ha he).1
-    simp only [RunTrace.finalizedAt]
-    rw [chainTo_agree hrj hri hU hsj hsi hFj hm]
-    exact chainTo_prefix hri ha
+  exact chainTo_compatible hri hrj hU hsi hsj (Store.cache_invariants _ _ _ _ hri).1
+    (Store.cache_invariants _ _ _ _ hrj).1 hc
 
 omit [DecidableEq V] in
 /-- CLAIMS G1.5's validator-count step:

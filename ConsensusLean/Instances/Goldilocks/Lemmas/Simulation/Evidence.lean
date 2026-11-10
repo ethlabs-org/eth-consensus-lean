@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 import ConsensusLean.Lemmas.Model.Constant
 
 public section
@@ -20,6 +21,18 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
+/-- Under constant faults every block a public tick of an honest node calls at a positive
+position is released at that event. -/
+private theorem tick_block_releases (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
+    {v : V} (hv' : v ∉ rho.faultyAt 0) {j : Nat} {t : Time}
+    (he : rho.events[j]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
+    ∀ r ∈ eventCuts S rho hn j, ∀ B acc, r.label = .fg (.block B acc) → r.pos ≠ 0 →
+      blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt j := by
+  have hnf := Regimes.non_framing _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hf hv)
+    _ (honest_ownKey (S := S) hv')
+  exact fun r hr => (tick_releases S rho hn hf hv hv' he hp hnf r hr).1
+
 /-- Every called block, accepted or refused, has its canonical object in the final view
 of the honest engine node responsible for the call. -/
 theorem occurring_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
@@ -27,70 +40,13 @@ theorem occurring_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVal
     (hB : (simTrace S rho hn).Occurs B) :
     B.parent ≠ none ∧ ∃ v, v ∉ rho.faultyAt 0 ∧ blockObj (S.params (pubOf E) hn) B ∈
       rho.ViewIdx v rho.events.length := by
-  obtain ⟨y, k, acc, hnode, hlab⟩ := hB
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, _, he, _, _, hidx, hn', _, hpk, hlab'⟩ := simTrace_cut S rho hn hl
-  have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
+  have hhon {i : Nat} {ev} (he : rho.events[i]? = some ev) : ev.node ∉ rho.faultyAt 0 :=
+    (rho.point.honestAt_iff_zero hf ev.node ev.time).mp
+      (hv.honest_only ev (List.mem_of_getElem? he))
+  obtain ⟨hp, i, ev, he, hb⟩ := block_call_in_view_of_releases S rho hn
+    (fun he => tick_block_releases S rho hn hf hv (hhon he) he) hB
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  have hhon := (rho.point.honestAt_iff_zero hf ev.node ev.time).mp
-    (hv.honest_only ev (List.mem_of_getElem? he))
-  cases ev with
-  | tick v t =>
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
-    have hr0 : r.pos ≠ 0 := by
-      intro hr0
-      obtain ⟨_, _, _, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
-      cases h
-    have hnf := Regimes.non_framing _ _ _ _ _ _ (simTrace_goldilocksRun S rho hn hf hv)
-      _ (honest_ownKey (S := S) hhon)
-    have hrel := (tick_releases S rho hn hf hv hhon he hp hnf r hmem).1 B acc hrl hr0
-    refine ⟨?_, v, hhon, rho.mem_viewIdx_iff.mpr
-      ⟨i, _, hi, Or.inl ⟨t, Or.inl he, hrel⟩, .refl _⟩⟩
-    have hy : y ∈ honestKeys S rho := by
-      have : rho.ownKey v = y := hn'.symm.trans hnode
-      rw [← this]
-      exact honest_ownKey (S := S) hhon
-    rcases Compose.blockCall_cases (simTrace_goldilocksRun S rho hn hf hv).toLocalRun hy
-      ⟨hnode, hlab⟩ with hg | ⟨j, x, _, _, _, d, p, _, hB', _⟩
-    · have hpos := (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
-      exact False.elim (hr0 (hpk.symm.trans (by simpa using hpos)))
-    · rw [hB']; simp [mkBlock]
-  | deliver v o t =>
-    rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', ho, hce, kk, hk, hlk, _⟩ :=
-      mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
-    have hcut := hlk.symm.trans hrl
-    have hzero := pos_of_block_cut _ _ _ _ _ (canonEvent_ne_tick hce) hk hcut
-    subst kk
-    have heq : e = .block B := by
-      cases e with
-      | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
-      | block B' =>
-        have hm := List.getElem_mem hk
-        rw [hcut] at hm
-        simp only [exec, onBlock] at hm
-        split_ifs at hm
-        · simp at hm
-        · split at hm <;> simp [acCall] at hm <;> simp_all
-      | message m => simp [exec, onMessage, acCall] at hcut
-      | attestation a => simp [exec, onAttestation] at hcut
-      | restart => simp [exec, Node.restart, acCall] at hcut
-    subst e
-    have ho' := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
-    rw [ho'] at ho
-    exact ⟨(decodeBlock_wire (decodeBlock_of_canonEvent hce)).2.1, v, hhon,
-      rho.mem_viewIdx_iff.mpr ⟨i, o, hi, Or.inr ⟨t, he⟩, contains_of_mem_delivered ho⟩⟩
-  | restart v t =>
-    rw [eventCuts_restart S rho hn i v t he] at hmem
-    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hlk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hlk, hrl] at hcut
-    simp [exec, Node.restart, acCall] at hcut
+  exact ⟨hp, ev.node, hhon he, rho.viewIdx_mono (by omega) _ hb⟩
 
 /-- An accepted block is in its reader's engine view at every subsequent mapped cut. -/
 theorem accepted_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
@@ -98,53 +54,8 @@ theorem accepted_in_view (hf : rho.point.ConstantFaults) (hv : rho.ExecutionVali
     {k i : Nat} {B : Blk (S.params (pubOf E) hn)}
     (hacc : (simTrace S rho hn).AcceptAt (rho.ownKey v) k B)
     (hki : k < cutMap S rho hn i) :
-    blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i := by
-  obtain ⟨hnode, hlab⟩ := hacc
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, j, ev, _, he, hjk, _, hidx, hn', _, _, hlab'⟩ := simTrace_cut S rho hn hl
-  have hji : j < i := by
-    by_contra h
-    have := cutMap_mono S rho hn (not_lt.1 h)
-    omega
-  have hrl : r.label = .fg (.block B true) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  have hkey : ev.node = v := rho.key.symm.injective (hn'.symm.trans hnode)
-  have hrun := simTrace_goldilocksRun S rho hn hf hv
-  cases ev with
-  | tick w t =>
-    change w = v at hkey
-    subst w
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn j v t he hp] at hmem
-      simp at hmem
-    have hr0 : r.pos ≠ 0 := by
-      intro hr0
-      obtain ⟨_, _, _, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
-      cases h
-    have hnf := Regimes.non_framing _ _ _ _ _ _ hrun _ (honest_ownKey (S := S) hv')
-    have hrel := (tick_releases S rho hn hf hv hv' he hp hnf r hmem).1 B true hrl hr0
-    exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inl he, hrel⟩, .refl _⟩
-  | deliver w o t =>
-    change w = v at hkey
-    subst w
-    rw [eventCuts_deliver S rho hn j v o t he] at hmem
-    have hnow := (now_eq_lastClock S rho hn hv v j).trans (lastClock_deliver S rho hv he)
-    have hq := ((process_relay (runProposer S rho hn)
-      (digestOf S rho) (Model.digests rho.hash o) t j
-      (delivered (S.params (pubOf E) hn) o) (stateAt S rho hn v j) 0 hnow).2.2.2 r
-      (by rw [self_eq_ownKey]; exact hmem)).1 B hrl
-    obtain ⟨cs, hx, hrel⟩ := deliver_relays S rho hn he hq
-    exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inr ⟨o, he⟩, hrel⟩,
-      .step hx (.refl _)⟩
-  | restart w t =>
-    exfalso
-    rw [eventCuts_restart S rho hn j w t he] at hmem
-    obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hlabk, hrl] at hcut
-    simp [exec, Node.restart, acCall] at hcut
+    blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i :=
+  accepted_in_view_of_releases S rho hn hv (tick_block_releases S rho hn hf hv hv') hacc hki
 
 /-- CLAIMS R.8/F.2 and Refinement G1.5: every held non-genesis block was accepted earlier;
 `accepted_in_view` retains the engine event index needed to put it in this reader's view.
