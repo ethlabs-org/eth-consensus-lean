@@ -794,6 +794,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalHealHorizon
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalResetPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowAssembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowBase
