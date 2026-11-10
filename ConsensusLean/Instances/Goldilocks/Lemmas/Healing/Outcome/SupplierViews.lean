@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ParentStop
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SuffixTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
@@ -244,32 +245,12 @@ theorem reset_suffix_best
   have hr := (healthy_base_of_reset_catch hp hc).run.localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   obtain ⟨-, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
-    hPv.1.1 hg hgi hgj
-  have hQP : Anc (tr.HonestBlocks H) d.head P :=
-    .single ⟨hPhiU hQt, hPsiU hPv.1.1, hPQ⟩
-  have hXC : Anc (tr.HonestBlocks H) X C :=
-    .single ⟨hPhiU (SA.mem_of_anc hXQ hQt), hPhiU hC.1.1.1, hC.1.2.1⟩
-  have hCy := reset_winner_voter_tree hp hy hcy hes hPv
-    ((hCQ.mono hPhiU).trans hQP) (haX.trans hXC)
-  have hCs : C.slot < s + 1 := by
-    have h1 := (Anc.slot_le hPhi.coherent hCQ).1
-    have h2 := hr.coherent.2 d.head (hPhiU hQt) P (hPsiU hPv.1.1) hPQ
-    have hPs := hP.2.2.2.2.1
-    omega
-  have hslot : sp.slot (tr.time i) = s + 1 := by
-    rw [hti]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  apply SA.isBest_transfer hXv (by omega) hvot ?_ (fun B hB => hB.1)
-    (fun B hB => hB.1.1) hCy ?_ hC
-  · intro B hBp hBy
-    simp only [SA.goldfishScore, heq, hsup B hBp hBy]
-  · intro B hB hBX
-    have hBP : B ≠ P := by
-      rintro rfl
-      exact hne (hr.coherent.1 (hPhiU (SA.mem_of_anc hXQ hQt)) (hPhiU hQt)
-        (Option.some_injective _ (hBX.symm.trans hPQ)))
-    exact reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hBP hXv hBX hB
+  exact suffix_best_of_views hr.coherent hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
+    (reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes hPv.1.1 hg hgi hgj)
+    hQt hPQ hP.2.2.2.2.1 hPv.1.1 hXQ hne hXv hCQ
+    (fun hCP hXC => reset_winner_voter_tree hp hy hcy hes hPv hCP (haX.trans hXC))
+    (fun B hB hBP hBX => reset_competitor_reflect hp hc hP hci hti hy hcy hgi hQt hPQ hXQ hBP
+      hXv hBX hB) hC
 
 /-- Finite best-child transfer along the proposal-parent suffix. -/
 theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
@@ -308,32 +289,13 @@ theorem ResetPremisesUpTo.reset_suffix_best {b : Time}
   have hr := (healthy_base_of_reset_catch_before hp hc).run.localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   obtain ⟨_, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree hc hpH hdesignated hactual hPs
-    hci hcall hd hti hpay hy hcy hes hib hjb hPv.1.1 hg hgi hgj hjoi hjoj
-  have hQP : Anc (tr.HonestBlocks H) d.head P :=
-    .single ⟨hPhiU hQt, hPsiU hPv.1.1, hPQ⟩
-  have hXC : Anc (tr.HonestBlocks H) X C :=
-    .single ⟨hPhiU (SA.mem_of_anc hXQ hQt), hPhiU hC.1.1.1, hC.1.2.1⟩
-  have hCy := hp.reset_winner_voter_tree hy hcy hes hPv
-    ((hCQ.mono hPhiU).trans hQP) (haX.trans hXC)
-  have hCs : C.slot < s + 1 := by
-    have h1 := (Anc.slot_le hPhi.coherent hCQ).1
-    have h2 := hr.coherent.2 d.head (hPhiU hQt) P (hPsiU hPv.1.1) hPQ
-    omega
-  have hslot : sp.slot (tr.time i) = s + 1 := by
-    rw [hti]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  apply SA.isBest_transfer hXv (by omega) hvot ?_ (fun B hB => hB.1)
-    (fun B hB => hB.1.1) hCy ?_ hC
-  · intro B hBp hBy
-    simp only [SA.goldfishScore, heq, hsup B hBp hBy]
-  · intro B hB hBX
-    have hBP : B ≠ P := by
-      rintro rfl
-      exact hne (hr.coherent.1 (hPhiU (SA.mem_of_anc hXQ hQt)) (hPhiU hQt)
-        (Option.some_injective _ (hBX.symm.trans hPQ)))
-    exact hp.reset_competitor_reflect hc hpH hdesignated hactual hPs hci hti hy hcy
-      hib hgi hjoi hQt hPQ hXQ hBP hXv hBX hB
+  exact suffix_best_of_views hr.coherent hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
+    (hp.reset_views_agree hc hpH hdesignated hactual hPs hci hcall hd hti hpay hy hcy hes hib
+      hjb hPv.1.1 hg hgi hgj hjoi hjoj)
+    hQt hPQ hPs hPv.1.1 hXQ hne hXv hCQ
+    (fun hCP hXC => hp.reset_winner_voter_tree hy hcy hes hPv hCP (haX.trans hXC))
+    (fun B hB hBP hBX => hp.reset_competitor_reflect hc hpH hdesignated hactual hPs hci hti hy
+      hcy hib hgi hjoi hQt hPQ hXQ hBP hXv hBX hB) hC
 
 /-- Once the proposal parent is viable in both frames, an old child cannot become eligible
 at the voter: guarded view agreement preserves its lack of a strict majority. -/
