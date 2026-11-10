@@ -236,6 +236,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Agreement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Entries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.QuorumFreeCounterexample
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Service
