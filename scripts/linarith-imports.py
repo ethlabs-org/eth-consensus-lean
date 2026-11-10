@@ -64,15 +64,17 @@ HEADER_STEPS = {
 
 def header(code):
     """The header's imported modules and the line of its last token, read from the
-    comment-stripped code: an optional leading `module`, then `[public] [meta] import [all] M`
-    commands, tokens separated by any whitespace (newlines included). The line is None without a
-    header, or when other code shares the line of the header's last token (a new line after it
-    would move that code)."""
+    comment-stripped code by Lean's header grammar `[module] [prelude] import*`, each import a
+    `[public] [meta] import [all] M` command, tokens separated by any whitespace (newlines
+    included). The line is None without a header, or when other code shares the line of the
+    header's last token (a new line after it would move that code)."""
     imports, last, line, pos, state, start = [], None, 0, 0, "command", None
-    for k, match in enumerate(TOKEN.finditer(code)):  # stops at the first token after the header
+    opening = ["module", "prelude"]  # the keywords that may still come before the imports, in order
+    for match in TOKEN.finditer(code):  # stops at the first token after the header
         line += code.count("\n", pos, match.start())
         pos, word = match.start(), match.group()
-        if k == 0 and word == "module":
+        if word in opening and state == "command" and not imports:
+            opening = opening[opening.index(word) + 1:]
             last = line
         elif word in HEADER_STEPS[state]:
             start = line if state == "command" else start
