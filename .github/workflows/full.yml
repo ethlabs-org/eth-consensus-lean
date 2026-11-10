@@ -161,7 +161,7 @@ jobs:
                   shared = (number == '0' and 'self-test' in s['step'] and
                             not s['step'].startswith('0 pins') and
                             s['reason'] == 'shared self-test owned by split main')
-                  other = (number in {'1', '1b', '2', '3', '3b', '3c', '4', '5', '6', '7', '8', '9', '11', '12', '13', '14'} and
+                  other = (number in {'1', '1b', '2', '2b', '3', '3b', '3c', '4', '5', '6', '7', '8', '9', '11', '12', '13', '14'} and
                            s['reason'] == 'the other --split part')
                   assert shared or other, f'unexpected skipped gate: {s}'
           PY
