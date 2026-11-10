@@ -17,6 +17,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedSafetyConditional
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -175,40 +176,19 @@ theorem healthy_repair_schedule_of_reset_at
       D.resetTime = a ∧ D.deltaF = ΔF ∧
       D.query = max Q.ready (Healing.drainTime Q.params a) ∧
       D.oldLabel = Q.params.slot a + 2 * Q.params.k + 4 := by
-  have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S A
-  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hduration : 18 * Q.params.Δ + 1 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run := by
-    simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
-    change 18 * Q.run.1.ΔAC + 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-    linarith [mul_le_mul_of_nonneg_right hc (by linarith : (0 : Time) ≤ Q.run.1.ΔAC)]
-  have hΔ := Q.params.toParams.hΔ
-  have hready : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.ready := by
-    change max Q.gst 0 + 4 * Q.params.Δ ≤
-      max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
-    linarith
-  have hzero : 0 ≤ Q.ready := by
-    change 0 ≤ max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
-    linarith [le_max_right Q.gst 0]
-  have hold : Q.params.ts (Q.params.slot a + 2 * Q.params.k + 4 : Nat) ≤
-      Healing.drainTime Q.params a := by
-    rw [Healing.drainTime_eq]
-    exact (SA.ts_le_iff Q.params).mpr (by omega)
-  refine ⟨{
+  obtain ⟨hdur, hlower⟩ := healthy_repair_lower S A V Q.run Q.hn Q.gst a
+  exact ⟨{
     resetTime := a
     deltaF := ΔF
     reset := hreset
     cleanLabel := Healing.cleanLabel Q.params a
     cleanLabel_eq := rfl
-    duration_bound := by linarith
+    duration_bound := hdur
     oldLabel := Q.params.slot a + 2 * Q.params.k + 4
     old_bound := by rw [Healing.cleanLabel_eq]; omega
     query := max Q.ready (Healing.drainTime Q.params a)
-    lower := ?_
+    lower := hlower
     reserve := hreserve }, rfl, rfl, rfl, rfl⟩
-  exact max_le (le_max_left _ _) (max_le (le_max_right _ _)
-    (max_le (hold.trans (le_max_right _ _))
-      (max_le (hready.trans (le_max_left _ _)) (hzero.trans (le_max_left _ _)))))
 
 /-- A preparation schedule for the same query supplies a repair schedule with the very same
 reset time, service delay and query, without a base-slot comparison. -/
@@ -246,22 +226,8 @@ theorem healthy_receiver_repair_of_opening_at (Q : HealthyPreparationQueryAt S A
     (hc : Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ)) :
     HealthyReceiverRepairAt S A V Q D O := by
   rw [healthyReceiverRepairAt_iff]
-  have hd := Q.params.toParams.hΔ
-  have hTb : Q.params.ts O.slot + 6 * Q.params.Δ ≤ Q.bound := by
-    linarith [O.bounded, D.reserve]
-  have hR : Healing.drainTime Q.params D.resetTime ≤ Q.params.ts O.slot := by
-    have := (le_max_left _ _).trans ((le_max_right _ _).trans D.lower)
-    exact this.trans O.fresh.le
-  have hgu : SA.gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts O.slot := by
-    have := (le_max_left _ _).trans ((le_max_right _ _).trans
-      ((le_max_right _ _).trans ((le_max_right _ _).trans D.lower)))
-    exact this.trans O.fresh.le
-  have hjoin : Q.params.ts (Q.params.slot (SA.gbar Q.gst) + 1 : Nat) ≤ Q.params.ts O.slot := by
-    have hbase := (SA.ts_le_iff_le_slot Q.params (SA.gbar_nonneg Q.gst)
-      (Q.params.slot (SA.gbar Q.gst))).mpr le_rfl
-    simp only [SA.SAParams.ts] at hbase hgu ⊢
-    push_cast at hbase hgu ⊢
-    linarith
+  obtain ⟨hTb, hR, hgu, hjoin⟩ :=
+    healthy_opening_timing D.lower O.fresh O.bounded D.reserve hb
   intro y hy
   obtain ⟨j, ell, _, hu, _⟩ := D.reset.update_toFG_calls_at hy.1 hjoin hTb
   have ht : Q.trace.time j = Q.params.ts O.slot + 6 * Q.params.Δ := hu.2.2.1
