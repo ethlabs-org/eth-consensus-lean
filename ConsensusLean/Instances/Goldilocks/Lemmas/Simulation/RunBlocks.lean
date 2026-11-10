@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
 import ConsensusLean.Lemmas.Model.Constant
 
@@ -39,76 +40,13 @@ private theorem block_payload_source (hf : rho.point.ConstantFaults) (hv : rho.E
     {B : Blk (S.params (pubOf E) hn)} (hc : (simTrace S rho hn).BlockCallAt y k B)
     {o : Wire (Fintype.card V)} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
     {u : V} (hu : u ∉ rho.faultyAt 0) (hsign : rho.signerOf o = some u) :
-    ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i := by
-  obtain ⟨acc, hnode, hlab⟩ := hc
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ := simTrace_cut S rho hn hl
-  have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
-  have hmem := List.mem_of_getElem? hidx
-  have hbefore : ∀ j < i, cutMap S rho hn (j + 1) ≤ k := by
-    intro j hj
-    exact (cutMap_mono S rho hn (show j + 1 ≤ i by omega)).trans hstart
-  cases ev with
-  | tick v t =>
-    have hv' : v ∉ rho.faultyAt 0 := by
+    ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i :=
+  block_payload_source_of S rho hn hv (fun {i v t} he => preNode_releasable S rho hn hf hv
+    (by
       have hh := hv.honest_only _ (List.mem_of_getElem? he)
       change v ∉ rho.faultyAt t at hh
-      simpa only [rho.faultyAt_eq_zero hf] using hh
-    have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
-      by_contra hp
-      rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
-    rw [eventCuts_tick_public S rho hn i v t he hp] at hmem
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hc⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hc, hrl] at hcut
-    obtain ⟨N4, N5, Q, R4, F, G, _, _, _, _, _, _, _, hR4, hcar, _⟩ :=
-      tick_public_analysis S rho hn hv hv' he hp (preNode_releasable S rho hn hf hv hv' he)
-    have hB : blockObj (S.params (pubOf E) hn) B ∈ R4 := by
-      rw [hR4]; exact mem_blockObjs.mpr ⟨B, acc, hcut, rfl⟩
-    have ho' := hcar _ hB o ho
-    have hnil := outbox_empty S rho hn hv v i
-    have hrel : relHead S rho v (rho.stateBefore i v).seen
-        (stateAt S rho hn v i).outbox.head? = [] := by
-      apply List.eq_nil_iff_forall_not_mem.mpr
-      intro x hx
-      obtain ⟨b, hb, _⟩ := mem_relHead S rho hx
-      simp [hnil] at hb
-    rw [hrel, List.append_nil] at ho'
-    obtain ⟨j, hj, t', hs, hr⟩ := rho.signed_seen_released hv
-      (Nat.le_of_lt (List.getElem?_eq_some_iff.mp he).1) ho'
-      (by simpa only [rho.faultyAt_eq_zero hf] using hu) hsign
-    exact ⟨j, t', hbefore j hj, hs, hr⟩
-  | deliver v x t =>
-    rw [eventCuts_deliver S rho hn i v x t he] at hmem
-    obtain ⟨x', e, st', hx, hce, m, hm, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
-    have hcut := List.getElem_mem hm
-    rw [← hc, hrl] at hcut
-    have heq : e = .block B := by
-      cases e with
-      | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
-      | block B' =>
-        simp only [exec, onBlock] at hcut
-        split_ifs at hcut
-        · simp at hcut
-        · split at hcut <;> simp [acCall] at hcut <;> simp_all
-      | message => simp [exec, onMessage, acCall] at hcut
-      | attestation => simp [exec, onAttestation] at hcut
-      | restart => simp [exec, Node.restart, acCall] at hcut
-    subst e
-    obtain rfl := eq_blockObj_of_decodeBlock (decodeBlock_of_canonEvent hce)
-    have hcontains := (contains_of_mem_delivered hx).trans (Model.Obj.Contains.step ho (.refl o))
-    obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v x t he o hcontains u hsign
-      (by simpa only [rho.faultyAt_eq_zero hf] using hu)
-    exact ⟨j, t', hbefore j hj, hs, hr⟩
-  | restart v t =>
-    rw [eventCuts_restart S rho hn i v t he] at hmem
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmem
-    obtain ⟨_, _, _, _, hc⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-    have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
-    rw [← hc, hrl] at hcut
-    simp [exec, Node.restart, acCall] at hcut
+      simpa only [rho.faultyAt_eq_zero hf] using hh) he)
+    hc ho (by simpa only [rho.faultyAt_eq_zero hf] using hu) hsign
 
 /-- Honest carried votes originate in earlier canonical emission cuts. -/
 theorem simTrace_carried_vote_unforgeable (hf : rho.point.ConstantFaults)
