@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.RegularBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalPath
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 
@@ -246,49 +247,12 @@ theorem FrameWindow.vote_head_eq_of_start_prefix {s₀ s floor : Nat}
   have hr := hS.run.localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hPhip := SA.frameIn_of_callAt hr hz hcp
-  obtain ⟨hst, _, hw⟩ := proposal_walk_end hrun hnc hz hcp hpay
-  have hstartQ := hw.anc (fun X hX => hX.1) hst
-  have hQt : d.head ∈ ellp.frame.tree := by
-    rcases eq_or_ne d.start d.head with he | he
-    · exact he ▸ hst
-    · exact (Anc.mem hstartQ he).2
-  have hQP : Anc (tr.HonestBlocks H) d.head P :=
-    .single ⟨hPhip.2 hQt, hPhi.2 hPv.1.1, hparent⟩
-  let A := SA.getAnchor sp e.readPoint ell.frame (tr.time i)
-  have hAt : A ∈ ell.frame.tree := by
-    by_cases he : ell.frame.fcRoot = A
-    · exact he ▸ hPhi.1.fcRoot_mem
-    · exact (Anc.mem (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
-  by_cases he : A = P
+  rcases anchor_on_proposal_path hr.coherent hPhip.1 hPhip.2 hPhi.1 hPhi.2
+      (proposal_walk_end hrun hnc hz hcp hpay) hPv.1.1 hparent haP hprefix with
+    he | ⟨X, hSX, hXQ, haX, hXE⟩
   · exact vote_head_eq_of_anchor_eq hrun hnc hy hc (hPs.trans hes.symm) hPv.1.1 he
-  have hAQ : Anc (tr.HonestBlocks H) A d.head := by
-    rcases Relation.ReflTransGen.cases_tail haP with heq | ⟨Y, hAY, hYP⟩
-    · exact (he heq.symm).elim
-    have hYQ : Y = d.head := hr.coherent.1 hYP.1 (hPhip.2 hQt)
-      (Option.some.inj (hYP.2.2.symm.trans hparent))
-    exact hYQ ▸ hAY
-  rcases Anc.total hr.coherent hAQ (Anc.mono hPhip.2 hstartQ) with hAS | hSA
-  · have hSt := SA.frame_mem_of_between sp hr.coherent hPhi.1 hPhi.2 hPv.1.1
-      ((Anc.mono hPhip.2 hstartQ).trans hQP)
-      ((Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans
-        (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)))).trans hAS)
-    have hASf := SA.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hAt hAS hSt
-    exact hframe.vote_head_eq_of_path hrun hnc hS hnr hf hm hs₀ hz hdesignated hactual
-      hPs hpH hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
-      .refl hstartQ hASf (hprefix hASf)
-  · have hApt := SA.frame_mem_of_between sp hr.coherent hPhip.1 hPhip.2 hQt hAQ
-      (Anc.mono hPhip.2 (hPhip.1.F_anc_fcRoot.trans
-        (proposal_walk_end hrun hnc hz hcp hpay).2.1) |>.trans hSA)
-    have hSAf := SA.anc_tree_of_anc_U hr.coherent hPhip.1 hPhip.2 hst hSA hApt
-    have hAQf := SA.anc_tree_of_anc_U hr.coherent hPhip.1 hPhip.2 hApt hAQ hQt
-    have hAE : ell.frame.Anc A (SA.getHead sp e.readPoint ell.frame (tr.time i)
-        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
-        (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-      unfold SA.getHead
-      exact SA.anc_ghost (fun X hX => hX.1.1) _ hAt
-    exact hframe.vote_head_eq_of_path hrun hnc hS hnr hf hm hs₀ hz hdesignated hactual
-      hPs hpH hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
-      hSAf hAQf .refl hAE
+  · exact hframe.vote_head_eq_of_path hrun hnc hS hnr hf hm hs₀ hz hdesignated hactual
+      hPs hpH hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv hSX hXQ haX hXE
 
 /-- A voter below another honest fcRoot reaches it. In kind J the roots
 agree; otherwise V forces the prefix to the other finalized block. -/
