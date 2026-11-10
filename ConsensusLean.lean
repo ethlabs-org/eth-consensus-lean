@@ -837,6 +837,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OperationalP
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageBridge
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Arming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageLockSafety.Count

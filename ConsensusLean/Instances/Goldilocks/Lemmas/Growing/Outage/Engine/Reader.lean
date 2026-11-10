@@ -14,6 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Step
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageReaderGate
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
@@ -69,15 +70,6 @@ structure OutageReaderGateAt (Q : OutageQueryAt S A V) (w : V) (t : Time) where
       (Node.frame (Q.trace.state (Q.run.2.ownKey w)
         (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)))) t).2 = ((slot + 1 : Nat) : Int)
 
-/-- The outage's end is not before `0`. -/
-private theorem stop_nonneg (Q : OutageQueryAt S A V) : 0 ≤ Q.stop := by
-  obtain ⟨⟨hT, hlag, h01, -⟩, -⟩ := Q.outage
-  have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.ΔAC := by
-    have := Q.run.1.ΔAC_pos; positivity
-  change Q.T + _ * Q.run.1.ΔAC ≤ Q.start at hlag
-  change Q.start ≤ Q.stop at h01
-  linarith
-
 /-- The query's catch-up duration is not negative. -/
 private theorem duration_nonneg (Q : OutageQueryAt S A V) : 0 ≤ Q.duration :=
   ((by unfold Regimes.catchUp; have := Q.params.toParams.hΔ; positivity :
@@ -123,31 +115,17 @@ theorem outage_reader_gate_at (Q : OutageQueryAt S A V) {t : Time}
     change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
-  have hb₁ := stop_nonneg Q
+  have hb₁ := outage_stop_nonneg Q.outage
   have hdur := outage_duration_supply_at Q
   have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hts (n : Int) : sp.ts n = 4 * sp.Δ * n := rfl
   have ht0 : 0 ≤ t := by linarith
   -- E0: the reader is ready on the node trace, honest at `t`
   have hR := ready_transport_at S Q.run.2 Q.hn Q.valid ht0 hth hw
   have hy : y ∈ Q.keys t := hR.1
   -- E1: the latest gate `s = slot(t − 6Δ)`
-  have h6 : 0 ≤ t - 6 * sp.Δ := by linarith
-  obtain ⟨s, hs⟩ : ∃ s, s = sp.slot (t - 6 * sp.Δ) := ⟨_, rfl⟩
-  have hs₁ : 4 * sp.Δ * s ≤ t - 6 * sp.Δ := by
-    have := (SA.ts_le_iff_le_slot sp h6 (s : Int)).2 (by rw [hs])
-    simpa only [SA.SAParams.ts] using this
-  have hs₂ : t - 6 * sp.Δ < 4 * sp.Δ * s + 4 * sp.Δ := by
-    by_contra hh
-    have := (SA.ts_le_iff_le_slot sp h6 ((s : Int) + 1)).1 (by
-      simp only [SA.SAParams.ts]; linarith)
-    omega
-  have hs0 : (0 : Time) ≤ 4 * sp.Δ * s := by positivity
-  have hrestored : Q.stop ≤ sp.ts s + sp.Δ := by
-    simp only [SA.SAParams.ts]
-    by_contra hh
-    linarith
+  obtain ⟨s, hrestored, hgate, hnext⟩ := outage_latest_gate sp hb₁ hrec
+  obtain ⟨hslu, hle⟩ := outage_gate_restarts sp hgate hnext
   -- E2: the gate tick at `u = t_s + 6Δ ≤ t`, an update of slot `s` by the reader honest then
   set u := sp.ts s + 6 * sp.Δ with hu_def
   have hu : u = 4 * sp.Δ * s + 6 * sp.Δ := rfl
@@ -190,44 +168,12 @@ theorem outage_reader_gate_at (Q : OutageQueryAt S A V) {t : Time}
   have hJt := joined_of_ready Q hy ht0 (by rw [hcu] at hdur; linarith) hR.2
   have hJt' := restarts_of_joined Q hy ht0 hJt
   have hJu' := restarts_of_joined Q hyu hu0 hJu
-  have hslt : (sp.slot t : Int) ≤ s + 2 := by
-    by_contra hh
-    have := (SA.ts_le_iff_le_slot sp ht0 ((s : Int) + 3)).2 (by omega)
-    simp only [SA.SAParams.ts] at this
-    linarith
-  have hslu : sp.slot u = s + 1 :=
-    SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      (by simp only [SA.SAParams.ts]; push_cast; linarith)
-  have hrestarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts s := by
-    intro k hk hkt
-    have h₁ := hJt' k hk hkt
-    simp only [SA.SAParams.ts] at h₁
-    have h₂ : 4 * sp.Δ * ((sp.slot t : Int) - 1) ≤ 4 * sp.Δ * ((s : Int) + 1) :=
-      mul_le_mul_of_nonneg_left (show (sp.slot t : Int) - 1 ≤ (s : Int) + 1 by omega)
-        (by linarith)
-    have h₃ := hJu' k hk (by rw [hu]; linarith)
-    rw [hslu, show (((s + 1 : Nat) : Int) - 1) = s by push_cast; ring] at h₃
-    exact h₃
+  have hrestarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts s :=
+    fun k hk hkt => (hJu' k hk ((hJt' k hk hkt).trans hle)).trans_eq hslu
   -- E4: the latest view at `t` has label `s + 1`
-  have hview : (SA.latestView sp (tr.state y j).ac (Node.frame (tr.state y j)) t).2 =
-      ((s + 1 : Nat) : Int) := by
-    unfold SA.latestView
-    dsimp only
-    by_cases hlt : t < 4 * sp.Δ * s + 8 * sp.Δ
-    · have hsl : sp.slot t = s + 1 :=
-        SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-          (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      split_ifs with hc
-      · rw [hsl]
-      · exfalso; apply hc; rw [hsl]; simp only [SA.SAParams.ts]; push_cast; linarith
-    · have hsl : sp.slot t = s + 2 :=
-        SA.slot_of_mem sp (s + 2) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-          (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      split_ifs with hc
-      · exfalso; rw [hsl] at hc; simp only [SA.SAParams.ts] at hc; push_cast at hc; linarith
-      · rw [hsl]; omega
-  exact ⟨⟨s, hrestored, by simp only [SA.SAParams.ts]; linarith,
-    by simp only [SA.SAParams.ts]; linarith, c₁, ℓ₁, hupd, hc₁j, hrestarts, hread, hview⟩⟩
+  have hview :=
+    latestView_label_of_gate sp (tr.state y j).ac (Node.frame (tr.state y j)) hgate hnext
+  exact ⟨⟨s, hrestored, hgate, hnext, c₁, ℓ₁, hupd, hc₁j, hrestarts, hread, hview⟩⟩
 
 /-- The engine cut at the end of `t ≥ 0` is at a time `≤ t`. -/
 private theorem cutTime_endCut_le (Q : OutageQueryAt S A V) {t : Time} (ht : 0 ≤ t) :
@@ -333,7 +279,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
     change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
-  have ht0 : 0 ≤ t := by linarith [stop_nonneg Q, Q.run.1.ΔAC_pos]
+  have ht0 : 0 ≤ t := by linarith [outage_stop_nonneg Q.outage, Q.run.1.ΔAC_pos]
   have hŵ : Q.run.2.ownKey w ∈ Q.keys t := honest_ownKey_at S Q.run.2 hw.1 hth
   have hS := outage_receiver_service_at Q (Q.run.2.ownKey w)
   have hspec := restoredLabel_spec Q
