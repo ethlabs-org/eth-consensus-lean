@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LocalSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
@@ -47,68 +48,28 @@ theorem high_J_root_of_held_at_call_before_at (hp : ResetPremisesUpTo tr H propo
     Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  rw [Outcome.frame_of_call hrun hy hc]
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hk0 := hrun.time_nonneg k
   have hlek : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hreach := fg_reachable_at hrun hk0 hlek hy
-  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
-    fun X hX => ⟨y, k, tr.time k, hk0, hlek, hy, hX⟩
   have hgB := ((Store.accepted_tree _ _ _ _ (fg_reachable_at hrun hi0 hlei hx)).2.2.2 B hBx).mono
     (fun X hX => (⟨x, i, tr.time i, hi0, hlei, hx, hX⟩ : X ∈ tr.HonestBlocksAt H))
-  have hrow : ∀ E ∈ (tr.state y k).fg.tree,
-      HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
-      ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocksAt H) E B →
-      ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
-        att.val ∉ H (tr.time k) := by
-    intro E hE hEh _ hncE W hW att ha haT haH
-    have he := Trace.upTo_state tr y hlek
-    have hW' : W ∈ ((tr.upTo (tr.time k)).state y k).fg.tree := by rwa [he]
-    rcases Healing.tree_accepted (hrun.upTo hk0).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
-    · cases ha
-    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
-    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
-      (hrun.antitone (hlek i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
-      (hrun.antitone (hlek i' hi') haH)
-    have hdk : d < k := hdi.trans hi'
-    have hv := hrun.antitone (hlek d hdk) haH
-    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
-      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
-    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
-    rw [he'] at hE' hE'h
-    have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
-      fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
-        fun q hq => hrun.time_mono hq.le, hv, h⟩
-    obtain rfl : E' = E := hU.1 (hsub' hE') (hsub hE) (hE'r.trans haT)
-    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
-      (fun q hq => hrun.time_mono hq.le) hv hk0 hlek hy hE' hE
-    obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-      Outcome.high_row_source_at hrun hnc hv hs (by rw [← hE'h, hσ]; exact hEh)
-    have hsub₀ : (tr.state att.val r).fg.tree ⊆ tr.HonestBlocksAt H :=
-      fun _ h => ⟨att.val, r, tr.time r, hrun.time_nonneg r,
-        fun q hq => hrun.time_mono hq.le, ho.1, h⟩
-    obtain rfl : E₀ = E' := hU.1 (hsub₀ hE₀) (hsub' hE') (hE₀r.trans hE'r.symm)
-    have hEO : Anc (tr.HonestBlocksAt H) E₀ O := hE₀O.mono hsub₀
-    rcases hcompare _ r l O (by clear * - hi' hrd hdi; omega) ho with hBO | hOB
-    · exact hncE (SA.anc_total hU hEO hBO)
-    · exact hncE (Or.inl (hEO.trans hOB))
   have hq : (H (tr.time k))ᶜ.ncard < sp.toParams.fg.q := by
     have hf := hp.faults (tr.time k) hk0 hkb
     have hn := sp.toParams.hn
     change 3 * (H (tr.time k))ᶜ.ncard ≤ sp.toParams.n - 1 at hf
     change (H (tr.time k))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
     clear * - hn hf; omega
-  have hJ := Store.J_compatible_of_rows hreach hq hU hsub hgB hrow hhigh
-  have hF : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F B := by
-    obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
-    rcases hJ with hJB | hBJ
-    · exact Or.inl ((hFJ.mono hsub).trans hJB)
-    · exact SA.anc_total hU (hFJ.mono hsub) hBJ
-  change Compatible _ (tr.state y k).fg.fcRoot B
-  unfold Store.fcRoot
-  split_ifs <;> assumption
+  exact LocalSources.high_frame_root_before (goldilocksNode sp ro).genesisPayload
+    (fun v i => (tr.state v i).fg) tr.time H tr.SignAt (HighOrigin tr H g) tr.JoinedAt
+    (tr.HonestBlocksAt H) (HZ tr H g) b hU hrun.time_mono
+    (fun v i hv _ X hX => ⟨v, i, tr.time i, hrun.time_nonneg i,
+      fun q hq => hrun.time_mono hq.le, hv, hX⟩)
+    (Outcome.local_observations hrun hnc _ b) (Outcome.local_sources hrun hnc g b)
+    y k B ell.frame hy hkb hreach hgB hq hhigh
+    (fun v r l O hrk _ ho => hcompare v r l O hrk ho) (Outcome.frame_of_call hrun hy hc)
 
 /-- A call of a node honest at it, with a low justified height and a held high seed, has its
 finalized-chain root compatible with every held block compatible with the seed. -/
