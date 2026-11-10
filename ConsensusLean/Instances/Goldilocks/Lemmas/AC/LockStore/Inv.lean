@@ -44,7 +44,7 @@ open Classical in
 /-- **New locks below a new record.** The record moves to `C` (unless `C` is below it), and the
 stored locks become the live locks of the old ones with new ones on ancestors of `C`; when `C` is
 in the tree and conflicts with no live lock, the invariant holds after. -/
-private theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
     {N : Set (Nat × Bool × Nat)} {C : Blk sp.n FGP} (hC : C ∈ Φ.tree)
     (hconf : ¬ conflictsWithLock sp A.locks Φ t C)
