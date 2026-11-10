@@ -899,6 +899,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacem
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowSeed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowUnanimous
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
@@ -922,6 +923,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationPr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PublicationQueue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.QueuePool
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReadTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReceiptTraversal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
