@@ -77,7 +77,11 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Instances.Goldilock
          "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.FG",
          "Instances.Goldilocks.Milestones.Spec.Frame", "Instances.Goldilocks.Milestones.Spec.Trace",
          "Instances.Goldilocks.Milestones.Spec.FGStore", "Instances.Goldilocks.Milestones.Spec.AC",
-         "Instances.Goldilocks.Milestones.Spec.Node"]
+         "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
+         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Statements.Compose"]
 about = "untrusted instance-side node engine; outside Blocks/FG"
 
 [[layer]]
@@ -1086,6 +1090,11 @@ about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index
 # those reach, through their own exceptions too; it does not extend to the importers of the `from` modules.
 # None may start in a
 # trusted layer, and every `from` and `to` entry must be used (a fixed deviation must be removed).
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine.Regression"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs"]
+reason = "A0b concrete canonical regression contracts name the unchanged old growing trace; generic engine leaves may not import these proofs"
 
 # Settings of scripts/check.sh (check-boundaries.py reads only proofs_component_prefixes and trusted_paths).
 [checks]

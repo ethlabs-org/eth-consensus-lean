@@ -765,3 +765,51 @@ prefixes = ["Fx.NodeEngine.Spec", "Fx.NodeEngine.Statements"]
 expose = true
 allow = ["Init", "ToMathlib", "Spec"]
 [[exception]]''']]
+
+# A0b permits one concrete regression leaf to name an old proof-side trace, not its siblings.
+[NodeEngineRegressionAllowed]
+files."Fx/NodeEngine/Regression.lean" = "module\npublic import Fx.Lemmas.L\npublic def regression : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.NodeEngine.Regression"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+[[exception]]
+from = ["Fx.NodeEngine.Regression"]
+to = ["Fx.Lemmas.L"]
+reason = "concrete regression leaf only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "NodeEngine"]']]
+
+[NodeEngineRegressionSiblingRejected]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.NodeEngine.Generic (layer NodeEngine)"
+files."Fx/NodeEngine/Regression.lean" = "module\npublic import Fx.Lemmas.L\npublic def regression : Prop := True\n"
+files."Fx/NodeEngine/Generic.lean" = "module\npublic import Fx.Lemmas.L\npublic def generic : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.NodeEngine.Regression\npublic import Fx.NodeEngine.Generic"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+[[exception]]
+from = ["Fx.NodeEngine.Regression"]
+to = ["Fx.Lemmas.L"]
+reason = "concrete regression leaf only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "NodeEngine"]']]
+
+# A0b additionally registers run/projection vocabulary, not arbitrary proof dependencies.
+[NodeEngineProjectionAllowed]
+files."Fx/Projection/Run.lean" = "module\npublic import Fx.Statements.S\npublic def contract : Prop := True\n"
+files."Fx/NodeEngine/Statements/Projection.lean" = "module\npublic import Fx.Projection.Run\npublic def exportContract : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Projection.Run\npublic import Fx.NodeEngine.Statements.Projection"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Projection"
+prefixes = ["Fx.Projection"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Projection"]
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Projection", "NodeEngine"]']]
