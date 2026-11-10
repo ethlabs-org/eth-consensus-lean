@@ -806,6 +806,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CoefficientA
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainWarm
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainedAnchorSlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalHealHorizon
