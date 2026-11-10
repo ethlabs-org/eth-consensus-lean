@@ -868,6 +868,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeabl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Chains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Cuts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EmitRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
