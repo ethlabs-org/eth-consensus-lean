@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ParentStop
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
@@ -369,38 +370,11 @@ theorem reset_old_child_ineligible
   have hslot : sp.slot (tr.time i) = s + 1 := by
     rw [hti]
     simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
-  set T := ellp.frame.viableTree ellp.frame.tree
-  have hT : T ⊆ ellp.frame.tree := fun _ h => h.1
-  have hhead : d.head = SA.ghost sp T
-      (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-      (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-      ellp.frame.tree.ncard d.start := by
-    unfold SA.acProposal at hd
-    split_ifs at hd
-    simp only [Option.some.injEq, Prod.mk.injEq] at hd
-    obtain ⟨rfl, rfl⟩ := hd
-    simp only [hslot, hcast]
-    rfl
-  have hstop := SA.ghost_stopped hPhi.coherent hT (hPhi.finite.subset hT)
-    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-    (Set.ncard_le_ncard hT hPhi.finite) d.start
-  rw [← hhead] at hstop
   obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
     hPy hg hgi hgj
   have hsj : sp.slot (tr.time j) = s + 1 :=
     ((SA.castAt_spec hr hy hcy).2.1).symm.trans hes
-  rintro (h | h | h)
-  · exact h ⟨d.head, hQvy, hBQ⟩
-  · omega
-  · have hmaj : (SA.voters (SA.View.ofLists pay).votes).ncard <
-        2 * SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B := by
-      simpa only [SA.goldfishScore, hvot, heq, hsup B hBv.1 hB.1.1] using h
-    exact hstop (SA.exists_isBest hPhi
-      (S := {X | X ∈ T ∧ X.parent = some d.head.root ∧
-        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
-      (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
+  exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- Finite old-child exclusion preserves the proposal call's strict-majority test. -/
 theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
@@ -437,38 +411,11 @@ theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
   have hslot : sp.slot (tr.time i) = s + 1 := by
     rw [hti]
     simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
-  set T := ellp.frame.viableTree ellp.frame.tree
-  have hT : T ⊆ ellp.frame.tree := fun _ h => h.1
-  have hhead : d.head = SA.ghost sp T
-      (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-      (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-      ellp.frame.tree.ncard d.start := by
-    unfold SA.acProposal at hd
-    split_ifs at hd
-    simp only [Option.some.injEq, Prod.mk.injEq] at hd
-    obtain ⟨rfl, rfl⟩ := hd
-    simp only [hslot, hcast]
-    rfl
-  have hstop := SA.ghost_stopped hPhi.coherent hT (hPhi.finite.subset hT)
-    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-    (Set.ncard_le_ncard hT hPhi.finite) d.start
-  rw [← hhead] at hstop
   obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree hc hpH hdesignated hactual hPs
     hci hcall hd hti hpay hy hcy hes hib hjb hPy hg hgi hgj hjoi hjoj
   have hsj : sp.slot (tr.time j) = s + 1 :=
     ((SA.castAt_spec hr hy hcy).2.1).symm.trans hes
-  rintro (h | h | h)
-  · exact h ⟨d.head, hQvy, hBQ⟩
-  · omega
-  · have hmaj : (SA.voters (SA.View.ofLists pay).votes).ncard <
-        2 * SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B := by
-      simpa only [SA.goldfishScore, hvot, heq, hsup B hBv.1 hB.1.1] using h
-    exact hstop (SA.exists_isBest hPhi
-      (S := {X | X ∈ T ∧ X.parent = some d.head.root ∧
-        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
-      (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
+  exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- Finite sibling viability places their parent above the voter's root and height floor. -/
 theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
@@ -484,28 +431,8 @@ theorem ResetPremisesUpTo.reset_parent_viable_of_children {b : Time}
       Anc (tr.HonestBlocks H) O Q) : Q ∈ ell.frame.viableHeads := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  have hQP : Anc (tr.HonestBlocks H) Q P := .single ⟨hQU, hPhiU hPv.1.1, hPQ⟩
-  have hnBP : ¬ Anc (tr.HonestBlocks H) B P := by
-    intro h
-    rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hBY, hY⟩
-    · exact hBP heq.symm
-    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
-      (Option.some_injective _ (hY.2.2.symm.trans hPQ))
-    have h1 := (Anc.slot_le hr.coherent hBY).1
-    have h2 := hr.coherent.2 Y hQU B (hPhiU hBv.1.1) hBQ
-    omega
-  have below : ∀ X, Anc (tr.HonestBlocks H) X B → Anc (tr.HonestBlocks H) X P →
-      Anc (tr.HonestBlocks H) X Q := by
-    intro X hXB hXP
-    rcases Relation.ReflTransGen.cases_tail hXB with heq | ⟨Y, hXY, hY⟩
-    · exact False.elim (hnBP (heq ▸ hXP))
-    obtain rfl : Y = Q := hr.coherent.1 hY.1 hQU
-      (Option.some_injective _ (hY.2.2.symm.trans hBQ))
-    exact hXY
-  have hfQ := below _ (hBv.2.1.mono hPhiU) (hPv.2.1.mono hPhiU)
-  have hQt := SA.frame_mem_of_between sp hr.coherent hPhi hPhiU hPv.1.1 hQP
-    ((hPhi.F_anc_fcRoot.mono hPhiU).trans hfQ)
-  have hfQ' := SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfQ hQt
+  obtain ⟨hQt, hfQ'⟩ := parent_mem_frame_of_children hr.coherent hPhi hPhiU hQU hPQ hBQ hBP
+    hPv.1.1 hPv.2.1 hBv.1.1 hBv.2.1
   rw [Compose.frame_of_projAC hp.run hy hc.1] at hQt hfQ' ⊢
   exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
     hp.reset_vote_floor_above_old hy hR hc hes hjb hQt.1 hQold⟩
