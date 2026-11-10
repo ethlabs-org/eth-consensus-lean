@@ -912,6 +912,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.DutyRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EmitRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineState
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Evidence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
