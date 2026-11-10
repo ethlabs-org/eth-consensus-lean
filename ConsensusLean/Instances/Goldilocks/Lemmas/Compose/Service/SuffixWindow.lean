@@ -21,6 +21,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.ProposalTick
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -293,40 +294,8 @@ private theorem proposal_data (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, -, htk⟩ := hP
   rcases blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, hr, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  set t := tr.time (j + 2)
-  set st := tr.state p j
-  set st1 := (Node.tickStep proposer dg p st t x .acTick).1
-  have hcuts : (Node.exec proposer dg p st t (.tick x)).2 =
-      (Node.tickStep proposer dg p st t x .acTick).2 ++
-      (Node.tickStep proposer dg p st1 t x .proposal).2 ++
-      (Node.tickStep proposer dg p
-        (Node.tickStep proposer dg p st1 t x .proposal).1 t x .fgUpdate).2 := by
-    simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, st1]
-  have h0 : (Node.exec proposer dg p st t (.tick x)).2[0]? = some (Node.acCall p st t .tick).2 := by
-    rw [hcuts]; simp [Node.tickStep]
-  have h1 : (Node.exec proposer dg p st t (.tick x)).2[1]? = some (Node.acProposal st1 t).2.1 := by
-    rw [hcuts]
-    simp only [Node.tickStep, hPr, ↓reduceIte]
-    split <;> simp [Node.acProposal, Node.acCall]
-  obtain ⟨hk0, hc0⟩ := List.getElem?_eq_some_iff.1 h0
-  obtain ⟨hk1, hc1⟩ := List.getElem?_eq_some_iff.1 h1
-  obtain ⟨hn0, ht0, -, -, hl0⟩ := hg.2.1 0 hk0
-  obtain ⟨hn1, ht1, -, -, hl1⟩ := hg.2.1 1 hk1
-  rw [hc0] at hl0
-  rw [hc1] at hl1
-  simp only [Nat.add_zero] at hn0 ht0 hl0
-  have hcall0 : tr.CallAt p j (Node.acCall p st t .tick).2 := ⟨hn0, hl0⟩
-  have hst1 : (tr.state p (j + 1)).ac = st1.ac := by
-    rw [tr.state_succ_of_call hcall0]
-    obtain ⟨-, hstep, -, -⟩ := hrun.cutLaw p hp j _ hcall0
-    rw [ht0] at hstep
-    exact (congrArg Prod.fst hstep).symm
-  have hts : t = sp.ts s := by
-    rw [htk, sp.slotTime_eq, hPs]; rfl
-  refine ⟨j + 1, ⟨.proposal, Node.frame st1, []⟩, d, pay, projAC_callAt.2 ⟨hn1, hl1⟩, rfl, ?_,
-    ht1.trans hts, by rw [hB]; rfl, by rw [hB]; rfl⟩
-  rw [projAC_state h hp, hst1, show tr.time (j + 1) = t from ht1]
-  exact hr
+  exact proposal_data_of_tick hg hPr hr hB (by rw [htk, sp.slotTime_eq, hPs]; rfl)
+    (hrun.cutLaw p hp j) (projAC_state h hp (j + 1))
 
 /-- The payload of the honest proposal `P` is the payload of any `ac_proposal` call of its
 proposer at `t_s`. -/
