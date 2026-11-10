@@ -996,6 +996,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Continuat
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGSafety
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Local
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.LocalSources
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC

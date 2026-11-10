@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
