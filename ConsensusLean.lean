@@ -795,6 +795,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalHealHorizon
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalQueryTiming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalResetPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowAssembly
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowBase
@@ -820,6 +821,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HonestNonempty
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalEndpoints
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
