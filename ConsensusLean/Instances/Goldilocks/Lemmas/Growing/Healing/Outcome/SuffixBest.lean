@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SuffixFrames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SuffixTransfer
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -11,9 +11,10 @@ public section
 /-! # A best child on the proposal-parent path stays best at the voter, under growing faults
 
 `reset_suffix_best_at`, the growing form of `Healing.ResetPremisesUpTo.reset_suffix_best`
-(`Healing/Outcome/SupplierViews`): the winner is transported through the viable proposal
+(`Healing/Outcome/SupplierViews`), from the frame step `Healing.suffix_best_of_views`
+(`Healing/Outcome/SuffixTransfer`): the winner is transported through the viable proposal
 (`reset_winner_voter_tree_at`), competitors reflect through guarded relay
-(`reset_competitor_reflect_at`), and the scores agree (`reset_views_agree_at`). -/
+(`reset_competitor_reflect_at`), and the views agree (`reset_views_agree_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -68,32 +69,13 @@ theorem reset_suffix_best_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
   have hPhi := Outcome.frame_realized hrun hpi hci
   have hPhiU := Outcome.frame_tree_subset hrun hpi hci
   have hPsiU := Outcome.frame_tree_subset hrun hy hcy.1
-  obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree_at hc hpH hdesignated hactual hPs
-    hci hcall hd hti hpay hy hcy hes hib hjb hPv.1.1 hg hgi hgj hjoi hjoj
-  have hQP : Anc (tr.HonestBlocksAt H) d.head P :=
-    .single ⟨hPhiU hQt, hPsiU hPv.1.1, hPQ⟩
-  have hXC : Anc (tr.HonestBlocksAt H) X C :=
-    .single ⟨hPhiU (SA.mem_of_anc hXQ hQt), hPhiU hC.1.1.1, hC.1.2.1⟩
-  have hCy := hp.reset_winner_voter_tree_at hy hcy hes hPv
-    ((hCQ.mono hPhiU).trans hQP) (haX.trans hXC)
-  have hCs : C.slot < s + 1 := by
-    have h1 := (Anc.slot_le hPhi.coherent hCQ).1
-    have h2 := hU.2 d.head (hPhiU hQt) P (hPsiU hPv.1.1) hPQ
-    omega
-  have hslot : sp.slot (tr.time i) = s + 1 := by
-    rw [hti]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  apply SA.isBest_transfer hXv (by omega) hvot ?_ (fun B hB => hB.1)
-    (fun B hB => hB.1.1) hCy ?_ hC
-  · intro B hBp hBy
-    simp only [SA.goldfishScore, heq, hsup B hBp hBy]
-  · intro B hB hBX
-    have hBP : B ≠ P := by
-      rintro rfl
-      exact hne (hU.1 (hPhiU (SA.mem_of_anc hXQ hQt)) (hPhiU hQt)
-        (Option.some_injective _ (hBX.symm.trans hPQ)))
-    exact hp.reset_competitor_reflect_at hc hpH hdesignated hactual hPs hci hti hy hcy hes
-      hib hgi hjoi hQt hPQ hXQ hBP hXv hBX hB
+  exact suffix_best_of_views hU hPhi hPhiU hPsiU (fun _ hB => hB.1.1) hti
+    (hp.reset_views_agree_at hc hpH hdesignated hactual hPs hci hcall hd hti hpay hy hcy hes hib
+      hjb hPv.1.1 hg hgi hgj hjoi hjoj)
+    hQt hPQ hPs hPv.1.1 hXQ hne hXv hCQ
+    (fun hCP hXC => hp.reset_winner_voter_tree_at hy hcy hes hPv hCP (haX.trans hXC))
+    (fun B hB hBP hBX => hp.reset_competitor_reflect_at hc hpH hdesignated hactual hPs hci hti hy
+      hcy hes hib hgi hjoi hQt hPQ hXQ hBP hXv hBX hB) hC
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

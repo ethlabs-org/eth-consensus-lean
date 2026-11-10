@@ -739,6 +739,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotWal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ProposalStart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SuffixTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
