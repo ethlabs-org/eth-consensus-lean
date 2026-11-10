@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ReceiptCover
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -81,64 +82,12 @@ theorem onTick_restartTime (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : (acOnTick sp x A Φ t).1.restartTime = A.restartTime :=
   onTick_restartTimeWith (wm := WriteMode.parent sp) (x := x) (A := A) (Φ := Φ) (t := t)
 
-private theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
-    (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
-  unfold admitVote
-  split_ifs
-  · exact h
-  · exact h
-  · simp only [Function.update_apply]
-    split_ifs with he
-    · subst he; exact List.mem_append_left _ h
-    · exact h
-
 theorem optimistic_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation updateLatestConfirmed
   split
   · rfl
   · split_ifs <;> rfl
-
-private theorem tryVote_pool
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (σ : Nat) : A.pool σ ⊆ (tryVoteWithM sp wm x L A Φ t).1.pool σ := by
-  unfold tryVoteWithM
-  dsimp only
-  split_ifs
-  · exact List.Subset.refl _
-  · exact List.Subset.refl _
-  all_goals
-    intro w hw
-    rw [optimisticConfirmationM_keep _ optimistic_pool]
-    exact mem_admitVote_pool hw
-
-private theorem foldl_admit_pool {t : Time} {σ : Nat} :
-    ∀ (l : List (Vote sp.n)) (A : SAState sp.n),
-      A.pool σ ⊆ (l.foldl (fun A v => admitVote sp A t v) A).pool σ
-  | [], _ => List.Subset.refl _
-  | _ :: l, _ => fun _ hw => foldl_admit_pool l _ (mem_admitVote_pool hw)
-
-/-- The receipt of a block admits each of its votes of the slot of `t` or the previous one: the
-node holds it after the receipt, or two other votes of its validator. -/
-private theorem blockReceipt_held (A : SAState sp.n) {t : Time} {B : Blk sp.n FGP}
-    {v : Vote sp.n} (hv : v ∈ blockVotes B) (h₁ : (sp.slot t : Int) - 1 ≤ v.slot)
-    (h₂ : v.slot ≤ sp.slot t) :
-    v ∈ (blockReceipt sp A t B).pool v.slot ∨
-      v.val ∈ equivocators {w | w ∈ (blockReceipt sp A t B).pool v.slot} := by
-  unfold blockReceipt
-  generalize ({ A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :
-    SAState sp.n) = A'
-  generalize blockVotes B = l at hv
-  induction l generalizing A' with
-  | nil => simp at hv
-  | cons x l ih =>
-    rw [List.foldl_cons]
-    rcases List.mem_cons.1 hv with rfl | hv
-    · have hs := foldl_admit_pool (t := t) (σ := v.slot) l (admitVote sp A' t v)
-      rcases admitVote_held A' _ _ h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-      · exact Or.inl (hs h)
-      · exact Or.inr ⟨a, hs ha, b, hs hb, hab, hav, hbv⟩
-    · exact ih _ hv
 
 /-! ## Over an SA trace -/
 
@@ -253,14 +202,7 @@ private theorem writer_pool_of_syncU
       rw [hupd.2.2.1]; linarith only [hki, hti]
     have hslot : ∀ t, tr.time k' ≤ t → t < tr.time k' + sp.Δ →
         (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t := by
-      intro t h₁ h₂
-      have ht : 0 ≤ t := (hr.time_nonneg k').trans h₁
-      have ha := (ts_le_iff_le_slot sp ht s).1 (hsk.trans h₁)
-      have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
-        have := (ts_le_iff_le_slot sp ht _).2 h
-        rw [hts₂] at this; linarith only [this, h₂, hki, hti, hΔ]
-      clear * - ha hb hvs
-      omega
+      rw [hvs]; exact slot_window_of_forward (hr.time_nonneg k') hsk hki hti
     have hheld := hsync.elim
       (fun h => sync_forwardU hr h hy hsend hsk hki hX hupd.1 hrs hdl hslot)
       (fun h => sync_window_before_forwardU hr h hy hsend hsk hdl hX hupd.1 hrs hdl hslot)
@@ -323,22 +265,9 @@ private theorem writer_merged_of_syncU
   have hpost : tr.post k = (tryVoteWithM sp wm y (u k) (optimisticConfirmationM sp wm
       (blockReceipt sp (tr.state y k) (tr.time k) B) ℓk.frame (tr.time k)) ℓk.frame
       (tr.time k)).1 := (congrArg Prod.fst he).symm
-  have hsub : ∀ w ∈ (blockReceipt sp (tr.state y k) (tr.time k) B).pool s,
-      w ∈ (tr.state y (k + 1)).pool s := fun w hw => by
-    rw [state_succ_of_call hck, hpost]
-    exact tryVote_pool (L := u k) _ _ _ _ _
-      (by rw [optimisticConfirmationM_keep _ optimistic_pool]; exact hw)
-  have hw := writer_pool_of_syncU hrun hX hupd hy hc hs hsync hki
-  rcases blockReceipt_held (tr.state y k) hvB (t := tr.time k) (by omega) (by omega) with
-    h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · rw [hvs] at h
-    exact hw v (hsub v h)
-  · rw [hvs] at ha hb
-    rcases hw a (hsub a ha) with ha' | ha'
-    · rcases hw b (hsub b hb) with hb' | hb'
-      · exact Or.inr ⟨a, ha', b, hb', hab, hav, hbv⟩
-      · exact Or.inr (hbv ▸ hb')
-    · exact Or.inr (hav ▸ ha')
+  exact receipt_vote_covered (L := u k) (t := tr.time k) y (tr.state y k) ℓk.frame hvB hvs
+    (by omega) (by omega) fun w hw => writer_pool_of_syncU hrun hX hupd hy hc hs hsync hki w
+      (by rw [state_succ_of_call hck, hpost]; exact hw)
 
 private theorem writer_merged_of_sync (hrun : ACRun proposer tr H U) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ s : Nat}
