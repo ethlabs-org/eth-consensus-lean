@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SameSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

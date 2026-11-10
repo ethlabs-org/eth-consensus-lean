@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Tran
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

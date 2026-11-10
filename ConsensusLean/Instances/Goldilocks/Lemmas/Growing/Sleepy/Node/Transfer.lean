@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

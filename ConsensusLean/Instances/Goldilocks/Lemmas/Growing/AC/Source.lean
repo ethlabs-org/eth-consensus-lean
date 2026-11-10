@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Unlocked
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

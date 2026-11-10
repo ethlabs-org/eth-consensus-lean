@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

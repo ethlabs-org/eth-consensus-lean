@@ -11,6 +11,7 @@ import all ConsensusLean.Lemmas.Model.Canonical.Events
 import all ConsensusLean.Lemmas.Model.Canonical.Inject
 import all ConsensusLean.Lemmas.Model.Truncate
 import all ConsensusLean.Lemmas.Model.Retain
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The proposer-hold counterexample: engine provenance

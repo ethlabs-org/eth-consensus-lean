@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.SupportCounting
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

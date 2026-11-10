@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

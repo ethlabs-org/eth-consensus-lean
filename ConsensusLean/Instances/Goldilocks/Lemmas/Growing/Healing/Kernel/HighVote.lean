@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.VoterWalk
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

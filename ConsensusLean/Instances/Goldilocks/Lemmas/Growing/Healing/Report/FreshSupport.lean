@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

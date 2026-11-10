@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Source
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Sync
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

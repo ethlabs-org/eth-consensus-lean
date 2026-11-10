@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

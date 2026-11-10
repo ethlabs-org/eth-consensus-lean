@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Cut
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

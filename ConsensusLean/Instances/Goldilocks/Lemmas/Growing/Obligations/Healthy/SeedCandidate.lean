@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Lo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

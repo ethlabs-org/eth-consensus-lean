@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

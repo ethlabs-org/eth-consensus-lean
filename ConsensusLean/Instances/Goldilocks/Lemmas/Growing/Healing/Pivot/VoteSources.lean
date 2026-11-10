@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
