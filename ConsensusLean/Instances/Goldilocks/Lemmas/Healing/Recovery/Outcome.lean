@@ -215,7 +215,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a
     have hlt : sp.ts C.slot < sp.ts (T.slot + sp.toParams.δt : Nat) := by
       simp only [SAParams.ts] at hCt hrt ⊢
       push_cast
-      nlinarith [hs.timeoutDelay]
+      linarith [hs.timeoutDelay]
     exact_mod_cast (SA.ts_lt_iff sp).1 hlt
   have hfg : FGLocalRun (goldilocksNode sp ro).genesisPayload H
       (tr.HonestBlocks H) tr.projFG :=
@@ -243,7 +243,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a
   have hbefore : sp.ts T.slot + 6 * sp.Δ < sp.ts (T.slot + cF + kF + 1 : Nat) := by
     simp only [SAParams.ts]
     push_cast
-    nlinarith [Nat.cast_nonneg (α := Int) kF]
+    linarith [mul_nonneg hΔ.le (Nat.cast_nonneg (α := Int) kF)]
   have hXt := (hp.run.time_mono hkr.le).trans hrt
   obtain ⟨io, hior, jo, O, ho, hCO⟩ := high_report_origin hp hz hrep
     (by rw [← hσ] at hhigh; omega)
@@ -264,7 +264,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H proposer dg g ΔF a
   · apply carrier_below_origin_before hp hs.noRestart hc ho hz hacc (hXU.trans hCO) hng
     · simp only [SAParams.ts] at hio' ⊢
       push_cast at *
-      nlinarith [Nat.cast_nonneg (α := Int) kF]
+      linarith [mul_nonneg hΔ.le (Nat.cast_nonneg (α := Int) kF)]
     · linarith
     · linarith
 

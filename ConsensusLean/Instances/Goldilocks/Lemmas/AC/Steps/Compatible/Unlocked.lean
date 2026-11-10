@@ -200,7 +200,8 @@ theorem locks_after_unlock (hrun : ACRun proposer tr H U) {s : Nat} {w x : Fin s
     · have hls' : (l.slot : Int) + 1 ≤ s := by exact_mod_cast hls
       simp only [SAParams.ts] at htj ht'
       push_cast at htj
-      nlinarith
+      have h4 : (0 : Time) ≤ 4 * sp.Δ := by linarith [sp.toParams.hΔ]
+      linarith [mul_le_mul_of_nonneg_left hls' h4]
 
 end Consensus.Goldilocks.SA
 

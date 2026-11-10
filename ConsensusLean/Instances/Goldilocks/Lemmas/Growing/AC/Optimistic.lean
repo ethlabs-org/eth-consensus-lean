@@ -67,7 +67,7 @@ theorem optimistic_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
     simp only [SAParams.ts] at ht hslt
     push_cast at ht
     have := sp.toParams.hΔ
-    nlinarith
+    linarith
   have hfreeze : sp.ts s + 3 * sp.Δ ≤ tr.time i := by
     have hsv : e.msg.slot = sp.slot (tr.time i) := (castAt_spec hry.localRun hy hc').2.1
     have ht := (ts_le_iff_le_slot sp (hr.time_nonneg i) (s + 1 : Nat)).mpr
@@ -75,7 +75,7 @@ theorem optimistic_transfer_stored (hrun : ACRun proposer tr H U) {s : Nat}
     simp only [SAParams.ts] at ht ⊢
     push_cast at ht
     have := sp.toParams.hΔ
-    nlinarith
+    linarith
   have hcarry' := carryAt_upTo (d := tr.time i) le_rfl hfreeze hcarry
   set V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by

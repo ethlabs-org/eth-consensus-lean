@@ -162,7 +162,7 @@ private theorem origin_label_ge {x : Fin sp.n} {q s rO : Nat}
   have hmul := mul_le_mul_of_nonneg_left hle (show (0 : Time) ≤ 4 * sp.Δ by linarith)
   simp only [SAParams.ts] at hhi hq
   push_cast at hmul hq hhi
-  nlinarith
+  linarith
 
 /-- **The effective record only extends** between two read points of one reader from
 `t₀ ≥ t_{rO+1}` on, both in `[t₁, b]`. The reader's results and optimistic selections in between

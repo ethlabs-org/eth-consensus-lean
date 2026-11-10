@@ -312,7 +312,7 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
   · dsimp [b₁]; linarith
   · have hb : (1 : Time) ≤ (K.params.budget : Time) := by exact_mod_cast ha.budget_pos
     change b₁ ≤ b₀ + (K.params.budget : Time) * Δ
-    dsimp [b₁]; nlinarith
+    dsimp [b₁]; linarith [mul_le_mul_of_nonneg_right hb hΔ.le]
   · exact (Model.sysOf_delivers_iff (O := O) rho _ _ _).mpr
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl hΔ1 hΔF1 b₀)
   · dsimp [b₀]; linarith

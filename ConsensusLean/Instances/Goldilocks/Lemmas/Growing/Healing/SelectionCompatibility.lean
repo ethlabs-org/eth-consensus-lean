@@ -55,7 +55,9 @@ theorem high_origin_compatible_before_update_at
       have hbefore : tr.time r < sp.ts (u + 1 : Nat) := by
         simp only [SAParams.ts] at htime ⊢
         push_cast at htime ⊢
-        nlinarith [sp.toParams.hΔ]
+        have hmu : (m : Time) + 1 ≤ u := by exact_mod_cast hm
+        have h4 : (0 : Time) ≤ 4 * sp.Δ := by linarith [sp.toParams.hΔ]
+        linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left hmu h4]
       exact False.elim (ht' hbefore)
     · have hs : sp.slot (tr.time r) = m := hop.choose_spec.choose_spec.2.1
       have hdeadline : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=

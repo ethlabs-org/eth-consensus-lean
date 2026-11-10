@@ -29,7 +29,7 @@ theorem fastLock_time_lt_at
     have hDelta := sp.toParams.hΔ
     rw [ht]
     simp only [SAParams.ts] at htr ⊢
-    nlinarith only [htwo, hDelta]
+    linarith only [mul_le_mul_of_nonneg_left htwo (show (0 : Time) ≤ 4 * sp.Δ by linarith), hDelta]
   · change sp.slot (tr.time r) = m at hsl
     by_contra h
     have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r) u).mp (not_lt.mp h)

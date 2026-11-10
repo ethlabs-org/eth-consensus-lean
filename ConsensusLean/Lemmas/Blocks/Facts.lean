@@ -65,7 +65,7 @@ theorem exists_slot_in_window {t : Time} (ht : 0 ≤ t) {k : Nat}
     rw [Int.toNat_of_nonneg hq]
     have h1 := Int.ediv_mul_le t hl.ne'
     have hk' : (1 : Time) ≤ k := by exact_mod_cast hk
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_right hk' hl.le]
 
 end TimeGrid
 

@@ -109,7 +109,7 @@ theorem Handover.sleepyOn_from_ready {K : Contract Prog} {g T : Time} {r : S.Run
   have hF' : (Ft.card : ℚ) ≤ FT.card := by exact_mod_cast hF
   have hslack := mul_nonneg (sub_nonneg.mpr hθ) (sub_nonneg.mpr hle')
   rw [heq']
-  nlinarith
+  linarith
 
 omit [DecidableEq V] in
 /-- At `θ = ½` and `β ≤ ½`, fewer than half of the validators are compromised at every time up to

@@ -28,7 +28,7 @@ private theorem one_le_cDur (Q : HealthyPreparationQueryAt S A V) :
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [System.cDur, Params.standard, contract_coefficients_catchUp]
   change 1 ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
-  nlinarith
+  linarith [mul_le_mul hc hd zero_le_one (by linarith)]
 
 /-- **Healed safety under growing faults**: on a query healthy through the horizon, with progress
 on `[ready, heal]` and the heal point within the horizon, the confirmed reads of nodes ready from

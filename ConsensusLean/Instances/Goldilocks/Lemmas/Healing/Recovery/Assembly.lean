@@ -51,11 +51,11 @@ theorem recovery_statements_of_coverage
     have hΔF := hp.shared.healthy.1.deltaF
     have hZ : 0 ≤ Zreset sp ΔF Gp := by
       simp only [Zreset, C_HS, D_HS]
-      nlinarith
+      linarith [mul_nonneg hk hΔ.le, mul_nonneg hΔ.le hδ]
     have hwindow : 0 ≤ 4 * sp.Δ * ((W : Time) + 1 + M) := by positivity
     have hgT : gbar g ≤ T := by
       dsimp only [T, Rstar]
-      nlinarith
+      linarith [mul_nonneg hk hΔ.le]
     have htime : T + 12 * sp.Δ = gbar g + T_rec sp ΔF Gp W M := by
       dsimp only [T, Rstar, T_rec]
       ring

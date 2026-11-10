@@ -57,7 +57,7 @@ theorem optimistic_isBest_of_carry_at (hrun : ACRun proposer tr H U) {s : Nat}
     simp only [SAParams.ts] at ht ⊢
     push_cast at ht
     have hΔ := sp.toParams.hΔ
-    nlinarith
+    linarith
   have hcarry' := carryAt_upTo (d := tr.time i) le_rfl hfreeze hcarry
   let V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by

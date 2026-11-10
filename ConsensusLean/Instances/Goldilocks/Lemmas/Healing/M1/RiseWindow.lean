@@ -47,7 +47,7 @@ theorem riseLen_nonneg {d ρ s : Time} (hd : 0 ≤ d) (hρ : 0 ≤ ρ) (hs : 0 �
     0 ≤ riseLen d ρ s HZ v := by
   unfold riseLen
   have : (0 : Time) ≤ (riseRounds HZ v : Time) := Nat.cast_nonneg _
-  nlinarith
+  positivity
 
 /-- The cumulative length of the five attempts: `5(d + s + λ) + 6ρ`. -/
 theorem sum_riseLen (d ρ s lam : Time) (HZ : Nat) :

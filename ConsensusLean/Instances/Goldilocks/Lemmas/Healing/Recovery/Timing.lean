@@ -58,7 +58,7 @@ theorem oldSlots_bounds {ΔF Gp : Time} (hΔF : 0 ≤ ΔF) (hGp : 0 ≤ Gp) :
   have hΔ := sp.toParams.hΔ
   have hδ : (0 : Time) ≤ sp.toParams.δt := Nat.cast_nonneg _
   have h := slotsCeil_bounds (sp := sp) (x := L_old sp ΔF Gp)
-    (by simp only [L_old]; nlinarith)
+    (by simp only [L_old]; linarith [mul_nonneg hδ hΔ.le])
   have he : ((oldSlots sp ΔF Gp : Nat) : Time) - 1 = (slotsCeil sp (L_old sp ΔF Gp) : Time) := by
     simp only [oldSlots]; push_cast; ring
   rw [he]; exact h
@@ -70,7 +70,7 @@ theorem timeout_add_three_le_oldSlots {ΔF Gp : Time} (hΔF : 0 ≤ ΔF) (hGp : 
   have h := (oldSlots_bounds (sp := sp) hΔF hGp).1
   simp only [L_old] at h
   have hlt : 4 * sp.Δ * ((sp.toParams.δt : Time) + 1) <
-      4 * sp.Δ * ((oldSlots sp ΔF Gp : Time) - 1) := by nlinarith
+      4 * sp.Δ * ((oldSlots sp ΔF Gp : Time) - 1) := by linarith
   have := lt_of_mul_lt_mul_left hlt (by linarith : (0 : Time) ≤ 4 * sp.Δ)
   have : ((sp.toParams.δt + 2 : Nat) : Time) < (oldSlots sp ΔF Gp : Time) := by
     push_cast; linarith
@@ -111,7 +111,7 @@ private theorem Zreset_nonneg (hp : PatternPremises tr H proposer dg g ΔF Gp W 
   have := pattern_ΔF_pos hp
   have := pattern_Gp_nonneg hp
   simp only [Zreset, C_HS, D_HS]
-  nlinarith
+  linarith [mul_nonneg hk hΔ.le, mul_nonneg hΔ.le hδ]
 
 /-- The drain of a reset `a ≥ 0` ends by `a + (8k + 20)Δ`. -/
 private theorem drainTime_le {a : Time} (ha : 0 ≤ a) :
@@ -120,7 +120,7 @@ private theorem drainTime_le {a : Time} (ha : 0 ≤ a) :
   rw [drainTime_eq]
   simp only [SA.SAParams.ts] at hs ⊢
   push_cast
-  nlinarith
+  linarith
 
 /-- A reset is at a cut, so at a time `≥ 0`. -/
 private theorem reset_nonneg (hrun : GoldilocksRun proposer dg H tr) {a : Time}
@@ -167,7 +167,7 @@ theorem pattern_stretch_after_reset
   have hΔ := sp.toParams.hΔ
   have hk : (0 : Time) ≤ sp.k := Nat.cast_nonneg _
   have hZ := Zreset_nonneg hp
-  have hgt : gbar g ≤ t := by simp only [Rstar] at ht; nlinarith
+  have hgt : gbar g ≤ t := by simp only [Rstar] at ht; linarith [mul_nonneg hk hΔ.le]
   obtain ⟨v, hv₁, hv₂, hv⟩ := hp.pattern t hgt
   refine ⟨v, hv₁, hv₂, ?_, hv⟩
   have := drainTime_le (sp := sp) (reset_nonneg hrun ha)

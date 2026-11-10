@@ -95,7 +95,7 @@ theorem ReadyAbove.retain_mono {θ : ℚ} {c t d e : Time}
     ((p.retain e).readyAt c t).card at h
   change θ * (((p.retain d).readyAt c t).card + (p.faultyAt d).card : ℚ) <
     ((p.retain d).readyAt c t).card
-  nlinarith
+  linarith
 
 omit [DecidableEq V] in
 /-- A full-run sleepy premise remains valid when its look-ahead is clamped

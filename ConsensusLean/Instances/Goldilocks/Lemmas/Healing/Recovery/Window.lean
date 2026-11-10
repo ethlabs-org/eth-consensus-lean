@@ -120,7 +120,7 @@ theorem good_window_of_rows (hp : ResetPremises tr H proposer dg g ΔF a)
       (SA.ts_le_iff sp).2 (by exact_mod_cast hlo)
     simp only [SAParams.ts] at hslots ⊢
     push_cast at hslots
-    nlinarith
+    linarith
   choose att j hsig hval hh hroot hto' ht hfin using fun z : ids => (hrows z z.property).2
   let R := Finset.univ.image att
   have hvals : R.image FG.Att.val = ids := by

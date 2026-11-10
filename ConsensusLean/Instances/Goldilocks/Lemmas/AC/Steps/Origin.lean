@@ -528,7 +528,7 @@ theorem lock_origin_readPointU
       have hsl' : ((sp.slot (tr.time i) : Nat) : Time) - 1 ≤ (l.slot : Time) := by
         exact_mod_cast hsl
       simp only [SAParams.ts] at htj ht
-      nlinarith
+      linarith [mul_le_mul_of_nonneg_left hsl' (show (0 : Time) ≤ 4 * sp.Δ by linarith)]
   -- the locks at `try_vote`'s input: also the optimistic check of the receipt
   have hPl : ∀ l ∈ P.locks, (sp.slot (tr.time i) : Int) - 1 ≤ l.slot → Good tr H U y i l := by
     rcases hP with rfl | ⟨A, hA, rfl, hAl⟩

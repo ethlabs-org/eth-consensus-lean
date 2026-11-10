@@ -251,7 +251,7 @@ theorem HandoverSeed.of_reset {T : Time} {r σ : Nat}
     rw [h]
     have hk : (0 : Time) ≤ sp.k := Nat.cast_nonneg _
     push_cast
-    nlinarith
+    linarith [mul_nonneg (show (0 : Time) ≤ 4 * sp.Δ by linarith) hk]
   · rw [healedOriginsBelow_iff]
     intro C j C' j' _ _ hC hC'
     exact member_compatible hp hc hr hC hC'
@@ -352,7 +352,7 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
             Q.params.ts (Q.params.slot D.resetTime + 2 * Q.params.k + 5 : Nat) +
               8 * Q.params.Δ := by
           simp only [SA.SAParams.ts]; push_cast; ring
-        nlinarith)
+        linarith [mul_le_mul_of_nonneg_right hX hΔ.le])
     rw [Healing.cleanLabel_eq]
     omega
   have hcov : ∀ y n t, D.query + (4 * (Q.index : Time) + 6) * Q.params.Δ + 1 ≤ t →
@@ -377,7 +377,8 @@ theorem handover_seed_cover_at (Q : HealthyPreparationQueryAt S A V) (h0 : 0 ≤
   refine ⟨Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2, Q.params.slot Q.bound - 2,
     Compose.Growing.HandoverSeed.of_reset hreset (healthy_schedule_catch_at S A V Q D) rfl ?_
       (by omega) ⟨_, by linarith, hcov⟩,
-    _, by linarith, by rw [hdr]; nlinarith, by rw [hDq]; linarith, hcov⟩
+    _, by linarith, by rw [hdr]; linarith [mul_le_mul_of_nonneg_right hX hΔ.le],
+    by rw [hDq]; linarith, hcov⟩
   have h : Q.params.ts ((Q.params.slot Q.bound - 2 : Nat) : Int) + 8 * Q.params.Δ =
       Q.params.ts (Q.params.slot Q.bound : Int) := by
     simp only [SA.SAParams.ts]; push_cast [show 2 ≤ Q.params.slot Q.bound by omega]; ring

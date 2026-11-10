@@ -658,7 +658,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     rw [hNtime, hlenEq]
     change 4 * D * (s₀ : Time) < af + 4 * D at hshi
     have halign := Int.le_sub_one_of_lt hshi
-    nlinarith only [halign]
+    linarith only [halign]
   have hts {x y : Nat} (h : x ≤ y) : sp.ts x ≤ sp.ts y :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast h)
   have hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * D) floor kindJ J :=
@@ -838,7 +838,7 @@ theorem exists_reset_of_drain_rounds_awake_at
       have h2 : (0 : Time) ≤ sp.toParams.fg.δt := Nat.cast_nonneg _
       have h3 : (1 : Time) ≤ G := by exact_mod_cast hG
       linarith
-    nlinarith [mul_nonneg hc (show (0 : Time) ≤ sp.Δ by linarith)]
+    linarith [mul_nonneg hc (show (0 : Time) ≤ sp.Δ by linarith)]
   have hczb : cutZ sp.toParams g ≤ b := by linarith
   obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_noRestartAfter_at
     (goldilocksRun_truncH hrun b) hnc

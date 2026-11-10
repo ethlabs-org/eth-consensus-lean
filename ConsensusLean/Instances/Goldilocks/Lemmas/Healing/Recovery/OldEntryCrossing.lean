@@ -128,7 +128,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
     have h1 := hpat.cF_upper
     have h2 : (cF : Time) ≤ (sp.toParams.δt : Time) := by
       exact_mod_cast (show cF ≤ sp.toParams.δt by have := hpat.timeout; omega)
-    nlinarith
+    linarith [mul_le_mul_of_nonneg_left h2 (show (0 : Time) ≤ 4 * sp.Δ by linarith)]
   have hδ1 : 1 ≤ sp.toParams.δt := by
     by_contra h
     have : (sp.toParams.δt : Time) = 0 := by exact_mod_cast (show sp.toParams.δt = 0 by omega)

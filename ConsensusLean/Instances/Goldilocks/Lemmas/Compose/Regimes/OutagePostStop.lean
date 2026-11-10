@@ -34,7 +34,7 @@ theorem exists_unpolluted_label (sp : SA.SAParams) {start stop : Time}
     by_contra h
     exact hn ⟨s, by omega, le_rfl, Or.inr (le_of_not_gt h)⟩
   simp only [SA.SAParams.ts] at hfirst hlast
-  nlinarith
+  linarith
 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}

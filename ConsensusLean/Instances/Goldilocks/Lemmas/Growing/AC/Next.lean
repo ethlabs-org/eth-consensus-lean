@@ -35,7 +35,7 @@ theorem next_transfer (sp : SAParams) : NextTransfer sp := by
     simp only [SAParams.ts] at h ⊢
     push_cast at h
     have := sp.toParams.hΔ
-    nlinarith
+    linarith
   have hbatch : {x | x ∈ H (tr.time i) ∧ ∃ j e', x ∈ H (tr.time j) ∧
       VoteAt tr x j e' ∧ e'.msg.slot = m} =
       {x | x ∈ H (tr.time i) ∧ ∃ j e', VoteAt (tr.upTo (tr.time i)) x j e' ∧

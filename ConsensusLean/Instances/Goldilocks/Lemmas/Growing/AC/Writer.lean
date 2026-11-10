@@ -72,8 +72,8 @@ private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
     exact hj
   have hsl : sp.slot (tr.time c) = s + 1 :=
     CompatibleSides.slot_of_lt (s := s + 1)
-      (by rw [ht]; simp only [SAParams.ts]; push_cast; nlinarith)
-      (by rw [ht]; simp only [SAParams.ts]; push_cast; nlinarith)
+      (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
+      (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
   intro k hk hrk
   have h := (SA.joined_awake sp FGP ro _ U tr hr Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h

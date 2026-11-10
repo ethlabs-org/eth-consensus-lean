@@ -87,7 +87,7 @@ theorem exists_unpolluted_labelW (sp : SAParams) {w : Nat} (hw : 2 ≤ w) {start
     by_contra h
     exact hn ⟨s, by omega, le_rfl, Or.inr (le_of_not_gt h)⟩
   simp only [SAParams.ts] at hfirst hlast
-  nlinarith
+  linarith
 
 end Consensus.Goldilocks.SA
 
