@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNext
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

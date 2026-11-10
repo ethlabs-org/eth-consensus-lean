@@ -41,9 +41,6 @@ TOKEN = re.compile(r"\S+")
 # Module -> why it stays without the front end. Instruction counts (`perf stat -e instructions:u`,
 # the module elaborated alone) with and without the import.
 EXEMPT = {
-    "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCompatibility":
-        "10.7% more instructions with it: its `nlinarith` needs the Nat casts, so the cheap attempt "
-        "fails and the call runs twice",
     "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift":
         "no demonstrated gain (0.2% more instructions, within the 0.3% spread of the measurement)",
     "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read":

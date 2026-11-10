@@ -115,11 +115,12 @@ critical-path `Kernel.ResetRounds`, whose profile showed `natToInt` as its large
 (1.0 s). Adding it, measured as user-space instructions (`perf stat -e instructions:u`,
 the module elaborated alone, deterministic to 0.3% where wall time under load was not):
 `ResetRounds` −24.0%, 45 more modules −12.3% together (each cheaper, up to −60.9% for
-`Growing.AC.Optimistic`), four unchanged controls 0.0%. Four modules were not cheaper and stay
+`Growing.AC.Optimistic`), four unchanged controls 0.0%. Four modules were not cheaper and stayed
 without it, recorded in the `EXEMPT` table of `scripts/linarith-imports.py`;
-`SelectionCompatibility` was 10.7% dearer because its `nlinarith` needs the `Nat` casts, so the cheap
-attempt fails and the call runs twice. `check.sh` step 2b now fails on a calling module without
-the import that is not exempt, and on an exemption that no longer applies.
+`SelectionCompatibility` was 10.7% dearer because its `nlinarith` needed the `Nat` casts, so the
+cheap attempt failed and the call ran twice. Once that call became `linarith` with its one product,
+the import made the module 7.0% cheaper, and its exemption was removed. `check.sh` step 2b fails on
+a calling module without the import that is not exempt, and on an exemption that no longer applies.
 
 ## The critical path is the proof structure
 
