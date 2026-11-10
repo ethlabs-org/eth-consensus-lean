@@ -829,6 +829,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyPrepa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyQueryShared
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyResetEnvelope
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthySuppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HonestNonempty
