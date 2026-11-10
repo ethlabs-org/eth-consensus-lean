@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Re
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.QuerySlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Suffix
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -91,53 +92,8 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
     (hprogress : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V) (K S A)
       Q.cap Q.index ready Q.run.2.horizon Q.run)
     (hquery : max ready 0 ≤ Q.query) : Nonempty (ConfirmedProducerSlotAt S A V Q) := by
-  classical
-  have hquery0 : 0 ≤ Q.query := (le_max_right ready 0).trans hquery
-  have hcap : Q.cap ≠ .final := by rcases Q.nonfinal with h | h <;> simp [h]
-  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (goldilocks S (Model.pubOf Q.run.1)).skel.grid
-      ⟨Pattern.single, Q.index, 1⟩ Q.duration ready Q.run.2.horizon := by
-    simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ite_eq_right hcap,
-      Model.sysExternal, ConfirmedQueryAt.duration, System.cDur, System.pt, Sys,
-      Model.sysOf, Model.Run.point]
-      using hprogress
-  have hlat : (4 * (Q.index : Time) + 6) ≤ contract_latency S A Q.cap Q.index := by
-    exact_mod_cast contract_latency_ge_sleepy S A Q.cap Q.index Q.nonfinal
-  have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hi : (0 : Time) ≤ Q.index := by positivity
-  have hbudget : (4 * (Q.index : Time) + 6) * Q.params.Δ ≤
-      ((K S A).params.latency Q.cap Q.index : Time) * Q.run.1.ΔAC := by
-    rw [show (K S A).params.latency Q.cap Q.index = contract_latency S A Q.cap Q.index from
-      congrFun (congrFun (contract_coefficients_latency S A) Q.cap) Q.index]
-    change (4 * (Q.index : Time) + 6) * Q.run.1.ΔAC ≤ _
-    exact mul_le_mul_of_nonneg_right hlat (zero_le_one.trans hd)
-  have hwin : Q.query + (Q.index : Time) * (4 * Q.params.Δ) ≤ Q.run.2.horizon := by
-    have hb := Q.bounded
-    have hp := Q.params.toParams.hΔ
-    change Q.query + _ ≤ _ at hb
-    linarith
-  obtain ⟨s, hlo, hhi, hr⟩ := hrec Q.query (by simpa using hquery)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton] using hwin)
-    (by simpa [Recurrence.len, Pattern.single, Pattern.span, goldilocks, skeleton,
-      Model.Run.point] using hwin)
-  have htime : (goldilocks S (Model.pubOf Q.run.1)).skel.grid.slotTime s = Q.params.ts s := by
-    change (s : Time) * (4 * Q.run.1.ΔAC) = 4 * Q.run.1.ΔAC * s
-    ring
-  rw [htime] at hlo hhi
-  have hmargin : Q.params.ts s + 6 * Q.params.Δ ≤ Q.deadline := by
-    change Q.params.ts s ≤ Q.query + (Q.index : Time) * (4 * Q.params.Δ) at hhi
-    change _ ≤ Q.query + _
-    linarith
-  have hready := hr 0 (by simp [Pattern.single])
-  simp only [Nat.add_zero] at hready
-  have hmem : runProposer S Q.run.2 Q.hn s ∈ Q.run.2.sel (.proposer s) := by
-    simp only [runProposer_eq, dite_eq_left hready.1]
-    exact Finset.min'_mem _ _
-  obtain ⟨hR, hH⟩ := hready.2 _ hmem
-  rw [htime] at hR hH
-  have hts0 : 0 ≤ Q.params.ts s := hquery0.trans hlo.le
-  have htsh : Q.params.ts s ≤ Q.run.2.horizon :=
-    (le_add_of_nonneg_right (by positivity : 0 ≤ 6 * Q.params.Δ)).trans (hmargin.trans Q.bounded)
+  obtain ⟨s, hs1, hlo, hmargin, hts0, htsh, hR, hH⟩ := nonfinal_query_slot S A V Q.run Q.hn
+    Q.nonfinal Q.index Q.bounded hprogress hquery
   have hnode := ready_transport_at S Q.run.2 Q.hn Q.valid hts0 htsh hR
   have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
       runProposer S Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
@@ -145,14 +101,8 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
   have hhold : runProposer S Q.run.2 Q.hn s ∈
       Q.keys (Q.params.ts s + Regimes.Growing.hold Q.params) := by
     rw [mem_honestKeysAt_iff]
-    change Q.run.2.key _ ∉ Q.run.2.faultyAt (min (Q.params.ts s + Q.run.1.ΔAC) Q.run.2.horizon)
-    simp only [Nat.cast_one, one_mul, EnvPoint.lookAhead, Model.Run.point] at hH
     exact hH
-  refine ⟨⟨s, ?_, hlo, hmargin, hnode, hhold⟩⟩
-  change 1 ≤ s
-  cases s with
-  | zero => simp [SA.SAParams.ts] at hlo; linarith
-  | succ s => exact Nat.succ_pos s
+  exact ⟨⟨s, hs1, hlo, hmargin, hnode, hhold⟩⟩
 
 /-- The selected slot's actual canonical proposal event, at the slot time. -/
 theorem confirmed_slot_event_at (Q : ConfirmedQueryAt S A V)

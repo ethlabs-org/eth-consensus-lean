@@ -889,9 +889,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalP
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposalWindowUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.QuerySlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SentForward
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchorRoute
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchorStep

@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Netw
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SentForward
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -79,48 +80,17 @@ theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.Ex
   obtain ⟨u, hud, hsource, _⟩ := hheld
   have huD : u < D := hud.trans_lt hd
   have event_before {i : Nat} {ev : Model.Event V (Wire (Fintype.card V))}
-      (he : rho.events[i]? = some ev) (hu : ev.time = u) : cutMap S rho hn (i + 1) ≤ j := by
-    rw [simTraceAt_eq] at hj
-    by_contra h
-    have hj' : j < cutMap S rho hn (i + 1) := by omega
-    have hlen : j < (allCuts S rho hn).length := by
-      rw [length_allCuts]
-      exact hj'.trans_le (cutMap_mono S rho hn (List.getElem?_eq_some_iff.mp he).1)
-    have hl : (simTrace S rho hn).label j ≠ none := by
-      rw [simTrace_label, List.getElem?_eq_getElem hlen]
-      simp
-    obtain ⟨_, q, e, _, hq, hstart, _, _, _, htime, _⟩ := simTrace_cut S rho hn hl
-    have hqi : q ≤ i := by
-      by_contra hq'
-      have := cutMap_mono S rho hn (show i + 1 ≤ q by omega)
-      omega
-    have hle : e.time ≤ ev.time := by
-      rcases hqi.lt_or_eq with hlt | rfl
-      · rcases keyLe_of_lt S rho hv hq he hlt with h | ⟨h, _⟩
-        · exact h.le
-        · exact h.le
-      · rw [he] at hq
-        cases hq
-        rfl
-    rw [hu, ← htime] at hle
-    exact absurd (hle.trans_lt huD) (not_lt.mpr hj)
+      (he : rho.events[i]? = some ev) (hu : ev.time = u) : cutMap S rho hn (i + 1) ≤ j :=
+    cutMap_succ_le_of_time_lt S rho hn hv he
+      (hu.trans_lt (huD.trans_le (by rwa [simTraceAt_eq] at hj)))
   have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply _
   rcases hsource with hs | hr
   · obtain ⟨i, hi, ho⟩ := hs
-    have hxy := released_forward_signer S rho hn hi ho hdecode
-    rw [hxy] at hdecode
-    have hstamp : t = u := released_forward_stamp S rho hn hv hi ho hdecode
-    have hacc : ∃ k < cutMap S rho hn (i + 1),
-        (simTrace S rho hn).AcceptAt (rho.ownKey (rho.key y)) k B ∧
-        (simTrace S rho hn).time k = t := by
-      rcases hi with he | ⟨receipt, he⟩
-      · exact tick_released_forward_acceptance S rho hn hv he ho hdecode
-      · exact delivery_released_forward_acceptance S rho hn hv he ho hdecode
-    obtain ⟨k, hk, ha, ht⟩ := hacc
+    obtain ⟨hstamp, k, hk, ha, ht⟩ := sent_forward_accepted S rho hn hv hi ho hdecode
     have hcut : cutMap S rho hn (i + 1) ≤ j := by
       rcases hi with he | ⟨receipt, he⟩ <;> exact event_before he rfl
     rw [simTraceAt_eq]
-    exact ⟨k, (hk.trans_le hcut).le, hkey ▸ ha, ht ▸ hstamp ▸ huD⟩
+    exact ⟨k, (hk.trans_le hcut).le, ha, ht ▸ hstamp ▸ huD⟩
   · obtain ⟨i, hi⟩ := hr
     obtain ⟨k, hk, ha, _, ht⟩ := received_forward_accepted_before_of_released_at S rho hn hv hnc
       hi hj₀ hy (.refl o) hx hrel hdecode (event_before hi rfl)
