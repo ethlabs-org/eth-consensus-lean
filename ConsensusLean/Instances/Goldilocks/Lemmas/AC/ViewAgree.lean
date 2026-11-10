@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -165,13 +166,8 @@ private theorem view_agree_of_forwardU
   have hblk : ∀ X ∈ ℓy.frame.tree, X.slot = s + 1 → X = P := fun X hX hXs =>
     huniq X ⟨y, hy, j, ℓy, hc.1, hX⟩ hXs
   have hvotes : ∀ v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes,
-      v ∈ (tr.state p i).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
-    rintro v (hv | ⟨X, hX, hXs, hv⟩)
-    · change v ∈ (voteViewList _ _ _ _).1 at hv
-      rw [hcast, mem_voteViewList_fst] at hv
-      exact hstar v hv.1 (by simpa [freeze, hcast] using hv.2)
-    · rw [hblk X hX hXs] at hv
-      exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hv)).1
+      v ∈ (tr.state p i).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} :=
+    merged_votes_of_early hPv hblk hstar
   -- the proposal's votes are merged votes
   have hm : ∀ v ∈ (tr.state p i).pool s,
       v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := fun v hv =>
