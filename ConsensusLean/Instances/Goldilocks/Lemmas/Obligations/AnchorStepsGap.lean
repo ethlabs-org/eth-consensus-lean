@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParentsUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedC4
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealedUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainedAnchorSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposalWindowUpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
@@ -58,15 +59,6 @@ private theorem run_slot {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
   obtain ⟨-, -, -, -, -, -, -, -, -, -, hs, -⟩ := hP
   exact hs
 
-/-- A proper ancestor of a block is an ancestor of its parent. -/
-private theorem anc_parent' {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
-    {A B Q : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc U A B) (hne : A ≠ B)
-    (hBQ : B.parent = some Q.root) (hQ : Q ∈ U) : Anc U A Q := by
-  rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hAY, hY⟩
-  · exact absurd heq.symm hne
-  obtain rfl : Y = Q := hU.1 hY.1 hQ (Option.some_injective _ (hY.2.2.symm.trans hBQ))
-  exact hAY
-
 /-- The facts of a post-drain honest anchor that `UpTo.report_cover_of_proposal` reads. -/
 private theorem anchor_facts {g ΔR a b : Time}
     (hp : Healing.ResetPremisesUpTo tr H proposer dg g ΔR a b) {s : Nat}
@@ -74,39 +66,19 @@ private theorem anchor_facts {g ΔR a b : Time}
     (hR : Healing.drainTime sp a ≤ sp.ts s) :
     (∃ k, tr.ProposesAt (proposer s) k A) ∧ A ∈ tr.HonestBlocks H ∧ A.slot = s ∧ 0 < s ∧
       A.root ≠ sp.genesisRoot ∧ gbar g + 4 * sp.Δ ≤ sp.ts s := by
-  have hΔ := sp.toParams.hΔ
   obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun hp.run hA
   obtain ⟨-, hAm, -⟩ := Healing.accept_of_proposesAt hp.run hp.noColl hA.1 hk
   have hAH : A ∈ tr.HonestBlocks H := ⟨_, hA.1, k + 1, hAm⟩
   have hAs := run_slot hA
-  have hca := Healing.cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨q, hq, _⟩ := hp.snapshot; exact ⟨q, hq⟩) hp.reset
-  have ha0 : 0 ≤ a := by
-    have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
-    linarith
-  have hau : sp.slot a + 2 * sp.k + 5 ≤ s := by
-    rw [Healing.drainTime_eq] at hR
-    exact_mod_cast (SA.ts_le_iff sp).1 hR
+  obtain ⟨hau, hgu⟩ := drained_anchor_slot (Healing.cutZ_lt_reset_of_snapshot hp.run
+    (by obtain ⟨q, hq, _⟩ := hp.snapshot; exact ⟨q, hq⟩) hp.reset) hR
   have hu : 0 < s := by omega
-  refine ⟨⟨k, hk⟩, hAH, hAs, hu, ?_, ?_⟩
-  · intro he
-    have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
-    have hG := Healing.Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hA.1 k)
-    have heq := hr.coherent.1 hAH ⟨_, hA.1, k, hG⟩ he
-    have hz : A.slot = 0 := by rw [heq]; rfl
-    omega
-  · have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
-      omega
-    have hle : sp.ts ((sp.slot a : Int) + 2) ≤ sp.ts s :=
-      (SA.ts_le_iff sp).2 (by omega)
-    have hgap : sp.ts ((sp.slot a : Int) + 2) =
-        sp.ts ((sp.slot a : Int) + 1) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; ring
-    have := Healing.lt_cutZ sp g
-    rw [hgap] at hle
-    linarith
+  refine ⟨⟨k, hk⟩, hAH, hAs, hu, fun he => ?_, hgu⟩
+  have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
+  have hG := Healing.Store.genesis_mem (Compose.fg_reachable hp.run.toLocalRun hA.1 k)
+  have heq := hr.coherent.1 hAH ⟨_, hA.1, k, hG⟩ he
+  have hz : A.slot = 0 := by rw [heq]; rfl
+  omega
 
 /-- **One route-A anchor step (gap `c`).** Honest proposals `A` at slot `s` and `X` at slot
 `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at an honest store
@@ -149,7 +121,7 @@ theorem anchorStep_gap {g ΔR a b gS ΔF : Time}
     rw [← he, hAs] at this
     omega
   have hAPrH : Anc (tr.HonestBlocks H) A Pr :=
-    anc_parent' hU hAX hne hpar ⟨_, hpX, kX, hPr⟩
+    Compose.anc_parent hU hAX hne hpar ⟨_, hpX, kX, hPr⟩
   have hAPr := Healing.store_anc_of_honest_anc hrun hnc hpX hAPrH hPr
   have hAp := Healing.mem_of_honest_anc hrun hnc hpX hAPrH hPr
   have hhA : Healing.HZ tr H g + 2 ≤
