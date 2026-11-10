@@ -88,6 +88,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Cut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.PersistKernel
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.PersistKernelGoldilocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.BlockFinality
