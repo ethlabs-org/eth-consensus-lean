@@ -803,6 +803,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalResetPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowAssembly
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingChain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
