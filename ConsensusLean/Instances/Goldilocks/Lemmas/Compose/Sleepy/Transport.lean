@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.CarryServed
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -88,30 +89,6 @@ theorem frame_anc_accepted (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X :=
   frame_anc_acceptedU (hr := hr.toU) (y := y) (hy := hy)
 
-/-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
-are those of the state after the vote's call. -/
-private theorem readPoint_slot (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
-    (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
-      ∀ u : Vote sp.n, u.slot = σ → (T.state y (i + 1)).voteStamp u = e.readPoint.voteStamp u := by
-  rw [Trace.state_succ_of_call T hc.1, SA.post_of_castAt hr hy hc]
-  have hopt : ∀ A : SA.SAState sp.n,
-      (SA.optimisticConfirmation sp A ℓ.frame (T.time i)).pool = A.pool ∧
-        (SA.optimisticConfirmation sp A ℓ.frame (T.time i)).voteStamp = A.voteStamp := by
-    intro A
-    unfold SA.optimisticConfirmation SA.updateLatestConfirmed
-    split
-    · exact ⟨rfl, rfl⟩
-    · split_ifs <;> exact ⟨rfl, rfl⟩
-  rw [(hopt _).1, (hopt _).2]
-  unfold SA.admitVote
-  split_ifs
-  · exact ⟨rfl, fun _ _ => rfl⟩
-  · exact ⟨rfl, fun _ _ => rfl⟩
-  · exact ⟨Function.update_of_ne (Ne.symm hσ) _ _,
-      fun u hu => Function.update_of_ne (by rintro rfl; exact hσ hu) _ _⟩
-
 /-- **`Carry_y` from a writer, per head.** For an honest `y` casting its slot-`(s+1)` vote,
 under `Sync` from `a ≤ t_s` to at least `t_s + 2Δ`: if each counted vote is of slot `s`, was sent
 or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s
@@ -132,135 +109,17 @@ theorem carryAt_of_writer_heads
         ((∃ k, T.AcceptAt w k Hv ∧ a ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∨
           SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
     SA.CarryAt T U y i e s CV := by
-  have hU := hr.coherent
-  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  obtain ⟨-, hys, hyj, -⟩ := SA.castAt_spec hr hy hc
-  have hsi : sp.slot (T.time i) = s + 1 := by omega
-  have hti : sp.ts s + 4 * sp.Δ ≤ T.time i := by
-    have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s + 1 : Nat) : Int)).2 (by rw [hsi])
-    rwa [hts] at this
-  -- the voter's restarts up to its vote are at or before `t_s`
-  have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts s := by
-    have hj' : SA.joined sp (T.post i) (T.time i) := by
-      unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
-    intro k hk hrk
-    have := ((SA.joined_awake sp) FGP ro H U T hr y hy i ℓ hc.1 hj').2 k hk hrk
-    rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
-  have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
-    intro k hk τ hτ
-    have h₁ := ac_deadline_le_of_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
-    have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ from
-      lt_add_of_pos_right _ (mul_pos two_pos hΔ))
-    change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
-    linarith only [h₁, h₂]
-  obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy i ℓ hc.1
-  refine ⟨hr.awake_of_call y hy i ℓ hc.1, hyj, fun v hv => ?_, fun v hv => ?_⟩
-  · -- the head: relayed to `y` before `t_s + 3Δ`, with its ancestors
-    obtain ⟨-, -, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
-    refine ⟨Hv, hHv, hHvr, fun X hX => ?_⟩
-    -- `y` accepted the head before the freeze: relayed, or by other means
-    have hyacc : SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ) := by
-      rcases hacc with ⟨kw, hkw, hakw, hkwt⟩ | hacc
-      · have hdi : T.deadline y i (T.time kw) ≤ T.time i := by
-          linarith only [hdl i le_rfl _ hkwt, hti, hΔ]
-        have delivered := hsync.elim
-          (fun h => h.2 w hw kw Hv hkw hakw (by linarith only [hkwt, hb]) y hy i ℓ hc.1 hdi hFHv)
-          (fun h => h.relay w hw kw Hv hkw hakw y hy i ℓ hc.1 hdi hdi hFHv)
-        obtain ⟨ky, hky, hacc', hkyt⟩ := delivered
-        exact Or.inr ⟨ky, hacc', hkyt.trans (hdl ky hky _ hkwt)⟩
-      · exact hacc
-    rcases hyacc with hg | ⟨ky, ⟨ℓk, hck, hcall⟩, hkyt'⟩
-    · left
-      obtain rfl : Hv = G := hU.1 hHv hGU (hg.trans hGr.symm)
-      rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hX with rfl | ⟨Q, -, hQ⟩
-      · exact hGr
-      · exact absurd (hQ.2.2.symm.trans hGp) (Option.some_ne_none _)
-    rcases frame_anc_accepted hr hy ky ℓk hck Hv
-      ((SA.accept_new sp hr hy ⟨ℓk, hck, hcall⟩).1 ℓk hck) X hX with hg | ⟨k, hk, hkX⟩
-    · exact Or.inl hg
-    · exact Or.inr ⟨k, hkX, lt_of_le_of_lt (hr.time_mono hk) hkyt'⟩
-  · -- the vote: forwarded by `w`, processed by `y` before `t_s + 3Δ` and kept
-    obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, -⟩ := hW v hv
-    have hdi : T.deadline y i (T.time k) ≤ T.time i := by
-      linarith only [hdl i le_rfl _ hk2, hti, hΔ]
-    have delivered := hsync.elim
-      (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-        (h.1 w hw k v hsend (ha.trans hk1) (by linarith only [hk2, hb]) y hy i ℓ hc.1 hdi)))
-      (fun h => h.message w hw k v hsend (ha.trans hk1) y hy i ℓ hc.1 hdi hdi)
-    rcases (SA.messageServedBefore_iff _ _ _ _).mp delivered with delivered | retained
-    swap
-    · have evidence := (retained.evidence hr hy).weaken (hdl i le_rfl _ hk2).le
-      have hheld (u : Vote sp.n) (hus : u.slot = s)
-          (hu : SA.HeldBefore (T.state y i) u (sp.ts s + 3 * sp.Δ)) :
-          SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
-        have hp := SA.heldBefore_mono hr hy (Nat.le_succ i)
-          (fun r hr₁ hr₂ hrr => by
-            have heq : r = i := by omega
-            subst r
-            have := hrsy i le_rfl hrr
-            linarith only [this, hti, hΔ]) hu
-        obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
-        exact ⟨by rw [hus, ← hpool]; simpa only [hus] using hp.1,
-          by rw [← hstamp u hus]; exact hp.2⟩
-      rcases (SA.poolEvidenceBefore_iff _ _ _).mp evidence with hv' |
-        ⟨u, w, huw, huv, hwv, hus, hws, hu, hw⟩
-      · exact Or.inl (hheld v hvs hv')
-      · by_cases huv' : u = v
-        · subst u; exact Or.inl (hheld v hvs hu)
-        by_cases hwv' : w = v
-        · subst w; exact Or.inl (hheld v hvs hw)
-        exact Or.inr ⟨u, w, huw, huv', hwv', huv, hwv, hus.trans hvs, hws.trans hvs,
-          hheld u (hus.trans hvs) hu, hheld w (hws.trans hvs) hw⟩
-    obtain ⟨k', hk'i, hkk', hp, hk'dl⟩ := delivered
-    have hk'lt : T.time k' < sp.ts s + 3 * sp.Δ := hk'dl.trans (hdl k' hk'i _ hk2)
-    obtain ⟨ℓ', hc', -⟩ := id hp
-    -- no restart of `y` after `k'` up to its vote
-    have hnr : ∀ r, k' + 1 ≤ r → r < i + 1 → ¬ T.RestartAt y r := by
-      rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
-      obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
-      have h₁ := hprev k' (by omega) ℓ' hc'
-      have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
-      linarith only [h₁, h₂, hu, hk1, hkk']
-    have hsk' : sp.slot (T.time k') = s :=
-      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith only [hk'lt, hΔ])
-    -- every slot-`s` vote that `y` holds after `k'` is held at the vote, received before the freeze
-    have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
-        SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
-      intro u hu
-      have hus : u.slot = s := SA.state_pool_slot sp hr hy (k' + 1) s u hu
-      obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
-      have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
-      refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
-      rw [← hstamp u hus]
-      rcases SA.pool_origin hr hy (i + 1) u (by rw [hus]; exact hu') with
-        ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-      · rw [hst₁, SA.etime_of_lt_of]
-        by_cases hk₁k' : k₁ ≤ k'
-        · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
-        · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
-          · -- `y`'s own slot-`s` vote, cast at most `Δ` after `t_s`
-            have h := (cast_head_fcRoot hr hy ⟨hc₁, he₁⟩).2
-            rw [hus] at h
-            linarith only [h, hΔ]
-          · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
-              (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
-      · rw [hst₁, SA.etime_of_lt_of]
-        have := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
-        linarith only [this, hΔ]
-    by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
-    · exact Or.inl (hheld v hv')
-    · rcases SA.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
-        h | ⟨a, ha, c, hc'', hac, hav, hcv⟩
-      · rw [hvs] at h
-        exact absurd h hv'
-      · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
-        have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot sp hr hy _ s a ha',
-          SA.state_pool_slot sp hr hy _ s c hc', hheld a ha', hheld c hc'⟩
-        · rintro rfl; exact hv' ha'
-        · rintro rfl; exact hv' hc'
+  refine carryAt_of_served hr (frame_anc_accepted hr hy) hy hc hs fun v hv => ?_
+  obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, Hv, -, hHvr, hFHv, hacc⟩ := hW v hv
+  -- the vote: forwarded by `w` from `t_k ∈ [t_s, t_s + 2Δ)`
+  refine ⟨hvs, ⟨T.time k, hk1, hk2, fun hdi => hsync.elim
+    (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+      (h.1 w hw k v hsend (ha.trans hk1) (by linarith only [hk2, hb]) y hy i ℓ hc.1 hdi)))
+    (fun h => h.message w hw k v hsend (ha.trans hk1) y hy i ℓ hc.1 hdi hdi)⟩, Hv, hHvr, ?_⟩
+  -- the head: relayed by `w` from its acceptance, or accepted by `y` by other means
+  refine hacc.imp (fun ⟨kw, hkw, hakw, hkwt⟩ => ⟨T.time kw, hkwt, fun hdi => hsync.elim
+    (fun h => h.2 w hw kw Hv hkw hakw (by linarith only [hkwt, hb]) y hy i ℓ hc.1 hdi hFHv)
+    (fun h => h.relay w hw kw Hv hkw hakw y hy i ℓ hc.1 hdi hdi hFHv)⟩) id
 
 /-- **`Carry_y` from a writer, on a window**: `carryAt_of_writer_heads`, with every head that
 `w` accepted before `a` (outside the relay window) reaching `y` before the freeze (`hold`). -/
