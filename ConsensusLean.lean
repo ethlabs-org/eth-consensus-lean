@@ -953,6 +953,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Family
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks

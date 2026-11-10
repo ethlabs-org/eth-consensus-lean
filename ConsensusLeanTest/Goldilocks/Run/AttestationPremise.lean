@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import Mathlib.Tactic.IntervalCases
 public import Mathlib.Tactic.Ring
 @[expose] public section
