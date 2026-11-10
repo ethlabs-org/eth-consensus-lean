@@ -73,6 +73,7 @@ public import ConsensusLeanTest.Goldilocks.Mirror.CutLaw
 public import ConsensusLeanTest.Goldilocks.Mirror.FG
 public import ConsensusLeanTest.Goldilocks.Mirror.Node
 public import ConsensusLeanTest.Goldilocks.Mirror.Setup
+public import ConsensusLeanTest.Goldilocks.NodeEngine
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
 public import ConsensusLeanTest.Goldilocks.Persist.RecentSource
 public import ConsensusLeanTest.Goldilocks.Refinement.Constant

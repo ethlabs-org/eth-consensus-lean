@@ -702,3 +702,66 @@ prefixes = ["Fx.Compose"]
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "Frame", "AC"]
 
 [[exception]]''']]
+
+# NodeEngine registration changes accepted imports; definitions and proofs stay separate.
+[NodeEngineAllowed]
+files."Fx/Milestones/Spec/Input.lean" = "module\npublic import Fx.Spec.A\npublic def input : Nat := 0\n"
+files."Fx/NodeEngine/Spec/Wire.lean" = "module\npublic import Fx.Milestones.Spec.Input\n@[expose] public section\ndef wire : Nat := 0\n"
+files."Fx/NodeEngine/Statements/Laws.lean" = "module\npublic import Fx.NodeEngine.Spec.Wire\npublic def law : Prop := True\n"
+files."Fx/NodeEngine/Lemmas/L.lean" = "module\npublic import Fx.NodeEngine.Statements.Laws\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Milestones.Spec.Input\npublic import Fx.NodeEngine.Spec.Wire\npublic import Fx.NodeEngine.Statements.Laws\npublic import Fx.NodeEngine.Lemmas.L"]]
+edit."FxTest/T.lean" = [['public import FxSol', "public import FxSol\npublic import Fx.NodeEngine.Spec.Wire\npublic import Fx.NodeEngine.Lemmas.L"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "MilestoneSpec"
+prefixes = ["Fx.Milestones.Spec"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine.Spec", "Fx.NodeEngine.Statements"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec", "MilestoneSpec"]
+[[layer]]
+name = "NodeEngineLemmas"
+prefixes = ["Fx.NodeEngine.Lemmas"]
+allow = ["Init", "ToMathlib", "Spec", "Statements", "MilestoneSpec", "Lemmas", "NodeEngine"]
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "MilestoneSpec", "NodeEngine", "NodeEngineLemmas"]']]
+
+[NodeEngineCannotImportLemmas]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.NodeEngine.Spec.Wire (layer NodeEngine)"
+files."Fx/NodeEngine/Spec/Wire.lean" = "module\npublic import Fx.Lemmas.L\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.NodeEngine.Spec.Wire"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine.Spec", "Fx.NodeEngine.Statements"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]''']]
+
+[NodeEngineCannotImportBlocks]
+expect = "FAIL[import] Fx.Blocks.FG (layer Blocks) imported by Fx.NodeEngine.Spec.Wire (layer NodeEngine)"
+files."Fx/Blocks/FG.lean" = "module\npublic import Fx.Spec.A\npublic def fg : Nat := 0\n"
+files."Fx/NodeEngine/Spec/Wire.lean" = "module\npublic import Fx.Blocks.FG\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Blocks.FG\npublic import Fx.NodeEngine.Spec.Wire"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Blocks"
+prefixes = ["Fx.Blocks"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine.Spec", "Fx.NodeEngine.Statements"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]''']]
+
+[TrustedCannotImportNodeEngine]
+expect = "FAIL[import] Fx.NodeEngine.Spec.Wire (layer NodeEngine) imported by Fx.Spec.A (layer Spec)"
+files."Fx/NodeEngine/Spec/Wire.lean" = "module\npublic import Fx.Init\npublic def wire : Nat := 0\n"
+edit."Fx/Spec/A.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.NodeEngine.Spec.Wire"]]
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.NodeEngine.Spec.Wire"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "NodeEngine"
+prefixes = ["Fx.NodeEngine.Spec", "Fx.NodeEngine.Statements"]
+expose = true
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]''']]
