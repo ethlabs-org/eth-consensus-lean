@@ -10,7 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowFields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalDutyProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalQueryTiming
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Lemmas.Model.Constant
 
@@ -33,10 +33,11 @@ anchor gap `c` with `2 ≤ c`, the span `3c ≤ δt`, the final pattern `[0, c, 
 `hlat` of a span-`3c` window explicit. `final_window_extract_of_shared` is its instance at the
 FG gap `c = fgSlots` of the assumptions (latency `final_latency_gap`), and
 `final_window_extract_of` instantiates the protocol FG delay `ΔF := protoFGDelay` only there.
-Proved here: `CatchRun 2Δ` (`catchRun_of_psync`), the recurrence from `Q.progress`, the
-two queries (`two_query_placement`), the seed height (`seed_height_held`), the anchor steps
-(`anchorSteps_gap`), the window fields (`finalWindow_data_of_honest_anchors_gap`, readiness by
-`ready_transport`), the slack `ts(s₀ + 3c) + Δ ≤ deadline` from `hlat`, and the time glue. -/
+The slots of the window are `final_window_slots` (FinalQueryTiming.lean): the recurrence from
+`Q.progress`, the two queries (`two_query_placement`), the time glue and the slack
+`ts(s₀ + 3c) + Δ ≤ deadline` from `hlat`. Proved here: `CatchRun 2Δ` (`catchRun_of_psync`), the
+seed height (`seed_height_held`), the anchor steps (`anchorSteps_gap`) and the window fields
+(`finalWindow_data_of_honest_anchors_gap`, readiness by `ready_transport`). -/
 
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
@@ -90,66 +91,11 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
         (W.block i.succ) := by
   classical
   let H := honestKeys S Q.run.2
-  let G := finalGrid S A V Q
   have hΔ : (0 : Time) < Q.params.Δ := Q.params.toParams.hΔ
-  have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
-  have hspc := finalWindow_span_of_offsets (S := S) (A := A) hpat
-  -- the recurrence of the query
-  have hrec : PatternRecurrence Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) G ⟨finalWindow A, Q.index, 1⟩
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run) ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run)
-      Q.run.2.horizon := by
-    simpa only [System.prog, shapeProgress, shapeHolds, goldilocksContract, ↓reduceIte,
-      Model.sysExternal, System.pt, Sys, Model.sysOf, Model.Run.point] using Q.progress
-  have hlen : ((⟨finalWindow A, Q.index, 1⟩ : Recurrence).len : Time) * G.slotLen =
-      4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ := by
-    simp only [Recurrence.len, hspc]
-    change _ * (4 * Q.run.1.ΔAC) = 4 * _ * Q.run.1.ΔAC
-    push_cast
-    ring
-  have hL : (0 : Time) < G.slotLen := G.slotLen_pos
-  have hi : (1 : Time) ≤ ((Q.index : Nat) : Time) := by exact_mod_cast Q.index.pos
-  have hbh : Q.deadline ≤ Q.run.2.horizon := Q.bounded
-  have hq : max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0) 0 ≤ Q.query := by
-    have h1 : G.slotLen ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) * G.slotLen := by
-      have : (1 : Time) ≤ ((((Q.index : Nat) + S.δt : Nat) : Time)) := by
-        push_cast; linarith only [hi, Int.natCast_nonneg S.δt]
-      exact le_mul_of_one_le_left hL.le this
-    have := le_max_left (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
-      (G.slotTime (finalSeedMin S A V Q a) - 1)
-    rw [max_eq_left (le_max_right _ _)]
-    linarith only [this, hplace, h1]
-  rw [max_eq_left (le_max_right _ _)] at hq
-  have hstop : Q.query + ((⟨finalWindow A, Q.index, 1⟩ : Recurrence).len : Time) * G.slotLen ≤
-      Q.run.2.horizon := by rw [hlen]; linarith only [hlat, hbh, hΔ]
-  obtain ⟨u, s₀, humin, hu0, hus, hut₁, -, hdu, hs₀q, -, hspan, hds⟩ :=
-    two_query_placement (δt := S.δt) hrec (by rw [hpat]; exact List.mem_cons_self) hplace hq hstop
-      hstop
-  rw [hlen, hspc, finalGrid_slotTime] at hspan
-  rw [finalGrid_slotTime] at hs₀q
-  -- the time glue
-  have hRu := finalSeedMin_spec S A V Q humin
-  have hgu : gbar Q.gst + 4 * Q.params.Δ ≤ Q.params.ts u := by
-    have hc := final_catchUp_le_cDur S A V Q
-    have hready : gbar Q.gst + 4 * Q.params.Δ <
-        (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run := by
-      change max Q.gst 0 + 4 * Q.params.Δ <
-        max Q.gst 0 + (Sys (goldilocks S) V).cDur (K S A) Q.run + 1
-      simp only [Regimes.catchUp] at hc
-      linarith only [hc, hΔ]
-    have h1 := ((le_max_left _ _).trans (le_max_left _ _)).trans_lt hut₁
-    rw [finalGrid_slotTime] at h1
-    linarith only [hready, h1]
-  have hus' : u + Q.params.toParams.fg.δt ≤ s₀ := hus
-  have hts : ∀ m n : Nat, m ≤ n → Q.params.ts m ≤ Q.params.ts n := fun m n h =>
-    (SA.ts_le_iff Q.params).2 (by exact_mod_cast h)
-  have hu₀ : Q.params.ts u ≤ Q.params.ts s₀ := hts _ _ ((Nat.le_add_right _ _).trans hus')
-  have hR : Healing.drainTime Q.params a ≤ Q.params.ts s₀ := hRu.trans hu₀
-  have hb3 : Q.params.ts (s₀ + 3 * c : Nat) ≤ Q.run.2.horizon := by
-    push_cast at hspan hlat ⊢; linarith only [hspan, hlat, hbh, hΔ]
-  have hb₀ : Q.params.ts s₀ ≤ Q.run.2.horizon := (hts _ _ (Nat.le_add_right _ _)).trans hb3
-  have hgS₀ : gbar Q.gst ≤ Q.params.ts s₀ + 6 * Q.params.Δ := by linarith only [hgu, hu₀, hΔ]
-  have hgSu : gbar Q.gst ≤ Q.params.ts u + 6 * Q.params.Δ := by linarith only [hgu, hΔ]
+  -- the slots of the window and their time glue
+  obtain ⟨u, s₀, hu0, hus', hdu, hanc, huh, hb₀, hb3, hRu, hR, hgu, hgSu, hgS₀, hs₀q, hlast,
+    h3D⟩ := final_window_slots S A V Q.run Q.hn Q.index Q.gst Q.query Q.progress Q.bounded hpat
+      hlat hplace
   -- shared premises
   have hc : Healing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
@@ -159,21 +105,8 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
       (fun v hv t ht hb => Q.healthy.2.1.2 v t ht hb
         ((Q.run.2.point.honestAt_iff_zero Q.constant _ _).mpr hv))
   -- the seed and the anchors
-  obtain ⟨Ps, hPs⟩ := hpropose u hu0 (hu₀.trans hb₀) (by simpa using hdu)
-  have hoff : ∀ i : Fin 4, ![0, c, 2 * c, 3 * c] i ≤ 3 * c := by
-    intro i; fin_cases i
-    exacts [Nat.zero_le _, Nat.le_mul_of_pos_left c (by decide), Nat.mul_le_mul_right c (by decide),
-      le_rfl]
-  have hduty : ∀ i : Fin 4, HonestReadyIn Q.run.2.point Q.run.2.key
-      (fun s => Q.run.2.sel (.proposer s)) (s₀ + ![0, c, 2 * c, 3 * c] i)
-      ((Sys (goldilocks S) V).cDur (K S A) Q.run)
-      (G.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) Q.run.2.point.env.ΔAC := by
-    intro i
-    simpa using hds _ (by rw [hpat]; exact List.mem_ofFn.2 ⟨i, rfl⟩)
-  choose P hP using fun i : Fin 4 => hpropose _
-    (Nat.lt_of_lt_of_le (Nat.lt_of_lt_of_le hu0 ((Nat.le_add_right _ _).trans hus'))
-      (Nat.le_add_right _ _))
-    ((hts _ _ (Nat.add_le_add_left (hoff i) _)).trans hb3) (hduty i)
+  obtain ⟨Ps, hPs⟩ := hpropose u hu0 huh hdu
+  choose P hP using fun i : Fin 4 => hpropose _ (hanc i).1 (hanc i).2.1 (hanc i).2.2
   have hδ2 : 2 ≤ Q.params.toParams.fg.δt :=
     hc2.trans ((Nat.le_mul_of_pos_left c (by decide)).trans h3c)
   have hh₀ := seed_height_held hreset hc hs hδ2 hPs hu0 hRu hgu (hP 0) hus' hb₀ hgSu
@@ -183,15 +116,13 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
   have hready : ∀ i, Regimes.ReadyAt Q.trace H ((Sys (goldilocks S) V).cDur (K S A) Q.run)
       (P i).proposer (Q.params.toParams.slotTime (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
     intro i
-    have hr := hduty i
+    obtain ⟨-, hti, hr⟩ := hanc i
     have hmem : runProposer S Q.run.2 Q.hn (s₀ + ![0, c, 2 * c, 3 * c] i) ∈
         Q.run.2.sel (.proposer (s₀ + ![0, c, 2 * c, 3 * c] i)) := by
       simp only [runProposer_eq, dite_eq_left hr.1]
       exact Finset.min'_mem _ _
     have hR' := (hr.2 _ hmem).1
-    rw [finalGrid_slotTime] at hR'
-    have hti : Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) ≤ Q.run.2.horizon :=
-      (hts _ _ (Nat.add_le_add_left (hoff i) _)).trans hb3
+    rw [finalGrid_slotTime S A V Q] at hR'
     have h0 : (0 : Time) ≤ Q.params.ts (s₀ + ![0, c, 2 * c, 3 * c] i : Nat) :=
       mul_nonneg (mul_nonneg zero_le_four hΔ.le) (Int.natCast_nonneg _)
     have hnode := ready_transport S Q.run.2 Q.hn Q.valid h0 hti hR'
@@ -200,10 +131,6 @@ theorem final_window_extract_of_gap (Q : FinalQuery S A V) {c : Nat} (hc2 : 2 �
     obtain ⟨-, -, -, -, -, -, -, -, -, -, -, hpr, -⟩ := hP i
     rw [hpr, Q.params.slotTime_eq]
     exact hnode
-  have h3D : Q.params.ts (s₀ + 3 * c : Nat) + Q.params.Δ ≤ Q.deadline := by
-    push_cast at hspan hlat ⊢; linarith only [hspan, hlat]
-  have hlast : Q.query < Q.params.ts (s₀ + 3 * c : Nat) :=
-    hs₀q.trans_le (hts _ _ (Nat.le_add_right _ _))
   obtain ⟨W, hWs, hWg, hWb⟩ := finalWindow_data_of_honest_anchors_gap Q hreset hc hc2 h3c s₀ hP
     hR hb3 (by rw [Q.params.slotTime_eq]; exact hs₀q)
     (by rw [Q.params.slotTime_eq]; simp only [SA.SAParams.ts] at h3D; push_cast at h3D ⊢
