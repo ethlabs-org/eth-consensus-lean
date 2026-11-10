@@ -144,6 +144,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.HeldRow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
