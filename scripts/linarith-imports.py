@@ -2,17 +2,20 @@
 """Add `import ConsensusLean.Lemmas.Tactic.Linarith` to every module that calls plain linarith.
 
 The front end (ConsensusLean/Lemmas/Tactic/Linarith.lean) only acts in modules that import it,
-directly or through an import. This script gives it to each module of the default libraries that
-calls plain `linarith`/`nlinarith` (no `!`, no `only`, no configuration such as `(config := c)`,
-`(preprocessors := ps)` or `-flag`: the only forms it changes) and may import the Lemmas layer
-(scripts/boundaries.toml), never a trusted path (`trusted_paths`). Comments, docstrings and strings
-are blanked before any matching, and only the module header (`module`, then `[public] [meta] import
-[all] M` commands, whose tokens may be split over lines) counts as imports. The scan is lexical: the
-word `linarith` or `nlinarith` outside comments and strings counts as a call unless one of those
-forms follows (a `«linarith»` identifier does not count; a bare one, such as a declaration named
-`linarith`, does).
-It adds one private import on a new line after the header's last token and touches nothing else; a
-module that imports the root `ConsensusLean` already reaches the front end and is left alone.
+directly or through an import. This script gives it to each module of the checked libraries (the
+`[[lib]]` entries of scripts/boundaries.toml: a library's root file and every file under its
+directory) that calls plain `linarith`/`nlinarith` (no `!`, no `only`, no configuration such as
+`(config := c)`, `(preprocessors := ps)` or `-flag`: the only forms it changes) and may import the
+Lemmas layer, never a trusted path (`trusted_paths`). Comments, docstrings and strings are blanked
+before any matching, and only the module header (Lean's `[module] [prelude]`, then `[public]
+[meta] import [all] M` commands, whose tokens may be split over lines) counts as imports. The scan
+is lexical: the word `linarith` or `nlinarith` outside comments and strings counts as a call unless
+one of those forms follows (a `«linarith»` identifier does not count; a bare one, such as a
+declaration named `linarith`, does).
+It adds one private import on a new line right after the header's last token (anything that
+followed that token on its line, a comment for instance, moves after the new import) and touches
+nothing else; a module that imports the root `ConsensusLean` already reaches the front end and is
+left alone.
 
 A module in `EXEMPT` is left without the import, for the reason recorded there (measured: the
 front end does not make its elaboration cheaper). An entry that no longer applies (the module is
@@ -30,7 +33,6 @@ import tomllib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FRONT_END = "ConsensusLean.Lemmas.Tactic.Linarith"
 IMPORT = f"import {FRONT_END}"
-LIBS = ("ConsensusLean", "ConsensusLeanTest")
 # Not counted: identifier characters around the word (`foo_linarith`, `X.linarith`, `«linarith»`),
 # `!`/`?` variants, and a following `only`, `(field := ...)` configuration or `-flag`/`+flag`.
 CALL = re.compile(r"(?<![\w.'«])n?linarith(?![\w'!?»])"
@@ -50,8 +52,7 @@ EXEMPT = {
         "no demonstrated gain (instructions unchanged)",
 }
 
-
-# The header grammar, token by token: state -> {keyword: next state}; any other token in state
+# The import commands, token by token: state -> {keyword: next state}; any other token in state
 # "import"/"all" is the module name (the command ends), in any other state it ends the header.
 HEADER_STEPS = {
     "command": {"public": "public", "meta": "meta", "import": "import"},
@@ -63,74 +64,79 @@ HEADER_STEPS = {
 
 
 def header(code):
-    """The header's imported modules and the line of its last token, read from the
+    """The header's imported modules and the offset just past its last token, read from the
     comment-stripped code by Lean's header grammar `[module] [prelude] import*`, each import a
     `[public] [meta] import [all] M` command, tokens separated by any whitespace (newlines
-    included). The line is None without a header, or when other code shares the line of the
-    header's last token (a new line after it would move that code)."""
-    imports, last, line, pos, state, start = [], None, 0, 0, "command", None
+    included). The offset is None without a header."""
+    imports, end, state = [], None, "command"
     opening = ["module", "prelude"]  # the keywords that may still come before the imports, in order
     for match in TOKEN.finditer(code):  # stops at the first token after the header
-        line += code.count("\n", pos, match.start())
-        pos, word = match.start(), match.group()
+        word = match.group()
         if word in opening and state == "command" and not imports:
             opening = opening[opening.index(word) + 1:]
-            last = line
+            end = match.end()
         elif word in HEADER_STEPS[state]:
-            start = line if state == "command" else start
             state = HEADER_STEPS[state][word]
         elif state in ("import", "all"):
             imports.append(word)
-            last, state = line, "command"
-        else:  # the first token of the code after the header: `start` if a command began
-            if (line if state == "command" else start) == last:
-                last = None
+            end, state = match.end(), "command"
+        else:
             break
-    return imports, last
+    return imports, end
 
 
 def strip_comments(text):
     """Blank nested `/- -/` blocks (docstrings too), `--` line comments and string literals.
 
-    Every newline survives, so line `k` of the result is line `k` of the source."""
+    Newlines stay and every other blanked character becomes a space, so an offset into the result
+    is the same offset into the source."""
     out, depth, i = [], 0, 0
     while i < len(text):
         if text.startswith("/-", i):
+            out.append("  ")
             depth, i = depth + 1, i + 2
         elif depth and text.startswith("-/", i):
+            out.append("  ")
             depth, i = depth - 1, i + 2
         elif depth:
             out.append("\n" if text[i] == "\n" else " ")
             i += 1
         elif text.startswith("--", i):
             j = text.find("\n", i)
-            i = len(text) if j < 0 else j
+            j = len(text) if j < 0 else j
+            out.append(" " * (j - i))
+            i = j
         elif text[i] == '"':
             j = i + 1
             while j < len(text) and text[j] != '"':
                 j += 2 if text[j] == "\\" else 1
-            out.append(" " + "\n" * text.count("\n", i, j + 1))
-            i = j + 1
+            j = min(j + 1, len(text))
+            out.append("".join("\n" if c == "\n" else " " for c in text[i:j]))
+            i = j
         else:
             out.append(text[i])
             i += 1
     return "".join(out)
 
 
-def layers(root):
-    config = tomllib.loads((root / "scripts/boundaries.toml").read_text())
-    trusted = config["checks"]["trusted_paths"]
+def config(root):
+    """The checked libraries, the trusted paths and the module prefixes that may import Lemmas."""
+    cfg = tomllib.loads((root / "scripts/boundaries.toml").read_text())
     may_import = []
-    for layer in config["layer"]:
+    for layer in cfg["layer"]:
         if layer["name"] == "Lemmas" or "Lemmas" in layer.get("allow", []):
             may_import += layer["prefixes"]
-    return trusted, may_import
+    return [lib["name"] for lib in cfg["lib"]], cfg["checks"]["trusted_paths"], may_import
 
 
 def candidates(root):
-    trusted, may_import = layers(root)
-    for lib in LIBS:
-        for path in sorted((root / lib).rglob("*.lean")):
+    """Every module of a checked library that may import the front end and calls plain linarith:
+    (path, module, source, comment-stripped source)."""
+    libs, trusted, may_import = config(root)
+    for lib in libs:
+        for path in sorted({root / f"{lib}.lean", *(root / lib).rglob("*.lean")}):
+            if not path.is_file():
+                continue
             relative = path.relative_to(root).as_posix()
             name = ".".join(path.relative_to(root).with_suffix("").parts)
             if name == FRONT_END or any(relative == t or relative.startswith(t.removesuffix(".lean") + "/")
@@ -150,7 +156,7 @@ def main(argv=None, root=ROOT, exempt=EXEMPT):
     args = parser.parse_args(argv)
     missing, present, exempted, importing = [], 0, set(), set()
     for path, name, text, code in candidates(root):
-        imports, last = header(code)
+        imports, end = header(code)
         # A module that imports the root ConsensusLean (some tests) already reaches the front end.
         if FRONT_END in imports or "ConsensusLean" in imports:
             present += 1
@@ -160,13 +166,11 @@ def main(argv=None, root=ROOT, exempt=EXEMPT):
         if name in exempt:
             exempted.add(name)
             continue
-        if last is None:
-            raise SystemExit(f"linarith-imports: {path.relative_to(root)}: no module header found, or other "
-                             "code on the line of its last token")
+        if end is None:
+            raise SystemExit(f"linarith-imports: {path.relative_to(root)}: no module header found")
         missing.append(path)
         if not args.check:
-            lines = text.split("\n")
-            path.write_text("\n".join(lines[:last + 1] + [IMPORT] + lines[last + 1:]))
+            path.write_text(text[:end] + "\n" + IMPORT + text[end:])
     for path in missing:
         print(path.relative_to(root).as_posix())
     stale = sorted(set(exempt) - exempted)

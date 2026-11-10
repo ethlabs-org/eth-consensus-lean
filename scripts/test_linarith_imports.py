@@ -16,6 +16,15 @@ BOUNDARIES = """\
 [checks]
 trusted_paths = ["ConsensusLean/Spec"]
 
+[[lib]]
+name = "ConsensusLean"
+
+[[lib]]
+name = "ConsensusLeanTest"
+
+[[lib]]
+name = "Solution"
+
 [[layer]]
 name = "Spec"
 prefixes = ["ConsensusLean.Spec"]
@@ -37,6 +46,11 @@ allow = ["Lemmas"]
 [[layer]]
 name = "Core"
 prefixes = ["ConsensusLean.Core"]
+
+[[layer]]
+name = "Solution"
+prefixes = ["Solution"]
+allow = ["Lemmas"]
 """
 HEADER = "module\npublic import ConsensusLean.Lemmas.Base\n"
 CALLS = "public section\n\ntheorem t (a b : Int) (h : a < b) : a ≤ b := by\n  linarith\n"
@@ -90,9 +104,28 @@ class LinarithImportsTests(unittest.TestCase):
         rc, _, err, after = self.run_tool({"ConsensusLean/Lemmas/A.lean": split + CALLS}, check=False)
         self.assertEqual(rc, 0, err)
         self.assertEqual(after["ConsensusLean/Lemmas/A.lean"], split + FRONT + CALLS)  # after the last token
-        shared = HEADER.rstrip("\n") + " public section\n\ntheorem t (a : Int) : a ≤ a := by\n  linarith\n"
-        with self.assertRaisesRegex(SystemExit, "other code on the line of its last token"):
-            self.run_tool({"ConsensusLean/Lemmas/A.lean": shared}, check=False)
+
+    def test_insertion_goes_before_whatever_follows_the_last_token(self):
+        base = "module\npublic import ConsensusLean.Lemmas.Base"
+        for trailing in (" /- import note\ncontinued -/\n", " -- import note\n", " public section\n\n"):
+            files = {"ConsensusLean/Lemmas/A.lean": base + trailing + CALLS}
+            rc, _, err, after = self.run_tool(files, check=False)
+            self.assertEqual(rc, 0, err)
+            self.assertEqual(after["ConsensusLean/Lemmas/A.lean"],
+                             base + "\n" + FRONT.rstrip("\n") + trailing + CALLS)
+            rc, out, err, _ = self.run_tool(after)  # the repair holds: the check passes, add is a no-op
+            self.assertEqual((rc, out), (0, ""), trailing + err)
+            self.assertEqual(self.run_tool(after, check=False)[3], after)
+
+    def test_single_module_library_root(self):
+        rc, out, err, _ = self.run_tool({"Solution.lean": HEADER + CALLS})
+        self.assertEqual((rc, out), (1, "Solution.lean\n"), err)
+        rc, out, err, _ = self.run_tool({"Solution.lean": HEADER + FRONT + CALLS})
+        self.assertEqual((rc, out), (0, ""), err)
+        self.assertIn("1 calling modules, 1 already import", err)
+        rc, out, err, _ = self.run_tool({"Other.lean": HEADER + CALLS})  # control: not a checked library
+        self.assertEqual((rc, out), (0, ""), err)
+        self.assertIn("0 calling modules", err)
 
     def test_prelude_with_and_without_module(self):
         for opening in ("module\nprelude\n", "prelude\n"):
