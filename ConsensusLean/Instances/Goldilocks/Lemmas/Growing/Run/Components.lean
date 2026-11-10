@@ -14,17 +14,6 @@ earlier cut. -/
 
 namespace Consensus.Goldilocks
 
-namespace Trace
-
-variable {N S L : Type} (tr : Trace N S L) {d : Time}
-
-theorem upTo_label_eq_some {i : Nat} {ℓ : L} :
-    (tr.upTo d).label i = some ℓ ↔ tr.time i ≤ d ∧ tr.label i = some ℓ := by
-  rw [upTo_label]
-  by_cases h : tr.time i ≤ d <;> simp [h]
-
-end Trace
-
 variable {P : Params}
 
 namespace Growing

@@ -624,6 +624,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.FGSto
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Healing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.HealingAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Statements.Regimes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
