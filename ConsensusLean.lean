@@ -753,6 +753,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifies
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalPath
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalSignedUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Acquisition
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Assembly
