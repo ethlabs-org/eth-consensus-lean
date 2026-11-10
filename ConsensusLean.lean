@@ -727,6 +727,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.CastEntr
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Healed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ParentStop
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Pivot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotOldSources

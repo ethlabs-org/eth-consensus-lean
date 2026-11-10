@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.ParentStop
 
 public section
 
@@ -36,28 +37,8 @@ theorem reset_parent_viable_of_children_at
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hPhi := Outcome.frame_realized hp.run hy hc.1
   have hPhiU := Outcome.frame_tree_subset hp.run hy hc.1
-  have hQP : Anc (tr.HonestBlocksAt H) Q P := .single ⟨hQU, hPhiU hPv.1.1, hPQ⟩
-  have hnBP : ¬ Anc (tr.HonestBlocksAt H) B P := by
-    intro h
-    rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, hBY, hY⟩
-    · exact hBP heq.symm
-    obtain rfl : Y = Q := hU.1 hY.1 hQU
-      (Option.some_injective _ (hY.2.2.symm.trans hPQ))
-    have h1 := (Anc.slot_le hU hBY).1
-    have h2 := hU.2 Y hQU B (hPhiU hBv.1.1) hBQ
-    omega
-  have below : ∀ X, Anc (tr.HonestBlocksAt H) X B → Anc (tr.HonestBlocksAt H) X P →
-      Anc (tr.HonestBlocksAt H) X Q := by
-    intro X hXB hXP
-    rcases Relation.ReflTransGen.cases_tail hXB with heq | ⟨Y, hXY, hY⟩
-    · exact False.elim (hnBP (heq ▸ hXP))
-    obtain rfl : Y = Q := hU.1 hY.1 hQU
-      (Option.some_injective _ (hY.2.2.symm.trans hBQ))
-    exact hXY
-  have hfQ := below _ (hBv.2.1.mono hPhiU) (hPv.2.1.mono hPhiU)
-  have hQt := SA.frame_mem_of_between sp hU hPhi hPhiU hPv.1.1 hQP
-    ((hPhi.F_anc_fcRoot.mono hPhiU).trans hfQ)
-  have hfQ' := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hfQ hQt
+  obtain ⟨hQt, hfQ'⟩ := parent_mem_frame_of_children hU hPhi hPhiU hQU hPQ hBQ hBP
+    hPv.1.1 hPv.2.1 hBv.1.1 hBv.2.1
   rw [Outcome.frame_of_call hp.run hy hc.1] at hQt hfQ' ⊢
   exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
     hp.reset_vote_floor_above_old_at hy hR hc hes hjb hQt.1 hQold⟩
@@ -98,24 +79,6 @@ theorem reset_old_child_ineligible_at
   have hslot : sp.slot (tr.time i) = s + 1 := by
     rw [hti]
     simpa using (SA.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  have hcast : ((s + 1 : Nat) : Int) - 1 = s := by omega
-  set T := ellp.frame.viableTree ellp.frame.tree
-  have hT : T ⊆ ellp.frame.tree := fun _ h => h.1
-  have hhead : d.head = SA.ghost sp T
-      (SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-      (SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-      ellp.frame.tree.ncard d.start := by
-    unfold SA.acProposal at hd
-    split_ifs at hd
-    simp only [Option.some.injEq, Prod.mk.injEq] at hd
-    obtain ⟨rfl, rfl⟩ := hd
-    simp only [hslot, hcast]
-    rfl
-  have hstop := SA.ghost_stopped hPhi.coherent hT (hPhi.finite.subset hT)
-    (sc := SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s)
-    (el := SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s)
-    (Set.ncard_le_ncard hT hPhi.finite) d.start
-  rw [← hhead] at hstop
   obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree_at hc hpH hdesignated hactual hPs
     hci hcall hd hti hpay hy hcy hes hib hjb hPy hg hgi hgj hjoi hjoj
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
@@ -123,16 +86,7 @@ theorem reset_old_child_ineligible_at
   have hcy' := SA.upTo_castAt.mpr (And.intro le_rfl hcy)
   have hsj : sp.slot (tr.time j) = s + 1 :=
     ((SA.castAt_spec hr hy hcy').2.1).symm.trans hes
-  rintro (h | h | h)
-  · exact h ⟨d.head, hQvy, hBQ⟩
-  · omega
-  · have hmaj : (SA.voters (SA.View.ofLists pay).votes).ncard <
-        2 * SA.goldfishScore sp ellp.frame (SA.View.ofLists pay) s B := by
-      simpa only [SA.goldfishScore, hvot, heq, hsup B hBv.1 hB.1.1] using h
-    exact hstop (SA.exists_isBest hPhi
-      (S := {X | X ∈ T ∧ X.parent = some d.head.root ∧
-        SA.goldfishEligible sp ellp.frame (tr.time i) (SA.View.ofLists pay) s X})
-      (fun X hX => hT hX.1) ⟨B, hBv, hBQ, Or.inr (Or.inr hmaj)⟩ _)
+  exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- At the proposal parent the actual proposal is the unique eligible child, and has no
 eligible child itself. Each reader is honest only at its own observation. -/
