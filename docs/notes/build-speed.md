@@ -110,6 +110,17 @@ best of two:
   (−8.4%), simulated on 8 cores 311.4 → 290.6 s (−6.7%). Both rounds agree in sign; round to
   round, base varied by 3%.
 
+Modules added later did not get the import: 50 calling modules lacked it again, among them the
+critical-path `Kernel.ResetRounds`, whose profile showed `natToInt` as its largest `linarith` step
+(1.0 s). Adding it, measured as user-space instructions (`perf stat -e instructions:u`,
+the module elaborated alone, deterministic to 0.3% where wall time under load was not):
+`ResetRounds` −24.0%, 45 more modules −12.3% together (each cheaper, up to −60.9% for
+`Growing.AC.Optimistic`), four unchanged controls 0.0%. Four modules were not cheaper and stay
+without it, recorded in the `EXEMPT` table of `scripts/linarith-imports.py`;
+`SelectionCompatibility` was 10.7% dearer because its `nlinarith` needs the `Nat` casts, so the cheap
+attempt fails and the call runs twice. `check.sh` step 2b now fails on a calling module without
+the import that is not exempt, and on an exemption that no longer applies.
+
 ## The critical path is the proof structure
 
 On 8 or more cores the build waits on one chain of about 65 modules, from `Spec.SA` through

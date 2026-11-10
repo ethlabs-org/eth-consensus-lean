@@ -11,6 +11,8 @@
 #   1b syntax lint      six build-deferred linters, touched sources in fast/changed,
 #                       every source in full (or explicitly owned by the nightly lint job)
 #   2  boundaries       layer matrix, Init chain, roots, inventory (source)     (check-boundaries.py)
+#   2b linarith front  every module that calls plain linarith/nlinarith and may  (linarith-imports.py)
+#                       import Lemmas imports the front end, or is exempt (source)
 #   3  declarations     axioms/sorry/opaque/unsafe/extern/csimp per library;    (EthLib check-decls)
 #                       `sorry` only in the `sorry = true` layers (Lemmas, Proofs)
 #   3b axiom audit      Solution closure and tests: only the three standard     (axiom-audit)
@@ -1621,6 +1623,8 @@ fi
 ((plan)) || ! in_part 2 || mapfile -t SPEC_MODULES < <(inv_trusted)
 ((plan)) || ! in_part 2 || mapfile -t PROTECTED_MODULES < <(inv_protected)
 run_selftest "2 boundaries self-test (fixtures/boundaries/cases.toml)" selftest_boundaries
+run_step "2b linarith front end (linarith-imports.py --check, every calling module)" python3 -I scripts/linarith-imports.py --check
+run_selftest "2b linarith front end self-test (throwaway source trees)" python3 -I scripts/test_linarith_imports.py
 run_if "${#DECL_LIBS[@]}" "no library affected" "3 declarations (check-decls: ${DECL_LIBS[*]:-none})" step_decls
 run_selftest "3 declarations self-test (test_check_decls.sh, OrphanLib, EmptyScope, HiddenOpaque, SorryPlace)" selftest_decls
 run_selftest "3 declaration waiver self-test (per declaration and kind)" bash scripts/test_check_decls_waivers.sh
