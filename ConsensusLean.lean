@@ -898,6 +898,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
