@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Batch
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -197,31 +198,6 @@ theorem result_not_vetoed_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   · exact Or.inl (SA.anc_tree_of_anc_U hcoh hΦ hHB hCt h hVt)
   · exact Or.inr (SA.anc_tree_of_anc_U hcoh hΦ hHB hVt h hCt)
 
-/-- A block strictly above a slot-`s` block has no supporter among the slot-`s` votes resolved by a
-cutoff. -/
-private theorem confirmationScore_eq_zero {A : SA.SAState sp.n}
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ) {s : Nat}
-    {P B : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = s) (hPB : Φ.Anc P B) (hne : P ≠ B) :
-    SA.confirmationScore sp A Φ s B = 0 := by
-  have hlt := ((Anc.slot_le hΦ.coherent hPB).2 hne)
-  rw [SA.confirmationScore, Set.ncard_eq_zero]
-  ext i
-  simp only [Set.mem_empty_iff_false, iff_false]
-  rintro ⟨-, x, ⟨-, hx⟩, -, hxs, R, hR, hRr, hBR⟩
-  have hin : SA.InTree Φ x.head := ⟨R, hR, hRr⟩
-  obtain ⟨R', hl⟩ : ∃ R', SA.lookup Φ x.head = some R' := by
-    unfold SA.lookup; rw [dite_eq_left_of_eq_true (eq_true hin)]; exact ⟨_, rfl⟩
-  obtain ⟨hR', hR'r⟩ := SA.lookup_eq_some hl
-  obtain rfl : R' = R := hΦ.coherent.1 hR' hR (hR'r.trans hRr.symm)
-  have hsR := (Anc.slot_le hΦ.coherent hBR).1
-  have hxs' : x.slot = s := by exact_mod_cast hxs
-  have : SA.resolutionTime A Φ x = ⊤ := by
-    unfold SA.resolutionTime
-    rw [hl]
-    exact ite_eq_left (by omega)
-  rw [this] at hx
-  exact not_top_lt hx
-
 /-- **The update of slot `s` returns exactly `P`** when `P` is held above `Σ.F` with a strict
 majority at the update's test: every block with a strict majority is on one chain with it, and no
 block above it has a resolved slot-`s` supporter. -/
@@ -233,27 +209,7 @@ theorem adopt_result_of (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
     (hmaj : (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P) :
     SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P := by
-  have hΦ : FrameOK ℓ.frame := (frameIn_at hrun hnc hy hu.1).1
-  set A := (tr.state y k₀).ac
-  set S := {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
-    (SA.voters {v | v ∈ A.pool s}).ncard < 2 * SA.confirmationScore sp A ℓ.frame s B}
-  have hS : S ⊆ ℓ.frame.tree := fun X hX => hX.1
-  set V : SA.View sp.n := ⟨{v | v ∈ A.pool s}, {v | v ∈ A.pool s ∧
-    SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s + 2 * sp.Δ)}⟩
-  have hcs : ∀ B, SA.confirmationScore sp A ℓ.frame s B = (SA.supporters ℓ.frame V s B).ncard :=
-    fun _ => rfl
-  have hsub : V.support ⊆ V.votes := fun _ hv => hv.1
-  have hch : ∀ B ∈ S, ∀ C ∈ S, Compatible ℓ.frame.tree B C := fun B hB C hC =>
-    SA.majority_chain sp _ ℓ.frame V s B C hΦ hsub hB.1 hC.1 (hcs B ▸ hB.2.2) (hcs C ▸ hC.2.2)
-  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hS ⟨P, hPt, hFP, hmaj⟩
-  have hPD := SA.anc_deepest hΦ hS hch hD P ⟨hPt, hFP, hmaj⟩
-  have hDS := (SA.deepest_mem hD).1
-  change SA.deepest ℓ.frame S = some P
-  rw [hD]
-  by_contra hne
-  have h0 := confirmationScore_eq_zero (A := A) hΦ hPs hPD fun h => hne (congrArg some h.symm)
-  have := hDS.2.2
-  omega
+  exact getConfirmation_eq_of_majority (frameIn_at hrun hnc hy hu.1).1 hPs hPt hFP hmaj
 
 /-- **The update of slot `s` returns exactly `P`, not vetoed**: `P` is held above `Σ.F` with a
 strict majority, every block with a strict majority is on one chain with it, and no block above

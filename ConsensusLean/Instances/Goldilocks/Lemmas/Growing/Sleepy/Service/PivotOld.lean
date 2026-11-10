@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.ProposalCall
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -176,22 +177,10 @@ theorem proposer_relay_from (hrun : Growing.GoldilocksRun proposer dg H tr)
     rw [← honestAt_eq_genesis hrun hU hB hg] at h2
     rw [← Anc.antisymm hU hFB h2]
     exact hΦ.rooted.1
-  have hsi : sp.slot (tr.time i) = s := by
-    rw [hti]; simpa using (SA.slot_arithmetic sp s).1 0 (by omega)
   have hts : sp.ts (s : Int) = sp.ts ((s : Int) - 1) + 4 * sp.Δ := by
     simp only [SAParams.ts]; ring
-  have hrs := proposal_call_restarts_at hrun hnc hp hc hcall hd
-  rw [hsi] at hrs
-  have hdl : ∀ c ≤ i, tr.projAC.deadline p c (tr.projAC.time kx) ≤
-      sp.ts ((s : Int) - 1) + 3 * sp.Δ := fun c hc' => by
-    have h1 := ac_deadline_le_of_restarts (T := tr.projAC)
-      (fun k hk hrk => hrs k (hk.trans hc') hrk) (tr.projAC.time kx)
-    have h2 := max_le hkxt (show sp.ts ((s : Int) - 1) ≤ sp.ts ((s : Int) - 1) + 2 * sp.Δ from
-      le_add_of_nonneg_right (mul_nonneg zero_le_two hΔ.le))
-    linarith only [h1, h2]
-  have hdi : tr.projAC.deadline p i (tr.projAC.time kx) ≤ tr.time i := by
-    have := hdl i le_rfl
-    linarith only [this, hti, hts, hΔ]
+  obtain ⟨hdl, hdi⟩ := proposal_relay_deadline (T := tr.projAC) hti
+    (proposal_call_restarts_at hrun hnc hp hc hcall hd) hkxt
   by_cases hka : a ≤ tr.time kx
   · obtain ⟨k', hk'i, hAp, hk't⟩ := hsync.acRelay x kx B hx hacc hka
       p i ℓp hp hc (hdi.trans hb) hdi hFB
@@ -426,22 +415,7 @@ theorem proposal_best_toward_from (hrun : Growing.GoldilocksRun proposer dg H tr
   rw [hσ]
   set A := tr.projAC.state p i with hA
   -- the payload is the proposer's slot-`(s−1)` pool
-  have hpay : pay = SA.voteViewList A ℓp.frame (s' : Int) ⊤ := by
-    have h := hd
-    unfold SA.acProposal at h
-    split_ifs at h
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    rw [← h.2, hsi, hσ]
-  have hvotes : ∀ v, v ∈ (SA.View.ofLists pay).votes ↔ v ∈ A.pool s' ∧ A.voteStamp v < ⊤ := by
-    intro v
-    rw [hpay]
-    simp [SA.View.ofLists, SA.voteViewList, SA.SAState.poolAt]
-  have hsupv : ∀ v, v ∈ (SA.View.ofLists pay).support ↔
-      (v ∈ A.pool s' ∧ A.voteStamp v < ⊤) ∧ SA.resolutionTime A ℓp.frame v < ⊤ := by
-    intro v
-    rw [hpay]
-    simp [SA.View.ofLists, SA.voteViewList, SA.SAState.poolAt]
-    tauto
+  obtain ⟨hvotes, hsupv⟩ := acProposal_pay_view hd hsi
   have hsub : (SA.View.ofLists pay).support ⊆ (SA.View.ofLists pay).votes := fun v hv =>
     (hvotes v).2 ((hsupv v).1 hv).1
   have hvotes' : ∀ v, v ∈ (SA.View.ofLists pay).votes ↔ v ∈ A.pool s' := fun v =>
