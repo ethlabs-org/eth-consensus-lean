@@ -94,6 +94,16 @@ class LinarithImportsTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "other code on the line of its last token"):
             self.run_tool({"ConsensusLean/Lemmas/A.lean": shared}, check=False)
 
+    def test_prelude_with_and_without_module(self):
+        for opening in ("module\nprelude\n", "prelude\n"):
+            rc, out, err, _ = self.run_tool({"ConsensusLean/Lemmas/A.lean": opening + FRONT + CALLS})
+            self.assertEqual((rc, out), (0, ""), opening + err)
+            for rest in ("import ConsensusLean.Lemmas.Base\n", ""):  # the import goes after the last token
+                rc, _, err, after = self.run_tool({"ConsensusLean/Lemmas/A.lean": opening + rest + CALLS},
+                                                  check=False)
+                self.assertEqual(rc, 0, opening + rest + err)
+                self.assertEqual(after["ConsensusLean/Lemmas/A.lean"], opening + rest + FRONT + CALLS)
+
     def test_only_plain_calls_count(self):
         for body in ("  linarith only [h]\n", "  linarith!\n", "  linarith (config := {}) [h]\n",
                      "  linarith (preprocessors := []) [h]\n", "  linarith ( config := {})\n",
