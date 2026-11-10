@@ -148,6 +148,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.RecordWri
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.SourceLabels
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
