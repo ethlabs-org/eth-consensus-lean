@@ -34,6 +34,7 @@ private theorem mem_foldl_target {n : Nat} {σ : FG.ChainState n} {atts : List (
     have hT : (σ.processAtt a).Th = σ.Th := by simpa using congrArg FG.ChainState.Th he
     rcases ih h with h | ⟨b, hb, hb'⟩
     · have : v ∈ σ.target ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th ∧ a.timeout = false) := by
+        clear ih he hh hT
         unfold FG.ChainState.processAtt at h
         dsimp only at h
         repeat' split at h

@@ -42,6 +42,7 @@ theorem foldl_processAtt_bits (σ : ChainState n) (atts : List (Att n)) :
         v ∈ σ.prog ∪ σ.target ∨ (b.val = v ∧ b.h = σ.h) := by
       obtain ⟨f, p, t, he⟩ := ChainState.foldl_processAtt_eq σ [b]
       refine ⟨by simpa using congrArg ChainState.h he, fun v hv => ?_⟩
+      clear he ih
       unfold ChainState.processAtt at hv
       repeat' split at hv
       all_goals simp only [Finset.mem_union, Finset.mem_insert] at hv

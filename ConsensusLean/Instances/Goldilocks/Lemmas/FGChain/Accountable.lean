@@ -41,6 +41,7 @@ private theorem mem_foldl_processAtt_prog {σ : ChainState n} {atts : List (Att 
     obtain ⟨hh, hT, -⟩ := σ.processAtt_fields a
     rcases ih h with h | ⟨b, hb, hb'⟩
     · have : v ∈ σ.prog ∨ (a.val = v ∧ a.h = σ.h ∧ a.T = σ.Th) := by
+        clear ih hh hT
         unfold processAtt at h
         dsimp only at h
         repeat' split at h
@@ -61,6 +62,7 @@ private theorem mem_foldl_processAtt_fin {σ : ChainState n} {atts : List (Att n
     obtain ⟨-, -, hp⟩ := σ.processAtt_fields a
     rcases ih h with h | ⟨b, hb, hb'⟩
     · have : v ∈ σ.fin j ∨ (a.val = v ∧ ∃ p ∈ σ.pending, a.fin = some p ∧ p.1 = j) := by
+        clear ih hp
         unfold processAtt at h
         dsimp only at h
         repeat' split at h
