@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
