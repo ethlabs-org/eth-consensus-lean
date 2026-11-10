@@ -37,5 +37,7 @@ module ownership/import effects, preserved replay leaf coverage and per-declarat
 Old forwarding paths may point toward Blocks; Blocks may not point back to them.
 
 Service, Sleepy, Simulation, AsChainShape and Obligations remain instance-side.
+The untrusted NodeEngine milestone definitions, contracts and supplier lemmas are also
+instance-side, explicitly excluded from Blocks/FG; generic leaves do not import concrete suppliers.
 Served, RecordWrites and SAFamily packages are outside this FG extraction.
 No semantic/proof changes or silent ownership allowances belong in a physical move.
