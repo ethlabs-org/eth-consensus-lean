@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.WireGroup
 
 public section
 
@@ -16,29 +17,6 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-
-omit [DecidableEq V] in
-private theorem wireOK_of_delivered (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    {o' : Wire (S.params (pubOf E) hn).n} (ho : o' ∈ delivered (S.params (pubOf E) hn) o)
-    {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
-    (he : canonEvent (S.params (pubOf E) hn) (S.ro _) (Model.digests rho.hash o) o' = some e) :
-    WireOK (digestOf S rho) e := by
-  rcases canonEvent_eq_some he with ⟨B, rfl, rfl⟩ | ⟨m, rfl, -⟩ | ⟨a, rfl, -⟩
-  · obtain ⟨hroot, hpar, hwf, hval⟩ := decodeBlock_wire (decodeBlock_of_canonEvent he)
-    have hh : rootOf (Model.digests rho.hash o) (headerOf _ B) =
-        some (rho.hash (headerOf _ B)) := by
-      apply rootOf_digests_of_mem
-      exact List.mem_filterMap.2 ⟨blockObj _ B, mem_delivered ho, rfl⟩
-    rw [hh, Option.map_some, Option.some.injEq] at hroot
-    have hrt := hroot.symm
-    obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
-    refine ⟨?_, hwf, hval⟩
-    rw [digestOf_eq]
-    change B.root = dgOf rho.hash S.genesisRoot B.parent B.slot B.input B.fgPayload B.acPayload
-    erw [dgOf_eq, hrt]
-    simp only [headerOf, hr]
-  · trivial
-  · exact wellFormed_of_canonEvent he
 
 private theorem group_of_cut (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {k : Nat} (hnode : (simTrace S rho hn).node k = y)
@@ -82,42 +60,6 @@ theorem simTraceAt_wire (hv : rho.ExecutionValid) :
       WireOK (digestOf S rho) e := by
   rw [simTraceAt_eq]
   intro y j t e hg
-  obtain ⟨hne, hcuts, huniq⟩ := hg
-  obtain ⟨hn0, -, -, -, hl0⟩ := hcuts 0 (List.length_pos_of_ne_nil hne)
-  rw [Nat.add_zero] at hn0 hl0
-  obtain ⟨j0, t0, e0, ⟨hne0, hc0, -⟩, h1, h2, hw0⟩ :=
-    group_of_cut S rho hn hv hn0 (by rw [hl0]; simp)
-  have hj : j0 = j := by
-    have hev := (hc0 (j - j0) (by omega)).2.2.1
-    rw [Nat.add_sub_cancel' h1] at hev
-    have := (huniq j0 hev.symm).1
-    omega
-  subst hj
-  have hl1 := (hc0 0 (List.length_pos_of_ne_nil hne0)).2.2.2.2
-  rw [Nat.add_zero, hl0, Option.some.injEq] at hl1
-  obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
-  obtain ⟨c0, cs0, hcs0⟩ := List.exists_cons_of_ne_nil hne0
-  have hc : c = c0 := by
-    rw [List.getElem_of_eq hcs, List.getElem_of_eq hcs0] at hl1
-    exact hl1
-  subst hc
-  cases e with
-  | tick _ => trivial
-  | restart => trivial
-  | message _ => trivial
-  | block B =>
-    obtain ⟨acc, rfl⟩ := exec_block_head _ _ _ _ _ B hcs
-    rcases exec_head_fg _ _ _ _ _ e0 hcs0 with ⟨B', acc', rfl, h⟩ | ⟨a, -, h⟩
-    · cases h; exact hw0
-    · cases h
-  | attestation a =>
-    have : c = .fg (.attestation a) := by
-      have := hcs.symm
-      simp only [Node.exec, onAttestation, List.cons.injEq] at this
-      exact this.1
-    subst this
-    rcases exec_head_fg _ _ _ _ _ e0 hcs0 with ⟨B', acc', -, h⟩ | ⟨a', rfl, h⟩
-    · cases h
-    · cases h; exact hw0
+  exact wireOK_of_group_cut hg (group_of_cut S rho hn hv)
 
 end Consensus.Goldilocks.Simulation
