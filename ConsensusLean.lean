@@ -823,6 +823,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyConfi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyConfirmedSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyEffective
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyGap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyPreparationTiming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyQueryShared
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRecordWriters
