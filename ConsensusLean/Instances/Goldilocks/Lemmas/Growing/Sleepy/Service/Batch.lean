@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.BatchWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CarryPrefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

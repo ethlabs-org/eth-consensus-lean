@@ -18,6 +18,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Timing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

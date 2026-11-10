@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkEnd
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 

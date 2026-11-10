@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
+import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
 /-! # The healthy two-validator run: the SA's calls
