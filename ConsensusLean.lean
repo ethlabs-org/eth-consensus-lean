@@ -799,6 +799,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CarrierProce
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CoefficientAdapters
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Concrete
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DeadlineWake
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainWarm
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DrainedAnchorSlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
@@ -862,6 +863,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageS5.Ste
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageS5.Suppliers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageSuppliers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposalWindowUpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ReceiverService
