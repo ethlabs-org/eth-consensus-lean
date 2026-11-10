@@ -36,6 +36,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry

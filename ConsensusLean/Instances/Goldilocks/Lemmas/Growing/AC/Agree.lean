@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 
 public section
@@ -10,33 +11,6 @@ public section
 namespace Consensus.Goldilocks.SA.Growing
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-
-private theorem anc_of_slot_le {S S' : Set (Blk sp.n FGP)} (hS : Coherent S) {s : Nat}
-    (heq : {X | X ∈ S ∧ X.slot ≤ s} = {X | X ∈ S' ∧ X.slot ≤ s}) {X Y : Blk sp.n FGP}
-    (h : Anc S X Y) (hY : Y.slot ≤ s) : Anc S' X Y := by
-  induction h with
-  | refl => exact Relation.ReflTransGen.refl
-  | @tail Z Y _ hZY ih =>
-    have hlt := hS.2 _ hZY.1 _ hZY.2.1 hZY.2.2
-    have hZ : Z ∈ {X | X ∈ S' ∧ X.slot ≤ s} := by rw [← heq]; exact ⟨hZY.1, by omega⟩
-    have hY' : Y ∈ {X | X ∈ S' ∧ X.slot ≤ s} := by rw [← heq]; exact ⟨hZY.2.1, hY⟩
-    exact (ih (by omega)).tail ⟨hZ.1, hY'.1, hZY.2.2⟩
-
-private theorem compatible_of_slot_le {S S' : Set (Blk sp.n FGP)} (hS : Coherent S) {s : Nat}
-    (heq : {X | X ∈ S ∧ X.slot ≤ s} = {X | X ∈ S' ∧ X.slot ≤ s}) {X Y : Blk sp.n FGP}
-    (hX : X.slot ≤ s) (hY : Y.slot ≤ s) (h : Compatible S X Y) : Compatible S' X Y :=
-  h.imp (fun h => anc_of_slot_le hS heq h hY) fun h => anc_of_slot_le hS heq h hX
-
-private theorem resolved_head {A : SAState sp.n} {Φ : Frm sp.n FGP} {v : Vote sp.n}
-    (h : resolutionTime A Φ v ≠ ⊤) : ∃ Hd ∈ Φ.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
-  unfold resolutionTime at h
-  split at h
-  · exact absurd rfl h
-  · rename_i Hd hl
-    obtain ⟨hHd, hr⟩ := lookup_eq_some hl
-    split_ifs at h with hlt
-    · exact absurd rfl h
-    · exact ⟨Hd, hHd, hr, by omega⟩
 
 /-- Proposer honesty covers both frame-reading cuts. -/
 theorem proposer_voters_agree_of_honest_max
@@ -135,9 +109,6 @@ theorem proposer_voters_agree_of_honest_max
     rcases pool_origin hpr.localRun hp i w (hws ▸ hw') with
       ⟨k, _, _, h, _⟩ | ⟨k, _, ℓ, _, _, h, _⟩ <;>
       rw [statep] at h <;> exact h ▸ etime_of_lt_top _
-  have hset : {w | w ∈ (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1} =
-      {w | w ∈ (tr.state p i).pool s} :=
-    Set.ext fun w => mem_voteViewList_fst.trans ⟨And.left, fun h => ⟨h, hpool w h⟩⟩
   have hstar : ∀ x ∈ e.readPoint.pool s, e.readPoint.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
@@ -160,81 +131,27 @@ theorem proposer_voters_agree_of_honest_max
       obtain ⟨_, hck⟩ := (Trace.upTo_callAt tr).mp hck
       rw [huniq k ℓk (Nat.le_of_lt_succ hk) hck X hX (by omega)] at hxX
       exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hxX)).1
-  have hblk : ∀ X ∈ ℓy.frame.tree, X.slot = s + 1 → X = P :=
-    huniq j ℓy le_rfl hc.1
-  have hvotes : ∀ v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes,
-      v ∈ (tr.state p i).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
-    rintro v (hv | ⟨X, hX, hXs, hv⟩)
-    · change v ∈ (voteViewList _ _ _ _).1 at hv
-      rw [hcast, mem_voteViewList_fst] at hv
-      exact hstar v hv.1 (by simpa [freeze, hcast] using hv.2)
-    · rw [hblk X hX hXs] at hv
-      exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hv)).1
-  have hmem : ∀ X : Blk sp.n FGP, X.slot ≤ s → (X ∈ ℓp.frame.tree ↔ X ∈ ℓy.frame.tree) := by
-    intro X hX
-    have hh := Set.ext_iff.1 heq X
-    exact ⟨fun h => (hh.mp ⟨h, hX⟩).1, fun h => (hh.mpr ⟨h, hX⟩).1⟩
-  have hcomp : ∀ Hd : Blk sp.n FGP, Hd.slot ≤ s →
-      (Compatible ℓp.frame.tree Hd B ↔ Compatible ℓy.frame.tree Hd B) := fun Hd hHd =>
-    ⟨compatible_of_slot_le hΦp.coherent heq hHd hBs,
-      compatible_of_slot_le hΦy.coherent heq.symm hHd hBs⟩
-  change opponents sp ℓp.frame ⟨{w | w ∈ (voteViewList _ _ _ _).1}, _⟩ s B = _
-  rw [hset]
-  ext w
-  constructor
-  · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
-    · have hv : ∀ v ∈ (tr.state p i).pool s,
-          v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := fun v hv =>
-        Or.inr ⟨P, hP, hPs, hPv ▸ mem_voteViewList_fst.2 ⟨hv, hpool v hv⟩⟩
-      exact Or.inl ⟨a, hv a ha, b, hv b hb, hab, rfl, hbv⟩
-    · obtain ⟨⟨_, hst⟩, hres⟩ := mem_voteViewList_snd.1 hx
-      obtain ⟨Hd', hHd', hHd'r, hHd's⟩ := resolved_head hres.ne
-      have hh : Hd' = Hd := hΦp.coherent.1 hHd' hHd (hHd'r.trans hHdr.symm)
-      subst hh
-      have hHds : Hd'.slot ≤ s := by omega
-      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by omega, Hd', (hmem _ hHds).1 hHd,
-        hHdr, by omega⟩, rfl, hxs, Hd', (hmem _ hHds).1 hHd, hHdr,
-        fun h => hnc ((hcomp _ hHds).2 h)⟩
-  · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
-    · rcases hvotes a ha with ha' | ha'
-      · rcases hvotes b hb with hb' | hb'
-        · exact Or.inl ⟨a, ha', b, hb', hab, rfl, hbv⟩
-        · exact Or.inl (hbv ▸ hb')
-      · exact Or.inl ha'
-    · rcases hx with hx | ⟨X, hX, hXs, hx, _, Hd', hHd', hHd'r, hHd's⟩
-      · change x ∈ (voteViewList _ _ _ _).2 at hx
-        rw [hcast, mem_voteViewList_snd] at hx
-        obtain ⟨⟨hxp, hxt⟩, hres⟩ := hx
-        obtain ⟨Hd', hHd', hHd'r, hHd's⟩ := resolved_head (hres.trans (etime_of_lt_top _)).ne
-        have hh : Hd' = Hd := hΦy.coherent.1 hHd' hHd (hHd'r.trans hHdr.symm)
-        subst hh
-        have hHds : Hd'.slot ≤ s := by omega
-        have hHdp := (hmem _ hHds).2 hHd
-        rcases hstar x hxp (by simpa [freeze, hcast] using hxt) with hxP | hxP
-        · have hbs : (tr.state p i).blockStamp x.head ≠ ⊤ := by
-            have hh := blockStamp_lt_of_acceptedBefore sp hpr.localRun hp hcp' hHdp
-              (T := tr.time i + 1) (by
-                rcases frame_accepted hpr.localRun hp i hcp' Hd' hHdp with h | ⟨k, hk, h⟩
-                · exact Or.inl h
-                · exact Or.inr ⟨k, h, by change tr.time k < tr.time i + 1; linarith [hm hk]⟩)
-              (fun k hk hrk => by
-                have ht := hrsp k hk ((ACTrace.upTo_restartAt
-                  (A := goldilocksSA sp FGP ro)).mp hrk).2
-                change tr.time k < tr.time i + 1
-                rw [hti, hts]; linarith only [ht, hΔ])
-              (Or.inr (by rw [hcall]; simp))
-            rw [statep] at hh
-            exact hHdr ▸ (hh.trans (etime_of_lt_top _)).ne
-          refine Or.inr ⟨x, mem_voteViewList_snd.2 ⟨⟨hxP, hpool x hxP⟩,
-            lt_top_iff_ne_top.2 (resolutionTime_ne_top hΦp hHdp hHdr hHd's (hpool x hxP).ne hbs)⟩,
-            rfl, hxs, Hd', hHdp, hHdr, fun h => hnc ((hcomp _ hHds).1 h)⟩
-        · exact Or.inl hxP
-      · rw [hblk X hX hXs] at hx
-        have hh : Hd' = Hd := hΦy.coherent.1 hHd' hHd (hHd'r.trans hHdr.symm)
-        subst hh
-        have hHds : Hd'.slot ≤ s := by omega
-        exact Or.inr ⟨x, hPsup ▸ hx, rfl, hxs, Hd', (hmem _ hHds).2 hHd, hHdr,
-          fun h => hnc ((hcomp _ hHds).1 h)⟩
+  -- the proposer has stamped the blocks of its tree
+  have hbs : ∀ Hd ∈ ℓp.frame.tree, (tr.state p i).blockStamp Hd.root ≠ ⊤ := by
+    intro Hd hHd
+    have hh := blockStamp_lt_of_acceptedBefore sp hpr.localRun hp hcp' hHd
+      (T := tr.time i + 1) (by
+        rcases frame_accepted hpr.localRun hp i hcp' Hd hHd with h | ⟨k, hk, h⟩
+        · exact Or.inl h
+        · exact Or.inr ⟨k, h, by change tr.time k < tr.time i + 1; linarith [hm hk]⟩)
+      (fun k hk hrk => by
+        have ht := hrsp k hk ((ACTrace.upTo_restartAt
+          (A := goldilocksSA sp FGP ro)).mp hrk).2
+        change tr.time k < tr.time i + 1
+        rw [hti, hts]; linarith only [ht, hΔ])
+      (Or.inr (by rw [hcall]; simp))
+    rw [statep] at hh
+    exact (hh.trans (etime_of_lt_top _)).ne
+  exact opponents_eq_of_merged hΦp hΦy heq hP hPs hPv hPsup
+    (huniq j ℓy le_rfl hc.1) hpool
+    (fun x hx Hd hHd hHdr hHds =>
+      resolutionTime_ne_top hΦp hHd hHdr hHds (hpool x hx).ne (hHdr ▸ hbs Hd hHd))
+    hstar hBs
 
 /-- Finite service survives retention for validators honest at the horizon. -/
 theorem ServiceWindowBefore.upTo
