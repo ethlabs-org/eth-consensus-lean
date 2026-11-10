@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ProvenanceGuard
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.DutyRelease
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 import ConsensusLean.Lemmas.Model.Candidates
 import ConsensusLean.Lemmas.Model.Protection
 
@@ -168,44 +169,8 @@ theorem engine_att_protected_at (hv : rho.ExecutionValid)
     cases hc with
     | tick he _ _ => exact event_honest_zero S rho hv he
     | deliver he _ => exact event_honest_zero S rho hv he
-  have hinj {a b : FG.Att (Fintype.card V)} (h : attObj a = attObj b) : a = b := by
-    injection h with _ h₂
-    injection h₂ with h₃
-    injection h₃ with h₄
-    have hd := congrArg (decodeAtt (Fintype.card V)) h₄
-    simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hd
-  have hself : conflicts (attObj a) (attObj a) = false := by
-    apply Bool.eq_false_iff.mpr
-    intro h
-    obtain ⟨b, c, hb, hc', hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
-    obtain rfl := hinj hb
-    obtain rfl := hinj hc'
-    exact engine_signings_nonFraming S rho hn hv hv0 ha ha hbc
-  unfold Model.protects
-  split
-  · simp only [Bool.and_eq_true, Bool.not_eq_true']
-    refine ⟨hself, ?_⟩
-    rw [List.all_eq_true]
-    intro o ho
-    by_cases hk : o.signer? = some (rho.ownKey v)
-    · have hconf : conflicts (attObj a) o = false ∧ conflicts o (attObj a) = false := by
-        constructor <;> apply Bool.eq_false_iff.mpr <;> intro h
-        · obtain ⟨b, c, hb, rfl, hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
-          obtain rfl := hinj hb
-          have hcval : c.val = rho.ownKey v := Option.some.inj hk
-          obtain ⟨j', q', hc'⟩ := engine_seen_att_signed_at S rho hn hv hc
-            (duty_honest_at S rho hv hc) hcval ho
-          exact engine_signings_nonFraming S rho hn hv hv0 ha hc' hbc
-        · obtain ⟨b, c, rfl, hc', hbc⟩ := (conflictsIff_iff.mp conflicts_iff _ _ _).mp h
-          obtain rfl := hinj hc'
-          have hbval : b.val = rho.ownKey v := Option.some.inj hk
-          obtain ⟨j', q', hb⟩ := engine_seen_att_signed_at S rho hn hv hc
-            (duty_honest_at S rho hv hc) hbval ho
-          exact engine_signings_nonFraming S rho hn hv hv0 hb ha hbc
-      change (_ != _ || !(conflicts (attObj a) o || conflicts o (attObj a))) = true
-      simp [hconf.1, hconf.2]
-    · simp [hk]
-  · rfl
+  exact att_protected_of_signings S rho hn (engine_signings_nonFraming S rho hn hv hv0)
+    (engine_seen_att_signed_at S rho hn hv hc (duty_honest_at S rho hv hc)) ha
 
 /-- An actual scheduled poll's ordinary attestation passes the own-signature guard. -/
 theorem engine_poll_att_protected_at (hv : rho.ExecutionValid) {v : V}
@@ -217,15 +182,7 @@ theorem engine_poll_att_protected_at (hv : rho.ExecutionValid) {v : V}
     (hsel : rho.ownKey v ∈ rho.sel .poll) {w cs}
     (hm : (poll (nd.st.1 hn) k).2 = some (.att w, cs)) :
     Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-      (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true := by
-  obtain ⟨a, j, q, rfl, hval, ha⟩ := engine_poll_att_signed S rho hn hc hd hsel hm
-  have hp := engine_att_protected_at S rho hn hv hc ha
-  have he := hval.trans (cut_self S rho hn hc)
-  have ho : attObj a = (.mk (.signed (rho.ownKey v) .poll)
-      (.data (.att (encodeAtt a))) [] : Wire (Fintype.card V)) := by
-    unfold attObj
-    rw [he]
-  rw [ho] at hp
-  exact hp
+      (.mk (.signed (rho.ownKey v) .poll) (.data (.att w)) []) = true :=
+  poll_att_protected_of S rho hn hc (engine_att_protected_at S rho hn hv hc) hd hsel hm
 
 end Consensus.Goldilocks.Simulation
