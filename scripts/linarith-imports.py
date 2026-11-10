@@ -10,6 +10,10 @@ Comments, docstrings and strings are blanked before any matching, and only the m
 It adds one private import after the header's last import line and touches nothing else; a
 module that imports the root `ConsensusLean` already reaches the front end and is left alone.
 
+A module in `EXEMPT` is left without the import, for the reason recorded there (measured: the
+front end does not make its elaboration cheaper). An entry that no longer applies (the module is
+gone, calls no plain `linarith`, or imports the front end) is stale and fails both modes.
+
   python3 -I scripts/linarith-imports.py          # add the missing imports, list the files
   python3 -I scripts/linarith-imports.py --check  # list them and exit 1 if any is missing
 """
@@ -25,6 +29,19 @@ IMPORT = f"import {FRONT_END}"
 LIBS = ("ConsensusLean", "ConsensusLeanTest")
 CALL = re.compile(r"(?<![\w.'])n?linarith(?![\w'!?])(?!\s*(?:only\b|\(config\b|[+-][a-zA-Z]))")
 IMPORT_LINE = re.compile(r"(?:public\s+)?(?:meta\s+)?import\s+(?:all\s+)?(\S+)\s*$")
+# Module -> why it stays without the front end. Instruction counts (`perf stat -e instructions:u`,
+# the module elaborated alone) with and without the import.
+EXEMPT = {
+    "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCompatibility":
+        "10.7% more instructions with it: its `nlinarith` needs the Nat casts, so the cheap attempt "
+        "fails and the call runs twice",
+    "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift":
+        "not cheaper with it (0.2% more instructions)",
+    "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read":
+        "not cheaper with it (instructions unchanged)",
+    "ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Cast":
+        "not cheaper with it (instructions unchanged)",
+}
 
 
 def header(code):
@@ -74,8 +91,8 @@ def strip_comments(text):
     return "".join(out)
 
 
-def layers():
-    config = tomllib.loads((ROOT / "scripts/boundaries.toml").read_text())
+def layers(root):
+    config = tomllib.loads((root / "scripts/boundaries.toml").read_text())
     trusted = config["checks"]["trusted_paths"]
     may_import = []
     for layer in config["layer"]:
@@ -84,16 +101,12 @@ def layers():
     return trusted, may_import
 
 
-def module_name(path):
-    return ".".join(path.relative_to(ROOT).with_suffix("").parts)
-
-
-def candidates():
-    trusted, may_import = layers()
+def candidates(root):
+    trusted, may_import = layers(root)
     for lib in LIBS:
-        for path in sorted((ROOT / lib).rglob("*.lean")):
-            relative = path.relative_to(ROOT).as_posix()
-            name = module_name(path)
+        for path in sorted((root / lib).rglob("*.lean")):
+            relative = path.relative_to(root).as_posix()
+            name = ".".join(path.relative_to(root).with_suffix("").parts)
             if name == FRONT_END or any(relative == t or relative.startswith(t.removesuffix(".lean") + "/")
                                         for t in trusted):
                 continue
@@ -102,32 +115,42 @@ def candidates():
             text = path.read_text()
             code = strip_comments(text)
             if CALL.search(code):
-                yield path, text, code
+                yield path, name, text, code
 
 
-def main():
+def main(argv=None, root=ROOT, exempt=EXEMPT):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="report missing imports, change nothing")
-    args = parser.parse_args()
-    missing, present = [], 0
-    for path, text, code in candidates():
+    args = parser.parse_args(argv)
+    missing, present, exempted, importing = [], 0, set(), set()
+    for path, name, text, code in candidates(root):
         imports, last = header(code)
         # A module that imports the root ConsensusLean (some tests) already reaches the front end.
         if FRONT_END in imports or "ConsensusLean" in imports:
             present += 1
+            if name in exempt:
+                importing.add(name)
+            continue
+        if name in exempt:
+            exempted.add(name)
             continue
         if last is None:
-            raise SystemExit(f"linarith-imports: {path.relative_to(ROOT)}: no module header found")
+            raise SystemExit(f"linarith-imports: {path.relative_to(root)}: no module header found")
         missing.append(path)
         if not args.check:
             lines = text.split("\n")
             path.write_text("\n".join(lines[:last + 1] + [IMPORT] + lines[last + 1:]))
     for path in missing:
-        print(path.relative_to(ROOT).as_posix())
+        print(path.relative_to(root).as_posix())
+    stale = sorted(set(exempt) - exempted)
+    for name in stale:
+        why = "imports the front end" if name in importing else "no module that may import it calls plain linarith"
+        print(f"stale exemption: {name} ({why})")
     verb = "missing" if args.check else "added"
-    print(f"linarith-imports: {present + len(missing)} calling modules, {present} already import "
-          f"{FRONT_END}, {len(missing)} {verb}", file=sys.stderr)
-    return 1 if args.check and missing else 0
+    print(f"linarith-imports: {present + len(exempted) + len(missing)} calling modules, {present} already import "
+          f"{FRONT_END}, {len(exempted)} exempt, {len(missing)} {verb}, {len(stale)} stale exemptions",
+          file=sys.stderr)
+    return 1 if stale or (args.check and missing) else 0
 
 
 if __name__ == "__main__":
