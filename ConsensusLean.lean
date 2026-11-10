@@ -90,6 +90,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.BlockFinality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.BlockFinalitySupplier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageDelivery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageGate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageMajority
@@ -984,6 +986,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.S
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.TickDuty
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Obligations.Constant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.BlockFinality
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
