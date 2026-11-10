@@ -81,9 +81,25 @@ class LinarithImportsTests(unittest.TestCase):
             self.assertEqual((rc, out), (0, ""), line + err)
             self.assertIn("1 calling modules, 1 already import", err)
 
+    def test_import_commands_split_over_lines(self):
+        for line in ("import\n  ConsensusLean.Lemmas.Tactic.Linarith\n",
+                     "public\n  meta import\n    ConsensusLean.Lemmas.Tactic.Linarith\n", "import\n  ConsensusLean\n"):
+            rc, out, err, _ = self.run_tool({"ConsensusLean/Lemmas/A.lean": HEADER + line + CALLS})
+            self.assertEqual((rc, out), (0, ""), line + err)
+        split = "module\npublic import\n  ConsensusLean.Lemmas.Base\n"
+        rc, _, err, after = self.run_tool({"ConsensusLean/Lemmas/A.lean": split + CALLS}, check=False)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(after["ConsensusLean/Lemmas/A.lean"], split + FRONT + CALLS)  # after the last token
+        shared = HEADER.rstrip("\n") + " public section\n\ntheorem t (a : Int) : a ≤ a := by\n  linarith\n"
+        with self.assertRaisesRegex(SystemExit, "other code on the line of its last token"):
+            self.run_tool({"ConsensusLean/Lemmas/A.lean": shared}, check=False)
+
     def test_only_plain_calls_count(self):
         for body in ("  linarith only [h]\n", "  linarith!\n", "  linarith (config := {}) [h]\n",
+                     "  linarith (preprocessors := []) [h]\n", "  linarith ( config := {})\n",
+                     "  nlinarith\n    (config := { splitNe := true })\n",
                      "  nlinarith -splitHypotheses\n", "  exact my_linarith h\n", "  exact Linarith.lemma h\n",
+                     "  exact «linarith»\n", "  exact «nlinarith» h\n",
                      "  -- linarith\n  omega\n", "  /- linarith -/ omega\n", '  trace "linarith"\n'):
             text = HEADER + "public section\n\ntheorem t : True := by\n" + body
             rc, out, err, _ = self.run_tool({"ConsensusLean/Lemmas/A.lean": text})
@@ -117,19 +133,19 @@ class LinarithImportsTests(unittest.TestCase):
 
     def test_stale_exemptions_fail_both_modes(self):
         exempt = {"ConsensusLean.Lemmas.A": "measured slower"}
-        cases = {
-            "imports the front end": {"ConsensusLean/Lemmas/A.lean": HEADER + FRONT + CALLS},
-            "no module that may import it calls plain linarith": {
-                "ConsensusLean/Lemmas/A.lean": HEADER + "public section\n\ntheorem t : True := trivial\n"},
-        }
-        cases["gone"] = {"ConsensusLean/Lemmas/B.lean": HEADER + FRONT + CALLS}
-        for why, files in cases.items():
+        no_call = "no module that may import it calls plain linarith"
+        cases = [  # (the file tree, the reason reported)
+            ({"ConsensusLean/Lemmas/A.lean": HEADER + FRONT + CALLS}, "imports the front end"),
+            ({"ConsensusLean/Lemmas/A.lean": HEADER + "public section\n\ntheorem t : True := trivial\n"}, no_call),
+            ({"ConsensusLean/Lemmas/A.lean": HEADER + CALLS.replace("linarith\n", "linarith (preprocessors := [])\n")},
+             no_call),  # its only call is configured
+            ({"ConsensusLean/Lemmas/B.lean": HEADER + FRONT + CALLS}, no_call),  # gone
+        ]
+        for files, why in cases:
             for check in (True, False):
                 rc, out, err, _ = self.run_tool(files, check=check, exempt=exempt)
-                self.assertEqual(rc, 1, why + err)
-                self.assertIn("stale exemption: ConsensusLean.Lemmas.A (", out)
-                if why != "gone":
-                    self.assertIn(f"({why})", out)
+                self.assertEqual(rc, 1, str(files) + err)
+                self.assertEqual(out, f"stale exemption: ConsensusLean.Lemmas.A ({why})\n", files)
                 self.assertIn("1 stale exemptions", err)
 
 

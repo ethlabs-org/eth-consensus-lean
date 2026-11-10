@@ -3,11 +3,15 @@
 
 The front end (ConsensusLean/Lemmas/Tactic/Linarith.lean) only acts in modules that import it,
 directly or through an import. This script gives it to each module of the default libraries that
-calls plain `linarith`/`nlinarith` (no `!`, no `only`, no configuration: the only forms it changes)
-and may import the Lemmas layer (scripts/boundaries.toml), never a trusted path (`trusted_paths`).
-Comments, docstrings and strings are blanked before any matching, and only the module header
-(`module`, import lines, blank lines and comments up to the first other line) counts as imports.
-It adds one private import after the header's last import line and touches nothing else; a
+calls plain `linarith`/`nlinarith` (no `!`, no `only`, no configuration such as `(config := c)`,
+`(preprocessors := ps)` or `-flag`: the only forms it changes) and may import the Lemmas layer
+(scripts/boundaries.toml), never a trusted path (`trusted_paths`). Comments, docstrings and strings
+are blanked before any matching, and only the module header (`module`, then `[public] [meta] import
+[all] M` commands, whose tokens may be split over lines) counts as imports. The scan is lexical: the
+word `linarith` or `nlinarith` outside comments and strings counts as a call unless one of those
+forms follows (a `«linarith»` identifier does not count; a bare one, such as a declaration named
+`linarith`, does).
+It adds one private import on a new line after the header's last token and touches nothing else; a
 module that imports the root `ConsensusLean` already reaches the front end and is left alone.
 
 A module in `EXEMPT` is left without the import, for the reason recorded there (measured: the
@@ -27,8 +31,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 FRONT_END = "ConsensusLean.Lemmas.Tactic.Linarith"
 IMPORT = f"import {FRONT_END}"
 LIBS = ("ConsensusLean", "ConsensusLeanTest")
-CALL = re.compile(r"(?<![\w.'])n?linarith(?![\w'!?])(?!\s*(?:only\b|\(config\b|[+-][a-zA-Z]))")
-IMPORT_LINE = re.compile(r"(?:public\s+)?(?:meta\s+)?import\s+(?:all\s+)?(\S+)\s*$")
+# Not counted: identifier characters around the word (`foo_linarith`, `X.linarith`, `«linarith»`),
+# `!`/`?` variants, and a following `only`, `(field := ...)` configuration or `-flag`/`+flag`.
+CALL = re.compile(r"(?<![\w.'«])n?linarith(?![\w'!?»])"
+                  r"(?!\s*(?:only\b|\(\s*[^\W\d][\w.']*\s*:=|[+-][a-zA-Z]))")
+TOKEN = re.compile(r"\S+")
 # Module -> why it stays without the front end. Instruction counts (`perf stat -e instructions:u`,
 # the module elaborated alone) with and without the import.
 EXEMPT = {
@@ -36,29 +43,46 @@ EXEMPT = {
         "10.7% more instructions with it: its `nlinarith` needs the Nat casts, so the cheap attempt "
         "fails and the call runs twice",
     "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift":
-        "not cheaper with it (0.2% more instructions)",
+        "no demonstrated gain (0.2% more instructions, within the 0.3% spread of the measurement)",
     "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read":
-        "not cheaper with it (instructions unchanged)",
+        "no demonstrated gain (instructions unchanged)",
     "ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Cast":
-        "not cheaper with it (instructions unchanged)",
+        "no demonstrated gain (instructions unchanged)",
+}
+
+
+# The header grammar, token by token: state -> {keyword: next state}; any other token in state
+# "import"/"all" is the module name (the command ends), in any other state it ends the header.
+HEADER_STEPS = {
+    "command": {"public": "public", "meta": "meta", "import": "import"},
+    "public": {"meta": "meta", "import": "import"},
+    "meta": {"import": "import"},
+    "import": {"all": "all"},
+    "all": {},
 }
 
 
 def header(code):
-    """The header's imported modules and the index of its last line (`module`/import lines,
-    blank lines and comments, up to the first other line), read from the comment-stripped code."""
-    imports, last = [], None
-    for k, line in enumerate(code.split("\n")):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        match = IMPORT_LINE.fullmatch(stripped)
-        if match:
-            imports.append(match.group(1))
-            last = k
-        elif stripped == "module" and last is None:
-            last = k
-        else:
+    """The header's imported modules and the line of its last token, read from the
+    comment-stripped code: an optional leading `module`, then `[public] [meta] import [all] M`
+    commands, tokens separated by any whitespace (newlines included). The line is None without a
+    header, or when other code shares the line of the header's last token (a new line after it
+    would move that code)."""
+    imports, last, line, pos, state, start = [], None, 0, 0, "command", None
+    for k, match in enumerate(TOKEN.finditer(code)):  # stops at the first token after the header
+        line += code.count("\n", pos, match.start())
+        pos, word = match.start(), match.group()
+        if k == 0 and word == "module":
+            last = line
+        elif word in HEADER_STEPS[state]:
+            start = line if state == "command" else start
+            state = HEADER_STEPS[state][word]
+        elif state in ("import", "all"):
+            imports.append(word)
+            last, state = line, "command"
+        else:  # the first token of the code after the header: `start` if a command began
+            if (line if state == "command" else start) == last:
+                last = None
             break
     return imports, last
 
@@ -135,7 +159,8 @@ def main(argv=None, root=ROOT, exempt=EXEMPT):
             exempted.add(name)
             continue
         if last is None:
-            raise SystemExit(f"linarith-imports: {path.relative_to(root)}: no module header found")
+            raise SystemExit(f"linarith-imports: {path.relative_to(root)}: no module header found, or other "
+                             "code on the line of its last token")
         missing.append(path)
         if not args.check:
             lines = text.split("\n")
