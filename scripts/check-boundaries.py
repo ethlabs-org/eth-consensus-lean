@@ -73,6 +73,25 @@ EXCEPTION_KEYS = {"from", "to", "reason"}
 def under(m, prefix):  # module-name prefix, component-wise: A covers A and A.x, not AB
     return m == prefix or m.startswith(prefix + ".")
 
+def block_instance_paths(direct):
+    """Actual reusable blocks may not reach instance modules, even through intermediaries."""
+    bad = []
+    for start in direct:
+        if not under(start, "ConsensusLean.Blocks"):
+            continue
+        seen, todo = {start}, [(start, [start])]
+        while todo:
+            module, path = todo.pop()
+            for dep in direct.get(module, []):
+                if dep in seen:
+                    continue
+                seen.add(dep)
+                if under(dep, "ConsensusLean.Instances"):
+                    bad.append("FAIL[block-instance] " + " -> ".join(path + [dep]))
+                else:
+                    todo.append((dep, path + [dep]))
+    return bad
+
 def lib_prefixes(lake_lib):  # module prefixes a lakefile lib owns (its roots, glob stems and one-module globs)
     globs = [g[:-2] if g.endswith((".*", ".+")) else g for g in lake_lib.get("globs", [])]
     return lake_lib.get("roots", [lake_lib["name"]]) + globs
@@ -564,6 +583,7 @@ def check(tree, cfg_path, lakefile, parse=deps_json, inventory_out=None, graph_o
             for x in e[side]:
                 if not any(u[0] == k and u[n] == x for u in used):
                     fails.append(f"FAIL[config] exception {k}: {side} entry {x} covers no import: remove it")
+    fails.extend(block_instance_paths(direct))  # no exceptions or forwarding back into Instances
     public, grew = {init}, True  # the init chain: modules reaching init_module through public imports
     while grew:
         grew = False
@@ -643,6 +663,12 @@ def self_test(fixtures):
     assert import_only("module -- c\n/-! doc /- nested -/ -/\npublic import A.B\nimport all C\n") and \
         not import_only("module\npublic import A\ndef x := 1\n") and import_only("import A") and \
         not import_only("module\nimport A\n#check 1 -- import B\n")
+    block, bridge, instance = "ConsensusLean.Blocks.FG.A", "ConsensusLean.Spec.Bridge", "ConsensusLean.Instances.X"
+    assert not block_instance_paths({block: [bridge], bridge: ["Mathlib.Data.Nat.Basic"]})
+    assert block_instance_paths({block: [instance]}) == [f"FAIL[block-instance] {block} -> {instance}"]
+    assert block_instance_paths({block: [bridge], bridge: [instance]}) == [
+        f"FAIL[block-instance] {block} -> {bridge} -> {instance}"]
+    assert not block_instance_paths({"ConsensusLean.Blocksmith": [instance]})
     return ok
 
 if __name__ == "__main__":
