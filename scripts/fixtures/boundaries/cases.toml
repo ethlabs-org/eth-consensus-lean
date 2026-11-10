@@ -813,3 +813,62 @@ prefixes = ["Fx.NodeEngine"]
 expose = true
 allow = ["Init", "ToMathlib", "Spec", "Statements", "Projection"]
 [[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Projection", "NodeEngine"]']]
+
+# Committee prefix vocabulary permits one definition edge, not either endpoint's siblings.
+[CommitteePrefixAllowed]
+files."Fx/Run/UpTo.lean" = "module\npublic import Fx.Spec.A\npublic def prefix : Nat := 0\n"
+files."Fx/CommitteeStatements/VotesK.lean" = "module\npublic import Fx.Run.UpTo\npublic def participants : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Run.UpTo\npublic import Fx.CommitteeStatements.VotesK"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Run"
+prefixes = ["Fx.Run"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "CommitteeStatements"
+prefixes = ["Fx.CommitteeStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]
+from = ["Fx.CommitteeStatements.VotesK"]
+to = ["Fx.Run.UpTo"]
+reason = "committee prefix definition only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Run", "CommitteeStatements"]']]
+
+[CommitteePrefixSourceSiblingRejected]
+expect = "FAIL[import] Fx.Run.UpTo (layer Run) imported by Fx.CommitteeStatements.Other (layer CommitteeStatements)"
+files."Fx/Run/UpTo.lean" = "module\npublic import Fx.Spec.A\npublic def prefix : Nat := 0\n"
+files."Fx/CommitteeStatements/VotesK.lean" = "module\npublic import Fx.Run.UpTo\npublic def participants : Prop := True\n"
+files."Fx/CommitteeStatements/Other.lean" = "module\npublic import Fx.Run.UpTo\npublic def other : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Run.UpTo\npublic import Fx.CommitteeStatements.VotesK\npublic import Fx.CommitteeStatements.Other"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Run"
+prefixes = ["Fx.Run"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "CommitteeStatements"
+prefixes = ["Fx.CommitteeStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]
+from = ["Fx.CommitteeStatements.VotesK"]
+to = ["Fx.Run.UpTo"]
+reason = "committee prefix definition only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Run", "CommitteeStatements"]']]
+
+[CommitteePrefixTargetSiblingRejected]
+expect = "FAIL[import] Fx.Run.Model (layer Run) imported by Fx.CommitteeStatements.VotesK (layer CommitteeStatements)"
+files."Fx/Run/UpTo.lean" = "module\npublic import Fx.Spec.A\npublic def prefix : Nat := 0\n"
+files."Fx/Run/Model.lean" = "module\npublic import Fx.Spec.A\npublic def model : Nat := 0\n"
+files."Fx/CommitteeStatements/VotesK.lean" = "module\npublic import Fx.Run.UpTo\npublic import Fx.Run.Model\npublic def participants : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Run.UpTo\npublic import Fx.Run.Model\npublic import Fx.CommitteeStatements.VotesK"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Run"
+prefixes = ["Fx.Run"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "CommitteeStatements"
+prefixes = ["Fx.CommitteeStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]
+from = ["Fx.CommitteeStatements.VotesK"]
+to = ["Fx.Run.UpTo"]
+reason = "committee prefix definition only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Run", "CommitteeStatements"]']]

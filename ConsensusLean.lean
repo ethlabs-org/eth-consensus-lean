@@ -555,6 +555,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.FamilyIdentity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.SA.ParticipantsK
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Attestations
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Blocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Const
@@ -989,6 +990,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.UpT
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
@@ -1007,6 +1009,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Source
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Unlock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Votes
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.VotesK
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
@@ -1096,6 +1099,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLean.Lemmas.Model.Adequate
+public import ConsensusLean.Lemmas.Model.AdequateObs
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Canonical.Delivery
@@ -1116,7 +1120,9 @@ public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Retain
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
+public import ConsensusLean.Lemmas.Model.TruncateExt
 public import ConsensusLean.Lemmas.Model.View
+public import ConsensusLean.Lemmas.Problem.AdequateObs
 public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts

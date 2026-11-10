@@ -1097,6 +1097,11 @@ from = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine.Reg
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs"]
 reason = "A0b concrete canonical regression contracts name the unchanged old growing trace; generic engine leaves may not import these proofs"
 
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.VotesK"]
+to = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.UpTo"]
+reason = "Growing committee participation uses the existing polymorphic trace prefix definition; no run model or engine dependency"
+
 # Settings of scripts/check.sh (check-boundaries.py reads only proofs_component_prefixes and trusted_paths).
 [checks]
 # The Spec surface is every module of a `trusted` layer above: the persisted-extension whitelist
