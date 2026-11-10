@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
@@ -20,7 +21,8 @@ public section
 A reader ready at `t` from the recovery point `b₁ + 9Δ` has its latest gate `s = slot(t − 6Δ)`:
 `b₁ ≤ t_s + Δ`, the update of slot `s` at `d_s = t_s + 6Δ ≤ t < t_s + 10Δ` before the read cut, no
 restart after `t_s` up to `t`, and the latest view at `t` of label `s + 1`. Only readiness,
-joining, the gate tick and the read cut are used: no vote, frame walk or voter tree.
+joining, the gate tick and the read cut are used: no vote, frame walk or voter tree. The slot
+arithmetic of the gate, its restarts and its view label is `OutageGateSlot`.
 `outage_reader_prefix` turns ancestry of the two read tips into the prefix of the engine reads. -/
 
 namespace Consensus.Goldilocks.Obligations
@@ -59,15 +61,6 @@ private theorem duration_ge (Q : OutageQuery S A V) :
   change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
   linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
-/-- The outage's end is not before `0`. -/
-private theorem stop_nonneg (Q : OutageQuery S A V) : 0 ≤ Q.stop := by
-  obtain ⟨⟨hT, hlag, h01, -⟩, -⟩ := Q.outage
-  have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.ΔAC := by
-    have := Q.run.1.ΔAC_pos; positivity
-  change Q.T + _ * Q.run.1.ΔAC ≤ Q.start at hlag
-  change Q.start ≤ Q.stop at h01
-  linarith
-
 theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
     (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t) (hth : t ≤ Q.run.2.horizon)
     {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
@@ -82,31 +75,17 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
     change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
-  have hb₁ := stop_nonneg S A V Q
+  have hb₁ := outage_stop_nonneg Q.outage
   have hdur := duration_ge S A V Q
   have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
   have hrun := simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid
-  have hts (n : Int) : sp.ts n = 4 * sp.Δ * n := rfl
   have ht0 : 0 ≤ t := by linarith
   -- E0: the reader is ready on the node trace
   have hR := ready_transport S Q.run.2 Q.hn Q.valid ht0 hth hw
   have hy : y ∈ honestKeys S Q.run.2 := hR.1
   -- E1: the latest gate `s = slot(t − 6Δ)`
-  have h6 : 0 ≤ t - 6 * sp.Δ := by linarith
-  obtain ⟨s, hs⟩ : ∃ s, s = sp.slot (t - 6 * sp.Δ) := ⟨_, rfl⟩
-  have hs₁ : 4 * sp.Δ * s ≤ t - 6 * sp.Δ := by
-    have := (SA.ts_le_iff_le_slot sp h6 (s : Int)).2 (by rw [hs])
-    simpa only [SA.SAParams.ts] using this
-  have hs₂ : t - 6 * sp.Δ < 4 * sp.Δ * s + 4 * sp.Δ := by
-    by_contra hh
-    have := (SA.ts_le_iff_le_slot sp h6 ((s : Int) + 1)).1 (by
-      simp only [SA.SAParams.ts]; linarith)
-    omega
-  have hs0 : (0 : Time) ≤ 4 * sp.Δ * s := by positivity
-  have hrestored : Q.stop ≤ sp.ts s + sp.Δ := by
-    simp only [SA.SAParams.ts]
-    by_contra hh
-    linarith
+  obtain ⟨s, hrestored, hgate, hnext⟩ := outage_latest_gate sp hb₁ hrec
+  obtain ⟨hslu, hle⟩ := outage_gate_restarts sp hgate hnext
   -- E2: the gate tick at `u = t_s + 6Δ`, an update of slot `s`
   set u := sp.ts s + 6 * sp.Δ with hu_def
   have hu : u = 4 * sp.Δ * s + 6 * sp.Δ := rfl
@@ -145,44 +124,12 @@ theorem outage_reader_gate (Q : OutageQuery S A V) {t : Time}
     (by rw [hcu] at hdur; linarith) hR.2).2
   have hJt' := ((Compose.joined_projection _ _ _ _ _ _ hrun y hy t).1).mp hJt
   have hJu' := ((Compose.joined_projection _ _ _ _ _ _ hrun y hy u).1).mp hJu
-  have hslt : (sp.slot t : Int) ≤ s + 2 := by
-    by_contra hh
-    have := (SA.ts_le_iff_le_slot sp ht0 ((s : Int) + 3)).2 (by omega)
-    simp only [SA.SAParams.ts] at this
-    linarith
-  have hslu : sp.slot u = s + 1 :=
-    SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      (by simp only [SA.SAParams.ts]; push_cast; linarith)
-  have hrestarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts s := by
-    intro k hk hkt
-    have h₁ := hJt' k hk hkt
-    simp only [SA.SAParams.ts] at h₁
-    have h₂ : 4 * sp.Δ * ((sp.slot t : Int) - 1) ≤ 4 * sp.Δ * ((s : Int) + 1) :=
-      mul_le_mul_of_nonneg_left (show (sp.slot t : Int) - 1 ≤ (s : Int) + 1 by omega)
-        (by linarith)
-    have h₃ := hJu' k hk (by rw [hu]; linarith)
-    rw [hslu, show (((s + 1 : Nat) : Int) - 1) = s by push_cast; ring] at h₃
-    exact h₃
+  have hrestarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts s :=
+    fun k hk hkt => (hJu' k hk ((hJt' k hk hkt).trans hle)).trans_eq hslu
   -- E4: the latest view at `t` has label `s + 1`
-  have hview : (SA.latestView sp (tr.state y j).ac (Node.frame (tr.state y j)) t).2 =
-      ((s + 1 : Nat) : Int) := by
-    unfold SA.latestView
-    dsimp only
-    by_cases hlt : t < 4 * sp.Δ * s + 8 * sp.Δ
-    · have hsl : sp.slot t = s + 1 :=
-        SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-          (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      split_ifs with hc
-      · rw [hsl]
-      · exfalso; apply hc; rw [hsl]; simp only [SA.SAParams.ts]; push_cast; linarith
-    · have hsl : sp.slot t = s + 2 :=
-        SA.slot_of_mem sp (s + 2) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-          (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      split_ifs with hc
-      · exfalso; rw [hsl] at hc; simp only [SA.SAParams.ts] at hc; push_cast at hc; linarith
-      · rw [hsl]; omega
-  exact ⟨⟨s, hrestored, by simp only [SA.SAParams.ts]; linarith,
-    by simp only [SA.SAParams.ts]; linarith, c₁, ℓ₁, hupd, hc₁j, hrestarts, hread, hview⟩⟩
+  have hview :=
+    latestView_label_of_gate sp (tr.state y j).ac (Node.frame (tr.state y j)) hgate hnext
+  exact ⟨⟨s, hrestored, hgate, hnext, c₁, ℓ₁, hupd, hc₁j, hrestarts, hread, hview⟩⟩
 
 /-- Ancestry of the two tips is the engine read prefix. -/
 theorem outage_reader_prefix (Q : OutageQuery S A V) {v : V}
