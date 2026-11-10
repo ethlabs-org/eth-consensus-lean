@@ -6,6 +6,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ForwardingDecode
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DeadlineWake
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Lemmas.Model.SysLog
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -199,101 +202,19 @@ theorem deadline_awake_interval (hn : 1 ≤ Fintype.card V) (hconst : rho.point.
       (simTrace S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ =
         a + (S.params (Model.pubOf E) hn).Δ ∧
       rho.point.AwakeOnClosed (rho.key y) a ((simTrace S rho hn).time j) := by
-  let tr := simTrace S rho hn
   have hr := simTrace_goldilocksRun S rho hn hconst hv
-  let a := Option.elim (tr.lastWake y j) τ (fun w => max τ w)
-  have hτa : τ ≤ a := by
-    dsimp [a]
-    cases tr.lastWake y j with
-    | bot => exact le_rfl
-    | coe w => exact le_max_left _ _
-  have hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ a := by
-    have hmax : ∀ c, ∀ k ≤ c, tr.RestartAt y k →
-        (tr.time k : WithBot Time) ≤ tr.lastWake y c := by
-      intro c
-      induction c with
-      | zero =>
-        intro k hk hk'
-        obtain rfl : k = 0 := by omega
-        simp [RunTrace.lastWake, hk']
-      | succ c ih =>
-        intro k hk hk'
-        by_cases hc : tr.RestartAt y (c + 1)
-        · simp only [RunTrace.lastWake, hc, ite_true]
-          exact WithBot.coe_le_coe.mpr (hr.time_mono hk)
-        · have hk0 : k ≤ c := by
-            by_contra h
-            obtain rfl : k = c + 1 := by omega
-            exact hc hk'
-          simpa only [RunTrace.lastWake, hc, ite_false] using ih k hk0 hk'
-    intro k hk hk'
-    have hm := hmax j k hk hk'
-    dsimp [a]
-    cases hw : tr.lastWake y j with
-    | bot => rw [hw] at hm; exact (WithBot.not_coe_le_bot _ hm).elim
-    | coe w =>
-      rw [hw] at hm
-      exact (WithBot.coe_le_coe.mp hm).trans (le_max_right _ _)
-  refine ⟨a, hτa, rfl, ?_⟩
-  intro u hau huj
-  have hu0 : 0 ≤ u := hτ.trans (hτa.trans hau)
-  have hwu : tr.awake y u := by
-    by_contra hsleep
-    have hwj := hr.awake_of_call y hy j hj
-    have huj' : u < tr.time j := lt_of_le_of_ne huj (by
-      intro heq
-      exact hsleep (heq ▸ hwj))
-    obtain ⟨k, hk, huk, hkj⟩ := hr.restart_at_wake y hy u (tr.time j) hu0 huj' hsleep hwj
-    have hkidx : k ≤ j := by
-      by_contra h
-      obtain ⟨v, _, hvk, _, hvprev⟩ := hr.sleep_of_restart y hy k hk
-      have := hvprev j (by omega) hj
-      linarith only [this, hvk, hkj]
-    have := hrestart k hkidx hk
-    linarith only [this, huk, hau]
-  exact (simTrace_awake_of S rho hn hv y hy u hwu).1
+  obtain ⟨a, hτa, heq, hw⟩ := (simTrace S rho hn).deadline_awake_of_call hr.time_mono hj
+    (hr.awake_of_call y hy j hj) (fun u => hr.restart_at_wake y hy u _)
+    (fun k hk _ => hr.sleep_of_restart y hy k hk) hτ _
+  exact ⟨a, hτa, heq, fun u hau huj => (simTrace_awake_of S rho hn hv y hy u (hw u hau huj)).1⟩
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
 theorem deadline_mono_cut (hn : 1 ≤ Fintype.card V) (hconst : rho.point.ConstantFaults)
     (hv : rho.ExecutionValid)
     (y : Fin (Fintype.card V)) (τ Δ : Time) :
-    Monotone (fun j => (simTrace S rho hn).deadline y j τ Δ) := by
-  let tr := simTrace S rho hn
-  have hr := simTrace_goldilocksRun S rho hn hconst hv
-  have hw : ∀ c (w : Time), tr.lastWake y c = (w : WithBot Time) → w ≤ tr.time c := by
-    intro c
-    induction c with
-    | zero =>
-      intro w h
-      unfold RunTrace.lastWake at h
-      split at h
-      · exact (WithBot.coe_injective h).ge
-      · cases h
-    | succ c ih =>
-      intro w h
-      unfold RunTrace.lastWake at h
-      split at h
-      · exact (WithBot.coe_injective h).ge
-      · exact (ih w h).trans (hr.time_mono (Nat.le_succ c))
-  apply monotone_nat_of_le_succ
-  intro c
-  change tr.deadline y c τ Δ ≤ tr.deadline y (c + 1) τ Δ
-  unfold RunTrace.deadline
-  rw [RunTrace.lastWake]
-  split
-  · cases heq : tr.lastWake y c with
-    | bot =>
-      change τ + Δ ≤ max τ (tr.time (c + 1)) + Δ
-      have := le_max_left τ (tr.time (c + 1))
-      dsimp [Time] at *
-      omega
-    | coe w =>
-      change max τ w + Δ ≤ max τ (tr.time (c + 1)) + Δ
-      have hle : w ≤ tr.time (c + 1) :=
-        (hw c w heq).trans (hr.time_mono (Nat.le_succ c))
-      simp only [Time] at hle ⊢
-      omega
-  · exact le_rfl
+    Monotone (fun j => (simTrace S rho hn).deadline y j τ Δ) :=
+  (simTrace S rho hn).deadline_mono_cut_of_time_mono
+    (simTrace_goldilocksRun S rho hn hconst hv).time_mono y τ Δ
 
 /-- A real honest publication is held strictly before a qualifying node deadline.
 The wake interval and horizon obligations follow from the recipient call and cutoff. -/
@@ -913,32 +834,7 @@ theorem released_att_processAt (hn : 1 ≤ Fintype.card V) (hconst : rho.point.C
   obtain ⟨i, he, ho⟩ := hs
   rcases he with he | ⟨o, he⟩
   · obtain ⟨hp, C, hc⟩ := att_released_inv S rho hn hconst hv hv' he ho
-    obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
-    have hnxt := Compose.exec_attest_next
-      (A := goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
-      (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))
-      (k := m) (C := C) (a := a) (List.getElem?_eq_some_iff.mpr ⟨hm, hcm⟩)
-    have hlen := (List.getElem?_eq_some_iff.mp hnxt).1
-    have hEC := eventCuts_tick_public S rho hn i v t he hp
-    have hm' : m + 1 < (eventCuts S rho hn i).length := by
-      rw [hEC, length_groupRecs]
-      exact hlen
-    have hk := allCuts_getElem?_add S rho hn i (m + 1)
-      (List.getElem?_eq_some_iff.mp he).1 hm'
-    rw [hEC] at hk
-    have hlen' : m + 1 < (groupRecs (runProposer S rho hn) (digestOf S rho)
-        (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := by
-      rw [length_groupRecs]; exact hlen
-    rw [List.getElem?_eq_getElem hlen'] at hk
-    obtain ⟨hnode, htime, _, _, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ (m + 1) hlen'
-    have hl := (List.getElem?_eq_some_iff.mp hnxt).2
-    refine ⟨cutMap S rho hn i + (m + 1), Or.inl ⟨?_, ?_⟩, ?_⟩
-    · simpa only [simTrace_node, hk, Option.elim_some] using hnode
-    · simp only [simTrace_label, hk, Option.map_some, hlab, hl]
-    · simpa only [simTrace_time, hk, Option.elim_some] using htime
+    exact tick_attest_processAt S rho hn he hp hc
   · exact (deliver_not_att S rho hn hv he a ho).elim
 
 /-- Holdings suffice for processing before an observation deadline, even for an old receipt. -/
@@ -1067,52 +963,9 @@ theorem own_proposal_payload_pooled (hn : 1 ≤ Fintype.card V)
     (hprop : ∃ ℓp, (simTrace S rho hn).CallAt y (j + 1) (.ac ℓp) ∧ ℓp.call = .proposal)
     (hfg : ∃ B, (simTrace S rho hn).CallAt y (j + 2) (.fg (.block B true)))
     {m : SA.Vote (Fintype.card V)} (hm : m ∈ p.1) :
-    m ∈ ((simTrace S rho hn).state y (j + 3)).ac.pool m.slot := by
-  have hr := simTrace_goldilocksRun S rho hn hconst hv
-  have htick := hg.2.1 0 (by simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps,
-    Node.tickStep, Node.acCall])
-  have hct : (simTrace S rho hn).CallAt y j
-      (Node.acCall y ((simTrace S rho hn).state y j) t .tick).2 := by
-    exact ⟨by simpa using htick.1, by
-      simpa [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep,
-        Node.acCall] using htick.2.2.2.2⟩
-  have hstate : ((simTrace S rho hn).state y (j + 1)).ac =
-      (Node.tickStep (runProposer S rho hn) (digestOf S rho) y
-        ((simTrace S rho hn).state y j) t x .acTick).1.ac := by
-    rw [(simTrace S rho hn).state_succ_of_call hct]
-    have hl := hr.cutLaw y hy j _ hct
-    have ht : (simTrace S rho hn).time j = t := by simpa using htick.2.1
-    rw [ht] at hl
-    exact (congrArg Prod.fst hl.2.1).symm
-  have hp : ∃ σ, m ∈ ((simTrace S rho hn).state y (j + 1)).ac.pool σ := by
-    rw [hstate]
-    change (SA.acProposal (S.params (Model.pubOf E) hn) _ _ t).2 = some (d, p) at hd
-    unfold SA.acProposal at hd
-    split_ifs at hd
-    obtain ⟨_, rfl⟩ := Prod.mk.inj (Option.some.inj hd)
-    simp only [SA.voteViewList, List.mem_filter] at hm
-    unfold SA.SAState.poolAt at hm
-    split_ifs at hm
-    · simp at hm
-    · exact ⟨_, hm.1⟩
-  obtain ⟨σ, hm⟩ := hp
-  have hslot := (Compose.state_pool_cap hr hy (j + 1) σ).1 m
-    (by simpa only [Compose.projAC_state hr.toLocalRun hy] using hm)
-  obtain ⟨ℓp, hcp, hpc⟩ := hprop
-  obtain ⟨B, hcb⟩ := hfg
-  have hp := (hr.cutLaw y hy (j + 1) _ hcp).2.1
-  rw [hpc] at hp
-  have hpools : ((simTrace S rho hn).state y (j + 2)).ac.pool =
-      ((simTrace S rho hn).state y (j + 1)).ac.pool := by
-    have he := congrArg Prod.fst hp
-    dsimp only [Prod.fst] at he
-    rw [show j + 2 = (j + 1) + 1 by omega, (simTrace S rho hn).state_succ_of_call hcp, ← he]
-    change (SA.acProposal _ _ _ _).1.pool = _
-    unfold SA.acProposal
-    split_ifs <;> rfl
-  rw [show j + 3 = (j + 2) + 1 by omega, (simTrace S rho hn).state_succ_of_call hcb,
-    (hr.cutLaw y hy (j + 2) _ hcb).2.2.1, hpools, hslot]
-  exact hm
+    m ∈ ((simTrace S rho hn).state y (j + 3)).ac.pool m.slot :=
+  Growing.own_proposal_payload_pooled_run (simTrace_goldilocksRun S rho hn hconst hv) hy hg hd
+    hprop hfg hm
 
 /-- A sending or freshly admitting source processes its vote at that same time.
 Recursive delivery processing may occur later in the event, never at a later time. -/
@@ -1133,80 +986,14 @@ theorem sendOrAdmit_process_same_time (hn : 1 ≤ Fintype.card V)
     exact ⟨i, ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inr he⟩, rfl⟩
   rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, hm⟩
   · exact ⟨i, ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inl hm⟩, rfl⟩
-  have hl : (simTrace S rho hn).label i ≠ none := by rw [hc.2]; simp
-  obtain ⟨r, n, ev, _, he, hlo, hhi, hidx, hnode, ht, _, hlabel⟩ :=
-    simTrace_cut S rho hn hl
-  have hrlabel : r.label = .ac ℓ := Option.some.inj (hlabel.symm.trans hc.2)
-  have hkey : rho.ownKey ev.node = y := hnode.symm.trans hc.1
-  cases ev with
-  | deliver v o t =>
-    obtain ⟨k, _, _, hp, hkt⟩ := delivery_block_payload_processAt S rho hn he
-      (List.mem_of_getElem? hidx) hrlabel hb hm
-    exact ⟨k, hkey ▸ hp, hkt.trans ht.symm⟩
-  | restart v t =>
-    have hm := List.mem_of_getElem? hidx
-    rw [eventCuts_restart S rho hn n v t he] at hm
-    obtain ⟨q, hq, rfl⟩ := List.getElem_of_mem hm
-    have hq' := hq
-    rw [length_groupRecs] at hq'
-    have hq0 : q = 0 := by
-      simpa only [Node.exec, Node.restart, List.length_singleton, Nat.lt_one_iff] using hq'
-    subst q
-    have hrlabel' := (getElem_groupRecs _ _ _ _ _ _ _ 0 hq).2.2.2.2
-    rw [hrlabel'] at hrlabel
-    have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) hrlabel
-    simp only [Node.exec, Node.restart, Node.acCall] at hcall
-    rw [← hcall] at hb
-    cases hb
-  | tick v t =>
-    change rho.ownKey v = y at hkey
-    have hpublic : (S.params (Model.pubOf E) hn).toParams.IsPublic t := by
-      by_contra h
-      rw [eventCuts_tick_other S rho hn n v t he h] at hidx
-      simp at hidx
-    have hvhon : v ∉ rho.faultyAt 0 := by
-      have : rho.key y = v := by rw [← hkey]; exact rho.key.apply_symm_apply v
-      exact this ▸ (mem_honestKeys_iff S rho y).mp hy
-    obtain ⟨hengine, hlen⟩ := simTrace_tick_public_group S rho hn hconst hv v hvhon n t he hpublic
-    rw [hkey] at hengine hlen
-    obtain ⟨i', hi, hacc, htime⟩ := Compose.acBlock_prev hr.toLocalRun hy hc hb
-    rcases Compose.blockCall_cases hr.toLocalRun hy hacc with hg |
-        ⟨j, x, hij, hg, hproposes, d, p, hd, hB, _, htick, hproposal, hfg⟩
-    · have hib : i' < cutMap S rho hn n +
-          (Node.exec (runProposer S rho hn) (digestOf S rho) y
-            ((simTrace S rho hn).state y (cutMap S rho hn n)) t
-            (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by omega
-      have hstart : i' = cutMap S rho hn n := by
-        by_cases hle : cutMap S rho hn n ≤ i'
-        · exact Compose.group_start hengine hg hle hib
-        · obtain ⟨l, heq, _⟩ := Compose.before_tick hr.toLocalRun hy ⟨_, hengine⟩ hacc
-            (by omega) (htime.trans ht)
-          cases heq
-      subst i'
-      have hf := Compose.group_phase hengine hg
-      cases hf
-    · have hcp : ∃ ℓp, (simTrace S rho hn).CallAt y (j + 1) (.ac ℓp) ∧
-          ℓp.call = .proposal := by
-        have hd' := hd
-        simp only [Node.tickStep, Node.acCall] at hd'
-        have hlen : 1 < (Node.exec (runProposer S rho hn) (digestOf S rho) y
-            ((simTrace S rho hn).state y j) ((simTrace S rho hn).time i') (.tick x)).2.length := by
-          simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
-            List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd']
-          simp
-        obtain ⟨hnode, _, _, _, hl⟩ := hg.2.1 1 hlen
-        simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
-          List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd'] at hl
-        simp only [List.nil_append,
-          List.cons_append, List.getElem_cons_succ, List.getElem_cons_zero] at hl
-        exact ⟨_, ⟨hnode, hl⟩, rfl⟩
-      have him : i = j + 3 := by omega
-      apply False.elim
-      apply hf
-      rw [him]
-      apply own_proposal_payload_pooled S rho hn hconst hv hy hg hd hcp
-        ⟨B, by simpa only [hij] using hacc⟩
-      simpa only [hB, Node.mkBlock, SA.blockVotes] using hm
+  rcases acBlock_cut_cases S rho hn hc hb hm with h | ⟨n, v, t, he, hpublic, hkey, hlo, hhi, ht⟩
+  · exact h
+  have hvhon : v ∉ rho.faultyAt 0 := by
+    have : rho.key y = v := by rw [← hkey]; exact rho.key.apply_symm_apply v
+    exact this ▸ (mem_honestKeys_iff S rho y).mp hy
+  obtain ⟨hengine, hlen⟩ := simTrace_tick_public_group S rho hn hconst hv v hvhon n t he hpublic
+  rw [hkey] at hengine hlen
+  exact (hf (acBlock_vote_pooled_in_tick hr hy hengine hlo (by omega) ht hc hb hm)).elim
 
 /-- A first-release vote envelope reaches a different honest node under PSync.
 The release time is the lower bound; GST changes only the service deadline. -/

@@ -14,6 +14,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTrans
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DeadlineWake
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -65,103 +67,21 @@ theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
       (simTraceAt S rho hn).deadline y j τ (S.params (Model.pubOf E) hn).Δ =
         a + (S.params (Model.pubOf E) hn).Δ ∧
       rho.point.AwakeOnClosed (rho.key y) a ((simTraceAt S rho hn).time j) := by
-  let tr := simTraceAt S rho hn
   have hr := simTraceAt_goldilocksRun S rho hn hv
-  let a := Option.elim (tr.lastWake y j) τ (fun w => max τ w)
-  have hτa : τ ≤ a := by
-    dsimp [a]
-    cases tr.lastWake y j with
-    | bot => exact le_rfl
-    | coe w => exact le_max_left _ _
-  have hrestart : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ a := by
-    have hmax : ∀ c, ∀ k ≤ c, tr.RestartAt y k →
-        (tr.time k : WithBot Time) ≤ tr.lastWake y c := by
-      intro c
-      induction c with
-      | zero =>
-        intro k hk hk'
-        obtain rfl : k = 0 := by omega
-        simp [RunTrace.lastWake, hk']
-      | succ c ih =>
-        intro k hk hk'
-        by_cases hc : tr.RestartAt y (c + 1)
-        · simp only [RunTrace.lastWake, hc, ite_true]
-          exact WithBot.coe_le_coe.mpr (hr.time_mono hk)
-        · have hk0 : k ≤ c := by
-            by_contra h
-            obtain rfl : k = c + 1 := by omega
-            exact hc hk'
-          simpa only [RunTrace.lastWake, hc, ite_false] using ih k hk0 hk'
-    intro k hk hk'
-    have hm := hmax j k hk hk'
-    dsimp [a]
-    cases hw : tr.lastWake y j with
-    | bot => rw [hw] at hm; exact (WithBot.not_coe_le_bot _ hm).elim
-    | coe w =>
-      rw [hw] at hm
-      exact (WithBot.coe_le_coe.mp hm).trans (le_max_right _ _)
-  refine ⟨a, hτa, rfl, ?_⟩
-  intro u hau huj
-  have hu0 : 0 ≤ u := hτ.trans (hτa.trans hau)
-  have hwu : tr.awake y u := by
-    by_contra hsleep
-    have hwj := hr.awake_of_call y j hy hj
-    have huj' : u < tr.time j := lt_of_le_of_ne huj (by
-      intro heq
-      exact hsleep (heq ▸ hwj))
-    obtain ⟨k, hk, huk, hkj⟩ := hr.restart_at_wake y u (tr.time j) hy hu0 huj' hsleep hwj
-    have hkidx : k ≤ j := by
-      by_contra h
-      obtain ⟨v, _, hvk, _, hvprev⟩ :=
-        hr.sleep_of_restart y k (hr.antitone hkj hy) hk
-      have := hvprev j (by omega) hj
-      linarith only [this, hvk, hkj]
-    have := hrestart k hkidx hk
-    linarith only [this, huk, hau]
-  have h := (simTraceAt_awake_iff S rho hn y u).mp hwu
+  obtain ⟨a, hτa, heq, hw⟩ := (simTraceAt S rho hn).deadline_awake_of_call hr.time_mono hj
+    (hr.awake_of_call y j hy hj) (fun u => hr.restart_at_wake y u _ hy)
+    (fun k hk hkj => hr.sleep_of_restart y k (hr.antitone hkj hy) hk) hτ _
+  refine ⟨a, hτa, heq, fun u hau huj => ?_⟩
+  have h := (simTraceAt_awake_iff S rho hn y u).mp (hw u hau huj)
   rw [awakeAt_iff] at h
   exact h.1
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
 theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (y : Fin (Fintype.card V)) (τ Δ : Time) :
-    Monotone (fun j => (simTraceAt S rho hn).deadline y j τ Δ) := by
-  let tr := simTraceAt S rho hn
-  have hr := simTraceAt_goldilocksRun S rho hn hv
-  have hw : ∀ c (w : Time), tr.lastWake y c = (w : WithBot Time) → w ≤ tr.time c := by
-    intro c
-    induction c with
-    | zero =>
-      intro w h
-      unfold RunTrace.lastWake at h
-      split at h
-      · exact (WithBot.coe_injective h).ge
-      · cases h
-    | succ c ih =>
-      intro w h
-      unfold RunTrace.lastWake at h
-      split at h
-      · exact (WithBot.coe_injective h).ge
-      · exact (ih w h).trans (hr.time_mono (Nat.le_succ c))
-  apply monotone_nat_of_le_succ
-  intro c
-  change tr.deadline y c τ Δ ≤ tr.deadline y (c + 1) τ Δ
-  unfold RunTrace.deadline
-  rw [RunTrace.lastWake]
-  split
-  · cases heq : tr.lastWake y c with
-    | bot =>
-      change τ + Δ ≤ max τ (tr.time (c + 1)) + Δ
-      have := le_max_left τ (tr.time (c + 1))
-      dsimp [Time] at *
-      omega
-    | coe w =>
-      change max τ w + Δ ≤ max τ (tr.time (c + 1)) + Δ
-      have hle : w ≤ tr.time (c + 1) :=
-        (hw c w heq).trans (hr.time_mono (Nat.le_succ c))
-      simp only [Time] at hle ⊢
-      omega
-  · exact le_rfl
+    Monotone (fun j => (simTraceAt S rho hn).deadline y j τ Δ) :=
+  (simTraceAt S rho hn).deadline_mono_cut_of_time_mono
+    (simTraceAt_goldilocksRun S rho hn hv).time_mono y τ Δ
 
 /-- Partial synchrony services an actual publication by an origin honest at its event strictly
 before the protocol endpoint, at a recipient honest at the holding time. -/
@@ -251,32 +171,7 @@ theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
   obtain ⟨i, he, ho⟩ := hs
   rcases he with he | ⟨o, he⟩
   · obtain ⟨hp, C, hc⟩ := att_released_inv_at S rho hn hv he ho
-    obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
-    have hnxt := Compose.exec_attest_next
-      (A := goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
-      (runProposer S rho hn) (digestOf S rho)
-      (rho.ownKey v) (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))
-      (k := m) (C := C) (a := a) (List.getElem?_eq_some_iff.mpr ⟨hm, hcm⟩)
-    have hlen := (List.getElem?_eq_some_iff.mp hnxt).1
-    have hEC := eventCuts_tick_public S rho hn i v t he hp
-    have hm' : m + 1 < (eventCuts S rho hn i).length := by
-      rw [hEC, length_groupRecs]
-      exact hlen
-    have hk := allCuts_getElem?_add S rho hn i (m + 1)
-      (List.getElem?_eq_some_iff.mp he).1 hm'
-    rw [hEC] at hk
-    have hlen' : m + 1 < (groupRecs (runProposer S rho hn) (digestOf S rho)
-        (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := by
-      rw [length_groupRecs]; exact hlen
-    rw [List.getElem?_eq_getElem hlen'] at hk
-    obtain ⟨hnode, htime, _, _, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ (m + 1) hlen'
-    have hl := (List.getElem?_eq_some_iff.mp hnxt).2
-    refine ⟨cutMap S rho hn i + (m + 1), Or.inl ⟨?_, ?_⟩, ?_⟩
-    · simpa only [simTrace_node, hk, Option.elim_some] using hnode
-    · simp only [simTrace_label, hk, Option.map_some, hlab, hl]
-    · simpa only [simTrace_time, hk, Option.elim_some] using htime
+    exact tick_attest_processAt S rho hn he hp hc
   · exact (deliver_not_att S rho hn hv he a ho).elim
 
 /-- Holdings suffice for processing before an observation deadline, even for an old receipt. No
