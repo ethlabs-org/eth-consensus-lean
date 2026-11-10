@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Fram
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.SourceLabels
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -21,95 +21,9 @@ each witnessing head is relayed from its voter, honest at its acceptance, to the
 `i`, before the freeze (`honest_head_frozen_at`).
 
 The store geometry runs on the prefix through `tr.time i` for the validators honest then
-(`vote_frame_core`, the static `vote_frame_of` with the frozen witnesses as premises), once `B` is
-known to be in the voter's frame: `Σ.J` and `Σ.F` are compared with `B` among the blocks held while
-honest, and `B` lies between `Σ.F` and a frozen witness. -/
-
-/-! ### Static pieces (copied from `Compose/Sleepy/FrameLabels`, private) -/
-
-namespace Consensus.Goldilocks.Compose
-
-open SA (SAParams ReplayOrder Vote Payload)
-
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-
-
-/-- **S3 at votes, over sources `G`, with the frozen witnesses given**: `vote_frame_of` with the
-relays of the honest heads (`honest_head_frozen`) replaced by their conclusions, for `B` and for
-the crossing sources. -/
-private theorem vote_frame_core (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hs : e.msg.slot = s + 1)
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
-    (hGW : ∀ D, G D → Anc (tr.HonestBlocks H) ℓ.frame.F D →
-      ∃ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1), Anc (tr.HonestBlocks H) D W)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
-    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
-    (hw : Anc (tr.HonestBlocks H) ℓ.frame.F B →
-      ∃ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1), Anc (tr.HonestBlocks H) B W) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
-      Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
-  have hU := (projFG_localRun hrun hnc).coherent
-  have hfr := frame_of_projAC hrun hy hc.1
-  have hΦ : FrameOK ℓ.frame := by
-    rw [hfr]; exact (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
-  have hΦU : ℓ.frame.tree ⊆ tr.HonestBlocks H := by
-    rw [hfr]; exact fun X hX => ⟨y, hy, i, hX.1⟩
-  have hsU := fg_tree_subset_honest (tr := tr) hy i
-  -- `Σ.J`, `Σ.F` and `fc_root` are compatible with `B`
-  have hJ := J_compatible hrun hnc hf hy hsrc hGB hB
-  have hF : Compatible (tr.HonestBlocks H) (tr.state y i).fg.F B := by
-    have hFJ := ((Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).2.2.1).mono
-      hsU
-    rcases hJ with h | h
-    · exact Or.inl (hFJ.trans h)
-    · exact Anc.total hU hFJ h
-  have hfc : Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B := by
-    rw [hfr]
-    change Compatible _ (tr.state y i).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact hJ
-    · exact hF
-  have hv := vote_viable hrun hnc hy hc (B := B) ⟨hF, hJ⟩
-  rw [hs] at hv
-  apply hv
-  rcases hfc with hfB | hBf
-  swap
-  · exact Or.inr hBf
-  left
-  have hFB : Anc (tr.HonestBlocks H) ℓ.frame.F B := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
-  -- the relayed honest slot-`s` head extending `B`
-  obtain ⟨W, hW, hBW⟩ := hw hFB
-  have hWt : W ∈ (tr.state y i).fg.tree := by
-    have := hW.1; rw [hfr] at this; exact this.1
-  have hBW' := honest_held_anc hrun hnc hy hBW hWt
-  have hBt := anc_mem hBW' hWt
-  rcases floor_or_crossing_of hrun hnc hf hy hsrc hGG hGB hBt with hle | ⟨D, E, X, hD, hDs, hE,
-    hBE, hEh, -⟩
-  · exact ⟨W, hW, hBW, hle.trans (honest_held_height hrun hnc hy hBW').1⟩
-  · -- the honest head of a vote extending the crossing source
-    obtain ⟨x₀, hx₀, k₀, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, i, hE⟩ rfl
-    have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx₀ k₀)
-    have hFD : Anc (tr.HonestBlocks H) ℓ.frame.F D := hFB.trans ((hBE.mono hsU).trans hEDU)
-    obtain ⟨W', hW', hDW'⟩ := hGW D hD hFD
-    have hW't : W' ∈ (tr.state y i).fg.tree := by
-      have := hW'.1; rw [hfr] at this; exact this.1
-    have hEW' := honest_held_anc hrun hnc hy (hEDU.trans hDW') hW't
-    refine ⟨W', hW', (hBE.mono hsU).trans (hEDU.trans hDW'), ?_⟩
-    change (tr.state y i).fg.headHeightFloor ≤ _
-    rw [← hEh]
-    exact (honest_held_height hrun hnc hy hEW').1
-
-end Consensus.Goldilocks.Compose
-
-/-! ### Under growing faults -/
+(`vote_frame_of_witnesses`, with the frozen witnesses as premises), once `B` is known to be in the
+voter's frame: `Σ.J` and `Σ.F` are compared with `B` among the blocks held while honest, and `B`
+lies between `Σ.F` and a frozen witness. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -344,18 +258,9 @@ theorem vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoC
   have hBt := SA.frame_mem_of_between sp hU hΦ.1 hΦ.2 hW.1 hBW hFB
   have hBp := frame_upTo_at hrun hnc hy hc.1 hBt
   -- the store geometry on the prefix
-  have hGG : ∀ D D', G D → G D' →
-      Compatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) D D' := by
-    rintro D D' ⟨C, hC, hDC⟩ ⟨C', hC', hDC'⟩
-    rcases hQQ C C' hC hC' with h | h
-    · exact Anc.total hUp (hDC.trans h) hDC'
-    · exact Anc.total hUp hDC (hDC'.trans h)
-  have hGB : ∀ D, G D → Compatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) D B := by
-    rintro D ⟨C, hC, hDC⟩
-    rcases compatible_upTo hrun hnc hd hBp (hQU C hC) (hQB C hC) with h | h
-    · exact Anc.total hUp hDC h
-    · exact Or.inl (hDC.trans h)
-  have h := vote_frame_core hrun' hnc' hf hy hc' hs (by rw [hst]; exact hsrc.above _) hGG
+  obtain ⟨hGG, hGB⟩ := below_tips_compatible hUp hQQ fun C hC =>
+    compatible_upTo hrun hnc hd hBp (hQU C hC) (hQB C hC)
+  have h := vote_frame_of_witnesses hrun' hnc' hf hy hc' hs (by rw [hst]; exact hsrc.above _) hGG
     (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ hFD => by
       obtain ⟨x', k', e'', hv', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
         honest_supporter_at hrun hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
