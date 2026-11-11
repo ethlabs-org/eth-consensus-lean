@@ -1043,6 +1043,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.F
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU
