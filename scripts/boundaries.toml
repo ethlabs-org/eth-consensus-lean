@@ -66,6 +66,70 @@ name = "Solution"
 # so exposure there costs no rebuild. `protected`: not trusted, but `trusted_paths` must cover its files (the tag
 # freezes their text; check-boundaries.py). An empty layer is allowed.
 [[layer]]
+name = "Milestones.Statements.Problem"
+prefixes = ["ConsensusLean.Milestones.Statements.Problem"]
+expose = true
+sorry = false
+trusted = false
+protected = false
+allow = ["Init", "ToMathlib", "Core", "Spec"]
+about = "environment-only committee regime vocabulary; no model-instance or proof dependencies"
+
+[[layer]]
+name = "Instances.Goldilocks.Milestones.Statements.Generic"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic"]
+expose = true
+sorry = false
+trusted = false
+protected = false
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
+         "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.FG",
+         "Instances.Goldilocks.Milestones.Spec.Frame", "Instances.Goldilocks.Milestones.Spec.Trace",
+         "Instances.Goldilocks.Milestones.Spec.FGStore", "Instances.Goldilocks.Milestones.Spec.AC",
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.Node",
+         "Instances.Goldilocks.Milestones.Spec.Run", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
+         "Instances.Goldilocks.Milestones.Statements.AC",
+         "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Statements.Compose", "Milestones.Statements.Problem"]
+about = "generic growing contracts and concrete statement bridges; no proof imports"
+
+[[layer]]
+name = "Instances.Goldilocks.Lemmas.Generic"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic"]
+sorry = false
+expose = false
+trusted = false
+protected = false
+allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
+         "Instances.Goldilocks.Spec.Common", "Instances.Goldilocks.Spec.FG",
+         "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
+         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.SA",
+         "Instances.Goldilocks.Spec.Node", "Instances.Goldilocks.Spec.Run",
+         "Instances.Goldilocks.Milestones.Spec.Common", "Instances.Goldilocks.Milestones.Spec.FG",
+         "Instances.Goldilocks.Milestones.Spec.Frame", "Instances.Goldilocks.Milestones.Spec.Trace",
+         "Instances.Goldilocks.Milestones.Spec.FGStore", "Instances.Goldilocks.Milestones.Spec.AC",
+         "Instances.Goldilocks.Milestones.Spec.SA", "Instances.Goldilocks.Milestones.Spec.Node",
+         "Instances.Goldilocks.Milestones.Spec.Run", "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
+         "Instances.Goldilocks.Milestones.Statements.AC",
+         "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
+         "Instances.Goldilocks.Milestones.Statements.Compose",
+         "Instances.Goldilocks.Milestones.Statements.Generic", "Milestones.Statements.Problem"]
+about = "unproved generic surface edges; endpoint and acceptance closures remain isolated"
+
+[[exception]]
+from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]
+to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row",
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService"]
+reason = "isolated concrete bridge proof closure for verbatim old-premise equations; leaf paths only"
+
+[[layer]]
 name = "Instances.Goldilocks.NodeEngine"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine",
             "ConsensusLean.Instances.Goldilocks.Milestones.Statements.NodeEngine"]
