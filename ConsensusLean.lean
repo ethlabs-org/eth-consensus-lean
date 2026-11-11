@@ -1039,6 +1039,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.S
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ChainRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CommitteeLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Correctness
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation

@@ -1,0 +1,209 @@
+module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
+
+@[expose] public section
+
+/-! # Committee-local available-chain correctness obligations
+
+Committee counterparts of the population sleepy and healthy rows of `ACCorrectLocal` and of
+`RegimeTransport.sleepy`. These are conditional protocol obligations, not evidence. Every
+population declaration stays as it is; no implication between a committee premise and a
+population premise is asserted in either direction.
+
+* The sleepy rows replace the population slot-point fault count of `SleepyRunAt` and
+  `SleepyPrefixAt` by `EnvPoint.CommitteeSleepyOn` at threshold `1 / 2` (retained ready committee
+  members exceed faulty committee members) on an environment point bound to the run by
+  `RunPointBinding`. Service, honesty, readers and read times are unchanged.
+* The healthy rows keep `HealthyRunAt` whole, whose whole-set fault count the population FG
+  reads, and add an OPEN committee healthy clause. The clause is a structure parameter: this
+  file chooses no candidate, and a supplier cannot choose it.
+* Outage protection, healing, durations, tips and payload rows are restated unchanged.
+-/
+
+set_option autoImplicit false
+namespace Consensus.Goldilocks.Generic
+
+variable {P : Params}
+
+/-- OPEN committee healthy clause, read on a run, its growing honesty, the environment point
+bound to it, the committee schedule and slot reader, GST `g` and a last consumption time `b`.
+No candidate is chosen here; contracts take it as a parameter, never as supplied data. -/
+abbrev CommitteeHealClause (A : NodeAC P) : Type :=
+  RunTrace A → (Time → Set (Fin P.n)) → EnvPoint (Fin P.n) → (Nat → Finset (Fin P.n)) →
+    (Time → Nat) → Time → Time → Prop
+
+variable {A : NodeAC P}
+
+/-- Committee `Sleepy` with catch-up `c` and look-ahead `W`: the `Sync[0, ∞)` service of
+`SleepyRunAt`, with its population slot-point count replaced by `CommitteeSleepyOn` at `1 / 2`
+on the point `p`, at every time of the point's horizon. -/
+def CommitteeSleepyRunAt (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n)) (slot : Time → Nat)
+    (ΔF c W : Time) : Prop :=
+  tr.SyncOnAt H ΔF (fun τ => 0 ≤ τ) (fun τ => 0 ≤ τ) id ∧
+    p.CommitteeSleepyOn K slot (1 / 2) c W
+
+/-- The prefix form through `b`: the service of `SleepyPrefixAt`, and `CommitteeSleepyOn` at
+`1 / 2` on the point read through `b`, so every count is at a time `≤ b` and every look-ahead
+is clamped at `b`. -/
+def CommitteeSleepyPrefixAt (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n)) (slot : Time → Nat)
+    (ΔF c W b : Time) : Prop :=
+  0 ≤ b ∧ tr.SyncRunAt H ΔF 0 (b - P.Δ) ∧
+    ({ p with horizon := b } : EnvPoint (Fin P.n)).CommitteeSleepyOn K slot (1 / 2) c W
+
+/-- Committee `Healthy(g)`: `HealthyRunAt` unchanged, with the OPEN committee healthy clause at
+every consumption time. -/
+def CommitteeHealthyRunAt (heal : CommitteeHealClause A) (tr : RunTrace A)
+    (H : Time → Set (Fin P.n)) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (ΔF g : Time) : Prop :=
+  tr.HealthyRunAt H ΔF g ∧ ∀ b, heal tr H p K slot g b
+
+/-- The committee local supplier. Rows L3–L7 of `ACCorrectLocal` are read under the committee
+regimes above, with the OPEN committee healthy clause `heal` as a parameter; every other field
+is the `ACCorrectLocal` field unchanged. Constructing its type supplies no evidence, and no
+relation to `ACCorrectLocal` is asserted. -/
+structure ACCorrectLocalK (A : NodeAC P) (sg : A.Msg → Fin P.n)
+    (heal : CommitteeHealClause A) where
+  /-- Protocol-supplied durations, not fixed instance coefficients. -/
+  look : Time
+  catchUp : Time
+  margin : Time
+  latency : Time
+  hold : Time
+  /-- Fixed local outage recovery duration, not chosen separately for each reader. -/
+  recovery : Time
+  /-- The local outage policy cannot start recovery before the outage ends. -/
+  recovery_nonneg : 0 ≤ recovery
+  /-- Healing is a separate protocol obligation, not implied by this record's endpoint claims. -/
+  healing : ACHealing A sg
+  /-- The transaction/input projection of a block, supplied as data. -/
+  payload : A.Blk → Set Nat
+  /-- Durations cannot make readiness or deadlines negative. -/
+  durations : 0 ≤ look ∧ 0 ≤ catchUp ∧ 0 ≤ margin ∧ 0 ≤ latency ∧ 0 ≤ hold
+  /-- L1: the confirmed tip is held, extends the finalized root and precedes the head. -/
+  tipsValid : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A), Growing.LocalRun proposer dg H sg tr →
+    ∀ y i, y ∈ H (tr.time i) →
+      tr.confirmedAt y i ∈ (Node.frame (tr.state y i)).tree ∧
+      (Node.frame (tr.state y i)).Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
+      (Node.frame (tr.state y i)).Anc (tr.confirmedAt y i) (tr.headAt y i)
+  /-- L3: ready confirmed reads under committee sleepy service are compatible. -/
+  sleepyReadySafe : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (ΔF : Time), Growing.LocalRun proposer dg H sg tr →
+    Compose.NoCollRun dg tr → RunPointBinding tr H p →
+    CommitteeSleepyRunAt tr H p K slot ΔF catchUp look →
+    ∀ y z i j, ReadyCut tr H catchUp y i → ReadyCut tr H catchUp z j →
+      Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)
+  /-- L4: a ready proposal under committee sleepy service is confirmed at every ready read past
+  its deadline. -/
+  sleepyProposalSupply : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (ΔF : Time), Growing.LocalRun proposer dg H sg tr →
+    Compose.NoCollRun dg tr → RunPointBinding tr H p →
+    CommitteeSleepyRunAt tr H p K slot ΔF catchUp look →
+    ∀ B k y j, ReadyProposal tr H catchUp hold B k →
+      tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
+      Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
+  /-- L5: the same proposal's projected payload is covered by that output. -/
+  sleepyInclusionCoverage : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (ΔF : Time), Growing.LocalRun proposer dg H sg tr →
+    Compose.NoCollRun dg tr → RunPointBinding tr H p →
+    CommitteeSleepyRunAt tr H p K slot ΔF catchUp look →
+    ∀ B k y j, ReadyProposal tr H catchUp hold B k →
+      tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
+      payload B ⊆ payload (tr.confirmedAt y j)
+  /-- L6: proposal chaining under committee healthy service needs this confirmed-tip obligation.
+  Ready reads after the healed slot agree, and include its honest proposal after the margin. -/
+  healedTips : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (ΔF g b : Time) (s₁ : Nat),
+    healing.Run proposer dg H tr → Compose.NoCollRun dg tr → RunPointBinding tr H p →
+    CommitteeHealthyRunAt heal tr H p K slot ΔF g → HealedFrom tr H proposer s₁ b →
+    max g 0 ≤ P.slotTime s₁ →
+    (∀ y z i j, P.slotTime s₁ + margin ≤ tr.time i → tr.time i ≤ b →
+      P.slotTime s₁ + margin ≤ tr.time j → tr.time j ≤ b →
+      ReadyCut tr H catchUp y i → ReadyCut tr H catchUp z j →
+      Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)) ∧
+    ∀ z k X, HonestProposal tr H proposer s₁ z k X →
+      ∀ y j, tr.time k + margin ≤ tr.time j → tr.time j ≤ b →
+        ReadyCut tr H catchUp y j → Anc (tr.HonestBlocksAt H) X (tr.confirmedAt y j)
+  /-- L7: under committee healthy service, a fresh ready proposal is confirmed within the
+  latency. -/
+  healthyConfirmedSupply : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (ΔF g healed : Time), Growing.LocalRun proposer dg H sg tr →
+    Compose.NoCollRun dg tr → RunPointBinding tr H p →
+    CommitteeHealthyRunAt heal tr H p K slot ΔF g → max g 0 + margin ≤ healed →
+    ∀ B k y j, ReadyProposal tr H catchUp hold B k → healed ≤ tr.time k →
+      tr.time k + latency ≤ tr.time j → ReadyCut tr H catchUp y j →
+      Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j)
+  /-- L8: ancestry of a proposal into either output preserves its projected payload. -/
+  payloadProjection : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A), Growing.LocalRun proposer dg H sg tr →
+    ∀ B y j, y ∈ H (tr.time j) →
+      (Anc (tr.HonestBlocksAt H) B (tr.confirmedAt y j) →
+        payload B ⊆ payload (tr.confirmedAt y j)) ∧
+      (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y j) →
+        payload B ⊆ payload (tr.finalizedAt y j))
+  /-- L9: outage protection uses the exact committee participation vocabulary.
+  Network transport and schedule binding are separate. Explicit sample coverage prevents
+  an empty sample family from claiming protection. The fixed local recovery policy bounds
+  every target; its adequacy remains a supplier obligation. Internal locks and S5 are not fields. -/
+  outageProtected : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (samples : Finset OutageSample) (ΔF T b₀ b₁ recoveryTime : Time),
+    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
+    b₁ + recovery ≤ recoveryTime →
+    tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
+    p.CommitteeSleepyOn K slot (1 / 2) catchUp look → p.CommitteeOutageOn K samples →
+    ∀ x i y j, tr.time i = T → ReadyCut tr H catchUp x i →
+      recoveryTime ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
+      (∃ d ∈ samples, d.committeeSlot = slot (tr.time j) ∧ d.anchor = T ∧
+        d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ tr.time j ∧
+        tr.time j ≤ d.chargeEnd) →
+      Anc (tr.HonestBlocksAt H) (tr.confirmedAt x i) (tr.confirmedAt y j)
+
+section Transport
+
+open Shape Blocks Generic
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
+  {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+/-- `RegimeTransport` with its sleepy row read under the committee regime of the policy `D`:
+partial synchrony from `0` and the policy point's `CommitteeSleepyOn` at `1 / 2` with the
+contract's catch-up and look-ahead durations, transported to the committee prefix at the
+horizon. The healthy and ready rows are the `RegimeTransport` rows unchanged. -/
+structure RegimeTransportK (M : RunMap rho payload) (D : OutagePolicy M)
+    (K : Contract ProgressReq) (catchUp look : Time) : Prop where
+  sleepy : rho.ExecutionValid → ¬ rho.HashCollision → rho.log.PSync rho.point 0 →
+    D.point.CommitteeSleepyOn D.committee D.slot (1 / 2) ((Sys F V).cDur K ⟨E, rho⟩)
+      ((Sys F V).aheadDur K ⟨E, rho⟩) →
+    CommitteeSleepyPrefixAt M.trace M.honest D.point D.committee D.slot E.ΔFG catchUp look
+      rho.horizon
+  healthy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ g,
+    (Sys F V).Healthy K g ⟨E, rho⟩ →
+    M.trace.GSTRunAt M.honest E.ΔFG g ∧
+    (∀ y t, max g 0 ≤ t → t ≤ rho.horizon → y ∈ M.honest t → M.trace.awake y t) ∧
+    (∀ t, 0 ≤ t → t ≤ rho.horizon → 3 * (M.honest t)ᶜ.ncard ≤ P.n - 1)
+  ready : ∀ c v i, i ≤ rho.events.length → rho.point.Ready c v (rho.cutTime i) →
+    ReadyRead M c (M.validator.symm v) (M.cut i) (rho.cutTime i)
+
+end Transport
+
+end Consensus.Goldilocks.Generic
+
+end
