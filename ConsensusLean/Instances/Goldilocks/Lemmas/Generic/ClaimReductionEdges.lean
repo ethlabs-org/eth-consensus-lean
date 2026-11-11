@@ -71,7 +71,8 @@ def SleepyLivenessReduction (B : EngineBinding (A := A) (F := F) (V := V) payloa
         fun r => ProposalLiveReady r.2 ((Sys F V).cDur K r) g 0 (K.params.latency cap idx)
 
 /-- UNPROVED all-capability healthy liveness reduction. Actual final deadline premises,
-anchor heights, processing and actual-read cache transport are separate OPEN suppliers.
+processing and actual-read cache transport remain separate OPEN suppliers. FinalWindowSupply
+jointly selects the same window, its delivery-spacing guard at E.ΔFG and pointwise heights.
 No constant FrameWindow production or progress-form exclusion is assumed. -/
 def HealthyLivenessReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
     (K : Contract ProgressReq)
@@ -84,7 +85,6 @@ def HealthyLivenessReduction (B : EngineBinding (A := A) (F := F) (V := V) paylo
       ProposalBudgetSupply M K L.catchUp L.hold L.margin ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.healing L.catchUp L.hold ∧
-      FinalHeightSupply M L.healing L.catchUp L.hold ∧
       FinalCarrierSupply M L.catchUp L.hold ∧ FinalCacheSupply M L.healing L.catchUp L.hold ∧
       FinalProposerTransport M K L ∧ FinalReadTransport M L ∧
       EndReadTransport M K L ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
