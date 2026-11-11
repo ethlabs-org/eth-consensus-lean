@@ -987,6 +987,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Gold
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Stages
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.NodeEngine.Wire
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Committee
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
@@ -999,6 +1000,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeInstance
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeSchedule
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Family
