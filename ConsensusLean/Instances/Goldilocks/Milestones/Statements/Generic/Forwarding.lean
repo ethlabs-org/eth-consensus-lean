@@ -133,6 +133,15 @@ structure ForwardingCodec (A : NodeAC P) (n : Nat) (Role Item Body : Type) where
   canon : List (Item × Nat) → Model.Obj n Role Item Body → Option (Node.Event A)
   keyIndex : Fin P.n → Fin n
   pollRole : Role
+  forwardBody : Time → Body
+  messageForwardBody : Time → A.Msg → Body
+  forward_envelope : ∀ x t parent B,
+    forwardObject x t parent B =
+      .mk (.signed (keyIndex x) pollRole) (.data (forwardBody t))
+        (parent.toList ++ [blockObject B])
+  message_forward_envelope : ∀ x t m,
+    messageForwardObject x t m =
+      .mk (.signed (keyIndex x) pollRole) (.data (messageForwardBody t m)) [messageObject m]
   forward_exact : ∀ hs o x t parent B, decodeForward hs o = some (x, t, parent, B) →
     o = forwardObject x t parent B ∧
     o.auth = .signed (keyIndex x) pollRole ∧
@@ -140,6 +149,20 @@ structure ForwardingCodec (A : NodeAC P) (n : Nat) (Role Item Body : Type) where
   forward_child_decode : ∀ hs o x t parent B,
     decodeForward hs o = some (x, t, parent, B) →
     decodeBlock hs (blockObject B) = some B
+  forward_parent_checks : ∀ hs o x t parent B,
+    decodeForward hs o = some (x, t, parent, B) →
+    0 ≤ t ∧ P.slotTime B.slot ≤ t ∧
+    match parent with
+    | none => B.parent = some P.genesisRoot
+    | some q => ∃ tp pp C, decodeForward hs q = some (x, tp, pp, C) ∧
+        B.parent = some C.root ∧ C.root ≠ P.genesisRoot ∧ C.slot < B.slot ∧ tp ≤ t
+  forward_decode : ∀ hs x t parent B,
+    decodeBlock hs (blockObject B) = some B → 0 ≤ t → P.slotTime B.slot ≤ t →
+    (match parent with
+    | none => B.parent = some P.genesisRoot
+    | some q => ∃ tp pp C, decodeForward hs q = some (x, tp, pp, C) ∧
+        B.parent = some C.root ∧ C.root ≠ P.genesisRoot ∧ C.slot < B.slot ∧ tp ≤ t) →
+    decodeForward hs (forwardObject x t parent B) = some (x, t, parent, B)
   block_decode_exact : ∀ hs q B, decodeBlock hs q = some B → q = blockObject B
   block_canon : ∀ hs q B, decodeBlock hs q = some B ↔ canon hs q = some (.block B)
   block_item : ∀ B, (blockObject B).item? = some (blockHeader B)
@@ -147,6 +170,11 @@ structure ForwardingCodec (A : NodeAC P) (n : Nat) (Role Item Body : Type) where
     o = messageForwardObject x t m ∧
     o.auth = .signed (keyIndex x) pollRole ∧ o.carried = [messageObject m] ∧
     decodeMessage hs (messageObject m) = some m
+  message_forward_time : ∀ hs o x t m,
+    decodeMessageForward hs o = some (x, t, m) → 0 ≤ t
+  message_forward_decode : ∀ hs x t m, 0 ≤ t →
+    decodeMessage hs (messageObject m) = some m →
+    decodeMessageForward hs (messageForwardObject x t m) = some (x, t, m)
   message_decode_exact : ∀ hs q m, decodeMessage hs q = some m → q = messageObject m
   message_canon : ∀ hs q m, decodeMessage hs q = some m ↔ canon hs q = some (.message m)
   forward_digest_context : ∀ hash outer inner, Model.Obj.Contains outer inner →
@@ -285,7 +313,14 @@ structure ForwardingEngineLaws (M : RunMap rho payload)
     OrderedDelivery M.proposer N M.digest codec.canon (Model.digests rho.hash outer)
       y u [q] (receiptCuts e a) (receiptCuts e (a + 1))
   used_event_cuts : ∀ e event, rho.events[e]? = some event → event.time ≤ through →
-    (∀ k < M.cut (e + 1), N.time k ≤ through)
+    rho.point.HonestAt event.node event.time →
+    ((∃ outer, event = .deliver event.node outer event.time) ∨
+      ∃ x outer q t, event.node = M.validator x ∧ outer ∈ rho.releasesAt e ∧
+        Model.Obj.Contains outer q ∧
+        ((∃ parent B, codec.decodeForward (Model.digests rho.hash q) q =
+          some (x, t, parent, B)) ∨
+          ∃ m, codec.decodeMessageForward (Model.digests rho.hash q) q = some (x, t, m))) →
+    ∀ k < M.cut (e + 1), N.time k ≤ through
   released_wrapper_source : ∀ e event x outer q t parent B,
     rho.events[e]? = some event → event.node = M.validator x →
     event.time ≤ through → x ∈ M.honest event.time → outer ∈ rho.releasesAt e →
@@ -356,6 +391,17 @@ variable (M : RunMap rho payload)
     (Model.protoOf (compiled F) E).Item (Model.protoOf (compiled F) E).Body)
   (binding : ForwardingEmit.EventBinding rho)
   (processStart processEnd : Nat → Nat) (receiptCuts internalBoundary : Nat → Nat → Nat)
+
+/-- UNSUPPLIED prefix source transport. Its premise is actual growing local execution
+on the source prefix, never the static retention consequence of a global run. -/
+structure ForwardingPrefixSourceLaws {Psrc : Params} (Asrc : NodeAC Psrc)
+    (proposerSrc : Nat → Fin Psrc.n)
+    (dgSrc : Digest (List (FG.Att Psrc.n)) Asrc.Payload)
+    (Hsrc : Time → Set (Fin Psrc.n)) (signerSrc : Asrc.Msg → Fin Psrc.n)
+    (trSrc : RunTrace Asrc) : Prop where
+  prefix_source : ∀ h, 0 ≤ h → h ≤ rho.horizon →
+    Growing.LocalRun proposerSrc dgSrc Hsrc signerSrc (trSrc.upTo h) →
+    ForwardingSourceLaws M.proposer M.digest M.honest M.signer (M.trace.upTo h)
 
 /-- Unproved acceptance-to-publication implication. The released object itself decodes;
 a signed descendant of an unsigned carrier is not this output. -/
