@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 
 /-! # Goldilocks supplier contracts
 
-These sorry-free propositions specify intended suppliers; they construct no supplier and are
+These admission-free propositions specify intended suppliers; they construct no supplier and are
 not evidence. The source-origin and truncation obligations remain open along with the other
 fields. The local correctness contract does not assert the missing engine, healing or regime
 edges. No stronger ready-majority premise replaces an original Goldilocks premise.
