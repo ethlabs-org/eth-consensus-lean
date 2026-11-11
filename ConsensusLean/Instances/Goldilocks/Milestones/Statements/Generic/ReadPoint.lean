@@ -127,14 +127,15 @@ CorrectLocal.outageProtected and lead LeadOutageProtected. This neither supplies
 committee sample coverage nor changes its final-duty/charging interval. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
   protection : ∀ proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
-    K slot samples ΔF T b₀ b₁ recovery,
+    K slot samples ΔF T b₀ b₁ recoveryTime,
     Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recovery →
+    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
+    b₁ + C.recovery ≤ recoveryTime →
     tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
     p.CommitteeSleepyOn K slot (1 / 2) C.catchUp C.look →
     p.CommitteeOutageOn K samples → ∀ x i y j t,
     ReadyReadPoint tr H p.horizon C.catchUp x i T → ReadBoundary tr x i →
-    recovery ≤ t → ReadyReadPoint tr H p.horizon C.catchUp y j t →
+    recoveryTime ≤ t → ReadyReadPoint tr H p.horizon C.catchUp y j t →
     ReadBoundary tr y j →
     (∃ d ∈ samples, d.committeeSlot = slot t ∧ d.anchor = T ∧
       d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ t ∧ t ≤ d.chargeEnd) →
