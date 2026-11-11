@@ -6,6 +6,141 @@
 [Good]
 protected = []
 
+[GenericAllowed]
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Spec.A\npublic def contract : Prop := Nat = Nat\n"
+files."Fx/Lemmas/Generic/Edge.lean" = "module\npublic import Fx.GenericStatements.Contract\npublic def edge : Prop := contract → contract\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract\npublic import Fx.Lemmas.Generic.Edge"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.Lemmas.Generic"]
+allow = ["Init", "ToMathlib", "Spec", "GenericStatements"]
+sorry = false
+[[exception]]'''], ['prefixes = ["Fx.Lemmas"]', 'prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]'], ['"Main", "Sol"]', '"Main", "Sol", "GenericStatements", "GenericEdges"]']]
+
+[GenericRejectsProof]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.GenericStatements.Contract (layer GenericStatements)"
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Lemmas.L\npublic def contract : Prop := Nat = Nat\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+expose = true
+sorry = false
+[[exception]]''']]
+
+[GenericRejectsReverse]
+expect = "FAIL[import] Fx.GenericStatements.Contract (layer GenericStatements) imported by Fx.Lemmas.L (layer Lemmas)"
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Spec.A\npublic def contract : Prop := Nat = Nat\n"
+edit."Fx/Lemmas/L.lean" = [['public import Fx.Statements.S', "public import Fx.Statements.S\npublic import Fx.GenericStatements.Contract"]]
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericStatements.Contract"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[exception]]''']]
+
+[GenericProblemAllowed]
+files."Fx/Problem/Regimes.lean" = "module\npublic import Fx.Spec.A\npublic def regime : Prop := Nat = Nat\n"
+files."Fx/GenericStatements/Contract.lean" = "module\npublic import Fx.Problem.Regimes\npublic def contract : Prop := regime\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Problem.Regimes\npublic import Fx.GenericStatements.Contract"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Problem"
+prefixes = ["Fx.Problem"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec", "Problem"]
+expose = true
+sorry = false
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Problem", "GenericStatements"]']]
+
+[ProblemRejectsLemmas]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.Problem.Regimes (layer Problem)"
+files."Fx/Problem/Regimes.lean" = "module\npublic import Fx.Lemmas.L\npublic def regime : Prop := Nat = Nat\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Problem.Regimes"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Problem"
+prefixes = ["Fx.Problem"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[exception]]''']]
+
+[ProblemRejectsInstance]
+expect = "FAIL[import] Fx.Instance.Model (layer Instance) imported by Fx.Problem.Regimes (layer Problem)"
+files."Fx/Problem/Regimes.lean" = "module\npublic import Fx.Instance.Model\npublic def regime : Prop := Nat = Nat\n"
+files."Fx/Instance/Model.lean" = "module\npublic import Fx.Spec.A\npublic def model : Nat := 0\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.Problem.Regimes\npublic import Fx.Instance.Model"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "Problem"
+prefixes = ["Fx.Problem"]
+allow = ["Init", "ToMathlib", "Spec"]
+expose = true
+sorry = false
+[[layer]]
+name = "Instance"
+prefixes = ["Fx.Instance"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]''']]
+
+[GenericBridgeAllowed]
+files."Fx/GenericEdges/Bridge.lean" = "module\npublic import Fx.Lemmas.L\npublic import Fx.Lemmas.M\npublic import Fx.Lemmas.N\npublic def bridge : Prop := Nat = Nat\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericEdges.Bridge"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.GenericEdges"]
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+sorry = false
+[[exception]]
+from = ["Fx.GenericEdges.Bridge"]
+to = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]
+reason = "isolated concrete bridge proof closure"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "GenericEdges"]']]
+
+[GenericBridgeSiblingRejected]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) imported by Fx.GenericEdges.Other (layer GenericEdges)"
+files."Fx/GenericEdges/Bridge.lean" = "module\npublic import Fx.Lemmas.L\npublic def bridge : Prop := Nat = Nat\n"
+files."Fx/GenericEdges/Other.lean" = "module\npublic import Fx.Lemmas.L\npublic def other : Prop := Nat = Nat\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericEdges.Bridge\npublic import Fx.GenericEdges.Other"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.GenericEdges"]
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+sorry = false
+[[exception]]
+from = ["Fx.GenericEdges.Bridge"]
+to = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]
+reason = "isolated concrete bridge proof closure"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "GenericEdges"]']]
+
+[GenericBridgeReexportRejected]
+expect = "FAIL[import] Fx.Lemmas.L (layer Lemmas) reached from Fx.GenericEdges.Other -> Fx.GenericEdges.Bridge (layer GenericEdges)"
+files."Fx/GenericEdges/Bridge.lean" = "module\npublic import Fx.Lemmas.L\npublic def bridge : Prop := Nat = Nat\n"
+files."Fx/GenericEdges/Other.lean" = "module\npublic import Fx.GenericEdges.Bridge\npublic def other : Prop := Nat = Nat\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.GenericEdges.Bridge\npublic import Fx.GenericEdges.Other"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.GenericEdges"]
+allow = ["Init", "ToMathlib", "Spec", "Statements"]
+sorry = false
+[[exception]]
+from = ["Fx.GenericEdges.Bridge"]
+to = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]
+reason = "isolated concrete bridge proof closure"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "GenericEdges"]']]
+
 # --- configuration -------------------------------------------------------------------------------
 [MissingConfig]
 expect = "FAIL[config] cannot read the boundaries config"
