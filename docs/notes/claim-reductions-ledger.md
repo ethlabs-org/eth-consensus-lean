@@ -1,8 +1,25 @@
 # Claim reduction interfaces: complete statement row
 
-Base: public `work/surface-iface` at `ca0a119c9e559bb827b911f4030e2ab5df31f76a`.
+Base: guarded production review checkpoint `work/surface-progress-guard` at
+`9d668433d1a29d746d61d7368f732e91086beee0`, extending interface base
+`ca0a119c9e559bb827b911f4030e2ab5df31f76a`.
 Branch: `work/surface-claim-reductions`. This is a separate additive statement slice,
 not a landing, proof, freeze, or source-acceptance release.
+
+## Guarded-window forward adaptation
+
+The original height interface omitted the concrete delivery-spacing prerequisite and
+quantified over arbitrary qualifying windows. The correction instead makes
+FinalHeightSupply pointwise evidence for one W and makes FinalWindowSupply jointly
+select W at the original query/deadline with
+`6 * P.Δ + E.ΔFG ≤ 4 * P.Δ * (W.gap : Time)`, HealedFrom, healing.Run and those heights.
+HealthyLivenessReduction therefore removes its independent FinalHeightSupply premise.
+It consumes the acceptance, ancestry and three own-reader height projections returned
+for that SAME W; FinalCacheSupply and FinalReadTransport.cache retain their exact
+inputs, and DeadlinePremisesSupply independently produces Premises at E.ΔFG.
+No arbitrary-window height law, timeoutDelay-to-spacing inference, gap enlargement or
+latency enlargement is claimed. Joint guarded production remains OPEN; this fixes a
+missing source prerequisite, not a valid-run counterexample, and supplies no proof.
 
 ## Verdict and ownership
 
@@ -87,7 +104,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | healthy finite service/awake/cardinal bounds | RegimeTransport.healthy plus bounded nonnegative horizon → HealthyPrefix | Existing OPEN supplier + engine bound arithmetic |
 | accountable fraction and final population threshold | ClaimDeadlineFit.accountable/final_faults | NEW OPEN numerical targets |
 | all progress forms and matching query budget | existing ProposalBudgetSupply, SleepyProposalBudgetSupply, ResetProgressSupply, FinalWindowSupply, plus explicit refinements | All OPEN, no single-pattern-only exclusion |
-| final four anchors / three height steps | FinalWindowSupply and FinalHeightSupply at SAME W | Existing OPEN suppliers; no constant FrameWindow manufacture |
+| final four anchors / delivery spacing / three height steps | FinalWindowSupply jointly selects SAME W, guard at E.ΔFG and pointwise FinalHeightSupply evidence | Corrected OPEN production target; no independent arbitrary-window height supplier, no constant FrameWindow manufacture |
 | actual final carrier processing | FinalReadTransport.processed, existing FinalCarrierSupply kept separately | NEW actual-read target; strict processing witness retained |
 | actual-read final cache ancestry | FinalReadTransport.cache, existing FinalCacheSupply kept separately | NEW target; not inferred from cut-clock cache supplier |
 | final deadline Premises | DeadlinePremisesSupply | NEW OPEN target, not FinalWindowSupply |
@@ -129,9 +146,11 @@ OPEN obligations of the instance realization:
 
 Both leaves elaborate with `lean -DwarningAsError=true`, using exact pinned dependency
 sources over the existing warm cache. Generated ConsensusLean root includes both leaves.
-`python3 -I scripts/check-boundaries.py` reports zero findings. No pre-existing declaration
-or reviewed leaf is edited. Full four-root, changed-cone, strict CSM/full dump and closure
-results will be reported separately on the exact pushed head; they are not claimed here.
+`python3 -I scripts/check-boundaries.py` reports zero findings. This adaptation changes
+only HealthyLivenessReduction's supplier telescope/docstring and this ledger; its claim
+conclusion is unchanged. The targeted packet for the prior 9222b346 checkpoint passed,
+but does not validate this rebased guarded head. Fresh four-root, changed-cone, strict
+CSM/full dump and closure results remain required and will be reported separately.
 The inherited E1/FINITE/READPOINT/CHAIN-REP/PROGRESS gates are not gates of this new head.
 
 Complete-row Astra review and DA read-back remain pending. Supplier proofs, nonvacuity,
