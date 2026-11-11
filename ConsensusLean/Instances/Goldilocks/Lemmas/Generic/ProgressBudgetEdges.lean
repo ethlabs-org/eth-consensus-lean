@@ -21,20 +21,21 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
-/-- UNPROVED bridge from the unchanged narrow recurrence transport and a real budget
-witness. It retains the exact advertised recurrence and its gap, rather than inventing one. -/
+/-- UNPROVED specialization of the healing-gap law at the advertised recurrence.
+Only the consuming interval's ready and report-deadline bounds are required. -/
 def reset_progress_of_single (M : RunMap rho payload) (K : Contract ProgressReq)
-    (healing : ACHealing A M.signer) (catchUp hold margin : Time) : Prop :=
-  ProposalProgressTransport M K healing catchUp hold margin →
-  rho.ExecutionValid → ∀ cap idx g (r : Recurrence),
-    (cap = .available ∨ cap = .stable) → (Sys F V).Healthy K g ⟨E, rho⟩ →
+    (healing : ACHealing A M.signer) : Prop :=
+  ∀ cap idx g (r : Recurrence),
     K.progress cap idx = .recur r → r.pattern = Pattern.single →
-    (Sys F V).prog (shapeProgress F V) K cap idx ((Sys F V).ready K g ⟨E, rho⟩)
-      ((Sys F V).heal K cap idx g ⟨E, rho⟩) ⟨E, rho⟩ →
-    ∀ W : ResetBudgetWindow healing g ((Sys F V).ready K g ⟨E, rho⟩)
-        ((Sys F V).heal K cap idx g ⟨E, rho⟩), W.gap = (r.gap : Nat) →
-      ProposalGap M.trace M.honest M.proposer W.gap W.start
-        (W.start + resetSlots healing.warmup W.gap P.δt)
+    (∀ a b, (Sys F V).ready K g ⟨E, rho⟩ ≤ P.slotTime a →
+      a + resetSlots healing.warmup (r.gap : Nat) P.δt ≤ b + 1 →
+      P.slotTime b + 2 * P.Δ ≤ (Sys F V).heal K cap idx g ⟨E, rho⟩ →
+      ProposalGap M.trace M.honest M.proposer (r.gap : Nat) a b) →
+    ∀ start, (Sys F V).ready K g ⟨E, rho⟩ ≤ P.slotTime start →
+      P.slotTime (start + resetSlots healing.warmup (r.gap : Nat) P.δt) + 2 * P.Δ ≤
+        (Sys F V).heal K cap idx g ⟨E, rho⟩ →
+      ProposalGap M.trace M.honest M.proposer (r.gap : Nat) start
+        (start + resetSlots healing.warmup (r.gap : Nat) P.δt)
 
 /-- UNPROVED composition with the old cache edge, keeping its missing constant frame
 as an explicit input. This is not a production law for FrameWindow. -/
@@ -54,10 +55,10 @@ def final_cache_of_frame (M : RunMap rho payload) (C : ACCorrectLocal A M.signer
       W.block a.succ ∈ (M.trace.state z j).fg.tree ∧
       ((M.trace.state z i).fg.σ (W.block a.castSucc).root).h + 1 ≤
         ((M.trace.state z j).fg.σ (W.block a.succ).root).h) →
-    ∀ y j, deadline ≤ M.trace.time j → M.trace.time j ≤ rho.horizon →
+    ∀ y j, deadline ≤ M.trace.time j →
       ReadyCut M.trace M.honest C.catchUp y j →
       (M.honest (M.trace.time j))ᶜ.ncard < 2 * P.q - P.n →
-      CarrierProcessed M (W.block 3) y j (M.trace.time (W.cut 3)) deadline →
+      (∃ k < j, M.trace.BlockCallAt y k (W.block 3)) →
       Anc (M.trace.HonestBlocksAt M.honest) (W.block 0) (M.trace.finalizedAt y j)
 
 end Consensus.Goldilocks.Generic
