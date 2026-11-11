@@ -40,8 +40,9 @@ def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)
     GoldilocksHealingData sp ro O
 
 /-- INCOMPLETE intended Goldilocks local supplier, not a completed specialisation.
-All six data equations remain open: `look`, `catchUp`, `margin`, `latency`, `hold`, and
-`payload`. A witness of this temporary proposition alone does not fix Goldilocks data.
+All seven data equations remain open: `look`, `catchUp`, `margin`, `latency`, `hold`,
+`recovery`, and `payload`. The healing equation below supplies no recovery equation
+or adequacy of the guarded outage field. A witness alone does not fix Goldilocks data.
 The original local field equations also remain open; no supplier evidence is inferred.
 The ready-majority counterpattern is not discharged by this skeleton. -/
 def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=

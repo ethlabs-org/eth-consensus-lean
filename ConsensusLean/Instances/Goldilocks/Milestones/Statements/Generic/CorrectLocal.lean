@@ -57,6 +57,10 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   margin : Time
   latency : Time
   hold : Time
+  /-- Fixed local outage recovery duration, not chosen separately for each reader. -/
+  recovery : Time
+  /-- The local outage policy cannot start recovery before the outage ends. -/
+  recovery_nonneg : 0 ≤ recovery
   /-- Healing is a separate protocol obligation, not implied by this record's endpoint claims. -/
   healing : ACHealing A sg
   /-- The transaction/input projection of a block, supplied as data. -/
@@ -128,17 +132,19 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
         payload B ⊆ payload (tr.finalizedAt y j))
   /-- L9: outage protection uses the exact committee participation vocabulary.
   Network transport and schedule binding are separate. Explicit sample coverage prevents
-  an empty sample family from claiming protection. Internal locks and S5 are not fields. -/
+  an empty sample family from claiming protection. The fixed local recovery policy bounds
+  every target; its adequacy remains a supplier obligation. Internal locks and S5 are not fields. -/
   outageProtected : ∀ (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
     (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
-    (slot : Time → Nat) (samples : Finset OutageSample) (ΔF T b₀ b₁ recovery : Time),
+    (slot : Time → Nat) (samples : Finset OutageSample) (ΔF T b₀ b₁ recoveryTime : Time),
     Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
-    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recovery →
+    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
+    b₁ + recovery ≤ recoveryTime →
     tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
     p.CommitteeSleepyOn K slot (1 / 2) catchUp look → p.CommitteeOutageOn K samples →
     ∀ x i y j, tr.time i = T → ReadyCut tr H catchUp x i →
-      recovery ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
+      recoveryTime ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
       (∃ d ∈ samples, d.committeeSlot = slot (tr.time j) ∧ d.anchor = T ∧
         d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ tr.time j ∧
         tr.time j ≤ d.chargeEnd) →
