@@ -209,6 +209,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ChainRepresentationEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
@@ -1034,6 +1035,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.L
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.LocalSources
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ChainRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Correctness
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
