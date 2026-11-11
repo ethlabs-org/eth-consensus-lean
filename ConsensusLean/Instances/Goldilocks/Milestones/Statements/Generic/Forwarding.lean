@@ -209,4 +209,296 @@ def ForwardReceiptHeldEdge (codec : ForwardingCodec A n Role Item Body)
       ∃ k, tr.AcceptAt x k C ∧ x ∈ H (tr.time k)) →
     child ∈ (tr.state y e).fg.tree
 
+/-- Global receiver output vocabulary with the identical field formulas of
+`Compose.Growing.ReceiverServiceAfterAt`. Explicit fieldwise conversion is deferred;
+the distinct records are not definitionally equal. This is never a supplier premise. -/
+structure ForwardingReceiverServiceAfter {P : Params} {FGP : Type} {A : ACInterface P FGP}
+    (H : Time → Set (Fin P.n)) (U : Set A.Blk) (g : Time) (y : Fin P.n) (ac : ACTrace A) :
+    Prop where
+  message : ∀ x i m, x ∈ H (ac.time i) → ac.SendOrAdmit x i m → ∀ j ℓ, y ∈ H (ac.time j) →
+    ac.CallAt y j ℓ → ac.deadline y j (max (ac.time i) g) ≤ ac.time j →
+    ∃ k ≤ j, ac.time i ≤ ac.time k ∧ ac.ProcessAt y k m ∧
+      ac.time k < ac.deadline y k (max (ac.time i) g)
+  relay : ∀ x i B, x ∈ H (ac.time i) → ac.AcceptAt x i B → ∀ j ℓ, y ∈ H (ac.time j) →
+    ac.CallAt y j ℓ → ac.deadline y j (max (ac.time i) g) ≤ ac.time j → Anc U ℓ.frame.F B →
+    ∃ k ≤ j, ac.AcceptAt y k B ∧ ac.time k < ac.deadline y k (max (ac.time i) g)
+
+/-- Finite pre-service output for an arbitrary node AC. The positive finality annotation
+is independent of the node AC delay used by the actual deadlines. -/
+structure FiniteServiceBefore (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (ΔF b : Time) : Prop where
+  deltaF : 0 < ΔF
+  message : ∀ x i m, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i m → 0 ≤ tr.time i →
+    ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ →
+      tr.projAC.deadline y j (tr.time i) ≤ b →
+      tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
+      ∃ k ≤ j, tr.time i ≤ tr.time k ∧ tr.projAC.ProcessAt y k m ∧
+        tr.time k < tr.projAC.deadline y k (tr.time i)
+  acRelay : ∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → 0 ≤ tr.time i →
+    ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ →
+      tr.projAC.deadline y j (tr.time i) ≤ b →
+      tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
+      ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.projAC.deadline y k (tr.time i)
+  relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → 0 ≤ tr.time i →
+    ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
+      tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → tr.BlockAcceptedBy y j (tr.time i) B
+
+section Engine
+
+variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
+  {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
+  {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
+
+/-- Actual local mechanisms through a bounded reader horizon on the same engine run.
+The trace may be a lawful prefix, but is not asserted to be an execution of a truncated run.
+Every source, reader and used event has an explicit finite domain. -/
+structure ForwardingEngineLaws (M : RunMap rho payload)
+    (codec : ForwardingCodec A (Fintype.card V) (Model.protoOf (compiled F) E).Role
+      (Model.protoOf (compiled F) E).Item (Model.protoOf (compiled F) E).Body)
+    (binding : ForwardingEmit.EventBinding rho) (N : RunTrace A) (through : Time)
+    (processStart processEnd : Nat → Nat) (receiptCuts internalBoundary : Nat → Nat → Nat) :
+    Prop where
+  scheduler : ForwardingEmit.SchedulerBinding rho binding
+  source : rho.ExecutionValid → ForwardingSourceLaws M.proposer M.digest M.honest M.signer N
+  key_eq : codec.keyIndex = M.keyIndex
+  process_segment : ∀ e y outer u,
+    rho.events[e]? = some (.deliver (M.validator y) outer u) → y ∈ M.honest u →
+    u ≤ through → ∃ p : Nat, (binding.phases e)[p]? =
+      some (ForwardingEmit.Phase.process (rho := rho) outer) ∧
+      M.cut e ≤ processStart e ∧ processStart e ≤ processEnd e ∧
+      processEnd e ≤ M.cut (e + 1) ∧ receiptCuts e 0 = processStart e ∧
+      receiptCuts e outer.parts.length = processEnd e ∧
+      (∀ k, processStart e ≤ k → k < processEnd e → N.time k = u)
+  receipt_ordered : ∀ e y outer u,
+    rho.events[e]? = some (.deliver (M.validator y) outer u) → y ∈ M.honest u →
+    u ≤ through →
+    OrderedDelivery M.proposer N M.digest codec.canon (Model.digests rho.hash outer)
+      y u outer.parts (processStart e) (processEnd e)
+  receipt_occurrence : ∀ e y outer u a q,
+    rho.events[e]? = some (.deliver (M.validator y) outer u) → y ∈ M.honest u →
+    u ≤ through → outer.parts[a]? = some q →
+    receiptCuts e a ≤ receiptCuts e (a + 1) ∧
+    processStart e ≤ receiptCuts e a ∧ receiptCuts e (a + 1) ≤ processEnd e ∧
+    internalBoundary e a < internalBoundary e (a + 1) ∧
+    OrderedDelivery M.proposer N M.digest codec.canon (Model.digests rho.hash outer)
+      y u [q] (receiptCuts e a) (receiptCuts e (a + 1))
+  used_event_cuts : ∀ e event, rho.events[e]? = some event → event.time ≤ through →
+    (∀ k < M.cut (e + 1), N.time k ≤ through)
+  released_wrapper_source : ∀ e event x outer q t parent B,
+    rho.events[e]? = some event → event.node = M.validator x →
+    event.time ≤ through → x ∈ M.honest event.time → outer ∈ rho.releasesAt e →
+    Model.Obj.Contains outer q →
+    codec.decodeForward (Model.digests rho.hash q) q = some (x, t, parent, B) →
+    ∃ k, k < M.cut (e + 1) ∧ N.AcceptAt x k B ∧ N.time k = t ∧ t ≤ event.time
+  root_stamp_le_release : ∀ e v s o x t parent B,
+    rho.SendsAt v e s → v = M.validator x → o ∈ rho.releasesAt e →
+    codec.decodeForward (Model.digests rho.hash o) o = some (x, t, parent, B) → t ≤ s
+  acceptance_candidate : ∀ x k B, x ∈ M.honest (N.time k) → N.AcceptAt x k B →
+    N.time k ≤ through → ∃ e r parent event,
+      rho.events[e]? = some event ∧ event.node = M.validator x ∧ event.time = N.time k ∧
+      M.cut e ≤ k ∧ k < M.cut (e + 1) ∧
+      (binding.phases e)[r]? = some (.release (codec.forwardObject x (N.time k) parent B)) ∧
+      codec.decodeForward (Model.digests rho.hash (codec.forwardObject x (N.time k) parent B))
+        (codec.forwardObject x (N.time k) parent B) = some (x, N.time k, parent, B) ∧
+      Model.releasable (ForwardingEmit.boundary rho binding e r).seen
+        (codec.forwardObject x (N.time k) parent B) = true ∧
+      Model.protects (Model.protoOf (compiled F) E) (rho.ownKey (M.validator x))
+        (ForwardingEmit.boundary rho binding e r).seen
+        (codec.forwardObject x (N.time k) parent B) = true ∧
+      (Model.protoOf (compiled F) E).dependencies.ready
+        (Model.closure (ForwardingEmit.boundary rho binding e r).seen)
+        (codec.forwardObject x (N.time k) parent B) = true
+  message_self : ∀ x i m j ℓ τ, x ∈ M.honest (N.projAC.time i) →
+    N.projAC.SendOrAdmit x i m → N.projAC.time i ≤ through → N.projAC.time i ≤ τ →
+    x ∈ M.honest (N.projAC.time j) → N.projAC.CallAt x j ℓ →
+    N.projAC.time j ≤ through → N.projAC.deadline x j τ ≤ N.projAC.time j →
+    ∃ k, k ≤ j ∧ N.projAC.ProcessAt x k m ∧ N.projAC.time k = N.projAC.time i ∧
+      N.projAC.time k < N.projAC.deadline x k τ
+  message_candidate : ∀ x i m, x ∈ M.honest (N.projAC.time i) →
+    N.projAC.SendOrAdmit x i m → N.projAC.time i ≤ through → ∃ e r event,
+      rho.events[e]? = some event ∧ event.node = M.validator x ∧
+      event.time = N.projAC.time i ∧ M.cut e ≤ i ∧ i < M.cut (e + 1) ∧
+      (binding.phases e)[r]? =
+        some (.release (codec.messageForwardObject x (N.projAC.time i) m)) ∧
+      codec.decodeMessageForward
+        (Model.digests rho.hash (codec.messageForwardObject x (N.projAC.time i) m))
+        (codec.messageForwardObject x (N.projAC.time i) m) = some (x, N.projAC.time i, m) ∧
+      Model.releasable (ForwardingEmit.boundary rho binding e r).seen
+        (codec.messageForwardObject x (N.projAC.time i) m) = true ∧
+      Model.protects (Model.protoOf (compiled F) E) (rho.ownKey (M.validator x))
+        (ForwardingEmit.boundary rho binding e r).seen
+        (codec.messageForwardObject x (N.projAC.time i) m) = true ∧
+      (Model.protoOf (compiled F) E).dependencies.ready
+        (Model.closure (ForwardingEmit.boundary rho binding e r).seen)
+        (codec.messageForwardObject x (N.projAC.time i) m) = true
+  message_receipt_group : ∀ x i m e y receipt u q a j ℓ τ,
+    x ∈ M.honest (N.projAC.time i) → N.projAC.SendOrAdmit x i m →
+    N.projAC.time i ≤ through →
+    rho.events[e]? = some (.deliver (M.validator y) receipt u) → y ∈ M.honest u →
+    u ≤ through → N.projAC.time i ≤ u → Model.Obj.Contains receipt q →
+    codec.decodeMessageForward (Model.digests rho.hash q) q = some (x, N.projAC.time i, m) →
+    receipt.parts[a]? = some (codec.messageObject m) →
+    (∃ b, receipt.parts[b]? = some q ∧ b ≤ a ∧ a < b + q.parts.length) →
+    y ∈ M.honest (N.projAC.time j) → N.projAC.CallAt y j ℓ →
+    N.projAC.time j ≤ through → processEnd e ≤ j → u < N.projAC.deadline y j τ →
+    (∃ k, receiptCuts e a ≤ k ∧ k < receiptCuts e (a + 1) ∧
+      processStart e ≤ k ∧ k < processEnd e ∧ k ≤ j ∧ N.projAC.ProcessAt y k m ∧
+      N.projAC.time k = u ∧ N.projAC.time i ≤ N.projAC.time k ∧
+      N.projAC.time k < N.projAC.deadline y k τ) ∨
+    (∃ k, k < receiptCuts e a ∧ k ≤ j ∧ N.projAC.ProcessAt y k m ∧
+      N.projAC.time i ≤ N.projAC.time k ∧ N.projAC.time k ≤ u ∧
+      N.projAC.time k < N.projAC.deadline y k τ)
+
+variable (M : RunMap rho payload)
+  (codec : ForwardingCodec A (Fintype.card V) (Model.protoOf (compiled F) E).Role
+    (Model.protoOf (compiled F) E).Item (Model.protoOf (compiled F) E).Body)
+  (binding : ForwardingEmit.EventBinding rho)
+  (processStart processEnd : Nat → Nat) (receiptCuts internalBoundary : Nat → Nat → Nat)
+
+/-- Unproved acceptance-to-publication implication. The released object itself decodes;
+a signed descendant of an unsigned carrier is not this output. -/
+def ForwardAcceptancePublicationEdge : Prop :=
+  rho.ExecutionValid →
+  ForwardingEngineLaws M codec binding M.trace rho.horizon
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ x k B, x ∈ M.honest (M.trace.time k) → M.trace.AcceptAt x k B →
+    M.trace.time k ≤ rho.horizon → ∃ e r : Nat, ∃ parent event,
+      rho.events[e]? = some event ∧ event.node = M.validator x ∧
+      event.time = M.trace.time k ∧ M.cut e ≤ k ∧ k < M.cut (e + 1) ∧
+      (binding.phases e)[r]? =
+        some (ForwardingEmit.Phase.release (rho := rho)
+          (codec.forwardObject x (M.trace.time k) parent B)) ∧
+      codec.forwardObject x (M.trace.time k) parent B ∈ rho.releasesAt e ∧
+      codec.decodeForward
+        (Model.digests rho.hash (codec.forwardObject x (M.trace.time k) parent B))
+        (codec.forwardObject x (M.trace.time k) parent B) = some (x, M.trace.time k, parent, B)
+
+/-- Unproved receipt-to-acceptance implication with the original finite reader,
+same-signer release, ancestry and strict-deadline guards. -/
+def ReleasedReceiptAcceptedEdge : Prop :=
+  rho.ExecutionValid → Compose.NoCollRun M.digest M.trace →
+  ForwardingEngineLaws M codec binding M.trace rho.horizon
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ i j v receipt o x u t deadline parent B t₀,
+    rho.events[i]? = some (.deliver v receipt u) →
+    (∀ k < j, M.trace.time k ≤ t₀) → rho.point.HonestAt v t₀ →
+    Model.Obj.Contains receipt o → x ∈ M.honest t →
+    rho.releases (M.validator x) o t →
+    codec.decodeForward (Model.digests rho.hash o) o = some (x, t, parent, B) →
+    M.cut (i + 1) ≤ j →
+    Anc (M.trace.HonestBlocksAt M.honest) (M.trace.state (M.validator.symm v) j).fg.F B →
+    u < deadline → ∃ k, k < M.cut (i + 1) ∧
+      M.trace.AcceptAt (M.validator.symm v) k B ∧
+      M.trace.time k ≤ u ∧ M.trace.time k < deadline
+
+/-- Unproved post-synchrony acceptance relay on the same actual run. -/
+def AcceptanceRelayAfterEdge : Prop :=
+  rho.ExecutionValid → Compose.NoCollRun M.digest M.trace →
+  ForwardingEngineLaws M codec binding M.trace rho.horizon
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ g, rho.log.PSync rho.point g →
+  ∀ x i B, x ∈ M.honest (M.trace.time i) → M.trace.AcceptAt x i B →
+  ∀ y j, y ∈ M.honest (M.trace.time j) → M.trace.IsCall y j →
+    M.trace.time j ≤ rho.horizon →
+    M.trace.deadline y j (max (M.trace.time i) g) P.Δ ≤ M.trace.time j →
+    Anc (M.trace.HonestBlocksAt M.honest) (M.trace.state y j).fg.F B →
+    M.trace.BlockAcceptedBy y j (max (M.trace.time i) g) B
+
+/-- Unproved global receiver-service output, with explicit fieldwise conversion to the
+existing receiver record deferred. No target service is an input. -/
+def ReceiverServiceAfterEdge : Prop :=
+  rho.ExecutionValid → Compose.NoCollRun M.digest M.trace →
+  ForwardingEngineLaws M codec binding M.trace rho.horizon
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ g, rho.log.PSync rho.point g → ∀ y,
+    ForwardingReceiverServiceAfter M.honest (M.trace.HonestBlocksAt M.honest) g y M.trace.projAC
+
+/-- Unproved finite pre-service output, preserving the actual network cutoff. -/
+def FiniteServiceBeforeEdge : Prop :=
+  rho.ExecutionValid → Compose.NoCollRun M.digest M.trace →
+  ForwardingEngineLaws M codec binding M.trace rho.horizon
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ b, b ≤ rho.horizon → rho.log.SyncUntil rho.point b →
+  ∀ ΔF, 0 < ΔF → FiniteServiceBefore M.trace M.honest ΔF b
+
+/-- Unproved bounded post-service implication. Only prefix no-collision and prefix source
+laws are consumed; the real engine point, log, event indices and horizon are unchanged. -/
+def ReceiverServiceAfterThroughEdge (h : Time) : Prop :=
+  0 ≤ h → h ≤ rho.horizon → rho.ExecutionValid →
+  Compose.NoCollRun M.digest (M.trace.upTo h) →
+  ForwardingSourceLaws M.proposer M.digest M.honest M.signer (M.trace.upTo h) →
+  ForwardingEngineLaws M codec binding (M.trace.upTo h) h
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ g, rho.log.PSync rho.point g → ∀ y,
+    (∀ x i m, x ∈ M.honest ((M.trace.upTo h).projAC.time i) →
+      (M.trace.upTo h).projAC.SendOrAdmit x i m → (M.trace.upTo h).projAC.time i ≤ h →
+      ∀ j ℓ, y ∈ M.honest ((M.trace.upTo h).projAC.time j) →
+        (M.trace.upTo h).projAC.CallAt y j ℓ → (M.trace.upTo h).projAC.time j ≤ h →
+        (M.trace.upTo h).projAC.time j ≤ rho.horizon →
+        (M.trace.upTo h).projAC.deadline y j
+          (max ((M.trace.upTo h).projAC.time i) g) ≤ (M.trace.upTo h).projAC.time j →
+        ∃ k, k ≤ j ∧ (M.trace.upTo h).projAC.time i ≤ (M.trace.upTo h).projAC.time k ∧
+          (M.trace.upTo h).projAC.ProcessAt y k m ∧
+          (M.trace.upTo h).projAC.time k < (M.trace.upTo h).projAC.deadline y k
+            (max ((M.trace.upTo h).projAC.time i) g)) ∧
+    (∀ x i B, x ∈ M.honest ((M.trace.upTo h).projAC.time i) →
+      (M.trace.upTo h).projAC.AcceptAt x i B → (M.trace.upTo h).projAC.time i ≤ h →
+      ∀ j ℓ, y ∈ M.honest ((M.trace.upTo h).projAC.time j) →
+        (M.trace.upTo h).projAC.CallAt y j ℓ → (M.trace.upTo h).projAC.time j ≤ h →
+        (M.trace.upTo h).projAC.time j ≤ rho.horizon →
+        (M.trace.upTo h).projAC.deadline y j
+          (max ((M.trace.upTo h).projAC.time i) g) ≤ (M.trace.upTo h).projAC.time j →
+        Anc ((M.trace.upTo h).HonestBlocksAt M.honest) ℓ.frame.F B →
+        ∃ k, k ≤ j ∧ (M.trace.upTo h).projAC.AcceptAt y k B ∧
+          (M.trace.upTo h).projAC.time k < (M.trace.upTo h).projAC.deadline y k
+            (max ((M.trace.upTo h).projAC.time i) g))
+
+/-- Unproved bounded finite-service implication. The network cutoff need not precede h;
+source and reader calls, rather than the cutoff, are restricted to the retained trace. -/
+def FiniteServiceBeforeThroughEdge (h : Time) : Prop :=
+  0 ≤ h → h ≤ rho.horizon → rho.ExecutionValid →
+  Compose.NoCollRun M.digest (M.trace.upTo h) →
+  ForwardingSourceLaws M.proposer M.digest M.honest M.signer (M.trace.upTo h) →
+  ForwardingEngineLaws M codec binding (M.trace.upTo h) h
+    processStart processEnd receiptCuts internalBoundary →
+  ∀ b, b ≤ rho.horizon → rho.log.SyncUntil rho.point b → ∀ ΔF, 0 < ΔF →
+    0 < ΔF ∧
+    (∀ x i m, x ∈ M.honest ((M.trace.upTo h).time i) →
+      (M.trace.upTo h).projAC.SendOrAdmit x i m → 0 ≤ (M.trace.upTo h).time i →
+      (M.trace.upTo h).time i ≤ h → ∀ y j ℓ,
+      y ∈ M.honest ((M.trace.upTo h).time j) → (M.trace.upTo h).projAC.CallAt y j ℓ →
+      (M.trace.upTo h).time j ≤ h →
+      (M.trace.upTo h).projAC.deadline y j ((M.trace.upTo h).time i) ≤ b →
+      (M.trace.upTo h).projAC.deadline y j ((M.trace.upTo h).time i) ≤
+        (M.trace.upTo h).time j →
+      ∃ k ≤ j, (M.trace.upTo h).time i ≤ (M.trace.upTo h).time k ∧
+        (M.trace.upTo h).projAC.ProcessAt y k m ∧
+        (M.trace.upTo h).time k <
+          (M.trace.upTo h).projAC.deadline y k ((M.trace.upTo h).time i)) ∧
+    (∀ x i B, x ∈ M.honest ((M.trace.upTo h).time i) →
+      (M.trace.upTo h).projAC.AcceptAt x i B → 0 ≤ (M.trace.upTo h).time i →
+      (M.trace.upTo h).time i ≤ h → ∀ y j ℓ,
+      y ∈ M.honest ((M.trace.upTo h).time j) → (M.trace.upTo h).projAC.CallAt y j ℓ →
+      (M.trace.upTo h).time j ≤ h →
+      (M.trace.upTo h).projAC.deadline y j ((M.trace.upTo h).time i) ≤ b →
+      (M.trace.upTo h).projAC.deadline y j ((M.trace.upTo h).time i) ≤
+        (M.trace.upTo h).time j →
+      Anc ((M.trace.upTo h).HonestBlocksAt M.honest) ℓ.frame.F B →
+      ∃ k ≤ j, (M.trace.upTo h).projAC.AcceptAt y k B ∧
+        (M.trace.upTo h).time k <
+          (M.trace.upTo h).projAC.deadline y k ((M.trace.upTo h).time i)) ∧
+    (∀ x i B, x ∈ M.honest ((M.trace.upTo h).time i) →
+      (M.trace.upTo h).AcceptAt x i B → 0 ≤ (M.trace.upTo h).time i →
+      (M.trace.upTo h).time i ≤ h → ∀ y j,
+      y ∈ M.honest ((M.trace.upTo h).time j) → (M.trace.upTo h).IsCall y j →
+      (M.trace.upTo h).time j ≤ h →
+      (M.trace.upTo h).deadline y j ((M.trace.upTo h).time i) P.Δ ≤ b →
+      (M.trace.upTo h).deadline y j ((M.trace.upTo h).time i) P.Δ ≤ (M.trace.upTo h).time j →
+      Anc ((M.trace.upTo h).HonestBlocksAt M.honest) ((M.trace.upTo h).state y j).fg.F B →
+      (M.trace.upTo h).BlockAcceptedBy y j ((M.trace.upTo h).time i) B)
+
+end Engine
+
 end Consensus.Goldilocks.Generic
