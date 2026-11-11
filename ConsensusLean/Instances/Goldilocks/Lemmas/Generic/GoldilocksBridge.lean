@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
+public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 
@@ -496,5 +498,18 @@ def high_entry_eq_at_bridge : Prop :=
     high_entry_eq_at (goldilocksNode sp ro) (fun v => v.val) O →
       ∀ {dg H tr proposer}, high_entry_eq_at_goldilocks (sp := sp) (ro := ro)
         (dg := dg) (H := H) (tr := tr) (proposer := proposer)
+
+/-- UNPROVED headline bridge to the landed `Statements/Obligations.lean:172` statement,
+used verbatim. The antecedent retains the full shape obligations for every original setup
+and assumption set, as in `Proofs/Growing/Obligations/Main.lean:27`; local AC evidence alone
+does not supply these obligations. Intended consumer: future generic correctness assembly.
+The AC-to-shape morphism, local supplier (including latency and payload), and all assembly
+reductions remain open; this proposition supplies none of their evidence. -/
+def goldilocks_correct_bridge : Prop :=
+  generic_correct (O := AsChainShape.schema) (Info := AsChainShape.Info) →
+    (∀ (S : AsChainShape.Setup) (A : ContractAssumptions S),
+      Shape.ShapeObligations (AsChainShape.goldilocks S)
+        (goldilocksContract A (contract_coefficients S A))) →
+    GoldilocksCorrect
 
 end Consensus.Goldilocks.Generic
