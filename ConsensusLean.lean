@@ -1117,6 +1117,7 @@ public import ConsensusLean.Lemmas.Model.Retain
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.View
+public import ConsensusLean.Lemmas.Problem.CommitteeRegimes
 public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
