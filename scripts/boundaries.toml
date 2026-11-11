@@ -1143,7 +1143,10 @@ allow = ["Instances.Goldilocks.NodeEngine", "Instances.Goldilocks.Lemmas.NodeEng
          "Instances.Goldilocks.Proofs.Growing.AC",
          "Instances.Goldilocks.Proofs.Growing.Compose", "Instances.Goldilocks.Proofs.Growing.Continuation",
          "Examples", "Solution",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes"]
+         "Instances.Goldilocks.Milestones.Spec.WriteModes",
+         "Milestones.Statements.Problem",
+         "Instances.Goldilocks.Milestones.Statements.Generic",
+         "Instances.Goldilocks.Lemmas.Generic"]
 may_import_roots = true
 may_import_all = true
 about = "tests, review pins (ReviewAxioms, ReviewGuard) and the cited-name index"
