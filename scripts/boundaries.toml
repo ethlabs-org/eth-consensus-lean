@@ -126,7 +126,8 @@ about = "unproved generic surface edges; endpoint and acceptance closures remain
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge"]
 to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row",
-      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService"]
+      "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService",
+      "ConsensusLean.Instances.Goldilocks.Statements.Obligations"]
 reason = "isolated concrete bridge proof closure for verbatim old-premise equations; leaf paths only"
 
 [[layer]]
