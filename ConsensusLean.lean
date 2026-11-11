@@ -1039,6 +1039,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.C
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineRepresentation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.EngineTransport
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FiniteRegime
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
