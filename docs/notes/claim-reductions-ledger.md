@@ -189,3 +189,39 @@ The inherited E1/FINITE/READPOINT/CHAIN-REP/PROGRESS gates are not gates of this
 
 Complete-row Astra review and DA read-back remain pending. Supplier proofs, nonvacuity,
 source realization and all correctness proofs remain open. No main push is authorized.
+
+## Generic forwarding statement interfaces
+
+The forwarding slice is additive statement vocabulary. Every supplier is **UNSUPPLIED**;
+every implication target is **UNPROVED / OPEN**. Elaboration establishes well-formedness,
+not sufficient premises, realizability, nonvacuity or service. Existing protocol, finality
+gadget, local correctness, reader and endpoint declarations are unchanged.
+
+All declarations below live in `Milestones/Statements/Generic/Forwarding.lean`.
+
+| Interface | Consumer boundary | Unresolved scope |
+| --- | --- | --- |
+| `ForwardingEmit.Phase`, `phaseStep`, `dutyPhases`, `runPhases`, `expandDuties`, `eventPhases`, `boundary` | Existing engine operations and actual ordered release candidates | Concrete phase expansion vocabulary only. Candidate capture precedes act; states thread through duties; outputs preserve order and multiplicity. Cross-vocabulary constructor, step, fold, scheduler and boundary commutation remain OPEN. |
+| `ForwardingEmit.EventBinding`, `ForwardingEmit.SchedulerBinding` | Actual event endpoints, release outputs and exact phase list | UNSUPPLIED endpoint and scheduler obligations, not an existence assertion. Different phase inductives require explicit transport, not definitional equality. |
+| `ForwardingCodec` | Same-hash forwarding, block and arbitrary-message decoding | UNSUPPLIED exact signed body, parent, canonical-child, stamp and conditional-decode laws. Digest-context equations compare decoder results on the same contained object, never whole digest lists. |
+| `OrderedDelivery` | Actual recursive-part traversal | Exact canonical event, drop and empty-cut cases preserve node execution and occurrence order. It is not a carried-object set or a retry mechanism. |
+| `ForwardingSourceLaws` | Generic growing local execution and honest-prefix finality projection | UNSUPPLIED local run and finality-prefix fields. Projection-store equality is derived; it is not an independent assumption. Full prefix projection is not obtained from static retention alone. |
+| `ForwardingPrefixSourceLaws.prefix_source` | Actual source growing run on a retained prefix | UNSUPPLIED transport to the target prefix source package. No global local-run substitution, inverse prefix retention or larger honest-block universe is asserted. |
+| `ForwardingEngineLaws` | Honest receipt/process segments, actual release provenance and candidate readiness | UNSUPPLIED exact cut and internal occurrence maps, canonical-child processing, source-time self-processing, candidate placement and all release guards. Used honest receipt and forwarding-release domains are explicit. No target service is a field. |
+| `ForwardReceiptHeldEdge` | Parent-first holding under same-signer honest acceptance provenance | UNPROVED implication retaining finite honest receiver, finalized ancestry, ordered traversal and source stamp guards. |
+| `ReleasedReceiptAcceptedEdge` | Actual released wrapper and later receipt | UNPROVED implication retaining source honesty, same object and digest, cut bounds, ancestry and strict output deadline. Root stamp need only precede release; descendant equality is not assumed. |
+| `ForwardAcceptancePublicationEdge` | Honest acceptance to actual same-event publication | UNPROVED implication from real release-phase candidate, exact decode and readiness. The released object itself must decode; an unsigned carrier with a signed descendant is not this publication path. |
+| `AcceptanceRelayAfterEdge` | Post-synchrony accepted-block relay | UNPROVED implication over the actual run, network log, own-time honesty, reader horizon, effective source time and finalized ancestry. |
+| `ForwardingReceiverServiceAfter`, `ReceiverServiceAfterEdge` | Global receiver output | Identical message and relay field formulas to the existing receiver service record. Explicit fieldwise conversion is OPEN; separate records are not definitionally equal. The output record is never a supplier premise. |
+| `FiniteServiceBefore`, `FiniteServiceBeforeEdge` | Finite message, projected acceptance and node acceptance output | UNPROVED implication preserving nonnegative sources, reader deadlines, ancestry and strict output witnesses. The positive finality annotation is distinct from the node delay. |
+| `ReceiverServiceAfterThroughEdge`, `FiniteServiceBeforeThroughEdge` | Prefix-indexed service on the same actual engine run | UNPROVED bounded targets consume prefix no-collision and explicitly supplied prefix mechanisms. Source and reader calls, used events and witnesses are retained. No fictional truncated engine, global no-collision premise or additional network-cutoff bound is introduced. |
+
+The bounded message self-processing law uses one effective-time parameter. Post-synchrony
+service chooses the later of source time and synchronization time; finite service chooses
+source time. Both retain an actual bounded same-time processing witness and a strict
+deadline at the output cut. Receipt processing has fresh-segment and actual-prior-witness
+branches; duplicate status alone supplies neither branch.
+
+Concrete queue retention, selected-duty publication, canonical child occurrences,
+prefix source and no-collision transport, observation suppliers, service proofs and stock
+recovery all remain **OPEN**. Statement checks do not close these realization obligations.
