@@ -8,7 +8,7 @@ These growing-fault predicates are additional untrusted vocabulary. They change 
 regime or FG population clause. The full-set bridge definitions below are intended theorem
 types, not proved facts. Publicity, PKI binding and instance sample coverage are separate. -/
 
-public section
+@[expose] public section
 
 namespace Consensus
 

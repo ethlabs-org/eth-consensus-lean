@@ -1127,7 +1127,6 @@ public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.TruncateExt
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Problem.AdequateObs
-public import ConsensusLean.Lemmas.Problem.CommitteeRegimes
 public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
@@ -1141,6 +1140,7 @@ public import ConsensusLean.Lemmas.Shape.OnRuns
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
+public import ConsensusLean.Milestones.Statements.Problem.CommitteeRegimes
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic
