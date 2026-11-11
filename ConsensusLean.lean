@@ -1035,6 +1035,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.T
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Correctness
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
