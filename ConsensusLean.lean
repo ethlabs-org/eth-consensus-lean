@@ -209,6 +209,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
@@ -1031,6 +1032,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.S
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.AC
