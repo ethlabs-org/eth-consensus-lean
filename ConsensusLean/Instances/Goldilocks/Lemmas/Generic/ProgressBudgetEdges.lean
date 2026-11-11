@@ -48,13 +48,7 @@ def final_cache_of_frame (M : RunMap rho payload) (C : ACCorrectLocal A M.signer
     C.healing.Run M.proposer M.digest M.honest M.trace →
     Premises M.trace M.honest M.proposer M.digest M.signer g ΔF deadline →
     HealedFrom M.trace M.honest M.proposer W.start deadline →
-    (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
-    (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) →
-    (∀ a : Fin 3, ∃ z i j, z ∈ M.honest (M.trace.time i) ∧ z ∈ M.honest (M.trace.time j) ∧
-      W.block a.castSucc ∈ (M.trace.state z i).fg.tree ∧
-      W.block a.succ ∈ (M.trace.state z j).fg.tree ∧
-      ((M.trace.state z i).fg.σ (W.block a.castSucc).root).h + 1 ≤
-        ((M.trace.state z j).fg.σ (W.block a.succ).root).h) →
+    FinalHeightSupply M C.catchUp C.hold query deadline W →
     ∀ y j, deadline ≤ M.trace.time j →
       ReadyCut M.trace M.honest C.catchUp y j →
       (M.honest (M.trace.time j))ᶜ.ncard < 2 * P.q - P.n →
