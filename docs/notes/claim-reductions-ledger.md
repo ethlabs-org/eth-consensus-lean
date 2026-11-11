@@ -1,10 +1,42 @@
 # Claim reduction interfaces: complete statement row
 
-Base: guarded production review checkpoint `work/surface-progress-guard` at
-`9d668433d1a29d746d61d7368f732e91086beee0`, extending interface base
-`ca0a119c9e559bb827b911f4030e2ab5df31f76a`.
-Branch: `work/surface-claim-reductions`. This is a separate additive statement slice,
+Base: combined ASSEMBLY candidate `c378aa9a3ec91a0aa17e0c42560607442b322758`,
+on main `3a20c7e0258bf40262d13e1dd41942166ff05e1c`, with the reviewed guarded
+production correction inherited from `9d668433` over interface base `ca0a119c`.
+Branch: `work/surface-recovery-guard`. This is a forward statement correction,
 not a landing, proof, freeze, or source-acceptance release.
+
+## Fixed recovery policy forward correction
+
+The DA accepted a fixed ACCorrectLocal.recovery and separate recovery_nonneg law.
+L9 and OutageReadPoint now retain their original b₁ ≤ recoveryTime bound and add
+b₁ + C.recovery ≤ recoveryTime. Their service, sample, readiness, actual-read and
+ancestry clauses are otherwise unchanged. The original durations conjunction is unchanged.
+The former telescope lacked a policy floor; this is not a valid-run counterexample
+or a proof that the former suppliers were false. Samples are not an inverse delay law.
+
+OutageRecoveryBinding.duration matches the SAME M/K/C by
+`C.recovery = (K.params.recovery : Time) * E.ΔAC`. This is a **NEW UNRESOLVED
+SUFFICIENCY TARGET**, not a supplied fact. PersistenceReduction explicitly consumes it.
+At recoveryTime = recoveryAt, rewriting the equation and unfolding recoveryAt makes
+the added floor guard reflexive; recovery_nonneg gives the retained b₁ bound.
+Exact equality is a deliberate policy-matching RESTRICTION, not mathematically
+necessary for persistence: a larger advertised recovery may safely dominate a smaller
+local floor. Unequal durations are not automatically unsound. No per-read choice,
+generic coefficient 9, or claim of arbitrary-duration protection is introduced.
+GBR's concrete duration equation/adequacy and dc's corresponding policy fit remain OPEN.
+The endpoint, Holds/collision alternative and independent service-reserve gap are unchanged.
+
+Constructor/consumer accounting: ACCorrectLocal has two additional fields; its generated
+constructor, recursors and projections must be included in the exact dump drift report.
+Only its outageProtected field formula gains the guard; other field formulas retain
+their text. ReadPoint.protection gains the same guard. Seven direct consumer leaves
+(GBR, FiniteRegime, ReadPoint, ClaimTransports, CorrectnessEdges, ProgressBudgetEdges,
+ClaimReductionEdges) elaborate against the changed record without unrelated formula edits.
+No explicit public ACCorrectLocal construction or outage field invocation was found.
+dc D-INST owns LeadLocalRunContracts and LeadOutagePrefixHandoff migration and the
+leadACCorrectLocal OPEN data note; framework owns staged integration. Their rebuild
+and the exact full-dump constructor/projection accounting remain separate required gates.
 
 ## Guarded-window forward adaptation
 
@@ -112,6 +144,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | reset / canonicality / drain-slot time | ActualResetSupply, HighCanonicalSupply, ResetHealBudgetSupply | Three separate NEW OPEN targets; heal_after_reset only consumes them |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | NEW OPEN local ancestry and separate mapping, not compatibility⇒ancestry |
 | outage participation/sample coverage | OutageTransport.participation/coverage and OutagePolicy.binding/horizon | Existing OPEN suppliers |
+| fixed outage recovery floor / endpoint fit | ACCorrectLocal.recovery/recovery_nonneg; OutageRecoveryBinding.duration at SAME M/K/C | NEW OPEN exact-policy matching target; no inference from sample coverage or readiness |
 | outage pre/post service | OutageServiceSupply | NEW OPEN exact implication, concrete service mismatch recorded above |
 | resilience target tip | ResilienceTipTransport | NEW OPEN representation only |
 | RootOk at actual reads | HonestReadTransport.roots; genesis separately for accountability/Premises | Existing OPEN supplier; never inferred from unrelated dc names |
@@ -146,11 +179,12 @@ OPEN obligations of the instance realization:
 
 Both leaves elaborate with `lean -DwarningAsError=true`, using exact pinned dependency
 sources over the existing warm cache. Generated ConsensusLean root includes both leaves.
-`python3 -I scripts/check-boundaries.py` reports zero findings. This adaptation changes
-only HealthyLivenessReduction's supplier telescope/docstring and this ledger; its claim
-conclusion is unchanged. The targeted packet for the prior 9222b346 checkpoint passed,
-but does not validate this rebased guarded head. Fresh four-root, changed-cone, strict
-CSM/full dump and closure results remain required and will be reported separately.
+`python3 -I scripts/check-boundaries.py` reports zero findings. The recovery correction
+changes local record data, the two outage guards and PersistenceReduction's supplier
+telescope, not its claim conclusion or any endpoint statement. Earlier targeted packets
+for 9222b346 and 880ddab6 passed within their reported comparison scopes, but do not
+validate this correction. Fresh four-root, changed-cone, strict CSM, full dump with
+intended record/projection drift and closure results remain required against exact heads.
 The inherited E1/FINITE/READPOINT/CHAIN-REP/PROGRESS gates are not gates of this new head.
 
 Complete-row Astra review and DA read-back remain pending. Supplier proofs, nonvacuity,

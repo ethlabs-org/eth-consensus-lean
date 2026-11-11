@@ -113,8 +113,9 @@ def FinalAccountabilityReduction
       fun r => (chainTrace r.2).AccountablySafe r.2.ViewIdx r.2.Slashable K.params.α g 0
 
 /-- UNPROVED outage reduction with the original source/destination, recovery time
-and collision alternative. The pre-outage service reserve is an explicit unresolved
-supplier, never a strengthening of ServiceTransport.sync. -/
+and collision alternative. The same local supplier's fixed recovery policy is explicitly
+matched to the advertised duration. The independent pre-outage service reserve remains
+an unresolved supplier, never a strengthening of ServiceTransport.sync. -/
 def PersistenceReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
     (K : Contract ProgressReq)
     (C : ∀ E rho (hv : rho.ExecutionValid), ACCorrectLocal A (B.map E rho hv).signer)
@@ -123,7 +124,8 @@ def PersistenceReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
     let M := B.map E rho hv
     let L := C E rho hv
     GrowingRunTransport M ∧ OutageTransport M (D E rho hv) K L.catchUp L.look ∧
-      OutageServiceSupply M K ∧ ResilienceTipTransport M ∧ OutageReadPoint L ∧
+      OutageRecoveryBinding M K L ∧ OutageServiceSupply M K ∧
+      ResilienceTipTransport M ∧ OutageReadPoint L ∧
       EndReadTransport M K L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
