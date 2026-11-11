@@ -141,6 +141,68 @@ to = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]
 reason = "isolated concrete bridge proof closure"
 [[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "GenericEdges"]']]
 
+[GenericBridgeHeadlineAllowed]
+files."Fx/ConcreteStatements/Obligations.lean" = "module\npublic import Fx.Spec.A\npublic def headline : Prop := True\n"
+files."Fx/GenericEdges/Bridge.lean" = "module\npublic import Fx.ConcreteStatements.Obligations\npublic def bridge : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.ConcreteStatements.Obligations\npublic import Fx.GenericEdges.Bridge"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "ConcreteStatements"
+prefixes = ["Fx.ConcreteStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.GenericEdges"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]
+from = ["Fx.GenericEdges.Bridge"]
+to = ["Fx.ConcreteStatements.Obligations"]
+reason = "isolated concrete headline bridge only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "ConcreteStatements", "GenericEdges"]']]
+
+[GenericBridgeHeadlineSiblingRejected]
+expect = "FAIL[import] Fx.ConcreteStatements.Obligations (layer ConcreteStatements) imported by Fx.GenericEdges.Other (layer GenericEdges)"
+files."Fx/ConcreteStatements/Obligations.lean" = "module\npublic import Fx.Spec.A\npublic def headline : Prop := True\n"
+files."Fx/GenericEdges/Bridge.lean" = "module\npublic import Fx.ConcreteStatements.Obligations\npublic def bridge : Prop := True\n"
+files."Fx/GenericEdges/Other.lean" = "module\npublic import Fx.ConcreteStatements.Obligations\npublic def other : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.ConcreteStatements.Obligations\npublic import Fx.GenericEdges.Bridge\npublic import Fx.GenericEdges.Other"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "ConcreteStatements"
+prefixes = ["Fx.ConcreteStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.GenericEdges"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]
+from = ["Fx.GenericEdges.Bridge"]
+to = ["Fx.ConcreteStatements.Obligations"]
+reason = "isolated concrete headline bridge only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "ConcreteStatements", "GenericEdges"]']]
+
+[GenericBridgeHeadlineStatementRejected]
+expect = "FAIL[import] Fx.ConcreteStatements.Obligations (layer ConcreteStatements) imported by Fx.GenericStatements.Bridge (layer GenericStatements)"
+files."Fx/ConcreteStatements/Obligations.lean" = "module\npublic import Fx.Spec.A\npublic def headline : Prop := True\n"
+files."Fx/GenericEdges/Bridge.lean" = "module\npublic import Fx.ConcreteStatements.Obligations\npublic def bridge : Prop := True\n"
+files."Fx/GenericStatements/Bridge.lean" = "module\npublic import Fx.ConcreteStatements.Obligations\npublic def other : Prop := True\n"
+edit."Fx.lean" = [['public import Fx.Init', "public import Fx.Init\npublic import Fx.ConcreteStatements.Obligations\npublic import Fx.GenericEdges.Bridge\npublic import Fx.GenericStatements.Bridge"]]
+edit."boundaries.toml" = [['[[exception]]', '''[[layer]]
+name = "ConcreteStatements"
+prefixes = ["Fx.ConcreteStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "GenericEdges"
+prefixes = ["Fx.GenericEdges"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[layer]]
+name = "GenericStatements"
+prefixes = ["Fx.GenericStatements"]
+allow = ["Init", "ToMathlib", "Spec"]
+[[exception]]
+from = ["Fx.GenericEdges.Bridge"]
+to = ["Fx.ConcreteStatements.Obligations"]
+reason = "isolated concrete headline bridge only"
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "ConcreteStatements", "GenericEdges", "GenericStatements"]']]
+
 # --- configuration -------------------------------------------------------------------------------
 [MissingConfig]
 expect = "FAIL[config] cannot read the boundaries config"
