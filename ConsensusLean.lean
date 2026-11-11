@@ -210,6 +210,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
