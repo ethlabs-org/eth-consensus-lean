@@ -214,6 +214,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ProgressBudgetEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
@@ -1045,6 +1046,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.F
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ProgressBudget
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
