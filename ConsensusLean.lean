@@ -941,6 +941,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReceiptTraver
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
@@ -1118,6 +1119,7 @@ public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.Protection
 public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Retain
+public import ConsensusLean.Lemmas.Model.RoleReader
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.TruncateExt
@@ -1132,6 +1134,7 @@ public import ConsensusLean.Lemmas.Problem.Facts.Network
 public import ConsensusLean.Lemmas.Problem.Facts.Properties
 public import ConsensusLean.Lemmas.Problem.Facts.Regimes
 public import ConsensusLean.Lemmas.Problem.Facts.Transfer
+public import ConsensusLean.Lemmas.Problem.PublicRoleReader
 public import ConsensusLean.Lemmas.Shape.OnRuns
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Tactic.Linarith
