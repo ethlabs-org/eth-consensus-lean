@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
+public import ConsensusLean.Milestones.Statements.Problem.CommitteeRegimes
 
 @[expose] public section
 
@@ -11,8 +13,7 @@ Every field reads the AC's own output in a generic growing node run. No field me
 compiled system, ledger output or correctness assembly record.
 
 * O-CORR-L2: engine-held/view provenance, feeding output validity; needs the engine morphism.
-* O-CORR-L6: pending the healing skeleton dependency for its exact healed-tip interface.
-* O-CORR-L9: L9 pending the U-REG edge ruling; no replacement outage regime is defined here.
+* O-ENG: the supplied payload projection needs its engine/input binding.
 
 Final-window extraction and final-cache coverage are classified as FG-plus-healing edges, not
 local fields: their existing adapters combine window/reset premises, FG replay safety and
@@ -37,6 +38,15 @@ def ReadyProposal {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
   tr.ProposesAt B.proposer i B ∧ ReadyCut tr H c B.proposer i ∧
     B.proposer ∈ H (tr.time i + hold)
 
+/-- Concrete environment/run schedule binding on the node's validator indices.
+This asserts no engine simulation or payload correspondence. -/
+def RunPointBinding {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (p : EnvPoint (Fin P.n)) : Prop :=
+  p.env.ΔAC = P.Δ ∧
+    (∀ y t, y ∈ H t ↔ p.HonestAt y t) ∧
+    (∀ y t, tr.awake y t ↔ p.env.awake y t = true) ∧
+    (∀ t, tr.InHorizon t ↔ t ≤ p.horizon)
+
 /-- The local supplier for a generic AC. Constructing its type supplies no evidence.
 The first row states membership and the finalized-to-confirmed-to-head ancestry at honest cuts.
 The assembly record lives separately and cannot be used as a premise of this field. -/
@@ -47,6 +57,8 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   margin : Time
   latency : Time
   hold : Time
+  /-- Healing is a separate protocol obligation, not implied by this record's endpoint claims. -/
+  healing : ACHealing A sg
   /-- The transaction/input projection of a block, supplied as data. -/
   payload : A.Blk → Set Nat
   /-- Durations cannot make readiness or deadlines negative. -/
@@ -82,6 +94,21 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
     ∀ B k y j, ReadyProposal tr H catchUp hold B k →
       tr.time k + margin ≤ tr.time j → ReadyCut tr H catchUp y j →
       payload B ⊆ payload (tr.confirmedAt y j)
+  /-- L6: proposal chaining needs this additional confirmed-tip obligation.
+  Ready reads after the healed slot agree, and include its honest proposal after the margin. -/
+  healedTips : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (ΔF g b : Time) (s₁ : Nat),
+    healing.Run proposer dg H tr → Compose.NoCollRun dg tr →
+    tr.HealthyRunAt H ΔF g → HealedFrom tr H proposer s₁ b →
+    max g 0 ≤ P.slotTime s₁ →
+    (∀ y z i j, P.slotTime s₁ + margin ≤ tr.time i → tr.time i ≤ b →
+      P.slotTime s₁ + margin ≤ tr.time j → tr.time j ≤ b →
+      ReadyCut tr H catchUp y i → ReadyCut tr H catchUp z j →
+      Compatible (tr.HonestBlocksAt H) (tr.confirmedAt y i) (tr.confirmedAt z j)) ∧
+    ∀ z k X, HonestProposal tr H proposer s₁ z k X →
+      ∀ y j, tr.time k + margin ≤ tr.time j → tr.time j ≤ b →
+        ReadyCut tr H catchUp y j → Anc (tr.HonestBlocksAt H) X (tr.confirmedAt y j)
   /-- L7: under healthy service, a fresh ready proposal is confirmed within the latency. -/
   healthyConfirmedSupply : ∀ (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
@@ -99,6 +126,23 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
         payload B ⊆ payload (tr.confirmedAt y j)) ∧
       (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y j) →
         payload B ⊆ payload (tr.finalizedAt y j))
+  /-- L9: outage protection uses the exact committee participation vocabulary.
+  Network transport and schedule binding are separate. Explicit sample coverage prevents
+  an empty sample family from claiming protection. Internal locks and S5 are not fields. -/
+  outageProtected : ∀ (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
+    (slot : Time → Nat) (samples : Finset OutageSample) (ΔF T b₀ b₁ recovery : Time),
+    Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
+    RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recovery →
+    tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
+    p.CommitteeSleepyOn K slot (1 / 2) catchUp look → p.CommitteeOutageOn K samples →
+    ∀ x i y j, tr.time i = T → ReadyCut tr H catchUp x i →
+      recovery ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
+      (∃ d ∈ samples, d.committeeSlot = slot (tr.time j) ∧ d.anchor = T ∧
+        d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ tr.time j ∧
+        tr.time j ≤ d.chargeEnd) →
+      Anc (tr.HonestBlocksAt H) (tr.confirmedAt x i) (tr.confirmedAt y j)
 
 end Consensus.Goldilocks.Generic
 

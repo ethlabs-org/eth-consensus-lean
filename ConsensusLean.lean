@@ -209,6 +209,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
@@ -1030,6 +1031,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.L
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.LocalSources
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Service
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.FGStore.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.CorrectLocal
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Correctness
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.FG
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Healing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
