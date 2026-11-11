@@ -121,8 +121,22 @@ structure FinalProductionWindow (M : RunMap rho payload) (catchUp hold : Time)
   bounded : ∀ a, M.trace.time (cut a) ≤ deadline
   publication : M.trace.time (cut 3) + P.Δ ≤ deadline
 
-/-- All-form final production from the advertised final progress and latency. A single
-proposal or a conditional four-anchor edge is not a supplier of this existential. -/
+/-- Actual acceptance, chaining and three own-reader height increases of one selected
+window. This predicate is evidence to be supplied jointly with that window, not a law for
+arbitrary windows. FrameWindow is not manufactured. -/
+def FinalHeightSupply (M : RunMap rho payload) (catchUp hold query deadline : Time)
+    (W : FinalProductionWindow M catchUp hold query deadline) : Prop :=
+  (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) ∧
+  (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) ∧
+  ∀ a : Fin 3, ∃ z i j, z ∈ M.honest (M.trace.time i) ∧ z ∈ M.honest (M.trace.time j) ∧
+    W.block a.castSucc ∈ (M.trace.state z i).fg.tree ∧
+    W.block a.succ ∈ (M.trace.state z j).fg.tree ∧
+    ((M.trace.state z i).fg.σ (W.block a.castSucc).root).h + 1 ≤
+      ((M.trace.state z j).fg.σ (W.block a.succ).root).h
+
+/-- All-form joint final production at the advertised query/deadline and actual FG delay.
+The same selected window must have delivery spacing, healing and actual height evidence.
+No spacing follows merely from the timeout, and no gap or latency is enlarged here. -/
 def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     (healing : ACHealing A M.signer) (catchUp hold : Time) : Prop :=
   rho.ExecutionValid → ∀ idx g t,
@@ -135,25 +149,12 @@ def FinalWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
       (t + (K.params.latency .final idx : Time) * E.ΔAC)) →
     ∃ W : FinalProductionWindow M catchUp hold t
         (t + (K.params.latency .final idx : Time) * E.ΔAC),
+      6 * P.Δ + E.ΔFG ≤ 4 * P.Δ * (W.gap : Time) ∧
       HealedFrom M.trace M.honest M.proposer W.start
         (t + (K.params.latency .final idx : Time) * E.ΔAC) ∧
-      healing.Run M.proposer M.digest M.honest M.trace
-
-/-- Actual acceptance, chaining and three own-reader height increases for the same anchors.
-The supplying protocol must justify these directly; FrameWindow is not manufactured. -/
-def FinalHeightSupply (M : RunMap rho payload) (healing : ACHealing A M.signer)
-    (catchUp hold : Time) : Prop :=
-  ∀ g ΔF query deadline (W : FinalProductionWindow M catchUp hold query deadline),
-    healing.Run M.proposer M.digest M.honest M.trace →
-    Premises M.trace M.honest M.proposer M.digest M.signer g ΔF deadline →
-    HealedFrom M.trace M.honest M.proposer W.start deadline →
-    (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) ∧
-    (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) ∧
-    ∀ a : Fin 3, ∃ z i j, z ∈ M.honest (M.trace.time i) ∧ z ∈ M.honest (M.trace.time j) ∧
-      W.block a.castSucc ∈ (M.trace.state z i).fg.tree ∧
-      W.block a.succ ∈ (M.trace.state z j).fg.tree ∧
-      ((M.trace.state z i).fg.σ (W.block a.castSucc).root).h + 1 ≤
-        ((M.trace.state z j).fg.σ (W.block a.succ).root).h
+      healing.Run M.proposer M.digest M.honest M.trace ∧
+      FinalHeightSupply M catchUp hold t
+        (t + (K.params.latency .final idx : Time) * E.ΔAC) W
 
 /-- The last actual anchor is processed before each consuming ready cut. The witness uses
 the existing CarrierProcessed type, including strict event order and own-event honesty. -/
