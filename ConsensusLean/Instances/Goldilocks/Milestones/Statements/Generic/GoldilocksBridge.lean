@@ -17,6 +17,15 @@ namespace Consensus.Goldilocks.Generic
 
 open SA (SAParams ReplayOrder)
 
+/-- Exact data equations for the intended Goldilocks supplier, not its field evidence. -/
+def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (O : ACHealing (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
+  O.Run = (fun proposer dg H tr => Growing.GoldilocksRun proposer dg H tr) ∧
+    O.warmup = 2 * sp.k ∧ O.follow = 3 ∧ O.drain = 2 * sp.k + 5 ∧
+    O.Warm = (fun _ _ s₀ u => s₀ + 2 * sp.k ≤ u) ∧
+    O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
+      ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
+
 /-- Intended full-set Goldilocks healing supplier, with its original run and arithmetic warmth.
 The existential is an unproved contract, never a definition of a supplier instance.
 `Run` is the original growing run. `warmup` and `Warm` come from the warmth premise in
@@ -28,11 +37,7 @@ The `warm_truncate` supplier is immediate arithmetic after the displayed `Warm` 
 neither side reads honesty. This observation supplies no field evidence here. -/
 def goldilocksACHealing (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
   ∃ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
-    O.Run = (fun proposer dg H tr => Growing.GoldilocksRun proposer dg H tr) ∧
-    O.warmup = 2 * sp.k ∧ O.follow = 3 ∧ O.drain = 2 * sp.k + 5 ∧
-    O.Warm = (fun _ _ s₀ u => s₀ + 2 * sp.k ≤ u) ∧
-    O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
-      ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
+    GoldilocksHealingData sp ro O
 
 /-- INCOMPLETE intended Goldilocks local supplier, not a completed specialisation.
 All six data equations remain open: `look`, `catchUp`, `margin`, `latency`, `hold`, and
@@ -40,7 +45,8 @@ All six data equations remain open: `look`, `catchUp`, `margin`, `latency`, `hol
 The original local field equations also remain open; no supplier evidence is inferred.
 The ready-majority counterpattern is not discharged by this skeleton. -/
 def goldilocksACCorrectLocal (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
-  Nonempty (ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+  ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro C.healing
 
 end Consensus.Goldilocks.Generic
 
