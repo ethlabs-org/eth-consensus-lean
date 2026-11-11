@@ -2,14 +2,16 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Boundaries
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.GoldilocksBridge
 
 public section
 
 /-! # Goldilocks old-premise bridge statements
 
-These unproved Prop contracts reserve the original Goldilocks statement sides of the generic
-bridges. Generic antecedents are added when their statement contracts are available. Nothing
-here supplies proved evidence. Each original premise and conclusion is retained verbatim.
+These unproved Prop contracts retain the original Goldilocks statement sides and connect them
+to the generic contracts by conditional implications. Nothing here supplies proved evidence.
+Every original premise and conclusion is retained, up to unused proof-binder alpha-renaming.
 
 This leaf has an isolated concrete bridge proof closure, not a vocabulary-only closure.
 `Kernel.Boundaries` supplies `FrameWindow`, `ProposalGap`, `DrainOutputs`, `NoRestartUpTo`,
@@ -127,8 +129,8 @@ def exists_frameWindow_seq_of_service_at_goldilocks : Prop := ∀
     ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 4 ∧ ∃ a, lo + lam ≤ a ∧
       a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
       (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey' (tr.state y i).fg = v) ∧
-      ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J
+        Healing.frameKey' (tr.state y i).fg = v) ∧
+      ∃ floor kindJ J, Healing.Growing.FrameWindow tr H a (a + len v) floor kindJ J
 
 /-- Original side: `Growing/Healing/Report/Row.lean:24`; no added tree premise. -/
 def row_or_high_of_report_at_goldilocks : Prop := ∀
@@ -180,21 +182,22 @@ def rounds_le_warm_proposal_at_goldilocks : Prop := ∀
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (_hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hwin : FrameWindow tr H af (af + len) floor kindJ J)
+    (_hwin : Healing.Growing.FrameWindow tr H af (af + len) floor kindJ J)
     (_hK : ∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
-      frameKey' (tr.state y i).fg = v)
+      Healing.frameKey' (tr.state y i).fg = v)
     (_hv : 2 * HZ tr H g ≤ v) (_hlo : af ≤ sp.ts u) (_hhi : sp.ts u ≤ af + len)
     {z : Fin sp.n} {kP : Nat} (_hz : z ∈ H (sp.ts u)) (_hdes : z = proposer u)
     (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
     (_hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n),
-    HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + riseRounds (HZ tr H g) v
+    HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h +
+      Healing.riseRounds (HZ tr H g) v
 
 /-- Original side: `Growing/Healing/Kernel/ResetRounds.lean:285`. -/
 def report_kind_of_warm_at_goldilocks : Prop := ∀
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (_hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : FrameWindow tr H lo hi floor kindJ J)
+    (_hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
     {z : Fin sp.n} {kP : Nat} (_hz : z ∈ H (sp.ts u)) (_hdes : z = proposer u)
     (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
     (_hlo : lo ≤ sp.ts u) (_hhi : sp.ts u ≤ hi)
@@ -211,7 +214,7 @@ def report_kind_of_warm_at_goldilocks : Prop := ∀
 def reset_of_high_proposal_at_goldilocks : Prop := ∀
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (_hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -228,7 +231,7 @@ def reset_of_high_proposal_at_goldilocks : Prop := ∀
 def round_of_warm_at_goldilocks : Prop := ∀
     {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J P X : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (_hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -254,7 +257,7 @@ def round_of_warm_at_goldilocks : Prop := ∀
 def rise_reset_rounds_at_goldilocks : Prop := ∀
     {g ΔF b T : Time} {s₀ N G floor : Nat} {kindJ : Prop}
     {J : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (_hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -263,7 +266,7 @@ def rise_reset_rounds_at_goldilocks : Prop := ∀
     (_hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (_hδ : 3 ≤ sp.toParams.fg.δt) (_hG : 1 ≤ G)
     (_hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (_hgp : ProposalGap tr H proposer G s₀ N)
+    (_hgp : Healing.Growing.ProposalGap tr H proposer G s₀ N)
     (_hmb : sp.ts N + 2 * sp.Δ ≤ b) (_hH : (H b).Nonempty) (_hTb : T ≤ b)
     (_hna : ∀ v k att, v ∈ H (tr.time k) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
@@ -284,7 +287,8 @@ def exists_reset_of_drain_rounds_awake_at_goldilocks : Prop := ∀
     (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (_hsvc : ResetService tr H g ΔF b)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartUpTo tr H (gbar g) b)
+    (_hcatch : CatchRun tr H g (2 * sp.Δ))
+    (_hnr : Healing.Growing.NoRestartUpTo tr H (gbar g) b)
     (_hH : (H b).Nonempty) (_hδ : 3 ≤ sp.toParams.fg.δt)
     (_hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (_hr : 0 ≤ r) (_hgr : gbar g ≤ r) (_hG : 1 ≤ G)
@@ -293,8 +297,8 @@ def exists_reset_of_drain_rounds_awake_at_goldilocks : Prop := ∀
     (_hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
-      ProposalGap tr H proposer G s₀ N)
-    (_hdrain : DrainOutputs tr proposer H g G Ld b),
+      Healing.Growing.ProposalGap tr H proposer G s₀ N)
+    (_hdrain : Healing.Growing.DrainOutputs tr proposer H g G Ld b),
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld
 
@@ -311,14 +315,14 @@ def high_row_source_at_goldilocks {tr : GoldilocksTrace sp ro}
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (_hv : v ∈ H (tr.time d)) (_hs : tr.SignAt v d att)
     (_hh : HZ tr H g + 1 ≤ att.h),
-    ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
+    ∃ r < d, ∃ l O, Healing.Growing.HighOrigin tr H g v r l O ∧
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E O ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
 /-- Original side: `Growing/Healing/Outcome/Contest.lean:41`. -/
 def no_high_contest_at_goldilocks : Prop := ∀ {g ΔF a b : Time}
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b)
+    (_hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b)
     {p : Fin sp.n} {i : Nat} (_hpH : p ∈ H (tr.time i)) (_hib : tr.time i ≤ b),
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
 
@@ -326,10 +330,10 @@ def no_high_contest_at_goldilocks : Prop := ∀ {g ΔF a b : Time}
 def high_entry_eq_at_goldilocks
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} : Prop := ∀ {g ΔF a b : Time}
-    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b) {x x' : Fin sp.n}
+    (_hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b) {x x' : Fin sp.n}
     {i j i' j' : Nat} {B B' Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))}
-    (_ho : HighOrigin tr H g x i j B) (_hib : tr.time i ≤ b)
-    (_ho' : HighOrigin tr H g x' i' j' B') (_hi'b : tr.time i' ≤ b)
+    (_ho : Healing.Growing.HighOrigin tr H g x i j B) (_hib : tr.time i ≤ b)
+    (_ho' : Healing.Growing.HighOrigin tr H g x' i' j' B') (_hi'b : tr.time i' ≤ b)
     (_h₁ : Anc (tr.HonestBlocksAt H) Z₁ B) (_h₂ : Anc (tr.HonestBlocksAt H) Z₂ B')
     {y₁ y₂ : Fin sp.n} {m₁ m₂ : Nat} {t₁ t₂ : Time}
     (_ht₁ : 0 ≤ t₁) (_hle₁ : ∀ q < m₁, tr.time q ≤ t₁) (_hy₁ : y₁ ∈ H t₁)
@@ -338,5 +342,159 @@ def high_entry_eq_at_goldilocks
     (_hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
     (_hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
     (_hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root), Z₁.root = Z₂.root
+
+/-- UNPROVED grid equation used by the rise and finite-horizon endpoint bridges.
+The numerical side is exactly `ResetRounds.lean:331` and `Boundaries.lean:83`.
+The grid is the explicit premise of `Generic/Truncation.lean:110,126`; its cell length
+is instantiated to `4 * P.Δ`, not an arbitrary slot duration. -/
+def timeout_grid_equation {P : Params} : Prop :=
+  ∀ (ΔF : Time),
+    (∀ s : Nat, P.slotTime s = (s : Time) * (4 * P.Δ)) →
+      ((∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) ↔
+        6 * P.Δ + ΔF ≤ 4 * P.Δ * (P.δt : Time))
+
+/-! Each consequent below universally closes the original target without changing its premises.
+The full validator set is used: no committee or ready-majority restriction is added. -/
+
+/-- UNPROVED full-set old-name implication; original source NoAdvance.lean:24. -/
+def reset_of_height_advance_at_bridge : Prop :=
+  reset_of_height_advance_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, reset_of_height_advance_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED upper half of the original range, NoAdvance.lean:60. -/
+def hmax_le_of_noAdvance_at_bridge : Prop :=
+  hmax_le_of_noAdvance_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, hmax_le_of_noAdvance_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED lower half of the original range, M1/FrameLag.lean:93. -/
+def HZ_le_hmax_at_bridge : Prop :=
+  HZ_le_hmax_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, HZ_le_hmax_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED full-set snapshot-call implication, DrainWarm.lean:70. -/
+def snapshotCall_of_awake_at_bridge : Prop :=
+  snapshotCall_of_awake_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, snapshotCall_of_awake_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED full-set call-lag implication, ResetRounds.lean:52. -/
+def callLag_of_awake_at_bridge : Prop :=
+  callLag_of_awake_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, callLag_of_awake_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED full-set high-source implication, ResetRounds.lean:141. -/
+def reset_of_high_source_at_bridge : Prop :=
+  reset_of_high_source_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, reset_of_high_source_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED full-set high-report implication, ResetRounds.lean:219. -/
+def reset_of_high_report_at_bridge : Prop :=
+  reset_of_high_report_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, reset_of_high_report_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED full-set proposal membership implication, ResetRounds.lean:251. -/
+def proposal_mem_at_bridge : Prop :=
+  proposal_mem_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, proposal_mem_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED real-time window implication, Boundaries.lean:29; not the slot-window endpoint. -/
+def exists_frameWindow_seq_of_service_at_bridge : Prop :=
+  exists_frameWindow_seq_of_service_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, exists_frameWindow_seq_of_service_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED report-row implication, Report/Row.lean:24.
+The old consequent has no added report-tree membership premise. -/
+def row_or_high_of_report_at_bridge : Prop :=
+  row_or_high_of_report_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, row_or_high_of_report_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED crossing implication, Crossing.lean:22; both heights remain at the later proposer. -/
+def round_cross_at_bridge : Prop :=
+  round_cross_at (goldilocksNode sp ro) (fun v => v.val) →
+    ∀ {proposer dg H tr}, round_cross_at_goldilocks (sp := sp) (ro := ro)
+      (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED deficit implication, ResetRounds.lean:530. -/
+def rounds_le_warm_proposal_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    rounds_le_warm_proposal_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, rounds_le_warm_proposal_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED report-kind implication, ResetRounds.lean:285. -/
+def report_kind_of_warm_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    report_kind_of_warm_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, report_kind_of_warm_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED high-proposal implication, ResetRounds.lean:415; original arithmetic Warm retained. -/
+def reset_of_high_proposal_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    reset_of_high_proposal_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, reset_of_high_proposal_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED round implication, ResetRounds.lean:320; no stronger timeout premise. -/
+def round_of_warm_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    round_of_warm_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, round_of_warm_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED rise implication, ResetRounds.lean:457; original numerical timeout retained. -/
+def rise_reset_rounds_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    rise_reset_rounds_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, rise_reset_rounds_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED finite-horizon endpoint implication, Boundaries.lean:75.
+Free Ld, bounded NoRestartUpTo and the original resetBoundRounds remain in the consequent. -/
+def exists_reset_of_drain_rounds_awake_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    exists_reset_of_drain_rounds_awake_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, exists_reset_of_drain_rounds_awake_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED high-row implication, Outcome/RowSource.lean:107. -/
+def high_row_source_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    high_row_source_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg tr H}, high_row_source_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (tr := tr) (H := H)
+
+/-- UNPROVED no-contest implication, Outcome/Contest.lean:41; old reset record unchanged. -/
+def no_high_contest_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    no_high_contest_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {proposer dg H tr}, no_high_contest_at_goldilocks (sp := sp) (ro := ro)
+        (proposer := proposer) (dg := dg) (H := H) (tr := tr)
+
+/-- UNPROVED historical-entry implication, RowService.lean:235.
+Arbitrary observation times are retained. -/
+def high_entry_eq_at_bridge : Prop :=
+  ∀ O : ACHealing (goldilocksNode sp ro) (fun v => v.val),
+    GoldilocksHealingData sp ro O →
+    high_entry_eq_at (goldilocksNode sp ro) (fun v => v.val) O →
+      ∀ {dg H tr proposer}, high_entry_eq_at_goldilocks (sp := sp) (ro := ro)
+        (dg := dg) (H := H) (tr := tr) (proposer := proposer)
 
 end Consensus.Goldilocks.Generic
