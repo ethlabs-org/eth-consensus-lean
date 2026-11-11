@@ -8,7 +8,7 @@ public section
 
 /-! # Open correctness assembly edges
 
-All edges are sorry-free proposition definitions, not proofs. Nothing here is supplied as
+All edges are admission-free proposition definitions, not proofs. Nothing here is supplied as
 evidence to a definition, instance, type witness or compiled endpoint. Reductions remain open rows
 until the concrete morphism and missing local interfaces have been specified.
 -/
