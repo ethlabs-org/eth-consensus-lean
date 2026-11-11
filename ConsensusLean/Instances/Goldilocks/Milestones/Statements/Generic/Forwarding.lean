@@ -153,7 +153,8 @@ structure ForwardingCodec (A : NodeAC P) (n : Nat) (Role Item Body : Type) where
     decodeForward (forwardingDigests hash outer) inner =
       decodeForward (forwardingDigests hash inner) inner
   block_digest_context : ∀ hash outer inner, Model.Obj.Contains outer inner →
-    decodeBlock (forwardingDigests hash outer) inner = decodeBlock (forwardingDigests hash inner) inner
+    decodeBlock (forwardingDigests hash outer) inner =
+      decodeBlock (forwardingDigests hash inner) inner
   message_digest_context : ∀ hash outer inner, Model.Obj.Contains outer inner →
     decodeMessage (forwardingDigests hash outer) inner =
       decodeMessage (forwardingDigests hash inner) inner
