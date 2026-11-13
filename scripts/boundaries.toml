@@ -66,16 +66,6 @@ name = "Solution"
 # so exposure there costs no rebuild. `protected`: not trusted, but `trusted_paths` must cover its files (the tag
 # freezes their text; check-boundaries.py). An empty layer is allowed.
 [[layer]]
-name = "Milestones.Statements.Problem"
-prefixes = ["ConsensusLean.Milestones.Statements.Problem"]
-expose = true
-sorry = false
-trusted = false
-protected = false
-allow = ["Init", "ToMathlib", "Core", "Spec"]
-about = "environment-only committee regime vocabulary; no model-instance or proof dependencies"
-
-[[layer]]
 name = "Instances.Goldilocks.Milestones.Statements.Generic"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic"]
 expose = true
@@ -95,7 +85,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
          "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
          "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
-         "Instances.Goldilocks.Milestones.Statements.Compose", "Milestones.Statements.Problem"]
+         "Instances.Goldilocks.Milestones.Statements.Compose"]
 about = "generic growing contracts and concrete statement bridges; no proof imports"
 
 [[layer]]
@@ -119,7 +109,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements",
          "Instances.Goldilocks.Milestones.Statements.AC",
          "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
          "Instances.Goldilocks.Milestones.Statements.Compose",
-         "Instances.Goldilocks.Milestones.Statements.Generic", "Milestones.Statements.Problem"]
+         "Instances.Goldilocks.Milestones.Statements.Generic"]
 about = "unproved generic surface edges; endpoint and acceptance closures remain isolated"
 
 [[exception]]
@@ -1145,7 +1135,6 @@ allow = ["Instances.Goldilocks.NodeEngine", "Instances.Goldilocks.Lemmas.NodeEng
          "Instances.Goldilocks.Proofs.Growing.Compose", "Instances.Goldilocks.Proofs.Growing.Continuation",
          "Examples", "Solution",
          "Instances.Goldilocks.Milestones.Spec.WriteModes",
-         "Milestones.Statements.Problem",
          "Instances.Goldilocks.Milestones.Statements.Generic",
          "Instances.Goldilocks.Lemmas.Generic"]
 may_import_roots = true

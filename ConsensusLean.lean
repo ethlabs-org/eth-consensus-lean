@@ -1148,7 +1148,6 @@ public import ConsensusLean.Lemmas.Model.Objects
 public import ConsensusLean.Lemmas.Model.Protection
 public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Retain
-public import ConsensusLean.Lemmas.Model.RoleReader
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
 public import ConsensusLean.Lemmas.Model.TruncateExt
@@ -1168,7 +1167,6 @@ public import ConsensusLean.Lemmas.Shape.OnRuns
 public import ConsensusLean.Lemmas.Shape.Payload
 public import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Main
-public import ConsensusLean.Milestones.Statements.Problem.CommitteeRegimes
 public import ConsensusLean.Proofs.Behaviour.Main
 public import ConsensusLean.Proofs.Faithful.Main
 public import ConsensusLean.Proofs.RegimesRealizable.Basic

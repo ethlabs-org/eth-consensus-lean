@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Obligations
-public import ConsensusLean.Milestones.Statements.Problem.CommitteeRegimes
+public import ConsensusLean.Spec.Problem.Regimes
 
 @[expose] public section
 

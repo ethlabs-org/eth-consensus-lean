@@ -14,10 +14,6 @@ structure CommitteeDict (n : Nat) where
 /-- Every validator participates in every slot. -/
 def CommitteeDict.full (n : Nat) : CommitteeDict n := ⟨fun _ => Set.univ⟩
 
-/-- Every slot's committee is the full validator set. -/
-def CommitteeDict.IsFull {n : Nat} (K : CommitteeDict n) : Prop :=
-  ∀ s, K.committee s = Set.univ
-
 end Consensus.Goldilocks.SA
 
 end

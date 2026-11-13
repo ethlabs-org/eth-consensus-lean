@@ -183,19 +183,6 @@ theorem mem_signedCandidate {v : V} {d : (protoOf F E).Duty}
   · simp [signedCandidate, hk]
 
 omit [DecidableEq V] in
-/-- The default classifier preserves the duty-role signing construction. -/
-theorem signedCandidate_of_default (v : V) (d : (protoOf F E).Duty)
-    (a : List (Msg (protoOf F E).Item (protoOf F E).Body × List (protoOf F E).Object))
-    (h : ∀ m, (protoOf F E).candidateRole d m = (protoOf F E).role d) :
-    rho.signedCandidate v d a =
-      if rho.ownKey v ∈ rho.sel ((protoOf F E).role d) then
-        a.map (fun (m, cs) => .mk (.signed (rho.ownKey v) ((protoOf F E).role d)) m cs)
-      else [] := by
-  by_cases hk : rho.ownKey v ∈ rho.sel ((protoOf F E).role d)
-  · simp [signedCandidate, hk, h]
-  · simp [signedCandidate, hk]
-
-omit [DecidableEq V] in
 private theorem foldl_duties_acc (v : V) (ds : List (protoOf F E).Duty)
     (nd : Node (protoOf F E)) (rel : List (protoOf F E).Object) :
     ds.foldl (fun r d => let s := rho.dutyStep v r.1 d; (s.1, r.2 ++ s.2)) (nd, rel) =
