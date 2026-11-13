@@ -67,13 +67,14 @@ end Consensus.Goldilocks.Compose.Growing
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 open Classical in
 /-- **The adapter**: the premise package of the lock module under growing faults from an armed
 ready source, with `P` its origin, `A₀` the cohort, `W` its late wakers, `j₀` the cover label and
 `r` the restored label. -/
 noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon)
     (ar : OutageArmingAt Q v) :
@@ -96,8 +97,8 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
   have hwin := outage_window_cover_at Q
   { b₀ := Q.start
     b₁ := Q.stop
-    a := (Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run
-    z := (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run
+    a := (Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run
+    z := (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run
     P := ar.origin
     σ := if ar.origin.root = Q.params.genesisRoot then 0 else ar.σ
     j₀ := Compose.coverLabel Q.params Q.start
@@ -169,7 +170,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
 
 section Projections
 
-variable {Q : OutageQueryAt S A V}
+variable {Q : OutageQueryAt S A V} [Fact (S.vote.participationKind = none)] -- TEMP(C2)
   {service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start} {v : V}
   {hsh : Q.start ≤ Q.run.2.horizon} {ar : OutageArmingAt Q v}
 

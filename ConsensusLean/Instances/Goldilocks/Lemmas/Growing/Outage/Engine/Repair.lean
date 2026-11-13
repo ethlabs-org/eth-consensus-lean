@@ -21,24 +21,25 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
 
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- **Slow-only recovery for ready readers under growing faults**: from the recovery point, the
 read of every source ready at `T` is a prefix of the read of every reader ready at `t`. -/
-theorem outage_protected_at (Q : OutageQueryAt S A V) :
+theorem outage_protected_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     (chainTrace Q.run.2).ProtectedReadyFrom Q.duration .confirmed
       (resilienceTarget schema .confirmed) Q.T
-      ((Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run) := by
+      ((Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) Q.stop Q.run) := by
   intro v hv t ht hth w hw
   have hTs : Q.T ≤ Q.start := by
     obtain ⟨-, hlag, -, -⟩ := Q.outage.times
-    have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.ΔAC := by
+    have : (0 : Time) ≤ ((K S.toSetup A).params.lag : Time) * Q.run.1.ΔAC := by
       have := Q.run.1.ΔAC_pos; positivity
     change Q.T + _ * Q.run.1.ΔAC ≤ Q.start at hlag
     linarith
   have hst : Q.start ≤ Q.stop := Q.outage.times.2.2.1
   have hrec : Q.stop ≤ t := by
-    have : (0 : Time) ≤ ((K S A).params.recovery : Time) * Q.run.1.ΔAC := by
+    have : (0 : Time) ≤ ((K S.toSetup A).params.recovery : Time) * Q.run.1.ΔAC := by
       have := Q.run.1.ΔAC_pos; positivity
     change Q.stop + _ * Q.run.1.ΔAC ≤ t at ht
     linarith

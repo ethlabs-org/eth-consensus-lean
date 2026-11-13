@@ -39,7 +39,7 @@ is `honestKeysAt` (the keys uncompromised at each time).
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- A call of the trace is at or before the engine horizon. -/
 theorem OutageQueryAt.call_le_horizon (Q : OutageQueryAt S A V) {y : Fin (Fintype.card V)}
@@ -49,7 +49,8 @@ theorem OutageQueryAt.call_le_horizon (Q : OutageQueryAt S A V) {y : Fin (Fintyp
 
 /-- **Pre-outage service through the start**, saturating at the finite engine horizon: only
 labelled recipient cuts require service. -/
-theorem outage_pre_service_at (Q : OutageQueryAt S A V) :
+theorem outage_pre_service_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start := by
   let b := min Q.start Q.run.2.horizon
   have h0 : Q.run.2.log.SyncUntil Q.run.2.point Q.start :=
@@ -76,7 +77,9 @@ theorem outage_psync_at (Q : OutageQueryAt S A V) : Q.run.2.log.PSync Q.run.2.po
   (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.2
 
 /-- **The receiver service after the stop**, for every receiver. -/
-theorem outage_receiver_service_at (Q : OutageQueryAt S A V) (y : Fin (Fintype.card V)) :
+theorem outage_receiver_service_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    (y : Fin (Fintype.card V)) :
     Compose.Growing.ReceiverServiceAfterAt Q.keys (Q.trace.HonestBlocksAt Q.keys) Q.stop y
       Q.trace.projAC :=
   receiverServiceAfterAt_of_psync S Q.run.2 Q.hn Q.valid
@@ -85,7 +88,8 @@ theorem outage_receiver_service_at (Q : OutageQueryAt S A V) (y : Fin (Fintype.c
 /-- **Post-stop pool delivery**: an update of a slot `m` with `b₁ ≤ t_m + Δ`, by a node honest at
 it, holds every slot-`m` vote of a node honest at its cast, or two other slot-`m` votes of its
 validator (equivocation evidence: the voter may be compromised after its cast). -/
-theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
+theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
     ∀ w c m ℓ, w ∈ Q.keys (Q.trace.time c) → SA.UpdateAt Q.trace.projAC w c m ℓ →
       Q.stop ≤ Q.params.ts m + Q.params.Δ →
       ∀ x i e, x ∈ Q.keys (Q.trace.time i) → SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →
@@ -97,11 +101,11 @@ theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
 /-- The catch-up duration of an outage query covers the node catch-up `18Δ`. -/
 theorem outage_duration_supply_at (Q : OutageQueryAt S A V) :
     Regimes.catchUp Q.params ≤ Q.duration := by
-  have hc : (19 : Time) ≤ (contract_catchUp S A : Nat) := by
-    exact_mod_cast contract_catchUp_ge_sleepy S A
+  have hc : (19 : Time) ≤ (contract_catchUp S.toSetup A : Nat) := by
+    exact_mod_cast contract_catchUp_ge_sleepy S.toSetup A
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   simp only [OutageQueryAt.duration, System.cDur, Params.standard, contract_coefficients_catchUp]
-  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S A : Nat) * Q.run.1.ΔAC
+  change 18 * Q.run.1.ΔAC ≤ (contract_catchUp S.toSetup A : Nat) * Q.run.1.ΔAC
   linarith [mul_le_mul_of_nonneg_right hc (zero_le_one.trans hd)]
 
 /-- (A1) The lag `4k + 6` is the node lag `(4k+6)Δ`. -/
@@ -118,13 +122,13 @@ theorem outage_node_lag_at (Q : OutageQueryAt S A V) :
 /-- (A4)/(A5) The no-sleep window `[a, z]` starts by `t_{j₀−k}` (from `0`) and ends at or after
 every update of a label `≤ j₀` within the horizon. -/
 theorem outage_window_cover_at (Q : OutageQueryAt S A V) :
-    0 ≤ (Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run ∧
-      (Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run ≤
+    0 ≤ (Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run ∧
+      (Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run ≤
         Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k) ∧
       ∀ d ≤ 6 * Q.params.Δ, Q.params.ts (Compose.coverLabel Q.params Q.start) + d ≤
           Q.run.2.horizon →
         Q.params.ts (Compose.coverLabel Q.params Q.start) + d ≤
-          (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run := by
+          (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run := by
   obtain ⟨hT, -, hb01, -⟩ := Q.outage.times
   have hlag := outage_node_lag_at Q
   have hΔ := Q.params.toParams.hΔ
@@ -172,7 +176,7 @@ theorem query_numbers_at (Q : OutageQueryAt S A V) :
       Q.start ≤ Q.stop ∧ Q.stop ≤ Q.params.ts (j₀ + Q.params.k : Nat) + Q.params.Δ ∧
       Q.params.ts (j₀ : Nat) + Q.params.Δ < Q.stop ∧
       (∀ t, t ≤ Q.params.ts (j₀ + Q.params.k : Nat) + 6 * Q.params.Δ → t ≤ Q.run.2.horizon →
-        t ≤ (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run) := by
+        t ≤ (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run) := by
   intro j₀
   obtain ⟨hT, -, hb01, hbud⟩ := Q.outage.times
   have hlag := outage_node_lag_at Q
@@ -216,39 +220,43 @@ theorem restoredLabel_spec (Q : OutageQueryAt S A V) :
 as keys (read on the view retained through the cohort time). -/
 noncomputable def OutageQueryAt.holdersAt (Q : OutageQueryAt S A V) :
     Set (Fin (Fintype.card V)) :=
-  {x | Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocks S) V).cohortAt (K S A) Q.stop
-    Q.run)).awakeAt ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run)}
+  {x | Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt
+    (K S.toSetup A) Q.stop Q.run)).awakeAt
+      ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run)}
 
 /-- The cohort's late wakers, as keys (read on the view retained through the cohort time). -/
 noncomputable def OutageQueryAt.lateKeysAt (Q : OutageQueryAt S A V) :
     Set (Fin (Fintype.card V)) :=
-  {x | Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocks S) V).cohortAt (K S A) Q.stop
-    Q.run)).lateWakers ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run)
-      ((Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run)}
+  {x | Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt
+    (K S.toSetup A) Q.stop Q.run)).lateWakers
+      ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run)
+      ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run)}
 
 theorem OutageQueryAt.mem_holdersAt {Q : OutageQueryAt S A V} {x : Fin (Fintype.card V)} :
-    x ∈ Q.holdersAt ↔ Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocks S) V).cohortAt
-      (K S A) Q.stop Q.run)).awakeAt ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run) :=
+    x ∈ Q.holdersAt ↔ Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt
+      (K S.toSetup A) Q.stop Q.run)).awakeAt
+        ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run) :=
   Iff.rfl
 
 theorem OutageQueryAt.mem_lateKeysAt {Q : OutageQueryAt S A V} {x : Fin (Fintype.card V)} :
-    x ∈ Q.lateKeysAt ↔ Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocks S) V).cohortAt
-      (K S A) Q.stop Q.run)).lateWakers ((Sys (goldilocks S) V).outageStart (K S A) Q.start Q.run)
-        ((Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run) :=
+    x ∈ Q.lateKeysAt ↔ Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt
+      (K S.toSetup A) Q.stop Q.run)).lateWakers
+        ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run)
+        ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run) :=
   Iff.rfl
 
 /-- With no cohort look-ahead, the cohort is charged at the window end. -/
 theorem OutageQueryAt.cohortAt_eq (Q : OutageQueryAt S A V) :
-    (Sys (goldilocks S) V).cohortAt (K S A) Q.stop Q.run =
-      (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run := by
-  change min ((Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run + ((0 : Nat) : Int) *
-    Q.run.1.ΔAC) Q.run.2.horizon = _
+    (Sys (goldilocksWith S) V).cohortAt (K S.toSetup A) Q.stop Q.run =
+      (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run := by
+  change min ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run +
+    ((0 : Nat) : Int) * Q.run.1.ΔAC) Q.run.2.horizon = _
   simp only [Nat.cast_zero, zero_mul, add_zero]
   exact min_eq_left (min_le_right _ _)
 
 /-- The sleepy look-ahead of the contract is `5Δ`. -/
 theorem OutageQueryAt.aheadDur_eq (Q : OutageQueryAt S A V) :
-    (Sys (goldilocks S) V).aheadDur (K S A) Q.run = 5 * Q.params.Δ := by
+    (Sys (goldilocksWith S) V).aheadDur (K S.toSetup A) Q.run = 5 * Q.params.Δ := by
   change ((5 : Nat) : Int) * Q.run.1.ΔAC = 5 * Q.run.1.ΔAC
   norm_num
 

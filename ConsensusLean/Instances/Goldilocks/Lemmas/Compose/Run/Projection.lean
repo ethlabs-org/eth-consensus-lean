@@ -226,6 +226,14 @@ private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
     push_cast [Nat.one_le_iff_ne_zero.2 hpos.ne']
     rfl
 
+/-- **The run's joined test is the AC projection's**, on a trace whose cuts are at times `≥ 0`. -/
+theorem projAC_joinedAt_iff {tr : GoldilocksTrace sp ro} (htime : ∀ k, 0 ≤ tr.time k)
+    (y : Fin sp.n) (t : Time) : tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t := by
+  unfold RunTrace.JoinedAt SA.JoinedAt
+  refine forall_congr' fun k => ?_
+  rw [projAC_restartAt]
+  exact imp_congr_right fun _ => imp_congr_right fun _ => joined_iff (htime k)
+
 /-- The latest restart time before cut `i`. -/
 private noncomputable def lastBefore (tr : GoldilocksTrace sp ro) (y : Fin sp.n) :
     Nat → WithBot Time
@@ -319,11 +327,8 @@ theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
         (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t)) ∧
       tr.honestAwakeJoined H t = SA.honestAwakeJoined tr.projAC H t := by
-  have hpt : ∀ z, (tr.JoinedAt z t ↔ SA.JoinedAt tr.projAC z t) := fun z => by
-    unfold RunTrace.JoinedAt SA.JoinedAt
-    refine forall_congr' fun k => ?_
-    rw [projAC_restartAt]
-    exact imp_congr_right fun _ => imp_congr_right fun _ => joined_iff (h.time_nonneg k)
+  have hpt : ∀ z, (tr.JoinedAt z t ↔ SA.JoinedAt tr.projAC z t) := fun z =>
+    projAC_joinedAt_iff h.time_nonneg z t
   refine ⟨hpt y, fun i hi hnr hit => ?_, ?_⟩
   · -- the restarts at or before `t` are the restarts before `i`
     have hset : ∀ k, tr.RestartAt y k → (tr.time k ≤ t ↔ k < i) := by

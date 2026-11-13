@@ -16,6 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
@@ -458,7 +459,7 @@ theorem projAC_state_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
 /-- A cast of a node honest then is at a slot the node may vote in. -/
-theorem mayVote_of_castAt_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem mayVote_of_castAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ℓ e) : (tr.state y i).ac.mayVote e.msg.slot = true := by
@@ -557,13 +558,42 @@ theorem mayVote_stock_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true :=
   mayVote_at hrun hnc hd hy rfl
 
+/-- **The stock committee facts**: at `K = full` with `committeeSize = n`, size, P, T and the frames
+hold for every signer, and the gate is the default start's permission (`mayVote_stock_at`). -/
+theorem CommitteeFacts.of_full (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hstock : sp.committeeSize = sp.n) :
+    CommitteeFacts tr H (SA.CommitteeDict.full sp.n) :=
+  ⟨SA.size_binding_full hstock,
+    ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩,
+    fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _, fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
+    fun _ ht _ hx i hi s =>
+      ⟨fun _ => SA.mem_full s _, fun _ => mayVote_stock_at hrun hnc ht hx i hi⟩⟩
+
+/-- **The stock committee bounds**: at `K = full`, CS is the population slot count read at the AC
+projection, and CS2 is the population half bound. -/
+theorem CommitteeBoundsFrom.of_full {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {σ₀ : Nat} {b : Time} (hB : SleepyBoundsFrom tr H σ₀ b) :
+    CommitteeBoundsFrom tr H (SA.CommitteeDict.full sp.n) σ₀ b := by
+  refine ⟨fun s d hs h1 hd h6 => (SA.faultBoundK_full_iff s _).2 ?_,
+    fun s d hs h0 hd _ => (SA.mul_ncard_inter_full_lt_iff 2 s _).2 (hB.two d ?_ hd)⟩
+  · have hJ : {y | y ∈ H d ∧ tr.projAC.awake y (sp.ts s + sp.Δ) ∧
+        SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)} =
+        {y | y ∈ H d ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} :=
+      Set.ext fun _ => and_congr_right fun _ => mem_awakeJoined_projAC hrun
+    change (H d)ᶜ.ncard < Set.ncard _
+    rw [hJ]
+    exact hB.slot s d hs h1 hd h6
+  · refine le_trans ?_ h0
+    simp only [SAParams.ts]
+    exact mul_nonneg (by linarith [sp.toParams.hΔ]) (by exact_mod_cast Nat.zero_le s)
+
 /-- The permission of a committee member honest at `d ≥ 0`, from the gate `hGate`. -/
-theorem mayVote_of_committee (hrun : Growing.GoldilocksRun proposer dg H tr)
-    {K : SA.CommitteeDict sp.n}
-    (hGate : ∀ x, x ∈ H 0 → ∀ i s, (tr.state x i).ac.mayVote s = true ↔ x ∈ K.committee s)
+theorem mayVote_of_committee {K : SA.CommitteeDict sp.n}
+    (hGate : ∀ t, 0 ≤ t → ∀ x, x ∈ H t → ∀ i, (∀ k < i, tr.time k ≤ t) → ∀ s,
+      ((tr.state x i).ac.mayVote s = true ↔ x ∈ K.committee s))
     (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat} (hyK : y ∈ K.committee s) :
     ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true :=
-  fun i _ => (hGate y (hrun.antitone hd hy) i s).2 hyK
+  fun i hi => (hGate d hd y hy i hi s).2 hyK
 
 /-- A node honest at `t_s + Δ`, awake and joined then, and permitted to vote in slot `s` before
 then, casts a slot-`s` vote by then, at a cut at which it is honest. -/

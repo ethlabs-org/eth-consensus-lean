@@ -49,7 +49,7 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 open Blocks Shape
 
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
 point, read at the trace cut of the end of `t`. -/
@@ -77,7 +77,9 @@ private theorem duration_nonneg (Q : OutageQueryAt S A V) : 0 ≤ Q.duration :=
 
 /-- A node honest at `t ≥ 0` and awake through a catch-up window `c` before `t`, with
 `8Δ ≤ c + 1`, is joined at `t` (the static `ready_implies_joined` on the prefix through `t`). -/
-private theorem joined_of_ready (Q : OutageQueryAt S A V) {y : Fin Q.params.n} {t c : Time}
+private theorem joined_of_ready (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {y : Fin Q.params.n} {t c : Time}
     (hy : y ∈ Q.keys t) (ht : 0 ≤ t) (hc : 8 * Q.params.Δ ≤ c + 1)
     (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → Q.trace.awake y u) :
     Q.trace.JoinedAt y t := by
@@ -88,7 +90,9 @@ private theorem joined_of_ready (Q : OutageQueryAt S A V) {y : Fin Q.params.n} {
 
 /-- The restarts of a node joined at `t ≥ 0` and honest then, up to `t`, are at or before
 `t_{slot t − 1}` (the static `joined_projection` on the prefix through `t`). -/
-private theorem restarts_of_joined (Q : OutageQueryAt S A V) {y : Fin Q.params.n} {t : Time}
+private theorem restarts_of_joined (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {y : Fin Q.params.n} {t : Time}
     (hy : y ∈ Q.keys t) (ht : 0 ≤ t) (hJ : Q.trace.JoinedAt y t) :
     ∀ k, Q.trace.projAC.RestartAt y k → Q.trace.time k ≤ t →
       Q.trace.time k ≤ Q.params.ts ((Q.params.slot t : Int) - 1) := by
@@ -101,9 +105,10 @@ private theorem restarts_of_joined (Q : OutageQueryAt S A V) {y : Fin Q.params.n
 
 /-- **E0–E4 under growing faults**: the latest gate of a reader ready at `t` from the recovery
 point `b₁ + 9Δ`. Only readiness, joining, the gate tick and the read cut are used. -/
-theorem outage_reader_gate_at (Q : OutageQueryAt S A V) {t : Time}
-    (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t) (hth : t ≤ Q.run.2.horizon)
-    {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
+theorem outage_reader_gate_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {t : Time} (ht : (Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) Q.stop Q.run ≤ t)
+    (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
     Nonempty (OutageReaderGateAt Q w t) := by
   set sp := Q.params
   set tr := Q.trace
@@ -115,6 +120,7 @@ theorem outage_reader_gate_at (Q : OutageQueryAt S A V) {t : Time}
     change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
+  clear ht
   have hb₁ := outage_stop_nonneg Q.outage
   have hdur := outage_duration_supply_at Q
   have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
@@ -183,7 +189,9 @@ private theorem cutTime_endCut_le (Q : OutageQueryAt S A V) {t : Time} (ht : 0 �
 
 /-- The confirmed read of an engine node ready at `t ∈ [0, horizon]` is the chain of its read tip
 at the trace cut of the end of `t`. -/
-private theorem read_eq_chain (Q : OutageQueryAt S A V) {w : V} {t : Time} (ht0 : 0 ≤ t)
+private theorem read_eq_chain (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {w : V} {t : Time} (ht0 : 0 ≤ t)
     (hth : t ≤ Q.run.2.horizon) (hw : Q.run.2.point.Ready Q.duration w t) :
     (chainTrace Q.run.2).readAt .confirmed w t =
       chainTo (Q.trace.state (Q.run.2.ownKey w)
@@ -204,8 +212,9 @@ private theorem read_eq_chain (Q : OutageQueryAt S A V) {w : V} {t : Time} (ht0 
 
 /-- **The read prefix**: ancestry of the two read tips, inside the blocks held while honest, is
 the prefix of the engine reads. -/
-theorem outage_reader_prefix_at (Q : OutageQueryAt S A V) {v : V}
-    (hv : Q.run.2.point.Ready Q.duration v Q.T) {t : Time} (hTt : Q.T ≤ t)
+theorem outage_reader_prefix_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {v : V} (hv : Q.run.2.point.Ready Q.duration v Q.T) {t : Time} (hTt : Q.T ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t)
     (h : Anc (Q.trace.HonestBlocksAt Q.keys)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
@@ -240,6 +249,7 @@ private theorem compatible_tree {sp : SA.SAParams} {U : Set (SA.Blk sp.n (List (
 node honest at its cast extends the origin (`restored_votes_extend_at`), so the slot count at
 `d ∈ [t_q + Δ, t_q + 6Δ]` within the horizon gives the extending majority charged at `d`. -/
 theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArmingAt Q v)
     (hinv : ∀ i, Compose.Growing.OutageLockInv (outageLockPremises_of_arming_at Q service hsh ar) i)
@@ -262,10 +272,11 @@ theorem extending_majority_after_r_at (Q : OutageQueryAt S A V)
 /-- **The reader bridge under growing faults.** A reader ready at `t` from the recovery point
 reads above the armed read tip of the ready source. -/
 theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon) (ar : OutageArmingAt Q v)
     (hinv : ∀ i, Compose.Growing.OutageLockInv (outageLockPremises_of_arming_at Q service hsh ar) i)
-    {t : Time} (ht : (Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run ≤ t)
+    {t : Time} (ht : (Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) Q.stop Q.run ≤ t)
     (hth : t ≤ Q.run.2.horizon) {w : V} (hw : Q.run.2.point.Ready Q.duration w t) :
     Anc (Q.trace.HonestBlocksAt Q.keys) ar.tip
       (Regimes.readAfter Q.trace (Q.run.2.ownKey w)
@@ -280,6 +291,7 @@ theorem outage_reader_bridge_at (Q : OutageQueryAt S A V)
     change Q.stop + ((9 : Nat) : Time) * Q.run.1.ΔAC ≤ t at ht
     push_cast at ht
     exact ht
+  clear ht
   have ht0 : 0 ≤ t := by linarith [outage_stop_nonneg Q.outage, Q.run.1.ΔAC_pos]
   have hŵ : Q.run.2.ownKey w ∈ Q.keys t := honest_ownKey_at S Q.run.2 hw.1 hth
   have hS := outage_receiver_service_at Q (Q.run.2.ownKey w)

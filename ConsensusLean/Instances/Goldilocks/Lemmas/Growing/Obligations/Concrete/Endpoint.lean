@@ -30,7 +30,7 @@ theorem meetsObligations_claims_growing :
     sleepySafe := meetsObligations_sleepySafe_growing S A V
     sleepyLive := meetsObligations_sleepyLive_growing S A V
     healedSafe := meetsObligations_healedSafe_growing S A V
-    persists := meetsObligations_persists_growing S A V }
+    persists := meetsObligations_persists_growing ⟨S, stock⟩ A V }
 
 /-- **The growing-fault endpoint** at the coefficients `contract_coefficients S A`. -/
 theorem meetsObligations_growing : ShapeObligations (goldilocks S) (K S A) :=

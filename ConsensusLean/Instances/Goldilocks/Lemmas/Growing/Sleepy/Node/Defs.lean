@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
 
 public section
 
@@ -130,6 +131,29 @@ structure SleepyBoundsFrom (σ₀ : Nat) (b : Time) : Prop where
     d ≤ sp.ts s + 6 * sp.Δ → tr.FaultBoundAt H (sp.ts s + sp.Δ) d
   late : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s + 2 * sp.Δ ≤ d → d ≤ b →
     d ≤ sp.ts s + 7 * sp.Δ → tr.FaultBoundAt H (sp.ts s + 2 * sp.Δ) d
+
+/-- **The run half of the committee premises** for the slot dictionary `K`: committees of
+`committeeSize` members, P and T (`CommitteePAt`, `CommitteeTAt`), the frames of nodes honest at
+the cut carry votes of members, and the gate: a node honest at `t ≥ 0` may vote in slot `s`, before
+every cut whose earlier cuts are at times `≤ t`, iff it is in the slot-`s` committee. -/
+structure CommitteeFacts (K : SA.CommitteeDict sp.n) : Prop where
+  hsize : ∀ s, (K.committee s).ncard = sp.committeeSize
+  hP : SA.CommitteePAt K tr.projAC H
+  hT : SA.CommitteeTAt K tr.projAC H
+  hFrame : ∀ w c, w ∈ H (tr.time c) → ∀ C ∈ (Node.frame (tr.state w c)).tree,
+    ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot
+  hGate : ∀ t, 0 ≤ t → ∀ x, x ∈ H t → ∀ i, (∀ k < i, tr.time k ≤ t) → ∀ s,
+    ((tr.state x i).ac.mayVote s = true ↔ x ∈ K.committee s)
+
+/-- **The committee count shapes through `b` for the slots from `σ₀` on**: for every slot `s ≥ σ₀`,
+CS at the slot-`s` committee (`FaultBoundK`, faults charged at `d`, readiness at `t_s + Δ`) at
+every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, and CS2 `2 f_d < |K s|` among the slot-`s` committee at
+every `d ∈ [t_s, min b (t_s + 2Δ)]`. -/
+structure CommitteeBoundsFrom (K : SA.CommitteeDict sp.n) (σ₀ : Nat) (b : Time) : Prop where
+  slotK : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s + sp.Δ ≤ d → d ≤ b →
+    d ≤ sp.ts s + 6 * sp.Δ → SA.FaultBoundK K s tr.projAC (H d) (sp.ts s + sp.Δ)
+  twoK : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s ≤ d → d ≤ b → d ≤ sp.ts s + 2 * sp.Δ →
+    2 * (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s).ncard
 
 /-- **The Sleepy record invariant up to `b`** (S1–S3). A node's state before cut `i` is read at a
 time `t ∈ [0, b]` at or after every earlier cut, with the node honest at `t` (the convention of
@@ -263,6 +287,19 @@ theorem SleepyBoundsFrom.mono {σ₀ : Nat} {b b' : Time} (h : SleepyBoundsFrom 
   ⟨fun d h0 hd => h.two d h0 (hd.trans hb),
     fun s d hs h1 hd h6 => h.slot s d hs h1 (hd.trans hb) h6,
     fun s d hs h1 hd h7 => h.late s d hs h1 (hd.trans hb) h7⟩
+
+/-- The committee bounds through `b` give the committee bounds through every `b' ≤ b`. -/
+theorem CommitteeBoundsFrom.mono {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b b' : Time}
+    (h : CommitteeBoundsFrom tr H K σ₀ b) (hb : b' ≤ b) : CommitteeBoundsFrom tr H K σ₀ b' :=
+  ⟨fun s d hs h1 hd h6 => h.slotK s d hs h1 (hd.trans hb) h6,
+    fun s d hs h0 hd h2 => h.twoK s d hs h0 (hd.trans hb) h2⟩
+
+/-- **Awake and joined at the AC projection** is awake and joined at the run. -/
+theorem mem_awakeJoined_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {proposer : Nat → Fin sp.n} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {t : Time} {y : Fin sp.n} :
+    (tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t) ↔ (tr.awake y t ∧ tr.JoinedAt y t) :=
+  and_congr Iff.rfl (projAC_joinedAt_iff hrun.time_nonneg y t).symm
 
 /-- The service through `b` gives the service through every `b' ≤ b`. -/
 theorem SleepyServiceBefore.mono {ΔF b b' : Time} (h : SleepyServiceBefore tr H ΔF b)

@@ -147,11 +147,15 @@ theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ c
     exact ⟨fun _ _ i _ hi => (hnone i hi).elim,
       fun _ i _ hi => (hnone i hi).elim⟩
 
-theorem meetsObligations_persists_growing : ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
-    (Sys (goldilocks S) V).Holds ((Sys (goldilocks S) V).Outage
-      (shapeProgress (goldilocks S) V).toExternal (K S A) T b₀ b₁) fun r =>
-      (chainTrace r.2).ProtectedReadyFrom ((Sys (goldilocks S) V).cDur (K S A) r) g
-        (resilienceTarget schema g) T ((Sys (goldilocks S) V).recoveryAt (K S A) b₁ r) := by
+theorem meetsObligations_persists_growing (S : BoundSetup) (A : ContractAssumptions S.toSetup)
+    (V : Type) [Fintype V] [DecidableEq V]
+    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+    ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
+    (Sys (goldilocksWith S) V).Holds ((Sys (goldilocksWith S) V).Outage
+      (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) T b₀ b₁) fun r =>
+      (chainTrace r.2).ProtectedReadyFrom ((Sys (goldilocksWith S) V).cDur (K S.toSetup A) r) g
+        (resilienceTarget schema g) T
+        ((Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) b₁ r) := by
   intro g hg T b₀ b₁ r hv ho
   have hg' : g = Out.confirmed := Option.some.inj hg.symm
   subst g

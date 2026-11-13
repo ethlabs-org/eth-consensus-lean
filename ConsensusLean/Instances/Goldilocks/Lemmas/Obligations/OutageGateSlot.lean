@@ -21,12 +21,13 @@ open AsChainShape
 open Blocks Shape
 
 /-- The outage ends at a time `b₁ ≥ 0`: `0 ≤ T`, `T + lag·Δ_AC ≤ b₀ ≤ b₁`. -/
-theorem outage_stop_nonneg {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V]
-    [DecidableEq V] {run : (Sys (goldilocks S) V).Run} {T start stop : Time}
-    (h : (Sys (goldilocks S) V).Outage
-      (shapeProgress (goldilocks S) V).toExternal (K S A) T start stop run) : 0 ≤ stop := by
+theorem outage_stop_nonneg {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type}
+    [Fintype V] [DecidableEq V] {run : (Sys (goldilocksWith S) V).Run} {T start stop : Time}
+    (h : (Sys (goldilocksWith S) V).Outage
+      (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) T start stop run) :
+    0 ≤ stop := by
   obtain ⟨hT, hlag, h01, -⟩ := h.times
-  have : (0 : Time) ≤ ((K S A).params.lag : Time) * run.1.ΔAC := by
+  have : (0 : Time) ≤ ((K S.toSetup A).params.lag : Time) * run.1.ΔAC := by
     have := run.1.ΔAC_pos; positivity
   change T + _ * run.1.ΔAC ≤ start at hlag
   change start ≤ stop at h01

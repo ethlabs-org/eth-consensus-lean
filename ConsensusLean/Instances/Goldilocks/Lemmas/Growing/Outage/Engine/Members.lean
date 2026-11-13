@@ -14,7 +14,7 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation
 
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 namespace OutageQueryAt
 

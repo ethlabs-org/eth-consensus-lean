@@ -14,12 +14,12 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation
 
-variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintype V] [DecidableEq V]
 
 namespace OutageQueryAt
 
 /-- The vote role of the query's binding. -/
-abbrev voteRole (_Q : OutageQueryAt S A V) := stock.voteRole
+abbrev voteRole (_Q : OutageQueryAt S A V) := S.vote.voteRole
 
 /-- The committee dictionary of the query: the keys selected for each slot's vote role. -/
 def K (Q : OutageQueryAt S A V) : SA.CommitteeDict (Fintype.card V) :=
