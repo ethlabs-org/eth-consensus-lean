@@ -90,6 +90,24 @@ abbrev _root_.Consensus.Goldilocks.AsChainShape.BoundSetup.params (S : BoundSetu
     (pub : Model.Public) (hn : 1 ≤ pub.n) : SAParams :=
   S.toSetup.params pub hn (binding := S.vote)
 
+/-- A bound setup's committee is nonempty at every population with a validator: the population
+binding's committee is the population, a committee binding's by `VoteBinding.committeeSize_pos`. -/
+theorem _root_.Consensus.Goldilocks.AsChainShape.BoundSetup.committeeSize_pos (S : BoundSetup)
+    (pub : Model.Public) (hn : 1 ≤ pub.n) : 0 < (S.params pub hn).committeeSize := by
+  change 0 < S.vote.committeeSize pub
+  unfold VoteBinding.committeeSize
+  split
+  · exact hn
+  · rename_i k _
+    have h := S.vote.committeeSize_pos pub k hn
+    split
+    · rename_i m hm
+      rw [hm] at h
+      exact lt_min h hn
+    · rename_i keys hk
+      rw [hk] at h
+      exact Finset.card_pos.mpr h
+
 /-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
 root `g`; any other block's root is the tagged hash of its header (`parentRef` for the parent). -/
 def dgOf {n : Nat} (hash : Header Info → Nat) (g : Nat) : Digest (List (FG.Att n)) (Payload n) :=

@@ -181,6 +181,12 @@ structure VoteBinding where
   kindSel : (pub : Public) → Kind → SelSpec pub.n
   /-- The kind observed by available-chain participation. -/
   participationKind : Option Kind
+  /-- Every kind's selection is nonempty at a nonempty population: a sized selection asks for at
+  least one key, a fixed one names at least one. -/
+  committeeSize_pos : ∀ (pub : Public) (k : Kind), 0 < pub.n →
+    match kindSel pub k with
+    | .sized m => 1 ≤ m
+    | .fixed keys => keys.Nonempty
 
 attribute [instance] VoteBinding.decKind
 
@@ -204,18 +210,25 @@ def stock : VoteBinding where
   decKind := inferInstance
   kindSel := fun _ k => k.elim
   participationKind := none
+  committeeSize_pos := fun _ k => k.elim
 
 /-- The historical committee vote role; no additional scheduled action is needed. -/
 inductive VoteKind where
   | vote
   deriving DecidableEq
 
-/-- A committee uses the same codec and state machine as the population binding. -/
-def committee (selection : (pub : Public) → SelSpec pub.n) : VoteBinding where
+/-- A committee uses the same codec and state machine as the population binding. Its selection is
+nonempty at every nonempty population (`hsel`). -/
+def committee (selection : (pub : Public) → SelSpec pub.n)
+    (hsel : ∀ pub : Public, 0 < pub.n →
+      match selection pub with
+      | .sized m => 1 ≤ m
+      | .fixed keys => keys.Nonempty) : VoteBinding where
   Kind := VoteKind
   decKind := inferInstance
   kindSel := fun pub _ => selection pub
   participationKind := some .vote
+  committeeSize_pos := fun pub _ => hsel pub
 
 /-- Classify historical votes; other bodies retain their duty's signing role.
 The population binding leaves all signing to the original duty classifier. -/
