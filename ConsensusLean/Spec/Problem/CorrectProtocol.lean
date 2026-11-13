@@ -329,12 +329,7 @@ def Progress.restrict {S : System V} (X : Progress S Prog) (Q : S.Run → Prop) 
   Ext := X.Ext
   ext := X.ext
   Admits := X.Admits
-  transport := X.transport
-  transport_refl := X.transport_refl
-  transport_trans := X.transport_trans
-  admits_transport := X.admits_transport
   selected := X.selected
-  selected_transport := X.selected_transport
   holds := X.holds
   mono := X.mono
   shrink := X.shrink
@@ -361,12 +356,7 @@ def Progress.atRun {S : System V} (X : Progress S Prog) (r : S.Run) :
   Ext := X.Ext
   ext := X.ext
   Admits := X.Admits
-  transport := X.transport
-  transport_refl := X.transport_refl
-  transport_trans := X.transport_trans
-  admits_transport := X.admits_transport
   selected := X.selected
-  selected_transport := X.selected_transport
   holds := X.holds
   mono := X.mono
   shrink := X.shrink

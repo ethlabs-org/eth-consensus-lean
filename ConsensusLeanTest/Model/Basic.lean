@@ -128,20 +128,6 @@ def env : Env (Fin 2) := ⟨3, by decide, 3, by decide, fun _ _ => true⟩
 def sel : Bool → Finset (Fin (Fintype.card (Fin 2))) :=
   fun r => if r then {0} else Finset.univ
 
-/-- A public participation query switches roles at a fixed time, not when nodes wake. -/
-def participationFamily : ProtocolFamily schema := fun pub =>
-  { proto pub with participationRole := fun t => some (decide (t < 4)) }
-
-/-- The queried singleton and whole-population selections survive an awake-profile change. -/
-theorem participation_observation_independent :
-    let X := sysExternal schema participationFamily (Fin 2)
-    let x : X.Ext env := (pkiFin 2, sel)
-    let sleeping := { env with awake := fun _ _ => false }
-    let y := X.transport env sleeping rfl rfl x
-    X.selected env x 3 = {0} ∧ X.selected sleeping y 3 = {0} ∧
-      X.selected sleeping y 4 = Finset.univ := by
-  decide
-
 theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := by
   intro r
   rw [h]

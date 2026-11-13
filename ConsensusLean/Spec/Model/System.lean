@@ -81,44 +81,9 @@ def sysExternal (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
   Ext E := (Fin (Fintype.card V) ≃ V) × ((protoOf F E).Role → Finset (Fin (Fintype.card V)))
   ext r := (r.2.key, r.2.sel)
   Admits E e := (protoOf F E).SelAdmits e.2
-  transport := by
-    intro E E' hAC hFG
-    rcases E with ⟨a, ha, b, hb, awake⟩
-    rcases E' with ⟨a', ha', b', hb', awake'⟩
-    cases hAC
-    cases hFG
-    exact Equiv.refl _
-  transport_refl := by
-    intro E x
-    rcases E with ⟨a, ha, b, hb, awake⟩
-    rfl
-  transport_trans := by
-    intro E E' E'' hAC hFG hAC' hFG' x
-    rcases E with ⟨a, ha, b, hb, awake⟩
-    rcases E' with ⟨a', ha', b', hb', awake'⟩
-    rcases E'' with ⟨a'', ha'', b'', hb'', awake''⟩
-    cases hAC
-    cases hFG
-    cases hAC'
-    cases hFG'
-    rfl
-  admits_transport := by
-    intro E E' hAC hFG x
-    rcases E with ⟨a, ha, b, hb, awake⟩
-    rcases E' with ⟨a', ha', b', hb', awake'⟩
-    cases hAC
-    cases hFG
-    rfl
   selected E x t := match (protoOf F E).participationRole t with
     | none => Finset.univ
     | some role => (x.2 role).map x.1.toEmbedding
-  selected_transport := by
-    intro E E' hAC hFG x t
-    rcases E with ⟨a, ha, b, hb, awake⟩
-    rcases E' with ⟨a', ha', b', hb', awake'⟩
-    cases hAC
-    cases hFG
-    cases (protoOf F ⟨a, ha, b, hb, awake⟩).participationRole t <;> rfl
 
 end Consensus.Model
 

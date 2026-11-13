@@ -458,14 +458,9 @@ which transactions arrive. (Otherwise "every submission is `42`" would be a
 legal requirement, and a constant ledger `[42]` that censors everything else
 would pass: `censoring_progress_rejected`.)
 
-`External` also requires a coherent equivalence of the entire input spaces
-when the environment's delays agree: transport is the identity on the same
-environment, composes across environments, and preserves admissibility in both
-directions. These laws alone do not make a selection reader independent of the
-awake profile: `External.selected_transport` additionally requires that the
-selected population at every observation time commute with transport. In the
-model, `sysExternal` transports the same PKI and complete role selection and
-observes the protocol's public `participationRole` (`none`: the whole population).
+In the model, `sysExternal` exports the PKI and the complete role selection, and
+`External.selected` observes the protocol's public `participationRole` (`none`:
+the whole population).
 The protocol, its role query and selection specification depend only on public
 delays and population size. A shape queries its `participationKind` in the slot
 of the observation, retaining that historical selection at later fault charges.

@@ -232,30 +232,9 @@ structure External {V : Type} (S : System V) where
   ext : (r : S.Run) → Ext (S.trace r).point.env
   /-- Admissible external data (in the model: the protocol's selection spec). -/
   Admits : (E : Env V) → Ext E → Prop
-  /-- Changing participation while keeping the public delays preserves the entire
-  external input space, not only inputs admitted in one environment. Fault profiles
-  and submissions are absent from both sides. -/
-  transport : ∀ (E E' : Env V), E.ΔAC = E'.ΔAC → E.ΔFG = E'.ΔFG → Ext E ≃ Ext E'
-  /-- Reindexing an input in the same environment preserves its identity. -/
-  transport_refl : ∀ (E : Env V) (x : Ext E), transport E E rfl rfl x = x
-  /-- Reindexing through an intermediate participation profile changes no input. -/
-  transport_trans : ∀ (E E' E'' : Env V)
-    (hAC : E.ΔAC = E'.ΔAC) (hFG : E.ΔFG = E'.ΔFG)
-    (hAC' : E'.ΔAC = E''.ΔAC) (hFG' : E'.ΔFG = E''.ΔFG) (x : Ext E),
-    transport E' E'' hAC' hFG' (transport E E' hAC hFG x) =
-      transport E E'' (hAC.trans hAC') (hFG.trans hFG') x
-  /-- Admissibility is invariant along transport. Independence of a selection
-  reader additionally requires that its selected sets commute with transport. -/
-  admits_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
-    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E),
-    Admits E' (transport E E' hAC hFG x) ↔ Admits E x
   /-- The population selected at an observation time. A later fault charge reads
   this same set; it does not select again at the charge time. -/
   selected : (E : Env V) → Ext E → Time → Finset V
-  /-- Selected identities do not change with participation at equal delays. -/
-  selected_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
-    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E) (t : Time),
-    selected E' (transport E E' hAC hFG x) t = selected E x t
 
 namespace System
 
