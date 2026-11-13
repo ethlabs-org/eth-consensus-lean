@@ -1,12 +1,23 @@
 module
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
 
-/-! # Stock vote-binding regression
+/-! # Vote bindings: the population binding and a proper-subset committee
 
-The legacy constructors below retain the population instance's bodies, with only the
-permission arguments forced by the model interface. No production module imports them.
+`legacySkeleton`, `legacyShape` and `legacyGoldilocks` are the 9124-form population shape: the
+population instance's bodies, with only the permission argument the model interface now passes.
+No production module imports them. `stock_legacy`: the population binding equals the 9124-form
+shape.
+
+`committeeOne` is a committee binding whose selection is one key per slot. Its votes are signed in
+the slot's committee role and other poll bodies keep the poll role (`committeeOne_voteRole`,
+`committeeOne_candidateRole_vote`, `committeeOne_candidateRole_att`); initialization installs the
+own committee membership as the vote permission (`committeeOne_init_mayVote`), so a node outside
+the slot's committee emits no vote of that slot (`committeeOne_nonmember_silent`); every admissible
+committee has one key, the committee size, a proper subset of every population of two or more
+(`committeeOne_committeeSize`, `committeeOne_selected_proper`).
 -/
 
 namespace Consensus.Goldilocks.AsChainShape.Regression
@@ -90,7 +101,7 @@ noncomputable def legacyGoldilocks (S : Setup) : ChainShapeFamily schema Info :=
 /-- The public stock subject reduces to the stock binding without a transport. -/
 theorem goldilocks_stock (S : Setup) : goldilocks S = goldilocksWith ⟨S, stock⟩ := by rfl
 
-/-- The generic stock instance equals the legacy population shape. -/
+/-- The population binding equals the 9124-form shape. -/
 theorem stock_legacy (S : Setup) : goldilocksWith ⟨S, stock⟩ = legacyGoldilocks S := by
   funext pub
   let X := goldilocksWith ⟨S, stock⟩ pub
@@ -117,5 +128,65 @@ theorem stock_legacy (S : Setup) : goldilocksWith ⟨S, stock⟩ = legacyGoldilo
         cases (st hn).relayBuf <;> rfl
       · simp only [hn, ↓reduceDIte]
         rfl
+
+/-! ## A proper-subset committee binding -/
+
+/-- A committee binding selecting one key per slot (`VoteBinding.committee`, nonempty at every
+nonempty population). -/
+@[expose] def committeeOne : VoteBinding := committee (fun _ => .sized 1) (fun _ _ => le_rfl)
+
+/-- Votes are authenticated in the slot's committee role, not in the poll role. -/
+theorem committeeOne_voteRole (s : Slot) : committeeOne.voteRole s = .duty s .vote := rfl
+
+/-- A poll emission of a vote is signed in the vote's committee role. -/
+theorem committeeOne_candidateRole_vote {n : Nat} (t : Nat) (v : SA.Vote n) :
+    (committeeOne.candidateRole n (.poll t) (.data (.vote (encodeVote v)))).getD .poll =
+      .duty v.slot .vote :=
+  committeeOne.candidateRole_poll_vote t v
+
+/-- A poll emission of an attestation keeps the poll role. -/
+theorem committeeOne_candidateRole_att (n t : Nat) (a : WireAtt) :
+    (committeeOne.candidateRole n (.poll t) (.data (.att a))).getD .poll = .poll :=
+  committeeOne.candidateRole_poll_nonvote n t _ fun _ h => by cases h
+
+/-- Initialization installs the own membership in the slot's committee as the vote permission. -/
+theorem committeeOne_init_mayVote (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) (key : Fin pub.n)
+    (p : ShapeRole VoteKind → Bool) (s : Slot) :
+    (((goldilocksWith ⟨S, committeeOne⟩ pub).init key p hn).node.ac).mayVote s =
+      p (.duty s .vote) :=
+  committeeOne.installVote_mayVote (Option.some_ne_none _) p _ s
+
+/-- A node outside the slot-`s` committee emits no slot-`s` vote from its initial AC state, at
+any call, frame and time. -/
+theorem committeeOne_nonmember_silent (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
+    (key : Fin pub.n) (p : ShapeRole VoteKind → Bool) (s : Slot)
+    (hp : p (.duty s .vote) = false) (Φ : SA.Frm pub.n (List (FG.Att pub.n))) (t : Time)
+    (c : (SA.goldilocksSA (S.params pub hn committeeOne) (List (FG.Att pub.n))
+      (S.ro pub.n)).Call) :
+    ∀ e ∈ ((SA.goldilocksSA (S.params pub hn committeeOne) (List (FG.Att pub.n))
+      (S.ro pub.n)).step key
+        (((goldilocksWith ⟨S, committeeOne⟩ pub).init key p hn).node.ac) Φ t c).2,
+      e.msg.slot ≠ s := by
+  intro e he hs
+  have h := SA.emits_mayVote (S.ro pub.n) key _ Φ t c e he
+  rw [hs, committeeOne_init_mayVote S pub hn key p s, hp] at h
+  exact Bool.false_ne_true h
+
+/-- The committee size, the vote threshold denominator, is `1` at every nonempty population. -/
+theorem committeeOne_committeeSize (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) :
+    (S.params pub hn committeeOne).committeeSize = 1 := by
+  change min 1 pub.n = 1
+  omega
+
+/-- Every admissible slot committee has the committee size, one key: a proper subset of every
+population of two or more. -/
+theorem committeeOne_selected_proper (S : Setup) (pub : Public) (hn : 2 ≤ pub.n) (k : VoteKind)
+    (T : Finset (Fin pub.n))
+    (hT : ((goldilocksWith ⟨S, committeeOne⟩ pub).skel.kindSel k).Admits T) :
+    T.card = (S.params pub (by omega) committeeOne).committeeSize ∧ T ⊂ Finset.univ := by
+  change T.card = min 1 pub.n at hT
+  refine ⟨hT, Finset.ssubset_univ_iff.2 fun h => ?_⟩
+  rw [h, Finset.card_univ, Fintype.card_fin] at hT
+  omega
 
 end Consensus.Goldilocks.AsChainShape.Regression
