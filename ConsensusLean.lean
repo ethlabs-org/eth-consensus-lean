@@ -216,6 +216,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.CorrectnessEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.GoldilocksBridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ProgressBudgetEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base

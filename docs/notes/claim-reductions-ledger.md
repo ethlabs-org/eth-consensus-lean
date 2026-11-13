@@ -143,7 +143,7 @@ Concrete source paths below are under `Lemmas/` unless otherwise stated.
 | preparation horizon Premises | PreparationPremisesSupply | NEW OPEN target; consumed before healing, not proved by healing |
 | reset / canonicality / drain-slot time | ActualResetSupply, HighCanonicalSupply, ResetHealBudgetSupply | Three separate NEW OPEN targets; heal_after_reset only consumes them |
 | healed temporal ancestry | HealedReadAncestry + StoredReadTransport | NEW OPEN local ancestry and separate mapping, not compatibility⇒ancestry |
-| outage participation/sample coverage | OutageTransport.participation/coverage and OutagePolicy.binding/horizon | Existing OPEN suppliers |
+| outage participation | OutageTransport.participation and OutagePolicy.binding/horizon | Existing OPEN suppliers; at the run's own point and selection the participation clauses follow from `Outage` (`OutageTransport.participation_of_outage`). The destination coupling (sample coverage) is removed: unsatisfiable under growing faults |
 | fixed outage recovery floor / endpoint fit | ACCorrectLocal.recovery/recovery_nonneg; OutageRecoveryBinding.duration at SAME M/K/C | NEW OPEN exact-policy matching target; no inference from sample coverage or readiness |
 | outage pre/post service | OutageServiceSupply | NEW OPEN exact implication, concrete service mismatch recorded above |
 | resilience target tip | ResilienceTipTransport | NEW OPEN representation only |

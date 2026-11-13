@@ -123,8 +123,10 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
     ReadBoundary tr y j → Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
 
 /-- L9 preserves the actual source read at T and destination read at t. Source:
-CorrectLocal.outageProtected and lead LeadOutageProtected. This neither supplies
-committee band coverage nor changes its retained cohort window. -/
+CorrectLocal.outageProtected and lead LeadOutageProtected. The local premises are the
+`System.Outage` clause shapes at endpoint binders `a`, `z`, `retention`, `bandStart`,
+`bandEnd`, constrained only by `a ≤ b₀` and `b₁ ≤ z`; tying them to the contract's endpoints
+is an open generic-layer defect. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
   protection : ∀ proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
     K η populationLook a z retention bandStart bandEnd ΔF T b₀ b₁ recoveryTime,
@@ -139,8 +141,7 @@ structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : P
     ReadyReadPoint tr H p.horizon C.catchUp x i T → ReadBoundary tr x i →
     recoveryTime ≤ t → ReadyReadPoint tr H p.horizon C.catchUp y j t →
     ReadBoundary tr y j →
-    a ≤ b₀ → b₁ ≤ z → z ≤ t → t ≤ retention →
-    max 0 bandStart ≤ t → t ≤ bandEnd → (K t).Nonempty →
+    a ≤ b₀ → b₁ ≤ z →
       Anc (tr.HonestBlocksAt H) (confirmedRead tr x i T) (confirmedRead tr y j t)
 
 section Engine

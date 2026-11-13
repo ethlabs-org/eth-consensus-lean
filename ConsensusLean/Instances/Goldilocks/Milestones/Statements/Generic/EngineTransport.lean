@@ -102,19 +102,6 @@ structure OutageTransport (M : RunMap rho payload) (D : OutagePolicy M)
     (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).CommitteeCohortOn D.committee
       ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩)
       ((Sys F V).bandStart K b₀ ⟨E, rho⟩) ((Sys F V).bandEnd K b₀ ⟨E, rho⟩)
-  /-- An unresolved supplier obligation, not a consequence of guarded Outage.
-  The fixed band and retention bounds can make coverage unsatisfiable, including
-  at the default band parameters. Nonemptiness is supplied by the instance. -/
-  coverage : rho.ExecutionValid → ∀ T b₀ b₁,
-    (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ → ∀ t,
-    (Sys F V).recoveryAt K b₁ ⟨E, rho⟩ ≤ t → t ≤ rho.horizon →
-    ((shapeProgress F V).selected E ((shapeProgress F V).ext ⟨E, rho⟩) t).Nonempty →
-    (Sys F V).outageStart K b₀ ⟨E, rho⟩ ≤ b₀ ∧
-      b₁ ≤ (Sys F V).outageEnd K b₁ ⟨E, rho⟩ ∧
-      (Sys F V).outageEnd K b₁ ⟨E, rho⟩ ≤ t ∧
-      t ≤ (Sys F V).cohortAt K b₁ ⟨E, rho⟩ ∧
-      max 0 ((Sys F V).bandStart K b₀ ⟨E, rho⟩) ≤ t ∧
-      t ≤ (Sys F V).bandEnd K b₀ ⟨E, rho⟩ ∧ (D.committee t).Nonempty
 
 def CarrierProcessed (M : RunMap rho payload) (B : A.Blk) (y : Fin P.n)
     (j : Nat) (sent deadline : Time) : Prop :=

@@ -124,9 +124,6 @@ def PersistenceReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
     let M := B.map E rho hv
     let L := C E rho hv
     GrowingRunTransport M ∧ OutageTransport M (D E rho hv) K L.catchUp L.look ∧
-      (∀ T b₀ b₁, (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
-        ∀ t, (Sys F V).recoveryAt K b₁ ⟨E, rho⟩ ≤ t → t ≤ rho.horizon →
-          ((shapeProgress F V).selected E ((shapeProgress F V).ext ⟨E, rho⟩) t).Nonempty) ∧
       OutageRecoveryBinding M K L ∧ OutageServiceSupply M K ∧
       ResilienceTipTransport M ∧ OutageReadPoint L ∧
       EndReadTransport M K L ∧ LocalReadPoint L ∧
