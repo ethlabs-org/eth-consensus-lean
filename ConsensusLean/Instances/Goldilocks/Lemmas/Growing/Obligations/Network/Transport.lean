@@ -60,7 +60,6 @@ theorem mem_honestKeysAt_of_not_faulty {y : Fin (Fintype.card V)} {t : Time}
 /-- A recipient is awake from its effective send/wake start through its call. The recipient is
 honest at the call. -/
 theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)} {j : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
     (hj : (simTraceAt S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) :
@@ -79,7 +78,6 @@ theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
 theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (y : Fin (Fintype.card V)) (τ Δ : Time) :
     Monotone (fun j => (simTraceAt S rho hn).deadline y j τ Δ) :=
   (simTraceAt S rho hn).deadline_mono_cut_of_time_mono

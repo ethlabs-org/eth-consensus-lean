@@ -148,8 +148,7 @@ theorem meetsObligations_healedSafe_growing : ∀ cap g, (cap = .available ∨ c
       fun _ i _ hi => (hnone i hi).elim⟩
 
 theorem meetsObligations_persists_growing (S : BoundSetup) (A : ContractAssumptions S.toSetup)
-    (V : Type) [Fintype V] [DecidableEq V]
-    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+    (V : Type) [Fintype V] [DecidableEq V] :
     ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
     (Sys (goldilocksWith S) V).Holds ((Sys (goldilocksWith S) V).Outage
       (shapeProgress (goldilocksWith S) V).toExternal (K S.toSetup A) T b₀ b₁) fun r =>

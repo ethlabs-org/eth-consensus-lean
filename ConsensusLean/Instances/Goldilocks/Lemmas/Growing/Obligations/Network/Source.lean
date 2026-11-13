@@ -29,7 +29,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- A node honest at a cut at which it sends or freshly admits a vote processes it at that same
 time. Recursive delivery processing may occur later in the event, never at a later time. -/
 theorem sendOrAdmit_process_same_time_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)} {i : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
     {m : SA.Vote (Fintype.card V)} (hsource : (simTraceAt S rho hn).SendOrAdmitAt y i m) :

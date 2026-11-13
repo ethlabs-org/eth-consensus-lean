@@ -246,7 +246,7 @@ theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v
 read time with every earlier cut no later is a prefix of their confirmed chains. -/
 theorem read_prefix {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {y z : Fin (Fintype.card V)} {j j' : Nat} {t t' : Time}
     (ht : 0 ≤ t) (hj : ∀ k < j, (simTraceAt S rho hn).time k ≤ t) (hy : y ∈ honestKeysAt S rho t)

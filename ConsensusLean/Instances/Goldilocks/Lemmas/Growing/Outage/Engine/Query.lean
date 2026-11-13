@@ -49,8 +49,7 @@ theorem OutageQueryAt.call_le_horizon (Q : OutageQueryAt S A V) {y : Fin (Fintyp
 
 /-- **Pre-outage service through the start**, saturating at the finite engine horizon: only
 labelled recipient cuts require service. -/
-theorem outage_pre_service_at (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+theorem outage_pre_service_at (Q : OutageQueryAt S A V) :
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start := by
   let b := min Q.start Q.run.2.horizon
   have h0 : Q.run.2.log.SyncUntil Q.run.2.point Q.start :=
@@ -78,7 +77,6 @@ theorem outage_psync_at (Q : OutageQueryAt S A V) : Q.run.2.log.PSync Q.run.2.po
 
 /-- **The receiver service after the stop**, for every receiver. -/
 theorem outage_receiver_service_at (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (y : Fin (Fintype.card V)) :
     Compose.Growing.ReceiverServiceAfterAt Q.keys (Q.trace.HonestBlocksAt Q.keys) Q.stop y
       Q.trace.projAC :=
@@ -88,8 +86,7 @@ theorem outage_receiver_service_at (Q : OutageQueryAt S A V)
 /-- **Post-stop pool delivery**: an update of a slot `m` with `b₁ ≤ t_m + Δ`, by a node honest at
 it, holds every slot-`m` vote of a node honest at its cast, or two other slot-`m` votes of its
 validator (equivocation evidence: the voter may be compromised after its cast). -/
-theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+theorem outage_pool_delivery_query_at (Q : OutageQueryAt S A V) :
     ∀ w c m ℓ, w ∈ Q.keys (Q.trace.time c) → SA.UpdateAt Q.trace.projAC w c m ℓ →
       Q.stop ≤ Q.params.ts m + Q.params.Δ →
       ∀ x i e, x ∈ Q.keys (Q.trace.time i) → SA.VoteAt Q.trace.projAC x i e → e.msg.slot = m →

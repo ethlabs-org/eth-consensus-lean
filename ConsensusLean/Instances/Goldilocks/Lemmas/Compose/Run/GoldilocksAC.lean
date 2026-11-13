@@ -499,7 +499,7 @@ theorem goldilocks_ac_projection_from (hrun : GoldilocksRun proposer dg H tr ini
   have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
     (fun y _ U _ s Φ t₀ h => SA.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
     hrun.toLocalRun hnc
-  refine ⟨hrun.stock, hloc, ⟨fun y hy => pool_vote_emitted hrun hy,
+  refine ⟨hloc, ⟨fun y hy => pool_vote_emitted hrun hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,
     fun y hy i ℓ hc B hB v hv hval => carried_vote hrun hy hc hB hv hval, fun B hB hr => ?_,
     fun B B' hB hB' hp hpr hs => one_block hrun hB hB' hp hpr hs⟩, hrun.vstart⟩

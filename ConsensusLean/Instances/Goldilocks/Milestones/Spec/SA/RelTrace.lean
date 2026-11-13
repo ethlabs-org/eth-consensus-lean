@@ -410,8 +410,6 @@ structure ACRunU (m : WriteMode) (u : Nat → Set Lock) {ro : ReplayOrder sp FGP
     (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP))
     (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop where
-  /-- Interim population specialization; removed in place by C2. -/
-  stock : sp.committeeSize = sp.n
   /-- The AC trace contract with the unlock given. -/
   localRun : ACLocalRunU m u H U tr ini
   /-- The honest-object facts. -/
@@ -424,8 +422,6 @@ honest-object facts. -/
 structure ACRunUS (m : WriteMode) (u : Nat → Set Lock) (st : Nat → WalkStartFn sp FGP)
     {ro : ReplayOrder sp FGP} (selectedProposer : Nat → Fin sp.n) (tr : SATrace sp FGP ro)
     (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) : Prop where
-  /-- Interim population specialization; removed in place by C2. -/
-  stock : sp.committeeSize = sp.n
   /-- The AC trace contract from the starts `st`. -/
   localRun : ACLocalRunUS m u st H U tr
   /-- The honest-object facts. -/

@@ -466,7 +466,6 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
 
 /-- **The two-validator run is a Goldilocks run**, with both validators honest. -/
 theorem run_goldilocksRun : GoldilocksRun prop dg Set.univ run where
-  stock := rfl
   toLocalRun := run_localRun
   genesis_root_ok := dg_genesis
   vstart := fun _ => SA.voteStart_initial _

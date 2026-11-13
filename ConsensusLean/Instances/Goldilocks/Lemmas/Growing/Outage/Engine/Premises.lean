@@ -77,7 +77,6 @@ open Classical in
 ready source, with `P` its origin, `A₀` the cohort, `W` its late wakers, `j₀` the cover label and
 `r` the restored label. -/
 noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     {v : V} (hsh : Q.start ≤ Q.run.2.horizon)
     (ar : OutageArmingAt Q v) :
@@ -176,7 +175,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
 
 section Projections
 
-variable {Q : OutageQueryAt S A V} [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+variable {Q : OutageQueryAt S A V}
   {service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start} {v : V}
   {hsh : Q.start ≤ Q.run.2.horizon} {ar : OutageArmingAt Q v}
 

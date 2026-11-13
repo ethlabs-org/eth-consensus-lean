@@ -41,7 +41,6 @@ namespace OutageQueryAt
 /-- The two count shapes through every `b ≤ horizon`, from the η-sleepy premise (η-sleepy
 implies sleepy, at half readiness, with look-ahead `5Δ`). -/
 theorem bounds (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {b : Time} (hb : b ≤ Q.run.2.horizon) :
     Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 b :=
   sleepy_bounds_at S Q.run.2 Q.hn Q.valid hb (fun t ht htb => by
@@ -315,7 +314,6 @@ structure OutageArmingAt (Q : OutageQueryAt S A V) (v : V) where
 
 /-- **Arming under growing faults**: every source ready at `T ≤ horizon` is armed. -/
 theorem outage_arming_at (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (service : Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon) :
     Nonempty (OutageArmingAt Q v) := by

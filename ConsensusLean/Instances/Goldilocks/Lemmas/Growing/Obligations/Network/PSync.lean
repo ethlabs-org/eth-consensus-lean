@@ -47,7 +47,6 @@ theorem received_forward_stamp_le_of_stamp_at (hn : 1 ≤ Fintype.card V)
 /-- GST holdings of an actual publication by an origin honest at its event, at a recipient
 honest at its call, before the effective `max(source, GST)` deadline. -/
 theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -83,7 +82,6 @@ theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
 /-- Acceptance service for an actual publication by an origin honest at its event, including a
 pre-GST one, at the effective `max(source, GST)` deadline at the acceptance cut. -/
 theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
@@ -131,7 +129,6 @@ theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rh
 /-- The acceptance-relay service for an acceptance by a node honest at its cut, including a
 pre-GST one, at a recipient honest at its call within the horizon. -/
 theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -315,7 +312,6 @@ theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V
 honest at its call under PSync. The release time is the lower bound; GST changes only the service
 deadline. -/
 theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
@@ -375,7 +371,6 @@ theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rh
 deadline by every recipient honest at its call within the horizon. The sender processes at the
 source time; other nodes use the first-release envelope. -/
 theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
     (hx : x ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))

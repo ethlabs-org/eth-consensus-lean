@@ -720,10 +720,9 @@ theorem fgBlock_ok (R : Run X) (hR : RowLaws R.D) {i : Nat} {y : Fin X.sp.n} {B 
 
 /-- **The run is a Goldilocks run.** -/
 theorem run_goldilocksRun (R : Run X) (hL : EntryLaws R.D) (hR : RowLaws R.D)
-    (hstock : X.sp.committeeSize = X.sp.n)
     (hle : ∀ y t, R.D.awake y t = true → t ≤ R.D.horizon) (hH : ∀ y ∈ H, y ∈ R.D.honest)
     (hf : X.f ∉ H) : GoldilocksRun R.proposer R.dg H R.tr := by
-  refine trace_goldilocksRun hstock (sched_runLaws R hL hle hH) ?_ ?_ ?_ R.wf.genesis ?_
+  refine trace_goldilocksRun (sched_runLaws R hL hle hH) ?_ ?_ ?_ R.wf.genesis ?_
   · intro y _ i B hB hp
     obtain ⟨b, hb, rfl⟩ := fgBlock_ok R hR hB
     exact absurd (blk_proposer hb ▸ hp) hf

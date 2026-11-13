@@ -49,7 +49,6 @@ private theorem release_closure_source (v : V)
 
 /-- A tick's signed attestation passes the guard using only signings through that tick. -/
 theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     ∀ r ∈ eventCuts S rho hn i, ∀ C a,
@@ -209,8 +208,7 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     exact List.mem_singleton_self _
 
 /-- A trace signing is released at its actual engine tick, under growing faults. -/
-theorem simTraceAt_att_released (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+theorem simTraceAt_att_released (hv : rho.ExecutionValid) :
     ∀ y k a, y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
       (simTraceAt S rho hn).SignAt y k a →
       ReleasedFrom S rho (rho.key y) (attObj a) ((simTraceAt S rho hn).time k) := by

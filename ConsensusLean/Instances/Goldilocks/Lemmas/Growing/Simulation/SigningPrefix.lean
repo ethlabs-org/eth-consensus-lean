@@ -40,7 +40,6 @@ theorem simTraceAt_time_le_event (hv : rho.ExecutionValid) {i k : Nat}
 
 /-- The signings through a tick of its honest node cannot conflict. -/
 theorem simTraceAt_signings_nonFraming_before (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))
     {k k' : Nat} {a b : FG.Att (Fintype.card V)}
     (hk : k < cutMap S rho hn (i + 1)) (hk' : k' < cutMap S rho hn (i + 1))

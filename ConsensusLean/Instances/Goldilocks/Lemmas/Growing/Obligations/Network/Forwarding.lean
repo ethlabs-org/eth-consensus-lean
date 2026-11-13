@@ -52,7 +52,7 @@ canonical child wire. Receipt validity and own-proposal validity are the run law
 through the cut. -/
 theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    (hv : rho.ExecutionValid)
     (y : Fin (Fintype.card V)) (i : Nat)
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
     (B : Blk (S.params (pubOf E) hn))
@@ -76,7 +76,7 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
 /-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
 theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
     (he : rho.events[i]? = some (.tick v t))
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
@@ -156,7 +156,6 @@ right syntactic shape. The queue and decoder witnesses use the same processed st
 theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {v : V}
     {i : Nat} {o : (protoOf (compiled (goldilocksWith S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
@@ -201,7 +200,6 @@ theorem tick_proposal_acceptance_decoded_publication_at {V : Type} [Fintype V] [
 theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
     (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
@@ -222,7 +220,7 @@ theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decidable
 publication. All decoding premises follow from execution validity and reachable state invariants. -/
 theorem forwardAtAcceptance_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
-    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+    (hv : rho.ExecutionValid) :
     ForwardAtAcceptanceAt S rho hn (simTraceAt S rho hn) (cutMap S rho hn)
       (publisherExecution S rho) := by
   rw [forwardAtAcceptanceAt_iff]

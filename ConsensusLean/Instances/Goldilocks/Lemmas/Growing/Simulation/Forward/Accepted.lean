@@ -86,7 +86,6 @@ honest at its stamp `t`, gives an acceptance before that deadline when the recip
 tip at a later reading cut is below the forwarded block. The signer may be compromised before the
 delivery. -/
 theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {i j : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote}
     {x : Fin (Fintype.card V)} {u t deadline : Time}

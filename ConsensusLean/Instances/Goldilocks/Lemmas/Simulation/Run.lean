@@ -246,14 +246,12 @@ theorem simTrace_wire (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) 
 /-! ## The trace is a Goldilocks run -/
 
 /-- **The simulating trace is a Goldilocks run** at the engine's digest, for the honest keys.
-Stock-only (§S): stated over `S : Setup`, its 9124 form; the run record's interim `stock` field
-holds by `rfl`. -/
+Stated over the population binding `S : Setup`, its 9124 form. -/
 theorem simTrace_goldilocksRun {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeys S rho) (simTrace S rho hn) where
-  stock := rfl
   vstart := fun _ => SA.voteStart_initial _
   init := simTrace_init S rho hn
   grouped := simTrace_grouped S rho hn hf hv

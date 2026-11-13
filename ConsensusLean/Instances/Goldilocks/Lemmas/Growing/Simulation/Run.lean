@@ -43,14 +43,10 @@ theorem simIni_voteStart (y : Fin (Fintype.card V)) :
   ⟨_, installVote_eq_mayVote S.vote _ _⟩
 
 /-- The canonical event expansion obeys all Goldilocks run laws under growing compromise, from
-the engine's own starts `simIni`. The instance premise `hstock` is interim, `TEMP(C2)`: it feeds
-only the record's interim `stock` field; stock callers get it from
-`stock_participationKind_none`. -/
-theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid)
-    [hstock : Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+the engine's own starts `simIni`. -/
+theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
     Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeysAt S rho) (simTraceAt S rho hn) (simIni S rho hn) where
-  stock := committeeSize_of_participationKind_none hstock.out _
   vstart := simIni_voteStart S rho hn
   antitone := honestKeysAt_antitone S rho
   init := by

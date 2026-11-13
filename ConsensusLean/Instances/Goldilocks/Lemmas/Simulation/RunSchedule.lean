@@ -36,17 +36,6 @@ theorem simTrace_init :
           (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial) :=
   fun y _ => simTrace_init_eq S rho hn y
 
-/-- TEMP(C2): a binding without a participation kind has the whole population as committee. -/
-theorem committeeSize_of_participationKind_none {B : VoteBinding}
-    (h : B.participationKind = none) : ∀ pub, B.committeeSize pub = pub.n := by
-  intro pub
-  simp only [VoteBinding.committeeSize, h]
-
-/-- TEMP(C2): the interim stock premise of the run records, discharged for the population
-binding. Proof-side lemmas carry it as `[Fact (S.vote.participationKind = none)]`; a committee
-binding fails instance synthesis. Removed with the records' `stock` field at C2. -/
-instance stock_participationKind_none : Fact (stock.participationKind = none) := ⟨rfl⟩
-
 /-! ### The engine's schedule and the trace's cuts -/
 
 omit [DecidableEq V] in

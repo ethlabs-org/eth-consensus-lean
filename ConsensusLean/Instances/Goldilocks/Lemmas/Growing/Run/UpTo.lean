@@ -313,7 +313,6 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
       block_unforgeable := fun y hy i B hB hp => ?_
       att_unforgeable := fun y hy i a ha hv => ?_
       msg_unforgeable := fun y hy i m hc hs => ?_
-      stock := h.stock
       vstart := h.vstart
       genesis_root_ok := h.genesis_root_ok
       carried_vote_unforgeable := fun y hy i B hB v hv hvH => ?_ }

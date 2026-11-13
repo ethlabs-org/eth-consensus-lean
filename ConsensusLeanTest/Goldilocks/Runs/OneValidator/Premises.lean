@@ -218,7 +218,6 @@ theorem tickRun_votes :
 /-- **The one-validator tick run is a Goldilocks run.** -/
 theorem tickRun_goldilocksRun :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) where
-  stock := rfl
   toLocalRun := tickRun_localRun rfl rfl _
   genesis_root_ok := dg1_genesis
   vstart := fun _ => SA.voteStart_initial _

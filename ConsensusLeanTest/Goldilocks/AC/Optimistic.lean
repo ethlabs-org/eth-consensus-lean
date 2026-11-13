@@ -769,7 +769,6 @@ theorem honest_W : HonestObjects (fun _ => v0) trW Set.univ where
 
 /-- (a) The run is an AC run (the hypothesis `ACRun` of every ACSteps statement). -/
 theorem acRun_W : ACRun (fun _ => v0) trW Set.univ U₁ where
-  stock := rfl
   localRun := localRun_W
   honest := honest_W
   vstart := fun _ => voteStart_initial _

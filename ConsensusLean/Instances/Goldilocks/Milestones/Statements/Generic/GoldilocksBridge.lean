@@ -20,7 +20,8 @@ open SA (SAParams ReplayOrder)
 /-- Exact data equations for the intended Goldilocks supplier, not its field evidence. -/
 def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (O : ACHealing (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
-  O.Run = (fun proposer dg H tr => Growing.GoldilocksRun proposer dg H tr) ∧
+  O.Run = (fun proposer dg H tr =>
+      sp.committeeSize = sp.n ∧ Growing.GoldilocksRun proposer dg H tr) ∧
     O.warmup = 2 * sp.k ∧ O.follow = 3 ∧ O.drain = 2 * sp.k + 5 ∧
     O.Warm = (fun _ _ s₀ u => s₀ + 2 * sp.k ≤ u) ∧
     O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
@@ -28,7 +29,8 @@ def GoldilocksHealingData (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.
 
 /-- Intended full-set Goldilocks healing supplier, with its original run and arithmetic warmth.
 The existential is an unproved contract, never a definition of a supplier instance.
-`Run` is the original growing run. `warmup` and `Warm` come from the warmth premise in
+`Run` is the original growing run, at population-sized committees (`sp.committeeSize = sp.n`).
+`warmup` and `Warm` come from the warmth premise in
 `Growing/Healing/Kernel/ResetRounds.lean:329`; `follow = 3` is the skeleton choice,
 with no upstream standalone statement; `drain` is the skeleton choice `2 * sp.k + 5`,
 not a newly proved upstream bound. `Origin` is the joined stored-fast-lock source

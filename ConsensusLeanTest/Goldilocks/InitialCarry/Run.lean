@@ -339,7 +339,7 @@ theorem fgBlock_ok {ctl : Bool} {i : Nat} {y : Fin 5} {B : X.Blk}
 
 /-- **The run is a Goldilocks run**, in both variants. -/
 theorem run_goldilocksRun (ctl : Bool) : GoldilocksRun proposer dg H (tr ctl) :=
-  DataRun.run_goldilocksRun (runD ctl) (entryLaws ctl) (rowLaws ctl) rfl (fun _ _ => awakeB_le)
+  DataRun.run_goldilocksRun (runD ctl) (entryLaws ctl) (rowLaws ctl) (fun _ _ => awakeB_le)
     mem_honest fun h => h rfl
 
 /-! ## `Sync[24, 33]` -/

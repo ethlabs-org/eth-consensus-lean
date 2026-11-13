@@ -176,7 +176,6 @@ theorem oneTick_state (y : Fin sp1.n) (i : Nat) : oneTick.state y i = SAState.in
 /-- (a) The one-tick trace satisfies the AC trace contract and the honest-object facts (the
 hypothesis `ACRun` of every ACSteps statement). -/
 theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1.n Unit)) where
-  stock := rfl
   localRun := localRun_one_tick
   vstart := fun _ => voteStart_initial _
   honest :=

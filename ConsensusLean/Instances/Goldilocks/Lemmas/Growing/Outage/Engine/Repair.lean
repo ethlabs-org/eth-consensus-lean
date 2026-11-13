@@ -25,8 +25,7 @@ variable {S : BoundSetup} {A : ContractAssumptions S.toSetup} {V : Type} [Fintyp
 
 /-- **Slow-only recovery for ready readers under growing faults**: from the recovery point, the
 read of every source ready at `T` is a prefix of the read of every reader ready at `t`. -/
-theorem outage_protected_at (Q : OutageQueryAt S A V)
-    [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
+theorem outage_protected_at (Q : OutageQueryAt S A V) :
     (chainTrace Q.run.2).ProtectedReadyFrom Q.duration .confirmed
       (resilienceTarget schema .confirmed) Q.T
       ((Sys (goldilocksWith S) V).recoveryAt (K S.toSetup A) Q.stop Q.run) := by

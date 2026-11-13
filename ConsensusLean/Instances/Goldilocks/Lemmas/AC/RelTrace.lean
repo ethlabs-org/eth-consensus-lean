@@ -277,7 +277,7 @@ theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n
     {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     (h : ACRun selectedProposer tr H U ini) :
     ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U ini :=
-  ⟨h.stock, h.localRun.toU, h.honest, h.vstart⟩
+  ⟨h.localRun.toU, h.honest, h.vstart⟩
 
 end Consensus.Goldilocks.SA
 

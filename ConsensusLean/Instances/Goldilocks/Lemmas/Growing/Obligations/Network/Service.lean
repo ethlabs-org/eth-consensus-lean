@@ -34,7 +34,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- An actual publication by an origin honest at its event is held strictly before a qualifying
 node deadline of a recipient honest at its call. -/
 theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -65,7 +64,6 @@ theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V) (hv : rh
 honest at the release, yield an acceptance before the observation deadline, at a reading cut `j`
 of a recipient honest at a time `t₀` that bounds every cut before `j`. -/
 theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {y x : Fin (Fintype.card V)} {j : Nat} {t₀ : Time}
     (hj₀ : ∀ k < j, (simTraceAt S rho hn).time k ≤ t₀) (hy : rho.key y ∉ rho.faultyAt t₀)
@@ -102,7 +100,6 @@ theorem held_forward_accepted_before_at (hn : 1 ≤ Fintype.card V) (hv : rho.Ex
 /-- Acceptance service is measured at the processing cut, even when later restarts enlarge the
 observation deadline. The origin is honest at its publication, the recipient at its call. -/
 theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (goldilocksWith S)) E))
@@ -149,7 +146,6 @@ theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rh
 /-- The finite acceptance-relay field: an acceptance by a node honest at its cut is relayed to
 every recipient honest at its call, inside the blocks held while honest. -/
 theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -178,7 +174,6 @@ theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 /-- A different recipient honest at its call processes a first-release vote envelope of a sender
 honest at its release before its processing-cut deadline. -/
 theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
@@ -248,7 +243,6 @@ bound `b ≤ horizon`: senders honest at their sends, recipients honest at their
 (the growing-fault `sleepyServiceBefore_of_syncUntil`). Self-service uses fresh processing at the
 source time. -/
 theorem sleepyServiceBefore_of_syncUntil_at (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b) :
     Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)

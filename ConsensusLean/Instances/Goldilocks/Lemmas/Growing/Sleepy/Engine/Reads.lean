@@ -40,7 +40,6 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
 there is honest at its time (event-local honesty), and the static boundary applies on the prefix
 through it. -/
 theorem cutAfter_boundary_at (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {y : Fin (Fintype.card V)}
     {j : Nat} {t : Time} (hj : Regimes.CutAfter (simTraceAt S rho hn) j t) :
     Regimes.Boundary (simTraceAt S rho hn) y j := by
@@ -60,7 +59,6 @@ private theorem cutTime_endCut_le {t : Time} (ht : 0 ≤ t) :
 trace cut of the engine cut at the end of `t` is the first trace cut after `t`, a boundary of the
 node, and the node's stored clock there is `t`. -/
 theorem ready_read_cut_at (hv : rho.ExecutionValid)
-    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     {c : Time} (hc : 0 ≤ c) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon) (hr : rho.point.Ready c v t) :
     Regimes.CutAfter (simTraceAt S rho hn) (cutMap S rho hn ((chainTrace rho).endCut t)) t ∧

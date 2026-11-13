@@ -86,7 +86,7 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
         rw [hs] at hv
         obtain ⟨j, hj, e, hvote, hev⟩ := ih σ v hv hvH
         exact ⟨j, hj.trans (Nat.lt_succ_self i), e, hvote, hev⟩
-  refine ⟨h.stock, hr, ⟨pool, ?_, ?_, ?_, ?_⟩, h.vstart⟩
+  refine ⟨hr, ⟨pool, ?_, ?_, ?_, ?_⟩, h.vstart⟩
   · intro y hy i ℓ v hc hl hvH
     obtain ⟨hid, hc⟩ := (Trace.upTo_callAt tr).mp hc
     obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.message_vote y i ℓ v (anti hid hy) hc hl

@@ -548,6 +548,22 @@ detail in `TRUST.md`.
   `Healing.cacheAcceptanceAfterReset_of_growing` and `Healing.outcomeService_of_growing` are unused upstream
   bridges (present at 9124), no longer derivable once the growing hypothesis carries the population pin; each
   static target is proved directly.
+- **The run records carry no committee size.** `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`,
+  `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the run and trace laws only, for every vote binding. A
+  milestone statement over a run record that is proved or stated for population-sized committees takes
+  `sp.committeeSize = sp.n` as a premise: the proved `Compose.HeadExtendsRecord`, `Compose.Inclusion`,
+  `Regimes.SleepySafe`, `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`,
+  `Healing.RunInclusion`, `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open
+  growing-fault statements over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`,
+  `Compose.Growing.HeadExtendsRecord`, `Compose.Growing.Inclusion`, `Compose.Growing.OutcomeService`,
+  `Healing.Growing.CutAndReset`, `ResetExistence`, `NonInterference`, `AvailableHealing`,
+  `ViableWitnessRetention`, `CleanLockDrain`, `FrozenTreeAgreement`, `CommonPathAcquisition`, `PatternRecovery`,
+  `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and `Regimes.Growing.SleepySafe`, `IncludeSleepy`,
+  `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`, `SA.Growing.ACHealingStandaloneCorollary` and
+  `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five `SA.*All` healing statements.
+  `GoldilocksHealingData` takes it as a conjunct of `O.Run`. Each is equivalent at every `sp` to the form with the
+  size equation as a field of the record. The lemmas on those chains take it as an explicit argument `hstock`; at
+  the population binding it holds by `rfl`.
 
 ## Repository, toolchain and trust checks
 

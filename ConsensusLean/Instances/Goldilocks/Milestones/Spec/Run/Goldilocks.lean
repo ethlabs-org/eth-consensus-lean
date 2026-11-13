@@ -9,7 +9,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
 
 The part of `Spec/Run/Goldilocks` that no Challenge statement reaches (`docs/decisions.md`
 §"Trusted surface and Challenge scope"): the milestone statements use it; it is not on the trusted
-surface. Names and bodies are unchanged.
+surface. `GoldilocksRun` takes the nodes' starts `ini` (by default the initial state) and the field
+`vstart`: every start is a start up to the vote permission. It carries no committee size.
 
 The Goldilocks node is `goldilocksNode sp ro` (`Spec/Run/Goldilocks`). `GoldilocksRun proposer dg H
 tr` is a run of it: `Node.LocalRun` with the vote's validator as the message signer, plus
@@ -47,8 +48,6 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (ini : Fin sp.n → (goldilocksNode sp ro).State := fun _ => (goldilocksNode sp ro).initial) :
     Prop
     extends Node.LocalRun proposer dg H (fun v : Vote sp.n => v.val) tr ini where
-  /-- Interim population specialization; removed in place by C2. -/
-  stock : sp.committeeSize = sp.n
   /-- The genesis block's root is the digest of its content: the premise `FGProjection` and
   C0.3 take over any AC (the Lean genesis root is a parameter). -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg

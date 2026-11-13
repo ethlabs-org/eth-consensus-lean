@@ -321,7 +321,6 @@ end Schedule
 entry-level laws, the unforgeability fields of the trace, the genesis root and carried-vote
 unforgeability. -/
 theorem trace_goldilocksRun {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (hstock : sp.committeeSize = sp.n)
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {sch : Schedule (goldilocksNode sp ro)}
     (h : sch.RunLaws proposer dg H)
@@ -336,7 +335,6 @@ theorem trace_goldilocksRun {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att s
     (hcarried : ∀ y ∈ H, ∀ i B, (sch.trace proposer dg).BlockCallAt y i B →
       ∀ v ∈ blockVotes B, v.val ∈ H → ∃ j < i, (sch.trace proposer dg).EmitAt v.val j v) :
     GoldilocksRun proposer dg H (sch.trace proposer dg) where
-  stock := hstock
   toLocalRun := Schedule.trace_localRun h hblock hatt hmsg
   genesis_root_ok := hroot
   carried_vote_unforgeable := hcarried

@@ -146,8 +146,6 @@ facts. -/
 structure ACRun (selectedProposer : Nat → Fin sp.n)
     (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop where
-  /-- Interim population specialization; removed in place by C2. -/
-  stock : sp.committeeSize = sp.n
   /-- The AC trace contract. -/
   localRun : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini
   /-- The honest-object facts. -/
