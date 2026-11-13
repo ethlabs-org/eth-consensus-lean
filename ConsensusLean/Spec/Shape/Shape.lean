@@ -126,8 +126,9 @@ abbrev ShapeObj (n : Nat) (Kind Info Body : Type) : Type :=
   Obj n (ShapeRole Kind) (Header Info) Body
 
 /-- A chain shape: the skeleton plus the protocol's state machine. Honest code
-knows the public parameters and its own key (`init`, `restore`); the engine
-writes positions of slot proposals and every proposal's payload. -/
+knows the public parameters, its own key (`init`, `restore`) and its own role
+membership (`init`); the engine writes positions of slot proposals and every
+proposal's payload. -/
 structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info]
     [Countable Info] : Type 1 where
   /-- The public skeleton. -/
@@ -181,7 +182,7 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   recordOwn : State → ShapeObj pub.n skel.Kind Info Body → List (Header Info × Nat) → State
   durable : State → Durable
   /-- The state after a restart, from the own key, what was kept, and the time. -/
-  restore : Key pub → (ShapeRole skel.Kind → Bool) → Durable → Time → State
+  restore : Key pub → Durable → Time → State
   /-- The output chains, one per output identifier. -/
   out : Out → State → Chain Info
   /-- The slashing rule: two objects that, signed by one validator, convict it.

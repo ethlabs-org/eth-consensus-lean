@@ -340,7 +340,6 @@ private theorem history_restore {v : V} {signed : FG.Att (Fintype.card V) → Pr
     (h : HasHistory (rho.ownKey v) (nd.st.1 hn) signed) :
     HasHistory (rho.ownKey v)
       (((Model.protoOf (compiled (goldilocksWith S)) E).restore (rho.ownKey v)
-        (fun r => decide (rho.ownKey v ∈ rho.sel r))
         ((Model.protoOf (compiled (goldilocksWith S)) E).durable nd.st) t).1 hn) signed := by
   obtain ⟨_, hr, ins, hi, he, hout⟩ := h
   exact ⟨rfl, hr, ins, hi, he, hout⟩

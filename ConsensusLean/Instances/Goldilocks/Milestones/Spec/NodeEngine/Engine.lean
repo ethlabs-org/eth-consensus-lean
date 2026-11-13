@@ -188,7 +188,7 @@ noncomputable def nodeShape {Out : Type} (isFinalized : Out → Bool) : ChainSha
   dependencies := W.dependencies
   recordOwn := recordOwn W
   durable := id
-  restore k _ := restore W k
+  restore := restore W
   out g st := outOf W st (isFinalized g)
   conflicts := W.conflicts
   isFGAtt := W.isFGAtt

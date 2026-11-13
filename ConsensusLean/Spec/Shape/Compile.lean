@@ -123,7 +123,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   dependencies := S.dependencies
   recordOwn st o hs := (S.recordOwn st.1 o hs, st.2)
   durable st := S.durable st.1
-  restore k p d t := (S.restore k p d t, [])
+  restore k d t := (S.restore k d t, [])
   out g st := ledgerOf (S.out g st.1)
   conflicts := S.conflicts
   isFGAtt := S.isFGAtt

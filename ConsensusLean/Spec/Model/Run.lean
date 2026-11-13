@@ -258,8 +258,7 @@ def step (w : V → Node (protoOf F E)) : Event V (protoOf F E).Object → V →
   | .deliver v o t => Function.update w v (rho.deliver (w v) v o t).1
   | .restart v t =>
       Function.update w v
-        ⟨(protoOf F E).restore (rho.ownKey v) (fun r => decide (rho.ownKey v ∈ rho.sel r))
-          ((protoOf F E).durable (w v).st) t, (w v).seen⟩
+        ⟨(protoOf F E).restore (rho.ownKey v) ((protoOf F E).durable (w v).st) t, (w v).seen⟩
 
 /-- The world before event `i` (event cut `i`). -/
 def stateBefore (i : Nat) : V → Node (protoOf F E) :=

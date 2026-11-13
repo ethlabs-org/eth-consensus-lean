@@ -14,9 +14,9 @@ per output identifier of its schema), and its slashing rule. There is no slot,
 proposer or block here: a proposer is a role whose selection has one key and
 whose duty acts at the proposal time, and blocks are items of the protocol.
 
-Honest code knows the public parameters `n`, `ΔAC` and `ΔFG`, its own key and
-its own role membership (`init` and `restore` receive both). It never sees
-other nodes' membership, the PKI, the
+Honest code knows the public parameters `n`, `ΔAC` and `ΔFG`, its own key
+(`init` and `restore` receive it) and its own role membership (`init` receives
+it). It never sees other nodes' membership, the PKI, the
 fault profile, the GST, the awake profile, the submission or relay functions, or
 the hash function: the engine gives it its own and relayed transactions (at its
 ticks) and the digests of the items it receives or signs. Dispatch is engine-side:
@@ -113,7 +113,7 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   clock : State → Time → List Tx → State
   /-- Duty `d`: the new state and ordered candidates signed in its selected role.
   An unselected duty does not execute. For a selected duty the engine applies
-  the state even if candidates are refused. Own membership is known at init/restore;
+  the state even if candidates are refused. Own membership is known at init;
   there is no release feedback, no fault or awake oracle, and no other nodes'
   membership. A later duty (also within the tick)
   learns of a successful release only through `recordOwn`. A purely local
@@ -135,7 +135,7 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   durable : State → Durable
   /-- The state after a restart of the node with the given key, from what it
   kept, at the restart time. -/
-  restore : Key pub → (Role → Bool) → Durable → Time → State
+  restore : Key pub → Durable → Time → State
   /-- The output ledgers, one per output identifier. -/
   out : Out → State → Ledger
   /-- The slashing rule: two objects that, signed by one validator, convict

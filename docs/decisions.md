@@ -64,6 +64,12 @@ detail in `TRUST.md`.
   list, and the other shape handlers likewise compile to zero-or-one lists. No network or realizability premise
   depends on it, and delivery clocks need no change: `lastClock_deliver` and `now_eq_lastClock` establish the
   receipt time from event order.
+- **Own membership is known at `init` only.** `Protocol.init` and `ChainShape.init` receive the node's own role
+  membership; `restore` receives only the own key, what `durable` kept and the restart time. The selection is fixed
+  before execution, so the membership given at `init` is the membership at every later restart: a protocol that
+  needs it after a restart keeps it in its durable state (`Durable`). Goldilocks does so: `ac_restart` (`acRestart`)
+  carries the installed vote permission `mayVote` across a restart. No instance read a restore-time membership
+  argument, so `restore` has none; it is to be re-added when a protocol needs it.
 
 ## Network and delivery
 

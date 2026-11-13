@@ -48,7 +48,7 @@ noncomputable def legacyShape (sp : SAParams)
   dependencies := dependencies sp.n (binding := stock)
   recordOwn := recordOwn
   durable := id
-  restore := fun k _ => restore k
+  restore := restore
   out g st := outOf st.node st.now g
   conflicts := conflicts (binding := stock)
   isFGAtt := isFGAtt (binding := stock)
@@ -82,7 +82,7 @@ noncomputable def legacyGoldilocks (S : Setup) : ChainShapeFamily schema Info :=
     dependencies := dependencies pub.n (binding := stock)
     recordOwn := fun st o hs hn => (G hn).recordOwn (st hn) o hs
     durable := id
-    restore := fun k p d t hn => (G hn).restore k p (d hn) t
+    restore := fun k d t hn => (G hn).restore k (d hn) t
     out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
     conflicts := conflicts (binding := stock)
     isFGAtt := isFGAtt (binding := stock) }

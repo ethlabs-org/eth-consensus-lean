@@ -57,7 +57,7 @@ def proto (pub : Public) : Protocol pub Unit where
   process := fun _ _ _ => ()
   recordOwn := fun _ _ _ => ()
   durable := fun _ => ()
-  restore := fun _ _ _ _ => ()
+  restore := fun _ _ _ => ()
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
@@ -273,7 +273,7 @@ def seqProto (pub : Public) : Protocol pub Unit where
   process := fun s _ _ => s
   recordOwn := fun s _ _ => s + 10
   durable := fun _ => ()
-  restore := fun _ _ _ _ => 0
+  restore := fun _ _ _ => 0
   out := fun _ _ => []
   conflicts := fun _ _ => false
 

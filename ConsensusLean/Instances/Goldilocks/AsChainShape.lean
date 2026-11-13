@@ -757,7 +757,7 @@ noncomputable def goldilocksShape (binding : VoteBinding := stock) :
   dependencies := dependencies sp.n (binding := binding)
   recordOwn := recordOwn
   durable := id
-  restore := fun k _ => restore k
+  restore := restore
   out g st := outOf st.node st.now g
   conflicts := conflicts (binding := binding)
   isFGAtt := isFGAtt (binding := binding)
@@ -855,7 +855,7 @@ noncomputable def goldilocksWith (S : BoundSetup) :
     dependencies := dependencies pub.n (binding := binding)
     recordOwn := fun st o hs hn => (G hn).recordOwn (st hn) o hs
     durable := id
-    restore := fun k p d t hn => (G hn).restore k p (d hn) t
+    restore := fun k d t hn => (G hn).restore k (d hn) t
     out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
     conflicts := conflicts (binding := binding)
     isFGAtt := isFGAtt (binding := binding) }

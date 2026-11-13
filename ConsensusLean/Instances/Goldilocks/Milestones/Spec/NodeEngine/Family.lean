@@ -57,7 +57,7 @@ noncomputable def shapeFamily {Info Body Out : Type} [DecidableEq Info] [Countab
       recordOwn := fun st o hs hn => (G hn).recordOwn (st hn) o hs
       dependencies := A.dependencies pub.n
       durable := id
-      restore := fun k p st t hn => (G hn).restore k p (st hn) t
+      restore := fun k st t hn => (G hn).restore k (st hn) t
       out := fun g st => if hn : 1 ≤ pub.n then (G hn).out g (st hn) else []
       conflicts := A.conflicts pub.n
       isFGAtt := A.isFGAtt pub.n }

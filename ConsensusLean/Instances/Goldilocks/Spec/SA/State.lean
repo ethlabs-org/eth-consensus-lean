@@ -76,8 +76,8 @@ structure SAState (n : Nat) where
   votedSlot : Int
   /-- `restart_time`: the time of the latest restart (`−∞` initially). -/
   restartTime : WithBot Time
-  /-- Own historical vote permission, installed by the execution at init and restore.
-  The population-wide stock binding permits every slot. -/
+  /-- Own historical vote permission, installed by the execution at init and kept across
+  restarts by `ac_restart` (`acRestart`). The population-wide stock binding permits every slot. -/
   mayVote : Nat → Bool := fun _ => true
 
 namespace SAState
