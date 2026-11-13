@@ -147,18 +147,6 @@ theorem cohort_lt_on (Q : OutageQueryAt S A V) (Sel : Finset V)
     Set.ncard_coe_finset]
   exact h
 
--- TEMP(C2): C3b-final removes after C3a/C3c
-/-- **The cohort count at the window end**: `|(H z)ᶜ ∪ W| < |A₀|` (`cohort_lt_on` at every
-validator). -/
-theorem cohort_lt (Q : OutageQueryAt S A V) :
-    ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪
-      Q.lateKeysAt).ncard <
-      Q.holdersAt.ncard := by
-  have h := Q.cohort_lt_on Finset.univ (by
-    rw [Finset.inter_univ, Finset.inter_univ]
-    exact Q.outage.cohort)
-  simpa only [Finset.coe_univ, Set.preimage_univ, Set.univ_inter] using h
-
 /-- **The cohort count inside a band committee**: at a label `m ∈ [j₀, j₀ + k]` whose start is
 within the horizon (and the outage start too), `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|`. The band
 `[b₀ − 2Δ, b₀ + (4k − 2)Δ]` holds a time `t_m` of slot `m` (`b₀ − 2Δ` for `j₀`, else `t_m`), at

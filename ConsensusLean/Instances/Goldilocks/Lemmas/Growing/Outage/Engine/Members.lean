@@ -9,9 +9,9 @@ public section
 /-! # The committee facts of an outage query
 
 The gate `Q.hGate`, and, on a run record of the query's trace, P (`Q.committeeP`: the pools and
-the optimistic-check states), T (`Q.committeeT`: the merged views of the casts) and the frames
-(`Q.hT`) hold for its dictionary `Q.K` (`GS/CommitteeVotes`, with `Q.bindsSel`). With the
-committee size `Q.hsize` they are the committee facts `Q.facts` of the outage chain. -/
+the optimistic-check states) and the frames (`Q.hT`) hold for its dictionary `Q.K`
+(`GS/CommitteeVotes`, with `Q.bindsSel`). With the committee size `Q.hsize` they are the committee
+facts `Q.facts` of the outage chain. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -57,24 +57,17 @@ theorem committeeP : SA.CommitteePAt Q.K Q.trace.projAC Q.keys := by
     rw [Trace.upTo_state Q.trace.projAC y fun k hk => hm (Nat.lt_succ_iff.mp hk)] at hsub
     exact hpool y i s hy v hsub
 
-/-- **T**: the merged view of a cast of a node honest at it holds only votes of members of their
-slots (`simTraceAt_merged_member`). -/
-theorem committeeT : SA.CommitteeTAt Q.K Q.trace.projAC Q.keys :=
-  fun y i ℓ e hy hc m =>
-    simTraceAt_merged_member S hrun Q.valid Q.bindsSel Q.noCollision y i ℓ e (m + 1) hy hc
-
 /-- **The frames of honest nodes carry votes of members.** -/
 theorem hT :
     ∀ w c, w ∈ Q.keys (Q.trace.time c) → ∀ C ∈ (Node.frame (Q.trace.state w c)).tree,
       ∀ v ∈ SA.blockVotes C, v.val ∈ Q.K.committee v.slot :=
   simTraceAt_tree_member S hrun Q.valid Q.bindsSel
 
-/-- **The committee facts of the outage query**: size, P, T, frames, and the gate read at every
+/-- **The committee facts of the outage query**: size, P, frames, and the gate read at every
 read time `t ≥ 0` (a node honest at `t` is honest at `0`). -/
 theorem facts : Compose.Growing.CommitteeFacts Q.trace Q.keys Q.K where
   hsize := Q.hsize
   hP := Q.committeeP hrun
-  hT := Q.committeeT hrun
   hFrame := Q.hT hrun
   hGate := fun _ ht x hx i _ s => Q.hGate x (hrun.antitone ht hx) i s
 

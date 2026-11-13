@@ -23,8 +23,7 @@ the canonical trace handles is of a member of its slot's committee:
 * a cast (`simTraceAt_vote_member`), a received message (`simTraceAt_msgCall_member`) and the
   votes of an occurring block (`simTraceAt_occurs_member`), from the credentials of the engine;
 * on a run record, the blocks held while honest (`simTraceAt_honestBlock_member`), the frames
-  (`simTraceAt_tree_member`), the pools (`simTraceAt_pool_member`) and the merged views of the
-  casts (`simTraceAt_merged_member`).
+  (`simTraceAt_tree_member`) and the pools (`simTraceAt_pool_member`).
 
 None of these needs an honest-set premise beyond the record's, nor the population binding. -/
 
@@ -196,29 +195,6 @@ theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
   have hm := upTo_pool_member S hrun hv hK hnc hd hw (c + 1) m v hvp
   have hacr := Compose.Growing.acRun_upTo hrun hnc hd
   rwa [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
-
-/-- **The merged view of an honest cast holds votes of members** (`hMerged`): its pool votes are
-in the caster's pool after the cast, its block votes in its frame. -/
-theorem simTraceAt_merged_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
-    (hc : ¬ rho.HashCollision) :
-    ∀ y i ℓ e m, y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i) →
-      SA.CastAt (simTraceAt S rho hn).projAC y i ℓ e →
-      ∀ v ∈ (SA.mergedVoteView _ e.readPoint ℓ.frame m).votes, v.val ∈ K.committee v.slot := by
-  intro y i ℓ e m hy hcast v hvm
-  rcases hvm with hvb | ⟨C, hC, -, hvC⟩
-  · have hnc := noCollRun_simTraceAt S rho hn hv hc
-    have hd := hrun.time_nonneg i
-    simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
-      decide_eq_true_eq] at hvb
-    have h := hvb.1
-    unfold SA.SAState.poolAt at h
-    split_ifs at h
-    · exact False.elim (List.not_mem_nil h)
-    · exact upTo_pool_member S hrun hv hK hnc hd hy (i + 1) _ v
-        (SA.readPoint_pool (Compose.Growing.acRun_upTo hrun hnc hd).localRun hy
-          (Compose.Growing.sa_castAt_upTo.mpr ⟨le_rfl, hcast⟩) h).1
-  · rw [Compose.Growing.frame_of_projAC_at hrun hy hcast.1] at hC
-    exact simTraceAt_tree_member S hrun hv hK y i hy C hC v hvC
 
 end Consensus.Goldilocks.Simulation
 

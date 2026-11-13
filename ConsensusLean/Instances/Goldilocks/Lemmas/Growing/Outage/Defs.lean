@@ -15,11 +15,11 @@ The vocabulary of `Obligations/OutageLockSafety/Defs` for a time-indexed honest 
 constrains (`HVoteAt`, `y ∈ H (tr.time k)` for the state at cut `k`).
 
 * `OutageLockPremises`: the premise package. The cohort is retained at the window end `z`
-  (`A₀ ⊆ H z`, `W ⊆ H z`, `|(H z)ᶜ ∪ W| < |A₀|`); a validator honest at `z` and awake in `[a, z]`
+  (`A₀ ⊆ H z`, `W ⊆ H z`); a validator honest at `z` and awake in `[a, z]`
   is in `A₀ ∪ W` (`hawake`). The fault bound is the count shapes `SleepyBoundsFrom` from slot `0`
   through every horizon that an honest call reaches (`hB`). Every cohort count runs at a time
   `≤ z`: a time up to `t_{j₀+k} + 6Δ` that an honest call reaches is at or before `z` (`hzc`).
-  The slot committees `K` carry their facts (`facts`: size, P, T, frames, gate), their count
+  The slot committees `K` carry their facts (`facts`: size, P, frames, gate), their count
   shapes (`hBK`) and, inside each band committee, the cohort count (`hcohortK`).
 * `two_mul_lt_K`: `2·|K m ∩ ((H z)ᶜ ∪ W)| < committeeSize` at a band label; `two_faults_lt_K`:
   `2·|K s ∩ (H d)ᶜ| < committeeSize` at `d ∈ [t_s, t_s + 6Δ]`; `cohort_classify`: a vote cast in
@@ -101,11 +101,8 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini
   /-- The slot committees: the run's selection for each slot's vote role. -/
   K : SA.CommitteeDict sp.n
-  /-- Size, P, T, frames and the gate for `K`. -/
+  /-- Size, P, frames and the gate for `K`. -/
   facts : CommitteeFacts tr H K
-  /-- Every start permits every vote. -/
-  -- TEMP(C2): C3b-final removes after C3a/C3c
-  hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true
   hnc : NoCollRun dg tr
   hj₀ : sp.ts j₀ + 2 * sp.Δ ≤ b₀ ∧ b₀ < sp.ts (j₀ + 1 : Nat) + 2 * sp.Δ
   hr : b₁ ≤ sp.ts r + sp.Δ ∧ ∀ s : Nat, b₁ ≤ sp.ts s + sp.Δ → r ≤ s
@@ -128,7 +125,6 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   /-- The cohort, retained at `z`. -/
   hA₀ : A₀ ⊆ H z
   hW : W ⊆ H z ∧ Disjoint A₀ W
-  hcohort : ((H z)ᶜ ∪ W).ncard < A₀.ncard -- TEMP(C2): C3b-final removes after C3a/C3c
   /-- Inside each slot committee of the band, the cohort outnumbers the compromised and the late
   wakers, at every label that an honest call reaches. -/
   hcohortK : ∀ m, j₀ ≤ m → m ≤ j₀ + sp.k →
@@ -172,21 +168,6 @@ variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : 
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 namespace OutageLockPremises
-
--- TEMP(C2): C3b-final removes after C3a/C3c
-/-- **N6 at the window end**: `2·|(H z)ᶜ ∪ W| < n`. -/
-theorem two_mul_lt (D : OutageLockPremises tr H proposer dg ini) :
-    2 * ((H D.z)ᶜ ∪ D.W).ncard < sp.n := by
-  have hdisj : Disjoint D.A₀ ((H D.z)ᶜ ∪ D.W) := by
-    rw [Set.disjoint_union_right]
-    exact ⟨Set.disjoint_left.2 fun x hx hxc => hxc (D.hA₀ hx), D.hW.2⟩
-  have h1 := Set.ncard_union_eq hdisj (Set.toFinite _) (Set.toFinite _)
-  have h2 : (D.A₀ ∪ ((H D.z)ᶜ ∪ D.W)).ncard ≤ sp.n := by
-    calc (D.A₀ ∪ ((H D.z)ᶜ ∪ D.W)).ncard ≤ (Set.univ : Set (Fin sp.n)).ncard :=
-          Set.ncard_le_ncard (Set.subset_univ _)
-      _ = sp.n := by rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := D.hcohort
-  omega
 
 /-- **N6 inside a band committee**: `2·|K m ∩ ((H z)ᶜ ∪ W)| < committeeSize` at a band label `m`
 that an honest call reaches. -/

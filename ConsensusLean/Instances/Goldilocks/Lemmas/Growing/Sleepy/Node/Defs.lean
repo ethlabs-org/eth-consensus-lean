@@ -133,13 +133,13 @@ structure SleepyBoundsFrom (σ₀ : Nat) (b : Time) : Prop where
     d ≤ sp.ts s + 7 * sp.Δ → tr.FaultBoundAt H (sp.ts s + 2 * sp.Δ) d
 
 /-- **The run half of the committee premises** for the slot dictionary `K`: committees of
-`committeeSize` members, P and T (`CommitteePAt`, `CommitteeTAt`), the frames of nodes honest at
-the cut carry votes of members, and the gate: a node honest at `t ≥ 0` may vote in slot `s`, before
-every cut whose earlier cuts are at times `≤ t`, iff it is in the slot-`s` committee. -/
+`committeeSize` members, P (`CommitteePAt`), the frames of nodes honest at the cut carry votes of
+members, and the gate: a node honest at `t ≥ 0` may vote in slot `s`, before every cut whose
+earlier cuts are at times `≤ t`, iff it is in the slot-`s` committee. T (`CommitteeTAt`) follows
+from P and the frames on a run (`CommitteeFacts.hT`). -/
 structure CommitteeFacts (K : SA.CommitteeDict sp.n) : Prop where
   hsize : ∀ s, (K.committee s).ncard = sp.committeeSize
   hP : SA.CommitteePAt K tr.projAC H
-  hT : SA.CommitteeTAt K tr.projAC H
   hFrame : ∀ w c, w ∈ H (tr.time c) → ∀ C ∈ (Node.frame (tr.state w c)).tree,
     ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot
   hGate : ∀ t, 0 ≤ t → ∀ x, x ∈ H t → ∀ i, (∀ k < i, tr.time k ≤ t) → ∀ s,

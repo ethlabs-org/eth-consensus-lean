@@ -542,32 +542,47 @@ theorem mayVote_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {
   rw [h]
   exact hmv i₀ hb
 
-/-- The permission of a node honest at `d ≥ 0` up to `d`, from its start's permission: the static
-`mayVote_of_start` on the prefix through `d`. -/
-theorem mayVote_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat}
-    (hmv : (ini y : SA.SAState sp.n).mayVote s = true) :
-    ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true := fun i hb => by
-  rw [← Trace.upTo_state tr y hb]
-  exact mayVote_of_start (hrun.upTo hd) (hnc.upTo _) hy hmv i
-
-/-- The permission of a node honest at `d ≥ 0` on a stock run, up to `d`: `mayVote_at` at the
-initial starts. -/
+/-- The permission of a node honest at `d ≥ 0` on a stock run, up to `d`: the static
+`mayVote_of_start` at the initial starts, on the prefix through `d`. -/
 theorem mayVote_stock_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat} :
     ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true :=
-  mayVote_at hrun hnc hd hy rfl
+  fun i hb => Trace.upTo_state tr y hb ▸ mayVote_of_start (hrun.upTo hd) (hnc.upTo _) hy rfl i
 
-/-- **The stock committee facts**: at `K = full` with `committeeSize = n`, size, P, T and the frames
+/-- **The stock committee facts**: at `K = full` with `committeeSize = n`, size, P and the frames
 hold for every signer, and the gate is the default start's permission (`mayVote_stock_at`). -/
 theorem CommitteeFacts.of_full (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hstock : sp.committeeSize = sp.n) :
     CommitteeFacts tr H (SA.CommitteeDict.full sp.n) :=
   ⟨SA.size_binding_full hstock,
     ⟨fun _ _ _ _ _ s _ _ => SA.mem_full s _, fun _ _ _ _ _ _ s _ _ => SA.mem_full s _⟩,
-    fun _ _ _ _ _ _ _ v _ => SA.mem_full v.slot _, fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
+    fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
     fun _ ht _ hx i hi s =>
       ⟨fun _ => SA.mem_full s _, fun _ => mayVote_stock_at hrun hnc ht hx i hi⟩⟩
+
+/-- **T from P and the frames**: the merged view of a cast of a node honest at it holds pool
+votes of its read point, which are in its pool after the cast (`SA.readPoint_pool`, P), and the
+votes of blocks of the call's frame, which is the node's frame (`frame_of_projAC_at`, `hFrame`). -/
+theorem CommitteeFacts.hT {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) :
+    SA.CommitteeTAt K tr.projAC H := by
+  intro y i ℓ e hy hc m v hv
+  rcases hv with hvb | ⟨C, hC, -, hvC⟩
+  · have hacr := acRun_upTo hrun hnc (hrun.time_nonneg i)
+    have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
+      hrun.time_mono (Nat.lt_succ_iff.mp hk)
+    simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
+      decide_eq_true_eq] at hvb
+    have h := hvb.1
+    unfold SA.SAState.poolAt at h
+    split_ifs at h
+    · exact False.elim (List.not_mem_nil h)
+    · have hp := (SA.readPoint_pool hacr.localRun hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩) h).1
+      rw [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
+      rw [Trace.upTo_state tr.projAC y hb] at hp
+      exact hKB.hP.1 (tr.time i) y hy (i + 1) hb _ v hp
+  · rw [frame_of_projAC_at hrun hy hc.1] at hC
+    exact hKB.hFrame y i hy C hC v hvC
 
 /-- **The stock committee bounds**: at `K = full`, CS is the population slot count read at the AC
 projection, and CS2 is the population half bound. -/

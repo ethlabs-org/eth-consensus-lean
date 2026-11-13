@@ -45,16 +45,6 @@ theorem simIni_voteStart (y : Fin (Fintype.card V)) :
   · exact SA.voteStart_initial _
   · exact SA.voteStart_iff.2 ⟨_, rfl⟩
 
-omit [DecidableEq V] in
-/-- TEMP(C2): without a participation kind every engine start permits every vote. It feeds only
-the lifted `hmv` premise of the outage chain; C3/C4 replace that premise by
-`mayVote_of_committee`. -/
-theorem simIni_mayVote [hstock : Fact (S.vote.participationKind = none)] -- TEMP(C2)
-    (y : Fin (Fintype.card V)) (s : Nat) : (simIni S rho hn y : SA.SAState _).mayVote s = true := by
-  change (S.vote.installVote _ _).mayVote s = true
-  rw [installVote_of_participationKind_none hstock.out]
-  rfl
-
 /-- The canonical event expansion obeys all Goldilocks run laws under growing compromise, from
 the engine's own starts `simIni`. The instance premise `hstock` is interim, `TEMP(C2)`: it feeds
 only the record's interim `stock` field; stock callers get it from

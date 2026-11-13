@@ -510,7 +510,7 @@ theorem outage_s5_inner_at
       rw [h, Set.ncard_empty] at hco
       omega
     obtain ⟨j, e', hve, hvs⟩ := hSXv x hx
-    exact vote_extends_of_counted_batch_run hrun D.hnc D.facts.hT hy hcast hs
+    exact vote_extends_of_counted_batch_run hrun D.hnc (D.facts.hT hrun D.hnc) hy hcast hs
       (hviab ⟨x, j, e', hve, hvs, hall x hx j e' hve hvs⟩) hA₀k hSXv hall hW hWc hcount
       (hcarry (D.K.committee D.r ∩ D.A₀) hall) hL
 

@@ -42,12 +42,6 @@ theorem committeeSize_of_participationKind_none {B : VoteBinding}
   intro pub
   simp only [VoteBinding.committeeSize, h]
 
-/-- TEMP(C2): a binding without a participation kind installs no own-role permission. -/
-theorem installVote_of_participationKind_none {B : VoteBinding}
-    (h : B.participationKind = none) {n : Nat} (p : ShapeRole B.Kind → Bool)
-    (a : SA.SAState n) : B.installVote p a = a := by
-  simp only [VoteBinding.installVote, h]
-
 /-- TEMP(C2): the interim stock premise of the run records, discharged for the population
 binding. Proof-side lemmas carry it as `[Fact (S.vote.participationKind = none)]`; a committee
 binding fails instance synthesis. Removed with the records' `stock` field at C2. -/
