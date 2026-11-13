@@ -265,7 +265,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
     · exact Or.inr (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hL.1 h hPt)
     · exact Or.inl (SA.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPt h hL.1)
   have hfast : SA.fastSelect sp A ell.frame u P = some P :=
-    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hp.run.stock]; omega)
+    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hp.stock]; omega)
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hslot : sp.slot (tr.time j) = u + 1 := by
     rw [ht]

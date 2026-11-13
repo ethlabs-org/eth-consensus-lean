@@ -583,6 +583,7 @@ theorem tickRun_hsShared (g : Time) : Healing.HSShared (tickRun N1 dg1) Set.univ
   healthy := tickRun_healthy g
   noRestart _ _ k h := absurd h (tickRun_no_restart _ k)
   timeoutDelay := by decide
+  stock := rfl
 
 /-- **Non-vacuity of node O.1's and C1.3's pattern premises, reduced to one fact of one run.**
 On the one-validator tick run, with `c_F = 2`, `k_F = 0` (so `c_F + k_F ≤ δ_t = 2`), `W = 1`,

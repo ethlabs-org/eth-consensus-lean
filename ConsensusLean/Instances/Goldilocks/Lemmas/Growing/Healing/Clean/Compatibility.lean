@@ -82,7 +82,7 @@ theorem optimistic_sources_compatible_at (hp : ResetPremisesUpTo tr H proposer d
   have h34' := (SA.deepest_mem hsel').1.2.1
   rw [hsl] at h34
   rw [hsl'] at h34'
-  rw [hp.run.stock] at h34 h34'
+  rw [hp.stock] at h34 h34'
   have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ell.frame s C)
     (SA.optimisticVoters sp A' ell'.frame s D)
   have hle : (SA.optimisticVoters sp A ell.frame s C ∪
@@ -134,7 +134,7 @@ theorem optimistic_supporter_at (hp : ResetPremisesUpTo tr H proposer dg g ΔF a
   split_ifs at hsel
   refine ⟨(frame_tree_subset_at hp.run hp.noColl hx hpt₀).2 (SA.deepest_mem hsel).1.1, ?_⟩
   have h34 := (SA.deepest_mem hsel).1.2.1
-  rw [hp.run.stock] at h34
+  rw [hp.stock] at h34
   obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
     Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H (tr.time r))ᶜ)
       (t := SA.optimisticVoters sp A ell.frame (sp.slot ((tr.projAC.upTo (tr.time r)).time r)) B)

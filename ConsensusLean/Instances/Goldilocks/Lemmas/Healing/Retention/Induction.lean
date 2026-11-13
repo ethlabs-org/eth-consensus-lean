@@ -399,7 +399,7 @@ theorem historical_activation_cutZ_before
     obtain ⟨CV, hst⟩ := ho.2.2.1
     obtain ⟨_, C, hfl, hBC⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
     obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
-      (by rw [hp.run.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hfl) hBC
+      (by rw [hp.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hfl) hBC
     rcases hacc with hg | ⟨q, hq, hqt⟩
     · obtain ⟨z, hz, m, hDm⟩ := hDU
       exact False.elim ((cutZ_lt_of_anc hp ho hz hDm hBD).2 hg)
@@ -592,7 +592,7 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
         B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
       intro hFB
       obtain ⟨v, _, D, hDU, _, hBD, hacc⟩ := raw_writer_relay_source
-        (by rw [hp.run.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hraw) hBC
+        (by rw [hp.stock]; exact sp.toParams.hn) hr ho.1 (Or.inr hraw) hBC
       rcases hacc with hgen | ⟨q, hq, hqt⟩
       · obtain ⟨z, hz, d, hD⟩ := hDU
         exact False.elim ((hp.cutZ_lt_of_anc ho hz hD hBD).2 hgen)
@@ -674,7 +674,7 @@ comparability from the votes (`origins_compatible`), (R1)'s attestations (`high_
 (R3) from the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
 theorem height_scoped_retention : HeightScopedRetention := by
   intro sp ro proposer dg H tr g ΔF hrun hh hnc a ha
-  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha⟩
+  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha, hrun.stock⟩
   have hinv := retention_inv hp
   have hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B →
       HighOrigin tr H g x' i' j' B' → Compatible (tr.HonestBlocks H) B B' := by

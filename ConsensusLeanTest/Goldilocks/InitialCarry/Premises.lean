@@ -75,6 +75,8 @@ structure PersistPremisesExceptCarry (dg : Digest (List (FG.Att sp.n)) (Payload 
   noColl : NoCollRun dg tr
   /-- `Clean(s, m, B)`. -/
   clean : Clean tr H s m B
+  /-- The stock committee. -/
+  stock : sp.committeeSize = sp.n
 
 /-- The field `carry` of `PersistPremises`: the initial `Carry(s, CV, B)`. -/
 def CarryHolds (s : Nat) (CV : Set (Vote sp.n)) : Prop :=
@@ -88,9 +90,9 @@ theorem persistPremises_iff_carry {dg : Digest (List (FG.Att sp.n)) (Payload sp.
     PersistPremises tr H dg ΔF x i₀ s m B CV ↔
       PersistPremisesExceptCarry tr H dg ΔF x i₀ s m B CV ∧ CarryHolds tr H s CV :=
   ⟨fun p => ⟨⟨p.writer_honest, p.fastLock, p.writer_joined, p.lt, p.sync, p.halfCommittee,
-      p.carryLater, p.faultBound, p.noColl, p.clean⟩, p.carry⟩,
+      p.carryLater, p.faultBound, p.noColl, p.clean, p.stock⟩, p.carry⟩,
     fun ⟨p, h⟩ => ⟨p.writer_honest, p.fastLock, p.writer_joined, p.lt, p.sync, h,
-      p.halfCommittee, p.carryLater, p.faultBound, p.noColl, p.clean⟩⟩
+      p.halfCommittee, p.carryLater, p.faultBound, p.noColl, p.clean, p.stock⟩⟩
 
 end Generic
 
@@ -504,6 +506,7 @@ theorem run_premisesExceptCarry (ctl : Bool) :
   faultBound := run_faultBound ctl
   noColl := run_noColl ctl
   clean := run_clean ctl
+  stock := rfl
 
 end Consensus.Goldilocks.Test.HalfCommittee.Heads
 

@@ -121,7 +121,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hy : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
   have hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b :=
-    ⟨hrun, hnc, hseed, hsvc, hB, hinv, hcv, hTb, hdt₁⟩
+    ⟨hrun, hnc, hseed, hsvc, hB, hinv, hcv, hTb, hdt₁, hseed.reset.elim fun _ h => h.1.stock⟩
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
   obtain ⟨pp, kP, -, hph, hPa, hkP⟩ := hP

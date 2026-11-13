@@ -285,9 +285,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
   {tr : GoldilocksTrace sp ro}
 
 /-- **Retention.** The prefix through `d` of a run under growing faults is a static run for the
-validators honest at `d` (`0 ≤ d`: they were honest at the start). -/
-theorem GoldilocksRun.upTo (h : Growing.GoldilocksRun proposer dg H tr) {d : Time} (hd : 0 ≤ d) :
-    Consensus.Goldilocks.GoldilocksRun proposer dg (H d) (tr.upTo d) := by
+validators honest at `d` (`0 ≤ d`: they were honest at the start), from the same starts. -/
+theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (h : Growing.GoldilocksRun proposer dg H tr ini) {d : Time} (hd : 0 ≤ d) :
+    Consensus.Goldilocks.GoldilocksRun proposer dg (H d) (tr.upTo d) ini := by
   have hm := h.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.antitone ht
   refine

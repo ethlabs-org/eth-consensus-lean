@@ -928,7 +928,7 @@ theorem first_update_postU
     rcases hlocks L hL with h | h
     · exact Or.inr (anc_tree_of_anc_U hU hΦ hΦU hL.1 h hPt)
     · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hPt h hL.1)
-  exact ⟨hconf, hnv, by unfold FastTest; rw [hS.run.stock]; omega, hpost⟩
+  exact ⟨hconf, hnv, by unfold FastTest; rw [hS.stock]; omega, hpost⟩
 
 /-- **The first update**: at an honest node's tick at `t_p + 6Δ`, with every honest
 slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,

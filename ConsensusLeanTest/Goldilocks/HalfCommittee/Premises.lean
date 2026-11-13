@@ -66,6 +66,8 @@ structure PersistPremisesExceptHalf (dg : Digest (List (FG.Att sp.n)) (Payload s
   noColl : NoCollRun dg tr
   /-- `Clean(s, m, B)`. -/
   clean : Clean tr H s m B
+  /-- The stock committee. -/
+  stock : sp.committeeSize = sp.n
 
 /-- The field `halfCommittee` of `PersistPremises`. -/
 def HalfCommitteeHolds (s m : Nat) : Prop :=
@@ -80,9 +82,9 @@ theorem persistPremises_iff {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {�
     PersistPremises tr H dg ΔF x i₀ s m B CV ↔
       PersistPremisesExceptHalf tr H dg ΔF x i₀ s m B CV ∧ HalfCommitteeHolds tr H s m :=
   ⟨fun p => ⟨⟨p.writer_honest, p.fastLock, p.writer_joined, p.lt, p.sync, p.carry, p.carryLater,
-      p.faultBound, p.noColl, p.clean⟩, p.halfCommittee⟩,
+      p.faultBound, p.noColl, p.clean, p.stock⟩, p.halfCommittee⟩,
     fun ⟨p, h⟩ => ⟨p.writer_honest, p.fastLock, p.writer_joined, p.lt, p.sync, p.carry, h,
-      p.carryLater, p.faultBound, p.noColl, p.clean⟩⟩
+      p.carryLater, p.faultBound, p.noColl, p.clean, p.stock⟩⟩
 
 end Consensus.Goldilocks.Test.HalfCommittee
 
@@ -478,6 +480,7 @@ theorem run_premisesExceptHalf (ctl : Bool) :
   faultBound := run_faultBound ctl
   noColl := run_noColl ctl
   clean := run_clean ctl
+  stock := rfl
 
 /-! ## The failure of `halfCommittee` and of the conclusion -/
 

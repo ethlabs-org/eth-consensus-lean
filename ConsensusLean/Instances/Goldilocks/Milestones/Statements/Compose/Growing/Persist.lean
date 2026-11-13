@@ -96,6 +96,8 @@ structure PersistPremises (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (ΔF
   noColl : NoCollRun dg tr
   /-- `Clean(s, m, B)`. -/
   clean : Clean tr H s m B
+  /-- The stock committee (§S scope-(ii) item S18). -/
+  stock : sp.committeeSize = sp.n
 
 /-- **The conclusion of G1.10 at the scope of C1.1** under growing faults, for `y`: at every
 block `y` accepts while honest, and at every cut or state read while `y` is honest. -/

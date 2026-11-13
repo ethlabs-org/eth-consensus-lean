@@ -79,6 +79,8 @@ structure PersistPremisesExceptCarryLater (dg : Digest (List (FG.Att sp.n)) (Pay
   noColl : NoCollRun dg tr
   /-- `Clean(s, m, B)`. -/
   clean : Clean tr H s m B
+  /-- The stock committee. -/
+  stock : sp.committeeSize = sp.n
 
 /-- The field `carryLater` of `PersistPremises`: `Carry(s', S_{s'}, B)` for the honest votes
 `S_{s'}` of every slot `s' ∈ (s, m]`. -/
@@ -94,9 +96,9 @@ theorem persistPremises_iff_carryLater {dg : Digest (List (FG.Att sp.n)) (Payloa
     PersistPremises tr H dg ΔF x i₀ s m B CV ↔
       PersistPremisesExceptCarryLater tr H dg ΔF x i₀ s m B CV ∧ CarryLaterHolds tr H s m :=
   ⟨fun p => ⟨⟨p.writer_honest, p.fastLock, p.writer_joined, p.lt, p.sync, p.carry,
-      p.halfCommittee, p.faultBound, p.noColl, p.clean⟩, p.carryLater⟩,
+      p.halfCommittee, p.faultBound, p.noColl, p.clean, p.stock⟩, p.carryLater⟩,
     fun ⟨p, h⟩ => ⟨p.writer_honest, p.fastLock, p.writer_joined, p.lt, p.sync, p.carry,
-      p.halfCommittee, h, p.faultBound, p.noColl, p.clean⟩⟩
+      p.halfCommittee, h, p.faultBound, p.noColl, p.clean, p.stock⟩⟩
 
 end Generic
 
@@ -455,6 +457,7 @@ theorem run_premisesExceptCarryLater (ctl : Bool) :
   faultBound := run_faultBound ctl
   noColl := run_noColl ctl
   clean := run_clean ctl
+  stock := rfl
 
 end Consensus.Goldilocks.Test.HalfCommittee.Later
 

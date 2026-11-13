@@ -142,7 +142,7 @@ theorem cF_bounds :
 theorem run_hsShared : Healing.HSShared run Set.univ dg 0 36 :=
   ⟨dg_noColl run, dg_genesis, run_healthy run_facts,
     fun y _ k hk => absurd hk (run_facts.noRestart y k),
-    by decide⟩
+    by decide, rfl⟩
 
 /-- `Catch(2Δ)` at `g = 0`, vacuously: no block is accepted before `ḡ = 0`. -/
 theorem run_catch : Healing.CatchRun run Set.univ 0 (2 * sp.Δ) := by

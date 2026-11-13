@@ -240,7 +240,7 @@ private theorem optimistic_unlock_keeps
     rw [tr.state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
     rw [← Compose.projAC_state hp.run.toLocalRun hy] at hv
-    exact (Compose.state_pool_cap hp.run hy m τ).1 v hv
+    exact (Compose.state_pool_cap hp.run (fun _ _ => rfl) hy m τ).1 v hv
   have hpay : ∀ C ∈ (Node.frame (tr.state y j)).tree, SA.validPayload C := by
     rw [← hfr]
     exact SA.frame_validPayload sp hr hy hcallA
@@ -253,7 +253,7 @@ private theorem optimistic_unlock_keeps
     (Compose.frameOK_state hp.run.toLocalRun hy j) _ hR (hpool j) (hpool (j + 1)) hpay
     (fun v hv w hw hvH hval hsl =>
       Compose.heldVotes_honest_unique hp.run hp.noColl hy hcall hv hw hvH hval hsl) ?_
-    (by simpa only [hp.run.stock] using hf)
+    (by simpa only [hp.stock] using hf)
   intro v hv hvH hvs Hd hHd hHdr
   obtain ⟨k, e, ⟨ell', hcast⟩, hm⟩ :
       ∃ k e, SA.VoteAt tr.projAC v.val k e ∧ e.msg = v := by

@@ -27,9 +27,11 @@ open SA (SAParams ReplayOrder Payload)
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The AC projection holds the AC state of a node honest at the cut. -/
-theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
+theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) : tr.projAC.state y i = (tr.state y i).ac := by
   have h := Compose.projAC_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (fun k hk => hrun.time_mono hk.le),
@@ -37,7 +39,7 @@ theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin
 
 /-- A send or fresh admission of a node honest at its cut is an emission, or a received message or
 block-carried vote that the node did not hold before the cut and holds after it. -/
-theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {m : SA.Vote sp.n}
     (h : tr.projAC.SendOrAdmit y k m) :
     tr.EmitAt y k m ∨
@@ -64,7 +66,8 @@ theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg 
 
 /-- `Σ.F` of a node honest at cut `i'` moves only to descendants up to `i'`, inside the blocks held
 while honest. -/
-theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i i' : Nat}
+theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {i i' : Nat}
     (hy : y ∈ H (tr.time i')) (hii : i ≤ i') :
     Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y i').fg.F := by
   have hr := (hrun.upTo (hrun.time_nonneg i')).toLocalRun
@@ -75,7 +78,8 @@ theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin s
 
 /-- An AC block call of a node honest at it follows the FG acceptance of the block at the same
 time. -/
-theorem acBlock_prev_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
+theorem acBlock_prev_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     {B : (goldilocksNode sp ro).Blk} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
     ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
@@ -85,7 +89,8 @@ theorem acBlock_prev_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin
   exact ⟨i', rfl, ((Trace.upTo_callAt _).mp hc').2, ht⟩
 
 /-- An FG acceptance of a node honest at it is followed at once by the AC block call. -/
-theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {i : Nat}
+theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {B : (goldilocksNode sp ro).Blk}
     (hc : tr.CallAt y i (.fg (.block B true))) :
     ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
@@ -98,7 +103,8 @@ theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin 
 /-- **The finite Sleepy service under growing faults** from SA message service and node
 acceptance relay (senders honest at the send, recipients at the reading call); the AC acceptance
 relay follows through the AC block cut after each acceptance. -/
-theorem sleepyServiceBefore_of_message_relay_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+theorem sleepyServiceBefore_of_message_relay_at
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {b : Time}
     (message : ∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → 0 ≤ tr.time i →
       ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ →

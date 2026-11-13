@@ -182,10 +182,11 @@ theorem requirements (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) 
 variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Every projected send/admission has precisely one of the forwarding supplier's
 sources: an emission, or a fresh message/payload insertion. Restart replay is excluded. -/
-theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr)
+theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {m : Vote sp.n}
     (h : tr.projAC.SendOrAdmit y k m) :
     tr.EmitAt y k m ∨
@@ -209,7 +210,7 @@ theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr)
     · exact Or.inl ⟨ℓ, projAC_callAt.mp hc, e, he, hm⟩
 
 /-- The frame of an honest AC call is inside the node's tree. -/
-private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
@@ -226,7 +227,7 @@ private theorem emit_voteAt {x : Fin sp.n} {j : Nat} {v : Vote sp.n} (h : tr.Emi
 
 /-- Honest emissions at different cuts have different slots without assuming `NoCollRun`.
 Individual FG stores supply well-formed frames; no global block-root injection is needed. -/
-theorem emitted_vote_slots_ne (hrun : GoldilocksRun proposer dg H tr)
+theorem emitted_vote_slots_ne (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i < j) {v w : Vote sp.n}
     (hv : tr.EmitAt y i v) (hw : tr.EmitAt y j w) : v.slot ≠ w.slot := by
   obtain ⟨e, he, rfl⟩ := emit_voteAt hv
@@ -241,7 +242,7 @@ theorem emitted_vote_slots_ne (hrun : GoldilocksRun proposer dg H tr)
 
 /-- Before an honest emission, neither a wire message nor a block payload processed by an
 honest node can contain a vote of that signer and slot. This includes the emitting cut. -/
-theorem emitted_slot_not_received (hrun : GoldilocksRun proposer dg H tr)
+theorem emitted_slot_not_received (hrun : GoldilocksRun proposer dg H tr ini)
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {i k : Nat} (hki : k ≤ i)
     {v m : Vote sp.n} (hv : tr.EmitAt y i v) (hm : m.val = y) (hs : m.slot = v.slot) :
     ¬ (tr.MsgCallAt x k m ∨ ∃ B, tr.BlockCallAt x k B ∧ m ∈ blockVotes B) := by
@@ -253,14 +254,16 @@ theorem emitted_slot_not_received (hrun : GoldilocksRun proposer dg H tr)
   obtain ⟨j, hj, he⟩ := he
   exact emitted_vote_slots_ne hrun hy (hj.trans_le hki) he hv hs
 
-private theorem message_vote (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem message_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {v : Vote sp.n}
     (hc : tr.projAC.CallAt y i ℓ) (hm : ℓ.call = .message v) (hval : v.val ∈ H) :
     ∃ j < i, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
   obtain ⟨j, hj, he⟩ := hrun.msg_unforgeable y hy i v ⟨ℓ, projAC_callAt.1 hc, hm⟩ hval
   exact ⟨j, hj, emit_voteAt he⟩
 
-private theorem carried_vote (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+private theorem carried_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
+    (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hv : v ∈ blockVotes B) (hval : v.val ∈ H) :
@@ -271,16 +274,18 @@ private theorem carried_vote (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp
     exact ⟨j, hj.trans hk, emit_voteAt he⟩
 
 /-- Honest votes in a stored pool have an earlier emission, including votes replayed at
-restart. Only individual frame well-formedness is needed, not `NoCollRun`. -/
-theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i σ : Nat) (v : Vote sp.n)
+restart, from starts `ini` with empty pools. Only individual frame well-formedness is needed,
+not `NoCollRun`. -/
+theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
+    (hini : ∀ y σ, (ini y).pool σ = [])
+    {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) (v : Vote sp.n)
     (hv : v ∈ (tr.projAC.state y i).pool σ) (hval : v.val ∈ H) :
     ∃ j < i, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
   induction i using Nat.strong_induction_on with
   | h i ih =>
     rcases tr.projAC.noCall_or_lastCall y i with hn | ⟨k, hk, ℓ, hc, hn⟩
     · rw [tr.projAC.state_of_noCall hn] at hv
-      simp [RunTrace.projAC, hrun.init y hy, Node.initWith, SA.SAState.initial] at hv
+      simp [RunTrace.projAC, hrun.init y hy, Node.initWith, hini] at hv
     · rw [tr.projAC.state_of_lastCall hc hk hn] at hv
       have hf := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).1
       have hΦ : FrameOK ℓ.frame :=
@@ -314,7 +319,8 @@ theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
           exact ⟨k, hk, e, hvy.symm ▸ ⟨ℓ, hc, he⟩, hev⟩
 
 /-- The pool form and capacity invariant needs no global block-root injectivity. -/
-theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr)
+theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr ini)
+    (hini : ∀ y σ, (ini y).pool σ = [])
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∀ σ, (∀ m ∈ (tr.projAC.state y i).pool σ, m.slot = σ) ∧
       ∀ x : Fin sp.n, (((tr.projAC.state y i).pool σ).filter
@@ -323,7 +329,7 @@ theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr)
   | h i ih =>
     rcases tr.projAC.noCall_or_lastCall y i with hn | ⟨k, hk, ℓ, hc, hn⟩
     · rw [tr.projAC.state_of_noCall hn]
-      simp [RunTrace.projAC, hrun.init y hy, Node.initWith, SA.SAState.initial]
+      simp [RunTrace.projAC, hrun.init y hy, Node.initWith, hini]
     · rw [tr.projAC.state_of_lastCall hc hk hn]
       have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
       rw [← projAC_state hrun.toLocalRun hy] at hex
@@ -334,7 +340,7 @@ theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr)
 
 /-- Non-restart pool retention uses the local step law only, not a coherent
 global block universe. The restart-free interval is explicit. -/
-theorem pool_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+theorem pool_mono (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) (σ : Nat) :
     (tr.projAC.state y a).pool σ ⊆ (tr.projAC.state y b).pool σ := by
@@ -358,18 +364,20 @@ theorem pool_mono (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
 
 /-- Before an honest emission, no honest stored pool contains a vote of its signer and slot,
 even if a restart has replayed previously accepted blocks. -/
-theorem emitted_slot_not_pooled (hrun : GoldilocksRun proposer dg H tr)
+theorem emitted_slot_not_pooled (hrun : GoldilocksRun proposer dg H tr ini)
+    (hini : ∀ y σ, (ini y).pool σ = [])
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {i k : Nat} (hki : k ≤ i)
     {v m : Vote sp.n} (hv : tr.EmitAt y i v) (hm : m.val = y) (hs : m.slot = v.slot)
     (σ : Nat) : m ∉ (tr.projAC.state x k).pool σ := by
   intro hp
-  obtain ⟨j, hj, e, ⟨ℓ, hc, he⟩, hev⟩ := pool_vote_emitted hrun hx k σ m hp (hm ▸ hy)
+  obtain ⟨j, hj, e, ⟨ℓ, hc, he⟩, hev⟩ := pool_vote_emitted hrun hini hx k σ m hp (hm ▸ hy)
   have hem : tr.EmitAt y j m := hm ▸ ⟨ℓ, projAC_callAt.mp hc, e, he, hev⟩
   exact emitted_vote_slots_ne hrun hy (hj.trans_le hki) hem hv hs
 
 /-- An honest emission really enters the post-call pool, without a collision
 assumption. Incoming votes of this signer and slot cannot precede its emission. -/
-theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr)
+theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
+    (hini : ∀ y σ, (ini y).pool σ = [])
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {v : Vote sp.n}
     (hv : tr.EmitAt y i v) : v ∈ (tr.post i).ac.pool v.slot := by
   obtain ⟨ℓ, hc, e, he, rfl⟩ := hv
@@ -378,10 +386,10 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr)
   rw [← projAC_state hrun.toLocalRun hy] at hex
   have hem : e ∈ ((goldilocksSA sp _ ro).step y (tr.projAC.state y i)
       ℓ.frame (tr.time i) ℓ.call).2 := by rw [hex]; exact he
-  have hcap := state_pool_cap hrun hy i
+  have hcap := state_pool_cap hrun hini hy i
   have hf : ∀ m ∈ (tr.projAC.state y i).pool e.msg.slot, m.val ≠ y := by
     intro m hm hmy
-    exact emitted_slot_not_pooled hrun hy hy le_rfl hv hmy
+    exact emitted_slot_not_pooled hrun hini hy hy le_rfl hv hmy
       ((hcap _).1 m hm) _ hm
   have hrecv := fun (m : Vote sp.n) (hm : m.val = y) (hs : m.slot = e.msg.slot) =>
     emitted_slot_not_received hrun hy hy le_rfl hv hm hs
@@ -433,7 +441,7 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr)
   exact hgoal
 
 /-- A block of an honest frame is genesis or was accepted by an honest node. -/
-private theorem frame_block_cases (hrun : GoldilocksRun proposer dg H tr)
+private theorem frame_block_cases (hrun : GoldilocksRun proposer dg H tr ini)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : SA.HonestFrameBlock tr.projAC H B) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
@@ -482,7 +490,7 @@ theorem goldilocks_ac_projection : GoldilocksACProjection := by
   intro sp ro dg H tr proposer hrun hnc
   have hloc := ac_projection _ _ dg H _ tr proposer (requirements sp ro)
     (fun y _ => payloadFrom_initial (requirements sp ro) y) hrun.toLocalRun hnc
-  refine ⟨hrun.stock, hloc, fun y hy => pool_vote_emitted hrun hy,
+  refine ⟨hrun.stock, hloc, fun y hy => pool_vote_emitted hrun (fun _ _ => rfl) hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval,
     fun y hy i ℓ hc B hB v hv hval => carried_vote hrun hy hc hB hv hval, fun B hB hr => ?_,
     fun B B' hB hB' hp hpr hs => one_block hrun hB hB' hp hpr hs⟩

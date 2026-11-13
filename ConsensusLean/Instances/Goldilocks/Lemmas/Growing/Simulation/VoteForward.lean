@@ -187,7 +187,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid)
           change _ = (_, ℓ.emits) at hstep
           exact (congrArg Prod.snd hstep).symm ▸ he)
       have hm : m.val = y := hev ▸ hsign
-      have hf := Compose.emitted_slot_not_pooled hpref hy hy le_rfl
+      have hf := Compose.emitted_slot_not_pooled hpref (simIni_pool S rho hn) hy hy le_rfl
         (hemit hem) hm rfl m.slot
       simpa only [Compose.projAC_state hpref.toLocalRun hy, hstate] using hf
     · exact hf
@@ -197,7 +197,8 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid)
     · rcases hc with ⟨ℓ, hc, -⟩ | ⟨ℓ, B, hc, -⟩ <;> exact ⟨_, hc⟩
   have hnew : m ∈ ((simTrace S rho hn).post k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, -, hnew⟩
-    · simpa only [hpost] using Compose.emitted_vote_mem_post hpref hy (hemit hem)
+    · simpa only [hpost] using
+        Compose.emitted_vote_mem_post hpref (simIni_pool S rho hn) hy (hemit hem)
     · exact hnew
   obtain ⟨hold, hnew⟩ := sending_event_insertion_at S rho hn hv hy hs hlo hhi hcall hfresh hnew
   refine ⟨i, hlo, hhi, hs, ?_, admission_forward_first_at S rho hn hv hy hs hlo hhi hfresh⟩

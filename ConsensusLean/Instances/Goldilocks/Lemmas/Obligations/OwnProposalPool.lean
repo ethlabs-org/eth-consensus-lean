@@ -52,7 +52,7 @@ theorem own_proposal_payload_pooled_run (hr : GoldilocksRun proposer dg H tr)
     · simp at hm
     · exact ⟨_, hm.1⟩
   obtain ⟨σ, hm⟩ := hp
-  have hslot := (Compose.state_pool_cap hr hy (j + 1) σ).1 m
+  have hslot := (Compose.state_pool_cap hr (fun _ _ => rfl) hy (j + 1) σ).1 m
     (by simpa only [Compose.projAC_state hr.toLocalRun hy] using hm)
   obtain ⟨ℓp, hcp, hpc⟩ := hprop
   obtain ⟨B, hcb⟩ := hfg

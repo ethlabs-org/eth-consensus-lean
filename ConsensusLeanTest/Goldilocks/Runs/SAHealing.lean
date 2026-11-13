@@ -780,7 +780,7 @@ theorem driven : Driven (fun _ => v0) run Set.univ where
 
 /-- One infinite live run satisfies all standalone healing premises together. -/
 theorem standaloneRun : StandaloneRun run Set.univ blocks (fun _ => v0) 0 :=
-  ⟨⟨acRun, driven, healthy, catchAC⟩, trivialFrames⟩
+  ⟨⟨acRun, driven, healthy, catchAC, rfl⟩, trivialFrames⟩
 
 /-- Every interval of length four from GST contains a positive honest proposer slot. -/
 theorem proposerBound : PropAC (sp := sp1) (fun _ => v0) Set.univ 0 4 := by

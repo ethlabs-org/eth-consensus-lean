@@ -863,7 +863,7 @@ theorem optimistic_next_result_of_floor {b : Time}
   have hf := hp.faults
   have hn : 0 < sp.n := sp.toParams.hn
   obtain ⟨D, hconf, hBD, _⟩ := SA.update_extends_of_resolved_votes hS.run
-    (by rw [hS.run.stock]; omega) hext hy hu (by rw [hS.run.stock]; omega) hres
+    (by rw [hp.stock]; omega) hext hy hu (by rw [hp.stock]; omega) hres
   exact ⟨D, _, ⟨ell, hu, hconf, rfl⟩, hBD⟩
 
 /-- A deepest block of `T` lying in `S ⊆ T` is the deepest block of `S`. -/

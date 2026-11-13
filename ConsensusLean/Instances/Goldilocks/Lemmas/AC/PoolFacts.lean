@@ -584,10 +584,25 @@ theorem carried_votes : CarriedVotes sp := by
   have := hpay.1 v hv
   omega
 
-/-- **A0.9.** The payload of a proposal at `t_σ` is the slot-`(σ−1)` vote view of the pool, whose
-votes are of slot `σ − 1` (`pool_cap`) and whose support is among its votes. -/
-theorem proposal_payload_valid : ProposalPayloadValid sp := by
-  intro FGP ro self U hU A Φ t₀ hr σ _ d p hp B hBs hBp
+/-- **A0.9 from a start `s₀` with empty pools** (the initial state, or a start that differs from
+it only in `mayVote`). The payload of a proposal at `t_σ` is the slot-`(σ−1)` vote view of the
+pool, whose votes are of slot `σ − 1` (the pool form, kept by every call) and whose support is
+among its votes. -/
+theorem proposal_payload_validFrom {FGP : Type} {ro : ReplayOrder sp FGP}
+    {s₀ : (goldilocksSA sp FGP ro).State} (h₀ : ∀ σ, (s₀ : SAState sp.n).pool σ = [])
+    (self : Fin sp.n) (U : Set (Blk sp.n FGP)) (A : (goldilocksSA sp FGP ro).State)
+    (Φ : (goldilocksSA sp FGP ro).Frm) (t₀ : Time)
+    (hr : (goldilocksSA sp FGP ro).ReachableAtFrom s₀ self U A Φ t₀) :
+    ∀ σ : Nat, t₀ ≤ sp.toParams.slotTime σ → ∀ d p,
+      ((goldilocksSA sp FGP ro).proposal A Φ (sp.toParams.slotTime σ)).2 = some (d, p) →
+      ∀ B : Blk sp.n FGP, B.slot = σ → B.acPayload = p → validPayload B := by
+  have hpool : ∀ σ, (∀ m ∈ (A : SAState sp.n).pool σ, m.slot = σ) ∧
+      ∀ x : Fin sp.n,
+        (((A : SAState sp.n).pool σ).filter (fun m => m.val = x)).dedup.length ≤ 2 := by
+    induction hr with
+    | init => intro σ; simp [h₀]
+    | step c _ _ _ ih => exact step_pool_cap ro self _ _ _ c ih
+  intro σ _ d p hp B hBs hBp
   have hσ : sp.slot (sp.toParams.slotTime σ) = σ := by
     rw [sp.slotTime_eq]
     exact slot_of_mem sp σ (by simp [SAParams.ts]) (by
@@ -597,7 +612,6 @@ theorem proposal_payload_valid : ProposalPayloadValid sp := by
   split_ifs at hp
   obtain ⟨-, rfl⟩ := Prod.mk.inj (Option.some.inj hp)
   rw [hσ] at *
-  have hpool := pool_cap sp FGP ro self U hU A Φ t₀ hr
   refine ⟨fun v hv => ?_, fun v hv => ?_⟩
   · simp only [blockVotes, hBp, voteViewList, List.mem_filter, SAState.poolAt] at hv
     split_ifs at hv with hneg
@@ -606,6 +620,10 @@ theorem proposal_payload_valid : ProposalPayloadValid sp := by
       omega
   · simp only [blockSupport, blockVotes, hBp, voteViewList, List.mem_filter] at hv ⊢
     exact hv.1
+
+/-- **A0.9.** `proposal_payload_validFrom` at the initial state. -/
+theorem proposal_payload_valid : ProposalPayloadValid sp :=
+  fun _ _ self U _ A Φ t₀ hr => proposal_payload_validFrom sp (fun _ => rfl) self U A Φ t₀ hr
 
 /-- At a reachable state, every pool vote is of a slot at most the slot of the last call's time
 (admission at `t` takes votes of slot `slot(t) − 1` or `slot(t)`, and calls are at nondecreasing

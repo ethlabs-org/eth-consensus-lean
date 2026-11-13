@@ -39,7 +39,7 @@ theorem raw_writer_held_at_slot_start_at
     simp only [SAParams.ts] at ht ⊢
     linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hxq, hq, hqt⟩⟩ :=
-    raw_writer_relay_source_at (by rw [hac.stock]; exact sp.toParams.hn)
+    raw_writer_relay_source_at (by rw [hp.stock]; exact sp.toParams.hn)
       hac.localRun hx hwriter hBC
   · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
     obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci'

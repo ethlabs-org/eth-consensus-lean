@@ -182,7 +182,7 @@ theorem persistPremises_tickRun :
   have hrun := tickRun_goldilocksRun
   refine ⟨Set.mem_univ _, ?_, ?_, by decide, tickRun_syncOn _ _ id (fun _ => le_rfl),
     carry_cv 1 (fun v hv => hv), ?_, fun s' _ _ => carry_cv s' (honestVotes_cv s'), ?_,
-    dg1_noColl _, ?_⟩
+    dg1_noColl _, ?_, rfl⟩
   · -- the optimistic fast lock at the admission of the own vote of slot `1`
     obtain ⟨fg', e, hl, hfg', hm, hp⟩ := vote_label 0
     obtain ⟨f, hf⟩ := fgGood_frame hfg'

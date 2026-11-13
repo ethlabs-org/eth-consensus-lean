@@ -158,7 +158,7 @@ theorem result_optimistic_compatibleU
   by_contra hnc
   obtain ⟨ℓ, S, hc, ht, hmaj, -, hSs⟩ := result_sideU hS.run hx hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hS.run hx' hO
-  rw [hS.run.stock] at h34
+  rw [hS.stock] at h34
   have h1 := against_updateU hr hsync hx' hx hc ht
     (fun k _ hk => (hS.restart_le hx hk).trans (by linarith)) hSs hT fun h => hnc (Or.symm h)
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))

@@ -151,7 +151,7 @@ theorem vote_anchor_cases_coreU
     right
     obtain ⟨Φ, A, D, -, hΦ'U, -, h34, hpool, -, L, hL, hLr, hLD⟩ :=
       lock_origin_readPointU hrun hx hc l hl (by rw [hes, hlp]; omega)
-    rw [hrun.stock] at h34
+    rw [hS.stock] at h34
     obtain rfl : L = a := hU.1 hL (hΦU haT) (hLr.trans hlr.symm)
     have hf := hS.two_faulty_lt
     have hlt : Hᶜ.ncard < (optimisticVoters sp A Φ l.slot D).ncard := by omega

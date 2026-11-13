@@ -14,10 +14,11 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
   (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- The canonical trace simulates every valid growing-fault engine execution. -/
+/-- The canonical trace simulates every valid growing-fault engine execution, from the engine's
+own starts. -/
 theorem simTraceAt_simulates (hv : rho.ExecutionValid)
     [Fact (S.vote.participationKind = none)] : -- TEMP(C2)
-    SimulatesAt S rho hn (simTraceAt S rho hn) (cutMap S rho hn) where
+    SimulatesAt S rho hn (simTraceAt S rho hn) (cutMap S rho hn) (simIni S rho hn) where
   run := simTraceAt_goldilocksRun S rho hn hv
   ι_zero := cutMap_zero S rho hn
   ι_mono := cutMap_mono S rho hn

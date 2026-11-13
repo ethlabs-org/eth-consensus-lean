@@ -30,7 +30,8 @@ variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
-theorem update_restarts (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
+theorem update_restarts {ini : Fin sp.n → SA.SAState sp.n}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
     (hu : SA.UpdateAt T y k₀ s ℓ) : ∀ k ≤ k₀, T.RestartAt y k → T.time k ≤ sp.ts s := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
@@ -51,7 +52,7 @@ theorem update_restarts (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T)
   have hsl : sp.slot (T.time k₀) = s + 1 :=
     SA.slot_of_mem sp (s + 1) (by rw [ht, hts]; linarith) (by rw [ht, hts₂]; linarith)
   intro k hk hrk
-  have := ((SA.joined_awake sp) FGP ro H U T hr y hy k₀ ℓ hc hpost).2 k hk hrk
+  have := (SA.joined_awakeU sp FGP ro H U T hr.toU y hy k₀ ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
 
 end Consensus.Goldilocks.Compose

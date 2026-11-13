@@ -226,9 +226,9 @@ theorem acLocalRunUS_parentWalkStartFn {ro : ReplayOrder sp FGP} (m : WriteMode)
 
 /-- **The parent's runs are runs with the unlock given**, at the parent's own unlock. -/
 theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)}
-    {tr : SATrace sp FGP ro} (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) :
-    ACLocalRunU (WriteMode.parent sp) (parentOracle sp tr) H U tr where
+    {U : Set (Blk sp.n FGP)} {ini : Fin sp.n → SAState sp.n}
+    {tr : SATrace sp FGP ro} (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) :
+    ACLocalRunU (WriteMode.parent sp) (parentOracle sp tr) H U tr ini where
   coherent := h.coherent
   init := h.init
   exec i ℓ hl hy := by

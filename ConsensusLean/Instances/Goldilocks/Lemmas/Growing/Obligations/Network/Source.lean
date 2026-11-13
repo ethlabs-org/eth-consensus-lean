@@ -35,7 +35,8 @@ theorem sendOrAdmit_process_same_time_at (hn : 1 ≤ Fintype.card V) (hv : rho.E
     {m : SA.Vote (Fintype.card V)} (hsource : (simTraceAt S rho hn).SendOrAdmitAt y i m) :
     ∃ k, (simTraceAt S rho hn).projAC.ProcessAt y k m ∧
       (simTraceAt S rho hn).time k = (simTraceAt S rho hn).time i := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  -- TEMP(C2): `acBlock_vote_pooled_in_tick` is not start-generic.
+  have hrun := simTraceAt_goldilocksRun_initial S rho hn hv
   have hsim := simTraceAt_simulates S rho hn hv
   rw [simTraceAt_eq] at hrun hsim hy hsource ⊢
   have hmono := hrun.time_mono

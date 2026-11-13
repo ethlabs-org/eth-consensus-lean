@@ -221,7 +221,7 @@ private theorem proposer_high_locks
     have h34 := (SA.deepest_mem hsel).1.2.1
     rw [hsl] at h34
     refine SA.origin_compatible hU hΦoU h34
-      (by simpa only [hrun'.stock] using hS.two_faulty_lt) fun v hv hvH => ?_
+      (by simpa only [hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_
     obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hpH hpt hv hvH
     exact hprior _ hvH j' (by omega) e'' hve (by rw [hvs]; omega)
   rcases hO' with h | h
@@ -386,7 +386,7 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr) (hs : HSS
         have h34 := (SA.deepest_mem hsel).1.2.1
         rw [hsl] at h34
         refine SA.origin_compatible hU hΦoU h34
-          (by simpa only [hrun'.stock] using hS.two_faulty_lt) fun v hv hvH => ?_
+          (by simpa only [hs.stock] using hS.two_faulty_lt) fun v hv hvH => ?_
         obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := SA.optimisticPoint_pool_vote hrun' hpH hpt hv hvH
         exact hprior _ hvH j' (by omega) e'' hve (by rw [hvs]; omega)
     rcases hO' with h | h

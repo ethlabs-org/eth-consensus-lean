@@ -21,11 +21,14 @@ open SA (Vote)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
   (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- The canonical engine expansion obeys the node laws with time-indexed honesty. -/
+/-- The canonical engine expansion obeys the node laws with time-indexed honesty, from the AC
+starts `ini` (default: the interface's initial state). -/
 structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
-    (ι : Nat → Nat) : Prop where
+    (ι : Nat → Nat) (ini : Fin (Fintype.card V) →
+      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State :=
+      fun _ => (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial) : Prop where
   run : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
-    (honestKeysAt S rho) tr
+    (honestKeysAt S rho) tr ini
   ι_zero : ι 0 = 0
   ι_mono : Monotone ι
   covered : ∀ k, tr.label k ≠ none →

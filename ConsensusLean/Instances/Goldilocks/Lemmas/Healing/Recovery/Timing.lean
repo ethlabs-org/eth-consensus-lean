@@ -141,7 +141,7 @@ theorem pattern_reset
     have h1 := hr.2.2.2.1 a ha
     have h2 := hr.2.2.2.2.1
     simp only [Zreset]; linarith
-  refine ⟨a, ⟨hrun, hp.shared.healthy, hp.shared.noColl, ha⟩, hab, ?_⟩
+  refine ⟨a, ⟨hrun, hp.shared.healthy, hp.shared.noColl, ha, hp.shared.stock⟩, hab, ?_⟩
   have := drainTime_le (sp := sp) (reset_nonneg hrun ha)
   simp only [Rstar]; linarith
 

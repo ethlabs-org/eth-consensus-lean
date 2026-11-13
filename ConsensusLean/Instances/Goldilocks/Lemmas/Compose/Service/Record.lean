@@ -22,8 +22,8 @@ open SA (SAParams ReplayOrder Payload)
 /-- The frame of an honest node before every cut is well formed. -/
 theorem frameOK_state {P : Params} {A : NodeAC P}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
-    {tr : RunTrace A} {proposer : Nat → Fin P.n}
-    (hrun : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+    {tr : RunTrace A} {proposer : Nat → Fin P.n} {ini : Fin P.n → A.State}
+    (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     FrameOK (Node.frame (tr.state y i)) :=
   (Store.frame_realization P A.Payload _ _ (fg_reachable hrun hy i)).1
 

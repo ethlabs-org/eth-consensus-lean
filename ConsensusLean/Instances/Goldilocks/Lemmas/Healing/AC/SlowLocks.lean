@@ -199,7 +199,7 @@ theorem slow_live_locksU
       lock_origin_readPointU hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (origin_compatible hU hΦ'U h34
-      (by simpa only [hS.run.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
+      (by simpa only [hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (castAt_specU hr hvH hcj).2.1

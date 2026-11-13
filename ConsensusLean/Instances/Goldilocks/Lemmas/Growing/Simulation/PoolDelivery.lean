@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Netw
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -20,7 +22,8 @@ open SA (SAParams ReplayOrder)
 
 private theorem pool_evidence_at_update {sp : SAParams} {FGP : Type}
     {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)}
-    {tr : SA.SATrace sp FGP ro} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr)
+    {tr : SA.SATrace sp FGP ro} {ini : Fin sp.n → SA.SAState sp.n}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
     {w : Fin sp.n} (hw : w ∈ H) {c m : Nat} {ℓ}
     (hu : SA.UpdateAt tr w c m ℓ) {k : Nat} {v : SA.Vote sp.n}
     (hkc : k ≤ c) (hlo : sp.ts m ≤ tr.time k)
@@ -71,8 +74,9 @@ private theorem pool_evidence_at_update_at (hv : rho.ExecutionValid)
   let tr := simTraceAt S rho hn
   have hr := simTraceAt_goldilocksRun S rho hn hv
   have hprefix := hr.upTo (hr.time_nonneg c)
-  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hprefix
-    (hnc.upTo (tr.time c))).localRun
+  have hac := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
+    (fun y _ U _ s Φ t₀ h => SA.proposal_payload_validFrom _ (simIni_pool S rho hn y) y U s Φ t₀ h)
+    hprefix.toLocalRun (hnc.upTo (tr.time c))
   have hs (j : Nat) (hj : j ≤ c) :
       ((tr.upTo (tr.time c)).projAC.state w j) = (tr.state w j).ac := by
     rw [Compose.projAC_state hprefix.toLocalRun hw,
@@ -116,8 +120,9 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have htc : tr.time c = sp.ts m + 6 * sp.Δ := hu.2.2.1
   have hprefix := hrun.upTo (hrun.time_nonneg c)
-  have hr := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hprefix
-    (hnc.upTo (tr.time c))).localRun
+  have hr := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
+    (fun y _ U _ s Φ t₀ h => SA.proposal_payload_validFrom _ (simIni_pool S rho hn y) y U s Φ t₀ h)
+    hprefix.toLocalRun (hnc.upTo (tr.time c))
   have hstate : (tr.upTo (tr.time c)).projAC.state w c = tr.projAC.state w c := by
     rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC w
       (fun q hq => hrun.time_mono hq.le)]
@@ -133,8 +138,9 @@ theorem outage_pool_delivery_at (hv : rho.ExecutionValid)
       (Compose.projAC_restartAt.mpr ((RunTrace.upTo_restartAt tr).mpr
         ⟨hrun.time_mono hrc, hrs⟩))
   have hprefixX := hrun.upTo (hrun.time_nonneg i)
-  have hrx := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hprefixX
-    (hnc.upTo (tr.time i))).localRun
+  have hrx := Compose.ac_projection _ _ _ _ _ _ _ (Compose.requirements _ _)
+    (fun y _ U _ s Φ t₀ h => SA.proposal_payload_validFrom _ (simIni_pool S rho hn y) y U s Φ t₀ h)
+    hprefixX.toLocalRun (hnc.upTo (tr.time i))
   have hv' : SA.VoteAt (tr.upTo (tr.time i)).projAC x i e := by
     obtain ⟨l, hc, he⟩ := hvote
     exact ⟨l, Compose.projAC_callAt.mpr ((Trace.upTo_callAt tr).mpr

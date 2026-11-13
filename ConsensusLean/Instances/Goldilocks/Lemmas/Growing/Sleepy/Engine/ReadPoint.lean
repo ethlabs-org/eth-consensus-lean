@@ -53,7 +53,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The state before cut `j` of a node honest at `t ≥ 0`, with every cut before `j` at a time
 `≤ t`: a reachable store, a well-formed frame, and a tree inside the blocks held while honest
 (the static facts on the prefix through `t`). -/
-theorem held_state (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+theorem held_state {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} {t : Time} (ht : 0 ≤ t) (hj : ∀ k < j, tr.time k ≤ t)
     (hy : y ∈ H t) :
     (tr.state y j).fg.Reachable (goldilocksNode sp ro).genesisPayload ∧
@@ -243,7 +244,9 @@ theorem engine_read_point (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v
 
 /-- Ancestry, inside the blocks held while honest, of the reads of two nodes each honest at its
 read time with every earlier cut no later is a prefix of their confirmed chains. -/
-theorem read_prefix (hv : rho.ExecutionValid)
+theorem read_prefix {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) [Fact (S.vote.participationKind = none)] -- TEMP(C2)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {y z : Fin (Fintype.card V)} {j j' : Nat} {t t' : Time}
     (ht : 0 ≤ t) (hj : ∀ k < j, (simTraceAt S rho hn).time k ≤ t) (hy : y ∈ honestKeysAt S rho t)

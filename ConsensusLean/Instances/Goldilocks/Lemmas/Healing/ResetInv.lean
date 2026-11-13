@@ -277,7 +277,7 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
     split_ifs at hsel
     refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
     have h34 := (SA.deepest_mem hsel).1.2.1
-    rw [hS.run.stock] at h34
+    rw [hp.stock] at h34
     obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time r)) B) (by omega)
@@ -289,7 +289,7 @@ theorem optimistic_target_vote_domain (hp : ResetPremises tr H proposer dg g ΔF
   refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
   · intro hF
     have hg := le_gbar g
-    exact raw_writer_voterBlockTree_window_before (by rw [hp.run.stock]; exact sp.toParams.hn)
+    exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
       hr (reset_raw_sync_window_before hp (tr.time i))
       (catch_window_of_reset_catch hp hc (tr.time i)) hx hy (Or.inr hfast) .refl hcast
       (by omega) le_rfl
@@ -395,7 +395,7 @@ private theorem protected_writer (hp : ResetPremises tr H proposer dg g ΔF a)
     split_ifs at hsel
     refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
     have h34 := (SA.deepest_mem hsel).1.2.1
-    rw [hS.run.stock] at h34
+    rw [hp.stock] at h34
     obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time i)) B) (by omega)
@@ -587,7 +587,7 @@ theorem reset_inv : ∃ Tb : Nat → Time → Time → Nat → Nat → Time,
           (a + Tb sp.n sp.Δ ΔF sp.k sp.toParams.δt) :=
   ⟨fun _ Δ _ k _ => resetInvOffset k Δ, fun _ Δ _ k _ => resetInvOffset_nonneg k Δ,
     fun _ _ _ _ _ _ _ _ _ hrun hs hc _ _ ha =>
-      inv_after_reset ⟨hrun, hs.healthy, hs.noColl, ha⟩ hc hs.noRestart⟩
+      inv_after_reset ⟨hrun, hs.healthy, hs.noColl, ha, hs.stock⟩ hc hs.noRestart⟩
 
 /-- **H.3 (c), the bridge**, from `reset_inv` and `settled_geo`, at `max(T_b, 8Δ)`: the offset
 `NonInterference` exposes is `max((8k + 20)·max(Δ, 0), 8Δ)`, which is `(8k + 20)Δ` for `Δ > 0`. -/

@@ -167,7 +167,7 @@ theorem healthy_base_of_service_catch_before_at
   have hdr := projection_driven_of_run hpre hncp hpre.genesis_root_ok
   rw [RunTrace.upTo_projAC] at hr hdr
   refine ⟨hr, hdr, sync_window_at_reset_at hrun hs (SA.le_gbar g) hd0,
-    catch_window_at_gbar_at hrun hc hd0, ?_, hfaults d hd0 hdb⟩
+    catch_window_at_gbar_at hrun hc hd0, ?_, hfaults d hd0 hdb, hrun.stock⟩
   intro y hy t hgt htd
   exact (Trace.upTo_awake _ y t).mpr
     ⟨hawake y t (hrun.antitone htd hy) hgt (htd.trans hdb), htd⟩

@@ -77,8 +77,8 @@ theorem honest_blocks_coherent_local
 theorem honest_blocks_coherent {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro}
-    (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
+    {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) :=
   honest_blocks_coherent_local h.toLocalRun hnc
 

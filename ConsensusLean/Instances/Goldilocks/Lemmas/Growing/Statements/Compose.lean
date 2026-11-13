@@ -119,6 +119,7 @@ private theorem persistPremises_of_static {dg : Digest (List (FG.Att sp.n)) (Pay
         exact h.clean.fgAttCut E' hE
       heightLead := fun y i ℓ e hy hc h1 h2 => by
         rw [RunTrace.honestBlocksAt_const]; exact h.clean.heightLead y hy i ℓ e hc h1 h2 }
+  stock := h.stock
 
 /-- A growing-fault conclusion of C1.1 for the constant honest set is the static conclusion. -/
 private theorem persistAt_to_static {B : SA.Blk sp.n (List (FG.Att sp.n))} {s s' : Nat}

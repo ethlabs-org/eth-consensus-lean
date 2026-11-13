@@ -1030,7 +1030,8 @@ theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAStat
 /-- After an honest call at `i`, `restart_time` is at least the time of every restart of the node
 at a cut `≤ i`. -/
 private theorem restartTime_geU
-    {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} {ini : Fin sp.n → SAState sp.n} (h : ACLocalRunU wm u H U tr ini)
+    {y : Fin sp.n}
     (hy : y ∈ H) : ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ →
       ∀ j ≤ i, tr.RestartAt y j → (tr.time j : WithBot Time) ≤ (tr.post i).restartTime := by
   intro i
@@ -1208,7 +1209,8 @@ end OneVote
 /-- **F.1 (c), a joined node**, over a trace with the unlock given. -/
 theorem joined_awakeU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) {u : Nat → Set Lock}
-    (h : ACLocalRunU wm u H U tr) : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+    {ini : Fin sp.n → SAState sp.n} (h : ACLocalRunU wm u H U tr ini) :
+    ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
       joined sp (tr.post i) (tr.time i) →
       (∀ u : Time, max 0 (sp.ts ((sp.slot (tr.time i) : Int) - 1)) ≤ u → u ≤ tr.time i →
         tr.awake y u) ∧

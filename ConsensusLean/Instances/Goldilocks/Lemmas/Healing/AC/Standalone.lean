@@ -35,7 +35,7 @@ variable {wm : SA.WriteMode}
 start `t_{p−1} ≥ ḡ + 8kΔ`). -/
 theorem ac_healing_standalone_tight (sp : SAParams) : ACHealingStandaloneTight (sp := sp) :=
   fun _ _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
-    ac_healing_standalone_of_parent_tight ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩ hpH hP hp
+    ac_healing_standalone_of_parent_tight ⟨⟨hrun, hdr, hheal, hcatch, hrun.stock⟩, htriv⟩ hpH hP hp
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` gives H.1**: `ḡ + (8k + 4)Δ ≤ ḡ + 2Θ + 8Δ = ḡ + (8k + 16)Δ`. -/
 theorem standalone_of_tight (sp : SAParams) (h : ACHealingStandaloneTight (sp := sp)) :
@@ -144,7 +144,7 @@ theorem corollary_of_standalone (sp : SAParams) (h : ACHealingStandalone (sp := 
   have hΘ := Θ_nonneg sp
   have hΔ := sp.toParams.hΔ
   exact corollary_at (c := 2 * Θ sp + 8 * sp.Δ) (by linarith)
-    ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩ hprop
+    ⟨⟨hrun, hdr, hheal, hcatch, hrun.stock⟩, htriv⟩ hprop
     (fun p P hpH hP hp => (h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by linarith)).2) t (by linarith)
 
@@ -157,7 +157,7 @@ theorem corollary_of_standalone_tight (sp : SAParams) (h : ACHealingStandaloneTi
   have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
   have hkΔ := mul_nonneg hk hΔ.le
   exact corollary_at (c := (8 * (sp.k : Time) + 4) * sp.Δ) (by linarith)
-    ⟨⟨hrun, hdr, hheal, hcatch⟩, htriv⟩ hprop
+    ⟨⟨hrun, hdr, hheal, hcatch, hrun.stock⟩, htriv⟩ hprop
     (fun p P hpH hP hp => (h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by linarith)).2) t (by linarith)
 

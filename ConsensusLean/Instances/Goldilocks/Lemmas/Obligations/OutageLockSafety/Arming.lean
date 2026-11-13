@@ -355,7 +355,8 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
     PG := fun w hw c m ℓ hu hrm x hx i e hve hes =>
       (outage_lock_others Q).pg w hw c m ℓ hu (hr.1.trans (by
         have := (SA.ts_le_iff Q.params).2 (show (Q.restoredLabel : Int) ≤ m by exact_mod_cast hrm)
-        linarith)) x hx i e hve hes }
+        linarith)) x hx i e hve hes
+    stock := rfl }
 
 section Headers
 

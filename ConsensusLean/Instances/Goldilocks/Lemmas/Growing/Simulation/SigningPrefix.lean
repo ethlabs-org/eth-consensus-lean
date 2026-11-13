@@ -53,6 +53,6 @@ theorem simTraceAt_signings_nonFraming_before (hv : rho.ExecutionValid)
     ⟨simTraceAt_time_le_event S rho hn hv he hk (by obtain ⟨_, _, h⟩ := ha; rw [h]; simp), ha⟩
   have hb' := (RunTrace.upTo_signAt (simTraceAt S rho hn) (d := t)).mpr
     ⟨simTraceAt_time_le_event S rho hn hv he hk' (by obtain ⟨_, _, h⟩ := hb; rw [h]; simp), hb⟩
-  exact Regimes.non_framing _ _ _ _ _ _ hr (rho.ownKey v) hh k k' a b ha' hb'
+  exact Regimes.goldilocksRun_nonFraming hr hh ha' hb'
 
 end Consensus.Goldilocks.Simulation

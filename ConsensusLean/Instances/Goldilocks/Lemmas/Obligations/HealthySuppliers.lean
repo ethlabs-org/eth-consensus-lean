@@ -81,7 +81,7 @@ theorem reset_premises_of_healthy_query (Q : HealthyPreparationQuery S A V)
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a Q.run.2.horizon := by
   refine ⟨simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid,
     noCollRun_simTrace S Q.run.2 Q.hn Q.constant Q.valid Q.noCollision,
-    hsync, ?_, ?_, hreset, ha, hsnapshot⟩
+    hsync, ?_, ?_, hreset, ha, hsnapshot, rfl⟩
   · intro y hy t ht htb
     rw [simTrace_awake_iff, awakeAt_iff]
     exact ⟨Q.healthy.2.1.2 (Q.run.2.key y) t ht htb

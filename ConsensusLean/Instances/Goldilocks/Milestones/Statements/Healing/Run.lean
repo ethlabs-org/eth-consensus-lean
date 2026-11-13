@@ -239,6 +239,8 @@ structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Ti
   noRestart : NoRestartAfter tr H (gbar g)
   /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
   timeoutDelay : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.δt : Time)
+  /-- The stock committee (§S scope-(ii) item S7). -/
+  stock : sp.committeeSize = sp.n
 
 /-- **A high origin** `(B, j)` (claims HR.4), written at cut `i` of `x`: a write of a fast lock
 (fast test or optimistic confirmation) of label `j` at the honest node `x`, joined at the write,

@@ -72,7 +72,7 @@ theorem raw_writer_voterBlockTree_before_at
     rw [hACt]
     exact hj₀.2 k hkj₀
   apply SA.Growing.raw_writer_voterBlockTree_window_before_at
-    (by rw [hac.stock]; exact sp.toParams.hn) hac.localRun hsvc hcatchAC
+    (by rw [hp.stock]; exact sp.toParams.hn) hac.localRun hsvc hcatchAC
     hx hy hwriter hBC hc (by omega) le_rfl ?_ hF
   have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (SA.ts_le_iff sp).mpr (by omega)
   linarith

@@ -29,7 +29,7 @@ open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
-  {proposer : Nat → Fin P.n}
+  {proposer : Nat → Fin P.n} {ini : Fin P.n → A.State}
 
 /-- The cut at index `k` of a group's handler cuts is the run's cut `j + k`. -/
 private theorem group_get? {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
@@ -46,7 +46,7 @@ theorem lastWake_succ {y : Fin P.n} {k : Nat} (hn : ¬ tr.RestartAt y (k + 1)) :
   simp [RunTrace.lastWake, hn]
 
 /-- `Σ.F` of an honest node moves only to descendants, inside the honest blocks. -/
-theorem run_F_mono (h : Node.LocalRun proposer dg H sg tr)
+theorem run_F_mono (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i i' : Nat}
     (hii : i ≤ i') : Anc (tr.HonestBlocks H) (tr.state y i).fg.F (tr.state y i').fg.F := by
   induction i', hii using Nat.le_induction with

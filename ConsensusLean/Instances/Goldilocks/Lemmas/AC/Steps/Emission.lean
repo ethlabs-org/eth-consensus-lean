@@ -19,7 +19,7 @@ namespace Consensus.Goldilocks.SA
 variable {wm : WriteMode}
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
 
 /-- The vote of `x` at frame `Φ` and time `t`, as `castAt_spec` states it. -/
 private def VoteSpec (x : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time) (e : Em sp FGP) : Prop :=
@@ -99,7 +99,7 @@ theorem step_emission_signer (y : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
 
 /-- An honest vote, and the state its call leaves. -/
 private theorem cast_emitsU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     VoteSpec y ℓ.frame (tr.time i) e ∧ tr.post i =
@@ -221,7 +221,7 @@ theorem voteDomain_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
 
 /-- `post_of_castAt` with the unlock given, the optimistic check at the writes of `wm`. -/
 theorem post_of_castAtU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {y : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     tr.post i = optimisticConfirmationM sp wm (admitVote sp e.readPoint (tr.time i) e.msg)
@@ -257,7 +257,7 @@ private theorem tryVote_emits_slot {x : Fin sp.n} {A : SAState sp.n} {Φ : Frm s
 
 /-- `vote_time_le` with the unlock given. -/
 theorem vote_time_leU
-    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr) {x : Fin sp.n}
+    {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
     tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
   obtain ⟨ℓ, hc, he⟩ := hv
@@ -295,14 +295,15 @@ theorem vote_time_leU
     simp at he'
 
 /-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
-theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem vote_time_le (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
     tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
   apply vote_time_leU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- An honest vote is its caster's, of the slot of its cast time. -/
-theorem vote_signer_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {x : Fin sp.n}
+theorem vote_signer_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
     e.msg.val = x ∧ e.msg.slot = sp.slot (tr.time j) := by
   obtain ⟨ℓ, hc, he⟩ := hv

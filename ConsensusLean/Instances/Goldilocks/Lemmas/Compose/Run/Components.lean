@@ -73,8 +73,8 @@ theorem projAC_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (
 
 /-- **The FG projection's state is the FG part and the record of the run's state** (honest
 node). -/
-theorem projFG_state (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
-    tr.projFG.state y i = ((tr.state y i).fg, (tr.state y i).record) := by
+theorem projFG_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    (i : Nat) : tr.projFG.state y i = ((tr.state y i).fg, (tr.state y i).record) := by
   induction i with
   | zero => simp [Trace.state, RunTrace.projFG, h.init y hy]
   | succ i ih =>

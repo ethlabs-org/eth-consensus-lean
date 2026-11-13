@@ -133,8 +133,10 @@ def SleepyServiceSupplier : Prop :=
     rho.log.SyncUntil rho.point b →
     Compose.SleepyServiceBefore (simTrace S rho hn) (honestKeys S rho) (S.params (pubOf E) hn).Δ b
 
-theorem event_before_endCut (hv : rho.ExecutionValid) {t : Time} (ht : 0 ≤ t)
-    {i : Nat} {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+theorem event_before_endCut {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : BoundSetup) (rho : Model.Run (compiled (goldilocksWith S)) E)
+    (hv : rho.ExecutionValid) {t : Time} (ht : 0 ≤ t)
+    {i : Nat} {e : Model.Event V (Model.protoOf (compiled (goldilocksWith S)) E).Object}
     (he : rho.events[i]? = some e) :
     i < (chainTrace rho).endCut t ↔ e.time ≤ t := by
   classical

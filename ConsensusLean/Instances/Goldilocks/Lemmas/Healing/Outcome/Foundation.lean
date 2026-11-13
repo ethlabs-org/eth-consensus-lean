@@ -156,7 +156,7 @@ theorem healthy_base_of_reset_catch (hp : ResetPremises tr H proposer dg g ΔF a
   ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl,
     projection_driven hp.run hp.noColl hp.run.genesis_root_ok hp.healthy,
     projection_healthy hp.run hp.noColl hp.healthy,
-    projection_catch hp.run hp.noColl hp.healthy hc⟩
+    projection_catch hp.run hp.noColl hp.healthy hc, hp.stock⟩
 
 /-- Finite service and Catch supply the AC base without any reset or snapshot premise. -/
 theorem healthy_base_of_service_catch_before {b : Time}
@@ -170,7 +170,7 @@ theorem healthy_base_of_service_catch_before {b : Time}
     projection_driven_of_run hrun hnc hrun.genesis_root_ok, ?_,
     ⟨fun x hx i B ha hi y hy j ell hj ht _ hF =>
       projection_catch_of_run hrun hc x hx i B ha hi y hy j ell hj ht hF⟩,
-    hawake, hfaults⟩
+    hawake, hfaults, hrun.stock⟩
   have h := hrun.toLocalRun
   constructor
   · intro x hx i m hsa hi y hy j ℓ hcj _ hdl
@@ -340,7 +340,7 @@ private theorem clean_source_vote_domain_step
         have htest := (SA.deepest_mem hD).1.2.2
         unfold SA.FastTest SA.confirmationScore at htest
         dsimp only at htest
-        rw [hS.run.stock] at htest
+        rw [hp.stock] at htest
         have hlt := Nat.lt_of_mul_lt_mul_left (lt_of_lt_of_le hf htest)
         obtain ⟨z, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hBR⟩, hz⟩ :=
           Set.exists_mem_notMem_of_ncard_lt_ncard hlt
@@ -353,7 +353,7 @@ private theorem clean_source_vote_domain_step
         split_ifs at hsel
         refine ⟨frame_tree_subset hp hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
         have h34 := (SA.deepest_mem hsel).1.2.1
-        rw [hS.run.stock] at h34
+        rw [hp.stock] at h34
         obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
           Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
             (t := SA.optimisticVoters sp A ellX.frame (sp.slot (tr.projAC.time r)) B) (by
@@ -365,7 +365,7 @@ private theorem clean_source_vote_domain_step
     obtain ⟨hBx, z, hz, q, e', hv, hvs, hVB⟩ := evidence
     refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
     · intro hF
-      exact raw_writer_voterBlockTree_window_before (by rw [hp.run.stock]; exact sp.toParams.hn)
+      exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
         hr (reset_raw_sync_window_before hp Q)
         (catch_window_of_reset_catch hp hc Q) hx hy (Or.inr hfast) .refl hcast (by
             clear * - hsi; omega) hiQ
@@ -424,7 +424,7 @@ private theorem clean_source_vote_domain_step
     ((SA.ts_le_iff sp).mpr (by rw [cleanLabel_eq] at hs; (clear * - hs; omega))) hrQ
     hcast hsi hiQ ?_ ?_ ⟨z, hz, q, e', hv, hvs, hVB⟩ ?_ hprior
   · intro hF
-    exact raw_writer_voterBlockTree_window_before (by rw [hp.run.stock]; exact sp.toParams.hn)
+    exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
       hr (reset_raw_sync_window_before hp Q)
       (catch_window_of_reset_catch hp hc Q) hx hy (Or.inl hres) hBC hcast (by
           clear * - hsi; omega) hiQ
@@ -604,7 +604,7 @@ theorem result_prefix_vote_domain_before
     ⟨D, hD, hDr, hBC.trans hCD⟩
   refine held_target_vote_domain_before hp hx hy hBx hcast ?_ ?_ ?_
   · intro hF
-    exact raw_writer_voterBlockTree_window_before (by rw [hp.run.stock]; exact sp.toParams.hn)
+    exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
       hr (reset_raw_sync_window_before hp Q)
       (catch_window_of_reset_catch hp hc Q) hx hy (Or.inl hres) hBC hcast (by
           clear * - hsi; omega) hiQ
@@ -671,7 +671,7 @@ theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
   apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by clear * - hsi hms; omega)
     (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
   · intro hF
-    exact raw_writer_voterBlockTree_window_before (by rw [hS.run.stock]; exact sp.toParams.hn)
+    exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
       hr hS.sync hS.catchUp hx hy
       (Or.inl ⟨ellX, hupd, hconf, rfl⟩) hBC hcast (by clear * - hsi; omega) hib
       (by
@@ -893,7 +893,7 @@ theorem raw_writer_held_at_slot_start
     simp only [SA.SAParams.ts] at ht ⊢
     linarith
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
-    raw_writer_relay_source (by rw [hS.run.stock]; exact sp.toParams.hn) hr hx hwriter hBC
+    raw_writer_relay_source (by rw [hp.stock]; exact sp.toParams.hn) hr hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)

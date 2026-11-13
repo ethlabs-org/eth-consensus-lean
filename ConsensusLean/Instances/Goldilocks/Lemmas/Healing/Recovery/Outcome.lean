@@ -358,7 +358,7 @@ theorem outcome_service_of_reports
   intro sp ro proposer dg H tr g ΔF a cF kF hrun hs hc hcf hto hreset
     p k i T u hP hentry hR hhigh hhj hretained
   classical
-  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hs.healthy, hs.noColl, hreset⟩
+  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hs.healthy, hs.noColl, hreset, hs.stock⟩
   have hslot := hP.2.2.2.2.1
   subst u
   rw [← drainTime_eq] at hR

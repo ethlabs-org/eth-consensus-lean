@@ -54,6 +54,8 @@ structure ResetPremises (proposer : Nat → Fin sp.n)
   healthy : tr.HealthyRun H ΔF g
   noColl : Compose.NoCollRun dg tr
   reset : IsReset tr H g a
+  /-- The stock committee (§S scope-(ii) item S11). -/
+  stock : sp.committeeSize = sp.n
 
 /-- GST service at actual receiver calls through `b`. Effective send times and strict
 delivery deadlines agree with `GSTRun`; no service after the observation horizon is required. -/
@@ -122,6 +124,8 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
   reset : IsReset tr H g a
   reset_le : a ≤ b
   snapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b
+  /-- The stock committee (§S scope-(ii) item S12). -/
+  stock : sp.committeeSize = sp.n
 
 /-- Whole-run premises restrict to any horizon containing the actual reset. -/
 theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
@@ -139,7 +143,7 @@ theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
   have hkb : tr.time (Nat.find hex) ≤ b :=
     (hp.run.time_mono (Nat.find_min' hex hck)).trans (hka ▸ hab)
   refine ⟨hp.run, hp.noColl, ?_, fun y hy t ht _ => hp.healthy.2.1 y hy t ht,
-    hp.healthy.2.2, hp.reset, hab, Nat.find hex, hfirst, hkb⟩
+    hp.healthy.2.2, hp.reset, hab, ⟨Nat.find hex, hfirst, hkb⟩, hp.stock⟩
   exact ResetService.of_gst tr H hp.healthy.1
 
 /-- (R3) at the honest votes cast at cut `k`, for every high origin `(B, j)` of the run: a vote

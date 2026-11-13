@@ -89,7 +89,7 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
       SA.lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (SA.origin_compatible hU hΦ'U h34
-      (by simpa only [hrun.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
+      (by simpa only [hS.stock] using hS.two_faulty_lt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (T.time j) := (SA.castAt_spec hr hvH hcj).2.1

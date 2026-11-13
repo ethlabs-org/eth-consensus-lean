@@ -34,7 +34,8 @@ theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H proposer dg 
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hb : SA.HealthyBase tr.projAC H (tr.HonestBlocks H) proposer g :=
     ⟨hac, projection_driven hp.run hp.noColl hs.genesisRoot hp.healthy,
-      projection_healthy hp.run hp.noColl hp.healthy, projection_catch_of_run hp.run hcatch⟩
+      projection_healthy hp.run hp.noColl hp.healthy, projection_catch_of_run hp.run hcatch,
+      hp.stock⟩
   obtain ⟨_, hWt, _⟩ := accept_of_proposesAt hp.run hp.noColl hW.1 hW.2.2.2.1
   have hWU : W ∈ tr.HonestBlocks H := ⟨p, hW.1, k + 1, hWt⟩
   intro y hy

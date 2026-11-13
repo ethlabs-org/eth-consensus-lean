@@ -531,7 +531,7 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
           rw [(hr.cutLaw y hy k _ hc).2.1]
           exact he)
       have hm : m.val = y := hev ▸ hsign
-      have hf := Compose.emitted_slot_not_pooled hr hy hy (Nat.le_refl k)
+      have hf := Compose.emitted_slot_not_pooled hr (fun _ _ => rfl) hy hy (Nat.le_refl k)
         ⟨ℓ, hc, e, he, hev⟩ hm rfl m.slot
       simpa only [Compose.projAC_state hr.toLocalRun hy] using hf
     · exact hf
@@ -541,7 +541,8 @@ theorem simTrace_vote_forwarded {V : Type} [Fintype V] [DecidableEq V] {E : Env 
     · rcases hc with ⟨ℓ, hc, -⟩ | ⟨ℓ, B, hc, -⟩ <;> exact ⟨_, hc⟩
   have hpost : m ∈ ((simTrace S rho hn).post k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, -, hpost⟩
-    · exact Compose.emitted_vote_mem_post (simTrace_goldilocksRun S rho hn hconst hv) hy hem
+    · exact Compose.emitted_vote_mem_post (simTrace_goldilocksRun S rho hn hconst hv)
+        (fun _ _ => rfl) hy hem
     · exact hpost
   obtain ⟨hold, hnew⟩ := sending_event_pool_insertion S rho hn hconst hv hy hs hlo hhi
     hcall hfresh hpost

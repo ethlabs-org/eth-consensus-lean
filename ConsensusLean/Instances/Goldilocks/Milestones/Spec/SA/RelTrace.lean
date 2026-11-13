@@ -364,10 +364,12 @@ structure ACLocalRunStep {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → 
       ∀ j < i, ∀ ℓ', tr.CallAt y j ℓ' → tr.time j < u
 
 /-- **The AC trace contract with the unlock given by `u` and the writes of mode `m`**: each honest
-call executes `stepWithM m` at the locks `u i` (`ACLocalRunStep` at the parent's call). -/
+call executes `stepWithM m` at the locks `u i` (`ACLocalRunStep` at the parent's call), from the
+AC starts `ini`. -/
 abbrev ACLocalRunU {ro : ReplayOrder sp FGP} (m : WriteMode) (u : Nat → Set Lock)
-    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) : Prop :=
-  ACLocalRunStep m u (fun _ => stepWithM sp ro m) H U tr
+    (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro)
+    (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop :=
+  ACLocalRunStep m u (fun _ => stepWithM sp ro m) H U tr ini
 
 /-- **The AC trace contract from the starts `st`**: each honest call `i` executes `stepWithMS m`
 with its head walks from `st i`; at `parentWalkStartFn` it is `ACLocalRunU`

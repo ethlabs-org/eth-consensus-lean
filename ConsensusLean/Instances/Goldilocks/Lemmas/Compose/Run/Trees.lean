@@ -99,7 +99,7 @@ theorem NoCollOn.mono {S S' : Set A.Blk} (h : NoCollOn dg S') (hS : S ⊆ S') : 
   fun B hB C hC => h B (hS hB) C (hS hC)
 
 /-- **The blocks of an honest tree are genesis or occur in the run.** -/
-theorem tree_subset_run (h : Node.LocalRun proposer dg H sg tr) {y : Fin P.n} (hy : y ∈ H)
+theorem tree_subset_run (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     (i : Nat) :
     (tr.state y i).fg.tree ⊆ insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B} :=
   fun _ hX => (tree_cases h hy hX).imp_right fun ⟨k, _, hk⟩ => ⟨y, k, true, hk⟩

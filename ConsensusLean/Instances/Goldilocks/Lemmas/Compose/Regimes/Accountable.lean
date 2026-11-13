@@ -69,15 +69,22 @@ theorem final_accountable : FinalAccountable := by
   obtain ⟨a, ha, b, hb, hav, hab⟩ := hSv v hv
   exact ⟨a, hmem a ha, b, hmem b hb, hav, hab⟩
 
-/-- **R.7, `nonFraming`.** -/
-theorem non_framing : NonFraming := by
-  intro sp ro dg H tr proposer hrun v hv k k' a b ha hb
+/-- **R.7, `nonFraming`** of a Goldilocks run from any AC starts `ini`: the FG projection
+executes the FG at the honest nodes, whose clients sign no slashable pair. -/
+theorem goldilocksRun_nonFraming {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {v : Fin sp.n} (hv : v ∈ H)
+    {k k' : Nat} {a b : FG.Att sp.n} (ha : tr.SignAt v k a) (hb : tr.SignAt v k' b) :
+    ¬ FG.slashable a b := by
   obtain ⟨inputs, hin, hsign⟩ := Store.signed_run_of_exec (fg_exec hrun.toLocalRun) hv
     (max k k' + 1)
   have conv : ∀ m c, tr.SignAt v m c → tr.projFG.SignAt v m c := fun m c ⟨src, hs⟩ =>
     ⟨src, projFG_callAt.2 hs⟩
   exact FG.client_safety sp.toParams.fg v inputs hin a
     (hsign k (by omega) a (conv k a ha)) b (hsign k' (by omega) b (conv k' b hb))
+
+/-- **R.7, `nonFraming`.** -/
+theorem non_framing : NonFraming :=
+  fun _ _ _ _ _ _ hrun _ hv _ _ _ _ ha hb => goldilocksRun_nonFraming hrun hv ha hb
 
 /-- **R.7, `finalized_safe_below_third`.** -/
 theorem finalized_safe : FinalizedSafe := by

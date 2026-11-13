@@ -18,7 +18,7 @@ namespace Consensus.Goldilocks.SA
 /-- **H.2, AC inclusion from the retention premise.** -/
 theorem ac_inclusion (sp : SAParams) : ACInclusion (sp := sp) := by
   intro FGP ro H U tr proposer g t₀ hrun hdr hh hc hg hinv p P hpH hP hp
-  have hI : InclusionRun tr H U proposer g t₀ := ⟨⟨hrun, hdr, hh, hc⟩, hg, hinv⟩
+  have hI : InclusionRun tr H U proposer g t₀ := ⟨⟨hrun, hdr, hh, hc, hrun.stock⟩, hg, hinv⟩
   have hΔ := sp.toParams.hΔ
   have hset : LocksSettled tr H U (sp.ts p - 4 * sp.Δ) :=
     (h2_locks_settled hI).mono (by linarith)

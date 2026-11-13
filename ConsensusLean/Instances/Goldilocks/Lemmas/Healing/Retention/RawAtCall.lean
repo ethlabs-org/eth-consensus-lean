@@ -38,7 +38,7 @@ theorem raw_target_held_at_call (hp : ResetPremises tr H proposer dg g ΔF a)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcall
   obtain ⟨-, -, D, hD, -, hBD, hg | ⟨q, hq, hqt⟩⟩ := raw_writer_relay_source
-    (by rw [hp.run.stock]; exact sp.toParams.hn) hr hx hwriter hBC
+    (by rw [hp.stock]; exact sp.toParams.hn) hr hx hwriter hBC
   · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy _ _ hcall
     obtain rfl : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
     have hGt : D ∈ ell.frame.tree := by

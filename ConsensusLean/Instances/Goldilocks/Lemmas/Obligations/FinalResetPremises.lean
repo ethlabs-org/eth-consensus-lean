@@ -128,7 +128,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake hrun hs.awake hH (b := Q.run.2.horizon)
     (by linarith only [hcz, h4B, hBh])
   refine ⟨ΔF, a, ⟨hrun, hs.noColl, hs.sync, hs.awake, hs.faults, ha, hab.trans hBh,
-    ⟨j, hj, hjt⟩⟩, ?_⟩
+    ⟨j, hj, hjt⟩, rfl⟩, ?_⟩
   -- the placement (H3)
   have ha0 : 0 ≤ a := by
     obtain ⟨⟨_, _, k, _, _, _, hka⟩, _⟩ := ha

@@ -229,7 +229,8 @@ theorem ready_proposer_proposes (hrun : GoldilocksRun proposer dg H tr) (hnc : N
 /-! ## Reads after all events -/
 
 /-- The point after all events at `t` is between two events of every node. -/
-theorem cutAfter_boundary (hrun : GoldilocksRun proposer dg H tr)
+theorem cutAfter_boundary {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {t : Time} (hj : CutAfter tr j t) : Boundary tr y j := by
   rintro ⟨c, hc⟩

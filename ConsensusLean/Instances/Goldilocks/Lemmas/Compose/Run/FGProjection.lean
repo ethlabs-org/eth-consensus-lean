@@ -20,6 +20,7 @@ open Node
 
 variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
+  {ini : Fin P.n → A.State}
 
 /-- **An honest node accepts its own block in the tick that makes it**, after the tick's two
 AC cuts, at the FG state before the tick, and its attestations are the proposal attestations of
@@ -69,7 +70,7 @@ theorem own_accept (hq : A.Requirements) (hg₀ : (P.genesisBlock A.genesisPaylo
 
 /-- **The FG projection executes the FG** at the honest nodes (no `NoColl`): the initial state
 and every FG call's step. -/
-theorem fg_exec (h : Node.LocalRun proposer dg H sg tr) :
+theorem fg_exec (h : Node.LocalRun proposer dg H sg tr ini) :
     Store.FGExec A.genesisPayload H tr.projFG := by
   refine ⟨fun y hy => by simp [RunTrace.projFG, h.init y hy, Node.initWith], fun i ℓ hl hH => ?_⟩
   have hH : tr.node i ∈ H := hH

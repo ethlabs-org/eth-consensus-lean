@@ -43,12 +43,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A node honest at `t ≥ 0` and awake through the catch-up window before `t` is awake and joined
 at `t` (the static `ready_implies_joined` on the prefix through `t`). -/
-private theorem ready_implies_joined_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n}
+private theorem ready_implies_joined_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {t c : Time} (hy : y ∈ H t) (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
     (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
     tr.awake y t ∧ tr.JoinedAt y t := by
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ (hrun.upTo ht) y hy t c ht hc
+  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined_of (hrun.upTo ht) hy ht hc
     fun u h1 h2 => ⟨hawake u h1 h2, h2⟩
   exact ⟨hw.1, fun k hk hkt => hj k ((RunTrace.upTo_restartAt tr).2 ⟨hkt, hk⟩) hkt⟩
 
@@ -91,8 +91,8 @@ private theorem sleepyBoundsFrom_of_faultBoundAt (hanti : Antitone H) {a b : Tim
 
 end Lift
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 set_option linter.unusedVariables false in
 /-- **Engine readiness under growing faults.** An engine node ready at `t ∈ [0, horizon]` is ready
@@ -111,7 +111,9 @@ on `[a, b]` (`b ≤ horizon`), at every `t ∈ [max a 0, b]` the keys compromise
 `min (t + 5Δ) b` are fewer than the keys honest then, awake and joined at `t`. The engine count is
 charged at `lookAhead (5Δ) t ≥ min (t + 5Δ) b`; compromise only grows, and a ready node is
 honest, awake and (by its catch-up) joined at `t`. -/
-private theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.horizon)
+private theorem sleepy_faultBoundAt (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {a b : Time} (hb : b ≤ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
       (5 * (S.params (pubOf E) hn).Δ) a b)
     {t : Time} (ht : 0 ≤ t) (hat : a ≤ t) (htb : t ≤ b) :
@@ -163,7 +165,9 @@ private theorem sleepy_faultBoundAt (hv : rho.ExecutionValid) {a b : Time} (hb :
 /-- **The sleepy count shapes under growing faults** through `b ≤ horizon`, from the L0 sleepy
 budget with look-ahead `5Δ` on `[a, b]`, for the slots `s ≥ σ₀` with `a ≤ t_{σ₀} + Δ` (and
 `a ≤ b` unless `a ≤ 0`). -/
-theorem sleepy_bounds_at (hv : rho.ExecutionValid) {a b : Time} (hb : b ≤ rho.horizon)
+theorem sleepy_bounds_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {a b : Time} (hb : b ≤ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
       (5 * (S.params (pubOf E) hn).Δ) a b)
     {σ₀ : Nat} (hσ : a ≤ (S.params (pubOf E) hn).ts σ₀ + (S.params (pubOf E) hn).Δ)

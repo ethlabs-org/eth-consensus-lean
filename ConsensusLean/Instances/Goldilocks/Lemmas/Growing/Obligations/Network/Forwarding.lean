@@ -59,7 +59,8 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
     (hc : (simTraceAt S rho hn).CallAt y i (.fg (.block B true))) :
     decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  -- TEMP(C2): `own_proposal_decodes` reads `Node.Reachable` from the default start.
+  have hrun := simTraceAt_goldilocksRun_initial S rho hn hv
   have run := hrun.upTo (hrun.time_nonneg i)
   have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
   rcases Compose.blockCall_cases run.toLocalRun hy hc' with hg |
@@ -91,7 +92,8 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
         (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p
       decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B := by
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
+  -- TEMP(C2): `scheduled_proposal_child_decodes_of_step` reads the default start.
+  have hrun := simTraceAt_goldilocksRun_initial S rho hn hv
   have hsim := simTraceAt_simulates S rho hn hv
   have ht0 : 0 ≤ t := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hth : t ≤ rho.horizon := (hv.in_horizon _ (List.mem_of_getElem? he)).2

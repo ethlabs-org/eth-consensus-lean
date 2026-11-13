@@ -33,13 +33,15 @@ open AsChainShape Simulation
 open Blocks Shape
 open Consensus.Model (pubOf)
 
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
-  (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
+  (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The first cut after a time is a boundary of every node of the canonical growing trace: a call
 there is honest at its time (event-local honesty), and the static boundary applies on the prefix
 through it. -/
-theorem cutAfter_boundary_at (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
+theorem cutAfter_boundary_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {y : Fin (Fintype.card V)}
     {j : Nat} {t : Time} (hj : Regimes.CutAfter (simTraceAt S rho hn) j t) :
     Regimes.Boundary (simTraceAt S rho hn) y j := by
   rintro ⟨c, hc⟩
@@ -57,7 +59,9 @@ private theorem cutTime_endCut_le {t : Time} (ht : 0 ≤ t) :
 /-- **End-of-time cut under growing faults.** For an engine node ready at `t ∈ [0, horizon]`, the
 trace cut of the engine cut at the end of `t` is the first trace cut after `t`, a boundary of the
 node, and the node's stored clock there is `t`. -/
-theorem ready_read_cut_at (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v : V} {t : Time}
+theorem ready_read_cut_at (hv : rho.ExecutionValid)
+    [Fact (S.vote.participationKind = none)] -- TEMP(C2)
+    {c : Time} (hc : 0 ≤ c) {v : V} {t : Time}
     (ht : 0 ≤ t) (hth : t ≤ rho.horizon) (hr : rho.point.Ready c v t) :
     Regimes.CutAfter (simTraceAt S rho hn) (cutMap S rho hn ((chainTrace rho).endCut t)) t ∧
       Regimes.Boundary (simTraceAt S rho hn) (rho.ownKey v)
@@ -117,7 +121,9 @@ theorem ready_read_cut_at (hv : rho.ExecutionValid) {c : Time} (hc : 0 ≤ c) {v
 /-- **Proposal evidence under growing faults.** An honest proposal of the canonical trace by a
 proposer ready at `τ ∈ [0, horizon]` (with any hold) is a proposal released at `τ` by a key ready
 at `τ` in the engine. -/
-theorem ready_proposal_at (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ ≤ rho.horizon)
+theorem ready_proposal_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho) c τ h P) :
     ∃ k, rho.point.Ready c (rho.key k) τ ∧
@@ -142,7 +148,9 @@ theorem ready_proposal_at (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ �
 /-- **Final-cache ancestry is engine finalized output** under growing faults: if a non-genesis
 block is an ancestor of the final cache of every node ready at `t ∈ [0, horizon]` after all
 events at `t`, its header is in the finalized read of every engine node ready at `t`. -/
-theorem finalized_inBy_at (hv : rho.ExecutionValid)
+theorem finalized_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {c t : Time} (hc : 0 ≤ c) (ht : 0 ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
@@ -179,7 +187,9 @@ theorem finalized_inBy_at (hv : rho.ExecutionValid)
 `τ ∈ [0, t]` by a proposer ready at `τ` (with any hold) is an ancestor of the confirmed read of
 every node ready at `t ≤ horizon` after all events at `t`, its header is in the confirmed read of
 every engine node ready at `t`. -/
-theorem confirmed_inBy_at (hv : rho.ExecutionValid)
+theorem confirmed_inBy_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {c : Time} (hc : 0 ≤ c) {τ t h : Time} (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
     {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}

@@ -230,7 +230,7 @@ theorem healthyBase_of_hs (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   ⟨Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hs.noColl,
     projection_driven hrun hs.noColl hs.genesisRoot hs.healthy,
     projection_healthy hrun hs.noColl hs.healthy,
-    projection_catch hrun hs.noColl hs.healthy hc⟩
+    projection_catch hrun hs.noColl hs.healthy hc, hs.stock⟩
 
 /-- A walk that starts in `S` and steps inside `T ⊆ S` stays in `S`. -/
 private theorem ghost_mem {FGP : Type} {S T : Set (SA.Blk sp.n FGP)} (hTS : T ⊆ S)

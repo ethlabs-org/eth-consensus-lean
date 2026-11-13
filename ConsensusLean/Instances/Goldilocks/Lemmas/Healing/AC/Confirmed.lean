@@ -175,7 +175,7 @@ theorem optimisticSelect_compatibleU
   split_ifs at hsel
   have hBt := (deepest_mem hsel).1.1
   have h34 := (deepest_mem hsel).1.2.1
-  rw [hS.run.stock] at h34
+  rw [hS.stock] at h34
   have hf := hS.two_faulty_lt
   have hlt : Hᶜ.ncard <
       (optimisticVoters sp A ℓ.frame (sp.slot (tr.time c)) B).ncard := by omega

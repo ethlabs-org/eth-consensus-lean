@@ -44,6 +44,8 @@ structure HealthyBase (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Bl
   driven : Driven proposer tr H
   healthy : HealthyAC tr H U g
   catchUp : CatchAC tr H U g (2 * sp.Δ)
+  /-- The stock committee (§S scope-(ii) item S3). -/
+  stock : sp.committeeSize = sp.n
 
 /-- Finite health with deadline-bounded service. Driven duties remain conditional
 on actual awake witnesses, so they assert no activity beyond the horizon. -/
@@ -55,6 +57,8 @@ structure HealthyBaseUpTo (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set
   catchUp : CatchACWindowBefore tr H U (gbar g) (2 * sp.Δ) b
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
   faults : 3 * Hᶜ.ncard ≤ sp.n - 1
+  /-- The stock committee (§S scope-(ii) item S5). -/
+  stock : sp.committeeSize = sp.n
 
 /-- **H.1's premises** over an AC trace of the SA: the healthy premises (`HealthyBase`) and
 trivial frames. -/
@@ -75,7 +79,7 @@ theorem HealthyAC.two_faulty_lt (h : HealthyAC tr H U g) : 2 * Hᶜ.ncard < sp.n
 
 theorem HealthyBase.toU (h : HealthyBase tr H U proposer g) :
     HealthyBaseU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=
-  ⟨h.run.toU, h.driven.toU, h.healthy.core, h.healthy.two_faulty_lt, h.catchUp⟩
+  ⟨h.run.toU, h.driven.toU, h.healthy.core, h.healthy.two_faulty_lt, h.catchUp, h.stock⟩
 
 theorem StandaloneRun.toU (h : StandaloneRun tr H U proposer g) :
     StandaloneRunU (WriteMode.parent sp) (parentOracle sp tr) tr H U proposer g :=

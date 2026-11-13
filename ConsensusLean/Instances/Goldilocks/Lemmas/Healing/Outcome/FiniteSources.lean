@@ -113,7 +113,7 @@ theorem ResetPremisesUpTo.optimistic_sources_compatible
   have h34' := (SA.deepest_mem hsel').1.2.1
   rw [hsl] at h34
   rw [hsl'] at h34'
-  rw [hrun.stock] at h34 h34'
+  rw [hp.stock] at h34 h34'
   have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ell.frame s C)
     (SA.optimisticVoters sp A' ell'.frame s D)
   have hle : (SA.optimisticVoters sp A ell.frame s C ∪
@@ -168,7 +168,7 @@ theorem ResetPremisesUpTo.optimistic_supporter
   split_ifs at hsel
   refine ⟨hp.frame_tree_subset hx hpt.1 (SA.deepest_mem hsel).1.1, ?_⟩
   have h34 := (SA.deepest_mem hsel).1.2.1
-  rw [hrun.stock] at h34
+  rw [hp.stock] at h34
   obtain ⟨z, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hz⟩ :=
     Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
       (t := SA.optimisticVoters sp A ell.frame (sp.slot (tr.projAC.time r)) B)
@@ -203,7 +203,7 @@ theorem ResetPremisesUpTo.optimistic_vote_domain_before
   apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by omega)
     (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
   · intro hF
-    exact raw_writer_voterBlockTree_window_before (by rw [hS.run.stock]; exact sp.toParams.hn)
+    exact raw_writer_voterBlockTree_window_before (by rw [hp.stock]; exact sp.toParams.hn)
       hr hS.sync hS.catchUp hx hy
       (Or.inr (Or.inr hop)) .refl hcast (by omega) hib (catch_time_le (hgs.trans
         ((SA.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)))) hF

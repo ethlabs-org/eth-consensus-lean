@@ -27,9 +27,15 @@ theorem event_order : EventOrder := by
     · exact Or.inl ha
     · exact Or.inr ⟨B, ⟨true, hB⟩, haB⟩
 
-/-- **F.4.** -/
-theorem ready_implies_joined : ReadyImpliesJoined := by
-  intro sp ro proposer dg H tr hrun y hy t c ht hc hawake
+/-- **F.4** from any AC starts `ini`: joining reads only the run's sleep, restart and tick laws. -/
+theorem ready_implies_joined_of {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {t c : Time}
+    (ht : 0 ≤ t) (hc : 8 * sp.Δ ≤ c + 1)
+    (hawake : ∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
+    tr.awake y t ∧ tr.JoinedAt y t := by
   have h := hrun.toLocalRun
   have hΔ := sp.toParams.hΔ
   have hm : max 0 (t - c - 1) ≤ t := max_le ht (by linarith only [hc, hΔ])
@@ -77,6 +83,10 @@ theorem ready_implies_joined : ReadyImpliesJoined := by
     linarith only [this, hjt, hgt]
   have := hb j hjk hjc
   exact (not_le_of_gt this) (hjt ▸ (hum.trans hSw).le)
+
+/-- **F.4.** -/
+theorem ready_implies_joined : ReadyImpliesJoined :=
+  fun _ _ _ _ _ _ hrun _ hy _ _ ht hc hawake => ready_implies_joined_of hrun hy ht hc hawake
 
 end Consensus.Goldilocks.Compose
 

@@ -104,7 +104,7 @@ theorem resetPremisesUpTo_of_reset_at
     (hreset : IsReset tr H g a) (hab : a ≤ b)
     (hsnapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b) :
     ResetPremisesUpTo tr H proposer dg g ΔF a b := by
-  exact ⟨hrun, hnc, hsvc, hawake, hf, hreset, hab, hsnapshot⟩
+  exact ⟨hrun, hnc, hsvc, hawake, hf, hreset, hab, hsnapshot, hrun.stock⟩
 
 end Consensus.Goldilocks.Healing.Growing
 
