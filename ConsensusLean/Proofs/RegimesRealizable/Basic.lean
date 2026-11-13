@@ -337,7 +337,7 @@ theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
         (p.faultyAt d ∩ C).card : Nat) : ℚ)) <
         (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by
       push_cast
-      nlinarith [mul_le_mul_of_nonneg_right hθ.2
+      linarith [mul_le_mul_of_nonneg_right hθ.2
         (show (0 : ℚ) ≤ ((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card by positivity)]
     dsimp only
     split_ifs
