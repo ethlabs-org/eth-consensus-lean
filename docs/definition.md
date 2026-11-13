@@ -391,7 +391,9 @@ submissions), `L` is the run's log, `n = |V|`, `ready_t = readyAt c t` and
 |---|---|
 | `System.Sleepy` | `L.PSync p 0 ∧ ∀ t ∈ [0, horizon], θ·(\|ready_t\| + f_d) < \|ready_t\|` on the view retained through `d = min (t + ahead·ΔAC) horizon` (ready at `t` and honest at `d`; `f_d` compromised by `d`) |
 | `System.Healthy g` | `L.PSync p g ∧ f_horizon < β·n ∧ ∀ t ∈ [max g 0, horizon], every validator honest at t is awake at t ∧ ΔFG ≤ fgDelay·ΔAC` (full participation; awake, not ready; the FG delay bound is an upper envelope, not a deadline) |
-| `System.Outage T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c (ahead·ΔAC) 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z`, the last two on the view retained through `cohortAt = min (z + cohortAhead·ΔAC) horizon` (`a`, `z`: `outageStart`, `outageEnd`; the surviving cohort) |
+| `System.Outage X T b₀ b₁` | `OutageTimes ∧ L.OutageNet p b₀ b₁ ∧ EtaSleepyOn θ (η·ΔAC) c (ahead·ΔAC) 0 horizon ∧ NoSleepOn a z ∧ CohortOn a z ∧ CommitteeCohortOn K a z bandStart bandEnd ∧ CommitteeSleepyOn K θ (η·ΔAC) c (committeeAhead·ΔAC) 0 horizon`; `NoSleepOn`, `CohortOn` and `CommitteeCohortOn` on the view retained through `cohortAt = min (z + cohortAhead·ΔAC) horizon` (`a`, `z`: `outageStart`, `outageEnd`; the surviving cohort); `K t = X.selected E x t`, the committee selected at `t` by the run's external data `x` (§"Committees"); the band `[bandStart, bandEnd] = [b₀ − bandLead·ΔAC, b₀ − bandLead·ΔAC + bandLen·ΔAC]` |
+| `CommitteeCohortOn K a z s e` | at each `t ∈ [max 0 s, min e horizon]` with `K t` nonempty: `\|(faulty_z ∪ lateWakers a z) ∩ K t\| < \|awake_a ∩ K t\|`, the cohort inequality inside the committee |
+| `CommitteeSleepyOn K θ η c W 0 horizon` | at each `t` with `K t` nonempty, on the view retained through `t + W`: the η-sleepy inequality (plain sleepy for `η = 0`) with every set intersected with `K t` |
 | `OutageTimes` | `0 ≤ T ∧ T + lag·ΔAC ≤ b₀ ∧ b₀ ≤ b₁ ∧ b₁ ≤ b₀ + budget·ΔAC` |
 | η-sleepy at `t` (`η > 0`) | `θ·\|ready_t ∪ awakeIn [max 0 (t − η·ΔAC), t] ∪ faulty\| < \|ready_t\|` on the same retained view (one fixed partition, so the union keeps identities) |
 
@@ -414,9 +416,13 @@ structure Params (Idx : Type) where
   noSleep recovery : Nat                     -- outage no-sleep margin C, recovery delay D (ΔAC-coefficients)
   heal latency : Capability → Idx → Nat      -- heal point after max g 0; transaction latency
   fgDelay : ℕ+                               -- healthy regime: ΔFG ≤ fgDelay·ΔAC (larger = weaker premise)
+  ahead cohortAhead : Nat                    -- participation and outage-cohort look-aheads (ΔAC-coefficients)
+  bandLead bandLen : Nat := 0                -- outage committee band [b₀ − bandLead·ΔAC, + bandLen·ΔAC]
+  committeeAhead : Nat := 0                  -- committee participation look-ahead (ΔAC-coefficient)
 def Params.standard (catchUp lag budget heal latency) :=
   { catchUp, θ := ½, β := ⅓, cover := ½, α := ⅓, lag, budget, η := 0, noSleep := 0,
-    recovery := 0, heal, latency, fgDelay := 1 }
+    recovery := 0, heal, latency, fgDelay := 1, ahead := 0, cohortAhead := 0 }
+    -- bandLead, bandLen, committeeAhead: their defaults 0
 structure Params.Admissible (P) : Prop :=
   1 ≤ catchUp,  0 ≤ θ ≤ ½,  ⅓ ≤ β,  0 ≤ cover ≤ ½,  β ≤ α ≤ 1,  1 ≤ budget
 ```
@@ -435,8 +441,49 @@ other numbers are not bounded and carry part of the verdict: a larger
 (`T ≤ b₀ − lag·ΔAC`, a stronger premise),
 a larger `η` a stricter outage participation condition, a larger `noSleep` a
 longer no-sleep window, a larger `recovery` a later protected reader, a small
-`budget` a short outage, and larger heal points and latencies weaker claims. Any `η` is
+`budget` a short outage, and larger heal points and latencies weaker claims.
+Larger look-aheads `ahead`, `cohortAhead` and `committeeAhead` charge
+participation with later faults, a stronger premise. A larger `bandLen` asks the
+committee cohort inequality at more times, a stronger premise; `bandLead` places
+the band relative to `b₀` and has no direction. Any `η` is
 realizable (`outage_witness`); the reviewer reads these as numbers.
+
+### Committees (`participationRole`, `candidateRole`)
+
+A protocol may count participation inside a committee instead of the whole
+population. It declares this with two public fields of `Protocol`, which read
+no state, fault or awake profile and depend only on public delays and
+population size:
+
+- `participationRole t : Option Role`: the role whose actual selection is the
+  population observed at time `t` (`none`, the default: every validator). A
+  shape sets it from `Skeleton.participationKind`: kind `k` observes
+  `.duty (slotOf t) k`, the committee of the observation's slot.
+  `TimeGrid.slotOf` is floor division by the positive slot length, clamped to
+  zero for negative times, so it reads the whole observation slot; `slotAt?`
+  instead recognizes exact boundaries after subtracting a duty's phase, so a
+  duty whose phase crosses a slot boundary need not execute in its own
+  labelled slot.
+- `candidateRole d m`: the role that authorizes candidate `m` of duty `d`
+  (default: the duty's role). The engine signs a candidate only if the node's
+  key is selected for both the duty's role and the candidate's role
+  (`Run.signedCandidate`), so a queued message keeps the role of its own slot
+  whenever it is released. A shape sets it through `ChainShape.candidateRole`
+  (`none`: the duty's role).
+
+`sysExternal` exports the PKI and the complete role selection, fixed before
+execution; `External.selected` is the selection of `participationRole t`
+(every validator for `none`). A later fault charge reads the committee
+selected for the observation slot; it does not select again. `System.Outage`
+reads the selection in two clauses, the cohort inequality inside each
+committee selected in the public band and committee η-sleepy participation
+with its own look-ahead; both are vacuous at empty selections, and the
+population clauses stay separate premises. Honest code learns only its own
+role membership, at `init`.
+
+That the declared committee is the one whose votes the protocol counts is the
+instance's proof obligation: the public query does not establish it, and
+signature mechanics stay out of the problem definition.
 
 ### The progress slot
 
@@ -459,23 +506,9 @@ which transactions arrive. (Otherwise "every submission is `42`" would be a
 legal requirement, and a constant ledger `[42]` that censors everything else
 would pass: `censoring_progress_rejected`.)
 
-In the model, `sysExternal` exports the PKI and the complete role selection, and
-`External.selected` observes the protocol's public `participationRole` (`none`:
-the whole population).
-The protocol, its role query and selection specification depend only on public
-delays and population size. A shape queries its `participationKind` in the slot
-of the observation, retaining that historical selection at later fault charges.
-`TimeGrid.slotOf` is floor division by the positive slot length, clamped to zero
-for negative times. It reads the whole observation slot; `slotAt?` instead
-recognizes exact boundaries after subtracting a duty's phase. Thus a duty whose
-phase crosses a slot boundary need not execute in its own labelled slot.
-The declared participation population may be a fixed non-universal committee.
-Any correctness premise that reads it is relative to that declared population;
-population-wide clauses remain separate. The instance supplier must prove that
-the declared role (or shape kind) is the actual role of the votes counted by its
-protocol. The public query alone does not prove this binding, and signature
-mechanics do not belong in the problem definition.
-No equality of execution validity or progress across awake profiles is required.
+In the model, `sysExternal` exports the PKI and the complete role selection
+(§"Committees"). No equality of execution validity or progress across awake
+profiles is required.
 
 The slot is checked, within limits:
 
@@ -537,7 +570,8 @@ liveness claim still hold. Gaps without slack at every index are rejected
 2. A **contract** `Contract Prog`: a nonempty index type `Idx`, `params :
    Params Idx` and `progress : Capability → Idx → Prog`.
 3. For a shape protocol, a **shape family** `F`: a skeleton (grid, proposer,
-   poll and committee selections, phases) and a state machine.
+   poll and committee selections, participation kind, phases) and a state
+   machine (with an optional per-candidate signing role).
 
 It supplies no premise, regime, escape, network condition, hash, decoder,
 author, schedule or evidence collector.
@@ -602,21 +636,21 @@ The generated library root only collects imports.
 2. `ConsensusLean/Spec/Problem/Basic.lean`: L0 vocabulary: capabilities, output schemas, environments and points, traces, communication logs and systems.
 3. `ConsensusLean/Spec/Problem/Network.lean`: Delivery and holding (`Held`, `TxHeld`), partial synchrony, synchrony up to a cut, outage networks and eager logs.
 4. `ConsensusLean/Spec/Problem/Properties.lean`: Trace claims: agreement, monotonicity, ready-reader safety, nesting, transaction liveness, resilience and local accountability.
-5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, sleepy/healthy/outage regimes and the `cDur`, `heal`, `ready`, `lat` accessors.
-6. `ConsensusLean/Spec/Problem/CorrectProtocol.lean`: External data and progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `CorrectProtocol`.
+5. `ConsensusLean/Spec/Problem/Regimes.lean`: `Params`, `Contract`, admissible numbers, the external run data `External` and its selected population, sleepy/healthy/outage regimes (with the outage's committee clauses over the external selection and its public band) and the `cDur`, `heal`, `ready`, `lat` accessors.
+6. `ConsensusLean/Spec/Problem/CorrectProtocol.lean`: Progress readers, the property table (`Behaviour`), system adequacy, active claims and witnesses, `Realizable`, and `CorrectProtocol`.
 7. `ConsensusLean/Spec/Problem/Profile.lean`: Profiles (`ebbAndFlow`, `bft`, `available`) and `Profile.Matches`, the exact capability set of a schema.
 8. `ConsensusLean/Spec/Model/Objects.lean`: Authenticated wire objects, carried-object closure, signers, items and decidable equality.
-9. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces, selection admissibility and families.
-10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state, releases, inboxes, views, slashing protection and local reads.
+9. `ConsensusLean/Spec/Model/Protocol.lean`: Public parameters, closed selections, protocol interfaces (including the per-candidate signing role `candidateRole` and the observed participation role `participationRole`), selection admissibility and families.
+10. `ConsensusLean/Spec/Model/Run.lean`: Events and their order, runs, engine state (initialized with the own role membership), signing in both the duty's and the candidate's role, releases, inboxes, views, slashing protection and local reads.
 11. `ConsensusLean/Spec/Model/Conditions.lean`: Signature unforgeability, valid selections, credentials, `ExecutionValid` and the engine communication log.
-12. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data (`sysExternal`).
+12. `ConsensusLean/Spec/Model/System.lean`: Evidence-based conviction, observed hash collisions, `sysOf`, and external PKI/selection data with the observed participating population (`sysExternal`).
 13. `ConsensusLean/Spec/Model/Served.lean`: Engine holding at a deadline (`Run.Served`), used by the `HeldIffServed` review statement.
 14. `ConsensusLean/Spec/Blocks/TimeGrid.lean`: Slots, their lengths and times, with phases measured in multiples of ΔAC.
 15. `ConsensusLean/Spec/Blocks/Progress.lean`: Patterns, recurrence windows, `ProgressReq`, `PatternRecurrence` and `NotReadyOn`.
 16. `ConsensusLean/Spec/Blocks/Chains.lean`: Headers and chains, explicit roots and digests, structural prefixes, linkage and provenance.
 17. `ConsensusLean/Spec/Blocks/Payload.lean`: Transaction encoding/decoding and `ledgerOf`: decoded inputs with first occurrences retained (`List.eraseDups`).
-18. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons, closed signing roles and proposal provenance, duties, `ChainShape` and `ChainShapeFamily`.
-19. `ConsensusLean/Spec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`).
+18. `ConsensusLean/Spec/Shape/Shape.lean`: Skeletons (with the participation kind), closed signing roles and proposal provenance, duties, `ChainShape` (with the candidate-role override) and `ChainShapeFamily`.
+19. `ConsensusLean/Spec/Shape/Compile.lean`: The compilation of skeleton duties and shape state machines to model protocols (`compiled`), including the candidate and participation roles.
 20. `ConsensusLean/Spec/Shape/Run.lean`: Compiled systems (`Sys`), chain traces, output validity, proposal liveness and `shapeProgress`.
 21. `ConsensusLean/Spec/Shape/Claims.lean`: The chain-level safety, liveness, accountability and resilience claims (`ShapeClaims`).
 22. `ConsensusLean/Spec/Shape/ProgressFit.lean`: `ProgressFits` and `ProgressTolerant`: one proposer per recurrence slot and bad-slot/participation tolerance.
@@ -676,7 +710,9 @@ Every participation budget is today's static count evaluated on the view
 retained through the count's consumption horizon (`EnvPoint.retain`,
 `EnvPoint.lookAhead`). Participation at `t` is charged with the faults of
 `t + ahead·ΔAC`, and validators compromised by then do not count as support.
-The outage cohort is charged at `outageEnd + cohortAhead·ΔAC`. The healthy
+The outage cohort, and the committee cohort of the outage band, are charged at
+`outageEnd + cohortAhead·ΔAC`; committee participation at `t` is charged with
+the faults of `t + committeeAhead·ΔAC`. The healthy
 budget is the bound at the horizon, which by monotonicity is the bound at every
 time. A recurrence's good proposer stays honest `hold·ΔAC` after its slot. A
 larger window is a stronger premise. `ΔFG` enters no window.
@@ -747,8 +783,10 @@ are the intended ones.
 - No public schedules: one proposer `SelSpec` for every slot, chosen
   adversarially. Round-robin and RANDAO duties are worst-case `.sized 1`,
   with a recurrence requirement.
-- No committee premise: only `.fixed` committees can support claims.
-  Gasper's partitioned selection is deferred.
+- Committees are public selections. A protocol may declare a participation
+  role, a `.fixed` or `.sized` selection per slot, and the outage regime's
+  committee clauses are relative to it (§"Committees"); the sleepy and healthy
+  regimes are population-wide. Gasper's partitioned selection is deferred.
 - Phases are multiples of `ΔAC`. For `pollSel := .fixed univ`, poll provenance
   accepts any validator's header.
 - `notReadyAtMost m` (Tendermint's contract, a placeholder) is a pointwise
@@ -783,6 +821,8 @@ with their nodes; and the milestone proof `Proofs/<M>/Main.lean`, which `Solutio
 `ConsensusLeanTest/MilestoneAxioms.lean` (the other milestones) cites. The concrete
 obligations endpoint (`Statements/Obligations`) is proved through the refinement; the other milestones
 are proved directly over their own models (FG chains, AC states, the node and its runs). Milestone status: `docs/roadmap.md`.
+The family is `goldilocksWith S` at a vote binding (population-wide votes, or votes by a per-slot committee);
+`goldilocks S` is its population binding, the specification's protocol (`docs/decisions.md` §"Committee modelling").
 
 ## Shape examples (`ConsensusLean/Examples/Shape/`): Bft, Streamlet and Tendermint
 

@@ -66,6 +66,19 @@ the certified endpoint `Consensus.Goldilocks.MeetsObligations`.
 | Healing, AC level (`Milestones/Statements/Healing/AC`; closed forms `ACHealingStandaloneAll`, `ACHealingStandaloneCorollaryAll`, `ACHealingStandaloneTightAll`, `ACHealingStandaloneTightCorollaryAll`, `ACInclusionAll`): H.1 standalone AC healing (also at `t_p ≥ ḡ + (8k + 4)Δ`, which implies it) and H.2 AC inclusion over driven AC traces; each H.1 corollary follows from its H.1 | `Consensus.Goldilocks.SA.HealingACStatements`, `Consensus.Goldilocks.Healing.healing_ac_statements`, `Consensus.Goldilocks.SA.ac_healing_standalone_corollary`, `Consensus.Goldilocks.SA.ac_healing_standalone_tight`, `Consensus.Goldilocks.SA.ac_healing_standalone_tight_corollary` | proved (standard axioms; lemma, not certified; pinned by `ConsensusLeanTest/MilestoneAxioms`) |
 | Continuation after healing under corruption growth (`Milestones/Statements/Continuation`, untrusted side property, not part of correctness): on a run healthy from GST up to a hand-over time `T` at or after the heal point and only sleepy afterwards, with fewer than `α·n` convicted by any two honest views, the available and stable outputs are ready-reader safe from the heal point and transaction-live with the healed latency, and the regime is realizable at every delay and GST with at least `β·n` corruption | `Consensus.Goldilocks.GoldilocksContinues`, `Consensus.Goldilocks.goldilocks_continues` | proved (standard axioms; lemma, not certified; pinned by `ConsensusLeanTest/MilestoneAxioms`) |
 
+**Committee scope.** The Goldilocks family is stated at every vote binding (`docs/decisions.md` §"Committee
+modelling"); the certified committee claim is the outage persistence row. A1.9
+`Consensus.Goldilocks.SA.SourceCompatible` and its growing-fault form
+`Consensus.Goldilocks.SA.Growing.SourceCompatible` take `committeeSize = n` as a premise, and the premise bundles
+`Consensus.Goldilocks.Compose.PersistPremises`, `Consensus.Goldilocks.Compose.Growing.PersistPremises`,
+`Consensus.Goldilocks.SA.HealthyBaseU` and `Consensus.Goldilocks.Healing.HSShared` carry it as a field: they are
+stated at population-sized committees only, and no certified statement reaches them.
+
+## Planned
+
+- Outage: replace the no-sleep and cohort clauses (`NoSleepOn`, `CohortOn`, `CommitteeCohortOn`) with run-wide
+  η-sleepy participation.
+
 ## Shape examples
 
 `ConsensusLean/Examples/Shape/{Bft,Streamlet,Tendermint}.lean` (not instances, not on the trusted surface): contract values with admissibility, progress-fit and

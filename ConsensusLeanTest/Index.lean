@@ -471,6 +471,8 @@ example := ``Consensus.Goldilocks.SyncAC
 example := ``Consensus.Goldilocks.Trace
 example := ``Consensus.Goldilocks.Trace.CallAt
 example := ``Consensus.Goldilocks.Trace.state
+example := ``Consensus.Goldilocks.SA.SAParams.committeeSize
+example := ``Consensus.Goldilocks.SA.SAState.mayVote
 
 /-! ## Goldilocks ACSteps (a milestone PR appends here only) -/
 
@@ -504,6 +506,14 @@ example := ``Consensus.Goldilocks.SA.confirmationPath
 example := ``Consensus.Goldilocks.SA.fastCounted
 example := ``Consensus.Goldilocks.SA.fastSelect
 example := ``Consensus.Goldilocks.SA.optimisticSelect
+example := ``Consensus.Goldilocks.SA.CommitteeDict
+example := ``Consensus.Goldilocks.SA.CommitteeDict.full
+example := ``Consensus.Goldilocks.SA.CommitteeP
+example := ``Consensus.Goldilocks.SA.CommitteeT
+example := ``Consensus.Goldilocks.SA.FaultBoundK
+example := ``Consensus.Goldilocks.SA.CommitteePAt
+example := ``Consensus.Goldilocks.SA.CommitteeTAt
+example := ``Consensus.Goldilocks.SA.Growing.SourceCompatible
 
 /-! ## Goldilocks Compose/AnyAC (a milestone PR appends here only) -/
 
@@ -638,6 +648,7 @@ example := ``Consensus.Goldilocks.Compose.PersistAt
 example := ``Consensus.Goldilocks.Compose.HonestFastConfirmationsPersist
 example := ``Consensus.Goldilocks.Compose.RecentSourceNextVote
 example := ``Consensus.Goldilocks.Compose.PersistStatements
+example := ``Consensus.Goldilocks.Compose.Growing.PersistPremises
 
 /-! ## Goldilocks Service (a milestone PR appends here only) -/
 
@@ -758,6 +769,7 @@ example := ``Consensus.Goldilocks.Healing.cache_acceptance_after_reset
 example := ``Consensus.Goldilocks.Healing.RecoveryStatements
 example := ``Consensus.Goldilocks.Healing.recovery_statements
 example := ``Consensus.Goldilocks.Healing.Recovery.outcome_service
+example := ``Consensus.Goldilocks.SA.HealthyBaseU
 
 /-! ## Goldilocks Regimes (a milestone PR appends here only) -/
 
@@ -884,6 +896,18 @@ example := ``Consensus.Goldilocks.Simulation.simulation_statements
 example := ``Consensus.Goldilocks.Simulation.Test.skeleton_proposerSel
 example := ``Consensus.Goldilocks.Simulation.Test.selValid_proposer
 example := ``Consensus.Goldilocks.Simulation.Test.selValid_exists
+example := ``Consensus.Goldilocks.AsChainShape.VoteBinding
+example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.voteRole
+example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.committeeSize
+example := ``Consensus.Goldilocks.AsChainShape.stock
+example := ``Consensus.Goldilocks.AsChainShape.VoteKind
+example := ``Consensus.Goldilocks.AsChainShape.committee
+example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.candidateRole
+example := ``Consensus.Goldilocks.AsChainShape.VoteBinding.installVote
+example := ``Consensus.Goldilocks.AsChainShape.BoundSetup
+example := ``Consensus.Goldilocks.AsChainShape.goldilocksWith
+example := ``Consensus.Goldilocks.SA.CommitteeDict.BindsSel
+example := ``Consensus.Goldilocks.Obligations.goldilocksContract_outage_stock_iff
 
 /-! ## Continuation (untrusted side property) -/
 

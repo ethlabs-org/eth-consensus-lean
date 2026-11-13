@@ -57,8 +57,9 @@ detail in `TRUST.md`.
   offsets in time units. Neither depends on the network delay generically; each instance constructs them from its
   public parameters. The generic progress and realizability proofs need only a positive slot length, not scaling
   or divisibility by the delay.
-- **Ordered duty batches.** A selected protocol duty returns an ordered list of candidates, all signed by its own
-  key in that duty's role. `releaseAll` checks each candidate against the holdings left by the successful earlier
+- **Ordered duty batches.** A selected protocol duty returns an ordered list of candidates, each signed by its own
+  key in the candidate's role (`candidateRole`, by default the duty's role; §"Committee modelling"). `releaseAll`
+  checks each candidate against the holdings left by the successful earlier
   candidates; a rejection does not retry or reorder the batch. This permits a same-event parent-wrapper
   publication before a child's dependency check. Shape `pollBatch` defaults to the optional poll as a zero-or-one
   list, and the other shape handlers likewise compile to zero-or-one lists. No network or realizability premise
@@ -315,6 +316,19 @@ detail in `TRUST.md`.
   bound is `b₁ ≤ b₀ + budget·Δ`. Reason: the proof uses only the plain-sleepy consequence
   (`EtaReadyAbove.readyAbove`) and the budget bound, and a weaker premise makes `persists` claim more.
 - **Sleepy and Outage carry no ratio** (§"Network and delivery"); only Healthy bounds `ΔFG`.
+- **Committee clauses of the outage regime.** `System.Outage` also reads the external selection
+  (`External.selected`: in the model, the actual selection of the protocol's public `participationRole` at the
+  observation slot, the whole population when it has none). `CommitteeCohortOn` asks the cohort inequality inside
+  each nonempty committee selected at a time of the public band `[b₀ − bandLead·ΔAC, b₀ − bandLead·ΔAC +
+  bandLen·ΔAC]`, on the same retained view as `CohortOn`; `CommitteeSleepyOn` asks η-sleepy participation inside
+  each nonempty selected committee throughout, with its own look-ahead `committeeAhead·ΔAC`. Reasons: a committee
+  protocol counts its votes inside the slot's committee, so its outage argument needs the honest majority there,
+  not only in the population; the band is fixed by `b₀` and the contract's numbers, never by run events, so the
+  premise is decided by the selection alone; a committee is the one selected for its observation slot, and a
+  later fault charge reads that same set rather than selecting again. Both clauses are vacuous at empty
+  selections; at a population-wide selection with `committeeAhead ≤ ahead` they follow from the population
+  clauses, so a protocol without a participation role meets exactly the population regime at such numbers. The
+  band numbers are contract numbers (§"Contract numbers").
 - **Node-level regime rows.** The node-level rows R.1, R.2, R.7 and R.8 (`Milestones/Statements/Regimes/{Sleepy,
   Always}`) are proved milestones, and the obligations proof uses their definitions. The node-level rows R.3–R.6
   (healed, final, outage, weak continuation) are not stated: R.3–R.5 correspond to the generic rows `healedSafe`,
@@ -450,6 +464,73 @@ detail in `TRUST.md`.
     (`phase_service_statements`). Restating the proposer-anchor premise over the voter's read-point locks was
     rejected: that premise is the voter's state after its own `unlock`, nearly the step being claimed.
 
+### Committee modelling
+
+- **One family for every vote binding.** `goldilocksWith S` is the Goldilocks family at a `BoundSetup`, a
+  `Setup` with a `VoteBinding`: the signing kinds, their public selection at each population, the participation
+  kind, and a proof that every selection is nonempty at a nonempty population. The population binding `stock` has
+  no kind; `committee sel hsel` has the one historical vote kind `VoteKind.vote`, selected by `sel`. Codec, state
+  machine and step order are the same for every binding.
+- **The population binding is the specification.** The specification's committee of every slot is all of `V`, and
+  `goldilocks S` is `goldilocksWith ⟨S, stock⟩`. At `stock` every committee definition reduces to the
+  specification's: votes are signed in the poll role, `mayVote` holds at every slot, `committeeSize = n`, and the
+  committee clauses of `System.Outage` follow from the population ones (`goldilocksContract_outage_stock_iff`).
+  The test `ConsensusLeanTest/Goldilocks/VoteBinding.lean` checks that the population binding equals the
+  population-only shape (`stock_legacy`), and exercises a proper-subset binding of one key per slot. Which
+  certified statement holds at which binding is in §"Trusted surface and Challenge scope".
+- **Votes leave through the poll outbox and are signed in their historical role (`candidateRole`).** No binding
+  schedules a committee duty (`kinds := []`): the AC emits a vote at a delivery or a tick, the shape queues it, and
+  the next selected poll releases it, possibly in a later slot. The generic `candidateRole d m` names the role
+  that authorizes candidate `m` of duty `d`; the engine signs a candidate only if the node's key is selected for
+  both the duty's role and the candidate's role (`Run.signedCandidate`). Goldilocks's `VoteBinding.candidateRole`
+  gives a canonical vote of slot `s` the role `voteRole s` (`.duty s .vote` for a committee, `.poll` for `stock`)
+  and leaves every other body in its duty's role. Reasons: this is the per-candidate historical role, so
+  a vote's signature binds its slot's committee whatever its release time, and `Credentials` forces every signer,
+  faulty ones included, to be selected for the role it claims; poll scheduling and release order stay those of
+  the population binding. Restricting `candidateRole` to duty roles was rejected: the population vote role is
+  `.poll`, which is not a duty role, and `Credentials` already ties every claimed role to the signer's selection.
+- **The `mayVote` gate.** `SAState.mayVote s` is the node's own permission to vote in slot `s`. For a committee
+  binding, `installVote` sets it at `init` from the actual own-role membership the engine passes
+  (`mayVote s = p (voteRole s)`), and it is kept across restarts (§"Correctness and the review statements");
+  `stock` leaves it `true`. `tryVote` runs its guards and records `votedSlot`
+  whether or not the permission holds, and admits, emits and optimistically checks its own vote only when it
+  holds. Reasons: a non-member never signs a vote, so the honest pools and views hold only committee votes (P and
+  T below); the AC reads its permission as state, never a selection; a denied slot is spent as a cast one is.
+- **Thresholds count the committee.** `SAParams.committeeSize` (`VoteBinding.committeeSize`: `n` at `stock`,
+  `min m n` for `.sized m`, `|keys|` for `.fixed keys`) is the denominator of the fast test
+  (`committeeSize ≤ 2·score`), the optimistic test (`3·committeeSize ≤ 4·|voters|`) and the unlock bound
+  (`2·|opponents| < committeeSize`). The AC step statements read a slot dictionary `CommitteeDict` of
+  `committeeSize` members per slot with three facts: P (`CommitteeP`, honest pools and optimistic-check states hold
+  only committee signatures), T (`CommitteeT`, so do the merged views of honest votes) and CS (`FaultBoundK`, fewer
+  faulty than honest, awake and joined members). `CommitteeDict.BindsSel` is the one link from a dictionary to the
+  run's actual selection of `voteRole s`.
+- **Statements at population-sized committees take the size equation as a premise.** The run records
+  `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the
+  run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
+  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: A1.9 `SourceCompatible`
+  and its growing-fault form; the proved `Compose.HeadExtendsRecord`, `Compose.Inclusion`, `Regimes.SleepySafe`,
+  `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`, `Healing.RunInclusion`,
+  `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open growing-fault statements
+  over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`, `Compose.Growing.HeadExtendsRecord`,
+  `Compose.Growing.Inclusion`, `Compose.Growing.OutcomeService`, `Healing.Growing.CutAndReset`, `ResetExistence`,
+  `NonInterference`, `AvailableHealing`, `ViableWitnessRetention`, `CleanLockDrain`, `FrozenTreeAgreement`,
+  `CommonPathAcquisition`, `PatternRecovery`, `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and
+  `Regimes.Growing.SleepySafe`, `IncludeSleepy`, `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`,
+  `SA.Growing.ACHealingStandaloneCorollary` and `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five
+  `SA.*All` healing statements. The premise bundles `PersistPremises` (constant and growing faults) and the premise
+  bundles of the healing statements (`HealthyBaseU` in `Milestones/Statements/Healing/ACU` and `HSShared` in
+  `Milestones/Statements/Healing/Run`), and the proof-side bundles built on them, carry it as a field, and
+  `GoldilocksHealingData` takes it as a conjunct of `O.Run`. The lemmas on those chains take it as an explicit
+  argument `hstock`; at the population binding it holds by `rfl`. No certified statement reaches any of them;
+  each is the population-binding case of a statement whose committee form is not stated. Reason: the run records
+  hold at every binding, so the premise marks exactly the statements that need population-sized committees.
+- **The `*_of_growing` bridges from the growing healing and compose statements to their static counterparts are
+  not kept, since none has a caller:** `Compose.{readyImpliesJoined, outcomeService}_of_growing` and
+  `Healing.{cutAndReset, resetExistence, nonInterference, availableHealing, viableWitnessRetention, cleanLockDrain,
+  frozenTreeAgreement, commonPathAcquisition, patternRecovery, finalizingCoverage,
+  cacheAcceptanceAfterReset}_of_growing`. For the same reason, `Healing.Growing.ResetExistence.exists_reset` is not
+  kept either.
+
 ### Layout of the instance proofs
 
 - **Simulation and obligations are separate closures.** The proofs split by import closure into
@@ -525,13 +606,13 @@ detail in `TRUST.md`.
 - **The outage row is certified at every vote binding; the other rows stay at the population binding.**
   `PersistsWith` states the `persists` claim of `ShapeClaimsAt`, verbatim, for the binding-generic family
   `goldilocksWith S` at every `S : BoundSetup` (population-wide votes or a per-slot committee), at the same
-  contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect` are
-  unchanged: they quantify over `Setup` and read the population binding. Reason: the committee clauses of the
+  contract `goldilocksContract A (contract_coefficients S A)`. `MeetsObligations` and `GoldilocksCorrect`
+  quantify over `Setup` and read the population binding. Reason: the committee clauses of the
   outage regime (the cohort inequality inside each committee selected in the band, committee sleepy
   participation) come in addition to its population clauses and are its only binding-dependent premises, and
   the outage proof is binding-generic; the healthy, sleepy and static rows are proved at the population binding
-  only. At the population binding every validator is selected, so the committee clauses coincide with the
-  population ones, and the statement is the stock `persists` field
+  only. At the population binding the committee clauses follow from the population ones (§"Committee
+  modelling"), so the statement is the stock `persists` field
   (`Obligations.Test.Contract.claims_with_persistsWith`). A proper-subset committee binding,
   `AsChainShape.Regression.committeeOne`, is `Obligations.Test.Contract.goldilocksWith_committeeOne`; its
   outage regime has a clean witness whose committee is never the population
@@ -557,31 +638,6 @@ detail in `TRUST.md`.
   since `Lemmas/Blocks/Facts` and the tests use them too.
 - **As much as possible stays off the trusted surface**: a definition that no Challenge statement needs moves to an
   untrusted layer, keeping its name and body. `cF` (the ratio gap) is an example: it lives in a test.
-- **Thirteen bridges from the growing-fault statements are deleted.** `Compose.readyImpliesJoined_of_growing`,
-  `Healing.cutAndReset_of_growing`, `Healing.resetExistence_of_growing`, `Healing.nonInterference_of_growing`,
-  `Healing.availableHealing_of_growing`,
-  `Healing.viableWitnessRetention_of_growing`, `Healing.cleanLockDrain_of_growing`,
-  `Healing.frozenTreeAgreement_of_growing`, `Healing.commonPathAcquisition_of_growing`,
-  `Healing.patternRecovery_of_growing`, `Healing.finalizingCoverage_of_growing`,
-  `Healing.cacheAcceptanceAfterReset_of_growing` and `Healing.outcomeService_of_growing` are unused upstream
-  bridges (present at 9124), no longer derivable once the growing hypothesis carries the population pin; each
-  static target is proved directly.
-- **The run records carry no committee size.** `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`,
-  `SA.ACRunU`, `SA.ACRunUS` and `SA.Growing.ACRun` state the run and trace laws only, for every vote binding. A
-  milestone statement over a run record that is proved or stated for population-sized committees takes
-  `sp.committeeSize = sp.n` as a premise: the proved `Compose.HeadExtendsRecord`, `Compose.Inclusion`,
-  `Regimes.SleepySafe`, `Regimes.IncludeSleepy`, `Regimes.GrowSleepy`, `Healing.HeightScopedRetention`,
-  `Healing.RunInclusion`, `Healing.Growing.HeightScopedRetention` and `Healing.Growing.RunInclusion`; the open
-  growing-fault statements over `Growing.GoldilocksRun` (`Compose.Growing.ReadyImpliesJoined`,
-  `Compose.Growing.HeadExtendsRecord`, `Compose.Growing.Inclusion`, `Compose.Growing.OutcomeService`,
-  `Healing.Growing.CutAndReset`, `ResetExistence`, `NonInterference`, `AvailableHealing`,
-  `ViableWitnessRetention`, `CleanLockDrain`, `FrozenTreeAgreement`, `CommonPathAcquisition`, `PatternRecovery`,
-  `FinalizingCoverage`, `CacheAcceptanceAfterReset`, and `Regimes.Growing.SleepySafe`, `IncludeSleepy`,
-  `GrowSleepy`); the open `SA.Growing.ACHealingStandalone`, `SA.Growing.ACHealingStandaloneCorollary` and
-  `SA.Growing.ACInclusion` over `SA.Growing.ACRun`; and the five `SA.*All` healing statements.
-  `GoldilocksHealingData` takes it as a conjunct of `O.Run`. Each is equivalent at every `sp` to the form with the
-  size equation as a field of the record. The lemmas on those chains take it as an explicit argument `hstock`; at
-  the population binding it holds by `rfl`.
 
 ## Repository, toolchain and trust checks
 
