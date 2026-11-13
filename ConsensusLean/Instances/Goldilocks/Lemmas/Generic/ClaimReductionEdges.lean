@@ -124,13 +124,16 @@ def PersistenceReduction (B : EngineBinding (A := A) (F := F) (V := V) payload)
     let M := B.map E rho hv
     let L := C E rho hv
     GrowingRunTransport M ∧ OutageTransport M (D E rho hv) K L.catchUp L.look ∧
+      (∀ T b₀ b₁, (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
+        ∀ t, (Sys F V).recoveryAt K b₁ ⟨E, rho⟩ ≤ t → t ≤ rho.horizon →
+          ((shapeProgress F V).selected E ((shapeProgress F V).ext ⟨E, rho⟩) t).Nonempty) ∧
       OutageRecoveryBinding M K L ∧ OutageServiceSupply M K ∧
       ResilienceTipTransport M ∧ OutageReadPoint L ∧
       EndReadTransport M K L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
     ∀ g, O.output .stable = some g → ∀ T b₀ b₁,
-      (Sys F V).Holds ((Sys F V).Outage K T b₀ b₁) fun r =>
+      (Sys F V).Holds ((Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁) fun r =>
         (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g
           (resilienceTarget O g) T ((Sys F V).recoveryAt K b₁ r)
 
@@ -192,7 +195,7 @@ def GenericClaimsBundling (K : Contract ProgressReq) : Prop :=
         fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g
           ((Sys F V).heal K cap idx gst r)) ∧
     (∀ g, O.output .stable = some g → ∀ T b₀ b₁,
-      (Sys F V).Holds ((Sys F V).Outage K T b₀ b₁) fun r =>
+      (Sys F V).Holds ((Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁) fun r =>
         (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g
           (resilienceTarget O g) T ((Sys F V).recoveryAt K b₁ r))) →
     GenericClaims F K

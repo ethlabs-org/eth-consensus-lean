@@ -27,7 +27,8 @@ structure OutageQuery where
   stop : Time
   valid : (Sys (goldilocks S) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  outage : (Sys (goldilocks S) V).Outage (K S A) T start stop run
+  outage : (Sys (goldilocks S) V).Outage
+    (shapeProgress (goldilocks S) V).toExternal (K S A) T start stop run
 
 namespace OutageQuery
 variable {S A V}
@@ -43,7 +44,7 @@ theorem outage_pre_service (Q : OutageQuery S A V) :
     Compose.SleepyServiceBefore Q.trace (honestKeys S Q.run.2) Q.params.Δ Q.start := by
   let b := min Q.start Q.run.2.horizon
   have h0 : Q.run.2.log.SyncUntil Q.run.2.point Q.start :=
-    (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.2.1.1
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.1
   have hnet : Q.run.2.log.SyncUntil Q.run.2.point b :=
     CommLog.Delivers.reindex h0 (f := id) (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl)
       (min_le_left _ _)

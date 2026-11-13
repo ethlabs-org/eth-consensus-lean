@@ -84,7 +84,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
   have hr := restoredLabel_spec Q
   have hΔ := Q.params.toParams.hΔ
   have hk2 := Q.params.two_le_k
-  have hT0 : 0 ≤ Q.T := Q.outage.1.1
+  have hT0 : 0 ≤ Q.T := Q.outage.times.1
   have hlag := outage_node_lag_at Q
   have hTs : Q.T ≤ Q.start := by
     have : (0 : Time) ≤ (4 * Q.params.k + 6) * Q.params.Δ := by positivity

@@ -260,13 +260,14 @@ asleep, a faulty `key 0`: the outage regime holds (its no-sleep window is
 `[2, 12]` and its recovery point `14`) and the outage is active, with a ready
 reader at the horizon `40 ≥ 14`. -/
 theorem outage_control :
-    ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧ S.Outage ctrlK 2 6 8 r ∧
+    ∃ r : S.Run, S.pt r = ptS ∧ S.Witness r ∧
+      S.Outage (shapeProgress ctrlFamily (Fin 5)).toExternal ctrlK 2 6 8 r ∧
       OutageActive (S.cDur ctrlK r) 6 2 6 8 (S.pt r) ∧
       S.outageStart ctrlK 6 r = 2 ∧ S.outageEnd ctrlK 8 r = 12 ∧ S.recoveryAt ctrlK 8 r = 14 ∧
       (S.pt r).HonestAt (kv key5 card5 2 (by decide)) 0 ∧
       (∀ t, (S.pt r).env.awake (kv key5 card5 2 (by decide)) t = false) ∧
       ((S.pt r).faultyAt 0).Nonempty := by
-  obtain ⟨rho, hpt, -, hw, ho, hoa⟩ :=
+  obtain ⟨rho, hpt, hw, ho, hoa⟩ :=
     outage_witness (F := ctrlFamily) key5 card5 two_pos two_pos 40 ctrlK_admissible
       (by norm_num) (by norm_num) (T := 2) (b₀ := 6) (b₁ := 8)
       ⟨by norm_num, by decide, by norm_num, by decide⟩ (by norm_num) (by norm_num) (by decide)

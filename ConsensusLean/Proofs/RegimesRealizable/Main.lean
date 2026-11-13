@@ -59,7 +59,7 @@ theorem regimes_realizable (F : ChainShapeFamily O Info) (K : Contract ProgressR
         ((k : Time) * Δ + (K.params.lag : Time) * Δ + Δ + Δ) :=
       ⟨hk, by linarith only [hΔ], by linarith only [hΔ],
         by linarith only [hk, hl, hΔ, le_mul_of_one_le_left hΔ.le hbud]⟩
-    obtain ⟨rho, -, -, hw, ho, hoa⟩ := outage_witness (F := F) key hn hΔ hΔF _ ha hΔ1 hΔF1 hT
+    obtain ⟨rho, -, hw, ho, hoa⟩ := outage_witness (F := F) key hn hΔ hΔF _ ha hΔ1 hΔF1 hT
       (by linarith only [hl, hΔ]) le_rfl le_rfl
     exact ⟨⟨_, rho⟩, _, _, _,
       ⟨hw, by change rho.point.env.ΔAC = Δ; rw [Model.Run.point, realPoint_env],

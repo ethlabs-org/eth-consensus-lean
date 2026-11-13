@@ -191,6 +191,36 @@ theorem growthPoint_cohort (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintyp
   simp only [growthPoint_eq, realPoint_eq, EnvPoint.retain, ite_eq_left hκd]
   exact h
 
+/-- Before the sole compromise selected support only increases; afterwards it
+is the static witness's support. The bound holds at every retention time. -/
+theorem growthPoint_committee_margin (key : Fin (Fintype.card V) ≃ V)
+    (hn : 5 ≤ Fintype.card V) {Δ : Time} (hΔ : 0 < Δ) {ΔF : Time} (hΔF : 0 < ΔF)
+    (H κ : Time) (C : Finset V)
+    (hgood : kv key hn 0 (by decide) ∉ C ∧ kv key hn 2 (by decide) ∉ C ∨
+      Fintype.card V - 1 ≤ C.card) (d : Time) (hC : C.Nonempty) :
+    let p := growthPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H κ
+    (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card := by
+  classical
+  let p := growthPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H κ
+  let q := realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H
+  have h := asleepAlways_committee_margin key hn hΔ hΔF H C hgood d hC
+  have hf : p.faultyAt d ⊆ q.faultyAt d := by
+    intro v hv
+    change v ∈ (if κ ≤ d then {kv key hn 0 (by decide)} else ∅) at hv
+    split_ifs at hv
+    · simpa only [q, realPoint_faulty] using hv
+    · exact False.elim (Finset.notMem_empty v hv)
+  have ha : (q.retain d).awakeAt 0 ⊆ (p.retain d).awakeAt 0 := by
+    intro v hv
+    obtain ⟨hh, hw⟩ := Finset.mem_filter.mp hv
+    exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr
+      ⟨Finset.mem_univ _, fun hv => (Finset.mem_sdiff.mp hh).2 (hf hv)⟩, by
+        simpa only [q, p, EnvPoint.retain, realPoint_env, growthPoint] using hw⟩
+  exact lt_of_le_of_lt
+    (Finset.card_le_card (Finset.inter_subset_inter hf (Finset.Subset.refl _)))
+    (lt_of_lt_of_le h (Finset.card_le_card
+      (Finset.inter_subset_inter ha (Finset.Subset.refl _))))
+
 /-- A canonical growing run, with active progress and a later reader after the source compromise. -/
 theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract ProgressReq)
     (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
@@ -249,7 +279,7 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
     (hΔ1 : 1 < Δ) (hΔF1 : 1 < ΔF) :
     ∃ r T b₀ b₁ u κ, (Sys F V).Valid r ∧ ¬ (Sys F V).Excuse r ∧
       ((Sys F V).pt r).env.ΔAC = Δ ∧ ((Sys F V).pt r).env.ΔFG = ΔF ∧
-      (Sys F V).Outage K T b₀ b₁ r ∧
+      (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ r ∧
       OutageActive ((Sys F V).cDur K r) ((K.params.recovery : Time) * Δ) T b₀ b₁
         ((Sys F V).pt r) ∧ (k : Time) * Δ ≤ T ∧
       ((Sys F V).pt r).Ready ((Sys F V).cDur K r) u T ∧ T < κ ∧
@@ -273,9 +303,10 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
   have hH0 : 0 ≤ H := by dsimp [H, b₁, b₀]; linarith
   let awake := asleepAlways (kv key hn 2 (by decide))
   let p := growthPoint key hn Δ hΔ ΔF hΔF awake H κ
-  obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run key F p hH0 0
+  obtain ⟨key', sel, C, hsel, hselected, hgood⟩ := exists_outage_selection F p.env key hn
+  obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run_sel key' F p hH0 0 sel hsel
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono H
-    events key (extremalSel F p.env) p.submit relay hash
+    events key' sel p.submit relay hash
   let r : (Sys F V).Run := ⟨p.env, rho⟩
   have haw (j : Nat) (hj : j < 5) (hj2 : j ≠ 2) (t : Time) :
       awake (kv key hn j hj) t = true := by
@@ -297,11 +328,19 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
       have hh : κ ≤ min (b₁ + (K.params.noSleep : Time) * Δ) H :=
         le_min (by linarith) hκH
       linarith)
+  have hcomm := committee_of_constant_awake p C K.params.θ
+    ((K.params.η : Time) * Δ) ((Sys F V).cDur K r) ((Sys F V).committeeAheadDur K r)
+    ((Sys F V).outageStart K b₀ r) ((Sys F V).outageEnd K b₁ r)
+    ((Sys F V).cohortAt K b₁ r) ((Sys F V).bandStart K b₀ r) ((Sys F V).bandEnd K b₀ r)
+    ha.θ_range (mul_nonneg (by positivity) hΔ.le)
+    (by intro v t u; simp only [p, growthPoint, awake, asleepAlways_apply])
+    (growthPoint_committee_margin key hn hΔ hΔF H κ C hgood)
+  have hselEq : (shapeProgress F V).selected p.env (key', sel) = fun _ => C := funext hselected
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   refine ⟨r, T, b₀, b₁, kv key hn 0 (by decide), κ, hv, hnc, rfl, rfl,
     ⟨⟨hT, ?_, ?_, ?_⟩, ⟨?_, hse.psync (by dsimp [b₁, b₀]; linarith) hΔ1 hΔF1⟩,
       growthPoint_eta key hn hΔ hΔF awake H κ ha.θ_range
-        (asleepAlways_readyAt key hn hΔ hΔF H) _ _ _ _ _, hco.1, hco.2⟩,
+        (asleepAlways_readyAt key hn hΔ hΔF H) _ _ _ _ _, hco.1, hco.2, ?_, ?_⟩,
     ⟨hT, ?_, le_rfl, ⟨_, hready0⟩,
       ⟨kv key hn 2 (by decide), b₀, le_rfl, by dsimp [b₁]; linarith,
         growthPoint_honest key hn hΔ hΔF awake H κ (j := 2) (by decide) (by decide) _, ?_⟩,
@@ -315,6 +354,17 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
     dsimp [b₁]; linarith [mul_le_mul_of_nonneg_right hb hΔ.le]
   · exact (Model.sysOf_delivers_iff (O := O) rho _ _ _).mpr
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl hΔ1 hΔF1 b₀)
+  · change (p.retain ((Sys F V).cohortAt K b₁ r)).CommitteeCohortOn
+      ((shapeProgress F V).selected p.env (key', sel))
+      ((Sys F V).outageStart K b₀ r) ((Sys F V).outageEnd K b₁ r)
+      ((Sys F V).bandStart K b₀ r) ((Sys F V).bandEnd K b₀ r)
+    rw [hselEq]
+    exact hcomm.1
+  · change p.CommitteeSleepyOn ((shapeProgress F V).selected p.env (key', sel)) K.params.θ
+      ((K.params.η : Time) * Δ) ((Sys F V).cDur K r)
+      ((Sys F V).committeeAheadDur K r) 0 H
+    rw [hselEq]
+    exact hcomm.2
   · dsimp [b₀]; linarith
   · change asleepAlways (kv key hn 2 (by decide)) (kv key hn 2 (by decide)) b₀ = false
     simp only [asleepAlways_apply, decide_true, Bool.not_true]

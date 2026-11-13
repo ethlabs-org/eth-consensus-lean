@@ -80,7 +80,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
       ((Sys F V).pt r).AwakeAtMost 2 ∧ ProgressActive F K cap i 0 r.2
   outage : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
     ∃ r T b₀ b₁, (Sys F V).WitnessAt ΔAC ΔFG r ∧
-    (Sys F V).Outage K T b₀ b₁ r ∧
+    (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ r ∧
     OutageActive ((Sys F V).cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁
       ((Sys F V).pt r) ∧ (k : Time) * ΔAC ≤ T
   /-- Bad proposer slots: every provided output is live, at some index, on a
@@ -113,7 +113,7 @@ structure RealizableActive (V : Type) [Fintype V] [DecidableEq V] : Prop where
   outageGrowth : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
     ∃ r T b₀ b₁ u κ, (Sys F V).Valid r ∧ ¬ (Sys F V).Excuse r ∧
     ((Sys F V).pt r).env.ΔAC = ΔAC ∧ ((Sys F V).pt r).env.ΔFG = ΔFG ∧
-    (Sys F V).Outage K T b₀ b₁ r ∧
+    (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ r ∧
     OutageActive ((Sys F V).cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁
       ((Sys F V).pt r) ∧ (k : Time) * ΔAC ≤ T ∧ ((Sys F V).pt r).Ready ((Sys F V).cDur K r) u T ∧
     T < κ ∧ u ∈ ((Sys F V).pt r).faultyAt κ ∧ ∃ w t, (Sys F V).recoveryAt K b₁ r ≤ t ∧

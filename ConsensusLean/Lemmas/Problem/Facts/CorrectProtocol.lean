@@ -101,13 +101,13 @@ with the final read of every reader ready from the recovery point on (both
 are prefixes of its available read). -/
 theorem persists_final_compatible (h : CorrectProtocol S X K) {g gf : S.schema.Id}
     (hs : S.schema.output .stable = some g) (hf : S.schema.output .final = some gf)
-    (r : S.Run) (hv : S.Valid r) {T b₀ b₁ : Time} (hO : S.Outage K T b₀ b₁ r)
+    (r : S.Run) (hv : S.Valid r) {T b₀ b₁ : Time} (hO : S.Outage X.toExternal K T b₀ b₁ r)
     {v w : V} (hvr : (S.pt r).Ready (S.cDur K r) v T) {t : Time}
     (ht : S.recoveryAt K b₁ r ≤ t) (hth : t ≤ (S.pt r).horizon)
     (hr : (S.pt r).Ready (S.cDur K r) w t) :
     Compatible ((S.trace r).readAt g v T) ((S.trace r).readAt gf w t) ∨ S.Excuse r := by
   have ht0 : 0 ≤ t := by
-    obtain ⟨hT, hl, h01, -⟩ := hO.1
+    obtain ⟨hT, hl, h01, -⟩ := hO.times
     have hlag : (0 : Time) ≤ (K.params.lag : Time) * (S.pt r).env.ΔAC :=
       mul_nonneg (Nat.cast_nonneg _) (S.pt r).env.ΔAC_pos.le
     have hrec : (0 : Time) ≤ (K.params.recovery : Time) * (S.pt r).env.ΔAC :=
@@ -314,10 +314,22 @@ theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
       (min (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b +
         (K.params.cohortAhead : Time) * (S.pt r).env.ΔAC) b)).CohortOn
       (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.ΔAC)) b)
-      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b)) :
+      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b))
+    (hcommitteeCohort : (({ S.pt r with horizon := b } : EnvPoint V).retain
+      (min (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b +
+        (K.params.cohortAhead : Time) * (S.pt r).env.ΔAC) b)).CommitteeCohortOn
+      (X.selected (S.pt r).env (X.ext r))
+      (min (max 0 (b₀ - (K.params.noSleep : Time) * (S.pt r).env.ΔAC)) b)
+      (min (b₁ + (K.params.noSleep : Time) * (S.pt r).env.ΔAC) b)
+      (S.bandStart K b₀ r) (S.bandEnd K b₀ r))
+    (hcommitteeSleepy : ({ S.pt r with horizon := b } : EnvPoint V).CommitteeSleepyOn
+      (X.selected (S.pt r).env (X.ext r)) K.params.θ
+      ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r)
+      (S.committeeAheadDur K r) 0 b) :
     (S.trace r).ProtectedReadyUpTo (S.cDur K r) g (resilienceTarget S.schema g) T
       (S.recoveryAt K b₁ r) b ∨ S.Excuse r := by
-  obtain ⟨r', hv', hP, -, hL, hE, -⟩ := h.adequate.prefixClosed r hv b hb0 hbh
+  obtain ⟨r', hv', hP, -, hL, hE, -, hselected⟩ :=
+    h.adequate.prefixClosed r hv b hb0 hbh
   have hc := cDur_prefix (K := K) hP
   have hΔ := (S.pt r).env.ΔAC_pos
   have hpt : S.pt r' = { S.pt r with horizon := b } := hP.point
@@ -334,12 +346,20 @@ theorem outage_prefix (h : CorrectProtocol S X K) {g : S.schema.Id}
     unfold System.cohortAt; rw [hen, hP.env, hpt]
   have hrec : S.recoveryAt K b₁ r' = S.recoveryAt K b₁ r := by
     unfold System.recoveryAt; rw [hP.env]
-  have hreg : S.Outage K T b₀ b₁ r' := by
+  have hbandStart : S.bandStart K b₀ r' = S.bandStart K b₀ r := by
+    unfold System.bandStart; rw [hP.env]
+  have hbandEnd : S.bandEnd K b₀ r' = S.bandEnd K b₀ r := by
+    unfold System.bandEnd; rw [hbandStart, hP.env]
+  have hcommitteeAhead : S.committeeAheadDur K r' = S.committeeAheadDur K r := by
+    unfold System.committeeAheadDur; rw [hP.env]
+  have hselection : X.selected (S.pt r').env (X.ext r') =
+      X.selected (S.pt r).env (X.ext r) := funext hselected
+  have hreg : S.Outage X.toExternal K T b₀ b₁ r' := by
     unfold System.Outage
-    rw [hc, ha, hcohort, hst, hen, hpt]
+    rw [hselection, hc, ha, hcohort, hst, hen, hbandStart, hbandEnd, hcommitteeAhead, hpt]
     refine ⟨hT, ⟨?_, ?_⟩, hθ.prefix hbh
       (by linarith [h.behaviour.admissible.θ_range.2]) h.behaviour.admissible.θ_range.1,
-      hns, hco⟩
+      hns, hco, hcommitteeCohort, hcommitteeSleepy⟩
     · exact hs.prefix hL hbh (fun _ => le_add_sub_one hΔ)
         (fun _ => le_add_sub_one (S.pt r).env.ΔFG_pos)
     · exact hps.prefix hL hbh (fun _ => le_max_add_sub_one hΔ)

@@ -83,23 +83,38 @@ structure ProposalProgressTransport (M : RunMap rho payload) (K : Contract Progr
 
 structure OutagePolicy (M : RunMap rho payload) where
   point : EnvPoint (Fin P.n)
-  committee : Nat → Finset (Fin P.n)
-  slot : Time → Nat
-  samples : Finset OutageSample
+  committee : Time → Finset (Fin P.n)
   binding : RunPointBinding M.trace M.honest point
   horizon : point.horizon = rho.horizon
 
 structure OutageTransport (M : RunMap rho payload) (D : OutagePolicy M)
     (K : Contract ProgressReq) (catchUp look : Time) : Prop where
   participation : rho.ExecutionValid → ∀ T b₀ b₁,
-    (Sys F V).Outage K T b₀ b₁ ⟨E, rho⟩ →
-    D.point.CommitteeSleepyOn D.committee D.slot (1 / 2) catchUp look ∧
-      D.point.CommitteeOutageOn D.committee D.samples
+    (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
+    D.point.EtaSleepyOn (1 / 2) ((K.params.η : Time) * E.ΔAC) catchUp
+      ((Sys F V).aheadDur K ⟨E, rho⟩) 0 D.point.horizon ∧
+    (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).NoSleepOn
+      ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩) ∧
+    (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).CohortOn
+      ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩) ∧
+    D.point.CommitteeSleepyOn D.committee (1 / 2) ((K.params.η : Time) * E.ΔAC)
+      catchUp look 0 D.point.horizon ∧
+    (D.point.retain ((Sys F V).cohortAt K b₁ ⟨E, rho⟩)).CommitteeCohortOn D.committee
+      ((Sys F V).outageStart K b₀ ⟨E, rho⟩) ((Sys F V).outageEnd K b₁ ⟨E, rho⟩)
+      ((Sys F V).bandStart K b₀ ⟨E, rho⟩) ((Sys F V).bandEnd K b₀ ⟨E, rho⟩)
+  /-- An unresolved supplier obligation, not a consequence of guarded Outage.
+  The fixed band and retention bounds can make coverage unsatisfiable, including
+  at the default band parameters. Nonemptiness is supplied by the instance. -/
   coverage : rho.ExecutionValid → ∀ T b₀ b₁,
-    (Sys F V).Outage K T b₀ b₁ ⟨E, rho⟩ → ∀ t,
+    (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ → ∀ t,
     (Sys F V).recoveryAt K b₁ ⟨E, rho⟩ ≤ t → t ≤ rho.horizon →
-    ∃ d ∈ D.samples, d.committeeSlot = D.slot t ∧ d.anchor = T ∧
-      d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ t ∧ t ≤ d.chargeEnd
+    ((shapeProgress F V).selected E ((shapeProgress F V).ext ⟨E, rho⟩) t).Nonempty →
+    (Sys F V).outageStart K b₀ ⟨E, rho⟩ ≤ b₀ ∧
+      b₁ ≤ (Sys F V).outageEnd K b₁ ⟨E, rho⟩ ∧
+      (Sys F V).outageEnd K b₁ ⟨E, rho⟩ ≤ t ∧
+      t ≤ (Sys F V).cohortAt K b₁ ⟨E, rho⟩ ∧
+      max 0 ((Sys F V).bandStart K b₀ ⟨E, rho⟩) ≤ t ∧
+      t ≤ (Sys F V).bandEnd K b₀ ⟨E, rho⟩ ∧ (D.committee t).Nonempty
 
 def CarrierProcessed (M : RunMap rho payload) (B : A.Blk) (y : Fin P.n)
     (j : Nat) (sent deadline : Time) : Prop :=

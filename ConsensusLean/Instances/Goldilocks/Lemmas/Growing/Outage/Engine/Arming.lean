@@ -41,7 +41,7 @@ implies sleepy, at half readiness, with look-ahead `5Δ`). -/
 theorem bounds (Q : OutageQueryAt S A V) {b : Time} (hb : b ≤ Q.run.2.horizon) :
     Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 b :=
   sleepy_bounds_at S Q.run.2 Q.hn Q.valid hb (fun t ht htb => by
-    have h := (Q.outage.2.2.1 t ht (htb.trans hb)).readyAbove
+    have h := (Q.outage.etaSleepy t ht (htb.trans hb)).readyAbove
       (by change (0 : ℚ) ≤ 1 / 2; norm_num)
     rw [Q.aheadDur_eq] at h
     exact half_ready_of_duration V _ (outage_duration_supply_at Q) h)
@@ -99,7 +99,7 @@ theorem cohort_lt (Q : OutageQueryAt S A V) :
     Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
       (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset,
     Set.ncard_coe_finset]
-  exact Q.outage.2.2.2.2
+  exact Q.outage.cohort
 
 /-- `2·|(H z)ᶜ ∪ W| < n`. -/
 theorem two_mul_opp_lt (Q : OutageQueryAt S A V) :
@@ -138,7 +138,7 @@ theorem holder_awake (Q : OutageQueryAt S A V) {x : Fin (Fintype.card V)} (hx : 
     (htz : t ≤ (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run) : Q.trace.awake x t := by
   obtain ⟨hxh, hxa⟩ := Finset.mem_filter.1 (OutageQueryAt.mem_holdersAt.1 hx)
   rw [simTraceAt_awake_bounds]
-  exact ⟨Q.outage.2.2.2.1 _ (Finset.mem_sdiff.mp hxh).2 _ le_rfl (hat.trans htz) hxa t hat htz,
+  exact ⟨Q.outage.noSleep _ (Finset.mem_sdiff.mp hxh).2 _ le_rfl (hat.trans htz) hxa t hat htz,
     (outage_window_cover_at Q).1.trans hat, htz.trans Q.end_le_horizon⟩
 
 end OutageQueryAt
@@ -200,7 +200,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon) :
     Nonempty (OutageArmingAt Q v) := by
   classical
-  obtain ⟨⟨hT0, -, hb01, -⟩, -⟩ := Q.outage
+  obtain ⟨hT0, -, hb01, -⟩ := Q.outage.times
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc

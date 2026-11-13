@@ -53,7 +53,7 @@ theorem outage_pre_service_at (Q : OutageQueryAt S A V) :
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.start := by
   let b := min Q.start Q.run.2.horizon
   have h0 : Q.run.2.log.SyncUntil Q.run.2.point Q.start :=
-    (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.2.1.1
+    (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.1
   have hnet : Q.run.2.log.SyncUntil Q.run.2.point b :=
     CommLog.Delivers.reindex h0 (f := id) (fun _ => le_rfl) (fun _ => rfl) (fun _ => rfl)
       (min_le_left _ _)
@@ -73,7 +73,7 @@ theorem outage_pre_service_at (Q : OutageQueryAt S A V) :
 
 /-- PSync from the outage's stop on the engine log. -/
 theorem outage_psync_at (Q : OutageQueryAt S A V) : Q.run.2.log.PSync Q.run.2.point Q.stop :=
-  (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.2.1.2
+  (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.2
 
 /-- **The receiver service after the stop**, for every receiver. -/
 theorem outage_receiver_service_at (Q : OutageQueryAt S A V) (y : Fin (Fintype.card V)) :
@@ -107,7 +107,7 @@ theorem outage_duration_supply_at (Q : OutageQueryAt S A V) :
 /-- (A1) The lag `4k + 6` is the node lag `(4k+6)Δ`. -/
 theorem outage_node_lag_at (Q : OutageQueryAt S A V) :
     Q.T + (4 * Q.params.k + 6) * Q.params.Δ ≤ Q.start := by
-  obtain ⟨⟨-, hlag, -, -⟩, -⟩ := Q.outage
+  obtain ⟨-, hlag, -, -⟩ := Q.outage.times
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hk : (0 : Time) ≤ S.k := by positivity
   change Q.T + ((4 * S.k + 6 : Nat) : Int) * Q.run.1.ΔAC ≤ Q.start at hlag
@@ -125,7 +125,7 @@ theorem outage_window_cover_at (Q : OutageQueryAt S A V) :
           Q.run.2.horizon →
         Q.params.ts (Compose.coverLabel Q.params Q.start) + d ≤
           (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run := by
-  obtain ⟨⟨hT, -, hb01, -⟩, -⟩ := Q.outage
+  obtain ⟨hT, -, hb01, -⟩ := Q.outage.times
   have hlag := outage_node_lag_at Q
   have hΔ := Q.params.toParams.hΔ
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
@@ -174,7 +174,7 @@ theorem query_numbers_at (Q : OutageQueryAt S A V) :
       (∀ t, t ≤ Q.params.ts (j₀ + Q.params.k : Nat) + 6 * Q.params.Δ → t ≤ Q.run.2.horizon →
         t ≤ (Sys (goldilocks S) V).outageEnd (K S A) Q.stop Q.run) := by
   intro j₀
-  obtain ⟨⟨hT, -, hb01, hbud⟩, -⟩ := Q.outage
+  obtain ⟨hT, -, hb01, hbud⟩ := Q.outage.times
   have hlag := outage_node_lag_at Q
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
   have hk2 : (2 : Int) ≤ S.k := by exact_mod_cast S.two_le_k

@@ -156,6 +156,53 @@ theorem EtaSleepyOn.mono {θ θ' : ℚ} {η η' c W a b : Time} (h : p.EtaSleepy
     (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') : p.EtaSleepyOn θ η c W a b :=
   fun t ha hb => (h t ha hb).mono _ h0 hθ hη
 
+/-- The guarded committee budget weakens with its fraction and look-back. -/
+theorem CommitteeSleepyOn.mono {K : Time → Finset V} {θ θ' : ℚ} {η η' c W a b : Time}
+    (h : p.CommitteeSleepyOn K θ' η' c W a b)
+    (h0 : 0 ≤ θ) (hθ : θ ≤ θ') (hη : η ≤ η') :
+    p.CommitteeSleepyOn K θ η c W a b := by
+  classical
+  intro t hat htb hK
+  have ht := h t hat htb hK
+  dsimp only at ht ⊢
+  let q := p.retain (p.lookAhead W t)
+  have hd : Disjoint (q.readyAt c t ∩ K t) (q.faultyAt t ∩ K t) := by
+    apply Finset.disjoint_left.mpr
+    intro v hr hf
+    have hr' := (Finset.mem_inter.mp hr).1
+    simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hr'
+    exact hr'.1 (Finset.mem_inter.mp hf).1
+  have hbase : (q.readyAt c t ∩ K t).card + (q.faultyAt t ∩ K t).card =
+      ((q.readyAt c t ∪ q.faultyAt t) ∩ K t).card := by
+    rw [Finset.union_inter_distrib_right, Finset.card_union_of_disjoint hd]
+  by_cases hη0 : η ≤ 0
+  · simp only [ite_eq_left hη0]
+    by_cases hη0' : η' ≤ 0
+    · simp only [ite_eq_left hη0'] at ht
+      exact lt_of_le_of_lt (mul_le_mul_of_nonneg_right hθ (by positivity)) ht
+    · simp only [ite_eq_right hη0'] at ht
+      have hsub : (q.readyAt c t ∪ q.faultyAt t) ∩ K t ⊆
+          (q.readyAt c t ∪ q.awakeIn (max 0 (t - η')) t ∪ q.faultyAt t) ∩ K t :=
+        Finset.inter_subset_inter
+          (Finset.union_subset_union Finset.subset_union_left (Finset.Subset.refl _))
+          (Finset.Subset.refl _)
+      have hn : (((q.readyAt c t ∩ K t).card + (q.faultyAt t ∩ K t).card : Nat) : ℚ) ≤
+          (((q.readyAt c t ∪ q.awakeIn (max 0 (t - η')) t ∪ q.faultyAt t) ∩ K t).card : ℚ) := by
+        have hh := Finset.card_le_card hsub
+        rw [← hbase] at hh
+        exact_mod_cast hh
+      exact lt_of_le_of_lt ((mul_le_mul_of_nonneg_left hn h0).trans
+        (mul_le_mul_of_nonneg_right hθ (by positivity))) ht
+  · have hη0' : ¬ η' ≤ 0 := fun h' => hη0 (hη.trans h')
+    simp only [ite_eq_right hη0]
+    simp only [ite_eq_right hη0'] at ht
+    have hn : (((q.readyAt c t ∪ q.awakeIn (max 0 (t - η)) t ∪ q.faultyAt t) ∩ K t).card : ℚ) ≤
+        (((q.readyAt c t ∪ q.awakeIn (max 0 (t - η')) t ∪ q.faultyAt t) ∩ K t).card : ℚ) := by
+      exact_mod_cast Finset.card_le_card
+        (Finset.inter_subset_inter (q.etaSet_mono hη) (Finset.Subset.refl (K t)))
+    exact lt_of_le_of_lt ((mul_le_mul_of_nonneg_left hn h0).trans
+      (mul_le_mul_of_nonneg_right hθ (by positivity))) ht
+
 omit [DecidableEq V] in
 /-- A larger fault bound is weaker. -/
 theorem HealthyOn.mono {β β' : ℚ} {g b : Time} (h : p.HealthyOn β' g b) (hle : β' ≤ β) :
@@ -206,6 +253,42 @@ theorem CohortOn.mono {a b a' b' : Time} (hf : p.ConstantFaults)
   simp only [hf] at h ⊢
   omega
 
+/-- No-sleep also preserves each guarded selected cohort on a subwindow. -/
+theorem CommitteeCohortOn.mono {K : Time → Finset V} {a b a' b' lo hi : Time}
+    (hf : p.ConstantFaults) (hns : p.NoSleepOn a b)
+    (h : p.CommitteeCohortOn K a b lo hi)
+    (ha : a ≤ a') (hab : a' ≤ b') (hb : b' ≤ b) :
+    p.CommitteeCohortOn K a' b' lo hi := by
+  classical
+  dsimp only [ConstantFaults] at hf
+  have hab' : a ≤ b := ha.trans (hab.trans hb)
+  have hsub : p.faultyAt 0 ∪ p.lateWakers a' b' ⊆ p.faultyAt 0 ∪ p.lateWakers a b := by
+    apply Finset.union_subset_union_right
+    intro v hv
+    simp only [EnvPoint.lateWakers, EnvPoint.awakeIn, EnvPoint.awakeAt,
+      EnvPoint.honestAt, Finset.mem_sdiff, Finset.mem_filter, Finset.mem_univ,
+      true_and, EnvPoint.HonestAt] at hv ⊢
+    simp only [hf] at hv ⊢
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢
+    obtain ⟨⟨u, hu1, hu2, hh, hu⟩, hn⟩ := hv
+    exact ⟨⟨u, ha.trans hu1, hu2.trans hb, hh, hu⟩,
+      fun h0 => hn ⟨hh, hns v (by simpa only [EnvPoint.HonestAt, hf] using hh)
+        a le_rfl hab' h0.2 a' ha (hab.trans hb)⟩⟩
+  have hA : p.awakeAt a ⊆ p.awakeAt a' := by
+    intro v hv
+    simp only [EnvPoint.awakeAt, EnvPoint.honestAt, Finset.mem_filter,
+      Finset.mem_sdiff, Finset.mem_univ, true_and] at hv ⊢
+    simp only [hf] at hv ⊢
+    exact ⟨hv.1, hns v (by simpa only [EnvPoint.HonestAt, hf] using hv.1)
+      a le_rfl hab' hv.2 a' ha (hab.trans hb)⟩
+  intro t htlo hthi hth hK
+  have ht := h t htlo hthi hth hK
+  simp only [hf] at ht ⊢
+  exact lt_of_le_of_lt
+    (Finset.card_le_card (Finset.inter_subset_inter hsub (Finset.Subset.refl _)))
+    (lt_of_lt_of_le ht
+      (Finset.card_le_card (Finset.inter_subset_inter hA (Finset.Subset.refl _))))
+
 end EnvPoint
 
 namespace System
@@ -215,14 +298,19 @@ variable {V : Type} [Fintype V] [DecidableEq V] {S : System V} {Prog Prog' : Typ
 
 /-- With look-back `η = 0`, the outage regime's participation is plain
 sleepy throughout. -/
-theorem outage_eta_zero (hη : K.params.η = 0) {T b₀ b₁ : Time} :
-    S.Outage K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧
+theorem outage_eta_zero {X : External S} (hη : K.params.η = 0) {T b₀ b₁ : Time} :
+    S.Outage X K T b₀ b₁ r ↔ OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧
       (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
       (S.pt r).SleepyOn K.params.θ (S.cDur K r) (S.aheadDur K r) 0 (S.pt r).horizon ∧
       ((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn
         (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
       ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn
-        (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := by
+        (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
+      ((S.pt r).retain (S.cohortAt K b₁ r)).CommitteeCohortOn
+        (X.selected (S.pt r).env (X.ext r)) (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
+        (S.bandStart K b₀ r) (S.bandEnd K b₀ r) ∧
+      (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
+        0 (S.cDur K r) (S.committeeAheadDur K r) 0 (S.pt r).horizon := by
   unfold Outage
   rw [show ((K.params.η : Time) * (S.pt r).env.ΔAC) = 0 by simp [hη], EnvPoint.etaSleepyOn_zero]
 
@@ -252,14 +340,18 @@ theorem Healthy.of_le {g : Time} (hβ : K.params.β ≤ K'.params.β)
 /-- Weaker thresholds (`θ' ≥ 0`), a shorter look-back, a shorter lag, a
 larger budget and a smaller no-sleep margin (same catch-up) keep the outage
 regime. -/
-theorem Outage.of_le {T b₀ b₁ : Time} (hc : K'.params.catchUp = K.params.catchUp)
+theorem Outage.of_le {X : External S} {T b₀ b₁ : Time}
+    (hc : K'.params.catchUp = K.params.catchUp)
     (h0 : 0 ≤ K'.params.θ) (hθ : K'.params.θ ≤ K.params.θ) (hη : K'.params.η ≤ K.params.η)
     (hl : K'.params.lag ≤ K.params.lag) (hb : K.params.budget ≤ K'.params.budget)
     (hC : K'.params.noSleep ≤ K.params.noSleep) (hf : (S.pt r).ConstantFaults)
-    (hW : K'.params.ahead = K.params.ahead) (h : S.Outage K T b₀ b₁ r) :
-    S.Outage K' T b₀ b₁ r := by
-  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hns, hco⟩ := h
-  rw [EnvPoint.retain_eq hf] at hns hco
+    (hW : K'.params.ahead = K.params.ahead)
+    (hLead : K'.params.bandLead = K.params.bandLead)
+    (hLen : K'.params.bandLen = K.params.bandLen)
+    (hCommittee : K'.params.committeeAhead = K.params.committeeAhead)
+    (h : S.Outage X K T b₀ b₁ r) : S.Outage X K' T b₀ b₁ r := by
+  obtain ⟨⟨hT, hlag, h01, hbud⟩, hn, hs, hns, hco, hcc, hcs⟩ := h
+  rw [EnvPoint.retain_eq hf] at hns hco hcc
   rw [System.Outage, EnvPoint.retain_eq hf]
   have hΔ : (0 : Time) ≤ (S.pt r).env.ΔAC := (S.pt r).env.ΔAC_pos.le
   have hl' : ((K'.params.lag : Nat) : Time) ≤ (K.params.lag : Time) := by exact_mod_cast hl
@@ -277,13 +369,19 @@ theorem Outage.of_le {T b₀ b₁ : Time} (hc : K'.params.catchUp = K.params.cat
   have haz : S.outageStart K' b₀ r ≤ S.outageEnd K' b₁ r := by
     unfold outageStart outageEnd
     exact min_le_min (max_le (by linarith) (by linarith)) le_rfl
-  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, hns.mono hf ha hz, hco.mono hf hns ha haz hz⟩
+  refine ⟨⟨hT, ?_, h01, ?_⟩, hn, ?_, hns.mono hf ha hz,
+    hco.mono hf hns ha haz hz, ?_, ?_⟩
   · exact le_trans (add_le_add_right (mul_le_mul_of_nonneg_right hl' hΔ) _) hlag
   · exact hbud.trans (add_le_add_right (mul_le_mul_of_nonneg_right hb' hΔ) _)
   · rw [cDur_of_catchUp hc]
     have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
     simpa only [aheadDur, hW] using
       EnvPoint.EtaSleepyOn.mono hs h0 hθ (mul_le_mul_of_nonneg_right hη' hΔ)
+  · simpa only [bandEnd, bandStart, hLead, hLen] using hcc.mono hf hns ha haz hz
+  · rw [cDur_of_catchUp hc]
+    have hη' : ((K'.params.η : Nat) : Time) ≤ (K.params.η : Time) := by exact_mod_cast hη
+    simpa only [committeeAheadDur, hCommittee] using
+      EnvPoint.CommitteeSleepyOn.mono hcs h0 hθ (mul_le_mul_of_nonneg_right hη' hΔ)
 
 end System
 

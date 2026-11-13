@@ -53,40 +53,6 @@ or only a stable one) is not a consensus service; `Behaviour` requires this. -/
 def OutputSchema.Serves (O : OutputSchema) : Prop :=
   (O.output .final).isSome ∨ (O.output .available).isSome
 
-/-- External run data and its admissibility: what a run fixes before execution
-besides its environment point (in the model: the PKI and the selection). -/
-structure External {V : Type} (S : System V) where
-  /-- The external data of runs in environment `E`. -/
-  Ext : Env V → Type
-  /-- The external data of a run. -/
-  ext : (r : S.Run) → Ext (S.trace r).point.env
-  /-- Admissible external data (in the model: the protocol's selection spec). -/
-  Admits : (E : Env V) → Ext E → Prop
-  /-- Changing participation while keeping the public delays preserves the entire
-  external input space, not only inputs admitted in one environment. Fault profiles
-  and submissions are absent from both sides. -/
-  transport : ∀ (E E' : Env V), E.ΔAC = E'.ΔAC → E.ΔFG = E'.ΔFG → Ext E ≃ Ext E'
-  /-- Reindexing an input in the same environment preserves its identity. -/
-  transport_refl : ∀ (E : Env V) (x : Ext E), transport E E rfl rfl x = x
-  /-- Reindexing through an intermediate participation profile changes no input. -/
-  transport_trans : ∀ (E E' E'' : Env V)
-    (hAC : E.ΔAC = E'.ΔAC) (hFG : E.ΔFG = E'.ΔFG)
-    (hAC' : E'.ΔAC = E''.ΔAC) (hFG' : E'.ΔFG = E''.ΔFG) (x : Ext E),
-    transport E' E'' hAC' hFG' (transport E E' hAC hFG x) =
-      transport E E'' (hAC.trans hAC') (hFG.trans hFG') x
-  /-- Admissibility is invariant along transport. Independence of a selection
-  reader additionally requires that its selected sets commute with transport. -/
-  admits_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
-    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E),
-    Admits E' (transport E E' hAC hFG x) ↔ Admits E x
-  /-- The population selected at an observation time. A later fault charge reads
-  this same set; it does not select again at the charge time. -/
-  selected : (E : Env V) → Ext E → Time → Finset V
-  /-- Selected identities do not change with participation at equal delays. -/
-  selected_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
-    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E) (t : Time),
-    selected E' (transport E E' hAC hFG x) t = selected E x t
-
 /-- Progress requirements (leader-based progress), read **only** from the
 participation of the environment point — awake profile, fault profile, horizon —
 and the external data; not from the submissions. `holds π c start stop p x`:
@@ -180,8 +146,9 @@ structure Behaviour (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   what a node ready at `T` reads as stable is kept by every ready reader from
   the recovery point `b₁ + recovery·ΔAC` on. -/
   persists : ∀ g, S.schema.output .stable = some g → ∀ T b₀ b₁,
-    S.Holds (S.Outage K T b₀ b₁) (fun r => (S.trace r).ProtectedReadyFrom (S.cDur K r) g
-      (resilienceTarget S.schema g) T (S.recoveryAt K b₁ r))
+    S.Holds (S.Outage X.toExternal K T b₀ b₁) (fun r =>
+      (S.trace r).ProtectedReadyFrom (S.cDur K r) g
+        (resilienceTarget S.schema g) T (S.recoveryAt K b₁ r))
 
 /-- **Adequacy**: the L0 acceptance interface, which rules out a vacuous
 system. -/
@@ -310,7 +277,7 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
     ∃ i, ∀ ΔAC ΔFG : Time, 1 < ΔAC → 1 < ΔFG →
       ∃ r, S.WitnessAt ΔAC ΔFG r ∧ S.SleepyLive X K cap i r ∧ (S.pt r).AwakeAtMost 2
   outage : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
-    ∃ r T b₀ b₁, S.WitnessAt ΔAC ΔFG r ∧ S.Outage K T b₀ b₁ r ∧
+    ∃ r T b₀ b₁, S.WitnessAt ΔAC ΔFG r ∧ S.Outage X.toExternal K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁ (S.pt r) ∧
       (k : Time) * ΔAC ≤ T
   /-- Growth, sleepy: at every delays, a valid excuse-free sleepy witness on which
@@ -331,7 +298,7 @@ structure Realizable (S : System V) (X : Progress S Prog) (K : Contract Prog) :
   at a time from both the recovery point and `κ`. -/
   outageGrowth : ∀ (ΔAC ΔFG : Time) (k : Nat), 1 < ΔAC → 1 < ΔFG →
     ∃ r T b₀ b₁ u κ, S.Valid r ∧ ¬ S.Excuse r ∧ (S.pt r).env.ΔAC = ΔAC ∧
-    (S.pt r).env.ΔFG = ΔFG ∧ S.Outage K T b₀ b₁ r ∧
+    (S.pt r).env.ΔFG = ΔFG ∧ S.Outage X.toExternal K T b₀ b₁ r ∧
     OutageActive (S.cDur K r) ((K.params.recovery : Time) * ΔAC) T b₀ b₁ (S.pt r) ∧
     (k : Time) * ΔAC ≤ T ∧ (S.pt r).Ready (S.cDur K r) u T ∧ T < κ ∧
     u ∈ (S.pt r).faultyAt κ ∧ ∃ w t, S.recoveryAt K b₁ r ≤ t ∧ t ≤ (S.pt r).horizon ∧ κ ≤ t ∧

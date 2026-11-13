@@ -209,7 +209,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
   have hr := restoredLabel_spec Q
   have hΔ := Q.params.toParams.hΔ
   have hk2 := Q.params.two_le_k
-  have hT0 : 0 ≤ Q.T := Q.outage.1.1
+  have hT0 : 0 ≤ Q.T := Q.outage.times.1
   have hlag := outage_node_lag S A V Q
   have hTs : Q.T ≤ Q.start := by
     have : (0 : Time) ≤ (4 * Q.params.k + 6) * Q.params.Δ := by positivity
@@ -218,7 +218,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
       ((Sys (goldilocks S) V).aheadDur (K S A) Q.run) 0 Q.run.2.horizon :=
     (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mpr fun t ht htb =>
       half_ready_of_duration V Q.run.2.point (outage_duration_supply S A V Q)
-        (((Q.run.2.point.etaSleepyOn_iff Q.constant _ _ _ _ _ _).mp Q.outage.2.2.1
+        (((Q.run.2.point.etaSleepyOn_iff Q.constant _ _ _ _ _ _).mp Q.outage.etaSleepy
           t ht htb).readyAbove (by change (0 : ℚ) ≤ 1 / 2; norm_num))
   have hcallh : ∀ {y : Fin (Fintype.card V)} {i : Nat}, Q.trace.IsCall y i →
       Q.trace.time i ≤ Q.run.2.horizon := fun {_ _} h => by
@@ -298,7 +298,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
         Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
           (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset,
         Set.ncard_coe_finset]
-      have hc := Q.outage.2.2.2.2
+      have hc := Q.outage.cohort
       change (Q.run.2.point.retain _).CohortOn _ _ at hc
       rw [Q.run.2.point.retain_eq Q.constant] at hc
       unfold EnvPoint.CohortOn at hc
@@ -317,7 +317,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
       obtain ⟨hxh, hxa⟩ := Finset.mem_filter.1 (OutageQuery.mem_holders.1 hx)
       have hxh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
         (Finset.mem_sdiff.mp hxh).2
-      have hns := Q.outage.2.2.2.1
+      have hns := Q.outage.noSleep
       change (Q.run.2.point.retain _).NoSleepOn _ _ at hns
       rw [Q.run.2.point.retain_eq Q.constant] at hns
       rw [simTrace_awake_iff, awakeAt_iff]
@@ -328,7 +328,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
       obtain ⟨hxh, hxa⟩ := Finset.mem_filter.1 (OutageQuery.mem_holders.1 hx)
       have hxh := (Q.run.2.point.honestAt_iff_zero Q.constant _ _).mp
         (Finset.mem_sdiff.mp hxh).2
-      have hns := Q.outage.2.2.2.1
+      have hns := Q.outage.noSleep
       change (Q.run.2.point.retain _).NoSleepOn _ _ at hns
       rw [Q.run.2.point.retain_eq Q.constant] at hns
       refine Compose.restart_le_of_awake hrun ((mem_honestKeys_iff S Q.run.2 x).mpr hxh)

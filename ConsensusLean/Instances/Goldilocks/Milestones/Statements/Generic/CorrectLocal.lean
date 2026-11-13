@@ -131,23 +131,25 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
       (Anc (tr.HonestBlocksAt H) B (tr.finalizedAt y j) →
         payload B ⊆ payload (tr.finalizedAt y j))
   /-- L9: outage protection uses the exact committee participation vocabulary.
-  Network transport and schedule binding are separate. Explicit sample coverage prevents
-  an empty sample family from claiming protection. The fixed local recovery policy bounds
+  Network transport and schedule binding are separate. Explicit nonempty band coverage prevents
+  an empty band from claiming protection. The fixed local recovery policy bounds
   every target; its adequacy remains a supplier obligation. Internal locks and S5 are not fields. -/
   outageProtected : ∀ (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Time → Set (Fin P.n))
-    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Nat → Finset (Fin P.n))
-    (slot : Time → Nat) (samples : Finset OutageSample) (ΔF T b₀ b₁ recoveryTime : Time),
+    (tr : RunTrace A) (p : EnvPoint (Fin P.n)) (K : Time → Finset (Fin P.n))
+    (η populationLook a z retention bandStart bandEnd ΔF T b₀ b₁ recoveryTime : Time),
     Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
     RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
     b₁ + recovery ≤ recoveryTime →
     tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
-    p.CommitteeSleepyOn K slot (1 / 2) catchUp look → p.CommitteeOutageOn K samples →
+    p.EtaSleepyOn (1 / 2) η catchUp populationLook 0 p.horizon →
+    (p.retain retention).NoSleepOn a z → (p.retain retention).CohortOn a z →
+    p.CommitteeSleepyOn K (1 / 2) η catchUp look 0 p.horizon →
+    (p.retain retention).CommitteeCohortOn K a z bandStart bandEnd →
     ∀ x i y j, tr.time i = T → ReadyCut tr H catchUp x i →
       recoveryTime ≤ tr.time j → tr.time j ≤ p.horizon → ReadyCut tr H catchUp y j →
-      (∃ d ∈ samples, d.committeeSlot = slot (tr.time j) ∧ d.anchor = T ∧
-        d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ tr.time j ∧
-        tr.time j ≤ d.chargeEnd) →
+      a ≤ b₀ → b₁ ≤ z → z ≤ tr.time j → tr.time j ≤ retention →
+      max 0 bandStart ≤ tr.time j → tr.time j ≤ bandEnd → (K (tr.time j)).Nonempty →
       Anc (tr.HonestBlocksAt H) (tr.confirmedAt x i) (tr.confirmedAt y j)
 
 end Consensus.Goldilocks.Generic

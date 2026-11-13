@@ -565,7 +565,8 @@ SyncUntil b₀ does not give unrestricted late-wake SyncRun calls. Do not
 insert that false implication as an intermediate lemma. -/
 theorem meetsObligations_persists : ∀ g, schema.output .stable = some g → ∀ T b₀ b₁,
     (Sys (goldilocks S) V).Holds
-      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Outage (K S A) T b₀ b₁ r)
+      (fun r => r.2.point.ConstantFaults ∧ (Sys (goldilocks S) V).Outage
+        (shapeProgress (goldilocks S) V).toExternal (K S A) T b₀ b₁ r)
       fun r => (chainTrace r.2).ProtectedReadyFrom
         ((Sys (goldilocks S) V).cDur (K S A) r) g (resilienceTarget schema g) T
         ((Sys (goldilocks S) V).recoveryAt (K S A) b₁ r) := by

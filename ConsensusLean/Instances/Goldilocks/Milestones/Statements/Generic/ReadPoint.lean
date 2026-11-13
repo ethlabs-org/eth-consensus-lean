@@ -124,21 +124,23 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
 
 /-- L9 preserves the actual source read at T and destination read at t. Source:
 CorrectLocal.outageProtected and lead LeadOutageProtected. This neither supplies
-committee sample coverage nor changes its final-duty/charging interval. -/
+committee band coverage nor changes its retained cohort window. -/
 structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
   protection : ∀ proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
-    K slot samples ΔF T b₀ b₁ recoveryTime,
+    K η populationLook a z retention bandStart bandEnd ΔF T b₀ b₁ recoveryTime,
     Growing.LocalRun proposer dg H sg tr → Compose.NoCollRun dg tr →
     RunPointBinding tr H p → 0 ≤ T → T ≤ b₀ → b₀ ≤ b₁ → b₁ ≤ recoveryTime →
     b₁ + C.recovery ≤ recoveryTime →
     tr.SyncRunAt H ΔF 0 b₀ → tr.GSTRunAt H ΔF b₁ →
-    p.CommitteeSleepyOn K slot (1 / 2) C.catchUp C.look →
-    p.CommitteeOutageOn K samples → ∀ x i y j t,
+    p.EtaSleepyOn (1 / 2) η C.catchUp populationLook 0 p.horizon →
+    (p.retain retention).NoSleepOn a z → (p.retain retention).CohortOn a z →
+    p.CommitteeSleepyOn K (1 / 2) η C.catchUp C.look 0 p.horizon →
+    (p.retain retention).CommitteeCohortOn K a z bandStart bandEnd → ∀ x i y j t,
     ReadyReadPoint tr H p.horizon C.catchUp x i T → ReadBoundary tr x i →
     recoveryTime ≤ t → ReadyReadPoint tr H p.horizon C.catchUp y j t →
     ReadBoundary tr y j →
-    (∃ d ∈ samples, d.committeeSlot = slot t ∧ d.anchor = T ∧
-      d.windowStart ≤ b₀ ∧ b₁ ≤ d.windowEnd ∧ d.windowEnd ≤ t ∧ t ≤ d.chargeEnd) →
+    a ≤ b₀ → b₁ ≤ z → z ≤ t → t ≤ retention →
+    max 0 bandStart ≤ t → t ≤ bandEnd → (K t).Nonempty →
       Anc (tr.HonestBlocksAt H) (confirmedRead tr x i T) (confirmedRead tr y j t)
 
 section Engine

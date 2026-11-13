@@ -142,6 +142,217 @@ theorem extremalSel_admits (F : ChainShapeFamily O Info) {V : Type} [Fintype V] 
     (protoOf (compiled F) E).SelAdmits (extremalSel F E) :=
   fun _ => extremalKeys_admits _
 
+/-- Fix one admitted committee for the participation kind at every slot.
+All other roles, including the proposer, retain the extremal selection. -/
+def outageSel (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V)
+    (C : Finset (Fin (Fintype.card V))) :
+    (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V)) :=
+  fun r => match r with
+    | .duty _ k => if (F (pubOf E)).skel.participationKind = some k then C else extremalSel F E r
+    | _ => extremalSel F E r
+
+theorem outageSel_admits (F : ChainShapeFamily O Info) {V : Type} [Fintype V] (E : Env V)
+    (C : Finset (Fin (Fintype.card V)))
+    (hC : ∀ k, (F (pubOf E)).skel.participationKind = some k →
+      ((F (pubOf E)).skel.kindSel k).Admits C) :
+    (protoOf (compiled F) E).SelAdmits (outageSel F E C) := by
+  intro r
+  cases r with
+  | proposer s => exact extremalSel_admits F E (.proposer s)
+  | poll => exact extremalSel_admits F E .poll
+  | duty s k =>
+    change ((F (pubOf E)).skel.kindSel k).Admits
+      (if (F (pubOf E)).skel.participationKind = some k then C else extremalSel F E (.duty s k))
+    split_ifs with hk
+    · exact hC k hk
+    · exact extremalSel_admits F E (.duty s k)
+
+/-- The chosen participation set is constant; admitted selections in general
+need not be constant for a sized specification. -/
+theorem outageSel_selected (F : ChainShapeFamily O Info) {V : Type}
+    [Fintype V] [DecidableEq V] (E : Env V) (key : Fin (Fintype.card V) ≃ V)
+    (C : Finset (Fin (Fintype.card V))) (t : Time) :
+    (shapeProgress F V).selected E (key, outageSel F E C) t =
+      if (F (pubOf E)).skel.participationKind.isSome then C.map key.toEmbedding
+      else Finset.univ := by
+  cases hk : (F (pubOf E)).skel.participationKind with
+  | none => simp [shapeProgress, Model.sysExternal, protoOf, compiled, compile, hk]
+  | some k => simp [shapeProgress, Model.sysExternal, protoOf, compiled, compile,
+      outageSel, hk]
+
+/-- A small committee leaves two distinct identities for the fault and sleeper.
+Otherwise its size supplies the majority margin. -/
+theorem exists_outage_pair {N : Nat} (hn : 5 ≤ N) (C : Finset (Fin N)) :
+    ∃ f s : Fin N, f ≠ s ∧ (f ∉ C ∧ s ∉ C ∨ N - 1 ≤ C.card) := by
+  classical
+  by_cases hc : N - 1 ≤ C.card
+  · exact ⟨⟨0, by omega⟩, ⟨2, by omega⟩, by simp, Or.inr hc⟩
+  · have hcard := Finset.card_sdiff_add_card_eq_card (Finset.subset_univ C)
+    have htwo : 1 < (Finset.univ \ C).card := by
+      simp only [Finset.card_univ, Fintype.card_fin] at hcard
+      omega
+    obtain ⟨f, hf, s, hs, hfs⟩ := Finset.one_lt_card.mp htwo
+    exact ⟨f, s, hfs, Or.inl ⟨(Finset.mem_sdiff.mp hf).2, (Finset.mem_sdiff.mp hs).2⟩⟩
+
+/-- Reindex the two exceptional identities without identifying any validators. -/
+theorem exists_outage_permutation {N : Nat} (hn : 5 ≤ N) (f s : Fin N) (hfs : f ≠ s) :
+    ∃ e : Equiv.Perm (Fin N), e ⟨0, by omega⟩ = f ∧ e ⟨2, by omega⟩ = s := by
+  let z : Fin N := ⟨0, by omega⟩
+  let two : Fin N := ⟨2, by omega⟩
+  let e := Equiv.swap z f
+  have hne : e two ≠ f := by
+    rw [← Equiv.swap_apply_left z f]
+    exact e.injective.ne (by simp [two, z])
+  refine ⟨e.trans (Equiv.swap (e two) s), ?_, ?_⟩
+  · change Equiv.swap (e two) s (e z) = f
+    rw [show e z = f from Equiv.swap_apply_left z f]
+    exact Equiv.swap_apply_of_ne_of_ne hne.symm hfs
+  · exact Equiv.swap_apply_left (e two) s
+
+/-- Reindex the PKI so a fixed committee avoids the witness's two exceptional
+validators, unless its cardinality already supplies the required margin. -/
+theorem exists_outage_key {V : Type} [Fintype V]
+    (key : Fin (Fintype.card V) ≃ V) (hn : 5 ≤ Fintype.card V)
+    (C : Finset (Fin (Fintype.card V))) :
+    ∃ key' : Fin (Fintype.card V) ≃ V,
+      (key ⟨0, by omega⟩ ∉ C.map key'.toEmbedding ∧
+        key ⟨2, by omega⟩ ∉ C.map key'.toEmbedding) ∨
+      Fintype.card V - 1 ≤ (C.map key'.toEmbedding).card := by
+  obtain ⟨f, s, hfs, hgood⟩ := exists_outage_pair hn C
+  obtain ⟨e, he0, he2⟩ := exists_outage_permutation hn f s hfs
+  refine ⟨e.symm.trans key, ?_⟩
+  rcases hgood with ⟨hf, hs⟩ | hlarge
+  · left
+    constructor
+    · intro hv
+      obtain ⟨j, hj, he⟩ := Finset.mem_map.mp hv
+      have hj0 : e.symm j = ⟨0, by omega⟩ := key.injective he
+      have hjf : j = f := by simpa only [Equiv.apply_symm_apply, he0] using congrArg e hj0
+      exact hf (hjf ▸ hj)
+    · intro hv
+      obtain ⟨j, hj, he⟩ := Finset.mem_map.mp hv
+      have hj2 : e.symm j = ⟨2, by omega⟩ := key.injective he
+      have hjs : j = s := by simpa only [Equiv.apply_symm_apply, he2] using congrArg e hj2
+      exact hs (hjs ▸ hj)
+  · exact Or.inr (by simpa only [Finset.card_map] using hlarge)
+
+/-- Choose one constant admitted participation set and a compatible PKI.
+The environment and its exceptional validators remain unchanged. -/
+theorem exists_outage_selection (F : ChainShapeFamily O Info) {V : Type}
+    [Fintype V] [DecidableEq V] (E : Env V) (key : Fin (Fintype.card V) ≃ V)
+    (hn : 5 ≤ Fintype.card V) :
+    ∃ (key' : Fin (Fintype.card V) ≃ V)
+      (sel : (protoOf (compiled F) E).Role → Finset (Fin (Fintype.card V))) (C : Finset V),
+      (protoOf (compiled F) E).SelAdmits sel ∧
+      (∀ t, (shapeProgress F V).selected E (key', sel) t = C) ∧
+      ((key ⟨0, by omega⟩ ∉ C ∧ key ⟨2, by omega⟩ ∉ C) ∨
+        Fintype.card V - 1 ≤ C.card) := by
+  classical
+  cases hk : (F (pubOf E)).skel.participationKind with
+  | none =>
+    refine ⟨key, outageSel F E Finset.univ, Finset.univ, ?_, ?_, Or.inr (by simp)⟩
+    · exact outageSel_admits F E _ (by intro k h; simp [hk] at h)
+    · intro t
+      rw [outageSel_selected]
+      simp only [hk, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
+  | some k =>
+    let D := extremalKeys ((F (pubOf E)).skel.kindSel k)
+    obtain ⟨key', hgood⟩ := exists_outage_key key hn D
+    refine ⟨key', outageSel F E D, D.map key'.toEmbedding, ?_, ?_, hgood⟩
+    · apply outageSel_admits
+      intro k' hk'
+      have he : k' = k := Option.some.inj (hk'.symm.trans hk)
+      subst k'
+      exact extremalKeys_admits _
+    · intro t
+      rw [outageSel_selected]
+      simp only [hk, Option.isSome_some, ↓reduceIte]
+
+/-- Removing the fault and sleeper leaves more support than selected faults,
+either because both are outside the committee or because the committee has margin. -/
+theorem outage_committee_margin {V : Type} [Fintype V] [DecidableEq V]
+    (hn : 5 ≤ Fintype.card V) (C : Finset V)
+    (f s : V) (hC : C.Nonempty)
+    (hgood : f ∉ C ∧ s ∉ C ∨ Fintype.card V - 1 ≤ C.card) :
+    ({f} ∩ C).card < ((C.erase f).erase s).card := by
+  rcases hgood with ⟨hf, hs⟩ | hlarge
+  · simpa [Finset.erase_eq_of_notMem hf, Finset.erase_eq_of_notMem hs,
+      Finset.singleton_inter_of_notMem hf] using hC.card_pos
+  · have hlow₁ : C.card ≤ (C.erase f).card + 1 := by
+      by_cases hf : f ∈ C
+      · rw [Finset.card_erase_of_mem hf]; omega
+      · rw [Finset.erase_eq_of_notMem hf]; omega
+    have hlow₂ : (C.erase f).card ≤ ((C.erase f).erase s).card + 1 := by
+      by_cases hs : s ∈ C.erase f
+      · rw [Finset.card_erase_of_mem hs]; omega
+      · rw [Finset.erase_eq_of_notMem hs]; omega
+    have hfault : ({f} ∩ C).card ≤ 1 := by
+      exact le_trans (Finset.card_le_card Finset.inter_subset_left) (by simp)
+    omega
+
+/-- A constant awake profile with a selected ready majority meets both guarded
+committee clauses. This applies to every retained view used by the witnesses. -/
+theorem committee_of_constant_awake {V : Type} [Fintype V] [DecidableEq V]
+    (p : EnvPoint V) (C : Finset V) (θ : ℚ) (η c W a z retention lo hi : Time)
+    (hθ : 0 ≤ θ ∧ θ ≤ 1 / 2) (hc : 0 ≤ c)
+    (haw : ∀ v t u, p.env.awake v t = p.env.awake v u)
+    (hmajority : ∀ d, C.Nonempty →
+      (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card) :
+    (p.retain retention).CommitteeCohortOn (fun _ => C) a z lo hi ∧
+      p.CommitteeSleepyOn (fun _ => C) θ η c W 0 p.horizon := by
+  classical
+  have hlate (d : Time) : (p.retain d).lateWakers a z = ∅ := by
+    rw [EnvPoint.lateWakers, Finset.sdiff_eq_empty_iff_subset]
+    intro v hv
+    obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
+    exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
+      (haw v a u).trans hu⟩
+  have hawake (d t : Time) : (p.retain d).awakeAt t = (p.retain d).awakeAt 0 := by
+    ext v
+    change (v ∈ (Finset.univ \ p.faultyAt d).filter (fun w => p.env.awake w t = true)) ↔
+      v ∈ (Finset.univ \ p.faultyAt d).filter (fun w => p.env.awake w 0 = true)
+    simp only [Finset.mem_filter, haw v t 0]
+  have hready (d t : Time) (ht : 0 ≤ t) :
+      (p.retain d).readyAt c t = (p.retain d).awakeAt 0 := by
+    ext v
+    constructor
+    · intro hv
+      obtain ⟨_, hh, hr⟩ := Finset.mem_filter.mp hv
+      exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
+        (haw v 0 t).trans (hr t (max_le ht (by linarith)) le_rfl)⟩
+    · intro hv
+      obtain ⟨hh, hr⟩ := Finset.mem_filter.mp hv
+      exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, (Finset.mem_sdiff.mp hh).2,
+        fun u _ _ => (haw v u 0).trans hr⟩
+  constructor
+  · intro t _ _ _ hC
+    rw [hlate retention, Finset.union_empty, hawake retention a]
+    exact hmajority retention hC
+  · intro t ht _ hC
+    let d := p.lookAhead W t
+    have hm := hmajority d hC
+    have hmq : ((p.faultyAt d ∩ C).card : ℚ) <
+        (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by exact_mod_cast hm
+    have hcount : θ * (((((p.retain d).awakeAt 0 ∩ C).card +
+        (p.faultyAt d ∩ C).card : Nat) : ℚ)) <
+        (((p.retain d).awakeAt 0 ∩ C).card : ℚ) := by
+      push_cast
+      nlinarith [mul_le_mul_of_nonneg_right hθ.2
+        (show (0 : ℚ) ≤ ((p.retain d).awakeAt 0 ∩ C).card + (p.faultyAt d ∩ C).card by positivity)]
+    dsimp only
+    split_ifs
+    · rw [hready d t ht]
+      exact hcount
+    · have hsub : (p.retain d).awakeIn (max 0 (t - η)) t ⊆ (p.retain d).awakeAt 0 := by
+        intro v hv
+        obtain ⟨_, u, -, -, hh, hu⟩ := Finset.mem_filter.mp hv
+        exact Finset.mem_filter.mpr ⟨Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh⟩,
+          (haw v 0 u).trans hu⟩
+      rw [hready d t ht, Finset.union_eq_left.mpr hsub]
+      have hn := Finset.card_union_le ((p.retain d).awakeAt 0 ∩ C) (p.faultyAt d ∩ C)
+      rw [← Finset.union_inter_distrib_right] at hn
+      exact lt_of_le_of_lt (mul_le_mul_of_nonneg_left (by exact_mod_cast hn) hθ.1) hcount
+
 /-! ## The bad-slot selection -/
 
 /-- A proposer role at a periodic bad slot: slot `s` with `s % P = P − 1`. -/
@@ -400,6 +611,27 @@ theorem asleepAlways_cohort (a b : Time) :
     rw [hlate, Finset.union_empty, realPoint_faulty, Finset.card_singleton, hawake,
       Finset.card_erase_of_mem h2]
     omega
+
+/-- Selected support at the one-fault, one-sleeper point. -/
+theorem asleepAlways_committee_margin (C : Finset V)
+    (hgood : kv key hn 0 (by decide) ∉ C ∧ kv key hn 2 (by decide) ∉ C ∨
+      Fintype.card V - 1 ≤ C.card) (d : Time) (hC : C.Nonempty) :
+    let p := realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H
+    (p.faultyAt d ∩ C).card < ((p.retain d).awakeAt 0 ∩ C).card := by
+  classical
+  dsimp only
+  have hset :
+      ((realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).retain d).awakeAt
+        0 ∩ C = (C.erase (kv key hn 0 (by decide))).erase (kv key hn 2 (by decide)) := by
+    ext v
+    change (v ∈ (Finset.univ \ {kv key hn 0 (by decide)}).filter
+      (fun w => asleepAlways (kv key hn 2 (by decide)) w 0 = true) ∩ C) ↔ _
+    simp only [Finset.mem_inter, Finset.mem_filter, Finset.mem_sdiff, Finset.mem_univ,
+      Finset.mem_singleton, true_and, asleepAlways_apply, Bool.not_eq_true',
+      decide_eq_false_iff_not, Finset.mem_erase]
+    tauto
+  rw [hset, realPoint_faulty]
+  exact outage_committee_margin hn C _ _ hC hgood
 
 include hn in
 omit [DecidableEq V] in
@@ -918,20 +1150,22 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
     ∃ rho : Model.Run (compiled F)
         (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).env,
       rho.point = realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H ∧
-      rho.key = key ∧ (Sys F V).Witness ⟨_, rho⟩ ∧ (Sys F V).Outage K T b₀ b₁ ⟨_, rho⟩ ∧
+      (Sys F V).Witness ⟨_, rho⟩ ∧
+      (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨_, rho⟩ ∧
       OutageActive ((Sys F V).cDur K ⟨_, rho⟩) ((K.params.recovery : Time) * Δ) T b₀ b₁
         rho.point := by
   have hT0 : 0 ≤ T := hT.1
   have hD : (0 : Time) ≤ (K.params.recovery : Time) * Δ := mul_nonneg (by positivity) hΔ.le
   have hH0 : 0 ≤ H := by linarith only [hH, hD, hb, hTb, hT0, hΔ]
   have h12 : kv key hn 1 (by decide) ≠ kv key hn 2 (by decide) := kv_ne key hn (by decide)
+  let p := realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H
+  obtain ⟨key', sel, C, hsel, hselected, hgood⟩ := exists_outage_selection F p.env key hn
   obtain ⟨hash, relay, events, hv, hnc, he⟩ :=
-    real_run key F (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H) hH0 0
+    real_run_sel key' F p hH0 0 sel hsel
   let rho := Model.Run.mk (F := compiled F)
       (E := (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).env)
       (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).faultyAt
-      monotone_const H events key
-      (extremalSel F (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).env)
+      monotone_const H events key' sel
       (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).submit relay hash
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   have hawake1 :
@@ -943,9 +1177,19 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
     (asleepAlways (kv key hn 2 (by decide))) H (j := 2) (t := t) (by decide) (by decide)
   obtain ⟨hns, hco⟩ := asleepAlways_cohort key hn hΔ hΔF H
     ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
-  refine ⟨rho, rfl, rfl, ⟨hv, hnc, fun _ => rfl, ?_,
+  have hcomm := committee_of_constant_awake p C K.params.θ
+    ((K.params.η : Time) * Δ) ((Sys F V).cDur K ⟨_, rho⟩)
+    ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
+    ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
+    ((Sys F V).cohortAt K b₁ ⟨_, rho⟩)
+    ((Sys F V).bandStart K b₀ ⟨_, rho⟩) ((Sys F V).bandEnd K b₀ ⟨_, rho⟩)
+    ha.θ_range (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl)
+    (asleepAlways_committee_margin key hn hΔ hΔF H C hgood)
+  have hselEq : (shapeProgress F V).selected p.env (key', sel) = fun _ => C := funext hselected
+  refine ⟨rho, rfl, ⟨hv, hnc, fun _ => rfl, ?_,
       ⟨_, Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hh1 _⟩⟩⟩,
-    ⟨hT, ⟨?_, hse.psync (by linarith only [hb, hTb, hT0, hΔ]) hΔ1 hΔF1⟩, ?_, hns, hco⟩,
+    ⟨hT, ⟨?_, hse.psync (by linarith only [hb, hTb, hT0, hΔ]) hΔ1 hΔF1⟩,
+      ?_, hns, hco, ?_, ?_⟩,
     ⟨hT0, hTb, hb, ⟨_, hh1 _, fun u _ _ => hawake1 u⟩,
       ⟨_, b₀, le_rfl, by linarith only [hb, hΔ], hh2 _,
         show asleepAlways (kv key hn 2 (by decide)) (kv key hn 2 (by decide)) b₀ = false by
@@ -958,6 +1202,17 @@ theorem outage_witness (ha : K.params.Admissible) (hΔ1 : 1 < Δ) (hΔF1 : 1 < �
       (he.syncUntil (Model.Run.log_sendsFromZero rho hv) le_rfl hΔ1 hΔF1 b₀)
   · intro t _ _
     exact etaReadyAbove_of_card hn ha.θ_range _ _ t (asleepAlways_readyAt key hn hΔ hΔF H _ t)
+  · change (p.retain ((Sys F V).cohortAt K b₁ ⟨_, rho⟩)).CommitteeCohortOn
+      ((shapeProgress F V).selected p.env (key', sel))
+      ((Sys F V).outageStart K b₀ ⟨_, rho⟩) ((Sys F V).outageEnd K b₁ ⟨_, rho⟩)
+      ((Sys F V).bandStart K b₀ ⟨_, rho⟩) ((Sys F V).bandEnd K b₀ ⟨_, rho⟩)
+    rw [hselEq]
+    exact hcomm.1
+  · change p.CommitteeSleepyOn ((shapeProgress F V).selected p.env (key', sel)) K.params.θ
+      ((K.params.η : Time) * Δ) ((Sys F V).cDur K ⟨_, rho⟩)
+      ((Sys F V).committeeAheadDur K ⟨_, rho⟩) 0 H
+    rw [hselEq]
+    exact hcomm.2
 
 end Witnesses
 

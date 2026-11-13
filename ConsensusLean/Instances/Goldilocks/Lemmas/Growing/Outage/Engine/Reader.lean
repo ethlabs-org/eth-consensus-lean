@@ -214,7 +214,7 @@ theorem outage_reader_prefix_at (Q : OutageQueryAt S A V) {v : V}
         (cutMap S Q.run.2 Q.hn ((chainTrace Q.run.2).endCut t)) t)) :
     (chainTrace Q.run.2).readAt .confirmed v Q.T <+:
       (chainTrace Q.run.2).readAt (resilienceTarget schema .confirmed) w t := by
-  have hT0 : 0 ≤ Q.T := Q.outage.1.1
+  have hT0 : 0 ≤ Q.T := Q.outage.times.1
   have ht0 : 0 ≤ t := hT0.trans hTt
   have hTh := hTt.trans hth
   have hc := duration_nonneg Q

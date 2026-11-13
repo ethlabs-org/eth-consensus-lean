@@ -35,7 +35,7 @@ each, for a larger value:
 * heal points: liveness and healed safety start later, weaker claims (and
   healed safety's progress premise covers a longer window);
 * latencies: later transaction deadlines, weaker claims;
-* look-aheads `ahead`, `cohortAhead`: participation and the outage cohort are
+* look-aheads `ahead`, `cohortAhead`, `committeeAhead`: participation and the outage cohort are
   charged with later faults, and validators compromised by then leave the honest
   support, a stronger premise (`EnvPoint.retain`; `0`: current faults);
 * FG delay bound `fgDelay`: the healthy regime assumes `ΔFG ≤ fgDelay·ΔAC`, so a
@@ -49,7 +49,9 @@ delay `ΔFG > 0` (whether sleepy needs a bound on `ΔFG` is an open audit questi
 
 The three regimes (`System.Sleepy`, `System.Healthy`, `System.Outage`) and
 the run quantities they use (`System.cDur`, `heal`, `ready`, `lat`) are read
-off a run's environment point and communication log. The GST is a parameter
+off a run's environment point and communication log; Outage also reads the
+external selection through `External.selected`. Its public committee band is
+set by `bandLead` and `bandLen`, independently of run events. The GST is a parameter
 of the regimes, not of the environment; an outage run is partially
 synchronous with GST `b₁`, so the after-GST entries apply with `g = b₁` when their
 other premises hold: `Outage` supplies only the `PSync b₁` part of `Healthy`,
@@ -103,6 +105,12 @@ structure Params (Idx : Type) where
   on the view retained through `outageEnd + cohortAhead·ΔAC` (clamped to the
   horizon, `System.cohortAt`). A larger look-ahead is a stronger premise. -/
   cohortAhead : Nat
+  /-- The public outage band starts `bandLead·ΔAC` before the outage. -/
+  bandLead : Nat := 0
+  /-- The public outage band lasts `bandLen·ΔAC`. -/
+  bandLen : Nat := 0
+  /-- Committee participation look-ahead, in units of `ΔAC`. -/
+  committeeAhead : Nat := 0
 
 namespace Params
 
@@ -158,6 +166,18 @@ look-ahead `W`. -/
 def EtaSleepyOn (θ : ℚ) (η c W a b : Time) : Prop :=
   ∀ t, a ≤ t → t ≤ b → (p.retain (p.lookAhead W t)).EtaReadyAbove θ η c t
 
+/-- Committee η-sleepy participation on a time window. The committee is read at
+the observation time, while honesty is retained through the look-ahead. -/
+def CommitteeSleepyOn (K : Time → Finset V) (θ : ℚ) (η c W a b : Time) : Prop :=
+  ∀ t, a ≤ t → t ≤ b → (K t).Nonempty →
+    let q := p.retain (p.lookAhead W t)
+    if η ≤ 0 then
+      θ * (((q.readyAt c t ∩ K t).card + (q.faultyAt t ∩ K t).card : Nat) : ℚ) <
+        ((q.readyAt c t ∩ K t).card : ℚ)
+    else
+      θ * (((q.readyAt c t ∪ q.awakeIn (max 0 (t - η)) t ∪ q.faultyAt t) ∩ K t).card : ℚ) <
+        ((q.readyAt c t ∩ K t).card : ℚ)
+
 /-- Healthy participation on `[max g 0, b]` (see `System.Healthy`): fewer
 than fraction `β` of all validators are compromised by `b` (faults only grow, so
 at every time up to `b`), and every validator honest at a time of the window is
@@ -182,6 +202,12 @@ validators). -/
 def CohortOn (a b : Time) : Prop :=
   (p.faultyAt b ∪ p.lateWakers a b).card < (p.awakeAt a).card
 
+/-- The retained cohort inequality restricted to each committee in a fixed public
+time band. The cohort window and the band are independent of run events. -/
+def CommitteeCohortOn (K : Time → Finset V) (a z bandStart bandEnd : Time) : Prop :=
+  ∀ t, max 0 bandStart ≤ t → t ≤ bandEnd → t ≤ p.horizon → (K t).Nonempty →
+    ((p.faultyAt z ∪ p.lateWakers a z) ∩ K t).card < (p.awakeAt a ∩ K t).card
+
 end EnvPoint
 
 /-- The outage times: armed at `T ≥ 0` at least `lag·ΔAC` before the window
@@ -196,6 +222,40 @@ structure Contract (Prog : Type) where
   idx_nonempty : Nonempty Idx
   params : Params Idx
   progress : Capability → Idx → Prog
+
+/-- External run data and its admissibility: what a run fixes before execution
+besides its environment point (in the model: the PKI and the selection). -/
+structure External {V : Type} (S : System V) where
+  /-- The external data of runs in environment `E`. -/
+  Ext : Env V → Type
+  /-- The external data of a run. -/
+  ext : (r : S.Run) → Ext (S.trace r).point.env
+  /-- Admissible external data (in the model: the protocol's selection spec). -/
+  Admits : (E : Env V) → Ext E → Prop
+  /-- Changing participation while keeping the public delays preserves the entire
+  external input space, not only inputs admitted in one environment. Fault profiles
+  and submissions are absent from both sides. -/
+  transport : ∀ (E E' : Env V), E.ΔAC = E'.ΔAC → E.ΔFG = E'.ΔFG → Ext E ≃ Ext E'
+  /-- Reindexing an input in the same environment preserves its identity. -/
+  transport_refl : ∀ (E : Env V) (x : Ext E), transport E E rfl rfl x = x
+  /-- Reindexing through an intermediate participation profile changes no input. -/
+  transport_trans : ∀ (E E' E'' : Env V)
+    (hAC : E.ΔAC = E'.ΔAC) (hFG : E.ΔFG = E'.ΔFG)
+    (hAC' : E'.ΔAC = E''.ΔAC) (hFG' : E'.ΔFG = E''.ΔFG) (x : Ext E),
+    transport E' E'' hAC' hFG' (transport E E' hAC hFG x) =
+      transport E E'' (hAC.trans hAC') (hFG.trans hFG') x
+  /-- Admissibility is invariant along transport. Independence of a selection
+  reader additionally requires that its selected sets commute with transport. -/
+  admits_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
+    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E),
+    Admits E' (transport E E' hAC hFG x) ↔ Admits E x
+  /-- The population selected at an observation time. A later fault charge reads
+  this same set; it does not select again at the charge time. -/
+  selected : (E : Env V) → Ext E → Time → Finset V
+  /-- Selected identities do not change with participation at equal delays. -/
+  selected_transport : ∀ (E E' : Env V) (hAC : E.ΔAC = E'.ΔAC)
+    (hFG : E.ΔFG = E'.ΔFG) (x : Ext E) (t : Time),
+    selected E' (transport E E' hAC hFG x) t = selected E x t
 
 namespace System
 
@@ -242,6 +302,18 @@ clamped to the horizon. -/
 def cohortAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
   min (S.outageEnd K b₁ r + (K.params.cohortAhead : Time) * (S.pt r).env.ΔAC) (S.pt r).horizon
 
+/-- The unclamped start of the fixed public committee band. -/
+def bandStart (K : Contract Prog) (b₀ : Time) (r : S.Run) : Time :=
+  b₀ - (K.params.bandLead : Time) * (S.pt r).env.ΔAC
+
+/-- The end of the fixed public committee band. -/
+def bandEnd (K : Contract Prog) (b₀ : Time) (r : S.Run) : Time :=
+  S.bandStart K b₀ r + (K.params.bandLen : Time) * (S.pt r).env.ΔAC
+
+/-- The committee participation look-ahead. -/
+def committeeAheadDur (K : Contract Prog) (r : S.Run) : Time :=
+  (K.params.committeeAhead : Time) * (S.pt r).env.ΔAC
+
 /-- The recovery point of an outage `[b₀, b₁)`: `b₁ + recovery·ΔAC`, from which
 every ready reader is protected (`Behaviour.persists`). -/
 def recoveryAt (K : Contract Prog) (b₁ : Time) (r : S.Run) : Time :=
@@ -274,13 +346,22 @@ counts as faulty), no honest validator falls asleep in the no-sleep window
 compromised validators with the late wakers of `[a, z]` are fewer than the
 honest validators awake at `a` (`CohortOn`; hence fewer than half of all
 validators, `EnvPoint.CohortOn.two_mul_lt`). No absolute fraction of
-validators needs to be awake or ready. -/
-def Outage (K : Contract Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
+validators needs to be awake or ready. The same cohort inequality is required
+inside each nonempty selected committee in the public band. Committee η-sleepy
+participation holds throughout the horizon with its own look-ahead; both
+committee clauses are vacuous at empty selections. -/
+def Outage (X : External S) (K : Contract Prog) (T b₀ b₁ : Time) (r : S.Run) : Prop :=
   OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧ (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
     (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r)
       (S.aheadDur K r) 0 (S.pt r).horizon ∧
     ((S.pt r).retain (S.cohortAt K b₁ r)).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-    ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
+    ((S.pt r).retain (S.cohortAt K b₁ r)).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
+    ((S.pt r).retain (S.cohortAt K b₁ r)).CommitteeCohortOn
+      (X.selected (S.pt r).env (X.ext r)) (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
+      (S.bandStart K b₀ r) (S.bandEnd K b₀ r) ∧
+    (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
+      ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r) (S.committeeAheadDur K r)
+      0 (S.pt r).horizon
 
 end System
 

@@ -165,7 +165,8 @@ structure OutageQueryAt where
   stop : Time
   valid : (Sys (goldilocks S) V).Valid run
   noCollision : ¬ run.2.HashCollision
-  outage : (Sys (goldilocks S) V).Outage (K S A) T start stop run
+  outage : (Sys (goldilocks S) V).Outage
+    (shapeProgress (goldilocks S) V).toExternal (K S A) T start stop run
 
 variable {S A V}
 

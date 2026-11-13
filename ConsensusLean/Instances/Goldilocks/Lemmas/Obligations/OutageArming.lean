@@ -153,7 +153,10 @@ theorem outage_arming (Q : OutageQuery S A V)
     (v : V) (hv : Q.run.2.point.Ready Q.duration v Q.T) (hTh : Q.T ≤ Q.run.2.horizon) :
     Nonempty (OutageArming S A V Q v) := by
   classical
-  obtain ⟨⟨hT0, -, hb01, -⟩, -, heta, hns, hcoh⟩ := Q.outage
+  obtain ⟨hT0, -, hb01, -⟩ := Q.outage.times
+  have heta := Q.outage.etaSleepy
+  have hns := Q.outage.noSleep
+  have hcoh := Q.outage.cohort
   change (Q.run.2.point.retain _).NoSleepOn _ _ at hns
   change (Q.run.2.point.retain _).CohortOn _ _ at hcoh
   rw [Q.run.2.point.retain_eq Q.constant] at hns hcoh

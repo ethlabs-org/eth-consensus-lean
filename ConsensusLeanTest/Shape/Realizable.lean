@@ -229,7 +229,7 @@ theorem healed_witness_late (h : Realizable S X K) (cap : Capability)
 /-- An arbitrarily late outage: every realizable system has, at `Δ = 7`, a
 clean witness of an active outage armed at or after `1000·Δ`. -/
 theorem outage_witness_late (h : Realizable S X K) :
-    ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ S.Outage K T b₀ b₁ r ∧
+    ∃ r T b₀ b₁, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ S.Outage X.toExternal K T b₀ b₁ r ∧
       OutageActive (S.cDur K r) ((K.params.recovery : Time) * 7) T b₀ b₁ (S.pt r) ∧
       7000 ≤ T := by
   obtain ⟨r, T, b₀, b₁, ⟨hw, hΔ, -⟩, ho, ha, hT⟩ := h.outage 7 7 1000 (by norm_num) (by norm_num)
@@ -240,7 +240,7 @@ theorem good_late_witnesses (h : CorrectProtocol S X K) (h5 : 5 ≤ Fintype.card
     (i : K.Idx) :
     (∃ r, S.Witness r ∧ (S.pt r).env.ΔAC = 7 ∧ 1000 ≤ S.heal K cap i 1000 r ∧
       SafeActive (S.cDur K r) (S.heal K cap i 1000 r) (S.pt r)) ∧
-    ∃ r T b₀ b₁, S.Witness r ∧ S.Outage K T b₀ b₁ r ∧ 7000 ≤ T := by
+    ∃ r T b₀ b₁, S.Witness r ∧ S.Outage X.toExternal K T b₀ b₁ r ∧ 7000 ≤ T := by
   obtain ⟨r, hw, hΔ, -, -, hh, -, -, hs⟩ := healed_witness_late (h.realizable h5) cap i
   obtain ⟨r', T, b₀, b₁, hw', -, ho, -, hT⟩ := outage_witness_late (h.realizable h5)
   exact ⟨⟨r, hw, hΔ, hh, hs⟩, r', T, b₀, b₁, hw', ho, hT⟩
@@ -264,7 +264,8 @@ theorem healed_witness_late_control (cap : Capability) :
 theorem outage_witness_late_control :
     ∃ r T b₀ b₁, (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Witness r ∧
       ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r).env.ΔAC = 7 ∧
-      (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Outage ctrlK T b₀ b₁ r ∧
+      (sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).Outage
+        (shapeProgress ctrlFamily (Fin 5)).toExternal ctrlK T b₀ b₁ r ∧
       OutageActive ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).cDur ctrlK r)
         ((ctrlK.params.recovery : Time) * 7) T b₀ b₁
         ((sysOf ctrlSchema (compiled ctrlFamily) (Fin 5)).pt r) ∧ 7000 ≤ T :=

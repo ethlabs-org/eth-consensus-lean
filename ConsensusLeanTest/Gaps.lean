@@ -138,7 +138,8 @@ theorem m30_prog_to_heal (r : S.Run) (cap : Capability) (i : K.Idx) (g : Time)
 
 /- M35 (override 4): a run after an outage is partially synchronous with
 GST `b₁`; nothing in the definition prevents taking GST = `b₁`. -/
-theorem m35_outage_psync (r : S.Run) {T b₀ b₁ : Time} (h : S.Outage K T b₀ b₁ r) :
+theorem m35_outage_psync (r : S.Run) {T b₀ b₁ : Time}
+    (h : S.Outage X.toExternal K T b₀ b₁ r) :
     (S.log r).PSync (S.pt r) b₁ := h.2.1.2
 
 end Generic

@@ -77,7 +77,8 @@ theorem outageQuery_applies {V : Type} [Fintype V] [DecidableEq V]
     (r : (Sys (goldilocks S) V).Run) (hn : 1 ≤ Fintype.card V) (T b₀ b₁ : Time)
     (hf : r.2.point.ConstantFaults)
     (hv : (Sys (goldilocks S) V).Valid r) (hc : ¬ r.2.HashCollision)
-    (ho : (Sys (goldilocks S) V).Outage (K S A) T b₀ b₁ r) :
+    (ho : (Sys (goldilocks S) V).Outage
+      (shapeProgress (goldilocks S) V).toExternal (K S A) T b₀ b₁ r) :
     ∃ Q : OutageQuery S A V, Q.run = r ∧ Q.T = T ∧ Q.start = b₀ ∧ Q.stop = b₁ :=
   ⟨⟨r, hf, hn, T, b₀, b₁, hv, hc, ho⟩, rfl, rfl, rfl, rfl⟩
 

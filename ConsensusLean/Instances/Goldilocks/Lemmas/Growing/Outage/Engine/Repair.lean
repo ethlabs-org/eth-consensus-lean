@@ -31,12 +31,12 @@ theorem outage_protected_at (Q : OutageQueryAt S A V) :
       ((Sys (goldilocks S) V).recoveryAt (K S A) Q.stop Q.run) := by
   intro v hv t ht hth w hw
   have hTs : Q.T ≤ Q.start := by
-    obtain ⟨⟨-, hlag, -, -⟩, -⟩ := Q.outage
+    obtain ⟨-, hlag, -, -⟩ := Q.outage.times
     have : (0 : Time) ≤ ((K S A).params.lag : Time) * Q.run.1.ΔAC := by
       have := Q.run.1.ΔAC_pos; positivity
     change Q.T + _ * Q.run.1.ΔAC ≤ Q.start at hlag
     linarith
-  have hst : Q.start ≤ Q.stop := Q.outage.1.2.2.1
+  have hst : Q.start ≤ Q.stop := Q.outage.times.2.2.1
   have hrec : Q.stop ≤ t := by
     have : (0 : Time) ≤ ((K S A).params.recovery : Time) * Q.run.1.ΔAC := by
       have := Q.run.1.ΔAC_pos; positivity

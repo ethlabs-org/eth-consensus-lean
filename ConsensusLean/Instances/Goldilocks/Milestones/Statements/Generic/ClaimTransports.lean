@@ -242,7 +242,7 @@ derivation remains open, as does the Delta reserve mismatch with ServiceTranspor
 The original service transport is not strengthened. -/
 def OutageServiceSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ T b₀ b₁,
-  (Sys F V).Outage K T b₀ b₁ ⟨E, rho⟩ →
+  (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
   M.trace.SyncRunAt M.honest E.ΔFG 0 b₀ ∧ M.trace.GSTRunAt M.honest E.ΔFG b₁
 
 /-- OPEN schema representation, not protection. Source: Concrete/Fields.persists

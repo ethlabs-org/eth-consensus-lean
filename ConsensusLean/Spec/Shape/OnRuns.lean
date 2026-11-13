@@ -55,7 +55,8 @@ structure ShapeClaimsOnAt (F : ChainShapeFamily O Info) (K : Contract ProgressRe
           ((Sys F V).heal K cap i gst r) r)
       fun r => (chainTrace r.2).ReadySafe ((Sys F V).cDur K r) g ((Sys F V).heal K cap i gst r)
   persists : ∀ g, O.output .stable = some g → ∀ T b₀ b₁,
-    (Sys F V).Holds (fun r => Q ((Sys F V).pt r) ∧ (Sys F V).Outage K T b₀ b₁ r)
+    (Sys F V).Holds (fun r => Q ((Sys F V).pt r) ∧
+      (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ r)
       fun r => (chainTrace r.2).ProtectedReadyFrom ((Sys F V).cDur K r) g (resilienceTarget O g) T
         ((Sys F V).recoveryAt K b₁ r)
 

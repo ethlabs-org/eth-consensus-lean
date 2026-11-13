@@ -277,15 +277,21 @@ theorem witness_constant_iff [Fintype V] [DecidableEq V]
   simp only [Witness, hc, true_and]
 
 theorem outage_constant_iff [Fintype V] [DecidableEq V] {Prog : Type}
-    (hc : (S.pt r).ConstantFaults) (K : Contract Prog) (T b₀ b₁ : Time) :
-    S.Outage K T b₀ b₁ r ↔
+    (hc : (S.pt r).ConstantFaults) (X : External S) (K : Contract Prog) (T b₀ b₁ : Time) :
+    S.Outage X K T b₀ b₁ r ↔
       OutageTimes K.params (S.pt r).env.ΔAC T b₀ b₁ ∧
       (S.log r).OutageNet (S.pt r) b₀ b₁ ∧
       (∀ t, 0 ≤ t → t ≤ (S.pt r).horizon →
         (S.pt r).EtaReadyAbove K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
           (S.cDur K r) t) ∧
       (S.pt r).NoSleepOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
-      (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) := by
+      (S.pt r).CohortOn (S.outageStart K b₀ r) (S.outageEnd K b₁ r) ∧
+      (S.pt r).CommitteeCohortOn (X.selected (S.pt r).env (X.ext r))
+        (S.outageStart K b₀ r) (S.outageEnd K b₁ r)
+        (S.bandStart K b₀ r) (S.bandEnd K b₀ r) ∧
+      (S.pt r).CommitteeSleepyOn (X.selected (S.pt r).env (X.ext r)) K.params.θ
+        ((K.params.η : Time) * (S.pt r).env.ΔAC) (S.cDur K r)
+        (S.committeeAheadDur K r) 0 (S.pt r).horizon := by
   simp only [Outage, EnvPoint.retain_eq hc, EnvPoint.etaSleepyOn_iff hc]
 
 /-- At the horizon, constant-fault historical evidence is exactly the old terminal honest view. -/
