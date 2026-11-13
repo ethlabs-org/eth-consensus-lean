@@ -340,7 +340,8 @@ theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer dg H tr)
           at hfault
         refine hfault.trans_le (Set.ncard_le_ncard ?_)
         rintro w ⟨hw, hawake, hjoined⟩
-        obtain ⟨j, e, hv, hs, _⟩ := vote_of_awake_joined hrun hnc hw hawake hjoined
+        obtain ⟨j, e, hv, hs, _⟩ :=
+          vote_of_awake_joined hrun hnc hw (mayVote_stock hrun hnc hw _) hawake hjoined
         exact ⟨hw, j, e, hv, hs⟩
       have := Set.ncard_union_le {w | w ∈ H ∧ ∃ j e, SA.VoteAt tr.projAC w j e ∧ e.msg.slot = s'}
         Hᶜ

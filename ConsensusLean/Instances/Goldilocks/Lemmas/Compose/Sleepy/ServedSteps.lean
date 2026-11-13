@@ -428,7 +428,8 @@ theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hTt, hres, jc, hjci, ℓj, hcj, htj⟩ := latest_slot_tick_at_read hrun hy hrd hL
-  obtain ⟨k, e, ⟨ℓ, hck, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hx hxw hxj
+  obtain ⟨k, e, ⟨ℓ, hck, he⟩, hes, hk⟩ :=
+    vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hxw hxj
   obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hx ⟨hck, he⟩
   have hk0 : sp.ts L ≤ tr.projAC.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) L).2 (by omega)

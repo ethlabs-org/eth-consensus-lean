@@ -216,7 +216,7 @@ private theorem faults_lt_honest_voters_win (hrun : GoldilocksRun proposer dg H 
     Hᶜ.ncard < {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = s}.ncard := by
   refine lt_of_lt_of_le (faults_lt_awake_joined_win hwin hs₀ hs) (Set.ncard_le_ncard ?_)
   rintro x ⟨hx, hw, hj⟩
-  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hx hw hj
+  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hw hj
   exact ⟨hx, k, e, hv, hs⟩
 
 /-- `honest_batch_carry_upTo` on the window from slot `s₀ ≤ s` to `b`, with the heads accepted
@@ -566,7 +566,8 @@ theorem later_transfer_step_before
       {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = s}.ncard := by
     refine lt_of_lt_of_le (hfb s sp.Δ (by simp) (by linarith)) (Set.ncard_le_ncard ?_)
     rintro x ⟨hx, hw, hj⟩
-    obtain ⟨k, e', hv, hs', -⟩ := vote_of_awake_joined hrun hnc hx hw hj
+    obtain ⟨k, e', hv, hs', -⟩ :=
+      vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hw hj
     exact ⟨hx, k, e', hv, hs'⟩
   obtain ⟨x, hx, k, e', hv, hvs⟩ :=
     (Set.ncard_pos (Set.toFinite _)).1 ((Nat.zero_le _).trans_lt hcount)

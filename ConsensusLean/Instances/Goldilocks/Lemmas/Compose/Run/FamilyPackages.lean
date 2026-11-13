@@ -49,13 +49,14 @@ theorem goldilocksParticipants_node (hr : GoldilocksRun proposer dg H R) (hnc : 
   · simp only [SA.proj_goldilocks]
     intro x hx s hw hj
     have hj' := (joined_projection sp ro dg H R proposer hr x hx _).1.mpr hj
-    obtain ⟨i, e, he, hs, _⟩ := vote_of_awake_joined hr hnc hx hw hj'
+    obtain ⟨i, e, he, hs, _⟩ := vote_of_awake_joined hr hnc hx (mayVote_stock hr hnc hx _) hw hj'
     exact ⟨i, e, he, (SA.vote_signer_slot hlocal hx he).1, hs⟩
   · simp only [SA.proj_goldilocks]
     intro s b hserv hb X hX i ℓ hu x hx hw hj
     have hj' := (joined_projection sp ro dg H R proposer hr x hx _).1.mpr hj
     exact awake_participant_early hr hnc
-      ((SA.FamilyFacts.serviceBefore_iff_old ..).mp hserv) hb hX hu hx hw hj'
+      ((SA.FamilyFacts.serviceBefore_iff_old ..).mp hserv) hb hX hu hx
+      (mayVote_stock hr hnc hx _) hw hj'
 
 variable {FGP : Type} {ro : ReplayOrder sp FGP} {U : Set (SA.Blk sp.n FGP)}
   {o : SA.SATrace sp FGP ro}

@@ -38,113 +38,16 @@ namespace Consensus.Goldilocks.SA
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-/-- A call from `A` to `A'` with the emissions `es` keeps `restart_time`, and keeps `voted_slot`
-or emits a vote of the slot that `A'` records. -/
-private def VotedStep (A A' : SAState sp.n) (es : List (Em sp FGP)) : Prop :=
-  A'.restartTime = A.restartTime ∧
-    (A'.votedSlot = A.votedSlot ∨ ∃ e ∈ es, (e.msg.slot : Int) = A'.votedSlot)
-
-private theorem VotedStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)}
-    (h : VotedStep B A' es) (hv : B.votedSlot = A.votedSlot)
-    (hr : B.restartTime = A.restartTime) : VotedStep A A' es :=
-  ⟨h.1.trans hr, h.2.imp_left (·.trans hv)⟩
-
-private theorem tryVote_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (hp : A.mayVote (sp.slot t) = true) :
-    VotedStep A (tryVote sp self A Φ t).1 (tryVote sp self A Φ t).2 := by
-  unfold tryVote
-  simp only [hp, ↓reduceIte]
-  split_ifs
-  · exact ⟨rfl, Or.inl rfl⟩
-  · exact ⟨rfl, Or.inl rfl⟩
-  all_goals
-    refine ⟨(optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2,
-      Or.inr ⟨_, List.mem_singleton_self _, ?_⟩⟩
-    rw [(optimistic_keeps _ _ _).1, (admitVote_keeps _ _ _).1]
-
-private theorem acOnTick_votedStep (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (hp : A.mayVote (sp.slot t) = true) :
-    VotedStep A (acOnTick sp self A Φ t).1 (acOnTick sp self A Φ t).2 := by
-  unfold acOnTick
-  dsimp only
-  have hr : VotedStep A
-      (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).1
-      (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])).2 := by
-    split_ifs
-    · exact tryVote_votedStep _ _ _ _ hp
-    · exact ⟨rfl, Or.inl rfl⟩
-  generalize (if t = sp.ts (sp.slot t) + sp.Δ then tryVote sp self A Φ t else (A, [])) = r at hr ⊢
-  split_ifs <;> first
-    | exact ⟨rfl, Or.inl rfl⟩
-    | exact hr
-    | exact ⟨(updateConfirmation_keeps _ _ _ _).2.trans hr.1,
-        by rw [(updateConfirmation_keeps _ _ _ _).1]; exact hr.2⟩
-
-/-- One call: a restart, which resets `voted_slot` to `−1`, or a `VotedStep`. -/
-private theorem step_votedStep (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP}
-    (t : Time) (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call)
-    (hp : A.mayVote (sp.slot t) = true) :
-    ((goldilocksSA sp FGP ro).step self A Φ t c).1.votedSlot = -1 ∨
-      VotedStep A ((goldilocksSA sp FGP ro).step self A Φ t c).1
-        ((goldilocksSA sp FGP ro).step self A Φ t c).2 := by
-  cases c with
-  | tick => exact Or.inr (acOnTick_votedStep _ _ _ _ hp)
-  | proposal => exact Or.inr ⟨(acProposal_keeps _ _ _).2, Or.inl (acProposal_keeps _ _ _).1⟩
-  | toFG => exact Or.inr ⟨(acToFG_keeps _ _ _).2, Or.inl (acToFG_keeps _ _ _).1⟩
-  | message m =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _ (by
-      simpa only [optimisticConfirmation_mayVote, admitVote_mayVote] using hp)).pre
-      ((optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1)
-      ((optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2))
-  | block B =>
-    exact Or.inr ((tryVote_votedStep _ _ _ _ (by
-      simpa only [optimisticConfirmation_mayVote, blockReceipt_mayVote] using hp)).pre
-      ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
-      ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2))
-  | restart => exact Or.inl ((restart_state sp) FGP ro self A Φ t hΦ ht).2.2.2.2.2.1
-
-/-- Before cut `i`, an honest node's `voted_slot` is `−1` or the slot of a vote it cast at an
-earlier cut. -/
-private theorem votedSlot_cast (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) : (tr.state y i).votedSlot = -1 ∨
-      ∃ k < i, ∃ e, VoteAt tr y k e ∧ (e.msg.slot : Int) = (tr.state y i).votedSlot := by
-  induction i with
-  | zero =>
-    left
-    change (tr.init y).votedSlot = -1
-    rw [hr.init y hy]
-    rfl
-  | succ i ih =>
-    have ih' : (tr.state y i).votedSlot = -1 ∨
-        ∃ k < i + 1, ∃ e, VoteAt tr y k e ∧ (e.msg.slot : Int) = (tr.state y i).votedSlot := by
-      rcases ih with h | ⟨k, hk, e, hv, hes⟩
-      · exact Or.inl h
-      · exact Or.inr ⟨k, hk.trans (Nat.lt_succ_self i), e, hv, hes⟩
-    by_cases hn : ∃ ℓ, tr.CallAt y i ℓ
-    · obtain ⟨ℓ, hc⟩ := hn
-      rw [tr.state_succ_of_call hc]
-      have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
-      rw [hc.1] at he
-      rcases step_votedStep (ro := ro) y (tr.state y i) (tr.time i) (frameIn_of_callAt hr hy hc).1
-        (hr.time_nonneg i) ℓ.call (trace_mayVote_stock hr hy i _)
-          with h | ⟨-, h | ⟨e, hem, hes⟩⟩ <;>
-        rw [he] at * <;> dsimp only at *
-      · exact Or.inl h
-      · rw [h]; exact ih'
-      · exact Or.inr ⟨i, Nat.lt_succ_self i, e, ⟨ℓ, hc, hem⟩, hes⟩
-    · rw [tr.state_succ_of_not fun ℓ hc => hn ⟨ℓ, hc⟩]
-      exact ih'
-
 /-- At the tick at `t_s + Δ` of a joined node, `try_vote` runs: the node votes in slot `s`, or
 `voted_slot = s` already. -/
 private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) {t : Time}
     (hj : joined sp A t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
-    (hp : A.mayVote (sp.slot t) = true) :
+    (hm : A.mayVote (sp.slot t) = true) :
     A.votedSlot = sp.slot t ∨ ∃ e ∈ (acOnTick sp self A Φ t).2, e.msg.slot = sp.slot t := by
   unfold acOnTick
   simp only [hj, not_true_eq_false, ↓reduceIte, ← ht]
   unfold tryVote
-  simp only [hp, ↓reduceIte]
+  simp only [hm, ↓reduceIte]
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
     · exact absurd hj h
@@ -179,7 +82,8 @@ private theorem update_restarts (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr
     have : tr.post c = (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1 :=
       (congrArg Prod.fst he).symm
     unfold joined at hj ⊢
-    rw [this, (acOnTick_votedStep Y _ _ _ (trace_mayVote_stock hr hY c _)).1]
+    rw [this, show (acOnTick sp Y (tr.state Y c) ℓ.frame (tr.time c)).1.restartTime =
+      (tr.state Y c).restartTime from step_restartTime (ro := ro) Y _ _ _ .tick nofun]
     exact hj
   have hsl : sp.slot (tr.time c) = s + 1 :=
     CompatibleSides.slot_of_lt (s := s + 1)
@@ -469,8 +373,8 @@ private theorem tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro))
 /-- **An honest validator awake and joined at `t_s + Δ` votes in slot `s`**, at or before
 `t_s + Δ`: its tick there runs `try_vote` unless it voted in slot `s` already. -/
 theorem vote_of_awake_joined (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hw : tr.awake y (sp.ts s + sp.Δ))
-    (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
     ∃ k e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧ tr.projAC.time k ≤ sp.ts s + sp.Δ := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -509,14 +413,21 @@ theorem vote_of_awake_joined (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     rw [projAC_state hrun.toLocalRun hy j, htj]
     exact ((joined_projection sp ro dg H tr proposer hrun y hy _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
   rcases SA.acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
-      (SA.trace_mayVote_stock hr hy j _) with hv | ⟨e, he', hes⟩
-  · rcases SA.votedSlot_cast hr hy j with h | ⟨k, hk, e, hve, hes⟩
-    · omega
-    · refine ⟨k, e, hve, ?_, (hr.time_mono hk.le).trans htj.le⟩
-      rw [htj, hslot] at hv
-      omega
+      (by rw [htj, hslot, projAC_state hrun.toLocalRun hy j]; exact hmv j) with hv | ⟨e, he', hes⟩
+  · rw [htj, hslot] at hv
+    rcases SA.cast_of_votedSlot hr hy j s hv with ⟨k, hk, e, hve, hes⟩ | hmf
+    · exact ⟨k, e, hve, hes, (hr.time_mono hk.le).trans htj.le⟩
+    · rw [projAC_state hrun.toLocalRun hy j, hmv j] at hmf
+      exact absurd hmf (by decide)
   · refine ⟨j, e, ⟨ℓ, hc, hemit ▸ he'⟩, ?_, htj.le⟩
     rwa [htj, hslot] at hes
+
+/-- `hmv` on a stock run: `trace_mayVote_stock`, read through `projAC_state`. -/
+theorem mayVote_stock (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) (s : Nat) : ∀ i, (tr.state y i).ac.mayVote s = true := fun i => by
+  rw [← projAC_state hrun.toLocalRun hy i]
+  exact SA.trace_mayVote_stock (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
+    hy i s
 
 /-- **The honest validators awake and joined at `t_s + Δ` are participants** of an honest update
 of slot `s`: their slot-`s` votes reach the writer, whose restarts are at or before `t_s`. -/
@@ -525,11 +436,12 @@ private theorem awake_participant (hrun : GoldilocksRun proposer dg H tr) (hnc :
     (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s) (sp.ts s + sp.Δ)
       tr.projAC) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX) {y : Fin sp.n}
-    (hy : y ∈ H) (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    (hy : y ∈ H) (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
     y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
   obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
@@ -562,11 +474,12 @@ theorem awake_participant_window_before (hrun : GoldilocksRun proposer dg H tr)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
+    (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
     y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
   obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
@@ -604,12 +517,12 @@ theorem awake_participant_early (hrun : GoldilocksRun proposer dg H tr)
     (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
-    {y : Fin sp.n} (hy : y ∈ H)
+    {y : Fin sp.n} (hy : y ∈ H) (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
     y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
   obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
@@ -646,10 +559,11 @@ theorem awake_participant_before (hrun : GoldilocksRun proposer dg H tr)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
     {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
+    (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
     y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} :=
   awake_participant_window_before hrun hnc ⟨hsync.message, hsync.relay⟩
-    (ts_nonneg s) hX hu hib hy hw hj
+    (ts_nonneg s) hX hu hib hy hmv hw hj
 
 /-- If every honest validator is awake and joined, windowed forwarding gives more than
 twice the faulty population in the actual update pool. No head resolution is needed. -/
@@ -664,7 +578,7 @@ theorem honest_participants_window_before
     (hf : 3 * Hᶜ.ncard < sp.n) :
     2 * Hᶜ.ncard < (SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
   have hsub : H ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
-    awake_participant_window_before hrun hnc hsync ha hX hu hib hy
+    awake_participant_window_before hrun hnc hsync ha hX hu hib hy (mayVote_stock hrun hnc hy s)
       (hready y hy).1 (hready y hy).2
   have hcount := Set.ncard_le_ncard hsub
   have htotal : H.ncard + Hᶜ.ncard = sp.n := by
@@ -698,7 +612,7 @@ private theorem honest_vote_exists_win (hrun : GoldilocksRun proposer dg H tr)
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = s := by
   obtain ⟨y, hy, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero
     (Nat.zero_lt_of_lt (faults_lt_awake_joined_win hwin hs₀ hs)).ne'
-  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hy hw hj
+  obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hy (mayVote_stock hrun hnc hy s) hw hj
   exact ⟨y, hy, k, e, hv, hs⟩
 
 /-- **Every slot up to `b` has an honest vote**: an honest validator awake and joined at
@@ -730,7 +644,7 @@ private theorem honest_supporter_win
         ((SA.add_mul_delta_le (by norm_num)).trans (ht₀.symm.trans_le hi₀))))
     have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
-      awake_participant hrun hnc hsync hX hu hy.1 hy.2.1 hy.2.2
+      awake_participant hrun hnc hsync hX hu hy.1 (mayVote_stock hrun hnc hy.1 s) hy.2.1 hy.2.2
     have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
       rintro w ⟨v, hv, rfl⟩
       rw [hCV] at hv
@@ -787,7 +701,7 @@ theorem honest_supporter_before
     have hJV : {y | y ∈ H ∧ tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy =>
       awake_participant_before hrun hnc hsync.ac
-        hX hu hi₀ hy.1 hy.2.1 hy.2.2
+        hX hu hi₀ hy.1 (mayVote_stock hrun hnc hy.1 s) hy.2.1 hy.2.2
     have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
       rintro w ⟨v, hv, rfl⟩
       rw [hCV] at hv

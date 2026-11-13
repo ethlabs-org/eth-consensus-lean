@@ -83,7 +83,9 @@ theorem update_result_extends_origin_at
     refine lt_of_lt_of_le hfb (Set.ncard_le_ncard ?_)
     rintro x ⟨hx, hw, hj⟩
     obtain ⟨j, e, hv, hs, -⟩ :=
-      vote_of_awake_joined_at hrun hnc (hrun.antitone (by rw [ht]; linarith) hx) hw hj
+      vote_of_awake_joined_at hrun hnc (hrun.antitone (by rw [ht]; linarith) hx)
+        (mayVote_stock_at hrun hnc (ts_add_delta_nonneg _)
+          (hrun.antitone (by rw [ht]; linarith) hx)) hw hj
     exact ⟨hx, j, e, hv, hs⟩
   have hvb : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ sp.ts s + sp.Δ := by
     rintro x j e hv hs

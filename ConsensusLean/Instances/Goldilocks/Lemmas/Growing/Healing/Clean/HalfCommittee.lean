@@ -53,7 +53,8 @@ theorem ResetPremisesUpTo.half_committee_at (hp : ResetPremisesUpTo tr H propose
         ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (gbar g) + 1 ≤ m - 1 by
           clear * - hm3; omega)))⟩
     obtain ⟨q, e, hv, he, -⟩ := Compose.vote_of_awake_joined (hp.run.upTo hd0)
-      (hp.noColl.upTo _) hzd ⟨hp.awake z _ hzd hgt hdb, le_rfl⟩ hj
+      (hp.noColl.upTo _) hzd (Compose.mayVote_stock (hp.run.upTo hd0) (hp.noColl.upTo _) hzd _)
+      ⟨hp.awake z _ hzd hgt hdb, le_rfl⟩ hj
     rw [RunTrace.upTo_projAC] at hv
     obtain ⟨ℓ, hc, he'⟩ := hv
     obtain ⟨hq, hc⟩ := (Trace.upTo_callAt _).mp hc

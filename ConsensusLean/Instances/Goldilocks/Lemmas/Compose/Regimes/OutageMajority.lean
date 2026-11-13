@@ -100,7 +100,7 @@ theorem extendingMajority_of_all (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   have hE : {y | y ∈ H ∧ tr.awake y (sp.ts q + sp.Δ) ∧ tr.JoinedAt y (sp.ts q + sp.Δ)} ⊆
       ExtendingCasters tr H B q := by
     rintro x ⟨hx, hw, hj⟩
-    obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hx hw hj
+    obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hw hj
     exact extendingCasters_iff.2 ⟨hx, k, e, hv, hs, hall x hx k e hv hs⟩
   exact (Set.ncard_le_ncard hO (Set.toFinite _)).trans_lt
     (lt_of_lt_of_le hfb (Set.ncard_le_ncard hE (Set.toFinite _)))

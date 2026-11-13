@@ -1298,7 +1298,7 @@ theorem ResetPremisesUpTo.half_committee {b : Time}
         ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (SA.gbar g) + 1 ≤ m - 1 by
             clear * - hm3; omega)))⟩
     obtain ⟨q, e, hv, he, -⟩ := Compose.vote_of_awake_joined hp.run hp.noColl hy
-      (hp.awake y hy _ hgt hmb) hj
+      (Compose.mayVote_stock hp.run hp.noColl hy _) (hp.awake y hy _ hgt hmb) hj
     exact ⟨hy, q, e, hv, he⟩
   have hle := Set.ncard_le_ncard hsub
   have hn : H.ncard + Hᶜ.ncard = sp.n := by

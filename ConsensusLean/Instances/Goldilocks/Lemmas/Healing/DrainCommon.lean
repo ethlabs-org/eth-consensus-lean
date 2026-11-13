@@ -171,7 +171,8 @@ theorem half_committee_of_healthy (hrun : GoldilocksRun proposer dg H tr)
       rw [he]
       exact (SA.ts_le_iff sp).mpr (by omega)
     obtain ⟨k, e, hv, hes, -⟩ :=
-      Compose.vote_of_awake_joined hrun hs.noColl hy (hs.healthy.2.1 y hy _ hgt) hj
+      Compose.vote_of_awake_joined hrun hs.noColl hy (Compose.mayVote_stock hrun hs.noColl hy _)
+        (hs.healthy.2.1 y hy _ hgt) hj
     exact ⟨hy, k, e, hv, hes⟩
   have hle := Set.ncard_le_ncard hsub (Set.toFinite _)
   have hn : H.ncard + Hᶜ.ncard = sp.n := by

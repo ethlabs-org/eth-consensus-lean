@@ -360,16 +360,12 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
       · have hh := congrArg Model.Obj.msg heq; cases hh
     · have hh := gossip_unsigned S rho _ _ _ _ hb; cases hh
 
-/-- An AC message that a node receives at cut `k`, while its signer is honest at the cut's
-time, was emitted by the signer at an earlier cut. Premise `hrel`: a release of the vote at an
-engine event of the signer comes from an own emission cut of that event
-(`released_vote_cut_of`, with the fault model's premises). -/
-theorem msgCall_emit_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
-    {k : Nat} {m : Vote (Fintype.card V)} (hc : (simTrace S rho hn).MsgCallAt y k m)
-    (hhon : rho.key m.val ∉ rho.faultyAt ((simTrace S rho hn).time k))
-    (hrel : ∀ {j t}, rho.SendsAt (rho.key m.val) j t → voteObj m ∈ rho.releasesAt j →
-      ∃ q < cutMap S rho hn (j + 1), (simTrace S rho hn).EmitAt m.val q m) :
-    ∃ j < k, (simTrace S rho hn).EmitAt m.val j m := by
+/-- **A received AC message was delivered**: the cut `k` of a message call is a cut of a
+delivery event `i` at the cut's time, whose delivered object contains the vote. -/
+theorem msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : Vote (Fintype.card V)}
+    (hc : (simTrace S rho hn).MsgCallAt y k m) :
+    ∃ i v o t, rho.events[i]? = some (.deliver v o t) ∧ Model.Obj.Contains o (voteObj m) ∧
+      cutMap S rho hn i ≤ k ∧ (simTrace S rho hn).time k = t := by
   obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hc
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, htime, _, hlab'⟩ := simTrace_cut S rho hn hl
@@ -407,11 +403,21 @@ theorem msgCall_emit_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
     · cases h; exact ho
     · cases h
   subst o'
-  have hhon' : rho.key m.val ∉ rho.faultyAt t := by
-    rw [htime] at hhon
-    exact hhon
-  obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ (contains_of_mem_delivered ho)
-    (rho.key m.val) rfl hhon'
+  exact ⟨i, v, o, t, he, contains_of_mem_delivered ho, hstart, htime⟩
+
+/-- An AC message that a node receives at cut `k`, while its signer is honest at the cut's
+time, was emitted by the signer at an earlier cut. Premise `hrel`: a release of the vote at an
+engine event of the signer comes from an own emission cut of that event
+(`released_vote_cut_of`, with the fault model's premises). -/
+theorem msgCall_emit_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
+    {k : Nat} {m : Vote (Fintype.card V)} (hc : (simTrace S rho hn).MsgCallAt y k m)
+    (hhon : rho.key m.val ∉ rho.faultyAt ((simTrace S rho hn).time k))
+    (hrel : ∀ {j t}, rho.SendsAt (rho.key m.val) j t → voteObj m ∈ rho.releasesAt j →
+      ∃ q < cutMap S rho hn (j + 1), (simTrace S rho hn).EmitAt m.val q m) :
+    ∃ j < k, (simTrace S rho hn).EmitAt m.val j m := by
+  obtain ⟨i, v, o, t, he, ho, hstart, htime⟩ := msgCall_delivered S rho hn hc
+  rw [htime] at hhon
+  obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ ho (rho.key m.val) rfl hhon
   obtain ⟨q, hq, hem⟩ := hrel hs hb
   have hle : cutMap S rho hn (j + 1) ≤ cutMap S rho hn i :=
     cutMap_mono S rho hn (Nat.succ_le_of_lt hj)

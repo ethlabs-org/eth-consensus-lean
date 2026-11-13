@@ -419,15 +419,18 @@ theorem vote_before_late_delivery
     rw [Compose.projAC_state hrun.toLocalRun hy]
     exact (hjp.2.1 jt ⟨_, hct'⟩ hnrt htt).mp hJ
   have hve : SA.VoteAt tr.projAC y k e := ⟨ell, hc.1, hc.2⟩
+  have hmay : (tr.projAC.state y jt).mayVote e.msg.slot = true := by
+    rw [(SA.trace_mayVote hr hy jt).trans (SA.trace_mayVote hr hy k).symm]
+    exact SA.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = (e.msg.slot : Int)
-  · obtain ⟨j', hj', e', hve', hes⟩ := SA.cast_of_votedSlot hr hy jt e.msg.slot hvs
-    have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr y hy j' k e' e hve' hve hes).1
-    omega
+  · rcases SA.cast_of_votedSlot hr hy jt e.msg.slot hvs with ⟨j', hj', e', hve', hes⟩ | hmf
+    · have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr y hy j' k e' e hve' hve hes).1
+      omega
+    · exact absurd hmay (by rw [hmf]; decide)
   · have hexec := hr.exec jt ellt hpt.2 (hpt.1 ▸ hy)
     rw [hpt.1, hcall] at hexec
     have hne := Compose.acOnTick_votes (ro' := ro) y _ ellt.frame hjt
-      (by rw [hslot]; exact hvs) (by rw [hslot])
-      (SA.trace_mayVote_stock hr hy jt _)
+      (by rw [hslot]; exact hvs) (by rw [hslot]; exact hmay) (by rw [hslot])
     rw [show tr.projAC.time jt = u from htt] at hexec
     rw [hexec] at hne
     obtain ⟨e', he'⟩ := List.exists_mem_of_ne_nil _ hne

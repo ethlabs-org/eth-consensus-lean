@@ -45,7 +45,8 @@ theorem faults_lt_voters (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
   refine (hB.slot s d hs h1 hdb h6).trans_le
     (Set.ncard_le_ncard (fun y hy => ?_) (Set.toFinite _))
   obtain ⟨k, e, hv, hs, -⟩ :=
-    vote_of_awake_joined_at hrun hnc (hrun.antitone h1 hy.1) hy.2.1 hy.2.2
+    vote_of_awake_joined_at hrun hnc (hrun.antitone h1 hy.1)
+      (mayVote_stock_at hrun hnc (ts_add_delta_nonneg _) (hrun.antitone h1 hy.1)) hy.2.1 hy.2.2
   exact votersAt_iff.2 ⟨hy.1, k, e, hv, hs⟩
 
 /-- **An origin within `b` has a supporter honest at its vote**: a slot-`s` vote at a time `≤ b`
@@ -76,7 +77,8 @@ theorem honest_supporter_at
         SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := fun y hy => by
       have h := awake_participant_window_before (hrun.upTo hd) (hnc.upTo _) hsvc ha hX
         (by rw [RunTrace.upTo_projAC]; exact (sa_updateAt_upTo hm).mpr ⟨le_rfl, hu⟩)
-        (le_min hi₀ le_rfl) hy.1 ⟨hy.2.1, by rw [ht₀]; linarith⟩ (joinedAt_upTo hy.2.2)
+        (le_min hi₀ le_rfl) hy.1 (mayVote_stock (hrun.upTo hd) (hnc.upTo _) hy.1 _)
+        ⟨hy.2.1, by rw [ht₀]; linarith⟩ (joinedAt_upTo hy.2.2)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
     have hSV : {w | ∃ v ∈ CV, v.val = w} ⊆ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
       rintro w ⟨v, hv, rfl⟩

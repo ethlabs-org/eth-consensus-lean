@@ -97,7 +97,8 @@ theorem extendingMajority_of_all_at
   have hE : {y | y ∈ H d ∧ tr.awake y (sp.ts q + sp.Δ) ∧ tr.JoinedAt y (sp.ts q + sp.Δ)} ⊆
       ExtendingCastersAt tr H B q d := by
     rintro x ⟨hx, hw, hj⟩
-    obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined_at hrun hnc (hrun.antitone hd hx) hw hj
+    obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined_at hrun hnc (hrun.antitone hd hx)
+      (mayVote_stock_at hrun hnc (ts_add_delta_nonneg _) (hrun.antitone hd hx)) hw hj
     exact extendingCastersAt_iff.2 ⟨hx, k, e, hv, hs, hall x k e hv hs⟩
   have hfb' : (H d)ᶜ.ncard <
       {y | y ∈ H d ∧ tr.awake y (sp.ts q + sp.Δ) ∧ tr.JoinedAt y (sp.ts q + sp.Δ)}.ncard := hfb

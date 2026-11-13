@@ -176,7 +176,7 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     (8 * sp.Δ) h0 hc8 (fun u hu hu' =>
       hawake u ((le_max_left _ _).trans hu) (hu'.trans ht.le))
   obtain ⟨k, e, ⟨ℓ, hcall, he⟩, hslot, htime⟩ :=
-    Compose.vote_of_awake_joined hrun hnc hy (s := 0) hw hj
+    Compose.vote_of_awake_joined hrun hnc hy (s := 0) (Compose.mayVote_stock hrun hnc hy 0) hw hj
   have hem : (simTrace S rho hn).EmitAt y k e.msg := ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
   obtain ⟨i, -, -, hsend, hrel, -⟩ :=
     simTrace_vote_forwarded S rho hn hf hv y hy k e.msg (Or.inl hem)

@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -450,6 +451,15 @@ theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin
   rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl,
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
+/-- A cast of a node honest then is at a slot the node may vote in. -/
+theorem mayVote_of_castAt_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hc : SA.CastAt tr.projAC y i ℓ e) : (tr.state y i).ac.mayVote e.msg.slot = true := by
+  have h := SA.mayVote_of_castAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
+    (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+  rwa [projAC_upTo_state hrun le_rfl, projAC_state_at hrun hy] at h
+
 theorem frame_slot_le_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
@@ -506,18 +516,47 @@ theorem frame_anc_accepted_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   · exact Or.inl h
   · exact Or.inr ⟨k, hk, ((ac_acceptAt_upTo _).mp hA).2⟩
 
-/-- A node honest at `t_s + Δ`, awake and joined then, casts a slot-`s` vote by then, at a cut at
-which it is honest. -/
-theorem vote_of_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {s : Nat} (hy : y ∈ H (sp.ts s + sp.Δ))
-    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
-    ∃ k e, HVoteAt tr H y k e ∧ e.msg.slot = s ∧ tr.time k ≤ sp.ts s + sp.Δ := by
-  have hd : 0 ≤ sp.ts s + sp.Δ := add_nonneg (by
+theorem ts_add_delta_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s + sp.Δ :=
+  add_nonneg (by
     simp only [SAParams.ts]
     exact mul_nonneg (by linarith [sp.toParams.hΔ]) (by exact_mod_cast Nat.zero_le s))
     sp.toParams.hΔ.le
-  obtain ⟨k, e, hv, hs, hk⟩ := vote_of_awake_joined (hrun.upTo hd) (hnc.upTo _) hy ⟨hw, le_rfl⟩
-    (joinedAt_upTo hj)
+
+/-- A permission held before every cut whose earlier cuts are at times `≤ d` holds at every state
+of the prefix through `d` (`upTo_state_exists`). -/
+theorem mayVote_upTo (hrun : Growing.GoldilocksRun proposer dg H tr) {y : Fin sp.n} {s : Nat}
+    (hmv : ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true) :
+    ∀ i, ((tr.upTo d).state y i).ac.mayVote s = true := fun i => by
+  obtain ⟨i₀, -, hb, h⟩ := Trace.upTo_state_exists tr hrun.time_mono y i
+  rw [h]
+  exact hmv i₀ hb
+
+/-- The permission of a node honest at `d ≥ 0` on a stock run, up to `d`: the static
+`mayVote_stock` on the prefix through `d`. -/
+theorem mayVote_stock_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
+    (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat} :
+    ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true := fun i hb => by
+  rw [← Trace.upTo_state tr y hb]
+  exact mayVote_stock (hrun.upTo hd) (hnc.upTo _) hy s i
+
+/-- The permission of a committee member honest at `d ≥ 0`, from the gate `hGate`. -/
+theorem mayVote_of_committee (hrun : Growing.GoldilocksRun proposer dg H tr)
+    {K : SA.CommitteeDict sp.n}
+    (hGate : ∀ x, x ∈ H 0 → ∀ i s, (tr.state x i).ac.mayVote s = true ↔ x ∈ K.committee s)
+    (hd : 0 ≤ d) {y : Fin sp.n} (hy : y ∈ H d) {s : Nat} (hyK : y ∈ K.committee s) :
+    ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true :=
+  fun i _ => (hGate y (hrun.antitone hd hy) i s).2 hyK
+
+/-- A node honest at `t_s + Δ`, awake and joined then, and permitted to vote in slot `s` before
+then, casts a slot-`s` vote by then, at a cut at which it is honest. -/
+theorem vote_of_awake_joined_at (hrun : Growing.GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {s : Nat} (hy : y ∈ H (sp.ts s + sp.Δ))
+    (hmv : ∀ i, (∀ k < i, tr.time k ≤ sp.ts s + sp.Δ) → (tr.state y i).ac.mayVote s = true)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    ∃ k e, HVoteAt tr H y k e ∧ e.msg.slot = s ∧ tr.time k ≤ sp.ts s + sp.Δ := by
+  have hd := ts_add_delta_nonneg (sp := sp) s
+  obtain ⟨k, e, hv, hs, hk⟩ := vote_of_awake_joined (hrun.upTo hd) (hnc.upTo _) hy
+    (mayVote_upTo hrun hmv) ⟨hw, le_rfl⟩ (joinedAt_upTo hj)
   rw [RunTrace.upTo_projAC] at hv
   obtain ⟨hkd, hv⟩ := sa_voteAt_upTo.mp hv
   exact ⟨k, e, hVoteAt_iff.2 ⟨hrun.antitone hkd hy, hv⟩, hs, hk⟩

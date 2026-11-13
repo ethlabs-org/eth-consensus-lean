@@ -715,7 +715,8 @@ theorem outage_s5_inner
     have hsub : {x | x ∈ H ∧ tr.awake x (sp.ts q + sp.Δ) ∧ tr.JoinedAt x (sp.ts q + sp.Δ)} ⊆
         {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = q} := by
       rintro x ⟨hx, haw, hjn⟩
-      obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined D.hrun D.hnc hx haw hjn
+      obtain ⟨j, e', hve, hvs, -⟩ :=
+        vote_of_awake_joined D.hrun D.hnc hx (mayVote_stock D.hrun D.hnc hx _) haw hjn
       exact ⟨hx, j, e', hve, hvs⟩
     have hcount : Hᶜ.ncard <
         {x | x ∈ H ∧ ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = q}.ncard :=
@@ -740,7 +741,8 @@ theorem outage_s5_inner
     have hSXv : ∀ x ∈ D.A₀, ∃ j e', SA.VoteAt tr.projAC x j e' ∧ e'.msg.slot = D.r := by
       intro x hx
       obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready D hx hrk.1 hrk.2 hcallq
-      obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined D.hrun D.hnc (D.hA₀ hx) haw hjn
+      obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined D.hrun D.hnc (D.hA₀ hx)
+        (mayVote_stock D.hrun D.hnc (D.hA₀ hx) _) haw hjn
       exact ⟨j, e', hve, hvs⟩
     have hW : SA.voters (SA.mergedVoteView sp e.readPoint ℓ.frame (D.r + 1)).votes ⊆
         D.A₀ ∪ (Hᶜ ∪ D.W) := by

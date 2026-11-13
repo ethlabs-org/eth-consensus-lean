@@ -20,19 +20,26 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : BoundSetup)
   (rho : Model.Run (compiled (goldilocksWith S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- An occurring block is observed while its engine reader is still honest, even if the
-reader is compromised later. Refused deliveries count as observations too. -/
-theorem occurring_observed_at (hv : rho.ExecutionValid)
+/-- An occurring block's object is observed while its engine reader is still honest, even if
+the reader is compromised later. Refused deliveries count as observations too. -/
+theorem occurs_blockObj_observed_at (hv : rho.ExecutionValid)
     {B : Blk (S.params (pubOf E) hn)} (hB : (simTraceAt S rho hn).Occurs B) :
-    B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B) := by
+    B.parent ≠ none ∧ blockObj (binding := S.vote) _ B ∈ rho.Observed := by
   rw [simTraceAt_eq] at hB
   obtain ⟨hp, i, ev, he, hb⟩ := block_call_in_view_of_releases S rho hn
     (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).1) hB
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
-  refine ⟨hp, blockObj _ B, ⟨ev.node, i + 1, by omega, ?_, hb⟩, rfl⟩
+  refine ⟨hp, ev.node, i + 1, by omega, ?_, hb⟩
   change ev.node ∉ rho.faultyAt (rho.cutTime (i + 1))
   simpa only [Model.Run.cutTime, he, Option.elim_some] using hv.honest_only ev
     (List.mem_of_getElem? he)
+
+/-- An occurring block is observed while its engine reader is still honest. -/
+theorem occurring_observed_at (hv : rho.ExecutionValid)
+    {B : Blk (S.params (pubOf E) hn)} (hB : (simTraceAt S rho hn).Occurs B) :
+    B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B) :=
+  have h := occurs_blockObj_observed_at S rho hn hv hB
+  ⟨h.1, blockObj _ B, h.2, rfl⟩
 
 /-- Absence of observed engine hash collisions gives collision freedom for every canonical
 block call, without a constant-fault premise. -/

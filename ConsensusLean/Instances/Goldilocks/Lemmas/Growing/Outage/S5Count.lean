@@ -47,7 +47,9 @@ theorem restored_majority_at_r_at (D : OutageLockPremises tr H proposer dg)
       intro x hx
       obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready_at D hx hrk.1 hrk.2 hcall
       obtain ⟨k, e, hv, hs, -⟩ :=
-        vote_of_awake_joined_at D.hrun D.hnc (D.hrun.antitone hrz (D.hA₀ hx)) haw hjn
+        vote_of_awake_joined_at D.hrun D.hnc (D.hrun.antitone hrz (D.hA₀ hx))
+          (mayVote_stock_at D.hrun D.hnc (ts_add_delta_nonneg _)
+            (D.hrun.antitone hrz (D.hA₀ hx))) haw hjn
       exact extendingCastersAt_iff.2 ⟨D.hA₀ hx, k, e, hv, hs,
         (hinv (k + 1)).votes x k (Nat.lt_succ_self k) e hv (hs ▸ hslot.1) (hs ▸ hslot.2)
           (Or.inr hx)⟩

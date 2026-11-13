@@ -65,7 +65,8 @@ private theorem origin_anc_proposal_at (hrun : Growing.GoldilocksRun proposer dg
   · have hcount := hB.slot s (sp.ts s + sp.Δ) (Nat.zero_le _) le_rfl hsb
       (by linarith [sp.toParams.hΔ])
     obtain ⟨x, hx, hw, hjx⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hcount).ne'
-    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined_at hrun hnc hx hw hjx
+    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined_at hrun hnc hx
+      (mayVote_stock_at hrun hnc (ts_add_delta_nonneg _) hx) hw hjx
     have hkb : tr.time k ≤ b := hkt.trans hsb
     obtain ⟨Hd, hHd, hHdr, hCH⟩ := hinv.vote_extends C j hC x k e hv hkb (by omega)
     rwa [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes hkb))] at hCH

@@ -43,7 +43,8 @@ theorem restored_majority_at_r (D : OutageLockPremises tr H proposer dg)
   have hA : D.A₀ ⊆ ExtendingCasters tr H D.P D.r := by
     intro x hx
     obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready D hx hrk.1 hrk.2 hcall
-    obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined D.hrun D.hnc (D.hA₀ hx) haw hjn
+    obtain ⟨k, e, hv, hs, -⟩ := vote_of_awake_joined D.hrun D.hnc (D.hA₀ hx)
+      (mayVote_stock D.hrun D.hnc (D.hA₀ hx) _) haw hjn
     exact extendingCasters_iff.2 ⟨D.hA₀ hx, k, e, hv, hs,
       (hinv (k + 1)).votes x (D.hA₀ hx) k (Nat.lt_succ_self k) e hv (hs ▸ hslot.1)
         (hs ▸ hslot.2) (Or.inr hx)⟩

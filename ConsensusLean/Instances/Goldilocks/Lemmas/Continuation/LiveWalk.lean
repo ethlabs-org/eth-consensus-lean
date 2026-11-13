@@ -199,7 +199,8 @@ theorem seeded_proposer_holds (hS : SeededRun tr H proposer dg g ΔF T r σ t₁
     have hcount := hS.bounds.slot (s - 1) (sp.ts (s - 1 : Nat) + sp.Δ) (by omega) le_rfl hsb
       (by linarith)
     obtain ⟨z, hz, hw, hjz⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hcount).ne'
-    obtain ⟨j, e, hv, hes, hjt⟩ := vote_of_awake_joined_at hS.run hS.noColl hz hw hjz
+    obtain ⟨j, e, hv, hes, hjt⟩ := vote_of_awake_joined_at hS.run hS.noColl hz
+      (mayVote_stock_at hS.run hS.noColl (ts_add_delta_nonneg _) hz) hw hjz
     obtain ⟨Hd, hHd, hHdr, hCHd⟩ :=
       hS.inv.vote_extends C l hC z j e hv (hjt.trans hsb) (by omega)
     have hHdt := (proposer_accepts_head_from hS.run hS.noColl hS.sync hp hc hcall hd hti hb hκ hv

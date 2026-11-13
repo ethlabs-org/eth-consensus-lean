@@ -458,7 +458,8 @@ theorem outage_s5_inner_at
       obtain ⟨haw, hjn⟩ := OutageVoteInv.cohort_ready_at D hx hrk.1 hrk.2 hcallr
       have hxr : x ∈ H (sp.ts D.r + sp.Δ) := hrun.antitone
         (D.hzc _ (by linarith only [hrK, hΔ]) hcallr) (D.hA₀ hx)
-      obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined_at hrun D.hnc hxr haw hjn
+      obtain ⟨j, e', hve, hvs, -⟩ := vote_of_awake_joined_at hrun D.hnc hxr
+        (mayVote_stock_at hrun D.hnc (ts_add_delta_nonneg _) hxr) haw hjn
       exact ⟨j, e', hve, hvs⟩
     have hW : ∀ x j e', HVoteAt tr H x j e' → x ∈ H (tr.time k) → e'.msg.slot = D.r →
         x ∈ D.A₀ ∪ ((H D.z)ᶜ ∪ D.W) := by

@@ -237,7 +237,8 @@ private theorem voter_of_ready (D : OutageLockPremises tr H proposer dg) {y : Fi
     (hx : x ∈ H (sp.ts m + sp.Δ)) (haw : tr.awake x (sp.ts m + sp.Δ))
     (hjn : tr.JoinedAt x (sp.ts m + sp.Δ)) :
     x ∈ SA.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
-  obtain ⟨k', e, hve, hes, -⟩ := vote_of_awake_joined_at D.hrun D.hnc hx haw hjn
+  obtain ⟨k', e, hve, hes, -⟩ := vote_of_awake_joined_at D.hrun D.hnc hx
+    (mayVote_stock_at D.hrun D.hnc (ts_add_delta_nonneg _) hx) haw hjn
   obtain ⟨hx', ℓ', hc', he'⟩ := hVoteAt_iff.1 hve
   have hval := (castAt_spec_at D.hrun D.hnc hx' ⟨hc', he'⟩).1
   rcases D.PG y k m ℓ hy hu hm x k' e hve hes with hpool | ⟨v, hv, -, -, -, hvx, -⟩
@@ -296,7 +297,8 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
       have h := awake_participant_early (D.hrun.upTo hd) (D.hnc.upTo _) hsvc
         (le_min (hmeq ▸ hj₀.1) (by rw [ht]; linarith)) hy
         (by rw [RunTrace.upTo_projAC]; exact (sa_updateAt_upTo D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
-        hx.1 ⟨hx.2.1, by rw [ht]; linarith⟩ (joinedAt_upTo hx.2.2)
+        hx.1 (mayVote_stock (D.hrun.upTo hd) (D.hnc.upTo _) hx.1 _) ⟨hx.2.1, by rw [ht]; linarith⟩
+        (joinedAt_upTo hx.2.2)
       rwa [RunTrace.upTo_projAC, projAC_upTo_state D.hrun le_rfl] at h
     obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT hslot
     have hvH : v.val ∈ H (tr.time k) := hvT.elim (fun h => h.1) not_not.1

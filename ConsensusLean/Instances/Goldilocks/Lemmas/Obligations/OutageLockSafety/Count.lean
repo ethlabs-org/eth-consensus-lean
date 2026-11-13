@@ -287,7 +287,8 @@ theorem result_compatible {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n} (h
     have hmeq : m = D.j₀ := le_antisymm hm hge
     have hT : {x | x ∈ H ∧ tr.awake x (sp.ts m + sp.Δ) ∧ tr.JoinedAt x (sp.ts m + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state y i).pool m} := fun x hx =>
-      awake_participant_early D.hrun D.hnc D.hpreSvc.ac (hmeq ▸ hj₀.1) hy hu hx.1 hx.2.1 hx.2.2
+      awake_participant_early D.hrun D.hnc D.hpreSvc.ac (hmeq ▸ hj₀.1) hy hu hx.1
+        (mayVote_stock D.hrun D.hnc hx.1 _) hx.2.1 hx.2.2
     obtain ⟨v, hv, hvT⟩ := exists_counted_of_participants hR hT (D.hFB m hcall)
     have hvH : v.val ∈ H := hvT.elim (fun h => h.1) not_not.1
     refine finish v hv hvH fun j hj e hve he => ?_
@@ -302,7 +303,8 @@ theorem result_compatible {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n} (h
     have hT : D.A₀ ⊆ SA.voters {v | v ∈ (tr.projAC.state y i).pool m} := by
       intro x hx
       obtain ⟨haw, hjn⟩ := cohort_ready D hx (by omega) hmK hcall
-      obtain ⟨k, e, hve, hes, -⟩ := vote_of_awake_joined D.hrun D.hnc (D.hA₀ hx) haw hjn
+      obtain ⟨k, e, hve, hes, -⟩ := vote_of_awake_joined D.hrun D.hnc (D.hA₀ hx)
+        (mayVote_stock D.hrun D.hnc (D.hA₀ hx) _) haw hjn
       have := D.PG y hy i m ℓ hu hm x (D.hA₀ hx) k e hve hes
       rw [← projAC_state D.hrun.toLocalRun hy] at this
       obtain ⟨ℓ', hc', he'⟩ := hve
@@ -325,7 +327,8 @@ theorem result_compatible {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n} (h
     have hT : {x | x ∈ H ∧ tr.awake x (sp.ts m + sp.Δ) ∧ tr.JoinedAt x (sp.ts m + sp.Δ)} ⊆
         SA.voters {v | v ∈ (tr.projAC.state y i).pool m} := by
       intro x hx
-      obtain ⟨k, e, hve, hes, -⟩ := vote_of_awake_joined D.hrun D.hnc hx.1 hx.2.1 hx.2.2
+      obtain ⟨k, e, hve, hes, -⟩ := vote_of_awake_joined D.hrun D.hnc hx.1
+        (mayVote_stock D.hrun D.hnc hx.1 _) hx.2.1 hx.2.2
       have := D.PG y hy i m ℓ hu hm x hx.1 k e hve hes
       rw [← projAC_state D.hrun.toLocalRun hy] at this
       obtain ⟨ℓ', hc', he'⟩ := hve

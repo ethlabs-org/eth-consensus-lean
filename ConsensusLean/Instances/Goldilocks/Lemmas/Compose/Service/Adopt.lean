@@ -136,7 +136,8 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
     refine lt_of_lt_of_le (hfb s sp.Δ (by simp)
       (by linarith [sp.toParams.hΔ])) (Set.ncard_le_ncard ?_)
     rintro x ⟨hx, hw, hj⟩
-    obtain ⟨j, e, hv, hes, -⟩ := vote_of_awake_joined hrun hnc hx hw hj
+    obtain ⟨j, e, hv, hes, -⟩ :=
+      vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hw hj
     exact ⟨hx, j, e, hv, hes⟩
   -- an honest validator's slot-`s` pool votes are its one slot-`s` vote
   have hone : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s →

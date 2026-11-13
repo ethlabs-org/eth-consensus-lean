@@ -60,7 +60,8 @@ private theorem origin_anc_proposal_before (hrun : GoldilocksRun proposer dg H t
   · have hcount := hfb s sp.Δ (by simp) hsb
     obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero
       (Nat.zero_lt_of_lt hcount).ne'
-    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined hrun hnc hx hw hj
+    obtain ⟨k, e, hv, hes, hkt⟩ :=
+      vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hw hj
     have hkb : tr.time k ≤ b := hkt.trans hsb
     obtain ⟨Hd, hHd, hHdr, hCH⟩ := hinv.vote_extends C j hC x hx k e hv hkb (by omega)
     rwa [hU.1 hHd hPU (hHdr.trans (hall x hx k e hv hes hkb))] at hCH

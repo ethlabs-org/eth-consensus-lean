@@ -160,6 +160,36 @@ theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP
       exact he e (append_mem l _ (List.mem_append_right _ he'))
   exact key l _ (fun s v hv => False.elim (List.not_mem_nil hv)) hlist he
 
+/-- **One SA call keeps a vote predicate on the pool**, given it of the call's input (a
+block's votes, a message, the frame's block votes at a restart) and of the call's emissions. -/
+theorem pool_step_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (c : (SA.goldilocksSA sp FGP ro).Call)
+    (h : ∀ s, ∀ v ∈ A.pool s, P v) (hΦ : FrameOK Φ)
+    (hc : match c with
+      | .block B => ∀ v ∈ SA.blockVotes B, P v
+      | .message v => P v
+      | .restart => ∀ B ∈ Φ.tree, ∀ v ∈ SA.blockVotes B, P v
+      | _ => True)
+    (he : ∀ e ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).2, P e.msg) :
+    ∀ s, ∀ v ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).1.pool s, P v := by
+  cases c with
+  | block B => exact pool_block self A Φ t B h hc he
+  | message v => exact pool_message self A Φ t v h hc he
+  | tick => exact pool_tick self A Φ t h he
+  | restart => exact restart_pool_inventory P ro self A Φ t hΦ hc he
+  | proposal =>
+    change PoolIn P (SA.acProposal sp A Φ t).1
+    unfold SA.acProposal
+    split_ifs <;> exact h
+  | toFG =>
+    change PoolIn P (SA.acToFG sp A Φ t).1
+    unfold SA.acToFG
+    split_ifs
+    · split
+      · exact h
+      · split_ifs <;> exact h
+    · exact h
+
 end Pools
 
 section Inventory
@@ -246,28 +276,14 @@ private theorem inventory_call {P : Wire sp.n binding → Prop} {st : NodeState
       | _ => True)
     (he : ∀ e ∈ ((goldilocksNode sp ro).step self st.ac (frame st) t c).2,
       P (voteObj e.msg)) : Inventory P (Node.acCall self st t c).1 := by
-  refine ⟨h.reachable, h.blocks, ?_, h.atts⟩
+  refine ⟨h.reachable, h.blocks, pool_step_inventory _ ro self st.ac (frame st) t c h.votes
+    (Store.frame_realization sp.toParams (Payload sp.n) ([], []) st.fg h.reachable).1 ?_ he,
+    h.atts⟩
   cases c with
-  | block B => exact pool_block self _ _ t B h.votes (payload_vote hc) he
-  | message v => exact pool_message self _ _ t v h.votes hc he
-  | tick => exact pool_tick self _ _ t h.votes he
-  | restart =>
-    refine restart_pool_inventory (fun v => P (voteObj v)) ro self st.ac (frame st) t
-      (Store.frame_realization sp.toParams (Payload sp.n) ([], []) st.fg h.reachable).1 ?_ he
-    intro B hB
-    exact payload_vote (h.blocks B hB.1)
-  | proposal =>
-    change PoolIn _ (SA.acProposal sp st.ac (frame st) t).1
-    unfold SA.acProposal
-    split_ifs <;> exact h.votes
-  | toFG =>
-    change PoolIn _ (SA.acToFG sp st.ac (frame st) t).1
-    unfold SA.acToFG
-    split_ifs
-    · split
-      · exact h.votes
-      · split_ifs <;> exact h.votes
-    · exact h.votes
+  | block _ => exact payload_vote hc
+  | message _ => exact hc
+  | restart => exact fun B hB => payload_vote (h.blocks B hB.1)
+  | tick | proposal | toFG => trivial
 
 private theorem inventory_mono {P Q : Wire sp.n binding → Prop}
     {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (hPQ : ∀ o, P o → Q o) :

@@ -50,7 +50,8 @@ theorem seeded_member_anc_proposal (hS : SeededRun tr H proposer dg g ΔF T r σ
   rcases hl.lt_or_eq with hlt | rfl
   · have hcount := hS.bounds.slot s (sp.ts s + sp.Δ) hrs le_rfl hsb (by linarith)
     obtain ⟨x, hx, hw, hjx⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hcount).ne'
-    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined_at hS.run hS.noColl hx hw hjx
+    obtain ⟨k, e, hv, hes, hkt⟩ := vote_of_awake_joined_at hS.run hS.noColl hx
+      (mayVote_stock_at hS.run hS.noColl (ts_add_delta_nonneg _) hx) hw hjx
     obtain ⟨Hd, hHd, hHdr, hCH⟩ :=
       hS.inv.vote_extends C l hC x k e hv (hkt.trans hsb) (by omega)
     rwa [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes))] at hCH

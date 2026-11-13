@@ -537,6 +537,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.ArmingSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Query
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Reader
@@ -565,6 +567,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.SA.ParticipantsK
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Attestations
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Blocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.CommitteeVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpoint.Accountable

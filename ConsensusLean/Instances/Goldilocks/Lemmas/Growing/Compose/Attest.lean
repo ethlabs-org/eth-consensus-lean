@@ -166,8 +166,10 @@ theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
         linarith)
   set A := (tr.projAC.upTo (tr.time i)).state y j₀ with hA
   by_cases hvs : A.votedSlot = ((s + 1 : Nat) : Int)
-  · obtain ⟨j, hj, e, ⟨ℓ', hc', he'⟩, hes⟩ := SA.cast_of_votedSlot hri hy j₀ (s + 1) hvs
-    exact ⟨j, hj.trans hj₀i, ℓ', e, (SA.upTo_castAt.mp ⟨hc', he'⟩).2, hes⟩
+  · rcases SA.cast_of_votedSlot hri hy j₀ (s + 1) hvs with
+      ⟨j, hj, e, ⟨ℓ', hc', he'⟩, hes⟩ | hmf
+    · exact ⟨j, hj.trans hj₀i, ℓ', e, (SA.upTo_castAt.mp ⟨hc', he'⟩).2, hes⟩
+    · exact absurd (SA.trace_mayVote_stock hri hy j₀ _) (by rw [hmf]; decide)
   have hjr : (tr.upTo (tr.time i)).JoinedAt y u := by
     intro k hk hku
     change tr.time k ≤ u at hku
@@ -197,8 +199,7 @@ theorem vote_or_restart (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
     ℓt.frame (tr.time j₀) ℓt.call = _ at hexec
   rw [hpt.1, hlt] at hexec
   have hne := Compose.acOnTick_votes (ro' := ro) y A ℓt.frame hjoined
-    (by rw [hslot]; exact hvs) (by rw [hslot])
-    (SA.trace_mayVote_stock hri hy j₀ _)
+    (by rw [hslot]; exact hvs) (SA.trace_mayVote_stock hri hy j₀ _) (by rw [hslot])
   change (SA.goldilocksSA sp _ ro).step y A ℓt.frame (tr.time j₀) .tick = _ at hexec
   rw [ht₀] at hexec
   rw [hexec] at hne

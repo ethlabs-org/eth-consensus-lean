@@ -40,7 +40,7 @@ a vote. (As `Persist/Attest`'s `acOnTick_votes`.) -/
 private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
     (Φ : SA.Frm sp.n (List (FG.Att sp.n))) {t : Time} (hj : SA.joined sp A t)
     (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
-    (hp : A.mayVote (sp.slot t) = true) :
+    (hm : A.mayVote (sp.slot t) = true) :
     ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step self A Φ t .tick).2 ≠ [] := by
   change (SA.acOnTick sp self A Φ t).2 ≠ []
   unfold SA.acOnTick
@@ -49,7 +49,7 @@ private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
   unfold SA.tryVote
   dsimp only
-  simp only [hp, ↓reduceIte]
+  simp only [hm, ↓reduceIte]
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
     · exact absurd hj h
@@ -182,11 +182,15 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
     simp [hcs]
   simp only [Nat.add_zero] at ht₀
   have hpt0 : tr.projAC.CallAt y jt ℓt := projAC_callAt.2 hct
+  have hmay : (tr.projAC.state y jt).mayVote (s + 1) = true := by
+    rw [(SA.trace_mayVote hr hy jt).trans (SA.trace_mayVote hr hy i).symm, ← hs]
+    exact SA.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = ((s + 1 : Nat) : Int)
-  · obtain ⟨j, hj, e', hv', hes'⟩ := SA.cast_of_votedSlot hr hy jt (s + 1) hvs
-    have := (SA.one_vote_per_slot sp _ ro H _ tr.projAC hr y hy j i e' e hv' hvi
-      (hes'.trans hs.symm)).1
-    omega
+  · rcases SA.cast_of_votedSlot hr hy jt (s + 1) hvs with ⟨j, hj, e', hv', hes'⟩ | hmf
+    · have := (SA.one_vote_per_slot sp _ ro H _ tr.projAC hr y hy j i e' e hv' hvi
+        (hes'.trans hs.symm)).1
+      omega
+    · exact absurd hmay (by rw [hmf]; decide)
   -- joined at the tick: its restarts are at or before `t_s`
   have hjr : tr.JoinedAt y (tr.time m) := by
     intro k' hk' hk'T
@@ -216,7 +220,7 @@ theorem held_row_late_absurd (hrun : GoldilocksRun proposer dg H tr)
   have hne := tick_votes (ro := ro) y (tr.projAC.state y jt) ℓt.frame hjoined
     (by rw [hslm]; exact hvs)
     (by rw [hslm, htm]; simp only [SAParams.ts]; push_cast; ring)
-    (SA.trace_mayVote_stock hr hy jt _)
+    (by rw [hslm]; exact hmay)
   rw [show tr.projAC.time jt = tr.time m from ht₀] at hexec
   rw [hexec] at hne
   obtain ⟨e₀, he₀⟩ := List.exists_mem_of_ne_nil _ hne

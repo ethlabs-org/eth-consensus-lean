@@ -92,8 +92,8 @@ theorem faulty_lt_half (hrun : GoldilocksRun proposer dg H tr)
 casts a vote. -/
 theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
     (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) {t : Time} (hj : SA.joined sp A t)
-    (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
-    (hp : A.mayVote (sp.slot t) = true) :
+    (hv : A.votedSlot ≠ sp.slot t) (hm : A.mayVote (sp.slot t) = true)
+    (ht : t = sp.ts (sp.slot t) + sp.Δ) :
     ((goldilocksSA sp FGP ro').step self A Φ t .tick).2 ≠ [] := by
   change (SA.acOnTick sp self A Φ t).2 ≠ []
   unfold SA.acOnTick
@@ -102,7 +102,7 @@ theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
   unfold SA.tryVote
   dsimp only
-  simp only [hp, ↓reduceIte]
+  simp only [hm, ↓reduceIte]
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   split_ifs with h₁ h₂
   · rcases h₁ with h | h | h
@@ -182,8 +182,9 @@ theorem vote_or_restart (hrun : GoldilocksRun proposer dg H tr)
         linarith)
   set A := tr.projAC.state y j₀ with hA
   by_cases hvs : A.votedSlot = ((s + 1 : Nat) : Int)
-  · obtain ⟨j, hj, e, ⟨ℓ', hc', he'⟩, hes⟩ := SA.cast_of_votedSlot hr hy j₀ (s + 1) hvs
-    exact ⟨j, hj.trans hj₀i, ℓ', e, ⟨hc', he'⟩, hes⟩
+  · rcases SA.cast_of_votedSlot hr hy j₀ (s + 1) hvs with ⟨j, hj, e, ⟨ℓ', hc', he'⟩, hes⟩ | hmf
+    · exact ⟨j, hj.trans hj₀i, ℓ', e, ⟨hc', he'⟩, hes⟩
+    · exact absurd (SA.trace_mayVote_stock hr hy j₀ _) (by rw [hmf]; decide)
   -- joined at the tick
   have hjr : tr.JoinedAt y u := by
     intro k hk hku
@@ -211,8 +212,7 @@ theorem vote_or_restart (hrun : GoldilocksRun proposer dg H tr)
   have hexec := hr.exec j₀ ℓt hpt.2 (hpt.1 ▸ hy)
   rw [hpt.1, hlt] at hexec
   have hne := acOnTick_votes (ro' := ro) y A ℓt.frame hjoined (by rw [hslot]; exact hvs)
-    (by rw [hslot])
-    (SA.trace_mayVote_stock hr hy j₀ _)
+    (SA.trace_mayVote_stock hr hy j₀ _) (by rw [hslot])
   rw [show tr.projAC.time j₀ = u from ht₀] at hexec
   rw [hexec] at hne
   obtain ⟨e, he⟩ := List.exists_mem_of_ne_nil _ hne
