@@ -107,7 +107,7 @@ theorem stop_at_parent_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
     (P ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} ∧
@@ -121,11 +121,12 @@ theorem stop_at_parent_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc :
         B.parent = some P.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   obtain ⟨D, -, hDQ, hviab, -⟩ := pivot_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti
-    hPQ hib
+    hPQ hib hstock
   exact stop_at_parent_of hrun hnc hp hP hPs hPQ hy hcy hes
-    (proposal_at_voter_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti hPQ hy hcy hes hib hjb)
+    (proposal_at_voter_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti hPQ hy hcy hes hib hjb
+      hstock)
     (fun X hX hXQ hXs => old_child_ineligible_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-      hti hPQ hDQ hviab hy hcy hes hib hjb hX hXQ hXs)
+      hti hPQ hDQ hviab hy hcy hes hib hjb hX hXQ hXs hstock)
 
 /-- **Every slot-`s` vote of a node honest at its vote is the proposal `P` of slot `s`**, from a
 pivot `D` of the proposal walk (`hvot`, as in `pivot_of`), the suffix agreement from `D` at every
@@ -220,21 +221,22 @@ theorem honest_votes_eq_proposal_at (hrun : Growing.GoldilocksRun proposer dg H 
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
-    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s ≤ b) :
+    (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root := by
   have hk : tr.time k = sp.ts s := by rw [hP.2.2, sp.slotTime_eq, hPs]; rfl
   have hpk : p ∈ H (tr.time k) := hrun.antitone (by rw [hk]; linarith [sp.toParams.hΔ]) hp
   obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data_at hrun hpk hP hPs
   have hib : tr.time i ≤ b := hti ▸ hsb
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := pivot_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd hti
-    hPQ hib
+    hPQ hib hstock
   exact honest_votes_eq_proposal_of hrun hnc hp hP hPs hc hd hti hPQ hsD hDQ hvot
     (fun y j ℓy e hy hcy hes hjb => suffix_agree_at hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-      hti hPQ hsD hDQ hviab hy hcy hes hib hjb)
+      hti hPQ hsD hDQ hviab hy hcy hes hib hjb hstock)
     (fun y j ℓy e hy hcy hes hjb => proposal_at_voter_at hrun hnc hsync hB hinv hp hP hPs hc hcall
-      hd hti hPQ hy hcy hes hib hjb)
-    (fun y j ℓy e hy hcy hes hjb B => old_child_ineligible_at hrun hnc hsync hB hinv hp hP hPs hc
-      hcall hd hti hPQ hDQ hviab hy hcy hes hib hjb (B := B))
+      hd hti hPQ hy hcy hes hib hjb hstock)
+    (fun y j ℓy e hy hcy hes hjb B hBv hBQ hBs => old_child_ineligible_at hrun hnc hsync hB hinv
+      hp hP hPs hc hcall hd hti hPQ hDQ hviab hy hcy hes hib hjb hBv hBQ hBs hstock)
 
 end Consensus.Goldilocks.Compose.Growing
 

@@ -209,10 +209,10 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr)
         (by linarith [hS.gbar_le (show r ≤ m by omega)])
         (OnHealedChain.compatible hrun hnc hinv.origins_compatible hFc hPm).symm
         (fun x i e hv hes => hinv.vote_extends P p hPm x i e hv ?_ (by omega))
-        fun C hC => seeded_result_not_vetoed hS hyk₁ hupd ht₁u hk₁b (l := m)
+        (fun C hC => seeded_result_not_vetoed hS hyk₁ hupd ht₁u hk₁b (l := m)
           (.of_origin (by omega) (originWithin_iff.2 ⟨y, k₁, _, hyk₁, hk₁b,
             Or.inl ⟨ℓ₁, hupd, by rw [projAC_state_at hrun hyk₁]; exact hC, rfl⟩⟩))
-          (SA.deepest_mem hC).1.1
+          (SA.deepest_mem hC).1.1) hS.stock
       obtain ⟨hx, ℓx, hc, he⟩ := hVoteAt_iff.1 hv
       have h := (cast_head_fcRoot_at hrun hnc hx ⟨hc, he⟩).2
       rw [hes] at h

@@ -106,7 +106,7 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
       exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
   obtain rfl : L = B₁ := hr.coherent.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
   have hlt : l₁.slot < u := Compose.proposal_locks_slot_of hp.run hp.noColl
-    (by have := hp.faults; have := Fin.pos p; omega) hpH hci hcall hd hti l₁
+    (by have := hp.faults; have := Fin.pos p; omega) hpH hci hcall hd hti hp.stock l₁
     (Compose.projAC_state hp.run.toLocalRun hpH i ▸ hl₁)
   apply (Anc.mono hPhiU hsB₁).trans (hLD.trans (extend D ?_))
   rcases horig with ⟨CV, hf⟩ | hslow

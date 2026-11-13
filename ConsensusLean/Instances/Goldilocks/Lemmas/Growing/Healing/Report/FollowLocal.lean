@@ -75,7 +75,8 @@ theorem toFG_time_ge_of_ancestor_slot_at
     (hy : y ∈ H (tr.time i)) (hf : 3 * (H (tr.time i))ᶜ.ncard ≤ sp.n - 1)
     {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
-    (hPR : Anc (tr.HonestBlocksAt H) P R) : sp.ts u ≤ tr.time i := by
+    (hPR : Anc (tr.HonestBlocksAt H) P R) (hstock : sp.committeeSize = sp.n) :
+    sp.ts u ≤ tr.time i := by
   have hr := hrun.toLocalRun
   have hd := hr.time_nonneg i
   have hp := hrun.upTo hd
@@ -96,7 +97,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
   have hPR' := RunTrace.anc_upTo_of_right hr hnc hd hRh hPR
   obtain ⟨a, _, j, D, CV, ho, hRD, hj⟩ := Healing.toFG_fast_origin hp hn hy hR'
   have hPD := (Anc.slot_le hac.localRun.coherent (hPR'.trans hRD)).1
-  have hDj := Healing.fast_selection_slot_le hp hn hf hy ho
+  have hDj := Healing.fast_selection_slot_le hp hn hf hy ho hstock
   have hu : u ≤ sp.slot (tr.time i) := by
     simp only [Trace.upTo_time] at hj
     omega
@@ -110,7 +111,8 @@ theorem stored_lock_lt_at_proposal_at
     {ell : ACLabel (goldilocksNode sp ro)} (hz : proposer s ∈ H (tr.time i))
     (hc : tr.projAC.CallAt (proposer s) i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts s) {l : SA.Lock}
-    (hl : l ∈ (tr.projAC.state (proposer s) i).locks) : l.slot < s := by
+    (hl : l ∈ (tr.projAC.state (proposer s) i).locks) (hstock : sp.committeeSize = sp.n) :
+    l.slot < s := by
   have hr := hrun.toLocalRun
   have hd := hr.time_nonneg i
   have hc' : (tr.upTo (tr.time i)).projAC.CallAt (proposer s) i ell := by
@@ -121,7 +123,7 @@ theorem stored_lock_lt_at_proposal_at
       Trace.upTo_state tr.projAC (proposer s) (d := tr.time i) (i := i)
         (fun k hk => hr.time_mono hk.le)] using hl
   exact Healing.stored_lock_lt_at_proposal (hrun.upTo hd) (hnc.upTo (tr.time i))
-    hf hs1 hz hc' hcall hti hl'
+    hf hs1 hz hc' hcall hti hl' hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

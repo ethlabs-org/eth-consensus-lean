@@ -173,7 +173,7 @@ theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∀ O, OldOrigin tr H s O → O ∈ ℓp.frame.tree → ∀ X Cx : SA.Blk sp.n (List (FG.Att sp.n)),
       Cx ∈ ℓp.frame.viableTree ℓp.frame.tree → Cx.parent = some X.root → ℓp.frame.Anc Cx O →
       SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
@@ -381,7 +381,6 @@ theorem proposal_best_toward_old_before (hrun : GoldilocksRun proposer dg H tr)
         rw [← Set.ncard_union_eq Set.disjoint_sdiff_left]
         exact (Set.ncard_le_ncard (Set.subset_univ _)).trans (by simp)
       have := Set.ncard_le_ncard hequiv (Set.toFinite _)
-      have hstock := hrun.stock
       omega
 
 set_option linter.unusedVariables false in
@@ -395,7 +394,7 @@ theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
+    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     HonestRowsSourced tr H
       (fun D => ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) p i := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -420,7 +419,7 @@ theorem proposal_rows_old_of (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
     · omega
     obtain rfl : l = s := by omega
     exact absurd hOp
-      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti z hz c (by omega) C CV)
+      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti hstock z hz c (by omega) C CV)
 /-- **The proposer's `fc_root` is below an old origin, or genesis**
 (`F ≤ fc_root ≤ D_s` at the proposal read), from the sources of its honest attestations
 (`proposal_rows_old_of`). -/
@@ -430,13 +429,13 @@ theorem proposal_fcRoot_old_of (hrun : GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
+    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     ℓp.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) ℓp.frame.fcRoot O := by
   rw [frame_of_projAC hrun hp hc]
   exact fcRoot_of_rows_of hrun hnc hf hp
     (fun _ _ hAB ⟨O, hO, hBO⟩ => ⟨O, hO, hAB.trans hBO⟩)
-    (proposal_rows_old_of hrun hnc hf hp hc hcall hd hti)
+    (proposal_rows_old_of hrun hnc hf hp hc hcall hd hti hstock)
 /-- A live lock block of the proposal's anchor sits below an origin, of the slot of a stored
 lock, before the proposal (`lock_origin`; unlocking and `live_locks` only move locks back). -/
 theorem proposal_lock_below (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
@@ -469,7 +468,7 @@ theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
+    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     d.start.root = sp.genesisRoot ∨
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) d.start O := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -479,7 +478,7 @@ theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
   rcases anchor_mem ℓp.frame A₁ (tr.time i) with hL | hf
   · right
     obtain ⟨l, hl, O, hO, hLO⟩ := proposal_lock_below hrun hnc hp hΦ hΦU hA₁ _ hL
-    have hls := proposal_locks_slot_of hrun hnc hfault hp hc hcall hd hti l hl
+    have hls := proposal_locks_slot_of hrun hnc hfault hp hc hcall hd hti hstock l hl
     refine ⟨O, ?_, hLO⟩
     obtain ⟨x, hx, k', hki, CV, hR | hOp⟩ := originBefore_iff.1 hO
     · refine oldOrigin_iff.2 ⟨x, hx, k', l.slot, CV, Or.inl ⟨hR, ts_add_two_le (sp := sp) ?_⟩⟩
@@ -489,7 +488,7 @@ theorem proposal_anchor_old_of (hrun : GoldilocksRun proposer dg H tr)
       linarith only [htk, this, hii, hti, sp.toParams.hΔ]
     · exact oldOrigin_iff.2 ⟨x, hx, k', l.slot, CV, Or.inr ⟨hOp, by omega⟩⟩
   · rw [Set.mem_singleton_iff.1 hf]
-    exact proposal_fcRoot_old_of hrun hnc hfault hp hc hcall hd hti
+    exact proposal_fcRoot_old_of hrun hnc hfault hp hc hcall hd hti hstock
 /-- **A voter's anchor is below `D`, or on `P`'s chain above `D`**: for a block `D` above every
 old origin and below `Q = P.parent`, at an honest slot-`s` vote whose earlier honest slot-`s`
 votes are `P`. -/
@@ -503,7 +502,7 @@ theorem vote_anchor_cases_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s)
     (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
-      e'.msg.head = P.root) :
+      e'.msg.head = P.root) (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) D ∨
       (Anc (tr.HonestBlocks H) D (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) ∧
         Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P ∧
@@ -522,7 +521,7 @@ theorem vote_anchor_cases_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · -- `fc_root` is below an old origin, or genesis
     left
     rw [Set.mem_singleton_iff.1 haf]
-    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes hrun'.stock with hg | ⟨O, hO, hfO⟩
+    rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes hstock with hg | ⟨O, hO, hfO⟩
     · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg hDU
     · exact hfO.trans (hDold O hO)
   -- a live lock block: the viable ancestor of the block of a read-point lock
@@ -534,7 +533,7 @@ theorem vote_anchor_cases_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc : 
   · -- a lock of slot `s`: below an optimistic selection with an honest earlier supporter
     obtain ⟨Φ', A', D', -, hΦ'U, -, h34, hpool, -, L, hLU, hLr, hLD'⟩ :=
       SA.lock_origin_readPoint hrun' hy hcy l hl (by rw [hes, hls]; omega)
-    rw [hrun'.stock] at h34
+    rw [hstock] at h34
     obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
     obtain ⟨x, ⟨v, hv, rfl, R, hR, hRr, hDR⟩, hxH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
@@ -587,7 +586,8 @@ theorem proposal_suffix_viable_of (hrun : GoldilocksRun proposer dg H tr)
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) {D : SA.Blk sp.n (List (FG.Att sp.n))} (hDt : D ∈ ℓp.frame.tree)
-    (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O D) :
+    (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O D)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads := by
   intro X hDX _
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -598,11 +598,11 @@ theorem proposal_suffix_viable_of (hrun : GoldilocksRun proposer dg H tr)
   -- `fc_root` is genesis or below an old origin, below `D`
   have hfX : ℓp.frame.Anc ℓp.frame.fcRoot X := by
     refine SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem ?_ hXt
-    rcases proposal_fcRoot_old_of hrun hnc hf hp hc hcall hd hti with hg | ⟨O, hO, hfO⟩
+    rcases proposal_fcRoot_old_of hrun hnc hf hp hc hcall hd hti hstock with hg | ⟨O, hO, hfO⟩
     · exact honest_genesis_root_anc hrun hU (hΦU hΦ.fcRoot_mem) hg (hΦU hXt)
     · exact (hfO.trans (hDold O hO)).trans hDXU
   -- the sources of the proposer's honest attestations are below old origins, below `D ⪯ X`
-  have hsrc := proposal_rows_old_of hrun hnc hf hp hc hcall hd hti
+  have hsrc := proposal_rows_old_of hrun hnc hf hp hc hcall hd hti hstock
   rw [frame_of_projAC hrun hp hc] at hXt hfX ⊢
   obtain ⟨hXs, hFX⟩ := hXt
   refine ⟨hXs, hFX, Anc.mono (fun _ h => h.1) hfX, ?_⟩

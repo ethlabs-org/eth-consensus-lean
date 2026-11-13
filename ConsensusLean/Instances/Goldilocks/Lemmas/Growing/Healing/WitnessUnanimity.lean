@@ -160,7 +160,8 @@ theorem unanimous_next_votes_of_witness_at
       e.msg.slot = m + 1 → Q ∈ (tr.state y i).fg.tree ∧
         e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (m + 1)))
     (hG : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
-      e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
+      e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = m + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   have hmono := hrun.time_mono
@@ -195,6 +196,7 @@ theorem unanimous_next_votes_of_witness_at
   obtain ⟨hQy, hstamp⟩ := hheld y i e hy ⟨ell, hcast⟩ hs
   have hhy := witness_height hrun hnc hz hy hQ hh hQy
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
+    hstock
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hcast'.1
   rcases witness_frame_at hrun hnc hframe hy hcast.1 hlo hhi
       (quorum_excess (hf _ ht0 hib)) hQy hhy hJ hXQ with hXF | ⟨hFX, hXt, hrootX, hQt, hvQ, hXQf⟩
@@ -302,7 +304,8 @@ theorem unanimous_next_proposal_of_witness_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (m + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hQy : Q ∈ (tr.state y i).fg.tree) : Anc (tr.HonestBlocksAt H) X d.head := by
+    (hQy : Q ∈ (tr.state y i).fg.tree) (hstock : sp.committeeSize = sp.n) :
+    Anc (tr.HonestBlocksAt H) X d.head := by
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
@@ -315,6 +318,7 @@ theorem unanimous_next_proposal_of_witness_at
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch ht0 hib
+    hstock
   have hr := hS.run.localRun
   have hf3 := hf _ ht0 hib
   have hf2 : 2 * (H (tr.time i))ᶜ.ncard < sp.n := by
@@ -382,7 +386,7 @@ theorem unanimous_next_proposal_of_witness_at
     omega
   have hpre := hrun.upTo ht0
   refine (SA.batch_proposal hS.run hf2 hhalf' hG' hy hcp (SA.proposal_slot hti) hdp
-    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt, hvQ, hXQf⟩⟩ ?_ ?_).mono subU
+    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt, hvQ, hXQf⟩⟩ ?_ ?_ hstock).mono subU
   · intro x hx k e hv hs
     obtain ⟨W, hW, hWr, -, hp, -, hb⟩ := SA.late_vote_held_of_frame_before hS hy hcp hm
       (show sp.ts m + 2 * sp.Δ ≤ tr.time i by linarith) le_rfl hdl hrs hx hv hs
@@ -397,11 +401,11 @@ theorem unanimous_next_proposal_of_witness_at
       rwa [h] at hl
     have hls := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hf2 hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
-      (by rw [RunTrace.upTo_projAC]; exact hdp) hti l hl'
+      (by rw [RunTrace.upTo_projAC]; exact hdp) hti hstock l hl'
     have heq : l.slot = m := by omega
     obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr hy hti hl hlm hL hLr
     rw [heq] at hopt
-    rcases SA.optimisticLock_compatible hS.run hf2 hy hopt hG' with hOX | hXO
+    rcases SA.optimisticLock_compatible hS.run hf2 hy hopt hG' hstock with hOX | hXO
     · exact Or.inl (hLO.trans hOX)
     · exact SA.anc_total hr.coherent hLO hXO
 

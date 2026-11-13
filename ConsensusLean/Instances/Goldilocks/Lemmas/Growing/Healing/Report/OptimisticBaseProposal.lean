@@ -57,7 +57,7 @@ theorem optimisticLock_pair_compatible_at
     (hf : 2 * (H (max (tr.time i) (tr.time j)))ᶜ.ncard < sp.n)
     {D E : SA.Blk sp.n (List (FG.Att sp.n))} {CV CW : Set (Vote sp.n)}
     (hd : SA.OptimisticLockAt tr.projAC x i s D CV)
-    (he : SA.OptimisticLockAt tr.projAC y j s E CW) :
+    (he : SA.OptimisticLockAt tr.projAC y j s E CW) (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocksAt H) D E := by
   have hmono := hrun.time_mono
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -73,7 +73,7 @@ theorem optimisticLock_pair_compatible_at
     (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
   obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE, -⟩ := SA.optimisticLockAt_spec hry hy he'
     (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
-  rw [hrx.stock] at hnD hnE
+  rw [hstock] at hnD hnE
   have hint := Set.ncard_inter_add_ncard_union (SA.voters CV) (SA.voters CW)
   have hu := Set.ncard_le_ncard (Set.subset_univ (SA.voters CV ∪ SA.voters CW))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hu
@@ -130,7 +130,8 @@ theorem optimistic_next_proposal_of_early_witness_at
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay)) :
+    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) X d.head := by
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
@@ -280,7 +281,7 @@ theorem optimistic_next_proposal_of_early_witness_at
       rwa [h] at hl
     have hlsb := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hf2 hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
-      (by rw [RunTrace.upTo_projAC]; exact hdp) hti l hl'
+      (by rw [RunTrace.upTo_projAC]; exact hdp) hti hstock l hl'
     have heq : l.slot = s := by omega
     obtain ⟨L', hL', hL'r, -⟩ := SA.lock_below_origin hr hy i l hl
     obtain rfl : L = L' := hU.1 hL (subU hL') (hLr.trans hL'r.symm)
@@ -300,11 +301,11 @@ theorem optimistic_next_proposal_of_early_witness_at
       have := Fin.pos y
       omega
     have hLO' := hLO.mono subU
-    rcases optimisticLock_pair_compatible_at hrun hnc hya' hx hf' ho hopt with hOD | hDO
+    rcases optimisticLock_pair_compatible_at hrun hnc hya' hx hf' ho hopt hstock with hOD | hDO
     · exact SA.anc_total hU (hLO'.trans hOD) hXD
     · exact SA.anc_total hU hLO' (hXD.trans hDO)
   exact SA.Growing.optimistic_first_proposal_stored_at hacG hx hopt hXD hy hf2 hc hslot hd
-    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt', hvQ, hXQf⟩⟩ hP hhigh
+    ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt', hvQ, hXQf⟩⟩ hP hhigh hstock
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

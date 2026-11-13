@@ -29,7 +29,7 @@ theorem optimistic_isBest_of_carry_at
     (hcarry : CarryAt tr U y i e s CV) (hBt : B ∈ ℓ.frame.tree)
     {X C : Blk sp.n FGP}
     (hC : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
-    (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) :
+    (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) (hstock : sp.committeeSize = sp.n) :
     IsBest sp (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
       {Q | Q ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ∧
         Q.parent = some X.root ∧
@@ -49,7 +49,7 @@ theorem optimistic_isBest_of_carry_at
     dsimp only at hsel
     split_ifs at hsel
     have h := (deepest_mem hsel).1.2.1
-    rwa [hslx, hrun.stock] at h
+    rwa [hslx, hstock] at h
   have hfreeze : sp.ts s + 3 * sp.Δ ≤ tr.time i := by
     have hsv := (castAt_spec hry.localRun hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at hsv
@@ -89,7 +89,8 @@ theorem optimistic_prefix_of_carry_at
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV)
     (hB : B ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
-    (haB : ℓ.frame.Anc (getAnchor sp e.readPoint ℓ.frame (tr.time i)) B) :
+    (haB : ℓ.frame.Anc (getAnchor sp e.readPoint ℓ.frame (tr.time i)) B)
+    (hstock : sp.committeeSize = sp.n) :
     ℓ.frame.Anc B (getHead sp e.readPoint ℓ.frame (tr.time i)
       (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
       (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s) := by
@@ -113,7 +114,7 @@ theorem optimistic_prefix_of_carry_at
       ((fcRoot_anc_getAnchor hΦ.1 e.readPoint (tr.time i)).trans haX).tail eC,
       Y, hY, hvY, hCB.trans hBY⟩
   exact ⟨C, optimistic_isBest_of_carry_at hrun hx hopt hBD hf hy hc hs hcarry
-    hBt hCv eC.2.2 hCB, hCB⟩
+    hBt hCv eC.2.2 hCB hstock, hCB⟩
 
 end Consensus.Goldilocks.SA.Growing
 

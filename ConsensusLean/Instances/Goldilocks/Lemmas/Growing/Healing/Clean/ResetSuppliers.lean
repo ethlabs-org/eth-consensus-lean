@@ -428,7 +428,8 @@ theorem live_locks_of_stored_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
     (hstored : ∀ l ∈ (tr.projAC.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k →
       l.slot ≤ s → ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block →
         Compatible (tr.HonestBlocksAt H) Y B)
-    (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
+    (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L B := by
   have hd := hrun.time_nonneg i
@@ -459,7 +460,7 @@ theorem live_locks_of_stored_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
       have hHdU := (SA.frameIn_of_callAt hr hx hc''.1).2 hHd
       obtain rfl : Hd = Hv :=
         (Compose.Growing.honest_blocks_coherent hrun hnc).1 (hsub hHdU) hHv (hHdr.trans hHvr.symm)
-      exact ⟨Hd, hHdU, hHdr, hanc hHdU hBHv⟩)
+      exact ⟨Hd, hHdU, hHdr, hanc hHdU hBHv⟩) hstock
   intro L hL
   exact (h L hL).imp (Anc.mono hsub) (Anc.mono hsub)
 

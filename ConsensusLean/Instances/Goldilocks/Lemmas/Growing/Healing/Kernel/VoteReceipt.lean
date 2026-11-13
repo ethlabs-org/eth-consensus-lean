@@ -47,7 +47,7 @@ theorem high_origin_frozen_head_at
     change 0 < sp.n at hn
     omega
   obtain ⟨z, hz, j, ev, hv, hes, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hr hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+    SA.fastLock_honest_vote hr hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
   obtain ⟨hjr, hv₀⟩ := SA.upTo_voteAt.mp hv
   have hzj := hp.run.antitone hjr hz
   obtain ⟨ellZ, hcz, he⟩ := hv₀

@@ -40,7 +40,7 @@ theorem FrameWindow.floor_le_warm_proposal
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (huN : u ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) (hstock : sp.committeeSize = sp.n) :
     floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h := by
   have hk := sp.two_le_k
   have hΔ := sp.toParams.hΔ
@@ -49,7 +49,7 @@ theorem FrameWindow.floor_le_warm_proposal
   have hsu := hts (show s₀ ≤ u by omega)
   have huN' := hts huN
   obtain ⟨c, e, hv, hes, hhi⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-    hcatch hnr (m := u) (by linarith) (by linarith) z hz
+    hcatch hnr (m := u) (by linarith) (by linarith) hstock z hz
   obtain ⟨ell, hc, he⟩ := hv
   have hcast : SA.CastAt tr.projAC z c ell e := ⟨hc, he⟩
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -65,7 +65,7 @@ theorem FrameWindow.floor_le_warm_proposal
       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith) hc⟩
   have hvP := (hsub.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
-    (by linarith) (by omega) (by omega) (by linarith) hz hdes hP hPs hz hcast hes).1
+    (by linarith) (by omega) (by omega) (by linarith) hz hdes hP hPs hz hcast hes hstock).1
   rw [Compose.frame_of_projAC hrun hz hc] at hvP
   have hfl := hframe.floor_eq z hz c hlo (by linarith)
   have hh : (tr.state z c).fg.headHeightFloor ≤ ((tr.state z c).fg.σ P.root).h := hvP.2.2.2

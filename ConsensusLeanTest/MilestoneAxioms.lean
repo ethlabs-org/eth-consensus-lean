@@ -175,27 +175,27 @@ statements (HR.1–HR.4, H.2 on the run, H.3, H.4; `Healing/Run`) and the phase 
 /-- Goldilocks Healing: `ACHealingStandaloneAll` (H.1). -/
 theorem Consensus.Goldilocks.SA.aCHealingStandaloneAll :
     Consensus.Goldilocks.SA.ACHealingStandaloneAll :=
-  fun sp _ => Consensus.Goldilocks.Healing.healing_ac_statements.standalone sp
+  fun sp h => Consensus.Goldilocks.Healing.healing_ac_statements.standalone sp h
 
 /-- Goldilocks Healing: `ACHealingStandaloneCorollaryAll` (H.1, corollary). -/
 theorem Consensus.Goldilocks.SA.aCHealingStandaloneCorollaryAll :
     Consensus.Goldilocks.SA.ACHealingStandaloneCorollaryAll :=
-  fun sp _ => Consensus.Goldilocks.SA.ac_healing_standalone_corollary sp
+  fun sp h => Consensus.Goldilocks.SA.ac_healing_standalone_corollary sp h
 
 /-- Goldilocks Healing: `ACHealingStandaloneTightAll` (H.1 at `ḡ + (8k + 4)Δ`). -/
 theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightAll :
     Consensus.Goldilocks.SA.ACHealingStandaloneTightAll :=
-  fun sp _ => Consensus.Goldilocks.SA.ac_healing_standalone_tight sp
+  fun sp h => Consensus.Goldilocks.SA.ac_healing_standalone_tight sp h
 
 /-- Goldilocks Healing: `ACHealingStandaloneTightCorollaryAll` (H.1 at `ḡ + (8k + 4)Δ`,
 corollary: proposal-block inclusion). -/
 theorem Consensus.Goldilocks.SA.aCHealingStandaloneTightCorollaryAll :
     Consensus.Goldilocks.SA.ACHealingStandaloneTightCorollaryAll :=
-  fun sp _ => Consensus.Goldilocks.SA.ac_healing_standalone_tight_corollary sp
+  fun sp h => Consensus.Goldilocks.SA.ac_healing_standalone_tight_corollary sp h
 
 /-- Goldilocks Healing: `ACInclusionAll` (H.2). -/
 theorem Consensus.Goldilocks.SA.aCInclusionAll : Consensus.Goldilocks.SA.ACInclusionAll :=
-  fun sp _ => Consensus.Goldilocks.Healing.healing_ac_statements.inclusion sp
+  fun sp h => Consensus.Goldilocks.Healing.healing_ac_statements.inclusion sp h
 
 /-- Goldilocks Healing: `CutAndReset` (HR.1). -/
 theorem Consensus.Goldilocks.Healing.cutAndReset : Consensus.Goldilocks.Healing.CutAndReset :=

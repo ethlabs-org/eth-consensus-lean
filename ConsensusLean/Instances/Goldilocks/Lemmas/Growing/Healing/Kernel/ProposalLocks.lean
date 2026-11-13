@@ -61,7 +61,7 @@ theorem proposal_high_lock_source_at
       exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hci⟩
     have hne : l.slot ≠ u := fun he =>
       Healing.proposal_no_optimistic_of_run hr (hp.noColl.upTo _) hf hpH hcp hcall hti
-        p hpH r hri D CV (he ▸ hop)
+        hp.stock p hpH r hri D CV (he ▸ hop)
     exact ⟨r, D, CV, hri, by omega, hp.run.antitone (hm hri.le) hpH, hop₀,
       L, RunTrace.honestBlocks_upTo_subset hm ht0 hL, hLr,
       hLD.mono (RunTrace.honestBlocks_upTo_subset hm ht0)⟩

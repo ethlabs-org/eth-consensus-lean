@@ -81,7 +81,8 @@ theorem stop_at_parent_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} 
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hes : e.msg.slot = s) (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     (P ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
         B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
           (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} ∧
@@ -110,14 +111,14 @@ theorem stop_at_parent_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} 
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     omega
   obtain ⟨D, -, hDQ, hviab, -⟩ := pivot_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj
-    hc hcall hd hti hPQ hib
+    hc hcall hd hti hPQ hib hstock
   exact SA.stop_core hrun' hy hcy hes hPs hPQ (by rw [hP.2.1]; exact hp) hng
     (proposal_at_voter_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hc hcall hd hti hPQ
-      hy hcy hes hib hjb)
+      hy hcy hes hib hjb hstock)
     (fun B hB hBQ hBs => old_child_ineligible_before hrun hnc hp hP hPs hc hcall hd hti hPQ
       hDQ hviab hy hcy hes hsync.ac hib hjb hf
-      (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib)
-      hB hBQ hBs)
+      (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib hstock)
+      hB hBQ hBs hstock)
 
 
 /-- **Every honest slot-`s` vote is the honest proposal `P` of slot `s`**, by
@@ -133,14 +134,15 @@ theorem honest_votes_eq_proposal_before {dg : Digest (List (FG.Att sp.n)) (Paylo
       tr.FaultBound H (sp.ts s + d))
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
-    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) (hsb : sp.ts s ≤ b) :
+    (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) (hsb : sp.ts s ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s → tr.time j ≤ b →
       e.msg.head = P.root := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   obtain ⟨i, ℓp, d, pay, hc, hcall, hd, hti, hPQ, -⟩ := proposal_data hrun hp hP hPs
   have hib : tr.time i ≤ b := hti ▸ hsb
   obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := pivot_before hrun hnc hb0 hsync hfb hinv
-    hp hP hPs hpj hc hcall hd hti hPQ hib
+    hp hP hPs hpj hc hcall hd hti hPQ hib hstock
   suffices main : ∀ j, (∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
       e'.msg.slot = s → e'.msg.head = P.root) →
       ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y j e → e.msg.slot = s → tr.time j ≤ b →
@@ -159,10 +161,10 @@ theorem honest_votes_eq_proposal_before {dg : Digest (List (FG.Att sp.n)) (Paylo
     simpa using this
   -- the voter's walk passes a block `X` of the path from `D` through `Q` to `P`
   obtain ⟨hstep₀, hP₀⟩ := stop_at_parent_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj
-    hc hcall hd hti hPQ hy hcast hes hib hjb
+    hc hcall hd hti hPQ hy hcast hes hib hjb hstock
   have hsuf :=
     suffix_agree_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hc hcall hd hti hPQ
-      hsD hDQ hviab hy hcast hes hib hjb
+      hsD hDQ hviab hy hcast hes hib hjb hstock
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hp hc
   obtain ⟨hΦy, hΦyU⟩ := SA.frameIn_of_callAt hr hy hcy
   obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j ℓy e hcast hjb hes hIH

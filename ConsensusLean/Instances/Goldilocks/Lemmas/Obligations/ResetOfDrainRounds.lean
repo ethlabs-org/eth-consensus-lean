@@ -89,7 +89,7 @@ theorem rounds_le_warm_proposal
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (huN : u ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) (hstock : sp.committeeSize = sp.n) :
     HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + riseRounds (HZ tr H g) v := by
   have hΔ := sp.toParams.hΔ
   have hsN : sp.ts s₀ ≤ sp.ts N :=
@@ -97,7 +97,7 @@ theorem rounds_le_warm_proposal
   have hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) (sp.ts N + 2 * sp.Δ)
       floor kindJ J := frameWindow_sub hwin haf hend
   obtain ⟨c, e, hvc, hes, hchi⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-    hcatch hnr (m := s₀) hm (by linarith only [hsN, hmb, hΔ]) z hz
+    hcatch hnr (m := s₀) hm (by linarith only [hsN, hmb, hΔ]) hstock z hz
   obtain ⟨ell, hc, he⟩ := hvc
   have hcast : SA.CastAt tr.projAC z c ell e := ⟨hc, he⟩
   have hlr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -114,7 +114,7 @@ theorem rounds_le_warm_proposal
     (by rw [hkey]; exact hv)
   rw [hkey, hwin.floor_eq z hz c hc1 hc2] at hZf
   have hPf := hframe.floor_le_warm_proposal hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-    huN hmb hz hdes hP hPs
+    huN hmb hz hdes hP hPs hstock
   exact hZf.trans (Nat.add_le_add_right hPf _)
 
 /-- **The reset from the drain, key-dependent rise rounds.** The premises of
@@ -140,7 +140,7 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
       sp.ts N + 2 * sp.Δ < resetBoundRounds r sp.Δ lam sp.toParams.fg.δt G Ld →
       ∀ x₀, s₀ ≤ x₀ → x₀ + G ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + G ∧ proposer x ∈ H ∧
         ∃ k P, tr.ProposesAt (proposer x) k P ∧ P.slot = x)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧ a ≤ resetBoundRounds r sp.Δ lam sp.toParams.fg.δt G Ld := by
   classical
   let D := sp.Δ
@@ -238,11 +238,11 @@ theorem exists_reset_of_drain_rounds (hrun : GoldilocksRun proposer dg H tr)
   have huN : u + rr * ρ + 1 ≤ N := Nat.add_le_add_right (Nat.add_le_add_right huLd _) 1
   -- the rise rounds at the warm proposal
   have hrise := rounds_le_warm_proposal hwin hK hv1 hts₀lo (by linarith only [hfitN.1]) hrun hnc
-    hsvc hawake hf hcatch hnr hm hwarm (huLd.trans hLdN) hmb hz hdes hP hPs
+    hsvc hawake hf hcatch hnr hm hwarm (huLd.trans hLdN) hmb hz hdes hP hPs hstock
   rw [hrrdef] at hrise
   -- the rise in `rr` rounds
   obtain ⟨a, ha, hab⟩ := hframe.rise_reset_rounds hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-    hδ hΔF hgpN hrr2 huN hmb hz hdes hP hPs hrise
+    hδ hΔF hgpN hrr2 huN hmb hz hdes hP hPs hrise hstock
   refine ⟨a, ha, hab.trans ?_⟩
   have := hts huN
   linarith only [hfitN.2, this]
@@ -265,7 +265,7 @@ theorem exists_reset_of_drain_rounds_awake (hrun : GoldilocksRun proposer dg H t
       sp.ts N + 2 * sp.Δ < resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ∀ x₀, s₀ ≤ x₀ → x₀ + G ≤ N + 1 → ∃ x, x₀ ≤ x ∧ x < x₀ + G ∧ proposer x ∈ H ∧
         ∃ k P, tr.ProposesAt (proposer x) k P ∧ P.slot = x)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧
       a ≤ resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -281,7 +281,7 @@ theorem exists_reset_of_drain_rounds_awake (hrun : GoldilocksRun proposer dg H t
       (Int.lt_add_one_iff.mpr hmb))
     (fun z hz i m hi him hmb => callLag_of_awake hrun hawake (lo := r + 4 * sp.Δ) (T := b + 1)
       (by linarith only [hcz, hΔ]) le_rfl z hz i m hi him (Int.lt_add_one_iff.mpr hmb))
-    hb hgp hdrain
+    hb hgp hdrain hstock
 
 end Consensus.Goldilocks.Obligations
 

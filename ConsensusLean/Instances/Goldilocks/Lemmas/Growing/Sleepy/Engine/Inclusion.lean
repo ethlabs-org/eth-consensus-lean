@@ -46,7 +46,7 @@ theorem sleepy_include_finite_at (hv : rho.ExecutionValid)
     Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P
       (Regimes.readAfter (simTraceAt S rho hn) y j t) :=
   Regimes.Growing.include_sleepy_at (simTraceAt_goldilocksRun S rho hn hv) hnc hb0 hsync hB hP
-    hmargin htb hy hj
+    hmargin htb hy hj rfl
 
 /-- **Finite growth under growing faults.** For `b = t + (4k + 6)Δ` with `t ≥ 0`, `k ≥ 1`, under
 the finite service and the two count shapes through `b`, and one proposer ready at its slot

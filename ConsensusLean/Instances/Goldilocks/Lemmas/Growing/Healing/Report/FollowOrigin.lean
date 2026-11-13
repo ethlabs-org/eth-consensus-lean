@@ -56,7 +56,7 @@ theorem toFG_fast_origin_slot_bounds_at
     {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hto : SA.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
     (hPR : Anc (tr.HonestBlocksAt H) P R)
-    (ht : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
+    (ht : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) (hstock : sp.committeeSize = sp.n) :
     ∃ a < i, ∃ j D CV, y ∈ H (tr.time a) ∧ SA.FastLockAt tr.projAC y a j D CV ∧
       Anc (tr.HonestBlocksAt H) R D ∧ u ≤ j ∧ j ≤ u + 1 := by
   obtain ⟨a, hai, j, D, CV, hya, ho, hRD, hj⟩ := toFG_fast_origin_at hrun hnc hy hto
@@ -71,7 +71,7 @@ theorem toFG_fast_origin_slot_bounds_at
     simpa only [RunTrace.upTo_projAC, SA.FastLockAt, SA.FastUpdateAt, SA.UpdateAt,
       SA.OptimisticLockAt, SA.OptimisticPoint, hc, hs, Trace.upTo_time] using ho
   have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a))
-    (hnc.upTo _) (hf _ (hrun.time_nonneg a) ha) hya ho'
+    (hnc.upTo _) (hf _ (hrun.time_nonneg a) ha) hya ho' hstock
   have hupper : sp.slot (tr.time i) ≤ u + 1 := by
     by_contra hn
     have hlo := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) ((u + 2 : Nat) : Int)).2

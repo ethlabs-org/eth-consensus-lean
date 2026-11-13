@@ -90,6 +90,7 @@ is honest through `t_p + hold`. -/
 def ACHealingStandalone : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g : Time),
+    sp.committeeSize = sp.n →
     ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
     CatchAC tr H U g (2 * sp.Δ) →
     ∀ (p : Nat) (P : Blk sp.n FGP), proposer p ∈ H (sp.ts p + hold sp) →
@@ -112,6 +113,7 @@ def PropAC (proposer : Nat → Fin sp.n) (H : Time → Set (Fin sp.n)) (g Gp : T
 def ACHealingStandaloneCorollary : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g Gp : Time),
+    sp.committeeSize = sp.n →
     ACRun proposer tr H U → Driven proposer tr H → TrivialFrames tr H → HealthyAC tr H U g →
     CatchAC tr H U g (2 * sp.Δ) → PropAC proposer H g Gp →
     ∀ t, gbar g + 2 * Θ sp + 8 * sp.Δ ≤ t →
@@ -160,6 +162,7 @@ def Geo (proposer : Nat → Fin sp.n)
 def ACInclusion : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n) (g t₀ : Time),
+    sp.committeeSize = sp.n →
     ACRun proposer tr H U → Driven proposer tr H → HealthyAC tr H U g →
     CatchAC tr H U g (2 * sp.Δ) →
     gbar g ≤ t₀ → Inv proposer tr H U t₀ →

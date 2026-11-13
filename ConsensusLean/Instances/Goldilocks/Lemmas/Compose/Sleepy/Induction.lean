@@ -40,7 +40,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **Every finite frontier**: `P_s` and `V_s` for every `s`. -/
 theorem frontier
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) : ∀ s, OriginsBelow tr H s ∧ VotesBelow tr H s := by
+    (hsl : tr.SleepyRun H ΔF) (hstock : sp.committeeSize = sp.n) :
+    ∀ s, OriginsBelow tr H s ∧ VotesBelow tr H s := by
   intro s
   induction s with
   | zero =>
@@ -48,15 +49,15 @@ theorem frontier
       votesBelow_iff.2 fun _ _ _ _ _ _ _ _ h₁ h₂ => ?_⟩
     omega
   | succ s ih =>
-    have hP := origins_below_succ hrun hnc hsl ih.1 ih.2
-    exact ⟨hP, votes_below_succ hrun hnc hsl hP ih.2⟩
+    have hP := origins_below_succ hrun hnc hsl ih.1 ih.2 hstock
+    exact ⟨hP, votes_below_succ hrun hnc hsl hP ih.2 hstock⟩
 
 /-- **The Sleepy record invariant** (S1–S3) holds of every Goldilocks run under `Sleepy` and
 `NoColl`. -/
 theorem sleepy_invariant
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) : SleepyInvariant tr H := by
-  have hF := frontier hrun hnc hsl
+    (hsl : tr.SleepyRun H ΔF) (hstock : sp.committeeSize = sp.n) : SleepyInvariant tr H := by
+  have hF := frontier hrun hnc hsl hstock
   have hcomp : ∀ C s C' s', Origin tr H C s → Origin tr H C' s' →
       Compatible (tr.HonestBlocks H) C C' := fun C s C' s' h h' =>
     originsBelow_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
@@ -73,23 +74,7 @@ theorem sleepy_invariant
 prefix premises up to `b`. -/
 theorem frontier_upTo
     {b : Time} (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) : ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
-  intro s
-  induction s with
-  | zero =>
-    refine ⟨originsBelowUpTo_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
-      votesBelowUpTo_iff.2 fun _ _ _ _ _ _ _ _ _ h₁ h₂ => ?_⟩
-    omega
-  | succ s ih =>
-    have hP := origins_below_succ_upTo hrun hnc hpre ih.1 ih.2
-    exact ⟨hP, votes_below_succ_upTo hrun hnc hpre hP ih.2⟩
-
-/-- Both frontiers at a finite horizon, with recipient-bounded rather than whole-run service. -/
-theorem frontier_before
-    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
-    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)) :
+    (hpre : SleepyPrefix tr H ΔF b) (hstock : sp.committeeSize = sp.n) :
     ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
   intro s
   induction s with
@@ -98,8 +83,25 @@ theorem frontier_before
       votesBelowUpTo_iff.2 fun _ _ _ _ _ _ _ _ _ h₁ h₂ => ?_⟩
     omega
   | succ s ih =>
-    have hP := origins_below_succ_before hrun hnc hb hsync hfb ih.1 ih.2
-    exact ⟨hP, votes_below_succ_before hrun hnc hb hsync hfb hP ih.2⟩
+    have hP := origins_below_succ_upTo hrun hnc hpre ih.1 ih.2 hstock
+    exact ⟨hP, votes_below_succ_upTo hrun hnc hpre hP ih.2 hstock⟩
+
+/-- Both frontiers at a finite horizon, with recipient-bounded rather than whole-run service. -/
+theorem frontier_before
+    {b : Time} (hrun : GoldilocksRun proposer dg H tr)
+    (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
+    (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
+      tr.FaultBound H (sp.ts s + d)) (hstock : sp.committeeSize = sp.n) :
+    ∀ s, OriginsBelowUpTo tr H s b ∧ VotesBelowUpTo tr H s b := by
+  intro s
+  induction s with
+  | zero =>
+    refine ⟨originsBelowUpTo_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
+      votesBelowUpTo_iff.2 fun _ _ _ _ _ _ _ _ _ h₁ h₂ => ?_⟩
+    omega
+  | succ s ih =>
+    have hP := origins_below_succ_before hrun hnc hb hsync hfb ih.1 ih.2 hstock
+    exact ⟨hP, votes_below_succ_before hrun hnc hb hsync hfb hP ih.2 hstock⟩
 
 /-- **The Sleepy record invariant up to `b`** (S1–S3 for the origins within `b`, the honest votes
 at times `≤ b` and the cuts within `b`) holds of every Goldilocks run under `NoColl` and the
@@ -107,8 +109,9 @@ send-window prefix premises `SleepyPrefix` up to `b`, whatever happens after `b`
 theorem sleepy_invariant_upTo
     {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
-    (hpre : SleepyPrefix tr H ΔF b) : SleepyInvariantUpTo tr H b := by
-  have hF := frontier_upTo hrun hnc hpre
+    (hpre : SleepyPrefix tr H ΔF b) (hstock : sp.committeeSize = sp.n) :
+    SleepyInvariantUpTo tr H b := by
+  have hF := frontier_upTo hrun hnc hpre hstock
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocks H) C C' := fun C s C' s' h h' =>
     originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
@@ -130,8 +133,9 @@ theorem sleepy_invariant_before
     {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)) : SleepyInvariantUpTo tr H b := by
-  have hF := frontier_before hrun hnc hb hsync hfb
+      tr.FaultBound H (sp.ts s + d)) (hstock : sp.committeeSize = sp.n) :
+    SleepyInvariantUpTo tr H b := by
+  have hF := frontier_before hrun hnc hb hsync hfb hstock
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocks H) C C' := fun C s C' s' h h' =>
     originsBelowUpTo_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'

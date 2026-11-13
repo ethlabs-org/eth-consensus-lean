@@ -108,11 +108,12 @@ theorem result_optimistic_compatible_window_before_at
     {C O : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
     (hR : ResultAt tr x i s C CV) (hO : OptimisticLockAt tr x' i' s O CV')
     (hi : tr.time i ≤ b) (_hi' : tr.time i' ≤ b)
-    (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s) : Compatible U C O := by
+    (hreset : ∀ q ≤ i, tr.RestartAt x q → tr.time q ≤ sp.ts s)
+    (hstock : sp.committeeSize = sp.n) : Compatible U C O := by
   by_contra hnc
   obtain ⟨ℓ, S, hc, ht, -, hmaj, -, hSs⟩ := result_side hrun hx hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_seats hrun hx' hO
-  rw [hrun.stock] at h34
+  rw [hstock] at h34
   have h1 := relayed_against_window hrun.localRun hsync ha hx hc ht hi hreset hSs hT
     fun h => hnc (Or.symm h)
   have hle := Set.ncard_le_ncard (Set.subset_univ (voters {v | v ∈ (tr.state x i).pool s}))

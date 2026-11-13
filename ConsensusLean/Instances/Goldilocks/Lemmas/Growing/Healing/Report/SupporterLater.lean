@@ -89,7 +89,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
     (hc : SA.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
     (hanchor : L = SA.getAnchor sp e.readPoint ell.frame (tr.time i))
     {CV : Set (SA.Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC x a s D CV)
-    (hLD : Anc (tr.HonestBlocksAt H) L D) :
+    (hLD : Anc (tr.HonestBlocksAt H) L D) (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y j ev, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j ev → ev.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) ev.msg L) ∧
@@ -172,7 +172,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
       fun y j hy hl hh' => hframe.kind_iff y j hy (hts.trans hl) hh',
       fun y j hy hl hh' => hframe.root_eq y j hy (hts.trans hl) hh'⟩
   exact optimistic_later_heads_of_early_witness_at hrun hnc hsvc hawake hf hcatch hnr hm hmb
-    hsub hxa hop hLD hx (by linarith only [hhi, hΔ]) hc.1 hQ hh hJ (hLQ.mono hPhiU')
+    hsub hxa hop hLD hx (by linarith only [hhi, hΔ]) hc.1 hQ hh hJ (hLQ.mono hPhiU') hstock
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

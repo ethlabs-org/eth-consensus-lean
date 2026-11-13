@@ -41,7 +41,7 @@ theorem FrameWindow.proposal_report_follow
     (hN : s + 2 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = s + 1)
-    {y : Fin sp.n} (hy : y ∈ H) :
+    {y : Fin sp.n} (hy : y ∈ H) (hstock : sp.committeeSize = sp.n) :
     ∃ i ell R, SA.ToFGAt tr.projAC y i ell R ∧
       tr.time i ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ ∧
       Anc (tr.HonestBlocks H) P R ∧
@@ -68,6 +68,7 @@ theorem FrameWindow.proposal_report_follow
     hrun hnc hsvc hawake hf hcatch hnr hm (by clear * - hk; omega) hwarm
     (by have := hts (by
         clear * - hN; omega : s + 1 ≤ N); linarith only [hmb, hΔ, this]) hz hdesignated hactual hPs
+    hstock
   have hshort := hsub (hts (by clear * - hwarm; omega : s₀ ≤ s + 1)) hT
   have hjoin : ∀ w ∈ H, SA.JoinedAt tr.projAC w (sp.ts (s + 1 : Nat) + sp.Δ) :=
     fun w hw => joined_voteTime_of_warm_frame hnr hm (by clear * - hwarm hk; omega) hw
@@ -76,12 +77,12 @@ theorem FrameWindow.proposal_report_follow
     linarith only [hm, hΔ, this]
   obtain ⟨k, ell, ell', hu, hc, hto, ht, he, _, _, _, hva, ex, hex, _, hl⟩ :=
     fresh_fast_lock_update_toFG hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
-      (hT.trans hmb) hshort hz hdesignated hactual hPs hun hy
+      (hT.trans hmb) hshort hz hdesignated hactual hPs hun hy hstock
   have hv := (hshort.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch hnr
     (by linarith only [hΔ, hmargin]) (by
         clear * -; omega) hjoin (hT.trans hmb) hz hdesignated hactual hPs hy hc
     (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith only [hΔ])
-    (by simpa only [show s + 1 + 1 = s + 2 by clear * -; omega] using ht.le)).1
+    (by simpa only [show s + 1 + 1 = s + 2 by clear * -; omega] using ht.le) hstock).1
   have hPc := fresh_lock_toFG_candidate hv hva hl hex
     (by simpa only [show s + 1 + 1 = s + 2 by clear * -; omega] using ht)
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -118,7 +119,7 @@ theorem FrameWindow.proposal_report_follow
     linarith only [hΔ, ht, htime, ht', hstep]
   exact (hsub le_rfl (by linarith only [hΔ])).toFG_later_proposal_head hrun hnc hsvc hawake hf
     hcatch hnr hm hwarm (by linarith only [hmb, hΔ]) hy hR hPs hPR hbound (htime.trans ht.le)
-    (by clear * - hrlo; omega) hrN hw hcp hcall htc hd
+    (by clear * - hrlo; omega) hrN hw hcp hcall htc hd hstock
 
 /-- Even a suppressing earlier report extending a slot-u proposal cannot
 predate that slot: its actual fast-write origin bounds the stored block slot. -/
@@ -127,11 +128,12 @@ theorem toFG_time_ge_of_ancestor_slot
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {y : Fin sp.n} (hy : y ∈ H) {i u : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {P R : SA.Blk sp.n (List (FG.Att sp.n))}
     (hR : SA.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
-    (hPR : Anc (tr.HonestBlocks H) P R) : sp.ts u ≤ tr.time i := by
+    (hPR : Anc (tr.HonestBlocks H) P R)
+    (hstock : sp.committeeSize = sp.n) : sp.ts u ≤ tr.time i := by
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   obtain ⟨a, _, j, D, CV, ho, hRD, hj⟩ := toFG_fast_origin hrun hnc hy hR
   have hPD := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
-  have hDj := fast_selection_slot_le hrun hnc hf hy ho
+  have hDj := fast_selection_slot_le hrun hnc hf hy ho hstock
   have hu : u ≤ sp.slot (tr.time i) := by clear * - hPs hj hPD hDj; omega
   exact (SA.ts_le_iff_le_slot sp (hac.localRun.time_nonneg i) _).2 (by exact_mod_cast hu)
 
@@ -172,10 +174,10 @@ theorem FrameWindow.reset_of_high_proposal
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = s + 1)
     {w : Fin sp.n} (hw : w ∈ H) {c : Nat}
     (hP : P ∈ (tr.state w c).fg.tree)
-    (hh : HZ tr H g + 1 ≤ ((tr.state w c).fg.σ P.root).h) :
+    (hh : HZ tr H g + 1 ≤ ((tr.state w c).fg.σ P.root).h) (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ := by
   obtain ⟨i, ell, R, hR, ht, hPR, _⟩ := hframe.proposal_report_follow
-    hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb hz hdesignated hactual hPs hz
+    hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb hz hdesignated hactual hPs hz hstock
   have hRt := toFG_mem_tree hrun hz hR
   have hanc := store_anc_of_honest_anc hrun hnc hz hPR hRt
   have hPt := mem_of_honest_anc hrun hnc hz hPR hRt
@@ -232,7 +234,7 @@ theorem FrameWindow.report_kind_of_warm
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i ell R, SA.ToFGAt tr.projAC y i ell R →
       Anc (tr.HonestBlocks H) P R → tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ →
       ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
@@ -250,7 +252,8 @@ theorem FrameWindow.report_kind_of_warm
     simp only [SAParams.ts]; push_cast; ring
   have huN := hts hN
   obtain ⟨c, e, hv, hes, hhi⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-    hcatch hnr (m := u) (by linarith only [hm, hsu]) (by linarith only [hmb, hΔ, hu1, huN]) z hz
+    hcatch hnr (m := u) (by linarith only [hm, hsu]) (by linarith only [hmb, hΔ, hu1, huN])
+    hstock z hz
   obtain ⟨ell', hc, he⟩ := hv
   have hcast : SA.CastAt tr.projAC z c ell' e := ⟨hc, he⟩
   have hslot : sp.slot (tr.time c) = u := (SA.castAt_spec hr hz hcast).2.1.symm.trans hes
@@ -265,12 +268,12 @@ theorem FrameWindow.report_kind_of_warm
       fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith only [hΔ, hu1, huN, hhi]) hc⟩
   have hvP := (hsub.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
     (by linarith only [hm, hΔ]) (by clear * - hwarm; omega) (by clear * - hwarm hk; omega) (by
-        linarith only [hmb, hΔ, hu1, huN]) hz hdes hP hPs hz hcast hes).1
+        linarith only [hmb, hΔ, hu1, huN]) hz hdes hP hPs hz hcast hes hstock).1
   rw [Compose.frame_of_projAC hrun hz hc] at hvP
   have hh : floor ≤ ((tr.state z c).fg.σ P.root).h := by
     rw [← hframe.floor_eq z hz c hloc (by linarith only [hΔ, hu1, huN, hhi])]
     exact hvP.2.2.2
-  have hloi := toFG_time_ge_of_ancestor_slot hrun hnc hf hy hR hPs hPR
+  have hloi := toFG_time_ge_of_ancestor_slot hrun hnc hf hy hR hPs hPR hstock
   have hfl := hframe.floor_eq y hy i (hsu.trans hloi) (by linarith only [hti, huN])
   have hRm := toFG_mem_tree hrun hy hR
   have hPy := mem_of_honest_anc hrun hnc hy hPR hRm

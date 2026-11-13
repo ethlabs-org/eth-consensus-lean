@@ -33,11 +33,11 @@ See `docs/decisions.md`, "Trusted surface and Challenge scope". -/
 
 namespace Consensus.Goldilocks.SA
 
-/-- The AC-level statements of milestone Healing (H.1, H.2). H.1's corollary follows from H.1
-(`corollary_of_standalone`), so it is not a field. -/
+/-- The AC-level statements of milestone Healing (H.1, H.2), for population-sized committees.
+H.1's corollary follows from H.1 (`corollary_of_standalone`), so it is not a field. -/
 structure HealingACStatements : Prop where
-  standalone : ∀ sp : SAParams, ACHealingStandalone (sp := sp)
-  inclusion : ∀ sp : SAParams, ACInclusion (sp := sp)
+  standalone : ∀ sp : SAParams, sp.committeeSize = sp.n → ACHealingStandalone (sp := sp)
+  inclusion : ∀ sp : SAParams, sp.committeeSize = sp.n → ACInclusion (sp := sp)
 
 end Consensus.Goldilocks.SA
 

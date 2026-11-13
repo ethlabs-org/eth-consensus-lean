@@ -42,7 +42,8 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
-      some (d, pay)) : Anc (tr.HonestBlocksAt H) R d.head := by
+      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
+    Anc (tr.HonestBlocksAt H) R d.head := by
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
   have hahi : tr.time a ≤ sp.ts N + sp.Δ := by
@@ -73,7 +74,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
        fun x i hx hlo hhi => hframe.kind_iff x i hx ((hts hj).trans hlo) hhi,
        fun x i hx hlo hhi => hframe.root_eq x i hx ((hts hj).trans hlo) hhi⟩
     exact hRA.trans ((optimistic_later_heads_of_early_witness_at hrun hnc hsvc hawake hf
-      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ
+      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ hstock
       r hrlo hrN).2 z c ell hz hc hcall hti d pay hd)
 
 end Consensus.Goldilocks.Healing.Growing

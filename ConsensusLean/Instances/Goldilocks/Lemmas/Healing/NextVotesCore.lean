@@ -48,10 +48,10 @@ theorem next_votes_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
       SA.ViableAtVote ell e (s + 1) X →
       (∀ z ∈ H, ∀ k < i, ∀ ev, SA.VoteAt tr.projAC z k ev → ev.msg.slot = s + 1 →
         SA.VoteExtends (tr.HonestBlocks H) ev.msg X) →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
   have hQ := mem_tree_of_frame hrun hw hcw hQw
@@ -181,7 +181,7 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
     (hJ : kindJ → Anc (tr.HonestBlocks H) J X)
     (hXQ : Anc (tr.HonestBlocks H) X Q)
     (hbase : ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X) (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocks H) e.msg X) ∧
@@ -189,7 +189,7 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
         tr.time i = sp.ts r →
         ∀ d pay, (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
           some (d, pay) → Anc (tr.HonestBlocks H) X d.head) := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
@@ -264,7 +264,7 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
       · exact (relay_readPoint_stamp_window_before hr hS.sync hS.catchUp hw hy hq hqt
           hcast (by omega) (hhi.trans (by linarith only [hmb, ht])) hct hFQ).2
     refine ⟨unanimous_next_votes_of_witness hrun hnc hsvc hawake hf hcatch hnr hwarm
-      (by linarith only [hmb, ht]) hwin hw hQ hh hJ hXQ hheld hprior, ?_⟩
+      (by linarith only [hmb, ht]) hwin hw hQ hh hJ hXQ hheld hprior hstock, ?_⟩
     intro _ y hy i ell hc hcall hti d pay hd
     have hlo : sp.ts s ≤ tr.time i := by rw [hti]; exact hts (by omega)
     have hhi : tr.time i ≤ sp.ts N + sp.Δ := by rw [hti]; linarith only [hΔ, ht]
@@ -282,7 +282,7 @@ theorem later_heads_of_early_witness (hrun : GoldilocksRun proposer dg H tr)
         (hm.trans (hts (by omega)))) hQU hsource' hFQ).1
     exact unanimous_next_proposal_of_witness hrun hnc hsvc hawake hf hcatch hnr hwarm
       (by linarith only [hmb, ht]) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd
-      (mem_tree_of_frame hrun hy hc hQt)
+      (mem_tree_of_frame hrun hy hc hQt) hstock
 
 /-- The viable, common-J and optimistic-supporter branches of
 `FrameWindow.vote_head_classification`, independent of lock kind. -/
@@ -311,10 +311,10 @@ theorem FrameWindow.next_votes_of_supporter {s₀ s floor : Nat}
       ∀ a D CV, SA.OptimisticLockAt tr.projAC z a s D CV →
       Anc (tr.HonestBlocks H) Q D →
       ∀ y ∈ H, ∀ i ev, SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocks H) ev.msg Q) :
+        SA.VoteExtends (tr.HonestBlocks H) ev.msg Q) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i ev, SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) ev.msg X := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
     rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, SA.ts_sub_one]

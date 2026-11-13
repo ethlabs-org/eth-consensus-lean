@@ -116,7 +116,7 @@ theorem healthy_reset_envelope_of_fit (Q : HealthyPreparationQuery S A V)
     hr0 hgr Q.index.pos hcz (hBh.trans hb)
     (fun s₀ N hs₀ hN => hgp_of_healthyQuery S A V Q hb hp (by rw [max_eq_left hr0]; exact hs₀)
       (by linarith only [hN, hBh, hΔ]))
-    hdrain
+    hdrain rfl
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake hrun hs.awake hH (b := Q.run.2.horizon)
     (by linarith only [hcz, h4B, hb])
   refine ⟨protoFGDelay (Model.pubOf Q.run.1), a, reset_premises_of_healthy_query S A V Q hs.sync ha
@@ -169,7 +169,7 @@ theorem healthy_reset_envelope (Q : HealthyPreparationQuery S A V)
   refine healthy_reset_envelope_of_drain S A V Q hb hp
     (drainOutputs_of_service (simTrace_goldilocksRun S Q.run.2 Q.hn Q.constant Q.valid)
       hs.noColl hs.sync hs.awake hs.faults (healthy_repair_catch S A V Q)
-      (healthy_noRestartAfter S A V Q) ?_)
+      (healthy_noRestartAfter S A V Q) ?_ rfl)
   rw [healthyDrainLen_val]
   change 2 * S.k + (Q.index : Nat) ≤ 2 * S.k + (Q.index : Nat) + 1
   omega

@@ -161,19 +161,19 @@ private theorem record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : No
 
 /-- **A1.7, inclusion.** -/
 theorem inclusion_sleepy : Inclusion := by
-  intro sp ro proposer dg H tr ΔF hrun hnc hsl p hp k P s hP hPs hpj y hy i hc hyj hnr' hu
+  intro sp ro proposer dg H tr ΔF hstock hrun hnc hsl p hp k P s hP hPs hpj y hy i hc hyj hnr' hu
   have hyw := hrun.awake_of_call y hy i hc
   have hyj₀ := joinedAt_of_update hrun hy hu
   have hnr : ∀ k', tr.RestartAt y k' → sp.ts s + 6 * sp.Δ < tr.time k' →
       tr.time k' ≤ tr.time i → False := fun k' hr h₁ h₂ => not_le.2 (hnr' k' hr h₁) h₂
-  have hinv := sleepy_invariant hrun hnc hsl
+  have hinv := sleepy_invariant hrun hnc hsl hstock
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer
       (requirements sp ro) (fun y _ => payloadFrom_initial (requirements sp ro) y)
       hrun.toLocalRun hnc).coherent
   obtain ⟨k₀, hk₀, ℓ₀, hupd, -⟩ := id hu
   obtain ⟨E, hE, hEr, hPE⟩ := record_extends hrun hnc hinv hy
-    (update_adopts hrun hnc hsl hp hP hPs hpj hy hupd) i hk₀
+    (update_adopts hrun hnc hsl hp hP hPs hpj hy hupd hstock) i hk₀
   by_cases hin : ∃ R, RecordAt tr y i R
   · obtain ⟨R, hR⟩ := hin
     obtain rfl : R = E := hcoh.1 ⟨y, hy, i, hR.1.1⟩ hE (hR.2.trans hEr.symm)

@@ -102,10 +102,11 @@ theorem optimistic_first_proposal_anc_at
     (hV : B ∈ ell.frame.tree ∧
       (B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ell.frame σ v)
-    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B) :
+    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head := by
   exact ProposalSources.optimistic_first_proposal_anc_at hrun hf hX hopt hBD hx hc
-    hslot hprop hV hP hhigh
+    hslot hprop hV hP hhigh hstock
 
 end Consensus.Goldilocks.SA.Growing
 

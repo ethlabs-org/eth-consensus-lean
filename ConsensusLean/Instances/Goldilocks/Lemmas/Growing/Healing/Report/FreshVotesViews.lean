@@ -36,7 +36,7 @@ theorem proposal_views_agree_before_at
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {elly : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
-    (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) :
+    (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
     SA.equivocators (SA.View.ofLists pay).votes =
         SA.equivocators (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)).votes ∧
       SA.voters (SA.View.ofLists pay).votes =
@@ -46,7 +46,7 @@ theorem proposal_views_agree_before_at
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
   have hr := hrun.toLocalRun
   have hd := hr.time_nonneg j
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hjb
+  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hjb hstock
   have hc' : SA.CastAt (tr.upTo (tr.time j)).projAC y j elly e := by
     refine ⟨?_, hc.2⟩
     rw [RunTrace.upTo_projAC]

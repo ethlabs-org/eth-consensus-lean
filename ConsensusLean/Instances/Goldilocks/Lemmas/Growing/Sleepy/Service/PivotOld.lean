@@ -297,7 +297,7 @@ theorem proposal_holds_old_from (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b)
     (hκ : a + κ ≤ max (sp.ts ((s : Int) - 1) + 3 * sp.Δ) 0)
     (hFc : ∀ O m, OriginWithin tr H O m b → ρ ≤ m → m < s →
-      Compatible (tr.HonestBlocksAt H) ℓp.frame.F O) :
+      Compatible (tr.HonestBlocksAt H) ℓp.frame.F O) (hstock : sp.committeeSize = sp.n) :
     ∀ O, OldOriginAbove tr H ρ s O →
       O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocksAt H) O ℓp.frame.F := by
   intro O hO
@@ -305,7 +305,7 @@ theorem proposal_holds_old_from (hrun : Growing.GoldilocksRun proposer dg H tr)
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hp hc
   obtain ⟨m, hm, hρm, hOm⟩ := hO.within hrun (hti ▸ hb)
   obtain ⟨x, j, e, hv, _, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hrun hnc
-      (CommitteeFacts.of_full hrun hnc hrun.stock) hsync (CommitteeBoundsFrom.of_full hrun hB)
+      (CommitteeFacts.of_full hrun hnc hstock) hsync (CommitteeBoundsFrom.of_full hrun hB)
     (hσρ.trans hρm) (haρ.trans ((SA.ts_le_iff sp).2 (by exact_mod_cast hρm))) hOm
   rcases hFc O m hOm hρm hm with hFO | hOF
   · left
@@ -323,7 +323,7 @@ theorem proposal_holds_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∀ O, OldOrigin tr H s O → O ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocksAt H) O ℓp.frame.F := by
   intro O hO
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hp hc
@@ -335,7 +335,7 @@ theorem proposal_holds_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     hc hcall hd hti hb (by rw [zero_add]; exact le_max_right _ _)
     (fun O m hOm _ _ => OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible
       (hΦU hΦ.rooted.1) (hOm.mem hrun) hFc
-      (onOriginChainWithin_iff.2 (Or.inr ⟨O, m, hOm, .refl⟩)))
+      (onOriginChainWithin_iff.2 (Or.inr ⟨O, m, hOm, .refl⟩))) hstock
     O (oldOrigin_iff_above.1 hO)
 
 /-- **The support of an old origin at the votes of slot `s − 1`**: an old origin of slot `s`
@@ -394,7 +394,8 @@ theorem proposal_best_toward_from (hrun : Growing.GoldilocksRun proposer dg H tr
     {O : SA.Blk sp.n (List (FG.Att sp.n))} (hOt : O ∈ ℓp.frame.tree)
     (hO : (∀ x j e, HVoteAt tr H x j e → e.msg.slot + 1 = s → tr.time j ≤ b →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg O) ∨
-      ∃ x k CV, x ∈ H (tr.time k) ∧ SA.OptimisticLockAt tr.projAC x k (s - 1) O CV) :
+      ∃ x k CV, x ∈ H (tr.time k) ∧ SA.OptimisticLockAt tr.projAC x k (s - 1) O CV)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ X Cx : SA.Blk sp.n (List (FG.Att sp.n)),
       Cx ∈ ℓp.frame.viableTree ℓp.frame.tree → Cx.parent = some X.root → ℓp.frame.Anc Cx O →
       SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
@@ -514,7 +515,7 @@ theorem proposal_best_toward_from (hrun : Growing.GoldilocksRun proposer dg H tr
         exact Or.inl (votersAt_iff.2
           ⟨hw, j, e, hve, state_pool_slot_at hrun hnc hp s' _ ((hvotes' _).1 hv)⟩)
       · exact Or.inr hw
-    · have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+    · have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
         (CommitteeBoundsFrom.of_full hrun hB) (s := s') (d := tr.time i) (by omega)
         (by rw [hti, hts]; linarith only [hΔ]) hb (by rw [hti, hts]; linarith only [hΔ])
       rw [SA.ncard_inter_full] at hcount
@@ -557,7 +558,7 @@ theorem proposal_best_toward_from (hrun : Growing.GoldilocksRun proposer dg H tr
         rw [← Set.ncard_union_eq Set.disjoint_sdiff_left]
         exact (Set.ncard_le_ncard (Set.subset_univ _)).trans (by simp)
       have := Set.ncard_le_ncard hequiv (Set.toFinite _)
-      rw [hrun.stock] at h34
+      rw [hstock] at h34
       omega
 
 
@@ -571,7 +572,7 @@ theorem proposal_best_toward_old_at (hrun : Growing.GoldilocksRun proposer dg H 
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∀ O, OldOrigin tr H s O → O ∈ ℓp.frame.tree → ∀ X Cx : SA.Blk sp.n (List (FG.Att sp.n)),
       Cx ∈ ℓp.frame.viableTree ℓp.frame.tree → Cx.parent = some X.root → ℓp.frame.Anc Cx O →
       SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
@@ -586,7 +587,7 @@ theorem proposal_best_toward_old_at (hrun : Growing.GoldilocksRun proposer dg H 
       obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
       rw [show ((s' + 1 : Nat) : Int) - 1 = (s' : Int) by push_cast; ring]
       exact ts_natCast_nonneg _) (by rw [zero_add]; exact le_max_right _ _) hOt
-    (hO.support_at hrun hinv (hti ▸ hb))
+    (hO.support_at hrun hinv (hti ▸ hb)) hstock
 
 end Consensus.Goldilocks.Compose.Growing
 

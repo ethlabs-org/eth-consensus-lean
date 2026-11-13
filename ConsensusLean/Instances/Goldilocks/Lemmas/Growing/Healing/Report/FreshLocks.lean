@@ -33,7 +33,8 @@ theorem FrameWindow.unanimous_update_no_veto_at
     (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell)
+    (hstock : sp.committeeSize = sp.n) :
     ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
   have hΔ := sp.toParams.hΔ
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
@@ -41,7 +42,7 @@ theorem FrameWindow.unanimous_update_no_veto_at
     simp only [SAParams.ts]; push_cast; ring
   have hkb : tr.time k ≤ b := by rw [hkt, ← hT]; exact hTb
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg k) hkb
+    (hrun.time_nonneg k) hkb hstock
   have hr := hS.run.localRun
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg k)
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -55,11 +56,11 @@ theorem FrameWindow.unanimous_update_no_veto_at
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩
   have hPhi := SA.frameIn_of_callAt hr hy hc'
   obtain ⟨hvi, _, _, _⟩ := hframe.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch
-    hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu
+    hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hstock
   have hnext := hframe.unanimous_next_votes_at hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdes hP hPs hun
+    hmargin hjoin hTb hz hdes hP hPs hun hstock
   have hold := hframe.older_locks_compatible_at_update_at hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdes hP hPs hun hy hu
+    hmargin hjoin hTb hz hdes hP hPs hun hy hu hstock
   have down : ∀ {X Y}, Anc (tr.HonestBlocksAt H) X Y →
       Compatible (tr.HonestBlocksAt H) Y P → Compatible (tr.HonestBlocksAt H) X P := by
     rintro X Y hXY (h | h)
@@ -94,7 +95,7 @@ theorem FrameWindow.unanimous_update_no_veto_at
     have hup' := (SA.upTo_updateAt hrun.time_mono).mp hup |>.2
     have hCP : C = P := by
       have hconf := (hframe.unanimous_update_selection_at hrun hnc hsvc hawake hf hcatch hnr
-        hmargin hjoin hTb hz hdes hP hPs hun (hrun.antitone hm hy) hup').2.1
+        hmargin hjoin hTb hz hdes hP hPs hun (hrun.antitone hm hy) hup' hstock).2.1
       have hsr := Trace.upTo_state tr.projAC y (i := r)
         (fun q hq => (hrun.time_mono hq.le).trans hm)
       rw [hsr] at hC
@@ -113,7 +114,8 @@ theorem FrameWindow.unanimous_update_no_veto_at
       have hb := hf (tr.time k) (hrun.time_nonneg k) hkb
       have := sp.toParams.hn
       omega
-    obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ := SA.fastLock_honest_vote hS.run hf2 hy hfl
+    obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ :=
+      SA.fastLock_honest_vote hS.run hf2 hy hfl hstock
     obtain ⟨hqt, hv⟩ := SA.upTo_voteAt.mp hv
     apply down (hLB.mono hsub)
     rcases (show l.slot = u ∨ l.slot = u + 1 by omega) with hls | hls

@@ -32,7 +32,7 @@ theorem older_locks_compatible_after_unlock_at
       x ∈ SA.equivocators (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)).votes ∨
         ∃ v ∈ (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)).support,
           v.val = x ∧ (v.slot : Int) = u ∧ SA.AncR ell.frame P v.head)
-    (hhalf : sp.n ≤ 2 * S.ncard) :
+    (hhalf : sp.n ≤ 2 * S.ncard) (hstock : sp.committeeSize = sp.n) :
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P := by
@@ -53,7 +53,7 @@ theorem older_locks_compatible_after_unlock_at
     hL (hsub hR) (hLr.trans hRr.symm)
   subst L
   exact (SA.older_locks_compatible_after_unlock hr hy hc' hs hjk hPt hS
-    (by simpa only [hrun.stock] using hhalf)
+    (by simpa only [hstock] using hhalf)
     l hl' hls R hR hRr).imp (Anc.mono hsub) (Anc.mono hsub)
 
 end Consensus.Goldilocks.Healing.Growing

@@ -128,19 +128,20 @@ at the votes after `σ` have labels `≥ r` (`handover_live_lock_label_at`); the
 theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
-    (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H) :
+    (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ s, HealedOriginsBelow tr H g r (r + sp.k - 1) s b ∧
       HealedVotesBelow tr H g r (r + sp.k - 1) s b := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨-, hrσ, hgr⟩ := hseed.timing
   have hsync := sleepyServiceFrom_of_reset hrun hsvc hseed.catchRun (by linarith)
   have htr := ts_le_ts (sp := sp) (show r ≤ σ + 1 by omega)
-  refine frontier_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hsync
+  refine frontier_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock) hsync
     (CommitteeBoundsFrom.of_full hrun (hB.of_le (show r ≤ σ + 1 by omega))) le_rfl (by omega)
     (by linarith) (fun s hs y i ℓ e hy hc hes _ l hl _ =>
       handover_live_lock_label_at hseed hy hc (by omega) l hl)
     (fun s hs hP y i ℓ e hy hc hes hib B j hBm hj hw =>
-      seeded_vote_frame_at hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib hBm hj hw)
+      seeded_vote_frame_at hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib hBm hj hw hstock)
     (hseed.frontier_upTo hrun hnc)
 
 end Consensus.Goldilocks.Compose.Growing

@@ -28,11 +28,11 @@ theorem FrameWindow.regular_slow_next_votes_at {s₀ s floor : Nat}
     (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    (hsl : SA.SlowLockAt tr.projAC x c s D) :
+    (hsl : SA.SlowLockAt tr.projAC x c s D) (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
   exact KernelProof.regular_slow_next_votes_at hframe hrun hnc hsvc hawake hf hcatch hnr
-    hwarm hpos hs₀ hm hmb hx hsl
+    hwarm hpos hs₀ hm hmb hx hsl hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

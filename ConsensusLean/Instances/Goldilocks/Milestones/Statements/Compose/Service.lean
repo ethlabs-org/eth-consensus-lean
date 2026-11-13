@@ -50,7 +50,8 @@ tree. -/
 def RecordAt (y : Fin sp.n) (i : Nat) (R : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   R ∈ (Node.frame (tr.state y i)).tree ∧ R.root = (tr.state y i).ac.latestConfirmed
 
-/-- **A1.6, head extends the record under synchrony.** Under `Sleepy`, at every call of an honest
+/-- **A1.6, head extends the record under synchrony.** Under `Sleepy`, with the full committee
+(`committeeSize = n`), at every call of an honest
 node (so awake, `awake_of_call`) joined at its time that has run the update of slot
 `slot(t) − 2` with no restart since: when the record `𝒜.latest_confirmed` is a block of the
 frame's tree, the head extends it (inside the frame) and `ac_confirmed` is that block; and while
@@ -61,13 +62,15 @@ def HeadExtendsRecord : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
+    sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ y ∈ H, ∀ i, ServedAt tr y i → ∀ R, RecordAt tr y i R →
       ((Node.frame (tr.state y i)).Anc R (tr.headAt y i) ∧ tr.confirmedAt y i = R) ∧
       ∀ i', i ≤ i' → (∀ k, i ≤ k → k ≤ i' → tr.IsCall y k → ServedAt tr y k) →
         ∀ R', RecordAt tr y i' R' → Anc (tr.HonestBlocks H) R R'
 
-/-- **A1.7, inclusion.** Under `Sleepy`, an honest proposal `P` of slot `s` by a proposer joined
+/-- **A1.7, inclusion.** Under `Sleepy`, with the full committee (`committeeSize = n`), an honest
+proposal `P` of slot `s` by a proposer joined
 at its proposal is in the confirmed tip (inside the honest blocks) of every honest node at every
 cut at a time `t` where it is joined, if it has not restarted at a cut in `(t_s + 6Δ, t]` and
 has run the update of slot `s` at a cut before this one with no restart since (`UpdatedNoRestart`,
@@ -84,6 +87,7 @@ def Inclusion : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
+    sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ p ∈ H, ∀ k (P : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat),
       tr.ProposesAt p k P → P.slot = s → SA.joined sp (tr.state p k).ac (tr.time k) →

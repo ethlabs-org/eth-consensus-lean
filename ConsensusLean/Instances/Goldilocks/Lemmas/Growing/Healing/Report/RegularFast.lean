@@ -32,7 +32,7 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (SA.Vote sp.n)}
     (hfast : SA.FastUpdateAt tr.projAC x c s D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X D) :
+    (hXD : Anc (tr.HonestBlocksAt H) X D) (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   have hΔ := sp.toParams.hΔ
@@ -46,7 +46,7 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
   have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr hms hx hres
-      (hu.2.2.1.trans_le hmb)
+      (hu.2.2.1.trans_le hmb) hstock
   have hDC := ((SA.deepest_mem hsel).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg q)).localRun
   have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
@@ -56,7 +56,7 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
   change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
   rw [hslot] at htq
   apply KernelProof.FrameWindow.next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch hnr
-    hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr (hXD.trans (hDC.trans hCQ))
+    hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr (hXD.trans (hDC.trans hCQ)) ?_ ?_ hstock
   · intro hQ hh hJX
     have hs₀s : s₀ ≤ s := by omega
     have hrestrict : FrameWindow tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) floor kindJ J :=
@@ -67,7 +67,7 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
        fun y i hy hlo hhi => hframe.root_eq y i hy
           (((SA.ts_le_iff sp).mpr (by exact_mod_cast hs₀s)).trans hlo) hhi⟩
     exact regular_fast_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith) hmb hrestrict hx hfast hres hXD hCQ hz (by linarith) hc hQ hh hJX
+      (by linarith) hmb hrestrict hx hfast hres hXD hCQ hz (by linarith) hc hQ hh hJX hstock
   · intro hA a D' CV' hza hop hQD
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
     have hnext : FrameWindow tr H (sp.ts s₀)
@@ -77,7 +77,7 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
        fun y i hy hlo hhi => hframe.root_eq y i hy hlo (by linarith)⟩
     exact (optimistic_supporter_later_heads_at hnext hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) (by omega) (by omega) (by linarith)
-      hz hza ⟨hc, he⟩ hes hA hop hQD (s + 1) le_rfl le_rfl).1
+      hz hza ⟨hc, he⟩ hes hA hop hQD hstock (s + 1) le_rfl le_rfl).1
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

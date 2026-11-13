@@ -32,12 +32,13 @@ theorem drainOutputs_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    (hnr : NoRestartAfter tr H (gbar g)) {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
+    (hnr : NoRestartAfter tr H (gbar g)) {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1)
+    (hstock : sp.committeeSize = sp.n) :
     DrainOutputs tr proposer H g G Ld b where
   warm hframe hm hN hb _ hgp := by
     obtain ⟨u, hlu, hhu, z, hz, hdes, kP, P, hP, hPs, hlow⟩ :=
       hframe.exists_warm_proposal hrun hnc hsvc hawake hf hcatch hnr hm (G := G) (by omega) hb
-        (hgp _ (by omega) (by omega))
+        (hgp _ (by omega) (by omega)) hstock
     exact ⟨u, hlu, by omega, z, hz, hdes, kP, P, hP, hPs, hlow⟩
 
 end Consensus.Goldilocks.Obligations

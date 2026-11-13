@@ -338,7 +338,7 @@ theorem round_of_warm_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) :
+    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hstock : sp.committeeSize = sp.n) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
@@ -394,7 +394,7 @@ theorem round_of_warm_at
     exact hd
   have hfol := fun y (hy : y ∈ H (tr.time kX)) =>
     proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm huN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy)
+      hz hdes hP hPs (hrun.antitone (by linarith) hy) hstock
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
   refine round_cross_at hrun hnc hsvc hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
@@ -426,14 +426,15 @@ theorem reset_of_high_proposal_at
     (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h) :
+    (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast hN)
   obtain ⟨y, hy⟩ := hH
   obtain ⟨i, ell, R, hyi, hR, _, hti, hPR, _⟩ :=
     proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy)
+      hz hdes hP hPs (hrun.antitone (by linarith) hy) hstock
   have htime : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
   have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [htime]; linarith) hz
@@ -477,14 +478,15 @@ theorem rise_reset_rounds_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r) :
+    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧
       a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ := by
   induction r generalizing u z kP P with
   | zero =>
     simpa only [Nat.zero_mul, Nat.add_zero] using
       reset_of_high_proposal_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-        (by simpa using hN) hmb hH hz hdes hP hPs (by simpa using hrise)
+        (by simpa using hN) hmb hH hz hdes hP hPs (by simpa using hrise) hstock
   | succ r ih =>
     let ρ := sp.toParams.fg.δt + G - 1
     have hρ : 3 ≤ ρ := by dsimp [ρ]; omega
@@ -496,7 +498,7 @@ theorem rise_reset_rounds_at
       (SA.ts_le_iff sp).2 (by exact_mod_cast h)
     by_cases hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h
     · obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_at hframe hrun hnc hsvc hawake hf
-        hcatch hnr hm hwarm (by omega) hmb hH hz hdes hP hPs hh
+        hcatch hnr hm hwarm (by omega) hmb hH hz hdes hP hPs hh hstock
       exact ⟨a, ha, hat.trans (by linarith [hts (show u + 1 ≤ u + (r + 1) * ρ + 1 by omega)])⟩
     obtain ⟨x, hxl, hxr, hpx, kX, X, hX, hXs⟩ := proposalGap_iff.mp hgp
       (u + sp.toParams.fg.δt) (by omega) (by
@@ -513,7 +515,7 @@ theorem rise_reset_rounds_at
         (SA.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
       linarith
     obtain ⟨hPX, _, hcross⟩ := round_of_warm_at hframe hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm hδ hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs
+      hm hwarm hδ hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hstock
     have htP : tr.time kP = sp.ts u := by
       simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
     have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
@@ -571,7 +573,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   classical
@@ -682,7 +684,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     (hfq (by change 0 ≤ 4 * sp.Δ * (u : Time); positivity) (by linarith)).2
   obtain ⟨a, ha, hat⟩ := rise_reset_rounds_at hframe hrun hnc hsvc hawake hf hcatch hnr hm
     hδ hG hΔF hgpN hmb hH hb hna rr hwarm huN
-    (by linarith [hts huN]) hz hdes hP hPs hrise
+    (by linarith [hts huN]) hz hdes hP hPs hrise hstock
   exact ⟨a, ha, hat.trans (by linarith [hts huN])⟩
 
 /-! ### Truncation after `b`
@@ -828,7 +830,7 @@ theorem exists_reset_of_drain_rounds_awake_at
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
@@ -849,7 +851,7 @@ theorem exists_reset_of_drain_rounds_awake_at
     (fun y k hy hk => noRestartUpTo_iff.mp hnr y k hy.1 hk hy.2)
     (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hΔF hr hgr hG hcz hb
     (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
-    (drainOutputs_truncH hdrain hczb)
+    (drainOutputs_truncH hdrain hczb) hstock
   exact ⟨a, isReset_of_truncH hczb ha (hab.trans hb), hab⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

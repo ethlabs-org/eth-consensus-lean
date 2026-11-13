@@ -41,7 +41,8 @@ theorem FrameWindow.rise_reset_rounds
     (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r) :
+    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧
       a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ := by
   classical
@@ -76,7 +77,7 @@ theorem FrameWindow.rise_reset_rounds
     obtain ⟨t, rfl⟩ : ∃ t, w = t + 1 := ⟨w - 1, by clear * - hw hk; omega⟩
     obtain ⟨-, hQm, -⟩ := accept_of_proposesAt hrun hnc hpw hQ
     obtain ⟨a, ha, hat⟩ := hframe.reset_of_high_proposal hrun hnc hsvc hawake hf hcatch hnr
-      hm hw (by clear * - hN hwN; omega) hmb hpw rfl hQ hQs hpw hQm hh
+      hm hw (by clear * - hN hwN; omega) hmb hpw rfl hQ hQs hpw hQm hh hstock
     exact ⟨a, ha, hat.trans
       (by linarith only [hts (show t + 2 ≤ u + r * ρ + 1 by clear * - hwN; omega)])⟩
   have hPm := (accept_of_proposesAt hrun hnc hz hP).2.1
@@ -95,7 +96,7 @@ theorem FrameWindow.rise_reset_rounds
   obtain ⟨hPm₁, hXm₁, hr₁⟩ := hframe.round_of_warm hrun hnc hsvc hawake hf hcatch hnr hm hwarm
     hδ hΔF hx₁l (by clear * - hN hx₁r hρr; omega) hmb hna
     (by rw [hTdef]; linarith only [htlt (show u + 1 < u + r * ρ + 1 by clear * - hρr hδ; omega)])
-    hz hdes hP hPs hp₁ rfl hX₁ hX₁s
+    hz hdes hP hPs hp₁ rfl hX₁ hX₁s hstock
   rw [hσy _ hp₁ _ hPm₁] at hr₁
   set h₁ := ((tr.state (proposer x₁) (k₁ + 1)).fg.σ X₁.root).h with hh₁
   by_cases hhigh₁ : HZ tr H g + 1 ≤ h₁
@@ -113,7 +114,7 @@ theorem FrameWindow.rise_reset_rounds
     (by clear * - hwarm hx₁l; omega) hδ hΔF hx₂l (by clear * - hN hx₂r hx₁r h2ρ; omega) hmb hna
     (by rw [hTdef]
         linarith only [htlt (show x₁ + 1 < u + r * ρ + 1 by clear * - hx₁r h2ρ hδ; omega)])
-    hp₁ rfl hX₁ hX₁s hp₂ rfl hX₂ hX₂s
+    hp₁ rfl hX₁ hX₁s hp₂ rfl hX₂ hX₂s hstock
   rw [hσy₁ _ hp₂ _ hXm₁'] at hr₂
   exact hF x₂ (by clear * - hwarm hx₂l hx₁l; omega) (by clear * - hx₁r h2ρ hx₂r; omega) X₂ k₂ hX₂
     hX₂s hp₂ (by clear * - hrise hr₂ hr hr₁; omega)

@@ -34,7 +34,7 @@ theorem regular_later_heads_at
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
     (horigin : (∃ CV, SA.FastUpdateAt tr.projAC x c s D CV) ∨
-      SA.SlowLockAt tr.projAC x c s D) :
+      SA.SlowLockAt tr.projAC x c s D) (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
@@ -59,9 +59,9 @@ theorem regular_later_heads_at
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
     rcases horigin with ⟨CV, hfast⟩ | hslow
     · exact regular_fast_next_votes_at (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
-        hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl
+        hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl hstock
     · exact Growing.FrameWindow.regular_slow_next_votes_at (hsub le_rfl h6) hrun hnc hsvc
-        hawake hf hcatch hnr hwarm hpos hs₀ hm (h6.trans hmb) hx hslow
+        hawake hf hcatch hnr hwarm hpos hs₀ hm (h6.trans hmb) hx hslow hstock
   obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, SA.ResultAt tr.projAC x c s C CV ∧
       Anc (tr.HonestBlocksAt H) D C := by
     rcases horigin with ⟨CV, ell, C, hu, hconf, hsel, -⟩ | ⟨ell, C, hu, hconf, hsel⟩
@@ -72,7 +72,7 @@ theorem regular_later_heads_at
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
       (hm.trans (hts hs₀s)) hx hres (by
         obtain ⟨ell', hu, -, -⟩ := hres
-        exact hu.2.2.1.trans_le (h6.trans hmb))
+        exact hu.2.2.1.trans_le (h6.trans hmb)) hstock
   have hDQ := hDC.trans hCQ
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg q)).localRun
   have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
@@ -93,7 +93,7 @@ theorem regular_later_heads_at
       rw [hes]; simp only [SA.freeze]
       rw [show (s : Int) - 1 = ((s - 1 : Nat) : Int) by omega]
       have := hm.trans (hts hs₀)
-      linarith)
+      linarith) hstock
   have hPhi := frameIn_at hrun hnc hz hc
   have hcoh := honestBlocksAt_coherent hrun hnc
   have hEQ : Hd = Q := hcoh.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
@@ -111,7 +111,7 @@ theorem regular_later_heads_at
     by_cases hJD : kindJ → Anc (tr.HonestBlocksAt H) J D
     · apply Growing.later_heads_of_early_witness_at hrun hnc hsvc hawake hf hcatch hnr
         (by have := hts hs₀s; linarith) hmb (hsub (hts hs₀s) le_rfl) hz
-        (by linarith) hc hHd ?_ hJD hDQ hbase
+        (by linarith) hc hHd ?_ hJD hDQ hbase hstock
       rw [frame_of_projAC_at hrun hz hc] at hvQ
       rw [← hframe.floor_eq z q hz hqt hqhi]
       exact hvQ.2.2.2
@@ -123,7 +123,7 @@ theorem regular_later_heads_at
   · obtain ⟨hA, l, hl, hls, a, hai, D', CV', hza, hop, -, -, -, hQD⟩ := ho
     have hheads := optimistic_supporter_later_heads_at hframe hrun hnc hsvc hawake hf hcatch hnr
       (by have := hts hs₀s; linarith) hs₀s (by omega) hmb hz hza ⟨hc, he⟩ hes hA
-      (hes ▸ hop) (hQD.mono hPhi.2)
+      (hes ▸ hop) (hQD.mono hPhi.2) hstock
     intro r hrlo hrN
     constructor
     · intro y i ev hy hv hesv

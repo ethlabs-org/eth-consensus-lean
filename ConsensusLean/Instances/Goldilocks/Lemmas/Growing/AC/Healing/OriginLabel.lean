@@ -62,7 +62,7 @@ theorem origin_label_lt_at_proposal_at
         exact (SA.upTo_optimisticLockAt hp.run.time_mono).mpr
           ⟨htime.le, hop⟩
       exact proposal_no_optimistic_of_run (hp.run.upTo hd) (hp.noColl.upTo _) hf hpH
-        hc' hcall hti v (htime ▸ hv) r hri D CV hop'
+        hc' hcall hti hp.stock v (htime ▸ hv) r hri D CV hop'
     omega
 
 end Consensus.Goldilocks.Healing.Growing.ProposalSources

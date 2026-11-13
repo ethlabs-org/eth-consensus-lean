@@ -88,7 +88,7 @@ theorem origin_label {C : Blk (S.params (pubOf env) one_le_card)} {s : Nat}
     rw [ht] at hi
     change 4 * 3 * (s : Int) + 6 * 3 ≤ 41 at hi
     omega
-  · obtain ⟨ℓ', A, hpt, -, h34, -⟩ := SA.optimistic_seats hrun' hx hO
+  · obtain ⟨ℓ', A, hpt, -, h34, -⟩ := SA.optimistic_seats hrun' hx hO rfl
     have hsub : SA.optimisticVoters _ A ℓ'.frame s C ⊆ H S := by
       rintro u ⟨v, hv, rfl, -⟩
       by_contra hvH
@@ -108,7 +108,7 @@ theorem origin_small {C : Blk (S.params (pubOf env) one_le_card)} {s : Nat}
   have hs := origin_label hC
   obtain ⟨x, hx, j, e, hv, -, hes, D, hD, hDr, hCD⟩ :=
     Compose.honest_supporter_before rhoc_run rhoc_noColl (by norm_num) rhoc_service
-      rhoc_faultBound hC
+      rhoc_faultBound hC rfl
   obtain ⟨D', hD', hD'r, hsm⟩ := vote_head hx hv (hes ▸ hs)
   have hD'U : D' ∈ (tr S).HonestBlocks (H S) := ⟨x, hx, j, hD'⟩
   have hDD : D = D' := honest_coherent'.1 hD hD'U (hDr.trans hD'r.symm)

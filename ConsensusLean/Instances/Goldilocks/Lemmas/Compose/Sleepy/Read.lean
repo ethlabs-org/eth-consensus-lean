@@ -48,7 +48,7 @@ head holds at every cut, also inside an event.) -/
 theorem ready_read_record (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr j t) (_hb : Regimes.Boundary tr y j)
-    (hready : Regimes.ReadyAt tr H (Regimes.catchUp sp) y t) :
+    (hready : Regimes.ReadyAt tr H (Regimes.catchUp sp) y t) (hstock : sp.committeeSize = sp.n) :
     (∃ R ∈ (Node.frame (tr.state y j)).tree,
         R.root = (tr.state y j).ac.latestConfirmed ∧ Regimes.readAfter tr y j t = R) ∨
       ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
@@ -63,8 +63,8 @@ theorem ready_read_record (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollR
     have hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t := fun ht0 =>
       ready_implies_joined sp ro dg H tr proposer hrun y hy t (Regimes.catchUp sp) ht0
         (by simp only [Regimes.catchUp]; linarith [sp.toParams.hΔ]) hready.2
-    obtain ⟨hc, hs⟩ := read_head_support (sleepy_invariant hrun hnc hsl) hrun hnc hsl hy hrp.1
-      hrp.2 hwj ⟨hR, hRr⟩
+    obtain ⟨hc, hs⟩ := read_head_support (sleepy_invariant hrun hnc hsl hstock) hrun hnc hsl hy
+      hrp.1 hrp.2 hwj ⟨hR, hRr⟩
     exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
   · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
 
@@ -170,26 +170,28 @@ theorem effective_record_mono_of_invariant {b : Time} (hrun : GoldilocksRun prop
 /-- The sender-window specialization of effective-record monotonicity. -/
 theorem effective_record_mono_upTo {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hpre : SleepyPrefix tr H ΔF b) {y : Fin sp.n} (hy : y ∈ H)
-    {i j : Nat} (hij : i ≤ j) (hj : ∀ k < j, tr.time k ≤ b) :
+    {i j : Nat} (hij : i ≤ j) (hj : ∀ k < j, tr.time k ≤ b) (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H)
       ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
         (Node.frame (tr.state y i)).F)
       ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
         (Node.frame (tr.state y j)).F) :=
-  effective_record_mono_of_invariant hrun hnc (sleepy_invariant_upTo hrun hnc hpre) hy hij hj
+  effective_record_mono_of_invariant hrun hnc (sleepy_invariant_upTo hrun hnc hpre hstock) hy
+    hij hj
 
 /-- **The effective record only extends**: the effective record of an honest node (the block of
 its record when its frame holds it, else its `Σ.F`) at a later cut extends the one at an earlier
 cut (inside the honest blocks). -/
 theorem effective_record_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j) :
+    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H)
       ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
         (Node.frame (tr.state y i)).F)
       ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
         (Node.frame (tr.state y j)).F) :=
   have ⟨_, hb, hj⟩ := exists_horizon hrun j
-  effective_record_mono_upTo hrun hnc (hsl.prefix hb) hy hij hj
+  effective_record_mono_upTo hrun hnc (hsl.prefix hb) hy hij hj hstock
 
 end Consensus.Goldilocks.Compose
 

@@ -252,7 +252,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
     clear * - hc₁ hc₂; omega
   · -- signed at `t_m`: then `n = 1`, and the signer is the voter, with its vote before `d`
     obtain ⟨hn1, j', hj', e', hve', hes⟩ :=
-      slot_start_optimistic hp.run hp.noColl hv hs (by rw [hcτ', hcc, hts]) hrd hopt
+      slot_start_optimistic hp.run hp.noColl hv hs (by rw [hcτ', hcc, hts]) hrd hopt hp.stock
     obtain rfl : v = y := Fin.ext (by have := v.2; have := y.2; (clear * - hn1; omega))
     have := ((SA.one_vote_per_slot sp) _ ro H _ tr.projAC hr v hy j' k e' e hve'
       ⟨ℓ, hc.1, hc.2⟩ hes).1

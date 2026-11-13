@@ -267,7 +267,7 @@ theorem proposal_anchor_cases_coreU
     obtain rfl : L = B := hU.1 hL (hΦU hB₂) (hLr.trans hB₂r.symm)
     rcases horig with ⟨CV, hopt⟩ | ⟨ℓ', hupd⟩
     · obtain ⟨z, hz, j', e', hv, hes, Hd, hHd, hHdr, hB'Hd⟩ :=
-        fastLock_honest_voteU hrun hS.two_faulty_lt hq (Or.inr hopt)
+        fastLock_honest_voteU hrun hS.two_faulty_lt hq (Or.inr hopt) hS.stock
       exact ⟨z, hz, j', e', hv, hes.trans heq, Hd, hHd, hHdr, haB.trans (hLB'.trans hB'Hd)⟩
     · exfalso
       have h1 := hupd.2.2.1

@@ -460,7 +460,7 @@ theorem rows_supported {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} (hy :
   obtain ⟨j', hj'j, B', CV, hfl, L, hLU, hLr, hLB'⟩ := SA.fast_lock_provenance hr hav j l₀ hl₀' hlf
   obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
   obtain ⟨w, hw, jw, ew, hvw, hws, Hd, hHd, hHdr, hB'Hd⟩ :=
-    SA.fastLock_honest_vote hr' D.two_faults_lt hav hfl
+    SA.fastLock_honest_vote hr' D.two_faults_lt hav hfl D.stock
   refine ⟨w, hw, jw, ew, hvw, ?_, Hd, hHd, hHdr, (Anc.mono hΦU hVB).trans (hLB'.trans hB'Hd)⟩
   -- the lock's slot is at most `q`
   rw [hws]

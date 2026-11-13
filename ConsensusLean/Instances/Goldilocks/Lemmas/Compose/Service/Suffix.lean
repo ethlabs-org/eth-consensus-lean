@@ -92,7 +92,8 @@ private theorem voter_facts_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc 
     {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head) :
+    (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head ∧
       ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
         (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
@@ -103,9 +104,8 @@ private theorem voter_facts_of_old (hrun : GoldilocksRun proposer dg H tr) (hnc 
   have hQt : d.head ∈ ℓp.frame.tree := (acProposal_start_anc_head hΦp hd).2 |> fun h =>
     mem_of_anc_left h (acProposal_start_anc_head hΦp hd).1
   refine ⟨?_, fun B hB hQB =>
-    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hB (fun O hO => (hold O hO).trans hQB)
-      hrun.stock⟩
-  rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes hrun.stock with hg | ⟨O, hO, hfO⟩
+    vote_floor_le_of hrun hnc hf hs0 hy hcy hes hB (fun O hO => (hold O hO).trans hQB) hstock⟩
+  rcases vote_fcRoot_old_of hrun hnc hf hs0 hy hcy hes hstock with hg | ⟨O, hO, hfO⟩
   · exact honest_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
   · exact hfO.trans (hold O hO)
 end Run
@@ -145,11 +145,11 @@ theorem old_child_ineligible_before {b : Time}
     (hold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocks H) O d.head)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
+    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) (hstock : sp.committeeSize = sp.n) :
     ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B := by
   have hs0 : 0 < s := by omega
-  obtain ⟨hfcQ, hflQ⟩ := voter_facts_of_old hrun hnc hf hp hc hd hs0 hy hcy hes hold
+  obtain ⟨hfcQ, hflQ⟩ := voter_facts_of_old hrun hnc hf hp hc hd hs0 hy hcy hes hold hstock
   exact old_child_ineligible_of hrun hnc hp hP hPs hc hcall hd hti hPQ hDQ hviab hy hcy hes
     (suffixService_of_before hrun hnc hsync hs0) hib hjb hfcQ hflQ hB hBQ hBs
 end Leaves
@@ -181,7 +181,7 @@ theorem suffix_agree_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
       Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
       X ≠ d.head →
@@ -206,7 +206,8 @@ theorem suffix_agree_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H
     have := head_slot_lt hrun hnc hp hP hPs hc hd hPQ
     omega
   obtain ⟨hfcQ, hflQ⟩ := voter_facts_of_old hrun hnc hf hp hc hd hs0 hy hcy hes
-    (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib)
+    (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib hstock)
+    hstock
   exact suffix_agree_of hrun hnc (suffixService_of_before hrun hnc hsync.ac hs0) hp hP hPs hc hcall
     hd hti hPQ hsD hDQ hviab hy hcy hes hib hjb hflQ
 
@@ -229,7 +230,8 @@ theorem proposal_at_voter_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ℓy e)
-    (hes : e.msg.slot = s) (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hes : e.msg.slot = s) (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
   have hf : 2 * Hᶜ.ncard < sp.n := by
     have hzero := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb0)
@@ -243,7 +245,8 @@ theorem proposal_at_voter_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n
     have := head_slot_lt hrun hnc hp hP hPs hc hd hPQ
     omega
   obtain ⟨hfcQ, hflQ⟩ := voter_facts_of_old hrun hnc hf hp hc hd hs0 hy hcy hes
-    (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib)
+    (proposal_walk_passes_old_before hrun hnc hb0 hsync hfb hinv hp hc hcall hd hti hib hstock)
+    hstock
   exact proposal_at_voter_of hrun hnc (suffixService_of_before hrun hnc hsync.ac hs0) hp hP hPs hc
     hd hPQ hy hcy hes hjb hfcQ hflQ
 

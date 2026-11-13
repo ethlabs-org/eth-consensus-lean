@@ -88,11 +88,11 @@ theorem exists_reset_of_drain_rounds_awake_at
       sp.ts N + 2 * sp.Δ <
         Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b) (hstock : sp.committeeSize = sp.n) :
     ∃ a, IsReset tr H g a ∧
       a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
   exact KernelProof.exists_reset_of_drain_rounds_awake_at hrun hnc hf hsvc hawake hcatch hnr
-    hH hδ hΔF hr hgr hG hcz hb hgp hdrain
+    hH hδ hΔF hr hgr hG hcz hb hgp hdrain hstock
 
 /-- Step 4 packaging: a bounded reset and a snapshot supply the existing finite reset record. -/
 theorem resetPremisesUpTo_of_reset_at
@@ -102,9 +102,10 @@ theorem resetPremisesUpTo_of_reset_at
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hreset : IsReset tr H g a) (hab : a ≤ b)
-    (hsnapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b) :
+    (hsnapshot : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ResetPremisesUpTo tr H proposer dg g ΔF a b := by
-  exact ⟨hrun, hnc, hsvc, hawake, hf, hreset, hab, hsnapshot, hrun.stock⟩
+  exact ⟨hrun, hnc, hsvc, hawake, hf, hreset, hab, hsnapshot, hstock⟩
 
 end Consensus.Goldilocks.Healing.Growing
 

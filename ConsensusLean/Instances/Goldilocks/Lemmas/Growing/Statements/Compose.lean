@@ -27,12 +27,6 @@ theorem eventOrder_of_growing (h : Compose.Growing.EventOrder) : EventOrder := b
       msg_before := fun y hy i m hm hs => r.msg_before y i m hy hm hs
       finite := r.finite }
 
-theorem readyImpliesJoined_of_growing (h : Compose.Growing.ReadyImpliesJoined) :
-    ReadyImpliesJoined :=
-  fun sp ro dg H tr proposer hrun y hy t c ht hc ha =>
-    h sp ro dg (fun _ => H) tr proposer (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) y t c
-      hy ht hc ha
-
 theorem acProjection_of_growing (h : Compose.Growing.ACProjection) : ACProjection := by
   intro P A dg H sg tr proposer ini hreq hpay hrun hnc
   have r := h P A dg (fun _ => H) sg tr proposer hreq hpay

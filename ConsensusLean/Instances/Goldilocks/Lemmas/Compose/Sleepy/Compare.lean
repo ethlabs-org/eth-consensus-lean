@@ -143,7 +143,8 @@ the node admitted (or cast) in `[t_s, t_s + 2Δ)`. -/
 private theorem optimistic_seats
     (hrun : ACRun proposer tr H U)
     {X : Fin sp.n} (hX : X ∈ H) {k s : Nat}
-    {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV) :
+    {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : OptimisticLockAt tr X k s D CV)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ ℓ A, OptimisticPoint tr X k ℓ A ∧ ℓ.frame.tree ⊆ U ∧
       3 * sp.n ≤ 4 * (optimisticVoters sp A ℓ.frame s D).ncard ∧
       optimisticVoters sp A ℓ.frame s D ⊆ Relayed tr U X s D := by
@@ -155,7 +156,7 @@ private theorem optimistic_seats
   split_ifs at hsel with hcond
   have h34 := (deepest_mem hsel).1.2.1
   rw [hsl] at h34 hcond
-  rw [hrun.stock] at h34
+  rw [hstock] at h34
   refine ⟨ℓ, A, hpt, hΦU, h34, ?_⟩
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
   have hvs := optimisticPoint_pool_slot hr hX hpt hv
@@ -605,14 +606,15 @@ private theorem result_optimistic_compatible
     (hsync : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) (sp.ts s)
       (sp.ts (s + 1 : Nat) + sp.Δ) tr.projAC) {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
     {i i' : Nat} {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i s C CV) (hO : SA.OptimisticLockAt tr.projAC x i' s C' CV') :
+    (hR : SA.ResultAt tr.projAC X i s C CV) (hO : SA.OptimisticLockAt tr.projAC x i' s C' CV')
+    (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocks H) C C' := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
     (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
   by_contra hnc'
   obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := SA.result_side hrun' hX hR
-  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO hstock
   have := SA.relayed_against hrun'.localRun hsync hx hX hc ht hrs hS hT fun h => hnc' (Or.symm h)
   have := hle (SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
   omega
@@ -638,7 +640,7 @@ theorem honest_vote_exists_upTo (hrun : GoldilocksRun proposer dg H tr) (hnc : N
 private theorem honest_supporter_win
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hwin : SleepyWindow tr H ΔF s₀ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hs₀ : s₀ ≤ s) (hC : OriginWithin tr H C s b) :
+    (hs₀ : s₀ ≤ s) (hC : OriginWithin tr H C s b) (hstock : sp.committeeSize = sp.n) :
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -680,7 +682,7 @@ private theorem honest_supporter_win
     exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
       SA.state_pool_slot sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · -- an optimistic selection: `3n/4 > f` voters
-    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
+    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
     have hf := two_faults_lt_of_window hwin
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
@@ -697,7 +699,8 @@ theorem honest_supporter_before
     {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b) :
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hC : OriginWithin tr H C s b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -736,7 +739,7 @@ theorem honest_supporter_before
     obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hX hu.1
     exact ⟨_, hwH, j, e, hve, (hrun.time_mono hj.le).trans hi₀,
       SA.state_pool_slot sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
-  · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
+  · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
     have hf : 2 * Hᶜ.ncard < sp.n := by
       have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
       change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
@@ -758,17 +761,18 @@ time `≤ b` whose head extends it. -/
 theorem honest_supporter_upTo
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginWithin tr H C s b) :
+    (hC : OriginWithin tr H C s b) (hstock : sp.committeeSize = sp.n) :
     ∃ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocks H) e.msg C :=
-  honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC
+  honest_supporter_win hrun hnc hpre.window (Nat.zero_le s) hC hstock
 
 /-- `same_label_compatible_upTo` on the window from slot `s₀ ≤ s` to `b`. -/
 private theorem same_label_compatible_win
     (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hwin : SleepyWindow tr H ΔF s₀ b)
     {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hs₀ : s₀ ≤ s)
-    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
+    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b)
+    (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocks H) C C' := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -794,8 +798,8 @@ private theorem same_label_compatible_win
       fun h => hnc' (Or.symm h)
     have h2 := SA.relayed_against hrun'.localRun (hsync hi hR) hX hX' hc' ht' hrs' hS' hSF hnc'
     omega
-  · exact result_optimistic_compatible hrun hnc (hsync hi hR) hX hX' hR hO'
-  · exact Or.symm (result_optimistic_compatible hrun hnc (hsync hi' hR') hX' hX hR' hO)
+  · exact result_optimistic_compatible hrun hnc (hsync hi hR) hX hX' hR hO' hstock
+  · exact Or.symm (result_optimistic_compatible hrun hnc (hsync hi' hR') hX' hX hR' hO hstock)
   · -- OO: an honest validator in common, with one slot-`s` vote
     have hr := hrun'.localRun
     have hU := hr.coherent
@@ -803,8 +807,8 @@ private theorem same_label_compatible_win
     have hle : ∀ T : Set (Fin sp.n), T.ncard ≤ sp.n := fun T =>
       (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
     by_contra hnc'
-    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
-    obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := SA.optimistic_seats hrun' hX' hO'
+    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
+    obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := SA.optimistic_seats hrun' hX' hO' hstock
     have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ℓ.frame s C)
       (SA.optimisticVoters sp A' ℓ'.frame s C')
     have := hle (SA.optimisticVoters sp A ℓ.frame s C ∪ SA.optimisticVoters sp A' ℓ'.frame s C')
@@ -829,12 +833,13 @@ theorem result_optimistic_compatible_label_before
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     {s : Nat} (hs : sp.ts s + 3 * sp.Δ ≤ b) {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
     {i i' : Nat} {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i s C CV) (hO : SA.OptimisticLockAt tr.projAC x i' s C' CV') :
+    (hR : SA.ResultAt tr.projAC X i s C CV) (hO : SA.OptimisticLockAt tr.projAC x i' s C' CV')
+    (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocks H) C C' := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   by_contra hnc'
   obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := SA.result_side hrun' hX hR
-  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO
+  obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := SA.optimistic_seats hrun' hx hO hstock
   have := SA.relayed_against_of_held hrun'.localRun
     (SA.relayed_held_before hrun'.localRun hsync.ac hx hX hc ht hs hrs) hS hT
     fun h => hnc' (Or.symm h)
@@ -849,7 +854,8 @@ theorem same_label_compatible_before
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hf : 2 * Hᶜ.ncard < sp.n)
     {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
+    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b)
+    (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocks H) C C' := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hs := hsync.ac
@@ -863,7 +869,7 @@ theorem same_label_compatible_before
       obtain ⟨_, hu, _⟩ := hR
       exact hu.2.2.1
     exact result_optimistic_compatible_label_before hrun hnc hsync
-      ((SA.add_mul_delta_le (by norm_num)).trans (ht.symm.trans_le hi)) hX hx hR hO
+      ((SA.add_mul_delta_le (by norm_num)).trans (ht.symm.trans_le hi)) hX hx hR hO hstock
   obtain ⟨X, hX, i, CV, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
     obtain ⟨X', hX', i', CV', hi', hR' | hO'⟩ := originWithin_iff.1 hC'
   · by_contra hnc'
@@ -884,8 +890,8 @@ theorem same_label_compatible_before
   · have hr := hrun'.localRun
     have hU := hr.coherent
     by_contra hnc'
-    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO
-    obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := SA.optimistic_seats hrun' hX' hO'
+    obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := SA.optimistic_seats hrun' hX hO hstock
+    obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := SA.optimistic_seats hrun' hX' hO' hstock
     have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ℓ.frame s C)
       (SA.optimisticVoters sp A' ℓ'.frame s C')
     have := hle (SA.optimisticVoters sp A ℓ.frame s C ∪ SA.optimisticVoters sp A' ℓ'.frame s C')
@@ -907,9 +913,10 @@ theorem same_label_compatible_before
 theorem same_label_compatible_upTo
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
+    (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b)
+    (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocks H) C C' :=
-  same_label_compatible_win hrun hnc hpre.window (Nat.zero_le s) hC hC'
+  same_label_compatible_win hrun hnc hpre.window (Nat.zero_le s) hC hC' hstock
 
 /-- Two blocks below the head of one vote are compatible. -/
 private theorem compatible_of_voteExtends (hU : Coherent (tr.HonestBlocks H)) {v : Vote sp.n}
@@ -925,14 +932,15 @@ private theorem compatible_of_voteExtends (hU : Coherent (tr.HonestBlocks H)) {v
 theorem origins_below_succ_upTo
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H s b)
-    (hV : VotesBelowUpTo tr H s b) : OriginsBelowUpTo tr H (s + 1) b := by
+    (hV : VotesBelowUpTo tr H s b) (hstock : sp.committeeSize = sp.n) :
+    OriginsBelowUpTo tr H (s + 1) b := by
   have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   rw [originsBelowUpTo_iff] at hP ⊢
   -- an origin of label `s` and one of label `j < s` are below the honest supporter's head
   have hnew : ∀ C C' j, j < s → OriginWithin tr H C s b → OriginWithin tr H C' j b →
       Compatible (tr.HonestBlocks H) C C' := by
     intro C C' j hj hC hC'
-    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporter_upTo hrun hnc hpre hC
+    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporter_upTo hrun hnc hpre hC hstock
     exact compatible_of_voteExtends hU hext
       (votesBelowUpTo_iff.1 hV C' j hC' x hx i e hv hib (by omega) (by omega))
   intro C j C' j' hj hj' hC hC'
@@ -941,7 +949,7 @@ theorem origins_below_succ_upTo
   · exact hP C j C' j' hj hj' hC hC'
   · exact Or.symm (hnew C' C j hj hC' hC)
   · exact hnew C C' j' hj' hC hC'
-  · exact same_label_compatible_upTo hrun hnc hpre hC hC'
+  · exact same_label_compatible_upTo hrun hnc hpre hC hC' hstock
 
 /-- The finite-deadline origin step preserves the horizon on every vote witness. -/
 theorem origins_below_succ_before
@@ -949,7 +957,8 @@ theorem origins_below_succ_before
     (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
-    {s : Nat} (hP : OriginsBelowUpTo tr H s b) (hV : VotesBelowUpTo tr H s b) :
+    {s : Nat} (hP : OriginsBelowUpTo tr H s b) (hV : VotesBelowUpTo tr H s b)
+    (hstock : sp.committeeSize = sp.n) :
     OriginsBelowUpTo tr H (s + 1) b := by
   have hU := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun.coherent
   have hf : 2 * Hᶜ.ncard < sp.n := by
@@ -964,7 +973,8 @@ theorem origins_below_succ_before
   have hnew : ∀ C C' j, j < s → OriginWithin tr H C s b → OriginWithin tr H C' j b →
       Compatible (tr.HonestBlocks H) C C' := by
     intro C C' j hj hC hC'
-    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporter_before hrun hnc hb hsync hfb hC
+    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ :=
+      honest_supporter_before hrun hnc hb hsync hfb hC hstock
     exact compatible_of_voteExtends hU hext
       (votesBelowUpTo_iff.1 hV C' j hC' x hx i e hv hib (by omega) (by omega))
   intro C j C' j' hj hj' hC hC'
@@ -973,18 +983,18 @@ theorem origins_below_succ_before
   · exact hP C j C' j' hj hj' hC hC'
   · exact Or.symm (hnew C' C j hj hC' hC)
   · exact hnew C C' j' hj' hC hC'
-  · exact same_label_compatible_before hrun hnc hsync hf hC hC'
+  · exact same_label_compatible_before hrun hnc hsync hf hC hC' hstock
 
 /-- **Extending the origin frontier**: `P_s` and `V_s` give `P_{s+1}`. -/
 theorem origins_below_succ
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H s) (hV : VotesBelow tr H s) :
-    OriginsBelow tr H (s + 1) := by
+    (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H s) (hV : VotesBelow tr H s)
+    (hstock : sp.committeeSize = sp.n) : OriginsBelow tr H (s + 1) := by
   refine originsBelow_iff.2 fun C j C' j' hj hj' hC hC' => ?_
   obtain ⟨b, hb⟩ := hC.exists_within
   obtain ⟨b', hb'⟩ := hC'.exists_within
   exact originsBelowUpTo_iff.1 (origins_below_succ_upTo hrun hnc
-    (hsl.prefix (le_max_right (max b b') 0)) (hP.upTo _) (hV.upTo _)) C j C' j' hj hj'
+    (hsl.prefix (le_max_right (max b b') 0)) (hP.upTo _) (hV.upTo _) hstock) C j C' j' hj hj'
     (hb.mono ((le_max_left b b').trans (le_max_left _ 0)))
     (hb'.mono ((le_max_right b b').trans (le_max_left _ 0)))
 

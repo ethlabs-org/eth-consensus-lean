@@ -64,7 +64,7 @@ theorem available_healing : AvailableHealing := by
     (hr.2.2.2.1 a ha).trans hr.2.2.2.2.1
   have hg : gbar g ≤ a + Tb := by linarith [lt_cutZ sp g, sp.toParams.hΔ, hTb]
   have hincl := (run_inclusion sp ro proposer dg H tr g ΔF
-    hrun hs.noColl hs.genesisRoot hs.healthy hc).2
+    hs.stock hrun hs.noColl hs.genesisRoot hs.healthy hc).2
     (a + Tb) hg hb.1
   intro p P hP htp hu
   exact (hincl p P hP (by simp only [T_heal] at htp; linarith)).2 hu

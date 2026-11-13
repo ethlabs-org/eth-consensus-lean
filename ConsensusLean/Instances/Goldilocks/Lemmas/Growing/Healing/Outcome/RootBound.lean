@@ -70,7 +70,7 @@ theorem reset_vote_root_source_at
       Outcome.left_entry_origin_at (g := g) hp.run hp.noColl ht hj hy hq hJm hJT (by omega) hEC
         (by have := Store.hj_lt_h hr hCm; omega)
     have hlu : l < u := hes ▸ Outcome.row_origin_label_lt_at hp.run hp.noColl
-      hy hv hc hW ha hs hdj hrd ho
+      hy hv hc hW ha hs hdj hrd ho hp.stock
     obtain ⟨CV, ellw, D, _, hfl, _⟩ := ho.2.2.1
     have hrj : tr.time r ≤ tr.time j := hp.run.time_mono (by omega)
     have hrt := Outcome.fastLock_time_lt_at hp.run hfl hlu (hrj.trans htupper)

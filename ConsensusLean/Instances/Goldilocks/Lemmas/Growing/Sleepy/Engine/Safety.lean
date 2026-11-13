@@ -45,7 +45,7 @@ theorem sleepy_safe_finite_at (hv : rho.ExecutionValid)
     (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b) :
     Regimes.Growing.ReadySafeOn (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) 0 b :=
-  Regimes.Growing.sleepy_safe_at (simTraceAt_goldilocksRun S rho hn hv) hnc hb0 hsync hB
+  Regimes.Growing.sleepy_safe_at (simTraceAt_goldilocksRun S rho hn hv) hnc hb0 hsync hB rfl
 
 /-- **Finite safety of the engine's confirmed output under growing faults.** Under the finite
 service and the L0 sleepy budget with look-ahead `5Δ` through the horizon, the confirmed reads of

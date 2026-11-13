@@ -215,12 +215,12 @@ private theorem seeded_members_compatible (hrun : Growing.GoldilocksRun proposer
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
-    (hcv : ChainConvictedBelow tr H) :
+    (hcv : ChainConvictedBelow tr H) (hstock : sp.committeeSize = sp.n) :
     ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
       HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C' :=
   fun C s C' s' h h' => healedOriginsBelow_iff.1
-    (healed_frontier_at hrun hnc hseed hTb hsvc hB hcv (max s s' + 1)).1 C s C' s' (by omega)
-      (by omega) h h'
+    (healed_frontier_at hrun hnc hseed hTb hsvc hB hcv hstock (max s s' + 1)).1 C s C' s'
+      (by omega) (by omega) h h'
 
 /-- **The seeded cache facts.** For a reader honest at `t ∈ [t₁, b]` that has called from
 `t_{r−k−3}` on before its read, `Σ.F` is on the healed chain, and `fc_root` is compatible with
@@ -233,14 +233,14 @@ theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
-      sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c) :
+      sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c) (hstock : sp.committeeSize = sp.n) :
     OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b →
         C ∈ (Node.frame (tr.state y i)).tree →
         Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C :=
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
   seeded_caches_of hrun hnc hcv hseed hTb
-    (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv) ht0 hi htb hy
+    (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hstock) ht0 hi htb hy
     (hB.two t ht0 htb) hcall
 
 /-- **S3 at full reads for the healed chain.** A block on the healed chain held in the frame of a
@@ -254,13 +254,13 @@ theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
-      sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c) :
+      sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c) (hstock : sp.committeeSize = sp.n) :
     ∀ C, OnHealedChain tr H g r (r + sp.k - 1) C b → C ∈ (Node.frame (tr.state y i)).tree →
       (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
         C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
   fun _ hC hCt => seeded_viable_of hrun hnc hcv hseed hTb
-    (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv) ht0 hi htb hy
+    (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hstock) ht0 hi htb hy
     (hB.two t ht0 htb) hcall hC hCt
 
 /-- **The held seed past `T`**. The seed's high origin `S` is in the frame of every honest call at
@@ -290,21 +290,21 @@ theorem seeded_invariant_of_cover_at (hrun : Growing.GoldilocksRun proposer dg H
     (hcov : ∀ y n t, tc ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
         ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
-          (tr.state y n).fg.F)) :
+          (tr.state y n).fg.F)) (hstock : sp.committeeSize = sp.n) :
     SeededInvariant tr H g r (r + sp.k - 1) (max tc (sp.ts (r + sp.k : Nat))) b := by
   have hdt : sp.ts (r + sp.k : Nat) ≤ max tc (sp.ts (r + sp.k : Nat)) := le_max_right _ _
-  have hF := healed_frontier_at hrun hnc hseed hTb hsvc hB hcv
-  exact ⟨seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv,
+  have hF := healed_frontier_at hrun hnc hseed hTb hsvc hB hcv hstock
+  exact ⟨seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hstock,
     fun C s hC y i e he hib hs =>
       healedVotesBelow_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl,
     seeded_record_at hrun hnc hseed hTb hsvc hB hcv hdt
       (fun y n t ht htT hy hrp => hcov y n t ((le_max_left _ _).trans ht) htT hy hrp),
     fun y i t ht₁ hi htb hy hcall =>
-      seeded_caches_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
+      seeded_caches_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall hstock,
     fun y i t ht₁ hi htb hy => seeded_locks_at hrun hnc hseed (hdt.trans ht₁) hi htb hy,
     fun y i ℓ C hy hi hib h => seeded_sources_at hrun hnc hseed hy (hdt.trans hi) hib h,
     fun y i t ht₁ hi htb hy hcall =>
-      seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall,
+      seeded_viable_at hrun hnc hseed hTb hsvc hB hcv hdt ht₁ hi htb hy hcall hstock,
     seed_held_past_at hrun hnc hseed hTb⟩
 
 /-- **The seeded invariant through `b`**: from the hand-over seed, the reset service and the slot
@@ -315,7 +315,7 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
-    (hcv : ChainConvictedBelow tr H) :
+    (hcv : ChainConvictedBelow tr H) (hstock : sp.committeeSize = sp.n) :
     ∃ t₁, t₁ ≤ T ∧ sp.ts (r + sp.k : Nat) ≤ t₁ ∧ SeededInvariant tr H g r (r + sp.k - 1) t₁ b := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨hσT, hrσ, -⟩ := hseed.timing
@@ -326,7 +326,7 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr)
       simp only [SAParams.ts]; push_cast; ring
     linarith
   exact ⟨_, max_le htcT hDT, le_max_right _ _,
-    seeded_invariant_of_cover_at hrun hnc hseed hTb hsvc hB hcv hcov⟩
+    seeded_invariant_of_cover_at hrun hnc hseed hTb hsvc hB hcv hcov hstock⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

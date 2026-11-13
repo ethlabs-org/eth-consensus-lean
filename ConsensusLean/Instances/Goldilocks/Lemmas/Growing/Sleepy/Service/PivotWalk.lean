@@ -70,12 +70,12 @@ theorem proposal_anchor_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
+    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     d.start.root = sp.genesisRoot ∨
       ∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocksAt H) d.start O := by
   have h0 := hrun.time_nonneg i
   obtain ⟨hc', hd'⟩ := proposal_upTo hrun hc hd
-  rcases proposal_anchor_old_of (hrun.upTo h0) (hnc.upTo _) hf hp hc' hcall hd' hti with
+  rcases proposal_anchor_old_of (hrun.upTo h0) (hnc.upTo _) hf hp hc' hcall hd' hti hstock with
     h | ⟨O, hO, hsO⟩
   · exact Or.inl h
   · exact Or.inr ⟨O, oldOrigin_of_upTo hrun hO, hsO.mono (upTo_subset hrun h0)⟩
@@ -89,13 +89,14 @@ theorem proposal_suffix_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) {D : SA.Blk sp.n (List (FG.Att sp.n))} (hDt : D ∈ ℓp.frame.tree)
-    (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocksAt H) O D) :
+    (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocksAt H) O D)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads := by
   have h0 := hrun.time_nonneg i
   obtain ⟨hc', hd'⟩ := proposal_upTo hrun hc hd
   exact proposal_suffix_viable_of (hrun.upTo h0) (hnc.upTo _) hf hp hc' hcall hd' hti hDt
-    fun O hO => RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0
-      (frame_upTo_at hrun hnc hp hc hDt) (hDold O (oldOrigin_of_upTo hrun hO))
+    (fun O hO => RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0
+      (frame_upTo_at hrun hnc hp hc hDt) (hDold O (oldOrigin_of_upTo hrun hO))) hstock
 
 /-- **A voter's anchor is below `D`, or on `P`'s chain above `D`** (lifted at the vote's time `d`,
 with the proposer honest then): for a block `D` above every old origin and below `Q = P.parent`, at
@@ -111,7 +112,8 @@ theorem vote_anchor_cases_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hDold : ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocksAt H) O D)
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hE : ∀ x j' e', j' < j → HVoteAt tr H x j' e' → e'.msg.slot = s → e'.msg.head = P.root) :
+    (hE : ∀ x j' e', j' < j → HVoteAt tr H x j' e' → e'.msg.slot = s → e'.msg.head = P.root)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) D ∨
       (Anc (tr.HonestBlocksAt H) D (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) ∧
         Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) P ∧
@@ -132,7 +134,7 @@ theorem vote_anchor_cases_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (fun x hx j' hj' e' hv hs => by
       rw [RunTrace.upTo_projAC] at hv
       obtain ⟨hjd, hv⟩ := sa_voteAt_upTo.mp hv
-      exact hE x j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs)
+      exact hE x j' e' hj' (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs) hstock
   rcases h with h | ⟨h1, h2, h3⟩
   · exact Or.inl (h.mono hsub)
   · exact Or.inr ⟨h1.mono hsub, h2.mono hsub, hsub h3⟩
@@ -202,7 +204,8 @@ theorem proposal_walk_passes_from (hrun : Growing.GoldilocksRun proposer dg H tr
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg O) ∨
       ∃ x k CV, x ∈ H (tr.time k) ∧ SA.OptimisticLockAt tr.projAC x k (s - 1) O CV)
     (hlock : ∀ l ∈ (tr.state p i).ac.locks, l.LiveAt sp (tr.time i) → ∀ D,
-      LockWithin tr H D l.slot (tr.time i) → Compatible (tr.HonestBlocksAt H) D O) :
+      LockWithin tr H D l.slot (tr.time i) → Compatible (tr.HonestBlocksAt H) D O)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) O d.head := by
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hp hc
@@ -215,7 +218,7 @@ theorem proposal_walk_passes_from (hrun : Growing.GoldilocksRun proposer dg H tr
     rw [hti]
     simpa using (SA.slot_arithmetic sp s).1 0 (by omega)
   have hbest := proposal_best_toward_from hrun hnc hsync hB hp hc hcall hd hti hb hs0 hσ₀ ha hκ
-    hOt hO
+    hOt hO hstock
   rw [← hsl_i] at hbest
   rw [hhd]
   refine Anc.mono hΦU (SA.anc_getHead hU hΦ hΦU A₁ (tr.time i) _ _ (fun _ h => h)
@@ -237,7 +240,7 @@ theorem proposal_walk_passes_old_at (hrun : Growing.GoldilocksRun proposer dg H 
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∀ O, OldOrigin tr H s O → Anc (tr.HonestBlocksAt H) O d.head := by
   intro O hO
   have hU := honestBlocksAt_coherent hrun hnc
@@ -251,8 +254,8 @@ theorem proposal_walk_passes_old_at (hrun : Growing.GoldilocksRun proposer dg H 
     (by omega) (by omega) (by
       rw [show ((s' + 1 : Nat) : Int) - 1 = (s' : Int) by push_cast; ring]
       exact ts_natCast_nonneg _) (by rw [zero_add]; exact le_max_right _ _)
-    (proposal_holds_old_at hrun hnc hsync hB hinv hp hc hcall hd hti hb O hO) (fun hOt => ?_)
-    (hO.support_at hrun hinv (hti ▸ hb)) fun l _ _ D hD => ?_
+    (proposal_holds_old_at hrun hnc hsync hB hinv hp hc hcall hd hti hb hstock O hO)
+    (fun hOt => ?_) (hO.support_at hrun hinv (hti ▸ hb)) (fun l _ _ D hD => ?_) hstock
   · have hviab := held_origin_viable_at hrun hnc hp hf
       (fun C l D n hC hD => hinv.origins_compatible C l D n (hC.mono hb) (hD.mono hb))
       (fun C m' hC => hinv.origins_compatible O m C m' hOm (hC.within hib)) (hfr ▸ hOt)
@@ -367,7 +370,8 @@ theorem pivot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) (hib : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root) (hib : tr.time i ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ D, ℓp.frame.Anc d.start D ∧ ℓp.frame.Anc D d.head ∧
       (∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads) ∧
       ∀ y j ℓy e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ℓy e → tr.time j ≤ b →
@@ -400,7 +404,7 @@ theorem pivot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     exact hPr.1
   obtain ⟨hstart, hsQ⟩ := acProposal_start_anc_head hΦp hd
   have hQt : d.head ∈ ℓp.frame.tree := mem_of_anc_left hsQ hstart
-  have hpass := proposal_walk_passes_old_at hrun hnc hsync hB hinv hpi hc hcall hd hti hib
+  have hpass := proposal_walk_passes_old_at hrun hnc hsync hB hinv hpi hc hcall hd hti hib hstock
   -- the start and the old origins are extended by the honest slot-`s` votes (genesis, or S2)
   have hextO : ∀ O, OldOrigin tr H s O → ∀ y j e, HVoteAt tr H y j e → tr.time j ≤ b →
       e.msg.slot = s → SA.VoteExtends (tr.HonestBlocksAt H) e.msg O := fun O hO y j e hv hjb hes =>
@@ -408,13 +412,13 @@ theorem pivot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     hinv.vote_extends O m hOm y j e hv hjb (by omega)
   refine pivot_of hrun hnc hp hc hd hti hPQ (Old := OldOrigin tr H s) hpass
     (fun X hX y j e hv hjb hes => ?_) (fun D hDt _ hDold =>
-      proposal_suffix_viable_at hrun hnc hpi hf hc hcall hd hti hDt hDold)
+      proposal_suffix_viable_at hrun hnc hpi hf hc hcall hd hti hDt hDold hstock)
     (fun D hDt hDQ hDold y j ℓy e hy hcy hjb hes hE => ?_)
   · rcases hX with rfl | hO
     · obtain ⟨hy, ℓy, hcy, hey⟩ := hVoteAt_iff.1 hv
       obtain ⟨⟨Hd, hHdt, hHdr, -⟩, -⟩ := cast_head_fcRoot_at hrun hnc hy ⟨hcy, hey⟩
       have hHdU := (frameIn_at hrun hnc hy hcy).2 hHdt
-      rcases proposal_anchor_old_at hrun hnc hpi hf hc hcall hd hti with hg | ⟨O, hO, hsO⟩
+      rcases proposal_anchor_old_at hrun hnc hpi hf hc hcall hd hti hstock with hg | ⟨O, hO, hsO⟩
       · exact ⟨Hd, hHdU, hHdr, honestAt_genesis_root_anc hrun hU (hΦpU hstart) hg hHdU⟩
       · obtain ⟨Hd', hHd', hHd'r, hOH⟩ := hextO O hO y j e hv hjb hes
         exact ⟨Hd', hHd', hHd'r, hsO.trans hOH⟩
@@ -427,7 +431,7 @@ theorem pivot_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     exact vote_anchor_cases_at hrun hnc hy (hB.two _ (hrun.time_nonneg j) hjb)
       (hrun.antitone hjt hp) hP (hkt.trans_le hj1) hs0 hPQ
       (mem_upTo_of_frame hrun (hrun.antitone hjt hp) (hti ▸ hj1) hc (mem_of_anc_left hDQ hDt))
-      (Anc.mono hΦpU hDQ) hDold hcy hes hE
+      (Anc.mono hΦpU hDQ) hDold hcy hes hE hstock
 
 end Consensus.Goldilocks.Compose.Growing
 

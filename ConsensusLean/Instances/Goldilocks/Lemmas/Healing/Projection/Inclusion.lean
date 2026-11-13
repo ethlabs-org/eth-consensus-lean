@@ -329,12 +329,12 @@ theorem projection_catch (hrun : GoldilocksRun proposer dg H tr) (_hnc : Compose
 
 /-- **H.2 (run), AC inclusion in runs.** -/
 theorem run_inclusion : RunInclusion := by
-  intro sp ro proposer dg H tr g ΔF hrun hnc hroot hh hc
+  intro sp ro proposer dg H tr g ΔF hstock hrun hnc hroot hh hc
   have hd := projection_driven hrun hnc hroot hh
   have hhe := projection_healthy hrun hnc hh
   have hca := projection_catch hrun hnc hh hc
   refine ⟨⟨hd, hhe, hca⟩, fun t₀ ht₀ hinv p P hP htp => ?_⟩
-  have := SA.ac_inclusion sp _ ro H _ tr.projAC proposer g t₀
+  have := SA.ac_inclusion sp hstock _ ro H _ tr.projAC proposer g t₀
     (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
     hd hhe hca ht₀ hinv p P hP.1 hP.2 htp
   exact ⟨this.1, fun hu y hy j ℓ hj ht hk => this.2 hu y hy j ℓ hj ht hk⟩

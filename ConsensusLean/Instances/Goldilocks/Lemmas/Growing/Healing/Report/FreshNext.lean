@@ -36,7 +36,7 @@ theorem FrameWindow.unanimous_next_votes_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
-      e.msg.slot = u → e.msg.head = P.root) :
+      e.msg.slot = u → e.msg.head = P.root) (hstock : sp.committeeSize = sp.n) :
     ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
@@ -51,7 +51,7 @@ theorem FrameWindow.unanimous_next_votes_at
     simp only [SAParams.ts]; push_cast; linarith
   have hdeadline : sp.ts u + sp.Δ ≤ b := by linarith
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g]) hdeadline
+    (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g]) hdeadline hstock
   have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
   have hPh : P ∈ tr.HonestBlocksAt H := by
     obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
@@ -92,7 +92,7 @@ theorem FrameWindow.unanimous_next_votes_at
     obtain ⟨hvi, _, hv⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hawake hf hcatch
       hnr hgu hu0 hTb hz hdes hP hPs hy hc.1
       (by simp only [SAParams.ts] at hlo ⊢; push_cast at hlo; linarith)
-      (by linarith) (hvotes y (hrun.antitone (hshort.trans hlo) hy))
+      (by linarith) (hvotes y (hrun.antitone (hshort.trans hlo) hy)) hstock
     have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg j)
     refine ⟨hvi.2.1.mono (fun Q hQ => hsub ((SA.frameIn_of_callAt hr hy hc'.1).2 hQ)), ?_⟩
     have hframeeq : ell.frame = Node.frame (tr.state y j) := by
@@ -125,8 +125,7 @@ theorem FrameWindow.unanimous_next_votes_at
     exact (geometry y j ell e hy hc hs hjb).1
   · intro y j ell e hy hc hs hjb _
     exact (geometry y j ell e hy hc hs hjb).2
-  · -- the run record's stock: no §S home in this `FrameWindow`-only chain (§S.2, S8 [T₀])
-    exact hrun.stock
+  · exact hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

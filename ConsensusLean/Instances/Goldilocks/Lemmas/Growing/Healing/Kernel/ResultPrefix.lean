@@ -101,7 +101,7 @@ theorem late_result_prefix_votes_before_at
       (live_locks_of_stored_at hrun hnc hf hy hcast hfirst hv.1.1
         (hstored y i ell e hy hcast hib hfirst)
         (fun z q hq hz e' he hslot => hprior z q e' hq
-          (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega)))
+          (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega)) hp.stock)
       (writer_merged_reset_at hp hx hres hts hy hcast hfirst)
   · obtain ⟨m, hm⟩ : ∃ m, e.msg.slot = m + 1 := ⟨e.msg.slot - 1, by omega⟩
     have hsm : s < m := by omega

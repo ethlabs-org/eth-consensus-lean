@@ -68,6 +68,7 @@ def ReadyImpliesJoined : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     ∀ y (t c : Time), y ∈ H t → 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
       (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →

@@ -270,7 +270,7 @@ theorem inclusion_control : ∃ P : N2.Blk, tr2.ProposesAt w0 34 P ∧ P.slot = 
     rw [tickRun_label, show 81 / 8 = 10 by omega, show 81 % 8 = 1 by omega]
     exact List.getElem?_eq_getElem hlen
   refine ⟨P, hP, hPs, hu, Compose.inclusion_sleepy sp2 ro2 (fun _ => w0) dg2 Set.univ tr2 1
-    asleepRun_goldilocksRun (dg2_noColl _) tr2_sleepy w0 (Set.mem_univ _) 34 P 1 hP
+    rfl asleepRun_goldilocksRun (dg2_noColl _) tr2_sleepy w0 (Set.mem_univ _) 34 P 1 hP
     hPs (joined_w0 34 _) w0 (Set.mem_univ _) 81 hc81 (joinedAt _ _)
     (fun k' hk' => absurd hk' (tr2_no_restart _ k')) hu⟩
 

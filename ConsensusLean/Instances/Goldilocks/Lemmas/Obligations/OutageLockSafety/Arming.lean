@@ -175,7 +175,7 @@ private theorem origin_facts (Q : OutageQuery S A V)
         half_ready_of_duration V Q.run.2.point (outage_duration_supply S A V Q)
           (((Q.run.2.point.etaSleepyOn_iff Q.constant _ _ _ _ _ _).mp heta
             t ht (htb.trans hTh)).readyAbove (by change (0 : ℚ) ≤ 1 / 2; norm_num)))
-  have hinvT := Compose.sleepy_invariant_before hrun hnc hT0 (service.mono hTs) hfb
+  have hinvT := Compose.sleepy_invariant_before hrun hnc hT0 (service.mono hTs) hfb rfl
   obtain ⟨hcut, -, -⟩ := ready_read_cut S Q.run.2 Q.hn Q.constant Q.valid (c := Q.duration)
     ((by unfold Regimes.catchUp; positivity : (0 : Time) ≤ Regimes.catchUp Q.params).trans
       (outage_duration_supply S A V Q)) hT0 hTh hv
@@ -269,7 +269,7 @@ noncomputable def outageLockPremises_of_arming (Q : OutageQuery S A V)
       (sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid hsh
         (W := (Sys (goldilocks S) V).aheadDur (K S A) Q.run)
         ((Q.run.2.point.sleepyOn_iff Q.constant _ _ _ 0 _).mpr fun t ht htb =>
-          (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mp hhalf t ht (htb.trans hsh)))
+          (Q.run.2.point.sleepyOn_iff Q.constant _ _ _ _ _).mp hhalf t ht (htb.trans hsh))) rfl
     hpreSvc := service
     hFB := fun s ⟨_, _, _, hc, hle⟩ =>
       sleepy_faultBound S Q.run.2 Q.hn Q.constant Q.valid le_rfl hhalf s _ (by simp)

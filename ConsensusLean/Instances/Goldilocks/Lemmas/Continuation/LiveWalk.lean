@@ -214,7 +214,7 @@ theorem seeded_proposer_holds (hS : SeededRun tr H proposer dg g ΔF T r σ t₁
       linarith
     refine proposal_holds_old_from hS.run hS.noColl hS.sync hS.bounds (ρ := r + sp.k - 1)
       (by omega) hρ hp hc hcall hd hti hb hκ (fun O m hOm hm _ => OnHealedChain.compatible
-        hS.run hS.noColl hS.inv.origins_compatible hF (.of_origin hm hOm)) C
+        hS.run hS.noColl hS.inv.origins_compatible hF (.of_origin hm hOm)) hS.stock C
       (oldOriginAbove_iff.2 ⟨x, k, s - 1, CV, hx, by omega, Or.inr ⟨hO, by omega⟩⟩)
 
 /-- **The proposal walk of slot `s ≥ σ + 1` passes every member of the old family**, at a proposal
@@ -239,8 +239,8 @@ theorem seeded_walk_passes (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b)
   have hfr := frame_of_projAC_at hS.run hp hc
   refine proposal_walk_passes_from hS.run hS.noColl hS.sync hS.bounds hp hc hcall hd hti hb hs0
     (by omega) (by linarith) hκ (seeded_proposer_holds hS hs hp hc hcall hd hti ht₁ hb hC)
-    (fun hCt => ?_) ?_ fun l hl hlive D hD => hS.inv.origins_compatible D l.slot C lC
-      (.of_lock (hS.live_label hp hdt hl hlive) (hD.mono hb)) hCm
+    (fun hCt => ?_) ?_ (fun l hl hlive D hD => hS.inv.origins_compatible D l.slot C lC
+      (.of_lock (hS.live_label hp hdt hl hlive) (hD.mono hb)) hCm) hS.stock
   · rw [hfr] at hCt ⊢
     exact hS.inv.viable p i (tr.time i) ht₁ hi hb hp (hS.called hp hdt le_rfl) C
       (onHealedChain_iff.2 ⟨C, lC, hCm, .refl⟩) hCt

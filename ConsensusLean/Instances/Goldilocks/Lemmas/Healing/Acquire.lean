@@ -298,7 +298,7 @@ theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr)
         obtain rfl : Hd = P := hU.1 hHd hPU (hHdr.trans (hvotes y hy iv ℓv ev hcv' hevs).1)
         exact hOHd
       · obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hDHd⟩ :=
-          SA.fastLock_honest_vote hS.run hS.two_faulty_lt hy hfl
+          SA.fastLock_honest_vote hS.run hS.two_faulty_lt hy hfl hs.stock
         obtain rfl : Hd = P :=
           hU.1 hHd hPU (hHdr.trans (hvotes z hz j' ℓe e ⟨hce, hee⟩ (by omega)).1)
         exact hOD.trans hDHd

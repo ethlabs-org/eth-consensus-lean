@@ -259,7 +259,7 @@ theorem FrameWindow.round_of_warm
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} (hp : p ∈ H) (hdx : p = proposer x)
-    {kX : Nat} (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) :
+    {kX : Nat} (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hstock : sp.committeeSize = sp.n) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
@@ -272,7 +272,7 @@ theorem FrameWindow.round_of_warm
     honestProposalRun_of_proposesAt hrun hnc hp hdx hX hXs
   have hpx : proposer x ∈ H := hdx ▸ hp
   have hrep := fun y (hy : y ∈ H) => hframe.proposal_report_follow hrun hnc hsvc hawake hf
-    hcatch hnr hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs hy
+    hcatch hnr hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs hy hstock
   have hfol : ∀ y ∈ H, ∃ i ell R, SA.ToFGAt tr.projAC y i ell R ∧
       tr.time i ≤ sp.ts (s + 2 : Nat) + 2 * sp.Δ ∧ Anc (tr.HonestBlocks H) P R ∧
       Anc (tr.HonestBlocks H) R d.head := by
@@ -301,7 +301,8 @@ theorem FrameWindow.round_of_warm
   have hiT : tr.time i < T := lt_of_le_of_lt hti hT
   obtain ⟨hPy, hRy, hor⟩ := row_or_high_of_report hrun hnc hf hna hy hR hiT hPR
     (fun heq => Or.inr (hframe.report_kind_of_warm hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs y hy i ell R hR hPR hti heq))
+      hm hwarm (by clear * - hxN hux hδ; omega) hmb hz hdes hP hPs hstock y hy i ell R hR hPR hti
+      heq))
   rcases hor with ⟨k', att, hs, hk', hah, haT⟩ | hlt
   · exact Or.inl ⟨y, hy, i, hPy, k', att, hs, hk'.trans hti, hah, haT⟩
   · exact Or.inr ⟨R, hRd, y, hy, i, hPy, hRy, hlt⟩

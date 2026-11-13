@@ -34,7 +34,8 @@ theorem proposal_viable_at_cast_at
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
+    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
+    (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame p) := by
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -128,7 +129,7 @@ theorem proposal_viable_at_cast_at
       have hcausal := proposal_frame_unique_at hrun hnc hz hdes hP hPs hp0 hy hc.1 hhigh hQ hQs
       exact hcausal ▸ hQ
     · have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-        (hrun.time_nonneg i) (hhigh.trans hpb)
+        (hrun.time_nonneg i) (hhigh.trans hpb) hstock
       have hdl : tr.projAC.deadline y i (tr.time ja) ≤ tr.time i := by
         apply (Compose.ac_deadline_le_of_restarts (a := gbar g) (fun r hr hrs =>
           hnr y r (hrun.antitone (hrun.time_mono hr) hy)

@@ -109,7 +109,7 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
       obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V Q
         (hb.trans Q.bound_le) hp
         (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBh, hΔ]) c hc hcN
-      exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain
+      exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain rfl
   have haw' : ∀ y ∈ Q.keys Q.bound, ∀ t, SA.gbar Q.gst ≤ t →
       t ≤ Q.bound → (Q.trace.upTo Q.bound).awake y t := by
     intro y hy t ht htb
@@ -117,7 +117,7 @@ theorem healthy_preparation_reset_at (Q : HealthyPreparationQueryAt S A V)
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0) haw' hH
     (by linarith only [hcz, h4B, hb])
   refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at hrun hnc hs haw hf ha
-    (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩, ?_⟩
+    (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ rfl, ?_⟩
   rw [hBeq] at hab
   linarith only [hab, hr]
 

@@ -32,7 +32,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((e.msg.slot - 1 : Nat) : Int))
-    (hgf : gbar g < SA.freeze sp e.msg.slot) :
+    (hgf : gbar g < SA.freeze sp e.msg.slot) (hstock : sp.committeeSize = sp.n) :
     ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
       ((Hd ∈ SA.voteDomain sp e.readPoint ell.frame e.msg.slot ∧ Hd ∈ ell.frame.viableHeads) ∨
       (kindJ ∧ Hd = J) ∨
@@ -43,7 +43,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
           sp.ts e.msg.slot ≤ tr.time a ∧ tr.time a < sp.ts e.msg.slot + 2 * sp.Δ ∧
           3 * sp.n ≤ 4 * (SA.voters CV).ncard ∧ ell.frame.Anc Hd D)) := by
   have hd := hrun.time_nonneg i
-  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hib
+  have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd hib hstock
   have hr := hrun.upTo hd
   have hframe' : Healing.FrameWindow (tr := tr.upTo (tr.time i)) (H := H (tr.time i))
       (sp.ts s₀) (tr.time i) floor kindJ J := by

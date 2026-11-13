@@ -171,7 +171,7 @@ theorem slow_stored_locks_before
     · exact result_result_compatible_window_before hS.run hS.sync hjr hy hx hO hR hkb hRb
         (fun z hz r _ hrs => (hnr z hz r hrs).trans hjr)
     · exact (result_optimistic_compatible_window_before hS.run hS.sync hjr hx hy hR hO hRb hkb
-        (fun r _ hrs => (hnr x hx r hrs).trans hjr)).symm
+        (fun r _ hrs => (hnr x hx r hrs).trans hjr) hS.stock).symm
   exact compat_of_below hr.coherent hLO hDR hcomp
 
 /-- `slow_live_locks` with the unlock given. -/
@@ -244,7 +244,7 @@ theorem live_locks_of_stored_before
     (hstored : ∀ l ∈ (tr.state y i).locks,
       sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ U, Y.root = l.block → Compatible U Y D)
-    (hE : EarlierVotesExtend tr H U i (s + 1) D) :
+    (hE : EarlierVotesExtend tr H U i (s + 1) D) (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L D := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -271,7 +271,7 @@ theorem live_locks_of_stored_before
       lock_origin_readPoint hrun hy hc l₀ hl₀ (by rw [hes]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
-      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hrun.stock] using hf)
+      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hstock] using hf)
       fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote

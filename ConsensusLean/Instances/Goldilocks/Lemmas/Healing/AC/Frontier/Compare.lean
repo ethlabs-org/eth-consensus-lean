@@ -155,7 +155,8 @@ theorem honest_supporterAC
     (hrun : ACRunU wm u proposer tr H U) (htick : TickDuty tr H)
     (hsv : ServiceWindowBefore H U 0 b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))
-    {C : Blk sp.n FGP} {s : Nat} (hC : OriginWithinAC tr H C s b) :
+    {C : Blk sp.n FGP} {s : Nat} (hC : OriginWithinAC tr H C s b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ x ∈ H, ∃ j e, VoteAt tr x j e ∧ tr.time j ≤ b ∧ e.msg.slot = s ∧ VoteExtends U e.msg C := by
   have hr := hrun.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -192,7 +193,7 @@ theorem honest_supporterAC
     exact ⟨_, hwH, j, e, hve, (hr.time_mono hj.le).trans hi₀,
       state_pool_slotU sp hr hX i₀ s _ hvp, R, hΦU hR, hRr, Anc.mono hΦU hCR⟩
   · obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := optimistic_sideU hrun hX hO
-    rw [hrun.stock] at h34
+    rw [hstock] at h34
     obtain ⟨w, ⟨v, hv, rfl, R, hR, hRr, hCR⟩, huH⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard (s := Hᶜ)
         (t := optimisticVoters sp A ℓ.frame s C) (by omega)
@@ -208,12 +209,12 @@ theorem result_optimistic_compatibleAC
     (hrun : ACRunU wm u proposer tr H U)
     (hsv : ServiceWindowBefore H U 0 b tr) {s : Nat} {X x : Fin sp.n} (hX : X ∈ H) (hx : x ∈ H)
     {i i' : Nat} {C C' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hi : tr.time i ≤ b)
-    (hR : ResultAt tr X i s C CV) (hO : OptimisticLockAt tr x i' s C' CV') :
-    Compatible U C C' := by
+    (hR : ResultAt tr X i s C CV) (hO : OptimisticLockAt tr x i' s C' CV')
+    (hstock : sp.committeeSize = sp.n) : Compatible U C C' := by
   by_contra hnc'
   obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := result_sideAC hrun hX hR
   obtain ⟨ℓo, Ao, -, -, h34, hT⟩ := optimistic_sideU hrun hx hO
-  rw [hrun.stock] at h34
+  rw [hstock] at h34
   have hb : sp.ts s + 3 * sp.Δ ≤ b := by
     have := sp.toParams.hΔ; rw [ht] at hi; linarith
   have := against_update_service hrun.localRun hsv hb hx hX hc ht hrs hS hT
@@ -226,7 +227,8 @@ theorem same_label_compatibleAC
     (hrun : ACRunU wm u proposer tr H U)
     (hsv : ServiceWindowBefore H U 0 b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     {C C' : Blk sp.n FGP} {s : Nat} (hC : OriginWithinAC tr H C s b)
-    (hC' : OriginWithinAC tr H C' s b) : Compatible U C C' := by
+    (hC' : OriginWithinAC tr H C' s b) (hstock : sp.committeeSize = sp.n) :
+    Compatible U C C' := by
   have hr := hrun.localRun
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
@@ -240,12 +242,12 @@ theorem same_label_compatibleAC
       fun h => hnc' (Or.symm h)
     have h2 := against_update_service hr hsv hb hX hX' hc' ht' hrs' hS' hSF hnc'
     omega
-  · exact result_optimistic_compatibleAC hrun hsv hX hX' hi hR hO'
-  · exact Or.symm (result_optimistic_compatibleAC hrun hsv hX' hX hi' hR' hO)
+  · exact result_optimistic_compatibleAC hrun hsv hX hX' hi hR hO' hstock
+  · exact Or.symm (result_optimistic_compatibleAC hrun hsv hX' hX hi' hR' hO hstock)
   · by_contra hnc'
     obtain ⟨ℓ, A, hpt, hΦU, h34, -⟩ := optimistic_sideU hrun hX hO
     obtain ⟨ℓ', A', hpt', hΦU', h34', -⟩ := optimistic_sideU hrun hX' hO'
-    rw [hrun.stock] at h34 h34'
+    rw [hstock] at h34 h34'
     have hI := Set.ncard_inter_add_ncard_union (optimisticVoters sp A ℓ.frame s C)
       (optimisticVoters sp A' ℓ'.frame s C')
     have := ncard_le_n (sp := sp)
@@ -277,13 +279,13 @@ theorem origins_below_succAC
     (hrun : ACRunU wm u proposer tr H U) (htick : TickDuty tr H)
     (hsv : ServiceWindowBefore H U 0 b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ)) {s : Nat}
-    (hP : OriginsBelowAC tr H U s b) (hV : VotesBelowAC tr H U s b) :
-    OriginsBelowAC tr H U (s + 1) b := by
+    (hP : OriginsBelowAC tr H U s b) (hV : VotesBelowAC tr H U s b)
+    (hstock : sp.committeeSize = sp.n) : OriginsBelowAC tr H U (s + 1) b := by
   have hU := hrun.localRun.coherent
   have hnew : ∀ C C' j, j < s → OriginWithinAC tr H C s b → OriginWithinAC tr H C' j b →
       Compatible U C C' := by
     intro C C' j hj hC hC'
-    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporterAC hrun htick hsv hf hJ hC
+    obtain ⟨x, hx, i, e, hv, hib, hs, hext⟩ := honest_supporterAC hrun htick hsv hf hJ hC hstock
     exact compatible_of_voteExtendsAC hU hext
       (votesBelowAC_iff.1 hV C' j hC' x hx i e hv hib (by omega) (by omega))
   refine originsBelowAC_iff.2 fun C j C' j' hj hj' hC hC' => ?_
@@ -292,7 +294,7 @@ theorem origins_below_succAC
   · exact originsBelowAC_iff.1 hP C j C' j' hj hj' hC hC'
   · exact Or.symm (hnew C' C j hj hC' hC)
   · exact hnew C C' j' hj' hC hC'
-  · exact same_label_compatibleAC hrun hsv hf hC hC'
+  · exact same_label_compatibleAC hrun hsv hf hC hC' hstock
 
 end Consensus.Goldilocks.SA
 

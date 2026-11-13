@@ -43,7 +43,7 @@ theorem FrameWindow.warm_proposal_height
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (huN : u ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) (hstock : sp.committeeSize = sp.n) :
     HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1 := by
   have hk := sp.two_le_k
   have hΔ := sp.toParams.hΔ
@@ -52,7 +52,7 @@ theorem FrameWindow.warm_proposal_height
   have hsu := hts (show s₀ ≤ u by omega)
   have huN' := hts huN
   obtain ⟨c, e, hv, hes, hhi⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-    hcatch hnr (m := u) (by linarith) (by linarith) z hz
+    hcatch hnr (m := u) (by linarith) (by linarith) hstock z hz
   obtain ⟨ell, hc, he⟩ := hv
   have hcast : SA.CastAt tr.projAC z c ell e := ⟨hc, he⟩
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -68,7 +68,7 @@ theorem FrameWindow.warm_proposal_height
       fun y hy i hlo hhi => hframe.kind_iff y hy i hlo (by linarith),
       fun y hy i hlo hhi hc => hframe.root_eq y hy i hlo (by linarith) hc⟩
   have hvP := (hsub.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
-    (by linarith) (by omega) (by omega) (by linarith) hz hdes hP hPs hz hcast hes).1
+    (by linarith) (by omega) (by omega) (by linarith) hz hdes hP hPs hz hcast hes hstock).1
   rw [Compose.frame_of_projAC hrun hz hc] at hvP
   have hf2 : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     have hn := sp.toParams.hn
@@ -107,13 +107,13 @@ theorem FrameWindow.exists_warm_proposal
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hN : s₀ + 2 * sp.k + G ≤ N + 1) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     (hgp : ∃ u, s₀ + 2 * sp.k ≤ u ∧ u < s₀ + 2 * sp.k + G ∧ proposer u ∈ H ∧
-      ∃ kP P, tr.ProposesAt (proposer u) kP P ∧ P.slot = u) :
+      ∃ kP P, tr.ProposesAt (proposer u) kP P ∧ P.slot = u) (hstock : sp.committeeSize = sp.n) :
     ∃ u, s₀ + 2 * sp.k ≤ u ∧ u < s₀ + 2 * sp.k + G ∧ ∃ z ∈ H, z = proposer u ∧
       ∃ kP P, tr.ProposesAt z kP P ∧ P.slot = u ∧
         HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1 := by
   obtain ⟨u, hlu, hhu, hz, kP, P, hP, hPs⟩ := hgp
   exact ⟨u, hlu, hhu, proposer u, hz, rfl, kP, P, hP, hPs,
     hframe.warm_proposal_height hrun hnc hsvc hawake hf hcatch hnr hm hlu
-      (by omega) hmb hz rfl hP hPs⟩
+      (by omega) hmb hz rfl hP hPs hstock⟩
 
 end Consensus.Goldilocks.Healing

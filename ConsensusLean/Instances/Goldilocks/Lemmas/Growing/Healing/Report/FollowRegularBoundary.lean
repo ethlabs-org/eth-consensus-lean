@@ -30,7 +30,7 @@ theorem FrameWindow.regular_later_heads_at
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
     (horigin : (∃ CV, SA.FastUpdateAt tr.projAC x c s D CV) ∨
-      SA.SlowLockAt tr.projAC x c s D) :
+      SA.SlowLockAt tr.projAC x c s D) (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
@@ -39,7 +39,7 @@ theorem FrameWindow.regular_later_heads_at
         (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) D d.head) := by
   exact KernelProof.regular_later_heads_at hframe hrun hnc hsvc hawake hf hcatch hnr hwarm hpos
-    hs₀ hm hsN hmb hx horigin
+    hs₀ hm hsN hmb hx horigin hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

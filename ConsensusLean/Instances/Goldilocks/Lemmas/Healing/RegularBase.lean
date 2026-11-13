@@ -49,10 +49,10 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocks H) J D) :
+    (hJ : kindJ → Anc (tr.HonestBlocks H) J D) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg D := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   obtain ⟨ellx, C', hu, hconf, hsel⟩ := hsl
   have he : C' = C := by
@@ -72,7 +72,7 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
     clear * - hf hn; omega
   apply next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hm (by
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
-    linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ hDQ
+    linarith only [sp.toParams.hΔ, hts]) hmb hframe hw hat hcw hQw hh hJ hDQ ?_ hstock
   intro y hy i ell e hcast hs hhigh hFD hviab ih
   have hslot := (SA.castAt_spec hr hy hcast).2.1.symm.trans hs
   change sp.slot (tr.time i) = s + 1 at hslot
@@ -93,7 +93,7 @@ theorem regular_slow_next_votes_of_early_witness (hrun : GoldilocksRun proposer 
       (by change s + 1 ≤ sp.slot (tr.time i); clear * - hslot; omega)
       (hhigh.trans hmb)) ih
     (SA.writer_merged_window_before hS.run (SA.serviceWindowBefore_of_sync hS.sync)
-      hx hm hu (hu.2.2.1.trans_le hmb) hy hcast hs)
+      hx hm hu (hu.2.2.1.trans_le hmb) hy hcast hs) hstock
 
 /-- The slow next-vote base from the actual selection and result, including all three supporter
 branches of `FrameWindow.vote_head_classification`. The warm-window margin supplies saved-slot
@@ -111,10 +111,10 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
-    (hsl : SA.SlowLockAt tr.projAC x c s D) :
+    (hsl : SA.SlowLockAt tr.projAC x c s D) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg D := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hslow : gbar g ≤ sp.ts ((s : Int) - sp.k + 1) := by
     have hts : sp.ts s₀ ≤ sp.ts ((s : Int) - sp.k + 1) :=
@@ -131,7 +131,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
   have hms : gbar g + 4 * sp.Δ ≤ sp.ts s := by linarith only [sp.toParams.hΔ, hm, hprev]
   obtain ⟨z, hz, q, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr hms hx hres
-      (hu.2.2.1.trans_le hmb)
+      (hu.2.2.1.trans_le hmb) hstock
   have hDC := ((SA.deepest_mem hsel).1.1.2.2).mono (SA.frameIn_of_callAt hr hx hu.1).2
   have hDQ := hDC.trans hCQ
   have htq := SA.vote_time_le hr hz ⟨ell, hc, he⟩
@@ -140,7 +140,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
   change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
   rw [hslot] at htq
   apply hframe.next_votes_of_supporter hrun hnc hsvc hawake hf hcatch hnr
-    hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr hDQ
+    hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr hDQ ?_ ?_ hstock
   · intro hQ hh hJD
     have hs₀s : s₀ ≤ s := by clear * - hwarm; omega
     apply regular_slow_next_votes_of_early_witness hrun hnc hsvc hawake hf hcatch hnr
@@ -151,7 +151,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
           (((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s)).trans hlo) hhi,
        fun y hy i hlo hhi => hframe.root_eq y hy i
           (((SA.ts_le_iff sp).2 (by exact_mod_cast hs₀s)).trans hlo) hhi⟩
-      hx hsl ?_ hCQ hz (by linarith only [sp.toParams.hΔ, htq]) hc hQ hh hJD
+      hx hsl ?_ hCQ hz (by linarith only [sp.toParams.hΔ, htq]) hc hQ hh hJD hstock
     simpa only [Compose.frame_of_projAC hrun hx hu.1] using hres
   · intro hA a D' CV' hop hQD
     have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
@@ -167,7 +167,7 @@ theorem FrameWindow.regular_slow_next_votes {s₀ s floor : Nat}
       (by linarith only [sp.toParams.hΔ, hm, hprev]) (by clear * - hwarm; omega)
       (by clear * -; omega)
       (by linarith only [sp.toParams.hΔ, hmb, hts])
-      hz ⟨hc, he⟩ hes hA hop hQD (s + 1) le_rfl le_rfl).1
+      hz ⟨hc, he⟩ hes hA hop hQD hstock (s + 1) le_rfl le_rfl).1
 
 /-- Later-label propagation for an actual regular origin, with all supporter cases discharged.
 Votes start at s+1 and proposals at s+2. The early viable supporter, not a
@@ -186,7 +186,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
     (horigin : (∃ CV, SA.FastUpdateAt tr.projAC x c s D CV) ∨
-      SA.SlowLockAt tr.projAC x c s D) :
+      SA.SlowLockAt tr.projAC x c s D) (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocks H) e.msg D) ∧
@@ -194,7 +194,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
         tr.time i = sp.ts r → ∀ d pay,
         (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocks H) D d.head) := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hts {a b : Nat} (hab : a ≤ b) : sp.ts a ≤ sp.ts b :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hab)
@@ -212,9 +212,9 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
       SA.VoteExtends (tr.HonestBlocks H) e.msg D := by
     rcases horigin with ⟨CV, hfast⟩ | hslow
     · exact (hsub le_rfl h6).regular_fast_next_votes hrun hnc hsvc hawake hf hcatch hnr
-        hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl
+        hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl hstock
     · exact (hsub le_rfl h6).regular_slow_next_votes hrun hnc hsvc hawake hf hcatch hnr
-        hwarm hpos hs₀ hm (h6.trans hmb) hx hslow
+        hwarm hpos hs₀ hm (h6.trans hmb) hx hslow hstock
   obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, SA.ResultAt tr.projAC x c s C CV ∧
       Anc (tr.HonestBlocks H) D C := by
     rcases horigin with ⟨CV, ell, C, hu, hconf, hsel, -⟩ | ⟨ell, C, hu, hconf, hsel⟩
@@ -224,7 +224,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
     result_honest_supporter_before hrun hnc hsvc hawake hf hcatch hnr
       (hm.trans (hts (by clear * - hwarm; omega))) hx hres (by
         obtain ⟨ell', hu, -, -⟩ := hres
-        exact hu.2.2.1.trans_le (h6.trans hmb))
+        exact hu.2.2.1.trans_le (h6.trans hmb)) hstock
   have hDQ := hDC.trans hCQ
   have htq := SA.vote_time_le hr hz ⟨ell, hc, he⟩
   have hslot := (SA.castAt_spec hr hz ⟨hc, he⟩).2.1.symm.trans hes
@@ -317,7 +317,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
         hc hHd
         (by rw [← hframe.floor_eq z hz q hqt
               (by linarith only [hts (show s ≤ N by clear * - hsN; omega), htq])]
-            exact hvQ.2.2.2) hJD hDQ hbase
+            exact hvQ.2.2.2) hJD hDQ hbase hstock
     · push Not at hJD
       obtain ⟨hk, hn⟩ := hJD
       exact hrootHeads hk ((SA.anc_total hr.coherent hDQ (hJQ hk)).resolve_right hn)
@@ -326,7 +326,7 @@ theorem FrameWindow.regular_later_heads {s₀ s N floor : Nat}
     have hheads := hframe.optimistic_supporter_later_heads hrun hnc hsvc hawake hf hcatch hnr
       (by linarith only [hts (show s₀ ≤ s by clear * - hwarm; omega), sp.toParams.hΔ, hm])
       (by clear * - hwarm; omega) (by clear * - hsN; omega) hmb
-      hz ⟨hc, he⟩ hes hA (hes ▸ hop) (hQD.mono hPhi.2)
+      hz ⟨hc, he⟩ hes hA (hes ▸ hop) (hQD.mono hPhi.2) hstock
     intro r hrlo hrN
     constructor
     · intro y hy i ev hv hesv
@@ -358,7 +358,7 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
     (hmargin : s₀ + 2 * sp.k ≤ p)
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B' : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hB' : B' ∈ ell.frame.tree) (hBr : B'.root = l.block) :
+    (hB' : B' ∈ ell.frame.tree) (hBr : B'.root = l.block) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame p) ∧
       (Anc (tr.HonestBlocks H) B' P ∨
@@ -367,7 +367,7 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
   have hΔ := sp.toParams.hΔ
   have hm₀ : gbar g ≤ sp.ts s₀ := by linarith only [hm, hΔ]
   obtain ⟨hvP, hdomP⟩ := hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch
-    hnr hm₀ hsp hp0 hpb hz hdesignated hactual hPs hy hc hes
+    hnr hm₀ hsp hp0 hpb hz hdesignated hactual hPs hy hc hes hstock
   refine ⟨hvP, hdomP, ?_⟩
   have hlabel : s₀ + sp.k ≤ l.slot := by clear * - hmargin hlive; omega
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
@@ -424,7 +424,7 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
       linarith only [hΔ, ht, htime, hhigh]
     have hDP := (hframe.regular_later_heads hrun hnc hsvc hawake hf hcatch hnr
       hlabel (by clear * - hlive hlabel hcurrent; omega)
-      (by clear * - hmargin hlive hcurrent; omega) hm hgap hpb hy horigin p
+      (by clear * - hmargin hlive hcurrent; omega) hm hgap hpb hy horigin hstock p
       (by clear * - hcurrent; omega) le_rfl).2
         hgap z hz ip ellp hcp hcall hti d pay hd
     exact hBA.trans (hAD.trans (hDP.trans hHP))
@@ -466,7 +466,7 @@ theorem FrameWindow.current_lock_passage_of_regular_base {s₀ p floor : Nat}
      fun w hw j hlo hhi => hframe.kind_iff w hw j (hts.trans hlo) hhi,
      fun w hw j hlo hhi => hframe.root_eq w hw j (hts.trans hlo) hhi⟩
   have hAP := (optimistic_later_heads_of_witness hrun hnc hsvc hawake hf hcatch hnr
-    (hm₀.trans hts) hpb hsub hy hop hAD ha hQ hh hJ (hAQ.mono hW.2) p hold le_rfl).2
+    (hm₀.trans hts) hpb hsub hy hop hAD ha hQ hh hJ (hAQ.mono hW.2) hstock p hold le_rfl).2
       z hz ip ellp hcp hcall hti d pay hd
   exact Or.inl (hBA.trans (hAP.trans hHP))
 
@@ -495,17 +495,18 @@ theorem FrameWindow.read_locks_below_of_earlier_heads {s₀ p floor : Nat}
       e'.msg.slot = p → e'.msg.head = P.root)
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
-    (hBr : B.root = l.block) : Anc (tr.HonestBlocks H) B P := by
+    (hBr : B.root = l.block) (hstock : sp.committeeSize = sp.n) :
+    Anc (tr.HonestBlocks H) B P := by
   obtain ⟨-, hdom, hpass⟩ := hframe.current_lock_passage_of_regular_base hrun hnc hsvc
     hawake hf hcatch hnr hm hsp hp0 hpb hz hdesignated hactual hPs hy hc hes
-    hmargin hl hlive hB hBr
+    hmargin hl hlive hB hBr hstock
   rcases hpass with h | ⟨hs, -⟩
   · exact h
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
   exact SA.current_read_lock_below_of_earlier_heads hac hy hc hl (hs.trans hes.symm)
     (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
-    (SA.four_thirds_full hac.stock (by have := sp.toParams.hn; omega))
+    (SA.four_thirds_full hstock (by have := sp.toParams.hn; omega))
     (hPhi.2 hdom.1.1) (fun x hx j hj e' he' hs' => hIH x hx j hj e' he' (hs'.trans hes))
     (hPhi.2 hB) hBr
 
@@ -1048,7 +1049,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x ∈ H, ∀ j < i, ∀ e', SA.VoteAt tr.projAC x j e' →
-      e'.msg.slot = p → e'.msg.head = P.root) :
+      e'.msg.slot = p → e'.msg.head = P.root) (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) P := by
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hPhi := SA.frameIn_of_callAt hac.localRun hy hc.1
@@ -1056,7 +1057,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
     have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
     linarith only [hm, hΔ]
   have hPv := (hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr hm₀
-    hsp hp0 hpb hz hdesignated hactual hPs hy hc hes).1
+    hsp hp0 hpb hz hdesignated hactual hPs hy hc hes hstock).1
   have hfP : Anc (tr.HonestBlocks H) ell.frame.fcRoot P :=
     Anc.mono hPhi.2 (hPhi.1.fcRoot_anc_viableHeads P hPv)
   have hlk : ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
@@ -1067,7 +1068,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads {s₀ p floor : Nat}
     have hslot := (SA.castAt_spec hac.localRun hy hc).2.1
     have hB₀P := hframe.read_locks_below_of_earlier_heads hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdesignated hactual hPs hy hc hes hmargin hIH hl
-      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r
+      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hstock
     exact (Anc.mono hPhi.2 (SA.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P
   unfold SA.getAnchor
   rcases hD : SA.deepest ell.frame

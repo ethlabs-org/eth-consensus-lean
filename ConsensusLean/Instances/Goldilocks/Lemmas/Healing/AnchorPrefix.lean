@@ -36,7 +36,8 @@ theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr)
     {s i : Nat} (hs1 : 1 ≤ s) {ell : ACLabel (goldilocksNode sp ro)}
     (hz : proposer s ∈ H) (hc : tr.projAC.CallAt (proposer s) i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts s)
-    {l : SA.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks) : l.slot < s := by
+    {l : SA.Lock} (hl : l ∈ (tr.projAC.state (proposer s) i).locks)
+    (hstock : sp.committeeSize = sp.n) : l.slot < s := by
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -57,7 +58,7 @@ theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr)
   dsimp only at hsel
   split_ifs at hsel
   have h34 := (SA.deepest_mem hsel).1.2.1
-  rw [hrun.stock] at h34
+  rw [hstock] at h34
   change 3 * sp.n ≤
     4 * (SA.optimisticVoters sp A ello.frame (sp.slot (tr.time r)) D).ncard at h34
   change sp.slot (tr.time r) = _ at hsl
@@ -160,7 +161,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
     (hti : tr.time i = sp.ts p)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state (proposer p) i) ell.frame (tr.time i)).2 =
-      some (d, pay)) :
+      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
     d.start = ell.frame.fcRoot ∨
       ∃ l ∈ SA.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
         s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
@@ -177,7 +178,7 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
       simp only [SAParams.ts]; push_cast; linarith only [sp.toParams.hΔ])
   rw [hslot] at hlive
   obtain ⟨l₀, hl₀, hs, -⟩ := (SA.liveLocks_movesBack sp hPhi _ _ ) l hl
-  have hold := stored_lock_lt_at_proposal hrun hnc hf hp hz hc hcall hti hl₀
+  have hold := stored_lock_lt_at_proposal hrun hnc hf hp hz hc hcall hti hl₀ hstock
   exact Or.inr ⟨l, hl, by clear * - hmargin hlive; omega, by clear * - hs hold; omega, B, hB,
     hBr, hstart⟩
 
@@ -318,11 +319,12 @@ theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
-    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B) :
+    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B)
+    (hstock : sp.committeeSize = sp.n) :
     ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hΔ := sp.toParams.hΔ
@@ -357,7 +359,7 @@ theorem honest_prefix_of_finality_before (hrun : GoldilocksRun proposer dg H tr)
   have hex : ∀ x ∈ H, ∃ j ev, SA.VoteAt tr.projAC x j ev ∧ ev.msg.slot = s := by
     intro x hx
     obtain ⟨j, ev, hv, hs, -⟩ := honest_votes_before_of_service hrun hnc hsvc hawake hf
-      hcatch hnr hm (by rw [hstep] at hmb; linarith only [hmb, ht, hstart]) x hx
+      hcatch hnr hm (by rw [hstep] at hmb; linarith only [hmb, ht, hstart]) hstock x hx
     exact ⟨j, ev, hv, hs⟩
   have hf' : 3 * Hᶜ.ncard < sp.n := by
     have hn : 0 < sp.n := sp.toParams.hn
@@ -446,7 +448,8 @@ theorem FrameWindow.proposal_lock_prefix_cases {s₀ s floor : Nat}
     (hl : l ∈ SA.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
     (hpred : s₀ ≤ l.slot - 1) (hold : l.slot < s + 1)
-    (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B) :
+    (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H) X ell.frame.fcRoot ∨
       (∀ y ∈ H, ∀ j e, SA.VoteAt tr.projAC y j e → e.msg.slot = s →
         SA.VoteExtends (tr.HonestBlocks H) e.msg X) ∨
@@ -481,7 +484,8 @@ theorem FrameWindow.proposal_lock_prefix_cases {s₀ s floor : Nat}
       push_cast at htime
       linarith only [hΔ, ht, htime]
     have hall := (hframe.regular_later_heads hrun hnc hsvc hawake hf hcatch hnr
-      hwarm hpos hpred hm hgap hmb hz ho s (by clear * - hgap; omega) (by clear * -; omega)).1
+      hwarm hpos hpred hm hgap hmb hz ho hstock s (by clear * - hgap; omega)
+      (by clear * -; omega)).1
     intro y hy j e hv hs
     obtain ⟨R, hR, hRr, hDR⟩ := hall y hy j e hv hs
     exact ⟨R, hR, hRr, (hXA.trans hAD).trans hDR⟩
@@ -519,7 +523,7 @@ theorem FrameWindow.proposal_lock_prefix_cases {s₀ s floor : Nat}
      fun y hy j hlo hhi => hframe.kind_iff y hy j (hts.trans hlo) hhi,
      fun y hy j hlo hhi => hframe.root_eq y hy j (hts.trans hlo) hhi⟩
   have hall := (optimistic_later_heads_of_witness hrun hnc hsvc hawake hf hcatch hnr
-    (by linarith only [hm, hti, hi, hts]) hmb hsub hz hop hAD ha hQ hh hJ (Anc.mono hW.2 hAQ)
+    (by linarith only [hm, hti, hi, hts]) hmb hsub hz hop hAD ha hQ hh hJ (Anc.mono hW.2 hAQ) hstock
     s (by clear * - hold hs; omega) (by clear * -; omega)).1
   refine Or.inr (Or.inl ?_)
   intro y hy j e hv hes
@@ -553,11 +557,12 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
     (hvP : P ∈ ell.frame.viableHeads)
-    (haS : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) d.start) :
+    (haS : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) d.start)
+    (hstock : sp.committeeSize = sp.n) :
     ell.frame.Anc d.start (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hPhip := SA.frameIn_of_callAt hr hz hcp
@@ -597,7 +602,8 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
       (SA.getHead_mem hPhi.1 (fun X hX => hX.1.1) _ _ _ _)
   rcases actual_proposal_start_live_origin hrun hnc hf (by clear * -; omega)
     (by clear * - hmargin; omega : s₀ + sp.k ≤ s + 1) (hdesignated ▸ hz)
-    (hdesignated ▸ hcp) hcall hti (hdesignated ▸ hpay) with he | ⟨l, hl, _, hold, B, hB, hBr, hSB⟩
+    (hdesignated ▸ hcp) hcall hti (hdesignated ▸ hpay) hstock
+    with he | ⟨l, hl, _, hold, B, hB, hBr, hSB⟩
   · exact hroot (he ▸ .refl)
   have hlive : s + 1 ≤ l.slot + sp.k := by
     have hcap := (SA.locksWF_state hr (hdesignated ▸ hz) ip).slot_le_of_live hl
@@ -607,19 +613,19 @@ theorem FrameWindow.proposal_start_prefix {s₀ s floor : Nat}
   rcases hframe.proposal_lock_prefix_cases hrun hnc hsvc hawake hf hcatch hnr hm hmb hz
     hcp hti (hdesignated.symm ▸ hl) (by clear * - hmargin hlive; omega)
     (by clear * - hlive hmargin; omega) (by clear * - hmargin hold hlive; omega) hold hB hBr
-    hSB with
+    hSB hstock with
     hbelow | hheads | ⟨a, _, D, CV, hop, hSD⟩
   · exact hroot hbelow
   · exact honest_prefix_of_finality_before hrun hnc hsvc hawake hf hcatch hnr
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by clear * - hmargin hk; omega)
-        linarith only [hm, ht]) hmb hheads hy hc hes hSv haS
+        linarith only [hm, ht]) hmb hheads hy hc hes hSv haS hstock
   · have hFD : Anc (tr.HonestBlocks H) ell.frame.F D :=
       (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
     exact optimistic_prefix_before hrun hnc hsvc hawake hf hcatch
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by clear * - hmargin hold hlive; omega)
-        linarith only [hm, hΔ, ht]) hz hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS
+        linarith only [hm, hΔ, ht]) hz hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS hstock
 
 /-- Finite head equality and causal closure: every honest vote of the warm honest proposal's slot
 has exactly its root. Current-slot optimistic residues use only strictly
@@ -637,10 +643,10 @@ theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
     (hmargin : s₀ + 2 * sp.k ≤ s + 1)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1)) {k : Nat}
-    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1) :
+    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       e.msg.head = P.root := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
   have hf' : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := faults_lt_quorum_margin hf
@@ -668,15 +674,15 @@ theorem FrameWindow.honest_vote_heads_eq {s₀ s floor : Nat}
     rw [hslot] at hhigh
     obtain ⟨hvP, hPv⟩ := hframe.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr
       (by linarith only [hm, hΔ]) hsp (by clear * -; omega) hmb hz hdesignated hactual hPs hy
-      hcast hes
+      hcast hes hstock
     have haP := hframe.vote_anchor_below_of_earlier_heads hrun hnc hsvc hawake hf hcatch
       hnr hm hsp (by clear * -; omega) hmb hz hdesignated hactual hPs hy hcast hes hmargin
-      (fun x hx j hji ev hv hs => ih j hji x hx ev hv hs)
+      (fun x hx j hji ev hv hs => ih j hji x hx ev hv hs) hstock
     apply hframe.vote_head_eq_of_start_prefix hrun hnc hS hnr hf' hms hsp hz hdesignated
       hactual hPs hpH hcp hcall hti hpay hpayload hparent hy hcast hes hhigh
       (hhigh.trans hmb) hPv haP
     exact fun haS => hframe.proposal_start_prefix hrun hnc hsvc hawake hf hcatch hnr
-      hm hk hmargin hmb hz hdesignated hcp hcall hti hpay hparent hy hcast hes hPv hvP haS
+      hm hk hmargin hmb hz hdesignated hcp hcall hti hpay hparent hy hcast hes hPv hvP haS hstock
 
 /-- At an actual honest call, every ToFG candidate is compatible with any
 other candidate of that same read. Candidacy itself is not inferred here. -/
@@ -752,14 +758,14 @@ theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {x : Fin sp.n} (hx : x ∈ H) {a j : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (ho : SA.FastLockAt tr.projAC x a j D CV) : D.slot ≤ j := by
+    (ho : SA.FastLockAt tr.projAC x a j D CV) (hstock : sp.committeeSize = sp.n) : D.slot ≤ j := by
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hf' : 2 * Hᶜ.ncard < sp.n := by
     have hn := sp.toParams.hn
     change 0 < sp.n at hn
     omega
   obtain ⟨y, hy, i, e, hv, hs, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hac hf' hx ho
+    SA.fastLock_honest_vote hac hf' hx ho hstock
   obtain ⟨W', hW', hW'r, hWs⟩ := SA.honest_head hac hy hv
   obtain rfl : W' = W := hac.localRun.coherent.1 hW' hW (hW'r.trans hWr.symm)
   exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)
@@ -826,7 +832,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
-      some (d, pay)) : Anc (tr.HonestBlocks H) R d.head := by
+      some (d, pay)) (hstock : sp.committeeSize = sp.n) : Anc (tr.HonestBlocks H) R d.head := by
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
     (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
   rcases hsource with hroot | ⟨Q, hQ, hh, hJ, hAQ⟩
@@ -849,7 +855,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head
        fun x hx i hlo hhi => hframe.kind_iff x hx i ((hts hj).trans hlo) hhi,
        fun x hx i hlo hhi => hframe.root_eq x hx i ((hts hj).trans hlo) hhi⟩
     exact hRA.trans ((optimistic_later_heads_of_early_witness hrun hnc hsvc hawake hf
-      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ
+      hcatch hnr (hm.trans (hts hj)) hmb hsub hy hopt hAD hy hat hcw hQ hh hJ hAQ hstock
       r hrlo hrN).2 z hz c ell hc hcall hti d pay hd)
 
 /-- D8c at the actual report, including a report made before the current
@@ -877,7 +883,7 @@ theorem FrameWindow.toFG_later_proposal_head
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
-      some (d, pay)) : Anc (tr.HonestBlocks H) R d.head := by
+      some (d, pay)) (hstock : sp.committeeSize = sp.n) : Anc (tr.HonestBlocks H) R d.head := by
   have hac := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hac.localRun
   have hPhi := SA.frameIn_of_callAt hr hy hto.1
@@ -914,7 +920,7 @@ theorem FrameWindow.toFG_later_proposal_head
   obtain ⟨CV, hfast⟩ := hfast
   have hjlo : u ≤ l₀.slot := by
     have := (Anc.slot_le hr.coherent (hPR.trans hRD)).1
-    have := fast_selection_slot_le hrun hnc hf hy hfast
+    have := fast_selection_slot_le hrun hnc hf hy hfast hstock
     omega
   have hjhi : l₀.slot ≤ u + 1 := by
     have hlow : sp.ts l₀.slot ≤ tr.time a := by
@@ -937,7 +943,7 @@ theorem FrameWindow.toFG_later_proposal_head
   · exact hRD.trans ((hframe.regular_later_heads hrun hnc hsvc hawake hf hcatch hnr
       (by clear * - hwarm hjlo; omega) (by clear * - hjlo hwarm hk; omega)
       (by clear * - hwarm hjlo hk; omega) hm (by clear * - hrN hjhi hrlo; omega) hmb hy
-      (Or.inl ⟨CV, hreg⟩) r (by clear * - hrlo hjhi; omega) hrN).2
+      (Or.inl ⟨CV, hreg⟩) hstock r (by clear * - hrlo hjhi; omega) hrN).2
       (by clear * - hrlo hjhi; omega) z hz c ellp hcp hcall hti d pay hd)
   · have halo : sp.ts s₀ ≤ tr.time a := by
       have hlow : sp.ts l₀.slot ≤ tr.time a := by
@@ -948,7 +954,7 @@ theorem FrameWindow.toFG_later_proposal_head
       (fun _ _ _ => SA.mem_full _ _)).1
     apply hframe.optimistic_write_later_proposal_head hrun hnc hsvc hawake hf hcatch hnr
       (by linarith only [sp.toParams.hΔ, hm]) hmb (by clear * - hwarm hjlo; omega) hy ha halo hat
-      hopt hRA hAD ?_ (by clear * - hrlo hjhi; omega) hrN hz hcp hcall hti hd
+      hopt hRA hAD ?_ (by clear * - hrlo hjhi; omega) hrN hz hcp hcall hti hd hstock
     rcases (SA.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
     · exact Or.inl hbelow
     · obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2

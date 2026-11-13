@@ -378,9 +378,10 @@ theorem served_head_support (hinv : SleepyInvariant tr H) (hrun : GoldilocksRun 
 /-- **The served-cut facts under `Sleepy`** (`ServedFacts`, the target of the Service
 milestone's served-cut facts). -/
 theorem sleepy_served_facts (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hs : ServedAt tr y i) :
+    (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hs : ServedAt tr y i)
+    (hstock : sp.committeeSize = sp.n) :
     ServedFacts tr H y i :=
-  have hinv := sleepy_invariant hrun hnc hsl
+  have hinv := sleepy_invariant hrun hnc hsl hstock
   have ⟨hc, hj, _, hs', hu⟩ := hs
   have hw := hrun.awake_of_call y hy i hc
   ⟨fun _ hR => served_head_support hinv hrun hnc hsl hy hc hw hj hs'.ge hu hR,

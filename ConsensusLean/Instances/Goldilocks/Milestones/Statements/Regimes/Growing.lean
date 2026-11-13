@@ -71,6 +71,7 @@ def SleepySafe : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) →
     (∀ y z i j t t', y ∈ H (max t (tr.time i)) → z ∈ H (max t' (tr.time j)) →
@@ -86,6 +87,7 @@ def IncludeSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) →
     ∀ τ P, ReadyProposalAt tr H (catchUp sp) τ (hold sp) P →
@@ -102,6 +104,7 @@ def GrowSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) → 1 ≤ k →
     let D := (4 * k + 6) * sp.Δ

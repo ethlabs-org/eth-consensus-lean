@@ -141,7 +141,7 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
     omega
   have hpre := hp.run.upTo hi0
   have hnoopt := Healing.proposal_no_optimistic_of_run hpre (hp.noColl.upTo _) hf hpH
-    (by rw [RunTrace.upTo_projAC]; exact hci') hcall hti
+    (by rw [RunTrace.upTo_projAC]; exact hci') hcall hti hp.stock
   have hhigh : SA.HighLocksCompatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
       ((tr.projAC.upTo (tr.time i)).state p i) ((tr.projAC.upTo (tr.time i)).time i) σ B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hlσ X hX hXr => ?_
@@ -181,7 +181,7 @@ theorem clean_source_proposal_parent_before_at (hp : ResetPremisesUpTo tr H prop
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
   have hfin := SA.batch_proposal hS.run hf hhalf' votes hpH hci'
-    (SA.proposal_slot hti) hd' ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+    (SA.proposal_slot hti) hd' ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   · exact hfin.mono hsub
   intro z hz q e hv he
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he

@@ -87,7 +87,8 @@ theorem h2_locks_compare (hI : InclusionRun tr H U proposer g t₀) {p : Nat} {P
     · -- a fast lock: an honest vote of its slot extends its block
       obtain ⟨j, -, B, CV, hfl, L', hL', hL'r, hL'B⟩ := fast_lock_provenance hr hy i l hl hf
       obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
-      obtain ⟨z, hz, j', e, hve, hes, hext⟩ := fastLock_honest_vote hrun hI.two_faulty_lt hy hfl
+      obtain ⟨z, hz, j', e, hve, hes, hext⟩ :=
+        fastLock_honest_vote hrun hI.two_faulty_lt hy hfl hI.stock
       exact down hL'B (hcomp hz hve hext (hvotes z hz j' e hve (hes ▸ hpl)))
 
 /-! ## Helpers: the record read by `ac_confirmed`, the head from `fc_root` -/

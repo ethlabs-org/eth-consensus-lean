@@ -454,7 +454,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr)
       have := (SA.ts_lt_iff sp).1 h'
       omega
     obtain ⟨z, hz, j', e, ⟨ℓe, hce, hee⟩, hes, Hd, hHd, hHdr, hDHd⟩ :=
-      SA.fastLock_honest_vote hS.run hS.two_faulty_lt hy hfl
+      SA.fastLock_honest_vote hS.run hS.two_faulty_lt hy hfl hs.stock
     have hcz : SA.CastAt tr.projAC z j' ℓe e := ⟨hce, hee⟩
     have hDY : Compatible (tr.HonestBlocks H) D Y := by
       rcases Nat.lt_or_ge l₀.slot (s + 1) with h | h

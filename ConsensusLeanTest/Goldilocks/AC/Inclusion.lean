@@ -98,8 +98,8 @@ before cut `81`, as `inclusion_sleepy` gives from `inclusion_premises_tickRun`. 
 theorem inclusion_tickRun :
     Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (blk 1) ((tickRun N1 dg1).confirmedAt v0 81) := by
   obtain ⟨hrun, hnc, hsl, hP, hPs, hpj, hc, hyj, hnr, hu⟩ := inclusion_premises_tickRun
-  exact Compose.inclusion_sleepy sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 1 hrun hnc
-    hsl v0 (Set.mem_univ _) 34 (blk 1) 1 hP hPs hpj v0 (Set.mem_univ _) 81 hc hyj hnr hu
+  exact Compose.inclusion_sleepy sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 1 rfl hrun
+    hnc hsl v0 (Set.mem_univ _) 34 (blk 1) 1 hP hPs hpj v0 (Set.mem_univ _) 81 hc hyj hnr hu
 
 end Consensus.Goldilocks.Witness.One
 

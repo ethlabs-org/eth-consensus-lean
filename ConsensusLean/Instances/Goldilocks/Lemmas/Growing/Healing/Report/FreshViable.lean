@@ -75,7 +75,7 @@ theorem FrameWindow.proposal_viable_after_votes_at
     (hlo : sp.ts u + 2 * sp.Δ ≤ tr.time k)
     (hhi : tr.time k ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ)
     (hvote : ∃ q e, SA.VoteAt tr.projAC y q e ∧ e.msg.slot = u ∧
-      tr.time q ≤ sp.ts u + sp.Δ) :
+      tr.time q ≤ sp.ts u + sp.Δ) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
       P ∈ ell.frame.viableHeads := by
   have hΔ := sp.toParams.hΔ
@@ -92,7 +92,7 @@ theorem FrameWindow.proposal_viable_after_votes_at
     linarith
   have hyq := hrun.antitone (hrun.time_mono hqk) hy
   have hPv := (KernelProof.proposal_viable_at_cast_at hshort hrun hnc hsvc hawake hf hcatch hnr hgu
-    le_rfl hu0 (hshortT.trans hTb) hz hdes hP hPs hyq hcq hes).1
+    le_rfl hu0 (hshortT.trans hTb) hz hdes hP hPs hyq hcq hes hstock).1
   have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
     (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
@@ -142,7 +142,8 @@ theorem FrameWindow.unanimous_update_selection_at
     (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell)
+    (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧
       SA.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
       SA.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
@@ -162,11 +163,11 @@ theorem FrameWindow.unanimous_update_selection_at
   have hlate : sp.ts u + 2 * sp.Δ ≤ tr.time k := by rw [hkt]; linarith
   have hshort : sp.ts u + sp.Δ ≤ tr.time k := by linarith
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g]) (hshort.trans hkb)
+    (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g]) (hshort.trans hkb) hstock
   have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
   obtain ⟨hvi, hva, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hawake hf hcatch
     hnr hgu hu0 hTb hz hdes hP hPs hy hu.1 hlate (by rw [hkt, hT])
-    (hvotes y (hrun.antitone hshort hy))
+    (hvotes y (hrun.antitone hshort hy)) hstock
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
     honestProposalRun_of_proposesAt_at hrun hnc hz hdes hP hPs
   change tr.time a = sp.ts u at hta
@@ -174,7 +175,7 @@ theorem FrameWindow.unanimous_update_selection_at
     apply hrun.antitone (show tr.time a ≤ sp.ts u + sp.Δ by rw [hta]; linarith)
     exact hdes ▸ hz
   have hpool := unanimous_early_pool_of_acceptance_at hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hPs hun hza ha hta hy hu.1 hlate hkb hvi.1
+    hmargin hjoin hPs hun hza ha hta hy hu.1 hlate hkb hvi.1 hstock
   have hr := (Compose.goldilocks_ac_projection sp ro dg (H (tr.time k))
     (tr.upTo (tr.time k)) proposer (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
@@ -197,8 +198,8 @@ theorem FrameWindow.unanimous_update_selection_at
     rwa [hs]
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
     (SA.frameIn_of_callAt hr hy hc').1 hvi.1 hPg (SA.CommitteeDict.full sp.n)
-    (SA.size_binding_full hrun.stock u) (fun _ _ => SA.mem_full _ _)
-    (SA.third_full hrun.stock (by
+    (SA.size_binding_full hstock u) (fun _ _ => SA.mem_full _ _)
+    (SA.third_full hstock (by
       have hk := hf (tr.time k) (hrun.time_nonneg k) hkb
       have hn := sp.toParams.hn
       change 1 ≤ sp.n at hn

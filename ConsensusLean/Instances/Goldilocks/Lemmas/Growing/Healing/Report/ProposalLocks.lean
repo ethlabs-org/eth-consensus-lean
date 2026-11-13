@@ -35,7 +35,8 @@ theorem proposal_lock_prefix_cases_at
     {l : SA.Lock} (hl : l ∈ SA.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
     (hpred : s₀ ≤ l.slot - 1) (hold : l.slot < s + 1)
-    (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B) :
+    (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) X ell.frame.fcRoot ∨
       (∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → e.msg.slot = s →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∨
@@ -69,7 +70,7 @@ theorem proposal_lock_prefix_cases_at
       push_cast at htime
       linarith only [hΔ, ht, htime]
     have hall := (hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
-      hwarm hpos hpred hm hgap hmb hza ho s (by omega) (by omega)).1
+      hwarm hpos hpred hm hgap hmb hza ho hstock s (by omega) (by omega)).1
     intro y j e hy hv hs
     obtain ⟨R, hR, hRr, hDR⟩ := hall y j e hy hv hs
     exact ⟨R, hR, hRr, (hXA.trans hAD).trans hDR⟩
@@ -108,7 +109,7 @@ theorem proposal_lock_prefix_cases_at
      fun y j hy hlo hhi => hframe.kind_iff y j hy (hts.trans hlo) hhi,
      fun y j hy hlo hhi => hframe.root_eq y j hy (hts.trans hlo) hhi⟩
   have hall := (optimistic_later_heads_of_witness_at hrun hnc hsvc hawake hf hcatch hnr
-    (by linarith only [hm, hts, hΔ]) hmb hsub hza hop hAD ha hQ hh hJ (Anc.mono hW.2 hAQ)
+    (by linarith only [hm, hts, hΔ]) hmb hsub hza hop hAD ha hQ hh hJ (Anc.mono hW.2 hAQ) hstock
     s (by omega) (by omega)).1
   refine Or.inr (Or.inl ?_)
   intro y j e hy hv hes

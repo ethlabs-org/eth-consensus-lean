@@ -42,7 +42,8 @@ theorem proposal_held_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payloa
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
   have h := hrun.toLocalRun
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -61,7 +62,7 @@ theorem proposal_held_at_update_before {dg : Digest (List (FG.Att sp.n)) (Payloa
     exact (hrun.cutLaw y hy k₀ (.ac ℓ) ⟨hn, hc⟩).1
   have hF : Anc (tr.HonestBlocks H) ℓ.frame.F P := by
     rw [hfr]
-    exact updater_F_anc_proposal_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hu hb
+    exact updater_F_anc_proposal_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hu hb hstock
   -- `P` is accepted by its proposer at `t_s`, and the AC cut of that block follows
   have hacc := proposal_accepted hrun hnc hp hP
   have hPU : P ∈ tr.HonestBlocks H := by
@@ -117,15 +118,16 @@ theorem proposal_majority_at_update_before {dg : Digest (List (FG.Att sp.n)) (Pa
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hPt := (proposal_held_at_update_before hrun hnc hb0 hsync hfb hinv
-    hp hP hPs hpj hy hu hb).1
+    hp hP hPs hpj hy hu hb hstock).1
   have hall := honest_votes_eq_proposal_at_update_before hrun hnc hb0 hsync hfb hinv
-    hp hP hPs hpj (hu.2.2.1 ▸ hb)
+    hp hP hPs hpj (hu.2.2.1 ▸ hb) hstock
   have hbatch := honest_batch_at_update_before hrun hnc
     hsync.ac hy hu hb hPt hall
   rw [← projAC_state hrun.toLocalRun hy]
@@ -232,15 +234,16 @@ theorem adopt_result_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
       ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
   suffices hres : SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P from
     ⟨hres, result_not_vetoed_before hrun hnc hinv hy hu hb hres⟩
   obtain ⟨hPt, hFP⟩ := proposal_held_at_update_before hrun hnc hb0 hsync hfb hinv
-    hp hP hPs hpj hy hu hb
+    hp hP hPs hpj hy hu hb hstock
   have hmaj := proposal_majority_at_update_before hrun hnc hb0 hsync hfb hinv
-    hp hP hPs hpj hy hu hb
+    hp hP hPs hpj hy hu hb hstock
   have hΦ : FrameOK ℓ.frame := by
     obtain ⟨⟨hn, hl⟩, -⟩ := hu
     obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
@@ -288,10 +291,12 @@ theorem update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocks H) P E := by
-  obtain ⟨hC, hv⟩ := adopt_result_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hu hb
+  obtain ⟨hC, hv⟩ :=
+    adopt_result_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hu hb hstock
   obtain ⟨⟨hn, hl⟩, hcall, ht, hj⟩ := hu
   rw [projAC_state hrun.toLocalRun hy] at hj
   -- the cut `k₀` is the run's AC cut `ℓ`
@@ -324,7 +329,7 @@ theorem update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocks H) P E := by
   have hs : tr.SyncBefore H ΔF (tr.time k₀) :=
@@ -336,7 +341,8 @@ theorem update_adopts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
   exact update_adopts_before hrun hnc (hrun.time_nonneg k₀)
     (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix (hrun.time_nonneg k₀))).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀))) hp hP hPs hpj hy hu le_rfl
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix (hrun.time_nonneg k₀)) hstock) hp hP hPs hpj hy hu
+    le_rfl hstock
 
 end Consensus.Goldilocks.Compose
 

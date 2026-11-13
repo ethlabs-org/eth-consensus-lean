@@ -542,7 +542,7 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
     (hcast : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s + 1 → j < c →
       x ∈ Hold ∨ x ∈ Opp)
     (hN : ∀ x ∈ Hold, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s + 1 → j < c →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg C) :
+      SA.VoteExtends (tr.HonestBlocks H) e.msg C) (hstock : sp.committeeSize = sp.n) :
     ∀ V ∈ SA.liveLockBlocks sp (tr.state y c).ac.locks ℓ.frame (tr.time c),
       ¬ Compatible ℓ.frame.tree D V →
         (∃ l ∈ (tr.state y c).ac.locks, l.slot = s + 1 ∧
@@ -610,7 +610,7 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
     · exact hfirst k' hk' ℓ' (hls ▸ hu')
     · rw [hls] at hopt
       refine hO O hLO (own_optimistic_compatible_result hrun hnc
-        (K := SA.CommitteeDict.full sp.n) SA.CommitteeP.full (SA.size_binding_full hrun.stock)
+        (K := SA.CommitteeDict.full sp.n) SA.CommitteeP.full (SA.size_binding_full hstock)
         hy hopt
         ⟨ℓ, hu, by rw [projAC_state hrun.toLocalRun hy]; exact hD, rfl⟩ hk' ?_)
       intro r hr₁ hr₂ hrr
@@ -640,7 +640,7 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
       omega
     obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv, -⟩ := SA.optimisticLockAt_spec hrun' hy hopt
       (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
-    rw [hrun'.stock] at hcnt
+    rw [hstock] at hcnt
     have hellU := (SA.frameIn_of_callAt hr hy hp.1).2
     -- an honest optimistic voter in `Hold`
     obtain ⟨v, hvCV, hvH, hvHold⟩ : ∃ v ∈ CV, v.val ∈ H ∧ v.val ∈ Hold := by
@@ -836,7 +836,7 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     (hsb : sp.ts s + 2 * sp.Δ ≤ b)
     (Hold Opp : Set (Fin sp.n)) (hF : Hᶜ ⊆ Opp) (hopp : 2 * Opp.ncard < sp.n)
     (hcast : ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = s + 1 →
-      tr.time j ≤ sp.ts s + 6 * sp.Δ → x ∈ Hold ∨ x ∈ Opp) :
+      tr.time j ≤ sp.ts s + 6 * sp.Δ → x ∈ Hold ∨ x ∈ Opp) (hstock : sp.committeeSize = sp.n) :
     ∃ c ℓ, SA.UpdateAt tr.projAC w c s ℓ ∧ (∀ k < c, ∀ ℓ', ¬ SA.UpdateAt tr.projAC w k s ℓ') ∧
       (Compatible (tr.HonestBlocks H) (tr.state w c).fg.F C →
         (Anc (tr.HonestBlocks H) (tr.state w c).fg.F C → ℓ.frame.AncestorCandidate C) →
@@ -860,7 +860,7 @@ theorem armed_lock_cover (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRu
     have := sp.two_le_k; omega)
   have hveto := cover_gate_veto_above hrun hnc hinv hw hu hfirst hD hCD hsupp hsb
     (fun r hr hrr => (hnr r hr hrr).trans_lt hτs) Hold Opp hF hopp
-    (fun x hx j e hv hs hj => hcast x hx j e hv hs (htc ▸ hrun.time_mono hj.le)) hN
+    (fun x hx j e hv hs hj => hcast x hx j e hv hs (htc ▸ hrun.time_mono hj.le)) hN hstock
   -- `C` conflicts with no live lock: a block compatible with `D` is compatible with `C ⪯ D`, and
   -- every block that vetoes `D` extends `C`
   have hnvC : ¬ SA.conflictsWithLock sp (tr.state w c).ac.locks ℓ.frame (tr.time c) C := by

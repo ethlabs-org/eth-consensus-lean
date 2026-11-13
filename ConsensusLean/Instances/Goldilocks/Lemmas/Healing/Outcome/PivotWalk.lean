@@ -58,7 +58,7 @@ theorem optimistic_prefix_compatible_old
   have hrun := Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl
   have hDO : Compatible (tr.HonestBlocks H) D O := by
     rcases hj.lt_or_eq with hj | rfl
-    · apply SA.optimisticLock_compatible hrun (faulty_lt_half hp p) hpH hop
+    · apply SA.optimisticLock_compatible hrun (faulty_lt_half hp p) hpH hop ?_ hp.stock
       intro z hz q e hv hs
       obtain ⟨ell, hc, he⟩ := hv
       have hvotes := (historical_activation_before hp (tr.time q) q le_rfl).2
@@ -102,7 +102,7 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
         (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l.slot).mpr (by omega)
       exact_mod_cast (SA.ts_le_iff sp).mp (ht.trans hrt)
     have hne : l.slot ≠ u := fun he =>
-      proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
+      proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti hp.stock
         p hpH r hri D CV (he ▸ hop)
     have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
       change u - 1 ≤ l.slot at hlabel

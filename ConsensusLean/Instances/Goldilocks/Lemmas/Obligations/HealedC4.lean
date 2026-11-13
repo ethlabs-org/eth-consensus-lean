@@ -190,7 +190,7 @@ theorem UpTo.operational_proposal_below_next_parent {b : Time}
       · have hle : l.slot ≤ u := by
           have htime := hp.run.time_mono hqi.le
           have hne : l.slot ≠ u + 1 := fun he =>
-            Healing.proposal_no_optimistic_of_run hp.run hp.noColl hf hy hci hcall hti
+            Healing.proposal_no_optimistic_of_run hp.run hp.noColl hf hy hci hcall hti hp.stock
               y hy q hqi O CV (he ▸ ⟨ellO, A, hpt, hsl, hsel, hCV⟩)
           have hstart := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) (l.slot : Int)).mpr
             (by change sp.slot (tr.time q) = l.slot at hsl; omega)
@@ -212,7 +212,7 @@ theorem UpTo.operational_proposal_below_next_parent {b : Time}
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
   refine SA.batch_proposal hS.run hf hhalf' votes hy hci
-    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   intro z hz q e hv he
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he
   obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hy hci hgu

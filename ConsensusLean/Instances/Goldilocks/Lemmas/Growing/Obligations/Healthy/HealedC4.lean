@@ -266,7 +266,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
       · have hle : l.slot ≤ u := by
           have htime := hmono hqi.le
           have hno := Healing.proposal_no_optimistic_of_run (hp.run.upTo hi0)
-            (hp.noColl.upTo _) hf hy hci'' hcall hti
+            (hp.noColl.upTo _) hf hy hci'' hcall hti hp.stock
           rw [RunTrace.upTo_projAC] at hno
           have hne : l.slot ≠ u + 1 := fun he =>
             hno y hy q hqi O CV (he ▸ ⟨ellO, A, hpt, hsl, hsel, hCV⟩)
@@ -290,7 +290,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
   refine Anc.mono hsub (SA.batch_proposal hS.run hf hhalf' votes hy hci'
-    (SA.proposal_slot hti) (by rw [hst]; exact hd) ⟨hV.1, Or.inl hV⟩ ?_ hhigh)
+    (SA.proposal_slot hti) (by rw [hst]; exact hd) ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock)
   intro z hz q e hv he
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he
   obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hy hci' hgu

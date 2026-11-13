@@ -39,7 +39,7 @@ theorem current_lock_passage_of_regular_base_at
     (hmargin : s₀ + 2 * sp.k ≤ p)
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
-    (hBr : B.root = l.block) :
+    (hBr : B.root = l.block) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame p) ∧
       (Anc (tr.HonestBlocksAt H) B P ∨
@@ -49,7 +49,7 @@ theorem current_lock_passage_of_regular_base_at
   have hΔ := sp.toParams.hΔ
   have hm₀ : gbar g ≤ sp.ts s₀ := by linarith
   obtain ⟨hvP, hdomP⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm₀ hsp hp0 hpb hz hdes hP hPs hy hc hes
+    hnr hm₀ hsp hp0 hpb hz hdes hP hPs hy hc hes hstock
   refine ⟨hvP, hdomP, ?_⟩
   have hlabel : s₀ + sp.k ≤ l.slot := by omega
   have hd := hrun.time_nonneg i
@@ -154,7 +154,7 @@ theorem current_lock_passage_of_regular_base_at
       push_cast at hhigh
       linarith
     have hDP := (hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
-      hlabel (by omega) (by omega) hm hgap hpb hya horigin p (by omega) le_rfl).2
+      hlabel (by omega) (by omega) hm hgap hpb hya horigin hstock p (by omega) le_rfl).2
       hgap z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
     exact Or.inl (hBA.trans (hAD.trans (hDP.trans hHP)))
   have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by omega)
@@ -191,7 +191,7 @@ theorem current_lock_passage_of_regular_base_at
      fun w j hw hlo hhi => hframe.kind_iff w j hw (hts.trans hlo) hhi,
      fun w j hw hlo hhi => hframe.root_eq w j hw (hts.trans hlo) hhi⟩
   have hAP := (optimistic_later_heads_of_witness_at hrun hnc hsvc hawake hf hcatch hnr
-    (hm₀.trans hts) hpb hsubframe hya hop hAD ha₀ hQ hh hJ (Anc.mono hW.2 hAQ)
+    (hm₀.trans hts) hpb hsubframe hya hop hAD ha₀ hQ hh hJ (Anc.mono hW.2 hAQ) hstock
     p hold le_rfl).2 z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
   exact Or.inl (hBA.trans (hAP.trans hHP))
 

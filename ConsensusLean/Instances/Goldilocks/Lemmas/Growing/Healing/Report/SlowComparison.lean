@@ -90,12 +90,13 @@ private theorem optimistic_side
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {X : Fin sp.n} {k s : Nat}
     (hX : X ∈ H (tr.time k)) {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC X k s D CV) :
+    {CV : Set (Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC X k s D CV)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ S : Set (Fin sp.n), 3 * sp.n ≤ 4 * S.ncard ∧ S ⊆ Released tr H X s D := by
   have hd := hrun.time_nonneg k
   obtain ⟨ell, A, -, -, h34, hfwd⟩ := SA.optimistic_side (acRun_upTo hrun hnc hd) hX
     ((sa_optimisticLockAt_upTo hrun.time_mono).2 ⟨le_rfl, hop⟩)
-  rw [hrun.stock] at h34
+  rw [hstock] at h34
   exact ⟨_, h34, fun u hu => released_of_fwd hrun hd hX (hfwd hu)⟩
 
 private theorem released_held
@@ -198,11 +199,12 @@ theorem result_optimistic_compatible_service_at
     {s : Nat} (hm : gbar g ≤ sp.ts s) {x y : Fin sp.n} {c i : Nat}
     (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
-    (hC : SA.ResultAt tr.projAC x c s C CV) (hD : SA.OptimisticLockAt tr.projAC y i s D DV) :
+    (hC : SA.ResultAt tr.projAC x c s C CV) (hD : SA.OptimisticLockAt tr.projAC y i s D DV)
+    (hstock : sp.committeeSize = sp.n) :
     Compatible (tr.HonestBlocksAt H) C D := by
   by_contra hne
   obtain ⟨ell, S, hc, ht, hrs, hmaj, -, hS⟩ := result_side hrun hnc hx hC
-  obtain ⟨T, h34, hT⟩ := optimistic_side hrun hnc hy hD
+  obtain ⟨T, h34, hT⟩ := optimistic_side hrun hnc hy hD hstock
   have h1 := against_update hrun hnc hsvc hm hx hc ht hrs hS hT (fun h => hne h.symm)
   have hle := Set.ncard_le_ncard
     (Set.subset_univ (SA.voters {v | v ∈ (tr.projAC.state x c).pool s}))

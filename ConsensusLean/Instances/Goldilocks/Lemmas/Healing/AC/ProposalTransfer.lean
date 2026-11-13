@@ -486,8 +486,8 @@ private theorem trivial_high_locksU
   rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
   · rw [h] at hopt
     exact hsame k CV O hopt
-  · exact optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt fun w hw j e hv hs =>
-      votesExtendAfter_iff.1 hlater w hw j e hv (by omega)
+  · exact optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt (fun w hw j e hv hs =>
+      votesExtendAfter_iff.1 hlater w hw j e hv (by omega)) hS.stock
 
 /-- (L-high) under `StandaloneRun`: a stored lock of slot `> σ` is optimistic over votes that
 extend `B`, and one of slot `σ` is compatible with `B` by `hsame`. -/
@@ -537,7 +537,7 @@ private theorem trivial_batch_proposalU
       let ⟨hheld, R, hR, hRr, hacc⟩ := hP z hz j e hv hes
       heldAtProposal_iff.2 ⟨Or.inl hheld, R, hR, hRr, trivial_stampU hS hx hc hcall hR hacc⟩)
     (trivial_high_locksU hS hx ht hlater fun _ _ _ hopt =>
-      optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt hB)
+      optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt hB hS.stock) hS.stock
 
 /-- `trivial_update_first_proposal` with the unlock given. -/
 private theorem trivial_update_first_proposalU
@@ -598,7 +598,7 @@ private theorem trivial_optimistic_first_proposalU
         (trivial_viable_atU hS hx hc hDt) ?_
     (trivial_high_locksU hS hx ht hlater fun _ _ _ hopt' =>
       fastLock_fastLock_compatibleU hS.toHealthyBaseU hx (Or.inr hopt') hX (Or.inr hopt)
-        (by linarith))
+        (by linarith)) hS.stock
   rintro v ⟨hv, R, hR, hRr, -⟩
   have hvs := optimisticPoint_pool_slotU hr (fun _ => voteStart_initial _) hX hpt hv
   obtain ⟨k, hk, hsend, h1, -⟩ := pool_sentU hr hX (fun _ _ hrk => restart_beforeU hS hX hσ hrk)
@@ -641,7 +641,7 @@ private theorem trivial_slow_first_proposalU
         hle Y hY hYr
     · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lockU hr hx ht hl hlt.le hY hYr
       exact compat_down hU hYO (optimisticLock_compatibleU hrun hS.two_faulty_lt hx hopt
-        fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega))
+        (fun w hw j e hv hs => votesExtendAfter_iff.1 hlater w hw j e hv (by omega)) hS.stock)
   exact result_first_proposalU hrun hX hres hDC' hx hc (proposal_slot ht) hprop
       (hS.run.localRun.lawful_proposal hx hc hcall (proposal_slot ht))
     (trivial_viable_atU hS hx hc hDt) (trivial_counted_heldU hS hX hupd hσ hx hc hcall ht)

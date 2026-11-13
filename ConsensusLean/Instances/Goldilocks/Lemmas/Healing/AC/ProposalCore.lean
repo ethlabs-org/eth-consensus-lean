@@ -368,7 +368,8 @@ theorem optimisticLock_compatibleU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
-    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B) :
+    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B)
+    (hstock : sp.committeeSize = sp.n) :
     Compatible U O B := by
   have hr := hrun.localRun
   obtain ⟨ℓ, A, hpt, hsl, hsel, -⟩ := hopt
@@ -379,7 +380,7 @@ theorem optimisticLock_compatibleU
   have h34 := (deepest_mem hsel).1.2.1
   rw [hsl] at h34
   refine origin_compatible hr.coherent hΦU (CommitteeDict.full sp.n) h34
-    (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hrun.stock] using hf)
+    (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hstock] using hf)
     fun v hv hvH => ?_
   obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_voteU hrun hz hpt hv hvH
   exact hB _ hvH j e hve hvs
@@ -389,10 +390,11 @@ theorem optimisticLock_compatibleU
 theorem optimisticLock_compatible (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {z : Fin sp.n} (hz : z ∈ H) {k s : Nat} {O : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt tr z k s O CV) {B : Blk sp.n FGP}
-    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B) :
+    (hB : ∀ w ∈ H, ∀ j e, VoteAt tr w j e → e.msg.slot = s → VoteExtends U e.msg B)
+    (hstock : sp.committeeSize = sp.n) :
     Compatible U O B :=
   optimisticLock_compatibleU (hrun := hrun.toU) (hf := hf) (z := z) (hz := hz) (k := k) (s := s)
-      (O := O) (CV := CV) (hopt := hopt) (B := B) (hB := hB)
+      (O := O) (CV := CV) (hopt := hopt) (B := B) (hB := hB) (hstock := hstock)
 
 /-- `proposal_high_lock` with the unlock given. -/
 theorem proposal_high_lockU
@@ -491,7 +493,8 @@ theorem batch_proposalU
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ →
       HeldAtProposal (tr.state x i) ℓ.frame σ e.msg)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -527,7 +530,7 @@ theorem batch_proposalU
     omega
   exact proposal_walkU hr hx hc hslot hprop hV.2
     (proposal_locksU hr hx hc hV.1 hL (Or.inl ⟨SX, fun w hw => Or.inr (hsupp hw),
-      by simpa only [hrun.stock] using hhalf⟩) hhigh)
+      by simpa only [hstock] using hhalf⟩) hhigh)
     fun X Cx hCx hp hCxB => isBest_of_majority hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hsupp hvoters h3 hCx hp hCxB
 
@@ -547,14 +550,15 @@ theorem batch_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ →
       HeldAtProposal (tr.state x i) ℓ.frame σ e.msg)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head :=
   batch_proposalU (hrun := hrun.toU) (hf := hf) (σ := σ) (B := B) (hhalf := hhalf) (hB := hB)
       (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
       (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _) (hslot := hslot)
           (d := d) (pay := pay)
           (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
-              (hP := hP) (hhigh := hhigh)
+              (hP := hP) (hhigh := hhigh) (hstock := hstock)
 
 /-! ## The writer's update at the proposal -/
 
@@ -924,7 +928,8 @@ theorem optimistic_first_proposal_storedU
     (hV : B ∈ ℓ.frame.tree ∧
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -936,8 +941,7 @@ theorem optimistic_first_proposal_storedU
   dsimp only at hsel'
   split_ifs at hsel' with hcond
   obtain ⟨-, h34, -⟩ := (deepest_mem hsel').1
-  rw [hslX, hrun.stock] at h34
-  have hstock := hrun.stock
+  rw [hslX, hstock] at h34
   set V := View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤) with hV'
   set SX := optimisticVoters sp A ℓX.frame σ D
   -- every optimistic voter supports `D` at the proposal, or equivocates there
@@ -982,14 +986,15 @@ theorem optimistic_first_proposal_stored (hrun : ACRun proposer tr H U) (hf : 2 
     (hV : B ∈ ℓ.frame.tree ∧
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head :=
   optimistic_first_proposal_storedU (hrun := hrun.toU) (hf := hf) (X := X) (hX := hX) (i₀ := i₀)
       (σ := σ) (D := D) (CV := CV) (hopt := hopt) (B := B) (hBD := hBD) (x := x) (hx := hx)
           (i := i) (ℓ := ℓ) (hc := hc)
       (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _) (hslot := hslot)
           (d := d) (pay := pay) (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop)
-              (hV := hV) (hP := hP) (hhigh := hhigh)
+              (hV := hV) (hP := hP) (hhigh := hhigh) (hstock := hstock)
 
 /-- Two actual optimistic selections of the same slot are compatible, by honest
 quorum overlap and one vote per slot. No delivery or head-viability premise is used. -/
@@ -997,14 +1002,14 @@ theorem optimisticLock_pair_compatible (hrun : ACRun proposer tr H U)
     (hf : 2 * Hᶜ.ncard < sp.n)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {i j s : Nat}
     {D E : Blk sp.n FGP} {CV CW : Set (Vote sp.n)}
-    (hd : OptimisticLockAt tr x i s D CV) (he : OptimisticLockAt tr y j s E CW) :
-    Compatible U D E := by
+    (hd : OptimisticLockAt tr x i s D CV) (he : OptimisticLockAt tr y j s E CW)
+    (hstock : sp.committeeSize = sp.n) : Compatible U D E := by
   have hr := hrun.localRun
   obtain ⟨-, hnD, ellD, A, hpD, -, hvD, hhD, -⟩ :=
     optimisticLockAt_spec hrun hx hd (CommitteeDict.full sp.n) (fun _ _ _ => mem_full _ _)
   obtain ⟨-, hnE, ellE, A', hpE, -, hvE, hhE, -⟩ :=
     optimisticLockAt_spec hrun hy he (CommitteeDict.full sp.n) (fun _ _ _ => mem_full _ _)
-  rw [hrun.stock] at hnD hnE
+  rw [hstock] at hnD hnE
   have hi := Set.ncard_inter_add_ncard_union (voters CV) (voters CW)
   have hu := Set.ncard_le_ncard (Set.subset_univ (voters CV ∪ voters CW))
   rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin] at hu
@@ -1044,9 +1049,9 @@ theorem optimistic_first_proposalU
     (hV : D ∈ ℓ.frame.tree ∧
       (D ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc D ℓ.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D) :
-    Anc U D d.head :=
-  optimistic_first_proposal_storedU hrun hf hX hopt .refl hx hc hslot hprop hL hV hP hhigh
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D)
+    (hstock : sp.committeeSize = sp.n) : Anc U D d.head :=
+  optimistic_first_proposal_storedU hrun hf hX hopt .refl hx hc hslot hprop hL hV hP hhigh hstock
 
 /-- **An optimistic confirmation transfers to the next proposal** (A1.4 (a) at the proposal
 duty): its counted votes supply the whole-pool walk's cover. -/
@@ -1060,15 +1065,15 @@ theorem optimistic_first_proposal (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.
     (hV : D ∈ ℓ.frame.tree ∧
       (D ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc D ℓ.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D) :
-    Anc U D d.head :=
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ D)
+    (hstock : sp.committeeSize = sp.n) : Anc U D d.head :=
   optimistic_first_proposalU (hrun := hrun.toU) (hf := hf) (X := X) (hX := hX) (i₀ := i₀) (σ := σ)
       (D := D) (CV := CV) (hopt := hopt) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
       (hL := unlockRel_unlock (frameIn_of_callAt hrun.localRun hx hc).1 _ _ _ _)
           (hslot := hslot) (d := d) (pay := pay)
               (hprop := by rwa [acProposal_eq_acProposalWith_slot hslot] at hprop) (hV := hV)
                   (hP := hP)
-              (hhigh := hhigh)
+              (hhigh := hhigh) (hstock := hstock)
 
 end Consensus.Goldilocks.SA
 

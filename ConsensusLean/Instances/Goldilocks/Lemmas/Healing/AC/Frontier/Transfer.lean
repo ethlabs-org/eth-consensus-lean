@@ -50,7 +50,7 @@ theorem vote_locks_compatibleAC
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
     {B : Blk sp.n FGP}
     (hBc : ∀ C j, OriginWithinAC tr H C j b → j ≤ s → Compatible U B C)
-    (hE : EarlierVotesExtend tr H U i (s + 1) B) :
+    (hE : EarlierVotesExtend tr H U i (s + 1) B) (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -81,7 +81,7 @@ theorem vote_locks_compatibleAC
         (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (origin_compatible hU hΦ'U (CommitteeDict.full sp.n) h34
-      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hrun.stock] using hf)
+      (fun _ _ => mem_full _ _) (by simpa only [ncard_inter_full, hstock] using hf)
       fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
@@ -265,15 +265,15 @@ theorem first_transfer_stepAC
     {s : Nat} (hP : OriginsBelowAC tr H U (s + 1) b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {C : Blk sp.n FGP}
-    (hC : OriginWithinAC tr H C s b) (hE : EarlierVotesExtend tr H U i (s + 1) C) :
-    VoteExtends U e.msg C := by
+    (hC : OriginWithinAC tr H C s b) (hE : EarlierVotesExtend tr H U i (s + 1) C)
+    (hstock : sp.committeeSize = sp.n) : VoteExtends U e.msg C := by
   have hr := hrun.localRun
   have hsv := hsy.service
   have hCc : ∀ C' j, OriginWithinAC tr H C' j b → j ≤ s → Compatible U C C' :=
     fun C' j hC' hj => originsBelowAC_iff.1 hP C s C' j (by omega) (by omega) hC hC'
-  obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporterAC hrun htick hsv hf hJ hC
+  obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporterAC hrun htick hsv hf hJ hC hstock
   have hvf := trivial_viableAC hr htriv hsy hy hc hs hib ⟨x', hx', k', e', hv', hs', hext'⟩
-  have hlocks := vote_locks_compatibleAC hrun hf hy hc hs hib hCc hE
+  have hlocks := vote_locks_compatibleAC hrun hf hy hc hs hib hCc hE hstock
   have hF := viable_anc_FAC hr hy hc hvf
   obtain ⟨x, hx, i₀, CV, hi₀, hR | hO⟩ := originWithinAC_iff.1 hC
   · obtain ⟨ℓX, hupd, -, -⟩ := id hR
@@ -281,8 +281,8 @@ theorem first_transfer_stepAC
       (result_carryAC hr hsy hx hR hy hc hs hib hF) hvf hlocks
       (writer_mergedAC hr hsv hx hupd hi₀ hy hc hs)
   · exact optimistic_transfer_storedU sp hrun (CommitteeDict.full sp.n) CommitteeP.full
-      CommitteeT.full (size_binding_full hrun.stock) hx hO .refl (cs2_full hrun.stock hf)
-      (cs2_full hrun.stock hf) hy hc hs
+      CommitteeT.full (size_binding_full hstock) hx hO .refl (cs2_full hstock hf)
+      (cs2_full hstock hf) hy hc hs
       (optimistic_carryAC hr hsy hx hO hy hc hs hib hF) hvf hE
 
 /-- **Later batch up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends a block `B`
@@ -298,7 +298,7 @@ theorem later_transfer_stepAC
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {B : Blk sp.n FGP}
     (hBc : ∀ C j, OriginWithinAC tr H C j b → j ≤ s → Compatible U B C)
     (hall : ∀ x ∈ H, ∀ k e', VoteAt tr x k e' → e'.msg.slot = s → VoteExtends U e'.msg B)
-    (hE : EarlierVotesExtend tr H U i (s + 1) B) :
+    (hE : EarlierVotesExtend tr H U i (s + 1) B) (hstock : sp.committeeSize = sp.n) :
     VoteExtends U e.msg B := by
   have hr := hrun.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -313,7 +313,7 @@ theorem later_transfer_stepAC
     (Set.ncard_pos (Set.toFinite _)).1 ((Nat.zero_le _).trans_lt hcount)
   have hvf := trivial_viableAC hr htriv hsy hy hc hs hib
     ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩
-  have hlocks := vote_locks_compatibleAC hrun hf hy hc hs hib hBc hE
+  have hlocks := vote_locks_compatibleAC hrun hf hy hc hs hib hBc hE hstock
   exact vote_extends_of_batchAC hrun hy hc hs hvf hall hcount
     (honest_batch_carryAC hr hsy hy hc hs hib hall (viable_anc_FAC hr hy hc hvf)) hlocks
 
@@ -324,8 +324,8 @@ theorem votes_below_succAC
     (htick : TickDuty tr H)
     (hsy : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))
-    {s : Nat} (hP : OriginsBelowAC tr H U (s + 1) b) (hV : VotesBelowAC tr H U s b) :
-    VotesBelowAC tr H U (s + 1) b := by
+    {s : Nat} (hP : OriginsBelowAC tr H U (s + 1) b) (hV : VotesBelowAC tr H U s b)
+    (hstock : sp.committeeSize = sp.n) : VotesBelowAC tr H U (s + 1) b := by
   have hr := hrun.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have key : ∀ i, ∀ y ∈ H, ∀ e, VoteAt tr y i e → tr.time i ≤ b →
@@ -347,7 +347,8 @@ theorem votes_below_succAC
             have hkt := cast_time_leAC hr hx hck
             rw [hs'] at hkt
             exact votesBelowAC_iff.1 hV C j hC x hx k e' hv (by linarith) (by omega) hs'.le) hE
-      · exact first_transfer_stepAC hrun htriv htick hsy hf hJ hP hy hc hs hib hC hE
+          hstock
+      · exact first_transfer_stepAC hrun htriv htick hsy hf hJ hP hy hc hs hib hC hE hstock
   refine votesBelowAC_iff.2 fun C j hC y hy i e hv hib hj hm => ?_
   rcases Nat.lt_or_ge e.msg.slot (s + 1) with h | h
   · exact votesBelowAC_iff.1 hV C j hC y hy i e hv hib hj (by omega)

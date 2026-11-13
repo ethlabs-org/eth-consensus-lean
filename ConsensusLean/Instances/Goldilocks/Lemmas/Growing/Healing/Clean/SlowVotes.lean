@@ -86,6 +86,7 @@ theorem result_source_compatible_at (hp : ResetPremisesUpTo tr H proposer dg g Î
   Â· exact SA.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx hy hR hD
       hrb hqb
       (fun c hc hrest => hreset x c (hp.run.antitone (hm hc) hx) ((hm hc).trans hrb) hrest)
+      hp.stock
 
 /-- **Two result or optimistic sources of one label are compatible**, for writers honest at their
 writes by `b`, past `c_z`. -/

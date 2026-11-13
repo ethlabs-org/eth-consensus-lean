@@ -315,7 +315,7 @@ theorem source (ctl : Bool) :
   obtain ⟨hlock, hjoin, ⟨ℓ, htf⟩, htime⟩ := DataRun.source_mk (runD ctl)
     (run_goldilocksRun ctl) hX (show va ≠ vf by decide) closedMa (t := 30) (s := 6)
     (c := 1) (b := 1) rfl h₀ h₁ hn₀ ht₀ hc₀ (by decide) (by decide) hg hf hj hcv
-    hn₁ ht₁ hc₁ htf
+    hn₁ ht₁ hc₁ htf rfl
   refine ⟨hlock, hjoin, ℓ, htf, ?_⟩
   change X.sp.slot ((runD ctl).tr.time (i0 ctl + 1)) = 7
   rw [htime, Fix.slot_eq]; rfl

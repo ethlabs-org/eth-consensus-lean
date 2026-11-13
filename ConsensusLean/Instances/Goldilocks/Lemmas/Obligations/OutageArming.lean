@@ -185,9 +185,9 @@ theorem outage_arming (Q : OutageQuery S A V)
           (((Q.run.2.point.etaSleepyOn_iff Q.constant _ _ _ _ _ _).mp heta
             t ht (htb.trans (min_le_right _ _))).readyAbove
               (by change (0 : ℚ) ≤ 1 / 2; norm_num)))
-  have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsvc hfball
+  have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsvc hfball rfl
   have hinvT := Compose.sleepy_invariant_before hrun hnc hT0 (service.mono hTs)
-    fun s d hd h => hfball s d hd (h.trans hTb)
+    (fun s d hd h => hfball s d hd (h.trans hTb)) rfl
   have hfb : ∀ q : Nat, Q.params.ts q + Q.params.Δ ≤ min Q.start Q.run.2.horizon →
       Q.trace.FaultBound (honestKeys S Q.run.2) (Q.params.ts q + Q.params.Δ) :=
     fun q h => hfball q _ (by simp) h
@@ -346,7 +346,7 @@ theorem outage_arming (Q : OutageQuery S A V)
             ((mem_honestKeys_iff S Q.run.2 x).mp hx), haw'.1⟩
     exact Compose.armed_lock_cover hrun hnc hinv hsvc.ac hfb hCb hCg hwH haw
       (s := Compose.coverLabel Q.params Q.start) h1 h2 (haj.trans hts1) hsz
-      (le_min hg₁ (by linarith)) Q.holders Opp hF hopp hcast
+      (le_min hg₁ (by linarith)) Q.holders Opp hF hopp hcast rfl
 
 end Consensus.Goldilocks.Obligations
 

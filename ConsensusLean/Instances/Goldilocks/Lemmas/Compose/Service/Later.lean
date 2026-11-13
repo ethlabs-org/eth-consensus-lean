@@ -243,7 +243,8 @@ theorem later_update_adopts_gt_before {dg : Digest (List (FG.Att sp.n)) (Payload
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s < s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
   have hΔ := sp.toParams.hΔ
@@ -260,7 +261,7 @@ theorem later_update_adopts_gt_before {dg : Digest (List (FG.Att sp.n)) (Payload
   obtain ⟨x, hx, hw, hj⟩ := Set.nonempty_of_ncard_ne_zero (Nat.zero_lt_of_lt hf).ne'
   obtain ⟨kx, ℓx, hux⟩ := update_of_awake_joined hrun hx hw hj
   obtain ⟨hC, -⟩ := adopt_result_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hx hux
-    (by have ht : tr.time kx = sp.ts s + 6 * sp.Δ := hux.2.2.1; linarith)
+    (by have ht : tr.time kx = sp.ts s + 6 * sp.Δ := hux.2.2.1; linarith) hstock
   have hfx : ℓx.frame = Node.frame (tr.state x kx) := by
     obtain ⟨⟨hn, hl⟩, -⟩ := hux
     obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
@@ -296,13 +297,15 @@ theorem later_update_adopts_before {dg : Digest (List (FG.Att sp.n)) (Payload sp
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)
     (hPs : P.slot = s) (hpj : SA.joined sp (tr.state p k).ac (tr.time k)) {y : Fin sp.n}
     (hy : y ∈ H) {k₀ s' : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hss : s ≤ s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y (k₀ + 1)).fg.F) := by
   rcases hss.lt_or_eq with hlt | rfl
   · exact later_update_adopts_gt_before hrun hnc hb0 hsync hfb hinv hp hP hPs hpj hy hlt hu hb
+      hstock
   · obtain ⟨E, hE, hEr, hPE⟩ := update_adopts_before hrun hnc hb0 hsync hfb hinv
-      hp hP hPs hpj hy hu hb
+      hp hP hPs hpj hy hu hb hstock
     exact ⟨E, hE, hEr, Or.inl hPE⟩
 
 end Consensus.Goldilocks.Compose

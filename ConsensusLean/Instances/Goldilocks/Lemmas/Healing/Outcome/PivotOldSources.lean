@@ -205,7 +205,7 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
     obtain ⟨ellX, D, CV, hcx, hfl, _, _, _, hOD, _⟩ := hp.highOrigin_mem ho
     have hf : 2 * Hᶜ.ncard < sp.n := by have := hp.faults; have := Fin.pos p; omega
     obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
-      SA.fastLock_honest_vote hrun hf ho.1 hfl
+      SA.fastLock_honest_vote hrun hf ho.1 hfl hp.stock
     have hOB := (hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2).trans hDB
     obtain ⟨ellZ, hcz, he⟩ := hv
     obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hr hz ⟨hcz, he⟩

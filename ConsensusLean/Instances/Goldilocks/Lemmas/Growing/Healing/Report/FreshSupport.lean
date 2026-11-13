@@ -39,13 +39,14 @@ theorem unanimous_next_cast_supporters_at
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
     (hvotes : ∀ x, x ∈ H (tr.time j) → ∃ i ev,
-      SA.VoteAt tr.projAC x i ev ∧ ev.msg.slot = u ∧ tr.time i ≤ tr.time j) :
+      SA.VoteAt tr.projAC x i ev ∧ ev.msg.slot = u ∧ tr.time i ≤ tr.time j)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ x, x ∈ H (tr.time j) →
       x ∈ SA.supporters ell.frame (SA.mergedVoteView sp e.readPoint ell.frame (u + 1)) u P := by
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg j) hjb
+    (hrun.time_nonneg j) hjb hstock
   have hr := hS.run.localRun
   have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
@@ -105,7 +106,8 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k u ell)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P := by
@@ -126,7 +128,7 @@ theorem FrameWindow.older_locks_compatible_at_update_at
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts (u + 1 : Nat) + sp.Δ by
       have ht : sp.ts u ≤ sp.ts (u + 1 : Nat) := (SA.ts_le_iff sp).2 (by omega)
-      linarith [SA.gbar_nonneg g]) (hnext.trans hkb)
+      linarith [SA.gbar_nonneg g]) (hnext.trans hkb) hstock
   have hslot : sp.slot (sp.ts (u + 1 : Nat) + sp.Δ) = u + 1 := by
     apply SA.slot_of_mem sp (u + 1)
     all_goals simp only [SAParams.ts]; push_cast; linarith
@@ -164,11 +166,11 @@ theorem FrameWindow.older_locks_compatible_at_update_at
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith
   have hS0 := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g])
-    (hshort.trans (hrun.time_mono hjk.le |>.trans hkb))
+    (hshort.trans (hrun.time_mono hjk.le |>.trans hkb)) hstock
   have hvotes := honest_votes_of_joined_before_at hS0 hgu hjoin
   obtain ⟨hvi, _, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hawake hf hcatch
     hnr hgu hu0 hTb hz hdes hP hPs hyj hc.1 hjlate hjfinite
-    (hvotes y (hrun.antitone hshort hyj))
+    (hvotes y (hrun.antitone hshort hyj)) hstock
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
     honestProposalRun_of_proposesAt_at hrun hnc hz hdes hP hPs
   change tr.time a = sp.ts u at hta
@@ -179,14 +181,14 @@ theorem FrameWindow.older_locks_compatible_at_update_at
     ((hrun.time_mono hjk.le).trans hkb) hvi.1
     (fun x hx => by
       obtain ⟨i, ev, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx)
-      exact ⟨i, ev, hv, hes, hit.trans hshort⟩)
+      exact ⟨i, ev, hv, hes, hit.trans hshort⟩) hstock
   have hhalf : sp.n ≤ 2 * (H (tr.time j)).ncard := by
     have hn : (H (tr.time j)).ncard + (H (tr.time j))ᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     have hb := hf (tr.time j) (hrun.time_nonneg j) ((hrun.time_mono hjk.le).trans hkb)
     omega
   exact older_locks_compatible_after_unlock_at hrun hnc hy hc hs hjk hvi.1
-    (fun x hx => Or.inr (hsupp x hx).2) hhalf
+    (fun x hx => Or.inr (hsupp x hx).2) hhalf hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

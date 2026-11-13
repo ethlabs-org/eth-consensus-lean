@@ -285,8 +285,8 @@ private theorem high_locks (hI : InclusionRun tr H U proposer g t₀) {x : Fin s
     rcases (show l.slot = σ ∨ σ < l.slot by omega) with h | h
     · rw [h] at hopt
       exact hsame k CV O hopt
-    · exact optimisticLock_compatible hrun hI.two_faulty_lt hx hopt fun w hw j e hv hs =>
-        hlater w hw j e hv (by omega)
+    · exact optimisticLock_compatible hrun hI.two_faulty_lt hx hopt (fun w hw j e hv hs =>
+        hlater w hw j e hv (by omega)) hI.stock
   rcases hO with h | h
   · exact Or.inl (hYO.trans h)
   · exact anc_total hU hYO h
@@ -374,7 +374,7 @@ theorem h2_proposals_continue (hI : InclusionRun tr H U proposer g t₀)
   refine batch_proposal hrun hI.two_faulty_lt (honest_voters_half hI.toHealthyBase hm4) hv hx hc
     (proposal_slot ht) hprop hV (fun z hz k e hve hes => ?_)
     (high_locks hI hx ht hlater fun k CV O hopt => optimisticLock_compatible hrun
-      hI.two_faulty_lt hx hopt hv)
+      hI.two_faulty_lt hx hopt hv hI.stock) hI.stock
   obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hv z hz k e hve hes
   obtain ⟨Hd, hHdt, hHdr, -, hh⟩ := late_vote_held_of_frame hI.toHealthyBase hx hc hm4
     (by rw [ht, hts]; linarith only [hΔ]) hz hve hes fun Hd hHd hHdr => by
@@ -468,7 +468,7 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
     · exact update_first_proposal hrun hX hfu hx hc hslot hprop hV hPCV
         (hW hX hfu.choose_spec.choose_spec.1) (high_locks hI hx ht hlater hsame)
     · exact optimistic_first_proposal hrun hI.two_faulty_lt hX hopt hx hc hslot hprop hV hPCV
-        (high_locks hI hx ht hlater hsame)
+        (high_locks hI hx ht hlater hsame) hI.stock
   · obtain ⟨ℓX, C, hupd, hconf, hdeep⟩ := id hsl
     have hres : ResultAt tr X i₀ j C (fastCounted sp (tr.state X i₀) ℓX.frame j C) :=
       ⟨ℓX, hupd, hconf, rfl⟩
@@ -482,8 +482,8 @@ theorem raw_first_proposals (hI : InclusionRun tr H U proposer g t₀) {B : Blk 
       · exact slow_stored_locks hI.toHealthyBase hX hsl hwin hx (by rw [hslot]) l hl hlive hle
           Y hY hYr
       · obtain ⟨O, hYO, k, CV', hopt⟩ := proposal_high_lock hr hx ht hl hlt.le hY hYr
-        rcases optimisticLock_compatible hrun hI.two_faulty_lt hx hopt fun w hw j' e hv hs =>
-            hlater w hw j' e hv (by omega) with h | h
+        rcases optimisticLock_compatible hrun hI.two_faulty_lt hx hopt (fun w hw j' e hv hs =>
+            hlater w hw j' e hv (by omega)) hI.stock with h | h
         · exact Or.inl (hYO.trans h)
         · exact anc_total hU hYO h
     exact result_first_proposal hrun hX hres hBC hx hc hslot hprop hV
@@ -606,10 +606,11 @@ theorem result_prefix_vote_extends_of_stored (hrun : ACRun proposer tr H U)
       ∀ Y ∈ U, Y.root = l.block → Compatible U Y B)
     (hE : EarlierVotesExtend tr H U i (s + 1) B)
     (hmerged : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.state x r).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state x r).pool s}) :
+      v ∈ (tr.state x r).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state x r).pool s})
+    (hstock : sp.committeeSize = sp.n) :
     VoteExtends U e.msg B :=
   result_transfer_anc sp hrun hx hres hBC hy hc hs hcarry hviab
-    (live_locks_of_stored_before hrun hf hy hc hs hstored hE) hmerged
+    (live_locks_of_stored_before hrun hf hy hc hs hstored hE hstock) hmerged
 
 /-- Later transfer needs extension only at earlier cuts, for the predecessor and
 current labels. Slot monotonicity places every predecessor vote before this cast. The `Sync`

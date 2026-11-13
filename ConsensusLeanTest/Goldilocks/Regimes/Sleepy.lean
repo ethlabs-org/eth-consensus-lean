@@ -132,8 +132,8 @@ theorem tickRun_sleepySafe (t t' : Nat) :
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t) t)
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * t') t')) := by
   obtain ⟨hrun, hnc, hsl, hi, hj, hbi, hbj, hy, hy'⟩ := sleepySafe_premises t t'
-  have h := Regimes.sleepy_safe sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0) 1 hrun hnc
-    hsl
+  have h := Regimes.sleepy_safe sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0) 1 rfl hrun
+    hnc hsl
   refine ⟨h.1 v0 (Set.mem_univ _) v0 (Set.mem_univ _) _ _ _ _, fun htt => ?_⟩
   exact h.2 v0 _ _ _ _ hi hj hbi hbj (by omega) hy hy'
 
@@ -143,8 +143,8 @@ theorem tickRun_includeSleepy (s t : Nat) (hs : 1 ≤ s) (ht : 4 * s + 6 ≤ t) 
     Anc ((tickRun N1 dg1).HonestBlocks Set.univ) (blk s)
       (Regimes.readAfter (tickRun N1 dg1) v0 (8 * (t + 1)) t) := by
   obtain ⟨hrun, hnc, hsl, hP, hτ, hy, hj⟩ := includeSleepy_premises s t hs ht
-  exact Regimes.include_sleepy sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0) 1 hrun hnc
-    hsl _ _ hP v0 t _ hτ hy hj
+  exact Regimes.include_sleepy sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0) 1 rfl hrun
+    hnc hsl _ _ hP v0 t _ hτ hy hj
 
 /-- (b) **R.2 growth on the tick run** (`grow_sleepy`, `k = 1`): some ready proposal `P` released
 after `t` is in the validator's read after `t + 10Δ` and not in its read after `t`, and the read
@@ -161,7 +161,7 @@ theorem tickRun_growSleepy (t : Nat) :
         (Regimes.readAfter (tickRun N1 dg1) v0 (8 * (t + 11)) (t + (4 * 1 + 6) * sp1.Δ)) := by
   obtain ⟨hrun, hnc, hsl, hk, ht, hrec, hx, hjx, hy, hj⟩ := growSleepy_premises t
   obtain ⟨τ, P, hτ, hP, hin, hnot, hanc⟩ := Regimes.grow_sleepy sp1 ro1 dg1 Set.univ
-    (tickRun N1 dg1) (fun _ => v0) 1 1 hrun hnc hsl hk t ht hrec
+    (tickRun N1 dg1) (fun _ => v0) 1 1 rfl hrun hnc hsl hk t ht hrec
   exact ⟨τ, P, hτ, hP, hin v0 _ hy hj, hnot v0 _ hx hjx, hanc v0 _ v0 _ hx hjx hy hj⟩
 
 end Consensus.Goldilocks.Witness.One

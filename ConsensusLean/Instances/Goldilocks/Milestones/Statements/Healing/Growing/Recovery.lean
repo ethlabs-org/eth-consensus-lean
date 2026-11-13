@@ -98,6 +98,7 @@ def PatternRecovery : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
     ∀ L D, resetWindow sp g ΔF Gp L ≤ D → LagWithin tr H g D L →
@@ -113,6 +114,7 @@ def FinalizingCoverage : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp : Time) (W M cF kF : Nat),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     PatternPremises tr H proposer dg g ΔF Gp W M cF kF →
     ∀ L D, resetWindow sp g ΔF Gp L ≤ D → LagWithin tr H g D L →
@@ -133,6 +135,7 @@ def CacheAcceptanceAfterReset : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → tr.HealthyRunAt H ΔF g →
     Compose.NoCollRun dg tr →
       ∀ y k B, y ∈ H (tr.time k) → tr.AcceptAt y k B →

@@ -159,7 +159,8 @@ theorem healthy_base_of_service_catch_before_at
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hs : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
+    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     SA.HealthyBaseUpTo (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
   have hpre := hrun.upTo hd0
   have hncp := hnc.upTo d
@@ -167,7 +168,7 @@ theorem healthy_base_of_service_catch_before_at
   have hdr := projection_driven_of_run hpre hncp hpre.genesis_root_ok
   rw [RunTrace.upTo_projAC] at hr hdr
   refine ⟨hr, hdr, sync_window_at_reset_at hrun hs (SA.le_gbar g) hd0,
-    catch_window_at_gbar_at hrun hc hd0, ?_, hfaults d hd0 hdb, hrun.stock⟩
+    catch_window_at_gbar_at hrun hc hd0, ?_, hfaults d hd0 hdb, hstock⟩
   intro y hy t hgt htd
   exact (Trace.upTo_awake _ y t).mpr
     ⟨hawake y t (hrun.antitone htd hy) hgt (htd.trans hdb), htd⟩
@@ -180,6 +181,7 @@ theorem healthy_base_of_reset_catch_before_at {b : Time}
     {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
     SA.HealthyBaseUpTo (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) proposer g d :=
   healthy_base_of_service_catch_before_at hp.run hp.noColl hp.sync hp.awake hp.faults hc hd0 hdb
+    hp.stock
 
 end Consensus.Goldilocks.Healing.Growing
 

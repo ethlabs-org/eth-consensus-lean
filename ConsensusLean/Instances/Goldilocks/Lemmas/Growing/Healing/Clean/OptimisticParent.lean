@@ -96,7 +96,7 @@ theorem clean_optimistic_proposal_parent_at (hp : ResetPremisesUpTo tr H propose
   have hFB := (hPhi.rooted.2 B hV.1).mono hPhiU
   -- the proposer's locks of a label `≥ s` are optimistic of label `s`, so compatible with `B`
   have hnoopt := Healing.proposal_no_optimistic_of_run (hp.run.upTo ht0) (hp.noColl.upTo _) hf
-    hpH (by rw [RunTrace.upTo_projAC]; exact hcp) hcall hti
+    hpH (by rw [RunTrace.upTo_projAC]; exact hcp) hcall hti hp.stock
   have hhigh : SA.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
       (tr.time i) s B := by
     refine SA.highLocksCompatible_iff.2 fun l hl _ hls X hX hXr => ?_
@@ -127,7 +127,7 @@ theorem clean_optimistic_proposal_parent_at (hp : ResetPremisesUpTo tr H propose
       exfalso
       linarith only [hqt, ht, hle, hΔ]
   refine SA.Growing.ProposalSources.optimistic_first_proposal_anc_at hac hf hx hop .refl hpH hci
-    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   intro v hv
   obtain ⟨hvs, hsend, D, hD, hDr, hBD, hacc⟩ := fastLock_writer_at hac.localRun hx
     (Or.inr hop) v hv

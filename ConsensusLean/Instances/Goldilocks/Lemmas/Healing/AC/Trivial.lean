@@ -910,7 +910,7 @@ theorem fastLock_honest_voteU
     {uL : Nat → Set Lock} (hrun : ACRunU wm uL proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hfl : FastLockAt tr x i₀ s B CV) :
+    (hfl : FastLockAt tr x i₀ s B CV) (hstock : sp.committeeSize = sp.n) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg B := by
   have hr := hrun.localRun
   rcases hfl with ⟨ℓ, C, ⟨hc, -⟩, -, hD, -⟩ | ⟨ℓ, A, hpt, hsl, hsel, -⟩
@@ -918,7 +918,7 @@ theorem fastLock_honest_voteU
     have hfast := (deepest_mem hD).1.2.2
     unfold FastTest confirmationScore at hfast
     dsimp only at hfast
-    rw [hrun.stock] at hfast
+    rw [hstock] at hfast
     have hlt := Nat.lt_of_mul_lt_mul_left (lt_of_lt_of_le hf hfast)
     obtain ⟨u, ⟨-, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hBR⟩, hu⟩ :=
       Set.exists_mem_notMem_of_ncard_lt_ncard hlt
@@ -931,7 +931,6 @@ theorem fastLock_honest_voteU
     split_ifs at hsel
     have h34 := (deepest_mem hsel).1.2.1
     have hlt : Hᶜ.ncard < (optimisticVoters sp A ℓ.frame (sp.slot (tr.time i₀)) B).ncard := by
-      have hstock := hrun.stock
       omega
     obtain ⟨u, ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hu⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard hlt
     obtain ⟨hvs, j, -, e, hve, rfl⟩ := optimisticPoint_pool_voteU hrun hx hpt hv (not_not.1 hu)
@@ -944,10 +943,10 @@ theorem fastLock_honest_vote
     (hrun : ACRun proposer tr H U) (hf : 2 * Hᶜ.ncard < sp.n)
     {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hfl : FastLockAt tr x i₀ s B CV) :
+    (hfl : FastLockAt tr x i₀ s B CV) (hstock : sp.committeeSize = sp.n) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg B :=
   fastLock_honest_voteU (hrun := hrun.toU) (hf := hf) (x := x) (hx := hx) (i₀ := i₀) (s := s)
-      (B := B) (CV := CV) (hfl := hfl)
+      (B := B) (CV := CV) (hfl := hfl) (hstock := hstock)
 
 /-! ## A fast origin of label `≥ r` transfers -/
 
@@ -1015,7 +1014,7 @@ theorem fast_origin_transfer_votesU
   have hrun := hS.run
   have hr := hrun.localRun
   have hΔ := sp.toParams.hΔ
-  have hvB := fastLock_honest_voteU hrun hS.two_faulty_lt hx hfl
+  have hvB := fastLock_honest_voteU hrun hS.two_faulty_lt hx hfl hS.stock
   have hcarry := trivial_carry_fastLockU hS hx hfl hs
   have hnext : ∀ i, ∀ y ∈ H, ∀ e, VoteAt tr y i e → e.msg.slot = s + 1 →
       VoteExtends U e.msg B := by

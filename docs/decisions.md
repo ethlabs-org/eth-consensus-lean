@@ -539,6 +539,15 @@ detail in `TRUST.md`.
   since `Lemmas/Blocks/Facts` and the tests use them too.
 - **As much as possible stays off the trusted surface**: a definition that no Challenge statement needs moves to an
   untrusted layer, keeping its name and body. `cF` (the ratio gap) is an example: it lives in a test.
+- **Thirteen bridges from the growing-fault statements are deleted.** `Compose.readyImpliesJoined_of_growing`,
+  `Healing.cutAndReset_of_growing`, `Healing.resetExistence_of_growing`, `Healing.nonInterference_of_growing`,
+  `Healing.availableHealing_of_growing`,
+  `Healing.viableWitnessRetention_of_growing`, `Healing.cleanLockDrain_of_growing`,
+  `Healing.frozenTreeAgreement_of_growing`, `Healing.commonPathAcquisition_of_growing`,
+  `Healing.patternRecovery_of_growing`, `Healing.finalizingCoverage_of_growing`,
+  `Healing.cacheAcceptanceAfterReset_of_growing` and `Healing.outcomeService_of_growing` are unused upstream
+  bridges (present at 9124), no longer derivable once the growing hypothesis carries the population pin; each
+  static target is proved directly.
 
 ## Repository, toolchain and trust checks
 

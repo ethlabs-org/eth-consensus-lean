@@ -140,7 +140,7 @@ theorem fastLock_compatible_at {n : Nat} (hvi : OutageVoteInv D n) {y : Fin sp.n
   have hU := D.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hcount, hCV⟩ := SA.fastLock_counted hrun' hy hfl
-  rw [D.stock] at hcount -- §S S14
+  rw [D.stock] at hcount
   by_cases hs : s < D.j₀
   · -- an update or a selection of a label `< j₀` is within `b₀`
     have hj₀ := D.hj₀.1

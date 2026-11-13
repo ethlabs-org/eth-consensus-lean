@@ -22,7 +22,7 @@ theorem slow_stored_locks_service_at
     {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsl : SA.SlowLockAt tr.projAC x c s D)
     (hm : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    (hi : s + 1 ≤ sp.slot (tr.time i)) :
+    (hi : s + 1 ≤ sp.slot (tr.time i)) (hstock : sp.committeeSize = sp.n) :
     ∀ l ∈ (tr.projAC.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
       ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block → Compatible (tr.HonestBlocksAt H) Y D := by
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
@@ -36,7 +36,7 @@ theorem slow_stored_locks_service_at
   have hc : Compatible (tr.HonestBlocksAt H) O R := by
     rcases hO with hO | hO
     · exact result_result_compatible_service_at hrun hnc hsvc hj hyk hxk hO hR
-    · exact (result_optimistic_compatible_service_at hrun hnc hsvc hj hxk hyk hR hO).symm
+    · exact (result_optimistic_compatible_service_at hrun hnc hsvc hj hxk hyk hR hO hstock).symm
   rcases hc with hc | hc
   · exact Anc.total hU (hLO.trans hc) hDR
   · exact Anc.total hU hLO (hDR.trans hc)

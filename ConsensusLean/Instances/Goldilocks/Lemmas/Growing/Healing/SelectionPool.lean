@@ -90,7 +90,7 @@ theorem ready_update_selection_of_pool_core_at
       SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
     (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
-      Compatible (tr.HonestBlocksAt H) L P) :
+      Compatible (tr.HonestBlocksAt H) L P) (hstock : sp.committeeSize = sp.n) :
     SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
       ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
       SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
@@ -162,7 +162,7 @@ theorem ready_update_selection_of_pool_core_at
     · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hPhiU hL.1 h hPt)
     · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hPhiU hPt h hL.1)
   have hfast : SA.fastSelect sp A ell.frame u P = some P :=
-    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hrun.stock]; omega)
+    SA.fastSelect_eq_result hPhi hPt hPg (by unfold SA.FastTest; rw [hstock]; omega)
   exact ⟨hconf, hnv, hfast, update_selection_of_confirmation_at hrun hnc hy hu hconf hnv⟩
 
 /-- The finite-reset wrapper supplies only execution, no collisions and the cut fault bound. -/
@@ -186,7 +186,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool_at {g ΔF a b : Time}
       (tr.projAC.post j).latestConfirmed =
         (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed :=
   ready_update_selection_of_pool_core_at hp.run hp.noColl hy
-    (hp.faults _ (hp.run.time_nonneg j) hjb) hu hPt hPg hpool hlocks
+    (hp.faults _ (hp.run.time_nonneg j) hjb) hu hPt hPg hpool hlocks hp.stock
 
 end Consensus.Goldilocks.Healing.Growing
 

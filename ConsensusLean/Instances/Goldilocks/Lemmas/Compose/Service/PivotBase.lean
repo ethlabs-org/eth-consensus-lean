@@ -271,7 +271,8 @@ theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
-    (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
+    (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV := by
   intro z hz c hci C CV hO
   have hr' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -340,7 +341,6 @@ theorem proposal_no_optimistic_of (hrun : GoldilocksRun proposer dg H tr)
       exact hnr (by rw [hmem])
     | _ => simp [Node.Event.phase] at hph
   have := Set.ncard_le_ncard hnoH (Set.toFinite _)
-  have hstock := hrun.stock
   omega
 
 set_option linter.unusedVariables false in
@@ -354,7 +354,7 @@ theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts s) :
+    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     ∀ l ∈ (tr.state p i).ac.locks, l.slot < s := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   intro l hl
@@ -375,7 +375,7 @@ theorem proposal_locks_slot_of (hrun : GoldilocksRun proposer dg H tr)
     · exact h
     have hls : l.slot = s := by rw [hii, hsl_i] at hle; omega
     exact absurd (hls ▸ hOp)
-      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti x hx k' hki O CV)
+      (proposal_no_optimistic_of hrun hnc hf hp hc hcall hti hstock x hx k' hki O CV)
 
 /-- **`fc_root` in a downward-closed set, from the sources**: at an honest node's cut whose honest
 attestations all have sources in a set `R` closed under ancestors, `Σ.J` is genesis (`h_j = 0`) or

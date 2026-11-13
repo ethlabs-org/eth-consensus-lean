@@ -39,7 +39,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J D) :
+    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J D) (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
   obtain ⟨ellx, C', hu, hconf, hsel⟩ := hsl
@@ -66,7 +66,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
     hx hres hDC hy hc hs
     (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
-    (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs htwo ih)
+    (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs htwo ih hstock)
     (writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs)
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

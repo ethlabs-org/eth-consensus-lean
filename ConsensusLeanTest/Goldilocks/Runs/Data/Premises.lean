@@ -415,7 +415,8 @@ theorem source_mk (R : Run X) (hrun : GoldilocksRun R.proposer R.dg H R.tr) (hX 
     (hcM : c ∈ M) (hbM : b ∈ M) (hg : r₀.pre.ac.getConf M s = some c)
     (hf : fastSelD r₀.pre.ac M t s c = some b) (hj : r₀.pre.ac.joinedB t = true)
     (hcv : cvD r₀.pre.ac M s b = L) (hn₁ : r₁.node = x) (ht₁ : r₁.time = t)
-    (hc₁ : r₁.cut = .ac .toFG M ems₁) (htf : (r₁.pre.ac.toFG M t).2 = some b) :
+    (hc₁ : r₁.cut = .ac .toFG M ems₁) (htf : (r₁.pre.ac.toFG M t).2 = some b)
+    (hstock : X.sp.committeeSize = X.sp.n) :
     StoredFastLockAt R.tr x i s (X.blk b) {v | v ∈ L} ∧
       SA.joined X.sp (R.tr.state x i).ac (R.tr.time i) ∧
       (∃ ℓ, SA.ToFGAt R.tr.projAC x (i + 1) ℓ (X.blk b)) ∧ R.tr.time (i + 1) = t := by
@@ -436,7 +437,7 @@ theorem source_mk (R : Run X) (hrun : GoldilocksRun R.proposer R.dg H R.tr) (hX 
   · change deepest _ {X_1 | _ ∧ ¬ conflictsWithLock X.sp (R.tr.projAC.state x i).locks
       _ (R.tr.time i) X_1 ∧ _} = _
     rw [hs₀, hT₀]
-    exact (fastSelect_eq hrun.stock hX hM r₀.pre.ac t s hcM).trans (by rw [hf]; rfl)
+    exact (fastSelect_eq hstock hX hM r₀.pre.ac t s hcM).trans (by rw [hf]; rfl)
   · rw [hs₀, fastCounted_eq hX hM _ _ (hM.valid b hbM), hcv]
   · exact (viableAncestor_frameOf hX hM (blk_mem_T hbM)).symm
   · have hst := (trace_row R h₀).2.2.2.2

@@ -85,10 +85,11 @@ theorem proposal_held_at_update_at (hrun : Growing.GoldilocksRun proposer dg H t
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     P ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F P := by
   exact proposal_held_at_update_from hrun hnc (hsync.toFrom hrun) hp hP hPs (ts_natCast_nonneg _)
-    hy hu hb (updater_F_anc_proposal_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb)
+    hy hu hb (updater_F_anc_proposal_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock)
 
 /-- **`P` has a strict majority at the update's test**, under the service from `a ≤ t_s` with its
 catch-up before `a + κ ≤ t_s + 2Δ` and the counts from `σ₀ ≤ s`, for `P` held at the update and
@@ -100,7 +101,8 @@ theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer 
     (hσ₀ : σ₀ ≤ s) (ha : a ≤ sp.ts s) (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ) {y : Fin sp.n}
     {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (hPt : P ∈ ℓ.frame.tree)
-    (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
+    (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
+    (hstock : sp.committeeSize = sp.n) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -111,7 +113,7 @@ theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer 
   set A := tr.projAC.state y k₀
   set Hv := VotersAt tr H s d
   have hcount : (H d)ᶜ.ncard < Hv.ncard := by
-    have h := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+    have h := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
       (CommitteeBoundsFrom.of_full hrun hB) hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
     rwa [SA.ncard_inter_full] at h
   -- a validator honest at `d` has one slot-`s` vote in the pool: its vote
@@ -156,15 +158,17 @@ theorem proposal_majority_at_update_at (hrun : Growing.GoldilocksRun proposer dg
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s}).ncard <
       2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s P := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
   exact proposal_majority_at_update_from hrun hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
     (ts_natCast_nonneg _) (by rw [zero_add]; exact add_nonneg (ts_natCast_nonneg _) (by linarith))
-    hy hu hb (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb).1
-    (honest_votes_eq_proposal_at_update_at hrun hnc hsync hB hinv hp hP hPs (ht ▸ hb))
+    hy hu hb (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock).1
+    (honest_votes_eq_proposal_at_update_at hrun hnc hsync hB hinv hp hP hPs (ht ▸ hb) hstock)
+    hstock
 
 /-- **No result of an update of a node honest then is vetoed**: a live lock block is an ancestor
 of a stored lock block, on the origin chain (S1); the result is an origin; blocks on the origin
@@ -223,13 +227,14 @@ theorem adopt_result_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
       ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
   have hres := adopt_result_of hrun hnc hPs hy hu
-    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb).1
-    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb).2
-    (proposal_majority_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb)
+    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock).1
+    (proposal_held_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock).2
+    (proposal_majority_at_update_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock)
   exact ⟨hres, result_not_vetoed_at hrun hnc hb0 hinv hy hu hb hres⟩
 
 /-- **An update whose result is `P`, not vetoed, adopts `P`**: after it, the record of the
@@ -275,10 +280,11 @@ theorem update_adopts_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       Anc (tr.HonestBlocksAt H) P E := by
-  obtain ⟨hC, hv⟩ := adopt_result_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb
+  obtain ⟨hC, hv⟩ := adopt_result_at hrun hnc hb0 hsync hB hinv hp hP hPs hy hu hb hstock
   obtain ⟨E, hE, hEr, hPE⟩ := update_adopts_of hrun hnc hy hu hC hv
   exact ⟨E, (frameIn_at hrun hnc hy hu.1).2 hE, hEr, hPE⟩
 

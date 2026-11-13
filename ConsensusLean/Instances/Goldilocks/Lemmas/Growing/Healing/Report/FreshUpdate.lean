@@ -59,11 +59,11 @@ theorem honest_vote_early_pool_before_at
     {x : Fin sp.n} (hx : x ∈ H (tr.time j)) {i : Nat}
     {e : SA.Em sp (List (FG.Att sp.n))}
     (hv : SA.VoteAt tr.projAC x i e) (hes : e.msg.slot = u)
-    (hit : tr.time i ≤ tr.time j) :
+    (hit : tr.time i ≤ tr.time j) (hstock : sp.committeeSize = sp.n) :
     e.msg ∈ (tr.projAC.state y j).pool u ∧
       (tr.projAC.state y j).voteStamp e.msg < SA.ETime.of (sp.ts u + 2 * sp.Δ) := by
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg j) hjb
+    (hrun.time_nonneg j) hjb hstock
   have hs := Trace.upTo_state tr.projAC y (i := j)
     (fun q hq => hrun.time_mono hq.le)
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
@@ -147,14 +147,15 @@ theorem unanimous_early_pool_of_blockStamp_at
     (hbs : (tr.projAC.state y j).blockStamp P.root <
       SA.ETime.of (sp.ts u + 2 * sp.Δ))
     (hvotes : ∀ x, x ∈ H (tr.time j) → ∃ i e,
-      SA.VoteAt tr.projAC x i e ∧ e.msg.slot = u ∧ tr.time i ≤ tr.time j) :
+      SA.VoteAt tr.projAC x i e ∧ e.msg.slot = u ∧ tr.time i ≤ tr.time j)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ x, x ∈ H (tr.time j) → ∃ v ∈ (tr.projAC.state y j).pool u,
       v.val = x ∧ v.head = P.root ∧
       SA.resolutionTime (tr.projAC.state y j) ell.frame v <
         SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg j) hjb
+    (hrun.time_nonneg j) hjb hstock
   have hr := hS.run.localRun
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
@@ -168,7 +169,7 @@ theorem unanimous_early_pool_of_blockStamp_at
     exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
   have heP := hun x i e (hrun.antitone hit hx) hv hes
   obtain ⟨hm, hvs⟩ := honest_vote_early_pool_before_at hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hy hc ht hjb hx hv hes hit
+    hmargin hy hc ht hjb hx hv hes hit hstock
   have hval := (SA.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
   refine ⟨e.msg, hm, hval, heP,
     SA.resolutionTime_lt_of hPhi.1 hPt heP.symm (by omega) hvs (heP ▸ hbs), ?_⟩
@@ -200,7 +201,7 @@ theorem unanimous_early_pool_of_acceptance_at
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
-    (hPt : P ∈ ell.frame.tree) :
+    (hPt : P ∈ ell.frame.tree) (hstock : sp.committeeSize = sp.n) :
     ∀ x, x ∈ H (tr.time j) → ∃ v ∈ (tr.projAC.state y j).pool u,
       v.val = x ∧ v.head = P.root ∧
       SA.resolutionTime (tr.projAC.state y j) ell.frame v <
@@ -210,14 +211,14 @@ theorem unanimous_early_pool_of_acceptance_at
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith [sp.toParams.hΔ]
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by
-      linarith [SA.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb)
+      linarith [SA.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb) hstock
   have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
   exact unanimous_early_pool_of_blockStamp_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hPs hun hy hc ht hjb hPt
     (blockStamp_early_of_historical_acceptance_at hrun hnc hsvc hnr hgu hz ha hta hy hc ht hPt)
     (fun x hx => by
       obtain ⟨i, e, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx)
-      exact ⟨i, e, hv, hes, hit.trans hshort⟩)
+      exact ⟨i, e, hv, hes, hit.trans hshort⟩) hstock
 
 /-- Wakefulness and the receiver's restart cutoff produce the actual adjacent calls. -/
 theorem update_toFG_calls_of_awake_at

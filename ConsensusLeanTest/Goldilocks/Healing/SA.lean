@@ -234,9 +234,9 @@ theorem h1 (h : RunFacts tr U block) {p : Nat} (hp : 8 ≤ p) :
       (tr.time j = sp1.ts p + 6 * sp1.Δ →
         ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
       Anc U (block p) (acConfirmed sp1 (tr.post j) ℓ.frame (tr.time j))) :=
-  ac_healing_standalone sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 h.run.run h.run.driven
-    h.run.trivial h.run.healthy h.run.catchUp p (block p) trivial (h.honest p (by omega))
-    (start_le hp)
+  ac_healing_standalone sp1 h.run.stock Unit ro1 Set.univ U tr (fun _ => v0) 0 h.run.run
+    h.run.driven h.run.trivial h.run.healthy h.run.catchUp p (block p) trivial
+    (h.honest p (by omega)) (start_le hp)
 
 /-- **Slot `8`**: the validator votes in slot `8`, and every slot-`8` vote is `block 8`. -/
 theorem vote8 (h : RunFacts tr U block) :
@@ -266,8 +266,8 @@ theorem corollary (h : RunFacts tr U block) {t : Time} (ht : 32 ≤ t) :
         (tr.time j = t + 4 + 6 * sp1.Δ →
           ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
         Anc U P (acConfirmed sp1 (tr.post j) ℓ.frame (tr.time j)) :=
-  ac_healing_standalone_corollary sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 4 h.run.run
-    h.run.driven h.run.trivial h.run.healthy h.run.catchUp proposerBound t
+  ac_healing_standalone_corollary sp1 h.run.stock Unit ro1 Set.univ U tr (fun _ => v0) 0 4
+    h.run.run h.run.driven h.run.trivial h.run.healthy h.run.catchUp proposerBound t
     (by rw [gbar0, Θ1, Δ1]; linarith)
 
 /-- **The corollary at `t = 32`**: an honest proposal of a slot `p` with `32 ≤ t_p ≤ 36` is below
@@ -302,7 +302,7 @@ theorem h1_tight (h : RunFacts tr U block) {p : Nat} (hp : 5 ≤ p) :
       (tr.time j = sp1.ts p + 6 * sp1.Δ →
         ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
       Anc U (block p) (acConfirmed sp1 (tr.post j) ℓ.frame (tr.time j))) :=
-  ac_healing_standalone_tight sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 h.run.run
+  ac_healing_standalone_tight sp1 h.run.stock Unit ro1 Set.univ U tr (fun _ => v0) 0 h.run.run
     h.run.driven h.run.trivial h.run.healthy h.run.catchUp p (block p) trivial
     (h.honest p (by omega)) (start_le_tight hp)
 
@@ -316,8 +316,8 @@ theorem corollary_tight (h : RunFacts tr U block) {t : Time} (ht : 20 ≤ t) :
         (tr.time j = t + 4 + 6 * sp1.Δ →
           ∃ k ≤ j, ∃ ℓ', tr.CallAt y k ℓ' ∧ ℓ'.call = .tick ∧ tr.time k = tr.time j) →
         Anc U P (acConfirmed sp1 (tr.post j) ℓ.frame (tr.time j)) :=
-  ac_healing_standalone_tight_corollary sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 4 h.run.run
-    h.run.driven h.run.trivial h.run.healthy h.run.catchUp proposerBound t
+  ac_healing_standalone_tight_corollary sp1 h.run.stock Unit ro1 Set.univ U tr (fun _ => v0) 0 4
+    h.run.run h.run.driven h.run.trivial h.run.healthy h.run.catchUp proposerBound t
     (by have hk : sp1.k = 2 := rfl; rw [gbar0, Δ1, hk]; push_cast; linarith)
 
 /-- **H.2 (i) on the run** (`t₀ = 0`, `Inv(0)`, `Geo`): for `p ≥ 8`, every slot-`p` vote is
@@ -325,7 +325,7 @@ theorem corollary_tight (h : RunFacts tr U block) {t : Time} (ht : 20 ≤ t) :
 theorem h2_votes (h : RunFacts tr U block) {p : Nat} (hp : 8 ≤ p) :
     ∀ x ∈ (Set.univ : Set (Fin sp1.n)), ∀ j e, VoteAt tr x j e → e.msg.slot = p →
       e.msg.head = (block p).root :=
-  (ac_inclusion sp1 Unit ro1 Set.univ U tr (fun _ => v0) 0 0 h.run.run h.run.driven
+  (ac_inclusion sp1 h.run.stock Unit ro1 Set.univ U tr (fun _ => v0) 0 0 h.run.run h.run.driven
     h.run.healthy h.run.catchUp (by rw [gbar0]) h.inv p (block p) trivial
     (h.honest p (by omega))
     (by rw [Θ1, Δ1, ts1]; push_cast; dsimp only [Time] at *; omega)).1 (h.geo (by omega))

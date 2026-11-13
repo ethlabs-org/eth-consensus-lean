@@ -204,7 +204,7 @@ theorem vote_frame_upTo
     (hsrc.above _) hGG (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB
     (let ⟨x, hx, k, e', hv, hs', hext⟩ := hw; ⟨x, hx, k, e', hv, hs', hext⟩)
   obtain ⟨x', hx', k', e'', hve', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
-    honest_supporter_upTo hrun hnc hpre hC
+    honest_supporter_upTo hrun hnc hpre hC hstock
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
 /-- The frozen witness at a vote needs only recipient service within its finite horizon
@@ -251,7 +251,7 @@ theorem vote_frame_before
     (fun _ _ m _ _ hm _ => absurd hm (by rw [ts_natCast_zero]; exact not_lt.2 (hrun.time_nonneg m)))
     (hsrc.above _) hGG (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ => ?_) hB hGB hw
   obtain ⟨x', hx', k', e'', hve', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
-    honest_supporter_before hrun hnc hb hsync hfb hC
+    honest_supporter_before hrun hnc hb hsync hfb hC hstock
   exact ⟨x', hx', k', e'', hve', hs''.trans_le hj, Hd, hHd, hHdr, hDC.trans hCHd⟩
 
 end Consensus.Goldilocks.Compose

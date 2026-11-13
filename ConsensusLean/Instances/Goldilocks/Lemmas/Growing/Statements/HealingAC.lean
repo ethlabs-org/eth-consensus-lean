@@ -82,28 +82,28 @@ theorem geo_const {p : Nat} {P : Blk sp.n FGP} :
   exact ⟨fun h k ℓP hc hp ht y hy i ℓ e he hs => h k ℓP hc hp ht y i ℓ e hy he hs,
     fun h k ℓP hc hp ht y i ℓ e hy he hs => h k ℓP hc hp ht y hy i ℓ e he hs⟩
 
-theorem acHealingStandalone_of_growing (h : Growing.ACHealingStandalone (sp := sp)) :
-    ACHealingStandalone (sp := sp) := by
+theorem acHealingStandalone_of_growing (h : Growing.ACHealingStandalone (sp := sp))
+    (hstock : sp.committeeSize = sp.n) : ACHealingStandalone (sp := sp) := by
   intro FGP ro H U tr proposer g hrun hd htf hh hc p P hp hP ht
-  obtain ⟨h1, h2⟩ := h FGP ro (fun _ => H) U tr proposer g (acRun_const.mpr hrun)
+  obtain ⟨h1, h2⟩ := h FGP ro (fun _ => H) U tr proposer g hstock (acRun_const.mpr hrun)
     (driven_const.mpr hd) (trivialFrames_const.mpr htf)
     (healthyAC_const.mpr hh) (catchAC_const.mpr hc) p P hp hP ht
   exact ⟨fun x hx j e hv hs => h1 x j e hx hv hs, fun y hy j ℓ hcl ht' htk =>
     h2 y j ℓ hy hcl ht' htk⟩
 
 theorem acHealingStandaloneCorollary_of_growing
-    (h : Growing.ACHealingStandaloneCorollary (sp := sp)) :
+    (h : Growing.ACHealingStandaloneCorollary (sp := sp)) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandaloneCorollary (sp := sp) := by
   intro FGP ro H U tr proposer g Gp hrun hd htf hh hc hprop t ht
-  obtain ⟨p, P, h1, h2, h3, h4⟩ := h FGP ro (fun _ => H) U tr proposer g Gp
+  obtain ⟨p, P, h1, h2, h3, h4⟩ := h FGP ro (fun _ => H) U tr proposer g Gp hstock
     (acRun_const.mpr hrun) (driven_const.mpr hd) (trivialFrames_const.mpr htf)
     (healthyAC_const.mpr hh) (catchAC_const.mpr hc) hprop t ht
   exact ⟨p, P, h1, h2, h3, fun y hy j ℓ hcl ht' htk => h4 y j ℓ hy hcl ht' htk⟩
 
-theorem acInclusion_of_growing (h : Growing.ACInclusion (sp := sp)) :
-    ACInclusion (sp := sp) := by
+theorem acInclusion_of_growing (h : Growing.ACInclusion (sp := sp))
+    (hstock : sp.committeeSize = sp.n) : ACInclusion (sp := sp) := by
   intro FGP ro H U tr proposer g t₀ hrun hd hh hc hg hinv p P hp hP ht
-  obtain ⟨h1, h2⟩ := h FGP ro (fun _ => H) U tr proposer g t₀ (acRun_const.mpr hrun)
+  obtain ⟨h1, h2⟩ := h FGP ro (fun _ => H) U tr proposer g t₀ hstock (acRun_const.mpr hrun)
     (driven_const.mpr hd) (healthyAC_const.mpr hh) (catchAC_const.mpr hc) hg
     (inv_const.mpr hinv)
     p P hp hP ht
@@ -112,13 +112,14 @@ theorem acInclusion_of_growing (h : Growing.ACInclusion (sp := sp)) :
       htk⟩
 
 theorem acHealingStandaloneAll_of_growing (h : Growing.ACHealingStandaloneAll) :
-    ACHealingStandaloneAll := fun sp _ => acHealingStandalone_of_growing (h sp)
+    ACHealingStandaloneAll := fun sp hstock => acHealingStandalone_of_growing (h sp) hstock
 
 theorem acHealingStandaloneCorollaryAll_of_growing (h : Growing.ACHealingStandaloneCorollaryAll) :
-    ACHealingStandaloneCorollaryAll := fun sp _ => acHealingStandaloneCorollary_of_growing (h sp)
+    ACHealingStandaloneCorollaryAll :=
+  fun sp hstock => acHealingStandaloneCorollary_of_growing (h sp) hstock
 
 theorem acInclusionAll_of_growing (h : Growing.ACInclusionAll) : ACInclusionAll :=
-  fun sp _ => acInclusion_of_growing (h sp)
+  fun sp hstock => acInclusion_of_growing (h sp) hstock
 
 end Consensus.Goldilocks.SA
 

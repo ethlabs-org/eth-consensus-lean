@@ -42,9 +42,11 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
       ev.msg.slot = p → ev.msg.head = P.root)
     {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
-    (hBr : B.root = l.block) : Anc (tr.HonestBlocksAt H) B P := by
+    (hBr : B.root = l.block) (hstock : sp.committeeSize = sp.n) :
+    Anc (tr.HonestBlocksAt H) B P := by
   obtain ⟨_, hdom, hpass⟩ := KernelProof.current_lock_passage_of_regular_base_at hframe hrun
     hnc hsvc hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hl hlive hB hBr
+    hstock
   rcases hpass with h | ⟨hs, _⟩
   · exact h
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -60,7 +62,7 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
   rw [hslot] at ht
   exact SA.current_read_lock_below_of_earlier_heads hri hy hcast hl (hs.trans hes.symm)
     (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
-    (SA.four_thirds_full hrun.stock (by
+    (SA.four_thirds_full hstock (by
       have hbound := hf _ (hrun.time_nonneg i) (ht.trans hpb)
       have hn := sp.toParams.hn
       change 1 ≤ sp.n at hn
@@ -91,7 +93,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → SA.VoteAt tr.projAC x j ev →
-      ev.msg.slot = p → ev.msg.head = P.root) :
+      ev.msg.slot = p → ev.msg.head = P.root) (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) P := by
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
@@ -100,7 +102,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
   have hcast : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   have hPhi := SA.frameIn_of_callAt hri.localRun hy hci
   have hPv := (KernelProof.proposal_viable_at_cast_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr (by linarith [sp.toParams.hΔ]) hsp hp0 hpb hz hdes hP hPs hy hc hes).1
+    hnr (by linarith [sp.toParams.hΔ]) hsp hp0 hpb hz hdes hP hPs hy hc hes hstock).1
   have hfP : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P :=
     Anc.mono hPhi.2 (hPhi.1.fcRoot_anc_viableHeads P hPv)
   have hlk : ∀ B ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
@@ -111,7 +113,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     have hslot := (SA.castAt_spec hri.localRun hy hcast).2.1
     have hB₀P := hframe.read_locks_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hIH hl
-      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r
+      (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hstock
     exact (Anc.mono hPhi.2 (SA.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P
   unfold SA.getAnchor
   rcases hD : SA.deepest ell.frame

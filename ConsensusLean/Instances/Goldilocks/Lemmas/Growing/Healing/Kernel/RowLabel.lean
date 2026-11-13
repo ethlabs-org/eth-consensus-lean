@@ -110,7 +110,7 @@ theorem row_origin_not_current_at
       rw [RunTrace.upTo_projAC]
       exact (SA.upTo_optimisticLockAt hm).mpr ⟨hm hrd.le, hopt⟩
     obtain ⟨hn1, j', hj', e', hve', hes⟩ := slot_start_optimistic hsD (hp.noColl.upTo _) hv hs'
-      (by change tr.time d = _; rw [hcτ', hcc, hts]) hrd hop'
+      (by change tr.time d = _; rw [hcτ', hcc, hts]) hrd hop' hp.stock
     obtain rfl : v = y := Fin.ext (by have := v.2; have := y.2; omega)
     have hve₀ : SA.VoteAt tr.projAC v j' e' := by
       rw [RunTrace.upTo_projAC] at hve'

@@ -63,6 +63,7 @@ def ViableWitnessRetention : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF d : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
     CatchRun tr H g (2 * sp.Δ) →
     ∀ (i k m : Nat) (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
@@ -92,6 +93,7 @@ def CleanLockDrain : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF w d : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
     CatchRun tr H g (2 * sp.Δ) → SettledIn tr H d g w i₀ m c →
     (∀ x i j B CV, x ∈ H (max d (tr.time i)) → Compose.StoredFastLockAt tr x i j B CV →
@@ -130,6 +132,7 @@ def FrozenTreeAgreement : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF w d : Time) (i₀ i m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
     CatchRun tr H g (2 * sp.Δ) → SettledIn tr H d g w i₀ m c → i₀ ≤ i →
     ∀ (p : Fin sp.n) (kP s : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
@@ -166,6 +169,7 @@ def CommonPathAcquisition : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF Gp w d : Time) (i₀ m : Nat)
     (c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → HSShared tr H dg g ΔF →
     CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp → w + D_HS sp Gp ≤ d →
     SettledIn tr H d g w i₀ m c →

@@ -41,7 +41,8 @@ theorem FrameWindow.toFG_later_proposal_head_at
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
-      some (d, pay)) : Anc (tr.HonestBlocksAt H) R d.head := by
+      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
+    Anc (tr.HonestBlocksAt H) R d.head := by
   obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ :=
     toFG_fast_candidate_origin_at hrun hnc hy hto
   have hac := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -56,6 +57,7 @@ theorem FrameWindow.toFG_later_proposal_head_at
     simpa only [RunTrace.upTo_projAC] using hfast'
   have hDj := Healing.fast_selection_slot_le (hrun.upTo (hrun.time_nonneg a))
     (hnc.upTo _) (hf _ (hrun.time_nonneg a) (hatime.trans (hihi.trans hmb))) hya hfast''
+    hstock
   have hjlo : u ≤ j := by
     have := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
     omega
@@ -76,14 +78,15 @@ theorem FrameWindow.toFG_later_proposal_head_at
   rcases hfast with hreg | hopt
   · exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
       (by omega) (by omega) (by omega) hm (by omega) hmb hya
-      (Or.inl ⟨CV, hreg⟩) r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay hd)
+      (Or.inl ⟨CV, hreg⟩) hstock r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
+      hd)
   · have halo : sp.ts s₀ ≤ tr.time a := (hts (by omega)).trans hjtime
     have ho := (SA.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
     have hat := (SA.optimisticLockAt_spec hr hya ho (SA.CommitteeDict.full sp.n)
       (fun _ _ _ => SA.mem_full _ _)).1
     apply hframe.optimistic_write_later_proposal_head_at hrun hnc hsvc hawake hf hcatch hnr
       (by linarith only [hm, sp.toParams.hΔ]) hmb (by omega) hya ha halo hat hopt hRA hAD
-      ?_ (by omega) hrN hz hcp hcall hti hd
+      ?_ (by omega) hrN hz hcp hcall hti hd hstock
     rcases (SA.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
     · exact Or.inl hbelow
     · obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2

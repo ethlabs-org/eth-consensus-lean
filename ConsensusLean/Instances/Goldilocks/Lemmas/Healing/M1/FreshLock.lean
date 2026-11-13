@@ -416,10 +416,10 @@ theorem FrameWindow.proposal_viable_after_votes
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y k ell)
     (hlo : sp.ts u + 2 * sp.Δ ≤ tr.time k)
-    (hhi : tr.time k ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
+    (hhi : tr.time k ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
       P ∈ ell.frame.viableHeads := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
@@ -434,7 +434,7 @@ theorem FrameWindow.proposal_viable_after_votes
       fun x hx i hlo hhi => hframe.root_eq x hx i hlo (hhi.trans hshortT)⟩
   obtain ⟨q, e, ⟨ellq, hcq⟩, hes, hqt⟩ := SA.honest_votes_of_joined_before hS hgu hub hjoin y hy
   have hPv := (hshort.proposal_viable_at_cast hrun hnc hsvc hawake hf hcatch hnr hgu
-    le_rfl hu0 hub hz hdesignated hactual hPs hy hcq hes).1
+    le_rfl hu0 hub hz hdesignated hactual hPs hy hcq hes hstock).1
   have hqlo : sp.ts u ≤ tr.time q :=
     (SA.ts_le_iff_le_slot sp (hr.time_nonneg q) _).2 (by
       rw [← (SA.castAt_spec hr hy hcq).2.1, hes])
@@ -468,13 +468,13 @@ theorem FrameWindow.proposal_viable_at_update
     {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer u)
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k u ell) :
+    (hu : SA.UpdateAt tr.projAC y k u ell) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P := by
   obtain ⟨hvi, hva, _⟩ := hframe.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch hnr
     hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hu.1
     (by rw [show tr.time k = sp.ts u + 6 * sp.Δ from hu.2.2.1]; linarith only [sp.toParams.hΔ])
     (by rw [show tr.time k = sp.ts u + 6 * sp.Δ from hu.2.2.1]
-        simp only [SAParams.ts]; push_cast; linarith only [])
+        simp only [SAParams.ts]; push_cast; linarith only []) hstock
   exact ⟨hvi, hva⟩
 
 /-- Finite unanimity and an actual honest proposal force confirmation and fast
@@ -495,7 +495,7 @@ theorem FrameWindow.unanimous_update_selection
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : Unanimous tr H u P)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k u ell) :
+    (hu : SA.UpdateAt tr.projAC y k u ell) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧
       SA.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
       SA.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
@@ -509,8 +509,8 @@ theorem FrameWindow.unanimous_update_selection
     simp only [Nat.cast_zero, SAParams.ts, mul_zero] at hmargin
     linarith only [SA.gbar_nonneg g, hDelta, hmargin]
   obtain ⟨hvi, hva⟩ := hframe.proposal_viable_at_update hrun hnc hsvc hawake hf hcatch hnr
-    hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hu
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+    hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hu hstock
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, hacc, hta⟩ :=
     honestProposalRun_of_proposesAt hrun hnc hz hdesignated hactual hPs
@@ -540,8 +540,8 @@ theorem FrameWindow.unanimous_update_selection
     hkb hdeadline hrestart hvi.1
   obtain ⟨hconf, hfast⟩ := SA.confirmation_of_unanimous_early_pool
     (SA.frameIn_of_callAt hr hy hu.1).1 hvi.1 hPg (SA.CommitteeDict.full sp.n)
-    (SA.size_binding_full hrun.stock u) (fun _ _ => SA.mem_full _ _)
-    (SA.third_full hrun.stock (by have hn := sp.toParams.hn; change 1 ≤ sp.n at hn; omega))
+    (SA.size_binding_full hstock u) (fun _ _ => SA.mem_full _ _)
+    (SA.third_full hstock (by have hn := sp.toParams.hn; change 1 ≤ sp.n at hn; omega))
     (SA.state_pool_slot sp hr hy k u) (fun x hx _ => hpool x hx)
   exact ⟨hvi, hconf, hfast, hva⟩
 
@@ -560,10 +560,10 @@ theorem FrameWindow.unanimous_next_votes
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer u)
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hun : Unanimous tr H u P) :
+    (hun : Unanimous tr H u P) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = u + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg P := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith only [hmargin, hDelta]
@@ -622,7 +622,7 @@ theorem FrameWindow.unanimous_next_votes
     have hlate : sp.ts u + 2 * sp.Δ ≤ tr.time i := by rw [hts] at hlo; linarith only [hts, hlo, hhi]
     have hfinite : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith only [hlo, hhi]
     obtain ⟨hvi, _, hPv⟩ := hframe.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch
-      hnr hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hc.1 hlate hfinite
+      hnr hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hc.1 hlate hfinite hstock
     have hPhi := SA.frameIn_of_callAt hr hy hc.1
     have hcarry := SA.unanimous_proposal_carry_before hS hgu hun hz hacc hta hy hc hs
       hlate (hfinite.trans hTb) hdl hrs hvi.1
@@ -667,10 +667,10 @@ theorem FrameWindow.older_locks_compatible_at_update
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : Unanimous tr H u P)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k u ell) :
+    (hu : SA.UpdateAt tr.projAC y k u ell) (hstock : sp.committeeSize = sp.n) :
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocks H, L.root = l.block → Compatible (tr.HonestBlocks H) L P := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith only [hmargin, hDelta]
@@ -710,7 +710,7 @@ theorem FrameWindow.older_locks_compatible_at_update
     rw [hts] at hjlo; linarith only [hts, hjlo, hjt]
   have hjfinite : tr.time j ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith only [hjlo, hjt]
   obtain ⟨hvi, _⟩ := hframe.proposal_viable_after_votes hrun hnc hsvc hawake hf hcatch hnr
-    hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hc.1 hjlate hjfinite
+    hgu hu0 hjoin hTb hz hdesignated hactual hPs hy hc.1 hjlate hjfinite hstock
   have hPhi := SA.frameIn_of_callAt hr hy hc.1
   have hdl : ∀ q ≤ j, ∀ t, gbar g ≤ t →
       tr.projAC.deadline y q t ≤ max t (sp.ts u) + sp.Δ := by
@@ -733,7 +733,7 @@ theorem FrameWindow.older_locks_compatible_at_update
     have := sp.toParams.hn
     clear * - hf hn; omega
   apply SA.older_locks_compatible_after_unlock hr hy hc hs hjk hvi.1 (S := H) _
-    (by simpa only [hrun.stock] using hhalf)
+    (by simpa only [hstock] using hhalf)
   intro x hx
   obtain ⟨q, ev, hv, hes, _⟩ := SA.honest_votes_of_joined_before hS hgu (by
       linarith only [hTb, hts, hjlo, hjt]) hjoin x hx
@@ -771,9 +771,9 @@ theorem FrameWindow.unanimous_update_no_veto
     {kP : Nat} (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : Unanimous tr H u P)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k u ell) :
+    (hu : SA.UpdateAt tr.projAC y k u ell) (hstock : sp.committeeSize = sp.n) :
     ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hU := hr.coherent
   have hDelta := sp.toParams.hΔ
@@ -784,11 +784,11 @@ theorem FrameWindow.unanimous_update_no_veto
     all_goals rw [hkt]; simp only [SAParams.ts]; push_cast; linarith only [hDelta]
   have hPhi := SA.frameIn_of_callAt hr hy hu.1
   obtain ⟨hvi, _⟩ := hframe.unanimous_update_selection hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
+    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu hstock
   have hnext := hframe.unanimous_next_votes hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdesignated hactual hPs hun
+    hmargin hjoin hTb hz hdesignated hactual hPs hun hstock
   have hold := hframe.older_locks_compatible_at_update hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
+    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu hstock
   have down : ∀ {X Y}, Anc (tr.HonestBlocks H) X Y → Compatible (tr.HonestBlocks H) Y P →
       Compatible (tr.HonestBlocks H) X P := by
     rintro X Y hXY (h | h)
@@ -823,7 +823,7 @@ theorem FrameWindow.unanimous_update_no_veto
       rw [hls] at hup hC
       have hCP : C = P := Option.some.inj (hC.symm.trans
         (hframe.unanimous_update_selection hrun hnc hsvc hawake hf hcatch hnr hmargin
-          hjoin hTb hz hdesignated hactual hPs hun hy hup).2.1)
+          hjoin hTb hz hdesignated hactual hPs hun hy hup hstock).2.1)
       have hBP := (SA.deepest_mem hB).1.1.2.2
       rw [hCP] at hBP
       have hLL₁ : L = L₁ := hU.1 hL hL₁ (hLr.trans hL₁r.symm)
@@ -834,7 +834,7 @@ theorem FrameWindow.unanimous_update_no_veto
       have hLL₁ : L = L₁ := hU.1 hL hL₁ (hLr.trans hL₁r.symm)
       rw [← hLL₁] at hLB
       obtain ⟨x, hx, q, e, hv, hes, D, hD, hDr, hBD⟩ :=
-        SA.fastLock_honest_vote hS.run hf2 hy hfl
+        SA.fastLock_honest_vote hS.run hf2 hy hfl hstock
       apply down hLB
       rcases (show l.slot = u ∨ l.slot = u + 1 by clear * - hlt hle; omega) with hs | hs
       · have hDP : D = P := hU.1 hD (hPhi.2 hvi.1) (hDr.trans (hun x hx q e hv (hes.trans hs)))
@@ -875,7 +875,7 @@ theorem fresh_fast_lock_at_update
     (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : Unanimous tr H u P)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k u ell) :
+    (hu : SA.UpdateAt tr.projAC y k u ell) (hstock : sp.committeeSize = sp.n) :
     P ∈ ell.frame.tree ∧
       SA.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
       ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P ∧
@@ -883,10 +883,11 @@ theorem fresh_fast_lock_at_update
       ell.frame.viableAncestor P = P ∧
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post k).locks := by
   obtain ⟨hvi, hconf, hfast, hva⟩ := hframe.unanimous_update_selection hrun hnc hsvc hawake hf
-    hcatch hnr hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
+    hcatch hnr hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu hstock
   have hnv := hframe.unanimous_update_no_veto hrun hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu
-  have hr := (healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch).run.localRun
+    hmargin hjoin hTb hz hdesignated hactual hPs hun hy hu hstock
+  have hr := (healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+    hstock).run.localRun
   have hDelta := sp.toParams.hΔ
   have hkt : tr.projAC.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
@@ -934,7 +935,7 @@ theorem fresh_fast_lock_update_toFG
       (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hz : z ∈ H) (hdesignated : z = proposer u)
     (hactual : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hun : Unanimous tr H u P) {y : Fin sp.n} (hy : y ∈ H) :
+    (hun : Unanimous tr H u P) {y : Fin sp.n} (hy : y ∈ H) (hstock : sp.committeeSize = sp.n) :
     ∃ k ell ell', SA.UpdateAt tr.projAC y k u ell ∧
       tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
       tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
@@ -945,7 +946,8 @@ theorem fresh_fast_lock_update_toFG
       ell'.frame.viableAncestor P = P ∧
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post k).locks ∧
         (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-  have hr := (healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch).run.localRun
+  have hr := (healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+    hstock).run.localRun
   have hDelta := sp.toParams.hΔ
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
@@ -967,7 +969,7 @@ theorem fresh_fast_lock_update_toFG
   obtain ⟨k, ell, ell', hu, hcall, hto, htime, hframe', _⟩ := update_toFG_calls_of_awake hrun hy
     (hawake y hy _ (by linarith only [hmargin, hDelta]) (by rwa [hT] at hTb)) hj
   obtain ⟨_, hconf, hnv, hfast, hva, e, he, hlock⟩ := fresh_fast_lock_at_update hrun hnc hsvc
-    hawake hf hcatch hnr hmargin hjoin hTb hframe hz hdesignated hactual hPs hun hy hu
+    hawake hf hcatch hnr hmargin hjoin hTb hframe hz hdesignated hactual hPs hun hy hu hstock
   refine ⟨k, ell, ell', hu, hcall, hto, htime.trans hT.symm, hframe', hconf, hnv,
     hfast, hframe'.symm ▸ hva, e, he, hlock, ?_⟩
   simpa [Trace.state, hu.1.1, hu.1.2] using hlock

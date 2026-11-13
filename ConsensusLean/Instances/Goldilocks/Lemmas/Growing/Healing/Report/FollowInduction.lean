@@ -35,7 +35,8 @@ theorem later_heads_of_early_witness_at
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     (hbase : ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
-      e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
+      e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∧
@@ -78,7 +79,7 @@ theorem later_heads_of_early_witness_at
               linarith only [hat, hsstep, hmN, hmb, hΔ]))))
         hlo hhi hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
     refine ⟨unanimous_next_votes_of_witness_at hrun hnc hsvc hawake hf hcatch hnr hwarm
-      (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ ?_ hprior, ?_⟩
+      (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ ?_ hprior hstock, ?_⟩
     · intro y i e hy hv hes
       obtain ⟨ell, hc⟩ := hv
       have hr := (hac.upTo (hrun.time_nonneg i)).localRun
@@ -106,7 +107,7 @@ theorem later_heads_of_early_witness_at
         (he ▸ hfinal hy hlo hhi)
       rw [he] at hQt
       exact unanimous_next_proposal_of_witness_at hrun hnc hsvc hawake hf hcatch hnr hwarm
-        (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd hQt.1
+        (by linarith only [ht, hmb]) hwin hw hQ hh hJ hXQ hprior hy hc hcall hti hd hQt.1 hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

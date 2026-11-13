@@ -48,11 +48,11 @@ structure ReadySafeOn (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (c t₀ 
 /-- **Agreement of the honest confirmed reads under `Sleepy`**: any two confirmed reads of honest
 nodes, at any cuts and at any times, are compatible (inside the honest blocks). -/
 theorem sleepy_reads_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) :
+    (hsl : tr.SleepyRun H ΔF) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ z ∈ H, ∀ i j t t',
       Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t') := by
   intro y hy z hz i j t t'
-  have hinv := sleepy_invariant hrun hnc hsl
+  have hinv := sleepy_invariant hrun hnc hsl hstock
   obtain ⟨hB, hc⟩ := confirmed_read_on_chain hinv hrun hnc hy i t
   obtain ⟨hB', hc'⟩ := confirmed_read_on_chain hinv hrun hnc hz j t'
   exact OnOriginChain.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'
@@ -96,31 +96,34 @@ private theorem read_effective_of (hrun : GoldilocksRun proposer dg H tr)
 record: the record's block when it is in the frame, else `Σ.F`. -/
 theorem ready_read_effective (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {y : Fin sp.n} {j : Nat} {t : Time} (hrp : ReadPoint tr j t)
-    (hb : Boundary tr y j) (hready : ReadyAt tr H (catchUp sp) y t) :
+    (hb : Boundary tr y j) (hready : ReadyAt tr H (catchUp sp) y t)
+    (hstock : sp.committeeSize = sp.n) :
     readAfter tr y j t = (SA.lookup (Node.frame (tr.state y j))
       (tr.state y j).ac.latestConfirmed).getD (Node.frame (tr.state y j)).F :=
-  read_effective_of hrun hready.1 (ready_read_record hrun hnc hsl hrp hb hready)
+  read_effective_of hrun hready.1 (ready_read_record hrun hnc hsl hrp hb hready hstock)
 
 /-- **R.1, the monotone half of `SleepySafe`** under `Sleepy`, catch-up `18Δ`. -/
 theorem sleepy_ready_mono (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    (hsl : tr.SleepyRun H ΔF) :
+    (hsl : tr.SleepyRun H ΔF) (hstock : sp.committeeSize = sp.n) :
     ∀ y i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i → Boundary tr y j →
       i ≤ j → ReadyAt tr H (catchUp sp) y t → ReadyAt tr H (catchUp sp) y t' →
       Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t') := by
   intro y i j t t' hi hj hbi hbj hij hy hy'
-  rw [ready_read_effective hrun hnc hsl hi hbi hy, ready_read_effective hrun hnc hsl hj hbj hy']
-  exact effective_record_mono hrun hnc hsl hy.1 hij
+  rw [ready_read_effective hrun hnc hsl hi hbi hy hstock,
+    ready_read_effective hrun hnc hsl hj hbj hy' hstock]
+  exact effective_record_mono hrun hnc hsl hy.1 hij hstock
 
 /-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** -/
-theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ _ hrun hnc hsl =>
-  ⟨sleepy_reads_compatible hrun hnc hsl, sleepy_ready_mono hrun hnc hsl⟩
+theorem sleepy_safe : SleepySafe := fun _ _ _ _ _ _ _ hstock hrun hnc hsl =>
+  ⟨sleepy_reads_compatible hrun hnc hsl hstock, sleepy_ready_mono hrun hnc hsl hstock⟩
 
 /-- R.1 localized to recipient deadlines within the observation horizon. -/
 theorem sleepy_safe_before {b : Time} (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      tr.FaultBound H (sp.ts s + d)) : ReadySafeOn tr H (catchUp sp) 0 b := by
-  have hinv := sleepy_invariant_before hrun hnc hb hsync hfb
+      tr.FaultBound H (sp.ts s + d)) (hstock : sp.committeeSize = sp.n) :
+    ReadySafeOn tr H (catchUp sp) 0 b := by
+  have hinv := sleepy_invariant_before hrun hnc hb hsync hfb hstock
   have hac := hsync.ac
   have hpop := fun s hs => hfb s sp.Δ (by simp) hs
   refine ⟨fun y z i j t t' hi hj _ _ _ htb _ htb' hy hz => ?_,

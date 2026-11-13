@@ -28,11 +28,12 @@ theorem result_honest_supporter_before_at
     {s : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts s)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x c s C CV) (hcb : tr.time c ≤ b) :
+    (hres : SA.ResultAt tr.projAC x c s C CV) (hcb : tr.time c ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ z q, z ∈ H (tr.time q) ∧ q < c ∧ ∃ e, SA.VoteAt tr.projAC z q e ∧ e.msg ∈ CV ∧
       e.msg.slot = s ∧ SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch
-    (hrun.time_nonneg c) hcb
+    (hrun.time_nonneg c) hcb hstock
   have hres' := (SA.upTo_resultAt hrun.time_mono).mpr ⟨le_rfl, hres⟩
   obtain ⟨ell, hu, hconf, hCV⟩ := hres'
   have hHV : H (tr.time c) ⊆ SA.voters

@@ -30,7 +30,8 @@ theorem optimistic_prefix_before_at
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D)
     (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
-    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B) :
+    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B)
+    (hstock : sp.committeeSize = sp.n) :
     ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
@@ -48,7 +49,7 @@ theorem optimistic_prefix_before_at
   exact SA.Growing.optimistic_prefix_of_carry_at
     (Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc)
     hx hopt hBD hhalf hy hc hes hcarry
-    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB
+    (SA.viableTree_voterBlockTree_subset_voteDomain hB) haB hstock
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

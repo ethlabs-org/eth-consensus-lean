@@ -276,7 +276,7 @@ theorem sleepy_safe_finite (hconst : rho.point.ConstantFaults) (hv : rho.Executi
       (simTrace S rho hn).FaultBound (honestKeys S rho) ((S.params (pubOf E) hn).ts s + d)) :
     Regimes.ReadySafeOn (simTrace S rho hn) (honestKeys S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) 0 b := by
-  exact Regimes.sleepy_safe_before (simTrace_goldilocksRun S rho hn hconst hv) hnc hb0 hsync hf
+  exact Regimes.sleepy_safe_before (simTrace_goldilocksRun S rho hn hconst hv) hnc hb0 hsync hf rfl
 
 set_option linter.unusedVariables false in
 /-- Finite R.2 inclusion consumer. Re-run A1.7/F.4 only
@@ -304,11 +304,11 @@ theorem sleepy_include_finite (hconst : rho.point.ConstantFaults) (hv : rho.Exec
     Anc ((simTrace S rho hn).HonestBlocks (honestKeys S rho)) P
       (Regimes.readAfter (simTrace S rho hn) y j t) := by
   have hrun := simTrace_goldilocksRun S rho hn hconst hv
-  have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsync hf
+  have hinv := Compose.sleepy_invariant_before hrun hnc hb0 hsync hf rfl
   exact Regimes.read_extends_of_record_before hrun hnc hinv
     hsync.ac
     (fun s hs => hf s _ (by simp) hs) hy.1 hj hy htb
-    (Regimes.ready_record_extends_before hrun hnc hb0 hsync hf hinv hP hmargin hy hj htb)
+    (Regimes.ready_record_extends_before hrun hnc hb0 hsync hf hinv hP hmargin hy hj htb rfl)
 
 /-- Finite R.2 growth consumer. Select a ready scheduled
 producer in `(t, t+4kΔ]`, leaving `6Δ` before `b = t+(4k+6)Δ`. Apply finite inclusion and
@@ -907,7 +907,7 @@ theorem sleepy_safe_engine (hconst : rho.point.ConstantFaults) (hv : rho.Executi
   let tr := simTrace S rho hn
   let H := honestKeys S rho
   have hrun := simTrace_goldilocksRun S rho hn hconst hv
-  have hinv := Compose.sleepy_invariant_before hrun hnc hv.horizon_nonneg hsync hf
+  have hinv := Compose.sleepy_invariant_before hrun hnc hv.horizon_nonneg hsync hf rfl
   have hU := Compose.honest_blocks_coherent hrun.toLocalRun hnc
   have hcut : ∀ i ≤ rho.events.length, ∀ k < cutMap S rho hn i, tr.time k ≤ rho.horizon := by
     intro i hi k hk

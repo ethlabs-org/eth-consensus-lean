@@ -594,7 +594,8 @@ theorem origin_compatible_proposalU
   have hU := hr.coherent
   have hs : gbar g + 4 * sp.Δ ≤ sp.ts s := hp.trans ((ts_le_iff sp).2 (by omega))
   rcases horig with ⟨CV, hfl⟩ | ⟨ℓ', C, hupd, hC, hB⟩
-  · obtain ⟨z, hz, j', e, hv, hes, hext⟩ := fastLock_honest_voteU hS.run hS.two_faulty_lt hx hfl
+  · obtain ⟨z, hz, j', e, hv, hes, hext⟩ :=
+      fastLock_honest_voteU hS.run hS.two_faulty_lt hx hfl hS.stock
     exact compatible_of_vote hU hvotes hz hv (hes ▸ hps) hext
   · obtain ⟨-, hΦU⟩ := frameIn_of_callAtU hr hx hupd.1
     have hBC : ℓ'.frame.Anc B C := (deepest_mem hB).1.1.2.2

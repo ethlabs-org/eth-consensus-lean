@@ -319,7 +319,8 @@ private theorem vote_locks_compatible_of
     (hBc : ∀ C j, OriginBefore tr H C j i → s₀ ≤ j → j ≤ s → Compatible (tr.HonestBlocks H) B C)
     (hlow : ∀ L ∈ SA.liveLockBlocks sp {l ∈ e.readPoint.locks | l.slot < s₀} ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L B)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L B := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -355,7 +356,7 @@ private theorem vote_locks_compatible_of
       SA.lock_origin_readPoint hrun' hy hc l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 hL₀ (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     refine down hL₀D (SA.origin_compatible hU hΦ'U (SA.CommitteeDict.full sp.n) h34
-      (fun _ _ => SA.mem_full _ _) (by simpa [SA.ncard_inter_full, hrun.stock] using hf)
+      (fun _ _ => SA.mem_full _ _) (by simpa [SA.ncard_inter_full, hstock] using hf)
       fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
@@ -374,12 +375,13 @@ theorem vote_locks_compatible_upTo
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L B := by
   have hib' : ∀ k < i, tr.time k ≤ b := fun k hk => (hrun.time_mono hk.le).trans hib
   refine vote_locks_compatible_of (s₀ := 0) hrun hnc (two_faults_lt_of_prefix hpre) hy hc hs
-    (fun C j hC _ hj => hBc C j (hC.within hib') hj) ?_ hE
+    (fun C j hC _ hj => hBc C j (hC.within hib') hj) ?_ hE hstock
   intro L hL
   obtain ⟨-, l, ⟨l₀, ⟨-, h⟩, -⟩, -⟩ := hL
   exact absurd h (Nat.not_lt_zero _)
@@ -401,7 +403,8 @@ private theorem first_transfer_win
       Anc (tr.HonestBlocks H) C ℓ.frame.fcRoot)
     (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L C)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
@@ -417,8 +420,8 @@ private theorem first_transfer_win
       (result_writer_pool_win hrun hnc hwin hx hs₀ hR hi₀ hy hc hs)
   · have hf := two_faults_lt_of_window hwin
     exact SA.optimistic_transfer_stored sp hrun' (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
-      SA.CommitteeT.full (SA.size_binding_full hrun'.stock) hx hO .refl
-      (SA.cs2_full hrun'.stock hf) (SA.cs2_full hrun'.stock hf) hy
+      SA.CommitteeT.full (SA.size_binding_full hstock) hx hO .refl
+      (SA.cs2_full hstock hf) (SA.cs2_full hstock hf) hy
       hc hs (optimistic_carry_win hrun hnc hwin hx hs₀ hO hy hc hs hib hold hF) (Or.inl hv) hE
 
 /-- **First transfer up to `b`**: an honest slot-`(s+1)` vote at a time `≤ b` extends an
@@ -430,15 +433,16 @@ theorem first_transfer_step_upTo
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hC : OriginWithin tr H C s b)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   have hCc : ∀ C' j, OriginWithin tr H C' j b → j ≤ s → Compatible (tr.HonestBlocks H) C C' :=
     fun C' j hC' hj => originsBelowUpTo_iff.1 hP C s C' j (by omega) (by omega) hC hC'
-  obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporter_upTo hrun hnc hpre hC
+  obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporter_upTo hrun hnc hpre hC hstock
   exact first_transfer_win hrun hnc hpre.window (Nat.zero_le s) hy hc hs hib (hold_zero hrun) hC
     (vote_frame_upTo hrun hnc hpre hP hy hc hs hib (origin_mem hrun hnc hC.origin) hCc
-      ⟨x', hx', k', e', hv', hs', hext'⟩ hrun.stock)
-    (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hCc hE) hE
+      ⟨x', hx', k', e', hv', hs', hext'⟩ hstock)
+    (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hCc hE hstock) hE hstock
 
 /-- First transfer with service restricted to recipient deadlines within `b`. -/
 theorem first_transfer_step_before
@@ -451,7 +455,8 @@ theorem first_transfer_step_before
     {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b) {C : SA.Blk sp.n (List (FG.Att sp.n))}
     (hC : OriginWithin tr H C s b)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) C)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg C := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
@@ -465,14 +470,15 @@ theorem first_transfer_step_before
     omega
   have hCc : ∀ C' j, OriginWithin tr H C' j b → j ≤ s → Compatible (tr.HonestBlocks H) C C' :=
     fun C' j hC' hj => originsBelowUpTo_iff.1 hP C s C' j (by omega) (by omega) hC hC'
-  obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ := honest_supporter_before hrun hnc hb hsync hfb hC
+  obtain ⟨x', hx', k', e', hv', -, hs', hext'⟩ :=
+    honest_supporter_before hrun hnc hb hsync hfb hC hstock
   have hvf := vote_frame_before hrun hnc hb hsync hfb hP hy hc hs hib
-    (origin_mem hrun hnc hC.origin) hCc ⟨x', hx', k', e', hv', hs', hext'⟩ hrun.stock
+    (origin_mem hrun hnc hC.origin) hCc ⟨x', hx', k', e', hv', hs', hext'⟩ hstock
   have hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocks H) L C := by
     refine vote_locks_compatible_of (s₀ := 0) hrun hnc hf hy hc hs
       (fun C' j hC' _ hj => hCc C' j
-        (hC'.within (fun k hk => (hrun.time_mono hk.le).trans hib)) hj) ?_ hE
+        (hC'.within (fun k hk => (hrun.time_mono hk.le).trans hib)) hj) ?_ hE hstock
     intro L hL
     obtain ⟨-, l, ⟨l₀, ⟨-, h⟩, -⟩, -⟩ := hL
     exact absurd h (Nat.not_lt_zero _)
@@ -488,8 +494,8 @@ theorem first_transfer_step_before
       (result_writer_pool_before hrun hnc hsync.ac
         hx hR hi₀ hy hc hs)
   · exact SA.optimistic_transfer_stored sp hrun' (SA.CommitteeDict.full sp.n) SA.CommitteeP.full
-      SA.CommitteeT.full (SA.size_binding_full hrun'.stock) hx hO .refl
-      (SA.cs2_full hrun'.stock hf) (SA.cs2_full hrun'.stock hf) hy hc hs
+      SA.CommitteeT.full (SA.size_binding_full hstock) hx hO .refl
+      (SA.cs2_full hstock hf) (SA.cs2_full hstock hf) hy hc hs
       (optimistic_carry_before hrun hnc hsync hx hO hy hc hs hib hF) (Or.inl hv) hE
 
 
@@ -539,7 +545,8 @@ theorem later_transfer_step_upTo
     (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
     (hall : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hti := (honest_vote_restarts hrun hnc hy hc hs).2
@@ -547,8 +554,8 @@ theorem later_transfer_step_upTo
     (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib))
   exact later_transfer_win hrun hnc hpre.window (Nat.zero_le s) hy hc hs hib (hold_zero hrun)
     (vote_frame_upTo hrun hnc hpre hP hy hc hs hib hB hBc
-      ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩ hrun.stock)
-    (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hBc hE) hall
+      ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩ hstock)
+    (vote_locks_compatible_upTo hrun hnc hpre hy hc hs hib hBc hE hstock) hall
 
 /-- Later-batch transfer with recipient-deadline-bounded service. -/
 theorem later_transfer_step_before
@@ -564,7 +571,8 @@ theorem later_transfer_step_before
     (hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocks H) B C)
     (hall : ∀ x ∈ H, ∀ k e', SA.VoteAt tr.projAC x k e' → e'.msg.slot = s →
       SA.VoteExtends (tr.HonestBlocks H) e'.msg B)
-    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B) :
+    (hE : SA.EarlierVotesExtend tr.projAC H (tr.HonestBlocks H) i (s + 1) B)
+    (hstock : sp.committeeSize = sp.n) :
     SA.VoteExtends (tr.HonestBlocks H) e.msg B := by
   have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
@@ -580,7 +588,7 @@ theorem later_transfer_step_before
   obtain ⟨x, hx, k, e', hv, hvs⟩ :=
     (Set.ncard_pos (Set.toFinite _)).1 ((Nat.zero_le _).trans_lt hcount)
   have hvf := vote_frame_before hrun hnc hb hsync hfb hP hy hc hs hib hB hBc
-    ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩ hrun.stock
+    ⟨x, hx, k, e', hv, hvs, hall x hx k e' hv hvs⟩ hstock
   have hf : 2 * Hᶜ.ncard < sp.n := by
     have h := hfb 0 0 (by simp) (by simpa [SAParams.ts] using hb)
     change Hᶜ.ncard < tr.honestAwakeJoined H (sp.ts 0 + 0) at h
@@ -593,7 +601,7 @@ theorem later_transfer_step_before
       Compatible (tr.HonestBlocks H) L B := by
     refine vote_locks_compatible_of (s₀ := 0) hrun hnc hf hy hc hs
       (fun C j hC _ hj => hBc C j
-        (hC.within (fun k hk => (hrun.time_mono hk.le).trans hib)) hj) ?_ hE
+        (hC.within (fun k hk => (hrun.time_mono hk.le).trans hib)) hj) ?_ hE hstock
     intro L hL
     obtain ⟨-, l, ⟨l₀, ⟨-, h⟩, -⟩, -⟩ := hL
     exact absurd h (Nat.not_lt_zero _)
@@ -612,7 +620,8 @@ to `b`. -/
 theorem votes_below_succ_upTo
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hpre : SleepyPrefix tr H ΔF b) {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
-    (hV : VotesBelowUpTo tr H s b) : VotesBelowUpTo tr H (s + 1) b := by
+    (hV : VotesBelowUpTo tr H s b) (hstock : sp.committeeSize = sp.n) :
+    VotesBelowUpTo tr H (s + 1) b := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   -- the slot-`(s+1)` votes at times `≤ b`, by strong induction on the cut (the first bad vote)
   have key : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → tr.time i ≤ b →
@@ -632,8 +641,8 @@ theorem votes_below_succ_upTo
           (fun x hx k e' hv hs' => votesBelowUpTo_iff.1 hV C j hC x hx k e' hv
             ((vote_time_le hrun hnc hx hv hs'.le).trans ((add_le_add le_rfl
               (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib)))
-            (by omega) hs'.le) hE
-      · exact first_transfer_step_upTo hrun hnc hpre hP hy hc hs hib hC hE
+            (by omega) hs'.le) hE hstock
+      · exact first_transfer_step_upTo hrun hnc hpre hP hy hc hs hib hC hE hstock
   refine votesBelowUpTo_iff.2 fun C j hC y hy i e hv hib hj hm => ?_
   rcases Nat.lt_or_ge e.msg.slot (s + 1) with h | h
   · exact votesBelowUpTo_iff.1 hV C j hC y hy i e hv hib hj (by omega)
@@ -646,7 +655,8 @@ theorem votes_below_succ_before
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time), sp.ts s + d ≤ b →
       tr.FaultBound H (sp.ts s + d))
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b)
-    (hV : VotesBelowUpTo tr H s b) : VotesBelowUpTo tr H (s + 1) b := by
+    (hV : VotesBelowUpTo tr H s b) (hstock : sp.committeeSize = sp.n) :
+    VotesBelowUpTo tr H (s + 1) b := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have key : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → tr.time i ≤ b →
       e.msg.slot = s + 1 → ∀ C j, OriginWithin tr H C j b → j ≤ s →
@@ -666,8 +676,8 @@ theorem votes_below_succ_before
           (fun x hx k e' hv hs' => votesBelowUpTo_iff.1 hV C j hC x hx k e' hv
             ((vote_time_le hrun hnc hx hv hs'.le).trans ((add_le_add le_rfl
               (le_mul_of_one_le_left hΔ.le (by norm_num))).trans (hti.trans hib)))
-            (by omega) hs'.le) hE
-      · exact first_transfer_step_before hrun hnc hb hsync hfb hP hy hc hs hib hC hE
+            (by omega) hs'.le) hE hstock
+      · exact first_transfer_step_before hrun hnc hb hsync hfb hP hy hc hs hib hC hE hstock
   refine votesBelowUpTo_iff.2 fun C j hC y hy i e hv hib hj hm => ?_
   rcases Nat.lt_or_ge e.msg.slot (s + 1) with h | h
   · exact votesBelowUpTo_iff.1 hV C j hC y hy i e hv hib hj (by omega)
@@ -677,11 +687,11 @@ theorem votes_below_succ_before
 theorem votes_below_succ
     (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {s : Nat} (hP : OriginsBelow tr H (s + 1))
-    (hV : VotesBelow tr H s) : VotesBelow tr H (s + 1) := by
+    (hV : VotesBelow tr H s) (hstock : sp.committeeSize = sp.n) : VotesBelow tr H (s + 1) := by
   refine votesBelow_iff.2 fun C j hC y hy i e hv hj hm => ?_
   obtain ⟨bC, hbC⟩ := hC.exists_within
   exact votesBelowUpTo_iff.1 (votes_below_succ_upTo hrun hnc
-    (hsl.prefix (le_max_right (max (tr.time i) bC) 0)) (hP.upTo _) (hV.upTo _)) C j
+    (hsl.prefix (le_max_right (max (tr.time i) bC) 0)) (hP.upTo _) (hV.upTo _) hstock) C j
     (hbC.mono ((le_max_right _ bC).trans (le_max_left _ 0))) y hy i e hv
     ((le_max_left _ bC).trans (le_max_left _ 0)) hj hm
 

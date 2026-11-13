@@ -47,7 +47,8 @@ theorem frontier_inductionAC {wm : WriteMode} (hrun : ACRunU wm u proposer tr H 
     (htriv : TrivialFrames tr H) (htick : TickDuty tr H)
     (hsync : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr)
     (hf : 2 * Hᶜ.ncard < sp.n)
-    (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ)) :
+    (hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ))
+    (hstock : sp.committeeSize = sp.n) :
     ∀ s, OriginsBelowAC tr H U s b ∧ VotesBelowAC tr H U s b := by
   intro s
   induction s with
@@ -56,8 +57,8 @@ theorem frontier_inductionAC {wm : WriteMode} (hrun : ACRunU wm u proposer tr H 
       votesBelowAC_iff.2 fun _ _ _ _ _ _ _ _ _ h₁ h₂ => ?_⟩
     omega
   | succ s ih =>
-    have hP := origins_below_succAC hrun htick hsync.service hf hJ ih.1 ih.2
-    exact ⟨hP, votes_below_succAC hrun htriv htick hsync hf hJ hP ih.2⟩
+    have hP := origins_below_succAC hrun htick hsync.service hf hJ ih.1 ih.2 hstock
+    exact ⟨hP, votes_below_succAC hrun htriv htick hsync hf hJ hP ih.2 hstock⟩
 
 /-- **The pre-`b` frontier over AC traces of a lock rule**: the AC content of
 `Compose.sleepy_invariant_before` under trivial frames, for any lawful unlock oracle `u` at any
@@ -66,7 +67,8 @@ theorem frontier_beforeAC {m : WriteMode} (hrun : ACRunU m u proposer tr H U)
     (htriv : TrivialFrames tr H) (htick : TickDuty tr H) (hb : 0 ≤ b)
     (hsync : SyncUntilAC (goldilocksSA sp FGP ro) H U b tr)
     (hfb : ∀ s : Nat, ∀ d ∈ ({0, sp.Δ} : Set Time), sp.ts s + d ≤ b →
-      FaultBound tr H (sp.ts s + d)) :
+      FaultBound tr H (sp.ts s + d))
+    (hstock : sp.committeeSize = sp.n) :
     FrontierAC tr H U b := by
   have hr := hrun.localRun
   have hf : 2 * Hᶜ.ncard < sp.n :=
@@ -74,7 +76,7 @@ theorem frontier_beforeAC {m : WriteMode} (hrun : ACRunU m u proposer tr H U)
       (by simpa only [SAParams.ts, Nat.cast_zero, mul_zero, add_zero] using hb))
   have hJ : ∀ s : Nat, sp.ts s + sp.Δ ≤ b → FaultBound tr H (sp.ts s + sp.Δ) :=
     fun s h => hfb s sp.Δ (Or.inr rfl) h
-  have hF := frontier_inductionAC hrun htriv htick hsync hf hJ
+  have hF := frontier_inductionAC hrun htriv htick hsync hf hJ hstock
   refine ⟨fun C s C' s' h h' =>
       originsBelowAC_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h',
     fun C s hC y hy i e he hib hs =>

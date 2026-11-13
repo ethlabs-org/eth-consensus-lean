@@ -98,8 +98,8 @@ theorem no_honest_row_conflicting (hp : ResetPremises tr H proposer dg g ΔF a)
     (reset_le_of_high hp.run hp.healthy hp.reset hv hsd hatt) hatt
   obtain rfl : E₀ = E' := hU.1 ⟨_, hoO.1, io, hE₀⟩ ⟨_, hv, d, hE'⟩ (hE₀r.trans hE'r.symm)
   have hEO : Anc (tr.HonestBlocks H) E₀ O := hE₀O.mono fun X hX => ⟨_, hoO.1, io, hX⟩
-  rcases (height_scoped_retention sp ro proposer dg H tr g ΔF hp.run hp.healthy hp.noColl a
-    hp.reset).comparable xo io jo O x i s B hoO ho with hOB | hBO
+  rcases (height_scoped_retention sp ro proposer dg H tr g ΔF hp.stock hp.run hp.healthy
+    hp.noColl a hp.reset).comparable xo io jo O x i s B hoO ho with hOB | hBO
   · exact hnc (Or.inl (hEO.trans hOB))
   · exact hnc (SA.anc_total hU hEO hBO)
 
@@ -260,8 +260,8 @@ theorem late_sources_compatible (hp : ResetPremises tr H proposer dg g ΔF a)
   have hU := honest_coherent hp
   obtain ⟨_, _, _, _, B, hoB, hCB⟩ := late_source_origin hp hF hy hC htC
   obtain ⟨_, _, _, _, B', hoB', hDB'⟩ := late_source_origin hp hF hz hD htD
-  rcases (height_scoped_retention sp ro proposer dg H tr g ΔF hp.run hp.healthy hp.noColl a
-    hp.reset).comparable _ _ _ B _ _ _ B' hoB hoB' with hBB' | hB'B
+  rcases (height_scoped_retention sp ro proposer dg H tr g ΔF hp.stock hp.run hp.healthy
+    hp.noColl a hp.reset).comparable _ _ _ B _ _ _ B' hoB hoB' with hBB' | hB'B
   · exact SA.anc_total hU (hCB.trans hBB') hDB'
   · exact SA.anc_total hU hCB (hDB'.trans hB'B)
 

@@ -61,7 +61,7 @@ theorem ready_record_extends_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
     (hinv : SleepyInvariantUpTo tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time} {j : Nat}
     (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t)
-    (htb : t ≤ b) :
+    (htb : t ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocksAt H) P E ∨ Anc (tr.HonestBlocksAt H) P (tr.state y j).fg.F) := by
   have hΔ := sp.toParams.hΔ
@@ -95,7 +95,7 @@ theorem ready_record_extends_at (hrun : Consensus.Goldilocks.Growing.GoldilocksR
   have hk₁ : tr.time k₁ = u := hupd.2.2.1
   have hyk₁ : y ∈ H (tr.time k₁) := hk₁ ▸ hyu
   obtain ⟨E, hE, hEr, hPE⟩ := later_update_adopts_at hrun hnc hb0 hsync hB hinv hp hPa rfl hyk₁
-    hms hupd (by rw [hk₁]; linarith)
+    hms hupd (by rw [hk₁]; linarith) hstock
   -- the record only extends from the update to `j`
   have hj₁j : k₁ + 1 ≤ j := by
     by_contra hh
@@ -183,16 +183,17 @@ theorem include_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
     {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (Regimes.catchUp sp) τ (hold sp) P) {y : Fin sp.n} {t : Time}
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
-    (hy : ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t) :
+    (hy : ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t)
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
-  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hb0 hsync
+  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock) hb0 hsync
     hB (CommitteeBoundsFrom.of_full hrun hB)
   have hτ0 : 0 ≤ τ := by
     obtain ⟨p, kP, -, -, -, hkP⟩ := hP
     exact hkP ▸ hrun.time_nonneg kP
   have ht0 : 0 ≤ t := by linarith [sp.toParams.hΔ]
   exact read_extends_of_record_at hrun hnc hinv hsync hB ht0 hj hy htb
-    (ready_record_extends_at hrun hnc hb0 hsync hB hinv hP hmargin hy hj htb)
+    (ready_record_extends_at hrun hnc hb0 hsync hB hinv hP hmargin hy hj htb hstock)
 
 /-- **Finite growth under growing faults.** For `t ≥ 0`, `k ≥ 1` and `t + (4k + 6)Δ ≤ b`, with one
 proposer ready at its slot start and honest through its hold in every window of `k` slots up to
@@ -205,7 +206,7 @@ theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
     (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {k : Nat} (hk : 1 ≤ k) {t : Time} (ht : 0 ≤ t)
     (htb : t + (4 * k + 6) * sp.Δ ≤ b)
     (hrec : ProposerRecurrence tr H proposer (Regimes.catchUp sp) k (hold sp) 0
-      (t + (4 * k + 6) * sp.Δ)) :
+      (t + (4 * k + 6) * sp.Δ)) (hstock : sp.committeeSize = sp.n) :
     ∃ τ P, t < τ ∧ ReadyProposalAt tr H (Regimes.catchUp sp) τ (hold sp) P ∧
       (∀ y j, ReadyAt tr H (Regimes.catchUp sp) y (t + (4 * k + 6) * sp.Δ) →
         Regimes.CutAfter tr j (t + (4 * k + 6) * sp.Δ) →
@@ -256,7 +257,7 @@ theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
     ⟨_, kP, hready, hhold, hP, hkP⟩
   have hinc : ∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
       Anc (tr.HonestBlocksAt H) P (readAfter tr y j (t + D)) := fun y j hy hj =>
-    include_sleepy_at hrun hnc hb0 hsync hB hRP htsD htb hy hj
+    include_sleepy_at hrun hnc hb0 hsync hB hRP htsD htb hy hj hstock
   -- `P` is newer than every block of a read at `t`
   have hnot : ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
       ¬ Anc (tr.HonestBlocksAt H) P (readAfter tr x jx t) := by
@@ -281,7 +282,7 @@ theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
       linarith
     omega
   refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
-  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hb0 hsync
+  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock) hb0 hsync
     hB (CommitteeBoundsFrom.of_full hrun hB)
   rcases hinv.read_compatible_at hrun hnc ht hjx.1 (by linarith) hx.1 hD0 hj.1 htb hy.1
       t (t + D) with h | h

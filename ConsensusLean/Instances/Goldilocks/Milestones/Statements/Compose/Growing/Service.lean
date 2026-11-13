@@ -31,6 +31,7 @@ def HeadExtendsRecord : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) →
     ∀ y i, y ∈ H (tr.time i) → ServedAt tr y i → ∀ R, RecordAt tr y i R →
@@ -45,6 +46,7 @@ def Inclusion : Prop :=
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (ΔF : Time),
+    sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) →
     ∀ p k (P : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat), p ∈ H (tr.time k + hold sp) →

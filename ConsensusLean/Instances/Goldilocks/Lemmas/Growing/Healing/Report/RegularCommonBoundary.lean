@@ -42,11 +42,11 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
       ∀ a D CV, z ∈ H (tr.time a) → SA.OptimisticLockAt tr.projAC z a s D CV →
       Anc (tr.HonestBlocksAt H) Q D →
       ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) :
+        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hstock : sp.committeeSize = sp.n) :
     ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   exact KernelProof.FrameWindow.next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hwarm hpos hs₀ hm hmb hz hc hes hQU hQr hXQ hbase hoptimistic
+    hnr hwarm hpos hs₀ hm hmb hz hc hes hQU hQr hXQ hbase hoptimistic hstock
 
 /-- An optimistic anchor at an honest supporter propagates to independently honest later calls. -/
 theorem FrameWindow.optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
@@ -64,7 +64,7 @@ theorem FrameWindow.optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
     (hc : SA.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
     (hanchor : L = SA.getAnchor sp e.readPoint ell.frame (tr.time i))
     {CV : Set (SA.Vote sp.n)} (hop : SA.OptimisticLockAt tr.projAC x a s D CV)
-    (hLD : Anc (tr.HonestBlocksAt H) L D) :
+    (hLD : Anc (tr.HonestBlocksAt H) L D) (hstock : sp.committeeSize = sp.n) :
     ∀ r, s + 1 ≤ r → r ≤ N →
       (∀ y j ev, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j ev → ev.msg.slot = r →
         SA.VoteExtends (tr.HonestBlocksAt H) ev.msg L) ∧
@@ -73,7 +73,7 @@ theorem FrameWindow.optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
         (SA.acProposal sp (tr.projAC.state y j) ell'.frame (tr.time j)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) L d.head) := by
   exact KernelProof.optimistic_supporter_later_heads_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm hs₀ hsN hmb hx hxa hc hes hanchor hop hLD
+    hnr hm hs₀ hsN hmb hx hxa hc hes hanchor hop hLD hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

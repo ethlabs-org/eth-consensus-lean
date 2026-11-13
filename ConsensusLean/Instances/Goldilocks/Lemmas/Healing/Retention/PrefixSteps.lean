@@ -219,7 +219,8 @@ theorem slot_start_optimistic
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att) {m : Nat} (hdt : tr.time d = sp.ts m)
     {r : Nat} (hrd : r < d) {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC v r m D CV) :
+    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC v r m D CV)
+    (hstock : sp.committeeSize = sp.n) :
     sp.n = 1 ∧ ∃ j' ≤ r, ∃ e', SA.VoteAt tr.projAC v j' e' ∧ e'.msg.slot = m := by
   have hrun' := Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
   have hr := hrun'.localRun
@@ -323,7 +324,7 @@ theorem slot_start_optimistic
     dsimp only at h
     split_ifs at h
     have := (SA.deepest_mem h).1.2.1
-    rwa [hsl, hrun.stock] at this
+    rwa [hsl, hstock] at this
   have hsub : SA.optimisticVoters sp A ellv.frame m D ⊆ {v} := by
     rintro i ⟨w, hw, rfl, -⟩
     exact hP w hw

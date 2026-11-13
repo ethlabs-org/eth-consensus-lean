@@ -27,7 +27,8 @@ theorem optimistic_first_proposal_anc_at
     (hV : B ∈ ell.frame.tree ∧
       (B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (T.state x i) ell.frame σ v)
-    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B) :
+    (hhigh : HighLocksCompatible U (T.state x i) (T.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head := by
   have hm := hrun.localRun.time_mono
   have hU := hrun.localRun.coherent
@@ -46,8 +47,7 @@ theorem optimistic_first_proposal_anc_at
   dsimp only at hsel'
   split_ifs at hsel'
   obtain ⟨-, h34, -⟩ := (deepest_mem hsel').1
-  rw [hrun.stock] at h34
-  have hstock := hrun.stock
+  rw [hstock] at h34
   rw [hslX] at h34
   set V := View.ofLists (voteViewList ((T.upTo (T.time i)).state x i) ell.frame σ ⊤)
   set SX := optimisticVoters sp A ellX.frame σ D

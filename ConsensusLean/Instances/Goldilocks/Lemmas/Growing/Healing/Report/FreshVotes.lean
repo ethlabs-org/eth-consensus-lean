@@ -29,7 +29,8 @@ theorem honest_vote_heads_eq_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts u + sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = u →
       e.msg.head = P.root := by
   have hk := sp.two_le_k
@@ -80,15 +81,16 @@ theorem honest_vote_heads_eq_at
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhigh
     rw [hslot] at hhigh
     obtain ⟨hvP, hPv⟩ := proposal_viable_at_cast_at hframe hrun hnc hsvc hawake hf hcatch hnr
-      (by linarith [sp.toParams.hΔ]) hsp (by omega) hmb hz hdes hP hPs hy hcast hes
+      (by linarith [sp.toParams.hΔ]) hsp (by omega) hmb hz hdes hP hPs hy hcast hes hstock
     have haP := hframe.vote_anchor_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp (by omega) hmb hz hdes hP hPs hy hcast hes hwarm
-      (fun x j ev hji hx hv hs => ih j hji x ev hx hv hs)
+      (fun x j ev hji hx hv hs => ih j hji x ev hx hv hs) hstock
     apply hframe.vote_head_eq_of_start_prefix_at hrun hnc hsvc hawake hf hcatch hnr hms hsp
       hz hdes hP hPs hcp0 hcall hip hpay0 hpayload hparent hy hcast hes hhigh
-      (hhigh.trans hmb) hPv haP
+      (hhigh.trans hmb) hPv haP ?_ hstock
     exact fun haS => hframe.proposal_start_prefix_at hrun hnc hsvc hawake hf hcatch hnr
       hm (by omega) hwarm hmb hz hdes hcp0 hcall hip hpay0 hparent hy hcast hes hPv hvP haS
+      hstock
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

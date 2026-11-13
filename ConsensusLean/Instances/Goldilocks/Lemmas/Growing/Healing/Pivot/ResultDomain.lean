@@ -113,7 +113,7 @@ theorem result_prefix_vote_domain_before_of_domain_at
         · exact SA.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx ho.1
             ⟨ellX, hupd, hconf, hCV⟩ hop hrb hcb
             (fun k hk hrest => hreset x k (hp.run.antitone (hp.run.time_mono hk) hx)
-              ((hp.run.time_mono hk).trans hrb) hrest)
+              ((hp.run.time_mono hk).trans hrb) hrest) hp.stock
       rcases hcomp with h | h
       · exact SA.anc_total hcoh (hBC.trans h) hOD
       · exact SA.anc_total hcoh hBC (hOD.trans h)

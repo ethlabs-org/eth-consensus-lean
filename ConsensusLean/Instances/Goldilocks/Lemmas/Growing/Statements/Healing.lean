@@ -148,21 +148,6 @@ end Vocabulary
 
 section Statements
 
-theorem cutAndReset_of_growing (h : Growing.CutAndReset) : CutAndReset := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc
-  obtain ⟨h0, h1, h2, h3, h4⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun)
-    ((RunTrace.healthyRunAt_const tr).mpr hh) hnc
-  refine ⟨h0, fun y hy k att hs hk => h1 y k att hy hs hk, fun x hx i ℓ C hc ht => ?_,
-    fun y hy i X hX hhX => h3 y i hy X hX hhX, fun a ha => ?_⟩
-  · simpa only [RunTrace.honestBlocksAt_const] using h2 x i ℓ C hx hc ht
-  · obtain ⟨e1, e2, e3, e4, e5, e6⟩ := h4 a (isReset_const.mpr ha)
-    exact ⟨e1, fun y hy k att hs hh' => e2 y k att hy hs hh',
-      fun y hy k src signed hc ht => e3 y k src signed hy hc ht,
-      fun y hy k att hs ht => e4 y k att hy hs ht,
-      fun 𝓔 h𝓔 E hE => e5 (a - sp.Δ) le_rfl 𝓔 (by rwa [highEntries_const]) E hE,
-      fun T hT y hy k att hs ht => e6 T hT y k att hy hs ht⟩
-
 theorem phaseCount_of_growing {P : Params} {ACP : Type} (h : Growing.PhaseCount P ACP) :
     PhaseCount P ACP := by
   intro acp₀ H U tr hrun hf
@@ -184,34 +169,16 @@ theorem phaseCount_of_growing {P : Params} {ACP : Type} (h : Growing.PhaseCount 
 theorem phaseCountAll_of_growing (h : Growing.PhaseCountAll) : PhaseCountAll :=
   fun P ACP => phaseCount_of_growing (h P ACP)
 
-theorem resetExistence_of_growing (h : Growing.ResetExistence) : ResetExistence := by
-  intro sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
-  obtain ⟨⟨h0, ha⟩, hb, hc', h5, h6, h7⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF Gp
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) (propPlus_const.mpr hp)
-  obtain ⟨a, hra, hale⟩ := hc' 0 (Growing.resetWindow sp g ΔF Gp 0) le_rfl (Nat.le_add_right _ _)
-  have hw : Growing.resetWindow sp g ΔF Gp 0 = cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
-    simp only [Growing.resetWindow, Nat.cast_zero, zero_mul, add_zero]
-  rw [hw] at hale
-  refine ⟨⟨h0, fun u hu j j' hj hj' =>
-      (ha (u + sp.Δ) u hu le_rfl j j' hj hj').imp id settledAt_const.mp⟩,
-    fun w hw j j' hj hj' => hb (w + A_HS sp ΔF Gp) w le_rfl (settledAt_const.mpr hw) j j' hj hj',
-    ⟨a, isReset_const.mp hra⟩, fun a' ha' => ?_, h5, h6, h7⟩
-  obtain ⟨y, k, att, hy, hs', hh, hk⟩ := hra.1
-  have := ha'.2 y hy k att hs' hh
-  rw [hk] at this
-  exact this.trans hale
-
 theorem heightScopedRetention_of_growing (h : Growing.HeightScopedRetention) :
     HeightScopedRetention := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc a ha
-  exact retentionAt_to_static (h sp ro proposer dg (fun _ => H) tr g ΔF
+  intro sp ro proposer dg H tr g ΔF hstock hrun hh hnc a ha
+  exact retentionAt_to_static (h sp ro proposer dg (fun _ => H) tr g ΔF hstock
     (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun)
     ((RunTrace.healthyRunAt_const tr).mpr hh) hnc a (isReset_const.mpr ha))
 
 theorem runInclusion_of_growing (h : Growing.RunInclusion) : RunInclusion := by
-  intro sp ro proposer dg H tr g ΔF hrun hnc hroot hh hc
-  obtain ⟨⟨hd, hha, hca⟩, hrest⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF
+  intro sp ro proposer dg H tr g ΔF hstock hrun hnc hroot hh hc
+  obtain ⟨⟨hd, hha, hca⟩, hrest⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF hstock
     (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) hnc hroot
     ((RunTrace.healthyRunAt_const tr).mpr hh) (catchRun_const.mpr hc)
   simp only [RunTrace.honestBlocksAt_const] at hha hca hrest
@@ -220,85 +187,6 @@ theorem runInclusion_of_growing (h : Growing.RunInclusion) : RunInclusion := by
   obtain ⟨h1, h2⟩ := hrest t₀ ht (SA.inv_const.mpr hinv) p P hP ht'
   exact ⟨fun hg => unanimous_const.mp (h1 (SA.geo_const.mpr hg)),
     fun hu => includedFrom_const.mp (h2 (unanimous_const.mpr hu))⟩
-
-theorem nonInterference_of_growing (h : Growing.NonInterference) : NonInterference := by
-  obtain ⟨Tb, hTb, h⟩ := h
-  refine ⟨Tb, hTb, fun sp ro proposer dg H tr g ΔF Gp hrun hs hc hp => ?_⟩
-  obtain ⟨a, ha, hle, hr, hb⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF Gp
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) (propPlus_const.mpr hp) 0 (Growing.resetWindow sp g ΔF Gp 0) le_rfl
-    (Nat.le_add_right _ _)
-  exact ⟨a, isReset_const.mp ha, by simpa only [Nat.cast_zero, zero_mul, add_zero]
-    using hle, retentionAt_to_static hr, bridgeAt_const.mp hb⟩
-
-theorem availableHealing_of_growing (h : Growing.AvailableHealing) : AvailableHealing := by
-  intro sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a Tb ha hTb hb p P hP ht hu
-  exact includedFrom_const.mp (h sp ro proposer dg (fun _ => H) tr g ΔF Gp
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) (propPlus_const.mpr hp) 0 (Growing.resetWindow sp g ΔF Gp 0) le_rfl
-    (Nat.le_add_right _ _) a Tb (isReset_const.mpr ha) hTb (bridgeAt_const.mpr hb) p P hP
-    (by simpa only [Nat.cast_zero, zero_mul, add_zero] using ht)
-    (unanimous_const.mpr hu))
-
-theorem viableWitnessRetention_of_growing (h : Growing.ViableWitnessRetention) :
-    ViableWitnessRetention := by
-  intro sp ro proposer dg H tr g ΔF hrun hs hc i k m c hph y hy W hW z hz k' h1 h2
-  have := h sp ro proposer dg (fun _ => H) tr g ΔF 0
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) i k m c hph y W hy hW z k' hz h1 h2
-  simpa only [RunTrace.honestBlocksAt_const] using this
-
-theorem cleanLockDrain_of_growing (h : Growing.CleanLockDrain) : CleanLockDrain := by
-  intro sp ro proposer dg H tr g ΔF w i₀ m c hrun hs hc hset
-  obtain ⟨h1, h2, h3, h4⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF w 0 i₀ m c
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) (settledIn_const.mpr hset)
-  refine ⟨fun x hx i j B CV hl hw y hy k ℓ e hcast hs' hph => ?_,
-    fun x hx i j B hl hw y hy k ℓ e hcast hs' hph => ?_,
-    fun y hy k ℓ hcall hr => h3 y k ℓ hy hcall hr,
-    fun s P hP hr y hy k ℓ e hcast hs' hph => ?_⟩
-  · have := h1 x i j B CV hx hl hw y k ℓ e hy hcast hs' hph
-    simpa only [voteKeeps_const, RunTrace.honestBlocksAt_const] using this
-  · have := h2 x i j B hx hl hw y k ℓ e hy hcast hs' hph
-    simpa only [voteKeeps_const, RunTrace.honestBlocksAt_const] using this
-  · have := h4 s P hP hr y k ℓ e hy hcast hs' hph
-    simpa only [RunTrace.honestBlocksAt_const] using this
-
-theorem frozenTreeAgreement_of_growing (h : Growing.FrozenTreeAgreement) :
-    FrozenTreeAgreement := by
-  intro sp ro proposer dg H tr g ΔF w i₀ i m c hrun hs hc hset hi p kP s P hR hk h1 h2 hph hr
-  obtain ⟨hA, hB, hC⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF w 0 i₀ i m c
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) (settledIn_const.mpr hset) hi p kP s P (readyProposal_const.mpr hR)
-    hk h1 h2 (fun y k ℓ e hy hcast hs' => hph y hy k ℓ e hcast hs') hr
-  refine ⟨fun y hy k ℓ e hcast hs' => ?_, fun y hy k ℓ e hcast hs' hph' => ?_,
-    fun s' P' k' hs' hP' hprop hpr hph' => ?_⟩
-  · have := hA y k ℓ e hy hcast hs'
-    simpa only [RunTrace.honestBlocksAt_const] using this
-  · have := hB y k ℓ e hy hcast hs' hph'
-    simpa only [RunTrace.honestBlocksAt_const] using this
-  · have := hC s' P' k' hs' hP' hprop hpr hph'
-    simpa only [RunTrace.honestBlocksAt_const] using this
-
-theorem commonPathAcquisition_of_growing (h : Growing.CommonPathAcquisition) :
-    CommonPathAcquisition := by
-  intro sp ro proposer dg H tr g ΔF Gp w i₀ m c hrun hs hc hp hset
-  obtain ⟨hA, hB⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF Gp w (w + D_HS sp Gp) i₀ m c
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (hsShared_of_static hs)
-    (catchRun_const.mpr hc) (propPlus_const.mpr hp) le_rfl (settledIn_const.mpr hset)
-  refine ⟨?_, fun y hy k C signed hcall hk hph => hB y k C signed hy hcall hk hph⟩
-  rcases hA with hA | ⟨s, hh, E, W, kW, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13,
-    e14, e15⟩
-  · exact Or.inl hA
-  · refine Or.inr ⟨s, hh, E, W, kW, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11,
-      fun y hy k ℓ e hcast hs' => ?_, e13, fun y hy k ℓ e hcast hs' hph => ?_,
-      fun s' P' k' a1 a2 a3 a4 a5 => ?_⟩
-    · have := e12 y k ℓ e hy hcast hs'
-      simpa only [RunTrace.honestBlocksAt_const] using this
-    · have := e14 y k ℓ e hy hcast hs' hph
-      simpa only [RunTrace.honestBlocksAt_const] using this
-    · have := e15 s' P' k' a1 a2 a3 a4 a5
-      simpa only [RunTrace.honestBlocksAt_const] using this
 
 end Statements
 
@@ -344,35 +232,6 @@ theorem patternPremises_of_static {dg : Digest (List (FG.Att sp.n)) (Payload sp.
 
 end Recovery
 
-theorem patternRecovery_of_growing (h : Growing.PatternRecovery) : PatternRecovery := by
-  intro sp ro proposer dg H tr g ΔF Gp W M cF kF hrun hpp
-  obtain ⟨hr, h2⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF Gp W M cF kF
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) (patternPremises_of_static hpp)
-    0 (Growing.resetWindow sp g ΔF Gp 0) le_rfl (Nat.le_add_right _ _)
-  simp only [Nat.cast_zero, zero_mul, add_zero] at hr h2
-  exact ⟨rec_to_static hr, fun y hy k hc ht => h2 y k hy hc ht⟩
-
-theorem finalizingCoverage_of_growing (h : Growing.FinalizingCoverage) : FinalizingCoverage := by
-  intro sp ro proposer dg H tr g ΔF Gp W M cF kF hrun hpp t ht
-  obtain ⟨q, kP, P, hq, hprop, h1, h2, ⟨x, kX, X, hx, hacc, Fx, hFx, hroot, hanc⟩, h3⟩ :=
-    h sp ro proposer dg (fun _ => H) tr g ΔF Gp W M cF kF
-      (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun)
-      (patternPremises_of_static hpp) 0 (Growing.resetWindow sp g ΔF Gp 0) le_rfl
-      (Nat.le_add_right _ _) t
-      (by simpa only [Nat.cast_zero, zero_mul, add_zero] using ht)
-  refine ⟨q, kP, P, hq, hprop, h1, h2,
-    ⟨x, hx, kX, X, hacc, Fx, hFx, hroot, by rwa [RunTrace.honestBlocksAt_const] at hanc⟩,
-    fun y hy k hc hk => ?_⟩
-  have := h3 y k hy hc hk
-  rwa [RunTrace.honestBlocksAt_const] at this
-
-theorem cacheAcceptanceAfterReset_of_growing (h : Growing.CacheAcceptanceAfterReset) :
-    CacheAcceptanceAfterReset := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc y hy k B hacc
-  exact h sp ro proposer dg (fun _ => H) tr g ΔF
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun)
-    ((RunTrace.healthyRunAt_const tr).mpr hh) hnc y k B hy hacc
-
 end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Compose
@@ -394,23 +253,6 @@ theorem goodWindow_to_static {P : Params} {ACP : Type} {H : Set (Fin P.n)} {tr :
     emitted := h.emitted
     pooled := h.pooled
     params := h.params }
-
-theorem outcomeService_of_growing (h : Growing.OutcomeService) : OutcomeService := by
-  intro sp ro proposer dg H tr g ΔF a cF kF hrun hs hc h1 h2 ha p k i T u hR hE hu hz hj hW
-  obtain ⟨hA, hB⟩ := h sp ro proposer dg (fun _ => H) tr g ΔF a cF kF
-    (Consensus.Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun)
-    (Healing.hsShared_of_static hs) (Healing.catchRun_const.mpr hc) h1 h2
-    (Healing.isReset_const.mpr ha) p k i T u (Healing.readyProposal_const.mpr hR) hE hu hz hj
-    (by
-      obtain ⟨w, kw, W, hR', a1, a2, Pr, hPr, hanc⟩ := hW
-      exact ⟨w, kw, W, Healing.readyProposal_const.mpr hR', a1, a2, Pr, hPr,
-        by rwa [RunTrace.honestBlocksAt_const]⟩)
-  refine ⟨?_, fun hb => ?_⟩
-  · rcases hA with ⟨q, j, Bs, Pr, R, hj', hgw, hacc⟩ | ⟨y, k', X, hy, hacc, ht, hjust, hbd, hall⟩
-    · exact Or.inl ⟨q, j, Bs, Pr, R, hj', goodWindow_to_static hgw, hacc⟩
-    · exact Or.inr ⟨y, hy, k', X, hacc, ht, hjust, hbd, hall⟩
-  · obtain ⟨y, k', X, hy, hacc, ht, hjust⟩ := hB hb
-    exact ⟨y, hy, k', X, hacc, ht, hjust⟩
 
 end Consensus.Goldilocks.Compose
 

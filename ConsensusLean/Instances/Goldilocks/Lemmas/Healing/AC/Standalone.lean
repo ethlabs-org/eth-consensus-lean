@@ -32,10 +32,11 @@ namespace Consensus.Goldilocks.SA
 variable {wm : SA.WriteMode}
 
 /-- **H.1 at `ḡ + (8k + 4)Δ`** (claims H.1, proof shape, with the locks settled from the slot
-start `t_{p−1} ≥ ḡ + 8kΔ`). -/
-theorem ac_healing_standalone_tight (sp : SAParams) : ACHealingStandaloneTight (sp := sp) :=
+start `t_{p−1} ≥ ḡ + 8kΔ`), for a population-sized committee. -/
+theorem ac_healing_standalone_tight (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
+    ACHealingStandaloneTight (sp := sp) :=
   fun _ _ _ _ _ _ _ hrun hdr htriv hheal hcatch _ _ hpH hP hp =>
-    ac_healing_standalone_of_parent_tight ⟨⟨hrun, hdr, hheal, hcatch, hrun.stock⟩, htriv⟩ hpH hP hp
+    ac_healing_standalone_of_parent_tight ⟨⟨hrun, hdr, hheal, hcatch, hstock⟩, htriv⟩ hpH hP hp
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` gives H.1**: `ḡ + (8k + 4)Δ ≤ ḡ + 2Θ + 8Δ = ḡ + (8k + 16)Δ`. -/
 theorem standalone_of_tight (sp : SAParams) (h : ACHealingStandaloneTight (sp := sp)) :
@@ -44,9 +45,11 @@ theorem standalone_of_tight (sp : SAParams) (h : ACHealingStandaloneTight (sp :=
     h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by have := sp.toParams.hΔ; unfold Θ at hp; linarith)
 
-/-- **H.1, AC healing standalone** (claims H.1, proof shape): from H.1 at `ḡ + (8k + 4)Δ`. -/
-theorem ac_healing_standalone (sp : SAParams) : ACHealingStandalone (sp := sp) :=
-  standalone_of_tight sp (ac_healing_standalone_tight sp)
+/-- **H.1, AC healing standalone** (claims H.1, proof shape): from H.1 at `ḡ + (8k + 4)Δ`, for a
+population-sized committee. -/
+theorem ac_healing_standalone (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
+    ACHealingStandalone (sp := sp) :=
+  standalone_of_tight sp (ac_healing_standalone_tight sp hstock)
 
 /-- `corollary_at` with the unlock given. -/
 theorem corollary_atU
@@ -138,39 +141,40 @@ theorem ac_healing_standalone_tight_corollaryU {u : Nat → Set Lock} {FGP : Typ
 honest proposer and `t ≤ t_p ≤ t + G_p`; the proposer is awake and joined at `t_p` (no restart
 after `ḡ`), so `ac_proposal` returns a payload and `Driven (b)` gives the honest proposal `P`;
 H.1 at `P` holds from `t_p + 6Δ ≤ t + G_p + 6Δ`. -/
-theorem corollary_of_standalone (sp : SAParams) (h : ACHealingStandalone (sp := sp)) :
-    ACHealingStandaloneCorollary (sp := sp) := by
+theorem corollary_of_standalone (sp : SAParams) (h : ACHealingStandalone (sp := sp))
+    (hstock : sp.committeeSize = sp.n) : ACHealingStandaloneCorollary (sp := sp) := by
   intro FGP ro H U tr proposer g Gp hrun hdr htriv hheal hcatch hprop t ht
   have hΘ := Θ_nonneg sp
   have hΔ := sp.toParams.hΔ
   exact corollary_at (c := 2 * Θ sp + 8 * sp.Δ) (by linarith)
-    ⟨⟨hrun, hdr, hheal, hcatch, hrun.stock⟩, htriv⟩ hprop
+    ⟨⟨hrun, hdr, hheal, hcatch, hstock⟩, htriv⟩ hprop
     (fun p P hpH hP hp => (h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by linarith)).2) t (by linarith)
 
 /-- **H.1 at `ḡ + (8k + 4)Δ` gives its corollary**, proposal-block inclusion from
 `ḡ + (8k + 10)Δ + G_p`, as `corollary_of_standalone`. -/
-theorem corollary_of_standalone_tight (sp : SAParams) (h : ACHealingStandaloneTight (sp := sp)) :
-    ACHealingStandaloneTightCorollary (sp := sp) := by
+theorem corollary_of_standalone_tight (sp : SAParams) (h : ACHealingStandaloneTight (sp := sp))
+    (hstock : sp.committeeSize = sp.n) : ACHealingStandaloneTightCorollary (sp := sp) := by
   intro FGP ro H U tr proposer g Gp hrun hdr htriv hheal hcatch hprop t ht
   have hΔ := sp.toParams.hΔ
   have hk : (0 : Time) ≤ sp.k := Int.natCast_nonneg _
   have hkΔ := mul_nonneg hk hΔ.le
   exact corollary_at (c := (8 * (sp.k : Time) + 4) * sp.Δ) (by linarith)
-    ⟨⟨hrun, hdr, hheal, hcatch, hrun.stock⟩, htriv⟩ hprop
+    ⟨⟨hrun, hdr, hheal, hcatch, hstock⟩, htriv⟩ hprop
     (fun p P hpH hP hp => (h FGP ro H U tr proposer g hrun hdr htriv hheal hcatch p P hpH hP
       (by linarith)).2) t (by linarith)
 
-/-- **H.1, corollary**: H.1 at an honest proposal of `Prop(G_p)`. -/
-theorem ac_healing_standalone_corollary (sp : SAParams) :
+/-- **H.1, corollary**: H.1 at an honest proposal of `Prop(G_p)`, for a population-sized
+committee. -/
+theorem ac_healing_standalone_corollary (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandaloneCorollary (sp := sp) :=
-  corollary_of_standalone sp (ac_healing_standalone sp)
+  corollary_of_standalone sp (ac_healing_standalone sp hstock) hstock
 
 /-- **H.1 at `ḡ + (8k + 4)Δ`, corollary** (proposal-block inclusion): H.1 at `ḡ + (8k + 4)Δ` at
-an honest proposal of `Prop(G_p)`. -/
-theorem ac_healing_standalone_tight_corollary (sp : SAParams) :
+an honest proposal of `Prop(G_p)`, for a population-sized committee. -/
+theorem ac_healing_standalone_tight_corollary (sp : SAParams) (hstock : sp.committeeSize = sp.n) :
     ACHealingStandaloneTightCorollary (sp := sp) :=
-  corollary_of_standalone_tight sp (ac_healing_standalone_tight sp)
+  corollary_of_standalone_tight sp (ac_healing_standalone_tight sp hstock) hstock
 
 /-- **The corollary at `ḡ + (8k + 4)Δ` gives the corollary**: its threshold is lower. -/
 theorem corollary_of_tight_corollary (sp : SAParams)

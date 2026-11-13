@@ -45,7 +45,8 @@ theorem row_origin_not_current_at
     (hc : SA.CastAt tr.projAC y k ell e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     (hs : tr.SignAt v d att) (hdk : d < k) (hrd : r < d)
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)} :
+    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    (hstock : sp.committeeSize = sp.n) :
     ¬ SA.OptimisticLockAt tr.projAC v r e.msg.slot D CV := by
   intro hopt
   have ht := hrun.time_nonneg k
@@ -102,7 +103,7 @@ theorem row_origin_not_current_at
   obtain hcc | hcc : c = 4 * (e.msg.slot : Int) ∨ c = 4 * (e.msg.slot : Int) + 1 := by omega
   · obtain ⟨hn1, j', hj', e', hve', hes⟩ := slot_start_optimistic hr₀ (hnc.upTo _) hv hs'
       (by change tr.time d = _; rw [hcTime, hcc, hts]) hrd
-      (optimistic_upTo hrun ((hrun.time_mono hrd.le).trans (hrun.time_mono hdk.le)) hopt)
+      (optimistic_upTo hrun ((hrun.time_mono hrd.le).trans (hrun.time_mono hdk.le)) hopt) hstock
     obtain rfl : v = y := Fin.ext (by have := v.2; have := y.2; omega)
     have := ((SA.one_vote_per_slot sp) _ ro (H (tr.time k)) _ _ hr v hy j' k e' e hve'
       ⟨ell, hcast⟩ hes).1
@@ -121,7 +122,8 @@ theorem row_origin_label_lt_at
     (hc : SA.CastAt tr.projAC y k ell e) {W : SA.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     (hs : tr.SignAt v d att) (hdk : d < k) (hrd : r < d)
-    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g v r l O) :
+    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g v r l O)
+    (hstock : sp.committeeSize = sp.n) :
     l < e.msg.slot := by
   have hc' : (tr.upTo (tr.time k)).projAC.CallAt y k ell := by
     rw [RunTrace.upTo_projAC]
@@ -150,7 +152,7 @@ theorem row_origin_label_lt_at
     rcases hl.lt_or_eq with hl | rfl
     · exact hl
     · exact absurd hopt
-        (row_origin_not_current_at hrun hnc hy hv hc hW ha hs hdk hrd)
+        (row_origin_not_current_at hrun hnc hy hv hc hW ha hs hdk hrd hstock)
 
 end Consensus.Goldilocks.Healing.Growing.Outcome
 

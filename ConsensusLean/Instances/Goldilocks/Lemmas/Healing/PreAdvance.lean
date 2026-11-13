@@ -159,11 +159,12 @@ theorem honest_votes_before_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hc : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g)) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b) :
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ x ∈ H, ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = m ∧
       tr.time j ≤ sp.ts m + sp.Δ := by
   apply SA.honest_votes_in_slot_before
-    (healthy_base_of_service_catch_before hrun hnc hsync hawake hf hc) hm hmb
+    (healthy_base_of_service_catch_before hrun hnc hsync hawake hf hc hstock) hm hmb
   intro x hx r _ hrs
   have hr := hnr x hx r (Compose.projAC_restartAt.mp hrs)
   rw [SA.ts_sub_one]
@@ -612,9 +613,10 @@ theorem honest_voters_half_of_service (hrun : GoldilocksRun proposer dg H tr)
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g)) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b) :
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
+    (hstock : sp.committeeSize = sp.n) :
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ i e, SA.VoteAt tr.projAC x i e ∧ e.msg.slot = m}.ncard := by
-  have hall := honest_votes_before_of_service hrun hnc hsvc hawake hf hcatch hnr hm hmb
+  have hall := honest_votes_before_of_service hrun hnc hsvc hawake hf hcatch hnr hm hmb hstock
   have hle := Set.ncard_le_ncard (s := H)
     (t := {x | x ∈ H ∧ ∃ i e, SA.VoteAt tr.projAC x i e ∧ e.msg.slot = m}) (by
       intro x hx
@@ -663,10 +665,10 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
         (SA.ViableAtVote ell e (m + 1) X ∧
           ∀ x ∈ H, ∀ k ev, SA.VoteAt tr.projAC x k ev → ev.msg.slot = m →
             ∀ B ∈ tr.HonestBlocks H, B.root = ev.msg.head →
-              Anc (tr.HonestBlocks H) ell.frame.F B)) :
+              Anc (tr.HonestBlocks H) ell.frame.F B)) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = m + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
@@ -675,7 +677,7 @@ private theorem unanimous_next_votes_of_geometry (hrun : GoldilocksRun proposer 
     (le_add_of_nonneg_right (mul_nonneg (by norm_num) hDelta.le)).trans hm
   have hhalf := honest_voters_half_of_service hrun hnc hsvc hawake hf hcatch hnr hm
     (show sp.ts m + sp.Δ ≤ b from (add_le_add ((le_add_of_nonneg_right
-      (mul_nonneg (by norm_num) hDelta.le)).trans_eq hts.symm) le_rfl).trans hmb)
+      (mul_nonneg (by norm_num) hDelta.le)).trans_eq hts.symm) le_rfl).trans hmb) hstock
   suffices hall : ∀ i, ∀ y ∈ H, ∀ e, SA.VoteAt tr.projAC y i e → e.msg.slot = m + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X by
     exact fun y hy i e hv hs => hall i y hy e hv hs
@@ -794,14 +796,14 @@ theorem unanimous_next_votes_of_witness (hrun : GoldilocksRun proposer dg H tr)
       Q ∈ (tr.state y i).fg.tree ∧
         e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (m + 1)))
     (hG : ∀ x ∈ H, ∀ i e, SA.VoteAt tr.projAC x i e → e.msg.slot = m →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg X) :
+      SA.VoteExtends (tr.HonestBlocks H) e.msg X) (hstock : sp.committeeSize = sp.n) :
     ∀ y ∈ H, ∀ i e, SA.VoteAt tr.projAC y i e → e.msg.slot = m + 1 →
       SA.VoteExtends (tr.HonestBlocks H) e.msg X := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
     exact faulty_lt_quorum_excess hf sp.toParams.hn
-  apply unanimous_next_votes_of_geometry hrun hnc hsvc hawake hf hcatch hnr hm hmb hG
+  apply unanimous_next_votes_of_geometry hrun hnc hsvc hawake hf hcatch hnr hm hmb hG ?_ hstock
   intro y hy i ell e hc hs
   have hslot : sp.slot (tr.time i) = m + 1 := (SA.castAt_spec hr hy hc).2.1.symm.trans hs
   have hlo : sp.ts m ≤ tr.time i :=
@@ -850,9 +852,10 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
       ((X ∈ ell.frame.tree ∧
         (X ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc X ell.frame.fcRoot)) ∧
         ∀ x ∈ H, ∀ k e, SA.VoteAt tr.projAC x k e → e.msg.slot = m →
-          ∀ B ∈ tr.HonestBlocks H, B.root = e.msg.head → Anc (tr.HonestBlocks H) ell.frame.F B)) :
+          ∀ B ∈ tr.HonestBlocks H, B.root = e.msg.head → Anc (tr.HonestBlocks H) ell.frame.F B))
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocks H) X d.head := by
-  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch
+  have hS := healthy_base_of_service_catch_before hrun hnc hsvc hawake hf hcatch hstock
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
@@ -862,7 +865,7 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
     (le_add_of_nonneg_right (mul_nonneg (by norm_num) hDelta.le)).trans hm
   have hhalf := honest_voters_half_of_service hrun hnc hsvc hawake hf hcatch hnr hm
     (show sp.ts m + sp.Δ ≤ b from (add_le_add ((le_add_of_nonneg_right
-      (mul_nonneg (by norm_num) hDelta.le)).trans_eq hts.symm) le_rfl).trans hmb)
+      (mul_nonneg (by norm_num) hDelta.le)).trans_eq hts.symm) le_rfl).trans hmb) hstock
   have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ :=
     hti.le.trans (le_add_of_nonneg_right hDelta.le)
   obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc
@@ -898,7 +901,7 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
           (hts.symm.trans_le hti.ge)) (hhi.trans hmb) hdl hrs hx hv hs
       (hrelay x hx k e hv hs)
   refine SA.batch_proposal hS.run hf2 hhalf hG hy hc (SA.proposal_slot hti) hd
-    hV ?_ ?_
+    hV ?_ ?_ hstock
   · intro x hx k e hv hs
     obtain ⟨W, hW, hWr, -, hp, -, hb⟩ := hdel x hx k e hv hs
     apply SA.heldAtProposal_iff.mpr
@@ -908,11 +911,11 @@ private theorem unanimous_next_proposal_of_geometry (hrun : GoldilocksRun propos
     intro l hl _ hlm L hL hLr
     have hl' : l ∈ (tr.state y i).ac.locks := by
       rwa [Compose.projAC_state hrun.toLocalRun hy i] at hl
-    have hls := Compose.proposal_locks_slot_of hrun hnc hf2 hy hc hcall hd hti l hl'
+    have hls := Compose.proposal_locks_slot_of hrun hnc hf2 hy hc hcall hd hti hstock l hl'
     have heq : l.slot = m := by omega
     obtain ⟨O, hLO, a, CV, hopt⟩ := SA.proposal_high_lock hr hy hti hl hlm hL hLr
     rw [heq] at hopt
-    rcases SA.optimisticLock_compatible hS.run hf2 hy hopt hG with hOX | hXO
+    rcases SA.optimisticLock_compatible hS.run hf2 hy hopt hG hstock with hOX | hXO
     · exact Or.inl (hLO.trans hOX)
     · exact SA.anc_total hr.coherent hLO hXO
 
@@ -939,7 +942,8 @@ theorem unanimous_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H t
     (hti : tr.time i = sp.ts (m + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hQy : Q ∈ (tr.state y i).fg.tree) : Anc (tr.HonestBlocks H) X d.head := by
+    (hQy : Q ∈ (tr.state y i).fg.tree)
+    (hstock : sp.committeeSize = sp.n) : Anc (tr.HonestBlocks H) X d.head := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hmf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     change Hᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
@@ -952,7 +956,7 @@ theorem unanimous_next_proposal_of_witness (hrun : GoldilocksRun proposer dg H t
   have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ :=
     hti.le.trans (le_add_of_nonneg_right hDelta.le)
   apply unanimous_next_proposal_of_geometry hrun hnc hsvc hawake hf hcatch hnr hm hmb hG
-    hy hc hcall hti hd
+    hy hc hcall hti hd ?_ hstock
   rcases hframe.finalized_comparable_of_witness hrun hnc hmf hy hz hlo hhi hQ hh
       (fun hk => (hJ hk).trans hXQ) hXQ with hFX | hXF
   swap

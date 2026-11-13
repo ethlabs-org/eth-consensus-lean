@@ -262,7 +262,7 @@ theorem source (ctl : Bool) :
   obtain ⟨ems₁, he₁⟩ := DataRun.toFGM_some h11
   obtain ⟨hf, hj, ⟨ℓ, htf⟩, hT⟩ := DataRun.source_mk (runD ctl) (run_goldilocksRun ctl) hX
     (show va ≠ vf by decide) closedMa (t := 30) (s := 6) (c := 3) (b := 1) rfl h₀ h₁ h1 h2 he₀
-    (by decide) (by decide) h4 h5 h6 h7 h9 h10 he₁ h12
+    (by decide) (by decide) h4 h5 h6 h7 h9 h10 he₁ h12 rfl
   refine ⟨hf, hj, ℓ, htf, ?_⟩
   change X.sp.slot ((runD ctl).tr.time (i0 ctl + 1)) = 7
   rw [hT, Fix.slot_eq]; rfl

@@ -135,7 +135,7 @@ theorem unlockKeeps {k : Nat} (hvi : OutageVoteInv D k) {y : Fin sp.n} (hy : y �
     (hP : D.P ∈ (tr.state y k).fg.toFrame.tree)
     (hs : (D.j₀ : Int) + 1 ≤ sp.slot (tr.time k)) : UnlockKeeps tr y k D.P :=
   unlockKeeps_of_voteCompat D.hrun D.hnc SA.CommitteeP.full hy
-    (SA.cs2_full D.stock D.two_mul_lt) -- §S S14
+    (SA.cs2_full D.stock D.two_mul_lt)
     (fun _ _ v _ => SA.mem_full v.slot _) hP
     fun x hx hxW k' hk' e hv hes => hvi.voteCompat_of_not_lateWaker hx hxW hk' hv (by omega)
 

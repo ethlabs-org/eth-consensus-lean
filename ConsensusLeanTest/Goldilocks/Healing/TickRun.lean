@@ -119,7 +119,7 @@ theorem projection_bundle :
       ∀ t₀, SA.Inv (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
         ((tickRun N1 dg1).HonestBlocks Set.univ) t₀ := by
   obtain ⟨⟨hd, hh, hc⟩, -⟩ := Healing.run_inclusion sp1 ro1 (fun _ => v0) dg1 Set.univ
-    (tickRun N1 dg1) 0 1 tickRun_goldilocksRun (dg1_noColl _) dg1_genesis (tickRun_healthy 0)
+    (tickRun N1 dg1) 0 1 rfl tickRun_goldilocksRun (dg1_noColl _) dg1_genesis (tickRun_healthy 0)
     (tickRun_catch 0 _ (by decide))
   exact ⟨hd, hh, hc, tickRun_inv⟩
 
@@ -208,7 +208,7 @@ theorem tickRun_resetExistence :
 at the heights `≥ H_z + 1 = 4`. -/
 theorem tickRun_retention : Healing.RetentionAt (tickRun N1 dg1) Set.univ 0 16 :=
   Healing.height_scoped_retention sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
-    tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _) 16 reset_bundle.1
+    rfl tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _) 16 reset_bundle.1
 
 /-- (b) **H.2 (run) (ii) on the tick run** at `g = 0`, from `t₀ = a_z + T_b = 16`
 (`16 + 2Θ + 8Δ = 48 ≤ t_272`): the unanimous honest proposal `blk 272` of slot `272` is in every
@@ -216,7 +216,7 @@ honest AC confirmed tip from `t_272 + 6Δ = 1094` on. -/
 theorem tickRun_runInclusion :
     Healing.IncludedFrom (tickRun N1 dg1) Set.univ 1094 (blk 272) := by
   have h := ((Healing.run_inclusion sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
-    tickRun_goldilocksRun (dg1_noColl _) dg1_genesis (tickRun_healthy 0)
+    rfl tickRun_goldilocksRun (dg1_noColl _) dg1_genesis (tickRun_healthy 0)
     (tickRun_catch 0 _ (by decide))).2 16 (by decide) (tickRun_inv 16) 272 (blk 272)
     blk272_honestProposal (by decide)).2 (unanimous_blk 272)
   rwa [show sp1.ts ((272 : Nat) : Int) + 6 * sp1.Δ = 1094 by decide] at h

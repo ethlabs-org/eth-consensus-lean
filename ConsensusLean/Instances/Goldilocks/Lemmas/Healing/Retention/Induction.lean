@@ -681,8 +681,8 @@ theorem origins_compatible (hp : ResetPremises tr H proposer dg g ΔF a) {x x' :
 comparability from the votes (`origins_compatible`), (R1)'s attestations (`high_rows`), (R2) and
 (R3) from the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
 theorem height_scoped_retention : HeightScopedRetention := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc a ha
-  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha, hrun.stock⟩
+  intro sp ro proposer dg H tr g ΔF hstock hrun hh hnc a ha
+  have hp : ResetPremises tr H proposer dg g ΔF a := ⟨hrun, hh, hnc, ha, hstock⟩
   have hinv := retention_inv hp
   have hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B →
       HighOrigin tr H g x' i' j' B' → Compatible (tr.HonestBlocks H) B B' := by

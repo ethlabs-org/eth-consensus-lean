@@ -59,7 +59,7 @@ theorem ready_record_extends_before (hrun : GoldilocksRun proposer dg H tr) (hnc
     (hinv : SleepyInvariantUpTo tr H b) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ P) {y : Fin sp.n} {t : Time} {j : Nat}
     (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t)
-    (htb : t ≤ b) :
+    (htb : t ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y j).fg.F) := by
   have hΔ := sp.toParams.hΔ
@@ -116,7 +116,7 @@ theorem ready_record_extends_before (hrun : GoldilocksRun proposer dg H tr) (hnc
     rw [projAC_state hrun.toLocalRun hy' j₁, ht₁]
     exact hj₁
   obtain ⟨E, hE, hEr, hPE⟩ := later_update_adopts_before hrun hnc hb0 hsync hfb hinv
-    hp hPa rfl hpj hy' hms hupd (by rw [ht₁]; dsimp [u]; linarith)
+    hp hPa rfl hpj hy' hms hupd (by rw [ht₁]; dsimp [u]; linarith) hstock
   -- the record only extends from the update to `j`
   have hj₁j : j₁ + 1 ≤ j := by
     by_contra hh
@@ -141,7 +141,8 @@ theorem ready_record_extends_before (hrun : GoldilocksRun proposer dg H tr) (hnc
 theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     (hsl : tr.SleepyRun H ΔF) {τ : Time} {P : SA.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposalAt tr H (catchUp sp) τ P) {y : Fin sp.n} {t : Time} {j : Nat}
-    (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t) :
+    (ht : τ + 6 * sp.Δ ≤ t) (hy : ReadyAt tr H (catchUp sp) y t) (hj : CutAfter tr j t)
+    (hstock : sp.committeeSize = sp.n) :
     ∃ E ∈ tr.HonestBlocks H, E.root = (tr.state y j).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocks H) P E ∨ Anc (tr.HonestBlocks H) P (tr.state y j).fg.F) := by
   have hb0 := le_max_right t 0
@@ -153,7 +154,8 @@ theorem ready_record_extends (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCo
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
   exact ready_record_extends_before hrun hnc hb0 (sleepyServiceBefore_of_sync hrun.toLocalRun hs)
     (sleepyPrefix_iff.1 (hsl.prefix hb0)).2.2
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb0)) hP ht hy hj (le_max_left t 0)
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix hb0) hstock) hP ht hy hj (le_max_left t 0)
+    hstock
 
 /-- **A proposer ready at its slot start proposes** (node-level: its tick at `t_s` runs
 the proposal step, `ac_proposal` returns a proposal since it is joined, and C0.3 accepts the own
@@ -295,7 +297,7 @@ theorem read_extends_of_record_before (hrun : GoldilocksRun proposer dg H tr)
 
 /-- **R.2, `includeSleepy`.** -/
 theorem include_sleepy : IncludeSleepy := by
-  intro sp ro dg H tr proposer ΔF hrun hnc hsl τ P hP y t j ht hy hj
+  intro sp ro dg H tr proposer ΔF hstock hrun hnc hsl τ P hP y t j ht hy hj
   have hs : tr.SyncBefore H ΔF (max t 0) :=
     ⟨hsl.1.deltaF, hsl.1.delta_le, fun x hx i m hm h0 y hy j hc _ hd =>
       hsl.1.message x hx i m hm h0 y hy j hc hd,
@@ -303,11 +305,11 @@ theorem include_sleepy : IncludeSleepy := by
       fun x hx i B hB h0 y hy j hc _ hd => hsl.1.relay x hx i B hB h0 y hy j hc hd,
       fun x hx i a ha h0 y hy j hc _ hd => hsl.1.attestation x hx i a ha h0 y hy j hc hd⟩
   exact read_extends_of_record_before hrun hnc
-    (sleepy_invariant_upTo hrun hnc (hsl.prefix (le_max_right t 0)))
+    (sleepy_invariant_upTo hrun hnc (hsl.prefix (le_max_right t 0)) hstock)
     (SA.serviceBefore_of_sync (syncBefore_projection hrun.toLocalRun hs))
     (fun s _ => by simpa only [sp.slotTime_eq, SA.SAParams.ts] using (hsl.2 s).2.1)
     hy.1 hj hy (le_max_left t 0)
-    (ready_record_extends hrun hnc hsl hP ht hy hj)
+    (ready_record_extends hrun hnc hsl hP ht hy hj hstock)
 
 /-- A block of an honest node's tree before a cut whose earlier cuts are at times `≤ t` has a
 slot at most `slot(t)`. -/
@@ -322,7 +324,7 @@ private theorem tree_slot_le (hrun : GoldilocksRun proposer dg H tr) {x : Fin sp
 
 /-- **R.2, `growSleepy`.** -/
 theorem grow_sleepy : GrowSleepy := by
-  intro sp ro dg H tr proposer ΔF k hrun hnc hsl hk D t ht hrec
+  intro sp ro dg H tr proposer ΔF k hstock hrun hnc hsl hk D t ht hrec
   have hΔ := sp.toParams.hΔ
   have hcoh := honest_blocks_coherent hrun.toLocalRun hnc
   -- the window `(t, t + 4kΔ]` has a ready proposer
@@ -359,7 +361,7 @@ theorem grow_sleepy : GrowSleepy := by
   have hRP : ReadyProposalAt tr H (catchUp sp) (sp.ts s) P := ⟨_, kP, hready, hP, hkP⟩
   have hinc : ∀ y j, ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
       Anc (tr.HonestBlocks H) P (readAfter tr y j (t + D)) := fun y j hy hj =>
-    include_sleepy sp ro dg H tr proposer ΔF hrun hnc hsl _ P hRP y _ j htsD hy hj
+    include_sleepy sp ro dg H tr proposer ΔF hstock hrun hnc hsl _ P hRP y _ j htsD hy hj
   -- `P` is newer than every block of a read at `t`
   have hnot : ∀ x jx, ReadyAt tr H (catchUp sp) x t → CutAfter tr jx t →
       ¬ Anc (tr.HonestBlocks H) P (readAfter tr x jx t) := by
@@ -376,7 +378,7 @@ theorem grow_sleepy : GrowSleepy := by
       at this
     omega
   refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
-  rcases sleepy_reads_compatible hrun hnc hsl x hx.1 y hy.1 jx j t (t + D) with h | h
+  rcases sleepy_reads_compatible hrun hnc hsl hstock x hx.1 y hy.1 jx j t (t + D) with h | h
   · exact h
   · exact absurd ((hinc y j hy hj).trans h) (hnot x jx hx hjx)
 

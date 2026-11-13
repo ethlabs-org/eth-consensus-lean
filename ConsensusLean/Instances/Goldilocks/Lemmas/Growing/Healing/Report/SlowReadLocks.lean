@@ -28,7 +28,8 @@ theorem slow_live_locks_service_at
     (hc : SA.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
     (hE : ∀ z k ev, k < i → z ∈ H (tr.time k) → SA.VoteAt tr.projAC z k ev →
-      ev.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) ev.msg D) :
+      ev.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) ev.msg D)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L D := by
   have hg := Compose.Growing.goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
@@ -36,11 +37,11 @@ theorem slow_live_locks_service_at
   have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hslot : sp.slot (tr.time i) = s + 1 :=
     ((SA.castAt_spec hr.localRun hy hc').2.1).symm.trans hs
-  apply SA.live_locks_of_stored_before hr hf hy hc' hs
+  apply SA.live_locks_of_stored_before hr hf hy hc' hs ?_ ?_ hstock
   · intro l hl hlive hle Y hY hYr
     rw [projAC_upTo_state hrun le_rfl] at hl
     exact slow_stored_locks_service_at hrun hnc hsvc hx hsl hm hy
-      (by rw [hslot]) l hl hlive hle Y hY hYr
+      (by rw [hslot]) hstock l hl hlive hle Y hY hYr
   · intro z hz k hki ev he hes
     obtain ⟨hkt, he⟩ := SA.upTo_voteAt.mp he
     exact hE z k ev hki (hrun.antitone hkt hz) he hes

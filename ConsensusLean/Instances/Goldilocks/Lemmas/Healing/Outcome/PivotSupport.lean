@@ -131,7 +131,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
         (by rintro z ⟨hz, q, e, hv, hs, _⟩; exact ⟨hz, q, e, hv, hs⟩)
       omega
     refine SA.batch_proposal hS.run hf hhalf' votes hpH hci
-      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
+      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh' hp.stock
     intro z hz q e hv hes
     obtain ⟨H', hH', hHr', hOH⟩ := votes z hz q e hv hes
     obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hsg
@@ -152,7 +152,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
       linarith only [hΔ, hrt, ht']
     have hODU := hOD.mono (SA.frameIn_of_callAt hr ho.1 hcx).2
     refine optimistic_first_proposal_anc hS.run hf ho.1 hop hODU hpH hci
-      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
+      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh' hp.stock
     intro v hv
     obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer hr ho.1 (Or.inr hop) v hv
     have hFB := hFO.trans (hODU.trans hDB)

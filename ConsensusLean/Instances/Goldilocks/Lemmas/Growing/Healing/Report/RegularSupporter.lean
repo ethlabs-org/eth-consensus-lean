@@ -53,7 +53,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
       ∀ a D CV, z ∈ H (tr.time a) → SA.OptimisticLockAt tr.projAC z a s D CV →
       Anc (tr.HonestBlocksAt H) Q D →
       ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) :
+        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hstock : sp.committeeSize = sp.n) :
     ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   have hΔ := sp.toParams.hΔ
@@ -99,7 +99,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm) (by
       rw [hes]; simp only [SA.freeze]
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
-      rw [← hcast]; linarith only [hΔ, hm])
+      rw [← hcast]; linarith only [hΔ, hm]) hstock
   have hPhi := Compose.Growing.frameIn_at hrun hnc hz hc.1
   have hEQ : Hd = Q := hU.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
   rw [hEQ] at hHd hclass

@@ -407,7 +407,8 @@ private theorem optimistic_supporter_at
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j s : Nat}
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hy : y ∈ H (tr.time j))
     (hopt : SA.OptimisticLockAt tr.projAC y j s D CV)
-    (hf : SA.FaultBoundAt tr.projAC H (tr.time j) (tr.time j)) :
+    (hf : SA.FaultBoundAt tr.projAC H (tr.time j) (tr.time j))
+    (hstock : sp.committeeSize = sp.n) :
     ∃ z q e, q ≤ j ∧ z ∈ H (tr.time q) ∧ SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
   have hm := hrun.time_mono
@@ -423,7 +424,7 @@ private theorem optimistic_supporter_at
   dsimp only at hsel
   split_ifs at hsel
   have h34 := (SA.deepest_mem hsel).1.2.1
-  rw [hacr.stock] at h34
+  rw [hstock] at h34
   have h₂ : {x | x ∈ H (tr.time j) ∧ tr.projAC.awake x (tr.time j) ∧
       SA.JoinedAt tr.projAC x (tr.time j)}.ncard ≤ (H (tr.time j)).ncard :=
     Set.ncard_le_ncard fun x hx => hx.1
@@ -471,7 +472,7 @@ theorem unanimous_next_optimistic_compatible_core_at
       change sp.slot (tr.time j) = u + 1 at hsl
       omega)
   obtain ⟨z, q, e, hqj, hz, hv, hs, Hd, hHd, he, hDH⟩ :=
-    optimistic_supporter_at hrun hnc hy hopt (hfault j htime hjb)
+    optimistic_supporter_at hrun hnc hy hopt (hfault j htime hjb) hstock
   obtain ⟨Hd', hHd', he', hPH⟩ := unanimous_next_votes_extend_core_at hrun hnc hsvc hc hP hslot
     hu hun hg hvotes hfault hroot hfloor hstock z q e hz hv ((hrun.time_mono hqj).trans hjb) hs
   obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)

@@ -90,7 +90,7 @@ theorem proposer_row_labels (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b
   refine Compose.proposal_no_optimistic_of (hS.run.upTo hd) (hS.noColl.upTo _)
     (hS.bounds.two _ hd hb) hp
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hcall hti
-    a.val hav c (by omega) O OV ?_
+    hS.stock a.val hav c (by omega) O OV ?_
   rw [RunTrace.upTo_projAC]
   exact (sa_optimisticLockAt_upTo hS.run.time_mono).mpr ⟨hci, hOp⟩
 
@@ -172,7 +172,7 @@ theorem seeded_start_old (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b) (
     have hls := Compose.proposal_locks_slot_of (hrun.upTo h0) (hnc.upTo _)
       (hS.bounds.two _ h0 hb) hp
       (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc) hcall
-      (by rw [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl]; exact hd) hti l
+      (by rw [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl]; exact hd) hti hS.stock l
       (by rw [Trace.upTo_state tr p hi]; exact hl)
     obtain ⟨O, hO, hD'O⟩ := old_cover (s := s) (l := l.slot) (τ := tr.time i) hrun hnc
       (.of_lock hlr hD')

@@ -42,8 +42,9 @@ theorem head_confirmed_of_support {sp : SAParams} {ro : ReplayOrder sp (List (FG
 
 /-- **A1.6, head extends the record under synchrony.** -/
 theorem head_extends_record : HeadExtendsRecord := by
-  intro sp ro proposer dg H tr ΔF hrun hnc hsl y hy i hs R hR
-  refine ⟨head_confirmed_of_support hrun hy hR ((sleepy_served_facts hrun hnc hsl hy hs).head R hR),
+  intro sp ro proposer dg H tr ΔF hstock hrun hnc hsl y hy i hs R hR
+  refine ⟨head_confirmed_of_support hrun hy hR
+      ((sleepy_served_facts hrun hnc hsl hy hs hstock).head R hR),
     fun i' hii' hserv R' hR' => ?_⟩
   have hcoh :=
     (ac_projection _ _ dg H _ tr proposer
@@ -62,7 +63,7 @@ theorem head_extends_record : HeadExtendsRecord := by
       · obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.1 hn.2
         have hsm := hserv m hm (Nat.le_of_succ_le hm') ⟨c, hn.1, hc⟩
         obtain ⟨E', hE', hE'r, hEE'⟩ :=
-          (sleepy_served_facts hrun hnc hsl hy hsm).record_step E hE hEr
+          (sleepy_served_facts hrun hnc hsl hy hsm hstock).record_step E hE hEr
         exact ⟨E', hE', hE'r, hRE.trans hEE'⟩
       · have : tr.state y (m + 1) = tr.state y m := by simp only [Trace.state, hn, ↓reduceIte]
         exact ⟨E, hE, this ▸ hEr, hRE⟩

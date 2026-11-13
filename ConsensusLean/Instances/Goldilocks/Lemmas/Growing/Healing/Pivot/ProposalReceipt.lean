@@ -64,6 +64,7 @@ theorem proposal_holds_old_at
       omega
     obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
       SA.fastLock_honest_vote hr' hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+        hp.stock
     obtain ⟨hjr, hv₀⟩ := (SA.upTo_voteAt).mp hv
     have hzj := hp.run.antitone hjr hz
     obtain ⟨ellZ, hcz, he⟩ := hv₀

@@ -384,14 +384,14 @@ def ResetExistence : Prop :=
         36 * Gp ∧
     C_HS sp ΔF Gp = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * Gp
 
-/-- **HR.4, height-scoped retention.** In a Goldilocks run (unforgeable signatures, durable and
-serialized honest clients) under `Healthy(g)` and `NoColl`, if the reset `a_z` exists, (R1)–(R4)
-hold for it (`RetentionAt`). -/
+/-- **HR.4, height-scoped retention.** For population-sized committees, in a Goldilocks run
+(unforgeable signatures, durable and serialized honest clients) under `Healthy(g)` and `NoColl`, if
+the reset `a_z` exists, (R1)–(R4) hold for it (`RetentionAt`). -/
 def HeightScopedRetention : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
+    (tr : GoldilocksTrace sp ro) (g ΔF : Time), sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
     ∀ a, IsReset tr H g a → RetentionAt tr H g a
 
@@ -440,10 +440,11 @@ def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
 
 end Top
 
-/-- **H.2 (run), AC inclusion in runs.** In a Goldilocks run (unforgeable signatures) under
-`NoColl`, a genesis whose root is its digest (so that the honest proposal of driven-trace clause (b)
-is accepted, as C0.3), `Healthy(g)` and `Catch(2Δ)`, the AC projection is a
-driven AC trace (clause (a) from the FG's acceptance tests, C0.5 (b) `Compose.ACSeesAcceptedBlocks`;
+/-- **H.2 (run), AC inclusion in runs.** For population-sized committees, in a Goldilocks run
+(unforgeable signatures) under `NoColl`, a genesis whose root is its digest (so that the honest
+proposal of driven-trace clause (b) is accepted, as C0.3), `Healthy(g)` and `Catch(2Δ)`, the AC
+projection is a driven AC trace (clause (a) from the FG's acceptance tests, C0.5 (b)
+`Compose.ACSeesAcceptedBlocks`;
 clause (b) from C0.4) with `Healthy(g)` and `Catch(2Δ)` read on it, inside the honest blocks of the
 run; and H.2 holds for the run: for `t₀ ≥ ḡ` with `Inv(t₀)` on the projection and an honest proposal
 `P` of slot `p` with `t_p ≥ t₀ + 2Θ + 8Δ`, (i) `Geo(P)` gives a unanimous slot `p`, and (ii) a
@@ -452,7 +453,7 @@ def RunInclusion : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
+    (tr : GoldilocksTrace sp ro) (g ΔF : Time), sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg →
     tr.HealthyRun H ΔF g → CatchRun tr H g (2 * sp.Δ) →

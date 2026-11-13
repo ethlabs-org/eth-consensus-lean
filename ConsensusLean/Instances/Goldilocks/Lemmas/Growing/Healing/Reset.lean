@@ -25,8 +25,9 @@ theorem ResetExistence.exists_reset (h : ResetExistence)
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF Gp : Time}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hs : HSShared tr H dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
-    (hp : PropPlus tr H proposer g Gp) : ∃ a, IsReset tr H g a := by
-  obtain ⟨_, _, hcount, _⟩ := h sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
+    (hp : PropPlus tr H proposer g Gp) (hstock : sp.committeeSize = sp.n) :
+    ∃ a, IsReset tr H g a := by
+  obtain ⟨_, _, hcount, _⟩ := h sp ro proposer dg H tr g ΔF Gp hstock hrun hs hc hp
   obtain ⟨a, ha, _⟩ := hcount (HZ tr H g) (resetWindow sp g ΔF Gp (HZ tr H g))
     le_rfl (lagWithin_hz tr H g _)
   exact ⟨a, ha⟩

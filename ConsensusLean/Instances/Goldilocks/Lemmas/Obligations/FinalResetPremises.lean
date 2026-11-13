@@ -115,7 +115,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
   have hdrain : DrainOutputs Q.trace (runProposer S Q.run.2 Q.hn) H Q.gst (Q.index : Nat)
       (healthyDrainLen S Q.index) Q.run.2.horizon :=
     drainOutputs_of_service hrun hs.noColl hs.sync hs.awake hs.faults hcatch hnr
-      (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _)
+      (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _) rfl
   -- the reset
   obtain ⟨a, ha, hab⟩ := exists_reset_of_drain_rounds_awake hrun hs.noColl hs.faults hs.sync
     hs.awake hcatch hnr hH
@@ -124,7 +124,7 @@ theorem final_reset_premises_of_shared (Q : FinalQuery S A V) {c : Nat} (hc2 : 2
     hr0 hgr Q.index.pos hcz hBh
     (fun s₀ N hs₀ hN => final_query_gap S A V Q hpat (by rw [max_eq_left hr0]; exact hs₀)
       (hgapN N hN))
-    hdrain
+    hdrain rfl
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake hrun hs.awake hH (b := Q.run.2.horizon)
     (by linarith only [hcz, h4B, hBh])
   refine ⟨ΔF, a, ⟨hrun, hs.noColl, hs.sync, hs.awake, hs.faults, ha, hab.trans hBh,

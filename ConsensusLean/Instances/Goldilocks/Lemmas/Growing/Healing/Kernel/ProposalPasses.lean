@@ -145,7 +145,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
       omega
     apply Anc.mono subU
     refine SA.batch_proposal hS.run hf hhalf' votes hpH hcp
-      (SA.proposal_slot hti) hdp ⟨hOt, Or.inl hV⟩ ?_ ?_
+      (SA.proposal_slot hti) hdp ⟨hOt, Or.inl hV⟩ ?_ ?_ hp.stock
     · intro z hz q e hv hes
       obtain ⟨R, hRV, hRroot, hOR⟩ := votes z hz q e hv hes
       obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hcp hsg
@@ -181,7 +181,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
       rw [hsucc] at hrt
       linarith
     refine SA.Growing.optimistic_first_proposal_anc_at hac hf ho.1 hop hOD hpH hci
-      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh'
+      (SA.proposal_slot hti) hd ⟨hOt, Or.inl hV⟩ ?_ hhigh' hp.stock
     intro v hv
     obtain ⟨hvs, hsend, B, hB, hBr, hDB, hacc⟩ := fastLock_writer_at hac.localRun ho.1
       (Or.inr hop) v hv

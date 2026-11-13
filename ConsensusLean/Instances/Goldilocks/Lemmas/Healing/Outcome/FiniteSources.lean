@@ -89,7 +89,7 @@ theorem ResetPremisesUpTo.result_source_compatible
     · simpa only [max_eq_right h] using hqb
     · simpa only [max_eq_left h] using hrb
   · exact SA.result_optimistic_compatible_window_before hS.run hS.sync hgs hx hy hR hD
-      hrb hqb (fun c hle hrest => hreset x hx c ((hp.run.time_mono hle).trans hrb) hrest)
+      hrb hqb (fun c hle hrest => hreset x hx c ((hp.run.time_mono hle).trans hrb) hrest) hp.stock
 
 /-- Two optimistic sources of one label need no service after either source cut. -/
 theorem ResetPremisesUpTo.optimistic_sources_compatible

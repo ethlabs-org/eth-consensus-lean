@@ -36,7 +36,7 @@ theorem actual_proposal_start_live_origin_at
     (hti : tr.time i = sp.ts p)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hpay : (SA.acProposal sp (tr.projAC.state (proposer p) i) ell.frame (tr.time i)).2 =
-      some (d, pay)) :
+      some (d, pay)) (hstock : sp.committeeSize = sp.n) :
     d.start = ell.frame.fcRoot ∨
       ∃ l ∈ SA.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
         s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
@@ -50,7 +50,7 @@ theorem actual_proposal_start_live_origin_at
       ell.frame (tr.time i)).2 = some (d, pay) := by
     simpa only [RunTrace.upTo_projAC, hs] using hpay
   have h := Healing.actual_proposal_start_live_origin (hrun.upTo (hrun.time_nonneg i))
-    (hnc.upTo _) hf hp hmargin hz hc' hcall hti hpay'
+    (hnc.upTo _) hf hp hmargin hz hc' hcall hti hpay' hstock
   simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using h
 
 /-- Prior-slot heads from validators honest at their own casts force the receiving walk.
@@ -71,7 +71,8 @@ theorem honest_prefix_of_finality_before_at
     {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hB : B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
-    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B) :
+    (haB : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) B)
+    (hstock : sp.committeeSize = sp.n) :
     ell.frame.Anc B (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
@@ -91,7 +92,7 @@ theorem honest_prefix_of_finality_before_at
     (SA.ts_le_iff_le_slot sp hd _).2 (by rw [hslot])
   have hstep : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
   have hS := healthy_base_of_service_catch_before_at hrun hnc hsvc hawake hf hcatch hd
-    (ht.trans hmb)
+    (ht.trans hmb) hstock
   have hPhi := SA.frameIn_of_callAt hS.run.localRun hy hci
   have hheads' : ∀ x ∈ H (tr.time i), ∀ j ev,
       SA.VoteAt (tr.projAC.upTo (tr.time i)) x j ev → ev.msg.slot = s →
@@ -176,7 +177,8 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
     (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hPv : P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
     (hvP : P ∈ ell.frame.viableHeads)
-    (haS : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) d.start) :
+    (haS : ell.frame.Anc (SA.getAnchor sp e.readPoint ell.frame (tr.time i)) d.start)
+    (hstock : sp.committeeSize = sp.n) :
     ell.frame.Anc d.start (SA.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (SA.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
@@ -229,7 +231,7 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
   rcases actual_proposal_start_live_origin_at hrun hnc
     (hf _ (hr.time_nonneg ip) (hphi.trans hmb)) (by omega)
     (by omega : s₀ + sp.k ≤ s + 1) (hdes ▸ hz')
-    (hdes ▸ hcp) hcall hti (hdes ▸ hpay) with he | ⟨l, hl, _, hold, B, hB, hBr, hSB⟩
+    (hdes ▸ hcp) hcall hti (hdes ▸ hpay) hstock with he | ⟨l, hl, _, hold, B, hB, hBr, hSB⟩
   · exact hroot (he ▸ .refl)
   have hlive : s + 1 ≤ l.slot + sp.k := by
     have hs := Trace.upTo_state tr.projAC (proposer (s + 1)) (d := tr.time ip) (i := ip)
@@ -243,19 +245,20 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
     rw [hsl] at hcap
     exact hcap
   rcases KernelProof.proposal_lock_prefix_cases_at hframe hrun hnc hsvc hawake hf hcatch hnr
-    hm hmb hz' hcp hti (hdes.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB with
+    hm hmb hz' hcp hti (hdes.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB
+    hstock with
     hbelow | hheads | ⟨a, _, D, CV, hza, hop, hSD⟩
   · exact hroot hbelow
   · exact honest_prefix_of_finality_before_at hrun hnc hsvc hawake hf hcatch hnr
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
-        linarith) hmb hheads hy hc hes hSv haS
+        linarith) hmb hheads hy hc hes hSv haS hstock
   · have hFD : Anc (tr.HonestBlocksAt H) ell.frame.F D :=
       (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans hSv.2.1)).trans hSD
     exact KernelProof.optimistic_prefix_before_at hrun hnc hsvc hawake hf hcatch
       (by
         have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
-        linarith [sp.toParams.hΔ]) hza hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS
+        linarith [sp.toParams.hΔ]) hza hy hop hSD hc hes (hhi.trans hmb) hFD hSv haS hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

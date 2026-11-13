@@ -104,7 +104,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
       exact_mod_cast (SA.ts_le_iff sp).mp (hts.trans hrt)
     have hf : 2 * Hᶜ.ncard < sp.n := two_faults_lt hp.faults
     have hne : l ≠ u := fun he => proposal_no_optimistic_of_run hp.run hp.noColl hf hpH
-      hci hcall hti v ho.1 r hri D CV (he ▸ hop)
+      hci hcall hti hp.stock v ho.1 r hri D CV (he ▸ hop)
     clear * - hle hne; omega
 
 /-- An origin already preceding an honest signature before a proposal has an older label.
@@ -570,7 +570,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
       · have hle : l.slot ≤ σ := by
           have htime := hp.run.time_mono hqi.le
           have hne : l.slot ≠ σ + 1 := fun he =>
-            proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
+            proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti hp.stock
               p hpH q hqi O CV (he ▸ ⟨ellO, A, hpt, hsl, hsel, hCV⟩)
           have hstart := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) (l.slot : Int)).mpr
             (by change sp.slot (tr.time q) = l.slot at hsl; clear * - hsl; omega)
@@ -592,7 +592,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
     · exact Or.inl (hLO.trans h)
     · exact SA.anc_total hU hLO h
   refine SA.batch_proposal hS.run hf hhalf' votes hpH hci
-    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   intro z hz q e hv he
   obtain ⟨H', hH', hHr', hBH⟩ := votes z hz q e hv he
   obtain ⟨Hd, hHd, hHdr, _, hmem, _, hbs⟩ := SA.late_vote_held_of_frame_before hS hpH hci hσg
@@ -683,7 +683,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
         exact_mod_cast (SA.ts_le_iff sp).mp (this.trans hqt)
       have hne : l.slot ≠ s + 1 := by
         intro he
-        exact proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti
+        exact proposal_no_optimistic_of_run hp.run hp.noColl hf hpH hci hcall hti hp.stock
           p hpH q hqi D CV' (he ▸ hop')
       have he : l.slot = s := by clear * - hls hle hne; omega
       rw [he] at hop'
@@ -696,7 +696,7 @@ theorem ResetPremisesUpTo.clean_optimistic_proposal_parent {b : Time}
       exfalso
       linarith only [hqt, ht, hle, hΔ]
   refine optimistic_first_proposal_anc hS.run hf hx hop .refl hpH hci
-    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh
+    (SA.proposal_slot hti) hd ⟨hV.1, Or.inl hV⟩ ?_ hhigh hp.stock
   intro v hv
   obtain ⟨hvs, hsend, D, hD, hDr, hBD, hacc⟩ := fastLock_writer hr hx (Or.inr hop) v hv
   have hFD := hFB.trans hBD

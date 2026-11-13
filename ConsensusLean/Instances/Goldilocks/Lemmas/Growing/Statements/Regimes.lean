@@ -50,24 +50,24 @@ open Regimes
 
 /-- The growing-fault R.1 implies the static R.1. -/
 theorem sleepySafe_of_growing (h : Regimes.Growing.SleepySafe) : SleepySafe := by
-  intro sp ro dg H tr proposer ΔF hrun hnc hsl
-  have hg := h sp ro dg (fun _ => H) tr proposer ΔF (Growing.GoldilocksRun.const_iff.mpr hrun) hnc
-    ((RunTrace.sleepyRunAt_const tr _).mpr hsl)
+  intro sp ro dg H tr proposer ΔF hstock hrun hnc hsl
+  have hg := h sp ro dg (fun _ => H) tr proposer ΔF hstock
+    (Growing.GoldilocksRun.const_iff.mpr hrun) hnc ((RunTrace.sleepyRunAt_const tr _).mpr hsl)
   rw [RunTrace.honestBlocksAt_const] at hg
   exact ⟨fun y hy z hz i j t t' => hg.1 y z i j t t' hy hz, hg.2⟩
 
 /-- The growing-fault R.2 inclusion implies the static one. -/
 theorem includeSleepy_of_growing (h : Regimes.Growing.IncludeSleepy) : IncludeSleepy := by
-  intro sp ro dg H tr proposer ΔF hrun hnc hsl τ P hP y t j ht hy hj
-  have hg := h sp ro dg (fun _ => H) tr proposer ΔF (Growing.GoldilocksRun.const_iff.mpr hrun) hnc
-    ((RunTrace.sleepyRunAt_const tr _).mpr hsl) τ P (Growing.readyProposalAt_const.mpr hP) y t j
-    ht hy hj
+  intro sp ro dg H tr proposer ΔF hstock hrun hnc hsl τ P hP y t j ht hy hj
+  have hg := h sp ro dg (fun _ => H) tr proposer ΔF hstock
+    (Growing.GoldilocksRun.const_iff.mpr hrun) hnc ((RunTrace.sleepyRunAt_const tr _).mpr hsl) τ P
+    (Growing.readyProposalAt_const.mpr hP) y t j ht hy hj
   rwa [RunTrace.honestBlocksAt_const] at hg
 
 /-- The growing-fault R.2 growth implies the static one. -/
 theorem growSleepy_of_growing (h : Regimes.Growing.GrowSleepy) : GrowSleepy := by
-  intro sp ro dg H tr proposer ΔF k hrun hnc hsl hk D t ht hr
-  obtain ⟨τ, P, hτ, hP, h1, h2, h3⟩ := h sp ro dg (fun _ => H) tr proposer ΔF k
+  intro sp ro dg H tr proposer ΔF k hstock hrun hnc hsl hk D t ht hr
+  obtain ⟨τ, P, hτ, hP, h1, h2, h3⟩ := h sp ro dg (fun _ => H) tr proposer ΔF k hstock
     (Growing.GoldilocksRun.const_iff.mpr hrun) hnc ((RunTrace.sleepyRunAt_const tr _).mpr hsl) hk
     t ht (Growing.proposerRecurrence_const.mpr hr)
   rw [RunTrace.honestBlocksAt_const] at h1 h2 h3
@@ -112,8 +112,8 @@ namespace Compose
 /-- The growing-fault A1.6 implies the static one. -/
 theorem headExtendsRecord_of_growing (h : Compose.Growing.HeadExtendsRecord) :
     HeadExtendsRecord := by
-  intro sp ro proposer dg H tr ΔF hrun hnc hsl y hy i hs R hR
-  obtain ⟨h1, h2⟩ := h sp ro proposer dg (fun _ => H) tr ΔF
+  intro sp ro proposer dg H tr ΔF hstock hrun hnc hsl y hy i hs R hR
+  obtain ⟨h1, h2⟩ := h sp ro proposer dg (fun _ => H) tr ΔF hstock
     (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) hnc
     ((RunTrace.sleepyRunAt_const tr _).mpr hsl) y i hy hs R hR
   refine ⟨h1, fun i' hi' hk R' hR' => ?_⟩
@@ -122,8 +122,8 @@ theorem headExtendsRecord_of_growing (h : Compose.Growing.HeadExtendsRecord) :
 
 /-- The growing-fault A1.7 implies the static one. -/
 theorem inclusion_of_growing (h : Compose.Growing.Inclusion) : Inclusion := by
-  intro sp ro proposer dg H tr ΔF hrun hnc hsl p hp k P s hP hs hj y hy i hc hjy hr hu
-  have hg := h sp ro proposer dg (fun _ => H) tr ΔF
+  intro sp ro proposer dg H tr ΔF hstock hrun hnc hsl p hp k P s hP hs hj y hy i hc hjy hr hu
+  have hg := h sp ro proposer dg (fun _ => H) tr ΔF hstock
     (Goldilocks.Growing.GoldilocksRun.const_iff.mpr hrun) hnc
     ((RunTrace.sleepyRunAt_const tr _).mpr hsl) p k P s hp hP hs hj y i hy hc hjy hr hu
   rwa [RunTrace.honestBlocksAt_const] at hg

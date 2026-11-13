@@ -132,9 +132,9 @@ theorem proposal_no_optimistic_of_run
     (hpH : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
-    (hti : tr.time i = sp.ts s) :
+    (hti : tr.time i = sp.ts s) (hstock : sp.committeeSize = sp.n) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV :=
-  Compose.proposal_no_optimistic_of hrun hnc hf hpH hc hcall hti
+  Compose.proposal_no_optimistic_of hrun hnc hf hpH hc hcall hti hstock
 
 /-- Whole-run specialization of operational proposal ordering. -/
 theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g ΔF a) {p : Fin sp.n}
@@ -142,7 +142,7 @@ theorem proposal_no_optimistic (hp : ResetPremises tr H proposer dg g ΔF a) {p 
     {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ SA.OptimisticLockAt tr.projAC x k' s C CV :=
-  proposal_no_optimistic_of_run hp.run hp.noColl (faulty_lt_half hp p) hpH hc hcall hti
+  proposal_no_optimistic_of_run hp.run hp.noColl (faulty_lt_half hp p) hpH hc hcall hti hp.stock
 
 
 end Consensus.Goldilocks.Healing

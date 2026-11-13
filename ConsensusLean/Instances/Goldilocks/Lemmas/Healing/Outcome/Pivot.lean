@@ -230,7 +230,7 @@ theorem reset_pivot (hp : ResetPremises tr H proposer dg g ΔF a) (hc : CatchRun
             (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
   have hr := (Compose.goldilocks_ac_projection sp ro dg H tr proposer hp.run hp.noColl).localRun
   have hret := height_scoped_retention sp ro proposer dg H tr g ΔF
-    hp.run hp.healthy hp.noColl a hp.reset
+    hp.stock hp.run hp.healthy hp.noColl a hp.reset
   have hPU := proposal_mem_honestBlocks hp.run hp.noColl hP.1 hP.2.2.2.1
   obtain ⟨hΦp, hΦpU⟩ := SA.frameIn_of_callAt hr hP.1 hci
   refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hΦp hΦpU hd hPQ

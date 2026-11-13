@@ -36,11 +36,11 @@ theorem optimistic_next_votes_of_early_witness_at
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
-    (hXQ : Anc (tr.HonestBlocksAt H) X Q) :
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   exact KernelProof.optimistic_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch
-    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hrun.stock
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hstock
 
 /-- The first next-slot proposal follows the same prefix, before unanimity induction starts. -/
 theorem optimistic_next_proposal_of_early_witness_at
@@ -66,10 +66,11 @@ theorem optimistic_next_proposal_of_early_witness_at
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay)) :
+    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hstock : sp.committeeSize = sp.n) :
     Anc (tr.HonestBlocksAt H) X d.head := by
   exact KernelProof.optimistic_next_proposal_of_early_witness_at hrun hnc hsvc hawake hf hcatch
-    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd
+    hm hmb hframe hx hopt hXD hw hat hcw hQw hh hJ hXQ hy hc hcall hti hd hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

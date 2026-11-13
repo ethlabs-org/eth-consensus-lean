@@ -87,14 +87,15 @@ def ProposerRecurrence (proposer : Nat → Fin sp.n) (c : Time) (k : Nat) (a b :
 
 end Defs
 
-/-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** Under `Sleepy`, safety of the confirmed
-output: agreement, any two confirmed reads of honest nodes (at any cuts and times) are compatible;
-and monotonicity, a node's reads at two read points between its events (`Boundary`), in cut order,
-where it is ready (catch-up `18Δ`), only extend. -/
+/-- **R.1, `sleepySafe` / `confirmed_safe_sleepy`.** Under `Sleepy`, with the full committee
+(`committeeSize = n`), safety of the confirmed output: agreement, any two confirmed reads of honest
+nodes (at any cuts and times) are compatible; and monotonicity, a node's reads at two read points
+between its events (`Boundary`), in cut order, where it is ready (catch-up `18Δ`), only extend. -/
 def SleepySafe : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
     (∀ y ∈ H, ∀ z ∈ H, ∀ i j t t',
       Compatible (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr z j t')) ∧
@@ -102,18 +103,21 @@ def SleepySafe : Prop :=
       i ≤ j → ReadyAt tr H (catchUp sp) y t → ReadyAt tr H (catchUp sp) y t' →
       Anc (tr.HonestBlocks H) (readAfter tr y i t) (readAfter tr y j t')
 
-/-- **R.2, `includeSleepy`.** Under `Sleepy`, every honest proposal released at `τ` by a proposer
-ready at `τ` is in the confirmed read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/
+/-- **R.2, `includeSleepy`.** Under `Sleepy`, with the full committee (`committeeSize = n`), every
+honest proposal released at `τ` by a proposer ready at `τ` is in the confirmed read of every node
+ready at `t`, for every `t ≥ τ + 6Δ`. -/
 def IncludeSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF →
     ∀ τ P, ReadyProposalAt tr H (catchUp sp) τ P →
       ∀ y t j, τ + 6 * sp.Δ ≤ t → ReadyAt tr H (catchUp sp) y t → CutAfter tr j t →
         Anc (tr.HonestBlocks H) P (readAfter tr y j t)
 
-/-- **R.2, `growSleepy` / `sleepyLive`.** Under `Sleepy`, for every `t ≥ 0` with one honest ready
+/-- **R.2, `growSleepy` / `sleepyLive`.** Under `Sleepy`, with the full committee
+(`committeeSize = n`), for every `t ≥ 0` with one honest ready
 proposer in every window of `k ≥ 1` slots up to the read time `t + D`, `D = (4k + 6)Δ`, some
 honest proposal `P` released at `τ > t` by a proposer ready at `τ` is a new common entry at
 `t + D`: it is in the read at `t + D` of every node ready then and in none of the reads at `t` of
@@ -122,6 +126,7 @@ def GrowSleepy : Prop :=
   ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
+    sp.committeeSize = sp.n →
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr → tr.SleepyRun H ΔF → 1 ≤ k →
     let D := (4 * k + 6) * sp.Δ
     ∀ t, 0 ≤ t → ProposerRecurrence tr H proposer (catchUp sp) k 0 (t + D) →

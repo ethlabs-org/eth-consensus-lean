@@ -46,11 +46,11 @@ theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hBm : HealedOrigin tr H g r (r + sp.k - 1) B j b) (hj : j ≤ s)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot :=
   seeded_vote_frame_of hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib
-    (fun C l hC hl => healedOriginsBelow_iff.1 hP B j C l (by omega) (by omega) hBm hC) hw
+    (fun C l hC hl => healedOriginsBelow_iff.1 hP B j C l (by omega) (by omega) hBm hC) hw hstock
 
 end Consensus.Goldilocks.Compose.Growing
 

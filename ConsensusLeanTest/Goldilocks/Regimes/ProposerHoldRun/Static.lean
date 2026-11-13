@@ -113,6 +113,7 @@ theorem rhoc_faultBound : ∀ s : Nat, ∀ d ∈ ({0, (S.params (pubOf env) one_
 /-- **The Sleepy record invariant up to the horizon** on the retained run. -/
 theorem rhoc_invariant : Compose.SleepyInvariantUpTo (tr S) (H S) 41 :=
   Compose.sleepy_invariant_before rhoc_run rhoc_noColl (by norm_num) rhoc_service rhoc_faultBound
+    rfl
 
 end Consensus.Goldilocks.Test.ProposerHold
 

@@ -87,7 +87,7 @@ theorem reset_vote_floor_above_old_at
     Outcome.left_entry_origin_at (g := g) hp.run hp.noColl ht hj hy hq hE hET
       (by omega) hEC (by omega)
   have hlu : l < u := hes ▸ Outcome.row_origin_label_lt_at hp.run hp.noColl
-    hy hv hc hW ha hs hdj hrd ho
+    hy hv hc hW ha hs hdj hrd ho hp.stock
   obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]

@@ -41,11 +41,12 @@ theorem unanimous_next_votes_of_witness_at
       e.msg.slot = m + 1 → Q ∈ (tr.state y i).fg.tree ∧
         e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (m + 1)))
     (hG : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
-      e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
+      e.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X)
+    (hstock : sp.committeeSize = sp.n) :
     ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
       e.msg.slot = m + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   exact KernelProof.unanimous_next_votes_of_witness_at hrun hnc hsvc hawake hf hcatch
-    hnr hm hmb hframe hz hQ hh hJ hXQ hheld hG
+    hnr hm hmb hframe hz hQ hh hJ hXQ hheld hG hstock
 
 /-- The same arbitrary prefix reaches an actual next-slot proposal head. -/
 theorem unanimous_next_proposal_of_witness_at
@@ -71,9 +72,10 @@ theorem unanimous_next_proposal_of_witness_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (m + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hQy : Q ∈ (tr.state y i).fg.tree) : Anc (tr.HonestBlocksAt H) X d.head := by
+    (hQy : Q ∈ (tr.state y i).fg.tree) (hstock : sp.committeeSize = sp.n) :
+    Anc (tr.HonestBlocksAt H) X d.head := by
   exact KernelProof.unanimous_next_proposal_of_witness_at hrun hnc hsvc hawake hf hcatch
-    hnr hm hmb hframe hz hQ hh hJ hXQ hG hy hc hcall hti hd hQy
+    hnr hm hmb hframe hz hQ hh hJ hXQ hG hy hc hcall hti hd hQy hstock
 
 end Consensus.Goldilocks.Healing.Growing
 

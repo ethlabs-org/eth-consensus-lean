@@ -411,7 +411,8 @@ theorem same_slot_source_below_ready
     have he := hU.1 hHd hPU (hHdr.trans (ready_unanimous hp hc hP hR z hz j e hv hes))
     exact he ▸ hBH
   rcases horig with ⟨CV, hf⟩ | ⟨ell, C, hupd, hC, hD⟩
-  · obtain ⟨z, hz, j, e, hv, hes, hB⟩ := SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hf
+  · obtain ⟨z, hz, j, e, hv, hes, hB⟩ :=
+      SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hf hp.stock
     exact below z hz j e hv hes hB
   · obtain ⟨z, hz, j, e, hv, hes, Hd, hHd, hHdr, hCH⟩ := SA.result_extended hS hgu hx
       hupd.1 (by rw [hupd.2.2.1]; linarith [sp.toParams.hΔ]) hC

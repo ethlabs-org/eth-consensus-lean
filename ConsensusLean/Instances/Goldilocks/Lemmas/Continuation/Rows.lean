@@ -919,7 +919,7 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ) {b : Time} (hTb : T ≤ b)
     (hsync : SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b) (hB : SleepyBoundsFrom tr H r b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
-    (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) :
+    (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) (hstock : sp.committeeSize = sp.n) :
     ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot ≤ max l (σ + 1) ∧
       SA.VoteExtends (tr.HonestBlocksAt H) e'.msg C := by
   have hΔ := sp.toParams.hΔ
@@ -940,7 +940,7 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
       have := (fastLockAt_time hrun hfl).2
       have := ts_le_ts (sp := sp) (show l ≤ σ by omega)
       linarith
-    have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+    have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
         (CommitteeBoundsFrom.of_full hrun hB) (s := σ + 1) (d := sp.ts (σ + 1 : Nat) + sp.Δ)
       (by omega) le_rfl (by linarith) (by linarith)
     obtain ⟨x', hx'⟩ : (VotersAt tr H (σ + 1) (sp.ts (σ + 1 : Nat) + sp.Δ)).Nonempty := by
@@ -957,7 +957,7 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
       (.of_high hqT ho) x' k e' hv hkT (by omega) (by omega)⟩
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
     obtain ⟨x, k, e', hv, -, hes, hext⟩ := honest_supporter_at hrun hnc
-        (CommitteeFacts.of_full hrun hnc hrun.stock) hsync (CommitteeBoundsFrom.of_full hrun hB) hlr
+        (CommitteeFacts.of_full hrun hnc hstock) hsync (CommitteeBoundsFrom.of_full hrun hB) hlr
       (by have := ts_le_ts (sp := sp) hlr; linarith) hO
     exact ⟨x, k, e', hv, by omega, voteExtends_of_anc hext hCO⟩
 
@@ -973,7 +973,8 @@ private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hA : tr.AcceptAt y m X) {a : FG.Att sp.n}
     (hav : a.val ∈ H (tr.time m)) {k : Nat} (hkm : k < m) (hS : tr.SignAt a.val k a) {c : Nat}
     (hck : c < k) {l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)}
-    (hO : SA.ResultAt tr.projAC a.val c l O OV ∨ SA.OptimisticLockAt tr.projAC a.val c l O OV) :
+    (hO : SA.ResultAt tr.projAC a.val c l O OV ∨ SA.OptimisticLockAt tr.projAC a.val c l O OV)
+    (hstock : sp.committeeSize = sp.n) :
     l ≤ s := by
   have hΔ := sp.toParams.hΔ
   have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
@@ -994,9 +995,9 @@ private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
     by_contra hl
     rcases (show l = s + 1 ∨ s + 2 ≤ l by omega) with rfl | hl2
     · have hcm := hrun.time_mono (show c ≤ m by omega)
-      exact no_optimistic_before_held_row_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+      exact no_optimistic_before_held_row_at hrun hnc (CommitteeFacts.of_full hrun hnc hstock)
         hy hc hs hA hmi hav hkm hS (hrun.antitone hcm hav) hck hO
-        (SA.cs2_full hrun.stock (hf _ (hrun.time_nonneg c) (hci.trans hib)))
+        (SA.cs2_full hstock (hf _ (hrun.time_nonneg c) (hci.trans hib)))
     · have h2 := (SA.ts_le_iff sp).2 (show ((s + 2 : Nat) : Int) ≤ (l : Int) by exact_mod_cast hl2)
       have h3 := ts_add (sp := sp) s 2
       push_cast at h2 h3
@@ -1024,7 +1025,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hBc : ∀ C l, HealedOrigin tr H g r (r + sp.k - 1) C l b → l ≤ s →
       Compatible (tr.HonestBlocksAt H) B C)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) (hstock : sp.committeeSize = sp.n) :
     B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
   have hΔ := sp.toParams.hΔ
@@ -1073,10 +1074,10 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hsrc := rowsAbove_of hrun hnc hseed hd hi hy (Q := Q)
     fun m hmi X hA a ha hav k hkm hS c hck C l O OV hC hO => by
       have hl := member_label_le hrun hnc (fun d h0 hdb => hB.two d h0 hdb) hy hc hes hib hmi hA
-        (hrun.antitone (hrun.time_mono hmi.le) hav) hkm hS hck hO
+        (hrun.antitone (hrun.time_mono hmi.le) hav) hkm hS hck hO hstock
       have hCb : HealedOrigin tr H g r (r + sp.k - 1) C l b :=
         hC.mono ((hrun.time_mono (by omega : c ≤ i)).trans hib)
-      obtain ⟨x, k', e', hv, hvs, hext⟩ := member_supported hrun hnc hseed hTb hsync hB hCb
+      obtain ⟨x, k', e', hv, hvs, hext⟩ := member_supported hrun hnc hseed hTb hsync hB hCb hstock
       exact ⟨hCb, hl, x, k', e', hv, by omega, hext⟩
   have hGB : ∀ D, (∃ C l, Q C l ∧ C ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) ∧
       Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) D C) →

@@ -614,7 +614,7 @@ theorem non_interference : NonInterference := by
   have hr := reset_existence sp ro proposer dg H tr g ΔF Gp hrun hs hc hp
   obtain ⟨a, ha⟩ := hr.2.2.1
   exact ⟨a, ha, (hr.2.2.2.1 a ha).trans hr.2.2.2.2.1,
-    height_scoped_retention sp ro proposer dg H tr g ΔF hrun hs.healthy hs.noColl a ha,
+    height_scoped_retention sp ro proposer dg H tr g ΔF hs.stock hrun hs.healthy hs.noColl a ha,
     hb sp ro proposer dg H tr g ΔF Gp hrun hs hc hp a ha⟩
 
 end Consensus.Goldilocks.Healing

@@ -55,7 +55,7 @@ theorem high_origin_held_at_vote_at
     change 0 < sp.n at hn
     omega
   obtain ⟨z, hz, q, ez, hv, hes, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hr' hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+    SA.fastLock_honest_vote hr' hf ho.1 ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hp.stock
   obtain ⟨hqi, hv₀⟩ := (SA.upTo_voteAt).mp hv
   have hzq := hp.run.antitone hqi hz
   obtain ⟨ellZ, hcz, he⟩ := hv₀

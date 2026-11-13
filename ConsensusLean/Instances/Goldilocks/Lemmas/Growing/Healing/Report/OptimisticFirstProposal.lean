@@ -37,10 +37,10 @@ theorem optimistic_first_proposal_stored_at (hrun : ACRun proposer tr H U)
     (hV : B ∈ ℓ.frame.tree ∧
       (B ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc B ℓ.frame.fcRoot))
     (hP : ∀ v ∈ CV, HeldAtProposal (tr.state x i) ℓ.frame σ v)
-    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B) :
+    (hhigh : HighLocksCompatible U (tr.state x i) (tr.time i) σ B)
+    (hstock : sp.committeeSize = sp.n) :
     Anc U B d.head := by
   have hU := hrun.localRun.coherent
-  have hstock := hrun.stock
   have htime := hrun.localRun.time_mono
   have hry := hrun.upTo (hrun.localRun.time_nonneg i)
   have hrx := hrun.upTo (hrun.localRun.time_nonneg i₀)

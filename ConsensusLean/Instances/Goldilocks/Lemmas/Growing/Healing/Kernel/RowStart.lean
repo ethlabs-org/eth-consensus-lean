@@ -24,9 +24,10 @@ theorem slot_start_optimistic
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att) {m : Nat} (hdt : tr.time d = sp.ts m)
     {r : Nat} (hrd : r < d) {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC v r m D CV) :
+    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC v r m D CV)
+    (hstock : sp.committeeSize = sp.n) :
     sp.n = 1 ∧ ∃ j' ≤ r, ∃ e', SA.VoteAt tr.projAC v j' e' ∧ e'.msg.slot = m :=
-  Healing.slot_start_optimistic hrun hnc hv hs hdt hrd hopt
+  Healing.slot_start_optimistic hrun hnc hv hs hdt hrd hopt hstock
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

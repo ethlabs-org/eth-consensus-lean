@@ -545,7 +545,7 @@ theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr) (hs : HSShared
   have hBD : Anc (tr.HonestBlocks H) (ℓw.frame.viableAncestor D) D :=
     Anc.mono (SA.frameIn_of_callAt hS.run.localRun hx hcw).2 (SA.anc_viableAncestor _ D)
   obtain ⟨z, hz, kz, e', hvz, hes, Hd, hHd, hHdr, hDHd⟩ :=
-    SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hfl
+    SA.fastLock_honest_vote hS.run hS.two_faulty_lt hx hfl hs.stock
   exact viable_of_clean_vote hrun hs hc hw hz hvz hj hes ⟨Hd, hHd, hHdr, hBD.trans hDHd⟩ hy hv
     hjs hk
 

@@ -116,7 +116,7 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
     (hPQ : P.parent = some d.head.root) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
     0 < s ∧ Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot d.head ∧
       ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) d.head B →
         (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
@@ -143,7 +143,7 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
   have hst : (tr.upTo (tr.time j)).state y j = tr.state y j :=
     Trace.upTo_state tr y fun k hk => hm hk.le
   have hf := hB.two _ h0 hjb
-  have hold := proposal_walk_passes_old_at hrun hnc hsync hB hinv hpi hc hcall hd hti hib
+  have hold := proposal_walk_passes_old_at hrun hnc hsync hB hinv hpi hc hcall hd hti hib hstock
   have hold' : ∀ O, Compose.OldOrigin (tr.upTo (tr.time j)) (H (tr.time j)) s O →
       Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) O d.head := fun O hO =>
     RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hQP (hold O (oldOrigin_of_upTo hrun hO))
@@ -160,7 +160,7 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
     have := Compose.head_slot_lt (hrun.upTo h0) (hnc.upTo _) hpj hP' hPs hc' hd' hPQ
     omega
   refine ⟨hs0, ?_, fun B hB hQB => ?_⟩
-  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes hrun.stock
+  · rcases Compose.vote_fcRoot_old_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes hstock
       with hg | ⟨O, hO, hfO⟩
     · exact honestAt_genesis_root_anc hrun hU (hΦyU hΦy.fcRoot_mem) hg (hΦpU hQt)
     · exact Anc.mono hsub (hfO.trans (hold' O hO))
@@ -169,7 +169,7 @@ private theorem genesis_voter_facts (hrun : Growing.GoldilocksRun proposer dg H 
     have h := Compose.vote_floor_le_of (hrun.upTo h0) (hnc.upTo _) hf hs0 hy hcy' hes
       (by rw [hst]; exact hB) (fun O hO =>
         (hold' O hO).trans (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc h0 hBP hQB))
-      hrun.stock
+      hstock
     rwa [hst] at h
 
 /-- The genesis start of the catch-up: `0 + 0 ≤ t_{s−1}` for `s > 0`. -/
@@ -243,7 +243,7 @@ theorem suffix_agree_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
       Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
       X ≠ d.head →
@@ -257,7 +257,7 @@ theorem suffix_agree_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : N
             B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
               (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   obtain ⟨hs0, hfcQ, hflQ⟩ := genesis_voter_facts hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-    hti hPQ hy hcy hes hib hjb
+    hti hPQ hy hcy hes hib hjb hstock
   exact suffix_agree_from hrun hnc (hsync.toFrom hrun) hp hP hPs hc hcall hd hti hPQ hsD hDQ hviab
     hy hcy hes hib hjb (genesis_start hs0) hfcQ hflQ
 
@@ -314,11 +314,11 @@ theorem old_child_ineligible_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
     (hBv : B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
+    (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) (hstock : sp.committeeSize = sp.n) :
     ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
       (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B := by
   obtain ⟨hs0, hfcQ, hflQ⟩ := genesis_voter_facts hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-    hti hPQ hy hcy hes hib hjb
+    hti hPQ hy hcy hes hib hjb hstock
   exact old_child_ineligible_from hrun hnc (hsync.toFrom hrun) hp hP hPs hc hcall hd hti hPQ hDQ
     hviab hy hcy hes hib hjb (genesis_start hs0) hfcQ hflQ hBv hBQ hBs
 
@@ -362,10 +362,10 @@ theorem proposal_at_voter_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hPQ : P.parent = some d.head.root) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) :
+    (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b) (hstock : sp.committeeSize = sp.n) :
     P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) := by
   obtain ⟨hs0, hfcQ, hflQ⟩ := genesis_voter_facts hrun hnc hsync hB hinv hp hP hPs hc hcall hd
-    hti hPQ hy hcy hes hib hjb
+    hti hPQ hy hcy hes hib hjb hstock
   exact proposal_at_voter_from hrun hnc (hsync.toFrom hrun) hp hP hPs hc hd hti hPQ hy hcy hes
     hjb (genesis_start hs0) hfcQ hflQ
 
