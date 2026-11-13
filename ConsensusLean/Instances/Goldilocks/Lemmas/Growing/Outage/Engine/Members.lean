@@ -1,14 +1,17 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.CommitteeVotes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 
 public section
 
 /-! # The committee facts of an outage query
 
-The gate `Q.hGate`, the casters `Q.hG`, and, on a run record of the query's trace, the pools
-`Q.hPool`, the frames `Q.hT` and the merged views `Q.hMerged` hold for its dictionary `Q.K`
-(`GS/CommitteeVotes`, with `Q.bindsSel`). -/
+The gate `Q.hGate`, and, on a run record of the query's trace, P (`Q.committeeP`: the pools and
+the optimistic-check states), T (`Q.committeeT`: the merged views of the casts) and the frames
+(`Q.hT`) hold for its dictionary `Q.K` (`GS/CommitteeVotes`, with `Q.bindsSel`). With the
+committee size `Q.hsize` they are the committee facts `Q.facts` of the outage chain. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
@@ -24,21 +27,41 @@ theorem hGate (Q : OutageQueryAt S A V) :
       (Q.trace.state x i).ac.mayVote s = true ↔ x ∈ Q.K.committee s :=
   simTraceAt_gate S Q.run.2 Q.hn Q.valid Q.bindsSel
 
-/-- **Honest casters are members** of their votes' committees. -/
-theorem hG (Q : OutageQueryAt S A V) :
-    ∀ x i e, Compose.Growing.HVoteAt Q.trace Q.keys x i e → x ∈ Q.K.committee e.msg.slot :=
-  fun x i e hv => simTraceAt_vote_member S Q.run.2 Q.hn Q.valid Q.bindsSel x i e
-    (Compose.Growing.hVoteAt_iff.1 hv).2
-
-variable (Q : OutageQueryAt S A V)
-  (hrun : Growing.GoldilocksRun (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys Q.trace)
+variable (Q : OutageQueryAt S A V) {ini}
+  (hrun : Growing.GoldilocksRun (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys Q.trace
+    ini)
 include hrun
 
-/-- **The pool after an honest call holds votes of members of its slot.** -/
-theorem hPool :
-    ∀ w c m, w ∈ Q.keys (Q.trace.time c) →
-      ∀ v ∈ (Q.trace.projAC.state w (c + 1)).pool m, v.val ∈ Q.K.committee m :=
-  simTraceAt_pool_member S hrun Q.valid Q.bindsSel Q.noCollision
+/-- **P**: the pools of a node honest at `t`, before every cut whose earlier cuts are at times
+`≤ t`, and its optimistic-check states at the cuts at which it is honest, hold only votes of
+members of their slots. The start's pools are empty (`simIni_voteStart`); a later pool is the
+post-state of an honest call (`simTraceAt_pool_member`), and an optimistic-check pool is in the
+call's post-state pool (`SA.optimisticPoint_pool_post`). -/
+theorem committeeP : SA.CommitteePAt Q.K Q.trace.projAC Q.keys := by
+  have hpool := simTraceAt_pool_member S hrun Q.valid Q.bindsSel Q.noCollision
+  refine ⟨fun t y hy i hi s v hv => ?_, fun y i ℓ A hy hpt s v hv => ?_⟩
+  · cases i with
+    | zero =>
+      have h0 : (Q.trace.projAC.state y 0).pool s = [] := by
+        change (((simTraceAt S Q.run.2 Q.hn).init y).ac).pool s = []
+        rw [simTraceAt_eq, simTrace_init_eq]
+        exact (simIni_voteStart S Q.run.2 Q.hn y).pool s
+      rw [h0] at hv
+      exact absurd hv List.not_mem_nil
+    | succ i => exact hpool y i s (hrun.antitone (hi i (Nat.lt_succ_self i)) hy) v hv
+  · have hm := hrun.time_mono
+    have hacr := Compose.Growing.acRun_upTo hrun
+      (noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision) (hrun.time_nonneg i)
+    have hsub := SA.optimisticPoint_pool_post hacr.localRun hy
+      ((SA.upTo_optimisticPoint hm).mpr ⟨le_rfl, hpt⟩) s hv
+    rw [Trace.upTo_state Q.trace.projAC y fun k hk => hm (Nat.lt_succ_iff.mp hk)] at hsub
+    exact hpool y i s hy v hsub
+
+/-- **T**: the merged view of a cast of a node honest at it holds only votes of members of their
+slots (`simTraceAt_merged_member`). -/
+theorem committeeT : SA.CommitteeTAt Q.K Q.trace.projAC Q.keys :=
+  fun y i ℓ e hy hc m =>
+    simTraceAt_merged_member S hrun Q.valid Q.bindsSel Q.noCollision y i ℓ e (m + 1) hy hc
 
 /-- **The frames of honest nodes carry votes of members.** -/
 theorem hT :
@@ -46,12 +69,14 @@ theorem hT :
       ∀ v ∈ SA.blockVotes C, v.val ∈ Q.K.committee v.slot :=
   simTraceAt_tree_member S hrun Q.valid Q.bindsSel
 
-/-- **The merged view of an honest cast holds votes of members.** -/
-theorem hMerged :
-    ∀ y i ℓ e m, y ∈ Q.keys (Q.trace.time i) → SA.CastAt Q.trace.projAC y i ℓ e →
-      ∀ v ∈ (SA.mergedVoteView Q.params e.readPoint ℓ.frame m).votes,
-        v.val ∈ Q.K.committee v.slot :=
-  simTraceAt_merged_member S hrun Q.valid Q.bindsSel Q.noCollision
+/-- **The committee facts of the outage query**: size, P, T, frames, and the gate read at every
+read time `t ≥ 0` (a node honest at `t` is honest at `0`). -/
+theorem facts : Compose.Growing.CommitteeFacts Q.trace Q.keys Q.K where
+  hsize := Q.hsize
+  hP := Q.committeeP hrun
+  hT := Q.committeeT hrun
+  hFrame := Q.hT hrun
+  hGate := fun _ ht x hx i _ s => Q.hGate x (hrun.antitone ht hx) i s
 
 end OutageQueryAt
 

@@ -38,12 +38,11 @@ theorem voteExtends_of_anc {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {v : Vot
 
 /-- An origin within `b` is held while honest. -/
 theorem OriginWithin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} (h : OriginWithin tr H C s b) :
     C ∈ tr.HonestBlocksAt H := by
   obtain ⟨x, k, CV, hx, -, hO⟩ := originWithin_iff.1 h
   exact upTo_subset hrun (hrun.time_nonneg k)
-    (origin_mem_upTo hrun hnc (hrun.time_nonneg k) hx le_rfl hO)
+    (origin_mem_upTo hrun hx le_rfl hO)
 
 /-- **Every member of the healed family is below an origin of its label within `b`**. -/
 theorem HealedOrigin.below_origin {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -65,7 +64,7 @@ theorem HealedOrigin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr in
     (hC : HealedOrigin tr H g rL rO C s b) : C ∈ tr.HonestBlocksAt H := by
   obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
   by_cases h : C = O
-  · exact h ▸ hO.mem hrun hnc
+  · exact h ▸ hO.mem hrun
   · exact (Anc.mem hCO h).1
 
 /-- **Compatibility with the origins gives compatibility with the family**: a block compatible

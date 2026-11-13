@@ -13,6 +13,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.ProposalCall
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -303,8 +304,8 @@ theorem proposal_holds_old_from (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hp hc
   obtain ⟨m, hm, hρm, hOm⟩ := hO.within hrun (hti ▸ hb)
-  obtain ⟨x, j, e, hv, _, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hrun (fun _ _ => rfl) hnc
-      hsync hB
+  obtain ⟨x, j, e, hv, _, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hrun hnc
+      (CommitteeFacts.of_full hrun hnc hrun.stock) hsync (CommitteeBoundsFrom.of_full hrun hB)
     (hσρ.trans hρm) (haρ.trans ((SA.ts_le_iff sp).2 (by exact_mod_cast hρm))) hOm
   rcases hFc O m hOm hρm hm with hFO | hOF
   · left
@@ -333,7 +334,7 @@ theorem proposal_holds_old_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   exact proposal_holds_old_from hrun hnc (hsync.toFrom hrun) hB le_rfl (ts_natCast_nonneg 0) hp
     hc hcall hd hti hb (by rw [zero_add]; exact le_max_right _ _)
     (fun O m hOm _ _ => OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible
-      (hΦU hΦ.rooted.1) (hOm.mem hrun hnc) hFc
+      (hΦU hΦ.rooted.1) (hOm.mem hrun) hFc
       (onOriginChainWithin_iff.2 (Or.inr ⟨O, m, hOm, .refl⟩)))
     O (oldOrigin_iff_above.1 hO)
 
@@ -513,9 +514,10 @@ theorem proposal_best_toward_from (hrun : Growing.GoldilocksRun proposer dg H tr
         exact Or.inl (votersAt_iff.2
           ⟨hw, j, e, hve, state_pool_slot_at hrun hnc hp s' _ ((hvotes' _).1 hv)⟩)
       · exact Or.inr hw
-    · have hcount := faults_lt_voters hrun (fun _ _ => rfl) hnc hB (s := s') (d := tr.time i)
-          (by omega)
+    · have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+        (CommitteeBoundsFrom.of_full hrun hB) (s := s') (d := tr.time i) (by omega)
         (by rw [hti, hts]; linarith only [hΔ]) hb (by rw [hti, hts]; linarith only [hΔ])
+      rw [SA.ncard_inter_full] at hcount
       have := Set.ncard_union_le (VotersAt tr H s' (tr.time i)) (H (tr.time i))ᶜ
       omega
   · -- an optimistic origin of label `s − 1`: its counted votes

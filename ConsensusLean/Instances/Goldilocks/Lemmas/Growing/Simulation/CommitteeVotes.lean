@@ -37,8 +37,9 @@ open SA (SAParams ReplayOrder Vote)
 /-- **The pool of an AC run keeps a vote predicate** that holds of the votes of the blocks of
 `U`, of the node's received messages and of its own emissions. -/
 theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H₀ : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {trA : SA.SATrace sp FGP ro}
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H₀ U trA) {y : Fin sp.n} (hy : y ∈ H₀)
+    {H₀ : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {trA : SA.SATrace sp FGP ro} {ini} {g : Nat}
+    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H₀ U trA ini) (hini : ∀ y, SA.VoteStart g (ini y))
+    {y : Fin sp.n} (hy : y ∈ H₀)
     (P : Vote sp.n → Prop) (hU : ∀ B ∈ U, ∀ v ∈ SA.blockVotes B, P v)
     (hmsg : ∀ i ℓ v, trA.CallAt y i ℓ → ℓ.call = .message v → P v)
     (hem : ∀ i ℓ e, trA.CallAt y i ℓ → e ∈ ℓ.emits → P e.msg) :
@@ -48,7 +49,7 @@ theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
   | zero =>
     intro σ v hv
     change v ∈ (trA.init y).pool σ at hv
-    rw [hr.init y hy] at hv
+    rw [hr.init y hy, (hini y).pool σ] at hv
     exact False.elim (List.not_mem_nil hv)
   | succ i ih =>
     by_cases hc : ∃ ℓ, trA.CallAt y i ℓ
@@ -136,9 +137,9 @@ theorem simTraceAt_vote_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
 
 /-! ### On a run record of the canonical trace -/
 
-variable {rho hn}
+variable {rho hn} {ini}
   (hrun : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho)
-    (simTraceAt S rho hn))
+    (simTraceAt S rho hn) ini)
 include hrun
 
 /-- **The blocks held while honest by `d ≥ 0` carry votes of members**: genesis carries none,
@@ -169,8 +170,9 @@ private theorem upTo_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho 
     {w : Fin (Fintype.card V)} (hw : w ∈ honestKeysAt S rho d) :
     ∀ i σ, ∀ v ∈ (((simTraceAt S rho hn).projAC.upTo d).state w i).pool σ,
       v.val ∈ K.committee v.slot := by
-  have hr := (Compose.Growing.acRun_upTo hrun hnc hd).localRun
-  refine pool_mem_of_run hr hw (fun v => v.val ∈ K.committee v.slot)
+  have hacr := Compose.Growing.acRun_upTo hrun hnc hd
+  have hr := hacr.localRun
+  refine pool_mem_of_run hr hacr.vstart hw (fun v => v.val ∈ K.committee v.slot)
     (simTraceAt_honestBlock_member S hrun hv hK hd)
     (fun _ ℓ v hci hcl => simTraceAt_msgCall_member S rho hn hv hK
       ⟨ℓ, Compose.projAC_callAt.1 ((Trace.upTo_callAt _).mp hci).2, hcl⟩)
@@ -192,8 +194,8 @@ theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
     Trace.upTo_state _ w fun k hk => hrun.time_mono (Nat.lt_succ_iff.mp hk)
   rw [← hst] at hvp
   have hm := upTo_pool_member S hrun hv hK hnc hd hw (c + 1) m v hvp
-  rwa [SA.state_pool_slot _ (Compose.Growing.acRun_upTo hrun hnc hd).localRun hw (c + 1) m v
-    hvp] at hm
+  have hacr := Compose.Growing.acRun_upTo hrun hnc hd
+  rwa [SA.state_pool_slot_from _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
 
 /-- **The merged view of an honest cast holds votes of members** (`hMerged`): its pool votes are
 in the caster's pool after the cast, its block votes in its frame. -/

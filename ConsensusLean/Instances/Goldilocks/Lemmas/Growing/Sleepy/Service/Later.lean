@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -86,8 +87,10 @@ theorem update_adopts_extended_from (hrun : Growing.GoldilocksRun proposer dg H 
   have hd := hrun.time_nonneg k₀
   have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
   set d := tr.time k₀
-  have hcount : (H d)ᶜ.ncard < (VotersAt tr H s' d).ncard :=
-    faults_lt_voters hrun (fun _ _ => rfl) hnc hB hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
+  have hcount : (H d)ᶜ.ncard < (VotersAt tr H s' d).ncard := by
+    have h := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+      (CommitteeBoundsFrom.of_full hrun hB) hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
+    rwa [SA.ncard_inter_full] at h
   have hcut : ∀ k < k₀ + 1, tr.time k ≤ d := fun k hk => hrun.time_mono (by omega)
   -- the update's cut
   obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hu.1.2

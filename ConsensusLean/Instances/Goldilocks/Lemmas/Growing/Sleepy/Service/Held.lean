@@ -70,9 +70,10 @@ private theorem origin_anc_proposal_at (hrun : Growing.GoldilocksRun proposer dg
     have hkb : tr.time k ≤ b := hkt.trans hsb
     obtain ⟨Hd, hHd, hHdr, hCH⟩ := hinv.vote_extends C j hC x k e hv hkb (by omega)
     rwa [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes hkb))] at hCH
-  · obtain ⟨x, k, e, hv, hkb, hes, Hd, hHd, hHdr, hCH⟩ := honest_supporter_at hrun (fun _ _ => rfl)
-        hnc
-      (hsync.toFrom hrun) hB (Nat.zero_le _) (ts_natCast_nonneg _) hC
+  · obtain ⟨x, k, e, hv, hkb, hes, Hd, hHd, hHdr, hCH⟩ := honest_supporter_at hrun hnc
+        (CommitteeFacts.of_full hrun hnc hrun.stock)
+      (hsync.toFrom hrun) (CommitteeBoundsFrom.of_full hrun hB) (Nat.zero_le _)
+      (ts_natCast_nonneg _) hC
     rwa [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes hkb))] at hCH
 
 /-- Every honest slot-`(s+1)` vote at a time `≤ b` extends `P` (the later transfer for the
@@ -95,11 +96,14 @@ private theorem votes_succ_extend_at (hrun : Growing.GoldilocksRun proposer dg H
     have hBc : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) P C :=
       fun C j hC hj => Or.inr (origin_anc_proposal_at hrun hnc hsync hB hinv hPU hsb
         (fun x k e hv hs _ => hall x k e hv hs) hC hj)
-    exact later_transfer_step_at hrun (fun _ _ => rfl) hnc (hsync.toFrom hrun) hB (g := 0) (rL := 0)
-        (rO := 0)
+    exact later_transfer_step_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+        (hsync.toFrom hrun)
+        (CommitteeBoundsFrom.of_full hrun hB) (g := 0) (rL := 0) (rO := 0)
       (Nat.zero_le _) (by rw [add_zero]; exact ts_natCast_nonneg _) hx ⟨hc, he⟩ hes hjb
       (fun _ _ _ => Nat.zero_le _) (HealedOrigin.compatible_of_origins hrun hnc hBc)
-      (vote_frame_at hrun (fun _ _ => rfl) hnc hb0 hsync hB hPb hx ⟨hc, he⟩ hes hjb hPU hBc)
+      (vote_frame_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hb0 hsync hB
+        (CommitteeBoundsFrom.of_full hrun hB) hPb hx
+        ⟨hc, he⟩ hes hjb hPU hBc)
       (fun x k e' hv hs => ⟨P, hPU, (hall x k e' hv hs).symm, .refl⟩)
       (fun z j' hj' hz e' hv' hs' => ih j' hj' z e' (hVoteAt_iff.2 ⟨hz, hv'⟩) hs'
         ((hrun.time_mono hj'.le).trans hjb))
@@ -159,9 +163,10 @@ private theorem rows_compatible_at (hrun : Growing.GoldilocksRun proposer dg H t
     · exact Or.inl (hDC'.trans (origin_anc_proposal_at hrun hnc hsync hB hinv hPU hsb
         (fun x k e hv hs _ => hall x k e hv hs) hCb (by omega)))
     obtain rfl : l = s + 1 := le_antisymm hl hls
-    obtain ⟨z, j, e, hv, hjb, hes, Hd, hHd, hHdr, hCH⟩ := honest_supporter_at hrun (fun _ _ => rfl)
-        hnc
-      (hsync.toFrom hrun) hB (Nat.zero_le _) (ts_natCast_nonneg _) hCb
+    obtain ⟨z, j, e, hv, hjb, hes, Hd, hHd, hHdr, hCH⟩ := honest_supporter_at hrun hnc
+        (CommitteeFacts.of_full hrun hnc hrun.stock)
+      (hsync.toFrom hrun) (CommitteeBoundsFrom.of_full hrun hB) (Nat.zero_le _)
+      (ts_natCast_nonneg _) hCb
     obtain ⟨Hd', hHd', hHd'r, hPH⟩ :=
       votes_succ_extend_at hrun hnc hb0 hsync hB hinv hPU hsb hall z j e hv hes hjb
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)

@@ -30,15 +30,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-! ### The frontier and the invariant -/
 
 /-- **Every finite frontier up to `b` from a seed** under growing faults, over the healed family
-from the floors `rL`, `rO ≤ s₀`: the seed `P_{s₀}`, `V_{s₀}`; the slot counts from `σ₀ ≤ s₀` and
-the service from `a` (`a + κ ≤ t_{s₀}`); at every honest vote of a slot `s + 1 > s₀`, the live
-locks of slot at most `s` from the lock floor on (`hlive`), and, given `P_{s+1}`, the frozen
-witness for a member of label at most `s` with an honest slot-`s` supporter (`hframe`). -/
+from the floors `rL`, `rO ≤ s₀`: the seed `P_{s₀}`, `V_{s₀}`; the committee slot counts from
+`σ₀ ≤ s₀` and the service from `a` (`a + κ ≤ t_{s₀}`); at every honest vote of a slot
+`s + 1 > s₀`, the live locks of slot at most `s` from the lock floor on (`hlive`), and, given
+`P_{s+1}`, the frozen witness for a member of label at most `s` with an honest slot-`s` supporter
+(`hframe`). -/
 theorem frontier_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
-    (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s₀ : Nat} (hσ₀ : σ₀ ≤ s₀)
+    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s₀ : Nat} (hσ₀ : σ₀ ≤ s₀)
     (hrO : rO ≤ s₀) (hsa : a + κ ≤ sp.ts s₀)
     (hlive : ∀ s, s₀ ≤ s → ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e →
       e.msg.slot = s + 1 → tr.time i ≤ b →
@@ -61,8 +61,9 @@ theorem frontier_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     | succ n ih =>
       have hs : s₀ ≤ s₀ + n := Nat.le_add_right _ _
       have hts := ts_le_ts (sp := sp) hs
-      have hP := origins_below_succ_at hrun hmv hnc hsync hB (hσ₀.trans hs) (ha.trans hts) ih.1 ih.2
-      exact ⟨hP, votes_below_succ_at hrun hmv hnc hsync hB (hσ₀.trans hs) (hrO.trans hs)
+      have hP := origins_below_succ_at hrun hnc hKB hsync hBK (hσ₀.trans hs) (ha.trans hts)
+        ih.1 ih.2
+      exact ⟨hP, votes_below_succ_at hrun hnc hKB hsync hBK (hσ₀.trans hs) (hrO.trans hs)
         (hsa.trans hts) (hlive _ hs) (hframe _ hs hP) hP ih.2⟩
   intro s
   rcases le_total s s₀ with h | h
@@ -87,13 +88,13 @@ private theorem held_origin_viable_read {ini} (hrun : Growing.GoldilocksRun prop
   have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt.1⟩
   have h := held_origin_viable_before (hrun.upTo ht0) (hnc.upTo _) (b := t) hf
     (fun _ => Compose.originsBelowUpTo_iff.2 fun C j C' j' _ _ hC hC' =>
-      compatible_upTo hrun hnc ht0 (originWithin_upTo_mem hrun hnc ht0 hC)
-        (originWithin_upTo_mem hrun hnc ht0 hC')
+      compatible_upTo hrun hnc ht0 (originWithin_upTo_mem hrun hC)
+        (originWithin_upTo_mem hrun hC')
         (hP C j C' j' (originWithin_of_upTo hrun hC) (originWithin_of_upTo hrun hC')))
     hy i hi
     (fun C s hC => by
       have hCw := hC.within (b := t) hi
-      exact compatible_upTo hrun hnc ht0 hBU (originWithin_upTo_mem hrun hnc ht0 hCw)
+      exact compatible_upTo hrun hnc ht0 hBU (originWithin_upTo_mem hrun hCw)
         (hBc C s (originBefore_of_upTo hrun hC)))
     (by rw [hst]; exact hBt)
   rwa [hst] at h
@@ -101,30 +102,30 @@ private theorem held_origin_viable_read {ini} (hrun : Growing.GoldilocksRun prop
 /-- **The healed frontier from genesis**: the floors `0` and the seed label `0` (vacuous seed),
 with the frozen witness `vote_frame_at`; every origin is a member. -/
 private theorem frontier_zero_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
-    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b) (g : Time) :
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {b : Time}
+    (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) (g : Time) :
     ∀ s, HealedOriginsBelow tr H g 0 0 s b ∧ HealedVotesBelow tr H g 0 0 s b := by
-  refine frontier_at hrun hmv hnc (hsync.toFrom hrun) hB le_rfl le_rfl
+  refine frontier_at hrun hnc hKB (hsync.toFrom hrun) hBK le_rfl le_rfl
     (by rw [add_zero]; exact ts_natCast_nonneg 0) (fun _ _ _ _ _ _ _ _ _ _ _ _ _ => Nat.zero_le _)
     (fun s _ hP y i ℓ e hy hc hs hib B j hBm hj hw => ?_)
     ⟨healedOriginsBelow_iff.2 fun _ _ _ _ h => absurd h (Nat.not_lt_zero _),
       healedVotesBelow_iff.2 fun _ _ _ _ _ _ _ _ h₁ h₂ => by omega⟩
   have hP' := healedOriginsBelow_iff.1 hP
-  refine vote_frame_at hrun hmv hnc hb hsync hB
+  refine vote_frame_at hrun hnc hKB hb hsync hB hBK
     (originsBelowUpTo_iff.2 fun C j C' j' hj hj' hC hC' =>
       hP' C j C' j' hj hj' (.of_origin (Nat.zero_le _) hC) (.of_origin (Nat.zero_le _) hC'))
     hy hc hs hib (hBm.mem hrun hnc)
     (fun C j' hC hj' => hP' B j C j' (by omega) (by omega) hBm (.of_origin (Nat.zero_le _) hC)) hw
 
 /-- **The Sleepy record invariant up to `b` under growing faults** (S1–S3), from the finite
-service and the count shapes through `b`: the healed frontier from genesis
-(`frontier_zero_at`) restricted to the origins. -/
+service, the count shapes and the committee count shapes through `b`: the healed frontier from
+genesis (`frontier_zero_at`) restricted to the origins. -/
 theorem sleepy_invariant_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
-    (hnc : NoCollRun dg tr) {b : Time} (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b) : SleepyInvariantUpTo tr H b := by
-  have hF := frontier_zero_at hrun hmv hnc hb hsync hB 0
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {b : Time}
+    (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
+    (hBK : CommitteeBoundsFrom tr H K 0 b) : SleepyInvariantUpTo tr H b := by
+  have hF := frontier_zero_at hrun hnc hKB hb hsync hB hBK 0
   have hcomp : ∀ C s C' s', OriginWithin tr H C s b → OriginWithin tr H C' s' b →
       Compatible (tr.HonestBlocksAt H) C C' := fun C s C' s' h h' =>
     healedOriginsBelow_iff.1 (hF (max s s' + 1)).1 C s C' s' (by omega) (by omega)

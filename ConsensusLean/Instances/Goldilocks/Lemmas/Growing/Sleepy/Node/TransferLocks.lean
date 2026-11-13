@@ -8,6 +8,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -18,8 +20,9 @@ lock block is compatible with a block `B` that is compatible with every member o
 family within `b` of label at most `s` and that the earlier slot-`(s+1)` votes of nodes honest at
 them extend, when the live locks of slot at most `s` have labels from the lock floor on. A lock of
 slot at most `s` sits below the holder's own lock write of its slot (`lock_write_at`), a family
-member; one of slot `s + 1` is optimistic, and its check at a cut `c ≤ i` is counted with
-`2 f < n` at that cut (`hB.two`). -/
+member; one of slot `s + 1` is optimistic, its voters are slot-`(s+1)` committee members (P on
+the prefix through the vote), and its check is counted with `2 |K(s+1) ∩ (H t_i)ᶜ| <
+committeeSize` at the vote's cut (`hBK.twoK`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -31,11 +34,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **The live locks at a slot-`(s+1)` vote are compatible with `B`** under growing faults. -/
 theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {b : Time} {σ₀ : Nat} (hB : SleepyBoundsFrom tr H σ₀ b)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {b : Time} {σ₀ : Nat} (hBK : CommitteeBoundsFrom tr H K σ₀ b)
     {g : Time} {rL rO s : Nat} {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b)
+    (hib : tr.time i ≤ b) (hs₀ : σ₀ ≤ s)
     (hlive : ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
       rL ≤ l.slot)
     {B : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -50,7 +54,8 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
   have hrun' := acRun_upTo hrun hnc hd
   have hr := hrun'.localRun
   have hcT : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
-  have hf := hB.two (tr.time i) hd hib
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨hti0, hti1⟩ := cast_time_at hrun hnc hy hc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
   have hsi : e.msg.slot = sp.slot (tr.time i) := (castAt_spec_at hrun hnc hy hc).2.1
   -- compatibility with `B` passes to ancestors
@@ -84,14 +89,21 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     exact down ((Anc.mono hΦU hA).trans hL₁D) (hBc D l₁.slot hDm (by omega)).symm
   · -- a lock of slot `s + 1` or later is optimistic, counted at the vote's cut, over earlier
     -- slot-`(s+1)` votes of nodes honest at them
-    obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, -, L₀, hL₀, hL₀r, hL₀D⟩ :=
+    obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, ⟨k₀, -, hk₀⟩, L₀, hL₀, hL₀r, hL₀D⟩ :=
       SA.lock_origin_readPoint hrun' hy hcT l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 (hsub hL₀) (hΦU hB₀) (hL₀r.trans hB₀r.symm)
-    -- TEMP(C2): C3/C4 replaces
+    have hl₀s : l₀.slot = s + 1 := by
+      have h := SA.readPoint_lock_slot_leU hr.toU hrun'.vstart hy hcT l₀ hl₀
+      change l₀.slot ≤ sp.slot (tr.time i) at h
+      omega
+    have hPi := SA.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time i)
+    have hfK := hBK.twoK l₀.slot (tr.time i) (by omega) (by rw [hl₀s, ← hs]; exact hti0) hib
+      (by rw [hl₀s, ← hs]; linarith)
+    rw [hKB.hsize] at hfK
     refine down (Anc.mono hsub hL₀D)
-      (SA.origin_compatible hU (hΦ'U.trans hsub) (SA.CommitteeDict.full sp.n) h34
-        (fun _ _ => SA.mem_full _ _)
-        (by simpa only [SA.ncard_inter_full, hrun'.stock] using hf) fun v hv hvH => ?_)
+      (SA.origin_compatible hU (hΦ'U.trans hsub) K h34
+        (fun _ ⟨v, hv, hvx, _⟩ => hvx ▸ hPi.1 y hy (k₀ + 1) _ v (hk₀ hv)) hfK
+        fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨hjd, hvote⟩ := sa_voteAt_upTo.mp hvote
     have hvj : e'.msg.val ∈ H (tr.time j) := hrun.antitone hjd hvH

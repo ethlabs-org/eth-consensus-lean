@@ -16,6 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -25,9 +26,10 @@ public section
 `update_result_extends_origin_at` (**Lemma P**): an update of slot `s` by a node honest at its
 cut `c`, whose slot's votes are delivered by `t_s + 2Δ ≤ b`, has a result extending an origin
 within `b` of an earlier label, held in its frame when `Σ.F ⪯ C`, with a supporter honest at the
-update in its pool. The count is charged at the update's cut: the slot-`s` voters still honest
-at `t_c` outnumber the validators compromised by `t_c` (`FaultBoundAt (t_s + Δ) (t_c)`), and each
-of them is delivered to the update (the static delivery, lifted to the prefix through `t_c`). -/
+update in its pool. The count is charged at the update's cut, inside the slot-`s` committee `K`
+(`hKB`): its members still honest at `t_c`, awake and joined at `t_s + Δ`, outnumber its members
+compromised by `t_c` (`FaultBoundK`), and each of them is delivered to the update (the static
+delivery, lifted to the prefix through `t_c`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -61,13 +63,13 @@ held in its frame when `Σ.F ⪯ C`, and a supporter of `D` honest at its cast a
 pool. -/
 theorem update_result_extends_origin_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {ΔF b : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hσs : σ < s) (hu : SA.UpdateAt tr.projAC y c s ℓ)
-    (hsb : sp.ts s + 2 * sp.Δ ≤ b) (hfb : tr.FaultBoundAt H (sp.ts s + sp.Δ) (tr.time c))
+    (hsb : sp.ts s + 2 * sp.Δ ≤ b)
+    (hfb : SA.FaultBoundK K s tr.projAC (H (tr.time c)) (sp.ts s + sp.Δ))
     (hFC : Anc (tr.HonestBlocksAt H) (tr.state y c).fg.F C) :
     C ∈ ℓ.frame.tree ∧ ∃ D, SA.getConfirmation sp (tr.state y c).ac ℓ.frame s = some D ∧
       ℓ.frame.Anc C D ∧ ∃ x j e, HVoteAt tr H x j e ∧ x ∈ H (tr.time c) ∧ e.msg.slot = s ∧
@@ -83,13 +85,13 @@ theorem update_result_extends_origin_at
   have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
   set d := tr.time c with hdef
   set Hv := {x | x ∈ H d ∧ ∃ j e, HVoteAt tr H x j e ∧ e.msg.slot = s}
-  have hcount : (H d)ᶜ.ncard < Hv.ncard := by
+  have hcount : (K.committee s ∩ (H d)ᶜ).ncard < Hv.ncard := by
     refine lt_of_lt_of_le hfb (Set.ncard_le_ncard ?_)
-    rintro x ⟨hx, hw, hj⟩
-    obtain ⟨j, e, hv, hs, -⟩ :=
-      vote_of_awake_joined_at hrun hnc (hrun.antitone (by rw [ht]; linarith) hx)
-        (mayVote_at hrun hnc (ts_add_delta_nonneg _) -- TEMP(C2): C3b replaces
-          (hrun.antitone (by rw [ht]; linarith) hx) (hmv _ _)) hw hj
+    rintro x ⟨hxK, hx, hw', hj'⟩
+    obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC hrun).1 ⟨hw', hj'⟩
+    have hxs : x ∈ H (sp.ts s + sp.Δ) := hrun.antitone (by rw [ht]; linarith) hx
+    obtain ⟨j, e, hv, hs, -⟩ := vote_of_awake_joined_at hrun hnc hxs
+      (mayVote_of_committee hKB.hGate (ts_add_delta_nonneg _) hxs hxK) hw hj
     exact ⟨hx, j, e, hv, hs⟩
   have hvb : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ sp.ts s + sp.Δ := by
     rintro x j e hv hs
@@ -163,12 +165,14 @@ theorem update_result_extends_origin_at
       SA.anc_tree_of_anc_U hU hΦ hHB hCt hCHd hHdt⟩
     rintro ⟨v, hv', v', hv'', hne, hvx, hv'x⟩
     exact hne ((hone x hx j e hv hs v hv' hvx).trans (hone x hx j e hv hs v' hv'' hv'x).symm)
-  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ Hv ∪ (H d)ᶜ := by
+  have hPK : ∀ v ∈ A.pool s, v.val ∈ K.committee s :=
+    hKB.hP.1 d y hy c (fun k hk => hm hk.le) s
+  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ Hv ∪ (K.committee s ∩ (H d)ᶜ) := by
     rintro w ⟨v, hv, rfl⟩
     by_cases hw : v.val ∈ H d
     · obtain ⟨j, -, e, he, rfl⟩ := pool_vote_at hrun hnc hy hv hw
       exact Or.inl ⟨hw, j, e, he, state_pool_slot_at hrun hnc hy s _ hv⟩
-    · exact Or.inr hw
+    · exact Or.inr ⟨hPK v hv, hw⟩
   have hHvv : Hv ⊆ SA.voters {v | v ∈ A.pool s} := by
     rintro x ⟨hx, j, e, hv, hs⟩
     obtain ⟨-, -, -, -, hvp, -⟩ := hbatch x hx j e hv hs
@@ -177,7 +181,7 @@ theorem update_result_extends_origin_at
   have hmaj : (SA.voters {v | v ∈ A.pool s}).ncard <
       2 * SA.confirmationScore sp A ℓ.frame s C := by
     have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
-    have h2 := Set.ncard_union_le Hv (H d)ᶜ
+    have h2 := Set.ncard_union_le Hv (K.committee s ∩ (H d)ᶜ)
     have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
     rw [hcs]
     omega
@@ -196,16 +200,16 @@ theorem update_result_extends_origin_at
   refine ⟨hCt, D, hD, hCD, ?_⟩
   -- a supporter of `D` honest at `t_c`
   by_contra hno
-  have hSpF : SA.supporters ℓ.frame V s D ⊆ (H d)ᶜ := by
+  have hSpF : SA.supporters ℓ.frame V s D ⊆ K.committee s ∩ (H d)ᶜ := by
     rintro i ⟨-, v, ⟨hvp, -⟩, hvi, hvs, R, hR, hRr, hDR⟩
-    intro hi
+    refine ⟨hvi ▸ hPK v hvp, fun hi => ?_⟩
     obtain ⟨j, -, e, he, rfl⟩ := pool_vote_at hrun hnc hy hvp (hvi ▸ hi)
     exact hno ⟨_, j, e, he, hvi ▸ hi, by exact_mod_cast hvs, hvp, R, hHB hR, hRr, hDR.mono hHB⟩
   have hSpv : SA.supporters ℓ.frame V s D ⊆ SA.voters {v | v ∈ A.pool s} := by
     rintro i ⟨-, v, ⟨hvp, -⟩, hvi, -⟩
     exact ⟨v, hvp, hvi⟩
   have hdisj : Disjoint Hv (SA.supporters ℓ.frame V s D) :=
-    Set.disjoint_left.2 fun x hx hx' => hSpF hx' hx.1
+    Set.disjoint_left.2 fun x hx hx' => (hSpF hx').2 hx.1
   have h1 := Set.ncard_le_ncard (Set.union_subset hHvv hSpv) (Set.toFinite _)
   rw [Set.ncard_union_eq hdisj (Set.toFinite _) (Set.toFinite _)] at h1
   have h2 := Set.ncard_le_ncard hSpF (Set.toFinite _)
@@ -215,13 +219,13 @@ theorem update_result_extends_origin_at
 Lemma P's frame conclusion. -/
 theorem update_result_or_root_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {ΔF b : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCU : C ∈ tr.HonestBlocksAt H) {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hσs : σ < s) (hu : SA.UpdateAt tr.projAC y c s ℓ)
-    (hcb : tr.time c ≤ b) (hfb : tr.FaultBoundAt H (sp.ts s + sp.Δ) (tr.time c)) :
+    (hcb : tr.time c ≤ b)
+    (hfb : SA.FaultBoundK K s tr.projAC (H (tr.time c)) (sp.ts s + sp.Δ)) :
     Anc (tr.HonestBlocksAt H) C (tr.state y c).fg.F ∨
       (Anc (tr.HonestBlocksAt H) (tr.state y c).fg.F C ∧ C ∈ ℓ.frame.tree ∧
         ∃ D, SA.getConfirmation sp (tr.state y c).ac ℓ.frame s = some D ∧ ℓ.frame.Anc C D) := by
@@ -235,7 +239,7 @@ theorem update_result_or_root_at
         hy).1 with hCF | hFC
   · exact Or.inl hCF
   have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
-  obtain ⟨hCt, D, hD, hCD, -⟩ := update_result_extends_origin_at hrun hmv hnc hinv hsync hC hy hσs
+  obtain ⟨hCt, D, hD, hCD, -⟩ := update_result_extends_origin_at hrun hnc hKB hinv hsync hC hy hσs
       hu
     (by linarith) hfb hFC
   exact Or.inr ⟨hFC, hCt, D, hD, hCD⟩
@@ -288,7 +292,7 @@ theorem saved_rows_above_at
 cuts of a node honest at the result (lifted to the prefix through the result's time). -/
 theorem own_optimistic_compatible_result_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {y : Fin sp.n} {k c s : Nat} (hy : y ∈ H (tr.time c))
     {B' D : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (SA.Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC y k s B' CV) (hR : SA.ResultAt tr.projAC y c s D CV')
@@ -296,7 +300,9 @@ theorem own_optimistic_compatible_result_at
     Compatible (tr.HonestBlocksAt H) B' D := by
   have hd := hrun.time_nonneg c
   have hm := hrun.time_mono
-  have h := own_optimistic_compatible_result (hrun.upTo hd) (hnc.upTo _) hy
+  have h := own_optimistic_compatible_result (hrun.upTo hd) (hnc.upTo _)
+    (by rw [RunTrace.upTo_projAC]; exact SA.CommitteePAt.upTo hm hrun.antitone hKB.hP _)
+    hKB.hsize hy
     (by rw [RunTrace.upTo_projAC]; exact (sa_optimisticLockAt_upTo hm).mpr ⟨hm hkc.le, hO⟩)
     (by rw [RunTrace.upTo_projAC]; exact (sa_resultAt_upTo hm).mpr ⟨le_rfl, hR⟩) hkc
     (fun r h₁ h₂ hrr => hnr r h₁ h₂ ((RunTrace.upTo_restartAt tr).mp hrr).2)
@@ -309,7 +315,7 @@ The opponents `Opp` contain the validators compromised by `t_c`; the optimistic 
 slot-`(s + 1)` selection are classified at `t_c` (a voter honest then has a genuine vote). -/
 theorem cover_gate_veto_above_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     {C D : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y c s ℓ)
@@ -319,7 +325,8 @@ theorem cover_gate_veto_above_at
       e.msg ∈ (tr.state y c).ac.pool s ∧ SA.VoteExtends (tr.HonestBlocksAt H) e.msg D)
     (hsb : sp.ts s + 2 * sp.Δ ≤ b)
     (hnr : ∀ r ≤ c, tr.RestartAt y r → tr.time r < sp.ts s)
-    (Hold Opp : Set (Fin sp.n)) (hF : (H (tr.time c))ᶜ ⊆ Opp) (hopp : 2 * Opp.ncard < sp.n)
+    (Hold Opp : Set (Fin sp.n)) (hF : (H (tr.time c))ᶜ ⊆ Opp)
+    (hopp : 2 * (K.committee (s + 1) ∩ Opp).ncard < sp.committeeSize)
     (hcast : ∀ x j e, HVoteAt tr H x j e → x ∈ H (tr.time c) → e.msg.slot = s + 1 → j < c →
       x ∈ Hold ∨ x ∈ Opp)
     (hN : ∀ x ∈ Hold, ∀ j e, HVoteAt tr H x j e → e.msg.slot = s + 1 → j < c →
@@ -388,10 +395,9 @@ theorem cover_gate_veto_above_at
     · have ht : tr.time k' = sp.ts l.slot + 6 * sp.Δ := hu'.2.2.1
       simp only [SAParams.ts] at hts ht hsb ⊢
       linarith
-    · -- TEMP(C2): C3/C4 replaces
-      have ht := (SA.optimisticLockAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg k')) hyk'
-        ((sa_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hopt⟩) (SA.CommitteeDict.full sp.n)
-        (fun _ _ _ => SA.mem_full _ _)).1
+    · have ht := (SA.optimisticLockAt_spec (acRun_upTo hrun hnc (hrun.time_nonneg k')) hyk'
+        ((sa_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hopt⟩) K
+        ((SA.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time k')).1 y hyk' (k' + 1))).1
       change tr.time k' < _ at ht
       simp only [SAParams.ts] at hts ht hsb ⊢
       linarith
@@ -400,7 +406,7 @@ theorem cover_gate_veto_above_at
     rcases hO' with ⟨ℓ', hu', -⟩ | hopt
     · exact hfirst k' hk' ℓ' (hls ▸ hu')
     · rw [hls] at hopt
-      refine hO O hLO' (own_optimistic_compatible_result_at hrun hnc hy hopt
+      refine hO O hLO' (own_optimistic_compatible_result_at hrun hnc hKB hy hopt
         ⟨ℓ, hu, by rw [projAC_state_at hrun hy]; exact hD, rfl⟩ hk' ?_)
       intro r hr₁ hr₂ hrr
       have h1 := hnr r hr₂ hrr
@@ -428,18 +434,17 @@ theorem cover_gate_veto_above_at
       rw [hso', hsc] at h1
       omega
     -- the optimistic voters, classified at `t_c`
-    -- TEMP(C2): C3/C4 replaces
-    obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv, -⟩ := SA.optimisticLockAt_spec hacr hy
-      ((sa_optimisticLockAt_upTo hm).mpr ⟨hk'c, hopt⟩) (SA.CommitteeDict.full sp.n)
-      (fun _ _ _ => SA.mem_full _ _)
-    rw [hacr.stock] at hcnt
+    obtain ⟨-, hcnt, ell, A, hp, -, hCV, hCVv, hCVK⟩ := SA.optimisticLockAt_spec hacr hy
+      ((sa_optimisticLockAt_upTo hm).mpr ⟨hk'c, hopt⟩) K
+      ((SA.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time c)).1 y hy (k' + 1))
     obtain ⟨-, hpc⟩ := (Trace.upTo_callAt _).mp hp.1
     have hellU := (frameIn_at hrun hnc hyk' hpc).2
     obtain ⟨v, hvCV, hvH, hvHold⟩ : ∃ v ∈ CV, v.val ∈ H (tr.time c) ∧ v.val ∈ Hold := by
       by_contra hno
       push Not at hno
-      have hsub' : SA.voters CV ⊆ Opp := by
+      have hsub' : SA.voters CV ⊆ K.committee (s + 1) ∩ Opp := by
         rintro i ⟨v, hv, rfl⟩
+        refine ⟨hls' ▸ hCVK ⟨v, hv, rfl⟩, ?_⟩
         by_cases hvH : v.val ∈ H (tr.time c)
         · obtain ⟨a, ha, e', he', hev⟩ := hCVv v hv hvH
           obtain ⟨had, he'⟩ := sa_voteAt_upTo.mp he'
@@ -523,14 +528,13 @@ theorem update_of_awakeOn_at
 `[a, z]`): it exists, its restarts are at or before `t_{s−k+1}`, and when `Σ.F ⪯ C` the origin
 `C` (of a label `σ ≤ s − k`) is in its frame below its result, which a pool vote of a node honest
 at its cast and at the update supports, and every saved attestation of the slow test names a
-block of the frame above `C`. The slot counts are charged at the update times (`hB` through
+block of the frame above `C`. The slot counts are charged at the update times (`hBK` through
 `b' ≥ z`). -/
 theorem armed_first_update_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b')
+    (hBK : CommitteeBoundsFrom tr H K 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     {w : Fin sp.n} {a z : Time} (hw : w ∈ H z) (hzb : z ≤ b')
     (haw : ∀ u, a ≤ u → u ≤ z → tr.awake w u)
@@ -562,10 +566,12 @@ theorem armed_first_update_at
   have hwc : w ∈ H (tr.time (Nat.find hex₀)) := hrun.antitone (htc ▸ hsz) hw
   -- the slot count of an update of a slot `q`, charged at its time `t_q + 6Δ ≤ z`
   have hfbu : ∀ {k q : Nat} {ℓ'}, SA.UpdateAt tr.projAC w k q ℓ' →
-      sp.ts q + 6 * sp.Δ ≤ z → tr.FaultBoundAt H (sp.ts q + sp.Δ) (tr.time k) := by
+      sp.ts q + 6 * sp.Δ ≤ z →
+        SA.FaultBoundK K q tr.projAC (H (tr.time k)) (sp.ts q + sp.Δ) := by
     intro k q ℓ' hu' hqz
     have ht : tr.time k = sp.ts q + 6 * sp.Δ := hu'.2.2.1
-    exact hB.slot q (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) (by rw [ht]; linarith) ht.le
+    exact hBK.slotK q (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) (by rw [ht]; linarith)
+      ht.le
   have hτs := (SA.ts_le_iff sp).2 (show (s : Int) - sp.k + 1 ≤ s by omega)
   have h0 : (0 : Time) ≤ sp.ts (s - sp.k + 1 : Nat) := by simp only [SAParams.ts]; positivity
   have hnr : ∀ r ≤ Nat.find hex₀, tr.RestartAt w r →
@@ -576,7 +582,7 @@ theorem armed_first_update_at
       (show sp.toParams.IsPublic _ from Dvd.intro (4 * ((s - sp.k + 1 : Nat) : Int))
         (by simp only [SAParams.ts]; ring)) hrr ((hm hr').trans (htc ▸ hsz))
   refine ⟨Nat.find hex₀, ℓ, hu, hfirst, hnr, fun hFC => ?_⟩
-  obtain ⟨hCt, D, hD, hCD, hsupp⟩ := update_result_extends_origin_at hrun hmv hnc hinv hsync hC hwc
+  obtain ⟨hCt, D, hD, hCD, hsupp⟩ := update_result_extends_origin_at hrun hnc hKB hinv hsync hC hwc
     (by omega) hu hsb (hfbu hu hsz) hFC
   refine ⟨hCt, D, hD, hCD, hsupp, ?_⟩
   have hCtfg : C ∈ (tr.state w (Nat.find hex₀)).fg.tree := by
@@ -601,7 +607,7 @@ theorem armed_first_update_at
       RunTrace.upTo_state_of_le hm le_rfl] at hFm
     have hFk : Anc (tr.HonestBlocksAt H) (tr.state w k).fg.F C :=
       (hFm.mono (upTo_subset hrun hd)).trans hFC
-    obtain ⟨-, R, hR, hCR, -⟩ := update_result_extends_origin_at hrun hmv hnc hinv hsync hC hwk
+    obtain ⟨-, R, hR, hCR, -⟩ := update_result_extends_origin_at hrun hnc hKB hinv hsync hC hwk
       (by omega) hu' (by linarith) (hfbu hu' (by linarith)) hFk
     exact ⟨R, hR, hCR.mono (frameIn_at hrun hnc hwk hu'.1).2⟩
 
@@ -638,10 +644,9 @@ private theorem slot_update_time {s : Nat} : sp.slot (sp.ts s + 6 * sp.Δ) = s +
 `≤ b`, has root cover, or stores a lock of slot `s` on a block of its frame above `C`. -/
 theorem armed_lock_formed_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b')
+    (hBK : CommitteeBoundsFrom tr H K 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCU : C ∈ tr.HonestBlocksAt H) (hCg : C.root ≠ sp.genesisRoot)
     {w : Fin sp.n} {a z : Time} (hw : w ∈ H z) (hzb : z ≤ b')
@@ -655,13 +660,13 @@ theorem armed_lock_formed_at
           (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
   have hk2 := sp.two_le_k
-  obtain ⟨c, ℓ, hu, -, -, hP⟩ := armed_first_update_at hrun hmv hnc hinv hsync hB hC hw hzb haw hks
+  obtain ⟨c, ℓ, hu, -, -, hP⟩ := armed_first_update_at hrun hnc hKB hinv hsync hBK hC hw hzb haw hks
     hσs ha hsz (by linarith)
   have htc : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
   have hwc : w ∈ H (tr.time c) := hrun.antitone (htc ▸ hsz) hw
   refine ⟨c, ℓ, hu, ?_⟩
-  rcases update_result_or_root_at hrun hmv hnc hinv hsync hC hCU hwc (by omega) hu (htc ▸ hsb)
-      (hB.slot s (tr.time c) (Nat.zero_le _) (by rw [htc]; linarith) (by rw [htc]; linarith)
+  rcases update_result_or_root_at hrun hnc hKB hinv hsync hC hCU hwc (by omega) hu (htc ▸ hsb)
+      (hBK.slotK s (tr.time c) (Nat.zero_le _) (by rw [htc]; linarith) (by rw [htc]; linarith)
         htc.le) with
       hroot | ⟨hFC, -, -⟩
   · exact Or.inl hroot
@@ -687,10 +692,9 @@ compromised by the update's time `t_s + 6Δ`; a slot-`(s + 1)` caster honest the
 `Opp`. -/
 theorem armed_lock_cover_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C3b replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {ΔF b b' : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b')
+    (hBK : CommitteeBoundsFrom tr H K 0 b')
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCg : C.root ≠ sp.genesisRoot)
     {w : Fin sp.n} {a z : Time} (hw : w ∈ H z) (hzb : z ≤ b')
@@ -699,7 +703,7 @@ theorem armed_lock_cover_at
     (ha : a ≤ sp.ts ((s : Int) - sp.k + 1)) (hsz : sp.ts s + 6 * sp.Δ ≤ z)
     (hsb : sp.ts s + 2 * sp.Δ ≤ b)
     (Hold Opp : Set (Fin sp.n)) (hF : (H (sp.ts s + 6 * sp.Δ))ᶜ ⊆ Opp)
-    (hopp : 2 * Opp.ncard < sp.n)
+    (hopp : 2 * (K.committee (s + 1) ∩ Opp).ncard < sp.committeeSize)
     (hcast : ∀ x j e, HVoteAt tr H x j e → x ∈ H (sp.ts s + 6 * sp.Δ) → e.msg.slot = s + 1 →
       tr.time j ≤ sp.ts s + 6 * sp.Δ → x ∈ Hold ∨ x ∈ Opp) :
     ∃ c ℓ, SA.UpdateAt tr.projAC w c s ℓ ∧ (∀ k < c, ∀ ℓ', ¬ SA.UpdateAt tr.projAC w k s ℓ') ∧
@@ -711,7 +715,7 @@ theorem armed_lock_cover_at
         ∃ L f, ℓ.frame.Anc C L ∧
           (⟨L.root, s, f, s + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks) := by
   have hΔ := sp.toParams.hΔ
-  obtain ⟨c, ℓ, hu, hfirst, hnr, hP⟩ := armed_first_update_at hrun hmv hnc hinv hsync hB hC hw hzb
+  obtain ⟨c, ℓ, hu, hfirst, hnr, hP⟩ := armed_first_update_at hrun hnc hKB hinv hsync hBK hC hw hzb
     haw hks hσs ha hsz hsb
   have htc : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
   have hwc : w ∈ H (tr.time c) := hrun.antitone (htc ▸ hsz) hw
@@ -723,7 +727,7 @@ theorem armed_lock_cover_at
   obtain ⟨hΦ, -⟩ := frameIn_at hrun hnc hwc hu.1
   have hτs := (SA.ts_lt_iff sp).2 (show (s : Int) - sp.k + 1 < s by
     have := sp.two_le_k; omega)
-  have hveto := cover_gate_veto_above_at hrun hnc hinv hwc hu hfirst hD hCD hsupp hsb
+  have hveto := cover_gate_veto_above_at hrun hnc hKB hinv hwc hu hfirst hD hCD hsupp hsb
     (fun r hr hrr => (hnr r hr hrr).trans_lt hτs) Hold Opp (htc ▸ hF) hopp
     (fun x j e hv hx hs hj => hcast x j e hv (htc ▸ hx) hs (htc ▸ hrun.time_mono hj.le)) hN
   have hnvC : ¬ SA.conflictsWithLock sp (tr.state w c).ac.locks ℓ.frame (tr.time c) C := by

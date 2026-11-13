@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -166,10 +167,9 @@ theorem honest_head_frozen_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
 
 /-- **S3 at votes under growing faults (the frozen witness)**. -/
 theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
-    (hnc : NoCollRun dg tr)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {b : Time} (_hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
-    (hB : SleepyBoundsFrom tr H 0 b)
+    (hB : SleepyBoundsFrom tr H 0 b) (hBK : CommitteeBoundsFrom tr H K 0 b)
     {s : Nat} (hP : OriginsBelowUpTo tr H (s + 1) b) {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -198,12 +198,12 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hQ : ∀ C, Q C → OriginWithin tr H C s b ∨ ∃ j, OriginWithin tr H C j b ∧ j ≤ s :=
     fun C ⟨j, hC, hj⟩ => Or.inr ⟨j, (originWithin_of_upTo hrun hC).mono hib, hj⟩
   have hQU : ∀ C, Q C → C ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
-    fun C ⟨_, hC, _⟩ => originWithin_upTo_mem hrun hnc hd hC
+    fun C ⟨_, hC, _⟩ => originWithin_upTo_mem hrun hC
   have hQQ : ∀ C C', Q C → Q C' →
       Compatible ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) C C' := by
     intro C C' ⟨j, hC, hj⟩ ⟨j', hC', hj'⟩
-    exact compatible_upTo hrun hnc hd (originWithin_upTo_mem hrun hnc hd hC)
-      (originWithin_upTo_mem hrun hnc hd hC')
+    exact compatible_upTo hrun hnc hd (originWithin_upTo_mem hrun hC)
+      (originWithin_upTo_mem hrun hC')
       (originsBelowUpTo_iff.1 hP C j C' j' (by omega) (by omega)
         ((originWithin_of_upTo hrun hC).mono hib) ((originWithin_of_upTo hrun hC').mono hib))
   have hQB : ∀ C, Q C → Compatible (tr.HonestBlocksAt H) B C := fun C ⟨j, hC, hj⟩ =>
@@ -213,10 +213,18 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hsrc : Compose.HonestRowsSourced (tr.upTo (tr.time i)) (H (tr.time i)) G y i := by
     rw [Compose.honestRowsSourced_iff]
     intro X hX a ha hav
-    -- TEMP(C2): C3/C4 replaces
-    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun' hnc' _ SA.CommitteeP.full
-      (SA.size_binding_full hrun'.stock) (SA.cs2_full hrun'.stock hf) hy (SA.mem_full _ _) hc' hs
-      hX ha hav
+    have hΔ := sp.toParams.hΔ
+    obtain ⟨hti0, hti1⟩ := cast_time_at hrun hnc hy hc
+    rw [hs] at hti0 hti1
+    have hfK := hBK.twoK (s + 1) (tr.time i) (Nat.zero_le _) hti0 hib (by linarith)
+    rw [hKB.hsize] at hfK
+    have hyK : y ∈ K.committee (s + 1) := by
+      rw [← hs]
+      exact (hKB.hGate (tr.time i) hd y hy i (fun k hk => hm hk.le) _).1
+        (mayVote_of_castAt_at hrun hnc hy hc)
+    obtain ⟨D, -, hDs, C, j, hC, hj, hDC⟩ := vote_row_source hrun' hnc' K
+      (by rw [RunTrace.upTo_projAC]; exact SA.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time i))
+      hKB.hsize hfK hy hyK hc' hs hX ha hav
     exact ⟨D, ⟨C, ⟨j, hC.within fun k hk => hm hk.le, hj⟩, hDC⟩, hDs⟩
   -- `Σ.J` and `Σ.F` are compatible with `B` among the blocks held while honest
   have hR := fg_reachable hrun'.toLocalRun hy i
@@ -269,7 +277,7 @@ theorem vote_frame_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have h := vote_frame_of_witnesses hrun' hnc' hf hy hc' hs (by rw [hst]; exact hsrc.above _) hGG
     (fun D ⟨C, ⟨j, hC, hj⟩, hDC⟩ hFD => by
       obtain ⟨x', k', e'', hv', -, hs'', Hd, hHd, hHdr, hCHd⟩ :=
-        honest_supporter_at hrun hmv hnc (hsync.toFrom hrun) hB (Nat.zero_le _)
+        honest_supporter_at hrun hnc hKB (hsync.toFrom hrun) hBK (Nat.zero_le _)
           (ts_natCast_nonneg _) ((originWithin_of_upTo hrun hC).mono hib)
       obtain ⟨W', hW', hDW'⟩ := honest_head_frozen_at hrun hnc hsync hy hc hs hib hv'
         (by omega) ⟨Hd, hHd, hHdr, (hDC.mono hsub).trans hCHd⟩ (hFD.mono hsub)

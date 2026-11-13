@@ -294,6 +294,22 @@ theorem CommitteeBoundsFrom.mono {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b b'
   ⟨fun s d hs h1 hd h6 => h.slotK s d hs h1 (hd.trans hb) h6,
     fun s d hs h0 hd h2 => h.twoK s d hs h0 (hd.trans hb) h2⟩
 
+/-- **CS2 from CS**: at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]` for a slot `s ≥ σ₀`, fewer than half of
+the slot-`s` committee is compromised by `d`. -/
+theorem CommitteeBoundsFrom.two_of_slotK {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
+    (h : CommitteeBoundsFrom tr H K σ₀ b) {s : Nat} {d : Time} (hs : σ₀ ≤ s)
+    (h1 : sp.ts s + sp.Δ ≤ d) (hdb : d ≤ b) (h6 : d ≤ sp.ts s + 6 * sp.Δ) :
+    2 * (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s).ncard := by
+  have hk : (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s ∩ {y | y ∈ H d ∧
+      tr.projAC.awake y (sp.ts s + sp.Δ) ∧ SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)}).ncard :=
+    h.slotK s d hs h1 hdb h6
+  have hle := Set.ncard_le_ncard (s := K.committee s ∩ {y | y ∈ H d ∧
+      tr.projAC.awake y (sp.ts s + sp.Δ) ∧ SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)})
+    (t := K.committee s ∩ H d) fun _ hy => ⟨hy.1, hy.2.1⟩
+  have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard (K.committee s) (H d)
+  rw [Set.sdiff_eq] at hsplit
+  omega
+
 /-- **Awake and joined at the AC projection** is awake and joined at the run. -/
 theorem mem_awakeJoined_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {proposer : Nat → Fin sp.n} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)

@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -99,16 +100,19 @@ private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     exact ⟨hne, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
 
 /-- **An optimistic selection's seats**, at the check of a node honest then: three quarters of the
-committee are optimistic voters of the selection, released by the checker while honest; an
-optimistic voter honest at the check has its one slot-`s` vote there. -/
+committee size are optimistic voters of the selection, all members of the slot-`s` committee
+(P), released by the checker while honest; an optimistic voter honest at the check has its one
+slot-`s` vote there. -/
 private theorem optimistic_side_at
     {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {X : Fin sp.n} {k s : Nat} (hX : X ∈ H (tr.time k))
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteePAt K tr.projAC H)
+    {X : Fin sp.n} {k s : Nat} (hX : X ∈ H (tr.time k))
     {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : SA.OptimisticLockAt tr.projAC X k s D CV) :
     ∃ (ℓ : ACLabel (goldilocksNode sp ro)) (A : SA.SAState sp.n),
       ℓ.frame.tree ⊆ tr.HonestBlocksAt H ∧
-      3 * sp.n ≤ 4 * (SA.optimisticVoters sp A ℓ.frame s D).ncard ∧
+      3 * sp.committeeSize ≤ 4 * (SA.optimisticVoters sp A ℓ.frame s D).ncard ∧
+      SA.optimisticVoters sp A ℓ.frame s D ⊆ K.committee s ∧
       SA.optimisticVoters sp A ℓ.frame s D ⊆ Released tr H X s D ∧
       ∀ v ∈ A.pool s, v.val ∈ H (tr.time k) →
         v.slot = s ∧ ∃ j ≤ k, ∃ e, HVoteAt tr H v.val j e ∧ e.msg = v := by
@@ -116,8 +120,9 @@ private theorem optimistic_side_at
   have hr := acRun_upTo hrun hnc hd
   obtain ⟨ℓ, A, hpt, hU, h34, hfwd⟩ := SA.optimistic_side hr hX
     ((sa_optimisticLockAt_upTo hrun.time_mono).2 ⟨le_rfl, hfl⟩)
-  rw [hrun.stock] at h34 -- TEMP(C2): C4 replaces
+  have hPk := SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hP (tr.time k)
   refine ⟨ℓ, A, fun B hB => upTo_subset hrun hd (hU hB), h34,
+    fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ hPk.2 X hX k ℓ A hpt s v hv,
     fun u hu => released_of_fwd hrun hd hX (hfwd hu), fun v hv hvH => ?_⟩
   obtain ⟨hvs, j, hj, e, hve, rfl⟩ := SA.optimisticPoint_pool_vote hr hX hpt hv hvH
   obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
@@ -199,14 +204,12 @@ private theorem against_update_at {ini} (hrun : Growing.GoldilocksRun proposer d
   · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
     exact ⟨v, hv, rfl⟩
 
-private theorem ncard_le_n (T : Set (Fin sp.n)) : T.ncard ≤ sp.n :=
-  (Set.ncard_le_ncard (Set.subset_univ T)).trans (by rw [Set.ncard_univ, Nat.card_fin])
-
 /-- **A result and an optimistic selection of one label are compatible** (relay only), the writer
 honest at its update within `b`, the checker honest at its check. -/
 theorem result_optimistic_compatible_at
     {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (ha : a ≤ sp.ts s)
     {X x : Fin sp.n} {i i' : Nat} (hX : X ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hx : x ∈ H (tr.time i')) {C C' : SA.Blk sp.n (List (FG.Att sp.n))}
@@ -215,18 +218,23 @@ theorem result_optimistic_compatible_at
     Compatible (tr.HonestBlocksAt H) C C' := by
   by_contra hncp
   obtain ⟨ℓ, S, hc, ht, hrs, hmaj, -, hS⟩ := result_side_at hrun hnc hX hR
-  obtain ⟨ℓo, Ao, -, h34, hT, -⟩ := optimistic_side_at hrun hnc hx hO
+  obtain ⟨ℓo, Ao, -, h34, -, hT, -⟩ := optimistic_side_at hrun hnc hKB.hP hx hO
   have := against_update_at hrun hnc hsync ha hX hc ht hib hrs hS hT fun h => hncp (Or.symm h)
-  have := ncard_le_n (SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
+  have := Set.ncard_le_ncard (s := SA.voters {v | v ∈ (tr.projAC.state X i).pool s})
+    (t := K.committee s) fun _ ⟨v, hv, hvu⟩ => hvu ▸
+      hKB.hP.1 _ X hX i (fun k hk => hrun.time_mono hk.le) s v hv
+  rw [hKB.hsize s] at this
   omega
 
-/-- **Two origins within `b` of one label are compatible** (RR, RO, OO), each read at its own
-cut; the shared validator of two optimistic selections is honest at the later check. -/
+/-- **Two origins within `b` of one label `s ≥ σ₀` are compatible** (RR, RO, OO), each read at its
+own cut; the shared validator of two optimistic selections is honest at the later check. -/
 theorem same_label_compatible_at
     {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
-    (hB : SleepyBoundsFrom tr H σ₀ b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (ha : a ≤ sp.ts s) (hC : OriginWithin tr H C s b) (hC' : OriginWithin tr H C' s b) :
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
+    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {C C' : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hs₀ : σ₀ ≤ s) (ha : a ≤ sp.ts s) (hC : OriginWithin tr H C s b)
+    (hC' : OriginWithin tr H C' s b) :
     Compatible (tr.HonestBlocksAt H) C C' := by
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨X, i, CV, hX, hi, hR | hO⟩ := originWithin_iff.1 hC <;>
@@ -239,23 +247,29 @@ theorem same_label_compatible_at
       fun h => hncp (Or.symm h)
     have h2 := against_update_at hrun hnc hsync ha hX' hc' ht' hi' hrs' hS' hSF hncp
     omega
-  · exact result_optimistic_compatible_at hrun hnc hsync ha hX hi hX' hR hO'
-  · exact Or.symm (result_optimistic_compatible_at hrun hnc hsync ha hX' hi' hX hR' hO)
+  · exact result_optimistic_compatible_at hrun hnc hKB hsync ha hX hi hX' hR hO'
+  · exact Or.symm (result_optimistic_compatible_at hrun hnc hKB hsync ha hX' hi' hX hR' hO)
   · -- OO: a validator honest at the later check is in both voter sets, with one slot-`s` vote
     by_contra hncp
     set d := max (tr.time i) (tr.time i')
-    have hf := hB.two d ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le hi hi')
-    obtain ⟨ℓ, A, hΦU, h34, -, hpool⟩ := optimistic_side_at hrun hnc hX hO
-    obtain ⟨ℓ', A', hΦU', h34', -, hpool'⟩ := optimistic_side_at hrun hnc hX' hO'
+    obtain ⟨ht0, ht2⟩ := optimistic_time_at hrun hO
+    obtain ⟨-, ht2'⟩ := optimistic_time_at hrun hO'
+    have hf := hBK.twoK s d hs₀ (ht0.trans (le_max_left _ _)) (max_le hi hi')
+      (max_le ht2.le ht2'.le)
+    rw [hKB.hsize s] at hf
+    obtain ⟨ℓ, A, hΦU, h34, hOK, -, hpool⟩ := optimistic_side_at hrun hnc hKB.hP hX hO
+    obtain ⟨ℓ', A', hΦU', h34', hOK', -, hpool'⟩ := optimistic_side_at hrun hnc hKB.hP hX' hO'
     have hI := Set.ncard_inter_add_ncard_union (SA.optimisticVoters sp A ℓ.frame s C)
       (SA.optimisticVoters sp A' ℓ'.frame s C')
-    have := ncard_le_n (SA.optimisticVoters sp A ℓ.frame s C ∪
-      SA.optimisticVoters sp A' ℓ'.frame s C')
-    obtain ⟨u, ⟨⟨v, hv, rfl, R, hR, hRr, hBR⟩, ⟨v', hv', hv'u, R', hR', hR'r, hBR'⟩⟩, huH⟩ :=
-      Set.exists_mem_notMem_of_ncard_lt_ncard (s := (H d)ᶜ)
+    have := Set.ncard_le_ncard (Set.union_subset hOK hOK')
+    rw [hKB.hsize s] at this
+    obtain ⟨u, ⟨hu, hu'⟩, huH⟩ :=
+      Set.exists_mem_notMem_of_ncard_lt_ncard (s := K.committee s ∩ (H d)ᶜ)
         (t := SA.optimisticVoters sp A ℓ.frame s C ∩ SA.optimisticVoters sp A' ℓ'.frame s C')
         (by omega)
-    have huH : v.val ∈ H d := not_not.1 huH
+    have huH : u ∈ H d := by_contra fun h => huH ⟨hOK hu, h⟩
+    obtain ⟨v, hv, rfl, R, hR, hRr, hBR⟩ := hu
+    obtain ⟨v', hv', hv'u, R', hR', hR'r, hBR'⟩ := hu'
     obtain ⟨hvs, j₁, -, e₁, he₁, rfl⟩ :=
       hpool v hv (hrun.antitone (le_max_left _ _) huH)
     obtain ⟨hv's, j₂, -, e₂, he₂, rfl⟩ :=
@@ -282,10 +296,11 @@ of label `s` is below an origin of its label (`HealedOrigin.below_origin`); a me
 (`honest_supporter_at`, then `V_s`); members of label `s` compare through their origins
 (`same_label_compatible_at`). -/
 theorem origins_below_succ_at
-    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
-    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
-    (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs : σ₀ ≤ s) (ha : a ≤ sp.ts s)
+    {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
+    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
+    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s : Nat} (hs : σ₀ ≤ s)
+    (ha : a ≤ sp.ts s)
     (hP : HealedOriginsBelow tr H g rL rO s b) (hV : HealedVotesBelow tr H g rL rO s b) :
     HealedOriginsBelow tr H g rL rO (s + 1) b := by
   have hU := honestBlocksAt_coherent hrun hnc
@@ -294,7 +309,7 @@ theorem origins_below_succ_at
       HealedOrigin tr H g rL rO C' j b → Compatible (tr.HonestBlocksAt H) C C' := by
     intro C C' j hj hC hC'
     obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
-    obtain ⟨x, i, e, hv, hib, hes, hext⟩ := honest_supporter_at hrun hmv hnc hsync hB hs ha hO
+    obtain ⟨x, i, e, hv, hib, hes, hext⟩ := honest_supporter_at hrun hnc hKB hsync hBK hs ha hO
     exact compatible_of_voteExtends hU (voteExtends_of_anc hext hCO)
       (healedVotesBelow_iff.1 hV C' j hC' x i e hv hib (by omega) (by omega))
   intro C j C' j' hj hj' hC hC'
@@ -305,7 +320,8 @@ theorem origins_below_succ_at
   · exact hnew C C' j' hj' hC hC'
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
     obtain ⟨O', hO', hC'O'⟩ := hC'.below_origin hrun hnc
-    exact compatible_of_anc_both hU hCO hC'O' (same_label_compatible_at hrun hnc hsync hB ha hO hO')
+    exact compatible_of_anc_both hU hCO hC'O'
+      (same_label_compatible_at hrun hnc hKB hsync hBK hs ha hO hO')
 
 end Consensus.Goldilocks.Compose.Growing
 

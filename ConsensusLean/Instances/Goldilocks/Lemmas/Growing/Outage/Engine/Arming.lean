@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Query
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.ArmingSteps
@@ -18,10 +19,11 @@ labels `j₀ − 1` and `j₀` for the cohort `holdersAt` (O1 at `j₀` given (F
 cover and (N), with (N) over the votes of the cohort cast while honest).
 
 The cohort facts of the query, read on the view retained through `cohortAt = outageEnd = z`:
-`holdersAt` and `lateKeysAt` are honest at `z` and disjoint, `|(H z)ᶜ ∪ W| < |A₀|`
-(`cohort_lt`), a validator honest at `z` and awake in `[a, z]` is in `A₀ ∪ W` (`classify`), and
-`A₀` is awake throughout `[a, z]` (`holder_awake`); `bounds` are the two count shapes through
-every `b ≤ horizon`, from the η-sleepy premise.
+`holdersAt` and `lateKeysAt` are honest at `z` and disjoint, inside each band committee
+`|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|` (`cohort_lt_K`), a validator honest at `z` and awake in
+`[a, z]` is in `A₀ ∪ W` (`classify`), and `A₀` is awake throughout `[a, z]` (`holder_awake`);
+`bounds` are the two count shapes through every `b ≤ horizon`, from the η-sleepy premise, and
+`boundsK` their committee forms, from the committee η-sleepy premise.
 
 `outage_arming_at`: every source ready at `T ≤ horizon` is armed. The Sleepy invariant up to
 `min b₀ horizon` (from the pre-start service and the counts) gives the tip on the chain of the
@@ -49,26 +51,45 @@ theorem bounds (Q : OutageQueryAt S A V)
     exact half_ready_of_duration V _ (outage_duration_supply_at Q) h)
     (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) Q.params.toParams.hΔ.le) (le_max_right _ _)
 
+/-- CS and current-slot CS2 inside the slot committees through every `b ≤ horizon`, from the
+committee η-sleepy premise (look-ahead `committeeAhead = 5`), read at the slot committees
+(`mem_K_iff_selected`, nonempty by `K_nonempty`). -/
+theorem boundsK (Q : OutageQueryAt S A V) {ini}
+    (hrun : Growing.GoldilocksRun (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys Q.trace
+      ini) {b : Time} (hb : b ≤ Q.run.2.horizon) :
+    Compose.Growing.CommitteeBoundsFrom Q.trace Q.keys Q.K 0 b := by
+  have hdur := outage_duration_supply_at Q
+  have hcu : Regimes.catchUp Q.params = 18 * Q.params.Δ := rfl
+  have hΔ := Q.params.toParams.hΔ
+  exact committee_bounds_at S Q.run.2 Q.hn Q.valid hrun (fun _ ht _ => Q.mem_K_iff_selected ht)
+    Q.K_nonempty (by change (1 / 2 : ℚ) ≤ 1 / 2; norm_num) (by linarith)
+    (by change 5 * Q.run.1.ΔAC ≤ ((5 : Nat) : Int) * Q.run.1.ΔAC; norm_num) hb
+    (fun t h₁ h₂ => Q.outage.committeeSleepy t h₁ (h₂.trans hb))
+    (add_nonneg (Compose.Growing.ts_natCast_nonneg 0) hΔ.le) (le_max_right _ _)
+
 theorem end_le_horizon (Q : OutageQueryAt S A V) :
-    (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run ≤ Q.run.2.horizon :=
+    (Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run ≤
+      Q.run.2.horizon :=
   min_le_right _ _
 
 /-- A key is honest at the window end iff its validator is not compromised by the cohort time. -/
 theorem mem_keys_end (Q : OutageQueryAt S A V) (x : Fin (Fintype.card V)) :
-    x ∈ Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run) ↔
+    x ∈ Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run) ↔
       Q.run.2.key x ∉ Q.run.2.point.faultyAt
-        ((Sys (goldilocksWith S) V).cohortAt (K S.toSetup A) Q.stop Q.run) := by
+        ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A) Q.stop Q.run) := by
   rw [mem_honestKeysAt_iff, min_eq_left Q.end_le_horizon, Q.cohortAt_eq]; rfl
 
 theorem holdersAt_subset (Q : OutageQueryAt S A V) :
-    Q.holdersAt ⊆ Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run) :=
+    Q.holdersAt ⊆
+      Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run) :=
   fun x hx => by
     obtain ⟨hxh, -⟩ := Finset.mem_filter.1 (OutageQueryAt.mem_holdersAt.1 hx)
     exact (Q.mem_keys_end x).2 (Finset.mem_sdiff.mp hxh).2
 
 open Classical in
 theorem lateKeysAt_subset (Q : OutageQueryAt S A V) :
-    Q.lateKeysAt ⊆ Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run) :=
+    Q.lateKeysAt ⊆
+      Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run) :=
   fun x hx => by
     obtain ⟨_, t, _, _, hh, _⟩ :=
       Finset.mem_filter.1 (Finset.mem_sdiff.1 (OutageQueryAt.mem_lateKeysAt.1 hx)).1
@@ -79,68 +100,172 @@ theorem holdersAt_disjoint (Q : OutageQueryAt S A V) : Disjoint Q.holdersAt Q.la
     (Finset.mem_sdiff.1 (OutageQueryAt.mem_lateKeysAt.1 h₂)).2 (OutageQueryAt.mem_holdersAt.1 h₁)
 
 open Classical in
-/-- **The cohort count at the window end**: `|(H z)ᶜ ∪ W| < |A₀|`. -/
-theorem cohort_lt (Q : OutageQueryAt S A V) :
-    ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run))ᶜ ∪
-      Q.lateKeysAt).ncard <
-      Q.holdersAt.ncard := by
-  have heq : (Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run))ᶜ ∪
-      Q.lateKeysAt = Q.run.2.key ⁻¹'
-      (↑(Q.run.2.point.faultyAt ((Sys (goldilocksWith S) V).cohortAt (K S.toSetup A) Q.stop Q.run) ∪
-        (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt (K S.toSetup A) Q.stop
-          Q.run)).lateWakers ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run)
-          ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run)) : Set V) := by
+/-- **The cohort count inside a selection** `Sel` of validators, as keys: the outage cohort count
+restricted to `Sel` (on the view retained through the cohort time) is `|key⁻¹' Sel ∩ ((H z)ᶜ ∪ W)|
+< |key⁻¹' Sel ∩ A₀|`. -/
+theorem cohort_lt_on (Q : OutageQueryAt S A V) (Sel : Finset V)
+    (h : ((Q.run.2.point.faultyAt
+        ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A) Q.stop Q.run) ∪
+      (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A)
+        Q.stop Q.run)).lateWakers
+        ((Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run)
+        ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run)) ∩
+        Sel).card <
+      ((Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A)
+        Q.stop Q.run)).awakeAt
+        ((Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run) ∩
+        Sel).card) :
+    (Q.run.2.key ⁻¹' ↑Sel ∩ ((Q.keys ((Sys (goldilocksWith S) V).outageEnd
+      (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪ Q.lateKeysAt)).ncard <
+      (Q.run.2.key ⁻¹' ↑Sel ∩ Q.holdersAt).ncard := by
+  have heq : Q.run.2.key ⁻¹' ↑Sel ∩ ((Q.keys ((Sys (goldilocksWith S) V).outageEnd
+      (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪ Q.lateKeysAt) = Q.run.2.key ⁻¹'
+      (↑((Q.run.2.point.faultyAt
+          ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A) Q.stop Q.run) ∪
+        (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A)
+          Q.stop Q.run)).lateWakers
+          ((Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run)
+          ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run)) ∩
+          Sel) : Set V) := by
     ext x
-    simp only [Set.mem_union, Set.mem_compl_iff, Q.mem_keys_end, not_not, Set.mem_preimage,
-      Finset.coe_union, Finset.mem_coe, OutageQueryAt.mem_lateKeysAt]
-  have hA : Q.holdersAt = Q.run.2.key ⁻¹' (↑((Q.run.2.point.retain
-      ((Sys (goldilocksWith S) V).cohortAt (K S.toSetup A) Q.stop Q.run)).awakeAt
-      ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run)) : Set V) := by
-    ext x; simp [OutageQueryAt.mem_holdersAt]
+    simp only [Set.mem_inter_iff, Set.mem_union, Set.mem_compl_iff, Q.mem_keys_end, not_not,
+      Set.mem_preimage, Finset.coe_inter, Finset.coe_union, Finset.mem_coe,
+      OutageQueryAt.mem_lateKeysAt]
+    tauto
+  have hA : Q.run.2.key ⁻¹' ↑Sel ∩ Q.holdersAt = Q.run.2.key ⁻¹' (↑((Q.run.2.point.retain
+      ((Sys (goldilocksWith S) V).cohortAt (Obligations.K S.toSetup A) Q.stop Q.run)).awakeAt
+      ((Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run) ∩
+        Sel) : Set V) := by
+    ext x
+    simp only [Set.mem_inter_iff, Set.mem_preimage, Finset.coe_inter, Finset.mem_coe,
+      OutageQueryAt.mem_holdersAt]
+    tauto
   rw [heq, hA, Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
       (by simp [Q.run.2.key.surjective.range_eq]),
     Set.ncard_preimage_of_injective_subset_range Q.run.2.key.injective
       (by simp [Q.run.2.key.surjective.range_eq]), Set.ncard_coe_finset,
     Set.ncard_coe_finset]
-  exact Q.outage.cohort
+  exact h
 
-/-- `2·|(H z)ᶜ ∪ W| < n`. -/
-theorem two_mul_opp_lt (Q : OutageQueryAt S A V) :
-    2 * ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run))ᶜ ∪
-      Q.lateKeysAt).ncard < Q.params.n := by
-  have hdisj : Disjoint Q.holdersAt
-      ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run))ᶜ ∪
-        Q.lateKeysAt) := by
+-- TEMP(C2): C3b-final removes after C3a/C3c
+/-- **The cohort count at the window end**: `|(H z)ᶜ ∪ W| < |A₀|` (`cohort_lt_on` at every
+validator). -/
+theorem cohort_lt (Q : OutageQueryAt S A V) :
+    ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪
+      Q.lateKeysAt).ncard <
+      Q.holdersAt.ncard := by
+  have h := Q.cohort_lt_on Finset.univ (by
+    rw [Finset.inter_univ, Finset.inter_univ]
+    exact Q.outage.cohort)
+  simpa only [Finset.coe_univ, Set.preimage_univ, Set.univ_inter] using h
+
+/-- **The cohort count inside a band committee**: at a label `m ∈ [j₀, j₀ + k]` whose start is
+within the horizon (and the outage start too), `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|`. The band
+`[b₀ − 2Δ, b₀ + (4k − 2)Δ]` holds a time `t_m` of slot `m` (`b₀ − 2Δ` for `j₀`, else `t_m`), at
+which the outage premise reads the selection `K m` (`mem_K_iff_selected`), nonempty
+(`K_nonempty`). -/
+theorem cohort_lt_K (Q : OutageQueryAt S A V) {m : Nat}
+    (h₁ : Compose.coverLabel Q.params Q.start ≤ m)
+    (h₂ : m ≤ Compose.coverLabel Q.params Q.start + Q.params.k)
+    (hq : Q.params.ts m ≤ Q.run.2.horizon) (hsh : Q.start ≤ Q.run.2.horizon) :
+    (Q.K.committee m ∩ ((Q.keys ((Sys (goldilocksWith S) V).outageEnd
+      (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪ Q.lateKeysAt)).ncard <
+      (Q.K.committee m ∩ Q.holdersAt).ncard := by
+  have hΔ := Q.params.toParams.hΔ
+  have hlag := outage_node_lag_at Q
+  have hT0 : 0 ≤ Q.T := Q.outage.times.1
+  have h2 : 2 * Q.params.Δ ≤ Q.start := by
+    have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
+    linarith
+  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) h2
+  obtain ⟨t, ht0, hslot, htb₁, htb₂, hth⟩ : ∃ t, 0 ≤ t ∧ Q.params.slot t = m ∧
+      Q.start - 2 * Q.params.Δ ≤ t ∧
+      t ≤ Q.start - 2 * Q.params.Δ + 4 * Q.params.k * Q.params.Δ ∧ t ≤ Q.run.2.horizon := by
+    rcases h₁.eq_or_lt with rfl | hlt
+    · refine ⟨Q.start - 2 * Q.params.Δ, by linarith, (Compose.coverLabel_eq _ _).symm, le_rfl, ?_,
+        by linarith⟩
+      have : (0 : Time) ≤ 4 * Q.params.k * Q.params.Δ := by positivity
+      linarith
+    · have hm1 := (SA.ts_le_iff Q.params).2
+        (show ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) ≤ m by omega)
+      have hmk := (SA.ts_le_iff Q.params).2
+        (show (m : Int) ≤ ((Compose.coverLabel Q.params Q.start + Q.params.k : Nat) : Int) by
+          omega)
+      refine ⟨Q.params.ts m, ?_, SA.slot_of_mem _ m le_rfl ((SA.ts_lt_iff _).2 (by omega)), ?_, ?_,
+        hq⟩
+      · simp only [SA.SAParams.ts]; positivity
+      · simp only [SA.SAParams.ts] at hm1 hg₂ ⊢; push_cast at hm1 hg₂ ⊢; linarith
+      · simp only [SA.SAParams.ts] at hmk hg₁ ⊢; push_cast at hmk hg₁ ⊢; linarith
+  subst hslot
+  have hband₁ : max 0 ((Sys (goldilocksWith S) V).bandStart (Obligations.K S.toSetup A)
+      Q.start Q.run) ≤ t := by
+    refine max_le ht0 ?_
+    change Q.start - ((2 : Nat) : Int) * Q.run.1.ΔAC ≤ t
+    push_cast
+    exact htb₁
+  have hband₂ :
+      t ≤ (Sys (goldilocksWith S) V).bandEnd (Obligations.K S.toSetup A) Q.start Q.run := by
+    change t ≤ Q.start - ((2 : Nat) : Int) * Q.run.1.ΔAC +
+      ((4 * Q.params.k : Nat) : Int) * Q.run.1.ΔAC
+    push_cast
+    linarith
+  have hne : ((shapeProgress (goldilocksWith S) V).toExternal.selected Q.run.2.point.env
+      ((shapeProgress (goldilocksWith S) V).toExternal.ext Q.run) t).Nonempty := by
+    obtain ⟨x, hx⟩ := Q.K_nonempty (Q.params.slot t)
+    exact ⟨_, (Q.mem_K_iff_selected ht0).1 hx⟩
+  have hK : Q.K.committee (Q.params.slot t) = Q.run.2.key ⁻¹'
+      ↑((shapeProgress (goldilocksWith S) V).toExternal.selected Q.run.2.point.env
+        ((shapeProgress (goldilocksWith S) V).toExternal.ext Q.run) t) :=
+    Set.ext fun _ => Q.mem_K_iff_selected ht0
+  rw [hK]
+  exact Q.cohort_lt_on _ (Q.outage.committeeCohort t hband₁ hband₂ hth hne)
+
+/-- **N6 inside a band committee**: `2·|K m ∩ ((H z)ᶜ ∪ W)| < committeeSize` (`cohort_lt_K`, the
+cohort being disjoint from the opponents). -/
+theorem two_mul_opp_lt (Q : OutageQueryAt S A V) {m : Nat}
+    (h₁ : Compose.coverLabel Q.params Q.start ≤ m)
+    (h₂ : m ≤ Compose.coverLabel Q.params Q.start + Q.params.k)
+    (hq : Q.params.ts m ≤ Q.run.2.horizon) (hsh : Q.start ≤ Q.run.2.horizon) :
+    2 * (Q.K.committee m ∩ ((Q.keys ((Sys (goldilocksWith S) V).outageEnd
+      (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪ Q.lateKeysAt)).ncard <
+      Q.params.committeeSize := by
+  have hdisj : Disjoint (Q.K.committee m ∩ Q.holdersAt) (Q.K.committee m ∩
+      ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪
+        Q.lateKeysAt)) := by
+    refine Disjoint.mono Set.inter_subset_right Set.inter_subset_right ?_
     rw [Set.disjoint_union_right]
     exact ⟨Set.disjoint_left.2 fun x hx hxc => hxc (Q.holdersAt_subset hx), Q.holdersAt_disjoint⟩
-  have h1 := Set.ncard_union_eq hdisj
-  have h2 : (Q.holdersAt ∪ ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop
-      Q.run))ᶜ ∪ Q.lateKeysAt)).ncard ≤ Q.params.n := by
-    calc _ ≤ (Set.univ : Set (Fin Q.params.n)).ncard := Set.ncard_le_ncard (Set.subset_univ _)
-      _ = Q.params.n := by rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin]
-  have := Q.cohort_lt
+  have h1 := Set.ncard_union_eq hdisj (Set.toFinite _) (Set.toFinite _)
+  have h2 : (Q.K.committee m ∩ Q.holdersAt ∪ Q.K.committee m ∩
+      ((Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run))ᶜ ∪
+        Q.lateKeysAt)).ncard ≤ (Q.K.committee m).ncard :=
+    Set.ncard_le_ncard (Set.union_subset Set.inter_subset_left Set.inter_subset_left)
+  rw [Q.hsize m] at h2
+  have := Q.cohort_lt_K h₁ h₂ hq hsh
   omega
 
 open Classical in
 /-- **The classification**: a validator honest at the window end and awake at a time of the
 window is in the cohort or a late waker. -/
 theorem classify (Q : OutageQueryAt S A V) {x : Fin (Fintype.card V)} {t : Time}
-    (hat : (Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run ≤ t)
-    (htz : t ≤ (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run)
-    (hxz : x ∈ Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run))
+    (hat : (Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run ≤ t)
+    (htz : t ≤ (Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run)
+    (hxz : x ∈
+      Q.keys ((Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run))
     (haw : Q.trace.awake x t) : x ∈ Q.holdersAt ∪ Q.lateKeysAt := by
   rw [simTraceAt_awake_bounds] at haw
   by_cases hxa : Q.run.2.key x ∈ (Q.run.2.point.retain ((Sys (goldilocksWith S) V).cohortAt
-      (K S.toSetup A) Q.stop Q.run)).awakeAt
-        ((Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run)
+      (Obligations.K S.toSetup A) Q.stop Q.run)).awakeAt
+        ((Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run)
   · exact Or.inl (OutageQueryAt.mem_holdersAt.2 hxa)
   · exact Or.inr (OutageQueryAt.mem_lateKeysAt.2 (Finset.mem_sdiff.2 ⟨Finset.mem_filter.2
       ⟨Finset.mem_univ _, t, hat, htz, (Q.mem_keys_end x).1 hxz, haw.1⟩, hxa⟩))
 
 /-- The cohort is awake throughout the window. -/
 theorem holder_awake (Q : OutageQueryAt S A V) {x : Fin (Fintype.card V)} (hx : x ∈ Q.holdersAt)
-    {t : Time} (hat : (Sys (goldilocksWith S) V).outageStart (K S.toSetup A) Q.start Q.run ≤ t)
-    (htz : t ≤ (Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run) :
+    {t : Time}
+    (hat : (Sys (goldilocksWith S) V).outageStart (Obligations.K S.toSetup A) Q.start Q.run ≤ t)
+    (htz : t ≤ (Sys (goldilocksWith S) V).outageEnd (Obligations.K S.toSetup A) Q.stop Q.run) :
     Q.trace.awake x t := by
   obtain ⟨hxh, hxa⟩ := Finset.mem_filter.1 (OutageQueryAt.mem_holdersAt.1 hx)
   rw [simTraceAt_awake_bounds]
@@ -209,7 +334,6 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
   classical
   obtain ⟨hT0, -, hb01, -⟩ := Q.outage.times
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b replaces
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hΔ := Q.params.toParams.hΔ
@@ -223,11 +347,12 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
   have hb0 : 0 ≤ min Q.start Q.run.2.horizon := le_min (hT0.trans hTs) hhor
   have hTb : Q.T ≤ min Q.start Q.run.2.horizon := le_min hTs hTh
   have hsvc := service.mono (min_le_left Q.start Q.run.2.horizon)
-  have hBh := Q.bounds le_rfl
-  have hinv := Compose.Growing.sleepy_invariant_at hrun hmv hnc hb0 hsvc (Q.bounds (min_le_right _
-      _))
-  have hinvT := Compose.Growing.sleepy_invariant_at hrun hmv hnc hT0 (service.mono hTs) (Q.bounds
-      hTh)
+  have hKB := Q.facts hrun
+  have hBKh := Q.boundsK hrun le_rfl
+  have hinv := Compose.Growing.sleepy_invariant_at hrun hnc hKB hb0 hsvc
+    (Q.bounds (min_le_right _ _)) (Q.boundsK hrun (min_le_right _ _))
+  have hinvT := Compose.Growing.sleepy_invariant_at hrun hnc hKB hT0 (service.mono hTs)
+    (Q.bounds hTh) (Q.boundsK hrun hTh)
   -- the tip at the end-of-`T` cut
   have hi : (chainTrace Q.run.2).endCut Q.T ≤ Q.run.2.events.length := Nat.findGreatest_le _
   obtain ⟨hcut, -, hnow⟩ := ready_read_cut_at S Q.run.2 Q.hn Q.valid (c := Q.duration)
@@ -282,7 +407,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
         rw [hs'])).trans hiT
   obtain ⟨hσk, hkj⟩ := Compose.armed_label_lt hT0 hlag hσT
   have hCb := hCw.mono hTb
-  obtain ⟨hg₁, -⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
+  obtain ⟨hg₁, hg₂⟩ := Compose.coverLabel_gates (sp := Q.params) (b₀ := Q.start) (by
     have : (0 : Time) ≤ (4 * Q.params.k + 4) * Q.params.Δ := by positivity
     linarith)
   have hts1 : Q.params.ts ((Compose.coverLabel Q.params Q.start : Int) - Q.params.k) ≤
@@ -315,7 +440,7 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
       rw [hjI, show (Compose.coverLabel Q.params Q.start : Int) - 1 - Q.params.k + 1 =
         (Compose.coverLabel Q.params Q.start : Int) - Q.params.k by ring]
       exact haj
-    exact Compose.Growing.armed_lock_formed_at hrun hmv hnc hinv hsvc hBh hCb hCU hCg
+    exact Compose.Growing.armed_lock_formed_at hrun hnc hKB hinv hsvc hBKh hCb hCU hCg
       (Q.holdersAt_subset hw) Q.end_le_horizon (fun u hu₁ hu₂ => Q.holder_awake hw hu₁ hu₂)
       (s := Compose.coverLabel Q.params Q.start - 1) h1 h2 h3 (hsz' ▸ hsz)
       (hsz' ▸ le_min hg₁ hhz)
@@ -327,10 +452,16 @@ theorem outage_arming_at (Q : OutageQueryAt S A V)
         (Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run))ᶜ ∪
           Q.lateKeysAt :=
       fun x hx => Or.inl fun hxz => hx (honestKeysAt_antitone S Q.run.2 hsz hxz)
-    exact Compose.Growing.armed_lock_cover_at hrun hmv hnc hinv hsvc hBh hCb hCg
+    have hsh : Q.start ≤ Q.run.2.horizon := by linarith
+    have hq1 : Q.params.ts ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) ≤
+        Q.run.2.horizon := by
+      have h := hhz
+      simp only [SA.SAParams.ts] at h ⊢; push_cast; linarith
+    exact Compose.Growing.armed_lock_cover_at hrun hnc hKB hinv hsvc hBKh hCb hCg
       (Q.holdersAt_subset hw) Q.end_le_horizon (fun u hu₁ hu₂ => Q.holder_awake hw hu₁ hu₂)
       (s := Compose.coverLabel Q.params Q.start) h1 h2 (haj.trans hts1) hsz
-      (le_min hg₁ (by linarith)) Q.holdersAt _ hF Q.two_mul_opp_lt
+      (le_min hg₁ (by linarith)) Q.holdersAt _ hF
+      (Q.two_mul_opp_lt (by omega) (by omega) hq1 hsh)
       fun x j e hve hx hes hjt => by
         by_cases hxz :
             x ∈ Q.keys ((Sys (goldilocksWith S) V).outageEnd (K S.toSetup A) Q.stop Q.run)

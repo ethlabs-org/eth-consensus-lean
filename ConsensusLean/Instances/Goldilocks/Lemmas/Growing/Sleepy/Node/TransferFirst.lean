@@ -7,6 +7,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -32,11 +34,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 slot count and service available) has a supporter (`honest_supporter_at`), so it is in the vote's
 viable voter tree or below `fc_root` (`hframe`); below `fc_root` the vote extends `C`, otherwise a
 result transfers (the writer honest at its update, the voter at its vote) and an optimistic
-selection transfers with `2 f_{t_i} < n` counted at the voter's cut. -/
+selection transfers with the committee counts `2 |K σ ∩ (H t_i)ᶜ| < committeeSize` at `σ = s, s + 1`
+counted at the voter's cut. -/
 theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hmv : ∀ y s, (ini y : SA.SAState sp.n).mayVote s = true) -- TEMP(C2): C4 replaces
-    (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
-    (hB : SleepyBoundsFrom tr H σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
+    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
     (hsa : a + κ ≤ sp.ts s) {y : Fin sp.n}
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -52,13 +55,20 @@ theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
         Anc (tr.HonestBlocksAt H) C ℓ.frame.fcRoot)
     (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C) :
     SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
-  have hd := hrun.time_nonneg i
   have hrun' := goldilocks_ac_projection_from hrun hnc
-  have hf := hB.two (tr.time i) hd hib
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨hti0, hti1⟩ := cast_time_at hrun hnc hy hc
+  rw [hs] at hti0 hti1
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hf := hBK.two_of_slotK hs₀ (by linarith) hib (by linarith)
+  rw [hKB.hsize s] at hf
+  have hf1 := hBK.twoK (s + 1) (tr.time i) (hs₀.trans (Nat.le_succ s)) hti0 hib (by linarith)
+  rw [hKB.hsize (s + 1)] at hf1
   have ha : a ≤ sp.ts s := (le_add_of_nonneg_right hsync.kappa).trans hsa
-  obtain ⟨x', k', e', hv', -, hs', hext'⟩ := honest_supporter_at hrun hmv hnc hsync hB hs₀ ha hC
+  obtain ⟨x', k', e', hv', -, hs', hext'⟩ := honest_supporter_at hrun hnc hKB hsync hBK hs₀ ha hC
   have hvf := hframe ⟨x', k', e', hv', hs', hext'⟩
-  have hlocks := vote_locks_compatible_at hrun hnc hB hy hc hs hib hlive hCc hE
+  have hlocks := vote_locks_compatible_at hrun hnc hKB hBK hy hc hs hib hs₀ hlive hCc hE
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
   rcases hvf with hv | hCf
   swap
@@ -69,10 +79,10 @@ theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
   · exact SA.Growing.result_transfer hrun' hx hR hy hc hs
       (result_carry_at hrun hnc hsync hsa hx hR hy hc hs hib hF) (Or.inl hv) hlocks
       (result_writer_pool_at hrun hnc hsync ha hx hR hi₀ hy hc hs)
-  · -- TEMP(C2): C3/C4 replaces
-    exact SA.Growing.optimistic_transfer_stored hrun' _ (fun _ => SA.CommitteeP.full)
-      (fun _ => SA.CommitteeT.full) (SA.size_binding_full hrun'.stock) hx hO .refl
-      (SA.cs2_full hrun'.stock hf) (SA.cs2_full hrun'.stock hf) hy hc hs
+  · exact SA.Growing.optimistic_transfer_stored hrun' K
+      (SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP)
+      (SA.CommitteeTAt.upTo hrun.antitone hKB.hT) hKB.hsize hx hO
+      .refl hf hf1 hy hc hs
       (optimistic_carry_at hrun hnc hsync hsa hx hO hy hc hs hib hF) (Or.inl hv) hE
 
 end Consensus.Goldilocks.Compose.Growing

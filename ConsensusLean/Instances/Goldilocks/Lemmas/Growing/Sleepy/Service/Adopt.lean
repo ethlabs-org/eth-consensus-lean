@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -109,8 +110,10 @@ theorem proposal_majority_at_update_from (hrun : Growing.GoldilocksRun proposer 
   set d := tr.time k₀
   set A := tr.projAC.state y k₀
   set Hv := VotersAt tr H s d
-  have hcount : (H d)ᶜ.ncard < Hv.ncard :=
-    faults_lt_voters hrun (fun _ _ => rfl) hnc hB hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
+  have hcount : (H d)ᶜ.ncard < Hv.ncard := by
+    have h := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+      (CommitteeBoundsFrom.of_full hrun hB) hσ₀ (by rw [ht]; linarith) hb (by rw [ht])
+    rwa [SA.ncard_inter_full] at h
   -- a validator honest at `d` has one slot-`s` vote in the pool: its vote
   have hone : ∀ x j e, HVoteAt tr H x j e → x ∈ H d → e.msg.slot = s →
       ∀ v ∈ A.pool s, v.val = x → v = e.msg := by

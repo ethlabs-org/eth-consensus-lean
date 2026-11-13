@@ -417,7 +417,7 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   obtain ⟨j', hj'j, B', CV, hfl, hyj', L, hLU, hLr, hLB'⟩ :=
     fastLock_provenance_at hrun D.hnc (hrun.time_nonneg j) (fun _ hk => hm hk.le) hav' hl₀ hlf
   obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
-  have hf := D.two_faults_lt_at hyj' (fastLockAt_isCall hfl)
+  have hcallj' := fastLockAt_isCall hfl
   obtain ⟨w, jw, ew, hvw, hws, Hd, hHd, hHdr, hB'Hd⟩ := fastLock_extending_vote_at D hyj' hfl
   refine ⟨w, jw, ew, hvw, ?_, Hd, hHd, hHdr, (Anc.mono hΦU hVB).trans (hLB'.trans hB'Hd)⟩
   -- the lock's slot is at most `q`
@@ -434,8 +434,20 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   · rcases Nat.lt_or_ge l₀.slot (q + 2) with hl2 | hl2
     · obtain hq : l₀.slot = q + 1 := by omega
       rw [hq] at hO
-      exact no_optimistic_before_held_row_at hrun D.hnc hy hc hs hmacc hmi
-        (hrun.antitone (hm hmi.le) hav) hkm hsg hyj' (by omega) hO hf
+      have hfK : 2 * (D.K.committee (q + 1) ∩ (H (tr.time j'))ᶜ).ncard < sp.committeeSize := by
+        obtain ⟨-, -, -, hslot, -⟩ := id hO
+        have hsl : sp.slot (tr.time j') = q + 1 := hslot
+        have h₁ := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j') ((q + 1 : Nat) : Int)).2
+          (by rw [hsl])
+        have h₂ : ¬ sp.ts ((q + 2 : Nat) : Int) ≤ tr.time j' := fun h => by
+          have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j') _).1 h
+          rw [hsl] at this
+          omega
+        have hts : sp.ts ((q + 2 : Nat) : Int) = sp.ts ((q + 1 : Nat) : Int) + 4 * sp.Δ := by
+          simp only [SAParams.ts]; push_cast; ring
+        exact D.two_faults_lt_K h₁ (by linarith) ⟨_, j', hyj', hcallj', le_rfl⟩
+      exact no_optimistic_before_held_row_at hrun D.hnc D.facts hy hc hs hmacc hmi
+        (hrun.antitone (hm hmi.le) hav) hkm hsg hyj' (by omega) hO hfK
     · obtain ⟨ℓO, A, -, hslot, -⟩ := id hO
       have h := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j') (l₀.slot : Int)).2
         (le_of_eq (by rw [show sp.slot (tr.time j') = l₀.slot from hslot]))

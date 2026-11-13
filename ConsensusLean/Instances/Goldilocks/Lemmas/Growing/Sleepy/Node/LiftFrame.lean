@@ -33,19 +33,18 @@ theorem resultAt_mem_frame {FGP : Type} {ro' : ReplayOrder sp FGP} {trS : SA.SAT
 /-- The block of an origin event at a time `≤ d` by a node honest at `d` is in the prefix's honest
 blocks through `d`. -/
 theorem origin_mem_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr)
-    (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d) {k s : Nat} (hkd : tr.time k ≤ d)
+    {x : Fin sp.n} (hx : x ∈ H d) {k s : Nat} (hkd : tr.time k ≤ d)
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (h : SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV) :
     C ∈ (tr.upTo d).HonestBlocks (H d) := by
   rcases h with h | h
   · obtain ⟨ℓ, hc, hC⟩ := resultAt_mem_frame h
     exact mem_upTo_of_frame hrun hx hkd hc hC
-  · -- TEMP(C2): C3/C4 replaces
-    obtain ⟨-, -, ell, A, hpt, hC, -⟩ := SA.optimisticLockAt_spec (acRun_upTo hrun hnc hd) hx
-      ((sa_optimisticLockAt_upTo hrun.time_mono).mpr ⟨hkd, h⟩) (SA.CommitteeDict.full sp.n)
-      (fun _ _ _ => SA.mem_full _ _)
-    exact mem_upTo_of_frame hrun hx hkd ((Trace.upTo_callAt _).mp hpt.1).2 hC
+  · obtain ⟨ℓ, A, hpt, -, hsel, -⟩ := h
+    unfold SA.optimisticSelect at hsel
+    dsimp only at hsel
+    split_ifs at hsel
+    exact mem_upTo_of_frame hrun hx hkd hpt.1 (SA.deepest_mem hsel).1.1
 
 /-- An origin of the prefix within `d'` is an origin of the run within `d'`. -/
 theorem originWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -61,11 +60,11 @@ theorem originWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 
 /-- The block of an origin of the prefix is in the prefix's honest blocks. -/
 theorem originWithin_upTo_mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (h : Compose.OriginWithin (tr.upTo d) (H d) C s d) : C ∈ (tr.upTo d).HonestBlocks (H d) := by
   obtain ⟨x, hx, k, CV, hk, hO⟩ := Compose.originWithin_iff.1 h
   rw [RunTrace.upTo_projAC] at hO
-  refine origin_mem_upTo hrun hnc hd hx hk (s := s) (CV := CV) ?_
+  refine origin_mem_upTo hrun hx hk (s := s) (CV := CV) ?_
   rcases hO with hO | hO
   · exact Or.inl ((sa_resultAt_upTo hrun.time_mono).mp hO).2
   · exact Or.inr ((sa_optimisticLockAt_upTo hrun.time_mono).mp hO).2
@@ -90,13 +89,13 @@ theorem held_origin_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr)
     ⟨y, hy, i, by rw [hst]; exact hBt.1⟩
   have h := held_origin_viable_before (hrun.upTo hd) (hnc.upTo _) (b := tr.time i) hf
     (fun _ => Compose.originsBelowUpTo_iff.2 fun C j C' j' _ _ hC hC' =>
-      compatible_upTo hrun hnc hd (originWithin_upTo_mem hrun hnc hd hC)
-        (originWithin_upTo_mem hrun hnc hd hC')
+      compatible_upTo hrun hnc hd (originWithin_upTo_mem hrun hC)
+        (originWithin_upTo_mem hrun hC')
         (hP C j C' j' (originWithin_of_upTo hrun hC) (originWithin_of_upTo hrun hC')))
     hy i (fun k hk => hrun.time_mono hk.le)
     (fun C s hC => by
       have hCw := hC.within (b := tr.time i) fun k hk => hrun.time_mono hk.le
-      exact compatible_upTo hrun hnc hd hBU (originWithin_upTo_mem hrun hnc hd hCw)
+      exact compatible_upTo hrun hnc hd hBU (originWithin_upTo_mem hrun hCw)
         (hBc C s (originBefore_of_upTo hrun hC)))
     (by rw [hst]; exact hBt)
   rwa [hst] at h

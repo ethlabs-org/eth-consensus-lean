@@ -17,7 +17,10 @@ service and an armed ready source, with `P` its origin, `A₀ = holdersAt`, `W =
 * The cohort premises come from the outage's no-sleep and cohort counts on the view retained
   through the cohort time `cohortAt = outageEnd = z`, with no rewrite of the retained view:
   `A₀ ⊆ H z`, `W ⊆ H z`, `|(H z)ᶜ ∪ W| < |A₀|`, and a validator honest at `z` awake in `[a, z]`
-  is in `A₀ ∪ W`.
+  is in `A₀ ∪ W`; inside each band committee `K m`, `|K m ∩ ((H z)ᶜ ∪ W)| < |K m ∩ A₀|`
+  (`cohort_lt_K`, from the committee cohort premise).
+* The slot committees are the query's `Q.K`, with their facts `Q.facts` (size, P, T, frames,
+  gate) and their count shapes `Q.boundsK` (from the committee η-sleepy premise).
 * The two count shapes through every horizon come from the η-sleepy premise (η-sleepy implies
   sleepy at half readiness, `sleepy_bounds_at`); the Sleepy invariant up to the start from the
   pre-start service and those counts (`sleepy_invariant_at`).
@@ -81,7 +84,7 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     Compose.Growing.OutageLockPremises Q.trace Q.keys (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2) (simIni S Q.run.2 Q.hn) :=
   have hrun := simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid
-  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b replaces
+  have hmv := simIni_mayVote S Q.run.2 Q.hn -- TEMP(C2): C3b-final removes after C3a/C3c
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hnum := query_numbers_at Q
   have hr := restoredLabel_spec Q
@@ -106,6 +109,8 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
     A₀ := Q.holdersAt
     W := Q.lateKeysAt
     hrun := hrun
+    K := Q.K
+    facts := Q.facts hrun
     hmv := hmv
     hnc := hnc
     hj₀ := ⟨hnum.1, hnum.2.1⟩
@@ -135,12 +140,16 @@ noncomputable def outageLockPremises_of_arming_at (Q : OutageQueryAt S A V)
       · rcases ar.armed with ⟨htg, ho⟩ | ⟨hCw, -⟩
         · exact absurd (ho ▸ htg) hg
         · exact Or.inr (hCw.mono hTs)
-    hpre := Compose.Growing.sleepy_invariant_at hrun hmv hnc (hT0.trans hTs) service (hBb _ hsh)
+    hpre := Compose.Growing.sleepy_invariant_at hrun hnc (Q.facts hrun) (hT0.trans hTs) service
+      (hBb _ hsh) (Q.boundsK hrun hsh)
     hpreSvc := service
     hB := fun b ⟨_, _, _, hc, hle⟩ => hBb b (hle.trans (Q.call_le_horizon hc))
+    hBK := fun b ⟨_, _, _, hc, hle⟩ => Q.boundsK hrun (hle.trans (Q.call_le_horizon hc))
     hA₀ := Q.holdersAt_subset
     hW := ⟨Q.lateKeysAt_subset, Q.holdersAt_disjoint⟩
     hcohort := Q.cohort_lt
+    hcohortK := fun m h₁ h₂ ⟨_, _, _, hc, hle⟩ =>
+      Q.cohort_lt_K h₁ h₂ (hle.trans (Q.call_le_horizon hc)) hsh
     hawake := fun x t hat htz hxz haw => Q.classify hat htz hxz haw
     hA₀awake := fun x hx t hat htz => Q.holder_awake hx hat htz
     hA₀join := fun x hx k hk hkz =>

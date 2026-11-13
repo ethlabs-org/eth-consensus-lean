@@ -185,7 +185,8 @@ theorem include_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
     (hy : ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
-  have hinv := sleepy_invariant_at hrun (fun _ _ => rfl) hnc hb0 hsync hB
+  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hb0 hsync
+    hB (CommitteeBoundsFrom.of_full hrun hB)
   have hτ0 : 0 ≤ τ := by
     obtain ⟨p, kP, -, -, -, hkP⟩ := hP
     exact hkP ▸ hrun.time_nonneg kP
@@ -280,7 +281,8 @@ theorem grow_sleepy_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
       linarith
     omega
   refine ⟨sp.ts s, P, hts, hRP, hinc, hnot, fun x jx y j hx hjx hy hj => ?_⟩
-  have hinv := sleepy_invariant_at hrun (fun _ _ => rfl) hnc hb0 hsync hB
+  have hinv := sleepy_invariant_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hb0 hsync
+    hB (CommitteeBoundsFrom.of_full hrun hB)
   rcases hinv.read_compatible_at hrun hnc ht hjx.1 (by linarith) hx.1 hD0 hj.1 htb hy.1
       t (t + D) with h | h
   · exact h

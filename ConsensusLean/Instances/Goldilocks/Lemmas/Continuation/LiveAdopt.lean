@@ -56,9 +56,9 @@ theorem seeded_member_anc_proposal (hS : SeededRun tr H proposer dg g ΔF T r σ
       hS.inv.vote_extends C l hC x k e hv (hkt.trans hsb) (by omega)
     rwa [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes))] at hCH
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hS.run hS.noColl
-    obtain ⟨x, k, e, hv, hkb, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hS.run (fun _
-        _ => rfl) hS.noColl
-      hS.sync hS.bounds hrs (by linarith [hS.gbar_le hrs]) hO
+    obtain ⟨x, k, e, hv, hkb, hes, Hd, hHd, hHdr, hOHd⟩ := honest_supporter_at hS.run
+        hS.noColl (CommitteeFacts.of_full hS.run hS.noColl hS.run.stock)
+      hS.sync (CommitteeBoundsFrom.of_full hS.run hS.bounds) hrs (by linarith [hS.gbar_le hrs]) hO
     rw [hU.1 hHd hPU (hHdr.trans (hall x k e hv hes))] at hOHd
     exact hCO.trans hOHd
 
@@ -88,8 +88,9 @@ theorem seeded_votes_succ_extend (hS : SeededRun tr H proposer dg g ΔF T r σ t
   | _ j ih =>
     intro e hv hes hjb
     obtain ⟨hx, ℓ, hc, he⟩ := hVoteAt_iff.1 hv
-    exact later_transfer_step_at hS.run (fun _ _ => rfl) hS.noColl hS.sync hS.bounds (g := g)
-        (rL := r)
+    exact later_transfer_step_at hS.run hS.noColl
+        (CommitteeFacts.of_full hS.run hS.noColl hS.run.stock) hS.sync
+        (CommitteeBoundsFrom.of_full hS.run hS.bounds) (g := g) (rL := r)
       (rO := r + sp.k - 1) hrs' hsa hx ⟨hc, he⟩ hes hjb
       (fun l hl _ => handover_live_lock_label_at hS.seed hx ⟨hc, he⟩ (by omega) l hl) hBc
       (fun hw => seeded_vote_frame_of hS.run hS.noColl hS.seed hS.horizon hS.service hS.bounds
@@ -170,9 +171,10 @@ theorem seeded_updater_F_anc (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ 
       · exact Or.inl (hmem hCb (by omega))
       obtain rfl : l = s + 1 := le_antisymm hl hls
       obtain ⟨O', hO', hCO'⟩ := hC.below_origin hrun hnc
-      obtain ⟨z, j, e, hv, hjb, hes, Hd, hHd, hHdr, hOH⟩ := honest_supporter_at hrun (fun _
-          _ => rfl) hnc
-        hS.sync hS.bounds (by omega) (by linarith [hS.gbar_le (show r ≤ s + 1 by omega)])
+      obtain ⟨z, j, e, hv, hjb, hes, Hd, hHd, hHdr, hOH⟩ := honest_supporter_at hrun hnc
+          (CommitteeFacts.of_full hrun hnc hrun.stock)
+        hS.sync (CommitteeBoundsFrom.of_full hrun hS.bounds) (by omega)
+        (by linarith [hS.gbar_le (show r ≤ s + 1 by omega)])
         (hO'.mono (hck₀.trans hb))
       obtain ⟨Hd', hHd', hHd'r, hPH⟩ := hsucc z j e hv hes (hjb.trans le_rfl)
       obtain rfl : Hd' = Hd := hU.1 hHd' hHd (hHd'r.trans hHdr.symm)

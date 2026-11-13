@@ -468,7 +468,9 @@ quarters of optimistic voters are in the updater's slot-`s` pool at the result (
 between), and none of them supports a conflicting block, so a conflicting result would have at most
 a quarter of the committee as supporters, not a majority. -/
 theorem own_optimistic_compatible_result {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {k c s : Nat}
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteeP K tr.projAC H)
+    (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
+    {k c s : Nat}
     {B' D : SA.Blk sp.n (List (FG.Att sp.n))} {CV CV' : Set (SA.Vote sp.n)}
     (hO : SA.OptimisticLockAt tr.projAC y k s B' CV) (hR : SA.ResultAt tr.projAC y c s D CV')
     (hkc : k < c) (hnr : ∀ r, k < r → r ≤ c → ¬ tr.RestartAt y r) :
@@ -476,10 +478,8 @@ theorem own_optimistic_compatible_result {ini} (hrun : GoldilocksRun proposer dg
   have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
-  -- TEMP(C2): C3/C4 replaces
-  obtain ⟨-, hcnt, ell, A, hp, -, hCV, -⟩ := SA.optimisticLockAt_spec hrun' hy hO
-    (SA.CommitteeDict.full sp.n) (fun _ _ _ => SA.mem_full _ _)
-  rw [hrun'.stock] at hcnt
+  obtain ⟨-, hcnt, ell, A, hp, -, hCV, -⟩ := SA.optimisticLockAt_spec hrun' hy hO K
+    (hP.1 y hy (k + 1))
   obtain ⟨ℓ, hu, hD, -⟩ := hR
   have hΦU := (SA.frameIn_of_callAt hr hy hp.1).2
   have hΦU' := (SA.frameIn_of_callAt hr hy hu.1).2
@@ -509,9 +509,13 @@ theorem own_optimistic_compatible_result {ini} (hrun : GoldilocksRun proposer dg
     rintro i ⟨v, hv, rfl⟩
     exact ⟨v, hsub v (hCV v hv).1, rfl⟩
   have h1 := Set.ncard_le_ncard hvv (Set.toFinite _)
-  have h2 : (SA.voters CV ∪ SA.supporters ℓ.frame V s D).ncard ≤ sp.n := by
-    refine (Set.ncard_le_ncard (Set.subset_univ _)).trans ?_
-    rw [Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin]
+  have h2 : (SA.voters CV ∪ SA.supporters ℓ.frame V s D).ncard ≤ sp.committeeSize := by
+    rw [← hsize s]
+    refine Set.ncard_le_ncard (Set.union_subset (hvv.trans ?_) ?_) (Set.toFinite _)
+    · rintro i ⟨v, hv, rfl⟩
+      exact (hP.1 y hy c s v hv)
+    · rintro i ⟨-, v, ⟨hv, -⟩, rfl, -⟩
+      exact hP.1 y hy c s v hv
   rw [Set.ncard_union_eq hdisj (Set.toFinite _) (Set.toFinite _)] at h2
   omega
 
@@ -605,7 +609,9 @@ theorem cover_gate_veto_above (hrun : GoldilocksRun proposer dg H tr)
     rcases hO' with ⟨ℓ', hu', -⟩ | hopt
     · exact hfirst k' hk' ℓ' (hls ▸ hu')
     · rw [hls] at hopt
-      refine hO O hLO (own_optimistic_compatible_result hrun hnc hy hopt
+      refine hO O hLO (own_optimistic_compatible_result hrun hnc
+        (K := SA.CommitteeDict.full sp.n) SA.CommitteeP.full (SA.size_binding_full hrun.stock)
+        hy hopt
         ⟨ℓ, hu, by rw [projAC_state hrun.toLocalRun hy]; exact hD, rfl⟩ hk' ?_)
       intro r hr₁ hr₂ hrr
       have h1 := hnr r hr₂ hrr

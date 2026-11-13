@@ -29,6 +29,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
 
@@ -518,7 +519,7 @@ theorem rowsAbove_of (hrun : Growing.GoldilocksRun proposer dg H tr)
   have hmd : tr.time m ≤ d := hi m hmi
   have hcd : tr.time c ≤ d := (hrun.time_mono (by omega : c ≤ m)).trans hmd
   have hk'le : ∀ q < k', tr.time q ≤ d := fun q hq => (hrun.time_mono (by omega)).trans hmd
-  have hOP := origin_mem_upTo hrun hnc hd hav hcd hO
+  have hOP := origin_mem_upTo hrun hav hcd hO
   have hCOP := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hOP hCO
   have hCP := Compose.anc_mem hCOP hOP
   have hDP : D ∈ (tr.upTo d).HonestBlocks (H d) :=
@@ -939,8 +940,8 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
       have := (fastLockAt_time hrun hfl).2
       have := ts_le_ts (sp := sp) (show l ≤ σ by omega)
       linarith
-    have hcount := faults_lt_voters hrun (fun _ _ => rfl) hnc hB (s := σ + 1) (d := sp.ts (σ + 1 :
-        Nat) + sp.Δ)
+    have hcount := faults_lt_voters hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+        (CommitteeBoundsFrom.of_full hrun hB) (s := σ + 1) (d := sp.ts (σ + 1 : Nat) + sp.Δ)
       (by omega) le_rfl (by linarith) (by linarith)
     obtain ⟨x', hx'⟩ : (VotersAt tr H (σ + 1) (sp.ts (σ + 1 : Nat) + sp.Δ)).Nonempty := by
       rw [Set.nonempty_iff_ne_empty]
@@ -955,8 +956,8 @@ private theorem member_supported (hrun : Growing.GoldilocksRun proposer dg H tr)
     exact ⟨x', k, e', hv, by omega, healedVotesBelow_iff.1 hseed.frontier.2 C l
       (.of_high hqT ho) x' k e' hv hkT (by omega) (by omega)⟩
   · obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
-    obtain ⟨x, k, e', hv, -, hes, hext⟩ := honest_supporter_at hrun (fun _ _ => rfl) hnc hsync hB
-        hlr
+    obtain ⟨x, k, e', hv, -, hes, hext⟩ := honest_supporter_at hrun hnc
+        (CommitteeFacts.of_full hrun hnc hrun.stock) hsync (CommitteeBoundsFrom.of_full hrun hB) hlr
       (by have := ts_le_ts (sp := sp) hlr; linarith) hO
     exact ⟨x, k, e', hv, by omega, voteExtends_of_anc hext hCO⟩
 
@@ -993,8 +994,9 @@ private theorem member_label_le (hrun : Growing.GoldilocksRun proposer dg H tr)
     by_contra hl
     rcases (show l = s + 1 ∨ s + 2 ≤ l by omega) with rfl | hl2
     · have hcm := hrun.time_mono (show c ≤ m by omega)
-      exact no_optimistic_before_held_row_at hrun hnc hy hc hs hA hmi hav hkm hS
-        (hrun.antitone hcm hav) hck hO (hf _ (hrun.time_nonneg c) (hci.trans hib))
+      exact no_optimistic_before_held_row_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock)
+        hy hc hs hA hmi hav hkm hS (hrun.antitone hcm hav) hck hO
+        (SA.cs2_full hrun.stock (hf _ (hrun.time_nonneg c) (hci.trans hib)))
     · have h2 := (SA.ts_le_iff sp).2 (show ((s + 2 : Nat) : Int) ≤ (l : Int) by exact_mod_cast hl2)
       have h3 := ts_add (sp := sp) s 2
       push_cast at h2 h3

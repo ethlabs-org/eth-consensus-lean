@@ -135,8 +135,8 @@ theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc 
   obtain ⟨-, hrσ, hgr⟩ := hseed.timing
   have hsync := sleepyServiceFrom_of_reset hrun hsvc hseed.catchRun (by linarith)
   have htr := ts_le_ts (sp := sp) (show r ≤ σ + 1 by omega)
-  refine frontier_at hrun (fun _ _ => rfl) hnc hsync (hB.of_le (show r ≤ σ + 1 by
-      omega)) le_rfl (by omega)
+  refine frontier_at hrun hnc (CommitteeFacts.of_full hrun hnc hrun.stock) hsync
+    (CommitteeBoundsFrom.of_full hrun (hB.of_le (show r ≤ σ + 1 by omega))) le_rfl (by omega)
     (by linarith) (fun s hs y i ℓ e hy hc hes _ l hl _ =>
       handover_live_lock_label_at hseed hy hc (by omega) l hl)
     (fun s hs hP y i ℓ e hy hc hes hib B j hBm hj hw =>

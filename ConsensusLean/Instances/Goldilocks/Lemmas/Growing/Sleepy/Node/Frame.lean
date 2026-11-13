@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.HeldRow
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 
 public section
 
@@ -125,15 +126,17 @@ theorem frame_crossing_source_at (hrun : Growing.GoldilocksRun proposer dg H tr)
   obtain ⟨E, hE, hEW, hEh, hET, D, hD, hDs⟩ := h
   exact ⟨E, hE, hEW, hEh, hET, D, hD, isHonestSourceAt_of_upTo hrun hDs⟩
 
-/-- **No optimistic check before a held row** under growing faults (R, the count at the check's
-cut `c`): at a slot-`(s+1)` vote of a node honest at its cut `i`, no block accepted at `m < i` holds
-an attestation, by a signer honest at `m`, signed at `k < m` after an optimistic check of slot
-`s + 1` at `c < k` by a node honest at `c`, when `2 f_{t_c} < n`. The signing is at `t_{s+1}` or
-`t_{s+1} + Δ`. At `t_{s+1} + Δ` the voter's own tick votes before the block arrives (on the prefix
-through `tr.time i`); at `t_{s+1}` the check's honest seats are the slot's proposer, so `n = 1`
-(on the prefix through `tr.time c`), and the voter has a second slot-`(s+1)` vote. -/
+/-- **No optimistic check before a held row** under growing faults (R, the committee count at the
+check's cut `c`): at a slot-`(s+1)` vote of a node honest at its cut `i`, no block accepted at
+`m < i` holds an attestation, by a signer honest at `m`, signed at `k < m` after an optimistic
+check of slot `s + 1` at `c < k` by a node honest at `c`, when `2 |K(s+1) ∩ (H t_c)ᶜ| <
+committeeSize`. The signing is at `t_{s+1}` or `t_{s+1} + Δ`. At `t_{s+1} + Δ` the voter's own tick
+votes before the block arrives (on the prefix through `tr.time i`); at `t_{s+1}` the check's honest
+seats are the slot's proposer, so the slot-`(s+1)` committee is one member (on the prefix through
+`tr.time c`), the voter (a member by the gate), and the voter has a second slot-`(s+1)` vote. -/
 theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : SA.Em sp (List (FG.Att sp.n))} {s : Nat} (hy : y ∈ H (tr.time i))
     (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) {m : Nat}
     {X : SA.Blk sp.n (List (FG.Att sp.n))} (hacc : tr.AcceptAt y m X) (hmi : m < i)
@@ -141,7 +144,7 @@ theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun pro
     (hsign : tr.SignAt a.val k a) {z : Fin sp.n} {c : Nat}
     {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hz : z ∈ H (tr.time c))
     (hck : c < k) (hO : SA.OptimisticLockAt tr.projAC z c (s + 1) C CV)
-    (hf : 2 * (H (tr.time c))ᶜ.ncard < sp.n) : False := by
+    (hfK : 2 * (K.committee (s + 1) ∩ (H (tr.time c))ᶜ).ncard < sp.committeeSize) : False := by
   have hm := hrun.time_mono
   obtain ⟨-, -, -, hslc, -⟩ := id hO
   change sp.slot (tr.time c) = s + 1 at hslc
@@ -152,17 +155,20 @@ theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun pro
       (hkm'.trans (hmi'.trans (by rw [← hs]; exact (cast_head_fcRoot_at hrun hnc hy hc).2)))
     with ⟨hT0, htc⟩ | hT
   · -- at `t_{s+1}`, on the prefix through the check
-    -- TEMP(C2): C3/C4 replaces
-    have hstk := (hrun.upTo (hrun.time_nonneg c)).stock
     obtain ⟨u, hu, hall, j', hj', e', hv', hs'⟩ := Compose.held_row_early_count
-      (hrun.upTo (hrun.time_nonneg c)) (hnc.upTo _) _ SA.CommitteeP.full
-      (SA.size_binding_full hstk) (SA.cs2_full hstk hf)
+      (hrun.upTo (hrun.time_nonneg c)) (hnc.upTo _) K
+      (by rw [RunTrace.upTo_projAC]; exact SA.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time c))
+      hKB.hsize hfK
       (hrun.antitone ((hm hck.le).trans hkm') hav)
       ((RunTrace.upTo_signAt tr).mpr ⟨htc.ge, hsign⟩) hT0 hz hck
       (by rw [RunTrace.upTo_projAC]; exact (sa_optimisticLockAt_upTo hm).mpr ⟨le_rfl, hO⟩)
     rw [RunTrace.upTo_projAC] at hv'
     obtain ⟨hjd, hv'⟩ := sa_voteAt_upTo.mp hv'
-    obtain rfl : u = y := (hall y (SA.mem_full _ _)).symm
+    have hyK : y ∈ K.committee (s + 1) := by
+      rw [← hs]
+      exact (hKB.hGate (tr.time i) (hrun.time_nonneg i) y hy i (fun k hk => hm hk.le) _).1
+        (mayVote_of_castAt_at hrun hnc hy hc)
+    obtain rfl : u = y := (hall y hyK).symm
     have := (one_vote_per_slot_at hrun hnc (hVoteAt_iff.2 ⟨hrun.antitone hjd hu, hv'⟩)
       (hVoteAt_iff.2 ⟨hy, ℓ, hc.1, hc.2⟩) (hs'.trans hs.symm)).1
     omega
